@@ -17,3 +17,28 @@
 
 # Claude settings
 **/.claude/settings.local.json
+
+#Lock
+**/Cargo.lock
+# MacOS
+.DS_Store
+# Windows
+Thumbs.db
+# Linux
+*~
+# Rust
+*.rs.bk
+# Rust
+*.pdb
+# Rust
+*.ilk
+# Rust
+*.idb
+# Rust
+*.exe
+# Rust
+*.ilk
+# Rust
+*.idb
+# Rust
+*.pdb

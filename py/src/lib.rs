@@ -7,7 +7,7 @@ use pyo3::prelude::*;
 
 /// Python module for quantrs
 #[pymodule]
-fn quantrs(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add("__version__", env!("CARGO_PKG_VERSION"))?;
+fn quantrs(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.setattr("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
 }
