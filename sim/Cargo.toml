@@ -1,0 +1,28 @@
+[package]
+name = "quantrs-sim"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Quantum circuit simulators for the quantrs framework"
+
+[dependencies]
+quantrs-core = { path = "../core", version = "0.1.0" }
+quantrs-circuit = { path = "../circuit", version = "0.1.0" }
+num-complex.workspace = true
+ndarray.workspace = true
+rayon.workspace = true
+thiserror.workspace = true
+
+# For GPU support (optional)
+wgpu = { workspace = true, optional = true }
+bytemuck = { workspace = true, optional = true }
+
+[features]
+default = []
+gpu = ["dep:wgpu", "dep:bytemuck"]
+simd = []

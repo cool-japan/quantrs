@@ -1,0 +1,18 @@
+[package]
+name = "quantrs-examples"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Examples for the quantrs quantum computing framework"
+publish = false
+
+[dependencies]
+quantrs-core = { path = "../core" }
+quantrs-circuit = { path = "../circuit" }
+quantrs-sim = { path = "../sim" }
+num-complex = "0.4"

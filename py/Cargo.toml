@@ -1,0 +1,23 @@
+[package]
+name = "quantrs-py"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Python bindings for the quantrs framework"
+
+[lib]
+name = "quantrs"
+crate-type = ["cdylib"]
+
+[dependencies]
+quantrs-core = { path = "../core", version = "0.1.0" }
+quantrs-circuit = { path = "../circuit", version = "0.1.0" }
+quantrs-sim = { path = "../sim", version = "0.1.0" }
+pyo3.workspace = true
+num-complex.workspace = true
+ndarray.workspace = true

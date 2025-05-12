@@ -1,0 +1,29 @@
+[package]
+name = "quantrs-device"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Quantum device connectors for the quantrs framework"
+
+[dependencies]
+quantrs-core = { path = "../core", version = "0.1.0" }
+quantrs-circuit = { path = "../circuit", version = "0.1.0" }
+num-complex.workspace = true
+thiserror.workspace = true
+
+# For device connectivity
+reqwest = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_json = { version = "1.0", optional = true }
+
+[features]
+default = []
+ibm = ["dep:reqwest", "dep:tokio", "dep:serde", "dep:serde_json"]
+azure = ["dep:reqwest", "dep:tokio", "dep:serde", "dep:serde_json"]
+aws = ["dep:reqwest", "dep:tokio", "dep:serde", "dep:serde_json"]

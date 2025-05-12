@@ -1,0 +1,45 @@
+[workspace]
+members = [
+    "core",
+    "circuit",
+    "sim",
+    "anneal",
+    "device",
+    "py",
+    "examples",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Quantrs Contributors"]
+edition = "2021"
+rust-version = "1.70.0"
+repository = "https://github.com/quantrs/quantrs"
+license = "Apache-2.0"
+keywords = ["quantum", "computing", "simulator", "annealing", "gate"]
+categories = ["science", "simulation"]
+
+[workspace.dependencies]
+# Common dependencies
+num-complex = "0.4"
+ndarray = { version = "0.15", features = ["rayon"] }
+rayon = "1.8"
+thiserror = "1.0"
+
+# For GPU support
+wgpu = { version = "0.17" }
+bytemuck = { version = "1.14" }
+
+# For D-Wave annealing
+reqwest = { version = "0.11", features = ["json"] }
+tokio = { version = "1.28", features = ["full"] }
+
+# For FFI and Python bindings
+pyo3 = { version = "0.19", features = ["extension-module"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+opt-level = 3
