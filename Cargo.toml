@@ -9,7 +9,14 @@ members = [
     "py",
     "examples",
 ]
-resolver = "2"
+exclude = [
+    "symengine-fork",
+]
+
+[patch.crates-io]
+symengine-sys = { git = "https://github.com/cool-japan/symengine-sys.git", branch = "fixed-macos" }
+
+[workspace.lints]
 
 [workspace.package]
 version = "0.1.0"

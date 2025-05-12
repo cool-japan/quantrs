@@ -49,12 +49,16 @@ pub mod gpu;
 pub mod analysis;
 
 // Re-export key types for convenience
+#[cfg(feature = "dwave")]
 pub use symbol::{symbols, symbols_list, symbols_define, symbols_nbit};
+#[cfg(feature = "dwave")]
 pub use compile::{Compile, PieckCompile};
 pub use sampler::{SASampler, GASampler, ArminSampler, MIKASAmpler, DWaveSampler};
+#[cfg(feature = "dwave")]
 pub use auto_array::Auto_array;
 pub use optimize::{optimize_qubo, optimize_hobo, calculate_energy};
-pub use gpu::{gpu_solve_qubo, gpu_solve_hobo, is_available as is_gpu_available};
+#[cfg(feature = "gpu")]
+pub use gpu::{gpu_solve_qubo, gpu_solve_hobo, is_available as is_gpu_available_internal};
 pub use analysis::{cluster_solutions, calculate_diversity, visualize_energy_distribution};
 
 // Expose Quantrs-anneal types as well for advanced usage

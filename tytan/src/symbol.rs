@@ -5,6 +5,7 @@
 
 use ndarray::Array;
 use std::fmt;
+#[cfg(feature = "dwave")]
 use symengine::{self, Symbol as SymengineSymbol};
 use thiserror::Error;
 
@@ -12,11 +13,11 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum SymbolError {
     /// Error when the format string doesn't match required dimensions
-    #[error("Format string must have same number of {} placeholders as dimensions")]
+    #[error("Format string must have same number of placeholders as dimensions")]
     FormatMismatch,
     
     /// Error when placeholder format is invalid
-    #[error("Format string must separate {} placeholders, got {0}")]
+    #[error("Format string must separate placeholders, got {0}")]
     InvalidPlaceholders(String),
     
     /// Error when dimensions exceed supported limits
@@ -47,8 +48,15 @@ pub type SymbolResult<T> = Result<T, SymbolError>;
 /// // Create multiple symbols
 /// let (x, y, z) = symbols("x y z");
 /// ```
+#[cfg(feature = "dwave")]
 pub fn symbols<T: AsRef<str>>(name: T) -> SymengineSymbol {
     symengine::symbols(name.as_ref())
+}
+
+/// Placeholder for when dwave feature is not enabled
+#[cfg(not(feature = "dwave"))]
+pub fn symbols<T: AsRef<str>>(_name: T) -> () {
+    panic!("The dwave feature is required to use symbolic functionality")
 }
 
 /// Create a multi-dimensional array of symbols
@@ -69,6 +77,7 @@ pub fn symbols<T: AsRef<str>>(name: T) -> SymengineSymbol {
 /// // Create a 3x3 grid of symbols
 /// let q = symbols_list([3, 3], "q{}_{}");
 /// ```
+#[cfg(feature = "dwave")]
 pub fn symbols_list<T>(shape: T, format_txt: &str) -> SymbolResult<Array<SymengineSymbol, ndarray::IxDyn>>
 where
     T: Into<Vec<usize>>,
@@ -101,6 +110,7 @@ where
 }
 
 // Helper function to recursively fill the symbol array
+#[cfg(feature = "dwave")]
 fn fill_symbol_array(
     array: &mut Array<SymengineSymbol, ndarray::IxDyn>,
     indices: &mut Vec<usize>,
@@ -158,6 +168,7 @@ fn fill_symbol_array(
 /// // q1_0 = symbols("q1_0")
 /// // q1_1 = symbols("q1_1")
 /// ```
+#[cfg(feature = "dwave")]
 pub fn symbols_define<T>(shape: T, format_txt: &str) -> SymbolResult<String>
 where
     T: Into<Vec<usize>>,
@@ -237,6 +248,7 @@ fn generate_symbol_commands(
 /// // Create an 8-bit variable representing values from 0 to 255
 /// let x = symbols_nbit(0, 256, "x{}", 8);
 /// ```
+#[cfg(feature = "dwave")]
 pub fn symbols_nbit(start: u64, stop: u64, format_txt: &str, num: usize) -> SymbolResult<SymengineSymbol> {
     // Validate format
     if format_txt.matches("{}").count() != 1 {

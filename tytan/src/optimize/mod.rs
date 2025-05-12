@@ -5,6 +5,7 @@
 
 use ndarray::{Array, ArrayD, Ix2, IxDyn};
 use std::collections::HashMap;
+use rand::Rng;
 
 #[cfg(feature = "scirs")]
 use scirs2_optimize::unconstrained::{minimize, MinimizeParams, MinimizeResult};

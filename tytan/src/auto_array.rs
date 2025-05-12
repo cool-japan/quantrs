@@ -7,7 +7,9 @@
 use std::collections::HashMap;
 use ndarray::{Array, ArrayD, IxDyn};
 use thiserror::Error;
+#[cfg(feature = "dwave")]
 use symengine::{Symbol as SymengineSymbol, Expr};
+#[cfg(feature = "dwave")]
 use regex::Regex;
 
 use crate::sampler::SampleResult;
@@ -35,11 +37,13 @@ pub type AutoArrayResult<T> = Result<T, AutoArrayError>;
 ///
 /// This struct provides methods for converting SampleResult objects
 /// into multi-dimensional arrays, which are easier to manipulate and visualize.
+#[cfg(feature = "dwave")]
 pub struct Auto_array<'a> {
     /// The sample result to convert
     result: &'a SampleResult,
 }
 
+#[cfg(feature = "dwave")]
 impl<'a> Auto_array<'a> {
     /// Create a new automatic array converter
     ///
@@ -82,6 +86,7 @@ impl<'a> Auto_array<'a> {
         
         // Create a regex to extract indices
         let re_str = format.replace("{}", "(.+?)");
+        #[cfg(feature = "dwave")]
         let re = Regex::new(&re_str).map_err(|e| {
             AutoArrayError::InvalidFormat(format!("Invalid regex: {}", e))
         })?;
@@ -236,6 +241,7 @@ impl<'a> Auto_array<'a> {
     /// # Returns
     ///
     /// The calculated value of the n-bit variable
+    #[cfg(feature = "dwave")]
     pub fn get_nbit_value(&self, expr: &SymengineSymbol) -> AutoArrayResult<f64> {
         // TODO: Implement n-bit value calculation
         // This will require evaluating the symbolic expression with

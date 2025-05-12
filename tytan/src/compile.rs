@@ -6,6 +6,7 @@
 
 use std::collections::{HashMap, HashSet};
 use ndarray::Array;
+#[cfg(feature = "dwave")]
 use symengine::{self, Symbol as SymengineSymbol, Expr};
 use thiserror::Error;
 
@@ -38,11 +39,13 @@ pub type CompileResult<T> = Result<T, CompileError>;
 ///
 /// This struct provides methods for converting symbolic expressions
 /// to QUBO models, which can then be solved using quantum annealing.
+#[cfg(feature = "dwave")]
 pub struct Compile {
     /// The symbolic expression to compile
     expr: Expr,
 }
 
+#[cfg(feature = "dwave")]
 impl Compile {
     /// Create a new compiler with the given expression
     pub fn new<T: Into<Expr>>(expr: T) -> Self {
@@ -120,6 +123,7 @@ impl Compile {
 }
 
 // Helper function to calculate the highest degree in the expression
+#[cfg(feature = "dwave")]
 fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
     // If the expression is a single variable, it's degree 1
     if expr.is_symbol() {
@@ -193,6 +197,7 @@ fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
 }
 
 // Helper function to replace squared terms with linear terms
+#[cfg(feature = "dwave")]
 fn replace_squared_terms(expr: &Expr) -> CompileResult<Expr> {
     // For binary variables, x^2 = x since x ∈ {0,1}
 
@@ -258,6 +263,7 @@ fn replace_squared_terms(expr: &Expr) -> CompileResult<Expr> {
 }
 
 // Helper function to extract coefficients and variables from the expression
+#[cfg(feature = "dwave")]
 fn extract_coefficients(expr: &Expr) -> CompileResult<(HashMap<Vec<String>, f64>, f64)> {
     let mut coeffs = HashMap::new();
     let mut offset = 0.0;
@@ -292,6 +298,7 @@ fn extract_coefficients(expr: &Expr) -> CompileResult<(HashMap<Vec<String>, f64>
 }
 
 // Helper function to extract coefficient and variables from a single term
+#[cfg(feature = "dwave")]
 fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>, f64>, f64)> {
     let mut coeffs = HashMap::new();
 
@@ -493,6 +500,7 @@ fn build_hobo_tensor(coeffs: &HashMap<Vec<String>, f64>, max_degree: usize) -> C
 ///
 /// This is a specialized compiler that is optimized for problems
 /// with one-hot constraints, common in many optimization problems.
+#[cfg(feature = "dwave")]
 pub struct PieckCompile {
     /// The symbolic expression to compile
     expr: Expr,
@@ -500,6 +508,7 @@ pub struct PieckCompile {
     verbose: bool,
 }
 
+#[cfg(feature = "dwave")]
 impl PieckCompile {
     /// Create a new Pieck compiler with the given expression
     pub fn new<T: Into<Expr>>(expr: T, verbose: bool) -> Self {
