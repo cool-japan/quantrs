@@ -16,7 +16,7 @@ Quantrs-Tytan is a high-level quantum annealing library for the Quantrs framewor
   - Optimized matrix operations with scirs2-linalg
   - Advanced numerical routines with scirs2-core
   - Specialized optimization algorithms with scirs2-optimize
-  - Solution clustering analysis with scirs2-cluster
+  - Solution clustering analysis (disabled due to dependency conflicts)
 
 ## Installation
 
@@ -63,10 +63,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - `parallel`: Enable multi-threading for samplers (default)
 - `gpu`: Enable GPU-accelerated samplers
-- `scirs`: Enable high-performance computing with SciRS2 libraries
+- `scirs`: Enable high-performance computing with SciRS2 libraries (without clustering)
 - `advanced_optimization`: Enable advanced optimization algorithms from SciRS2
 - `gpu_accelerated`: Full GPU-acceleration with SciRS2 GPU primitives
-- `clustering`: Enable solution clustering and analysis tools
+- `clustering`: Enable basic solution clustering and analysis tools (without scirs2-cluster)
 
 ## Integration with Existing Quantrs Modules
 

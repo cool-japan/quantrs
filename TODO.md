@@ -70,3 +70,4 @@ This document outlines the planned development tasks for the Quantrs project, or
 - [ ] Implement additional algorithms
 - [ ] Support for Azure Quantum and AWS Braket
 - [ ] Add tensor network simulator backend
+- [ ] Fork symengine to cool-japan/symengine and maintain it there to resolve dependency conflicts in the tytan crate

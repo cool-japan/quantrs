@@ -15,8 +15,8 @@ publish = false
 quantrs-core = { path = "../core" }
 quantrs-circuit = { path = "../circuit" }
 quantrs-anneal = { path = "../anneal" }
-# Temporarily comment out the tytan dependency as it's causing build issues
-# quantrs-tytan = { path = "../tytan" }
+# Tytan is intentionally not included directly
+# quantrs-tytan = { path = "../tytan", optional = true }
 num-complex = "0.4"
 
 # Feature for simulation examples which require quantrs-sim
@@ -32,6 +32,8 @@ num-complex = "0.4"
 #
 [features]
 simulation = ["quantrs-sim"]
+# Tytan feature is maintained but doesn't activate any dependencies
+tytan = []
 default = []
 
 # Optional dependencies with features
@@ -55,16 +57,16 @@ name = "traveling_salesman"
 path = "src/bin/traveling_salesman.rs"
 required-features = []
 
-# Tytan examples - Temporary commented
-# [[bin]]
-# name = "tytan_3rooks"
-# path = "src/bin/tytan_3rooks.rs"
-# required-features = []
+# Tytan examples
+[[bin]]
+name = "tytan_3rooks"
+path = "src/bin/tytan_3rooks.rs"
+required-features = ["tytan"]
 
-# [[bin]]
-# name = "tytan_maxcut_scirs"
-# path = "src/bin/tytan_maxcut_scirs.rs"
-# required-features = []
+[[bin]]
+name = "tytan_maxcut_scirs"
+path = "src/bin/tytan_maxcut_scirs.rs"
+required-features = ["tytan"]
 
 # Simulation examples
 [[bin]]

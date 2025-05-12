@@ -129,15 +129,33 @@ The integration uses feature flags to allow users to opt-in to specific capabili
 
 ## Dependency Management
 
-To avoid version conflicts, SciRS2 dependencies are all optional and versioned:
+To avoid version conflicts, SciRS2 dependencies are all optional and versioned. We've excluded scirs2-cluster due to compatibility issues with symengine:
 
 ```toml
 # SciRS2 dependencies for performance optimization
 scirs2-core = { version = "0.1.0-alpha.2", optional = true }
 scirs2-linalg = { version = "0.1.0-alpha.2", optional = true }
 scirs2-optimize = { version = "0.1.0-alpha.2", optional = true }
-scirs2-cluster = { version = "0.1.0-alpha.2", optional = true }
+# Excluded due to dependency conflicts with symengine
+# scirs2-cluster = { version = "0.1.0-alpha.2", optional = true }
 ```
+
+### Dependency Conflict Resolution
+
+We've encountered a dependency conflict between `symengine-sys` and `scirs2-cluster`:
+
+1. **Issue**: Both packages have transitive dependencies on different, incompatible versions of `clang-sys`:
+   - `symengine-sys` requires `clang-sys v0.28.0`
+   - `scirs2-cluster` requires `clang-sys v1.x`
+
+2. **Resolution**:
+   - Excluded `scirs2-cluster` from dependencies
+   - Implemented a simpler fallback clustering algorithm for the `clustering` feature
+   - Retained compatibility with core SciRS2 components that don't conflict
+
+3. **Future Solutions**:
+   - Monitor for updated versions of `symengine` that might resolve conflicts
+   - Consider creating a compatibility layer using isolated processes if advanced clustering remains necessary
 
 ## Performance Expectations
 

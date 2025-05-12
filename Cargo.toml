@@ -5,8 +5,7 @@ members = [
     "sim",
     "anneal",
     "device",
-    # Temporarily exclude tytan due to dependency conflicts
-    # "tytan",
+    "tytan",  # Re-enabled after resolving dependency conflicts
     "py",
     "examples",
 ]
