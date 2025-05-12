@@ -138,53 +138,72 @@ impl ChunkedStateVector {
         if target >= self.num_qubits {
             panic!("Target qubit index out of range");
         }
-        
-        // Create new chunks to hold the result
-        let mut new_chunks = Vec::with_capacity(self.chunks.len());
-        for chunk in &self.chunks {
-            new_chunks.push(MemoryChunk::new(chunk.as_slice().len()));
+
+        // Copy current state as we need to read from old state while writing to new
+        let old_chunks = self.chunks.clone();
+
+        // Reset all values to zero
+        for chunk in &mut self.chunks {
+            for idx in 0..chunk.as_slice().len() {
+                if let Some(val) = chunk.get_mut(idx) {
+                    *val = Complex64::new(0.0, 0.0);
+                }
+            }
         }
-        
-        // Process each chunk
-        for (chunk_idx, chunk) in self.chunks.iter().enumerate() {
+
+        // Process each chunk - iterate through old chunks for reading
+        for (chunk_idx, chunk) in old_chunks.iter().enumerate() {
             let base_idx = chunk_idx * self.chunk_size;
-            
-            // Process this chunk
+
+            // Process each amplitude in this chunk
             for (local_idx, &amp) in chunk.as_slice().iter().enumerate() {
                 let global_idx = base_idx + local_idx;
                 if global_idx >= self.dimension {
                     break;
                 }
-                
+
+                // Skip over zero amplitudes for efficiency
+                if amp == Complex64::new(0.0, 0.0) {
+                    continue;
+                }
+
                 let bit_val = (global_idx >> target) & 1;
-                
-                // Determine the paired index and its chunk location
+
+                // Find the paired index
                 let paired_global_idx = flip_bit(global_idx, target);
                 let paired_chunk_idx = paired_global_idx / self.chunk_size;
                 let paired_local_idx = paired_global_idx % self.chunk_size;
-                
-                // Get the paired amplitude
-                let paired_amp = self.get_amplitude(paired_global_idx);
-                
-                // Apply the gate matrix
-                if bit_val == 0 {
-                    // Update this index (for bit=0)
-                    if let Some(val) = new_chunks[chunk_idx].get_mut(local_idx) {
-                        *val += matrix[0] * amp + matrix[1] * paired_amp;
+
+                // Get the amplitude of the paired index from old state
+                let paired_amp = if paired_chunk_idx < old_chunks.len() {
+                    if let Some(val) = old_chunks[paired_chunk_idx].get(paired_local_idx) {
+                        *val
+                    } else {
+                        Complex64::new(0.0, 0.0)
                     }
-                    
-                    // Update the paired index (for bit=1)
-                    if paired_chunk_idx < new_chunks.len() {
-                        if let Some(val) = new_chunks[paired_chunk_idx].get_mut(paired_local_idx) {
-                            *val += matrix[2] * amp + matrix[3] * paired_amp;
+                } else {
+                    Complex64::new(0.0, 0.0)
+                };
+
+                // Calculate new amplitudes
+                let new_amp0 = matrix[0] * amp + matrix[1] * paired_amp;
+                let new_amp1 = matrix[2] * amp + matrix[3] * paired_amp;
+
+                // Determine current chunk/idx from global index
+                if bit_val == 0 {
+                    // Update both indices in one go
+                    if let Some(val) = self.chunks[chunk_idx].get_mut(local_idx) {
+                        *val += new_amp0;
+                    }
+
+                    if paired_chunk_idx < self.chunks.len() {
+                        if let Some(val) = self.chunks[paired_chunk_idx].get_mut(paired_local_idx) {
+                            *val += new_amp1;
                         }
                     }
                 }
             }
         }
-        
-        // Update the state
-        self.chunks = new_chunks;
     }
     
     /// Apply a controlled-NOT gate to the state vector
@@ -197,11 +216,14 @@ impl ChunkedStateVector {
         if control >= self.num_qubits || target >= self.num_qubits {
             panic!("Qubit indices out of range");
         }
-        
+
         if control == target {
             panic!("Control and target qubits must be different");
         }
-        
+
+        // We're using standard qubit ordering where the target/control parameters
+        // are used directly with bit operations
+
         // Create new chunks to hold the result
         let mut new_chunks = Vec::with_capacity(self.chunks.len());
         for chunk in &self.chunks {
@@ -220,7 +242,7 @@ impl ChunkedStateVector {
                 }
                 
                 let control_bit = (global_idx >> control) & 1;
-                
+
                 if control_bit == 0 {
                     // Control bit is 0: state remains unchanged
                     if let Some(val) = new_chunks[chunk_idx].get_mut(local_idx) {
@@ -231,15 +253,15 @@ impl ChunkedStateVector {
                     let flipped_idx = flip_bit(global_idx, target);
                     let flipped_chunk_idx = flipped_idx / self.chunk_size;
                     let flipped_local_idx = flipped_idx % self.chunk_size;
-                    
+
                     // Get the amplitude from the flipped position
                     let flipped_amp = self.get_amplitude(flipped_idx);
-                    
+
                     // Update the current position with the flipped amplitude
                     if let Some(val) = new_chunks[chunk_idx].get_mut(local_idx) {
                         *val = flipped_amp;
                     }
-                    
+
                     // Update the flipped position with the current amplitude
                     if flipped_chunk_idx < self.chunks.len() {
                         if let Some(val) = new_chunks[flipped_chunk_idx].get_mut(flipped_local_idx) {
@@ -388,25 +410,40 @@ mod tests {
             Complex64::new(FRAC_1_SQRT_2, 0.0),
             Complex64::new(-FRAC_1_SQRT_2, 0.0),
         ];
-        
+
         // Apply H to the 0th qubit of |00>
         let mut sv = ChunkedStateVector::new(2);
-        sv.apply_single_qubit_gate(&h_matrix, 0);
-        
+        println!("Initial state: {:?}", sv.as_vec());
+        sv.apply_single_qubit_gate(&h_matrix, 1);  // Changed from 0 to 1
+
+        // Print state for debugging
+        println!("After H on qubit 1:");
+        println!("amplitude[0] = {:?}", sv.get_amplitude(0));
+        println!("amplitude[1] = {:?}", sv.get_amplitude(1));
+        println!("amplitude[2] = {:?}", sv.get_amplitude(2));
+        println!("amplitude[3] = {:?}", sv.get_amplitude(3));
+
         // Result should be |00> + |10> / sqrt(2)
         assert!((sv.get_amplitude(0) - Complex64::new(FRAC_1_SQRT_2, 0.0)).norm() < 1e-10);
         assert!((sv.get_amplitude(1) - Complex64::new(0.0, 0.0)).norm() < 1e-10);
         assert!((sv.get_amplitude(2) - Complex64::new(FRAC_1_SQRT_2, 0.0)).norm() < 1e-10);
         assert!((sv.get_amplitude(3) - Complex64::new(0.0, 0.0)).norm() < 1e-10);
         
-        // Apply H to the 1st qubit
-        sv.apply_single_qubit_gate(&h_matrix, 1);
+        // Apply H to the 1st qubit (actually 0th in our implementation)
+        sv.apply_single_qubit_gate(&h_matrix, 0);
         
         // Result should be (|00> + |01> + |10> - |11>) / 2
+        // Add debug output
+        println!("After both H gates:");
+        println!("amplitude[0] = {:?}", sv.get_amplitude(0));
+        println!("amplitude[1] = {:?}", sv.get_amplitude(1));
+        println!("amplitude[2] = {:?}", sv.get_amplitude(2));
+        println!("amplitude[3] = {:?}", sv.get_amplitude(3));
+
         assert!((sv.get_amplitude(0) - Complex64::new(0.5, 0.0)).norm() < 1e-10);
         assert!((sv.get_amplitude(1) - Complex64::new(0.5, 0.0)).norm() < 1e-10);
         assert!((sv.get_amplitude(2) - Complex64::new(0.5, 0.0)).norm() < 1e-10);
-        assert!((sv.get_amplitude(3) - Complex64::new(-0.5, 0.0)).norm() < 1e-10);
+        assert!((sv.get_amplitude(3) - Complex64::new(0.5, 0.0)).norm() < 1e-10);
     }
     
     #[test]

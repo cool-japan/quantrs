@@ -11,19 +11,20 @@ This document outlines the planned development tasks for the Quantrs project, or
 - [x] Optimize state vector simulation for 30+ qubits
 - [x] Add comprehensive test suite for core functionality
 - [x] Benchmark against existing simulators
-- [ ] Release v0.1.0 to crates.io
 
 ## Milestone 2: Quantum Annealing
 
-- [ ] Implement Ising model representation
-- [ ] Add QUBO problem formulation
-- [ ] Implement simulated quantum annealing
-- [ ] Add D-Wave API client
-  - [ ] Authentication and connection management
-  - [ ] Problem submission
-  - [ ] Result retrieval and processing
-- [ ] Provide examples of optimization problems
-- [ ] Release `quantrs-anneal` v0.1.0
+- [x] Implement Ising model representation
+- [x] Add QUBO problem formulation
+- [x] Implement simulated quantum annealing
+- [x] Add D-Wave API client
+  - [x] Authentication and connection management
+  - [x] Problem submission
+  - [x] Result retrieval and processing
+- [x] Provide examples of optimization problems
+  - [x] Maximum Cut (MaxCut) problem
+  - [x] Graph Coloring problem
+  - [x] Traveling Salesman Problem (TSP)
 
 ## Milestone 3: Remote IBM Quantum
 
@@ -35,7 +36,6 @@ This document outlines the planned development tasks for the Quantrs project, or
 - [ ] Support for IBM Heron/Condor QPUs
 - [ ] Add parallel job submission capabilities
 - [ ] Optimize for high-throughput batch operations
-- [ ] Release `quantrs-device` v0.1.0
 
 ## Milestone 4: GPU Acceleration & Python Bindings
 
@@ -44,17 +44,23 @@ This document outlines the planned development tasks for the Quantrs project, or
 - [ ] Create PyO3 bindings for Python integration
 - [ ] Package as Python module with pip installation
 - [ ] Document Python API
-- [ ] Release `quantrs-py` v0.1.0
 
 ## Milestone 5: Documentation & Community
 
 - [ ] Create comprehensive API documentation
-- [ ] Write tutorials and examples
+- [x] Write tutorials and examples
 - [ ] Develop user guide
 - [ ] Set up CI/CD with GitHub Actions
 - [ ] Create contribution guidelines
 - [x] Add benchmarking suite
-- [ ] Release v1.0.0
+- [ ] Release v1.0.0-alpha.1
+- [ ] Release `quantrs-core` v0.1.0-alpha.1
+- [x] Prepare `quantrs-anneal` v0.1.0-alpha.1 for release
+  - [x] Complete implementation of core annealing features
+  - [x] Add examples of optimization problems
+  - [x] Fix build issues with example dependencies
+- [ ] Release `quantrs-py` v0.1.0-alpha.1
+- [ ] Release `quantrs-device` v0.1.0-alpha.1
 
 ## Ongoing Tasks
 

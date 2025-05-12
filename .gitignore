@@ -42,3 +42,4 @@ Thumbs.db
 *.idb
 # Rust
 *.pdb
+**/CLAUDE.local.md

@@ -94,7 +94,37 @@ Check out the `examples` directory for more quantum algorithms and demonstration
 - Grover's search algorithm
 - Quantum Fourier transform
 - VQE (Variational Quantum Eigensolver)
-- Quantum annealing
+- Quantum annealing optimization problems:
+  - Maximum Cut (MaxCut)
+  - Graph Coloring
+  - Traveling Salesman Problem (TSP)
+
+### Running Examples
+
+The examples are divided into two categories:
+
+1. **Quantum Annealing Examples** (no special dependencies):
+   ```bash
+   # Run MaxCut example
+   cargo run --bin max_cut
+
+   # Run Graph Coloring example
+   cargo run --bin graph_coloring
+
+   # Run Traveling Salesman example
+   cargo run --bin traveling_salesman
+   ```
+
+2. **Quantum Simulation Examples** (require the `simulation` feature):
+   ```bash
+   # Run Bell State example
+   cargo run --features simulation --bin bell_state
+
+   # Run optimized simulator example
+   cargo run --features simulation --bin optimized_sim_small
+   ```
+
+Note: Simulation examples require additional dependencies including linear algebra libraries.
 
 ## Performance
 

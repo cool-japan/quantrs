@@ -5,6 +5,8 @@ members = [
     "sim",
     "anneal",
     "device",
+    # Temporarily exclude tytan due to dependency conflicts
+    # "tytan",
     "py",
     "examples",
 ]
@@ -28,7 +30,7 @@ rayon = "1.10.0"
 thiserror = "2.0.12"
 scirs2-core = "0.1.0-alpha.2"
 scirs2-optimize = "0.1.0-alpha.2"
-pandrs = "0.1.0-alpha.1"
+pandrs = "0.1.0-alpha.2"
 
 # For GPU support
 wgpu = { version = "25.0.0" }

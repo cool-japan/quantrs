@@ -14,5 +14,75 @@ publish = false
 [dependencies]
 quantrs-core = { path = "../core" }
 quantrs-circuit = { path = "../circuit" }
-quantrs-sim = { path = "../sim" }
+quantrs-anneal = { path = "../anneal" }
+# Temporarily comment out the tytan dependency as it's causing build issues
+# quantrs-tytan = { path = "../tytan" }
 num-complex = "0.4"
+
+# Feature for simulation examples which require quantrs-sim
+#
+# Examples are divided into two categories:
+# 1. Quantum annealing examples (max_cut, graph_coloring, traveling_salesman)
+#    - These don't require any special features
+#    - Run with: cargo run --bin max_cut
+#
+# 2. Quantum simulation examples (bell_state, optimized_sim_small)
+#    - These require the "simulation" feature which enables quantrs-sim dependency
+#    - Run with: cargo run --features simulation --bin bell_state
+#
+[features]
+simulation = ["quantrs-sim"]
+default = []
+
+# Optional dependencies with features
+[dependencies.quantrs-sim]
+path = "../sim"
+optional = true
+
+# Quantum annealing examples
+[[bin]]
+name = "max_cut"
+path = "src/bin/max_cut.rs"
+required-features = []
+
+[[bin]]
+name = "graph_coloring"
+path = "src/bin/graph_coloring.rs"
+required-features = []
+
+[[bin]]
+name = "traveling_salesman"
+path = "src/bin/traveling_salesman.rs"
+required-features = []
+
+# Tytan examples - Temporary commented
+# [[bin]]
+# name = "tytan_3rooks"
+# path = "src/bin/tytan_3rooks.rs"
+# required-features = []
+
+# [[bin]]
+# name = "tytan_maxcut_scirs"
+# path = "src/bin/tytan_maxcut_scirs.rs"
+# required-features = []
+
+# Simulation examples
+[[bin]]
+name = "bell_state"
+path = "src/bin/bell_state.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "optimized_sim_small"
+path = "src/bin/optimized_sim_small.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "optimized_sim_demo"
+path = "src/bin/optimized_sim_demo.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "quantum_teleportation"
+path = "src/bin/quantum_teleportation.rs"
+required-features = ["simulation"]
