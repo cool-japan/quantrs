@@ -1,0 +1,71 @@
+[workspace]
+resolver = "2"
+members = [
+    "core",
+    "circuit",
+    "sim",
+    "anneal",
+    "device",
+    "tytan",  # Re-enabled after resolving dependency conflicts
+    "py",
+    "examples",
+]
+exclude = [
+    "symengine-fork",
+]
+
+[patch.crates-io]
+symengine-sys = { git = "https://github.com/cool-japan/symengine-sys.git", branch = "fixed-macos" }
+
+[workspace.lints.rust]
+nonstandard_style = "warn"
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+rust_2018_idioms = { level = "deny", priority = -1 }
+
+[workspace.lints.clippy]
+enum_glob_use = "warn"
+pedantic = "warn"
+nursery = "warn"
+unwrap_used = "warn"
+cast_possible_truncation = "warn"
+cast_sign_loss = "warn"
+cast_possible_wrap = "warn"
+dbg_macro = "warn"
+
+[workspace.package]
+version = "0.1.0-alpha.1"
+authors = ["Quantrs Contributors"]
+edition = "2021"
+rust-version = "1.86.0"
+repository = "https://github.com/quantrs/quantrs"
+license = "MIT OR Apache-2.0"
+keywords = ["quantum", "computing", "simulator", "annealing", "gate"]
+categories = ["science", "simulation"]
+
+[workspace.dependencies]
+# Common dependencies
+num-complex = "0.4.6"
+ndarray = { version = "0.16.1", features = ["rayon"] }
+rayon = "1.10.0"
+thiserror = "2.0.12"
+scirs2-core = "0.1.0-alpha.2"
+scirs2-optimize = "0.1.0-alpha.2"
+pandrs = "0.1.0-alpha.2"
+
+# For GPU support
+wgpu = { version = "25.0.0" }
+bytemuck = { version = "1.23.0" }
+
+# For D-Wave annealing
+reqwest = { version = "0.12.15", features = ["json"] }
+tokio = { version = "1.45.0", features = ["full"] }
+
+# For FFI and Python bindings
+pyo3 = { version = "0.24.2", features = ["extension-module"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+opt-level = 3

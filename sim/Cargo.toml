@@ -1,0 +1,36 @@
+[package]
+name = "quantrs-sim"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Quantum circuit simulators for the quantrs framework"
+
+[dependencies]
+quantrs-core = { path = "../core", version = "0.1.0-alpha.1" }
+quantrs-circuit = { path = "../circuit", version = "0.1.0-alpha.1" }
+num-complex.workspace = true
+ndarray.workspace = true
+rayon.workspace = true
+thiserror.workspace = true
+scirs2-core.workspace = true
+scirs2-optimize.workspace = true
+pandrs.workspace = true
+
+# For GPU support (optional)
+wgpu = { workspace = true, optional = true }
+bytemuck = { workspace = true, optional = true }
+rand = "0.9.1"
+rand_chacha = "0.9.0"
+wide = "0.7.32"
+
+[features]
+default = ["optimize"]
+gpu = ["dep:wgpu", "dep:bytemuck"]
+simd = []
+optimize = ["simd"] # Enable optimized implementations
+memory_efficient = [] # Enable memory-efficient algorithms for large state vectors

@@ -1,0 +1,182 @@
+[package]
+name = "quantrs-examples"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Examples for the quantrs quantum computing framework"
+publish = false
+
+[dependencies]
+quantrs-core = { path = "../core", version = "0.1.0-alpha.1" }
+quantrs-circuit = { path = "../circuit", version = "0.1.0-alpha.1" }
+quantrs-anneal = { path = "../anneal", version = "0.1.0-alpha.1" }
+# Tytan is intentionally not included directly
+# quantrs-tytan = { path = "../tytan", optional = true }
+num-complex = "0.4"
+
+# Feature for simulation examples which require quantrs-sim
+#
+# Examples are divided into categories:
+# 1. Quantum annealing examples (max_cut, graph_coloring, traveling_salesman)
+#    - These don't require any special features
+#    - Run with: cargo run --bin max_cut
+#
+# 2. Quantum simulation examples (bell_state, optimized_sim_small)
+#    - These require the "simulation" feature which enables quantrs-sim dependency
+#    - Run with: cargo run --features simulation --bin bell_state
+#
+# 3. GPU-accelerated simulation examples
+#    - These require both the "simulation" and "gpu" features
+#    - Run with: cargo run --features "simulation,gpu" --bin gpu_simulation
+#
+[features]
+simulation = ["quantrs-sim"]
+gpu = ["quantrs-sim/gpu"]
+# Tytan feature is maintained but doesn't activate any dependencies
+tytan = []
+ibm = ["quantrs-device/ibm", "tokio"]
+default = []
+
+# Optional dependencies with features
+[dependencies.quantrs-sim]
+path = "../sim"
+version = "0.1.0-alpha.1"
+optional = true
+
+[dependencies.quantrs-device]
+path = "../device"
+version = "0.1.0-alpha.1"
+optional = true
+
+[dependencies.tokio]
+version = "1.0"
+features = ["full"]
+optional = true
+
+# Quantum annealing examples
+[[bin]]
+name = "max_cut"
+path = "src/bin/max_cut.rs"
+required-features = []
+
+[[bin]]
+name = "graph_coloring"
+path = "src/bin/graph_coloring.rs"
+required-features = []
+
+[[bin]]
+name = "traveling_salesman"
+path = "src/bin/traveling_salesman.rs"
+required-features = []
+
+# Tytan examples
+[[bin]]
+name = "tytan_3rooks"
+path = "src/bin/tytan_3rooks.rs"
+required-features = ["tytan"]
+
+[[bin]]
+name = "tytan_maxcut_scirs"
+path = "src/bin/tytan_maxcut_scirs.rs"
+required-features = ["tytan"]
+
+# Simulation examples
+[[bin]]
+name = "bell_state"
+path = "src/bin/bell_state.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "optimized_sim_small"
+path = "src/bin/optimized_sim_small.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "optimized_sim_demo"
+path = "src/bin/optimized_sim_demo.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "quantum_teleportation"
+path = "src/bin/quantum_teleportation.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "extended_gates"
+path = "src/bin/extended_gates.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "noisy_simulator"
+path = "src/bin/noisy_simulator.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "extended_gates_with_noise"
+path = "src/bin/extended_gates_with_noise.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "error_correction"
+path = "src/bin/error_correction.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "phase_error_correction"
+path = "src/bin/phase_error_correction.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "five_qubit_code"
+path = "src/bin/five_qubit_code.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "error_correction_comparison"
+path = "src/bin/error_correction_comparison.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "tensor_network_sim"
+path = "src/bin/tensor_network_sim.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "tensor_network_optimization"
+path = "src/bin/tensor_network_optimization.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "grovers_algorithm"
+path = "src/bin/grovers_algorithm.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "quantum_fourier_transform"
+path = "src/bin/quantum_fourier_transform.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "quantum_phase_estimation"
+path = "src/bin/quantum_phase_estimation.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "shors_algorithm_simplified"
+path = "src/bin/shors_algorithm_simplified.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "ibm_quantum_example"
+path = "src/bin/ibm_quantum_example.rs"
+required-features = ["ibm"]
+
+[[bin]]
+name = "gpu_simulation"
+path = "src/bin/gpu_simulation.rs"
+required-features = ["simulation", "gpu"]
