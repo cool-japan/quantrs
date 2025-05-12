@@ -1,0 +1,111 @@
+name: Quantrs CI
+
+on:
+  push:
+    branches: [ "main", "master", "feature/*" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust: [stable]
+        features: ['', 'parallel']
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt, clippy
+      
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libopenblas-dev pkg-config
+
+      - name: Install system dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install openblas gmp mpfr
+          echo "OPENBLAS_DIR=$(brew --prefix openblas)" >> $GITHUB_ENV
+          echo "GMP_DIR=$(brew --prefix gmp)" >> $GITHUB_ENV
+          echo "MPFR_DIR=$(brew --prefix mpfr)" >> $GITHUB_ENV
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-I$(brew --prefix openblas)/include -I$(brew --prefix gmp)/include -I$(brew --prefix mpfr)/include" >> $GITHUB_ENV
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      
+      - name: Clippy check
+        if: matrix.features == ''
+        run: cargo clippy -- -D warnings
+        
+      - name: Clippy check with features
+        if: matrix.features != ''
+        run: cargo clippy --features=${{ matrix.features }} -- -D warnings
+      
+      - name: Run tests
+        if: matrix.features == ''
+        run: cargo test --verbose
+        
+      - name: Run tests with features
+        if: matrix.features != ''
+        run: cargo test --features=${{ matrix.features }} --verbose
+      
+      - name: Build documentation
+        run: cargo doc --no-deps
+
+  # Add a separate job for dwave feature, as it requires symengine
+  test-dwave:
+    name: Test with SymEngine (D-Wave feature)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libopenblas-dev pkg-config cmake
+          
+          # Install SymEngine from source
+          git clone https://github.com/symengine/symengine.git
+          cd symengine
+          mkdir build && cd build
+          cmake -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_SHARED_LIBS=yes ..
+          make -j$(nproc)
+          sudo make install
+          cd ../..
+          
+          # Set environment variables
+          echo "SYMENGINE_DIR=/usr" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      
+      - name: Build with dwave feature
+        run: cargo build --verbose --features=dwave -p quantrs-tytan
+        
+      - name: Run tests with dwave feature
+        run: cargo test --verbose --features=dwave -p quantrs-tytan

@@ -3,7 +3,13 @@
 use quantrs_tytan::*;
 use ndarray::Array;
 
+#[cfg(feature = "dwave")]
+use quantrs_tytan::compile::Compile;
+#[cfg(feature = "dwave")]
+use quantrs_tytan::symbol::symbols;
+
 #[test]
+#[cfg(feature = "dwave")]
 fn test_compile_simple_expression() {
     // Test compiling a simple expression
     let x = symbols("x");
@@ -36,6 +42,7 @@ fn test_compile_simple_expression() {
 }
 
 #[test]
+#[cfg(feature = "dwave")]
 fn test_compile_quadratic_expression() {
     // Test compiling a quadratic expression
     let x = symbols("x");
@@ -68,6 +75,7 @@ fn test_compile_quadratic_expression() {
 }
 
 #[test]
+#[cfg(feature = "dwave")]
 fn test_compile_constraint_expression() {
     // Test compiling a constraint expression
     // For example, exactly one of x, y, z must be 1
@@ -111,6 +119,7 @@ fn test_compile_constraint_expression() {
 }
 
 #[test]
+#[cfg(feature = "dwave")]
 #[ignore] // Enable when HOBO support is fully implemented
 fn test_compile_cubic_expression() {
     // Test compiling a cubic expression
@@ -150,6 +159,7 @@ fn test_compile_cubic_expression() {
 }
 
 #[test]
+#[cfg(feature = "dwave")]
 fn test_compile_matrix_input() {
     // Test compiling from a matrix input
     // Create a 3x3 QUBO matrix directly

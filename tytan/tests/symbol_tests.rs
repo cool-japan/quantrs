@@ -2,7 +2,11 @@
 
 use quantrs_tytan::*;
 
+#[cfg(feature = "dwave")]
+use quantrs_tytan::symbol::{symbols, symbols_list, symbols_define, symbols_nbit};
+
 #[test]
+#[cfg(feature = "dwave")]
 fn test_basic_symbols() {
     // Test creating a single symbol
     let x = symbols("x");
@@ -17,6 +21,7 @@ fn test_basic_symbols() {
 }
 
 #[test]
+#[cfg(feature = "dwave")]
 fn test_symbols_list_1d() {
     // Test creating a 1D array of symbols
     let x = symbols_list(5, "x{}").unwrap();
@@ -32,6 +37,7 @@ fn test_symbols_list_1d() {
 }
 
 #[test]
+#[cfg(feature = "dwave")]
 fn test_symbols_list_2d() {
     // Test creating a 2D array of symbols
     let q = symbols_list([3, 3], "q{}_{}").unwrap();
@@ -46,6 +52,7 @@ fn test_symbols_list_2d() {
 }
 
 #[test]
+#[cfg(feature = "dwave")]
 fn test_symbols_list_error() {
     // Test error when format string doesn't match dimensions
     let result = symbols_list([3, 3], "q{}");
@@ -61,6 +68,7 @@ fn test_symbols_list_error() {
 }
 
 #[test]
+#[cfg(feature = "dwave")]
 fn test_symbols_define() {
     // Test generating symbol definition commands
     let command = symbols_define([2, 2], "q{}_{}").unwrap();
@@ -73,6 +81,7 @@ fn test_symbols_define() {
 }
 
 #[test]
+#[cfg(feature = "dwave")]
 fn test_symbols_nbit() {
     // Test creating an n-bit encoded variable
     let x = symbols_nbit(0, 16, "x{}", 4).unwrap();

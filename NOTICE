@@ -1,0 +1,22 @@
+Quantrs - Quantum Computing Toolkit in Rust
+Copyright 2025 Quantrs Team
+
+This software is dual-licensed under MIT License and Apache License 2.0. Please see the LICENSE file for details.
+
+Portions of this software are inspired by or based on existing quantum computing software:
+- Qiskit (https://qiskit.org/)
+- Cirq (https://quantumai.google/cirq)
+- D-Wave Ocean SDK (https://docs.ocean.dwavesys.com/)
+
+This implementation uses several Rust crates from third parties, including:
+- ndarray
+- num-traits
+- num-complex
+- rayon
+- thiserror
+- symengine-sys
+- pyo3
+- SciRS2 (KitaSan)
+
+Each of these third-party components may have their own licenses. 
+Please see their respective license files for details.

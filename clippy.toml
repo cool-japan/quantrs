@@ -1,0 +1,33 @@
+# Clippy configuration file
+
+# Enable/disable lints
+allow = []
+warn = [
+    "clippy::all",
+    "clippy::pedantic",
+    "clippy::nursery",
+]
+deny = [
+    "clippy::correctness",
+    "clippy::suspicious",
+    "clippy::complexity",
+    "clippy::perf",
+    "clippy::style",
+]
+
+# Set as warning so we don't break CI for now
+warn = [
+    "clippy::doc_markdown",
+    "clippy::missing_errors_doc",
+    "clippy::missing_panics_doc",
+]
+
+# Specific configuration for lint groups
+# cyclomatic_complexity_threshold = 25     # Default is 25
+# enum_variant_size_threshold = 200        # Default is 200
+# type_complexity_threshold = 250          # Default is 250
+# vec_box_size_threshold = 0               # Default is 0
+
+# Exclude certain files/directories from linting
+# [ignore]
+# paths = ["src/generated/"]

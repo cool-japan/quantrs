@@ -1,4 +1,5 @@
 [workspace]
+resolver = "2"
 members = [
     "core",
     "circuit",
@@ -17,6 +18,22 @@ exclude = [
 symengine-sys = { git = "https://github.com/cool-japan/symengine-sys.git", branch = "fixed-macos" }
 
 [workspace.lints]
+rust = {
+    nonstandard_style = "warn",
+    missing_debug_implementations = "warn",
+    missing_docs = "warn",
+    rust_2018_idioms = "deny"
+}
+clippy = {
+    enum_glob_use = "warn",
+    pedantic = "warn",
+    nursery = "warn",
+    unwrap_used = "warn",
+    cast_possible_truncation = "warn",
+    cast_sign_loss = "warn",
+    cast_possible_wrap = "warn",
+    dbg_macro = "warn"
+}
 
 [workspace.package]
 version = "0.1.0"

@@ -13,8 +13,15 @@
 //!
 //! # Example
 //!
+//! Example with the `dwave` feature enabled:
+//!
 //! ```rust,no_run
-//! use quantrs_tytan::{symbols, Compile, SASampler, Auto_array};
+//! # #[cfg(feature = "dwave")]
+//! # fn dwave_example() {
+//! use quantrs_tytan::sampler::{SASampler, Sampler};
+//! use quantrs_tytan::symbol::symbols;
+//! use quantrs_tytan::compile::Compile;
+//! use quantrs_tytan::auto_array::Auto_array;
 //!
 //! // Define variables
 //! let x = symbols("x");
@@ -31,7 +38,40 @@
 //! let solver = SASampler::new(None);
 //!
 //! // Sample
-//! let result = solver.run(&qubo, 100).unwrap();
+//! let result = solver.run_qubo(&qubo, 100).unwrap();
+//!
+//! // Display results
+//! for r in &result {
+//!     println!("{:?}", r);
+//! }
+//! # }
+//! ```
+//!
+//! Basic example without the `dwave` feature (no symbolic math):
+//!
+//! ```rust,no_run
+//! use quantrs_tytan::sampler::{SASampler, Sampler};
+//! use std::collections::HashMap;
+//! use ndarray::Array;
+//!
+//! // Create a simple QUBO matrix manually
+//! let mut matrix = Array::<f64, _>::zeros((2, 2));
+//! matrix[[0, 0]] = -1.0;  // Linear term for x
+//! matrix[[1, 1]] = -1.0;  // Linear term for y
+//! matrix[[0, 1]] = 2.0;   // Quadratic term for x*y
+//! matrix[[1, 0]] = 2.0;   // Symmetric
+//!
+//! // Create variable map
+//! let mut var_map = HashMap::new();
+//! var_map.insert("x".to_string(), 0);
+//! var_map.insert("y".to_string(), 1);
+//!
+//! // Choose a sampler
+//! let solver = SASampler::new(None);
+//!
+//! // Sample by converting to the dynamic format for hobo
+//! let matrix_dyn = matrix.into_dyn();
+//! let result = solver.run_hobo(&(matrix_dyn, var_map), 100).unwrap();
 //!
 //! // Display results
 //! for r in &result {

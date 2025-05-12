@@ -2,8 +2,13 @@
 
 use quantrs_tytan::*;
 use std::collections::HashMap;
+use quantrs_tytan::sampler::SampleResult;
+
+#[cfg(feature = "dwave")]
+use quantrs_tytan::auto_array::Auto_array;
 
 #[test]
+#[cfg(feature = "dwave")]
 fn test_auto_array_1d() {
     // Test 1D array conversion
     let mut assignments = HashMap::new();
@@ -37,6 +42,7 @@ fn test_auto_array_1d() {
 }
 
 #[test]
+#[cfg(feature = "dwave")]
 fn test_auto_array_2d() {
     // Test 2D array conversion
     let mut assignments = HashMap::new();
@@ -71,6 +77,7 @@ fn test_auto_array_2d() {
 }
 
 #[test]
+#[cfg(feature = "dwave")]
 fn test_auto_array_dframe() {
     // Test DataFrame conversion (2D)
     let mut assignments = HashMap::new();
@@ -104,6 +111,7 @@ fn test_auto_array_dframe() {
 }
 
 #[test]
+#[cfg(feature = "dwave")]
 fn test_auto_array_image() {
     // Test image conversion (2D)
     let mut assignments = HashMap::new();
@@ -137,6 +145,7 @@ fn test_auto_array_image() {
 }
 
 #[test]
+#[cfg(feature = "dwave")]
 fn test_auto_array_missing_values() {
     // Test handling of missing values
     let mut assignments = HashMap::new();
@@ -165,6 +174,7 @@ fn test_auto_array_missing_values() {
 }
 
 #[test]
+#[cfg(feature = "dwave")]
 fn test_auto_array_natural_sort() {
     // Test natural sorting of indices
     let mut assignments = HashMap::new();
