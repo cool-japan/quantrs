@@ -14,6 +14,10 @@ exclude = [
     "symengine-fork",
 ]
 
+# Exclude the Python bindings when publishing to crates.io
+[workspace.metadata.cargo-released]
+exclude-members = ["py", "examples"]
+
 [patch.crates-io]
 symengine-sys = { git = "https://github.com/cool-japan/symengine-sys.git", branch = "fixed-macos" }
 

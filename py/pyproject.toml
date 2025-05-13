@@ -1,0 +1,48 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "quantrs2"
+version = "0.1.0a1"
+description = "Python bindings for the QuantRS2 quantum computing framework"
+authors = [
+    {name = "QuantRS2 Contributors", email = "noreply@example.com"}
+]
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT/Apache-2.0"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
+]
+
+[project.urls]
+Homepage = "https://github.com/cool-japan/quantrs"
+Repository = "https://github.com/cool-japan/quantrs"
+Documentation = "https://docs.rs/quantrs2-py"
+
+[tool.maturin]
+# Basic features for extension module
+features = ["pyo3/extension-module"]
+# Include Python source modules
+python-source = "python"
+# Use simple binding mode
+binding = "pyo3"
+# Include these files in the package
+include = ["LICENSE*", "README.md"]
+# Make compatible with multiple Python versions
+abi3 = true
+abi3-py38 = true
+# Set this to work with maturin development
+manifest-path = "Cargo.toml"

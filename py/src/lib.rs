@@ -623,5 +623,8 @@ fn quantrs2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyCircuit>()?;
     m.add_class::<PySimulationResult>()?;
 
+    // Add metadata
+    m.setattr("__doc__", "QuantRS2 Quantum Computing Framework Python Bindings")?;
+
     Ok(())
 }
