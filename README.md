@@ -20,12 +20,13 @@ QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing fr
 
 QuantRS2 is organized as a workspace with several crates:
 
-- **quantrs2-core**: Core types, traits, and abstractions shared across the ecosystem
-- **quantrs2-circuit**: Quantum circuit representation and DSL
-- **quantrs2-sim**: Quantum simulators (state-vector and tensor-network)
-- **quantrs2-anneal**: Quantum annealing support and D-Wave integration
-- **quantrs2-device**: Remote quantum hardware connections (IBM Quantum and other providers)
-- **quantrs2-py**: Python bindings with PyO3
+- **[quantrs2-core](core/README.md)**: Core types, traits, and abstractions shared across the ecosystem
+- **[quantrs2-circuit](circuit/README.md)**: Quantum circuit representation and DSL
+- **[quantrs2-sim](sim/README.md)**: Quantum simulators (state-vector and tensor-network)
+- **[quantrs2-anneal](anneal/README.md)**: Quantum annealing support and D-Wave integration
+- **[quantrs2-device](device/README.md)**: Remote quantum hardware connections (IBM Quantum and other providers)
+- **[quantrs2-py](py/README.md)**: Python bindings with PyO3
+- **[quantrs2-tytan](tytan/README.md)**: High-level quantum annealing library
 
 ## Getting Started
 

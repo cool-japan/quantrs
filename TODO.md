@@ -2,6 +2,18 @@
 
 This document outlines the release plans and future roadmap for the QuantRS2 project.
 
+## Module-Specific Roadmaps
+
+For more detailed development plans for each module, see the individual TODO files:
+
+- [quantrs2-core](core/TODO.md): Core types and abstractions
+- [quantrs2-circuit](circuit/TODO.md): Circuit builder and DSL
+- [quantrs2-sim](sim/TODO.md): Quantum simulators
+- [quantrs2-anneal](anneal/TODO.md): Quantum annealing
+- [quantrs2-device](device/TODO.md): Hardware connectivity
+- [quantrs2-py](py/TODO.md): Python bindings
+- [quantrs2-tytan](tytan/TODO.md): High-level quantum annealing
+
 ## v0.1.0-alpha.1 Release Status
 
 The first alpha release of QuantRS2 is ready with all core functionality completed.
