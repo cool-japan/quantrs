@@ -1640,19 +1640,6 @@ dependencies = [
 
 [[package]]
 name = "ndarray"
-version = "0.15.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adb12d4e967ec485a5f71c6311fe28158e9d6f4bc4a447b474184d0f91a8fa32"
-dependencies = [
- "matrixmultiply",
- "num-complex",
- "num-integer",
- "num-traits 0.2.19",
- "rawpointer",
-]
-
-[[package]]
-name = "ndarray"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "882ed72dce9365842bf196bdeedf5055305f11fc8c03dee7bb0194a6cad34841"
@@ -1680,7 +1667,7 @@ dependencies = [
  "cauchy",
  "katexit",
  "lax",
- "ndarray 0.16.1",
+ "ndarray",
  "num-complex",
  "num-traits 0.2.19",
  "rand 0.8.5",
@@ -1693,7 +1680,7 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f093b3db6fd194718dcdeea6bd8c829417deae904e3fcc7732dabcd4416d25d8"
 dependencies = [
- "ndarray 0.16.1",
+ "ndarray",
  "rand 0.8.5",
  "rand_distr 0.4.3",
 ]
@@ -2248,7 +2235,7 @@ dependencies = [
 name = "quantrs2-py"
 version = "0.1.0-alpha.1"
 dependencies = [
- "ndarray 0.16.1",
+ "ndarray",
  "num-complex",
  "pyo3",
  "quantrs2-circuit",
@@ -2261,7 +2248,7 @@ name = "quantrs2-sim"
 version = "0.1.0-alpha.1"
 dependencies = [
  "bytemuck",
- "ndarray 0.16.1",
+ "ndarray",
  "num-complex",
  "pandrs",
  "quantrs2-circuit",
@@ -2280,7 +2267,7 @@ dependencies = [
 name = "quantrs2-tytan"
 version = "0.1.0-alpha.1"
 dependencies = [
- "ndarray 0.15.6",
+ "ndarray",
  "num-complex",
  "ocl",
  "quantrs2-anneal",
@@ -2762,7 +2749,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06e56fb54a89285b3b84be7f1234c408584cf6e3df15582cb1c0efd0d37dd6d0"
 dependencies = [
  "chrono",
- "ndarray 0.16.1",
+ "ndarray",
  "ndarray-linalg",
  "num-complex",
  "num-traits 0.2.19",
@@ -2785,7 +2772,7 @@ dependencies = [
  "approx",
  "blas",
  "nalgebra",
- "ndarray 0.16.1",
+ "ndarray",
  "ndarray-rand",
  "num-complex",
  "num-traits 0.2.19",
@@ -2806,7 +2793,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4207b1e32445ab6cddc538f252110268366bfa1559425c05b35c2d17501096f1"
 dependencies = [
  "argmin",
- "ndarray 0.16.1",
+ "ndarray",
  "num-complex",
  "num-traits 0.2.19",
  "openblas-src",
