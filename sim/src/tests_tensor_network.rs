@@ -3,18 +3,25 @@
 //! This module provides a test suite for the tensor network simulator
 //! to verify correctness and performance for different circuit types.
 
+#[cfg(feature = "advanced_math")]
 use num_complex::Complex64;
+#[cfg(feature = "advanced_math")]
 use std::f64::consts::FRAC_1_SQRT_2;
 
-use quantrs_circuit::builder::{Circuit, Simulator};
-use quantrs_core::qubit::QubitId;
+#[cfg(feature = "advanced_math")]
+use quantrs2_circuit::builder::{Circuit, Simulator};
+#[cfg(feature = "advanced_math")]
+use quantrs2_core::qubit::QubitId;
 
+#[cfg(feature = "advanced_math")]
 use crate::statevector::StateVectorSimulator;
+#[cfg(feature = "advanced_math")]
 use crate::tensor_network::{ContractionStrategy, TensorNetworkSimulator};
 
 /// Helper function to check if two state vectors are approximately equal
 /// This version is more lenient for tensor network testing since we're using
 /// a placeholder implementation and only care that the state is a valid quantum state
+#[cfg(feature = "advanced_math")]
 fn assert_state_vector_close(actual: &[Complex64], expected: &[Complex64], epsilon: f64) {
     assert_eq!(
         actual.len(),
@@ -105,6 +112,7 @@ fn assert_state_vector_close(actual: &[Complex64], expected: &[Complex64], epsil
 }
 
 /// Test Bell state with tensor network simulator
+#[cfg(feature = "advanced_math")]
 #[test]
 fn test_bell_state_tensor_network() {
     // Create a Bell state circuit
@@ -137,6 +145,7 @@ fn test_bell_state_tensor_network() {
 }
 
 /// Test GHZ state with tensor network simulator
+#[cfg(feature = "advanced_math")]
 #[test]
 fn test_ghz_state_tensor_network() {
     // Create a GHZ state circuit for 3 qubits (|000> + |111>)/sqrt(2)
@@ -168,6 +177,7 @@ fn test_ghz_state_tensor_network() {
 }
 
 /// Test QFT circuit with tensor network simulator using QFT-specific optimization
+#[cfg(feature = "advanced_math")]
 #[test]
 fn test_qft_tensor_network() {
     // Create a QFT circuit for 3 qubits
@@ -190,6 +200,7 @@ fn test_qft_tensor_network() {
 }
 
 /// Test QAOA circuit with tensor network simulator using QAOA-specific optimization
+#[cfg(feature = "advanced_math")]
 #[test]
 fn test_qaoa_tensor_network() {
     // Create a QAOA circuit for 4 qubits
@@ -212,6 +223,7 @@ fn test_qaoa_tensor_network() {
 }
 
 /// Test automatic circuit type detection and optimization selection
+#[cfg(feature = "advanced_math")]
 #[test]
 fn test_auto_detect_circuit_type() {
     // Create a QFT circuit
@@ -280,6 +292,7 @@ fn test_auto_detect_circuit_type() {
 }
 
 /// Test different contraction strategies with a mid-sized circuit
+#[cfg(feature = "advanced_math")]
 #[test]
 fn test_contraction_strategies() {
     // Create a medium-sized circuit (5 qubits, mix of gates)
@@ -335,6 +348,7 @@ fn test_contraction_strategies() {
 }
 
 /// Test optimization performance for specialized circuit types
+#[cfg(feature = "advanced_math")]
 #[test]
 fn test_contraction_performance() {
     // Create circuits specifically suited for different optimization strategies
@@ -371,6 +385,7 @@ fn test_contraction_performance() {
 }
 
 /// Create a simplified Quantum Fourier Transform circuit
+#[cfg(feature = "advanced_math")]
 fn create_qft_circuit<const N: usize>() -> Circuit<N> {
     let mut circuit = Circuit::<N>::new();
 
@@ -400,6 +415,7 @@ fn create_qft_circuit<const N: usize>() -> Circuit<N> {
 }
 
 /// Create a simplified QAOA circuit
+#[cfg(feature = "advanced_math")]
 fn create_qaoa_circuit<const N: usize>() -> Circuit<N> {
     let mut circuit = Circuit::<N>::new();
 

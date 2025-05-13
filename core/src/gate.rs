@@ -3,7 +3,7 @@ use std::any::Any;
 use std::f64::consts::PI;
 use std::fmt::Debug;
 
-use crate::error::QuantrsResult;
+use crate::error::QuantRS2Result;
 use crate::qubit::QubitId;
 
 /// Trait for quantum gate operations
@@ -25,7 +25,7 @@ pub trait GateOp: Debug + Send + Sync {
     }
 
     /// Returns the matrix representation of this gate
-    fn matrix(&self) -> QuantrsResult<Vec<Complex64>>;
+    fn matrix(&self) -> QuantRS2Result<Vec<Complex64>>;
 
     /// Downcast to concrete gate type
     fn as_any(&self) -> &dyn Any;
@@ -52,7 +52,7 @@ pub mod single {
             vec![self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             let sqrt2_inv = 1.0 / 2.0_f64.sqrt();
             Ok(vec![
                 Complex64::new(sqrt2_inv, 0.0),
@@ -83,7 +83,7 @@ pub mod single {
             vec![self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             Ok(vec![
                 Complex64::new(0.0, 0.0),
                 Complex64::new(1.0, 0.0),
@@ -113,7 +113,7 @@ pub mod single {
             vec![self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             Ok(vec![
                 Complex64::new(0.0, 0.0),
                 Complex64::new(0.0, -1.0),
@@ -143,7 +143,7 @@ pub mod single {
             vec![self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             Ok(vec![
                 Complex64::new(1.0, 0.0),
                 Complex64::new(0.0, 0.0),
@@ -180,7 +180,7 @@ pub mod single {
             true
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             let cos = (self.theta / 2.0).cos();
             let sin = (self.theta / 2.0).sin();
             Ok(vec![
@@ -219,7 +219,7 @@ pub mod single {
             true
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             let cos = (self.theta / 2.0).cos();
             let sin = (self.theta / 2.0).sin();
             Ok(vec![
@@ -258,7 +258,7 @@ pub mod single {
             true
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             let phase = Complex64::new(0.0, -self.theta / 2.0).exp();
             let phase_conj = Complex64::new(0.0, self.theta / 2.0).exp();
             Ok(vec![
@@ -290,7 +290,7 @@ pub mod single {
             vec![self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             Ok(vec![
                 Complex64::new(1.0, 0.0),
                 Complex64::new(0.0, 0.0),
@@ -320,7 +320,7 @@ pub mod single {
             vec![self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             let phase = Complex64::new((PI / 4.0).cos(), (PI / 4.0).sin());
             Ok(vec![
                 Complex64::new(1.0, 0.0),
@@ -351,7 +351,7 @@ pub mod single {
             vec![self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             let phase = Complex64::new((PI / 4.0).cos(), -(PI / 4.0).sin());
             Ok(vec![
                 Complex64::new(1.0, 0.0),
@@ -382,7 +382,7 @@ pub mod single {
             vec![self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             Ok(vec![
                 Complex64::new(1.0, 0.0),
                 Complex64::new(0.0, 0.0),
@@ -412,7 +412,7 @@ pub mod single {
             vec![self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             // √X = [[0.5+0.5i, 0.5-0.5i], [0.5-0.5i, 0.5+0.5i]]
             let half_plus_i_half = Complex64::new(0.5, 0.5);
             let half_minus_i_half = Complex64::new(0.5, -0.5);
@@ -446,7 +446,7 @@ pub mod single {
             vec![self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             // √X† = [[0.5-0.5i, 0.5+0.5i], [0.5+0.5i, 0.5-0.5i]]
             let half_minus_i_half = Complex64::new(0.5, -0.5);
             let half_plus_i_half = Complex64::new(0.5, 0.5);
@@ -489,7 +489,7 @@ pub mod multi {
             vec![self.control, self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             // For a 2-qubit gate, we return a 4x4 matrix in row-major order
             Ok(vec![
                 Complex64::new(1.0, 0.0),
@@ -535,7 +535,7 @@ pub mod multi {
             vec![self.control, self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             // For a 2-qubit gate, we return a 4x4 matrix in row-major order
             Ok(vec![
                 Complex64::new(1.0, 0.0),
@@ -581,7 +581,7 @@ pub mod multi {
             vec![self.qubit1, self.qubit2]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             // For a 2-qubit gate, we return a 4x4 matrix in row-major order
             Ok(vec![
                 Complex64::new(1.0, 0.0),
@@ -627,7 +627,7 @@ pub mod multi {
             vec![self.control, self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             // Matrix for CY:
             // [[1, 0, 0, 0],
             //  [0, 1, 0, 0],
@@ -677,7 +677,7 @@ pub mod multi {
             vec![self.control, self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             // For a controlled-H gate, the matrix is:
             // [[1, 0, 0, 0],
             //  [0, 1, 0, 0],
@@ -729,7 +729,7 @@ pub mod multi {
             vec![self.control, self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             // For a controlled-S gate, the matrix is:
             // [[1, 0, 0, 0],
             //  [0, 1, 0, 0],
@@ -782,11 +782,11 @@ pub mod multi {
             vec![self.control1, self.control2, self.target]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             // For a 3-qubit gate, we return an 8x8 matrix
             // This would be very large to write out fully, so for now we return
             // an error indicating it should be expanded into its constituent gates
-            Err(crate::error::QuantrsError::UnsupportedOperation(
+            Err(crate::error::QuantRS2Error::UnsupportedOperation(
                 "Direct matrix representation of Toffoli gate not supported. \
                  Use gate decomposition."
                     .into(),
@@ -820,11 +820,11 @@ pub mod multi {
             vec![self.control, self.target1, self.target2]
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             // For a 3-qubit gate, we return an 8x8 matrix
             // This would be very large to write out fully, so for now we return
             // an error indicating it should be expanded into its constituent gates
-            Err(crate::error::QuantrsError::UnsupportedOperation(
+            Err(crate::error::QuantRS2Error::UnsupportedOperation(
                 "Direct matrix representation of Fredkin gate not supported. \
                  Use gate decomposition."
                     .into(),
@@ -862,7 +862,7 @@ pub mod multi {
             true
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             // For a controlled-RX gate, the matrix is:
             // [[1, 0, 0, 0],
             //  [0, 1, 0, 0],
@@ -922,7 +922,7 @@ pub mod multi {
             true
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             // For a controlled-RY gate, the matrix is:
             // [[1, 0, 0, 0],
             //  [0, 1, 0, 0],
@@ -982,7 +982,7 @@ pub mod multi {
             true
         }
 
-        fn matrix(&self) -> QuantrsResult<Vec<Complex64>> {
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             // For a controlled-RZ gate, the matrix is:
             // [[1, 0, 0, 0],
             //  [0, 1, 0, 0],

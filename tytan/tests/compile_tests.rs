@@ -1,12 +1,12 @@
 //! Tests for the compile module.
 
 use ndarray::Array;
-use quantrs_tytan::*;
+use quantrs2_tytan::*;
 
 #[cfg(feature = "dwave")]
-use quantrs_tytan::compile::Compile;
+use quantrs2_tytan::compile::Compile;
 #[cfg(feature = "dwave")]
-use quantrs_tytan::symbol::symbols;
+use quantrs2_tytan::symbol::symbols;
 
 #[test]
 #[cfg(feature = "dwave")]

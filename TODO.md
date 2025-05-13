@@ -1,10 +1,10 @@
-# Quantrs Release Plans and Roadmap
+# QuantRS2 Release Plans and Roadmap
 
-This document outlines the release plans and future roadmap for the Quantrs project.
+This document outlines the release plans and future roadmap for the QuantRS2 project.
 
 ## v0.1.0-alpha.1 Release Status
 
-The first alpha release of Quantrs is ready with all core functionality completed.
+The first alpha release of QuantRS2 is ready with all core functionality completed.
 
 ### Completed Features
 

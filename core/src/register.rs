@@ -1,7 +1,7 @@
 use num_complex::Complex64;
 use std::marker::PhantomData;
 
-use crate::error::{QuantrsError, QuantrsResult};
+use crate::error::{QuantRS2Error, QuantRS2Result};
 use crate::qubit::QubitId;
 
 /// A quantum register that holds the state of N qubits
@@ -37,10 +37,10 @@ impl<const N: usize> Register<N> {
     ///
     /// Returns an error if the provided amplitudes vector doesn't have
     /// the correct dimension (2^N) or if the vector isn't properly normalized.
-    pub fn with_amplitudes(amplitudes: Vec<Complex64>) -> QuantrsResult<Self> {
+    pub fn with_amplitudes(amplitudes: Vec<Complex64>) -> QuantRS2Result<Self> {
         let expected_dim = 1 << N;
         if amplitudes.len() != expected_dim {
-            return Err(QuantrsError::CircuitValidationFailed(format!(
+            return Err(QuantRS2Error::CircuitValidationFailed(format!(
                 "Amplitudes vector has incorrect dimension. Expected {}, got {}",
                 expected_dim,
                 amplitudes.len()
@@ -51,7 +51,7 @@ impl<const N: usize> Register<N> {
         let norm_squared: f64 = amplitudes.iter().map(|a| a.norm_sqr()).sum();
 
         if (norm_squared - 1.0).abs() > 1e-10 {
-            return Err(QuantrsError::CircuitValidationFailed(format!(
+            return Err(QuantRS2Error::CircuitValidationFailed(format!(
                 "Amplitudes vector is not properly normalized. Norm^2 = {}",
                 norm_squared
             )));
@@ -94,9 +94,9 @@ impl<const N: usize> Register<N> {
     ///
     /// Returns an error if the bits slice has incorrect length or contains
     /// values other than 0 or 1.
-    pub fn amplitude(&self, bits: &[u8]) -> QuantrsResult<Complex64> {
+    pub fn amplitude(&self, bits: &[u8]) -> QuantRS2Result<Complex64> {
         if bits.len() != N {
-            return Err(QuantrsError::CircuitValidationFailed(format!(
+            return Err(QuantRS2Error::CircuitValidationFailed(format!(
                 "Bits slice has incorrect length. Expected {}, got {}",
                 N,
                 bits.len()
@@ -105,7 +105,7 @@ impl<const N: usize> Register<N> {
 
         for &bit in bits {
             if bit > 1 {
-                return Err(QuantrsError::CircuitValidationFailed(format!(
+                return Err(QuantRS2Error::CircuitValidationFailed(format!(
                     "Invalid bit value {}. Must be 0 or 1",
                     bit
                 )));
@@ -128,7 +128,7 @@ impl<const N: usize> Register<N> {
     ///
     /// Returns an error if the bits slice has incorrect length or contains
     /// values other than 0 or 1.
-    pub fn probability(&self, bits: &[u8]) -> QuantrsResult<f64> {
+    pub fn probability(&self, bits: &[u8]) -> QuantRS2Result<f64> {
         let amplitude = self.amplitude(bits)?;
         Ok(amplitude.norm_sqr())
     }
@@ -139,12 +139,12 @@ impl<const N: usize> Register<N> {
     }
 
     /// Calculate the expectation value of a single-qubit Pauli operator
-    pub fn expectation_z(&self, qubit: impl Into<QubitId>) -> QuantrsResult<f64> {
+    pub fn expectation_z(&self, qubit: impl Into<QubitId>) -> QuantRS2Result<f64> {
         let qubit_id = qubit.into();
         let q_idx = qubit_id.id() as usize;
 
         if q_idx >= N {
-            return Err(QuantrsError::InvalidQubitId(qubit_id.id()));
+            return Err(QuantRS2Error::InvalidQubitId(qubit_id.id()));
         }
 
         let dim = 1 << N;

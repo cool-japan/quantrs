@@ -1,5 +1,5 @@
 [package]
-name = "quantrs-anneal"
+name = "quantrs2-anneal"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
@@ -8,10 +8,10 @@ repository.workspace = true
 license.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Quantum annealing support for the quantrs framework"
+description = "Quantum annealing support for the QuantRS2 framework"
 
 [dependencies]
-quantrs-core = { path = "../core", version = "0.1.0-alpha.1" }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.1" }
 num-complex.workspace = true
 thiserror.workspace = true
 rand = "0.9.1"

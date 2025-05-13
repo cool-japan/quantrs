@@ -2,7 +2,7 @@
 use async_trait::async_trait;
 #[cfg(feature = "ibm")]
 use chrono;
-use quantrs_circuit::prelude::Circuit;
+use quantrs2_circuit::prelude::Circuit;
 use std::collections::HashMap;
 #[cfg(feature = "ibm")]
 use std::sync::Arc;

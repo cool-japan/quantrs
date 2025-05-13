@@ -1,6 +1,6 @@
-# Quantrs: Rust Quantum Computing Framework
+# QuantRS2: Rust Quantum Computing Framework
 
-Quantrs (`/kwɒntərz/`) is a comprehensive Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction.
+QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction.
 
 ## Features
 
@@ -18,44 +18,44 @@ Quantrs (`/kwɒntərz/`) is a comprehensive Rust-based quantum computing framewo
 
 ## Project Structure
 
-Quantrs is organized as a workspace with several crates:
+QuantRS2 is organized as a workspace with several crates:
 
-- **quantrs-core**: Core types, traits, and abstractions shared across the ecosystem
-- **quantrs-circuit**: Quantum circuit representation and DSL
-- **quantrs-sim**: Quantum simulators (state-vector and tensor-network)
-- **quantrs-anneal**: Quantum annealing support and D-Wave integration
-- **quantrs-device**: Remote quantum hardware connections (IBM Quantum and other providers)
-- **quantrs-py**: Python bindings with PyO3
+- **quantrs2-core**: Core types, traits, and abstractions shared across the ecosystem
+- **quantrs2-circuit**: Quantum circuit representation and DSL
+- **quantrs2-sim**: Quantum simulators (state-vector and tensor-network)
+- **quantrs2-anneal**: Quantum annealing support and D-Wave integration
+- **quantrs2-device**: Remote quantum hardware connections (IBM Quantum and other providers)
+- **quantrs2-py**: Python bindings with PyO3
 
 ## Getting Started
 
-First, add Quantrs to your project:
+First, add QuantRS2 to your project:
 
 ```toml
 [dependencies]
-quantrs-core = "0.1"
-quantrs-circuit = "0.1"
-quantrs-sim = "0.1"
+quantrs2-core = "0.1"
+quantrs2-circuit = "0.1"
+quantrs2-sim = "0.1"
 ```
 
 ### Creating a Bell State
 
 ```rust
-use quantrs_circuit::builder::Circuit;
-use quantrs_sim::statevector::StateVectorSimulator;
+use quantrs2_circuit::builder::Circuit;
+use quantrs2_sim::statevector::StateVectorSimulator;
 
 fn main() {
     // Create a circuit with 2 qubits
     let mut circuit = Circuit::<2>::new();
-    
+
     // Build a Bell state circuit: H(0) followed by CNOT(0, 1)
     circuit.h(0).unwrap()
            .cnot(0, 1).unwrap();
-    
+
     // Run the circuit on the state vector simulator
     let simulator = StateVectorSimulator::new();
     let result = circuit.run(simulator).unwrap();
-    
+
     // Print the resulting probabilities
     for (i, prob) in result.probabilities().iter().enumerate() {
         let bits = format!("{:02b}", i);
@@ -67,22 +67,22 @@ fn main() {
 ### Creating a Superposition State
 
 ```rust
-use quantrs_circuit::builder::Circuit;
-use quantrs_sim::statevector::StateVectorSimulator;
+use quantrs2_circuit::builder::Circuit;
+use quantrs2_sim::statevector::StateVectorSimulator;
 
 fn main() {
     // Create a circuit with 3 qubits
     let mut circuit = Circuit::<3>::new();
-    
+
     // Apply Hadamard gates to all qubits to create superposition
     circuit.h(0).unwrap()
            .h(1).unwrap()
            .h(2).unwrap();
-    
+
     // Run the circuit
     let simulator = StateVectorSimulator::new();
     let result = circuit.run(simulator).unwrap();
-    
+
     // Each basis state should have equal probability (1/8)
     for (i, prob) in result.probabilities().iter().enumerate() {
         let bits = format!("{:03b}", i);
@@ -165,7 +165,7 @@ Note: Simulation examples require additional dependencies including linear algeb
 
 ## Performance
 
-Quantrs is designed for high performance quantum simulation:
+QuantRS2 is designed for high performance quantum simulation:
 
 - Efficiently simulates up to 30+ qubits on standard hardware
 - Parallel execution with Rayon
@@ -185,7 +185,7 @@ See [TODO.md](TODO.md) for the development roadmap and upcoming features.
 
 ### Code Quality
 
-The Quantrs project maintains high code quality standards:
+The QuantRS2 project maintains high code quality standards:
 
 - All code compiles with zero warnings when using `cargo clippy -- -D warnings`
 - Modern Rust APIs are used throughout (rand 0.9+, ndarray 0.15+)
@@ -204,6 +204,37 @@ For a completely warning-free build:
 cargo clippy --all -- -D warnings
 ```
 
+#### Building on macOS (Apple Silicon)
+
+macOS users, especially on Apple Silicon, might encounter issues with OpenBLAS compilation during build. To resolve this, use these environment variables to force using the system BLAS (Accelerate framework):
+
+```bash
+OPENBLAS_SYSTEM=1 OPENBLAS64_SYSTEM=1 cargo build
+```
+
+Or create a `.cargo/config.toml` file in the project root with:
+
+```toml
+[env]
+OPENBLAS_SYSTEM = "1"
+OPENBLAS64_SYSTEM = "1"
+```
+
+If you still encounter issues, try building components separately:
+
+```bash
+# First, build the core components
+cargo build -p quantrs-core -p quantrs-circuit
+
+# Then build simulator components
+cargo build -p quantrs-sim
+
+# Or try building without default features
+cargo build -p quantrs-sim --no-default-features
+```
+
+For more detailed macOS build troubleshooting, see [MACOS_BUILD.md](MACOS_BUILD.md).
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. Before submitting, please ensure:
@@ -214,7 +245,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. Before sub
 
 ## Optional Features
 
-Quantrs provides several optional features:
+QuantRS2 provides several optional features:
 
 - **parallel**: Enables parallel execution using Rayon (enabled by default)
 - **gpu**: Enables GPU acceleration using WGPU
@@ -225,8 +256,8 @@ To use these features, add them to your dependencies:
 
 ```toml
 [dependencies]
-quantrs-sim = { version = "0.1", features = ["parallel", "gpu"] }
-quantrs-device = { version = "0.1", features = ["ibm"] }
+quantrs2-sim = { version = "0.1", features = ["parallel", "gpu"] }
+quantrs2-device = { version = "0.1", features = ["ibm"] }
 ```
 
 ### GPU Acceleration
@@ -235,7 +266,7 @@ The `gpu` feature enables GPU-accelerated quantum simulation using WGPU:
 
 ```toml
 [dependencies]
-quantrs-sim = { version = "0.1", features = ["gpu"] }
+quantrs2-sim = { version = "0.1", features = ["gpu"] }
 ```
 
 This requires a WGPU-compatible GPU (most modern GPUs). The GPU acceleration implementation uses compute shaders to parallelize quantum operations, providing significant speedup for large qubit counts.
@@ -243,8 +274,8 @@ This requires a WGPU-compatible GPU (most modern GPUs). The GPU acceleration imp
 Use the `GpuStateVectorSimulator` to run circuits on the GPU:
 
 ```rust
-use quantrs_circuit::prelude::*;
-use quantrs_sim::gpu::GpuStateVectorSimulator;
+use quantrs2_circuit::prelude::*;
+use quantrs2_sim::gpu::GpuStateVectorSimulator;
 
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Check if GPU acceleration is available
@@ -280,13 +311,13 @@ The `ibm` feature enables connection to IBM Quantum hardware:
 
 ```toml
 [dependencies]
-quantrs-device = { version = "0.1", features = ["ibm"] }
+quantrs2-device = { version = "0.1", features = ["ibm"] }
 ```
 
 To use IBM Quantum, you'll need an IBM Quantum account and API token. Use the token to authenticate:
 
 ```rust
-use quantrs_device::{create_ibm_client, create_ibm_device};
+use quantrs2_device::{create_ibm_client, create_ibm_device};
 
 async fn run() {
     let token = "your_ibm_quantum_token";
@@ -306,7 +337,7 @@ The `dwave` feature enables symbolic problem formulation for quantum annealing:
 
 ```toml
 [dependencies]
-quantrs-tytan = { version = "0.1", features = ["dwave"] }
+quantrs2-tytan = { version = "0.1", features = ["dwave"] }
 ```
 
 This requires the SymEngine library and its dependencies. See [TODO.md](TODO.md) for detailed setup instructions.

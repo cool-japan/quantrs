@@ -1,16 +1,16 @@
-//! Python bindings for the quantrs framework.
+//! Python bindings for the QuantRS2 framework.
 //!
 //! This crate provides Python bindings using PyO3,
-//! allowing quantrs to be used from Python.
+//! allowing QuantRS2 to be used from Python.
 
 use num_complex::Complex64;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyComplex, PyDict, PyList};
-use quantrs_circuit::builder::Simulator;
-use quantrs_circuit::prelude::Circuit;
-use quantrs_core::qubit::QubitId;
-use quantrs_sim::statevector::StateVectorSimulator;
+use quantrs2_circuit::builder::Simulator;
+use quantrs2_circuit::prelude::Circuit;
+use quantrs2_core::qubit::QubitId;
+use quantrs2_sim::statevector::StateVectorSimulator;
 
 /// Quantum circuit representation for Python
 #[pyclass]
@@ -96,25 +96,25 @@ fn apply_op<const N: usize>(circuit: &mut Circuit<N>, op: CircuitOp) -> Result<(
         CircuitOp::S(qubit) => {
             // Use the Phase gate for S
             circuit
-                .add_gate(quantrs_core::gate::single::Phase { target: qubit })
+                .add_gate(quantrs2_core::gate::single::Phase { target: qubit })
                 .map_err(|e| e.to_string())?;
         }
         CircuitOp::SDagger(qubit) => {
             // Use the PhaseDagger gate for S-dagger
             circuit
-                .add_gate(quantrs_core::gate::single::PhaseDagger { target: qubit })
+                .add_gate(quantrs2_core::gate::single::PhaseDagger { target: qubit })
                 .map_err(|e| e.to_string())?;
         }
         CircuitOp::T(qubit) => {
             // Use the T gate
             circuit
-                .add_gate(quantrs_core::gate::single::T { target: qubit })
+                .add_gate(quantrs2_core::gate::single::T { target: qubit })
                 .map_err(|e| e.to_string())?;
         }
         CircuitOp::TDagger(qubit) => {
             // Use the TDagger gate
             circuit
-                .add_gate(quantrs_core::gate::single::TDagger { target: qubit })
+                .add_gate(quantrs2_core::gate::single::TDagger { target: qubit })
                 .map_err(|e| e.to_string())?;
         }
         CircuitOp::Rx(qubit, theta) => {
@@ -248,7 +248,7 @@ impl PyCircuit {
         if use_gpu {
             #[cfg(feature = "gpu")]
             {
-                use quantrs_sim::gpu::GpuStateVectorSimulator;
+                use quantrs2_sim::gpu::GpuStateVectorSimulator;
                 if !GpuStateVectorSimulator::is_available() {
                     return Err(PyValueError::new_err(
                         "GPU acceleration requested but not available on this system",
@@ -501,15 +501,15 @@ impl PyCircuit {
         simulator: &S,
     ) -> PyResult<Py<PySimulationResult>>
     where
-        S: quantrs_circuit::prelude::Simulator<M>,
-        S: quantrs_circuit::prelude::Simulator<1>
-            + quantrs_circuit::prelude::Simulator<2>
-            + quantrs_circuit::prelude::Simulator<3>
-            + quantrs_circuit::prelude::Simulator<4>
-            + quantrs_circuit::prelude::Simulator<5>
-            + quantrs_circuit::prelude::Simulator<8>
-            + quantrs_circuit::prelude::Simulator<10>
-            + quantrs_circuit::prelude::Simulator<16>,
+        S: quantrs2_circuit::prelude::Simulator<M>,
+        S: quantrs2_circuit::prelude::Simulator<1>
+            + quantrs2_circuit::prelude::Simulator<2>
+            + quantrs2_circuit::prelude::Simulator<3>
+            + quantrs2_circuit::prelude::Simulator<4>
+            + quantrs2_circuit::prelude::Simulator<5>
+            + quantrs2_circuit::prelude::Simulator<8>
+            + quantrs2_circuit::prelude::Simulator<10>
+            + quantrs2_circuit::prelude::Simulator<16>,
     {
         let result = match &self.circuit {
             Some(CircuitEnum::Q1(c)) => {
@@ -614,9 +614,9 @@ impl PySimulationResult {
     }
 }
 
-/// Python module for quantrs
+/// Python module for QuantRS2
 #[pymodule]
-fn quantrs(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn quantrs2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.setattr("__version__", env!("CARGO_PKG_VERSION"))?;
 
     // Add classes to the module

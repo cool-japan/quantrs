@@ -1,9 +1,9 @@
 use num_complex::Complex64;
 use rayon::prelude::*;
 
-use quantrs_circuit::builder::{Circuit, Simulator};
-use quantrs_core::{
-    error::{QuantrsError, QuantrsResult},
+use quantrs2_circuit::builder::{Circuit, Simulator};
+use quantrs2_core::{
+    error::{QuantRS2Error, QuantRS2Result},
     gate::{multi, single, GateOp},
     qubit::QubitId,
     register::Register,
@@ -67,10 +67,10 @@ impl StateVectorSimulator {
         state: &mut [Complex64],
         gate_matrix: &[Complex64],
         target: QubitId,
-    ) -> QuantrsResult<()> {
+    ) -> QuantRS2Result<()> {
         let target_idx = target.id() as usize;
         if target_idx >= N {
-            return Err(QuantrsError::InvalidQubitId(target.id()));
+            return Err(QuantRS2Error::InvalidQubitId(target.id()));
         }
 
         // Convert the gate matrix to a 2x2 ndarray
@@ -130,12 +130,12 @@ impl StateVectorSimulator {
         gate_matrix: &[Complex64],
         control: QubitId,
         target: QubitId,
-    ) -> QuantrsResult<()> {
+    ) -> QuantRS2Result<()> {
         let control_idx = control.id() as usize;
         let target_idx = target.id() as usize;
 
         if control_idx >= N || target_idx >= N {
-            return Err(QuantrsError::InvalidQubitId(if control_idx >= N {
+            return Err(QuantRS2Error::InvalidQubitId(if control_idx >= N {
                 control.id()
             } else {
                 target.id()
@@ -143,7 +143,7 @@ impl StateVectorSimulator {
         }
 
         if control_idx == target_idx {
-            return Err(QuantrsError::CircuitValidationFailed(
+            return Err(QuantRS2Error::CircuitValidationFailed(
                 "Control and target qubits must be different".into(),
             ));
         }
@@ -232,12 +232,12 @@ impl StateVectorSimulator {
         state: &mut [Complex64],
         control: QubitId,
         target: QubitId,
-    ) -> QuantrsResult<()> {
+    ) -> QuantRS2Result<()> {
         let control_idx = control.id() as usize;
         let target_idx = target.id() as usize;
 
         if control_idx >= N || target_idx >= N {
-            return Err(QuantrsError::InvalidQubitId(if control_idx >= N {
+            return Err(QuantRS2Error::InvalidQubitId(if control_idx >= N {
                 control.id()
             } else {
                 target.id()
@@ -245,7 +245,7 @@ impl StateVectorSimulator {
         }
 
         if control_idx == target_idx {
-            return Err(QuantrsError::CircuitValidationFailed(
+            return Err(QuantRS2Error::CircuitValidationFailed(
                 "Control and target qubits must be different".into(),
             ));
         }
@@ -286,12 +286,12 @@ impl StateVectorSimulator {
         state: &mut [Complex64],
         qubit1: QubitId,
         qubit2: QubitId,
-    ) -> QuantrsResult<()> {
+    ) -> QuantRS2Result<()> {
         let q1_idx = qubit1.id() as usize;
         let q2_idx = qubit2.id() as usize;
 
         if q1_idx >= N || q2_idx >= N {
-            return Err(QuantrsError::InvalidQubitId(if q1_idx >= N {
+            return Err(QuantRS2Error::InvalidQubitId(if q1_idx >= N {
                 qubit1.id()
             } else {
                 qubit2.id()
@@ -299,7 +299,7 @@ impl StateVectorSimulator {
         }
 
         if q1_idx == q2_idx {
-            return Err(QuantrsError::CircuitValidationFailed(
+            return Err(QuantRS2Error::CircuitValidationFailed(
                 "Qubits must be different for SWAP gate".into(),
             ));
         }
@@ -348,7 +348,7 @@ impl Default for StateVectorSimulator {
 }
 
 impl<const N: usize> Simulator<N> for StateVectorSimulator {
-    fn run(&self, circuit: &Circuit<N>) -> QuantrsResult<Register<N>> {
+    fn run(&self, circuit: &Circuit<N>) -> QuantRS2Result<Register<N>> {
         // Initialize state vector to |0...0⟩
         let dim = 1 << N;
         let mut state = vec![Complex64::new(0.0, 0.0); dim];
@@ -498,7 +498,7 @@ impl<const N: usize> Simulator<N> for StateVectorSimulator {
                     if gate.as_any().downcast_ref::<multi::Toffoli>().is_some() {
                         // Implement Toffoli as a sequence of simpler gates
                         // (This is a placeholder for a more efficient implementation)
-                        return Err(QuantrsError::UnsupportedOperation(
+                        return Err(QuantRS2Error::UnsupportedOperation(
                             "Direct Toffoli gate not yet implemented. Use gate decomposition."
                                 .into(),
                         ));
@@ -508,7 +508,7 @@ impl<const N: usize> Simulator<N> for StateVectorSimulator {
                     if gate.as_any().downcast_ref::<multi::Fredkin>().is_some() {
                         // Implement Fredkin as a sequence of simpler gates
                         // (This is a placeholder for a more efficient implementation)
-                        return Err(QuantrsError::UnsupportedOperation(
+                        return Err(QuantRS2Error::UnsupportedOperation(
                             "Direct Fredkin gate not yet implemented. Use gate decomposition."
                                 .into(),
                         ));
@@ -516,7 +516,7 @@ impl<const N: usize> Simulator<N> for StateVectorSimulator {
                 }
 
                 _ => {
-                    return Err(QuantrsError::UnsupportedOperation(format!(
+                    return Err(QuantRS2Error::UnsupportedOperation(format!(
                         "Gate {} not supported",
                         gate.name()
                     )));

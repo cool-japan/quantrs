@@ -3,9 +3,9 @@
 //! This module provides a high-performance simulator implementation that can handle
 //! large qubit counts through memory-efficient chunked processing.
 
-use quantrs_circuit::builder::{Circuit, Simulator};
-use quantrs_core::{
-    error::{QuantrsError, QuantrsResult},
+use quantrs2_circuit::builder::{Circuit, Simulator};
+use quantrs2_core::{
+    error::{QuantRS2Error, QuantRS2Result},
     gate::{multi, single, GateOp},
     register::Register,
 };
@@ -30,7 +30,7 @@ impl Default for OptimizedSimulatorChunked {
 }
 
 impl<const N: usize> Simulator<N> for OptimizedSimulatorChunked {
-    fn run(&self, circuit: &Circuit<N>) -> QuantrsResult<Register<N>> {
+    fn run(&self, circuit: &Circuit<N>) -> QuantRS2Result<Register<N>> {
         // Use chunked implementation for large qubit counts
         if N > 25 {
             // For large qubit counts, use chunked state vector
@@ -125,13 +125,13 @@ impl<const N: usize> Simulator<N> for OptimizedSimulatorChunked {
 
                     // Three-qubit gates are not directly supported yet
                     "Toffoli" | "Fredkin" => {
-                        return Err(QuantrsError::UnsupportedOperation(
+                        return Err(QuantRS2Error::UnsupportedOperation(
                             format!("Direct {} gate not yet implemented in optimized simulator. Use gate decomposition.", gate.name())
                         ));
                     }
 
                     _ => {
-                        return Err(QuantrsError::UnsupportedOperation(format!(
+                        return Err(QuantRS2Error::UnsupportedOperation(format!(
                             "Gate {} not supported in optimized simulator",
                             gate.name()
                         )));
@@ -247,13 +247,13 @@ impl<const N: usize> Simulator<N> for OptimizedSimulatorChunked {
 
                     // Three-qubit gates are not directly supported yet
                     "Toffoli" | "Fredkin" => {
-                        return Err(QuantrsError::UnsupportedOperation(
+                        return Err(QuantRS2Error::UnsupportedOperation(
                             format!("Direct {} gate not yet implemented in optimized simulator. Use gate decomposition.", gate.name())
                         ));
                     }
 
                     _ => {
-                        return Err(QuantrsError::UnsupportedOperation(format!(
+                        return Err(QuantRS2Error::UnsupportedOperation(format!(
                             "Gate {} not supported in optimized simulator",
                             gate.name()
                         )));

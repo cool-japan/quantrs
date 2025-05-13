@@ -2184,11 +2184,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "quantrs-anneal"
+name = "quantrs2-anneal"
 version = "0.1.0-alpha.1"
 dependencies = [
  "num-complex",
- "quantrs-core",
+ "quantrs2-core",
  "rand 0.9.1",
  "rand_chacha 0.9.0",
  "reqwest 0.12.15",
@@ -2199,16 +2199,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "quantrs-circuit"
+name = "quantrs2-circuit"
 version = "0.1.0-alpha.1"
 dependencies = [
  "num-complex",
- "quantrs-core",
+ "quantrs2-core",
  "thiserror 2.0.12",
 ]
 
 [[package]]
-name = "quantrs-core"
+name = "quantrs2-core"
 version = "0.1.0-alpha.1"
 dependencies = [
  "num-complex",
@@ -2216,14 +2216,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "quantrs-device"
+name = "quantrs2-device"
 version = "0.1.0-alpha.1"
 dependencies = [
  "async-trait",
  "chrono",
  "num-complex",
- "quantrs-circuit",
- "quantrs-core",
+ "quantrs2-circuit",
+ "quantrs2-core",
  "reqwest 0.11.27",
  "serde",
  "serde_json",
@@ -2232,40 +2232,40 @@ dependencies = [
 ]
 
 [[package]]
-name = "quantrs-examples"
+name = "quantrs2-examples"
 version = "0.1.0-alpha.1"
 dependencies = [
  "num-complex",
- "quantrs-anneal",
- "quantrs-circuit",
- "quantrs-core",
- "quantrs-device",
- "quantrs-sim",
+ "quantrs2-anneal",
+ "quantrs2-circuit",
+ "quantrs2-core",
+ "quantrs2-device",
+ "quantrs2-sim",
  "tokio",
 ]
 
 [[package]]
-name = "quantrs-py"
+name = "quantrs2-py"
 version = "0.1.0-alpha.1"
 dependencies = [
  "ndarray 0.16.1",
  "num-complex",
  "pyo3",
- "quantrs-circuit",
- "quantrs-core",
- "quantrs-sim",
+ "quantrs2-circuit",
+ "quantrs2-core",
+ "quantrs2-sim",
 ]
 
 [[package]]
-name = "quantrs-sim"
+name = "quantrs2-sim"
 version = "0.1.0-alpha.1"
 dependencies = [
  "bytemuck",
  "ndarray 0.16.1",
  "num-complex",
  "pandrs",
- "quantrs-circuit",
- "quantrs-core",
+ "quantrs2-circuit",
+ "quantrs2-core",
  "rand 0.9.1",
  "rand_chacha 0.9.0",
  "rayon",
@@ -2277,14 +2277,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "quantrs-tytan"
+name = "quantrs2-tytan"
 version = "0.1.0-alpha.1"
 dependencies = [
  "ndarray 0.15.6",
  "num-complex",
  "ocl",
- "quantrs-anneal",
- "quantrs-core",
+ "quantrs2-anneal",
+ "quantrs2-core",
  "rand 0.9.1",
  "rand_chacha 0.9.0",
  "rayon",

@@ -1,7 +1,7 @@
-//! Core types and traits for the quantrs quantum computing framework.
+//! Core types and traits for the QuantRS2 quantum computing framework.
 //!
 //! This crate provides the foundational types and traits used throughout
-//! the quantrs ecosystem, including qubit identifiers, quantum gates,
+//! the QuantRS2 ecosystem, including qubit identifiers, quantum gates,
 //! and register representations.
 
 pub mod error;

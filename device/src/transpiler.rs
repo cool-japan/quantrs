@@ -1,5 +1,5 @@
-use quantrs_circuit::prelude::Circuit;
-use quantrs_core::prelude::QubitId;
+use quantrs2_circuit::prelude::Circuit;
+use quantrs2_core::prelude::QubitId;
 use std::collections::{HashMap, VecDeque};
 
 use crate::DeviceError;

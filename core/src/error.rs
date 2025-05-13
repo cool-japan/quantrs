@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// Common error types for quantum operations
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
-pub enum QuantrsError {
+pub enum QuantRS2Error {
     /// Error when a qubit is not in a valid range
     #[error("Invalid qubit ID {0}, must be within the valid range for this operation")]
     InvalidQubitId(u32),
@@ -25,4 +25,4 @@ pub enum QuantrsError {
 }
 
 /// Result type for quantum operations
-pub type QuantrsResult<T> = Result<T, QuantrsError>;
+pub type QuantRS2Result<T> = Result<T, QuantRS2Error>;

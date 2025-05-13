@@ -1,5 +1,5 @@
 [package]
-name = "quantrs-core"
+name = "quantrs2-core"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
@@ -8,7 +8,7 @@ repository.workspace = true
 license.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Core types and traits for the quantrs quantum computing framework"
+description = "Core types and traits for the QuantRS2 quantum computing framework"
 
 [dependencies]
 num-complex.workspace = true

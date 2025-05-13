@@ -3,8 +3,8 @@
 //! This module provides utilities for benchmarking different simulator
 //! implementations and comparing their performance.
 
-use quantrs_circuit::builder::{Circuit, Simulator};
-use quantrs_core::{error::QuantrsResult, qubit::QubitId};
+use quantrs2_circuit::builder::{Circuit, Simulator};
+use quantrs2_core::{error::QuantRS2Result, qubit::QubitId};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use std::time::{Duration, Instant};
@@ -91,7 +91,7 @@ pub fn run_benchmark<S, const N: usize>(
     simulator: &S,
     circuit: &Circuit<N>,
     notes: Option<String>,
-) -> QuantrsResult<BenchmarkResult>
+) -> QuantRS2Result<BenchmarkResult>
 where
     S: Simulator<N>,
 {

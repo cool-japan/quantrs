@@ -1,5 +1,5 @@
 [package]
-name = "quantrs-sim"
+name = "quantrs2-sim"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
@@ -8,18 +8,19 @@ repository.workspace = true
 license.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Quantum circuit simulators for the quantrs framework"
+description = "Quantum circuit simulators for the QuantRS2 framework"
 
 [dependencies]
-quantrs-core = { path = "../core", version = "0.1.0-alpha.1" }
-quantrs-circuit = { path = "../circuit", version = "0.1.0-alpha.1" }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.1" }
+quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.1" }
 num-complex.workspace = true
 ndarray.workspace = true
 rayon.workspace = true
 thiserror.workspace = true
-scirs2-core.workspace = true
-scirs2-optimize.workspace = true
-pandrs.workspace = true
+# Optional dependencies disabled by default to avoid OpenBLAS issues on macOS ARM
+scirs2-core = { workspace = true, default-features = false, optional = true }
+scirs2-optimize = { workspace = true, default-features = false, optional = true }
+pandrs = { workspace = true, optional = true }
 
 # For GPU support (optional)
 wgpu = { workspace = true, optional = true }
@@ -34,3 +35,4 @@ gpu = ["dep:wgpu", "dep:bytemuck"]
 simd = []
 optimize = ["simd"] # Enable optimized implementations
 memory_efficient = [] # Enable memory-efficient algorithms for large state vectors
+advanced_math = ["dep:scirs2-core", "dep:scirs2-optimize", "dep:pandrs"] # Enable advanced math using external libs

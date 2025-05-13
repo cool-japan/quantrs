@@ -1,4 +1,4 @@
-//! Quantum circuit simulators for the quantrs framework.
+//! Quantum circuit simulators for the QuantRS2 framework.
 //!
 //! This crate provides various simulation backends for quantum circuits,
 //! including state vector simulation on CPU and optionally GPU.
@@ -9,6 +9,8 @@
 
 pub mod statevector;
 pub mod tensor;
+
+#[cfg(feature = "advanced_math")]
 pub mod tensor_network;
 pub mod utils;
 // pub mod optimized;  // Temporarily disabled due to implementation issues
@@ -54,8 +56,11 @@ pub mod prelude {
     pub use crate::noise::*;
     pub use crate::statevector::*;
     pub use crate::tensor::*;
-    pub use crate::tensor_network::*;
     pub use crate::utils::*;
+
+    #[cfg(feature = "advanced_math")]
+    pub use crate::tensor_network::*;
+
     // pub use crate::optimized::*;  // Temporarily disabled
     // pub use crate::optimized_simulator::*;  // Temporarily disabled
     pub use crate::benchmark::*;

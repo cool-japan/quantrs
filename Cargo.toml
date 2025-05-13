@@ -35,10 +35,10 @@ dbg_macro = "warn"
 
 [workspace.package]
 version = "0.1.0-alpha.1"
-authors = ["Quantrs Contributors"]
+authors = ["QuantRS2 Contributors"]
 edition = "2021"
 rust-version = "1.86.0"
-repository = "https://github.com/quantrs/quantrs"
+repository = "https://github.com/cool-japan/quantrs"
 license = "MIT OR Apache-2.0"
 keywords = ["quantum", "computing", "simulator", "annealing", "gate"]
 categories = ["science", "simulation"]
@@ -49,8 +49,8 @@ num-complex = "0.4.6"
 ndarray = { version = "0.16.1", features = ["rayon"] }
 rayon = "1.10.0"
 thiserror = "2.0.12"
-scirs2-core = "0.1.0-alpha.2"
-scirs2-optimize = "0.1.0-alpha.2"
+scirs2-core = { version = "0.1.0-alpha.2", default-features = false }
+scirs2-optimize = { version = "0.1.0-alpha.2", default-features = false }
 pandrs = "0.1.0-alpha.2"
 
 # For GPU support

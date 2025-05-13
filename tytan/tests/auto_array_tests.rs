@@ -1,11 +1,11 @@
 //! Tests for the auto_array module.
 
-use quantrs_tytan::sampler::SampleResult;
-use quantrs_tytan::*;
+use quantrs2_tytan::sampler::SampleResult;
+use quantrs2_tytan::*;
 use std::collections::HashMap;
 
 #[cfg(feature = "dwave")]
-use quantrs_tytan::auto_array::Auto_array;
+use quantrs2_tytan::auto_array::Auto_array;
 
 #[test]
 #[cfg(feature = "dwave")]

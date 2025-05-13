@@ -1,5 +1,5 @@
 [package]
-name = "quantrs-py"
+name = "quantrs2-py"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
@@ -8,20 +8,20 @@ repository.workspace = true
 license.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Python bindings for the quantrs framework"
+description = "Python bindings for the QuantRS2 framework"
 
 [lib]
-name = "quantrs"
+name = "quantrs2"
 crate-type = ["cdylib"]
 
 [dependencies]
-quantrs-core = { path = "../core", version = "0.1.0-alpha.1" }
-quantrs-circuit = { path = "../circuit", version = "0.1.0-alpha.1" }
-quantrs-sim = { path = "../sim", version = "0.1.0-alpha.1", features = [] }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.1" }
+quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.1" }
+quantrs2-sim = { path = "../sim", version = "0.1.0-alpha.1", features = [] }
 pyo3.workspace = true
 num-complex.workspace = true
 ndarray.workspace = true
 
 [features]
 default = []
-gpu = ["quantrs-sim/gpu"]
+gpu = ["quantrs2-sim/gpu"]

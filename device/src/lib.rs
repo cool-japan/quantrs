@@ -4,7 +4,7 @@
 //! Azure Quantum, and AWS Braket. It enables users to run quantum circuits on real
 //! quantum hardware or cloud-based simulators.
 
-use quantrs_circuit::prelude::Circuit;
+use quantrs2_circuit::prelude::Circuit;
 use std::collections::HashMap;
 use thiserror::Error;
 

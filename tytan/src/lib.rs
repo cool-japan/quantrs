@@ -1,4 +1,4 @@
-//! High-level quantum annealing interface inspired by Tytan for the quantrs framework.
+//! High-level quantum annealing interface inspired by Tytan for the QuantRS2 framework.
 //!
 //! This crate provides a high-level interface for formulating and solving
 //! quantum annealing problems, with support for multiple backend solvers.
@@ -18,10 +18,10 @@
 //! ```rust,no_run
 //! # #[cfg(feature = "dwave")]
 //! # fn dwave_example() {
-//! use quantrs_tytan::sampler::{SASampler, Sampler};
-//! use quantrs_tytan::symbol::symbols;
-//! use quantrs_tytan::compile::Compile;
-//! use quantrs_tytan::auto_array::Auto_array;
+//! use quantrs2_tytan::sampler::{SASampler, Sampler};
+//! use quantrs2_tytan::symbol::symbols;
+//! use quantrs2_tytan::compile::Compile;
+//! use quantrs2_tytan::auto_array::Auto_array;
 //!
 //! // Define variables
 //! let x = symbols("x");
@@ -50,7 +50,7 @@
 //! Basic example without the `dwave` feature (no symbolic math):
 //!
 //! ```rust,no_run
-//! use quantrs_tytan::sampler::{SASampler, Sampler};
+//! use quantrs2_tytan::sampler::{SASampler, Sampler};
 //! use std::collections::HashMap;
 //! use ndarray::Array;
 //!
@@ -101,9 +101,9 @@ pub use sampler::{ArminSampler, DWaveSampler, GASampler, MIKASAmpler, SASampler}
 #[cfg(feature = "dwave")]
 pub use symbol::{symbols, symbols_define, symbols_list, symbols_nbit};
 
-// Expose Quantrs-anneal types as well for advanced usage
-pub use quantrs_anneal::{IsingError, IsingModel, IsingResult, QuboModel};
-pub use quantrs_anneal::{QuboBuilder, QuboError, QuboFormulation, QuboResult};
+// Expose QuantRS2-anneal types as well for advanced usage
+pub use quantrs2_anneal::{IsingError, IsingModel, IsingResult, QuboModel};
+pub use quantrs2_anneal::{QuboBuilder, QuboError, QuboFormulation, QuboResult};
 
 /// Check if the module is available
 ///

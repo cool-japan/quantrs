@@ -1,14 +1,14 @@
 //! Tests for the sampler module.
 
 use ndarray::{ArrayD, IxDyn};
-use quantrs_tytan::sampler::{GASampler, SASampler, Sampler};
-use quantrs_tytan::*;
+use quantrs2_tytan::sampler::{GASampler, SASampler, Sampler};
+use quantrs2_tytan::*;
 use std::collections::HashMap;
 
 #[cfg(feature = "dwave")]
-use quantrs_tytan::compile::Compile;
+use quantrs2_tytan::compile::Compile;
 #[cfg(feature = "dwave")]
-use quantrs_tytan::symbol::symbols;
+use quantrs2_tytan::symbol::symbols;
 
 #[test]
 fn test_sa_sampler_simple() {
