@@ -1,5 +1,18 @@
 # QuantRS2: Rust Quantum Computing Framework
 
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
+
+| Crate | Version | Documentation |
+|-------|---------|---------------|
+| **quantrs2-core** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-core.svg)](https://crates.io/crates/quantrs2-core) | [![Documentation](https://docs.rs/quantrs2-core/badge.svg)](https://docs.rs/quantrs2-core) |
+| **quantrs2-circuit** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-circuit.svg)](https://crates.io/crates/quantrs2-circuit) | [![Documentation](https://docs.rs/quantrs2-circuit/badge.svg)](https://docs.rs/quantrs2-circuit) |
+| **quantrs2-sim** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-sim.svg)](https://crates.io/crates/quantrs2-sim) | [![Documentation](https://docs.rs/quantrs2-sim/badge.svg)](https://docs.rs/quantrs2-sim) |
+| **quantrs2-device** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-device.svg)](https://crates.io/crates/quantrs2-device) | [![Documentation](https://docs.rs/quantrs2-device/badge.svg)](https://docs.rs/quantrs2-device) |
+| **quantrs2-ml** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-ml.svg)](https://crates.io/crates/quantrs2-ml) | [![Documentation](https://docs.rs/quantrs2-ml/badge.svg)](https://docs.rs/quantrs2-ml) |
+| **quantrs2-anneal** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-anneal.svg)](https://crates.io/crates/quantrs2-anneal) | [![Documentation](https://docs.rs/quantrs2-anneal/badge.svg)](https://docs.rs/quantrs2-anneal) |
+| **quantrs2-tytan** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-tytan.svg)](https://crates.io/crates/quantrs2-tytan) | [![Documentation](https://docs.rs/quantrs2-tytan/badge.svg)](https://docs.rs/quantrs2-tytan) |
+| **quantrs2-py** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-py.svg)](https://crates.io/crates/quantrs2-py) | [![Documentation](https://docs.rs/quantrs2-py/badge.svg)](https://docs.rs/quantrs2-py) |
+
 QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction.
 
 ## Features
@@ -25,6 +38,7 @@ QuantRS2 is organized as a workspace with several crates:
 - **[quantrs2-sim](sim/README.md)**: Quantum simulators (state-vector and tensor-network)
 - **[quantrs2-anneal](anneal/README.md)**: Quantum annealing support and D-Wave integration
 - **[quantrs2-device](device/README.md)**: Remote quantum hardware connections (IBM Quantum and other providers)
+- **[quantrs2-ml](ml/README.md)**: Quantum machine learning including QNNs, GANs, and specialized HEP classifiers
 - **[quantrs2-py](py/README.md)**: Python bindings with PyO3
 - **[quantrs2-tytan](tytan/README.md)**: High-level quantum annealing library
 
@@ -34,9 +48,9 @@ First, add QuantRS2 to your project:
 
 ```toml
 [dependencies]
-quantrs2-core = "0.1"
-quantrs2-circuit = "0.1"
-quantrs2-sim = "0.1"
+quantrs2-core = "0.1.0-alpha.2"
+quantrs2-circuit = "0.1.0-alpha.2"
+quantrs2-sim = "0.1.0-alpha.2"
 ```
 
 ### Creating a Bell State
@@ -225,13 +239,13 @@ If you still encounter issues, try building components separately:
 
 ```bash
 # First, build the core components
-cargo build -p quantrs-core -p quantrs-circuit
+cargo build -p quantrs2-core -p quantrs2-circuit
 
 # Then build simulator components
-cargo build -p quantrs-sim
+cargo build -p quantrs2-sim
 
 # Or try building without default features
-cargo build -p quantrs-sim --no-default-features
+cargo build -p quantrs2-sim --no-default-features
 ```
 
 For more detailed macOS build troubleshooting, see [MACOS_BUILD.md](MACOS_BUILD.md).
@@ -257,8 +271,8 @@ To use these features, add them to your dependencies:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1", features = ["parallel", "gpu"] }
-quantrs2-device = { version = "0.1", features = ["ibm"] }
+quantrs2-sim = { version = "0.1.0-alpha.2", features = ["parallel", "gpu"] }
+quantrs2-device = { version = "0.1.0-alpha.2", features = ["ibm"] }
 ```
 
 ### GPU Acceleration
@@ -267,7 +281,7 @@ The `gpu` feature enables GPU-accelerated quantum simulation using WGPU:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1", features = ["gpu"] }
+quantrs2-sim = { version = "0.1.0-alpha.2", features = ["gpu"] }
 ```
 
 This requires a WGPU-compatible GPU (most modern GPUs). The GPU acceleration implementation uses compute shaders to parallelize quantum operations, providing significant speedup for large qubit counts.
@@ -312,7 +326,7 @@ The `ibm` feature enables connection to IBM Quantum hardware:
 
 ```toml
 [dependencies]
-quantrs2-device = { version = "0.1", features = ["ibm"] }
+quantrs2-device = { version = "0.1.0-alpha.2", features = ["ibm"] }
 ```
 
 To use IBM Quantum, you'll need an IBM Quantum account and API token. Use the token to authenticate:
@@ -338,7 +352,7 @@ The `dwave` feature enables symbolic problem formulation for quantum annealing:
 
 ```toml
 [dependencies]
-quantrs2-tytan = { version = "0.1", features = ["dwave"] }
+quantrs2-tytan = { version = "0.1.0-alpha.2", features = ["dwave"] }
 ```
 
 This requires the SymEngine library and its dependencies. See [TODO.md](TODO.md) for detailed setup instructions.

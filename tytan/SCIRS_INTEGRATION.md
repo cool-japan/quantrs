@@ -1,6 +1,6 @@
-# SciRS2 Integration Strategy for Quantrs-Tytan
+# SciRS2 Integration Strategy for QuantRS2-Tytan
 
-This document outlines the strategy for integrating SciRS2 libraries with Quantrs-Tytan to enhance performance and functionality.
+This document outlines the strategy for integrating SciRS2 libraries with QuantRS2-Tytan to enhance performance and functionality.
 
 ## Core Integration Areas
 

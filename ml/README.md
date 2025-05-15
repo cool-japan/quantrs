@@ -1,5 +1,8 @@
 # QuantRS2 Machine Learning Module
 
+[![Crates.io](https://img.shields.io/crates/v/quantrs2-ml.svg)](https://crates.io/crates/quantrs2-ml)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
+
 The `quantrs2-ml` crate provides quantum machine learning capabilities for the QuantRS2 quantum computing framework.
 
 ## Features
@@ -136,7 +139,7 @@ quantrs2-ml = { version = "0.1.0-alpha.2", features = ["gpu"] }
 
 This project is licensed under either of:
 
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or https://opensource.org/licenses/MIT)
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or https://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](../LICENSE-MIT) or https://opensource.org/licenses/MIT)
+- Apache License, Version 2.0 ([LICENSE-APACHE](../LICENSE-APACHE) or https://www.apache.org/licenses/LICENSE-2.0)
 
 at your option.

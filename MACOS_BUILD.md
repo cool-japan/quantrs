@@ -1,6 +1,6 @@
-# Building Quantrs on macOS
+# Building QuantRS2 on macOS
 
-Quantrs uses several complex dependencies, including linear algebra libraries that can sometimes cause build issues on macOS, particularly on Apple Silicon (ARM) Macs. This document provides troubleshooting steps for common build problems.
+QuantRS2 uses several complex dependencies, including linear algebra libraries that can sometimes cause build issues on macOS, particularly on Apple Silicon (ARM) Macs. This document provides troubleshooting steps for common build problems.
 
 ## OpenBLAS Build Issues
 
@@ -35,10 +35,10 @@ If you're still experiencing issues, try building the components incrementally:
 
 ```bash
 # First build the core components
-cargo build -p quantrs-core -p quantrs-circuit
+cargo build -p quantrs2-core -p quantrs2-circuit
 
 # Then build sim components without default features
-cargo build -p quantrs-sim --no-default-features
+cargo build -p quantrs2-sim --no-default-features
 ```
 
 ## Solution 3: Disable Advanced Math Features
@@ -47,17 +47,17 @@ For basic quantum simulation, you can build without the advanced math features:
 
 ```bash
 # Build without advanced math features (disables tensor network simulation)
-cargo build -p quantrs-sim --no-default-features
+cargo build -p quantrs2-sim --no-default-features
 ```
 
 Then, if you need specific features, you can enable them selectively:
 
 ```bash
 # Add optimizations (but still no advanced math)
-cargo build -p quantrs-sim --no-default-features --features="optimize"
+cargo build -p quantrs2-sim --no-default-features --features="optimize"
 
 # Add GPU support (but still no advanced math)
-cargo build -p quantrs-sim --no-default-features --features="optimize,gpu"
+cargo build -p quantrs2-sim --no-default-features --features="optimize,gpu"
 ```
 
 ## Solution 4: Install BLAS/LAPACK via Homebrew
@@ -80,10 +80,10 @@ Once you've successfully built the package, you can run the tests:
 
 ```bash
 # Run tests for core components
-cargo test -p quantrs-core
+cargo test -p quantrs2-core
 
 # Run minimal simulator tests
-cargo test -p quantrs-sim --no-default-features
+cargo test -p quantrs2-sim --no-default-features
 ```
 
 ## Reporting Build Issues

@@ -1,4 +1,4 @@
-# Quantrs-Tytan Implementation Roadmap
+# QuantRS2-Tytan Implementation Roadmap
 
 ## Phase 1: Core Components - COMPLETED
 - [x] Initial project setup with dependencies
@@ -39,7 +39,7 @@
   - [ ] Solution visualization for common problems (TSP, graph coloring, etc.)
 
 ## Phase 5: Integration and Examples - PARTIALLY COMPLETED
-- [x] Integration with existing Quantrs modules
+- [x] Integration with existing QuantRS2 modules
 - [x] Example implementations
   - [x] 3-Rooks problem
   - [ ] Graph coloring

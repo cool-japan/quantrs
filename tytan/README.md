@@ -1,6 +1,9 @@
-# Quantrs-Tytan
+# QuantRS2-Tytan
 
-Quantrs-Tytan is a high-level quantum annealing library for the Quantrs framework, inspired by the Python [Tytan](https://github.com/tytansdk/tytan) library. It provides easy-to-use interfaces for formulating and solving quantum annealing problems, with support for multiple backend solvers.
+[![Crates.io](https://img.shields.io/crates/v/quantrs2-tytan.svg)](https://crates.io/crates/quantrs2-tytan)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
+
+QuantRS2-Tytan is a high-level quantum annealing library for the QuantRS2 framework, inspired by the Python [Tytan](https://github.com/tytansdk/tytan) library. It provides easy-to-use interfaces for formulating and solving quantum annealing problems, with support for multiple backend solvers.
 
 ## Features
 
@@ -24,7 +27,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs-tytan = { git = "https://github.com/cool-japan/quantrs", version = "0.1.0" }
+quantrs2-tytan = { git = "https://github.com/cool-japan/quantrs", version = "0.1.0-alpha.2" }
 ```
 
 ## Examples
@@ -35,7 +38,7 @@ quantrs-tytan = { git = "https://github.com/cool-japan/quantrs", version = "0.1.
 // This example requires the 'dwave' feature
 #[cfg(feature = "dwave")]
 fn symbolic_example() -> Result<(), Box<dyn std::error::Error>> {
-    use quantrs_tytan::{symbols, Compile, SASampler};
+    use quantrs2_tytan::{symbols, Compile, SASampler};
 
     // Define variables
     let x = symbols("x");
@@ -66,7 +69,7 @@ fn symbolic_example() -> Result<(), Box<dyn std::error::Error>> {
 ### Example without symbolic math
 
 ```rust
-use quantrs_tytan::sampler::{SASampler, Sampler};
+use quantrs2_tytan::sampler::{SASampler, Sampler};
 use std::collections::HashMap;
 use ndarray::Array;
 
@@ -109,9 +112,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 - `clustering`: Enable basic solution clustering and analysis tools
 - `plotters`: Enable visualization of energy distributions and other plots
 
-## Integration with Existing Quantrs Modules
+## Integration with Existing QuantRS2 Modules
 
-Quantrs-Tytan is built on top of the core Quantrs annealing stack, extending it with higher-level interfaces. It's compatible with all existing Quantrs projects and can be used alongside other components.
+QuantRS2-Tytan is built on top of the core QuantRS2 annealing stack, extending it with higher-level interfaces. It's compatible with all existing Quantrs projects and can be used alongside other components.
 
 ## Building with SymEngine (for the `dwave` feature)
 
