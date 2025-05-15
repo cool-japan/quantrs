@@ -2,16 +2,16 @@
 
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
 
-| Crate | Version | Documentation |
-|-------|---------|---------------|
-| **quantrs2-core** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-core.svg)](https://crates.io/crates/quantrs2-core) | [![Documentation](https://docs.rs/quantrs2-core/badge.svg)](https://docs.rs/quantrs2-core) |
-| **quantrs2-circuit** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-circuit.svg)](https://crates.io/crates/quantrs2-circuit) | [![Documentation](https://docs.rs/quantrs2-circuit/badge.svg)](https://docs.rs/quantrs2-circuit) |
-| **quantrs2-sim** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-sim.svg)](https://crates.io/crates/quantrs2-sim) | [![Documentation](https://docs.rs/quantrs2-sim/badge.svg)](https://docs.rs/quantrs2-sim) |
-| **quantrs2-device** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-device.svg)](https://crates.io/crates/quantrs2-device) | [![Documentation](https://docs.rs/quantrs2-device/badge.svg)](https://docs.rs/quantrs2-device) |
-| **quantrs2-ml** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-ml.svg)](https://crates.io/crates/quantrs2-ml) | [![Documentation](https://docs.rs/quantrs2-ml/badge.svg)](https://docs.rs/quantrs2-ml) |
-| **quantrs2-anneal** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-anneal.svg)](https://crates.io/crates/quantrs2-anneal) | [![Documentation](https://docs.rs/quantrs2-anneal/badge.svg)](https://docs.rs/quantrs2-anneal) |
-| **quantrs2-tytan** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-tytan.svg)](https://crates.io/crates/quantrs2-tytan) | [![Documentation](https://docs.rs/quantrs2-tytan/badge.svg)](https://docs.rs/quantrs2-tytan) |
-| **quantrs2-py** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-py.svg)](https://crates.io/crates/quantrs2-py) | [![Documentation](https://docs.rs/quantrs2-py/badge.svg)](https://docs.rs/quantrs2-py) |
+| Crate | Crate Version | Python Package | Documentation |
+|-------|--------------|---------------|---------------|
+| **quantrs2-core** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-core.svg)](https://crates.io/crates/quantrs2-core) | | [![Documentation](https://docs.rs/quantrs2-core/badge.svg)](https://docs.rs/quantrs2-core) |
+| **quantrs2-circuit** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-circuit.svg)](https://crates.io/crates/quantrs2-circuit) | | [![Documentation](https://docs.rs/quantrs2-circuit/badge.svg)](https://docs.rs/quantrs2-circuit) |
+| **quantrs2-sim** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-sim.svg)](https://crates.io/crates/quantrs2-sim) | | [![Documentation](https://docs.rs/quantrs2-sim/badge.svg)](https://docs.rs/quantrs2-sim) |
+| **quantrs2-device** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-device.svg)](https://crates.io/crates/quantrs2-device) | | [![Documentation](https://docs.rs/quantrs2-device/badge.svg)](https://docs.rs/quantrs2-device) |
+| **quantrs2-ml** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-ml.svg)](https://crates.io/crates/quantrs2-ml) | | [![Documentation](https://docs.rs/quantrs2-ml/badge.svg)](https://docs.rs/quantrs2-ml) |
+| **quantrs2-anneal** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-anneal.svg)](https://crates.io/crates/quantrs2-anneal) | | [![Documentation](https://docs.rs/quantrs2-anneal/badge.svg)](https://docs.rs/quantrs2-anneal) |
+| **quantrs2-tytan** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-tytan.svg)](https://crates.io/crates/quantrs2-tytan) | | [![Documentation](https://docs.rs/quantrs2-tytan/badge.svg)](https://docs.rs/quantrs2-tytan) |
+| **quantrs2-py** | | [![PyPI](https://img.shields.io/pypi/v/quantrs2.svg)](https://pypi.org/project/quantrs2/) | |
 
 QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction.
 
