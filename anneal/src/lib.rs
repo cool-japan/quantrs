@@ -1,4 +1,4 @@
-//! Quantum annealing support for the quantrs framework.
+//! Quantum annealing support for the QuantRS2 framework.
 //!
 //! This crate provides types and functions for quantum annealing,
 //! including Ising model representation, QUBO problem formulation,
@@ -15,7 +15,7 @@
 //! # Example
 //!
 //! ```rust
-//! use quantrs_anneal::{
+//! use quantrs2_anneal::{
 //!     ising::IsingModel,
 //!     simulator::{ClassicalAnnealingSimulator, AnnealingParams}
 //! };

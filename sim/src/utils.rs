@@ -2,7 +2,7 @@ use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use rayon::prelude::*;
 
-use quantrs_core::qubit::QubitId;
+use quantrs2_core::qubit::QubitId;
 
 /// Calculate the kronecker product of two matrices
 pub fn kron(a: &Array2<Complex64>, b: &Array2<Complex64>) -> Array2<Complex64> {

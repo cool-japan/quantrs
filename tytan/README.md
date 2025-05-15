@@ -24,7 +24,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs-tytan = { git = "https://github.com/your-repo/quantrs", version = "0.1.0" }
+quantrs-tytan = { git = "https://github.com/cool-japan/quantrs", version = "0.1.0" }
 ```
 
 ## Examples

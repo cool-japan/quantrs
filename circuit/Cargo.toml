@@ -1,5 +1,5 @@
 [package]
-name = "quantrs-circuit"
+name = "quantrs2-circuit"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
@@ -8,12 +8,13 @@ repository.workspace = true
 license.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Quantum circuit representation and DSL for the quantrs framework"
+description = "Quantum circuit representation and DSL for the QuantRS2 framework"
 
 [dependencies]
-quantrs-core = { path = "../core", version = "0.1.0-alpha.1" }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.2" }
 num-complex.workspace = true
 thiserror.workspace = true
+pyo3 = { version = "0.24.2", features = ["extension-module"] }
 
 [dev-dependencies]
 num-complex.workspace = true

@@ -1,4 +1,4 @@
-use quantrs_circuit::prelude::Circuit;
+use quantrs2_circuit::prelude::Circuit;
 use std::collections::HashMap;
 #[cfg(feature = "aws")]
 use std::sync::Arc;
@@ -236,20 +236,56 @@ impl AWSBraketClient {
     }
 
     /// Generate AWS signature for API requests
-    fn generate_aws_v4_signature(&self, request_method: &str, path: &str, body: &str) -> String {
-        // This is a simplified placeholder for the AWS signing process
-        // In a real implementation, this would include:
-        // 1. Create a canonical request
-        // 2. Create a string to sign
-        // 3. Calculate the signature
-        // 4. Add the signature to the request headers
+    fn generate_aws_v4_signature(
+        &self,
+        request_method: &str,
+        path: &str,
+        body: &str,
+    ) -> reqwest::header::HeaderMap {
+        use crate::aws_auth::{AwsRegion, AwsSignatureV4};
+        use chrono::Utc;
 
-        // For now, we'll return a dummy signature
-        // This would need to be replaced with actual AWS V4 signing
-        format!(
-            "AWS4-HMAC-SHA256 Credential={}/20230101/{}/braket/aws4_request",
-            self.access_key, self.region
-        )
+        let mut headers = reqwest::header::HeaderMap::new();
+
+        // Add required headers
+        headers.insert(
+            reqwest::header::CONTENT_TYPE,
+            reqwest::header::HeaderValue::from_static("application/json"),
+        );
+
+        let host = format!("braket.{}.amazonaws.com", self.region);
+        headers.insert(
+            reqwest::header::HOST,
+            reqwest::header::HeaderValue::from_str(&host).unwrap(),
+        );
+
+        let now = Utc::now();
+        headers.insert(
+            reqwest::header::HeaderName::from_static("x-amz-date"),
+            reqwest::header::HeaderValue::from_str(&now.format("%Y%m%dT%H%M%SZ").to_string())
+                .unwrap(),
+        );
+
+        // Create region information
+        let region = AwsRegion {
+            name: self.region.clone(),
+            service: "braket".to_string(),
+        };
+
+        // Sign the request
+        AwsSignatureV4::sign_request(
+            request_method,
+            path,
+            "", // No query string
+            &mut headers,
+            body.as_bytes(),
+            &self.access_key,
+            &self.secret_key,
+            &region,
+            &now,
+        );
+
+        headers
     }
 
     /// List all available devices
@@ -258,16 +294,14 @@ impl AWSBraketClient {
         let url = format!("{}{}", self.api_url, path);
         let body = "{}";
 
-        let auth_header = self.generate_aws_v4_signature("GET", path, body);
+        let headers = self.generate_aws_v4_signature("GET", path, body);
 
-        let response = self
-            .client
-            .get(&url)
-            .header("Authorization", auth_header)
-            .header(
-                "X-Amz-Date",
-                chrono::Utc::now().format("%Y%m%dT%H%M%SZ").to_string(),
-            )
+        let mut request = self.client.get(&url);
+        for (key, value) in headers.iter() {
+            request = request.header(key, value);
+        }
+
+        let response = request
             .send()
             .await
             .map_err(|e| DeviceError::Connection(e.to_string()))?;
@@ -294,16 +328,14 @@ impl AWSBraketClient {
         let url = format!("{}{}", self.api_url, path);
         let body = "{}";
 
-        let auth_header = self.generate_aws_v4_signature("GET", &path, body);
+        let headers = self.generate_aws_v4_signature("GET", &path, body);
 
-        let response = self
-            .client
-            .get(&url)
-            .header("Authorization", auth_header)
-            .header(
-                "X-Amz-Date",
-                chrono::Utc::now().format("%Y%m%dT%H%M%SZ").to_string(),
-            )
+        let mut request = self.client.get(&url);
+        for (key, value) in headers.iter() {
+            request = request.header(key, value);
+        }
+
+        let response = request
             .send()
             .await
             .map_err(|e| DeviceError::Connection(e.to_string()))?;
@@ -347,16 +379,14 @@ impl AWSBraketClient {
         });
 
         let body = payload.to_string();
-        let auth_header = self.generate_aws_v4_signature("POST", path, &body);
+        let headers = self.generate_aws_v4_signature("POST", path, &body);
 
-        let response = self
-            .client
-            .post(&url)
-            .header("Authorization", auth_header)
-            .header(
-                "X-Amz-Date",
-                chrono::Utc::now().format("%Y%m%dT%H%M%SZ").to_string(),
-            )
+        let mut request = self.client.post(&url);
+        for (key, value) in headers.iter() {
+            request = request.header(key, value);
+        }
+
+        let response = request
             .json(&payload)
             .send()
             .await
@@ -531,38 +561,14 @@ impl AWSBraketClient {
 
     /// Convert a Quantrs circuit to Braket IR JSON
     pub fn circuit_to_braket_ir<const N: usize>(circuit: &Circuit<N>) -> DeviceResult<String> {
-        // Simplified placeholder for the actual conversion logic
-        // In a real implementation, this would convert the circuit to Braket's JSON IR format
-        use serde_json::json;
-
-        // This is a very simplified version of AWS Braket's IR format
-        let instructions = Vec::new(); // This would be populated with actual gate instructions
-
-        let braket_ir = json!({
-            "braketSchemaHeader": {
-                "name": "braket.ir.jaqcd.Program",
-                "version": "1"
-            },
-            "results": [],
-            "basis_rotation_instructions": [],
-            "instructions": instructions
-        });
-
-        Ok(braket_ir.to_string())
+        use crate::aws_conversion;
+        aws_conversion::circuit_to_braket_ir(circuit)
     }
 
     /// Convert a Quantrs circuit to OpenQASM
     pub fn circuit_to_qasm<const N: usize>(circuit: &Circuit<N>) -> DeviceResult<String> {
-        // Simplified placeholder for OpenQASM conversion
-        let mut qasm = String::from("OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n");
-
-        // Define the quantum and classical registers
-        qasm.push_str(&format!("qreg q[{}];\n", N));
-        qasm.push_str(&format!("creg c[{}];\n\n", N));
-
-        // Implement conversion of gates to QASM here
-        // For now, just return placeholder QASM
-        Ok(qasm)
+        use crate::aws_conversion;
+        aws_conversion::circuit_to_qasm(circuit)
     }
 }
 

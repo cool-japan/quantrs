@@ -18,9 +18,11 @@ use scirs2_core::ndarray_ext::manipulation;
 use std::collections::HashMap;
 
 pub mod contraction;
+pub mod opt_contraction;
 pub mod tensor;
 
 use contraction::ContractableNetwork;
+use opt_contraction::{ContractionOptMethod, OptimizedTensorNetwork, PathOptimizer};
 use tensor::{Tensor, TensorIndex};
 
 /// A simulator for quantum circuits using tensor network methods
@@ -34,6 +36,9 @@ pub struct TensorNetworkSimulator {
 
     /// Contraction strategy to use
     contraction_strategy: ContractionStrategy,
+
+    /// Optimizer for tensor network contraction
+    path_optimizer: PathOptimizer,
 }
 
 /// Enum representing different types of quantum circuits
@@ -87,6 +92,7 @@ impl TensorNetworkSimulator {
             max_bond_dimension: 16,
             optimization_level: 1,
             contraction_strategy: ContractionStrategy::Greedy,
+            path_optimizer: PathOptimizer::default(),
         }
     }
 
@@ -96,6 +102,9 @@ impl TensorNetworkSimulator {
             max_bond_dimension: 16,
             optimization_level: 2,
             contraction_strategy: ContractionStrategy::QFT,
+            path_optimizer: PathOptimizer::default()
+                .with_method(ContractionOptMethod::Hybrid)
+                .with_max_bond_dimension(32),
         }
     }
 
@@ -105,12 +114,18 @@ impl TensorNetworkSimulator {
             max_bond_dimension: 16,
             optimization_level: 2,
             contraction_strategy: ContractionStrategy::QAOA,
+            path_optimizer: PathOptimizer::default()
+                .with_method(ContractionOptMethod::Hybrid)
+                .with_max_bond_dimension(32),
         }
     }
 
     /// Create a new tensor network simulator with specified bond dimension
     pub fn with_bond_dimension(mut self, max_bond_dimension: usize) -> Self {
         self.max_bond_dimension = max_bond_dimension;
+        self.path_optimizer = self
+            .path_optimizer
+            .with_max_bond_dimension(max_bond_dimension);
         self
     }
 
@@ -122,12 +137,52 @@ impl TensorNetworkSimulator {
     /// 3 = Aggressive optimizations (may impact accuracy)
     pub fn with_optimization_level(mut self, level: u8) -> Self {
         self.optimization_level = level.min(3);
+
+        // Set the contraction method based on optimization level
+        self.path_optimizer = match level {
+            0 => self
+                .path_optimizer
+                .with_method(ContractionOptMethod::Greedy),
+            1 => self
+                .path_optimizer
+                .with_method(ContractionOptMethod::Greedy),
+            2 => self
+                .path_optimizer
+                .with_method(ContractionOptMethod::DynamicProgramming),
+            3 => self
+                .path_optimizer
+                .with_method(ContractionOptMethod::Hybrid),
+            _ => self
+                .path_optimizer
+                .with_method(ContractionOptMethod::Greedy),
+        };
+
         self
     }
 
     /// Set the contraction strategy
     pub fn with_contraction_strategy(mut self, strategy: ContractionStrategy) -> Self {
         self.contraction_strategy = strategy;
+
+        // Set the appropriate optimization method based on strategy
+        self.path_optimizer = match strategy {
+            ContractionStrategy::QFT => self
+                .path_optimizer
+                .with_method(ContractionOptMethod::DynamicProgramming)
+                .with_max_bond_dimension(32),
+            ContractionStrategy::QAOA => self
+                .path_optimizer
+                .with_method(ContractionOptMethod::DynamicProgramming)
+                .with_max_bond_dimension(32),
+            ContractionStrategy::Linear => self
+                .path_optimizer
+                .with_method(ContractionOptMethod::Greedy),
+            ContractionStrategy::Star => self
+                .path_optimizer
+                .with_method(ContractionOptMethod::Greedy),
+            _ => self.path_optimizer,
+        };
+
         self
     }
 
@@ -775,20 +830,60 @@ impl TensorNetwork {
             return Ok(state);
         }
 
-        // Calculate the optimal contraction path
-        let path = contraction::calculate_optimal_contraction_path(&tensors, &connections)?;
+        // Choose contraction method based on network complexity and optimization flags
+        if self.using_qft_optimization
+            || self.using_qaoa_optimization
+            || self.using_linear_optimization
+            || self.using_star_optimization
+        {
+            // Use optimized contraction for specific circuit types
+            // Create an optimized tensor network
+            let mut opt_network = OptimizedTensorNetwork::new();
 
-        // Contract the network along this path
-        let mut next_id = self.next_id;
-        let final_tensor = contraction::contract_network_along_path(
-            &mut tensors,
-            &mut connections,
-            &path,
-            &mut next_id,
-        )?;
+            // Configure based on circuit type
+            if self.using_qft_optimization {
+                opt_network =
+                    opt_network.with_optimization_method(ContractionOptMethod::DynamicProgramming);
+            } else if self.using_qaoa_optimization {
+                opt_network =
+                    opt_network.with_optimization_method(ContractionOptMethod::DynamicProgramming);
+            } else if self.using_linear_optimization {
+                opt_network = opt_network.with_optimization_method(ContractionOptMethod::Greedy);
+            } else if self.using_star_optimization {
+                opt_network = opt_network.with_optimization_method(ContractionOptMethod::Greedy);
+            }
 
-        // Convert the final tensor to a state vector
-        self.tensor_to_statevector(final_tensor)
+            // Add tensors to the optimized network
+            for (id, tensor) in &tensors {
+                opt_network.add_tensor(*id, tensor.clone());
+            }
+
+            // Add connections
+            for (t1, t2) in &connections {
+                opt_network.add_connection(*t1, *t2);
+            }
+
+            // Contract using optimized path
+            let final_tensor = opt_network.contract()?;
+
+            // Convert the final tensor to a state vector
+            self.tensor_to_statevector(final_tensor)
+        } else {
+            // Use standard path optimization for general circuits
+            let path = contraction::calculate_optimal_contraction_path(&tensors, &connections)?;
+
+            // Contract the network along this path
+            let mut next_id = self.next_id;
+            let final_tensor = contraction::contract_network_along_path(
+                &mut tensors,
+                &mut connections,
+                &path,
+                &mut next_id,
+            )?;
+
+            // Convert the final tensor to a state vector
+            self.tensor_to_statevector(final_tensor)
+        }
     }
 
     /// Convert a tensor to a state vector

@@ -1,9 +1,9 @@
 //! Tests for the symbol module.
 
-use quantrs_tytan::*;
+use quantrs2_tytan::*;
 
 #[cfg(feature = "dwave")]
-use quantrs_tytan::symbol::{symbols, symbols_define, symbols_list, symbols_nbit};
+use quantrs2_tytan::symbol::{symbols, symbols_define, symbols_list, symbols_nbit};
 
 #[test]
 #[cfg(feature = "dwave")]

@@ -1,0 +1,5 @@
+include LICENSE*
+include README.md
+include MANIFEST.in
+recursive-include python/quantrs2 *.py
+recursive-include python/_quantrs2 *.py

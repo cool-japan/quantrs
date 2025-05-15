@@ -6,7 +6,7 @@
 // The TSP: Find the shortest possible route that visits each city exactly once
 // and returns to the starting city.
 
-use quantrs_anneal::{
+use quantrs2_anneal::{
     ising::QuboModel,
     qubo::{QuboBuilder, Variable},
     simulator::{AnnealingParams, ClassicalAnnealingSimulator, QuantumAnnealingSimulator},

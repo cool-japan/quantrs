@@ -1,5 +1,5 @@
 [package]
-name = "quantrs-examples"
+name = "quantrs2-examples"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
@@ -8,18 +8,19 @@ repository.workspace = true
 license.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Examples for the quantrs quantum computing framework"
+description = "Examples for the QuantRS2 quantum computing framework"
 publish = false
 
 [dependencies]
-quantrs-core = { path = "../core", version = "0.1.0-alpha.1" }
-quantrs-circuit = { path = "../circuit", version = "0.1.0-alpha.1" }
-quantrs-anneal = { path = "../anneal", version = "0.1.0-alpha.1" }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.2" }
+quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.2" }
+quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.2" }
 # Tytan is intentionally not included directly
-# quantrs-tytan = { path = "../tytan", optional = true }
+# quantrs2-tytan = { path = "../tytan", optional = true }
 num-complex = "0.4"
+rand = "0.9.1"
 
-# Feature for simulation examples which require quantrs-sim
+# Feature for simulation examples which require quantrs2-sim
 #
 # Examples are divided into categories:
 # 1. Quantum annealing examples (max_cut, graph_coloring, traveling_salesman)
@@ -27,7 +28,7 @@ num-complex = "0.4"
 #    - Run with: cargo run --bin max_cut
 #
 # 2. Quantum simulation examples (bell_state, optimized_sim_small)
-#    - These require the "simulation" feature which enables quantrs-sim dependency
+#    - These require the "simulation" feature which enables quantrs2-sim dependency
 #    - Run with: cargo run --features simulation --bin bell_state
 #
 # 3. GPU-accelerated simulation examples
@@ -35,22 +36,24 @@ num-complex = "0.4"
 #    - Run with: cargo run --features "simulation,gpu" --bin gpu_simulation
 #
 [features]
-simulation = ["quantrs-sim"]
-gpu = ["quantrs-sim/gpu"]
+simulation = ["quantrs2-sim"]
+gpu = ["quantrs2-sim/gpu"]
+advanced_math = ["quantrs2-sim/advanced_math"]
 # Tytan feature is maintained but doesn't activate any dependencies
 tytan = []
-ibm = ["quantrs-device/ibm", "tokio"]
+ibm = ["quantrs2-device/ibm", "tokio"]
+aws = ["quantrs2-device", "tokio"]
 default = []
 
 # Optional dependencies with features
-[dependencies.quantrs-sim]
+[dependencies.quantrs2-sim]
 path = "../sim"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 optional = true
 
-[dependencies.quantrs-device]
+[dependencies.quantrs2-device]
 path = "../device"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 optional = true
 
 [dependencies.tokio]
@@ -144,12 +147,12 @@ required-features = ["simulation"]
 [[bin]]
 name = "tensor_network_sim"
 path = "src/bin/tensor_network_sim.rs"
-required-features = ["simulation"]
+required-features = ["simulation", "advanced_math"]
 
 [[bin]]
 name = "tensor_network_optimization"
 path = "src/bin/tensor_network_optimization.rs"
-required-features = ["simulation"]
+required-features = ["simulation", "advanced_math"]
 
 [[bin]]
 name = "grovers_algorithm"
@@ -177,6 +180,31 @@ path = "src/bin/ibm_quantum_example.rs"
 required-features = ["ibm"]
 
 [[bin]]
+name = "aws_example"
+path = "src/bin/aws_example.rs"
+required-features = ["aws"]
+
+[[bin]]
 name = "gpu_simulation"
 path = "src/bin/gpu_simulation.rs"
 required-features = ["simulation", "gpu"]
+
+[[bin]]
+name = "realistic_noise"
+path = "src/bin/realistic_noise.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "parametric_gates_demo"
+path = "src/bin/parametric_gates_demo.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "grovers_algorithm_noisy"
+path = "src/bin/grovers_algorithm_noisy.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "gate_decomposition"
+path = "src/bin/gate_decomposition.rs"
+required-features = ["simulation"]

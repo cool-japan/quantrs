@@ -7,13 +7,35 @@
 
 use bytemuck::{Pod, Zeroable};
 use num_complex::Complex64;
-use quantrs_circuit::prelude::{Circuit, GateType};
-use quantrs_core::prelude::QubitId;
+use quantrs2_circuit::builder::Simulator as CircuitSimulator;
+use quantrs2_circuit::prelude::Circuit;
+use quantrs2_core::prelude::QubitId;
 use std::borrow::Cow;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
 use crate::simulator::{Simulator, SimulatorResult};
+
+// Define GateType enum for the GPU implementation
+#[derive(Debug, Clone)]
+pub enum GateType {
+    /// Single-qubit gate with matrix representation
+    SingleQubit {
+        /// Target qubit
+        target: QubitId,
+        /// 2x2 matrix representation (row-major)
+        matrix: ndarray::Array2<num_complex::Complex64>,
+    },
+    /// Two-qubit gate with matrix representation
+    TwoQubit {
+        /// Control qubit
+        control: QubitId,
+        /// Target qubit
+        target: QubitId,
+        /// 4x4 matrix representation (row-major)
+        matrix: ndarray::Array2<num_complex::Complex64>,
+    },
+}
 
 /// The alignment used for buffers
 const BUFFER_ALIGNMENT: u64 = 256;
@@ -89,22 +111,25 @@ impl GpuStateVectorSimulator {
         let instance = wgpu::Instance::default();
 
         // Request adapter
-        let adapter = instance
+        let adapter = match instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 force_fallback_adapter: false,
                 compatible_surface: None,
             })
             .await
-            .ok_or("Failed to find GPU adapter")?;
+        {
+            Some(adapter) => adapter,
+            None => return Err("Failed to find GPU adapter".into()),
+        };
 
         // Create device and queue
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: Some("Quantrs GPU Simulator"),
-                    required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
+                    features: wgpu::Features::empty(),
+                    limits: wgpu::Limits::default(),
                 },
                 None,
             )
@@ -264,13 +289,19 @@ impl GpuStateVectorSimulator {
 
 impl Simulator for GpuStateVectorSimulator {
     fn run<const N: usize>(&self, circuit: &Circuit<N>) -> crate::simulator::SimulatorResult<N> {
-        use quantrs_core::gate::GateMatrix;
+        // We'll extract gate information manually since we're using our own GateType enum
 
         // Skip GPU simulation for small circuits (less than 4 qubits)
         // CPU is often faster for these small circuits due to overhead
         if N < 4 {
             let cpu_sim = crate::statevector::StateVectorSimulator::new();
-            return cpu_sim.run(circuit);
+            // Use the CPU simulator's implementation through quantrs2_circuit::builder::Simulator trait
+            let result = quantrs2_circuit::builder::Simulator::<N>::run(&cpu_sim, circuit)
+                .expect("CPU simulation failed");
+            return SimulatorResult {
+                amplitudes: result.amplitudes().to_vec(),
+                num_qubits: N,
+            };
         }
 
         // Calculate state vector size
@@ -314,7 +345,53 @@ impl Simulator for GpuStateVectorSimulator {
                     label: Some("Gate Execution Encoder"),
                 });
 
-            match gate.gate_type {
+            // Convert the gate to our own GateType enum for GPU processing
+            let gate_type = match gate.name() {
+                // Single qubit gates
+                "H" | "X" | "Y" | "Z" | "S" | "T" | "S†" | "T†" | "√X" | "√X†" | "RX" | "RY"
+                | "RZ" => {
+                    // Get the target qubit and matrix from the gate
+                    let target = gate.qubits()[0];
+                    let matrix = ndarray::Array2::from_shape_vec(
+                        (2, 2),
+                        gate.matrix().expect("Failed to get gate matrix").to_vec(),
+                    )
+                    .expect("Failed to convert matrix to Array2");
+
+                    GateType::SingleQubit { target, matrix }
+                }
+
+                // Two qubit gates
+                "CNOT" | "CY" | "CZ" | "CH" | "CS" | "CRX" | "CRY" | "CRZ" | "SWAP" => {
+                    let qubits = gate.qubits();
+                    let control = qubits[0];
+                    let target = qubits[1];
+                    let matrix = ndarray::Array2::from_shape_vec(
+                        (4, 4),
+                        gate.matrix().expect("Failed to get gate matrix").to_vec(),
+                    )
+                    .expect("Failed to convert matrix to Array2");
+
+                    GateType::TwoQubit {
+                        control,
+                        target,
+                        matrix,
+                    }
+                }
+
+                _ => {
+                    // For unsupported gates, use CPU fallback
+                    let cpu_sim = crate::statevector::StateVectorSimulator::new();
+                    let result = quantrs2_circuit::builder::Simulator::<N>::run(&cpu_sim, circuit)
+                        .expect("CPU simulation failed");
+                    return SimulatorResult {
+                        amplitudes: result.amplitudes().to_vec(),
+                        num_qubits: N,
+                    };
+                }
+            };
+
+            match gate_type {
                 GateType::SingleQubit { target, matrix } => {
                     // Convert matrix to GPU format
                     let gpu_matrix = [
@@ -472,7 +549,7 @@ impl Simulator for GpuStateVectorSimulator {
         let amplitudes: Vec<Complex64> = result_data.into_iter().map(|c| c.into()).collect();
 
         // Return simulation result
-        crate::simulator::SimulatorResult {
+        SimulatorResult {
             amplitudes,
             num_qubits: N,
         }

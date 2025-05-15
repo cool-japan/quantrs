@@ -1,5 +1,5 @@
-use quantrs_circuit::builder::Circuit;
-use quantrs_sim::statevector::StateVectorSimulator;
+use quantrs2_circuit::builder::{Circuit, Simulator};
+use quantrs2_sim::statevector::StateVectorSimulator;
 
 fn main() {
     // Create a circuit with 3 qubits
@@ -13,7 +13,7 @@ fn main() {
 
     println!("Prepared state to teleport:");
     let simulator = StateVectorSimulator::new();
-    let state_prep = circuit.run(simulator.clone()).unwrap();
+    let state_prep = simulator.run(&circuit).unwrap();
 
     // Print the resulting amplitudes
     for (i, amplitude) in state_prep.amplitudes().iter().enumerate() {
@@ -37,7 +37,7 @@ fn main() {
            .cz(1, 2).unwrap(); // Apply Z correction if second qubit is 1
 
     // Run the full circuit
-    let result = circuit.run(simulator).unwrap();
+    let result = simulator.run(&circuit).unwrap();
 
     println!("\nFinal state after teleportation:");
     for (i, amplitude) in result.amplitudes().iter().enumerate() {

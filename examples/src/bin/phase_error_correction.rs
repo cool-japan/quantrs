@@ -3,11 +3,11 @@
 // This example demonstrates the use of the 3-qubit phase flip code to
 // protect against phase errors, which are common in real quantum devices.
 
-use quantrs_circuit::builder::Circuit;
-use quantrs_core::qubit::QubitId;
-use quantrs_sim::error_correction::PhaseFlipCode;
-use quantrs_sim::noise::{NoiseModel, PhaseFlipChannel};
-use quantrs_sim::statevector::StateVectorSimulator;
+use quantrs2_circuit::builder::{Circuit, Simulator};
+use quantrs2_core::qubit::QubitId;
+use quantrs2_sim::error_correction::PhaseFlipCode;
+use quantrs2_sim::noise::{NoiseModel, PhaseFlipChannel};
+use quantrs2_sim::statevector::StateVectorSimulator;
 
 fn main() {
     println!("Quantum Phase Error Correction Example");
@@ -25,7 +25,7 @@ fn main() {
 
     // Run with ideal simulator to verify starting state
     let ideal_sim = StateVectorSimulator::sequential();
-    let ideal_result = circuit.run(ideal_sim).unwrap();
+    let ideal_result = ideal_sim.run(&circuit).unwrap();
 
     // Display the initial state
     println!("\nInitial state (first 2 amplitudes):");
@@ -61,7 +61,7 @@ fn main() {
     }
 
     // Run the encoding circuit
-    let encoded_result = encoding_circuit.run(ideal_sim).unwrap();
+    let encoded_result = ideal_sim.run(&encoding_circuit).unwrap();
 
     // Display the encoded state
     println!("\nEncoded state (first 8 amplitudes):");
@@ -97,7 +97,7 @@ fn main() {
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
 
     // Run the encoding circuit with noise
-    let noisy_result = encoding_circuit.run(noisy_sim).unwrap();
+    let noisy_result = noisy_sim.run(&encoding_circuit).unwrap();
 
     // Display the noisy state
     println!("\nState after noise (first 8 amplitudes):");
@@ -136,7 +136,7 @@ fn main() {
 
     // Run the error detection and correction
     let clean_sim = StateVectorSimulator::sequential();
-    let corrected_result = correction_circuit.run(clean_sim).unwrap();
+    let corrected_result = clean_sim.run(&correction_circuit).unwrap();
 
     // Display the corrected state
     println!("\nCorrected state (first 8 amplitudes):");
@@ -183,7 +183,7 @@ fn main() {
 
 // Helper function to extract the logical qubit state from the encoded state
 fn extract_logical_state(
-    register: &quantrs_core::register::Register<5>,
+    register: &quantrs2_core::register::Register<5>,
 ) -> [num_complex::Complex64; 2] {
     use num_complex::Complex64;
 

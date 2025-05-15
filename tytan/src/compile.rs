@@ -10,7 +10,7 @@ use std::collections::{HashMap, HashSet};
 use symengine::{self, Expr, Symbol as SymengineSymbol};
 use thiserror::Error;
 
-use quantrs_anneal::QuboError;
+use quantrs2_anneal::QuboError;
 
 /// Errors that can occur during compilation
 #[derive(Error, Debug)]

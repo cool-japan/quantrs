@@ -4,9 +4,9 @@
 // for quantum circuits, which can be more efficient than state vector
 // simulation for certain circuit topologies.
 
-use quantrs_circuit::builder::Circuit;
-use quantrs_sim::statevector::StateVectorSimulator;
-use quantrs_sim::tensor_network::TensorNetworkSimulator;
+use quantrs2_circuit::builder::{Circuit, Simulator};
+use quantrs2_sim::statevector::StateVectorSimulator;
+use quantrs2_sim::tensor_network::TensorNetworkSimulator;
 use std::time::Instant;
 
 fn main() {
@@ -125,17 +125,17 @@ fn compare_simulators<const N: usize>(circuit: &Circuit<N>, name: &str) {
 
     // Run with state vector simulator
     let start = Instant::now();
-    let sv_result = circuit.run(sv_sim).unwrap();
+    let sv_result = sv_sim.run(&circuit).unwrap();
     let sv_time = start.elapsed();
 
     // Run with basic tensor network simulator
     let start = Instant::now();
-    let tn_result = circuit.run(tn_sim).unwrap();
+    let tn_result = tn_sim.run(&circuit).unwrap();
     let tn_time = start.elapsed();
 
     // Run with optimized tensor network simulator
     let start = Instant::now();
-    let opt_tn_result = circuit.run(opt_tn_sim).unwrap();
+    let opt_tn_result = opt_tn_sim.run(&circuit).unwrap();
     let opt_tn_time = start.elapsed();
 
     // Compare results

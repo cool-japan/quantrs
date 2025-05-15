@@ -50,3 +50,30 @@ Thumbs.db
 **/.claude/settings.local.json
 # Claude
 **/.claude/settings.json
+
+.venv/
+**/venv/
+**/.venv/
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+*.whl
+__pycache__/
+*.so
+*.dll
+*.dylib
+
+# Python build artifacts
+build/
+dist/
+py/build/
+py/dist/
+
+# Generated files
+py/python/_quantrs2/
+py/python/**/*.so

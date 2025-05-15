@@ -3,8 +3,8 @@
 //! This module provides a high-performance simulator implementation that automatically
 //! selects the most appropriate optimization strategy based on qubit count and hardware support.
 
-use quantrs_circuit::builder::{Circuit, Simulator};
-use quantrs_core::{error::QuantrsResult, register::Register};
+use quantrs2_circuit::builder::{Circuit, Simulator};
+use quantrs2_core::{error::QuantRS2Result, register::Register};
 
 /// An optimized simulator for quantum circuits that automatically selects the best
 /// implementation based on circuit size and hardware capabilities
@@ -80,7 +80,7 @@ impl Default for OptimizedSimulator {
 }
 
 impl<const N: usize> Simulator<N> for OptimizedSimulator {
-    fn run(&self, circuit: &Circuit<N>) -> QuantrsResult<Register<N>> {
+    fn run(&self, circuit: &Circuit<N>) -> QuantRS2Result<Register<N>> {
         // For extremely large circuits, memory efficiency is critical
         if N >= 30 && self.memory_efficient {
             // Defer to chunked implementation

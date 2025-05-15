@@ -1,68 +1,78 @@
-// Single qubit gate shader for quantum simulation
-// Computes the effect of a single-qubit gate on the state vector
+// Single-qubit gate shader for quantum simulation
 
-// Define the buffer structures
-struct StateVector {
-    data: array<vec2<f32>>, // Array of complex numbers (real, imag)
+// Complex number structure
+struct Complex {
+    real: f32,
+    imag: f32,
 }
 
-struct GateParams {
+// Gate parameters
+struct Params {
     target_qubit: u32,
     n_qubits: u32,
-    matrix: array<vec2<f32>, 4>, // 2x2 complex matrix as flattened array
-    padding: vec2<u32>,         // Padding for alignment
+    matrix: array<Complex, 4>, // 2x2 matrix in row-major format
 }
 
-// Binding group
-@group(0) @binding(0) var<storage, read_write> state_vector: StateVector;
-@group(0) @binding(1) var<uniform> params: GateParams;
+// State vector storage buffer
+@group(0) @binding(0)
+var<storage, read_write> state_vector: array<Complex>;
 
-// Helper function to multiply complex numbers
-fn complex_mul(a: vec2<f32>, b: vec2<f32>) -> vec2<f32> {
-    return vec2<f32>(
-        a.x * b.x - a.y * b.y,
-        a.x * b.y + a.y * b.x
+// Uniform buffer for gate parameters
+@group(0) @binding(1)
+var<uniform> params: Params;
+
+// Complex number operations
+fn complex_add(a: Complex, b: Complex) -> Complex {
+    return Complex(a.real + b.real, a.imag + b.imag);
+}
+
+fn complex_mul(a: Complex, b: Complex) -> Complex {
+    return Complex(
+        a.real * b.real - a.imag * b.imag,
+        a.real * b.imag + a.imag * b.real
     );
 }
 
-// The main compute shader function
+// Apply a single-qubit gate to the state vector
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    let state_size = 1u << params.n_qubits;
     let idx = global_id.x;
+    let dim = 1u << params.n_qubits;
     
-    // Return if the index is out of bounds
-    if (idx >= state_size) {
+    // Check if we are within bounds
+    if (idx >= dim) {
         return;
     }
     
-    let target = params.target_qubit;
-    let mask = 1u << target;
+    // Determine if this index corresponds to target qubit = 0 or 1
+    let mask = 1u << params.target_qubit;
+    let paired_idx = idx ^ mask; // Flip the target qubit bit
     
-    // Determine if this index has the target qubit set to 0 or 1
-    let bit_is_set = (idx & mask) != 0u;
-    
-    // Compute the paired index (flipping the target bit)
-    let paired_idx = idx ^ mask;
-    
-    // Only process the lower indices to avoid race conditions
-    if (idx < paired_idx) {
-        // Get the current amplitudes
-        let amp0 = state_vector.data[idx];
-        let amp1 = state_vector.data[paired_idx];
-        
-        // Matrix operation: [a b; c d] * [amp0; amp1]
-        let a = params.matrix[0]; // [0, 0]
-        let b = params.matrix[1]; // [0, 1]
-        let c = params.matrix[2]; // [1, 0]
-        let d = params.matrix[3]; // [1, 1]
-        
-        // Calculate new amplitudes
-        let new_amp0 = complex_mul(a, amp0) + complex_mul(b, amp1);
-        let new_amp1 = complex_mul(c, amp0) + complex_mul(d, amp1);
-        
-        // Update the state vector
-        state_vector.data[idx] = new_amp0;
-        state_vector.data[paired_idx] = new_amp1;
+    // Skip half of the indices to avoid double computation
+    if (idx > paired_idx) {
+        return;
     }
+    
+    // Get the current state values
+    let val0 = state_vector[idx];
+    let val1 = state_vector[paired_idx];
+    
+    // Apply the 2x2 matrix
+    // [ matrix[0,0] matrix[0,1] ] [ val0 ]
+    // [ matrix[1,0] matrix[1,1] ] [ val1 ]
+    
+    // New values after matrix multiplication
+    let new_val0 = complex_add(
+        complex_mul(params.matrix[0], val0),
+        complex_mul(params.matrix[1], val1)
+    );
+    
+    let new_val1 = complex_add(
+        complex_mul(params.matrix[2], val0),
+        complex_mul(params.matrix[3], val1)
+    );
+    
+    // Update the state vector
+    state_vector[idx] = new_val0;
+    state_vector[paired_idx] = new_val1;
 }

@@ -1,0 +1,83 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "quantrs2"
+version = "0.1.0a3"
+description = "Python bindings for the QuantRS2 quantum computing framework"
+authors = [
+    {name = "QuantRS2 Contributors", email = "noreply@example.com"}
+]
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT/Apache-2.0"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
+]
+dependencies = [
+    "numpy>=1.20.0",
+    "matplotlib>=3.3.0",
+    "ipython>=7.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/cool-japan/quantrs"
+Repository = "https://github.com/cool-japan/quantrs"
+Documentation = "https://docs.rs/quantrs2-py"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0.0",
+    "black>=22.3.0",
+    "flake8>=5.0.0",
+    "isort>=5.10.0",
+]
+ml = [
+    "scikit-learn>=1.0.0",
+    "scipy>=1.7.0",
+]
+gpu = [
+    "tabulate>=0.8.0",
+]
+
+[tool.maturin]
+# Basic features for extension module
+features = ["pyo3/extension-module"]
+# Include Python source modules
+python-source = "src"
+# Use simple binding mode
+binding = "pyo3"
+# Include these files in the package
+include = ["LICENSE*", "README.md"]
+# Make compatible with multiple Python versions
+abi3 = true
+abi3-py38 = true
+# Set this to work with maturin development
+manifest-path = "Cargo.toml"
+# Set the correct module name to match the Python import
+module-name = "_quantrs2"
+
+[tool.black]
+line-length = 88
+target-version = ["py38"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"

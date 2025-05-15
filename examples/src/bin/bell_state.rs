@@ -1,5 +1,5 @@
-use quantrs_circuit::builder::Circuit;
-use quantrs_sim::statevector::StateVectorSimulator;
+use quantrs2_circuit::builder::{Circuit, Simulator};
+use quantrs2_sim::statevector::StateVectorSimulator;
 
 fn main() {
     // Create a circuit with 2 qubits
@@ -10,7 +10,7 @@ fn main() {
 
     // Run the circuit on the state vector simulator
     let simulator = StateVectorSimulator::new();
-    let result = circuit.run(simulator).unwrap();
+    let result = simulator.run(&circuit).unwrap();
 
     // Print the resulting amplitudes
     println!("Bell state (|00⟩ + |11⟩)/√2 amplitudes:");

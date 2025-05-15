@@ -1,4 +1,4 @@
-use quantrs_circuit::prelude::Circuit;
+use quantrs2_circuit::prelude::Circuit;
 #[cfg(feature = "ibm")]
 use std::collections::HashMap;
 #[cfg(feature = "ibm")]

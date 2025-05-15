@@ -7,7 +7,7 @@
 // The MaxCut problem: Given a graph, partition the vertices into two sets
 // such that the number of edges with endpoints in different partitions is maximized.
 
-use quantrs_anneal::{
+use quantrs2_anneal::{
     ising::QuboModel,
     qubo::QuboBuilder,
     simulator::{AnnealingParams, ClassicalAnnealingSimulator, QuantumAnnealingSimulator},

@@ -1,86 +1,134 @@
-// Two qubit gate shader for quantum simulation
-// Computes the effect of a two-qubit gate on the state vector
+// Two-qubit gate shader for quantum simulation
 
-// Define the buffer structures
-struct StateVector {
-    data: array<vec2<f32>>, // Array of complex numbers (real, imag)
+// Complex number structure
+struct Complex {
+    real: f32,
+    imag: f32,
 }
 
-struct GateParams {
+// Gate parameters
+struct Params {
     control_qubit: u32,
     target_qubit: u32,
     n_qubits: u32,
-    matrix: array<vec2<f32>, 16>, // 4x4 complex matrix as flattened array
-    padding: u32,
+    matrix: array<Complex, 16>, // 4x4 matrix in row-major format
 }
 
-// Binding group
-@group(0) @binding(0) var<storage, read_write> state_vector: StateVector;
-@group(0) @binding(1) var<uniform> params: GateParams;
+// State vector storage buffer
+@group(0) @binding(0)
+var<storage, read_write> state_vector: array<Complex>;
 
-// Helper function to multiply complex numbers
-fn complex_mul(a: vec2<f32>, b: vec2<f32>) -> vec2<f32> {
-    return vec2<f32>(
-        a.x * b.x - a.y * b.y,
-        a.x * b.y + a.y * b.x
+// Uniform buffer for gate parameters
+@group(0) @binding(1)
+var<uniform> params: Params;
+
+// Complex number operations
+fn complex_add(a: Complex, b: Complex) -> Complex {
+    return Complex(a.real + b.real, a.imag + b.imag);
+}
+
+fn complex_mul(a: Complex, b: Complex) -> Complex {
+    return Complex(
+        a.real * b.real - a.imag * b.imag,
+        a.real * b.imag + a.imag * b.real
     );
 }
 
-// The main compute shader function
+// Apply a two-qubit gate to the state vector
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    let state_size = 1u << params.n_qubits;
     let idx = global_id.x;
+    let dim = 1u << params.n_qubits;
     
-    // Return if the index is out of bounds
-    if (idx >= state_size) {
+    // Check if we are within bounds
+    if (idx >= dim) {
         return;
     }
     
-    let control = params.control_qubit;
-    let target = params.target_qubit;
+    // Get the masks for control and target qubits
+    let control_mask = 1u << params.control_qubit;
+    let target_mask = 1u << params.target_qubit;
     
-    let control_mask = 1u << control;
-    let target_mask = 1u << target;
+    // Get the bit values for this index
+    let control_bit = (idx & control_mask) >> params.control_qubit;
+    let target_bit = (idx & target_mask) >> params.target_qubit;
     
-    // We only process if the control qubit mask is set (for controlled gates)
-    // For non-controlled gates, we would remove this check
-    let control_bit_set = (idx & control_mask) != 0u;
-    if (!control_bit_set) {
+    // Find the indices for the four states we need to consider (00, 01, 10, 11)
+    let idx_mask = control_mask | target_mask;
+    let base_idx = idx & ~idx_mask; // Clear control and target bits
+    
+    let idx00 = base_idx;
+    let idx01 = base_idx | target_mask;
+    let idx10 = base_idx | control_mask;
+    let idx11 = base_idx | control_mask | target_mask;
+    
+    // Only process once for each set of indices
+    if (idx \!= idx00) {
         return;
     }
     
-    // Determine the four indices that form our 2-qubit basis
-    let idx_00 = idx & ~(control_mask | target_mask); // both bits cleared
-    let idx_01 = idx_00 | target_mask;                // only target bit set
-    let idx_10 = idx_00 | control_mask;               // only control bit set
-    let idx_11 = idx_00 | control_mask | target_mask; // both bits set
+    // Get the four amplitudes from the state vector
+    let val00 = state_vector[idx00];
+    let val01 = state_vector[idx01];
+    let val10 = state_vector[idx10];
+    let val11 = state_vector[idx11];
     
-    // Only process one of the four indices to avoid race conditions
-    if (idx == idx_00) {
-        // Get the current amplitudes
-        let amp00 = state_vector.data[idx_00];
-        let amp01 = state_vector.data[idx_01];
-        let amp10 = state_vector.data[idx_10];
-        let amp11 = state_vector.data[idx_11];
-        
-        // Create a vector of the amplitudes [amp00, amp01, amp10, amp11]
-        let amps = array<vec2<f32>, 4>(amp00, amp01, amp10, amp11);
-        
-        // Apply 4x4 matrix: Result = M * [amp00, amp01, amp10, amp11]^T
-        var new_amps: array<vec2<f32>, 4>;
-        
-        for (var i = 0u; i < 4u; i = i + 1u) {
-            new_amps[i] = vec2<f32>(0.0, 0.0);
-            for (var j = 0u; j < 4u; j = j + 1u) {
-                new_amps[i] = new_amps[i] + complex_mul(params.matrix[i * 4u + j], amps[j]);
-            }
-        }
-        
-        // Update the state vector
-        state_vector.data[idx_00] = new_amps[0];
-        state_vector.data[idx_01] = new_amps[1];
-        state_vector.data[idx_10] = new_amps[2];
-        state_vector.data[idx_11] = new_amps[3];
-    }
+    // Apply the 4x4 matrix
+    // [ m00 m01 m02 m03 ] [ val00 ]
+    // [ m10 m11 m12 m13 ] [ val01 ]
+    // [ m20 m21 m22 m23 ] [ val10 ]
+    // [ m30 m31 m32 m33 ] [ val11 ]
+    
+    let matrix = params.matrix;
+    
+    // Calculate new values
+    let new_val00 = complex_add(
+        complex_add(
+            complex_mul(matrix[0], val00),
+            complex_mul(matrix[1], val01)
+        ),
+        complex_add(
+            complex_mul(matrix[2], val10),
+            complex_mul(matrix[3], val11)
+        )
+    );
+    
+    let new_val01 = complex_add(
+        complex_add(
+            complex_mul(matrix[4], val00),
+            complex_mul(matrix[5], val01)
+        ),
+        complex_add(
+            complex_mul(matrix[6], val10),
+            complex_mul(matrix[7], val11)
+        )
+    );
+    
+    let new_val10 = complex_add(
+        complex_add(
+            complex_mul(matrix[8], val00),
+            complex_mul(matrix[9], val01)
+        ),
+        complex_add(
+            complex_mul(matrix[10], val10),
+            complex_mul(matrix[11], val11)
+        )
+    );
+    
+    let new_val11 = complex_add(
+        complex_add(
+            complex_mul(matrix[12], val00),
+            complex_mul(matrix[13], val01)
+        ),
+        complex_add(
+            complex_mul(matrix[14], val10),
+            complex_mul(matrix[15], val11)
+        )
+    );
+    
+    // Update the state vector
+    state_vector[idx00] = new_val00;
+    state_vector[idx01] = new_val01;
+    state_vector[idx10] = new_val10;
+    state_vector[idx11] = new_val11;
 }

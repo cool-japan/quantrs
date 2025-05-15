@@ -6,8 +6,8 @@
 // - Square Root of X (√X) gate
 // - Controlled gates (CY, CH, CS, CRX, CRY, CRZ)
 
-use quantrs_circuit::builder::Circuit;
-use quantrs_sim::statevector::StateVectorSimulator;
+use quantrs2_circuit::builder::{Circuit, Simulator};
+use quantrs2_sim::statevector::StateVectorSimulator;
 
 fn main() {
     println!("Extended Quantum Gates Example");
@@ -21,7 +21,7 @@ fn main() {
 
     // Run the circuit
     let simulator = StateVectorSimulator::new();
-    let result = sx_circuit.run(simulator).unwrap();
+    let result = simulator.run(&sx_circuit).unwrap();
 
     // Print the resulting state vector
     println!("After applying √X to |0⟩:");
@@ -47,7 +47,7 @@ fn main() {
 
     // Run the circuit
     let simulator = StateVectorSimulator::new();
-    let result = sdg_circuit.run(simulator).unwrap();
+    let result = simulator.run(&sdg_circuit).unwrap();
 
     // Print the resulting state vector
     println!("After applying S then S† to |0⟩:");
@@ -71,7 +71,7 @@ fn main() {
 
     // Run the circuit
     let simulator = StateVectorSimulator::sequential(); // Use sequential for predictable output order
-    let result = controlled_circuit.run(simulator).unwrap();
+    let result = simulator.run(&controlled_circuit).unwrap();
 
     // Print the resulting state vector
     println!("After applying H to q0, then CH(q0, q1):");
@@ -101,7 +101,7 @@ fn main() {
 
     // Run the circuit
     let simulator = StateVectorSimulator::sequential();
-    let result = crz_circuit.run(simulator).unwrap();
+    let result = simulator.run(&crz_circuit).unwrap();
 
     // Print the resulting state vector
     println!("After applying X to q0, then CRZ(q0, q1, π/2):");

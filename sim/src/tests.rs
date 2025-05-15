@@ -6,8 +6,8 @@
 use num_complex::Complex64;
 use std::f64::consts::FRAC_1_SQRT_2;
 
-use quantrs_circuit::builder::{Circuit, Simulator};
-use quantrs_core::register::Register;
+use quantrs2_circuit::builder::{Circuit, Simulator};
+use quantrs2_core::register::Register;
 
 use crate::optimized_simulator::OptimizedSimulator;
 use crate::statevector::StateVectorSimulator;

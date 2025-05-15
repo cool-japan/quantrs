@@ -3,9 +3,9 @@
 //! This module provides a high-performance simulator implementation focused on
 //! correctness and simplicity for quantum state vector simulation.
 
-use quantrs_circuit::builder::{Circuit, Simulator};
-use quantrs_core::{
-    error::{QuantrsError, QuantrsResult},
+use quantrs2_circuit::builder::{Circuit, Simulator};
+use quantrs2_core::{
+    error::{QuantRS2Error, QuantRS2Result},
     gate::{multi, single, GateOp},
     register::Register,
 };
@@ -30,7 +30,7 @@ impl Default for OptimizedSimulatorSimple {
 }
 
 impl<const N: usize> Simulator<N> for OptimizedSimulatorSimple {
-    fn run(&self, circuit: &Circuit<N>) -> QuantrsResult<Register<N>> {
+    fn run(&self, circuit: &Circuit<N>) -> QuantRS2Result<Register<N>> {
         // Initialize state vector
         let mut state_vector = OptimizedStateVector::new(N);
 
@@ -122,13 +122,13 @@ impl<const N: usize> Simulator<N> for OptimizedSimulatorSimple {
 
                 // Three-qubit gates are not directly supported yet
                 "Toffoli" | "Fredkin" => {
-                    return Err(QuantrsError::UnsupportedOperation(
+                    return Err(QuantRS2Error::UnsupportedOperation(
                         format!("Direct {} gate not yet implemented in optimized simulator. Use gate decomposition.", gate.name())
                     ));
                 }
 
                 _ => {
-                    return Err(QuantrsError::UnsupportedOperation(format!(
+                    return Err(QuantRS2Error::UnsupportedOperation(format!(
                         "Gate {} not supported in optimized simulator",
                         gate.name()
                     )));

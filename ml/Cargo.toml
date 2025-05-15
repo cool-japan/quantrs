@@ -1,0 +1,29 @@
+[package]
+name = "quantrs2-ml"
+version = "0.1.0-alpha.2"
+edition = "2021"
+rust-version = "1.86.0"
+authors = ["QuantRS2 Contributors"]
+description = "Quantum Machine Learning module for QuantRS2"
+repository = "https://github.com/cool-japan/quantrs"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+keywords = ["quantum", "computing", "machine-learning", "ai", "data-science"]
+categories = ["science", "simulation"]
+
+[dependencies]
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.2" }
+quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.2" }
+quantrs2-sim = { path = "../sim", version = "0.1.0-alpha.2" }
+thiserror = "1.0"
+ndarray = "0.15"
+ndarray-rand = "0.14"
+ndarray-stats = "0.5"
+rand = "0.8"
+rand_distr = "0.4"
+rayon = "1.7"
+num-complex = "0.4"
+
+[features]
+default = []
+gpu = ["quantrs2-sim/gpu"]

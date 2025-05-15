@@ -6,7 +6,7 @@
 // The Graph Coloring problem: Assign colors to vertices of a graph such that
 // no two adjacent vertices have the same color, using the minimum number of colors.
 
-use quantrs_anneal::{
+use quantrs2_anneal::{
     ising::QuboModel,
     qubo::{QuboBuilder, Variable},
     simulator::{AnnealingParams, ClassicalAnnealingSimulator, QuantumAnnealingSimulator},

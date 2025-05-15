@@ -1,6 +1,6 @@
 extern crate proc_macro;
 
-/// Quantum circuit representation and DSL for the quantrs framework.
+/// Quantum circuit representation and DSL for the QuantRS2 framework.
 ///
 /// This crate provides types for constructing and manipulating
 /// quantum circuits with a fluent API.
@@ -25,7 +25,7 @@ pub mod prelude {
 macro_rules! qubits {
     ($($id:expr),* $(,)?) => {
         {
-            use quantrs_core::qubit::QubitSet;
+            use quantrs2_core::qubit::QubitSet;
 
             let mut qs = QubitSet::new();
             $(qs.add($id);)*
@@ -49,7 +49,7 @@ macro_rules! qubits {
 #[macro_export]
 macro_rules! circuit {
     ($n:expr) => {
-        quantrs_circuit::builder::Circuit::<$n>::new()
+        quantrs2_circuit::builder::Circuit::<$n>::new()
     };
 }
 
@@ -58,7 +58,7 @@ macro_rules! circuit {
 /// # Example
 ///
 /// ```ignore
-/// use quantrs_circuit::quantum;
+/// use quantrs2_circuit::quantum;
 ///
 /// quantum! {
 ///     let qc = circuit(4);  // 4 qubits

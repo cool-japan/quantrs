@@ -4,7 +4,7 @@
 //! Azure Quantum, and AWS Braket. It enables users to run quantum circuits on real
 //! quantum hardware or cloud-based simulators.
 
-use quantrs_circuit::prelude::Circuit;
+use quantrs2_circuit::prelude::Circuit;
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -15,6 +15,14 @@ pub mod azure_device;
 pub mod ibm;
 pub mod ibm_device;
 pub mod transpiler;
+
+// AWS authentication module
+#[cfg(feature = "aws")]
+pub mod aws_auth;
+
+// AWS circuit conversion module
+#[cfg(feature = "aws")]
+pub mod aws_conversion;
 
 /// Result type for device operations
 pub type DeviceResult<T> = Result<T, DeviceError>;

@@ -8,8 +8,8 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use std::f64::consts::FRAC_1_SQRT_2;
 
-use quantrs_circuit::builder::{Circuit, Simulator};
-use quantrs_core::{qubit::QubitId, register::Register};
+use quantrs2_circuit::builder::{Circuit, Simulator};
+use quantrs2_core::{qubit::QubitId, register::Register};
 
 use crate::benchmark::generate_benchmark_circuit;
 use crate::optimized_simulator::OptimizedSimulator;

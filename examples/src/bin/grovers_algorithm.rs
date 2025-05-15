@@ -1,6 +1,6 @@
-use quantrs_circuit::Circuit;
-use quantrs_core::{QubitId, Register};
-use quantrs_sim::StateVectorSimulator;
+use quantrs2_circuit::prelude::{Circuit, Simulator};
+use quantrs2_core::{qubit::QubitId, register::Register};
+use quantrs2_sim::statevector::StateVectorSimulator;
 use std::f64::consts::PI;
 
 /// Implements Grover's algorithm for a 3-qubit search space
@@ -32,25 +32,23 @@ fn main() {
     // For 3 qubits, one iteration is optimal
     // For larger qubit counts, we would need to repeat steps 2 and 3 approximately sqrt(N) times
 
-    // Initialize the simulator and register
+    // Initialize the simulator
     let mut simulator = StateVectorSimulator::new();
-    let register = Register::<3>::new();
 
     // Run the circuit
     println!("\nExecuting circuit...");
-    let result = simulator.run(&circuit, &register);
+    let result = simulator.run(&circuit);
 
     // Print the results
     println!("\nFinal state probabilities:");
+    let probabilities = result.probabilities();
     for i in 0..8 {
-        let prob = simulator.probability(i, &result);
-        println!("State |{:03b}⟩: {:.6}", i, prob);
+        println!("State |{:03b}⟩: {:.6}", i, probabilities[i]);
     }
 
     // Perform a measurement
     println!("\nPerforming measurement...");
-    let qubits: Vec<_> = (0..3).map(|i| QubitId::new(i)).collect();
-    let measured = simulator.measure(qubits, &result);
+    let measured = result.measure();
 
     // Calculate the most probable state
     let mut max_prob = 0.0;

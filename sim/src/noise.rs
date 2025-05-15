@@ -8,8 +8,8 @@ use num_complex::Complex64;
 use rand::Rng;
 use std::fmt::Debug;
 
-use quantrs_core::error::QuantrsResult;
-use quantrs_core::qubit::QubitId;
+use quantrs2_core::error::QuantRS2Result;
+use quantrs2_core::qubit::QubitId;
 
 /// An enum that represents all possible noise channel types
 #[derive(Debug, Clone)]
@@ -62,7 +62,7 @@ impl NoiseChannelType {
     }
 
     /// Apply the noise channel to a state vector
-    pub fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantrsResult<()> {
+    pub fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantRS2Result<()> {
         match self {
             Self::BitFlip(ch) => ch.apply_to_statevector(state),
             Self::PhaseFlip(ch) => ch.apply_to_statevector(state),
@@ -93,7 +93,7 @@ pub trait NoiseChannel: Debug + Clone {
     fn qubits(&self) -> Vec<QubitId>;
 
     /// Apply the noise channel to a state vector
-    fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantrsResult<()>;
+    fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantRS2Result<()>;
 
     /// Return the Kraus operators for this channel
     fn kraus_operators(&self) -> Vec<Vec<Complex64>>;
@@ -121,7 +121,7 @@ impl NoiseChannel for BitFlipChannel {
         vec![self.target]
     }
 
-    fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantrsResult<()> {
+    fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantRS2Result<()> {
         let target_idx = self.target.id() as usize;
         let dim = state.len();
 
@@ -190,7 +190,7 @@ impl NoiseChannel for PhaseFlipChannel {
         vec![self.target]
     }
 
-    fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantrsResult<()> {
+    fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantRS2Result<()> {
         let target_idx = self.target.id() as usize;
         let dim = state.len();
 
@@ -258,7 +258,7 @@ impl NoiseChannel for DepolarizingChannel {
         vec![self.target]
     }
 
-    fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantrsResult<()> {
+    fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantRS2Result<()> {
         let target_idx = self.target.id() as usize;
         let dim = state.len();
 
@@ -376,7 +376,7 @@ impl NoiseChannel for AmplitudeDampingChannel {
         vec![self.target]
     }
 
-    fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantrsResult<()> {
+    fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantRS2Result<()> {
         let target_idx = self.target.id() as usize;
         let dim = state.len();
 
@@ -455,7 +455,7 @@ impl NoiseChannel for PhaseDampingChannel {
         vec![self.target]
     }
 
-    fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantrsResult<()> {
+    fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantRS2Result<()> {
         let target_idx = self.target.id() as usize;
         let dim = state.len();
 
@@ -558,7 +558,7 @@ impl NoiseModel {
     }
 
     /// Apply all noise channels to a state vector
-    pub fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantrsResult<()> {
+    pub fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantRS2Result<()> {
         for channel in &self.channels {
             channel.apply_to_statevector(state)?;
         }

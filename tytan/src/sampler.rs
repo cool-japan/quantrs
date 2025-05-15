@@ -54,7 +54,7 @@ fn evaluate_qubo_energy(state: &[bool], h_vector: &[f64], j_matrix: &[f64], n_va
     energy
 }
 
-use quantrs_anneal::{
+use quantrs2_anneal::{
     simulator::{AnnealingError, AnnealingParams, ClassicalAnnealingSimulator},
     IsingError, QuboModel,
 };
@@ -89,7 +89,7 @@ pub enum SamplerError {
     /// Error in D-Wave operations
     #[cfg(feature = "dwave")]
     #[error("D-Wave error: {0}")]
-    DWaveError(#[from] quantrs_anneal::dwave::DWaveError),
+    DWaveError(#[from] quantrs2_anneal::dwave::DWaveError),
 }
 
 /// Result type for sampling operations
@@ -3634,7 +3634,7 @@ impl Sampler for DWaveSampler {
         // Initialize the D-Wave client
         #[cfg(feature = "dwave")]
         {
-            use quantrs_anneal::dwave::{DWaveClient, DWaveParams};
+            use quantrs2_anneal::dwave::{DWaveClient, DWaveParams};
 
             // Create D-Wave client
             let dwave_client = DWaveClient::new(&self.api_key)?;
