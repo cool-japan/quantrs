@@ -17,8 +17,8 @@ quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.2" }
 quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.2" }
 # Tytan is intentionally not included directly
 # quantrs2-tytan = { path = "../tytan", optional = true }
-num-complex = "0.4"
-rand = "0.9.1"
+num-complex.workspace = true
+rand.workspace = true
 
 # Feature for simulation examples which require quantrs2-sim
 #
@@ -57,7 +57,7 @@ version = "0.1.0-alpha.2"
 optional = true
 
 [dependencies.tokio]
-version = "1.0"
+workspace = true
 features = ["full"]
 optional = true
 
