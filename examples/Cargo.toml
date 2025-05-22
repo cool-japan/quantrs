@@ -213,3 +213,18 @@ required-features = ["simulation"]
 name = "scirs2_integration_demo"
 path = "src/bin/scirs2_integration_demo.rs"
 required-features = ["simulation"]
+
+[[bin]]
+name = "qaoa_demo"
+path = "src/bin/qaoa_demo.rs"
+required-features = []
+
+[[bin]]
+name = "circuit_optimizer_demo"
+path = "src/bin/circuit_optimizer_demo.rs"
+required-features = []
+
+[[bin]]
+name = "stabilizer_demo"
+path = "src/bin/stabilizer_demo.rs"
+required-features = ["simulation"]

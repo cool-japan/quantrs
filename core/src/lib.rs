@@ -10,6 +10,7 @@ pub mod error;
 pub mod gate;
 pub mod memory_efficient;
 pub mod parametric;
+pub mod qaoa;
 pub mod qubit;
 pub mod register;
 pub mod simd_ops;
@@ -30,5 +31,8 @@ pub mod prelude {
     pub use crate::register::*;
     pub use crate::simd_ops::{
         apply_phase_simd, controlled_phase_simd, expectation_z_simd, inner_product, normalize_simd,
+    };
+    pub use crate::qaoa::{
+        QAOAParams, QAOACircuit, QAOAOptimizer, CostHamiltonian, MixerHamiltonian,
     };
 }

@@ -5,10 +5,12 @@ extern crate proc_macro;
 /// This crate provides types for constructing and manipulating
 /// quantum circuits with a fluent API.
 pub mod builder;
+pub mod optimizer;
 
 // Re-exports of commonly used types and traits
 pub mod prelude {
     pub use crate::builder::*;
+    pub use crate::optimizer::{CircuitOptimizer, OptimizationResult, OptimizationPassType, HardwareOptimizer, RedundantGateElimination, SingleQubitGateFusion};
 }
 
 // The following should be proc macros, but we'll implement them later

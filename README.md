@@ -26,6 +26,9 @@ QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing fr
 - **Realistic Noise Models**: Simulate quantum hardware with configurable noise channels (bit flip, phase flip, depolarizing, amplitude/phase damping) and IBM device-specific T1/T2 relaxation models
 - **Quantum Error Correction**: Protect quantum information with error correction codes (bit flip code, phase flip code, Shor code, 5-qubit perfect code)
 - **Tensor Network Simulation**: Memory-efficient simulation of quantum circuits with limited entanglement, featuring specialized contraction path optimization for QFT, QAOA, and other common circuit patterns with benchmarking tools to evaluate performance gains
+- **Stabilizer Simulation**: Efficient O(n²) simulation of Clifford circuits using tableau representation, ideal for quantum error correction
+- **Quantum Algorithms**: Built-in implementations of QAOA, Grover's search, QFT, QPE, and simplified Shor's algorithm
+- **Circuit Optimization**: Comprehensive optimization framework with gate fusion, peephole optimization, and hardware-aware compilation
 - **IBM Quantum Integration**: Connect to real IBM quantum hardware with authentication, circuit transpilation, job submission, and result processing
 - **Zero-Cost Abstractions**: Maintaining Rust's performance while providing intuitive quantum programming interfaces
 - **Quality Code**: Follows modern Rust best practices with no compiler warnings or deprecation issues

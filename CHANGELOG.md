@@ -16,6 +16,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Thread-safe buffer pools for reduced memory allocation overhead
   - Enhanced state vector simulator with automatic memory optimization
 
+- **Quantum Approximate Optimization Algorithm (QAOA)**
+  - Complete QAOA implementation for solving combinatorial optimization problems
+  - Support for MaxCut, weighted MaxCut, and general Ising models
+  - Gradient-free optimization with customizable parameters
+  - Leverages SciRS2 SIMD operations for enhanced performance
+
+- **Circuit Optimization Framework**
+  - Multiple optimization passes: gate fusion, redundant gate elimination, commutation-based optimization
+  - Peephole optimization for common gate patterns (H-X-H → Z, H-Z-H → X)
+  - Template matching for complex gate decompositions
+  - Hardware-aware optimization with connectivity constraints
+  - Extensible architecture for custom optimization passes
+
+- **Stabilizer Simulator**
+  - Efficient simulation of Clifford circuits using tableau representation
+  - O(n²) scaling per gate operation vs O(2^n) for state vector simulation
+  - Support for all Clifford gates (H, S, CNOT, Pauli gates)
+  - Measurement in computational basis with proper stabilizer updates
+  - Ideal for simulating quantum error correction codes
+
 ### Changed
 - Updated dependencies to use SciRS2 v0.1.0-alpha.3
 - Replaced custom implementations with optimized SciRS2 equivalents

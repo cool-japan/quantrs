@@ -11,6 +11,7 @@ pub mod dynamic;
 pub mod enhanced_statevector;
 pub mod linalg_ops;
 pub mod simulator;
+pub mod stabilizer;
 pub mod statevector;
 pub mod tensor;
 
@@ -62,6 +63,7 @@ pub mod prelude {
     #[allow(unused_imports)]
     pub use crate::simulator::*;
     pub use crate::simulator::{Simulator, SimulatorResult};
+    pub use crate::stabilizer::{StabilizerSimulator, StabilizerGate, is_clifford_circuit};
     pub use crate::statevector::StateVectorSimulator;
     #[allow(unused_imports)]
     pub use crate::statevector::*;
