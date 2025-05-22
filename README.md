@@ -19,6 +19,7 @@ QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing fr
 
 - **Type-Safe Quantum Circuits**: Using Rust's const generics for compile-time verification of qubit counts and operations
 - **High Performance**: Leveraging SIMD, multi-threading, tensor networks, and optional GPU acceleration for efficient simulation
+- **SciRS2 Integration**: Deep integration with Scientific Rust (SciRS2) for enhanced numerical computing, memory management, and SIMD operations
 - **Multiple Paradigms**: Support for both gate-based quantum computing and quantum annealing
 - **Hardware Connectivity**: Connect to real quantum devices from IBM, Azure Quantum, and other platforms
 - **Comprehensive Gate Set**: Includes all standard gates plus S/T-dagger, Square root of X, and controlled variants

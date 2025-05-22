@@ -208,3 +208,8 @@ required-features = ["simulation"]
 name = "gate_decomposition"
 path = "src/bin/gate_decomposition.rs"
 required-features = ["simulation"]
+
+[[bin]]
+name = "scirs2_integration_demo"
+path = "src/bin/scirs2_integration_demo.rs"
+required-features = ["simulation"]

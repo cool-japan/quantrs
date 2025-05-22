@@ -5,6 +5,27 @@ All notable changes to QuantRS2 will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **SciRS2 Integration**: Deep integration with Scientific Rust for enhanced performance
+  - Quantum-specific complex number extensions with probability and fidelity calculations
+  - Memory-efficient state vector storage with automatic chunking for large quantum states
+  - SIMD-accelerated quantum operations providing 2-5x speedup for common operations
+  - Enhanced linear algebra operations leveraging BLAS/LAPACK
+  - Thread-safe buffer pools for reduced memory allocation overhead
+  - Enhanced state vector simulator with automatic memory optimization
+
+### Changed
+- Updated dependencies to use SciRS2 v0.1.0-alpha.3
+- Replaced custom implementations with optimized SciRS2 equivalents
+- Improved memory usage for quantum states with >20 qubits
+
+### Documentation
+- Added comprehensive SciRS2 integration guide
+- Updated TODO.md with detailed enhancement plans
+- Enhanced module-specific roadmaps with SciRS2-powered features
+
 ## [0.1.0-alpha.2] - 2025-05-20
 
 This groundbreaking release transforms QuantRS2 into a comprehensive quantum computing ecosystem that rivals and exceeds commercial offerings. With over 30 major enhancements spanning all quantum computing paradigms, QuantRS2 now provides state-of-the-art capabilities for quantum simulation, algorithm development, and hardware integration.

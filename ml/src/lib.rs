@@ -16,6 +16,7 @@
 //! - Quantum Blockchain and Distributed Ledger Technology
 //! - Quantum-Enhanced Natural Language Processing
 
+use fastrand;
 use std::error::Error;
 use thiserror::Error;
 

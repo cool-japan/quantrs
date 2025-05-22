@@ -191,7 +191,7 @@ impl QuantumAgent for ReinforcementLearning {
         // Epsilon-greedy action selection
         if rand::random::<f64>() < self.exploration_rate {
             // Explore: random action
-            Ok(rand::random::<usize>() % self.action_dim)
+            Ok(fastrand::usize(0..self.action_dim))
         } else {
             // Exploit: best action
             let q_values = self.get_q_values(state)?;

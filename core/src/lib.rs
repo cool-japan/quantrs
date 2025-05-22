@@ -4,19 +4,31 @@
 //! the QuantRS2 ecosystem, including qubit identifiers, quantum gates,
 //! and register representations.
 
+pub mod complex_ext;
 pub mod decomposition;
 pub mod error;
 pub mod gate;
+pub mod memory_efficient;
 pub mod parametric;
 pub mod qubit;
 pub mod register;
+pub mod simd_ops;
 
 /// Re-exports of commonly used types and traits
 pub mod prelude {
-    pub use crate::decomposition::*;
+    // Import specific items from each module to avoid ambiguous glob re-exports
+    pub use crate::complex_ext::{quantum_states, QuantumComplexExt};
+    pub use crate::decomposition::decompose_u_gate;
+    pub use crate::decomposition::utils::{
+        clone_gate, decompose_circuit, optimize_gate_sequence, GateSequence,
+    };
     pub use crate::error::*;
     pub use crate::gate::*;
-    pub use crate::parametric::*;
+    pub use crate::memory_efficient::{EfficientStateVector, StateMemoryStats};
+    pub use crate::parametric::{Parameter, ParametricGate, SymbolicParameter};
     pub use crate::qubit::*;
     pub use crate::register::*;
+    pub use crate::simd_ops::{
+        apply_phase_simd, controlled_phase_simd, expectation_z_simd, inner_product, normalize_simd,
+    };
 }

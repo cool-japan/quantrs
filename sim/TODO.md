@@ -15,54 +15,82 @@ This document outlines the development plans and future tasks for the QuantRS2-S
 - ✅ Initial noise models (bit flip, phase flip, depolarizing)
 - ✅ Basic tensor network implementation
 - ✅ Basic benchmark utilities
+- ✅ GPU compute shader framework with wgpu
+- ✅ Advanced noise models (amplitude damping, thermal relaxation)
+- ✅ Dynamic qubit allocation support
+- ✅ Enhanced state vector with lazy evaluation
+- ✅ Linear algebra operations module
 
 ### In Progress
 
-- 🔄 Enhanced GPU acceleration for state vector simulation
-- 🔄 Advanced noise models for realistic hardware simulation
-- 🔄 Tensor network contraction optimization
-- 🔄 Advanced quantum error correction codes
+- 🔄 SciRS2 integration for advanced numerical algorithms
+- 🔄 Distributed simulation across multiple nodes
+- 🔄 Quantum error mitigation techniques
+- 🔄 Hardware-aware simulation optimization
 
 ## Planned Enhancements
 
 ### Near-term (v0.1.x)
 
-- [ ] Complete the noise model implementations for all common noise channels
-- [ ] Finalize GPU shader optimizations
-- [ ] Add automated backend selection based on circuit characteristics
-- [ ] Implement T1/T2 relaxation models for IBM-like hardware
-- [ ] Add extensive benchmarking suite with visualization
-- [ ] Optimize tensor network contraction paths
-- [ ] Complete documentation with performance guidelines
-- [ ] Implement quantum error correction (bit flip code, phase flip code, Shor code)
+- [ ] Integrate SciRS2 sparse matrix operations for large circuits
+- [ ] Implement Trotter-Suzuki decomposition using SciRS2
+- [ ] Add quantum Monte Carlo simulation with SciRS2 RNG
+- [ ] Create adaptive precision control for state vectors
+- [ ] Implement gate fusion using SciRS2 matrix multiplication
+- [ ] Add support for Pauli string evolution
+- [ ] Create stabilizer simulator for Clifford circuits
+- [ ] Implement matrix product state (MPS) simulator
+- [ ] Add support for open quantum system simulation
+- [ ] Create shot-based sampling with statistical analysis
 
 ### Medium-term (v0.2.x)
 
-- [ ] Add adaptive algorithms for large qubit simulation
-- [ ] Implement specialized simulators for specific circuit classes
-- [ ] Add visualization of quantum states and simulation dynamics
-- [ ] Integrate with scientific computing libraries for advanced analysis
-- [ ] Implement approximate simulation techniques for very large circuits
-- [ ] Add support for multi-GPU acceleration
-- [ ] Implement more advanced error correction techniques (surface codes)
-- [ ] Add noise-aware circuit optimization
+- [ ] Implement decision diagram simulator using SciRS2 graphs
+- [ ] Add Feynman path integral simulation method
+- [ ] Create quantum supremacy verification algorithms
+- [ ] Implement cross-entropy benchmarking
+- [ ] Add support for fermionic simulation with SciRS2
+- [ ] Create quantum algorithm debugger interface
+- [ ] Implement automatic differentiation for VQE
+- [ ] Add support for photonic simulation
+- [ ] Create noise extrapolation techniques
+- [ ] Implement quantum volume calculation
 
 ### Long-term (Future Versions)
 
-- [ ] Implement full density matrix simulation
-- [ ] Add support for continuous variable quantum computing
-- [ ] Implement quantum machine learning extensions
-- [ ] Add distributed simulation across multiple machines
-- [ ] Support for specialized quantum processor architectures
-- [ ] Implement hardware-accelerated tensor network contraction
-- [ ] Add advanced visualization and interactive simulation tools
+- [ ] Implement quantum cellular automata simulation
+- [ ] Add support for topological quantum simulation
+- [ ] Create quantum field theory simulators
+- [ ] Implement lattice gauge theory simulation
+- [ ] Add support for quantum chemistry DMRG
+- [ ] Create quantum gravity simulation tools
+- [ ] Implement holographic quantum error correction
+- [ ] Add support for quantum machine learning layers
+- [ ] Create quantum-inspired classical algorithms
+- [ ] Implement quantum reservoir computing
 
 ## Implementation Notes
 
-- The GPU implementation needs shader optimization for better performance
-- Consider replacing ndarray with custom SIMD-optimized linear algebra for core operations
-- Tensor network implementation should leverage better contraction path optimization
-- Consider implementing a hybrid classical-quantum simulator for VQE-like algorithms
+### Performance Optimization
+- Use SciRS2 BLAS Level 3 operations for matrix multiplication
+- Implement cache-oblivious algorithms for state vector updates
+- Use thread-local storage for parallel simulations
+- Implement vectorized operations for Pauli measurements
+- Create memory pools for temporary allocations
+
+### Technical Architecture
+- State vectors stored in interleaved complex format
+- Use lazy evaluation for gate sequences
+- Implement just-in-time compilation for circuits
+- Support both row-major and column-major layouts
+- Create pluggable backend system for simulators
+
+### SciRS2 Integration Points
+- Linear algebra: Use SciRS2 BLAS/LAPACK bindings
+- Sparse operations: Leverage SciRS2 sparse matrices
+- Optimization: Use SciRS2 optimization algorithms
+- Statistics: Integrate SciRS2 for result analysis
+- Parallel computing: Use SciRS2 parallel primitives
 
 ## Known Issues
 
@@ -73,6 +101,23 @@ This document outlines the development plans and future tasks for the QuantRS2-S
 
 ## Integration Tasks
 
-- [ ] Enhance integration with device-specific simulation capabilities
-- [ ] Improve support for running on cloud/cluster computing resources
-- [ ] Add hooks for custom gate implementations to improve performance
+### SciRS2 Integration
+- [ ] Replace custom linear algebra with SciRS2 routines
+- [ ] Use SciRS2 FFT for quantum Fourier transform
+- [ ] Integrate SciRS2 sparse solvers for large systems
+- [ ] Leverage SciRS2 eigensolvers for spectral analysis
+- [ ] Use SciRS2 optimization for variational algorithms
+
+### Hardware Integration
+- [ ] Create CUDA kernels using SciRS2 GPU support
+- [ ] Implement OpenCL backend for AMD GPUs
+- [ ] Add support for TPU acceleration
+- [ ] Create FPGA-optimized implementations
+- [ ] Integrate with quantum cloud services
+
+### Module Integration
+- [ ] Create efficient interfaces with circuit module
+- [ ] Add support for device noise models
+- [ ] Implement ML module integration for QML
+- [ ] Create visualization hooks for debugging
+- [ ] Add telemetry for performance monitoring

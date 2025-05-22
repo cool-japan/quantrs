@@ -18,7 +18,7 @@ ndarray.workspace = true
 rayon.workspace = true
 thiserror.workspace = true
 # Optional dependencies disabled by default to avoid OpenBLAS issues on macOS ARM
-scirs2-core = { workspace = true, default-features = false, optional = true }
+scirs2-core = { workspace = true, features = ["simd", "memory_management", "parallel", "linalg"], optional = true }
 scirs2-optimize = { workspace = true, default-features = false, optional = true }
 pandrs = { workspace = true, optional = true }
 pyo3.workspace = true
@@ -30,6 +30,7 @@ tokio = { workspace = true, features = ["rt", "rt-multi-thread"], optional = tru
 rand.workspace = true
 rand_chacha.workspace = true
 wide.workspace = true
+fastrand = "2.0.1"
 
 [features]
 default = ["optimize"]

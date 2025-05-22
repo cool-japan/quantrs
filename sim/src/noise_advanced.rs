@@ -1,5 +1,6 @@
+#![allow(clippy::needless_range_loop)]
+
 use num_complex::Complex64;
-use rand::Rng;
 use std::f64::consts::PI;
 use std::time::Duration;
 
@@ -32,13 +33,13 @@ impl NoiseChannel for TwoQubitDepolarizingChannel {
 
     fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantRS2Result<()> {
         let q1_idx = self.qubit1.id() as usize;
-        let q2_idx = self.qubit2.id() as usize;
+    #[allow(clippy::needless_range_loop)]        let q2_idx = self.qubit2.id() as usize;
         let dim = state.len();
 
         // Apply two-qubit depolarizing noise with probability p
-        if rand::thread_rng().gen::<f64>() < self.probability {
+        if fastrand::f64() < self.probability {
             // Choose randomly between 15 possible Pauli errors (excluding I⊗I)
-            let error_type = rand::thread_rng().gen_range(0..15);
+            let error_type = fastrand::u32(..) % 15;
 
             // Create a copy of the state to read from
             let state_copy = state.to_vec();
@@ -251,10 +252,10 @@ impl NoiseChannel for ThermalRelaxationChannel {
                 let base_idx = i & !(1 << target_idx); // Flip the target bit to 0
 
                 // Apply relaxation with probability p_reset
-                if rand::thread_rng().gen::<f64>() < p_reset {
+                if fastrand::f64() < p_reset {
                     // With probability (1-p_eq), collapse to |0⟩ state
                     // With probability p_eq, collapse to |1⟩ state (thermal equilibrium)
-                    if rand::thread_rng().gen::<f64>() < self.excited_state_population {
+                    if fastrand::f64() < self.excited_state_population {
                         // Stay in |1⟩ due to thermal excitation
                         state[i] = state_copy[i];
                     } else {
@@ -273,7 +274,7 @@ impl NoiseChannel for ThermalRelaxationChannel {
         for i in 0..dim {
             if (i >> target_idx) & 1 == 1 {
                 // Apply additional pure dephasing
-                if rand::thread_rng().gen::<f64>() < p_phase {
+                if fastrand::f64() < p_phase {
                     // Random phase
                     state[i] *= Complex64::new(-1.0, 0.0); // Apply phase flip
                 }
@@ -332,14 +333,14 @@ impl NoiseChannel for CrosstalkChannel {
         let dim = state.len();
 
         // Apply crosstalk with probability based on strength
-        if rand::thread_rng().gen::<f64>() < self.strength {
+        if fastrand::f64() < self.strength {
             // Create a copy of the state for reading
             let state_copy = state.to_vec();
 
             // Randomly select an effect (simplified model):
             // 1. ZZ interaction
             // 2. Neighbor rotation
-            let effect = rand::thread_rng().gen_range(0..2);
+            let effect = fastrand::u32(..) % 2;
 
             match effect {
                 0 => {
@@ -348,7 +349,7 @@ impl NoiseChannel for CrosstalkChannel {
                         let parity = ((i >> primary_idx) & 1) ^ ((i >> neighbor_idx) & 1);
                         if parity == 1 {
                             // Apply phase shift if qubits have different parity
-                            let phase = rand::thread_rng().gen_range(0.0..PI);
+                            let phase = fastrand::f64() * PI;
                             state[i] *= Complex64::new(phase.cos(), phase.sin());
                         }
                     }
@@ -362,7 +363,7 @@ impl NoiseChannel for CrosstalkChannel {
                             let flipped_i = i ^ (1 << neighbor_idx);
 
                             // Small, random amplitude swap
-                            let theta: f64 = rand::thread_rng().gen_range(0.0..0.2); // Small angle
+                            let theta: f64 = fastrand::f64() * 0.2; // Small angle
                             let cos_theta = theta.cos();
                             let sin_theta = theta.sin();
 
@@ -577,7 +578,7 @@ impl RealisticNoiseModelBuilder {
                 let gate_error_1q = 0.001; // 0.1% error rate
 
                 // Two-qubit gates (CNOT)
-                let gate_time_2q = 300e-9; // 300 nanoseconds
+                let _gate_time_2q = 300e-9; // 300 nanoseconds
                 let gate_error_2q = 0.01; // 1% error rate
 
                 // Readout errors
@@ -648,7 +649,7 @@ impl RealisticNoiseModelBuilder {
                 let gate_error_1q = 0.0005; // 0.05% error rate
 
                 // Two-qubit gates (CNOT)
-                let gate_time_2q = 250e-9; // 250 nanoseconds
+                let _gate_time_2q = 250e-9; // 250 nanoseconds
                 let gate_error_2q = 0.008; // 0.8% error rate
 
                 // Readout errors
@@ -719,7 +720,7 @@ impl RealisticNoiseModelBuilder {
                 let gate_error_1q = 0.0004; // 0.04% error rate
 
                 // Two-qubit gates (CNOT)
-                let gate_time_2q = 275e-9; // 275 nanoseconds
+                let _gate_time_2q = 275e-9; // 275 nanoseconds
                 let gate_error_2q = 0.007; // 0.7% error rate
 
                 // Readout errors
@@ -787,7 +788,7 @@ impl RealisticNoiseModelBuilder {
                 let gate_error_1q = 0.0003; // 0.03% error rate
 
                 // Two-qubit gates (CNOT)
-                let gate_time_2q = 220e-9; // 220 nanoseconds
+                let _gate_time_2q = 220e-9; // 220 nanoseconds
                 let gate_error_2q = 0.006; // 0.6% error rate
 
                 // Readout errors
@@ -855,7 +856,7 @@ impl RealisticNoiseModelBuilder {
                 let gate_error_1q = 0.001; // 0.1% error rate
 
                 // Two-qubit gates (CNOT)
-                let gate_time_2q = 300e-9; // 300 nanoseconds
+                let _gate_time_2q = 300e-9; // 300 nanoseconds
                 let gate_error_2q = 0.01; // 1% error rate
 
                 // Readout errors
@@ -931,7 +932,7 @@ impl RealisticNoiseModelBuilder {
                 let gate_error_1q = 0.0015; // 0.15% error rate
 
                 // Two-qubit gates (CZ)
-                let gate_time_2q = 220e-9; // 220 nanoseconds
+                let _gate_time_2q = 220e-9; // 220 nanoseconds
                 let gate_error_2q = 0.02; // 2% error rate
 
                 // Readout errors
@@ -999,7 +1000,7 @@ impl RealisticNoiseModelBuilder {
                 let gate_error_1q = 0.002; // 0.2% error rate
 
                 // Two-qubit gates (CZ)
-                let gate_time_2q = 250e-9; // 250 nanoseconds
+                let _gate_time_2q = 250e-9; // 250 nanoseconds
                 let gate_error_2q = 0.025; // 2.5% error rate
 
                 // Readout errors

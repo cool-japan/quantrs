@@ -546,7 +546,7 @@ fn sample_batch(data: &Array2<f64>, batch_size: usize) -> Result<Array2<f64>> {
     let mut batch = Array2::zeros((batch_size.min(num_samples), data.ncols()));
 
     for i in 0..batch_size.min(num_samples) {
-        let idx = rand::random::<usize>() % num_samples;
+        let idx = fastrand::usize(0..num_samples);
         batch.row_mut(i).assign(&data.row(idx));
     }
 

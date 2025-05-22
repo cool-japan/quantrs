@@ -9,6 +9,8 @@ use pyo3::prelude::*;
 use pyo3::types::{PyComplex, PyDict, PyList};
 use quantrs2_circuit::builder::Simulator;
 use quantrs2_core::qubit::QubitId;
+use std::time::Duration;
+
 use quantrs2_sim::dynamic::{DynamicCircuit, DynamicResult};
 use quantrs2_sim::noise::{BitFlipChannel, DepolarizingChannel, NoiseModel, PhaseFlipChannel};
 use quantrs2_sim::noise_advanced::{
@@ -16,7 +18,6 @@ use quantrs2_sim::noise_advanced::{
     TwoQubitDepolarizingChannel,
 };
 use quantrs2_sim::statevector::StateVectorSimulator;
-use std::time::Duration;
 
 // Include the visualization module
 mod visualization;

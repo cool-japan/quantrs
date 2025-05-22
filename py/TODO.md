@@ -21,66 +21,81 @@ This document outlines the development plans and future tasks for the QuantRS2-P
 - ✅ Basic Quantum Neural Network implementation
 - ✅ Variational quantum algorithm implementations
 - ✅ Domain-specific ML applications (HEP, GAN, etc.)
+- ✅ Circuit visualization tools
+- ✅ Noise model integration
 
 ### In Progress
 
-- 🔄 Support for arbitrary qubit counts
-- 🔄 Performance optimization for ML workloads
-- 🔄 Enhanced integration with scikit-learn
-- 🔄 Circuit decomposition and optimization
+- 🔄 SciRS2 Python bindings integration
+- 🔄 Dynamic qubit allocation support
+- 🔄 Advanced quantum algorithm library
+- 🔄 Hardware backend integration
 
 ## Planned Enhancements
 
 ### Near-term (v0.1.x)
 
-- [ ] Support for all qubit counts (not just fixed sizes)
-- [x] Add circuit visualization with matplotlib integration
-- [ ] Improve documentation with Sphinx and Read the Docs
-- [ ] Add more Python examples and Jupyter notebooks
-- [ ] Create CI/CD pipeline for PyPI package
-- [ ] Implement full manylinux wheel building
-- [x] Add noise model support in Python interface
-- [ ] Enable conditional operations in Python API
-- [x] Add ML module integration with PyTorch and TensorFlow
-- [x] Implement basic quantum neural network capabilities
+- [ ] Integrate SciRS2 Python bindings for numerical operations
+- [ ] Add support for parametric circuits with autodiff
+- [ ] Implement quantum circuit optimization passes
+- [ ] Create Pythonic API matching Qiskit/Cirq conventions
+- [ ] Add support for custom gate definitions from Python
+- [ ] Implement measurement statistics and tomography
+- [ ] Create quantum algorithm templates (VQE, QAOA, QFT)
+- [ ] Add support for pulse-level control from Python
+- [ ] Implement quantum error mitigation techniques
+- [ ] Create comprehensive benchmarking suite
 
 ### Medium-term (v0.2.x)
 
-- [x] Add NumPy integration for result processing
-- [x] Create pandas DataFrame converters for results
-- [ ] Implement circuit serialization to/from JSON
-- [ ] Add device connectivity through Python interface
-- [ ] Create visualization tools for hardware execution results
-- [ ] Add tensor network simulation support
-- [x] Implement quantum algorithm building blocks
-- [x] Create quantum algorithm library with pre-built circuits
-- [x] Add machine learning integrations (scikit-learn, PyTorch)
-- [ ] Create quantum kernels for classical ML enhancement
-- [ ] Add optimization algorithms for variational circuits
+- [ ] Implement OpenQASM 3.0 import/export
+- [ ] Add support for quantum circuit databases
+- [ ] Create interactive circuit builder GUI
+- [ ] Implement quantum compilation as a service
+- [ ] Add support for distributed quantum simulation
+- [ ] Create quantum algorithm debugger
+- [ ] Implement quantum circuit profiler
+- [ ] Add support for quantum networking protocols
+- [ ] Create quantum cryptography toolkit
+- [ ] Implement quantum finance algorithms
 
 ### Long-term (Future Versions)
 
-- [ ] Create comprehensive visualization library
-- [ ] Add integration with qiskit and other Python frameworks
-- [ ] Implement hardware-specific optimizations in Python interface
-- [x] Create high-level API for quantum algorithm development
-- [ ] Implement distributed simulation capabilities
-- [ ] Create interactive web-based visualization and exploration
-- [ ] Implement quantum error correction modules
-- [ ] Add cloud-based execution capabilities
-- [ ] Create automated circuit optimization pipeline
-- [ ] Implement hybrid quantum-classical ML frameworks
-- [ ] Develop quantum feature selection methods
-- [ ] Create parallel circuit execution tools
+- [ ] Create quantum development IDE plugin
+- [ ] Implement quantum algorithm marketplace
+- [ ] Add support for quantum cloud orchestration
+- [ ] Create quantum application framework
+- [ ] Implement quantum software testing tools
+- [ ] Add quantum performance profiling
+- [ ] Create quantum algorithm visualization
+- [ ] Implement quantum debugging tools
+- [ ] Add support for quantum containers
+- [ ] Create quantum CI/CD pipelines
+- [ ] Implement quantum package manager
+- [ ] Add quantum code analysis tools
 
 ## Implementation Notes
 
-- PyO3 type conversion still has overhead for large state vectors
-- Generic implementations would be better than fixed-size enum pattern
-- Python packaging with native dependencies needs careful consideration
-- GPU feature should be made easier to install for Python users
-- ML modules should leverage PyTorch when available for hybrid models
-- Stub module provides fallback functionality when native code fails
+### Performance Optimization
+- Use zero-copy NumPy arrays where possible
+- Implement lazy evaluation for circuit construction
+- Cache compiled circuits for repeated execution
+- Use memory views for efficient data access
+- Implement parallel circuit evaluation
+
+### Technical Architecture
+- Create type stubs for better IDE support
+- Use protocol buffers for serialization
+- Implement async/await for hardware execution
+- Support context managers for resource cleanup
+- Create plugin system for extensibility
+
+### SciRS2 Integration
+- Expose SciRS2 arrays as NumPy arrays
+- Use SciRS2 optimizers for variational algorithms
+- Leverage SciRS2 parallel computing
+- Integrate SciRS2 visualization tools
+- Use SciRS2 for result analysis
 
 ## Known Issues
 
@@ -93,11 +108,30 @@ This document outlines the development plans and future tasks for the QuantRS2-P
 
 ## Integration Tasks
 
-- [ ] Improve integration with Python quantum ecosystem
-- [ ] Create automated tests using pytest
-- [ ] Add benchmarks comparing to other Python quantum frameworks
-- [ ] Create conda recipe for easier installation with binary dependencies
-- [ ] Develop tutorials for quantum machine learning
-- [ ] Create integration examples with scikit-learn
-- [ ] Develop domain-specific examples (HEP, finance, chemistry)
-- [ ] Create Jupyter notebook gallery for common tasks
+### Python Ecosystem
+- [ ] Create compatibility layer for Qiskit circuits
+- [ ] Add PennyLane plugin for hybrid ML
+- [ ] Implement Cirq circuit converter
+- [ ] Create MyQLM integration
+- [ ] Add ProjectQ compatibility
+
+### Documentation and Examples
+- [ ] Create comprehensive API documentation
+- [ ] Develop interactive tutorials
+- [ ] Add video tutorial series
+- [ ] Create algorithm cookbook
+- [ ] Implement best practices guide
+
+### Testing and Quality
+- [ ] Achieve 90%+ test coverage
+- [ ] Add property-based testing
+- [ ] Create performance regression tests
+- [ ] Implement fuzz testing
+- [ ] Add integration test suite
+
+### Distribution
+- [ ] Create Docker images
+- [ ] Add Homebrew formula
+- [ ] Create Snap package
+- [ ] Implement auto-updater
+- [ ] Add telemetry (opt-in)

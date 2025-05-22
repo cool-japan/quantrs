@@ -13,51 +13,77 @@ This document outlines the development plans and future tasks for the QuantRS2-D
 - ✅ Basic circuit transpilation for hardware constraints
 - ✅ Async job execution and monitoring
 - ✅ Standard result processing format
+- ✅ Device capability discovery
+- ✅ Circuit validation for hardware constraints
+- ✅ Result post-processing and error mitigation
 
 ### In Progress
 
-- 🔄 Enhanced IBM Quantum integration with full Qiskit Runtime support
-- 🔄 Improved Azure Quantum provider coverage
-- 🔄 Advanced circuit transpilation with hardware-specific optimizations
+- 🔄 SciRS2-powered circuit optimization
+- 🔄 Hardware noise characterization
+- 🔄 Cross-platform performance benchmarking
+- 🔄 Advanced error mitigation strategies
 
 ## Planned Enhancements
 
 ### Near-term (v0.1.x)
 
-- [ ] Complete IBM Quantum implementation with full provider API support
-- [ ] Finalize Azure Quantum integration with all provider options
-- [ ] Add AWS Braket integration with all supported hardware
-- [ ] Implement robust error handling and retry mechanisms
-- [ ] Create comprehensive examples for each provider
-- [ ] Add batch job submission for better queue management
-- [ ] Add hardware-specific noise models for accurate simulation
+- [ ] Implement hardware topology analysis using SciRS2 graphs
+- [ ] Add qubit routing algorithms with SciRS2 optimization
+- [ ] Create pulse-level control interfaces for each provider
+- [ ] Implement zero-noise extrapolation with SciRS2 fitting
+- [ ] Add support for parametric circuit execution
+- [ ] Create hardware benchmarking suite with SciRS2 analysis
+- [ ] Implement cross-talk characterization and mitigation
+- [ ] Add support for mid-circuit measurements
+- [ ] Create job priority and scheduling optimization
 
 ### Medium-term (v0.2.x)
 
-- [ ] Implement cross-provider circuit optimization
-- [ ] Add support for custom device calibrations
-- [ ] Create visualization of device topology and connectivity
-- [ ] Implement advanced transpilation with gate fusion
-- [ ] Add hardware-aware qubit mapping with minimal swaps
-- [ ] Create device benchmarking and comparison tools
-- [ ] Add job management with persistence and resumption
+- [ ] Implement quantum process tomography with SciRS2
+- [ ] Add support for variational quantum algorithms
+- [ ] Create hardware-specific compiler passes
+- [ ] Implement dynamical decoupling sequences
+- [ ] Add support for quantum error correction codes
+- [ ] Create cross-platform circuit migration tools
+- [ ] Implement hardware-aware parallelization
+- [ ] Add support for hybrid quantum-classical loops
+- [ ] Create provider cost optimization engine
 
 ### Long-term (Future Versions)
 
-- [ ] Support for emerging quantum hardware providers
-- [ ] Dynamic provider selection based on circuit characteristics
-- [ ] Hybrid classical-quantum algorithm execution
-- [ ] Integration with cloud-based quantum services
-- [ ] Implement automatic hardware selection for optimal execution
-- [ ] Add hardware-aware circuit optimization and partitioning
-- [ ] Create comprehensive hardware benchmarking suite
+- [ ] Implement quantum network protocols for distributed computing
+- [ ] Add support for photonic quantum computers
+- [ ] Create neutral atom quantum computer interfaces
+- [ ] Implement topological quantum computer support
+- [ ] Add support for continuous variable systems
+- [ ] Create quantum machine learning accelerators
+- [ ] Implement quantum cloud orchestration
+- [ ] Add support for quantum internet protocols
+- [ ] Create quantum algorithm marketplace integration
 
 ## Implementation Notes
 
-- IBM Quantum API is subject to changes, requiring regular updates
-- Authentication mechanisms vary widely between providers
-- Error mitigation strategies need to be tailored for each provider
-- Network operations require careful timeout and retry handling
+### Architecture Considerations
+- Use SciRS2 for hardware graph representations
+- Implement caching for device calibration data
+- Create modular authentication system
+- Use async/await for all network operations
+- Implement circuit batching for efficiency
+
+### Performance Optimization
+- Cache transpiled circuits for repeated execution
+- Use SciRS2 parallel algorithms for routing
+- Implement predictive job scheduling
+- Create hardware-specific gate libraries
+- Optimize for minimal API calls
+
+### Error Handling
+- Implement exponential backoff for retries
+- Create provider-specific error mappings
+- Add circuit validation before submission
+- Implement partial result recovery
+- Create comprehensive logging system
 
 ## Known Issues
 
@@ -68,7 +94,23 @@ This document outlines the development plans and future tasks for the QuantRS2-D
 
 ## Integration Tasks
 
-- [ ] Improve integration with the simulator module for result comparison
-- [ ] Create cross-provider benchmark comparison tools
-- [ ] Add support for provider-specific extensions while maintaining API compatibility
-- [ ] Develop hardware-specific optimizations for common quantum algorithms
+### SciRS2 Integration
+- [ ] Use SciRS2 graph algorithms for qubit mapping
+- [ ] Leverage SciRS2 optimization for scheduling
+- [ ] Integrate SciRS2 statistics for result analysis
+- [ ] Use SciRS2 sparse matrices for connectivity
+- [ ] Implement SciRS2-based noise modeling
+
+### Module Integration
+- [ ] Create seamless circuit module integration
+- [ ] Add simulator comparison framework
+- [ ] Implement ML module hooks for QML
+- [ ] Create unified benchmarking system
+- [ ] Add telemetry and monitoring
+
+### Provider Integration
+- [ ] Implement provider capability discovery
+- [ ] Create unified error handling
+- [ ] Add provider-specific optimizations
+- [ ] Implement cost estimation APIs
+- [ ] Create provider migration tools

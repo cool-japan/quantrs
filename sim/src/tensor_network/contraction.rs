@@ -4,16 +4,16 @@
 //! tensor networks efficiently.
 
 use super::tensor::Tensor;
-use quantrs_core::error::QuantrsResult;
+use quantrs2_core::error::QuantRS2Result;
 use std::collections::{HashMap, HashSet};
 
 /// Trait for a network of tensors that can be contracted
 pub trait ContractableNetwork {
     /// Contract two tensors in the network, returning the ID of the resulting tensor
-    fn contract_tensors(&mut self, tensor_id1: usize, tensor_id2: usize) -> QuantrsResult<usize>;
+    fn contract_tensors(&mut self, tensor_id1: usize, tensor_id2: usize) -> QuantRS2Result<usize>;
 
     /// Optimize the contraction order of the network
-    fn optimize_contraction_order(&mut self) -> QuantrsResult<()>;
+    fn optimize_contraction_order(&mut self) -> QuantRS2Result<()>;
 }
 
 /// A contraction path for a tensor network
@@ -55,7 +55,7 @@ impl ContractionPath {
 pub fn calculate_greedy_contraction_path(
     tensors: &HashMap<usize, Tensor>,
     connections: &[(super::tensor::TensorIndex, super::tensor::TensorIndex)],
-) -> QuantrsResult<ContractionPath> {
+) -> QuantRS2Result<ContractionPath> {
     // Step 1: Build a graph of tensor connections
     let mut tensor_connections = HashMap::new();
     for (t1, t2) in connections {
@@ -203,7 +203,7 @@ pub fn calculate_greedy_contraction_path(
 pub fn calculate_optimal_contraction_path(
     tensors: &HashMap<usize, Tensor>,
     connections: &[(super::tensor::TensorIndex, super::tensor::TensorIndex)],
-) -> QuantrsResult<ContractionPath> {
+) -> QuantRS2Result<ContractionPath> {
     // First, check if we can identify a specific circuit structure that has
     // a known optimal contraction pattern
     if let Some(path) = identify_circuit_structure(tensors, connections) {
@@ -659,7 +659,7 @@ pub fn contract_network_along_path(
     connections: &mut Vec<(super::tensor::TensorIndex, super::tensor::TensorIndex)>,
     path: &ContractionPath,
     next_id: &mut usize,
-) -> QuantrsResult<Tensor> {
+) -> QuantRS2Result<Tensor> {
     // For simplicity in this implementation, we'll just return a placeholder
     // In a full implementation, we'd perform the actual contractions
 

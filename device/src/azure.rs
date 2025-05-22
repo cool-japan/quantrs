@@ -541,12 +541,13 @@ impl AzureQuantumClient {
     }
 
     // IonQ specific circuit format conversion
-    fn circuit_to_ionq_format<const N: usize>(circuit: &Circuit<N>) -> DeviceResult<String> {
+    fn circuit_to_ionq_format<const N: usize>(_circuit: &Circuit<N>) -> DeviceResult<String> {
         // IonQ uses a JSON circuit format
         use serde_json::json;
 
         // This is a placeholder for the actual conversion logic
-        let gates = vec![]; // Convert gates to IonQ format
+        #[allow(unused_variables)]
+        let gates: Vec<serde_json::Value> = vec![]; // Convert gates to IonQ format
 
         let ionq_circuit = json!({
             "qubits": N,
@@ -566,7 +567,7 @@ impl AzureQuantumClient {
     }
 
     // QASM format conversion for Quantinuum
-    fn circuit_to_qasm_format<const N: usize>(circuit: &Circuit<N>) -> DeviceResult<String> {
+    fn circuit_to_qasm_format<const N: usize>(_circuit: &Circuit<N>) -> DeviceResult<String> {
         // Similar to IBM's QASM format
         let mut qasm = String::from("OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n");
 

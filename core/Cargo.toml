@@ -13,6 +13,8 @@ description = "Core types and traits for the QuantRS2 quantum computing framewor
 [dependencies]
 num-complex.workspace = true
 thiserror.workspace = true
+scirs2-core = { workspace = true, features = ["types", "memory_management", "simd", "serialization"] }
 
 [features]
 default = []
+simd = ["scirs2-core/simd"]

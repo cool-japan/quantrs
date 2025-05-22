@@ -8,6 +8,8 @@
 //! to enable simulation of larger qubit counts (30+).
 
 pub mod dynamic;
+pub mod enhanced_statevector;
+pub mod linalg_ops;
 pub mod simulator;
 pub mod statevector;
 pub mod tensor;
@@ -39,7 +41,6 @@ pub mod noise;
 /// Advanced noise models for realistic device simulation
 pub mod noise_advanced;
 
-/// Quantum error correction codes and utilities (placeholder for future implementation)
 #[allow(clippy::module_inception)]
 pub mod error_correction {
     //! Quantum error correction codes and utilities
@@ -50,16 +51,19 @@ pub mod error_correction {
 
 /// Prelude module that re-exports common types and traits
 pub mod prelude {
-    //! Common types and traits for quantum simulation
     pub use crate::dynamic::*;
+    pub use crate::enhanced_statevector::EnhancedStateVectorSimulator;
+    #[allow(unused_imports)]
     pub use crate::error_correction::*;
     pub use crate::noise::*;
     pub use crate::noise::{NoiseChannel, NoiseModel};
     pub use crate::noise_advanced::*;
     pub use crate::noise_advanced::{AdvancedNoiseModel, RealisticNoiseModelBuilder};
+    #[allow(unused_imports)]
     pub use crate::simulator::*;
     pub use crate::simulator::{Simulator, SimulatorResult};
     pub use crate::statevector::StateVectorSimulator;
+    #[allow(unused_imports)]
     pub use crate::statevector::*;
     pub use crate::tensor::*;
     pub use crate::utils::*;
