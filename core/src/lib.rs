@@ -8,6 +8,7 @@ pub mod complex_ext;
 pub mod decomposition;
 pub mod error;
 pub mod gate;
+pub mod hhl;
 pub mod memory_efficient;
 pub mod parametric;
 pub mod qaoa;
@@ -35,4 +36,5 @@ pub mod prelude {
     pub use crate::qaoa::{
         QAOAParams, QAOACircuit, QAOAOptimizer, CostHamiltonian, MixerHamiltonian,
     };
+    pub use crate::hhl::{HHLParams, HHLAlgorithm, hhl_example};
 }

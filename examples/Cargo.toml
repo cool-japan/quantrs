@@ -18,6 +18,7 @@ quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.2" }
 # Tytan is intentionally not included directly
 # quantrs2-tytan = { path = "../tytan", optional = true }
 num-complex.workspace = true
+ndarray.workspace = true
 rand.workspace = true
 
 # Feature for simulation examples which require quantrs2-sim
@@ -228,3 +229,13 @@ required-features = []
 name = "stabilizer_demo"
 path = "src/bin/stabilizer_demo.rs"
 required-features = ["simulation"]
+
+[[bin]]
+name = "gpu_linalg_demo"
+path = "src/bin/gpu_linalg_demo.rs"
+required-features = ["simulation", "gpu"]
+
+[[bin]]
+name = "hhl_demo"
+path = "src/bin/hhl_demo.rs"
+required-features = []

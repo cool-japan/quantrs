@@ -27,6 +27,7 @@ pyo3.workspace = true
 wgpu = { workspace = true, optional = true }
 bytemuck = { workspace = true, features = ["derive"], optional = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"], optional = true }
+futures = { version = "0.3", optional = true }
 rand.workspace = true
 rand_chacha.workspace = true
 wide.workspace = true
@@ -34,7 +35,7 @@ fastrand = "2.0.1"
 
 [features]
 default = ["optimize"]
-gpu = ["dep:wgpu", "dep:bytemuck", "dep:tokio"]
+gpu = ["dep:wgpu", "dep:bytemuck", "dep:tokio", "dep:futures"]
 simd = []
 optimize = ["simd"] # Enable optimized implementations
 memory_efficient = [] # Enable memory-efficient algorithms for large state vectors

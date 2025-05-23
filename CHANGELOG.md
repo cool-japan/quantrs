@@ -36,6 +36,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Measurement in computational basis with proper stabilizer updates
   - Ideal for simulating quantum error correction codes
 
+- **HHL Algorithm**
+  - Implementation of Harrow-Hassidim-Lloyd algorithm for solving linear systems
+  - Support for Hermitian matrices with quantum phase estimation
+  - Eigenvalue inversion and amplitude amplification
+  - Demonstrates quantum advantage for specific problem classes
+  - Example implementations for 2x2 and 4x4 systems
+
+- **GPU Linear Algebra (Preview)**
+  - Framework for GPU-accelerated quantum operations using WGPU
+  - Matrix multiplication and tensor product shaders
+  - Foundation for future GPU-accelerated simulation
+
 ### Changed
 - Updated dependencies to use SciRS2 v0.1.0-alpha.3
 - Replaced custom implementations with optimized SciRS2 equivalents
