@@ -12,9 +12,13 @@ pub mod hhl;
 pub mod memory_efficient;
 pub mod parametric;
 pub mod qaoa;
+pub mod qpca;
+pub mod quantum_counting;
+pub mod quantum_walk;
 pub mod qubit;
 pub mod register;
 pub mod simd_ops;
+pub mod testing;
 
 /// Re-exports of commonly used types and traits
 pub mod prelude {
@@ -26,15 +30,28 @@ pub mod prelude {
     };
     pub use crate::error::*;
     pub use crate::gate::*;
+    pub use crate::hhl::{hhl_example, HHLAlgorithm, HHLParams};
     pub use crate::memory_efficient::{EfficientStateVector, StateMemoryStats};
     pub use crate::parametric::{Parameter, ParametricGate, SymbolicParameter};
+    pub use crate::qaoa::{
+        CostHamiltonian, MixerHamiltonian, QAOACircuit, QAOAOptimizer, QAOAParams,
+    };
+    pub use crate::qpca::{DensityMatrixPCA, QPCAParams, QuantumPCA};
+    pub use crate::quantum_counting::{
+        amplitude_estimation_example, quantum_counting_example, QuantumAmplitudeEstimation,
+        QuantumCounting, QuantumPhaseEstimation,
+    };
+    pub use crate::quantum_walk::{
+        CoinOperator, ContinuousQuantumWalk, DiscreteQuantumWalk, Graph, GraphType,
+        QuantumWalkSearch, SearchOracle,
+    };
     pub use crate::qubit::*;
     pub use crate::register::*;
     pub use crate::simd_ops::{
         apply_phase_simd, controlled_phase_simd, expectation_z_simd, inner_product, normalize_simd,
     };
-    pub use crate::qaoa::{
-        QAOAParams, QAOACircuit, QAOAOptimizer, CostHamiltonian, MixerHamiltonian,
+    pub use crate::testing::{
+        QuantumAssert, QuantumTest, QuantumTestSuite, TestResult, TestSuiteResult,
+        DEFAULT_TOLERANCE,
     };
-    pub use crate::hhl::{HHLParams, HHLAlgorithm, hhl_example};
 }

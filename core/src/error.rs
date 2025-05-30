@@ -30,6 +30,10 @@ pub enum QuantRS2Error {
     /// Error when invalid input is provided
     #[error("Invalid input: {0}")]
     InvalidInput(String),
+
+    /// Error during computation
+    #[error("Computation error: {0}")]
+    ComputationError(String),
 }
 
 /// Result type for quantum operations

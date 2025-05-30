@@ -33,7 +33,8 @@ impl NoiseChannel for TwoQubitDepolarizingChannel {
 
     fn apply_to_statevector(&self, state: &mut [Complex64]) -> QuantRS2Result<()> {
         let q1_idx = self.qubit1.id() as usize;
-    #[allow(clippy::needless_range_loop)]        let q2_idx = self.qubit2.id() as usize;
+        #[allow(clippy::needless_range_loop)]
+        let q2_idx = self.qubit2.id() as usize;
         let dim = state.len();
 
         // Apply two-qubit depolarizing noise with probability p

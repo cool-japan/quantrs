@@ -1,14 +1,12 @@
 //! Quantum Approximate Optimization Algorithm (QAOA) implementation
-//! 
+//!
 //! QAOA is a hybrid quantum-classical algorithm for solving combinatorial optimization problems.
 //! This implementation leverages SciRS2 for enhanced performance.
 
 use crate::complex_ext::QuantumComplexExt;
-use crate::gate::GateOp;
-use crate::qubit::QubitId;
 use crate::simd_ops;
+use ndarray::Array2;
 use num_complex::Complex64;
-use ndarray::{Array2, ArrayView2};
 use std::f64::consts::PI;
 
 /// QAOA circuit parameters
@@ -36,15 +34,19 @@ impl QAOAParams {
     pub fn random(layers: usize) -> Self {
         let mut beta = Vec::with_capacity(layers);
         let mut gamma = Vec::with_capacity(layers);
-        
+
         for i in 0..layers {
             // Simple pseudo-random for reproducibility
             let rand_val = ((i as f64 * 1.234 + 5.678).sin() + 1.0) / 2.0;
             beta.push(rand_val * PI);
             gamma.push(rand_val * 2.0 * PI);
         }
-        
-        Self { layers, beta, gamma }
+
+        Self {
+            layers,
+            beta,
+            gamma,
+        }
     }
 
     /// Update parameters (for optimization)
@@ -64,7 +66,10 @@ pub enum CostHamiltonian {
     /// Weighted Max-Cut: H_C = Σ_{<i,j>} w_{ij} (1 - Z_i Z_j) / 2
     WeightedMaxCut(Vec<(usize, usize, f64)>),
     /// General Ising model: H_C = Σ_i h_i Z_i + Σ_{<i,j>} J_{ij} Z_i Z_j
-    Ising { h: Vec<f64>, j: Vec<((usize, usize), f64)> },
+    Ising {
+        h: Vec<f64>,
+        j: Vec<((usize, usize), f64)>,
+    },
 }
 
 impl std::fmt::Debug for CostHamiltonian {
@@ -166,10 +171,10 @@ impl QAOACircuit {
     fn apply_z_rotation(&self, state: &mut [Complex64], qubit: usize, angle: f64) {
         let phase = Complex64::from_polar(1.0, -angle / 2.0);
         let phase_conj = phase.conj();
-        
+
         let n = state.len();
         let qubit_mask = 1 << qubit;
-        
+
         for i in 0..n {
             if i & qubit_mask == 0 {
                 state[i] *= phase;
@@ -183,21 +188,21 @@ impl QAOACircuit {
     fn apply_x_rotation(&self, state: &mut [Complex64], qubit: usize, angle: f64) {
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
-        
+
         let n = state.len();
-        let qubit_mask = 1 << qubit;
+        let _qubit_mask = 1 << qubit;
         let stride = 1 << (qubit + 1);
-        
+
         // Process in chunks for better cache efficiency
         for chunk_start in (0..n).step_by(stride) {
             for i in 0..(stride / 2) {
                 let idx0 = chunk_start + i;
                 let idx1 = idx0 + (stride / 2);
-                
+
                 if idx1 < n {
                     let amp0 = state[idx0];
                     let amp1 = state[idx1];
-                    
+
                     state[idx0] = amp0 * cos_half + amp1 * Complex64::new(0.0, -sin_half);
                     state[idx1] = amp1 * cos_half + amp0 * Complex64::new(0.0, -sin_half);
                 }
@@ -208,11 +213,11 @@ impl QAOACircuit {
     /// Apply a two-qubit ZZ rotation
     fn apply_zz_rotation(&self, state: &mut [Complex64], qubit1: usize, qubit2: usize, angle: f64) {
         let phase = Complex64::from_polar(1.0, -angle / 2.0);
-        
+
         let n = state.len();
         let mask1 = 1 << qubit1;
         let mask2 = 1 << qubit2;
-        
+
         for i in 0..n {
             let parity = ((i & mask1) >> qubit1) ^ ((i & mask2) >> qubit2);
             if parity == 0 {
@@ -227,15 +232,15 @@ impl QAOACircuit {
     pub fn execute(&self, state: &mut [Complex64]) {
         // Initial state preparation
         self.prepare_initial_state(state);
-        
+
         // Apply QAOA layers
         for layer in 0..self.params.layers {
             self.apply_cost_evolution(state, self.params.gamma[layer]);
             self.apply_mixer_evolution(state, self.params.beta[layer]);
         }
-        
+
         // Normalize the state using SIMD operations
-        simd_ops::normalize_simd(state);
+        let _ = simd_ops::normalize_simd(state);
     }
 
     /// Compute the expectation value of the cost Hamiltonian
@@ -259,21 +264,21 @@ impl QAOACircuit {
             }
             CostHamiltonian::Ising { h, j } => {
                 let mut expectation = 0.0;
-                
+
                 // Single-qubit terms
                 for (i, &h_i) in h.iter().enumerate() {
                     if h_i.abs() > 1e-10 {
                         expectation += h_i * simd_ops::expectation_z_simd(state, i).unwrap_or(0.0);
                     }
                 }
-                
+
                 // Two-qubit terms
                 for &((i, j), j_ij) in j {
                     if j_ij.abs() > 1e-10 {
                         expectation += j_ij * self.compute_zz_expectation(state, i, j);
                     }
                 }
-                
+
                 expectation
             }
         }
@@ -284,7 +289,7 @@ impl QAOACircuit {
         let n = state.len();
         let mask1 = 1 << qubit1;
         let mask2 = 1 << qubit2;
-        
+
         let mut expectation = 0.0;
         for i in 0..n {
             let bit1 = (i & mask1) >> qubit1;
@@ -292,7 +297,7 @@ impl QAOACircuit {
             let sign = if bit1 == bit2 { 1.0 } else { -1.0 };
             expectation += sign * state[i].probability();
         }
-        
+
         expectation
     }
 
@@ -300,7 +305,7 @@ impl QAOACircuit {
     pub fn get_solution(&self, state: &[Complex64]) -> Vec<bool> {
         let mut max_prob = 0.0;
         let mut max_idx = 0;
-        
+
         for (i, amp) in state.iter().enumerate() {
             let prob = amp.probability();
             if prob > max_prob {
@@ -308,7 +313,7 @@ impl QAOACircuit {
                 max_idx = i;
             }
         }
-        
+
         // Convert index to bitstring
         (0..self.num_qubits)
             .map(|i| (max_idx >> i) & 1 == 1)
@@ -340,52 +345,52 @@ impl QAOAOptimizer {
         self.circuit.execute(&mut state);
         state
     }
-    
+
     /// Get the solution from a quantum state
     pub fn get_solution(&self, state: &[Complex64]) -> Vec<bool> {
         self.circuit.get_solution(state)
     }
-    
+
     /// Run the optimization using gradient-free optimization
     /// Returns the optimized parameters and the final expectation value
     pub fn optimize(&mut self) -> (QAOAParams, f64) {
         let mut best_params = self.circuit.params.clone();
         let mut best_cost = f64::INFINITY;
-        
+
         // Simple gradient-free optimization (could be replaced with more sophisticated methods)
         for _ in 0..self.max_iterations {
             // Create a quantum state vector
             let state_size = 1 << self.circuit.num_qubits;
             let mut state = vec![Complex64::new(0.0, 0.0); state_size];
-            
+
             // Execute circuit with current parameters
             self.circuit.execute(&mut state);
-            
+
             // Compute expectation value
             let cost = self.circuit.compute_expectation(&state);
-            
+
             if cost < best_cost {
                 best_cost = cost;
                 best_params = self.circuit.params.clone();
             }
-            
+
             // Simple parameter update (random perturbation)
             let mut new_beta = self.circuit.params.beta.clone();
             let mut new_gamma = self.circuit.params.gamma.clone();
-            
+
             for i in 0..self.circuit.params.layers {
-                let rand_val = ((i as f64 * 3.14159 + best_cost).sin() + 1.0) / 2.0;
+                let rand_val = ((i as f64 * PI + best_cost).sin() + 1.0) / 2.0;
                 new_beta[i] += (rand_val - 0.5) * 0.1;
                 new_gamma[i] += (rand_val - 0.5) * 0.1;
             }
-            
+
             self.circuit.params.update(new_beta, new_gamma);
-            
+
             if best_cost < self.tolerance {
                 break;
             }
         }
-        
+
         self.circuit.params = best_params.clone();
         (best_params, best_cost)
     }
@@ -400,17 +405,17 @@ mod tests {
         // Simple 4-node graph: square
         let edges = vec![(0, 1), (1, 2), (2, 3), (3, 0)];
         let params = QAOAParams::random(2);
-        
+
         let circuit = QAOACircuit::new(
             4,
             CostHamiltonian::MaxCut(edges),
             MixerHamiltonian::TransverseField,
             params,
         );
-        
+
         let mut state = vec![Complex64::new(0.0, 0.0); 16];
         circuit.execute(&mut state);
-        
+
         // Check normalization
         let norm: f64 = state.iter().map(|c| c.probability()).sum();
         assert!((norm - 1.0).abs() < 1e-10);
@@ -420,17 +425,17 @@ mod tests {
     fn test_qaoa_optimizer() {
         let edges = vec![(0, 1), (1, 2), (2, 0)]; // Triangle graph
         let params = QAOAParams::new(1);
-        
+
         let circuit = QAOACircuit::new(
             3,
             CostHamiltonian::MaxCut(edges),
             MixerHamiltonian::TransverseField,
             params,
         );
-        
+
         let mut optimizer = QAOAOptimizer::new(circuit, 100, 0.01);
         let (optimized_params, final_cost) = optimizer.optimize();
-        
+
         // For a triangle, the max cut has value 2
         assert!(final_cost <= 2.0);
         assert_eq!(optimized_params.layers, 1);

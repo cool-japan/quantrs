@@ -29,6 +29,7 @@ pub mod kernels;
 pub mod nlp;
 pub mod optimization;
 pub mod qnn;
+pub mod qsvm;
 pub mod reinforcement;
 pub mod variational;
 
@@ -54,6 +55,9 @@ pub mod prelude {
     pub use crate::nlp::{NLPTaskType, QuantumLanguageModel, SentimentAnalyzer, TextSummarizer};
     pub use crate::optimization::{ObjectiveFunction, OptimizationMethod, Optimizer};
     pub use crate::qnn::{QNNBuilder, QNNLayer, QuantumNeuralNetwork};
+    pub use crate::qsvm::{
+        FeatureMapType, QSVMParams, QuantumKernel as QSVMKernel, QuantumKernelRidge, QSVM,
+    };
     pub use crate::reinforcement::{Environment, QuantumAgent, ReinforcementLearning};
     pub use crate::variational::{VariationalAlgorithm, VariationalCircuit};
 }

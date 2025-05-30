@@ -63,11 +63,11 @@ pub mod prelude {
     #[allow(unused_imports)]
     pub use crate::simulator::*;
     pub use crate::simulator::{Simulator, SimulatorResult};
-    pub use crate::stabilizer::{StabilizerSimulator, StabilizerGate, is_clifford_circuit};
+    pub use crate::stabilizer::{is_clifford_circuit, StabilizerGate, StabilizerSimulator};
     pub use crate::statevector::StateVectorSimulator;
-    
+
     #[cfg(feature = "gpu")]
-    pub use crate::gpu_linalg::{GpuLinearAlgebra, benchmark_gpu_linalg};
+    pub use crate::gpu_linalg::{benchmark_gpu_linalg, GpuLinearAlgebra};
     #[allow(unused_imports)]
     pub use crate::statevector::*;
     pub use crate::tensor::*;

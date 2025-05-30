@@ -126,7 +126,7 @@ mod tests {
 
     #[test]
     fn test_efficient_state_vector() {
-        let mut state = EfficientStateVector::new(3).unwrap();
+        let state = EfficientStateVector::new(3).unwrap();
         assert_eq!(state.num_qubits(), 3);
         assert_eq!(state.size(), 8);
 

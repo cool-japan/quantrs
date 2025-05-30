@@ -1,13 +1,13 @@
 //! Quantum circuit optimization passes
-//! 
+//!
 //! This module provides various optimization passes that can be applied to quantum circuits
 //! to reduce gate count, improve fidelity, and optimize for hardware constraints.
 
 use crate::builder::Circuit;
+use num_complex::Complex64;
 use quantrs2_core::gate::GateOp;
 use quantrs2_core::qubit::QubitId;
 use std::collections::{HashMap, HashSet};
-use num_complex::Complex64;
 
 /// Gate representation for optimization
 #[derive(Debug, Clone, PartialEq)]
@@ -44,7 +44,7 @@ impl SingleQubitGateFusion {
             improvement: 0.0,
         }
     }
-    
+
     pub fn name(&self) -> &str {
         "Single-Qubit Gate Fusion"
     }
@@ -61,7 +61,7 @@ impl RedundantGateElimination {
                 if q1 != q2 {
                     return false;
                 }
-                
+
                 // Self-inverse gates
                 matches!(
                     (name1.as_str(), name2.as_str()),
@@ -71,7 +71,7 @@ impl RedundantGateElimination {
             _ => false,
         }
     }
-    
+
     pub fn apply<const N: usize>(&self, ctx: &OptimizationContext<N>) -> PassResult<N> {
         // TODO: Implement actual redundant gate elimination
         PassResult {
@@ -80,7 +80,7 @@ impl RedundantGateElimination {
             improvement: 0.0,
         }
     }
-    
+
     pub fn name(&self) -> &str {
         "Redundant Gate Elimination"
     }
@@ -95,21 +95,21 @@ impl CommutationOptimizer {
         match (gate1, gate2) {
             // Single-qubit gates on different qubits always commute
             (OptGate::Single(q1, _, _), OptGate::Single(q2, _, _)) => q1 != q2,
-            
+
             // Z gates commute with each other
             (OptGate::Single(q1, name1, _), OptGate::Single(q2, name2, _)) => {
                 q1 == q2 && name1 == "Z" && name2 == "Z"
             }
-            
+
             // CNOT gates commute if they don't share qubits
             (OptGate::Double(c1, t1, name1, _), OptGate::Double(c2, t2, name2, _)) => {
                 name1 == "CNOT" && name2 == "CNOT" && c1 != c2 && c1 != t2 && t1 != c2 && t1 != t2
             }
-            
+
             _ => false,
         }
     }
-    
+
     pub fn apply<const N: usize>(&self, ctx: &OptimizationContext<N>) -> PassResult<N> {
         // TODO: Implement commutation-based reordering
         PassResult {
@@ -118,7 +118,7 @@ impl CommutationOptimizer {
             improvement: 0.0,
         }
     }
-    
+
     pub fn name(&self) -> &str {
         "Commutation-Based Optimization"
     }
@@ -139,7 +139,7 @@ struct PatternRule {
 impl Default for PeepholeOptimizer {
     fn default() -> Self {
         let mut patterns = Vec::new();
-        
+
         // Pattern: H-X-H = Z
         patterns.push(PatternRule {
             pattern: vec![
@@ -147,12 +147,10 @@ impl Default for PeepholeOptimizer {
                 OptGate::Single(QubitId::new(0), "X".to_string(), vec![]),
                 OptGate::Single(QubitId::new(0), "H".to_string(), vec![]),
             ],
-            replacement: vec![
-                OptGate::Single(QubitId::new(0), "Z".to_string(), vec![]),
-            ],
+            replacement: vec![OptGate::Single(QubitId::new(0), "Z".to_string(), vec![])],
             name: "H-X-H to Z".to_string(),
         });
-        
+
         // Pattern: H-Z-H = X
         patterns.push(PatternRule {
             pattern: vec![
@@ -160,12 +158,10 @@ impl Default for PeepholeOptimizer {
                 OptGate::Single(QubitId::new(0), "Z".to_string(), vec![]),
                 OptGate::Single(QubitId::new(0), "H".to_string(), vec![]),
             ],
-            replacement: vec![
-                OptGate::Single(QubitId::new(0), "X".to_string(), vec![]),
-            ],
+            replacement: vec![OptGate::Single(QubitId::new(0), "X".to_string(), vec![])],
             name: "H-Z-H to X".to_string(),
         });
-        
+
         Self { patterns }
     }
 }
@@ -179,7 +175,7 @@ impl PeepholeOptimizer {
             improvement: 0.0,
         }
     }
-    
+
     pub fn name(&self) -> &str {
         "Peephole Optimization"
     }
@@ -198,14 +194,12 @@ struct Template {
 
 impl Default for TemplateOptimizer {
     fn default() -> Self {
-        let templates = vec![
-            Template {
-                name: "Toffoli Decomposition".to_string(),
-                pattern: vec![], // Would contain Toffoli gate pattern
-                cost_reduction: 0.3,
-            },
-        ];
-        
+        let templates = vec![Template {
+            name: "Toffoli Decomposition".to_string(),
+            pattern: vec![], // Would contain Toffoli gate pattern
+            cost_reduction: 0.3,
+        }];
+
         Self { templates }
     }
 }
@@ -219,7 +213,7 @@ impl TemplateOptimizer {
             improvement: 0.0,
         }
     }
-    
+
     pub fn name(&self) -> &str {
         "Template Matching Optimization"
     }
@@ -246,7 +240,7 @@ impl OptimizationPassType {
             Self::Hardware(p) => p.apply(ctx),
         }
     }
-    
+
     pub fn name(&self) -> &str {
         match self {
             Self::SingleQubitFusion(p) => p.name(),
@@ -281,13 +275,13 @@ impl<const N: usize> CircuitOptimizer<N> {
             OptimizationPassType::Peephole(PeepholeOptimizer::default()),
             OptimizationPassType::Template(TemplateOptimizer::default()),
         ];
-        
+
         Self {
             passes,
             max_iterations: 10,
         }
     }
-    
+
     /// Create a custom optimizer with specific passes
     pub fn with_passes(passes: Vec<OptimizationPassType>) -> Self {
         Self {
@@ -295,52 +289,53 @@ impl<const N: usize> CircuitOptimizer<N> {
             max_iterations: 10,
         }
     }
-    
+
     /// Set the maximum number of optimization iterations
     pub fn with_max_iterations(mut self, max_iterations: usize) -> Self {
         self.max_iterations = max_iterations;
         self
     }
-    
+
     /// Add an optimization pass
     pub fn add_pass(mut self, pass: OptimizationPassType) -> Self {
         self.passes.push(pass);
         self
     }
-    
+
     /// Optimize a circuit
     pub fn optimize(&self, circuit: &Circuit<N>) -> OptimizationResult<N> {
         let mut current_circuit = circuit.clone();
         let mut total_iterations = 0;
         let mut pass_statistics = HashMap::new();
-        
+
         // Keep track of circuit cost (simplified as gate count for now)
         let initial_cost = self.estimate_cost(&current_circuit);
         let mut current_cost = initial_cost;
-        
+
         // Apply optimization passes iteratively
         for iteration in 0..self.max_iterations {
             let iteration_start_cost = current_cost;
-            
+
             for pass in &self.passes {
                 let pass_name = pass.name().to_string();
                 let before_cost = current_cost;
-                
+
                 let ctx = OptimizationContext {
                     circuit: current_circuit.clone(),
                     gate_count: 10, // Placeholder
                     depth: 5,       // Placeholder
                 };
-                
+
                 let result = pass.apply(&ctx);
                 current_circuit = result.circuit;
-                
+
                 if result.improved {
                     current_cost -= result.improvement;
                 }
-                
+
                 let improvement = before_cost - current_cost;
-                pass_statistics.entry(pass_name)
+                pass_statistics
+                    .entry(pass_name)
                     .and_modify(|stats: &mut PassStats| {
                         stats.applications += 1;
                         stats.total_improvement += improvement;
@@ -350,15 +345,15 @@ impl<const N: usize> CircuitOptimizer<N> {
                         total_improvement: improvement,
                     });
             }
-            
+
             total_iterations = iteration + 1;
-            
+
             // Stop if no improvement in this iteration
             if (iteration_start_cost - current_cost).abs() < 1e-10 {
                 break;
             }
         }
-        
+
         OptimizationResult {
             optimized_circuit: current_circuit,
             initial_cost,
@@ -367,7 +362,7 @@ impl<const N: usize> CircuitOptimizer<N> {
             pass_statistics,
         }
     }
-    
+
     /// Estimate the cost of a circuit (simplified version)
     fn estimate_cost(&self, _circuit: &Circuit<N>) -> f64 {
         // TODO: Implement actual cost estimation based on gate count and types
@@ -402,7 +397,7 @@ impl<const N: usize> OptimizationResult<N> {
             0.0
         }
     }
-    
+
     /// Print optimization summary
     pub fn print_summary(&self) {
         println!("Circuit Optimization Summary");
@@ -412,11 +407,13 @@ impl<const N: usize> OptimizationResult<N> {
         println!("Improvement: {:.1}%", self.improvement_ratio() * 100.0);
         println!("Iterations: {}", self.iterations);
         println!("\nPass Statistics:");
-        
+
         for (pass_name, stats) in &self.pass_statistics {
             if stats.total_improvement > 0.0 {
-                println!("  {}: {} applications, {:.2} total improvement",
-                    pass_name, stats.applications, stats.total_improvement);
+                println!(
+                    "  {}: {} applications, {:.2} total improvement",
+                    pass_name, stats.applications, stats.total_improvement
+                );
             }
         }
     }
@@ -435,7 +432,7 @@ impl HardwareOptimizer {
             native_gates,
         }
     }
-    
+
     pub fn apply<const N: usize>(&self, ctx: &OptimizationContext<N>) -> PassResult<N> {
         // TODO: Implement hardware-aware optimization
         // This would include qubit routing and native gate decomposition
@@ -445,7 +442,7 @@ impl HardwareOptimizer {
             improvement: 0.0,
         }
     }
-    
+
     pub fn name(&self) -> &str {
         "Hardware-Aware Optimization"
     }
@@ -454,20 +451,20 @@ impl HardwareOptimizer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_circuit_optimizer_creation() {
         let optimizer = CircuitOptimizer::<4>::new();
         assert_eq!(optimizer.passes.len(), 5);
         assert_eq!(optimizer.max_iterations, 10);
     }
-    
+
     #[test]
     fn test_optimization_result() {
         let circuit = Circuit::<4>::new();
         let optimizer = CircuitOptimizer::new();
         let result = optimizer.optimize(&circuit);
-        
+
         assert!(result.improvement_ratio() >= 0.0);
         assert!(result.iterations > 0);
     }

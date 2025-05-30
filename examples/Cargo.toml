@@ -15,6 +15,7 @@ publish = false
 quantrs2-core = { path = "../core", version = "0.1.0-alpha.2" }
 quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.2" }
 quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.2" }
+quantrs2-ml = { path = "../ml", version = "0.1.0-alpha.2", optional = true }
 # Tytan is intentionally not included directly
 # quantrs2-tytan = { path = "../tytan", optional = true }
 num-complex.workspace = true
@@ -40,6 +41,7 @@ rand.workspace = true
 simulation = ["quantrs2-sim"]
 gpu = ["quantrs2-sim/gpu"]
 advanced_math = ["quantrs2-sim/advanced_math"]
+ml = ["quantrs2-ml"]
 # Tytan feature is maintained but doesn't activate any dependencies
 tytan = []
 ibm = ["quantrs2-device/ibm", "tokio"]
@@ -238,4 +240,24 @@ required-features = ["simulation", "gpu"]
 [[bin]]
 name = "hhl_demo"
 path = "src/bin/hhl_demo.rs"
+required-features = []
+
+[[bin]]
+name = "quantum_pca_demo"
+path = "src/bin/quantum_pca_demo.rs"
+required-features = []
+
+[[bin]]
+name = "graph_optimizer_demo"
+path = "src/bin/graph_optimizer_demo.rs"
+required-features = []
+
+[[bin]]
+name = "qsvm_demo"
+path = "src/bin/qsvm_demo.rs"
+required-features = ["ml"]
+
+[[bin]]
+name = "quantum_testing_demo"
+path = "src/bin/quantum_testing_demo.rs"
 required-features = []

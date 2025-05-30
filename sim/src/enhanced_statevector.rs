@@ -137,7 +137,9 @@ impl<const N: usize> Simulator<N> for EnhancedStateVectorSimulator {
             // Apply gates
             for gate in circuit.gates() {
                 // Try enhanced application first
-                if self.apply_gate_enhanced::<N>(efficient_state.data_mut(), gate.as_ref()).is_err()
+                if self
+                    .apply_gate_enhanced::<N>(efficient_state.data_mut(), gate.as_ref())
+                    .is_err()
                 {
                     // Fall back to base simulator if enhanced application fails
                     return self.base_simulator.run(circuit);
@@ -161,7 +163,10 @@ impl<const N: usize> Simulator<N> for EnhancedStateVectorSimulator {
             // Apply gates
             for gate in circuit.gates() {
                 // Try enhanced application first
-                if self.apply_gate_enhanced::<N>(&mut state, gate.as_ref()).is_err() {
+                if self
+                    .apply_gate_enhanced::<N>(&mut state, gate.as_ref())
+                    .is_err()
+                {
                     // Fall back to base simulator if enhanced application fails
                     return self.base_simulator.run(circuit);
                 }
