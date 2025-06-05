@@ -1,5 +1,4 @@
 use num_complex::Complex64;
-use std::f64::consts::PI;
 use std::ops::{Add, Mul, Sub};
 
 use crate::error::QuantRS2Result;

@@ -1,9 +1,5 @@
 use crate::error::QuantRS2Result;
 use crate::gate::{multi, single, GateOp};
-use crate::parametric::{
-    ParametricGate, ParametricPhaseShift, ParametricRotationX, ParametricRotationY,
-    ParametricRotationZ, ParametricU,
-};
 use crate::qubit::QubitId;
 use num_complex::Complex64;
 use std::any::Any;
@@ -443,7 +439,7 @@ pub mod utils {
                 let gate1 = &gates[i];
                 let gate2 = &gates[i + 1];
 
-                if let Some(_) = try_cancel_gates(gate1.as_ref(), gate2.as_ref()) {
+                if try_cancel_gates(gate1.as_ref(), gate2.as_ref()).is_some() {
                     // Gates cancel each other, skip both
                     i += 2;
                     continue;

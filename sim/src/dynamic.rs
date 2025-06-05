@@ -6,12 +6,16 @@ use quantrs2_circuit::builder::Simulator; // Added Simulator trait import
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
-    qubit::QubitId,
 };
-use std::collections::HashMap;
 
+// Unused imports
+#[allow(unused_imports)]
 use crate::simulator::SimulatorResult;
 use crate::statevector::StateVectorSimulator;
+#[allow(unused_imports)]
+use quantrs2_core::qubit::QubitId;
+#[allow(unused_imports)]
+use std::collections::HashMap;
 
 #[cfg(feature = "gpu")]
 use crate::gpu::GpuStateVectorSimulator;
@@ -231,7 +235,7 @@ impl DynamicCircuit {
 
         // Find the Nth occurrence of this gate type
         let mut count = 0;
-        for (i, name) in gates.iter().enumerate() {
+        for name in gates.iter() {
             if name == &gate_name {
                 if count == index {
                     // Return placeholder values - in a real implementation these would be accurate
@@ -259,7 +263,7 @@ impl DynamicCircuit {
 
         // Find the Nth occurrence of this gate type
         let mut count = 0;
-        for (i, name) in gates.iter().enumerate() {
+        for name in gates.iter() {
             if name == &gate_name {
                 if count == index {
                     // Return placeholder values - in a real implementation these would be accurate
@@ -287,7 +291,7 @@ impl DynamicCircuit {
 
         // Find the Nth occurrence of this gate type
         let mut count = 0;
-        for (i, name) in gates.iter().enumerate() {
+        for name in gates.iter() {
             if name == &gate_name {
                 if count == index {
                     // Return placeholder values - in a real implementation these would be accurate
@@ -315,7 +319,7 @@ impl DynamicCircuit {
 
         // Find the Nth occurrence of this gate type
         let mut count = 0;
-        for (i, name) in gates.iter().enumerate() {
+        for name in gates.iter() {
             if name == &gate_name {
                 if count == index {
                     // Return placeholder values - in a real implementation these would be accurate

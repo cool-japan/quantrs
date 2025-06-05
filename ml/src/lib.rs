@@ -16,19 +16,25 @@
 //! - Quantum Blockchain and Distributed Ledger Technology
 //! - Quantum-Enhanced Natural Language Processing
 
+use fastrand;
 use std::error::Error;
 use thiserror::Error;
 
+pub mod barren_plateau;
 pub mod blockchain;
 pub mod classification;
 pub mod crypto;
+pub mod enhanced_gan;
 pub mod gan;
 pub mod hep;
 pub mod kernels;
 pub mod nlp;
 pub mod optimization;
+pub mod qcnn;
 pub mod qnn;
+pub mod qsvm;
 pub mod reinforcement;
+pub mod vae;
 pub mod variational;
 
 pub mod error;
@@ -53,6 +59,9 @@ pub mod prelude {
     pub use crate::nlp::{NLPTaskType, QuantumLanguageModel, SentimentAnalyzer, TextSummarizer};
     pub use crate::optimization::{ObjectiveFunction, OptimizationMethod, Optimizer};
     pub use crate::qnn::{QNNBuilder, QNNLayer, QuantumNeuralNetwork};
+    pub use crate::qsvm::{
+        FeatureMapType, QSVMParams, QuantumKernel as QSVMKernel, QuantumKernelRidge, QSVM,
+    };
     pub use crate::reinforcement::{Environment, QuantumAgent, ReinforcementLearning};
     pub use crate::variational::{VariationalAlgorithm, VariationalCircuit};
 }

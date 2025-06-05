@@ -9,7 +9,7 @@ use std::time::Duration;
 #[cfg(feature = "azure")]
 use async_trait::async_trait;
 #[cfg(feature = "azure")]
-use quantrs_circuit::prelude::Circuit;
+use quantrs2_circuit::prelude::Circuit;
 #[cfg(feature = "azure")]
 use tokio::sync::RwLock;
 
@@ -95,7 +95,7 @@ impl AzureQuantumDevice {
             target_id: target_id.to_string(),
             provider_id,
             config,
-            target_cache,
+            target_cache: Arc::clone(&target_cache),
         })
     }
 

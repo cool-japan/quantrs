@@ -18,10 +18,10 @@ name = "_quantrs2"
 crate-type = ["cdylib"]
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.2" }
-quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.2" }
-quantrs2-sim = { path = "../sim", version = "0.1.0-alpha.2", features = [] }
-quantrs2-ml = { path = "../ml", version = "0.1.0-alpha.2", optional = true }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.3" }
+quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.3" }
+quantrs2-sim = { path = "../sim", version = "0.1.0-alpha.3", features = [] }
+quantrs2-ml = { path = "../ml", version = "0.1.0-alpha.3", optional = true }
 pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"] }
 num-complex.workspace = true
 ndarray.workspace = true

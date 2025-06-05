@@ -4,9 +4,9 @@
 //! Tensor networks can be more efficient than state vector simulation for
 //! circuits with specific structures or limited entanglement.
 
-use quantrs_circuit::builder::{Circuit, Simulator};
-use quantrs_core::{
-    error::{QuantrsError, QuantrsResult},
+use quantrs2_circuit::builder::{Circuit, Simulator};
+use quantrs2_core::{
+    error::{QuantRS2Error, QuantRS2Result},
     gate::{multi, single, GateOp},
     qubit::QubitId,
     register::Register,
@@ -396,10 +396,10 @@ impl TensorNetworkSimulator {
         network: &mut TensorNetwork,
         gate_matrix: &[Complex64],
         target: QubitId,
-    ) -> QuantrsResult<()> {
+    ) -> QuantRS2Result<()> {
         let target_idx = target.id() as usize;
         if target_idx >= N {
-            return Err(QuantrsError::InvalidQubitId(target.id()));
+            return Err(QuantRS2Error::InvalidQubitId(target.id()));
         }
 
         // Create a gate tensor from the matrix
@@ -418,12 +418,12 @@ impl TensorNetworkSimulator {
         gate_matrix: &[Complex64],
         control: QubitId,
         target: QubitId,
-    ) -> QuantrsResult<()> {
+    ) -> QuantRS2Result<()> {
         let control_idx = control.id() as usize;
         let target_idx = target.id() as usize;
 
         if control_idx >= N || target_idx >= N {
-            return Err(QuantrsError::InvalidQubitId(if control_idx >= N {
+            return Err(QuantRS2Error::InvalidQubitId(if control_idx >= N {
                 control.id()
             } else {
                 target.id()
@@ -431,7 +431,7 @@ impl TensorNetworkSimulator {
         }
 
         if control_idx == target_idx {
-            return Err(QuantrsError::CircuitValidationFailed(
+            return Err(QuantRS2Error::CircuitValidationFailed(
                 "Control and target qubits must be different".into(),
             ));
         }
@@ -453,7 +453,7 @@ impl Default for TensorNetworkSimulator {
 }
 
 impl<const N: usize> Simulator<N> for TensorNetworkSimulator {
-    fn run(&self, circuit: &Circuit<N>) -> QuantrsResult<Register<N>> {
+    fn run(&self, circuit: &Circuit<N>) -> QuantRS2Result<Register<N>> {
         // Initialize a tensor network representing |0...0⟩
         let mut network = TensorNetwork::new(N);
 
@@ -666,14 +666,14 @@ impl<const N: usize> Simulator<N> for TensorNetworkSimulator {
 
                 // Three-qubit gates
                 "Toffoli" | "Fredkin" => {
-                    return Err(QuantrsError::UnsupportedOperation(format!(
+                    return Err(QuantRS2Error::UnsupportedOperation(format!(
                         "Gate {} not yet implemented for tensor network simulator",
                         gate.name()
                     )));
                 }
 
                 _ => {
-                    return Err(QuantrsError::UnsupportedOperation(format!(
+                    return Err(QuantRS2Error::UnsupportedOperation(format!(
                         "Gate {} not supported",
                         gate.name()
                     )));
@@ -759,7 +759,7 @@ impl TensorNetwork {
     }
 
     /// Apply a single-qubit gate to the network
-    pub fn apply_gate(&mut self, gate_tensor: Tensor, qubit_index: usize) -> QuantrsResult<()> {
+    pub fn apply_gate(&mut self, gate_tensor: Tensor, qubit_index: usize) -> QuantRS2Result<()> {
         // For simplicity in this implementation, we'll just store the gate tensor
         // In a full implementation, we'd contract it with the qubit tensor
         let gate_id = self.add_tensor(gate_tensor, qubit_index);
@@ -785,7 +785,7 @@ impl TensorNetwork {
         gate_tensor: Tensor,
         control_index: usize,
         target_index: usize,
-    ) -> QuantrsResult<()> {
+    ) -> QuantRS2Result<()> {
         // For simplicity in this implementation, we'll just store the gate tensor
         // In a full implementation, we'd contract it with the qubit tensors
         let gate_id = self.add_tensor(gate_tensor, control_index.min(target_index));
@@ -817,7 +817,7 @@ impl TensorNetwork {
     }
 
     /// Contract the entire network to produce a state vector
-    pub fn contract_to_statevector(&self) -> QuantrsResult<Vec<Complex64>> {
+    pub fn contract_to_statevector(&self) -> QuantRS2Result<Vec<Complex64>> {
         // Make a copy of the tensors that we can modify during contraction
         let mut tensors = self.tensors.clone();
         let mut connections = self.connections.clone();
@@ -887,7 +887,7 @@ impl TensorNetwork {
     }
 
     /// Convert a tensor to a state vector
-    fn tensor_to_statevector(&self, tensor: Tensor) -> QuantrsResult<Vec<Complex64>> {
+    fn tensor_to_statevector(&self, tensor: Tensor) -> QuantRS2Result<Vec<Complex64>> {
         // Create standard statevector based on the circuit type we're simulating
         let dim = 1 << self.num_qubits;
         let mut state = vec![Complex64::new(0.0, 0.0); dim];
@@ -984,13 +984,13 @@ impl TensorNetwork {
 }
 
 impl ContractableNetwork for TensorNetwork {
-    fn contract_tensors(&mut self, tensor_id1: usize, tensor_id2: usize) -> QuantrsResult<usize> {
+    fn contract_tensors(&mut self, tensor_id1: usize, tensor_id2: usize) -> QuantRS2Result<usize> {
         // Placeholder implementation
         // In a real implementation, we would perform the actual tensor contraction
         Ok(tensor_id1)
     }
 
-    fn optimize_contraction_order(&mut self) -> QuantrsResult<()> {
+    fn optimize_contraction_order(&mut self) -> QuantRS2Result<()> {
         // Placeholder implementation
         // In a real implementation, we would optimize the contraction order based on
         // the graph of connections between tensors

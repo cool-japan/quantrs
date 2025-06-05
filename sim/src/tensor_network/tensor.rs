@@ -5,7 +5,7 @@
 
 use ndarray::{Array, ArrayD, Axis, IxDyn};
 use num_complex::Complex64;
-use quantrs_core::error::QuantrsResult;
+use quantrs2_core::error::QuantRS2Result;
 use scirs2_core::ndarray_ext::manipulation;
 
 /// A tensor representing a quantum state or operation
@@ -103,22 +103,25 @@ impl Tensor {
         other: &Tensor,
         self_axis: usize,
         other_axis: usize,
-    ) -> QuantrsResult<Tensor> {
+    ) -> QuantRS2Result<Tensor> {
         // Validate axis indices
         if self_axis >= self.rank || other_axis >= other.rank {
-            return Err(quantrs_core::error::QuantrsError::CircuitValidationFailed(
-                format!("Invalid contraction axes: {} and {}", self_axis, other_axis),
-            ));
+            return Err(
+                quantrs2_core::error::QuantRS2Error::CircuitValidationFailed(format!(
+                    "Invalid contraction axes: {} and {}",
+                    self_axis, other_axis
+                )),
+            );
         }
 
         // Validate axis dimensions
         if self.dimensions[self_axis] != other.dimensions[other_axis] {
-            return Err(quantrs_core::error::QuantrsError::CircuitValidationFailed(
-                format!(
+            return Err(
+                quantrs2_core::error::QuantRS2Error::CircuitValidationFailed(format!(
                     "Mismatched dimensions for contraction: {} and {}",
                     self.dimensions[self_axis], other.dimensions[other_axis]
-                ),
-            ));
+                )),
+            );
         }
 
         // For simplicity in this implementation, we'll just return a placeholder
@@ -134,7 +137,7 @@ impl Tensor {
         left_axes: &[usize],
         right_axes: &[usize],
         max_bond_dim: usize,
-    ) -> QuantrsResult<(Tensor, Tensor)> {
+    ) -> QuantRS2Result<(Tensor, Tensor)> {
         // For simplicity in this implementation, we'll just return a placeholder
         // In a full implementation, we'd perform actual SVD decomposition
 

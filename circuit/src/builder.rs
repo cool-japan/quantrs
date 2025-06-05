@@ -6,7 +6,7 @@
 use std::fmt;
 
 use quantrs2_core::{
-    decomposition::{utils as decomp_utils, CompositeGate, GateDecomposable},
+    decomposition::{utils as decomp_utils, CompositeGate},
     error::QuantRS2Result,
     gate::{
         multi::{Fredkin, Toffoli, CH, CNOT, CRX, CRY, CRZ, CS, CY, CZ, SWAP},
@@ -206,16 +206,12 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Helper method to find a gate by type and index
-    fn find_gate_by_type_and_index(
-        &self,
-        gate_type: &str,
-        index: usize,
-    ) -> Option<&Box<dyn GateOp>> {
+    fn find_gate_by_type_and_index(&self, gate_type: &str, index: usize) -> Option<&dyn GateOp> {
         let mut count = 0;
         for gate in &self.gates {
             if gate.name() == gate_type {
                 if count == index {
-                    return Some(gate);
+                    return Some(gate.as_ref());
                 }
                 count += 1;
             }
@@ -428,6 +424,17 @@ impl<const N: usize> Circuit<N> {
         })
     }
 
+    /// Apply a controlled phase gate
+    pub fn cp(
+        &mut self,
+        control: impl Into<QubitId>,
+        target: impl Into<QubitId>,
+        lambda: f64,
+    ) -> QuantRS2Result<&mut Self> {
+        // CRZ(lambda) is equivalent to CP(lambda) up to a global phase
+        self.crz(control, target, lambda)
+    }
+
     /// Apply a SWAP gate
     pub fn swap(
         &mut self,
@@ -499,12 +506,12 @@ impl<const N: usize> Circuit<N> {
         let mut optimized = Self::new();
 
         // Optimize the gate sequence
-        let simplified_gates = decomp_utils::optimize_gate_sequence(&self.gates);
+        let simplified_gates_result = decomp_utils::optimize_gate_sequence(&self.gates);
 
         // Add each optimized gate to the new circuit
-        for gate in simplified_gates {
+        if let Ok(simplified_gates) = simplified_gates_result {
             // We need to handle each gate individually
-            for g in gate {
+            for g in simplified_gates {
                 optimized.add_gate_box(g)?;
             }
         }

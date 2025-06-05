@@ -97,11 +97,11 @@ impl IBMQuantumDevice {
         &self,
         circuit: &Circuit<N>,
         shots: Option<usize>,
-    ) -> DeviceResult<IBMCircuitConfig> {
+    ) -> DeviceResult<crate::ibm::IBMCircuitConfig> {
         let qasm = self.circuit_to_qasm(circuit)?;
         let shots = shots.unwrap_or(self.config.default_shots);
 
-        Ok(IBMCircuitConfig {
+        Ok(crate::ibm::IBMCircuitConfig {
             name: format!("quantrs_circuit_{}", chrono::Utc::now().timestamp()),
             qasm,
             shots,
@@ -111,7 +111,7 @@ impl IBMQuantumDevice {
     }
 
     /// Convert a Quantrs circuit to QASM for IBM Quantum
-    fn circuit_to_qasm<const N: usize>(&self, circuit: &Circuit<N>) -> DeviceResult<String> {
+    fn circuit_to_qasm<const N: usize>(&self, _circuit: &Circuit<N>) -> DeviceResult<String> {
         if N > self.backend.n_qubits {
             return Err(DeviceError::CircuitConversion(format!(
                 "Circuit has {} qubits but backend {} only supports {} qubits",
@@ -299,7 +299,7 @@ impl CircuitExecutor for IBMQuantumDevice {
 
     async fn can_execute_circuit<const N: usize>(
         &self,
-        circuit: &Circuit<N>,
+        _circuit: &Circuit<N>,
     ) -> DeviceResult<bool> {
         // Basic check: does the circuit fit on the device?
         if N > self.backend.n_qubits {

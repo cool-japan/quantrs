@@ -446,8 +446,8 @@ impl IBMQuantumClient {
 
     /// Convert a Quantrs circuit to QASM
     pub fn circuit_to_qasm<const N: usize>(
-        circuit: &Circuit<N>,
-        initial_layout: Option<std::collections::HashMap<String, usize>>,
+        _circuit: &Circuit<N>,
+        _initial_layout: Option<std::collections::HashMap<String, usize>>,
     ) -> DeviceResult<String> {
         // This is a placeholder for the actual conversion logic
         // In a complete implementation, this would translate our circuit representation

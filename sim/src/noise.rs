@@ -4,8 +4,9 @@
 //! including common noise models such as depolarizing, amplitude damping,
 //! phase damping, and bit flip/phase flip channels.
 
+#![allow(clippy::needless_range_loop)]
+
 use num_complex::Complex64;
-use rand::Rng;
 use std::fmt::Debug;
 
 use quantrs2_core::error::QuantRS2Result;
@@ -126,7 +127,7 @@ impl NoiseChannel for BitFlipChannel {
         let dim = state.len();
 
         // Apply bit flip with probability p
-        if rand::thread_rng().random::<f64>() < self.probability {
+        if fastrand::f64() < self.probability {
             // Create a copy of the state to read from
             let state_copy = state.to_vec();
 
@@ -195,7 +196,7 @@ impl NoiseChannel for PhaseFlipChannel {
         let dim = state.len();
 
         // Apply phase flip with probability p
-        if rand::thread_rng().gen::<f64>() < self.probability {
+        if fastrand::f64() < self.probability {
             // Apply phase flip to each amplitude
             for i in 0..dim {
                 if (i >> target_idx) & 1 == 1 {
@@ -263,9 +264,9 @@ impl NoiseChannel for DepolarizingChannel {
         let dim = state.len();
 
         // Apply depolarizing noise with probability p
-        if rand::thread_rng().gen::<f64>() < self.probability {
+        if fastrand::f64() < self.probability {
             // Choose randomly between X, Y, and Z errors
-            let error_type = rand::thread_rng().gen_range(0..3);
+            let error_type = fastrand::u32(..) % 3;
 
             // Create a copy of the state to read from
             let state_copy = state.to_vec();
@@ -390,7 +391,7 @@ impl NoiseChannel for AmplitudeDampingChannel {
                 let base_idx = i & !(1 << target_idx); // Flip the target bit to 0
 
                 // Damping from |1⟩ to |0⟩ with probability gamma
-                if rand::thread_rng().gen::<f64>() < self.gamma {
+                if fastrand::f64() < self.gamma {
                     // Collapse to |0⟩ state
                     state[base_idx] += state_copy[i];
                     state[i] = Complex64::new(0.0, 0.0);
@@ -464,9 +465,9 @@ impl NoiseChannel for PhaseDampingChannel {
             if (i >> target_idx) & 1 == 1 {
                 // This basis state has the target qubit in |1⟩
                 // Apply phase damping
-                if rand::thread_rng().gen::<f64>() < self.lambda {
+                if fastrand::f64() < self.lambda {
                     // Random phase
-                    let phase = 2.0 * std::f64::consts::PI * rand::thread_rng().gen::<f64>();
+                    let phase = 2.0 * std::f64::consts::PI * fastrand::f64();
                     state[i] *= Complex64::new(phase.cos(), phase.sin());
                 }
             }

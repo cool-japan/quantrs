@@ -583,6 +583,7 @@ impl ClassicalAnnealingSimulator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
     use crate::ising::QuboModel;
 
     #[test]

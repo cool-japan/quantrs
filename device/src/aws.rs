@@ -414,16 +414,14 @@ impl AWSBraketClient {
         let url = format!("{}{}", self.api_url, path);
         let body = "{}";
 
-        let auth_header = self.generate_aws_v4_signature("GET", &path, body);
+        let headers = self.generate_aws_v4_signature("GET", &path, body);
 
-        let response = self
-            .client
-            .get(&url)
-            .header("Authorization", auth_header)
-            .header(
-                "X-Amz-Date",
-                chrono::Utc::now().format("%Y%m%dT%H%M%SZ").to_string(),
-            )
+        let mut request = self.client.get(&url);
+        for (key, value) in headers.iter() {
+            request = request.header(key, value);
+        }
+
+        let response = request
             .send()
             .await
             .map_err(|e| DeviceError::Connection(e.to_string()))?;

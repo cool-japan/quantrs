@@ -13,13 +13,13 @@ use async_trait::async_trait;
 use tokio::sync::RwLock;
 
 #[cfg(feature = "aws")]
-use crate::aws::{AWSBraketClient, AWSCircuitConfig, AWSDevice, AWSTaskStatus};
+use crate::aws::{AWSBraketClient, AWSCircuitConfig, AWSDevice};
 use crate::DeviceError;
 use crate::DeviceResult;
 #[cfg(feature = "aws")]
 use crate::{CircuitExecutor, CircuitResult, QuantumDevice};
 #[cfg(feature = "aws")]
-use quantrs_circuit::prelude::Circuit;
+use quantrs2_circuit::prelude::Circuit;
 
 /// Configuration for an AWS Braket device
 #[derive(Debug, Clone)]
@@ -85,7 +85,7 @@ impl AWSBraketDevice {
             client,
             device_arn: device_arn.to_string(),
             config,
-            device_cache,
+            device_cache: Arc::clone(&device_cache),
         })
     }
 

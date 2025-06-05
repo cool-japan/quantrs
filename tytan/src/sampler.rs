@@ -533,8 +533,8 @@ impl SASampler {
                         let delta_e = new_energy - energy;
 
                         // Metropolis acceptance criterion
-                        let accept =
-                            delta_e <= 0.0 || rng.random_range(0.0..1.0) < (-delta_e / temp).exp();
+                        let accept = delta_e <= 0.0
+                            || rng.random_range(0.0..1.0) < f64::exp(-delta_e / temp);
 
                         if accept {
                             energy = new_energy;

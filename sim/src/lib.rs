@@ -8,7 +8,10 @@
 //! to enable simulation of larger qubit counts (30+).
 
 pub mod dynamic;
+pub mod enhanced_statevector;
+pub mod linalg_ops;
 pub mod simulator;
+pub mod stabilizer;
 pub mod statevector;
 pub mod tensor;
 
@@ -18,6 +21,7 @@ pub mod utils;
 // pub mod optimized;  // Temporarily disabled due to implementation issues
 // pub mod optimized_simulator;  // Temporarily disabled due to implementation issues
 pub mod benchmark;
+pub mod clifford_sparse;
 pub mod optimized_chunked;
 pub mod optimized_simd;
 pub mod optimized_simple;
@@ -39,7 +43,6 @@ pub mod noise;
 /// Advanced noise models for realistic device simulation
 pub mod noise_advanced;
 
-/// Quantum error correction codes and utilities (placeholder for future implementation)
 #[allow(clippy::module_inception)]
 pub mod error_correction {
     //! Quantum error correction codes and utilities
@@ -50,16 +53,24 @@ pub mod error_correction {
 
 /// Prelude module that re-exports common types and traits
 pub mod prelude {
-    //! Common types and traits for quantum simulation
+    pub use crate::clifford_sparse::{CliffordGate, SparseCliffordSimulator};
     pub use crate::dynamic::*;
+    pub use crate::enhanced_statevector::EnhancedStateVectorSimulator;
+    #[allow(unused_imports)]
     pub use crate::error_correction::*;
     pub use crate::noise::*;
     pub use crate::noise::{NoiseChannel, NoiseModel};
     pub use crate::noise_advanced::*;
     pub use crate::noise_advanced::{AdvancedNoiseModel, RealisticNoiseModelBuilder};
+    #[allow(unused_imports)]
     pub use crate::simulator::*;
     pub use crate::simulator::{Simulator, SimulatorResult};
+    pub use crate::stabilizer::{is_clifford_circuit, StabilizerGate, StabilizerSimulator};
     pub use crate::statevector::StateVectorSimulator;
+
+    #[cfg(feature = "gpu")]
+    pub use crate::gpu_linalg::{benchmark_gpu_linalg, GpuLinearAlgebra};
+    #[allow(unused_imports)]
     pub use crate::statevector::*;
     pub use crate::tensor::*;
     pub use crate::utils::*;
@@ -72,6 +83,9 @@ pub struct ErrorCorrection;
 
 #[cfg(feature = "gpu")]
 pub mod gpu;
+
+#[cfg(feature = "gpu")]
+pub mod gpu_linalg;
 
 #[cfg(feature = "advanced_math")]
 pub use crate::tensor_network::*;

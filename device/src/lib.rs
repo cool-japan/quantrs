@@ -8,12 +8,17 @@ use quantrs2_circuit::prelude::Circuit;
 use std::collections::HashMap;
 use thiserror::Error;
 
+/// Public exports for commonly used types
+// Forward declaration - implemented below
+// pub mod prelude;
 pub mod aws;
 pub mod aws_device;
 pub mod azure;
 pub mod azure_device;
 pub mod ibm;
 pub mod ibm_device;
+pub mod routing;
+pub mod topology;
 pub mod transpiler;
 
 // AWS authentication module
@@ -56,6 +61,12 @@ pub enum DeviceError {
 
     #[error("Circuit conversion error: {0}")]
     CircuitConversion(String),
+
+    #[error("Insufficient qubits: required {required}, available {available}")]
+    InsufficientQubits { required: usize, available: usize },
+
+    #[error("Routing error: {0}")]
+    RoutingError(String),
 }
 
 /// General representation of quantum hardware
@@ -326,26 +337,5 @@ pub async fn create_aws_device(
 
 /// Re-exports of commonly used types and traits
 pub mod prelude {
-    pub use crate::CircuitExecutor;
-    pub use crate::CircuitResult;
-    pub use crate::DeviceError;
-    pub use crate::DeviceResult;
-    pub use crate::QuantumDevice;
-
-    #[cfg(feature = "ibm")]
-    pub use crate::ibm::*;
-    #[cfg(feature = "ibm")]
-    pub use crate::ibm_device::*;
-
-    #[cfg(feature = "azure")]
-    pub use crate::azure::*;
-    #[cfg(feature = "azure")]
-    pub use crate::azure_device::*;
-
-    #[cfg(feature = "aws")]
-    pub use crate::aws::*;
-    #[cfg(feature = "aws")]
-    pub use crate::aws_device::*;
-
-    pub use crate::transpiler::*;
+    pub use crate::ibm::IBMCircuitConfig;
 }

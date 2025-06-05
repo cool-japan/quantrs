@@ -13,48 +13,75 @@ This document outlines the development plans and future tasks for the QuantRS2-A
 - ✅ D-Wave API client foundation
 - ✅ Temperature scheduling for annealing
 - ✅ Common optimization problem templates
+- ✅ Parallel tempering implementation
+- ✅ Energy landscape analysis tools
 
 ### In Progress
 
-- 🔄 Enhanced D-Wave integration with topology mapping
-- 🔄 Advanced QUBO constraint handling
-- 🔄 Improved quantum annealing simulation
+- 🔄 SciRS2 integration for large-scale optimization
+- 🔄 Graph embedding algorithms with SciRS2
+- 🔄 Advanced sampling techniques
 
 ## Planned Enhancements
 
 ### Near-term (v0.1.x)
 
-- [ ] Complete D-Wave topology-aware problem embedding
-- [ ] Add more pre-built optimization problem templates (TSP, MaxCut, etc.)
-- [ ] Implement chimera and pegasus graph utilities
-- [ ] Add post-processing for optimization solutions
-- [ ] Improve QUBO builder with more constraint types
-- [ ] Create better documentation with practical examples
-- [ ] Add benchmarks for annealing performance
+- [ ] Implement minorminer-like embedding using SciRS2 graphs
+- [ ] Add graph partitioning with SciRS2 spectral methods
+- [ ] Create QUBO matrix compression using SciRS2 sparse formats
+- [ ] Implement chain break resolution algorithms
+- [ ] Add support for higher-order interactions (HOBO)
+- [ ] Create penalty function optimization with SciRS2
+- [ ] Implement flux bias optimization for D-Wave
+- [ ] Add support for reverse annealing schedules
+- [ ] Create problem-specific annealing schedules
 
 ### Medium-term (v0.2.x)
 
-- [ ] Implement hybrid classical-quantum algorithms
-- [ ] Add support for other quantum annealing hardware platforms
-- [ ] Create visualization tools for annealing problems and solutions
-- [ ] Implement advanced annealing algorithms (parallel tempering, etc.)
-- [ ] Add automated problem decomposition for large instances
-- [ ] Create higher-level problem description language
+- [ ] Implement quantum-classical hybrid solvers with SciRS2
+- [ ] Add support for Fujitsu Digital Annealer interface
+- [ ] Create energy landscape visualization with SciRS2 plotting
+- [ ] Implement population annealing with MPI support
+- [ ] Add large-scale QUBO decomposition using SciRS2
+- [ ] Create constraint satisfaction problem (CSP) compiler
+- [ ] Implement quantum walk-based optimization
+- [ ] Add support for continuous variable annealing
+- [ ] Create multi-objective optimization framework
 
 ### Long-term (Future Versions)
 
-- [ ] Implement quantum Boltzmann machine learning
-- [ ] Add support for continuous optimization problems
-- [ ] Create a unified interface for quantum annealing and gate-based approaches
-- [ ] Implement hardware-specific optimizations for multiple platforms
-- [ ] Add automated parameter tuning for annealing
-- [ ] Develop specialized solvers for industrial applications
+- [ ] Implement restricted Boltzmann machines with SciRS2
+- [ ] Add support for quantum approximate optimization (QAOA)
+- [ ] Create variational quantum annealing algorithms
+- [ ] Implement coherent Ising machines simulation
+- [ ] Add support for photonic annealing systems
+- [ ] Create domain-specific languages for optimization
+- [ ] Implement quantum machine learning with annealing
+- [ ] Add support for non-stoquastic Hamiltonians
+- [ ] Create industry-specific optimization libraries
 
 ## Implementation Notes
 
-- Consider using symengine for symbolic problem formulation when complex constraints are needed
-- The D-Wave client needs better error handling for API rate limits
-- Quantum annealing simulation needs more validation against hardware results
+### Performance Optimization
+- Use SciRS2 sparse matrix operations for large QUBO matrices
+- Implement bit-packed representations for binary variables
+- Cache embedding solutions for repeated problems
+- Use SIMD operations for energy calculations
+- Implement parallel chain break resolution
+
+### Technical Architecture
+- Store QUBO as upper triangular sparse matrix
+- Use graph coloring for parallel spin updates
+- Implement lazy evaluation for constraint compilation
+- Support both row-major and CSR sparse formats
+- Create modular sampler interface
+
+### SciRS2 Integration Points
+- Graph algorithms: Use for embedding and partitioning
+- Sparse matrices: QUBO and Ising representations
+- Optimization: Parameter tuning and hyperopt
+- Statistics: Solution quality analysis
+- Parallel computing: Multi-threaded sampling
 
 ## Known Issues
 
@@ -64,6 +91,23 @@ This document outlines the development plans and future tasks for the QuantRS2-A
 
 ## Integration Tasks
 
-- [ ] Improve integration with quantrs2-tytan for symbolic problem formulation
-- [ ] Create converter between gate-based and annealing approaches for certain problems
-- [ ] Develop examples that combine annealing with classical post-processing
+### SciRS2 Integration
+- [ ] Replace custom sparse matrix with SciRS2 sparse arrays
+- [ ] Use SciRS2 graph algorithms for embedding
+- [ ] Integrate SciRS2 optimization for parameter search
+- [ ] Leverage SciRS2 statistical analysis for solutions
+- [ ] Use SciRS2 plotting for energy landscapes
+
+### Module Integration
+- [ ] Create QAOA bridge with circuit module
+- [ ] Add VQE-style variational annealing
+- [ ] Integrate with ML module for QBM
+- [ ] Create unified problem description format
+- [ ] Add benchmarking framework integration
+
+### Hardware Integration
+- [ ] Implement D-Wave Leap cloud service client
+- [ ] Add support for AWS Braket annealing
+- [ ] Create abstraction for different topologies
+- [ ] Implement hardware-aware compilation
+- [ ] Add calibration data management

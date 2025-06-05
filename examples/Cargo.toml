@@ -12,13 +12,19 @@ description = "Examples for the QuantRS2 quantum computing framework"
 publish = false
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.2" }
-quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.2" }
-quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.2" }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.3" }
+quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.3" }
+quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.3" }
+quantrs2-ml = { path = "../ml", version = "0.1.0-alpha.3", optional = true }
+quantrs2-device = { path = "../device", version = "0.1.0-alpha.3", features = [] }
 # Tytan is intentionally not included directly
 # quantrs2-tytan = { path = "../tytan", optional = true }
-num-complex = "0.4"
-rand = "0.9.1"
+num-complex.workspace = true
+ndarray.workspace = true
+rand.workspace = true
+fastrand = "2.0"
+petgraph = "0.6"
+thiserror = "2.0"
 
 # Feature for simulation examples which require quantrs2-sim
 #
@@ -39,25 +45,22 @@ rand = "0.9.1"
 simulation = ["quantrs2-sim"]
 gpu = ["quantrs2-sim/gpu"]
 advanced_math = ["quantrs2-sim/advanced_math"]
+ml = ["quantrs2-ml"]
 # Tytan feature is maintained but doesn't activate any dependencies
 tytan = []
 ibm = ["quantrs2-device/ibm", "tokio"]
-aws = ["quantrs2-device", "tokio"]
+aws = ["quantrs2-device/aws", "tokio"]
 default = []
 
 # Optional dependencies with features
 [dependencies.quantrs2-sim]
 path = "../sim"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 optional = true
 
-[dependencies.quantrs2-device]
-path = "../device"
-version = "0.1.0-alpha.2"
-optional = true
 
 [dependencies.tokio]
-version = "1.0"
+workspace = true
 features = ["full"]
 optional = true
 
@@ -208,3 +211,88 @@ required-features = ["simulation"]
 name = "gate_decomposition"
 path = "src/bin/gate_decomposition.rs"
 required-features = ["simulation"]
+
+[[bin]]
+name = "scirs2_integration_demo"
+path = "src/bin/scirs2_integration_demo.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "qaoa_demo"
+path = "src/bin/qaoa_demo.rs"
+required-features = []
+
+[[bin]]
+name = "circuit_optimizer_demo"
+path = "src/bin/circuit_optimizer_demo.rs"
+required-features = []
+
+[[bin]]
+name = "stabilizer_demo"
+path = "src/bin/stabilizer_demo.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "gpu_linalg_demo"
+path = "src/bin/gpu_linalg_demo.rs"
+required-features = ["simulation", "gpu"]
+
+[[bin]]
+name = "hhl_demo"
+path = "src/bin/hhl_demo.rs"
+required-features = []
+
+[[bin]]
+name = "quantum_pca_demo"
+path = "src/bin/quantum_pca_demo.rs"
+required-features = []
+
+[[bin]]
+name = "graph_optimizer_demo"
+path = "src/bin/graph_optimizer_demo.rs"
+required-features = []
+
+[[bin]]
+name = "qsvm_demo"
+path = "src/bin/qsvm_demo.rs"
+required-features = ["ml"]
+
+[[bin]]
+name = "quantum_testing_demo"
+path = "src/bin/quantum_testing_demo.rs"
+required-features = []
+
+[[bin]]
+name = "sparse_clifford_demo"
+path = "src/bin/sparse_clifford_demo.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "hardware_topology_demo"
+path = "src/bin/hardware_topology_demo.rs"
+required-features = []
+
+[[bin]]
+name = "qcnn_demo"
+path = "src/bin/qcnn_demo.rs"
+required-features = ["ml"]
+
+[[bin]]
+name = "barren_plateau_demo"
+path = "src/bin/barren_plateau_demo.rs"
+required-features = ["ml"]
+
+[[bin]]
+name = "qvae_demo"
+path = "src/bin/qvae_demo.rs"
+required-features = ["ml"]
+
+[[bin]]
+name = "enhanced_qgan_demo"
+path = "src/bin/enhanced_qgan_demo.rs"
+required-features = ["ml"]
+
+[[bin]]
+name = "qubit_routing_demo"
+path = "src/bin/qubit_routing_demo.rs"
+required-features = []

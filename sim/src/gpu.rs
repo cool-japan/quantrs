@@ -44,12 +44,16 @@ const BUFFER_ALIGNMENT: u64 = 256;
 #[derive(Debug)]
 pub struct GpuStateVectorSimulator {
     /// The WGPU device
+    #[allow(dead_code)]
     device: Arc<wgpu::Device>,
     /// The WGPU queue
+    #[allow(dead_code)]
     queue: Arc<wgpu::Queue>,
     /// The compute pipeline for applying single-qubit gates
+    #[allow(dead_code)]
     single_qubit_pipeline: wgpu::ComputePipeline,
     /// The compute pipeline for applying two-qubit gates
+    #[allow(dead_code)]
     two_qubit_pipeline: wgpu::ComputePipeline,
 }
 
@@ -124,12 +128,14 @@ impl GpuStateVectorSimulator {
         };
 
         // Create device and queue
-        let (device, queue) = adapter
+        let (device, queue): (wgpu::Device, wgpu::Queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: Some("Quantrs GPU Simulator"),
-                    features: wgpu::Features::empty(),
-                    limits: wgpu::Limits::default(),
+                    required_features: wgpu::Features::empty(),
+                    required_limits: wgpu::Limits::default(),
+                    memory_hints: wgpu::MemoryHints::default(),
+                    trace: None,
                 },
                 None,
             )
@@ -231,14 +237,18 @@ impl GpuStateVectorSimulator {
                 label: Some("Single Qubit Pipeline"),
                 layout: Some(&single_qubit_pipeline_layout),
                 module: &single_qubit_shader,
-                entry_point: "main",
+                entry_point: Some("main"),
+                compilation_options: wgpu::CompilationOptions::default(),
+                cache: None,
             });
 
         let two_qubit_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("Two Qubit Pipeline"),
             layout: Some(&two_qubit_pipeline_layout),
             module: &two_qubit_shader,
-            entry_point: "main",
+            entry_point: Some("main"),
+            compilation_options: wgpu::CompilationOptions::default(),
+            cache: None,
         });
 
         Ok(Self {
@@ -441,6 +451,7 @@ impl Simulator for GpuStateVectorSimulator {
                         encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                             label: Some("Single Qubit Gate Compute Pass"),
                             timestamp_writes: None,
+                            trace: None,
                         });
                     compute_pass.set_pipeline(&self.single_qubit_pipeline);
                     compute_pass.set_bind_group(0, &bind_group, &[]);
@@ -504,6 +515,7 @@ impl Simulator for GpuStateVectorSimulator {
                         encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                             label: Some("Two Qubit Gate Compute Pass"),
                             timestamp_writes: None,
+                            trace: None,
                         });
                     compute_pass.set_pipeline(&self.two_qubit_pipeline);
                     compute_pass.set_bind_group(0, &bind_group, &[]);
