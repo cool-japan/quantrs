@@ -35,9 +35,6 @@ This document outlines the development plans and future tasks for the QuantRS2-A
 - [ ] Implement flux bias optimization for D-Wave
 - [ ] Add support for reverse annealing schedules
 - [ ] Create problem-specific annealing schedules
-
-### Medium-term (v0.2.x)
-
 - [ ] Implement quantum-classical hybrid solvers with SciRS2
 - [ ] Add support for Fujitsu Digital Annealer interface
 - [ ] Create energy landscape visualization with SciRS2 plotting

@@ -40,9 +40,6 @@ This document outlines the development plans and future tasks for the QuantRS2-M
 - [ ] Create quantum transfer learning framework
 - [ ] Implement quantum few-shot learning algorithms
 - [ ] Add support for quantum reinforcement learning with continuous actions
-
-### Medium-term (v0.2.x)
-
 - [ ] Implement quantum graph neural networks with SciRS2 graphs
 - [ ] Add support for quantum diffusion models
 - [ ] Implement quantum Boltzmann machines

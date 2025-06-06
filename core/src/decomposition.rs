@@ -5,6 +5,9 @@ use num_complex::Complex64;
 use std::any::Any;
 use std::f64::consts::PI;
 
+pub mod solovay_kitaev;
+pub mod clifford_t;
+
 /// Trait for gate decomposition
 pub trait GateDecomposable: GateOp {
     /// Decompose the gate into a sequence of simpler gates
@@ -276,6 +279,14 @@ impl GateOp for CompositeGate {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+    
+    fn clone_gate(&self) -> Box<dyn GateOp> {
+        Box::new(CompositeGate {
+            gates: self.gates.iter().map(|g| g.clone()).collect(),
+            qubits: self.qubits.clone(),
+            name: self.name.clone(),
+        })
     }
 }
 

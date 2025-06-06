@@ -6,6 +6,15 @@ use std::fmt::Debug;
 use crate::error::QuantRS2Result;
 use crate::qubit::QubitId;
 
+/// Macro to implement clone_gate method for gate types
+macro_rules! impl_clone_gate {
+    () => {
+        fn clone_gate(&self) -> Box<dyn GateOp> {
+            Box::new(self.clone())
+        }
+    };
+}
+
 /// Trait for quantum gate operations
 pub trait GateOp: Debug + Send + Sync {
     /// Returns the name of the gate
@@ -29,6 +38,16 @@ pub trait GateOp: Debug + Send + Sync {
 
     /// Downcast to concrete gate type
     fn as_any(&self) -> &dyn Any;
+    
+    /// Clone the gate into a new boxed instance
+    fn clone_gate(&self) -> Box<dyn GateOp>;
+}
+
+/// Implement Clone for Box<dyn GateOp>
+impl Clone for Box<dyn GateOp> {
+    fn clone(&self) -> Box<dyn GateOp> {
+        self.clone_gate()
+    }
 }
 
 /// Single-qubit gate operations
@@ -65,6 +84,8 @@ pub mod single {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Pauli-X gate
@@ -95,6 +116,8 @@ pub mod single {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Pauli-Y gate
@@ -125,6 +148,8 @@ pub mod single {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Pauli-Z gate
@@ -155,6 +180,8 @@ pub mod single {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Rotation around X-axis
@@ -194,6 +221,8 @@ pub mod single {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Rotation around Y-axis
@@ -233,6 +262,8 @@ pub mod single {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Rotation around Z-axis
@@ -272,6 +303,8 @@ pub mod single {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Phase gate (S gate)
@@ -302,6 +335,8 @@ pub mod single {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// T gate
@@ -333,6 +368,8 @@ pub mod single {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// T-dagger gate (Conjugate of T gate)
@@ -364,6 +401,8 @@ pub mod single {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// S-dagger gate (Conjugate of Phase/S gate)
@@ -394,6 +433,8 @@ pub mod single {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Square Root of X (√X) gate
@@ -428,6 +469,8 @@ pub mod single {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Square Root of X Dagger (√X†) gate
@@ -462,6 +505,8 @@ pub mod single {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 }
 
@@ -514,6 +559,8 @@ pub mod multi {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Controlled-Z gate
@@ -560,6 +607,8 @@ pub mod multi {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// SWAP gate
@@ -606,6 +655,8 @@ pub mod multi {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Controlled-Y (CY) gate
@@ -656,6 +707,8 @@ pub mod multi {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Controlled-H (CH) gate
@@ -708,6 +761,8 @@ pub mod multi {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Controlled-Phase (CS) gate
@@ -758,6 +813,8 @@ pub mod multi {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Toffoli (CCNOT) gate
@@ -796,6 +853,8 @@ pub mod multi {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Fredkin (CSWAP) gate
@@ -834,6 +893,8 @@ pub mod multi {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Controlled Rotation-X gate (CRX)
@@ -894,6 +955,8 @@ pub mod multi {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Controlled Rotation-Y gate (CRY)
@@ -954,6 +1017,8 @@ pub mod multi {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 
     /// Controlled Rotation-Z gate (CRZ)
@@ -1014,5 +1079,7 @@ pub mod multi {
         fn as_any(&self) -> &dyn Any {
             self
         }
+        
+        impl_clone_gate!();
     }
 }

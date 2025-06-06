@@ -42,9 +42,6 @@ This document outlines the development plans and future tasks for the QuantRS2-S
 - [ ] Implement matrix product state (MPS) simulator
 - [ ] Add support for open quantum system simulation
 - [ ] Create shot-based sampling with statistical analysis
-
-### Medium-term (v0.2.x)
-
 - [ ] Implement decision diagram simulator using SciRS2 graphs
 - [ ] Add Feynman path integral simulation method
 - [ ] Create quantum supremacy verification algorithms

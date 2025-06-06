@@ -45,9 +45,6 @@ This document outlines the development plans and future tasks for the QuantRS2-P
 - [ ] Add support for pulse-level control from Python
 - [ ] Implement quantum error mitigation techniques
 - [ ] Create comprehensive benchmarking suite
-
-### Medium-term (v0.2.x)
-
 - [ ] Implement OpenQASM 3.0 import/export
 - [ ] Add support for quantum circuit databases
 - [ ] Create interactive circuit builder GUI

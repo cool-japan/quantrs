@@ -34,7 +34,17 @@ pub enum QuantRS2Error {
     /// Error during computation
     #[error("Computation error: {0}")]
     ComputationError(String),
+    
+    /// Linear algebra error
+    #[error("Linear algebra error: {0}")]
+    LinalgError(String),
 }
 
 /// Result type for quantum operations
 pub type QuantRS2Result<T> = Result<T, QuantRS2Error>;
+
+impl From<ndarray::ShapeError> for QuantRS2Error {
+    fn from(err: ndarray::ShapeError) -> Self {
+        QuantRS2Error::InvalidInput(format!("Shape error: {}", err))
+    }
+}

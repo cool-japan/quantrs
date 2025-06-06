@@ -33,9 +33,6 @@ This document outlines the development plans and future tasks for the QuantRS2-C
 - [ ] Create circuit equivalence checking algorithms
 - [ ] Implement peephole optimization passes
 - [ ] Add support for classical control flow
-
-### Medium-term (v0.2.x)
-
 - [ ] Implement template matching using SciRS2 pattern recognition
 - [ ] Add routing algorithms (SABRE, lookahead) with SciRS2 graphs
 - [ ] Create noise-aware circuit optimization
