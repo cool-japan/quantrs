@@ -32,7 +32,7 @@ rand.workspace = true
 rand_chacha.workspace = true
 wide.workspace = true
 fastrand = "2.0.1"
-nalgebra-sparse = "0.9"
+nalgebra-sparse = "0.10"
 
 [features]
 default = ["optimize"]
