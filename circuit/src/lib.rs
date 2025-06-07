@@ -7,6 +7,7 @@ extern crate proc_macro;
 pub mod builder;
 pub mod graph_optimizer;
 pub mod optimizer;
+pub mod optimization;
 
 // Re-exports of commonly used types and traits
 pub mod prelude {
@@ -15,6 +16,15 @@ pub mod prelude {
     pub use crate::optimizer::{
         CircuitOptimizer, HardwareOptimizer, OptimizationPassType, OptimizationResult,
         RedundantGateElimination, SingleQubitGateFusion,
+    };
+    pub use crate::optimization::{
+        CircuitOptimizer2, PassManager, OptimizationLevel, PassConfig,
+        GateProperties, GateCost, GateError, CommutationTable,
+        OptimizationPass, GateCancellation, GateCommutation, GateMerging,
+        DecompositionOptimization, CostBasedOptimization, RotationMerging,
+        TwoQubitOptimization, TemplateMatching, CircuitRewriting,
+        CostModel, HardwareCostModel, AbstractCostModel,
+        CircuitAnalyzer, CircuitMetrics, OptimizationReport,
     };
 }
 

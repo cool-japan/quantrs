@@ -14,6 +14,10 @@ This document outlines the development plans and future tasks for the QuantRS2-C
 - ✅ Circuit depth and gate count analysis
 - ✅ Support for multi-qubit gates
 - ✅ Circuit validation and error checking
+- ✅ Circuit optimization passes using gate properties
+- ✅ Modular optimization framework with multiple passes
+- ✅ Hardware-aware cost models and optimization
+- ✅ Circuit analysis and metrics calculation
 
 ### In Progress
 

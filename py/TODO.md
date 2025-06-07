@@ -23,6 +23,10 @@ This document outlines the development plans and future tasks for the QuantRS2-P
 - ✅ Domain-specific ML applications (HEP, GAN, etc.)
 - ✅ Circuit visualization tools
 - ✅ Noise model integration
+- ✅ Python bindings for all gate operations
+- ✅ Parametric gate support for variational algorithms
+- ✅ Custom gate creation from matrices
+- ✅ NumPy integration for gate operations
 
 ### In Progress
 

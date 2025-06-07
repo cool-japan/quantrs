@@ -17,12 +17,14 @@ num-complex.workspace = true
 thiserror.workspace = true
 petgraph = "0.6"
 fastrand = "2.0"
+rand.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+ndarray.workspace = true
 
 # For device connectivity
 reqwest = { workspace = true, features = ["json"], optional = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"], optional = true }
-serde = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
 chrono = { workspace = true, optional = true }
 async-trait = { workspace = true, optional = true }
 
@@ -34,13 +36,11 @@ bytemuck = { workspace = true, features = ["derive"], optional = true }
 
 [features]
 default = []
-ibm = ["dep:reqwest", "dep:tokio", "dep:serde", "dep:serde_json", "dep:chrono", "dep:async-trait"]
-azure = ["dep:reqwest", "dep:tokio", "dep:serde", "dep:serde_json", "dep:chrono", "dep:async-trait"]
+ibm = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait"]
+azure = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait"]
 aws = [
     "dep:reqwest", 
     "dep:tokio", 
-    "dep:serde", 
-    "dep:serde_json", 
     "dep:chrono", 
     "dep:async-trait",
     "dep:hmac",

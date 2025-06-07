@@ -16,6 +16,12 @@ This document outlines the development plans and future tasks for the QuantRS2-D
 - ✅ Device capability discovery
 - ✅ Circuit validation for hardware constraints
 - ✅ Result post-processing and error mitigation
+- ✅ Device-specific gate calibration data structures
+- ✅ Calibration-based noise modeling
+- ✅ Circuit optimization using calibration data
+- ✅ Gate translation for different hardware backends
+- ✅ Hardware-specific gate implementations
+- ✅ Backend capability querying
 
 ### In Progress
 

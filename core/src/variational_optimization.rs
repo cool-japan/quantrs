@@ -1094,13 +1094,15 @@ mod tests {
         circuit.add_gate(VariationalGate::rz(QubitId(1), "beta".to_string(), 0.5));
         
         let config = OptimizationConfig {
-            max_iterations: 20,
+            max_iterations: 100,
+            f_tol: 1e-6,
+            g_tol: 1e-6,
             ..Default::default()
         };
         
         let mut optimizer = VariationalQuantumOptimizer::new(
             OptimizationMethod::Adam {
-                learning_rate: 0.01,
+                learning_rate: 0.1,
                 beta1: 0.9,
                 beta2: 0.999,
                 epsilon: 1e-8,

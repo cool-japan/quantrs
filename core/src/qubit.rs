@@ -1,8 +1,10 @@
+use serde::{Serialize, Deserialize};
+
 /// A transparent wrapper around a qubit identifier
 ///
 /// This provides type safety for qubit references while
 /// maintaining zero-cost abstraction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[repr(transparent)]
 pub struct QubitId(pub u32);
 

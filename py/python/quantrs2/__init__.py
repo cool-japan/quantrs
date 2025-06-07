@@ -143,6 +143,7 @@ from . import bell_state
 from . import utils
 from . import visualization
 from . import ml
+from . import gates
 
 # Import common utilities
 from .utils import (

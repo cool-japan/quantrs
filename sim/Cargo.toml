@@ -33,6 +33,7 @@ rand_chacha.workspace = true
 wide.workspace = true
 fastrand = "2.0.1"
 nalgebra-sparse = "0.9"
+dashmap = "5.5"
 
 [features]
 default = ["optimize"]

@@ -23,6 +23,9 @@ use quantrs2_sim::statevector::StateVectorSimulator;
 mod visualization;
 use visualization::{create_visualizer_from_operations, PyCircuitVisualizer};
 
+// Include the gates module
+mod gates;
+
 /// Python wrapper for realistic noise models
 #[pyclass]
 struct PyRealisticNoiseModel {
@@ -1278,6 +1281,9 @@ fn _quantrs2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PySimulationResult>()?;
     m.add_class::<PyRealisticNoiseModel>()?;
     m.add_class::<PyCircuitVisualizer>()?;
+    
+    // Register the gates submodule
+    gates::register_module(&m)?;
 
     // Add metadata
     m.setattr(

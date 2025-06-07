@@ -197,7 +197,7 @@ impl BosonOperator {
         let a_dag_squared = a_dag.dot(&a_dag);
         
         // Generator: (z*a² - z*(a†)²)/2
-        let generator = (&a_squared.mapv(|x| z * x / 2.0) - &a_dag_squared.mapv(|x| z.conj() * x / 2.0));
+        let generator = &a_squared.mapv(|x| z * x / 2.0) - &a_dag_squared.mapv(|x| z.conj() * x / 2.0);
         
         // Use matrix exponential via Padé approximation
         matrix_exponential_complex(&generator)

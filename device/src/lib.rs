@@ -15,10 +15,15 @@ pub mod aws;
 pub mod aws_device;
 pub mod azure;
 pub mod azure_device;
+pub mod backend_traits;
+pub mod calibration;
 pub mod ibm;
 pub mod ibm_device;
+pub mod noise_model;
+pub mod optimization;
 pub mod routing;
 pub mod topology;
+pub mod translation;
 pub mod transpiler;
 
 // AWS authentication module
@@ -338,4 +343,28 @@ pub async fn create_aws_device(
 /// Re-exports of commonly used types and traits
 pub mod prelude {
     pub use crate::ibm::IBMCircuitConfig;
+    pub use crate::calibration::{
+        DeviceCalibration, CalibrationManager, CalibrationBuilder,
+        QubitCalibration, SingleQubitGateCalibration, TwoQubitGateCalibration,
+        ReadoutCalibration, DeviceTopology, CrosstalkMatrix,
+        create_ideal_calibration,
+    };
+    pub use crate::noise_model::{
+        CalibrationNoiseModel, NoiseModelBuilder,
+        QubitNoiseParams, GateNoiseParams, ReadoutNoiseParams,
+    };
+    pub use crate::optimization::{
+        CalibrationOptimizer, OptimizationConfig, OptimizationResult,
+        FidelityEstimator, PulseOptimizer,
+    };
+    pub use crate::translation::{
+        HardwareBackend, NativeGateSet, GateTranslator, TranslationOptimizer,
+        OptimizationStrategy, TranslationStats, validate_native_circuit,
+        DecomposedGate, TranslationRule, TranslationMethod,
+    };
+    pub use crate::backend_traits::{
+        HardwareGate, BackendCapabilities, BackendFeatures, BackendPerformance,
+        query_backend_capabilities, ibm_gates, google_gates, ionq_gates,
+        rigetti_gates, honeywell_gates,
+    };
 }

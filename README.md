@@ -200,7 +200,7 @@ QuantRS2 is designed for high performance quantum simulation:
 
 ## Roadmap
 
-See [TODO.md](TODO.md) for the development roadmap and upcoming features.
+See [TODO.md](docs/development/TODO.md) for the development roadmap and upcoming features.
 
 ## Development
 
@@ -254,7 +254,7 @@ cargo build -p quantrs2-sim
 cargo build -p quantrs2-sim --no-default-features
 ```
 
-For more detailed macOS build troubleshooting, see [MACOS_BUILD.md](MACOS_BUILD.md).
+For more detailed macOS build troubleshooting, see [MACOS_BUILD.md](docs/build/MACOS_BUILD.md).
 
 ## Contributing
 
@@ -361,7 +361,7 @@ The `dwave` feature enables symbolic problem formulation for quantum annealing:
 quantrs2-tytan = { version = "0.1.0-alpha.3", features = ["dwave"] }
 ```
 
-This requires the SymEngine library and its dependencies. See [TODO.md](TODO.md) for detailed setup instructions.
+This requires the SymEngine library and its dependencies. See [TODO.md](docs/development/TODO.md) for detailed setup instructions.
 
 ## License
 

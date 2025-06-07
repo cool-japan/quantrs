@@ -23,6 +23,7 @@ rustc-hash = "2.1"
 rand = { workspace = true }
 rayon = { workspace = true }
 ndarray-linalg = { version = "0.16", features = ["intel-mkl"] }
+serde = { workspace = true, features = ["derive"] }
 
 [features]
 default = []

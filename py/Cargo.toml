@@ -25,6 +25,7 @@ quantrs2-ml = { path = "../ml", version = "0.1.0-alpha.3", optional = true }
 pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"] }
 num-complex.workspace = true
 ndarray.workspace = true
+numpy = "0.25"
 
 [features]
 default = []

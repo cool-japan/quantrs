@@ -11,6 +11,8 @@ pub mod dynamic;
 pub mod enhanced_statevector;
 pub mod linalg_ops;
 pub mod simulator;
+pub mod specialized_gates;
+pub mod specialized_simulator;
 pub mod stabilizer;
 pub mod statevector;
 pub mod tensor;
@@ -67,6 +69,18 @@ pub mod prelude {
     pub use crate::simulator::{Simulator, SimulatorResult};
     pub use crate::stabilizer::{is_clifford_circuit, StabilizerGate, StabilizerSimulator};
     pub use crate::statevector::StateVectorSimulator;
+    pub use crate::specialized_gates::{
+        SpecializedGate, specialize_gate,
+        HadamardSpecialized, PauliXSpecialized, PauliYSpecialized, PauliZSpecialized,
+        PhaseSpecialized, SGateSpecialized, TGateSpecialized,
+        RXSpecialized, RYSpecialized, RZSpecialized,
+        CNOTSpecialized, CZSpecialized, SWAPSpecialized, CPhaseSpecialized,
+        ToffoliSpecialized, FredkinSpecialized,
+    };
+    pub use crate::specialized_simulator::{
+        SpecializedStateVectorSimulator, SpecializedSimulatorConfig,
+        SpecializationStats, benchmark_specialization,
+    };
 
     #[cfg(feature = "gpu")]
     pub use crate::gpu_linalg::{benchmark_gpu_linalg, GpuLinearAlgebra};
