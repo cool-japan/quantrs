@@ -2,6 +2,7 @@
 
 use quantrs2_circuit::prelude::*;
 use quantrs2_circuit::optimization::passes::utils;
+use quantrs2_circuit::optimization::PeepholeOptimization;
 use quantrs2_core::gate::{single, multi, GateOp};
 use quantrs2_core::qubit::QubitId;
 
@@ -201,6 +202,110 @@ fn test_custom_pass_creation() {
     
     let pass = TestPass;
     assert_eq!(pass.name(), "Test Pass");
+}
+
+#[test]
+fn test_peephole_optimization() {
+    use std::f64::consts::PI;
+    
+    let peephole = PeepholeOptimization::new(4);
+    let abstract_model = AbstractCostModel::default();
+    
+    // Test X-Y-X pattern
+    {
+        let gates: Vec<Box<dyn GateOp>> = vec![
+            Box::new(single::PauliX { target: QubitId::new(0) }),
+            Box::new(single::PauliY { target: QubitId::new(0) }),
+            Box::new(single::PauliX { target: QubitId::new(0) }),
+        ];
+        
+        let optimized = peephole.apply_to_gates(gates, &abstract_model).unwrap();
+        assert_eq!(optimized.len(), 1); // Should reduce to just Y
+        assert_eq!(optimized[0].name(), "Y");
+    }
+    
+    // Test Euler angle optimization (RZ-RX-RZ with small RX)
+    {
+        let gates: Vec<Box<dyn GateOp>> = vec![
+            Box::new(single::RotationZ { target: QubitId::new(0), theta: PI / 4.0 }),
+            Box::new(single::RotationX { target: QubitId::new(0), theta: 1e-12 }), // Very small
+            Box::new(single::RotationZ { target: QubitId::new(0), theta: PI / 4.0 }),
+        ];
+        
+        let optimized = peephole.apply_to_gates(gates, &abstract_model).unwrap();
+        assert_eq!(optimized.len(), 1); // Should merge to single RZ
+        assert_eq!(optimized[0].name(), "RZ");
+        if let Some(rz) = optimized[0].as_any().downcast_ref::<single::RotationZ>() {
+            assert!((rz.theta - PI / 2.0).abs() < 1e-10);
+        }
+    }
+    
+    // Test pattern that shouldn't match
+    {
+        let gates: Vec<Box<dyn GateOp>> = vec![
+            Box::new(single::Hadamard { target: QubitId::new(0) }),
+            Box::new(single::PauliX { target: QubitId::new(0) }),
+            Box::new(single::PauliZ { target: QubitId::new(0) }),
+        ];
+        
+        let optimized = peephole.apply_to_gates(gates.clone(), &abstract_model).unwrap();
+        assert_eq!(optimized.len(), 3); // No optimization should occur
+    }
+}
+
+#[test]
+fn test_template_matching() {
+    let template_matcher = TemplateMatching::with_advanced_templates();
+    let abstract_model = AbstractCostModel::default();
+    
+    // Test H-Z-H to X pattern
+    {
+        let gates: Vec<Box<dyn GateOp>> = vec![
+            Box::new(single::Hadamard { target: QubitId::new(0) }),
+            Box::new(single::PauliZ { target: QubitId::new(0) }),
+            Box::new(single::Hadamard { target: QubitId::new(0) }),
+        ];
+        
+        let optimized = template_matcher.apply_to_gates(gates, &abstract_model).unwrap();
+        assert_eq!(optimized.len(), 1); // Should reduce to single X gate
+        assert_eq!(optimized[0].name(), "X");
+    }
+    
+    // Test CNOT-CNOT elimination
+    {
+        let gates: Vec<Box<dyn GateOp>> = vec![
+            Box::new(multi::CNOT { control: QubitId::new(0), target: QubitId::new(1) }),
+            Box::new(multi::CNOT { control: QubitId::new(0), target: QubitId::new(1) }),
+        ];
+        
+        let optimized = template_matcher.apply_to_gates(gates, &abstract_model).unwrap();
+        assert_eq!(optimized.len(), 0); // Should eliminate both CNOTs
+    }
+    
+    // Test S-S to Z pattern
+    {
+        let gates: Vec<Box<dyn GateOp>> = vec![
+            Box::new(single::Phase { target: QubitId::new(0) }),
+            Box::new(single::Phase { target: QubitId::new(0) }),
+        ];
+        
+        let optimized = template_matcher.apply_to_gates(gates, &abstract_model).unwrap();
+        assert_eq!(optimized.len(), 1); // Should reduce to single Z gate
+        assert_eq!(optimized[0].name(), "Z");
+    }
+    
+    // Test hardware-specific template matching
+    let ibm_matcher = TemplateMatching::for_hardware("ibm");
+    {
+        let gates: Vec<Box<dyn GateOp>> = vec![
+            Box::new(single::Hadamard { target: QubitId::new(0) }),
+            Box::new(single::PauliZ { target: QubitId::new(0) }),
+            Box::new(single::Hadamard { target: QubitId::new(0) }),
+        ];
+        
+        let optimized = ibm_matcher.apply_to_gates(gates, &abstract_model).unwrap();
+        assert!(optimized.len() <= 1); // Should optimize for IBM hardware
+    }
 }
 
 #[cfg(test)]

@@ -182,6 +182,7 @@ impl PassManager {
             OptimizationLevel::Medium => vec![
                 Box::new(GateCancellation::new(false)),
                 Box::new(GateCommutation::new(5)),
+                Box::new(PeepholeOptimization::new(3)),
                 Box::new(RotationMerging::new(1e-10)),
                 Box::new(GateMerging::new(true, 1e-10)),
                 Box::new(TemplateMatching::new()),
@@ -190,6 +191,7 @@ impl PassManager {
             OptimizationLevel::Heavy => vec![
                 Box::new(GateCancellation::new(true)),
                 Box::new(GateCommutation::new(10)),
+                Box::new(PeepholeOptimization::new(4)),
                 Box::new(RotationMerging::new(1e-12)),
                 Box::new(GateMerging::new(true, 1e-12)),
                 Box::new(DecompositionOptimization::new(config.target_gates.clone(), true)),
@@ -208,6 +210,7 @@ impl PassManager {
         let mut passes: Vec<Box<dyn OptimizationPass>> = vec![
             Box::new(GateCancellation::new(false)),
             Box::new(GateCommutation::new(5)),
+            Box::new(PeepholeOptimization::new(3)),
             Box::new(RotationMerging::new(1e-10)),
         ];
         

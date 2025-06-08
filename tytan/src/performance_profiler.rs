@@ -1,0 +1,1600 @@
+//! Performance profiler for quantum optimization.
+//!
+//! This module provides comprehensive performance profiling tools
+//! for analyzing QUBO generation, solving, and optimization performance.
+
+use crate::sampler::{Sampler, SampleResult, SamplerError, SamplerResult};
+use crate::compile::{Compile, CompiledModel};
+use ndarray::{Array, Array1, Array2, IxDyn};
+use std::collections::{HashMap, BTreeMap};
+use std::time::{Duration, Instant};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::fs::File;
+use std::io::{Write, BufWriter};
+use serde::{Serialize, Deserialize};
+use plotters::prelude::*;
+
+/// Performance profiler
+pub struct PerformanceProfiler {
+    /// Configuration
+    config: ProfilerConfig,
+    /// Profile data
+    profiles: Vec<Profile>,
+    /// Current profile
+    current_profile: Option<ProfileContext>,
+    /// Metrics collectors
+    collectors: Vec<Box<dyn MetricsCollector>>,
+    /// Analysis engine
+    analyzer: PerformanceAnalyzer,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProfilerConfig {
+    /// Enable profiling
+    pub enabled: bool,
+    /// Sampling interval
+    pub sampling_interval: Duration,
+    /// Metrics to collect
+    pub metrics: Vec<MetricType>,
+    /// Memory profiling
+    pub profile_memory: bool,
+    /// CPU profiling
+    pub profile_cpu: bool,
+    /// GPU profiling
+    pub profile_gpu: bool,
+    /// Detailed timing
+    pub detailed_timing: bool,
+    /// Output format
+    pub output_format: OutputFormat,
+    /// Auto-save interval
+    pub auto_save_interval: Option<Duration>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum MetricType {
+    /// Execution time
+    Time,
+    /// Memory usage
+    Memory,
+    /// CPU usage
+    CPU,
+    /// GPU usage
+    GPU,
+    /// Cache metrics
+    Cache,
+    /// I/O metrics
+    IO,
+    /// Network metrics
+    Network,
+    /// Custom metric
+    Custom(String),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum OutputFormat {
+    /// JSON format
+    Json,
+    /// Binary format
+    Binary,
+    /// CSV format
+    Csv,
+    /// Flame graph
+    FlameGraph,
+    /// Chrome tracing format
+    ChromeTrace,
+}
+
+/// Profile data
+#[derive(Debug, Clone)]
+pub struct Profile {
+    /// Profile ID
+    pub id: String,
+    /// Start time
+    pub start_time: Instant,
+    /// End time
+    pub end_time: Option<Instant>,
+    /// Events
+    pub events: Vec<ProfileEvent>,
+    /// Metrics
+    pub metrics: MetricsData,
+    /// Call graph
+    pub call_graph: CallGraph,
+    /// Resource usage
+    pub resource_usage: ResourceUsage,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProfileEvent {
+    /// Event timestamp
+    pub timestamp: Instant,
+    /// Event type
+    pub event_type: EventType,
+    /// Event name
+    pub name: String,
+    /// Duration (if applicable)
+    pub duration: Option<Duration>,
+    /// Associated data
+    pub data: HashMap<String, String>,
+    /// Thread ID
+    pub thread_id: thread::ThreadId,
+}
+
+#[derive(Debug, Clone)]
+pub enum EventType {
+    /// Function call
+    FunctionCall,
+    /// Function return
+    FunctionReturn,
+    /// Memory allocation
+    MemoryAlloc,
+    /// Memory deallocation
+    MemoryFree,
+    /// I/O operation
+    IOOperation,
+    /// Synchronization
+    Synchronization,
+    /// Custom event
+    Custom(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct MetricsData {
+    /// Time metrics
+    pub time_metrics: TimeMetrics,
+    /// Memory metrics
+    pub memory_metrics: MemoryMetrics,
+    /// Computation metrics
+    pub computation_metrics: ComputationMetrics,
+    /// Quality metrics
+    pub quality_metrics: QualityMetrics,
+}
+
+#[derive(Debug, Clone)]
+pub struct TimeMetrics {
+    /// Total execution time
+    pub total_time: Duration,
+    /// QUBO generation time
+    pub qubo_generation_time: Duration,
+    /// Compilation time
+    pub compilation_time: Duration,
+    /// Solving time
+    pub solving_time: Duration,
+    /// Post-processing time
+    pub post_processing_time: Duration,
+    /// Time breakdown by function
+    pub function_times: BTreeMap<String, Duration>,
+    /// Time percentiles
+    pub percentiles: Percentiles,
+}
+
+#[derive(Debug, Clone)]
+pub struct Percentiles {
+    pub p50: Duration,
+    pub p90: Duration,
+    pub p95: Duration,
+    pub p99: Duration,
+    pub p999: Duration,
+}
+
+#[derive(Debug, Clone)]
+pub struct MemoryMetrics {
+    /// Peak memory usage
+    pub peak_memory: usize,
+    /// Average memory usage
+    pub avg_memory: usize,
+    /// Memory allocations
+    pub allocations: usize,
+    /// Memory deallocations
+    pub deallocations: usize,
+    /// Largest allocation
+    pub largest_allocation: usize,
+    /// Memory timeline
+    pub memory_timeline: Vec<(Instant, usize)>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ComputationMetrics {
+    /// FLOPS (floating-point operations per second)
+    pub flops: f64,
+    /// Memory bandwidth
+    pub memory_bandwidth: f64,
+    /// Cache hit rate
+    pub cache_hit_rate: f64,
+    /// Branch prediction accuracy
+    pub branch_prediction_accuracy: f64,
+    /// Vectorization efficiency
+    pub vectorization_efficiency: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct QualityMetrics {
+    /// Solution quality over time
+    pub quality_timeline: Vec<(Duration, f64)>,
+    /// Convergence rate
+    pub convergence_rate: f64,
+    /// Improvement per iteration
+    pub improvement_per_iteration: f64,
+    /// Time to first solution
+    pub time_to_first_solution: Duration,
+    /// Time to best solution
+    pub time_to_best_solution: Duration,
+}
+
+#[derive(Debug, Clone)]
+pub struct CallGraph {
+    /// Nodes (functions)
+    pub nodes: Vec<CallNode>,
+    /// Edges (calls)
+    pub edges: Vec<CallEdge>,
+    /// Root nodes
+    pub roots: Vec<usize>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CallNode {
+    /// Node ID
+    pub id: usize,
+    /// Function name
+    pub name: String,
+    /// Total time
+    pub total_time: Duration,
+    /// Self time
+    pub self_time: Duration,
+    /// Call count
+    pub call_count: usize,
+    /// Average time per call
+    pub avg_time: Duration,
+}
+
+#[derive(Debug, Clone)]
+pub struct CallEdge {
+    /// Source node
+    pub from: usize,
+    /// Target node
+    pub to: usize,
+    /// Number of calls
+    pub call_count: usize,
+    /// Total time
+    pub total_time: Duration,
+}
+
+#[derive(Debug, Clone)]
+pub struct ResourceUsage {
+    /// CPU usage timeline
+    pub cpu_usage: Vec<(Instant, f64)>,
+    /// Memory usage timeline
+    pub memory_usage: Vec<(Instant, usize)>,
+    /// GPU usage timeline
+    pub gpu_usage: Vec<(Instant, f64)>,
+    /// I/O operations
+    pub io_operations: Vec<IOOperation>,
+    /// Network operations
+    pub network_operations: Vec<NetworkOperation>,
+}
+
+#[derive(Debug, Clone)]
+pub struct IOOperation {
+    /// Timestamp
+    pub timestamp: Instant,
+    /// Operation type
+    pub operation: IOOpType,
+    /// Bytes transferred
+    pub bytes: usize,
+    /// Duration
+    pub duration: Duration,
+    /// File/device
+    pub target: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum IOOpType {
+    Read,
+    Write,
+    Seek,
+    Flush,
+}
+
+#[derive(Debug, Clone)]
+pub struct NetworkOperation {
+    /// Timestamp
+    pub timestamp: Instant,
+    /// Operation type
+    pub operation: NetworkOpType,
+    /// Bytes transferred
+    pub bytes: usize,
+    /// Duration
+    pub duration: Duration,
+    /// Remote endpoint
+    pub endpoint: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum NetworkOpType {
+    Send,
+    Receive,
+    Connect,
+    Disconnect,
+}
+
+/// Profile context for current profiling session
+#[derive(Debug)]
+struct ProfileContext {
+    /// Profile being built
+    profile: Profile,
+    /// Stack of function calls
+    call_stack: Vec<(String, Instant)>,
+    /// Active timers
+    timers: HashMap<String, Instant>,
+    /// Metrics buffer
+    metrics_buffer: MetricsBuffer,
+}
+
+#[derive(Debug, Default)]
+struct MetricsBuffer {
+    /// Time samples
+    time_samples: Vec<(String, Duration)>,
+    /// Memory samples
+    memory_samples: Vec<(Instant, usize)>,
+    /// CPU samples
+    cpu_samples: Vec<(Instant, f64)>,
+    /// Custom metrics
+    custom_metrics: HashMap<String, Vec<f64>>,
+}
+
+/// Metrics collector trait
+pub trait MetricsCollector: Send + Sync {
+    /// Collect metrics
+    fn collect(&self) -> Result<MetricsSample, String>;
+    
+    /// Collector name
+    fn name(&self) -> &str;
+    
+    /// Supported metrics
+    fn supported_metrics(&self) -> Vec<MetricType>;
+}
+
+#[derive(Debug, Clone)]
+pub struct MetricsSample {
+    /// Timestamp
+    pub timestamp: Instant,
+    /// Metric values
+    pub values: HashMap<MetricType, f64>,
+}
+
+/// Performance analyzer
+pub struct PerformanceAnalyzer {
+    /// Analysis configuration
+    config: AnalysisConfig,
+    /// Bottleneck detector
+    bottleneck_detector: BottleneckDetector,
+    /// Optimization suggester
+    optimization_suggester: OptimizationSuggester,
+}
+
+#[derive(Debug, Clone)]
+pub struct AnalysisConfig {
+    /// Enable bottleneck detection
+    pub detect_bottlenecks: bool,
+    /// Enable optimization suggestions
+    pub suggest_optimizations: bool,
+    /// Anomaly detection
+    pub detect_anomalies: bool,
+    /// Regression detection
+    pub detect_regressions: bool,
+    /// Baseline comparison
+    pub baseline: Option<Profile>,
+}
+
+/// Bottleneck detector
+pub struct BottleneckDetector {
+    /// Threshold for hot functions
+    hot_function_threshold: f64,
+    /// Memory leak detection
+    detect_memory_leaks: bool,
+    /// Contention detection
+    detect_contention: bool,
+}
+
+/// Optimization suggester
+pub struct OptimizationSuggester {
+    /// Suggestion rules
+    rules: Vec<OptimizationRule>,
+    /// Historical data
+    history: Vec<Profile>,
+}
+
+#[derive(Debug, Clone)]
+pub struct OptimizationRule {
+    /// Rule name
+    pub name: String,
+    /// Condition
+    pub condition: RuleCondition,
+    /// Suggestion
+    pub suggestion: String,
+    /// Potential improvement
+    pub improvement: f64,
+}
+
+#[derive(Debug, Clone)]
+pub enum RuleCondition {
+    /// High function time
+    HighFunctionTime { function: String, threshold: Duration },
+    /// High memory usage
+    HighMemoryUsage { threshold: usize },
+    /// Low cache hit rate
+    LowCacheHitRate { threshold: f64 },
+    /// Custom condition
+    Custom(String),
+}
+
+impl PerformanceProfiler {
+    /// Create new profiler
+    pub fn new(config: ProfilerConfig) -> Self {
+        Self {
+            config,
+            profiles: Vec::new(),
+            current_profile: None,
+            collectors: Self::default_collectors(),
+            analyzer: PerformanceAnalyzer::new(AnalysisConfig {
+                detect_bottlenecks: true,
+                suggest_optimizations: true,
+                detect_anomalies: true,
+                detect_regressions: false,
+                baseline: None,
+            }),
+        }
+    }
+    
+    /// Get default collectors
+    fn default_collectors() -> Vec<Box<dyn MetricsCollector>> {
+        vec![
+            Box::new(TimeCollector),
+            Box::new(MemoryCollector),
+            Box::new(CPUCollector),
+        ]
+    }
+    
+    /// Start profiling
+    pub fn start_profile(&mut self, name: &str) -> Result<(), String> {
+        if !self.config.enabled {
+            return Ok(());
+        }
+        
+        if self.current_profile.is_some() {
+            return Err("Profile already in progress".to_string());
+        }
+        
+        let profile = Profile {
+            id: format!("{}_{}", name, std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()),
+            start_time: Instant::now(),
+            end_time: None,
+            events: Vec::new(),
+            metrics: MetricsData {
+                time_metrics: TimeMetrics {
+                    total_time: Duration::from_secs(0),
+                    qubo_generation_time: Duration::from_secs(0),
+                    compilation_time: Duration::from_secs(0),
+                    solving_time: Duration::from_secs(0),
+                    post_processing_time: Duration::from_secs(0),
+                    function_times: BTreeMap::new(),
+                    percentiles: Percentiles {
+                        p50: Duration::from_secs(0),
+                        p90: Duration::from_secs(0),
+                        p95: Duration::from_secs(0),
+                        p99: Duration::from_secs(0),
+                        p999: Duration::from_secs(0),
+                    },
+                },
+                memory_metrics: MemoryMetrics {
+                    peak_memory: 0,
+                    avg_memory: 0,
+                    allocations: 0,
+                    deallocations: 0,
+                    largest_allocation: 0,
+                    memory_timeline: Vec::new(),
+                },
+                computation_metrics: ComputationMetrics {
+                    flops: 0.0,
+                    memory_bandwidth: 0.0,
+                    cache_hit_rate: 0.0,
+                    branch_prediction_accuracy: 0.0,
+                    vectorization_efficiency: 0.0,
+                },
+                quality_metrics: QualityMetrics {
+                    quality_timeline: Vec::new(),
+                    convergence_rate: 0.0,
+                    improvement_per_iteration: 0.0,
+                    time_to_first_solution: Duration::from_secs(0),
+                    time_to_best_solution: Duration::from_secs(0),
+                },
+            },
+            call_graph: CallGraph {
+                nodes: Vec::new(),
+                edges: Vec::new(),
+                roots: Vec::new(),
+            },
+            resource_usage: ResourceUsage {
+                cpu_usage: Vec::new(),
+                memory_usage: Vec::new(),
+                gpu_usage: Vec::new(),
+                io_operations: Vec::new(),
+                network_operations: Vec::new(),
+            },
+        };
+        
+        self.current_profile = Some(ProfileContext {
+            profile,
+            call_stack: Vec::new(),
+            timers: HashMap::new(),
+            metrics_buffer: MetricsBuffer::default(),
+        });
+        
+        // Start metrics collection thread
+        if self.config.sampling_interval > Duration::from_secs(0) {
+            self.start_metrics_collection()?;
+        }
+        
+        Ok(())
+    }
+    
+    /// Stop profiling
+    pub fn stop_profile(&mut self) -> Result<Profile, String> {
+        if !self.config.enabled {
+            return Err("Profiling not enabled".to_string());
+        }
+        
+        let mut context = self.current_profile.take()
+            .ok_or("No profile in progress")?;
+        
+        context.profile.end_time = Some(Instant::now());
+        
+        // Calculate total time
+        context.profile.metrics.time_metrics.total_time = 
+            context.profile.end_time.unwrap() - context.profile.start_time;
+        
+        // Process metrics buffer
+        self.process_metrics_buffer(&mut context)?;
+        
+        // Build call graph
+        self.build_call_graph(&mut context.profile)?;
+        
+        // Calculate percentiles
+        self.calculate_percentiles(&mut context.profile)?;
+        
+        // Store profile
+        self.profiles.push(context.profile.clone());
+        
+        Ok(context.profile)
+    }
+    
+    /// Record function entry
+    pub fn enter_function(&mut self, name: &str) -> FunctionGuard {
+        if !self.config.enabled {
+            return FunctionGuard { profiler: None, name: String::new() };
+        }
+        
+        if let Some(ref mut context) = self.current_profile {
+            let event = ProfileEvent {
+                timestamp: Instant::now(),
+                event_type: EventType::FunctionCall,
+                name: name.to_string(),
+                duration: None,
+                data: HashMap::new(),
+                thread_id: thread::current().id(),
+            };
+            
+            context.profile.events.push(event);
+            context.call_stack.push((name.to_string(), Instant::now()));
+        }
+        
+        FunctionGuard {
+            profiler: Some(self as *mut Self),
+            name: name.to_string(),
+        }
+    }
+    
+    /// Record function exit
+    fn exit_function(&mut self, name: &str) {
+        if let Some(ref mut context) = self.current_profile {
+            if let Some((_, enter_time)) = context.call_stack.pop() {
+                let duration = Instant::now() - enter_time;
+                
+                let event = ProfileEvent {
+                    timestamp: Instant::now(),
+                    event_type: EventType::FunctionReturn,
+                    name: name.to_string(),
+                    duration: Some(duration),
+                    data: HashMap::new(),
+                    thread_id: thread::current().id(),
+                };
+                
+                context.profile.events.push(event);
+                
+                // Update function times
+                *context.profile.metrics.time_metrics.function_times
+                    .entry(name.to_string())
+                    .or_insert(Duration::from_secs(0)) += duration;
+            }
+        }
+    }
+    
+    /// Start timer
+    pub fn start_timer(&mut self, name: &str) {
+        if !self.config.enabled {
+            return;
+        }
+        
+        if let Some(ref mut context) = self.current_profile {
+            context.timers.insert(name.to_string(), Instant::now());
+        }
+    }
+    
+    /// Stop timer
+    pub fn stop_timer(&mut self, name: &str) -> Option<Duration> {
+        if !self.config.enabled {
+            return None;
+        }
+        
+        if let Some(ref mut context) = self.current_profile {
+            if let Some(start_time) = context.timers.remove(name) {
+                let duration = Instant::now() - start_time;
+                
+                // Store in appropriate metric
+                match name {
+                    "qubo_generation" => {
+                        context.profile.metrics.time_metrics.qubo_generation_time = duration;
+                    }
+                    "compilation" => {
+                        context.profile.metrics.time_metrics.compilation_time = duration;
+                    }
+                    "solving" => {
+                        context.profile.metrics.time_metrics.solving_time = duration;
+                    }
+                    "post_processing" => {
+                        context.profile.metrics.time_metrics.post_processing_time = duration;
+                    }
+                    _ => {
+                        context.metrics_buffer.time_samples.push((name.to_string(), duration));
+                    }
+                }
+                
+                return Some(duration);
+            }
+        }
+        
+        None
+    }
+    
+    /// Record memory allocation
+    pub fn record_allocation(&mut self, size: usize) {
+        if !self.config.enabled || !self.config.profile_memory {
+            return;
+        }
+        
+        if let Some(ref mut context) = self.current_profile {
+            context.profile.metrics.memory_metrics.allocations += 1;
+            context.profile.metrics.memory_metrics.largest_allocation = 
+                context.profile.metrics.memory_metrics.largest_allocation.max(size);
+            
+            let event = ProfileEvent {
+                timestamp: Instant::now(),
+                event_type: EventType::MemoryAlloc,
+                name: "allocation".to_string(),
+                duration: None,
+                data: {
+                    let mut data = HashMap::new();
+                    data.insert("size".to_string(), size.to_string());
+                    data
+                },
+                thread_id: thread::current().id(),
+            };
+            
+            context.profile.events.push(event);
+        }
+    }
+    
+    /// Record memory deallocation
+    pub fn record_deallocation(&mut self, size: usize) {
+        if !self.config.enabled || !self.config.profile_memory {
+            return;
+        }
+        
+        if let Some(ref mut context) = self.current_profile {
+            context.profile.metrics.memory_metrics.deallocations += 1;
+            
+            let event = ProfileEvent {
+                timestamp: Instant::now(),
+                event_type: EventType::MemoryFree,
+                name: "deallocation".to_string(),
+                duration: None,
+                data: {
+                    let mut data = HashMap::new();
+                    data.insert("size".to_string(), size.to_string());
+                    data
+                },
+                thread_id: thread::current().id(),
+            };
+            
+            context.profile.events.push(event);
+        }
+    }
+    
+    /// Record solution quality
+    pub fn record_solution_quality(&mut self, quality: f64) {
+        if !self.config.enabled {
+            return;
+        }
+        
+        if let Some(ref mut context) = self.current_profile {
+            let elapsed = Instant::now() - context.profile.start_time;
+            context.profile.metrics.quality_metrics.quality_timeline.push((elapsed, quality));
+            
+            // Update time to first solution
+            if context.profile.metrics.quality_metrics.quality_timeline.len() == 1 {
+                context.profile.metrics.quality_metrics.time_to_first_solution = elapsed;
+            }
+        }
+    }
+    
+    /// Start metrics collection
+    fn start_metrics_collection(&self) -> Result<(), String> {
+        // This would spawn a thread to collect metrics periodically
+        // Simplified for now
+        Ok(())
+    }
+    
+    /// Process metrics buffer
+    fn process_metrics_buffer(&self, context: &mut ProfileContext) -> Result<(), String> {
+        // Calculate memory statistics
+        if !context.metrics_buffer.memory_samples.is_empty() {
+            let total_memory: usize = context.metrics_buffer.memory_samples.iter()
+                .map(|(_, mem)| mem)
+                .sum();
+            context.profile.metrics.memory_metrics.avg_memory = 
+                total_memory / context.metrics_buffer.memory_samples.len();
+            
+            context.profile.metrics.memory_metrics.peak_memory = 
+                context.metrics_buffer.memory_samples.iter()
+                    .map(|(_, mem)| *mem)
+                    .max()
+                    .unwrap_or(0);
+            
+            context.profile.metrics.memory_metrics.memory_timeline = 
+                context.metrics_buffer.memory_samples.clone();
+        }
+        
+        // Calculate CPU statistics
+        if !context.metrics_buffer.cpu_samples.is_empty() {
+            context.profile.resource_usage.cpu_usage = 
+                context.metrics_buffer.cpu_samples.clone();
+        }
+        
+        Ok(())
+    }
+    
+    /// Build call graph
+    fn build_call_graph(&self, profile: &mut Profile) -> Result<(), String> {
+        let mut node_map: HashMap<String, usize> = HashMap::new();
+        let mut nodes = Vec::new();
+        let mut edges: HashMap<(usize, usize), CallEdge> = HashMap::new();
+        
+        // Create nodes
+        for (func_name, &total_time) in &profile.metrics.time_metrics.function_times {
+            let node_id = nodes.len();
+            node_map.insert(func_name.clone(), node_id);
+            
+            nodes.push(CallNode {
+                id: node_id,
+                name: func_name.clone(),
+                total_time,
+                self_time: total_time, // Will be adjusted
+                call_count: 0, // Will be counted
+                avg_time: Duration::from_secs(0), // Will be calculated
+            });
+        }
+        
+        // Count calls and build edges
+        let mut call_stack: Vec<usize> = Vec::new();
+        
+        for event in &profile.events {
+            match event.event_type {
+                EventType::FunctionCall => {
+                    if let Some(&node_id) = node_map.get(&event.name) {
+                        nodes[node_id].call_count += 1;
+                        
+                        if let Some(&parent_id) = call_stack.last() {
+                            let edge_key = (parent_id, node_id);
+                            edges.entry(edge_key)
+                                .and_modify(|e| e.call_count += 1)
+                                .or_insert(CallEdge {
+                                    from: parent_id,
+                                    to: node_id,
+                                    call_count: 1,
+                                    total_time: Duration::from_secs(0),
+                                });
+                        }
+                        
+                        call_stack.push(node_id);
+                    }
+                }
+                EventType::FunctionReturn => {
+                    call_stack.pop();
+                }
+                _ => {}
+            }
+        }
+        
+        // Calculate average times
+        for node in &mut nodes {
+            if node.call_count > 0 {
+                node.avg_time = node.total_time / node.call_count as u32;
+            }
+        }
+        
+        // Find root nodes
+        let mut has_parent = vec![false; nodes.len()];
+        for edge in edges.values() {
+            has_parent[edge.to] = true;
+        }
+        
+        let roots: Vec<usize> = (0..nodes.len())
+            .filter(|&i| !has_parent[i])
+            .collect();
+        
+        profile.call_graph = CallGraph {
+            nodes,
+            edges: edges.into_values().collect(),
+            roots,
+        };
+        
+        Ok(())
+    }
+    
+    /// Calculate percentiles
+    fn calculate_percentiles(&self, profile: &mut Profile) -> Result<(), String> {
+        let mut durations: Vec<Duration> = profile.events.iter()
+            .filter_map(|e| e.duration)
+            .collect();
+        
+        if durations.is_empty() {
+            return Ok(());
+        }
+        
+        durations.sort();
+        
+        let len = durations.len();
+        profile.metrics.time_metrics.percentiles = Percentiles {
+            p50: durations[len * 50 / 100],
+            p90: durations[len * 90 / 100],
+            p95: durations[len * 95 / 100],
+            p99: durations[len * 99 / 100],
+            p999: durations[len.saturating_sub(1)],
+        };
+        
+        Ok(())
+    }
+    
+    /// Analyze profile
+    pub fn analyze_profile(&self, profile: &Profile) -> AnalysisReport {
+        self.analyzer.analyze(profile)
+    }
+    
+    /// Compare profiles
+    pub fn compare_profiles(&self, profile1: &Profile, profile2: &Profile) -> ComparisonReport {
+        ComparisonReport {
+            time_comparison: self.compare_time_metrics(
+                &profile1.metrics.time_metrics,
+                &profile2.metrics.time_metrics,
+            ),
+            memory_comparison: self.compare_memory_metrics(
+                &profile1.metrics.memory_metrics,
+                &profile2.metrics.memory_metrics,
+            ),
+            quality_comparison: self.compare_quality_metrics(
+                &profile1.metrics.quality_metrics,
+                &profile2.metrics.quality_metrics,
+            ),
+            regressions: Vec::new(),
+            improvements: Vec::new(),
+        }
+    }
+    
+    /// Compare time metrics
+    fn compare_time_metrics(&self, m1: &TimeMetrics, m2: &TimeMetrics) -> TimeComparison {
+        TimeComparison {
+            total_time_diff: m2.total_time.as_secs_f64() - m1.total_time.as_secs_f64(),
+            total_time_ratio: m2.total_time.as_secs_f64() / m1.total_time.as_secs_f64(),
+            qubo_time_diff: m2.qubo_generation_time.as_secs_f64() - m1.qubo_generation_time.as_secs_f64(),
+            solving_time_diff: m2.solving_time.as_secs_f64() - m1.solving_time.as_secs_f64(),
+            function_diffs: BTreeMap::new(), // TODO: implement
+        }
+    }
+    
+    /// Compare memory metrics
+    fn compare_memory_metrics(&self, m1: &MemoryMetrics, m2: &MemoryMetrics) -> MemoryComparison {
+        MemoryComparison {
+            peak_memory_diff: m2.peak_memory as i64 - m1.peak_memory as i64,
+            peak_memory_ratio: m2.peak_memory as f64 / m1.peak_memory as f64,
+            avg_memory_diff: m2.avg_memory as i64 - m1.avg_memory as i64,
+            allocations_diff: m2.allocations as i64 - m1.allocations as i64,
+        }
+    }
+    
+    /// Compare quality metrics
+    fn compare_quality_metrics(&self, m1: &QualityMetrics, m2: &QualityMetrics) -> QualityComparison {
+        QualityComparison {
+            convergence_rate_diff: m2.convergence_rate - m1.convergence_rate,
+            time_to_best_diff: m2.time_to_best_solution.as_secs_f64() - 
+                               m1.time_to_best_solution.as_secs_f64(),
+            final_quality_diff: 0.0, // TODO: implement
+        }
+    }
+    
+    /// Generate report
+    pub fn generate_report(&self, profile: &Profile, format: &OutputFormat) -> Result<String, String> {
+        match format {
+            OutputFormat::Json => self.generate_json_report(profile),
+            OutputFormat::Csv => self.generate_csv_report(profile),
+            OutputFormat::FlameGraph => self.generate_flame_graph(profile),
+            OutputFormat::ChromeTrace => self.generate_chrome_trace(profile),
+            _ => Err("Format not implemented".to_string()),
+        }
+    }
+    
+    /// Generate JSON report
+    fn generate_json_report(&self, profile: &Profile) -> Result<String, String> {
+        #[derive(Serialize)]
+        struct JsonReport {
+            id: String,
+            start_time: String,
+            total_time: f64,
+            metrics: MetricsData,
+        }
+        
+        let report = JsonReport {
+            id: profile.id.clone(),
+            start_time: format!("{:?}", profile.start_time),
+            total_time: profile.metrics.time_metrics.total_time.as_secs_f64(),
+            metrics: profile.metrics.clone(),
+        };
+        
+        serde_json::to_string_pretty(&report)
+            .map_err(|e| format!("JSON serialization error: {}", e))
+    }
+    
+    /// Generate CSV report
+    fn generate_csv_report(&self, profile: &Profile) -> Result<String, String> {
+        let mut csv = String::new();
+        
+        csv.push_str("function,total_time_ms,call_count,avg_time_ms\n");
+        
+        for node in &profile.call_graph.nodes {
+            csv.push_str(&format!("{},{},{},{}\n",
+                node.name,
+                node.total_time.as_millis(),
+                node.call_count,
+                node.avg_time.as_millis()
+            ));
+        }
+        
+        Ok(csv)
+    }
+    
+    /// Generate flame graph
+    fn generate_flame_graph(&self, profile: &Profile) -> Result<String, String> {
+        // Simplified flame graph generation
+        let mut stacks = Vec::new();
+        
+        for node in &profile.call_graph.nodes {
+            let stack = vec![node.name.clone()];
+            let value = node.self_time.as_micros() as usize;
+            stacks.push((stack, value));
+        }
+        
+        // Would use inferno crate for actual flame graph generation
+        Ok(format!("Flame graph with {} stacks", stacks.len()))
+    }
+    
+    /// Generate Chrome trace format
+    fn generate_chrome_trace(&self, profile: &Profile) -> Result<String, String> {
+        #[derive(Serialize)]
+        struct TraceEvent {
+            name: String,
+            cat: String,
+            ph: String,
+            ts: u64,
+            dur: Option<u64>,
+            pid: u32,
+            tid: String,
+        }
+        
+        let mut events = Vec::new();
+        
+        for event in &profile.events {
+            let trace_event = TraceEvent {
+                name: event.name.clone(),
+                cat: "function".to_string(),
+                ph: match event.event_type {
+                    EventType::FunctionCall => "B".to_string(),
+                    EventType::FunctionReturn => "E".to_string(),
+                    _ => "i".to_string(),
+                },
+                ts: event.timestamp.elapsed().as_micros() as u64,
+                dur: event.duration.map(|d| d.as_micros() as u64),
+                pid: std::process::id(),
+                tid: format!("{:?}", event.thread_id),
+            };
+            
+            events.push(trace_event);
+        }
+        
+        serde_json::to_string(&events)
+            .map_err(|e| format!("JSON serialization error: {}", e))
+    }
+    
+    /// Visualize profile
+    pub fn visualize_profile(&self, profile: &Profile, output_path: &str) -> Result<(), String> {
+        let root = BitMapBackend::new(output_path, (1024, 768)).into_drawing_area();
+        root.fill(&WHITE).map_err(|e| format!("Drawing error: {}", e))?;
+        
+        let mut chart = ChartBuilder::on(&root)
+            .caption("Performance Profile", ("sans-serif", 40))
+            .margin(10)
+            .x_label_area_size(30)
+            .y_label_area_size(40)
+            .build_cartesian_2d(
+                0f64..profile.metrics.time_metrics.total_time.as_secs_f64(),
+                0f64..100f64,
+            )
+            .map_err(|e| format!("Chart error: {}", e))?;
+        
+        chart.configure_mesh().draw().map_err(|e| format!("Mesh error: {}", e))?;
+        
+        // Plot CPU usage
+        if !profile.resource_usage.cpu_usage.is_empty() {
+            let cpu_data: Vec<(f64, f64)> = profile.resource_usage.cpu_usage.iter()
+                .map(|(t, usage)| {
+                    (t.duration_since(profile.start_time).as_secs_f64(), *usage)
+                })
+                .collect();
+            
+            chart.draw_series(LineSeries::new(cpu_data, &RED))
+                .map_err(|e| format!("Series error: {}", e))?
+                .label("CPU Usage")
+                .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &RED));
+        }
+        
+        chart.configure_series_labels()
+            .background_style(&WHITE.mix(0.8))
+            .border_style(&BLACK)
+            .draw()
+            .map_err(|e| format!("Legend error: {}", e))?;
+        
+        root.present().map_err(|e| format!("Present error: {}", e))?;
+        
+        Ok(())
+    }
+}
+
+/// RAII guard for function profiling
+pub struct FunctionGuard {
+    profiler: Option<*mut PerformanceProfiler>,
+    name: String,
+}
+
+impl Drop for FunctionGuard {
+    fn drop(&mut self) {
+        if let Some(profiler_ptr) = self.profiler {
+            unsafe {
+                (*profiler_ptr).exit_function(&self.name);
+            }
+        }
+    }
+}
+
+unsafe impl Send for FunctionGuard {}
+
+impl PerformanceAnalyzer {
+    /// Create new analyzer
+    pub fn new(config: AnalysisConfig) -> Self {
+        Self {
+            config,
+            bottleneck_detector: BottleneckDetector {
+                hot_function_threshold: 0.1, // 10% of total time
+                detect_memory_leaks: true,
+                detect_contention: true,
+            },
+            optimization_suggester: OptimizationSuggester {
+                rules: Self::default_optimization_rules(),
+                history: Vec::new(),
+            },
+        }
+    }
+    
+    /// Default optimization rules
+    fn default_optimization_rules() -> Vec<OptimizationRule> {
+        vec![
+            OptimizationRule {
+                name: "Hot function optimization".to_string(),
+                condition: RuleCondition::HighFunctionTime {
+                    function: "any".to_string(),
+                    threshold: Duration::from_millis(100),
+                },
+                suggestion: "Consider optimizing this function or caching results".to_string(),
+                improvement: 0.2,
+            },
+            OptimizationRule {
+                name: "Memory optimization".to_string(),
+                condition: RuleCondition::HighMemoryUsage {
+                    threshold: 1024 * 1024 * 1024, // 1GB
+                },
+                suggestion: "Consider using more memory-efficient data structures".to_string(),
+                improvement: 0.15,
+            },
+            OptimizationRule {
+                name: "Cache optimization".to_string(),
+                condition: RuleCondition::LowCacheHitRate {
+                    threshold: 0.8,
+                },
+                suggestion: "Consider improving data locality or cache-friendly algorithms".to_string(),
+                improvement: 0.1,
+            },
+        ]
+    }
+    
+    /// Analyze profile
+    pub fn analyze(&self, profile: &Profile) -> AnalysisReport {
+        let mut report = AnalysisReport {
+            bottlenecks: Vec::new(),
+            optimizations: Vec::new(),
+            anomalies: Vec::new(),
+            summary: AnalysisSummary {
+                total_time: profile.metrics.time_metrics.total_time,
+                peak_memory: profile.metrics.memory_metrics.peak_memory,
+                hot_functions: Vec::new(),
+                critical_path: Vec::new(),
+            },
+        };
+        
+        // Detect bottlenecks
+        if self.config.detect_bottlenecks {
+            report.bottlenecks = self.detect_bottlenecks(profile);
+        }
+        
+        // Suggest optimizations
+        if self.config.suggest_optimizations {
+            report.optimizations = self.suggest_optimizations(profile);
+        }
+        
+        // Detect anomalies
+        if self.config.detect_anomalies {
+            report.anomalies = self.detect_anomalies(profile);
+        }
+        
+        // Find hot functions
+        report.summary.hot_functions = self.find_hot_functions(profile);
+        
+        // Find critical path
+        report.summary.critical_path = self.find_critical_path(profile);
+        
+        report
+    }
+    
+    /// Detect bottlenecks
+    fn detect_bottlenecks(&self, profile: &Profile) -> Vec<Bottleneck> {
+        let mut bottlenecks = Vec::new();
+        
+        // CPU bottlenecks
+        for node in &profile.call_graph.nodes {
+            let time_percentage = node.total_time.as_secs_f64() / 
+                profile.metrics.time_metrics.total_time.as_secs_f64();
+            
+            if time_percentage > self.bottleneck_detector.hot_function_threshold {
+                bottlenecks.push(Bottleneck {
+                    bottleneck_type: BottleneckType::CPU,
+                    location: node.name.clone(),
+                    severity: if time_percentage > 0.5 { Severity::High } 
+                             else if time_percentage > 0.3 { Severity::Medium }
+                             else { Severity::Low },
+                    impact: time_percentage,
+                    description: format!("Function uses {:.1}% of total time", time_percentage * 100.0),
+                });
+            }
+        }
+        
+        // Memory bottlenecks
+        if self.bottleneck_detector.detect_memory_leaks {
+            let alloc_dealloc_diff = profile.metrics.memory_metrics.allocations as i64 - 
+                profile.metrics.memory_metrics.deallocations as i64;
+            
+            if alloc_dealloc_diff > 1000 {
+                bottlenecks.push(Bottleneck {
+                    bottleneck_type: BottleneckType::Memory,
+                    location: "global".to_string(),
+                    severity: Severity::High,
+                    impact: alloc_dealloc_diff as f64 / profile.metrics.memory_metrics.allocations as f64,
+                    description: format!("Potential memory leak: {} unfreed allocations", alloc_dealloc_diff),
+                });
+            }
+        }
+        
+        bottlenecks
+    }
+    
+    /// Suggest optimizations
+    fn suggest_optimizations(&self, profile: &Profile) -> Vec<OptimizationSuggestion> {
+        let mut suggestions = Vec::new();
+        
+        for rule in &self.optimization_suggester.rules {
+            if self.check_rule_condition(&rule.condition, profile) {
+                suggestions.push(OptimizationSuggestion {
+                    title: rule.name.clone(),
+                    description: rule.suggestion.clone(),
+                    expected_improvement: rule.improvement,
+                    implementation_effort: ImplementationEffort::Medium,
+                    priority: Priority::High,
+                });
+            }
+        }
+        
+        suggestions
+    }
+    
+    /// Check rule condition
+    fn check_rule_condition(&self, condition: &RuleCondition, profile: &Profile) -> bool {
+        match condition {
+            RuleCondition::HighFunctionTime { function, threshold } => {
+                if function == "any" {
+                    profile.call_graph.nodes.iter()
+                        .any(|n| n.total_time > *threshold)
+                } else {
+                    profile.call_graph.nodes.iter()
+                        .any(|n| n.name == *function && n.total_time > *threshold)
+                }
+            }
+            RuleCondition::HighMemoryUsage { threshold } => {
+                profile.metrics.memory_metrics.peak_memory > *threshold
+            }
+            RuleCondition::LowCacheHitRate { threshold } => {
+                profile.metrics.computation_metrics.cache_hit_rate < *threshold
+            }
+            RuleCondition::Custom(_) => false,
+        }
+    }
+    
+    /// Detect anomalies
+    fn detect_anomalies(&self, profile: &Profile) -> Vec<Anomaly> {
+        let mut anomalies = Vec::new();
+        
+        // Check for unusual time distributions
+        for node in &profile.call_graph.nodes {
+            if node.call_count > 10 {
+                let avg_time = node.avg_time.as_secs_f64();
+                let total_time = node.total_time.as_secs_f64();
+                let expected_total = avg_time * node.call_count as f64;
+                
+                if (total_time - expected_total).abs() / expected_total > 0.5 {
+                    anomalies.push(Anomaly {
+                        anomaly_type: AnomalyType::Performance,
+                        location: node.name.clone(),
+                        description: "Unusual time distribution detected".to_string(),
+                        confidence: 0.8,
+                    });
+                }
+            }
+        }
+        
+        anomalies
+    }
+    
+    /// Find hot functions
+    fn find_hot_functions(&self, profile: &Profile) -> Vec<(String, f64)> {
+        let total_time = profile.metrics.time_metrics.total_time.as_secs_f64();
+        
+        let mut hot_functions: Vec<_> = profile.call_graph.nodes.iter()
+            .map(|n| (n.name.clone(), n.total_time.as_secs_f64() / total_time))
+            .collect();
+        
+        hot_functions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        hot_functions.truncate(10);
+        
+        hot_functions
+    }
+    
+    /// Find critical path
+    fn find_critical_path(&self, profile: &Profile) -> Vec<String> {
+        // Simplified critical path - longest execution path
+        let mut path = Vec::new();
+        
+        if let Some(&root) = profile.call_graph.roots.first() {
+            let mut current = root;
+            path.push(profile.call_graph.nodes[current].name.clone());
+            
+            // Follow the most expensive child at each level
+            while let Some(edge) = profile.call_graph.edges.iter()
+                .filter(|e| e.from == current)
+                .max_by_key(|e| profile.call_graph.nodes[e.to].total_time) {
+                
+                current = edge.to;
+                path.push(profile.call_graph.nodes[current].name.clone());
+            }
+        }
+        
+        path
+    }
+}
+
+/// Analysis report
+#[derive(Debug, Clone)]
+pub struct AnalysisReport {
+    pub bottlenecks: Vec<Bottleneck>,
+    pub optimizations: Vec<OptimizationSuggestion>,
+    pub anomalies: Vec<Anomaly>,
+    pub summary: AnalysisSummary,
+}
+
+#[derive(Debug, Clone)]
+pub struct Bottleneck {
+    pub bottleneck_type: BottleneckType,
+    pub location: String,
+    pub severity: Severity,
+    pub impact: f64,
+    pub description: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum BottleneckType {
+    CPU,
+    Memory,
+    IO,
+    Network,
+    Contention,
+}
+
+#[derive(Debug, Clone)]
+pub enum Severity {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+#[derive(Debug, Clone)]
+pub struct OptimizationSuggestion {
+    pub title: String,
+    pub description: String,
+    pub expected_improvement: f64,
+    pub implementation_effort: ImplementationEffort,
+    pub priority: Priority,
+}
+
+#[derive(Debug, Clone)]
+pub enum ImplementationEffort {
+    Low,
+    Medium,
+    High,
+}
+
+#[derive(Debug, Clone)]
+pub enum Priority {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+#[derive(Debug, Clone)]
+pub struct Anomaly {
+    pub anomaly_type: AnomalyType,
+    pub location: String,
+    pub description: String,
+    pub confidence: f64,
+}
+
+#[derive(Debug, Clone)]
+pub enum AnomalyType {
+    Performance,
+    Memory,
+    Behavior,
+}
+
+#[derive(Debug, Clone)]
+pub struct AnalysisSummary {
+    pub total_time: Duration,
+    pub peak_memory: usize,
+    pub hot_functions: Vec<(String, f64)>,
+    pub critical_path: Vec<String>,
+}
+
+/// Comparison report
+#[derive(Debug, Clone)]
+pub struct ComparisonReport {
+    pub time_comparison: TimeComparison,
+    pub memory_comparison: MemoryComparison,
+    pub quality_comparison: QualityComparison,
+    pub regressions: Vec<Regression>,
+    pub improvements: Vec<Improvement>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TimeComparison {
+    pub total_time_diff: f64,
+    pub total_time_ratio: f64,
+    pub qubo_time_diff: f64,
+    pub solving_time_diff: f64,
+    pub function_diffs: BTreeMap<String, f64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MemoryComparison {
+    pub peak_memory_diff: i64,
+    pub peak_memory_ratio: f64,
+    pub avg_memory_diff: i64,
+    pub allocations_diff: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct QualityComparison {
+    pub convergence_rate_diff: f64,
+    pub time_to_best_diff: f64,
+    pub final_quality_diff: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct Regression {
+    pub metric: String,
+    pub old_value: f64,
+    pub new_value: f64,
+    pub change_percentage: f64,
+    pub severity: Severity,
+}
+
+#[derive(Debug, Clone)]
+pub struct Improvement {
+    pub metric: String,
+    pub old_value: f64,
+    pub new_value: f64,
+    pub change_percentage: f64,
+}
+
+/// Default collectors
+struct TimeCollector;
+
+impl MetricsCollector for TimeCollector {
+    fn collect(&self) -> Result<MetricsSample, String> {
+        Ok(MetricsSample {
+            timestamp: Instant::now(),
+            values: HashMap::new(),
+        })
+    }
+    
+    fn name(&self) -> &str {
+        "TimeCollector"
+    }
+    
+    fn supported_metrics(&self) -> Vec<MetricType> {
+        vec![MetricType::Time]
+    }
+}
+
+struct MemoryCollector;
+
+impl MetricsCollector for MemoryCollector {
+    fn collect(&self) -> Result<MetricsSample, String> {
+        // Would use system APIs to get actual memory usage
+        let mut values = HashMap::new();
+        values.insert(MetricType::Memory, 0.0);
+        
+        Ok(MetricsSample {
+            timestamp: Instant::now(),
+            values,
+        })
+    }
+    
+    fn name(&self) -> &str {
+        "MemoryCollector"
+    }
+    
+    fn supported_metrics(&self) -> Vec<MetricType> {
+        vec![MetricType::Memory]
+    }
+}
+
+struct CPUCollector;
+
+impl MetricsCollector for CPUCollector {
+    fn collect(&self) -> Result<MetricsSample, String> {
+        // Would use system APIs to get actual CPU usage
+        let mut values = HashMap::new();
+        values.insert(MetricType::CPU, 0.0);
+        
+        Ok(MetricsSample {
+            timestamp: Instant::now(),
+            values,
+        })
+    }
+    
+    fn name(&self) -> &str {
+        "CPUCollector"
+    }
+    
+    fn supported_metrics(&self) -> Vec<MetricType> {
+        vec![MetricType::CPU]
+    }
+}
+
+/// Profiling macros
+#[macro_export]
+macro_rules! profile {
+    ($profiler:expr, $name:expr) => {
+        $profiler.enter_function($name)
+    };
+}
+
+#[macro_export]
+macro_rules! time_it {
+    ($profiler:expr, $name:expr, $code:block) => {{
+        $profiler.start_timer($name);
+        let result = $code;
+        $profiler.stop_timer($name);
+        result
+    }};
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_performance_profiler() {
+        let config = ProfilerConfig {
+            enabled: true,
+            sampling_interval: Duration::from_millis(10),
+            metrics: vec![MetricType::Time, MetricType::Memory],
+            profile_memory: true,
+            profile_cpu: true,
+            profile_gpu: false,
+            detailed_timing: true,
+            output_format: OutputFormat::Json,
+            auto_save_interval: None,
+        };
+        
+        let mut profiler = PerformanceProfiler::new(config);
+        
+        // Start profiling
+        let result = profiler.start_profile("test_profile");
+        assert!(result.is_ok());
+        
+        // Simulate some work
+        {
+            let _guard = profiler.enter_function("test_function");
+            profiler.start_timer("computation");
+            thread::sleep(Duration::from_millis(10));
+            profiler.stop_timer("computation");
+            
+            profiler.record_allocation(1024);
+            profiler.record_solution_quality(0.5);
+            profiler.record_deallocation(1024);
+        }
+        
+        // Stop profiling
+        let profile = profiler.stop_profile();
+        assert!(profile.is_ok());
+        
+        let profile = profile.unwrap();
+        assert!(!profile.events.is_empty());
+        assert!(profile.metrics.time_metrics.total_time > Duration::from_secs(0));
+        
+        // Analyze profile
+        let report = profiler.analyze_profile(&profile);
+        assert!(report.summary.total_time > Duration::from_secs(0));
+        
+        // Generate report
+        let json_report = profiler.generate_report(&profile, &OutputFormat::Json);
+        assert!(json_report.is_ok());
+    }
+}

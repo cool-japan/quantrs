@@ -43,10 +43,18 @@ pub mod chain_break;
 pub mod compression;
 pub mod dwave;
 pub mod embedding;
+pub mod flux_bias;
+#[cfg(feature = "fujitsu")]
+pub mod fujitsu;
 pub mod hobo;
+pub mod hybrid_solvers;
 pub mod ising;
+pub mod layout_embedding;
 pub mod partitioning;
+pub mod penalty_optimization;
+pub mod problem_schedules;
 pub mod qubo;
+pub mod reverse_annealing;
 pub mod simulator;
 
 // Re-export key types for convenience
@@ -58,18 +66,46 @@ pub use compression::{
     BlockDetector, CompressedQubo, CompressionStats, CooCompressor, ReductionMapping,
     VariableReducer,
 };
-pub use dwave::{is_available as is_dwave_available, DWaveClient, DWaveError, DWaveResult};
+pub use dwave::{
+    is_available as is_dwave_available, DWaveClient, DWaveError, DWaveResult, ProblemParams,
+};
 pub use embedding::{Embedding, HardwareGraph, HardwareTopology, MinorMiner};
+pub use flux_bias::{
+    FluxBiasOptimizer, FluxBiasConfig, FluxBiasResult, CalibrationData, MLFluxBiasOptimizer,
+};
+#[cfg(feature = "fujitsu")]
+pub use fujitsu::{
+    FujitsuClient, FujitsuError, FujitsuResult, FujitsuAnnealingParams, FujitsuHardwareSpec,
+    GuidanceConfig, is_available as is_fujitsu_available,
+};
 pub use hobo::{
     AuxiliaryVariable, ConstraintViolations, HigherOrderTerm, HoboAnalyzer, HoboProblem,
     HoboStats, QuboReduction, ReductionMethod, ReductionType,
 };
+pub use hybrid_solvers::{
+    HybridQuantumClassicalSolver, HybridSolverConfig, HybridSolverResult,
+    VariationalHybridSolver,
+};
 pub use ising::{IsingError, IsingModel, IsingResult, QuboModel};
+pub use layout_embedding::{
+    LayoutAwareEmbedder, LayoutConfig, LayoutStats, MultiLevelEmbedder,
+};
 pub use partitioning::{
     BipartitionMethod, KernighanLinPartitioner, Partition, RecursiveBisectionPartitioner,
     SpectralPartitioner,
 };
+pub use penalty_optimization::{
+    PenaltyOptimizer, PenaltyConfig, PenaltyStats, AdvancedPenaltyOptimizer,
+    ConstraintPenaltyOptimizer, Constraint, ConstraintType,
+};
+pub use problem_schedules::{
+    ProblemSpecificScheduler, ProblemType, ScheduleTemplate, AdaptiveScheduleOptimizer,
+};
 pub use qubo::{QuboBuilder, QuboError, QuboFormulation, QuboResult};
+pub use reverse_annealing::{
+    ReverseAnnealingSimulator, ReverseAnnealingParams, ReverseAnnealingSchedule,
+    ReverseAnnealingScheduleBuilder,
+};
 pub use simulator::{
     AnnealingError, AnnealingParams, AnnealingResult, AnnealingSolution,
     ClassicalAnnealingSimulator, QuantumAnnealingSimulator, TemperatureSchedule,

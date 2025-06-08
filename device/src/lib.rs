@@ -17,6 +17,7 @@ pub mod azure;
 pub mod azure_device;
 pub mod backend_traits;
 pub mod calibration;
+pub mod characterization;
 pub mod ibm;
 pub mod ibm_device;
 pub mod noise_model;
@@ -363,6 +364,10 @@ pub mod prelude {
         QubitCalibration, SingleQubitGateCalibration, TwoQubitGateCalibration,
         ReadoutCalibration, DeviceTopology, CrosstalkMatrix,
         create_ideal_calibration,
+    };
+    pub use crate::characterization::{
+        ProcessTomography, StateTomography, RandomizedBenchmarking,
+        CrosstalkCharacterization, DriftTracker,
     };
     pub use crate::noise_model::{
         CalibrationNoiseModel, NoiseModelBuilder,

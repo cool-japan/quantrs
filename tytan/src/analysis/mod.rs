@@ -10,6 +10,13 @@ use thiserror::Error;
 
 use crate::sampler::SampleResult;
 
+// Re-export visualization module
+pub mod visualization;
+pub use visualization::*;
+
+// Graph utilities
+pub mod graph;
+
 /// Errors that can occur during analysis
 #[derive(Error, Debug)]
 pub enum AnalysisError {

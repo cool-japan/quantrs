@@ -26,3 +26,4 @@ serde_json = { workspace = true, optional = true }
 [features]
 default = []
 dwave = ["dep:reqwest", "dep:tokio", "dep:serde", "dep:serde_json"]
+fujitsu = ["dep:reqwest", "dep:tokio", "dep:serde", "dep:serde_json"]

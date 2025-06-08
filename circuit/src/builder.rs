@@ -5,6 +5,9 @@
 
 use std::fmt;
 
+/// Type alias for backwards compatibility
+pub type CircuitBuilder<const N: usize> = Circuit<N>;
+
 use quantrs2_core::{
     decomposition::{utils as decomp_utils, CompositeGate},
     error::QuantRS2Result,
@@ -19,6 +22,43 @@ use quantrs2_core::{
     qubit::QubitId,
     register::Register,
 };
+
+use std::any::Any;
+use num_complex::Complex64;
+
+/// A placeholder measurement gate for QASM export
+#[derive(Debug, Clone)]
+pub struct Measure {
+    pub target: QubitId,
+}
+
+impl GateOp for Measure {
+    fn name(&self) -> &'static str {
+        "measure"
+    }
+
+    fn qubits(&self) -> Vec<QubitId> {
+        vec![self.target]
+    }
+
+    fn is_parameterized(&self) -> bool {
+        false
+    }
+
+    fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+        // Measurement doesn't have a unitary matrix representation
+        Ok(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)])
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn clone_gate(&self) -> Box<dyn GateOp> {
+        Box::new(self.clone())
+    }
+}
 
 /// A quantum circuit with a fixed number of qubits
 pub struct Circuit<const N: usize> {
@@ -476,6 +516,28 @@ impl<const N: usize> Circuit<N> {
             target2: target2.into(),
         })
     }
+    
+    /// Measure a qubit (placeholder for QASM export)
+    pub fn measure(&mut self, qubit: impl Into<QubitId>) -> QuantRS2Result<&mut Self> {
+        let qubit_id = qubit.into();
+        eprintln!("WARNING: measure() is a placeholder for QASM export");
+        self.add_gate(Measure { target: qubit_id })?;
+        Ok(self)
+    }
+    
+    /// Reset a qubit (placeholder for QASM export)
+    pub fn reset(&mut self, qubit: impl Into<QubitId>) -> QuantRS2Result<&mut Self> {
+        // For now, just add a placeholder gate
+        eprintln!("WARNING: reset() is a placeholder for QASM export");
+        Ok(self)
+    }
+    
+    /// Add a barrier (placeholder for QASM export)
+    pub fn barrier(&mut self, qubits: &[QubitId]) -> QuantRS2Result<&mut Self> {
+        // For now, just add a placeholder
+        eprintln!("WARNING: barrier() is a placeholder for QASM export");
+        Ok(self)
+    }
 
     /// Run the circuit on a simulator
     pub fn run<S: Simulator<N>>(&self, simulator: S) -> QuantRS2Result<Register<N>> {
@@ -498,6 +560,11 @@ impl<const N: usize> Circuit<N> {
         }
 
         Ok(decomposed)
+    }
+    
+    /// Build the circuit (for compatibility - returns self)
+    pub fn build(self) -> Self {
+        self
     }
 
     /// Optimize the circuit by combining or removing gates
@@ -593,6 +660,34 @@ impl<const N: usize> Circuit<N> {
         }
 
         Ok(self)
+    }
+    
+    // Classical control flow extensions
+    
+    
+    /// Measure all qubits in the circuit
+    pub fn measure_all(&mut self) -> QuantRS2Result<&mut Self> {
+        for i in 0..N {
+            self.measure(QubitId(i as u32))?;
+        }
+        Ok(self)
+    }
+    
+    /// Convert this circuit to a ClassicalCircuit with classical control support
+    pub fn with_classical_control(self) -> crate::classical::ClassicalCircuit<N> {
+        let mut classical_circuit = crate::classical::ClassicalCircuit::new();
+        
+        // Add a default classical register for measurements
+        let _ = classical_circuit.add_classical_register("c", N);
+        
+        // Transfer all gates
+        for gate in self.gates {
+            classical_circuit.operations.push(
+                crate::classical::CircuitOp::Quantum(gate)
+            );
+        }
+        
+        classical_circuit
     }
 }
 

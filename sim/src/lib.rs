@@ -11,6 +11,10 @@ pub mod dynamic;
 pub mod enhanced_statevector;
 pub mod error;
 pub mod linalg_ops;
+pub mod mps_simulator;
+pub mod mps_basic;
+#[cfg(feature = "mps")]
+pub mod mps_enhanced;
 pub mod simulator;
 pub mod sparse;
 pub mod specialized_gates;
@@ -77,6 +81,12 @@ pub mod prelude {
     pub use crate::sparse::{CSRMatrix, SparseGates, SparseMatrixBuilder, apply_sparse_gate};
     pub use crate::stabilizer::{is_clifford_circuit, StabilizerGate, StabilizerSimulator};
     pub use crate::statevector::StateVectorSimulator;
+    pub use crate::mps_simulator::{MPS, MPSSimulator};
+    pub use crate::mps_basic::{BasicMPS, BasicMPSSimulator, BasicMPSConfig};
+    #[cfg(feature = "mps")]
+    pub use crate::mps_enhanced::{
+        EnhancedMPS, EnhancedMPSSimulator, MPSConfig, utils::*
+    };
     pub use crate::trotter::{
         Hamiltonian, HamiltonianTerm, TrotterDecomposer, TrotterMethod, HamiltonianLibrary,
     };

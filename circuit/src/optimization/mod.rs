@@ -13,7 +13,7 @@ pub use gate_properties::{GateProperties, GateCost, GateError, CommutationTable}
 pub use passes::{
     OptimizationPass, GateCancellation, GateCommutation, GateMerging, 
     DecompositionOptimization, CostBasedOptimization, RotationMerging,
-    TwoQubitOptimization, TemplateMatching, CircuitRewriting
+    TwoQubitOptimization, TemplateMatching, CircuitRewriting, PeepholeOptimization
 };
 pub use pass_manager::{PassManager, PassConfig, OptimizationLevel};
 pub use cost_model::{CostModel, HardwareCostModel, AbstractCostModel};

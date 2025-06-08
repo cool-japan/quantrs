@@ -15,6 +15,11 @@ pub trait CostModel: Send + Sync {
     /// Calculate the total cost of a circuit (using gate list)
     fn circuit_cost_from_gates(&self, gates: &[Box<dyn GateOp>]) -> f64;
     
+    /// Calculate the total cost of a list of gates (alias for circuit_cost_from_gates)
+    fn gates_cost(&self, gates: &[Box<dyn GateOp>]) -> f64 {
+        self.circuit_cost_from_gates(gates)
+    }
+    
     /// Get the weights used in cost calculation
     fn weights(&self) -> CostWeights;
     

@@ -53,6 +53,18 @@ mod pulse;
 // Include the error mitigation module
 mod mitigation;
 
+// Include the ML transfer learning module
+#[cfg(feature = "ml")]
+mod ml_transfer;
+
+// Include the anneal module
+#[cfg(feature = "anneal")]
+mod anneal;
+
+// Include the tytan module
+#[cfg(feature = "tytan")]
+mod tytan;
+
 /// Python wrapper for realistic noise models
 #[pyclass]
 struct PyRealisticNoiseModel {
@@ -1339,6 +1351,18 @@ fn _quantrs2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     
     // Register the mitigation module
     mitigation::register_mitigation_module(&m)?;
+    
+    // Register the ML transfer learning module
+    #[cfg(feature = "ml")]
+    ml_transfer::register_ml_transfer_module(&m)?;
+    
+    // Register the anneal module
+    #[cfg(feature = "anneal")]
+    anneal::register_anneal_module(&m)?;
+    
+    // Register the tytan module
+    #[cfg(feature = "tytan")]
+    tytan::register_tytan_module(&m)?;
 
     // Add metadata
     m.setattr(

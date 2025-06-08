@@ -30,11 +30,13 @@ tokio = { workspace = true, features = ["rt", "rt-multi-thread"], optional = tru
 futures = { version = "0.3", optional = true }
 rand.workspace = true
 rand_chacha.workspace = true
+rand_xoshiro = "0.6"
 wide.workspace = true
 fastrand = "2.0.1"
 nalgebra-sparse = "0.9"
 dashmap = "5.5"
 half = { version = "2.4", features = ["num-traits"] }
+ndarray-linalg = { version = "0.16", optional = true }
 
 [features]
 default = ["optimize"]
@@ -43,6 +45,7 @@ simd = []
 optimize = ["simd"] # Enable optimized implementations
 memory_efficient = [] # Enable memory-efficient algorithms for large state vectors
 advanced_math = ["dep:scirs2-core", "dep:scirs2-optimize", "dep:pandrs"] # Enable advanced math using external libs
+mps = ["dep:ndarray-linalg"] # Enable MPS simulator with linear algebra support
 
 [[bin]]
 name = "test_stabilizer"

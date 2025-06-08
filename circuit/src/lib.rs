@@ -13,10 +13,14 @@ pub mod commutation;
 pub mod qasm;
 pub mod slicing;
 pub mod topology;
+pub mod equivalence;
+pub mod classical;
 
 // Re-exports of commonly used types and traits
 pub mod prelude {
     pub use crate::builder::*;
+    // Convenience re-export
+    pub use quantrs2_core::qubit::QubitId as Qubit;
     pub use crate::graph_optimizer::{CircuitDAG, GraphGate, GraphOptimizer, OptimizationStats};
     pub use crate::optimizer::{
         CircuitOptimizer, HardwareOptimizer, OptimizationPassType, OptimizationResult,
@@ -36,12 +40,26 @@ pub mod prelude {
         CommutationAnalyzer, CommutationRules, CommutationResult, GateType,
         CommutationOptimization,
     };
-    pub use crate::qasm::{parse_qasm, export_qasm, QasmVersion, QasmError};
+    pub use crate::qasm::{
+        parse_qasm3, export_qasm3, QasmParser, QasmExporter, ExportOptions,
+        QasmProgram, QasmStatement, QasmGate, QasmRegister,
+        validate_qasm3, ParseError, ValidationError,
+    };
+    pub use crate::qasm::exporter::ExportError;
     pub use crate::slicing::{
         CircuitSlicer, CircuitSlice, SlicingStrategy, SlicingResult,
     };
     pub use crate::topology::{
         TopologicalAnalyzer, TopologicalAnalysis, TopologicalStrategy,
+    };
+    pub use crate::equivalence::{
+        EquivalenceChecker, EquivalenceResult, EquivalenceType, EquivalenceOptions,
+        circuits_equivalent, circuits_structurally_equal,
+    };
+    pub use crate::classical::{
+        ClassicalCircuit, ClassicalCircuitBuilder, ClassicalRegister, ClassicalBit,
+        ClassicalValue, ClassicalCondition, ComparisonOp, MeasureOp, ConditionalGate,
+        ClassicalOp, CircuitOp,
     };
 }
 

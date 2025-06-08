@@ -43,6 +43,12 @@ pub mod lstm;
 pub mod attention;
 pub mod gnn;
 pub mod federated;
+pub mod transfer;
+pub mod few_shot;
+pub mod continuous_rl;
+pub mod diffusion;
+pub mod boltzmann;
+pub mod meta_learning;
 
 // Internal utilities module
 mod utils;
@@ -72,4 +78,28 @@ pub mod prelude {
     };
     pub use crate::reinforcement::{Environment, QuantumAgent, ReinforcementLearning};
     pub use crate::variational::{VariationalAlgorithm, VariationalCircuit};
+    pub use crate::transfer::{
+        QuantumTransferLearning, TransferStrategy, PretrainedModel, 
+        LayerConfig, QuantumModelZoo
+    };
+    pub use crate::few_shot::{
+        FewShotLearner, FewShotMethod, Episode, QuantumPrototypicalNetwork,
+        QuantumMAML, DistanceMetric
+    };
+    pub use crate::continuous_rl::{
+        ContinuousEnvironment, QuantumDDPG, QuantumSAC, QuantumActor, QuantumCritic,
+        ReplayBuffer, Experience, PendulumEnvironment
+    };
+    pub use crate::diffusion::{
+        QuantumDiffusionModel, NoiseSchedule, QuantumScoreDiffusion,
+        QuantumVariationalDiffusion
+    };
+    pub use crate::boltzmann::{
+        QuantumBoltzmannMachine, QuantumRBM, DeepBoltzmannMachine,
+        AnnealingSchedule
+    };
+    pub use crate::meta_learning::{
+        QuantumMetaLearner, MetaLearningAlgorithm, MetaTask, MetaLearningHistory,
+        ContinualMetaLearner, TaskGenerator
+    };
 }

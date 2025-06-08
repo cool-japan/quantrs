@@ -157,6 +157,24 @@ try:
 except ImportError:
     pass
 
+# Try to import ML transfer learning module (only available with ml feature)
+try:
+    from . import transfer_learning
+except ImportError:
+    pass
+
+# Try to import anneal module (only available with anneal feature)
+try:
+    from . import anneal
+except ImportError:
+    pass
+
+# Try to import tytan visualization module (only available with tytan feature)
+try:
+    from . import tytan_viz
+except ImportError:
+    pass
+
 # Import common utilities
 from .utils import (
     bell_state as create_bell_state,

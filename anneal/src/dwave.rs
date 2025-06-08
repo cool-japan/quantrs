@@ -110,6 +110,14 @@ mod client {
         #[serde(rename = "readout_thermalization")]
         pub readout_therm: usize,
 
+        /// Flux biases for each qubit (optional)
+        #[serde(rename = "flux_biases", skip_serializing_if = "Option::is_none")]
+        pub flux_biases: Option<Vec<f64>>,
+
+        /// Per-qubit flux bias values (optional, alternative format)
+        #[serde(rename = "flux_bias", skip_serializing_if = "Option::is_none")]
+        pub flux_bias_map: Option<serde_json::Map<String, serde_json::Value>>,
+
         /// Additional parameters
         #[serde(flatten)]
         pub other: serde_json::Value,
@@ -122,6 +130,8 @@ mod client {
                 annealing_time: 20,
                 programming_therm: 1000,
                 readout_therm: 0,
+                flux_biases: None,
+                flux_bias_map: None,
                 other: serde_json::Value::Object(serde_json::Map::new()),
             }
         }
@@ -308,6 +318,26 @@ mod client {
             self.submit_problem(&problem)
         }
 
+        /// Submit an Ising model with flux bias optimization
+        pub fn submit_ising_with_flux_bias(
+            &self,
+            model: &IsingModel,
+            solver_id: &str,
+            params: ProblemParams,
+            flux_biases: &std::collections::HashMap<usize, f64>,
+        ) -> DWaveResult<Solution> {
+            let mut params_with_flux = params;
+            
+            // Convert flux biases to the format expected by D-Wave
+            let mut flux_map = serde_json::Map::new();
+            for (qubit, &flux_bias) in flux_biases {
+                flux_map.insert(qubit.to_string(), serde_json::to_value(flux_bias).unwrap());
+            }
+            params_with_flux.flux_bias_map = Some(flux_map);
+            
+            self.submit_ising(model, solver_id, params_with_flux)
+        }
+
         /// Submit a problem to D-Wave
         fn submit_problem(&self, problem: &Problem) -> DWaveResult<Solution> {
             // Create the URL
@@ -431,6 +461,30 @@ mod placeholder {
         /// Placeholder for D-Wave client creation
         pub fn new(_token: impl Into<String>, _endpoint: Option<String>) -> DWaveResult<Self> {
             Err(DWaveError::NotEnabled)
+        }
+    }
+
+    /// Placeholder for D-Wave problem submission parameters
+    #[derive(Debug, Clone)]
+    pub struct ProblemParams {
+        /// Number of reads/samples to take
+        pub num_reads: usize,
+        /// Annealing time in microseconds
+        pub annealing_time: usize,
+        /// Programming thermalization in microseconds
+        pub programming_therm: usize,
+        /// Read-out thermalization in microseconds
+        pub readout_therm: usize,
+    }
+
+    impl Default for ProblemParams {
+        fn default() -> Self {
+            Self {
+                num_reads: 1000,
+                annealing_time: 20,
+                programming_therm: 1000,
+                readout_therm: 0,
+            }
         }
     }
 }

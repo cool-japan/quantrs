@@ -82,12 +82,46 @@
 // Export modules
 pub mod analysis;
 pub mod auto_array;
+pub mod benchmark;
 pub mod compile;
 pub mod gpu;
+pub mod optimization;
 pub mod optimize;
 pub mod sampler;
 pub mod scirs_stub;
 pub mod symbol;
+pub mod visualization;
+pub mod quantum_annealing;
+pub mod parallel_tempering;
+pub mod parallel_tempering_advanced;
+pub mod ml_guided_sampling;
+pub mod solution_clustering;
+pub mod solution_statistics;
+pub mod variable_correlation;
+pub mod sensitivity_analysis;
+pub mod gpu_samplers;
+pub mod gpu_memory_pool;
+pub mod gpu_kernels;
+pub mod gpu_performance;
+pub mod gpu_benchmark;
+pub mod constraints;
+pub mod encoding;
+pub mod sampler_framework;
+pub mod hybrid_algorithms;
+pub mod coherent_ising_machine;
+pub mod quantum_optimization_extensions;
+pub mod variational_quantum_factoring;
+pub mod quantum_ml_integration;
+pub mod topological_optimization;
+pub mod problem_decomposition;
+pub mod applications;
+pub mod problem_dsl;
+pub mod testing_framework;
+pub mod performance_profiler;
+pub mod solution_debugger;
+pub mod performance_optimization;
+pub mod quantum_inspired_ml;
+pub mod adaptive_optimization;
 
 // Re-export key types for convenience
 pub use analysis::{calculate_diversity, cluster_solutions, visualize_energy_distribution};
