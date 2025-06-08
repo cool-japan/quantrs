@@ -32,8 +32,8 @@ rand.workspace = true
 rand_chacha.workspace = true
 wide.workspace = true
 fastrand = "2.0.1"
-nalgebra-sparse = "0.9"
-dashmap = "5.5"
+nalgebra-sparse = "0.10"
+dashmap = "6.1"
 half = { version = "2.4", features = ["num-traits"] }
 
 [features]

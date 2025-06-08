@@ -23,7 +23,7 @@ num-complex.workspace = true
 ndarray.workspace = true
 rand.workspace = true
 fastrand = "2.0"
-petgraph = "0.6"
+petgraph = "0.8"
 thiserror = "2.0"
 
 # Feature for simulation examples which require quantrs2-sim
