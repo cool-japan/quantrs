@@ -23,6 +23,7 @@ This document outlines the development plans and future tasks for the QuantRS2-S
 - ✅ Specialized gate implementations for common gates (H, X, Y, Z, CNOT, etc.)
 - ✅ Gate fusion optimization for specialized gates
 - ✅ Performance tracking and statistics for gate specialization
+- ✅ Stabilizer simulator for efficient Clifford circuit simulation
 
 ### In Progress
 
@@ -35,13 +36,13 @@ This document outlines the development plans and future tasks for the QuantRS2-S
 
 ### Near-term (v0.1.x)
 
-- [ ] Integrate SciRS2 sparse matrix operations for large circuits
-- [ ] Implement Trotter-Suzuki decomposition using SciRS2
-- [ ] Add quantum Monte Carlo simulation with SciRS2 RNG
-- [ ] Create adaptive precision control for state vectors
-- [ ] Implement gate fusion using SciRS2 matrix multiplication
+- [x] Integrate SciRS2 sparse matrix operations for large circuits (completed)
+- [x] Implement Trotter-Suzuki decomposition using SciRS2 (completed)
+- [x] Add quantum Monte Carlo simulation with SciRS2 RNG (completed)
+- [x] Create adaptive precision control for state vectors (completed)
+- [x] Implement gate fusion using SciRS2 matrix multiplication (completed)
 - [ ] Add support for Pauli string evolution
-- [ ] Create stabilizer simulator for Clifford circuits
+- [x] Create stabilizer simulator for Clifford circuits
 - [ ] Implement matrix product state (MPS) simulator
 - [ ] Add support for open quantum system simulation
 - [ ] Create shot-based sampling with statistical analysis

@@ -28,10 +28,12 @@ pub struct Circuit<const N: usize> {
 
 impl<const N: usize> Clone for Circuit<N> {
     fn clone(&self) -> Self {
-        // We can't clone dyn GateOp directly, so we create a new circuit
-        // with the same gates by using their type information
-        // In a real implementation, we would use the stored gate types
-        // to create new instances of each gate
+        // Since Box<dyn GateOp> doesn't implement Clone, we need to manually clone each gate
+        // For now, we'll create a new circuit and add placeholders
+        // TODO: Implement proper cloning once we have a gate factory or registry
+        
+        // For testing purposes, return empty circuit with warning
+        eprintln!("WARNING: Circuit::clone() is not properly implemented - returning empty circuit");
         Self { gates: Vec::new() }
     }
 }

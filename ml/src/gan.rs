@@ -216,19 +216,19 @@ impl QuantumGenerator {
     ) -> Result<Self> {
         // Create a QNN architecture suitable for generation
         let layers = vec![
-            crate::qnn::QNNLayer::EncodingLayer {
+            crate::qnn::QNNLayerType::EncodingLayer {
                 num_features: latent_dim,
             },
-            crate::qnn::QNNLayer::VariationalLayer {
+            crate::qnn::QNNLayerType::VariationalLayer {
                 num_params: 2 * num_qubits,
             },
-            crate::qnn::QNNLayer::EntanglementLayer {
+            crate::qnn::QNNLayerType::EntanglementLayer {
                 connectivity: "full".to_string(),
             },
-            crate::qnn::QNNLayer::VariationalLayer {
+            crate::qnn::QNNLayerType::VariationalLayer {
                 num_params: 2 * num_qubits,
             },
-            crate::qnn::QNNLayer::MeasurementLayer {
+            crate::qnn::QNNLayerType::MeasurementLayer {
                 measurement_basis: "computational".to_string(),
             },
         ];
@@ -325,19 +325,19 @@ impl QuantumDiscriminator {
     ) -> Result<Self> {
         // Create a QNN architecture suitable for discrimination
         let layers = vec![
-            crate::qnn::QNNLayer::EncodingLayer {
+            crate::qnn::QNNLayerType::EncodingLayer {
                 num_features: data_dim,
             },
-            crate::qnn::QNNLayer::VariationalLayer {
+            crate::qnn::QNNLayerType::VariationalLayer {
                 num_params: 2 * num_qubits,
             },
-            crate::qnn::QNNLayer::EntanglementLayer {
+            crate::qnn::QNNLayerType::EntanglementLayer {
                 connectivity: "full".to_string(),
             },
-            crate::qnn::QNNLayer::VariationalLayer {
+            crate::qnn::QNNLayerType::VariationalLayer {
                 num_params: 2 * num_qubits,
             },
-            crate::qnn::QNNLayer::MeasurementLayer {
+            crate::qnn::QNNLayerType::MeasurementLayer {
                 measurement_basis: "computational".to_string(),
             },
         ];

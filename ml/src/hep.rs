@@ -150,19 +150,19 @@ impl HEPQuantumClassifier {
     ) -> Result<Self> {
         // Create a QNN architecture suitable for HEP classification
         let layers = vec![
-            crate::qnn::QNNLayer::EncodingLayer {
+            crate::qnn::QNNLayerType::EncodingLayer {
                 num_features: feature_dim,
             },
-            crate::qnn::QNNLayer::VariationalLayer {
+            crate::qnn::QNNLayerType::VariationalLayer {
                 num_params: 2 * num_qubits,
             },
-            crate::qnn::QNNLayer::EntanglementLayer {
+            crate::qnn::QNNLayerType::EntanglementLayer {
                 connectivity: "full".to_string(),
             },
-            crate::qnn::QNNLayer::VariationalLayer {
+            crate::qnn::QNNLayerType::VariationalLayer {
                 num_params: 2 * num_qubits,
             },
-            crate::qnn::QNNLayer::MeasurementLayer {
+            crate::qnn::QNNLayerType::MeasurementLayer {
                 measurement_basis: "computational".to_string(),
             },
         ];
@@ -441,17 +441,17 @@ impl HiggsDetector {
     pub fn new(num_qubits: usize) -> Result<Self> {
         // Create a QNN for Higgs detection
         let layers = vec![
-            crate::qnn::QNNLayer::EncodingLayer { num_features: 10 },
-            crate::qnn::QNNLayer::VariationalLayer {
+            crate::qnn::QNNLayerType::EncodingLayer { num_features: 10 },
+            crate::qnn::QNNLayerType::VariationalLayer {
                 num_params: 2 * num_qubits,
             },
-            crate::qnn::QNNLayer::EntanglementLayer {
+            crate::qnn::QNNLayerType::EntanglementLayer {
                 connectivity: "full".to_string(),
             },
-            crate::qnn::QNNLayer::VariationalLayer {
+            crate::qnn::QNNLayerType::VariationalLayer {
                 num_params: 2 * num_qubits,
             },
-            crate::qnn::QNNLayer::MeasurementLayer {
+            crate::qnn::QNNLayerType::MeasurementLayer {
                 measurement_basis: "computational".to_string(),
             },
         ];
@@ -499,12 +499,12 @@ impl ParticleCollisionClassifier {
     pub fn new() -> Self {
         // This is a placeholder implementation
         let layers = vec![
-            crate::qnn::QNNLayer::EncodingLayer { num_features: 10 },
-            crate::qnn::QNNLayer::VariationalLayer { num_params: 20 },
-            crate::qnn::QNNLayer::EntanglementLayer {
+            crate::qnn::QNNLayerType::EncodingLayer { num_features: 10 },
+            crate::qnn::QNNLayerType::VariationalLayer { num_params: 20 },
+            crate::qnn::QNNLayerType::EntanglementLayer {
                 connectivity: "full".to_string(),
             },
-            crate::qnn::QNNLayer::MeasurementLayer {
+            crate::qnn::QNNLayerType::MeasurementLayer {
                 measurement_basis: "computational".to_string(),
             },
         ];
@@ -582,12 +582,12 @@ impl EventReconstructor {
     pub fn new() -> Self {
         // This is a placeholder implementation
         let layers = vec![
-            crate::qnn::QNNLayer::EncodingLayer { num_features: 10 },
-            crate::qnn::QNNLayer::VariationalLayer { num_params: 20 },
-            crate::qnn::QNNLayer::EntanglementLayer {
+            crate::qnn::QNNLayerType::EncodingLayer { num_features: 10 },
+            crate::qnn::QNNLayerType::VariationalLayer { num_params: 20 },
+            crate::qnn::QNNLayerType::EntanglementLayer {
                 connectivity: "full".to_string(),
             },
-            crate::qnn::QNNLayer::MeasurementLayer {
+            crate::qnn::QNNLayerType::MeasurementLayer {
                 measurement_basis: "computational".to_string(),
             },
         ];

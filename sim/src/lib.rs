@@ -9,13 +9,19 @@
 
 pub mod dynamic;
 pub mod enhanced_statevector;
+pub mod error;
 pub mod linalg_ops;
 pub mod simulator;
+pub mod sparse;
 pub mod specialized_gates;
 pub mod specialized_simulator;
 pub mod stabilizer;
 pub mod statevector;
 pub mod tensor;
+pub mod trotter;
+pub mod qmc;
+pub mod precision;
+pub mod fusion;
 
 #[cfg(feature = "advanced_math")]
 pub mod tensor_network;
@@ -58,6 +64,7 @@ pub mod prelude {
     pub use crate::clifford_sparse::{CliffordGate, SparseCliffordSimulator};
     pub use crate::dynamic::*;
     pub use crate::enhanced_statevector::EnhancedStateVectorSimulator;
+    pub use crate::error::{SimulatorError, Result};
     #[allow(unused_imports)]
     pub use crate::error_correction::*;
     pub use crate::noise::*;
@@ -67,8 +74,23 @@ pub mod prelude {
     #[allow(unused_imports)]
     pub use crate::simulator::*;
     pub use crate::simulator::{Simulator, SimulatorResult};
+    pub use crate::sparse::{CSRMatrix, SparseGates, SparseMatrixBuilder, apply_sparse_gate};
     pub use crate::stabilizer::{is_clifford_circuit, StabilizerGate, StabilizerSimulator};
     pub use crate::statevector::StateVectorSimulator;
+    pub use crate::trotter::{
+        Hamiltonian, HamiltonianTerm, TrotterDecomposer, TrotterMethod, HamiltonianLibrary,
+    };
+    pub use crate::qmc::{
+        VMC, DMC, PIMC, WaveFunction, Walker, VMCResult, DMCResult, PIMCResult,
+    };
+    pub use crate::precision::{
+        Precision, AdaptiveStateVector, AdaptivePrecisionConfig, PrecisionTracker,
+        PrecisionStats, ComplexAmplitude, ComplexF16, benchmark_precisions,
+    };
+    pub use crate::fusion::{
+        GateFusion, FusionStrategy, GateGroup, FusedGate, OptimizedGate,
+        OptimizedCircuit, FusionStats, benchmark_fusion_strategies,
+    };
     pub use crate::specialized_gates::{
         SpecializedGate, specialize_gate,
         HadamardSpecialized, PauliXSpecialized, PauliYSpecialized, PauliZSpecialized,

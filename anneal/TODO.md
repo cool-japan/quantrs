@@ -26,11 +26,11 @@ This document outlines the development plans and future tasks for the QuantRS2-A
 
 ### Near-term (v0.1.x)
 
-- [ ] Implement minorminer-like embedding using SciRS2 graphs
-- [ ] Add graph partitioning with SciRS2 spectral methods
-- [ ] Create QUBO matrix compression using SciRS2 sparse formats
-- [ ] Implement chain break resolution algorithms
-- [ ] Add support for higher-order interactions (HOBO)
+- [x] Implement minorminer-like embedding using SciRS2 graphs ✅
+- [x] Add graph partitioning with SciRS2 spectral methods ✅
+- [x] Create QUBO matrix compression using SciRS2 sparse formats ✅
+- [x] Implement chain break resolution algorithms ✅
+- [x] Add support for higher-order interactions (HOBO) ✅
 - [ ] Create penalty function optimization with SciRS2
 - [ ] Implement flux bias optimization for D-Wave
 - [ ] Add support for reverse annealing schedules

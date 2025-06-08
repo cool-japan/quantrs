@@ -145,6 +145,18 @@ from . import visualization
 from . import ml
 from . import gates
 
+# Try to import pulse module (only available with device feature)
+try:
+    from . import pulse
+except ImportError:
+    pass
+
+# Try to import mitigation module (only available with device feature)
+try:
+    from . import mitigation
+except ImportError:
+    pass
+
 # Import common utilities
 from .utils import (
     bell_state as create_bell_state,

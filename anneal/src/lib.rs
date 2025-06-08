@@ -39,14 +39,36 @@
 //! ```
 
 // Export modules
+pub mod chain_break;
+pub mod compression;
 pub mod dwave;
+pub mod embedding;
+pub mod hobo;
 pub mod ising;
+pub mod partitioning;
 pub mod qubo;
 pub mod simulator;
 
 // Re-export key types for convenience
+pub use chain_break::{
+    ChainBreakResolver, ChainBreakStats, ChainStrengthOptimizer, HardwareSolution,
+    LogicalProblem, ResolutionMethod, ResolvedSolution,
+};
+pub use compression::{
+    BlockDetector, CompressedQubo, CompressionStats, CooCompressor, ReductionMapping,
+    VariableReducer,
+};
 pub use dwave::{is_available as is_dwave_available, DWaveClient, DWaveError, DWaveResult};
+pub use embedding::{Embedding, HardwareGraph, HardwareTopology, MinorMiner};
+pub use hobo::{
+    AuxiliaryVariable, ConstraintViolations, HigherOrderTerm, HoboAnalyzer, HoboProblem,
+    HoboStats, QuboReduction, ReductionMethod, ReductionType,
+};
 pub use ising::{IsingError, IsingModel, IsingResult, QuboModel};
+pub use partitioning::{
+    BipartitionMethod, KernighanLinPartitioner, Partition, RecursiveBisectionPartitioner,
+    SpectralPartitioner,
+};
 pub use qubo::{QuboBuilder, QuboError, QuboFormulation, QuboResult};
 pub use simulator::{
     AnnealingError, AnnealingParams, AnnealingResult, AnnealingSolution,

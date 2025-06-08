@@ -8,6 +8,11 @@ pub mod builder;
 pub mod graph_optimizer;
 pub mod optimizer;
 pub mod optimization;
+pub mod dag;
+pub mod commutation;
+pub mod qasm;
+pub mod slicing;
+pub mod topology;
 
 // Re-exports of commonly used types and traits
 pub mod prelude {
@@ -25,6 +30,18 @@ pub mod prelude {
         TwoQubitOptimization, TemplateMatching, CircuitRewriting,
         CostModel, HardwareCostModel, AbstractCostModel,
         CircuitAnalyzer, CircuitMetrics, OptimizationReport,
+    };
+    pub use crate::dag::{CircuitDag, DagNode, DagEdge, EdgeType, circuit_to_dag};
+    pub use crate::commutation::{
+        CommutationAnalyzer, CommutationRules, CommutationResult, GateType,
+        CommutationOptimization,
+    };
+    pub use crate::qasm::{parse_qasm, export_qasm, QasmVersion, QasmError};
+    pub use crate::slicing::{
+        CircuitSlicer, CircuitSlice, SlicingStrategy, SlicingResult,
+    };
+    pub use crate::topology::{
+        TopologicalAnalyzer, TopologicalAnalysis, TopologicalStrategy,
     };
 }
 

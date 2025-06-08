@@ -21,10 +21,15 @@ pub mod ibm;
 pub mod ibm_device;
 pub mod noise_model;
 pub mod optimization;
+pub mod parametric;
+pub mod pulse;
 pub mod routing;
+pub mod routing_advanced;
 pub mod topology;
+pub mod topology_analysis;
 pub mod translation;
 pub mod transpiler;
+pub mod zero_noise_extrapolation;
 
 // AWS authentication module
 #[cfg(feature = "aws")]
@@ -72,6 +77,16 @@ pub enum DeviceError {
 
     #[error("Routing error: {0}")]
     RoutingError(String),
+    
+    #[error("Unsupported operation: {0}")]
+    UnsupportedOperation(String),
+}
+
+/// Convert QuantRS2Error to DeviceError
+impl From<quantrs2_core::error::QuantRS2Error> for DeviceError {
+    fn from(err: quantrs2_core::error::QuantRS2Error) -> Self {
+        DeviceError::APIError(err.to_string())
+    }
 }
 
 /// General representation of quantum hardware
@@ -366,5 +381,27 @@ pub mod prelude {
         HardwareGate, BackendCapabilities, BackendFeatures, BackendPerformance,
         query_backend_capabilities, ibm_gates, google_gates, ionq_gates,
         rigetti_gates, honeywell_gates,
+    };
+    pub use crate::topology_analysis::{
+        TopologyAnalyzer, TopologyAnalysis, HardwareMetrics, AllocationStrategy,
+        create_standard_topology,
+    };
+    pub use crate::routing_advanced::{
+        AdvancedQubitRouter, AdvancedRoutingStrategy, AdvancedRoutingResult,
+        SwapOperation, RoutingMetrics,
+    };
+    pub use crate::pulse::{
+        PulseShape, ChannelType, PulseInstruction, PulseSchedule, PulseCalibration,
+        PulseBuilder, PulseBackend, MeasLevel, PulseResult, MeasurementData,
+        PulseLibrary, PulseTemplates,
+    };
+    pub use crate::zero_noise_extrapolation::{
+        NoiseScalingMethod, ExtrapolationMethod, ZNEConfig, ZNEResult, ZNEExecutor,
+        ZNECapable, CircuitFolder, ExtrapolationFitter, Observable,
+    };
+    pub use crate::parametric::{
+        Parameter, ParameterExpression, ParametricGate, ParametricCircuit,
+        ParametricCircuitBuilder, ParametricExecutor, BatchExecutionRequest,
+        BatchExecutionResult, ParametricTemplates, ParameterOptimizer,
     };
 }

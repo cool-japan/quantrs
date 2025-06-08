@@ -86,6 +86,7 @@ pub mod compile;
 pub mod gpu;
 pub mod optimize;
 pub mod sampler;
+pub mod scirs_stub;
 pub mod symbol;
 
 // Re-export key types for convenience
@@ -98,6 +99,7 @@ pub use compile::{Compile, PieckCompile};
 pub use gpu::{gpu_solve_hobo, gpu_solve_qubo, is_available as is_gpu_available_internal};
 pub use optimize::{calculate_energy, optimize_hobo, optimize_qubo};
 pub use sampler::{ArminSampler, DWaveSampler, GASampler, MIKASAmpler, SASampler};
+pub use scirs_stub::SCIRS2_AVAILABLE;
 #[cfg(feature = "dwave")]
 pub use symbol::{symbols, symbols_define, symbols_list, symbols_nbit};
 

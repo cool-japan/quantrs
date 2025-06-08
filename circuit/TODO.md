@@ -29,11 +29,11 @@ This document outlines the development plans and future tasks for the QuantRS2-C
 
 ### Near-term (v0.1.x)
 
-- [ ] Implement circuit DAG representation using SciRS2 graphs
-- [ ] Add commutation analysis for gate reordering
-- [ ] Create QASM 2.0/3.0 import/export functionality
-- [ ] Implement circuit slicing for parallel execution
-- [ ] Add topological sorting for dependency analysis
+- [x] Implement circuit DAG representation using SciRS2 graphs ✅
+- [x] Add commutation analysis for gate reordering ✅
+- [x] Create QASM 2.0/3.0 import/export functionality ✅
+- [x] Implement circuit slicing for parallel execution ✅
+- [x] Add topological sorting for dependency analysis ✅
 - [ ] Create circuit equivalence checking algorithms
 - [ ] Implement peephole optimization passes
 - [ ] Add support for classical control flow

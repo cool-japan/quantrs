@@ -27,10 +27,16 @@ This document outlines the development plans and future tasks for the QuantRS2-P
 - ✅ Parametric gate support for variational algorithms
 - ✅ Custom gate creation from matrices
 - ✅ NumPy integration for gate operations
+- ✅ SciRS2 Python bindings integration
+- ✅ Parametric circuits with autodiff support
+- ✅ Quantum circuit optimization passes
+- ✅ Pythonic API matching Qiskit/Cirq conventions
+- ✅ Custom gate definitions from Python
+- ✅ Measurement statistics and tomography
+- ✅ Quantum algorithm templates (VQE, QAOA, QFT)
 
 ### In Progress
 
-- 🔄 SciRS2 Python bindings integration
 - 🔄 Dynamic qubit allocation support
 - 🔄 Advanced quantum algorithm library
 - 🔄 Hardware backend integration
@@ -39,15 +45,15 @@ This document outlines the development plans and future tasks for the QuantRS2-P
 
 ### Near-term (v0.1.x)
 
-- [ ] Integrate SciRS2 Python bindings for numerical operations
-- [ ] Add support for parametric circuits with autodiff
-- [ ] Implement quantum circuit optimization passes
-- [ ] Create Pythonic API matching Qiskit/Cirq conventions
-- [ ] Add support for custom gate definitions from Python
-- [ ] Implement measurement statistics and tomography
-- [ ] Create quantum algorithm templates (VQE, QAOA, QFT)
-- [ ] Add support for pulse-level control from Python
-- [ ] Implement quantum error mitigation techniques
+- [x] Integrate SciRS2 Python bindings for numerical operations
+- [x] Add support for parametric circuits with autodiff
+- [x] Implement quantum circuit optimization passes
+- [x] Create Pythonic API matching Qiskit/Cirq conventions
+- [x] Add support for custom gate definitions from Python
+- [x] Implement measurement statistics and tomography
+- [x] Create quantum algorithm templates (VQE, QAOA, QFT)
+- [x] Add support for pulse-level control from Python
+- [x] Implement quantum error mitigation techniques
 - [ ] Create comprehensive benchmarking suite
 - [ ] Implement OpenQASM 3.0 import/export
 - [ ] Add support for quantum circuit databases

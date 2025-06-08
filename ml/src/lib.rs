@@ -38,6 +38,14 @@ pub mod vae;
 pub mod variational;
 
 pub mod error;
+pub mod autodiff;
+pub mod lstm;
+pub mod attention;
+pub mod gnn;
+pub mod federated;
+
+// Internal utilities module
+mod utils;
 
 /// Re-export error types for easier access
 pub use error::MLError;

@@ -26,6 +26,33 @@ use visualization::{create_visualizer_from_operations, PyCircuitVisualizer};
 // Include the gates module
 mod gates;
 
+// Include the SciRS2 bindings module
+mod scirs2_bindings;
+
+// Include the parametric circuits module
+mod parametric;
+
+// Include the optimization passes module
+mod optimization_passes;
+
+// Include the Pythonic API module
+mod pythonic_api;
+
+// Include the custom gates module
+mod custom_gates;
+
+// Include the measurement and tomography module
+mod measurement;
+
+// Include the quantum algorithms module
+mod algorithms;
+
+// Include the pulse control module
+mod pulse;
+
+// Include the error mitigation module
+mod mitigation;
+
 /// Python wrapper for realistic noise models
 #[pyclass]
 struct PyRealisticNoiseModel {
@@ -1284,6 +1311,34 @@ fn _quantrs2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     
     // Register the gates submodule
     gates::register_module(&m)?;
+    
+    // Register the SciRS2 submodule
+    scirs2_bindings::create_scirs2_module(&m)?;
+    m.add_class::<scirs2_bindings::PyQuantumNumerics>()?;
+    
+    // Register the parametric module
+    parametric::register_parametric_module(&m)?;
+    
+    // Register the optimization module
+    optimization_passes::register_optimization_module(&m)?;
+    
+    // Register the Pythonic API module
+    pythonic_api::register_pythonic_module(&m)?;
+    
+    // Register the custom gates module
+    custom_gates::register_custom_gates_module(&m)?;
+    
+    // Register the measurement module
+    measurement::register_measurement_module(&m)?;
+    
+    // Register the algorithms module
+    algorithms::register_algorithms_module(&m)?;
+    
+    // Register the pulse module
+    pulse::register_pulse_module(&m)?;
+    
+    // Register the mitigation module
+    mitigation::register_mitigation_module(&m)?;
 
     // Add metadata
     m.setattr(

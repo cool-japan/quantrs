@@ -21,6 +21,11 @@ This document outlines the development plans and future tasks for the QuantRS2-M
 - ✅ Barren plateau detection and mitigation strategies
 - ✅ Quantum Variational Autoencoders (QVAE) with hybrid architectures
 - ✅ Enhanced Quantum GANs with Wasserstein loss and conditional generation
+- ✅ SciRS2 automatic differentiation for gradient computation
+- ✅ Quantum LSTM and recurrent architectures
+- ✅ Quantum attention mechanisms for transformers
+- ✅ Quantum graph neural networks
+- ✅ Quantum federated learning protocols with differential privacy
 
 ### In Progress
 
@@ -33,14 +38,9 @@ This document outlines the development plans and future tasks for the QuantRS2-M
 
 ### Near-term (v0.1.x)
 
-- [ ] Integrate SciRS2 automatic differentiation for gradient computation
-- [ ] Add support for quantum LSTM and recurrent architectures
-- [ ] Create quantum attention mechanisms for transformers
-- [ ] Add quantum federated learning protocols
 - [ ] Create quantum transfer learning framework
 - [ ] Implement quantum few-shot learning algorithms
 - [ ] Add support for quantum reinforcement learning with continuous actions
-- [ ] Implement quantum graph neural networks with SciRS2 graphs
 - [ ] Add support for quantum diffusion models
 - [ ] Implement quantum Boltzmann machines
 - [ ] Add quantum meta-learning algorithms
@@ -96,7 +96,7 @@ This document outlines the development plans and future tasks for the QuantRS2-M
 ### SciRS2 Integration
 - [ ] Replace custom optimizers with SciRS2 implementations
 - [ ] Use SciRS2 tensor operations for classical layers
-- [ ] Integrate SciRS2 automatic differentiation
+- ✅ Integrate SciRS2 automatic differentiation (using stub pattern)
 - [ ] Leverage SciRS2 distributed training support
 - [ ] Use SciRS2 model serialization formats
 

@@ -36,6 +36,14 @@ pub enum MLError {
     #[error("Invalid parameter: {0}")]
     InvalidParameter(String),
 
+    /// Invalid input
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+
+    /// Invalid configuration
+    #[error("Invalid configuration: {0}")]
+    InvalidConfiguration(String),
+
     /// Not implemented
     #[error("Not implemented: {0}")]
     NotImplemented(String),

@@ -288,19 +288,19 @@ impl QuantumLanguageModel {
 
         // Create a QNN architecture suitable for the task
         let layers = vec![
-            crate::qnn::QNNLayer::EncodingLayer {
+            crate::qnn::QNNLayerType::EncodingLayer {
                 num_features: embedding_dimension,
             },
-            crate::qnn::QNNLayer::VariationalLayer {
+            crate::qnn::QNNLayerType::VariationalLayer {
                 num_params: 2 * num_qubits,
             },
-            crate::qnn::QNNLayer::EntanglementLayer {
+            crate::qnn::QNNLayerType::EntanglementLayer {
                 connectivity: "full".to_string(),
             },
-            crate::qnn::QNNLayer::VariationalLayer {
+            crate::qnn::QNNLayerType::VariationalLayer {
                 num_params: 2 * num_qubits,
             },
-            crate::qnn::QNNLayer::MeasurementLayer {
+            crate::qnn::QNNLayerType::MeasurementLayer {
                 measurement_basis: "computational".to_string(),
             },
         ];

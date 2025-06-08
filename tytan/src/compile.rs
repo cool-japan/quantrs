@@ -6,6 +6,9 @@
 
 use ndarray::Array;
 use std::collections::{HashMap, HashSet};
+
+#[cfg(feature = "scirs")]
+use crate::scirs_stub;
 #[cfg(feature = "dwave")]
 use symengine::{self, Expr, Symbol as SymengineSymbol};
 use thiserror::Error;
@@ -65,6 +68,20 @@ impl Compile {
     pub fn get_qubo(
         &self,
     ) -> CompileResult<((Array<f64, ndarray::Ix2>, HashMap<String, usize>), f64)> {
+        #[cfg(feature = "scirs")]
+        {
+            self.get_qubo_scirs()
+        }
+        #[cfg(not(feature = "scirs"))]
+        {
+            self.get_qubo_standard()
+        }
+    }
+    
+    /// Standard QUBO compilation without SciRS2
+    fn get_qubo_standard(
+        &self,
+    ) -> CompileResult<((Array<f64, ndarray::Ix2>, HashMap<String, usize>), f64)> {
         // Expand the expression to simplify
         let expr = symengine::expand(&self.expr);
 
@@ -87,6 +104,20 @@ impl Compile {
         let (matrix, var_map) = build_qubo_matrix(&coeffs)?;
 
         Ok(((matrix, var_map), offset))
+    }
+    
+    /// QUBO compilation with SciRS2 optimization
+    #[cfg(feature = "scirs")]
+    fn get_qubo_scirs(
+        &self,
+    ) -> CompileResult<((Array<f64, ndarray::Ix2>, HashMap<String, usize>), f64)> {
+        // Get standard result
+        let ((matrix, var_map), offset) = self.get_qubo_standard()?;
+        
+        // Apply SciRS2 enhancements
+        let enhanced_matrix = scirs_stub::enhance_qubo_matrix(&matrix);
+        
+        Ok(((enhanced_matrix, var_map), offset))
     }
 
     /// Compile the expression to a HOBO model

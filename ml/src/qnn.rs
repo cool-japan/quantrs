@@ -6,9 +6,22 @@ use quantrs2_circuit::prelude::Circuit;
 use quantrs2_sim::statevector::StateVectorSimulator;
 use std::fmt;
 
-/// Represents a layer in a quantum neural network
+/// Activation function types for quantum layers
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ActivationType {
+    /// Linear activation (identity)
+    Linear,
+    /// ReLU activation
+    ReLU,
+    /// Sigmoid activation
+    Sigmoid,
+    /// Tanh activation
+    Tanh,
+}
+
+/// Represents a layer type in a quantum neural network
 #[derive(Debug, Clone)]
-pub enum QNNLayer {
+pub enum QNNLayerType {
     /// Encoding layer for converting classical data to quantum states
     EncodingLayer {
         /// Number of classical features to encode
@@ -54,7 +67,7 @@ pub struct TrainingResult {
 #[derive(Debug, Clone)]
 pub struct QuantumNeuralNetwork {
     /// The layers that make up the network
-    pub layers: Vec<QNNLayer>,
+    pub layers: Vec<QNNLayerType>,
 
     /// The number of qubits used in the network
     pub num_qubits: usize,
@@ -72,7 +85,7 @@ pub struct QuantumNeuralNetwork {
 impl QuantumNeuralNetwork {
     /// Creates a new quantum neural network
     pub fn new(
-        layers: Vec<QNNLayer>,
+        layers: Vec<QNNLayerType>,
         num_qubits: usize,
         input_dim: usize,
         output_dim: usize,
@@ -88,7 +101,7 @@ impl QuantumNeuralNetwork {
         let num_params = layers
             .iter()
             .filter_map(|layer| match layer {
-                QNNLayer::VariationalLayer { num_params } => Some(num_params),
+                QNNLayerType::VariationalLayer { num_params } => Some(num_params),
                 _ => None,
             })
             .sum::<usize>();
@@ -166,7 +179,7 @@ impl QuantumNeuralNetwork {
 /// Builder for quantum neural networks
 #[derive(Debug, Clone)]
 pub struct QNNBuilder {
-    layers: Vec<QNNLayer>,
+    layers: Vec<QNNLayerType>,
     num_qubits: usize,
     input_dim: usize,
     output_dim: usize,
@@ -203,19 +216,19 @@ impl QNNBuilder {
 
     /// Adds an encoding layer
     pub fn add_encoding_layer(mut self, num_features: usize) -> Self {
-        self.layers.push(QNNLayer::EncodingLayer { num_features });
+        self.layers.push(QNNLayerType::EncodingLayer { num_features });
         self
     }
 
     /// Adds a variational layer
     pub fn add_variational_layer(mut self, num_params: usize) -> Self {
-        self.layers.push(QNNLayer::VariationalLayer { num_params });
+        self.layers.push(QNNLayerType::VariationalLayer { num_params });
         self
     }
 
     /// Adds an entanglement layer
     pub fn add_entanglement_layer(mut self, connectivity: &str) -> Self {
-        self.layers.push(QNNLayer::EntanglementLayer {
+        self.layers.push(QNNLayerType::EntanglementLayer {
             connectivity: connectivity.to_string(),
         });
         self
@@ -223,7 +236,7 @@ impl QNNBuilder {
 
     /// Adds a measurement layer
     pub fn add_measurement_layer(mut self, measurement_basis: &str) -> Self {
-        self.layers.push(QNNLayer::MeasurementLayer {
+        self.layers.push(QNNLayerType::MeasurementLayer {
             measurement_basis: measurement_basis.to_string(),
         });
         self
@@ -264,21 +277,43 @@ impl QNNBuilder {
     }
 }
 
-impl fmt::Display for QNNLayer {
+impl fmt::Display for QNNLayerType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            QNNLayer::EncodingLayer { num_features } => {
+            QNNLayerType::EncodingLayer { num_features } => {
                 write!(f, "Encoding Layer (features: {})", num_features)
             }
-            QNNLayer::VariationalLayer { num_params } => {
+            QNNLayerType::VariationalLayer { num_params } => {
                 write!(f, "Variational Layer (parameters: {})", num_params)
             }
-            QNNLayer::EntanglementLayer { connectivity } => {
+            QNNLayerType::EntanglementLayer { connectivity } => {
                 write!(f, "Entanglement Layer (connectivity: {})", connectivity)
             }
-            QNNLayer::MeasurementLayer { measurement_basis } => {
+            QNNLayerType::MeasurementLayer { measurement_basis } => {
                 write!(f, "Measurement Layer (basis: {})", measurement_basis)
             }
+        }
+    }
+}
+
+/// Quantum neural network layer for use in other modules
+#[derive(Debug, Clone)]
+pub struct QNNLayer {
+    /// Input dimension
+    pub input_dim: usize,
+    /// Output dimension
+    pub output_dim: usize,
+    /// Activation function
+    pub activation: ActivationType,
+}
+
+impl QNNLayer {
+    /// Create a new QNN layer
+    pub fn new(input_dim: usize, output_dim: usize, activation: ActivationType) -> Self {
+        Self {
+            input_dim,
+            output_dim,
+            activation,
         }
     }
 }
