@@ -99,7 +99,11 @@ pub enum QubitRef {
     /// Single qubit: reg[index]
     Single { register: String, index: usize },
     /// Register slice: reg[start:end]
-    Slice { register: String, start: usize, end: usize },
+    Slice {
+        register: String,
+        start: usize,
+        end: usize,
+    },
     /// Entire register: reg
     Register(String),
 }
@@ -119,7 +123,11 @@ pub enum ClassicalRef {
     /// Single bit: reg[index]
     Single { register: String, index: usize },
     /// Register slice: reg[start:end]
-    Slice { register: String, start: usize, end: usize },
+    Slice {
+        register: String,
+        start: usize,
+        end: usize,
+    },
     /// Entire register: reg
     Register(String),
 }
@@ -163,18 +171,43 @@ pub enum Literal {
 /// Binary operators
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BinaryOp {
-    Add, Sub, Mul, Div, Mod, Pow,
-    Eq, Ne, Lt, Le, Gt, Ge,
-    And, Or, Xor,
-    BitAnd, BitOr, BitXor, Shl, Shr,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Pow,
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    And,
+    Or,
+    Xor,
+    BitAnd,
+    BitOr,
+    BitXor,
+    Shl,
+    Shr,
 }
 
 /// Unary operators
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum UnaryOp {
-    Neg, Not, BitNot,
-    Sin, Cos, Tan, Asin, Acos, Atan,
-    Exp, Ln, Sqrt,
+    Neg,
+    Not,
+    BitNot,
+    Sin,
+    Cos,
+    Tan,
+    Asin,
+    Acos,
+    Atan,
+    Exp,
+    Ln,
+    Sqrt,
 }
 
 /// Condition for control flow
@@ -191,7 +224,12 @@ pub struct Condition {
 /// Comparison operators
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ComparisonOp {
-    Eq, Ne, Lt, Le, Gt, Ge,
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
 }
 
 /// For loop structure
@@ -213,27 +251,27 @@ pub struct ForLoop {
 impl fmt::Display for QasmProgram {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "OPENQASM {};", self.version)?;
-        
+
         for include in &self.includes {
             writeln!(f, "include \"{}\";", include)?;
         }
-        
+
         if !self.includes.is_empty() {
             writeln!(f)?;
         }
-        
+
         for decl in &self.declarations {
             writeln!(f, "{}", decl)?;
         }
-        
+
         if !self.declarations.is_empty() {
             writeln!(f)?;
         }
-        
+
         for stmt in &self.statements {
             writeln!(f, "{}", stmt)?;
         }
-        
+
         Ok(())
     }
 }
@@ -300,8 +338,11 @@ impl fmt::Display for QasmStatement {
             QasmStatement::Assignment(var, expr) => write!(f, "{} = {};", var, expr),
             QasmStatement::If(cond, stmt) => write!(f, "if ({}) {}", cond, stmt),
             QasmStatement::For(for_loop) => {
-                write!(f, "for {} in [{}:{}] {{\n", 
-                    for_loop.variable, for_loop.start, for_loop.end)?;
+                write!(
+                    f,
+                    "for {} in [{}:{}] {{\n",
+                    for_loop.variable, for_loop.start, for_loop.end
+                )?;
                 for stmt in &for_loop.body {
                     writeln!(f, "  {}", stmt)?;
                 }
@@ -352,9 +393,9 @@ impl fmt::Display for QasmGate {
         if let Some(power) = &self.power {
             write!(f, "pow({}) ", power)?;
         }
-        
+
         write!(f, "{}", self.name)?;
-        
+
         if !self.params.is_empty() {
             write!(f, "(")?;
             for (i, param) in self.params.iter().enumerate() {
@@ -365,7 +406,7 @@ impl fmt::Display for QasmGate {
             }
             write!(f, ")")?;
         }
-        
+
         write!(f, " ")?;
         for (i, qubit) in self.qubits.iter().enumerate() {
             if i > 0 {
@@ -381,7 +422,11 @@ impl fmt::Display for QubitRef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             QubitRef::Single { register, index } => write!(f, "{}[{}]", register, index),
-            QubitRef::Slice { register, start, end } => write!(f, "{}[{}:{}]", register, start, end),
+            QubitRef::Slice {
+                register,
+                start,
+                end,
+            } => write!(f, "{}[{}:{}]", register, start, end),
             QubitRef::Register(name) => write!(f, "{}", name),
         }
     }
@@ -391,7 +436,11 @@ impl fmt::Display for ClassicalRef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ClassicalRef::Single { register, index } => write!(f, "{}[{}]", register, index),
-            ClassicalRef::Slice { register, start, end } => write!(f, "{}[{}:{}]", register, start, end),
+            ClassicalRef::Slice {
+                register,
+                start,
+                end,
+            } => write!(f, "{}[{}:{}]", register, start, end),
             ClassicalRef::Register(name) => write!(f, "{}", name),
         }
     }

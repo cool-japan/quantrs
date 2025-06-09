@@ -82,14 +82,14 @@ impl CircuitDag {
         for qubit in &qubits {
             if let Some(&last_node) = self.qubit_last_use.get(&qubit.id()) {
                 predecessors.push(last_node);
-                
+
                 // Add edge
                 self.edges.push(DagEdge {
                     source: last_node,
                     target: node_id,
                     edge_type: EdgeType::QubitDependency(qubit.id()),
                 });
-                
+
                 // Update successor of predecessor
                 self.nodes[last_node].successors.push(node_id);
             }
@@ -125,7 +125,7 @@ impl CircuitDag {
         if predecessors.is_empty() {
             self.input_nodes.push(node_id);
         }
-        
+
         // Remove predecessors from output nodes
         for &pred in &predecessors {
             self.output_nodes.retain(|&x| x != pred);
@@ -259,9 +259,9 @@ impl CircuitDag {
         let mut paths = Vec::new();
         let mut current_path = vec![start];
         let mut visited = HashSet::new();
-        
+
         self.find_paths_dfs(start, end, &mut current_path, &mut visited, &mut paths);
-        
+
         paths
     }
 
@@ -359,39 +359,42 @@ impl fmt::Debug for CircuitDag {
 /// Convert a Circuit into a DAG representation
 pub fn circuit_to_dag<const N: usize>(circuit: &crate::builder::Circuit<N>) -> CircuitDag {
     let mut dag = CircuitDag::new();
-    
+
     for gate in circuit.gates() {
         // Clone the gate since we need ownership
         // In a real implementation, we'd have a better way to handle this
         dag.add_gate(gate.clone());
     }
-    
+
     dag
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use quantrs2_core::gate::single::{Hadamard, PauliX};
     use quantrs2_core::gate::multi::CNOT;
+    use quantrs2_core::gate::single::{Hadamard, PauliX};
     use quantrs2_core::qubit::QubitId;
 
     #[test]
     fn test_dag_creation() {
         let mut dag = CircuitDag::new();
-        
+
         // Add H gate on qubit 0
         let h_gate = Box::new(Hadamard { target: QubitId(0) });
         let h_id = dag.add_gate(h_gate);
-        
+
         // Add X gate on qubit 1
         let x_gate = Box::new(PauliX { target: QubitId(1) });
         let x_id = dag.add_gate(x_gate);
-        
+
         // Add CNOT gate on qubits 0,1
-        let cnot_gate = Box::new(CNOT { control: QubitId(0), target: QubitId(1) });
+        let cnot_gate = Box::new(CNOT {
+            control: QubitId(0),
+            target: QubitId(1),
+        });
         let cnot_id = dag.add_gate(cnot_gate);
-        
+
         // Check structure
         assert_eq!(dag.nodes().len(), 3);
         assert_eq!(dag.edges().len(), 2);
@@ -402,19 +405,22 @@ mod tests {
     #[test]
     fn test_topological_sort() {
         let mut dag = CircuitDag::new();
-        
+
         // Create a simple circuit: H(0) -> CNOT(0,1) <- X(1)
         let h_gate = Box::new(Hadamard { target: QubitId(0) });
         let h_id = dag.add_gate(h_gate);
-        
+
         let x_gate = Box::new(PauliX { target: QubitId(1) });
         let x_id = dag.add_gate(x_gate);
-        
-        let cnot_gate = Box::new(CNOT { control: QubitId(0), target: QubitId(1) });
+
+        let cnot_gate = Box::new(CNOT {
+            control: QubitId(0),
+            target: QubitId(1),
+        });
         let cnot_id = dag.add_gate(cnot_gate);
-        
+
         let sorted = dag.topological_sort().unwrap();
-        
+
         // H and X can be in any order, but CNOT must be last
         assert_eq!(sorted.len(), 3);
         assert!(sorted.contains(&h_id));
@@ -425,17 +431,17 @@ mod tests {
     #[test]
     fn test_parallel_nodes() {
         let mut dag = CircuitDag::new();
-        
+
         // Add gates on different qubits (can be parallel)
         let h0 = dag.add_gate(Box::new(Hadamard { target: QubitId(0) }));
         let h1 = dag.add_gate(Box::new(Hadamard { target: QubitId(1) }));
         let h2 = dag.add_gate(Box::new(Hadamard { target: QubitId(2) }));
-        
+
         // Check that all H gates can be executed in parallel
         assert!(dag.are_independent(h0, h1));
         assert!(dag.are_independent(h0, h2));
         assert!(dag.are_independent(h1, h2));
-        
+
         let parallel_to_h0 = dag.parallel_nodes(h0);
         assert!(parallel_to_h0.contains(&h1));
         assert!(parallel_to_h0.contains(&h2));
@@ -444,17 +450,20 @@ mod tests {
     #[test]
     fn test_critical_path() {
         let mut dag = CircuitDag::new();
-        
+
         // Create a circuit with a clear critical path
         // H(0) -> CNOT(0,1) -> X(0)
         //      -> X(1) -----/
         let h0 = dag.add_gate(Box::new(Hadamard { target: QubitId(0) }));
         let x1 = dag.add_gate(Box::new(PauliX { target: QubitId(1) }));
-        let cnot = dag.add_gate(Box::new(CNOT { control: QubitId(0), target: QubitId(1) }));
+        let cnot = dag.add_gate(Box::new(CNOT {
+            control: QubitId(0),
+            target: QubitId(1),
+        }));
         let x0 = dag.add_gate(Box::new(PauliX { target: QubitId(0) }));
-        
+
         let path = dag.critical_path();
-        
+
         // Critical path should be H(0) -> CNOT -> X(0)
         assert_eq!(path.len(), 3);
         assert_eq!(path[0], h0);

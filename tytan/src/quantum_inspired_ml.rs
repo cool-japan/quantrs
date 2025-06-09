@@ -7,6 +7,7 @@ use crate::sampler::{Sampler, SampleResult, SamplerError};
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
 use std::collections::HashMap;
 use rand::prelude::*;
+use rand::thread_rng;
 
 /// Quantum-Inspired Support Vector Machine
 pub struct QuantumSVM {
@@ -401,11 +402,13 @@ impl QuantumBoltzmannMachine {
         Self {
             n_visible,
             n_hidden,
-            weights: Array2::random_using(
-                (n_visible, n_hidden),
-                ndarray_rand::rand_distr::Normal::new(0.0, 0.01).unwrap(),
-                &mut rng,
-            ),
+            weights: {
+                let mut weights = Array2::zeros((n_visible, n_hidden));
+                for element in weights.iter_mut() {
+                    *element = rng.gen_range(-0.01..0.01);
+                }
+                weights
+            },
             visible_bias: Array1::zeros(n_visible),
             hidden_bias: Array1::zeros(n_hidden),
             learning_rate: 0.01,
@@ -555,11 +558,13 @@ impl QuantumBoltzmannMachine {
     ) -> Result<Array2<f64>, String> {
         // Start with random hidden state
         let mut rng = thread_rng();
-        let mut hidden = Array2::random_using(
-            (n_samples, self.n_hidden),
-            ndarray_rand::rand_distr::Bernoulli::new(0.5).unwrap(),
-            &mut rng,
-        ).mapv(|x| if x { 1.0 } else { 0.0 });
+        let mut hidden = {
+            let mut hidden = Array2::zeros((n_samples, self.n_hidden));
+            for element in hidden.iter_mut() {
+                *element = if rng.gen::<bool>() { 1.0 } else { 0.0 };
+            }
+            hidden
+        };
         
         // Gibbs sampling
         for _ in 0..10 {

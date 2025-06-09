@@ -3,12 +3,16 @@
 //! This module implements various optimization passes that can be applied to quantum circuits.
 
 use crate::builder::Circuit;
-use crate::optimization::gate_properties::{get_gate_properties, CommutationTable};
 use crate::optimization::cost_model::CostModel;
-use quantrs2_core::error::{QuantRS2Result, QuantRS2Error};
-use quantrs2_core::gate::{GateOp, single::{self, RotationX, RotationY, RotationZ, PauliX, PauliZ}, multi};
+use crate::optimization::gate_properties::{get_gate_properties, CommutationTable};
+use quantrs2_core::decomposition::{decompose_controlled_rotation, GateDecomposable};
+use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
+use quantrs2_core::gate::{
+    multi,
+    single::{self, PauliX, PauliZ, RotationX, RotationY, RotationZ},
+    GateOp,
+};
 use quantrs2_core::qubit::QubitId;
-use quantrs2_core::decomposition::{GateDecomposable, decompose_controlled_rotation};
 use std::collections::{HashMap, HashSet};
 use std::f64::consts::PI;
 
@@ -16,10 +20,14 @@ use std::f64::consts::PI;
 pub trait OptimizationPass: Send + Sync {
     /// Name of the optimization pass
     fn name(&self) -> &str;
-    
+
     /// Apply the optimization pass to a gate list
-    fn apply_to_gates(&self, gates: Vec<Box<dyn GateOp>>, cost_model: &dyn CostModel) -> QuantRS2Result<Vec<Box<dyn GateOp>>>;
-    
+    fn apply_to_gates(
+        &self,
+        gates: Vec<Box<dyn GateOp>>,
+        cost_model: &dyn CostModel,
+    ) -> QuantRS2Result<Vec<Box<dyn GateOp>>>;
+
     /// Check if this pass should be applied
     fn should_apply(&self) -> bool {
         true
@@ -28,16 +36,21 @@ pub trait OptimizationPass: Send + Sync {
 
 /// Extension trait for circuit operations
 pub trait OptimizationPassExt<const N: usize> {
-    fn apply(&self, circuit: &Circuit<N>, cost_model: &dyn CostModel) -> QuantRS2Result<Circuit<N>>;
+    fn apply(&self, circuit: &Circuit<N>, cost_model: &dyn CostModel)
+        -> QuantRS2Result<Circuit<N>>;
     fn should_apply_to_circuit(&self, circuit: &Circuit<N>) -> bool;
 }
 
 impl<T: OptimizationPass + ?Sized, const N: usize> OptimizationPassExt<N> for T {
-    fn apply(&self, circuit: &Circuit<N>, cost_model: &dyn CostModel) -> QuantRS2Result<Circuit<N>> {
+    fn apply(
+        &self,
+        circuit: &Circuit<N>,
+        cost_model: &dyn CostModel,
+    ) -> QuantRS2Result<Circuit<N>> {
         // TODO: Convert circuit to gates, apply pass, convert back
         Ok(circuit.clone())
     }
-    
+
     fn should_apply_to_circuit(&self, _circuit: &Circuit<N>) -> bool {
         self.should_apply()
     }
@@ -58,16 +71,20 @@ impl OptimizationPass for GateCancellation {
     fn name(&self) -> &str {
         "Gate Cancellation"
     }
-    
-    fn apply_to_gates(&self, gates: Vec<Box<dyn GateOp>>, _cost_model: &dyn CostModel) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
+
+    fn apply_to_gates(
+        &self,
+        gates: Vec<Box<dyn GateOp>>,
+        _cost_model: &dyn CostModel,
+    ) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
         let mut optimized = Vec::new();
         let mut i = 0;
-        
+
         while i < gates.len() {
             if i + 1 < gates.len() {
                 let gate1 = &gates[i];
                 let gate2 = &gates[i + 1];
-                
+
                 // Check if gates act on the same qubits
                 if gate1.qubits() == gate2.qubits() && gate1.name() == gate2.name() {
                     // Check for self-inverse gates (H, X, Y, Z)
@@ -81,7 +98,7 @@ impl OptimizationPass for GateCancellation {
                             // Check if rotations cancel
                             if let (Some(rx1), Some(rx2)) = (
                                 gate1.as_any().downcast_ref::<single::RotationX>(),
-                                gate2.as_any().downcast_ref::<single::RotationX>()
+                                gate2.as_any().downcast_ref::<single::RotationX>(),
                             ) {
                                 let combined_angle = rx1.theta + rx2.theta;
                                 // Check if the combined rotation is effectively zero
@@ -91,7 +108,7 @@ impl OptimizationPass for GateCancellation {
                                 }
                             } else if let (Some(ry1), Some(ry2)) = (
                                 gate1.as_any().downcast_ref::<single::RotationY>(),
-                                gate2.as_any().downcast_ref::<single::RotationY>()
+                                gate2.as_any().downcast_ref::<single::RotationY>(),
                             ) {
                                 let combined_angle = ry1.theta + ry2.theta;
                                 if (combined_angle % (2.0 * PI)).abs() < 1e-10 {
@@ -100,7 +117,7 @@ impl OptimizationPass for GateCancellation {
                                 }
                             } else if let (Some(rz1), Some(rz2)) = (
                                 gate1.as_any().downcast_ref::<single::RotationZ>(),
-                                gate2.as_any().downcast_ref::<single::RotationZ>()
+                                gate2.as_any().downcast_ref::<single::RotationZ>(),
                             ) {
                                 let combined_angle = rz1.theta + rz2.theta;
                                 if (combined_angle % (2.0 * PI)).abs() < 1e-10 {
@@ -113,7 +130,7 @@ impl OptimizationPass for GateCancellation {
                             // CNOT is self-inverse
                             if let (Some(cnot1), Some(cnot2)) = (
                                 gate1.as_any().downcast_ref::<multi::CNOT>(),
-                                gate2.as_any().downcast_ref::<multi::CNOT>()
+                                gate2.as_any().downcast_ref::<multi::CNOT>(),
                             ) {
                                 if cnot1.control == cnot2.control && cnot1.target == cnot2.target {
                                     i += 2;
@@ -124,18 +141,20 @@ impl OptimizationPass for GateCancellation {
                         _ => {}
                     }
                 }
-                
+
                 // Look for more complex cancellations if aggressive mode is enabled
                 if self.aggressive && i + 2 < gates.len() {
                     // Check for patterns like X-Y-X-Y or Z-H-Z-H
                     let gate3 = &gates[i + 2];
-                    if gate1.qubits() == gate3.qubits() && 
-                       gate1.name() == gate3.name() &&
-                       i + 3 < gates.len() {
+                    if gate1.qubits() == gate3.qubits()
+                        && gate1.name() == gate3.name()
+                        && i + 3 < gates.len()
+                    {
                         let gate4 = &gates[i + 3];
-                        if gate2.qubits() == gate4.qubits() && 
-                           gate2.name() == gate4.name() &&
-                           gate1.qubits() == gate2.qubits() {
+                        if gate2.qubits() == gate4.qubits()
+                            && gate2.name() == gate4.name()
+                            && gate1.qubits() == gate2.qubits()
+                        {
                             // Pattern detected, check if it simplifies
                             match (gate1.name(), gate2.name()) {
                                 ("X", "Y") | ("Y", "X") | ("Z", "H") | ("H", "Z") => {
@@ -148,12 +167,12 @@ impl OptimizationPass for GateCancellation {
                     }
                 }
             }
-            
+
             // If we didn't skip, add the gate to optimized list
             optimized.push(gates[i].clone());
             i += 1;
         }
-        
+
         Ok(optimized)
     }
 }
@@ -180,37 +199,38 @@ impl GateCommutation {
         if self.commutation_table.commutes(gate1.name(), gate2.name()) {
             return true;
         }
-        
+
         // Additional commutation rules
         match (gate1.name(), gate2.name()) {
             // Pauli gates commutation
             ("X", "X") | ("Y", "Y") | ("Z", "Z") => true,
             ("I", _) | (_, "I") => true,
-            
+
             // Phase/T gates commute with Z
             ("S", "Z") | ("Z", "S") | ("T", "Z") | ("Z", "T") => true,
-            
+
             // Same-axis rotations commute
             ("RX", "RX") | ("RY", "RY") | ("RZ", "RZ") => true,
-            
+
             // RZ commutes with Z-like gates
-            ("RZ", "Z") | ("Z", "RZ") | ("RZ", "S") | ("S", "RZ") | 
-            ("RZ", "T") | ("T", "RZ") => true,
-            
-            _ => false
+            ("RZ", "Z") | ("Z", "RZ") | ("RZ", "S") | ("S", "RZ") | ("RZ", "T") | ("T", "RZ") => {
+                true
+            }
+
+            _ => false,
         }
     }
-    
+
     /// Check if swapping gates at position i would enable optimizations
     fn would_benefit_from_swap(&self, gates: &[Box<dyn GateOp>], i: usize) -> bool {
         if i + 2 >= gates.len() {
             return false;
         }
-        
+
         let gate1 = &gates[i];
         let gate2 = &gates[i + 1];
         let gate3 = &gates[i + 2];
-        
+
         // Check if swapping would create cancellation opportunities
         if gate1.name() == gate3.name() && gate1.qubits() == gate3.qubits() {
             // After swap, gate2 and gate3 (originally gate1) would be adjacent
@@ -219,7 +239,7 @@ impl GateCommutation {
                 _ => {}
             }
         }
-        
+
         // Check if swapping would enable rotation merging
         if gate2.name() == gate3.name() && gate2.qubits() == gate3.qubits() {
             match gate2.name() {
@@ -227,7 +247,7 @@ impl GateCommutation {
                 _ => {}
             }
         }
-        
+
         false
     }
 }
@@ -236,29 +256,33 @@ impl OptimizationPass for GateCommutation {
     fn name(&self) -> &str {
         "Gate Commutation"
     }
-    
-    fn apply_to_gates(&self, gates: Vec<Box<dyn GateOp>>, _cost_model: &dyn CostModel) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
+
+    fn apply_to_gates(
+        &self,
+        gates: Vec<Box<dyn GateOp>>,
+        _cost_model: &dyn CostModel,
+    ) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
         if gates.len() < 2 {
             return Ok(gates);
         }
-        
+
         let mut optimized = gates;
         let mut changed = true;
-        
+
         // Keep trying to commute gates until no more changes
         while changed {
             changed = false;
             let mut i = 0;
-            
+
             while i < optimized.len().saturating_sub(1) {
                 let can_swap = {
                     let gate1 = &optimized[i];
                     let gate2 = &optimized[i + 1];
-                    
+
                     // Check if gates act on different qubits (always commute)
                     let qubits1: HashSet<_> = gate1.qubits().into_iter().collect();
                     let qubits2: HashSet<_> = gate2.qubits().into_iter().collect();
-                    
+
                     if qubits1.is_disjoint(&qubits2) {
                         // Gates on disjoint qubits always commute
                         // Check if swapping would enable optimizations
@@ -271,7 +295,7 @@ impl OptimizationPass for GateCommutation {
                         false
                     }
                 };
-                
+
                 if can_swap {
                     optimized.swap(i, i + 1);
                     changed = true;
@@ -282,14 +306,14 @@ impl OptimizationPass for GateCommutation {
                 } else {
                     i += 1;
                 }
-                
+
                 // Limit lookahead to prevent excessive computation
                 if i >= self.max_lookahead {
                     break;
                 }
             }
         }
-        
+
         Ok(optimized)
     }
 }
@@ -313,16 +337,20 @@ impl OptimizationPass for GateMerging {
     fn name(&self) -> &str {
         "Gate Merging"
     }
-    
-    fn apply_to_gates(&self, gates: Vec<Box<dyn GateOp>>, _cost_model: &dyn CostModel) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
+
+    fn apply_to_gates(
+        &self,
+        gates: Vec<Box<dyn GateOp>>,
+        _cost_model: &dyn CostModel,
+    ) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
         let mut optimized = Vec::new();
         let mut i = 0;
-        
+
         while i < gates.len() {
             if i + 1 < gates.len() && self.merge_rotations {
                 let gate1 = &gates[i];
                 let gate2 = &gates[i + 1];
-                
+
                 // Try to merge rotation gates
                 if gate1.qubits() == gate2.qubits() {
                     let merged = match (gate1.name(), gate2.name()) {
@@ -332,8 +360,14 @@ impl OptimizationPass for GateMerging {
                             None
                         }
                         // Different axis rotations might be mergeable using Euler decomposition
-                        ("RZ", "RX") | ("RX", "RZ") | ("RY", "RX") | ("RX", "RY") | 
-                        ("RZ", "RY") | ("RY", "RZ") if self.merge_threshold > 0.0 => {
+                        ("RZ", "RX")
+                        | ("RX", "RZ")
+                        | ("RY", "RX")
+                        | ("RX", "RY")
+                        | ("RZ", "RY")
+                        | ("RY", "RZ")
+                            if self.merge_threshold > 0.0 =>
+                        {
                             // Complex merging would require matrix multiplication
                             // For now, skip this advanced optimization
                             None
@@ -344,9 +378,9 @@ impl OptimizationPass for GateMerging {
                             // These could be merged but need special handling
                             None
                         }
-                        _ => None
+                        _ => None,
                     };
-                    
+
                     if let Some(merged_gate) = merged {
                         optimized.push(merged_gate);
                         i += 2;
@@ -354,23 +388,27 @@ impl OptimizationPass for GateMerging {
                     }
                 }
             }
-            
+
             // Check for special merging patterns
             if i + 1 < gates.len() {
                 let gate1 = &gates[i];
                 let gate2 = &gates[i + 1];
-                
+
                 // H-Z-H = X, H-X-H = Z (basis change)
                 if i + 2 < gates.len() {
                     let gate3 = &gates[i + 2];
-                    if gate1.name() == "H" && gate3.name() == "H" && 
-                       gate1.qubits() == gate2.qubits() && gate2.qubits() == gate3.qubits() {
+                    if gate1.name() == "H"
+                        && gate3.name() == "H"
+                        && gate1.qubits() == gate2.qubits()
+                        && gate2.qubits() == gate3.qubits()
+                    {
                         match gate2.name() {
                             "Z" => {
                                 // H-Z-H = X
                                 optimized.push(Box::new(single::PauliX {
                                     target: gate1.qubits()[0],
-                                }) as Box<dyn GateOp>);
+                                })
+                                    as Box<dyn GateOp>);
                                 i += 3;
                                 continue;
                             }
@@ -378,7 +416,8 @@ impl OptimizationPass for GateMerging {
                                 // H-X-H = Z
                                 optimized.push(Box::new(single::PauliZ {
                                     target: gate1.qubits()[0],
-                                }) as Box<dyn GateOp>);
+                                })
+                                    as Box<dyn GateOp>);
                                 i += 3;
                                 continue;
                             }
@@ -387,12 +426,12 @@ impl OptimizationPass for GateMerging {
                     }
                 }
             }
-            
+
             // If no merging happened, keep the original gate
             optimized.push(gates[i].clone());
             i += 1;
         }
-        
+
         Ok(optimized)
     }
 }
@@ -406,13 +445,13 @@ impl RotationMerging {
     pub fn new(tolerance: f64) -> Self {
         Self { tolerance }
     }
-    
+
     /// Check if angle is effectively zero (or 2π multiple)
     fn is_zero_rotation(&self, angle: f64) -> bool {
         let normalized = angle % (2.0 * PI);
         normalized.abs() < self.tolerance || (normalized - 2.0 * PI).abs() < self.tolerance
     }
-    
+
     /// Merge two rotation angles
     fn merge_angles(&self, angle1: f64, angle2: f64) -> f64 {
         let merged = angle1 + angle2;
@@ -431,23 +470,27 @@ impl OptimizationPass for RotationMerging {
     fn name(&self) -> &str {
         "Rotation Merging"
     }
-    
-    fn apply_to_gates(&self, gates: Vec<Box<dyn GateOp>>, _cost_model: &dyn CostModel) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
+
+    fn apply_to_gates(
+        &self,
+        gates: Vec<Box<dyn GateOp>>,
+        _cost_model: &dyn CostModel,
+    ) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
         let mut optimized = Vec::new();
         let mut i = 0;
-        
+
         while i < gates.len() {
             if i + 1 < gates.len() {
                 let gate1 = &gates[i];
                 let gate2 = &gates[i + 1];
-                
+
                 // Check if both gates are rotations on the same qubit and axis
                 if gate1.qubits() == gate2.qubits() && gate1.name() == gate2.name() {
                     match gate1.name() {
                         "RX" => {
                             if let (Some(rx1), Some(rx2)) = (
                                 gate1.as_any().downcast_ref::<single::RotationX>(),
-                                gate2.as_any().downcast_ref::<single::RotationX>()
+                                gate2.as_any().downcast_ref::<single::RotationX>(),
                             ) {
                                 let merged_angle = self.merge_angles(rx1.theta, rx2.theta);
                                 if self.is_zero_rotation(merged_angle) {
@@ -459,7 +502,8 @@ impl OptimizationPass for RotationMerging {
                                     optimized.push(Box::new(single::RotationX {
                                         target: rx1.target,
                                         theta: merged_angle,
-                                    }) as Box<dyn GateOp>);
+                                    })
+                                        as Box<dyn GateOp>);
                                     i += 2;
                                     continue;
                                 }
@@ -468,7 +512,7 @@ impl OptimizationPass for RotationMerging {
                         "RY" => {
                             if let (Some(ry1), Some(ry2)) = (
                                 gate1.as_any().downcast_ref::<single::RotationY>(),
-                                gate2.as_any().downcast_ref::<single::RotationY>()
+                                gate2.as_any().downcast_ref::<single::RotationY>(),
                             ) {
                                 let merged_angle = self.merge_angles(ry1.theta, ry2.theta);
                                 if self.is_zero_rotation(merged_angle) {
@@ -478,7 +522,8 @@ impl OptimizationPass for RotationMerging {
                                     optimized.push(Box::new(single::RotationY {
                                         target: ry1.target,
                                         theta: merged_angle,
-                                    }) as Box<dyn GateOp>);
+                                    })
+                                        as Box<dyn GateOp>);
                                     i += 2;
                                     continue;
                                 }
@@ -487,7 +532,7 @@ impl OptimizationPass for RotationMerging {
                         "RZ" => {
                             if let (Some(rz1), Some(rz2)) = (
                                 gate1.as_any().downcast_ref::<single::RotationZ>(),
-                                gate2.as_any().downcast_ref::<single::RotationZ>()
+                                gate2.as_any().downcast_ref::<single::RotationZ>(),
                             ) {
                                 let merged_angle = self.merge_angles(rz1.theta, rz2.theta);
                                 if self.is_zero_rotation(merged_angle) {
@@ -497,7 +542,8 @@ impl OptimizationPass for RotationMerging {
                                     optimized.push(Box::new(single::RotationZ {
                                         target: rz1.target,
                                         theta: merged_angle,
-                                    }) as Box<dyn GateOp>);
+                                    })
+                                        as Box<dyn GateOp>);
                                     i += 2;
                                     continue;
                                 }
@@ -507,12 +553,12 @@ impl OptimizationPass for RotationMerging {
                     }
                 }
             }
-            
+
             // If we didn't merge, keep the original gate
             optimized.push(gates[i].clone());
             i += 1;
         }
-        
+
         Ok(optimized)
     }
 }
@@ -530,17 +576,23 @@ impl DecompositionOptimization {
             prefer_native,
         }
     }
-    
+
     pub fn for_hardware(hardware: &str) -> Self {
         let target_gate_set = match hardware {
             "ibm" => vec!["X", "Y", "Z", "H", "S", "T", "RZ", "CNOT", "CZ"]
-                .into_iter().map(|s| s.to_string()).collect(),
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect(),
             "google" => vec!["X", "Y", "Z", "H", "RZ", "CZ", "SQRT_X"]
-                .into_iter().map(|s| s.to_string()).collect(),
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect(),
             _ => vec!["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY", "CNOT"]
-                .into_iter().map(|s| s.to_string()).collect(),
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect(),
         };
-        
+
         Self {
             target_gate_set,
             prefer_native: true,
@@ -552,8 +604,12 @@ impl OptimizationPass for DecompositionOptimization {
     fn name(&self) -> &str {
         "Decomposition Optimization"
     }
-    
-    fn apply_to_gates(&self, gates: Vec<Box<dyn GateOp>>, cost_model: &dyn CostModel) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
+
+    fn apply_to_gates(
+        &self,
+        gates: Vec<Box<dyn GateOp>>,
+        cost_model: &dyn CostModel,
+    ) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
         // TODO: Implement decomposition optimization
         Ok(gates)
     }
@@ -587,8 +643,12 @@ impl OptimizationPass for CostBasedOptimization {
     fn name(&self) -> &str {
         "Cost-Based Optimization"
     }
-    
-    fn apply_to_gates(&self, gates: Vec<Box<dyn GateOp>>, cost_model: &dyn CostModel) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
+
+    fn apply_to_gates(
+        &self,
+        gates: Vec<Box<dyn GateOp>>,
+        cost_model: &dyn CostModel,
+    ) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
         // TODO: Implement cost-based optimization
         Ok(gates)
     }
@@ -613,8 +673,12 @@ impl OptimizationPass for TwoQubitOptimization {
     fn name(&self) -> &str {
         "Two-Qubit Optimization"
     }
-    
-    fn apply_to_gates(&self, gates: Vec<Box<dyn GateOp>>, _cost_model: &dyn CostModel) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
+
+    fn apply_to_gates(
+        &self,
+        gates: Vec<Box<dyn GateOp>>,
+        _cost_model: &dyn CostModel,
+    ) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
         // TODO: Implement two-qubit optimization
         Ok(gates)
     }
@@ -645,9 +709,13 @@ impl PeepholeOptimization {
                         let g0 = &gates[0];
                         let g1 = &gates[1];
                         let g2 = &gates[2];
-                        
-                        if g0.name() == "X" && g2.name() == "X" && g1.name() == "Y" &&
-                           g0.qubits() == g1.qubits() && g1.qubits() == g2.qubits() {
+
+                        if g0.name() == "X"
+                            && g2.name() == "X"
+                            && g1.name() == "Y"
+                            && g0.qubits() == g1.qubits()
+                            && g1.qubits() == g2.qubits()
+                        {
                             // X-Y-X = -Y, we can return Y with a phase
                             return Some(vec![g1.clone()]);
                         }
@@ -664,13 +732,20 @@ impl PeepholeOptimization {
                         let g0 = &gates[0];
                         let g1 = &gates[1];
                         let g2 = &gates[2];
-                        
-                        if g0.name() == "H" && g2.name() == "H" && g1.name() == "S" &&
-                           g0.qubits() == g1.qubits() && g1.qubits() == g2.qubits() {
+
+                        if g0.name() == "H"
+                            && g2.name() == "H"
+                            && g1.name() == "S"
+                            && g0.qubits() == g1.qubits()
+                            && g1.qubits() == g2.qubits()
+                        {
                             let target = g0.qubits()[0];
                             return Some(vec![
                                 Box::new(single::PauliX { target }) as Box<dyn GateOp>,
-                                Box::new(single::RotationZ { target, theta: PI / 2.0 }) as Box<dyn GateOp>,
+                                Box::new(single::RotationZ {
+                                    target,
+                                    theta: PI / 2.0,
+                                }) as Box<dyn GateOp>,
                                 Box::new(single::PauliX { target }) as Box<dyn GateOp>,
                             ]);
                         }
@@ -687,14 +762,18 @@ impl PeepholeOptimization {
                         let g0 = &gates[0];
                         let g1 = &gates[1];
                         let g2 = &gates[2];
-                        
-                        if g0.name() == "RZ" && g1.name() == "RX" && g2.name() == "RZ" &&
-                           g0.qubits() == g1.qubits() && g1.qubits() == g2.qubits() {
+
+                        if g0.name() == "RZ"
+                            && g1.name() == "RX"
+                            && g2.name() == "RZ"
+                            && g0.qubits() == g1.qubits()
+                            && g1.qubits() == g2.qubits()
+                        {
                             // Check if this is an inefficient decomposition
                             if let (Some(rz1), Some(rx), Some(rz2)) = (
                                 g0.as_any().downcast_ref::<single::RotationZ>(),
                                 g1.as_any().downcast_ref::<single::RotationX>(),
-                                g2.as_any().downcast_ref::<single::RotationZ>()
+                                g2.as_any().downcast_ref::<single::RotationZ>(),
                             ) {
                                 // If middle rotation is small, might be numerical error
                                 if rx.theta.abs() < 1e-10 {
@@ -703,12 +782,11 @@ impl PeepholeOptimization {
                                     if combined_angle.abs() < 1e-10 {
                                         return Some(vec![]); // Identity
                                     } else {
-                                        return Some(vec![
-                                            Box::new(single::RotationZ {
-                                                target: rz1.target,
-                                                theta: combined_angle,
-                                            }) as Box<dyn GateOp>
-                                        ]);
+                                        return Some(vec![Box::new(single::RotationZ {
+                                            target: rz1.target,
+                                            theta: combined_angle,
+                                        })
+                                            as Box<dyn GateOp>]);
                                     }
                                 }
                             }
@@ -726,17 +804,18 @@ impl PeepholeOptimization {
                         let g0 = &gates[0];
                         let g1 = &gates[1];
                         let g2 = &gates[2];
-                        
+
                         if g0.name() == "CNOT" && g2.name() == "CNOT" && g1.name() == "RZ" {
                             if let (Some(cnot1), Some(rz), Some(cnot2)) = (
                                 g0.as_any().downcast_ref::<multi::CNOT>(),
                                 g1.as_any().downcast_ref::<single::RotationZ>(),
-                                g2.as_any().downcast_ref::<multi::CNOT>()
+                                g2.as_any().downcast_ref::<multi::CNOT>(),
                             ) {
                                 // Check if it's the same CNOT structure
-                                if cnot1.control == cnot2.control && 
-                                   cnot1.target == cnot2.target &&
-                                   rz.target == cnot1.target {
+                                if cnot1.control == cnot2.control
+                                    && cnot1.target == cnot2.target
+                                    && rz.target == cnot1.target
+                                {
                                     // This is a controlled-RZ, keep as is for now
                                     // In future, could replace with native CRZ if available
                                     return None;
@@ -754,18 +833,23 @@ impl PeepholeOptimization {
                 matcher: |gates| {
                     if gates.len() >= 4 {
                         // H-CNOT-H-CNOT pattern
-                        if gates[0].name() == "H" && gates[1].name() == "CNOT" &&
-                           gates[2].name() == "H" && gates[3].name() == "CNOT" {
+                        if gates[0].name() == "H"
+                            && gates[1].name() == "CNOT"
+                            && gates[2].name() == "H"
+                            && gates[3].name() == "CNOT"
+                        {
                             // Check qubit connectivity
                             let h1_target = gates[0].qubits()[0];
                             let h2_target = gates[2].qubits()[0];
-                            
+
                             if let (Some(cnot1), Some(cnot2)) = (
                                 gates[1].as_any().downcast_ref::<multi::CNOT>(),
-                                gates[3].as_any().downcast_ref::<multi::CNOT>()
+                                gates[3].as_any().downcast_ref::<multi::CNOT>(),
                             ) {
-                                if h1_target == cnot1.control && h2_target == cnot2.control &&
-                                   cnot1.target == cnot2.target {
+                                if h1_target == cnot1.control
+                                    && h2_target == cnot2.control
+                                    && cnot1.target == cnot2.target
+                                {
                                     // Can sometimes be simplified
                                     return None; // Keep for now, needs deeper analysis
                                 }
@@ -776,13 +860,13 @@ impl PeepholeOptimization {
                 },
             },
         ];
-        
+
         Self {
             window_size,
             patterns,
         }
     }
-    
+
     /// Apply patterns to a window of gates
     fn apply_patterns(&self, window: &[Box<dyn GateOp>]) -> Option<Vec<Box<dyn GateOp>>> {
         for pattern in &self.patterns {
@@ -800,20 +884,24 @@ impl OptimizationPass for PeepholeOptimization {
     fn name(&self) -> &str {
         "Peephole Optimization"
     }
-    
-    fn apply_to_gates(&self, gates: Vec<Box<dyn GateOp>>, _cost_model: &dyn CostModel) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
+
+    fn apply_to_gates(
+        &self,
+        gates: Vec<Box<dyn GateOp>>,
+        _cost_model: &dyn CostModel,
+    ) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
         let mut optimized = Vec::new();
         let mut i = 0;
-        
+
         while i < gates.len() {
             // Try to match patterns starting at position i
             let mut matched = false;
-            
+
             // Try different window sizes up to the configured maximum
             for window_size in (2..=self.window_size).rev() {
                 if i + window_size <= gates.len() {
                     let window = &gates[i..i + window_size];
-                    
+
                     if let Some(replacement) = self.apply_patterns(window) {
                         // Apply the optimization
                         optimized.extend(replacement);
@@ -823,14 +911,14 @@ impl OptimizationPass for PeepholeOptimization {
                     }
                 }
             }
-            
+
             // If no pattern matched, keep the original gate
             if !matched {
                 optimized.push(gates[i].clone());
                 i += 1;
             }
         }
-        
+
         Ok(optimized)
     }
 }
@@ -870,10 +958,10 @@ impl TemplateMatching {
                 cost_reduction: 2.0,
             },
         ];
-        
+
         Self { templates }
     }
-    
+
     pub fn with_templates(templates: Vec<CircuitTemplate>) -> Self {
         Self { templates }
     }
@@ -883,19 +971,23 @@ impl OptimizationPass for TemplateMatching {
     fn name(&self) -> &str {
         "Template Matching"
     }
-    
-    fn apply_to_gates(&self, gates: Vec<Box<dyn GateOp>>, cost_model: &dyn CostModel) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
+
+    fn apply_to_gates(
+        &self,
+        gates: Vec<Box<dyn GateOp>>,
+        cost_model: &dyn CostModel,
+    ) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
         let mut optimized = gates;
         let mut changed = true;
-        
+
         while changed {
             changed = false;
             let original_cost = cost_model.gates_cost(&optimized);
-            
+
             for template in &self.templates {
                 let result = self.apply_template(template, optimized.clone())?;
                 let new_cost = cost_model.gates_cost(&result);
-                
+
                 if new_cost < original_cost {
                     optimized = result;
                     changed = true;
@@ -903,17 +995,21 @@ impl OptimizationPass for TemplateMatching {
                 }
             }
         }
-        
+
         Ok(optimized)
     }
 }
 
 impl TemplateMatching {
     /// Apply a single template to the gates
-    fn apply_template(&self, template: &CircuitTemplate, gates: Vec<Box<dyn GateOp>>) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
+    fn apply_template(
+        &self,
+        template: &CircuitTemplate,
+        gates: Vec<Box<dyn GateOp>>,
+    ) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
         let mut result = Vec::new();
         let mut i = 0;
-        
+
         while i < gates.len() {
             if let Some(replacement) = self.match_pattern_at_position(template, &gates, i)? {
                 // Add replacement gates
@@ -925,30 +1021,35 @@ impl TemplateMatching {
                 i += 1;
             }
         }
-        
+
         Ok(result)
     }
-    
+
     /// Try to match a pattern starting at a specific position
-    fn match_pattern_at_position(&self, template: &CircuitTemplate, gates: &[Box<dyn GateOp>], start: usize) -> QuantRS2Result<Option<Vec<Box<dyn GateOp>>>> {
+    fn match_pattern_at_position(
+        &self,
+        template: &CircuitTemplate,
+        gates: &[Box<dyn GateOp>],
+        start: usize,
+    ) -> QuantRS2Result<Option<Vec<Box<dyn GateOp>>>> {
         if start + template.pattern.len() > gates.len() {
             return Ok(None);
         }
-        
+
         // Check if pattern matches and collect qubits
         let mut qubit_mapping = HashMap::new();
         let mut all_qubits = Vec::new();
         let mut is_match = true;
-        
+
         for (i, pattern_gate) in template.pattern.iter().enumerate() {
             let gate = &gates[start + i];
-            
+
             // Check if the gate name matches
             if !self.gate_matches_pattern(gate.as_ref(), pattern_gate, &mut qubit_mapping) {
                 is_match = false;
                 break;
             }
-            
+
             // Collect qubits from this gate
             for qubit in gate.qubits() {
                 if !all_qubits.contains(&qubit) {
@@ -956,19 +1057,23 @@ impl TemplateMatching {
                 }
             }
         }
-        
+
         if !is_match {
             return Ok(None);
         }
-        
+
         // Check if all gates operate on the same qubit(s) for single-qubit patterns
-        if template.pattern.iter().all(|p| p == "H" || p == "X" || p == "Y" || p == "Z" || p == "S" || p == "T") {
+        if template
+            .pattern
+            .iter()
+            .all(|p| p == "H" || p == "X" || p == "Y" || p == "Z" || p == "S" || p == "T")
+        {
             // For single-qubit gates, check they all operate on the same qubit
             let first_qubit = gates[start].qubits();
             if first_qubit.len() != 1 {
                 return Ok(None);
             }
-            
+
             for i in 1..template.pattern.len() {
                 let gate_qubits = gates[start + i].qubits();
                 if gate_qubits != first_qubit {
@@ -976,21 +1081,26 @@ impl TemplateMatching {
                 }
             }
         }
-        
+
         // Store qubits in mapping for replacement generation
         qubit_mapping.insert("qubits".to_string(), all_qubits);
-        
+
         // Generate replacement gates
         self.generate_replacement_gates(template, &qubit_mapping)
     }
-    
+
     /// Check if a gate matches a pattern element
-    fn gate_matches_pattern(&self, gate: &dyn GateOp, pattern: &str, qubit_mapping: &mut HashMap<String, Vec<QubitId>>) -> bool {
+    fn gate_matches_pattern(
+        &self,
+        gate: &dyn GateOp,
+        pattern: &str,
+        qubit_mapping: &mut HashMap<String, Vec<QubitId>>,
+    ) -> bool {
         // For now, use simple name matching
         // Later we can add more sophisticated pattern matching
         gate.name() == pattern
     }
-    
+
     /// Parse a pattern string like "H(q0)" or "CNOT(q0,q1)"
     fn parse_pattern(&self, pattern: &str) -> Option<(String, String)> {
         if let Some(open_paren) = pattern.find('(') {
@@ -1002,35 +1112,46 @@ impl TemplateMatching {
         }
         None
     }
-    
+
     /// Generate replacement gates based on the template and qubit mapping
-    fn generate_replacement_gates(&self, template: &CircuitTemplate, qubit_mapping: &HashMap<String, Vec<QubitId>>) -> QuantRS2Result<Option<Vec<Box<dyn GateOp>>>> {
+    fn generate_replacement_gates(
+        &self,
+        template: &CircuitTemplate,
+        qubit_mapping: &HashMap<String, Vec<QubitId>>,
+    ) -> QuantRS2Result<Option<Vec<Box<dyn GateOp>>>> {
         let mut replacement_gates = Vec::new();
-        
+
         // For simple patterns, just use the first qubit found in the mapping
-        let qubits: Vec<QubitId> = qubit_mapping.values().flat_map(|v| v.iter().cloned()).collect();
+        let qubits: Vec<QubitId> = qubit_mapping
+            .values()
+            .flat_map(|v| v.iter().cloned())
+            .collect();
         let mut unique_qubits: Vec<QubitId> = Vec::new();
         for qubit in qubits {
             if !unique_qubits.contains(&qubit) {
                 unique_qubits.push(qubit);
             }
         }
-        
+
         for replacement_pattern in &template.replacement {
             if let Some(gate) = self.create_simple_gate(replacement_pattern, &unique_qubits)? {
                 replacement_gates.push(gate);
             }
         }
-        
+
         Ok(Some(replacement_gates))
     }
-    
+
     /// Create a simple gate from pattern and available qubits
-    fn create_simple_gate(&self, pattern: &str, qubits: &[QubitId]) -> QuantRS2Result<Option<Box<dyn GateOp>>> {
+    fn create_simple_gate(
+        &self,
+        pattern: &str,
+        qubits: &[QubitId],
+    ) -> QuantRS2Result<Option<Box<dyn GateOp>>> {
         if qubits.is_empty() {
             return Ok(None);
         }
-        
+
         match pattern {
             "H" => Ok(Some(Box::new(single::Hadamard { target: qubits[0] }))),
             "X" => Ok(Some(Box::new(single::PauliX { target: qubits[0] }))),
@@ -1038,24 +1159,28 @@ impl TemplateMatching {
             "Z" => Ok(Some(Box::new(single::PauliZ { target: qubits[0] }))),
             "S" => Ok(Some(Box::new(single::Phase { target: qubits[0] }))),
             "T" => Ok(Some(Box::new(single::T { target: qubits[0] }))),
-            "CNOT" if qubits.len() >= 2 => Ok(Some(Box::new(multi::CNOT { 
-                control: qubits[0], 
-                target: qubits[1] 
+            "CNOT" if qubits.len() >= 2 => Ok(Some(Box::new(multi::CNOT {
+                control: qubits[0],
+                target: qubits[1],
             }))),
-            "CZ" if qubits.len() >= 2 => Ok(Some(Box::new(multi::CZ { 
-                control: qubits[0], 
-                target: qubits[1] 
+            "CZ" if qubits.len() >= 2 => Ok(Some(Box::new(multi::CZ {
+                control: qubits[0],
+                target: qubits[1],
             }))),
-            "SWAP" if qubits.len() >= 2 => Ok(Some(Box::new(multi::SWAP { 
-                qubit1: qubits[0], 
-                qubit2: qubits[1] 
+            "SWAP" if qubits.len() >= 2 => Ok(Some(Box::new(multi::SWAP {
+                qubit1: qubits[0],
+                qubit2: qubits[1],
             }))),
             _ => Ok(None),
         }
     }
-    
+
     /// Create a gate from a pattern string and qubit mapping
-    fn create_gate_from_pattern(&self, pattern: &str, qubit_mapping: &HashMap<String, Vec<QubitId>>) -> QuantRS2Result<Option<Box<dyn GateOp>>> {
+    fn create_gate_from_pattern(
+        &self,
+        pattern: &str,
+        qubit_mapping: &HashMap<String, Vec<QubitId>>,
+    ) -> QuantRS2Result<Option<Box<dyn GateOp>>> {
         if let Some((gate_name, qubit_pattern)) = self.parse_pattern(pattern) {
             if let Some(qubits) = qubit_mapping.get(&qubit_pattern) {
                 return Ok(Some(self.create_gate(&gate_name, qubits)?));
@@ -1068,10 +1193,10 @@ impl TemplateMatching {
                 }
             }
         }
-        
+
         Ok(None)
     }
-    
+
     /// Create a gate instance from name and qubits
     fn create_gate(&self, gate_name: &str, qubits: &[QubitId]) -> QuantRS2Result<Box<dyn GateOp>> {
         match (gate_name, qubits.len()) {
@@ -1081,24 +1206,26 @@ impl TemplateMatching {
             ("Z", 1) => Ok(Box::new(single::PauliZ { target: qubits[0] })),
             ("S", 1) => Ok(Box::new(single::Phase { target: qubits[0] })),
             ("T", 1) => Ok(Box::new(single::T { target: qubits[0] })),
-            ("CNOT", 2) => Ok(Box::new(multi::CNOT { 
-                control: qubits[0], 
-                target: qubits[1] 
+            ("CNOT", 2) => Ok(Box::new(multi::CNOT {
+                control: qubits[0],
+                target: qubits[1],
             })),
-            ("CZ", 2) => Ok(Box::new(multi::CZ { 
-                control: qubits[0], 
-                target: qubits[1] 
+            ("CZ", 2) => Ok(Box::new(multi::CZ {
+                control: qubits[0],
+                target: qubits[1],
             })),
-            ("SWAP", 2) => Ok(Box::new(multi::SWAP { 
-                qubit1: qubits[0], 
-                qubit2: qubits[1] 
+            ("SWAP", 2) => Ok(Box::new(multi::SWAP {
+                qubit1: qubits[0],
+                qubit2: qubits[1],
             })),
-            _ => Err(QuantRS2Error::UnsupportedOperation(
-                format!("Cannot create gate {} with {} qubits", gate_name, qubits.len())
-            ))
+            _ => Err(QuantRS2Error::UnsupportedOperation(format!(
+                "Cannot create gate {} with {} qubits",
+                gate_name,
+                qubits.len()
+            ))),
         }
     }
-    
+
     /// Create an advanced template matcher with more sophisticated patterns
     pub fn with_advanced_templates() -> Self {
         let templates = vec![
@@ -1131,7 +1258,12 @@ impl TemplateMatching {
             },
             CircuitTemplate {
                 name: "T-T-T-T to Identity".to_string(),
-                pattern: vec!["T".to_string(), "T".to_string(), "T".to_string(), "T".to_string()],
+                pattern: vec![
+                    "T".to_string(),
+                    "T".to_string(),
+                    "T".to_string(),
+                    "T".to_string(),
+                ],
                 replacement: vec![],
                 cost_reduction: 4.0,
             },
@@ -1150,10 +1282,10 @@ impl TemplateMatching {
                 cost_reduction: 0.5, // SWAP might be native on some hardware
             },
         ];
-        
+
         Self { templates }
     }
-    
+
     /// Create a template matcher for specific hardware
     pub fn for_hardware(hardware: &str) -> Self {
         let templates = match hardware {
@@ -1171,17 +1303,15 @@ impl TemplateMatching {
                     cost_reduction: 2.0,
                 },
             ],
-            "google" => vec![
-                CircuitTemplate {
-                    name: "CNOT to CZ with Hadamards".to_string(),
-                    pattern: vec!["CNOT".to_string()],
-                    replacement: vec!["H".to_string(), "CZ".to_string(), "H".to_string()],
-                    cost_reduction: -0.5, // CZ might be more native
-                },
-            ],
+            "google" => vec![CircuitTemplate {
+                name: "CNOT to CZ with Hadamards".to_string(),
+                pattern: vec!["CNOT".to_string()],
+                replacement: vec!["H".to_string(), "CZ".to_string(), "H".to_string()],
+                cost_reduction: -0.5, // CZ might be more native
+            }],
             _ => Self::new().templates,
         };
-        
+
         Self { templates }
     }
 }
@@ -1210,7 +1340,7 @@ impl CircuitRewriting {
         let rules = vec![
             // Add rewrite rules here
         ];
-        
+
         Self {
             rules,
             max_rewrites,
@@ -1222,8 +1352,12 @@ impl OptimizationPass for CircuitRewriting {
     fn name(&self) -> &str {
         "Circuit Rewriting"
     }
-    
-    fn apply_to_gates(&self, gates: Vec<Box<dyn GateOp>>, _cost_model: &dyn CostModel) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
+
+    fn apply_to_gates(
+        &self,
+        gates: Vec<Box<dyn GateOp>>,
+        _cost_model: &dyn CostModel,
+    ) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
         // TODO: Implement circuit rewriting
         Ok(gates)
     }
@@ -1232,17 +1366,17 @@ impl OptimizationPass for CircuitRewriting {
 /// Helper functions for optimization passes
 pub mod utils {
     use super::*;
-    
+
     /// Check if two gates cancel each other
     pub fn gates_cancel(gate1: &dyn GateOp, gate2: &dyn GateOp) -> bool {
         if gate1.name() != gate2.name() || gate1.qubits() != gate2.qubits() {
             return false;
         }
-        
+
         let props = get_gate_properties(gate1);
         props.is_self_inverse
     }
-    
+
     /// Check if a gate is effectively identity
     pub fn is_identity_gate(gate: &dyn GateOp, tolerance: f64) -> bool {
         match gate.name() {
@@ -1258,12 +1392,12 @@ pub mod utils {
             _ => false,
         }
     }
-    
+
     /// Calculate circuit depth
     pub fn calculate_depth(gates: &[Box<dyn GateOp>]) -> usize {
         let mut qubit_depths: HashMap<u32, usize> = HashMap::new();
         let mut max_depth = 0;
-        
+
         for gate in gates {
             let gate_qubits = gate.qubits();
             let current_depth = gate_qubits
@@ -1271,15 +1405,15 @@ pub mod utils {
                 .map(|q| qubit_depths.get(&q.id()).copied().unwrap_or(0))
                 .max()
                 .unwrap_or(0);
-            
+
             let new_depth = current_depth + 1;
             for qubit in gate_qubits {
                 qubit_depths.insert(qubit.id(), new_depth);
             }
-            
+
             max_depth = max_depth.max(new_depth);
         }
-        
+
         max_depth
     }
 }

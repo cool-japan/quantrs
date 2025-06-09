@@ -6,6 +6,7 @@
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
 use rayon::prelude::*;
 use std::sync::Arc;
+#[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
 
 /// Optimized QUBO evaluation

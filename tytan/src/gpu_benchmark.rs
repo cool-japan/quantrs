@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use std::fs::File;
 use std::io::Write;
+use rand::thread_rng;
 
 #[cfg(feature = "scirs")]
 use crate::scirs_stub::{
@@ -200,7 +201,7 @@ impl<S: Sampler> GpuBenchmark<S> {
                 let solutions = self.sampler.run_qubo(
                     &(qubo.clone(), var_map.clone()),
                     self.config.samples_per_problem
-                )?;
+                ).map_err(|e| e.to_string())?;
                 
                 let elapsed = start.elapsed();
                 times.push(elapsed);
@@ -265,7 +266,7 @@ impl<S: Sampler> GpuBenchmark<S> {
             let _solutions = self.sampler.run_qubo(
                 &(qubo.clone(), var_map.clone()),
                 batch_size
-            )?;
+            ).map_err(|e| e.to_string())?;
             
             let elapsed = start.elapsed();
             
@@ -306,7 +307,7 @@ impl<S: Sampler> GpuBenchmark<S> {
             let solutions = self.sampler.run_qubo(
                 &(qubo.clone(), var_map.clone()),
                 self.config.samples_per_problem
-            )?;
+            ).map_err(|e| e.to_string())?;
             
             let elapsed = start.elapsed();
             

@@ -5,11 +5,13 @@
 //! and parallel subproblem solving.
 
 use crate::sampler::{Sampler, SampleResult, SamplerError, SamplerResult};
+#[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
 use ndarray::{Array, Array1, Array2, IxDyn};
 use std::collections::{HashMap, HashSet, VecDeque, BinaryHeap};
 use std::cmp::Ordering;
 use rand::prelude::*;
+use rand::thread_rng;
 use rayon::prelude::*;
 
 /// Automatic graph partitioner for QUBO problems
@@ -105,10 +107,12 @@ impl GraphPartitioner {
             &partition_assignment,
         );
         
+        let coupling_terms = self.extract_coupling_terms(qubo, &partition_assignment)?;
+        
         Ok(Partitioning {
             partition_assignment,
             subproblems,
-            coupling_terms: self.extract_coupling_terms(qubo, &partition_assignment)?,
+            coupling_terms,
             metrics,
         })
     }
@@ -1116,7 +1120,7 @@ pub enum CoordinationStrategy {
     MessagePassing { damping: f64 },
 }
 
-impl<S: Sampler + Clone + Send> DomainDecompositionSolver<S> {
+impl<S: Sampler + Clone + Send + Sync> DomainDecompositionSolver<S> {
     /// Create new domain decomposition solver
     pub fn new(base_sampler: S, method: DecompositionMethod) -> Self {
         Self {
@@ -1508,7 +1512,7 @@ pub enum CommunicationPattern {
     Asynchronous,
 }
 
-impl<S: Sampler + Clone + Send + Sync> ParallelSubproblemSolver<S> {
+impl<S: Sampler + Clone + Send + Sync + 'static> ParallelSubproblemSolver<S> {
     /// Create new parallel solver
     pub fn new(base_sampler: S, num_workers: usize) -> Self {
         Self {

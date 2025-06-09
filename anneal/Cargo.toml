@@ -16,6 +16,7 @@ num-complex.workspace = true
 thiserror.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
+ndarray.workspace = true
 
 # For D-Wave integration
 reqwest = { workspace = true, optional = true }

@@ -532,6 +532,16 @@ impl QuantumMetaLearner {
     pub fn get_task_embedding(&self, task_id: &str) -> Option<&Array1<f64>> {
         self.task_embeddings.get(task_id)
     }
+    
+    /// Get meta parameters
+    pub fn meta_params(&self) -> &Array1<f64> {
+        &self.meta_params
+    }
+    
+    /// Get per-parameter learning rates
+    pub fn per_param_lr(&self) -> Option<&Array1<f64>> {
+        self.per_param_lr.as_ref()
+    }
 }
 
 /// Continual meta-learning with memory
@@ -588,6 +598,11 @@ impl ContinualMetaLearner {
         self.meta_learner.meta_train(&task_batch, &mut dummy_optimizer, 10, task_batch.len())?;
         
         Ok(())
+    }
+    
+    /// Get memory buffer length
+    pub fn memory_buffer_len(&self) -> usize {
+        self.memory_buffer.len()
     }
 }
 

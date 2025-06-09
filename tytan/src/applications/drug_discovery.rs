@@ -834,11 +834,14 @@ impl MolecularDesignOptimizer {
             }
         }
         
+        let properties = self.calculate_properties(&fragments);
+        let score = self.calculate_score(&fragments, &connections);
+        
         Ok(DesignedMolecule {
             fragments,
             connections,
-            properties: self.calculate_properties(&fragments),
-            score: self.calculate_score(&fragments, &connections),
+            properties,
+            score,
             smiles: None, // Would need to construct SMILES
         })
     }

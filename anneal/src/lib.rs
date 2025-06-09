@@ -40,7 +40,11 @@
 
 // Export modules
 pub mod chain_break;
+pub mod coherent_ising_machine;
 pub mod compression;
+pub mod continuous_variable;
+pub mod csp_compiler;
+pub mod dsl;
 pub mod dwave;
 pub mod embedding;
 pub mod flux_bias;
@@ -50,21 +54,50 @@ pub mod hobo;
 pub mod hybrid_solvers;
 pub mod ising;
 pub mod layout_embedding;
+pub mod multi_objective;
 pub mod partitioning;
 pub mod penalty_optimization;
+pub mod photonic_annealing;
+pub mod population_annealing;
 pub mod problem_schedules;
+pub mod qaoa;
 pub mod qubo;
+pub mod qubo_decomposition;
+pub mod quantum_boltzmann_machine;
+pub mod quantum_machine_learning;
+pub mod quantum_walk;
 pub mod reverse_annealing;
 pub mod simulator;
+pub mod variational_quantum_annealing;
+pub mod visualization;
 
 // Re-export key types for convenience
 pub use chain_break::{
     ChainBreakResolver, ChainBreakStats, ChainStrengthOptimizer, HardwareSolution,
     LogicalProblem, ResolutionMethod, ResolvedSolution,
 };
+pub use coherent_ising_machine::{
+    CoherentIsingMachine, CimConfig, CimResults, CimError, CimResult,
+    OpticalParametricOscillator, OpticalCoupling, Complex, PumpSchedule, NetworkTopology,
+    NoiseConfig, MeasurementConfig, ConvergenceConfig, OpticalStatistics, CimPerformanceMetrics,
+    create_standard_cim_config, create_low_noise_cim_config, create_realistic_cim_config,
+};
 pub use compression::{
     BlockDetector, CompressedQubo, CompressionStats, CooCompressor, ReductionMapping,
     VariableReducer,
+};
+pub use continuous_variable::{
+    ContinuousVariableAnnealer, ContinuousAnnealingConfig, ContinuousOptimizationProblem,
+    ContinuousVariable, ContinuousConstraint, ContinuousSolution, ContinuousOptimizationStats,
+    ContinuousVariableError, ContinuousVariableResult, create_quadratic_problem,
+};
+pub use csp_compiler::{
+    CspProblem, CspVariable, CspConstraint, CspObjective, CspSolution, CspValue, Domain,
+    ComparisonOp, CompilationParams, CspCompilationInfo, CspError, CspResult,
+};
+pub use dsl::{
+    OptimizationModel, Variable, VariableVector, VariableType, Expression, BooleanExpression,
+    Constraint, Objective, ObjectiveDirection, ModelSummary, DslError, DslResult, patterns,
 };
 pub use dwave::{
     is_available as is_dwave_available, DWaveClient, DWaveError, DWaveResult, ProblemParams,
@@ -90,16 +123,62 @@ pub use ising::{IsingError, IsingModel, IsingResult, QuboModel};
 pub use layout_embedding::{
     LayoutAwareEmbedder, LayoutConfig, LayoutStats, MultiLevelEmbedder,
 };
+pub use multi_objective::{
+    MultiObjectiveOptimizer, MultiObjectiveConfig, MultiObjectiveResults, MultiObjectiveSolution,
+    MultiObjectiveStats, ScalarizationMethod, QualityMetrics, MultiObjectiveError,
+    MultiObjectiveResult, MultiObjectiveFunction,
+};
 pub use partitioning::{
     BipartitionMethod, KernighanLinPartitioner, Partition, RecursiveBisectionPartitioner,
     SpectralPartitioner,
 };
 pub use penalty_optimization::{
     PenaltyOptimizer, PenaltyConfig, PenaltyStats, AdvancedPenaltyOptimizer,
-    ConstraintPenaltyOptimizer, Constraint, ConstraintType,
+    ConstraintPenaltyOptimizer, Constraint as PenaltyConstraint, ConstraintType,
+};
+pub use photonic_annealing::{
+    PhotonicAnnealer, PhotonicAnnealingConfig, PhotonicAnnealingResults, PhotonicError,
+    PhotonicResult, PhotonicArchitecture, ConnectivityType, MeasurementType,
+    PhotonicComponent, PhotonicState, InitialStateType, PumpPowerSchedule,
+    MeasurementStrategy, MeasurementOutcome, EvolutionHistory, PhotonicMetrics,
+    create_coherent_state_config, create_squeezed_state_config, create_temporal_multiplexing_config,
+    create_measurement_based_config, create_low_noise_config, create_realistic_config,
+};
+pub use population_annealing::{
+    PopulationAnnealingSimulator, PopulationAnnealingConfig, PopulationAnnealingSolution,
+    PopulationMember, EnergyStatistics, MpiConfig, PopulationAnnealingError,
 };
 pub use problem_schedules::{
     ProblemSpecificScheduler, ProblemType, ScheduleTemplate, AdaptiveScheduleOptimizer,
+};
+pub use qaoa::{
+    QaoaOptimizer, QaoaConfig, QaoaResults, QaoaError, QaoaResult, QaoaVariant, MixerType as QaoaMixerType,
+    ProblemEncoding, QaoaClassicalOptimizer, ParameterInitialization as QaoaParameterInitialization,
+    QaoaCircuit, QaoaLayer, QuantumGate as QaoaQuantumGate, QuantumState as QaoaQuantumState, QaoaCircuitStats, QuantumStateStats,
+    QaoaPerformanceMetrics, create_standard_qaoa_config, create_qaoa_plus_config,
+    create_warm_start_qaoa_config, create_constrained_qaoa_config,
+};
+pub use qubo_decomposition::{
+    QuboDecomposer, DecompositionConfig, DecompositionStrategy, DecomposedSolution,
+    SubProblem, SubSolution, DecompositionStats, DecompositionError,
+};
+pub use quantum_boltzmann_machine::{
+    QuantumRestrictedBoltzmannMachine, LayerConfig, UnitType, QbmTrainingConfig,
+    QbmTrainingStats, QuantumSamplingStats, TrainingSample, QbmInferenceResult,
+    QbmError, QbmResult, create_binary_rbm, create_gaussian_bernoulli_rbm,
+};
+pub use quantum_machine_learning::{
+    VariationalQuantumClassifier, VqcConfig, TrainingSample as QmlTrainingSample, TrainingHistory,
+    QuantumNeuralNetwork, QuantumNeuralLayer, QnnConfig, ActivationType,
+    QuantumFeatureMap, FeatureMapType, EntanglementType, QuantumCircuit, QuantumLayer, QuantumGate as QmlQuantumGate,
+    QuantumKernelMethod, KernelMethodType, QuantumGAN, QGanConfig, QGanTrainingHistory,
+    QuantumRLAgent, QRLConfig, Experience, QRLStats, QuantumAutoencoder, QAutoencoderConfig,
+    QmlMetrics, QmlError, QmlResult, create_binary_classifier, create_zz_feature_map,
+    create_quantum_svm, evaluate_qml_model,
+};
+pub use quantum_walk::{
+    QuantumWalkOptimizer, QuantumWalkConfig, QuantumWalkAlgorithm, QuantumState as QuantumWalkState,
+    CoinOperator, AdiabaticHamiltonian, QuantumWalkError, QuantumWalkResult,
 };
 pub use qubo::{QuboBuilder, QuboError, QuboFormulation, QuboResult};
 pub use reverse_annealing::{
@@ -110,6 +189,16 @@ pub use simulator::{
     AnnealingError, AnnealingParams, AnnealingResult, AnnealingSolution,
     ClassicalAnnealingSimulator, QuantumAnnealingSimulator, TemperatureSchedule,
     TransverseFieldSchedule,
+};
+pub use variational_quantum_annealing::{
+    VariationalQuantumAnnealer, VqaConfig, VqaResults, VqaStatistics, ParameterStatistics,
+    OptimizerStatistics, AnsatzType, ClassicalOptimizer, EntanglingGateType, MixerType as VqaMixerType,
+    QuantumGate as VqaQuantumGate, QuantumCircuit as VqaQuantumCircuit, ParameterRef, VqaError, VqaResult,
+    create_qaoa_vqa_config, create_hardware_efficient_vqa_config, create_adiabatic_vqa_config,
+};
+pub use visualization::{
+    BasinAnalyzer, LandscapeAnalyzer, LandscapePoint, LandscapeStats, VisualizationError,
+    VisualizationResult, calculate_landscape_stats, plot_energy_histogram, plot_energy_landscape,
 };
 
 /// Check if quantum annealing support is available

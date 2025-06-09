@@ -9,6 +9,7 @@ use crate::compile::{Compile, CompiledModel};
 use ndarray::{Array, Array1, Array2, IxDyn};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
+use quantrs2_anneal::qubo::Variable;
 use std::str::FromStr;
 
 /// DSL parser for optimization problems

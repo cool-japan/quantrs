@@ -48,6 +48,7 @@ impl GpuProfiler {
         Self {
             metrics: Arc::new(Mutex::new(GpuPerformanceMetrics::default())),
             enabled: true,
+            #[cfg(feature = "scirs")]
             device_info: None,
         }
     }

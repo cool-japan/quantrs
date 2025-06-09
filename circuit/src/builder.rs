@@ -23,8 +23,8 @@ use quantrs2_core::{
     register::Register,
 };
 
-use std::any::Any;
 use num_complex::Complex64;
+use std::any::Any;
 
 /// A placeholder measurement gate for QASM export
 #[derive(Debug, Clone)]
@@ -47,8 +47,12 @@ impl GateOp for Measure {
 
     fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
         // Measurement doesn't have a unitary matrix representation
-        Ok(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)])
+        Ok(vec![
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(1.0, 0.0),
+        ])
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -71,9 +75,11 @@ impl<const N: usize> Clone for Circuit<N> {
         // Since Box<dyn GateOp> doesn't implement Clone, we need to manually clone each gate
         // For now, we'll create a new circuit and add placeholders
         // TODO: Implement proper cloning once we have a gate factory or registry
-        
+
         // For testing purposes, return empty circuit with warning
-        eprintln!("WARNING: Circuit::clone() is not properly implemented - returning empty circuit");
+        eprintln!(
+            "WARNING: Circuit::clone() is not properly implemented - returning empty circuit"
+        );
         Self { gates: Vec::new() }
     }
 }
@@ -516,7 +522,7 @@ impl<const N: usize> Circuit<N> {
             target2: target2.into(),
         })
     }
-    
+
     /// Measure a qubit (placeholder for QASM export)
     pub fn measure(&mut self, qubit: impl Into<QubitId>) -> QuantRS2Result<&mut Self> {
         let qubit_id = qubit.into();
@@ -524,14 +530,14 @@ impl<const N: usize> Circuit<N> {
         self.add_gate(Measure { target: qubit_id })?;
         Ok(self)
     }
-    
+
     /// Reset a qubit (placeholder for QASM export)
     pub fn reset(&mut self, qubit: impl Into<QubitId>) -> QuantRS2Result<&mut Self> {
         // For now, just add a placeholder gate
         eprintln!("WARNING: reset() is a placeholder for QASM export");
         Ok(self)
     }
-    
+
     /// Add a barrier (placeholder for QASM export)
     pub fn barrier(&mut self, qubits: &[QubitId]) -> QuantRS2Result<&mut Self> {
         // For now, just add a placeholder
@@ -561,7 +567,7 @@ impl<const N: usize> Circuit<N> {
 
         Ok(decomposed)
     }
-    
+
     /// Build the circuit (for compatibility - returns self)
     pub fn build(self) -> Self {
         self
@@ -661,10 +667,9 @@ impl<const N: usize> Circuit<N> {
 
         Ok(self)
     }
-    
+
     // Classical control flow extensions
-    
-    
+
     /// Measure all qubits in the circuit
     pub fn measure_all(&mut self) -> QuantRS2Result<&mut Self> {
         for i in 0..N {
@@ -672,21 +677,21 @@ impl<const N: usize> Circuit<N> {
         }
         Ok(self)
     }
-    
+
     /// Convert this circuit to a ClassicalCircuit with classical control support
     pub fn with_classical_control(self) -> crate::classical::ClassicalCircuit<N> {
         let mut classical_circuit = crate::classical::ClassicalCircuit::new();
-        
+
         // Add a default classical register for measurements
         let _ = classical_circuit.add_classical_register("c", N);
-        
+
         // Transfer all gates
         for gate in self.gates {
-            classical_circuit.operations.push(
-                crate::classical::CircuitOp::Quantum(gate)
-            );
+            classical_circuit
+                .operations
+                .push(crate::classical::CircuitOp::Quantum(gate));
         }
-        
+
         classical_circuit
     }
 }

@@ -3,10 +3,10 @@
 //! This module defines properties of quantum gates that are used for optimization,
 //! including cost models, error rates, decomposition rules, and commutation relations.
 
-use std::collections::HashMap;
-use quantrs2_core::gate::{GateOp, single, multi};
+use quantrs2_core::gate::{multi, single, GateOp};
 use quantrs2_core::qubit::QubitId;
 use std::any::Any;
+use std::collections::HashMap;
 
 /// Gate cost information
 #[derive(Debug, Clone, Copy)]
@@ -31,8 +31,8 @@ impl GateCost {
 
     /// Total cost (weighted sum)
     pub fn total_cost(&self, time_weight: f64, count_weight: f64, comp_weight: f64) -> f64 {
-        time_weight * self.duration_ns 
-            + count_weight * self.gate_count as f64 
+        time_weight * self.duration_ns
+            + count_weight * self.gate_count as f64
             + comp_weight * self.computational_cost
     }
 }
@@ -125,10 +125,15 @@ impl GateProperties {
                 cost: GateCost::new(20.0, 1, 1.0),
                 error: GateError::new(0.9999, 0.0001, 0.00001),
                 decompositions: vec![],
-                commutes_with: if name == "Z" { 
-                    vec!["Z".to_string(), "RZ".to_string(), "S".to_string(), "T".to_string()]
-                } else { 
-                    vec![] 
+                commutes_with: if name == "Z" {
+                    vec![
+                        "Z".to_string(),
+                        "RZ".to_string(),
+                        "S".to_string(),
+                        "T".to_string(),
+                    ]
+                } else {
+                    vec![]
                 },
                 is_self_inverse: true,
                 is_diagonal: name == "Z",
@@ -140,15 +145,18 @@ impl GateProperties {
                 is_native: true,
                 cost: GateCost::new(20.0, 1, 1.0),
                 error: GateError::new(0.9999, 0.0001, 0.00001),
-                decompositions: vec![
-                    DecompositionRule {
-                        name: "Z-rotation".to_string(),
-                        target_gates: vec!["RZ".to_string()],
-                        cost: GateCost::new(20.0, 1, 1.0),
-                        priority: 1,
-                    }
+                decompositions: vec![DecompositionRule {
+                    name: "Z-rotation".to_string(),
+                    target_gates: vec!["RZ".to_string()],
+                    cost: GateCost::new(20.0, 1, 1.0),
+                    priority: 1,
+                }],
+                commutes_with: vec![
+                    "Z".to_string(),
+                    "RZ".to_string(),
+                    "S".to_string(),
+                    "T".to_string(),
                 ],
-                commutes_with: vec!["Z".to_string(), "RZ".to_string(), "S".to_string(), "T".to_string()],
                 is_self_inverse: false,
                 is_diagonal: true,
                 is_parameterized: false,
@@ -159,15 +167,18 @@ impl GateProperties {
                 is_native: true,
                 cost: GateCost::new(20.0, 1, 1.0),
                 error: GateError::new(0.9999, 0.0001, 0.00001),
-                decompositions: vec![
-                    DecompositionRule {
-                        name: "Z-rotation".to_string(),
-                        target_gates: vec!["RZ".to_string()],
-                        cost: GateCost::new(20.0, 1, 1.0),
-                        priority: 1,
-                    }
+                decompositions: vec![DecompositionRule {
+                    name: "Z-rotation".to_string(),
+                    target_gates: vec!["RZ".to_string()],
+                    cost: GateCost::new(20.0, 1, 1.0),
+                    priority: 1,
+                }],
+                commutes_with: vec![
+                    "Z".to_string(),
+                    "RZ".to_string(),
+                    "S".to_string(),
+                    "T".to_string(),
                 ],
-                commutes_with: vec!["Z".to_string(), "RZ".to_string(), "S".to_string(), "T".to_string()],
                 is_self_inverse: false,
                 is_diagonal: true,
                 is_parameterized: false,
@@ -179,10 +190,15 @@ impl GateProperties {
                 cost: GateCost::new(40.0, 1, 1.5),
                 error: GateError::new(0.9998, 0.0002, 0.00002),
                 decompositions: vec![],
-                commutes_with: if name == "RZ" { 
-                    vec!["Z".to_string(), "RZ".to_string(), "S".to_string(), "T".to_string()]
-                } else { 
-                    vec![] 
+                commutes_with: if name == "RZ" {
+                    vec![
+                        "Z".to_string(),
+                        "RZ".to_string(),
+                        "S".to_string(),
+                        "T".to_string(),
+                    ]
+                } else {
+                    vec![]
                 },
                 is_self_inverse: false,
                 is_diagonal: name == "RZ",
@@ -213,14 +229,12 @@ impl GateProperties {
                 is_native: true,
                 cost: GateCost::new(200.0, 1, 2.5),
                 error: GateError::new(0.999, 0.001, 0.0001),
-                decompositions: vec![
-                    DecompositionRule {
-                        name: "H-CNOT-H".to_string(),
-                        target_gates: vec!["H".to_string(), "CNOT".to_string()],
-                        cost: GateCost::new(340.0, 3, 5.0),
-                        priority: 1,
-                    }
-                ],
+                decompositions: vec![DecompositionRule {
+                    name: "H-CNOT-H".to_string(),
+                    target_gates: vec!["H".to_string(), "CNOT".to_string()],
+                    cost: GateCost::new(340.0, 3, 5.0),
+                    priority: 1,
+                }],
                 commutes_with: vec!["CZ".to_string()],
                 is_self_inverse: true,
                 is_diagonal: true,
@@ -232,14 +246,12 @@ impl GateProperties {
                 is_native: false,
                 cost: GateCost::new(900.0, 3, 9.0),
                 error: GateError::new(0.997, 0.003, 0.0003),
-                decompositions: vec![
-                    DecompositionRule {
-                        name: "3-CNOT".to_string(),
-                        target_gates: vec!["CNOT".to_string()],
-                        cost: GateCost::new(900.0, 3, 9.0),
-                        priority: 1,
-                    }
-                ],
+                decompositions: vec![DecompositionRule {
+                    name: "3-CNOT".to_string(),
+                    target_gates: vec!["CNOT".to_string()],
+                    cost: GateCost::new(900.0, 3, 9.0),
+                    priority: 1,
+                }],
                 commutes_with: vec![],
                 is_self_inverse: true,
                 is_diagonal: false,
@@ -258,14 +270,17 @@ impl GateProperties {
                 is_native: false,
                 cost: GateCost::new(2000.0, 15, 20.0),
                 error: GateError::new(0.99, 0.01, 0.001),
-                decompositions: vec![
-                    DecompositionRule {
-                        name: "Standard".to_string(),
-                        target_gates: vec!["H".to_string(), "CNOT".to_string(), "T".to_string(), "T†".to_string()],
-                        cost: GateCost::new(2000.0, 15, 20.0),
-                        priority: 1,
-                    }
-                ],
+                decompositions: vec![DecompositionRule {
+                    name: "Standard".to_string(),
+                    target_gates: vec![
+                        "H".to_string(),
+                        "CNOT".to_string(),
+                        "T".to_string(),
+                        "T†".to_string(),
+                    ],
+                    cost: GateCost::new(2000.0, 15, 20.0),
+                    priority: 1,
+                }],
                 commutes_with: vec![],
                 is_self_inverse: true,
                 is_diagonal: false,
@@ -310,8 +325,16 @@ impl GateProperties {
             name: name.to_string(),
             num_qubits,
             is_native: false,
-            cost: GateCost::new(1000.0 * num_qubits as f64, num_qubits as u32 * 5, 10.0 * num_qubits as f64),
-            error: GateError::new(0.99 / num_qubits as f64, 0.01 * num_qubits as f64, 0.001 * num_qubits as f64),
+            cost: GateCost::new(
+                1000.0 * num_qubits as f64,
+                num_qubits as u32 * 5,
+                10.0 * num_qubits as f64,
+            ),
+            error: GateError::new(
+                0.99 / num_qubits as f64,
+                0.01 * num_qubits as f64,
+                0.001 * num_qubits as f64,
+            ),
             decompositions: vec![],
             commutes_with: vec![],
             is_self_inverse: false,
@@ -330,7 +353,7 @@ impl CommutationTable {
     /// Create a new commutation table
     pub fn new() -> Self {
         let mut table = HashMap::new();
-        
+
         // Pauli commutation relations
         table.insert(("X".to_string(), "X".to_string()), true);
         table.insert(("Y".to_string(), "Y".to_string()), true);
@@ -341,17 +364,17 @@ impl CommutationTable {
         table.insert(("Z".to_string(), "X".to_string()), false);
         table.insert(("Y".to_string(), "Z".to_string()), false);
         table.insert(("Z".to_string(), "Y".to_string()), false);
-        
+
         // Diagonal gates commute
         for diag1 in &["Z", "S", "T", "RZ"] {
             for diag2 in &["Z", "S", "T", "RZ"] {
                 table.insert((diag1.to_string(), diag2.to_string()), true);
             }
         }
-        
+
         // CNOT commutation
         table.insert(("CNOT".to_string(), "CNOT".to_string()), false); // In general
-        
+
         Self { table }
     }
 
@@ -370,12 +393,12 @@ impl CommutationTable {
     pub fn gates_commute(&self, gate1: &dyn GateOp, gate2: &dyn GateOp) -> bool {
         let qubits1 = gate1.qubits();
         let qubits2 = gate2.qubits();
-        
+
         // Gates on disjoint qubits always commute
         if qubits1.iter().all(|q| !qubits2.contains(q)) {
             return true;
         }
-        
+
         // Check specific commutation rules
         self.commutes(gate1.name(), gate2.name())
     }
@@ -390,7 +413,7 @@ impl Default for CommutationTable {
 /// Get properties for a gate operation
 pub fn get_gate_properties(gate: &dyn GateOp) -> GateProperties {
     let num_qubits = gate.num_qubits();
-    
+
     match num_qubits {
         1 => GateProperties::single_qubit(gate.name()),
         2 => GateProperties::two_qubit(gate.name()),

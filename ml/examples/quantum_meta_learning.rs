@@ -5,6 +5,7 @@
 
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use quantrs2_ml::autodiff::optimizers::Adam;
 use ndarray::{Array1, Array2};
 
 fn main() -> Result<()> {
@@ -78,7 +79,7 @@ fn maml_demo() -> Result<()> {
     
     // Meta-train
     println!("\n   Meta-training on 20 rotation tasks...");
-    let mut optimizer = crate::autodiff::optimizers::Adam::new(0.001);
+    let mut optimizer = Adam::new(0.001);
     meta_learner.meta_train(&tasks, &mut optimizer, 50, 5)?;
     
     // Test adaptation
@@ -88,7 +89,7 @@ fn maml_demo() -> Result<()> {
     let adapted_params = meta_learner.adapt_to_task(&test_task)?;
     println!("   Successfully adapted to new task");
     println!("   Parameter adaptation magnitude: {:.4}", 
-        (&adapted_params - &meta_learner.meta_params).mapv(|x| x.abs()).mean().unwrap());
+        (&adapted_params - meta_learner.meta_params()).mapv(|x| x.abs()).mean().unwrap());
     
     Ok(())
 }
@@ -121,7 +122,7 @@ fn reptile_demo() -> Result<()> {
         .collect();
     
     println!("\n   Meta-training on 15 sinusoid tasks...");
-    let mut optimizer = crate::autodiff::optimizers::Adam::new(0.001);
+    let mut optimizer = Adam::new(0.001);
     meta_learner.meta_train(&tasks, &mut optimizer, 30, 3)?;
     
     println!("   Reptile training complete");
@@ -169,7 +170,7 @@ fn protomaml_demo() -> Result<()> {
         .collect();
     
     println!("\n   Meta-training on 4-way classification tasks...");
-    let mut optimizer = crate::autodiff::optimizers::Adam::new(0.001);
+    let mut optimizer = Adam::new(0.001);
     meta_learner.meta_train(&tasks, &mut optimizer, 40, 2)?;
     
     println!("   ProtoMAML leverages both gradient-based and metric-based learning");
@@ -211,10 +212,10 @@ fn metasgd_demo() -> Result<()> {
     }
     
     println!("\n   Meta-training on mixed task distribution...");
-    let mut optimizer = crate::autodiff::optimizers::Adam::new(0.0005);
+    let mut optimizer = Adam::new(0.0005);
     meta_learner.meta_train(&tasks, &mut optimizer, 50, 4)?;
     
-    if let Some(lr) = &meta_learner.per_param_lr {
+    if let Some(lr) = meta_learner.per_param_lr() {
         println!("\n   Learned per-parameter learning rates:");
         println!("   - Min LR: {:.4}", lr.iter().cloned().fold(f64::INFINITY, f64::min));
         println!("   - Max LR: {:.4}", lr.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
@@ -256,7 +257,7 @@ fn anil_demo() -> Result<()> {
         .collect();
     
     println!("\n   Meta-training on binary classification tasks...");
-    let mut optimizer = crate::autodiff::optimizers::Adam::new(0.001);
+    let mut optimizer = Adam::new(0.001);
     meta_learner.meta_train(&tasks, &mut optimizer, 40, 5)?;
     
     println!("   ANIL reduces computational cost while maintaining performance");
@@ -306,7 +307,7 @@ fn continual_meta_learning_demo() -> Result<()> {
         if i % 5 == 4 {
             println!("   Learned {} tasks, memory contains {} unique tasks", 
                 i + 1, 
-                continual_learner.memory_buffer.len());
+                continual_learner.memory_buffer_len());
         }
     }
     

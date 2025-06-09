@@ -74,11 +74,7 @@ fn basic_qbm_demo() -> Result<()> {
 /// RBM demonstration with persistent contrastive divergence
 fn rbm_demo() -> Result<()> {
     // Create RBM with annealing
-    let annealing = AnnealingSchedule {
-        initial_temp: 2.0,
-        final_temp: 0.5,
-        num_steps: 100,
-    };
+    let annealing = AnnealingSchedule::new(2.0, 0.5, 100);
     
     let mut rbm = QuantumRBM::new(
         6,    // visible units
@@ -108,7 +104,7 @@ fn rbm_demo() -> Result<()> {
     println!("   - Final temperature: 0.5");
     
     // Test reconstruction
-    let test_data = data.slice(s![0..5, ..]);
+    let test_data = data.slice(s![0..5, ..]).to_owned();
     let reconstructed = rbm.qbm().reconstruct(&test_data)?;
     
     println!("\n   Reconstruction quality:");

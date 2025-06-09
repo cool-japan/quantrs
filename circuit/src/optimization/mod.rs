@@ -3,25 +3,30 @@
 //! This module provides a comprehensive optimization framework that uses gate properties
 //! to optimize quantum circuits through various optimization passes.
 
-pub mod gate_properties;
-pub mod passes;
-pub mod pass_manager;
-pub mod cost_model;
 pub mod analysis;
+pub mod cost_model;
+pub mod gate_properties;
+pub mod noise;
+pub mod pass_manager;
+pub mod passes;
 
-pub use gate_properties::{GateProperties, GateCost, GateError, CommutationTable};
-pub use passes::{
-    OptimizationPass, GateCancellation, GateCommutation, GateMerging, 
-    DecompositionOptimization, CostBasedOptimization, RotationMerging,
-    TwoQubitOptimization, TemplateMatching, CircuitRewriting, PeepholeOptimization
-};
-pub use pass_manager::{PassManager, PassConfig, OptimizationLevel};
-pub use cost_model::{CostModel, HardwareCostModel, AbstractCostModel};
 pub use analysis::{CircuitAnalyzer, CircuitMetrics, OptimizationReport};
+pub use cost_model::{AbstractCostModel, CostModel, HardwareCostModel};
+pub use gate_properties::{CommutationTable, GateCost, GateError, GateProperties};
+pub use noise::{
+    CoherenceOptimization, DecouplingSequence, DynamicalDecoupling, NoiseAwareCostModel,
+    NoiseAwareMapping, NoiseAwareOptimizer, NoiseModel,
+};
+pub use pass_manager::{OptimizationLevel, PassConfig, PassManager};
+pub use passes::{
+    CircuitRewriting, CostBasedOptimization, DecompositionOptimization, GateCancellation,
+    GateCommutation, GateMerging, OptimizationPass, PeepholeOptimization, RotationMerging,
+    TemplateMatching, TwoQubitOptimization,
+};
 
+use self::cost_model::CircuitCostExt;
 use crate::builder::Circuit;
 use quantrs2_core::error::QuantRS2Result;
-use self::cost_model::CircuitCostExt;
 
 /// Main optimization interface
 pub struct CircuitOptimizer2<const N: usize> {
@@ -62,13 +67,13 @@ impl<const N: usize> CircuitOptimizer2<N> {
     pub fn optimize(&mut self, circuit: &Circuit<N>) -> QuantRS2Result<OptimizationReport> {
         // Analyze initial circuit
         let initial_metrics = self.analyzer.analyze(circuit)?;
-        
+
         // Run optimization passes
         let optimized_circuit = self.pass_manager.run(circuit, &*self.cost_model)?;
-        
+
         // Analyze optimized circuit
         let final_metrics = self.analyzer.analyze(&optimized_circuit)?;
-        
+
         // Generate report
         Ok(OptimizationReport {
             initial_metrics,

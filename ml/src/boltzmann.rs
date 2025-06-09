@@ -324,6 +324,17 @@ pub struct AnnealingSchedule {
     num_steps: usize,
 }
 
+impl AnnealingSchedule {
+    /// Create a new annealing schedule
+    pub fn new(initial_temp: f64, final_temp: f64, num_steps: usize) -> Self {
+        Self {
+            initial_temp,
+            final_temp,
+            num_steps,
+        }
+    }
+}
+
 impl QuantumRBM {
     /// Create a new Quantum RBM
     pub fn new(

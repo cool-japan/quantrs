@@ -82,6 +82,13 @@ impl Default for SpectralPartitioner {
 }
 
 impl SpectralPartitioner {
+    /// Create a new spectral partitioner with default settings
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl SpectralPartitioner {
     /// Partition a graph using spectral methods
     pub fn partition_graph(
         &self,

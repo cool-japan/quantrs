@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use num_integer::Integer;
 use num_bigint::BigUint;
 use rand::prelude::*;
+use rand::thread_rng;
 
 /// Variational Quantum Factoring solver
 pub struct VQF {
@@ -593,9 +594,10 @@ impl ShorsAlgorithm {
         let mut amplitudes = vec![0.0; max_period as usize];
         
         // Prepare superposition and apply modular exponentiation
+        let amplitudes_len = amplitudes.len();
         for x in 0..max_period {
             let state = mod_exp(a, x, self.n);
-            amplitudes[state as usize % amplitudes.len()] += 1.0;
+            amplitudes[state as usize % amplitudes_len] += 1.0;
         }
         
         // Find period from amplitude pattern
@@ -683,7 +685,9 @@ mod tests {
         // Test preprocessing
         let result = vqf.preprocess();
         assert!(result.is_some());
-        assert_eq!(result.unwrap().p * result.unwrap().q, 15);
+        if let Some(factors) = result {
+            assert_eq!(factors.p * factors.q, 15);
+        }
     }
     
     #[test]

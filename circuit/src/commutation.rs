@@ -3,9 +3,9 @@
 //! This module provides functionality to analyze which quantum gates commute
 //! with each other, enabling optimizations like gate reordering and parallelization.
 
-use std::collections::{HashMap, HashSet};
 use ndarray::Array2;
 use num_complex::Complex64;
+use std::collections::{HashMap, HashSet};
 
 use quantrs2_core::gate::GateOp;
 use quantrs2_core::qubit::QubitId;
@@ -79,8 +79,8 @@ impl CommutationRules {
 
     /// Initialize standard commutation rules
     fn initialize_standard_rules(&mut self) {
-        use GateType::*;
         use CommutationResult::*;
+        use GateType::*;
 
         // Pauli commutation rules
         self.add_rule(X, X, Commute);
@@ -110,9 +110,13 @@ impl CommutationRules {
         self.add_rule(Rz("any1".to_string()), Rz("any2".to_string()), Commute);
 
         // CNOT commutation rules
-        self.add_rule(CNOT, CNOT, ConditionalCommute("Same control and target".to_string()));
+        self.add_rule(
+            CNOT,
+            CNOT,
+            ConditionalCommute("Same control and target".to_string()),
+        );
         self.add_rule(CZ, CZ, ConditionalCommute("Same qubits".to_string()));
-        
+
         // Measurements don't commute with most gates
         self.add_rule(Measure, X, NonCommute);
         self.add_rule(Measure, Y, NonCommute);
@@ -122,17 +126,25 @@ impl CommutationRules {
 
     /// Add a commutation rule
     pub fn add_rule(&mut self, gate1: GateType, gate2: GateType, result: CommutationResult) {
-        self.cache.insert((gate1.clone(), gate2.clone()), result.clone());
+        self.cache
+            .insert((gate1.clone(), gate2.clone()), result.clone());
         // Commutation is symmetric for most cases
-        if matches!(result, CommutationResult::Commute | CommutationResult::NonCommute) {
+        if matches!(
+            result,
+            CommutationResult::Commute | CommutationResult::NonCommute
+        ) {
             self.cache.insert((gate2, gate1), result);
         }
     }
 
     /// Add a custom commutation rule
     pub fn add_custom_rule(&mut self, gate1: String, gate2: String, result: CommutationResult) {
-        self.custom_rules.insert((gate1.clone(), gate2.clone()), result.clone());
-        if matches!(result, CommutationResult::Commute | CommutationResult::NonCommute) {
+        self.custom_rules
+            .insert((gate1.clone(), gate2.clone()), result.clone());
+        if matches!(
+            result,
+            CommutationResult::Commute | CommutationResult::NonCommute
+        ) {
             self.custom_rules.insert((gate2, gate1), result);
         }
     }
@@ -297,13 +309,9 @@ impl CommutationAnalyzer {
 
             let mut indices_to_check: Vec<usize> = remaining.iter().copied().collect();
             indices_to_check.sort(); // Process in order for deterministic results
-            
+
             for idx in indices_to_check {
-                let gate_qubits: HashSet<_> = gates[idx]
-                    .qubits()
-                    .iter()
-                    .map(|q| q.id())
-                    .collect();
+                let gate_qubits: HashSet<_> = gates[idx].qubits().iter().map(|q| q.id()).collect();
 
                 // Check if this gate can be added to current set
                 let can_add = if current_set.is_empty() {
@@ -345,7 +353,7 @@ impl Default for CommutationAnalyzer {
 pub trait CommutationOptimization {
     /// Reorder gates to maximize parallelism
     fn optimize_gate_order(&mut self, analyzer: &CommutationAnalyzer);
-    
+
     /// Group commuting gates together
     fn group_commuting_gates(&mut self, analyzer: &CommutationAnalyzer);
 }
@@ -353,8 +361,8 @@ pub trait CommutationOptimization {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use quantrs2_core::gate::single::{Hadamard, PauliX, PauliZ};
     use quantrs2_core::gate::multi::CNOT;
+    use quantrs2_core::gate::single::{Hadamard, PauliX, PauliZ};
 
     #[test]
     fn test_basic_commutation() {
@@ -385,12 +393,21 @@ mod tests {
         let analyzer = CommutationAnalyzer::new();
 
         // Same CNOT gates commute
-        let cnot1 = CNOT { control: QubitId(0), target: QubitId(1) };
-        let cnot2 = CNOT { control: QubitId(0), target: QubitId(1) };
+        let cnot1 = CNOT {
+            control: QubitId(0),
+            target: QubitId(1),
+        };
+        let cnot2 = CNOT {
+            control: QubitId(0),
+            target: QubitId(1),
+        };
         assert!(analyzer.gates_commute(&cnot1, &cnot2));
 
         // Different CNOT gates may not commute
-        let cnot3 = CNOT { control: QubitId(1), target: QubitId(0) };
+        let cnot3 = CNOT {
+            control: QubitId(1),
+            target: QubitId(0),
+        };
         assert!(!analyzer.gates_commute(&cnot1, &cnot3));
     }
 
@@ -420,7 +437,10 @@ mod tests {
             Box::new(Hadamard { target: QubitId(0) }),
             Box::new(Hadamard { target: QubitId(1) }),
             Box::new(Hadamard { target: QubitId(2) }),
-            Box::new(CNOT { control: QubitId(0), target: QubitId(1) }),
+            Box::new(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            }),
         ];
 
         let parallel_sets = analyzer.find_parallel_sets(&gates);

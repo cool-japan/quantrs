@@ -10,6 +10,7 @@ use std::collections::{HashMap, HashSet, BinaryHeap};
 use std::f64::consts::PI;
 use num_complex::Complex64;
 use rand::prelude::*;
+use rand::thread_rng;
 
 /// Topological Quantum Optimizer using anyonic braiding
 pub struct TopologicalOptimizer {
@@ -105,7 +106,7 @@ impl TopologicalOptimizer {
             
             if cost < best_cost {
                 best_cost = cost;
-                best_state = measured_state;
+                best_state = measured_state.clone();
             }
             
             braid_history.push(BraidStep {
@@ -633,11 +634,14 @@ impl PersistentHomology {
         // Extract features
         let features = self.extract_topological_features(&persistence_pairs);
         
+        let betti_numbers = self.compute_betti_numbers(&persistence_pairs);
+        let optimal_regions = self.identify_optimal_regions(&persistence_pairs, samples);
+        
         Ok(HomologyResult {
             persistence_pairs,
-            betti_numbers: self.compute_betti_numbers(&persistence_pairs),
+            betti_numbers,
             features,
-            optimal_regions: self.identify_optimal_regions(&persistence_pairs, samples),
+            optimal_regions,
         })
     }
     

@@ -4,12 +4,14 @@
 //! ensemble methods, and adaptive sampling strategies.
 
 use crate::sampler::{Sampler, SampleResult, SamplerError, SamplerResult};
+#[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
 use ndarray::{Array, Array2, IxDyn};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use rand::prelude::*;
+use rand::thread_rng;
 
 #[cfg(feature = "scirs")]
 use crate::scirs_stub::{
@@ -172,6 +174,7 @@ impl HyperparameterOptimizer {
     }
     
     /// Optimize hyperparameters
+    #[cfg(feature = "dwave")]
     pub fn optimize<F>(
         &self,
         objective: F,
@@ -210,6 +213,7 @@ impl HyperparameterOptimizer {
     }
     
     /// Random search implementation
+    #[cfg(feature = "dwave")]
     fn random_search<F>(
         &self,
         objective: F,
@@ -252,6 +256,7 @@ impl HyperparameterOptimizer {
     }
     
     /// Grid search implementation
+    #[cfg(feature = "dwave")]
     fn grid_search<F>(
         &self,
         objective: F,
@@ -293,7 +298,7 @@ impl HyperparameterOptimizer {
     }
     
     /// Bayesian optimization implementation
-    #[cfg(feature = "scirs")]
+    #[cfg(all(feature = "scirs", feature = "dwave"))]
     fn bayesian_optimization<F>(
         &self,
         objective: F,
@@ -375,6 +380,7 @@ impl HyperparameterOptimizer {
     }
     
     /// Evolutionary optimization (placeholder)
+    #[cfg(feature = "dwave")]
     fn evolutionary_optimization<F>(
         &self,
         _objective: F,
@@ -468,6 +474,7 @@ impl HyperparameterOptimizer {
     }
     
     /// Evaluate sampler performance
+    #[cfg(feature = "dwave")]
     fn evaluate_sampler(
         &self,
         mut sampler: Box<dyn Sampler>,
@@ -747,7 +754,7 @@ impl EnsembleSampler {
         use std::thread;
         
         let shots_per_sampler = shots / self.samplers.len();
-        let mut handles = Vec::new();
+        let mut handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
         
         // Would need to make samplers thread-safe for real parallel execution
         // For now, sequential execution
@@ -875,7 +882,7 @@ impl<S: Sampler> AdaptiveSampler<S> {
     }
     
     /// Adapt parameters based on performance
-    fn adapt_parameters(&mut self) -> HashMap<String, f64> {
+    fn adapt_parameters(&self) -> HashMap<String, f64> {
         let history = self.history.lock().unwrap();
         
         match &self.strategy {
@@ -980,6 +987,7 @@ impl SamplerCrossValidation {
     }
     
     /// Evaluate sampler with cross-validation
+    #[cfg(feature = "dwave")]
     pub fn evaluate<S: Sampler>(
         &self,
         sampler: &S,
@@ -1025,6 +1033,7 @@ impl SamplerCrossValidation {
     }
     
     /// Evaluate single problem
+    #[cfg(feature = "dwave")]
     fn evaluate_single<S: Sampler>(
         &self,
         sampler: &S,

@@ -145,6 +145,30 @@ from . import visualization
 from . import ml
 from . import gates
 
+# Try to import QASM module
+try:
+    from . import qasm
+except ImportError:
+    pass
+
+# Try to import profiler module
+try:
+    from . import profiler
+except ImportError:
+    pass
+
+# Try to import crypto module
+try:
+    from . import crypto
+except ImportError:
+    pass
+
+# Try to import finance module
+try:
+    from . import finance
+except ImportError:
+    pass
+
 # Try to import pulse module (only available with device feature)
 try:
     from . import pulse
@@ -196,6 +220,56 @@ from .ml import (
     HEPClassifier,
     QuantumGAN
 )
+
+# Import QASM functions (if available)
+try:
+    from .qasm import (
+        parse_qasm,
+        export_qasm,
+        validate_qasm,
+        QasmExportOptions
+    )
+except ImportError:
+    pass
+
+# Import profiler functions (if available)
+try:
+    from .profiler import (
+        profile_circuit,
+        compare_circuits,
+        CircuitProfiler,
+        ProfilerSession
+    )
+except ImportError:
+    pass
+
+# Import crypto functions (if available)
+try:
+    from .crypto import (
+        BB84Protocol,
+        E91Protocol,
+        QuantumDigitalSignature,
+        QuantumCoinFlipping,
+        run_bb84_demo,
+        run_e91_demo,
+        generate_quantum_random_bits
+    )
+except ImportError:
+    pass
+
+# Import finance functions (if available)
+try:
+    from .finance import (
+        QuantumPortfolioOptimizer,
+        QuantumOptionPricer,
+        QuantumRiskAnalyzer,
+        QuantumFraudDetector,
+        run_portfolio_optimization_demo,
+        run_option_pricing_demo,
+        create_sample_portfolio
+    )
+except ImportError:
+    pass
 
 # Convenience aliases
 Circuit = PyCircuit

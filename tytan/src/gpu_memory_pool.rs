@@ -59,9 +59,9 @@ pub struct AllocationStats {
     pub evictions: usize,
 }
 
+#[cfg(feature = "scirs")]
 impl GpuMemoryPool {
     /// Create a new memory pool
-    #[cfg(feature = "scirs")]
     pub fn new(context: Arc<GpuContext>, max_size: usize) -> Self {
         Self {
             context,

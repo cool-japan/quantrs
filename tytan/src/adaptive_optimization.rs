@@ -10,6 +10,7 @@ use ndarray::{Array1, Array2};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 use serde::{Serialize, Deserialize};
+use rand::{thread_rng, Rng};
 
 /// Adaptive optimizer that learns and improves
 pub struct AdaptiveOptimizer {
@@ -582,7 +583,7 @@ impl AdaptiveOptimizer {
     }
     
     fn explore_new_algorithm(&self, features: &ProblemFeatures) -> Result<(String, HashMap<String, f64>), String> {
-        let idx = rand::random::<usize>() % self.samplers.len();
+        let idx = thread_rng().gen_range(0..self.samplers.len());
         let algorithm = self.samplers[idx].0.clone();
         let params = self.get_default_params(&algorithm);
         Ok((algorithm, params))
@@ -599,7 +600,7 @@ impl AdaptiveOptimizer {
     }
     
     fn random_select(&self) -> Result<(String, HashMap<String, f64>), String> {
-        let idx = rand::random::<usize>() % self.samplers.len();
+        let idx = thread_rng().gen_range(0..self.samplers.len());
         let algorithm = self.samplers[idx].0.clone();
         let params = self.get_default_params(&algorithm);
         Ok((algorithm, params))

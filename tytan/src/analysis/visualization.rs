@@ -619,10 +619,10 @@ pub fn spring_layout(
     n_nodes: usize,
     edges: &[(usize, usize)],
 ) -> Vec<(f64, f64)> {
-    use rand::{Rng, SeedableRng};
-    use rand_chacha::ChaCha8Rng;
+    use rand::Rng;
+    use rand::thread_rng;
     
-    let mut rng = ChaCha8Rng::seed_from_u64(42);
+    let mut rng = thread_rng();
     
     // Initialize random positions
     let mut positions: Vec<(f64, f64)> = (0..n_nodes)

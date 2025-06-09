@@ -294,7 +294,7 @@ impl AllDifferentPropagator {
         // Check all subsets (exponential, so limited to small constraints)
         for subset_bits in 1..(1 << n) {
             let mut subset_vars = Vec::new();
-            let mut union_values = HashSet::new();
+            let mut union_values: HashSet<i32> = HashSet::new();
             
             for (i, var) in self.variables.iter().enumerate() {
                 if (subset_bits >> i) & 1 == 1 {

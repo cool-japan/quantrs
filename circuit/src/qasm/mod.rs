@@ -4,14 +4,14 @@
 //! and OpenQASM 3.0 format, enabling interoperability with other quantum
 //! computing frameworks.
 
-pub mod parser;
-pub mod exporter;
 pub mod ast;
+pub mod exporter;
+pub mod parser;
 pub mod validator;
 
-pub use parser::{parse_qasm3, QasmParser, ParseError};
-pub use exporter::{export_qasm3, QasmExporter, ExportOptions};
-pub use ast::{QasmProgram, QasmStatement, QasmGate, QasmRegister};
+pub use ast::{QasmGate, QasmProgram, QasmRegister, QasmStatement};
+pub use exporter::{export_qasm3, ExportOptions, QasmExporter};
+pub use parser::{parse_qasm3, ParseError, QasmParser};
 pub use validator::{validate_qasm3, ValidationError};
 
 /// QASM version supported

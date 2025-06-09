@@ -8,6 +8,7 @@ use ndarray::{Array, Array1, Array2, Array3, IxDyn};
 use std::collections::{HashMap, HashSet};
 use std::cmp::Ordering;
 use rand::prelude::*;
+use rand::thread_rng;
 
 /// Feature selector using quantum optimization
 pub struct QuantumFeatureSelector {

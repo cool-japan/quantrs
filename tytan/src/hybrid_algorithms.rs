@@ -4,10 +4,12 @@
 //! quantum and classical computing approaches for solving optimization problems.
 
 use crate::sampler::{Sampler, SampleResult, SamplerError, SamplerResult};
+#[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
 use ndarray::{Array, Array1, Array2, IxDyn};
 use std::collections::HashMap;
 use std::f64::consts::PI;
+use rand::thread_rng;
 
 #[cfg(feature = "scirs")]
 use crate::scirs_stub::{
@@ -131,13 +133,16 @@ impl VQE {
             params = self.update_parameters(params, hamiltonian)?;
         }
         
+        let iterations = energy_history.len();
+        let ground_state_energy = *energy_history.last().unwrap();
+        
         Ok(VQEResult {
             optimal_parameters: params,
-            ground_state_energy: *energy_history.last().unwrap(),
+            ground_state_energy,
             energy_history,
             parameter_history: param_history,
             converged,
-            iterations: energy_history.len(),
+            iterations,
         })
     }
     
@@ -427,12 +432,14 @@ impl QAOA {
         // Sample final state
         let samples = self.sample_qaoa_state(&betas, &gammas, &hamiltonian, 1000)?;
         
+        let best_energy = *energy_history.last().unwrap();
+        
         Ok(QAOAResult {
             optimal_betas: betas,
             optimal_gammas: gammas,
             energy_history,
             samples,
-            best_energy: *energy_history.last().unwrap(),
+            best_energy,
         })
     }
     
@@ -578,6 +585,7 @@ impl WarmStartStrategy {
     }
     
     /// Generate warm start
+    #[cfg(feature = "dwave")]
     pub fn generate_warm_start(
         &mut self,
         problem: &CompiledModel,
@@ -624,7 +632,7 @@ impl WarmStartStrategy {
         vars.sort();
         
         for (i, var) in vars.iter().enumerate() {
-            if assignments[var] {
+            if assignments[var.as_str()] {
                 index |= 1 << i;
             }
         }
@@ -694,6 +702,7 @@ impl IterativeRefinement {
     }
     
     /// Refine solution iteratively
+    #[cfg(feature = "dwave")]
     pub fn refine(
         &mut self,
         problem: &CompiledModel,

@@ -91,6 +91,8 @@ ndarray-rand = "0.14"
 ndarray-stats = "0.5"
 rand_distr = "0.4"
 ocl = "0.19.4"
+nalgebra = "0.33.2"
+fastrand = "2.0.1"
 
 [profile.release]
 lto = "thin"

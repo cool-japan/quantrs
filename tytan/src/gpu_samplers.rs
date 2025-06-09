@@ -8,6 +8,7 @@ use ndarray::{Array, ArrayD, Ix2, IxDyn};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use rand::prelude::*;
+use rand::thread_rng;
 
 #[cfg(feature = "scirs")]
 use crate::scirs_stub::{
@@ -178,7 +179,7 @@ impl EnhancedArminSampler {
             .map_err(|e| SamplerError::GpuError(format!("Energy allocation failed: {}", e)))?;
         
         // Initialize random states on GPU
-        ctx.init_random_states(&d_states, self.seed.unwrap_or_else(|| rand::random()))
+        ctx.init_random_states(&d_states, self.seed.unwrap_or_else(|| thread_rng().gen()))
             .map_err(|e| SamplerError::GpuError(format!("Random init failed: {}", e)))?;
         
         // Launch parallel tempering kernel

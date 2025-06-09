@@ -609,7 +609,7 @@ impl RiskParityOptimizer {
         // Linearize around current weights
         for i in 0..n_assets {
             for k in 0..num_bits_per_asset {
-                let weight = (1 << k) as f64 / ((1 << bits_per_asset) - 1) as f64;
+                let weight = (1 << k) as f64 / ((1 << num_bits_per_asset) - 1) as f64;
                 let var_idx = i * num_bits_per_asset + k;
                 
                 // Gradient of risk contribution

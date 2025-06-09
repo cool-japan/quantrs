@@ -5,10 +5,12 @@
 //! parameters, and problem formulation choices.
 
 use crate::sampler::{SampleResult, Sampler, SamplerResult};
+#[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
 use ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::error::Error;
+use rand::thread_rng;
 
 #[cfg(feature = "scirs")]
 use crate::scirs_stub::{
@@ -175,6 +177,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     }
     
     /// Perform sensitivity analysis
+    #[cfg(feature = "dwave")]
     pub fn analyze(
         &mut self,
         problem: &CompiledModel,
@@ -199,6 +202,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     }
     
     /// One-at-a-time sensitivity analysis
+    #[cfg(feature = "dwave")]
     fn one_at_a_time_analysis(
         &mut self,
         problem: &CompiledModel,
@@ -280,6 +284,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     }
     
     /// Morris screening analysis
+    #[cfg(feature = "dwave")]
     fn morris_analysis(
         &mut self,
         problem: &CompiledModel,
@@ -360,6 +365,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     }
     
     /// Sobol sensitivity analysis
+    #[cfg(feature = "dwave")]
     fn sobol_analysis(
         &mut self,
         problem: &CompiledModel,
@@ -451,6 +457,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     }
     
     /// Latin hypercube sampling analysis
+    #[cfg(feature = "dwave")]
     fn latin_hypercube_analysis(
         &mut self,
         problem: &CompiledModel,
@@ -488,6 +495,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     }
     
     /// Factorial design analysis
+    #[cfg(feature = "dwave")]
     fn factorial_analysis(
         &mut self,
         problem: &CompiledModel,
@@ -537,6 +545,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     }
     
     /// Evaluate a parameter configuration
+    #[cfg(feature = "dwave")]
     fn evaluate_configuration(
         &mut self,
         problem: &CompiledModel,
@@ -654,6 +663,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     
     // Additional helper methods would be implemented here...
     
+    #[cfg(feature = "dwave")]
     fn compute_interaction_effects(
         &mut self,
         _problem: &CompiledModel,
@@ -773,6 +783,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         0.5 * mean_sq_diff / var_total
     }
     
+    #[cfg(feature = "dwave")]
     fn compute_second_order_indices(
         &mut self,
         _problem: &CompiledModel,

@@ -40,12 +40,15 @@ impl CircuitMetrics {
         MetricImprovement {
             gate_count: Self::percent_change(other.gate_count as f64, self.gate_count as f64),
             depth: Self::percent_change(other.depth as f64, self.depth as f64),
-            two_qubit_gates: Self::percent_change(other.two_qubit_gates as f64, self.two_qubit_gates as f64),
+            two_qubit_gates: Self::percent_change(
+                other.two_qubit_gates as f64,
+                self.two_qubit_gates as f64,
+            ),
             execution_time: Self::percent_change(other.execution_time, self.execution_time),
             total_error: Self::percent_change(other.total_error, self.total_error),
         }
     }
-    
+
     fn percent_change(old_val: f64, new_val: f64) -> f64 {
         if old_val == 0.0 {
             0.0
@@ -79,7 +82,7 @@ impl CircuitAnalyzer {
             analyze_critical_path: true,
         }
     }
-    
+
     /// Analyze a circuit and compute metrics
     pub fn analyze<const N: usize>(&self, circuit: &Circuit<N>) -> QuantRS2Result<CircuitMetrics> {
         // TODO: Implement actual circuit analysis once we have circuit introspection
@@ -97,46 +100,46 @@ impl CircuitAnalyzer {
             parallelism: 2.0,
         })
     }
-    
+
     /// Analyze gate sequence (helper for when we have gate list)
     pub fn analyze_gates(&self, gates: &[Box<dyn GateOp>], num_qubits: usize) -> CircuitMetrics {
         let mut gate_types = HashMap::new();
         let mut two_qubit_gates = 0;
         let mut execution_time = 0.0;
         let mut total_error = 0.0;
-        
+
         // Count gates and accumulate costs
         for gate in gates {
             let gate_name = gate.name().to_string();
             *gate_types.entry(gate_name).or_insert(0) += 1;
-            
+
             if gate.num_qubits() == 2 {
                 two_qubit_gates += 1;
             }
-            
+
             let props = get_gate_properties(gate.as_ref());
             execution_time += props.cost.duration_ns;
             total_error += props.error.total_error();
         }
-        
+
         let depth = if self.analyze_critical_path {
             self.calculate_depth(gates)
         } else {
             gates.len()
         };
-        
+
         let critical_path = if self.analyze_critical_path {
             self.calculate_critical_path(gates)
         } else {
             depth
         };
-        
+
         let parallelism = if self.analyze_parallelism && depth > 0 {
             gates.len() as f64 / depth as f64
         } else {
             1.0
         };
-        
+
         CircuitMetrics {
             gate_count: gates.len(),
             gate_types,
@@ -150,40 +153,40 @@ impl CircuitAnalyzer {
             parallelism,
         }
     }
-    
+
     /// Calculate circuit depth
     fn calculate_depth(&self, gates: &[Box<dyn GateOp>]) -> usize {
         let mut qubit_depths: HashMap<u32, usize> = HashMap::new();
         let mut max_depth = 0;
-        
+
         for gate in gates {
             let gate_qubits = gate.qubits();
-            
+
             // Find the maximum depth among involved qubits
             let current_depth = gate_qubits
                 .iter()
                 .map(|q| qubit_depths.get(&q.id()).copied().unwrap_or(0))
                 .max()
                 .unwrap_or(0);
-            
+
             // Update depth for all involved qubits
             let new_depth = current_depth + 1;
             for qubit in gate_qubits {
                 qubit_depths.insert(qubit.id(), new_depth);
             }
-            
+
             max_depth = max_depth.max(new_depth);
         }
-        
+
         max_depth
     }
-    
+
     /// Calculate critical path length
     fn calculate_critical_path(&self, gates: &[Box<dyn GateOp>]) -> usize {
         // Build dependency graph
         let mut dependencies: Vec<HashSet<usize>> = vec![HashSet::new(); gates.len()];
         let mut qubit_last_gate: HashMap<u32, usize> = HashMap::new();
-        
+
         for (i, gate) in gates.iter().enumerate() {
             for qubit in gate.qubits() {
                 if let Some(&prev_gate) = qubit_last_gate.get(&qubit.id()) {
@@ -192,22 +195,22 @@ impl CircuitAnalyzer {
                 qubit_last_gate.insert(qubit.id(), i);
             }
         }
-        
+
         // Calculate longest path
         let mut path_lengths = vec![0; gates.len()];
         let mut max_path = 0;
-        
+
         for i in 0..gates.len() {
             let max_dep_length = dependencies[i]
                 .iter()
                 .map(|&j| path_lengths[j])
                 .max()
                 .unwrap_or(0);
-            
+
             path_lengths[i] = max_dep_length + 1;
             max_path = max_path.max(path_lengths[i]);
         }
-        
+
         max_path
     }
 }
@@ -234,7 +237,7 @@ impl OptimizationReport {
     pub fn improvement(&self) -> MetricImprovement {
         self.final_metrics.improvement_from(&self.initial_metrics)
     }
-    
+
     /// Print a summary of the optimization
     pub fn print_summary(&self) {
         println!("=== Circuit Optimization Report ===");
@@ -242,15 +245,24 @@ impl OptimizationReport {
         println!("Initial Metrics:");
         println!("  Gate count: {}", self.initial_metrics.gate_count);
         println!("  Depth: {}", self.initial_metrics.depth);
-        println!("  Two-qubit gates: {}", self.initial_metrics.two_qubit_gates);
-        println!("  Execution time: {:.2} ns", self.initial_metrics.execution_time);
+        println!(
+            "  Two-qubit gates: {}",
+            self.initial_metrics.two_qubit_gates
+        );
+        println!(
+            "  Execution time: {:.2} ns",
+            self.initial_metrics.execution_time
+        );
         println!("  Total error: {:.6}", self.initial_metrics.total_error);
         println!();
         println!("Final Metrics:");
         println!("  Gate count: {}", self.final_metrics.gate_count);
         println!("  Depth: {}", self.final_metrics.depth);
         println!("  Two-qubit gates: {}", self.final_metrics.two_qubit_gates);
-        println!("  Execution time: {:.2} ns", self.final_metrics.execution_time);
+        println!(
+            "  Execution time: {:.2} ns",
+            self.final_metrics.execution_time
+        );
         println!("  Total error: {:.6}", self.final_metrics.total_error);
         println!();
         println!("Improvements:");
@@ -266,13 +278,13 @@ impl OptimizationReport {
             println!("  - {}", pass);
         }
     }
-    
+
     /// Generate a detailed report as string
     pub fn detailed_report(&self) -> String {
         let mut report = String::new();
-        
+
         report.push_str("=== Detailed Circuit Optimization Report ===\n\n");
-        
+
         // Gate type breakdown
         report.push_str("Gate Type Breakdown:\n");
         report.push_str("Initial:\n");
@@ -283,16 +295,25 @@ impl OptimizationReport {
         for (gate_type, count) in &self.final_metrics.gate_types {
             report.push_str(&format!("  {}: {}\n", gate_type, count));
         }
-        
+
         // Additional metrics
         report.push_str(&format!("\nGate Density:\n"));
-        report.push_str(&format!("  Initial: {:.2} gates/qubit\n", self.initial_metrics.gate_density));
-        report.push_str(&format!("  Final: {:.2} gates/qubit\n", self.final_metrics.gate_density));
-        
+        report.push_str(&format!(
+            "  Initial: {:.2} gates/qubit\n",
+            self.initial_metrics.gate_density
+        ));
+        report.push_str(&format!(
+            "  Final: {:.2} gates/qubit\n",
+            self.final_metrics.gate_density
+        ));
+
         report.push_str(&format!("\nParallelism Factor:\n"));
-        report.push_str(&format!("  Initial: {:.2}\n", self.initial_metrics.parallelism));
+        report.push_str(&format!(
+            "  Initial: {:.2}\n",
+            self.initial_metrics.parallelism
+        ));
         report.push_str(&format!("  Final: {:.2}\n", self.final_metrics.parallelism));
-        
+
         report
     }
 }

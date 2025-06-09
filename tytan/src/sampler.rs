@@ -7,6 +7,7 @@
 use ndarray::{Array, Dimension, Ix2};
 use rand::prelude::*;
 use rand::rngs::StdRng;
+use rand::thread_rng;
 // thread_rng is deprecated, use rng() instead
 use std::collections::HashMap;
 use thiserror::Error;
@@ -55,7 +56,7 @@ fn evaluate_qubo_energy(state: &[bool], h_vector: &[f64], j_matrix: &[f64], n_va
 }
 
 use quantrs2_anneal::{
-    simulator::{AnnealingError, AnnealingParams, ClassicalAnnealingSimulator},
+    simulator::{AnnealingError, AnnealingParams, ClassicalAnnealingSimulator, TemperatureSchedule},
     IsingError, QuboModel,
 };
 
@@ -90,6 +91,16 @@ pub enum SamplerError {
     #[cfg(feature = "dwave")]
     #[error("D-Wave error: {0}")]
     DWaveError(#[from] quantrs2_anneal::dwave::DWaveError),
+
+    /// Feature not implemented
+    #[error("Not implemented: {0}")]
+    NotImplemented(String),
+}
+
+impl From<String> for SamplerError {
+    fn from(s: String) -> Self {
+        SamplerError::InvalidParameter(s)
+    }
 }
 
 /// Result type for sampling operations
@@ -191,6 +202,21 @@ impl SASampler {
         }
 
         Self { seed, params }
+    }
+
+    /// Set beta range for simulated annealing
+    pub fn with_beta_range(mut self, beta_min: f64, beta_max: f64) -> Self {
+        // Convert beta (inverse temperature) to temperature
+        self.params.initial_temperature = 1.0 / beta_max;
+        // Use exponential temperature schedule to approximate final beta
+        self.params.temperature_schedule = TemperatureSchedule::Exponential(beta_min / beta_max);
+        self
+    }
+
+    /// Set number of sweeps
+    pub fn with_sweeps(mut self, sweeps: usize) -> Self {
+        self.params.num_sweeps = sweeps;
+        self
     }
 
     /// Run the sampler on a QUBO/HOBO problem
@@ -439,7 +465,7 @@ impl SASampler {
             let seeds: Vec<u64> = (0..total_runs)
                 .map(|i| match self.seed {
                     Some(seed) => seed.wrapping_add(i as u64),
-                    None => rand::random(),
+                    None => thread_rng().gen(),
                 })
                 .collect();
 
@@ -654,6 +680,12 @@ impl GASampler {
             max_generations,
             population_size,
         }
+    }
+
+    /// Set population size
+    pub fn with_population_size(mut self, size: usize) -> Self {
+        self.population_size = size;
+        self
     }
 }
 
@@ -1813,7 +1845,7 @@ impl ArminSampler {
         }
 
         // Create a seed based on input seed or random value
-        let seed_val = self.seed.unwrap_or_else(rand::random::<u64>);
+        let seed_val = self.seed.unwrap_or_else(thread_rng().gen());
 
         // Use parallel tempering for larger problems, standard SA for smaller ones
         let use_parallel_tempering = n_vars > 100 && num_shots > 10;
@@ -2235,7 +2267,7 @@ impl ArminSampler {
             .arg(5000i32) // More sweeps for thorough optimization of a chunk
             .arg(5.0f32)  // Higher initial temperature
             .arg(0.01f32) // Lower final temperature
-            .arg(seed.unwrap_or_else(rand::random::<u64>))
+            .arg(seed.unwrap_or_else(thread_rng().gen()))
             .build()?;
 
         // Execute kernel
@@ -3112,7 +3144,7 @@ impl ArminSampler {
             .arg(10.0f32) // init_temp
             .arg(0.1f32)  // final_temp
             .arg(1000i32) // sweeps
-            .arg(self.seed.unwrap_or_else(rand::random::<u64>))
+            .arg(self.seed.unwrap_or_else(thread_rng().gen()))
             .build()?;
 
         // Execute kernel
@@ -3367,7 +3399,7 @@ impl Sampler for MIKASAmpler {
                 let seeds: Vec<u64> = (0..total_runs)
                     .map(|i| match self.0.seed {
                         Some(seed) => seed.wrapping_add(i as u64),
-                        None => rand::random(),
+                        None => thread_rng().gen(),
                     })
                     .collect();
 

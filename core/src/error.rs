@@ -38,6 +38,10 @@ pub enum QuantRS2Error {
     /// Linear algebra error
     #[error("Linear algebra error: {0}")]
     LinalgError(String),
+    
+    /// Routing error
+    #[error("Routing error: {0}")]
+    RoutingError(String),
 }
 
 /// Result type for quantum operations

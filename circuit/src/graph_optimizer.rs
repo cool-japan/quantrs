@@ -14,8 +14,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use scirs2_core::sparse::{CsrMatrix, SparseMatrix};
 #[cfg(feature = "scirs")]
 use scirs2_optimize::graph::{
-    topological_sort_weighted, find_critical_path, 
-    minimum_feedback_arc_set, graph_coloring
+    find_critical_path, graph_coloring, minimum_feedback_arc_set, topological_sort_weighted,
 };
 
 /// Helper function to multiply two 2x2 matrices
@@ -133,10 +132,10 @@ impl CircuitDAG {
                 return;
             }
         }
-        
+
         self.standard_compute_commutation_edges();
     }
-    
+
     #[cfg(feature = "scirs")]
     /// SciRS2-powered commutation edge computation
     fn scirs_compute_commutation_edges(&mut self) -> bool {
@@ -144,15 +143,15 @@ impl CircuitDAG {
         if n == 0 {
             return true;
         }
-        
+
         // Build interference graph for gates
         let mut interference = vec![vec![false; n]; n];
-        
+
         for i in 0..n {
             for j in i + 1..n {
                 let g1 = &self.nodes[i];
                 let g2 = &self.nodes[j];
-                
+
                 // Check if gates interfere (can't be scheduled in parallel)
                 if !self.gates_commute(g1, g2) && !self.has_path(i, j) && !self.has_path(j, i) {
                     interference[i][j] = true;
@@ -160,7 +159,7 @@ impl CircuitDAG {
                 }
             }
         }
-        
+
         // Use graph coloring to find maximum parallelism
         if let Ok(coloring) = graph_coloring(&interference) {
             // Use coloring information to add parallelization hints
@@ -174,10 +173,10 @@ impl CircuitDAG {
             }
             return true;
         }
-        
+
         false
     }
-    
+
     /// Standard commutation edge computation
     fn standard_compute_commutation_edges(&mut self) {
         let n = self.nodes.len();
@@ -205,7 +204,7 @@ impl CircuitDAG {
             }
         }
     }
-    
+
     #[cfg(feature = "scirs")]
     /// Find optimal gate reordering using minimum feedback arc set
     pub fn optimize_with_feedback_arc_set(&self) -> Option<Vec<usize>> {
@@ -213,11 +212,11 @@ impl CircuitDAG {
         if n == 0 {
             return Some(vec![]);
         }
-        
+
         // Build directed graph of non-commuting edges
         let mut edges = Vec::new();
         let mut weights = Vec::new();
-        
+
         for ((u, v), edge_type) in &self.edges {
             if *edge_type == EdgeType::NonCommuting {
                 edges.push((*u, *v));
@@ -226,7 +225,7 @@ impl CircuitDAG {
                 weights.push(weight);
             }
         }
-        
+
         // Find minimum feedback arc set to break cycles
         if let Ok(feedback_arcs) = minimum_feedback_arc_set(&edges, &weights) {
             // Remove feedback arcs and compute new ordering
@@ -235,17 +234,17 @@ impl CircuitDAG {
                 filtered_edges[arc_idx] = (n, n); // Mark for removal
             }
             filtered_edges.retain(|&(u, v)| u < n && v < n);
-            
+
             // Build new DAG and compute topological sort
             let mut new_dag = CircuitDAG::new();
             new_dag.nodes = self.nodes.clone();
             for (u, v) in filtered_edges {
                 new_dag.edges.insert((u, v), EdgeType::DataDependency);
             }
-            
+
             return Some(new_dag.optimized_topological_sort());
         }
-        
+
         None
     }
 
@@ -282,11 +281,11 @@ impl CircuitDAG {
                 return order;
             }
         }
-        
+
         // Fallback to standard implementation
         self.standard_topological_sort()
     }
-    
+
     #[cfg(feature = "scirs")]
     /// SciRS2-powered topological sort with advanced optimization
     fn scirs_topological_sort(&self) -> Option<Vec<usize>> {
@@ -294,12 +293,12 @@ impl CircuitDAG {
         if n == 0 {
             return Some(vec![]);
         }
-        
+
         // Convert to sparse adjacency matrix for SciRS2
         let mut row_indices = Vec::new();
         let mut col_indices = Vec::new();
         let mut values = Vec::new();
-        
+
         for ((u, v), edge_type) in &self.edges {
             if *edge_type == EdgeType::DataDependency {
                 row_indices.push(*u);
@@ -309,10 +308,10 @@ impl CircuitDAG {
                 values.push(weight);
             }
         }
-        
+
         // Create sparse matrix
         let matrix = CsrMatrix::from_triplets(n, n, &row_indices, &col_indices, &values);
-        
+
         // Use weighted topological sort for optimal scheduling
         if let Ok(order) = topological_sort_weighted(&matrix, |i| self.gate_priority(i)) {
             // Find critical path for depth optimization
@@ -322,10 +321,10 @@ impl CircuitDAG {
             }
             return Some(order);
         }
-        
+
         None
     }
-    
+
     /// Calculate gate weight for scheduling priority
     fn gate_weight(&self, gate_id: usize) -> f64 {
         let gate = &self.nodes[gate_id];
@@ -341,7 +340,7 @@ impl CircuitDAG {
             _ => 5.0,
         }
     }
-    
+
     /// Calculate gate priority for scheduling
     fn gate_priority(&self, gate_id: usize) -> f64 {
         // Prioritize gates that enable more parallelism
@@ -351,7 +350,7 @@ impl CircuitDAG {
         // Higher priority for gates that unlock more parallelism
         parallelism_score / weight
     }
-    
+
     /// Count how many gates can be executed in parallel after this gate
     fn count_parallel_successors(&self, gate_id: usize) -> usize {
         let mut count = 0;
@@ -362,14 +361,18 @@ impl CircuitDAG {
         }
         count
     }
-    
+
     #[cfg(feature = "scirs")]
     /// Optimize gate order based on critical path analysis
-    fn optimize_order_by_critical_path(&self, order: Vec<usize>, critical: Vec<usize>) -> Vec<usize> {
+    fn optimize_order_by_critical_path(
+        &self,
+        order: Vec<usize>,
+        critical: Vec<usize>,
+    ) -> Vec<usize> {
         let mut optimized = Vec::new();
         let mut scheduled = HashSet::new();
         let critical_set: HashSet<_> = critical.into_iter().collect();
-        
+
         // Schedule critical path gates first
         for &gate_id in &order {
             if critical_set.contains(&gate_id) && !scheduled.contains(&gate_id) {
@@ -377,7 +380,7 @@ impl CircuitDAG {
                 scheduled.insert(gate_id);
             }
         }
-        
+
         // Then schedule remaining gates
         for &gate_id in &order {
             if !scheduled.contains(&gate_id) {
@@ -385,10 +388,10 @@ impl CircuitDAG {
                 scheduled.insert(gate_id);
             }
         }
-        
+
         optimized
     }
-    
+
     /// Standard topological sort implementation (fallback)
     fn standard_topological_sort(&self) -> Vec<usize> {
         let n = self.nodes.len();
@@ -521,7 +524,10 @@ impl GraphOptimizer {
             // Try feedback arc set optimization for complex circuits
             if dag.nodes.len() > 10 {
                 if let Some(optimized_order) = dag.optimize_with_feedback_arc_set() {
-                    return optimized_order.iter().map(|&i| dag.nodes[i].clone()).collect();
+                    return optimized_order
+                        .iter()
+                        .map(|&i| dag.nodes[i].clone())
+                        .collect();
                 }
             }
         }
@@ -532,16 +538,16 @@ impl GraphOptimizer {
         // Apply gate merging optimization
         self.merge_gates_in_sequence(order.iter().map(|&i| dag.nodes[i].clone()).collect())
     }
-    
+
     /// Apply gate merging to an ordered sequence
     fn merge_gates_in_sequence(&self, gates: Vec<GraphGate>) -> Vec<GraphGate> {
         if gates.is_empty() {
             return gates;
         }
-        
+
         let mut merged = Vec::new();
         let mut i = 0;
-        
+
         while i < gates.len() {
             if i + 1 < gates.len() {
                 // Try to merge consecutive gates
@@ -554,10 +560,10 @@ impl GraphOptimizer {
             merged.push(gates[i].clone());
             i += 1;
         }
-        
+
         merged
     }
-    
+
     /// Try to merge two gates if possible
     fn try_merge_gates(&self, g1: &GraphGate, g2: &GraphGate) -> Option<GraphGate> {
         // Only merge single-qubit gates on the same qubit

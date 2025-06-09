@@ -1178,17 +1178,21 @@ impl WarehouseOptimizer {
             
             let route = self.optimize_picking_route(&batch_orders)?;
             
+            let estimated_time = self.estimate_picking_time(&route);
             batches.push(Batch {
                 orders: batch_orders,
                 route,
-                estimated_time: self.estimate_picking_time(&route),
+                estimated_time,
             });
         }
         
+        let total_distance = batches.iter().map(|b| b.route.total_distance).sum();
+        let total_time = batches.iter().map(|b| b.estimated_time).sum();
+        
         Ok(PickingPlan {
             batches,
-            total_distance: batches.iter().map(|b| b.route.total_distance).sum(),
-            total_time: batches.iter().map(|b| b.estimated_time).sum(),
+            total_distance,
+            total_time,
         })
     }
     
@@ -1198,18 +1202,22 @@ impl WarehouseOptimizer {
         
         for order in &self.orders {
             let route = self.optimize_picking_route(&[order.clone()])?;
+            let estimated_time = self.estimate_picking_time(&route);
             
             batches.push(Batch {
                 orders: vec![order.clone()],
                 route,
-                estimated_time: self.estimate_picking_time(&route),
+                estimated_time,
             });
         }
         
+        let total_distance = batches.iter().map(|b| b.route.total_distance).sum();
+        let total_time = batches.iter().map(|b| b.estimated_time).sum();
+        
         Ok(PickingPlan {
             batches,
-            total_distance: batches.iter().map(|b| b.route.total_distance).sum(),
-            total_time: batches.iter().map(|b| b.estimated_time).sum(),
+            total_distance,
+            total_time,
         })
     }
     
@@ -1261,9 +1269,10 @@ impl WarehouseOptimizer {
         let (qubo, var_map) = tsp.build_qubo()?;
         
         // Simplified: return S-shaped route
+        let sequence = (0..pick_locations.len()).collect();
         Ok(PickingRoute {
             locations: pick_locations,
-            sequence: (0..pick_locations.len()).collect(),
+            sequence,
             total_distance: 0.0, // Would calculate from solution
         })
     }

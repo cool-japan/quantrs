@@ -23,7 +23,7 @@ rand = "0.8" # Keeping 0.8 for now to avoid breaking changes
 rand_distr.workspace = true
 rayon.workspace = true
 num-complex.workspace = true
-fastrand = "2.0.1"
+fastrand.workspace = true
 
 [features]
 default = []

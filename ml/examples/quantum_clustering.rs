@@ -1,0 +1,545 @@
+//! Quantum Clustering Example
+//!
+//! This example demonstrates various quantum clustering algorithms available in the
+//! quantum ML module, including quantum K-means, DBSCAN, spectral clustering,
+//! fuzzy c-means, and Gaussian mixture models.
+
+use ndarray::{array, Array2};
+use quantrs2_ml::prelude::*;
+
+fn main() -> Result<()> {
+    println!("🌀 Quantum Clustering Algorithms Demo");
+    println!("=====================================\n");
+
+    // Create sample datasets
+    let (simple_data, clustered_data, noisy_data) = create_sample_datasets();
+
+    // Demo 1: Quantum K-means Clustering
+    demo_quantum_kmeans(&simple_data)?;
+
+    // Demo 2: Quantum DBSCAN
+    demo_quantum_dbscan(&noisy_data)?;
+
+    // Demo 3: Quantum Spectral Clustering
+    demo_quantum_spectral(&clustered_data)?;
+
+    // Demo 4: Quantum Fuzzy C-means
+    demo_quantum_fuzzy_cmeans(&simple_data)?;
+
+    // Demo 5: Quantum Gaussian Mixture Models
+    demo_quantum_gmm(&clustered_data)?;
+
+    // Demo 6: Quantum Distance Metrics Comparison
+    demo_quantum_distance_metrics(&simple_data)?;
+
+    // Demo 7: Clustering Evaluation Metrics
+    demo_clustering_evaluation(&simple_data)?;
+
+    // Demo 8: Advanced Configurations
+    demo_advanced_configurations()?;
+
+    println!("\n✅ All quantum clustering demos completed successfully!");
+
+    Ok(())
+}
+
+/// Create sample datasets for different clustering scenarios
+fn create_sample_datasets() -> (Array2<f64>, Array2<f64>, Array2<f64>) {
+    // Simple 2-cluster dataset
+    let simple_data = array![
+        [1.0, 1.0],
+        [1.1, 1.1],
+        [0.9, 0.9],
+        [1.2, 0.8],
+        [5.0, 5.0],
+        [5.1, 5.1],
+        [4.9, 4.9],
+        [5.2, 4.8],
+    ];
+
+    // More complex clustered dataset
+    let clustered_data = array![
+        // Cluster 1
+        [1.0, 1.0], [1.2, 1.1], [0.8, 0.9], [1.1, 1.3],
+        // Cluster 2
+        [5.0, 5.0], [5.2, 5.1], [4.8, 4.9], [5.1, 5.3],
+        // Cluster 3
+        [9.0, 1.0], [9.2, 1.1], [8.8, 0.9], [9.1, 1.3],
+        // Cluster 4
+        [5.0, 9.0], [5.2, 9.1], [4.8, 8.9], [5.1, 9.3],
+    ];
+
+    // Noisy dataset with outliers (for DBSCAN)
+    let noisy_data = array![
+        // Dense cluster 1
+        [1.0, 1.0], [1.1, 1.1], [0.9, 0.9], [1.2, 0.8], [0.8, 1.2],
+        // Dense cluster 2
+        [5.0, 5.0], [5.1, 5.1], [4.9, 4.9], [5.2, 4.8], [4.8, 5.2],
+        // Outliers (noise)
+        [10.0, 10.0], [0.0, 10.0], [-5.0, -5.0],
+    ];
+
+    (simple_data, clustered_data, noisy_data)
+}
+
+/// Demo quantum K-means clustering with different configurations
+fn demo_quantum_kmeans(data: &Array2<f64>) -> Result<()> {
+    println!("🎯 Demo 1: Quantum K-means Clustering");
+    println!("-------------------------------------");
+
+    // Create different K-means configurations
+    let configs = vec![
+        ("Standard Quantum K-means", QuantumKMeansConfig {
+            n_clusters: 2,
+            max_iterations: 100,
+            tolerance: 1e-4,
+            distance_metric: QuantumDistanceMetric::QuantumEuclidean,
+            quantum_reps: 2,
+            enhancement_level: ClusteringQuantumEnhancementLevel::Moderate,
+            seed: Some(42),
+        }),
+        ("Quantum Fidelity Distance", QuantumKMeansConfig {
+            n_clusters: 2,
+            distance_metric: QuantumDistanceMetric::QuantumFidelity,
+            enhancement_level: ClusteringQuantumEnhancementLevel::Full,
+            ..QuantumKMeansConfig::default()
+        }),
+        ("Quantum Entanglement Distance", QuantumKMeansConfig {
+            n_clusters: 2,
+            distance_metric: QuantumDistanceMetric::QuantumEntanglement,
+            enhancement_level: ClusteringQuantumEnhancementLevel::Experimental,
+            ..QuantumKMeansConfig::default()
+        }),
+    ];
+
+    for (name, config) in configs {
+        println!("\n📊 Testing: {}", name);
+        
+        let mut clusterer = QuantumClusterer::kmeans(config);
+        let result = clusterer.fit(data)?;
+
+        println!("   Clusters found: {}", result.n_clusters);
+        println!("   Labels: {:?}", result.labels);
+        println!("   Inertia: {:.4}", result.inertia.unwrap_or(0.0));
+
+        if let Some(centers) = &result.cluster_centers {
+            println!("   Cluster centers:");
+            for (i, center) in centers.rows().into_iter().enumerate() {
+                println!("     Cluster {}: [{:.3}, {:.3}]", i, center[0], center[1]);
+            }
+        }
+
+        // Test prediction on new data
+        let new_data = array![[1.5, 1.5], [4.5, 4.5]];
+        let predictions = clusterer.predict(&new_data)?;
+        println!("   Predictions for new data: {:?}", predictions);
+    }
+
+    Ok(())
+}
+
+/// Demo quantum DBSCAN clustering
+fn demo_quantum_dbscan(data: &Array2<f64>) -> Result<()> {
+    println!("\n🎯 Demo 2: Quantum DBSCAN Clustering");
+    println!("------------------------------------");
+
+    let configs = vec![
+        ("Standard Quantum DBSCAN", QuantumDBSCANConfig {
+            eps: 1.0,
+            min_samples: 3,
+            distance_metric: QuantumDistanceMetric::QuantumEuclidean,
+            quantum_density_reps: 2,
+            enhancement_level: ClusteringQuantumEnhancementLevel::Moderate,
+        }),
+        ("Quantum Kernel Distance", QuantumDBSCANConfig {
+            eps: 0.8,
+            min_samples: 2,
+            distance_metric: QuantumDistanceMetric::QuantumKernel,
+            quantum_density_reps: 3,
+            enhancement_level: ClusteringQuantumEnhancementLevel::Full,
+        }),
+    ];
+
+    for (name, config) in configs {
+        println!("\n📊 Testing: {}", name);
+        
+        let mut clusterer = QuantumClusterer::dbscan(config);
+        let result = clusterer.fit(data)?;
+
+        println!("   Clusters found: {}", result.n_clusters);
+        println!("   Labels: {:?}", result.labels);
+
+        // Count noise points (-1 labels)
+        let noise_count = result.labels.iter().filter(|&&x| x == -1).count();
+        println!("   Noise points: {}", noise_count);
+
+        // Count points in each cluster
+        let unique_labels: std::collections::HashSet<_> = result.labels.iter().cloned().collect();
+        for &label in &unique_labels {
+            if label != -1 {
+                let cluster_size = result.labels.iter().filter(|&&x| x == label).count();
+                println!("   Cluster {} size: {}", label, cluster_size);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Demo quantum spectral clustering
+fn demo_quantum_spectral(data: &Array2<f64>) -> Result<()> {
+    println!("\n🎯 Demo 3: Quantum Spectral Clustering");
+    println!("--------------------------------------");
+
+    let configs = vec![
+        ("RBF Affinity", QuantumSpectralConfig {
+            n_clusters: 4,
+            n_components: Some(4),
+            affinity: AffinityType::RBF,
+            eigensolver_reps: 2,
+            enhancement_level: ClusteringQuantumEnhancementLevel::Light,
+        }),
+        ("Quantum Kernel Affinity", QuantumSpectralConfig {
+            n_clusters: 4,
+            n_components: Some(3),
+            affinity: AffinityType::QuantumKernel,
+            eigensolver_reps: 3,
+            enhancement_level: ClusteringQuantumEnhancementLevel::Full,
+        }),
+    ];
+
+    for (name, config) in configs {
+        println!("\n📊 Testing: {}", name);
+        
+        let mut clusterer = QuantumClusterer::spectral(config);
+        let result = clusterer.fit(data)?;
+
+        println!("   Clusters found: {}", result.n_clusters);
+        println!("   Labels: {:?}", result.labels);
+
+        // Analyze cluster distribution
+        let unique_labels: std::collections::HashSet<_> = result.labels.iter().cloned().collect();
+        for &label in &unique_labels {
+            let cluster_size = result.labels.iter().filter(|&&x| x == label).count();
+            println!("   Cluster {} size: {}", label, cluster_size);
+        }
+    }
+
+    Ok(())
+}
+
+/// Demo quantum fuzzy c-means clustering
+fn demo_quantum_fuzzy_cmeans(data: &Array2<f64>) -> Result<()> {
+    println!("\n🎯 Demo 4: Quantum Fuzzy C-means Clustering");
+    println!("-------------------------------------------");
+
+    let configs = vec![
+        ("Standard Fuzzy C-means", QuantumFuzzyCMeansConfig {
+            n_clusters: 2,
+            m: 2.0,
+            max_iterations: 100,
+            tolerance: 1e-4,
+            distance_metric: QuantumDistanceMetric::QuantumEuclidean,
+            enhancement_level: ClusteringQuantumEnhancementLevel::Moderate,
+        }),
+        ("High Fuzziness", QuantumFuzzyCMeansConfig {
+            n_clusters: 2,
+            m: 3.0,
+            distance_metric: QuantumDistanceMetric::QuantumFidelity,
+            enhancement_level: ClusteringQuantumEnhancementLevel::Full,
+            ..QuantumFuzzyCMeansConfig {
+                n_clusters: 2,
+                m: 2.0,
+                max_iterations: 100,
+                tolerance: 1e-4,
+                distance_metric: QuantumDistanceMetric::QuantumEuclidean,
+                enhancement_level: ClusteringQuantumEnhancementLevel::Moderate,
+            }
+        }),
+    ];
+
+    for (name, config) in configs {
+        println!("\n📊 Testing: {}", name);
+        
+        let mut clusterer = QuantumClusterer::new(ClusteringAlgorithm::QuantumFuzzyCMeans);
+        clusterer.fuzzy_config = Some(config);
+
+        let result = clusterer.fit(data)?;
+
+        println!("   Clusters found: {}", result.n_clusters);
+        println!("   Hard labels: {:?}", result.labels);
+
+        if let Some(probabilities) = &result.probabilities {
+            println!("   Membership probabilities:");
+            for (i, row) in probabilities.rows().into_iter().enumerate() {
+                println!("     Point {}: [{:.3}, {:.3}]", i, row[0], row[1]);
+            }
+        }
+
+        // Test probabilistic prediction
+        let new_data = array![[1.5, 1.5], [4.5, 4.5]];
+        let probabilities = clusterer.predict_proba(&new_data)?;
+        println!("   New data probabilities:");
+        for (i, row) in probabilities.rows().into_iter().enumerate() {
+            println!("     New point {}: [{:.3}, {:.3}]", i, row[0], row[1]);
+        }
+    }
+
+    Ok(())
+}
+
+/// Demo quantum Gaussian mixture models
+fn demo_quantum_gmm(data: &Array2<f64>) -> Result<()> {
+    println!("\n🎯 Demo 5: Quantum Gaussian Mixture Models");
+    println!("------------------------------------------");
+
+    let configs = vec![
+        ("Standard Quantum GMM", QuantumGMMConfig {
+            n_components: 4,
+            covariance_type: CovarianceType::Diagonal,
+            max_iterations: 100,
+            tolerance: 1e-4,
+            reg_covar: 1e-6,
+            enhancement_level: ClusteringQuantumEnhancementLevel::Moderate,
+        }),
+        ("Quantum Enhanced Covariance", QuantumGMMConfig {
+            n_components: 4,
+            covariance_type: CovarianceType::QuantumEnhanced,
+            enhancement_level: ClusteringQuantumEnhancementLevel::Full,
+            ..QuantumGMMConfig {
+                n_components: 4,
+                covariance_type: CovarianceType::Diagonal,
+                max_iterations: 100,
+                tolerance: 1e-4,
+                reg_covar: 1e-6,
+                enhancement_level: ClusteringQuantumEnhancementLevel::Moderate,
+            }
+        }),
+    ];
+
+    for (name, config) in configs {
+        println!("\n📊 Testing: {}", name);
+        
+        let mut clusterer = QuantumClusterer::new(ClusteringAlgorithm::QuantumGMM);
+        clusterer.gmm_config = Some(config);
+
+        let result = clusterer.fit(data)?;
+
+        println!("   Components found: {}", result.n_clusters);
+        println!("   Hard labels: {:?}", result.labels);
+
+        if let Some(centers) = &result.cluster_centers {
+            println!("   Component means:");
+            for (i, center) in centers.rows().into_iter().enumerate() {
+                println!("     Component {}: [{:.3}, {:.3}]", i, center[0], center[1]);
+            }
+        }
+
+        if let Some(probabilities) = &result.probabilities {
+            println!("   Posterior probabilities (first 4 points):");
+            for i in 0..4.min(probabilities.nrows()) {
+                let row = probabilities.row(i);
+                let prob_str: Vec<String> = row.iter().map(|&p| format!("{:.3}", p)).collect();
+                println!("     Point {}: [{}]", i, prob_str.join(", "));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Demo different quantum distance metrics
+fn demo_quantum_distance_metrics(data: &Array2<f64>) -> Result<()> {
+    println!("\n🎯 Demo 6: Quantum Distance Metrics Comparison");
+    println!("----------------------------------------------");
+
+    let metrics = vec![
+        QuantumDistanceMetric::QuantumEuclidean,
+        QuantumDistanceMetric::QuantumManhattan,
+        QuantumDistanceMetric::QuantumCosine,
+        QuantumDistanceMetric::QuantumFidelity,
+        QuantumDistanceMetric::QuantumTrace,
+        QuantumDistanceMetric::QuantumKernel,
+        QuantumDistanceMetric::QuantumEntanglement,
+    ];
+
+    // Test each metric with K-means
+    for metric in metrics {
+        let config = QuantumKMeansConfig {
+            n_clusters: 2,
+            distance_metric: metric,
+            enhancement_level: ClusteringQuantumEnhancementLevel::Moderate,
+            ..QuantumKMeansConfig::default()
+        };
+
+        let mut clusterer = QuantumClusterer::kmeans(config);
+        let result = clusterer.fit(data)?;
+
+        println!("\n📊 Distance Metric: {:?}", metric);
+        println!("   Inertia: {:.4}", result.inertia.unwrap_or(0.0));
+        println!("   Labels: {:?}", result.labels);
+
+        // Calculate some example distances
+        let clusterer_ref = QuantumClusterer::new(ClusteringAlgorithm::QuantumKMeans);
+        let point1 = data.row(0).to_owned();
+        let point2 = data.row(1).to_owned();
+        let distance = clusterer_ref.compute_quantum_distance(&point1, &point2, metric)?;
+        println!("   Sample distance (points 0-1): {:.4}", distance);
+    }
+
+    Ok(())
+}
+
+/// Demo clustering evaluation metrics
+fn demo_clustering_evaluation(data: &Array2<f64>) -> Result<()> {
+    println!("\n🎯 Demo 7: Clustering Evaluation Metrics");
+    println!("----------------------------------------");
+
+    // Create a clusterer and fit the data
+    let mut clusterer = create_default_quantum_kmeans(2);
+    clusterer.fit(data)?;
+
+    // Evaluate clustering quality
+    let metrics = clusterer.evaluate(data, None)?;
+
+    println!("\n📊 Clustering Quality Metrics:");
+    println!("   Silhouette Score: {:.4}", metrics.silhouette_score);
+    println!("   Davies-Bouldin Index: {:.4}", metrics.davies_bouldin_index);
+    println!("   Calinski-Harabasz Index: {:.4}", metrics.calinski_harabasz_index);
+
+    if let Some(quantum_metrics) = &metrics.quantum_metrics {
+        println!("\n📊 Quantum-Specific Metrics:");
+        println!("   Avg Intra-cluster Coherence: {:.4}", quantum_metrics.avg_intra_cluster_coherence);
+        println!("   Avg Inter-cluster Coherence: {:.4}", quantum_metrics.avg_inter_cluster_coherence);
+        println!("   Quantum Separation: {:.4}", quantum_metrics.quantum_separation);
+        println!("   Entanglement Preservation: {:.4}", quantum_metrics.entanglement_preservation);
+        println!("   Circuit Complexity: {:.4}", quantum_metrics.circuit_complexity);
+    }
+
+    // Compare different algorithms on the same data
+    println!("\n📊 Algorithm Comparison:");
+    
+    let algorithms = vec![
+        ("Quantum K-means", ClusteringAlgorithm::QuantumKMeans),
+        ("Quantum DBSCAN", ClusteringAlgorithm::QuantumDBSCAN),
+    ];
+
+    for (name, algorithm) in algorithms {
+        let result = match algorithm {
+            ClusteringAlgorithm::QuantumKMeans => {
+                let mut clusterer = create_default_quantum_kmeans(2);
+                clusterer.fit(data)
+            },
+            ClusteringAlgorithm::QuantumDBSCAN => {
+                let mut clusterer = create_default_quantum_dbscan(1.0, 2);
+                clusterer.fit(data)
+            },
+            _ => continue,
+        };
+
+        if let Ok(result) = result {
+            println!("   {} - Clusters: {}, Inertia: {:.4}", 
+                     name, 
+                     result.n_clusters, 
+                     result.inertia.unwrap_or(0.0));
+        }
+    }
+
+    Ok(())
+}
+
+/// Demo advanced clustering configurations
+fn demo_advanced_configurations() -> Result<()> {
+    println!("\n🎯 Demo 8: Advanced Clustering Configurations");
+    println!("---------------------------------------------");
+
+    // Demo ensemble configuration
+    println!("\n📊 Ensemble Clustering Configuration:");
+    let ensemble_config = ClusteringEnsembleConfig {
+        base_algorithms: vec![
+            ClusteringAlgorithm::QuantumKMeans,
+            ClusteringAlgorithm::QuantumDBSCAN,
+            ClusteringAlgorithm::QuantumSpectral,
+        ],
+        combination_method: EnsembleCombinationMethod::ConsensusClustering,
+        consensus_threshold: 0.7,
+        n_bootstrap: 100,
+    };
+    println!("   Base algorithms: {:?}", ensemble_config.base_algorithms);
+    println!("   Combination method: {:?}", ensemble_config.combination_method);
+    println!("   Consensus threshold: {:.2}", ensemble_config.consensus_threshold);
+
+    // Demo specialized clustering configurations
+    println!("\n📊 Specialized Clustering Configurations:");
+    
+    let graph_config = GraphClusteringConfig {
+        graph_method: GraphMethod::QuantumGraph,
+        community_algorithm: CommunityAlgorithm::QuantumCommunityDetection,
+        resolution: 1.0,
+        enhancement_level: ClusteringQuantumEnhancementLevel::Full,
+    };
+    println!("   Graph clustering: {:?} with {:?}", 
+             graph_config.graph_method, 
+             graph_config.community_algorithm);
+
+    let time_series_config = TimeSeriesClusteringConfig {
+        ts_distance_metric: TimeSeriesDistanceMetric::QuantumTemporal,
+        window_size: Some(10),
+        warping_constraint: Some(0.1),
+        temporal_enhancement: true,
+    };
+    println!("   Time series clustering: {:?} with quantum temporal enhancement", 
+             time_series_config.ts_distance_metric);
+
+    let high_dim_config = HighDimClusteringConfig {
+        dim_reduction: DimensionalityReduction::QuantumPCA,
+        target_dims: 10,
+        pca_components: Some(5),
+        quantum_pca: true,
+    };
+    println!("   High-dim clustering: {:?} reducing to {} dimensions", 
+             high_dim_config.dim_reduction, 
+             high_dim_config.target_dims);
+
+    let streaming_config = StreamingClusteringConfig {
+        buffer_size: 1000,
+        decay_factor: 0.95,
+        update_frequency: 10,
+        quantum_adaptation_rate: 0.1,
+    };
+    println!("   Streaming clustering: buffer size {}, decay factor {:.2}", 
+             streaming_config.buffer_size, 
+             streaming_config.decay_factor);
+
+    // Demo quantum-native configurations
+    println!("\n📊 Quantum-Native Clustering Configuration:");
+    let quantum_native_config = QuantumNativeConfig {
+        circuit_depth: 5,
+        num_qubits: 8,
+        state_preparation: StatePreparationMethod::VariationalStatePreparation,
+        measurement_strategy: MeasurementStrategy::AdaptiveMeasurements,
+        entanglement_structure: EntanglementStructure::HardwareEfficient,
+    };
+    println!("   Circuit depth: {}, Qubits: {}", 
+             quantum_native_config.circuit_depth, 
+             quantum_native_config.num_qubits);
+    println!("   State preparation: {:?}", quantum_native_config.state_preparation);
+    println!("   Measurement strategy: {:?}", quantum_native_config.measurement_strategy);
+    println!("   Entanglement structure: {:?}", quantum_native_config.entanglement_structure);
+
+    // Demo enhancement levels
+    println!("\n📊 Quantum Enhancement Levels:");
+    let enhancement_levels = vec![
+        ClusteringQuantumEnhancementLevel::Classical,
+        ClusteringQuantumEnhancementLevel::Light,
+        ClusteringQuantumEnhancementLevel::Moderate,
+        ClusteringQuantumEnhancementLevel::Full,
+        ClusteringQuantumEnhancementLevel::Experimental,
+    ];
+
+    for level in enhancement_levels {
+        println!("   {:?}: Provides different levels of quantum enhancement", level);
+    }
+
+    Ok(())
+}

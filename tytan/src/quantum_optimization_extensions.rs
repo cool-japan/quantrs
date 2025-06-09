@@ -9,6 +9,7 @@ use ndarray::{Array, Array1, Array2, IxDyn};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use rand::prelude::*;
+use rand::thread_rng;
 
 /// ADAPT-QAOA: Adaptive QAOA with dynamic circuit construction
 pub struct AdaptQAOA {
@@ -95,7 +96,7 @@ impl AdaptQAOA {
             }
             
             // Add operator to circuit
-            let operator = self.operator_pool.get_operator(*best_op_idx)?;
+            let operator = self.operator_pool.get_operator(best_op_idx)?;
             circuit.add_operator(operator.clone(), 0.0); // Initial parameter
             
             // Optimize parameters
@@ -106,7 +107,7 @@ impl AdaptQAOA {
                 // Keep all operators available in early stages
             } else {
                 // Start removing used operators
-                self.operator_pool.remove_operator(*best_op_idx);
+                self.operator_pool.remove_operator(best_op_idx);
             }
         }
         

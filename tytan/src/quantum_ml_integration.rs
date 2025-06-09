@@ -4,11 +4,13 @@
 //! algorithms for optimization problems.
 
 use crate::sampler::{Sampler, SampleResult, SamplerError, SamplerResult};
+#[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
 use ndarray::{Array, Array1, Array2, Array3, IxDyn, Axis};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use rand::prelude::*;
+use rand::{thread_rng, Rng};
 use rand_distr::{Normal, Distribution};
 
 /// Quantum Boltzmann Machine for optimization
@@ -36,13 +38,14 @@ pub struct QuantumBoltzmannMachine {
 impl QuantumBoltzmannMachine {
     /// Create new Quantum Boltzmann Machine
     pub fn new(n_visible: usize, n_hidden: usize) -> Self {
-        let mut rng = thread_rng();
-        let normal = Normal::new(0.0, 0.1).unwrap();
+        use rand::{SeedableRng, Rng};
+        use rand::rngs::StdRng;
+        let mut rng = StdRng::seed_from_u64(42);
         
-        // Initialize weights and biases
-        let weights = Array2::from_shape_fn((n_visible, n_hidden), |_| normal.sample(&mut rng));
-        let visible_bias = Array1::from_shape_fn(n_visible, |_| normal.sample(&mut rng));
-        let hidden_bias = Array1::from_shape_fn(n_hidden, |_| normal.sample(&mut rng));
+        // Initialize weights and biases with simple random values
+        let weights = Array2::from_shape_fn((n_visible, n_hidden), |_| rng.gen_range(-0.1..0.1));
+        let visible_bias = Array1::from_shape_fn(n_visible, |_| rng.gen_range(-0.1..0.1));
+        let hidden_bias = Array1::from_shape_fn(n_hidden, |_| rng.gen_range(-0.1..0.1));
         
         Self {
             n_visible,
@@ -85,7 +88,8 @@ impl QuantumBoltzmannMachine {
             
             // Mini-batch training
             for batch_idx in 0..batch_size {
-                let visible = data.row(batch_idx);
+                let visible_view = data.row(batch_idx);
+                let visible: Array1<bool> = visible_view.to_owned();
                 
                 // Positive phase: sample hidden given visible
                 let hidden_probs = self.hidden_given_visible(&visible);
@@ -114,10 +118,13 @@ impl QuantumBoltzmannMachine {
             }
         }
         
+        let final_loss = *loss_history.last().unwrap();
+        let converged = final_loss < 0.01;
+        
         Ok(TrainingResult {
-            final_loss: *loss_history.last().unwrap(),
+            final_loss,
             loss_history,
-            converged: loss_history.last().unwrap() < &0.01,
+            converged,
         })
     }
     
@@ -286,17 +293,16 @@ pub struct QuantumVAE {
 impl QuantumVAE {
     /// Create new Quantum VAE
     pub fn new(input_dim: usize, latent_dim: usize, n_layers: usize) -> Self {
-        let mut rng = thread_rng();
-        let normal = Normal::new(0.0, 0.1).unwrap();
+        use rand::Rng;
         
         let encoder_params = Array2::from_shape_fn(
             (n_layers, input_dim),
-            |_| normal.sample(&mut rng)
+            |_| thread_rng().gen_range(-0.1..0.1)
         );
         
         let decoder_params = Array2::from_shape_fn(
             (n_layers, latent_dim),
-            |_| normal.sample(&mut rng)
+            |_| thread_rng().gen_range(-0.1..0.1)
         );
         
         Self {
@@ -378,7 +384,7 @@ impl QuantumVAE {
                 }
             }
             
-            output = new_output.mapv(|x| 1.0 / (1.0 + (-x).exp()));
+            output = new_output.mapv(|x: f64| 1.0 / (1.0 + (-x).exp()));
         }
         
         output
@@ -386,26 +392,21 @@ impl QuantumVAE {
     
     /// Reparameterization trick
     fn reparameterize(&self, mean: &Array1<f64>, log_var: &Array1<f64>) -> Array1<f64> {
-        let mut rng = thread_rng();
-        let normal = Normal::new(0.0, 1.0).unwrap();
-        
         let std = log_var.mapv(|x| (x / 2.0).exp());
-        let eps = Array1::from_shape_fn(mean.len(), |_| normal.sample(&mut rng));
+        let eps = Array1::from_shape_fn(mean.len(), |_| thread_rng().gen_range(-1.0..1.0));
         
         mean + eps * std
     }
     
     /// Generate new samples
     pub fn generate(&self, num_samples: usize) -> Vec<Array1<bool>> {
-        let mut rng = thread_rng();
-        let normal = Normal::new(0.0, 1.0).unwrap();
         let mut samples = Vec::new();
         
         for _ in 0..num_samples {
             // Sample from prior
             let z = Array1::from_shape_fn(
                 self.latent_dim,
-                |_| normal.sample(&mut rng)
+                |_| thread_rng().gen_range(-1.0..1.0)
             );
             
             // Decode

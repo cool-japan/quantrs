@@ -87,7 +87,7 @@ impl ClassicalCondition {
             rhs,
         }
     }
-    
+
     /// Check if a register equals a specific value
     pub fn register_equals(register: &str, value: u64) -> Self {
         Self {
@@ -181,22 +181,21 @@ impl<const N: usize> ClassicalCircuit<N> {
             operations: Vec::new(),
         }
     }
-    
+
     /// Add a classical register
     pub fn add_classical_register(&mut self, name: &str, size: usize) -> QuantRS2Result<()> {
         if self.classical_registers.contains_key(name) {
-            return Err(QuantRS2Error::InvalidInput(
-                format!("Classical register '{}' already exists", name)
-            ));
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Classical register '{}' already exists",
+                name
+            )));
         }
-        
-        self.classical_registers.insert(
-            name.to_string(),
-            ClassicalRegister::new(name, size),
-        );
+
+        self.classical_registers
+            .insert(name.to_string(), ClassicalRegister::new(name, size));
         Ok(())
     }
-    
+
     /// Add a quantum gate
     pub fn add_gate<G: GateOp + 'static>(&mut self, gate: G) -> QuantRS2Result<()> {
         // Validate qubits
@@ -205,42 +204,42 @@ impl<const N: usize> ClassicalCircuit<N> {
                 return Err(QuantRS2Error::InvalidQubitId(qubit.id()));
             }
         }
-        
+
         self.operations.push(CircuitOp::Quantum(Box::new(gate)));
         Ok(())
     }
-    
+
     /// Add a measurement
     pub fn measure(&mut self, qubit: QubitId, register: &str, bit: usize) -> QuantRS2Result<()> {
         // Validate qubit
         if qubit.id() as usize >= N {
             return Err(QuantRS2Error::InvalidQubitId(qubit.id()));
         }
-        
+
         // Validate classical register
-        let creg = self.classical_registers.get(register)
-            .ok_or_else(|| QuantRS2Error::InvalidInput(
-                format!("Classical register '{}' not found", register)
-            ))?;
-            
+        let creg = self.classical_registers.get(register).ok_or_else(|| {
+            QuantRS2Error::InvalidInput(format!("Classical register '{}' not found", register))
+        })?;
+
         if bit >= creg.size {
-            return Err(QuantRS2Error::InvalidInput(
-                format!("Bit index {} out of range for register '{}' (size: {})", 
-                    bit, register, creg.size)
-            ));
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Bit index {} out of range for register '{}' (size: {})",
+                bit, register, creg.size
+            )));
         }
-        
-        self.operations.push(CircuitOp::Classical(
-            ClassicalOp::Measure(MeasureOp::new(qubit, register, bit))
-        ));
+
+        self.operations
+            .push(CircuitOp::Classical(ClassicalOp::Measure(MeasureOp::new(
+                qubit, register, bit,
+            ))));
         Ok(())
     }
-    
+
     /// Add a conditional gate
     pub fn add_conditional<G: GateOp + 'static>(
-        &mut self, 
+        &mut self,
         condition: ClassicalCondition,
-        gate: G
+        gate: G,
     ) -> QuantRS2Result<()> {
         // Validate gate qubits
         for qubit in gate.qubits() {
@@ -248,32 +247,35 @@ impl<const N: usize> ClassicalCircuit<N> {
                 return Err(QuantRS2Error::InvalidQubitId(qubit.id()));
             }
         }
-        
+
         // TODO: Validate condition references valid registers
-        
-        self.operations.push(CircuitOp::Classical(
-            ClassicalOp::Conditional(ConditionalGate {
-                condition,
-                gate: Box::new(gate),
-            })
-        ));
+
+        self.operations
+            .push(CircuitOp::Classical(ClassicalOp::Conditional(
+                ConditionalGate {
+                    condition,
+                    gate: Box::new(gate),
+                },
+            )));
         Ok(())
     }
-    
+
     /// Reset a classical register to zero
     pub fn reset_classical(&mut self, register: &str) -> QuantRS2Result<()> {
         if !self.classical_registers.contains_key(register) {
-            return Err(QuantRS2Error::InvalidInput(
-                format!("Classical register '{}' not found", register)
-            ));
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Classical register '{}' not found",
+                register
+            )));
         }
-        
-        self.operations.push(CircuitOp::Classical(
-            ClassicalOp::Reset(register.to_string())
-        ));
+
+        self.operations
+            .push(CircuitOp::Classical(ClassicalOp::Reset(
+                register.to_string(),
+            )));
         Ok(())
     }
-    
+
     /// Get the number of operations
     pub fn num_operations(&self) -> usize {
         self.operations.len()
@@ -292,35 +294,35 @@ impl<const N: usize> ClassicalCircuitBuilder<N> {
             circuit: ClassicalCircuit::new(),
         }
     }
-    
+
     /// Add a classical register
     pub fn classical_register(mut self, name: &str, size: usize) -> QuantRS2Result<Self> {
         self.circuit.add_classical_register(name, size)?;
         Ok(self)
     }
-    
+
     /// Add a quantum gate
     pub fn gate<G: GateOp + 'static>(mut self, gate: G) -> QuantRS2Result<Self> {
         self.circuit.add_gate(gate)?;
         Ok(self)
     }
-    
+
     /// Add a measurement
     pub fn measure(mut self, qubit: QubitId, register: &str, bit: usize) -> QuantRS2Result<Self> {
         self.circuit.measure(qubit, register, bit)?;
         Ok(self)
     }
-    
+
     /// Add a conditional gate
     pub fn conditional<G: GateOp + 'static>(
         mut self,
         condition: ClassicalCondition,
-        gate: G
+        gate: G,
     ) -> QuantRS2Result<Self> {
         self.circuit.add_conditional(condition, gate)?;
         Ok(self)
     }
-    
+
     /// Build the circuit
     pub fn build(self) -> ClassicalCircuit<N> {
         self.circuit
@@ -331,42 +333,46 @@ impl<const N: usize> ClassicalCircuitBuilder<N> {
 mod tests {
     use super::*;
     use quantrs2_core::gate::single::PauliX;
-    
+
     #[test]
     fn test_classical_register() {
         let reg = ClassicalRegister::new("c", 3);
         assert_eq!(reg.name, "c");
         assert_eq!(reg.size, 3);
     }
-    
+
     #[test]
     fn test_classical_condition() {
         let cond = ClassicalCondition::register_equals("c", 1);
         assert_eq!(cond.op, ComparisonOp::Equal);
-        
+
         match &cond.lhs {
             ClassicalValue::Register(name) => assert_eq!(name, "c"),
             _ => panic!("Expected Register variant"),
         }
-        
+
         match &cond.rhs {
             ClassicalValue::Integer(val) => assert_eq!(*val, 1),
             _ => panic!("Expected Integer variant"),
         }
     }
-    
+
     #[test]
     fn test_classical_circuit_builder() {
         let circuit = ClassicalCircuitBuilder::<2>::new()
-            .classical_register("c", 2).unwrap()
-            .gate(PauliX { target: QubitId(0) }).unwrap()
-            .measure(QubitId(0), "c", 0).unwrap()
+            .classical_register("c", 2)
+            .unwrap()
+            .gate(PauliX { target: QubitId(0) })
+            .unwrap()
+            .measure(QubitId(0), "c", 0)
+            .unwrap()
             .conditional(
                 ClassicalCondition::register_equals("c", 1),
-                PauliX { target: QubitId(1) }
-            ).unwrap()
+                PauliX { target: QubitId(1) },
+            )
+            .unwrap()
             .build();
-            
+
         assert_eq!(circuit.classical_registers.len(), 1);
         assert_eq!(circuit.num_operations(), 3);
     }

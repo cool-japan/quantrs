@@ -58,7 +58,7 @@ plotters = ["dep:plotters"]
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 ndarray-rand = "0.14"
-rand_chacha = "0.3"
+rand_chacha.workspace = true
 colored = "2.0"
 
 [[bench]]
