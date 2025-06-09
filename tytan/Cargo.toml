@@ -17,7 +17,7 @@ num-complex.workspace = true
 thiserror.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
-rand_distr = "0.4"
+rand_distr = "0.5"
 ndarray.workspace = true
 num-bigint = "0.4"
 num-integer = "0.1"
@@ -28,7 +28,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 num_cpus = "1.16"
 plotters = { version = "0.3", optional = true }
-colored = "2.0"
+colored = "3.0"
 
 # SciRS2 dependencies for performance optimization
 scirs2-core = { workspace = true, optional = true }
@@ -56,10 +56,10 @@ clustering = []
 plotters = ["dep:plotters"]
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.6", features = ["html_reports"] }
 ndarray-rand = "0.14"
 rand_chacha.workspace = true
-colored = "2.0"
+colored = "3.0"
 
 [[bench]]
 name = "performance_benchmark"
