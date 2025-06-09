@@ -36,7 +36,7 @@ fastrand = "2.0.1"
 nalgebra-sparse = "0.9"
 dashmap = "5.5"
 half = { version = "2.4", features = ["num-traits"] }
-ndarray-linalg = { version = "0.16", optional = true }
+ndarray-linalg = { version = "0.17", optional = true }
 
 [features]
 default = ["optimize"]
