@@ -43,36 +43,46 @@ This document outlines the development plans and future tasks for the QuantRS2-C
 
 ### In Progress
 
-- ⚠️ Batch operations implementation (core functionality complete, minor compilation issues remain)
+- ⚠️ Batch operations final compilation fixes and optimization
+- 🔄 Advanced ZX-calculus optimization passes
+- 🔄 Enhanced GPU kernel optimization for specialized gates
 
+## Near-term Enhancements (v0.2.x)
 
-## Planned Enhancements
+### Performance Optimizations
+- [ ] Implement gate compilation caching with persistent storage
+- [ ] Add adaptive SIMD dispatch based on CPU capabilities detection
+- [ ] Optimize memory layout for better cache performance in batch operations
+- [ ] Implement lazy evaluation for gate sequence optimization
+- [ ] Add compressed gate storage with runtime decompression
 
-### Near-term (v0.1.x)
+### Advanced Algorithms
+- [ ] Implement quantum approximate optimization for MaxCut and TSP
+- [ ] Add quantum machine learning for natural language processing
+- [ ] Implement quantum reinforcement learning algorithms
+- [ ] Add quantum generative adversarial networks (QGANs)
+- [ ] Implement quantum autoencoders and variational quantum eigensolver improvements
 
-- [x] Integrate SciRS2 sparse matrix support for large gate representations
-- [x] Implement Solovay-Kitaev algorithm using SciRS2 matrix operations
-- [x] Add Clifford+T gate decomposition with optimal T-count
-- [x] Leverage SciRS2 eigenvalue solvers for gate characterization
-- [x] Implement ZX-calculus primitives for gate optimization
-- [x] Add support for controlled versions of arbitrary gates
-- [x] Create gate fusion optimization passes
-- [x] Implement quantum Shannon decomposition using SciRS2 SVD
-- [x] Add Cartan decomposition for two-qubit gates
-- [x] Create gate synthesis from unitary matrices using SciRS2
-- [x] Implement KAK decomposition for multi-qubit gates
-- [x] Add support for variational gate parameters with autodiff
-- [x] Integrate SciRS2 optimization for gate sequence compression
-- [x] Implement quantum channel representations (Kraus, Choi, etc.)
-- [x] Add support for non-unitary operations and measurements
-- [x] Implement tensor network representations using SciRS2 tensors
-- [x] Add support for fermionic operations with Jordan-Wigner transform
-- [x] Create bosonic operator support using SciRS2 sparse matrices
-- [x] Implement quantum error correction codes (surface, color, etc.)
-- [x] Add topological quantum computing primitives
-- [x] Support for measurement-based quantum computing
-- [x] Integrate with SciRS2 GPU acceleration for gate operations
-- [x] Implement quantum machine learning layers
+### Error Correction Enhancements
+- [ ] Add concatenated quantum error correction codes
+- [ ] Implement quantum LDPC codes with sparse syndrome decoding
+- [ ] Add real-time error correction with hardware integration
+- [ ] Implement logical gate synthesis for fault-tolerant computing
+- [ ] Add noise-adaptive error correction threshold estimation
+
+### Hardware Integration
+- [ ] Implement pulse-level gate compilation for superconducting qubits
+- [ ] Add trapped ion gate set with optimized decompositions
+- [ ] Implement photonic quantum computing gate operations
+- [ ] Add neutral atom quantum computing support
+- [ ] Implement silicon quantum dot gate operations
+
+### Advanced Quantum Systems
+- [ ] Add support for quantum walks on arbitrary graphs
+- [ ] Implement adiabatic quantum computing simulation
+- [ ] Add quantum cellular automata simulation
+- [ ] Implement quantum game theory algorithms
+- [ ] Add quantum cryptographic protocol implementations
 
 ## Implementation Notes
 
@@ -103,9 +113,90 @@ This document outlines the development plans and future tasks for the QuantRS2-C
 - [x] Leverage SciRS2 parallel algorithms for batch operations
 - [x] Use SciRS2 optimization for variational parameters
 
-### Module Integration
-- [ ] Provide specialized gate implementations for sim module
-- [ ] Create device-specific gate calibration data structures
-- [ ] Implement gate translation for different hardware backends
-- [ ] Add circuit optimization passes using gate properties
-- [ ] Create Python bindings for gate operations
+## Medium-term Goals (v0.3.x)
+
+### Quantum Computing Frontiers
+- [ ] Implement distributed quantum computing protocols
+- [ ] Add quantum internet simulation capabilities
+- [ ] Implement quantum sensor networks
+- [ ] Add quantum-classical hybrid algorithms
+- [ ] Implement post-quantum cryptography resistance analysis
+
+### Research Integration
+- [ ] Add experimental quantum computing protocol support
+- [ ] Implement quantum advantage demonstration algorithms
+- [ ] Add quantum supremacy benchmark implementations
+- [ ] Implement noise characterization and mitigation protocols
+- [ ] Add quantum volume and quantum process tomography
+
+### Ecosystem Integration
+- [ ] Deep integration with quantum cloud platforms (IBM, AWS, Google)
+- [ ] Add quantum hardware abstraction layer (QHAL)
+- [ ] Implement quantum programming language compilation targets
+- [ ] Add real-time quantum system monitoring and diagnostics
+- [ ] Implement quantum algorithm complexity analysis tools
+
+## Long-term Vision (v1.0+)
+
+### Quantum Operating System
+- [ ] Implement quantum resource management and scheduling
+- [ ] Add quantum memory hierarchy with caching strategies
+- [ ] Implement quantum process isolation and security
+- [ ] Add quantum garbage collection and memory management
+- [ ] Implement quantum thread scheduling and synchronization
+
+### Universal Quantum Computer Support
+- [ ] Add support for all major quantum computing architectures
+- [ ] Implement universal quantum gate compilation
+- [ ] Add cross-platform quantum application portability
+- [ ] Implement quantum algorithm performance profiling
+- [ ] Add quantum debugging and introspection tools
+
+## Current Focus Areas
+
+### Priority 1: Performance & Stability
+- Finalize batch operations with comprehensive testing
+- Optimize GPU kernels for better memory bandwidth utilization
+- Implement adaptive optimization based on hardware characteristics
+
+### Priority 2: Algorithm Completeness
+- Complete quantum machine learning algorithm suite
+- Implement all major quantum error correction codes
+- Add comprehensive variational quantum algorithm support
+
+### Priority 3: Integration & Usability
+- Enhance Python bindings with full feature parity
+- Improve documentation with more comprehensive examples
+- Add interactive tutorials and quantum computing education materials
+
+## Module Integration Tasks
+
+### Simulation Module Integration
+- [x] Provide optimized matrix representations for quantum simulation
+- [x] Supply batch processing capabilities for parallel simulations
+- [ ] Enhanced GPU acceleration integration for large-scale simulations
+- [ ] Add adaptive precision simulation support
+
+### Circuit Module Integration
+- [x] Provide foundational gate types for circuit construction
+- [x] Supply optimization passes for circuit compilation
+- [ ] Enhanced decomposition algorithms for hardware-specific compilation
+- [ ] Add circuit synthesis from high-level quantum algorithms
+
+### Device Module Integration
+- [x] Provide gate calibration data structures for hardware backends
+- [x] Supply noise models for realistic quantum device simulation
+- [ ] Enhanced translation algorithms for device-specific gate sets
+- [ ] Add real-time hardware performance monitoring integration
+
+### Machine Learning Module Integration
+- [x] Provide QML layers and training frameworks
+- [x] Supply variational optimization algorithms
+- [ ] Enhanced automatic differentiation for quantum gradients
+- [ ] Add quantum-classical hybrid learning algorithms
+
+### Python Bindings Integration
+- [ ] Complete Python API coverage for all core functionality
+- [ ] Add NumPy integration for seamless data exchange
+- [ ] Implement Jupyter notebook visualization tools
+- [ ] Add Python-based quantum algorithm development environment

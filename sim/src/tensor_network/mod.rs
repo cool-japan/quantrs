@@ -162,10 +162,10 @@ impl TensorNetworkSimulator {
 
     /// Set the contraction strategy
     pub fn with_contraction_strategy(mut self, strategy: ContractionStrategy) -> Self {
-        self.contraction_strategy = strategy;
-
+        self.contraction_strategy = strategy.clone();
+        
         // Set the appropriate optimization method based on strategy
-        self.path_optimizer = match strategy {
+        self.path_optimizer = match &strategy {
             ContractionStrategy::QFT => self
                 .path_optimizer
                 .with_method(ContractionOptMethod::DynamicProgramming)

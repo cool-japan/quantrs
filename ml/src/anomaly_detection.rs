@@ -501,7 +501,6 @@ pub struct TrendContext {
 }
 
 /// Main quantum anomaly detector
-#[derive(Debug)]
 pub struct QuantumAnomalyDetector {
     /// Configuration
     config: QuantumAnomalyConfig,
@@ -667,7 +666,6 @@ pub struct QuantumAutoencoder {
 }
 
 /// Quantum One-Class SVM implementation
-#[derive(Debug)]
 pub struct QuantumOneClassSVM {
     config: QuantumAnomalyConfig,
     svm: QSVM,
@@ -686,7 +684,6 @@ pub struct QuantumLOF {
 }
 
 /// Time Series Anomaly Detector
-#[derive(Debug)]
 pub struct TimeSeriesAnomalyDetector {
     base_detector: QuantumAnomalyDetector,
     window_size: usize,
@@ -1242,6 +1239,19 @@ impl QuantumAnomalyDetector {
         } else {
             Ok(auc / (pos_count * neg_count) as f64)
         }
+    }
+}
+
+impl std::fmt::Debug for QuantumAnomalyDetector {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("QuantumAnomalyDetector")
+            .field("config", &self.config)
+            .field("primary_detector", &"<detector_trait>")
+            .field("ensemble_detectors", &format!("{} detectors", self.ensemble_detectors.len()))
+            .field("preprocessor", &self.preprocessor)
+            .field("realtime_buffer", &self.realtime_buffer.as_ref().map(|b| b.len()))
+            .field("training_stats", &self.training_stats)
+            .finish()
     }
 }
 
@@ -1919,7 +1929,7 @@ impl AnomalyDetectorTrait for QuantumAutoencoder {
         let anomaly_labels = anomaly_scores.mapv(|score| if score > self.threshold { 1 } else { 0 });
         
         // Confidence scores (inverse of reconstruction error)
-        let max_error = anomaly_scores.fold(0.0, |a, &b| a.max(b));
+        let max_error = anomaly_scores.fold(0.0_f64, |a, &b| a.max(b));
         let confidence_scores = anomaly_scores.mapv(|score| 1.0 - score / max_error);
         
         // Feature importance (placeholder)
@@ -1995,14 +2005,15 @@ impl QuantumOneClassSVM {
         if let AnomalyDetectionMethod::QuantumOneClassSVM { kernel_type, nu, gamma } = &config.primary_method {
             // Create QSVM with one-class configuration
             let qsvm_params = QSVMParams {
-                kernel_gamma: *gamma,
-                regularization: 1.0,
+                feature_map: crate::qsvm::FeatureMapType::ZZFeatureMap,
+                reps: 2,
+                c: 1.0,
                 tolerance: 1e-3,
                 max_iterations: 1000,
-                feature_map_type: crate::qsvm::FeatureMapType::ZZFeatureMap,
+                seed: None,
             };
             
-            let svm = QSVM::new(qsvm_params)?;
+            let svm = QSVM::new(qsvm_params);
             
             Ok(QuantumOneClassSVM {
                 config,
@@ -2021,10 +2032,10 @@ impl QuantumOneClassSVM {
 impl AnomalyDetectorTrait for QuantumOneClassSVM {
     fn fit(&mut self, data: &Array2<f64>) -> Result<()> {
         // Create labels for one-class SVM (all normal data)
-        let labels = Array1::ones(data.nrows());
+        let labels = Array1::from_elem(data.nrows(), 1i32);
         
         // Train QSVM
-        self.svm.train(data, &labels)?;
+        self.svm.fit(data, &labels).map_err(|e| MLError::MLOperationError(e))?;
         
         // Store support vectors (placeholder)
         self.support_vectors = Some(data.slice(s![0..10.min(data.nrows()), ..]).to_owned());
@@ -2041,8 +2052,9 @@ impl AnomalyDetectorTrait for QuantumOneClassSVM {
         // Compute decision scores
         for i in 0..n_samples {
             let sample = data.row(i).to_owned();
-            let prediction = self.svm.predict(&sample)?;
-            decision_scores[i] = prediction as f64;
+            let sample_2d = sample.insert_axis(ndarray::Axis(0));
+            let predictions = self.svm.predict(&sample_2d).map_err(|e| MLError::MLOperationError(e))?;
+            decision_scores[i] = predictions[0] as f64;
         }
         
         // Anomaly scores (distance from decision boundary)

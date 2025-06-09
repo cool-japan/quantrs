@@ -22,7 +22,7 @@ smallvec = { version = "1.13", features = ["const_generics"] }
 rustc-hash = "2.1"
 rand = { workspace = true }
 rayon = { workspace = true }
-ndarray-linalg = { version = "0.16", features = ["intel-mkl"] }
+ndarray-linalg = { version = "0.17", default-features = false, features = ["openblas-system"] }
 serde = { workspace = true, features = ["derive"] }
 
 [features]

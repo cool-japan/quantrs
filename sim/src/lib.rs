@@ -26,6 +26,22 @@ pub mod trotter;
 pub mod qmc;
 pub mod precision;
 pub mod fusion;
+pub mod pauli;
+pub mod debugger;
+pub mod autodiff_vqe;
+pub mod scirs2_integration;
+pub mod shot_sampling;
+pub mod open_quantum_systems;
+pub mod decision_diagram;
+pub mod quantum_supremacy;
+pub mod fermionic_simulation;
+pub mod quantum_volume;
+pub mod noise_extrapolation;
+pub mod scirs2_qft;
+pub mod scirs2_sparse;
+pub mod scirs2_eigensolvers;
+pub mod path_integral;
+pub mod photonic;
 
 #[cfg(feature = "advanced_math")]
 pub mod tensor_network;
@@ -112,6 +128,80 @@ pub mod prelude {
     pub use crate::specialized_simulator::{
         SpecializedStateVectorSimulator, SpecializedSimulatorConfig,
         SpecializationStats, benchmark_specialization,
+    };
+    pub use crate::pauli::{
+        PauliOperator, PauliString, PauliOperatorSum, PauliUtils,
+    };
+    pub use crate::debugger::{
+        QuantumDebugger, DebugConfig, BreakCondition, Watchpoint, WatchProperty, 
+        WatchFrequency, DebugReport, StepResult, PerformanceMetrics,
+    };
+    pub use crate::autodiff_vqe::{
+        VQEWithAutodiff, ParametricCircuit, ParametricGate, AutoDiffContext,
+        GradientMethod, VQEResult, VQEIteration, ConvergenceCriteria,
+        ParametricRX, ParametricRY, ParametricRZ, ansatze,
+    };
+    pub use crate::scirs2_integration::{
+        SciRS2Backend, BackendStats, MemoryStats, OptimizationMethod,
+        OptimizationResult, BenchmarkResults, get_backend, benchmark_scirs2_ops,
+    };
+    pub use crate::shot_sampling::{
+        QuantumSampler, ShotResult, BitString, SamplingConfig, MeasurementStatistics,
+        ExpectationResult, ConvergenceResult, NoiseModel as SamplingNoiseModel, SimpleReadoutNoise,
+        ComparisonResult, analysis,
+    };
+    pub use crate::open_quantum_systems::{
+        LindladSimulator, LindladOperator, IntegrationMethod, EvolutionResult,
+        QuantumChannel, ProcessTomography, NoiseModelBuilder, CompositeNoiseModel,
+        quantum_fidelity,
+    };
+    pub use crate::decision_diagram::{
+        DecisionDiagram, DDNode, Edge, DDSimulator, DDStats, DDOptimizer,
+        benchmark_dd_simulator,
+    };
+    pub use crate::quantum_supremacy::{
+        QuantumSupremacyVerifier, CrossEntropyResult, PorterThomasResult, HOGAnalysis,
+        CostComparison, VerificationParams, GateSet, RandomCircuit, CircuitLayer,
+        QuantumGate, benchmark_quantum_supremacy, verify_supremacy_claim,
+    };
+    pub use crate::fermionic_simulation::{
+        FermionicOperator, FermionicString, FermionicHamiltonian, JordanWignerTransform,
+        FermionicSimulator, FermionicStats, benchmark_fermionic_simulation,
+    };
+    pub use crate::quantum_volume::{
+        QuantumVolumeResult, QVStats, QVCircuit, QVGate, QuantumVolumeCalculator,
+        QVParams, benchmark_quantum_volume, calculate_quantum_volume_with_params,
+    };
+    pub use crate::noise_extrapolation::{
+        ZeroNoiseExtrapolator, ZNEResult, VirtualDistillation, VirtualDistillationResult,
+        SymmetryVerification, SymmetryVerificationResult, SymmetryOperation,
+        ExtrapolationMethod, NoiseScalingMethod, FitStatistics, DistillationProtocol,
+        benchmark_noise_extrapolation,
+    };
+    pub use crate::scirs2_qft::{
+        SciRS2QFT, QFTMethod, QFTConfig, QFTStats, QFTUtils,
+        benchmark_qft_methods, compare_qft_accuracy,
+    };
+    pub use crate::scirs2_sparse::{
+        SciRS2SparseSolver, SparseMatrix, SparseFormat, SparseSolverMethod, 
+        Preconditioner, SparseSolverConfig, SparseSolverStats, SparseEigenResult,
+        SparseMatrixUtils, benchmark_sparse_solvers, compare_sparse_solver_accuracy,
+    };
+    pub use crate::scirs2_eigensolvers::{
+        SciRS2SpectralAnalyzer, SpectralAnalysisResult, PhaseTransitionResult,
+        SpectralDensityResult, EntanglementSpectrumResult, BandStructureResult,
+        SpectralConfig, SpectralStatistics, QuantumHamiltonianLibrary,
+        benchmark_spectral_analysis,
+    };
+    pub use crate::path_integral::{
+        PathIntegralSimulator, PathIntegralMethod, PathIntegralConfig, PathIntegralResult,
+        QuantumPath, ConvergenceStats, PathIntegralStats, PathIntegralUtils,
+        benchmark_path_integral_methods,
+    };
+    pub use crate::photonic::{
+        PhotonicSimulator, PhotonicMethod, PhotonicConfig, PhotonicState, FockState,
+        PhotonicOperator, PhotonicResult, PhotonicStats, PhotonicUtils,
+        benchmark_photonic_methods,
     };
 
     #[cfg(feature = "gpu")]

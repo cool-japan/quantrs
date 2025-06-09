@@ -385,7 +385,7 @@ impl QuantumMultiHeadAttention {
                 
                 // Add parameterized rotations
                 for i in 0..num_qubits.min(16) {
-                    circuit.ry(0.0, i); // Will be parameterized
+                    circuit.ry(i, 0.0); // Will be parameterized
                 }
             }
             
@@ -401,7 +401,7 @@ impl QuantumMultiHeadAttention {
                 }
                 
                 for i in 0..num_qubits.min(16) {
-                    circuit.rx(0.0, i); // Will be parameterized
+                    circuit.rx(i, 0.0); // Will be parameterized
                 }
             }
             
@@ -409,8 +409,8 @@ impl QuantumMultiHeadAttention {
                 // Variational quantum attention circuit
                 for layer in 0..3 {
                     for i in 0..num_qubits.min(16) {
-                        circuit.ry(0.0, i); // Will be parameterized
-                        circuit.rz(0.0, i); // Will be parameterized
+                        circuit.ry(i, 0.0); // Will be parameterized
+                        circuit.rz(i, 0.0); // Will be parameterized
                     }
                     
                     for i in 0..num_qubits.min(15) {
@@ -423,7 +423,7 @@ impl QuantumMultiHeadAttention {
                 // Default attention circuit
                 for i in 0..num_qubits.min(16) {
                     circuit.h(i);
-                    circuit.ry(0.0, i); // Will be parameterized
+                    circuit.ry(i, 0.0); // Will be parameterized
                 }
             }
         }
@@ -627,7 +627,7 @@ impl QuantumMultiHeadAttention {
         // Encode first vector
         for i in 0..dim.min(num_qubits / 2) {
             let angle = vec1[i] * PI;
-            circuit.ry(angle, i);
+            circuit.ry(i, angle);
         }
         
         // Encode second vector
@@ -635,7 +635,7 @@ impl QuantumMultiHeadAttention {
             let angle = vec2[i] * PI;
             let qubit_idx = i + num_qubits / 2;
             if qubit_idx < num_qubits {
-                circuit.ry(angle, qubit_idx);
+                circuit.ry(qubit_idx, angle);
             }
         }
         
@@ -649,17 +649,18 @@ impl QuantumMultiHeadAttention {
         
         // Simulate and extract dot product
         let simulator = StateVectorSimulator::new();
-        let state = simulator.simulate(&circuit);
+        let register = simulator.run(&circuit)?;
+        let state_probs = register.probabilities();
         
         // Compute expectation value as dot product
-        let dot_product = self.extract_dot_product_from_state(&state)?;
+        let dot_product = self.extract_dot_product_from_state(&state_probs)?;
         
         // Update quantum information
-        let entanglement = self.compute_entanglement(&state)?;
+        let entanglement = self.compute_entanglement(&state_probs)?;
         quantum_info.entanglement_matrix[[pos1, pos2]] = entanglement;
         
         if pos1 < quantum_info.coherence_scores.len() {
-            quantum_info.coherence_scores[pos1] = self.compute_coherence(&state)?;
+            quantum_info.coherence_scores[pos1] = self.compute_coherence(&state_probs)?;
         }
         
         Ok(dot_product)
@@ -852,8 +853,8 @@ impl QuantumPositionEncoding {
                 for _ in 0..max_seq_len {
                     let mut circuit = Circuit::<16>::new();
                     for i in 0..num_qubits.min(16) {
-                        circuit.ry(0.0, i); // Will be parameterized
-                        circuit.rz(0.0, i); // Will be parameterized
+                        circuit.ry(i, 0.0); // Will be parameterized
+                        circuit.rz(i, 0.0); // Will be parameterized
                     }
                     encoding_circuits.push(circuit);
                 }
@@ -866,7 +867,7 @@ impl QuantumPositionEncoding {
                     for i in 0..num_qubits.min(16) {
                         let phase = 2.0 * PI * pos as f64 / (10000_f64.powf(2.0 * i as f64 / model_dim as f64));
                         circuit.h(i);
-                        circuit.rz(phase, i);
+                        circuit.rz(i, phase);
                     }
                     encoding_circuits.push(circuit);
                 }
@@ -878,7 +879,7 @@ impl QuantumPositionEncoding {
                     let mut circuit = Circuit::<16>::new();
                     for i in 0..num_qubits.min(16) {
                         circuit.h(i);
-                        circuit.ry(0.0, i); // Will be parameterized
+                        circuit.ry(i, 0.0); // Will be parameterized
                     }
                     encoding_circuits.push(circuit);
                 }
@@ -951,7 +952,8 @@ impl QuantumPositionEncoding {
         
         for pos in 0..seq_len {
             if pos < self.encoding_circuits.len() {
-                let state = simulator.simulate(&self.encoding_circuits[pos]);
+                let register = simulator.run(&self.encoding_circuits[pos])?;
+                let state = register.probabilities();
                 
                 // Extract encoding from quantum state
                 for i in 0..self.model_dim.min(state.len()) {

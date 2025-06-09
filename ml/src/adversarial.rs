@@ -336,7 +336,7 @@ impl QuantumAdversarialTrainer {
             let adversarial_example = self.generate_single_adversarial_example(
                 &input.to_owned(),
                 label,
-                attack_type,
+                attack_type.clone(),
             )?;
             
             adversarial_examples.push(adversarial_example);
@@ -381,7 +381,7 @@ impl QuantumAdversarialTrainer {
         
         // Compute perturbation norm
         let perturbation = &adversarial_input - input;
-        let perturbation_norm = perturbation.mapv(|x| x.powi(2)).sum().sqrt();
+        let perturbation_norm = perturbation.mapv(|x| (x as f64).powi(2)).sum().sqrt();
         
         // Check attack success
         let original_class = original_prediction.iter()
@@ -449,7 +449,7 @@ impl QuantumAdversarialTrainer {
             
             // Project back to epsilon ball
             let total_perturbation = &adversarial_input - input;
-            let perturbation_norm = total_perturbation.mapv(|x| x.powi(2)).sum().sqrt();
+            let perturbation_norm = total_perturbation.mapv(|x| (x as f64).powi(2)).sum().sqrt();
             
             if perturbation_norm > epsilon {
                 let scaling = epsilon / perturbation_norm;
@@ -617,7 +617,7 @@ impl QuantumAdversarialTrainer {
                     let label = labels[idx];
                     
                     // Randomly select attack type
-                    let attack_type = attack_types[fastrand::usize(0..attack_types.len())];
+                    let attack_type = attack_types[fastrand::usize(0..attack_types.len())].clone();
                     let adversarial_example = self.generate_single_adversarial_example(
                         &input, label, attack_type
                     )?;
@@ -700,9 +700,9 @@ impl QuantumAdversarialTrainer {
             
             // Test robustness against attacks
             let mut robust_for_this_input = true;
-            for &attack_type in &test_attacks {
+            for attack_type in &test_attacks {
                 let adversarial_example = self.generate_single_adversarial_example(
-                    &input_owned, label, attack_type
+                    &input_owned, label, attack_type.clone()
                 )?;
                 
                 total_perturbation += adversarial_example.perturbation_norm;
@@ -865,7 +865,7 @@ mod tests {
         let adversarial_prediction = Array1::from_vec(vec![0.3, 0.7]);
         
         let perturbation = &adversarial_input - &original_input;
-        let perturbation_norm = perturbation.mapv(|x| x.powi(2)).sum().sqrt();
+        let perturbation_norm = perturbation.mapv(|x| (x as f64).powi(2)).sum().sqrt();
         
         let example = QuantumAdversarialExample {
             original_input,
@@ -903,7 +903,7 @@ mod tests {
         
         // Check that perturbation exists
         let perturbation = &adversarial_input - &input;
-        let perturbation_norm = perturbation.mapv(|x| x.powi(2)).sum().sqrt();
+        let perturbation_norm = perturbation.mapv(|x| (x as f64).powi(2)).sum().sqrt();
         assert!(perturbation_norm > 0.0);
         
         // Check that values are in valid range

@@ -63,6 +63,21 @@ pub mod anomaly_detection;
 pub mod clustering;
 pub mod dimensionality_reduction;
 pub mod automl;
+pub mod scirs2_integration;
+pub mod circuit_integration;
+pub mod simulator_backends;
+pub mod device_compilation;
+pub mod benchmarking;
+pub mod anneal_integration;
+pub mod pytorch_api;
+pub mod tensorflow_compatibility;
+pub mod sklearn_compatibility;
+pub mod keras_api;
+pub mod onnx_export;
+pub mod model_zoo;
+pub mod domain_templates;
+pub mod industry_examples;
+pub mod classical_ml_integration;
 
 // Internal utilities module
 mod utils;
@@ -207,16 +222,88 @@ pub mod prelude {
         create_comprehensive_qpca, create_comprehensive_qtsne
     };
     pub use crate::automl::{
-        QuantumAutoML, AutoMLConfig, AutoMLResult, AutoMLTaskType, AutoMLDataType, QuantumEncodingMethod,
-        ModelSelectionStrategy, AutoMLEnsembleMethod, OptimizationObjective, QuantumSearchSpace,
-        QuantumAlgorithm, PreprocessingMethod, ParameterRange, ArchitectureConstraints,
-        ResourceConstraints, NoiseToleranceConfig, BudgetConfig, EvaluationConfig,
-        QuantumMetric, QuantumAutoMLConfig, QuantumHardwareConstraints, ErrorMitigationConfig,
-        QuantumAdvantageConfig, StatePreparationConfig, QuantumModel, QuantumEnsemble,
-        PerformanceMetrics, SearchIteration, ModelConfiguration, ArchitectureConfiguration,
-        LayerConfiguration, EnsembleResults, DiversityMetrics, QuantumAdvantageAnalysis,
-        ResourceEfficiencyAnalysis, ScalingAnalysis, TheoreticalAdvantage, ResourceUsageSummary,
-        EfficiencyMetrics, ModelExplanation, QuantumCircuitAnalysis, ParameterValue,
-        create_default_automl_config, create_comprehensive_automl_config
+        QuantumAutoML, QuantumAutoMLConfig, MLTaskType, QuantumEncodingMethod,
+        OptimizationObjective, AutoMLResults, SearchBudgetConfig, QuantumConstraints,
+        EvaluationConfig, AdvancedAutoMLFeatures, SearchSpaceConfig,
+        AlgorithmSearchSpace, HyperparameterSearchSpace, EnsembleSearchSpace,
+        QuantumMLPipeline, PerformanceSummary, QuantumAdvantageAnalysis
+    };
+    pub use crate::scirs2_integration::{
+        SciRS2Array, SciRS2Tensor, SciRS2Optimizer, SciRS2DistributedTrainer, SciRS2Serializer
+    };
+    pub use crate::circuit_integration::{
+        QuantumMLExecutor, QuantumLayer, ParameterizedLayer, RotationAxis,
+        HardwareAwareCompiler, DeviceTopology, QubitProperties, BackendManager,
+        MLCircuitOptimizer, OptimizationPass, MLCircuitAnalyzer,
+        ExpressionvityMetrics, TrainabilityMetrics
+    };
+    pub use crate::simulator_backends::{
+        SimulatorBackend, SimulationResult, Observable, GradientMethod, BackendCapabilities,
+        StatevectorBackend, MPSBackend, BackendSelectionStrategy
+    };
+    pub use crate::device_compilation::{
+        DeviceCompiler, CompilationOptions, RoutingAlgorithm, SynthesisMethod,
+        DeviceCharacterization, QuantumMLModel, CompiledModel, QubitMapping, CompilationMetrics
+    };
+    pub use crate::benchmarking::{
+        BenchmarkFramework, BenchmarkConfig, Benchmark, BenchmarkRunResult, ScalingType,
+        BenchmarkCategory, BenchmarkResults, BenchmarkSummary, BenchmarkReport
+    };
+    pub use crate::anneal_integration::{
+        QuantumMLQUBO, IsingProblem, QuantumMLAnnealer, AnnealingParams, AnnealingSchedule as MLAnnealingSchedule,
+        AnnealingClient, AnnealingResult, QuantumMLOptimizationProblem, OptimizationResult,
+        FeatureSelectionProblem, HyperparameterProblem, CircuitOptimizationProblem,
+        PortfolioOptimizationProblem
+    };
+    pub use crate::pytorch_api::{
+        QuantumModule, Parameter, QuantumLinear, QuantumConv2d, QuantumActivation, ActivationType as PyTorchActivationType,
+        QuantumSequential, QuantumLoss, QuantumMSELoss, QuantumCrossEntropyLoss, QuantumTrainer,
+        TrainingHistory as PyTorchTrainingHistory, DataLoader, MemoryDataLoader, InitType
+    };
+    pub use crate::tensorflow_compatibility::{
+        QuantumCircuitLayer, PQCLayer, QuantumConvolutionalLayer, TFQModel, TFQLayer,
+        ParameterInitStrategy, RegularizationType, PaddingType, TFQLossFunction, TFQOptimizer,
+        QuantumDataset, QuantumDatasetIterator, TFQCircuitFormat, TFQGate, DataEncodingType,
+        tfq_utils
+    };
+    pub use crate::sklearn_compatibility::{
+        SklearnEstimator, SklearnClassifier, SklearnRegressor, SklearnClusterer,
+        QuantumSVC, QuantumMLPClassifier, QuantumMLPRegressor, QuantumKMeans,
+        model_selection, pipeline
+    };
+    pub use crate::keras_api::{
+        KerasLayer, Dense, QuantumDense, Activation, Sequential, Input,
+        ActivationFunction, QuantumAnsatzType, InitializerType, LossFunction,
+        OptimizerType, MetricType, Callback, EarlyStopping, TrainingHistory as KerasTrainingHistory,
+        ModelSummary, LayerInfo, DataType, utils as keras_utils
+    };
+    pub use crate::onnx_export::{
+        ONNXGraph, ONNXNode, ONNXAttribute, ONNXValueInfo, ONNXDataType, ONNXTensor,
+        ONNXExporter, ONNXImporter, ExportOptions, ImportOptions, QuantumBackendTarget,
+        TargetFramework, UnsupportedOpHandling, ValidationReport, ModelInfo,
+        utils as onnx_utils
+    };
+    pub use crate::model_zoo::{
+        ModelZoo, ModelMetadata, ModelCategory, ModelRequirements, QuantumModel,
+        TrainingConfig, MNISTQuantumNN, IrisQuantumSVM, H2VQE, PortfolioQAOA,
+        QuantumAnomalyDetector, QuantumTimeSeriesForecaster, utils as model_zoo_utils
+    };
+    pub use crate::domain_templates::{
+        DomainTemplateManager, Domain, TemplateMetadata, ProblemType, ModelComplexity,
+        TemplateConfig, DomainModel, PortfolioOptimizationModel, CreditRiskModel,
+        FraudDetectionModel, MolecularPropertyModel, DrugDiscoveryModel, MedicalImageModel,
+        VehicleRoutingModel, SmartGridModel, MaterialPropertyModel, utils as domain_utils
+    };
+    pub use crate::industry_examples::{
+        IndustryExampleManager, Industry, UseCase, DataRequirements, ImplementationComplexity,
+        ROIEstimate, BenchmarkResult, PerformanceMetrics, QuantumAdvantageMetrics,
+        ResourceRequirements, ExampleResult, BusinessImpact, ROISummary, utils as industry_utils
+    };
+    pub use crate::classical_ml_integration::{
+        HybridPipelineManager, PipelineTemplate, PipelineStage, ModelType, PerformanceProfile,
+        DataPreprocessor, ModelRegistry, ClassicalModel, HybridModel, EnsembleStrategy,
+        HybridPipeline, PipelineConfig, ResourceConstraints, ValidationStrategy,
+        DatasetInfo, PipelineRecommendation, AutoOptimizationConfig, OptimizedPipeline,
+        StandardScaler, MinMaxScaler, WeightedVotingEnsemble, utils as pipeline_utils
     };
 }

@@ -174,7 +174,7 @@ fn constrained_optimization_example() -> Result<(), Box<dyn std::error::Error>> 
     // Solution is on the line x + y = 4 closest to (3,2), which is (2.5, 1.5)
     let x_optimal = 2.5;
     let y_optimal = 1.5;
-    let optimal_objective = (x_optimal - 3.0).powi(2) + (y_optimal - 2.0).powi(2);
+    let optimal_objective = (x_optimal - 3.0f64).powi(2) + (y_optimal - 2.0f64).powi(2);
     println!("\n  Theoretical optimum: x={}, y={}, f={:.4}", x_optimal, y_optimal, optimal_objective);
     
     Ok(())

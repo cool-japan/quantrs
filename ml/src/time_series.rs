@@ -1098,7 +1098,7 @@ impl QuantumTimeSeriesForecaster {
         let mut anomalies = Vec::new();
         
         // Simple anomaly detection based on quantum uncertainty
-        for (i, row) in predictions.rows().enumerate() {
+        for (i, row) in predictions.rows().into_iter().enumerate() {
             let uncertainty = self.calculate_row_uncertainty(&row)?;
             if uncertainty > 0.8 {
                 anomalies.push(AnomalyPoint {
@@ -1700,9 +1700,9 @@ impl QuantumFeatureExtractor {
         }
         
         // Apply quantum transformation
-        let mut quantum_features = Array2::zeros((features.nrows(), self.transform_network.output_size));
+        let mut quantum_features = Array2::zeros((features.nrows(), self.transform_network.output_dim));
         
-        for (i, row) in features.rows().enumerate() {
+        for (i, row) in features.rows().into_iter().enumerate() {
             let row_vec = row.to_owned();
             let transformed = self.transform_network.forward(&row_vec)?;
             quantum_features.row_mut(i).assign(&transformed);

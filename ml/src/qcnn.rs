@@ -86,6 +86,8 @@ pub enum PoolingType {
     TraceOut,
     /// Measure and reset qubits
     MeasureReset,
+    /// Quantum pooling
+    Quantum,
 }
 
 impl QuantumPooling {
@@ -121,6 +123,27 @@ impl QuantumPooling {
                     }
                 }
                 *active_qubits = new_active;
+            }
+            PoolingType::Quantum => {
+                // Quantum pooling using unitary operations
+                let pool_size = self.pool_size;
+                let new_size = active_qubits.len() / pool_size;
+                
+                // Apply quantum pooling gates (simplified)
+                for i in 0..new_size {
+                    let start_idx = i * pool_size;
+                    let end_idx = (start_idx + pool_size).min(active_qubits.len());
+                    
+                    if end_idx > start_idx + 1 {
+                        // Apply entangling gates between qubits in pool
+                        for j in start_idx..end_idx-1 {
+                            circuit.cnot(active_qubits[j], active_qubits[j+1]);
+                        }
+                    }
+                }
+                
+                // Keep only the first qubit from each pool
+                active_qubits.truncate(new_size);
             }
         }
         Ok(())

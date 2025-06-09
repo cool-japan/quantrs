@@ -666,7 +666,7 @@ impl ProblemDSL {
                 
                 // Numbers
                 '0'..='9' => {
-                    let (number, len) = self.scan_number(&mut chars)?;
+                    let (number, len) = self.scan_number(&mut chars).map_err(|e| vec![e])?;
                     tokens.push(Token::Number(number));
                     column += len;
                 }
@@ -681,7 +681,7 @@ impl ProblemDSL {
                 
                 // String literals
                 '"' => {
-                    let (string, len) = self.scan_string(&mut chars)?;
+                    let (string, len) = self.scan_string(&mut chars).map_err(|e| vec![e])?;
                     tokens.push(Token::String(string));
                     column += len;
                 }
@@ -1034,7 +1034,7 @@ impl Parser {
         while !self.is_at_end() {
             match self.peek() {
                 Token::Var => {
-                    declarations.push(self.parse_declaration()?);
+                    declarations.push(self.parse_declaration().map_err(|e| vec![e])?);
                 }
                 Token::Minimize | Token::Maximize => {
                     if objective.is_some() {
@@ -1044,17 +1044,17 @@ impl Parser {
                             column: 0,
                         }]);
                     }
-                    objective = Some(self.parse_objective()?);
+                    objective = Some(self.parse_objective().map_err(|e| vec![e])?);
                 }
                 Token::Subject => {
                     self.advance(); // subject
-                    self.consume(Token::To, "Expected 'to' after 'subject'")?;
+                    self.consume(Token::To, "Expected 'to' after 'subject'").map_err(|e| vec![e])?;
                     while !self.is_at_end() {
-                        constraints.push(self.parse_constraint()?);
+                        constraints.push(self.parse_constraint().map_err(|e| vec![e])?);
                     }
                 }
                 Token::Constraint => {
-                    constraints.push(self.parse_constraint()?);
+                    constraints.push(self.parse_constraint().map_err(|e| vec![e])?);
                 }
                 _ => {
                     return Err(vec![ParseError {
@@ -1655,15 +1655,21 @@ impl TypeChecker {
             AST::Program { declarations, objective, constraints } => {
                 // Check declarations
                 for decl in declarations {
-                    self.check_declaration(decl)?;
+                    if let Err(e) = self.check_declaration(decl) {
+                        self.errors.push(e);
+                    }
                 }
                 
                 // Check objective
-                self.check_objective(objective)?;
+                if let Err(e) = self.check_objective(objective) {
+                    self.errors.push(e);
+                }
                 
                 // Check constraints
                 for constraint in constraints {
-                    self.check_constraint(constraint)?;
+                    if let Err(e) = self.check_constraint(constraint) {
+                        self.errors.push(e);
+                    }
                 }
                 
                 if self.errors.is_empty() {
@@ -1735,7 +1741,9 @@ impl TypeChecker {
             }
             ConstraintExpression::Logical { operands, .. } => {
                 for operand in operands {
-                    self.check_constraint_expression(operand)?;
+                    if let Err(e) = self.check_constraint_expression(operand) {
+                        self.errors.push(e);
+                    }
                 }
                 Ok(())
             }

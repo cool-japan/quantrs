@@ -79,7 +79,7 @@ pub struct AttachmentPoint {
     pub direction: Vec3D,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BondType {
     Single,
     Double,

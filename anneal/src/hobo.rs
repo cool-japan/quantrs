@@ -140,8 +140,12 @@ impl HoboProblem {
         let mut reduction = QuboReduction::new(self.num_vars);
         
         // Copy linear and quadratic terms
-        reduction.qubo.linear_terms = self.linear_terms.clone();
-        reduction.qubo.quadratic_terms = self.quadratic_terms.clone();
+        for (&var, &coeff) in &self.linear_terms {
+            reduction.qubo.add_linear(var, coeff);
+        }
+        for (&(i, j), &coeff) in &self.quadratic_terms {
+            reduction.qubo.add_quadratic(i, j, coeff);
+        }
         reduction.qubo.offset = self.offset;
 
         // Process each higher-order term
@@ -219,8 +223,12 @@ impl HoboProblem {
         let mut reduction = QuboReduction::new(self.num_vars);
         
         // Copy linear and quadratic terms
-        reduction.qubo.linear_terms = self.linear_terms.clone();
-        reduction.qubo.quadratic_terms = self.quadratic_terms.clone();
+        for (&var, &coeff) in &self.linear_terms {
+            reduction.qubo.add_linear(var, coeff);
+        }
+        for (&(i, j), &coeff) in &self.quadratic_terms {
+            reduction.qubo.add_quadratic(i, j, coeff);
+        }
         reduction.qubo.offset = self.offset;
 
         // Process each higher-order term

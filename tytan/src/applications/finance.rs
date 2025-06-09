@@ -519,7 +519,7 @@ impl PortfolioOptimizer {
         
         // Approximation for normal distribution
         let z_score = 1.645;
-        let phi = (-z_score * z_score / 2.0).exp() / (2.0 * PI).sqrt();
+        let phi = (-z_score * z_score / 2.0_f64).exp() / (2.0_f64 * PI).sqrt();
         
         var - volatility * phi / (1.0 - confidence)
     }

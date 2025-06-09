@@ -820,18 +820,18 @@ impl<S: Sampler> HierarchicalSolver<S> {
         let hierarchy = self.build_hierarchy(qubo_matrix, var_map)?;
         
         // Solve from coarsest to finest
-        let mut current_solution = None;
+        let mut current_solution: Option<Vec<SampleResult>> = None;
         
         for level in (0..hierarchy.levels.len()).rev() {
             let level_data = &hierarchy.levels[level];
             
             // Solve at this level
-            let level_solution = if let Some(coarse_sol) = current_solution {
+            let level_solution = if let Some(ref coarse_sol) = current_solution {
                 // Refine from coarser solution
                 self.refine_solution(
                     &level_data.qubo,
                     &level_data.var_map,
-                    &coarse_sol,
+                    coarse_sol,
                     &hierarchy.projections[level],
                     shots,
                 )?
@@ -840,7 +840,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
                 self.base_sampler.run_qubo(
                     &(level_data.qubo.clone(), level_data.var_map.clone()),
                     shots,
-                )?
+                ).map_err(|e| format!("Sampler error: {:?}", e))?
             };
             
             current_solution = Some(level_solution);
@@ -1046,6 +1046,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
         // Use base sampler with warm start
         // For now, just run sampler normally
         self.base_sampler.run_qubo(&(qubo.clone(), var_map.clone()), shots)
+            .map_err(|e| format!("Sampler error: {:?}", e))
     }
 }
 
@@ -1293,7 +1294,8 @@ impl<S: Sampler + Clone + Send + Sync> DomainDecompositionSolver<S> {
         let modified_qubo = self.add_coordination_terms(domain, coordination)?;
         
         // Solve
-        let results = self.base_sampler.run_qubo(&(modified_qubo, domain.var_map.clone()), shots)?;
+        let results = self.base_sampler.run_qubo(&(modified_qubo, domain.var_map.clone()), shots)
+            .map_err(|e| format!("Sampler error: {:?}", e))?;
         
         Ok(SubdomainSolution {
             domain_id: domain.id,
@@ -1358,7 +1360,7 @@ impl<S: Sampler + Clone + Send + Sync> DomainDecompositionSolver<S> {
         if let (Some(lagrange), Some(consensus)) = 
             (&mut state.lagrange_multipliers, &mut state.consensus_variables) {
             
-            let mut max_residual = 0.0;
+            let mut max_residual = 0.0_f64;
             
             // Update consensus variables (z-update)
             for domain in domains {
@@ -1397,8 +1399,8 @@ impl<S: Sampler + Clone + Send + Sync> DomainDecompositionSolver<S> {
                         .find(|s| s.domain_id == domain.id)
                         .and_then(|s| s.results.first()) {
                         
-                        let x = if best.assignments.values().any(|&v| v) { 1.0 } else { 0.0 };
-                        let z = if *consensus.get(&boundary_var).unwrap_or(&false) { 1.0 } else { 0.0 };
+                        let x = if best.assignments.values().any(|&v| v) { 1.0_f64 } else { 0.0_f64 };
+                        let z = if *consensus.get(&boundary_var).unwrap_or(&false) { 1.0_f64 } else { 0.0_f64 };
                         
                         let residual = x - z;
                         max_residual = max_residual.max(residual.abs());
@@ -1550,7 +1552,7 @@ impl<S: Sampler + Clone + Send + Sync + 'static> ParallelSubproblemSolver<S> {
                 let results = self.base_sampler.run_qubo(
                     &(subproblem.qubo.clone(), subproblem.var_map.clone()),
                     shots,
-                )?;
+                ).map_err(|e| format!("Sampler error: {:?}", e))?;
                 
                 Ok(SubproblemResult {
                     subproblem_id: subproblem.id,

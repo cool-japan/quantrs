@@ -530,16 +530,19 @@ impl QuantumGAN {
             disc_losses.push(epoch_disc_loss / self.config.disc_steps as f64);
         }
         
+        let final_gen_loss = *gen_losses.last().unwrap();
+        let final_disc_loss = *disc_losses.last().unwrap();
+        
         Ok(QGANTrainingResult {
             generator_losses: gen_losses,
             discriminator_losses: disc_losses,
-            final_gen_loss: *gen_losses.last().unwrap(),
-            final_disc_loss: *disc_losses.last().unwrap(),
+            final_gen_loss,
+            final_disc_loss,
         })
     }
     
     /// Train generator for one step
-    fn train_generator_step(&mut self, rng: &mut StdRng) -> Result<f64, String> {
+    fn train_generator_step<R: Rng>(&mut self, rng: &mut R) -> Result<f64, String> {
         // Generate fake sample
         let fake_sample = self.generator.generate(rng);
         
@@ -576,11 +579,10 @@ impl QuantumGAN {
 impl QuantumGenerator {
     fn new(latent_dim: usize, output_dim: usize, depth: usize) -> Self {
         let mut rng = thread_rng();
-        let normal = Normal::new(0.0, PI/4.0).unwrap();
         
         let params = Array2::from_shape_fn(
             (depth, latent_dim + output_dim),
-            |_| normal.sample(&mut rng)
+            |_| rng.gen::<f64>() * PI/2.0 - PI/4.0  // Sample from [-PI/4, PI/4]
         );
         
         Self {
@@ -591,13 +593,11 @@ impl QuantumGenerator {
         }
     }
     
-    fn generate(&self, rng: &mut StdRng) -> Array1<bool> {
-        let normal = Normal::new(0.0, 1.0).unwrap();
-        
-        // Sample latent vector
+    fn generate<R: Rng>(&self, rng: &mut R) -> Array1<bool> {
+        // Sample latent vector using simple approach
         let latent = Array1::from_shape_fn(
             self.latent_dim,
-            |_| normal.sample(rng)
+            |_| rng.gen::<f64>() * 2.0 - 1.0  // Sample from [-1, 1]
         );
         
         // Initialize quantum state
@@ -859,7 +859,7 @@ impl QuantumQNetwork {
             }
             
             // Non-linearity (quantum measurement)
-            quantum_state = new_state.mapv(|x| x.tanh());
+            quantum_state = new_state.mapv(|x: f64| x.tanh());
         }
         
         // Extract Q-values

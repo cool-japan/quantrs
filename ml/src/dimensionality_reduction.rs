@@ -10,7 +10,7 @@ use crate::utils::VariationalCircuit;
 use ndarray::{s, Array1, Array2, Array3, Axis};
 use ndarray_rand::{RandomExt, rand_distr::{StandardNormal, Uniform}};
 use num_complex::Complex64;
-use rand::distributions::Distribution;
+use rand::{thread_rng, distributions::Distribution};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -2440,10 +2440,12 @@ pub fn create_comprehensive_qtsne(n_components: usize, perplexity: f64, quantum_
 mod tests {
     use super::*;
     use ndarray::Array2;
+    use rand_distr::StandardNormal;
+    use rand::thread_rng;
 
     #[test]
     fn test_qpca_basic() {
-        let data = Array2::random((100, 10), rand::distributions::StandardNormal);
+        let data = Array2::from_shape_fn((100, 10), |_| thread_rng().sample(StandardNormal));
         let mut reducer = QuantumDimensionalityReducer::qpca(create_default_qpca_config());
         
         let result = reducer.fit(&data);
@@ -2456,7 +2458,7 @@ mod tests {
 
     #[test]
     fn test_qica_basic() {
-        let data = Array2::random((50, 5), rand::distributions::StandardNormal);
+        let data = Array2::from_shape_fn((50, 5), |_| thread_rng().sample(StandardNormal));
         let mut reducer = QuantumDimensionalityReducer::qica(create_default_qica_config());
         
         let result = reducer.fit(&data);
@@ -2465,7 +2467,7 @@ mod tests {
 
     #[test]
     fn test_qtsne_basic() {
-        let data = Array2::random((30, 4), rand::distributions::StandardNormal);
+        let data = Array2::from_shape_fn((30, 4), |_| thread_rng().sample(StandardNormal));
         let mut reducer = QuantumDimensionalityReducer::qtsne(create_default_qtsne_config());
         
         let result = reducer.fit(&data);
@@ -2474,7 +2476,7 @@ mod tests {
 
     #[test]
     fn test_qvae_basic() {
-        let data = Array2::random((20, 8), rand::distributions::StandardNormal);
+        let data = Array2::from_shape_fn((20, 8), |_| thread_rng().sample(StandardNormal));
         let mut reducer = QuantumDimensionalityReducer::qautoencoder(create_default_qautoencoder_config());
         
         let result = reducer.fit(&data);
@@ -2492,7 +2494,7 @@ mod tests {
 
     #[test]
     fn test_inverse_transform() {
-        let data = Array2::random((50, 6), rand::distributions::StandardNormal);
+        let data = Array2::from_shape_fn((50, 6), |_| thread_rng().sample(StandardNormal));
         let mut reducer = QuantumDimensionalityReducer::qpca(create_default_qpca_config());
         
         let _ = reducer.fit(&data).unwrap();
@@ -2505,7 +2507,7 @@ mod tests {
 
     #[test]
     fn test_evaluation_metrics() {
-        let data = Array2::random((40, 5), rand::distributions::StandardNormal);
+        let data = Array2::from_shape_fn((40, 5), |_| thread_rng().sample(StandardNormal));
         let mut reducer = QuantumDimensionalityReducer::qpca(create_default_qpca_config());
         
         let result = reducer.fit(&data).unwrap();

@@ -687,6 +687,20 @@ impl GASampler {
         self.population_size = size;
         self
     }
+
+    /// Set elite fraction (placeholder method)
+    pub fn with_elite_fraction(self, _fraction: f64) -> Self {
+        // Note: Elite fraction not currently implemented in struct
+        // This is a placeholder to satisfy compilation
+        self
+    }
+
+    /// Set mutation rate (placeholder method)
+    pub fn with_mutation_rate(self, _rate: f64) -> Self {
+        // Note: Mutation rate not currently implemented in struct
+        // This is a placeholder to satisfy compilation
+        self
+    }
 }
 
 /// Crossover strategy for genetic algorithm

@@ -586,7 +586,7 @@ impl QuantumRecommenderConfig {
         Self {
             num_qubits: 10,
             algorithm: RecommendationAlgorithm::QuantumMatrixFactorization {
-                optimization_method: OptimizationMethod::Adam { learning_rate: 0.001 },
+                optimization_method: OptimizationMethod::Adam,
                 num_iterations: 100,
             },
             num_factors: 50,
@@ -890,7 +890,7 @@ impl QuantumRecommender {
             return Ok(1.0);
         }
         
-        let mut min_similarity = 1.0;
+        let mut min_similarity: f64 = 1.0;
         
         for &selected_id in selected_items {
             let similarity = self.engine.compute_similarity(

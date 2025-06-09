@@ -1639,8 +1639,8 @@ impl QuantumClusterer {
                 let gamma = 1.0;
                 for i in 0..n_samples {
                     for j in i + 1..n_samples {
-                        let distance = (data.row(i) - &data.row(j)).mapv(|x| x.powi(2)).sum();
-                        let similarity = (-gamma * distance).exp();
+                        let distance = (data.row(i).to_owned() - data.row(j).to_owned()).mapv(|x| x.powi(2)).sum();
+                        let similarity = (-gamma * distance as f64).exp() as f64;
                         affinity[[i, j]] = similarity;
                         affinity[[j, i]] = similarity;
                     }
@@ -1716,7 +1716,7 @@ impl QuantumClusterer {
             
             for j in 0..n_samples {
                 if i != j {
-                    let distance = (data.row(i) - &data.row(j)).mapv(|x| x.powi(2)).sum().sqrt();
+                    let distance = (data.row(i).to_owned() - data.row(j).to_owned()).mapv(|x| x.powi(2)).sum().sqrt();
                     
                     if labels[j] == label_i {
                         intra_distances.push(distance);
@@ -1790,13 +1790,13 @@ impl QuantumClusterer {
             
             let s_i = if cluster_i_points.len() > 1 {
                 cluster_i_points.iter()
-                    .map(|&idx| (data.row(idx) - center_i).mapv(|x| x.powi(2)).sum().sqrt())
+                    .map(|&idx| (data.row(idx).to_owned() - center_i).mapv(|x| x.powi(2)).sum().sqrt())
                     .sum::<f64>() / cluster_i_points.len() as f64
             } else {
                 0.0
             };
             
-            let mut max_ratio = 0.0;
+            let mut max_ratio: f64 = 0.0;
             
             for &label_j in &unique_labels {
                 if label_i != label_j {
@@ -1809,7 +1809,7 @@ impl QuantumClusterer {
                     
                     let s_j = if cluster_j_points.len() > 1 {
                         cluster_j_points.iter()
-                            .map(|&idx| (data.row(idx) - center_j).mapv(|x| x.powi(2)).sum().sqrt())
+                            .map(|&idx| (data.row(idx).to_owned() - center_j).mapv(|x| x.powi(2)).sum().sqrt())
                             .sum::<f64>() / cluster_j_points.len() as f64
                     } else {
                         0.0
@@ -1820,7 +1820,7 @@ impl QuantumClusterer {
                     
                     if m_ij > 1e-10 {
                         let ratio = (s_i + s_j) / m_ij;
-                        max_ratio = max_ratio.max(ratio);
+                        max_ratio = max_ratio.max(ratio as f64);
                     }
                 }
             }
@@ -1867,11 +1867,11 @@ impl QuantumClusterer {
                     center = center + &data.row(point_idx);
                 }
                 center /= n_points as f64;
-                centers.insert(label, center);
+                centers.insert(label, center.clone());
                 
                 // Calculate within-cluster sum of squares
                 for &point_idx in &cluster_points {
-                    wgss += (data.row(point_idx) - &center).mapv(|x| x.powi(2)).sum();
+                    wgss += (data.row(point_idx).to_owned() - &center).mapv(|x| x.powi(2)).sum();
                 }
             }
         }

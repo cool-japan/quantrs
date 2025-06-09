@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use std::fs::File;
 use std::io::{Write, BufWriter};
 use rand::prelude::*;
-use rand::thread_rng;
+use rand::{thread_rng, SeedableRng};
 use serde::{Serialize, Deserialize};
 
 /// Automated testing framework
@@ -134,7 +134,7 @@ pub struct TestCategory {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ProblemType {
     /// Max-cut problem
     MaxCut,
@@ -624,7 +624,8 @@ impl TestingFramework {
     pub fn run_suite<S: Sampler>(&mut self, sampler: &S) -> Result<(), String> {
         let total_start = Instant::now();
         
-        for test_case in &self.suite.test_cases {
+        let test_cases = self.suite.test_cases.clone();
+        for test_case in &test_cases {
             let test_start = Instant::now();
             
             // Run test with timeout
@@ -661,7 +662,7 @@ impl TestingFramework {
     
     /// Run single test
     fn run_single_test<S: Sampler>(
-        &self,
+        &mut self,
         test_case: &TestCase,
         sampler: &S,
     ) -> Result<TestResult, String> {
@@ -669,9 +670,9 @@ impl TestingFramework {
         
         // Run sampler
         let sample_result = sampler.run_qubo(
-            &test_case.qubo,
+            &(test_case.qubo.clone(), test_case.var_map.clone()),
             self.config.samplers[0].num_samples,
-        )?;
+        ).map_err(|e| format!("Sampler error: {:?}", e))?;
         
         let solve_time = solve_start.elapsed();
         
@@ -680,8 +681,8 @@ impl TestingFramework {
             .min_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap())
             .ok_or("No samples returned")?;
         
-        // Convert to solution map
-        let solution = self.decode_solution(&test_case.var_map, &best_sample.sample);
+        // Use the assignments directly (already decoded)
+        let solution = best_sample.assignments.clone();
         
         // Validate
         let validation_start = Instant::now();
@@ -1158,7 +1159,8 @@ impl TestGenerator for MaxCutGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            StdRng::from_entropy()
+            let mut thread_rng = thread_rng();
+            StdRng::from_rng(&mut thread_rng)
         };
         
         let mut test_cases = Vec::new();
@@ -1232,7 +1234,8 @@ impl TestGenerator for TSPGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            StdRng::from_entropy()
+            let mut thread_rng = thread_rng();
+            StdRng::from_rng(&mut thread_rng)
         };
         
         let n_cities = config.size;
@@ -1249,8 +1252,8 @@ impl TestGenerator for TSPGenerator {
         for i in 0..n_cities {
             for j in 0..n_cities {
                 if i != j {
-                    let dx = cities[i].0 - cities[j].0;
-                    let dy = cities[i].1 - cities[j].1;
+                    let dx: f64 = cities[i].0 - cities[j].0;
+                    let dy: f64 = cities[i].1 - cities[j].1;
                     distances[[i, j]] = (dx * dx + dy * dy).sqrt();
                 }
             }
@@ -1389,7 +1392,8 @@ impl TestGenerator for GraphColoringGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            StdRng::from_entropy()
+            let mut thread_rng = thread_rng();
+            StdRng::from_rng(&mut thread_rng)
         };
         
         let n_vertices = config.size;
@@ -1500,7 +1504,8 @@ impl TestGenerator for KnapsackGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            StdRng::from_entropy()
+            let mut thread_rng = thread_rng();
+            StdRng::from_rng(&mut thread_rng)
         };
         
         let n_items = config.size;
@@ -1572,7 +1577,8 @@ impl TestGenerator for RandomQuboGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            StdRng::from_entropy()
+            let mut thread_rng = thread_rng();
+            StdRng::from_rng(&mut thread_rng)
         };
         
         let n = config.size;

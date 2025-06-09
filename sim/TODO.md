@@ -27,35 +27,40 @@ This document outlines the development plans and future tasks for the QuantRS2-S
 
 ### In Progress
 
-- 🔄 SciRS2 integration for advanced numerical algorithms
-- 🔄 Distributed simulation across multiple nodes
-- 🔄 Quantum error mitigation techniques
-- 🔄 Hardware-aware simulation optimization
+- 🔄 Enhanced GPU kernel optimization for specialized quantum operations
+- 🔄 Distributed quantum simulation across multiple nodes with MPI
+- 🔄 Advanced tensor network contraction algorithms with optimal ordering
+- 🔄 Real-time hardware integration for cloud quantum computers
 
-## Planned Enhancements
+## Near-term Enhancements (v0.2.x)
 
-### Near-term (v0.1.x)
+### Performance & Scalability
+- [ ] Implement distributed state vector simulation across multiple GPUs
+- [ ] Add mixed-precision simulation with automatic precision selection
+- [ ] Optimize memory bandwidth utilization for large state vectors
+- [ ] Implement adaptive gate fusion based on circuit structure
+- [ ] Add just-in-time compilation for frequently used gate sequences
 
-- [x] Integrate SciRS2 sparse matrix operations for large circuits (completed)
-- [x] Implement Trotter-Suzuki decomposition using SciRS2 (completed)
-- [x] Add quantum Monte Carlo simulation with SciRS2 RNG (completed)
-- [x] Create adaptive precision control for state vectors (completed)
-- [x] Implement gate fusion using SciRS2 matrix multiplication (completed)
-- [ ] Add support for Pauli string evolution
-- [x] Create stabilizer simulator for Clifford circuits
-- [ ] Implement matrix product state (MPS) simulator
-- [ ] Add support for open quantum system simulation
-- [ ] Create shot-based sampling with statistical analysis
-- [ ] Implement decision diagram simulator using SciRS2 graphs
-- [ ] Add Feynman path integral simulation method
-- [ ] Create quantum supremacy verification algorithms
-- [ ] Implement cross-entropy benchmarking
-- [ ] Add support for fermionic simulation with SciRS2
-- [ ] Create quantum algorithm debugger interface
-- [ ] Implement automatic differentiation for VQE
-- [ ] Add support for photonic simulation
-- [ ] Create noise extrapolation techniques
-- [ ] Implement quantum volume calculation
+### Advanced Simulation Methods
+- [ ] Enhanced tensor network simulation with advanced contraction heuristics
+- [ ] Quantum cellular automata simulation for novel quantum algorithms
+- [ ] Adiabatic quantum computing simulation with gap tracking
+- [ ] Quantum annealing simulation with realistic noise models
+- [ ] Implement quantum reservoir computing simulation
+
+### Error Correction & Mitigation Enhancements
+- [ ] Concatenated quantum error correction codes with hierarchical decoding
+- [ ] Real-time adaptive error correction with machine learning
+- [ ] Quantum LDPC codes with belief propagation decoding
+- [ ] Advanced error mitigation using machine learning techniques
+- [ ] Fault-tolerant gate synthesis with logical operations
+
+### Quantum Algorithm Specialization
+- [ ] Optimized Shor's algorithm simulation with period finding
+- [ ] Grover's algorithm with amplitude amplification optimization
+- [ ] Quantum phase estimation with enhanced precision control
+- [ ] Quantum machine learning algorithms with hardware-aware optimization
+- [ ] Quantum chemistry simulation with second quantization optimization
 
 ### Long-term (Future Versions)
 

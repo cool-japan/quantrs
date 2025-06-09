@@ -910,7 +910,7 @@ impl QuantumImageEncoder {
         // Apply quantum encoding (simplified)
         for b in 0..batch_size {
             for c in 0..channels {
-                let image_slice = images.slice(s![b, c, .., ..]);
+                let image_slice = images.slice(s![b, c, .., ..]).to_owned();
                 let encoded_slice = self.encode_single_channel(&image_slice)?;
                 encoded.slice_mut(s![b, c, .., ..]).assign(&encoded_slice);
             }
@@ -938,7 +938,7 @@ impl QuantumImageEncoder {
         
         // Amplitude encoding gates
         for i in 0..num_qubits.min(16) {
-            circuit.ry(0.0, i); // Will be parameterized
+            circuit.ry(i, 0.0); // Will be parameterized
         }
         
         circuits.push(circuit);
@@ -955,23 +955,23 @@ impl QuantumImageEncoder {
         match basis {
             "x" => {
                 for i in 0..num_qubits.min(16) {
-                    circuit.rx(0.0, i); // Will be parameterized
+                    circuit.rx(i, 0.0); // Will be parameterized
                 }
             }
             "y" => {
                 for i in 0..num_qubits.min(16) {
-                    circuit.ry(0.0, i); // Will be parameterized
+                    circuit.ry(i, 0.0); // Will be parameterized
                 }
             }
             "z" => {
                 for i in 0..num_qubits.min(16) {
-                    circuit.rz(0.0, i); // Will be parameterized
+                    circuit.rz(i, 0.0); // Will be parameterized
                 }
             }
             _ => {
                 // Default to Y rotations
                 for i in 0..num_qubits.min(16) {
-                    circuit.ry(0.0, i); // Will be parameterized
+                    circuit.ry(i, 0.0); // Will be parameterized
                 }
             }
         }
@@ -995,7 +995,7 @@ impl QuantumImageEncoder {
         
         // Color qubit encoding
         if position_qubits < 16 {
-            circuit.ry(0.0, position_qubits); // Will be parameterized
+            circuit.ry(position_qubits, 0.0); // Will be parameterized
         }
         
         circuits.push(circuit);
@@ -1019,7 +1019,7 @@ impl QuantumImageEncoder {
         
         // Gray level encoding
         for i in position_qubits..num_qubits.min(16) {
-            circuit.ry(0.0, i); // Will be parameterized
+            circuit.ry(i, 0.0); // Will be parameterized
         }
         
         circuits.push(circuit);
@@ -1036,7 +1036,7 @@ impl QuantumImageEncoder {
         // Probability amplitude encoding
         for i in 0..num_qubits.min(16) {
             circuit.h(i);
-            circuit.ry(0.0, i); // Will be parameterized
+            circuit.ry(i, 0.0); // Will be parameterized
         }
         
         // Entanglement for spatial correlations
@@ -1064,7 +1064,7 @@ impl QuantumImageEncoder {
             // Level-specific encoding
             for i in start_qubit..end_qubit {
                 circuit.h(i);
-                circuit.ry(0.0, i); // Will be parameterized
+                circuit.ry(i, 0.0); // Will be parameterized
             }
             
             // Inter-level entanglement
@@ -1114,6 +1114,9 @@ struct QuantumCNNBackbone {
     
     /// Number of qubits
     num_qubits: usize,
+    
+    /// Model parameters
+    parameters: Array1<f64>,
 }
 
 impl QuantumCNNBackbone {
@@ -1138,6 +1141,7 @@ impl QuantumCNNBackbone {
             conv_layers,
             pooling_type,
             num_qubits,
+            parameters: Array1::zeros(100),
         })
     }
 }
@@ -1149,7 +1153,7 @@ impl VisionModel for QuantumCNNBackbone {
     }
     
     fn parameters(&self) -> &Array1<f64> {
-        Array1::zeros(100)
+        &self.parameters
     }
     
     fn update_parameters(&mut self, _params: &Array1<f64>) -> Result<()> {
@@ -1176,6 +1180,9 @@ struct QuantumViTBackbone {
     
     /// Transformer
     transformer: QuantumTransformer,
+    
+    /// Model parameters
+    parameters: Array1<f64>,
 }
 
 impl QuantumViTBackbone {
@@ -1204,6 +1211,7 @@ impl QuantumViTBackbone {
             patch_size,
             embed_dim,
             transformer,
+            parameters: Array1::zeros(1000),
         })
     }
 }
@@ -1215,7 +1223,7 @@ impl VisionModel for QuantumViTBackbone {
     }
     
     fn parameters(&self) -> &Array1<f64> {
-        Array1::zeros(1000)
+        &self.parameters
     }
     
     fn update_parameters(&mut self, _params: &Array1<f64>) -> Result<()> {
@@ -1242,6 +1250,9 @@ struct HybridVisionBackbone {
     
     /// Number of qubits
     num_qubits: usize,
+    
+    /// Model parameters
+    parameters: Array1<f64>,
 }
 
 impl HybridVisionBackbone {
@@ -1250,6 +1261,7 @@ impl HybridVisionBackbone {
             cnn_layers,
             transformer_layers,
             num_qubits,
+            parameters: Array1::zeros(500),
         })
     }
 }
@@ -1260,7 +1272,7 @@ impl VisionModel for HybridVisionBackbone {
     }
     
     fn parameters(&self) -> &Array1<f64> {
-        Array1::zeros(500)
+        &self.parameters
     }
     
     fn update_parameters(&mut self, _params: &Array1<f64>) -> Result<()> {
@@ -1287,6 +1299,9 @@ struct QuantumResNetBackbone {
     
     /// Number of qubits
     num_qubits: usize,
+    
+    /// Model parameters
+    parameters: Array1<f64>,
 }
 
 impl QuantumResNetBackbone {
@@ -1295,6 +1310,7 @@ impl QuantumResNetBackbone {
             blocks,
             skip_connections,
             num_qubits,
+            parameters: Array1::zeros(1000),
         })
     }
 }
@@ -1305,7 +1321,7 @@ impl VisionModel for QuantumResNetBackbone {
     }
     
     fn parameters(&self) -> &Array1<f64> {
-        Array1::zeros(1000)
+        &self.parameters
     }
     
     fn update_parameters(&mut self, _params: &Array1<f64>) -> Result<()> {
@@ -1332,6 +1348,9 @@ struct QuantumEfficientNetBackbone {
     
     /// Number of qubits
     num_qubits: usize,
+    
+    /// Model parameters
+    parameters: Array1<f64>,
 }
 
 impl QuantumEfficientNetBackbone {
@@ -1340,6 +1359,7 @@ impl QuantumEfficientNetBackbone {
             width_coefficient,
             depth_coefficient,
             num_qubits,
+            parameters: Array1::zeros(800),
         })
     }
 }
@@ -1350,7 +1370,7 @@ impl VisionModel for QuantumEfficientNetBackbone {
     }
     
     fn parameters(&self) -> &Array1<f64> {
-        Array1::zeros(800)
+        &self.parameters
     }
     
     fn update_parameters(&mut self, _params: &Array1<f64>) -> Result<()> {
@@ -1462,7 +1482,7 @@ impl TaskHead for DetectionHead {
         // Placeholder detection output
         let boxes = Array3::zeros((batch_size, 100, 4));
         let scores = Array2::zeros((batch_size, 100));
-        let classes = Array2::zeros((batch_size, 100));
+        let classes = Array2::<f64>::zeros((batch_size, 100));
         
         Ok(TaskOutput::Detection { 
             boxes, 

@@ -2,7 +2,7 @@
 //!
 //! This crate provides types and functions for quantum annealing,
 //! including Ising model representation, QUBO problem formulation,
-//! simulated quantum annealing, and D-Wave connectivity.
+//! simulated quantum annealing, and cloud quantum annealing services.
 //!
 //! # Features
 //!
@@ -11,6 +11,7 @@
 //! - Simulated quantum annealing using path integral Monte Carlo
 //! - Classical simulated annealing using Metropolis algorithm
 //! - D-Wave API client for connecting to quantum annealing hardware
+//! - AWS Braket client for accessing Amazon's quantum computing services
 //!
 //! # Example
 //!
@@ -39,6 +40,8 @@
 //! ```
 
 // Export modules
+pub mod applications;
+pub mod braket;
 pub mod chain_break;
 pub mod coherent_ising_machine;
 pub mod compression;
@@ -50,17 +53,20 @@ pub mod embedding;
 pub mod flux_bias;
 #[cfg(feature = "fujitsu")]
 pub mod fujitsu;
+pub mod hardware_compilation;
 pub mod hobo;
 pub mod hybrid_solvers;
 pub mod ising;
 pub mod layout_embedding;
 pub mod multi_objective;
+pub mod non_stoquastic;
 pub mod partitioning;
 pub mod penalty_optimization;
 pub mod photonic_annealing;
 pub mod population_annealing;
 pub mod problem_schedules;
 pub mod qaoa;
+pub mod qaoa_circuit_bridge;
 pub mod qubo;
 pub mod qubo_decomposition;
 pub mod quantum_boltzmann_machine;
@@ -68,10 +74,22 @@ pub mod quantum_machine_learning;
 pub mod quantum_walk;
 pub mod reverse_annealing;
 pub mod simulator;
+pub mod solution_clustering;
 pub mod variational_quantum_annealing;
 pub mod visualization;
 
 // Re-export key types for convenience
+pub use applications::{
+    ApplicationError, ApplicationResult, OptimizationProblem, IndustrySolution, Benchmarkable,
+    ProblemCategory, IndustryConstraint, IndustryObjective, create_benchmark_suite,
+    generate_performance_report, validate_constraints,
+    finance, logistics, energy, manufacturing, healthcare, telecommunications, transportation,
+};
+pub use braket::{
+    is_available as is_braket_available, BraketClient, BraketError, BraketResult,
+    DeviceType, DeviceStatus, TaskStatus, BraketDevice, DeviceSelector,
+    AdvancedAnnealingParams, TaskResult, TaskMetrics, BatchTaskResult, CostTracker,
+};
 pub use chain_break::{
     ChainBreakResolver, ChainBreakStats, ChainStrengthOptimizer, HardwareSolution,
     LogicalProblem, ResolutionMethod, ResolvedSolution,
@@ -101,6 +119,10 @@ pub use dsl::{
 };
 pub use dwave::{
     is_available as is_dwave_available, DWaveClient, DWaveError, DWaveResult, ProblemParams,
+    // Enhanced Leap types
+    SolverType, SolverCategory, ProblemStatus, LeapSolverInfo, ProblemInfo, SolverSelector,
+    EmbeddingConfig, ChainStrengthMethod, AdvancedProblemParams, HybridSolverParams,
+    AnnealingSchedule, ProblemMetrics, BatchSubmissionResult,
 };
 pub use embedding::{Embedding, HardwareGraph, HardwareTopology, MinorMiner};
 pub use flux_bias::{
@@ -110,6 +132,13 @@ pub use flux_bias::{
 pub use fujitsu::{
     FujitsuClient, FujitsuError, FujitsuResult, FujitsuAnnealingParams, FujitsuHardwareSpec,
     GuidanceConfig, is_available as is_fujitsu_available,
+};
+pub use hardware_compilation::{
+    HardwareCompiler, CompilerConfig, CompilationTarget, CompilationResult, HardwareType,
+    HardwareCharacteristics, OptimizationObjective, HardwareCompilationError, HardwareCompilationResult,
+    EmbeddingInfo, HardwareMapping, PerformancePrediction, EmbeddingAlgorithm, QubitAllocationStrategy,
+    CouplingUtilization, ParallelizationStrategy, ConnectivityPattern, TopologyType,
+    create_chimera_target, create_ideal_target,
 };
 pub use hobo::{
     AuxiliaryVariable, ConstraintViolations, HigherOrderTerm, HoboAnalyzer, HoboProblem,
@@ -127,6 +156,13 @@ pub use multi_objective::{
     MultiObjectiveOptimizer, MultiObjectiveConfig, MultiObjectiveResults, MultiObjectiveSolution,
     MultiObjectiveStats, ScalarizationMethod, QualityMetrics, MultiObjectiveError,
     MultiObjectiveResult, MultiObjectiveFunction,
+};
+pub use non_stoquastic::{
+    NonStoquasticHamiltonian, HamiltonianType, ComplexCoupling, InteractionType,
+    NonStoquasticQMCConfig, SignMitigationStrategy, NonStoquasticResults,
+    QMCStatistics, ConvergenceInfo, NonStoquasticSimulator, QuantumState as NonStoquasticQuantumState,
+    NonStoquasticError, NonStoquasticResult, is_hamiltonian_stoquastic, xy_to_ising_approximation,
+    create_xy_chain, create_tfxy_model, create_frustrated_xy_triangle,
 };
 pub use partitioning::{
     BipartitionMethod, KernighanLinPartitioner, Partition, RecursiveBisectionPartitioner,
@@ -157,6 +193,12 @@ pub use qaoa::{
     QaoaCircuit, QaoaLayer, QuantumGate as QaoaQuantumGate, QuantumState as QaoaQuantumState, QaoaCircuitStats, QuantumStateStats,
     QaoaPerformanceMetrics, create_standard_qaoa_config, create_qaoa_plus_config,
     create_warm_start_qaoa_config, create_constrained_qaoa_config,
+};
+pub use qaoa_circuit_bridge::{
+    QaoaCircuitBridge, BridgeError, BridgeResult, CircuitBridgeRepresentation, ParameterReference,
+    ParameterType, LinearTerm, QuadraticTerm, CircuitProblemRepresentation, OptimizationMetrics,
+    EnhancedQaoaOptimizer, OptimizationLevel, CircuitCostEstimate, create_qaoa_bridge_for_problem,
+    qaoa_parameters_to_circuit_parameters, validate_circuit_compatibility,
 };
 pub use qubo_decomposition::{
     QuboDecomposer, DecompositionConfig, DecompositionStrategy, DecomposedSolution,
@@ -190,6 +232,14 @@ pub use simulator::{
     ClassicalAnnealingSimulator, QuantumAnnealingSimulator, TemperatureSchedule,
     TransverseFieldSchedule,
 };
+pub use solution_clustering::{
+    SolutionClusteringAnalyzer, ClusteringConfig, ClusteringResults, SolutionCluster,
+    ClusteringAlgorithm, DistanceMetric, FeatureExtractionMethod, AnalysisDepth,
+    SolutionPoint, LandscapeAnalysis, StatisticalSummary, OptimizationRecommendation,
+    ClusteringError, ClusteringResult, LinkageType, DimensionalityReduction,
+    create_basic_clustering_config, create_comprehensive_clustering_config,
+    analyze_solution_diversity, find_representative_solution,
+};
 pub use variational_quantum_annealing::{
     VariationalQuantumAnnealer, VqaConfig, VqaResults, VqaStatistics, ParameterStatistics,
     OptimizerStatistics, AnsatzType, ClassicalOptimizer, EntanglingGateType, MixerType as VqaMixerType,
@@ -211,8 +261,8 @@ pub fn is_available() -> bool {
 
 /// Check if hardware quantum annealing is available
 ///
-/// This function checks if the D-Wave API client is available
-/// and enabled via the "dwave" feature.
+/// This function checks if any quantum annealing hardware API clients are available
+/// and enabled via their respective features (D-Wave or AWS Braket).
 pub fn is_hardware_available() -> bool {
-    dwave::is_available()
+    dwave::is_available() || braket::is_available()
 }

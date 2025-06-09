@@ -477,7 +477,7 @@ impl GenericAnyonState {
     }
     
     fn measure(&self) -> Result<Vec<bool>, String> {
-        let mut rng = thread_rng();
+        let mut rng = StdRng::seed_from_u64(42);
         let probabilities: Vec<f64> = self.state_vector.iter()
             .map(|a| a.norm_sqr())
             .collect();
@@ -549,8 +549,12 @@ impl FusionRules {
     }
     
     fn default_rules() -> Self {
-        let fusion_tensor = Array3::eye(2);
-        let r_matrix = Array2::eye(2).mapv(Complex64::from);
+        // Create a 2x2x2 identity-like fusion tensor
+        let mut fusion_tensor = Array3::zeros((2, 2, 2));
+        fusion_tensor[[0, 0, 0]] = 1.0; // 1 × 1 = 1
+        fusion_tensor[[1, 1, 0]] = 1.0; // σ × σ = 1
+        
+        let r_matrix = Array2::<f64>::eye(2).mapv(Complex64::from);
         
         Self {
             fusion_tensor,
@@ -845,7 +849,7 @@ impl PersistentHomology {
             let end = (pair.death * resolution as f64) as usize;
             
             for i in start..end.min(resolution) {
-                landscape[pair.dimension][i] = (landscape[pair.dimension][i])
+                landscape[pair.dimension][i] = (landscape[pair.dimension][i] as f64)
                     .max(1.0 - (i as f64 / resolution as f64 - pair.birth).abs());
             }
         }

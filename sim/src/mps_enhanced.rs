@@ -493,7 +493,59 @@ impl EnhancedMPS {
     
     /// Get gate matrix from gate operation
     fn get_gate_matrix(&self, gate: &dyn GateOp) -> QuantRS2Result<Array2<Complex64>> {
-        // Map gate names to matrices
+        // Handle parametric gates using pattern matching on name and string parsing
+        // This is a simpler approach that doesn't require trait object downcasting
+        let gate_name = gate.name();
+        if gate_name.starts_with("RX(") {
+            // Parse theta from string like "RX(1.5708)"
+            let theta_str = gate_name.trim_start_matches("RX(").trim_end_matches(")");
+            if let Ok(theta) = theta_str.parse::<f64>() {
+                let cos_half = (theta / 2.0).cos();
+                let sin_half = (theta / 2.0).sin();
+                return Ok(array![
+                    [Complex64::new(cos_half, 0.), Complex64::new(0., -sin_half)],
+                    [Complex64::new(0., -sin_half), Complex64::new(cos_half, 0.)]
+                ]);
+            }
+        }
+        
+        if gate_name.starts_with("RY(") {
+            let theta_str = gate_name.trim_start_matches("RY(").trim_end_matches(")");
+            if let Ok(theta) = theta_str.parse::<f64>() {
+                let cos_half = (theta / 2.0).cos();
+                let sin_half = (theta / 2.0).sin();
+                return Ok(array![
+                    [Complex64::new(cos_half, 0.), Complex64::new(-sin_half, 0.)],
+                    [Complex64::new(sin_half, 0.), Complex64::new(cos_half, 0.)]
+                ]);
+            }
+        }
+        
+        if gate_name.starts_with("RZ(") {
+            let theta_str = gate_name.trim_start_matches("RZ(").trim_end_matches(")");
+            if let Ok(theta) = theta_str.parse::<f64>() {
+                let exp_pos = Complex64::from_polar(1.0, theta / 2.0);
+                let exp_neg = Complex64::from_polar(1.0, -theta / 2.0);
+                return Ok(array![
+                    [exp_neg, Complex64::new(0., 0.)],
+                    [Complex64::new(0., 0.), exp_pos]
+                ]);
+            }
+        }
+        
+        if gate_name.starts_with("P(") || gate_name.starts_with("PHASE(") {
+            let prefix = if gate_name.starts_with("P(") { "P(" } else { "PHASE(" };
+            let phi_str = gate_name.trim_start_matches(prefix).trim_end_matches(")");
+            if let Ok(phi) = phi_str.parse::<f64>() {
+                let phase = Complex64::from_polar(1.0, phi);
+                return Ok(array![
+                    [Complex64::new(1., 0.), Complex64::new(0., 0.)],
+                    [Complex64::new(0., 0.), phase]
+                ]);
+            }
+        }
+        
+        // Map gate names to matrices for non-parametric gates
         let matrix = match gate.name().as_ref() {
             "I" => array![[Complex64::new(1., 0.), Complex64::new(0., 0.)],
                          [Complex64::new(0., 0.), Complex64::new(1., 0.)]],
@@ -510,8 +562,15 @@ impl EnhancedMPS {
             },
             "S" => array![[Complex64::new(1., 0.), Complex64::new(0., 0.)],
                          [Complex64::new(0., 0.), Complex64::new(0., 1.)]],
+            "S†" | "Sdg" => array![[Complex64::new(1., 0.), Complex64::new(0., 0.)],
+                                 [Complex64::new(0., 0.), Complex64::new(0., -1.)]],
             "T" => {
                 let phase = Complex64::from_polar(1.0, PI / 4.0);
+                array![[Complex64::new(1., 0.), Complex64::new(0., 0.)],
+                      [Complex64::new(0., 0.), phase]]
+            },
+            "T†" | "Tdg" => {
+                let phase = Complex64::from_polar(1.0, -PI / 4.0);
                 array![[Complex64::new(1., 0.), Complex64::new(0., 0.)],
                       [Complex64::new(0., 0.), phase]]
             },
@@ -527,6 +586,24 @@ impl EnhancedMPS {
                 [Complex64::new(0., 0.), Complex64::new(0., 0.), Complex64::new(1., 0.), Complex64::new(0., 0.)],
                 [Complex64::new(0., 0.), Complex64::new(0., 0.), Complex64::new(0., 0.), Complex64::new(-1., 0.)],
             ],
+            "SWAP" => array![
+                [Complex64::new(1., 0.), Complex64::new(0., 0.), Complex64::new(0., 0.), Complex64::new(0., 0.)],
+                [Complex64::new(0., 0.), Complex64::new(0., 0.), Complex64::new(1., 0.), Complex64::new(0., 0.)],
+                [Complex64::new(0., 0.), Complex64::new(1., 0.), Complex64::new(0., 0.), Complex64::new(0., 0.)],
+                [Complex64::new(0., 0.), Complex64::new(0., 0.), Complex64::new(0., 0.), Complex64::new(1., 0.)],
+            ],
+            "TOFFOLI" | "CCX" => {
+                // 8x8 matrix for 3-qubit Toffoli gate
+                let mut matrix = Array2::zeros((8, 8));
+                // Identity for first 6 states
+                for i in 0..6 {
+                    matrix[[i, i]] = Complex64::new(1., 0.);
+                }
+                // Swap last two states
+                matrix[[6, 7]] = Complex64::new(1., 0.);
+                matrix[[7, 6]] = Complex64::new(1., 0.);
+                matrix
+            },
             _ => {
                 // For other gates, try to get from gate trait
                 // This is a fallback - in practice would need proper gate matrix extraction
@@ -675,6 +752,207 @@ impl EnhancedMPS {
         }
         
         Ok(entropy)
+    }
+    
+    /// Measure a qubit in the computational basis and update the state
+    pub fn measure_qubit(&mut self, qubit: usize) -> QuantRS2Result<bool> {
+        if qubit >= self.num_qubits {
+            return Err(QuantRS2Error::InvalidQubitId(qubit as u32));
+        }
+        
+        // Move orthogonality center to measured qubit
+        self.move_orthogonality_center(qubit)?;
+        
+        // Compute measurement probabilities
+        let tensor = &self.tensors[qubit];
+        
+        // Contract left environment
+        let mut left_env = Array2::from_elem((1, 1), Complex64::new(1.0, 0.0));
+        for i in 0..qubit {
+            let t = &self.tensors[i];
+            let sum_matrix = t.data.slice(s![.., 0, ..]).to_owned() + 
+                           t.data.slice(s![.., 1, ..]).to_owned();
+            left_env = left_env.dot(&sum_matrix);
+        }
+        
+        // Contract right environment
+        let mut right_env = Array2::from_elem((1, 1), Complex64::new(1.0, 0.0));
+        for i in (qubit + 1)..self.num_qubits {
+            let t = &self.tensors[i];
+            let sum_matrix = t.data.slice(s![.., 0, ..]).to_owned() + 
+                           t.data.slice(s![.., 1, ..]).to_owned();
+            right_env = right_env.dot(&sum_matrix);
+        }
+        
+        // Compute probabilities
+        let prob0_matrix = left_env.dot(&tensor.data.slice(s![.., 0, ..])).dot(&right_env);
+        let prob1_matrix = left_env.dot(&tensor.data.slice(s![.., 1, ..])).dot(&right_env);
+        
+        let prob0 = prob0_matrix[[0, 0]].norm_sqr();
+        let prob1 = prob1_matrix[[0, 0]].norm_sqr();
+        let total_prob = prob0 + prob1;
+        
+        // Sample measurement outcome
+        let outcome = self.rng.gen::<f64>() < prob0 / total_prob;
+        
+        // Update state by projecting onto measurement outcome
+        if outcome {
+            // Project onto |0>
+            let new_data = tensor.data.slice(s![.., 0, ..]).to_owned()
+                .into_shape((tensor.left_dim, 1, tensor.right_dim))?;
+            self.tensors[qubit] = MPSTensor::new(new_data);
+            
+            // Normalize
+            let norm = (prob0 / total_prob).sqrt();
+            if norm > 0.0 {
+                self.tensors[qubit].data /= Complex64::new(norm, 0.0);
+            }
+        } else {
+            // Project onto |1>
+            let new_data = tensor.data.slice(s![.., 1, ..]).to_owned()
+                .into_shape((tensor.left_dim, 1, tensor.right_dim))?;
+            self.tensors[qubit] = MPSTensor::new(new_data);
+            
+            // Normalize
+            let norm = (prob1 / total_prob).sqrt();
+            if norm > 0.0 {
+                self.tensors[qubit].data /= Complex64::new(norm, 0.0);
+            }
+        }
+        
+        Ok(!outcome) // Return true for |1>, false for |0>
+    }
+    
+    /// Compute expectation value of a Pauli string
+    pub fn expectation_value_pauli(&self, pauli_string: &str) -> QuantRS2Result<Complex64> {
+        if pauli_string.len() != self.num_qubits {
+            return Err(QuantRS2Error::InvalidInput(
+                format!("Pauli string length {} doesn't match qubit count {}", 
+                    pauli_string.len(), self.num_qubits)
+            ));
+        }
+        
+        // Convert state to vector and compute expectation value
+        let state_vector = self.to_statevector()?;
+        let mut result = Complex64::new(0.0, 0.0);
+        
+        for (i, amplitude) in state_vector.iter().enumerate() {
+            // Apply Pauli string to basis state |i>
+            let mut coeff = Complex64::new(1.0, 0.0);
+            let mut target_state = i;
+            
+            for (qubit, pauli_char) in pauli_string.chars().rev().enumerate() {
+                let bit = (i >> qubit) & 1;
+                match pauli_char {
+                    'I' => {}, // Identity does nothing
+                    'X' => {
+                        // X flips the bit
+                        target_state ^= 1 << qubit;
+                    },
+                    'Y' => {
+                        // Y flips the bit and adds phase
+                        target_state ^= 1 << qubit;
+                        coeff *= if bit == 0 { 
+                            Complex64::new(0.0, 1.0) 
+                        } else { 
+                            Complex64::new(0.0, -1.0) 
+                        };
+                    },
+                    'Z' => {
+                        // Z adds phase based on bit value
+                        if bit == 1 {
+                            coeff *= Complex64::new(-1.0, 0.0);
+                        }
+                    },
+                    _ => return Err(QuantRS2Error::InvalidInput(
+                        format!("Invalid Pauli operator: {}", pauli_char)
+                    )),
+                }
+            }
+            
+            result += amplitude.conj() * coeff * state_vector[target_state];
+        }
+        
+        Ok(result)
+    }
+    
+    /// Compute variance of a Pauli string observable
+    pub fn variance_pauli(&self, pauli_string: &str) -> QuantRS2Result<f64> {
+        let expectation = self.expectation_value_pauli(pauli_string)?;
+        
+        // For Pauli observables, eigenvalues are ±1, so variance = 1 - |<P>|²
+        let variance = 1.0 - expectation.norm_sqr();
+        Ok(variance.max(0.0)) // Ensure non-negative due to numerical errors
+    }
+    
+    /// Get current bond dimensions
+    pub fn bond_dimensions(&self) -> Vec<usize> {
+        self.tensors.iter().map(|t| t.right_dim).collect()
+    }
+    
+    /// Get maximum bond dimension currently used
+    pub fn max_bond_dimension(&self) -> usize {
+        self.bond_dimensions().iter().copied().max().unwrap_or(1)
+    }
+    
+    /// Compress MPS by reducing bond dimensions
+    pub fn compress(&mut self, new_threshold: Option<f64>) -> QuantRS2Result<()> {
+        let old_threshold = self.config.svd_threshold;
+        if let Some(threshold) = new_threshold {
+            self.config.svd_threshold = threshold;
+        }
+        
+        // Sweep through and recompress all bonds
+        for i in 0..self.num_qubits - 1 {
+            self.move_orthogonality_center(i)?;
+            
+            // Get current bond
+            let tensor = &self.tensors[i];
+            let matrix = tensor.data.view().into_shape((
+                tensor.left_dim * 2,
+                tensor.right_dim,
+            ))?;
+            
+            // Recompress using current threshold
+            let (u, s, vt) = self.truncated_svd(&matrix)?;
+            
+            // Update tensors
+            let new_bond = s.len();
+            self.tensors[i] = MPSTensor::new(
+                u.into_shape((tensor.left_dim, 2, new_bond))?
+            );
+            
+            // Update next tensor
+            if i + 1 < self.num_qubits {
+                let next = &self.tensors[i + 1];
+                let sv_matrix = {
+                    let mut sv = Array2::<Complex64>::zeros((new_bond, vt.shape()[1]));
+                    for j in 0..new_bond {
+                        for k in 0..vt.shape()[1] {
+                            sv[[j, k]] = Complex64::new(s[j], 0.0) * vt[[j, k]];
+                        }
+                    }
+                    sv
+                };
+                
+                // Contract with next tensor
+                let next_matrix = next.data.view().into_shape((
+                    next.left_dim,
+                    2 * next.right_dim,
+                ))?;
+                let new_next = sv_matrix.dot(&next_matrix);
+                self.tensors[i + 1] = MPSTensor::new(
+                    new_next.into_shape((new_bond, 2, next.right_dim))?
+                );
+            }
+        }
+        
+        // Restore original threshold if it was temporarily changed
+        if new_threshold.is_some() {
+            self.config.svd_threshold = old_threshold;
+        }
+        
+        Ok(())
     }
 }
 

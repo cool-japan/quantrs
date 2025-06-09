@@ -44,6 +44,14 @@ pub enum MLError {
     #[error("Invalid configuration: {0}")]
     InvalidConfiguration(String),
 
+    /// Configuration error
+    #[error("Configuration error: {0}")]
+    ConfigurationError(String),
+
+    /// Dimension mismatch error
+    #[error("Dimension mismatch: {0}")]
+    DimensionMismatch(String),
+
     /// Not implemented
     #[error("Not implemented: {0}")]
     NotImplemented(String),
@@ -55,4 +63,8 @@ pub enum MLError {
     /// Quantum error
     #[error("Quantum error: {0}")]
     QuantumError(#[from] QuantRS2Error),
+
+    /// Shape error from ndarray
+    #[error("Shape error: {0}")]
+    ShapeError(#[from] ndarray::ShapeError),
 }

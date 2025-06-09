@@ -371,7 +371,8 @@ impl QuantumExplainableAI {
         baseline: Option<&Array1<f64>>,
         num_samples: usize,
     ) -> Result<Array1<f64>> {
-        let baseline = baseline.unwrap_or(&Array1::zeros(input.len()));
+        let default_baseline = Array1::zeros(input.len());
+        let baseline = baseline.unwrap_or(&default_baseline);
         let mut integrated_grad: Array1<f64> = Array1::zeros(input.len());
         
         for i in 0..num_samples {

@@ -579,7 +579,8 @@ impl CrystalStructurePredictor {
         var_map: &HashMap<String, usize>,
     ) -> Result<(), String> {
         // Penalize deviations from ideal coordination
-        if let Some(coord_numbers) = &self.constraints.coordination.coordination_numbers {
+        if !self.constraints.coordination.coordination_numbers.is_empty() {
+            let coord_numbers = &self.constraints.coordination.coordination_numbers;
             // Simplified: just favor certain distance ranges
             let penalty = 10.0;
             
@@ -730,7 +731,8 @@ impl CrystalStructurePredictor {
         qubo: &mut Array2<f64>,
         var_map: &HashMap<String, usize>,
     ) -> Result<(), String> {
-        if let Some(min_distances) = &self.constraints.distances.min_distances {
+        if !self.constraints.distances.min_distances.is_empty() {
+            let min_distances = &self.constraints.distances.min_distances;
             let penalty = 50.0;
             
             // Penalize configurations where atoms are too close

@@ -904,11 +904,12 @@ impl QuantumLLM {
                 continue;
             }
             
-            let input_ids = Array2::from_shape_vec((1, tokens.len()), tokens)?;
+            let tokens_len = tokens.len();
+            let input_ids = Array2::from_shape_vec((1, tokens_len), tokens.clone())?;
             let logits = self.forward(&input_ids, None, false, false)?;
             
             // Calculate log likelihood
-            for i in 0..tokens.len() - 1 {
+            for i in 0..tokens_len - 1 {
                 let target_token = tokens[i + 1];
                 let token_logits = logits.slice(s![0, i, ..]);
                 
@@ -1184,7 +1185,7 @@ impl QuantumReasoningModule {
                 // Create quantum logic gates for reasoning
                 for i in 0..8 {
                     circuit.h(i);
-                    circuit.ry(0.0, i); // Will be parameterized
+                    circuit.ry(i, 0.0); // Will be parameterized
                 }
                 
                 // Entanglement for logical connections
@@ -1255,7 +1256,8 @@ impl QuantumReasoningModule {
         for step in 0..self.config.reasoning_steps.min(self.logical_circuits.len()) {
             // Apply quantum logical reasoning circuit
             let simulator = StateVectorSimulator::new();
-            let quantum_state = simulator.simulate(&self.logical_circuits[step]);
+            let register = simulator.run(&self.logical_circuits[step])?;
+            let quantum_state = register.probabilities();
             
             // Extract reasoning features from quantum state
             let reasoning_features = self.extract_logical_features(&quantum_state)?;

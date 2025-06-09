@@ -1,6 +1,7 @@
 use crate::error::{MLError, Result};
 use ndarray::{Array1, ArrayView1};
 use std::fmt;
+use std::collections::HashMap;
 
 /// Optimization method to use for training quantum machine learning models
 #[derive(Debug, Clone, Copy)]
@@ -19,6 +20,15 @@ pub enum OptimizationMethod {
 
     /// Quantum Natural Gradient
     QuantumNaturalGradient,
+    
+    /// SciRS2 Adam optimizer
+    SciRS2Adam,
+    
+    /// SciRS2 L-BFGS optimizer
+    SciRS2LBFGS,
+    
+    /// SciRS2 Conjugate Gradient
+    SciRS2CG,
 }
 
 /// Optimizer for quantum machine learning models
@@ -52,6 +62,14 @@ pub enum Optimizer {
 
         /// Perturbation size
         perturbation: f64,
+    },
+    
+    /// SciRS2-based optimizers (placeholder for integration)
+    SciRS2 {
+        /// Optimizer method
+        method: String,
+        /// Configuration parameters
+        config: HashMap<String, f64>,
     },
 }
 
@@ -88,6 +106,36 @@ impl Optimizer {
                     beta1: 0.9,
                     beta2: 0.999,
                     epsilon: 1e-8,
+                }
+            }
+            OptimizationMethod::SciRS2Adam => {
+                let mut config = HashMap::new();
+                config.insert("learning_rate".to_string(), 0.001);
+                config.insert("beta1".to_string(), 0.9);
+                config.insert("beta2".to_string(), 0.999);
+                config.insert("epsilon".to_string(), 1e-8);
+                Optimizer::SciRS2 {
+                    method: "adam".to_string(),
+                    config,
+                }
+            }
+            OptimizationMethod::SciRS2LBFGS => {
+                let mut config = HashMap::new();
+                config.insert("m".to_string(), 10.0); // Memory size
+                config.insert("c1".to_string(), 1e-4);
+                config.insert("c2".to_string(), 0.9);
+                Optimizer::SciRS2 {
+                    method: "lbfgs".to_string(),
+                    config,
+                }
+            }
+            OptimizationMethod::SciRS2CG => {
+                let mut config = HashMap::new();
+                config.insert("beta_method".to_string(), 0.0); // Fletcher-Reeves
+                config.insert("restart_threshold".to_string(), 100.0);
+                Optimizer::SciRS2 {
+                    method: "cg".to_string(),
+                    config,
                 }
             }
         }
@@ -131,6 +179,36 @@ impl Optimizer {
                 }
                 Ok(())
             }
+            Optimizer::SciRS2 { method, config } => {
+                // Placeholder - would delegate to SciRS2 optimizers
+                let learning_rate = config.get("learning_rate").unwrap_or(&0.001);
+                match method.as_str() {
+                    "adam" => {
+                        // Use SciRS2 Adam when available
+                        for i in 0..parameters.len() {
+                            parameters[i] -= learning_rate * gradients[i];
+                        }
+                    }
+                    "lbfgs" => {
+                        // Use SciRS2 L-BFGS when available
+                        for i in 0..parameters.len() {
+                            parameters[i] -= learning_rate * gradients[i];
+                        }
+                    }
+                    "cg" => {
+                        // Use SciRS2 Conjugate Gradient when available
+                        for i in 0..parameters.len() {
+                            parameters[i] -= learning_rate * gradients[i];
+                        }
+                    }
+                    _ => {
+                        return Err(MLError::InvalidConfiguration(
+                            format!("Unknown SciRS2 optimizer method: {}", method),
+                        ));
+                    }
+                }
+                Ok(())
+            }
         }
     }
 }
@@ -170,6 +248,9 @@ impl fmt::Display for OptimizationMethod {
             OptimizationMethod::SPSA => write!(f, "SPSA"),
             OptimizationMethod::LBFGS => write!(f, "L-BFGS"),
             OptimizationMethod::QuantumNaturalGradient => write!(f, "Quantum Natural Gradient"),
+            OptimizationMethod::SciRS2Adam => write!(f, "SciRS2 Adam"),
+            OptimizationMethod::SciRS2LBFGS => write!(f, "SciRS2 L-BFGS"),
+            OptimizationMethod::SciRS2CG => write!(f, "SciRS2 Conjugate Gradient"),
         }
     }
 }
@@ -201,6 +282,9 @@ impl fmt::Display for Optimizer {
                     "SPSA (learning_rate: {}, perturbation: {})",
                     learning_rate, perturbation
                 )
+            }
+            Optimizer::SciRS2 { method, config } => {
+                write!(f, "SciRS2 {} with config: {:?}", method, config)
             }
         }
     }

@@ -12,6 +12,7 @@ description = "Quantum annealing support for the QuantRS2 framework"
 
 [dependencies]
 quantrs2-core = { path = "../core", version = "0.1.0-alpha.3" }
+quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.3" }
 num-complex.workspace = true
 thiserror.workspace = true
 rand.workspace = true
@@ -26,5 +27,6 @@ serde_json = { workspace = true, optional = true }
 
 [features]
 default = []
+braket = ["dep:reqwest", "dep:tokio", "dep:serde", "dep:serde_json"]
 dwave = ["dep:reqwest", "dep:tokio", "dep:serde", "dep:serde_json"]
 fujitsu = ["dep:reqwest", "dep:tokio", "dep:serde", "dep:serde_json"]

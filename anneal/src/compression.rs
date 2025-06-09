@@ -6,16 +6,119 @@
 use std::collections::{HashMap, HashSet};
 use crate::ising::{IsingError, IsingResult};
 
+/// Simple sparse vector implementation
+#[derive(Debug, Clone)]
+pub struct SparseVector<T> {
+    data: HashMap<usize, T>,
+    size: usize,
+}
+
+impl<T: Clone + Default + PartialEq> SparseVector<T> {
+    pub fn new(size: usize) -> Self {
+        Self {
+            data: HashMap::new(),
+            size,
+        }
+    }
+    
+    pub fn get(&self, index: usize) -> Option<&T> {
+        self.data.get(&index)
+    }
+    
+    pub fn set(&mut self, index: usize, value: T) {
+        if index < self.size {
+            if value == T::default() {
+                self.data.remove(&index);
+            } else {
+                self.data.insert(index, value);
+            }
+        }
+    }
+    
+    pub fn iter(&self) -> impl Iterator<Item = (usize, &T)> {
+        self.data.iter().map(|(&k, v)| (k, v))
+    }
+    
+    pub fn remove(&mut self, index: usize) -> Option<T> {
+        self.data.remove(&index)
+    }
+    
+    pub fn nnz(&self) -> usize {
+        self.data.len()
+    }
+    
+    pub fn filter_inplace<F>(&mut self, mut predicate: F)
+    where
+        F: FnMut(&T) -> bool,
+    {
+        self.data.retain(|_, v| predicate(v));
+    }
+}
+
+/// Simple COO sparse matrix implementation
+#[derive(Debug, Clone)]
+pub struct CooMatrix<T> {
+    data: HashMap<(usize, usize), T>,
+    rows: usize,
+    cols: usize,
+}
+
+impl<T: Clone + Default + PartialEq> CooMatrix<T> {
+    pub fn new(rows: usize, cols: usize) -> Self {
+        Self {
+            data: HashMap::new(),
+            rows,
+            cols,
+        }
+    }
+    
+    pub fn get(&self, row: usize, col: usize) -> Option<&T> {
+        self.data.get(&(row, col))
+    }
+    
+    pub fn set(&mut self, row: usize, col: usize, value: T) {
+        if row < self.rows && col < self.cols {
+            if value == T::default() {
+                self.data.remove(&(row, col));
+            } else {
+                self.data.insert((row, col), value);
+            }
+        }
+    }
+    
+    pub fn iter(&self) -> impl Iterator<Item = (usize, usize, &T)> {
+        self.data.iter().map(|(&(i, j), v)| (i, j, v))
+    }
+    
+    pub fn retain<F>(&mut self, mut predicate: F)
+    where
+        F: FnMut(&(usize, usize), &mut T) -> bool,
+    {
+        self.data.retain(predicate);
+    }
+    
+    pub fn nnz(&self) -> usize {
+        self.data.len()
+    }
+    
+    pub fn filter_inplace<F>(&mut self, mut predicate: F)
+    where
+        F: FnMut(&T) -> bool,
+    {
+        self.data.retain(|_, v| predicate(v));
+    }
+}
+
 /// Compressed QUBO representation using various sparse formats
 #[derive(Debug, Clone)]
 pub struct CompressedQubo {
     /// Number of variables
     pub num_vars: usize,
-    /// Linear terms (diagonal elements)
-    pub linear_terms: HashMap<usize, f64>,
-    /// Quadratic terms (off-diagonal elements)
+    /// Linear terms (diagonal elements) as sparse vector
+    pub linear_terms: SparseVector<f64>,
+    /// Quadratic terms (off-diagonal elements) as COO sparse matrix
     /// Stored as upper triangular: (i, j) where i < j
-    pub quadratic_terms: HashMap<(usize, usize), f64>,
+    pub quadratic_terms: CooMatrix<f64>,
     /// Constant offset
     pub offset: f64,
     /// Compression statistics
@@ -42,8 +145,8 @@ impl CompressedQubo {
     pub fn new(num_vars: usize) -> Self {
         Self {
             num_vars,
-            linear_terms: HashMap::new(),
-            quadratic_terms: HashMap::new(),
+            linear_terms: SparseVector::new(num_vars),
+            quadratic_terms: CooMatrix::new(num_vars, num_vars),
             offset: 0.0,
             stats: CompressionStats::default(),
         }
@@ -52,7 +155,8 @@ impl CompressedQubo {
     /// Add or update a linear term
     pub fn add_linear(&mut self, var: usize, coefficient: f64) {
         if coefficient.abs() > 1e-10 {
-            *self.linear_terms.entry(var).or_insert(0.0) += coefficient;
+            let current_value = *self.linear_terms.get(var).unwrap_or(&0.0);
+            self.linear_terms.set(var, current_value + coefficient);
         }
     }
 
@@ -62,7 +166,8 @@ impl CompressedQubo {
             self.add_linear(i, coefficient);
         } else if coefficient.abs() > 1e-10 {
             let (i, j) = if i < j { (i, j) } else { (j, i) };
-            *self.quadratic_terms.entry((i, j)).or_insert(0.0) += coefficient;
+            let current_value = *self.quadratic_terms.get(i, j).unwrap_or(&0.0);
+            self.quadratic_terms.set(i, j, current_value + coefficient);
         }
     }
 
@@ -71,14 +176,14 @@ impl CompressedQubo {
         let mut energy = self.offset;
 
         // Linear terms
-        for (&var, &coeff) in &self.linear_terms {
+        for (var, coeff) in self.linear_terms.iter() {
             if var < solution.len() && solution[var] {
                 energy += coeff;
             }
         }
 
         // Quadratic terms
-        for (&(i, j), &coeff) in &self.quadratic_terms {
+        for (i, j, coeff) in self.quadratic_terms.iter() {
             if i < solution.len() && j < solution.len() && solution[i] && solution[j] {
                 energy += coeff;
             }
@@ -89,13 +194,13 @@ impl CompressedQubo {
 
     /// Get total number of non-zero elements
     pub fn nnz(&self) -> usize {
-        self.linear_terms.len() + self.quadratic_terms.len()
+        self.linear_terms.nnz() + self.quadratic_terms.nnz()
     }
 
     /// Apply threshold to remove small coefficients
     pub fn apply_threshold(&mut self, threshold: f64) {
-        self.linear_terms.retain(|_, &mut v| v.abs() > threshold);
-        self.quadratic_terms.retain(|_, &mut v| v.abs() > threshold);
+        self.linear_terms.filter_inplace(|&v| v.abs() > threshold);
+        self.quadratic_terms.filter_inplace(|&v| v.abs() > threshold);
     }
 }
 
@@ -232,10 +337,10 @@ impl VariableReducer {
         let mut to_fix = Vec::new();
 
         // Find variables to fix
-        for (&var, &coeff) in &qubo.linear_terms {
+        for (var, coeff) in qubo.linear_terms.iter() {
             if coeff.abs() > self.fixing_threshold {
                 // Fix to 0 if coefficient is positive, 1 if negative
-                let value = coeff < 0.0;
+                let value = *coeff < 0.0;
                 to_fix.push((var, value));
             }
         }
@@ -261,17 +366,16 @@ impl VariableReducer {
 
         // Update offset if variable is set to 1
         if value {
-            if let Some(&linear_coeff) = qubo.linear_terms.get(&var) {
-                qubo.offset += linear_coeff;
-            }
+            let linear_coeff = *qubo.linear_terms.get(var).unwrap_or(&0.0);
+            qubo.offset += linear_coeff;
 
             // Update other linear terms
             let mut updates = Vec::new();
-            for (&(i, j), &coeff) in &qubo.quadratic_terms {
+            for (i, j, coeff) in qubo.quadratic_terms.iter() {
                 if i == var {
-                    updates.push((j, coeff));
+                    updates.push((j, *coeff));
                 } else if j == var {
-                    updates.push((i, coeff));
+                    updates.push((i, *coeff));
                 }
             }
 
@@ -281,8 +385,16 @@ impl VariableReducer {
         }
 
         // Remove variable from QUBO
-        qubo.linear_terms.remove(&var);
-        qubo.quadratic_terms.retain(|&(i, j), _| i != var && j != var);
+        qubo.linear_terms.remove(var);
+        qubo.quadratic_terms.filter_inplace(|_| true); // Remove terms involving var
+        // Note: We need a more specific filter for removing terms involving var
+        let mut new_quadratic = CooMatrix::new(qubo.num_vars, qubo.num_vars);
+        for (i, j, coeff) in qubo.quadratic_terms.iter() {
+            if i != var && j != var {
+                new_quadratic.set(i, j, *coeff);
+            }
+        }
+        qubo.quadratic_terms = new_quadratic;
 
         Ok(())
     }
@@ -324,13 +436,14 @@ impl VariableReducer {
             let mut sig_parts = Vec::new();
 
             // Linear coefficient
-            if let Some(&coeff) = qubo.linear_terms.get(&var) {
-                sig_parts.push(format!("L:{:.6}", coeff));
+            let linear_coeff = *qubo.linear_terms.get(var).unwrap_or(&0.0);
+            if linear_coeff.abs() > 1e-10 {
+                sig_parts.push(format!("L:{:.6}", linear_coeff));
             }
 
             // Quadratic coefficients
             let mut quad_coeffs = Vec::new();
-            for (&(i, j), &coeff) in &qubo.quadratic_terms {
+            for (i, j, coeff) in qubo.quadratic_terms.iter() {
                 if i == var || j == var {
                     let other = if i == var { j } else { i };
                     quad_coeffs.push((other, coeff));
@@ -359,27 +472,28 @@ impl VariableReducer {
         mapping.merge_variables(from_var, to_var);
 
         // Merge linear terms
-        if let Some(coeff) = qubo.linear_terms.remove(&from_var) {
-            qubo.add_linear(to_var, coeff);
+        let from_coeff = *qubo.linear_terms.get(from_var).unwrap_or(&0.0);
+        qubo.linear_terms.remove(from_var);
+        if from_coeff.abs() > 1e-10 {
+            qubo.add_linear(to_var, from_coeff);
         }
 
         // Update quadratic terms
         let mut updates = Vec::new();
-        let mut to_remove = Vec::new();
+        let mut new_quadratic = CooMatrix::new(qubo.num_vars, qubo.num_vars);
 
-        for (&(i, j), &coeff) in &qubo.quadratic_terms {
+        for (i, j, coeff) in qubo.quadratic_terms.iter() {
             if i == from_var || j == from_var {
-                to_remove.push((i, j));
                 let new_i = if i == from_var { to_var } else { i };
                 let new_j = if j == from_var { to_var } else { j };
-                updates.push((new_i, new_j, coeff));
+                updates.push((new_i, new_j, *coeff));
+            } else {
+                new_quadratic.set(i, j, *coeff);
             }
         }
 
-        // Remove old terms
-        for key in to_remove {
-            qubo.quadratic_terms.remove(&key);
-        }
+        // Set the new quadratic matrix
+        qubo.quadratic_terms = new_quadratic;
 
         // Add updated terms
         for (i, j, coeff) in updates {
@@ -407,21 +521,21 @@ impl VariableReducer {
                     let mut connected_var = None;
                     let mut connection_coeff = 0.0;
 
-                    for (&(i, j), &coeff) in &qubo.quadratic_terms {
+                    for (i, j, coeff) in qubo.quadratic_terms.iter() {
                         if i == var {
                             connected_var = Some(j);
-                            connection_coeff = coeff;
+                            connection_coeff = *coeff;
                             break;
                         } else if j == var {
                             connected_var = Some(i);
-                            connection_coeff = coeff;
+                            connection_coeff = *coeff;
                             break;
                         }
                     }
 
                     if let Some(other) = connected_var {
                         // Determine optimal value based on coefficients
-                        let linear_coeff = qubo.linear_terms.get(&var).copied().unwrap_or(0.0);
+                        let linear_coeff = *qubo.linear_terms.get(var).unwrap_or(&0.0);
                         
                         // If connection is positive, variables should have opposite values
                         // If connection is negative, variables should have same value
@@ -434,15 +548,21 @@ impl VariableReducer {
                         }
 
                         // Update QUBO
-                        qubo.linear_terms.remove(&var);
-                        qubo.quadratic_terms.retain(|&(i, j), _| i != var && j != var);
+                        qubo.linear_terms.remove(var);
+                        let mut new_quadratic = CooMatrix::new(qubo.num_vars, qubo.num_vars);
+                        for (i, j, coeff) in qubo.quadratic_terms.iter() {
+                            if i != var && j != var {
+                                new_quadratic.set(i, j, *coeff);
+                            }
+                        }
+                        qubo.quadratic_terms = new_quadratic;
                         
                         // Update linear term of connected variable
                         if linear_coeff.abs() > 1e-10 {
                             if connection_coeff > 0.0 {
                                 // Opposite values: adjust offset
                                 qubo.offset += linear_coeff.min(0.0);
-                                qubo.add_linear(other, -linear_coeff.abs().min(connection_coeff.abs()));
+                                qubo.add_linear(other, -(linear_coeff.abs() as f64).min(connection_coeff.abs() as f64));
                             } else {
                                 // Same values: just add linear coefficient
                                 qubo.add_linear(other, linear_coeff);
@@ -468,11 +588,11 @@ impl VariableReducer {
     fn compute_variable_degrees(&self, qubo: &CompressedQubo) -> HashMap<usize, usize> {
         let mut degrees = HashMap::new();
 
-        for &var in qubo.linear_terms.keys() {
+        for (var, _) in qubo.linear_terms.iter() {
             degrees.insert(var, 0);
         }
 
-        for &(i, j) in qubo.quadratic_terms.keys() {
+        for (i, j, _) in qubo.quadratic_terms.iter() {
             *degrees.entry(i).or_insert(0) += 1;
             *degrees.entry(j).or_insert(0) += 1;
         }
@@ -597,7 +717,7 @@ impl BlockDetector {
             // Grow block using BFS
             while let Some(var) = to_process.pop() {
                 // Find connected variables
-                for (&(i, j), &coeff) in &qubo.quadratic_terms {
+                for (i, j, coeff) in qubo.quadratic_terms.iter() {
                     if coeff.abs() > self.independence_threshold {
                         let connected = if i == var && unassigned.contains(&j) {
                             Some(j)
@@ -649,10 +769,10 @@ mod tests {
 
         assert_eq!(compressed.num_vars, 3);
         assert_eq!(compressed.offset, 0.5);
-        assert_eq!(compressed.linear_terms[&0], 1.0);
-        assert_eq!(compressed.linear_terms[&1], 2.0);
-        assert_eq!(compressed.linear_terms[&2], 3.0);
-        assert_eq!(compressed.quadratic_terms[&(0, 2)], -0.5);
+        assert_eq!(*compressed.linear_terms.get(0).unwrap_or(&0.0), 1.0);
+        assert_eq!(*compressed.linear_terms.get(1).unwrap_or(&0.0), 2.0);
+        assert_eq!(*compressed.linear_terms.get(2).unwrap_or(&0.0), 3.0);
+        assert_eq!(*compressed.quadratic_terms.get(0, 2).unwrap_or(&0.0), -0.5);
     }
 
     #[test]

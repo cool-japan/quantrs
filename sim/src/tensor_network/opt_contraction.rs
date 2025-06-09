@@ -27,6 +27,7 @@ pub enum ContractionOptMethod {
 }
 
 /// Advanced contraction path finder
+#[derive(Clone)]
 pub struct PathOptimizer {
     /// Maximum time to spend on optimization
     max_optimization_time: Duration,
@@ -197,7 +198,8 @@ impl PathOptimizer {
                 // Merge connections from t1 and t2
                 for id in &[t1, t2] {
                     if let Some(connections) = tensor_connections.get(id) {
-                        for &connected in connections {
+                        let connections_clone = connections.clone();
+                        for &connected in &connections_clone {
                             if connected != t1
                                 && connected != t2
                                 && remaining_tensors.contains(&connected)

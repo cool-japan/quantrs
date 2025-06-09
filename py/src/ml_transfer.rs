@@ -98,7 +98,7 @@ impl PyPretrainedModel {
         #[cfg(feature = "ml")]
         {
             if let Some(model) = &self.inner {
-                Ok(model.qnn.config().n_qubits)
+                Ok(model.qnn.num_qubits)
             } else {
                 Err(PyValueError::new_err("Model not initialized"))
             }
@@ -115,7 +115,7 @@ impl PyPretrainedModel {
         #[cfg(feature = "ml")]
         {
             if let Some(model) = &self.inner {
-                Ok(model.qnn.config().layers.len())
+                Ok(model.qnn.layers.len())
             } else {
                 Err(PyValueError::new_err("Model not initialized"))
             }
@@ -174,8 +174,9 @@ impl PyQuantumTransferLearning {
         #[cfg(feature = "ml")]
         {
             if let Some(qtl) = &mut self.inner {
-                qtl.adapt_for_task(n_outputs)
-                    .map_err(|e| PyValueError::new_err(format!("Adaptation failed: {}", e)))
+                // Note: adapt_for_task method not yet implemented in the Rust side
+                // This would need to be implemented in the QuantumTransferLearning struct
+                Err(PyValueError::new_err("adapt_for_task method not yet implemented"))
             } else {
                 Err(PyValueError::new_err("Transfer learning not initialized"))
             }
@@ -192,7 +193,8 @@ impl PyQuantumTransferLearning {
         #[cfg(feature = "ml")]
         {
             if let Some(qtl) = &self.inner {
-                Ok(qtl.trainable_parameters())
+                // Note: trainable_parameters method not yet implemented in the Rust side
+                Err(PyValueError::new_err("trainable_parameters method not yet implemented"))
             } else {
                 Err(PyValueError::new_err("Transfer learning not initialized"))
             }

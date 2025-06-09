@@ -393,11 +393,11 @@ impl QuantumFeatureSelector {
         
         // Discretize if continuous
         let n_bins = 10;
-        let feature_discrete = self.discretize_array(feature, n_bins);
-        let target_discrete = self.discretize_array(target, n_bins);
+        let feature_discrete = self.discretize_array(&feature.to_owned(), n_bins);
+        let target_discrete = self.discretize_array(&target.to_owned(), n_bins);
         
         // Compute joint and marginal probabilities
-        let mut joint_counts = Array2::zeros((n_bins, n_bins));
+        let mut joint_counts = Array2::<f64>::zeros((n_bins, n_bins));
         for (i, (f, t)) in feature_discrete.iter().zip(target_discrete.iter()).enumerate() {
             joint_counts[[*f, *t]] += 1.0;
         }
@@ -411,8 +411,8 @@ impl QuantumFeatureSelector {
         for i in 0..n_bins {
             for j in 0..n_bins {
                 if joint_probs[[i, j]] > 0.0 {
-                    mi += joint_probs[[i, j]] * (joint_probs[[i, j]] / 
-                        (feature_probs[i] * target_probs[j])).ln();
+                    let ratio: f64 = joint_probs[[i, j]] / (feature_probs[i] * target_probs[j]);
+                    mi += joint_probs[[i, j]] * ratio.ln();
                 }
             }
         }
@@ -577,11 +577,12 @@ impl QuantumFeatureSelector {
         // Combine filter and wrapper approaches
         
         // Filter component
-        let mut filter_qubo = Array2::zeros(qubo.shape());
+        let shape = qubo.shape();
+        let mut filter_qubo = Array2::zeros((shape[0], shape[1]));
         self.add_filter_objective(&mut filter_qubo, filter_metric, 0.0)?;
         
         // Wrapper component
-        let mut wrapper_qubo = Array2::zeros(qubo.shape());
+        let mut wrapper_qubo = Array2::zeros((shape[0], shape[1]));
         self.add_wrapper_objective(&mut wrapper_qubo, wrapper_model)?;
         
         // Combine with balance

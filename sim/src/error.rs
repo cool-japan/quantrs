@@ -57,6 +57,14 @@ pub enum SimulatorError {
     /// Core error
     #[error("Core error: {0}")]
     CoreError(#[from] QuantRS2Error),
+
+    /// Unsupported operation
+    #[error("Unsupported operation: {0}")]
+    UnsupportedOperation(String),
+
+    /// Linear algebra error
+    #[error("Linear algebra error: {0}")]
+    LinalgError(String),
 }
 
 /// Result type for simulator operations

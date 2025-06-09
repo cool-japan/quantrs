@@ -30,7 +30,7 @@ pub struct SolutionDebugger {
     visualizer: SolutionVisualizer,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DebuggerConfig {
     /// Enable detailed analysis
     pub detailed_analysis: bool,
@@ -48,7 +48,7 @@ pub struct DebuggerConfig {
     pub verbosity: VerbosityLevel,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum DebugOutputFormat {
     /// Console output
     Console,
@@ -60,7 +60,7 @@ pub enum DebugOutputFormat {
     Markdown,
 }
 
-#[derive(Debug, Clone, PartialEq, Ord, PartialOrd, Eq)]
+#[derive(Debug, Clone, PartialEq, Ord, PartialOrd, Eq, Serialize)]
 pub enum VerbosityLevel {
     /// Minimal output
     Minimal,
@@ -73,7 +73,7 @@ pub enum VerbosityLevel {
 }
 
 /// Problem information
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ProblemInfo {
     /// Problem name
     pub name: String,
@@ -95,7 +95,7 @@ pub struct ProblemInfo {
     pub metadata: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct Solution {
     /// Variable assignments
     pub assignments: HashMap<String, bool>,
@@ -107,7 +107,7 @@ pub struct Solution {
     pub solver: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ConstraintInfo {
     /// Constraint name
     pub name: String,
@@ -123,7 +123,7 @@ pub struct ConstraintInfo {
     pub is_hard: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum ConstraintType {
     /// Linear equality: sum(a_i * x_i) = b
     LinearEquality {
@@ -160,7 +160,7 @@ pub struct ConstraintAnalyzer {
     violation_cache: HashMap<String, Vec<ConstraintViolation>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ConstraintViolation {
     /// Constraint violated
     pub constraint: ConstraintInfo,
@@ -172,7 +172,7 @@ pub struct ConstraintViolation {
     pub suggested_fixes: Vec<SuggestedFix>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SuggestedFix {
     /// Fix description
     pub description: String,
@@ -184,7 +184,7 @@ pub struct SuggestedFix {
     pub complexity: FixComplexity,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum FixComplexity {
     /// Single variable flip
     Simple,
@@ -202,7 +202,7 @@ pub struct EnergyAnalyzer {
     analysis_depth: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct EnergyBreakdown {
     /// Total energy
     pub total_energy: f64,
@@ -220,7 +220,7 @@ pub struct EnergyBreakdown {
     pub energy_landscape: EnergyLandscape,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct EnergyLandscape {
     /// Local minima nearby
     pub local_minima: Vec<LocalMinimum>,
@@ -232,7 +232,7 @@ pub struct EnergyLandscape {
     pub ruggedness: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct LocalMinimum {
     /// Solution
     pub solution: HashMap<String, bool>,
@@ -244,7 +244,7 @@ pub struct LocalMinimum {
     pub escape_barrier: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct EnergyBarrier {
     /// From solution
     pub from: HashMap<String, bool>,
@@ -264,7 +264,7 @@ pub struct SolutionComparator {
     reference_solutions: Vec<Solution>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum ComparisonMetric {
     /// Hamming distance
     HammingDistance,
@@ -278,7 +278,7 @@ pub enum ComparisonMetric {
     Custom { name: String },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ComparisonResult {
     /// Solutions compared
     pub solution1: String,
@@ -291,7 +291,7 @@ pub struct ComparisonResult {
     pub similarity: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Difference {
     /// Variable name
     pub variable: String,
@@ -313,7 +313,7 @@ pub struct SolutionVisualizer {
     color_schemes: HashMap<String, ColorScheme>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct VisualizationOptions {
     /// Show variable values
     pub show_values: bool,
@@ -327,7 +327,7 @@ pub struct VisualizationOptions {
     pub layout: LayoutAlgorithm,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum LayoutAlgorithm {
     /// Grid layout
     Grid,
@@ -341,7 +341,7 @@ pub enum LayoutAlgorithm {
     Custom,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ColorScheme {
     /// Variable colors
     pub variable_colors: HashMap<bool, String>,
@@ -1350,7 +1350,7 @@ impl SolutionVisualizer {
 }
 
 /// Debug report
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct DebugReport {
     /// Solution being debugged
     pub solution: Solution,
@@ -1370,7 +1370,7 @@ pub struct DebugReport {
     pub summary: DebugSummary,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ConstraintAnalysis {
     pub total_constraints: usize,
     pub satisfied: usize,
@@ -1380,7 +1380,7 @@ pub struct ConstraintAnalysis {
     pub penalty_incurred: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct EnergyAnalysis {
     pub total_energy: f64,
     pub breakdown: EnergyBreakdown,
@@ -1389,7 +1389,7 @@ pub struct EnergyAnalysis {
     pub improvement_potential: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Issue {
     pub issue_type: IssueType,
     pub severity: IssueSeverity,
@@ -1398,7 +1398,7 @@ pub struct Issue {
     pub impact: IssueImpact,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum IssueType {
     ConstraintViolation,
     SuboptimalEnergy,
@@ -1407,21 +1407,21 @@ pub enum IssueType {
     SymmetryIssue,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum IssueSeverity {
     Critical,
     Warning,
     Info,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct IssueImpact {
     pub objective_impact: f64,
     pub feasibility_impact: bool,
     pub quality_impact: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Suggestion {
     pub suggestion_type: SuggestionType,
     pub title: String,
@@ -1431,7 +1431,7 @@ pub struct Suggestion {
     pub confidence: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum SuggestionType {
     ConstraintFix,
     EnergyOptimization,
@@ -1440,7 +1440,7 @@ pub enum SuggestionType {
     ProblemReformulation,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum Implementation {
     VariableChanges(HashMap<String, bool>),
     ParameterChange { parameter: String, current_value: f64, suggested_value: f64 },
@@ -1448,7 +1448,7 @@ pub enum Implementation {
     Custom(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Benefit {
     pub objective_improvement: f64,
     pub constraint_satisfaction: usize,
@@ -1480,7 +1480,7 @@ impl Default for SolutionQuality {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Visualization {
     pub viz_type: VisualizationType,
     pub title: String,
@@ -1488,7 +1488,7 @@ pub struct Visualization {
     pub options: VisualizationOptions,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum VisualizationType {
     Matrix,
     Graph,
@@ -1497,7 +1497,7 @@ pub enum VisualizationType {
     Timeline,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum VisualizationData {
     Matrix {
         values: Array2<f64>,
@@ -1514,7 +1514,7 @@ pub enum VisualizationData {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GraphNode {
     pub id: String,
     pub label: String,
@@ -1522,7 +1522,7 @@ pub struct GraphNode {
     pub color: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GraphEdge {
     pub from: String,
     pub to: String,
@@ -1549,7 +1549,7 @@ pub struct InteractiveDebugger {
 }
 
 /// Breakpoint types
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum Breakpoint {
     /// Break on constraint violation
     ConstraintViolation { constraint_name: String },
@@ -1562,7 +1562,7 @@ pub enum Breakpoint {
 }
 
 /// Session recorder for replay
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SessionRecorder {
     /// Commands executed
     commands: Vec<(String, std::time::SystemTime)>,
@@ -1572,7 +1572,7 @@ pub struct SessionRecorder {
     events: Vec<DebugEvent>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum DebugEvent {
     /// Solution loaded
     SolutionLoaded { solution_id: String },
