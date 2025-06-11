@@ -103,6 +103,9 @@ pub struct AnnealingParams {
     /// Initial temperature
     pub initial_temperature: f64,
 
+    /// Final temperature
+    pub final_temperature: f64,
+
     /// Temperature schedule
     pub temperature_schedule: TemperatureSchedule,
 
@@ -132,6 +135,7 @@ impl AnnealingParams {
             initial_transverse_field: 2.0,
             transverse_field_schedule: TransverseFieldSchedule::Linear,
             initial_temperature: 2.0,
+            final_temperature: 0.01,
             temperature_schedule: TemperatureSchedule::Exponential(3.0),
             num_sweeps: 1000,
             updates_per_sweep: None,
@@ -157,6 +161,14 @@ impl AnnealingParams {
             return Err(AnnealingError::InvalidParameter(format!(
                 "Initial temperature must be positive and finite, got {}",
                 self.initial_temperature
+            )));
+        }
+
+        // Check final temperature
+        if self.final_temperature <= 0.0 || !self.final_temperature.is_finite() {
+            return Err(AnnealingError::InvalidParameter(format!(
+                "Final temperature must be positive and finite, got {}",
+                self.final_temperature
             )));
         }
 

@@ -385,7 +385,7 @@ pub struct PassStats {
 }
 
 /// Result of circuit optimization
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct OptimizationResult<const N: usize> {
     pub optimized_circuit: Circuit<N>,
     pub initial_cost: f64,

@@ -12,11 +12,11 @@ description = "Examples for the QuantRS2 quantum computing framework"
 publish = false
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.3" }
-quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.3" }
-quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.3" }
-quantrs2-ml = { path = "../ml", version = "0.1.0-alpha.3", optional = true }
-quantrs2-device = { path = "../device", version = "0.1.0-alpha.3", features = [] }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.4" }
+quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.4" }
+quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.4" }
+quantrs2-ml = { path = "../ml", version = "0.1.0-alpha.4", optional = true }
+quantrs2-device = { path = "../device", version = "0.1.0-alpha.4", features = [] }
 # Tytan is intentionally not included directly
 # quantrs2-tytan = { path = "../tytan", optional = true }
 num-complex.workspace = true
@@ -55,7 +55,7 @@ default = []
 # Optional dependencies with features
 [dependencies.quantrs2-sim]
 path = "../sim"
-version = "0.1.0-alpha.3"
+version = "0.1.0-alpha.4"
 optional = true
 
 

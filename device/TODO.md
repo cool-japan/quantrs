@@ -16,6 +16,12 @@ This document outlines the development plans and future tasks for the QuantRS2-D
 - ✅ Device capability discovery
 - ✅ Circuit validation for hardware constraints
 - ✅ Result post-processing and error mitigation
+- ✅ Device-specific gate calibration data structures
+- ✅ Calibration-based noise modeling
+- ✅ Circuit optimization using calibration data
+- ✅ Gate translation for different hardware backends
+- ✅ Hardware-specific gate implementations
+- ✅ Backend capability querying
 
 ### In Progress
 
@@ -28,18 +34,15 @@ This document outlines the development plans and future tasks for the QuantRS2-D
 
 ### Near-term (v0.1.x)
 
-- [ ] Implement hardware topology analysis using SciRS2 graphs
-- [ ] Add qubit routing algorithms with SciRS2 optimization
-- [ ] Create pulse-level control interfaces for each provider
-- [ ] Implement zero-noise extrapolation with SciRS2 fitting
-- [ ] Add support for parametric circuit execution
+- [x] Implement hardware topology analysis using SciRS2 graphs ✅
+- [x] Add qubit routing algorithms with SciRS2 optimization ✅
+- [x] Create pulse-level control interfaces for each provider ✅
+- [x] Implement zero-noise extrapolation with SciRS2 fitting ✅
+- [x] Add support for parametric circuit execution ✅
 - [ ] Create hardware benchmarking suite with SciRS2 analysis
 - [ ] Implement cross-talk characterization and mitigation
 - [ ] Add support for mid-circuit measurements
 - [ ] Create job priority and scheduling optimization
-
-### Medium-term (v0.2.x)
-
 - [ ] Implement quantum process tomography with SciRS2
 - [ ] Add support for variational quantum algorithms
 - [ ] Create hardware-specific compiler passes

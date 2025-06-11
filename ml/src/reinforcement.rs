@@ -92,13 +92,13 @@ impl ReinforcementLearning {
         // In a real system, this would create a proper QNN
 
         let layers = vec![
-            crate::qnn::QNNLayer::EncodingLayer { num_features: 4 },
-            crate::qnn::QNNLayer::VariationalLayer { num_params: 16 },
-            crate::qnn::QNNLayer::EntanglementLayer {
+            crate::qnn::QNNLayerType::EncodingLayer { num_features: 4 },
+            crate::qnn::QNNLayerType::VariationalLayer { num_params: 16 },
+            crate::qnn::QNNLayerType::EntanglementLayer {
                 connectivity: "full".to_string(),
             },
-            crate::qnn::QNNLayer::VariationalLayer { num_params: 16 },
-            crate::qnn::QNNLayer::MeasurementLayer {
+            crate::qnn::QNNLayerType::VariationalLayer { num_params: 16 },
+            crate::qnn::QNNLayerType::MeasurementLayer {
                 measurement_basis: "computational".to_string(),
             },
         ];

@@ -7,13 +7,10 @@ use ndarray::{Array, ArrayD, Ix2};
 use rand::Rng;
 use std::collections::HashMap;
 
-#[cfg(feature = "scirs")]
-use scirs2_optimize::unconstrained::{minimize, MinimizeParams, MinimizeResult};
-
-#[cfg(feature = "scirs")]
-use scirs2_linalg::decomposition;
-
 use crate::sampler::SampleResult;
+
+#[cfg(feature = "scirs")]
+use crate::scirs_stub;
 
 /// Enhanced QUBO optimization using SciRS2 (when available)
 ///
@@ -26,9 +23,9 @@ pub fn optimize_qubo(
     initial_guess: Option<Vec<bool>>,
     max_iterations: usize,
 ) -> Vec<SampleResult> {
-    use scirs2_optimize::unconstrained::{MinimizeAlgorithm, MinimizeParams};
-
-    let n_vars = var_map.len();
+    // Use SciRS2 enhanced parallel sampling
+    let enhanced_matrix = scirs_stub::enhance_qubo_matrix(matrix);
+    let samples = scirs_stub::parallel_sample_qubo(&enhanced_matrix, max_iterations);
 
     // Map from indices back to variable names
     let idx_to_var: HashMap<usize, String> = var_map
@@ -36,77 +33,32 @@ pub fn optimize_qubo(
         .map(|(var, &idx)| (idx, var.clone()))
         .collect();
 
-    // Define the objective function
-    let objective = |x: &[f64]| {
-        // Convert continuous values to binary
-        let binary: Vec<bool> = x.iter().map(|&val| val > 0.5).collect();
+    // Convert to SampleResults
+    let mut results: Vec<SampleResult> = samples
+        .into_iter()
+        .map(|(solution, energy)| {
+            let assignments: HashMap<String, bool> = solution
+                .iter()
+                .enumerate()
+                .map(|(idx, &value)| {
+                    let var_name = idx_to_var.get(&idx).unwrap().clone();
+                    (var_name, value)
+                })
+                .collect();
 
-        // Calculate energy
-        let mut energy = 0.0;
-
-        // Linear terms
-        for i in 0..n_vars {
-            if binary[i] {
-                energy += matrix[[i, i]];
+            SampleResult {
+                assignments,
+                energy,
+                occurrences: 1,
             }
-        }
-
-        // Quadratic terms
-        for i in 0..n_vars {
-            if binary[i] {
-                for j in (i + 1)..n_vars {
-                    if binary[j] {
-                        energy += matrix[[i, j]];
-                    }
-                }
-            }
-        }
-
-        energy
-    };
-
-    // Create initial guess (either provided or random)
-    let x0: Vec<f64> = match initial_guess {
-        Some(guess) => guess.iter().map(|&b| if b { 1.0 } else { 0.0 }).collect(),
-        None => {
-            use rand::Rng;
-            let mut rng = rand::rng();
-            (0..n_vars)
-                .map(|_| if rng.random_bool(0.5) { 1.0 } else { 0.0 })
-                .collect()
-        }
-    };
-
-    // Configure optimization parameters
-    let mut params = MinimizeParams::new();
-    params.max_iterations = max_iterations;
-    params.algorithm = MinimizeAlgorithm::SimulatedAnnealing;
-    params.tolerance = 1e-6;
-
-    // Run the optimization
-    let result = minimize(objective, &x0, &params).unwrap();
-
-    // Convert to binary solution
-    let binary: Vec<bool> = result.x.iter().map(|&val| val > 0.5).collect();
-
-    // Convert to SampleResult
-    let assignments: HashMap<String, bool> = binary
-        .iter()
-        .enumerate()
-        .map(|(idx, &value)| {
-            let var_name = idx_to_var.get(&idx).unwrap().clone();
-            (var_name, value)
         })
         .collect();
 
-    // Create result
-    let sample_result = SampleResult {
-        assignments,
-        energy: result.f_min,
-        occurrences: 1,
-    };
+    // Sort by energy and return best solutions
+    results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+    results.truncate(10); // Return top 10 solutions
 
-    vec![sample_result]
+    results
 }
 
 /// Fallback QUBO optimization implementation
@@ -131,8 +83,8 @@ pub fn optimize_qubo(
         Some(guess) => guess,
         None => {
             use rand::Rng;
-            let mut rng = rand::rng();
-            (0..n_vars).map(|_| rng.random_bool(0.5)).collect()
+            let mut rng = rand::thread_rng();
+            (0..n_vars).map(|_| rng.gen_bool(0.5)).collect()
         }
     };
 
@@ -144,11 +96,11 @@ pub fn optimize_qubo(
     let cooling_rate = 0.99;
 
     // Simulated annealing loop
-    let mut rng = rand::rng();
+    let mut rng = rand::thread_rng();
 
     for _ in 0..max_iterations {
         // Generate a neighbor by flipping a random bit
-        let flip_idx = rng.random_range(0..n_vars);
+        let flip_idx = rng.gen_range(0..n_vars);
         solution[flip_idx] = !solution[flip_idx];
 
         // Calculate new energy
@@ -159,7 +111,7 @@ pub fn optimize_qubo(
             true
         } else {
             let p = ((energy - new_energy) / temperature).exp();
-            rng.random::<f64>() < p
+            rng.gen::<f64>() < p
         };
 
         if !accept {
@@ -195,6 +147,11 @@ pub fn optimize_qubo(
 
 /// Calculate the energy of a solution for a QUBO problem
 pub fn calculate_energy(solution: &[bool], matrix: &Array<f64, Ix2>) -> f64 {
+    calculate_energy_standard(solution, matrix)
+}
+
+/// Standard energy calculation without SciRS2
+fn calculate_energy_standard(solution: &[bool], matrix: &Array<f64, Ix2>) -> f64 {
     let n = solution.len();
     let mut energy = 0.0;
 
@@ -219,7 +176,7 @@ pub fn calculate_energy(solution: &[bool], matrix: &Array<f64, Ix2>) -> f64 {
     energy
 }
 
-/// Advanced HOBO tensor optimization using SciRS2 tensor methods
+/// Advanced HOBO tensor optimization using SciRS2
 #[cfg(feature = "scirs")]
 pub fn optimize_hobo(
     tensor: &ArrayD<f64>,
@@ -227,65 +184,34 @@ pub fn optimize_hobo(
     initial_guess: Option<Vec<bool>>,
     max_iterations: usize,
 ) -> Vec<SampleResult> {
-    use scirs2_linalg::tensor_contraction::{cp, tucker};
+    // Apply SciRS2 tensor optimizations (placeholder)
+    let _enhanced = scirs_stub::optimize_hobo_tensor(tensor);
 
-    let n_vars = var_map.len();
-    let dim = tensor.ndim();
-
-    // Map from indices back to variable names
-    let idx_to_var: HashMap<usize, String> = var_map
-        .iter()
-        .map(|(var, &idx)| (idx, var.clone()))
-        .collect();
-
-    // Decompose the tensor for efficient computation
-    let decomposed = if dim > 3 {
-        // For high-dimensional tensors, use CP decomposition
-        let rank = std::cmp::min(n_vars, 50); // Truncate to reasonable rank
-        let cp_tensors = cp::decompose(tensor, rank);
-
-        // Processing with CP tensors
-        // ...
-    } else {
-        // For lower dimensions, use Tucker decomposition
-        let ranks = vec![std::cmp::min(n_vars, 20); dim];
-        let tucker_decomp = tucker::decompose(tensor, &ranks);
-
-        // Processing with Tucker decomposition
-        // ...
-    };
-
-    // For now, fall back to basic implementation
-    // (Actual implementation would use tensor methods)
-
-    // Convert to SampleResult placeholder
-    let assignments: HashMap<String, bool> = var_map
-        .iter()
-        .map(|(name, _)| (name.clone(), false))
-        .collect();
-
-    // Create result
-    let sample_result = SampleResult {
-        assignments,
-        energy: 0.0,
-        occurrences: 1,
-    };
-
-    vec![sample_result]
+    // For now, return a simple result
+    // In a full implementation, this would use tensor decomposition
+    optimize_hobo_basic(tensor, var_map, initial_guess, max_iterations)
 }
 
 /// Basic HOBO optimization for when SciRS2 is not available
 #[cfg(not(feature = "scirs"))]
 pub fn optimize_hobo(
+    tensor: &ArrayD<f64>,
+    var_map: &HashMap<String, usize>,
+    initial_guess: Option<Vec<bool>>,
+    max_iterations: usize,
+) -> Vec<SampleResult> {
+    optimize_hobo_basic(tensor, var_map, initial_guess, max_iterations)
+}
+
+/// Basic HOBO optimization implementation
+fn optimize_hobo_basic(
     _tensor: &ArrayD<f64>,
     var_map: &HashMap<String, usize>,
     _initial_guess: Option<Vec<bool>>,
     _max_iterations: usize,
 ) -> Vec<SampleResult> {
-    // For now, implement a simple fallback that only works for 3rd order
-    // For higher orders, you'd need a more general implementation
-
-    // (Implementation would go here)
+    // For now, implement a simple fallback
+    // In a full implementation, this would handle arbitrary tensor orders
 
     // Return placeholder
     let assignments: HashMap<String, bool> = var_map
@@ -293,12 +219,9 @@ pub fn optimize_hobo(
         .map(|(name, _)| (name.clone(), false))
         .collect();
 
-    // Create result
-    let sample_result = SampleResult {
+    vec![SampleResult {
         assignments,
         energy: 0.0,
         occurrences: 1,
-    };
-
-    vec![sample_result]
+    }]
 }

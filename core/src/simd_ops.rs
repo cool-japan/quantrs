@@ -18,7 +18,7 @@ pub fn apply_phase_simd(amplitudes: &mut [Complex64], theta: f64) {
     {
         // Process in SIMD chunks when available
         let mut chunks = amplitudes.chunks_exact_mut(4);
-        
+
         // Process SIMD chunks
         for chunk in &mut chunks {
             // Simulate SIMD operation on 4 complex numbers at once
@@ -26,14 +26,14 @@ pub fn apply_phase_simd(amplitudes: &mut [Complex64], theta: f64) {
                 *amp *= phase_factor;
             }
         }
-        
+
         // Process remainder
         let remainder = chunks.into_remainder();
         for amp in remainder {
             *amp *= phase_factor;
         }
     }
-    
+
     #[cfg(not(feature = "simd"))]
     {
         // Fallback to scalar implementation
@@ -56,13 +56,13 @@ pub fn inner_product(state1: &[Complex64], state2: &[Complex64]) -> QuantRS2Resu
     #[cfg(feature = "simd")]
     {
         let mut result = Complex64::new(0.0, 0.0);
-        
+
         // Process in SIMD chunks
         let chunks1 = state1.chunks_exact(4);
         let chunks2 = state2.chunks_exact(4);
         let remainder1 = chunks1.remainder();
         let remainder2 = chunks2.remainder();
-        
+
         // Process SIMD chunks
         for (chunk1, chunk2) in chunks1.zip(chunks2) {
             // Simulate SIMD operation on 4 complex numbers at once
@@ -70,15 +70,15 @@ pub fn inner_product(state1: &[Complex64], state2: &[Complex64]) -> QuantRS2Resu
                 result += a.conj() * b;
             }
         }
-        
+
         // Process remainder
         for (a, b) in remainder1.iter().zip(remainder2.iter()) {
             result += a.conj() * b;
         }
-        
+
         Ok(result)
     }
-    
+
     #[cfg(not(feature = "simd"))]
     {
         // Fallback to scalar implementation
@@ -101,11 +101,11 @@ pub fn normalize_simd(amplitudes: &mut [Complex64]) -> QuantRS2Result<()> {
         {
             // Compute norm squared using SIMD
             let mut norm_sqr = 0.0;
-            
+
             // Process in SIMD chunks
             let chunks = amplitudes.chunks_exact(4);
             let remainder = chunks.remainder();
-            
+
             // Process SIMD chunks
             for chunk in chunks {
                 // Simulate SIMD operation on 4 complex numbers at once
@@ -113,15 +113,15 @@ pub fn normalize_simd(amplitudes: &mut [Complex64]) -> QuantRS2Result<()> {
                     norm_sqr += amp.norm_sqr();
                 }
             }
-            
+
             // Process remainder
             for amp in remainder {
                 norm_sqr += amp.norm_sqr();
             }
-            
+
             norm_sqr
         }
-        
+
         #[cfg(not(feature = "simd"))]
         {
             amplitudes.iter().map(|c| c.norm_sqr()).sum()
@@ -141,21 +141,21 @@ pub fn normalize_simd(amplitudes: &mut [Complex64]) -> QuantRS2Result<()> {
     {
         // Process in SIMD chunks
         let mut chunks = amplitudes.chunks_exact_mut(4);
-        
+
         // Process SIMD chunks
         for chunk in &mut chunks {
             for amp in chunk {
                 *amp /= norm;
             }
         }
-        
+
         // Process remainder
         let remainder = chunks.into_remainder();
         for amp in remainder {
             *amp /= norm;
         }
     }
-    
+
     #[cfg(not(feature = "simd"))]
     {
         for amp in amplitudes.iter_mut() {
@@ -172,7 +172,7 @@ pub fn normalize_simd(amplitudes: &mut [Complex64]) -> QuantRS2Result<()> {
 pub fn expectation_z_simd(amplitudes: &[Complex64], qubit: usize, num_qubits: usize) -> f64 {
     let qubit_mask = 1 << qubit;
     let mut expectation = 0.0;
-    
+
     #[cfg(feature = "simd")]
     {
         // Process in SIMD chunks
@@ -181,7 +181,7 @@ pub fn expectation_z_simd(amplitudes: &[Complex64], qubit: usize, num_qubits: us
             expectation += sign * amp.norm_sqr();
         }
     }
-    
+
     #[cfg(not(feature = "simd"))]
     {
         for (i, amp) in amplitudes.iter().enumerate() {
@@ -189,7 +189,7 @@ pub fn expectation_z_simd(amplitudes: &[Complex64], qubit: usize, num_qubits: us
             expectation += sign * amp.norm_sqr();
         }
     }
-    
+
     expectation
 }
 
@@ -199,34 +199,34 @@ pub fn expectation_z_simd(amplitudes: &[Complex64], qubit: usize, num_qubits: us
 pub fn hadamard_simd(amplitudes: &mut [Complex64], qubit: usize, num_qubits: usize) {
     let qubit_mask = 1 << qubit;
     let sqrt2_inv = 1.0 / 2.0_f64.sqrt();
-    
+
     #[cfg(feature = "simd")]
     {
         // Process pairs of amplitudes that differ only in the target qubit
         for i in 0..(amplitudes.len() / 2) {
             let idx0 = (i & !(qubit_mask >> 1)) | ((i & (qubit_mask >> 1)) << 1);
             let idx1 = idx0 | qubit_mask;
-            
+
             if idx1 < amplitudes.len() {
                 let a0 = amplitudes[idx0];
                 let a1 = amplitudes[idx1];
-                
+
                 amplitudes[idx0] = (a0 + a1) * sqrt2_inv;
                 amplitudes[idx1] = (a0 - a1) * sqrt2_inv;
             }
         }
     }
-    
+
     #[cfg(not(feature = "simd"))]
     {
         for i in 0..(amplitudes.len() / 2) {
             let idx0 = (i & !(qubit_mask >> 1)) | ((i & (qubit_mask >> 1)) << 1);
             let idx1 = idx0 | qubit_mask;
-            
+
             if idx1 < amplitudes.len() {
                 let a0 = amplitudes[idx0];
                 let a1 = amplitudes[idx1];
-                
+
                 amplitudes[idx0] = (a0 + a1) * sqrt2_inv;
                 amplitudes[idx1] = (a0 - a1) * sqrt2_inv;
             }
@@ -264,7 +264,6 @@ pub fn controlled_phase_simd(
 
     Ok(())
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -315,35 +314,32 @@ mod tests {
         let exp_plus = expectation_z_simd(&state_plus, 0, 1);
         assert!(exp_plus.abs() < 1e-10);
     }
-    
+
     #[test]
     fn test_hadamard_simd() {
         // Test Hadamard gate on |0⟩ state to create |+⟩
         let mut state = vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
         hadamard_simd(&mut state, 0, 1);
-        
+
         let sqrt2_inv = 1.0 / 2.0_f64.sqrt();
         assert!((state[0].re - sqrt2_inv).abs() < 1e-10);
         assert!((state[1].re - sqrt2_inv).abs() < 1e-10);
         assert!(state[0].im.abs() < 1e-10);
         assert!(state[1].im.abs() < 1e-10);
-        
+
         // Apply Hadamard again to get back to |0⟩
         hadamard_simd(&mut state, 0, 1);
         assert!((state[0].re - 1.0).abs() < 1e-10);
         assert!(state[1].re.abs() < 1e-10);
     }
-    
+
     #[test]
     fn test_phase_simd() {
-        let mut state = vec![
-            Complex64::new(0.5, 0.5),
-            Complex64::new(0.5, -0.5),
-        ];
-        
+        let mut state = vec![Complex64::new(0.5, 0.5), Complex64::new(0.5, -0.5)];
+
         let theta = std::f64::consts::PI / 4.0;
         apply_phase_simd(&mut state, theta);
-        
+
         // Check that magnitudes are preserved
         let norm_before = 0.5_f64.powi(2) + 0.5_f64.powi(2);
         let norm_after = state[0].norm_sqr();

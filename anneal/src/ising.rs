@@ -6,6 +6,88 @@
 use std::collections::HashMap;
 use thiserror::Error;
 
+/// Simple sparse vector implementation
+#[derive(Debug, Clone)]
+pub struct SparseVector<T> {
+    data: HashMap<usize, T>,
+    size: usize,
+}
+
+impl<T: Clone + Default + PartialEq> SparseVector<T> {
+    pub fn new(size: usize) -> Self {
+        Self {
+            data: HashMap::new(),
+            size,
+        }
+    }
+
+    pub fn get(&self, index: usize) -> Option<&T> {
+        self.data.get(&index)
+    }
+
+    pub fn set(&mut self, index: usize, value: T) {
+        if index < self.size {
+            if value == T::default() {
+                self.data.remove(&index);
+            } else {
+                self.data.insert(index, value);
+            }
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (usize, &T)> + '_ {
+        self.data.iter().map(|(&k, v)| (k, v))
+    }
+
+    pub fn remove(&mut self, index: usize) -> Option<T> {
+        self.data.remove(&index)
+    }
+
+    pub fn nnz(&self) -> usize {
+        self.data.len()
+    }
+}
+
+/// Simple COO sparse matrix implementation
+#[derive(Debug, Clone)]
+pub struct CooMatrix<T> {
+    data: HashMap<(usize, usize), T>,
+    rows: usize,
+    cols: usize,
+}
+
+impl<T: Clone + Default + PartialEq> CooMatrix<T> {
+    pub fn new(rows: usize, cols: usize) -> Self {
+        Self {
+            data: HashMap::new(),
+            rows,
+            cols,
+        }
+    }
+
+    pub fn get(&self, row: usize, col: usize) -> Option<&T> {
+        self.data.get(&(row, col))
+    }
+
+    pub fn set(&mut self, row: usize, col: usize, value: T) {
+        if row < self.rows && col < self.cols {
+            if value == T::default() {
+                self.data.remove(&(row, col));
+            } else {
+                self.data.insert((row, col), value);
+            }
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (usize, usize, &T)> + '_ {
+        self.data.iter().map(|(&(i, j), v)| (i, j, v))
+    }
+
+    pub fn nnz(&self) -> usize {
+        self.data.len()
+    }
+}
+
 /// Errors that can occur when working with Ising models
 #[derive(Error, Debug)]
 pub enum IsingError {
@@ -86,11 +168,11 @@ pub struct IsingModel {
     /// Number of qubits/spins in the model
     pub num_qubits: usize,
 
-    /// Local fields (h_i) for each qubit
-    biases: HashMap<usize, f64>,
+    /// Local fields (h_i) for each qubit as sparse vector
+    biases: SparseVector<f64>,
 
-    /// Coupling strengths (J_ij) between qubits
-    couplings: HashMap<(usize, usize), f64>,
+    /// Coupling strengths (J_ij) between qubits as COO sparse matrix
+    couplings: CooMatrix<f64>,
 }
 
 impl IsingModel {
@@ -98,8 +180,8 @@ impl IsingModel {
     pub fn new(num_qubits: usize) -> Self {
         Self {
             num_qubits,
-            biases: HashMap::new(),
-            couplings: HashMap::new(),
+            biases: SparseVector::new(num_qubits),
+            couplings: CooMatrix::new(num_qubits, num_qubits),
         }
     }
 
@@ -116,7 +198,7 @@ impl IsingModel {
             )));
         }
 
-        self.biases.insert(qubit, bias);
+        self.biases.set(qubit, bias);
         Ok(())
     }
 
@@ -126,7 +208,7 @@ impl IsingModel {
             return Err(IsingError::InvalidQubit(qubit));
         }
 
-        Ok(*self.biases.get(&qubit).unwrap_or(&0.0))
+        Ok(*self.biases.get(qubit).unwrap_or(&0.0))
     }
 
     /// Set the coupling strength (J_ij) between two qubits
@@ -148,7 +230,7 @@ impl IsingModel {
 
         // Always store with i < j for consistency
         let (i, j) = if i < j { (i, j) } else { (j, i) };
-        self.couplings.insert((i, j), strength);
+        self.couplings.set(i, j, strength);
         Ok(())
     }
 
@@ -164,14 +246,14 @@ impl IsingModel {
 
         // Always retrieve with i < j for consistency
         let (i, j) = if i < j { (i, j) } else { (j, i) };
-        Ok(*self.couplings.get(&(i, j)).unwrap_or(&0.0))
+        Ok(*self.couplings.get(i, j).unwrap_or(&0.0))
     }
 
     /// Get all non-zero biases
     pub fn biases(&self) -> Vec<(usize, f64)> {
         self.biases
             .iter()
-            .map(|(&qubit, &bias)| (qubit, bias))
+            .map(|(qubit, bias)| (qubit, *bias))
             .collect()
     }
 
@@ -179,7 +261,11 @@ impl IsingModel {
     pub fn couplings(&self) -> Vec<Coupling> {
         self.couplings
             .iter()
-            .map(|(&(i, j), &strength)| Coupling { i, j, strength })
+            .map(|(i, j, strength)| Coupling {
+                i,
+                j,
+                strength: *strength,
+            })
             .collect()
     }
 
@@ -212,14 +298,14 @@ impl IsingModel {
         let bias_energy: f64 = self
             .biases
             .iter()
-            .map(|(&qubit, &bias)| bias * (spins[qubit] as f64))
+            .map(|(qubit, bias)| *bias * (spins[qubit] as f64))
             .sum();
 
         // Calculate energy from couplings
         let coupling_energy: f64 = self
             .couplings
             .iter()
-            .map(|(&(i, j), &strength)| strength * (spins[i] as f64) * (spins[j] as f64))
+            .map(|(i, j, strength)| *strength * (spins[i] as f64) * (spins[j] as f64))
             .sum();
 
         Ok(bias_energy + coupling_energy)
@@ -239,32 +325,38 @@ impl IsingModel {
         let mut linear_terms = HashMap::new();
 
         // First, convert all couplings to quadratic terms
-        for (&(i, j), &coupling) in &self.couplings {
+        for (i, j, coupling) in self.couplings.iter() {
             // The conversion formula is Q_ij = 4*J_ij
-            let quadratic_term = 4.0 * coupling;
+            let quadratic_term = 4.0 * *coupling;
             let _ = qubo.set_quadratic(i, j, quadratic_term);
 
             // Adjust the linear terms for qubits i and j based on the coupling
-            *linear_terms.entry(i).or_insert(0.0) -= 2.0 * coupling;
-            *linear_terms.entry(j).or_insert(0.0) -= 2.0 * coupling;
+            *linear_terms.entry(i).or_insert(0.0) -= 2.0 * *coupling;
+            *linear_terms.entry(j).or_insert(0.0) -= 2.0 * *coupling;
         }
 
         // Then, convert biases to linear terms and merge with coupling-based adjustments
-        for (&i, &bias) in &self.biases {
+        for (i, bias) in self.biases.iter() {
             let linear_adj = *linear_terms.get(&i).unwrap_or(&0.0);
-            let linear_term = 2.0 * bias + linear_adj;
+            let linear_term = 2.0 * *bias + linear_adj;
             let _ = qubo.set_linear(i, linear_term);
         }
 
         // For qubits that have coupling-related adjustments but no explicit bias
         for (i, adj) in linear_terms {
-            if !self.biases.contains_key(&i) {
+            let has_bias = self.biases.get(i).unwrap_or(&0.0).abs() > 1e-10;
+            if !has_bias {
                 let _ = qubo.set_linear(i, adj);
             }
         }
 
         // Set constant offset
-        qubo.offset = -self.couplings.values().sum::<f64>();
+        let coupling_sum: f64 = self
+            .couplings
+            .iter()
+            .map(|(_, _, strength)| *strength)
+            .sum();
+        qubo.offset = -coupling_sum;
 
         qubo
     }
@@ -275,17 +367,17 @@ impl IsingModel {
         let mut ising = IsingModel::new(qubo.num_variables);
 
         // Convert QUBO linear terms to Ising biases
-        for (&i, &linear) in &qubo.linear_terms {
+        for (i, linear) in qubo.linear_terms.iter() {
             // The conversion formula is h_i = Q_ii/2
-            let bias = linear / 2.0;
+            let bias = *linear / 2.0;
             // Let IsingModel handle the error (which shouldn't occur since the QUBO model is valid)
             let _ = ising.set_bias(i, bias);
         }
 
         // Convert QUBO quadratic terms to Ising couplings
-        for (&(i, j), &quadratic) in &qubo.quadratic_terms {
+        for (i, j, quadratic) in qubo.quadratic_terms.iter() {
             // The conversion formula is J_ij = Q_ij/4
-            let coupling = quadratic / 4.0;
+            let coupling = *quadratic / 4.0;
             // Let IsingModel handle the error (which shouldn't occur since the QUBO model is valid)
             let _ = ising.set_coupling(i, j, coupling);
         }
@@ -312,11 +404,11 @@ pub struct QuboModel {
     /// Number of binary variables in the model
     pub num_variables: usize,
 
-    /// Linear terms (Q_ii for each variable)
-    linear_terms: HashMap<usize, f64>,
+    /// Linear terms (Q_ii for each variable) as sparse vector
+    linear_terms: SparseVector<f64>,
 
-    /// Quadratic terms (Q_ij for each variable pair)
-    quadratic_terms: HashMap<(usize, usize), f64>,
+    /// Quadratic terms (Q_ij for each variable pair) as COO sparse matrix
+    quadratic_terms: CooMatrix<f64>,
 
     /// Constant offset term
     pub offset: f64,
@@ -327,8 +419,8 @@ impl QuboModel {
     pub fn new(num_variables: usize) -> Self {
         Self {
             num_variables,
-            linear_terms: HashMap::new(),
-            quadratic_terms: HashMap::new(),
+            linear_terms: SparseVector::new(num_variables),
+            quadratic_terms: CooMatrix::new(num_variables, num_variables),
             offset: 0.0,
         }
     }
@@ -346,7 +438,7 @@ impl QuboModel {
             )));
         }
 
-        self.linear_terms.insert(var, value);
+        self.linear_terms.set(var, value);
         Ok(())
     }
 
@@ -356,7 +448,7 @@ impl QuboModel {
             return Err(IsingError::InvalidQubit(var));
         }
 
-        Ok(*self.linear_terms.get(&var).unwrap_or(&0.0))
+        Ok(*self.linear_terms.get(var).unwrap_or(&0.0))
     }
 
     /// Set the quadratic coefficient (Q_ij) for a pair of variables
@@ -382,7 +474,7 @@ impl QuboModel {
         } else {
             (var2, var1)
         };
-        self.quadratic_terms.insert((var1, var2), value);
+        self.quadratic_terms.set(var1, var2, value);
         Ok(())
     }
 
@@ -402,14 +494,14 @@ impl QuboModel {
         } else {
             (var2, var1)
         };
-        Ok(*self.quadratic_terms.get(&(var1, var2)).unwrap_or(&0.0))
+        Ok(*self.quadratic_terms.get(var1, var2).unwrap_or(&0.0))
     }
 
     /// Get all non-zero linear terms
     pub fn linear_terms(&self) -> Vec<(usize, f64)> {
         self.linear_terms
             .iter()
-            .map(|(&var, &value)| (var, value))
+            .map(|(var, value)| (var, *value))
             .collect()
     }
 
@@ -417,7 +509,7 @@ impl QuboModel {
     pub fn quadratic_terms(&self) -> Vec<(usize, usize, f64)> {
         self.quadratic_terms
             .iter()
-            .map(|(&(var1, var2), &value)| (var1, var2, value))
+            .map(|(var1, var2, value)| (var1, var2, *value))
             .collect()
     }
 
@@ -440,16 +532,16 @@ impl QuboModel {
         let linear_value: f64 = self
             .linear_terms
             .iter()
-            .map(|(&var, &value)| if binary_vars[var] { value } else { 0.0 })
+            .map(|(var, value)| if binary_vars[var] { *value } else { 0.0 })
             .sum();
 
         // Calculate from quadratic terms
         let quadratic_value: f64 = self
             .quadratic_terms
             .iter()
-            .map(|(&(var1, var2), &value)| {
+            .map(|(var1, var2, value)| {
                 if binary_vars[var1] && binary_vars[var2] {
-                    value
+                    *value
                 } else {
                     0.0
                 }
@@ -473,9 +565,9 @@ impl QuboModel {
         let mut offset_change = 0.0;
 
         // Convert quadratic terms to Ising couplings
-        for (&(i, j), &quadratic) in &self.quadratic_terms {
+        for (i, j, quadratic) in self.quadratic_terms.iter() {
             // The conversion formula is J_ij = Q_ij/4
-            let coupling = quadratic / 4.0;
+            let coupling = *quadratic / 4.0;
             offset_change += coupling;
             // Let IsingModel handle the error (which shouldn't occur since the QUBO model is valid)
             let _ = ising.set_coupling(i, j, coupling);
@@ -510,6 +602,11 @@ impl QuboModel {
         let total_offset = self.offset + offset_change;
 
         (ising, total_offset)
+    }
+
+    /// Convert to QUBO model (returns self since this is already a QUBO model)
+    pub fn to_qubo_model(&self) -> QuboModel {
+        self.clone()
     }
 }
 

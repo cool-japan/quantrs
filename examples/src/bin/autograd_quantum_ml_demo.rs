@@ -35,11 +35,15 @@ impl QuantumLayer {
         // Apply parameterized single-qubit rotations
         for i in 0..self.num_qubits {
             if param_idx < self.params.len() {
-                circuit.ry(i, self.params[param_idx]).map_err(|e| e.to_string())?;
+                circuit
+                    .ry(i, self.params[param_idx])
+                    .map_err(|e| e.to_string())?;
                 param_idx += 1;
             }
             if param_idx < self.params.len() {
-                circuit.rz(i, self.params[param_idx]).map_err(|e| e.to_string())?;
+                circuit
+                    .rz(i, self.params[param_idx])
+                    .map_err(|e| e.to_string())?;
                 param_idx += 1;
             }
         }
@@ -52,7 +56,9 @@ impl QuantumLayer {
         // Additional parameterized rotations
         for i in 0..self.num_qubits {
             if param_idx < self.params.len() {
-                circuit.ry(i, self.params[param_idx]).map_err(|e| e.to_string())?;
+                circuit
+                    .ry(i, self.params[param_idx])
+                    .map_err(|e| e.to_string())?;
                 param_idx += 1;
             }
         }
@@ -131,20 +137,21 @@ fn hybrid_optimization_demo() {
     // Cost function that simulates quantum circuit execution
     let cost_fn = |params: &[f64]| -> f64 {
         let mut circuit = Circuit::<NUM_QUBITS>::new();
-        
+
         // Apply parameterized gates
         for i in 0..NUM_QUBITS {
             let _ = circuit.ry(i, params[i * 2]);
             let _ = circuit.rz(i, params[i * 2 + 1]);
         }
-        
+
         // In practice, we would simulate the circuit and compute expectation value
         // For demo, use a simple function
-        let expectation = params.iter()
+        let expectation = params
+            .iter()
             .enumerate()
             .map(|(i, &p)| (p - PI / 4.0 * (i as f64 + 1.0)).powi(2))
             .sum::<f64>();
-        
+
         expectation
     };
 
@@ -152,17 +159,17 @@ fn hybrid_optimization_demo() {
     let compute_gradient = |params: &[f64]| -> Vec<f64> {
         let mut grad = vec![0.0; params.len()];
         let epsilon = PI / 2.0;
-        
+
         for i in 0..params.len() {
             let mut params_plus = params.to_vec();
             let mut params_minus = params.to_vec();
-            
+
             params_plus[i] += epsilon;
             params_minus[i] -= epsilon;
-            
+
             grad[i] = (cost_fn(&params_plus) - cost_fn(&params_minus)) / (2.0 * epsilon);
         }
-        
+
         grad
     };
 
@@ -172,12 +179,12 @@ fn hybrid_optimization_demo() {
 
     for iter in 0..20 {
         let grad = compute_gradient(&params);
-        
+
         // Update parameters
         for i in 0..params.len() {
             params[i] -= learning_rate * grad[i];
         }
-        
+
         if iter % 5 == 0 {
             println!("Iteration {}: cost = {:.4}", iter, cost_fn(&params));
         }
@@ -185,8 +192,12 @@ fn hybrid_optimization_demo() {
 
     println!("\nOptimized parameters:");
     for (i, &p) in params.iter().enumerate() {
-        println!("  θ[{}] = {:.4} (target: {:.4})", 
-                 i, p, PI / 4.0 * (i as f64 + 1.0));
+        println!(
+            "  θ[{}] = {:.4} (target: {:.4})",
+            i,
+            p,
+            PI / 4.0 * (i as f64 + 1.0)
+        );
     }
 }
 
@@ -196,14 +207,14 @@ fn quantum_kernel_gradients() {
 
     // Quantum feature map parameters
     let mut feature_params = vec![0.1, 0.2, 0.3];
-    
+
     // Kernel function (simplified)
     let kernel_fn = |params: &[f64], x1: f64, x2: f64| -> f64 {
         // In practice, this would involve quantum circuit simulation
         let phi1 = params[0] * x1 + params[1] * x1.powi(2);
         let phi2 = params[0] * x2 + params[1] * x2.powi(2);
         let scale = params[2];
-        
+
         scale * (phi1 - phi2).cos()
     };
 
@@ -214,7 +225,7 @@ fn quantum_kernel_gradients() {
     // Loss function for kernel alignment
     let loss_fn = |params: &[f64]| -> f64 {
         let mut loss = 0.0;
-        
+
         for i in 0..x_train.len() {
             for j in 0..x_train.len() {
                 let k_ij = kernel_fn(params, x_train[i], x_train[j]);
@@ -222,7 +233,7 @@ fn quantum_kernel_gradients() {
                 loss += (k_ij - target).powi(2);
             }
         }
-        
+
         loss / (x_train.len() * x_train.len()) as f64
     };
 
@@ -233,10 +244,10 @@ fn quantum_kernel_gradients() {
     for i in 0..feature_params.len() {
         let mut params_plus = feature_params.clone();
         let mut params_minus = feature_params.clone();
-        
+
         params_plus[i] += epsilon;
         params_minus[i] -= epsilon;
-        
+
         gradients[i] = (loss_fn(&params_plus) - loss_fn(&params_minus)) / (2.0 * epsilon);
     }
 
@@ -250,10 +261,10 @@ fn quantum_kernel_gradients() {
         for i in 0..feature_params.len() {
             let mut params_plus = feature_params.clone();
             let mut params_minus = feature_params.clone();
-            
+
             params_plus[i] += epsilon;
             params_minus[i] -= epsilon;
-            
+
             let grad = (loss_fn(&params_plus) - loss_fn(&params_minus)) / (2.0 * epsilon);
             feature_params[i] -= learning_rate * grad;
         }
@@ -267,7 +278,7 @@ fn main() {
     quantum_autograd_example();
     hybrid_optimization_demo();
     quantum_kernel_gradients();
-    
+
     println!("\n=== Summary ===");
     println!("Demonstrated automatic differentiation concepts for:");
     println!("- Quantum neural network training");

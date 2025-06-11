@@ -15,6 +15,8 @@ pub enum FeatureMapType {
     ZFeatureMap,
     /// Pauli-ZZ feature map: exp(i·φ(x)·ZZ)
     ZZFeatureMap,
+    /// Pauli feature map (general)
+    PauliFeatureMap,
     /// Custom angle encoding
     AngleEncoding,
     /// Amplitude encoding
@@ -28,10 +30,18 @@ pub struct QSVMParams {
     pub feature_map: FeatureMapType,
     /// Number of repetitions of the feature map circuit
     pub reps: usize,
-    /// Regularization parameter
+    /// Regularization parameter (also accessible as c_parameter for compatibility)
     pub c: f64,
     /// Tolerance for convergence
     pub tolerance: f64,
+    /// Number of qubits
+    pub num_qubits: usize,
+    /// Circuit depth
+    pub depth: usize,
+    /// Gamma parameter for RBF-like kernels
+    pub gamma: Option<f64>,
+    /// Regularization parameter (alias for c)
+    pub regularization: f64,
     /// Maximum iterations for optimization
     pub max_iterations: usize,
     /// Random seed for reproducibility
@@ -45,9 +55,26 @@ impl Default for QSVMParams {
             reps: 2,
             c: 1.0,
             tolerance: 1e-3,
+            num_qubits: 4,
+            depth: 2,
+            gamma: None,
+            regularization: 1.0,
             max_iterations: 1000,
             seed: None,
         }
+    }
+}
+
+impl QSVMParams {
+    /// Get c_parameter (alias for c)
+    pub fn c_parameter(&self) -> f64 {
+        self.c
+    }
+
+    /// Set c_parameter (updates both c and regularization)
+    pub fn set_c_parameter(&mut self, value: f64) {
+        self.c = value;
+        self.regularization = value;
     }
 }
 
@@ -68,6 +95,7 @@ impl QuantumKernel {
         match self.feature_map {
             FeatureMapType::ZFeatureMap => self.z_feature_map_kernel(x1, x2),
             FeatureMapType::ZZFeatureMap => self.zz_feature_map_kernel(x1, x2),
+            FeatureMapType::PauliFeatureMap => self.zz_feature_map_kernel(x1, x2), // Use ZZ as fallback
             FeatureMapType::AngleEncoding => self.angle_encoding_kernel(x1, x2),
             FeatureMapType::AmplitudeEncoding => self.amplitude_encoding_kernel(x1, x2),
         }

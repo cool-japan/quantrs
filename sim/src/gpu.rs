@@ -11,6 +11,7 @@ use quantrs2_circuit::builder::Simulator as CircuitSimulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::prelude::QubitId;
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
@@ -40,6 +41,195 @@ pub enum GateType {
 /// The alignment used for buffers
 const BUFFER_ALIGNMENT: u64 = 256;
 
+/// GPU buffer pool for efficient memory management
+#[derive(Debug)]
+pub struct GpuBufferPool {
+    /// Device reference for creating buffers
+    device: Arc<wgpu::Device>,
+    /// Queue reference for updating buffers
+    queue: Arc<wgpu::Queue>,
+    /// Pool of reusable state vector buffers by size
+    state_buffers: HashMap<u64, Vec<wgpu::Buffer>>,
+    /// Pool of reusable result buffers by size
+    result_buffers: HashMap<u64, Vec<wgpu::Buffer>>,
+    /// Pool of reusable uniform buffers by size
+    uniform_buffers: HashMap<u64, Vec<wgpu::Buffer>>,
+    /// Maximum number of buffers to keep per size
+    max_buffers_per_size: usize,
+    /// Current buffer generation (for invalidation)
+    generation: u64,
+}
+
+impl GpuBufferPool {
+    /// Create a new GPU buffer pool
+    pub fn new(device: Arc<wgpu::Device>, queue: Arc<wgpu::Queue>) -> Self {
+        Self {
+            device,
+            queue,
+            state_buffers: HashMap::new(),
+            result_buffers: HashMap::new(),
+            uniform_buffers: HashMap::new(),
+            max_buffers_per_size: 4, // Keep max 4 buffers per size
+            generation: 0,
+        }
+    }
+
+    /// Get or create a state vector buffer
+    pub fn get_state_buffer(&mut self, size: u64) -> wgpu::Buffer {
+        let aligned_size = Self::align_buffer_size(size);
+
+        if let Some(buffers) = self.state_buffers.get_mut(&aligned_size) {
+            if let Some(buffer) = buffers.pop() {
+                return buffer;
+            }
+        }
+
+        // Create new buffer
+        self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Pooled State Vector Buffer"),
+            size: aligned_size,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        })
+    }
+
+    /// Get or create a result buffer
+    pub fn get_result_buffer(&mut self, size: u64) -> wgpu::Buffer {
+        let aligned_size = Self::align_buffer_size(size);
+
+        if let Some(buffers) = self.result_buffers.get_mut(&aligned_size) {
+            if let Some(buffer) = buffers.pop() {
+                return buffer;
+            }
+        }
+
+        // Create new buffer
+        self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Pooled Result Buffer"),
+            size: aligned_size,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        })
+    }
+
+    /// Get or create a uniform buffer
+    pub fn get_uniform_buffer(&mut self, size: u64, data: &[u8]) -> wgpu::Buffer {
+        let aligned_size = Self::align_buffer_size(size);
+
+        if let Some(buffers) = self.uniform_buffers.get_mut(&aligned_size) {
+            if let Some(buffer) = buffers.pop() {
+                // Update buffer data
+                self.queue.write_buffer(&buffer, 0, data);
+                return buffer;
+            }
+        }
+
+        // Create new buffer with data
+        self.device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Pooled Uniform Buffer"),
+                contents: data,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            })
+    }
+
+    /// Return a state buffer to the pool
+    pub fn return_state_buffer(&mut self, buffer: wgpu::Buffer, size: u64) {
+        let aligned_size = Self::align_buffer_size(size);
+        let buffers = self
+            .state_buffers
+            .entry(aligned_size)
+            .or_insert_with(Vec::new);
+
+        if buffers.len() < self.max_buffers_per_size {
+            buffers.push(buffer);
+        }
+        // Otherwise buffer is dropped and deallocated
+    }
+
+    /// Return a result buffer to the pool
+    pub fn return_result_buffer(&mut self, buffer: wgpu::Buffer, size: u64) {
+        let aligned_size = Self::align_buffer_size(size);
+        let buffers = self
+            .result_buffers
+            .entry(aligned_size)
+            .or_insert_with(Vec::new);
+
+        if buffers.len() < self.max_buffers_per_size {
+            buffers.push(buffer);
+        }
+        // Otherwise buffer is dropped and deallocated
+    }
+
+    /// Return a uniform buffer to the pool
+    pub fn return_uniform_buffer(&mut self, buffer: wgpu::Buffer, size: u64) {
+        let aligned_size = Self::align_buffer_size(size);
+        let buffers = self
+            .uniform_buffers
+            .entry(aligned_size)
+            .or_insert_with(Vec::new);
+
+        if buffers.len() < self.max_buffers_per_size {
+            buffers.push(buffer);
+        }
+        // Otherwise buffer is dropped and deallocated
+    }
+
+    /// Align buffer size to GPU requirements
+    fn align_buffer_size(size: u64) -> u64 {
+        (size + BUFFER_ALIGNMENT - 1) & !(BUFFER_ALIGNMENT - 1)
+    }
+
+    /// Clear all buffers (for memory cleanup)
+    pub fn clear(&mut self) {
+        self.state_buffers.clear();
+        self.result_buffers.clear();
+        self.uniform_buffers.clear();
+        self.generation += 1;
+    }
+
+    /// Get memory usage statistics
+    pub fn get_stats(&self) -> GpuBufferStats {
+        let mut total_state_buffers = 0;
+        let mut total_result_buffers = 0;
+        let mut total_uniform_buffers = 0;
+
+        for buffers in self.state_buffers.values() {
+            total_state_buffers += buffers.len();
+        }
+        for buffers in self.result_buffers.values() {
+            total_result_buffers += buffers.len();
+        }
+        for buffers in self.uniform_buffers.values() {
+            total_uniform_buffers += buffers.len();
+        }
+
+        GpuBufferStats {
+            state_buffer_pools: self.state_buffers.len(),
+            result_buffer_pools: self.result_buffers.len(),
+            uniform_buffer_pools: self.uniform_buffers.len(),
+            total_state_buffers,
+            total_result_buffers,
+            total_uniform_buffers,
+            generation: self.generation,
+        }
+    }
+}
+
+/// Statistics for GPU buffer usage
+#[derive(Debug, Clone)]
+pub struct GpuBufferStats {
+    pub state_buffer_pools: usize,
+    pub result_buffer_pools: usize,
+    pub uniform_buffer_pools: usize,
+    pub total_state_buffers: usize,
+    pub total_result_buffers: usize,
+    pub total_uniform_buffers: usize,
+    pub generation: u64,
+}
+
 /// GPU-accelerated state vector simulator
 #[derive(Debug)]
 pub struct GpuStateVectorSimulator {
@@ -55,6 +245,8 @@ pub struct GpuStateVectorSimulator {
     /// The compute pipeline for applying two-qubit gates
     #[allow(dead_code)]
     two_qubit_pipeline: wgpu::ComputePipeline,
+    /// GPU buffer pool for efficient memory management
+    buffer_pool: std::sync::Mutex<GpuBufferPool>,
 }
 
 /// Complex number for GPU computation
@@ -115,30 +307,24 @@ impl GpuStateVectorSimulator {
         let instance = wgpu::Instance::default();
 
         // Request adapter
-        let adapter = match instance
+        let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 force_fallback_adapter: false,
                 compatible_surface: None,
             })
             .await
-        {
-            Some(adapter) => adapter,
-            None => return Err("Failed to find GPU adapter".into()),
-        };
+            .map_err(|_| "Failed to find GPU adapter".to_string())?;
 
         // Create device and queue
         let (device, queue): (wgpu::Device, wgpu::Queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some("Quantrs GPU Simulator"),
-                    required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
-                    memory_hints: wgpu::MemoryHints::default(),
-                    trace: None,
-                },
-                None,
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("Quantrs GPU Simulator"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::default(),
+                memory_hints: wgpu::MemoryHints::default(),
+                trace: wgpu::Trace::default(),
+            })
             .await?;
 
         let device = Arc::new(device);
@@ -238,7 +424,7 @@ impl GpuStateVectorSimulator {
                 layout: Some(&single_qubit_pipeline_layout),
                 module: &single_qubit_shader,
                 entry_point: Some("main"),
-                compilation_options: wgpu::CompilationOptions::default(),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
                 cache: None,
             });
 
@@ -247,15 +433,19 @@ impl GpuStateVectorSimulator {
             layout: Some(&two_qubit_pipeline_layout),
             module: &two_qubit_shader,
             entry_point: Some("main"),
-            compilation_options: wgpu::CompilationOptions::default(),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
         });
+
+        // Create buffer pool for efficient memory management
+        let buffer_pool = GpuBufferPool::new(device.clone(), queue.clone());
 
         Ok(Self {
             device,
             queue,
             single_qubit_pipeline,
             two_qubit_pipeline,
+            buffer_pool: std::sync::Mutex::new(buffer_pool),
         })
     }
 
@@ -288,7 +478,7 @@ impl GpuStateVectorSimulator {
                         compatible_surface: None,
                     })
                     .await
-                    .is_some()
+                    .is_ok()
             })
         }) {
             Ok(result) => result,
@@ -451,7 +641,6 @@ impl Simulator for GpuStateVectorSimulator {
                         encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                             label: Some("Single Qubit Gate Compute Pass"),
                             timestamp_writes: None,
-                            trace: None,
                         });
                     compute_pass.set_pipeline(&self.single_qubit_pipeline);
                     compute_pass.set_bind_group(0, &bind_group, &[]);
@@ -515,7 +704,6 @@ impl Simulator for GpuStateVectorSimulator {
                         encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                             label: Some("Two Qubit Gate Compute Pass"),
                             timestamp_writes: None,
-                            trace: None,
                         });
                     compute_pass.set_pipeline(&self.two_qubit_pipeline);
                     compute_pass.set_bind_group(0, &bind_group, &[]);
@@ -547,7 +735,7 @@ impl Simulator for GpuStateVectorSimulator {
         });
 
         // Wait for the buffer to be mapped
-        self.device.poll(wgpu::Maintain::Wait);
+        self.device.poll(wgpu::MaintainBase::Wait);
         if rx.recv().unwrap().is_err() {
             panic!("Failed to map buffer for reading");
         }

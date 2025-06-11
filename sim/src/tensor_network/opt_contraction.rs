@@ -27,6 +27,7 @@ pub enum ContractionOptMethod {
 }
 
 /// Advanced contraction path finder
+#[derive(Debug, Clone)]
 pub struct PathOptimizer {
     /// Maximum time to spend on optimization
     max_optimization_time: Duration,
@@ -197,7 +198,8 @@ impl PathOptimizer {
                 // Merge connections from t1 and t2
                 for id in &[t1, t2] {
                     if let Some(connections) = tensor_connections.get(id) {
-                        for &connected in connections {
+                        let connections_clone = connections.clone();
+                        for &connected in &connections_clone {
                             if connected != t1
                                 && connected != t2
                                 && remaining_tensors.contains(&connected)
@@ -469,7 +471,7 @@ fn contract_tensors(
 }
 
 /// Optimized contraction plan for tensor networks
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ContractionPlan {
     /// Ordered list of tensor pairs to contract
     pairs: Vec<(usize, usize)>,
@@ -504,6 +506,24 @@ impl ContractionPlan {
     /// Get the estimated peak memory usage
     pub fn memory_estimate(&self) -> usize {
         self.memory_estimate
+    }
+}
+
+impl Eq for ContractionPlan {}
+
+impl Ord for ContractionPlan {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // Compare by computational cost first, then by memory usage
+        self.flop_estimate
+            .partial_cmp(&other.flop_estimate)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| self.memory_estimate.cmp(&other.memory_estimate))
+    }
+}
+
+impl PartialOrd for ContractionPlan {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 

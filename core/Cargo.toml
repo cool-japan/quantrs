@@ -15,7 +15,19 @@ num-complex.workspace = true
 thiserror.workspace = true
 ndarray.workspace = true
 scirs2-core = { workspace = true, features = ["types", "memory_management", "simd", "serialization"] }
+scirs2-linalg = { workspace = true }
+scirs2-optimize = { workspace = true }
+scirs2-sparse = { version = "0.1.0-alpha.4" }
+smallvec = { version = "1.13", features = ["const_generics"] }
+rustc-hash = "2.1"
+rand = { workspace = true }
+rayon = { workspace = true }
+ndarray-linalg = { version = "0.17", default-features = false, features = ["openblas-system"] }
+serde = { workspace = true, features = ["derive"] }
 
 [features]
 default = []
 simd = ["scirs2-core/simd"]
+cuda = []
+metal = []
+vulkan = []

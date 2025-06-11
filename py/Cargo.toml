@@ -14,22 +14,30 @@ publish = false
 build = "build.rs"
 
 [lib]
-name = "_quantrs2"
+name = "quantrs2"
 crate-type = ["cdylib"]
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.3" }
-quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.3" }
-quantrs2-sim = { path = "../sim", version = "0.1.0-alpha.3", features = [] }
-quantrs2-ml = { path = "../ml", version = "0.1.0-alpha.3", optional = true }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.4" }
+quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.4" }
+quantrs2-sim = { path = "../sim", version = "0.1.0-alpha.4", features = [] }
+quantrs2-device = { path = "../device", version = "0.1.0-alpha.4" }
+quantrs2-ml = { path = "../ml", version = "0.1.0-alpha.4", optional = true }
+quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.4", optional = true }
+quantrs2-tytan = { path = "../tytan", version = "0.1.0-alpha.4", optional = true }
 pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"] }
 num-complex.workspace = true
 ndarray.workspace = true
+numpy = "0.25"
+rand = "0.8"
+thiserror = { workspace = true }
 
 [features]
-default = []
+default = ["ml", "anneal", "tytan"]
 gpu = ["quantrs2-sim/gpu"]
 ml = ["quantrs2-ml"]
+anneal = ["quantrs2-anneal"]
+tytan = ["quantrs2-tytan"]
 
 # Minimal maturin configuration
 [package.metadata.maturin]

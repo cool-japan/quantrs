@@ -596,11 +596,11 @@ mod tests {
         circuit.cnot(QubitId::new(1), QubitId::new(3)).unwrap(); // This also requires routing
 
         let result = router.route_circuit(&circuit).unwrap();
-        
+
         // Check that we have a valid result
         // The initial mapping might be optimal, so swaps might not be needed
-        assert!(result.cost >= 0);
-        
+        // Note: cost is usize, so it's always >= 0
+
         // Verify initial and final mappings exist
         assert_eq!(result.initial_mapping.len(), 5);
         assert_eq!(result.final_mapping.len(), 5);
@@ -617,9 +617,9 @@ mod tests {
         circuit.h(QubitId::new(0)).unwrap();
         circuit.cnot(QubitId::new(0), QubitId::new(8)).unwrap(); // Corner to corner
         circuit.cnot(QubitId::new(4), QubitId::new(2)).unwrap(); // Center to edge
-        
+
         let result = router.route_circuit(&circuit).unwrap();
-        
+
         // Should require swaps for non-adjacent qubits
         assert!(result.swap_gates.len() > 0);
     }
@@ -636,9 +636,9 @@ mod tests {
         circuit.cnot(QubitId::new(0), QubitId::new(5)).unwrap();
         circuit.cnot(QubitId::new(2), QubitId::new(7)).unwrap();
         circuit.cnot(QubitId::new(3), QubitId::new(9)).unwrap();
-        
+
         let result = router.route_circuit(&circuit).unwrap();
-        
+
         // Should successfully route
         assert!(result.initial_mapping.len() <= 27);
     }
@@ -650,7 +650,7 @@ mod tests {
 
         // Try to route a circuit with more logical qubits than physical
         let circuit = Circuit::<5>::new();
-        
+
         let result = router.route_circuit(&circuit);
         assert!(result.is_err());
     }
@@ -658,14 +658,16 @@ mod tests {
     #[test]
     fn test_different_strategies_comparison() {
         let topology = HardwareTopology::grid_topology(4, 4);
-        
+
         // Create a challenging circuit
         let mut circuit = Circuit::<16>::new();
         for i in 0..8 {
             circuit.h(QubitId::new(i as u32)).unwrap();
-            circuit.cnot(QubitId::new(i as u32), QubitId::new((i + 8) as u32)).unwrap();
+            circuit
+                .cnot(QubitId::new(i as u32), QubitId::new((i + 8) as u32))
+                .unwrap();
         }
-        
+
         // Test all strategies
         let strategies = vec![
             RoutingStrategy::NearestNeighbor,
@@ -673,18 +675,16 @@ mod tests {
             RoutingStrategy::Lookahead { depth: 5 },
             RoutingStrategy::StochasticAnnealing,
         ];
-        
+
         let mut results = Vec::new();
         for strategy in strategies {
             let router = QubitRouter::new(topology.clone(), strategy);
             let result = router.route_circuit(&circuit).unwrap();
             results.push((strategy, result.cost));
         }
-        
+
         // All strategies should produce valid results
-        for (_, cost) in &results {
-            assert!(*cost >= 0);
-        }
+        // Note: cost is usize, so it's always >= 0
     }
 
     #[test]
@@ -696,9 +696,9 @@ mod tests {
         let mut circuit = Circuit::<3>::new();
         circuit.cnot(QubitId::new(0), QubitId::new(1)).unwrap(); // Adjacent
         circuit.cnot(QubitId::new(1), QubitId::new(2)).unwrap(); // Adjacent
-        
+
         let result = router.route_circuit(&circuit).unwrap();
-        
+
         // Should require no swaps
         assert_eq!(result.swap_gates.len(), 0);
         assert_eq!(result.cost, 0);
@@ -715,17 +715,17 @@ mod tests {
         let n1 = graph.add_node(());
         let n2 = graph.add_node(());
         let n3 = graph.add_node(());
-        
+
         graph.add_edge(n0, n1, 1.0);
         graph.add_edge(n1, n2, 1.0);
         graph.add_edge(n2, n3, 1.0);
         graph.add_edge(n3, n0, 1.0); // Square
-        
+
         let layout = synthesizer.synthesize_layout(&graph).unwrap();
-        
+
         // Should map all 4 qubits
         assert_eq!(layout.len(), 4);
-        
+
         // All mappings should be to different physical qubits
         let physical_qubits: HashSet<usize> = layout.values().copied().collect();
         assert_eq!(physical_qubits.len(), 4);
@@ -735,11 +735,11 @@ mod tests {
     fn test_path_finding() {
         let topology = HardwareTopology::linear_topology(5);
         let router = QubitRouter::new(topology, RoutingStrategy::NearestNeighbor);
-        
+
         // Test path from 0 to 4
         let path = router.find_shortest_path(0, 4).unwrap();
         assert_eq!(path, vec![0, 1, 2, 3, 4]);
-        
+
         // Test path from 2 to 0
         let path = router.find_shortest_path(2, 0).unwrap();
         assert_eq!(path, vec![2, 1, 0]);
@@ -749,14 +749,14 @@ mod tests {
     fn test_connectivity_check() {
         let topology = HardwareTopology::grid_topology(3, 3);
         let router = QubitRouter::new(topology, RoutingStrategy::NearestNeighbor);
-        
+
         // Adjacent qubits in grid should be connected
         assert!(router.are_connected(0, 1).unwrap()); // Horizontal
         assert!(router.are_connected(0, 3).unwrap()); // Vertical
-        
+
         // Diagonal qubits should not be connected
         assert!(!router.are_connected(0, 4).unwrap());
-        
+
         // Far qubits should not be connected
         assert!(!router.are_connected(0, 8).unwrap());
     }

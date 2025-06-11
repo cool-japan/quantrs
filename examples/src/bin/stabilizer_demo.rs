@@ -1,224 +1,125 @@
-//! Demonstration of the stabilizer simulator for Clifford circuits
+//! Demonstration of the Stabilizer Simulator for efficient Clifford circuit simulation
+//!
+//! The Stabilizer formalism provides exponentially more efficient simulation
+//! of quantum circuits composed only of Clifford gates (H, S, CNOT, etc.)
+//! compared to full state vector simulation.
 
+use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
 use quantrs2_sim::prelude::*;
-use std::time::Instant;
 
 fn main() {
     println!("=== Stabilizer Simulator Demo ===\n");
 
-    // Example 1: Basic gates
-    println!("Example 1: Basic Clifford Gates");
-    demo_basic_gates();
-
-    println!("\n{}\n", "=".repeat(50));
-
-    // Example 2: Bell states
-    println!("Example 2: Bell States");
-    demo_bell_states();
-
-    println!("\n{}\n", "=".repeat(50));
-
-    // Example 3: GHZ states
-    println!("Example 3: GHZ States");
-    demo_ghz_states();
-
-    println!("\n{}\n", "=".repeat(50));
-
-    // Example 4: Quantum error correction
-    println!("Example 4: Simple Error Detection");
-    demo_error_detection();
-
-    println!("\n{}\n", "=".repeat(50));
-
-    // Example 5: Performance comparison
-    println!("Example 5: Performance Comparison");
-    demo_performance();
-}
-
-fn demo_basic_gates() {
+    // Example 1: Bell State Preparation
+    println!("1. Bell State Preparation:");
     let mut sim = StabilizerSimulator::new(2);
 
-    println!("Initial state |00⟩:");
-    print_stabilizers(&sim);
-
-    // Apply Hadamard to first qubit
+    // Apply H to qubit 0
     sim.apply_gate(StabilizerGate::H(0)).unwrap();
-    println!("\nAfter H on qubit 0:");
-    print_stabilizers(&sim);
+    println!("After H(0): {:?}", sim.get_stabilizers());
 
-    // Apply S gate
-    sim.apply_gate(StabilizerGate::S(0)).unwrap();
-    println!("\nAfter S on qubit 0:");
-    print_stabilizers(&sim);
-
-    // Apply Pauli gates
-    sim.apply_gate(StabilizerGate::X(1)).unwrap();
-    println!("\nAfter X on qubit 1:");
-    print_stabilizers(&sim);
-}
-
-fn demo_bell_states() {
-    println!("Creating all four Bell states:\n");
-
-    // |Φ+⟩ = (|00⟩ + |11⟩)/√2
-    let mut sim = StabilizerSimulator::new(2);
-    sim.apply_gate(StabilizerGate::H(0)).unwrap();
+    // Apply CNOT(0, 1)
     sim.apply_gate(StabilizerGate::CNOT(0, 1)).unwrap();
-    println!("|Φ+⟩ stabilizers:");
-    print_stabilizers(&sim);
+    println!("After CNOT(0,1): {:?}", sim.get_stabilizers());
+    println!("This represents the Bell state |00⟩ + |11⟩\n");
 
-    // |Φ-⟩ = (|00⟩ - |11⟩)/√2
-    sim.reset();
-    sim.apply_gate(StabilizerGate::H(0)).unwrap();
-    sim.apply_gate(StabilizerGate::Z(0)).unwrap();
-    sim.apply_gate(StabilizerGate::CNOT(0, 1)).unwrap();
-    println!("\n|Φ-⟩ stabilizers:");
-    print_stabilizers(&sim);
-
-    // |Ψ+⟩ = (|01⟩ + |10⟩)/√2
-    sim.reset();
-    sim.apply_gate(StabilizerGate::H(0)).unwrap();
-    sim.apply_gate(StabilizerGate::X(1)).unwrap();
-    sim.apply_gate(StabilizerGate::CNOT(0, 1)).unwrap();
-    println!("\n|Ψ+⟩ stabilizers:");
-    print_stabilizers(&sim);
-
-    // |Ψ-⟩ = (|01⟩ - |10⟩)/√2
-    sim.reset();
-    sim.apply_gate(StabilizerGate::H(0)).unwrap();
-    sim.apply_gate(StabilizerGate::X(1)).unwrap();
-    sim.apply_gate(StabilizerGate::Z(0)).unwrap();
-    sim.apply_gate(StabilizerGate::CNOT(0, 1)).unwrap();
-    println!("\n|Ψ-⟩ stabilizers:");
-    print_stabilizers(&sim);
-}
-
-fn demo_ghz_states() {
-    // Create GHZ states of various sizes
-    for n in 3..=5 {
-        let mut sim = StabilizerSimulator::new(n);
-
-        // Create GHZ state: |000...0⟩ + |111...1⟩
-        sim.apply_gate(StabilizerGate::H(0)).unwrap();
-        for i in 0..(n - 1) {
-            sim.apply_gate(StabilizerGate::CNOT(i, i + 1)).unwrap();
-        }
-
-        println!("{}-qubit GHZ state stabilizers:", n);
-        print_stabilizers(&sim);
-        println!();
-    }
-}
-
-fn demo_error_detection() {
-    // Simple 3-qubit repetition code for bit flip errors
+    // Example 2: GHZ State Preparation
+    println!("2. GHZ State Preparation:");
     let mut sim = StabilizerSimulator::new(3);
 
-    println!("3-qubit repetition code:");
-
-    // Encode |0⟩ as |000⟩
-    println!("Encoded |0⟩ state:");
-    print_stabilizers(&sim);
-
-    // Simulate error on qubit 1
-    sim.apply_gate(StabilizerGate::X(1)).unwrap();
-    println!("\nAfter bit flip on qubit 1:");
-    print_stabilizers(&sim);
-
-    // Create superposition and encode
-    sim.reset();
-    sim.apply_gate(StabilizerGate::H(0)).unwrap();
-    sim.apply_gate(StabilizerGate::CNOT(0, 1)).unwrap();
-    sim.apply_gate(StabilizerGate::CNOT(0, 2)).unwrap();
-    println!("\nEncoded superposition state:");
-    print_stabilizers(&sim);
-
-    // Measure syndrome
-    println!("\nMeasuring parity checks...");
-    // In a real error correction scheme, we would measure
-    // stabilizer generators to detect errors
-}
-
-fn demo_performance() {
-    println!("Comparing stabilizer simulator performance:\n");
-
-    // Test different circuit sizes
-    for n in [10, 20, 30, 40, 50] {
-        let mut sim = StabilizerSimulator::new(n);
-
-        // Create a random Clifford circuit
-        let num_gates = n * 10;
-        let start = Instant::now();
-
-        for _ in 0..num_gates {
-            // Random gate selection (simplified)
-            let gate_type = (start.elapsed().as_nanos() % 4) as usize;
-            let qubit = ((start.elapsed().as_nanos() / 7) % n as u128) as usize;
-
-            match gate_type {
-                0 => sim.apply_gate(StabilizerGate::H(qubit)).unwrap(),
-                1 => sim.apply_gate(StabilizerGate::S(qubit)).unwrap(),
-                2 => {
-                    let target = (qubit + 1) % n;
-                    sim.apply_gate(StabilizerGate::CNOT(qubit, target)).unwrap();
-                }
-                _ => sim.apply_gate(StabilizerGate::X(qubit)).unwrap(),
-            }
-        }
-
-        let elapsed = start.elapsed();
-        println!("{} qubits, {} gates: {:?}", n, num_gates, elapsed);
-
-        // Compare with theoretical scaling
-        let ops_per_sec = (num_gates as f64) / elapsed.as_secs_f64();
-        println!("  Operations per second: {:.0}", ops_per_sec);
-        println!(
-            "  Time per gate: {:.2} ns",
-            elapsed.as_nanos() as f64 / num_gates as f64
-        );
-    }
-
-    println!("\nNote: Stabilizer simulation scales as O(n²) per gate,");
-    println!("compared to O(2^n) for full state vector simulation!");
-}
-
-fn print_stabilizers(sim: &StabilizerSimulator) {
-    let stabs = sim.get_stabilizers();
-    for (i, stab) in stabs.iter().enumerate() {
-        println!("  S{}: {}", i, stab);
-    }
-}
-
-// Demonstrate measurement
-fn demo_measurement() {
-    println!("\n=== Measurement Demo ===\n");
-
-    let mut sim = StabilizerSimulator::new(3);
-
-    // Create GHZ state
     sim.apply_gate(StabilizerGate::H(0)).unwrap();
     sim.apply_gate(StabilizerGate::CNOT(0, 1)).unwrap();
     sim.apply_gate(StabilizerGate::CNOT(1, 2)).unwrap();
 
-    println!("GHZ state before measurement:");
-    print_stabilizers(&sim);
+    println!("GHZ state stabilizers: {:?}", sim.get_stabilizers());
+    println!("This represents the GHZ state |000⟩ + |111⟩\n");
 
-    // Measure first qubit
+    // Example 3: Error Correction Code (3-qubit bit flip code)
+    println!("3. 3-Qubit Bit Flip Code:");
+    let mut sim = StabilizerSimulator::new(3);
+
+    // Encode logical |0⟩ as |000⟩
+    // The stabilizers are ZZI and IZZ
+    sim.apply_gate(StabilizerGate::CNOT(0, 1)).unwrap();
+    sim.apply_gate(StabilizerGate::CNOT(0, 2)).unwrap();
+
+    println!("Encoded |0⟩ stabilizers: {:?}", sim.get_stabilizers());
+
+    // Apply bit flip error on qubit 1
+    sim.apply_gate(StabilizerGate::X(1)).unwrap();
+    println!("After X error on qubit 1: {:?}", sim.get_stabilizers());
+
+    // Example 4: Measurement
+    println!("\n4. Measurement Example:");
+    let mut sim = StabilizerSimulator::new(2);
+
+    // Create superposition
+    sim.apply_gate(StabilizerGate::H(0)).unwrap();
+    println!("Before measurement: {:?}", sim.get_stabilizers());
+
+    // Measure qubit 0
     let outcome = sim.measure(0).unwrap();
-    println!("\nMeasured qubit 0: {}", if outcome { "1" } else { "0" });
+    println!("Measurement outcome: {}", outcome as u8);
+    println!("After measurement: {:?}", sim.get_stabilizers());
 
-    println!("\nState after measurement:");
-    print_stabilizers(&sim);
+    // Example 5: Using the Clifford Circuit Builder
+    println!("\n5. Clifford Circuit Builder:");
+    let circuit = CliffordCircuitBuilder::new(3)
+        .h(0)
+        .cnot(0, 1)
+        .s(1)
+        .cnot(1, 2)
+        .h(2)
+        .run()
+        .unwrap();
 
-    // Measure remaining qubits
-    let outcome1 = sim.measure(1).unwrap();
-    let outcome2 = sim.measure(2).unwrap();
+    println!("Final stabilizers: {:?}", circuit.get_stabilizers());
 
-    println!(
-        "\nAll measurement outcomes: {}{}{}",
-        if outcome { "1" } else { "0" },
-        if outcome1 { "1" } else { "0" },
-        if outcome2 { "1" } else { "0" }
-    );
+    // Example 6: Phase Gate Application
+    println!("\n6. Phase Gate Example:");
+    let mut sim = StabilizerSimulator::new(1);
+
+    // Create |+⟩ state
+    sim.apply_gate(StabilizerGate::H(0)).unwrap();
+    println!("After H: {:?}", sim.get_stabilizers());
+
+    // Apply S gate
+    sim.apply_gate(StabilizerGate::S(0)).unwrap();
+    println!("After S: {:?}", sim.get_stabilizers());
+
+    // This creates |+i⟩ = (|0⟩ + i|1⟩)/√2
+
+    // Example 7: Check if circuit is Clifford
+    println!("\n7. Clifford Circuit Detection:");
+
+    // Create a simple 2-qubit circuit
+    let mut circuit = Circuit::<2>::new();
+    circuit
+        .add_gate(Hadamard {
+            target: QubitId::new(0),
+        })
+        .unwrap();
+    circuit
+        .add_gate(CNOT {
+            control: QubitId::new(0),
+            target: QubitId::new(1),
+        })
+        .unwrap();
+
+    let is_clifford = is_clifford_circuit(&circuit);
+    println!("Is Bell state circuit Clifford? {}", is_clifford);
+
+    // Add a non-Clifford gate
+    circuit
+        .add_gate(RotationX {
+            target: QubitId::new(0),
+            theta: std::f64::consts::PI / 4.0,
+        })
+        .unwrap();
+
+    let is_clifford = is_clifford_circuit(&circuit);
+    println!("Is circuit with Rx(π/4) Clifford? {}", is_clifford);
+
+    println!("\n=== Demo Complete ===");
 }

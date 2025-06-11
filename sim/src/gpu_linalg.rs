@@ -47,7 +47,7 @@ impl GpuLinearAlgebra {
     /// Create a new GPU linear algebra instance
     pub async fn new() -> Result<Self, QuantRS2Error> {
         // Initialize WGPU
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
@@ -59,20 +59,18 @@ impl GpuLinearAlgebra {
                 force_fallback_adapter: false,
             })
             .await
-            .ok_or_else(|| {
+            .map_err(|_| {
                 QuantRS2Error::BackendExecutionFailed("No GPU adapter found".to_string())
             })?;
 
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some("Quantum GPU Device"),
-                    required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
-                    memory_hints: Default::default(),
-                },
-                None,
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("Quantum GPU Device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::default(),
+                memory_hints: Default::default(),
+                trace: wgpu::Trace::default(),
+            })
             .await
             .map_err(|e| QuantRS2Error::BackendExecutionFailed(e.to_string()))?;
 
@@ -244,10 +242,133 @@ impl GpuLinearAlgebra {
     ) -> Result<Array2<Complex64>, QuantRS2Error> {
         let (m1, n1) = a.dim();
         let (m2, n2) = b.dim();
+        let result_shape = (m1 * m2, n1 * n2);
 
-        // For now, fall back to CPU implementation
-        // TODO: Implement GPU tensor product
-        Ok(linalg_ops::tensor_product(a, b))
+        // Convert to GPU format
+        let a_gpu: Vec<GpuComplex> = a.iter().map(|&c| c.into()).collect();
+        let b_gpu: Vec<GpuComplex> = b.iter().map(|&c| c.into()).collect();
+
+        // Create GPU buffers
+        let a_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Tensor A"),
+                contents: bytemuck::cast_slice(&a_gpu),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let b_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Tensor B"),
+                contents: bytemuck::cast_slice(&b_gpu),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let result_size =
+            (result_shape.0 * result_shape.1 * std::mem::size_of::<GpuComplex>()) as u64;
+        let result_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Tensor Product Result"),
+            size: result_size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        // Create uniform buffer for dimensions
+        let dimensions = [m1 as u32, n1 as u32, m2 as u32, n2 as u32];
+        let dimensions_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Tensor Dimensions"),
+                contents: bytemuck::cast_slice(&dimensions),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        // Create bind group
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Tensor Product Bind Group"),
+            layout: &self.tensor_product_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: a_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: b_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: result_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: dimensions_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Execute compute shader
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Tensor Product Encoder"),
+            });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Tensor Product Pass"),
+                timestamp_writes: None,
+            });
+
+            compute_pass.set_pipeline(&self.tensor_product_pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch with appropriate workgroup size
+            let workgroup_size = 16;
+            let workgroups_x = (result_shape.1 + workgroup_size - 1) / workgroup_size;
+            let workgroups_y = (result_shape.0 + workgroup_size - 1) / workgroup_size;
+            compute_pass.dispatch_workgroups(workgroups_x as u32, workgroups_y as u32, 1);
+        }
+
+        // Copy result to staging buffer
+        let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Tensor Staging Buffer"),
+            size: result_size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        encoder.copy_buffer_to_buffer(&result_buffer, 0, &staging_buffer, 0, result_size);
+        self.queue.submit(std::iter::once(encoder.finish()));
+
+        // Read back results
+        let buffer_slice = staging_buffer.slice(..);
+        let (tx, rx) = futures::channel::oneshot::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).unwrap();
+        });
+
+        self.device.poll(wgpu::MaintainBase::Wait);
+        rx.await
+            .unwrap()
+            .map_err(|e| QuantRS2Error::BackendExecutionFailed(e.to_string()))?;
+
+        let data = buffer_slice.get_mapped_range();
+        let gpu_result: &[GpuComplex] = bytemuck::cast_slice(&data);
+
+        // Convert back to Complex64
+        let mut result = Array2::zeros(result_shape);
+        for i in 0..result_shape.0 {
+            for j in 0..result_shape.1 {
+                result[[i, j]] = gpu_result[i * result_shape.1 + j].into();
+            }
+        }
+
+        drop(data);
+        staging_buffer.unmap();
+
+        Ok(result)
     }
 
     /// Apply unitary matrix to state vector on GPU
@@ -257,9 +378,142 @@ impl GpuLinearAlgebra {
         unitary: &Array2<Complex64>,
         target_qubits: &[usize],
     ) -> Result<(), QuantRS2Error> {
-        // For now, fall back to CPU implementation
-        // TODO: Implement GPU unitary application
-        linalg_ops::apply_unitary(state, unitary, target_qubits)
+        let num_qubits = (state.len() as f64).log2() as usize;
+        let unitary_size = unitary.nrows();
+
+        if unitary_size != (1 << target_qubits.len()) {
+            return Err(QuantRS2Error::InvalidInput(
+                "Unitary size doesn't match number of target qubits".to_string(),
+            ));
+        }
+
+        // Convert state to GPU format
+        let state_gpu: Vec<GpuComplex> = state.iter().map(|&c| c.into()).collect();
+        let unitary_gpu: Vec<GpuComplex> = unitary.iter().map(|&c| c.into()).collect();
+
+        // Create GPU buffers
+        let state_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("State Vector"),
+                contents: bytemuck::cast_slice(&state_gpu),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
+
+        let unitary_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Unitary Matrix"),
+                contents: bytemuck::cast_slice(&unitary_gpu),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let target_qubits_u32: Vec<u32> = target_qubits.iter().map(|&q| q as u32).collect();
+        let qubits_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Target Qubits"),
+                contents: bytemuck::cast_slice(&target_qubits_u32),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        // Create uniform buffer for parameters
+        let params = [
+            num_qubits as u32,
+            target_qubits.len() as u32,
+            state.len() as u32,
+            unitary_size as u32,
+        ];
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Unitary Parameters"),
+                contents: bytemuck::cast_slice(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        // Create bind group
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Apply Unitary Bind Group"),
+            layout: &self.apply_unitary_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: state_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: unitary_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: qubits_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Execute compute shader
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Apply Unitary Encoder"),
+            });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Apply Unitary Pass"),
+                timestamp_writes: None,
+            });
+
+            compute_pass.set_pipeline(&self.apply_unitary_pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch with appropriate workgroup size
+            let workgroup_size = 64;
+            let workgroups = (state.len() + workgroup_size - 1) / workgroup_size;
+            compute_pass.dispatch_workgroups(workgroups as u32, 1, 1);
+        }
+
+        // Copy result to staging buffer
+        let staging_size = (state.len() * std::mem::size_of::<GpuComplex>()) as u64;
+        let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Unitary Staging Buffer"),
+            size: staging_size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        encoder.copy_buffer_to_buffer(&state_buffer, 0, &staging_buffer, 0, staging_size);
+        self.queue.submit(std::iter::once(encoder.finish()));
+
+        // Read back results
+        let buffer_slice = staging_buffer.slice(..);
+        let (tx, rx) = futures::channel::oneshot::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).unwrap();
+        });
+
+        self.device.poll(wgpu::MaintainBase::Wait);
+        rx.await
+            .unwrap()
+            .map_err(|e| QuantRS2Error::BackendExecutionFailed(e.to_string()))?;
+
+        let data = buffer_slice.get_mapped_range();
+        let gpu_result: &[GpuComplex] = bytemuck::cast_slice(&data);
+
+        // Convert back to Complex64 and update state
+        for (i, &gpu_val) in gpu_result.iter().enumerate() {
+            state[i] = gpu_val.into();
+        }
+
+        drop(data);
+        staging_buffer.unmap();
+
+        Ok(())
     }
 
     /// Create matrix multiplication compute pipeline
@@ -276,6 +530,7 @@ impl GpuLinearAlgebra {
             layout: None,
             module: &shader,
             entry_point: Some("matmul"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
         })
     }
@@ -294,6 +549,7 @@ impl GpuLinearAlgebra {
             layout: None,
             module: &shader,
             entry_point: Some("tensor_product"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
         })
     }
@@ -312,6 +568,7 @@ impl GpuLinearAlgebra {
             layout: None,
             module: &shader,
             entry_point: Some("apply_unitary"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
         })
     }

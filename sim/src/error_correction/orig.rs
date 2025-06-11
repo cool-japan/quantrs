@@ -668,7 +668,36 @@ impl ErrorCorrection for SteaneCode {
             panic!("SteaneCode requires 1 logical qubit and 6 ancilla qubits");
         }
         
-        // This is a placeholder for the encoding circuit
+        // Steane code encoding circuit
+        // The Steane code is a [7,1,3] CSS code derived from the classical Hamming code
+        
+        let data = encoded_qubits[0];
+        let parity_x = &encoded_qubits[1..4];
+        let parity_z = &encoded_qubits[4..7];
+        
+        // X-basis encoding (for bit-flip protection)
+        for &p in parity_x {
+            circuit.cnot(data, p).unwrap();
+        }
+        
+        // Additional X parity checks
+        circuit.cnot(encoded_qubits[1], encoded_qubits[3]).unwrap();
+        circuit.cnot(encoded_qubits[2], encoded_qubits[3]).unwrap();
+        
+        // Z-basis encoding (for phase-flip protection)
+        for &p in parity_z {
+            circuit.h(p).unwrap();
+            circuit.cnot(data, p).unwrap();
+            circuit.h(p).unwrap();
+        }
+        
+        // Additional Z parity checks
+        circuit.h(encoded_qubits[4]).unwrap();
+        circuit.h(encoded_qubits[5]).unwrap();
+        circuit.cnot(encoded_qubits[4], encoded_qubits[6]).unwrap();
+        circuit.cnot(encoded_qubits[5], encoded_qubits[6]).unwrap();
+        circuit.h(encoded_qubits[4]).unwrap();
+        circuit.h(encoded_qubits[5]).unwrap();
         
         circuit
     }
@@ -681,7 +710,70 @@ impl ErrorCorrection for SteaneCode {
             panic!("SteaneCode requires 7 encoded qubits and 6 syndrome qubits");
         }
         
-        // This is a placeholder for the decoding circuit
+        // Steane code decoding circuit
+        // Measure syndrome qubits to detect and correct errors
+        
+        // X-syndrome measurement (detects Z errors)
+        for i in 0..3 {
+            circuit.h(syndrome_qubits[i]).unwrap();
+            for j in 0..7 {
+                if (j + 1) & (1 << i) != 0 {
+                    circuit.cnot(syndrome_qubits[i], encoded_qubits[j]).unwrap();
+                }
+            }
+            circuit.h(syndrome_qubits[i]).unwrap();
+        }
+        
+        // Z-syndrome measurement (detects X errors)
+        for i in 3..6 {
+            for j in 0..7 {
+                if (j + 1) & (1 << (i - 3)) != 0 {
+                    circuit.cnot(encoded_qubits[j], syndrome_qubits[i]).unwrap();
+                }
+            }
+        }
+        
+        // Error correction based on syndrome
+        // In a real implementation, this would involve classical processing
+        // For simulation, we apply corrections based on syndrome patterns
+        
+        // X error corrections (based on Z syndrome)
+        for error_pos in 1..8 {
+            let mut control_qubits = Vec::new();
+            for i in 0..3 {
+                if error_pos & (1 << i) != 0 {
+                    control_qubits.push(syndrome_qubits[i]);
+                }
+            }
+            
+            // Multi-controlled X gate (simplified)
+            if !control_qubits.is_empty() {
+                let target = encoded_qubits[error_pos - 1];
+                for &ctrl in &control_qubits {
+                    circuit.cnot(ctrl, target).unwrap();
+                }
+            }
+        }
+        
+        // Z error corrections (based on X syndrome)
+        for error_pos in 1..8 {
+            let mut control_qubits = Vec::new();
+            for i in 3..6 {
+                if error_pos & (1 << (i - 3)) != 0 {
+                    control_qubits.push(syndrome_qubits[i]);
+                }
+            }
+            
+            // Multi-controlled Z gate (simplified)
+            if !control_qubits.is_empty() {
+                let target = encoded_qubits[error_pos - 1];
+                for &ctrl in &control_qubits {
+                    circuit.h(target).unwrap();
+                    circuit.cnot(ctrl, target).unwrap();
+                    circuit.h(target).unwrap();
+                }
+            }
+        }
         
         circuit
     }

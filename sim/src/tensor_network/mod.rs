@@ -14,6 +14,7 @@ use quantrs2_core::{
 
 use ndarray::{Array, ArrayD, IxDyn};
 use num_complex::Complex64;
+use rayon::prelude::*;
 use scirs2_core::ndarray_ext::manipulation;
 use std::collections::HashMap;
 
@@ -162,10 +163,10 @@ impl TensorNetworkSimulator {
 
     /// Set the contraction strategy
     pub fn with_contraction_strategy(mut self, strategy: ContractionStrategy) -> Self {
-        self.contraction_strategy = strategy;
+        self.contraction_strategy = strategy.clone();
 
         // Set the appropriate optimization method based on strategy
-        self.path_optimizer = match strategy {
+        self.path_optimizer = match &strategy {
             ContractionStrategy::QFT => self
                 .path_optimizer
                 .with_method(ContractionOptMethod::DynamicProgramming)
@@ -896,40 +897,36 @@ impl TensorNetwork {
         // This is a temporary solution until the full tensor network implementation is complete
         match self.detected_circuit_type {
             CircuitType::QFT => {
-                // Simulate QFT output (uniform superposition with specific phases)
+                // Simulate QFT output (uniform superposition with specific phases) in parallel
                 let norm = 1.0 / (dim as f64).sqrt();
-                for i in 0..dim {
-                    // QFT creates uniform amplitude with specific phases
-                    state[i] = Complex64::new(norm, 0.0);
-                }
+                state.par_iter_mut().for_each(|amp| {
+                    *amp = Complex64::new(norm, 0.0);
+                });
             }
             CircuitType::QAOA => {
                 if self.num_qubits <= 3 {
-                    // For small QAOA, create a non-uniform distribution
-                    // that mimics solving a simple optimization problem
+                    // For small QAOA, create a non-uniform distribution in parallel
                     let norm = 1.0 / (dim as f64).sqrt();
-                    for i in 0..dim {
-                        // Add some phase variation typical of QAOA solutions
+                    state.par_iter_mut().enumerate().for_each(|(i, amp)| {
                         let phase = (i as f64) * std::f64::consts::PI / (dim as f64);
-                        state[i] =
-                            Complex64::new(norm * (1.0 + (i % 2) as f64), norm * (phase.sin()));
-                    }
-                    // Normalize the state
-                    let magnitude: f64 = state.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
-                    for i in 0..dim {
-                        state[i] /= magnitude;
-                    }
+                        *amp = Complex64::new(norm * (1.0 + (i % 2) as f64), norm * (phase.sin()));
+                    });
+                    // Normalize the state in parallel
+                    let magnitude: f64 = state.par_iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
+                    state.par_iter_mut().for_each(|amp| {
+                        *amp /= magnitude;
+                    });
                 } else {
-                    // For larger systems, just create a non-uniform distribution
+                    // For larger systems, create non-uniform distribution in parallel
                     let norm = 1.0 / (dim as f64).sqrt();
-                    for i in 0..dim {
-                        state[i] = Complex64::new(norm * (1.0 + 0.1 * (i % 3) as f64), 0.0);
-                    }
-                    // Normalize the state
-                    let magnitude: f64 = state.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
-                    for i in 0..dim {
-                        state[i] /= magnitude;
-                    }
+                    state.par_iter_mut().enumerate().for_each(|(i, amp)| {
+                        *amp = Complex64::new(norm * (1.0 + 0.1 * (i % 3) as f64), 0.0);
+                    });
+                    // Normalize the state in parallel
+                    let magnitude: f64 = state.par_iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
+                    state.par_iter_mut().for_each(|amp| {
+                        *amp /= magnitude;
+                    });
                 }
             }
             CircuitType::Linear | CircuitType::Star => {
@@ -951,12 +948,12 @@ impl TensorNetwork {
                 }
             }
             CircuitType::Layered => {
-                // For layered circuits, create a superposition with some structure
+                // For layered circuits, create superposition with structure in parallel
                 let norm = 1.0 / (dim as f64).sqrt();
-                for i in 0..dim {
+                state.par_iter_mut().enumerate().for_each(|(i, amp)| {
                     let phase = (i as f64) * std::f64::consts::PI / (dim as f64);
-                    state[i] = Complex64::new(norm * phase.cos(), norm * phase.sin());
-                }
+                    *amp = Complex64::new(norm * phase.cos(), norm * phase.sin());
+                });
             }
             _ => {
                 // Default to the Bell state for 2 qubits, GHZ for 3 qubits,
@@ -970,11 +967,11 @@ impl TensorNetwork {
                     state[0] = Complex64::new(sqrt2_inv, 0.0);
                     state[7] = Complex64::new(sqrt2_inv, 0.0);
                 } else {
-                    // Superposition for larger systems
+                    // Superposition for larger systems in parallel
                     let norm = 1.0 / (dim as f64).sqrt();
-                    for i in 0..dim {
-                        state[i] = Complex64::new(norm, 0.0);
-                    }
+                    state.par_iter_mut().for_each(|amp| {
+                        *amp = Complex64::new(norm, 0.0);
+                    });
                 }
             }
         }

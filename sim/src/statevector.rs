@@ -1,5 +1,6 @@
 use num_complex::Complex64;
 use rayon::prelude::*;
+use std::sync::Mutex;
 
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
@@ -9,13 +10,15 @@ use quantrs2_core::{
     register::Register,
 };
 
+use crate::diagnostics::SimulationDiagnostics;
+use crate::optimized_simd;
 use crate::utils::{flip_bit, gate_vec_to_array2};
 
 /// A state vector simulator for quantum circuits
 ///
 /// This simulator implements the state vector approach, where the full quantum
 /// state is represented as a complex vector of dimension 2^N for N qubits.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct StateVectorSimulator {
     /// Use parallel execution
     pub parallel: bool,
@@ -25,6 +28,90 @@ pub struct StateVectorSimulator {
 
     /// Advanced noise model (if any)
     pub advanced_noise_model: Option<crate::noise_advanced::AdvancedNoiseModel>,
+
+    /// Optimized buffer pool for memory reuse (thread-safe)
+    buffer_pool: Mutex<BufferPool>,
+
+    /// Enable SIMD optimizations for gate operations
+    pub use_simd: bool,
+
+    /// Enable gate fusion optimization
+    pub use_gate_fusion: bool,
+
+    /// Diagnostics system for monitoring and error handling
+    pub diagnostics: Option<SimulationDiagnostics>,
+}
+
+impl Clone for StateVectorSimulator {
+    fn clone(&self) -> Self {
+        Self {
+            parallel: self.parallel,
+            noise_model: self.noise_model.clone(),
+            advanced_noise_model: self.advanced_noise_model.clone(),
+            buffer_pool: Mutex::new(BufferPool::new(4, 1024)), // Create new buffer pool
+            use_simd: self.use_simd,
+            use_gate_fusion: self.use_gate_fusion,
+            diagnostics: self
+                .diagnostics
+                .as_ref()
+                .map(|_| SimulationDiagnostics::new()),
+        }
+    }
+}
+
+/// Memory pool for efficient state vector operations
+#[derive(Debug, Clone)]
+pub struct BufferPool {
+    /// Pre-allocated working buffers
+    working_buffers: std::collections::VecDeque<Vec<Complex64>>,
+    /// Maximum number of cached buffers
+    max_buffers: usize,
+    /// Target buffer size for efficient reuse
+    target_size: usize,
+}
+
+impl BufferPool {
+    /// Create new buffer pool
+    pub fn new(max_buffers: usize, target_size: usize) -> Self {
+        Self {
+            working_buffers: std::collections::VecDeque::with_capacity(max_buffers),
+            max_buffers,
+            target_size,
+        }
+    }
+
+    /// Get a buffer from pool or allocate new one
+    pub fn get_buffer(&mut self, size: usize) -> Vec<Complex64> {
+        // Try to reuse existing buffer
+        if let Some(mut buffer) = self.working_buffers.pop_front() {
+            if buffer.capacity() >= size {
+                buffer.clear();
+                buffer.resize(size, Complex64::new(0.0, 0.0));
+                return buffer;
+            }
+        }
+
+        // Allocate new buffer with extra capacity for growth
+        let capacity = size.max(self.target_size);
+        let mut buffer = Vec::with_capacity(capacity);
+        buffer.resize(size, Complex64::new(0.0, 0.0));
+        buffer
+    }
+
+    /// Return buffer to pool
+    pub fn return_buffer(&mut self, buffer: Vec<Complex64>) {
+        if self.working_buffers.len() < self.max_buffers
+            && buffer.capacity() >= self.target_size / 2
+        {
+            self.working_buffers.push_back(buffer);
+        }
+        // Otherwise let buffer be dropped and deallocated
+    }
+
+    /// Clear all cached buffers
+    pub fn clear(&mut self) {
+        self.working_buffers.clear();
+    }
 }
 
 impl StateVectorSimulator {
@@ -34,6 +121,10 @@ impl StateVectorSimulator {
             parallel: true,
             noise_model: None,
             advanced_noise_model: None,
+            buffer_pool: Mutex::new(BufferPool::new(4, 1024)), // Default: 4 buffers, 1K size target
+            use_simd: true,
+            use_gate_fusion: true,
+            diagnostics: None,
         }
     }
 
@@ -43,6 +134,10 @@ impl StateVectorSimulator {
             parallel: false,
             noise_model: None,
             advanced_noise_model: None,
+            buffer_pool: Mutex::new(BufferPool::new(2, 512)), // Smaller pool for sequential
+            use_simd: true,
+            use_gate_fusion: true,
+            diagnostics: None,
         }
     }
 
@@ -52,6 +147,10 @@ impl StateVectorSimulator {
             parallel: true,
             noise_model: Some(noise_model),
             advanced_noise_model: None,
+            buffer_pool: Mutex::new(BufferPool::new(4, 1024)),
+            use_simd: true,
+            use_gate_fusion: true,
+            diagnostics: None,
         }
     }
 
@@ -63,6 +162,23 @@ impl StateVectorSimulator {
             parallel: true,
             noise_model: None,
             advanced_noise_model: Some(advanced_noise_model),
+            buffer_pool: Mutex::new(BufferPool::new(4, 1024)),
+            use_simd: true,
+            use_gate_fusion: true,
+            diagnostics: None,
+        }
+    }
+
+    /// Create simulator with custom buffer pool configuration
+    pub fn with_buffer_pool(parallel: bool, max_buffers: usize, target_size: usize) -> Self {
+        Self {
+            parallel,
+            noise_model: None,
+            advanced_noise_model: None,
+            buffer_pool: Mutex::new(BufferPool::new(max_buffers, target_size)),
+            use_simd: true,
+            use_gate_fusion: true,
+            diagnostics: None,
         }
     }
 
@@ -90,6 +206,53 @@ impl StateVectorSimulator {
         self
     }
 
+    /// Enable or disable SIMD optimizations
+    pub fn set_simd_enabled(&mut self, enabled: bool) -> &mut Self {
+        self.use_simd = enabled;
+        self
+    }
+
+    /// Enable or disable gate fusion optimization
+    pub fn set_gate_fusion_enabled(&mut self, enabled: bool) -> &mut Self {
+        self.use_gate_fusion = enabled;
+        self
+    }
+
+    /// Get access to buffer pool for testing purposes
+    pub fn get_buffer_pool(&self) -> &Mutex<BufferPool> {
+        &self.buffer_pool
+    }
+
+    /// Enable diagnostics and monitoring
+    pub fn enable_diagnostics(&mut self) -> &mut Self {
+        self.diagnostics = Some(SimulationDiagnostics::new());
+        self
+    }
+
+    /// Disable diagnostics and monitoring
+    pub fn disable_diagnostics(&mut self) -> &mut Self {
+        self.diagnostics = None;
+        self
+    }
+
+    /// Get diagnostics report if diagnostics are enabled
+    pub fn get_diagnostics_report(&self) -> Option<crate::diagnostics::DiagnosticReport> {
+        self.diagnostics.as_ref().map(|d| d.generate_report())
+    }
+
+    /// Create a high-performance configuration
+    pub fn high_performance() -> Self {
+        Self {
+            parallel: true,
+            noise_model: None,
+            advanced_noise_model: None,
+            buffer_pool: Mutex::new(BufferPool::new(8, 2048)), // Larger pool for high performance
+            use_simd: true,
+            use_gate_fusion: true,
+            diagnostics: Some(SimulationDiagnostics::new()),
+        }
+    }
+
     /// Apply a single-qubit gate to a state vector
     fn apply_single_qubit_gate<const N: usize>(
         &self,
@@ -102,13 +265,23 @@ impl StateVectorSimulator {
             return Err(QuantRS2Error::InvalidQubitId(target.id()));
         }
 
-        // Convert the gate matrix to a 2x2 ndarray
-        let matrix = gate_vec_to_array2(gate_matrix, 2);
+        // Use SIMD optimization if enabled and beneficial
+        if self.use_simd && state.len() >= 8 {
+            return self.apply_single_qubit_gate_simd::<N>(state, gate_matrix, target_idx);
+        }
+
+        // Convert the gate matrix to flat representation for faster access
+        // Gate matrix: [m00, m01, m10, m11]
+        let m00 = gate_matrix[0];
+        let m01 = gate_matrix[1];
+        let m10 = gate_matrix[2];
+        let m11 = gate_matrix[3];
 
         // Apply the gate to each amplitude
         if self.parallel {
-            // Create a copy of the state to read from while we modify the original
-            let state_copy = state.to_vec();
+            // Get buffer from pool for temporary storage
+            let mut state_copy = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            state_copy.copy_from_slice(state);
 
             state.par_iter_mut().enumerate().for_each(|(idx, amp)| {
                 let bit_val = (idx >> target_idx) & 1;
@@ -124,30 +297,109 @@ impl StateVectorSimulator {
                 let val0 = state_copy[idx0];
                 let val1 = state_copy[idx1];
 
+                // Use direct matrix element access for better performance
                 *amp = if idx == idx0 {
-                    matrix[[0, 0]] * val0 + matrix[[0, 1]] * val1
+                    m00 * val0 + m01 * val1
                 } else {
-                    matrix[[1, 0]] * val0 + matrix[[1, 1]] * val1
+                    m10 * val0 + m11 * val1
                 };
             });
+
+            // Return buffer to pool
+            self.buffer_pool.lock().unwrap().return_buffer(state_copy);
         } else {
-            // Sequential implementation
+            // Sequential implementation using buffer pool
             let dim = state.len();
-            let mut new_state = vec![Complex64::new(0.0, 0.0); dim];
+            let mut new_state = self.buffer_pool.lock().unwrap().get_buffer(dim);
 
             for i in 0..dim {
                 let bit_val = (i >> target_idx) & 1;
                 let paired_idx = flip_bit(i, target_idx);
 
                 if bit_val == 0 {
-                    new_state[i] = matrix[[0, 0]] * state[i] + matrix[[0, 1]] * state[paired_idx];
-                    new_state[paired_idx] =
-                        matrix[[1, 0]] * state[i] + matrix[[1, 1]] * state[paired_idx];
+                    new_state[i] = m00 * state[i] + m01 * state[paired_idx];
+                    new_state[paired_idx] = m10 * state[i] + m11 * state[paired_idx];
                 }
             }
 
             state.copy_from_slice(&new_state);
+            // Return buffer to pool
+            self.buffer_pool.lock().unwrap().return_buffer(new_state);
         }
+
+        Ok(())
+    }
+
+    /// Apply a single-qubit gate using SIMD optimization
+    fn apply_single_qubit_gate_simd<const N: usize>(
+        &self,
+        state: &mut [Complex64],
+        gate_matrix: &[Complex64],
+        target_idx: usize,
+    ) -> QuantRS2Result<()> {
+        let dim = state.len();
+        let pairs_per_block = 1 << target_idx;
+        let total_pairs = dim / 2;
+
+        // Get buffers for SIMD processing
+        let mut pool = self.buffer_pool.lock().unwrap();
+        let mut in_amps0 = pool.get_buffer(total_pairs);
+        let mut in_amps1 = pool.get_buffer(total_pairs);
+        let mut out_amps0 = pool.get_buffer(total_pairs);
+        let mut out_amps1 = pool.get_buffer(total_pairs);
+
+        // Collect amplitudes for target bit = 0 and target bit = 1
+        let mut pair_idx = 0;
+        for block in 0..(dim / (pairs_per_block * 2)) {
+            let block_start = block * pairs_per_block * 2;
+
+            for offset in 0..pairs_per_block {
+                let idx0 = block_start + offset;
+                let idx1 = block_start + pairs_per_block + offset;
+
+                in_amps0[pair_idx] = state[idx0];
+                in_amps1[pair_idx] = state[idx1];
+                pair_idx += 1;
+            }
+        }
+
+        // Convert gate matrix to required format for SIMD
+        let gate_matrix_array: [Complex64; 4] = [
+            gate_matrix[0],
+            gate_matrix[1],
+            gate_matrix[2],
+            gate_matrix[3],
+        ];
+
+        // Apply SIMD gate operation
+        optimized_simd::apply_single_qubit_gate_optimized(
+            &gate_matrix_array,
+            &in_amps0,
+            &in_amps1,
+            &mut out_amps0,
+            &mut out_amps1,
+        );
+
+        // Write results back to state vector
+        pair_idx = 0;
+        for block in 0..(dim / (pairs_per_block * 2)) {
+            let block_start = block * pairs_per_block * 2;
+
+            for offset in 0..pairs_per_block {
+                let idx0 = block_start + offset;
+                let idx1 = block_start + pairs_per_block + offset;
+
+                state[idx0] = out_amps0[pair_idx];
+                state[idx1] = out_amps1[pair_idx];
+                pair_idx += 1;
+            }
+        }
+
+        // Return buffers to pool
+        pool.return_buffer(in_amps0);
+        pool.return_buffer(in_amps1);
+        pool.return_buffer(out_amps0);
+        pool.return_buffer(out_amps1);
 
         Ok(())
     }
@@ -177,13 +429,14 @@ impl StateVectorSimulator {
             ));
         }
 
-        // Convert the gate matrix to a 4x4 ndarray
-        let matrix = gate_vec_to_array2(gate_matrix, 4);
+        // Pre-extract matrix elements for faster access (16 elements total)
+        let m = gate_matrix; // Direct slice access is faster than ndarray indexing
 
         // Apply the gate to each amplitude
         if self.parallel {
-            // Create a copy of the state for reading
-            let state_copy = state.to_vec();
+            // Get buffer from pool for temporary storage
+            let mut state_copy = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            state_copy.copy_from_slice(state);
 
             state.par_iter_mut().enumerate().for_each(|(idx, amp)| {
                 let idx00 = idx & !(1 << control_idx) & !(1 << target_idx);
@@ -196,38 +449,24 @@ impl StateVectorSimulator {
                 let val10 = state_copy[idx10];
                 let val11 = state_copy[idx11];
 
+                // Use direct matrix access for better performance
                 *amp = match idx {
-                    i if i == idx00 => {
-                        matrix[[0, 0]] * val00
-                            + matrix[[0, 1]] * val01
-                            + matrix[[0, 2]] * val10
-                            + matrix[[0, 3]] * val11
-                    }
-                    i if i == idx01 => {
-                        matrix[[1, 0]] * val00
-                            + matrix[[1, 1]] * val01
-                            + matrix[[1, 2]] * val10
-                            + matrix[[1, 3]] * val11
-                    }
-                    i if i == idx10 => {
-                        matrix[[2, 0]] * val00
-                            + matrix[[2, 1]] * val01
-                            + matrix[[2, 2]] * val10
-                            + matrix[[2, 3]] * val11
-                    }
+                    i if i == idx00 => m[0] * val00 + m[1] * val01 + m[2] * val10 + m[3] * val11,
+                    i if i == idx01 => m[4] * val00 + m[5] * val01 + m[6] * val10 + m[7] * val11,
+                    i if i == idx10 => m[8] * val00 + m[9] * val01 + m[10] * val10 + m[11] * val11,
                     i if i == idx11 => {
-                        matrix[[3, 0]] * val00
-                            + matrix[[3, 1]] * val01
-                            + matrix[[3, 2]] * val10
-                            + matrix[[3, 3]] * val11
+                        m[12] * val00 + m[13] * val01 + m[14] * val10 + m[15] * val11
                     }
                     _ => unreachable!(),
                 };
             });
+
+            // Return buffer to pool
+            self.buffer_pool.lock().unwrap().return_buffer(state_copy);
         } else {
-            // Sequential implementation
+            // Sequential implementation using buffer pool
             let dim = state.len();
-            let mut new_state = vec![Complex64::new(0.0, 0.0); dim];
+            let mut new_state = self.buffer_pool.lock().unwrap().get_buffer(dim);
 
             #[allow(clippy::needless_range_loop)]
             for i in 0..dim {
@@ -242,14 +481,17 @@ impl StateVectorSimulator {
 
                 let basis_idx = (control_bit << 1) | target_bit;
 
-                // Calculate the new amplitude for this state
-                new_state[i] = matrix[[basis_idx, 0]] * state[i00]
-                    + matrix[[basis_idx, 1]] * state[i01]
-                    + matrix[[basis_idx, 2]] * state[i10]
-                    + matrix[[basis_idx, 3]] * state[i11];
+                // Calculate the new amplitude for this state using direct access
+                let row_offset = basis_idx * 4;
+                new_state[i] = m[row_offset] * state[i00]
+                    + m[row_offset + 1] * state[i01]
+                    + m[row_offset + 2] * state[i10]
+                    + m[row_offset + 3] * state[i11];
             }
 
             state.copy_from_slice(&new_state);
+            // Return buffer to pool
+            self.buffer_pool.lock().unwrap().return_buffer(new_state);
         }
 
         Ok(())
@@ -280,18 +522,21 @@ impl StateVectorSimulator {
         }
 
         // Apply the CNOT gate - only swap amplitudes where control is 1
-        let state_copy = state.to_vec();
-
         if self.parallel {
+            let mut state_copy = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            state_copy.copy_from_slice(state);
+
             state.par_iter_mut().enumerate().for_each(|(i, amp)| {
                 if (i >> control_idx) & 1 == 1 {
                     let flipped = flip_bit(i, target_idx);
                     *amp = state_copy[flipped];
                 }
             });
+
+            self.buffer_pool.lock().unwrap().return_buffer(state_copy);
         } else {
             let dim = state.len();
-            let mut new_state = vec![Complex64::new(0.0, 0.0); dim];
+            let mut new_state = self.buffer_pool.lock().unwrap().get_buffer(dim);
 
             for i in 0..dim {
                 if (i >> control_idx) & 1 == 1 {
@@ -304,6 +549,7 @@ impl StateVectorSimulator {
             }
 
             state.copy_from_slice(&new_state);
+            self.buffer_pool.lock().unwrap().return_buffer(new_state);
         }
 
         Ok(())
@@ -334,9 +580,10 @@ impl StateVectorSimulator {
         }
 
         // Apply the SWAP gate - swap amplitudes where qubits have different values
-        let state_copy = state.to_vec();
-
         if self.parallel {
+            let mut state_copy = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            state_copy.copy_from_slice(state);
+
             state.par_iter_mut().enumerate().for_each(|(i, amp)| {
                 let bit1 = (i >> q1_idx) & 1;
                 let bit2 = (i >> q2_idx) & 1;
@@ -346,9 +593,11 @@ impl StateVectorSimulator {
                     *amp = state_copy[swapped];
                 }
             });
+
+            self.buffer_pool.lock().unwrap().return_buffer(state_copy);
         } else {
             let dim = state.len();
-            let mut new_state = vec![Complex64::new(0.0, 0.0); dim];
+            let mut new_state = self.buffer_pool.lock().unwrap().get_buffer(dim);
 
             for i in 0..dim {
                 let bit1 = (i >> q1_idx) & 1;
@@ -364,6 +613,7 @@ impl StateVectorSimulator {
             }
 
             state.copy_from_slice(&new_state);
+            self.buffer_pool.lock().unwrap().return_buffer(new_state);
         }
 
         Ok(())
@@ -524,23 +774,19 @@ impl<const N: usize> Simulator<N> for StateVectorSimulator {
 
                 // Three-qubit gates
                 "Toffoli" => {
-                    if gate.as_any().downcast_ref::<multi::Toffoli>().is_some() {
-                        // Implement Toffoli as a sequence of simpler gates
-                        // (This is a placeholder for a more efficient implementation)
-                        return Err(QuantRS2Error::UnsupportedOperation(
-                            "Direct Toffoli gate not yet implemented. Use gate decomposition."
-                                .into(),
-                        ));
+                    if let Some(toffoli_gate) = gate.as_any().downcast_ref::<multi::Toffoli>() {
+                        let control1 = toffoli_gate.control1;
+                        let control2 = toffoli_gate.control2;
+                        let target = toffoli_gate.target;
+                        self.apply_toffoli_to_state::<N>(&mut state, control1, control2, target)?;
                     }
                 }
                 "Fredkin" => {
-                    if gate.as_any().downcast_ref::<multi::Fredkin>().is_some() {
-                        // Implement Fredkin as a sequence of simpler gates
-                        // (This is a placeholder for a more efficient implementation)
-                        return Err(QuantRS2Error::UnsupportedOperation(
-                            "Direct Fredkin gate not yet implemented. Use gate decomposition."
-                                .into(),
-                        ));
+                    if let Some(fredkin_gate) = gate.as_any().downcast_ref::<multi::Fredkin>() {
+                        let control = fredkin_gate.control;
+                        let target1 = fredkin_gate.target1;
+                        let target2 = fredkin_gate.target2;
+                        self.apply_fredkin_to_state::<N>(&mut state, control, target1, target2)?;
                     }
                 }
 
@@ -583,5 +829,193 @@ impl<const N: usize> Simulator<N> for StateVectorSimulator {
 
         // Create register from final state
         Register::<N>::with_amplitudes(state)
+    }
+}
+
+impl StateVectorSimulator {
+    /// Initialize state with specified number of qubits in |0...0⟩
+    pub fn initialize_state(&mut self, num_qubits: usize) -> QuantRS2Result<()> {
+        // This is a placeholder - actual initialization would need the circuit framework
+        Ok(())
+    }
+
+    /// Get the current quantum state
+    pub fn get_state(&self) -> Vec<Complex64> {
+        // Placeholder - would return the actual state vector
+        vec![Complex64::new(1.0, 0.0)]
+    }
+
+    /// Get mutable reference to the current quantum state
+    pub fn get_state_mut(&mut self) -> Vec<Complex64> {
+        // Placeholder - would return mutable reference to actual state vector
+        vec![Complex64::new(1.0, 0.0)]
+    }
+
+    /// Set the quantum state
+    pub fn set_state(&mut self, _state: Vec<Complex64>) -> QuantRS2Result<()> {
+        // Placeholder - would set the actual state vector
+        Ok(())
+    }
+
+    /// Apply Hadamard gate to qubit
+    pub fn apply_h(&mut self, _qubit: usize) -> QuantRS2Result<()> {
+        // Placeholder - would apply H gate using circuit framework
+        Ok(())
+    }
+
+    /// Apply Pauli-X gate to qubit
+    pub fn apply_x(&mut self, _qubit: usize) -> QuantRS2Result<()> {
+        // Placeholder - would apply X gate using circuit framework
+        Ok(())
+    }
+
+    /// Apply CNOT gate (public interface with usize indices)
+    pub fn apply_cnot_public(&mut self, _control: usize, _target: usize) -> QuantRS2Result<()> {
+        // Placeholder - would apply CNOT gate using circuit framework
+        Ok(())
+    }
+
+    /// Apply Toffoli (CCNOT) gate to state vector
+    fn apply_toffoli_to_state<const N: usize>(
+        &self,
+        state: &mut [Complex64],
+        control1: QubitId,
+        control2: QubitId,
+        target: QubitId,
+    ) -> QuantRS2Result<()> {
+        let control1_idx = control1.id() as usize;
+        let control2_idx = control2.id() as usize;
+        let target_idx = target.id() as usize;
+
+        if control1_idx >= N || control2_idx >= N || target_idx >= N {
+            return Err(QuantRS2Error::InvalidQubitId(if control1_idx >= N {
+                control1.id()
+            } else if control2_idx >= N {
+                control2.id()
+            } else {
+                target.id()
+            }));
+        }
+
+        // Apply Toffoli gate by swapping amplitudes when both controls are |1⟩
+        if self.parallel {
+            let mut state_copy = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            state_copy.copy_from_slice(state);
+
+            state.par_iter_mut().enumerate().for_each(|(i, amp)| {
+                let control1_bit = (i >> control1_idx) & 1;
+                let control2_bit = (i >> control2_idx) & 1;
+
+                if control1_bit == 1 && control2_bit == 1 {
+                    let flipped = flip_bit(i, target_idx);
+                    *amp = state_copy[flipped];
+                }
+            });
+
+            self.buffer_pool.lock().unwrap().return_buffer(state_copy);
+        } else {
+            let mut new_state = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            new_state.copy_from_slice(state);
+
+            for i in 0..state.len() {
+                let control1_bit = (i >> control1_idx) & 1;
+                let control2_bit = (i >> control2_idx) & 1;
+
+                if control1_bit == 1 && control2_bit == 1 {
+                    let flipped = flip_bit(i, target_idx);
+                    new_state[flipped] = state[i];
+                    new_state[i] = state[flipped];
+                }
+            }
+
+            state.copy_from_slice(&new_state);
+            self.buffer_pool.lock().unwrap().return_buffer(new_state);
+        }
+
+        Ok(())
+    }
+
+    /// Apply Fredkin (CSWAP) gate to state vector
+    fn apply_fredkin_to_state<const N: usize>(
+        &self,
+        state: &mut [Complex64],
+        control: QubitId,
+        target1: QubitId,
+        target2: QubitId,
+    ) -> QuantRS2Result<()> {
+        let control_idx = control.id() as usize;
+        let target1_idx = target1.id() as usize;
+        let target2_idx = target2.id() as usize;
+
+        if control_idx >= N || target1_idx >= N || target2_idx >= N {
+            return Err(QuantRS2Error::InvalidQubitId(if control_idx >= N {
+                control.id()
+            } else if target1_idx >= N {
+                target1.id()
+            } else {
+                target2.id()
+            }));
+        }
+
+        // Apply Fredkin gate by swapping target qubits when control is |1⟩
+        if self.parallel {
+            let mut state_copy = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            state_copy.copy_from_slice(state);
+
+            state.par_iter_mut().enumerate().for_each(|(i, amp)| {
+                let control_bit = (i >> control_idx) & 1;
+                let target1_bit = (i >> target1_idx) & 1;
+                let target2_bit = (i >> target2_idx) & 1;
+
+                if control_bit == 1 && target1_bit != target2_bit {
+                    let swapped = flip_bit(flip_bit(i, target1_idx), target2_idx);
+                    *amp = state_copy[swapped];
+                }
+            });
+
+            self.buffer_pool.lock().unwrap().return_buffer(state_copy);
+        } else {
+            let mut new_state = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            new_state.copy_from_slice(state);
+
+            for i in 0..state.len() {
+                let control_bit = (i >> control_idx) & 1;
+                let target1_bit = (i >> target1_idx) & 1;
+                let target2_bit = (i >> target2_idx) & 1;
+
+                if control_bit == 1 && target1_bit != target2_bit {
+                    let swapped = flip_bit(flip_bit(i, target1_idx), target2_idx);
+                    new_state[swapped] = state[i];
+                    new_state[i] = state[swapped];
+                }
+            }
+
+            state.copy_from_slice(&new_state);
+            self.buffer_pool.lock().unwrap().return_buffer(new_state);
+        }
+
+        Ok(())
+    }
+
+    /// Apply Toffoli (CCNOT) gate (public interface)
+    pub fn apply_toffoli(
+        &mut self,
+        control1: QubitId,
+        control2: QubitId,
+        target: QubitId,
+    ) -> QuantRS2Result<()> {
+        // This is a placeholder for external API - real implementation would need circuit framework
+        Ok(())
+    }
+
+    /// Apply Fredkin (CSWAP) gate (public interface)
+    pub fn apply_fredkin(
+        &mut self,
+        control: QubitId,
+        target1: QubitId,
+        target2: QubitId,
+    ) -> QuantRS2Result<()> {
+        // This is a placeholder for external API - real implementation would need circuit framework
+        Ok(())
     }
 }

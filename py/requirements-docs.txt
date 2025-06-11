@@ -1,0 +1,65 @@
+# Documentation requirements for QuantRS2
+# Install with: pip install -r requirements-docs.txt
+
+# Core documentation framework
+mkdocs>=1.5.0
+mkdocs-material>=9.2.0
+
+# API documentation generation
+mkdocstrings[python]>=0.22.0
+mkdocstrings-python>=1.5.0
+
+# Enhanced markdown features
+pymdown-extensions>=10.0
+markdown>=3.4
+
+# Additional MkDocs plugins
+mkdocs-awesome-pages-plugin>=2.9.0
+mkdocs-git-revision-date-localized-plugin>=1.2.0
+mkdocs-macros-plugin>=1.0.0
+mkdocs-minify-plugin>=0.7.0
+mkdocs-redirects>=1.2.0
+
+# Mathematical notation support
+pymdown-extensions[extra]
+
+# Code highlighting and formatting
+pygments>=2.15.0
+
+# Optional dependencies for enhanced features
+# Uncomment if needed:
+
+# For diagram generation
+# mkdocs-mermaid2-plugin>=1.1.0
+# plantuml-markdown>=3.9.0
+
+# For PDF generation
+# mkdocs-pdf-export-plugin>=0.5.10
+# weasyprint>=59.0
+
+# For search improvements
+# mkdocs-exclude-search>=0.6.5
+
+# For table formatting
+# mkdocs-table-reader-plugin>=2.0.0
+
+# For social cards and SEO
+# mkdocs-social>=0.3.0
+# pillow>=10.0.0
+
+# For internationalization
+# mkdocs-static-i18n>=1.0.0
+
+# Development and validation tools
+# mkdocs-htmlproofer-plugin>=0.10.0
+# linkchecker>=10.2.0
+
+# Performance monitoring
+# mkdocs-git-committers-plugin-2>=1.2.0
+# mkdocs-build-plantuml-plugin>=1.7.4
+
+# For advanced theming
+# mkdocs-material[imaging]>=9.2.0
+
+# Version handling
+packaging>=21.0

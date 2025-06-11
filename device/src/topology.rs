@@ -331,7 +331,7 @@ impl HardwareTopology {
                     },
                 );
             }
-            
+
             // Row 1: 5, 6, 7, 8, 9
             for i in 5..9 {
                 topo.add_connection(
@@ -344,7 +344,7 @@ impl HardwareTopology {
                     },
                 );
             }
-            
+
             // Row 2: 10, 11, 12, 13, 14
             for i in 10..14 {
                 topo.add_connection(
@@ -357,7 +357,7 @@ impl HardwareTopology {
                     },
                 );
             }
-            
+
             // Row 3: 15, 16, 17, 18, 19
             for i in 15..19 {
                 topo.add_connection(
@@ -370,7 +370,7 @@ impl HardwareTopology {
                     },
                 );
             }
-            
+
             // Row 4: 20, 21, 22, 23, 24, 25, 26
             for i in 20..26 {
                 topo.add_connection(
@@ -383,15 +383,25 @@ impl HardwareTopology {
                     },
                 );
             }
-            
+
             // Vertical connections (heavy edges)
             let vertical_connections = vec![
-                (0, 5), (2, 7), (4, 9),
-                (5, 10), (7, 12), (9, 14),
-                (10, 15), (12, 17), (14, 19),
-                (15, 20), (16, 21), (17, 22), (18, 23), (19, 24),
+                (0, 5),
+                (2, 7),
+                (4, 9),
+                (5, 10),
+                (7, 12),
+                (9, 14),
+                (10, 15),
+                (12, 17),
+                (14, 19),
+                (15, 20),
+                (16, 21),
+                (17, 22),
+                (18, 23),
+                (19, 24),
             ];
-            
+
             for (a, b) in vertical_connections {
                 if a < num_qubits && b < num_qubits {
                     topo.add_connection(
@@ -405,14 +415,10 @@ impl HardwareTopology {
                     );
                 }
             }
-            
+
             // Diagonal connections (hex pattern)
-            let diagonal_connections = vec![
-                (1, 6), (3, 8),
-                (6, 11), (8, 13),
-                (11, 16), (13, 18),
-            ];
-            
+            let diagonal_connections = vec![(1, 6), (3, 8), (6, 11), (8, 13), (11, 16), (13, 18)];
+
             for (a, b) in diagonal_connections {
                 if a < num_qubits && b < num_qubits {
                     topo.add_connection(
@@ -427,7 +433,7 @@ impl HardwareTopology {
                 }
             }
         }
-        
+
         topo
     }
 
@@ -455,10 +461,10 @@ impl HardwareTopology {
             // Create a 4x5 grid-like structure
             let rows = 4;
             let cols = 5;
-            
+
             // Horizontal connections
             for row in 0..rows {
-                for col in 0..cols-1 {
+                for col in 0..cols - 1 {
                     let q1 = row * cols + col;
                     let q2 = row * cols + col + 1;
                     if q1 < num_qubits && q2 < num_qubits {
@@ -474,9 +480,9 @@ impl HardwareTopology {
                     }
                 }
             }
-            
+
             // Vertical connections (with some removed for Sycamore pattern)
-            for row in 0..rows-1 {
+            for row in 0..rows - 1 {
                 for col in 0..cols {
                     // Skip some connections to create Sycamore pattern
                     if (row + col) % 2 == 0 {
@@ -497,7 +503,7 @@ impl HardwareTopology {
                 }
             }
         }
-        
+
         topo
     }
 
@@ -751,7 +757,9 @@ impl HardwareTopology {
             // Add connection scores
             for i in 0..subset.len() {
                 for j in i + 1..subset.len() {
-                    if let Some(props) = self.gate_properties.get(&(subset[i], subset[j]))
+                    if let Some(props) = self
+                        .gate_properties
+                        .get(&(subset[i], subset[j]))
                         .or_else(|| self.gate_properties.get(&(subset[j], subset[i])))
                     {
                         score += props.error_rate;
@@ -791,7 +799,7 @@ impl HardwareTopology {
                         self.gate_properties.contains_key(&(q, candidate))
                             || self.gate_properties.contains_key(&(candidate, q))
                     });
-                    
+
                     if is_connected {
                         found_connected = true;
                         let mut test_subset = subset.clone();
@@ -835,6 +843,17 @@ impl HardwareTopology {
         }
 
         Ok(best_subset)
+    }
+}
+
+impl Default for HardwareTopology {
+    fn default() -> Self {
+        Self {
+            num_qubits: 0,
+            connectivity: UnGraph::new_undirected(),
+            qubit_properties: Vec::new(),
+            gate_properties: HashMap::new(),
+        }
     }
 }
 

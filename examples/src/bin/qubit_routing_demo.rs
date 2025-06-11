@@ -56,11 +56,11 @@ fn main() {
 
         let router = QubitRouter::new(linear.clone(), strategy);
         let start = Instant::now();
-        
+
         match router.route_circuit(&circuit) {
             Ok(result) => {
                 let elapsed = start.elapsed();
-                
+
                 println!("     Initial mapping: {:?}", result.initial_mapping);
                 println!("     SWAPs needed: {}", result.cost);
                 println!("     Depth overhead: {} layers", result.depth_overhead);
@@ -151,7 +151,8 @@ fn main() {
         let num_edges = topology.connectivity.edge_count();
         let router = QubitRouter::new(topology.clone(), RoutingStrategy::Lookahead { depth: 3 });
 
-        if topology.num_qubits >= 5 {  // Only route if we have enough qubits
+        if topology.num_qubits >= 5 {
+            // Only route if we have enough qubits
             if let Ok(result) = router.route_circuit(&circuit) {
                 let efficiency = 1.0 - (result.cost as f64 / 10.0);
                 println!(
@@ -166,11 +167,7 @@ fn main() {
         } else {
             println!(
                 "   {:11} | {:6} | {:5} | {:5} | {:9}",
-                name,
-                topology.num_qubits,
-                num_edges,
-                "N/A",
-                "N/A"
+                name, topology.num_qubits, num_edges, "N/A", "N/A"
             );
         }
     }

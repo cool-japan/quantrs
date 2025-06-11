@@ -4,10 +4,10 @@ build-backend = "maturin"
 
 [project]
 name = "quantrs2"
-version = "0.1.0a3"
-description = "Python bindings for the QuantRS2 quantum computing framework"
+version = "0.1.0a4"
+description = "High-performance quantum computing framework with ML, error mitigation, and annealing capabilities"
 authors = [
-    {name = "QuantRS2 Contributors", email = "noreply@example.com"}
+    {name = "QuantRS2 Contributors (Team KitaSan) ", email = "info@kitasan.io"}
 ]
 readme = "README.md"
 requires-python = ">=3.8"
@@ -19,10 +19,14 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Rust",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
     "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "License :: OSI Approved :: Apache Software License",
 ]
@@ -35,7 +39,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/cool-japan/quantrs"
 Repository = "https://github.com/cool-japan/quantrs"
-Documentation = "https://docs.rs/quantrs2-py"
+Documentation = "https://pypi.org/project/quantrs2/"
 
 [project.optional-dependencies]
 dev = [
@@ -56,7 +60,7 @@ gpu = [
 # Basic features for extension module
 features = ["pyo3/extension-module"]
 # Include Python source modules
-python-source = "src"
+python-source = "python"
 # Use simple binding mode
 binding = "pyo3"
 # Include these files in the package
@@ -67,7 +71,7 @@ abi3-py38 = true
 # Set this to work with maturin development
 manifest-path = "Cargo.toml"
 # Set the correct module name to match the Python import
-module-name = "_quantrs2"
+module-name = "quantrs2"
 
 [tool.black]
 line-length = 88

@@ -12,10 +12,13 @@ description = "Quantum Machine Learning module for QuantRS2"
 readme = "README.md"
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.3" }
-quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.3" }
-quantrs2-sim = { path = "../sim", version = "0.1.0-alpha.3" }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.4" }
+quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.4" }
+quantrs2-sim = { path = "../sim", version = "0.1.0-alpha.4" }
+quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.4" }
 thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 ndarray.workspace = true
 ndarray-rand.workspace = true
 ndarray-stats.workspace = true
@@ -23,7 +26,8 @@ rand = "0.8" # Keeping 0.8 for now to avoid breaking changes
 rand_distr.workspace = true
 rayon.workspace = true
 num-complex.workspace = true
-fastrand = "2.0.1"
+fastrand.workspace = true
+num_cpus = "1.16"
 
 [features]
 default = []

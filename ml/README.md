@@ -1,20 +1,46 @@
-# QuantRS2 Machine Learning Module
+# QuantRS2-ML: Advanced Quantum Machine Learning Suite
 
 [![Crates.io](https://img.shields.io/crates/v/quantrs2-ml.svg)](https://crates.io/crates/quantrs2-ml)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
 
-The `quantrs2-ml` crate provides quantum machine learning capabilities for the QuantRS2 quantum computing framework.
+QuantRS2-ML is the comprehensive quantum machine learning library of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing cutting-edge quantum algorithms, hybrid architectures, and industry-specific applications for next-generation artificial intelligence and data science.
 
-## Features
+## Comprehensive Features
 
-- **Quantum Neural Networks**: Parameterized quantum circuits for machine learning tasks
-- **Variational Quantum Algorithms**: Hybrid quantum-classical optimization for complex problems
-- **Application-Specific Modules**:
-  - **High-Energy Physics**: Quantum classification of particle collision data from accelerators
-  - **Generative Models**: Quantum GANs for data generation and augmentation
-  - **Cryptography**: Post-quantum cryptographic algorithms and protocols
-  - **Natural Language Processing**: Quantum-enhanced text understanding and generation
-  - **Blockchain**: Quantum-secured distributed ledger technology
+### Core Quantum Machine Learning
+- **Quantum Neural Networks (QNN)**: Parameterized quantum circuits with automatic differentiation
+- **Variational Quantum Algorithms**: VQE, QAOA, and hybrid optimization frameworks
+- **Quantum Convolutional Networks (QCNN)**: Quantum feature maps with pooling operations
+- **Quantum Support Vector Machines (QSVM)**: Kernel methods with quantum advantage
+- **Quantum Autoencoders (QVAE)**: Dimensionality reduction and representation learning
+
+### Advanced Deep Learning Architectures
+- **Quantum Transformers**: Attention mechanisms with quantum enhancement
+- **Quantum LSTM Networks**: Recurrent architectures for sequence modeling
+- **Quantum Graph Neural Networks**: Node and edge processing with quantum features
+- **Quantum Diffusion Models**: Generative modeling with quantum denoising
+- **Quantum Boltzmann Machines**: Energy-based models with quantum sampling
+
+### Generative AI & Large Models
+- **Quantum GANs**: Enhanced generative adversarial networks with Wasserstein loss
+- **Quantum Large Language Models**: Transformer-based text generation with quantum layers
+- **Quantum Computer Vision**: Image processing and recognition with quantum features
+- **Quantum Recommender Systems**: Collaborative filtering with quantum kernels
+- **Quantum Anomaly Detection**: Unsupervised learning for outlier identification
+
+### Specialized Applications
+- **High-Energy Physics**: Particle collision classification and analysis
+- **Quantum Cryptography**: Post-quantum security and key distribution protocols
+- **Blockchain Integration**: Quantum-secured distributed ledger technology
+- **Federated Learning**: Privacy-preserving distributed quantum ML
+- **Time Series Forecasting**: Financial and scientific data prediction
+
+### Advanced Training & Optimization
+- **Meta-Learning**: Few-shot and transfer learning with quantum adaptation
+- **Neural Architecture Search**: Automated quantum circuit design
+- **Adversarial Training**: Robustness enhancement against quantum attacks
+- **Continual Learning**: Lifelong learning without catastrophic forgetting
+- **AutoML**: Automated hyperparameter optimization and model selection
 
 ## Installation
 

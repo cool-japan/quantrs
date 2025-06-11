@@ -86,6 +86,8 @@ pub enum PoolingType {
     TraceOut,
     /// Measure and reset qubits
     MeasureReset,
+    /// Quantum pooling
+    Quantum,
 }
 
 impl QuantumPooling {
@@ -121,6 +123,27 @@ impl QuantumPooling {
                     }
                 }
                 *active_qubits = new_active;
+            }
+            PoolingType::Quantum => {
+                // Quantum pooling using unitary operations
+                let pool_size = self.pool_size;
+                let new_size = active_qubits.len() / pool_size;
+
+                // Apply quantum pooling gates (simplified)
+                for i in 0..new_size {
+                    let start_idx = i * pool_size;
+                    let end_idx = (start_idx + pool_size).min(active_qubits.len());
+
+                    if end_idx > start_idx + 1 {
+                        // Apply entangling gates between qubits in pool
+                        for j in start_idx..end_idx - 1 {
+                            circuit.cnot(active_qubits[j], active_qubits[j + 1]);
+                        }
+                    }
+                }
+
+                // Keep only the first qubit from each pool
+                active_qubits.truncate(new_size);
             }
         }
         Ok(())
@@ -389,10 +412,10 @@ mod tests {
     fn test_filter_application() {
         let filter = QuantumConvFilter::new(3, 1);
         let mut circuit = Circuit::<8>::new();
-        
+
         // Apply filter starting at qubit 0
         filter.apply_filter(&mut circuit, 0).unwrap();
-        
+
         // Should have applied gates
         assert!(circuit.num_gates() > 0);
     }
@@ -402,9 +425,11 @@ mod tests {
         let pooling = QuantumPooling::new(2, PoolingType::TraceOut);
         let mut circuit = Circuit::<8>::new();
         let mut active_qubits = vec![0, 1, 2, 3, 4, 5, 6, 7];
-        
-        pooling.apply_pooling(&mut circuit, &mut active_qubits).unwrap();
-        
+
+        pooling
+            .apply_pooling(&mut circuit, &mut active_qubits)
+            .unwrap();
+
         // Should reduce active qubits by pool_size
         assert_eq!(active_qubits.len(), 4);
     }
@@ -414,9 +439,11 @@ mod tests {
         let pooling = QuantumPooling::new(2, PoolingType::MeasureReset);
         let mut circuit = Circuit::<8>::new();
         let mut active_qubits = vec![0, 1, 2, 3, 4, 5, 6, 7];
-        
-        pooling.apply_pooling(&mut circuit, &mut active_qubits).unwrap();
-        
+
+        pooling
+            .apply_pooling(&mut circuit, &mut active_qubits)
+            .unwrap();
+
         // Should keep every 2nd qubit
         assert_eq!(active_qubits.len(), 4);
         assert_eq!(active_qubits, vec![0, 2, 4, 6]);
@@ -444,7 +471,7 @@ mod tests {
             Complex::new(0.5, 0.0),
             Complex::new(0.5, 0.0),
         ];
-        
+
         let decoded = encoder.decode(&state);
         assert_eq!(decoded.len(), 2);
         assert_eq!(decoded[0].len(), 2);
@@ -453,16 +480,16 @@ mod tests {
     #[test]
     fn test_qcnn_forward() {
         let qcnn = QCNN::new(
-            4,              // 4 qubits
-            vec![(2, 1)],   // One conv layer
-            vec![2],        // One pooling layer
-            2,              // FC layer params
+            4,            // 4 qubits
+            vec![(2, 1)], // One conv layer
+            vec![2],      // One pooling layer
+            2,            // FC layer params
         )
         .unwrap();
-        
+
         let input_state = vec![Complex::new(1.0, 0.0); 16]; // 2^4 = 16
         let output = qcnn.forward(&input_state).unwrap();
-        
+
         // Output should be for reduced qubits after pooling
         assert!(output.len() > 0);
     }
@@ -470,20 +497,20 @@ mod tests {
     #[test]
     fn test_parameter_management() {
         let mut qcnn = QCNN::new(
-            4,              // 4 qubits
-            vec![(2, 1)],   // One conv layer
-            vec![2],        // One pooling layer
-            2,              // FC layer params
+            4,            // 4 qubits
+            vec![(2, 1)], // One conv layer
+            vec![2],      // One pooling layer
+            2,            // FC layer params
         )
         .unwrap();
-        
+
         let params = qcnn.get_parameters();
         let num_params = params.len();
-        
+
         // Modify parameters
         let new_params: Vec<f64> = (0..num_params).map(|i| i as f64 * 0.1).collect();
         qcnn.set_parameters(&new_params).unwrap();
-        
+
         let retrieved_params = qcnn.get_parameters();
         assert_eq!(retrieved_params, new_params);
     }
@@ -491,26 +518,29 @@ mod tests {
     #[test]
     fn test_gradient_computation() {
         let mut qcnn = QCNN::new(
-            4,              // 4 qubits
-            vec![(2, 1)],   // One conv layer
-            vec![2],        // One pooling layer
-            2,              // FC layer params
+            4,            // 4 qubits
+            vec![(2, 1)], // One conv layer
+            vec![2],      // One pooling layer
+            2,            // FC layer params
         )
         .unwrap();
-        
+
         let input_state = vec![Complex::new(0.5, 0.0); 16];
         let target_state = vec![Complex::new(0.707, 0.0); 2];
-        
+
         // Simple MSE loss
         let loss_fn = |output: &DVector<Complex>, target: &DVector<Complex>| -> f64 {
-            output.iter()
+            output
+                .iter()
                 .zip(target.iter())
                 .map(|(o, t)| (o - t).norm_sqr())
                 .sum::<f64>()
         };
-        
-        let gradients = qcnn.compute_gradients(&input_state, &target_state, loss_fn).unwrap();
-        
+
+        let gradients = qcnn
+            .compute_gradients(&input_state, &target_state, loss_fn)
+            .unwrap();
+
         // Should have gradients for all parameters
         assert_eq!(gradients.len(), qcnn.get_parameters().len());
     }
@@ -524,7 +554,7 @@ mod tests {
             vec![2],              // Only one pooling layer
             4,
         );
-        
+
         assert!(result.is_err());
     }
 
@@ -532,9 +562,9 @@ mod tests {
     fn test_stride_behavior() {
         let filter = QuantumConvFilter::new(2, 2); // Filter size 2, stride 2
         assert_eq!(filter.stride, 2);
-        
+
         let mut circuit = Circuit::<8>::new();
-        
+
         // Apply with stride - should skip positions
         filter.apply_filter(&mut circuit, 0).unwrap();
         filter.apply_filter(&mut circuit, 2).unwrap(); // Next position based on stride
@@ -544,10 +574,10 @@ mod tests {
     fn test_large_image_encoding() {
         let encoder = QuantumImageEncoder::new(4, 4, 4); // 4x4 image, 4 qubits
         let image = vec![vec![0.25; 4]; 4];
-        
+
         let encoded = encoder.encode(&image).unwrap();
         assert_eq!(encoded.len(), 16); // 2^4 = 16
-        
+
         // Verify partial encoding (16 pixels into 16 amplitudes)
         let decoded = encoder.decode(&encoded);
         assert_eq!(decoded.len(), 4);

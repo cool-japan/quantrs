@@ -1,3 +1,4 @@
+#[cfg(feature = "aws")]
 use chrono::{DateTime, Utc};
 use hmac::{Hmac, Mac};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};

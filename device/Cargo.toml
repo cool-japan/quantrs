@@ -11,20 +11,29 @@ categories.workspace = true
 description = "Quantum device connectors for the QuantRS2 framework"
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.3" }
-quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.3" }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.4" }
+quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.4" }
 num-complex.workspace = true
 thiserror.workspace = true
 petgraph = "0.6"
 fastrand = "2.0"
+rand.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+ndarray.workspace = true
+
+# SciRS2 dependencies for advanced algorithms
+scirs2-stats = { version = "0.1.0-alpha.4", default-features = false, optional = true }
+scirs2-graph = { version = "0.1.0-alpha.4", default-features = false, optional = true }
+scirs2-linalg = { workspace = true, optional = true }
+scirs2-optimize = { workspace = true, optional = true }
 
 # For device connectivity
 reqwest = { workspace = true, features = ["json"], optional = true }
-tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"], optional = true }
-serde = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "sync", "time"], optional = true }
 chrono = { workspace = true, optional = true }
 async-trait = { workspace = true, optional = true }
+uuid = { version = "1.10.0", features = ["v4"], optional = true }
 
 # For AWS authentication
 hmac = { workspace = true, optional = true }
@@ -32,15 +41,17 @@ sha2 = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }
 bytemuck = { workspace = true, features = ["derive"], optional = true }
 
+# For quantum security features
+aes-gcm = { version = "0.10.3", optional = true }
+x25519-dalek = { version = "2.0.1", optional = true }
+
 [features]
-default = []
-ibm = ["dep:reqwest", "dep:tokio", "dep:serde", "dep:serde_json", "dep:chrono", "dep:async-trait"]
-azure = ["dep:reqwest", "dep:tokio", "dep:serde", "dep:serde_json", "dep:chrono", "dep:async-trait"]
+default = ["scheduling", "scirs2", "security"]
+ibm = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait"]
+azure = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait"]
 aws = [
     "dep:reqwest", 
     "dep:tokio", 
-    "dep:serde", 
-    "dep:serde_json", 
     "dep:chrono", 
     "dep:async-trait",
     "dep:hmac",
@@ -48,3 +59,6 @@ aws = [
     "dep:hex",
     "dep:bytemuck"
 ]
+scheduling = ["dep:tokio", "dep:async-trait", "dep:uuid"]
+scirs2 = ["dep:scirs2-stats", "dep:scirs2-graph", "dep:scirs2-linalg", "dep:scirs2-optimize"]
+security = ["dep:aes-gcm", "dep:x25519-dalek", "dep:sha2", "dep:chrono"]

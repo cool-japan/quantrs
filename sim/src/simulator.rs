@@ -40,7 +40,7 @@ impl<const N: usize> SimulatorResult<N> {
 pub trait Simulator {
     /// Run a quantum circuit and return the simulation result
     fn run<const N: usize>(
-        &self,
+        &mut self,
         circuit: &quantrs2_circuit::prelude::Circuit<N>,
     ) -> SimulatorResult<N>;
 }

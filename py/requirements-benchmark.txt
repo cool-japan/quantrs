@@ -1,0 +1,40 @@
+# Requirements for QuantRS2 Benchmarking Suite
+# Install with: pip install -r requirements-benchmark.txt
+
+# Core requirements
+numpy>=1.19.0
+pandas>=1.3.0
+matplotlib>=3.3.0
+seaborn>=0.11.0
+psutil>=5.8.0
+
+# For parallel benchmarks
+joblib>=1.0.0
+
+# For memory profiling
+memory-profiler>=0.58.0
+tracemalloc-ng>=1.0.0  # Enhanced tracemalloc
+
+# For system information
+py-cpuinfo>=8.0.0
+
+# For report generation
+jinja2>=3.0.0  # Template engine
+plotly>=5.0.0  # Interactive plots
+
+# Optional GPU monitoring (install if using GPU)
+# pynvml>=11.0.0  # NVIDIA GPU monitoring
+# pyamd>=0.1.0    # AMD GPU monitoring
+
+# For statistical analysis
+scipy>=1.7.0
+scikit-learn>=0.24.0  # For regression analysis
+
+# Development tools
+pytest>=6.0.0
+pytest-benchmark>=3.4.0
+pytest-timeout>=2.0.0
+
+# QuantRS2 itself (with all features)
+# Uncomment if not installed separately
+# quantrs2[ml,anneal,tytan]

@@ -8,15 +8,31 @@ QuantRS2-Py provides Python bindings for the [QuantRS2](https://github.com/cool-
 
 ## Features
 
+### Core Quantum Computing
 - **Seamless Python Integration**: Easy-to-use Python interface for QuantRS2
 - **High Performance**: Leverages Rust's performance while providing Python's usability 
 - **Complete Gate Set**: All quantum gates from the core library exposed to Python
 - **Simulator Access**: Run circuits on state vector and other simulators
 - **GPU Acceleration**: Optional GPU acceleration via feature flag
 - **PyO3-Based**: Built using the robust PyO3 framework for Rust-Python interoperability
-- **Machine Learning Integration**: Quantum Neural Networks and Variational Algorithms
-- **Domain-specific ML Applications**: Tools for high-energy physics, cryptography, and more
-- **Quantum Circuit Visualization**: Built-in tools for visualizing quantum circuits 
+
+### Advanced Features ✨ **NEW in v0.1.0a4**
+- **🧠 Quantum Machine Learning**: 
+  - Quantum Neural Networks (QNN) with parameter-shift rule gradients
+  - Variational Quantum Eigensolver (VQE) with multiple ansätze
+  - Hardware-efficient parameterized circuits
+- **🛡️ Error Mitigation**: 
+  - Zero-Noise Extrapolation (ZNE) with multiple extrapolation methods
+  - Circuit folding for noise scaling
+  - Observable expectation value calculation
+- **🔥 Quantum Annealing**: 
+  - QUBO and Ising model optimization
+  - Simulated annealing solver
+  - Graph embedding for quantum hardware
+  - Penalty optimization for constrained problems
+- **🎨 Visualization**: Interactive circuit diagrams and state visualization
+- **🔐 Cryptography**: Quantum key distribution and digital signatures
+- **💰 Finance**: Portfolio optimization and option pricing 
 
 ## Installation
 
@@ -62,6 +78,93 @@ for state, prob in probs.items():
     print(f"|{state}⟩: {prob:.6f}")
 ```
 
+## Advanced Usage Examples ✨
+
+### Quantum Machine Learning
+
+#### Quantum Neural Network (QNN)
+```python
+from quantrs2.ml import QNN
+import numpy as np
+
+# Create and train a QNN
+qnn = QNN(n_qubits=4, n_layers=3, activation="relu")
+
+# Training data
+X_train = np.random.random((100, 4))
+y_train = np.random.random((100, 4))
+
+# Train the model
+losses = qnn.train(X_train, y_train, epochs=50, learning_rate=0.01)
+
+# Make predictions
+predictions = qnn.forward(X_train[:10])
+print(f"Predictions shape: {predictions.shape}")
+```
+
+#### Variational Quantum Eigensolver (VQE)
+```python
+from quantrs2.ml import VQE
+import numpy as np
+
+# Create VQE instance for ground state finding
+vqe = VQE(n_qubits=4, ansatz="hardware_efficient")
+
+# Optimize to find ground state
+ground_energy, ground_state = vqe.compute_ground_state()
+print(f"Ground state energy: {ground_energy:.6f}")
+```
+
+### Error Mitigation
+
+#### Zero-Noise Extrapolation
+```python
+from quantrs2.mitigation import ZeroNoiseExtrapolation, ZNEConfig, Observable
+from quantrs2 import PyCircuit
+
+# Configure ZNE
+config = ZNEConfig(
+    scale_factors=[1.0, 1.5, 2.0, 2.5, 3.0],
+    extrapolation_method="richardson"
+)
+zne = ZeroNoiseExtrapolation(config)
+
+# Create noisy circuit
+circuit = PyCircuit(2)
+circuit.h(0)
+circuit.cnot(0, 1)
+
+# Define observable
+observable = Observable.z(0)
+
+# Mitigate errors
+result = zne.mitigate_observable(circuit, observable)
+print(f"Mitigated value: {result.mitigated_value:.6f} ± {result.error_estimate:.6f}")
+```
+
+### Quantum Annealing
+
+#### QUBO Optimization
+```python
+from quantrs2.anneal import QuboModel, PenaltyOptimizer
+
+# Create QUBO model
+qubo = QuboModel(n_vars=4)
+qubo.add_linear(0, 1.0)
+qubo.add_linear(1, -2.0)
+qubo.add_quadratic(0, 1, 3.0)
+qubo.add_quadratic(1, 2, -1.0)
+
+# Solve using simulated annealing
+solution, energy = qubo.solve_simulated_annealing(max_iter=1000)
+print(f"Best solution: {solution}")
+print(f"Energy: {energy:.6f}")
+
+# Convert to Ising model
+ising = qubo.to_ising()
+print(f"Ising model with {ising.n_spins} spins")
+```
+
 ### Using GPU Acceleration
 
 ```python
@@ -87,129 +190,52 @@ except ValueError as e:
 probs = result.probabilities()
 ```
 
-### Using Quantum Neural Networks for Classification
+## What's New in v0.1.0a4
 
-```python
-import quantrs2 as qr
-import numpy as np
-from sklearn import datasets
+- **🧠 Advanced Machine Learning**: Full QNN implementation with gradient-based training
+- **🛡️ Error Mitigation Suite**: ZNE, circuit folding, and observable measurements  
+- **🔥 Quantum Annealing**: Complete QUBO/Ising optimization framework
+- **⚡ Performance**: Enhanced algorithms with better convergence
+- **📚 Documentation**: Comprehensive examples and API references
 
-# Load the iris dataset
-iris = datasets.load_iris()
-X = iris.data[:, :2]  # Use only the first two features
-y = iris.target
+## API Reference
 
-# Normalize features
-X = (X - X.min(axis=0)) / (X.max(axis=0) - X.min(axis=0))
+### Core Classes
+- `PyCircuit`: Main circuit building and execution
+- `PySimulationResult`: Results from quantum simulations
 
-# Create a QNN with 4 qubits
-qnn = qr.QNN(n_qubits=4, n_layers=2)
+### Machine Learning (`quantrs2.ml`)
+- `QNN`: Quantum Neural Networks
+- `VQE`: Variational Quantum Eigensolver
+- `HEPClassifier`: High-Energy Physics classifier
+- `QuantumGAN`: Quantum Generative Adversarial Networks
 
-# Process a sample
-sample = X[0]
-output = qnn.forward(sample.reshape(1, -1))
-predicted_class = np.argmax(output)
-print(f"Predicted class: {predicted_class}")
-```
+### Error Mitigation (`quantrs2.mitigation`)
+- `ZeroNoiseExtrapolation`: ZNE implementation
+- `Observable`: Quantum observables
+- `CircuitFolding`: Noise scaling utilities
 
-### Applying Variational Quantum Algorithms
+### Quantum Annealing (`quantrs2.anneal`)
+- `QuboModel`: QUBO problem formulation
+- `IsingModel`: Ising model optimization
+- `PenaltyOptimizer`: Constrained optimization
 
-```python
-import quantrs2 as qr
-import numpy as np
+## Contributing
 
-# Create a VQE instance for a 2-qubit system
-vqe = qr.VQE(n_qubits=2)
-
-# Run optimization to find ground state energy
-final_energy, optimal_params = vqe.optimize(max_iterations=100)
-print(f"Optimal energy: {final_energy:.6f}")
-```
-
-### Analyzing Results
-
-```python
-import quantrs2 as qr
-import matplotlib.pyplot as plt
-
-# Create and run a circuit
-circuit = qr.PyCircuit(3)
-circuit.h(0)
-circuit.cnot(0, 1)
-circuit.x(2)
-result = circuit.run()
-
-# Get the state probabilities
-probs = result.state_probabilities()
-
-# Plot the results using quantrs2's visualization tools
-viz = qr.visualize_probabilities(result)
-viz.plot()
-plt.show()
-```
-
-## API Overview
-
-### Main Classes
-
-- `PyCircuit`, `Circuit`: Quantum circuit representation
-- `PySimulationResult`, `SimulationResult`: Results from circuit simulation
-- `QNN`: Quantum Neural Network for machine learning
-- `VQE`: Variational Quantum Eigensolver for optimization problems
-- `HEPClassifier`: Specialized classifier for high-energy physics data
-- `QuantumGAN`: Quantum Generative Adversarial Network
-
-### Circuit Methods
-
-- `PyCircuit(n_qubits)`: Create a new circuit with specified number of qubits
-- `h(qubit)`: Apply Hadamard gate
-- `x(qubit)`, `y(qubit)`, `z(qubit)`: Apply Pauli gates
-- `s(qubit)`, `sdg(qubit)`: Apply S and S-dagger gates
-- `t(qubit)`, `tdg(qubit)`: Apply T and T-dagger gates
-- `rx(qubit, theta)`, `ry(qubit, theta)`, `rz(qubit, theta)`: Apply rotation gates
-- `cnot(control, target)`: Apply CNOT gate
-- `swap(qubit1, qubit2)`: Apply SWAP gate
-- `run(use_gpu=False)`: Run the circuit on a simulator
-- `draw()`, `draw_html()`: Visualize the circuit
-
-### Result Methods
-
-- `amplitudes()`: Get the state vector amplitudes
-- `probabilities()`: Get the measurement probabilities for each basis state
-- `state_probabilities()`: Get a dictionary mapping basis states to probabilities
-- `expectation_value(operator)`: Calculate expectation value of a Pauli operator
-
-### Utility Functions
-
-- `create_bell_state()`, `create_ghz_state()`: Predefined quantum states
-- `visualize_circuit(circuit)`: Create a circuit visualizer
-- `visualize_probabilities(result)`: Visualize measurement probabilities
-
-## Limitations
-
-- Current implementation supports circuits with 1, 2, 3, 4, 5, 8, 10, or 16 qubits only
-- GPU acceleration requires the `gpu` feature flag during compilation
-- Machine learning features may require additional dependencies (install with `pip install quantrs2[ml]`)
-
-## Future Plans
-
-See [TODO.md](TODO.md) for planned improvements and features.
-
-## Integration with Python Ecosystem
-
-QuantRS2 Python bindings work well with common Python scientific libraries:
-
-- **NumPy**: Results can be easily converted to NumPy arrays
-- **Matplotlib**: Visualization of quantum states and probabilities
-- **Pandas**: Analysis of simulation results
-- **scikit-learn**: Integration with classical ML pipelines
-- **IPython/Jupyter**: Interactive exploration of quantum circuits
+We welcome contributions! Please see our [contributing guidelines](CONTRIBUTING.md) for more information.
 
 ## License
 
-This project is licensed under either:
+This project is licensed under the MIT/Apache-2.0 dual license.
 
-- [Apache License, Version 2.0](../LICENSE-APACHE)
-- [MIT License](../LICENSE-MIT)
+## Citation
 
-at your option.
+If you use QuantRS2 in your research, please cite:
+
+```bibtex
+@software{quantrs2,
+  title = {QuantRS2: High-Performance Quantum Computing Framework},
+  author = {Team KitaSan},
+  year = {2024},
+  url = {https://github.com/cool-japan/quantrs}
+}

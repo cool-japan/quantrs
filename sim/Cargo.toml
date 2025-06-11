@@ -11,14 +11,15 @@ categories.workspace = true
 description = "Quantum circuit simulators for the QuantRS2 framework"
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.3" }
-quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.3" }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.4" }
+quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.4" }
 num-complex.workspace = true
 ndarray.workspace = true
 rayon.workspace = true
 thiserror.workspace = true
 # Optional dependencies disabled by default to avoid OpenBLAS issues on macOS ARM
-scirs2-core = { workspace = true, features = ["simd", "memory_management", "parallel", "linalg"], optional = true }
+scirs2-core = { workspace = true, features = ["simd", "memory_management", "parallel", "linalg", "gpu"], optional = true }
+scirs2-linalg = { workspace = true, default-features = false, optional = true }
 scirs2-optimize = { workspace = true, default-features = false, optional = true }
 pandrs = { workspace = true, optional = true }
 pyo3.workspace = true
@@ -30,9 +31,20 @@ tokio = { workspace = true, features = ["rt", "rt-multi-thread"], optional = tru
 futures = { version = "0.3", optional = true }
 rand.workspace = true
 rand_chacha.workspace = true
+rand_xoshiro = "0.6"
 wide.workspace = true
 fastrand = "2.0.1"
 nalgebra-sparse = "0.9"
+dashmap = "5.5"
+half = { version = "2.4", features = ["num-traits"] }
+ndarray-linalg = { version = "0.17", optional = true }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+num_cpus = "1.16"
+
+[dev-dependencies]
+approx = "0.5"
 
 [features]
 default = ["optimize"]
@@ -40,4 +52,9 @@ gpu = ["dep:wgpu", "dep:bytemuck", "dep:tokio", "dep:futures"]
 simd = []
 optimize = ["simd"] # Enable optimized implementations
 memory_efficient = [] # Enable memory-efficient algorithms for large state vectors
-advanced_math = ["dep:scirs2-core", "dep:scirs2-optimize", "dep:pandrs"] # Enable advanced math using external libs
+advanced_math = ["dep:scirs2-core", "dep:scirs2-linalg", "dep:scirs2-optimize", "dep:pandrs"] # Enable advanced math using external libs
+mps = ["dep:ndarray-linalg"] # Enable MPS simulator with linear algebra support
+
+[[bin]]
+name = "test_stabilizer"
+path = "src/bin/test_stabilizer.rs"

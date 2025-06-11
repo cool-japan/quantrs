@@ -11,15 +11,24 @@ categories.workspace = true
 description = "High-level quantum annealing interface inspired by Tytan for the QuantRS2 framework"
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.3" }
-quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.3" }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.4" }
+quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.4" }
 num-complex.workspace = true
 thiserror.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
+rand_distr.workspace = true
 ndarray.workspace = true
+num-bigint = "0.4"
+num-integer = "0.1"
+chrono = "0.4"
 symengine = { workspace = true, optional = true }
 regex = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+num_cpus = "1.16"
+plotters = { version = "0.3", optional = true }
+colored = "2.0"
 
 # SciRS2 dependencies for performance optimization
 scirs2-core = { workspace = true, optional = true }
@@ -44,4 +53,14 @@ advanced_optimization = ["scirs", "dep:scirs2-optimize"]
 gpu_accelerated = ["gpu", "scirs", "parallel"]
 # These features are placeholder stubs for conditional compilation
 clustering = []
-plotters = []
+plotters = ["dep:plotters"]
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+ndarray-rand.workspace = true
+rand_chacha.workspace = true
+colored = "2.0"
+
+# [[bench]]
+# name = "performance_benchmark"
+# harness = false

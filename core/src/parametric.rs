@@ -238,6 +238,10 @@ impl GateOp for ParametricRotationX {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn clone_gate(&self) -> Box<dyn GateOp> {
+        Box::new(self.clone())
+    }
 }
 
 impl ParametricGate for ParametricRotationX {
@@ -368,6 +372,10 @@ impl GateOp for ParametricRotationY {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn clone_gate(&self) -> Box<dyn GateOp> {
+        Box::new(self.clone())
+    }
 }
 
 impl ParametricGate for ParametricRotationY {
@@ -497,6 +505,10 @@ impl GateOp for ParametricRotationZ {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+
+    fn clone_gate(&self) -> Box<dyn GateOp> {
+        Box::new(self.clone())
     }
 }
 
@@ -648,6 +660,10 @@ impl GateOp for ParametricU {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+
+    fn clone_gate(&self) -> Box<dyn GateOp> {
+        Box::new(self.clone())
     }
 }
 
@@ -843,6 +859,10 @@ impl GateOp for ParametricCRX {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn clone_gate(&self) -> Box<dyn GateOp> {
+        Box::new(self.clone())
+    }
 }
 
 impl ParametricGate for ParametricCRX {
@@ -975,6 +995,10 @@ impl GateOp for ParametricPhaseShift {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+
+    fn clone_gate(&self) -> Box<dyn GateOp> {
+        Box::new(self.clone())
     }
 }
 

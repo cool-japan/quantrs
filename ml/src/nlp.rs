@@ -288,19 +288,19 @@ impl QuantumLanguageModel {
 
         // Create a QNN architecture suitable for the task
         let layers = vec![
-            crate::qnn::QNNLayer::EncodingLayer {
+            crate::qnn::QNNLayerType::EncodingLayer {
                 num_features: embedding_dimension,
             },
-            crate::qnn::QNNLayer::VariationalLayer {
+            crate::qnn::QNNLayerType::VariationalLayer {
                 num_params: 2 * num_qubits,
             },
-            crate::qnn::QNNLayer::EntanglementLayer {
+            crate::qnn::QNNLayerType::EntanglementLayer {
                 connectivity: "full".to_string(),
             },
-            crate::qnn::QNNLayer::VariationalLayer {
+            crate::qnn::QNNLayerType::VariationalLayer {
                 num_params: 2 * num_qubits,
             },
-            crate::qnn::QNNLayer::MeasurementLayer {
+            crate::qnn::QNNLayerType::MeasurementLayer {
                 measurement_basis: "computational".to_string(),
             },
         ];
@@ -350,7 +350,7 @@ impl QuantumLanguageModel {
         let y_train = Array1::from_vec(labels.iter().map(|&l| l as f64).collect());
 
         // Train the QNN
-        self.qnn.train(&x_train, &y_train, 100, 0.01)?;
+        self.qnn.train_1d(&x_train, &y_train, 100, 0.01)?;
 
         Ok(())
     }
@@ -576,7 +576,8 @@ impl QuantumLanguageModel {
         let y_train = Array1::from_vec(labels.iter().map(|&l| l as f64).collect());
 
         // Train the underlying QNN
-        self.qnn.train(&features, &y_train, epochs, learning_rate)?;
+        self.qnn
+            .train_1d(&features, &y_train, epochs, learning_rate)?;
 
         Ok(())
     }

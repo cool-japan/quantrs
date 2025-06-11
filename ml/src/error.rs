@@ -36,9 +36,41 @@ pub enum MLError {
     #[error("Invalid parameter: {0}")]
     InvalidParameter(String),
 
+    /// Invalid input
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+
+    /// Invalid configuration
+    #[error("Invalid configuration: {0}")]
+    InvalidConfiguration(String),
+
+    /// Configuration error
+    #[error("Configuration error: {0}")]
+    ConfigurationError(String),
+
+    /// Dimension mismatch error
+    #[error("Dimension mismatch: {0}")]
+    DimensionMismatch(String),
+
     /// Not implemented
     #[error("Not implemented: {0}")]
     NotImplemented(String),
+
+    /// Not supported
+    #[error("Not supported: {0}")]
+    NotSupported(String),
+
+    /// Validation error
+    #[error("Validation error: {0}")]
+    ValidationError(String),
+
+    /// Model not trained
+    #[error("Model not trained: {0}")]
+    ModelNotTrained(String),
+
+    /// Computation error
+    #[error("Computation error: {0}")]
+    ComputationError(String),
 
     /// I/O error
     #[error("I/O error: {0}")]
@@ -47,4 +79,18 @@ pub enum MLError {
     /// Quantum error
     #[error("Quantum error: {0}")]
     QuantumError(#[from] QuantRS2Error),
+
+    /// Shape error from ndarray
+    #[error("Shape error: {0}")]
+    ShapeError(#[from] ndarray::ShapeError),
+
+    /// JSON serialization error
+    #[error("JSON error: {0}")]
+    JsonError(#[from] serde_json::Error),
+}
+
+impl From<String> for MLError {
+    fn from(s: String) -> Self {
+        MLError::ComputationError(s)
+    }
 }

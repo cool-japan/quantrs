@@ -1,8 +1,9 @@
+use crate::simulator::Simulator; // Local simulator trait
 use num_complex::Complex64;
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 use quantrs2_circuit::builder::Circuit;
-use quantrs2_circuit::builder::Simulator; // Added Simulator trait import
+use quantrs2_circuit::builder::Simulator as CircuitSimulator; // Circuit simulator trait
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,

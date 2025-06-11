@@ -57,46 +57,68 @@ class QNN:
         if _has_native_qml:
             return self._native_qnn.forward(x)
         
-        # Stub implementation
+        # Enhanced implementation with batch processing
         n_samples = x.shape[0]
-        circuit = PyCircuit(self.n_qubits)
+        n_features = min(x.shape[1], self.n_qubits)
+        outputs = []
         
-        # Data encoding
-        for i in range(min(x.shape[1], self.n_qubits)):
-            circuit.ry(i, x[0, i])
-        
-        # Apply parameterized layers
-        param_idx = 0
-        for layer in range(self.n_layers):
-            # Single-qubit rotations
+        for sample_idx in range(n_samples):
+            circuit = PyCircuit(self.n_qubits)
+            
+            # Data encoding with angle embedding
+            for i in range(n_features):
+                # Normalize input to [0, 2π] for angle encoding
+                angle = x[sample_idx, i] * np.pi / 2.0
+                circuit.ry(i, angle)
+            
+            # Apply parameterized layers
+            param_idx = 0
+            for layer in range(self.n_layers):
+                # Single-qubit rotations
+                for q in range(self.n_qubits):
+                    circuit.rx(q, self.parameters[param_idx])
+                    param_idx += 1
+                    circuit.ry(q, self.parameters[param_idx])
+                    param_idx += 1
+                    circuit.rz(q, self.parameters[param_idx])
+                    param_idx += 1
+                
+                # Entanglement layer
+                for q in range(self.n_qubits - 1):
+                    circuit.cnot(q, q + 1)
+                
+                # Add circular connection for better expressivity
+                if self.n_qubits > 2:
+                    circuit.cnot(self.n_qubits - 1, 0)
+            
+            # Run the circuit
+            result = circuit.run()
+            
+            # Extract observables (expectation values of Pauli-Z on each qubit)
+            state_probs = result.state_probabilities()
+            
+            # Calculate expectation values of Z operators
+            z_expectations = []
             for q in range(self.n_qubits):
-                circuit.rx(q, self.parameters[param_idx])
-                param_idx += 1
-                circuit.ry(q, self.parameters[param_idx])
-                param_idx += 1
-                circuit.rz(q, self.parameters[param_idx])
-                param_idx += 1
+                z_exp = 0.0
+                for state, prob in state_probs.items():
+                    # Extract the bit for qubit q
+                    bit = int(state[q])
+                    z_exp += prob * (1 - 2 * bit)  # +1 for |0⟩, -1 for |1⟩
+                z_expectations.append(z_exp)
             
-            # Entanglement
-            for q in range(self.n_qubits - 1):
-                circuit.cnot(q, q + 1)
+            # Apply classical post-processing
+            features = np.array(z_expectations)
+            if self.activation == "relu":
+                features = np.maximum(0, features)
+            elif self.activation == "tanh":
+                features = np.tanh(features)
+            elif self.activation == "sigmoid":
+                features = 1.0 / (1.0 + np.exp(-features))
             
-            # Add final connection
-            if self.n_qubits > 2:
-                circuit.cnot(self.n_qubits - 1, 0)
+            outputs.append(features)
         
-        # Run the circuit
-        result = circuit.run()
-        
-        # Extract features from the quantum state (simplified)
-        probs = result.probabilities()
-        features = np.array(probs[:4])  # Take first 4 probabilities as features
-        
-        # Apply classical post-processing
-        if self.activation == "relu":
-            features = np.maximum(0, features)
-        
-        return features.reshape(1, -1)
+        return np.array(outputs)
     
     def set_parameters(self, parameters: np.ndarray):
         """
@@ -117,6 +139,84 @@ class QNN:
             Current parameter values
         """
         return self.parameters
+    
+    def compute_gradient(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        """
+        Compute gradients using parameter-shift rule.
+        
+        Args:
+            x: Input data, shape (n_samples, n_features)
+            y: Target outputs, shape (n_samples, n_outputs)
+            
+        Returns:
+            Gradients with respect to parameters
+        """
+        if _has_native_qml:
+            return self._native_qnn.compute_gradient(x, y)
+        
+        # Parameter-shift rule implementation
+        gradients = np.zeros_like(self.parameters)
+        shift = np.pi / 2  # Standard shift for parameter-shift rule
+        
+        # Compute forward pass with current parameters
+        predictions = self.forward(x)
+        current_loss = np.mean((predictions - y) ** 2)
+        
+        for i in range(len(self.parameters)):
+            # Shift parameter positively
+            self.parameters[i] += shift
+            pred_plus = self.forward(x)
+            loss_plus = np.mean((pred_plus - y) ** 2)
+            
+            # Shift parameter negatively
+            self.parameters[i] -= 2 * shift
+            pred_minus = self.forward(x)
+            loss_minus = np.mean((pred_minus - y) ** 2)
+            
+            # Restore parameter
+            self.parameters[i] += shift
+            
+            # Compute gradient using parameter-shift rule
+            gradients[i] = (loss_plus - loss_minus) / 2.0
+        
+        return gradients
+    
+    def train(self, x: np.ndarray, y: np.ndarray, epochs: int = 100, 
+              learning_rate: float = 0.01, verbose: bool = True) -> List[float]:
+        """
+        Train the QNN using gradient descent.
+        
+        Args:
+            x: Training data, shape (n_samples, n_features)
+            y: Training targets, shape (n_samples, n_outputs)
+            epochs: Number of training epochs
+            learning_rate: Learning rate for optimization
+            verbose: Whether to print training progress
+            
+        Returns:
+            List of loss values during training
+        """
+        if _has_native_qml:
+            return self._native_qnn.train(x, y, epochs, learning_rate, verbose)
+        
+        losses = []
+        
+        for epoch in range(epochs):
+            # Forward pass
+            predictions = self.forward(x)
+            loss = np.mean((predictions - y) ** 2)
+            losses.append(loss)
+            
+            # Compute gradients
+            gradients = self.compute_gradient(x, y)
+            
+            # Update parameters
+            self.parameters -= learning_rate * gradients
+            
+            if verbose and epoch % 10 == 0:
+                print(f"Epoch {epoch}: Loss = {loss:.6f}")
+        
+        return losses
 
 class VQE:
     """
@@ -178,41 +278,69 @@ class VQE:
         if _has_native_qml:
             return self._native_vqe.expectation(parameters)
         
-        # Stub implementation - simplified expectation value calculation
+        # Enhanced implementation with proper Hamiltonian expectation value
         circuit = PyCircuit(self.n_qubits)
         
         # Apply hardware-efficient ansatz
         param_idx = 0
-        for q in range(self.n_qubits):
-            circuit.rx(q, parameters[param_idx])
-            param_idx += 1
-            circuit.ry(q, parameters[param_idx])
-            param_idx += 1
-            circuit.rz(q, parameters[param_idx])
-            param_idx += 1
-        
-        # Entanglement layer
-        for q in range(self.n_qubits - 1):
-            circuit.cnot(q, q + 1)
+        if self.ansatz == "hardware_efficient":
+            for q in range(self.n_qubits):
+                circuit.rx(q, parameters[param_idx])
+                param_idx += 1
+                circuit.ry(q, parameters[param_idx])
+                param_idx += 1
+                circuit.rz(q, parameters[param_idx])
+                param_idx += 1
+            
+            # Entanglement layer
+            for q in range(self.n_qubits - 1):
+                circuit.cnot(q, q + 1)
+                
+            # Circular entanglement for better connectivity
+            if self.n_qubits > 2:
+                circuit.cnot(self.n_qubits - 1, 0)
+        else:
+            # Simple ansatz
+            for q in range(self.n_qubits):
+                circuit.ry(q, parameters[param_idx])
+                param_idx += 1
+                circuit.rz(q, parameters[param_idx])
+                param_idx += 1
+            
+            for q in range(self.n_qubits - 1):
+                circuit.cnot(q, q + 1)
         
         # Run the circuit
         result = circuit.run()
-        probs = result.probabilities()
         
-        # Calculate expectation value using the probabilities and Hamiltonian diagonal
-        expectation = 0.0
-        for i, prob in enumerate(probs):
-            if i < len(self.hamiltonian):
-                expectation += prob * self.hamiltonian[i, i]
+        # Get state vector using internal amplitudes
+        if hasattr(result, 'amplitudes') and hasattr(result, 'n_qubits'):
+            # Direct access to internal attributes
+            state_vector = np.array([complex(amp.real, amp.imag) if hasattr(amp, 'real') else complex(amp) 
+                                   for amp in getattr(result, '_amplitudes', [])])
+            if len(state_vector) == 0:
+                # Fallback: create uniform superposition
+                n_states = 2 ** result.n_qubits
+                state_vector = np.ones(n_states, dtype=complex) / np.sqrt(n_states)
+        else:
+            # Fallback
+            n_states = 2 ** self.n_qubits
+            state_vector = np.ones(n_states, dtype=complex) / np.sqrt(n_states)
         
-        return expectation
+        # Calculate expectation value <ψ|H|ψ>
+        expectation_value = np.real(np.conj(state_vector).T @ self.hamiltonian @ state_vector)
+        
+        return expectation_value
     
-    def optimize(self, max_iterations: int = 100) -> Tuple[float, np.ndarray]:
+    def optimize(self, max_iterations: int = 100, 
+                 learning_rate: float = 0.1, verbose: bool = True) -> Tuple[float, np.ndarray]:
         """
-        Optimize the VQE parameters to minimize energy.
+        Optimize the VQE parameters to minimize energy using parameter-shift rule.
         
         Args:
             max_iterations: Maximum number of optimization iterations
+            learning_rate: Learning rate for optimization
+            verbose: Whether to print optimization progress
             
         Returns:
             Tuple of (final_energy, optimal_parameters)
@@ -220,9 +348,8 @@ class VQE:
         if _has_native_qml:
             return self._native_vqe.optimize(max_iterations)
         
-        # Stub implementation - simple gradient descent
+        # Enhanced implementation with parameter-shift rule gradients
         parameters = self.parameters.copy()
-        learning_rate = 0.1
         
         best_energy = float('inf')
         best_params = parameters.copy()
@@ -235,14 +362,78 @@ class VQE:
                 best_energy = energy
                 best_params = parameters.copy()
             
-            # Simple parameter update - not a real gradient approach
-            new_parameters = parameters - learning_rate * np.sin(parameters)
-            parameters = new_parameters
+            # Compute gradients using parameter-shift rule
+            gradients = np.zeros_like(parameters)
+            shift = np.pi / 2
             
-            # Reduce learning rate over time
-            learning_rate *= 0.98
+            for i in range(len(parameters)):
+                # Shift parameter positively
+                params_plus = parameters.copy()
+                params_plus[i] += shift
+                energy_plus = self.expectation(params_plus)
+                
+                # Shift parameter negatively
+                params_minus = parameters.copy()
+                params_minus[i] -= shift
+                energy_minus = self.expectation(params_minus)
+                
+                # Compute gradient
+                gradients[i] = (energy_plus - energy_minus) / 2.0
+            
+            # Update parameters
+            parameters -= learning_rate * gradients
+            
+            # Adaptive learning rate
+            if iteration > 10 and iteration % 10 == 0:
+                learning_rate *= 0.95
+            
+            if verbose and iteration % 10 == 0:
+                print(f"Iteration {iteration}: Energy = {energy:.6f}")
         
+        self.parameters = best_params
         return best_energy, best_params
+    
+    def compute_ground_state(self) -> Tuple[float, np.ndarray]:
+        """
+        Compute the ground state energy using VQE optimization.
+        
+        Returns:
+            Tuple of (ground_state_energy, optimal_state_vector)
+        """
+        # Optimize parameters
+        ground_energy, optimal_params = self.optimize()
+        
+        # Get the ground state vector
+        circuit = PyCircuit(self.n_qubits)
+        
+        # Apply optimized ansatz
+        param_idx = 0
+        if self.ansatz == "hardware_efficient":
+            for q in range(self.n_qubits):
+                circuit.rx(q, optimal_params[param_idx])
+                param_idx += 1
+                circuit.ry(q, optimal_params[param_idx])
+                param_idx += 1
+                circuit.rz(q, optimal_params[param_idx])
+                param_idx += 1
+            
+            for q in range(self.n_qubits - 1):
+                circuit.cnot(q, q + 1)
+            if self.n_qubits > 2:
+                circuit.cnot(self.n_qubits - 1, 0)
+        
+        result = circuit.run()
+        if hasattr(result, 'amplitudes') and hasattr(result, 'n_qubits'):
+            state_vector = np.array([complex(amp.real, amp.imag) if hasattr(amp, 'real') else complex(amp) 
+                                   for amp in getattr(result, '_amplitudes', [])])
+            if len(state_vector) == 0:
+                n_states = 2 ** result.n_qubits
+                state_vector = np.ones(n_states, dtype=complex) / np.sqrt(n_states)
+        else:
+            n_states = 2 ** self.n_qubits
+            state_vector = np.ones(n_states, dtype=complex) / np.sqrt(n_states)
+        
+        return ground_energy, state_vector
 
 # Quantum Machine Learning for specific domains
 

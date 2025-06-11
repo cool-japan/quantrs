@@ -1,0 +1,128 @@
+# QuantRS2 Development Docker Image
+# For development with all tools and dependencies
+
+FROM python:3.11-slim as development
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+# Install development dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    git \
+    vim \
+    nano \
+    htop \
+    tree \
+    pkg-config \
+    libssl-dev \
+    libffi-dev \
+    cmake \
+    gdb \
+    valgrind \
+    strace \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Rust with additional components
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+RUN rustup component add rustfmt clippy llvm-tools-preview
+RUN cargo install cargo-tarpaulin cargo-audit cargo-outdated
+
+# Upgrade pip and install development tools
+RUN pip install --upgrade pip setuptools wheel
+
+# Install comprehensive development dependencies
+RUN pip install --no-cache-dir \
+    pytest \
+    pytest-cov \
+    pytest-xdist \
+    pytest-benchmark \
+    black \
+    isort \
+    flake8 \
+    mypy \
+    pylint \
+    bandit \
+    pre-commit \
+    sphinx \
+    sphinx-rtd-theme \
+    jupyter \
+    jupyterlab \
+    ipdb \
+    pdb++ \
+    memory-profiler \
+    line-profiler \
+    py-spy \
+    snakeviz
+
+# Install quantum development libraries
+RUN pip install --no-cache-dir \
+    qiskit \
+    cirq \
+    pennylane \
+    pyquil \
+    strawberryfields \
+    mitiq \
+    openqasm3 \
+    matplotlib \
+    plotly \
+    seaborn \
+    networkx \
+    sympy \
+    scipy \
+    scikit-learn \
+    tensorflow \
+    torch \
+    pandas \
+    numpy
+
+# Copy source code
+WORKDIR /app
+COPY . .
+
+# Install QuantRS2 in development mode
+RUN pip install -e .
+
+# Install development requirements if they exist
+COPY requirements-dev.txt /tmp/ 2>/dev/null || echo "# No dev requirements" > /tmp/requirements-dev.txt
+RUN pip install -r /tmp/requirements-dev.txt || true
+
+# Setup git hooks
+RUN git config --global --add safe.directory /app || true
+RUN pre-commit install || true
+
+# Create development user
+RUN groupadd -r dev && useradd -r -g dev -s /bin/bash dev
+RUN mkdir -p /home/dev && chown -R dev:dev /home/dev
+RUN chown -R dev:dev /app
+
+# Switch to development user
+USER dev
+
+# Setup development environment
+RUN echo 'export PS1="\[\033[01;32m\]quantrs-dev\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /home/dev/.bashrc
+RUN echo 'alias ll="ls -la"' >> /home/dev/.bashrc
+RUN echo 'alias pytest="python -m pytest"' >> /home/dev/.bashrc
+RUN echo 'alias test="python -m pytest tests/"' >> /home/dev/.bashrc
+RUN echo 'alias format="black . && isort ."' >> /home/dev/.bashrc
+RUN echo 'alias lint="flake8 . && pylint python/quantrs2/"' >> /home/dev/.bashrc
+
+# Expose common development ports
+EXPOSE 8888 8080 3000 5000
+
+# Set working directory
+WORKDIR /app
+
+# Default command for development
+CMD ["/bin/bash"]
+
+# Labels
+LABEL maintainer="QuantRS2 Team" \
+      version="0.1.0-dev" \
+      description="QuantRS2 development environment with all tools" \
+      org.opencontainers.image.title="QuantRS2 Development" \
+      org.opencontainers.image.description="Complete development environment for QuantRS2"

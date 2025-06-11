@@ -182,6 +182,44 @@ impl QuboBuilder {
         Ok(())
     }
 
+    /// Add a bias term to a variable (linear coefficient)
+    pub fn add_bias(&mut self, var_index: usize, bias: f64) -> QuboResult<()> {
+        if var_index >= self.num_vars {
+            return Err(QuboError::VariableNotFound(format!(
+                "Variable index {}",
+                var_index
+            )));
+        }
+        let current = self.model.get_linear(var_index)?;
+        self.model.set_linear(var_index, current + bias)?;
+        Ok(())
+    }
+
+    /// Add a coupling term between two variables (quadratic coefficient)
+    pub fn add_coupling(
+        &mut self,
+        var1_index: usize,
+        var2_index: usize,
+        coupling: f64,
+    ) -> QuboResult<()> {
+        if var1_index >= self.num_vars {
+            return Err(QuboError::VariableNotFound(format!(
+                "Variable index {}",
+                var1_index
+            )));
+        }
+        if var2_index >= self.num_vars {
+            return Err(QuboError::VariableNotFound(format!(
+                "Variable index {}",
+                var2_index
+            )));
+        }
+        let current = self.model.get_quadratic(var1_index, var2_index)?;
+        self.model
+            .set_quadratic(var1_index, var2_index, current + coupling)?;
+        Ok(())
+    }
+
     /// Add a linear objective term to minimize
     pub fn minimize_linear(&mut self, var: &Variable, coeff: f64) -> QuboResult<()> {
         self.set_linear_term(var, self.model.get_linear(var.index)? + coeff)

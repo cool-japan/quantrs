@@ -4,6 +4,7 @@
 //! solving QUBO and HOBO problems, using SciRS2 when available.
 
 use ndarray::{Array, ArrayD, Ix2};
+use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -219,7 +220,7 @@ pub fn gpu_solve_qubo(
         // Create random binary states
         let mut rng = rand::thread_rng();
         let binary_states: Vec<u8> = (0..shots * n_vars)
-            .map(|_| if rand::random::<bool>() { 1u8 } else { 0u8 })
+            .map(|_| if thread_rng().gen::<bool>() { 1u8 } else { 0u8 })
             .collect();
 
         // Create OCL buffers
@@ -353,7 +354,7 @@ pub fn gpu_solve_hobo(
         // Generate random solution for placeholder
         let assignments: HashMap<String, bool> = var_map
             .iter()
-            .map(|(name, _)| (name.clone(), rand::random::<bool>()))
+            .map(|(name, _)| (name.clone(), thread_rng().gen::<bool>()))
             .collect();
 
         // Create sample result

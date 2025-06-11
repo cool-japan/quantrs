@@ -14,6 +14,10 @@ This document outlines the development plans and future tasks for the QuantRS2-C
 - ✅ Circuit depth and gate count analysis
 - ✅ Support for multi-qubit gates
 - ✅ Circuit validation and error checking
+- ✅ Circuit optimization passes using gate properties
+- ✅ Modular optimization framework with multiple passes
+- ✅ Hardware-aware cost models and optimization
+- ✅ Circuit analysis and metrics calculation
 
 ### In Progress
 
@@ -25,33 +29,30 @@ This document outlines the development plans and future tasks for the QuantRS2-C
 
 ### Near-term (v0.1.x)
 
-- [ ] Implement circuit DAG representation using SciRS2 graphs
-- [ ] Add commutation analysis for gate reordering
-- [ ] Create QASM 2.0/3.0 import/export functionality
-- [ ] Implement circuit slicing for parallel execution
-- [ ] Add topological sorting for dependency analysis
-- [ ] Create circuit equivalence checking algorithms
-- [ ] Implement peephole optimization passes
-- [ ] Add support for classical control flow
-
-### Medium-term (v0.2.x)
-
-- [ ] Implement template matching using SciRS2 pattern recognition
-- [ ] Add routing algorithms (SABRE, lookahead) with SciRS2 graphs
-- [ ] Create noise-aware circuit optimization
-- [ ] Implement unitary synthesis from circuit description
-- [ ] Add support for mid-circuit measurements and feed-forward
-- [ ] Create circuit compression using tensor networks
-- [ ] Implement cross-talk aware scheduling
-- [ ] Add support for pulse-level control
+- [x] Implement circuit DAG representation using SciRS2 graphs ✅
+- [x] Add commutation analysis for gate reordering ✅
+- [x] Create QASM 2.0/3.0 import/export functionality ✅
+- [x] Implement circuit slicing for parallel execution ✅
+- [x] Add topological sorting for dependency analysis ✅
+- [x] Create circuit equivalence checking algorithms ✅
+- [x] Implement peephole optimization passes ✅
+- [x] Add support for classical control flow ✅
+- [x] Implement template matching using SciRS2 pattern recognition ✅
+- [x] Add routing algorithms (SABRE, lookahead) with SciRS2 graphs ✅
+- [x] Create noise-aware circuit optimization ✅
+- [x] Implement unitary synthesis from circuit description ✅
+- [x] Add support for mid-circuit measurements and feed-forward ✅
+- [x] Create circuit compression using tensor networks ✅
+- [x] Implement cross-talk aware scheduling ✅
+- [x] Add support for pulse-level control ✅
 
 ### Long-term (Future Versions)
 
-- [ ] Implement ZX-calculus optimization using SciRS2 graph algorithms
-- [ ] Add support for photonic quantum circuits
-- [ ] Create ML-based circuit optimization with SciRS2 ML integration
-- [ ] Implement fault-tolerant circuit compilation
-- [ ] Add support for topological quantum circuits
+- [x] Implement ZX-calculus optimization using SciRS2 graph algorithms ✅
+- [x] Add support for photonic quantum circuits ✅
+- [x] Create ML-based circuit optimization with SciRS2 ML integration ✅
+- [x] Implement fault-tolerant circuit compilation ✅
+- [x] Add support for topological quantum circuits ✅
 - [ ] Create distributed circuit execution framework
 - [ ] Implement quantum-classical co-optimization
 - [ ] Add support for variational quantum eigensolver circuits
@@ -82,14 +83,14 @@ This document outlines the development plans and future tasks for the QuantRS2-C
 ## Integration Tasks
 
 ### SciRS2 Integration
-- [ ] Use SciRS2 graph algorithms for circuit analysis
+- [x] Use SciRS2 graph algorithms for circuit analysis ✅
 - [ ] Leverage SciRS2 sparse matrices for gate representations
 - [ ] Integrate SciRS2 optimization for parameter tuning
 - [ ] Use SciRS2 statistical tools for circuit benchmarking
 - [ ] Implement circuit similarity metrics using SciRS2
 
 ### Module Integration
-- [ ] Create efficient circuit-to-simulator interfaces
+- [x] Create efficient circuit-to-simulator interfaces ✅
 - [ ] Implement device-specific transpiler passes
 - [ ] Add hardware noise model integration
 - [ ] Create circuit validation for each backend

@@ -5,17 +5,122 @@ extern crate proc_macro;
 /// This crate provides types for constructing and manipulating
 /// quantum circuits with a fluent API.
 pub mod builder;
+pub mod classical;
+pub mod commutation;
+pub mod crosstalk;
+pub mod dag;
+pub mod equivalence;
+pub mod fault_tolerant;
 pub mod graph_optimizer;
+pub mod measurement;
+pub mod ml_optimization;
+pub mod optimization;
 pub mod optimizer;
+pub mod photonic;
+pub mod pulse;
+pub mod qasm;
+pub mod routing;
+pub mod scirs2_integration;
+pub mod simulator_interface;
+pub mod slicing;
+pub mod synthesis;
+pub mod tensor_network;
+pub mod topological;
+pub mod topology;
+pub mod zx_calculus;
 
 // Re-exports of commonly used types and traits
 pub mod prelude {
     pub use crate::builder::*;
+    // Convenience re-export
+    pub use crate::classical::{
+        CircuitOp, ClassicalBit, ClassicalCircuit, ClassicalCircuitBuilder, ClassicalCondition,
+        ClassicalOp, ClassicalRegister, ClassicalValue, ComparisonOp, ConditionalGate, MeasureOp,
+    };
+    pub use crate::commutation::{
+        CommutationAnalyzer, CommutationOptimization, CommutationResult, CommutationRules, GateType,
+    };
+    pub use crate::crosstalk::{
+        CrosstalkAnalysis, CrosstalkAnalyzer, CrosstalkModel, CrosstalkSchedule,
+        CrosstalkScheduler, SchedulingStrategy, TimeSlice,
+    };
+    pub use crate::dag::{circuit_to_dag, CircuitDag, DagEdge, DagNode, EdgeType};
+    pub use crate::equivalence::{
+        circuits_equivalent, circuits_structurally_equal, EquivalenceChecker, EquivalenceOptions,
+        EquivalenceResult, EquivalenceType,
+    };
+    pub use crate::fault_tolerant::{
+        FaultTolerantCircuit, FaultTolerantCompiler, LogicalQubit, MagicState, QECCode,
+        ResourceOverhead, SyndromeMeasurement, SyndromeType,
+    };
     pub use crate::graph_optimizer::{CircuitDAG, GraphGate, GraphOptimizer, OptimizationStats};
+    pub use crate::measurement::{
+        CircuitOp as MeasurementCircuitOp, FeedForward, Measurement, MeasurementCircuit,
+        MeasurementCircuitBuilder, MeasurementDependencies,
+    };
+    pub use crate::ml_optimization::{
+        AcquisitionFunction, FeatureExtractor, ImprovementMetrics, MLCircuitOptimizer,
+        MLCircuitRepresentation, MLOptimizationResult, MLStrategy, TrainingExample,
+    };
+    pub use crate::optimization::{
+        AbstractCostModel, CircuitAnalyzer, CircuitMetrics, CircuitOptimizer2, CircuitRewriting,
+        CoherenceOptimization, CommutationTable, CostBasedOptimization, CostModel,
+        DecompositionOptimization, DecouplingSequence, DynamicalDecoupling, GateCancellation,
+        GateCommutation, GateCost, GateError, GateMerging, GateProperties, HardwareCostModel,
+        NoiseAwareCostModel, NoiseAwareMapping, NoiseAwareOptimizer, NoiseModel, OptimizationLevel,
+        OptimizationPass, OptimizationReport, PassConfig, PassManager, RotationMerging,
+        TemplateMatching, TwoQubitOptimization,
+    };
     pub use crate::optimizer::{
         CircuitOptimizer, HardwareOptimizer, OptimizationPassType, OptimizationResult,
         RedundantGateElimination, SingleQubitGateFusion,
     };
+    pub use crate::photonic::{
+        CVCircuit, CVGate, CVMeasurement, PhotonicCircuit, PhotonicCircuitBuilder,
+        PhotonicConverter, PhotonicGate, PhotonicMeasurement, PhotonicMode, Polarization,
+        PolarizationBasis,
+    };
+    pub use crate::pulse::{
+        Channel, DeviceConfig, PulseCalibration, PulseCompiler, PulseInstruction, PulseOptimizer,
+        PulseSchedule, Waveform,
+    };
+    pub use crate::qasm::exporter::ExportError;
+    pub use crate::qasm::{
+        export_qasm3, parse_qasm3, validate_qasm3, ExportOptions, ParseError, QasmExporter,
+        QasmGate, QasmParser, QasmProgram, QasmRegister, QasmStatement, ValidationError,
+    };
+    pub use crate::routing::{
+        CircuitRouter, CouplingMap, Distance, LookaheadConfig, LookaheadRouter, RoutedCircuit,
+        RoutingPassType, RoutingResult, RoutingStatistics, RoutingStrategy, SabreConfig,
+        SabreRouter, SwapLayer, SwapNetwork,
+    };
+    pub use crate::scirs2_integration::{
+        AnalysisResult, AnalyzerConfig, GraphMetrics, GraphMotif, OptimizationSuggestion,
+        SciRS2CircuitAnalyzer, SciRS2CircuitGraph, SciRS2Edge, SciRS2Node, SciRS2NodeType,
+    };
+    pub use crate::simulator_interface::{
+        CircuitCompiler, CompilationTarget, CompiledCircuit, ContractionStrategy, ExecutionResult,
+        InstructionSet, MemoryOptimization, OptimizationLevel as SimulatorOptimizationLevel,
+        ResourceRequirements, SimulatorBackend, SimulatorExecutor,
+    };
+    pub use crate::slicing::{CircuitSlice, CircuitSlicer, SlicingResult, SlicingStrategy};
+    pub use crate::synthesis::{
+        GateSet, MultiQubitSynthesizer, SingleQubitSynthesizer, SynthesisConfig,
+        TwoQubitSynthesizer, UnitaryOperation, UnitarySynthesizer,
+    };
+    pub use crate::tensor_network::{
+        CircuitToTensorNetwork, CompressedCircuit, CompressionMethod, MatrixProductState, Tensor,
+        TensorNetwork, TensorNetworkCompressor,
+    };
+    pub use crate::topological::{
+        Anyon, AnyonModel, AnyonType, BraidingOperation, BraidingOptimizer, OptimizationStrategy,
+        TopologicalCircuit, TopologicalCompiler, TopologicalGate,
+    };
+    pub use crate::topology::{TopologicalAnalysis, TopologicalAnalyzer, TopologicalStrategy};
+    pub use crate::zx_calculus::{
+        OptimizedZXResult, ZXDiagram, ZXEdge, ZXNode, ZXOptimizationResult, ZXOptimizer,
+    };
+    pub use quantrs2_core::qubit::QubitId as Qubit;
 }
 
 // The following should be proc macros, but we'll implement them later

@@ -16,9 +16,12 @@ fn main() {
     let sizes = vec![4, 16, 64, 256, 1024, 4096];
 
     for &size in &sizes {
-        println!("Testing with {} qubits ({} amplitudes):", 
-                 (size as f64).log2() as usize, size);
-        
+        println!(
+            "Testing with {} qubits ({} amplitudes):",
+            (size as f64).log2() as usize,
+            size
+        );
+
         // Create random quantum state
         let mut state: Vec<Complex64> = (0..size)
             .map(|i| {
@@ -80,7 +83,7 @@ fn main() {
 
     // Demonstrate chunked processing for large states
     println!("=== Chunked Processing Demo ===\n");
-    
+
     let large_size = 16384; // 14 qubits
     let mut large_state: Vec<Complex64> = (0..large_size)
         .map(|i| Complex64::new((i as f64).sin(), (i as f64).cos()))
@@ -89,16 +92,22 @@ fn main() {
     // Process in chunks to demonstrate cache efficiency
     let chunk_size = 256;
     let start = Instant::now();
-    
+
     for chunk in large_state.chunks_mut(chunk_size) {
         // Apply operations to each chunk
         normalize_simd(chunk).unwrap();
         apply_phase_simd(chunk, 0.1);
     }
-    
+
     let chunked_time = start.elapsed();
-    println!("Chunked processing of {} amplitudes: {:?}", large_size, chunked_time);
-    println!("Average time per chunk: {:?}", chunked_time / (large_size / chunk_size) as u32);
+    println!(
+        "Chunked processing of {} amplitudes: {:?}",
+        large_size, chunked_time
+    );
+    println!(
+        "Average time per chunk: {:?}",
+        chunked_time / (large_size / chunk_size) as u32
+    );
 
     // Performance comparison summary
     println!("\n=== Performance Summary ===");

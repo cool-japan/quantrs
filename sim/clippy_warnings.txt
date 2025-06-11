@@ -1,0 +1,5 @@
+    Checking quantrs2-core v0.1.0-alpha.3 (/Users/kitasan/work/quantrs/core)
+   Compiling quantrs2-sim v0.1.0-alpha.3 (/Users/kitasan/work/quantrs/sim)
+warning: quantrs2-sim@0.1.0-alpha.3: Building on macOS with Accelerate framework
+    Checking quantrs2-circuit v0.1.0-alpha.3 (/Users/kitasan/work/quantrs/circuit)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9.11s
