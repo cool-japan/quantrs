@@ -27,7 +27,7 @@ Warmup: 10 iterations before measurement
 ```
 
 ### Framework Versions
-- QuantRS2: 0.1.0-alpha.4
+- QuantRS2: 0.1.0-alpha.5
 - Qiskit: 0.45.1
 - Cirq: 1.3.0
 - PennyLane: 0.33.1

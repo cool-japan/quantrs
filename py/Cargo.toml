@@ -18,13 +18,13 @@ name = "quantrs2"
 crate-type = ["cdylib"]
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.4" }
-quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.4" }
-quantrs2-sim = { path = "../sim", version = "0.1.0-alpha.4", features = [] }
-quantrs2-device = { path = "../device", version = "0.1.0-alpha.4" }
-quantrs2-ml = { path = "../ml", version = "0.1.0-alpha.4", optional = true }
-quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.4", optional = true }
-quantrs2-tytan = { path = "../tytan", version = "0.1.0-alpha.4", optional = true }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.5" }
+quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.5" }
+quantrs2-sim = { path = "../sim", version = "0.1.0-alpha.5", features = [] }
+quantrs2-device = { path = "../device", version = "0.1.0-alpha.5" }
+quantrs2-ml = { path = "../ml", version = "0.1.0-alpha.5", optional = true }
+quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.5", optional = true }
+quantrs2-tytan = { path = "../tytan", version = "0.1.0-alpha.5", optional = true }
 pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"] }
 num-complex.workspace = true
 ndarray.workspace = true

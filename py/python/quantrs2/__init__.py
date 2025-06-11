@@ -5,7 +5,7 @@ This module provides Python access to the QuantRS2 quantum computing framework.
 """
 
 # Version information
-__version__ = "0.1.0a4"
+__version__ = "0.1.0a5"
 
 # Try to import the actual native module first
 try:

@@ -11,8 +11,8 @@ categories.workspace = true
 description = "Quantum device connectors for the QuantRS2 framework"
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.4" }
-quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.4" }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.5" }
+quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.5" }
 num-complex.workspace = true
 thiserror.workspace = true
 petgraph = "0.6"
@@ -23,8 +23,8 @@ serde_json.workspace = true
 ndarray.workspace = true
 
 # SciRS2 dependencies for advanced algorithms
-scirs2-stats = { version = "0.1.0-alpha.4", default-features = false, optional = true }
-scirs2-graph = { version = "0.1.0-alpha.4", default-features = false, optional = true }
+scirs2-stats = { version = "0.1.0-alpha.5", default-features = false, optional = true }
+scirs2-graph = { version = "0.1.0-alpha.5", default-features = false, optional = true }
 scirs2-linalg = { workspace = true, optional = true }
 scirs2-optimize = { workspace = true, optional = true }
 

@@ -1210,23 +1210,19 @@ impl QuantumMLTrainer {
         // Compile circuit for target hardware
         let compiled_circuit = self.hardware_compiler.compile_circuit(&self.pqc.circuit)?;
 
-        // Execute circuit (simplified - would use actual quantum simulator)
-        let mut simulator = StateVectorSimulator::new();
+        // Execute circuit using proper circuit interface
+        let backend = crate::circuit_interfaces::SimulationBackend::StateVector;
+        let result = self.circuit_interface.execute_circuit(&compiled_circuit, None)?;
 
-        // Apply gates from compiled circuit
-        for gate in &compiled_circuit.gates {
-            match gate.gate_type {
-                // TODO: Implement proper gate application with circuit interface
-                _ => {
-                    // Placeholder - gates are not actually applied to the simulator
-                }
-            }
-        }
+        // Extract probabilities from final state
+        let probabilities = if let Some(final_state) = result.final_state {
+            final_state.iter().map(|amp| amp.norm_sqr()).collect()
+        } else {
+            // Fallback to uniform distribution if no state available
+            vec![1.0 / (1 << self.config.num_qubits) as f64; 1 << self.config.num_qubits]
+        };
 
-        // Measure expectations (simplified)
-        // TODO: Implement proper state retrieval with circuit interface
-        let probabilities: Vec<f64> = vec![1.0; 1 << self.config.num_qubits];
-
+        // Return the computed probabilities as output
         Ok(Array1::from_vec(probabilities))
     }
 

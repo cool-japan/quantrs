@@ -54,6 +54,7 @@
 
 use quantrs_circuit::builder::Circuit;
 use quantrs_core::qubit::QubitId;
+use crate::error::{Result, SimulatorError};
 
 mod codes;
 
@@ -79,9 +80,9 @@ pub trait ErrorCorrection {
     ///
     /// # Returns
     ///
-    /// A circuit containing the encoding operations
+    /// A Result containing the circuit with encoding operations, or an error if insufficient qubits
     fn encode_circuit(&self, logical_qubits: &[QubitId], ancilla_qubits: &[QubitId])
-        -> Circuit<16>;
+        -> Result<Circuit<16>>;
 
     /// Create a circuit to decode and correct errors
     ///
@@ -92,12 +93,12 @@ pub trait ErrorCorrection {
     ///
     /// # Returns
     ///
-    /// A circuit containing the error detection and correction operations
+    /// A Result containing the circuit with error detection and correction operations, or an error if insufficient qubits
     fn decode_circuit(
         &self,
         encoded_qubits: &[QubitId],
         syndrome_qubits: &[QubitId],
-    ) -> Circuit<16>;
+    ) -> Result<Circuit<16>>;
 }
 
 /// Utility functions for error correction
@@ -117,14 +118,14 @@ pub mod utils {
     ///
     /// # Returns
     ///
-    /// A complete circuit with error correction
+    /// A Result containing the complete circuit with error correction
     pub fn create_error_corrected_circuit<T: ErrorCorrection, const N: usize>(
         initial_circuit: &Circuit<N>,
         code: &T,
         logical_qubits: &[QubitId],
         ancilla_qubits: &[QubitId],
         syndrome_qubits: &[QubitId],
-    ) -> Circuit<N> {
+    ) -> Result<Circuit<N>> {
         let mut result = Circuit::<N>::new();
 
         // Copy gates from initial circuit
@@ -157,7 +158,7 @@ pub mod utils {
         }
 
         // Copy gates from encoding circuit
-        let encoder = code.encode_circuit(logical_qubits, ancilla_qubits);
+        let encoder = code.encode_circuit(logical_qubits, ancilla_qubits)?;
         for op in encoder.gates() {
             if op.qubits().is_empty() {
                 continue;
@@ -183,7 +184,7 @@ pub mod utils {
         encoded_qubits.extend_from_slice(ancilla_qubits);
 
         // Copy gates from correction circuit
-        let correction = code.decode_circuit(&encoded_qubits, syndrome_qubits);
+        let correction = code.decode_circuit(&encoded_qubits, syndrome_qubits)?;
         for op in correction.gates() {
             if op.qubits().is_empty() {
                 continue;
@@ -204,7 +205,7 @@ pub mod utils {
             }
         }
 
-        result
+        Ok(result)
     }
 
     /// Analyzes the quality of error correction by comparing states before and after correction
@@ -217,16 +218,16 @@ pub mod utils {
     ///
     /// # Returns
     ///
-    /// A tuple containing (fidelity before correction, fidelity after correction)
+    /// A Result containing a tuple with (fidelity before correction, fidelity after correction)
     pub fn analyze_correction_quality(
         ideal_state: &[num_complex::Complex64],
         noisy_state: &[num_complex::Complex64],
         corrected_state: &[num_complex::Complex64],
-    ) -> (f64, f64) {
-        let fidelity_before = calculate_fidelity(ideal_state, noisy_state);
-        let fidelity_after = calculate_fidelity(ideal_state, corrected_state);
+    ) -> Result<(f64, f64)> {
+        let fidelity_before = calculate_fidelity(ideal_state, noisy_state)?;
+        let fidelity_after = calculate_fidelity(ideal_state, corrected_state)?;
 
-        (fidelity_before, fidelity_after)
+        Ok((fidelity_before, fidelity_after))
     }
 
     /// Calculates the fidelity between two quantum states
@@ -245,11 +246,14 @@ pub mod utils {
     pub fn calculate_fidelity(
         state1: &[num_complex::Complex64],
         state2: &[num_complex::Complex64],
-    ) -> f64 {
+    ) -> Result<f64> {
         use num_complex::Complex64;
 
         if state1.len() != state2.len() {
-            panic!("States must have the same dimension");
+            return Err(SimulatorError::DimensionMismatch(
+                format!("States have different dimensions: {} vs {}", 
+                        state1.len(), state2.len())
+            ));
         }
 
         // Calculate inner product
@@ -259,6 +263,6 @@ pub mod utils {
         }
 
         // Fidelity is the square of the absolute value of the inner product
-        inner_product.norm_sqr()
+        Ok(inner_product.norm_sqr())
     }
 }

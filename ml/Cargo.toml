@@ -12,10 +12,10 @@ description = "Quantum Machine Learning module for QuantRS2"
 readme = "README.md"
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.4" }
-quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.4" }
-quantrs2-sim = { path = "../sim", version = "0.1.0-alpha.4" }
-quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.4" }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.5" }
+quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.5" }
+quantrs2-sim = { path = "../sim", version = "0.1.0-alpha.5" }
+quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.5" }
 thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -4,9 +4,9 @@
 //!
 //! This crate provides quantum machine learning capabilities for the QuantRS2 framework.
 //! It includes quantum neural networks, variational algorithms, and specialized tools for
-//! high-energy physics data analysis.
+//! high-energy physics data analysis, plus cutting-edge quantum ML algorithms.
 //!
-//! ## Features
+//! ## Core Features
 //!
 //! - Quantum Neural Networks
 //! - Variational Quantum Algorithms
@@ -18,6 +18,13 @@
 //! - Quantum Blockchain and Distributed Ledger Technology
 //! - Quantum-Enhanced Natural Language Processing
 //! - Quantum Anomaly Detection and Outlier Analysis
+//!
+//! ## Cutting-Edge Quantum ML Algorithms
+//!
+//! - **Quantum Neural ODEs**: Continuous-depth quantum neural networks using quantum circuits to parameterize derivative functions
+//! - **Quantum Physics-Informed Neural Networks (QPINNs)**: Quantum neural networks that enforce physical laws and solve PDEs
+//! - **Quantum Reservoir Computing**: Leverages quantum dynamics for temporal data processing with quantum advantages
+//! - **Quantum Graph Attention Networks**: Combines graph neural networks with quantum attention mechanisms for complex graph analysis
 
 use fastrand;
 use std::error::Error;
@@ -82,6 +89,11 @@ pub mod tensorflow_compatibility;
 pub mod time_series;
 pub mod transfer;
 pub mod tutorials;
+pub mod quantum_neural_odes;
+pub mod quantum_pinns;
+pub mod quantum_reservoir_computing;
+pub mod quantum_graph_attention;
+pub mod quantum_memory_networks;
 
 // Internal utilities module
 mod utils;
@@ -297,4 +309,34 @@ pub mod prelude {
         UserBackground,
     };
     pub use crate::variational::{VariationalAlgorithm, VariationalCircuit};
+    
+    // New cutting-edge quantum ML algorithms
+    pub use crate::quantum_neural_odes::{
+        QNODEConfig, QuantumNeuralODE, TrainingMetrics as QNODETrainingMetrics,
+        IntegrationMethod, AnsatzType as QNODEAnsatzType, OptimizationStrategy as QNODEOptimizationStrategy,
+        BenchmarkResults as QNODEBenchmarkResults,
+    };
+    pub use crate::quantum_pinns::{
+        QPINNConfig, QuantumPINN, PhysicsEquationType, BoundaryCondition, InitialCondition,
+        LossWeights, AttentionConfig as QPINNAttentionConfig, DerivativeResults,
+        TrainingMetrics as QPINNTrainingMetrics,
+    };
+    pub use crate::quantum_reservoir_computing::{
+        QRCConfig, QuantumReservoirComputer, ReservoirDynamics, InputEncoding, ReadoutConfig,
+        QuantumAttentionType as QRCQuantumAttentionType, TrainingMetrics as QRCTrainingMetrics,
+        DynamicsAnalysis, BenchmarkResults as QRCBenchmarkResults,
+    };
+    pub use crate::quantum_graph_attention::{
+        QGATConfig, QuantumGraphAttentionNetwork, Graph, AttentionConfig as QGATAttentionConfig,
+        QuantumAttentionType as QGATQuantumAttentionType, PoolingConfig,
+        TrainingMetrics as QGATTrainingMetrics, AttentionAnalysis,
+        BenchmarkResults as QGATBenchmarkResults,
+    };
+    pub use crate::quantum_memory_networks::{
+        QMANConfig, QuantumMemoryAugmentedNetwork, AddressingConfig, HeadConfig,
+        ControllerConfig as QMANControllerConfig, QMANTrainingConfig, AddressingType,
+        HeadType as QMANHeadType, ControllerArchitecture, MemoryInitialization,
+        TrainingMetrics as QMANTrainingMetrics, BenchmarkResults as QMANBenchmarkResults,
+        ReadParams, WriteParams, EpisodicMemory,
+    };
 }

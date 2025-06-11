@@ -29,6 +29,9 @@ pub mod logical_operations;
 pub mod resource_constraints;
 pub mod annealing_integration;
 pub mod logical_encoding;
+pub mod syndrome_detection;
+pub mod noise_resilient_protocols;
+pub mod error_mitigation;
 
 // Re-exports for public API
 pub use config::*;
@@ -37,6 +40,9 @@ pub use logical_operations::*;
 pub use resource_constraints::*;
 pub use annealing_integration::*;
 pub use logical_encoding::*;
+pub use syndrome_detection::*;
+pub use noise_resilient_protocols::*;
+pub use error_mitigation::*;
 
 // TODO: Add implementation structs and functions that were in the original file
 // This would include the QuantumErrorCorrectionAnnealer struct and its implementation

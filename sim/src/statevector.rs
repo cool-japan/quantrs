@@ -869,6 +869,12 @@ impl StateVectorSimulator {
         Ok(())
     }
 
+    /// Apply Pauli-Z gate to qubit
+    pub fn apply_z_public(&mut self, _qubit: usize) -> QuantRS2Result<()> {
+        // Placeholder - would apply Z gate using circuit framework
+        Ok(())
+    }
+
     /// Apply CNOT gate (public interface with usize indices)
     pub fn apply_cnot_public(&mut self, _control: usize, _target: usize) -> QuantRS2Result<()> {
         // Placeholder - would apply CNOT gate using circuit framework

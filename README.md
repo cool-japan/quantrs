@@ -15,7 +15,7 @@
 
 QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction.
 
-**Latest Release**: v0.1.0-alpha.4 features comprehensive code quality improvements with zero compiler warnings, enhanced ML capabilities including continual learning and AutoML, improved device orchestration and cloud management, advanced quantum error correction with adaptive algorithms, and expanded quantum annealing with hybrid solvers.
+**Latest Release**: v0.1.0-alpha.5 features comprehensive code quality improvements with zero compiler warnings, enhanced ML capabilities including continual learning and AutoML, improved device orchestration and cloud management, advanced quantum error correction with adaptive algorithms, and expanded quantum annealing with hybrid solvers.
 
 ## Features
 
@@ -54,9 +54,9 @@ First, add QuantRS2 to your project:
 
 ```toml
 [dependencies]
-quantrs2-core = "0.1.0-alpha.4"
-quantrs2-circuit = "0.1.0-alpha.4"
-quantrs2-sim = "0.1.0-alpha.4"
+quantrs2-core = "0.1.0-alpha.5"
+quantrs2-circuit = "0.1.0-alpha.5"
+quantrs2-sim = "0.1.0-alpha.5"
 ```
 
 ### Creating a Bell State
@@ -277,8 +277,8 @@ To use these features, add them to your dependencies:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1.0-alpha.4", features = ["parallel", "gpu"] }
-quantrs2-device = { version = "0.1.0-alpha.4", features = ["ibm"] }
+quantrs2-sim = { version = "0.1.0-alpha.5", features = ["parallel", "gpu"] }
+quantrs2-device = { version = "0.1.0-alpha.5", features = ["ibm"] }
 ```
 
 ### GPU Acceleration
@@ -287,7 +287,7 @@ The `gpu` feature enables GPU-accelerated quantum simulation using WGPU:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1.0-alpha.4", features = ["gpu"] }
+quantrs2-sim = { version = "0.1.0-alpha.5", features = ["gpu"] }
 ```
 
 This requires a WGPU-compatible GPU (most modern GPUs). The GPU acceleration implementation uses compute shaders to parallelize quantum operations, providing significant speedup for large qubit counts.
@@ -332,7 +332,7 @@ The `ibm` feature enables connection to IBM Quantum hardware:
 
 ```toml
 [dependencies]
-quantrs2-device = { version = "0.1.0-alpha.4", features = ["ibm"] }
+quantrs2-device = { version = "0.1.0-alpha.5", features = ["ibm"] }
 ```
 
 To use IBM Quantum, you'll need an IBM Quantum account and API token. Use the token to authenticate:
@@ -358,7 +358,7 @@ The `dwave` feature enables symbolic problem formulation for quantum annealing:
 
 ```toml
 [dependencies]
-quantrs2-tytan = { version = "0.1.0-alpha.4", features = ["dwave"] }
+quantrs2-tytan = { version = "0.1.0-alpha.5", features = ["dwave"] }
 ```
 
 This requires the SymEngine library and its dependencies. See [TODO.md](docs/development/TODO.md) for detailed setup instructions.

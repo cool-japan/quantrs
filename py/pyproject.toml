@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "quantrs2"
-version = "0.1.0a4"
+version = "0.1.0a5"
 description = "High-performance quantum computing framework with ML, error mitigation, and annealing capabilities"
 authors = [
     {name = "QuantRS2 Contributors (Team KitaSan) ", email = "info@kitasan.io"}

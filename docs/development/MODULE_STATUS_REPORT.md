@@ -123,7 +123,7 @@ This report summarizes the current implementation status across all QuantRS2 mod
 
 ## Version Readiness
 
-For v0.1.0-alpha.4 release:
+For v0.1.0-alpha.5 release:
 - ✅ Core, ML, Anneal, Tytan modules ready
 - 🟨 Sim module ready (except advanced_math)
 - 🟨 Py module has significant new features

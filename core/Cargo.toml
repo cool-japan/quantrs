@@ -17,7 +17,7 @@ ndarray.workspace = true
 scirs2-core = { workspace = true, features = ["types", "memory_management", "simd", "serialization"] }
 scirs2-linalg = { workspace = true }
 scirs2-optimize = { workspace = true }
-scirs2-sparse = { version = "0.1.0-alpha.4" }
+scirs2-sparse = { version = "0.1.0-alpha.5" }
 smallvec = { version = "1.13", features = ["const_generics"] }
 rustc-hash = "2.1"
 rand = { workspace = true }

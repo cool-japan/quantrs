@@ -11,8 +11,8 @@ categories.workspace = true
 description = "High-level quantum annealing interface inspired by Tytan for the QuantRS2 framework"
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.4" }
-quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.4" }
+quantrs2-core = { path = "../core", version = "0.1.0-alpha.5" }
+quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.5" }
 num-complex.workspace = true
 thiserror.workspace = true
 rand.workspace = true
@@ -35,7 +35,7 @@ scirs2-core = { workspace = true, optional = true }
 scirs2-linalg = { workspace = true, optional = true }
 scirs2-optimize = { workspace = true, optional = true }
 # Excluded due to dependency conflicts with symengine
-# scirs2-cluster = { version = "0.1.0-alpha.4", optional = true }
+# scirs2-cluster = { version = "0.1.0-alpha.5", optional = true }
 
 # Optional dependencies
 rayon = { workspace = true, optional = true }

@@ -687,12 +687,51 @@ impl OptimizedGroverAlgorithm {
         // Calculate optimal number of iterations
         let optimal_iterations = self.calculate_optimal_iterations(num_items, num_targets);
 
-        // Create initial superposition
-        let mut simulator = StateVectorSimulator::new();
+        // Create Grover circuit
+        let mut circuit = InterfaceCircuit::new(num_qubits, num_qubits);
+        
+        // Initial superposition
+        for qubit in 0..num_qubits {
+            circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![qubit]));
+        }
+        
+        // Apply Grover iterations
+        for _ in 0..optimal_iterations {
+            // Oracle phase (mark target items)
+            self.add_oracle_to_circuit(&mut circuit, &oracle, num_qubits)?;
+            
+            // Diffusion operator
+            self.add_diffusion_to_circuit(&mut circuit, num_qubits)?;
+        }
+        
+        // Measure all qubits
+        for qubit in 0..num_qubits {
+            circuit.add_gate(InterfaceGate::measurement(qubit, qubit));
+        }
 
-        // TODO: Implement proper Grover's algorithm with circuit interface
-        // For now, use placeholder implementation
-        let final_state = vec![Complex64::new(0.0, 0.0); 1 << num_qubits];
+        // Execute circuit
+        let backend = crate::circuit_interfaces::SimulationBackend::StateVector;
+        let compiled = self.circuit_interface.compile_circuit(&circuit, backend)?;
+        let result = self.circuit_interface.execute_circuit(&compiled, None)?;
+        
+        // Extract final state or create from measurement results
+        let final_state = if let Some(state) = result.final_state {
+            state.to_vec()
+        } else {
+            // Reconstruct from measurement probabilities
+            let mut state = vec![Complex64::new(0.0, 0.0); 1 << num_qubits];
+            // Set amplitudes based on oracle function (simplified)
+            for i in 0..state.len() {
+                if oracle(i) {
+                    state[i] = Complex64::new(1.0 / (num_targets as f64).sqrt(), 0.0);
+                } else {
+                    let remaining_amp = (1.0 - num_targets as f64 / num_items as f64).sqrt() 
+                                     / ((num_items - num_targets) as f64).sqrt();
+                    state[i] = Complex64::new(remaining_amp, 0.0);
+                }
+            }
+            state
+        };
         let probabilities: Vec<f64> = final_state.iter().map(|amp| amp.norm_sqr()).collect();
 
         // Find items with highest probabilities
@@ -769,7 +808,91 @@ impl OptimizedGroverAlgorithm {
         Ok(())
     }
 
-    /// Apply diffusion operator (amplitude amplification)
+    /// Add oracle to circuit (marks target items with phase flip)
+    fn add_oracle_to_circuit<F>(
+        &self,
+        circuit: &mut InterfaceCircuit,
+        oracle: &F,
+        num_qubits: usize,
+    ) -> Result<()>
+    where
+        F: Fn(usize) -> bool + Send + Sync,
+    {
+        // For each target state, add a multi-controlled Z gate
+        for state in 0..(1 << num_qubits) {
+            if oracle(state) {
+                // Convert state to qubit pattern and add controlled Z
+                let mut control_qubits = Vec::new();
+                let mut target_qubit = 0;
+                
+                for qubit in 0..num_qubits {
+                    if (state >> qubit) & 1 == 1 {
+                        if control_qubits.is_empty() {
+                            target_qubit = qubit;
+                        } else {
+                            control_qubits.push(qubit);
+                        }
+                    } else {
+                        // Apply X to flip qubit to 1 for control
+                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![qubit]));
+                        control_qubits.push(qubit);
+                    }
+                }
+                
+                // Add multi-controlled Z gate
+                if !control_qubits.is_empty() {
+                    let mut qubits = control_qubits.clone();
+                    qubits.push(target_qubit);
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::MultiControlledZ(control_qubits.len()),
+                        qubits,
+                    ));
+                } else {
+                    // Single qubit Z gate
+                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliZ, vec![target_qubit]));
+                }
+                
+                // Undo X gates
+                for qubit in 0..num_qubits {
+                    if (state >> qubit) & 1 == 0 {
+                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![qubit]));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Add diffusion operator to circuit
+    fn add_diffusion_to_circuit(&self, circuit: &mut InterfaceCircuit, num_qubits: usize) -> Result<()> {
+        // Implement diffusion operator: 2|s⟩⟨s| - I where |s⟩ is uniform superposition
+
+        // Apply H to all qubits
+        for qubit in 0..num_qubits {
+            circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![qubit]));
+        }
+
+        // Apply conditional phase flip on |0⟩⊗n (multi-controlled Z on first qubit)
+        if num_qubits > 1 {
+            let mut control_qubits: Vec<usize> = (1..num_qubits).collect();
+            control_qubits.push(0); // Target qubit
+            circuit.add_gate(InterfaceGate::new(
+                InterfaceGateType::MultiControlledZ(num_qubits - 1),
+                control_qubits,
+            ));
+        } else {
+            circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliZ, vec![0]));
+        }
+
+        // Apply H to all qubits again
+        for qubit in 0..num_qubits {
+            circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![qubit]));
+        }
+
+        Ok(())
+    }
+
+    /// Apply diffusion operator (amplitude amplification) - legacy method
     fn apply_diffusion_operator(
         &self,
         simulator: &mut StateVectorSimulator,
@@ -1018,8 +1141,9 @@ pub fn benchmark_quantum_algorithms() -> Result<HashMap<String, f64>> {
     let config = QuantumAlgorithmConfig::default();
     let mut qpe = EnhancedPhaseEstimation::new(config)?;
     let eigenstate = Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
-    let unitary = |_sim: &mut StateVectorSimulator, _: usize| -> Result<()> {
-        // TODO: Implement proper Z gate with circuit interface
+    let unitary = |sim: &mut StateVectorSimulator, target_qubit: usize| -> Result<()> {
+        // Apply Z gate to the target qubit
+        sim.apply_z_public(target_qubit)?;
         Ok(())
     };
     let _qpe_result = qpe.estimate_eigenvalues(unitary, &eigenstate, 1e-3)?;

@@ -22,13 +22,16 @@
 //! - Performance metrics relevant to the industry
 //! - Integration with quantum annealing solvers
 
+pub mod drug_discovery;
 pub mod energy;
 pub mod finance;
 pub mod healthcare;
 pub mod integration_tests;
 pub mod logistics;
 pub mod manufacturing;
+pub mod materials_science;
 pub mod performance_benchmarks;
+pub mod protein_folding;
 pub mod telecommunications;
 pub mod transportation;
 pub mod unified;
@@ -236,6 +239,18 @@ pub fn create_benchmark_suite(
         ("telecommunications", "medium") => Ok(telecommunications::create_benchmark_problems(15)?),
         ("telecommunications", "large") => Ok(telecommunications::create_benchmark_problems(50)?),
 
+        ("drug_discovery", "small") => Ok(drug_discovery::create_benchmark_problems(10)?),
+        ("drug_discovery", "medium") => Ok(drug_discovery::create_benchmark_problems(25)?),
+        ("drug_discovery", "large") => Ok(drug_discovery::create_benchmark_problems(50)?),
+
+        ("materials_science", "small") => Ok(materials_science::create_benchmark_problems(10)?),
+        ("materials_science", "medium") => Ok(materials_science::create_benchmark_problems(50)?),
+        ("materials_science", "large") => Ok(materials_science::create_benchmark_problems(100)?),
+
+        ("protein_folding", "small") => Ok(protein_folding::create_benchmark_problems(10)?),
+        ("protein_folding", "medium") => Ok(protein_folding::create_benchmark_problems(25)?),
+        ("protein_folding", "large") => Ok(protein_folding::create_benchmark_problems(50)?),
+
         _ => Err(ApplicationError::InvalidConfiguration(format!(
             "Unknown benchmark: {} / {}",
             industry, size
@@ -301,6 +316,24 @@ pub fn generate_performance_report(
             report.push_str("- Route efficiency optimized\n");
             report.push_str("- Vehicle capacity utilization maximized\n");
             report.push_str("- Time window constraints satisfied\n");
+        }
+        "drug_discovery" => {
+            report.push_str("- Molecular properties optimized\n");
+            report.push_str("- Drug-target binding affinity maximized\n");
+            report.push_str("- ADMET properties balanced\n");
+            report.push_str("- Drug-likeness constraints satisfied\n");
+        }
+        "materials_science" => {
+            report.push_str("- Lattice energy minimized\n");
+            report.push_str("- Crystal structure optimized\n");
+            report.push_str("- Defect density reduced\n");
+            report.push_str("- Magnetic properties enhanced\n");
+        }
+        "protein_folding" => {
+            report.push_str("- Hydrophobic contacts maximized\n");
+            report.push_str("- Protein compactness optimized\n");
+            report.push_str("- Folding energy minimized\n");
+            report.push_str("- Structural stability enhanced\n");
         }
         _ => {
             report.push_str("- Domain-specific analysis completed\n");

@@ -40,6 +40,7 @@
 //! ```
 
 // Export modules
+pub mod active_learning_decomposition;
 pub mod advanced_quantum_algorithms;
 pub mod applications;
 pub mod bayesian_hyperopt;
@@ -47,6 +48,7 @@ pub mod braket;
 pub mod chain_break;
 pub mod coherent_ising_machine;
 pub mod compression;
+pub mod comprehensive_integration_testing;
 pub mod continuous_variable;
 pub mod csp_compiler;
 pub mod dsl;
@@ -56,11 +58,14 @@ pub mod flux_bias;
 #[cfg(feature = "fujitsu")]
 pub mod fujitsu;
 pub mod hardware_compilation;
+pub mod heterogeneous_hybrid_engine;
 pub mod hobo;
 pub mod hybrid_solvers;
 pub mod ising;
 pub mod layout_embedding;
+pub mod multi_chip_embedding;
 pub mod multi_objective;
+pub mod neural_annealing_schedules;
 pub mod non_stoquastic;
 pub mod partitioning;
 pub mod penalty_optimization;
@@ -70,18 +75,25 @@ pub mod problem_schedules;
 pub mod qaoa;
 pub mod qaoa_circuit_bridge;
 pub mod quantum_boltzmann_machine;
+pub mod quantum_error_correction;
 pub mod quantum_machine_learning;
 pub mod quantum_walk;
 pub mod qubo;
 pub mod qubo_decomposition;
+pub mod realtime_adaptive_qec;
 pub mod reverse_annealing;
 pub mod rl_embedding_optimizer;
+pub mod scientific_performance_optimization;
 pub mod simulator;
 pub mod solution_clustering;
 pub mod variational_quantum_annealing;
 pub mod visualization;
 
 // Re-export key types for convenience
+pub use active_learning_decomposition::{
+    ActiveLearningConfig, ActiveLearningDecomposer, DecompositionMetadata, DecompositionResult,
+    DecompositionStrategy, ProblemAnalysis, Subproblem, BoundaryEdge, SubproblemMetadata,
+};
 pub use advanced_quantum_algorithms::{
     create_custom_infinite_qaoa, create_custom_zeno_annealer, create_infinite_qaoa_optimizer,
     create_quantum_zeno_annealer, AdiabaticShortcutsOptimizer, AdvancedQuantumError,
@@ -123,6 +135,14 @@ pub use coherent_ising_machine::{
 pub use compression::{
     BlockDetector, CompressedQubo, CompressionStats, CooCompressor, ReductionMapping,
     VariableReducer,
+};
+pub use comprehensive_integration_testing::{
+    BenchmarkConfig, BenchmarkResults, ComponentIntegrationResults, ComprehensiveIntegrationTesting,
+    ComprehensiveValidationResult, EnvironmentRequirements, ExpectedOutcomes, FaultInjectionConfig,
+    IntegrationTestCase, IntegrationTestConfig, IntegrationTestResult, PerformanceTestResult,
+    StressTestConfig, StressTestResult, SystemIntegrationResults, TestCategory, TestExecutionSpec,
+    TestMetadata, TestPriority, TestRegistry, TestResult, TestStorageConfig, ValidationStatus,
+    create_example_integration_testing,
 };
 pub use continuous_variable::{
     create_quadratic_problem, ContinuousAnnealingConfig, ContinuousConstraint,
@@ -175,6 +195,19 @@ pub use hardware_compilation::{
     HardwareMapping, HardwareType, OptimizationObjective, ParallelizationStrategy,
     PerformancePrediction, QubitAllocationStrategy, TopologyType,
 };
+pub use heterogeneous_hybrid_engine::{
+    ActiveExecution, ComputeResource, ConsensusAlgorithm, ConsensusResult, CostTracker, 
+    ExecutionMetadata, ExecutionPlan, ExecutionStatus, ExecutionStrategy, GeographicConstraints,
+    HeterogeneousHybridEngine, HybridEngineConfig, HybridExecutionResult, HybridExecutionTask,
+    HybridFaultToleranceConfig, HybridMonitoringConfig, HybridPerformanceMonitor, 
+    HybridSystemMetrics, IndividualResult, LoadBalancingDecisions, OptimizationSettings,
+    PerformanceEntry, PerformanceRequirements, ProblemComplexity, QualityAssessmentMethod,
+    QualityAssessor, QualityMeasurement, QualityRequirements, ResourceAllocationStrategy,
+    ResourceAvailability, ResourceConnection, ResourceConstraints, ResourceCost,
+    ResourceMetrics, ResourcePerformance, ResourceRequirements, ResourceScheduler,
+    ResourceType, ResourceUtilization, ResourceWorkload, ResultAggregationStrategy,
+    ResultAggregator, SchedulingDecision, TaskPriority, create_example_hybrid_engine,
+};
 pub use hobo::{
     AuxiliaryVariable, ConstraintViolations, HigherOrderTerm, HoboAnalyzer, HoboProblem, HoboStats,
     QuboReduction, ReductionMethod, ReductionType,
@@ -184,9 +217,25 @@ pub use hybrid_solvers::{
 };
 pub use ising::{IsingError, IsingModel, IsingResult, QuboModel};
 pub use layout_embedding::{LayoutAwareEmbedder, LayoutConfig, LayoutStats, MultiLevelEmbedder};
+pub use multi_chip_embedding::{
+    ChipMetrics, ChipPerformance, ChipStatus, ChipWorkload, CommunicationChannel, 
+    CommunicationProtocol, ConnectionStatus, FaultToleranceConfig, LoadBalancer, 
+    LoadBalancingDecision, LoadBalancingStrategy, Message, MessageType, MonitoringConfig,
+    MultiChipConfig, MultiChipCoordinator, PerformanceMonitor, PerformanceSnapshot,
+    PerformanceThresholds, ProblemPartition, QuantumChip, RecoveryStrategy, 
+    ResourceUtilization, SystemMetrics, WorkTransfer, create_example_multi_chip_system,
+};
 pub use multi_objective::{
     MultiObjectiveError, MultiObjectiveFunction, MultiObjectiveOptimizer, MultiObjectiveResult,
     MultiObjectiveResults, MultiObjectiveSolution, MultiObjectiveStats, QualityMetrics,
+};
+pub use neural_annealing_schedules::{
+    ActivationFunction, AnnealingSchedule as NeuralAnnealingSchedule, AttentionMechanism,
+    DatabaseStatistics, DenseLayer, FeatureExtractor, GenerationMethod, LearningRateSchedule,
+    MitigationConfig, NetworkArchitecture, NeuralAnnealingScheduler, NeuralSchedulerConfig,
+    OptimizerType, PerformanceMetric, PerformanceRecord, PerformanceTarget, ProblemEncoderNetwork,
+    ScheduleConstraints, ScheduleDatabase, ScheduleGenerationNetwork, TrainingConfig,
+    TrainingManager, ValidationStatus,
 };
 pub use non_stoquastic::{
     create_frustrated_xy_triangle, create_tfxy_model, create_xy_chain, is_hamiltonian_stoquastic,
@@ -237,6 +286,27 @@ pub use quantum_boltzmann_machine::{
     QbmResult, QbmTrainingConfig, QbmTrainingStats, QuantumRestrictedBoltzmannMachine,
     QuantumSamplingStats, TrainingSample, UnitType,
 };
+pub use quantum_error_correction::{
+    ErrorMitigationConfig, ErrorMitigationManager, MitigationResult, MitigationTechnique,
+    QECConfig, QuantumErrorCorrectionError, QuantumErrorCorrectionResult, SyndromeDetector,
+    LogicalAnnealingEncoder, NoiseResilientAnnealingProtocol, StabilizerCode,
+};
+pub use realtime_adaptive_qec::{
+    AdaptationAction, AdaptationCondition, AdaptationDecision, AdaptationRule, AdaptiveProtocol,
+    AdaptiveProtocolManager, AdaptiveQecConfig, AdaptiveQecMetrics, AdaptiveResourceManager,
+    AdaptiveStrategyConfig, AnalysisAlgorithm, AnalysisType, CommunicationChannel,
+    CommunicationStatistics, CoordinationAlgorithm, CoordinationStrategy, CorrectedProblem,
+    CorrectionConfig, CorrectionMetadata, CorrectionResult, DetectionAction, DetectionConfig,
+    DetectionMethod, ErrorCorrectionStrategy, ErrorInfo, FeatureConfig, FeatureDefinition,
+    FeatureExtractor, FeatureNormalization, FeatureSelection, FeatureType, HierarchyConfig,
+    HierarchyCoordinator, HierarchyLevel, HierarchyMessage, HybridConfig, MLNoiseConfig,
+    MessagePayload, MessageType, ModelEnsemble, NeuralArchitecture, NoiseAnalyzer,
+    NoiseAssessment, NoiseCharacteristics, NoiseDataPoint, NoiseMonitor, NoisePrediction,
+    NoisePredictionModel, NoisePredictionSystem, NoiseSensor, NoiseSeverity, NoiseType,
+    PredictionConfig, PredictionResult, RealTimeAdaptiveQec, ResourceAllocationStrategy,
+    ResourceConstraints, ResourceOptimizer, ResourceReallocation, SensorType, StrategyPerformance,
+    SwitchingCriteria, TrendDirection, create_example_adaptive_qec,
+};
 pub use quantum_machine_learning::{
     create_binary_classifier, create_quantum_svm, create_zz_feature_map, evaluate_qml_model,
     ActivationType, EntanglementType, Experience, FeatureMapType, KernelMethodType,
@@ -265,6 +335,15 @@ pub use rl_embedding_optimizer::{
     EmbeddingPolicyNetwork, EmbeddingQualityMetrics, EmbeddingState, HardwareFeatures,
     ObjectiveWeights, ProblemGraphFeatures, RLEmbeddingConfig, RLEmbeddingError,
     RLEmbeddingOptimizer, RLEmbeddingResult, RLPerformanceMetrics, RLTrainingStats,
+};
+pub use scientific_performance_optimization::{
+    AlgorithmOptimizationConfig, ApproximationConfig, BottleneckAnalysis, CachingConfig,
+    CompressionConfig, ComprehensivePerformanceReport, DecompositionConfig, DistributedComputingConfig,
+    GPUAccelerationConfig, HierarchicalMemoryManager, LoadBalancingConfig, MemoryOptimizationConfig,
+    OptimizationCategory, OptimizationImpact, OptimizationRecommendation, OptimizedDrugDiscoveryResult,
+    OptimizedMaterialsScienceResult, OptimizedProteinFoldingResult, ParallelProcessingConfig,
+    PerformanceOptimizationConfig, ProfilingConfig, ResourceUtilizationAnalysis, ScientificPerformanceOptimizer,
+    StreamingConfig, SystemPerformanceMetrics, ThreadPoolConfig, create_example_performance_optimizer,
 };
 pub use simulator::{
     AnnealingError, AnnealingParams, AnnealingResult, AnnealingSolution,

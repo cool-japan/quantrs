@@ -16,7 +16,7 @@ QuantRS2-Py provides Python bindings for the [QuantRS2](https://github.com/cool-
 - **GPU Acceleration**: Optional GPU acceleration via feature flag
 - **PyO3-Based**: Built using the robust PyO3 framework for Rust-Python interoperability
 
-### Advanced Features ✨ **NEW in v0.1.0a4**
+### Advanced Features ✨ **NEW in v0.1.0a5**
 - **🧠 Quantum Machine Learning**: 
   - Quantum Neural Networks (QNN) with parameter-shift rule gradients
   - Variational Quantum Eigensolver (VQE) with multiple ansätze
@@ -190,7 +190,7 @@ except ValueError as e:
 probs = result.probabilities()
 ```
 
-## What's New in v0.1.0a4
+## What's New in v0.1.0a5
 
 - **🧠 Advanced Machine Learning**: Full QNN implementation with gradient-based training
 - **🛡️ Error Mitigation Suite**: ZNE, circuit folding, and observable measurements  
