@@ -81,6 +81,7 @@
 
 // Export modules
 pub mod adaptive_optimization;
+pub mod advanced_performance_analysis;
 pub mod analysis;
 pub mod applications;
 pub mod auto_array;
@@ -106,9 +107,12 @@ pub mod performance_profiler;
 pub mod problem_decomposition;
 pub mod problem_dsl;
 pub mod quantum_annealing;
+pub mod quantum_error_correction;
 pub mod quantum_inspired_ml;
 pub mod quantum_ml_integration;
+pub mod quantum_neural_networks;
 pub mod quantum_optimization_extensions;
+pub mod quantum_state_tomography;
 pub mod sampler;
 pub mod sampler_framework;
 pub mod scirs_stub;
@@ -117,6 +121,7 @@ pub mod solution_clustering;
 pub mod solution_debugger;
 pub mod solution_statistics;
 pub mod symbol;
+pub mod tensor_network_sampler;
 pub mod testing_framework;
 pub mod topological_optimization;
 pub mod variable_correlation;
@@ -124,6 +129,7 @@ pub mod variational_quantum_factoring;
 pub mod visualization;
 
 // Re-export key types for convenience
+pub use advanced_performance_analysis::{AdvancedPerformanceAnalyzer, AnalysisConfig, create_comprehensive_analyzer, create_lightweight_analyzer};
 pub use analysis::{calculate_diversity, cluster_solutions, visualize_energy_distribution};
 #[cfg(feature = "dwave")]
 pub use auto_array::Auto_array;
@@ -133,6 +139,7 @@ pub use compile::{Compile, PieckCompile};
 pub use gpu::{gpu_solve_hobo, gpu_solve_qubo, is_available as is_gpu_available_internal};
 pub use optimize::{calculate_energy, optimize_hobo, optimize_qubo};
 pub use sampler::{ArminSampler, DWaveSampler, GASampler, MIKASAmpler, SASampler};
+pub use tensor_network_sampler::{TensorNetworkSampler, create_mps_sampler, create_peps_sampler, create_mera_sampler};
 pub use scirs_stub::SCIRS2_AVAILABLE;
 #[cfg(feature = "dwave")]
 pub use symbol::{symbols, symbols_define, symbols_list, symbols_nbit};

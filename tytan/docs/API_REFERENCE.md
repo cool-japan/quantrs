@@ -424,3 +424,138 @@ let final_solution = merge_solutions(sub_solutions, &overlap_map);
 4. **Enable SciRS2 features** for maximum performance
 
 5. **Tune sampler parameters** based on problem characteristics
+
+## Advanced Quantum Computing Modules 🆕
+
+### `quantrs2_tytan::quantum_neural_networks`
+
+Hybrid quantum-classical neural network architectures for optimization.
+
+#### Key Types
+
+- **`QuantumNeuralNetwork`** - Main QNN implementation
+- **`QNNConfig`** - Configuration for QNN architecture
+- **`QNNArchitecture`** - Architecture types (PureQuantum, HybridSequential, HybridDense)
+- **`EntanglementPattern`** - Entanglement patterns (Linear, Circular, AllToAll, Custom)
+- **`TrainingResult`** - Results from QNN training
+
+#### Functions
+
+- **`create_qnn_for_optimization(num_qubits: usize) -> Result<QuantumNeuralNetwork, QNNError>`**
+  - Creates a pre-configured QNN for optimization problems
+
+### `quantrs2_tytan::quantum_state_tomography`
+
+Comprehensive quantum state reconstruction and characterization.
+
+#### Key Types
+
+- **`QuantumStateTomography`** - Main tomography system
+- **`TomographyConfig`** - Configuration for tomography
+- **`TomographyType`** - Types (QuantumState, ShadowTomography, CompressedSensing, AdaptiveTomography)
+- **`ReconstructedState`** - Reconstructed quantum state with metadata
+- **`EntanglementMeasures`** - Concurrence, negativity, and other measures
+
+#### Functions
+
+- **`create_tomography_system(num_qubits: usize) -> QuantumStateTomography`**
+  - Creates a tomography system with default configuration
+- **`create_shadow_tomography_config(num_shadows: usize) -> TomographyConfig`**
+  - Creates configuration for shadow tomography
+
+### `quantrs2_tytan::quantum_error_correction`
+
+Advanced quantum error correction for optimization problems.
+
+#### Key Types
+
+- **`QuantumErrorCorrection`** - Main QEC system
+- **`QECConfig`** - Configuration for error correction
+- **`QuantumCodeType`** - Code types (SurfaceCode, ColorCode, StabilizerCode, TopologicalCode)
+- **`DecodingAlgorithm`** - Decoding methods (MWPM, BeliefPropagation, NeuralNetwork, MachineLearning)
+- **`QECMetrics`** - Performance metrics for error correction
+
+#### Functions
+
+- **`create_optimization_qec(num_logical_qubits: usize) -> QuantumErrorCorrection`**
+  - Creates QEC system optimized for quantum annealing
+- **`create_adaptive_qec_config() -> QECConfig`**
+  - Creates adaptive QEC configuration
+
+### `quantrs2_tytan::tensor_network_sampler`
+
+Tensor network algorithms for quantum optimization.
+
+#### Key Types
+
+- **`TensorNetworkSampler`** - Main tensor network sampler
+- **`TensorNetworkConfig`** - Configuration for tensor networks
+- **`TensorNetworkType`** - Network types (MPS, PEPS, MERA, TTN, iMPS, iPEPS)
+- **`TensorNetwork`** - Internal tensor network representation
+- **`TensorNetworkMetrics`** - Performance metrics
+
+#### Functions
+
+- **`create_mps_sampler(bond_dimension: usize) -> TensorNetworkSampler`**
+  - Creates Matrix Product State sampler
+- **`create_peps_sampler(bond_dimension: usize, lattice_shape: (usize, usize)) -> TensorNetworkSampler`**
+  - Creates Projected Entangled Pair State sampler
+- **`create_mera_sampler(layers: usize) -> TensorNetworkSampler`**
+  - Creates MERA sampler
+
+### `quantrs2_tytan::advanced_performance_analysis`
+
+Comprehensive performance monitoring and analysis.
+
+#### Key Types
+
+- **`AdvancedPerformanceAnalyzer`** - Main performance analyzer
+- **`AnalysisConfig`** - Configuration for analysis
+- **`MetricsLevel`** - Collection levels (Basic, Detailed, Comprehensive)
+- **`AnalysisDepth`** - Analysis depth (Surface, Deep, Exhaustive, Adaptive)
+- **`AnalysisResults`** - Comprehensive analysis results
+
+#### Functions
+
+- **`create_comprehensive_analyzer() -> AdvancedPerformanceAnalyzer`**
+  - Creates analyzer with full monitoring capabilities
+- **`create_lightweight_analyzer() -> AdvancedPerformanceAnalyzer`**
+  - Creates lightweight analyzer for basic monitoring
+
+## Complete API Usage Example
+
+```rust
+use quantrs2_tytan::{
+    // Core features
+    symbols, Compile,
+    sampler::{SASampler, Sampler},
+    
+    // Advanced features
+    quantum_neural_networks::create_qnn_for_optimization,
+    tensor_network_sampler::create_mps_sampler,
+    advanced_performance_analysis::create_comprehensive_analyzer,
+};
+
+fn advanced_optimization() -> Result<(), Box<dyn std::error::Error>> {
+    // Set up performance monitoring
+    let mut analyzer = create_comprehensive_analyzer();
+    analyzer.start_analysis()?;
+    
+    // Create symbolic problem
+    let x = symbols("x");
+    let y = symbols("y");
+    let expr = x * y + (x - y).pow(2);
+    
+    // Compile to QUBO
+    let (qubo, offset) = Compile::new(&expr).get_qubo()?;
+    
+    // Use tensor network sampler
+    let sampler = create_mps_sampler(32);
+    let results = sampler.run_qubo(&qubo, 1000)?;
+    
+    // Analyze performance
+    analyzer.perform_comprehensive_analysis()?;
+    
+    Ok(())
+}
+```

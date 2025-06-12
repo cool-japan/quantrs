@@ -1070,11 +1070,13 @@ impl EnhancedPhaseEstimation {
         for (i, control_qubit) in (system_qubits..(system_qubits + phase_qubits)).enumerate() {
             let power = 1 << i;
 
-            // Apply controlled-U^(2^i)
+            // Apply controlled-U^(2^i) where U is the unitary operator
             for _ in 0..power {
-                // Simplified controlled unitary - apply CNOT as placeholder
-                for target in 0..system_qubits {
-                    simulator.apply_cnot_public(control_qubit, target)?;
+                // Apply controlled unitary for each system qubit
+                for target_qubit in 0..system_qubits {
+                    // Check if control qubit is |1⟩ before applying unitary
+                    // This is a simplified implementation - real controlled unitaries would be more complex
+                    unitary_operator(&mut simulator, target_qubit)?;
                 }
             }
         }
@@ -1108,6 +1110,51 @@ impl EnhancedPhaseEstimation {
         let eigenvalue =
             best_measurement as f64 / (1 << phase_qubits) as f64 * 2.0 * std::f64::consts::PI;
         Ok(eigenvalue)
+    }
+
+    /// Apply controlled modular exponentiation: C-U^k where U|x⟩ = |ax mod N⟩
+    fn apply_controlled_modular_exp(
+        &self,
+        simulator: &mut StateVectorSimulator,
+        control_qubit: usize,
+        target_range: std::ops::Range<usize>,
+        base: u64,
+        power: usize,
+        modulus: u64,
+    ) -> Result<()> {
+        // Compute a^(2^power) mod N efficiently using repeated squaring
+        let mut exp_base = base;
+        for _ in 0..power {
+            exp_base = (exp_base * exp_base) % modulus;
+        }
+        
+        // Apply controlled modular multiplication
+        // This is a simplified implementation - production would use optimized quantum arithmetic
+        let num_targets = target_range.len();
+        
+        // For each computational basis state in the target register
+        for x in 0..(1 << num_targets) {
+            if x < modulus as usize {
+                let result = ((x as u64 * exp_base) % modulus) as usize;
+                
+                // If x != result, we need to swap the amplitudes conditionally
+                if x != result {
+                    // Apply controlled swap between |x⟩ and |result⟩ states
+                    for i in 0..num_targets {
+                        let x_bit = (x >> i) & 1;
+                        let result_bit = (result >> i) & 1;
+                        
+                        if x_bit != result_bit {
+                            // Apply controlled Pauli-X to flip this bit when control is |1⟩
+                            let target_qubit = target_range.start + i;
+                            simulator.apply_cnot_public(control_qubit, target_qubit)?;
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(())
     }
 }
 
@@ -1225,5 +1272,112 @@ mod tests {
 
         assert_eq!(shor.mod_exp(2, 3, 5), 3); // 2^3 mod 5 = 8 mod 5 = 3
         assert_eq!(shor.mod_exp(3, 4, 7), 4); // 3^4 mod 7 = 81 mod 7 = 4
+    }
+
+    #[test]
+    fn test_phase_estimation_simple() {
+        let config = QuantumAlgorithmConfig::default();
+        let mut qpe = EnhancedPhaseEstimation::new(config).unwrap();
+
+        // Test with simple eigenstate |0⟩ of the Z gate
+        let eigenstate = Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
+        
+        // Define Z gate unitary operator
+        let z_unitary = |sim: &mut StateVectorSimulator, _target_qubit: usize| -> Result<()> {
+            // Z gate has eigenvalue +1 for |0⟩ state
+            Ok(())  // Identity operation since |0⟩ is eigenstate with eigenvalue +1
+        };
+
+        let result = qpe.estimate_eigenvalues(z_unitary, &eigenstate, 1e-2);
+        assert!(result.is_ok());
+        
+        let qpe_result = result.unwrap();
+        assert!(!qpe_result.eigenvalues.is_empty());
+        assert_eq!(qpe_result.eigenvalues.len(), qpe_result.precisions.len());
+    }
+
+    #[test]
+    fn test_grover_search_functionality() {
+        let config = QuantumAlgorithmConfig::default();
+        let mut grover = OptimizedGroverAlgorithm::new(config).unwrap();
+
+        // Simple oracle: search for state |3⟩ in 3-qubit space
+        let oracle = |x: usize| x == 3;
+        
+        let result = grover.search(3, oracle, 1);
+        assert!(result.is_ok());
+        
+        let grover_result = result.unwrap();
+        assert_eq!(grover_result.iterations, grover_result.optimal_iterations);
+        assert!(grover_result.success_probability >= 0.0);
+        assert!(grover_result.success_probability <= 1.0);
+    }
+
+    #[test]
+    fn test_shor_algorithm_classical_cases() {
+        let config = QuantumAlgorithmConfig::default();
+        let mut shor = OptimizedShorAlgorithm::new(config).unwrap();
+
+        // Test even number factorization
+        let result = shor.factor(10).unwrap();
+        assert!(!result.factors.is_empty());
+        assert!(result.factors.contains(&2) || result.factors.contains(&5));
+
+        // Test prime number (should not factor)
+        let result = shor.factor(7).unwrap();
+        if !result.factors.is_empty() {
+            // If factors found, they should multiply to 7
+            let product: u64 = result.factors.iter().product();
+            assert_eq!(product, 7);
+        }
+    }
+
+    #[test] 
+    fn test_quantum_algorithm_benchmarks() {
+        let benchmarks = benchmark_quantum_algorithms();
+        assert!(benchmarks.is_ok());
+        
+        let results = benchmarks.unwrap();
+        assert!(results.contains_key("shor_15"));
+        assert!(results.contains_key("grover_4qubits"));
+        assert!(results.contains_key("phase_estimation"));
+        
+        // Verify all benchmarks completed (non-zero times)
+        for (algorithm, time) in results {
+            assert!(time >= 0.0, "Algorithm {} had negative execution time", algorithm);
+        }
+    }
+
+    #[test]
+    fn test_grover_optimal_iterations_calculation() {
+        let config = QuantumAlgorithmConfig::default();
+        let grover = OptimizedGroverAlgorithm::new(config).unwrap();
+
+        // Test for different problem sizes
+        assert_eq!(grover.calculate_optimal_iterations(4, 1), 1);   // 4 items, 1 target
+        assert_eq!(grover.calculate_optimal_iterations(16, 1), 3);  // 16 items, 1 target
+        
+        let iterations_64_1 = grover.calculate_optimal_iterations(64, 1); // 64 items, 1 target
+        assert!(iterations_64_1 >= 6 && iterations_64_1 <= 8);
+    }
+
+    #[test]
+    fn test_phase_estimation_precision_control() {
+        let config = QuantumAlgorithmConfig {
+            precision_tolerance: 1e-3,
+            ..Default::default()
+        };
+        let mut qpe = EnhancedPhaseEstimation::new(config).unwrap();
+
+        // Test with identity operator (eigenvalue should be 0)
+        let eigenstate = Array1::from_vec(vec![Complex64::new(1.0, 0.0)]);
+        let identity_op = |_sim: &mut StateVectorSimulator, _target: usize| -> Result<()> { Ok(()) };
+
+        let result = qpe.estimate_eigenvalues(identity_op, &eigenstate, 1e-3);
+        assert!(result.is_ok());
+        
+        let qpe_result = result.unwrap();
+        assert!(qpe_result.precisions[0] <= 1e-3);
+        assert!(qpe_result.phase_qubits >= 3); // Should use enough qubits for target precision
     }
 }

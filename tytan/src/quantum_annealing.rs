@@ -196,10 +196,25 @@ impl QuantumAnnealingSampler {
 
     /// Build the problem Hamiltonian from QUBO (legacy method - unused)
     #[allow(dead_code)]
-    fn build_problem_hamiltonian(&self, _qubo: &QuboModel) -> Array2<f64> {
-        // This method is no longer used as we switched to matrix-based interface
-        // Keeping for backward compatibility but not implementing
-        unimplemented!("Use build_problem_hamiltonian_from_matrix instead")
+    fn build_problem_hamiltonian(&self, qubo: &QuboModel) -> Array2<f64> {
+        // Convert QuboModel to matrix format and delegate
+        let n = qubo.size();
+        let mut matrix = Array2::zeros((n, n));
+        
+        // Copy linear terms to diagonal
+        for (i, &val) in qubo.linear_terms().iter().enumerate() {
+            matrix[[i, i]] = val;
+        }
+        
+        // Copy quadratic terms
+        for ((i, j), &val) in qubo.quadratic_terms() {
+            matrix[[*i, *j]] = val;
+            if i != j {
+                matrix[[*j, *i]] = val; // Ensure symmetry
+            }
+        }
+        
+        self.build_problem_hamiltonian_from_matrix(&matrix)
     }
 
     /// Build the problem Hamiltonian from matrix

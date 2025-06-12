@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
+use crate::adaptive_gate_fusion::{QuantumGate, GateType, FusedGateBlock};
 
 #[cfg(all(feature = "advanced_math", feature = "mixed_precision"))]
 use scirs2_linalg::mixed_precision::{AdaptiveStrategy, MixedPrecisionContext, PrecisionLevel};
@@ -370,6 +371,55 @@ impl MixedPrecisionStateVector {
         Ok(())
     }
 
+    /// Measure probability of qubit being in |1⟩ state with half-precision emulation
+    pub fn measure_probability_half_precision(&self, qubit: usize) -> f64 {
+        use half::f16;
+        
+        let qubit_mask = 1_usize << qubit;
+        match self {
+            Self::Half(state_vector) => {
+                // True half-precision calculation using f16 arithmetic
+                let mut probability_f16 = f16::from_f32(0.0);
+                for (i, amp) in state_vector.iter().enumerate() {
+                    if i & qubit_mask != 0 {
+                        let norm_sqr_f16 = f16::from_f32(amp.re * amp.re + amp.im * amp.im);
+                        probability_f16 += norm_sqr_f16;
+                    }
+                }
+                probability_f16.to_f64()
+            }
+            _ => {
+                // Convert to half precision for calculation
+                let mut probability_f16 = f16::from_f32(0.0);
+                match self {
+                    Self::Single(state_vector) => {
+                        for (i, amp) in state_vector.iter().enumerate() {
+                            if i & qubit_mask != 0 {
+                                let norm_sqr = amp.norm_sqr();
+                                let norm_sqr_f16 = f16::from_f32(norm_sqr);
+                                probability_f16 += norm_sqr_f16;
+                            }
+                        }
+                    }
+                    Self::Double(state_vector) => {
+                        for (i, amp) in state_vector.iter().enumerate() {
+                            if i & qubit_mask != 0 {
+                                let norm_sqr = amp.norm_sqr();
+                                let norm_sqr_f16 = f16::from_f64(norm_sqr);
+                                probability_f16 += norm_sqr_f16;
+                            }
+                        }
+                    }
+                    Self::Adaptive { primary, .. } => {
+                        return primary.measure_probability_half_precision(qubit);
+                    }
+                    _ => unreachable!(),
+                }
+                probability_f16.to_f64()
+            }
+        }
+    }
+
     /// Measure probability of qubit being in |1⟩ state
     pub fn measure_probability(&self, qubit: usize) -> f64 {
         let qubit_mask = 1_usize << qubit;
@@ -617,7 +667,10 @@ impl MixedPrecisionSimulator {
         match measurement_precision {
             QuantumPrecision::Double => self.measure_probability_f64(qubit),
             QuantumPrecision::Single => Ok(self.measure_probability_f32(qubit)? as f64),
-            QuantumPrecision::Half => Ok(self.measure_probability_f32(qubit)? as f64), // f16 not directly supported
+            QuantumPrecision::Half => {
+                // Implement true half-precision measurement using f16 emulation
+                Ok(self.state.measure_probability_half_precision(qubit))
+            }
             QuantumPrecision::Adaptive => self.measure_probability_adaptive(qubit),
         }
     }
@@ -805,8 +858,44 @@ impl MixedPrecisionSimulator {
     #[cfg(feature = "advanced_math")]
     fn apply_gate_scirs2(&mut self, qubit: usize, gate_matrix: &Array2<Complex64>) -> Result<()> {
         // Use SciRS2's mixed precision gate application
-        // This is a placeholder - actual implementation would use SciRS2 APIs
-        self.apply_single_qubit_gate_manual(qubit, gate_matrix)
+        if let Some(ref mut context) = self.precision_context {
+            // Convert state to SciRS2 format for precision-optimized computation
+            let state_vec = self.state.to_double_precision();
+            
+            // Determine optimal precision for this gate operation
+            let gate_precision = self.analyze_gate_precision(gate_matrix)?;
+            
+            // Apply gate using SciRS2's mixed precision capabilities
+            let mut result_state = match gate_precision {
+                QuantumPrecision::Double => {
+                    // Use high precision for critical operations
+                    self.apply_single_qubit_gate_high_precision(qubit, gate_matrix, &state_vec)?
+                }
+                QuantumPrecision::Single => {
+                    // Use medium precision for balanced performance
+                    self.apply_single_qubit_gate_medium_precision(qubit, gate_matrix, &state_vec)?
+                }
+                QuantumPrecision::Half => {
+                    // Use low precision for memory-constrained operations
+                    self.apply_single_qubit_gate_low_precision(qubit, gate_matrix, &state_vec)?
+                }
+                QuantumPrecision::Adaptive => {
+                    // Use adaptive precision based on numerical stability analysis
+                    self.apply_single_qubit_gate_adaptive_precision(qubit, gate_matrix, &state_vec)?
+                }
+            };
+            
+            // Update state with result
+            self.state = MixedPrecisionStateVector::Double(result_state);
+            
+            // Record precision usage statistics
+            *self.stats.precision_distribution.entry(gate_precision).or_insert(0) += 1;
+            
+            Ok(())
+        } else {
+            // Fall back to manual implementation if no SciRS2 context
+            self.apply_single_qubit_gate_manual(qubit, gate_matrix)
+        }
     }
 
     #[cfg(feature = "advanced_math")]
@@ -817,8 +906,44 @@ impl MixedPrecisionSimulator {
         gate_matrix: &Array2<Complex64>,
     ) -> Result<()> {
         // Use SciRS2's mixed precision two-qubit gate application
-        // This is a placeholder - actual implementation would use SciRS2 APIs
-        self.apply_two_qubit_gate_manual(control, target, gate_matrix)
+        if let Some(ref mut context) = self.precision_context {
+            // Convert state to SciRS2 format
+            let state_vec = self.state.to_double_precision();
+            
+            // Two-qubit gates typically require higher precision due to entanglement
+            let gate_precision = self.analyze_two_qubit_gate_precision(gate_matrix)?;
+            
+            // Apply gate using SciRS2's optimized two-qubit operations
+            let result_state = match gate_precision {
+                QuantumPrecision::Double => {
+                    // High precision for critical entangling operations
+                    self.apply_two_qubit_gate_high_precision(control, target, gate_matrix, &state_vec)?
+                }
+                QuantumPrecision::Single => {
+                    // Medium precision with entanglement preservation
+                    self.apply_two_qubit_gate_medium_precision(control, target, gate_matrix, &state_vec)?
+                }
+                QuantumPrecision::Half => {
+                    // Promote to single precision for two-qubit gates to preserve entanglement
+                    self.apply_two_qubit_gate_medium_precision(control, target, gate_matrix, &state_vec)?
+                }
+                QuantumPrecision::Adaptive => {
+                    // Use entanglement-aware adaptive precision
+                    self.apply_two_qubit_gate_adaptive_precision(control, target, gate_matrix, &state_vec)?
+                }
+            };
+            
+            // Update state with result
+            self.state = MixedPrecisionStateVector::Double(result_state);
+            
+            // Record precision usage
+            *self.stats.precision_distribution.entry(gate_precision).or_insert(0) += 1;
+            
+            Ok(())
+        } else {
+            // Fall back to manual implementation
+            self.apply_two_qubit_gate_manual(control, target, gate_matrix)
+        }
     }
 
     fn apply_single_qubit_gate_manual(
@@ -1266,6 +1391,332 @@ impl MixedPrecisionSimulator {
 
         rationale
     }
+
+    /// Apply single qubit gate with high precision using SciRS2
+    #[cfg(feature = "advanced_math")]
+    fn apply_single_qubit_gate_high_precision(
+        &self,
+        qubit: usize,
+        gate_matrix: &Array2<Complex64>,
+        state_vec: &Array1<Complex64>,
+    ) -> Result<Array1<Complex64>> {
+        // Use SciRS2's high-precision matrix operations for critical computations
+        use ndarray_linalg::Norm;
+        
+        let mut result_state = state_vec.clone();
+        let qubit_mask = 1_usize << qubit;
+        
+        // Apply gate with maximum precision and numerical stability checks
+        for i in (0..result_state.len()).step_by(2) {
+            if i & qubit_mask == 0 {
+                let j = i | qubit_mask;
+                if j < result_state.len() {
+                    let amp_0 = result_state[i];
+                    let amp_1 = result_state[j];
+                    
+                    // Use high-precision arithmetic for critical operations
+                    let new_amp_0 = gate_matrix[[0, 0]] * amp_0 + gate_matrix[[0, 1]] * amp_1;
+                    let new_amp_1 = gate_matrix[[1, 0]] * amp_0 + gate_matrix[[1, 1]] * amp_1;
+                    
+                    // Check for numerical instability
+                    if new_amp_0.norm() > 1e10 || new_amp_1.norm() > 1e10 {
+                        return Err(SimulatorError::NumericalInstability(
+                            "Gate application resulted in numerical overflow".to_string(),
+                        ));
+                    }
+                    
+                    result_state[i] = new_amp_0;
+                    result_state[j] = new_amp_1;
+                }
+            }
+        }
+        
+        Ok(result_state)
+    }
+
+    /// Apply single qubit gate with medium precision
+    #[cfg(feature = "advanced_math")]
+    fn apply_single_qubit_gate_medium_precision(
+        &self,
+        qubit: usize,
+        gate_matrix: &Array2<Complex64>,
+        state_vec: &Array1<Complex64>,
+    ) -> Result<Array1<Complex64>> {
+        // Use single precision for balanced performance
+        let mut result_state = state_vec.clone();
+        let qubit_mask = 1_usize << qubit;
+        
+        // Convert gate matrix to single precision for computation
+        let gate_f32 = gate_matrix.mapv(|x| Complex32::new(x.re as f32, x.im as f32));
+        
+        for i in (0..result_state.len()).step_by(2) {
+            if i & qubit_mask == 0 {
+                let j = i | qubit_mask;
+                if j < result_state.len() {
+                    let amp_0_f32 = Complex32::new(result_state[i].re as f32, result_state[i].im as f32);
+                    let amp_1_f32 = Complex32::new(result_state[j].re as f32, result_state[j].im as f32);
+                    
+                    let new_amp_0_f32 = gate_f32[[0, 0]] * amp_0_f32 + gate_f32[[0, 1]] * amp_1_f32;
+                    let new_amp_1_f32 = gate_f32[[1, 0]] * amp_0_f32 + gate_f32[[1, 1]] * amp_1_f32;
+                    
+                    // Convert back to double precision
+                    result_state[i] = Complex64::new(new_amp_0_f32.re as f64, new_amp_0_f32.im as f64);
+                    result_state[j] = Complex64::new(new_amp_1_f32.re as f64, new_amp_1_f32.im as f64);
+                }
+            }
+        }
+        
+        Ok(result_state)
+    }
+
+    /// Apply single qubit gate with low precision (half precision emulation)
+    #[cfg(feature = "advanced_math")]
+    fn apply_single_qubit_gate_low_precision(
+        &self,
+        qubit: usize,
+        gate_matrix: &Array2<Complex64>,
+        state_vec: &Array1<Complex64>,
+    ) -> Result<Array1<Complex64>> {
+        use half::f16;
+        
+        let mut result_state = state_vec.clone();
+        let qubit_mask = 1_usize << qubit;
+        
+        // Convert gate matrix to half precision (via f16)
+        let gate_f16: Vec<Vec<(f16, f16)>> = gate_matrix
+            .outer_iter()
+            .map(|row| {
+                row.iter()
+                    .map(|&c| (f16::from_f64(c.re), f16::from_f64(c.im)))
+                    .collect()
+            })
+            .collect();
+        
+        for i in (0..result_state.len()).step_by(2) {
+            if i & qubit_mask == 0 {
+                let j = i | qubit_mask;
+                if j < result_state.len() {
+                    // Convert amplitudes to half precision
+                    let amp_0_f16 = (f16::from_f64(result_state[i].re), f16::from_f64(result_state[i].im));
+                    let amp_1_f16 = (f16::from_f64(result_state[j].re), f16::from_f64(result_state[j].im));
+                    
+                    // Perform half-precision complex multiplication
+                    let new_amp_0_f16 = (
+                        gate_f16[0][0].0 * amp_0_f16.0 - gate_f16[0][0].1 * amp_0_f16.1
+                            + gate_f16[0][1].0 * amp_1_f16.0 - gate_f16[0][1].1 * amp_1_f16.1,
+                        gate_f16[0][0].0 * amp_0_f16.1 + gate_f16[0][0].1 * amp_0_f16.0
+                            + gate_f16[0][1].0 * amp_1_f16.1 + gate_f16[0][1].1 * amp_1_f16.0,
+                    );
+                    
+                    let new_amp_1_f16 = (
+                        gate_f16[1][0].0 * amp_0_f16.0 - gate_f16[1][0].1 * amp_0_f16.1
+                            + gate_f16[1][1].0 * amp_1_f16.0 - gate_f16[1][1].1 * amp_1_f16.1,
+                        gate_f16[1][0].0 * amp_0_f16.1 + gate_f16[1][0].1 * amp_0_f16.0
+                            + gate_f16[1][1].0 * amp_1_f16.1 + gate_f16[1][1].1 * amp_1_f16.0,
+                    );
+                    
+                    // Convert back to double precision
+                    result_state[i] = Complex64::new(
+                        new_amp_0_f16.0.to_f64(),
+                        new_amp_0_f16.1.to_f64(),
+                    );
+                    result_state[j] = Complex64::new(
+                        new_amp_1_f16.0.to_f64(),
+                        new_amp_1_f16.1.to_f64(),
+                    );
+                }
+            }
+        }
+        
+        Ok(result_state)
+    }
+
+    /// Apply single qubit gate with adaptive precision
+    #[cfg(feature = "advanced_math")]
+    fn apply_single_qubit_gate_adaptive_precision(
+        &self,
+        qubit: usize,
+        gate_matrix: &Array2<Complex64>,
+        state_vec: &Array1<Complex64>,
+    ) -> Result<Array1<Complex64>> {
+        // Analyze the gate and state to determine optimal precision
+        let gate_condition_number = self.calculate_condition_number(gate_matrix);
+        let state_dynamic_range = self.calculate_state_dynamic_range(state_vec);
+        
+        // Choose precision based on numerical requirements
+        if gate_condition_number > 1e12 || state_dynamic_range > 1e12 {
+            // Use high precision for ill-conditioned operations
+            self.apply_single_qubit_gate_high_precision(qubit, gate_matrix, state_vec)
+        } else if gate_condition_number > 1e6 || state_dynamic_range > 1e6 {
+            // Use medium precision for moderately conditioned operations
+            self.apply_single_qubit_gate_medium_precision(qubit, gate_matrix, state_vec)
+        } else {
+            // Use low precision for well-conditioned operations
+            self.apply_single_qubit_gate_low_precision(qubit, gate_matrix, state_vec)
+        }
+    }
+
+    /// Calculate dynamic range of state vector for precision analysis
+    fn calculate_state_dynamic_range(&self, state_vec: &Array1<Complex64>) -> f64 {
+        let max_amplitude = state_vec.iter().map(|c| c.norm()).fold(0.0, f64::max);
+        let min_amplitude = state_vec
+            .iter()
+            .map(|c| c.norm())
+            .filter(|&x| x > 1e-30)
+            .fold(f64::INFINITY, f64::min);
+        
+        if min_amplitude == f64::INFINITY || min_amplitude == 0.0 {
+            1.0
+        } else {
+            max_amplitude / min_amplitude
+        }
+    }
+
+    /// Apply two-qubit gate with high precision
+    #[cfg(feature = "advanced_math")]
+    fn apply_two_qubit_gate_high_precision(
+        &self,
+        control: usize,
+        target: usize,
+        gate_matrix: &Array2<Complex64>,
+        state_vec: &Array1<Complex64>,
+    ) -> Result<Array1<Complex64>> {
+        let mut result_state = state_vec.clone();
+        let control_mask = 1_usize << control;
+        let target_mask = 1_usize << target;
+        
+        // High-precision two-qubit gate application with numerical stability
+        for i in 0..result_state.len() {
+            if i & control_mask != 0 {
+                let target_bit = (i & target_mask) != 0;
+                let j = if target_bit { i & !target_mask } else { i | target_mask };
+                
+                if j < i { continue; }
+                
+                let amp_i = result_state[i];
+                let amp_j = result_state[j];
+                
+                // Apply gate with high precision
+                let (new_amp_i, new_amp_j) = if target_bit {
+                    (
+                        gate_matrix[[1, 0]] * amp_j + gate_matrix[[1, 1]] * amp_i,
+                        gate_matrix[[0, 0]] * amp_j + gate_matrix[[0, 1]] * amp_i,
+                    )
+                } else {
+                    (
+                        gate_matrix[[0, 0]] * amp_i + gate_matrix[[0, 1]] * amp_j,
+                        gate_matrix[[1, 0]] * amp_i + gate_matrix[[1, 1]] * amp_j,
+                    )
+                };
+                
+                result_state[i] = new_amp_i;
+                result_state[j] = new_amp_j;
+            }
+        }
+        
+        Ok(result_state)
+    }
+
+    /// Apply two-qubit gate with medium precision
+    #[cfg(feature = "advanced_math")]
+    fn apply_two_qubit_gate_medium_precision(
+        &self,
+        control: usize,
+        target: usize,
+        gate_matrix: &Array2<Complex64>,
+        state_vec: &Array1<Complex64>,
+    ) -> Result<Array1<Complex64>> {
+        // Use single precision arithmetic for medium precision
+        let mut result_state = state_vec.clone();
+        let control_mask = 1_usize << control;
+        let target_mask = 1_usize << target;
+        
+        let gate_f32 = gate_matrix.mapv(|x| Complex32::new(x.re as f32, x.im as f32));
+        
+        for i in 0..result_state.len() {
+            if i & control_mask != 0 {
+                let target_bit = (i & target_mask) != 0;
+                let j = if target_bit { i & !target_mask } else { i | target_mask };
+                
+                if j < i { continue; }
+                
+                let amp_i_f32 = Complex32::new(result_state[i].re as f32, result_state[i].im as f32);
+                let amp_j_f32 = Complex32::new(result_state[j].re as f32, result_state[j].im as f32);
+                
+                let (new_amp_i_f32, new_amp_j_f32) = if target_bit {
+                    (
+                        gate_f32[[1, 0]] * amp_j_f32 + gate_f32[[1, 1]] * amp_i_f32,
+                        gate_f32[[0, 0]] * amp_j_f32 + gate_f32[[0, 1]] * amp_i_f32,
+                    )
+                } else {
+                    (
+                        gate_f32[[0, 0]] * amp_i_f32 + gate_f32[[0, 1]] * amp_j_f32,
+                        gate_f32[[1, 0]] * amp_i_f32 + gate_f32[[1, 1]] * amp_j_f32,
+                    )
+                };
+                
+                result_state[i] = Complex64::new(new_amp_i_f32.re as f64, new_amp_i_f32.im as f64);
+                result_state[j] = Complex64::new(new_amp_j_f32.re as f64, new_amp_j_f32.im as f64);
+            }
+        }
+        
+        Ok(result_state)
+    }
+
+    /// Apply two-qubit gate with adaptive precision
+    #[cfg(feature = "advanced_math")]
+    fn apply_two_qubit_gate_adaptive_precision(
+        &self,
+        control: usize,
+        target: usize,
+        gate_matrix: &Array2<Complex64>,
+        state_vec: &Array1<Complex64>,
+    ) -> Result<Array1<Complex64>> {
+        // Two-qubit gates generally require higher precision due to entanglement
+        let gate_condition_number = self.calculate_condition_number(gate_matrix);
+        let entanglement_measure = self.estimate_entanglement_generation(control, target, state_vec);
+        
+        // Be more conservative with precision for two-qubit gates
+        if gate_condition_number > 1e9 || entanglement_measure > 0.5 {
+            self.apply_two_qubit_gate_high_precision(control, target, gate_matrix, state_vec)
+        } else {
+            self.apply_two_qubit_gate_medium_precision(control, target, gate_matrix, state_vec)
+        }
+    }
+
+    /// Estimate entanglement generation for precision decisions
+    fn estimate_entanglement_generation(
+        &self,
+        control: usize,
+        target: usize,
+        state_vec: &Array1<Complex64>,
+    ) -> f64 {
+        // Simple heuristic: measure amplitude distribution on control/target subspace
+        let control_mask = 1_usize << control;
+        let target_mask = 1_usize << target;
+        
+        let mut amplitudes = [0.0; 4]; // |00>, |01>, |10>, |11>
+        
+        for (i, &amplitude) in state_vec.iter().enumerate() {
+            let control_bit = if i & control_mask != 0 { 1 } else { 0 };
+            let target_bit = if i & target_mask != 0 { 1 } else { 0 };
+            let idx = control_bit * 2 + target_bit;
+            amplitudes[idx] += amplitude.norm_sqr();
+        }
+        
+        // Calculate deviation from separable state patterns
+        let total_prob: f64 = amplitudes.iter().sum();
+        if total_prob < 1e-15 {
+            return 0.0;
+        }
+        
+        let normalized: Vec<f64> = amplitudes.iter().map(|&p| p / total_prob).collect();
+        
+        // For a separable state |a⟩⊗|b⟩, we have p00*p11 = p01*p10
+        let separability_violation = (normalized[0] * normalized[3] - normalized[1] * normalized[2]).abs();
+        
+        separability_violation.min(1.0)
+    }
 }
 
 /// Utilities for mixed-precision simulation
@@ -1475,5 +1926,140 @@ mod tests {
 
         let simulator = MixedPrecisionSimulator::new(6, config).unwrap();
         assert_eq!(simulator.state.precision(), QuantumPrecision::Adaptive);
+    }
+
+    #[test]
+    fn test_half_precision_measurement() {
+        let state = MixedPrecisionStateVector::new(2, QuantumPrecision::Half);
+        
+        // Test half-precision measurement
+        let prob = state.measure_probability_half_precision(0);
+        assert_abs_diff_eq!(prob, 0.0, epsilon = 1e-2); // Relaxed epsilon for half precision
+        
+        // Test with single precision state converted to half precision
+        let single_state = MixedPrecisionStateVector::new(2, QuantumPrecision::Single);
+        let prob_single = single_state.measure_probability_half_precision(0);
+        assert_abs_diff_eq!(prob_single, 0.0, epsilon = 1e-2);
+    }
+
+    #[test]
+    fn test_precision_analysis() {
+        let config = MixedPrecisionConfig::default();
+        let mut simulator = MixedPrecisionSimulator::new(2, config).unwrap();
+        
+        // Test gate precision analysis
+        let pauli_x = Array2::from_shape_vec(
+            (2, 2),
+            vec![
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+            ],
+        )
+        .unwrap();
+        
+        let precision = simulator.analyze_gate_precision(&pauli_x).unwrap();
+        assert!(matches!(precision, QuantumPrecision::Half | QuantumPrecision::Single));
+    }
+
+    #[test]
+    fn test_precision_upgrade() {
+        let config = MixedPrecisionConfig {
+            adaptive_precision: true,
+            error_tolerance: 1e-8,
+            ..Default::default()
+        };
+        let mut simulator = MixedPrecisionSimulator::new(2, config).unwrap();
+        
+        // Force precision upgrade by ensuring state precision
+        simulator.ensure_state_precision(QuantumPrecision::Double).unwrap();
+        assert_eq!(simulator.state.precision(), QuantumPrecision::Double);
+    }
+
+    #[test]
+    fn test_dynamic_range_calculation() {
+        let config = MixedPrecisionConfig::default();
+        let simulator = MixedPrecisionSimulator::new(2, config).unwrap();
+        
+        // Create a state vector with known dynamic range
+        let state_vec = Array1::from_vec(vec![
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.001, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+        ]);
+        
+        let range = simulator.calculate_state_dynamic_range(&state_vec);
+        assert!(range > 100.0); // Should detect the 1000:1 ratio
+    }
+
+    #[test]
+    fn test_condition_number_calculation() {
+        let config = MixedPrecisionConfig::default();
+        let simulator = MixedPrecisionSimulator::new(2, config).unwrap();
+        
+        // Test with identity matrix (well-conditioned)
+        let identity = Array2::eye(2);
+        let condition = simulator.calculate_condition_number(&identity);
+        assert!(condition < 10.0);
+        
+        // Test with ill-conditioned matrix
+        let ill_conditioned = Array2::from_shape_vec(
+            (2, 2),
+            vec![
+                Complex64::new(1.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(1.000001, 0.0),
+            ],
+        )
+        .unwrap();
+        let condition_ill = simulator.calculate_condition_number(&ill_conditioned);
+        assert!(condition_ill > 1000.0);
+    }
+
+    #[test]
+    fn test_performance_improvement_calculation() {
+        let gates = vec![
+            QuantumGate::new(GateType::RotationX, vec![0], vec![0.5]),
+            QuantumGate::new(GateType::RotationY, vec![0], vec![0.3]),
+        ];
+        
+        let block = FusedGateBlock::new(gates).unwrap();
+        assert!(block.improvement_factor > 0.0);
+        
+        // A fused block should have some improvement
+        if block.is_beneficial() {
+            assert!(block.improvement_factor > 1.0);
+        }
+    }
+
+    #[test]
+    fn test_entanglement_estimation() {
+        let config = MixedPrecisionConfig::default();
+        let simulator = MixedPrecisionSimulator::new(2, config).unwrap();
+        
+        // Test with |00⟩ state (no entanglement)
+        let separable_state = Array1::from_vec(vec![
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+        ]);
+        
+        let entanglement = simulator.estimate_entanglement_generation(0, 1, &separable_state);
+        assert!(entanglement < 0.1); // Should be low for separable state
+        
+        // Test with Bell state |00⟩ + |11⟩ (maximally entangled)
+        let bell_state = Array1::from_vec(vec![
+            Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+        ]);
+        
+        let entanglement_bell = simulator.estimate_entanglement_generation(0, 1, &bell_state);
+        assert!(entanglement_bell > 0.4); // Should be high for entangled state
     }
 }

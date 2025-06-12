@@ -275,7 +275,7 @@ impl Clone for BatchCircuitExecutor {
         Self {
             config: self.config.clone(),
             gpu_backend: self.gpu_backend.clone(),
-            scheduler: None, // Don't clone scheduler
+            thread_pool: None, // Don't clone thread pool
         }
     }
 }

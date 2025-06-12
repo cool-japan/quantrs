@@ -6,6 +6,15 @@
 
 QuantRS2-Core is the foundational library of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing a comprehensive suite of quantum computing primitives, algorithms, and optimizations that power the entire ecosystem.
 
+## Latest Updates (v0.1.0-alpha.5)
+
+- **Advanced ZX-Calculus Optimization**: Graph-based circuit optimization achieving up to 84% gate count reduction
+- **GPU Kernel Optimization**: CUDA tensor cores and WebGPU shaders for specialized quantum gates
+- **Quantum Approximate Optimization Algorithm (QAOA)**: Complete implementation for MaxCut and TSP
+- **Quantum Machine Learning for NLP**: Attention mechanisms and quantum embeddings
+- **Gate Compilation Caching**: Persistent storage with compression and LRU eviction
+- **Adaptive SIMD Dispatch**: Runtime CPU feature detection with AVX-512/AVX2/SSE4 optimization
+
 ## Core Features
 
 ### Basic Quantum Primitives

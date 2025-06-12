@@ -2,6 +2,8 @@
 
 use crate::ising::IsingError;
 use thiserror::Error;
+use super::gaussian_process::{GaussianProcessSurrogate, KernelFunction};
+use rand_chacha::ChaCha8Rng;
 
 /// Errors that can occur in Bayesian optimization
 #[derive(Error, Debug)]

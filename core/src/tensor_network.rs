@@ -85,9 +85,35 @@ impl Tensor {
         }
     }
 
+    /// Create a tensor from an ndarray with specified indices
+    pub fn from_array<D>(array: ndarray::ArrayBase<ndarray::OwnedRepr<Complex64>, D>, indices: Vec<usize>) -> Self
+    where
+        D: ndarray::Dimension,
+    {
+        let shape = array.shape().to_vec();
+        let data = array.into_dyn();
+        let index_labels: Vec<String> = indices.iter().map(|i| format!("idx_{}", i)).collect();
+        Self {
+            id: 0, // Default ID
+            data,
+            indices: index_labels,
+            shape,
+        }
+    }
+
     /// Get the rank (number of indices) of the tensor
     pub fn rank(&self) -> usize {
         self.indices.len()
+    }
+
+    /// Get a reference to the tensor data
+    pub fn tensor(&self) -> &ArrayD<Complex64> {
+        &self.data
+    }
+
+    /// Get the number of dimensions
+    pub fn ndim(&self) -> usize {
+        self.data.ndim()
     }
 
     /// Contract this tensor with another over specified indices
@@ -578,6 +604,16 @@ impl TensorNetwork {
     pub fn apply_mpo(&mut self, mpo: &[Tensor], qubits: &[usize]) -> QuantRS2Result<()> {
         // Apply an MPO to specified qubits
         Ok(())
+    }
+
+    /// Get a reference to the tensors in the network
+    pub fn tensors(&self) -> Vec<&Tensor> {
+        self.tensors.values().collect()
+    }
+
+    /// Get a reference to a tensor by ID
+    pub fn tensor(&self, id: usize) -> Option<&Tensor> {
+        self.tensors.get(&id)
     }
 }
 

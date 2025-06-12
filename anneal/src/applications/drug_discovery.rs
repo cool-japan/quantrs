@@ -27,9 +27,9 @@ use crate::advanced_quantum_algorithms::{
 use crate::applications::{ApplicationError, ApplicationResult, OptimizationProblem, IndustrySolution};
 use crate::bayesian_hyperopt::{optimize_annealing_parameters, BayesianHyperoptimizer};
 use crate::ising::{IsingModel, QuboModel};
-use crate::neural_annealing_schedules::{NeuralAnnealingScheduler, NeuralScheduleConfig};
+use crate::neural_annealing_schedules::{NeuralAnnealingScheduler, NeuralSchedulerConfig};
 use crate::quantum_error_correction::{
-    QuantumErrorCorrectionFramework, ErrorCorrectionConfig, 
+    SyndromeDetector, ErrorCorrectionCode, NoiseResilientAnnealingProtocol, 
     ErrorMitigationManager, LogicalAnnealingEncoder,
 };
 

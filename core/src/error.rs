@@ -42,6 +42,86 @@ pub enum QuantRS2Error {
     /// Routing error
     #[error("Routing error: {0}")]
     RoutingError(String),
+
+    /// Matrix construction error
+    #[error("Matrix construction error: {0}")]
+    MatrixConstruction(String),
+
+    /// Matrix inversion error
+    #[error("Matrix inversion error: {0}")]
+    MatrixInversion(String),
+
+    /// Optimization failed error
+    #[error("Optimization failed: {0}")]
+    OptimizationFailed(String),
+
+    /// Tensor network error
+    #[error("Tensor network error: {0}")]
+    TensorNetwork(String),
+
+    /// Runtime error
+    #[error("Runtime error: {0}")]
+    RuntimeError(String),
+
+    /// Execution error
+    #[error("Execution error: {0}")]
+    ExecutionError(String),
+
+    /// Invalid gate operation
+    #[error("Invalid gate operation: {0}")]
+    InvalidGateOp(String),
+
+    /// UltraThink mode error variants
+    #[error("Invalid parameter: {0}")]
+    InvalidParameter(String),
+
+    #[error("Quantum decoherence: {0}")]
+    QuantumDecoherence(String),
+
+    #[error("No storage available: {0}")]
+    NoStorageAvailable(String),
+
+    #[error("Calibration not found: {0}")]
+    CalibrationNotFound(String),
+
+    #[error("Access denied: {0}")]
+    AccessDenied(String),
+
+    #[error("Storage capacity exceeded: {0}")]
+    StorageCapacityExceeded(String),
+
+    #[error("Hardware target not found: {0}")]
+    HardwareTargetNotFound(String),
+
+    #[error("Gate fusion error: {0}")]
+    GateFusionError(String),
+
+    #[error("Unsupported gate: {0}")]
+    UnsupportedGate(String),
+
+    #[error("Compilation timeout: {0}")]
+    CompilationTimeout(String),
+
+    #[error("Node not found: {0}")]
+    NodeNotFound(String),
+
+    #[error("Node unavailable: {0}")]
+    NodeUnavailable(String),
+
+    #[error("Network error: {0}")]
+    NetworkError(String),
+
+    #[error("No hardware available: {0}")]
+    NoHardwareAvailable(String),
+
+    #[error("State not found: {0}")]
+    StateNotFound(String),
+
+    #[error("Invalid operation: {0}")]
+    InvalidOperation(String),
+
+    #[error("QKD failure: {0}")]
+    QKDFailure(String),
 }
 
 /// Result type for quantum operations
@@ -58,5 +138,23 @@ impl From<ndarray::ShapeError> for QuantRS2Error {
 impl From<ndarray_linalg::error::LinalgError> for QuantRS2Error {
     fn from(err: ndarray_linalg::error::LinalgError) -> Self {
         QuantRS2Error::LinalgError(format!("Linear algebra error: {}", err))
+    }
+}
+
+impl From<std::io::Error> for QuantRS2Error {
+    fn from(err: std::io::Error) -> Self {
+        QuantRS2Error::RuntimeError(format!("I/O error: {}", err))
+    }
+}
+
+impl From<Box<bincode::ErrorKind>> for QuantRS2Error {
+    fn from(err: Box<bincode::ErrorKind>) -> Self {
+        QuantRS2Error::RuntimeError(format!("Serialization error: {:?}", err))
+    }
+}
+
+impl From<serde_json::Error> for QuantRS2Error {
+    fn from(err: serde_json::Error) -> Self {
+        QuantRS2Error::RuntimeError(format!("JSON error: {}", err))
     }
 }

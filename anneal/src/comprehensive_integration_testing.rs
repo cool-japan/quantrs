@@ -31,7 +31,7 @@ use crate::applications::{
 use crate::heterogeneous_hybrid_engine::{HeterogeneousHybridEngine, HybridEngineConfig};
 use crate::ising::{IsingModel, QuboModel};
 use crate::multi_chip_embedding::{MultiChipCoordinator, MultiChipConfig};
-use crate::quantum_error_correction::QuantumErrorCorrectionFramework;
+use crate::quantum_error_correction::{SyndromeDetector, ErrorCorrectionCode};
 use crate::realtime_adaptive_qec::{RealTimeAdaptiveQec, AdaptiveQecConfig};
 
 /// Integration testing framework configuration

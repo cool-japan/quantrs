@@ -651,9 +651,7 @@ pub struct ScheduleConstraints {
     /// Maximum annealing time
     pub max_annealing_time: f64,
     /// Smoothness constraints
-    pub smoothness_constraints: SmoothnessCons
-
-trait,
+    pub smoothness_constraints: SmoothnessConstraints,
     /// Hardware constraints
     pub hardware_constraints: HardwareConstraints,
     /// Energy gap constraints

@@ -24,8 +24,8 @@ use std::time::{Duration, Instant, SystemTime};
 use crate::applications::{ApplicationError, ApplicationResult};
 use crate::ising::{IsingModel, QuboModel};
 use crate::quantum_error_correction::{
-    QuantumErrorCorrectionFramework, ErrorCorrectionConfig, ErrorCorrectionCode,
-    ErrorMitigationStrategy, LogicalAnnealingEncoder, SyndromeDetector,
+    ErrorCorrectionCode, MitigationTechnique,
+    LogicalAnnealingEncoder, SyndromeDetector,
 };
 
 /// Real-time adaptive QEC configuration

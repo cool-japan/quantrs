@@ -6,6 +6,7 @@
 
 pub mod encoding;
 pub mod layers;
+pub mod nlp;
 pub mod training;
 
 use crate::{

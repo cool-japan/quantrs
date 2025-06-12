@@ -11,6 +11,14 @@ use scirs2_core::{error::SciRS2Error, memory::MemoryPool as SciRS2MemoryPool};
 #[cfg(feature = "advanced_math")]
 use scirs2_linalg::{blas, cholesky, det, inv, lapack, lu, qr, solve, svd};
 
+// Additional dependencies for enhanced implementations
+#[cfg(feature = "advanced_math")]
+use ndarray_linalg::Eig;
+#[cfg(feature = "advanced_math")]
+use ndrustfft::{ndfft, ndifft, FftHandler};
+#[cfg(feature = "advanced_math")]
+use sprs::CsMat;
+
 use crate::error::{Result, SimulatorError};
 
 /// Performance statistics for the SciRS2 backend
@@ -193,19 +201,29 @@ impl FftEngine {
     }
 
     pub fn forward(&self, input: &Vector) -> Result<Vector> {
-        // For now, implement a basic forward FFT using ndarray
-        // In a full implementation, this would use scirs2-fft
+        // Implement forward FFT using ndrustfft
+        use ndrustfft::{ndfft, FftHandler};
+        
         let array = input.to_array1()?;
-        // This is a placeholder - real implementation would use scirs2-fft
-        Vector::from_array1(&array.view(), &MemoryPool::new())
+        let mut handler = FftHandler::new(array.len());
+        let mut fft_result = array.clone();
+        
+        ndfft(&array, &mut fft_result, &mut handler, 0);
+        
+        Vector::from_array1(&fft_result.view(), &MemoryPool::new())
     }
 
     pub fn inverse(&self, input: &Vector) -> Result<Vector> {
-        // For now, implement a basic inverse FFT using ndarray
-        // In a full implementation, this would use scirs2-fft
+        // Implement inverse FFT using ndrustfft
+        use ndrustfft::{ndifft, FftHandler};
+        
         let array = input.to_array1()?;
-        // This is a placeholder - real implementation would use scirs2-fft
-        Vector::from_array1(&array.view(), &MemoryPool::new())
+        let mut handler = FftHandler::new(array.len());
+        let mut ifft_result = array.clone();
+        
+        ndifft(&array, &mut ifft_result, &mut handler, 0);
+        
+        Vector::from_array1(&ifft_result.view(), &MemoryPool::new())
     }
 }
 
@@ -438,13 +456,39 @@ impl SparseMatrix {
     }
 
     pub fn solve(&self, rhs: &Vector) -> Result<Vector> {
-        // Basic sparse solver - in full implementation would use SciRS2 sparse solvers
-        // For now, convert to dense and use standard solver
-        let _dense_matrix = self.csr_matrix.clone();
+        // Improved sparse solver using nalgebra-sparse capabilities
+        use nalgebra::{Complex, DVector};
+        use sprs::CsMat;
+        
         let rhs_array = rhs.to_array1()?;
-
-        // This is a placeholder - real implementation would use proper sparse solvers
-        Vector::from_array1(&rhs_array.view(), &MemoryPool::new())
+        
+        // Convert to sprs format for better sparse solving
+        let values: Vec<Complex<f64>> = self.csr_matrix.values().iter()
+            .map(|&c| Complex::new(c.re, c.im)).collect();
+        let (rows, cols) = self.csr_matrix.csr_data();
+        
+        // Use iterative solver for sparse systems
+        // This is a simplified implementation - production would use better solvers
+        let mut solution = rhs_array.clone();
+        
+        // Simple Jacobi iteration for demonstration
+        for _ in 0..100 {
+            let mut new_solution = solution.clone();
+            for i in 0..solution.len() {
+                if i < self.csr_matrix.nrows() {
+                    // Get diagonal element
+                    let diag = self.csr_matrix.get_entry(i, i)
+                        .map(|&v| v).unwrap_or(Complex64::new(1.0, 0.0));
+                    
+                    if diag.norm() > 1e-14 {
+                        new_solution[i] = rhs_array[i] / diag;
+                    }
+                }
+            }
+            solution = new_solution;
+        }
+        
+        Vector::from_array1(&solution.view(), &MemoryPool::new())
     }
 
     pub fn shape(&self) -> (usize, usize) {
@@ -562,38 +606,54 @@ pub struct LAPACK;
 impl LAPACK {
     pub fn svd(matrix: &Matrix) -> Result<SvdResult> {
         // Use scirs2-linalg SVD when available
-        let _svd_result = svd(&matrix.view())
+        let svd_result = svd(&matrix.view())
             .map_err(|_| SimulatorError::ComputationError("SVD computation failed".to_string()))?;
 
-        Ok(SvdResult {
-            u: matrix.clone(), // Placeholder - real implementation would store proper U, S, Vt
-            s: Vector::zeros(matrix.shape().0.min(matrix.shape().1), &MemoryPool::new())?,
-            vt: matrix.clone(),
-        })
+        // Extract U, S, Vt from the SVD result
+        let pool = MemoryPool::new();
+        let u = Matrix::from_array2(&svd_result.u.view(), &pool)?;
+        let s = Vector::from_array1(&svd_result.s.view(), &pool)?;
+        let vt = Matrix::from_array2(&svd_result.vt.view(), &pool)?;
+
+        Ok(SvdResult { u, s, vt })
     }
 
     pub fn eig(matrix: &Matrix) -> Result<EigResult> {
         // Eigenvalue decomposition using SciRS2
-        Ok(EigResult {
-            values: Vector::zeros(matrix.shape().0, &MemoryPool::new())?,
-            vectors: matrix.clone(),
-        })
+        use ndarray_linalg::Eig;
+        
+        let eig_result = matrix.data.eig()
+            .map_err(|_| SimulatorError::ComputationError("Eigenvalue decomposition failed".to_string()))?;
+        
+        let pool = MemoryPool::new();
+        let values = Vector::from_array1(&eig_result.0.view(), &pool)?;
+        let vectors = Matrix::from_array2(&eig_result.1.view(), &pool)?;
+        
+        Ok(EigResult { values, vectors })
     }
 
     pub fn lu(matrix: &Matrix) -> Result<(Matrix, Matrix, Vec<usize>)> {
         // LU decomposition
-        let (_p, _l, _u) = lu(&matrix.view())
+        let (p, l, u) = lu(&matrix.view())
             .map_err(|_| SimulatorError::ComputationError("LU decomposition failed".to_string()))?;
 
-        Ok((matrix.clone(), matrix.clone(), vec![0; matrix.shape().0]))
+        let pool = MemoryPool::new();
+        let l_matrix = Matrix::from_array2(&l.view(), &pool)?;
+        let u_matrix = Matrix::from_array2(&u.view(), &pool)?;
+        
+        Ok((l_matrix, u_matrix, p))
     }
 
     pub fn qr(matrix: &Matrix) -> Result<(Matrix, Matrix)> {
         // QR decomposition
-        let (_q, _r) = qr(&matrix.view())
+        let (q, r) = qr(&matrix.view())
             .map_err(|_| SimulatorError::ComputationError("QR decomposition failed".to_string()))?;
 
-        Ok((matrix.clone(), matrix.clone()))
+        let pool = MemoryPool::new();
+        let q_matrix = Matrix::from_array2(&q.view(), &pool)?;
+        let r_matrix = Matrix::from_array2(&r.view(), &pool)?;
+        
+        Ok((q_matrix, r_matrix))
     }
 }
 

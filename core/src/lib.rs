@@ -18,6 +18,7 @@ pub mod fermionic;
 pub mod gate;
 pub mod gpu;
 pub mod hhl;
+pub mod holonomic;
 pub mod kak_multiqubit;
 pub mod matrix_ops;
 pub mod mbqc;
@@ -28,8 +29,10 @@ pub mod parametric;
 pub mod qaoa;
 pub mod qml;
 pub mod qpca;
+pub mod post_quantum_crypto;
 pub mod quantum_channels;
 pub mod quantum_counting;
+pub mod quantum_ml_accelerators;
 pub mod quantum_walk;
 pub mod qubit;
 pub mod register;
@@ -39,10 +42,29 @@ pub mod synthesis;
 pub mod tensor_network;
 pub mod testing;
 pub mod topological;
+pub mod ultra_high_fidelity_synthesis;
 pub mod variational;
 pub mod variational_optimization;
+pub mod quantum_hardware_abstraction;
+pub mod distributed_quantum_networks;
+pub mod quantum_memory_integration;
+pub mod real_time_compilation;
+pub mod quantum_aware_interpreter;
+pub mod ultrathink_core;
+pub mod quantum_operating_system;
+pub mod quantum_internet;
+pub mod quantum_sensor_networks;
+pub mod quantum_supremacy_algorithms;
+pub mod quantum_debugging_profiling;
+pub mod quantum_resource_management;
+pub mod quantum_memory_hierarchy;
+pub mod quantum_process_isolation;
+pub mod quantum_garbage_collection;
+pub mod quantum_universal_framework;
+pub mod quantum_algorithm_profiling;
 pub mod zx_calculus;
 pub mod zx_extraction;
+pub mod compilation_cache;
 
 /// Re-exports of commonly used types and traits
 pub mod prelude {
@@ -104,9 +126,18 @@ pub mod prelude {
     pub use crate::gate::*;
     pub use crate::gpu::{
         cpu_backend::CpuBackend, GpuBackend, GpuBackendFactory, GpuBuffer, GpuConfig, GpuKernel,
-        GpuStateVector,
+        GpuStateVector, initialize_adaptive_simd, SpecializedGpuKernels, OptimizationConfig,
+    };
+    pub use crate::compilation_cache::{
+        CompilationCache, CacheConfig, CompiledGate, CacheStatistics,
+        initialize_compilation_cache, get_compilation_cache,
     };
     pub use crate::hhl::{hhl_example, HHLAlgorithm, HHLParams};
+    pub use crate::holonomic::{
+        // GeometricErrorCorrection, HolonomicGate, HolonomicGateSynthesis, HolonomicPath,
+        // HolonomicQuantumComputer, PathOptimizationConfig, 
+        WilsonLoop,
+    };
     pub use crate::kak_multiqubit::{
         kak_decompose_multiqubit, DecompositionMethod, DecompositionStats, DecompositionTree,
         KAKTreeAnalyzer, MultiQubitKAK, MultiQubitKAKDecomposer,
@@ -159,6 +190,15 @@ pub mod prelude {
         amplitude_estimation_example, quantum_counting_example, QuantumAmplitudeEstimation,
         QuantumCounting, QuantumPhaseEstimation,
     };
+    pub use crate::quantum_ml_accelerators::{
+        HardwareEfficientMLLayer, ParameterShiftOptimizer,
+        QuantumFeatureMap, QuantumKernelOptimizer, QuantumNaturalGradient,
+        TensorNetworkMLAccelerator,
+    };
+    pub use crate::post_quantum_crypto::{
+        CompressionFunction, QKDProtocol, QKDResult, QuantumDigitalSignature,
+        QuantumHashFunction, QuantumKeyDistribution, QuantumSignature,
+    };
     pub use crate::quantum_walk::{
         CoinOperator, ContinuousQuantumWalk, DiscreteQuantumWalk, Graph, GraphType,
         QuantumWalkSearch, SearchOracle,
@@ -185,6 +225,95 @@ pub mod prelude {
         AnyonModel, AnyonType, AnyonWorldline, BraidingOperation, FibonacciModel, FusionTree,
         IsingModel, TopologicalGate, TopologicalQC, ToricCode,
     };
+    pub use crate::ultra_high_fidelity_synthesis::{
+        ErrorSuppressionSynthesis, ErrorSuppressedSequence, GateOperation, GrapeOptimizer,
+        GrapeResult, NoiseModel, QuantumGateRL, RLResult, SynthesisConfig, SynthesisMethod,
+        UltraFidelityResult, UltraHighFidelitySynthesis,
+    };
+    pub use crate::quantum_hardware_abstraction::{
+        AdaptiveMiddleware, CalibrationEngine, ErrorMitigationLayer, ExecutionRequirements,
+        HardwareCapabilities, HardwareResourceManager, HardwareType,
+        QuantumHardwareAbstraction, QuantumHardwareBackend,
+    };
+    pub use crate::distributed_quantum_networks::{
+        DistributedQuantumGate, DistributedGateType, EntanglementManager, EntanglementProtocol,
+        NetworkScheduler, QuantumNetwork, QuantumNode,
+    };
+    pub use crate::quantum_memory_integration::{
+        QuantumMemory, QuantumState, QuantumStorageLayer, CoherenceManager, 
+        MemoryAccessController, QuantumMemoryErrorCorrection,
+    };
+    pub use crate::real_time_compilation::{
+        RealTimeQuantumCompiler, CompilationContext, HardwareTarget,
+        OptimizationPipeline, PerformanceMonitor,
+    };
+    pub use crate::quantum_aware_interpreter::{
+        QuantumAwareInterpreter, QuantumStateTracker, QuantumJITCompiler,
+        RuntimeOptimizationEngine, ExecutionStrategy, 
+        OperationResult as InterpreterOperationResult,
+    };
+    pub use crate::ultrathink_core::{
+        UltraThinkQuantumComputer, HolonomicProcessor, QuantumMLAccelerator,
+        QuantumMemoryCore, RealTimeCompiler, DistributedQuantumNetwork,
+        QuantumAdvantageReport,
+    };
+    pub use crate::quantum_operating_system::{
+        QuantumOperatingSystem, QuantumScheduler, QuantumMemoryManager,
+        QuantumProcessManager, QuantumSecurityManager,
+        QuantumOSAdvantageReport,
+    };
+    pub use crate::quantum_internet::{
+        QuantumInternet, QuantumNetworkInfrastructure, QuantumInternetNode, QuantumRouting,
+        QuantumInternetSecurity, GlobalQuantumKeyDistribution, DistributedQuantumComputing,
+        QuantumInternetAdvantageReport,
+    };
+    pub use crate::quantum_sensor_networks::{
+        QuantumSensorNetwork, QuantumSensor, QuantumSensorType, EntanglementDistribution,
+        QuantumMetrologyEngine, DistributedSensingResult, QuantumSensorAdvantageReport,
+        EnvironmentalMonitoringResult,
+    };
+    pub use crate::quantum_supremacy_algorithms::{
+        QuantumSupremacyEngine, RandomCircuitSampling, BosonSampling, IQPSampling,
+        QuantumSupremacyBenchmarkReport, RandomCircuitSupremacyResult, BosonSamplingSupremacyResult,
+        QuantumSimulationAdvantageResult,
+    };
+    pub use crate::quantum_debugging_profiling::{
+        QuantumDebugProfiling, QuantumDebugger, QuantumPerformanceProfiler, QuantumCircuitAnalyzer,
+        QuantumStateInspector, QuantumErrorTracker, ProfilingReport, CircuitAnalysisReport,
+        StateInspectionReport, QuantumDebugProfilingReport,
+    };
+    pub use crate::quantum_resource_management::{
+        QuantumResourceManager, AdvancedQuantumScheduler, QuantumResourceAllocator, CoherenceAwareManager,
+        QuantumWorkloadOptimizer, QuantumProcess, QuantumResourceAdvantageReport, AdvancedSchedulingResult,
+        OptimizationLevel, SchedulingPolicy,
+    };
+    pub use crate::quantum_memory_hierarchy::{
+        QuantumMemoryHierarchy, L1QuantumCache, L2QuantumCache, L3QuantumCache, QuantumMainMemory,
+        QuantumMemoryOperation, QuantumMemoryResult, QuantumMemoryAdvantageReport, CacheReplacementPolicy,
+        MemoryOperationType, OptimizationResult,
+    };
+    pub use crate::quantum_process_isolation::{
+        QuantumProcessIsolation, QuantumSandbox, QuantumAccessController, QuantumStateIsolator,
+        IsolatedQuantumProcess, SecurityDomain, VirtualQuantumMachine, IsolationLevel,
+        SecureQuantumOperation, QuantumSecurityAdvantageReport, IsolatedProcessResult,
+    };
+    pub use crate::quantum_garbage_collection::{
+        QuantumGarbageCollector, QuantumReferenceCounter, QuantumLifecycleManager, QuantumGCAdvantageReport,
+        QuantumAllocationRequest, QuantumAllocationResult, GCCollectionMode, GCCollectionResult,
+        CoherenceBasedGC,
+    };
+    pub use crate::quantum_universal_framework::{
+        UniversalQuantumFramework, QuantumHardwareRegistry, UniversalQuantumCompiler,
+        CrossPlatformOptimizer, AdaptiveQuantumRuntime, QuantumPortabilityEngine,
+        ArchitectureType, UniversalQuantumCircuit, UniversalCompilationResult,
+        AdaptiveExecutionResult, UniversalFrameworkAdvantageReport,
+    };
+    pub use crate::quantum_algorithm_profiling::{
+        QuantumAlgorithmProfiler, QuantumPerformanceAnalyzer, QuantumComplexityAnalyzer,
+        QuantumBottleneckDetector, QuantumOptimizationAdvisor, QuantumAdvantageCalculator,
+        QuantumResourceMonitor, QuantumProfilingReport, QuantumBenchmarkResult,
+        QuantumProfilingAdvantageReport, ComplexityClass, AlgorithmType, ProfilingLevel,
+    };
     pub use crate::variational::{
         ComputationGraph, DiffMode, Dual, Node, Operation, VariationalCircuit, VariationalGate,
         VariationalOptimizer,
@@ -194,7 +323,7 @@ pub mod prelude {
         create_vqe_optimizer, ConstrainedVariationalOptimizer,
         HyperparameterOptimizer as VariationalHyperparameterOptimizer,
         OptimizationConfig as VariationalOptimizationConfig, OptimizationHistory,
-        OptimizationMethod, OptimizationResult, VariationalQuantumOptimizer,
+        OptimizationMethod, OptimizationResult as VariationalOptimizationResult, VariationalQuantumOptimizer,
     };
     pub use crate::zx_calculus::{
         CircuitToZX, Edge, EdgeType, Spider, SpiderType, ZXDiagram, ZXOptimizer,

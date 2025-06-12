@@ -20,6 +20,22 @@ pub mod metal_backend;
 #[cfg(feature = "vulkan")]
 pub mod vulkan_backend;
 
+// Enhanced GPU optimization modules
+pub mod specialized_kernels;
+pub mod adaptive_simd;
+
+// Re-export key optimization components
+pub use adaptive_simd::{
+    AdaptiveSimdDispatcher, SimdVariant, CpuFeatures, 
+    initialize_adaptive_simd, apply_single_qubit_adaptive,
+    apply_two_qubit_adaptive, apply_batch_gates_adaptive,
+    get_adaptive_performance_report
+};
+pub use specialized_kernels::{
+    SpecializedGpuKernels, OptimizationConfig, PostQuantumCompressionType,
+    PerformanceReport, FusionType
+};
+
 /// GPU memory buffer abstraction
 pub trait GpuBuffer: Send + Sync {
     /// Get the size of the buffer in bytes
@@ -39,6 +55,50 @@ pub trait GpuBuffer: Send + Sync {
 
     /// Enable mutable downcasting to concrete types
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+}
+
+/// Enhanced GPU kernel for specialized quantum operations
+pub trait SpecializedGpuKernel: Send + Sync {
+    /// Apply a holonomic gate with optimized GPU execution
+    fn apply_holonomic_gate(
+        &self,
+        state: &mut dyn GpuBuffer,
+        holonomy_matrix: &[Complex64],
+        target_qubits: &[QubitId],
+    ) -> QuantRS2Result<()>;
+
+    /// Apply post-quantum cryptographic hash gate
+    fn apply_post_quantum_hash_gate(
+        &self,
+        state: &mut dyn GpuBuffer,
+        hash_circuit: &[Complex64],
+        compression_type: PostQuantumCompressionType,
+    ) -> QuantRS2Result<()>;
+
+    /// Apply quantum ML attention mechanism
+    fn apply_quantum_ml_attention(
+        &self,
+        state: &mut dyn GpuBuffer,
+        query_params: &[Complex64],
+        key_params: &[Complex64],
+        value_params: &[Complex64],
+        num_heads: usize,
+    ) -> QuantRS2Result<()>;
+
+    /// Apply fused gate sequences for optimal performance
+    fn apply_fused_gate_sequence(
+        &self,
+        state: &mut dyn GpuBuffer,
+        gates: &[Box<dyn GateOp>],
+    ) -> QuantRS2Result<()>;
+
+    /// Apply tensor network contraction
+    fn apply_tensor_contraction(
+        &self,
+        tensor_data: &mut dyn GpuBuffer,
+        contraction_indices: &[usize],
+        bond_dimension: usize,
+    ) -> QuantRS2Result<()>;
 }
 
 /// GPU kernel for quantum operations
@@ -87,6 +147,95 @@ pub trait GpuKernel: Send + Sync {
         qubits: &[QubitId],
         n_qubits: usize,
     ) -> QuantRS2Result<f64>;
+}
+
+/// Enhanced GPU backend trait for specialized quantum computations
+pub trait EnhancedGpuBackend: GpuBackend {
+    /// Get the specialized kernel implementation
+    fn specialized_kernel(&self) -> Option<&dyn SpecializedGpuKernel>;
+
+    /// Apply a holonomic gate with GPU optimization
+    fn apply_holonomic_gate(
+        &self,
+        state: &mut dyn GpuBuffer,
+        holonomy_matrix: &[Complex64],
+        target_qubits: &[QubitId],
+    ) -> QuantRS2Result<()> {
+        if let Some(kernel) = self.specialized_kernel() {
+            kernel.apply_holonomic_gate(state, holonomy_matrix, target_qubits)
+        } else {
+            Err(QuantRS2Error::UnsupportedOperation(
+                "Holonomic gates not supported by this backend".to_string()
+            ))
+        }
+    }
+
+    /// Apply post-quantum cryptographic operations
+    fn apply_post_quantum_crypto(
+        &self,
+        state: &mut dyn GpuBuffer,
+        hash_circuit: &[Complex64],
+        compression_type: PostQuantumCompressionType,
+    ) -> QuantRS2Result<()> {
+        if let Some(kernel) = self.specialized_kernel() {
+            kernel.apply_post_quantum_hash_gate(state, hash_circuit, compression_type)
+        } else {
+            Err(QuantRS2Error::UnsupportedOperation(
+                "Post-quantum crypto gates not supported by this backend".to_string()
+            ))
+        }
+    }
+
+    /// Apply quantum ML operations
+    fn apply_quantum_ml_attention(
+        &self,
+        state: &mut dyn GpuBuffer,
+        query_params: &[Complex64],
+        key_params: &[Complex64],
+        value_params: &[Complex64],
+        num_heads: usize,
+    ) -> QuantRS2Result<()> {
+        if let Some(kernel) = self.specialized_kernel() {
+            kernel.apply_quantum_ml_attention(state, query_params, key_params, value_params, num_heads)
+        } else {
+            Err(QuantRS2Error::UnsupportedOperation(
+                "Quantum ML attention not supported by this backend".to_string()
+            ))
+        }
+    }
+
+    /// Apply optimized gate fusion
+    fn apply_fused_gates(
+        &self,
+        state: &mut dyn GpuBuffer,
+        gates: &[Box<dyn GateOp>],
+    ) -> QuantRS2Result<()> {
+        if let Some(kernel) = self.specialized_kernel() {
+            kernel.apply_fused_gate_sequence(state, gates)
+        } else {
+            // Fallback to applying gates individually
+            for gate in gates {
+                let qubits = gate.qubits();
+                self.apply_gate(state, gate.as_ref(), &qubits, qubits.len())?;
+            }
+            Ok(())
+        }
+    }
+
+    /// Get optimization configuration
+    fn optimization_config(&self) -> OptimizationConfig {
+        OptimizationConfig::default()
+    }
+
+    /// Get performance statistics
+    fn performance_stats(&self) -> PerformanceReport {
+        PerformanceReport {
+            average_kernel_times: std::collections::HashMap::new(),
+            cache_hit_rate: 0.0,
+            tensor_core_utilization: 0.0,
+            memory_bandwidth_utilization: 0.0,
+        }
+    }
 }
 
 /// GPU backend trait for quantum computations
