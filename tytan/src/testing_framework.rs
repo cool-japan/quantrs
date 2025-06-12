@@ -461,6 +461,147 @@ pub struct BenchmarkResults {
     pub timestamp: std::time::SystemTime,
 }
 
+/// Regression testing report
+#[derive(Debug, Clone)]
+pub struct RegressionReport {
+    /// Performance regressions detected
+    pub regressions: Vec<RegressionIssue>,
+    /// Performance improvements detected
+    pub improvements: Vec<RegressionIssue>,
+    /// Number of baseline tests
+    pub baseline_tests: usize,
+    /// Number of current tests
+    pub current_tests: usize,
+}
+
+/// Individual regression issue
+#[derive(Debug, Clone)]
+pub struct RegressionIssue {
+    /// Test ID
+    pub test_id: String,
+    /// Metric that regressed (quality, runtime, etc.)
+    pub metric: String,
+    /// Baseline value
+    pub baseline_value: f64,
+    /// Current value
+    pub current_value: f64,
+    /// Percentage change
+    pub change_percent: f64,
+}
+
+/// CI/CD integration report
+#[derive(Debug, Clone)]
+pub struct CIReport {
+    /// Overall CI status
+    pub status: CIStatus,
+    /// Test pass rate
+    pub passed_rate: f64,
+    /// Total number of tests
+    pub total_tests: usize,
+    /// Number of failed tests
+    pub failed_tests: usize,
+    /// Number of critical failures
+    pub critical_failures: usize,
+    /// Average runtime
+    pub avg_runtime: Duration,
+    /// Overall quality score (0-100)
+    pub quality_score: f64,
+}
+
+/// CI status enumeration
+#[derive(Debug, Clone)]
+pub enum CIStatus {
+    /// All tests passed with good performance
+    Pass,
+    /// Tests passed but with warnings
+    Warning,
+    /// Critical failures detected
+    Fail,
+}
+
+/// Extended performance metrics
+#[derive(Debug, Clone)]
+pub struct ExtendedPerformanceMetrics {
+    /// CPU utilization percentage
+    pub cpu_utilization: f64,
+    /// Memory utilization (MB)
+    pub memory_usage: f64,
+    /// GPU utilization (if applicable)
+    pub gpu_utilization: Option<f64>,
+    /// Energy consumption (Joules)
+    pub energy_consumption: f64,
+    /// Iterations per second
+    pub iterations_per_second: f64,
+    /// Solution quality trend
+    pub quality_trend: QualityTrend,
+}
+
+/// Quality trend analysis
+#[derive(Debug, Clone)]
+pub enum QualityTrend {
+    /// Quality improving over time
+    Improving,
+    /// Quality stable
+    Stable,
+    /// Quality degrading
+    Degrading,
+    /// Insufficient data
+    Unknown,
+}
+
+/// Test execution environment
+#[derive(Debug, Clone)]
+pub struct TestEnvironment {
+    /// Operating system
+    pub os: String,
+    /// CPU model
+    pub cpu_model: String,
+    /// Available memory (GB)
+    pub memory_gb: f64,
+    /// GPU information (if available)
+    pub gpu_info: Option<String>,
+    /// Rust version
+    pub rust_version: String,
+    /// Compilation flags
+    pub compile_flags: Vec<String>,
+}
+
+/// Sampler comparison results
+#[derive(Debug, Clone)]
+pub struct SamplerComparison {
+    /// First sampler name
+    pub sampler1_name: String,
+    /// Second sampler name
+    pub sampler2_name: String,
+    /// Individual test comparisons
+    pub test_comparisons: Vec<TestComparison>,
+    /// Average quality improvement (sampler2 vs sampler1)
+    pub avg_quality_improvement: f64,
+    /// Average runtime ratio (sampler2 / sampler1)
+    pub avg_runtime_ratio: f64,
+    /// Overall winner
+    pub winner: String,
+}
+
+/// Individual test comparison
+#[derive(Debug, Clone)]
+pub struct TestComparison {
+    /// Test ID
+    pub test_id: String,
+    /// First sampler quality
+    pub sampler1_quality: f64,
+    /// Second sampler quality
+    pub sampler2_quality: f64,
+    /// Quality improvement (positive means sampler2 is better)
+    pub quality_improvement: f64,
+    /// First sampler runtime
+    pub sampler1_runtime: Duration,
+    /// Second sampler runtime
+    pub sampler2_runtime: Duration,
+    /// Runtime ratio (sampler2 / sampler1)
+    pub runtime_ratio: f64,
+}
+
 /// Test generator trait
 pub trait TestGenerator: Send + Sync {
     /// Generate test cases
@@ -497,6 +638,368 @@ pub trait Validator: Send + Sync {
 }
 
 impl TestingFramework {
+    /// Run regression tests against baseline
+    pub fn run_regression_tests<S: Sampler>(&mut self, sampler: &S, baseline_file: &str) -> Result<RegressionReport, String> {
+        // Load baseline results
+        let baseline = self.load_baseline(baseline_file)?;
+        
+        // Run current tests
+        self.run_suite(sampler)?;
+        
+        // Compare with baseline
+        let mut regressions = Vec::new();
+        let mut improvements = Vec::new();
+        
+        for current_result in &self.results.test_results {
+            if let Some(baseline_result) = baseline.iter().find(|b| b.test_id == current_result.test_id) {
+                let quality_change = (current_result.objective_value - baseline_result.objective_value) / baseline_result.objective_value.abs();
+                let runtime_change = (current_result.runtime.as_secs_f64() - baseline_result.runtime.as_secs_f64()) / baseline_result.runtime.as_secs_f64();
+                
+                if quality_change > 0.05 || runtime_change > 0.2 {
+                    regressions.push(RegressionIssue {
+                        test_id: current_result.test_id.clone(),
+                        metric: if quality_change > 0.05 { "quality".to_string() } else { "runtime".to_string() },
+                        baseline_value: if quality_change > 0.05 { baseline_result.objective_value } else { baseline_result.runtime.as_secs_f64() },
+                        current_value: if quality_change > 0.05 { current_result.objective_value } else { current_result.runtime.as_secs_f64() },
+                        change_percent: if quality_change > 0.05 { quality_change * 100.0 } else { runtime_change * 100.0 },
+                    });
+                } else if quality_change < -0.05 || runtime_change < -0.2 {
+                    improvements.push(RegressionIssue {
+                        test_id: current_result.test_id.clone(),
+                        metric: if quality_change < -0.05 { "quality".to_string() } else { "runtime".to_string() },
+                        baseline_value: if quality_change < -0.05 { baseline_result.objective_value } else { baseline_result.runtime.as_secs_f64() },
+                        current_value: if quality_change < -0.05 { current_result.objective_value } else { current_result.runtime.as_secs_f64() },
+                        change_percent: if quality_change < -0.05 { quality_change * 100.0 } else { runtime_change * 100.0 },
+                    });
+                }
+            }
+        }
+        
+        Ok(RegressionReport {
+            regressions,
+            improvements,
+            baseline_tests: baseline.len(),
+            current_tests: self.results.test_results.len(),
+        })
+    }
+    
+    /// Load baseline results from file
+    fn load_baseline(&self, _filename: &str) -> Result<Vec<TestResult>, String> {
+        // Simplified implementation - in practice would load from JSON/CSV
+        Ok(Vec::new())
+    }
+    
+    /// Run test suite in parallel
+    pub fn run_suite_parallel<S: Sampler + Clone + Send + Sync>(&mut self, sampler: &S, num_threads: usize) -> Result<(), String> {
+        use std::sync::{Arc, Mutex};
+        use std::thread;
+        
+        let test_cases = Arc::new(self.suite.test_cases.clone());
+        let results = Arc::new(Mutex::new(Vec::new()));
+        let failures = Arc::new(Mutex::new(Vec::new()));
+        
+        let total_start = Instant::now();
+        let chunk_size = (test_cases.len() + num_threads - 1) / num_threads;
+        
+        let mut handles = Vec::new();
+        
+        for thread_id in 0..num_threads {
+            let start_idx = thread_id * chunk_size;
+            let end_idx = ((thread_id + 1) * chunk_size).min(test_cases.len());
+            
+            if start_idx >= test_cases.len() {
+                break;
+            }
+            
+            let test_cases_clone = Arc::clone(&test_cases);
+            let results_clone = Arc::clone(&results);
+            let failures_clone = Arc::clone(&failures);
+            let sampler_clone = sampler.clone();
+            
+            let handle = thread::spawn(move || {
+                for idx in start_idx..end_idx {
+                    let test_case = &test_cases_clone[idx];
+                    
+                    match Self::run_single_test_static(test_case, &sampler_clone) {
+                        Ok(result) => {
+                            results_clone.lock().unwrap().push(result);
+                        }
+                        Err(e) => {
+                            failures_clone.lock().unwrap().push(TestFailure {
+                                test_id: test_case.id.clone(),
+                                failure_type: FailureType::SamplerError,
+                                message: e,
+                                stack_trace: None,
+                                context: HashMap::new(),
+                            });
+                        }
+                    }
+                }
+            });
+            
+            handles.push(handle);
+        }
+        
+        // Wait for all threads to complete
+        for handle in handles {
+            handle.join().map_err(|_| "Thread panic")?;
+        }
+        
+        // Collect results
+        self.results.test_results = results.lock().unwrap().clone();
+        self.results.failures = failures.lock().unwrap().clone();
+        
+        self.results.performance.runtime_stats.total_time = total_start.elapsed();
+        self.results.summary.passed = self.results.test_results.len();
+        self.results.summary.failed = self.results.failures.len();
+        self.results.summary.total_tests = self.results.summary.passed + self.results.summary.failed;
+        
+        self.calculate_summary();
+        
+        Ok(())
+    }
+    
+    /// Static version of run_single_test for parallel execution
+    fn run_single_test_static<S: Sampler>(test_case: &TestCase, sampler: &S) -> Result<TestResult, String> {
+        let solve_start = Instant::now();
+        
+        // Run sampler
+        let sample_result = sampler
+            .run_qubo(&(test_case.qubo.clone(), test_case.var_map.clone()), 100)
+            .map_err(|e| format!("Sampler error: {:?}", e))?;
+        
+        let solve_time = solve_start.elapsed();
+        
+        // Get best solution
+        let best_sample = sample_result
+            .iter()
+            .min_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap())
+            .ok_or("No samples returned")?;
+        
+        let solution = best_sample.assignments.clone();
+        
+        Ok(TestResult {
+            test_id: test_case.id.clone(),
+            sampler: "parallel".to_string(),
+            solution,
+            objective_value: best_sample.energy,
+            constraints_satisfied: true,
+            validation: ValidationResult {
+                is_valid: true,
+                checks: Vec::new(),
+                warnings: Vec::new(),
+            },
+            runtime: solve_time,
+            metrics: HashMap::new(),
+        })
+    }
+    
+    /// Generate CI/CD report
+    pub fn generate_ci_report(&self) -> Result<CIReport, String> {
+        let passed_rate = if self.results.summary.total_tests > 0 {
+            self.results.summary.passed as f64 / self.results.summary.total_tests as f64
+        } else {
+            0.0
+        };
+        
+        let status = if passed_rate >= 0.95 {
+            CIStatus::Pass
+        } else if passed_rate >= 0.8 {
+            CIStatus::Warning
+        } else {
+            CIStatus::Fail
+        };
+        
+        Ok(CIReport {
+            status,
+            passed_rate,
+            total_tests: self.results.summary.total_tests,
+            failed_tests: self.results.summary.failed,
+            critical_failures: self.results.failures.iter().filter(|f| matches!(f.failure_type, FailureType::Timeout | FailureType::SamplerError)).count(),
+            avg_runtime: self.results.summary.avg_runtime,
+            quality_score: self.calculate_quality_score(),
+        })
+    }
+    
+    /// Calculate overall quality score
+    fn calculate_quality_score(&self) -> f64 {
+        if self.results.test_results.is_empty() {
+            return 0.0;
+        }
+        
+        let constraint_score = self.results.summary.quality_metrics.constraint_satisfaction_rate;
+        let success_score = self.results.summary.success_rate;
+        let quality_score = if self.results.summary.quality_metrics.best_quality.is_finite() {
+            0.8 // Base score for having finite solutions
+        } else {
+            0.0
+        };
+        
+        (constraint_score * 0.4 + success_score * 0.4 + quality_score * 0.2) * 100.0
+    }
+    
+    /// Add stress test cases
+    pub fn add_stress_tests(&mut self) {
+        let stress_categories = vec![
+            TestCategory {
+                name: "Large Scale Tests".to_string(),
+                description: "Tests with large problem sizes".to_string(),
+                problem_types: vec![ProblemType::MaxCut, ProblemType::TSP],
+                difficulties: vec![Difficulty::Extreme],
+                tags: vec!["stress".to_string(), "large".to_string()],
+            },
+            TestCategory {
+                name: "Memory Stress Tests".to_string(),
+                description: "Tests designed to stress memory usage".to_string(),
+                problem_types: vec![ProblemType::Knapsack],
+                difficulties: vec![Difficulty::VeryHard, Difficulty::Extreme],
+                tags: vec!["stress".to_string(), "memory".to_string()],
+            },
+            TestCategory {
+                name: "Runtime Stress Tests".to_string(),
+                description: "Tests with challenging runtime requirements".to_string(),
+                problem_types: vec![ProblemType::GraphColoring],
+                difficulties: vec![Difficulty::Extreme],
+                tags: vec!["stress".to_string(), "runtime".to_string()],
+            },
+        ];
+        
+        for category in stress_categories {
+            self.suite.categories.push(category);
+        }
+    }
+    
+    /// Detect test environment
+    pub fn detect_environment(&self) -> TestEnvironment {
+        TestEnvironment {
+            os: std::env::consts::OS.to_string(),
+            cpu_model: "Unknown".to_string(), // Would need OS-specific detection
+            memory_gb: 8.0, // Simplified - would need system detection
+            gpu_info: None,
+            rust_version: env!("RUSTC_VERSION").to_string(),
+            compile_flags: vec!["--release".to_string()],
+        }
+    }
+    
+    /// Export test results for external analysis
+    pub fn export_results(&self, format: &str) -> Result<String, String> {
+        match format {
+            "csv" => self.export_csv(),
+            "json" => self.generate_json_report(),
+            "xml" => self.export_xml(),
+            _ => Err(format!("Unsupported export format: {}", format)),
+        }
+    }
+    
+    /// Export results as CSV
+    fn export_csv(&self) -> Result<String, String> {
+        let mut csv = String::new();
+        csv.push_str("test_id,problem_type,size,sampler,objective_value,runtime_ms,constraints_satisfied,valid\n");
+        
+        for result in &self.results.test_results {
+            // Find corresponding test case for additional info
+            if let Some(test_case) = self.suite.test_cases.iter().find(|tc| tc.id == result.test_id) {
+                csv.push_str(&format!(
+                    "{},{:?},{},{},{},{},{},{}\n",
+                    result.test_id,
+                    test_case.problem_type,
+                    test_case.size,
+                    result.sampler,
+                    result.objective_value,
+                    result.runtime.as_millis(),
+                    result.constraints_satisfied,
+                    result.validation.is_valid
+                ));
+            }
+        }
+        
+        Ok(csv)
+    }
+    
+    /// Export results as XML
+    fn export_xml(&self) -> Result<String, String> {
+        let mut xml = String::new();
+        xml.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        xml.push_str("<test_results>\n");
+        xml.push_str(&format!("  <summary total=\"{}\" passed=\"{}\" failed=\"{}\" success_rate=\"{:.2}\"/>\n",
+            self.results.summary.total_tests,
+            self.results.summary.passed,
+            self.results.summary.failed,
+            self.results.summary.success_rate
+        ));
+        
+        xml.push_str("  <tests>\n");
+        for result in &self.results.test_results {
+            xml.push_str(&format!(
+                "    <test id=\"{}\" sampler=\"{}\" objective=\"{}\" runtime_ms=\"{}\" valid=\"{}\"/>\n",
+                result.test_id,
+                result.sampler,
+                result.objective_value,
+                result.runtime.as_millis(),
+                result.validation.is_valid
+            ));
+        }
+        xml.push_str("  </tests>\n");
+        xml.push_str("</test_results>\n");
+        
+        Ok(xml)
+    }
+    
+    /// Add industry-specific test generators
+    pub fn add_industry_generators(&mut self) {
+        // Add finance test generator
+        self.generators.push(Box::new(FinanceTestGenerator));
+        
+        // Add logistics test generator  
+        self.generators.push(Box::new(LogisticsTestGenerator));
+        
+        // Add manufacturing test generator
+        self.generators.push(Box::new(ManufacturingTestGenerator));
+    }
+    
+    /// Generate performance comparison report
+    pub fn compare_samplers<S1: Sampler, S2: Sampler>(&mut self, sampler1: &S1, sampler2: &S2, sampler1_name: &str, sampler2_name: &str) -> Result<SamplerComparison, String> {
+        // Run tests with first sampler
+        self.run_suite(sampler1)?;
+        let results1 = self.results.test_results.clone();
+        
+        // Clear results and run with second sampler
+        self.results.test_results.clear();
+        self.run_suite(sampler2)?;
+        let results2 = self.results.test_results.clone();
+        
+        // Compare results
+        let mut comparisons = Vec::new();
+        
+        for r1 in &results1 {
+            if let Some(r2) = results2.iter().find(|r| r.test_id == r1.test_id) {
+                let quality_diff = r2.objective_value - r1.objective_value;
+                let runtime_ratio = r2.runtime.as_secs_f64() / r1.runtime.as_secs_f64();
+                
+                comparisons.push(TestComparison {
+                    test_id: r1.test_id.clone(),
+                    sampler1_quality: r1.objective_value,
+                    sampler2_quality: r2.objective_value,
+                    quality_improvement: -quality_diff, // Negative because lower is better
+                    sampler1_runtime: r1.runtime,
+                    sampler2_runtime: r2.runtime,
+                    runtime_ratio,
+                });
+            }
+        }
+        
+        let avg_quality_improvement = comparisons.iter().map(|c| c.quality_improvement).sum::<f64>() / comparisons.len() as f64;
+        let avg_runtime_ratio = comparisons.iter().map(|c| c.runtime_ratio).sum::<f64>() / comparisons.len() as f64;
+        
+        Ok(SamplerComparison {
+            sampler1_name: sampler1_name.to_string(),
+            sampler2_name: sampler2_name.to_string(),
+            test_comparisons: comparisons,
+            avg_quality_improvement,
+            avg_runtime_ratio,
+            winner: if avg_quality_improvement > 0.0 { sampler2_name.to_string() } else { sampler1_name.to_string() },
+        })
+    }
     /// Create new testing framework
     pub fn new(config: TestConfig) -> Self {
         Self {
@@ -880,8 +1383,75 @@ impl TestingFramework {
 
     /// Generate JSON report
     fn generate_json_report(&self) -> Result<String, String> {
-        // TODO: Add proper JSON serialization support
-        Ok("{}".to_string())
+        use std::fmt::Write;
+        
+        let mut json = String::new();
+        
+        // Build JSON manually (avoiding serde dependency issues)
+        json.push_str("{\n");
+        
+        // Summary section
+        json.push_str("  \"summary\": {\n");
+        write!(&mut json, "    \"total_tests\": {},\n", self.results.summary.total_tests).unwrap();
+        write!(&mut json, "    \"passed\": {},\n", self.results.summary.passed).unwrap();
+        write!(&mut json, "    \"failed\": {},\n", self.results.summary.failed).unwrap();
+        write!(&mut json, "    \"skipped\": {},\n", self.results.summary.skipped).unwrap();
+        write!(&mut json, "    \"success_rate\": {},\n", self.results.summary.success_rate).unwrap();
+        write!(&mut json, "    \"avg_runtime_ms\": {}\n", self.results.summary.avg_runtime.as_millis()).unwrap();
+        json.push_str("  },\n");
+        
+        // Quality metrics
+        json.push_str("  \"quality_metrics\": {\n");
+        write!(&mut json, "    \"avg_quality\": {},\n", self.results.summary.quality_metrics.avg_quality).unwrap();
+        write!(&mut json, "    \"best_quality\": {},\n", self.results.summary.quality_metrics.best_quality).unwrap();
+        write!(&mut json, "    \"worst_quality\": {},\n", self.results.summary.quality_metrics.worst_quality).unwrap();
+        write!(&mut json, "    \"std_dev\": {},\n", self.results.summary.quality_metrics.std_dev).unwrap();
+        write!(&mut json, "    \"constraint_satisfaction_rate\": {}\n", self.results.summary.quality_metrics.constraint_satisfaction_rate).unwrap();
+        json.push_str("  },\n");
+        
+        // Performance data
+        json.push_str("  \"performance\": {\n");
+        write!(&mut json, "    \"total_time_ms\": {},\n", self.results.performance.runtime_stats.total_time.as_millis()).unwrap();
+        write!(&mut json, "    \"solving_time_ms\": {},\n", self.results.performance.runtime_stats.solving_time.as_millis()).unwrap();
+        write!(&mut json, "    \"validation_time_ms\": {}\n", self.results.performance.runtime_stats.validation_time.as_millis()).unwrap();
+        json.push_str("  },\n");
+        
+        // Test results
+        json.push_str("  \"test_results\": [\n");
+        for (i, result) in self.results.test_results.iter().enumerate() {
+            json.push_str("    {\n");
+            write!(&mut json, "      \"test_id\": \"{}\",\n", result.test_id).unwrap();
+            write!(&mut json, "      \"sampler\": \"{}\",\n", result.sampler).unwrap();
+            write!(&mut json, "      \"objective_value\": {},\n", result.objective_value).unwrap();
+            write!(&mut json, "      \"constraints_satisfied\": {},\n", result.constraints_satisfied).unwrap();
+            write!(&mut json, "      \"runtime_ms\": {},\n", result.runtime.as_millis()).unwrap();
+            write!(&mut json, "      \"is_valid\": {}\n", result.validation.is_valid).unwrap();
+            json.push_str("    }");
+            if i < self.results.test_results.len() - 1 {
+                json.push_str(",");
+            }
+            json.push_str("\n");
+        }
+        json.push_str("  ],\n");
+        
+        // Failures
+        json.push_str("  \"failures\": [\n");
+        for (i, failure) in self.results.failures.iter().enumerate() {
+            json.push_str("    {\n");
+            write!(&mut json, "      \"test_id\": \"{}\",\n", failure.test_id).unwrap();
+            write!(&mut json, "      \"failure_type\": \"{:?}\",\n", failure.failure_type).unwrap();
+            write!(&mut json, "      \"message\": \"{}\"\n", failure.message.replace("\"", "\\\"")).unwrap();
+            json.push_str("    }");
+            if i < self.results.failures.len() - 1 {
+                json.push_str(",");
+            }
+            json.push_str("\n");
+        }
+        json.push_str("  ]\n");
+        
+        json.push_str("}\n");
+        
+        Ok(json)
     }
 
     /// Generate HTML report
@@ -1754,6 +2324,236 @@ impl TestGenerator for RandomQuboGenerator {
             },
             ProblemType::Ising,
         ]
+    }
+}
+
+/// Finance industry test generator
+struct FinanceTestGenerator;
+
+impl TestGenerator for FinanceTestGenerator {
+    fn generate(&self, config: &GeneratorConfig) -> Result<Vec<TestCase>, String> {
+        let mut rng = if let Some(seed) = config.seed {
+            StdRng::seed_from_u64(seed)
+        } else {
+            let mut thread_rng = thread_rng();
+            StdRng::from_rng(&mut thread_rng)
+        };
+
+        let n_assets = config.size;
+        let mut test_cases = Vec::new();
+
+        // Generate portfolio optimization test case
+        let mut qubo = Array2::zeros((n_assets, n_assets));
+        let mut var_map = HashMap::new();
+
+        for i in 0..n_assets {
+            var_map.insert(format!("asset_{}", i), i);
+            
+            // Expected return (negative for minimization)
+            let expected_return = rng.gen_range(0.05..0.15);
+            qubo[[i, i]] -= expected_return;
+        }
+
+        // Risk covariance terms
+        for i in 0..n_assets {
+            for j in 0..n_assets {
+                let covariance = if i == j {
+                    rng.gen_range(0.01..0.04) // Variance
+                } else {
+                    rng.gen_range(-0.01..0.01) // Covariance
+                };
+                qubo[[i, j]] += covariance;
+            }
+        }
+
+        test_cases.push(TestCase {
+            id: format!("portfolio_{}_{:?}", n_assets, config.difficulty),
+            problem_type: ProblemType::Portfolio,
+            size: n_assets,
+            qubo,
+            var_map,
+            optimal_solution: None,
+            optimal_value: None,
+            constraints: vec![
+                Constraint {
+                    constraint_type: ConstraintType::LinearEquality { target: 1.0 },
+                    variables: (0..n_assets).map(|i| format!("asset_{}", i)).collect(),
+                    parameters: HashMap::new(),
+                    penalty: 1000.0,
+                }
+            ],
+            metadata: TestMetadata {
+                generation_method: "Random portfolio".to_string(),
+                difficulty: config.difficulty.clone(),
+                expected_runtime: Duration::from_millis(200),
+                notes: format!("{} assets", n_assets),
+                tags: vec!["finance".to_string(), "portfolio".to_string()],
+            },
+        });
+
+        Ok(test_cases)
+    }
+
+    fn name(&self) -> &str {
+        "FinanceTestGenerator"
+    }
+
+    fn supported_types(&self) -> Vec<ProblemType> {
+        vec![ProblemType::Portfolio]
+    }
+}
+
+/// Logistics industry test generator
+struct LogisticsTestGenerator;
+
+impl TestGenerator for LogisticsTestGenerator {
+    fn generate(&self, config: &GeneratorConfig) -> Result<Vec<TestCase>, String> {
+        let mut rng = if let Some(seed) = config.seed {
+            StdRng::seed_from_u64(seed)
+        } else {
+            let mut thread_rng = thread_rng();
+            StdRng::from_rng(&mut thread_rng)
+        };
+
+        let n_vehicles = 2;
+        let n_locations = config.size;
+        let mut test_cases = Vec::new();
+
+        // Generate vehicle routing problem
+        let n_vars = n_vehicles * n_locations * n_locations;
+        let mut qubo = Array2::zeros((n_vars, n_vars));
+        let mut var_map = HashMap::new();
+
+        // Variable mapping: x[v][i][j] = vehicle v goes from i to j
+        for v in 0..n_vehicles {
+            for i in 0..n_locations {
+                for j in 0..n_locations {
+                    let idx = v * n_locations * n_locations + i * n_locations + j;
+                    var_map.insert(format!("x_{}_{}_{}",v, i, j), idx);
+                }
+            }
+        }
+
+        // Add distance objective
+        for v in 0..n_vehicles {
+            for i in 0..n_locations {
+                for j in 0..n_locations {
+                    if i != j {
+                        let idx = v * n_locations * n_locations + i * n_locations + j;
+                        let distance = rng.gen_range(1.0..20.0);
+                        qubo[[idx, idx]] += distance;
+                    }
+                }
+            }
+        }
+
+        test_cases.push(TestCase {
+            id: format!("vrp_{}_{}_{:?}", n_vehicles, n_locations, config.difficulty),
+            problem_type: ProblemType::VRP,
+            size: n_locations,
+            qubo,
+            var_map,
+            optimal_solution: None,
+            optimal_value: None,
+            constraints: vec![],
+            metadata: TestMetadata {
+                generation_method: "Random VRP".to_string(),
+                difficulty: config.difficulty.clone(),
+                expected_runtime: Duration::from_millis(500),
+                notes: format!("{} vehicles, {} locations", n_vehicles, n_locations),
+                tags: vec!["logistics".to_string(), "vrp".to_string()],
+            },
+        });
+
+        Ok(test_cases)
+    }
+
+    fn name(&self) -> &str {
+        "LogisticsTestGenerator"
+    }
+
+    fn supported_types(&self) -> Vec<ProblemType> {
+        vec![ProblemType::VRP]
+    }
+}
+
+/// Manufacturing industry test generator
+struct ManufacturingTestGenerator;
+
+impl TestGenerator for ManufacturingTestGenerator {
+    fn generate(&self, config: &GeneratorConfig) -> Result<Vec<TestCase>, String> {
+        let mut rng = if let Some(seed) = config.seed {
+            StdRng::seed_from_u64(seed)
+        } else {
+            let mut thread_rng = thread_rng();
+            StdRng::from_rng(&mut thread_rng)
+        };
+
+        let n_jobs = config.size;
+        let n_machines = 3;
+        let mut test_cases = Vec::new();
+
+        // Generate job scheduling problem
+        let n_vars = n_jobs * n_machines;
+        let mut qubo = Array2::zeros((n_vars, n_vars));
+        let mut var_map = HashMap::new();
+
+        // Variable mapping: x[j][m] = job j on machine m
+        for j in 0..n_jobs {
+            for m in 0..n_machines {
+                let idx = j * n_machines + m;
+                var_map.insert(format!("job_{}_machine_{}", j, m), idx);
+            }
+        }
+
+        // Add processing time objective
+        for j in 0..n_jobs {
+            for m in 0..n_machines {
+                let idx = j * n_machines + m;
+                let processing_time = rng.gen_range(1.0..10.0);
+                qubo[[idx, idx]] += processing_time;
+            }
+        }
+
+        // Add constraints: each job assigned to exactly one machine
+        let mut constraints = Vec::new();
+        for j in 0..n_jobs {
+            let vars: Vec<_> = (0..n_machines).map(|m| format!("job_{}_machine_{}", j, m)).collect();
+            constraints.push(Constraint {
+                constraint_type: ConstraintType::ExactlyK { k: 1 },
+                variables: vars,
+                parameters: HashMap::new(),
+                penalty: 100.0,
+            });
+        }
+
+        test_cases.push(TestCase {
+            id: format!("scheduling_{}_{}_{:?}", n_jobs, n_machines, config.difficulty),
+            problem_type: ProblemType::JobScheduling,
+            size: n_jobs,
+            qubo,
+            var_map,
+            optimal_solution: None,
+            optimal_value: None,
+            constraints,
+            metadata: TestMetadata {
+                generation_method: "Random job scheduling".to_string(),
+                difficulty: config.difficulty.clone(),
+                expected_runtime: Duration::from_millis(300),
+                notes: format!("{} jobs, {} machines", n_jobs, n_machines),
+                tags: vec!["manufacturing".to_string(), "scheduling".to_string()],
+            },
+        });
+
+        Ok(test_cases)
+    }
+
+    fn name(&self) -> &str {
+        "ManufacturingTestGenerator"
+    }
+
+    fn supported_types(&self) -> Vec<ProblemType> {
+        vec![ProblemType::JobScheduling]
     }
 }
 

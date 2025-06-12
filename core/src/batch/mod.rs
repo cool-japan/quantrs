@@ -13,9 +13,8 @@ use crate::{
     gate::GateOp,
     qubit::QubitId,
 };
-use ndarray::{Array1, Array2, Array3};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use std::sync::Arc;
 
 /// Configuration for batch operations
 #[derive(Debug, Clone)]

@@ -450,6 +450,290 @@ pub enum RuleCondition {
 }
 
 impl PerformanceProfiler {
+    /// Start real-time monitoring
+    pub fn start_real_time_monitoring(&mut self) -> Result<RealTimeMonitor, String> {
+        if !self.config.enabled {
+            return Err("Profiling not enabled".to_string());
+        }
+        
+        let monitor = RealTimeMonitor::new(
+            self.config.sampling_interval,
+            self.collectors.iter().map(|c| c.name().to_string()).collect(),
+        )?;
+        
+        Ok(monitor)
+    }
+    
+    /// Predict performance characteristics
+    pub fn predict_performance(&self, problem_characteristics: &ProblemCharacteristics) -> PerformancePrediction {
+        let predictor = PerformancePredictor::new(&self.profiles);
+        predictor.predict(problem_characteristics)
+    }
+    
+    /// Generate optimization recommendations
+    pub fn generate_recommendations(&self, profile: &Profile) -> Vec<OptimizationRecommendation> {
+        let mut recommendations = Vec::new();
+        
+        // Analyze hot functions
+        let analysis = self.analyze_profile(profile);
+        
+        for bottleneck in &analysis.bottlenecks {
+            match bottleneck.bottleneck_type {
+                BottleneckType::CPU => {
+                    if bottleneck.impact > 0.3 {
+                        recommendations.push(OptimizationRecommendation {
+                            title: format!("Optimize hot function: {}", bottleneck.location),
+                            description: "Consider algorithmic improvements, caching, or parallelization".to_string(),
+                            category: RecommendationCategory::Algorithm,
+                            impact: RecommendationImpact::High,
+                            effort: ImplementationEffort::Medium,
+                            estimated_improvement: bottleneck.impact * 0.5,
+                            code_suggestions: vec![
+                                "Add memoization for expensive calculations".to_string(),
+                                "Consider parallel processing".to_string(),
+                                "Profile inner loops for micro-optimizations".to_string(),
+                            ],
+                        });
+                    }
+                }
+                BottleneckType::Memory => {
+                    recommendations.push(OptimizationRecommendation {
+                        title: "Memory usage optimization".to_string(),
+                        description: "Reduce memory allocations and improve data locality".to_string(),
+                        category: RecommendationCategory::Memory,
+                        impact: RecommendationImpact::Medium,
+                        effort: ImplementationEffort::Low,
+                        estimated_improvement: 0.2,
+                        code_suggestions: vec![
+                            "Use object pooling for frequently allocated objects".to_string(),
+                            "Consider more compact data structures".to_string(),
+                            "Implement streaming for large datasets".to_string(),
+                        ],
+                    });
+                }
+                _ => {}
+            }
+        }
+        
+        // Add general recommendations based on metrics
+        if profile.metrics.computation_metrics.cache_hit_rate < 0.8 {
+            recommendations.push(OptimizationRecommendation {
+                title: "Improve cache locality".to_string(),
+                description: "Restructure data access patterns for better cache performance".to_string(),
+                category: RecommendationCategory::Memory,
+                impact: RecommendationImpact::Medium,
+                effort: ImplementationEffort::High,
+                estimated_improvement: 0.15,
+                code_suggestions: vec![
+                    "Use structure-of-arrays instead of array-of-structures".to_string(),
+                    "Implement cache-oblivious algorithms".to_string(),
+                    "Add data prefetching hints".to_string(),
+                ],
+            });
+        }
+        
+        // Sort by impact
+        recommendations.sort_by(|a, b| {
+            b.estimated_improvement.partial_cmp(&a.estimated_improvement).unwrap()
+        });
+        
+        recommendations
+    }
+    
+    /// Export profile for external analysis tools
+    pub fn export_for_external_tool(&self, profile: &Profile, tool: ExternalTool) -> Result<String, String> {
+        match tool {
+            ExternalTool::Perf => self.export_perf_script(profile),
+            ExternalTool::Valgrind => self.export_valgrind_format(profile),
+            ExternalTool::FlameScope => self.export_flamescope_format(profile),
+            ExternalTool::SpeedScope => self.export_speedscope_format(profile),
+        }
+    }
+    
+    /// Export in perf script format
+    fn export_perf_script(&self, profile: &Profile) -> Result<String, String> {
+        let mut output = String::new();
+        
+        for event in &profile.events {
+            if let EventType::FunctionCall = event.event_type {
+                output.push_str(&format!(
+                    "{} {} [{}] {}: {}\n",
+                    "comm",
+                    std::process::id(),
+                    format!("{:?}", event.thread_id),
+                    event.timestamp.elapsed().as_micros(),
+                    event.name
+                ));
+            }
+        }
+        
+        Ok(output)
+    }
+    
+    /// Export in valgrind callgrind format
+    fn export_valgrind_format(&self, profile: &Profile) -> Result<String, String> {
+        let mut output = String::new();
+        
+        output.push_str("events: Instructions\n");
+        output.push_str("summary: 1000000\n\n");
+        
+        for node in &profile.call_graph.nodes {
+            output.push_str(&format!(
+                "fl={}\nfn={}\n1 {}\n\n",
+                "unknown",
+                node.name,
+                node.total_time.as_micros()
+            ));
+        }
+        
+        Ok(output)
+    }
+    
+    /// Export in FlameScope format
+    fn export_flamescope_format(&self, profile: &Profile) -> Result<String, String> {
+        // Simplified FlameScope JSON format
+        let mut stacks = Vec::new();
+        
+        for event in &profile.events {
+            if let EventType::FunctionCall = event.event_type {
+                if let Some(duration) = event.duration {
+                    stacks.push(serde_json::json!({
+                        "name": event.name,
+                        "value": duration.as_micros(),
+                        "start": event.timestamp.elapsed().as_micros()
+                    }));
+                }
+            }
+        }
+        
+        serde_json::to_string(&stacks).map_err(|e| format!("JSON error: {}", e))
+    }
+    
+    /// Export in SpeedScope format
+    fn export_speedscope_format(&self, profile: &Profile) -> Result<String, String> {
+        let speedscope_profile = serde_json::json!({
+            "$schema": "https://www.speedscope.app/file-format-schema.json",
+            "version": "0.0.1",
+            "shared": {
+                "frames": profile.call_graph.nodes.iter().enumerate().map(|(i, node)| {
+                    serde_json::json!({
+                        "name": node.name,
+                        "file": "unknown",
+                        "line": 0,
+                        "col": 0
+                    })
+                }).collect::<Vec<_>>()
+            },
+            "profiles": [{
+                "type": "evented",
+                "name": profile.id,
+                "unit": "microseconds",
+                "startValue": 0,
+                "endValue": profile.metrics.time_metrics.total_time.as_micros(),
+                "events": profile.events.iter().filter_map(|event| {
+                    match event.event_type {
+                        EventType::FunctionCall => Some(serde_json::json!({
+                            "type": "O",
+                            "at": event.timestamp.elapsed().as_micros(),
+                            "frame": event.name
+                        })),
+                        EventType::FunctionReturn => Some(serde_json::json!({
+                            "type": "C",
+                            "at": event.timestamp.elapsed().as_micros(),
+                            "frame": event.name
+                        })),
+                        _ => None
+                    }
+                }).collect::<Vec<_>>()
+            }]
+        });
+        
+        serde_json::to_string(&speedscope_profile).map_err(|e| format!("JSON error: {}", e))
+    }
+    
+    /// Continuous profiling mode
+    pub fn start_continuous_profiling(&mut self, duration: Duration) -> Result<ContinuousProfiler, String> {
+        if !self.config.enabled {
+            return Err("Profiling not enabled".to_string());
+        }
+        
+        let profiler = ContinuousProfiler::new(duration, self.config.sampling_interval);
+        Ok(profiler)
+    }
+    
+    /// Benchmark comparison
+    pub fn benchmark_compare(&self, profiles: &[Profile]) -> BenchmarkComparison {
+        let mut comparison = BenchmarkComparison {
+            profiles: profiles.iter().map(|p| p.id.clone()).collect(),
+            metrics_comparison: Vec::new(),
+            regression_analysis: Vec::new(),
+            performance_trends: Vec::new(),
+        };
+        
+        if profiles.len() < 2 {
+            return comparison;
+        }
+        
+        // Compare total times
+        let times: Vec<f64> = profiles.iter()
+            .map(|p| p.metrics.time_metrics.total_time.as_secs_f64())
+            .collect();
+        
+        comparison.metrics_comparison.push(MetricComparison {
+            metric_name: "total_time".to_string(),
+            values: times.clone(),
+            trend: if times.len() >= 2 {
+                if times[times.len() - 1] < times[0] {
+                    PerformanceTrend::Improving
+                } else if times[times.len() - 1] > times[0] * 1.1 {
+                    PerformanceTrend::Degrading
+                } else {
+                    PerformanceTrend::Stable
+                }
+            } else {
+                PerformanceTrend::Unknown
+            },
+            variance: self.calculate_variance(&times),
+        });
+        
+        // Compare memory usage
+        let memory: Vec<f64> = profiles.iter()
+            .map(|p| p.metrics.memory_metrics.peak_memory as f64)
+            .collect();
+        
+        comparison.metrics_comparison.push(MetricComparison {
+            metric_name: "peak_memory".to_string(),
+            values: memory.clone(),
+            trend: if memory.len() >= 2 {
+                if memory[memory.len() - 1] < memory[0] {
+                    PerformanceTrend::Improving
+                } else if memory[memory.len() - 1] > memory[0] * 1.1 {
+                    PerformanceTrend::Degrading
+                } else {
+                    PerformanceTrend::Stable
+                }
+            } else {
+                PerformanceTrend::Unknown
+            },
+            variance: self.calculate_variance(&memory),
+        });
+        
+        comparison
+    }
+    
+    /// Calculate variance
+    fn calculate_variance(&self, values: &[f64]) -> f64 {
+        if values.len() < 2 {
+            return 0.0;
+        }
+        
+        let mean = values.iter().sum::<f64>() / values.len() as f64;
+        let variance = values.iter()
+            .map(|v| (v - mean).powi(2))
+            .sum::<f64>() / values.len() as f64;
+        
+        variance.sqrt()
+    }
     /// Create new profiler
     pub fn new(config: ProfilerConfig) -> Self {
         Self {
@@ -1015,8 +1299,163 @@ impl PerformanceProfiler {
 
     /// Generate JSON report
     fn generate_json_report(&self, profile: &Profile) -> Result<String, String> {
-        // TODO: Add proper JSON serialization support
-        Ok("{}".to_string())
+        use std::fmt::Write;
+        
+        let mut json = String::new();
+        
+        // Build comprehensive JSON report
+        json.push_str("{\n");
+        
+        // Profile metadata
+        json.push_str("  \"metadata\": {\n");
+        write!(&mut json, "    \"id\": \"{}\",\n", profile.id).unwrap();
+        write!(&mut json, "    \"start_time\": {},\n", profile.start_time.elapsed().as_millis()).unwrap();
+        if let Some(end_time) = profile.end_time {
+            write!(&mut json, "    \"end_time\": {},\n", end_time.elapsed().as_millis()).unwrap();
+        }
+        json.push_str("    \"duration_ms\": ");
+        write!(&mut json, "{}", profile.metrics.time_metrics.total_time.as_millis()).unwrap();
+        json.push_str("\n  },\n");
+        
+        // Time metrics
+        json.push_str("  \"time_metrics\": {\n");
+        write!(&mut json, "    \"total_time_ms\": {},\n", profile.metrics.time_metrics.total_time.as_millis()).unwrap();
+        write!(&mut json, "    \"qubo_generation_ms\": {},\n", profile.metrics.time_metrics.qubo_generation_time.as_millis()).unwrap();
+        write!(&mut json, "    \"compilation_ms\": {},\n", profile.metrics.time_metrics.compilation_time.as_millis()).unwrap();
+        write!(&mut json, "    \"solving_ms\": {},\n", profile.metrics.time_metrics.solving_time.as_millis()).unwrap();
+        write!(&mut json, "    \"post_processing_ms\": {},\n", profile.metrics.time_metrics.post_processing_time.as_millis()).unwrap();
+        
+        // Function times
+        json.push_str("    \"function_times\": {\n");
+        let func_entries: Vec<_> = profile.metrics.time_metrics.function_times.iter().collect();
+        for (i, (func, time)) in func_entries.iter().enumerate() {
+            write!(&mut json, "      \"{}\": {}", func, time.as_millis()).unwrap();
+            if i < func_entries.len() - 1 {
+                json.push_str(",");
+            }
+            json.push_str("\n");
+        }
+        json.push_str("    },\n");
+        
+        // Percentiles
+        json.push_str("    \"percentiles_ms\": {\n");
+        write!(&mut json, "      \"p50\": {},\n", profile.metrics.time_metrics.percentiles.p50.as_millis()).unwrap();
+        write!(&mut json, "      \"p90\": {},\n", profile.metrics.time_metrics.percentiles.p90.as_millis()).unwrap();
+        write!(&mut json, "      \"p95\": {},\n", profile.metrics.time_metrics.percentiles.p95.as_millis()).unwrap();
+        write!(&mut json, "      \"p99\": {},\n", profile.metrics.time_metrics.percentiles.p99.as_millis()).unwrap();
+        write!(&mut json, "      \"p999\": {}\n", profile.metrics.time_metrics.percentiles.p999.as_millis()).unwrap();
+        json.push_str("    }\n");
+        json.push_str("  },\n");
+        
+        // Memory metrics
+        json.push_str("  \"memory_metrics\": {\n");
+        write!(&mut json, "    \"peak_memory_bytes\": {},\n", profile.metrics.memory_metrics.peak_memory).unwrap();
+        write!(&mut json, "    \"avg_memory_bytes\": {},\n", profile.metrics.memory_metrics.avg_memory).unwrap();
+        write!(&mut json, "    \"allocations\": {},\n", profile.metrics.memory_metrics.allocations).unwrap();
+        write!(&mut json, "    \"deallocations\": {},\n", profile.metrics.memory_metrics.deallocations).unwrap();
+        write!(&mut json, "    \"largest_allocation_bytes\": {}\n", profile.metrics.memory_metrics.largest_allocation).unwrap();
+        json.push_str("  },\n");
+        
+        // Computation metrics
+        json.push_str("  \"computation_metrics\": {\n");
+        write!(&mut json, "    \"flops\": {},\n", profile.metrics.computation_metrics.flops).unwrap();
+        write!(&mut json, "    \"memory_bandwidth_gbps\": {},\n", profile.metrics.computation_metrics.memory_bandwidth).unwrap();
+        write!(&mut json, "    \"cache_hit_rate\": {},\n", profile.metrics.computation_metrics.cache_hit_rate).unwrap();
+        write!(&mut json, "    \"branch_prediction_accuracy\": {},\n", profile.metrics.computation_metrics.branch_prediction_accuracy).unwrap();
+        write!(&mut json, "    \"vectorization_efficiency\": {}\n", profile.metrics.computation_metrics.vectorization_efficiency).unwrap();
+        json.push_str("  },\n");
+        
+        // Quality metrics
+        json.push_str("  \"quality_metrics\": {\n");
+        write!(&mut json, "    \"convergence_rate\": {},\n", profile.metrics.quality_metrics.convergence_rate).unwrap();
+        write!(&mut json, "    \"improvement_per_iteration\": {},\n", profile.metrics.quality_metrics.improvement_per_iteration).unwrap();
+        write!(&mut json, "    \"time_to_first_solution_ms\": {},\n", profile.metrics.quality_metrics.time_to_first_solution.as_millis()).unwrap();
+        write!(&mut json, "    \"time_to_best_solution_ms\": {},\n", profile.metrics.quality_metrics.time_to_best_solution.as_millis()).unwrap();
+        
+        // Quality timeline
+        json.push_str("    \"quality_timeline\": [\n");
+        for (i, (time, quality)) in profile.metrics.quality_metrics.quality_timeline.iter().enumerate() {
+            json.push_str("      {\n");
+            write!(&mut json, "        \"time_ms\": {},\n", time.as_millis()).unwrap();
+            write!(&mut json, "        \"quality\": {}\n", quality).unwrap();
+            json.push_str("      }");
+            if i < profile.metrics.quality_metrics.quality_timeline.len() - 1 {
+                json.push_str(",");
+            }
+            json.push_str("\n");
+        }
+        json.push_str("    ]\n");
+        json.push_str("  },\n");
+        
+        // Call graph
+        json.push_str("  \"call_graph\": {\n");
+        json.push_str("    \"nodes\": [\n");
+        for (i, node) in profile.call_graph.nodes.iter().enumerate() {
+            json.push_str("      {\n");
+            write!(&mut json, "        \"id\": {},\n", node.id).unwrap();
+            write!(&mut json, "        \"name\": \"{}\",\n", node.name.replace("\"", "\\\"")).unwrap();
+            write!(&mut json, "        \"total_time_ms\": {},\n", node.total_time.as_millis()).unwrap();
+            write!(&mut json, "        \"self_time_ms\": {},\n", node.self_time.as_millis()).unwrap();
+            write!(&mut json, "        \"call_count\": {},\n", node.call_count).unwrap();
+            write!(&mut json, "        \"avg_time_ms\": {}\n", node.avg_time.as_millis()).unwrap();
+            json.push_str("      }");
+            if i < profile.call_graph.nodes.len() - 1 {
+                json.push_str(",");
+            }
+            json.push_str("\n");
+        }
+        json.push_str("    ],\n");
+        
+        json.push_str("    \"edges\": [\n");
+        for (i, edge) in profile.call_graph.edges.iter().enumerate() {
+            json.push_str("      {\n");
+            write!(&mut json, "        \"from\": {},\n", edge.from).unwrap();
+            write!(&mut json, "        \"to\": {},\n", edge.to).unwrap();
+            write!(&mut json, "        \"call_count\": {},\n", edge.call_count).unwrap();
+            write!(&mut json, "        \"total_time_ms\": {}\n", edge.total_time.as_millis()).unwrap();
+            json.push_str("      }");
+            if i < profile.call_graph.edges.len() - 1 {
+                json.push_str(",");
+            }
+            json.push_str("\n");
+        }
+        json.push_str("    ]\n");
+        json.push_str("  },\n");
+        
+        // Events summary
+        json.push_str("  \"events_summary\": {\n");
+        write!(&mut json, "    \"total_events\": {},\n", profile.events.len()).unwrap();
+        
+        // Count events by type
+        let mut event_counts = std::collections::BTreeMap::new();
+        for event in &profile.events {
+            let type_name = match &event.event_type {
+                EventType::FunctionCall => "function_call",
+                EventType::FunctionReturn => "function_return", 
+                EventType::MemoryAlloc => "memory_alloc",
+                EventType::MemoryFree => "memory_free",
+                EventType::IOOperation => "io_operation",
+                EventType::Synchronization => "synchronization",
+                EventType::Custom(name) => name,
+            };
+            *event_counts.entry(type_name).or_insert(0) += 1;
+        }
+        
+        json.push_str("    \"event_counts\": {\n");
+        let count_entries: Vec<_> = event_counts.iter().collect();
+        for (i, (event_type, count)) in count_entries.iter().enumerate() {
+            write!(&mut json, "      \"{}\": {}", event_type, count).unwrap();
+            if i < count_entries.len() - 1 {
+                json.push_str(",");
+            }
+            json.push_str("\n");
+        }
+        json.push_str("    }\n");
+        json.push_str("  }\n");
+        
+        json.push_str("}\n");
+        
+        Ok(json)
     }
 
     /// Generate CSV report
@@ -1546,6 +1985,239 @@ pub struct Improvement {
     pub old_value: f64,
     pub new_value: f64,
     pub change_percentage: f64,
+}
+
+/// Real-time performance monitor
+pub struct RealTimeMonitor {
+    /// Sampling interval
+    sampling_interval: Duration,
+    /// Collectors to use
+    collector_names: Vec<String>,
+    /// Live metrics
+    live_metrics: Arc<Mutex<LiveMetrics>>,
+    /// Monitor thread handle
+    _monitor_handle: Option<thread::JoinHandle<()>>,
+}
+
+impl RealTimeMonitor {
+    pub fn new(sampling_interval: Duration, collector_names: Vec<String>) -> Result<Self, String> {
+        let live_metrics = Arc::new(Mutex::new(LiveMetrics::default()));
+        
+        Ok(Self {
+            sampling_interval,
+            collector_names,
+            live_metrics,
+            _monitor_handle: None,
+        })
+    }
+    
+    pub fn get_live_metrics(&self) -> LiveMetrics {
+        self.live_metrics.lock().unwrap().clone()
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct LiveMetrics {
+    pub current_cpu: f64,
+    pub current_memory: usize,
+    pub current_functions: Vec<(String, Duration)>,
+    pub events_per_second: f64,
+    pub last_update: Option<Instant>,
+}
+
+/// Performance prediction system
+pub struct PerformancePredictor {
+    /// Historical profiles
+    history: Vec<Profile>,
+    /// Prediction model
+    model: PredictionModel,
+}
+
+impl PerformancePredictor {
+    pub fn new(profiles: &[Profile]) -> Self {
+        Self {
+            history: profiles.to_vec(),
+            model: PredictionModel::Linear,
+        }
+    }
+    
+    pub fn predict(&self, characteristics: &ProblemCharacteristics) -> PerformancePrediction {
+        // Simplified prediction based on problem size
+        let base_time = Duration::from_millis(100);
+        let complexity_factor = match characteristics.complexity {
+            ProblemComplexity::Linear => characteristics.size as f64,
+            ProblemComplexity::Quadratic => (characteristics.size as f64).powi(2),
+            ProblemComplexity::Exponential => 2.0_f64.powi(characteristics.size.min(30) as i32),
+        };
+        
+        let estimated_time = base_time.mul_f64(complexity_factor / 1000.0);
+        let estimated_memory = (characteristics.size * 8) as usize; // 8 bytes per element
+        
+        PerformancePrediction {
+            estimated_runtime: estimated_time,
+            estimated_memory: estimated_memory,
+            confidence: if self.history.len() > 5 { 0.8 } else { 0.5 },
+            bottleneck_predictions: vec![
+                BottleneckPrediction {
+                    location: "QUBO generation".to_string(),
+                    probability: 0.3,
+                    predicted_impact: 0.4,
+                },
+                BottleneckPrediction {
+                    location: "Solving".to_string(),
+                    probability: 0.7,
+                    predicted_impact: 0.6,
+                },
+            ],
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum PredictionModel {
+    Linear,
+    Polynomial,
+    MachineLearning,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProblemCharacteristics {
+    pub size: usize,
+    pub complexity: ProblemComplexity,
+    pub sparsity: f64,
+    pub symmetry: bool,
+    pub structure: ProblemStructure,
+}
+
+#[derive(Debug, Clone)]
+pub enum ProblemComplexity {
+    Linear,
+    Quadratic,
+    Exponential,
+}
+
+#[derive(Debug, Clone)]
+pub enum ProblemStructure {
+    Dense,
+    Sparse,
+    Structured,
+    Random,
+}
+
+#[derive(Debug, Clone)]
+pub struct PerformancePrediction {
+    pub estimated_runtime: Duration,
+    pub estimated_memory: usize,
+    pub confidence: f64,
+    pub bottleneck_predictions: Vec<BottleneckPrediction>,
+}
+
+#[derive(Debug, Clone)]
+pub struct BottleneckPrediction {
+    pub location: String,
+    pub probability: f64,
+    pub predicted_impact: f64,
+}
+
+/// Advanced optimization recommendations
+#[derive(Debug, Clone)]
+pub struct OptimizationRecommendation {
+    pub title: String,
+    pub description: String,
+    pub category: RecommendationCategory,
+    pub impact: RecommendationImpact,
+    pub effort: ImplementationEffort,
+    pub estimated_improvement: f64,
+    pub code_suggestions: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub enum RecommendationCategory {
+    Algorithm,
+    Memory,
+    IO,
+    Parallelization,
+    Caching,
+    DataStructure,
+}
+
+#[derive(Debug, Clone)]
+pub enum RecommendationImpact {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+/// External tool integration
+#[derive(Debug, Clone)]
+pub enum ExternalTool {
+    Perf,
+    Valgrind,
+    FlameScope,
+    SpeedScope,
+}
+
+/// Continuous profiling
+pub struct ContinuousProfiler {
+    duration: Duration,
+    sampling_interval: Duration,
+    profiles: Vec<Profile>,
+}
+
+impl ContinuousProfiler {
+    pub fn new(duration: Duration, sampling_interval: Duration) -> Self {
+        Self {
+            duration,
+            sampling_interval,
+            profiles: Vec::new(),
+        }
+    }
+    
+    pub fn get_profiles(&self) -> &[Profile] {
+        &self.profiles
+    }
+}
+
+/// Benchmark comparison
+#[derive(Debug, Clone)]
+pub struct BenchmarkComparison {
+    pub profiles: Vec<String>,
+    pub metrics_comparison: Vec<MetricComparison>,
+    pub regression_analysis: Vec<RegressionAnalysis>,
+    pub performance_trends: Vec<PerformanceTrendAnalysis>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MetricComparison {
+    pub metric_name: String,
+    pub values: Vec<f64>,
+    pub trend: PerformanceTrend,
+    pub variance: f64,
+}
+
+#[derive(Debug, Clone)]
+pub enum PerformanceTrend {
+    Improving,
+    Stable,
+    Degrading,
+    Unknown,
+}
+
+#[derive(Debug, Clone)]
+pub struct RegressionAnalysis {
+    pub metric: String,
+    pub regression_coefficient: f64,
+    pub correlation: f64,
+    pub prediction_accuracy: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct PerformanceTrendAnalysis {
+    pub function_name: String,
+    pub trend: PerformanceTrend,
+    pub rate_of_change: f64,
+    pub statistical_significance: f64,
 }
 
 /// Default collectors

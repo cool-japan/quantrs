@@ -30,8 +30,9 @@ use crate::ising::{IsingModel, QuboModel};
 use crate::neural_annealing_schedules::{NeuralAnnealingScheduler, NeuralSchedulerConfig};
 use crate::quantum_error_correction::{
     SyndromeDetector, ErrorCorrectionCode, NoiseResilientAnnealingProtocol, 
-    ErrorMitigationManager, LogicalAnnealingEncoder,
+    ErrorMitigationManager, LogicalAnnealingEncoder, ErrorMitigationConfig,
 };
+use crate::simulator::{AnnealingParams, AnnealingResult, QuantumAnnealingSimulator};
 
 /// Chemical elements for molecular representation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -462,11 +463,11 @@ pub struct DrugDiscoveryProblem {
     /// Molecular constraints
     pub constraints: Vec<MolecularConstraint>,
     /// Quantum error correction framework
-    pub qec_framework: Option<QuantumErrorCorrectionFramework>,
+    pub qec_framework: Option<String>,
     /// Advanced algorithm configuration
     pub advanced_config: AdvancedAlgorithmConfig,
     /// Neural scheduling configuration
-    pub neural_config: Option<NeuralScheduleConfig>,
+    pub neural_config: Option<NeuralSchedulerConfig>,
 }
 
 /// Molecular design constraints
@@ -509,12 +510,12 @@ impl DrugDiscoveryProblem {
         }
     }
     
-    pub fn with_quantum_error_correction(mut self, config: ErrorCorrectionConfig) -> Self {
-        self.qec_framework = Some(QuantumErrorCorrectionFramework::new(config));
+    pub fn with_quantum_error_correction(mut self, config: String) -> Self {
+        self.qec_framework = Some(config);
         self
     }
     
-    pub fn with_neural_annealing(mut self, config: NeuralScheduleConfig) -> Self {
+    pub fn with_neural_annealing(mut self, config: NeuralSchedulerConfig) -> Self {
         self.neural_config = Some(config);
         self
     }
@@ -598,14 +599,34 @@ impl DrugDiscoveryProblem {
             let (ising_model, variable_map) = self.to_ising_model()?;
             
             // Use error mitigation for molecular optimization
-            let mut error_manager = ErrorMitigationManager::new(qec_framework.config.clone());
+            let error_config = ErrorMitigationConfig::default();
+            let mut error_manager = ErrorMitigationManager::new(error_config)
+                .map_err(|e| ApplicationError::OptimizationError(format!("Failed to create error manager: {:?}", e)))?;
             
-            let result = error_manager.optimize(&ising_model)
-                .map_err(|e| ApplicationError::OptimizationError(format!("QEC optimization failed: {:?}", e)))?;
+            // First perform standard annealing
+            let params = AnnealingParams::default();
+            let annealer = QuantumAnnealingSimulator::new(params.clone())
+                .map_err(|e| ApplicationError::OptimizationError(format!("Failed to create annealer: {:?}", e)))?;
+            let annealing_result = annealer.solve(&ising_model)
+                .map_err(|e| ApplicationError::OptimizationError(format!("Annealing failed: {:?}", e)))?;
             
-            let solution = result.map_err(|e| ApplicationError::OptimizationError(format!("QEC solver error: {}", e)))?;
+            // Convert simulator result to error mitigation format
+            let error_mitigation_result = crate::quantum_error_correction::error_mitigation::AnnealingResult {
+                solution: annealing_result.best_spins.iter().map(|&x| x as i32).collect(),
+                energy: annealing_result.best_energy,
+                num_occurrences: 1,
+                chain_break_fraction: 0.0,
+                timing: std::collections::HashMap::new(),
+                info: std::collections::HashMap::new(),
+            };
             
-            self.solution_to_molecule(&solution, &variable_map)
+            // Apply error mitigation to improve the result
+            let mitigation_result = error_manager.apply_mitigation(&ising_model, error_mitigation_result, &params)
+                .map_err(|e| ApplicationError::OptimizationError(format!("Error mitigation failed: {:?}", e)))?;
+            
+            let solution = &mitigation_result.mitigated_result.solution;
+            
+            self.solution_to_molecule(solution, &variable_map)
         } else {
             Err(ApplicationError::InvalidConfiguration(
                 "Quantum error correction not enabled".to_string()
@@ -654,7 +675,7 @@ impl DrugDiscoveryProblem {
         let num_atoms = self.target_interaction.drug_molecule.atoms.len();
         let num_variables = num_atoms * 8; // 8 bits per atom for type encoding
         
-        let mut ising = IsingModel::new(num_variables)?;
+        let mut ising = IsingModel::new(num_variables);
         let mut variable_map = HashMap::new();
         
         // Map molecular variables to Ising variables
@@ -697,7 +718,8 @@ impl DrugDiscoveryProblem {
                     }
                 }
                 
-                ising.set_bias(var_idx, bias)?;
+                ising.set_bias(var_idx, bias)
+                    .map_err(|e| ApplicationError::OptimizationError(e.to_string()))?;
             }
         }
         
@@ -713,7 +735,8 @@ impl DrugDiscoveryProblem {
                     
                     if var1 < var2 && var1 < num_variables && var2 < num_variables {
                         let coupling = bond.bond_type.bond_order() * 0.1;
-                        ising.set_coupling(var1, var2, -coupling)?; // Negative for stability
+                        ising.set_coupling(var1, var2, -coupling)
+                            .map_err(|e| ApplicationError::OptimizationError(e.to_string()))?; // Negative for stability
                     }
                 }
             }
@@ -839,7 +862,7 @@ impl OptimizationProblem for DrugDiscoveryProblem {
     fn to_qubo(&self) -> ApplicationResult<(QuboModel, HashMap<String, usize>)> {
         // Convert Ising model to QUBO
         let (ising, variable_map) = self.to_ising_model()?;
-        let qubo = ising.to_qubo()?;
+        let qubo = ising.to_qubo();
         Ok((qubo, variable_map))
     }
     
@@ -1009,7 +1032,7 @@ impl IndustrySolution for Molecule {
 }
 
 /// Create benchmark drug discovery problems
-pub fn create_benchmark_problems(size: usize) -> ApplicationResult<Vec<Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>>>> {
+pub fn create_benchmark_problems(size: usize) -> ApplicationResult<Vec<Box<dyn OptimizationProblem<Solution = Molecule, ObjectiveValue = f64>>>> {
     let mut problems = Vec::new();
     
     // Create molecules of different complexity
@@ -1079,7 +1102,7 @@ pub fn create_benchmark_problems(size: usize) -> ApplicationResult<Vec<Box<dyn O
         problem = problem.add_constraint(MolecularConstraint::LogPRange { min: -2.0, max: 5.0 });
         
         // Note: Simplified for trait object compatibility
-        problems.push(Box::new(problem) as Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>>);
+        problems.push(Box::new(problem) as Box<dyn OptimizationProblem<Solution = Molecule, ObjectiveValue = f64>>);
     }
     
     Ok(problems)

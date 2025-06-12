@@ -127,6 +127,7 @@ pub mod topological_optimization;
 pub mod variable_correlation;
 pub mod variational_quantum_factoring;
 pub mod visualization;
+pub mod visual_problem_builder;
 
 // Re-export key types for convenience
 pub use advanced_performance_analysis::{AdvancedPerformanceAnalyzer, AnalysisConfig, create_comprehensive_analyzer, create_lightweight_analyzer};
@@ -143,6 +144,7 @@ pub use tensor_network_sampler::{TensorNetworkSampler, create_mps_sampler, creat
 pub use scirs_stub::SCIRS2_AVAILABLE;
 #[cfg(feature = "dwave")]
 pub use symbol::{symbols, symbols_define, symbols_list, symbols_nbit};
+pub use visual_problem_builder::{VisualProblemBuilder, VisualProblem, BuilderConfig, VariableType, ConstraintType, ObjectiveExpression, ExportFormat};
 
 // Expose QuantRS2-anneal types as well for advanced usage
 pub use quantrs2_anneal::{IsingError, IsingModel, IsingResult, QuboModel};

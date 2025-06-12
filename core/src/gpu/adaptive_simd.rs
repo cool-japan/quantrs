@@ -5,7 +5,6 @@
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
-    simd_ops,
 };
 use num_complex::Complex64;
 use std::sync::Once;

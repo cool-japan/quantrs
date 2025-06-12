@@ -536,12 +536,24 @@ impl OptimizedShorAlgorithm {
     }
 
     fn choose_random_base(&self, n: u64) -> Result<u64> {
-        loop {
-            let a = 2 + fastrand::u64(2..n);
+        // For small numbers like 15, just try a few known good values
+        let candidates = [2, 3, 4, 5, 6, 7, 8];
+        for &a in &candidates {
+            if a < n && self.gcd(a, n) == 1 {
+                return Ok(a);
+            }
+        }
+        
+        // Fallback to simple iteration for larger numbers
+        for a in 2..n {
             if self.gcd(a, n) == 1 {
                 return Ok(a);
             }
         }
+        
+        Err(SimulatorError::InvalidInput(
+            "Cannot find suitable base for factoring".to_string(),
+        ))
     }
 
     fn gcd(&self, mut a: u64, mut b: u64) -> u64 {
@@ -823,20 +835,18 @@ impl OptimizedGroverAlgorithm {
             if oracle(state) {
                 // Convert state to qubit pattern and add controlled Z
                 let mut control_qubits = Vec::new();
-                let mut target_qubit = 0;
+                let target_qubit = num_qubits - 1; // Use the highest bit as target
                 
                 for qubit in 0..num_qubits {
-                    if (state >> qubit) & 1 == 1 {
-                        if control_qubits.is_empty() {
-                            target_qubit = qubit;
-                        } else {
-                            control_qubits.push(qubit);
-                        }
-                    } else {
+                    if qubit == target_qubit {
+                        continue; // Skip target qubit
+                    }
+                    
+                    if (state >> qubit) & 1 == 0 {
                         // Apply X to flip qubit to 1 for control
                         circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![qubit]));
-                        control_qubits.push(qubit);
                     }
+                    control_qubits.push(qubit);
                 }
                 
                 // Add multi-controlled Z gate
@@ -854,7 +864,7 @@ impl OptimizedGroverAlgorithm {
                 
                 // Undo X gates
                 for qubit in 0..num_qubits {
-                    if (state >> qubit) & 1 == 0 {
+                    if qubit != target_qubit && (state >> qubit) & 1 == 0 {
                         circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![qubit]));
                     }
                 }
@@ -1305,6 +1315,10 @@ mod tests {
         let oracle = |x: usize| x == 3;
         
         let result = grover.search(3, oracle, 1);
+        match &result {
+            Err(e) => eprintln!("Grover search failed: {:?}", e),
+            Ok(_) => {}
+        }
         assert!(result.is_ok());
         
         let grover_result = result.unwrap();

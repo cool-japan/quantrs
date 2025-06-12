@@ -20,7 +20,7 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use crate::ising::{IsingModel};
-use crate::simulator::{AnnealingParams, AnnealingResult, QuantumState};
+use crate::simulator::{AnnealingParams, AnnealingResult};
 
 // Module declarations
 pub mod config;

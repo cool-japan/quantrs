@@ -1091,7 +1091,7 @@ pub struct PerformanceEvaluator {
 }
 
 /// Evaluation metrics
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EvaluationMetric {
     /// Solution quality
     SolutionQuality,
@@ -1918,7 +1918,7 @@ impl ActiveLearningDecomposer {
         // Copy biases
         for (new_idx, &old_idx) in vertices.iter().enumerate() {
             let bias = problem.get_bias(old_idx).unwrap_or(0.0);
-            subproblem_model.set_bias(new_idx, bias)?;
+            subproblem_model.set_bias(new_idx, bias).map_err(|e| e.to_string())?;
         }
 
         // Copy couplings within subproblem
@@ -1926,7 +1926,7 @@ impl ActiveLearningDecomposer {
             for (j, &old_j) in vertices.iter().enumerate().skip(i + 1) {
                 let coupling = problem.get_coupling(old_i, old_j).unwrap_or(0.0);
                 if coupling.abs() > 1e-10 {
-                    subproblem_model.set_coupling(i, j, coupling)?;
+                    subproblem_model.set_coupling(i, j, coupling).map_err(|e| e.to_string())?;
                 }
             }
         }

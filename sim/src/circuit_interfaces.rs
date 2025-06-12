@@ -347,6 +347,37 @@ impl InterfaceGate {
                 ],
             )
             .unwrap()),
+            InterfaceGateType::MultiControlledZ(num_controls) => {
+                let total_qubits = num_controls + 1;
+                let dim = 1 << total_qubits;
+                let mut matrix = Array2::eye(dim);
+                
+                // Apply Z to the target when all control qubits are |1⟩
+                let target_state = (1 << total_qubits) - 1; // All qubits in |1⟩ state
+                matrix[(target_state, target_state)] = Complex64::new(-1.0, 0.0);
+                
+                Ok(matrix)
+            }
+            InterfaceGateType::MultiControlledX(num_controls) => {
+                let total_qubits = num_controls + 1;
+                let dim = 1 << total_qubits;
+                let mut matrix = Array2::eye(dim);
+                
+                // Apply X to the target when all control qubits are |1⟩
+                let control_pattern = (1 << *num_controls) - 1; // All control qubits in |1⟩
+                let target_bit = 1 << num_controls;
+                
+                // Swap the two states where only the target bit differs
+                let state0 = control_pattern; // Target qubit is |0⟩
+                let state1 = control_pattern | target_bit; // Target qubit is |1⟩
+                
+                matrix[(state0, state0)] = Complex64::new(0.0, 0.0);
+                matrix[(state1, state1)] = Complex64::new(0.0, 0.0);
+                matrix[(state0, state1)] = Complex64::new(1.0, 0.0);
+                matrix[(state1, state0)] = Complex64::new(1.0, 0.0);
+                
+                Ok(matrix)
+            }
             InterfaceGateType::Custom(_, matrix) => Ok(matrix.clone()),
             _ => Err(SimulatorError::UnsupportedOperation(format!(
                 "Unitary matrix not available for gate type: {:?}",
@@ -522,8 +553,8 @@ impl InterfaceCircuit {
             optimized_gates: self.gates.len(),
             original_depth,
             optimized_depth: self.metadata.depth,
-            gates_eliminated: original_gates - self.gates.len(),
-            depth_reduction: original_depth - self.metadata.depth,
+            gates_eliminated: original_gates.saturating_sub(self.gates.len()),
+            depth_reduction: original_depth.saturating_sub(self.metadata.depth),
         }
     }
 

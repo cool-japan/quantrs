@@ -173,7 +173,7 @@ impl Default for ValidationConfig {
 }
 
 /// Validation metrics for climate models
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ValidationMetric {
     /// Root Mean Square Error
     RMSE,

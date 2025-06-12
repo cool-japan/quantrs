@@ -22,8 +22,25 @@ use rand_chacha::ChaCha8Rng;
 use num_complex::Complex64;
 
 use crate::ising::{IsingModel};
-use crate::simulator::{AnnealingParams, AnnealingResult, QuantumState};
+use crate::simulator::{AnnealingParams};
 use super::config::{QECResult, QuantumErrorCorrectionError};
+
+/// Custom annealing result structure for error mitigation
+#[derive(Debug, Clone)]
+pub struct AnnealingResult {
+    /// Solution vector
+    pub solution: Vec<i32>,
+    /// Energy of the solution
+    pub energy: f64,
+    /// Number of occurrences
+    pub num_occurrences: usize,
+    /// Chain break fraction
+    pub chain_break_fraction: f64,
+    /// Timing information
+    pub timing: HashMap<String, f64>,
+    /// Additional information
+    pub info: HashMap<String, String>,
+}
 
 /// Error mitigation manager
 #[derive(Debug, Clone)]
@@ -688,9 +705,9 @@ pub struct MitigationMetrics {
 #[derive(Debug, Clone)]
 pub struct MitigationResult {
     /// Mitigated result
-    pub mitigated_result: AnnealingResult<Vec<i32>>,
+    pub mitigated_result: AnnealingResult,
     /// Original result (before mitigation)
-    pub original_result: AnnealingResult<Vec<i32>>,
+    pub original_result: AnnealingResult,
     /// Mitigation techniques applied
     pub techniques_applied: Vec<String>,
     /// Mitigation effectiveness
@@ -722,7 +739,7 @@ impl ErrorMitigationManager {
     pub fn apply_mitigation(
         &mut self,
         problem: &IsingModel,
-        original_result: AnnealingResult<Vec<i32>>,
+        original_result: AnnealingResult,
         params: &AnnealingParams,
     ) -> QECResult<MitigationResult> {
         let start_time = Instant::now();
@@ -823,7 +840,7 @@ impl ErrorMitigationManager {
     fn select_techniques(
         &self,
         problem: &IsingModel,
-        result: &AnnealingResult<Vec<i32>>,
+        result: &AnnealingResult,
         params: &AnnealingParams,
     ) -> QECResult<Vec<MitigationTechnique>> {
         let error_rate = self.estimate_error_rate(result)?;
@@ -851,11 +868,11 @@ impl ErrorMitigationManager {
         match technique {
             MitigationTechnique::ZeroNoiseExtrapolation(_) => {
                 // Apply ZNE if error rate is moderate and we have enough shots
-                Ok(error_rate > 0.01 && error_rate < 0.2 && params.num_reads >= 1000)
+                Ok(error_rate > 0.01 && error_rate < 0.2 && params.num_repetitions >= 10)
             }
             MitigationTechnique::ProbabilisticErrorCancellation(_) => {
                 // Apply PEC for high-fidelity requirements with acceptable overhead
-                Ok(error_rate > 0.005 && params.num_reads >= 5000)
+                Ok(error_rate > 0.005 && params.num_repetitions >= 50)
             }
             MitigationTechnique::SymmetryVerification(_) => {
                 // Apply symmetry verification if problem has known symmetries
@@ -881,9 +898,9 @@ impl ErrorMitigationManager {
         &self,
         technique: &MitigationTechnique,
         problem: &IsingModel,
-        result: &AnnealingResult<Vec<i32>>,
+        result: &AnnealingResult,
         params: &AnnealingParams,
-    ) -> QECResult<AnnealingResult<Vec<i32>>> {
+    ) -> QECResult<AnnealingResult> {
         match technique {
             MitigationTechnique::ZeroNoiseExtrapolation(config) => {
                 self.apply_zero_noise_extrapolation(config, problem, result, params)
@@ -909,9 +926,9 @@ impl ErrorMitigationManager {
         &self,
         config: &ZNEConfig,
         problem: &IsingModel,
-        result: &AnnealingResult<Vec<i32>>,
+        result: &AnnealingResult,
         params: &AnnealingParams,
-    ) -> QECResult<AnnealingResult<Vec<i32>>> {
+    ) -> QECResult<AnnealingResult> {
         let mut energies = Vec::new();
         let mut noise_levels = Vec::new();
 
@@ -947,12 +964,12 @@ impl ErrorMitigationManager {
     fn simulate_with_scaled_noise(
         &self,
         problem: &IsingModel,
-        original_result: &AnnealingResult<Vec<i32>>,
+        original_result: &AnnealingResult,
         scaling_factor: f64,
         num_shots: usize,
-    ) -> QECResult<AnnealingResult<Vec<i32>>> {
+    ) -> QECResult<AnnealingResult> {
         // Simplified noise scaling simulation
-        let mut rng = ChaCha8Rng::from_entropy();
+        let mut rng = ChaCha8Rng::from_rng(rand::thread_rng()).unwrap();
         let base_error_rate = 0.01; // Base error rate
         let scaled_error_rate = base_error_rate * scaling_factor;
 
@@ -1063,9 +1080,9 @@ impl ErrorMitigationManager {
         &self,
         config: &PECConfig,
         problem: &IsingModel,
-        result: &AnnealingResult<Vec<i32>>,
+        result: &AnnealingResult,
         params: &AnnealingParams,
-    ) -> QECResult<AnnealingResult<Vec<i32>>> {
+    ) -> QECResult<AnnealingResult> {
         // Simplified PEC implementation
         // In practice, would implement full quasi-probability decomposition
         
@@ -1083,9 +1100,9 @@ impl ErrorMitigationManager {
         &self,
         config: &SymmetryConfig,
         problem: &IsingModel,
-        result: &AnnealingResult<Vec<i32>>,
+        result: &AnnealingResult,
         params: &AnnealingParams,
-    ) -> QECResult<AnnealingResult<Vec<i32>>> {
+    ) -> QECResult<AnnealingResult> {
         // Check symmetries and apply post-selection
         let mut symmetry_violations = 0;
         
@@ -1155,9 +1172,9 @@ impl ErrorMitigationManager {
         &self,
         config: &ReadoutConfig,
         problem: &IsingModel,
-        result: &AnnealingResult<Vec<i32>>,
+        result: &AnnealingResult,
         params: &AnnealingParams,
-    ) -> QECResult<AnnealingResult<Vec<i32>>> {
+    ) -> QECResult<AnnealingResult> {
         // Apply readout error correction based on confusion matrix
         let mut corrected_solution = result.solution.clone();
         
@@ -1222,7 +1239,7 @@ impl ErrorMitigationManager {
     }
 
     /// Estimate error rate from result
-    fn estimate_error_rate(&self, result: &AnnealingResult<Vec<i32>>) -> QECResult<f64> {
+    fn estimate_error_rate(&self, result: &AnnealingResult) -> QECResult<f64> {
         // Simplified error rate estimation
         let base_rate = result.chain_break_fraction;
         let energy_penalty = if result.energy > 0.0 { 0.05 } else { 0.0 };
@@ -1246,8 +1263,8 @@ impl ErrorMitigationManager {
     /// Calculate mitigation effectiveness
     fn calculate_effectiveness(
         &self,
-        original: &AnnealingResult<Vec<i32>>,
-        mitigated: &AnnealingResult<Vec<i32>>,
+        original: &AnnealingResult,
+        mitigated: &AnnealingResult,
     ) -> QECResult<f64> {
         let original_error = original.chain_break_fraction;
         let mitigated_error = mitigated.chain_break_fraction;
@@ -1274,7 +1291,7 @@ impl ErrorMitigationManager {
     /// Calculate confidence interval
     fn calculate_confidence_interval(
         &self,
-        result: &AnnealingResult<Vec<i32>>,
+        result: &AnnealingResult,
         techniques: &[String],
     ) -> QECResult<(f64, f64)> {
         // Simplified confidence interval calculation
@@ -1287,8 +1304,8 @@ impl ErrorMitigationManager {
     /// Update performance tracking
     fn update_performance_tracking(
         &mut self,
-        original: &AnnealingResult<Vec<i32>>,
-        mitigated: &AnnealingResult<Vec<i32>>,
+        original: &AnnealingResult,
+        mitigated: &AnnealingResult,
         techniques: &[String],
     ) -> QECResult<()> {
         let effectiveness = self.calculate_effectiveness(original, mitigated)?;
@@ -1435,7 +1452,7 @@ mod tests {
     #[test]
     fn test_technique_selection() {
         let manager = ErrorMitigationManager::new(ErrorMitigationConfig::default()).unwrap();
-        let problem = IsingModel::new(4);
+        let mut problem = IsingModel::new(4);
         let result = AnnealingResult {
             solution: vec![1, -1, 1, -1],
             energy: -2.0,
@@ -1444,12 +1461,7 @@ mod tests {
             timing: HashMap::new(),
             info: HashMap::new(),
         };
-        let params = AnnealingParams {
-            temperature: 1.0,
-            num_reads: 1000,
-            annealing_time: 1000.0,
-            schedule: None,
-        };
+        let params = AnnealingParams::default();
 
         let techniques = manager.select_techniques(&problem, &result, &params).unwrap();
         assert!(!techniques.is_empty());

@@ -157,6 +157,11 @@ pub mod prelude {
     };
     pub use crate::optimization::compression::{
         CompressedGate, CompressionConfig, CompressionStats, GateSequenceCompressor,
+        CompressionType, GateMetadata,
+    };
+    pub use crate::optimization::lazy_evaluation::{
+        LazyOptimizationPipeline, LazyEvaluationConfig, LazyGateContext, OptimizationResult as LazyOptimizationResult,
+        OptimizationStats, LazyEvaluationStats,
     };
     pub use crate::optimization::fusion::{CliffordFusion, GateFusion};
     pub use crate::optimization::peephole::{PeepholeOptimizer, TCountOptimizer};
@@ -180,6 +185,14 @@ pub mod prelude {
     pub use crate::qml::{
         create_entangling_gates, natural_gradient, quantum_fisher_information, EncodingStrategy,
         EntanglementPattern, QMLCircuit, QMLConfig, QMLLayer,
+    };
+    pub use crate::qml::reinforcement_learning::{
+        QuantumDQN, QuantumActorCritic, QuantumRLConfig, Experience, ReplayBuffer,
+        TrainingMetrics as RLTrainingMetrics, QLearningStats, QuantumValueNetwork, QuantumPolicyNetwork,
+    };
+    pub use crate::qml::generative_adversarial::{
+        QGAN, QGANConfig, QGANTrainingStats, QGANIterationMetrics, NoiseType,
+        QuantumGenerator, QuantumDiscriminator,
     };
     pub use crate::qpca::{DensityMatrixPCA, QPCAParams, QuantumPCA};
     pub use crate::quantum_channels::{
@@ -290,7 +303,7 @@ pub mod prelude {
     pub use crate::quantum_memory_hierarchy::{
         QuantumMemoryHierarchy, L1QuantumCache, L2QuantumCache, L3QuantumCache, QuantumMainMemory,
         QuantumMemoryOperation, QuantumMemoryResult, QuantumMemoryAdvantageReport, CacheReplacementPolicy,
-        MemoryOperationType, OptimizationResult,
+        MemoryOperationType, OptimizationResult as MemoryOptimizationResult,
     };
     pub use crate::quantum_process_isolation::{
         QuantumProcessIsolation, QuantumSandbox, QuantumAccessController, QuantumStateIsolator,

@@ -14,10 +14,12 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use crate::ising::{IsingModel};
-use crate::simulator::{AnnealingResult, QuantumState};
+use crate::simulator::AnnealingResult;
+use crate::qaoa::QuantumState;
 use super::config::{QECResult, QuantumErrorCorrectionError};
 use super::codes::{ErrorCorrectionCode, CodeParameters};
 use super::syndrome_detection::{SyndromeDetector, SyndromeDetectorConfig};
+use super::logical_operations::LogicalOperation;
 
 /// Logical encoding system
 #[derive(Debug, Clone)]

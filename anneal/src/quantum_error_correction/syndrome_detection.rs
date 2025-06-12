@@ -14,7 +14,8 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use crate::ising::{IsingModel};
-use crate::simulator::{AnnealingResult, QuantumState};
+use crate::simulator::AnnealingResult;
+use crate::qaoa::QuantumState;
 use super::config::{QECResult, QuantumErrorCorrectionError};
 use super::codes::{ErrorCorrectionCode, CodeParameters};
 use super::logical_operations::LogicalOperation;
@@ -525,7 +526,7 @@ impl SyndromeDetector {
         let mut syndrome = vec![0u8; num_stabilizers];
 
         // Simulate syndrome measurements
-        let mut rng = ChaCha8Rng::from_entropy();
+        let mut rng = ChaCha8Rng::from_rng(rand::thread_rng()).unwrap();
         
         for i in 0..num_stabilizers {
             // In a real implementation, this would measure the stabilizer

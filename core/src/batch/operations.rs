@@ -6,13 +6,10 @@ use crate::{
     gate::{single::*, GateOp},
     qubit::QubitId,
 };
-use ndarray::{s, Array1, Array2, Array3, ArrayView2, Axis};
+use ndarray::{s, Array1, Array2, Array3, Axis};
 use num_complex::Complex64;
 use rayon::prelude::*;
-use std::sync::Arc;
 
-// Use our own SIMD operations
-use crate::simd_ops::{apply_phase_simd, controlled_phase_simd};
 
 /// Apply a single-qubit gate to all states in a batch
 pub fn apply_single_qubit_gate_batch(

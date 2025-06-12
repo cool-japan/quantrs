@@ -6,7 +6,6 @@
 use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
-use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
 use crate::qubit::QubitId;
 use num_complex::Complex64;
 // use scirs2_linalg::{decompose_svd, matrix_exp, matrix_log};
@@ -302,7 +301,7 @@ impl HolonomicPath {
     pub fn fidelity(&self, target_gate: &Array2<Complex64>) -> f64 {
         let overlap = self.gate_matrix().dot(&target_gate.t());
         let trace = overlap.diag().sum();
-        (trace.norm_sqr() / (self.gate_matrix().nrows() as f64).powi(2))
+        trace.norm_sqr() / (self.gate_matrix().nrows() as f64).powi(2)
     }
 }
 

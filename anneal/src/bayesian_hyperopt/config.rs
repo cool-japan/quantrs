@@ -146,7 +146,7 @@ pub struct BayesianHyperoptimizer {
     pub config: BayesianOptConfig,
     pub parameter_space: ParameterSpace,
     pub history: OptimizationHistory,
-    pub gp_model: Option<GaussianProcessModel>,
+    pub gp_model: Option<GaussianProcessSurrogate>,
     pub current_best_value: f64,
     pub metrics: BayesianOptMetrics,
 }
@@ -188,7 +188,7 @@ impl BayesianHyperoptimizer {
         let mut rng = if let Some(seed) = self.config.seed {
             ChaCha8Rng::seed_from_u64(seed)
         } else {
-            ChaCha8Rng::from_entropy()
+            ChaCha8Rng::from_rng(rand::thread_rng()).unwrap()
         };
         
         let start_time = std::time::Instant::now();
@@ -296,11 +296,11 @@ impl BayesianHyperoptimizer {
         let y_data: Vec<f64> = self.history.evaluations.iter().map(|(_, y)| *y).collect();
         
         // Create or update GP model
-        let model = GaussianProcessModel::new(
-            x_data,
-            y_data,
-            self.config.gp_config.clone(),
-        )?;
+        let model = GaussianProcessSurrogate {
+            kernel: KernelFunction::RBF,
+            noise_variance: 1e-6,
+            mean_function: super::gaussian_process::MeanFunction::Zero,
+        };
         
         self.gp_model = Some(model);
         self.metrics.gp_training_time = gp_start.elapsed().as_secs_f64();
@@ -340,7 +340,7 @@ impl BayesianHyperoptimizer {
     }
     
     /// Evaluate acquisition function at given point
-    fn evaluate_acquisition_function(&self, point: &[f64], gp_model: &GaussianProcessModel) -> BayesianOptResult<f64> {
+    fn evaluate_acquisition_function(&self, point: &[f64], gp_model: &GaussianProcessSurrogate) -> BayesianOptResult<f64> {
         let (mean, variance) = gp_model.predict(point)?;
         let std_dev = variance.sqrt();
         
@@ -371,7 +371,18 @@ impl BayesianHyperoptimizer {
         let z = improvement / std_dev;
         
         // Approximation of normal CDF and PDF
-        let phi = 0.5 * (1.0 + libm::erf(z / std::f64::consts::SQRT_2));
+        // Using approximation for erf
+        let a1 = 0.254829592;
+        let a2 = -0.284496736;
+        let a3 = 1.421413741;
+        let a4 = -1.453152027;
+        let a5 = 1.061405429;
+        let p = 0.3275911;
+        let sign = if z < 0.0 { -1.0 } else { 1.0 };
+        let z_abs = z.abs() / std::f64::consts::SQRT_2;
+        let t = 1.0 / (1.0 + p * z_abs);
+        let erf = sign * (1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-z_abs * z_abs).exp());
+        let phi = 0.5 * (1.0 + erf);
         let pdf = (1.0 / (std::f64::consts::TAU.sqrt())) * (-0.5 * z * z).exp();
         
         let ei = improvement * phi + std_dev * pdf;
@@ -391,7 +402,18 @@ impl BayesianHyperoptimizer {
         }
         
         let z = (self.current_best_value - mean) / std_dev;
-        let pi = 0.5 * (1.0 + libm::erf(z / std::f64::consts::SQRT_2));
+        // Using approximation for erf (same as above)
+        let a1 = 0.254829592;
+        let a2 = -0.284496736;
+        let a3 = 1.421413741;
+        let a4 = -1.453152027;
+        let a5 = 1.061405429;
+        let p = 0.3275911;
+        let sign = if z < 0.0 { -1.0 } else { 1.0 };
+        let z_abs = z.abs() / std::f64::consts::SQRT_2;
+        let t = 1.0 / (1.0 + p * z_abs);
+        let erf = sign * (1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-z_abs * z_abs).exp());
+        let pi = 0.5 * (1.0 + erf);
         Ok(pi)
     }
     

@@ -22,7 +22,8 @@ use std::time::{Duration, Instant};
 
 use crate::applications::{ApplicationError, ApplicationResult};
 use crate::braket::{BraketClient, BraketDevice};
-use crate::dwave::{DWaveClient, HardwareTopology};
+use crate::dwave::DWaveClient;
+use crate::HardwareTopology;
 use crate::ising::{IsingModel, QuboModel};
 use crate::simulator::{ClassicalAnnealingSimulator, AnnealingParams, AnnealingResult};
 use crate::multi_objective::{MultiObjectiveOptimizer, MultiObjectiveResult};
@@ -104,7 +105,7 @@ impl Default for AdvantageConfig {
 }
 
 /// Classical algorithms for baseline comparison
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ClassicalAlgorithm {
     /// Simulated annealing
     SimulatedAnnealing,
@@ -127,7 +128,7 @@ pub enum ClassicalAlgorithm {
 }
 
 /// Quantum devices for testing
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum QuantumDevice {
     /// D-Wave Advantage system
     DWaveAdvantage,

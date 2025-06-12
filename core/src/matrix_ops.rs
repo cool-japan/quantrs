@@ -5,9 +5,8 @@
 //! quantum operations.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
+use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use num_complex::Complex64;
-use scirs2_linalg::{det, inv};
 use scirs2_sparse::csr::CsrMatrix;
 use std::fmt::Debug;
 

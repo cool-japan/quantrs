@@ -577,7 +577,7 @@ impl Default for MonitoringConfig {
 }
 
 /// Metrics to monitor during testing
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MonitoredMetric {
     /// Test execution time
     ExecutionTime,
@@ -906,7 +906,7 @@ pub struct IntegrationTestCase {
 }
 
 /// Test categories
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TestCategory {
     /// Unit integration tests
     UnitIntegration,

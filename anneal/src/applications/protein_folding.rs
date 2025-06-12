@@ -26,8 +26,9 @@ use crate::ising::{IsingModel, QuboModel};
 use crate::neural_annealing_schedules::{NeuralAnnealingScheduler, NeuralSchedulerConfig};
 use crate::quantum_error_correction::{
     SyndromeDetector, ErrorCorrectionCode, LogicalAnnealingEncoder,
-    NoiseResilientAnnealingProtocol,
+    NoiseResilientAnnealingProtocol, ErrorMitigationManager, ErrorMitigationConfig,
 };
+use crate::simulator::{AnnealingParams, QuantumAnnealingSimulator};
 
 /// Amino acid types in the HP model
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -262,11 +263,11 @@ pub struct ProteinFoldingProblem {
     /// Optimization objectives
     pub objectives: Vec<FoldingObjective>,
     /// Quantum error correction framework
-    pub qec_framework: Option<QuantumErrorCorrectionFramework>,
+    pub qec_framework: Option<String>,
     /// Advanced algorithm configuration
     pub advanced_config: AdvancedAlgorithmConfig,
     /// Neural scheduling configuration
-    pub neural_config: Option<NeuralScheduleConfig>,
+    pub neural_config: Option<NeuralSchedulerConfig>,
 }
 
 /// Folding optimization objectives
@@ -303,13 +304,13 @@ impl ProteinFoldingProblem {
     }
     
     /// Enable quantum error correction
-    pub fn with_quantum_error_correction(mut self, config: ErrorCorrectionConfig) -> Self {
-        self.qec_framework = Some(QuantumErrorCorrectionFramework::new(config));
+    pub fn with_quantum_error_correction(mut self, config: String) -> Self {
+        self.qec_framework = Some(config);
         self
     }
     
     /// Enable neural annealing schedules
-    pub fn with_neural_annealing(mut self, config: NeuralScheduleConfig) -> Self {
+    pub fn with_neural_annealing(mut self, config: NeuralSchedulerConfig) -> Self {
         self.neural_config = Some(config);
         self
     }
@@ -345,24 +346,37 @@ impl ProteinFoldingProblem {
         if let Some(ref qec_framework) = self.qec_framework {
             println!("Starting noise-resilient protein folding optimization");
             
-            // Convert to QUBO
+            // Convert to QUBO and then to Ising
             let (qubo, variable_map) = self.to_qubo()?;
+            let ising_model = qubo.to_ising();
             
-            // Use logical encoding for noise resilience
-            let mut logical_encoder = LogicalAnnealingEncoder::new(
-                qec_framework.config.clone()
-            );
+            // Use error mitigation for protein folding optimization
+            let error_config = ErrorMitigationConfig::default();
+            let mut error_manager = ErrorMitigationManager::new(error_config)
+                .map_err(|e| ApplicationError::OptimizationError(format!("Failed to create error manager: {:?}", e)))?;
             
-            // Create noise-resilient protocol
-            let mut noise_protocol = NoiseResilientAnnealingProtocol::new(
-                qec_framework.config.clone()
-            );
+            // First perform standard annealing
+            let params = AnnealingParams::default();
+            let annealer = QuantumAnnealingSimulator::new(params.clone())
+                .map_err(|e| ApplicationError::OptimizationError(format!("Failed to create annealer: {:?}", e)))?;
+            let annealing_result = annealer.solve(&ising_model.0)
+                .map_err(|e| ApplicationError::OptimizationError(format!("Annealing failed: {:?}", e)))?;
             
-            // Solve with error correction
-            let result = noise_protocol.solve(&qubo)
-                .map_err(|e| ApplicationError::OptimizationError(format!("QEC solving failed: {:?}", e)))?;
+            // Convert simulator result to error mitigation format
+            let error_mitigation_result = crate::quantum_error_correction::error_mitigation::AnnealingResult {
+                solution: annealing_result.best_spins.iter().map(|&x| x as i32).collect(),
+                energy: annealing_result.best_energy,
+                num_occurrences: 1,
+                chain_break_fraction: 0.0,
+                timing: std::collections::HashMap::new(),
+                info: std::collections::HashMap::new(),
+            };
             
-            let solution = result.map_err(|e| ApplicationError::OptimizationError(format!("QEC solver error: {}", e)))?;
+            // Apply error mitigation to improve the result
+            let mitigation_result = error_manager.apply_mitigation(&ising_model.0, error_mitigation_result, &params)
+                .map_err(|e| ApplicationError::OptimizationError(format!("Error mitigation failed: {:?}", e)))?;
+            
+            let solution = &mitigation_result.mitigated_result.solution;
             
             // Convert back to folding
             self.solution_from_binary(&solution, &variable_map)
@@ -381,7 +395,8 @@ impl ProteinFoldingProblem {
             let (qubo, variable_map) = self.to_qubo()?;
             
             // Create neural annealing scheduler
-            let mut neural_scheduler = NeuralAnnealingScheduler::new(neural_config.clone());
+            let mut neural_scheduler = NeuralAnnealingScheduler::new(neural_config.clone())
+                .map_err(|e| ApplicationError::OptimizationError(format!("Failed to create neural scheduler: {:?}", e)))?;
             
             // Optimize using neural-guided schedules
             let result = neural_scheduler.optimize(&qubo)
@@ -564,7 +579,7 @@ impl OptimizationProblem for ProteinFoldingProblem {
         let seq_len = self.sequence.length();
         let num_vars = (seq_len - 1) * 2; // 2 bits per move for 2D lattice
         
-        let mut qubo = QuboModel::new(num_vars)?;
+        let mut qubo = QuboModel::new(num_vars);
         let mut variable_map = HashMap::new();
         
         // Map variables
@@ -614,10 +629,10 @@ impl ProteinFoldingProblem {
         // Simplified contact terms - in practice would be more complex
         let weight = -1.0; // Negative to encourage contacts
         
-        for i in 0..qubo.num_variables() {
-            for j in (i + 1)..qubo.num_variables() {
+        for i in 0..qubo.num_variables {
+            for j in (i + 1)..qubo.num_variables {
                 // Add interaction terms that promote favorable configurations
-                qubo.set_coupling(i, j, weight * 0.1)?;
+                qubo.set_quadratic(i, j, weight * 0.1)?;
             }
         }
         
@@ -629,7 +644,7 @@ impl ProteinFoldingProblem {
         // Penalty for extended configurations
         let penalty = 0.5;
         
-        for i in 0..qubo.num_variables() {
+        for i in 0..qubo.num_variables {
             qubo.set_bias(i, penalty)?;
         }
         
@@ -692,7 +707,7 @@ impl IndustrySolution for ProteinFolding {
 }
 
 /// Create benchmark protein folding problems
-pub fn create_benchmark_problems(size: usize) -> ApplicationResult<Vec<Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>>>> {
+pub fn create_benchmark_problems(size: usize) -> ApplicationResult<Vec<Box<dyn OptimizationProblem<Solution = ProteinFolding, ObjectiveValue = f64>>>> {
     let mut problems = Vec::new();
     
     // Generate test sequences of different complexity
@@ -727,7 +742,7 @@ pub fn create_benchmark_problems(size: usize) -> ApplicationResult<Vec<Box<dyn O
         
         // Note: This is a simplified implementation for the trait object
         // In practice, would need proper trait object conversion
-        problems.push(Box::new(problem) as Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>>);
+        problems.push(Box::new(problem) as Box<dyn OptimizationProblem<Solution = ProteinFolding, ObjectiveValue = f64>>);
     }
     
     Ok(problems)

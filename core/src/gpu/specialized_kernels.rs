@@ -5,7 +5,7 @@
 //! It leverages tensor cores, optimized memory access patterns, and gate fusion for maximum performance.
 
 use crate::{
-    error::{QuantRS2Error, QuantRS2Result},
+    error::QuantRS2Result,
     gate::GateOp,
     qubit::QubitId,
 };

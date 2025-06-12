@@ -493,7 +493,7 @@ impl HardwareAwareCompiler {
 
     /// Fuse consecutive single-qubit gates
     fn fuse_consecutive_gates(&mut self, circuit: InterfaceCircuit) -> Result<InterfaceCircuit> {
-        let mut optimized_circuit = Circuit::new(circuit.gates.len());
+        let mut optimized_gates = Vec::new();
         let mut i = 0;
         
         while i < circuit.gates.len() {
@@ -521,23 +521,22 @@ impl HardwareAwareCompiler {
                 // If we found consecutive gates, fuse them
                 if consecutive_gates.len() > 1 {
                     let fused_gate = self.fuse_rotation_gates(&consecutive_gates, target)?;
-                    optimized_circuit.add_gate(fused_gate);
+                    optimized_gates.push(fused_gate);
                     i = j;
                 } else {
-                    optimized_circuit.add_gate(current_gate.clone());
+                    optimized_gates.push(current_gate.clone());
                     i += 1;
                 }
             } else {
                 // Not a single-qubit gate, just add it
-                optimized_circuit.add_gate(current_gate.clone());
+                optimized_gates.push(current_gate.clone());
                 i += 1;
             }
         }
         
-        Ok(InterfaceCircuit {
-            gates: optimized_circuit.gates,
-            measurements: circuit.measurements,
-        })
+        let mut optimized_circuit = circuit.clone();
+        optimized_circuit.gates = optimized_gates;
+        Ok(optimized_circuit)
     }
 
     /// Route circuit for limited connectivity
@@ -1276,9 +1275,10 @@ impl QuantumMLTrainer {
             for data in batch_data {
                 // Simulate with perturbed parameters
                 let mut circuit = self.create_parameterized_circuit(&params_plus)?;
-                let mut simulator = StateVectorSimulator::new(circuit.num_qubits());
-                simulator.apply_circuit(&circuit)?;
-                let state = simulator.get_state_vector();
+                let mut simulator = StateVectorSimulator::new();
+                simulator.initialize_state(circuit.num_qubits)?;
+                simulator.apply_interface_circuit(&circuit)?;
+                let state = simulator.get_state();
                 
                 // Convert state to probability distribution for loss computation
                 let probs: Array1<f64> = state.iter().map(|x| x.norm_sqr()).collect();
@@ -1293,9 +1293,10 @@ impl QuantumMLTrainer {
             for data in batch_data {
                 // Simulate with perturbed parameters
                 let mut circuit = self.create_parameterized_circuit(&params_minus)?;
-                let mut simulator = StateVectorSimulator::new(circuit.num_qubits());
-                simulator.apply_circuit(&circuit)?;
-                let state = simulator.get_state_vector();
+                let mut simulator = StateVectorSimulator::new();
+                simulator.initialize_state(circuit.num_qubits)?;
+                simulator.apply_interface_circuit(&circuit)?;
+                let state = simulator.get_state();
                 
                 // Convert state to probability distribution for loss computation
                 let probs: Array1<f64> = state.iter().map(|x| x.norm_sqr()).collect();
@@ -1421,10 +1422,10 @@ impl QuantumMLTrainer {
         self.update_circuit_parameters()?;
 
         // Compile circuit for target hardware
-        let compiled_circuit = self.hardware_compiler.compile_circuit(&self.pqc.circuit)?;
+        let optimized_circuit = self.hardware_compiler.compile_circuit(&self.pqc.circuit)?;
+        let compiled_circuit = self.circuit_interface.compile_circuit(&optimized_circuit, crate::circuit_interfaces::SimulationBackend::StateVector)?;
 
         // Execute circuit using proper circuit interface
-        let backend = crate::circuit_interfaces::SimulationBackend::StateVector;
         let result = self.circuit_interface.execute_circuit(&compiled_circuit, None)?;
 
         // Extract probabilities from final state
@@ -1625,85 +1626,6 @@ impl QuantumMLTrainer {
         }
         self.optimizer_state.parameters = parameters;
         Ok(())
-    }
-
-    /// Get target qubit for single-qubit gates
-    fn get_single_qubit_target(&self, gate: &InterfaceGate) -> Option<usize> {
-        match gate.gate_type {
-            InterfaceGateType::RX(_) | 
-            InterfaceGateType::RY(_) | 
-            InterfaceGateType::RZ(_) |
-            InterfaceGateType::Phase(_) |
-            InterfaceGateType::Hadamard |
-            InterfaceGateType::PauliX |
-            InterfaceGateType::PauliY |
-            InterfaceGateType::PauliZ => {
-                if gate.qubits.len() == 1 {
-                    Some(gate.qubits[0])
-                } else {
-                    None
-                }
-            },
-            _ => None,
-        }
-    }
-
-    /// Fuse consecutive rotation gates into a single equivalent gate
-    fn fuse_rotation_gates(
-        &self,
-        gates: &[InterfaceGate],
-        target: usize,
-    ) -> Result<InterfaceGate> {
-        // Track rotation angles for each axis
-        let mut rx_angle = 0.0;
-        let mut ry_angle = 0.0;
-        let mut rz_angle = 0.0;
-
-        // Accumulate rotations
-        for gate in gates {
-            match gate.gate_type {
-                InterfaceGateType::RX(angle) => rx_angle += angle,
-                InterfaceGateType::RY(angle) => ry_angle += angle,
-                InterfaceGateType::RZ(angle) => rz_angle += angle,
-                InterfaceGateType::Phase(angle) => rz_angle += angle,
-                InterfaceGateType::PauliX => rx_angle += std::f64::consts::PI,
-                InterfaceGateType::PauliY => ry_angle += std::f64::consts::PI,
-                InterfaceGateType::PauliZ => rz_angle += std::f64::consts::PI,
-                InterfaceGateType::Hadamard => {
-                    // H = RZ(π)RY(π/2)RZ(π) (up to global phase)
-                    rz_angle += std::f64::consts::PI;
-                    ry_angle += std::f64::consts::PI / 2.0;
-                    rz_angle += std::f64::consts::PI;
-                }
-                _ => {
-                    return Err(SimulatorError::UnsupportedOperation(
-                        "Cannot fuse non-single-qubit gate".to_string(),
-                    ));
-                }
-            }
-        }
-
-        // Normalize angles to [-π, π]
-        rx_angle = ((rx_angle + std::f64::consts::PI) % (2.0 * std::f64::consts::PI))
-            - std::f64::consts::PI;
-        ry_angle = ((ry_angle + std::f64::consts::PI) % (2.0 * std::f64::consts::PI))
-            - std::f64::consts::PI;
-        rz_angle = ((rz_angle + std::f64::consts::PI) % (2.0 * std::f64::consts::PI))
-            - std::f64::consts::PI;
-
-        // Return the most significant rotation (largest angle)
-        let max_angle = rx_angle.abs().max(ry_angle.abs()).max(rz_angle.abs());
-
-        if max_angle < 1e-10 {
-            // Identity operation - use RZ with zero angle as placeholder
-            Ok(InterfaceGate::new(InterfaceGateType::RZ(0.0), vec![target]))
-        } else if rx_angle.abs() == max_angle {
-            Ok(InterfaceGate::new(InterfaceGateType::RX(rx_angle), vec![target]))
-        } else if ry_angle.abs() == max_angle {
-            Ok(InterfaceGate::new(InterfaceGateType::RY(ry_angle), vec![target]))
-        } else {
-            Ok(InterfaceGate::new(InterfaceGateType::RZ(rz_angle), vec![target]))
-        }
     }
 }
 
@@ -1980,8 +1902,7 @@ mod tests {
 
     #[test]
     fn test_gate_fusion_functionality() {
-        let config = QMLConfig::default();
-        let trainer = QuantumMLTrainer::new(config).unwrap();
+        let compiler = HardwareAwareCompiler::new(HardwareArchitecture::NISQ, 4);
 
         // Create test gates for fusion
         let gates = vec![
@@ -1990,7 +1911,7 @@ mod tests {
             InterfaceGate::new(InterfaceGateType::RX(0.3), vec![0]),
         ];
 
-        let result = trainer.fuse_rotation_gates(&gates, 0);
+        let result = compiler.fuse_rotation_gates(&gates, 0);
         assert!(result.is_ok());
         
         let fused_gate = result.unwrap();
@@ -1999,18 +1920,17 @@ mod tests {
 
     #[test]
     fn test_single_qubit_gate_identification() {
-        let config = QMLConfig::default();
-        let trainer = QuantumMLTrainer::new(config).unwrap();
+        let compiler = HardwareAwareCompiler::new(HardwareArchitecture::NISQ, 4);
 
         // Test various single-qubit gates
         let ry_gate = InterfaceGate::new(InterfaceGateType::RY(0.5), vec![1]);
-        assert_eq!(trainer.get_single_qubit_target(&ry_gate), Some(1));
+        assert_eq!(compiler.get_single_qubit_target(&ry_gate), Some(1));
 
         let hadamard_gate = InterfaceGate::new(InterfaceGateType::Hadamard, vec![2]);
-        assert_eq!(trainer.get_single_qubit_target(&hadamard_gate), Some(2));
+        assert_eq!(compiler.get_single_qubit_target(&hadamard_gate), Some(2));
 
         let cnot_gate = InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]);
-        assert_eq!(trainer.get_single_qubit_target(&cnot_gate), None);
+        assert_eq!(compiler.get_single_qubit_target(&cnot_gate), None);
     }
 
     #[test]

@@ -21,7 +21,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::embedding::{Embedding, EmbeddingResult, HardwareTopology};
-use crate::ising::{IsingModel, QuboModel};
+use crate::ising::{IsingModel};
 use crate::applications::{ApplicationError, ApplicationResult};
 
 /// Multi-chip embedding configuration
@@ -270,6 +270,7 @@ pub struct ProblemPartition {
 }
 
 /// Multi-chip embedding and execution coordinator
+#[derive(Debug)]
 pub struct MultiChipCoordinator {
     /// Configuration
     pub config: MultiChipConfig,
@@ -588,7 +589,7 @@ impl MultiChipCoordinator {
     /// Extract subproblem for partition
     fn extract_subproblem(&self, problem: &IsingModel, variables: &[usize]) -> ApplicationResult<IsingModel> {
         let num_vars = variables.len();
-        let mut subproblem = IsingModel::new(num_vars)?;
+        let mut subproblem = IsingModel::new(num_vars);
         
         // Map original variables to local indices
         let var_map: HashMap<usize, usize> = variables.iter()
@@ -598,8 +599,9 @@ impl MultiChipCoordinator {
         
         // Copy bias terms
         for (i, &original_var) in variables.iter().enumerate() {
-            if original_var < problem.biases.len() {
-                subproblem.set_bias(i, problem.biases[original_var])?;
+            let biases = problem.biases();
+            if original_var < biases.len() {
+                subproblem.set_bias(i, biases[original_var])?;
             }
         }
         
@@ -609,8 +611,9 @@ impl MultiChipCoordinator {
                 let orig_i = variables[i];
                 let orig_j = variables[j];
                 
-                if orig_i < problem.couplings.len() && orig_j < problem.couplings[orig_i].len() {
-                    let coupling = problem.couplings[orig_i][orig_j];
+                let couplings = problem.couplings();
+                if orig_i < couplings.len() && orig_j < couplings[orig_i].len() {
+                    let coupling = couplings[orig_i][orig_j];
                     if coupling != 0.0 {
                         subproblem.set_coupling(i, j, coupling)?;
                     }
@@ -642,13 +645,14 @@ impl MultiChipCoordinator {
     fn check_partition_coupling(&self, partition1: &ProblemPartition, partition2: &ProblemPartition, problem: &IsingModel) -> ApplicationResult<bool> {
         for &var1 in &partition1.variables {
             for &var2 in &partition2.variables {
-                if var1 < problem.couplings.len() && var2 < problem.couplings[var1].len() {
-                    if problem.couplings[var1][var2] != 0.0 {
+                let couplings = problem.couplings();
+                if var1 < couplings.len() && var2 < couplings[var1].len() {
+                    if couplings[var1][var2] != 0.0 {
                         return Ok(true);
                     }
                 }
-                if var2 < problem.couplings.len() && var1 < problem.couplings[var2].len() {
-                    if problem.couplings[var2][var1] != 0.0 {
+                if var2 < couplings.len() && var1 < couplings[var2].len() {
+                    if couplings[var2][var1] != 0.0 {
                         return Ok(true);
                     }
                 }
@@ -936,7 +940,7 @@ pub fn create_example_multi_chip_system() -> ApplicationResult<MultiChipCoordina
     for i in 0..4 {
         let chip = QuantumChip {
             id: format!("chip_{}", i),
-            topology: HardwareTopology::new(format!("D-Wave_Advantage_{}", i), 5000)?,
+            topology: HardwareTopology::Pegasus(16), // D-Wave Advantage uses Pegasus-16
             status: ChipStatus::Available,
             performance: ChipPerformance::default(),
             workload: None,
@@ -990,7 +994,7 @@ mod tests {
         let coordinator = create_example_multi_chip_system().unwrap();
         
         // Create test problem
-        let problem = IsingModel::new(200).unwrap();
+        let mut problem = IsingModel::new(200);
         
         // Distribute problem
         let result = coordinator.distribute_problem(&problem);

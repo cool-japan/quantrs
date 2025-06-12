@@ -5,8 +5,10 @@
 //! and common QML layer patterns.
 
 pub mod encoding;
+pub mod generative_adversarial;
 pub mod layers;
 pub mod nlp;
+pub mod reinforcement_learning;
 pub mod training;
 
 use crate::{

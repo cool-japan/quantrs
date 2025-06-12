@@ -4,7 +4,7 @@ use super::{BatchConfig, BatchExecutionResult, BatchStateVector};
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
-    gpu::{GpuBackendFactory, GpuStateVector},
+    gpu::GpuBackendFactory,
     qubit::QubitId,
 };
 use ndarray::{Array1, Array2};

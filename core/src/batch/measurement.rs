@@ -5,7 +5,7 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
-use ndarray::{Array1, Array2, Axis};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use rand::prelude::*;
 use rand::{thread_rng, SeedableRng};

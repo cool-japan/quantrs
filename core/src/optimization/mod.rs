@@ -5,6 +5,7 @@
 
 pub mod compression;
 pub mod fusion;
+pub mod lazy_evaluation;
 pub mod peephole;
 pub mod zx_optimizer;
 

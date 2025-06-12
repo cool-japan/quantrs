@@ -5,7 +5,7 @@
 //! decomposition techniques.
 
 use crate::{
-    cartan::{CartanCoefficients, CartanDecomposer, CartanDecomposition},
+    cartan::{CartanDecomposer, CartanDecomposition},
     error::{QuantRS2Error, QuantRS2Result},
     gate::{multi::*, single::*, GateOp},
     matrix_ops::{DenseMatrix, QuantumMatrix},
@@ -13,10 +13,9 @@ use crate::{
     shannon::ShannonDecomposer,
     synthesis::{decompose_single_qubit_zyz, SingleQubitDecomposition},
 };
-use ndarray::{s, Array1, Array2, ArrayView2, Axis};
+use ndarray::{s, Array2};
 use num_complex::Complex;
 use rustc_hash::FxHashMap;
-use std::f64::consts::PI;
 
 /// Result of multi-qubit KAK decomposition
 #[derive(Debug, Clone)]

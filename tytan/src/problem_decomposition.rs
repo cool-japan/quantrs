@@ -1898,6 +1898,685 @@ pub struct ParallelResult {
     pub efficiency: f64,
 }
 
+/// Constraint satisfaction decomposer
+pub struct ConstraintSatisfactionDecomposer {
+    /// Decomposition strategy
+    strategy: CSPDecompositionStrategy,
+    /// Variable ordering heuristic
+    variable_ordering: VariableOrderingHeuristic,
+    /// Constraint propagation level
+    propagation_level: PropagationLevel,
+    /// Maximum cluster size
+    max_cluster_size: usize,
+}
+
+#[derive(Debug, Clone)]
+pub enum CSPDecompositionStrategy {
+    /// Tree decomposition
+    TreeDecomposition,
+    /// Hypertree decomposition
+    HypertreeDecomposition { width: usize },
+    /// Cycle cutset decomposition
+    CycleCutset,
+    /// Constraint clustering
+    ConstraintClustering,
+    /// Functional decomposition
+    FunctionalDecomposition,
+}
+
+#[derive(Debug, Clone)]
+pub enum VariableOrderingHeuristic {
+    /// Minimum remaining values
+    MRV,
+    /// Degree heuristic
+    Degree,
+    /// Minimum width ordering
+    MinWidth,
+    /// Maximum cardinality search
+    MaxCardinality,
+    /// Dynamic ordering
+    Dynamic,
+}
+
+#[derive(Debug, Clone)]
+pub enum PropagationLevel {
+    /// No propagation
+    None,
+    /// Node consistency
+    NodeConsistency,
+    /// Arc consistency
+    ArcConsistency,
+    /// Path consistency
+    PathConsistency,
+    /// Generalized arc consistency
+    GAC,
+}
+
+/// CSP representation
+#[derive(Debug, Clone)]
+pub struct CSPProblem {
+    /// Variables with their domains
+    pub variables: HashMap<String, VariableInfo>,
+    /// Constraints
+    pub constraints: Vec<CSPConstraint>,
+    /// Constraint graph
+    pub constraint_graph: ConstraintGraph,
+}
+
+#[derive(Debug, Clone)]
+pub struct VariableInfo {
+    pub name: String,
+    pub domain: Vec<i32>,
+    pub current_domain: Vec<i32>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CSPConstraint {
+    pub id: usize,
+    pub scope: Vec<String>,
+    pub constraint_type: ConstraintType,
+    pub tuples: Option<Vec<Vec<i32>>>, // For extensional constraints
+}
+
+#[derive(Debug, Clone)]
+pub enum ConstraintType {
+    /// All different constraint
+    AllDifferent,
+    /// Linear constraint
+    Linear { coefficients: Vec<f64>, op: String, rhs: f64 },
+    /// Table constraint (extensional)
+    Table { allowed: bool },
+    /// Global cardinality
+    GlobalCardinality { values: Vec<i32>, bounds: Vec<(usize, usize)> },
+    /// Cumulative constraint
+    Cumulative { capacity: i32 },
+    /// Element constraint
+    Element,
+    /// Custom constraint
+    Custom { name: String },
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintGraph {
+    /// Adjacency list representation
+    pub adjacency: HashMap<String, HashSet<String>>,
+    /// Constraint hypergraph
+    pub hyperedges: Vec<HashSet<String>>,
+}
+
+impl ConstraintSatisfactionDecomposer {
+    /// Create new CSP decomposer
+    pub fn new() -> Self {
+        Self {
+            strategy: CSPDecompositionStrategy::TreeDecomposition,
+            variable_ordering: VariableOrderingHeuristic::MinWidth,
+            propagation_level: PropagationLevel::ArcConsistency,
+            max_cluster_size: 10,
+        }
+    }
+
+    /// Set decomposition strategy
+    pub fn with_strategy(mut self, strategy: CSPDecompositionStrategy) -> Self {
+        self.strategy = strategy;
+        self
+    }
+
+    /// Set variable ordering heuristic
+    pub fn with_variable_ordering(mut self, ordering: VariableOrderingHeuristic) -> Self {
+        self.variable_ordering = ordering;
+        self
+    }
+
+    /// Decompose CSP into subproblems
+    pub fn decompose(&self, csp: &CSPProblem) -> Result<CSPDecomposition, String> {
+        match self.strategy {
+            CSPDecompositionStrategy::TreeDecomposition => {
+                self.tree_decomposition(csp)
+            }
+            CSPDecompositionStrategy::ConstraintClustering => {
+                self.constraint_clustering_decomposition(csp)
+            }
+            CSPDecompositionStrategy::CycleCutset => {
+                self.cycle_cutset_decomposition(csp)
+            }
+            _ => {
+                // Default to tree decomposition
+                self.tree_decomposition(csp)
+            }
+        }
+    }
+
+    /// Tree decomposition of CSP
+    fn tree_decomposition(&self, csp: &CSPProblem) -> Result<CSPDecomposition, String> {
+        // Build primal graph
+        let primal_graph = self.build_primal_graph(csp);
+        
+        // Find tree decomposition
+        let tree_dec = self.find_tree_decomposition(&primal_graph)?;
+        
+        // Extract clusters
+        let clusters = self.extract_clusters_from_tree(&tree_dec, csp)?;
+        
+        // Build cluster tree
+        let cluster_tree = self.build_cluster_tree(&clusters, &tree_dec)?;
+        
+        Ok(CSPDecomposition {
+            clusters,
+            cluster_tree,
+            separator_sets: self.compute_separator_sets(&cluster_tree),
+            width: tree_dec.width,
+        })
+    }
+
+    /// Build primal graph from CSP
+    fn build_primal_graph(&self, csp: &CSPProblem) -> Graph {
+        let mut edges = Vec::new();
+        let var_to_idx: HashMap<&str, usize> = csp.variables
+            .keys()
+            .enumerate()
+            .map(|(i, v)| (v.as_str(), i))
+            .collect();
+        
+        // Add edge between variables that appear in same constraint
+        for constraint in &csp.constraints {
+            let vars_in_constraint: Vec<_> = constraint.scope
+                .iter()
+                .filter_map(|v| var_to_idx.get(v.as_str()))
+                .collect();
+            
+            // Add all pairs as edges
+            for i in 0..vars_in_constraint.len() {
+                for j in i+1..vars_in_constraint.len() {
+                    edges.push(Edge {
+                        from: *vars_in_constraint[i],
+                        to: *vars_in_constraint[j],
+                        weight: 1.0,
+                    });
+                }
+            }
+        }
+        
+        Graph {
+            num_nodes: csp.variables.len(),
+            edges,
+            node_weights: vec![1.0; csp.variables.len()],
+        }
+    }
+
+    /// Find tree decomposition using minimum width heuristic
+    fn find_tree_decomposition(&self, graph: &Graph) -> Result<TreeDecomposition, String> {
+        // Use greedy minimum width algorithm
+        let mut remaining_nodes: HashSet<_> = (0..graph.num_nodes).collect();
+        let mut tree_nodes = Vec::new();
+        let mut elimination_order = Vec::new();
+        let mut current_graph = graph.clone();
+        let mut max_bag_size = 0;
+        
+        while !remaining_nodes.is_empty() {
+            // Choose node to eliminate based on heuristic
+            let node = self.choose_node_to_eliminate(&current_graph, &remaining_nodes)?;
+            elimination_order.push(node);
+            
+            // Find neighbors in current graph
+            let neighbors = self.get_neighbors(&current_graph, node);
+            
+            // Create tree node (bag) with node and its neighbors
+            let mut bag = neighbors.clone();
+            bag.insert(node);
+            max_bag_size = max_bag_size.max(bag.len());
+            
+            tree_nodes.push(TreeNode {
+                id: tree_nodes.len(),
+                bag,
+                children: Vec::new(),
+            });
+            
+            // Make neighbors form a clique
+            self.make_clique(&mut current_graph, &neighbors);
+            
+            // Remove node from graph
+            remaining_nodes.remove(&node);
+            current_graph = self.remove_node_from_graph(&current_graph, node);
+        }
+        
+        Ok(TreeDecomposition {
+            nodes: tree_nodes,
+            width: max_bag_size - 1, // Tree width is max bag size - 1
+            root: 0,
+        })
+    }
+
+    /// Choose node to eliminate based on heuristic
+    fn choose_node_to_eliminate(&self, graph: &Graph, remaining: &HashSet<usize>) -> Result<usize, String> {
+        match self.variable_ordering {
+            VariableOrderingHeuristic::MinWidth => {
+                // Choose node that creates smallest clique when eliminated
+                remaining.iter()
+                    .min_by_key(|&&node| {
+                        let neighbors = self.get_neighbors(graph, node);
+                        neighbors.len()
+                    })
+                    .copied()
+                    .ok_or_else(|| "No nodes remaining".to_string())
+            }
+            _ => {
+                // Default: choose arbitrary node
+                remaining.iter().next().copied()
+                    .ok_or_else(|| "No nodes remaining".to_string())
+            }
+        }
+    }
+
+    /// Get neighbors of a node in graph
+    fn get_neighbors(&self, graph: &Graph, node: usize) -> HashSet<usize> {
+        graph.edges
+            .iter()
+            .filter_map(|edge| {
+                if edge.from == node {
+                    Some(edge.to)
+                } else if edge.to == node {
+                    Some(edge.from)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Make a set of nodes form a clique
+    fn make_clique(&self, graph: &mut Graph, nodes: &HashSet<usize>) {
+        let node_vec: Vec<_> = nodes.iter().copied().collect();
+        for i in 0..node_vec.len() {
+            for j in i+1..node_vec.len() {
+                // Check if edge already exists
+                let exists = graph.edges.iter().any(|e| {
+                    (e.from == node_vec[i] && e.to == node_vec[j]) ||
+                    (e.from == node_vec[j] && e.to == node_vec[i])
+                });
+                
+                if !exists {
+                    graph.edges.push(Edge {
+                        from: node_vec[i],
+                        to: node_vec[j],
+                        weight: 1.0,
+                    });
+                }
+            }
+        }
+    }
+
+    /// Remove node from graph
+    fn remove_node_from_graph(&self, graph: &Graph, node: usize) -> Graph {
+        Graph {
+            num_nodes: graph.num_nodes,
+            edges: graph.edges
+                .iter()
+                .filter(|e| e.from != node && e.to != node)
+                .cloned()
+                .collect(),
+            node_weights: graph.node_weights.clone(),
+        }
+    }
+
+    /// Extract clusters from tree decomposition
+    fn extract_clusters_from_tree(&self, tree_dec: &TreeDecomposition, csp: &CSPProblem) -> Result<Vec<CSPCluster>, String> {
+        let var_names: Vec<_> = csp.variables.keys().cloned().collect();
+        let mut clusters = Vec::new();
+        
+        for tree_node in &tree_dec.nodes {
+            let cluster_vars: Vec<_> = tree_node.bag
+                .iter()
+                .filter_map(|&idx| var_names.get(idx).cloned())
+                .collect();
+            
+            // Find constraints that are fully contained in this cluster
+            let cluster_constraints: Vec<_> = csp.constraints
+                .iter()
+                .filter(|c| c.scope.iter().all(|v| cluster_vars.contains(v)))
+                .cloned()
+                .collect();
+            
+            clusters.push(CSPCluster {
+                id: tree_node.id,
+                variables: cluster_vars,
+                constraints: cluster_constraints,
+                subproblem: None,
+            });
+        }
+        
+        Ok(clusters)
+    }
+
+    /// Build cluster tree from tree decomposition
+    fn build_cluster_tree(&self, clusters: &[CSPCluster], tree_dec: &TreeDecomposition) -> Result<ClusterTree, String> {
+        // For now, create a simple linear tree
+        // TODO: Implement proper tree construction from tree decomposition
+        let mut edges = Vec::new();
+        for i in 1..clusters.len() {
+            edges.push((i-1, i));
+        }
+        
+        Ok(ClusterTree {
+            clusters: clusters.len(),
+            edges,
+            root: 0,
+        })
+    }
+
+    /// Compute separator sets between clusters
+    fn compute_separator_sets(&self, cluster_tree: &ClusterTree) -> HashMap<(usize, usize), HashSet<String>> {
+        // TODO: Implement separator set computation
+        HashMap::new()
+    }
+
+    /// Constraint clustering decomposition
+    fn constraint_clustering_decomposition(&self, csp: &CSPProblem) -> Result<CSPDecomposition, String> {
+        // Group constraints by their scope overlap
+        let mut clusters = Vec::new();
+        let mut assigned_constraints = vec![false; csp.constraints.len()];
+        let mut cluster_id = 0;
+        
+        for (i, constraint) in csp.constraints.iter().enumerate() {
+            if assigned_constraints[i] {
+                continue;
+            }
+            
+            // Start new cluster with this constraint
+            let mut cluster_vars: HashSet<_> = constraint.scope.iter().cloned().collect();
+            let mut cluster_constraints = vec![constraint.clone()];
+            assigned_constraints[i] = true;
+            
+            // Add related constraints
+            for (j, other_constraint) in csp.constraints.iter().enumerate() {
+                if assigned_constraints[j] {
+                    continue;
+                }
+                
+                // Check overlap
+                let overlap: HashSet<_> = other_constraint.scope
+                    .iter()
+                    .filter(|v| cluster_vars.contains(*v))
+                    .cloned()
+                    .collect();
+                
+                if !overlap.is_empty() && cluster_vars.len() + other_constraint.scope.len() - overlap.len() <= self.max_cluster_size {
+                    // Add to cluster
+                    cluster_vars.extend(other_constraint.scope.iter().cloned());
+                    cluster_constraints.push(other_constraint.clone());
+                    assigned_constraints[j] = true;
+                }
+            }
+            
+            clusters.push(CSPCluster {
+                id: cluster_id,
+                variables: cluster_vars.into_iter().collect(),
+                constraints: cluster_constraints,
+                subproblem: None,
+            });
+            cluster_id += 1;
+        }
+        
+        // Build cluster tree (for now, star topology)
+        let edges = (1..clusters.len()).map(|i| (0, i)).collect();
+        
+        Ok(CSPDecomposition {
+            clusters,
+            cluster_tree: ClusterTree {
+                clusters: cluster_id,
+                edges,
+                root: 0,
+            },
+            separator_sets: HashMap::new(),
+            width: self.max_cluster_size,
+        })
+    }
+
+    /// Cycle cutset decomposition
+    fn cycle_cutset_decomposition(&self, csp: &CSPProblem) -> Result<CSPDecomposition, String> {
+        // Find cycle cutset
+        let primal_graph = self.build_primal_graph(csp);
+        let cutset = self.find_cycle_cutset(&primal_graph)?;
+        
+        // Create two clusters: cutset variables and remaining variables
+        let cutset_vars: HashSet<_> = cutset.iter()
+            .filter_map(|&idx| csp.variables.keys().nth(idx))
+            .cloned()
+            .collect();
+        
+        let remaining_vars: HashSet<_> = csp.variables.keys()
+            .filter(|v| !cutset_vars.contains(*v))
+            .cloned()
+            .collect();
+        
+        let mut clusters = vec![
+            CSPCluster {
+                id: 0,
+                variables: cutset_vars.into_iter().collect(),
+                constraints: Vec::new(),
+                subproblem: None,
+            },
+            CSPCluster {
+                id: 1,
+                variables: remaining_vars.into_iter().collect(),
+                constraints: Vec::new(),
+                subproblem: None,
+            },
+        ];
+        
+        // Assign constraints to clusters
+        for constraint in &csp.constraints {
+            let in_cutset = constraint.scope.iter().all(|v| clusters[0].variables.contains(v));
+            let in_remaining = constraint.scope.iter().all(|v| clusters[1].variables.contains(v));
+            
+            if in_cutset {
+                clusters[0].constraints.push(constraint.clone());
+            } else if in_remaining {
+                clusters[1].constraints.push(constraint.clone());
+            }
+            // Constraints spanning both clusters need special handling
+        }
+        
+        Ok(CSPDecomposition {
+            clusters,
+            cluster_tree: ClusterTree {
+                clusters: 2,
+                edges: vec![(0, 1)],
+                root: 0,
+            },
+            separator_sets: HashMap::new(),
+            width: cutset.len(),
+        })
+    }
+
+    /// Find cycle cutset using greedy heuristic
+    fn find_cycle_cutset(&self, graph: &Graph) -> Result<HashSet<usize>, String> {
+        let mut cutset = HashSet::new();
+        let mut remaining_graph = graph.clone();
+        
+        while self.has_cycle(&remaining_graph) {
+            // Choose node with highest degree
+            let node = (0..remaining_graph.num_nodes)
+                .filter(|n| !cutset.contains(n))
+                .max_by_key(|&n| self.get_neighbors(&remaining_graph, n).len())
+                .ok_or_else(|| "No nodes remaining".to_string())?;
+            
+            cutset.insert(node);
+            remaining_graph = self.remove_node_from_graph(&remaining_graph, node);
+        }
+        
+        Ok(cutset)
+    }
+
+    /// Check if graph has a cycle using DFS
+    fn has_cycle(&self, graph: &Graph) -> bool {
+        let mut visited = vec![false; graph.num_nodes];
+        let mut rec_stack = vec![false; graph.num_nodes];
+        
+        for node in 0..graph.num_nodes {
+            if !visited[node] && self.has_cycle_dfs(graph, node, &mut visited, &mut rec_stack, None) {
+                return true;
+            }
+        }
+        
+        false
+    }
+
+    /// DFS helper for cycle detection
+    fn has_cycle_dfs(&self, graph: &Graph, node: usize, visited: &mut [bool], rec_stack: &mut [bool], parent: Option<usize>) -> bool {
+        visited[node] = true;
+        rec_stack[node] = true;
+        
+        for neighbor in self.get_neighbors(graph, node) {
+            if !visited[neighbor] {
+                if self.has_cycle_dfs(graph, neighbor, visited, rec_stack, Some(node)) {
+                    return true;
+                }
+            } else if rec_stack[neighbor] && Some(neighbor) != parent {
+                return true;
+            }
+        }
+        
+        rec_stack[node] = false;
+        false
+    }
+}
+
+/// Tree decomposition structure
+#[derive(Debug, Clone)]
+struct TreeDecomposition {
+    nodes: Vec<TreeNode>,
+    width: usize,
+    root: usize,
+}
+
+#[derive(Debug, Clone)]
+struct TreeNode {
+    id: usize,
+    bag: HashSet<usize>,
+    children: Vec<usize>,
+}
+
+/// CSP decomposition result
+#[derive(Debug, Clone)]
+pub struct CSPDecomposition {
+    pub clusters: Vec<CSPCluster>,
+    pub cluster_tree: ClusterTree,
+    pub separator_sets: HashMap<(usize, usize), HashSet<String>>,
+    pub width: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct CSPCluster {
+    pub id: usize,
+    pub variables: Vec<String>,
+    pub constraints: Vec<CSPConstraint>,
+    pub subproblem: Option<CSPProblem>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ClusterTree {
+    pub clusters: usize,
+    pub edges: Vec<(usize, usize)>,
+    pub root: usize,
+}
+
+/// CSP solver using decomposition
+pub struct DecompositionCSPSolver<S: Sampler> {
+    /// Base sampler for solving subproblems
+    base_sampler: S,
+    /// Decomposer
+    decomposer: ConstraintSatisfactionDecomposer,
+    /// Message passing algorithm
+    message_passing: MessagePassingAlgorithm,
+}
+
+#[derive(Debug, Clone)]
+pub enum MessagePassingAlgorithm {
+    /// Belief propagation
+    BeliefPropagation,
+    /// Max-product
+    MaxProduct,
+    /// Sum-product
+    SumProduct,
+    /// Junction tree algorithm
+    JunctionTree,
+}
+
+impl<S: Sampler> DecompositionCSPSolver<S> {
+    /// Create new decomposition-based CSP solver
+    pub fn new(base_sampler: S) -> Self {
+        Self {
+            base_sampler,
+            decomposer: ConstraintSatisfactionDecomposer::new(),
+            message_passing: MessagePassingAlgorithm::JunctionTree,
+        }
+    }
+
+    /// Solve CSP using decomposition
+    pub fn solve(&mut self, csp: &CSPProblem, shots: usize) -> Result<CSPSolution, String> {
+        // Decompose problem
+        let decomposition = self.decomposer.decompose(csp)?;
+        
+        // Solve each cluster
+        let mut cluster_solutions = Vec::new();
+        for cluster in &decomposition.clusters {
+            let solution = self.solve_cluster(cluster, shots)?;
+            cluster_solutions.push(solution);
+        }
+        
+        // Combine solutions using message passing
+        let combined_solution = self.combine_solutions(
+            &cluster_solutions,
+            &decomposition.cluster_tree,
+            &decomposition.separator_sets,
+        )?;
+        
+        Ok(combined_solution)
+    }
+
+    /// Solve a single cluster
+    fn solve_cluster(&mut self, cluster: &CSPCluster, shots: usize) -> Result<ClusterSolution, String> {
+        // Convert cluster to QUBO if possible
+        // For now, return a dummy solution
+        Ok(ClusterSolution {
+            cluster_id: cluster.id,
+            assignments: HashMap::new(),
+            cost: 0.0,
+        })
+    }
+
+    /// Combine cluster solutions
+    fn combine_solutions(
+        &self,
+        cluster_solutions: &[ClusterSolution],
+        cluster_tree: &ClusterTree,
+        separator_sets: &HashMap<(usize, usize), HashSet<String>>,
+    ) -> Result<CSPSolution, String> {
+        // TODO: Implement message passing to combine solutions
+        Ok(CSPSolution {
+            assignments: HashMap::new(),
+            satisfied_constraints: Vec::new(),
+            violated_constraints: Vec::new(),
+            objective_value: 0.0,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ClusterSolution {
+    cluster_id: usize,
+    assignments: HashMap<String, i32>,
+    cost: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct CSPSolution {
+    pub assignments: HashMap<String, i32>,
+    pub satisfied_constraints: Vec<usize>,
+    pub violated_constraints: Vec<usize>,
+    pub objective_value: f64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1942,5 +2621,118 @@ mod tests {
 
         let result = solver.solve(&(qubo, var_map), 10);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_csp_decomposer() {
+        let decomposer = ConstraintSatisfactionDecomposer::new();
+        
+        // Create a simple CSP
+        let mut variables = HashMap::new();
+        variables.insert("x".to_string(), VariableInfo {
+            name: "x".to_string(),
+            domain: vec![0, 1],
+            current_domain: vec![0, 1],
+        });
+        variables.insert("y".to_string(), VariableInfo {
+            name: "y".to_string(),
+            domain: vec![0, 1],
+            current_domain: vec![0, 1],
+        });
+        variables.insert("z".to_string(), VariableInfo {
+            name: "z".to_string(),
+            domain: vec![0, 1],
+            current_domain: vec![0, 1],
+        });
+        
+        let constraints = vec![
+            CSPConstraint {
+                id: 0,
+                scope: vec!["x".to_string(), "y".to_string()],
+                constraint_type: ConstraintType::AllDifferent,
+                tuples: None,
+            },
+            CSPConstraint {
+                id: 1,
+                scope: vec!["y".to_string(), "z".to_string()],
+                constraint_type: ConstraintType::AllDifferent,
+                tuples: None,
+            },
+        ];
+        
+        let mut adjacency = HashMap::new();
+        adjacency.insert("x".to_string(), HashSet::from(["y".to_string()]));
+        adjacency.insert("y".to_string(), HashSet::from(["x".to_string(), "z".to_string()]));
+        adjacency.insert("z".to_string(), HashSet::from(["y".to_string()]));
+        
+        let csp = CSPProblem {
+            variables,
+            constraints,
+            constraint_graph: ConstraintGraph {
+                adjacency,
+                hyperedges: vec![HashSet::from(["x".to_string(), "y".to_string()]), 
+                                HashSet::from(["y".to_string(), "z".to_string()])],
+            },
+        };
+        
+        let result = decomposer.decompose(&csp);
+        assert!(result.is_ok());
+        
+        let decomposition = result.unwrap();
+        assert!(!decomposition.clusters.is_empty());
+    }
+
+    #[test]
+    fn test_constraint_clustering() {
+        let decomposer = ConstraintSatisfactionDecomposer::new()
+            .with_strategy(CSPDecompositionStrategy::ConstraintClustering);
+        
+        // Create CSP with multiple constraints
+        let mut variables = HashMap::new();
+        for i in 0..5 {
+            let name = format!("x{}", i);
+            variables.insert(name.clone(), VariableInfo {
+                name: name.clone(),
+                domain: vec![0, 1, 2],
+                current_domain: vec![0, 1, 2],
+            });
+        }
+        
+        let constraints = vec![
+            CSPConstraint {
+                id: 0,
+                scope: vec!["x0".to_string(), "x1".to_string()],
+                constraint_type: ConstraintType::AllDifferent,
+                tuples: None,
+            },
+            CSPConstraint {
+                id: 1,
+                scope: vec!["x1".to_string(), "x2".to_string()],
+                constraint_type: ConstraintType::AllDifferent,
+                tuples: None,
+            },
+            CSPConstraint {
+                id: 2,
+                scope: vec!["x3".to_string(), "x4".to_string()],
+                constraint_type: ConstraintType::AllDifferent,
+                tuples: None,
+            },
+        ];
+        
+        let csp = CSPProblem {
+            variables,
+            constraints,
+            constraint_graph: ConstraintGraph {
+                adjacency: HashMap::new(),
+                hyperedges: Vec::new(),
+            },
+        };
+        
+        let result = decomposer.decompose(&csp);
+        assert!(result.is_ok());
+        
+        let decomposition = result.unwrap();
+        // Should create at least 2 clusters due to disconnected constraints
+        assert!(decomposition.clusters.len() >= 2);
     }
 }

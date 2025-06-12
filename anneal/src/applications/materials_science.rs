@@ -29,8 +29,9 @@ use crate::neural_annealing_schedules::{NeuralAnnealingScheduler, NeuralSchedule
 use crate::non_stoquastic::{NonStoquasticHamiltonian, HamiltonianType};
 use crate::quantum_error_correction::{
     SyndromeDetector, ErrorCorrectionCode, NoiseResilientAnnealingProtocol,
-    ErrorMitigationManager, LogicalAnnealingEncoder,
+    ErrorMitigationManager, LogicalAnnealingEncoder, ErrorMitigationConfig,
 };
+use crate::simulator::{AnnealingParams, QuantumAnnealingSimulator};
 
 /// Crystal lattice types
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -374,9 +375,9 @@ pub struct MaterialsOptimizationProblem {
     pub lattice: MaterialsLattice,
     pub objectives: Vec<MaterialsObjective>,
     pub constraints: Vec<MaterialsConstraint>,
-    pub qec_framework: Option<QuantumErrorCorrectionFramework>,
+    pub qec_framework: Option<String>,
     pub advanced_config: AdvancedAlgorithmConfig,
-    pub neural_config: Option<NeuralScheduleConfig>,
+    pub neural_config: Option<NeuralSchedulerConfig>,
 }
 
 /// Materials-specific constraints
@@ -415,12 +416,12 @@ impl MaterialsOptimizationProblem {
         }
     }
     
-    pub fn with_quantum_error_correction(mut self, config: ErrorCorrectionConfig) -> Self {
-        self.qec_framework = Some(QuantumErrorCorrectionFramework::new(config));
+    pub fn with_quantum_error_correction(mut self, config: String) -> Self {
+        self.qec_framework = Some(config);
         self
     }
     
-    pub fn with_neural_annealing(mut self, config: NeuralScheduleConfig) -> Self {
+    pub fn with_neural_annealing(mut self, config: NeuralSchedulerConfig) -> Self {
         self.neural_config = Some(config);
         self
     }
@@ -504,12 +505,32 @@ impl MaterialsOptimizationProblem {
             let (ising_model, variable_map) = self.to_ising_model()?;
             
             // Use error mitigation for lattice optimization
-            let mut error_manager = ErrorMitigationManager::new(qec_framework.config.clone());
+            let error_config = ErrorMitigationConfig::default();
+            let mut error_manager = ErrorMitigationManager::new(error_config)
+                .map_err(|e| ApplicationError::OptimizationError(format!("Failed to create error manager: {:?}", e)))?;
             
-            let result = error_manager.optimize(&ising_model)
-                .map_err(|e| ApplicationError::OptimizationError(format!("QEC optimization failed: {:?}", e)))?;
+            // First perform standard annealing
+            let params = AnnealingParams::default();
+            let annealer = QuantumAnnealingSimulator::new(params.clone())
+                .map_err(|e| ApplicationError::OptimizationError(format!("Failed to create annealer: {:?}", e)))?;
+            let annealing_result = annealer.solve(&ising_model)
+                .map_err(|e| ApplicationError::OptimizationError(format!("Annealing failed: {:?}", e)))?;
             
-            let solution = result.map_err(|e| ApplicationError::OptimizationError(format!("QEC solver error: {}", e)))?;
+            // Convert simulator result to error mitigation format
+            let error_mitigation_result = crate::quantum_error_correction::error_mitigation::AnnealingResult {
+                solution: annealing_result.best_spins.iter().map(|&x| x as i32).collect(),
+                energy: annealing_result.best_energy,
+                num_occurrences: 1,
+                chain_break_fraction: 0.0,
+                timing: std::collections::HashMap::new(),
+                info: std::collections::HashMap::new(),
+            };
+            
+            // Apply error mitigation to improve the result
+            let mitigation_result = error_manager.apply_mitigation(&ising_model, error_mitigation_result, &params)
+                .map_err(|e| ApplicationError::OptimizationError(format!("Error mitigation failed: {:?}", e)))?;
+            
+            let solution = &mitigation_result.mitigated_result.solution;
             
             self.solution_to_lattice(&solution, &variable_map)
         } else {
@@ -552,7 +573,7 @@ impl MaterialsOptimizationProblem {
     /// Convert to Ising model representation
     fn to_ising_model(&self) -> ApplicationResult<(IsingModel, HashMap<String, usize>)> {
         let total_sites = self.lattice.sites.len();
-        let mut ising = IsingModel::new(total_sites)?;
+        let mut ising = IsingModel::new(total_sites);
         let mut variable_map = HashMap::new();
         
         // Map lattice sites to Ising variables
@@ -589,7 +610,7 @@ impl MaterialsOptimizationProblem {
                 }
             }
             
-            ising.set_bias(i, bias)?;
+            ising.set_bias(i, bias).map_err(|e| ApplicationError::OptimizationError(e.to_string()))?;
         }
         
         // Add coupling terms for neighbor interactions
@@ -600,7 +621,7 @@ impl MaterialsOptimizationProblem {
                     .find(|(_, (pos, _))| **pos == neighbor_pos) {
                     if i < j { // Avoid double counting
                         let coupling = self.lattice.interaction_energy(site1, site2);
-                        ising.set_coupling(i, j, coupling)?;
+                        ising.set_coupling(i, j, coupling).map_err(|e| ApplicationError::OptimizationError(e.to_string()))?;
                     }
                 }
             }
@@ -738,7 +759,7 @@ impl OptimizationProblem for MaterialsOptimizationProblem {
     fn to_qubo(&self) -> ApplicationResult<(crate::ising::QuboModel, HashMap<String, usize>)> {
         // Convert Ising model to QUBO
         let (ising, variable_map) = self.to_ising_model()?;
-        let qubo = ising.to_qubo()?;
+        let qubo = ising.to_qubo();
         Ok((qubo, variable_map))
     }
     
@@ -859,7 +880,7 @@ impl IndustrySolution for MaterialsLattice {
 }
 
 /// Create benchmark materials science problems
-pub fn create_benchmark_problems(size: usize) -> ApplicationResult<Vec<Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>>>> {
+pub fn create_benchmark_problems(size: usize) -> ApplicationResult<Vec<Box<dyn OptimizationProblem<Solution = MaterialsLattice, ObjectiveValue = f64>>>> {
     let mut problems = Vec::new();
     
     let dimensions = match size {
@@ -909,7 +930,7 @@ pub fn create_benchmark_problems(size: usize) -> ApplicationResult<Vec<Box<dyn O
         }
         
         // Note: Simplified for trait object compatibility
-        problems.push(Box::new(problem) as Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>>);
+        problems.push(Box::new(problem) as Box<dyn OptimizationProblem<Solution = MaterialsLattice, ObjectiveValue = f64>>);
     }
     
     Ok(problems)

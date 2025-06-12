@@ -22,7 +22,8 @@ use std::time::{Duration, Instant};
 
 use crate::applications::{ApplicationError, ApplicationResult};
 use crate::braket::{BraketClient, BraketDevice};
-use crate::dwave::{DWaveClient, HardwareTopology};
+use crate::dwave::DWaveClient;
+use crate::HardwareTopology;
 use crate::ising::{IsingModel, QuboModel};
 use crate::multi_chip_embedding::{MultiChipCoordinator, MultiChipConfig};
 use crate::simulator::{ClassicalAnnealingSimulator, AnnealingParams, AnnealingResult};
@@ -288,7 +289,7 @@ pub struct ResourceWorkload {
 }
 
 /// Resource connection interface
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ResourceConnection {
     /// D-Wave cloud connection
     DWave(Arc<Mutex<DWaveClient>>),
@@ -811,9 +812,10 @@ impl HeterogeneousHybridEngine {
         let total_possible = problem.num_qubits * (problem.num_qubits - 1) / 2;
         let mut actual_couplings = 0;
         
-        for i in 0..problem.couplings.len() {
-            for j in 0..problem.couplings[i].len() {
-                if problem.couplings[i][j] != 0.0 {
+        let couplings = problem.couplings();
+        for i in 0..couplings.len() {
+            for j in 0..couplings[i].len() {
+                if couplings[i][j] != 0.0 {
                     actual_couplings += 1;
                 }
             }
@@ -1092,16 +1094,18 @@ impl HeterogeneousHybridEngine {
         
         // Bias terms
         for (i, &spin) in solution.iter().enumerate() {
-            if i < problem.biases.len() {
-                energy += problem.biases[i] * spin as f64;
+            let biases = problem.biases();
+            if i < biases.len() {
+                energy += biases[i] * spin as f64;
             }
         }
         
         // Coupling terms
         for i in 0..solution.len() {
             for j in (i + 1)..solution.len() {
-                if i < problem.couplings.len() && j < problem.couplings[i].len() {
-                    energy += problem.couplings[i][j] * solution[i] as f64 * solution[j] as f64;
+                let couplings = problem.couplings();
+                if i < couplings.len() && j < couplings[i].len() {
+                    energy += couplings[i][j] * solution[i] as f64 * solution[j] as f64;
                 }
             }
         }

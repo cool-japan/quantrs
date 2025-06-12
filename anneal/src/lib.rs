@@ -147,11 +147,11 @@ pub use compression::{
     VariableReducer,
 };
 pub use comprehensive_integration_testing::{
-    BenchmarkConfig, BenchmarkResults, ComponentIntegrationResults, ComprehensiveIntegrationTesting,
-    ComprehensiveValidationResult, EnvironmentRequirements, ExpectedOutcomes, FaultInjectionConfig,
+    BenchmarkConfig, ComponentIntegrationResults, ComprehensiveIntegrationTesting,
+    IntegrationValidationResult, EnvironmentRequirements, ExpectedOutcomes, FaultInjectionConfig,
     IntegrationTestCase, IntegrationTestConfig, IntegrationTestResult, PerformanceTestResult,
     StressTestConfig, StressTestResult, SystemIntegrationResults, TestCategory, TestExecutionSpec,
-    TestMetadata, TestPriority, TestRegistry, TestResult, TestStorageConfig, ValidationStatus as TestValidationStatus,
+    TestMetadata, TestPriority, TestRegistry, TestStorageConfig, ValidationStatus as TestValidationStatus,
     create_example_integration_testing,
 };
 pub use continuous_variable::{

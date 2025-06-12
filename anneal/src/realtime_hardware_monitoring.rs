@@ -22,7 +22,8 @@ use std::time::{Duration, Instant, SystemTime};
 
 use crate::applications::{ApplicationError, ApplicationResult};
 use crate::braket::{BraketClient, BraketDevice};
-use crate::dwave::{DWaveClient, HardwareTopology};
+use crate::dwave::DWaveClient;
+use crate::HardwareTopology;
 use crate::ising::{IsingModel, QuboModel};
 use crate::embedding::{Embedding, HardwareGraph};
 use crate::hardware_compilation::{HardwareCompiler, CompilationTarget};

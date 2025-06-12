@@ -777,11 +777,11 @@ impl SciRS2SpectralAnalyzer {
             spectral_form_factor.push(Complex64::new(form_factor_value, 0.0));
             
             // Find Thouless time as the time when form factor transitions from ramp to plateau
-            if t_idx > 10 && t_idx < max_time_steps - 10 {
+            if t_idx >= 5 && t_idx < spectral_form_factor.len().saturating_sub(5) {
                 // Check if we're transitioning from linear ramp to plateau
-                let prev_values: Vec<f64> = spectral_form_factor[t_idx-5..t_idx]
+                let prev_values: Vec<f64> = spectral_form_factor[t_idx.saturating_sub(5)..t_idx]
                     .iter().map(|c| c.re).collect();
-                let next_values: Vec<f64> = spectral_form_factor[t_idx..t_idx+5]
+                let next_values: Vec<f64> = spectral_form_factor[t_idx..(t_idx+5).min(spectral_form_factor.len())]
                     .iter().map(|c| c.re).collect();
                 
                 // Calculate slopes

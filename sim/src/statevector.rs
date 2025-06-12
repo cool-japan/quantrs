@@ -857,6 +857,12 @@ impl StateVectorSimulator {
         Ok(())
     }
 
+    /// Apply an interface circuit to the quantum state
+    pub fn apply_interface_circuit(&mut self, _circuit: &crate::circuit_interfaces::InterfaceCircuit) -> QuantRS2Result<()> {
+        // Placeholder - would apply the circuit gates using the circuit framework
+        Ok(())
+    }
+
     /// Apply Hadamard gate to qubit
     pub fn apply_h(&mut self, _qubit: usize) -> QuantRS2Result<()> {
         // Placeholder - would apply H gate using circuit framework

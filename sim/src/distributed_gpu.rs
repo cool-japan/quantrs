@@ -436,13 +436,20 @@ impl DistributedGpuStateVector {
     }
 
     #[cfg(not(feature = "advanced_math"))]
-    fn initialize_gpu_contexts(_config: &DistributedGpuConfig) -> Result<Vec<GpuContextWrapper>> {
+    fn initialize_gpu_contexts(config: &DistributedGpuConfig) -> Result<Vec<GpuContextWrapper>> {
         // Fallback: create dummy contexts for CPU simulation
-        Ok(vec![GpuContextWrapper {
-            device_id: 0,
-            memory_available: 1_000_000_000, // 1GB
-            compute_capability: 1.0,
-        }])
+        let num_gpus = if config.num_gpus == 0 { 1 } else { config.num_gpus };
+        
+        let mut contexts = Vec::new();
+        for device_id in 0..num_gpus {
+            contexts.push(GpuContextWrapper {
+                device_id,
+                memory_available: 1_000_000_000, // 1GB
+                compute_capability: 1.0,
+            });
+        }
+        
+        Ok(contexts)
     }
 
     #[cfg(feature = "advanced_math")]
@@ -962,13 +969,16 @@ impl DistributedGpuStateVector {
                 let partner = i + step;
                 if partner < active_partitions {
                     // Partition i receives and accumulates data from partition 'partner'
-                    let partner_size = self.state_partitions[partner].size.min(self.state_partitions[i].size);
+                    let (left_partitions, right_partitions) = self.state_partitions.split_at_mut(partner);
+                    let target_partition = &mut left_partitions[i];
+                    let source_partition = &right_partitions[0];
+                    
+                    let partner_size = source_partition.size.min(target_partition.size);
                     
                     for j in 0..partner_size {
-                        if j < self.state_partitions[i].cpu_fallback.len() && 
-                           j < self.state_partitions[partner].cpu_fallback.len() {
-                            self.state_partitions[i].cpu_fallback[j] += 
-                                self.state_partitions[partner].cpu_fallback[j];
+                        if j < target_partition.cpu_fallback.len() && 
+                           j < source_partition.cpu_fallback.len() {
+                            target_partition.cpu_fallback[j] += source_partition.cpu_fallback[j];
                         }
                     }
                 }

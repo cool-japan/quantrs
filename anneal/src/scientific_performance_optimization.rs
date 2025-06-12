@@ -24,8 +24,8 @@ use std::time::{Duration, Instant};
 use crate::applications::{ApplicationError, ApplicationResult};
 use crate::applications::{
     protein_folding::{ProteinFoldingProblem, ProteinSequence},
-    materials_science::{MaterialsOptimizationProblem, CrystalLattice},
-    drug_discovery::{DrugDiscoveryProblem, MolecularStructure},
+    materials_science::MaterialsOptimizationProblem,
+    drug_discovery::DrugDiscoveryProblem,
 };
 use crate::ising::{IsingModel, QuboModel};
 
@@ -1004,7 +1004,7 @@ pub struct MaterialsScienceTask {
 #[derive(Debug)]
 pub struct DrugDiscoveryTask {
     /// Molecular structure
-    pub molecular_structure: MolecularStructure,
+    pub molecular_structure: String,
     /// Interaction targets
     pub targets: Vec<InteractionTarget>,
     /// Property constraints
@@ -2469,7 +2469,7 @@ pub enum TaskDistributionMethod {
 
 #[derive(Debug, Clone)]
 pub struct DrugDiscoveryOptimizationResult {
-    pub optimized_molecules: Vec<MolecularStructure>,
+    pub optimized_molecules: Vec<String>,
     pub screening_efficiency: f64,
     pub hit_rate_improvement: f64,
     pub discovery_time: Duration,
