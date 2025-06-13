@@ -1838,7 +1838,7 @@ pub fn create_example_hardware_monitor() -> ApplicationResult<RealTimeHardwareMo
                 confidence: 0.8,
             },
         })),
-        topology: HardwareTopology::Pegasus,
+        topology: HardwareTopology::Pegasus(16),
         connection: DeviceConnection::Custom("dwave_cloud".to_string()),
         monitoring_history: Arc::new(Mutex::new(VecDeque::new())),
         noise_profile: Arc::new(RwLock::new(NoiseProfile {

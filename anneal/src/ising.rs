@@ -89,7 +89,7 @@ impl<T: Clone + Default + PartialEq> CooMatrix<T> {
 }
 
 /// Errors that can occur when working with Ising models
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum IsingError {
     /// Error when a specified qubit is invalid or doesn't exist
     #[error("Invalid qubit index: {0}")]

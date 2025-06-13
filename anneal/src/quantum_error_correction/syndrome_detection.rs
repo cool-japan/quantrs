@@ -508,7 +508,7 @@ impl SyndromeDetector {
         }
 
         Ok(CorrectionOperation {
-            pauli_corrections: corrections,
+            pauli_corrections: corrections.clone(),
             confidence: 0.8, // Default confidence
             success_probability: 0.9,
             required_resources: CorrectionResources {
@@ -526,7 +526,7 @@ impl SyndromeDetector {
         let mut syndrome = vec![0u8; num_stabilizers];
 
         // Simulate syndrome measurements
-        let mut rng = ChaCha8Rng::from_rng(rand::thread_rng()).unwrap();
+        let mut rng = ChaCha8Rng::from_rng(&mut rand::thread_rng());
         
         for i in 0..num_stabilizers {
             // In a real implementation, this would measure the stabilizer

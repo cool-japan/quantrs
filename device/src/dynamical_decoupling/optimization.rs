@@ -15,7 +15,12 @@ use super::{
 use scirs2_optimize::{minimize, OptimizeResult};
 
 #[cfg(not(feature = "scirs2"))]
-use super::fallback_scirs2::{minimize, OptimizeResult};
+mod fallback_scirs2 {
+    pub use super::super::fallback_scirs2::{minimize, OptimizeResult};
+}
+
+#[cfg(not(feature = "scirs2"))]
+use fallback_scirs2::{minimize, OptimizeResult};
 
 /// DD sequence optimizer using SciRS2
 pub struct DDSequenceOptimizer {

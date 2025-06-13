@@ -99,6 +99,7 @@ impl DDSequenceGenerator {
             DDSequenceType::QDD => Self::generate_qdd_sequence(target_qubits, duration),
             DDSequenceType::CDD => Self::generate_cdd_sequence(target_qubits, duration),
             DDSequenceType::RDD => Self::generate_rdd_sequence(target_qubits, duration),
+            DDSequenceType::HahnEcho => Self::generate_hahn_echo_sequence(target_qubits, duration),
             DDSequenceType::CarrPurcell => Self::generate_cp_sequence(target_qubits, duration),
             DDSequenceType::SciRS2Optimized => {
                 Self::generate_optimized_sequence(target_qubits, duration)
@@ -107,6 +108,59 @@ impl DDSequenceGenerator {
                 Self::generate_custom_sequence(name, target_qubits, duration)
             }
         }
+    }
+
+    /// Generate Hahn Echo sequence
+    fn generate_hahn_echo_sequence(
+        target_qubits: &[QubitId],
+        duration: f64,
+    ) -> DeviceResult<DDSequence> {
+        let pulse_spacing = duration / 2.0; // Single π pulse at the center
+
+        let mut circuit = Circuit::<32>::new();
+        let mut pulse_timings = Vec::new();
+        let mut pulse_phases = Vec::new();
+
+        for qubit in target_qubits {
+            pulse_timings.push(pulse_spacing);
+            pulse_phases.push(PI); // Y rotation (π pulse)
+            circuit.add_gate(PauliY { target: *qubit })?;
+        }
+
+        let properties = DDSequenceProperties {
+            pulse_count: target_qubits.len(),
+            sequence_order: 1,
+            periodicity: 1,
+            symmetry: SequenceSymmetry {
+                time_reversal: true,
+                phase_symmetry: true,
+                rotational_symmetry: false,
+                inversion_symmetry: true,
+            },
+            noise_suppression: {
+                let mut suppression = HashMap::new();
+                suppression.insert(NoiseType::PhaseDamping, 0.8);
+                suppression.insert(NoiseType::AmplitudeDamping, 0.2);
+                suppression
+            },
+            resource_requirements: ResourceRequirements {
+                gate_count: target_qubits.len(),
+                circuit_depth: 1,
+                required_connectivity: Vec::new(),
+                execution_time: duration,
+                memory_requirements: target_qubits.len() * 8,
+            },
+        };
+
+        Ok(DDSequence {
+            sequence_type: DDSequenceType::HahnEcho,
+            target_qubits: target_qubits.to_vec(),
+            duration,
+            circuit,
+            pulse_timings,
+            pulse_phases,
+            properties,
+        })
     }
 
     /// Generate CPMG (Carr-Purcell-Meiboom-Gill) sequence
@@ -412,6 +466,92 @@ impl DDSequenceGenerator {
         Ok(cpmg_sequence)
     }
 
+    /// Generate composite DD sequence
+    fn generate_composite_sequence(
+        base_sequences: &[DDSequence],
+        composition_strategy: CompositionStrategy,
+    ) -> DeviceResult<DDSequence> {
+        if base_sequences.is_empty() {
+            return Err(crate::DeviceError::InvalidParameters("No base sequences provided".to_string()));
+        }
+
+        match composition_strategy {
+            CompositionStrategy::Sequential => {
+                let mut composite_circuit = Circuit::<32>::new();
+                let mut composite_timings = Vec::new();
+                let mut composite_phases = Vec::new();
+                let mut total_duration = 0.0;
+                let mut total_gate_count = 0;
+                let target_qubits = base_sequences[0].target_qubits.clone();
+
+                for sequence in base_sequences {
+                    // Append sequence to composite
+                    for &timing in &sequence.pulse_timings {
+                        composite_timings.push(total_duration + timing);
+                    }
+                    composite_phases.extend(&sequence.pulse_phases);
+                    total_duration += sequence.duration;
+                    total_gate_count += sequence.properties.gate_count;
+                    
+                    // Add gates from sequence circuit (simplified)
+                    for qubit in &target_qubits {
+                        for _ in 0..sequence.properties.pulse_count / target_qubits.len() {
+                            composite_circuit.add_gate(PauliY { target: *qubit })?;
+                        }
+                    }
+                }
+
+                // Combine noise suppression properties
+                let mut combined_suppression = HashMap::new();
+                for sequence in base_sequences {
+                    for (noise_type, suppression) in &sequence.properties.noise_suppression {
+                        let current = combined_suppression.get(noise_type).unwrap_or(&0.0);
+                        // Use geometric mean for combination
+                        combined_suppression.insert(noise_type.clone(), (current * suppression).sqrt());
+                    }
+                }
+
+                let properties = DDSequenceProperties {
+                    pulse_count: composite_timings.len(),
+                    sequence_order: base_sequences.iter().map(|s| s.properties.sequence_order).max().unwrap_or(1),
+                    periodicity: base_sequences.len(),
+                    symmetry: SequenceSymmetry {
+                        time_reversal: base_sequences.iter().all(|s| s.properties.symmetry.time_reversal),
+                        phase_symmetry: base_sequences.iter().all(|s| s.properties.symmetry.phase_symmetry),
+                        rotational_symmetry: base_sequences.iter().any(|s| s.properties.symmetry.rotational_symmetry),
+                        inversion_symmetry: base_sequences.iter().all(|s| s.properties.symmetry.inversion_symmetry),
+                    },
+                    noise_suppression: combined_suppression,
+                    resource_requirements: ResourceRequirements {
+                        gate_count: total_gate_count,
+                        circuit_depth: base_sequences.iter().map(|s| s.properties.resource_requirements.circuit_depth).sum(),
+                        required_connectivity: Vec::new(),
+                        execution_time: total_duration,
+                        memory_requirements: total_gate_count * 8,
+                    },
+                };
+
+                Ok(DDSequence {
+                    sequence_type: DDSequenceType::Composite,
+                    target_qubits,
+                    duration: total_duration,
+                    circuit: composite_circuit,
+                    pulse_timings: composite_timings,
+                    pulse_phases: composite_phases,
+                    properties,
+                })
+            },
+            CompositionStrategy::Interleaved => {
+                // Interleave sequences (simplified implementation)
+                Self::generate_composite_sequence(base_sequences, CompositionStrategy::Sequential)
+            },
+            CompositionStrategy::Nested => {
+                // Nested composition (simplified implementation)
+                Self::generate_composite_sequence(base_sequences, CompositionStrategy::Sequential)
+            },
+        }
+    }
+
     /// Generate other sequence types (placeholders)
     fn generate_qdd_sequence(target_qubits: &[QubitId], duration: f64) -> DeviceResult<DDSequence> {
         let mut base = Self::generate_udd_sequence(target_qubits, duration)?;
@@ -493,5 +633,140 @@ impl SequenceCache {
 
     pub fn store_sequence(&mut self, key: String, sequence: DDSequence) {
         self.cached_sequences.insert(key, sequence);
+    }
+    
+    pub fn get_cache_statistics(&self) -> (usize, usize, f64) {
+        let total_requests = self.cache_hits + self.cache_misses;
+        let hit_rate = if total_requests > 0 {
+            self.cache_hits as f64 / total_requests as f64
+        } else {
+            0.0
+        };
+        (self.cache_hits, self.cache_misses, hit_rate)
+    }
+}
+
+/// Composition strategies for combining DD sequences
+#[derive(Debug, Clone, PartialEq)]
+pub enum CompositionStrategy {
+    /// Sequential execution of sequences
+    Sequential,
+    /// Interleaved execution
+    Interleaved,
+    /// Nested composition
+    Nested,
+}
+
+/// Multi-qubit DD sequence coordinator
+pub struct MultiQubitDDCoordinator {
+    /// Sequences for each qubit group
+    pub qubit_sequences: HashMap<Vec<QubitId>, DDSequence>,
+    /// Cross-talk mitigation strategy
+    pub crosstalk_mitigation: CrosstalkMitigationStrategy,
+    /// Synchronization requirements
+    pub synchronization: SynchronizationRequirements,
+}
+
+/// Cross-talk mitigation strategies
+#[derive(Debug, Clone, PartialEq)]
+pub enum CrosstalkMitigationStrategy {
+    /// No mitigation
+    None,
+    /// Time-shifted sequences
+    TimeShifted,
+    /// Phase-randomized sequences
+    PhaseRandomized,
+    /// Orthogonal sequences
+    Orthogonal,
+    /// Adaptive mitigation
+    Adaptive,
+}
+
+/// Synchronization requirements
+#[derive(Debug, Clone)]
+pub struct SynchronizationRequirements {
+    /// Global synchronization needed
+    pub global_sync: bool,
+    /// Phase coherence requirements
+    pub phase_coherence: bool,
+    /// Timing tolerance
+    pub timing_tolerance: f64,
+    /// Synchronization points
+    pub sync_points: Vec<f64>,
+}
+
+impl MultiQubitDDCoordinator {
+    /// Create new multi-qubit coordinator
+    pub fn new(
+        crosstalk_mitigation: CrosstalkMitigationStrategy,
+        synchronization: SynchronizationRequirements,
+    ) -> Self {
+        Self {
+            qubit_sequences: HashMap::new(),
+            crosstalk_mitigation,
+            synchronization,
+        }
+    }
+    
+    /// Add DD sequence for qubit group
+    pub fn add_sequence(&mut self, qubits: Vec<QubitId>, sequence: DDSequence) {
+        self.qubit_sequences.insert(qubits, sequence);
+    }
+    
+    /// Generate coordinated multi-qubit DD sequence
+    pub fn generate_coordinated_sequence(&self) -> DeviceResult<DDSequence> {
+        if self.qubit_sequences.is_empty() {
+            return Err(crate::DeviceError::InvalidParameters("No sequences to coordinate".to_string()));
+        }
+        
+        let sequences: Vec<_> = self.qubit_sequences.values().cloned().collect();
+        
+        match self.crosstalk_mitigation {
+            CrosstalkMitigationStrategy::TimeShifted => {
+                self.generate_time_shifted_sequence(&sequences)
+            },
+            CrosstalkMitigationStrategy::PhaseRandomized => {
+                self.generate_phase_randomized_sequence(&sequences)
+            },
+            _ => {
+                // Default to sequential composition
+                DDSequenceGenerator::generate_composite_sequence(&sequences, CompositionStrategy::Sequential)
+            }
+        }
+    }
+    
+    /// Generate time-shifted sequences to reduce crosstalk
+    fn generate_time_shifted_sequence(&self, sequences: &[DDSequence]) -> DeviceResult<DDSequence> {
+        let base_sequence = &sequences[0];
+        let mut coordinated = base_sequence.clone();
+        
+        // Apply time shifts to reduce crosstalk
+        let shift_increment = base_sequence.duration / (sequences.len() as f64 * 10.0);
+        
+        for (i, sequence) in sequences.iter().enumerate() {
+            let time_shift = i as f64 * shift_increment;
+            for timing in &mut coordinated.pulse_timings {
+                *timing += time_shift;
+            }
+        }
+        
+        coordinated.sequence_type = DDSequenceType::MultiQubitCoordinated;
+        Ok(coordinated)
+    }
+    
+    /// Generate phase-randomized sequences
+    fn generate_phase_randomized_sequence(&self, sequences: &[DDSequence]) -> DeviceResult<DDSequence> {
+        let base_sequence = &sequences[0];
+        let mut coordinated = base_sequence.clone();
+        
+        // Apply random phase shifts to reduce coherent crosstalk
+        use std::f64::consts::PI;
+        for phase in &mut coordinated.pulse_phases {
+            let random_phase = rand::random::<f64>() * 2.0 * PI;
+            *phase += random_phase;
+        }
+        
+        coordinated.sequence_type = DDSequenceType::MultiQubitCoordinated;
+        Ok(coordinated)
     }
 }

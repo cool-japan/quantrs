@@ -653,8 +653,12 @@ impl MaterialsOptimizationProblem {
         }
         
         // Recalculate local energies
-        for (pos, site) in optimized_lattice.sites.iter_mut() {
-            site.local_energy = self.calculate_local_energy(pos, &optimized_lattice);
+        let positions: Vec<_> = optimized_lattice.sites.keys().cloned().collect();
+        for pos in positions {
+            let local_energy = self.calculate_local_energy(&pos, &optimized_lattice);
+            if let Some(site) = optimized_lattice.sites.get_mut(&pos) {
+                site.local_energy = local_energy;
+            }
         }
         
         Ok(optimized_lattice)

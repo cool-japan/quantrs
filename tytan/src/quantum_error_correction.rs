@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::sync::{Arc, Mutex};
 use ndarray::{Array, Array1, Array2, Array3, Array4, Axis, Zip, ArrayD, s};
-use rand::prelude::*;
+use rand::{prelude::*, thread_rng};
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 
 /// Quantum error correction system for optimization
@@ -435,14 +435,14 @@ pub struct SyndromeRecord {
 }
 
 /// Pattern detector for syndrome sequences
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct PatternDetector {
     /// Detected patterns
     pub patterns: Vec<SyndromePattern>,
     /// Pattern frequency
     pub pattern_frequency: HashMap<String, usize>,
     /// Pattern prediction model
-    pub prediction_model: Option<Box<PredictionModel>>,
+    pub prediction_model: Option<Box<dyn PredictionModel>>,
 }
 
 /// Syndrome pattern

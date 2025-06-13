@@ -86,6 +86,7 @@ pub mod realtime_adaptive_qec;
 pub mod realtime_hardware_monitoring;
 pub mod reverse_annealing;
 pub mod rl_embedding_optimizer;
+pub mod scirs2_integration;
 pub mod scientific_performance_optimization;
 pub mod simulator;
 pub mod solution_clustering;
@@ -360,6 +361,11 @@ pub use rl_embedding_optimizer::{
     EmbeddingPolicyNetwork, EmbeddingQualityMetrics, EmbeddingState, HardwareFeatures,
     ObjectiveWeights, ProblemGraphFeatures, RLEmbeddingConfig, RLEmbeddingError,
     RLEmbeddingOptimizer, RLEmbeddingResult, RLPerformanceMetrics, RLTrainingStats,
+};
+pub use scirs2_integration::{
+    EmbeddingDifficulty, GraphAnalysisResult, GraphMetrics, PlottingConfig, QualityAssessment,
+    QuboStatistics, SciRS2EnergyPlotter, SciRS2GraphAnalyzer, SciRS2QuboModel, SciRS2SolutionAnalyzer,
+    SolutionAnalysisResult, SolutionStatistics,
 };
 pub use scientific_performance_optimization::{
     AlgorithmOptimizationConfig, ApproximationConfig, BottleneckAnalysis, CachingConfig,

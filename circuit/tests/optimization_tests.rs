@@ -1,7 +1,7 @@
 //! Tests for the circuit optimization system
 
 use quantrs2_circuit::optimization::passes::utils;
-use quantrs2_circuit::optimization::PeepholeOptimization;
+use quantrs2_circuit::optimization::{CircuitMetrics, PeepholeOptimization};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::gate::{multi, single, GateOp};
 use quantrs2_core::qubit::QubitId;

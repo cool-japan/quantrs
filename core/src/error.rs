@@ -134,7 +134,6 @@ impl From<ndarray::ShapeError> for QuantRS2Error {
 }
 
 #[cfg(feature = "mps")]
-#[allow(unexpected_cfgs)]
 impl From<ndarray_linalg::error::LinalgError> for QuantRS2Error {
     fn from(err: ndarray_linalg::error::LinalgError) -> Self {
         QuantRS2Error::LinalgError(format!("Linear algebra error: {}", err))

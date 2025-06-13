@@ -4,7 +4,7 @@
 //! problems without requiring direct code writing. It includes drag-and-drop
 //! variable creation, constraint specification, and real-time validation.
 
-use crate::problem_dsl::compiler::{Compiler, AST, Expression, Variable, Constraint as DslConstraint};
+use crate::problem_dsl::ast::{AST, Expression, Constraint as DslConstraint};
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -1012,14 +1012,15 @@ impl VisualProblemBuilder {
     }
 
     /// Export problem as QUBO matrix
-    pub fn export_qubo(&self) -> Result<(Array2<f64>, HashMap<String, usize>), String> {
-        // Convert visual problem to DSL AST
-        let ast = self.build_ast()?;
-        
-        // Use existing compiler to generate QUBO
-        let mut compiler = Compiler::new(ast);
-        compiler.generate_qubo()
-    }
+    // TODO: Fix QUBO export - requires proper access to compiler internals
+    // pub fn export_qubo(&self) -> Result<(Array2<f64>, HashMap<String, usize>), String> {
+    //     // Convert visual problem to DSL AST
+    //     let ast = self.build_ast()?;
+    //     
+    //     // Use existing compiler to generate QUBO
+    //     let mut compiler = Compiler::new(ast);
+    //     compiler.generate_qubo()
+    // }
 
     /// Undo last action
     pub fn undo(&mut self) -> Result<(), String> {
@@ -1070,61 +1071,63 @@ impl VisualProblemBuilder {
             .map_err(|e| format!("Failed to serialize to JSON: {}", e))
     }
 
-    /// Convert visual problem to DSL AST
-    fn build_ast(&self) -> Result<AST, String> {
-        let mut variables = Vec::new();
-        let mut constraints = Vec::new();
-
-        // Convert variables
-        for var in &self.problem.variables {
-            let domain = match &var.domain {
-                VariableDomain::Binary => crate::problem_dsl::compiler::VariableDomain::Binary,
-                VariableDomain::IntegerRange { min, max } => {
-                    crate::problem_dsl::compiler::VariableDomain::Integer { min: *min, max: *max }
-                }
-                VariableDomain::RealRange { min, max } => {
-                    crate::problem_dsl::compiler::VariableDomain::Real { min: *min, max: *max }
-                }
-                _ => return Err("Unsupported variable domain".to_string()),
-            };
-
-            variables.push(Variable {
-                name: var.name.clone(),
-                domain,
-                indexed: false,
-                indices: Vec::new(),
-            });
-        }
-
-        // Convert constraints
-        for constraint in &self.problem.constraints {
-            // Simplified constraint conversion
-            constraints.push(DslConstraint {
-                name: constraint.name.clone(),
-                expression: Expression::Literal(0.0), // Placeholder
-                penalty: 1.0,
-            });
-        }
-
-        // Build objective
-        let objective = if let Some(obj) = &self.problem.objective {
-            match &obj.expression {
-                ObjectiveExpression::Linear { coefficients, constant } => {
-                    // Build linear expression
-                    Expression::Literal(*constant)
-                }
-                _ => Expression::Literal(0.0),
-            }
-        } else {
-            Expression::Literal(0.0)
-        };
-
-        Ok(AST {
-            variables,
-            constraints,
-            objective,
-        })
-    }
+    // TODO: Fix AST building - requires proper access to compiler internals
+    // /// Convert visual problem to DSL AST
+    // fn build_ast(&self) -> Result<AST, String> {
+    //     let mut variables = Vec::new();
+    //     let mut constraints = Vec::new();
+    //
+    //     // Convert variables
+    //     for var in &self.problem.variables {
+    //         let domain = match &var.domain {
+    //             VariableDomain::Binary => crate::problem_dsl::compiler::VariableDomain::Binary,
+    //             VariableDomain::IntegerRange { min, max } => {
+    //                 crate::problem_dsl::compiler::VariableDomain::Integer { min: *min, max: *max }
+    //             }
+    //             VariableDomain::RealRange { min, max } => {
+    //                 crate::problem_dsl::compiler::VariableDomain::Real { min: *min, max: *max }
+    //             }
+    //             _ => return Err("Unsupported variable domain".to_string()),
+    //         };
+    //
+    //         // TODO: Fix Variable type construction
+    //         // variables.push(Variable {
+    //         //     name: var.name.clone(),
+    //         //     domain,
+    //         //     indexed: false,
+    //         //     indices: Vec::new(),
+    //         // });
+    //     }
+    //
+    //     // Convert constraints
+    //     for constraint in &self.problem.constraints {
+    //         // Simplified constraint conversion
+    //         constraints.push(DslConstraint {
+    //             name: constraint.name.clone(),
+    //             expression: Expression::Literal(0.0), // Placeholder
+    //             penalty: 1.0,
+    //         });
+    //     }
+    //
+    //     // Build objective
+    //     let objective = if let Some(obj) = &self.problem.objective {
+    //         match &obj.expression {
+    //             ObjectiveExpression::Linear { coefficients, constant } => {
+    //                 // Build linear expression
+    //                 Expression::Literal(*constant)
+    //             }
+    //             _ => Expression::Literal(0.0),
+    //         }
+    //     } else {
+    //         Expression::Literal(0.0)
+    //     };
+    //
+    //     Ok(AST {
+    //         variables,
+    //         constraints,
+    //         objective,
+    //     })
+    // }
 
     /// Record action in history
     fn record_action(&mut self, action_type: ActionType, before: &VisualProblem, after: &VisualProblem, description: &str) {

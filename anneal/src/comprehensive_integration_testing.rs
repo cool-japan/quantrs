@@ -2721,7 +2721,7 @@ impl ComprehensiveIntegrationTesting {
     
     fn test_qec_algorithm_integration(&self) -> ApplicationResult<IntegrationTestResult> {
         // Create a test problem
-        let problem = IsingModel::new(100)?;
+        let problem = IsingModel::new(100);
         
         // Test with real-time adaptive QEC
         let qec_system = RealTimeAdaptiveQec::new(AdaptiveQecConfig::default());
@@ -2733,7 +2733,7 @@ impl ComprehensiveIntegrationTesting {
         let advanced_config = AdvancedAlgorithmConfig::default();
         let algorithms = AdvancedQuantumAlgorithms::with_config(advanced_config);
         
-        let qubo = problem.to_qubo()?;
+        let qubo = problem.to_qubo();
         let result = algorithms.solve(&qubo, None)?;
         
         Ok(IntegrationTestResult {
@@ -2750,7 +2750,7 @@ impl ComprehensiveIntegrationTesting {
         let coordinator = MultiChipCoordinator::new(config);
         
         // Test problem distribution
-        let problem = IsingModel::new(500)?;
+        let problem = IsingModel::new(500);
         let chip_assignments = coordinator.distribute_problem(&problem)?;
         
         Ok(IntegrationTestResult {
@@ -2773,7 +2773,7 @@ impl ComprehensiveIntegrationTesting {
             test_name: "Hybrid Engine Integration".to_string(),
             success: true,
             execution_time: Duration::from_millis(25),
-            details: format!("System performance: {:.2} throughput", metrics.total_throughput),
+            details: format!("System performance: {:.2} efficiency", metrics.resource_efficiency),
         })
     }
     

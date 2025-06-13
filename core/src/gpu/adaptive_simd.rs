@@ -7,7 +7,7 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
 };
 use num_complex::Complex64;
-use std::sync::Once;
+use std::sync::{Mutex, OnceLock};
 
 /// CPU feature detection results
 #[derive(Debug, Clone, Copy)]
@@ -58,7 +58,7 @@ pub struct AdaptiveSimdDispatcher {
     /// Selected SIMD variant
     selected_variant: SimdVariant,
     /// Performance cache for different operation sizes
-    performance_cache: std::collections::HashMap<String, PerformanceData>,
+    performance_cache: Mutex<std::collections::HashMap<String, PerformanceData>>,
 }
 
 /// Performance data for SIMD operations
@@ -73,37 +73,32 @@ struct PerformanceData {
 }
 
 /// Global dispatcher instance
-static mut GLOBAL_DISPATCHER: Option<AdaptiveSimdDispatcher> = None;
-static INIT_ONCE: Once = Once::new();
+static GLOBAL_DISPATCHER: OnceLock<AdaptiveSimdDispatcher> = OnceLock::new();
 
 impl AdaptiveSimdDispatcher {
     /// Initialize the global adaptive SIMD dispatcher
     pub fn initialize() -> QuantRS2Result<()> {
-        INIT_ONCE.call_once(|| {
-            let cpu_features = Self::detect_cpu_features();
-            let selected_variant = Self::select_optimal_variant(&cpu_features);
-            
-            let dispatcher = AdaptiveSimdDispatcher {
-                cpu_features,
-                selected_variant,
-                performance_cache: std::collections::HashMap::new(),
-            };
-            
-            unsafe {
-                GLOBAL_DISPATCHER = Some(dispatcher);
-            }
-        });
+        let cpu_features = Self::detect_cpu_features();
+        let selected_variant = Self::select_optimal_variant(&cpu_features);
+        
+        let dispatcher = AdaptiveSimdDispatcher {
+            cpu_features,
+            selected_variant,
+            performance_cache: Mutex::new(std::collections::HashMap::new()),
+        };
+        
+        GLOBAL_DISPATCHER.set(dispatcher).map_err(|_| {
+            QuantRS2Error::RuntimeError("Adaptive SIMD dispatcher already initialized".to_string())
+        })?;
         
         Ok(())
     }
     
     /// Get the global dispatcher instance
-    pub fn instance() -> QuantRS2Result<&'static mut AdaptiveSimdDispatcher> {
-        unsafe {
-            GLOBAL_DISPATCHER.as_mut().ok_or_else(|| {
-                QuantRS2Error::RuntimeError("Adaptive SIMD dispatcher not initialized".to_string())
-            })
-        }
+    pub fn instance() -> QuantRS2Result<&'static AdaptiveSimdDispatcher> {
+        GLOBAL_DISPATCHER.get().ok_or_else(|| {
+            QuantRS2Error::RuntimeError("Adaptive SIMD dispatcher not initialized".to_string())
+        })
     }
     
     /// Detect CPU features at runtime
@@ -219,7 +214,7 @@ impl AdaptiveSimdDispatcher {
     
     /// Apply a single-qubit gate with adaptive SIMD
     pub fn apply_single_qubit_gate_adaptive(
-        &mut self,
+        &self,
         state: &mut [Complex64],
         target: usize,
         matrix: &[Complex64; 4],
@@ -244,7 +239,7 @@ impl AdaptiveSimdDispatcher {
     
     /// Apply a two-qubit gate with adaptive SIMD
     pub fn apply_two_qubit_gate_adaptive(
-        &mut self,
+        &self,
         state: &mut [Complex64],
         control: usize,
         target: usize,
@@ -270,7 +265,7 @@ impl AdaptiveSimdDispatcher {
     
     /// Batch apply gates with adaptive SIMD
     pub fn apply_batch_gates_adaptive(
-        &mut self,
+        &self,
         states: &mut [&mut [Complex64]],
         gates: &[Box<dyn crate::gate::GateOp>],
     ) -> QuantRS2Result<()> {
@@ -296,9 +291,11 @@ impl AdaptiveSimdDispatcher {
     /// Select the best SIMD variant for a specific operation
     fn select_variant_for_operation(&self, operation_key: &str, data_size: usize) -> SimdVariant {
         // Check performance cache first
-        if let Some(perf_data) = self.performance_cache.get(operation_key) {
-            if perf_data.samples >= 5 {
-                return perf_data.best_variant;
+        if let Ok(cache) = self.performance_cache.lock() {
+            if let Some(perf_data) = cache.get(operation_key) {
+                if perf_data.samples >= 5 {
+                    return perf_data.best_variant;
+                }
             }
         }
         
@@ -315,31 +312,37 @@ impl AdaptiveSimdDispatcher {
     }
     
     /// Update performance cache with execution time
-    fn update_performance_cache(&mut self, operation_key: &str, execution_time: f64, variant: SimdVariant) {
-        let perf_data = self.performance_cache.entry(operation_key.to_string())
-            .or_insert_with(|| PerformanceData {
-                avg_time: execution_time,
-                samples: 0,
-                best_variant: variant,
-            });
-        
-        // Update running average
-        perf_data.avg_time = (perf_data.avg_time * perf_data.samples as f64 + execution_time) 
-                           / (perf_data.samples + 1) as f64;
-        perf_data.samples += 1;
-        
-        // Update best variant if this one is significantly faster
-        if execution_time < perf_data.avg_time * 0.9 {
-            perf_data.best_variant = variant;
+    fn update_performance_cache(&self, operation_key: &str, execution_time: f64, variant: SimdVariant) {
+        if let Ok(mut cache) = self.performance_cache.lock() {
+            let perf_data = cache.entry(operation_key.to_string())
+                .or_insert_with(|| PerformanceData {
+                    avg_time: execution_time,
+                    samples: 0,
+                    best_variant: variant,
+                });
+            
+            // Update running average
+            perf_data.avg_time = (perf_data.avg_time * perf_data.samples as f64 + execution_time) 
+                               / (perf_data.samples + 1) as f64;
+            perf_data.samples += 1;
+            
+            // Update best variant if this one is significantly faster
+            if execution_time < perf_data.avg_time * 0.9 {
+                perf_data.best_variant = variant;
+            }
         }
     }
     
     /// Get performance report
     pub fn get_performance_report(&self) -> AdaptivePerformanceReport {
+        let cache = self.performance_cache.lock()
+            .map(|cache| cache.clone())
+            .unwrap_or_default();
+        
         AdaptivePerformanceReport {
             cpu_features: self.cpu_features,
             selected_variant: self.selected_variant,
-            performance_cache: self.performance_cache.clone(),
+            performance_cache: cache,
         }
     }
     
@@ -593,13 +596,13 @@ mod tests {
         let mut dispatcher = AdaptiveSimdDispatcher {
             cpu_features: AdaptiveSimdDispatcher::detect_cpu_features(),
             selected_variant: SimdVariant::Avx2,
-            performance_cache: std::collections::HashMap::new(),
+            performance_cache: Mutex::new(std::collections::HashMap::new()),
         };
         
         dispatcher.update_performance_cache("test_op", 100.0, SimdVariant::Avx2);
         dispatcher.update_performance_cache("test_op", 150.0, SimdVariant::Avx2);
         
-        let perf_data = dispatcher.performance_cache.get("test_op").unwrap();
+        let perf_data = dispatcher.performance_cache.lock().unwrap().get("test_op").unwrap().clone();
         assert_eq!(perf_data.samples, 2);
         assert!((perf_data.avg_time - 125.0).abs() < 1e-10);
     }

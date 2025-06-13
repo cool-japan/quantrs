@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::sync::{Arc, Mutex};
 use ndarray::{Array, Array1, Array2, Array3, Array4, Axis, Zip, ArrayD, s};
-use rand::prelude::*;
+use rand::{prelude::*, thread_rng};
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 
 /// Tensor network sampler for quantum annealing
@@ -1504,15 +1504,11 @@ pub fn create_mera_sampler(layers: usize) -> TensorNetworkSampler {
 
 // Implement Sampler trait for TensorNetworkSampler
 impl Sampler for TensorNetworkSampler {
-    fn run_ising(&self, _model: &crate::ising::IsingModel, _num_reads: usize) -> SamplerResult {
+    fn run_qubo(&self, _qubo: &(ndarray::Array2<f64>, std::collections::HashMap<String, usize>), _num_reads: usize) -> SamplerResult<Vec<crate::sampler::SampleResult>> {
         Err(SamplerError::NotImplemented("Use run_hobo instead".to_string()))
     }
 
-    fn run_qubo(&self, _qubo: &ndarray::ArrayView2<f64>, _num_reads: usize) -> SamplerResult {
-        Err(SamplerError::NotImplemented("Use run_hobo instead".to_string()))
-    }
-
-    fn run_hobo(&self, problem: &(ndarray::ArrayD<f64>, std::collections::HashMap<String, usize>), num_reads: usize) -> SamplerResult {
+    fn run_hobo(&self, problem: &(ndarray::ArrayD<f64>, std::collections::HashMap<String, usize>), num_reads: usize) -> SamplerResult<Vec<crate::sampler::SampleResult>> {
         let (hamiltonian, _var_map) = problem;
         
         // Create a mutable copy for sampling
@@ -1522,10 +1518,6 @@ impl Sampler for TensorNetworkSampler {
             Ok(results) => Ok(results),
             Err(e) => Err(SamplerError::SamplingFailed(e.to_string())),
         }
-    }
-
-    fn get_sampler_type(&self) -> &'static str {
-        "TensorNetworkSampler"
     }
 }
 

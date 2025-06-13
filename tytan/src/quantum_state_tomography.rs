@@ -8,9 +8,8 @@ use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::sync::{Arc, Mutex};
 use ndarray::{Array, Array1, Array2, Array3, Array4, Axis, Zip, ArrayD, s};
-use rand::prelude::*;
+use rand::{prelude::*, thread_rng};
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use crate::symbol::Symbol;
 
 /// Quantum state tomography system
 pub struct QuantumStateTomography {

@@ -7,7 +7,6 @@
 //! - Reset operations
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use crate::matrix_ops::DenseMatrix;
 use crate::qubit::QubitId;
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use num_complex::Complex64;

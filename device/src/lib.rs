@@ -9,6 +9,8 @@ use std::collections::HashMap;
 use thiserror::Error;
 
 pub mod adaptive_compilation;
+pub mod advanced_benchmarking_suite;
+pub mod advanced_scheduling;
 /// Public exports for commonly used types
 // Forward declaration - implemented below
 // pub mod prelude;
@@ -22,6 +24,7 @@ pub mod calibration;
 pub mod characterization;
 pub mod cloud;
 pub mod compiler_passes;
+pub mod cross_platform_benchmarking;
 pub mod crosstalk;
 pub mod distributed;
 pub mod dynamical_decoupling;
@@ -52,6 +55,7 @@ pub mod topology;
 pub mod topology_analysis;
 pub mod translation;
 pub mod transpiler;
+pub mod unified_benchmarking;
 pub mod vqa_support;
 pub mod zero_noise_extrapolation;
 
@@ -390,6 +394,12 @@ pub async fn create_aws_device(
 
 /// Re-exports of commonly used types and traits
 pub mod prelude {
+    pub use crate::advanced_benchmarking_suite::{
+        AdvancedBenchmarkConfig, AdvancedBenchmarkResult, AdvancedHardwareBenchmarkSuite,
+        MLAnalysisResult, PredictionResult, AnomalyDetectionResult, AdvancedStatisticalResult,
+        MLBenchmarkConfig, RealtimeBenchmarkConfig, PredictiveModelingConfig,
+        AnomalyDetectionConfig, AdvancedStatsConfig, BenchmarkOptimizationConfig,
+    };
     pub use crate::backend_traits::{
         google_gates, honeywell_gates, ibm_gates, ionq_gates, query_backend_capabilities,
         rigetti_gates, BackendCapabilities, BackendFeatures, BackendPerformance, HardwareGate,
@@ -511,6 +521,11 @@ pub mod prelude {
         validate_native_circuit, DecomposedGate, GateTranslator, HardwareBackend, NativeGateSet,
         OptimizationStrategy, TranslationMethod, TranslationOptimizer, TranslationRule,
         TranslationStats,
+    };
+    pub use crate::unified_benchmarking::{
+        UnifiedQuantumBenchmarkSystem, UnifiedBenchmarkConfig, UnifiedBenchmarkResult,
+        QuantumPlatform as UnifiedQuantumPlatform, BenchmarkEvent,
+        PerformanceBaseline, BaselineMetric, BaselineMetricValue,
     };
     pub use crate::vqa_support::{
         analysis::ConvergenceAnalysis,

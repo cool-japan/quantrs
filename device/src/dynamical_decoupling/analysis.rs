@@ -12,17 +12,10 @@ use super::{
 
 // SciRS2 dependencies with fallbacks
 #[cfg(feature = "scirs2")]
-mod fallback_scirs2 {
-    use ndarray::{Array1, Array2};
-    
-    pub fn mean(_data: &ndarray::ArrayView1<f64>) -> Result<f64, String> { Ok(0.0) }
-    pub fn std(_data: &ndarray::ArrayView1<f64>, _ddof: i32) -> Result<f64, String> { Ok(1.0) }
-    pub fn trace(_matrix: &ndarray::ArrayView2<f64>) -> Result<f64, String> { Ok(1.0) }
-    pub fn inv(_matrix: &ndarray::ArrayView2<f64>) -> Result<Array2<f64>, String> { Ok(Array2::eye(2)) }
-}
+use scirs2_stats::{mean, std};
 
 #[cfg(not(feature = "scirs2"))]
-use fallback_scirs2::*;
+use super::fallback_scirs2::{mean, std, trace, inv};
 
 /// Statistical analysis results for DD sequences
 #[derive(Debug, Clone)]

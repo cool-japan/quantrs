@@ -5,7 +5,7 @@
 //! decomposition techniques.
 
 use crate::{
-    cartan::{CartanDecomposer, CartanDecomposition},
+    cartan::{CartanCoefficients, CartanDecomposer, CartanDecomposition},
     error::{QuantRS2Error, QuantRS2Result},
     gate::{multi::*, single::*, GateOp},
     matrix_ops::{DenseMatrix, QuantumMatrix},

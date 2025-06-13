@@ -876,7 +876,7 @@ impl TestingFramework {
             cpu_model: "Unknown".to_string(), // Would need OS-specific detection
             memory_gb: 8.0, // Simplified - would need system detection
             gpu_info: None,
-            rust_version: env!("RUSTC_VERSION").to_string(),
+            rust_version: std::env::var("RUSTC_VERSION").unwrap_or_else(|_| "unknown".to_string()),
             compile_flags: vec!["--release".to_string()],
         }
     }

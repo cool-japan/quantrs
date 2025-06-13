@@ -323,10 +323,10 @@ struct VectorSolution {
 
 impl Sampler for NECVectorAnnealingSampler {
     fn run_qubo(
-        &mut self,
+        &self,
         model: &(Array2<f64>, HashMap<String, usize>),
         shots: usize,
-    ) -> SamplerResult {
+    ) -> SamplerResult<Vec<SampleResult>> {
         let (qubo, var_map) = model;
         
         // Preprocess problem
@@ -356,47 +356,14 @@ impl Sampler for NECVectorAnnealingSampler {
         Ok(results)
     }
 
-    fn run_ising(
-        &mut self,
-        linear: &[f64],
-        quadratic: &[(usize, usize, f64)],
-        offset: f64,
-        shots: usize,
-    ) -> SamplerResult {
-        // Convert Ising to QUBO
-        let n = linear.len();
-        let mut qubo = Array2::zeros((n, n));
-        
-        // Linear terms
-        for (i, &h) in linear.iter().enumerate() {
-            qubo[[i, i]] = 2.0 * h;
-        }
-        
-        // Quadratic terms
-        for &(i, j, coupling) in quadratic {
-            if i == j {
-                qubo[[i, i]] += 4.0 * coupling;
-            } else {
-                qubo[[i, j]] += 2.0 * coupling;
-                qubo[[j, i]] += 2.0 * coupling;
-            }
-        }
-        
-        // Create variable mapping
-        let var_map: HashMap<String, usize> = (0..n)
-            .map(|i| (format!("s{}", i), i))
-            .collect();
-        
-        // Run as QUBO
-        let mut results = self.run_qubo(&(qubo, var_map), shots)?;
-        
-        // Adjust for Ising offset
-        for result in &mut results {
-            result.energy += offset;
-        }
-        
-        Ok(results)
+    fn run_hobo(
+        &self,
+        _hobo: &(ndarray::ArrayD<f64>, HashMap<String, usize>),
+        _shots: usize,
+    ) -> SamplerResult<Vec<SampleResult>> {
+        Err(SamplerError::NotImplemented("HOBO not supported by NEC hardware".to_string()))
     }
+
 }
 
 #[cfg(test)]

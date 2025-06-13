@@ -24,6 +24,7 @@ ndarray-rand.workspace = true
 ndarray-stats.workspace = true
 rand.workspace = true
 rand_distr.workspace = true
+rand_chacha = "0.3"
 rayon.workspace = true
 num-complex.workspace = true
 fastrand.workspace = true

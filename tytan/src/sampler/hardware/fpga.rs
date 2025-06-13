@@ -375,10 +375,10 @@ struct FPGAResult {
 
 impl Sampler for FPGASampler {
     fn run_qubo(
-        &mut self,
+        &self,
         model: &(Array2<f64>, HashMap<String, usize>),
         shots: usize,
-    ) -> SamplerResult {
+    ) -> SamplerResult<Vec<SampleResult>> {
         let (qubo, var_map) = model;
         
         // Check problem size
@@ -405,43 +405,14 @@ impl Sampler for FPGASampler {
         Ok(results)
     }
 
-    fn run_ising(
-        &mut self,
-        linear: &[f64],
-        quadratic: &[(usize, usize, f64)],
-        offset: f64,
-        shots: usize,
-    ) -> SamplerResult {
-        // Convert Ising to QUBO for FPGA processing
-        let n = linear.len();
-        let mut qubo = Array2::zeros((n, n));
-        
-        for (i, &h) in linear.iter().enumerate() {
-            qubo[[i, i]] = 2.0 * h;
-        }
-        
-        for &(i, j, coupling) in quadratic {
-            if i == j {
-                qubo[[i, i]] += 4.0 * coupling;
-            } else {
-                qubo[[i, j]] += 2.0 * coupling;
-                qubo[[j, i]] += 2.0 * coupling;
-            }
-        }
-        
-        let var_map: HashMap<String, usize> = (0..n)
-            .map(|i| (format!("s{}", i), i))
-            .collect();
-        
-        let mut results = self.run_qubo(&(qubo, var_map), shots)?;
-        
-        // Adjust energies
-        for result in &mut results {
-            result.energy += offset;
-        }
-        
-        Ok(results)
+    fn run_hobo(
+        &self,
+        _hobo: &(ndarray::ArrayD<f64>, HashMap<String, usize>),
+        _shots: usize,
+    ) -> SamplerResult<Vec<SampleResult>> {
+        Err(SamplerError::NotImplemented("HOBO not supported by FPGA hardware".to_string()))
     }
+
 }
 
 impl Drop for FPGASampler {

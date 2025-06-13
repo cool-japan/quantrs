@@ -100,6 +100,34 @@ impl AtomType {
     }
 }
 
+/// Atomic hybridization states
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Hybridization {
+    SP,
+    SP2,
+    SP3,
+    SP3D,
+    SP3D2,
+}
+
+/// 3D position coordinates
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Position3D {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
+impl Position3D {
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
+        Self { x, y, z }
+    }
+    
+    pub fn distance(&self, other: &Position3D) -> f64 {
+        ((self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2)).sqrt()
+    }
+}
+
 /// Bond types in molecular graphs
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BondType {

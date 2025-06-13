@@ -473,6 +473,7 @@ impl ProteinFoldingProblem {
                     (0, 1) => LatticePosition::new(prev_pos.x, prev_pos.y + 1, prev_pos.z),
                     (1, 0) => LatticePosition::new(prev_pos.x - 1, prev_pos.y, prev_pos.z),
                     (1, 1) => LatticePosition::new(prev_pos.x, prev_pos.y - 1, prev_pos.z),
+                    _ => LatticePosition::new(prev_pos.x + 1, prev_pos.y, prev_pos.z), // Default case
                 };
                 
                 folding.set_position(i, new_pos)?;
@@ -645,7 +646,7 @@ impl ProteinFoldingProblem {
         let penalty = 0.5;
         
         for i in 0..qubo.num_variables {
-            qubo.set_bias(i, penalty)?;
+            qubo.set_linear(i, penalty)?;
         }
         
         Ok(())
@@ -828,7 +829,7 @@ mod tests {
         let problem = ProteinFoldingProblem::new(sequence, LatticeType::Square2D);
         
         let (qubo, variable_map) = problem.to_qubo().unwrap();
-        assert_eq!(qubo.num_variables(), 6); // (4-1) * 2 = 6 variables
+        assert_eq!(qubo.num_variables, 6); // (4-1) * 2 = 6 variables
         assert!(!variable_map.is_empty());
     }
 }

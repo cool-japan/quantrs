@@ -1398,7 +1398,7 @@ impl RealTimeAdaptiveQec {
         };
         
         let predicted_noise = NoiseCharacteristics {
-            timestamp: Instant::now() + self.config.prediction_config.accuracy_threshold as u64 * 1000,
+            timestamp: Instant::now() + Duration::from_millis((self.config.prediction_config.accuracy_threshold * 1000.0) as u64),
             noise_level: predicted_noise_level,
             noise_type: assessment.current_noise.noise_type.clone(),
             temporal_correlation: assessment.current_noise.temporal_correlation,
@@ -1446,7 +1446,7 @@ impl RealTimeAdaptiveQec {
                         action: DetectionAction::SwitchProtocol,
                     },
                     correction: CorrectionConfig {
-                        code: ErrorCorrectionCode::Surface,
+                        code: ErrorCorrectionCode::SurfaceCode,
                         threshold: 0.05,
                         max_attempts: 3,
                         efficiency_target: 0.9,
@@ -1462,7 +1462,7 @@ impl RealTimeAdaptiveQec {
             _ => {
                 // Large problem or high noise: full correction
                 ErrorCorrectionStrategy::Correction(CorrectionConfig {
-                    code: ErrorCorrectionCode::Surface,
+                    code: ErrorCorrectionCode::SurfaceCode,
                     threshold: 0.1,
                     max_attempts: 5,
                     efficiency_target: 0.95,
@@ -1948,7 +1948,7 @@ mod tests {
     #[test]
     fn test_strategy_selection() {
         let system = create_example_adaptive_qec().unwrap();
-        let problem = IsingModel::new(100).unwrap();
+        let problem = IsingModel::new(100);
         
         let noise_assessment = NoiseAssessment {
             current_noise: NoiseCharacteristics {

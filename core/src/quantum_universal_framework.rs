@@ -437,7 +437,7 @@ impl UniversalQuantumFramework {
     fn analyze_architecture_compatibility(&self, architecture: &ArchitectureInfo) -> Result<CompatibilityAnalysis, QuantRS2Error> {
         Ok(CompatibilityAnalysis {
             compatibility_score: 0.95, // 95% compatibility
-            supported_features: vec!["quantum_gates", "measurements", "classical_control"].iter().map(|s| s.to_string()).collect(),
+            supported_features: ["quantum_gates", "measurements", "classical_control"].iter().map(|s| s.to_string()).collect(),
             missing_features: vec![],
             adaptation_requirements: vec![],
         })

@@ -715,7 +715,7 @@ impl QuantumInternet {
             network_name: "Global Terrestrial Quantum Network".to_string(),
             fiber_length: 2_500_000.0, // km of quantum fiber
             repeater_spacing: 50.0, // km average spacing
-            coverage_regions: vec!["North America", "Europe", "Asia", "Australia"].iter().map(|s| s.to_string()).collect(),
+            coverage_regions: ["North America", "Europe", "Asia", "Australia"].iter().map(|s| s.to_string()).collect(),
         };
         
         self.quantum_network_infrastructure.terrestrial_networks.push(terrestrial_network);

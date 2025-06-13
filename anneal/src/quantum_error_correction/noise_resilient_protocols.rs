@@ -742,7 +742,7 @@ impl NoiseResilientAnnealingProtocol {
         protocol: &AnnealingProtocol,
     ) -> QECResult<AnnealingResult> {
         // Simulate annealing with noise effects
-        let mut rng = ChaCha8Rng::from_rng(rand::thread_rng()).unwrap();
+        let mut rng = ChaCha8Rng::from_rng(&mut rand::thread_rng());
         
         // Apply protocol-specific modifications to parameters
         let modified_params = self.apply_protocol_modifications(params, protocol)?;
@@ -813,8 +813,17 @@ impl NoiseResilientAnnealingProtocol {
             }
         }
 
-        // Return the solution state
-        Ok(state)
+        // Create AnnealingResult from state
+        let energy = self.calculate_energy(problem, &state)?;
+        let result = super::error_mitigation::AnnealingResult {
+            solution: state,
+            energy,
+            num_occurrences: 1,
+            chain_break_fraction: 0.0,
+            timing: HashMap::new(),
+            info: HashMap::new(),
+        };
+        Ok(result)
     }
 
     /// Calculate energy of state with problem
@@ -893,10 +902,11 @@ impl NoiseResilientAnnealingProtocol {
 
     /// Estimate error rate from annealing result
     fn estimate_result_error_rate(&self, result: &AnnealingResult) -> f64 {
-        // Simplified error estimation - if result is Ok, assume low error
-        match result {
-            Ok(_) => 0.01, // Base error rate for successful result
-            Err(_) => 0.5, // High error rate for failed result
+        // Simplified error estimation based on solution quality
+        if result.energy < -0.5 {
+            0.01 // Low error rate for good solution
+        } else {
+            0.5  // High error rate for poor solution
         }
     }
 
@@ -1012,10 +1022,11 @@ impl NoiseResilientAnnealingProtocol {
 
     /// Calculate solution fidelity
     fn calculate_solution_fidelity(&self, result: &AnnealingResult) -> QECResult<f64> {
-        // Simplified fidelity calculation based on success
-        match result {
-            Ok(_) => Ok(0.95), // High fidelity for successful result
-            Err(_) => Ok(0.5), // Low fidelity for failed result
+        // Simplified fidelity calculation based on energy quality
+        if result.energy < -0.5 {
+            Ok(0.95) // High fidelity for good solution
+        } else {
+            Ok(0.5)  // Low fidelity for poor solution
         }
     }
 

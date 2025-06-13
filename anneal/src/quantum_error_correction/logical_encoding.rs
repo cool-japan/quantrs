@@ -1327,7 +1327,7 @@ impl LogicalAnnealingEncoder {
     /// Create default hardware topology
     fn create_default_topology(parameters: &CodeParameters) -> AnnealingTopology {
         let n = parameters.num_physical_qubits;
-        let connectivity = Array2::eye(n); // Default to isolated qubits
+        let connectivity = Array2::from_shape_fn((n, n), |(i, j)| i == j); // Default to isolated qubits
         let coupling_strengths = Array2::zeros((n, n));
         let coherence_times = Array1::ones(n) * 100.0; // 100 microseconds
         

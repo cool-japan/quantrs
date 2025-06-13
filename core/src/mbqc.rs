@@ -5,15 +5,11 @@
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
-    gate::GateOp,
-    operations::{MeasurementOutcome, ProjectiveMeasurement},
-    qubit::QubitId,
 };
-use ndarray::{Array1, Array2, ArrayView1};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::f64::consts::PI;
-use std::fmt;
 
 /// Measurement basis for MBQC
 #[derive(Debug, Clone, Copy, PartialEq)]

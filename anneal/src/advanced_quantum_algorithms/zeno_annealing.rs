@@ -270,7 +270,7 @@ impl QuantumZenoAnnealer {
     /// Solve problem using Zeno annealing
     pub fn solve<P>(&mut self, problem: &P) -> AdvancedQuantumResult<AnnealingResult<Vec<i32>>>
     where
-        P: Clone,
+        P: Clone + 'static,
     {
         // For compatibility with the coordinator, convert to the expected format
         if let Ok(ising_problem) = self.convert_to_ising(problem) {
@@ -294,7 +294,7 @@ impl QuantumZenoAnnealer {
     }
 
     /// Convert generic problem to Ising model with enhanced handling
-    fn convert_to_ising<P>(&self, problem: &P) -> Result<IsingModel, AdvancedQuantumError> {
+    fn convert_to_ising<P: 'static>(&self, problem: &P) -> Result<IsingModel, AdvancedQuantumError> {
         use std::any::Any;
         
         // Check if it's already an Ising model

@@ -13,7 +13,6 @@ use serde::{Deserialize, Serialize};
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 
 /// Advanced performance analysis system
-#[derive(Debug)]
 pub struct AdvancedPerformanceAnalyzer {
     /// Configuration
     pub config: AnalysisConfig,
@@ -527,7 +526,6 @@ pub trait PerformanceMonitor: Send + Sync {
 }
 
 /// Benchmarking suite
-#[derive(Debug)]
 pub struct BenchmarkingSuite {
     /// Available benchmarks
     pub benchmarks: Vec<Box<dyn Benchmark>>,
@@ -1529,7 +1527,7 @@ pub struct Visualization {
     /// Data
     pub data: VisualizationData,
     /// Configuration
-    pub config: VisualizationConfig,
+    pub config: RenderingConfig,
 }
 
 /// Visualization types
@@ -1556,9 +1554,9 @@ pub enum VisualizationData {
     Network { nodes: Vec<String>, edges: Vec<(usize, usize)> },
 }
 
-/// Visualization configuration
+/// Rendering configuration
 #[derive(Debug, Clone)]
-pub struct VisualizationConfig {
+pub struct RenderingConfig {
     /// Width
     pub width: usize,
     /// Height

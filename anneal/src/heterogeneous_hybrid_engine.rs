@@ -92,6 +92,8 @@ pub enum ExecutionStrategy {
     Competitive,
     /// Cooperative execution (combine results)
     Cooperative,
+    /// Adaptive execution (strategy chosen based on problem characteristics)
+    Adaptive,
     /// Hierarchical execution (coarse then fine-grained)
     Hierarchical,
 }
@@ -810,16 +812,11 @@ impl HeterogeneousHybridEngine {
     /// Calculate coupling density of problem
     fn calculate_coupling_density(&self, problem: &IsingModel) -> f64 {
         let total_possible = problem.num_qubits * (problem.num_qubits - 1) / 2;
-        let mut actual_couplings = 0;
         
         let couplings = problem.couplings();
-        for i in 0..couplings.len() {
-            for j in 0..couplings[i].len() {
-                if couplings[i][j] != 0.0 {
-                    actual_couplings += 1;
-                }
-            }
-        }
+        let actual_couplings = couplings.iter()
+            .filter(|coupling| coupling.strength != 0.0)
+            .count();
         
         if total_possible > 0 {
             actual_couplings as f64 / total_possible as f64
@@ -941,10 +938,10 @@ impl HeterogeneousHybridEngine {
         cost_sorted.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
         
         // Select cheapest resource that meets quality requirements
-        for (resource_id, _cost) in cost_sorted {
-            if let Some(resource) = available.iter().find(|r| r.id == resource_id) {
+        for (resource_id, _cost) in &cost_sorted {
+            if let Some(resource) = available.iter().find(|r| &r.id == resource_id) {
                 if resource.performance.quality_score >= task.quality_requirements.min_quality {
-                    return Ok(vec![resource_id]);
+                    return Ok(vec![resource_id.clone()]);
                 }
             }
         }
@@ -1095,18 +1092,19 @@ impl HeterogeneousHybridEngine {
         // Bias terms
         for (i, &spin) in solution.iter().enumerate() {
             let biases = problem.biases();
-            if i < biases.len() {
-                energy += biases[i] * spin as f64;
+            for (qubit_index, bias_value) in biases {
+                if qubit_index == i {
+                    energy += bias_value * spin as f64;
+                    break;
+                }
             }
         }
         
         // Coupling terms
-        for i in 0..solution.len() {
-            for j in (i + 1)..solution.len() {
-                let couplings = problem.couplings();
-                if i < couplings.len() && j < couplings[i].len() {
-                    energy += couplings[i][j] * solution[i] as f64 * solution[j] as f64;
-                }
+        let couplings = problem.couplings();
+        for coupling in couplings {
+            if coupling.i < solution.len() && coupling.j < solution.len() {
+                energy += coupling.strength * solution[coupling.i] as f64 * solution[coupling.j] as f64;
             }
         }
         
@@ -1157,7 +1155,7 @@ impl HeterogeneousHybridEngine {
             quality_score: best_result.quality,
             total_time,
             total_cost,
-            resource_utilization,
+            resource_utilization: resource_utilization.clone(),
             individual_results: results,
             metadata: ExecutionMetadata {
                 strategy: self.config.execution_strategy.clone(),
@@ -1371,7 +1369,7 @@ mod tests {
     fn test_task_submission() {
         let engine = create_example_hybrid_engine().unwrap();
         
-        let problem = IsingModel::new(100).unwrap();
+        let problem = IsingModel::new(100);
         let task = HybridExecutionTask {
             id: "test_task".to_string(),
             problem,

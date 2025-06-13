@@ -446,7 +446,7 @@ impl InfiniteDepthQAOA {
     /// Solve problem using infinite-depth QAOA
     pub fn solve<P>(&mut self, problem: &P) -> AdvancedQuantumResult<AnnealingResult<Vec<i32>>>
     where
-        P: Clone,
+        P: Clone + 'static,
     {
         // For compatibility with the coordinator, convert to the expected format
         if let Ok(ising_problem) = self.convert_to_ising(problem) {
@@ -470,7 +470,7 @@ impl InfiniteDepthQAOA {
     }
 
     /// Convert generic problem to Ising model
-    fn convert_to_ising<P>(&self, problem: &P) -> Result<IsingModel, AdvancedQuantumError> {
+    fn convert_to_ising<P: 'static>(&self, problem: &P) -> Result<IsingModel, AdvancedQuantumError> {
         // Try to downcast to known problem types
         use std::any::Any;
         

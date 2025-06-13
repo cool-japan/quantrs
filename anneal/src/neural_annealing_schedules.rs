@@ -915,7 +915,7 @@ impl NeuralAnnealingScheduler {
 
     /// Initialize network weights
     fn initialize_weights(input_dim: usize, output_dim: usize) -> Array2<f64> {
-        let mut rng = ChaCha8Rng::from_rng(rand::thread_rng()).unwrap();
+        let mut rng = ChaCha8Rng::from_rng(&mut rand::thread_rng());
         let std_dev = (2.0 / input_dim as f64).sqrt(); // Xavier initialization
 
         Array2::from_shape_fn((output_dim, input_dim), |_| {
@@ -1574,42 +1574,29 @@ impl Default for NeuralSchedulerConfig {
         }
     }
 
+}
+
+impl NeuralAnnealingScheduler {
     /// Optimize a QUBO problem using neural-guided annealing schedules
     pub fn optimize(&mut self, qubo: &QuboModel) -> AnnealingResult<Result<Vec<i32>, AnnealingError>> {
         // Convert QUBO to Ising model
         let ising_model = IsingModel::from_qubo(qubo);
 
-        // Generate neural-guided annealing schedule
-        let schedule = self.generate_schedule(&ising_model, None)
-            .map_err(|e| AnnealingError::InvalidSchedule(e))?;
-
-        // Create annealing parameters from schedule
-        let annealing_params = AnnealingParams {
-            initial_transverse_field: schedule.transverse_field[0],
-            temperature_schedule: crate::simulator::TemperatureSchedule::Linear,
-            transverse_field_schedule: crate::simulator::TransverseFieldSchedule::Custom(Box::new(move |t, t_f| {
-                // Interpolate from the schedule
-                let progress = t / t_f;
-                let idx = (progress * (schedule.transverse_field.len() - 1) as f64).floor() as usize;
-                let idx = idx.min(schedule.transverse_field.len() - 1);
-                schedule.transverse_field[idx]
-            })),
-            num_sweeps: 10000,
-            initial_temperature: 10.0,
-            final_temperature: 0.1,
-            annealing_time: Duration::from_millis(1000),
-            num_reads: 100,
-            randomize_initial_state: true,
-        };
+        // Set up simplified annealing parameters
+        let mut annealing_params = AnnealingParams::new();
+        annealing_params.initial_temperature = 10.0;
+        annealing_params.final_temperature = 0.1;
+        annealing_params.num_sweeps = 1000;
+        annealing_params.seed = Some(42);
 
         // Create simulator and run annealing
-        let mut simulator = QuantumAnnealingSimulator::new(ising_model);
+        let mut simulator = QuantumAnnealingSimulator::new(annealing_params.clone())?;
 
         // Run the annealing and return the result wrapped in the expected format
-        match simulator.anneal(&annealing_params) {
+        match simulator.solve(&ising_model) {
             Ok(result) => {
                 // Convert to binary solution (assuming positive spins are 1, negative are 0)
-                let binary_solution: Vec<i32> = result.solution.iter()
+                let binary_solution: Vec<i32> = result.best_spins.iter()
                     .map(|&spin| if spin > 0 { 1 } else { 0 })
                     .collect();
                 Ok(Ok(binary_solution))

@@ -4,6 +4,7 @@ use crate::ising::IsingError;
 use thiserror::Error;
 use super::gaussian_process::{GaussianProcessSurrogate, KernelFunction};
 use rand_chacha::ChaCha8Rng;
+use rand::Rng;
 
 /// Errors that can occur in Bayesian optimization
 #[derive(Error, Debug)]
@@ -188,7 +189,7 @@ impl BayesianHyperoptimizer {
         let mut rng = if let Some(seed) = self.config.seed {
             ChaCha8Rng::seed_from_u64(seed)
         } else {
-            ChaCha8Rng::from_rng(rand::thread_rng()).unwrap()
+            ChaCha8Rng::from_rng(&mut rand::thread_rng())
         };
         
         let start_time = std::time::Instant::now();
@@ -309,7 +310,7 @@ impl BayesianHyperoptimizer {
     }
     
     /// Suggest next point to evaluate using acquisition function
-    fn suggest_next_point(&self, rng: &mut ChaCha8Rng) -> BayesianOptResult<Vec<f64>> {
+    fn suggest_next_point(&mut self, rng: &mut ChaCha8Rng) -> BayesianOptResult<Vec<f64>> {
         let acq_start = std::time::Instant::now();
         
         let gp_model = self.gp_model.as_ref().ok_or_else(|| {

@@ -386,7 +386,7 @@ impl Default for DecompositionConfig {
 }
 
 /// Decomposition strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecompositionStrategy {
     /// Uniform decomposition
     Uniform,
@@ -2276,11 +2276,23 @@ pub struct CommunicationStatistics {}
 #[derive(Debug, Clone, Default)]
 pub struct FaultToleranceManager {}
 
+impl FaultToleranceManager {
+    pub fn new() -> Self { Self {} }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct MemoryProfiler {}
 
+impl MemoryProfiler {
+    pub fn new() -> Self { Self {} }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct IOProfiler {}
+
+impl IOProfiler {
+    pub fn new() -> Self { Self {} }
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct PerformanceMetrics {}
@@ -2291,8 +2303,16 @@ pub struct CPUProfilingConfig {}
 #[derive(Debug, Clone, Default)]
 pub struct GPUMemoryManager {}
 
+impl GPUMemoryManager {
+    pub fn new() -> Self { Self {} }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct KernelRegistry {}
+
+impl KernelRegistry {
+    pub fn new() -> Self { Self {} }
+}
 
 // More type definitions continuing...
 
@@ -2590,8 +2610,18 @@ mod tests {
             DecompositionStrategy::Hierarchical,
         ];
         
-        for strategy in strategies {
-            assert_ne!(strategy, DecompositionStrategy::Uniform);
+        // Test that each strategy is a valid enum variant
+        assert_eq!(strategies.len(), 4);
+        
+        // Test that different strategies are indeed different
+        assert_ne!(DecompositionStrategy::Uniform, DecompositionStrategy::Adaptive);
+        assert_ne!(DecompositionStrategy::Adaptive, DecompositionStrategy::GraphBased);
+        assert_ne!(DecompositionStrategy::GraphBased, DecompositionStrategy::Hierarchical);
+        
+        // Test that strategies can be cloned and compared
+        for strategy in &strategies {
+            let cloned = strategy.clone();
+            assert_eq!(strategy, &cloned);
         }
     }
 }

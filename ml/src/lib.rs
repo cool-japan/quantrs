@@ -99,7 +99,7 @@ pub mod quantum_in_context_learning;
 pub mod quantum_mixture_of_experts;
 pub mod quantum_advanced_diffusion;
 pub mod quantum_continuous_flows;
-pub mod quantum_neural_radiance;
+pub mod quantum_neural_radiance_fields;
 pub mod quantum_self_supervised_learning;
 pub mod quantum_implicit_neural_representations;
 
@@ -326,12 +326,12 @@ pub mod prelude {
     };
     pub use crate::quantum_pinns::{
         QPINNConfig, QuantumPINN, PhysicsEquationType, BoundaryCondition, InitialCondition,
-        LossWeights, AttentionConfig as QPINNAttentionConfig, DerivativeResults,
+        LossWeights, DerivativeResults,
         TrainingMetrics as QPINNTrainingMetrics,
     };
     pub use crate::quantum_reservoir_computing::{
         QRCConfig, QuantumReservoirComputer, ReservoirDynamics, InputEncoding, ReadoutConfig,
-        QuantumAttentionType as QRCQuantumAttentionType, TrainingMetrics as QRCTrainingMetrics,
+        TrainingMetrics as QRCTrainingMetrics,
         DynamicsAnalysis, BenchmarkResults as QRCBenchmarkResults,
     };
     pub use crate::quantum_graph_attention::{
@@ -353,7 +353,7 @@ pub mod prelude {
         QuantumContextEncoder, QuantumTaskAdapter, QuantumEpisodicMemory, QuantumContextAttention,
         InContextLearningOutput, AdaptationResult, TransferLearningResults, InContextLearningStatistics,
         InContextLearningMetrics, ContextExample, ContextMetadata, ContextModality, AdaptationTarget,
-        MetaUpdateStrategy, InterpolationMethod, QuantumAttentionMechanism, ErrorMitigationStrategy,
+        MetaUpdateStrategy, InterpolationMethod, QuantumAttentionMechanism,
         QuantumContextState,
     };
     
@@ -363,12 +363,12 @@ pub mod prelude {
     };
     
     pub use crate::quantum_continuous_flows::{
-        QuantumContinuousFlow, QuantumContinuousFlowConfig, FlowSamplingOutput, QuantumEnhancement,
-        FlowArchitecture, FlowTrainingConfig,
+        QuantumContinuousFlow, QuantumContinuousFlowConfig, FlowSamplingOutput,
+        FlowArchitecture, FlowTrainingConfig, QuantumODEFunction,
     };
     
-    pub use crate::quantum_neural_radiance::{
-        QuantumNeRF, QuantumNeRFConfig, QuantumNeRFOutput, QuantumRenderingMetrics,
+    pub use crate::quantum_neural_radiance_fields::{
+        QuantumNeRF, QuantumNeRFConfig, QuantumRenderOutput, QuantumRenderingMetrics,
     };
     
     pub use crate::quantum_mixture_of_experts::{
@@ -387,8 +387,8 @@ pub mod prelude {
         QuantumImplicitNeuralRepresentation, QuantumINRConfig, SignalType, RepresentationMethod,
         QuantumActivationConfig, CompressionConfig, MetaLearningConfig, OptimizationConfig,
         INRQueryOutput, INRTrainingOutput, QuantumINRMetrics, INRTrainingConfig,
-        QuantumPositionalEncoding, QuantumLayerConfig, QuantumODEFunction, QuantumStateManager,
-        EntanglementManager, QuantumMetaLearner, QuantumOptimizer, QuantumGradientEstimator,
+        QuantumPositionalEncoding, QuantumLayerConfig, QuantumStateManager,
+        EntanglementManager, QuantumOptimizer, QuantumGradientEstimator,
         CompressionManager, CompressedRepresentation, AdaptationOutput,
     };
 }

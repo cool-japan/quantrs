@@ -351,6 +351,7 @@ pub enum ConnectionStatus {
 }
 
 /// Performance monitoring system
+#[derive(Debug)]
 pub struct PerformanceMonitor {
     /// System-wide metrics
     pub system_metrics: SystemMetrics,
@@ -419,6 +420,7 @@ pub struct PerformanceSnapshot {
 }
 
 /// Load balancing system
+#[derive(Debug)]
 pub struct LoadBalancer {
     /// Balancing strategy
     pub strategy: LoadBalancingStrategy,
@@ -460,7 +462,7 @@ impl MultiChipCoordinator {
     /// Create new multi-chip coordinator
     pub fn new(config: MultiChipConfig) -> Self {
         Self {
-            config,
+            config: config.clone(),
             chips: Arc::new(RwLock::new(HashMap::new())),
             partitions: Arc::new(RwLock::new(HashMap::new())),
             channels: Arc::new(Mutex::new(HashMap::new())),
@@ -600,22 +602,29 @@ impl MultiChipCoordinator {
         // Copy bias terms
         for (i, &original_var) in variables.iter().enumerate() {
             let biases = problem.biases();
-            if original_var < biases.len() {
-                subproblem.set_bias(i, biases[original_var])?;
+            for (qubit_index, bias_value) in biases {
+                if qubit_index == original_var {
+                    subproblem.set_bias(i, bias_value)?;
+                    break;
+                }
             }
         }
         
         // Copy coupling terms
+        let couplings = problem.couplings();
         for i in 0..variables.len() {
             for j in (i + 1)..variables.len() {
                 let orig_i = variables[i];
                 let orig_j = variables[j];
                 
-                let couplings = problem.couplings();
-                if orig_i < couplings.len() && orig_j < couplings[orig_i].len() {
-                    let coupling = couplings[orig_i][orig_j];
-                    if coupling != 0.0 {
-                        subproblem.set_coupling(i, j, coupling)?;
+                // Find coupling between orig_i and orig_j
+                for coupling in &couplings {
+                    if (coupling.i == orig_i && coupling.j == orig_j) || 
+                       (coupling.i == orig_j && coupling.j == orig_i) {
+                        if coupling.strength != 0.0 {
+                            subproblem.set_coupling(i, j, coupling.strength)?;
+                        }
+                        break;
                     }
                 }
             }
@@ -643,17 +652,16 @@ impl MultiChipCoordinator {
     
     /// Check if two partitions have coupling terms
     fn check_partition_coupling(&self, partition1: &ProblemPartition, partition2: &ProblemPartition, problem: &IsingModel) -> ApplicationResult<bool> {
+        let couplings = problem.couplings();
         for &var1 in &partition1.variables {
             for &var2 in &partition2.variables {
-                let couplings = problem.couplings();
-                if var1 < couplings.len() && var2 < couplings[var1].len() {
-                    if couplings[var1][var2] != 0.0 {
-                        return Ok(true);
-                    }
-                }
-                if var2 < couplings.len() && var1 < couplings[var2].len() {
-                    if couplings[var2][var1] != 0.0 {
-                        return Ok(true);
+                // Check if there's a coupling between var1 and var2
+                for coupling in &couplings {
+                    if (coupling.i == var1 && coupling.j == var2) || 
+                       (coupling.i == var2 && coupling.j == var1) {
+                        if coupling.strength != 0.0 {
+                            return Ok(true);
+                        }
                     }
                 }
             }

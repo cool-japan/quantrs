@@ -16,7 +16,7 @@ use std::{
     fs::{self, File},
     io::{BufReader, BufWriter},
     path::{Path, PathBuf},
-    sync::{Arc, RwLock},
+    sync::{Arc, OnceLock, RwLock},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 // use sha2::{Sha256, Digest}; // Disabled for simplified implementation
@@ -711,34 +711,26 @@ fn compile_two_qubit_gate(gate: &dyn GateOp) -> QuantRS2Result<CompiledGate> {
 }
 
 /// Global compilation cache instance
-static mut GLOBAL_CACHE: Option<Arc<CompilationCache>> = None;
-static CACHE_INIT: std::sync::Once = std::sync::Once::new();
+static GLOBAL_CACHE: OnceLock<Arc<CompilationCache>> = OnceLock::new();
 
 /// Initialize the global compilation cache
 pub fn initialize_compilation_cache(config: CacheConfig) -> QuantRS2Result<()> {
-    CACHE_INIT.call_once(|| {
-        match CompilationCache::new(config) {
-            Ok(cache) => unsafe {
-                GLOBAL_CACHE = Some(Arc::new(cache));
-            },
-            Err(e) => {
-                eprintln!("Failed to initialize compilation cache: {}", e);
-            }
-        }
-    });
+    let cache = CompilationCache::new(config)?;
+    
+    GLOBAL_CACHE.set(Arc::new(cache)).map_err(|_| {
+        QuantRS2Error::RuntimeError("Compilation cache already initialized".to_string())
+    })?;
     
     Ok(())
 }
 
 /// Get the global compilation cache
 pub fn get_compilation_cache() -> QuantRS2Result<Arc<CompilationCache>> {
-    unsafe {
-        GLOBAL_CACHE.as_ref()
-            .map(Arc::clone)
-            .ok_or_else(|| QuantRS2Error::RuntimeError(
-                "Compilation cache not initialized".to_string()
-            ))
-    }
+    GLOBAL_CACHE.get()
+        .map(Arc::clone)
+        .ok_or_else(|| QuantRS2Error::RuntimeError(
+            "Compilation cache not initialized".to_string()
+        ))
 }
 
 #[cfg(test)]

@@ -1944,7 +1944,7 @@ impl QuantumAdvantageDemonstrator {
             .step_by((self.config.problem_size_range.1 - self.config.problem_size_range.0) / 10) {
             
             // Create Ising problem
-            let ising_problem = IsingModel::new(size)?;
+            let ising_problem = IsingModel::new(size);
             
             let problem = ProblemInstance {
                 id: format!("ising_size_{}", size),

@@ -878,7 +878,7 @@ impl ClimateModelingOptimizer {
                         parameter_space.coupling_params.len();
         
         // Create Ising model for parameter optimization
-        let mut ising_model = IsingModel::new(num_params * 10)?; // 10 bits per parameter
+        let mut ising_model = IsingModel::new(num_params * 10); // 10 bits per parameter
         
         // Add objective terms for accuracy
         for i in 0..num_params {

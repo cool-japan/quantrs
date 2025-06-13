@@ -21,6 +21,8 @@ rand.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 ndarray.workspace = true
+rayon.workspace = true
+num_cpus = "1.16"
 
 # SciRS2 dependencies for advanced algorithms
 scirs2-stats = { version = "0.1.0-alpha.4", default-features = false, optional = true }
@@ -31,6 +33,7 @@ scirs2-optimize = { workspace = true, optional = true }
 # For device connectivity
 reqwest = { workspace = true, features = ["json"], optional = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "sync", "time"], optional = true }
+broadcast = "0.1"
 chrono = { workspace = true, optional = true }
 async-trait = { workspace = true, optional = true }
 uuid = { version = "1.10.0", features = ["v4"], optional = true }

@@ -969,7 +969,7 @@ impl ErrorMitigationManager {
         num_shots: usize,
     ) -> QECResult<AnnealingResult> {
         // Simplified noise scaling simulation
-        let mut rng = ChaCha8Rng::from_rng(rand::thread_rng()).unwrap();
+        let mut rng = ChaCha8Rng::from_rng(&mut rand::thread_rng());
         let base_error_rate = 0.01; // Base error rate
         let scaled_error_rate = base_error_rate * scaling_factor;
 
@@ -1139,7 +1139,7 @@ impl ErrorMitigationManager {
         for operator in &symmetry.operators {
             let mut operator_value = 1.0;
             
-            for (&qubit, &pauli) in operator.support.iter().zip(operator.pauli_string.iter()) {
+            for (&qubit, pauli) in operator.support.iter().zip(operator.pauli_string.iter()) {
                 if qubit < solution.len() {
                     let spin_value = solution[qubit] as f64;
                     

@@ -145,8 +145,8 @@ impl GrapeOptimizer {
             
             for (i, control_h) in self.control_hamiltonians.iter().enumerate() {
                 // Gradient computation using chain rule
-                let dU_dpulse = -Complex64::i() * dt * control_h.dot(&forward_part);
-                let gradient_matrix = &backward_props[t].t().mapv(|x| x.conj()).dot(&fidelity_error.dot(&dU_dpulse));
+                let d_u_dpulse = -Complex64::i() * dt * control_h.dot(&forward_part);
+                let gradient_matrix = &backward_props[t].t().mapv(|x| x.conj()).dot(&fidelity_error.dot(&d_u_dpulse));
                 
                 gradients[[i, t]] = gradient_matrix.diag().map(|x| x.re).sum();
             }

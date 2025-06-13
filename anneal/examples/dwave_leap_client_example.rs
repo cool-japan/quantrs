@@ -16,9 +16,10 @@ use std::time::Duration;
 use quantrs2_anneal::{
     dwave::{
         AdvancedProblemParams, AnnealingSchedule, ChainStrengthMethod, DWaveClient,
-        EmbeddingConfig, HybridSolverParams, OptimizationLevel, SolverCategory, SolverSelector,
+        EmbeddingConfig, HybridSolverParams, SolverCategory, SolverSelector,
     },
     ising::IsingModel,
+    OptimizationLevel,
 };
 
 #[cfg(not(feature = "dwave"))]

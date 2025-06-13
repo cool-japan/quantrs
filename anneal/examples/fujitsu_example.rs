@@ -154,7 +154,7 @@ fn create_maxcut_instance(n: usize) -> Result<IsingModel, Box<dyn std::error::Er
 #[cfg(feature = "fujitsu")]
 fn create_portfolio_optimization(
     n_assets: usize,
-) -> Result<quantrs2_anneal::qubo::QuboFormulation, Box<dyn std::error::Error>> {
+) -> Result<Box<dyn quantrs2_anneal::qubo::QuboFormulation>, Box<dyn std::error::Error>> {
     let mut builder = QuboBuilder::new();
 
     // Generate random returns and risks
@@ -178,7 +178,7 @@ fn create_portfolio_optimization(
     // Constraint: select exactly k assets
     let k = n_assets / 3;
     builder.set_constraint_weight(10.0)?;
-    builder.constrain_sum_exactly(&vars, k as f64)?;
+    builder.constrain_equal(&vars, k as f64)?;
 
     // Add correlation penalties between assets
     for i in 0..n_assets {
@@ -191,7 +191,7 @@ fn create_portfolio_optimization(
         }
     }
 
-    Ok(builder.build())
+    Ok(Box::new(builder.build()))
 }
 
 #[cfg(not(feature = "fujitsu"))]

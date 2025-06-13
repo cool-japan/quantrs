@@ -28,6 +28,14 @@ pub mod tensor_network;
 pub mod topological;
 pub mod topology;
 pub mod zx_calculus;
+pub mod transpiler;
+pub mod noise_models;
+pub mod validation;
+pub mod circuit_cache;
+pub mod scirs2_matrices;
+pub mod scirs2_optimization;
+pub mod scirs2_benchmarking;
+pub mod scirs2_similarity;
 
 // Re-exports of commonly used types and traits
 pub mod prelude {
@@ -63,7 +71,7 @@ pub mod prelude {
         MLCircuitRepresentation, MLOptimizationResult, MLStrategy, TrainingExample,
     };
     pub use crate::optimization::{
-        AbstractCostModel, CircuitAnalyzer, CircuitMetrics, CircuitOptimizer2, CircuitRewriting,
+        AbstractCostModel, CircuitAnalyzer, CircuitOptimizer2, CircuitRewriting,
         CoherenceOptimization, CommutationTable, CostBasedOptimization, CostModel,
         DecompositionOptimization, DecouplingSequence, DynamicalDecoupling, GateCancellation,
         GateCommutation, GateCost, GateError, GateMerging, GateProperties, HardwareCostModel,
@@ -119,6 +127,45 @@ pub mod prelude {
     pub use crate::topology::{TopologicalAnalysis, TopologicalAnalyzer, TopologicalStrategy};
     pub use crate::zx_calculus::{
         OptimizedZXResult, ZXDiagram, ZXEdge, ZXNode, ZXOptimizationResult, ZXOptimizer,
+    };
+    pub use crate::transpiler::{
+        DeviceTranspiler, HardwareSpec, NativeGateSet, TranspilationOptions, TranspilationResult,
+        TranspilationStats, TranspilationStrategy,
+    };
+    pub use crate::noise_models::{
+        DecoherenceParams, ErrorSource, LeakageError, NoiseAnalysisResult,
+        NoiseAnalyzer, ReadoutError, SingleQubitError, ThermalNoise, TwoQubitError,
+    };
+    pub use crate::validation::{
+        CircuitValidator, ClassicalConstraints, ConnectivityConstraints, DepthLimits,
+        GateRestrictions, MeasurementConstraints, ResourceLimits,
+        ValidationResult, ValidationRules, ValidationStats, ValidationSuggestion,
+        ValidationWarning,
+    };
+    pub use crate::circuit_cache::{
+        CacheConfig, CacheEntry, CacheManager, CacheStats, CircuitCache, CircuitSignature,
+        CompiledCircuitCache, EvictionPolicy, ExecutionResultCache, SignatureGenerator,
+        TranspilationCache,
+    };
+    pub use crate::scirs2_matrices::{
+        CircuitToSparseMatrix, Complex64, SparseFormat, SparseGate,
+        SparseGateLibrary, SparseMatrix, SparseOptimizer,
+    };
+    pub use crate::scirs2_optimization::{
+        CircuitTemplate, EarlyStoppingCriteria, KernelType, ObjectiveFunction,
+        OptimizationAlgorithm, OptimizationConfig, OptimizationHistory,
+        Parameter, ParameterizedGate, QAOAObjective, QuantumCircuitOptimizer, VQEObjective,
+    };
+    pub use crate::scirs2_benchmarking::{
+        BaselineComparison, BenchmarkConfig, BenchmarkReport, BenchmarkRun, CircuitBenchmark,
+        CircuitMetrics as BenchmarkCircuitMetrics, DescriptiveStats, Distribution, DistributionFit, HypothesisTestResult,
+        InsightCategory, OutlierAnalysis, OutlierDetectionMethod, PerformanceInsight,
+        PracticalSignificance, RegressionAnalysis, StatisticalAnalyzer, StatisticalTest,
+    };
+    pub use crate::scirs2_similarity::{
+        BatchSimilarityComputer, CircuitDistanceMetrics, CircuitFeatures, CircuitSimilarityAnalyzer,
+        CircuitSimilarityMetrics, EntanglementStructure, GraphKernelType, GraphSimilarityAlgorithm,
+        MLModelType, SciRS2Graph, SimilarityAlgorithm, SimilarityConfig, SimilarityWeights,
     };
     pub use quantrs2_core::qubit::QubitId as Qubit;
 }

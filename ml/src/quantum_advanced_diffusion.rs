@@ -1380,15 +1380,6 @@ impl QuantumAdvancedDiffusionModel {
 
 // Supporting structures and implementations
 
-#[derive(Debug, Clone)]
-pub struct QuantumDenoisingNetwork {
-    architecture: DenoisingArchitecture,
-    quantum_layers: Vec<QuantumDenoisingLayer>,
-    classical_layers: Vec<ClassicalLayer>,
-    quantum_parameters: Array1<f64>,
-    hybrid_connections: Vec<HybridConnection>,
-}
-
 impl QuantumDenoisingNetwork {
     pub fn new(config: &QuantumAdvancedDiffusionConfig) -> Result<Self> {
         // Initialize based on architecture

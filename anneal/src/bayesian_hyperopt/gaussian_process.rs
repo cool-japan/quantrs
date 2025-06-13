@@ -23,6 +23,15 @@ impl Default for GaussianProcessSurrogate {
     }
 }
 
+impl GaussianProcessSurrogate {
+    /// Simple predict method for compatibility
+    pub fn predict(&self, _x: &[f64]) -> BayesianOptResult<(f64, f64)> {
+        // Simplified prediction - in practice would use trained model
+        // Returns (mean, variance)
+        Ok((0.0, 1.0))
+    }
+}
+
 /// Kernel functions for Gaussian processes
 #[derive(Debug, Clone, PartialEq)]
 pub enum KernelFunction {

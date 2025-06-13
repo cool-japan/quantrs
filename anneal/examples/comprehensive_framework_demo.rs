@@ -388,7 +388,7 @@ async fn demo_cloud_integration() -> Result<(), Box<dyn std::error::Error>> {
                         println!(
                             "    - {} ({}): {} qubits",
                             solver.name,
-                            solver.solver_type,
+                            format!("{:?}", solver.solver_type),
                             solver
                                 .properties
                                 .get("num_qubits")

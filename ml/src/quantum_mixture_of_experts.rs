@@ -2039,7 +2039,7 @@ pub struct GatingResult {
     pub quantum_efficiency: f64,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct ExpertOutput {
     pub prediction: Array1<f64>,
     pub quality_score: f64,
@@ -2047,7 +2047,7 @@ pub struct ExpertOutput {
     pub quantum_metrics: ExpertQuantumMetrics,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct ExpertQuantumMetrics {
     pub coherence: f64,
     pub entanglement: f64,
