@@ -14,10 +14,10 @@
 //! - Data governance and compliance tracking
 //! - SIEM and ITSM integration capabilities
 
-use std::collections::{HashMap, VecDeque, BTreeMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::fmt;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime};
-use std::fmt;
 
 use crate::applications::{ApplicationError, ApplicationResult};
 
@@ -80,9 +80,18 @@ impl Default for SloConfig {
             evaluation_window: Duration::from_secs(24 * 3600),
             alert_on_breach: true,
             burn_rate_thresholds: vec![
-                BurnRateThreshold { window: Duration::from_secs(5 * 60), threshold: 14.4 },
-                BurnRateThreshold { window: Duration::from_secs(1 * 3600), threshold: 6.0 },
-                BurnRateThreshold { window: Duration::from_secs(6 * 3600), threshold: 1.0 },
+                BurnRateThreshold {
+                    window: Duration::from_secs(5 * 60),
+                    threshold: 14.4,
+                },
+                BurnRateThreshold {
+                    window: Duration::from_secs(1 * 3600),
+                    threshold: 6.0,
+                },
+                BurnRateThreshold {
+                    window: Duration::from_secs(6 * 3600),
+                    threshold: 1.0,
+                },
             ],
         }
     }
@@ -266,8 +275,14 @@ impl Default for CostMonitoringConfig {
                 "quantum_algorithm".to_string(),
             ],
             budget_thresholds: vec![
-                BudgetThreshold { percentage: 80.0, action: BudgetAction::Alert },
-                BudgetThreshold { percentage: 95.0, action: BudgetAction::Restrict },
+                BudgetThreshold {
+                    percentage: 80.0,
+                    action: BudgetAction::Alert,
+                },
+                BudgetThreshold {
+                    percentage: 95.0,
+                    action: BudgetAction::Restrict,
+                },
             ],
             optimization_rules: vec![
                 CostOptimizationRule::IdleResourceShutdown,
@@ -430,13 +445,16 @@ pub struct ItsmConfig {
 impl Default for ItsmConfig {
     fn default() -> Self {
         let mut incident_templates = HashMap::new();
-        incident_templates.insert("slo_breach".to_string(), IncidentTemplate {
-            priority: IncidentPriority::High,
-            category: "Performance".to_string(),
-            assignment_group: "QuantumOps".to_string(),
-            escalation_path: vec!["L2".to_string(), "L3".to_string()],
-        });
-        
+        incident_templates.insert(
+            "slo_breach".to_string(),
+            IncidentTemplate {
+                priority: IncidentPriority::High,
+                category: "Performance".to_string(),
+                assignment_group: "QuantumOps".to_string(),
+                escalation_path: vec!["L2".to_string(), "L3".to_string()],
+            },
+        );
+
         Self {
             platform: ItsmPlatform::ServiceNow,
             endpoint: "https://company.service-now.com/api".to_string(),
@@ -1089,17 +1107,21 @@ impl EnterpriseMonitoringSystem {
             tracing_system: Arc::new(Mutex::new(DistributedTracingSystem::new())),
             slo_manager: Arc::new(RwLock::new(SloManager::new())),
             security_monitor: Arc::new(Mutex::new(SecurityMonitor::new(config.security_config))),
-            business_metrics: Arc::new(Mutex::new(BusinessMetricsCollector::new(config.business_metrics_config))),
+            business_metrics: Arc::new(Mutex::new(BusinessMetricsCollector::new(
+                config.business_metrics_config,
+            ))),
             cost_monitor: Arc::new(Mutex::new(CostMonitor::new(config.cost_monitoring_config))),
-            data_governance: Arc::new(Mutex::new(DataGovernanceSystem::new(config.data_governance_config))),
+            data_governance: Arc::new(Mutex::new(DataGovernanceSystem::new(
+                config.data_governance_config,
+            ))),
             integration_hub: Arc::new(Mutex::new(IntegrationHub::new(config.integration_config))),
         }
     }
-    
+
     /// Start enterprise monitoring
     pub fn start(&self) -> ApplicationResult<()> {
         println!("Starting enterprise monitoring and observability system");
-        
+
         // Initialize subsystems
         self.initialize_logging()?;
         self.initialize_tracing()?;
@@ -1109,50 +1131,61 @@ impl EnterpriseMonitoringSystem {
         self.initialize_cost_monitoring()?;
         self.initialize_data_governance()?;
         self.initialize_integrations()?;
-        
+
         println!("Enterprise monitoring system started successfully");
         Ok(())
     }
-    
+
     /// Log structured message with correlation ID
-    pub fn log(&self, level: LogLevel, message: &str, correlation_id: Option<String>) -> ApplicationResult<()> {
+    pub fn log(
+        &self,
+        level: LogLevel,
+        message: &str,
+        correlation_id: Option<String>,
+    ) -> ApplicationResult<()> {
         let mut logging_system = self.logging_system.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire logging system lock".to_string())
         })?;
-        
+
         logging_system.log(level, message, correlation_id)?;
         Ok(())
     }
-    
+
     /// Start distributed trace
-    pub fn start_trace(&self, operation_name: &str, service_name: &str) -> ApplicationResult<String> {
+    pub fn start_trace(
+        &self,
+        operation_name: &str,
+        service_name: &str,
+    ) -> ApplicationResult<String> {
         let mut tracing_system = self.tracing_system.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire tracing system lock".to_string())
         })?;
-        
+
         tracing_system.start_trace(operation_name, service_name)
     }
-    
+
     /// Create SLO
     pub fn create_slo(&self, slo: ServiceLevelObjective) -> ApplicationResult<()> {
         let mut slo_manager = self.slo_manager.write().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire SLO manager lock".to_string())
         })?;
-        
+
         slo_manager.create_slo(slo)?;
         Ok(())
     }
-    
+
     /// Record security event
     pub fn record_security_event(&self, event: SecurityEvent) -> ApplicationResult<()> {
         let mut security_monitor = self.security_monitor.lock().map_err(|_| {
-            ApplicationError::OptimizationError("Failed to acquire security monitor lock".to_string())
+            ApplicationError::OptimizationError(
+                "Failed to acquire security monitor lock".to_string(),
+            )
         })?;
-        
+
         security_monitor.record_event(event)?;
         Ok(())
     }
-    
+
     /// Get enterprise monitoring dashboard
     pub fn get_dashboard(&self) -> ApplicationResult<EnterpriseMonitoringDashboard> {
         Ok(EnterpriseMonitoringDashboard {
@@ -1164,48 +1197,48 @@ impl EnterpriseMonitoringSystem {
             last_updated: SystemTime::now(),
         })
     }
-    
+
     /// Private helper methods
     fn initialize_logging(&self) -> ApplicationResult<()> {
         println!("Initializing structured logging system");
         Ok(())
     }
-    
+
     fn initialize_tracing(&self) -> ApplicationResult<()> {
         println!("Initializing distributed tracing system");
         Ok(())
     }
-    
+
     fn initialize_slo_monitoring(&self) -> ApplicationResult<()> {
         println!("Initializing SLO/SLI monitoring");
         Ok(())
     }
-    
+
     fn initialize_security_monitoring(&self) -> ApplicationResult<()> {
         println!("Initializing security monitoring");
         Ok(())
     }
-    
+
     fn initialize_business_metrics(&self) -> ApplicationResult<()> {
         println!("Initializing business metrics collection");
         Ok(())
     }
-    
+
     fn initialize_cost_monitoring(&self) -> ApplicationResult<()> {
         println!("Initializing cost monitoring and FinOps");
         Ok(())
     }
-    
+
     fn initialize_data_governance(&self) -> ApplicationResult<()> {
         println!("Initializing data governance system");
         Ok(())
     }
-    
+
     fn initialize_integrations(&self) -> ApplicationResult<()> {
         println!("Initializing external integrations");
         Ok(())
     }
-    
+
     fn get_system_health(&self) -> ApplicationResult<SystemHealthStatus> {
         Ok(SystemHealthStatus {
             overall_health: 95.0,
@@ -1214,7 +1247,7 @@ impl EnterpriseMonitoringSystem {
             warnings: 2,
         })
     }
-    
+
     fn get_slo_compliance(&self) -> ApplicationResult<SloComplianceStatus> {
         Ok(SloComplianceStatus {
             total_slos: 5,
@@ -1223,7 +1256,7 @@ impl EnterpriseMonitoringSystem {
             average_compliance: 96.5,
         })
     }
-    
+
     fn get_security_status(&self) -> ApplicationResult<SecurityStatus> {
         Ok(SecurityStatus {
             threat_level: ThreatLevel::Low,
@@ -1232,7 +1265,7 @@ impl EnterpriseMonitoringSystem {
             compliance_score: 97.2,
         })
     }
-    
+
     fn get_cost_metrics(&self) -> ApplicationResult<CostMetrics> {
         Ok(CostMetrics {
             current_spend: 12450.67,
@@ -1241,7 +1274,7 @@ impl EnterpriseMonitoringSystem {
             savings_opportunities: 5,
         })
     }
-    
+
     fn get_business_kpis(&self) -> ApplicationResult<BusinessKpis> {
         Ok(BusinessKpis {
             user_satisfaction: 4.7,
@@ -1339,8 +1372,13 @@ impl StructuredLoggingSystem {
             destinations: vec![LogDestination::Console],
         }
     }
-    
-    fn log(&mut self, level: LogLevel, message: &str, correlation_id: Option<String>) -> ApplicationResult<()> {
+
+    fn log(
+        &mut self,
+        level: LogLevel,
+        message: &str,
+        correlation_id: Option<String>,
+    ) -> ApplicationResult<()> {
         let entry = LogEntry {
             timestamp: SystemTime::now(),
             level,
@@ -1353,14 +1391,14 @@ impl StructuredLoggingSystem {
             fields: HashMap::new(),
             tags: vec![],
         };
-        
+
         self.log_buffer.push_back(entry);
-        
+
         // Limit buffer size
         if self.log_buffer.len() > 10000 {
             self.log_buffer.pop_front();
         }
-        
+
         Ok(())
     }
 }
@@ -1377,15 +1415,26 @@ impl DistributedTracingSystem {
                 adaptive_sampling: true,
                 max_traces_per_second: 1000,
             },
-            exporters: vec![TraceExporter::OpenTelemetry("http://localhost:4317".to_string())],
+            exporters: vec![TraceExporter::OpenTelemetry(
+                "http://localhost:4317".to_string(),
+            )],
         }
     }
-    
-    fn start_trace(&mut self, operation_name: &str, service_name: &str) -> ApplicationResult<String> {
-        let trace_id = format!("trace_{}", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap_or_default().as_nanos());
+
+    fn start_trace(
+        &mut self,
+        operation_name: &str,
+        service_name: &str,
+    ) -> ApplicationResult<String> {
+        let trace_id = format!(
+            "trace_{}",
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        );
         let span_id = format!("span_{}", self.active_traces.len());
-        
+
         let span = Span {
             span_id: span_id.clone(),
             parent_span_id: None,
@@ -1397,10 +1446,10 @@ impl DistributedTracingSystem {
             logs: vec![],
             status: SpanStatus::Ok,
         };
-        
+
         let mut spans = HashMap::new();
         spans.insert(span_id.clone(), span);
-        
+
         let trace = Trace {
             trace_id: trace_id.clone(),
             spans,
@@ -1409,7 +1458,7 @@ impl DistributedTracingSystem {
             end_time: None,
             service_map: HashMap::new(),
         };
-        
+
         self.active_traces.insert(trace_id.clone(), trace);
         Ok(trace_id)
     }
@@ -1425,7 +1474,7 @@ impl SloManager {
             burn_rate_alerts: vec![],
         }
     }
-    
+
     fn create_slo(&mut self, slo: ServiceLevelObjective) -> ApplicationResult<()> {
         self.slos.insert(slo.id.clone(), slo);
         Ok(())
@@ -1445,21 +1494,21 @@ impl SecurityMonitor {
                 blocked_events: 0,
                 false_positive_rate: 0.05,
                 mean_time_to_detection: Duration::from_secs(300), // 5 minutes
-                mean_time_to_response: Duration::from_secs(900), // 15 minutes
+                mean_time_to_response: Duration::from_secs(900),  // 15 minutes
                 compliance_score: 95.0,
             },
         }
     }
-    
+
     fn record_event(&mut self, event: SecurityEvent) -> ApplicationResult<()> {
         self.security_events.push_back(event);
         self.security_metrics.total_events += 1;
-        
+
         // Limit buffer size
         if self.security_events.len() > 50000 {
             self.security_events.pop_front();
         }
-        
+
         Ok(())
     }
 }
@@ -1471,29 +1520,37 @@ pub struct DataGovernanceSystem;
 pub struct IntegrationHub;
 
 impl BusinessMetricsCollector {
-    fn new(_config: BusinessMetricsConfig) -> Self { Self }
+    fn new(_config: BusinessMetricsConfig) -> Self {
+        Self
+    }
 }
 
 impl CostMonitor {
-    fn new(_config: CostMonitoringConfig) -> Self { Self }
+    fn new(_config: CostMonitoringConfig) -> Self {
+        Self
+    }
 }
 
 impl DataGovernanceSystem {
-    fn new(_config: DataGovernanceConfig) -> Self { Self }
+    fn new(_config: DataGovernanceConfig) -> Self {
+        Self
+    }
 }
 
 impl IntegrationHub {
-    fn new(_config: IntegrationConfig) -> Self { Self }
+    fn new(_config: IntegrationConfig) -> Self {
+        Self
+    }
 }
 
 /// Create example enterprise monitoring system
 pub fn create_example_enterprise_monitoring() -> ApplicationResult<EnterpriseMonitoringSystem> {
     let config = EnterpriseMonitoringConfig::default();
     let system = EnterpriseMonitoringSystem::new(config);
-    
+
     // Start the system
     system.start()?;
-    
+
     println!("Created enterprise monitoring system with comprehensive observability");
     Ok(system)
 }
@@ -1501,23 +1558,23 @@ pub fn create_example_enterprise_monitoring() -> ApplicationResult<EnterpriseMon
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_enterprise_monitoring_creation() {
         let config = EnterpriseMonitoringConfig::default();
         let system = EnterpriseMonitoringSystem::new(config);
-        
+
         assert!(system.config.enable_structured_logging);
         assert!(system.config.enable_distributed_tracing);
     }
-    
+
     #[test]
     fn test_structured_logging() {
         let system = create_example_enterprise_monitoring().unwrap();
         let result = system.log(LogLevel::Info, "Test message", Some("corr-123".to_string()));
         assert!(result.is_ok());
     }
-    
+
     #[test]
     fn test_slo_creation() {
         let system = create_example_enterprise_monitoring().unwrap();
@@ -1533,11 +1590,11 @@ mod tests {
             created_at: SystemTime::now(),
             updated_at: SystemTime::now(),
         };
-        
+
         let result = system.create_slo(slo);
         assert!(result.is_ok());
     }
-    
+
     #[test]
     fn test_security_event_recording() {
         let system = create_example_enterprise_monitoring().unwrap();
@@ -1554,17 +1611,17 @@ mod tests {
             details: HashMap::new(),
             correlation_id: Some("corr-456".to_string()),
         };
-        
+
         let result = system.record_security_event(event);
         assert!(result.is_ok());
     }
-    
+
     #[test]
     fn test_dashboard_generation() {
         let system = create_example_enterprise_monitoring().unwrap();
         let dashboard = system.get_dashboard();
         assert!(dashboard.is_ok());
-        
+
         let dashboard = dashboard.unwrap();
         assert!(dashboard.system_health.overall_health > 0.0);
         assert!(dashboard.slo_compliance.total_slos >= 0);

@@ -3,15 +3,15 @@
 //! This module contains all Neural Architecture Search (NAS) types and implementations
 //! used by the meta-learning optimization system.
 
-use std::collections::{HashMap, VecDeque};
-use std::time::{Duration, Instant};
-use crate::applications::ApplicationResult;
 use super::config::{
-    NeuralArchitectureSearchConfig, SearchSpace, SearchStrategy, EarlyStoppingCriteria, ResourceConstraints,
-    ArchitectureSpec, LayerSpec, LayerType, ConnectionPattern, OptimizationSettings,
-    OptimizerType, ActivationFunction, RegularizationConfig
+    ActivationFunction, ArchitectureSpec, ConnectionPattern, EarlyStoppingCriteria, LayerSpec,
+    LayerType, NeuralArchitectureSearchConfig, OptimizationSettings, OptimizerType,
+    RegularizationConfig, ResourceConstraints, SearchSpace, SearchStrategy,
 };
 use super::features::ProblemFeatures;
+use crate::applications::ApplicationResult;
+use std::collections::{HashMap, VecDeque};
+use std::time::{Duration, Instant};
 
 /// Neural Architecture Search engine
 #[derive(Debug)]
@@ -44,7 +44,6 @@ pub struct ArchitectureCandidate {
     /// Generation method
     pub generation_method: GenerationMethod,
 }
-
 
 /// Resource requirements for architectures
 #[derive(Debug, Clone)]
@@ -134,8 +133,11 @@ impl NeuralArchitectureSearch {
             },
         }
     }
-    
-    pub fn search_architecture(&mut self, _features: &ProblemFeatures) -> ApplicationResult<ArchitectureSpec> {
+
+    pub fn search_architecture(
+        &mut self,
+        _features: &ProblemFeatures,
+    ) -> ApplicationResult<ArchitectureSpec> {
         // Simplified architecture search
         let layers = vec![
             LayerSpec {
@@ -163,7 +165,7 @@ impl NeuralArchitectureSearch {
                 parameters: HashMap::new(),
             },
         ];
-        
+
         Ok(ArchitectureSpec {
             layers,
             connections: ConnectionPattern::Sequential,
@@ -184,9 +186,12 @@ impl NeuralArchitectureSearch {
     }
 
     /// Generate a new architecture candidate
-    pub fn generate_candidate(&mut self, method: GenerationMethod) -> ApplicationResult<ArchitectureCandidate> {
+    pub fn generate_candidate(
+        &mut self,
+        method: GenerationMethod,
+    ) -> ApplicationResult<ArchitectureCandidate> {
         let id = format!("arch_{}", Instant::now().elapsed().as_nanos());
-        
+
         // Generate architecture based on method
         let architecture = match method {
             GenerationMethod::Random => self.generate_random_architecture()?,
@@ -213,14 +218,21 @@ impl NeuralArchitectureSearch {
     }
 
     /// Evaluate an architecture candidate
-    pub fn evaluate_candidate(&mut self, candidate: &mut ArchitectureCandidate) -> ApplicationResult<f64> {
+    pub fn evaluate_candidate(
+        &mut self,
+        candidate: &mut ArchitectureCandidate,
+    ) -> ApplicationResult<f64> {
         // Simulate architecture evaluation
-        let performance = self.performance_predictor.predict(&candidate.architecture)?;
+        let performance = self
+            .performance_predictor
+            .predict(&candidate.architecture)?;
         candidate.actual_performance = Some(performance);
-        
+
         // Update predictor with new data
-        self.performance_predictor.training_data.push((candidate.architecture.clone(), performance));
-        
+        self.performance_predictor
+            .training_data
+            .push((candidate.architecture.clone(), performance));
+
         Ok(performance)
     }
 
@@ -248,12 +260,13 @@ impl NeuralArchitectureSearch {
 
     /// Get the best architecture found so far
     pub fn get_best_architecture(&self) -> Option<&ArchitectureCandidate> {
-        self.current_architectures.iter()
-            .max_by(|a, b| {
-                let a_perf = a.actual_performance.unwrap_or(a.estimated_performance);
-                let b_perf = b.actual_performance.unwrap_or(b.estimated_performance);
-                a_perf.partial_cmp(&b_perf).unwrap_or(std::cmp::Ordering::Equal)
-            })
+        self.current_architectures.iter().max_by(|a, b| {
+            let a_perf = a.actual_performance.unwrap_or(a.estimated_performance);
+            let b_perf = b.actual_performance.unwrap_or(b.estimated_performance);
+            a_perf
+                .partial_cmp(&b_perf)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
     }
 
     // Helper methods for architecture generation
@@ -308,21 +321,22 @@ impl NeuralArchitectureSearch {
         // If we have existing architectures, mutate one of them
         if let Some(base_arch) = self.current_architectures.first() {
             let mut mutated = base_arch.architecture.clone();
-            
+
             // Simple mutation: change the size of a random layer
             if !mutated.layers.is_empty() {
                 let layer_idx = 0; // Simplified: always mutate first layer
-                if layer_idx < mutated.layers.len() - 1 { // Don't mutate output layer
+                if layer_idx < mutated.layers.len() - 1 {
+                    // Don't mutate output layer
                     let new_size = [64, 128, 256, 512][layer_idx % 4];
                     mutated.layers[layer_idx].output_dim = new_size;
-                    
+
                     // Update next layer's input dimension
                     if layer_idx + 1 < mutated.layers.len() {
                         mutated.layers[layer_idx + 1].input_dim = new_size;
                     }
                 }
             }
-            
+
             Ok(mutated)
         } else {
             // No existing architectures, generate random
@@ -335,11 +349,11 @@ impl NeuralArchitectureSearch {
         if self.current_architectures.len() >= 2 {
             let parent1 = &self.current_architectures[0].architecture;
             let parent2 = &self.current_architectures[1].architecture;
-            
+
             // Simple crossover: take layers from both parents
             let mut child_layers = Vec::new();
             let min_layers = parent1.layers.len().min(parent2.layers.len());
-            
+
             for i in 0..min_layers {
                 let layer = if i % 2 == 0 {
                     parent1.layers[i].clone()
@@ -348,10 +362,10 @@ impl NeuralArchitectureSearch {
                 };
                 child_layers.push(layer);
             }
-            
+
             // Ensure proper dimensions
             self.fix_layer_dimensions(&mut child_layers);
-            
+
             Ok(ArchitectureSpec {
                 layers: child_layers,
                 connections: parent1.connections.clone(),
@@ -368,7 +382,7 @@ impl NeuralArchitectureSearch {
         for i in 1..layers.len() {
             layers[i].input_dim = layers[i - 1].output_dim;
         }
-        
+
         // Ensure final layer outputs 1 value
         if let Some(last_layer) = layers.last_mut() {
             last_layer.output_dim = 1;
@@ -384,7 +398,7 @@ impl PerformancePredictor {
         let complexity = self.calculate_complexity(architecture);
         let base_performance = 0.8;
         let complexity_penalty = (complexity - 1.0) * 0.1;
-        
+
         let predicted_performance = (base_performance - complexity_penalty).max(0.1).min(1.0);
         Ok(predicted_performance)
     }
@@ -392,10 +406,12 @@ impl PerformancePredictor {
     /// Calculate architecture complexity metric
     fn calculate_complexity(&self, architecture: &ArchitectureSpec) -> f64 {
         let num_layers = architecture.layers.len() as f64;
-        let total_params = architecture.layers.iter()
+        let total_params = architecture
+            .layers
+            .iter()
             .map(|layer| layer.input_dim * layer.output_dim)
             .sum::<usize>() as f64;
-        
+
         // Normalize complexity
         (num_layers / 10.0) + (total_params / 1_000_000.0)
     }
@@ -403,12 +419,12 @@ impl PerformancePredictor {
     /// Update predictor with new training data
     pub fn update(&mut self, architecture: ArchitectureSpec, performance: f64) {
         self.training_data.push((architecture, performance));
-        
+
         // Limit training data size
         if self.training_data.len() > 10000 {
             self.training_data.remove(0);
         }
-        
+
         // Update accuracy estimate (simplified)
         self.accuracy = 0.8 + (self.training_data.len() as f64 / 10000.0) * 0.15;
     }
@@ -431,10 +447,10 @@ mod tests {
     fn test_architecture_generation() {
         let config = NeuralArchitectureSearchConfig::default();
         let mut nas = NeuralArchitectureSearch::new(config);
-        
+
         let candidate = nas.generate_candidate(GenerationMethod::Random);
         assert!(candidate.is_ok());
-        
+
         let arch = candidate.unwrap();
         assert!(!arch.architecture.layers.is_empty());
         assert!(!arch.id.is_empty());
@@ -476,7 +492,7 @@ mod tests {
 
         let performance = predictor.predict(&architecture);
         assert!(performance.is_ok());
-        
+
         let perf_value = performance.unwrap();
         assert!(perf_value >= 0.0 && perf_value <= 1.0);
     }

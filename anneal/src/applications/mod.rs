@@ -50,6 +50,10 @@ pub enum ApplicationError {
     #[error("Invalid problem configuration: {0}")]
     InvalidConfiguration(String),
 
+    /// Configuration error
+    #[error("Configuration error: {0}")]
+    ConfigurationError(String),
+
     /// Constraint violation
     #[error("Constraint violation: {0}")]
     ConstraintViolation(String),
@@ -269,104 +273,154 @@ pub fn create_benchmark_suite(
 
         ("drug_discovery", "small") => {
             let molecule_problems = drug_discovery::create_benchmark_problems(10)?;
-            Ok(molecule_problems.into_iter().map(|problem| {
-                // Create wrapper that converts Molecule to Vec<i8>
-                let wrapper: Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>> = 
-                    Box::new(MoleculeToBinaryWrapper { inner: problem });
-                wrapper
-            }).collect())
-        },
+            Ok(molecule_problems
+                .into_iter()
+                .map(|problem| {
+                    // Create wrapper that converts Molecule to Vec<i8>
+                    let wrapper: Box<
+                        dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>,
+                    > = Box::new(MoleculeToBinaryWrapper { inner: problem });
+                    wrapper
+                })
+                .collect())
+        }
         ("drug_discovery", "medium") => {
             let molecule_problems = drug_discovery::create_benchmark_problems(25)?;
-            Ok(molecule_problems.into_iter().map(|problem| {
-                let wrapper: Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>> = 
-                    Box::new(MoleculeToBinaryWrapper { inner: problem });
-                wrapper
-            }).collect())
-        },
+            Ok(molecule_problems
+                .into_iter()
+                .map(|problem| {
+                    let wrapper: Box<
+                        dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>,
+                    > = Box::new(MoleculeToBinaryWrapper { inner: problem });
+                    wrapper
+                })
+                .collect())
+        }
         ("drug_discovery", "large") => {
             let molecule_problems = drug_discovery::create_benchmark_problems(50)?;
-            Ok(molecule_problems.into_iter().map(|problem| {
-                let wrapper: Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>> = 
-                    Box::new(MoleculeToBinaryWrapper { inner: problem });
-                wrapper
-            }).collect())
-        },
+            Ok(molecule_problems
+                .into_iter()
+                .map(|problem| {
+                    let wrapper: Box<
+                        dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>,
+                    > = Box::new(MoleculeToBinaryWrapper { inner: problem });
+                    wrapper
+                })
+                .collect())
+        }
 
         ("materials_science", "small") => {
             let materials_problems = materials_science::create_benchmark_problems(10)?;
-            Ok(materials_problems.into_iter().map(|problem| {
-                let wrapper: Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>> = 
-                    Box::new(MaterialsToBinaryWrapper { inner: problem });
-                wrapper
-            }).collect())
-        },
+            Ok(materials_problems
+                .into_iter()
+                .map(|problem| {
+                    let wrapper: Box<
+                        dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>,
+                    > = Box::new(MaterialsToBinaryWrapper { inner: problem });
+                    wrapper
+                })
+                .collect())
+        }
         ("materials_science", "medium") => {
             let materials_problems = materials_science::create_benchmark_problems(50)?;
-            Ok(materials_problems.into_iter().map(|problem| {
-                let wrapper: Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>> = 
-                    Box::new(MaterialsToBinaryWrapper { inner: problem });
-                wrapper
-            }).collect())
-        },
+            Ok(materials_problems
+                .into_iter()
+                .map(|problem| {
+                    let wrapper: Box<
+                        dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>,
+                    > = Box::new(MaterialsToBinaryWrapper { inner: problem });
+                    wrapper
+                })
+                .collect())
+        }
         ("materials_science", "large") => {
             let materials_problems = materials_science::create_benchmark_problems(100)?;
-            Ok(materials_problems.into_iter().map(|problem| {
-                let wrapper: Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>> = 
-                    Box::new(MaterialsToBinaryWrapper { inner: problem });
-                wrapper
-            }).collect())
-        },
+            Ok(materials_problems
+                .into_iter()
+                .map(|problem| {
+                    let wrapper: Box<
+                        dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>,
+                    > = Box::new(MaterialsToBinaryWrapper { inner: problem });
+                    wrapper
+                })
+                .collect())
+        }
 
         ("protein_folding", "small") => {
             let protein_problems = protein_folding::create_benchmark_problems(10)?;
-            Ok(protein_problems.into_iter().map(|problem| {
-                let wrapper: Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>> = 
-                    Box::new(ProteinToBinaryWrapper { inner: problem });
-                wrapper
-            }).collect())
-        },
+            Ok(protein_problems
+                .into_iter()
+                .map(|problem| {
+                    let wrapper: Box<
+                        dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>,
+                    > = Box::new(ProteinToBinaryWrapper { inner: problem });
+                    wrapper
+                })
+                .collect())
+        }
         ("protein_folding", "medium") => {
             let protein_problems = protein_folding::create_benchmark_problems(25)?;
-            Ok(protein_problems.into_iter().map(|problem| {
-                let wrapper: Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>> = 
-                    Box::new(ProteinToBinaryWrapper { inner: problem });
-                wrapper
-            }).collect())
-        },
+            Ok(protein_problems
+                .into_iter()
+                .map(|problem| {
+                    let wrapper: Box<
+                        dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>,
+                    > = Box::new(ProteinToBinaryWrapper { inner: problem });
+                    wrapper
+                })
+                .collect())
+        }
         ("protein_folding", "large") => {
             let protein_problems = protein_folding::create_benchmark_problems(50)?;
-            Ok(protein_problems.into_iter().map(|problem| {
-                let wrapper: Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>> = 
-                    Box::new(ProteinToBinaryWrapper { inner: problem });
-                wrapper
-            }).collect())
-        },
+            Ok(protein_problems
+                .into_iter()
+                .map(|problem| {
+                    let wrapper: Box<
+                        dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>,
+                    > = Box::new(ProteinToBinaryWrapper { inner: problem });
+                    wrapper
+                })
+                .collect())
+        }
 
         ("quantum_computational_chemistry", "small") => {
             let chemistry_problems = quantum_computational_chemistry::create_benchmark_problems(5)?;
-            Ok(chemistry_problems.into_iter().map(|problem| {
-                let wrapper: Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>> = 
-                    Box::new(ChemistryToBinaryWrapper { inner: problem });
-                wrapper
-            }).collect())
-        },
+            Ok(chemistry_problems
+                .into_iter()
+                .map(|problem| {
+                    let wrapper: Box<
+                        dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>,
+                    > = Box::new(ChemistryToBinaryWrapper { inner: problem });
+                    wrapper
+                })
+                .collect())
+        }
         ("quantum_computational_chemistry", "medium") => {
-            let chemistry_problems = quantum_computational_chemistry::create_benchmark_problems(15)?;
-            Ok(chemistry_problems.into_iter().map(|problem| {
-                let wrapper: Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>> = 
-                    Box::new(ChemistryToBinaryWrapper { inner: problem });
-                wrapper
-            }).collect())
-        },
+            let chemistry_problems =
+                quantum_computational_chemistry::create_benchmark_problems(15)?;
+            Ok(chemistry_problems
+                .into_iter()
+                .map(|problem| {
+                    let wrapper: Box<
+                        dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>,
+                    > = Box::new(ChemistryToBinaryWrapper { inner: problem });
+                    wrapper
+                })
+                .collect())
+        }
         ("quantum_computational_chemistry", "large") => {
-            let chemistry_problems = quantum_computational_chemistry::create_benchmark_problems(30)?;
-            Ok(chemistry_problems.into_iter().map(|problem| {
-                let wrapper: Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>> = 
-                    Box::new(ChemistryToBinaryWrapper { inner: problem });
-                wrapper
-            }).collect())
-        },
+            let chemistry_problems =
+                quantum_computational_chemistry::create_benchmark_problems(30)?;
+            Ok(chemistry_problems
+                .into_iter()
+                .map(|problem| {
+                    let wrapper: Box<
+                        dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>,
+                    > = Box::new(ChemistryToBinaryWrapper { inner: problem });
+                    wrapper
+                })
+                .collect())
+        }
 
         _ => Err(ApplicationError::InvalidConfiguration(format!(
             "Unknown benchmark: {} / {}",
@@ -579,42 +633,49 @@ impl OptimizationProblem for MoleculeToBinaryWrapper {
         let n = 32; // binary dimension
         let mut h = vec![0.0; n];
         let mut j = std::collections::HashMap::new();
-        
+
         // Add some basic interactions
         for i in 0..n {
             h[i] = -0.1; // Small bias towards 1
             for j_idx in (i + 1)..n {
-                if j_idx < i + 4 { // Local interactions
+                if j_idx < i + 4 {
+                    // Local interactions
                     j.insert((i, j_idx), 0.05);
                 }
             }
         }
-        
+
         let mut qubo = crate::ising::QuboModel::new(n);
-        
+
         // Set linear terms
         for (i, &value) in h.iter().enumerate() {
             qubo.set_linear(i, value)?;
         }
-        
+
         // Set quadratic terms
         for ((i, j_idx), &value) in j.iter() {
             qubo.set_quadratic(*i, *j_idx, value)?;
         }
-        
+
         let mut variable_mapping = HashMap::new();
         for i in 0..n {
             variable_mapping.insert(format!("bit_{}", i), i);
         }
-        
+
         Ok((qubo, variable_mapping))
     }
 
-    fn evaluate_solution(&self, solution: &Self::Solution) -> ApplicationResult<Self::ObjectiveValue> {
+    fn evaluate_solution(
+        &self,
+        solution: &Self::Solution,
+    ) -> ApplicationResult<Self::ObjectiveValue> {
         // Convert binary solution to a simple molecule representation
         let molecule = self.binary_to_molecule(solution)?;
         // For now, just return a simple score based on the number of 1s
-        Ok(solution.iter().map(|&x| if x > 0 { 1.0 } else { 0.0 }).sum())
+        Ok(solution
+            .iter()
+            .map(|&x| if x > 0 { 1.0 } else { 0.0 })
+            .sum())
     }
 
     fn is_feasible(&self, solution: &Self::Solution) -> bool {
@@ -628,7 +689,7 @@ impl MoleculeToBinaryWrapper {
         // Create a simple molecule based on binary encoding
         // This is a simplified conversion - in practice would be more sophisticated
         let mut molecule = Molecule::new(format!("generated_{}", solution.len()));
-        
+
         // Add atoms based on binary pattern
         for (i, &bit) in solution.iter().enumerate() {
             if bit == 1 {
@@ -649,14 +710,19 @@ impl MoleculeToBinaryWrapper {
                 molecule.add_atom(atom);
             }
         }
-        
+
         Ok(molecule)
     }
 }
 
 /// Wrapper to convert MaterialsLattice problems to binary representation
 pub struct MaterialsToBinaryWrapper {
-    inner: Box<dyn OptimizationProblem<Solution = materials_science::MaterialsLattice, ObjectiveValue = f64>>,
+    inner: Box<
+        dyn OptimizationProblem<
+            Solution = materials_science::MaterialsLattice,
+            ObjectiveValue = f64,
+        >,
+    >,
 }
 
 impl OptimizationProblem for MaterialsToBinaryWrapper {
@@ -683,40 +749,48 @@ impl OptimizationProblem for MaterialsToBinaryWrapper {
         let n = 64; // binary dimension
         let mut h = vec![0.0; n];
         let mut j = std::collections::HashMap::new();
-        
+
         // Add some basic interactions for lattice structure
         for i in 0..n {
             h[i] = -0.05; // Small bias towards occupied sites
             for j_idx in (i + 1)..n {
-                if j_idx < i + 8 { // Local interactions in lattice
+                if j_idx < i + 8 {
+                    // Local interactions in lattice
                     j.insert((i, j_idx), 0.02);
                 }
             }
         }
-        
+
         let mut qubo = crate::ising::QuboModel::new(n);
-        
+
         // Set linear terms
         for (i, &value) in h.iter().enumerate() {
             qubo.set_linear(i, value)?;
         }
-        
+
         // Set quadratic terms
         for ((i, j_idx), &value) in j.iter() {
             qubo.set_quadratic(*i, *j_idx, value)?;
         }
-        
+
         let mut variable_mapping = HashMap::new();
         for i in 0..n {
             variable_mapping.insert(format!("site_{}", i), i);
         }
-        
+
         Ok((qubo, variable_mapping))
     }
 
-    fn evaluate_solution(&self, solution: &Self::Solution) -> ApplicationResult<Self::ObjectiveValue> {
+    fn evaluate_solution(
+        &self,
+        solution: &Self::Solution,
+    ) -> ApplicationResult<Self::ObjectiveValue> {
         // Simple evaluation based on lattice structure
-        Ok(solution.iter().map(|&x| if x > 0 { 1.0 } else { 0.0 }).sum::<f64>() * 0.1)
+        Ok(solution
+            .iter()
+            .map(|&x| if x > 0 { 1.0 } else { 0.0 })
+            .sum::<f64>()
+            * 0.1)
     }
 
     fn is_feasible(&self, solution: &Self::Solution) -> bool {
@@ -726,7 +800,9 @@ impl OptimizationProblem for MaterialsToBinaryWrapper {
 
 /// Wrapper to convert ProteinFolding problems to binary representation
 pub struct ProteinToBinaryWrapper {
-    inner: Box<dyn OptimizationProblem<Solution = protein_folding::ProteinFolding, ObjectiveValue = f64>>,
+    inner: Box<
+        dyn OptimizationProblem<Solution = protein_folding::ProteinFolding, ObjectiveValue = f64>,
+    >,
 }
 
 impl OptimizationProblem for ProteinToBinaryWrapper {
@@ -753,40 +829,48 @@ impl OptimizationProblem for ProteinToBinaryWrapper {
         let n = 32; // binary dimension
         let mut h = vec![0.0; n];
         let mut j = std::collections::HashMap::new();
-        
+
         // Add interactions for folding constraints
         for i in 0..n {
             h[i] = -0.02; // Small bias
             for j_idx in (i + 1)..n {
-                if j_idx < i + 3 { // Local folding interactions
+                if j_idx < i + 3 {
+                    // Local folding interactions
                     j.insert((i, j_idx), 0.01);
                 }
             }
         }
-        
+
         let mut qubo = crate::ising::QuboModel::new(n);
-        
+
         // Set linear terms
         for (i, &value) in h.iter().enumerate() {
             qubo.set_linear(i, value)?;
         }
-        
+
         // Set quadratic terms
         for ((i, j_idx), &value) in j.iter() {
             qubo.set_quadratic(*i, *j_idx, value)?;
         }
-        
+
         let mut variable_mapping = HashMap::new();
         for i in 0..n {
             variable_mapping.insert(format!("fold_{}", i), i);
         }
-        
+
         Ok((qubo, variable_mapping))
     }
 
-    fn evaluate_solution(&self, solution: &Self::Solution) -> ApplicationResult<Self::ObjectiveValue> {
+    fn evaluate_solution(
+        &self,
+        solution: &Self::Solution,
+    ) -> ApplicationResult<Self::ObjectiveValue> {
         // Simple evaluation based on folding energy
-        Ok(solution.iter().map(|&x| if x > 0 { 1.0 } else { 0.0 }).sum::<f64>() * 0.05)
+        Ok(solution
+            .iter()
+            .map(|&x| if x > 0 { 1.0 } else { 0.0 })
+            .sum::<f64>()
+            * 0.05)
     }
 
     fn is_feasible(&self, solution: &Self::Solution) -> bool {
@@ -796,7 +880,12 @@ impl OptimizationProblem for ProteinToBinaryWrapper {
 
 /// Wrapper to convert quantum computational chemistry problems to binary representation
 pub struct ChemistryToBinaryWrapper {
-    inner: Box<dyn OptimizationProblem<Solution = quantum_computational_chemistry::QuantumChemistryResult, ObjectiveValue = f64>>,
+    inner: Box<
+        dyn OptimizationProblem<
+            Solution = quantum_computational_chemistry::QuantumChemistryResult,
+            ObjectiveValue = f64,
+        >,
+    >,
 }
 
 impl OptimizationProblem for ChemistryToBinaryWrapper {
@@ -822,7 +911,10 @@ impl OptimizationProblem for ChemistryToBinaryWrapper {
         self.inner.to_qubo()
     }
 
-    fn evaluate_solution(&self, solution: &Self::Solution) -> ApplicationResult<Self::ObjectiveValue> {
+    fn evaluate_solution(
+        &self,
+        solution: &Self::Solution,
+    ) -> ApplicationResult<Self::ObjectiveValue> {
         // Create a mock QuantumChemistryResult from binary solution
         let chemistry_result = self.binary_to_chemistry_result(solution)?;
         self.inner.evaluate_solution(&chemistry_result)
@@ -834,9 +926,12 @@ impl OptimizationProblem for ChemistryToBinaryWrapper {
 }
 
 impl ChemistryToBinaryWrapper {
-    fn binary_to_chemistry_result(&self, solution: &[i8]) -> ApplicationResult<quantum_computational_chemistry::QuantumChemistryResult> {
+    fn binary_to_chemistry_result(
+        &self,
+        solution: &[i8],
+    ) -> ApplicationResult<quantum_computational_chemistry::QuantumChemistryResult> {
         use quantum_computational_chemistry::*;
-        
+
         // Create molecular orbitals from binary solution
         let mut molecular_orbitals = Vec::new();
         for (i, &bit) in solution.iter().enumerate().take(32) {
@@ -854,12 +949,15 @@ impl ChemistryToBinaryWrapper {
                 },
             });
         }
-        
+
         // Calculate electronic energy from solution
-        let electronic_energy = solution.iter().map(|&x| if x == 1 { -1.0 } else { 0.0 }).sum::<f64>();
+        let electronic_energy = solution
+            .iter()
+            .map(|&x| if x == 1 { -1.0 } else { 0.0 })
+            .sum::<f64>();
         let nuclear_repulsion = 10.0; // Fixed value for simplicity
         let total_energy = electronic_energy + nuclear_repulsion;
-        
+
         Ok(QuantumChemistryResult {
             system_id: "binary_chemistry".to_string(),
             electronic_energy,

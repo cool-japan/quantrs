@@ -6,9 +6,9 @@
 
 pub mod config;
 pub mod features;
+pub mod multi_objective;
 pub mod nas;
 pub mod portfolio;
-pub mod multi_objective;
 pub mod transfer_learning;
 
 use std::collections::{HashMap, VecDeque};
@@ -21,20 +21,19 @@ use crate::simulator::{AnnealingParams, AnnealingResult, QuantumAnnealingSimulat
 
 // Re-export main types from submodules
 pub use config::{
-    MetaLearningConfig, FeatureExtractionConfig, NeuralArchitectureSearchConfig,
-    PortfolioManagementConfig, MultiObjectiveConfig, AlgorithmType, ArchitectureSpec,
-    LayerSpec, LayerType, ConnectionPattern, OptimizationSettings, OptimizerType,
-    ActivationFunction, RegularizationConfig, ResourceAllocation, OptimizationConfiguration,
-    ProblemDomain
+    ActivationFunction, AlgorithmType, ArchitectureSpec, ConnectionPattern,
+    FeatureExtractionConfig, LayerSpec, LayerType, MetaLearningConfig, MultiObjectiveConfig,
+    NeuralArchitectureSearchConfig, OptimizationConfiguration, OptimizationSettings, OptimizerType,
+    PortfolioManagementConfig, ProblemDomain, RegularizationConfig, ResourceAllocation,
 };
 pub use features::{
-    FeatureExtractor, ProblemFeatures, GraphFeatures, StatisticalFeatures,
-    SpectralFeatures, CorrelationFeatures
+    CorrelationFeatures, FeatureExtractor, GraphFeatures, ProblemFeatures, SpectralFeatures,
+    StatisticalFeatures,
 };
+pub use multi_objective::{MultiObjectiveOptimizer, MultiObjectiveSolution, ParetoFrontier};
 pub use nas::{NeuralArchitectureSearch, PerformancePredictor};
-pub use portfolio::{AlgorithmPortfolio, Algorithm, ResourceRequirements, GuaranteeType};
-pub use multi_objective::{MultiObjectiveOptimizer, ParetoFrontier, MultiObjectiveSolution};
-pub use transfer_learning::{TransferLearner, SourceDomain, TransferStrategy, TransferResult};
+pub use portfolio::{Algorithm, AlgorithmPortfolio, GuaranteeType, ResourceRequirements};
+pub use transfer_learning::{SourceDomain, TransferLearner, TransferResult, TransferStrategy};
 
 /// Main meta-learning optimization engine
 pub struct MetaLearningOptimizer {
@@ -74,7 +73,6 @@ pub struct OptimizationExperience {
     /// Success metrics
     pub success_metrics: SuccessMetrics,
 }
-
 
 /// Optimization results
 #[derive(Debug, Clone)]
@@ -129,7 +127,6 @@ pub struct QualityMetrics {
     /// Diversity score
     pub diversity: f64,
 }
-
 
 /// Success metrics
 #[derive(Debug, Clone)]
@@ -371,50 +368,71 @@ impl MetaLearningOptimizer {
         Self {
             config: config.clone(),
             experience_db: Arc::new(RwLock::new(ExperienceDatabase::new())),
-            feature_extractor: Arc::new(Mutex::new(FeatureExtractor::new(config.feature_config.clone()))),
+            feature_extractor: Arc::new(Mutex::new(FeatureExtractor::new(
+                config.feature_config.clone(),
+            ))),
             meta_learner: Arc::new(Mutex::new(MetaLearner::new())),
-            nas_engine: Arc::new(Mutex::new(NeuralArchitectureSearch::new(config.nas_config.clone()))),
-            portfolio_manager: Arc::new(Mutex::new(AlgorithmPortfolio::new(config.portfolio_config.clone()))),
-            multi_objective_optimizer: Arc::new(Mutex::new(MultiObjectiveOptimizer::new(config.multi_objective_config.clone()))),
+            nas_engine: Arc::new(Mutex::new(NeuralArchitectureSearch::new(
+                config.nas_config.clone(),
+            ))),
+            portfolio_manager: Arc::new(Mutex::new(AlgorithmPortfolio::new(
+                config.portfolio_config.clone(),
+            ))),
+            multi_objective_optimizer: Arc::new(Mutex::new(MultiObjectiveOptimizer::new(
+                config.multi_objective_config.clone(),
+            ))),
             transfer_learner: Arc::new(Mutex::new(TransferLearner::new())),
         }
     }
-    
+
     /// Optimize a problem using meta-learning
     pub fn optimize(&self, problem: &IsingModel) -> ApplicationResult<MetaOptimizationResult> {
-        println!("Starting meta-learning optimization for problem with {} qubits", problem.num_qubits);
-        
+        println!(
+            "Starting meta-learning optimization for problem with {} qubits",
+            problem.num_qubits
+        );
+
         let start_time = Instant::now();
-        
+
         // Step 1: Extract problem features
         let problem_features = self.extract_problem_features(problem)?;
-        
+
         // Step 2: Retrieve similar experiences
         let similar_experiences = self.find_similar_experiences(&problem_features)?;
-        
+
         // Step 3: Recommend optimization strategy
-        let recommended_strategy = self.recommend_strategy(&problem_features, &similar_experiences)?;
-        
+        let recommended_strategy =
+            self.recommend_strategy(&problem_features, &similar_experiences)?;
+
         // Step 4: Apply neural architecture search if needed
         let optimized_architecture = if self.config.nas_config.enable_nas {
             Some(self.search_optimal_architecture(&problem_features)?)
         } else {
             None
         };
-        
+
         // Step 5: Execute optimization with meta-learned configuration
-        let optimization_result = self.execute_optimization(problem, &recommended_strategy, optimized_architecture.as_ref())?;
-        
+        let optimization_result = self.execute_optimization(
+            problem,
+            &recommended_strategy,
+            optimized_architecture.as_ref(),
+        )?;
+
         // Step 6: Store experience for future learning
-        self.store_experience(problem, &problem_features, &recommended_strategy, &optimization_result)?;
-        
+        self.store_experience(
+            problem,
+            &problem_features,
+            &recommended_strategy,
+            &optimization_result,
+        )?;
+
         // Step 7: Update meta-learner
         self.update_meta_learner(&problem_features, &optimization_result)?;
-        
+
         let total_time = start_time.elapsed();
-        
+
         println!("Meta-learning optimization completed in {:?}", total_time);
-        
+
         Ok(MetaOptimizationResult {
             problem_features,
             recommended_strategy,
@@ -425,43 +443,57 @@ impl MetaLearningOptimizer {
             confidence: 0.85,
         })
     }
-    
+
     /// Extract features from problem
     fn extract_problem_features(&self, problem: &IsingModel) -> ApplicationResult<ProblemFeatures> {
         let mut feature_extractor = self.feature_extractor.lock().map_err(|_| {
-            ApplicationError::OptimizationError("Failed to acquire feature extractor lock".to_string())
+            ApplicationError::OptimizationError(
+                "Failed to acquire feature extractor lock".to_string(),
+            )
         })?;
-        
+
         feature_extractor.extract_features(problem)
     }
-    
+
     /// Find similar experiences from database
-    fn find_similar_experiences(&self, features: &ProblemFeatures) -> ApplicationResult<Vec<OptimizationExperience>> {
+    fn find_similar_experiences(
+        &self,
+        features: &ProblemFeatures,
+    ) -> ApplicationResult<Vec<OptimizationExperience>> {
         let experience_db = self.experience_db.read().map_err(|_| {
-            ApplicationError::OptimizationError("Failed to acquire experience database lock".to_string())
+            ApplicationError::OptimizationError(
+                "Failed to acquire experience database lock".to_string(),
+            )
         })?;
-        
+
         experience_db.find_similar_experiences(features, 10)
     }
-    
+
     /// Recommend optimization strategy based on meta-learning
-    fn recommend_strategy(&self, features: &ProblemFeatures, experiences: &[OptimizationExperience]) -> ApplicationResult<RecommendedStrategy> {
+    fn recommend_strategy(
+        &self,
+        features: &ProblemFeatures,
+        experiences: &[OptimizationExperience],
+    ) -> ApplicationResult<RecommendedStrategy> {
         let mut meta_learner = self.meta_learner.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire meta-learner lock".to_string())
         })?;
-        
+
         meta_learner.recommend_strategy(features, experiences)
     }
-    
+
     /// Search for optimal neural architecture
-    fn search_optimal_architecture(&self, features: &ProblemFeatures) -> ApplicationResult<ArchitectureSpec> {
+    fn search_optimal_architecture(
+        &self,
+        features: &ProblemFeatures,
+    ) -> ApplicationResult<ArchitectureSpec> {
         let mut nas_engine = self.nas_engine.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire NAS engine lock".to_string())
         })?;
-        
+
         nas_engine.search_architecture(features)
     }
-    
+
     /// Execute optimization with recommended strategy
     fn execute_optimization(
         &self,
@@ -471,32 +503,40 @@ impl MetaLearningOptimizer {
     ) -> ApplicationResult<OptimizationResults> {
         // Create annealing parameters based on strategy
         let mut params = AnnealingParams::new();
-        
+
         // Apply recommended hyperparameters
-        if let Some(temp) = strategy.configuration.hyperparameters.get("initial_temperature") {
+        if let Some(temp) = strategy
+            .configuration
+            .hyperparameters
+            .get("initial_temperature")
+        {
             params.initial_temperature = *temp;
         }
-        if let Some(temp) = strategy.configuration.hyperparameters.get("final_temperature") {
+        if let Some(temp) = strategy
+            .configuration
+            .hyperparameters
+            .get("final_temperature")
+        {
             params.final_temperature = *temp;
         }
         if let Some(sweeps) = strategy.configuration.hyperparameters.get("num_sweeps") {
             params.num_sweeps = *sweeps as usize;
         }
-        
+
         params.seed = Some(42);
-        
+
         let start_time = Instant::now();
-        
+
         // Create and run simulator
         let mut simulator = QuantumAnnealingSimulator::new(params)?;
         let result = simulator.solve(problem)?;
-        
+
         let execution_time = start_time.elapsed();
-        
+
         // Calculate quality metrics
         let objective_value = result.best_energy;
         let quality_score = 1.0 / (1.0 + objective_value.abs());
-        
+
         Ok(OptimizationResults {
             objective_values: vec![objective_value],
             execution_time,
@@ -520,7 +560,7 @@ impl MetaLearningOptimizer {
             },
         })
     }
-    
+
     /// Store optimization experience
     fn store_experience(
         &self,
@@ -530,9 +570,11 @@ impl MetaLearningOptimizer {
         result: &OptimizationResults,
     ) -> ApplicationResult<()> {
         let mut experience_db = self.experience_db.write().map_err(|_| {
-            ApplicationError::OptimizationError("Failed to acquire experience database lock".to_string())
+            ApplicationError::OptimizationError(
+                "Failed to acquire experience database lock".to_string(),
+            )
         })?;
-        
+
         let experience = OptimizationExperience {
             id: format!("exp_{}", Instant::now().elapsed().as_nanos()),
             problem_features: features.clone(),
@@ -547,27 +589,33 @@ impl MetaLearningOptimizer {
                 recommendation_confidence: strategy.confidence,
             },
         };
-        
+
         experience_db.add_experience(experience);
         Ok(())
     }
-    
+
     /// Update meta-learner with new experience
-    fn update_meta_learner(&self, features: &ProblemFeatures, result: &OptimizationResults) -> ApplicationResult<()> {
+    fn update_meta_learner(
+        &self,
+        features: &ProblemFeatures,
+        result: &OptimizationResults,
+    ) -> ApplicationResult<()> {
         let mut meta_learner = self.meta_learner.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire meta-learner lock".to_string())
         })?;
-        
+
         meta_learner.update_with_experience(features, result);
         Ok(())
     }
-    
+
     /// Get current meta-learning statistics
     pub fn get_statistics(&self) -> ApplicationResult<MetaLearningStatistics> {
         let experience_db = self.experience_db.read().map_err(|_| {
-            ApplicationError::OptimizationError("Failed to acquire experience database lock".to_string())
+            ApplicationError::OptimizationError(
+                "Failed to acquire experience database lock".to_string(),
+            )
         })?;
-        
+
         Ok(MetaLearningStatistics {
             total_experiences: experience_db.statistics.total_experiences,
             average_performance: experience_db.statistics.avg_performance,
@@ -605,12 +653,12 @@ impl ExperienceDatabase {
             },
         }
     }
-    
+
     fn add_experience(&mut self, experience: OptimizationExperience) {
         self.experiences.push_back(experience.clone());
         self.update_index(&experience);
         self.update_statistics();
-        
+
         // Limit buffer size
         if self.experiences.len() > 10000 {
             if let Some(removed) = self.experiences.pop_front() {
@@ -618,75 +666,97 @@ impl ExperienceDatabase {
             }
         }
     }
-    
+
     fn update_index(&mut self, experience: &OptimizationExperience) {
         // Update domain index
-        self.index.domain_index
+        self.index
+            .domain_index
             .entry(experience.domain.clone())
             .or_insert_with(Vec::new)
             .push(experience.id.clone());
-        
+
         // Update size index
-        self.index.size_index
+        self.index
+            .size_index
             .entry(experience.problem_features.size)
             .or_insert_with(Vec::new)
             .push(experience.id.clone());
     }
-    
+
     fn remove_from_index(&mut self, experience: &OptimizationExperience) {
         // Remove from domain index
         if let Some(ids) = self.index.domain_index.get_mut(&experience.domain) {
             ids.retain(|id| id != &experience.id);
         }
-        
+
         // Remove from size index
-        if let Some(ids) = self.index.size_index.get_mut(&experience.problem_features.size) {
+        if let Some(ids) = self
+            .index
+            .size_index
+            .get_mut(&experience.problem_features.size)
+        {
             ids.retain(|id| id != &experience.id);
         }
     }
-    
+
     fn update_statistics(&mut self) {
         self.statistics.total_experiences = self.experiences.len();
-        
+
         if !self.experiences.is_empty() {
-            let total_performance: f64 = self.experiences.iter()
+            let total_performance: f64 = self
+                .experiences
+                .iter()
                 .map(|exp| exp.results.quality_metrics.objective_value)
                 .sum();
             self.statistics.avg_performance = total_performance / self.experiences.len() as f64;
         }
-        
+
         // Update domain distribution
         self.statistics.domain_distribution.clear();
         for experience in &self.experiences {
-            *self.statistics.domain_distribution.entry(experience.domain.clone()).or_insert(0) += 1;
+            *self
+                .statistics
+                .domain_distribution
+                .entry(experience.domain.clone())
+                .or_insert(0) += 1;
         }
     }
-    
-    fn find_similar_experiences(&self, features: &ProblemFeatures, limit: usize) -> ApplicationResult<Vec<OptimizationExperience>> {
+
+    fn find_similar_experiences(
+        &self,
+        features: &ProblemFeatures,
+        limit: usize,
+    ) -> ApplicationResult<Vec<OptimizationExperience>> {
         let mut similarities = Vec::new();
-        
+
         for experience in &self.experiences {
             let similarity = self.calculate_similarity(features, &experience.problem_features);
             similarities.push((experience.clone(), similarity));
         }
-        
+
         // Sort by similarity (descending)
         similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        
-        Ok(similarities.into_iter()
+
+        Ok(similarities
+            .into_iter()
             .take(limit)
             .map(|(exp, _)| exp)
             .collect())
     }
-    
-    fn calculate_similarity(&self, features1: &ProblemFeatures, features2: &ProblemFeatures) -> f64 {
+
+    fn calculate_similarity(
+        &self,
+        features1: &ProblemFeatures,
+        features2: &ProblemFeatures,
+    ) -> f64 {
         // Simple similarity calculation based on size and density
-        let size_diff = (features1.size as f64 - features2.size as f64).abs() / features1.size.max(features2.size) as f64;
+        let size_diff = (features1.size as f64 - features2.size as f64).abs()
+            / features1.size.max(features2.size) as f64;
         let density_diff = (features1.density - features2.density).abs();
-        
+
         let size_similarity = 1.0 - size_diff;
         let density_similarity = 1.0 - density_diff;
-        
+
         (size_similarity + density_similarity) / 2.0
     }
 }
@@ -698,44 +768,61 @@ impl MetaLearner {
             parameters: Vec::new(),
             training_history: VecDeque::new(),
             evaluator: PerformanceEvaluator {
-                metrics: vec![EvaluationMetric::MeanSquaredError, EvaluationMetric::Accuracy],
+                metrics: vec![
+                    EvaluationMetric::MeanSquaredError,
+                    EvaluationMetric::Accuracy,
+                ],
                 cv_strategy: CrossValidationStrategy::KFold(5),
                 statistical_tests: vec![StatisticalTest::TTest],
             },
         }
     }
-    
-    fn recommend_strategy(&mut self, features: &ProblemFeatures, experiences: &[OptimizationExperience]) -> ApplicationResult<RecommendedStrategy> {
+
+    fn recommend_strategy(
+        &mut self,
+        features: &ProblemFeatures,
+        experiences: &[OptimizationExperience],
+    ) -> ApplicationResult<RecommendedStrategy> {
         // Simple strategy recommendation based on problem size
         let algorithm = if features.size < 100 {
             AlgorithmType::SimulatedAnnealing
         } else if features.size < 500 {
             AlgorithmType::QuantumAnnealing
         } else {
-            AlgorithmType::Hybrid(vec![AlgorithmType::QuantumAnnealing, AlgorithmType::TabuSearch])
+            AlgorithmType::Hybrid(vec![
+                AlgorithmType::QuantumAnnealing,
+                AlgorithmType::TabuSearch,
+            ])
         };
-        
+
         let mut hyperparameters = HashMap::new();
-        
+
         // Set hyperparameters based on experiences
         if !experiences.is_empty() {
-            let avg_initial_temp = experiences.iter()
+            let avg_initial_temp = experiences
+                .iter()
                 .filter_map(|exp| exp.configuration.hyperparameters.get("initial_temperature"))
-                .sum::<f64>() / experiences.len() as f64;
+                .sum::<f64>()
+                / experiences.len() as f64;
             hyperparameters.insert("initial_temperature".to_string(), avg_initial_temp.max(1.0));
-            
-            let avg_final_temp = experiences.iter()
+
+            let avg_final_temp = experiences
+                .iter()
                 .filter_map(|exp| exp.configuration.hyperparameters.get("final_temperature"))
-                .sum::<f64>() / experiences.len() as f64;
+                .sum::<f64>()
+                / experiences.len() as f64;
             hyperparameters.insert("final_temperature".to_string(), avg_final_temp.max(0.01));
         } else {
             // Default hyperparameters
             hyperparameters.insert("initial_temperature".to_string(), 10.0);
             hyperparameters.insert("final_temperature".to_string(), 0.1);
         }
-        
-        hyperparameters.insert("num_sweeps".to_string(), (features.size as f64 * 10.0).min(10000.0));
-        
+
+        hyperparameters.insert(
+            "num_sweeps".to_string(),
+            (features.size as f64 * 10.0).min(10000.0),
+        );
+
         let configuration = OptimizationConfiguration {
             algorithm,
             hyperparameters,
@@ -747,19 +834,26 @@ impl MetaLearner {
                 time: Duration::from_secs(60),
             },
         };
-        
+
         let confidence = if experiences.len() >= 5 { 0.9 } else { 0.6 };
-        
+
         Ok(RecommendedStrategy {
             confidence,
             configuration,
             expected_performance: 0.8,
-            reasoning: format!("Recommendation based on {} similar experiences", experiences.len()),
+            reasoning: format!(
+                "Recommendation based on {} similar experiences",
+                experiences.len()
+            ),
             alternatives: Vec::new(),
         })
     }
-    
-    fn update_with_experience(&mut self, _features: &ProblemFeatures, _result: &OptimizationResults) {
+
+    fn update_with_experience(
+        &mut self,
+        _features: &ProblemFeatures,
+        _result: &OptimizationResults,
+    ) {
         // Update meta-learner with new experience
         // In a real implementation, this would update neural network weights
     }
@@ -769,7 +863,7 @@ impl MetaLearner {
 pub fn create_example_meta_learning_optimizer() -> ApplicationResult<MetaLearningOptimizer> {
     let config = MetaLearningConfig::default();
     let optimizer = MetaLearningOptimizer::new(config);
-    
+
     println!("Created meta-learning optimizer with comprehensive capabilities");
     Ok(optimizer)
 }
@@ -777,21 +871,21 @@ pub fn create_example_meta_learning_optimizer() -> ApplicationResult<MetaLearnin
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_meta_learning_optimizer_creation() {
         let config = MetaLearningConfig::default();
         let optimizer = MetaLearningOptimizer::new(config);
-        
+
         assert!(optimizer.config.enable_transfer_learning);
         assert!(optimizer.config.enable_few_shot_learning);
         assert_eq!(optimizer.config.experience_buffer_size, 10000);
     }
-    
+
     #[test]
     fn test_experience_database() {
         let mut db = ExperienceDatabase::new();
-        
+
         let experience = OptimizationExperience {
             id: "test_exp".to_string(),
             problem_features: ProblemFeatures {
@@ -844,15 +938,15 @@ mod tests {
                 recommendation_confidence: 0.9,
             },
         };
-        
+
         db.add_experience(experience);
         assert_eq!(db.statistics.total_experiences, 1);
     }
-    
+
     #[test]
     fn test_meta_learner_recommendation() {
         let mut meta_learner = MetaLearner::new();
-        
+
         let features = ProblemFeatures {
             size: 50,
             density: 0.3,
@@ -861,10 +955,12 @@ mod tests {
             spectral_features: SpectralFeatures::default(),
             domain_features: HashMap::new(),
         };
-        
+
         let experiences = vec![];
-        let recommendation = meta_learner.recommend_strategy(&features, &experiences).unwrap();
-        
+        let recommendation = meta_learner
+            .recommend_strategy(&features, &experiences)
+            .unwrap();
+
         assert!(recommendation.confidence > 0.0);
         assert!(recommendation.confidence <= 1.0);
         assert!(!recommendation.configuration.hyperparameters.is_empty());

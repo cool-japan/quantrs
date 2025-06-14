@@ -837,6 +837,62 @@ try:
 except ImportError:
     pass
 
+# Try to import dynamic allocation module
+try:
+    from . import dynamic_allocation
+except ImportError:
+    pass
+
+# Import dynamic allocation functions (if available)
+try:
+    from .dynamic_allocation import (
+        AllocationStrategy,
+        QubitState,
+        QubitInfo,
+        QubitAllocator,
+        DynamicCircuit,
+        create_dynamic_circuit,
+        configure_allocation_strategy,
+        allocate_qubits,
+        deallocate_qubits,
+        garbage_collect,
+        get_global_allocation_stats,
+        set_global_allocator
+    )
+except ImportError:
+    pass
+
+# Try to import hardware backends module
+try:
+    from . import hardware_backends
+except ImportError:
+    pass
+
+# Import hardware backends functions (if available)
+try:
+    from .hardware_backends import (
+        BackendType,
+        JobStatus,
+        DeviceStatus,
+        DeviceCapabilities,
+        DeviceInfo,
+        JobRequest,
+        JobResult,
+        QuantumBackend,
+        IBMQuantumBackend,
+        GoogleQuantumAIBackend,
+        AWSBraketBackend,
+        HardwareBackendManager,
+        get_hardware_manager,
+        register_ibm_backend,
+        register_google_backend,
+        register_aws_backend,
+        submit_to_hardware,
+        get_hardware_devices
+    )
+except ImportError:
+    pass
+
 # Try to import Qiskit compatibility module
 try:
     from . import qiskit_compatibility
@@ -902,6 +958,80 @@ try:
         create_quantrs2_device,
         quantrs2_qnode,
         test_quantrs2_pennylane_integration
+    )
+except ImportError:
+    pass
+
+# Try to import advanced algorithms module
+try:
+    from . import advanced_algorithms
+except ImportError:
+    pass
+
+# Import advanced algorithms functions (if available)
+try:
+    from .advanced_algorithms import (
+        AnsatzType,
+        OptimizerType,
+        AdvancedVQE,
+        AdvancedQAOA,
+        QuantumWalk,
+        QuantumErrorCorrection,
+        QuantumFourierTransform,
+        AdvancedAlgorithmLibrary,
+        create_advanced_vqe,
+        create_advanced_qaoa,
+        run_quantum_walk,
+        apply_error_correction,
+        quantum_fourier_transform,
+        get_algorithm_library
+    )
+except ImportError:
+    pass
+
+# Try to import enhanced Qiskit compatibility module
+try:
+    from . import enhanced_qiskit_compatibility
+except ImportError:
+    pass
+
+# Import enhanced Qiskit compatibility functions (if available)
+try:
+    from .enhanced_qiskit_compatibility import (
+        ConversionMode,
+        CompatibilityLevel,
+        ConversionOptions,
+        EnhancedCircuitConverter,
+        AdvancedQiskitIntegration,
+        HybridAlgorithm,
+        NoiseModelAdapter,
+        create_enhanced_converter,
+        optimize_circuit_for_backend,
+        benchmark_conversion_performance
+    )
+except ImportError:
+    pass
+
+# Try to import enhanced PennyLane plugin module
+try:
+    from . import enhanced_pennylane_plugin
+except ImportError:
+    pass
+
+# Import enhanced PennyLane plugin functions (if available)
+try:
+    from .enhanced_pennylane_plugin import (
+        DeviceMode,
+        GradientMethod,
+        DeviceConfig,
+        EnhancedQuantRS2Device,
+        QuantRS2QMLModel,
+        QuantRS2VQC,
+        EnhancedPennyLaneIntegration,
+        create_enhanced_pennylane_device,
+        create_qml_model,
+        register_enhanced_device,
+        benchmark_pennylane_performance
     )
 except ImportError:
     pass

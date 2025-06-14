@@ -15,18 +15,21 @@
 //! - Temperature-aware adaptive compilation
 //! - Real-time calibration drift compensation
 
-use std::collections::{HashMap, VecDeque, BTreeMap, HashSet};
-use std::sync::{Arc, Mutex, RwLock, atomic::{AtomicBool, AtomicU64, Ordering}};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
+use std::sync::{
+    atomic::{AtomicBool, AtomicU64, Ordering},
+    Arc, Mutex, RwLock,
+};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 
 use crate::applications::{ApplicationError, ApplicationResult};
 use crate::braket::{BraketClient, BraketDevice};
 use crate::dwave::DWaveClient;
-use crate::HardwareTopology;
-use crate::ising::{IsingModel, QuboModel};
 use crate::embedding::{Embedding, HardwareGraph};
-use crate::hardware_compilation::{HardwareCompiler, CompilationTarget};
+use crate::hardware_compilation::{CompilationTarget, HardwareCompiler};
+use crate::ising::{IsingModel, QuboModel};
+use crate::HardwareTopology;
 
 /// Real-time hardware monitoring system
 pub struct RealTimeHardwareMonitor {
@@ -1381,125 +1384,134 @@ impl RealTimeHardwareMonitor {
             monitoring_active: Arc::new(AtomicBool::new(false)),
         }
     }
-    
+
     /// Start real-time monitoring
     pub fn start_monitoring(&self) -> ApplicationResult<()> {
         if self.monitoring_active.load(Ordering::Relaxed) {
             return Err(ApplicationError::InvalidConfiguration(
-                "Monitoring is already active".to_string()
+                "Monitoring is already active".to_string(),
             ));
         }
-        
+
         self.monitoring_active.store(true, Ordering::Relaxed);
-        
+
         // Start monitoring thread
         let monitor_clone = self.clone_for_thread();
         thread::spawn(move || {
             monitor_clone.monitoring_loop();
         });
-        
+
         println!("Real-time hardware monitoring started");
         Ok(())
     }
-    
+
     /// Stop real-time monitoring
     pub fn stop_monitoring(&self) -> ApplicationResult<()> {
         self.monitoring_active.store(false, Ordering::Relaxed);
         println!("Real-time hardware monitoring stopped");
         Ok(())
     }
-    
+
     /// Register device for monitoring
     pub fn register_device(&self, device: MonitoredDevice) -> ApplicationResult<()> {
         let device_id = device.device_id.clone();
         let mut devices = self.devices.write().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire devices lock".to_string())
         })?;
-        
+
         devices.insert(device_id.clone(), device);
         println!("Registered device for monitoring: {}", device_id);
         Ok(())
     }
-    
+
     /// Get current device status
     pub fn get_device_status(&self, device_id: &str) -> ApplicationResult<DeviceStatus> {
         let devices = self.devices.read().map_err(|_| {
             ApplicationError::OptimizationError("Failed to read devices".to_string())
         })?;
-        
-        devices.get(device_id)
+
+        devices
+            .get(device_id)
             .map(|device| device.status.clone())
-            .ok_or_else(|| ApplicationError::InvalidConfiguration(
-                format!("Device {} not found", device_id)
-            ))
+            .ok_or_else(|| {
+                ApplicationError::InvalidConfiguration(format!("Device {} not found", device_id))
+            })
     }
-    
+
     /// Get real-time performance metrics
-    pub fn get_performance_metrics(&self, device_id: &str) -> ApplicationResult<DevicePerformanceMetrics> {
+    pub fn get_performance_metrics(
+        &self,
+        device_id: &str,
+    ) -> ApplicationResult<DevicePerformanceMetrics> {
         let devices = self.devices.read().map_err(|_| {
             ApplicationError::OptimizationError("Failed to read devices".to_string())
         })?;
-        
-        let device = devices.get(device_id)
-            .ok_or_else(|| ApplicationError::InvalidConfiguration(
-                format!("Device {} not found", device_id)
-            ))?;
-        
+
+        let device = devices.get(device_id).ok_or_else(|| {
+            ApplicationError::InvalidConfiguration(format!("Device {} not found", device_id))
+        })?;
+
         let metrics = device.performance_metrics.read().map_err(|_| {
             ApplicationError::OptimizationError("Failed to read performance metrics".to_string())
         })?;
-        
+
         Ok(metrics.clone())
     }
-    
+
     /// Trigger adaptive compilation
-    pub fn trigger_adaptive_compilation(&self, device_id: &str, problem: &IsingModel) -> ApplicationResult<CompilationParameters> {
+    pub fn trigger_adaptive_compilation(
+        &self,
+        device_id: &str,
+        problem: &IsingModel,
+    ) -> ApplicationResult<CompilationParameters> {
         let mut compiler = self.adaptive_compiler.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire compiler lock".to_string())
         })?;
-        
+
         // Get current device metrics
         let metrics = self.get_performance_metrics(device_id)?;
-        
+
         // Determine if adaptation is needed
         let adaptation_needed = self.assess_adaptation_need(&metrics)?;
-        
+
         if adaptation_needed {
             println!("Triggering adaptive compilation for device: {}", device_id);
-            
+
             // Generate adaptive compilation parameters
             let parameters = self.generate_adaptive_parameters(&metrics, problem)?;
-            
+
             // Cache the compilation
             compiler.cache_compilation(problem, &parameters)?;
-            
+
             Ok(parameters)
         } else {
             // Return default parameters
             Ok(CompilationParameters::default())
         }
     }
-    
+
     /// Get active alerts
     pub fn get_active_alerts(&self) -> ApplicationResult<Vec<Alert>> {
         let alert_system = self.alert_system.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire alert system lock".to_string())
         })?;
-        
+
         Ok(alert_system.active_alerts.values().cloned().collect())
     }
-    
+
     /// Get failure predictions
     pub fn get_failure_predictions(&self) -> ApplicationResult<Vec<FailurePrediction>> {
         let detector = self.failure_detector.lock().map_err(|_| {
-            ApplicationError::OptimizationError("Failed to acquire failure detector lock".to_string())
+            ApplicationError::OptimizationError(
+                "Failed to acquire failure detector lock".to_string(),
+            )
         })?;
-        
+
         Ok(detector.current_predictions.values().cloned().collect())
     }
-    
+
     // Private helper methods
-    
+
     /// Clone necessary components for monitoring thread
     fn clone_for_thread(&self) -> MonitoringThreadData {
         MonitoringThreadData {
@@ -1510,36 +1522,36 @@ impl RealTimeHardwareMonitor {
             monitoring_active: Arc::clone(&self.monitoring_active),
         }
     }
-    
+
     /// Main monitoring loop
     fn monitoring_loop(&self) {
         while self.monitoring_active.load(Ordering::Relaxed) {
             // Collect metrics from all devices
             self.collect_device_metrics();
-            
+
             // Update noise characterization
             self.update_noise_characterization();
-            
+
             // Check for alerts
             self.check_alert_conditions();
-            
+
             // Update failure predictions
             self.update_failure_predictions();
-            
+
             // Trigger optimizations if needed
             self.check_optimization_triggers();
-            
+
             // Sleep until next collection interval
             thread::sleep(self.config.monitoring_interval);
         }
     }
-    
+
     /// Collect metrics from all devices
     fn collect_device_metrics(&self) {
         // Implementation would collect real metrics from devices
         println!("Collecting device metrics...");
     }
-    
+
     /// Update noise characterization
     fn update_noise_characterization(&self) {
         if self.config.enable_noise_characterization {
@@ -1547,13 +1559,13 @@ impl RealTimeHardwareMonitor {
             println!("Updating noise characterization...");
         }
     }
-    
+
     /// Check alert conditions
     fn check_alert_conditions(&self) {
         // Implementation would check thresholds and generate alerts
         println!("Checking alert conditions...");
     }
-    
+
     /// Update failure predictions
     fn update_failure_predictions(&self) {
         if self.config.enable_failure_prediction {
@@ -1561,34 +1573,41 @@ impl RealTimeHardwareMonitor {
             println!("Updating failure predictions...");
         }
     }
-    
+
     /// Check optimization triggers
     fn check_optimization_triggers(&self) {
         // Implementation would check if optimizations should be triggered
         println!("Checking optimization triggers...");
     }
-    
+
     /// Assess if adaptation is needed
-    fn assess_adaptation_need(&self, metrics: &DevicePerformanceMetrics) -> ApplicationResult<bool> {
+    fn assess_adaptation_need(
+        &self,
+        metrics: &DevicePerformanceMetrics,
+    ) -> ApplicationResult<bool> {
         // Simple heuristic: adapt if error rate is above threshold
         Ok(metrics.error_rate > self.config.alert_thresholds.max_error_rate)
     }
-    
+
     /// Generate adaptive compilation parameters
-    fn generate_adaptive_parameters(&self, metrics: &DevicePerformanceMetrics, problem: &IsingModel) -> ApplicationResult<CompilationParameters> {
+    fn generate_adaptive_parameters(
+        &self,
+        metrics: &DevicePerformanceMetrics,
+        problem: &IsingModel,
+    ) -> ApplicationResult<CompilationParameters> {
         // Adaptive parameter generation based on current metrics
         let chain_strength = if metrics.error_rate > 0.1 {
             2.0 // Increase chain strength for high error rate
         } else {
             1.0
         };
-        
+
         let temperature_compensation = if metrics.temperature > 0.02 {
             0.1 // Apply temperature compensation
         } else {
             0.0
         };
-        
+
         Ok(CompilationParameters {
             chain_strength,
             annealing_schedule: vec![(0.0, 1.0), (1.0, 0.0)], // Linear schedule
@@ -1638,7 +1657,7 @@ impl Default for MetricsCollectionConfig {
         enabled_metrics.insert(MetricType::CoherenceTime);
         enabled_metrics.insert(MetricType::NoiseLevel);
         enabled_metrics.insert(MetricType::SuccessRate);
-        
+
         Self {
             enabled_metrics,
             collection_frequency: Duration::from_millis(100),
@@ -1669,10 +1688,17 @@ impl AdaptiveCompiler {
             active_adaptations: HashMap::new(),
         }
     }
-    
-    fn cache_compilation(&mut self, problem: &IsingModel, parameters: &CompilationParameters) -> ApplicationResult<()> {
+
+    fn cache_compilation(
+        &mut self,
+        problem: &IsingModel,
+        parameters: &CompilationParameters,
+    ) -> ApplicationResult<()> {
         // Implementation would cache the compilation
-        println!("Caching compilation for problem with {} qubits", problem.num_qubits);
+        println!(
+            "Caching compilation for problem with {} qubits",
+            problem.num_qubits
+        );
         Ok(())
     }
 }
@@ -1796,7 +1822,7 @@ impl Default for OptimizerConfig {
 pub fn create_example_hardware_monitor() -> ApplicationResult<RealTimeHardwareMonitor> {
     let config = MonitoringConfig::default();
     let monitor = RealTimeHardwareMonitor::new(config);
-    
+
     // Register example device
     let device = MonitoredDevice {
         device_id: "dwave_advantage_4_1".to_string(),
@@ -1885,61 +1911,61 @@ pub fn create_example_hardware_monitor() -> ApplicationResult<RealTimeHardwareMo
             calibration_validity: Duration::from_secs(3600),
         })),
     };
-    
+
     monitor.register_device(device)?;
-    
+
     Ok(monitor)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_monitor_creation() {
         let config = MonitoringConfig::default();
         let monitor = RealTimeHardwareMonitor::new(config);
-        
+
         assert!(!monitor.monitoring_active.load(Ordering::Relaxed));
     }
-    
+
     #[test]
     fn test_device_registration() {
         let monitor = create_example_hardware_monitor().unwrap();
-        
+
         let devices = monitor.devices.read().unwrap();
         assert_eq!(devices.len(), 1);
         assert!(devices.contains_key("dwave_advantage_4_1"));
     }
-    
+
     #[test]
     fn test_metrics_collection_config() {
         let config = MetricsCollectionConfig::default();
         assert!(config.enabled_metrics.contains(&MetricType::ErrorRate));
         assert!(config.enabled_metrics.contains(&MetricType::Temperature));
     }
-    
+
     #[test]
     fn test_adaptive_compiler() {
         let compiler = AdaptiveCompiler::new();
         assert!(compiler.config.enable_realtime_recompilation);
         assert_eq!(compiler.config.cache_size, 1000);
     }
-    
+
     #[test]
     fn test_alert_system() {
         let alert_system = AlertSystem::new();
         assert_eq!(alert_system.config.max_active_alerts, 100);
         assert!(alert_system.active_alerts.is_empty());
     }
-    
+
     #[test]
     fn test_failure_detector() {
         let detector = PredictiveFailureDetector::new();
         assert_eq!(detector.config.confidence_threshold, 0.8);
         assert!(detector.models.is_empty());
     }
-    
+
     #[test]
     fn test_performance_optimizer() {
         let optimizer = RealTimePerformanceOptimizer::new();

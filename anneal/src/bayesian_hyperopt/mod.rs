@@ -49,28 +49,38 @@ pub use transfer::*;
 /// Create parameter space for annealing hyperparameters
 pub fn create_annealing_parameter_space() -> ParameterSpace {
     let mut parameters = Vec::new();
-    
+
     // Common annealing parameters
     parameters.push(Parameter {
         name: "temperature".to_string(),
         param_type: ParameterType::Continuous,
-        bounds: ParameterBounds::Continuous { min: 0.1, max: 10.0 },
+        bounds: ParameterBounds::Continuous {
+            min: 0.1,
+            max: 10.0,
+        },
     });
-    
+
     parameters.push(Parameter {
         name: "num_sweeps".to_string(),
         param_type: ParameterType::Discrete,
-        bounds: ParameterBounds::Discrete { min: 100, max: 10000 },
+        bounds: ParameterBounds::Discrete {
+            min: 100,
+            max: 10000,
+        },
     });
-    
+
     parameters.push(Parameter {
         name: "schedule_type".to_string(),
         param_type: ParameterType::Categorical,
-        bounds: ParameterBounds::Categorical { 
-            values: vec!["linear".to_string(), "exponential".to_string(), "polynomial".to_string()]
+        bounds: ParameterBounds::Categorical {
+            values: vec![
+                "linear".to_string(),
+                "exponential".to_string(),
+                "polynomial".to_string(),
+            ],
         },
     });
-    
+
     ParameterSpace { parameters }
 }
 
@@ -98,7 +108,7 @@ pub fn create_bayesian_optimizer() -> BayesianHyperoptimizer {
         transfer_config: TransferConfig::default(),
         seed: Some(42),
     };
-    
+
     let parameter_space = create_annealing_parameter_space();
     BayesianHyperoptimizer::new(config, parameter_space)
 }
@@ -131,7 +141,7 @@ pub fn create_custom_bayesian_optimizer(
         transfer_config: TransferConfig::default(),
         seed: Some(42),
     };
-    
+
     let parameter_space = create_annealing_parameter_space();
     BayesianHyperoptimizer::new(config, parameter_space)
 }
@@ -153,25 +163,34 @@ where
     } else {
         create_bayesian_optimizer()
     };
-    
+
     optimizer.optimize(objective_function)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_parameter_space_creation() {
         let param_space = create_annealing_parameter_space();
         assert_eq!(param_space.parameters.len(), 3);
-        
+
         // Check parameter types
-        assert_eq!(param_space.parameters[0].param_type, ParameterType::Continuous);
-        assert_eq!(param_space.parameters[1].param_type, ParameterType::Discrete);
-        assert_eq!(param_space.parameters[2].param_type, ParameterType::Categorical);
+        assert_eq!(
+            param_space.parameters[0].param_type,
+            ParameterType::Continuous
+        );
+        assert_eq!(
+            param_space.parameters[1].param_type,
+            ParameterType::Discrete
+        );
+        assert_eq!(
+            param_space.parameters[2].param_type,
+            ParameterType::Categorical
+        );
     }
-    
+
     #[test]
     fn test_optimizer_creation() {
         let optimizer = create_bayesian_optimizer();
@@ -179,7 +198,7 @@ mod tests {
         assert_eq!(optimizer.config.initial_samples, 5);
         assert_eq!(optimizer.parameter_space.parameters.len(), 3);
     }
-    
+
     #[test]
     fn test_custom_optimizer_creation() {
         let optimizer = create_custom_bayesian_optimizer(
@@ -187,7 +206,7 @@ mod tests {
             AcquisitionFunctionType::UpperConfidenceBound,
             KernelFunction::Matern,
         );
-        
+
         assert_eq!(optimizer.config.max_iterations, 100);
         assert_eq!(optimizer.config.initial_samples, 10);
         assert_eq!(
@@ -196,20 +215,18 @@ mod tests {
         );
         assert_eq!(optimizer.config.gp_config.kernel, KernelFunction::Matern);
     }
-    
+
     #[test]
     fn test_simple_optimization() {
         // Simple quadratic function to minimize
-        let objective = |x: &[f64]| {
-            x.iter().map(|&xi| (xi - 1.0).powi(2)).sum::<f64>()
-        };
-        
+        let objective = |x: &[f64]| x.iter().map(|&xi| (xi - 1.0).powi(2)).sum::<f64>();
+
         let result = optimize_annealing_parameters(objective, Some(10));
         assert!(result.is_ok());
-        
+
         let best_params = result.unwrap();
         assert_eq!(best_params.len(), 3);
-        
+
         // Check that parameters are within bounds
         assert!(best_params[0] >= 0.1 && best_params[0] <= 10.0); // temperature
         assert!(best_params[1] >= 100.0 && best_params[1] <= 10000.0); // num_sweeps

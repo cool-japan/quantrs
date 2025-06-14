@@ -24,7 +24,9 @@ pub mod calibration;
 pub mod characterization;
 pub mod circuit_migration;
 pub mod cloud;
+// pub mod cost_optimization;
 pub mod hardware_parallelization;
+pub mod hybrid_quantum_classical;
 pub mod compiler_passes;
 pub mod cross_platform_benchmarking;
 pub mod crosstalk;
@@ -445,6 +447,17 @@ pub mod prelude {
         HardwareConstraints, OptimizationObjective, OptimizationStats, PassInfo,
         PerformancePrediction,
     };
+    // pub use crate::cost_optimization::{
+    //     CostOptimizationEngine, CostOptimizationConfig, CostOptimizationStrategy as CostStrategy, CostEstimate,
+    //     CostBreakdown, CostEstimationMetadata, BudgetConfig, BudgetStatus, BudgetRolloverPolicy,
+    //     CostModel, CostModelType, ProviderComparisonResult, ProviderMetrics, ComparisonMetric,
+    //     PredictiveModelingConfig as CostPredictiveConfig, PredictiveModelType, PredictionResult as CostPredictionResult, 
+    //     ResourceRequirements as CostResourceRequirements, OptimizationResult as CostOptimizationResult, 
+    //     OptimizationStatus, BudgetConstraint, TimeConstraint, QualityRequirement,
+    //     OptimizationRecommendation, RecommendationType, CostTrends, TrendDirection, CostAnomaly,
+    //     MonitoringMetric, CostAlertConfig, CostAlertRule, AlertCondition, AlertSeverity,
+    //     NotificationChannel, DashboardConfig, DashboardWidget, MLCostModel, PredictiveModel,
+    // };
     pub use crate::crosstalk::{
         CrosstalkAnalyzer, CrosstalkCharacterization, CrosstalkConfig, CrosstalkMechanism,
         MitigationStrategy, SpatialCrosstalkAnalysis, SpectralCrosstalkAnalysis,
@@ -473,6 +486,17 @@ pub mod prelude {
         ExecutionConstraints, QualityRequirements, TimingConstraints, ResourceConstraints,
         ParallelExecutionResult, LoadBalancingResult, PerformanceMetrics as ParallelPerformanceMetrics,
         OptimizationSuggestion, ResourceUsage, ExecutionQualityMetrics,
+    };
+    pub use crate::hybrid_quantum_classical::{
+        HybridQuantumClassicalExecutor, HybridLoopConfig, HybridLoopStrategy, HybridLoopResult,
+        HybridOptimizationConfig, HybridOptimizer, FeedbackControlConfig, FeedbackAlgorithm,
+        ClassicalComputationConfig, QuantumExecutionConfig, ConvergenceConfig, ConvergenceCriterion,
+        HybridPerformanceConfig, ErrorHandlingConfig, HybridLoopState, IterationResult,
+        QuantumExecutionResult, ClassicalComputationResult, ConvergenceStatus, ConvergenceReason,
+        PerformanceMetrics as HybridPerformanceMetrics, OptimizationSummary, QualityMetrics,
+        StateEstimationMethod, NoiseModelingConfig, BackendSelectionConfig, SelectionCriterion,
+        CircuitOptimizationConfig, OptimizationPass, OptimizationLevel, AdaptiveControlConfig,
+        AdaptationAlgorithm, ErrorRecoveryStrategy, RetryConfig, BackoffStrategy,
     };
     pub use crate::ibm::IBMCircuitConfig;
     pub use crate::integrated_device_manager::{
@@ -556,7 +580,7 @@ pub mod prelude {
         analysis::ConvergenceAnalysis,
         circuits::ParametricCircuit as VQAParametricCircuit,
         config::{
-            AdaptiveShotConfig, ConvergenceCriterion, GradientMethod, MultiStartConfig,
+            AdaptiveShotConfig, ConvergenceCriterion as VQAConvergenceCriterion, GradientMethod, MultiStartConfig,
             OptimizationTrajectory, ResourceUtilization, VQAAlgorithmType, VQAConfig,
             VQAHardwareAnalysis, VQAHardwareConfig, VQANoiseMitigation, VQAOptimizationConfig,
             VQAOptimizer, VQAStatisticalAnalysis, VQAStatisticalConfig, VQAValidationConfig,

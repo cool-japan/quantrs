@@ -20,9 +20,9 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::embedding::{Embedding, EmbeddingResult, HardwareTopology};
-use crate::ising::{IsingModel};
 use crate::applications::{ApplicationError, ApplicationResult};
+use crate::embedding::{Embedding, EmbeddingResult, HardwareTopology};
+use crate::ising::IsingModel;
 
 /// Multi-chip embedding configuration
 #[derive(Debug, Clone)]
@@ -470,27 +470,27 @@ impl MultiChipCoordinator {
             load_balancer: Arc::new(Mutex::new(LoadBalancer::new(config.load_balancing.clone()))),
         }
     }
-    
+
     /// Register a quantum chip
     pub fn register_chip(&self, chip: QuantumChip) -> ApplicationResult<()> {
         let chip_id = chip.id.clone();
         let mut chips = self.chips.write().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire chip registry lock".to_string())
         })?;
-        
+
         chips.insert(chip_id.clone(), chip);
-        
+
         // Initialize communication channels with existing chips
         for existing_chip_id in chips.keys() {
             if existing_chip_id != &chip_id {
                 self.create_communication_channel(&chip_id, existing_chip_id)?;
             }
         }
-        
+
         println!("Registered quantum chip: {}", chip_id);
         Ok(())
     }
-    
+
     /// Create communication channel between chips
     fn create_communication_channel(&self, chip1: &str, chip2: &str) -> ApplicationResult<()> {
         let channel_id = format!("{}_{}", chip1, chip2);
@@ -503,72 +503,78 @@ impl MultiChipCoordinator {
             bandwidth: 100.0, // Default bandwidth
             latency: Duration::from_millis(10),
         };
-        
+
         let mut channels = self.channels.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire channel lock".to_string())
         })?;
-        
+
         channels.insert(channel_id, channel);
         Ok(())
     }
-    
+
     /// Distribute problem across multiple chips
     pub fn distribute_problem(&self, problem: &IsingModel) -> ApplicationResult<Vec<String>> {
         println!("Starting multi-chip problem distribution");
-        
+
         // Step 1: Analyze problem characteristics
         let problem_size = problem.num_qubits;
         let optimal_chips = self.calculate_optimal_chip_count(problem_size)?;
-        
+
         // Step 2: Partition the problem
         let partitions = self.partition_problem(problem, optimal_chips)?;
-        
+
         // Step 3: Select and assign chips
         let selected_chips = self.select_chips(&partitions)?;
-        
+
         // Step 4: Distribute partitions to chips
         self.assign_partitions_to_chips(&partitions, &selected_chips)?;
-        
+
         // Step 5: Initialize communication
         self.initialize_inter_chip_communication(&selected_chips)?;
-        
+
         println!("Problem distributed to {} chips", selected_chips.len());
         Ok(selected_chips)
     }
-    
+
     /// Calculate optimal number of chips for problem
     fn calculate_optimal_chip_count(&self, problem_size: usize) -> ApplicationResult<usize> {
         let chips = self.chips.read().map_err(|_| {
             ApplicationError::OptimizationError("Failed to read chip registry".to_string())
         })?;
-        
-        let available_chips = chips.values()
+
+        let available_chips = chips
+            .values()
             .filter(|chip| chip.status == ChipStatus::Available)
             .count();
-        
+
         // Calculate based on problem size and chip capacity
-        let chips_needed = (problem_size + self.config.max_problem_size - 1) / self.config.max_problem_size;
+        let chips_needed =
+            (problem_size + self.config.max_problem_size - 1) / self.config.max_problem_size;
         let optimal_chips = chips_needed.min(available_chips).min(self.config.max_chips);
-        
+
         Ok(optimal_chips.max(1))
     }
-    
+
     /// Partition problem for multi-chip execution
-    fn partition_problem(&self, problem: &IsingModel, num_partitions: usize) -> ApplicationResult<Vec<ProblemPartition>> {
+    fn partition_problem(
+        &self,
+        problem: &IsingModel,
+        num_partitions: usize,
+    ) -> ApplicationResult<Vec<ProblemPartition>> {
         let mut partitions = Vec::new();
         let variables_per_partition = (problem.num_qubits + num_partitions - 1) / num_partitions;
-        
+
         for i in 0..num_partitions {
             let start_var = i * variables_per_partition;
             let end_var = ((i + 1) * variables_per_partition).min(problem.num_qubits);
-            
+
             if start_var >= end_var {
                 break;
             }
-            
+
             let variables: Vec<usize> = (start_var..end_var).collect();
             let local_model = self.extract_subproblem(problem, &variables)?;
-            
+
             let partition = ProblemPartition {
                 id: format!("partition_{}", i),
                 parent_problem_id: "main_problem".to_string(),
@@ -578,27 +584,32 @@ impl MultiChipCoordinator {
                 priority: 0,
                 estimated_time: Duration::from_secs(60),
             };
-            
+
             partitions.push(partition);
         }
-        
+
         // Analyze dependencies between partitions
         self.analyze_partition_dependencies(&mut partitions, problem)?;
-        
+
         Ok(partitions)
     }
-    
+
     /// Extract subproblem for partition
-    fn extract_subproblem(&self, problem: &IsingModel, variables: &[usize]) -> ApplicationResult<IsingModel> {
+    fn extract_subproblem(
+        &self,
+        problem: &IsingModel,
+        variables: &[usize],
+    ) -> ApplicationResult<IsingModel> {
         let num_vars = variables.len();
         let mut subproblem = IsingModel::new(num_vars);
-        
+
         // Map original variables to local indices
-        let var_map: HashMap<usize, usize> = variables.iter()
+        let var_map: HashMap<usize, usize> = variables
+            .iter()
             .enumerate()
             .map(|(i, &var)| (var, i))
             .collect();
-        
+
         // Copy bias terms
         for (i, &original_var) in variables.iter().enumerate() {
             let biases = problem.biases();
@@ -609,18 +620,19 @@ impl MultiChipCoordinator {
                 }
             }
         }
-        
+
         // Copy coupling terms
         let couplings = problem.couplings();
         for i in 0..variables.len() {
             for j in (i + 1)..variables.len() {
                 let orig_i = variables[i];
                 let orig_j = variables[j];
-                
+
                 // Find coupling between orig_i and orig_j
                 for coupling in &couplings {
-                    if (coupling.i == orig_i && coupling.j == orig_j) || 
-                       (coupling.i == orig_j && coupling.j == orig_i) {
+                    if (coupling.i == orig_i && coupling.j == orig_j)
+                        || (coupling.i == orig_j && coupling.j == orig_i)
+                    {
                         if coupling.strength != 0.0 {
                             subproblem.set_coupling(i, j, coupling.strength)?;
                         }
@@ -629,36 +641,47 @@ impl MultiChipCoordinator {
                 }
             }
         }
-        
+
         Ok(subproblem)
     }
-    
+
     /// Analyze dependencies between partitions
-    fn analyze_partition_dependencies(&self, partitions: &mut [ProblemPartition], problem: &IsingModel) -> ApplicationResult<()> {
+    fn analyze_partition_dependencies(
+        &self,
+        partitions: &mut [ProblemPartition],
+        problem: &IsingModel,
+    ) -> ApplicationResult<()> {
         // Find cross-partition couplings
         for i in 0..partitions.len() {
             for j in (i + 1)..partitions.len() {
-                let has_coupling = self.check_partition_coupling(&partitions[i], &partitions[j], problem)?;
-                
+                let has_coupling =
+                    self.check_partition_coupling(&partitions[i], &partitions[j], problem)?;
+
                 if has_coupling {
                     partitions[i].dependencies.push(partitions[j].id.clone());
                     partitions[j].dependencies.push(partitions[i].id.clone());
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Check if two partitions have coupling terms
-    fn check_partition_coupling(&self, partition1: &ProblemPartition, partition2: &ProblemPartition, problem: &IsingModel) -> ApplicationResult<bool> {
+    fn check_partition_coupling(
+        &self,
+        partition1: &ProblemPartition,
+        partition2: &ProblemPartition,
+        problem: &IsingModel,
+    ) -> ApplicationResult<bool> {
         let couplings = problem.couplings();
         for &var1 in &partition1.variables {
             for &var2 in &partition2.variables {
                 // Check if there's a coupling between var1 and var2
                 for coupling in &couplings {
-                    if (coupling.i == var1 && coupling.j == var2) || 
-                       (coupling.i == var2 && coupling.j == var1) {
+                    if (coupling.i == var1 && coupling.j == var2)
+                        || (coupling.i == var2 && coupling.j == var1)
+                    {
                         if coupling.strength != 0.0 {
                             return Ok(true);
                         }
@@ -666,57 +689,64 @@ impl MultiChipCoordinator {
                 }
             }
         }
-        
+
         Ok(false)
     }
-    
+
     /// Select optimal chips for execution
     fn select_chips(&self, partitions: &[ProblemPartition]) -> ApplicationResult<Vec<String>> {
         let chips = self.chips.read().map_err(|_| {
             ApplicationError::OptimizationError("Failed to read chip registry".to_string())
         })?;
-        
-        let mut available_chips: Vec<_> = chips.values()
+
+        let mut available_chips: Vec<_> = chips
+            .values()
             .filter(|chip| chip.status == ChipStatus::Available)
             .collect();
-        
+
         // Sort by performance (best first)
         available_chips.sort_by(|a, b| {
-            b.performance.throughput.partial_cmp(&a.performance.throughput)
+            b.performance
+                .throughput
+                .partial_cmp(&a.performance.throughput)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-        
+
         // Select chips based on load balancing strategy
         let mut selected_chips = Vec::new();
         let num_chips_needed = partitions.len().min(available_chips.len());
-        
+
         for i in 0..num_chips_needed {
             selected_chips.push(available_chips[i].id.clone());
         }
-        
+
         if selected_chips.is_empty() {
             return Err(ApplicationError::ResourceLimitExceeded(
-                "No available chips for execution".to_string()
+                "No available chips for execution".to_string(),
             ));
         }
-        
+
         Ok(selected_chips)
     }
-    
+
     /// Assign partitions to selected chips
-    fn assign_partitions_to_chips(&self, partitions: &[ProblemPartition], chips: &[String]) -> ApplicationResult<()> {
+    fn assign_partitions_to_chips(
+        &self,
+        partitions: &[ProblemPartition],
+        chips: &[String],
+    ) -> ApplicationResult<()> {
         let mut partitions_map = self.partitions.write().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire partitions lock".to_string())
         })?;
-        
+
         let mut chips_map = self.chips.write().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire chips lock".to_string())
         })?;
-        
+
         // Assign partitions in round-robin fashion
         for (i, partition) in partitions.iter().enumerate() {
             let chip_id = &chips[i % chips.len()];
-            
+
             // Update chip workload
             if let Some(chip) = chips_map.get_mut(chip_id) {
                 chip.status = ChipStatus::Busy;
@@ -728,14 +758,14 @@ impl MultiChipCoordinator {
                     progress: 0.0,
                 });
             }
-            
+
             // Store partition assignment
             partitions_map.insert(partition.id.clone(), partition.clone());
         }
-        
+
         Ok(())
     }
-    
+
     /// Initialize inter-chip communication
     fn initialize_inter_chip_communication(&self, chips: &[String]) -> ApplicationResult<()> {
         // Set up communication channels between all chip pairs
@@ -744,19 +774,19 @@ impl MultiChipCoordinator {
                 self.create_communication_channel(&chips[i], &chips[j])?;
             }
         }
-        
+
         // Send initial synchronization messages
         self.send_sync_messages(chips)?;
-        
+
         Ok(())
     }
-    
+
     /// Send synchronization messages to chips
     fn send_sync_messages(&self, chips: &[String]) -> ApplicationResult<()> {
         let mut channels = self.channels.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire channels lock".to_string())
         })?;
-        
+
         for chip_id in chips {
             let message = Message {
                 id: format!("sync_{}", chip_id),
@@ -765,7 +795,7 @@ impl MultiChipCoordinator {
                 timestamp: Instant::now(),
                 priority: 255, // Highest priority
             };
-            
+
             // Send to all communication channels involving this chip
             for channel in channels.values_mut() {
                 if channel.source == *chip_id || channel.target == *chip_id {
@@ -773,88 +803,91 @@ impl MultiChipCoordinator {
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Execute distributed computation
     pub fn execute_distributed(&self, chips: &[String]) -> ApplicationResult<Vec<i32>> {
         println!("Starting distributed execution on {} chips", chips.len());
-        
+
         let start_time = Instant::now();
-        
+
         // Start monitoring
         self.start_performance_monitoring()?;
-        
+
         // Execute on each chip (simulated)
         let results = self.execute_on_chips(chips)?;
-        
+
         // Aggregate results
         let final_result = self.aggregate_results(&results)?;
-        
+
         // Stop monitoring and collect metrics
         let execution_time = start_time.elapsed();
         self.collect_execution_metrics(execution_time, &final_result)?;
-        
+
         println!("Distributed execution completed in {:?}", execution_time);
         Ok(final_result)
     }
-    
+
     /// Execute computation on individual chips
     fn execute_on_chips(&self, chips: &[String]) -> ApplicationResult<HashMap<String, Vec<i32>>> {
         let mut results = HashMap::new();
-        
+
         // Simulate parallel execution
         for chip_id in chips {
             let result = self.execute_on_single_chip(chip_id)?;
             results.insert(chip_id.clone(), result);
         }
-        
+
         Ok(results)
     }
-    
+
     /// Execute on a single chip (simulated)
     fn execute_on_single_chip(&self, chip_id: &str) -> ApplicationResult<Vec<i32>> {
         // Simulate chip execution
         thread::sleep(Duration::from_millis(100)); // Simulate processing time
-        
+
         // Get partition for this chip
         let partitions = self.partitions.read().map_err(|_| {
             ApplicationError::OptimizationError("Failed to read partitions".to_string())
         })?;
-        
+
         if let Some(partition) = partitions.values().next() {
             // Simulate finding partition for this chip
             let solution_size = partition.variables.len();
             let mut solution = vec![1; solution_size]; // Dummy solution
-            
+
             // Add some randomness
             for i in 0..solution_size {
                 if i % 2 == 0 {
                     solution[i] = -1;
                 }
             }
-            
+
             return Ok(solution);
         }
-        
+
         // Default empty solution
         Ok(vec![])
     }
-    
+
     /// Aggregate results from multiple chips
-    fn aggregate_results(&self, results: &HashMap<String, Vec<i32>>) -> ApplicationResult<Vec<i32>> {
+    fn aggregate_results(
+        &self,
+        results: &HashMap<String, Vec<i32>>,
+    ) -> ApplicationResult<Vec<i32>> {
         let mut final_solution = Vec::new();
-        
+
         // Combine results from all chips in order
         let partitions = self.partitions.read().map_err(|_| {
             ApplicationError::OptimizationError("Failed to read partitions".to_string())
         })?;
-        
+
         // Sort partitions by ID to maintain variable order
         let mut sorted_partitions: Vec<_> = partitions.values().collect();
         sorted_partitions.sort_by(|a, b| a.id.cmp(&b.id));
-        
+
         for partition in sorted_partitions {
             // Find corresponding result
             for (chip_id, result) in results {
@@ -864,37 +897,41 @@ impl MultiChipCoordinator {
                 }
             }
         }
-        
+
         Ok(final_solution)
     }
-    
+
     /// Start performance monitoring
     fn start_performance_monitoring(&self) -> ApplicationResult<()> {
         // Initialize monitoring system
         let mut monitor = self.monitor.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire monitor lock".to_string())
         })?;
-        
+
         monitor.start_monitoring();
         Ok(())
     }
-    
+
     /// Collect execution metrics
-    fn collect_execution_metrics(&self, execution_time: Duration, solution: &[i32]) -> ApplicationResult<()> {
+    fn collect_execution_metrics(
+        &self,
+        execution_time: Duration,
+        solution: &[i32],
+    ) -> ApplicationResult<()> {
         let mut monitor = self.monitor.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire monitor lock".to_string())
         })?;
-        
+
         monitor.record_execution(execution_time, solution.len());
         Ok(())
     }
-    
+
     /// Get system performance metrics
     pub fn get_performance_metrics(&self) -> ApplicationResult<SystemMetrics> {
         let monitor = self.monitor.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire monitor lock".to_string())
         })?;
-        
+
         Ok(monitor.system_metrics.clone())
     }
 }
@@ -915,16 +952,19 @@ impl PerformanceMonitor {
             thresholds: PerformanceThresholds::default(),
         }
     }
-    
+
     fn start_monitoring(&mut self) {
         println!("Performance monitoring started");
     }
-    
+
     fn record_execution(&mut self, execution_time: Duration, solution_size: usize) {
         self.system_metrics.total_throughput = solution_size as f64 / execution_time.as_secs_f64();
         self.system_metrics.average_latency = execution_time;
-        
-        println!("Recorded execution: {} variables in {:?}", solution_size, execution_time);
+
+        println!(
+            "Recorded execution: {} variables in {:?}",
+            solution_size, execution_time
+        );
     }
 }
 
@@ -943,7 +983,7 @@ impl LoadBalancer {
 pub fn create_example_multi_chip_system() -> ApplicationResult<MultiChipCoordinator> {
     let config = MultiChipConfig::default();
     let coordinator = MultiChipCoordinator::new(config);
-    
+
     // Create example chips
     for i in 0..4 {
         let chip = QuantumChip {
@@ -955,17 +995,17 @@ pub fn create_example_multi_chip_system() -> ApplicationResult<MultiChipCoordina
             available_qubits: 1000 + i * 200,
             connections: HashMap::new(),
         };
-        
+
         coordinator.register_chip(chip)?;
     }
-    
+
     Ok(coordinator)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_multi_chip_config() {
         let config = MultiChipConfig::default();
@@ -973,58 +1013,58 @@ mod tests {
         assert_eq!(config.load_balancing, LoadBalancingStrategy::Dynamic);
         assert_eq!(config.communication, CommunicationProtocol::Asynchronous);
     }
-    
+
     #[test]
     fn test_coordinator_creation() {
         let config = MultiChipConfig::default();
         let coordinator = MultiChipCoordinator::new(config);
-        
+
         let chips = coordinator.chips.read().unwrap();
         assert!(chips.is_empty());
     }
-    
+
     #[test]
     fn test_chip_registration() {
         let coordinator = create_example_multi_chip_system().unwrap();
-        
+
         let chips = coordinator.chips.read().unwrap();
         assert_eq!(chips.len(), 4);
-        
+
         for i in 0..4 {
             let chip_id = format!("chip_{}", i);
             assert!(chips.contains_key(&chip_id));
             assert_eq!(chips[&chip_id].status, ChipStatus::Available);
         }
     }
-    
+
     #[test]
     fn test_problem_distribution() {
         let coordinator = create_example_multi_chip_system().unwrap();
-        
+
         // Create test problem
         let mut problem = IsingModel::new(200);
-        
+
         // Distribute problem
         let result = coordinator.distribute_problem(&problem);
         assert!(result.is_ok());
-        
+
         let selected_chips = result.unwrap();
         assert!(!selected_chips.is_empty());
         assert!(selected_chips.len() <= 4);
     }
-    
+
     #[test]
     fn test_performance_monitoring() {
         let coordinator = create_example_multi_chip_system().unwrap();
-        
+
         let result = coordinator.start_performance_monitoring();
         assert!(result.is_ok());
-        
+
         let metrics = coordinator.get_performance_metrics().unwrap();
         assert_eq!(metrics.total_throughput, 0.0);
         assert_eq!(metrics.active_chips, 0);
     }
-    
+
     #[test]
     fn test_fault_tolerance_config() {
         let fault_config = FaultToleranceConfig::default();

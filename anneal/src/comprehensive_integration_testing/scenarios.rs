@@ -24,13 +24,13 @@ impl TestRegistry {
             categories: HashMap::new(),
         }
     }
-    
+
     pub fn register_test_case(&mut self, test_case: IntegrationTestCase) -> Result<(), String> {
         let id = test_case.id.clone();
         self.test_cases.insert(id, test_case);
         Ok(())
     }
-    
+
     // TODO: Implement other registry methods
 }
 

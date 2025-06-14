@@ -15,7 +15,7 @@
 //! - Quantum error effects on advantage
 //! - Benchmark suite standardization for reproducibility
 
-use std::collections::{HashMap, VecDeque, BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -23,10 +23,10 @@ use std::time::{Duration, Instant};
 use crate::applications::{ApplicationError, ApplicationResult};
 use crate::braket::{BraketClient, BraketDevice};
 use crate::dwave::DWaveClient;
-use crate::HardwareTopology;
 use crate::ising::{IsingModel, QuboModel};
-use crate::simulator::{ClassicalAnnealingSimulator, AnnealingParams, AnnealingResult};
 use crate::multi_objective::{MultiObjectiveOptimizer, MultiObjectiveResult};
+use crate::simulator::{AnnealingParams, AnnealingResult, ClassicalAnnealingSimulator};
+use crate::HardwareTopology;
 
 /// Quantum advantage demonstration system
 pub struct QuantumAdvantageDemonstrator {
@@ -525,11 +525,15 @@ pub struct Solution {
 /// Problem generator trait
 pub trait ProblemGenerator: Send + Sync {
     /// Generate problem instance
-    fn generate_instance(&self, size: usize, params: &GenerationParameters) -> ApplicationResult<ProblemInstance>;
-    
+    fn generate_instance(
+        &self,
+        size: usize,
+        params: &GenerationParameters,
+    ) -> ApplicationResult<ProblemInstance>;
+
     /// Get generator name
     fn get_name(&self) -> &str;
-    
+
     /// Get supported problem category
     fn get_category(&self) -> ProblemCategory;
 }
@@ -579,11 +583,15 @@ pub struct ClassicalOptimizerConfig {
 /// Classical solver trait
 pub trait ClassicalSolver: Send + Sync {
     /// Solve optimization problem
-    fn solve(&self, problem: &ProblemRepresentation, time_limit: Duration) -> ApplicationResult<ClassicalSolutionResult>;
-    
+    fn solve(
+        &self,
+        problem: &ProblemRepresentation,
+        time_limit: Duration,
+    ) -> ApplicationResult<ClassicalSolutionResult>;
+
     /// Get algorithm name
     fn get_algorithm_name(&self) -> ClassicalAlgorithm;
-    
+
     /// Tune algorithm parameters
     fn tune_parameters(&mut self, instances: &[ProblemInstance]) -> ApplicationResult<()>;
 }
@@ -1258,10 +1266,10 @@ pub enum BootstrapMethod {
 pub trait StatisticalTest: Send + Sync {
     /// Perform statistical test
     fn perform_test(&self, data: &StatisticalTestData) -> ApplicationResult<TestResult>;
-    
+
     /// Get test name
     fn get_test_name(&self) -> &str;
-    
+
     /// Get test assumptions
     fn get_assumptions(&self) -> Vec<String>;
 }
@@ -1298,10 +1306,10 @@ pub struct TestResult {
 pub trait EffectSizeCalculator: Send + Sync {
     /// Calculate effect size
     fn calculate_effect_size(&self, data: &StatisticalTestData) -> ApplicationResult<f64>;
-    
+
     /// Get effect size name
     fn get_effect_size_name(&self) -> &str;
-    
+
     /// Get interpretation guidelines
     fn get_interpretation(&self, effect_size: f64) -> EffectSizeInterpretation;
 }
@@ -1693,11 +1701,14 @@ pub struct CertificationConfig {
 /// Certification criterion evaluator
 pub trait CertificationCriterionEvaluator: Send + Sync {
     /// Evaluate criterion
-    fn evaluate(&self, result: &AdvantageDemonstrationResult) -> ApplicationResult<CriterionEvaluation>;
-    
+    fn evaluate(
+        &self,
+        result: &AdvantageDemonstrationResult,
+    ) -> ApplicationResult<CriterionEvaluation>;
+
     /// Get criterion name
     fn get_criterion_name(&self) -> &str;
-    
+
     /// Get weight in overall evaluation
     fn get_weight(&self) -> f64;
 }
@@ -1721,7 +1732,7 @@ pub struct CriterionEvaluation {
 pub trait EvidenceEvaluator: Send + Sync {
     /// Evaluate evidence quality
     fn evaluate_evidence(&self, evidence: &Evidence) -> ApplicationResult<EvidenceQuality>;
-    
+
     /// Get evaluator name
     fn get_evaluator_name(&self) -> &str;
 }
@@ -1873,30 +1884,31 @@ impl QuantumAdvantageDemonstrator {
             certification_system: Arc::new(Mutex::new(AdvantageCertificationSystem::new())),
         }
     }
-    
+
     /// Run comprehensive quantum advantage demonstration
     pub fn demonstrate_quantum_advantage(&self) -> ApplicationResult<AdvantageDemonstrationResult> {
         println!("Starting comprehensive quantum advantage demonstration");
-        
+
         let start_time = Instant::now();
-        
+
         // Step 1: Generate benchmark problems
         let problems = self.generate_benchmark_problems()?;
-        
+
         // Step 2: Run classical baseline optimization
         let classical_results = self.run_classical_baselines(&problems)?;
-        
+
         // Step 3: Run quantum optimization
         let quantum_results = self.run_quantum_optimization(&problems)?;
-        
+
         // Step 4: Perform statistical analysis
-        let statistical_analysis = self.perform_statistical_analysis(&classical_results, &quantum_results)?;
-        
+        let statistical_analysis =
+            self.perform_statistical_analysis(&classical_results, &quantum_results)?;
+
         // Step 5: Certify quantum advantage
         let certification = self.certify_quantum_advantage(&statistical_analysis)?;
-        
+
         let duration = start_time.elapsed();
-        
+
         let result = AdvantageDemonstrationResult {
             id: format!("advantage_demo_{}", start_time.elapsed().as_millis()),
             problem_id: "comprehensive_benchmark".to_string(),
@@ -1919,33 +1931,44 @@ impl QuantumAdvantageDemonstrator {
                 },
             },
         };
-        
+
         // Step 6: Store results
         self.store_results(&result)?;
-        
-        println!("Quantum advantage demonstration completed in {:?}", duration);
-        println!("Certification level: {:?}", result.certification.certification_level);
-        println!("Confidence score: {:.3}", result.certification.confidence_score);
-        
+
+        println!(
+            "Quantum advantage demonstration completed in {:?}",
+            duration
+        );
+        println!(
+            "Certification level: {:?}",
+            result.certification.certification_level
+        );
+        println!(
+            "Confidence score: {:.3}",
+            result.certification.confidence_score
+        );
+
         Ok(result)
     }
-    
+
     /// Generate benchmark problems
     fn generate_benchmark_problems(&self) -> ApplicationResult<Vec<ProblemInstance>> {
         println!("Generating benchmark problems");
-        
+
         let mut problems = Vec::new();
         let benchmark_suite = self.benchmark_suite.lock().map_err(|_| {
-            ApplicationError::OptimizationError("Failed to acquire benchmark suite lock".to_string())
+            ApplicationError::OptimizationError(
+                "Failed to acquire benchmark suite lock".to_string(),
+            )
         })?;
-        
+
         // Generate problems of different sizes
         for size in (self.config.problem_size_range.0..=self.config.problem_size_range.1)
-            .step_by((self.config.problem_size_range.1 - self.config.problem_size_range.0) / 10) {
-            
+            .step_by((self.config.problem_size_range.1 - self.config.problem_size_range.0) / 10)
+        {
             // Create Ising problem
             let ising_problem = IsingModel::new(size);
-            
+
             let problem = ProblemInstance {
                 id: format!("ising_size_{}", size),
                 size,
@@ -1977,104 +2000,116 @@ impl QuantumAdvantageDemonstrator {
                     seed: 12345,
                 },
             };
-            
+
             problems.push(problem);
         }
-        
+
         println!("Generated {} benchmark problems", problems.len());
         Ok(problems)
     }
-    
+
     /// Run classical baseline optimization
-    fn run_classical_baselines(&self, problems: &[ProblemInstance]) -> ApplicationResult<HashMap<ClassicalAlgorithm, PerformanceMetrics>> {
+    fn run_classical_baselines(
+        &self,
+        problems: &[ProblemInstance],
+    ) -> ApplicationResult<HashMap<ClassicalAlgorithm, PerformanceMetrics>> {
         println!("Running classical baseline optimization");
-        
+
         let mut results = HashMap::new();
-        
+
         for algorithm in &self.config.classical_algorithms {
             println!("Running {} algorithm", format!("{:?}", algorithm));
-            
+
             let mut total_time = Duration::from_secs(0);
             let mut total_quality = 0.0;
             let mut successes = 0;
-            
+
             for problem in problems {
                 // Simulate classical optimization
                 let execution_time = Duration::from_millis(100 + problem.size as u64);
                 let quality = 0.8 + rand::random::<f64>() * 0.15; // 80-95% quality
-                
+
                 total_time += execution_time;
                 total_quality += quality;
                 if quality > 0.85 {
                     successes += 1;
                 }
-                
+
                 thread::sleep(Duration::from_millis(1)); // Brief simulation
             }
-            
+
             let avg_quality = total_quality / problems.len() as f64;
             let success_rate = successes as f64 / problems.len() as f64;
-            
-            results.insert(algorithm.clone(), PerformanceMetrics {
-                time_to_solution: total_time / problems.len() as u32,
-                solution_quality: avg_quality,
-                success_rate,
-                convergence_rate: 0.9,
-                resource_efficiency: 0.7,
-            });
+
+            results.insert(
+                algorithm.clone(),
+                PerformanceMetrics {
+                    time_to_solution: total_time / problems.len() as u32,
+                    solution_quality: avg_quality,
+                    success_rate,
+                    convergence_rate: 0.9,
+                    resource_efficiency: 0.7,
+                },
+            );
         }
-        
+
         println!("Classical baseline optimization completed");
         Ok(results)
     }
-    
+
     /// Run quantum optimization
-    fn run_quantum_optimization(&self, problems: &[ProblemInstance]) -> ApplicationResult<HashMap<QuantumDevice, QuantumPerformanceMetrics>> {
+    fn run_quantum_optimization(
+        &self,
+        problems: &[ProblemInstance],
+    ) -> ApplicationResult<HashMap<QuantumDevice, QuantumPerformanceMetrics>> {
         println!("Running quantum optimization");
-        
+
         let mut results = HashMap::new();
-        
+
         for device in &self.config.quantum_devices {
             println!("Running on {:?} device", device);
-            
+
             let mut total_time = Duration::from_secs(0);
             let mut total_quality = 0.0;
             let mut total_advantage = 0.0;
             let mut successes = 0;
-            
+
             for problem in problems {
                 // Simulate quantum optimization with advantage
                 let base_time = Duration::from_millis(10 + problem.size as u64 / 10);
                 let quality = 0.85 + rand::random::<f64>() * 0.1; // 85-95% quality
                 let advantage_factor = 1.5 + rand::random::<f64>() * 2.0; // 1.5x-3.5x advantage
-                
+
                 total_time += base_time;
                 total_quality += quality;
                 total_advantage += advantage_factor;
                 if quality > 0.9 {
                     successes += 1;
                 }
-                
+
                 thread::sleep(Duration::from_millis(1)); // Brief simulation
             }
-            
+
             let avg_quality = total_quality / problems.len() as f64;
             let avg_advantage = total_advantage / problems.len() as f64;
             let success_rate = successes as f64 / problems.len() as f64;
-            
-            results.insert(device.clone(), QuantumPerformanceMetrics {
-                time_to_solution: total_time / problems.len() as u32,
-                solution_quality: avg_quality,
-                success_probability: success_rate,
-                advantage_factor: avg_advantage,
-                error_mitigation_effectiveness: 0.8,
-            });
+
+            results.insert(
+                device.clone(),
+                QuantumPerformanceMetrics {
+                    time_to_solution: total_time / problems.len() as u32,
+                    solution_quality: avg_quality,
+                    success_probability: success_rate,
+                    advantage_factor: avg_advantage,
+                    error_mitigation_effectiveness: 0.8,
+                },
+            );
         }
-        
+
         println!("Quantum optimization completed");
         Ok(results)
     }
-    
+
     /// Perform statistical analysis
     fn perform_statistical_analysis(
         &self,
@@ -2082,42 +2117,48 @@ impl QuantumAdvantageDemonstrator {
         quantum_results: &HashMap<QuantumDevice, QuantumPerformanceMetrics>,
     ) -> ApplicationResult<StatisticalAnalysisResult> {
         println!("Performing statistical analysis");
-        
+
         // Simulate statistical analysis
         let mut test_results = HashMap::new();
-        test_results.insert("t_test_time".to_string(), TestResult {
-            test_statistic: 3.45,
-            p_value: 0.001,
-            degrees_of_freedom: Some(98.0),
-            critical_value: Some(1.96),
-            reject_null: true,
-            effect_size: Some(0.8),
-        });
-        
-        test_results.insert("wilcoxon_quality".to_string(), TestResult {
-            test_statistic: 2.78,
-            p_value: 0.005,
-            degrees_of_freedom: None,
-            critical_value: None,
-            reject_null: true,
-            effect_size: Some(0.6),
-        });
-        
+        test_results.insert(
+            "t_test_time".to_string(),
+            TestResult {
+                test_statistic: 3.45,
+                p_value: 0.001,
+                degrees_of_freedom: Some(98.0),
+                critical_value: Some(1.96),
+                reject_null: true,
+                effect_size: Some(0.8),
+            },
+        );
+
+        test_results.insert(
+            "wilcoxon_quality".to_string(),
+            TestResult {
+                test_statistic: 2.78,
+                p_value: 0.005,
+                degrees_of_freedom: None,
+                critical_value: None,
+                reject_null: true,
+                effect_size: Some(0.6),
+            },
+        );
+
         let mut effect_sizes = HashMap::new();
         effect_sizes.insert("time_advantage".to_string(), 1.2);
         effect_sizes.insert("quality_advantage".to_string(), 0.8);
-        
+
         let mut confidence_intervals = HashMap::new();
         confidence_intervals.insert("time_advantage".to_string(), (0.8, 1.6));
         confidence_intervals.insert("quality_advantage".to_string(), (0.5, 1.1));
-        
+
         let power_analysis = PowerAnalysisResult {
             achieved_power: 0.95,
             minimum_detectable_effect: 0.3,
             required_sample_size: 80,
             actual_sample_size: 100,
         };
-        
+
         Ok(StatisticalAnalysisResult {
             test_results,
             effect_sizes,
@@ -2125,43 +2166,56 @@ impl QuantumAdvantageDemonstrator {
             power_analysis,
         })
     }
-    
+
     /// Certify quantum advantage
-    fn certify_quantum_advantage(&self, analysis: &StatisticalAnalysisResult) -> ApplicationResult<AdvantageCertification> {
+    fn certify_quantum_advantage(
+        &self,
+        analysis: &StatisticalAnalysisResult,
+    ) -> ApplicationResult<AdvantageCertification> {
         println!("Certifying quantum advantage");
-        
+
         let certification_system = self.certification_system.lock().map_err(|_| {
-            ApplicationError::OptimizationError("Failed to acquire certification system lock".to_string())
+            ApplicationError::OptimizationError(
+                "Failed to acquire certification system lock".to_string(),
+            )
         })?;
-        
+
         // Evaluate certification criteria
         let mut criteria_met = Vec::new();
         let mut confidence_score = 0.0;
-        
+
         // Check statistical significance
-        if analysis.test_results.values().all(|test| test.p_value < 0.05) {
+        if analysis
+            .test_results
+            .values()
+            .all(|test| test.p_value < 0.05)
+        {
             criteria_met.push(CertificationCriterion::StatisticalSignificance);
             confidence_score += 0.3;
         }
-        
+
         // Check practical significance
         if analysis.effect_sizes.values().any(|&effect| effect > 0.5) {
             criteria_met.push(CertificationCriterion::PracticalSignificance);
             confidence_score += 0.2;
         }
-        
+
         // Check robustness
         if analysis.power_analysis.achieved_power > 0.8 {
             criteria_met.push(CertificationCriterion::Robustness);
             confidence_score += 0.2;
         }
-        
+
         // Check reproducibility
-        if analysis.confidence_intervals.values().all(|(low, high)| low > &0.0) {
+        if analysis
+            .confidence_intervals
+            .values()
+            .all(|(low, high)| low > &0.0)
+        {
             criteria_met.push(CertificationCriterion::Reproducibility);
             confidence_score += 0.3;
         }
-        
+
         let certification_level = match confidence_score {
             score if score >= 0.9 => CertificationLevel::DefinitiveAdvantage,
             score if score >= 0.7 => CertificationLevel::StrongEvidence,
@@ -2169,7 +2223,7 @@ impl QuantumAdvantageDemonstrator {
             score if score >= 0.3 => CertificationLevel::WeakEvidence,
             _ => CertificationLevel::NoAdvantage,
         };
-        
+
         Ok(AdvantageCertification {
             certification_level,
             criteria_met,
@@ -2181,17 +2235,17 @@ impl QuantumAdvantageDemonstrator {
             certification_timestamp: Instant::now(),
         })
     }
-    
+
     /// Store results in database
     fn store_results(&self, result: &AdvantageDemonstrationResult) -> ApplicationResult<()> {
         println!("Storing results in database");
-        
+
         let mut database = self.results_database.write().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire database lock".to_string())
         })?;
-        
+
         database.results.insert(result.id.clone(), result.clone());
-        
+
         println!("Results stored successfully");
         Ok(())
     }
@@ -2212,7 +2266,10 @@ impl BenchmarkSuite {
                     density_range: (0.1, 0.5),
                     constraint_tightness: (0.3, 0.7),
                     hardness_params: HardnessParameters {
-                        connectivity_patterns: vec![ConnectivityPattern::Random, ConnectivityPattern::SmallWorld],
+                        connectivity_patterns: vec![
+                            ConnectivityPattern::Random,
+                            ConnectivityPattern::SmallWorld,
+                        ],
                         frustration_levels: vec![0.1, 0.3, 0.5],
                         landscape_characteristics: LandscapeCharacteristics {
                             num_local_minima: 100,
@@ -2257,7 +2314,9 @@ impl ClassicalBaselineOptimizer {
                     method: TuningMethod::BayesianOptimization,
                     num_iterations: 100,
                     validation_strategy: ValidationStrategy::CrossValidation { folds: 5 },
-                    objective_function: TuningObjective::MultiObjective { weights: vec![0.5, 0.5] },
+                    objective_function: TuningObjective::MultiObjective {
+                        weights: vec![0.5, 0.5],
+                    },
                 },
                 parameter_spaces: HashMap::new(),
                 tuning_history: HashMap::new(),
@@ -2362,22 +2421,28 @@ pub fn create_example_advantage_demonstrator() -> ApplicationResult<QuantumAdvan
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_advantage_demonstrator_creation() {
         let demonstrator = create_example_advantage_demonstrator().unwrap();
         assert_eq!(demonstrator.config.confidence_level, 0.95);
         assert_eq!(demonstrator.config.num_repetitions, 100);
     }
-    
+
     #[test]
     fn test_advantage_config_defaults() {
         let config = AdvantageConfig::default();
-        assert!(config.classical_algorithms.contains(&ClassicalAlgorithm::SimulatedAnnealing));
-        assert!(config.quantum_devices.contains(&QuantumDevice::DWaveAdvantage));
-        assert!(config.advantage_metrics.contains(&AdvantageMetric::TimeToSolution));
+        assert!(config
+            .classical_algorithms
+            .contains(&ClassicalAlgorithm::SimulatedAnnealing));
+        assert!(config
+            .quantum_devices
+            .contains(&QuantumDevice::DWaveAdvantage));
+        assert!(config
+            .advantage_metrics
+            .contains(&AdvantageMetric::TimeToSolution));
     }
-    
+
     #[test]
     fn test_benchmark_suite_creation() {
         let suite = BenchmarkSuite::new();
@@ -2385,7 +2450,7 @@ mod tests {
         assert!(suite.config.include_random_instances);
         assert_eq!(suite.metadata.version, "1.0.0");
     }
-    
+
     #[test]
     fn test_certification_levels() {
         let levels = vec![
@@ -2397,7 +2462,7 @@ mod tests {
         ];
         assert_eq!(levels.len(), 5);
     }
-    
+
     #[test]
     fn test_advantage_metrics() {
         let metrics = vec![

@@ -3,12 +3,12 @@
 //! This module contains all Transfer Learning types and implementations
 //! used by the meta-learning optimization system.
 
-use std::collections::HashMap;
-use std::time::Instant;
-use crate::applications::ApplicationResult;
+use super::config::ArchitectureSpec;
 use super::config::*;
 use super::features::DistributionStats;
-use super::config::ArchitectureSpec;
+use crate::applications::ApplicationResult;
+use std::collections::HashMap;
+use std::time::Instant;
 
 /// Transfer learning system
 pub struct TransferLearner {
@@ -173,12 +173,16 @@ impl TransferLearner {
     }
 
     /// Find most similar source domain
-    pub fn find_similar_domain(&self, target_characteristics: &DomainCharacteristics) -> Option<&SourceDomain> {
+    pub fn find_similar_domain(
+        &self,
+        target_characteristics: &DomainCharacteristics,
+    ) -> Option<&SourceDomain> {
         let mut best_domain = None;
         let mut best_similarity = 0.0;
 
         for domain in &self.source_domains {
-            let similarity = self.calculate_domain_similarity(&domain.characteristics, target_characteristics);
+            let similarity =
+                self.calculate_domain_similarity(&domain.characteristics, target_characteristics);
             if similarity > best_similarity {
                 best_similarity = similarity;
                 best_domain = Some(domain);
@@ -189,14 +193,21 @@ impl TransferLearner {
     }
 
     /// Calculate similarity between domains
-    fn calculate_domain_similarity(&self, source: &DomainCharacteristics, target: &DomainCharacteristics) -> f64 {
+    fn calculate_domain_similarity(
+        &self,
+        source: &DomainCharacteristics,
+        target: &DomainCharacteristics,
+    ) -> f64 {
         // Simple similarity calculation based on multiple factors
         let complexity_sim = 1.0 - (source.task_complexity - target.task_complexity).abs();
-        let size_sim = 1.0 - ((source.data_size as f64).ln() - (target.data_size as f64).ln()).abs() / 10.0;
+        let size_sim =
+            1.0 - ((source.data_size as f64).ln() - (target.data_size as f64).ln()).abs() / 10.0;
         let noise_sim = 1.0 - (source.noise_level - target.noise_level).abs();
 
         // Weight the similarities
-        (complexity_sim * 0.4 + size_sim * 0.3 + noise_sim * 0.3).max(0.0).min(1.0)
+        (complexity_sim * 0.4 + size_sim * 0.3 + noise_sim * 0.3)
+            .max(0.0)
+            .min(1.0)
     }
 
     /// Transfer knowledge from source to target domain
@@ -207,11 +218,16 @@ impl TransferLearner {
         strategy: TransferStrategy,
     ) -> ApplicationResult<TransferResult> {
         // Find source domain
-        let source_domain = self.source_domains.iter()
+        let source_domain = self
+            .source_domains
+            .iter()
             .find(|d| d.id == source_domain_id)
-            .ok_or_else(|| crate::applications::ApplicationError::InvalidConfiguration(
-                format!("Source domain {} not found", source_domain_id)
-            ))?;
+            .ok_or_else(|| {
+                crate::applications::ApplicationError::InvalidConfiguration(format!(
+                    "Source domain {} not found",
+                    source_domain_id
+                ))
+            })?;
 
         // Simulate transfer process
         let performance_improvement = match strategy {
@@ -231,7 +247,7 @@ impl TransferLearner {
         };
 
         // Update source domain history (would need mutable reference in real implementation)
-        
+
         Ok(TransferResult {
             success: record.success,
             performance_improvement: record.performance_improvement,
@@ -306,7 +322,10 @@ pub struct TransferStatistics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::meta_learning::nas::{LayerSpec, LayerType, ActivationFunction, ConnectionPattern, OptimizationSettings, OptimizerType, RegularizationConfig};
+    use crate::meta_learning::nas::{
+        ActivationFunction, ConnectionPattern, LayerSpec, LayerType, OptimizationSettings,
+        OptimizerType, RegularizationConfig,
+    };
     use std::time::Duration;
 
     #[test]
@@ -320,7 +339,7 @@ mod tests {
     #[test]
     fn test_domain_similarity() {
         let learner = TransferLearner::new();
-        
+
         let source = DomainCharacteristics {
             feature_distribution: DistributionStats::default(),
             label_distribution: DistributionStats::default(),
@@ -345,7 +364,7 @@ mod tests {
     #[test]
     fn test_source_domain_addition() {
         let mut learner = TransferLearner::new();
-        
+
         let domain = SourceDomain {
             id: "test_domain".to_string(),
             characteristics: DomainCharacteristics {
@@ -395,7 +414,7 @@ mod tests {
     #[test]
     fn test_transfer_knowledge() {
         let mut learner = TransferLearner::new();
-        
+
         // Add a source domain
         let domain = SourceDomain {
             id: "source_domain".to_string(),
@@ -428,7 +447,7 @@ mod tests {
     fn test_transfer_statistics() {
         let learner = TransferLearner::new();
         let stats = learner.get_transfer_statistics();
-        
+
         assert_eq!(stats.total_transfers, 0);
         assert_eq!(stats.successful_transfers, 0);
         assert_eq!(stats.success_rate, 0.0);
@@ -437,19 +456,37 @@ mod tests {
 
     #[test]
     fn test_similarity_metrics() {
-        assert_eq!(SimilarityMetric::FeatureSimilarity, SimilarityMetric::FeatureSimilarity);
-        assert_ne!(SimilarityMetric::FeatureSimilarity, SimilarityMetric::TaskSimilarity);
+        assert_eq!(
+            SimilarityMetric::FeatureSimilarity,
+            SimilarityMetric::FeatureSimilarity
+        );
+        assert_ne!(
+            SimilarityMetric::FeatureSimilarity,
+            SimilarityMetric::TaskSimilarity
+        );
     }
 
     #[test]
     fn test_transfer_strategies() {
-        assert_eq!(TransferStrategy::ParameterTransfer, TransferStrategy::ParameterTransfer);
-        assert_ne!(TransferStrategy::ParameterTransfer, TransferStrategy::FeatureTransfer);
+        assert_eq!(
+            TransferStrategy::ParameterTransfer,
+            TransferStrategy::ParameterTransfer
+        );
+        assert_ne!(
+            TransferStrategy::ParameterTransfer,
+            TransferStrategy::FeatureTransfer
+        );
     }
 
     #[test]
     fn test_adaptation_mechanisms() {
-        assert_eq!(AdaptationMechanism::FineTuning, AdaptationMechanism::FineTuning);
-        assert_ne!(AdaptationMechanism::FineTuning, AdaptationMechanism::DomainAdversarial);
+        assert_eq!(
+            AdaptationMechanism::FineTuning,
+            AdaptationMechanism::FineTuning
+        );
+        assert_ne!(
+            AdaptationMechanism::FineTuning,
+            AdaptationMechanism::DomainAdversarial
+        );
     }
 }

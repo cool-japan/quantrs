@@ -15,15 +15,15 @@
 //! - Composite pulse sequences
 
 use ndarray::{Array1, Array2};
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use num_complex::Complex64;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
-use num_complex::Complex64;
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
-use crate::ising::{IsingModel};
-use crate::simulator::{AnnealingParams};
 use super::config::{QECResult, QuantumErrorCorrectionError};
+use crate::ising::IsingModel;
+use crate::simulator::AnnealingParams;
 
 /// Custom annealing result structure for error mitigation
 #[derive(Debug, Clone)]
@@ -750,19 +750,22 @@ impl ErrorMitigationManager {
         // Apply mitigation techniques
         let mut current_result = original_result.clone();
         let mut techniques_applied = Vec::new();
-        
+
         for technique in selected_techniques {
-            let mitigated = self.apply_single_technique(&technique, problem, &current_result, params)?;
+            let mitigated =
+                self.apply_single_technique(&technique, problem, &current_result, params)?;
             current_result = mitigated;
             techniques_applied.push(self.technique_name(&technique));
         }
 
         // Calculate effectiveness and overhead
         let effectiveness = self.calculate_effectiveness(&original_result, &current_result)?;
-        let resource_overhead = self.calculate_resource_overhead(&techniques_applied, start_time.elapsed())?;
+        let resource_overhead =
+            self.calculate_resource_overhead(&techniques_applied, start_time.elapsed())?;
 
         // Calculate confidence interval
-        let confidence_interval = self.calculate_confidence_interval(&current_result, &techniques_applied)?;
+        let confidence_interval =
+            self.calculate_confidence_interval(&current_result, &techniques_applied)?;
 
         // Update performance tracking
         self.update_performance_tracking(&original_result, &current_result, &techniques_applied)?;
@@ -791,12 +794,14 @@ impl ErrorMitigationManager {
         }
 
         if config.enable_pec {
-            techniques.push(MitigationTechnique::ProbabilisticErrorCancellation(PECConfig {
-                quasi_prob_decomposition: QuasiProbabilityDecomposition::default(),
-                sampling_strategy: PECSamplingStrategy::Importance,
-                max_sampling_overhead: config.pec_sampling_overhead_limit,
-                precision_threshold: 0.01,
-            }));
+            techniques.push(MitigationTechnique::ProbabilisticErrorCancellation(
+                PECConfig {
+                    quasi_prob_decomposition: QuasiProbabilityDecomposition::default(),
+                    sampling_strategy: PECSamplingStrategy::Importance,
+                    max_sampling_overhead: config.pec_sampling_overhead_limit,
+                    precision_threshold: 0.01,
+                },
+            ));
         }
 
         if config.enable_symmetry_verification {
@@ -822,18 +827,16 @@ impl ErrorMitigationManager {
 
     /// Create default symmetries for verification
     fn create_default_symmetries() -> Vec<Symmetry> {
-        vec![
-            Symmetry {
-                symmetry_type: SymmetryType::Parity,
-                operators: vec![SymmetryOperator {
-                    pauli_string: vec![PauliType::Z, PauliType::Z],
-                    coefficient: Complex64::new(1.0, 0.0),
-                    support: vec![0, 1],
-                }],
-                expected_eigenvalue: 1.0,
-                tolerance: 0.1,
-            }
-        ]
+        vec![Symmetry {
+            symmetry_type: SymmetryType::Parity,
+            operators: vec![SymmetryOperator {
+                pauli_string: vec![PauliType::Z, PauliType::Z],
+                coefficient: Complex64::new(1.0, 0.0),
+                support: vec![0, 1],
+            }],
+            expected_eigenvalue: 1.0,
+            tolerance: 0.1,
+        }]
     }
 
     /// Select appropriate mitigation techniques
@@ -844,7 +847,7 @@ impl ErrorMitigationManager {
         params: &AnnealingParams,
     ) -> QECResult<Vec<MitigationTechnique>> {
         let error_rate = self.estimate_error_rate(result)?;
-        
+
         let mut selected = Vec::new();
 
         // Select based on error rate and problem characteristics
@@ -936,22 +939,19 @@ impl ErrorMitigationManager {
         for &scaling_factor in &config.noise_scaling_factors {
             // Simulate annealing with scaled noise
             let scaled_result = self.simulate_with_scaled_noise(
-                problem, 
-                result, 
-                scaling_factor, 
-                config.shots_per_level
+                problem,
+                result,
+                scaling_factor,
+                config.shots_per_level,
             )?;
-            
+
             energies.push(scaled_result.energy);
             noise_levels.push(scaling_factor);
         }
 
         // Extrapolate to zero noise
-        let zero_noise_energy = self.extrapolate_to_zero_noise(
-            &noise_levels,
-            &energies,
-            &config.extrapolation_method,
-        )?;
+        let zero_noise_energy =
+            self.extrapolate_to_zero_noise(&noise_levels, &energies, &config.extrapolation_method)?;
 
         // Create mitigated result
         let mut mitigated_result = result.clone();
@@ -974,7 +974,7 @@ impl ErrorMitigationManager {
         let scaled_error_rate = base_error_rate * scaling_factor;
 
         let mut corrupted_solution = original_result.solution.clone();
-        
+
         // Apply scaled noise to solution
         for i in 0..corrupted_solution.len() {
             if rng.gen::<f64>() < scaled_error_rate {
@@ -1003,9 +1003,7 @@ impl ErrorMitigationManager {
         method: &ExtrapolationMethod,
     ) -> QECResult<f64> {
         match method {
-            ExtrapolationMethod::Linear => {
-                self.linear_extrapolation(noise_levels, energies)
-            }
+            ExtrapolationMethod::Linear => self.linear_extrapolation(noise_levels, energies),
             ExtrapolationMethod::Exponential => {
                 self.exponential_extrapolation(noise_levels, energies)
             }
@@ -1022,7 +1020,7 @@ impl ErrorMitigationManager {
     fn linear_extrapolation(&self, x: &[f64], y: &[f64]) -> QECResult<f64> {
         if x.len() < 2 || y.len() < 2 {
             return Err(QuantumErrorCorrectionError::DecodingError(
-                "Need at least 2 points for linear extrapolation".to_string()
+                "Need at least 2 points for linear extrapolation".to_string(),
             ));
         }
 
@@ -1045,7 +1043,8 @@ impl ErrorMitigationManager {
         // Simplified exponential fit: y = a * exp(b * x) + c
         // Use linear fit on log-transformed data
         let log_y: Vec<f64> = y.iter().map(|&yi| yi.abs().ln()).collect();
-        self.linear_extrapolation(x, &log_y).map(|log_result| log_result.exp())
+        self.linear_extrapolation(x, &log_y)
+            .map(|log_result| log_result.exp())
     }
 
     /// Polynomial extrapolation
@@ -1064,14 +1063,14 @@ impl ErrorMitigationManager {
         // Simplified Richardson extrapolation
         if x.len() < 2 {
             return Err(QuantumErrorCorrectionError::DecodingError(
-                "Need at least 2 points for Richardson extrapolation".to_string()
+                "Need at least 2 points for Richardson extrapolation".to_string(),
             ));
         }
 
         // Use the first two points for Richardson extrapolation
         let r = x[1] / x[0]; // Ratio of scaling factors
         let extrapolated = (r * y[1] - y[0]) / (r - 1.0);
-        
+
         Ok(extrapolated)
     }
 
@@ -1085,13 +1084,13 @@ impl ErrorMitigationManager {
     ) -> QECResult<AnnealingResult> {
         // Simplified PEC implementation
         // In practice, would implement full quasi-probability decomposition
-        
+
         let mut mitigated_result = result.clone();
-        
+
         // Apply error cancellation based on quasi-probabilities
         let correction_factor = 1.0 + 0.1 * config.quasi_prob_decomposition.sampling_overhead;
         mitigated_result.energy /= correction_factor;
-        
+
         Ok(mitigated_result)
     }
 
@@ -1105,17 +1104,18 @@ impl ErrorMitigationManager {
     ) -> QECResult<AnnealingResult> {
         // Check symmetries and apply post-selection
         let mut symmetry_violations = 0;
-        
+
         for symmetry in &config.symmetries {
-            let measured_eigenvalue = self.measure_symmetry_eigenvalue(symmetry, &result.solution)?;
-            
+            let measured_eigenvalue =
+                self.measure_symmetry_eigenvalue(symmetry, &result.solution)?;
+
             if (measured_eigenvalue - symmetry.expected_eigenvalue).abs() > symmetry.tolerance {
                 symmetry_violations += 1;
             }
         }
 
         let violation_rate = symmetry_violations as f64 / config.symmetries.len() as f64;
-        
+
         if violation_rate <= config.post_selection_threshold {
             // Accept result
             Ok(result.clone())
@@ -1128,21 +1128,17 @@ impl ErrorMitigationManager {
     }
 
     /// Measure symmetry eigenvalue
-    fn measure_symmetry_eigenvalue(
-        &self,
-        symmetry: &Symmetry,
-        solution: &[i32],
-    ) -> QECResult<f64> {
+    fn measure_symmetry_eigenvalue(&self, symmetry: &Symmetry, solution: &[i32]) -> QECResult<f64> {
         // Simplified symmetry measurement
         let mut eigenvalue = 0.0;
-        
+
         for operator in &symmetry.operators {
             let mut operator_value = 1.0;
-            
+
             for (&qubit, pauli) in operator.support.iter().zip(operator.pauli_string.iter()) {
                 if qubit < solution.len() {
                     let spin_value = solution[qubit] as f64;
-                    
+
                     match pauli {
                         PauliType::Z => operator_value *= spin_value,
                         PauliType::X => {
@@ -1160,10 +1156,10 @@ impl ErrorMitigationManager {
                     }
                 }
             }
-            
+
             eigenvalue += operator.coefficient.re * operator_value;
         }
-        
+
         Ok(eigenvalue)
     }
 
@@ -1177,21 +1173,21 @@ impl ErrorMitigationManager {
     ) -> QECResult<AnnealingResult> {
         // Apply readout error correction based on confusion matrix
         let mut corrected_solution = result.solution.clone();
-        
+
         // Simplified readout correction
         for i in 0..corrected_solution.len() {
             // Apply confusion matrix correction
             let measured_bit = if corrected_solution[i] > 0 { 1.0 } else { 0.0 };
-            
+
             // Simple matrix inversion correction
             if config.confusion_matrix.nrows() >= 2 && config.confusion_matrix.ncols() >= 2 {
                 let p00 = config.confusion_matrix[[0, 0]];
                 let p01 = config.confusion_matrix[[0, 1]];
                 let p10 = config.confusion_matrix[[1, 0]];
                 let p11 = config.confusion_matrix[[1, 1]];
-                
+
                 let det = p00 * p11 - p01 * p10;
-                
+
                 if det.abs() > config.inversion_threshold {
                     // Apply matrix inversion
                     let corrected_prob = if measured_bit > 0.5 {
@@ -1199,15 +1195,15 @@ impl ErrorMitigationManager {
                     } else {
                         (p00 - p10) / det
                     };
-                    
+
                     corrected_solution[i] = if corrected_prob > 0.5 { 1 } else { -1 };
                 }
             }
         }
-        
+
         // Recalculate energy with corrected solution
         let corrected_energy = self.calculate_energy(problem, &corrected_solution)?;
-        
+
         Ok(AnnealingResult {
             solution: corrected_solution,
             energy: corrected_energy,
@@ -1229,9 +1225,10 @@ impl ErrorMitigationManager {
 
         // Add coupling terms
         for i in 0..solution.len() {
-            for j in (i+1)..solution.len() {
-                energy += problem.get_coupling(i, j).unwrap_or(0.0) 
-                    * solution[i] as f64 * solution[j] as f64;
+            for j in (i + 1)..solution.len() {
+                energy += problem.get_coupling(i, j).unwrap_or(0.0)
+                    * solution[i] as f64
+                    * solution[j] as f64;
             }
         }
 
@@ -1243,7 +1240,7 @@ impl ErrorMitigationManager {
         // Simplified error rate estimation
         let base_rate = result.chain_break_fraction;
         let energy_penalty = if result.energy > 0.0 { 0.05 } else { 0.0 };
-        
+
         Ok(base_rate + energy_penalty)
     }
 
@@ -1268,7 +1265,7 @@ impl ErrorMitigationManager {
     ) -> QECResult<f64> {
         let original_error = original.chain_break_fraction;
         let mitigated_error = mitigated.chain_break_fraction;
-        
+
         if original_error > 0.0 {
             Ok((original_error - mitigated_error) / original_error)
         } else {
@@ -1284,7 +1281,7 @@ impl ErrorMitigationManager {
     ) -> QECResult<f64> {
         let base_overhead = techniques.len() as f64 * 0.1; // 10% per technique
         let time_overhead = elapsed_time.as_secs_f64() / 1.0; // Normalize by 1 second
-        
+
         Ok(base_overhead + time_overhead)
     }
 
@@ -1297,7 +1294,7 @@ impl ErrorMitigationManager {
         // Simplified confidence interval calculation
         let uncertainty = 0.1 / (techniques.len() as f64 + 1.0);
         let energy = result.energy;
-        
+
         Ok((energy - uncertainty, energy + uncertainty))
     }
 
@@ -1309,7 +1306,7 @@ impl ErrorMitigationManager {
         techniques: &[String],
     ) -> QECResult<()> {
         let effectiveness = self.calculate_effectiveness(original, mitigated)?;
-        
+
         for technique in techniques {
             let record = MitigationPerformanceRecord {
                 timestamp: Instant::now(),
@@ -1319,13 +1316,13 @@ impl ErrorMitigationManager {
                 mitigation_factor: effectiveness,
                 resource_overhead: 0.1, // Simplified
             };
-            
+
             self.performance_tracker.performance_history.push(record);
         }
 
         // Update current metrics
         self.performance_tracker.current_metrics.effectiveness = effectiveness;
-        self.performance_tracker.current_metrics.error_reduction = 
+        self.performance_tracker.current_metrics.error_reduction =
             original.chain_break_fraction - mitigated.chain_break_fraction;
 
         Ok(())
@@ -1444,7 +1441,7 @@ mod tests {
         let manager = ErrorMitigationManager::new(ErrorMitigationConfig::default()).unwrap();
         let x = vec![1.0, 2.0, 3.0];
         let y = vec![2.0, 4.0, 6.0];
-        
+
         let result = manager.linear_extrapolation(&x, &y).unwrap();
         assert!((result - 0.0).abs() < 1e-10); // Should extrapolate to y = 0 at x = 0
     }
@@ -1463,7 +1460,9 @@ mod tests {
         };
         let params = AnnealingParams::default();
 
-        let techniques = manager.select_techniques(&problem, &result, &params).unwrap();
+        let techniques = manager
+            .select_techniques(&problem, &result, &params)
+            .unwrap();
         assert!(!techniques.is_empty());
     }
 
@@ -1473,10 +1472,10 @@ mod tests {
         let mut problem = IsingModel::new(2);
         problem.set_bias(0, 1.0).unwrap();
         problem.set_coupling(0, 1, -0.5).unwrap();
-        
+
         let solution = vec![1, -1];
         let energy = manager.calculate_energy(&problem, &solution).unwrap();
-        
+
         // Energy = 1.0 * 1 + (-0.5) * 1 * (-1) = 1.0 + 0.5 = 1.5
         assert!((energy - 1.5).abs() < 1e-10);
     }
@@ -1494,10 +1493,12 @@ mod tests {
             expected_eigenvalue: 1.0,
             tolerance: 0.1,
         };
-        
+
         let solution = vec![1, 1]; // Both spins up
-        let eigenvalue = manager.measure_symmetry_eigenvalue(&symmetry, &solution).unwrap();
-        
+        let eigenvalue = manager
+            .measure_symmetry_eigenvalue(&symmetry, &solution)
+            .unwrap();
+
         // Z ⊗ Z |↑↑⟩ = +1 |↑↑⟩
         assert!((eigenvalue - 1.0).abs() < 1e-10);
     }

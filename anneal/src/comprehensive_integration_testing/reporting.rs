@@ -23,7 +23,7 @@ impl TestReportGenerator {
             config: super::config::ReportingConfig::default(),
         }
     }
-    
+
     // TODO: Implement report generation methods
 }
 

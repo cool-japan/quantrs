@@ -1,7 +1,7 @@
 //! Performance monitoring and alerting for tests
 
 use std::collections::HashMap;
-use std::time::{SystemTime, Duration};
+use std::time::{Duration, SystemTime};
 
 /// Performance monitoring for tests
 pub struct TestPerformanceMonitor {
@@ -24,7 +24,7 @@ impl TestPerformanceMonitor {
             alert_system: PerformanceAlertSystem::new(),
         }
     }
-    
+
     // TODO: Implement monitoring methods
 }
 
@@ -170,7 +170,7 @@ impl PerformanceAlertSystem {
             alert_history: vec![],
         }
     }
-    
+
     // TODO: Implement alert methods
 }
 

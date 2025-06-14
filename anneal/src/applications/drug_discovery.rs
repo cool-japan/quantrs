@@ -20,17 +20,19 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt;
 
 use crate::advanced_quantum_algorithms::{
-    AdvancedQuantumAlgorithms, AdvancedAlgorithmConfig, AlgorithmSelectionStrategy,
-    InfiniteDepthQAOA, InfiniteQAOAConfig, QuantumZenoAnnealer, ZenoConfig,
-    AdiabaticShortcutsOptimizer, ShortcutsConfig,
+    AdiabaticShortcutsOptimizer, AdvancedAlgorithmConfig, AdvancedQuantumAlgorithms,
+    AlgorithmSelectionStrategy, InfiniteDepthQAOA, InfiniteQAOAConfig, QuantumZenoAnnealer,
+    ShortcutsConfig, ZenoConfig,
 };
-use crate::applications::{ApplicationError, ApplicationResult, OptimizationProblem, IndustrySolution};
+use crate::applications::{
+    ApplicationError, ApplicationResult, IndustrySolution, OptimizationProblem,
+};
 use crate::bayesian_hyperopt::{optimize_annealing_parameters, BayesianHyperoptimizer};
 use crate::ising::{IsingModel, QuboModel};
 use crate::neural_annealing_schedules::{NeuralAnnealingScheduler, NeuralSchedulerConfig};
 use crate::quantum_error_correction::{
-    SyndromeDetector, ErrorCorrectionCode, NoiseResilientAnnealingProtocol, 
-    ErrorMitigationManager, LogicalAnnealingEncoder, ErrorMitigationConfig,
+    ErrorCorrectionCode, ErrorMitigationConfig, ErrorMitigationManager, LogicalAnnealingEncoder,
+    NoiseResilientAnnealingProtocol, SyndromeDetector,
 };
 use crate::simulator::{AnnealingParams, AnnealingResult, QuantumAnnealingSimulator};
 
@@ -66,7 +68,7 @@ impl AtomType {
             AtomType::Custom(n) => *n,
         }
     }
-    
+
     pub fn symbol(&self) -> &'static str {
         match self {
             AtomType::Hydrogen => "H",
@@ -82,7 +84,7 @@ impl AtomType {
             AtomType::Custom(_) => "X",
         }
     }
-    
+
     pub fn valence(&self) -> u8 {
         match self {
             AtomType::Hydrogen => 1,
@@ -122,9 +124,10 @@ impl Position3D {
     pub fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
-    
+
     pub fn distance(&self, other: &Position3D) -> f64 {
-        ((self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2)).sqrt()
+        ((self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2))
+            .sqrt()
     }
 }
 
@@ -170,17 +173,17 @@ impl Atom {
             coordinates: None,
         }
     }
-    
+
     pub fn with_charge(mut self, charge: i8) -> Self {
         self.formal_charge = charge;
         self
     }
-    
+
     pub fn with_coordinates(mut self, coords: [f64; 3]) -> Self {
         self.coordinates = Some(coords);
         self
     }
-    
+
     pub fn set_aromatic(mut self, aromatic: bool) -> Self {
         self.aromatic = aromatic;
         self
@@ -207,12 +210,12 @@ impl Bond {
             in_ring: false,
         }
     }
-    
+
     pub fn set_aromatic(mut self, aromatic: bool) -> Self {
         self.aromatic = aromatic;
         self
     }
-    
+
     pub fn set_in_ring(mut self, in_ring: bool) -> Self {
         self.in_ring = in_ring;
         self
@@ -239,48 +242,51 @@ impl Molecule {
             properties: HashMap::new(),
         }
     }
-    
+
     pub fn add_atom(&mut self, atom: Atom) -> usize {
         let id = self.atoms.len();
         self.atoms.push(atom);
         id
     }
-    
+
     pub fn add_bond(&mut self, bond: Bond) {
         self.bonds.push(bond);
     }
-    
+
     pub fn set_smiles(&mut self, smiles: String) {
         self.smiles = Some(smiles);
     }
-    
+
     pub fn set_property(&mut self, name: String, value: f64) {
         self.properties.insert(name, value);
     }
-    
+
     /// Calculate molecular weight
     pub fn molecular_weight(&self) -> f64 {
-        self.atoms.iter().map(|atom| {
-            match atom.atom_type {
-                AtomType::Hydrogen => 1.008,
-                AtomType::Carbon => 12.011,
-                AtomType::Nitrogen => 14.007,
-                AtomType::Oxygen => 15.999,
-                AtomType::Phosphorus => 30.974,
-                AtomType::Sulfur => 32.065,
-                AtomType::Fluorine => 18.998,
-                AtomType::Chlorine => 35.453,
-                AtomType::Bromine => 79.904,
-                AtomType::Iodine => 126.904,
-                AtomType::Custom(_) => 12.0, // Default
-            }
-        }).sum()
+        self.atoms
+            .iter()
+            .map(|atom| {
+                match atom.atom_type {
+                    AtomType::Hydrogen => 1.008,
+                    AtomType::Carbon => 12.011,
+                    AtomType::Nitrogen => 14.007,
+                    AtomType::Oxygen => 15.999,
+                    AtomType::Phosphorus => 30.974,
+                    AtomType::Sulfur => 32.065,
+                    AtomType::Fluorine => 18.998,
+                    AtomType::Chlorine => 35.453,
+                    AtomType::Bromine => 79.904,
+                    AtomType::Iodine => 126.904,
+                    AtomType::Custom(_) => 12.0, // Default
+                }
+            })
+            .sum()
     }
-    
+
     /// Calculate LogP (lipophilicity) approximation
     pub fn logp_approximation(&self) -> f64 {
         let mut logp = 0.0;
-        
+
         // Simplified LogP calculation based on atom contributions
         for atom in &self.atoms {
             match atom.atom_type {
@@ -294,14 +300,14 @@ impl Molecule {
                 _ => {}
             }
         }
-        
+
         logp
     }
-    
+
     /// Calculate topological polar surface area (TPSA) approximation
     pub fn tpsa_approximation(&self) -> f64 {
         let mut tpsa = 0.0;
-        
+
         for atom in &self.atoms {
             match atom.atom_type {
                 AtomType::Nitrogen => tpsa += 23.79,
@@ -309,56 +315,63 @@ impl Molecule {
                 _ => {}
             }
         }
-        
+
         tpsa
     }
-    
+
     /// Count rotatable bonds
     pub fn rotatable_bonds(&self) -> usize {
-        self.bonds.iter()
+        self.bonds
+            .iter()
             .filter(|bond| {
-                bond.bond_type == BondType::Single && 
-                !bond.in_ring &&
-                !self.is_terminal_bond(bond)
+                bond.bond_type == BondType::Single && !bond.in_ring && !self.is_terminal_bond(bond)
             })
             .count()
     }
-    
+
     fn is_terminal_bond(&self, bond: &Bond) -> bool {
-        let atom1_degree = self.bonds.iter().filter(|b| b.atom1 == bond.atom1 || b.atom2 == bond.atom1).count();
-        let atom2_degree = self.bonds.iter().filter(|b| b.atom1 == bond.atom2 || b.atom2 == bond.atom2).count();
+        let atom1_degree = self
+            .bonds
+            .iter()
+            .filter(|b| b.atom1 == bond.atom1 || b.atom2 == bond.atom1)
+            .count();
+        let atom2_degree = self
+            .bonds
+            .iter()
+            .filter(|b| b.atom1 == bond.atom2 || b.atom2 == bond.atom2)
+            .count();
         atom1_degree == 1 || atom2_degree == 1
     }
-    
+
     /// Calculate drug-likeness score (Lipinski's Rule of Five compliance)
     pub fn drug_likeness_score(&self) -> f64 {
         let mw = self.molecular_weight();
         let logp = self.logp_approximation();
         let tpsa = self.tpsa_approximation();
         let rot_bonds = self.rotatable_bonds() as f64;
-        
+
         let mut score = 1.0;
-        
+
         // Molecular weight penalty
         if mw > 500.0 {
             score *= 0.5;
         }
-        
+
         // LogP penalty
         if logp > 5.0 || logp < -2.0 {
             score *= 0.5;
         }
-        
+
         // TPSA penalty
         if tpsa > 140.0 {
             score *= 0.7;
         }
-        
+
         // Rotatable bonds penalty
         if rot_bonds > 10.0 {
             score *= 0.8;
         }
-        
+
         score
     }
 }
@@ -369,7 +382,7 @@ pub struct DrugTargetInteraction {
     pub drug_molecule: Molecule,
     pub target_id: String,
     pub target_type: TargetType,
-    pub binding_affinity: Option<f64>, // pKd or pIC50
+    pub binding_affinity: Option<f64>,     // pKd or pIC50
     pub selectivity: HashMap<String, f64>, // Off-target interactions
     pub admet_properties: AdmetProperties,
 }
@@ -537,188 +550,224 @@ impl DrugDiscoveryProblem {
             neural_config: None,
         }
     }
-    
+
     pub fn with_quantum_error_correction(mut self, config: String) -> Self {
         self.qec_framework = Some(config);
         self
     }
-    
+
     pub fn with_neural_annealing(mut self, config: NeuralSchedulerConfig) -> Self {
         self.neural_config = Some(config);
         self
     }
-    
+
     pub fn add_objective(mut self, objective: DrugOptimizationObjective) -> Self {
         self.objectives.push(objective);
         self
     }
-    
+
     pub fn add_constraint(mut self, constraint: MolecularConstraint) -> Self {
         self.constraints.push(constraint);
         self
     }
-    
+
     /// Solve using infinite-depth QAOA
     pub fn solve_with_infinite_qaoa(&self) -> ApplicationResult<Molecule> {
         println!("Starting drug discovery optimization with infinite-depth QAOA");
-        
+
         let (ising_model, variable_map) = self.to_ising_model()?;
-        
+
         let qaoa_config = InfiniteQAOAConfig {
             max_depth: 50,
             initial_depth: 3,
             optimization_tolerance: 1e-8,
             ..Default::default()
         };
-        
+
         let mut qaoa = InfiniteDepthQAOA::new(qaoa_config);
-        let result = qaoa.solve(&ising_model)
-            .map_err(|e| ApplicationError::OptimizationError(format!("Infinite QAOA failed: {:?}", e)))?;
-        
-        let solution = result.map_err(|e| ApplicationError::OptimizationError(format!("QAOA solver error: {}", e)))?;
-        
+        let result = qaoa.solve(&ising_model).map_err(|e| {
+            ApplicationError::OptimizationError(format!("Infinite QAOA failed: {:?}", e))
+        })?;
+
+        let solution = result.map_err(|e| {
+            ApplicationError::OptimizationError(format!("QAOA solver error: {}", e))
+        })?;
+
         self.solution_to_molecule(&solution, &variable_map)
     }
-    
+
     /// Solve using Quantum Zeno annealing
     pub fn solve_with_zeno_annealing(&self) -> ApplicationResult<Molecule> {
         println!("Starting drug discovery optimization with Quantum Zeno annealing");
-        
+
         let (ising_model, variable_map) = self.to_ising_model()?;
-        
+
         let zeno_config = ZenoConfig {
             measurement_frequency: 2.0,
             total_evolution_time: 20.0,
             evolution_time_step: 0.05,
             ..Default::default()
         };
-        
+
         let mut zeno_annealer = QuantumZenoAnnealer::new(zeno_config);
-        let result = zeno_annealer.solve(&ising_model)
-            .map_err(|e| ApplicationError::OptimizationError(format!("Zeno annealing failed: {:?}", e)))?;
-        
-        let solution = result.map_err(|e| ApplicationError::OptimizationError(format!("Zeno solver error: {}", e)))?;
-        
+        let result = zeno_annealer.solve(&ising_model).map_err(|e| {
+            ApplicationError::OptimizationError(format!("Zeno annealing failed: {:?}", e))
+        })?;
+
+        let solution = result.map_err(|e| {
+            ApplicationError::OptimizationError(format!("Zeno solver error: {}", e))
+        })?;
+
         self.solution_to_molecule(&solution, &variable_map)
     }
-    
+
     /// Solve using adiabatic shortcuts
     pub fn solve_with_adiabatic_shortcuts(&self) -> ApplicationResult<Molecule> {
         println!("Starting drug discovery optimization with adiabatic shortcuts");
-        
+
         let (ising_model, variable_map) = self.to_ising_model()?;
-        
+
         let shortcuts_config = ShortcutsConfig::default();
         let mut shortcuts_optimizer = AdiabaticShortcutsOptimizer::new(shortcuts_config);
-        
-        let result = shortcuts_optimizer.solve(&ising_model)
-            .map_err(|e| ApplicationError::OptimizationError(format!("Adiabatic shortcuts failed: {:?}", e)))?;
-        
-        let solution = result.map_err(|e| ApplicationError::OptimizationError(format!("Shortcuts solver error: {}", e)))?;
-        
+
+        let result = shortcuts_optimizer.solve(&ising_model).map_err(|e| {
+            ApplicationError::OptimizationError(format!("Adiabatic shortcuts failed: {:?}", e))
+        })?;
+
+        let solution = result.map_err(|e| {
+            ApplicationError::OptimizationError(format!("Shortcuts solver error: {}", e))
+        })?;
+
         self.solution_to_molecule(&solution, &variable_map)
     }
-    
+
     /// Solve with quantum error correction
     pub fn solve_with_error_correction(&self) -> ApplicationResult<Molecule> {
         if let Some(ref qec_framework) = self.qec_framework {
             println!("Starting noise-resilient drug discovery optimization");
-            
+
             let (ising_model, variable_map) = self.to_ising_model()?;
-            
+
             // Use error mitigation for molecular optimization
             let error_config = ErrorMitigationConfig::default();
-            let mut error_manager = ErrorMitigationManager::new(error_config)
-                .map_err(|e| ApplicationError::OptimizationError(format!("Failed to create error manager: {:?}", e)))?;
-            
+            let mut error_manager = ErrorMitigationManager::new(error_config).map_err(|e| {
+                ApplicationError::OptimizationError(format!(
+                    "Failed to create error manager: {:?}",
+                    e
+                ))
+            })?;
+
             // First perform standard annealing
             let params = AnnealingParams::default();
-            let annealer = QuantumAnnealingSimulator::new(params.clone())
-                .map_err(|e| ApplicationError::OptimizationError(format!("Failed to create annealer: {:?}", e)))?;
-            let annealing_result = annealer.solve(&ising_model)
-                .map_err(|e| ApplicationError::OptimizationError(format!("Annealing failed: {:?}", e)))?;
-            
+            let annealer = QuantumAnnealingSimulator::new(params.clone()).map_err(|e| {
+                ApplicationError::OptimizationError(format!("Failed to create annealer: {:?}", e))
+            })?;
+            let annealing_result = annealer.solve(&ising_model).map_err(|e| {
+                ApplicationError::OptimizationError(format!("Annealing failed: {:?}", e))
+            })?;
+
             // Convert simulator result to error mitigation format
-            let error_mitigation_result = crate::quantum_error_correction::error_mitigation::AnnealingResult {
-                solution: annealing_result.best_spins.iter().map(|&x| x as i32).collect(),
-                energy: annealing_result.best_energy,
-                num_occurrences: 1,
-                chain_break_fraction: 0.0,
-                timing: std::collections::HashMap::new(),
-                info: std::collections::HashMap::new(),
-            };
-            
+            let error_mitigation_result =
+                crate::quantum_error_correction::error_mitigation::AnnealingResult {
+                    solution: annealing_result
+                        .best_spins
+                        .iter()
+                        .map(|&x| x as i32)
+                        .collect(),
+                    energy: annealing_result.best_energy,
+                    num_occurrences: 1,
+                    chain_break_fraction: 0.0,
+                    timing: std::collections::HashMap::new(),
+                    info: std::collections::HashMap::new(),
+                };
+
             // Apply error mitigation to improve the result
-            let mitigation_result = error_manager.apply_mitigation(&ising_model, error_mitigation_result, &params)
-                .map_err(|e| ApplicationError::OptimizationError(format!("Error mitigation failed: {:?}", e)))?;
-            
+            let mitigation_result = error_manager
+                .apply_mitigation(&ising_model, error_mitigation_result, &params)
+                .map_err(|e| {
+                    ApplicationError::OptimizationError(format!("Error mitigation failed: {:?}", e))
+                })?;
+
             let solution = &mitigation_result.mitigated_result.solution;
-            
+
             self.solution_to_molecule(solution, &variable_map)
         } else {
             Err(ApplicationError::InvalidConfiguration(
-                "Quantum error correction not enabled".to_string()
+                "Quantum error correction not enabled".to_string(),
             ))
         }
     }
-    
+
     /// Optimize molecular parameters using Bayesian optimization
     pub fn optimize_molecular_parameters(&self) -> ApplicationResult<HashMap<String, f64>> {
         println!("Optimizing molecular parameters with Bayesian optimization");
-        
+
         let objective = |params: &[f64]| -> f64 {
             // params[0] = molecular weight target, params[1] = logP target, params[2] = TPSA target
             let mw_target = params[0];
             let logp_target = params[1];
             let tpsa_target = params[2];
-            
+
             let current_mw = self.target_interaction.drug_molecule.molecular_weight();
             let current_logp = self.target_interaction.drug_molecule.logp_approximation();
             let current_tpsa = self.target_interaction.drug_molecule.tpsa_approximation();
-            
+
             // Calculate optimization score based on distance from targets
             let mw_score = -((current_mw - mw_target) / 100.0).powi(2);
             let logp_score = -((current_logp - logp_target) / 2.0).powi(2);
             let tpsa_score = -((current_tpsa - tpsa_target) / 50.0).powi(2);
-            
+
             // Combined score with drug-likeness
             let drug_likeness = self.target_interaction.drug_molecule.drug_likeness_score();
-            
+
             mw_score + logp_score + tpsa_score + drug_likeness
         };
-        
-        let best_params = optimize_annealing_parameters(objective, Some(40))
-            .map_err(|e| ApplicationError::OptimizationError(format!("Bayesian optimization failed: {:?}", e)))?;
-        
+
+        let best_params = optimize_annealing_parameters(objective, Some(40)).map_err(|e| {
+            ApplicationError::OptimizationError(format!("Bayesian optimization failed: {:?}", e))
+        })?;
+
         let mut result = HashMap::new();
         result.insert("optimal_molecular_weight".to_string(), best_params[0]);
         result.insert("optimal_logp".to_string(), best_params[1]);
         result.insert("optimal_tpsa".to_string(), best_params[2]);
-        
+
         Ok(result)
     }
-    
+
     /// Convert to Ising model representation
     fn to_ising_model(&self) -> ApplicationResult<(IsingModel, HashMap<String, usize>)> {
         let num_atoms = self.target_interaction.drug_molecule.atoms.len();
         let num_variables = num_atoms * 8; // 8 bits per atom for type encoding
-        
+
         let mut ising = IsingModel::new(num_variables);
         let mut variable_map = HashMap::new();
-        
+
         // Map molecular variables to Ising variables
-        for (i, atom) in self.target_interaction.drug_molecule.atoms.iter().enumerate() {
+        for (i, atom) in self
+            .target_interaction
+            .drug_molecule
+            .atoms
+            .iter()
+            .enumerate()
+        {
             for bit in 0..8 {
                 variable_map.insert(format!("atom_{}_bit_{}", i, bit), i * 8 + bit);
             }
         }
-        
+
         // Add objective-based bias terms
-        for (i, atom) in self.target_interaction.drug_molecule.atoms.iter().enumerate() {
+        for (i, atom) in self
+            .target_interaction
+            .drug_molecule
+            .atoms
+            .iter()
+            .enumerate()
+        {
             for bit in 0..8 {
                 let var_idx = i * 8 + bit;
                 let mut bias = 0.0;
-                
+
                 // Add objective-specific bias
                 for objective in &self.objectives {
                     match objective {
@@ -732,7 +781,8 @@ impl DrugDiscoveryProblem {
                         }
                         DrugOptimizationObjective::MaximizeDrugLikeness => {
                             // Encourage drug-like properties
-                            bias -= self.target_interaction.drug_molecule.drug_likeness_score() * 0.1;
+                            bias -=
+                                self.target_interaction.drug_molecule.drug_likeness_score() * 0.1;
                         }
                         DrugOptimizationObjective::MinimizeToxicity => {
                             // Penalize potentially toxic groups
@@ -745,43 +795,50 @@ impl DrugDiscoveryProblem {
                         }
                     }
                 }
-                
-                ising.set_bias(var_idx, bias)
+
+                ising
+                    .set_bias(var_idx, bias)
                     .map_err(|e| ApplicationError::OptimizationError(e.to_string()))?;
             }
         }
-        
+
         // Add coupling terms for molecular connectivity
         for bond in &self.target_interaction.drug_molecule.bonds {
             let atom1_base = bond.atom1 * 8;
             let atom2_base = bond.atom2 * 8;
-            
+
             for bit1 in 0..8 {
                 for bit2 in 0..8 {
                     let var1 = atom1_base + bit1;
                     let var2 = atom2_base + bit2;
-                    
+
                     if var1 < var2 && var1 < num_variables && var2 < num_variables {
                         let coupling = bond.bond_type.bond_order() * 0.1;
-                        ising.set_coupling(var1, var2, -coupling)
-                            .map_err(|e| ApplicationError::OptimizationError(e.to_string()))?; // Negative for stability
+                        ising
+                            .set_coupling(var1, var2, -coupling)
+                            .map_err(|e| ApplicationError::OptimizationError(e.to_string()))?;
+                        // Negative for stability
                     }
                 }
             }
         }
-        
+
         Ok((ising, variable_map))
     }
-    
+
     /// Convert Ising solution back to molecular structure
-    fn solution_to_molecule(&self, solution: &[i32], variable_map: &HashMap<String, usize>) -> ApplicationResult<Molecule> {
+    fn solution_to_molecule(
+        &self,
+        solution: &[i32],
+        variable_map: &HashMap<String, usize>,
+    ) -> ApplicationResult<Molecule> {
         let mut optimized_molecule = self.target_interaction.drug_molecule.clone();
-        
+
         // Update molecular structure based on solution
         for (i, atom) in optimized_molecule.atoms.iter_mut().enumerate() {
             // Decode atom type from binary solution
             let mut atom_encoding = 0u8;
-            
+
             for bit in 0..8 {
                 if let Some(&var_index) = variable_map.get(&format!("atom_{}_bit_{}", i, bit)) {
                     if var_index < solution.len() && solution[var_index] > 0 {
@@ -789,7 +846,7 @@ impl DrugDiscoveryProblem {
                     }
                 }
             }
-            
+
             // Update atom type based on encoding
             atom.atom_type = match atom_encoding % 10 {
                 0 => AtomType::Carbon,
@@ -803,13 +860,21 @@ impl DrugDiscoveryProblem {
                 _ => atom.atom_type, // Keep original
             };
         }
-        
+
         // Recalculate molecular properties
-        optimized_molecule.set_property("molecular_weight".to_string(), optimized_molecule.molecular_weight());
-        optimized_molecule.set_property("logp".to_string(), optimized_molecule.logp_approximation());
-        optimized_molecule.set_property("tpsa".to_string(), optimized_molecule.tpsa_approximation());
-        optimized_molecule.set_property("drug_likeness".to_string(), optimized_molecule.drug_likeness_score());
-        
+        optimized_molecule.set_property(
+            "molecular_weight".to_string(),
+            optimized_molecule.molecular_weight(),
+        );
+        optimized_molecule
+            .set_property("logp".to_string(), optimized_molecule.logp_approximation());
+        optimized_molecule
+            .set_property("tpsa".to_string(), optimized_molecule.tpsa_approximation());
+        optimized_molecule.set_property(
+            "drug_likeness".to_string(),
+            optimized_molecule.drug_likeness_score(),
+        );
+
         Ok(optimized_molecule)
     }
 }
@@ -817,7 +882,7 @@ impl DrugDiscoveryProblem {
 impl OptimizationProblem for DrugDiscoveryProblem {
     type Solution = Molecule;
     type ObjectiveValue = f64;
-    
+
     fn description(&self) -> String {
         format!(
             "Drug discovery optimization for {} targeting {} (MW: {:.2})",
@@ -826,56 +891,75 @@ impl OptimizationProblem for DrugDiscoveryProblem {
             self.target_interaction.drug_molecule.molecular_weight()
         )
     }
-    
+
     fn size_metrics(&self) -> HashMap<String, usize> {
         let mut metrics = HashMap::new();
-        metrics.insert("num_atoms".to_string(), self.target_interaction.drug_molecule.atoms.len());
-        metrics.insert("num_bonds".to_string(), self.target_interaction.drug_molecule.bonds.len());
-        metrics.insert("rotatable_bonds".to_string(), self.target_interaction.drug_molecule.rotatable_bonds());
-        metrics.insert("variables".to_string(), self.target_interaction.drug_molecule.atoms.len() * 8);
+        metrics.insert(
+            "num_atoms".to_string(),
+            self.target_interaction.drug_molecule.atoms.len(),
+        );
+        metrics.insert(
+            "num_bonds".to_string(),
+            self.target_interaction.drug_molecule.bonds.len(),
+        );
+        metrics.insert(
+            "rotatable_bonds".to_string(),
+            self.target_interaction.drug_molecule.rotatable_bonds(),
+        );
+        metrics.insert(
+            "variables".to_string(),
+            self.target_interaction.drug_molecule.atoms.len() * 8,
+        );
         metrics
     }
-    
+
     fn validate(&self) -> ApplicationResult<()> {
         if self.target_interaction.drug_molecule.atoms.is_empty() {
             return Err(ApplicationError::DataValidationError(
-                "Molecule must have at least one atom".to_string()
+                "Molecule must have at least one atom".to_string(),
             ));
         }
-        
+
         if self.target_interaction.drug_molecule.atoms.len() > 100 {
             return Err(ApplicationError::ResourceLimitExceeded(
-                "Molecule too large for current implementation".to_string()
+                "Molecule too large for current implementation".to_string(),
             ));
         }
-        
+
         // Validate molecular constraints
         for constraint in &self.constraints {
             match constraint {
                 MolecularConstraint::MolecularWeightRange { min, max } => {
                     let mw = self.target_interaction.drug_molecule.molecular_weight();
                     if mw < *min || mw > *max {
-                        return Err(ApplicationError::ConstraintViolation(
-                            format!("Molecular weight {} outside range [{}, {}]", mw, min, max)
-                        ));
+                        return Err(ApplicationError::ConstraintViolation(format!(
+                            "Molecular weight {} outside range [{}, {}]",
+                            mw, min, max
+                        )));
                     }
                 }
                 MolecularConstraint::LogPRange { min, max } => {
                     let logp = self.target_interaction.drug_molecule.logp_approximation();
                     if logp < *min || logp > *max {
-                        return Err(ApplicationError::ConstraintViolation(
-                            format!("LogP {} outside range [{}, {}]", logp, min, max)
-                        ));
+                        return Err(ApplicationError::ConstraintViolation(format!(
+                            "LogP {} outside range [{}, {}]",
+                            logp, min, max
+                        )));
                     }
                 }
                 MolecularConstraint::MaxHeavyAtoms(max_atoms) => {
-                    let heavy_atoms = self.target_interaction.drug_molecule.atoms.iter()
+                    let heavy_atoms = self
+                        .target_interaction
+                        .drug_molecule
+                        .atoms
+                        .iter()
                         .filter(|atom| atom.atom_type != AtomType::Hydrogen)
                         .count();
                     if heavy_atoms > *max_atoms {
-                        return Err(ApplicationError::ConstraintViolation(
-                            format!("Heavy atom count {} exceeds maximum {}", heavy_atoms, max_atoms)
-                        ));
+                        return Err(ApplicationError::ConstraintViolation(format!(
+                            "Heavy atom count {} exceeds maximum {}",
+                            heavy_atoms, max_atoms
+                        )));
                     }
                 }
                 _ => {
@@ -883,20 +967,23 @@ impl OptimizationProblem for DrugDiscoveryProblem {
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     fn to_qubo(&self) -> ApplicationResult<(QuboModel, HashMap<String, usize>)> {
         // Convert Ising model to QUBO
         let (ising, variable_map) = self.to_ising_model()?;
         let qubo = ising.to_qubo();
         Ok((qubo, variable_map))
     }
-    
-    fn evaluate_solution(&self, solution: &Self::Solution) -> ApplicationResult<Self::ObjectiveValue> {
+
+    fn evaluate_solution(
+        &self,
+        solution: &Self::Solution,
+    ) -> ApplicationResult<Self::ObjectiveValue> {
         let mut total_score = 0.0;
-        
+
         // Evaluate based on objectives
         for objective in &self.objectives {
             match objective {
@@ -909,8 +996,12 @@ impl OptimizationProblem for DrugDiscoveryProblem {
                 }
                 DrugOptimizationObjective::MinimizeToxicity => {
                     // Penalize potentially toxic elements
-                    let toxic_penalty = solution.atoms.iter()
-                        .filter(|atom| matches!(atom.atom_type, AtomType::Bromine | AtomType::Iodine))
+                    let toxic_penalty = solution
+                        .atoms
+                        .iter()
+                        .filter(|atom| {
+                            matches!(atom.atom_type, AtomType::Bromine | AtomType::Iodine)
+                        })
                         .count() as f64;
                     total_score -= toxic_penalty * 2.0;
                 }
@@ -919,10 +1010,10 @@ impl OptimizationProblem for DrugDiscoveryProblem {
                 }
             }
         }
-        
+
         Ok(total_score)
     }
-    
+
     fn is_feasible(&self, solution: &Self::Solution) -> bool {
         // Check basic feasibility constraints
         for constraint in &self.constraints {
@@ -940,7 +1031,9 @@ impl OptimizationProblem for DrugDiscoveryProblem {
                     }
                 }
                 MolecularConstraint::MaxHeavyAtoms(max_atoms) => {
-                    let heavy_atoms = solution.atoms.iter()
+                    let heavy_atoms = solution
+                        .atoms
+                        .iter()
                         .filter(|atom| atom.atom_type != AtomType::Hydrogen)
                         .count();
                     if heavy_atoms > *max_atoms {
@@ -952,77 +1045,111 @@ impl OptimizationProblem for DrugDiscoveryProblem {
                 }
             }
         }
-        
+
         true
     }
 }
 
 impl IndustrySolution for Molecule {
     type Problem = DrugDiscoveryProblem;
-    
+
     fn from_binary(problem: &Self::Problem, binary_solution: &[i8]) -> ApplicationResult<Self> {
         let solution_i32: Vec<i32> = binary_solution.iter().map(|&x| x as i32).collect();
         let variable_map = HashMap::new(); // Simplified
         problem.solution_to_molecule(&solution_i32, &variable_map)
     }
-    
+
     fn summary(&self) -> HashMap<String, String> {
         let mut summary = HashMap::new();
         summary.insert("molecule_id".to_string(), self.id.clone());
         summary.insert("num_atoms".to_string(), self.atoms.len().to_string());
         summary.insert("num_bonds".to_string(), self.bonds.len().to_string());
-        summary.insert("molecular_weight".to_string(), format!("{:.2}", self.molecular_weight()));
-        summary.insert("logp".to_string(), format!("{:.2}", self.logp_approximation()));
-        summary.insert("tpsa".to_string(), format!("{:.2}", self.tpsa_approximation()));
-        summary.insert("rotatable_bonds".to_string(), self.rotatable_bonds().to_string());
-        summary.insert("drug_likeness".to_string(), format!("{:.3}", self.drug_likeness_score()));
-        
+        summary.insert(
+            "molecular_weight".to_string(),
+            format!("{:.2}", self.molecular_weight()),
+        );
+        summary.insert(
+            "logp".to_string(),
+            format!("{:.2}", self.logp_approximation()),
+        );
+        summary.insert(
+            "tpsa".to_string(),
+            format!("{:.2}", self.tpsa_approximation()),
+        );
+        summary.insert(
+            "rotatable_bonds".to_string(),
+            self.rotatable_bonds().to_string(),
+        );
+        summary.insert(
+            "drug_likeness".to_string(),
+            format!("{:.3}", self.drug_likeness_score()),
+        );
+
         if let Some(ref smiles) = self.smiles {
             summary.insert("smiles".to_string(), smiles.clone());
         }
-        
+
         summary
     }
-    
+
     fn metrics(&self) -> HashMap<String, f64> {
         let mut metrics = HashMap::new();
         metrics.insert("molecular_weight".to_string(), self.molecular_weight());
         metrics.insert("logp".to_string(), self.logp_approximation());
         metrics.insert("tpsa".to_string(), self.tpsa_approximation());
         metrics.insert("rotatable_bonds".to_string(), self.rotatable_bonds() as f64);
-        metrics.insert("drug_likeness_score".to_string(), self.drug_likeness_score());
-        
-        let heavy_atom_count = self.atoms.iter()
+        metrics.insert(
+            "drug_likeness_score".to_string(),
+            self.drug_likeness_score(),
+        );
+
+        let heavy_atom_count = self
+            .atoms
+            .iter()
             .filter(|atom| atom.atom_type != AtomType::Hydrogen)
             .count() as f64;
         metrics.insert("heavy_atom_count".to_string(), heavy_atom_count);
-        
+
         // Add any stored properties
         for (key, value) in &self.properties {
             metrics.insert(key.clone(), *value);
         }
-        
+
         metrics
     }
-    
+
     fn export_format(&self) -> ApplicationResult<String> {
         let mut output = String::new();
-        
+
         output.push_str("# Drug Discovery Molecular Result\n");
         output.push_str(&format!("Molecule ID: {}\n", self.id));
-        output.push_str(&format!("Molecular Weight: {:.2} Da\n", self.molecular_weight()));
-        output.push_str(&format!("LogP (Lipophilicity): {:.2}\n", self.logp_approximation()));
+        output.push_str(&format!(
+            "Molecular Weight: {:.2} Da\n",
+            self.molecular_weight()
+        ));
+        output.push_str(&format!(
+            "LogP (Lipophilicity): {:.2}\n",
+            self.logp_approximation()
+        ));
         output.push_str(&format!("TPSA: {:.2} Ų\n", self.tpsa_approximation()));
         output.push_str(&format!("Rotatable Bonds: {}\n", self.rotatable_bonds()));
-        output.push_str(&format!("Drug-likeness Score: {:.3}\n", self.drug_likeness_score()));
-        
+        output.push_str(&format!(
+            "Drug-likeness Score: {:.3}\n",
+            self.drug_likeness_score()
+        ));
+
         if let Some(ref smiles) = self.smiles {
             output.push_str(&format!("SMILES: {}\n", smiles));
         }
-        
+
         output.push_str("\n# Atoms\n");
         for (i, atom) in self.atoms.iter().enumerate() {
-            output.push_str(&format!("Atom {}: {} ({})", i, atom.atom_type.symbol(), atom.atom_type.atomic_number()));
+            output.push_str(&format!(
+                "Atom {}: {} ({})",
+                i,
+                atom.atom_type.symbol(),
+                atom.atom_type.atomic_number()
+            ));
             if atom.formal_charge != 0 {
                 output.push_str(&format!(" charge={}", atom.formal_charge));
             }
@@ -1030,15 +1157,20 @@ impl IndustrySolution for Molecule {
                 output.push_str(" aromatic");
             }
             if let Some(coords) = atom.coordinates {
-                output.push_str(&format!(" coords=({:.3}, {:.3}, {:.3})", coords[0], coords[1], coords[2]));
+                output.push_str(&format!(
+                    " coords=({:.3}, {:.3}, {:.3})",
+                    coords[0], coords[1], coords[2]
+                ));
             }
             output.push('\n');
         }
-        
+
         output.push_str("\n# Bonds\n");
         for (i, bond) in self.bonds.iter().enumerate() {
-            output.push_str(&format!("Bond {}: {} - {} ({:?})", 
-                i, bond.atom1, bond.atom2, bond.bond_type));
+            output.push_str(&format!(
+                "Bond {}: {} - {} ({:?})",
+                i, bond.atom1, bond.atom2, bond.bond_type
+            ));
             if bond.aromatic {
                 output.push_str(" aromatic");
             }
@@ -1047,48 +1179,107 @@ impl IndustrySolution for Molecule {
             }
             output.push('\n');
         }
-        
+
         if !self.properties.is_empty() {
             output.push_str("\n# Properties\n");
             for (key, value) in &self.properties {
                 output.push_str(&format!("{}: {:.6}\n", key, value));
             }
         }
-        
+
         Ok(output)
     }
 }
 
 /// Create benchmark drug discovery problems
-pub fn create_benchmark_problems(size: usize) -> ApplicationResult<Vec<Box<dyn OptimizationProblem<Solution = Molecule, ObjectiveValue = f64>>>> {
+pub fn create_benchmark_problems(
+    size: usize,
+) -> ApplicationResult<Vec<Box<dyn OptimizationProblem<Solution = Molecule, ObjectiveValue = f64>>>>
+{
     let mut problems = Vec::new();
-    
+
     // Create molecules of different complexity
     let molecule_specs = match size {
         s if s <= 10 => {
             vec![
-                ("aspirin", vec![(AtomType::Carbon, 9), (AtomType::Hydrogen, 8), (AtomType::Oxygen, 4)]),
-                ("caffeine", vec![(AtomType::Carbon, 8), (AtomType::Hydrogen, 10), (AtomType::Nitrogen, 4), (AtomType::Oxygen, 2)]),
+                (
+                    "aspirin",
+                    vec![
+                        (AtomType::Carbon, 9),
+                        (AtomType::Hydrogen, 8),
+                        (AtomType::Oxygen, 4),
+                    ],
+                ),
+                (
+                    "caffeine",
+                    vec![
+                        (AtomType::Carbon, 8),
+                        (AtomType::Hydrogen, 10),
+                        (AtomType::Nitrogen, 4),
+                        (AtomType::Oxygen, 2),
+                    ],
+                ),
             ]
         }
         s if s <= 25 => {
             vec![
-                ("ibuprofen", vec![(AtomType::Carbon, 13), (AtomType::Hydrogen, 18), (AtomType::Oxygen, 2)]),
-                ("acetaminophen", vec![(AtomType::Carbon, 8), (AtomType::Hydrogen, 9), (AtomType::Nitrogen, 1), (AtomType::Oxygen, 2)]),
-                ("penicillin", vec![(AtomType::Carbon, 16), (AtomType::Hydrogen, 18), (AtomType::Nitrogen, 2), (AtomType::Oxygen, 4), (AtomType::Sulfur, 1)]),
+                (
+                    "ibuprofen",
+                    vec![
+                        (AtomType::Carbon, 13),
+                        (AtomType::Hydrogen, 18),
+                        (AtomType::Oxygen, 2),
+                    ],
+                ),
+                (
+                    "acetaminophen",
+                    vec![
+                        (AtomType::Carbon, 8),
+                        (AtomType::Hydrogen, 9),
+                        (AtomType::Nitrogen, 1),
+                        (AtomType::Oxygen, 2),
+                    ],
+                ),
+                (
+                    "penicillin",
+                    vec![
+                        (AtomType::Carbon, 16),
+                        (AtomType::Hydrogen, 18),
+                        (AtomType::Nitrogen, 2),
+                        (AtomType::Oxygen, 4),
+                        (AtomType::Sulfur, 1),
+                    ],
+                ),
             ]
         }
         _ => {
             vec![
-                ("vancomycin", vec![(AtomType::Carbon, 66), (AtomType::Hydrogen, 75), (AtomType::Chlorine, 2), (AtomType::Nitrogen, 9), (AtomType::Oxygen, 24)]),
-                ("doxorubicin", vec![(AtomType::Carbon, 27), (AtomType::Hydrogen, 29), (AtomType::Nitrogen, 1), (AtomType::Oxygen, 11)]),
+                (
+                    "vancomycin",
+                    vec![
+                        (AtomType::Carbon, 66),
+                        (AtomType::Hydrogen, 75),
+                        (AtomType::Chlorine, 2),
+                        (AtomType::Nitrogen, 9),
+                        (AtomType::Oxygen, 24),
+                    ],
+                ),
+                (
+                    "doxorubicin",
+                    vec![
+                        (AtomType::Carbon, 27),
+                        (AtomType::Hydrogen, 29),
+                        (AtomType::Nitrogen, 1),
+                        (AtomType::Oxygen, 11),
+                    ],
+                ),
             ]
         }
     };
-    
+
     for (i, (name, atom_composition)) in molecule_specs.iter().enumerate() {
         let mut molecule = Molecule::new(format!("benchmark_{}", name));
-        
+
         // Add atoms based on composition
         let mut atom_id = 0;
         for (atom_type, count) in atom_composition {
@@ -1098,13 +1289,13 @@ pub fn create_benchmark_problems(size: usize) -> ApplicationResult<Vec<Box<dyn O
                 atom_id += 1;
             }
         }
-        
+
         // Add some basic bonds (simplified)
         for j in 0..(molecule.atoms.len() - 1) {
             let bond = Bond::new(j, j + 1, BondType::Single);
             molecule.add_bond(bond);
         }
-        
+
         // Create drug-target interaction
         let target_interaction = DrugTargetInteraction {
             drug_molecule: molecule,
@@ -1114,9 +1305,9 @@ pub fn create_benchmark_problems(size: usize) -> ApplicationResult<Vec<Box<dyn O
             selectivity: HashMap::new(),
             admet_properties: AdmetProperties::default(),
         };
-        
+
         let mut problem = DrugDiscoveryProblem::new(target_interaction);
-        
+
         // Add different objectives for different problems
         match i % 3 {
             0 => problem = problem.add_objective(DrugOptimizationObjective::MaximizeAffinity),
@@ -1124,68 +1315,77 @@ pub fn create_benchmark_problems(size: usize) -> ApplicationResult<Vec<Box<dyn O
             2 => problem = problem.add_objective(DrugOptimizationObjective::MinimizeToxicity),
             _ => problem = problem.add_objective(DrugOptimizationObjective::OptimizeAdmet),
         }
-        
+
         // Add molecular constraints
-        problem = problem.add_constraint(MolecularConstraint::MolecularWeightRange { min: 100.0, max: 800.0 });
-        problem = problem.add_constraint(MolecularConstraint::LogPRange { min: -2.0, max: 5.0 });
-        
+        problem = problem.add_constraint(MolecularConstraint::MolecularWeightRange {
+            min: 100.0,
+            max: 800.0,
+        });
+        problem = problem.add_constraint(MolecularConstraint::LogPRange {
+            min: -2.0,
+            max: 5.0,
+        });
+
         // Note: Simplified for trait object compatibility
-        problems.push(Box::new(problem) as Box<dyn OptimizationProblem<Solution = Molecule, ObjectiveValue = f64>>);
+        problems.push(Box::new(problem)
+            as Box<
+                dyn OptimizationProblem<Solution = Molecule, ObjectiveValue = f64>,
+            >);
     }
-    
+
     Ok(problems)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_atom_creation() {
         let atom = Atom::new(0, AtomType::Carbon)
             .with_charge(-1)
             .with_coordinates([1.0, 2.0, 3.0])
             .set_aromatic(true);
-            
+
         assert_eq!(atom.id, 0);
         assert_eq!(atom.atom_type, AtomType::Carbon);
         assert_eq!(atom.formal_charge, -1);
         assert_eq!(atom.coordinates, Some([1.0, 2.0, 3.0]));
         assert!(atom.aromatic);
     }
-    
+
     #[test]
     fn test_molecule_properties() {
         let mut molecule = Molecule::new("test".to_string());
-        
+
         // Add carbon and hydrogen atoms
         molecule.add_atom(Atom::new(0, AtomType::Carbon));
         molecule.add_atom(Atom::new(1, AtomType::Hydrogen));
         molecule.add_atom(Atom::new(2, AtomType::Oxygen));
-        
+
         assert_eq!(molecule.atoms.len(), 3);
         assert!(molecule.molecular_weight() > 0.0);
-        
+
         let drug_likeness = molecule.drug_likeness_score();
         assert!(drug_likeness > 0.0 && drug_likeness <= 1.0);
     }
-    
+
     #[test]
     fn test_atom_type_properties() {
         assert_eq!(AtomType::Carbon.atomic_number(), 6);
         assert_eq!(AtomType::Carbon.symbol(), "C");
         assert_eq!(AtomType::Carbon.valence(), 4);
-        
+
         assert_eq!(AtomType::Nitrogen.atomic_number(), 7);
         assert_eq!(AtomType::Oxygen.valence(), 2);
     }
-    
+
     #[test]
     fn test_bond_properties() {
         let bond = Bond::new(0, 1, BondType::Double)
             .set_aromatic(true)
             .set_in_ring(true);
-            
+
         assert_eq!(bond.atom1, 0);
         assert_eq!(bond.atom2, 1);
         assert_eq!(bond.bond_type, BondType::Double);
@@ -1193,11 +1393,11 @@ mod tests {
         assert!(bond.aromatic);
         assert!(bond.in_ring);
     }
-    
+
     #[test]
     fn test_molecular_calculations() {
         let mut molecule = Molecule::new("ethanol".to_string());
-        
+
         // Create ethanol: C2H6O
         molecule.add_atom(Atom::new(0, AtomType::Carbon));
         molecule.add_atom(Atom::new(1, AtomType::Carbon));
@@ -1205,24 +1405,24 @@ mod tests {
         for i in 3..9 {
             molecule.add_atom(Atom::new(i, AtomType::Hydrogen));
         }
-        
+
         // Add bonds
         molecule.add_bond(Bond::new(0, 1, BondType::Single));
         molecule.add_bond(Bond::new(1, 2, BondType::Single));
-        
+
         let mw = molecule.molecular_weight();
         assert!(mw > 40.0 && mw < 50.0); // Approximately 46 Da
-        
+
         let logp = molecule.logp_approximation();
         assert!(logp > -2.0 && logp < 2.0); // Reasonable LogP for ethanol
     }
-    
+
     #[test]
     fn test_drug_discovery_problem() {
         let mut molecule = Molecule::new("test_drug".to_string());
         molecule.add_atom(Atom::new(0, AtomType::Carbon));
         molecule.add_atom(Atom::new(1, AtomType::Nitrogen));
-        
+
         let target_interaction = DrugTargetInteraction {
             drug_molecule: molecule,
             target_id: "test_target".to_string(),
@@ -1231,23 +1431,26 @@ mod tests {
             selectivity: HashMap::new(),
             admet_properties: AdmetProperties::default(),
         };
-        
+
         let problem = DrugDiscoveryProblem::new(target_interaction)
             .add_objective(DrugOptimizationObjective::MaximizeAffinity)
-            .add_constraint(MolecularConstraint::MolecularWeightRange { min: 20.0, max: 500.0 });
-        
+            .add_constraint(MolecularConstraint::MolecularWeightRange {
+                min: 20.0,
+                max: 500.0,
+            });
+
         assert!(problem.validate().is_ok());
-        
+
         let metrics = problem.size_metrics();
         assert_eq!(metrics["num_atoms"], 2);
     }
-    
+
     #[test]
     fn test_ising_conversion() {
         let mut molecule = Molecule::new("test".to_string());
         molecule.add_atom(Atom::new(0, AtomType::Carbon));
         molecule.add_atom(Atom::new(1, AtomType::Nitrogen));
-        
+
         let target_interaction = DrugTargetInteraction {
             drug_molecule: molecule,
             target_id: "test".to_string(),
@@ -1256,10 +1459,10 @@ mod tests {
             selectivity: HashMap::new(),
             admet_properties: AdmetProperties::default(),
         };
-        
+
         let problem = DrugDiscoveryProblem::new(target_interaction);
         let (ising, variable_map) = problem.to_ising_model().unwrap();
-        
+
         assert_eq!(ising.num_qubits, 16); // 2 atoms * 8 bits each
         assert!(!variable_map.is_empty());
     }

@@ -7,19 +7,19 @@
 //! - Constructing stabilizer codes optimized for annealing hardware constraints
 //! - Managing logical operations during annealing evolution
 
-use std::collections::HashMap;
 use ndarray::{Array1, Array2};
-use std::time::{Duration, Instant};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
-use crate::ising::{IsingModel};
-use crate::simulator::AnnealingResult;
-use crate::qaoa::QuantumState;
+use super::codes::{CodeParameters, ErrorCorrectionCode};
 use super::config::{QECResult, QuantumErrorCorrectionError};
-use super::codes::{ErrorCorrectionCode, CodeParameters};
-use super::syndrome_detection::{SyndromeDetector, SyndromeDetectorConfig};
 use super::logical_operations::LogicalOperation;
+use super::syndrome_detection::{SyndromeDetector, SyndromeDetectorConfig};
+use crate::ising::IsingModel;
+use crate::qaoa::QuantumState;
+use crate::simulator::AnnealingResult;
 
 /// Logical encoding system
 #[derive(Debug, Clone)]
@@ -523,7 +523,11 @@ impl LogicalAnnealingEncoder {
 
         let syndrome_detector = if config.enable_monitoring {
             let detector_config = SyndromeDetectorConfig::default();
-            Some(SyndromeDetector::new(code.clone(), parameters.clone(), detector_config)?)
+            Some(SyndromeDetector::new(
+                code.clone(),
+                parameters.clone(),
+                detector_config,
+            )?)
         } else {
             None
         };
@@ -553,7 +557,8 @@ impl LogicalAnnealingEncoder {
         let physical_implementation = self.map_to_physical_implementation(&logical_hamiltonian)?;
 
         // Create encoding map
-        let encoding_map = self.create_encoding_map(&logical_hamiltonian, &physical_implementation)?;
+        let encoding_map =
+            self.create_encoding_map(&logical_hamiltonian, &physical_implementation)?;
 
         // Calculate performance metrics
         let performance = self.calculate_encoding_performance(
@@ -589,7 +594,7 @@ impl LogicalAnnealingEncoder {
     ) -> QECResult<Vec<SyndromeRecord>> {
         if let Some(ref mut detector) = self.syndrome_detector {
             let syndrome_result = detector.detect_syndrome(physical_state)?;
-            
+
             let record = SyndromeRecord {
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
@@ -622,9 +627,10 @@ impl LogicalAnnealingEncoder {
             .logical_to_physical
             .get(&logical_qubit)
             .ok_or_else(|| {
-                QuantumErrorCorrectionError::LogicalOperationError(
-                    format!("Logical qubit {} not found in encoding map", logical_qubit)
-                )
+                QuantumErrorCorrectionError::LogicalOperationError(format!(
+                    "Logical qubit {} not found in encoding map",
+                    logical_qubit
+                ))
             })?;
 
         let mut gates = Vec::new();
@@ -640,9 +646,10 @@ impl LogicalAnnealingEncoder {
                 gates.extend(self.implement_logical_measurement(physical_qubits)?);
             }
             _ => {
-                return Err(QuantumErrorCorrectionError::LogicalOperationError(
-                    format!("Logical operation {:?} not implemented", operation)
-                ));
+                return Err(QuantumErrorCorrectionError::LogicalOperationError(format!(
+                    "Logical operation {:?} not implemented",
+                    operation
+                )));
             }
         }
 
@@ -687,9 +694,10 @@ impl LogicalAnnealingEncoder {
                 stabilizers.extend(Self::steane_code_stabilizers(parameters)?);
             }
             _ => {
-                return Err(QuantumErrorCorrectionError::CodeError(
-                    format!("Stabilizer generation not implemented for {:?}", code)
-                ));
+                return Err(QuantumErrorCorrectionError::CodeError(format!(
+                    "Stabilizer generation not implemented for {:?}",
+                    code
+                )));
             }
         }
 
@@ -702,12 +710,12 @@ impl LogicalAnnealingEncoder {
         let mut stabilizers = Vec::new();
 
         // X-type stabilizers (plaquettes)
-        for row in 0..(d-1) {
-            for col in 0..(d-1) {
+        for row in 0..(d - 1) {
+            for col in 0..(d - 1) {
                 if (row + col) % 2 == 0 {
                     let mut pauli_string = vec![PauliType::I; parameters.num_physical_qubits];
                     let qubits = Self::get_plaquette_qubits(row, col, d);
-                    
+
                     for &qubit in &qubits {
                         if qubit < parameters.num_physical_qubits {
                             pauli_string[qubit] = PauliType::X;
@@ -730,7 +738,7 @@ impl LogicalAnnealingEncoder {
                 if (row + col) % 2 == 1 {
                     let mut pauli_string = vec![PauliType::I; parameters.num_physical_qubits];
                     let qubits = Self::get_vertex_qubits(row, col, d);
-                    
+
                     for &qubit in &qubits {
                         if qubit < parameters.num_physical_qubits {
                             pauli_string[qubit] = PauliType::Z;
@@ -755,7 +763,7 @@ impl LogicalAnnealingEncoder {
         let n = parameters.num_physical_qubits;
         let mut stabilizers = Vec::new();
 
-        for i in 0..(n-1) {
+        for i in 0..(n - 1) {
             let mut pauli_string = vec![PauliType::I; n];
             pauli_string[i] = PauliType::Z;
             pauli_string[i + 1] = PauliType::Z;
@@ -776,17 +784,9 @@ impl LogicalAnnealingEncoder {
         let mut stabilizers = Vec::new();
 
         // Steane code [[7,1,3]] stabilizers
-        let x_stabilizers = [
-            vec![0, 2, 4, 6],
-            vec![1, 2, 5, 6],
-            vec![3, 4, 5, 6],
-        ];
+        let x_stabilizers = [vec![0, 2, 4, 6], vec![1, 2, 5, 6], vec![3, 4, 5, 6]];
 
-        let z_stabilizers = [
-            vec![0, 1, 2, 3],
-            vec![0, 1, 4, 5],
-            vec![0, 2, 4, 6],
-        ];
+        let z_stabilizers = [vec![0, 1, 2, 3], vec![0, 1, 4, 5], vec![0, 2, 4, 6]];
 
         // Add X-type stabilizers
         for pattern in &x_stabilizers {
@@ -919,7 +919,7 @@ impl LogicalAnnealingEncoder {
     ) -> QECResult<PauliOperator> {
         // Y = iXZ (simplified implementation)
         let mut pauli_string = vec![PauliType::I; logical_x.pauli_string.len()];
-        
+
         for i in 0..pauli_string.len() {
             pauli_string[i] = match (&logical_x.pauli_string[i], &logical_z.pauli_string[i]) {
                 (PauliType::X, PauliType::I) => PauliType::X,
@@ -960,20 +960,27 @@ impl LogicalAnnealingEncoder {
     }
 
     /// Generate logical basis states
-    fn generate_logical_basis_states(parameters: &CodeParameters) -> QECResult<Vec<LogicalBasisState>> {
+    fn generate_logical_basis_states(
+        parameters: &CodeParameters,
+    ) -> QECResult<Vec<LogicalBasisState>> {
         let mut basis_states = Vec::new();
 
         // For k logical qubits, generate 2^k basis states
         let num_basis_states = 1 << parameters.num_logical_qubits;
-        
+
         for state_index in 0..num_basis_states {
-            let label = format!("L{:0width$b}", state_index, width = parameters.num_logical_qubits);
-            
+            let label = format!(
+                "L{:0width$b}",
+                state_index,
+                width = parameters.num_logical_qubits
+            );
+
             // Generate physical state representation (simplified)
             let physical_state = vec![0.0; 1 << parameters.num_physical_qubits];
-            
+
             // Generate stabilizer eigenvalues (all +1 for code states)
-            let stabilizer_eigenvalues = vec![1i8; parameters.num_physical_qubits - parameters.num_logical_qubits];
+            let stabilizer_eigenvalues =
+                vec![1i8; parameters.num_physical_qubits - parameters.num_logical_qubits];
 
             basis_states.push(LogicalBasisState {
                 label,
@@ -989,7 +996,7 @@ impl LogicalAnnealingEncoder {
     fn compute_code_projector(parameters: &CodeParameters) -> QECResult<Vec<Vec<f64>>> {
         let dim = 1 << parameters.num_physical_qubits;
         let mut projector = vec![vec![0.0; dim]; dim];
-        
+
         // Simplified identity projector
         for i in 0..dim {
             projector[i][i] = 1.0;
@@ -1023,7 +1030,9 @@ impl LogicalAnnealingEncoder {
     }
 
     /// Create repetition code encoding circuit
-    fn create_repetition_encoding_circuit(parameters: &CodeParameters) -> QECResult<QuantumCircuit> {
+    fn create_repetition_encoding_circuit(
+        parameters: &CodeParameters,
+    ) -> QECResult<QuantumCircuit> {
         let mut gates = Vec::new();
 
         // CNOT gates to copy logical qubit to all physical qubits
@@ -1111,7 +1120,7 @@ impl LogicalAnnealingEncoder {
         // Copy coupling matrix and bias vector
         for i in 0..num_logical_qubits {
             logical_biases[i] = problem.get_bias(i).unwrap_or(0.0);
-            
+
             for j in 0..num_logical_qubits {
                 logical_couplings[[i, j]] = problem.get_coupling(i, j).unwrap_or(0.0);
             }
@@ -1141,7 +1150,7 @@ impl LogicalAnnealingEncoder {
             // Map logical bias
             if let Some(logical_op) = logical_hamiltonian.logical_operators.get(i) {
                 let bias_value = logical_hamiltonian.logical_biases[i];
-                
+
                 // Apply bias to physical qubits according to logical Z operator
                 for &qubit in &logical_op.logical_z.support {
                     if qubit < num_physical_qubits {
@@ -1151,13 +1160,13 @@ impl LogicalAnnealingEncoder {
             }
 
             // Map logical couplings
-            for j in (i+1)..logical_hamiltonian.num_logical_qubits {
+            for j in (i + 1)..logical_hamiltonian.num_logical_qubits {
                 let coupling_value = logical_hamiltonian.logical_couplings[[i, j]];
-                
+
                 if coupling_value != 0.0 {
                     if let (Some(logical_op_i), Some(logical_op_j)) = (
                         logical_hamiltonian.logical_operators.get(i),
-                        logical_hamiltonian.logical_operators.get(j)
+                        logical_hamiltonian.logical_operators.get(j),
                     ) {
                         // Map coupling between logical qubits to physical interactions
                         for &qubit_i in &logical_op_i.logical_z.support {
@@ -1196,7 +1205,9 @@ impl LogicalAnnealingEncoder {
         let mut code_blocks = Vec::new();
 
         // Create mapping based on logical operators
-        for (logical_qubit, logical_op_set) in logical_hamiltonian.logical_operators.iter().enumerate() {
+        for (logical_qubit, logical_op_set) in
+            logical_hamiltonian.logical_operators.iter().enumerate()
+        {
             let physical_qubits = logical_op_set.logical_z.support.clone();
             logical_to_physical.insert(logical_qubit, physical_qubits.clone());
 
@@ -1233,7 +1244,9 @@ impl LogicalAnnealingEncoder {
     /// Get stabilizers for a specific code block
     fn get_stabilizers_for_block(&self, logical_qubit: usize) -> QECResult<Vec<PauliOperator>> {
         // Return stabilizers that act on qubits in this block
-        let stabilizers: Vec<PauliOperator> = self.encoding.stabilizers
+        let stabilizers: Vec<PauliOperator> = self
+            .encoding
+            .stabilizers
             .iter()
             .filter(|stabilizer| {
                 // Check if stabilizer acts on qubits in this block
@@ -1255,7 +1268,7 @@ impl LogicalAnnealingEncoder {
         physical_implementation: &PhysicalImplementation,
         encoding_time: Duration,
     ) -> QECResult<EncodingPerformanceMetrics> {
-        let qubit_overhead = physical_implementation.num_physical_qubits as f64 
+        let qubit_overhead = physical_implementation.num_physical_qubits as f64
             / logical_hamiltonian.num_logical_qubits as f64;
 
         let encoding_fidelity = 0.95; // Would be calculated based on noise model
@@ -1278,7 +1291,9 @@ impl LogicalAnnealingEncoder {
 
     /// Calculate encoding circuit depth
     fn calculate_encoding_depth(&self) -> QECResult<usize> {
-        let max_depth = self.encoding.encoding_circuits
+        let max_depth = self
+            .encoding
+            .encoding_circuits
             .iter()
             .map(|circuit| circuit.depth)
             .max()
@@ -1291,7 +1306,7 @@ impl LogicalAnnealingEncoder {
     fn identify_ancilla_qubits(&self) -> Vec<usize> {
         let num_data_qubits = self.parameters.num_logical_qubits;
         let total_qubits = self.parameters.num_physical_qubits;
-        
+
         // Simple identification: last qubits are ancillas
         (num_data_qubits..total_qubits).collect()
     }
@@ -1330,7 +1345,7 @@ impl LogicalAnnealingEncoder {
         let connectivity = Array2::from_shape_fn((n, n), |(i, j)| i == j); // Default to isolated qubits
         let coupling_strengths = Array2::zeros((n, n));
         let coherence_times = Array1::ones(n) * 100.0; // 100 microseconds
-        
+
         AnnealingTopology {
             connectivity,
             coupling_strengths,
@@ -1377,7 +1392,10 @@ impl LogicalAnnealingEncoder {
     }
 
     /// Implement logical measurement
-    fn implement_logical_measurement(&self, physical_qubits: &[usize]) -> QECResult<Vec<QuantumGate>> {
+    fn implement_logical_measurement(
+        &self,
+        physical_qubits: &[usize],
+    ) -> QECResult<Vec<QuantumGate>> {
         let mut gates = Vec::new();
 
         // Measure all qubits in the code block
@@ -1397,14 +1415,22 @@ impl LogicalAnnealingEncoder {
     /// Get plaquette qubits for surface code
     fn get_plaquette_qubits(row: usize, col: usize, d: usize) -> Vec<usize> {
         let mut qubits = Vec::new();
-        
+
         // Calculate qubit indices for plaquette
         let center = row * d + col;
-        
-        if row > 0 { qubits.push(center - d); }
-        if col > 0 { qubits.push(center - 1); }
-        if row < d - 1 { qubits.push(center + d); }
-        if col < d - 1 { qubits.push(center + 1); }
+
+        if row > 0 {
+            qubits.push(center - d);
+        }
+        if col > 0 {
+            qubits.push(center - 1);
+        }
+        if row < d - 1 {
+            qubits.push(center + d);
+        }
+        if col < d - 1 {
+            qubits.push(center + 1);
+        }
 
         qubits
     }
@@ -1468,7 +1494,7 @@ mod tests {
             num_logical_qubits: 1,
             num_physical_qubits: 3,
             num_ancilla_qubits: 0,
-            code_rate: 1.0/3.0,
+            code_rate: 1.0 / 3.0,
             threshold_probability: 0.1,
         };
         let config = LogicalEncoderConfig::default();
@@ -1498,11 +1524,12 @@ mod tests {
             num_logical_qubits: 1,
             num_physical_qubits: 3,
             num_ancilla_qubits: 0,
-            code_rate: 1.0/3.0,
+            code_rate: 1.0 / 3.0,
             threshold_probability: 0.1,
         };
 
-        let stabilizers = LogicalAnnealingEncoder::repetition_code_stabilizers(&parameters).unwrap();
+        let stabilizers =
+            LogicalAnnealingEncoder::repetition_code_stabilizers(&parameters).unwrap();
         assert_eq!(stabilizers.len(), 2); // n-1 stabilizers for repetition code
     }
 
@@ -1514,11 +1541,12 @@ mod tests {
             num_logical_qubits: 1,
             num_physical_qubits: 3,
             num_ancilla_qubits: 0,
-            code_rate: 1.0/3.0,
+            code_rate: 1.0 / 3.0,
             threshold_probability: 0.1,
         };
 
-        let logical_ops = LogicalAnnealingEncoder::generate_logical_operators(&code, &parameters).unwrap();
+        let logical_ops =
+            LogicalAnnealingEncoder::generate_logical_operators(&code, &parameters).unwrap();
         assert_eq!(logical_ops.len(), 1);
         assert_eq!(logical_ops[0].logical_qubit, 0);
     }
@@ -1530,11 +1558,12 @@ mod tests {
             num_logical_qubits: 1,
             num_physical_qubits: 3,
             num_ancilla_qubits: 0,
-            code_rate: 1.0/3.0,
+            code_rate: 1.0 / 3.0,
             threshold_probability: 0.1,
         };
 
-        let circuit = LogicalAnnealingEncoder::create_repetition_encoding_circuit(&parameters).unwrap();
+        let circuit =
+            LogicalAnnealingEncoder::create_repetition_encoding_circuit(&parameters).unwrap();
         assert_eq!(circuit.gates.len(), 2); // 2 CNOT gates for 3-qubit repetition code
         assert_eq!(circuit.num_qubits, 3);
     }
@@ -1546,7 +1575,7 @@ mod tests {
             num_logical_qubits: 2,
             num_physical_qubits: 6,
             num_ancilla_qubits: 0,
-            code_rate: 1.0/3.0,
+            code_rate: 1.0 / 3.0,
             threshold_probability: 0.1,
         };
         let config = LogicalEncoderConfig::default();

@@ -107,7 +107,7 @@ impl MixedPrecisionSimulator {
         self.adapt_state_precision(optimal_precision)?;
         
         // Apply each gate in the block
-        for gate in block.gates() {
+        for gate in &block.gates {
             self.apply_gate_with_precision(gate, optimal_precision)?;
         }
         
@@ -213,7 +213,7 @@ impl MixedPrecisionSimulator {
 
     /// Run precision analysis
     pub fn analyze_precision(&mut self) -> Result<PrecisionAnalysis> {
-        self.analyzer.analyze_for_tolerance(self.config.error_tolerance)
+        Ok(self.analyzer.analyze_for_tolerance(self.config.error_tolerance))
     }
 
     /// Get performance statistics
@@ -239,8 +239,8 @@ impl MixedPrecisionSimulator {
         }
 
         // Use heuristics to select precision based on gate type
-        let precision = match gate.gate_type() {
-            GateType::Single => {
+        let precision = match gate.gate_type {
+            GateType::PauliX | GateType::PauliY | GateType::PauliZ | GateType::Hadamard | GateType::Phase | GateType::T | GateType::RotationX | GateType::RotationY | GateType::RotationZ | GateType::Identity => {
                 // Single qubit gates are usually numerically stable
                 if self.config.gate_precision == QuantumPrecision::Adaptive {
                     QuantumPrecision::Single
@@ -248,7 +248,7 @@ impl MixedPrecisionSimulator {
                     self.config.gate_precision
                 }
             }
-            GateType::TwoQubit => {
+            GateType::CNOT | GateType::CZ | GateType::SWAP | GateType::ISwap => {
                 // Two qubit gates may require higher precision
                 if self.config.gate_precision == QuantumPrecision::Adaptive {
                     if self.num_qubits > self.config.large_system_threshold {
@@ -260,13 +260,17 @@ impl MixedPrecisionSimulator {
                     self.config.gate_precision
                 }
             }
-            GateType::MultiQubit => {
+            GateType::Toffoli | GateType::Fredkin => {
                 // Multi-qubit gates typically need higher precision
                 if self.config.gate_precision == QuantumPrecision::Adaptive {
                     QuantumPrecision::Double
                 } else {
                     self.config.gate_precision
                 }
+            }
+            GateType::Custom(_) => {
+                // Custom gates - use conservative precision
+                QuantumPrecision::Double
             }
         };
 

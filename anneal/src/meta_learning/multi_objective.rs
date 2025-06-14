@@ -3,11 +3,13 @@
 //! This module contains all Multi-Objective Optimization types and implementations
 //! used by the meta-learning optimization system.
 
+use super::config::{
+    ConstraintHandling, FrontierUpdateStrategy, MultiObjectiveConfig, OptimizationConfiguration,
+    OptimizationObjective, ParetoFrontierConfig, ScalarizationMethod,
+};
+use crate::applications::ApplicationResult;
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
-use crate::applications::ApplicationResult;
-use super::config::{MultiObjectiveConfig, OptimizationObjective, ParetoFrontierConfig, 
-                    ScalarizationMethod, ConstraintHandling, FrontierUpdateStrategy, OptimizationConfiguration};
 
 /// Multi-objective optimizer
 pub struct MultiObjectiveOptimizer {
@@ -256,21 +258,24 @@ impl MultiObjectiveOptimizer {
     pub fn add_solution(&mut self, solution: MultiObjectiveSolution) -> ApplicationResult<bool> {
         // Check if solution is non-dominated
         let is_non_dominated = self.is_non_dominated(&solution);
-        
+
         if is_non_dominated {
             // Remove dominated solutions
-            let solutions_to_keep: Vec<_> = self.pareto_frontier.solutions.iter()
+            let solutions_to_keep: Vec<_> = self
+                .pareto_frontier
+                .solutions
+                .iter()
                 .filter(|existing| !self.dominates(&solution, existing))
                 .cloned()
                 .collect();
             self.pareto_frontier.solutions = solutions_to_keep;
-            
+
             // Add new solution
             self.pareto_frontier.solutions.push(solution.clone());
-            
+
             // Update statistics
             self.update_frontier_statistics();
-            
+
             // Record update
             let update = FrontierUpdate {
                 timestamp: Instant::now(),
@@ -279,12 +284,12 @@ impl MultiObjectiveOptimizer {
                 reason: UpdateReason::NewNonDominated,
             };
             self.pareto_frontier.update_history.push_back(update);
-            
+
             // Limit history size
             if self.pareto_frontier.update_history.len() > 1000 {
                 self.pareto_frontier.update_history.pop_front();
             }
-            
+
             Ok(true)
         } else {
             Ok(false)
@@ -302,10 +307,18 @@ impl MultiObjectiveOptimizer {
     }
 
     /// Check if solution1 dominates solution2
-    fn dominates(&self, solution1: &MultiObjectiveSolution, solution2: &MultiObjectiveSolution) -> bool {
+    fn dominates(
+        &self,
+        solution1: &MultiObjectiveSolution,
+        solution2: &MultiObjectiveSolution,
+    ) -> bool {
         let mut at_least_one_better = false;
-        
-        for (val1, val2) in solution1.objective_values.iter().zip(&solution2.objective_values) {
+
+        for (val1, val2) in solution1
+            .objective_values
+            .iter()
+            .zip(&solution2.objective_values)
+        {
             if val1 < val2 {
                 return false; // Assuming minimization
             }
@@ -313,23 +326,23 @@ impl MultiObjectiveOptimizer {
                 at_least_one_better = true;
             }
         }
-        
+
         at_least_one_better
     }
 
     /// Update frontier statistics
     fn update_frontier_statistics(&mut self) {
         self.pareto_frontier.statistics.size = self.pareto_frontier.solutions.len();
-        
+
         // Calculate hypervolume (simplified)
         self.pareto_frontier.statistics.hypervolume = self.calculate_hypervolume();
-        
+
         // Calculate spread
         self.pareto_frontier.statistics.spread = self.calculate_spread();
-        
+
         // Update convergence metric
         self.pareto_frontier.statistics.convergence = 0.8; // Simplified
-        
+
         // Update coverage
         self.pareto_frontier.statistics.coverage = 0.9; // Simplified
     }
@@ -339,7 +352,7 @@ impl MultiObjectiveOptimizer {
         if self.pareto_frontier.solutions.is_empty() {
             return 0.0;
         }
-        
+
         // Simple hypervolume calculation
         let mut volume = 0.0;
         for solution in &self.pareto_frontier.solutions {
@@ -349,7 +362,7 @@ impl MultiObjectiveOptimizer {
             }
             volume += point_volume;
         }
-        
+
         volume
     }
 
@@ -358,29 +371,36 @@ impl MultiObjectiveOptimizer {
         if self.pareto_frontier.solutions.len() < 2 {
             return 0.0;
         }
-        
+
         // Simple spread calculation based on distance between solutions
         let mut total_distance = 0.0;
         let num_objectives = self.pareto_frontier.solutions[0].objective_values.len();
-        
+
         for i in 0..num_objectives {
-            let mut values: Vec<f64> = self.pareto_frontier.solutions
+            let mut values: Vec<f64> = self
+                .pareto_frontier
+                .solutions
                 .iter()
                 .map(|s| s.objective_values[i])
                 .collect();
             values.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            
+
             if let (Some(&min), Some(&max)) = (values.first(), values.last()) {
                 total_distance += max - min;
             }
         }
-        
+
         total_distance / num_objectives as f64
     }
 
     /// Scalarize objectives using weighted sum
-    pub fn scalarize_weighted_sum(&self, solution: &MultiObjectiveSolution, weights: &[f64]) -> f64 {
-        solution.objective_values
+    pub fn scalarize_weighted_sum(
+        &self,
+        solution: &MultiObjectiveSolution,
+        weights: &[f64],
+    ) -> f64 {
+        solution
+            .objective_values
             .iter()
             .zip(weights)
             .map(|(value, weight)| value * weight)
@@ -392,15 +412,15 @@ impl MultiObjectiveOptimizer {
         if self.pareto_frontier.solutions.is_empty() {
             return Ok(None);
         }
-        
+
         match self.decision_maker.strategy {
             DecisionStrategy::Automated => {
                 // Use weighted sum with user preferences
                 let weights = &self.decision_maker.preferences.objective_weights;
-                
+
                 let mut best_solution = None;
                 let mut best_score = f64::NEG_INFINITY;
-                
+
                 for solution in &self.pareto_frontier.solutions {
                     let score = self.scalarize_weighted_sum(solution, weights);
                     if score > best_score {
@@ -408,7 +428,7 @@ impl MultiObjectiveOptimizer {
                         best_solution = Some(solution.id.clone());
                     }
                 }
-                
+
                 if let Some(ref solution_id) = best_solution {
                     // Record decision
                     let decision = Decision {
@@ -419,13 +439,13 @@ impl MultiObjectiveOptimizer {
                         user_feedback: None,
                     };
                     self.decision_maker.decision_history.push_back(decision);
-                    
+
                     // Limit history size
                     if self.decision_maker.decision_history.len() > 100 {
                         self.decision_maker.decision_history.pop_front();
                     }
                 }
-                
+
                 Ok(best_solution)
             }
             _ => {
@@ -449,7 +469,7 @@ impl MultiObjectiveOptimizer {
     pub fn clear_frontier(&mut self) {
         self.pareto_frontier.solutions.clear();
         self.update_frontier_statistics();
-        
+
         let update = FrontierUpdate {
             timestamp: Instant::now(),
             solutions_added: Vec::new(),
@@ -470,7 +490,7 @@ mod tests {
     fn test_multi_objective_optimizer_creation() {
         let config = MultiObjectiveConfig::default();
         let optimizer = MultiObjectiveOptimizer::new(config);
-        
+
         assert_eq!(optimizer.pareto_frontier.solutions.len(), 0);
         assert_eq!(optimizer.pareto_frontier.statistics.size, 0);
     }
@@ -479,7 +499,7 @@ mod tests {
     fn test_solution_addition() {
         let config = MultiObjectiveConfig::default();
         let mut optimizer = MultiObjectiveOptimizer::new(config);
-        
+
         let solution = MultiObjectiveSolution {
             id: "test_solution".to_string(),
             objective_values: vec![1.0, 2.0, 3.0],
@@ -497,7 +517,7 @@ mod tests {
             dominance_rank: 0,
             crowding_distance: 0.0,
         };
-        
+
         let result = optimizer.add_solution(solution);
         assert!(result.is_ok());
         assert!(result.unwrap());
@@ -508,7 +528,7 @@ mod tests {
     fn test_dominance_check() {
         let config = MultiObjectiveConfig::default();
         let optimizer = MultiObjectiveOptimizer::new(config);
-        
+
         let solution1 = MultiObjectiveSolution {
             id: "solution1".to_string(),
             objective_values: vec![1.0, 2.0],
@@ -526,7 +546,7 @@ mod tests {
             dominance_rank: 0,
             crowding_distance: 0.0,
         };
-        
+
         let solution2 = MultiObjectiveSolution {
             id: "solution2".to_string(),
             objective_values: vec![2.0, 1.0],
@@ -544,7 +564,7 @@ mod tests {
             dominance_rank: 0,
             crowding_distance: 0.0,
         };
-        
+
         // Neither solution should dominate the other (trade-off)
         assert!(!optimizer.dominates(&solution1, &solution2));
         assert!(!optimizer.dominates(&solution2, &solution1));
@@ -554,7 +574,7 @@ mod tests {
     fn test_weighted_sum_scalarization() {
         let config = MultiObjectiveConfig::default();
         let optimizer = MultiObjectiveOptimizer::new(config);
-        
+
         let solution = MultiObjectiveSolution {
             id: "test_solution".to_string(),
             objective_values: vec![2.0, 3.0, 1.0],
@@ -572,10 +592,10 @@ mod tests {
             dominance_rank: 0,
             crowding_distance: 0.0,
         };
-        
+
         let weights = vec![0.5, 0.3, 0.2];
         let score = optimizer.scalarize_weighted_sum(&solution, &weights);
-        
+
         // Expected: 2.0*0.5 + 3.0*0.3 + 1.0*0.2 = 1.0 + 0.9 + 0.2 = 2.1
         assert!((score - 2.1).abs() < 1e-10);
     }
@@ -584,7 +604,7 @@ mod tests {
     fn test_frontier_statistics() {
         let config = MultiObjectiveConfig::default();
         let mut optimizer = MultiObjectiveOptimizer::new(config);
-        
+
         // Add a solution
         let solution = MultiObjectiveSolution {
             id: "test_solution".to_string(),
@@ -603,9 +623,9 @@ mod tests {
             dominance_rank: 0,
             crowding_distance: 0.0,
         };
-        
+
         optimizer.add_solution(solution).unwrap();
-        
+
         let stats = optimizer.get_statistics();
         assert_eq!(stats.size, 1);
         assert!(stats.hypervolume > 0.0);
@@ -615,7 +635,7 @@ mod tests {
     fn test_solution_selection() {
         let config = MultiObjectiveConfig::default();
         let mut optimizer = MultiObjectiveOptimizer::new(config);
-        
+
         // Add solutions
         let solution1 = MultiObjectiveSolution {
             id: "solution1".to_string(),
@@ -634,7 +654,7 @@ mod tests {
             dominance_rank: 0,
             crowding_distance: 0.0,
         };
-        
+
         let solution2 = MultiObjectiveSolution {
             id: "solution2".to_string(),
             objective_values: vec![2.0, 1.0],
@@ -652,10 +672,10 @@ mod tests {
             dominance_rank: 0,
             crowding_distance: 0.0,
         };
-        
+
         optimizer.add_solution(solution1).unwrap();
         optimizer.add_solution(solution2).unwrap();
-        
+
         let selected = optimizer.select_solution();
         assert!(selected.is_ok());
         assert!(selected.unwrap().is_some());

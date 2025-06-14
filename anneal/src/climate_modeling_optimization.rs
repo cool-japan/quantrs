@@ -14,7 +14,7 @@
 //! - Extreme weather event prediction optimization
 //! - Renewable energy integration modeling
 
-use std::collections::{HashMap, VecDeque, BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -65,8 +65,8 @@ impl Default for ClimateOptimizationConfig {
     fn default() -> Self {
         Self {
             temporal_resolution: Duration::from_secs(3600), // 1 hour
-            spatial_resolution: 100.0, // 100 km
-            optimization_horizon: 100.0, // 100 years
+            spatial_resolution: 100.0,                      // 100 km
+            optimization_horizon: 100.0,                    // 100 years
             sensitivity_threshold: 0.01,
             objective_weights: ClimateObjectiveWeights::default(),
             uncertainty_config: UncertaintyQuantificationConfig::default(),
@@ -244,7 +244,7 @@ pub struct GlobalModelConfig {
 pub struct GridResolution {
     /// Longitude resolution (degrees)
     pub longitude_resolution: f64,
-    /// Latitude resolution (degrees) 
+    /// Latitude resolution (degrees)
     pub latitude_resolution: f64,
     /// Vertical levels
     pub vertical_levels: usize,
@@ -714,47 +714,52 @@ impl ClimateModelingOptimizer {
             ocean_optimizer: Arc::new(Mutex::new(OceanDynamicsOptimizer::new())),
             carbon_optimizer: Arc::new(Mutex::new(CarbonCycleOptimizer::new())),
             energy_optimizer: Arc::new(Mutex::new(EnergyBalanceOptimizer::new())),
-            performance_optimizer: Arc::new(Mutex::new(
-                ScientificPerformanceOptimizer::new(Default::default())
-            )),
+            performance_optimizer: Arc::new(Mutex::new(ScientificPerformanceOptimizer::new(
+                Default::default(),
+            ))),
         }
     }
-    
+
     /// Optimize global climate model parameters
     pub fn optimize_global_climate_model(&self) -> ApplicationResult<ClimateOptimizationResult> {
         println!("Starting global climate model optimization");
-        
+
         let start_time = Instant::now();
-        
+
         // Step 1: Initialize parameter space
         let parameter_space = self.initialize_parameter_space()?;
-        
+
         // Step 2: Formulate multi-objective optimization problem
         let optimization_problem = self.formulate_optimization_problem(&parameter_space)?;
-        
+
         // Step 3: Optimize atmospheric dynamics
         let atmosphere_result = self.optimize_atmospheric_dynamics()?;
-        
+
         // Step 4: Optimize ocean dynamics
         let ocean_result = self.optimize_ocean_dynamics()?;
-        
+
         // Step 5: Optimize carbon cycle
         let carbon_result = self.optimize_carbon_cycle()?;
-        
+
         // Step 6: Optimize energy balance
         let energy_result = self.optimize_energy_balance()?;
-        
+
         // Step 7: Perform coupled optimization
-        let coupled_result = self.optimize_coupled_system(&atmosphere_result, &ocean_result, &carbon_result, &energy_result)?;
-        
+        let coupled_result = self.optimize_coupled_system(
+            &atmosphere_result,
+            &ocean_result,
+            &carbon_result,
+            &energy_result,
+        )?;
+
         // Step 8: Validate optimized model
         let validation_results = self.validate_optimized_model(&coupled_result)?;
-        
+
         // Step 9: Quantify uncertainties
         let uncertainty_estimates = self.quantify_uncertainties(&coupled_result)?;
-        
+
         let duration = start_time.elapsed();
-        
+
         let result = ClimateOptimizationResult {
             optimized_parameters: coupled_result,
             objective_values: self.calculate_objective_values()?,
@@ -770,84 +775,102 @@ impl ClimateModelingOptimizer {
                 algorithm: "Quantum Multi-Objective Annealing".to_string(),
             },
         };
-        
+
         println!("Global climate optimization completed in {:?}", duration);
         Ok(result)
     }
-    
+
     /// Initialize parameter space for optimization
     fn initialize_parameter_space(&self) -> ApplicationResult<ClimateParameterSpace> {
         println!("Initializing climate parameter space");
-        
+
         let mut atmospheric_params = HashMap::new();
         let mut oceanic_params = HashMap::new();
         let mut land_params = HashMap::new();
         let mut coupling_params = HashMap::new();
-        
+
         // Initialize atmospheric parameters
-        atmospheric_params.insert("cloud_fraction_coefficient".to_string(), ParameterInfo {
-            name: "cloud_fraction_coefficient".to_string(),
-            description: "Cloud fraction parameterization coefficient".to_string(),
-            range: (0.1, 2.0),
-            default_value: 1.0,
-            current_value: 1.0,
-            sensitivity: 0.8,
-            uncertainty: 0.2,
-        });
-        
-        atmospheric_params.insert("convection_trigger_threshold".to_string(), ParameterInfo {
-            name: "convection_trigger_threshold".to_string(),
-            description: "Threshold for convection triggering".to_string(),
-            range: (0.5, 1.5),
-            default_value: 1.0,
-            current_value: 1.0,
-            sensitivity: 0.6,
-            uncertainty: 0.15,
-        });
-        
+        atmospheric_params.insert(
+            "cloud_fraction_coefficient".to_string(),
+            ParameterInfo {
+                name: "cloud_fraction_coefficient".to_string(),
+                description: "Cloud fraction parameterization coefficient".to_string(),
+                range: (0.1, 2.0),
+                default_value: 1.0,
+                current_value: 1.0,
+                sensitivity: 0.8,
+                uncertainty: 0.2,
+            },
+        );
+
+        atmospheric_params.insert(
+            "convection_trigger_threshold".to_string(),
+            ParameterInfo {
+                name: "convection_trigger_threshold".to_string(),
+                description: "Threshold for convection triggering".to_string(),
+                range: (0.5, 1.5),
+                default_value: 1.0,
+                current_value: 1.0,
+                sensitivity: 0.6,
+                uncertainty: 0.15,
+            },
+        );
+
         // Initialize oceanic parameters
-        oceanic_params.insert("ocean_mixing_coefficient".to_string(), ParameterInfo {
-            name: "ocean_mixing_coefficient".to_string(),
-            description: "Ocean vertical mixing coefficient".to_string(),
-            range: (0.1, 5.0),
-            default_value: 1.0,
-            current_value: 1.0,
-            sensitivity: 0.7,
-            uncertainty: 0.25,
-        });
-        
-        oceanic_params.insert("thermohaline_strength".to_string(), ParameterInfo {
-            name: "thermohaline_strength".to_string(),
-            description: "Thermohaline circulation strength parameter".to_string(),
-            range: (0.5, 2.0),
-            default_value: 1.0,
-            current_value: 1.0,
-            sensitivity: 0.9,
-            uncertainty: 0.3,
-        });
-        
+        oceanic_params.insert(
+            "ocean_mixing_coefficient".to_string(),
+            ParameterInfo {
+                name: "ocean_mixing_coefficient".to_string(),
+                description: "Ocean vertical mixing coefficient".to_string(),
+                range: (0.1, 5.0),
+                default_value: 1.0,
+                current_value: 1.0,
+                sensitivity: 0.7,
+                uncertainty: 0.25,
+            },
+        );
+
+        oceanic_params.insert(
+            "thermohaline_strength".to_string(),
+            ParameterInfo {
+                name: "thermohaline_strength".to_string(),
+                description: "Thermohaline circulation strength parameter".to_string(),
+                range: (0.5, 2.0),
+                default_value: 1.0,
+                current_value: 1.0,
+                sensitivity: 0.9,
+                uncertainty: 0.3,
+            },
+        );
+
         // Initialize land surface parameters
-        land_params.insert("vegetation_albedo".to_string(), ParameterInfo {
-            name: "vegetation_albedo".to_string(),
-            description: "Vegetation albedo parameter".to_string(),
-            range: (0.05, 0.3),
-            default_value: 0.15,
-            current_value: 0.15,
-            sensitivity: 0.5,
-            uncertainty: 0.05,
-        });
-        
+        land_params.insert(
+            "vegetation_albedo".to_string(),
+            ParameterInfo {
+                name: "vegetation_albedo".to_string(),
+                description: "Vegetation albedo parameter".to_string(),
+                range: (0.05, 0.3),
+                default_value: 0.15,
+                current_value: 0.15,
+                sensitivity: 0.5,
+                uncertainty: 0.05,
+            },
+        );
+
         // Initialize coupling parameters
-        coupling_params.insert("air_sea_momentum_transfer".to_string(), ParameterInfo {
-            name: "air_sea_momentum_transfer".to_string(),
-            description: "Air-sea momentum transfer coefficient".to_string(),
-            range: (0.8, 1.5),
-            default_value: 1.0,
-            current_value: 1.0,
-            sensitivity: 0.4,
-            uncertainty: 0.1,
-        });
-        
+        coupling_params.insert(
+            "air_sea_momentum_transfer".to_string(),
+            ParameterInfo {
+                name: "air_sea_momentum_transfer".to_string(),
+                description: "Air-sea momentum transfer coefficient".to_string(),
+                range: (0.8, 1.5),
+                default_value: 1.0,
+                current_value: 1.0,
+                sensitivity: 0.4,
+                uncertainty: 0.1,
+            },
+        );
+
         Ok(ClimateParameterSpace {
             atmospheric_params,
             oceanic_params,
@@ -867,106 +890,109 @@ impl ClimateModelingOptimizer {
             },
         })
     }
-    
+
     /// Formulate multi-objective optimization problem
-    fn formulate_optimization_problem(&self, parameter_space: &ClimateParameterSpace) -> ApplicationResult<IsingModel> {
+    fn formulate_optimization_problem(
+        &self,
+        parameter_space: &ClimateParameterSpace,
+    ) -> ApplicationResult<IsingModel> {
         println!("Formulating quantum optimization problem");
-        
-        let num_params = parameter_space.atmospheric_params.len() +
-                        parameter_space.oceanic_params.len() +
-                        parameter_space.land_params.len() +
-                        parameter_space.coupling_params.len();
-        
+
+        let num_params = parameter_space.atmospheric_params.len()
+            + parameter_space.oceanic_params.len()
+            + parameter_space.land_params.len()
+            + parameter_space.coupling_params.len();
+
         // Create Ising model for parameter optimization
         let mut ising_model = IsingModel::new(num_params * 10); // 10 bits per parameter
-        
+
         // Add objective terms for accuracy
         for i in 0..num_params {
             ising_model.set_bias(i, -1.0)?; // Favor optimal values
         }
-        
+
         // Add coupling terms for parameter correlations
         for i in 0..num_params {
             for j in (i + 1)..num_params {
                 ising_model.set_coupling(i, j, -0.1)?; // Weak coupling
             }
         }
-        
+
         Ok(ising_model)
     }
-    
+
     /// Optimize atmospheric dynamics parameters
     fn optimize_atmospheric_dynamics(&self) -> ApplicationResult<HashMap<String, f64>> {
         println!("Optimizing atmospheric dynamics parameters");
-        
+
         let mut optimized_params = HashMap::new();
-        
+
         // Simulate atmospheric optimization
         thread::sleep(Duration::from_millis(100));
-        
+
         optimized_params.insert("cloud_fraction_coefficient".to_string(), 1.2);
         optimized_params.insert("convection_trigger_threshold".to_string(), 0.8);
         optimized_params.insert("radiation_absorption_coefficient".to_string(), 1.1);
         optimized_params.insert("boundary_layer_mixing".to_string(), 1.3);
-        
+
         println!("Atmospheric optimization completed");
         Ok(optimized_params)
     }
-    
+
     /// Optimize ocean dynamics parameters
     fn optimize_ocean_dynamics(&self) -> ApplicationResult<HashMap<String, f64>> {
         println!("Optimizing ocean dynamics parameters");
-        
+
         let mut optimized_params = HashMap::new();
-        
+
         // Simulate ocean optimization
         thread::sleep(Duration::from_millis(100));
-        
+
         optimized_params.insert("ocean_mixing_coefficient".to_string(), 1.4);
         optimized_params.insert("thermohaline_strength".to_string(), 1.1);
         optimized_params.insert("eddy_diffusivity".to_string(), 0.9);
         optimized_params.insert("bottom_friction".to_string(), 1.2);
-        
+
         println!("Ocean optimization completed");
         Ok(optimized_params)
     }
-    
+
     /// Optimize carbon cycle parameters
     fn optimize_carbon_cycle(&self) -> ApplicationResult<HashMap<String, f64>> {
         println!("Optimizing carbon cycle parameters");
-        
+
         let mut optimized_params = HashMap::new();
-        
+
         // Simulate carbon cycle optimization
         thread::sleep(Duration::from_millis(100));
-        
+
         optimized_params.insert("co2_fertilization_factor".to_string(), 1.3);
         optimized_params.insert("soil_respiration_q10".to_string(), 2.1);
         optimized_params.insert("ocean_carbon_solubility".to_string(), 1.05);
         optimized_params.insert("vegetation_carbon_residence".to_string(), 0.95);
-        
+
         println!("Carbon cycle optimization completed");
         Ok(optimized_params)
     }
-    
+
     /// Optimize energy balance parameters
     fn optimize_energy_balance(&self) -> ApplicationResult<HashMap<String, f64>> {
         println!("Optimizing energy balance parameters");
-        
+
         let mut optimized_params = HashMap::new();
-        
+
         // Simulate energy balance optimization
         thread::sleep(Duration::from_millis(100));
-        
+
         optimized_params.insert("solar_constant_scaling".to_string(), 1.0);
         optimized_params.insert("greenhouse_gas_absorption".to_string(), 1.15);
         optimized_params.insert("surface_albedo_feedback".to_string(), 0.88);
         optimized_params.insert("cloud_radiative_forcing".to_string(), 1.05);
-        
+
         println!("Energy balance optimization completed");
         Ok(optimized_params)
     }
-    
+
     /// Optimize coupled system
     fn optimize_coupled_system(
         &self,
@@ -976,57 +1002,63 @@ impl ClimateModelingOptimizer {
         energy: &HashMap<String, f64>,
     ) -> ApplicationResult<HashMap<String, f64>> {
         println!("Optimizing coupled climate system");
-        
+
         let mut coupled_params = HashMap::new();
-        
+
         // Combine all component parameters
         coupled_params.extend(atmosphere.clone());
         coupled_params.extend(ocean.clone());
         coupled_params.extend(carbon.clone());
         coupled_params.extend(energy.clone());
-        
+
         // Add coupling-specific parameters
         coupled_params.insert("air_sea_momentum_transfer".to_string(), 1.08);
         coupled_params.insert("land_atmosphere_heat_exchange".to_string(), 1.12);
         coupled_params.insert("ocean_carbon_exchange".to_string(), 0.95);
         coupled_params.insert("ice_albedo_feedback".to_string(), 1.25);
-        
+
         println!("Coupled system optimization completed");
         Ok(coupled_params)
     }
-    
+
     /// Validate optimized model against observations
-    fn validate_optimized_model(&self, parameters: &HashMap<String, f64>) -> ApplicationResult<ValidationResults> {
+    fn validate_optimized_model(
+        &self,
+        parameters: &HashMap<String, f64>,
+    ) -> ApplicationResult<ValidationResults> {
         println!("Validating optimized climate model");
-        
+
         // Simulate validation against historical data
         thread::sleep(Duration::from_millis(50));
-        
+
         let mut historical_validation = HashMap::new();
         historical_validation.insert(ValidationMetric::RMSE, 0.85);
         historical_validation.insert(ValidationMetric::MAE, 0.78);
         historical_validation.insert(ValidationMetric::CorrelationCoefficient, 0.92);
         historical_validation.insert(ValidationMetric::NashSutcliffeEfficiency, 0.88);
-        
+
         let mut cross_validation = HashMap::new();
         cross_validation.insert(ValidationMetric::RMSE, vec![0.83, 0.87, 0.85, 0.84, 0.86]);
-        cross_validation.insert(ValidationMetric::CorrelationCoefficient, vec![0.91, 0.93, 0.92, 0.90, 0.94]);
-        
+        cross_validation.insert(
+            ValidationMetric::CorrelationCoefficient,
+            vec![0.91, 0.93, 0.92, 0.90, 0.94],
+        );
+
         let mut ensemble_validation = HashMap::new();
         ensemble_validation.insert(ValidationMetric::RMSE, 0.82);
         ensemble_validation.insert(ValidationMetric::CorrelationCoefficient, 0.94);
-        
+
         let mut regional_validation = HashMap::new();
         let mut arctic_scores = HashMap::new();
         arctic_scores.insert(ValidationMetric::RMSE, 0.78);
         arctic_scores.insert(ValidationMetric::CorrelationCoefficient, 0.89);
         regional_validation.insert("Arctic".to_string(), arctic_scores);
-        
+
         let mut tropical_scores = HashMap::new();
         tropical_scores.insert(ValidationMetric::RMSE, 0.87);
         tropical_scores.insert(ValidationMetric::CorrelationCoefficient, 0.93);
         regional_validation.insert("Tropical".to_string(), tropical_scores);
-        
+
         println!("Model validation completed");
         Ok(ValidationResults {
             historical_validation,
@@ -1035,27 +1067,30 @@ impl ClimateModelingOptimizer {
             regional_validation,
         })
     }
-    
+
     /// Quantify parameter and model uncertainties
-    fn quantify_uncertainties(&self, parameters: &HashMap<String, f64>) -> ApplicationResult<UncertaintyEstimates> {
+    fn quantify_uncertainties(
+        &self,
+        parameters: &HashMap<String, f64>,
+    ) -> ApplicationResult<UncertaintyEstimates> {
         println!("Quantifying model uncertainties");
-        
+
         let mut parameter_uncertainties = HashMap::new();
         let mut output_uncertainties = HashMap::new();
         let mut confidence_intervals = HashMap::new();
         let mut sensitivity_indices = HashMap::new();
-        
+
         // Simulate uncertainty quantification
         for (param_name, _value) in parameters {
             parameter_uncertainties.insert(param_name.clone(), 0.1);
             confidence_intervals.insert(param_name.clone(), (0.05, 0.15));
             sensitivity_indices.insert(param_name.clone(), 0.2);
         }
-        
+
         output_uncertainties.insert("global_temperature".to_string(), 0.5);
         output_uncertainties.insert("precipitation".to_string(), 0.8);
         output_uncertainties.insert("sea_level".to_string(), 0.3);
-        
+
         println!("Uncertainty quantification completed");
         Ok(UncertaintyEstimates {
             parameter_uncertainties,
@@ -1064,11 +1099,11 @@ impl ClimateModelingOptimizer {
             sensitivity_indices,
         })
     }
-    
+
     /// Calculate objective function values
     fn calculate_objective_values(&self) -> ApplicationResult<HashMap<String, f64>> {
         let mut objectives = HashMap::new();
-        
+
         objectives.insert("temperature_accuracy".to_string(), 0.92);
         objectives.insert("precipitation_accuracy".to_string(), 0.88);
         objectives.insert("sea_level_accuracy".to_string(), 0.94);
@@ -1076,10 +1111,10 @@ impl ClimateModelingOptimizer {
         objectives.insert("carbon_cycle_accuracy".to_string(), 0.90);
         objectives.insert("energy_balance_accuracy".to_string(), 0.96);
         objectives.insert("computational_efficiency".to_string(), 0.78);
-        
+
         Ok(objectives)
     }
-    
+
     /// Calculate performance metrics
     fn calculate_performance_metrics(&self) -> ApplicationResult<ClimatePerformanceMetrics> {
         Ok(ClimatePerformanceMetrics {
@@ -1188,20 +1223,34 @@ macro_rules! impl_new_for_component {
 }
 
 // Component implementations
-#[derive(Debug)] pub struct RadiationModule {}
-#[derive(Debug)] pub struct ConvectionModule {}
-#[derive(Debug)] pub struct CloudPhysics {}
-#[derive(Debug)] pub struct BoundaryLayerPhysics {}
-#[derive(Debug)] pub struct AtmosphericChemistry {}
-#[derive(Debug)] pub struct AerosolModel {}
-#[derive(Debug)] pub struct AtmosphericState {}
-#[derive(Debug)] pub struct OceanDynamics {}
-#[derive(Debug)] pub struct OceanThermodynamics {}
-#[derive(Debug)] pub struct OceanBiogeochemistry {}
-#[derive(Debug)] pub struct OceanState {}
-#[derive(Debug)] pub struct LandSurfaceModel {}
-#[derive(Debug)] pub struct SeaIceModel {}
-#[derive(Debug)] pub struct CarbonCycleModel {}
+#[derive(Debug)]
+pub struct RadiationModule {}
+#[derive(Debug)]
+pub struct ConvectionModule {}
+#[derive(Debug)]
+pub struct CloudPhysics {}
+#[derive(Debug)]
+pub struct BoundaryLayerPhysics {}
+#[derive(Debug)]
+pub struct AtmosphericChemistry {}
+#[derive(Debug)]
+pub struct AerosolModel {}
+#[derive(Debug)]
+pub struct AtmosphericState {}
+#[derive(Debug)]
+pub struct OceanDynamics {}
+#[derive(Debug)]
+pub struct OceanThermodynamics {}
+#[derive(Debug)]
+pub struct OceanBiogeochemistry {}
+#[derive(Debug)]
+pub struct OceanState {}
+#[derive(Debug)]
+pub struct LandSurfaceModel {}
+#[derive(Debug)]
+pub struct SeaIceModel {}
+#[derive(Debug)]
+pub struct CarbonCycleModel {}
 
 impl_new_for_component!(RadiationModule);
 impl_new_for_component!(ConvectionModule);
@@ -1222,8 +1271,14 @@ impl AtmosphericDynamicsOptimizer {
     fn new() -> Self {
         Self {
             config: AtmosphericOptimizationConfig {
-                targets: vec![AtmosphericTarget::TemperatureAccuracy, AtmosphericTarget::WindSpeedAccuracy],
-                constraints: vec![AtmosphericConstraint::EnergyConservation, AtmosphericConstraint::MassConservation],
+                targets: vec![
+                    AtmosphericTarget::TemperatureAccuracy,
+                    AtmosphericTarget::WindSpeedAccuracy,
+                ],
+                constraints: vec![
+                    AtmosphericConstraint::EnergyConservation,
+                    AtmosphericConstraint::MassConservation,
+                ],
                 method: OptimizationMethod::QuantumAnnealing,
                 convergence: ConvergenceCriteria::default(),
             },
@@ -1236,25 +1291,44 @@ impl AtmosphericDynamicsOptimizer {
 }
 
 // More component optimizers
-#[derive(Debug)] pub struct WindFieldOptimizer {}
-#[derive(Debug)] pub struct TemperatureOptimizer {}
-#[derive(Debug)] pub struct PressureOptimizer {}
-#[derive(Debug)] pub struct HumidityOptimizer {}
-#[derive(Debug)] pub struct OceanOptimizationConfig {}
-#[derive(Debug)] pub struct OceanCurrentOptimizer {}
-#[derive(Debug)] pub struct OceanTemperatureOptimizer {}
-#[derive(Debug)] pub struct SalinityOptimizer {}
-#[derive(Debug)] pub struct SeaLevelOptimizer {}
-#[derive(Debug)] pub struct CarbonOptimizationConfig {}
-#[derive(Debug)] pub struct AtmosphericCO2Optimizer {}
-#[derive(Debug)] pub struct OceanCarbonOptimizer {}
-#[derive(Debug)] pub struct LandCarbonOptimizer {}
-#[derive(Debug)] pub struct CarbonFeedbackOptimizer {}
-#[derive(Debug)] pub struct EnergyOptimizationConfig {}
-#[derive(Debug)] pub struct RadiationBudgetOptimizer {}
-#[derive(Debug)] pub struct SurfaceEnergyOptimizer {}
-#[derive(Debug)] pub struct LatentHeatOptimizer {}
-#[derive(Debug)] pub struct SensibleHeatOptimizer {}
+#[derive(Debug)]
+pub struct WindFieldOptimizer {}
+#[derive(Debug)]
+pub struct TemperatureOptimizer {}
+#[derive(Debug)]
+pub struct PressureOptimizer {}
+#[derive(Debug)]
+pub struct HumidityOptimizer {}
+#[derive(Debug)]
+pub struct OceanOptimizationConfig {}
+#[derive(Debug)]
+pub struct OceanCurrentOptimizer {}
+#[derive(Debug)]
+pub struct OceanTemperatureOptimizer {}
+#[derive(Debug)]
+pub struct SalinityOptimizer {}
+#[derive(Debug)]
+pub struct SeaLevelOptimizer {}
+#[derive(Debug)]
+pub struct CarbonOptimizationConfig {}
+#[derive(Debug)]
+pub struct AtmosphericCO2Optimizer {}
+#[derive(Debug)]
+pub struct OceanCarbonOptimizer {}
+#[derive(Debug)]
+pub struct LandCarbonOptimizer {}
+#[derive(Debug)]
+pub struct CarbonFeedbackOptimizer {}
+#[derive(Debug)]
+pub struct EnergyOptimizationConfig {}
+#[derive(Debug)]
+pub struct RadiationBudgetOptimizer {}
+#[derive(Debug)]
+pub struct SurfaceEnergyOptimizer {}
+#[derive(Debug)]
+pub struct LatentHeatOptimizer {}
+#[derive(Debug)]
+pub struct SensibleHeatOptimizer {}
 
 impl_new_for_component!(WindFieldOptimizer);
 impl_new_for_component!(TemperatureOptimizer);
@@ -1355,14 +1429,14 @@ pub fn create_example_climate_optimizer() -> ApplicationResult<ClimateModelingOp
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_climate_optimizer_creation() {
         let optimizer = create_example_climate_optimizer().unwrap();
         assert_eq!(optimizer.config.spatial_resolution, 100.0);
         assert_eq!(optimizer.config.optimization_horizon, 100.0);
     }
-    
+
     #[test]
     fn test_climate_config_defaults() {
         let config = ClimateOptimizationConfig::default();
@@ -1370,25 +1444,28 @@ mod tests {
         assert_eq!(config.spatial_resolution, 100.0);
         assert!(config.uncertainty_config.enable_bayesian_uncertainty);
     }
-    
+
     #[test]
     fn test_parameter_space_initialization() {
         let optimizer = create_example_climate_optimizer().unwrap();
         let parameter_space = optimizer.initialize_parameter_space().unwrap();
-        
+
         assert!(!parameter_space.atmospheric_params.is_empty());
         assert!(!parameter_space.oceanic_params.is_empty());
         assert!(!parameter_space.land_params.is_empty());
         assert!(!parameter_space.coupling_params.is_empty());
     }
-    
+
     #[test]
     fn test_objective_weights() {
         let weights = ClimateObjectiveWeights::default();
-        let total_weight = weights.temperature_accuracy + weights.precipitation_accuracy +
-                          weights.sea_level_accuracy + weights.extreme_weather_accuracy +
-                          weights.carbon_cycle_accuracy + weights.energy_balance_accuracy +
-                          weights.computational_efficiency;
+        let total_weight = weights.temperature_accuracy
+            + weights.precipitation_accuracy
+            + weights.sea_level_accuracy
+            + weights.extreme_weather_accuracy
+            + weights.carbon_cycle_accuracy
+            + weights.energy_balance_accuracy
+            + weights.computational_efficiency;
         assert!((total_weight - 1.0).abs() < 1e-10);
     }
 }

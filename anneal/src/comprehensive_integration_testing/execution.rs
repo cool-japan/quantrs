@@ -1,11 +1,11 @@
 //! Test execution engine and execution management
 
 use std::collections::{HashMap, VecDeque};
-use std::time::SystemTime;
 use std::thread;
+use std::time::SystemTime;
 
-use super::scenarios::IntegrationTestCase;
 use super::results::IntegrationTestResult;
+use super::scenarios::IntegrationTestCase;
 
 /// Test execution engine
 pub struct TestExecutionEngine {
@@ -28,7 +28,7 @@ impl TestExecutionEngine {
             resource_monitor: ResourceMonitor::new(),
         }
     }
-    
+
     // TODO: Implement execution methods
 }
 
@@ -225,7 +225,7 @@ impl Default for ResourceLimits {
         Self {
             max_cpu_usage: 95.0,
             max_memory_usage: 8 * 1024 * 1024 * 1024, // 8 GB
-            max_network_usage: 1000.0, // 1 GB/s
+            max_network_usage: 1000.0,                // 1 GB/s
             max_disk_usage: 100 * 1024 * 1024 * 1024, // 100 GB
             max_threads: 1000,
         }

@@ -1,7 +1,7 @@
 //! Test result types and result storage management
 
-use std::collections::{HashMap, BTreeMap};
-use std::time::{SystemTime, Duration};
+use std::collections::{BTreeMap, HashMap};
+use std::time::{Duration, SystemTime};
 
 use super::config::TestStorageConfig;
 
@@ -337,7 +337,7 @@ impl TestResultStorage {
             storage_stats: StorageStatistics::default(),
         }
     }
-    
+
     // TODO: Implement storage methods
 }
 

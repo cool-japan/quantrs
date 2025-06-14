@@ -3,11 +3,13 @@
 //! This module contains all feature extraction types and implementations used
 //! by the meta-learning optimization system.
 
-use std::collections::HashMap;
-use std::time::Instant;
+use super::config::{
+    DimensionalityReduction, FeatureExtractionConfig, FeatureNormalization, FeatureSelectionMethod,
+};
 use crate::applications::ApplicationResult;
 use crate::ising::IsingModel;
-use super::config::{FeatureExtractionConfig, FeatureSelectionMethod, DimensionalityReduction, FeatureNormalization};
+use std::collections::HashMap;
+use std::time::Instant;
 
 /// Problem feature representation
 #[derive(Debug, Clone)]
@@ -210,26 +212,26 @@ impl FeatureExtractor {
             reducers: Vec::new(),
         }
     }
-    
+
     pub fn extract_features(&mut self, problem: &IsingModel) -> ApplicationResult<ProblemFeatures> {
         let graph_features = if self.config.enable_graph_features {
             self.extract_graph_features(problem)?
         } else {
             GraphFeatures::default()
         };
-        
+
         let statistical_features = if self.config.enable_statistical_features {
             self.extract_statistical_features(problem)?
         } else {
             StatisticalFeatures::default()
         };
-        
+
         let spectral_features = if self.config.enable_spectral_features {
             self.extract_spectral_features(problem)?
         } else {
             SpectralFeatures::default()
         };
-        
+
         Ok(ProblemFeatures {
             size: problem.num_qubits,
             density: self.calculate_density(problem),
@@ -239,11 +241,11 @@ impl FeatureExtractor {
             domain_features: HashMap::new(),
         })
     }
-    
+
     fn extract_graph_features(&self, problem: &IsingModel) -> ApplicationResult<GraphFeatures> {
         let num_vertices = problem.num_qubits;
         let mut num_edges = 0;
-        
+
         // Count edges (non-zero couplings)
         for i in 0..problem.num_qubits {
             for j in (i + 1)..problem.num_qubits {
@@ -252,13 +254,13 @@ impl FeatureExtractor {
                 }
             }
         }
-        
+
         let avg_degree = if num_vertices > 0 {
             2.0 * num_edges as f64 / num_vertices as f64
         } else {
             0.0
         };
-        
+
         Ok(GraphFeatures {
             num_vertices,
             num_edges,
@@ -278,16 +280,19 @@ impl FeatureExtractor {
             },
         })
     }
-    
-    fn extract_statistical_features(&self, problem: &IsingModel) -> ApplicationResult<StatisticalFeatures> {
+
+    fn extract_statistical_features(
+        &self,
+        problem: &IsingModel,
+    ) -> ApplicationResult<StatisticalFeatures> {
         let mut bias_values = Vec::new();
         let mut coupling_values = Vec::new();
-        
+
         // Collect bias values
         for i in 0..problem.num_qubits {
             bias_values.push(problem.get_bias(i).unwrap_or(0.0));
         }
-        
+
         // Collect coupling values
         for i in 0..problem.num_qubits {
             for j in (i + 1)..problem.num_qubits {
@@ -297,7 +302,7 @@ impl FeatureExtractor {
                 }
             }
         }
-        
+
         Ok(StatisticalFeatures {
             bias_stats: self.calculate_distribution_stats(&bias_values),
             coupling_stats: self.calculate_distribution_stats(&coupling_values),
@@ -314,12 +319,15 @@ impl FeatureExtractor {
             },
         })
     }
-    
-    fn extract_spectral_features(&self, problem: &IsingModel) -> ApplicationResult<SpectralFeatures> {
+
+    fn extract_spectral_features(
+        &self,
+        problem: &IsingModel,
+    ) -> ApplicationResult<SpectralFeatures> {
         // Simplified spectral analysis
         let n = problem.num_qubits as f64;
         let spectral_gap_estimate = 1.0 / n.sqrt();
-        
+
         Ok(SpectralFeatures {
             eigenvalue_stats: DistributionStats {
                 mean: 0.0,
@@ -335,11 +343,11 @@ impl FeatureExtractor {
             condition_number: n,
         })
     }
-    
+
     fn calculate_density(&self, problem: &IsingModel) -> f64 {
         let mut num_edges = 0;
         let max_edges = problem.num_qubits * (problem.num_qubits - 1) / 2;
-        
+
         for i in 0..problem.num_qubits {
             for j in (i + 1)..problem.num_qubits {
                 if problem.get_coupling(i, j).unwrap_or(0.0).abs() > 1e-10 {
@@ -347,25 +355,25 @@ impl FeatureExtractor {
                 }
             }
         }
-        
+
         if max_edges > 0 {
             num_edges as f64 / max_edges as f64
         } else {
             0.0
         }
     }
-    
+
     fn calculate_distribution_stats(&self, values: &[f64]) -> DistributionStats {
         if values.is_empty() {
             return DistributionStats::default();
         }
-        
+
         let mean = values.iter().sum::<f64>() / values.len() as f64;
         let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
         let std_dev = variance.sqrt();
         let min = values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
         let max = values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-        
+
         DistributionStats {
             mean,
             std_dev,

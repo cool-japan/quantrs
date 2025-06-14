@@ -505,7 +505,10 @@ pub struct SafetyMeasures {
 impl Default for SafetyMeasures {
     fn default() -> Self {
         Self {
-            auto_rollback_triggers: vec!["cpu_usage_critical".to_string(), "memory_exhausted".to_string()],
+            auto_rollback_triggers: vec![
+                "cpu_usage_critical".to_string(),
+                "memory_exhausted".to_string(),
+            ],
             max_impact_duration: Duration::from_secs(300),
             emergency_stop: vec!["system_failure".to_string(), "data_corruption".to_string()],
             health_checks: vec!["system_health".to_string(), "component_status".to_string()],
@@ -587,7 +590,7 @@ impl Default for AlertConfig {
         thresholds.insert(MonitoredMetric::ErrorRate, 0.1);
         thresholds.insert(MonitoredMetric::MemoryUsage, 0.9);
         thresholds.insert(MonitoredMetric::CpuUtilization, 0.95);
-        
+
         Self {
             enable_alerts: true,
             thresholds,
@@ -750,7 +753,7 @@ impl Default for ResourceAllocationConfig {
     fn default() -> Self {
         Self {
             max_cpu_cores: num_cpus::get(),
-            max_memory: 8 * 1024 * 1024 * 1024, // 8 GB
+            max_memory: 8 * 1024 * 1024 * 1024,       // 8 GB
             max_disk_space: 100 * 1024 * 1024 * 1024, // 100 GB
             network_bandwidth_limit: None,
         }

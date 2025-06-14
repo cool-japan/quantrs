@@ -14,35 +14,35 @@
 //! - Fault-tolerant annealing procedures
 //! - Active error correction during annealing evolution
 
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
-use crate::ising::{IsingModel};
+use crate::ising::IsingModel;
 use crate::simulator::{AnnealingParams, AnnealingResult};
 
 // Module declarations
-pub mod config;
-pub mod codes;
-pub mod logical_operations;
-pub mod resource_constraints;
 pub mod annealing_integration;
-pub mod logical_encoding;
-pub mod syndrome_detection;
-pub mod noise_resilient_protocols;
+pub mod codes;
+pub mod config;
 pub mod error_mitigation;
+pub mod logical_encoding;
+pub mod logical_operations;
+pub mod noise_resilient_protocols;
+pub mod resource_constraints;
+pub mod syndrome_detection;
 
 // Re-exports for public API
-pub use config::*;
-pub use codes::*;
-pub use logical_operations::*;
-pub use resource_constraints::*;
 pub use annealing_integration::*;
-pub use logical_encoding::*;
-pub use syndrome_detection::*;
-pub use noise_resilient_protocols::*;
+pub use codes::*;
+pub use config::*;
 pub use error_mitigation::*;
+pub use logical_encoding::*;
+pub use logical_operations::*;
+pub use noise_resilient_protocols::*;
+pub use resource_constraints::*;
+pub use syndrome_detection::*;
 
 // TODO: Add implementation structs and functions that were in the original file
 // This would include the QuantumErrorCorrectionAnnealer struct and its implementation

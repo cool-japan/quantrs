@@ -3,9 +3,9 @@
 //! This module implements the infinite-depth Quantum Approximate Optimization Algorithm
 //! with adaptive depth selection, parameter optimization, and convergence detection.
 
+use num_complex::Complex64;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
-use num_complex::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::time::{Duration, Instant};
@@ -470,56 +470,63 @@ impl InfiniteDepthQAOA {
     }
 
     /// Convert generic problem to Ising model
-    fn convert_to_ising<P: 'static>(&self, problem: &P) -> Result<IsingModel, AdvancedQuantumError> {
+    fn convert_to_ising<P: 'static>(
+        &self,
+        problem: &P,
+    ) -> Result<IsingModel, AdvancedQuantumError> {
         // Try to downcast to known problem types
         use std::any::Any;
-        
+
         // Check if it's already an Ising model
         if let Some(ising) = (problem as &dyn Any).downcast_ref::<IsingModel>() {
             return Ok(ising.clone());
         }
-        
+
         // Check if it's a reference to Ising model
         if let Some(ising_ref) = (problem as &dyn Any).downcast_ref::<&IsingModel>() {
             return Ok((*ising_ref).clone());
         }
-        
+
         // For other problem types, we need more sophisticated conversion
         // For now, create a reasonable default problem for testing
         let num_qubits = self.estimate_problem_size(problem);
         let mut ising = IsingModel::new(num_qubits);
-        
+
         // Add random structure based on problem hash
         let problem_hash = self.hash_problem(problem);
         let mut rng = ChaCha8Rng::seed_from_u64(problem_hash);
-        
+
         // Add biases
         for i in 0..num_qubits {
             let bias = rng.gen_range(-1.0..1.0);
-            ising.set_bias(i, bias).map_err(AdvancedQuantumError::IsingError)?;
+            ising
+                .set_bias(i, bias)
+                .map_err(AdvancedQuantumError::IsingError)?;
         }
-        
+
         // Add couplings with some sparsity
         let coupling_probability = 0.3;
         for i in 0..num_qubits {
-            for j in (i+1)..num_qubits {
+            for j in (i + 1)..num_qubits {
                 if rng.gen::<f64>() < coupling_probability {
                     let coupling = rng.gen_range(-1.0..1.0);
-                    ising.set_coupling(i, j, coupling).map_err(AdvancedQuantumError::IsingError)?;
+                    ising
+                        .set_coupling(i, j, coupling)
+                        .map_err(AdvancedQuantumError::IsingError)?;
                 }
             }
         }
-        
+
         Ok(ising)
     }
-    
+
     /// Estimate problem size from generic type
     fn estimate_problem_size<P>(&self, _problem: &P) -> usize {
         // In practice, would extract size from problem structure
         // For now, use reasonable default
         16
     }
-    
+
     /// Generate hash for problem to ensure consistent conversion
     fn hash_problem<P>(&self, _problem: &P) -> u64 {
         // In practice, would hash problem structure
@@ -750,9 +757,12 @@ impl InfiniteDepthQAOA {
     ) -> AdvancedQuantumResult<f64> {
         // Improved energy evaluation using quantum state evolution principles
         if params.len() != 2 * depth {
-            return Err(AdvancedQuantumError::ParameterError(
-                format!("Expected {} parameters for depth {}, got {}", 2 * depth, depth, params.len())
-            ));
+            return Err(AdvancedQuantumError::ParameterError(format!(
+                "Expected {} parameters for depth {}, got {}",
+                2 * depth,
+                depth,
+                params.len()
+            )));
         }
 
         // For large systems, use approximation to avoid exponential memory
@@ -766,8 +776,8 @@ impl InfiniteDepthQAOA {
 
         // Apply alternating QAOA layers
         for layer in 0..depth {
-            let gamma = params[2 * layer];       // Problem Hamiltonian angle
-            let beta = params[2 * layer + 1];   // Mixer Hamiltonian angle
+            let gamma = params[2 * layer]; // Problem Hamiltonian angle
+            let beta = params[2 * layer + 1]; // Mixer Hamiltonian angle
 
             // Apply problem Hamiltonian evolution: exp(-i * gamma * H_C)
             self.apply_problem_hamiltonian(&mut state_amplitudes, problem, gamma);
@@ -780,7 +790,7 @@ impl InfiniteDepthQAOA {
         let energy = self.calculate_energy_expectation(&state_amplitudes, problem);
         Ok(energy)
     }
-    
+
     /// Evaluate QAOA energy using approximation for large systems
     fn evaluate_qaoa_energy_approximation(
         &self,
@@ -790,7 +800,7 @@ impl InfiniteDepthQAOA {
     ) -> AdvancedQuantumResult<f64> {
         // Use improved approximation for large systems
         let mut energy = 0.0;
-        
+
         // Calculate approximate expectation values using quantum-inspired methods
         for i in 0..problem.num_qubits {
             if let Ok(bias) = problem.get_bias(i) {
@@ -802,7 +812,8 @@ impl InfiniteDepthQAOA {
             for j in (i + 1)..problem.num_qubits {
                 if let Ok(coupling) = problem.get_coupling(i, j) {
                     if coupling.abs() > 1e-10 {
-                        energy += coupling * self.estimate_coupling_expectation_improved(i, j, params, depth);
+                        energy += coupling
+                            * self.estimate_coupling_expectation_improved(i, j, params, depth);
                     }
                 }
             }
@@ -810,81 +821,97 @@ impl InfiniteDepthQAOA {
 
         Ok(energy)
     }
-    
+
     /// Initialize state to |+⟩⊗n superposition state
     fn initialize_plus_state(&self, num_qubits: usize) -> Vec<Complex64> {
         let state_size = 1 << num_qubits; // 2^n
         let amplitude = Complex64::new(1.0 / (state_size as f64).sqrt(), 0.0);
         vec![amplitude; state_size]
     }
-    
+
     /// Apply problem Hamiltonian evolution
     fn apply_problem_hamiltonian(&self, state: &mut [Complex64], problem: &IsingModel, gamma: f64) {
         let num_qubits = problem.num_qubits;
         let state_size = 1 << num_qubits;
-        
+
         // For each computational basis state
         for basis_state in 0..state_size {
-            if state[basis_state].norm() < 1e-12 { continue; }
-            
+            if state[basis_state].norm() < 1e-12 {
+                continue;
+            }
+
             // Calculate energy of this basis state
             let mut energy = 0.0;
-            
+
             // Add bias terms
             for i in 0..num_qubits {
-                let spin = if (basis_state >> i) & 1 == 0 { -1.0 } else { 1.0 };
+                let spin = if (basis_state >> i) & 1 == 0 {
+                    -1.0
+                } else {
+                    1.0
+                };
                 if let Ok(bias) = problem.get_bias(i) {
                     energy += bias * spin;
                 }
             }
-            
+
             // Add coupling terms
             for i in 0..num_qubits {
                 for j in (i + 1)..num_qubits {
                     if let Ok(coupling) = problem.get_coupling(i, j) {
                         if coupling.abs() > 1e-10 {
-                            let spin_i = if (basis_state >> i) & 1 == 0 { -1.0 } else { 1.0 };
-                            let spin_j = if (basis_state >> j) & 1 == 0 { -1.0 } else { 1.0 };
+                            let spin_i = if (basis_state >> i) & 1 == 0 {
+                                -1.0
+                            } else {
+                                1.0
+                            };
+                            let spin_j = if (basis_state >> j) & 1 == 0 {
+                                -1.0
+                            } else {
+                                1.0
+                            };
                             energy += coupling * spin_i * spin_j;
                         }
                     }
                 }
             }
-            
+
             // Apply phase evolution: exp(-i * gamma * energy)
             let phase = Complex64::new(0.0, -gamma * energy).exp();
             state[basis_state] *= phase;
         }
     }
-    
+
     /// Apply mixer Hamiltonian evolution (X rotations)
     fn apply_mixer_hamiltonian(&self, state: &mut [Complex64], num_qubits: usize, beta: f64) {
         let state_size = 1 << num_qubits;
         let mut new_state = vec![Complex64::new(0.0, 0.0); state_size];
-        
+
         let cos_half_beta = (beta / 2.0).cos();
         let sin_half_beta = (beta / 2.0).sin();
-        
+
         // Apply product of X rotations
         for basis_state in 0..state_size {
-            if state[basis_state].norm() < 1e-12 { continue; }
-            
+            if state[basis_state].norm() < 1e-12 {
+                continue;
+            }
+
             // For each qubit, apply X rotation
             let mut current_amplitude = state[basis_state];
             let mut current_state = basis_state;
-            
+
             // Simplified: apply average effect of X rotations
             new_state[current_state] += current_amplitude * cos_half_beta.powi(num_qubits as i32);
-            
+
             // Add contributions from flipped states (simplified)
             for qubit in 0..num_qubits {
                 let flipped_state = current_state ^ (1 << qubit);
-                new_state[flipped_state] += current_amplitude * 
-                    cos_half_beta.powi((num_qubits - 1) as i32) * 
-                    Complex64::new(0.0, -sin_half_beta);
+                new_state[flipped_state] += current_amplitude
+                    * cos_half_beta.powi((num_qubits - 1) as i32)
+                    * Complex64::new(0.0, -sin_half_beta);
             }
         }
-        
+
         // Normalize
         let norm = new_state.iter().map(|a| a.norm_sqr()).sum::<f64>().sqrt();
         if norm > 1e-12 {
@@ -892,46 +919,60 @@ impl InfiniteDepthQAOA {
                 *amplitude /= norm;
             }
         }
-        
+
         state.copy_from_slice(&new_state);
     }
-    
+
     /// Calculate energy expectation value from quantum state
     fn calculate_energy_expectation(&self, state: &[Complex64], problem: &IsingModel) -> f64 {
         let num_qubits = problem.num_qubits;
         let state_size = 1 << num_qubits;
         let mut expectation = 0.0;
-        
+
         for basis_state in 0..state_size {
             let probability = state[basis_state].norm_sqr();
-            if probability < 1e-12 { continue; }
-            
+            if probability < 1e-12 {
+                continue;
+            }
+
             let mut energy = 0.0;
-            
+
             // Add bias terms
             for i in 0..num_qubits {
-                let spin = if (basis_state >> i) & 1 == 0 { -1.0 } else { 1.0 };
+                let spin = if (basis_state >> i) & 1 == 0 {
+                    -1.0
+                } else {
+                    1.0
+                };
                 if let Ok(bias) = problem.get_bias(i) {
                     energy += bias * spin;
                 }
             }
-            
+
             // Add coupling terms
             for i in 0..num_qubits {
                 for j in (i + 1)..num_qubits {
                     if let Ok(coupling) = problem.get_coupling(i, j) {
                         if coupling.abs() > 1e-10 {
-                            let spin_i = if (basis_state >> i) & 1 == 0 { -1.0 } else { 1.0 };
-                            let spin_j = if (basis_state >> j) & 1 == 0 { -1.0 } else { 1.0 };
+                            let spin_i = if (basis_state >> i) & 1 == 0 {
+                                -1.0
+                            } else {
+                                1.0
+                            };
+                            let spin_j = if (basis_state >> j) & 1 == 0 {
+                                -1.0
+                            } else {
+                                1.0
+                            };
                             energy += coupling * spin_i * spin_j;
                         }
                     }
                 }
             }
-            
+
             expectation += probability * energy;
         }
-        
+
         expectation
     }
 
@@ -961,56 +1002,67 @@ impl InfiniteDepthQAOA {
         // Simple correlation approximation
         exp1 * exp2 * 0.8 // Reduce correlation strength
     }
-    
+
     /// Improved single qubit expectation value estimation
-    fn estimate_qubit_expectation_improved(&self, qubit: usize, params: &[f64], depth: usize) -> f64 {
+    fn estimate_qubit_expectation_improved(
+        &self,
+        qubit: usize,
+        params: &[f64],
+        depth: usize,
+    ) -> f64 {
         // Enhanced expectation value estimation using QAOA theory
         let mut expectation = 0.0;
         let mut state_prob_up = 0.5; // Start in equal superposition
-        
+
         for layer in 0..depth {
             let gamma = params[2 * layer];
             let beta = params[2 * layer + 1];
-            
+
             // Apply problem Hamiltonian effect (simplified single-qubit approximation)
             // This would depend on the local field and neighborhood
             let local_field = 0.0; // Would calculate from bias and neighbor coupling effects
             state_prob_up = 0.5 + 0.5 * (2.0 * state_prob_up - 1.0) * (gamma * local_field).cos();
-            
+
             // Apply mixer Hamiltonian effect (X rotation)
             let x_expectation = 2.0 * state_prob_up - 1.0; // Convert to [-1, 1]
             let z_expectation = (beta * x_expectation).cos();
             state_prob_up = 0.5 + 0.5 * z_expectation;
         }
-        
+
         expectation = 2.0 * state_prob_up - 1.0; // Convert to Z expectation in [-1, 1]
         expectation.tanh() // Ensure bounded
     }
-    
+
     /// Improved two-qubit coupling expectation value estimation
-    fn estimate_coupling_expectation_improved(&self, qubit1: usize, qubit2: usize, params: &[f64], depth: usize) -> f64 {
+    fn estimate_coupling_expectation_improved(
+        &self,
+        qubit1: usize,
+        qubit2: usize,
+        params: &[f64],
+        depth: usize,
+    ) -> f64 {
         // Enhanced two-qubit expectation using correlation functions
         let exp1 = self.estimate_qubit_expectation_improved(qubit1, params, depth);
         let exp2 = self.estimate_qubit_expectation_improved(qubit2, params, depth);
-        
+
         // Calculate correlation based on QAOA dynamics
         let mut correlation_factor = 1.0;
-        
+
         for layer in 0..depth {
             let gamma = params[2 * layer];
             let beta = params[2 * layer + 1];
-            
+
             // Reduce correlation due to mixing
             correlation_factor *= (beta / 2.0).cos().powi(2);
-            
+
             // Problem Hamiltonian can increase or decrease correlation
             correlation_factor *= 1.0 - 0.1 * gamma.abs(); // Simple approximation
         }
-        
+
         // Return correlated expectation
         let independent_correlation = exp1 * exp2;
         let qaoa_correlation = correlation_factor.max(0.1).min(1.0);
-        
+
         independent_correlation * qaoa_correlation
     }
 

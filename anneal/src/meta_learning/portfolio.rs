@@ -3,15 +3,16 @@
 //! This module contains all Algorithm Portfolio Management types and implementations
 //! used by the meta-learning optimization system.
 
-use std::collections::{HashMap, VecDeque};
-use std::time::{Duration, Instant};
-use crate::applications::ApplicationResult;
 use super::config::{
-    AlgorithmSelectionStrategy, DiversityCriteria, DiversityMethod, AlgorithmType,
-    ArchitectureSpec, LayerSpec, LayerType, ConnectionPattern, OptimizationSettings,
-    OptimizerType, ActivationFunction, RegularizationConfig, ResourceAllocation, OptimizationConfiguration
+    ActivationFunction, AlgorithmSelectionStrategy, AlgorithmType, ArchitectureSpec,
+    ConnectionPattern, DiversityCriteria, DiversityMethod, LayerSpec, LayerType,
+    OptimizationConfiguration, OptimizationSettings, OptimizerType, RegularizationConfig,
+    ResourceAllocation,
 };
 use super::features::ProblemFeatures;
+use crate::applications::ApplicationResult;
+use std::collections::{HashMap, VecDeque};
+use std::time::{Duration, Instant};
 
 /// Algorithm portfolio manager
 pub struct AlgorithmPortfolio {
@@ -41,8 +42,6 @@ pub struct Algorithm {
     /// Applicability conditions
     pub applicability: ApplicabilityConditions,
 }
-
-
 
 /// Portfolio composition
 #[derive(Debug, Clone)]
@@ -230,12 +229,17 @@ impl AlgorithmPortfolio {
         } else {
             "hybrid_approach"
         };
-        
+
         Ok(algorithm_id.to_string())
     }
 
     /// Update portfolio based on performance feedback
-    pub fn update_portfolio(&mut self, algorithm_id: &str, performance: f64, features: &ProblemFeatures) {
+    pub fn update_portfolio(
+        &mut self,
+        algorithm_id: &str,
+        performance: f64,
+        features: &ProblemFeatures,
+    ) {
         // Record performance
         let record = PerformanceRecord {
             timestamp: Instant::now(),
@@ -249,19 +253,19 @@ impl AlgorithmPortfolio {
             },
             context: HashMap::new(),
         };
-        
+
         self.performance_history
             .entry(algorithm_id.to_string())
             .or_insert_with(VecDeque::new)
             .push_back(record);
-        
+
         // Limit history size
         if let Some(history) = self.performance_history.get_mut(algorithm_id) {
             if history.len() > 1000 {
                 history.pop_front();
             }
         }
-        
+
         // Update composition weights based on performance
         self.update_composition_weights();
     }
@@ -270,14 +274,16 @@ impl AlgorithmPortfolio {
     fn update_composition_weights(&mut self) {
         for (algorithm_id, history) in &self.performance_history {
             if !history.is_empty() {
-                let avg_performance: f64 = history.iter()
-                    .map(|record| record.performance)
-                    .sum::<f64>() / history.len() as f64;
-                
-                self.composition.weights.insert(algorithm_id.clone(), avg_performance);
+                let avg_performance: f64 =
+                    history.iter().map(|record| record.performance).sum::<f64>()
+                        / history.len() as f64;
+
+                self.composition
+                    .weights
+                    .insert(algorithm_id.clone(), avg_performance);
             }
         }
-        
+
         // Normalize weights
         let total_weight: f64 = self.composition.weights.values().sum();
         if total_weight > 0.0 {
@@ -285,7 +291,7 @@ impl AlgorithmPortfolio {
                 *weight /= total_weight;
             }
         }
-        
+
         self.composition.last_update = Instant::now();
     }
 
@@ -294,12 +300,16 @@ impl AlgorithmPortfolio {
         let total_algorithms = self.algorithms.len();
         let active_algorithms = self.composition.weights.len();
         let avg_performance = if !self.performance_history.is_empty() {
-            let total_records: usize = self.performance_history.values()
+            let total_records: usize = self
+                .performance_history
+                .values()
                 .map(|history| history.len())
                 .sum();
-            
+
             if total_records > 0 {
-                let total_performance: f64 = self.performance_history.values()
+                let total_performance: f64 = self
+                    .performance_history
+                    .values()
                     .flat_map(|history| history.iter())
                     .map(|record| record.performance)
                     .sum();
@@ -310,7 +320,7 @@ impl AlgorithmPortfolio {
         } else {
             0.0
         };
-        
+
         PortfolioStatistics {
             total_algorithms,
             active_algorithms,
@@ -345,7 +355,7 @@ mod tests {
     fn test_portfolio_creation() {
         let config = PortfolioManagementConfig::default();
         let portfolio = AlgorithmPortfolio::new(config);
-        
+
         assert_eq!(portfolio.algorithms.len(), 0);
         assert!(portfolio.composition.quality_score > 0.0);
     }
@@ -354,7 +364,7 @@ mod tests {
     fn test_algorithm_selection() {
         let config = PortfolioManagementConfig::default();
         let portfolio = AlgorithmPortfolio::new(config);
-        
+
         let features = ProblemFeatures {
             size: 50,
             density: 0.3,
@@ -363,7 +373,7 @@ mod tests {
             spectral_features: crate::meta_learning::features::SpectralFeatures::default(),
             domain_features: HashMap::new(),
         };
-        
+
         let algorithm_id = portfolio.select_algorithm(&features);
         assert!(algorithm_id.is_ok());
         assert!(!algorithm_id.unwrap().is_empty());
@@ -373,7 +383,7 @@ mod tests {
     fn test_portfolio_update() {
         let config = PortfolioManagementConfig::default();
         let mut portfolio = AlgorithmPortfolio::new(config);
-        
+
         let features = ProblemFeatures {
             size: 100,
             density: 0.5,
@@ -382,9 +392,9 @@ mod tests {
             spectral_features: crate::meta_learning::features::SpectralFeatures::default(),
             domain_features: HashMap::new(),
         };
-        
+
         portfolio.update_portfolio("test_algorithm", 0.9, &features);
-        
+
         assert!(portfolio.performance_history.contains_key("test_algorithm"));
         assert_eq!(portfolio.performance_history["test_algorithm"].len(), 1);
     }
@@ -393,7 +403,7 @@ mod tests {
     fn test_portfolio_statistics() {
         let config = PortfolioManagementConfig::default();
         let portfolio = AlgorithmPortfolio::new(config);
-        
+
         let stats = portfolio.get_statistics();
         assert_eq!(stats.total_algorithms, 0);
         assert_eq!(stats.active_algorithms, 0);

@@ -571,6 +571,41 @@ impl HardwareTopology {
         topo
     }
 
+    /// Get the number of qubits
+    pub fn num_qubits(&self) -> usize {
+        self.num_qubits
+    }
+
+    /// Get all connected pairs of qubits
+    pub fn connectivity(&self) -> Vec<(usize, usize)> {
+        let mut connections = Vec::new();
+        for edge in self.connectivity.edge_indices() {
+            if let Some((a, b)) = self.connectivity.edge_endpoints(edge) {
+                let q1 = self.connectivity[a] as usize;
+                let q2 = self.connectivity[b] as usize;
+                connections.push((q1, q2));
+            }
+        }
+        connections
+    }
+
+    /// Check if two qubits are connected
+    pub fn are_connected(&self, q1: usize, q2: usize) -> bool {
+        // Find node indices for these qubits
+        let node1 = self.connectivity
+            .node_indices()
+            .find(|&n| self.connectivity[n] == q1 as u32);
+        let node2 = self.connectivity
+            .node_indices()
+            .find(|&n| self.connectivity[n] == q2 as u32);
+
+        if let (Some(n1), Some(n2)) = (node1, node2) {
+            self.connectivity.contains_edge(n1, n2)
+        } else {
+            false
+        }
+    }
+
     /// Simple connectivity analysis
     pub fn analyze_connectivity(&self) -> ConnectivityAnalysis {
         let num_edges = self.connectivity.edge_count();

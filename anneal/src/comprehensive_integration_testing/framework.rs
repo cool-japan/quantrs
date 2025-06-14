@@ -4,11 +4,11 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 
 use super::config::IntegrationTestConfig;
-use super::scenarios::{TestRegistry, IntegrationTestCase};
 use super::execution::TestExecutionEngine;
-use super::results::TestResultStorage;
 use super::monitoring::TestPerformanceMonitor;
 use super::reporting::TestReportGenerator;
+use super::results::TestResultStorage;
+use super::scenarios::{IntegrationTestCase, TestRegistry};
 
 /// Main comprehensive integration testing framework
 pub struct ComprehensiveIntegrationTesting {
@@ -35,31 +35,40 @@ impl ComprehensiveIntegrationTesting {
             config: config.clone(),
             test_registry: Arc::new(RwLock::new(TestRegistry::new())),
             execution_engine: Arc::new(Mutex::new(TestExecutionEngine::new())),
-            result_storage: Arc::new(Mutex::new(TestResultStorage::new(config.storage_config.clone()))),
+            result_storage: Arc::new(Mutex::new(TestResultStorage::new(
+                config.storage_config.clone(),
+            ))),
             performance_monitor: Arc::new(Mutex::new(TestPerformanceMonitor::new())),
             report_generator: Arc::new(Mutex::new(TestReportGenerator::new())),
-            environment_manager: Arc::new(Mutex::new(TestEnvironmentManager::new(config.environment_config.clone()))),
+            environment_manager: Arc::new(Mutex::new(TestEnvironmentManager::new(
+                config.environment_config.clone(),
+            ))),
         }
     }
-    
+
     /// Register a test case
     pub fn register_test_case(&self, test_case: IntegrationTestCase) -> Result<(), String> {
         let mut registry = self.test_registry.write().unwrap();
         registry.register_test_case(test_case)
     }
-    
+
     /// Execute all registered tests
-    pub async fn execute_all_tests(&self) -> Result<Vec<super::results::IntegrationTestResult>, String> {
+    pub async fn execute_all_tests(
+        &self,
+    ) -> Result<Vec<super::results::IntegrationTestResult>, String> {
         // TODO: Implement comprehensive test execution
         Err("Not yet implemented".to_string())
     }
-    
+
     /// Execute a specific test suite
-    pub async fn execute_test_suite(&self, suite_name: &str) -> Result<super::results::IntegrationTestResult, String> {
+    pub async fn execute_test_suite(
+        &self,
+        suite_name: &str,
+    ) -> Result<super::results::IntegrationTestResult, String> {
         // TODO: Implement test suite execution
         Err("Not yet implemented".to_string())
     }
-    
+
     /// Generate comprehensive test report
     pub fn generate_report(&self) -> Result<String, String> {
         // TODO: Implement report generation
@@ -82,7 +91,7 @@ impl TestEnvironmentManager {
             active_environments: HashMap::new(),
         }
     }
-    
+
     // TODO: Implement environment management methods
 }
 

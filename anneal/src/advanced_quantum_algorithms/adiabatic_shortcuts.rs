@@ -409,27 +409,30 @@ impl AdiabaticShortcutsOptimizer {
     }
 
     /// Convert generic problem to Ising model with enhanced handling
-    fn convert_to_ising<P: 'static>(&self, problem: &P) -> Result<IsingModel, AdvancedQuantumError> {
+    fn convert_to_ising<P: 'static>(
+        &self,
+        problem: &P,
+    ) -> Result<IsingModel, AdvancedQuantumError> {
         use std::any::Any;
-        
+
         // Check if it's already an Ising model
         if let Some(ising) = (problem as &dyn Any).downcast_ref::<IsingModel>() {
             return Ok(ising.clone());
         }
-        
+
         // Check if it's a reference to Ising model
         if let Some(ising_ref) = (problem as &dyn Any).downcast_ref::<&IsingModel>() {
             return Ok((*ising_ref).clone());
         }
-        
+
         // For other problem types, generate a structured problem for testing
         let num_qubits = self.estimate_problem_size(problem);
         let mut ising = IsingModel::new(num_qubits);
-        
+
         // Generate problem structure based on shortcut method requirements
         let problem_hash = self.hash_problem(problem);
         let mut rng = ChaCha8Rng::seed_from_u64(problem_hash);
-        
+
         // Create structured problem suitable for adiabatic shortcuts
         match self.config.shortcut_method {
             ShortcutMethod::ShortcutsToAdiabaticity => {
@@ -445,93 +448,119 @@ impl AdiabaticShortcutsOptimizer {
                 self.generate_default_problem(&mut ising, &mut rng)?
             }
         }
-        
+
         Ok(ising)
     }
-    
+
     /// Generate smooth energy landscape for STA
-    fn generate_smooth_landscape(&self, ising: &mut IsingModel, rng: &mut ChaCha8Rng) -> Result<(), AdvancedQuantumError> {
+    fn generate_smooth_landscape(
+        &self,
+        ising: &mut IsingModel,
+        rng: &mut ChaCha8Rng,
+    ) -> Result<(), AdvancedQuantumError> {
         let num_qubits = ising.num_qubits;
-        
+
         // Add smooth bias pattern
         for i in 0..num_qubits {
             let bias = 0.5 * (2.0 * std::f64::consts::PI * i as f64 / num_qubits as f64).sin();
-            ising.set_bias(i, bias).map_err(AdvancedQuantumError::IsingError)?;
+            ising
+                .set_bias(i, bias)
+                .map_err(AdvancedQuantumError::IsingError)?;
         }
-        
+
         // Add nearest-neighbor couplings for smoothness
         for i in 0..(num_qubits - 1) {
             let coupling = -0.5 + 0.2 * rng.gen_range(-1.0..1.0);
-            ising.set_coupling(i, i + 1, coupling).map_err(AdvancedQuantumError::IsingError)?;
+            ising
+                .set_coupling(i, i + 1, coupling)
+                .map_err(AdvancedQuantumError::IsingError)?;
         }
-        
+
         // Add some long-range couplings
         for _ in 0..(num_qubits / 4) {
             let i = rng.gen_range(0..num_qubits);
             let j = rng.gen_range(0..num_qubits);
             if i != j {
                 let coupling = 0.1 * rng.gen_range(-1.0..1.0);
-                ising.set_coupling(i, j, coupling).map_err(AdvancedQuantumError::IsingError)?;
+                ising
+                    .set_coupling(i, j, coupling)
+                    .map_err(AdvancedQuantumError::IsingError)?;
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Generate problem with known gap structure
-    fn generate_gap_structured_problem(&self, ising: &mut IsingModel, rng: &mut ChaCha8Rng) -> Result<(), AdvancedQuantumError> {
+    fn generate_gap_structured_problem(
+        &self,
+        ising: &mut IsingModel,
+        rng: &mut ChaCha8Rng,
+    ) -> Result<(), AdvancedQuantumError> {
         let num_qubits = ising.num_qubits;
-        
+
         // Create problem with predictable gap behavior
         for i in 0..num_qubits {
             let bias = if i % 2 == 0 { 0.8 } else { -0.8 };
-            ising.set_bias(i, bias).map_err(AdvancedQuantumError::IsingError)?;
+            ising
+                .set_bias(i, bias)
+                .map_err(AdvancedQuantumError::IsingError)?;
         }
-        
+
         // Add frustrated couplings to create interesting gap behavior
         for i in 0..num_qubits {
             for j in (i + 1)..num_qubits {
                 if (i + j) % 3 == 0 {
                     let coupling = 0.3 * if rng.gen_bool(0.5) { 1.0 } else { -1.0 };
-                    ising.set_coupling(i, j, coupling).map_err(AdvancedQuantumError::IsingError)?;
+                    ising
+                        .set_coupling(i, j, coupling)
+                        .map_err(AdvancedQuantumError::IsingError)?;
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Generate default structured problem
-    fn generate_default_problem(&self, ising: &mut IsingModel, rng: &mut ChaCha8Rng) -> Result<(), AdvancedQuantumError> {
+    fn generate_default_problem(
+        &self,
+        ising: &mut IsingModel,
+        rng: &mut ChaCha8Rng,
+    ) -> Result<(), AdvancedQuantumError> {
         let num_qubits = ising.num_qubits;
-        
+
         // Add random biases
         for i in 0..num_qubits {
             let bias = rng.gen_range(-1.0..1.0);
-            ising.set_bias(i, bias).map_err(AdvancedQuantumError::IsingError)?;
+            ising
+                .set_bias(i, bias)
+                .map_err(AdvancedQuantumError::IsingError)?;
         }
-        
+
         // Add sparse random couplings
         let coupling_probability = 0.3;
         for i in 0..num_qubits {
             for j in (i + 1)..num_qubits {
                 if rng.gen::<f64>() < coupling_probability {
                     let coupling = rng.gen_range(-1.0..1.0);
-                    ising.set_coupling(i, j, coupling).map_err(AdvancedQuantumError::IsingError)?;
+                    ising
+                        .set_coupling(i, j, coupling)
+                        .map_err(AdvancedQuantumError::IsingError)?;
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Estimate problem size from generic type
     fn estimate_problem_size<P>(&self, _problem: &P) -> usize {
         // In practice, would extract size from problem structure
         // Use reasonable size for adiabatic shortcuts (not too large for exact simulation)
         12
     }
-    
+
     /// Generate hash for problem to ensure consistent conversion
     fn hash_problem<P>(&self, _problem: &P) -> u64 {
         // In practice, would hash problem structure

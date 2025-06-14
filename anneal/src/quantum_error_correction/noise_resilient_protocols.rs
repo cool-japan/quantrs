@@ -13,17 +13,17 @@
 //! - Multi-level error correction integration
 
 use ndarray::{Array1, Array2};
-use std::collections::HashMap;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
+use std::collections::HashMap;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use crate::ising::{IsingModel};
-use crate::simulator::{AnnealingParams};
 use super::config::{QECResult, QuantumErrorCorrectionError};
-use super::syndrome_detection::{SyndromeDetector, SyndromeDetectorConfig, SyndromeResult};
-use super::logical_encoding::{LogicalAnnealingEncoder, LogicalEncodingResult};
 use super::error_mitigation::AnnealingResult;
+use super::logical_encoding::{LogicalAnnealingEncoder, LogicalEncodingResult};
+use super::syndrome_detection::{SyndromeDetector, SyndromeDetectorConfig, SyndromeResult};
+use crate::ising::IsingModel;
+use crate::simulator::AnnealingParams;
 
 /// Noise-resilient annealing protocol manager
 #[derive(Debug, Clone)]
@@ -88,7 +88,7 @@ impl Default for SystemNoiseModel {
     fn default() -> Self {
         Self {
             t1_coherence_time: Array1::from_elem(4, 100.0), // 100 microseconds
-            t2_dephasing_time: Array1::from_elem(4, 50.0),  // 50 microseconds  
+            t2_dephasing_time: Array1::from_elem(4, 50.0),  // 50 microseconds
             gate_error_rates: {
                 let mut rates = HashMap::new();
                 rates.insert(GateType::SingleQubit, 0.001);
@@ -593,16 +593,14 @@ impl NoiseResilientAnnealingProtocol {
 
         for attempt in 0..self.config.max_adaptation_steps + 1 {
             // Run annealing attempt
-            let attempt_result = self.run_annealing_attempt(
-                problem,
-                &current_params,
-                &protocol,
-            )?;
+            let attempt_result = self.run_annealing_attempt(problem, &current_params, &protocol)?;
 
             // Check for errors and adaptation triggers
             let error_rate = self.estimate_current_error_rate(&attempt_result)?;
-            
-            if error_rate <= self.config.error_threshold || attempt == self.config.max_adaptation_steps {
+
+            if error_rate <= self.config.error_threshold
+                || attempt == self.config.max_adaptation_steps
+            {
                 // Accept result
                 annealing_result = Some(attempt_result);
                 break;
@@ -610,12 +608,8 @@ impl NoiseResilientAnnealingProtocol {
 
             // Adapt parameters
             if self.config.enable_adaptive_scheduling {
-                let adaptation_event = self.adapt_parameters(
-                    &mut current_params,
-                    &protocol,
-                    error_rate,
-                    attempt,
-                )?;
+                let adaptation_event =
+                    self.adapt_parameters(&mut current_params, &protocol, error_rate, attempt)?;
                 adaptation_history.push(adaptation_event);
             } else {
                 // No adaptation enabled, accept result
@@ -626,15 +620,18 @@ impl NoiseResilientAnnealingProtocol {
 
         let base_result = annealing_result.ok_or_else(|| {
             QuantumErrorCorrectionError::ThresholdError(
-                "Failed to achieve acceptable error rate after maximum adaptation attempts".to_string()
+                "Failed to achieve acceptable error rate after maximum adaptation attempts"
+                    .to_string(),
             )
         })?;
 
         // Calculate final performance metrics
-        let performance_metrics = self.calculate_performance_metrics(&base_result, &adaptation_history)?;
+        let performance_metrics =
+            self.calculate_performance_metrics(&base_result, &adaptation_history)?;
 
         // Calculate demonstrated noise resilience
-        let demonstrated_resilience = self.calculate_demonstrated_resilience(&error_events, &adaptation_history)?;
+        let demonstrated_resilience =
+            self.calculate_demonstrated_resilience(&error_events, &adaptation_history)?;
 
         // Update performance history
         self.update_performance_history(&performance_metrics, &protocol)?;
@@ -650,7 +647,10 @@ impl NoiseResilientAnnealingProtocol {
     }
 
     /// Encode problem with error correction
-    pub fn encode_problem(&self, problem: &crate::ising::QuboModel) -> QECResult<crate::ising::QuboModel> {
+    pub fn encode_problem(
+        &self,
+        problem: &crate::ising::QuboModel,
+    ) -> QECResult<crate::ising::QuboModel> {
         // For now, return a copy of the original problem
         // TODO: Implement actual error correction encoding
         Ok(crate::ising::QuboModel::new(problem.num_variables))
@@ -659,24 +659,19 @@ impl NoiseResilientAnnealingProtocol {
     /// Select optimal protocol for current conditions
     fn select_optimal_protocol(&self, problem: &IsingModel) -> QECResult<AnnealingProtocol> {
         match self.protocol_selector.selection_strategy {
-            ProtocolSelectionStrategy::NoiseAdaptive => {
-                self.select_noise_adaptive_protocol()
-            }
+            ProtocolSelectionStrategy::NoiseAdaptive => self.select_noise_adaptive_protocol(),
             ProtocolSelectionStrategy::ProblemAdaptive => {
                 self.select_problem_adaptive_protocol(problem)
             }
-            ProtocolSelectionStrategy::HistoryBased => {
-                self.select_history_based_protocol()
-            }
+            ProtocolSelectionStrategy::HistoryBased => self.select_history_based_protocol(),
             _ => {
                 // Default to first available protocol
-                self.protocol_selector.available_protocols
+                self.protocol_selector
+                    .available_protocols
                     .first()
                     .cloned()
                     .ok_or_else(|| {
-                        QuantumErrorCorrectionError::CodeError(
-                            "No protocols available".to_string()
-                        )
+                        QuantumErrorCorrectionError::CodeError("No protocols available".to_string())
                     })
             }
         }
@@ -705,13 +700,16 @@ impl NoiseResilientAnnealingProtocol {
 
         best_protocol.ok_or_else(|| {
             QuantumErrorCorrectionError::CodeError(
-                "No suitable protocol found for current noise conditions".to_string()
+                "No suitable protocol found for current noise conditions".to_string(),
             )
         })
     }
 
     /// Select protocol based on problem characteristics
-    fn select_problem_adaptive_protocol(&self, problem: &IsingModel) -> QECResult<AnnealingProtocol> {
+    fn select_problem_adaptive_protocol(
+        &self,
+        problem: &IsingModel,
+    ) -> QECResult<AnnealingProtocol> {
         let problem_density = self.calculate_problem_density(problem);
         let problem_frustration = self.calculate_problem_frustration(problem);
 
@@ -738,13 +736,12 @@ impl NoiseResilientAnnealingProtocol {
         }
 
         // Default to first protocol if no specific match
-        self.protocol_selector.available_protocols
+        self.protocol_selector
+            .available_protocols
             .first()
             .cloned()
             .ok_or_else(|| {
-                QuantumErrorCorrectionError::CodeError(
-                    "No protocols available".to_string()
-                )
+                QuantumErrorCorrectionError::CodeError("No protocols available".to_string())
             })
     }
 
@@ -754,7 +751,11 @@ impl NoiseResilientAnnealingProtocol {
         let mut best_performance = 0.0;
 
         for protocol in &self.protocol_selector.available_protocols {
-            if let Some(performance) = self.protocol_selector.performance_history.get(&protocol.name) {
+            if let Some(performance) = self
+                .protocol_selector
+                .performance_history
+                .get(&protocol.name)
+            {
                 let score = performance.success_rate * performance.resource_efficiency;
                 if score > best_performance {
                     best_performance = score;
@@ -763,14 +764,14 @@ impl NoiseResilientAnnealingProtocol {
             }
         }
 
-        best_protocol.or_else(|| {
-            // If no history, use first protocol
-            self.protocol_selector.available_protocols.first().cloned()
-        }).ok_or_else(|| {
-            QuantumErrorCorrectionError::CodeError(
-                "No protocols available".to_string()
-            )
-        })
+        best_protocol
+            .or_else(|| {
+                // If no history, use first protocol
+                self.protocol_selector.available_protocols.first().cloned()
+            })
+            .ok_or_else(|| {
+                QuantumErrorCorrectionError::CodeError("No protocols available".to_string())
+            })
     }
 
     /// Run single annealing attempt
@@ -782,7 +783,7 @@ impl NoiseResilientAnnealingProtocol {
     ) -> QECResult<AnnealingResult> {
         // Simulate annealing with noise effects
         let mut rng = ChaCha8Rng::from_rng(&mut rand::thread_rng());
-        
+
         // Apply protocol-specific modifications to parameters
         let modified_params = self.apply_protocol_modifications(params, protocol)?;
 
@@ -876,9 +877,9 @@ impl NoiseResilientAnnealingProtocol {
 
         // Add coupling terms
         for i in 0..state.len() {
-            for j in (i+1)..state.len() {
-                energy += problem.get_coupling(i, j).unwrap_or(0.0) 
-                    * state[i] as f64 * state[j] as f64;
+            for j in (i + 1)..state.len() {
+                energy +=
+                    problem.get_coupling(i, j).unwrap_or(0.0) * state[i] as f64 * state[j] as f64;
             }
         }
 
@@ -899,7 +900,7 @@ impl NoiseResilientAnnealingProtocol {
     fn estimate_thermal_noise_probability(&self) -> f64 {
         let thermal_energy = 8.617e-5 * self.noise_model.thermal_temperature; // kT in eV
         let interaction_energy = 1e-6; // Typical interaction energy scale
-        
+
         if thermal_energy > 0.0 {
             (thermal_energy / interaction_energy).min(0.1) // Cap at 10%
         } else {
@@ -916,7 +917,8 @@ impl NoiseResilientAnnealingProtocol {
         // Estimate errors based on result quality and noise model
         let estimated_error_rate = self.estimate_result_error_rate(result);
 
-        if estimated_error_rate > 0.01 { // Threshold for significant errors
+        if estimated_error_rate > 0.01 {
+            // Threshold for significant errors
             let error_event = ErrorEvent {
                 timestamp: SystemTime::now(),
                 error_type: ErrorEventType::DecoherenceEvent,
@@ -945,7 +947,7 @@ impl NoiseResilientAnnealingProtocol {
         if result.energy < -0.5 {
             0.01 // Low error rate for good solution
         } else {
-            0.5  // High error rate for poor solution
+            0.5 // High error rate for poor solution
         }
     }
 
@@ -971,9 +973,7 @@ impl NoiseResilientAnnealingProtocol {
             AdaptationAlgorithm::ThresholdBased => {
                 self.apply_threshold_based_adaptation(params, error_rate, attempt)
             }
-            AdaptationAlgorithm::Gradient => {
-                self.apply_gradient_adaptation(params, error_rate)
-            }
+            AdaptationAlgorithm::Gradient => self.apply_gradient_adaptation(params, error_rate),
             _ => {
                 // Default simple adaptation
                 self.apply_simple_adaptation(params, error_rate)
@@ -1000,12 +1000,12 @@ impl NoiseResilientAnnealingProtocol {
             // Increase annealing time to reduce errors
             let time_factor = 1.0 + 0.5 * attempt as f64;
             let time_factor = time_factor.min(self.config.max_annealing_time_factor);
-            
+
             // Modify parameters (simplified)
             params.initial_temperature *= 0.9; // Lower temperature
             params.final_temperature *= 0.9;
             // Would modify actual annealing schedule in real implementation
-            
+
             true
         } else {
             false
@@ -1017,7 +1017,7 @@ impl NoiseResilientAnnealingProtocol {
         // Simplified gradient adaptation
         let learning_rate = self.adaptation_strategy.learning_rate;
         let error_gradient = error_rate - self.config.error_threshold;
-        
+
         if error_gradient > 0.0 {
             params.initial_temperature *= 1.0 - learning_rate * error_gradient;
             params.final_temperature *= 1.0 - learning_rate * error_gradient;
@@ -1045,10 +1045,13 @@ impl NoiseResilientAnnealingProtocol {
         adaptation_history: &[AdaptationEvent],
     ) -> QECResult<PerformanceMetrics> {
         let solution_fidelity = self.calculate_solution_fidelity(result)?;
-        let annealing_efficiency = self.calculate_annealing_efficiency(result, adaptation_history)?;
-        let error_suppression_factor = self.calculate_error_suppression_factor(adaptation_history)?;
+        let annealing_efficiency =
+            self.calculate_annealing_efficiency(result, adaptation_history)?;
+        let error_suppression_factor =
+            self.calculate_error_suppression_factor(adaptation_history)?;
         let protocol_stability = self.calculate_protocol_stability(adaptation_history)?;
-        let adaptation_effectiveness = self.calculate_adaptation_effectiveness(adaptation_history)?;
+        let adaptation_effectiveness =
+            self.calculate_adaptation_effectiveness(adaptation_history)?;
 
         Ok(PerformanceMetrics {
             solution_fidelity,
@@ -1065,7 +1068,7 @@ impl NoiseResilientAnnealingProtocol {
         if result.energy < -0.5 {
             Ok(0.95) // High fidelity for good solution
         } else {
-            Ok(0.5)  // Low fidelity for poor solution
+            Ok(0.5) // Low fidelity for poor solution
         }
     }
 
@@ -1079,17 +1082,21 @@ impl NoiseResilientAnnealingProtocol {
         let base_efficiency = 0.9;
         let adaptation_penalty = adaptation_history.len() as f64 * 0.1;
         let efficiency = (base_efficiency - adaptation_penalty).max(0.1);
-        
+
         Ok(efficiency)
     }
 
     /// Calculate error suppression factor
-    fn calculate_error_suppression_factor(&self, adaptation_history: &[AdaptationEvent]) -> QECResult<f64> {
+    fn calculate_error_suppression_factor(
+        &self,
+        adaptation_history: &[AdaptationEvent],
+    ) -> QECResult<f64> {
         if adaptation_history.is_empty() {
             Ok(1.0)
         } else {
             // Factor based on successful adaptations
-            let successful_adaptations = adaptation_history.iter()
+            let successful_adaptations = adaptation_history
+                .iter()
                 .filter(|event| event.success)
                 .count();
             let suppression_factor = 1.0 + (successful_adaptations as f64 * 0.5);
@@ -1098,7 +1105,10 @@ impl NoiseResilientAnnealingProtocol {
     }
 
     /// Calculate protocol stability
-    fn calculate_protocol_stability(&self, adaptation_history: &[AdaptationEvent]) -> QECResult<f64> {
+    fn calculate_protocol_stability(
+        &self,
+        adaptation_history: &[AdaptationEvent],
+    ) -> QECResult<f64> {
         if adaptation_history.is_empty() {
             Ok(1.0)
         } else {
@@ -1109,11 +1119,15 @@ impl NoiseResilientAnnealingProtocol {
     }
 
     /// Calculate adaptation effectiveness
-    fn calculate_adaptation_effectiveness(&self, adaptation_history: &[AdaptationEvent]) -> QECResult<f64> {
+    fn calculate_adaptation_effectiveness(
+        &self,
+        adaptation_history: &[AdaptationEvent],
+    ) -> QECResult<f64> {
         if adaptation_history.is_empty() {
             Ok(1.0)
         } else {
-            let successful_adaptations = adaptation_history.iter()
+            let successful_adaptations = adaptation_history
+                .iter()
                 .filter(|event| event.success)
                 .count();
             let effectiveness = successful_adaptations as f64 / adaptation_history.len() as f64;
@@ -1129,14 +1143,16 @@ impl NoiseResilientAnnealingProtocol {
     ) -> QECResult<f64> {
         let base_resilience = 0.5;
         let error_penalty = error_events.len() as f64 * 0.1;
-        let adaptation_bonus = adaptation_history.iter()
+        let adaptation_bonus = adaptation_history
+            .iter()
             .filter(|event| event.success)
-            .count() as f64 * 0.2;
-        
+            .count() as f64
+            * 0.2;
+
         let resilience = (base_resilience - error_penalty + adaptation_bonus)
             .max(0.0)
             .min(1.0);
-        
+
         Ok(resilience)
     }
 
@@ -1154,7 +1170,8 @@ impl NoiseResilientAnnealingProtocol {
             demonstrated_resilience: metrics.error_suppression_factor,
         };
 
-        self.protocol_selector.performance_history
+        self.protocol_selector
+            .performance_history
             .insert(protocol.name.clone(), performance);
 
         Ok(())
@@ -1166,22 +1183,26 @@ impl NoiseResilientAnnealingProtocol {
         let current_time = SystemTime::now();
 
         // Filter recent errors
-        let recent_errors: Vec<&ErrorEvent> = self.error_tracker.error_history
+        let recent_errors: Vec<&ErrorEvent> = self
+            .error_tracker
+            .error_history
             .iter()
             .filter(|event| {
-                current_time.duration_since(event.timestamp)
-                    .unwrap_or(Duration::from_secs(u64::MAX)) <= recent_window
+                current_time
+                    .duration_since(event.timestamp)
+                    .unwrap_or(Duration::from_secs(u64::MAX))
+                    <= recent_window
             })
             .collect();
 
         // Update statistics
         self.error_tracker.current_stats.total_errors = recent_errors.len();
-        self.error_tracker.current_stats.error_rate = 
+        self.error_tracker.current_stats.error_rate =
             recent_errors.len() as f64 / recent_window.as_secs_f64();
 
         // Calculate average magnitude
         if !recent_errors.is_empty() {
-            self.error_tracker.current_stats.average_magnitude = 
+            self.error_tracker.current_stats.average_magnitude =
                 recent_errors.iter().map(|e| e.magnitude).sum::<f64>() / recent_errors.len() as f64;
         }
 
@@ -1208,17 +1229,19 @@ impl NoiseResilientAnnealingProtocol {
         coherence_time: f64,
     ) -> f64 {
         // Score based on how well protocol handles current conditions
-        let error_score = if error_rate <= protocol.optimal_conditions.preferred_error_rate_range.1 {
+        let error_score = if error_rate <= protocol.optimal_conditions.preferred_error_rate_range.1
+        {
             1.0
         } else {
             0.5
         };
 
-        let coherence_score = if coherence_time >= protocol.optimal_conditions.optimal_coherence_time_range.0 {
-            1.0
-        } else {
-            0.5
-        };
+        let coherence_score =
+            if coherence_time >= protocol.optimal_conditions.optimal_coherence_time_range.0 {
+                1.0
+            } else {
+                0.5
+            };
 
         protocol.noise_resilience * (error_score + coherence_score) / 2.0
     }
@@ -1227,7 +1250,7 @@ impl NoiseResilientAnnealingProtocol {
         // Simplified density calculation
         let total_possible_edges = problem.num_qubits * (problem.num_qubits - 1) / 2;
         let actual_edges = 10; // Would count actual couplings in real implementation
-        
+
         if total_possible_edges > 0 {
             actual_edges as f64 / total_possible_edges as f64
         } else {
@@ -1294,7 +1317,7 @@ impl ProtocolSelector {
     /// Create new protocol selector
     pub fn new() -> QECResult<Self> {
         let available_protocols = Self::create_default_protocols();
-        
+
         Ok(Self {
             available_protocols,
             selection_strategy: ProtocolSelectionStrategy::NoiseAdaptive,

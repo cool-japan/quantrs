@@ -42,14 +42,15 @@
 // Export modules
 pub mod active_learning_decomposition;
 pub mod advanced_quantum_algorithms;
+pub mod advanced_testing_framework;
 pub mod applications;
 pub mod bayesian_hyperopt;
 pub mod braket;
 pub mod chain_break;
 pub mod climate_modeling_optimization;
 pub mod coherent_ising_machine;
-pub mod compression;
 pub mod comprehensive_integration_testing;
+pub mod compression;
 pub mod continuous_variable;
 pub mod csp_compiler;
 pub mod dsl;
@@ -88,8 +89,8 @@ pub mod realtime_adaptive_qec;
 pub mod realtime_hardware_monitoring;
 pub mod reverse_annealing;
 pub mod rl_embedding_optimizer;
-pub mod scirs2_integration;
 pub mod scientific_performance_optimization;
+pub mod scirs2_integration;
 pub mod simulator;
 pub mod solution_clustering;
 pub mod variational_quantum_annealing;
@@ -97,8 +98,9 @@ pub mod visualization;
 
 // Re-export key types for convenience
 pub use active_learning_decomposition::{
-    ActiveLearningConfig, ActiveLearningDecomposer, DecompositionMetadata, DecompositionResult,
-    DecompositionStrategy as ActiveDecompositionStrategy, ProblemAnalysis, Subproblem, BoundaryEdge, SubproblemMetadata,
+    ActiveLearningConfig, ActiveLearningDecomposer, BoundaryEdge, DecompositionMetadata,
+    DecompositionResult, DecompositionStrategy as ActiveDecompositionStrategy, ProblemAnalysis,
+    Subproblem, SubproblemMetadata,
 };
 pub use advanced_quantum_algorithms::{
     create_custom_infinite_qaoa, create_custom_zeno_annealer, create_infinite_qaoa_optimizer,
@@ -112,14 +114,15 @@ pub use advanced_quantum_algorithms::{
 };
 pub use applications::{
     create_benchmark_suite, energy, finance, generate_performance_report, healthcare, logistics,
-    manufacturing, telecommunications, transportation, validate_constraints, ApplicationError,
-    ApplicationResult, Benchmarkable, IndustryConstraint, IndustryObjective, IndustrySolution,
-    OptimizationProblem, ProblemCategory as ApplicationProblemCategory,
+    manufacturing,
     quantum_computational_chemistry::{
-        QuantumChemistryOptimizer, QuantumChemistryConfig, QuantumChemistryResult,
-        MolecularSystem, ElectronicStructureMethod, BasisSet, CatalysisOptimization,
-        create_example_molecular_systems,
+        create_example_molecular_systems, BasisSet, CatalysisOptimization,
+        ElectronicStructureMethod, MolecularSystem, QuantumChemistryConfig,
+        QuantumChemistryOptimizer, QuantumChemistryResult,
     },
+    telecommunications, transportation, validate_constraints, ApplicationError, ApplicationResult,
+    Benchmarkable, IndustryConstraint, IndustryObjective, IndustrySolution, OptimizationProblem,
+    ProblemCategory as ApplicationProblemCategory,
 };
 pub use bayesian_hyperopt::{
     create_annealing_parameter_space, create_bayesian_optimizer, create_custom_bayesian_optimizer,
@@ -130,12 +133,20 @@ pub use bayesian_hyperopt::{
 };
 pub use braket::{
     is_available as is_braket_available, AdvancedAnnealingParams, BatchTaskResult, BraketClient,
-    BraketDevice, BraketError, BraketResult, CostTracker as BraketCostTracker, DeviceSelector, DeviceStatus as BraketDeviceStatus, DeviceType,
-    TaskMetrics, TaskResult, TaskStatus,
+    BraketDevice, BraketError, BraketResult, CostTracker as BraketCostTracker, DeviceSelector,
+    DeviceStatus as BraketDeviceStatus, DeviceType, TaskMetrics, TaskResult, TaskStatus,
 };
 pub use chain_break::{
     ChainBreakResolver, ChainBreakStats, ChainStrengthOptimizer, HardwareSolution, LogicalProblem,
     ResolutionMethod, ResolvedSolution,
+};
+pub use climate_modeling_optimization::{
+    create_example_climate_optimizer, AtmosphericDynamicsOptimizer, AtmosphericTarget,
+    CarbonCycleOptimizer, ClimateModelingOptimizer, ClimateOptimizationConfig,
+    ClimateOptimizationResult, ClimateParameterSpace, ClimatePerformanceMetrics, ConvectionScheme,
+    CouplingMethod, EnergyBalanceOptimizer, GlobalClimateModel, LandSurfaceScheme,
+    OceanDynamicsOptimizer, OptimizationMethod, ParameterInfo, RadiationScheme,
+    UncertaintyEstimates, ValidationMetric, ValidationResults,
 };
 pub use coherent_ising_machine::{
     create_low_noise_cim_config, create_realistic_cim_config, create_standard_cim_config,
@@ -143,24 +154,17 @@ pub use coherent_ising_machine::{
     Complex, ConvergenceConfig, MeasurementConfig, NetworkTopology, NoiseConfig, OpticalCoupling,
     OpticalParametricOscillator, OpticalStatistics, PumpSchedule,
 };
-pub use climate_modeling_optimization::{
-    AtmosphericDynamicsOptimizer, AtmosphericTarget, CarbonCycleOptimizer, ClimateModelingOptimizer,
-    ClimateOptimizationConfig, ClimateOptimizationResult, ClimateParameterSpace, ClimatePerformanceMetrics,
-    ConvectionScheme, CouplingMethod, EnergyBalanceOptimizer, GlobalClimateModel, LandSurfaceScheme,
-    OceanDynamicsOptimizer, OptimizationMethod, ParameterInfo, RadiationScheme, UncertaintyEstimates,
-    ValidationMetric, ValidationResults, create_example_climate_optimizer,
+pub use comprehensive_integration_testing::{
+    create_example_integration_testing, BenchmarkConfig, ComponentIntegrationResults,
+    ComprehensiveIntegrationTesting, EnvironmentRequirements, ExpectedOutcomes,
+    FaultInjectionConfig, IntegrationTestCase, IntegrationTestConfig, IntegrationTestResult,
+    IntegrationValidationResult, PerformanceTestResult, StressTestConfig, StressTestResult,
+    SystemIntegrationResults, TestCategory, TestExecutionSpec, TestMetadata, TestPriority,
+    TestRegistry, TestStorageConfig, ValidationStatus as TestValidationStatus,
 };
 pub use compression::{
     BlockDetector, CompressedQubo, CompressionStats, CooCompressor, ReductionMapping,
     VariableReducer,
-};
-pub use comprehensive_integration_testing::{
-    BenchmarkConfig, ComponentIntegrationResults, ComprehensiveIntegrationTesting,
-    IntegrationValidationResult, EnvironmentRequirements, ExpectedOutcomes, FaultInjectionConfig,
-    IntegrationTestCase, IntegrationTestConfig, IntegrationTestResult, PerformanceTestResult,
-    StressTestConfig, StressTestResult, SystemIntegrationResults, TestCategory, TestExecutionSpec,
-    TestMetadata, TestPriority, TestRegistry, TestStorageConfig, ValidationStatus as TestValidationStatus,
-    create_example_integration_testing,
 };
 pub use continuous_variable::{
     create_quadratic_problem, ContinuousAnnealingConfig, ContinuousConstraint,
@@ -199,8 +203,9 @@ pub use dwave::{
 };
 pub use embedding::{Embedding, HardwareGraph, HardwareTopology, MinorMiner};
 pub use enterprise_monitoring::{
-    create_example_enterprise_monitoring, EnterpriseMonitoringConfig, EnterpriseMonitoringDashboard,
-    EnterpriseMonitoringSystem, LogLevel, SecurityEvent, ServiceLevelObjective, ThreatLevel,
+    create_example_enterprise_monitoring, EnterpriseMonitoringConfig,
+    EnterpriseMonitoringDashboard, EnterpriseMonitoringSystem, LogLevel, SecurityEvent,
+    ServiceLevelObjective, ThreatLevel,
 };
 pub use flux_bias::{
     CalibrationData, FluxBiasConfig, FluxBiasOptimizer, FluxBiasResult, MLFluxBiasOptimizer,
@@ -218,17 +223,18 @@ pub use hardware_compilation::{
     PerformancePrediction, QubitAllocationStrategy, TopologyType,
 };
 pub use heterogeneous_hybrid_engine::{
-    ActiveExecution, ComputeResource, ConsensusAlgorithm, ConsensusResult, CostTracker as HybridCostTracker, 
-    ExecutionMetadata, ExecutionPlan, ExecutionStatus, ExecutionStrategy, GeographicConstraints,
-    HeterogeneousHybridEngine, HybridEngineConfig, HybridExecutionResult, HybridExecutionTask,
-    HybridFaultToleranceConfig, HybridMonitoringConfig, HybridPerformanceMonitor, 
-    HybridSystemMetrics, IndividualResult, LoadBalancingDecisions, OptimizationSettings,
-    PerformanceEntry, PerformanceRequirements, ProblemComplexity, QualityAssessmentMethod,
-    QualityAssessor, QualityMeasurement, QualityRequirements, ResourceAllocationStrategy,
-    ResourceAvailability, ResourceConnection, ResourceConstraints, ResourceCost,
-    ResourceMetrics, ResourcePerformance, ResourceRequirements, ResourceScheduler,
-    ResourceType, ResourceUtilization as HybridResourceUtilization, ResourceWorkload, ResultAggregationStrategy,
-    ResultAggregator, SchedulingDecision, TaskPriority, create_example_hybrid_engine,
+    create_example_hybrid_engine, ActiveExecution, ComputeResource, ConsensusAlgorithm,
+    ConsensusResult, CostTracker as HybridCostTracker, ExecutionMetadata, ExecutionPlan,
+    ExecutionStatus, ExecutionStrategy, GeographicConstraints, HeterogeneousHybridEngine,
+    HybridEngineConfig, HybridExecutionResult, HybridExecutionTask, HybridFaultToleranceConfig,
+    HybridMonitoringConfig, HybridPerformanceMonitor, HybridSystemMetrics, IndividualResult,
+    LoadBalancingDecisions, OptimizationSettings, PerformanceEntry, PerformanceRequirements,
+    ProblemComplexity, QualityAssessmentMethod, QualityAssessor, QualityMeasurement,
+    QualityRequirements, ResourceAllocationStrategy, ResourceAvailability, ResourceConnection,
+    ResourceConstraints, ResourceCost, ResourceMetrics, ResourcePerformance, ResourceRequirements,
+    ResourceScheduler, ResourceType, ResourceUtilization as HybridResourceUtilization,
+    ResourceWorkload, ResultAggregationStrategy, ResultAggregator, SchedulingDecision,
+    TaskPriority,
 };
 pub use hobo::{
     AuxiliaryVariable, ConstraintViolations, HigherOrderTerm, HoboAnalyzer, HoboProblem, HoboStats,
@@ -240,12 +246,13 @@ pub use hybrid_solvers::{
 pub use ising::{IsingError, IsingModel, IsingResult, QuboModel};
 pub use layout_embedding::{LayoutAwareEmbedder, LayoutConfig, LayoutStats, MultiLevelEmbedder};
 pub use multi_chip_embedding::{
-    ChipMetrics, ChipPerformance, ChipStatus, ChipWorkload, CommunicationChannel as ChipCommunicationChannel, 
-    CommunicationProtocol, ConnectionStatus, FaultToleranceConfig, LoadBalancer, 
-    LoadBalancingDecision, LoadBalancingStrategy, Message, MessageType as ChipMessageType, MonitoringConfig as ChipMonitoringConfig,
-    MultiChipConfig, MultiChipCoordinator, PerformanceMonitor, PerformanceSnapshot,
-    PerformanceThresholds, ProblemPartition, QuantumChip, RecoveryStrategy, 
-    ResourceUtilization as ChipResourceUtilization, SystemMetrics, WorkTransfer, create_example_multi_chip_system,
+    create_example_multi_chip_system, ChipMetrics, ChipPerformance, ChipStatus, ChipWorkload,
+    CommunicationChannel as ChipCommunicationChannel, CommunicationProtocol, ConnectionStatus,
+    FaultToleranceConfig, LoadBalancer, LoadBalancingDecision, LoadBalancingStrategy, Message,
+    MessageType as ChipMessageType, MonitoringConfig as ChipMonitoringConfig, MultiChipConfig,
+    MultiChipCoordinator, PerformanceMonitor, PerformanceSnapshot, PerformanceThresholds,
+    ProblemPartition, QuantumChip, RecoveryStrategy,
+    ResourceUtilization as ChipResourceUtilization, SystemMetrics, WorkTransfer,
 };
 pub use multi_objective::{
     MultiObjectiveError, MultiObjectiveFunction, MultiObjectiveOptimizer, MultiObjectiveResult,
@@ -253,8 +260,8 @@ pub use multi_objective::{
 };
 pub use neural_annealing_schedules::{
     ActivationFunction, AnnealingSchedule as NeuralAnnealingSchedule, AttentionMechanism,
-    DatabaseStatistics, DenseLayer, FeatureExtractor as NeuralFeatureExtractor, GenerationMethod, LearningRateSchedule,
-    NetworkArchitecture, NeuralAnnealingScheduler, NeuralSchedulerConfig,
+    DatabaseStatistics, DenseLayer, FeatureExtractor as NeuralFeatureExtractor, GenerationMethod,
+    LearningRateSchedule, NetworkArchitecture, NeuralAnnealingScheduler, NeuralSchedulerConfig,
     OptimizerType, PerformanceMetric, PerformanceRecord, PerformanceTarget, ProblemEncoderNetwork,
     ScheduleConstraints, ScheduleDatabase, ScheduleGenerationNetwork, TrainingConfig,
     TrainingManager, ValidationStatus as NeuralValidationStatus,
@@ -303,46 +310,22 @@ pub use qaoa_circuit_bridge::{
     CircuitCostEstimate, CircuitProblemRepresentation, EnhancedQaoaOptimizer, LinearTerm,
     OptimizationLevel, OptimizationMetrics, ParameterReference, QaoaCircuitBridge, QuadraticTerm,
 };
+pub use quantum_advantage_demonstration::{
+    create_example_advantage_demonstrator, AdvantageCertification, AdvantageConfig,
+    AdvantageDemonstrationResult, AdvantageMetric, BenchmarkSuite, CertificationLevel,
+    ClassicalAlgorithm, ClassicalBaselineOptimizer, ProblemCategory as AdvantageProblemCategory,
+    QuantumAdvantageDemonstrator, QuantumDevice, QuantumPerformanceAnalyzer,
+    QuantumPerformanceMetrics, ResultsDatabase, StatisticalAnalyzer,
+};
 pub use quantum_boltzmann_machine::{
     create_binary_rbm, create_gaussian_bernoulli_rbm, LayerConfig, QbmError, QbmInferenceResult,
     QbmResult, QbmTrainingConfig, QbmTrainingStats, QuantumRestrictedBoltzmannMachine,
     QuantumSamplingStats, TrainingSample, UnitType,
 };
 pub use quantum_error_correction::{
-    ErrorMitigationConfig, ErrorMitigationManager, MitigationResult, MitigationTechnique,
-    QECConfig, QuantumErrorCorrectionError, SyndromeDetector,
-    LogicalAnnealingEncoder, NoiseResilientAnnealingProtocol, ErrorCorrectionCode,
-};
-pub use realtime_adaptive_qec::{
-    AdaptationAction, AdaptationCondition, AdaptationDecision, AdaptationRule, AdaptiveProtocol,
-    AdaptiveProtocolManager, AdaptiveQecConfig, AdaptiveQecMetrics, AdaptiveResourceManager,
-    AdaptiveStrategyConfig, AnalysisAlgorithm, AnalysisType, CommunicationChannel as QecCommunicationChannel,
-    CommunicationStatistics, CoordinationAlgorithm, CoordinationStrategy, CorrectedProblem,
-    CorrectionConfig, CorrectionMetadata, CorrectionResult, DetectionAction, DetectionConfig,
-    DetectionMethod, ErrorCorrectionStrategy, ErrorInfo, FeatureConfig, FeatureDefinition,
-    FeatureExtractor as QecFeatureExtractor, FeatureNormalization, FeatureSelection, FeatureType, HierarchyConfig,
-    HierarchyCoordinator, HierarchyLevel, HierarchyMessage, HybridConfig, MLNoiseConfig,
-    MessagePayload, MessageType as QecMessageType, ModelEnsemble, NeuralArchitecture, NoiseAnalyzer,
-    NoiseAssessment, NoiseCharacteristics, NoiseDataPoint, NoiseMonitor, NoisePrediction,
-    NoisePredictionModel, NoisePredictionSystem, NoiseSensor, NoiseSeverity, NoiseType,
-    PredictionConfig, PredictionResult, RealTimeAdaptiveQec, ResourceAllocationStrategy as QecResourceAllocationStrategy,
-    ResourceConstraints as QecResourceConstraints, ResourceOptimizer, ResourceReallocation, SensorType, StrategyPerformance,
-    SwitchingCriteria, TrendDirection as QecTrendDirection, create_example_adaptive_qec,
-};
-pub use realtime_hardware_monitoring::{
-    AdaptationStatus, AdaptiveAction, AdaptiveActionType, AdaptiveCompiler, AdaptiveCompilerConfig,
-    Alert, AlertHandler, AlertLevel, AlertSystem, AlertThresholds, CalibrationData as MonitorCalibrationData, ChangeType,
-    CoherenceCharacteristics, DecoherenceSource, DeviceConnection, DeviceInfo, DevicePerformanceMetrics,
-    DeviceStatus as MonitorDeviceStatus, FailureDetectionConfig, FailurePrediction, FailureSeverity, FailureType,
-    MetricType, MonitoredDevice, MonitoringConfig as HardwareMonitoringConfig, MonitoringSnapshot, NoiseModel, NoiseProfile,
-    PredictiveFailureDetector, QuantumOperation, RealTimeHardwareMonitor, RealTimePerformanceOptimizer,
-    TrendDirection as MonitorTrendDirection, create_example_hardware_monitor,
-};
-pub use quantum_advantage_demonstration::{
-    AdvantageConfig, AdvantageMetric, AdvantageCertification, AdvantageDemonstrationResult,
-    BenchmarkSuite, CertificationLevel, ClassicalAlgorithm, ClassicalBaselineOptimizer,
-    ProblemCategory as AdvantageProblemCategory, QuantumAdvantageDemonstrator, QuantumDevice, QuantumPerformanceAnalyzer,
-    QuantumPerformanceMetrics, ResultsDatabase, StatisticalAnalyzer, create_example_advantage_demonstrator,
+    ErrorCorrectionCode, ErrorMitigationConfig, ErrorMitigationManager, LogicalAnnealingEncoder,
+    MitigationResult, MitigationTechnique, NoiseResilientAnnealingProtocol, QECConfig,
+    QuantumErrorCorrectionError, SyndromeDetector,
 };
 pub use quantum_machine_learning::{
     create_binary_classifier, create_quantum_svm, create_zz_feature_map, evaluate_qml_model,
@@ -362,6 +345,35 @@ pub use qubo_decomposition::{
     DecomposedSolution, DecompositionConfig, DecompositionError, DecompositionStats,
     DecompositionStrategy as QuboDecompositionStrategy, QuboDecomposer, SubProblem, SubSolution,
 };
+pub use realtime_adaptive_qec::{
+    create_example_adaptive_qec, AdaptationAction, AdaptationCondition, AdaptationDecision,
+    AdaptationRule, AdaptiveProtocol, AdaptiveProtocolManager, AdaptiveQecConfig,
+    AdaptiveQecMetrics, AdaptiveResourceManager, AdaptiveStrategyConfig, AnalysisAlgorithm,
+    AnalysisType, CommunicationChannel as QecCommunicationChannel, CommunicationStatistics,
+    CoordinationAlgorithm, CoordinationStrategy, CorrectedProblem, CorrectionConfig,
+    CorrectionMetadata, CorrectionResult, DetectionAction, DetectionConfig, DetectionMethod,
+    ErrorCorrectionStrategy, ErrorInfo, FeatureConfig, FeatureDefinition,
+    FeatureExtractor as QecFeatureExtractor, FeatureNormalization, FeatureSelection, FeatureType,
+    HierarchyConfig, HierarchyCoordinator, HierarchyLevel, HierarchyMessage, HybridConfig,
+    MLNoiseConfig, MessagePayload, MessageType as QecMessageType, ModelEnsemble,
+    NeuralArchitecture, NoiseAnalyzer, NoiseAssessment, NoiseCharacteristics, NoiseDataPoint,
+    NoiseMonitor, NoisePrediction, NoisePredictionModel, NoisePredictionSystem, NoiseSensor,
+    NoiseSeverity, NoiseType, PredictionConfig, PredictionResult, RealTimeAdaptiveQec,
+    ResourceAllocationStrategy as QecResourceAllocationStrategy,
+    ResourceConstraints as QecResourceConstraints, ResourceOptimizer, ResourceReallocation,
+    SensorType, StrategyPerformance, SwitchingCriteria, TrendDirection as QecTrendDirection,
+};
+pub use realtime_hardware_monitoring::{
+    create_example_hardware_monitor, AdaptationStatus, AdaptiveAction, AdaptiveActionType,
+    AdaptiveCompiler, AdaptiveCompilerConfig, Alert, AlertHandler, AlertLevel, AlertSystem,
+    AlertThresholds, CalibrationData as MonitorCalibrationData, ChangeType,
+    CoherenceCharacteristics, DecoherenceSource, DeviceConnection, DeviceInfo,
+    DevicePerformanceMetrics, DeviceStatus as MonitorDeviceStatus, FailureDetectionConfig,
+    FailurePrediction, FailureSeverity, FailureType, MetricType, MonitoredDevice,
+    MonitoringConfig as HardwareMonitoringConfig, MonitoringSnapshot, NoiseModel, NoiseProfile,
+    PredictiveFailureDetector, QuantumOperation, RealTimeHardwareMonitor,
+    RealTimePerformanceOptimizer, TrendDirection as MonitorTrendDirection,
+};
 pub use reverse_annealing::{
     ReverseAnnealingParams, ReverseAnnealingSchedule, ReverseAnnealingScheduleBuilder,
     ReverseAnnealingSimulator,
@@ -373,19 +385,21 @@ pub use rl_embedding_optimizer::{
     ObjectiveWeights, ProblemGraphFeatures, RLEmbeddingConfig, RLEmbeddingError,
     RLEmbeddingOptimizer, RLEmbeddingResult, RLPerformanceMetrics, RLTrainingStats,
 };
+pub use scientific_performance_optimization::{
+    create_example_performance_optimizer, AlgorithmOptimizationConfig, ApproximationConfig,
+    BottleneckAnalysis, CachingConfig, ComprehensivePerformanceReport, CompressionConfig,
+    DecompositionConfig as PerfDecompositionConfig, DistributedComputingConfig,
+    GPUAccelerationConfig, HierarchicalMemoryManager, LoadBalancingConfig,
+    MemoryOptimizationConfig, OptimizationCategory, OptimizationImpact,
+    OptimizationRecommendation as PerfOptimizationRecommendation, OptimizedDrugDiscoveryResult,
+    OptimizedMaterialsScienceResult, OptimizedProteinFoldingResult, ParallelProcessingConfig,
+    PerformanceOptimizationConfig, ProfilingConfig, ResourceUtilizationAnalysis,
+    ScientificPerformanceOptimizer, StreamingConfig, SystemPerformanceMetrics, ThreadPoolConfig,
+};
 pub use scirs2_integration::{
     EmbeddingDifficulty, GraphAnalysisResult, GraphMetrics, PlottingConfig, QualityAssessment,
-    QuboStatistics, SciRS2EnergyPlotter, SciRS2GraphAnalyzer, SciRS2QuboModel, SciRS2SolutionAnalyzer,
-    SolutionAnalysisResult, SolutionStatistics,
-};
-pub use scientific_performance_optimization::{
-    AlgorithmOptimizationConfig, ApproximationConfig, BottleneckAnalysis, CachingConfig,
-    CompressionConfig, ComprehensivePerformanceReport, DecompositionConfig as PerfDecompositionConfig, DistributedComputingConfig,
-    GPUAccelerationConfig, HierarchicalMemoryManager, LoadBalancingConfig, MemoryOptimizationConfig,
-    OptimizationCategory, OptimizationImpact, OptimizationRecommendation as PerfOptimizationRecommendation, OptimizedDrugDiscoveryResult,
-    OptimizedMaterialsScienceResult, OptimizedProteinFoldingResult, ParallelProcessingConfig,
-    PerformanceOptimizationConfig, ProfilingConfig, ResourceUtilizationAnalysis, ScientificPerformanceOptimizer,
-    StreamingConfig, SystemPerformanceMetrics, ThreadPoolConfig, create_example_performance_optimizer,
+    QuboStatistics, SciRS2EnergyPlotter, SciRS2GraphAnalyzer, SciRS2QuboModel,
+    SciRS2SolutionAnalyzer, SolutionAnalysisResult, SolutionStatistics,
 };
 pub use simulator::{
     AnnealingError, AnnealingParams, AnnealingResult, AnnealingSolution,
@@ -397,8 +411,8 @@ pub use solution_clustering::{
     create_comprehensive_clustering_config, find_representative_solution, AnalysisDepth,
     ClusteringAlgorithm, ClusteringConfig, ClusteringError, ClusteringResult, ClusteringResults,
     DimensionalityReduction, DistanceMetric, FeatureExtractionMethod, LandscapeAnalysis,
-    LinkageType, OptimizationRecommendation as ClusteringOptimizationRecommendation, SolutionCluster, SolutionClusteringAnalyzer,
-    SolutionPoint, StatisticalSummary,
+    LinkageType, OptimizationRecommendation as ClusteringOptimizationRecommendation,
+    SolutionCluster, SolutionClusteringAnalyzer, SolutionPoint, StatisticalSummary,
 };
 pub use variational_quantum_annealing::{
     create_adiabatic_vqa_config, create_hardware_efficient_vqa_config, create_qaoa_vqa_config,

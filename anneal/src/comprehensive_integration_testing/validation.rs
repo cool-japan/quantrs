@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use super::results::{IntegrationValidationResult, ValidationStatus};
 use super::scenarios::{IntegrationTestCase, ValidationMethod};
-use super::results::{ValidationStatus, IntegrationValidationResult};
 
 /// Integration verification system
 pub struct IntegrationVerification {
@@ -24,13 +24,16 @@ impl IntegrationVerification {
             statistics: VerificationStatistics::default(),
         }
     }
-    
+
     /// Verify integration test case
-    pub fn verify_test_case(&self, test_case: &IntegrationTestCase) -> Result<IntegrationValidationResult, String> {
+    pub fn verify_test_case(
+        &self,
+        test_case: &IntegrationTestCase,
+    ) -> Result<IntegrationValidationResult, String> {
         // TODO: Implement verification logic
         Err("Not yet implemented".to_string())
     }
-    
+
     // TODO: Implement other verification methods
 }
 
@@ -74,16 +77,9 @@ pub enum VerificationCondition {
         value: VerificationValue,
     },
     /// Range check
-    RangeCheck {
-        field: String,
-        min: f64,
-        max: f64,
-    },
+    RangeCheck { field: String, min: f64, max: f64 },
     /// Pattern match
-    PatternMatch {
-        field: String,
-        pattern: String,
-    },
+    PatternMatch { field: String, pattern: String },
     /// Custom condition
     Custom(String),
 }
@@ -229,12 +225,12 @@ impl ValidationExecutor {
             methods: HashMap::new(),
         }
     }
-    
+
     /// Execute validation
     pub fn execute(&self) -> Result<ValidationStatus, String> {
         // TODO: Implement validation execution
         Err("Not yet implemented".to_string())
     }
-    
+
     // TODO: Implement other execution methods
 }

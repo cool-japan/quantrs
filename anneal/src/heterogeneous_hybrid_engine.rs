@@ -23,10 +23,10 @@ use std::time::{Duration, Instant};
 use crate::applications::{ApplicationError, ApplicationResult};
 use crate::braket::{BraketClient, BraketDevice};
 use crate::dwave::DWaveClient;
-use crate::HardwareTopology;
 use crate::ising::{IsingModel, QuboModel};
-use crate::multi_chip_embedding::{MultiChipCoordinator, MultiChipConfig};
-use crate::simulator::{ClassicalAnnealingSimulator, AnnealingParams, AnnealingResult};
+use crate::multi_chip_embedding::{MultiChipConfig, MultiChipCoordinator};
+use crate::simulator::{AnnealingParams, AnnealingResult, ClassicalAnnealingSimulator};
+use crate::HardwareTopology;
 
 /// Hybrid execution engine configuration
 #[derive(Debug, Clone)]
@@ -701,91 +701,108 @@ impl HeterogeneousHybridEngine {
             aggregator: Arc::new(Mutex::new(ResultAggregator::new())),
         }
     }
-    
+
     /// Register a compute resource
     pub fn register_resource(&self, resource: ComputeResource) -> ApplicationResult<()> {
         let resource_id = resource.id.clone();
         let mut resources = self.resources.write().map_err(|_| {
-            ApplicationError::OptimizationError("Failed to acquire resource registry lock".to_string())
+            ApplicationError::OptimizationError(
+                "Failed to acquire resource registry lock".to_string(),
+            )
         })?;
-        
+
         resources.insert(resource_id.clone(), resource);
-        
-        println!("Registered compute resource: {} ({:?})", resource_id, resources[&resource_id].resource_type);
+
+        println!(
+            "Registered compute resource: {} ({:?})",
+            resource_id, resources[&resource_id].resource_type
+        );
         Ok(())
     }
-    
+
     /// Submit task for hybrid execution
     pub fn submit_task(&self, task: HybridExecutionTask) -> ApplicationResult<String> {
         let task_id = task.id.clone();
         let mut queue = self.task_queue.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire task queue lock".to_string())
         })?;
-        
+
         queue.push_back(task);
         println!("Task {} submitted to hybrid execution queue", task_id);
         Ok(task_id)
     }
-    
+
     /// Execute task using hybrid approach
     pub fn execute_task(&self, task_id: &str) -> ApplicationResult<HybridExecutionResult> {
         println!("Starting hybrid execution for task: {}", task_id);
-        
+
         // Step 1: Get task from queue
         let task = self.get_task_from_queue(task_id)?;
-        
+
         // Step 2: Analyze problem and select strategy
         let execution_plan = self.create_execution_plan(&task)?;
-        
+
         // Step 3: Schedule resources
         let resource_assignments = self.schedule_resources(&task, &execution_plan)?;
-        
+
         // Step 4: Execute on assigned resources
         let individual_results = self.execute_on_resources(&task, &resource_assignments)?;
-        
+
         // Step 5: Aggregate results
         let final_result = self.aggregate_results(&task, individual_results)?;
-        
+
         // Step 6: Update performance metrics
         self.update_performance_metrics(&task, &final_result)?;
-        
+
         println!("Hybrid execution completed for task: {}", task_id);
         Ok(final_result)
     }
-    
+
     /// Get task from queue
     fn get_task_from_queue(&self, task_id: &str) -> ApplicationResult<HybridExecutionTask> {
         let mut queue = self.task_queue.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire task queue lock".to_string())
         })?;
-        
+
         // Find and remove task from queue
-        let task_index = queue.iter().position(|task| task.id == task_id)
-            .ok_or_else(|| ApplicationError::InvalidConfiguration(
-                format!("Task {} not found in queue", task_id)
-            ))?;
-        
+        let task_index = queue
+            .iter()
+            .position(|task| task.id == task_id)
+            .ok_or_else(|| {
+                ApplicationError::InvalidConfiguration(format!(
+                    "Task {} not found in queue",
+                    task_id
+                ))
+            })?;
+
         Ok(queue.remove(task_index).unwrap())
     }
-    
+
     /// Create execution plan for task
-    fn create_execution_plan(&self, task: &HybridExecutionTask) -> ApplicationResult<ExecutionPlan> {
+    fn create_execution_plan(
+        &self,
+        task: &HybridExecutionTask,
+    ) -> ApplicationResult<ExecutionPlan> {
         let problem_size = task.problem.num_qubits;
         let quality_requirements = &task.quality_requirements;
-        
+
         // Analyze problem characteristics
         let problem_complexity = self.analyze_problem_complexity(&task.problem)?;
-        
+
         // Select optimal execution strategy
         let strategy = match (&self.config.execution_strategy, problem_complexity) {
-            (ExecutionStrategy::Adaptive, ProblemComplexity::Simple) => ExecutionStrategy::Sequential,
-            (ExecutionStrategy::Adaptive, ProblemComplexity::Complex) => ExecutionStrategy::Parallel,
+            (ExecutionStrategy::Adaptive, ProblemComplexity::Simple) => {
+                ExecutionStrategy::Sequential
+            }
+            (ExecutionStrategy::Adaptive, ProblemComplexity::Complex) => {
+                ExecutionStrategy::Parallel
+            }
             (strategy, _) => strategy.clone(),
         };
-        
+
         // Determine resource requirements
         let resource_requirements = self.determine_resource_requirements(task)?;
-        
+
         Ok(ExecutionPlan {
             strategy,
             resource_requirements,
@@ -794,12 +811,15 @@ impl HeterogeneousHybridEngine {
             quality_target: quality_requirements.target_quality,
         })
     }
-    
+
     /// Analyze problem complexity
-    fn analyze_problem_complexity(&self, problem: &IsingModel) -> ApplicationResult<ProblemComplexity> {
+    fn analyze_problem_complexity(
+        &self,
+        problem: &IsingModel,
+    ) -> ApplicationResult<ProblemComplexity> {
         let num_qubits = problem.num_qubits;
         let density = self.calculate_coupling_density(problem);
-        
+
         if num_qubits < 100 && density < 0.1 {
             Ok(ProblemComplexity::Simple)
         } else if num_qubits < 1000 && density < 0.5 {
@@ -808,30 +828,34 @@ impl HeterogeneousHybridEngine {
             Ok(ProblemComplexity::Complex)
         }
     }
-    
+
     /// Calculate coupling density of problem
     fn calculate_coupling_density(&self, problem: &IsingModel) -> f64 {
         let total_possible = problem.num_qubits * (problem.num_qubits - 1) / 2;
-        
+
         let couplings = problem.couplings();
-        let actual_couplings = couplings.iter()
+        let actual_couplings = couplings
+            .iter()
             .filter(|coupling| coupling.strength != 0.0)
             .count();
-        
+
         if total_possible > 0 {
             actual_couplings as f64 / total_possible as f64
         } else {
             0.0
         }
     }
-    
+
     /// Determine resource requirements
-    fn determine_resource_requirements(&self, task: &HybridExecutionTask) -> ApplicationResult<ResourceRequirements> {
+    fn determine_resource_requirements(
+        &self,
+        task: &HybridExecutionTask,
+    ) -> ApplicationResult<ResourceRequirements> {
         let problem_size = task.problem.num_qubits;
-        
+
         // Determine suitable resource types
         let mut suitable_types = Vec::new();
-        
+
         if problem_size <= 5000 {
             suitable_types.push(ResourceType::DWaveQuantum);
         }
@@ -839,11 +863,11 @@ impl HeterogeneousHybridEngine {
             suitable_types.push(ResourceType::BraketQuantum);
         }
         suitable_types.push(ResourceType::ClassicalSimulator);
-        
+
         if problem_size > 1000 {
             suitable_types.push(ResourceType::MultiChipQuantum);
         }
-        
+
         Ok(ResourceRequirements {
             suitable_types,
             min_resources: 1,
@@ -855,29 +879,38 @@ impl HeterogeneousHybridEngine {
             },
         })
     }
-    
+
     /// Schedule resources for execution
-    fn schedule_resources(&self, task: &HybridExecutionTask, plan: &ExecutionPlan) -> ApplicationResult<Vec<String>> {
+    fn schedule_resources(
+        &self,
+        task: &HybridExecutionTask,
+        plan: &ExecutionPlan,
+    ) -> ApplicationResult<Vec<String>> {
         let mut scheduler = self.scheduler.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire scheduler lock".to_string())
         })?;
-        
+
         let resources = self.resources.read().map_err(|_| {
             ApplicationError::OptimizationError("Failed to read resource registry".to_string())
         })?;
-        
+
         // Filter available resources
-        let available_resources: Vec<_> = resources.values()
+        let available_resources: Vec<_> = resources
+            .values()
             .filter(|resource| resource.availability == ResourceAvailability::Available)
-            .filter(|resource| plan.resource_requirements.suitable_types.contains(&resource.resource_type))
+            .filter(|resource| {
+                plan.resource_requirements
+                    .suitable_types
+                    .contains(&resource.resource_type)
+            })
             .collect();
-        
+
         if available_resources.is_empty() {
             return Err(ApplicationError::ResourceLimitExceeded(
-                "No suitable resources available".to_string()
+                "No suitable resources available".to_string(),
             ));
         }
-        
+
         // Select resources based on strategy
         let selected = match self.config.allocation_strategy {
             ResourceAllocationStrategy::Adaptive => {
@@ -891,52 +924,75 @@ impl HeterogeneousHybridEngine {
             }
             _ => {
                 // Default: select best performing resource
-                vec![available_resources.iter()
-                    .max_by(|a, b| a.performance.throughput.partial_cmp(&b.performance.throughput).unwrap())
-                    .unwrap().id.clone()]
+                vec![available_resources
+                    .iter()
+                    .max_by(|a, b| {
+                        a.performance
+                            .throughput
+                            .partial_cmp(&b.performance.throughput)
+                            .unwrap()
+                    })
+                    .unwrap()
+                    .id
+                    .clone()]
             }
         };
-        
+
         Ok(selected)
     }
-    
+
     /// Select resources using adaptive strategy
-    fn select_adaptive_resources(&self, available: &[&ComputeResource], task: &HybridExecutionTask) -> ApplicationResult<Vec<String>> {
+    fn select_adaptive_resources(
+        &self,
+        available: &[&ComputeResource],
+        task: &HybridExecutionTask,
+    ) -> ApplicationResult<Vec<String>> {
         // Score resources based on multiple factors
-        let mut scored_resources: Vec<_> = available.iter()
+        let mut scored_resources: Vec<_> = available
+            .iter()
             .map(|resource| {
-                let performance_score = resource.performance.throughput * resource.performance.success_rate;
+                let performance_score =
+                    resource.performance.throughput * resource.performance.success_rate;
                 let quality_score = resource.performance.quality_score;
-                let cost_score = 1.0 / (1.0 + resource.cost.fixed_cost + resource.cost.variable_cost * task.problem.num_qubits as f64);
-                
+                let cost_score = 1.0
+                    / (1.0
+                        + resource.cost.fixed_cost
+                        + resource.cost.variable_cost * task.problem.num_qubits as f64);
+
                 let total_score = performance_score * 0.4 + quality_score * 0.4 + cost_score * 0.2;
                 (resource.id.clone(), total_score)
             })
             .collect();
-        
+
         // Sort by score (highest first)
         scored_resources.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-        
+
         // Select top resources
         let num_resources = (scored_resources.len().min(3)).max(1);
-        Ok(scored_resources.into_iter()
+        Ok(scored_resources
+            .into_iter()
             .take(num_resources)
             .map(|(id, _)| id)
             .collect())
     }
-    
+
     /// Select cost-optimized resources
-    fn select_cost_optimized_resources(&self, available: &[&ComputeResource], task: &HybridExecutionTask) -> ApplicationResult<Vec<String>> {
-        let mut cost_sorted: Vec<_> = available.iter()
+    fn select_cost_optimized_resources(
+        &self,
+        available: &[&ComputeResource],
+        task: &HybridExecutionTask,
+    ) -> ApplicationResult<Vec<String>> {
+        let mut cost_sorted: Vec<_> = available
+            .iter()
             .map(|resource| {
-                let total_cost = resource.cost.fixed_cost + 
-                               resource.cost.variable_cost * task.problem.num_qubits as f64;
+                let total_cost = resource.cost.fixed_cost
+                    + resource.cost.variable_cost * task.problem.num_qubits as f64;
                 (resource.id.clone(), total_cost)
             })
             .collect();
-        
+
         cost_sorted.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-        
+
         // Select cheapest resource that meets quality requirements
         for (resource_id, _cost) in &cost_sorted {
             if let Some(resource) = available.iter().find(|r| &r.id == resource_id) {
@@ -945,31 +1001,41 @@ impl HeterogeneousHybridEngine {
                 }
             }
         }
-        
+
         // Fallback: select cheapest available
         Ok(vec![cost_sorted[0].0.clone()])
     }
-    
+
     /// Select quality-focused resources
-    fn select_quality_focused_resources(&self, available: &[&ComputeResource], task: &HybridExecutionTask) -> ApplicationResult<Vec<String>> {
-        let mut quality_sorted: Vec<_> = available.iter()
+    fn select_quality_focused_resources(
+        &self,
+        available: &[&ComputeResource],
+        task: &HybridExecutionTask,
+    ) -> ApplicationResult<Vec<String>> {
+        let mut quality_sorted: Vec<_> = available
+            .iter()
             .map(|resource| (resource.id.clone(), resource.performance.quality_score))
             .collect();
-        
+
         quality_sorted.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-        
+
         // Select highest quality resources
         let num_resources = quality_sorted.len().min(2);
-        Ok(quality_sorted.into_iter()
+        Ok(quality_sorted
+            .into_iter()
             .take(num_resources)
             .map(|(id, _)| id)
             .collect())
     }
-    
+
     /// Execute on assigned resources
-    fn execute_on_resources(&self, task: &HybridExecutionTask, resources: &[String]) -> ApplicationResult<Vec<IndividualResult>> {
+    fn execute_on_resources(
+        &self,
+        task: &HybridExecutionTask,
+        resources: &[String],
+    ) -> ApplicationResult<Vec<IndividualResult>> {
         let mut results = Vec::new();
-        
+
         // Execute based on strategy
         match self.config.execution_strategy {
             ExecutionStrategy::Sequential => {
@@ -986,79 +1052,97 @@ impl HeterogeneousHybridEngine {
                 results.extend(self.execute_parallel(task, resources)?);
             }
         }
-        
+
         Ok(results)
     }
-    
+
     /// Execute sequentially on resources
-    fn execute_sequential(&self, task: &HybridExecutionTask, resources: &[String]) -> ApplicationResult<Vec<IndividualResult>> {
+    fn execute_sequential(
+        &self,
+        task: &HybridExecutionTask,
+        resources: &[String],
+    ) -> ApplicationResult<Vec<IndividualResult>> {
         let mut results = Vec::new();
-        
+
         for resource_id in resources {
             let result = self.execute_on_single_resource(task, resource_id)?;
             results.push(result.clone());
-            
+
             // Check if we achieved target quality
             if result.quality >= task.quality_requirements.target_quality {
                 break;
             }
         }
-        
+
         Ok(results)
     }
-    
+
     /// Execute in parallel on resources
-    fn execute_parallel(&self, task: &HybridExecutionTask, resources: &[String]) -> ApplicationResult<Vec<IndividualResult>> {
+    fn execute_parallel(
+        &self,
+        task: &HybridExecutionTask,
+        resources: &[String],
+    ) -> ApplicationResult<Vec<IndividualResult>> {
         let mut results = Vec::new();
-        
+
         // Simulate parallel execution
         for resource_id in resources {
             let result = self.execute_on_single_resource(task, resource_id)?;
             results.push(result);
         }
-        
+
         Ok(results)
     }
-    
+
     /// Execute competitively (first good result wins)
-    fn execute_competitive(&self, task: &HybridExecutionTask, resources: &[String]) -> ApplicationResult<Vec<IndividualResult>> {
+    fn execute_competitive(
+        &self,
+        task: &HybridExecutionTask,
+        resources: &[String],
+    ) -> ApplicationResult<Vec<IndividualResult>> {
         // For now, simulate by running all and taking the best
         let all_results = self.execute_parallel(task, resources)?;
-        
+
         // Return best result
-        if let Some(best) = all_results.iter().max_by(|a, b| a.quality.partial_cmp(&b.quality).unwrap()) {
+        if let Some(best) = all_results
+            .iter()
+            .max_by(|a, b| a.quality.partial_cmp(&b.quality).unwrap())
+        {
             Ok(vec![best.clone()])
         } else {
             Ok(all_results)
         }
     }
-    
+
     /// Execute on single resource
-    fn execute_on_single_resource(&self, task: &HybridExecutionTask, resource_id: &str) -> ApplicationResult<IndividualResult> {
+    fn execute_on_single_resource(
+        &self,
+        task: &HybridExecutionTask,
+        resource_id: &str,
+    ) -> ApplicationResult<IndividualResult> {
         let start_time = Instant::now();
-        
+
         // Simulate execution based on resource type
         let resources = self.resources.read().map_err(|_| {
             ApplicationError::OptimizationError("Failed to read resource registry".to_string())
         })?;
-        
-        let resource = resources.get(resource_id)
-            .ok_or_else(|| ApplicationError::InvalidConfiguration(
-                format!("Resource {} not found", resource_id)
-            ))?;
-        
+
+        let resource = resources.get(resource_id).ok_or_else(|| {
+            ApplicationError::InvalidConfiguration(format!("Resource {} not found", resource_id))
+        })?;
+
         // Simulate execution time based on resource performance
-        let execution_time = Duration::from_millis(
-            (1000.0 / resource.performance.throughput) as u64
-        );
+        let execution_time =
+            Duration::from_millis((1000.0 / resource.performance.throughput) as u64);
         thread::sleep(Duration::from_millis(10)); // Brief simulation
-        
+
         // Generate solution (simplified)
         let solution = self.generate_simulated_solution(task, resource)?;
         let energy = self.calculate_energy(&task.problem, &solution)?;
         let quality = resource.performance.quality_score * (0.8 + rand::random::<f64>() * 0.4);
-        let cost = resource.cost.fixed_cost + resource.cost.variable_cost * task.problem.num_qubits as f64;
-        
+        let cost =
+            resource.cost.fixed_cost + resource.cost.variable_cost * task.problem.num_qubits as f64;
+
         Ok(IndividualResult {
             resource_id: resource_id.to_string(),
             solution,
@@ -1069,26 +1153,30 @@ impl HeterogeneousHybridEngine {
             metadata: HashMap::new(),
         })
     }
-    
+
     /// Generate simulated solution
-    fn generate_simulated_solution(&self, task: &HybridExecutionTask, resource: &ComputeResource) -> ApplicationResult<Vec<i32>> {
+    fn generate_simulated_solution(
+        &self,
+        task: &HybridExecutionTask,
+        resource: &ComputeResource,
+    ) -> ApplicationResult<Vec<i32>> {
         let num_vars = task.problem.num_qubits;
         let mut solution = vec![1; num_vars];
-        
+
         // Add some randomness based on resource type
         for i in 0..num_vars {
             if rand::random::<f64>() < 0.5 {
                 solution[i] = -1;
             }
         }
-        
+
         Ok(solution)
     }
-    
+
     /// Calculate energy for solution
     fn calculate_energy(&self, problem: &IsingModel, solution: &[i32]) -> ApplicationResult<f64> {
         let mut energy = 0.0;
-        
+
         // Bias terms
         for (i, &spin) in solution.iter().enumerate() {
             let biases = problem.biases();
@@ -1099,25 +1187,31 @@ impl HeterogeneousHybridEngine {
                 }
             }
         }
-        
+
         // Coupling terms
         let couplings = problem.couplings();
         for coupling in couplings {
             if coupling.i < solution.len() && coupling.j < solution.len() {
-                energy += coupling.strength * solution[coupling.i] as f64 * solution[coupling.j] as f64;
+                energy +=
+                    coupling.strength * solution[coupling.i] as f64 * solution[coupling.j] as f64;
             }
         }
-        
+
         Ok(energy)
     }
-    
+
     /// Aggregate results from multiple resources
-    fn aggregate_results(&self, task: &HybridExecutionTask, results: Vec<IndividualResult>) -> ApplicationResult<HybridExecutionResult> {
+    fn aggregate_results(
+        &self,
+        task: &HybridExecutionTask,
+        results: Vec<IndividualResult>,
+    ) -> ApplicationResult<HybridExecutionResult> {
         let mut aggregator = self.aggregator.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire aggregator lock".to_string())
         })?;
-        
-        let best_result = results.iter()
+
+        let best_result = results
+            .iter()
             .min_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap())
             .cloned()
             .unwrap_or_else(|| IndividualResult {
@@ -1129,25 +1223,29 @@ impl HeterogeneousHybridEngine {
                 cost: 0.0,
                 metadata: HashMap::new(),
             });
-        
-        let total_time = results.iter()
+
+        let total_time = results
+            .iter()
             .map(|r| r.execution_time)
             .max()
             .unwrap_or(Duration::from_secs(0));
-        
+
         let total_cost = results.iter().map(|r| r.cost).sum();
-        
+
         let mut resource_utilization = HashMap::new();
         for result in &results {
-            resource_utilization.insert(result.resource_id.clone(), ResourceUtilization {
-                resource_id: result.resource_id.clone(),
-                time_used: result.execution_time,
-                cost: result.cost,
-                success: result.quality > task.quality_requirements.min_quality,
-                quality: result.quality,
-            });
+            resource_utilization.insert(
+                result.resource_id.clone(),
+                ResourceUtilization {
+                    resource_id: result.resource_id.clone(),
+                    time_used: result.execution_time,
+                    cost: result.cost,
+                    success: result.quality > task.quality_requirements.min_quality,
+                    quality: result.quality,
+                },
+            );
         }
-        
+
         Ok(HybridExecutionResult {
             task_id: task.id.clone(),
             best_solution: best_result.solution,
@@ -1166,23 +1264,27 @@ impl HeterogeneousHybridEngine {
             },
         })
     }
-    
+
     /// Update performance metrics after execution
-    fn update_performance_metrics(&self, task: &HybridExecutionTask, result: &HybridExecutionResult) -> ApplicationResult<()> {
+    fn update_performance_metrics(
+        &self,
+        task: &HybridExecutionTask,
+        result: &HybridExecutionResult,
+    ) -> ApplicationResult<()> {
         let mut monitor = self.monitor.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire monitor lock".to_string())
         })?;
-        
+
         monitor.update_metrics(task, result);
         Ok(())
     }
-    
+
     /// Get current system performance
     pub fn get_system_performance(&self) -> ApplicationResult<HybridSystemMetrics> {
         let monitor = self.monitor.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire monitor lock".to_string())
         })?;
-        
+
         Ok(monitor.system_metrics.clone())
     }
 }
@@ -1240,14 +1342,17 @@ impl HybridPerformanceMonitor {
             },
         }
     }
-    
+
     fn update_metrics(&mut self, task: &HybridExecutionTask, result: &HybridExecutionResult) {
         self.system_metrics.total_tasks += 1;
         self.system_metrics.total_cost += result.total_cost;
-        self.system_metrics.avg_quality = (self.system_metrics.avg_quality * (self.system_metrics.total_tasks - 1) as f64 + result.quality_score) / self.system_metrics.total_tasks as f64;
-        
+        self.system_metrics.avg_quality = (self.system_metrics.avg_quality
+            * (self.system_metrics.total_tasks - 1) as f64
+            + result.quality_score)
+            / self.system_metrics.total_tasks as f64;
+
         self.cost_tracking.spent_amount += result.total_cost;
-        
+
         println!("Updated performance metrics for task {}", task.id);
     }
 }
@@ -1289,7 +1394,7 @@ impl ResultAggregator {
 pub fn create_example_hybrid_engine() -> ApplicationResult<HeterogeneousHybridEngine> {
     let config = HybridEngineConfig::default();
     let engine = HeterogeneousHybridEngine::new(config);
-    
+
     // Register D-Wave quantum resource
     let dwave_resource = ComputeResource {
         id: "dwave_advantage".to_string(),
@@ -1312,7 +1417,7 @@ pub fn create_example_hybrid_engine() -> ApplicationResult<HeterogeneousHybridEn
         workload: None,
         connection: ResourceConnection::Custom("dwave_cloud".to_string()),
     };
-    
+
     // Register classical simulator resource
     let classical_resource = ComputeResource {
         id: "classical_simulator".to_string(),
@@ -1335,40 +1440,40 @@ pub fn create_example_hybrid_engine() -> ApplicationResult<HeterogeneousHybridEn
         workload: None,
         connection: ResourceConnection::Custom("local".to_string()),
     };
-    
+
     engine.register_resource(dwave_resource)?;
     engine.register_resource(classical_resource)?;
-    
+
     Ok(engine)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_hybrid_engine_creation() {
         let config = HybridEngineConfig::default();
         let engine = HeterogeneousHybridEngine::new(config);
-        
+
         let resources = engine.resources.read().unwrap();
         assert!(resources.is_empty());
     }
-    
+
     #[test]
     fn test_resource_registration() {
         let engine = create_example_hybrid_engine().unwrap();
-        
+
         let resources = engine.resources.read().unwrap();
         assert_eq!(resources.len(), 2);
         assert!(resources.contains_key("dwave_advantage"));
         assert!(resources.contains_key("classical_simulator"));
     }
-    
+
     #[test]
     fn test_task_submission() {
         let engine = create_example_hybrid_engine().unwrap();
-        
+
         let problem = IsingModel::new(100);
         let task = HybridExecutionTask {
             id: "test_task".to_string(),
@@ -1389,22 +1494,22 @@ mod tests {
             priority: TaskPriority::Medium,
             deadline: None,
         };
-        
+
         let result = engine.submit_task(task);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "test_task");
     }
-    
+
     #[test]
     fn test_execution_strategies() {
         let config = HybridEngineConfig {
             execution_strategy: ExecutionStrategy::Parallel,
             ..Default::default()
         };
-        
+
         assert_eq!(config.execution_strategy, ExecutionStrategy::Parallel);
     }
-    
+
     #[test]
     fn test_resource_allocation_strategies() {
         let strategies = vec![
@@ -1412,7 +1517,7 @@ mod tests {
             ResourceAllocationStrategy::CostOptimized,
             ResourceAllocationStrategy::QualityFocused,
         ];
-        
+
         for strategy in strategies {
             let config = HybridEngineConfig {
                 allocation_strategy: strategy.clone(),

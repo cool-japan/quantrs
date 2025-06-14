@@ -27,6 +27,7 @@ pub mod fermionic_simulation;
 pub mod fusion;
 pub mod linalg_ops;
 pub mod mixed_precision;
+pub mod mixed_precision_impl;
 pub mod mps_basic;
 #[cfg(feature = "mps")]
 pub mod mps_enhanced;

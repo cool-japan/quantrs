@@ -17,38 +17,37 @@
 //! - Test result analysis and optimization recommendations
 
 pub mod config;
-pub mod scenarios;
 pub mod execution;
+pub mod framework;
 pub mod monitoring;
 pub mod reporting;
 pub mod results;
-pub mod framework;
+pub mod scenarios;
 pub mod validation;
 
 // Re-export commonly used types
 pub use config::{
-    IntegrationTestConfig, TestStorageConfig, BenchmarkConfig, StressTestConfig,
-    FaultInjectionConfig, MonitoringConfig, TestEnvironmentConfig,
-    StorageFormat, BenchmarkSuite, StatisticalTest, StressScenario, FaultType,
-    MonitoredMetric, AlertChannel, ReportFormat,
+    AlertChannel, BenchmarkConfig, BenchmarkSuite, FaultInjectionConfig, FaultType,
+    IntegrationTestConfig, MonitoredMetric, MonitoringConfig, ReportFormat, StatisticalTest,
+    StorageFormat, StressScenario, StressTestConfig, TestEnvironmentConfig, TestStorageConfig,
 };
 
+pub use execution::{ExecutionStatus, TestExecutionEngine, TestExecutionResult};
 pub use framework::ComprehensiveIntegrationTesting;
-pub use scenarios::{
-    IntegrationTestCase, TestSuite, TestCategory, TestPriority, TestMetadata, TestRegistry,
-};
-pub use execution::{TestExecutionEngine, TestExecutionResult, ExecutionStatus};
 pub use results::{
-    IntegrationTestResult, IntegrationValidationResult, ComponentIntegrationResults,
+    ComponentIntegrationResults, IntegrationTestResult, IntegrationValidationResult,
     SystemIntegrationResults, ValidationStatus,
+};
+pub use scenarios::{
+    IntegrationTestCase, TestCategory, TestMetadata, TestPriority, TestRegistry, TestSuite,
 };
 
 // Additional types that may be referenced in lib.rs
-pub use scenarios::{ExpectedResults as ExpectedOutcomes};
-pub use execution::{TestExecutionRequest as TestExecutionSpec};
-pub use results::{PerformanceMetrics as PerformanceTestResult};
-pub use config::{TestEnvironmentConfig as EnvironmentRequirements};
-pub use results::{ValidationResults as StressTestResult};
+pub use config::TestEnvironmentConfig as EnvironmentRequirements;
+pub use execution::TestExecutionRequest as TestExecutionSpec;
+pub use results::PerformanceMetrics as PerformanceTestResult;
+pub use results::ValidationResults as StressTestResult;
+pub use scenarios::ExpectedResults as ExpectedOutcomes;
 
 // Placeholder for create_example_integration_testing function
 pub fn create_example_integration_testing() -> ComprehensiveIntegrationTesting {

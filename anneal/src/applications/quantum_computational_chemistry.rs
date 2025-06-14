@@ -18,25 +18,29 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::f64::consts::PI;
 use std::fmt;
 
-use crate::quantum_error_correction::{SystemNoiseModel, NoiseResilientConfig};
+use crate::quantum_error_correction::{NoiseResilientConfig, SystemNoiseModel};
 
 use crate::advanced_quantum_algorithms::{
-    AdvancedQuantumAlgorithms, AdvancedAlgorithmConfig, AlgorithmSelectionStrategy,
-    InfiniteDepthQAOA, InfiniteQAOAConfig, QuantumZenoAnnealer, ZenoConfig,
-    AdiabaticShortcutsOptimizer, ShortcutsConfig,
+    AdiabaticShortcutsOptimizer, AdvancedAlgorithmConfig, AdvancedQuantumAlgorithms,
+    AlgorithmSelectionStrategy, InfiniteDepthQAOA, InfiniteQAOAConfig, QuantumZenoAnnealer,
+    ShortcutsConfig, ZenoConfig,
 };
-use crate::applications::{ApplicationError, ApplicationResult, OptimizationProblem, IndustrySolution};
+use crate::applications::{
+    ApplicationError, ApplicationResult, IndustrySolution, OptimizationProblem,
+};
 use crate::bayesian_hyperopt::{BayesianHyperoptimizer, BayesianOptConfig};
 use crate::enterprise_monitoring::{EnterpriseMonitoringSystem, LogLevel};
 use crate::ising::{IsingModel, QuboModel};
 use crate::meta_learning::MetaLearningOptimizer;
 use crate::neural_annealing_schedules::{NeuralAnnealingScheduler, NeuralSchedulerConfig};
 use crate::quantum_error_correction::{
-    SyndromeDetector, ErrorCorrectionCode, NoiseResilientAnnealingProtocol, 
-    ErrorMitigationManager, LogicalAnnealingEncoder, ErrorMitigationConfig,
+    ErrorCorrectionCode, ErrorMitigationConfig, ErrorMitigationManager, LogicalAnnealingEncoder,
+    NoiseResilientAnnealingProtocol, SyndromeDetector,
 };
 use crate::realtime_adaptive_qec::RealTimeAdaptiveQec;
-use crate::simulator::{AnnealingParams, AnnealingResult, AnnealingSolution, QuantumAnnealingSimulator};
+use crate::simulator::{
+    AnnealingParams, AnnealingResult, AnnealingSolution, QuantumAnnealingSimulator,
+};
 
 /// Quantum computational chemistry configuration
 #[derive(Debug, Clone)]
@@ -300,19 +304,43 @@ pub struct Dihedral {
 /// External fields affecting the molecular system
 #[derive(Debug, Clone)]
 pub enum ExternalField {
-    Electric { field: [f64; 3], frequency: Option<f64> },
-    Magnetic { field: [f64; 3] },
-    Pressure { pressure: f64 },
-    Temperature { temperature: f64 },
+    Electric {
+        field: [f64; 3],
+        frequency: Option<f64>,
+    },
+    Magnetic {
+        field: [f64; 3],
+    },
+    Pressure {
+        pressure: f64,
+    },
+    Temperature {
+        temperature: f64,
+    },
 }
 
 /// Geometry constraints
 #[derive(Debug, Clone)]
 pub enum GeometryConstraint {
     FixedAtom(usize),
-    FixedBond { atom1: usize, atom2: usize, length: f64 },
-    FixedAngle { atom1: usize, atom2: usize, atom3: usize, angle: f64 },
-    FixedDihedral { atom1: usize, atom2: usize, atom3: usize, atom4: usize, angle: f64 },
+    FixedBond {
+        atom1: usize,
+        atom2: usize,
+        length: f64,
+    },
+    FixedAngle {
+        atom1: usize,
+        atom2: usize,
+        atom3: usize,
+        angle: f64,
+    },
+    FixedDihedral {
+        atom1: usize,
+        atom2: usize,
+        atom3: usize,
+        atom4: usize,
+        angle: f64,
+    },
 }
 
 /// Basis function for quantum calculations
@@ -608,14 +636,14 @@ impl QuantumChemistryOptimizer {
         let advanced_algorithms = AdvancedQuantumAlgorithms::new();
         let error_correction = NoiseResilientAnnealingProtocol::new(
             AnnealingParams::new(),
-            SystemNoiseModel::default(), 
-            NoiseResilientConfig::default()
+            SystemNoiseModel::default(),
+            NoiseResilientConfig::default(),
         )?;
         let adaptive_qec = RealTimeAdaptiveQec::new(Default::default());
         let meta_learning = MetaLearningOptimizer::new(Default::default());
         // TODO: Fix NeuralAnnealingScheduler type - seems to be missing
         // let neural_scheduler = NeuralAnnealingScheduler::new(NeuralSchedulerConfig::default())?;
-        
+
         let monitoring = if config.monitoring_enabled {
             Some(crate::enterprise_monitoring::create_example_enterprise_monitoring()?)
         } else {
@@ -640,7 +668,14 @@ impl QuantumChemistryOptimizer {
         system: &MolecularSystem,
     ) -> ApplicationResult<QuantumChemistryResult> {
         if let Some(monitoring) = &self.monitoring {
-            monitoring.log(LogLevel::Info, &format!("Starting electronic structure calculation for system {}", system.id), None)?;
+            monitoring.log(
+                LogLevel::Info,
+                &format!(
+                    "Starting electronic structure calculation for system {}",
+                    system.id
+                ),
+                None,
+            )?;
         }
 
         // Check cache first
@@ -650,21 +685,31 @@ impl QuantumChemistryOptimizer {
 
         // Convert molecular system to quantum problem
         let (qubo_model, _) = self.molecular_system_to_qubo(system)?;
-        
+
         // Apply error correction
         let corrected_model = self.error_correction.encode_problem(&qubo_model)?;
-        
+
         // Optimize using advanced algorithms
-        let optimization_result = self.advanced_algorithms.optimize_problem(&corrected_model)?;
-        
+        let optimization_result = self
+            .advanced_algorithms
+            .optimize_problem(&corrected_model)?;
+
         // Convert back to chemistry result
         let chemistry_result = self.interpret_quantum_result(system, &optimization_result)?;
-        
+
         // Cache result
-        self.system_cache.insert(system.id.clone(), chemistry_result.clone());
-        
+        self.system_cache
+            .insert(system.id.clone(), chemistry_result.clone());
+
         if let Some(monitoring) = &self.monitoring {
-            monitoring.log(LogLevel::Info, &format!("Completed electronic structure calculation for system {}", system.id), None)?;
+            monitoring.log(
+                LogLevel::Info,
+                &format!(
+                    "Completed electronic structure calculation for system {}",
+                    system.id
+                ),
+                None,
+            )?;
         }
 
         Ok(chemistry_result)
@@ -676,7 +721,14 @@ impl QuantumChemistryOptimizer {
         problem: &CatalysisOptimization,
     ) -> ApplicationResult<CatalysisOptimizationResult> {
         if let Some(monitoring) = &self.monitoring {
-            monitoring.log(LogLevel::Info, &format!("Starting catalysis optimization for reaction {}", problem.reaction.id), None)?;
+            monitoring.log(
+                LogLevel::Info,
+                &format!(
+                    "Starting catalysis optimization for reaction {}",
+                    problem.reaction.id
+                ),
+                None,
+            )?;
         }
 
         let mut best_catalyst = None;
@@ -690,16 +742,21 @@ impl QuantumChemistryOptimizer {
             }
 
             // Calculate reaction energetics with this catalyst
-            let energetics = self.calculate_reaction_energetics(&problem.reaction, Some(candidate))?;
-            
+            let energetics =
+                self.calculate_reaction_energetics(&problem.reaction, Some(candidate))?;
+
             // Evaluate objectives
             let score = self.evaluate_catalysis_objectives(&problem.objectives, &energetics)?;
-            
+
             evaluated_candidates.push(CatalystEvaluation {
                 catalyst: candidate.clone(),
                 energetics,
                 score,
-                meets_constraints: self.check_catalysis_constraints(&problem.constraints, candidate, score)?,
+                meets_constraints: self.check_catalysis_constraints(
+                    &problem.constraints,
+                    candidate,
+                    score,
+                )?,
             });
 
             if score > best_score {
@@ -709,7 +766,14 @@ impl QuantumChemistryOptimizer {
         }
 
         if let Some(monitoring) = &self.monitoring {
-            monitoring.log(LogLevel::Info, &format!("Completed catalysis optimization, evaluated {} candidates", evaluated_candidates.len()), None)?;
+            monitoring.log(
+                LogLevel::Info,
+                &format!(
+                    "Completed catalysis optimization, evaluated {} candidates",
+                    evaluated_candidates.len()
+                ),
+                None,
+            )?;
         }
 
         Ok(CatalysisOptimizationResult {
@@ -728,26 +792,26 @@ impl QuantumChemistryOptimizer {
     ) -> ApplicationResult<ReactionEnergetics> {
         let mut reactant_energies = Vec::new();
         let mut product_energies = Vec::new();
-        
+
         // Calculate energies for reactants
         for reactant in &reaction.reactants {
             let result = self.calculate_electronic_structure(reactant)?;
             reactant_energies.push(result.total_energy);
         }
-        
-        // Calculate energies for products  
+
+        // Calculate energies for products
         for product in &reaction.products {
             let result = self.calculate_electronic_structure(product)?;
             product_energies.push(result.total_energy);
         }
-        
+
         // Calculate transition state energy if available
         let transition_state_energy = if let Some(ts) = &reaction.transition_state {
             Some(self.calculate_electronic_structure(ts)?.total_energy)
         } else {
             None
         };
-        
+
         // Calculate catalyst binding energies if present
         let catalyst_binding_energy = if let Some(cat) = catalyst {
             Some(self.calculate_electronic_structure(cat)?.total_energy)
@@ -758,7 +822,7 @@ impl QuantumChemistryOptimizer {
         let total_reactant_energy: f64 = reactant_energies.iter().sum();
         let total_product_energy: f64 = product_energies.iter().sum();
         let reaction_energy = total_product_energy - total_reactant_energy;
-        
+
         let activation_energy = if let Some(ts_energy) = transition_state_energy {
             ts_energy - total_reactant_energy
         } else {
@@ -774,7 +838,7 @@ impl QuantumChemistryOptimizer {
             reaction_energy,
             activation_energy,
             reaction_enthalpy: reaction_energy, // Simplified
-            reaction_entropy: 0.0, // TODO: calculate entropy changes
+            reaction_entropy: 0.0,              // TODO: calculate entropy changes
         })
     }
 
@@ -784,24 +848,28 @@ impl QuantumChemistryOptimizer {
         system: &MolecularSystem,
     ) -> ApplicationResult<(QuboModel, HashMap<String, usize>)> {
         let n_atoms = system.atoms.len();
-        let n_basis = system.atoms.iter().map(|a| a.basis_functions.len()).sum::<usize>();
-        
+        let n_basis = system
+            .atoms
+            .iter()
+            .map(|a| a.basis_functions.len())
+            .sum::<usize>();
+
         // Create QUBO model with variables for molecular orbitals
         let mut qubo = QuboModel::new(n_basis);
         let mut variable_mapping = HashMap::new();
-        
+
         // Add electronic structure terms
         for i in 0..n_basis {
             // Kinetic energy terms
             qubo.set_linear(i, -1.0)?;
             variable_mapping.insert(format!("orbital_{}", i), i);
-            
+
             // Electron-electron repulsion
             for j in (i + 1)..n_basis {
                 qubo.set_quadratic(i, j, 0.5)?;
             }
         }
-        
+
         // Add nuclear-electron attraction terms
         for (atom_idx, atom) in system.atoms.iter().enumerate() {
             for i in 0..n_basis {
@@ -819,18 +887,28 @@ impl QuantumChemistryOptimizer {
         result: &AnnealingResult<AnnealingSolution>,
     ) -> ApplicationResult<QuantumChemistryResult> {
         let n_atoms = system.atoms.len();
-        let n_basis = system.atoms.iter().map(|a| a.basis_functions.len()).sum::<usize>();
-        
+        let n_basis = system
+            .atoms
+            .iter()
+            .map(|a| a.basis_functions.len())
+            .sum::<usize>();
+
         // Extract molecular orbitals from solution
-        let solution = result.as_ref().map_err(|e| ApplicationError::OptimizationError(e.to_string()))?;
+        let solution = result
+            .as_ref()
+            .map_err(|e| ApplicationError::OptimizationError(e.to_string()))?;
         let mut molecular_orbitals = Vec::new();
         for i in 0..n_basis {
             let occupation = if i < solution.best_spins.len() {
-                if solution.best_spins[i] == 1 { 2.0 } else { 0.0 }
+                if solution.best_spins[i] == 1 {
+                    2.0
+                } else {
+                    0.0
+                }
             } else {
                 0.0
             };
-            
+
             molecular_orbitals.push(MolecularOrbital {
                 energy: -1.0 * i as f64, // Simplified
                 coefficients: vec![1.0; n_basis],
@@ -845,7 +923,7 @@ impl QuantumChemistryOptimizer {
                 },
             });
         }
-        
+
         // Calculate electron density
         let electron_density = ElectronDensity {
             grid_points: vec![[0.0, 0.0, 0.0]; 100],
@@ -854,12 +932,12 @@ impl QuantumChemistryOptimizer {
             mulliken_charges: vec![0.0; n_atoms],
             electrostatic_potential: vec![0.0; 100],
         };
-        
+
         // Calculate properties
         let electronic_energy = solution.best_energy;
         let nuclear_repulsion = self.calculate_nuclear_repulsion(system);
         let total_energy = electronic_energy + nuclear_repulsion;
-        
+
         Ok(QuantumChemistryResult {
             system_id: system.id.clone(),
             electronic_energy,
@@ -894,7 +972,7 @@ impl QuantumChemistryOptimizer {
 
     fn calculate_nuclear_repulsion(&self, system: &MolecularSystem) -> f64 {
         let mut repulsion = 0.0;
-        
+
         for (i, atom1) in system.atoms.iter().enumerate() {
             for (j, atom2) in system.atoms.iter().enumerate() {
                 if i < j {
@@ -902,14 +980,14 @@ impl QuantumChemistryOptimizer {
                     let dy = atom1.position[1] - atom2.position[1];
                     let dz = atom1.position[2] - atom2.position[2];
                     let distance = (dx * dx + dy * dy + dz * dz).sqrt();
-                    
+
                     if distance > 1e-10 {
                         repulsion += (atom1.atomic_number * atom2.atomic_number) as f64 / distance;
                     }
                 }
             }
         }
-        
+
         repulsion
     }
 
@@ -919,7 +997,7 @@ impl QuantumChemistryOptimizer {
         energetics: &ReactionEnergetics,
     ) -> ApplicationResult<f64> {
         let mut total_score = 0.0;
-        
+
         for objective in objectives {
             let score = match objective {
                 CatalysisObjective::MinimizeActivationEnergy => {
@@ -945,7 +1023,7 @@ impl QuantumChemistryOptimizer {
             };
             total_score += score;
         }
-        
+
         Ok(total_score / objectives.len() as f64)
     }
 
@@ -1046,15 +1124,13 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
                 mass: 15.999,
                 position: [0.0, 0.0, 0.0],
                 partial_charge: Some(-0.834),
-                basis_functions: vec![
-                    BasisFunction {
-                        function_type: BasisFunctionType::GTO,
-                        angular_momentum: (0, 0, 0),
-                        exponent: 130.7093,
-                        coefficients: vec![0.1543],
-                        center: [0.0, 0.0, 0.0],
-                    }
-                ],
+                basis_functions: vec![BasisFunction {
+                    function_type: BasisFunctionType::GTO,
+                    angular_momentum: (0, 0, 0),
+                    exponent: 130.7093,
+                    coefficients: vec![0.1543],
+                    center: [0.0, 0.0, 0.0],
+                }],
             },
             Atom {
                 atomic_number: 1,
@@ -1062,15 +1138,13 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
                 mass: 1.008,
                 position: [0.758, 0.0, 0.586],
                 partial_charge: Some(0.417),
-                basis_functions: vec![
-                    BasisFunction {
-                        function_type: BasisFunctionType::GTO,
-                        angular_momentum: (0, 0, 0),
-                        exponent: 3.425251,
-                        coefficients: vec![0.1543],
-                        center: [0.758, 0.0, 0.586],
-                    }
-                ],
+                basis_functions: vec![BasisFunction {
+                    function_type: BasisFunctionType::GTO,
+                    angular_momentum: (0, 0, 0),
+                    exponent: 3.425251,
+                    coefficients: vec![0.1543],
+                    center: [0.758, 0.0, 0.586],
+                }],
             },
             Atom {
                 atomic_number: 1,
@@ -1078,15 +1152,13 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
                 mass: 1.008,
                 position: [-0.758, 0.0, 0.586],
                 partial_charge: Some(0.417),
-                basis_functions: vec![
-                    BasisFunction {
-                        function_type: BasisFunctionType::GTO,
-                        angular_momentum: (0, 0, 0),
-                        exponent: 3.425251,
-                        coefficients: vec![0.1543],
-                        center: [-0.758, 0.0, 0.586],
-                    }
-                ],
+                basis_functions: vec![BasisFunction {
+                    function_type: BasisFunctionType::GTO,
+                    angular_momentum: (0, 0, 0),
+                    exponent: 3.425251,
+                    coefficients: vec![0.1543],
+                    center: [-0.758, 0.0, 0.586],
+                }],
             },
         ],
         geometry: MolecularGeometry {
@@ -1133,15 +1205,13 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
                 mass: 12.011,
                 position: [0.0, 0.0, 0.0],
                 partial_charge: Some(-0.4),
-                basis_functions: vec![
-                    BasisFunction {
-                        function_type: BasisFunctionType::GTO,
-                        angular_momentum: (0, 0, 0),
-                        exponent: 71.6168,
-                        coefficients: vec![0.1543],
-                        center: [0.0, 0.0, 0.0],
-                    }
-                ],
+                basis_functions: vec![BasisFunction {
+                    function_type: BasisFunctionType::GTO,
+                    angular_momentum: (0, 0, 0),
+                    exponent: 71.6168,
+                    coefficients: vec![0.1543],
+                    center: [0.0, 0.0, 0.0],
+                }],
             },
             Atom {
                 atomic_number: 1,
@@ -1149,15 +1219,13 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
                 mass: 1.008,
                 position: [0.629, 0.629, 0.629],
                 partial_charge: Some(0.1),
-                basis_functions: vec![
-                    BasisFunction {
-                        function_type: BasisFunctionType::GTO,
-                        angular_momentum: (0, 0, 0),
-                        exponent: 3.425251,
-                        coefficients: vec![0.1543],
-                        center: [0.629, 0.629, 0.629],
-                    }
-                ],
+                basis_functions: vec![BasisFunction {
+                    function_type: BasisFunctionType::GTO,
+                    angular_momentum: (0, 0, 0),
+                    exponent: 3.425251,
+                    coefficients: vec![0.1543],
+                    center: [0.629, 0.629, 0.629],
+                }],
             },
             Atom {
                 atomic_number: 1,
@@ -1165,15 +1233,13 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
                 mass: 1.008,
                 position: [-0.629, -0.629, 0.629],
                 partial_charge: Some(0.1),
-                basis_functions: vec![
-                    BasisFunction {
-                        function_type: BasisFunctionType::GTO,
-                        angular_momentum: (0, 0, 0),
-                        exponent: 3.425251,
-                        coefficients: vec![0.1543],
-                        center: [-0.629, -0.629, 0.629],
-                    }
-                ],
+                basis_functions: vec![BasisFunction {
+                    function_type: BasisFunctionType::GTO,
+                    angular_momentum: (0, 0, 0),
+                    exponent: 3.425251,
+                    coefficients: vec![0.1543],
+                    center: [-0.629, -0.629, 0.629],
+                }],
             },
             Atom {
                 atomic_number: 1,
@@ -1181,15 +1247,13 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
                 mass: 1.008,
                 position: [-0.629, 0.629, -0.629],
                 partial_charge: Some(0.1),
-                basis_functions: vec![
-                    BasisFunction {
-                        function_type: BasisFunctionType::GTO,
-                        angular_momentum: (0, 0, 0),
-                        exponent: 3.425251,
-                        coefficients: vec![0.1543],
-                        center: [-0.629, 0.629, -0.629],
-                    }
-                ],
+                basis_functions: vec![BasisFunction {
+                    function_type: BasisFunctionType::GTO,
+                    angular_momentum: (0, 0, 0),
+                    exponent: 3.425251,
+                    coefficients: vec![0.1543],
+                    center: [-0.629, 0.629, -0.629],
+                }],
             },
             Atom {
                 atomic_number: 1,
@@ -1197,24 +1261,46 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
                 mass: 1.008,
                 position: [0.629, -0.629, -0.629],
                 partial_charge: Some(0.1),
-                basis_functions: vec![
-                    BasisFunction {
-                        function_type: BasisFunctionType::GTO,
-                        angular_momentum: (0, 0, 0),
-                        exponent: 3.425251,
-                        coefficients: vec![0.1543],
-                        center: [0.629, -0.629, -0.629],
-                    }
-                ],
+                basis_functions: vec![BasisFunction {
+                    function_type: BasisFunctionType::GTO,
+                    angular_momentum: (0, 0, 0),
+                    exponent: 3.425251,
+                    coefficients: vec![0.1543],
+                    center: [0.629, -0.629, -0.629],
+                }],
             },
         ],
         geometry: MolecularGeometry {
             coordinate_system: CoordinateSystem::Cartesian,
             bonds: vec![
-                Bond { atom1: 0, atom2: 1, length: 1.09, order: BondOrder::Single, strength: 414.0 },
-                Bond { atom1: 0, atom2: 2, length: 1.09, order: BondOrder::Single, strength: 414.0 },
-                Bond { atom1: 0, atom2: 3, length: 1.09, order: BondOrder::Single, strength: 414.0 },
-                Bond { atom1: 0, atom2: 4, length: 1.09, order: BondOrder::Single, strength: 414.0 },
+                Bond {
+                    atom1: 0,
+                    atom2: 1,
+                    length: 1.09,
+                    order: BondOrder::Single,
+                    strength: 414.0,
+                },
+                Bond {
+                    atom1: 0,
+                    atom2: 2,
+                    length: 1.09,
+                    order: BondOrder::Single,
+                    strength: 414.0,
+                },
+                Bond {
+                    atom1: 0,
+                    atom2: 3,
+                    length: 1.09,
+                    order: BondOrder::Single,
+                    strength: 414.0,
+                },
+                Bond {
+                    atom1: 0,
+                    atom2: 4,
+                    length: 1.09,
+                    order: BondOrder::Single,
+                    strength: 414.0,
+                },
             ],
             angles: vec![],
             dihedrals: vec![],
@@ -1231,10 +1317,12 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
 /// Create benchmark problems for quantum computational chemistry
 pub fn create_benchmark_problems(
     num_problems: usize,
-) -> ApplicationResult<Vec<Box<dyn OptimizationProblem<Solution = QuantumChemistryResult, ObjectiveValue = f64>>>> {
+) -> ApplicationResult<
+    Vec<Box<dyn OptimizationProblem<Solution = QuantumChemistryResult, ObjectiveValue = f64>>>,
+> {
     let mut problems = Vec::new();
     let systems = create_example_molecular_systems()?;
-    
+
     for i in 0..num_problems {
         let system = systems[i % systems.len()].clone();
         let problem = QuantumChemistryProblem {
@@ -1242,9 +1330,12 @@ pub fn create_benchmark_problems(
             config: QuantumChemistryConfig::default(),
             objectives: vec![ChemistryObjective::MinimizeEnergy],
         };
-        problems.push(Box::new(problem) as Box<dyn OptimizationProblem<Solution = QuantumChemistryResult, ObjectiveValue = f64>>);
+        problems.push(Box::new(problem)
+            as Box<
+                dyn OptimizationProblem<Solution = QuantumChemistryResult, ObjectiveValue = f64>,
+            >);
     }
-    
+
     Ok(problems)
 }
 
@@ -1270,20 +1361,31 @@ impl OptimizationProblem for QuantumChemistryProblem {
     type ObjectiveValue = f64;
 
     fn description(&self) -> String {
-        format!("Quantum computational chemistry optimization for system: {}", self.system.id)
+        format!(
+            "Quantum computational chemistry optimization for system: {}",
+            self.system.id
+        )
     }
 
     fn size_metrics(&self) -> HashMap<String, usize> {
         let mut metrics = HashMap::new();
         metrics.insert("atoms".to_string(), self.system.atoms.len());
-        metrics.insert("basis_functions".to_string(), 
-                      self.system.atoms.iter().map(|a| a.basis_functions.len()).sum());
+        metrics.insert(
+            "basis_functions".to_string(),
+            self.system
+                .atoms
+                .iter()
+                .map(|a| a.basis_functions.len())
+                .sum(),
+        );
         metrics
     }
 
     fn validate(&self) -> ApplicationResult<()> {
         if self.system.atoms.is_empty() {
-            return Err(ApplicationError::InvalidConfiguration("No atoms in molecular system".to_string()));
+            return Err(ApplicationError::InvalidConfiguration(
+                "No atoms in molecular system".to_string(),
+            ));
         }
         Ok(())
     }
@@ -1293,9 +1395,12 @@ impl OptimizationProblem for QuantumChemistryProblem {
         optimizer.molecular_system_to_qubo(&self.system)
     }
 
-    fn evaluate_solution(&self, solution: &Self::Solution) -> ApplicationResult<Self::ObjectiveValue> {
+    fn evaluate_solution(
+        &self,
+        solution: &Self::Solution,
+    ) -> ApplicationResult<Self::ObjectiveValue> {
         let mut score = 0.0;
-        
+
         for objective in &self.objectives {
             let obj_score = match objective {
                 ChemistryObjective::MinimizeEnergy => -solution.total_energy,
@@ -1305,7 +1410,7 @@ impl OptimizationProblem for QuantumChemistryProblem {
             };
             score += obj_score;
         }
-        
+
         Ok(score / self.objectives.len() as f64)
     }
 
@@ -1347,7 +1452,7 @@ mod tests {
             config: QuantumChemistryConfig::default(),
             objectives: vec![ChemistryObjective::MinimizeEnergy],
         };
-        
+
         assert!(problem.validate().is_ok());
         assert!(!problem.description().is_empty());
     }

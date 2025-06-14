@@ -16,17 +16,17 @@
 //! - Memory-mapped I/O for large datasets
 //! - Streaming algorithms for continuous processing
 
-use std::collections::{HashMap, VecDeque, BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::applications::{ApplicationError, ApplicationResult};
 use crate::applications::{
-    protein_folding::{ProteinFoldingProblem, ProteinSequence},
-    materials_science::MaterialsOptimizationProblem,
     drug_discovery::DrugDiscoveryProblem,
+    materials_science::MaterialsOptimizationProblem,
+    protein_folding::{ProteinFoldingProblem, ProteinSequence},
 };
+use crate::applications::{ApplicationError, ApplicationResult};
 use crate::ising::{IsingModel, QuboModel};
 
 /// Performance optimization configuration
@@ -105,7 +105,7 @@ pub struct MemoryPoolConfig {
 impl Default for MemoryPoolConfig {
     fn default() -> Self {
         Self {
-            pool_size: 4096, // 4GB
+            pool_size: 4096,                               // 4GB
             block_sizes: vec![64, 256, 1024, 4096, 16384], // Various block sizes
             enable_preallocation: true,
             growth_strategy: PoolGrowthStrategy::Exponential,
@@ -1487,70 +1487,88 @@ impl ScientificPerformanceOptimizer {
     pub fn new(config: PerformanceOptimizationConfig) -> Self {
         Self {
             config: config.clone(),
-            memory_manager: Arc::new(Mutex::new(HierarchicalMemoryManager::new(config.memory_config))),
-            parallel_processor: Arc::new(Mutex::new(AdvancedParallelProcessor::new(config.parallel_config))),
-            algorithm_optimizer: Arc::new(Mutex::new(AlgorithmOptimizer::new(config.algorithm_config))),
-            distributed_coordinator: Arc::new(Mutex::new(DistributedCoordinator::new(config.distributed_config))),
-            profiler: Arc::new(Mutex::new(PerformanceProfiler::new(config.profiling_config))),
+            memory_manager: Arc::new(Mutex::new(HierarchicalMemoryManager::new(
+                config.memory_config,
+            ))),
+            parallel_processor: Arc::new(Mutex::new(AdvancedParallelProcessor::new(
+                config.parallel_config,
+            ))),
+            algorithm_optimizer: Arc::new(Mutex::new(AlgorithmOptimizer::new(
+                config.algorithm_config,
+            ))),
+            distributed_coordinator: Arc::new(Mutex::new(DistributedCoordinator::new(
+                config.distributed_config,
+            ))),
+            profiler: Arc::new(Mutex::new(PerformanceProfiler::new(
+                config.profiling_config,
+            ))),
             gpu_accelerator: Arc::new(Mutex::new(GPUAccelerator::new(config.gpu_config))),
         }
     }
-    
+
     /// Initialize the performance optimization system
     pub fn initialize(&self) -> ApplicationResult<()> {
         println!("Initializing scientific performance optimization system");
-        
+
         // Initialize memory management
         self.initialize_memory_management()?;
-        
+
         // Initialize parallel processing
         self.initialize_parallel_processing()?;
-        
+
         // Initialize algorithm optimization
         self.initialize_algorithm_optimization()?;
-        
+
         // Initialize distributed computing if enabled
         if self.config.distributed_config.enable_distributed {
             self.initialize_distributed_computing()?;
         }
-        
+
         // Initialize profiling
         self.initialize_profiling()?;
-        
+
         // Initialize GPU acceleration if enabled
         if self.config.gpu_config.enable_gpu {
             self.initialize_gpu_acceleration()?;
         }
-        
+
         println!("Scientific performance optimization system initialized successfully");
         Ok(())
     }
-    
+
     /// Optimize protein folding problem performance
-    pub fn optimize_protein_folding(&self, problem: &ProteinFoldingProblem) -> ApplicationResult<OptimizedProteinFoldingResult> {
+    pub fn optimize_protein_folding(
+        &self,
+        problem: &ProteinFoldingProblem,
+    ) -> ApplicationResult<OptimizedProteinFoldingResult> {
         println!("Optimizing protein folding problem performance");
-        
+
         let start_time = Instant::now();
-        
+
         // Step 1: Analyze problem characteristics
         let problem_analysis = self.analyze_protein_folding_problem(problem)?;
-        
+
         // Step 2: Apply memory optimizations
         let memory_optimizations = self.apply_memory_optimizations(&problem_analysis)?;
-        
+
         // Step 3: Apply parallel processing optimizations
         let parallel_optimizations = self.apply_parallel_optimizations(&problem_analysis)?;
-        
+
         // Step 4: Apply algorithmic optimizations
         let algorithm_optimizations = self.apply_algorithm_optimizations(&problem_analysis)?;
-        
+
         // Step 5: Execute optimized computation
-        let result = self.execute_optimized_protein_folding(problem, &memory_optimizations, &parallel_optimizations, &algorithm_optimizations)?;
-        
+        let result = self.execute_optimized_protein_folding(
+            problem,
+            &memory_optimizations,
+            &parallel_optimizations,
+            &algorithm_optimizations,
+        )?;
+
         let total_time = start_time.elapsed();
-        
+
         println!("Protein folding optimization completed in {:?}", total_time);
-        
+
         Ok(OptimizedProteinFoldingResult {
             original_problem: problem.clone(),
             optimized_result: result,
@@ -1565,29 +1583,39 @@ impl ScientificPerformanceOptimizer {
             },
         })
     }
-    
+
     /// Optimize materials science problem performance
-    pub fn optimize_materials_science(&self, problem: &MaterialsOptimizationProblem) -> ApplicationResult<OptimizedMaterialsScienceResult> {
+    pub fn optimize_materials_science(
+        &self,
+        problem: &MaterialsOptimizationProblem,
+    ) -> ApplicationResult<OptimizedMaterialsScienceResult> {
         println!("Optimizing materials science problem performance");
-        
+
         let start_time = Instant::now();
-        
+
         // Step 1: Analyze crystal structure complexity
         let structure_analysis = self.analyze_crystal_structure(problem)?;
-        
+
         // Step 2: Apply decomposition strategies
         let decomposition_strategy = self.select_decomposition_strategy(&structure_analysis)?;
-        
+
         // Step 3: Apply parallel lattice processing
         let parallel_strategy = self.apply_parallel_lattice_processing(&structure_analysis)?;
-        
+
         // Step 4: Execute optimized simulation
-        let result = self.execute_optimized_materials_simulation(problem, &decomposition_strategy, &parallel_strategy)?;
-        
+        let result = self.execute_optimized_materials_simulation(
+            problem,
+            &decomposition_strategy,
+            &parallel_strategy,
+        )?;
+
         let total_time = start_time.elapsed();
-        
-        println!("Materials science optimization completed in {:?}", total_time);
-        
+
+        println!(
+            "Materials science optimization completed in {:?}",
+            total_time
+        );
+
         Ok(OptimizedMaterialsScienceResult {
             original_problem: problem.clone(),
             optimized_result: result,
@@ -1601,29 +1629,36 @@ impl ScientificPerformanceOptimizer {
             },
         })
     }
-    
+
     /// Optimize drug discovery problem performance
-    pub fn optimize_drug_discovery(&self, problem: &DrugDiscoveryProblem) -> ApplicationResult<OptimizedDrugDiscoveryResult> {
+    pub fn optimize_drug_discovery(
+        &self,
+        problem: &DrugDiscoveryProblem,
+    ) -> ApplicationResult<OptimizedDrugDiscoveryResult> {
         println!("Optimizing drug discovery problem performance");
-        
+
         let start_time = Instant::now();
-        
+
         // Step 1: Analyze molecular complexity
         let molecular_analysis = self.analyze_molecular_complexity(problem)?;
-        
+
         // Step 2: Apply molecular caching strategies
         let caching_strategy = self.apply_molecular_caching(&molecular_analysis)?;
-        
+
         // Step 3: Apply distributed screening
         let distributed_strategy = self.apply_distributed_screening(&molecular_analysis)?;
-        
+
         // Step 4: Execute optimized discovery
-        let result = self.execute_optimized_drug_discovery(problem, &caching_strategy, &distributed_strategy)?;
-        
+        let result = self.execute_optimized_drug_discovery(
+            problem,
+            &caching_strategy,
+            &distributed_strategy,
+        )?;
+
         let total_time = start_time.elapsed();
-        
+
         println!("Drug discovery optimization completed in {:?}", total_time);
-        
+
         Ok(OptimizedDrugDiscoveryResult {
             original_problem: problem.clone(),
             optimized_result: result,
@@ -1637,26 +1672,33 @@ impl ScientificPerformanceOptimizer {
             },
         })
     }
-    
+
     /// Get comprehensive performance report
     pub fn get_performance_report(&self) -> ApplicationResult<ComprehensivePerformanceReport> {
         let profiler = self.profiler.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire profiler lock".to_string())
         })?;
-        
+
         let memory_manager = self.memory_manager.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire memory manager lock".to_string())
         })?;
-        
+
         let parallel_processor = self.parallel_processor.lock().map_err(|_| {
-            ApplicationError::OptimizationError("Failed to acquire parallel processor lock".to_string())
+            ApplicationError::OptimizationError(
+                "Failed to acquire parallel processor lock".to_string(),
+            )
         })?;
-        
+
         Ok(ComprehensivePerformanceReport {
             system_metrics: SystemPerformanceMetrics {
                 overall_performance_score: 0.85,
                 memory_efficiency: memory_manager.memory_stats.memory_efficiency,
-                cpu_utilization: profiler.cpu_profiler.cpu_samples.back().map(|s| s.usage_percent).unwrap_or(0.0),
+                cpu_utilization: profiler
+                    .cpu_profiler
+                    .cpu_samples
+                    .back()
+                    .map(|s| s.usage_percent)
+                    .unwrap_or(0.0),
                 parallel_efficiency: parallel_processor.performance_metrics.parallel_efficiency,
                 cache_hit_rate: memory_manager.cache_hierarchy.cache_stats.hit_rate,
             },
@@ -1665,40 +1707,43 @@ impl ScientificPerformanceOptimizer {
             resource_utilization: self.analyze_resource_utilization()?,
         })
     }
-    
+
     // Private helper methods
-    
+
     fn initialize_memory_management(&self) -> ApplicationResult<()> {
         println!("Initializing memory management system");
         Ok(())
     }
-    
+
     fn initialize_parallel_processing(&self) -> ApplicationResult<()> {
         println!("Initializing parallel processing system");
         Ok(())
     }
-    
+
     fn initialize_algorithm_optimization(&self) -> ApplicationResult<()> {
         println!("Initializing algorithm optimization system");
         Ok(())
     }
-    
+
     fn initialize_distributed_computing(&self) -> ApplicationResult<()> {
         println!("Initializing distributed computing system");
         Ok(())
     }
-    
+
     fn initialize_profiling(&self) -> ApplicationResult<()> {
         println!("Initializing performance profiling system");
         Ok(())
     }
-    
+
     fn initialize_gpu_acceleration(&self) -> ApplicationResult<()> {
         println!("Initializing GPU acceleration system");
         Ok(())
     }
-    
-    fn analyze_protein_folding_problem(&self, problem: &ProteinFoldingProblem) -> ApplicationResult<ProblemAnalysis> {
+
+    fn analyze_protein_folding_problem(
+        &self,
+        problem: &ProteinFoldingProblem,
+    ) -> ApplicationResult<ProblemAnalysis> {
         Ok(ProblemAnalysis {
             problem_type: ProblemType::ProteinFolding,
             complexity_score: 0.7,
@@ -1711,8 +1756,11 @@ impl ScientificPerformanceOptimizer {
             ],
         })
     }
-    
-    fn apply_memory_optimizations(&self, analysis: &ProblemAnalysis) -> ApplicationResult<MemoryOptimizations> {
+
+    fn apply_memory_optimizations(
+        &self,
+        analysis: &ProblemAnalysis,
+    ) -> ApplicationResult<MemoryOptimizations> {
         Ok(MemoryOptimizations {
             memory_pool_enabled: true,
             cache_strategy: CacheStrategy::Hierarchical,
@@ -1721,8 +1769,11 @@ impl ScientificPerformanceOptimizer {
             estimated_savings: 0.3,
         })
     }
-    
-    fn apply_parallel_optimizations(&self, analysis: &ProblemAnalysis) -> ApplicationResult<ParallelOptimizations> {
+
+    fn apply_parallel_optimizations(
+        &self,
+        analysis: &ProblemAnalysis,
+    ) -> ApplicationResult<ParallelOptimizations> {
         Ok(ParallelOptimizations {
             parallel_strategy: ParallelStrategy::TaskParallelism,
             thread_count: num_cpus::get(),
@@ -1731,8 +1782,11 @@ impl ScientificPerformanceOptimizer {
             estimated_speedup: 5.2,
         })
     }
-    
-    fn apply_algorithm_optimizations(&self, analysis: &ProblemAnalysis) -> ApplicationResult<AlgorithmOptimizations> {
+
+    fn apply_algorithm_optimizations(
+        &self,
+        analysis: &ProblemAnalysis,
+    ) -> ApplicationResult<AlgorithmOptimizations> {
         Ok(AlgorithmOptimizations {
             decomposition_enabled: true,
             approximation_enabled: true,
@@ -1741,7 +1795,7 @@ impl ScientificPerformanceOptimizer {
             estimated_improvement: 0.15,
         })
     }
-    
+
     fn execute_optimized_protein_folding(
         &self,
         problem: &ProteinFoldingProblem,
@@ -1751,7 +1805,7 @@ impl ScientificPerformanceOptimizer {
     ) -> ApplicationResult<ProteinFoldingOptimizationResult> {
         // Simulate optimized execution
         thread::sleep(Duration::from_millis(100));
-        
+
         Ok(ProteinFoldingOptimizationResult {
             optimized_conformation: vec![1, -1, 1, -1], // Simplified
             energy_reduction: 0.25,
@@ -1759,8 +1813,11 @@ impl ScientificPerformanceOptimizer {
             execution_time: Duration::from_millis(100),
         })
     }
-    
-    fn analyze_crystal_structure(&self, problem: &MaterialsOptimizationProblem) -> ApplicationResult<CrystalStructureAnalysis> {
+
+    fn analyze_crystal_structure(
+        &self,
+        problem: &MaterialsOptimizationProblem,
+    ) -> ApplicationResult<CrystalStructureAnalysis> {
         Ok(CrystalStructureAnalysis {
             lattice_complexity: 0.6,
             atom_count: 1000,
@@ -1768,19 +1825,25 @@ impl ScientificPerformanceOptimizer {
             optimization_potential: 0.7,
         })
     }
-    
-    fn select_decomposition_strategy(&self, analysis: &CrystalStructureAnalysis) -> ApplicationResult<DecompositionStrategy> {
+
+    fn select_decomposition_strategy(
+        &self,
+        analysis: &CrystalStructureAnalysis,
+    ) -> ApplicationResult<DecompositionStrategy> {
         Ok(DecompositionStrategy::Hierarchical)
     }
-    
-    fn apply_parallel_lattice_processing(&self, analysis: &CrystalStructureAnalysis) -> ApplicationResult<ParallelLatticeStrategy> {
+
+    fn apply_parallel_lattice_processing(
+        &self,
+        analysis: &CrystalStructureAnalysis,
+    ) -> ApplicationResult<ParallelLatticeStrategy> {
         Ok(ParallelLatticeStrategy {
             partitioning_method: PartitioningMethod::Spatial,
             communication_pattern: CommunicationPattern::NearestNeighbor,
             load_balancing: LoadBalancingMethod::Dynamic,
         })
     }
-    
+
     fn execute_optimized_materials_simulation(
         &self,
         problem: &MaterialsOptimizationProblem,
@@ -1789,7 +1852,7 @@ impl ScientificPerformanceOptimizer {
     ) -> ApplicationResult<MaterialsOptimizationResult> {
         // Simulate optimized execution
         thread::sleep(Duration::from_millis(50));
-        
+
         Ok(MaterialsOptimizationResult {
             optimized_structure: CrystalStructure::default(),
             energy_minimization: 0.3,
@@ -1797,8 +1860,11 @@ impl ScientificPerformanceOptimizer {
             simulation_time: Duration::from_millis(50),
         })
     }
-    
-    fn analyze_molecular_complexity(&self, problem: &DrugDiscoveryProblem) -> ApplicationResult<MolecularComplexityAnalysis> {
+
+    fn analyze_molecular_complexity(
+        &self,
+        problem: &DrugDiscoveryProblem,
+    ) -> ApplicationResult<MolecularComplexityAnalysis> {
         Ok(MolecularComplexityAnalysis {
             molecular_weight: 500.0,
             rotatable_bonds: 5,
@@ -1806,8 +1872,11 @@ impl ScientificPerformanceOptimizer {
             complexity_score: 0.6,
         })
     }
-    
-    fn apply_molecular_caching(&self, analysis: &MolecularComplexityAnalysis) -> ApplicationResult<MolecularCachingStrategy> {
+
+    fn apply_molecular_caching(
+        &self,
+        analysis: &MolecularComplexityAnalysis,
+    ) -> ApplicationResult<MolecularCachingStrategy> {
         Ok(MolecularCachingStrategy {
             cache_type: MolecularCacheType::StructureBased,
             cache_size: 1000,
@@ -1815,8 +1884,11 @@ impl ScientificPerformanceOptimizer {
             hit_rate_target: 0.8,
         })
     }
-    
-    fn apply_distributed_screening(&self, analysis: &MolecularComplexityAnalysis) -> ApplicationResult<DistributedScreeningStrategy> {
+
+    fn apply_distributed_screening(
+        &self,
+        analysis: &MolecularComplexityAnalysis,
+    ) -> ApplicationResult<DistributedScreeningStrategy> {
         Ok(DistributedScreeningStrategy {
             screening_method: ScreeningMethod::VirtualScreening,
             cluster_size: 4,
@@ -1824,7 +1896,7 @@ impl ScientificPerformanceOptimizer {
             fault_tolerance: true,
         })
     }
-    
+
     fn execute_optimized_drug_discovery(
         &self,
         problem: &DrugDiscoveryProblem,
@@ -1833,7 +1905,7 @@ impl ScientificPerformanceOptimizer {
     ) -> ApplicationResult<DrugDiscoveryOptimizationResult> {
         // Simulate optimized execution
         thread::sleep(Duration::from_millis(25));
-        
+
         Ok(DrugDiscoveryOptimizationResult {
             optimized_molecules: vec![],
             screening_efficiency: 0.85,
@@ -1841,12 +1913,15 @@ impl ScientificPerformanceOptimizer {
             discovery_time: Duration::from_millis(25),
         })
     }
-    
-    fn generate_optimization_recommendations(&self) -> ApplicationResult<Vec<OptimizationRecommendation>> {
+
+    fn generate_optimization_recommendations(
+        &self,
+    ) -> ApplicationResult<Vec<OptimizationRecommendation>> {
         Ok(vec![
             OptimizationRecommendation {
                 category: OptimizationCategory::Memory,
-                recommendation: "Increase memory pool size for better allocation efficiency".to_string(),
+                recommendation: "Increase memory pool size for better allocation efficiency"
+                    .to_string(),
                 impact: OptimizationImpact::Medium,
                 estimated_improvement: 0.15,
             },
@@ -1864,7 +1939,7 @@ impl ScientificPerformanceOptimizer {
             },
         ])
     }
-    
+
     fn analyze_performance_bottlenecks(&self) -> ApplicationResult<BottleneckAnalysis> {
         Ok(BottleneckAnalysis {
             primary_bottleneck: BottleneckType::MemoryBandwidth,
@@ -1877,7 +1952,7 @@ impl ScientificPerformanceOptimizer {
             ],
         })
     }
-    
+
     fn analyze_resource_utilization(&self) -> ApplicationResult<ResourceUtilizationAnalysis> {
         Ok(ResourceUtilizationAnalysis {
             cpu_utilization: 0.75,
@@ -1906,9 +1981,9 @@ impl HierarchicalMemoryManager {
 impl CacheHierarchy {
     fn new() -> Self {
         Self {
-            l1_cache: LRUCache::new(1024),  // 1KB L1
-            l2_cache: LRUCache::new(1024 * 1024),  // 1MB L2
-            l3_cache: LRUCache::new(10 * 1024 * 1024),  // 10MB L3
+            l1_cache: LRUCache::new(1024),             // 1KB L1
+            l2_cache: LRUCache::new(1024 * 1024),      // 1MB L2
+            l3_cache: LRUCache::new(10 * 1024 * 1024), // 10MB L3
             cache_stats: CacheStatistics::default(),
         }
     }
@@ -2232,10 +2307,10 @@ pub struct ResourceUtilizationAnalysis {
 pub fn create_example_performance_optimizer() -> ApplicationResult<ScientificPerformanceOptimizer> {
     let config = PerformanceOptimizationConfig::default();
     let optimizer = ScientificPerformanceOptimizer::new(config);
-    
+
     // Initialize the optimizer
     optimizer.initialize()?;
-    
+
     Ok(optimizer)
 }
 
@@ -2277,21 +2352,27 @@ pub struct CommunicationStatistics {}
 pub struct FaultToleranceManager {}
 
 impl FaultToleranceManager {
-    pub fn new() -> Self { Self {} }
+    pub fn new() -> Self {
+        Self {}
+    }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct MemoryProfiler {}
 
 impl MemoryProfiler {
-    pub fn new() -> Self { Self {} }
+    pub fn new() -> Self {
+        Self {}
+    }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct IOProfiler {}
 
 impl IOProfiler {
-    pub fn new() -> Self { Self {} }
+    pub fn new() -> Self {
+        Self {}
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -2304,14 +2385,18 @@ pub struct CPUProfilingConfig {}
 pub struct GPUMemoryManager {}
 
 impl GPUMemoryManager {
-    pub fn new() -> Self { Self {} }
+    pub fn new() -> Self {
+        Self {}
+    }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct KernelRegistry {}
 
 impl KernelRegistry {
-    pub fn new() -> Self { Self {} }
+    pub fn new() -> Self {
+        Self {}
+    }
 }
 
 // More type definitions continuing...
@@ -2525,16 +2610,19 @@ pub enum ComputationType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_performance_optimizer_creation() {
         let config = PerformanceOptimizationConfig::default();
         let optimizer = ScientificPerformanceOptimizer::new(config);
-        
+
         assert_eq!(optimizer.config.memory_config.cache_size_limit, 8192);
-        assert_eq!(optimizer.config.parallel_config.num_threads, num_cpus::get());
+        assert_eq!(
+            optimizer.config.parallel_config.num_threads,
+            num_cpus::get()
+        );
     }
-    
+
     #[test]
     fn test_memory_optimization_config() {
         let config = MemoryOptimizationConfig::default();
@@ -2542,65 +2630,74 @@ mod tests {
         assert_eq!(config.cache_size_limit, 8192);
         assert!(config.enable_memory_mapping);
     }
-    
+
     #[test]
     fn test_parallel_processing_config() {
         let config = ParallelProcessingConfig::default();
         assert_eq!(config.num_threads, num_cpus::get());
-        assert_eq!(config.scheduling_strategy, TaskSchedulingStrategy::WorkStealing);
+        assert_eq!(
+            config.scheduling_strategy,
+            TaskSchedulingStrategy::WorkStealing
+        );
     }
-    
+
     #[test]
     fn test_algorithm_optimization_config() {
         let config = AlgorithmOptimizationConfig::default();
         assert!(config.enable_algorithmic_improvements);
-        assert!(config.decomposition_config.enable_hierarchical_decomposition);
+        assert!(
+            config
+                .decomposition_config
+                .enable_hierarchical_decomposition
+        );
         assert!(config.caching_config.enable_result_caching);
     }
-    
+
     #[test]
     fn test_gpu_acceleration_config() {
         let config = GPUAccelerationConfig::default();
         assert!(!config.enable_gpu); // Disabled by default
         assert_eq!(config.device_selection, GPUDeviceSelection::Automatic);
     }
-    
+
     #[test]
     fn test_optimization_recommendations() {
         let optimizer = create_example_performance_optimizer().unwrap();
         let recommendations = optimizer.generate_optimization_recommendations().unwrap();
-        
+
         assert!(!recommendations.is_empty());
-        assert!(recommendations.iter().any(|r| r.category == OptimizationCategory::Memory));
+        assert!(recommendations
+            .iter()
+            .any(|r| r.category == OptimizationCategory::Memory));
     }
-    
+
     #[test]
     fn test_performance_report_generation() {
         let optimizer = create_example_performance_optimizer().unwrap();
         let report = optimizer.get_performance_report().unwrap();
-        
+
         assert!(report.system_metrics.overall_performance_score > 0.0);
         assert!(!report.optimization_recommendations.is_empty());
     }
-    
+
     #[test]
     fn test_hierarchical_memory_manager() {
         let config = MemoryOptimizationConfig::default();
         let manager = HierarchicalMemoryManager::new(config);
-        
+
         assert_eq!(manager.memory_stats.current_usage, 0);
         assert_eq!(manager.cache_hierarchy.cache_stats.hits, 0);
     }
-    
+
     #[test]
     fn test_cache_hierarchy() {
         let cache_hierarchy = CacheHierarchy::new();
-        
+
         assert_eq!(cache_hierarchy.l1_cache.capacity, 1024);
         assert_eq!(cache_hierarchy.l2_cache.capacity, 1024 * 1024);
         assert_eq!(cache_hierarchy.l3_cache.capacity, 10 * 1024 * 1024);
     }
-    
+
     #[test]
     fn test_decomposition_strategies() {
         let strategies = vec![
@@ -2609,15 +2706,24 @@ mod tests {
             DecompositionStrategy::GraphBased,
             DecompositionStrategy::Hierarchical,
         ];
-        
+
         // Test that each strategy is a valid enum variant
         assert_eq!(strategies.len(), 4);
-        
+
         // Test that different strategies are indeed different
-        assert_ne!(DecompositionStrategy::Uniform, DecompositionStrategy::Adaptive);
-        assert_ne!(DecompositionStrategy::Adaptive, DecompositionStrategy::GraphBased);
-        assert_ne!(DecompositionStrategy::GraphBased, DecompositionStrategy::Hierarchical);
-        
+        assert_ne!(
+            DecompositionStrategy::Uniform,
+            DecompositionStrategy::Adaptive
+        );
+        assert_ne!(
+            DecompositionStrategy::Adaptive,
+            DecompositionStrategy::GraphBased
+        );
+        assert_ne!(
+            DecompositionStrategy::GraphBased,
+            DecompositionStrategy::Hierarchical
+        );
+
         // Test that strategies can be cloned and compared
         for strategy in &strategies {
             let cloned = strategy.clone();

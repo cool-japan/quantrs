@@ -168,7 +168,7 @@ impl Default for ParallelConfig {
 }
 
 /// Hardware constraints for compilation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct HardwareConstraints {
     /// Maximum circuit depth
     pub max_depth: Option<usize>,

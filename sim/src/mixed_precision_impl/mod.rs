@@ -88,7 +88,7 @@ pub fn get_performance_factor(precision: QuantumPrecision) -> f64 {
 /// Benchmark different precision levels
 pub fn benchmark_precisions() -> Result<analysis::PrecisionAnalysis> {
     let mut analyzer = PrecisionAnalyzer::new();
-    analyzer.analyze_for_tolerance(1e-6)
+    Ok(analyzer.analyze_for_tolerance(1e-6))
 }
 
 #[cfg(test)]

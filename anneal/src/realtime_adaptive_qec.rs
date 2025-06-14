@@ -16,7 +16,7 @@
 //! - Temporal noise correlation analysis
 //! - Predictive error mitigation strategies
 
-use std::collections::{HashMap, VecDeque, BTreeMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
@@ -24,8 +24,7 @@ use std::time::{Duration, Instant, SystemTime};
 use crate::applications::{ApplicationError, ApplicationResult};
 use crate::ising::{IsingModel, QuboModel};
 use crate::quantum_error_correction::{
-    ErrorCorrectionCode, MitigationTechnique,
-    LogicalAnnealingEncoder, SyndromeDetector,
+    ErrorCorrectionCode, LogicalAnnealingEncoder, MitigationTechnique, SyndromeDetector,
 };
 
 /// Real-time adaptive QEC configuration
@@ -1270,15 +1269,19 @@ impl RealTimeAdaptiveQec {
             protocol_manager: Arc::new(RwLock::new(AdaptiveProtocolManager::new())),
             prediction_system: Arc::new(Mutex::new(NoisePredictionSystem::new(config.ml_config))),
             performance_analyzer: Arc::new(Mutex::new(PerformanceAnalyzer::new())),
-            resource_manager: Arc::new(Mutex::new(AdaptiveResourceManager::new(config.resource_config))),
-            hierarchy_coordinator: Arc::new(Mutex::new(HierarchyCoordinator::new(config.hierarchy_config))),
+            resource_manager: Arc::new(Mutex::new(AdaptiveResourceManager::new(
+                config.resource_config,
+            ))),
+            hierarchy_coordinator: Arc::new(Mutex::new(HierarchyCoordinator::new(
+                config.hierarchy_config,
+            ))),
         }
     }
-    
+
     /// Start real-time adaptive QEC system
     pub fn start(&self) -> ApplicationResult<()> {
         println!("Starting real-time adaptive quantum error correction system");
-        
+
         // Initialize all subsystems
         self.initialize_noise_monitoring()?;
         self.initialize_prediction_system()?;
@@ -1286,50 +1289,55 @@ impl RealTimeAdaptiveQec {
         self.initialize_performance_analysis()?;
         self.initialize_resource_management()?;
         self.initialize_hierarchy_coordination()?;
-        
+
         // Start monitoring loops
         self.start_monitoring_loops()?;
-        
+
         println!("Real-time adaptive QEC system started successfully");
         Ok(())
     }
-    
+
     /// Apply adaptive error correction to a problem
-    pub fn apply_adaptive_correction(&self, problem: &IsingModel) -> ApplicationResult<CorrectedProblem> {
+    pub fn apply_adaptive_correction(
+        &self,
+        problem: &IsingModel,
+    ) -> ApplicationResult<CorrectedProblem> {
         println!("Applying adaptive error correction to Ising problem");
-        
+
         // Step 1: Assess current noise conditions
         let noise_assessment = self.assess_noise_conditions()?;
-        
+
         // Step 2: Predict near-future noise
         let noise_prediction = self.predict_noise_evolution(&noise_assessment)?;
-        
+
         // Step 3: Select optimal correction strategy
-        let correction_strategy = self.select_correction_strategy(problem, &noise_assessment, &noise_prediction)?;
-        
+        let correction_strategy =
+            self.select_correction_strategy(problem, &noise_assessment, &noise_prediction)?;
+
         // Step 4: Apply correction with adaptive monitoring
-        let corrected_problem = self.apply_correction_with_monitoring(problem, &correction_strategy)?;
-        
+        let corrected_problem =
+            self.apply_correction_with_monitoring(problem, &correction_strategy)?;
+
         // Step 5: Update system state and learn from results
         self.update_system_state(&corrected_problem)?;
-        
+
         println!("Adaptive error correction applied successfully");
         Ok(corrected_problem)
     }
-    
+
     /// Assess current noise conditions
     fn assess_noise_conditions(&self) -> ApplicationResult<NoiseAssessment> {
         let noise_monitor = self.noise_monitor.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire noise monitor lock".to_string())
         })?;
-        
+
         let current_noise = &noise_monitor.current_noise;
-        
+
         // Analyze noise characteristics
         let noise_level = current_noise.noise_level;
         let noise_type = current_noise.noise_type.clone();
         let temporal_correlation = current_noise.temporal_correlation;
-        
+
         // Classify noise severity
         let severity = if noise_level < 0.01 {
             NoiseSeverity::Low
@@ -1338,7 +1346,7 @@ impl RealTimeAdaptiveQec {
         } else {
             NoiseSeverity::High
         };
-        
+
         Ok(NoiseAssessment {
             current_noise: current_noise.clone(),
             severity,
@@ -1347,11 +1355,11 @@ impl RealTimeAdaptiveQec {
             timestamp: Instant::now(),
         })
     }
-    
+
     /// Analyze noise trends from history
     fn analyze_noise_trends(&self, noise_monitor: &NoiseMonitor) -> ApplicationResult<NoiseTrends> {
         let history = &noise_monitor.noise_history;
-        
+
         if history.len() < 2 {
             return Ok(NoiseTrends {
                 direction: TrendDirection::Stable,
@@ -1359,11 +1367,11 @@ impl RealTimeAdaptiveQec {
                 confidence: 0.5,
             });
         }
-        
+
         // Simple trend analysis
         let recent = &history[history.len() - 1];
         let previous = &history[history.len() - 2];
-        
+
         let noise_change = recent.noise_level - previous.noise_level;
         let direction = if noise_change > 0.001 {
             TrendDirection::Increasing
@@ -1372,20 +1380,25 @@ impl RealTimeAdaptiveQec {
         } else {
             TrendDirection::Stable
         };
-        
+
         Ok(NoiseTrends {
             direction,
             rate: noise_change.abs(),
             confidence: 0.8,
         })
     }
-    
+
     /// Predict noise evolution
-    fn predict_noise_evolution(&self, assessment: &NoiseAssessment) -> ApplicationResult<NoisePrediction> {
+    fn predict_noise_evolution(
+        &self,
+        assessment: &NoiseAssessment,
+    ) -> ApplicationResult<NoisePrediction> {
         let prediction_system = self.prediction_system.lock().map_err(|_| {
-            ApplicationError::OptimizationError("Failed to acquire prediction system lock".to_string())
+            ApplicationError::OptimizationError(
+                "Failed to acquire prediction system lock".to_string(),
+            )
         })?;
-        
+
         // Use ensemble prediction
         let predicted_noise_level = match assessment.trends.direction {
             TrendDirection::Increasing => {
@@ -1396,9 +1409,12 @@ impl RealTimeAdaptiveQec {
             }
             TrendDirection::Stable => assessment.current_noise.noise_level,
         };
-        
+
         let predicted_noise = NoiseCharacteristics {
-            timestamp: Instant::now() + Duration::from_millis((self.config.prediction_config.accuracy_threshold * 1000.0) as u64),
+            timestamp: Instant::now()
+                + Duration::from_millis(
+                    (self.config.prediction_config.accuracy_threshold * 1000.0) as u64,
+                ),
             noise_level: predicted_noise_level,
             noise_type: assessment.current_noise.noise_type.clone(),
             temporal_correlation: assessment.current_noise.temporal_correlation,
@@ -1408,7 +1424,7 @@ impl RealTimeAdaptiveQec {
             coherence_times: assessment.current_noise.coherence_times.clone(),
             gate_fidelities: assessment.current_noise.gate_fidelities.clone(),
         };
-        
+
         Ok(NoisePrediction {
             predicted_noise,
             confidence: 0.85,
@@ -1416,7 +1432,7 @@ impl RealTimeAdaptiveQec {
             uncertainty_bounds: (predicted_noise_level * 0.9, predicted_noise_level * 1.1),
         })
     }
-    
+
     /// Select optimal correction strategy
     fn select_correction_strategy(
         &self,
@@ -1426,7 +1442,7 @@ impl RealTimeAdaptiveQec {
     ) -> ApplicationResult<ErrorCorrectionStrategy> {
         let problem_size = problem.num_qubits;
         let noise_level = noise_assessment.current_noise.noise_level;
-        
+
         // Strategy selection based on problem and noise characteristics
         let strategy = match (problem_size, noise_level) {
             (size, noise) if size <= 100 && noise < 0.01 => {
@@ -1469,12 +1485,14 @@ impl RealTimeAdaptiveQec {
                 })
             }
         };
-        
-        println!("Selected error correction strategy based on problem size {} and noise level {:.4}", 
-                problem_size, noise_level);
+
+        println!(
+            "Selected error correction strategy based on problem size {} and noise level {:.4}",
+            problem_size, noise_level
+        );
         Ok(strategy)
     }
-    
+
     /// Apply correction with real-time monitoring
     fn apply_correction_with_monitoring(
         &self,
@@ -1482,7 +1500,7 @@ impl RealTimeAdaptiveQec {
         strategy: &ErrorCorrectionStrategy,
     ) -> ApplicationResult<CorrectedProblem> {
         let start_time = Instant::now();
-        
+
         // Apply the selected strategy
         let corrected_data = match strategy {
             ErrorCorrectionStrategy::None => {
@@ -1507,9 +1525,9 @@ impl RealTimeAdaptiveQec {
                 self.apply_adaptive_strategy(problem, config)?
             }
         };
-        
+
         let execution_time = start_time.elapsed();
-        
+
         Ok(CorrectedProblem {
             original_problem: problem.clone(),
             corrected_problem: corrected_data.corrected_problem,
@@ -1523,14 +1541,18 @@ impl RealTimeAdaptiveQec {
             },
         })
     }
-    
+
     /// Apply detection-only strategy
-    fn apply_detection_only(&self, problem: &IsingModel, config: &DetectionConfig) -> ApplicationResult<CorrectionResult> {
+    fn apply_detection_only(
+        &self,
+        problem: &IsingModel,
+        config: &DetectionConfig,
+    ) -> ApplicationResult<CorrectionResult> {
         // Simulate error detection
         thread::sleep(Duration::from_millis(5));
-        
+
         let errors_detected = (problem.num_qubits as f64 * 0.01) as usize;
-        
+
         Ok(CorrectionResult {
             corrected_problem: problem.clone(),
             correction_overhead: 0.05,
@@ -1538,15 +1560,19 @@ impl RealTimeAdaptiveQec {
             errors_corrected: 0,
         })
     }
-    
+
     /// Apply full error correction
-    fn apply_full_correction(&self, problem: &IsingModel, config: &CorrectionConfig) -> ApplicationResult<CorrectionResult> {
+    fn apply_full_correction(
+        &self,
+        problem: &IsingModel,
+        config: &CorrectionConfig,
+    ) -> ApplicationResult<CorrectionResult> {
         // Simulate full error correction
         thread::sleep(Duration::from_millis(20));
-        
+
         let errors_detected = (problem.num_qubits as f64 * 0.02) as usize;
         let errors_corrected = (errors_detected as f64 * 0.9) as usize;
-        
+
         Ok(CorrectionResult {
             corrected_problem: problem.clone(),
             correction_overhead: 0.2,
@@ -1554,20 +1580,25 @@ impl RealTimeAdaptiveQec {
             errors_corrected,
         })
     }
-    
+
     /// Apply hybrid correction strategy
-    fn apply_hybrid_correction(&self, problem: &IsingModel, config: &HybridConfig) -> ApplicationResult<CorrectionResult> {
+    fn apply_hybrid_correction(
+        &self,
+        problem: &IsingModel,
+        config: &HybridConfig,
+    ) -> ApplicationResult<CorrectionResult> {
         // Start with detection
         let detection_result = self.apply_detection_only(problem, &config.detection)?;
-        
+
         // Decide whether to proceed with correction
         let should_correct = detection_result.errors_detected > 0;
-        
+
         if should_correct {
             let correction_result = self.apply_full_correction(problem, &config.correction)?;
             Ok(CorrectionResult {
                 corrected_problem: correction_result.corrected_problem,
-                correction_overhead: detection_result.correction_overhead + correction_result.correction_overhead,
+                correction_overhead: detection_result.correction_overhead
+                    + correction_result.correction_overhead,
                 errors_detected: detection_result.errors_detected,
                 errors_corrected: correction_result.errors_corrected,
             })
@@ -1575,9 +1606,13 @@ impl RealTimeAdaptiveQec {
             Ok(detection_result)
         }
     }
-    
+
     /// Apply adaptive strategy selection
-    fn apply_adaptive_strategy(&self, problem: &IsingModel, config: &AdaptiveStrategyConfig) -> ApplicationResult<CorrectionResult> {
+    fn apply_adaptive_strategy(
+        &self,
+        problem: &IsingModel,
+        config: &AdaptiveStrategyConfig,
+    ) -> ApplicationResult<CorrectionResult> {
         // Select best strategy from available options
         if let Some(best_strategy) = config.available_strategies.first() {
             match best_strategy {
@@ -1589,82 +1624,92 @@ impl RealTimeAdaptiveQec {
                 }
                 _ => {
                     // Default to detection
-                    self.apply_detection_only(problem, &DetectionConfig {
-                        threshold: 0.01,
-                        method: DetectionMethod::Parity,
-                        action: DetectionAction::Flag,
-                    })
+                    self.apply_detection_only(
+                        problem,
+                        &DetectionConfig {
+                            threshold: 0.01,
+                            method: DetectionMethod::Parity,
+                            action: DetectionAction::Flag,
+                        },
+                    )
                 }
             }
         } else {
             Err(ApplicationError::InvalidConfiguration(
-                "No strategies available for adaptive selection".to_string()
+                "No strategies available for adaptive selection".to_string(),
             ))
         }
     }
-    
+
     /// Update system state based on results
     fn update_system_state(&self, corrected_problem: &CorrectedProblem) -> ApplicationResult<()> {
         // Update performance metrics
         let mut performance_analyzer = self.performance_analyzer.lock().map_err(|_| {
-            ApplicationError::OptimizationError("Failed to acquire performance analyzer lock".to_string())
+            ApplicationError::OptimizationError(
+                "Failed to acquire performance analyzer lock".to_string(),
+            )
         })?;
-        
+
         performance_analyzer.update_performance(&corrected_problem.correction_metadata);
-        
+
         // Update resource allocation if needed
         let mut resource_manager = self.resource_manager.lock().map_err(|_| {
-            ApplicationError::OptimizationError("Failed to acquire resource manager lock".to_string())
+            ApplicationError::OptimizationError(
+                "Failed to acquire resource manager lock".to_string(),
+            )
         })?;
-        
-        resource_manager.update_allocation_based_on_performance(&corrected_problem.correction_metadata);
-        
+
+        resource_manager
+            .update_allocation_based_on_performance(&corrected_problem.correction_metadata);
+
         Ok(())
     }
-    
+
     /// Initialize subsystems
     fn initialize_noise_monitoring(&self) -> ApplicationResult<()> {
         println!("Initializing noise monitoring subsystem");
         Ok(())
     }
-    
+
     fn initialize_prediction_system(&self) -> ApplicationResult<()> {
         println!("Initializing noise prediction subsystem");
         Ok(())
     }
-    
+
     fn initialize_protocol_management(&self) -> ApplicationResult<()> {
         println!("Initializing adaptive protocol management");
         Ok(())
     }
-    
+
     fn initialize_performance_analysis(&self) -> ApplicationResult<()> {
         println!("Initializing performance analysis subsystem");
         Ok(())
     }
-    
+
     fn initialize_resource_management(&self) -> ApplicationResult<()> {
         println!("Initializing adaptive resource management");
         Ok(())
     }
-    
+
     fn initialize_hierarchy_coordination(&self) -> ApplicationResult<()> {
         println!("Initializing hierarchy coordination");
         Ok(())
     }
-    
+
     fn start_monitoring_loops(&self) -> ApplicationResult<()> {
         println!("Starting real-time monitoring loops");
         // In a real implementation, this would start background threads
         Ok(())
     }
-    
+
     /// Get current system performance metrics
     pub fn get_performance_metrics(&self) -> ApplicationResult<AdaptiveQecMetrics> {
         let performance_analyzer = self.performance_analyzer.lock().map_err(|_| {
-            ApplicationError::OptimizationError("Failed to acquire performance analyzer lock".to_string())
+            ApplicationError::OptimizationError(
+                "Failed to acquire performance analyzer lock".to_string(),
+            )
         })?;
-        
+
         Ok(AdaptiveQecMetrics {
             correction_efficiency: performance_analyzer.metrics.correction_efficiency,
             adaptation_responsiveness: performance_analyzer.metrics.adaptation_responsiveness,
@@ -1825,20 +1870,22 @@ impl PerformanceAnalyzer {
             benchmarks: HashMap::new(),
         }
     }
-    
+
     fn update_performance(&mut self, metadata: &CorrectionMetadata) {
         // Update performance metrics based on correction results
         let efficiency = metadata.errors_corrected as f64 / metadata.errors_detected.max(1) as f64;
-        self.metrics.correction_efficiency = (self.metrics.correction_efficiency * 0.9) + (efficiency * 0.1);
-        
+        self.metrics.correction_efficiency =
+            (self.metrics.correction_efficiency * 0.9) + (efficiency * 0.1);
+
         let resource_efficiency = 1.0 / (1.0 + metadata.correction_overhead);
-        self.metrics.resource_efficiency = (self.metrics.resource_efficiency * 0.9) + (resource_efficiency * 0.1);
-        
+        self.metrics.resource_efficiency =
+            (self.metrics.resource_efficiency * 0.9) + (resource_efficiency * 0.1);
+
         // Update overall performance
-        self.metrics.overall_performance = self.metrics.correction_efficiency * 0.3 +
-            self.metrics.resource_efficiency * 0.3 +
-            self.metrics.adaptation_responsiveness * 0.2 +
-            self.metrics.prediction_accuracy * 0.2;
+        self.metrics.overall_performance = self.metrics.correction_efficiency * 0.3
+            + self.metrics.resource_efficiency * 0.3
+            + self.metrics.adaptation_responsiveness * 0.2
+            + self.metrics.prediction_accuracy * 0.2;
     }
 }
 
@@ -1860,17 +1907,22 @@ impl AdaptiveResourceManager {
             optimizers: vec![],
         }
     }
-    
+
     fn update_allocation_based_on_performance(&mut self, metadata: &CorrectionMetadata) {
         // Adjust resource allocation based on performance
-        let performance_score = metadata.errors_corrected as f64 / metadata.errors_detected.max(1) as f64;
-        
+        let performance_score =
+            metadata.errors_corrected as f64 / metadata.errors_detected.max(1) as f64;
+
         if performance_score < 0.8 {
             // Increase resource allocation for error correction
-            self.allocation.allocation_map.insert("error_correction".to_string(), 0.4);
+            self.allocation
+                .allocation_map
+                .insert("error_correction".to_string(), 0.4);
         } else if performance_score > 0.95 && metadata.correction_overhead < 0.1 {
             // Reduce allocation if performance is excellent and overhead is low
-            self.allocation.allocation_map.insert("error_correction".to_string(), 0.2);
+            self.allocation
+                .allocation_map
+                .insert("error_correction".to_string(), 0.2);
         }
     }
 }
@@ -1892,7 +1944,7 @@ impl HierarchyCoordinator {
                 },
             });
         }
-        
+
         Self {
             levels,
             communication: HierarchyCommunicationManager {
@@ -1914,40 +1966,43 @@ impl HierarchyCoordinator {
 pub fn create_example_adaptive_qec() -> ApplicationResult<RealTimeAdaptiveQec> {
     let config = AdaptiveQecConfig::default();
     let system = RealTimeAdaptiveQec::new(config);
-    
+
     // Start the system
     system.start()?;
-    
+
     Ok(system)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_adaptive_qec_creation() {
         let config = AdaptiveQecConfig::default();
         let system = RealTimeAdaptiveQec::new(config);
-        
+
         // Basic system creation test
-        assert_eq!(system.config.monitoring_interval, Duration::from_millis(100));
+        assert_eq!(
+            system.config.monitoring_interval,
+            Duration::from_millis(100)
+        );
     }
-    
+
     #[test]
     fn test_noise_assessment() {
         let system = create_example_adaptive_qec().unwrap();
         let assessment = system.assess_noise_conditions().unwrap();
-        
+
         assert!(assessment.confidence > 0.0);
         assert!(assessment.confidence <= 1.0);
     }
-    
+
     #[test]
     fn test_strategy_selection() {
         let system = create_example_adaptive_qec().unwrap();
         let problem = IsingModel::new(100);
-        
+
         let noise_assessment = NoiseAssessment {
             current_noise: NoiseCharacteristics {
                 timestamp: Instant::now(),
@@ -1969,25 +2024,35 @@ mod tests {
             confidence: 0.9,
             timestamp: Instant::now(),
         };
-        
+
         let noise_prediction = NoisePrediction {
             predicted_noise: noise_assessment.current_noise.clone(),
             confidence: 0.85,
             horizon: Duration::from_secs(10),
             uncertainty_bounds: (0.003, 0.007),
         };
-        
-        let strategy = system.select_correction_strategy(&problem, &noise_assessment, &noise_prediction).unwrap();
-        
+
+        let strategy = system
+            .select_correction_strategy(&problem, &noise_assessment, &noise_prediction)
+            .unwrap();
+
         // Should select appropriate strategy for small problem with low noise
         match &strategy {
             ErrorCorrectionStrategy::Detection(_) => assert!(true),
-            ErrorCorrectionStrategy::Hybrid(_) => assert!(false, "Got hybrid strategy instead of detection"),
-            ErrorCorrectionStrategy::Correction(_) => assert!(false, "Got correction strategy instead of detection"),
-            _ => assert!(false, "Expected detection strategy for low noise, got: {:?}", strategy),
+            ErrorCorrectionStrategy::Hybrid(_) => {
+                assert!(false, "Got hybrid strategy instead of detection")
+            }
+            ErrorCorrectionStrategy::Correction(_) => {
+                assert!(false, "Got correction strategy instead of detection")
+            }
+            _ => assert!(
+                false,
+                "Expected detection strategy for low noise, got: {:?}",
+                strategy
+            ),
         }
     }
-    
+
     #[test]
     fn test_ml_config() {
         let ml_config = MLNoiseConfig::default();
@@ -1995,7 +2060,7 @@ mod tests {
         assert_eq!(ml_config.training_window, 1000);
         assert!(ml_config.enable_neural_prediction);
     }
-    
+
     #[test]
     fn test_hierarchy_config() {
         let hierarchy_config = HierarchyConfig::default();
@@ -2003,11 +2068,11 @@ mod tests {
         assert_eq!(hierarchy_config.level_thresholds.len(), 3);
         assert!(hierarchy_config.enable_hierarchy);
     }
-    
+
     #[test]
     fn test_performance_metrics_update() {
         let mut analyzer = PerformanceAnalyzer::new();
-        
+
         let metadata = CorrectionMetadata {
             strategy_used: ErrorCorrectionStrategy::Detection(DetectionConfig {
                 threshold: 0.01,
@@ -2020,10 +2085,10 @@ mod tests {
             errors_corrected: 4,
             confidence: 0.9,
         };
-        
+
         let initial_efficiency = analyzer.metrics.correction_efficiency;
         analyzer.update_performance(&metadata);
-        
+
         // Performance should be updated
         assert!(analyzer.metrics.correction_efficiency >= 0.0);
         assert!(analyzer.metrics.correction_efficiency <= 1.0);

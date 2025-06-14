@@ -1,10 +1,10 @@
 //! Bayesian Optimization Configuration Types
 
-use crate::ising::IsingError;
-use thiserror::Error;
 use super::gaussian_process::{GaussianProcessSurrogate, KernelFunction};
-use rand_chacha::ChaCha8Rng;
+use crate::ising::IsingError;
 use rand::Rng;
+use rand_chacha::ChaCha8Rng;
+use thiserror::Error;
 
 /// Errors that can occur in Bayesian optimization
 #[derive(Error, Debug)]
@@ -177,7 +177,7 @@ impl BayesianHyperoptimizer {
             metrics: BayesianOptMetrics::default(),
         }
     }
-    
+
     /// Run Bayesian optimization
     pub fn optimize<F>(&mut self, objective_function: F) -> BayesianOptResult<Vec<f64>>
     where
@@ -185,83 +185,90 @@ impl BayesianHyperoptimizer {
     {
         use rand::{Rng, SeedableRng};
         use rand_chacha::ChaCha8Rng;
-        
+
         let mut rng = if let Some(seed) = self.config.seed {
             ChaCha8Rng::seed_from_u64(seed)
         } else {
             ChaCha8Rng::from_rng(&mut rand::thread_rng())
         };
-        
+
         let start_time = std::time::Instant::now();
-        
+
         // Step 1: Generate initial random samples
         self.generate_initial_samples(&mut rng, &objective_function)?;
-        
+
         // Step 2: Main optimization loop
         for iteration in 0..self.config.max_iterations {
             let iter_start = std::time::Instant::now();
-            
+
             // Update Gaussian Process model
             self.update_gp_model()?;
-            
+
             // Find next point to evaluate using acquisition function
             let next_point = self.suggest_next_point(&mut rng)?;
-            
+
             // Evaluate objective function
             let value = objective_function(&next_point);
-            
+
             // Update history
             self.history.evaluations.push((next_point, value));
-            
+
             // Update best value
             if value < self.current_best_value {
                 self.current_best_value = value;
             }
             self.history.best_values.push(self.current_best_value);
-            
+
             // Record iteration time
             let iter_time = iter_start.elapsed().as_secs_f64();
             self.history.iteration_times.push(iter_time);
-            
+
             // Check convergence
             if self.check_convergence()? {
-                println!("Bayesian optimization converged after {} iterations", iteration + 1);
+                println!(
+                    "Bayesian optimization converged after {} iterations",
+                    iteration + 1
+                );
                 break;
             }
         }
-        
+
         // Update final metrics
         self.metrics.convergence_rate = self.calculate_convergence_rate();
         self.metrics.regret = self.calculate_regret();
-        
+
         // Return best parameter values found
         self.get_best_parameters()
     }
-    
+
     /// Generate initial random samples
-    fn generate_initial_samples<F>(&mut self, rng: &mut ChaCha8Rng, objective_function: &F) -> BayesianOptResult<()>
+    fn generate_initial_samples<F>(
+        &mut self,
+        rng: &mut ChaCha8Rng,
+        objective_function: &F,
+    ) -> BayesianOptResult<()>
     where
         F: Fn(&[f64]) -> f64,
     {
         for _ in 0..self.config.initial_samples {
             let sample = self.sample_random_point(rng)?;
             let value = objective_function(&sample);
-            
+
             self.history.evaluations.push((sample, value));
-            
+
             if value < self.current_best_value {
                 self.current_best_value = value;
             }
             self.history.best_values.push(self.current_best_value);
         }
-        
+
         Ok(())
     }
-    
+
     /// Sample a random point from the parameter space
     fn sample_random_point(&self, rng: &mut ChaCha8Rng) -> BayesianOptResult<Vec<f64>> {
         let mut point = Vec::new();
-        
+
         for param in &self.parameter_space.parameters {
             match &param.bounds {
                 ParameterBounds::Continuous { min, max } => {
@@ -278,10 +285,10 @@ impl BayesianHyperoptimizer {
                 }
             }
         }
-        
+
         Ok(point)
     }
-    
+
     /// Update Gaussian Process model with current data
     fn update_gp_model(&mut self) -> BayesianOptResult<()> {
         if self.history.evaluations.is_empty() {
@@ -289,62 +296,71 @@ impl BayesianHyperoptimizer {
                 "No data available for GP model".to_string(),
             ));
         }
-        
+
         let gp_start = std::time::Instant::now();
-        
+
         // Extract training data
-        let x_data: Vec<Vec<f64>> = self.history.evaluations.iter().map(|(x, _)| x.clone()).collect();
+        let x_data: Vec<Vec<f64>> = self
+            .history
+            .evaluations
+            .iter()
+            .map(|(x, _)| x.clone())
+            .collect();
         let y_data: Vec<f64> = self.history.evaluations.iter().map(|(_, y)| *y).collect();
-        
+
         // Create or update GP model
         let model = GaussianProcessSurrogate {
             kernel: KernelFunction::RBF,
             noise_variance: 1e-6,
             mean_function: super::gaussian_process::MeanFunction::Zero,
         };
-        
+
         self.gp_model = Some(model);
         self.metrics.gp_training_time = gp_start.elapsed().as_secs_f64();
-        
+
         Ok(())
     }
-    
+
     /// Suggest next point to evaluate using acquisition function
     fn suggest_next_point(&mut self, rng: &mut ChaCha8Rng) -> BayesianOptResult<Vec<f64>> {
         let acq_start = std::time::Instant::now();
-        
+
         let gp_model = self.gp_model.as_ref().ok_or_else(|| {
             BayesianOptError::GaussianProcessError("GP model not initialized".to_string())
         })?;
-        
+
         let mut best_point = self.sample_random_point(rng)?;
         let mut best_acquisition_value = f64::NEG_INFINITY;
-        
+
         // Random search for acquisition function optimization
         // In practice, would use more sophisticated optimization
         for _ in 0..self.config.acquisition_config.num_restarts * 10 {
             let candidate = self.sample_random_point(rng)?;
             let acquisition_value = self.evaluate_acquisition_function(&candidate, gp_model)?;
-            
+
             if acquisition_value > best_acquisition_value {
                 best_acquisition_value = acquisition_value;
                 best_point = candidate;
             }
         }
-        
+
         // Update acquisition time metric
         let acq_time = acq_start.elapsed().as_secs_f64();
         // Note: This overwrites the previous value. In practice, you might want to accumulate or average
         self.metrics.acquisition_time = acq_time;
-        
+
         Ok(best_point)
     }
-    
+
     /// Evaluate acquisition function at given point
-    fn evaluate_acquisition_function(&self, point: &[f64], gp_model: &GaussianProcessSurrogate) -> BayesianOptResult<f64> {
+    fn evaluate_acquisition_function(
+        &self,
+        point: &[f64],
+        gp_model: &GaussianProcessSurrogate,
+    ) -> BayesianOptResult<f64> {
         let (mean, variance) = gp_model.predict(point)?;
         let std_dev = variance.sqrt();
-        
+
         match self.config.acquisition_config.function_type {
             super::AcquisitionFunctionType::ExpectedImprovement => {
                 self.expected_improvement(mean, std_dev)
@@ -361,16 +377,16 @@ impl BayesianHyperoptimizer {
             }
         }
     }
-    
+
     /// Expected Improvement acquisition function
     fn expected_improvement(&self, mean: f64, std_dev: f64) -> BayesianOptResult<f64> {
         if std_dev <= 1e-10 {
             return Ok(0.0);
         }
-        
+
         let improvement = self.current_best_value - mean;
         let z = improvement / std_dev;
-        
+
         // Approximation of normal CDF and PDF
         // Using approximation for erf
         let a1 = 0.254829592;
@@ -382,26 +398,27 @@ impl BayesianHyperoptimizer {
         let sign = if z < 0.0 { -1.0 } else { 1.0 };
         let z_abs = z.abs() / std::f64::consts::SQRT_2;
         let t = 1.0 / (1.0 + p * z_abs);
-        let erf = sign * (1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-z_abs * z_abs).exp());
+        let erf = sign
+            * (1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-z_abs * z_abs).exp());
         let phi = 0.5 * (1.0 + erf);
         let pdf = (1.0 / (std::f64::consts::TAU.sqrt())) * (-0.5 * z * z).exp();
-        
+
         let ei = improvement * phi + std_dev * pdf;
         Ok(ei.max(0.0))
     }
-    
+
     /// Upper Confidence Bound acquisition function
     fn upper_confidence_bound(&self, mean: f64, std_dev: f64) -> BayesianOptResult<f64> {
         let beta = self.config.acquisition_config.exploration_factor;
         Ok(-mean + beta * std_dev) // Negative because we're minimizing
     }
-    
+
     /// Probability of Improvement acquisition function
     fn probability_of_improvement(&self, mean: f64, std_dev: f64) -> BayesianOptResult<f64> {
         if std_dev <= 1e-10 {
             return Ok(0.0);
         }
-        
+
         let z = (self.current_best_value - mean) / std_dev;
         // Using approximation for erf (same as above)
         let a1 = 0.254829592;
@@ -413,67 +430,74 @@ impl BayesianHyperoptimizer {
         let sign = if z < 0.0 { -1.0 } else { 1.0 };
         let z_abs = z.abs() / std::f64::consts::SQRT_2;
         let t = 1.0 / (1.0 + p * z_abs);
-        let erf = sign * (1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-z_abs * z_abs).exp());
+        let erf = sign
+            * (1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-z_abs * z_abs).exp());
         let pi = 0.5 * (1.0 + erf);
         Ok(pi)
     }
-    
+
     /// Check convergence criteria
     fn check_convergence(&self) -> BayesianOptResult<bool> {
         if self.history.best_values.len() < 2 {
             return Ok(false);
         }
-        
+
         // Simple convergence check: improvement in last few iterations
         let recent_window = 5.min(self.history.best_values.len());
-        let recent_best = self.history.best_values[self.history.best_values.len() - recent_window..].to_vec();
-        
+        let recent_best =
+            self.history.best_values[self.history.best_values.len() - recent_window..].to_vec();
+
         let improvement = recent_best.first().unwrap() - recent_best.last().unwrap();
         let relative_improvement = improvement.abs() / (recent_best.first().unwrap().abs() + 1e-10);
-        
+
         Ok(relative_improvement < 1e-6)
     }
-    
+
     /// Calculate convergence rate
     fn calculate_convergence_rate(&self) -> f64 {
         if self.history.best_values.len() < 2 {
             return 0.0;
         }
-        
+
         let initial = self.history.best_values[0];
         let final_val = *self.history.best_values.last().unwrap();
-        
+
         if initial.abs() < 1e-10 {
             return 0.0;
         }
-        
+
         (initial - final_val) / initial.abs()
     }
-    
+
     /// Calculate regret over time
     fn calculate_regret(&self) -> Vec<f64> {
         if self.history.best_values.is_empty() {
             return Vec::new();
         }
-        
+
         let global_best = *self.history.best_values.last().unwrap();
-        self.history.best_values.iter().map(|&v| v - global_best).collect()
+        self.history
+            .best_values
+            .iter()
+            .map(|&v| v - global_best)
+            .collect()
     }
-    
+
     /// Get best parameters found during optimization
     fn get_best_parameters(&self) -> BayesianOptResult<Vec<f64>> {
-        self.history.evaluations
+        self.history
+            .evaluations
             .iter()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .map(|(params, _)| params.clone())
             .ok_or_else(|| BayesianOptError::OptimizationError("No evaluations found".to_string()))
     }
-    
+
     /// Get optimization metrics
     pub fn get_metrics(&self) -> &BayesianOptMetrics {
         &self.metrics
     }
-    
+
     /// Get optimization history
     pub fn get_history(&self) -> &OptimizationHistory {
         &self.history

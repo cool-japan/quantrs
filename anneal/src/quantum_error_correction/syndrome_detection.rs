@@ -8,17 +8,17 @@
 //! - Integration with annealing schedules
 
 use ndarray::{Array1, Array2};
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
-use crate::ising::{IsingModel};
-use crate::simulator::AnnealingResult;
-use crate::qaoa::QuantumState;
+use super::codes::{CodeParameters, ErrorCorrectionCode};
 use super::config::{QECResult, QuantumErrorCorrectionError};
-use super::codes::{ErrorCorrectionCode, CodeParameters};
 use super::logical_operations::LogicalOperation;
+use crate::ising::IsingModel;
+use crate::qaoa::QuantumState;
+use crate::simulator::AnnealingResult;
 
 /// Syndrome detection and correction engine
 #[derive(Debug, Clone)]
@@ -224,7 +224,7 @@ impl SyndromeDetector {
 
         // Perform syndrome measurements
         let syndrome = self.measure_syndrome(state)?;
-        
+
         // Decode errors if syndrome is non-trivial
         let (correction, error_locations) = if self.is_trivial_syndrome(&syndrome) {
             (None, Vec::new())
@@ -270,12 +270,11 @@ impl SyndromeDetector {
 
         // Update correction statistics
         self.detection_stats.successful_corrections += 1;
-        self.detection_stats.avg_correction_time = 
-            Self::update_average_time(
-                self.detection_stats.avg_correction_time,
-                start_time.elapsed(),
-                self.detection_stats.successful_corrections,
-            );
+        self.detection_stats.avg_correction_time = Self::update_average_time(
+            self.detection_stats.avg_correction_time,
+            start_time.elapsed(),
+            self.detection_stats.successful_corrections,
+        );
 
         Ok(())
     }
@@ -299,23 +298,16 @@ impl SyndromeDetector {
         parameters: &CodeParameters,
     ) -> QECResult<Array2<u8>> {
         match code {
-            ErrorCorrectionCode::SurfaceCode => {
-                Self::generate_surface_code_stabilizers(parameters)
-            }
+            ErrorCorrectionCode::SurfaceCode => Self::generate_surface_code_stabilizers(parameters),
             ErrorCorrectionCode::RepetitionCode => {
                 Self::generate_repetition_code_stabilizers(parameters)
             }
-            ErrorCorrectionCode::SteaneCode => {
-                Self::generate_steane_code_stabilizers(parameters)
-            }
-            ErrorCorrectionCode::ShorCode => {
-                Self::generate_shor_code_stabilizers(parameters)
-            }
-            _ => {
-                Err(QuantumErrorCorrectionError::CodeError(
-                    format!("Stabilizer generation not implemented for code: {:?}", code)
-                ))
-            }
+            ErrorCorrectionCode::SteaneCode => Self::generate_steane_code_stabilizers(parameters),
+            ErrorCorrectionCode::ShorCode => Self::generate_shor_code_stabilizers(parameters),
+            _ => Err(QuantumErrorCorrectionError::CodeError(format!(
+                "Stabilizer generation not implemented for code: {:?}",
+                code
+            ))),
         }
     }
 
@@ -331,9 +323,10 @@ impl SyndromeDetector {
         let mut stabilizer_idx = 0;
 
         // X-type stabilizers (plaquette checks)
-        for row in 0..(d-1) {
-            for col in 0..(d-1) {
-                if (row + col) % 2 == 0 { // X-type plaquettes
+        for row in 0..(d - 1) {
+            for col in 0..(d - 1) {
+                if (row + col) % 2 == 0 {
+                    // X-type plaquettes
                     let qubits = Self::get_plaquette_qubits(row, col, d);
                     for &qubit in &qubits {
                         if qubit < num_qubits {
@@ -348,18 +341,24 @@ impl SyndromeDetector {
         // Z-type stabilizers (vertex checks)
         for row in 0..d {
             for col in 0..d {
-                if (row + col) % 2 == 1 { // Z-type vertices
+                if (row + col) % 2 == 1 {
+                    // Z-type vertices
                     let qubits = Self::get_vertex_qubits(row, col, d);
                     for &qubit in &qubits {
                         if qubit < num_qubits {
-                            stabilizers[[stabilizer_idx, num_qubits + qubit]] = 1; // Z part
+                            stabilizers[[stabilizer_idx, num_qubits + qubit]] = 1;
+                            // Z part
                         }
                     }
                     stabilizer_idx += 1;
-                    if stabilizer_idx >= num_stabilizers { break; }
+                    if stabilizer_idx >= num_stabilizers {
+                        break;
+                    }
                 }
             }
-            if stabilizer_idx >= num_stabilizers { break; }
+            if stabilizer_idx >= num_stabilizers {
+                break;
+            }
         }
 
         Ok(stabilizers)
@@ -374,7 +373,7 @@ impl SyndromeDetector {
 
         // Generate ZZ stabilizers for repetition code
         for i in 0..num_stabilizers {
-            stabilizers[[i, n + i]] = 1;     // Z on qubit i
+            stabilizers[[i, n + i]] = 1; // Z on qubit i
             stabilizers[[i, n + i + 1]] = 1; // Z on qubit i+1
         }
 
@@ -387,14 +386,32 @@ impl SyndromeDetector {
         let mut stabilizers = Array2::zeros((6, 14)); // 6 stabilizers for [[7,1,3]] code
 
         // X-type stabilizers
-        stabilizers[[0, 0]] = 1; stabilizers[[0, 2]] = 1; stabilizers[[0, 4]] = 1; stabilizers[[0, 6]] = 1;
-        stabilizers[[1, 1]] = 1; stabilizers[[1, 2]] = 1; stabilizers[[1, 5]] = 1; stabilizers[[1, 6]] = 1;
-        stabilizers[[2, 3]] = 1; stabilizers[[2, 4]] = 1; stabilizers[[2, 5]] = 1; stabilizers[[2, 6]] = 1;
+        stabilizers[[0, 0]] = 1;
+        stabilizers[[0, 2]] = 1;
+        stabilizers[[0, 4]] = 1;
+        stabilizers[[0, 6]] = 1;
+        stabilizers[[1, 1]] = 1;
+        stabilizers[[1, 2]] = 1;
+        stabilizers[[1, 5]] = 1;
+        stabilizers[[1, 6]] = 1;
+        stabilizers[[2, 3]] = 1;
+        stabilizers[[2, 4]] = 1;
+        stabilizers[[2, 5]] = 1;
+        stabilizers[[2, 6]] = 1;
 
         // Z-type stabilizers
-        stabilizers[[3, 7]] = 1; stabilizers[[3, 9]] = 1; stabilizers[[3, 11]] = 1; stabilizers[[3, 13]] = 1;
-        stabilizers[[4, 8]] = 1; stabilizers[[4, 9]] = 1; stabilizers[[4, 12]] = 1; stabilizers[[4, 13]] = 1;
-        stabilizers[[5, 10]] = 1; stabilizers[[5, 11]] = 1; stabilizers[[5, 12]] = 1; stabilizers[[5, 13]] = 1;
+        stabilizers[[3, 7]] = 1;
+        stabilizers[[3, 9]] = 1;
+        stabilizers[[3, 11]] = 1;
+        stabilizers[[3, 13]] = 1;
+        stabilizers[[4, 8]] = 1;
+        stabilizers[[4, 9]] = 1;
+        stabilizers[[4, 12]] = 1;
+        stabilizers[[4, 13]] = 1;
+        stabilizers[[5, 10]] = 1;
+        stabilizers[[5, 11]] = 1;
+        stabilizers[[5, 12]] = 1;
+        stabilizers[[5, 13]] = 1;
 
         Ok(stabilizers)
     }
@@ -405,16 +422,27 @@ impl SyndromeDetector {
         let mut stabilizers = Array2::zeros((8, 18)); // 8 stabilizers for [[9,1,3]] code
 
         // X-type stabilizers (phase error detection)
-        stabilizers[[0, 0]] = 1; stabilizers[[0, 1]] = 1; stabilizers[[0, 2]] = 1;
-        stabilizers[[1, 3]] = 1; stabilizers[[1, 4]] = 1; stabilizers[[1, 5]] = 1;
-        stabilizers[[2, 6]] = 1; stabilizers[[2, 7]] = 1; stabilizers[[2, 8]] = 1;
+        stabilizers[[0, 0]] = 1;
+        stabilizers[[0, 1]] = 1;
+        stabilizers[[0, 2]] = 1;
+        stabilizers[[1, 3]] = 1;
+        stabilizers[[1, 4]] = 1;
+        stabilizers[[1, 5]] = 1;
+        stabilizers[[2, 6]] = 1;
+        stabilizers[[2, 7]] = 1;
+        stabilizers[[2, 8]] = 1;
 
         // Z-type stabilizers (bit error detection)
-        stabilizers[[3, 9]] = 1; stabilizers[[3, 10]] = 1;
-        stabilizers[[4, 10]] = 1; stabilizers[[4, 11]] = 1;
-        stabilizers[[5, 12]] = 1; stabilizers[[5, 13]] = 1;
-        stabilizers[[6, 13]] = 1; stabilizers[[6, 14]] = 1;
-        stabilizers[[7, 15]] = 1; stabilizers[[7, 16]] = 1;
+        stabilizers[[3, 9]] = 1;
+        stabilizers[[3, 10]] = 1;
+        stabilizers[[4, 10]] = 1;
+        stabilizers[[4, 11]] = 1;
+        stabilizers[[5, 12]] = 1;
+        stabilizers[[5, 13]] = 1;
+        stabilizers[[6, 13]] = 1;
+        stabilizers[[6, 14]] = 1;
+        stabilizers[[7, 15]] = 1;
+        stabilizers[[7, 16]] = 1;
 
         Ok(stabilizers)
     }
@@ -444,13 +472,17 @@ impl SyndromeDetector {
             DecodingAlgorithm::MinimumWeight => {
                 // For minimum weight, we'll compute corrections on-demand
                 // Just add trivial syndrome entry
-                table.insert(vec![0; parameters.num_physical_qubits - parameters.num_logical_qubits], 
-                           CorrectionOperation::identity());
+                table.insert(
+                    vec![0; parameters.num_physical_qubits - parameters.num_logical_qubits],
+                    CorrectionOperation::identity(),
+                );
             }
             _ => {
                 // Other decoders compute corrections algorithmically
-                table.insert(vec![0; parameters.num_physical_qubits - parameters.num_logical_qubits], 
-                           CorrectionOperation::identity());
+                table.insert(
+                    vec![0; parameters.num_physical_qubits - parameters.num_logical_qubits],
+                    CorrectionOperation::identity(),
+                );
             }
         }
 
@@ -464,9 +496,10 @@ impl SyndromeDetector {
         table: &mut HashMap<Vec<u8>, CorrectionOperation>,
     ) -> QECResult<()> {
         let num_syndrome_bits = parameters.num_physical_qubits - parameters.num_logical_qubits;
-        
+
         // For small codes, enumerate all possible syndromes
-        if num_syndrome_bits <= 10 { // Limit to reasonable table size
+        if num_syndrome_bits <= 10 {
+            // Limit to reasonable table size
             for syndrome_int in 0..(1 << num_syndrome_bits) {
                 let syndrome = Self::int_to_syndrome(syndrome_int, num_syndrome_bits);
                 let correction = Self::compute_minimum_weight_correction(&syndrome, parameters)?;
@@ -491,7 +524,7 @@ impl SyndromeDetector {
     ) -> QECResult<CorrectionOperation> {
         // Simplified minimum weight decoding
         let mut corrections = Vec::new();
-        
+
         // Find non-zero syndrome bits and create corresponding corrections
         for (i, &bit) in syndrome.iter().enumerate() {
             if bit == 1 {
@@ -527,7 +560,7 @@ impl SyndromeDetector {
 
         // Simulate syndrome measurements
         let mut rng = ChaCha8Rng::from_rng(&mut rand::thread_rng());
-        
+
         for i in 0..num_stabilizers {
             // In a real implementation, this would measure the stabilizer
             // For simulation, we'll generate syndrome based on noise model
@@ -565,7 +598,8 @@ impl SyndromeDetector {
 
     /// Extract error locations from correction
     fn extract_error_locations(&self, correction: &CorrectionOperation) -> Vec<usize> {
-        correction.pauli_corrections
+        correction
+            .pauli_corrections
             .iter()
             .map(|pc| pc.qubit)
             .collect()
@@ -580,13 +614,13 @@ impl SyndromeDetector {
         // Base confidence on syndrome weight and consistency
         let syndrome_weight = syndrome.iter().map(|&b| b as usize).sum::<usize>();
         let max_weight = syndrome.len();
-        
+
         // Lower confidence for higher syndrome weights (more errors)
         let weight_factor = 1.0 - (syndrome_weight as f64 / max_weight as f64);
-        
+
         // Factor in noise model
         let noise_factor = 1.0 - self.config.noise_model.measurement_error_rate;
-        
+
         Ok(weight_factor * noise_factor * 0.9) // Cap at 0.9
     }
 
@@ -604,7 +638,10 @@ impl SyndromeDetector {
     ) -> QECResult<()> {
         // This would apply the actual Pauli operation in a real implementation
         // For now, we'll just log the correction
-        println!("Applying {:?} correction to qubit {}", correction.operation, correction.qubit);
+        println!(
+            "Applying {:?} correction to qubit {}",
+            correction.operation, correction.qubit
+        );
         Ok(())
     }
 
@@ -616,7 +653,7 @@ impl SyndromeDetector {
         detection_time: Duration,
     ) {
         self.detection_stats.total_measurements += 1;
-        
+
         if !self.is_trivial_syndrome(syndrome) {
             self.detection_stats.errors_detected += 1;
         }
@@ -654,12 +691,20 @@ impl SyndromeDetector {
     /// Get plaquette qubits for surface code
     fn get_plaquette_qubits(row: usize, col: usize, d: usize) -> Vec<usize> {
         let mut qubits = Vec::new();
-        
+
         // Add qubits around the plaquette
-        if row > 0 { qubits.push(row * d + col); }
-        if col > 0 { qubits.push(row * d + col - 1); }
-        if row < d - 1 { qubits.push((row + 1) * d + col); }
-        if col < d - 1 { qubits.push(row * d + col + 1); }
+        if row > 0 {
+            qubits.push(row * d + col);
+        }
+        if col > 0 {
+            qubits.push(row * d + col - 1);
+        }
+        if row < d - 1 {
+            qubits.push((row + 1) * d + col);
+        }
+        if col < d - 1 {
+            qubits.push(row * d + col + 1);
+        }
 
         qubits
     }
@@ -760,7 +805,7 @@ mod tests {
             num_logical_qubits: 1,
             num_physical_qubits: 3,
             num_ancilla_qubits: 2,
-            code_rate: 1.0/3.0,
+            code_rate: 1.0 / 3.0,
             threshold_probability: 0.1,
         };
         let config = SyndromeDetectorConfig::default();
@@ -776,11 +821,12 @@ mod tests {
             num_logical_qubits: 1,
             num_physical_qubits: 3,
             num_ancilla_qubits: 2,
-            code_rate: 1.0/3.0,
+            code_rate: 1.0 / 3.0,
             threshold_probability: 0.1,
         };
 
-        let stabilizers = SyndromeDetector::generate_repetition_code_stabilizers(&parameters).unwrap();
+        let stabilizers =
+            SyndromeDetector::generate_repetition_code_stabilizers(&parameters).unwrap();
         assert_eq!(stabilizers.nrows(), 2); // n-1 stabilizers
         assert_eq!(stabilizers.ncols(), 6); // 2n columns (X and Z parts)
     }
@@ -802,12 +848,13 @@ mod tests {
             num_logical_qubits: 1,
             num_physical_qubits: 3,
             num_ancilla_qubits: 2,
-            code_rate: 1.0/3.0,
+            code_rate: 1.0 / 3.0,
             threshold_probability: 0.1,
         };
 
         let syndrome = vec![1, 0];
-        let correction = SyndromeDetector::compute_minimum_weight_correction(&syndrome, &parameters).unwrap();
+        let correction =
+            SyndromeDetector::compute_minimum_weight_correction(&syndrome, &parameters).unwrap();
         assert_eq!(correction.pauli_corrections.len(), 1);
         assert_eq!(correction.pauli_corrections[0].qubit, 0);
     }
@@ -819,7 +866,7 @@ mod tests {
             num_logical_qubits: 1,
             num_physical_qubits: 3,
             num_ancilla_qubits: 2,
-            code_rate: 1.0/3.0,
+            code_rate: 1.0 / 3.0,
             threshold_probability: 0.1,
         };
         let config = SyndromeDetectorConfig::default();

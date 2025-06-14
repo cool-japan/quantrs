@@ -60,6 +60,49 @@ impl Default for DeviceCalibration {
     }
 }
 
+impl DeviceCalibration {
+    /// Get single-qubit gate fidelity for a specific qubit
+    pub fn single_qubit_fidelity(&self, qubit: usize) -> Option<f64> {
+        let qubit_id = QubitId(qubit as u32);
+        
+        // Try to get fidelity from single-qubit gates (prefer X gate as representative)
+        if let Some(x_gate) = self.single_qubit_gates.get("X") {
+            if let Some(gate_data) = x_gate.qubit_data.get(&qubit_id) {
+                return Some(gate_data.fidelity);
+            }
+        }
+        
+        // Fallback: try other common single-qubit gates
+        for gate_name in &["H", "Y", "Z", "RX", "RY", "RZ"] {
+            if let Some(gate) = self.single_qubit_gates.get(*gate_name) {
+                if let Some(gate_data) = gate.qubit_data.get(&qubit_id) {
+                    return Some(gate_data.fidelity);
+                }
+            }
+        }
+        
+        // Default fallback
+        None
+    }
+    
+    /// Get two-qubit gate fidelity between two qubits
+    pub fn gate_fidelity(&self, q1: usize, q2: usize) -> Option<f64> {
+        let qubit1 = QubitId(q1 as u32);
+        let qubit2 = QubitId(q2 as u32);
+        
+        // Look for a two-qubit gate between these qubits (try both directions)
+        for gate in self.two_qubit_gates.values() {
+            if (gate.control == qubit1 && gate.target == qubit2) ||
+               (gate.control == qubit2 && gate.target == qubit1) {
+                return Some(gate.fidelity);
+            }
+        }
+        
+        // Default fallback
+        None
+    }
+}
+
 /// Calibration data for individual qubits
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QubitCalibration {

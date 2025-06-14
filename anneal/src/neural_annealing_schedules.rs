@@ -14,13 +14,15 @@
 //! - Hardware-aware schedule generation
 
 use ndarray::{Array1, Array2, Array3};
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
 use crate::ising::{IsingModel, QuboModel};
-use crate::simulator::{AnnealingParams, AnnealingResult, AnnealingError, QuantumAnnealingSimulator};
+use crate::simulator::{
+    AnnealingError, AnnealingParams, AnnealingResult, QuantumAnnealingSimulator,
+};
 
 /// Neural network guided scheduler
 #[derive(Debug, Clone)]
@@ -214,9 +216,18 @@ pub enum OptimizerType {
     /// Stochastic gradient descent
     SGD,
     /// Adam optimizer
-    Adam { beta1: f64, beta2: f64, epsilon: f64 },
+    Adam {
+        beta1: f64,
+        beta2: f64,
+        epsilon: f64,
+    },
     /// AdamW optimizer
-    AdamW { beta1: f64, beta2: f64, epsilon: f64, weight_decay: f64 },
+    AdamW {
+        beta1: f64,
+        beta2: f64,
+        epsilon: f64,
+        weight_decay: f64,
+    },
     /// RMSprop optimizer
     RMSprop { alpha: f64, epsilon: f64 },
 }
@@ -771,7 +782,9 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Create schedule generation network
-    fn create_schedule_network(config: &NeuralSchedulerConfig) -> Result<ScheduleGenerationNetwork, String> {
+    fn create_schedule_network(
+        config: &NeuralSchedulerConfig,
+    ) -> Result<ScheduleGenerationNetwork, String> {
         let input_dim = 128; // Problem embedding dimension
         let output_dim = config.max_schedule_points * 2; // Transverse field + problem Hamiltonian
 
@@ -782,7 +795,7 @@ impl NeuralAnnealingScheduler {
         for &layer_dim in &config.schedule_network_layers {
             let weights = Self::initialize_weights(prev_dim, layer_dim);
             let biases = Array1::zeros(layer_dim);
-            
+
             layers.push(DenseLayer {
                 weights,
                 biases,
@@ -790,7 +803,7 @@ impl NeuralAnnealingScheduler {
                 dropout_rate: 0.1,
                 layer_norm: true,
             });
-            
+
             prev_dim = layer_dim;
         }
 
@@ -822,7 +835,9 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Create problem encoder network
-    fn create_problem_encoder(config: &NeuralSchedulerConfig) -> Result<ProblemEncoderNetwork, String> {
+    fn create_problem_encoder(
+        config: &NeuralSchedulerConfig,
+    ) -> Result<ProblemEncoderNetwork, String> {
         let mut layers = Vec::new();
         let input_dim = 100; // Problem feature dimension
         let embedding_dim = 128;
@@ -831,7 +846,7 @@ impl NeuralAnnealingScheduler {
         for &layer_dim in &config.encoder_network_layers {
             let weights = Self::initialize_weights(prev_dim, layer_dim);
             let biases = Array1::zeros(layer_dim);
-            
+
             layers.push(DenseLayer {
                 weights,
                 biases,
@@ -839,7 +854,7 @@ impl NeuralAnnealingScheduler {
                 dropout_rate: 0.1,
                 layer_norm: true,
             });
-            
+
             prev_dim = layer_dim;
         }
 
@@ -865,7 +880,9 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Create performance predictor network
-    fn create_performance_predictor(config: &NeuralSchedulerConfig) -> Result<PerformancePredictorNetwork, String> {
+    fn create_performance_predictor(
+        config: &NeuralSchedulerConfig,
+    ) -> Result<PerformancePredictorNetwork, String> {
         let mut layers = Vec::new();
         let input_dim = 128 + config.max_schedule_points * 2; // Embedding + schedule
         let output_dim = 5; // Number of performance metrics
@@ -874,7 +891,7 @@ impl NeuralAnnealingScheduler {
         for &layer_dim in &config.predictor_network_layers {
             let weights = Self::initialize_weights(prev_dim, layer_dim);
             let biases = Array1::zeros(layer_dim);
-            
+
             layers.push(DenseLayer {
                 weights,
                 biases,
@@ -882,7 +899,7 @@ impl NeuralAnnealingScheduler {
                 dropout_rate: 0.2,
                 layer_norm: true,
             });
-            
+
             prev_dim = layer_dim;
         }
 
@@ -973,7 +990,11 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Extract features using specific extractor
-    fn extract_features(&self, problem: &IsingModel, extractor: &FeatureExtractor) -> Result<Array1<f64>, String> {
+    fn extract_features(
+        &self,
+        problem: &IsingModel,
+        extractor: &FeatureExtractor,
+    ) -> Result<Array1<f64>, String> {
         match extractor.extractor_type {
             FeatureExtractorType::GraphFeatures => {
                 self.extract_graph_features(problem, extractor.output_dim)
@@ -987,23 +1008,25 @@ impl NeuralAnnealingScheduler {
             FeatureExtractorType::Complexity => {
                 self.extract_complexity_features(problem, extractor.output_dim)
             }
-            _ => {
-                Ok(Array1::zeros(extractor.output_dim))
-            }
+            _ => Ok(Array1::zeros(extractor.output_dim)),
         }
     }
 
     /// Extract graph-based features
-    fn extract_graph_features(&self, problem: &IsingModel, output_dim: usize) -> Result<Array1<f64>, String> {
+    fn extract_graph_features(
+        &self,
+        problem: &IsingModel,
+        output_dim: usize,
+    ) -> Result<Array1<f64>, String> {
         let mut features = Vec::new();
 
         // Basic graph properties
         features.push(problem.num_qubits as f64);
-        
+
         // Count non-zero couplings
         let mut num_edges = 0;
         for i in 0..problem.num_qubits {
-            for j in (i+1)..problem.num_qubits {
+            for j in (i + 1)..problem.num_qubits {
                 if problem.get_coupling(i, j).unwrap_or(0.0).abs() > 1e-10 {
                     num_edges += 1;
                 }
@@ -1013,11 +1036,19 @@ impl NeuralAnnealingScheduler {
 
         // Density
         let max_edges = problem.num_qubits * (problem.num_qubits - 1) / 2;
-        let density = if max_edges > 0 { num_edges as f64 / max_edges as f64 } else { 0.0 };
+        let density = if max_edges > 0 {
+            num_edges as f64 / max_edges as f64
+        } else {
+            0.0
+        };
         features.push(density);
 
         // Average degree (simplified)
-        let avg_degree = if problem.num_qubits > 0 { 2.0 * num_edges as f64 / problem.num_qubits as f64 } else { 0.0 };
+        let avg_degree = if problem.num_qubits > 0 {
+            2.0 * num_edges as f64 / problem.num_qubits as f64
+        } else {
+            0.0
+        };
         features.push(avg_degree);
 
         // Pad to output dimension
@@ -1026,7 +1057,11 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Extract statistical features
-    fn extract_statistical_features(&self, problem: &IsingModel, output_dim: usize) -> Result<Array1<f64>, String> {
+    fn extract_statistical_features(
+        &self,
+        problem: &IsingModel,
+        output_dim: usize,
+    ) -> Result<Array1<f64>, String> {
         let mut features = Vec::new();
 
         // Bias statistics
@@ -1036,7 +1071,11 @@ impl NeuralAnnealingScheduler {
         }
 
         let bias_mean = bias_values.iter().sum::<f64>() / bias_values.len() as f64;
-        let bias_var = bias_values.iter().map(|x| (x - bias_mean).powi(2)).sum::<f64>() / bias_values.len() as f64;
+        let bias_var = bias_values
+            .iter()
+            .map(|x| (x - bias_mean).powi(2))
+            .sum::<f64>()
+            / bias_values.len() as f64;
         let bias_max = bias_values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
         let bias_min = bias_values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
 
@@ -1045,7 +1084,7 @@ impl NeuralAnnealingScheduler {
         // Coupling statistics
         let mut coupling_values = Vec::new();
         for i in 0..problem.num_qubits {
-            for j in (i+1)..problem.num_qubits {
+            for j in (i + 1)..problem.num_qubits {
                 let coupling = problem.get_coupling(i, j).unwrap_or(0.0);
                 if coupling.abs() > 1e-10 {
                     coupling_values.push(coupling);
@@ -1055,11 +1094,22 @@ impl NeuralAnnealingScheduler {
 
         if !coupling_values.is_empty() {
             let coupling_mean = coupling_values.iter().sum::<f64>() / coupling_values.len() as f64;
-            let coupling_var = coupling_values.iter().map(|x| (x - coupling_mean).powi(2)).sum::<f64>() / coupling_values.len() as f64;
-            let coupling_max = coupling_values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+            let coupling_var = coupling_values
+                .iter()
+                .map(|x| (x - coupling_mean).powi(2))
+                .sum::<f64>()
+                / coupling_values.len() as f64;
+            let coupling_max = coupling_values
+                .iter()
+                .fold(f64::NEG_INFINITY, |a, &b| a.max(b));
             let coupling_min = coupling_values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
 
-            features.extend_from_slice(&[coupling_mean, coupling_var.sqrt(), coupling_max, coupling_min]);
+            features.extend_from_slice(&[
+                coupling_mean,
+                coupling_var.sqrt(),
+                coupling_max,
+                coupling_min,
+            ]);
         } else {
             features.extend_from_slice(&[0.0, 0.0, 0.0, 0.0]);
         }
@@ -1070,7 +1120,11 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Extract spectral features
-    fn extract_spectral_features(&self, problem: &IsingModel, output_dim: usize) -> Result<Array1<f64>, String> {
+    fn extract_spectral_features(
+        &self,
+        problem: &IsingModel,
+        output_dim: usize,
+    ) -> Result<Array1<f64>, String> {
         // Simplified spectral analysis
         let mut features = Vec::new();
 
@@ -1088,7 +1142,11 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Extract complexity features
-    fn extract_complexity_features(&self, problem: &IsingModel, output_dim: usize) -> Result<Array1<f64>, String> {
+    fn extract_complexity_features(
+        &self,
+        problem: &IsingModel,
+        output_dim: usize,
+    ) -> Result<Array1<f64>, String> {
         let mut features = Vec::new();
 
         // Problem size complexity
@@ -1097,7 +1155,7 @@ impl NeuralAnnealingScheduler {
         // Interaction complexity (number of non-zero couplings)
         let mut num_interactions = 0;
         for i in 0..problem.num_qubits {
-            for j in (i+1)..problem.num_qubits {
+            for j in (i + 1)..problem.num_qubits {
                 if problem.get_coupling(i, j).unwrap_or(0.0).abs() > 1e-10 {
                     num_interactions += 1;
                 }
@@ -1111,7 +1169,11 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Forward pass through network layers
-    fn forward_pass(&self, layers: &[DenseLayer], input: &Array1<f64>) -> Result<Array1<f64>, String> {
+    fn forward_pass(
+        &self,
+        layers: &[DenseLayer],
+        input: &Array1<f64>,
+    ) -> Result<Array1<f64>, String> {
         let mut current = input.clone();
 
         for layer in layers {
@@ -1129,15 +1191,23 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Apply activation function
-    fn apply_activation(&self, input: &Array1<f64>, activation: &ActivationFunction) -> Array1<f64> {
+    fn apply_activation(
+        &self,
+        input: &Array1<f64>,
+        activation: &ActivationFunction,
+    ) -> Array1<f64> {
         match activation {
             ActivationFunction::Linear => input.clone(),
             ActivationFunction::ReLU => input.map(|&x| x.max(0.0)),
             ActivationFunction::Sigmoid => input.map(|&x| 1.0 / (1.0 + (-x).exp())),
             ActivationFunction::Tanh => input.map(|&x| x.tanh()),
-            ActivationFunction::LeakyReLU(alpha) => input.map(|&x| if x > 0.0 { x } else { alpha * x }),
+            ActivationFunction::LeakyReLU(alpha) => {
+                input.map(|&x| if x > 0.0 { x } else { alpha * x })
+            }
             ActivationFunction::Swish => input.map(|&x| x / (1.0 + (-x).exp())),
-            ActivationFunction::GELU => input.map(|&x| 0.5 * x * (1.0 + (0.7978845608 * (x + 0.044715 * x.powi(3))).tanh())),
+            ActivationFunction::GELU => {
+                input.map(|&x| 0.5 * x * (1.0 + (0.7978845608 * (x + 0.044715 * x.powi(3))).tanh()))
+            }
         }
     }
 
@@ -1151,8 +1221,10 @@ impl NeuralAnnealingScheduler {
         let time_points = Array1::linspace(0.0, 1000.0, num_points); // 1000 µs default
 
         // Split output into transverse field and problem Hamiltonian
-        let (tf_output, ph_output) = schedule_output.view().split_at(ndarray::Axis(0), num_points);
-        
+        let (tf_output, ph_output) = schedule_output
+            .view()
+            .split_at(ndarray::Axis(0), num_points);
+
         let transverse_field = Array1::from_iter(tf_output.iter().cloned());
         let problem_hamiltonian = Array1::from_iter(ph_output.iter().cloned());
 
@@ -1166,7 +1238,11 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Apply constraints to schedule
-    fn apply_constraints(&self, mut schedule: AnnealingSchedule, problem: &IsingModel) -> Result<AnnealingSchedule, String> {
+    fn apply_constraints(
+        &self,
+        mut schedule: AnnealingSchedule,
+        problem: &IsingModel,
+    ) -> Result<AnnealingSchedule, String> {
         // Apply smoothness constraints
         if self.config.smoothness_weight > 0.0 {
             schedule = self.apply_smoothness_constraints(schedule)?;
@@ -1193,22 +1269,26 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Apply smoothness constraints
-    fn apply_smoothness_constraints(&self, mut schedule: AnnealingSchedule) -> Result<AnnealingSchedule, String> {
+    fn apply_smoothness_constraints(
+        &self,
+        mut schedule: AnnealingSchedule,
+    ) -> Result<AnnealingSchedule, String> {
         let smoothing_factor = 0.1;
 
         // Simple smoothing: weighted average with neighbors
-        for _ in 0..3 { // Multiple passes
+        for _ in 0..3 {
+            // Multiple passes
             let mut new_tf = schedule.transverse_field.clone();
             let mut new_ph = schedule.problem_hamiltonian.clone();
 
-            for i in 1..schedule.transverse_field.len()-1 {
-                new_tf[i] = (1.0 - 2.0 * smoothing_factor) * schedule.transverse_field[i] +
-                           smoothing_factor * schedule.transverse_field[i-1] +
-                           smoothing_factor * schedule.transverse_field[i+1];
+            for i in 1..schedule.transverse_field.len() - 1 {
+                new_tf[i] = (1.0 - 2.0 * smoothing_factor) * schedule.transverse_field[i]
+                    + smoothing_factor * schedule.transverse_field[i - 1]
+                    + smoothing_factor * schedule.transverse_field[i + 1];
 
-                new_ph[i] = (1.0 - 2.0 * smoothing_factor) * schedule.problem_hamiltonian[i] +
-                           smoothing_factor * schedule.problem_hamiltonian[i-1] +
-                           smoothing_factor * schedule.problem_hamiltonian[i+1];
+                new_ph[i] = (1.0 - 2.0 * smoothing_factor) * schedule.problem_hamiltonian[i]
+                    + smoothing_factor * schedule.problem_hamiltonian[i - 1]
+                    + smoothing_factor * schedule.problem_hamiltonian[i + 1];
             }
 
             schedule.transverse_field = new_tf;
@@ -1219,18 +1299,21 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Enforce monotonicity constraints
-    fn enforce_monotonicity(&self, mut schedule: AnnealingSchedule) -> Result<AnnealingSchedule, String> {
+    fn enforce_monotonicity(
+        &self,
+        mut schedule: AnnealingSchedule,
+    ) -> Result<AnnealingSchedule, String> {
         // Enforce transverse field monotonic decrease
         for i in 1..schedule.transverse_field.len() {
-            if schedule.transverse_field[i] > schedule.transverse_field[i-1] {
-                schedule.transverse_field[i] = schedule.transverse_field[i-1];
+            if schedule.transverse_field[i] > schedule.transverse_field[i - 1] {
+                schedule.transverse_field[i] = schedule.transverse_field[i - 1];
             }
         }
 
         // Enforce problem Hamiltonian monotonic increase
         for i in 1..schedule.problem_hamiltonian.len() {
-            if schedule.problem_hamiltonian[i] < schedule.problem_hamiltonian[i-1] {
-                schedule.problem_hamiltonian[i] = schedule.problem_hamiltonian[i-1];
+            if schedule.problem_hamiltonian[i] < schedule.problem_hamiltonian[i - 1] {
+                schedule.problem_hamiltonian[i] = schedule.problem_hamiltonian[i - 1];
             }
         }
 
@@ -1238,7 +1321,10 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Apply hardware constraints
-    fn apply_hardware_constraints(&self, mut schedule: AnnealingSchedule) -> Result<AnnealingSchedule, String> {
+    fn apply_hardware_constraints(
+        &self,
+        mut schedule: AnnealingSchedule,
+    ) -> Result<AnnealingSchedule, String> {
         // Clamp values to hardware limits
         schedule.transverse_field = schedule.transverse_field.map(|&x| x.max(0.0).min(1.0));
         schedule.problem_hamiltonian = schedule.problem_hamiltonian.map(|&x| x.max(0.0).min(1.0));
@@ -1256,10 +1342,15 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Validate generated schedule
-    fn validate_schedule(&self, schedule: &AnnealingSchedule, problem: &IsingModel) -> Result<(), String> {
+    fn validate_schedule(
+        &self,
+        schedule: &AnnealingSchedule,
+        problem: &IsingModel,
+    ) -> Result<(), String> {
         // Check basic constraints
-        if schedule.time_points.len() != schedule.transverse_field.len() ||
-           schedule.time_points.len() != schedule.problem_hamiltonian.len() {
+        if schedule.time_points.len() != schedule.transverse_field.len()
+            || schedule.time_points.len() != schedule.problem_hamiltonian.len()
+        {
             return Err("Schedule length mismatch".to_string());
         }
 
@@ -1291,7 +1382,8 @@ impl NeuralAnnealingScheduler {
     /// Check if array is monotonically decreasing
     fn is_monotonic_decreasing(&self, arr: &Array1<f64>) -> bool {
         for i in 1..arr.len() {
-            if arr[i] > arr[i-1] + 1e-6 { // Small tolerance for numerical errors
+            if arr[i] > arr[i - 1] + 1e-6 {
+                // Small tolerance for numerical errors
                 return false;
             }
         }
@@ -1301,7 +1393,8 @@ impl NeuralAnnealingScheduler {
     /// Check if array is monotonically increasing
     fn is_monotonic_increasing(&self, arr: &Array1<f64>) -> bool {
         for i in 1..arr.len() {
-            if arr[i] < arr[i-1] - 1e-6 { // Small tolerance for numerical errors
+            if arr[i] < arr[i - 1] - 1e-6 {
+                // Small tolerance for numerical errors
                 return false;
             }
         }
@@ -1316,7 +1409,7 @@ impl NeuralAnnealingScheduler {
         problem: &IsingModel,
     ) -> Result<(), String> {
         let id = format!("schedule_{}", self.schedule_database.schedules.len());
-        
+
         let entry = ScheduleEntry {
             id: id.clone(),
             problem_features: features.clone(),
@@ -1345,7 +1438,7 @@ impl NeuralAnnealingScheduler {
         performance: &PerformanceRecord,
     ) -> Result<(), String> {
         let features = self.encode_problem(problem)?;
-        
+
         // Convert performance to label vector
         let performance_label = Array1::from_vec(vec![
             performance.solution_quality,
@@ -1355,9 +1448,18 @@ impl NeuralAnnealingScheduler {
             performance.convergence_metrics.convergence_rate,
         ]);
 
-        self.training_manager.training_dataset.problem_features.push(features);
-        self.training_manager.training_dataset.target_schedules.push(schedule.clone());
-        self.training_manager.training_dataset.performance_labels.push(performance_label);
+        self.training_manager
+            .training_dataset
+            .problem_features
+            .push(features);
+        self.training_manager
+            .training_dataset
+            .target_schedules
+            .push(schedule.clone());
+        self.training_manager
+            .training_dataset
+            .performance_labels
+            .push(performance_label);
 
         Ok(())
     }
@@ -1365,16 +1467,25 @@ impl NeuralAnnealingScheduler {
     /// Check if networks should be retrained
     fn should_retrain(&self) -> Result<bool, String> {
         let new_data_threshold = 100;
-        let data_size = self.training_manager.training_dataset.problem_features.len();
-        
+        let data_size = self
+            .training_manager
+            .training_dataset
+            .problem_features
+            .len();
+
         Ok(data_size >= new_data_threshold && data_size % new_data_threshold == 0)
     }
 
     /// Retrain neural networks
     fn retrain_networks(&mut self) -> Result<(), String> {
         // Simplified retraining - in practice would implement full training loop
-        println!("Retraining networks with {} samples", 
-                self.training_manager.training_dataset.problem_features.len());
+        println!(
+            "Retraining networks with {} samples",
+            self.training_manager
+                .training_dataset
+                .problem_features
+                .len()
+        );
 
         // Update training state
         self.schedule_network.training_state.current_epoch += 1;
@@ -1485,7 +1596,11 @@ impl TrainingState {
                 parameters: HashMap::new(),
             },
             optimizer_state: OptimizerState {
-                optimizer_type: OptimizerType::Adam { beta1: 0.9, beta2: 0.999, epsilon: 1e-8 },
+                optimizer_type: OptimizerType::Adam {
+                    beta1: 0.9,
+                    beta2: 0.999,
+                    epsilon: 1e-8,
+                },
                 momentum_buffer: Vec::new(),
                 second_moment_buffer: Vec::new(),
                 step_counter: 0,
@@ -1595,12 +1710,14 @@ impl Default for NeuralSchedulerConfig {
             enable_hardware_constraints: true,
         }
     }
-
 }
 
 impl NeuralAnnealingScheduler {
     /// Optimize a QUBO problem using neural-guided annealing schedules
-    pub fn optimize(&mut self, qubo: &QuboModel) -> AnnealingResult<Result<Vec<i32>, AnnealingError>> {
+    pub fn optimize(
+        &mut self,
+        qubo: &QuboModel,
+    ) -> AnnealingResult<Result<Vec<i32>, AnnealingError>> {
         // Convert QUBO to Ising model
         let ising_model = IsingModel::from_qubo(qubo);
 
@@ -1618,12 +1735,14 @@ impl NeuralAnnealingScheduler {
         match simulator.solve(&ising_model) {
             Ok(result) => {
                 // Convert to binary solution (assuming positive spins are 1, negative are 0)
-                let binary_solution: Vec<i32> = result.best_spins.iter()
+                let binary_solution: Vec<i32> = result
+                    .best_spins
+                    .iter()
                     .map(|&spin| if spin > 0 { 1 } else { 0 })
                     .collect();
                 Ok(Ok(binary_solution))
-            },
-            Err(e) => Ok(Err(e))
+            }
+            Err(e) => Ok(Err(e)),
         }
     }
 }
@@ -1656,11 +1775,11 @@ mod tests {
     fn test_problem_encoding() {
         let config = NeuralSchedulerConfig::default();
         let mut scheduler = NeuralAnnealingScheduler::new(config).unwrap();
-        
+
         let problem = IsingModel::new(4);
         let features = scheduler.encode_problem(&problem);
         assert!(features.is_ok());
-        
+
         let feature_vec = features.unwrap();
         assert_eq!(feature_vec.len(), 128); // Embedding dimension
     }
@@ -1669,17 +1788,17 @@ mod tests {
     fn test_schedule_generation() {
         let config = NeuralSchedulerConfig::default();
         let mut scheduler = NeuralAnnealingScheduler::new(config).unwrap();
-        
+
         let mut problem = IsingModel::new(2);
         problem.set_bias(0, 1.0).unwrap();
         problem.set_coupling(0, 1, -0.5).unwrap();
-        
+
         let schedule = scheduler.generate_schedule(&problem, None);
         if let Err(e) = &schedule {
             eprintln!("Schedule generation failed with error: {:?}", e);
         }
         assert!(schedule.is_ok());
-        
+
         let schedule = schedule.unwrap();
         assert_eq!(schedule.time_points.len(), 100); // max_schedule_points
         assert_eq!(schedule.transverse_field.len(), 100);
@@ -1690,13 +1809,13 @@ mod tests {
     fn test_activation_functions() {
         let config = NeuralSchedulerConfig::default();
         let scheduler = NeuralAnnealingScheduler::new(config).unwrap();
-        
+
         let input = Array1::from_vec(vec![-2.0, -1.0, 0.0, 1.0, 2.0]);
-        
+
         // Test ReLU
         let relu_output = scheduler.apply_activation(&input, &ActivationFunction::ReLU);
         assert_eq!(relu_output, Array1::from_vec(vec![0.0, 0.0, 0.0, 1.0, 2.0]));
-        
+
         // Test Sigmoid (check that values are in (0, 1))
         let sigmoid_output = scheduler.apply_activation(&input, &ActivationFunction::Sigmoid);
         for &val in sigmoid_output.iter() {
@@ -1708,20 +1827,22 @@ mod tests {
     fn test_feature_extraction() {
         let config = NeuralSchedulerConfig::default();
         let scheduler = NeuralAnnealingScheduler::new(config).unwrap();
-        
+
         let mut problem = IsingModel::new(4);
         problem.set_bias(0, 1.0).unwrap();
         problem.set_coupling(0, 1, -0.5).unwrap();
         problem.set_coupling(1, 2, 0.3).unwrap();
-        
+
         // Test graph features
         let graph_features = scheduler.extract_graph_features(&problem, 20).unwrap();
         assert_eq!(graph_features.len(), 20);
         assert_eq!(graph_features[0], 4.0); // num_qubits
         assert_eq!(graph_features[1], 2.0); // num_edges
-        
+
         // Test statistical features
-        let stat_features = scheduler.extract_statistical_features(&problem, 15).unwrap();
+        let stat_features = scheduler
+            .extract_statistical_features(&problem, 15)
+            .unwrap();
         assert_eq!(stat_features.len(), 15);
     }
 
@@ -1729,9 +1850,9 @@ mod tests {
     fn test_schedule_validation() {
         let config = NeuralSchedulerConfig::default();
         let scheduler = NeuralAnnealingScheduler::new(config).unwrap();
-        
+
         let problem = IsingModel::new(2);
-        
+
         // Valid schedule
         let valid_schedule = AnnealingSchedule {
             time_points: Array1::linspace(0.0, 1000.0, 10),
@@ -1740,9 +1861,11 @@ mod tests {
             additional_controls: HashMap::new(),
             constraints: ScheduleConstraints::default(),
         };
-        
-        assert!(scheduler.validate_schedule(&valid_schedule, &problem).is_ok());
-        
+
+        assert!(scheduler
+            .validate_schedule(&valid_schedule, &problem)
+            .is_ok());
+
         // Invalid schedule (non-monotonic)
         let invalid_schedule = AnnealingSchedule {
             time_points: Array1::linspace(0.0, 1000.0, 3),
@@ -1751,7 +1874,9 @@ mod tests {
             additional_controls: HashMap::new(),
             constraints: ScheduleConstraints::default(),
         };
-        
-        assert!(scheduler.validate_schedule(&invalid_schedule, &problem).is_err());
+
+        assert!(scheduler
+            .validate_schedule(&invalid_schedule, &problem)
+            .is_err());
     }
 }

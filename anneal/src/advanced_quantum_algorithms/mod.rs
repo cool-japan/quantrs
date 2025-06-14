@@ -153,7 +153,11 @@ impl AdvancedQuantumAlgorithms {
     }
 
     /// Optimize a problem using the advanced quantum algorithms
-    pub fn optimize_problem(&self, problem: &crate::ising::QuboModel) -> AdvancedQuantumResult<crate::simulator::AnnealingResult<crate::simulator::AnnealingSolution>> {
+    pub fn optimize_problem(
+        &self,
+        problem: &crate::ising::QuboModel,
+    ) -> AdvancedQuantumResult<crate::simulator::AnnealingResult<crate::simulator::AnnealingSolution>>
+    {
         // For now, return a simple stub result
         // TODO: Implement actual optimization
         use crate::simulator::AnnealingSolution;
