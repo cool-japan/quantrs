@@ -2,8 +2,8 @@
 
 #[cfg(test)]
 mod tests {
-    use super::super::src::advanced_performance_analysis::*;
-    use super::super::src::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
+    use quantrs2_tytan::advanced_performance_analysis::*;
+    use quantrs2_tytan::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
     use ndarray::{Array1, Array2, Array3, ArrayD};
     use std::collections::HashMap;
     use std::time::{Duration, Instant};

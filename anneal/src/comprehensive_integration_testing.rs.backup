@@ -2745,9 +2745,8 @@ impl ComprehensiveIntegrationTesting {
     }
     
     fn test_multi_chip_integration(&self) -> ApplicationResult<IntegrationTestResult> {
-        // Create multi-chip system
-        let config = MultiChipConfig::default();
-        let coordinator = MultiChipCoordinator::new(config);
+        // Create multi-chip system with available chips
+        let coordinator = crate::multi_chip_embedding::create_example_multi_chip_system()?;
         
         // Test problem distribution
         let problem = IsingModel::new(500);
@@ -3583,6 +3582,9 @@ mod tests {
         let framework = create_example_integration_testing().unwrap();
         
         let result = framework.run_comprehensive_validation();
+        if let Err(e) = &result {
+            eprintln!("Validation failed with error: {:?}", e);
+        }
         assert!(result.is_ok());
         
         let validation_result = result.unwrap();

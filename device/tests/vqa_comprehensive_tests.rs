@@ -41,9 +41,6 @@ mod test_helpers {
                 })
             }
 
-            fn name(&self) -> &str {
-                "mock_quadratic"
-            }
         }
         Box::new(MockObjective)
     }

@@ -22,6 +22,9 @@ QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing fr
 - Quantum machine learning for NLP with attention mechanisms and embeddings
 - Gate compilation caching with persistent storage and compression
 - Adaptive SIMD dispatch with runtime CPU feature detection
+- Meta-learning optimization for quantum circuit training
+- Dynamic topology reconfiguration for adaptive quantum computing
+- Advanced testing framework with property-based verification
 - Complete module integration across simulation, device, and ML components
 
 ## Features
@@ -207,7 +210,7 @@ QuantRS2 is designed for high performance quantum simulation:
 
 ## Roadmap
 
-See [TODO.md](docs/development/TODO.md) for the development roadmap and upcoming features.
+See [TODO.md](TODO.md) for the development roadmap and upcoming features.
 
 ## Development
 

@@ -6,6 +6,7 @@
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::Array2;
 use std::collections::HashMap;
+use std::cell::RefCell;
 
 /// FPGA accelerator configuration
 #[derive(Debug, Clone)]
@@ -162,11 +163,11 @@ impl Default for FPGAConfig {
 pub struct FPGASampler {
     config: FPGAConfig,
     /// Device handle
-    device: Option<FPGADevice>,
+    device: RefCell<Option<FPGADevice>>,
     /// Problem size limit
     max_problem_size: usize,
     /// Performance monitor
-    perf_monitor: PerformanceMonitor,
+    perf_monitor: RefCell<PerformanceMonitor>,
 }
 
 /// FPGA device abstraction
@@ -208,26 +209,26 @@ impl FPGASampler {
         
         Self {
             config,
-            device: None,
+            device: RefCell::new(None),
             max_problem_size,
-            perf_monitor: PerformanceMonitor {
+            perf_monitor: RefCell::new(PerformanceMonitor {
                 kernel_times: Vec::new(),
                 transfer_times: Vec::new(),
                 energy_consumption: Vec::new(),
-            },
+            }),
         }
     }
 
     /// Initialize FPGA device
-    fn initialize_device(&mut self) -> Result<(), SamplerError> {
-        if self.device.is_some() {
+    fn initialize_device(&self) -> Result<(), SamplerError> {
+        if self.device.borrow().is_some() {
             return Ok(());
         }
         
         // Load appropriate bitstream based on algorithm
         let bitstream = self.select_bitstream()?;
         
-        self.device = Some(FPGADevice {
+        *self.device.borrow_mut() = Some(FPGADevice {
             device_id: self.config.device_id.clone(),
             is_initialized: true,
             current_bitstream: Some(bitstream),
@@ -259,7 +260,7 @@ impl FPGASampler {
 
     /// Execute on FPGA
     fn execute_on_fpga(
-        &mut self,
+        &self,
         qubo: &Array2<f64>,
         shots: usize,
     ) -> Result<Vec<FPGAResult>, SamplerError> {
@@ -268,7 +269,7 @@ impl FPGASampler {
         // Transfer data to FPGA
         let transfer_start = std::time::Instant::now();
         self.transfer_problem_to_device(qubo)?;
-        self.perf_monitor.transfer_times.push(transfer_start.elapsed().as_secs_f64());
+        self.perf_monitor.borrow_mut().transfer_times.push(transfer_start.elapsed().as_secs_f64());
         
         // Execute kernel
         let kernel_start = std::time::Instant::now();
@@ -285,7 +286,7 @@ impl FPGASampler {
                 ));
             }
         };
-        self.perf_monitor.kernel_times.push(kernel_start.elapsed().as_secs_f64());
+        self.perf_monitor.borrow_mut().kernel_times.push(kernel_start.elapsed().as_secs_f64());
         
         Ok(results)
     }
@@ -418,7 +419,7 @@ impl Sampler for FPGASampler {
 impl Drop for FPGASampler {
     fn drop(&mut self) {
         // Clean up FPGA resources
-        if let Some(device) = &self.device {
+        if let Some(device) = &*self.device.borrow() {
             // Release device
             println!("Releasing FPGA device {}", device.device_id);
         }

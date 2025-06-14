@@ -935,7 +935,7 @@ impl QuantumPINN {
                 first_derivatives[[i, j]] = (output_plus - output_minus) / (2.0 * h);
 
                 // Second derivatives
-                let output_center = self.forward(&points.row(i).insert_axis(ndarray::Axis(0)))?[[0, 0]];
+                let output_center = self.forward(&points.row(i).insert_axis(ndarray::Axis(0)).to_owned())?[[0, 0]];
                 second_derivatives[[i, j]] = (output_plus - 2.0 * output_center + output_minus) / (h * h);
 
                 // Mixed derivatives

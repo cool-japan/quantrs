@@ -1186,6 +1186,9 @@ impl NeuralAnnealingScheduler {
         schedule.problem_hamiltonian[0] = schedule.problem_hamiltonian[0].min(0.2);
         schedule.problem_hamiltonian[last_idx] = schedule.problem_hamiltonian[last_idx].max(0.8);
 
+        // Enforce monotonicity constraints
+        schedule = self.enforce_monotonicity(schedule)?;
+
         Ok(schedule)
     }
 
@@ -1210,6 +1213,25 @@ impl NeuralAnnealingScheduler {
 
             schedule.transverse_field = new_tf;
             schedule.problem_hamiltonian = new_ph;
+        }
+
+        Ok(schedule)
+    }
+
+    /// Enforce monotonicity constraints
+    fn enforce_monotonicity(&self, mut schedule: AnnealingSchedule) -> Result<AnnealingSchedule, String> {
+        // Enforce transverse field monotonic decrease
+        for i in 1..schedule.transverse_field.len() {
+            if schedule.transverse_field[i] > schedule.transverse_field[i-1] {
+                schedule.transverse_field[i] = schedule.transverse_field[i-1];
+            }
+        }
+
+        // Enforce problem Hamiltonian monotonic increase
+        for i in 1..schedule.problem_hamiltonian.len() {
+            if schedule.problem_hamiltonian[i] < schedule.problem_hamiltonian[i-1] {
+                schedule.problem_hamiltonian[i] = schedule.problem_hamiltonian[i-1];
+            }
         }
 
         Ok(schedule)
@@ -1653,6 +1675,9 @@ mod tests {
         problem.set_coupling(0, 1, -0.5).unwrap();
         
         let schedule = scheduler.generate_schedule(&problem, None);
+        if let Err(e) = &schedule {
+            eprintln!("Schedule generation failed with error: {:?}", e);
+        }
         assert!(schedule.is_ok());
         
         let schedule = schedule.unwrap();

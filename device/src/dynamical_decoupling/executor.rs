@@ -210,6 +210,10 @@ impl DynamicalDecouplingExecutor {
             execution_time,
             success: true,
             quality_score,
+            performance_analysis: None,
+            noise_analysis: None,
+            hardware_analysis: None,
+            adaptation_stats: None,
         })
     }
 

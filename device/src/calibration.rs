@@ -348,6 +348,7 @@ pub struct DecomposedGate {
 }
 
 /// Calibration manager for handling device calibrations
+#[derive(Debug, Clone)]
 pub struct CalibrationManager {
     /// Current calibrations for each device
     calibrations: HashMap<String, DeviceCalibration>,
@@ -434,6 +435,13 @@ impl CalibrationManager {
         } else {
             false
         }
+    }
+
+    /// Get the latest calibration across all devices
+    pub fn get_latest_calibration(&self) -> Option<&DeviceCalibration> {
+        self.calibrations
+            .values()
+            .max_by_key(|cal| cal.timestamp)
     }
 
     /// Get gate fidelity for a specific gate on specific qubits

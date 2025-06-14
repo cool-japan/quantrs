@@ -2060,10 +2060,11 @@ impl ConstraintSatisfactionDecomposer {
         // Build cluster tree
         let cluster_tree = self.build_cluster_tree(&clusters, &tree_dec)?;
         
+        let separator_sets = self.compute_separator_sets(&cluster_tree);
         Ok(CSPDecomposition {
             clusters,
             cluster_tree,
-            separator_sets: self.compute_separator_sets(&cluster_tree),
+            separator_sets,
             width: tree_dec.width,
         })
     }

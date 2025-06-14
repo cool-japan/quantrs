@@ -87,6 +87,10 @@ pub enum MLError {
     /// JSON serialization error
     #[error("JSON error: {0}")]
     JsonError(#[from] serde_json::Error),
+
+    /// Numerical error during computation
+    #[error("Numerical error: {0}")]
+    NumericalError(String),
 }
 
 impl From<String> for MLError {

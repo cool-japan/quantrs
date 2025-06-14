@@ -106,7 +106,7 @@ use fallback_scirs2::*;
 use ndarray::{s, Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};
 use num_complex::Complex64;
 use rand::prelude::*;
-use tokio::sync::{broadcast, mpsc};
+use std::sync::mpsc;
 
 use crate::{
     backend_traits::{query_backend_capabilities, BackendCapabilities},

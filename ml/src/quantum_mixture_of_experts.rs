@@ -524,6 +524,19 @@ pub struct EntanglementConfig {
     pub entanglement_pattern: EntanglementPattern,
 }
 
+impl Default for EntanglementConfig {
+    fn default() -> Self {
+        Self {
+            enable_expert_entanglement: false,
+            entanglement_strength: 0.5,
+            entanglement_decay: 0.01,
+            entanglement_restoration: 0.05,
+            max_entanglement_range: 4,
+            entanglement_pattern: EntanglementPattern::Linear,
+        }
+    }
+}
+
 /// Main Quantum Mixture of Experts model
 pub struct QuantumMixtureOfExperts {
     config: QuantumMixtureOfExpertsConfig,
@@ -1288,12 +1301,14 @@ impl QuantumMixtureOfExperts {
             }
         }
         
+        let convergence_analysis = self.analyze_convergence(&training_losses)?;
+        
         Ok(MoETrainingOutput {
             training_losses,
             routing_efficiency_history,
             quantum_metrics_history,
             final_expert_statistics: self.expert_statistics.clone(),
-            convergence_analysis: self.analyze_convergence(&training_losses)?,
+            convergence_analysis,
         })
     }
     
@@ -1357,7 +1372,7 @@ impl QuantumMixtureOfExperts {
         let mut quantum_coherence_sum = 0.0;
         let mut entanglement_sum = 0.0;
         
-        for (sample_idx, (input, target)) in batch_data.rows().zip(batch_targets.rows()).enumerate() {
+        for (sample_idx, (input, target)) in batch_data.rows().into_iter().zip(batch_targets.rows()).enumerate() {
             let input_array = input.to_owned();
             let target_array = target.to_owned();
             
@@ -1429,8 +1444,18 @@ impl QuantumMixtureOfExperts {
         config: &MoETrainingConfig,
     ) -> Result<()> {
         // Update routing parameters
+        // Convert RoutingResult to RoutingDecision for compatibility
+        let routing_decision = RoutingDecision {
+            decision_id: 0,
+            expert_weights: output.routing_decision.expert_weights.clone(),
+            routing_confidence: output.routing_decision.routing_confidence,
+            quantum_coherence: output.routing_decision.quantum_coherence,
+            entanglement_measure: 0.0, // Default value
+            decision_quality: output.routing_decision.routing_confidence,
+        };
+        
         self.routing_optimizer.update_routing_parameters(
-            &output.routing_decision,
+            &routing_decision,
             target,
             config.routing_learning_rate,
         )?;
@@ -1635,7 +1660,7 @@ impl QuantumExpert {
             current_load: 0,
             performance_history: Vec::new(),
             quantum_state: QuantumExpertState {
-                quantum_amplitudes: Array1::ones(2_usize.pow(config.num_qubits as u32)).mapv(|_| Complex64::new(1.0, 0.0)),
+                quantum_amplitudes: Array1::<Complex64>::ones(2_usize.pow(config.num_qubits as u32)).mapv(|_| Complex64::new(1.0, 0.0)),
                 entanglement_connections: Vec::new(),
                 coherence_time: 1.0,
                 fidelity: 1.0,
@@ -1681,7 +1706,7 @@ impl QuantumRouter {
             routing_parameters: Array1::zeros(config.num_experts * 10),
             routing_history: Vec::new(),
             quantum_routing_state: QuantumRoutingState {
-                routing_amplitudes: Array1::ones(config.num_experts).mapv(|_| Complex64::new(1.0, 0.0)),
+                routing_amplitudes: Array1::<Complex64>::ones(config.num_experts).mapv(|_| Complex64::new(1.0, 0.0)),
                 routing_entanglement: 0.0,
                 routing_coherence: 1.0,
                 routing_fidelity: 1.0,
@@ -1715,7 +1740,7 @@ impl QuantumRouter {
         self.routing_history.push(routing_decision.clone());
         
         Ok(RoutingResult {
-            expert_weights,
+            expert_weights: expert_weights.clone(),
             routing_confidence: 0.8,
             quantum_coherence: self.quantum_routing_state.routing_coherence,
             routing_entropy: self.compute_routing_entropy(&expert_weights)?,
@@ -1748,7 +1773,7 @@ impl QuantumGateNetwork {
             gate_parameters: Array1::zeros(config.num_experts),
             gating_history: Vec::new(),
             quantum_gate_state: QuantumGateState {
-                gate_amplitudes: Array1::ones(config.num_experts).mapv(|_| Complex64::new(1.0, 0.0)),
+                gate_amplitudes: Array1::<Complex64>::ones(config.num_experts).mapv(|_| Complex64::new(1.0, 0.0)),
                 gate_entanglement: 0.0,
                 gate_coherence: 1.0,
             },

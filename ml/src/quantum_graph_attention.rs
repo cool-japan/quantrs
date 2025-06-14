@@ -680,10 +680,12 @@ impl QuantumGraphAttentionNetwork {
             }
         }
         
+        let average_entropy = head_entropies.iter().sum::<f64>() / head_entropies.len() as f64;
+        
         Ok(AttentionAnalysis {
             attention_weights,
             head_entropies,
-            average_entropy: head_entropies.iter().sum::<f64>() / head_entropies.len() as f64,
+            average_entropy,
         })
     }
 

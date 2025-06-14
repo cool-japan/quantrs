@@ -5,6 +5,7 @@
 //! across multiple quantum processors.
 
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::Arc;
 
 use quantrs2_core::{gate::GateOp, qubit::QubitId};
 
@@ -434,7 +435,7 @@ impl CircuitSlicer {
     }
 
     /// Add dependencies based on qubit usage
-    fn add_qubit_dependencies(&self, slices: &mut [CircuitSlice], gates: &[Box<dyn GateOp>]) {
+    fn add_qubit_dependencies(&self, slices: &mut [CircuitSlice], gates: &[Arc<dyn GateOp + Send + Sync>]) {
         let mut qubit_last_slice: HashMap<u32, usize> = HashMap::new();
 
         for slice in slices.iter_mut() {
@@ -470,7 +471,7 @@ impl CircuitSlicer {
     fn add_order_dependencies(
         &self,
         slices: &mut [CircuitSlice],
-        gates: &[Box<dyn GateOp>],
+        gates: &[Arc<dyn GateOp + Send + Sync>],
         gate_to_slice: &HashMap<usize, usize>,
     ) {
         for (gate_idx, gate) in gates.iter().enumerate() {

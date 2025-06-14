@@ -4,6 +4,7 @@
 //! including distributional analysis, moment analysis, correlation analysis, and outlier detection.
 
 use crate::{DeviceError, DeviceResult};
+use super::config::DistributionType;
 use ndarray::{Array1, Array2, ArrayView2};
 use scirs2_stats::{
     corrcoef,
@@ -34,21 +35,6 @@ pub struct NoiseDistribution {
     pub goodness_of_fit: f64,
     pub confidence_intervals: Vec<(f64, f64)>,
     pub p_value: f64,
-}
-
-/// Supported distribution types
-#[derive(Debug, Clone, PartialEq)]
-pub enum DistributionType {
-    Normal,
-    Gamma,
-    Exponential,
-    Poisson,
-    Laplace,
-    StudentT,
-    Weibull,
-    LogNormal,
-    Beta,
-    Custom,
 }
 
 /// Statistical moment analysis

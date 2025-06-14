@@ -14,6 +14,9 @@ use quantrs2_core::{
     qubit::QubitId,
 };
 
+// Type placeholders for missing complex types
+type DistributionType = String;
+
 // SciRS2 dependencies (feature-gated for availability)
 #[cfg(feature = "scirs2")]
 use scirs2_graph::{
@@ -1394,29 +1397,34 @@ impl SciRS2ProcessTomographer {
             if let Ok(shapiro_result) = shapiro_wilk(&process_array.view()) {
                 tests.insert("shapiro_wilk".to_string(), StatisticalTest {
                     test_name: "Shapiro-Wilk Normality Test".to_string(),
-                    statistic: shapiro_result.statistic,
-                    p_value: shapiro_result.p_value,
+                    statistic: shapiro_result.0,
+                    p_value: shapiro_result.1,
                     critical_value: 0.05,
-                    significant: shapiro_result.p_value < 0.05,
+                    significant: shapiro_result.1 < 0.05,
                     effect_size: None,
                 });
             }
 
             // Kolmogorov-Smirnov test against theoretical distribution
-            let theoretical_normal = norm::new(0.0, 1.0).unwrap();
+            let mut rng = rand::thread_rng();
             let theoretical_samples: Vec<f64> = (0..process_array.len())
-                .map(|_| theoretical_normal.sample(&mut rand::thread_rng()))
+                .map(|_| {
+                    // Box-Muller transform for normal distribution
+                    let u1: f64 = rng.gen();
+                    let u2: f64 = rng.gen();
+                    (-2.0 * u1.ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos()
+                })
                 .collect();
             let theoretical_array = Array1::from_vec(theoretical_samples);
             
-            if let Ok(ks_result) = ks_2samp(&process_array.view(), &theoretical_array.view()) {
+            if let Ok(ks_result) = ks_2samp(&process_array.view(), &theoretical_array.view(), "two-sided") {
                 tests.insert("kolmogorov_smirnov".to_string(), StatisticalTest {
                     test_name: "Kolmogorov-Smirnov Test".to_string(),
-                    statistic: ks_result.statistic,
-                    p_value: ks_result.p_value,
+                    statistic: ks_result.0,
+                    p_value: ks_result.1,
                     critical_value: 0.05,
-                    significant: ks_result.p_value < 0.05,
-                    effect_size: Some(ks_result.statistic),
+                    significant: ks_result.1 < 0.05,
+                    effect_size: Some(ks_result.0),
                 });
             }
 
@@ -1427,13 +1435,13 @@ impl SciRS2ProcessTomographer {
                 .collect();
             let fidelity_array = Array1::from_vec(fidelity_measurements);
             
-            if let Ok(ttest_result) = ttest_1samp(&fidelity_array.view(), 1.0, Alternative::TwoSided) {
+            if let Ok(ttest_result) = ttest_1samp(&fidelity_array.view(), 1.0, Alternative::TwoSided, "propagate") {
                 tests.insert("fidelity_ttest".to_string(), StatisticalTest {
                     test_name: "One-Sample T-Test for Fidelity".to_string(),
                     statistic: ttest_result.statistic,
-                    p_value: ttest_result.p_value,
+                    p_value: ttest_result.pvalue,
                     critical_value: 0.05,
-                    significant: ttest_result.p_value < 0.05,
+                    significant: ttest_result.pvalue < 0.05,
                     effect_size: Some(ttest_result.statistic.abs()),
                 });
             }
@@ -1557,9 +1565,12 @@ impl SciRS2ProcessTomographer {
         
         #[cfg(feature = "scirs2")]
         {
+            // Convert complex matrix to real parts for eigenvalue calculation
+            let real_matrix = choi_matrix.mapv(|x| x.re);
+            
             // Compute eigenvalues using SciRS2
-            if let Ok(eigenvalues) = eig(&choi_matrix.view()) {
-                let real_eigenvalues: Vec<f64> = eigenvalues.eigenvalues.iter()
+            if let Ok((eigenvalues, _eigenvectors)) = eig(&real_matrix.view()) {
+                let real_eigenvalues: Vec<f64> = eigenvalues.iter()
                     .map(|x| x.re)
                     .collect();
                 
@@ -1621,7 +1632,7 @@ impl SciRS2ProcessTomographer {
                 let process_array = Array1::from_vec(process_subset.to_vec());
                 let measurement_array = Array1::from_vec(measurement_results.clone());
                 
-                if let Ok((correlation, _p_value)) = pearsonr(&process_array.view(), &measurement_array.view()) {
+                if let Ok((correlation, _p_value)) = pearsonr(&process_array.view(), &measurement_array.view(), "two-sided") {
                     // Fill correlation matrix (simplified)
                     for i in 0..std::cmp::min(matrix_size, 4) {
                         for j in 0..std::cmp::min(matrix_size, 4) {
@@ -1884,8 +1895,13 @@ impl SciRS2ProcessTomographer {
         
         #[cfg(feature = "scirs2")]
         {
-            if let Ok(eigenvalues) = eig(&choi_matrix.view()) {
-                return Ok(eigenvalues.eigenvalues);
+            // Convert complex matrix to real parts for eigenvalue calculation
+            let real_matrix = choi_matrix.mapv(|x| x.re);
+            
+            if let Ok((eigenvalues, _eigenvectors)) = eig(&real_matrix.view()) {
+                // Convert back to complex eigenvalues
+                let complex_eigenvalues = eigenvalues.mapv(|x| Complex64::new(x.re, 0.0));
+                return Ok(complex_eigenvalues);
             }
         }
         
@@ -2384,17 +2400,17 @@ impl DriftDetector {
         Self {
             baseline_distribution: ProcessDistribution {
                 fidelity_dist: DistributionParameters {
-                    distribution_type: DistributionType::Normal,
+                    distribution_type: "Normal".to_string(),
                     parameters: vec![1.0, 0.01],
                     confidence_interval: (0.95, 1.0),
                 },
                 unitarity_dist: DistributionParameters {
-                    distribution_type: DistributionType::Normal,
+                    distribution_type: "Normal".to_string(),
                     parameters: vec![1.0, 0.01],
                     confidence_interval: (0.95, 1.0),
                 },
                 diamond_norm_dist: DistributionParameters {
-                    distribution_type: DistributionType::Normal,
+                    distribution_type: "Normal".to_string(),
                     parameters: vec![0.0, 0.01],
                     confidence_interval: (0.0, 0.05),
                 },

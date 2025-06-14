@@ -77,7 +77,7 @@ pub struct SciRS2MappingConfig {
 }
 
 /// Initial mapping algorithms
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum InitialMappingAlgorithm {
     /// Spectral embedding for optimal initial placement
     SpectralEmbedding,
@@ -96,7 +96,7 @@ pub enum InitialMappingAlgorithm {
 }
 
 /// SciRS2 routing algorithms
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum SciRS2RoutingAlgorithm {
     /// A* search with spectral heuristics
     SpectralAStar,
@@ -113,7 +113,7 @@ pub enum SciRS2RoutingAlgorithm {
 }
 
 /// Optimization objectives
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum OptimizationObjective {
     /// Minimize total swap count
     MinimizeSwaps,
@@ -130,7 +130,7 @@ pub enum OptimizationObjective {
 }
 
 /// Community detection methods
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum CommunityMethod {
     /// Louvain algorithm
     Louvain,
@@ -849,7 +849,7 @@ pub struct SciRS2MappingResult {
 }
 
 /// Graph analysis results
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphAnalysisResult {
     /// Graph density
     pub density: f64,
@@ -868,7 +868,7 @@ pub struct GraphAnalysisResult {
 }
 
 /// Spectral analysis results
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpectralAnalysisResult {
     /// Eigenvalues of the Laplacian matrix
     pub laplacian_eigenvalues: Array1<f64>,
@@ -885,7 +885,7 @@ pub struct SpectralAnalysisResult {
 }
 
 /// Community analysis results
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommunityAnalysisResult {
     /// Community assignments
     pub communities: HashMap<usize, usize>,
@@ -902,7 +902,7 @@ pub struct CommunityAnalysisResult {
 }
 
 /// Centrality analysis results
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CentralityAnalysisResult {
     /// Betweenness centrality for each node
     pub betweenness_centrality: HashMap<usize, f64>,
@@ -919,7 +919,7 @@ pub struct CentralityAnalysisResult {
 }
 
 /// Optimization metrics
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptimizationMetrics {
     /// Initial objective value
     pub initial_objective: f64,
@@ -938,7 +938,7 @@ pub struct OptimizationMetrics {
 }
 
 /// Performance predictions
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformancePredictions {
     /// Predicted circuit depth
     pub predicted_depth: f64,
@@ -1111,7 +1111,7 @@ pub struct HardwareOptimization {
 }
 
 /// Supporting data structures
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectivityStats {
     pub degree_distribution: Array1<f64>,
     pub degree_centrality: HashMap<usize, f64>,
@@ -1120,7 +1120,7 @@ pub struct ConnectivityStats {
     pub assortativity: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TopologicalProperties {
     pub is_planar: bool,
     pub genus: usize,
@@ -1129,7 +1129,7 @@ pub struct TopologicalProperties {
     pub domination_number: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingQuality {
     pub stress: f64,
     pub distortion: f64,
@@ -1137,7 +1137,7 @@ pub struct EmbeddingQuality {
     pub embedding_dimension: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommunityQualityMetrics {
     pub silhouette_score: f64,
     pub conductance: f64,

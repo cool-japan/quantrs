@@ -84,6 +84,27 @@ pub struct SystemNoiseModel {
     pub crosstalk_matrix: Array2<f64>,
 }
 
+impl Default for SystemNoiseModel {
+    fn default() -> Self {
+        Self {
+            t1_coherence_time: Array1::from_elem(4, 100.0), // 100 microseconds
+            t2_dephasing_time: Array1::from_elem(4, 50.0),  // 50 microseconds  
+            gate_error_rates: {
+                let mut rates = HashMap::new();
+                rates.insert(GateType::SingleQubit, 0.001);
+                rates.insert(GateType::TwoQubit, 0.01);
+                rates.insert(GateType::Measurement, 0.02);
+                rates.insert(GateType::Preparation, 0.001);
+                rates
+            },
+            measurement_error_rate: 0.02,
+            thermal_temperature: 15.0, // 15 mK
+            noise_spectrum: NoiseSpectrum::default(),
+            crosstalk_matrix: Array2::eye(4),
+        }
+    }
+}
+
 /// Gate types for error modeling
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GateType {
@@ -104,6 +125,17 @@ pub struct NoiseSpectrum {
     pub dominant_noise_type: NoiseType,
     /// Noise bandwidth
     pub bandwidth: f64,
+}
+
+impl Default for NoiseSpectrum {
+    fn default() -> Self {
+        Self {
+            frequencies: Array1::linspace(1e3, 1e9, 1000), // 1 kHz to 1 GHz
+            power_spectral_density: Array1::from_elem(1000, 1e-15), // Default PSD
+            dominant_noise_type: NoiseType::OneOverF,
+            bandwidth: 1e9, // 1 GHz
+        }
+    }
 }
 
 /// Types of noise affecting the system
@@ -617,6 +649,13 @@ impl NoiseResilientAnnealingProtocol {
         })
     }
 
+    /// Encode problem with error correction
+    pub fn encode_problem(&self, problem: &crate::ising::QuboModel) -> QECResult<crate::ising::QuboModel> {
+        // For now, return a copy of the original problem
+        // TODO: Implement actual error correction encoding
+        Ok(crate::ising::QuboModel::new(problem.num_variables))
+    }
+
     /// Select optimal protocol for current conditions
     fn select_optimal_protocol(&self, problem: &IsingModel) -> QECResult<AnnealingProtocol> {
         match self.protocol_selector.selection_strategy {
@@ -980,8 +1019,8 @@ impl NoiseResilientAnnealingProtocol {
         let error_gradient = error_rate - self.config.error_threshold;
         
         if error_gradient > 0.0 {
-            params.initial_temperature *= (1.0 - learning_rate * error_gradient);
-            params.final_temperature *= (1.0 - learning_rate * error_gradient);
+            params.initial_temperature *= 1.0 - learning_rate * error_gradient;
+            params.final_temperature *= 1.0 - learning_rate * error_gradient;
             true
         } else {
             false

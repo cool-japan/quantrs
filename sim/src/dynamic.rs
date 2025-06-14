@@ -337,7 +337,7 @@ impl DynamicCircuit {
     }
 
     /// Apply a gate to the circuit
-    pub fn apply_gate<G: GateOp + 'static>(&mut self, gate: G) -> QuantRS2Result<()> {
+    pub fn apply_gate<G: GateOp + Clone + Send + Sync + 'static>(&mut self, gate: G) -> QuantRS2Result<()> {
         match self {
             DynamicCircuit::Q2(c) => c.add_gate(gate).map(|_| ()),
             DynamicCircuit::Q3(c) => c.add_gate(gate).map(|_| ()),

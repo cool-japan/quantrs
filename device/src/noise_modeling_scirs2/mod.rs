@@ -25,7 +25,7 @@ pub use spectral::*;
 pub use statistical::*;
 pub use temporal::*;
 
-use crate::{calibration::DeviceCalibration, noise_model::CalibrationNoiseModel, DeviceResult, DeviceError};
+use crate::{calibration::DeviceCalibration, noise_model::{CalibrationNoiseModel, CrosstalkNoise}, DeviceResult, DeviceError};
 use quantrs2_core::{error::QuantRS2Result, qubit::QubitId};
 use std::collections::HashMap;
 use ndarray::{Array1, Array2};
@@ -60,18 +60,6 @@ pub struct CorrelationAnalysis {
 pub struct TemporalAnalysis {
     pub autocorrelation: Array1<f64>,
     pub power_spectrum: Array1<f64>,
-}
-
-/// Distribution types for noise characterization
-#[derive(Debug, Clone, PartialEq)]
-pub enum DistributionType {
-    Normal,
-    LogNormal,
-    Gamma,
-    Exponential,
-    Poisson,
-    Beta,
-    Custom,
 }
 
 /// Main SciRS2 noise modeling coordinator
@@ -143,9 +131,9 @@ impl SciRS2NoiseModeler {
         }
 
         // Extract readout noise
-        for (qubit, readout_cal) in &calibration.readout_calibration.qubit_data {
+        for (qubit, readout_cal) in &calibration.readout_calibration.qubit_readout {
             let key = format!("readout_{}", qubit.0);
-            let error_data = vec![readout_cal.error_rate, readout_cal.assignment_error];
+            let error_data = vec![1.0 - readout_cal.p0_given_0, 1.0 - readout_cal.p1_given_1];
             noise_data.insert(key, Array1::from_vec(error_data));
         }
 
@@ -288,11 +276,11 @@ impl SciRS2NoiseModeler {
             let t2_stats = analysis.noise_statistics.get(&t2_key);
             
             let qubit_params = QubitNoiseParams {
-                t1: t1_stats.map(|s| s.mean).unwrap_or(50000.0), // 50μs default
-                t2: t2_stats.map(|s| s.mean).unwrap_or(25000.0), // 25μs default
+                gamma_1: t1_stats.map(|s| 1.0 / s.mean).unwrap_or(1.0 / 50000.0), // 1/T1
+                gamma_phi: t2_stats.map(|s| 1.0 / s.mean).unwrap_or(1.0 / 25000.0), // 1/T2
                 thermal_population: 0.01,
-                frequency_noise: 0.001,
-                amplitude_noise: 0.0005,
+                frequency_drift: 0.001,
+                flicker_noise: 0.0005,
             };
             
             qubit_noise.insert(qubit_id, qubit_params);
@@ -305,9 +293,11 @@ impl SciRS2NoiseModeler {
             
             let gate_params = GateNoiseParams {
                 depolarizing_rate: noise_stats.map(|s| s.mean).unwrap_or(0.001),
-                dephasing_rate: noise_stats.map(|s| s.std_dev).unwrap_or(0.0005),
-                amplitude_damping_rate: 0.0001,
+                incoherent_error: noise_stats.map(|s| s.std_dev).unwrap_or(0.0005),
+                amplitude_noise: 0.0001,
                 coherent_error: 0.0002,
+                duration: 100.0, // 100ns default
+                phase_noise: 0.0001,
             };
             
             gate_noise.insert(gate_name.clone(), gate_params);
@@ -321,11 +311,15 @@ impl SciRS2NoiseModeler {
             
             let readout_stats = analysis.noise_statistics.get(&readout_key);
             
+            let error_01 = readout_stats.map(|s| s.mean).unwrap_or(0.02);
+            let error_10 = readout_stats.map(|s| s.std_dev).unwrap_or(0.02);
             let readout_params = ReadoutNoiseParams {
-                assignment_error_01: readout_stats.map(|s| s.mean).unwrap_or(0.02),
-                assignment_error_10: readout_stats.map(|s| s.std_dev).unwrap_or(0.02),
-                readout_time: 1000.0, // 1μs
-                readout_fidelity: 1.0 - readout_stats.map(|s| s.mean).unwrap_or(0.02),
+                assignment_matrix: [
+                    [1.0 - error_01, error_01],
+                    [error_10, 1.0 - error_10]
+                ],
+                readout_excitation: 0.001,
+                readout_relaxation: 0.001,
             };
             
             readout_noise.insert(qubit_id, readout_params);
@@ -333,11 +327,30 @@ impl SciRS2NoiseModeler {
 
         Ok(CalibrationNoiseModel {
             device_id: self.device_id.clone(),
-            timestamp: std::time::SystemTime::now(),
             qubit_noise,
             gate_noise,
+            two_qubit_noise: HashMap::new(),
             readout_noise,
-            correlation_matrix: analysis.correlation_analysis.correlation_matrix.clone(),
+            crosstalk: CrosstalkNoise {
+                crosstalk_matrix: {
+                    let matrix = &analysis.correlation_analysis.correlation_matrix;
+                    let rows = matrix.nrows();
+                    let cols = matrix.ncols();
+                    let mut vec_matrix = Vec::with_capacity(rows);
+                    for i in 0..rows {
+                        let mut row = Vec::with_capacity(cols);
+                        for j in 0..cols {
+                            row.push(matrix[[i, j]]);
+                        }
+                        vec_matrix.push(row);
+                    }
+                    vec_matrix
+                },
+                threshold: 0.1,
+                single_qubit_crosstalk: 0.001,
+                two_qubit_crosstalk: 0.005,
+            },
+            temperature: 15.0, // mK
         })
     }
 

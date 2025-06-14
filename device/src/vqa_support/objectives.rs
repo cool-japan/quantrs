@@ -306,6 +306,13 @@ impl Default for ObjectiveConfig {
             objective_type: ObjectiveType::Energy,
             target: None,
             regularization: RegularizationConfig::default(),
+            hamiltonian: None,
+            cost_function: None,
+            training_data: None,
+            measurement_strategy: MeasurementStrategy::default(),
+            shot_allocation: ShotAllocationConfig::default(),
+            gradient_method: GradientMethod::ParameterShift,
+            noise_mitigation: ObjectiveNoiseMitigation::default(),
         }
     }
 }
@@ -715,7 +722,7 @@ impl ObjectiveEvaluator {
             .map(|term| term.coefficient.re * rng.gen_range(-1.0..1.0))
             .sum::<f64>();
             
-        let variance = 0.01; // Mock variance
+        let variance: f64 = 0.01; // Mock variance
         
         Ok(ObjectiveResult {
             value: energy,
@@ -874,7 +881,7 @@ impl ObjectiveEvaluator {
         use rand::prelude::*;
         let mut rng = rand::thread_rng();
         
-        let expectation = rng.gen_range(-1.0..1.0);
+        let expectation: f64 = rng.gen_range(-1.0..1.0);
         let variance = 1.0 - expectation.powi(2); // Var = 1 - ⟨P⟩² for Pauli operators
         
         Ok((expectation, variance))
@@ -930,5 +937,96 @@ impl ObjectiveEvaluator {
         // Placeholder prediction
         use rand::prelude::*;
         Ok(rand::thread_rng().gen_range(-1.0..1.0))
+    }
+    
+    /// Missing method implementations
+    fn evaluate_state_preparation(&self, _circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented("State preparation evaluation not yet implemented".to_string()))
+    }
+    
+    fn evaluate_process_fidelity(&self, _circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented("Process fidelity evaluation not yet implemented".to_string()))
+    }
+    
+    fn evaluate_custom(&self, _circuit: &ParametricCircuit, _name: &str) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented("Custom evaluation not yet implemented".to_string()))
+    }
+    
+    fn compute_finite_difference_gradient(&self, _parameters: &Array1<f64>) -> DeviceResult<Array1<f64>> {
+        Err(crate::DeviceError::NotImplemented("Finite difference gradient not yet implemented".to_string()))
+    }
+    
+    fn compute_central_difference_gradient(&self, _parameters: &Array1<f64>) -> DeviceResult<Array1<f64>> {
+        Err(crate::DeviceError::NotImplemented("Central difference gradient not yet implemented".to_string()))
+    }
+    
+    fn compute_forward_difference_gradient(&self, _parameters: &Array1<f64>) -> DeviceResult<Array1<f64>> {
+        Err(crate::DeviceError::NotImplemented("Forward difference gradient not yet implemented".to_string()))
+    }
+    
+    fn compute_natural_gradient(&self, _parameters: &Array1<f64>) -> DeviceResult<Array1<f64>> {
+        Err(crate::DeviceError::NotImplemented("Natural gradient not yet implemented".to_string()))
+    }
+    
+    fn compute_automatic_gradient(&self, _parameters: &Array1<f64>) -> DeviceResult<Array1<f64>> {
+        Err(crate::DeviceError::NotImplemented("Automatic gradient not yet implemented".to_string()))
+    }
+    
+    fn simulate_circuit_exact(&self, _circuit: &ParametricCircuit) -> DeviceResult<Array1<Complex64>> {
+        Err(crate::DeviceError::NotImplemented("Exact circuit simulation not yet implemented".to_string()))
+    }
+    
+    fn evaluate_cost(&self, _circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented("Cost evaluation not yet implemented".to_string()))
+    }
+    
+    fn evaluate_classification(&self, _circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented("Classification evaluation not yet implemented".to_string()))
+    }
+    
+    fn evaluate_regression(&self, _circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented("Regression evaluation not yet implemented".to_string()))
+    }
+    
+    fn evaluate_fidelity(&self, _circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented("Fidelity evaluation not yet implemented".to_string()))
+    }
+    
+    fn evaluate_expectation_value(&self, _circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented("Expectation value evaluation not yet implemented".to_string()))
+    }
+}
+
+// Default implementations for missing types
+impl Default for MeasurementStrategy {
+    fn default() -> Self {
+        Self {
+            strategy_type: MeasurementStrategyType::Individual,
+            term_grouping: TermGrouping::None,
+            shadow_tomography: None,
+        }
+    }
+}
+
+impl Default for ShotAllocationConfig {
+    fn default() -> Self {
+        Self {
+            total_shots: 1000,
+            allocation_strategy: ShotAllocationStrategy::Uniform,
+            min_shots_per_term: 10,
+            adaptive_params: None,
+        }
+    }
+}
+
+impl Default for ObjectiveNoiseMitigation {
+    fn default() -> Self {
+        Self {
+            enable_zne: false,
+            zne_factors: vec![1.0, 1.5, 2.0],
+            enable_rem: false,
+            enable_symmetry: false,
+            overhead_budget: 1.0,
+        }
     }
 }

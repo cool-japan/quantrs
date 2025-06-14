@@ -819,8 +819,8 @@ impl QuantumContinuousFlow {
     /// Create Pauli-Z observable
     fn create_pauli_z_observable(qubit: usize) -> Observable {
         let pauli_z = ndarray::array![
-            [Complex64::new(1.0, 0.0), Complex64::zero()],
-            [Complex64::zero(), Complex64::new(-1.0, 0.0)]
+            [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
+            [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)]
         ];
         
         Observable {
@@ -866,7 +866,7 @@ impl QuantumContinuousFlow {
     /// Create entanglement pattern
     fn create_entanglement_pattern(config: &QuantumContinuousFlowConfig) -> Result<EntanglementPattern> {
         let connectivity = ConnectivityGraph {
-            adjacency_matrix: Array2::eye(config.num_qubits),
+            adjacency_matrix: Array2::<f64>::eye(config.num_qubits).mapv(|x| x != 0.0),
             edge_weights: Array2::ones((config.num_qubits, config.num_qubits)),
             num_nodes: config.num_qubits,
         };
@@ -894,7 +894,7 @@ impl QuantumContinuousFlow {
         };
         
         let quantum_state = QuantumDistributionState {
-            quantum_state_vector: Array1::zeros(2_usize.pow(config.num_qubits as u32)).mapv(|_| Complex64::zero()),
+            quantum_state_vector: Array1::zeros(2_usize.pow(config.num_qubits as u32)).mapv(|_: f64| Complex64::new(0.0, 0.0)),
             density_matrix: Array2::eye(2_usize.pow(config.num_qubits as u32)).mapv(|x| Complex64::new(x, 0.0)),
             entanglement_structure: EntanglementStructure {
                 entanglement_measure: 0.5,
@@ -1131,7 +1131,7 @@ impl QuantumContinuousFlow {
         
         Ok(QuantumFlowState {
             amplitudes: normalized_x.mapv(|x_i| Complex64::new(x_i, 0.0)),
-            phases: Array1::zeros(x.len()).mapv(|_| Complex64::new(1.0, 0.0)),
+            phases: Array1::zeros(x.len()).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             entanglement_measure: 0.5,
             coherence_time: 1.0,
             fidelity: 1.0,
@@ -1200,7 +1200,8 @@ impl QuantumContinuousFlow {
                     if control < new_state.amplitudes.len() && target < new_state.amplitudes.len() {
                         // Simple entanglement operation
                         let entanglement_factor = 0.1;
-                        new_state.amplitudes[target] += entanglement_factor * new_state.amplitudes[control];
+                        let control_amplitude = new_state.amplitudes[control];
+                        new_state.amplitudes[target] += entanglement_factor * control_amplitude;
                         new_state.entanglement_measure = (new_state.entanglement_measure + 0.1).min(1.0);
                     }
                 }
@@ -1492,14 +1493,14 @@ impl QuantumContinuousFlow {
         match &self.base_distribution.distribution_type {
             QuantumDistributionType::QuantumGaussian { mean, covariance, quantum_enhancement } => {
                 let diff = z - mean;
-                let covariance_inv = covariance.try_inverse()
-                    .ok_or_else(|| MLError::ModelCreationError("Singular covariance matrix".to_string()))?;
-                
-                let mahalanobis_distance = diff.dot(&covariance_inv.dot(&diff));
+                // Simplified distance computation (assuming diagonal covariance)
+                let mahalanobis_distance = diff.iter().zip(covariance.diag().iter())
+                    .map(|(d, cov)| d * d / cov.max(1e-8))
+                    .sum::<f64>();
                 let log_prob = -0.5 * (
                     mahalanobis_distance + 
                     z.len() as f64 * (2.0 * PI).ln() + 
-                    covariance.det().ln()
+                    covariance.diag().iter().map(|x| x.ln()).sum::<f64>()
                 );
                 
                 // Add quantum enhancement
@@ -1603,8 +1604,8 @@ impl QuantumContinuousFlow {
         let z2 = z.slice(ndarray::s![split_dim..]).to_owned();
         
         // Apply inverse coupling (z1 unchanged, invert transformation on z2)
-        let scale_output = self.apply_quantum_network(&coupling_function.scale_network, &z1)?;
-        let translation_output = self.apply_quantum_network(&coupling_function.translation_network, &z1)?;
+        let scale_output = self.apply_quantum_network(&coupling_function.scale_function, &z1)?;
+        let translation_output = self.apply_quantum_network(&coupling_function.translation_function, &z1)?;
         
         // Inverse transformation: x2 = (z2 - translation) / scale
         let x2 = (&z2 - &translation_output.output) / &scale_output.output;
@@ -1667,7 +1668,7 @@ impl QuantumContinuousFlow {
     fn sample_base_distribution(&self) -> Result<Array1<f64>> {
         match &self.base_distribution.distribution_type {
             QuantumDistributionType::QuantumGaussian { mean, covariance, quantum_enhancement } => {
-                let mut rng = ChaCha20Rng::from_entropy();
+                let mut rng = rand::thread_rng();
                 
                 // Sample from standard Gaussian
                 let mut z = Array1::zeros(mean.len());
@@ -1738,7 +1739,7 @@ impl QuantumContinuousFlow {
         }
         
         Ok(FlowTrainingOutput {
-            training_losses,
+            training_losses: training_losses.clone(),
             validation_losses,
             quantum_metrics_history,
             final_invertibility_score: self.invertibility_tracker.inversion_errors.last().copied().unwrap_or(0.0),

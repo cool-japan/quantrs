@@ -1029,7 +1029,7 @@ impl QuantumMemoryAugmentedNetwork {
     /// Compute novelty of input
     fn compute_novelty(&self, input: &Array1<f64>) -> Result<f64> {
         // Compare with recent experiences
-        let mut min_similarity = 1.0;
+        let mut min_similarity: f64 = 1.0;
         
         for episode in self.episodic_memory.episodes.iter().rev().take(10) {
             for state in &episode.states {

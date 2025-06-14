@@ -628,7 +628,7 @@ pub struct CodeGenerator {
     settings: GenerationSettings,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum ExportFormat {
     /// Python code
     Python,
@@ -788,8 +788,10 @@ impl VisualProblemBuilder {
             state: ProblemState::Editing,
         };
 
-        self.record_action(ActionType::BulkOperation(vec![]), &self.problem, &problem, "New problem created");
+        let old_problem = self.problem.clone();
         self.problem = problem;
+        let current_problem = self.problem.clone();
+        self.record_action(ActionType::BulkOperation(vec![]), &old_problem, &current_problem, "New problem created");
 
         Ok(())
     }
@@ -834,10 +836,11 @@ impl VisualProblemBuilder {
         self.problem.variables.push(variable);
         self.problem.metadata.modified = std::time::SystemTime::now();
 
+        let current_problem = self.problem.clone();
         self.record_action(
             ActionType::AddVariable(id.clone()),
             &before_state,
-            &self.problem,
+            &current_problem,
             &format!("Added variable '{}'", name)
         );
 
@@ -866,10 +869,11 @@ impl VisualProblemBuilder {
 
         self.problem.metadata.modified = std::time::SystemTime::now();
 
+        let current_problem = self.problem.clone();
         self.record_action(
             ActionType::RemoveVariable(variable_id.to_string()),
             &before_state,
-            &self.problem,
+            &current_problem,
             &format!("Removed variable '{}'", variable.name)
         );
 
@@ -884,7 +888,7 @@ impl VisualProblemBuilder {
     pub fn add_constraint(&mut self, name: &str, constraint_type: ConstraintType, variables: Vec<String>) -> Result<String, String> {
         // Validate that all variables exist
         for var_id in &variables {
-            if !self.problem.variables.iter().any(|v| v.id == var_id) {
+            if !self.problem.variables.iter().any(|v| &v.id == var_id) {
                 return Err(format!("Variable '{}' not found", var_id));
             }
         }
@@ -911,10 +915,11 @@ impl VisualProblemBuilder {
         self.problem.constraints.push(constraint);
         self.problem.metadata.modified = std::time::SystemTime::now();
 
+        let current_problem = self.problem.clone();
         self.record_action(
             ActionType::AddConstraint(id.clone()),
             &before_state,
-            &self.problem,
+            &current_problem,
             &format!("Added constraint '{}'", name)
         );
 
@@ -948,10 +953,11 @@ impl VisualProblemBuilder {
         self.problem.objective = Some(objective);
         self.problem.metadata.modified = std::time::SystemTime::now();
 
+        let current_problem = self.problem.clone();
         self.record_action(
             ActionType::SetObjective,
             &before_state,
-            &self.problem,
+            &current_problem,
             &format!("Set objective function '{}'", name)
         );
 
@@ -981,10 +987,11 @@ impl VisualProblemBuilder {
 
         self.problem.metadata.modified = std::time::SystemTime::now();
 
+        let current_problem = self.problem.clone();
         self.record_action(
             ActionType::LayoutChange,
             &before_state,
-            &self.problem,
+            &current_problem,
             &format!("Applied {:?} layout", algorithm)
         );
 
@@ -1053,12 +1060,14 @@ impl VisualProblemBuilder {
             .map_err(|e| format!("Failed to parse JSON: {}", e))?;
 
         let before_state = self.problem.clone();
+        let old_problem = self.problem.clone();
         self.problem = problem;
 
+        let current_problem = self.problem.clone();
         self.record_action(
             ActionType::BulkOperation(vec![]),
             &before_state,
-            &self.problem,
+            &current_problem,
             "Loaded problem from JSON"
         );
 

@@ -1127,7 +1127,7 @@ impl QuantumImplicitNeuralRepresentation {
         let final_compressed = self.compress_representation()?;
         
         Ok(INRTrainingOutput {
-            training_losses,
+            training_losses: training_losses.clone(),
             quantum_metrics_history,
             compression_history,
             final_quantum_metrics: self.quantum_metrics.clone(),
@@ -1143,13 +1143,17 @@ impl QuantumImplicitNeuralRepresentation {
         values: &Array2<f64>,
         adaptation_steps: usize,
     ) -> Result<AdaptationOutput> {
-        if let Some(ref mut meta_learner) = self.meta_learner {
-            meta_learner.fast_adaptation(
+        if self.meta_learner.is_some() {
+            // Extract meta_learner temporarily to avoid double borrow
+            let mut meta_learner = self.meta_learner.take().unwrap();
+            let result = meta_learner.fast_adaptation(
                 self,
                 coordinates,
                 values,
                 adaptation_steps,
-            )
+            );
+            self.meta_learner = Some(meta_learner);
+            result
         } else {
             Err(MLError::ModelCreationError(
                 "Meta-learning not enabled for this model".to_string()
@@ -1159,7 +1163,29 @@ impl QuantumImplicitNeuralRepresentation {
     
     /// Compress the representation
     pub fn compress_representation(&mut self) -> Result<CompressedRepresentation> {
-        self.compression_manager.compress_full_representation(self)
+        // Extract needed data to avoid self-borrowing
+        let config = self.config.clone();
+        let coordinate_network = self.coordinate_network.clone();
+        
+        // Create temporary representation for compression
+        let temp_repr = QuantumImplicitNeuralRepresentation {
+            config,
+            coordinate_network,
+            positional_encoder: self.positional_encoder.clone(),
+            quantum_layers: self.quantum_layers.clone(),
+            quantum_state_manager: self.quantum_state_manager.clone(),
+            entanglement_manager: self.entanglement_manager.clone(),
+            meta_learner: self.meta_learner.clone(),
+            adaptation_parameters: self.adaptation_parameters.clone(),
+            optimizer: self.optimizer.clone(),
+            gradient_estimator: self.gradient_estimator.clone(),
+            training_history: self.training_history.clone(),
+            quantum_metrics: self.quantum_metrics.clone(),
+            compression_manager: self.compression_manager.clone(),
+            compressed_representation: self.compressed_representation.clone(),
+        };
+        
+        self.compression_manager.compress_full_representation(&temp_repr)
     }
     
     /// Helper method implementations
@@ -1178,7 +1204,7 @@ impl QuantumImplicitNeuralRepresentation {
         Ok(QuantumPositionalEncoder {
             encoding_config: config.positional_encoding.clone(),
             frequency_parameters: Array2::zeros((config.coordinate_dim, config.positional_encoding.num_frequencies)),
-            quantum_frequencies: Array2::zeros((config.coordinate_dim, config.positional_encoding.num_frequencies)).mapv(|_| Complex64::new(1.0, 0.0)),
+            quantum_frequencies: Array2::<f64>::zeros((config.coordinate_dim, config.positional_encoding.num_frequencies)).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             phase_offsets: Array1::zeros(config.positional_encoding.num_frequencies),
             learnable_parameters: Array1::zeros(config.positional_encoding.num_frequencies * 2),
         })
@@ -1195,7 +1221,7 @@ impl QuantumImplicitNeuralRepresentation {
                     output_dim: config.hidden_dim,
                     quantum_weight_encoding: WeightEncodingType::AmplitudeEncoding,
                 },
-                quantum_weights: Array2::zeros((config.hidden_dim, config.hidden_dim)).mapv(|_| Complex64::new(1.0, 0.0)),
+                quantum_weights: Array2::zeros((config.hidden_dim, config.hidden_dim)).mapv(|_: f64| Complex64::new(1.0, 0.0)),
                 classical_weights: Array2::zeros((config.hidden_dim, config.hidden_dim)),
                 bias: Array1::zeros(config.hidden_dim),
                 activation: config.activation_config.activation_type.clone(),
@@ -1394,7 +1420,7 @@ impl CompressionManager {
     ) -> Result<CompressedRepresentation> {
         // Full compression implementation
         Ok(CompressedRepresentation {
-            compressed_parameters: vec![0u8; 1000], // Placeholder
+            compressed_parameters: Array1::from(vec![0u8; 1000]), // Placeholder
             compression_metadata: CompressionMetadata {
                 original_size: 10000,
                 compressed_size: 1000,
@@ -1703,7 +1729,7 @@ mod tests {
         let encoder = QuantumPositionalEncoder {
             encoding_config: config.positional_encoding.clone(),
             frequency_parameters: Array2::zeros((2, 10)),
-            quantum_frequencies: Array2::zeros((2, 10)).mapv(|_| Complex64::new(1.0, 0.0)),
+            quantum_frequencies: Array2::zeros((2, 10)).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             phase_offsets: Array1::zeros(10),
             learnable_parameters: Array1::zeros(20),
         };

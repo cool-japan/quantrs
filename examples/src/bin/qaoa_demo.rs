@@ -54,7 +54,7 @@ fn solve_triangle_maxcut() {
 
         // Optimize
         let mut optimizer = QAOAOptimizer::new(circuit, 200, 0.001);
-        let (optimized_params, final_cost) = optimizer.optimize();
+        let (optimized_params, _, final_cost) = optimizer.optimize();
 
         let elapsed = start.elapsed();
 
@@ -66,8 +66,7 @@ fn solve_triangle_maxcut() {
         println!("  Final cost: {:.4}", final_cost);
         println!("  Solution: {:?}", solution);
         println!("  Cut size: {}", calculate_cut_size(&edges, &solution));
-        println!("  Optimized β: {:?}", optimized_params.beta);
-        println!("  Optimized γ: {:?}", optimized_params.gamma);
+        println!("  Optimized params: {:?}", optimized_params);
     }
 }
 
@@ -93,7 +92,7 @@ fn solve_square_maxcut() {
     );
 
     let mut optimizer = QAOAOptimizer::new(circuit, 300, 0.001);
-    let (optimized_params, final_cost) = optimizer.optimize();
+    let (optimized_params, _, final_cost) = optimizer.optimize();
 
     let elapsed = start.elapsed();
 
@@ -133,7 +132,7 @@ fn solve_k5_maxcut() {
     );
 
     let mut optimizer = QAOAOptimizer::new(circuit, 500, 0.001);
-    let (optimized_params, final_cost) = optimizer.optimize();
+    let (optimized_params, _, final_cost) = optimizer.optimize();
 
     let elapsed = start.elapsed();
 
@@ -173,7 +172,7 @@ fn solve_weighted_maxcut() {
     );
 
     let mut optimizer = QAOAOptimizer::new(circuit, 300, 0.001);
-    let (optimized_params, final_cost) = optimizer.optimize();
+    let (optimized_params, _, final_cost) = optimizer.optimize();
 
     let elapsed = start.elapsed();
 

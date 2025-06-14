@@ -2,7 +2,7 @@
 
 use super::config::*;
 use crate::DeviceResult;
-use ndarray::{Array1, Array2};
+use ndarray::{Array1, Array2, ArrayView1};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -490,25 +490,39 @@ impl OptimizationStrategy {
             use super::scirs2_optimize::{minimize, unconstrained::Method};
             
             // Define objective function closure
-            let objective = |x: &Array1<f64>| -> f64 {
-                problem.evaluate_objective(x).unwrap_or(f64::INFINITY)
+            let mut objective = |x: &ndarray::ArrayView1<f64>| -> f64 {
+                let owned_array = Array1::from_vec(x.to_vec());
+                problem.evaluate_objective(&owned_array).unwrap_or(f64::INFINITY)
             };
 
-            // Set up bounds if available
-            let bounds = if let Some(ref bounds) = problem.bounds {
-                Some(bounds.clone())
+            // Set up options with bounds if available
+            let options = if let Some(ref bounds) = problem.bounds {
+                use super::scirs2_optimize::unconstrained::{Options, Bounds};
+                let bound_pairs: Vec<(Option<f64>, Option<f64>)> = bounds
+                    .iter()
+                    .map(|(low, high)| (Some(*low), Some(*high)))
+                    .collect();
+                let scirs2_bounds = Bounds::new(&bound_pairs);
+                Some(scirs2_optimize::prelude::Options {
+                    bounds: Some(scirs2_bounds),
+                    max_iter: self.config.max_iterations,
+                    ftol: self.config.convergence_tolerance,
+                    ..Default::default()
+                })
             } else {
-                None
+                Some(scirs2_optimize::prelude::Options {
+                    max_iter: self.config.max_iterations,
+                    ftol: self.config.convergence_tolerance,
+                    ..Default::default()
+                })
             };
 
             // Configure L-BFGS-B optimization
             let result = minimize(
                 objective,
-                initial_params,
+                &initial_params.as_slice().unwrap(),
                 Method::LBFGSB,
-                bounds,
-                Some(self.config.max_iterations),
-                Some(self.config.convergence_tolerance),
+                options,
             ).map_err(|e| crate::DeviceError::OptimizationError(format!("L-BFGS-B failed: {}", e)))?;
 
             let mut trajectory = OptimizationTrajectory::new();
@@ -570,38 +584,15 @@ impl OptimizationStrategy {
             use super::scirs2_optimize::{minimize, unconstrained::Method};
             
             // Define objective function closure
-            let objective = |x: &Array1<f64>| -> f64 {
-                problem.evaluate_objective(x).unwrap_or(f64::INFINITY)
+            let mut objective = |x: &ndarray::ArrayView1<f64>| -> f64 {
+                let owned_array = Array1::from_vec(x.to_vec());
+                problem.evaluate_objective(&owned_array).unwrap_or(f64::INFINITY)
             };
-
-            // COBYLA supports constraints - convert our constraints to COBYLA format
-            let constraints = problem.constraints.iter().map(|c| {
-                match c.constraint_type {
-                    ConstraintType::Inequality => {
-                        // COBYLA inequality: constraint(x) >= 0
-                        move |x: &Array1<f64>| -> f64 {
-                            c.bounds[0] - x.sum() // upper_bound - f(x) >= 0
-                        }
-                    },
-                    ConstraintType::Equality => {
-                        move |x: &Array1<f64>| -> f64 {
-                            (x.sum() - c.bounds[0]).abs() - c.tolerance
-                        }
-                    },
-                    ConstraintType::Bounds => {
-                        move |x: &Array1<f64>| -> f64 {
-                            x.iter().map(|&xi| {
-                                (xi - c.bounds[0]).min(c.bounds[1] - xi)
-                            }).fold(f64::INFINITY, f64::min)
-                        }
-                    },
-                }
-            }).collect::<Vec<_>>();
 
             let result = minimize(
                 objective,
                 &initial_params.as_slice().unwrap(),
-                "NELDER-MEAD",
+                Method::NelderMead,
                 None,
             ).map_err(|e| crate::DeviceError::OptimizationError(format!("Optimization failed: {}", e)))?;
 

@@ -442,6 +442,24 @@ impl QuboModel {
         Ok(())
     }
 
+    /// Add to the linear coefficient (Q_ii) for a specific variable
+    pub fn add_linear(&mut self, var: usize, value: f64) -> IsingResult<()> {
+        if var >= self.num_variables {
+            return Err(IsingError::InvalidQubit(var));
+        }
+
+        if !value.is_finite() {
+            return Err(IsingError::InvalidValue(format!(
+                "Linear term must be finite, got {}",
+                value
+            )));
+        }
+
+        let current = *self.linear_terms.get(var).unwrap_or(&0.0);
+        self.linear_terms.set(var, current + value);
+        Ok(())
+    }
+
     /// Get the linear coefficient (Q_ii) for a specific variable
     pub fn get_linear(&self, var: usize) -> IsingResult<f64> {
         if var >= self.num_variables {

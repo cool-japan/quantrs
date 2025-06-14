@@ -55,6 +55,7 @@ pub mod csp_compiler;
 pub mod dsl;
 pub mod dwave;
 pub mod embedding;
+pub mod enterprise_monitoring;
 pub mod flux_bias;
 #[cfg(feature = "fujitsu")]
 pub mod fujitsu;
@@ -64,6 +65,7 @@ pub mod hobo;
 pub mod hybrid_solvers;
 pub mod ising;
 pub mod layout_embedding;
+pub mod meta_learning;
 pub mod multi_chip_embedding;
 pub mod multi_objective;
 pub mod neural_annealing_schedules;
@@ -113,6 +115,11 @@ pub use applications::{
     manufacturing, telecommunications, transportation, validate_constraints, ApplicationError,
     ApplicationResult, Benchmarkable, IndustryConstraint, IndustryObjective, IndustrySolution,
     OptimizationProblem, ProblemCategory as ApplicationProblemCategory,
+    quantum_computational_chemistry::{
+        QuantumChemistryOptimizer, QuantumChemistryConfig, QuantumChemistryResult,
+        MolecularSystem, ElectronicStructureMethod, BasisSet, CatalysisOptimization,
+        create_example_molecular_systems,
+    },
 };
 pub use bayesian_hyperopt::{
     create_annealing_parameter_space, create_bayesian_optimizer, create_custom_bayesian_optimizer,
@@ -191,6 +198,10 @@ pub use dwave::{
     SolverType,
 };
 pub use embedding::{Embedding, HardwareGraph, HardwareTopology, MinorMiner};
+pub use enterprise_monitoring::{
+    create_example_enterprise_monitoring, EnterpriseMonitoringConfig, EnterpriseMonitoringDashboard,
+    EnterpriseMonitoringSystem, LogLevel, SecurityEvent, ServiceLevelObjective, ThreatLevel,
+};
 pub use flux_bias::{
     CalibrationData, FluxBiasConfig, FluxBiasOptimizer, FluxBiasResult, MLFluxBiasOptimizer,
 };

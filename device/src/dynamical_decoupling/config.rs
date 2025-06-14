@@ -131,7 +131,7 @@ impl Default for MonitoringConfig {
 }
 
 /// Monitoring metrics
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MonitoringMetric {
     /// Coherence time
     CoherenceTime,
@@ -327,7 +327,7 @@ pub enum ExplorationStrategy {
 }
 
 /// Types of dynamical decoupling sequences
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DDSequenceType {
     /// Hahn Echo sequence
     HahnEcho,
@@ -589,7 +589,7 @@ impl Default for DDPerformanceConfig {
 }
 
 /// DD performance metrics
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DDPerformanceMetric {
     /// Effective coherence time
     CoherenceTime,

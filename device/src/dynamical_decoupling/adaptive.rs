@@ -4,15 +4,18 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use std::sync::{Arc, Mutex};
 
+use rand::Rng;
+
 use ndarray::{Array1, Array2};
 use quantrs2_core::qubit::QubitId;
+use quantrs2_circuit::prelude::Circuit;
 
 use crate::{DeviceResult, DeviceError};
 use super::{
     config::{
         AdaptiveDDConfig, AdaptationCriteria, MonitoringConfig, MonitoringMetric, 
         FeedbackControlConfig, LearningConfig, LearningAlgorithm, ControlAlgorithm,
-        DDSequenceType, ExplorationStrategy
+        DDSequenceType, ExplorationStrategy, DDPerformanceMetric
     },
     sequences::{DDSequence, DDSequenceGenerator},
     performance::DDPerformanceAnalysis,
@@ -235,6 +238,8 @@ struct LearningAgent {
     exploration_strategy: ExplorationStrategy,
     /// Learning statistics
     learning_stats: LearningStatistics,
+    /// Action count tracking for exploration
+    action_counts: HashMap<String, u32>,
 }
 
 /// Experience for learning
@@ -403,6 +408,7 @@ impl AdaptiveDDSystem {
                     exploration_rate: 0.1,
                     learning_rate: config.learning_config.learning_rate,
                 },
+                action_counts: HashMap::new(),
             })
         };
 
@@ -456,11 +462,11 @@ impl AdaptiveDDSystem {
         // Record performance
         let performance_record = PerformanceRecord {
             timestamp: Instant::now(),
-            coherence_time: performance_analysis.coherence_preservation.effective_t2,
-            fidelity: performance_analysis.fidelity_metrics.average_gate_fidelity,
-            gate_overhead: performance_analysis.overhead_analysis.gate_count_overhead,
-            success_rate: performance_analysis.success_metrics.overall_success_rate,
-            resource_utilization: performance_analysis.resource_analysis.resource_efficiency,
+            coherence_time: performance_analysis.metrics.get(&DDPerformanceMetric::CoherenceTime).copied().unwrap_or(0.0),
+            fidelity: performance_analysis.metrics.get(&DDPerformanceMetric::ProcessFidelity).copied().unwrap_or(0.95),
+            gate_overhead: performance_analysis.metrics.get(&DDPerformanceMetric::GateOverhead).copied().unwrap_or(1.0),
+            success_rate: performance_analysis.metrics.get(&DDPerformanceMetric::RobustnessScore).copied().unwrap_or(0.9),
+            resource_utilization: performance_analysis.metrics.get(&DDPerformanceMetric::ResourceEfficiency).copied().unwrap_or(0.8),
         };
         state.performance_history.push(performance_record);
 
@@ -487,8 +493,8 @@ impl AdaptiveDDSystem {
         state.noise_history.push(noise_record);
 
         // Update current metrics
-        state.current_metrics.coherence_time = performance_analysis.coherence_preservation.effective_t2;
-        state.current_metrics.fidelity = performance_analysis.fidelity_metrics.average_gate_fidelity;
+        state.current_metrics.coherence_time = performance_analysis.metrics.get(&DDPerformanceMetric::CoherenceTime).copied().unwrap_or(0.0);
+        state.current_metrics.fidelity = performance_analysis.metrics.get(&DDPerformanceMetric::ProcessFidelity).copied().unwrap_or(0.95);
 
         // Check for adaptation triggers
         if self.should_adapt(&state)? {
@@ -597,14 +603,111 @@ impl AdaptiveDDSystem {
     fn select_optimal_sequence(&mut self, current_state: &str) -> DeviceResult<DDSequenceType> {
         // Use learning agent if available
         if let Some(ref mut agent) = self.learning_agent {
-            return self.select_sequence_with_learning(agent, current_state);
+            // Clone the available sequences to avoid borrowing conflicts
+            let available_sequences = self.available_sequences.clone();
+            return Self::select_sequence_with_learning_static(agent, current_state, &available_sequences);
         }
         
         // Fallback to rule-based selection
         self.select_sequence_rule_based(current_state)
     }
 
-    /// Select sequence using learning agent
+    /// Select sequence using learning agent (static method)
+    fn select_sequence_with_learning_static(agent: &mut LearningAgent, current_state: &str, available_sequences: &[DDSequenceType]) -> DeviceResult<DDSequenceType> {
+        // Get Q-values for all available actions
+        let mut best_sequence = DDSequenceType::CPMG;
+        let mut best_q_value = f64::NEG_INFINITY;
+        
+        for sequence_type in available_sequences {
+            let action = format!("{:?}", sequence_type);
+            let q_value = agent.q_table.get(&(current_state.to_string(), action))
+                               .copied()
+                               .unwrap_or(0.0);
+            
+            if q_value > best_q_value {
+                best_q_value = q_value;
+                best_sequence = sequence_type.clone();
+            }
+        }
+        
+        // Apply exploration 
+        match agent.exploration_strategy {
+            ExplorationStrategy::EpsilonGreedy(epsilon) => {
+                if rand::random::<f64>() < epsilon {
+                    // Random exploration
+                    let random_idx = rand::thread_rng().gen_range(0..available_sequences.len());
+                    best_sequence = available_sequences[random_idx].clone();
+                }
+            }
+            ExplorationStrategy::UCB(c) => {
+                // Upper Confidence Bound exploration
+                let total_visits = agent.action_counts.values().sum::<u32>() as f64;
+                let mut best_ucb = f64::NEG_INFINITY;
+                
+                for sequence_type in available_sequences {
+                    let action = format!("{:?}", sequence_type);
+                    let visits = agent.action_counts.get(&action).copied().unwrap_or(0) as f64;
+                    let q_value = agent.q_table.get(&(current_state.to_string(), action.clone()))
+                                       .copied()
+                                       .unwrap_or(0.0);
+                    
+                    let ucb_value = if visits > 0.0 {
+                        q_value + c * (total_visits.ln() / visits).sqrt()
+                    } else {
+                        f64::INFINITY // Unvisited actions get highest priority
+                    };
+                    
+                    if ucb_value > best_ucb {
+                        best_ucb = ucb_value;
+                        best_sequence = sequence_type.clone();
+                    }
+                }
+            }
+            ExplorationStrategy::Boltzmann(temperature) => {
+                // Softmax exploration
+                let mut probabilities = Vec::new();
+                let mut exp_sum = 0.0;
+                
+                for sequence_type in available_sequences {
+                    let action = format!("{:?}", sequence_type);
+                    let q_value = agent.q_table.get(&(current_state.to_string(), action))
+                                       .copied()
+                                       .unwrap_or(0.0);
+                    let exp_val = (q_value / temperature).exp();
+                    probabilities.push(exp_val);
+                    exp_sum += exp_val;
+                }
+                
+                // Normalize probabilities
+                for prob in &mut probabilities {
+                    *prob /= exp_sum;
+                }
+                
+                // Sample from distribution
+                let mut cumsum = 0.0;
+                let rand_val = rand::random::<f64>();
+                for (i, prob) in probabilities.iter().enumerate() {
+                    cumsum += prob;
+                    if rand_val <= cumsum {
+                        best_sequence = available_sequences[i].clone();
+                        break;
+                    }
+                }
+            }
+            ExplorationStrategy::ThompsonSampling => {
+                // Thompson sampling exploration (simplified implementation)
+                // For now, use epsilon-greedy with a fixed epsilon as fallback
+                if rand::random::<f64>() < 0.1 {
+                    let random_idx = rand::thread_rng().gen_range(0..available_sequences.len());
+                    best_sequence = available_sequences[random_idx].clone();
+                }
+            }
+        }
+        
+        Ok(best_sequence)
+    }
+
+    /// Select sequence using learning agent  
     fn select_sequence_with_learning(&self, agent: &mut LearningAgent, current_state: &str) -> DeviceResult<DDSequenceType> {
         // Get Q-values for all available actions
         let mut best_sequence = DDSequenceType::CPMG;
@@ -627,7 +730,7 @@ impl AdaptiveDDSystem {
             ExplorationStrategy::EpsilonGreedy(epsilon) => {
                 if rand::random::<f64>() < epsilon {
                     // Explore: select random sequence
-                    let random_idx = rand::random::<usize>() % self.available_sequences.len();
+                    let random_idx = rand::thread_rng().gen_range(0..self.available_sequences.len());
                     best_sequence = self.available_sequences[random_idx].clone();
                 }
             },
@@ -823,7 +926,7 @@ mod tests {
             sequence_type: DDSequenceType::CPMG,
             target_qubits: vec![quantrs2_core::qubit::QubitId(0)],
             duration: 100e-6,
-            circuit: quantrs2_circuit::Circuit::<32>::new(),
+            circuit: Circuit::<32>::new(),
             pulse_timings: vec![50e-6],
             pulse_phases: vec![std::f64::consts::PI],
             properties: DDSequenceProperties {

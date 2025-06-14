@@ -532,17 +532,17 @@ impl QuantumAdvancedDiffusionModel {
     
     /// Generate quantum-correlated noise with proper entanglement structure
     fn generate_quantum_noise(&self, t: usize) -> Result<Array1<Complex64>> {
-        let mut rng = ChaCha20Rng::from_entropy();
+        let mut rng = rand::thread_rng();
         let data_dim = self.config.data_dim;
-        let mut noise = Array1::zeros(data_dim);
+        let mut noise = Array1::<Complex64>::zeros(data_dim);
         
         // Generate correlated quantum noise
         for i in 0..data_dim {
             // Box-Muller for real and imaginary parts
             let u1 = rng.gen::<f64>();
             let u2 = rng.gen::<f64>();
-            let real_part = (-2.0 * u1.ln()).sqrt() * (2.0 * PI * u2).cos();
-            let imaginary_part = (-2.0 * u1.ln()).sqrt() * (2.0 * PI * u2).sin();
+            let real_part = (-2.0f64 * u1.ln()).sqrt() * (2.0f64 * std::f64::consts::PI * u2).cos();
+            let imaginary_part = (-2.0f64 * u1.ln()).sqrt() * (2.0f64 * std::f64::consts::PI * u2).sin();
             
             // Apply quantum correlations based on entanglement schedule
             let entanglement_strength = self.entanglement_schedule[t];
@@ -651,7 +651,7 @@ impl QuantumAdvancedDiffusionModel {
         let mut features = Array1::zeros(num_features);
         
         // Generate random Fourier features with quantum correlations
-        let mut rng = ChaCha20Rng::seed_from_u64(t as u64);
+        let mut rng = rand::thread_rng();
         
         for i in 0..num_features {
             let frequency = rng.gen_range(0.1..10.0);
@@ -1088,7 +1088,7 @@ impl QuantumAdvancedDiffusionModel {
         }
         
         Ok(QuantumTrainingOutput {
-            training_losses,
+            training_losses: training_losses.clone(),
             validation_losses,
             quantum_metrics_history,
             final_model_state: self.export_model_state()?,
@@ -1149,7 +1149,7 @@ impl QuantumAdvancedDiffusionModel {
             let x0 = batch_data.row(sample_idx).to_owned();
             
             // Random timestep
-            let mut rng = ChaCha20Rng::from_entropy();
+            let mut rng = rand::thread_rng();
             let t = rng.gen_range(0..self.config.num_timesteps);
             
             // Forward diffusion with quantum noise
@@ -1266,7 +1266,7 @@ impl QuantumAdvancedDiffusionModel {
         for sample_idx in 0..validation_data.nrows() {
             let x0 = validation_data.row(sample_idx).to_owned();
             
-            let mut rng = ChaCha20Rng::from_entropy();
+            let mut rng = rand::thread_rng();
             let t = rng.gen_range(0..self.config.num_timesteps);
             
             let (xt, quantum_noise, quantum_state) = self.quantum_forward_diffusion(&x0, t)?;
@@ -1475,7 +1475,7 @@ impl QuantumDenoisingNetwork {
         
         Ok(RawDenoiseOutput {
             predicted_noise,
-            quantum_state,
+            quantum_state: quantum_state.clone(),
             confidence: quantum_state.fidelity,
         })
     }

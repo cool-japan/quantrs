@@ -582,7 +582,7 @@ pub struct ErrorAnalysisTools {
 }
 
 /// Error propagation method trait
-pub trait ErrorPropagationMethod: Send + Sync {
+pub trait ErrorPropagationMethod: Send + Sync + std::fmt::Debug {
     /// Propagate measurement errors to state reconstruction
     fn propagate_errors(&self, measurement_errors: &Array1<f64>, reconstruction: &ReconstructedState) -> Array2<f64>;
     
@@ -591,7 +591,7 @@ pub trait ErrorPropagationMethod: Send + Sync {
 }
 
 /// Uncertainty quantification method trait
-pub trait UncertaintyQuantificationMethod: Send + Sync {
+pub trait UncertaintyQuantificationMethod: Send + Sync + std::fmt::Debug {
     /// Quantify reconstruction uncertainty
     fn quantify_uncertainty(&self, data: &MeasurementDatabase, reconstruction: &ReconstructedState) -> UncertaintyAnalysis;
     
@@ -948,7 +948,13 @@ impl QuantumStateTomography {
                 timestamp: std::time::Instant::now(),
                 hardware_info: HardwareInfo {
                     device_name: "simulator".to_string(),
-                    connectivity: Array2::eye(self.num_qubits),
+                    connectivity: {
+                        let mut conn = Array2::from_elem((self.num_qubits, self.num_qubits), false);
+                        for i in 0..self.num_qubits {
+                            conn[(i, i)] = true;
+                        }
+                        conn
+                    },
                     gate_fidelities: HashMap::new(),
                     readout_fidelities: Array1::ones(self.num_qubits) * 0.99,
                     coherence_times: CoherenceTimes {
@@ -1321,7 +1327,7 @@ impl QuantumStateTomography {
         // Test 1: Positive semidefiniteness
         let eigenvals_positive = state.eigenvalues.iter().all(|&eigenval| eigenval >= -1e-10);
         test_results.insert("positive_semidefinite".to_string(), TestResult {
-            statistic: state.eigenvalues.min().unwrap_or(0.0),
+            statistic: *state.eigenvalues.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or(&0.0),
             p_value: if eigenvals_positive { 1.0 } else { 0.0 },
             critical_value: 0.0,
             passed: eigenvals_positive,

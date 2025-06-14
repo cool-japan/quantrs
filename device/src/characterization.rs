@@ -547,7 +547,7 @@ pub struct CharacterizationMeasurement {
 }
 
 /// Types of characterization protocols
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CharacterizationProtocol {
     ProcessTomography,
     StateTomography,
@@ -761,8 +761,8 @@ impl AdvancedNoiseCharacterizer {
     ) -> Self {
         let noise_config = SciRS2NoiseConfig {
             enable_ml_modeling: config.enable_ml_predictions,
-            enable_temporal_analysis: config.enable_temporal_analysis,
-            enable_spatial_analysis: config.enable_crosstalk_analysis,
+            enable_temporal_modeling: config.enable_temporal_analysis,
+            enable_spatial_modeling: config.enable_crosstalk_analysis,
             ..Default::default()
         };
         
@@ -1220,8 +1220,8 @@ impl AdvancedNoiseCharacterizer {
         let mut confidence_intervals = HashMap::new();
 
         // Collect all measurement data
-        let mut all_fidelities = Vec::new();
-        let mut all_error_rates = Vec::new();
+        let mut all_fidelities: Vec<f64> = Vec::new();
+        let mut all_error_rates: Vec<f64> = Vec::new();
         
         for result in protocol_results.values() {
             all_fidelities.extend(result.gate_fidelities.values());
@@ -1391,7 +1391,13 @@ impl AdvancedNoiseCharacterizer {
         let n = calibration.topology.num_qubits;
         
         Ok(AdvancedCrosstalkAnalysis {
-            crosstalk_matrix: calibration.crosstalk_matrix.matrix.clone().into(),
+            crosstalk_matrix: {
+                let matrix = &calibration.crosstalk_matrix.matrix;
+                let rows = matrix.len();
+                let cols = if rows > 0 { matrix[0].len() } else { 0 };
+                let flat: Vec<f64> = matrix.iter().flatten().copied().collect();
+                Array2::from_shape_vec((rows, cols), flat).unwrap_or_else(|_| Array2::eye(n))
+            },
             significant_pairs: Vec::new(),
             spatial_patterns: SpatialCrosstalkPattern {
                 spatial_correlation: Array2::eye(n),

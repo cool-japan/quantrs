@@ -884,7 +884,8 @@ impl QuantumInContextLearner {
         query: &Array1<f64>,
         budget: Option<AdaptationBudget>,
     ) -> Result<AdaptationResult> {
-        match &self.config.adaptation_strategy {
+        let adaptation_strategy = self.config.adaptation_strategy.clone();
+        match &adaptation_strategy {
             AdaptationStrategy::DirectConditioning => {
                 self.direct_conditioning_adaptation(context, query)
             },
@@ -993,7 +994,7 @@ impl QuantumInContextLearner {
         let nearest_prototypes = self.prototype_bank.find_nearest_prototypes(context, num_prototypes)?;
         
         // Interpolate between prototypes
-        let adapted_state = self.interpolate_prototypes(&nearest_prototypes, context, update_rate)?;
+        let adapted_state = self.interpolate_prototypes(&nearest_prototypes.into_iter().cloned().collect::<Vec<_>>(), context, update_rate)?;
         
         Ok(AdaptationResult {
             adapted_state,
@@ -1152,7 +1153,7 @@ impl QuantumInContextLearner {
     fn update_with_source_task(&mut self, example: &ContextExample) -> Result<()> {
         // Update prototype bank
         let encoded_state = self.context_encoder.encode_example(example)?;
-        self.prototype_bank.add_prototype(encoded_state)?;
+        self.prototype_bank.add_prototype(encoded_state.clone())?;
         
         // Update quantum memory if enabled
         if let Some(ref mut memory) = self.quantum_memory {
@@ -1322,7 +1323,7 @@ impl QuantumInContextLearner {
     fn get_base_quantum_state(&self) -> Result<QuantumContextState> {
         // Return default quantum state for zero-shot learning
         Ok(QuantumContextState {
-            quantum_amplitudes: Array1::ones(2_usize.pow(self.config.num_qubits as u32)).mapv(|_| Complex64::new(1.0, 0.0)),
+            quantum_amplitudes: Array1::ones(2_usize.pow(self.config.num_qubits as u32)).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             classical_features: Array1::zeros(self.config.model_dim),
             entanglement_measure: 0.0,
             coherence_time: 1.0,
@@ -1355,7 +1356,7 @@ impl QuantumContextEncoder {
     pub fn encode_example(&self, example: &ContextExample) -> Result<QuantumContextState> {
         // Placeholder implementation
         Ok(QuantumContextState {
-            quantum_amplitudes: Array1::ones(2_usize.pow(self.num_qubits as u32)).mapv(|_| Complex64::new(1.0, 0.0)),
+            quantum_amplitudes: Array1::ones(2_usize.pow(self.num_qubits as u32)).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             classical_features: example.input.clone(),
             entanglement_measure: 0.5,
             coherence_time: 1.0,
@@ -1368,7 +1369,7 @@ impl QuantumContextEncoder {
     pub fn encode_query(&self, query: &Array1<f64>) -> Result<QuantumContextState> {
         // Placeholder implementation
         Ok(QuantumContextState {
-            quantum_amplitudes: Array1::ones(2_usize.pow(self.num_qubits as u32)).mapv(|_| Complex64::new(1.0, 0.0)),
+            quantum_amplitudes: Array1::ones(2_usize.pow(self.num_qubits as u32)).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             classical_features: query.clone(),
             entanglement_measure: 0.0,
             coherence_time: 1.0,
@@ -1994,7 +1995,7 @@ mod tests {
                 importance_weight: 1.0,
             },
             quantum_encoding: QuantumContextState {
-                quantum_amplitudes: Array1::zeros(16).mapv(|_| Complex64::new(1.0, 0.0)),
+                quantum_amplitudes: Array1::zeros(16).mapv(|_: f64| Complex64::new(1.0, 0.0)),
                 classical_features: Array1::from_vec(vec![0.1, 0.2, 0.3]),
                 entanglement_measure: 0.5,
                 coherence_time: 1.0,
@@ -2017,7 +2018,7 @@ mod tests {
     #[test]
     fn test_zero_shot_learning() {
         let config = QuantumInContextLearningConfig::default();
-        let learner = QuantumInContextLearner::new(config).unwrap();
+        let learner = QuantumInContextLearner::new(config.clone()).unwrap();
         
         let query = Array1::from_vec(vec![0.5, -0.3, 0.8]);
         let result = learner.zero_shot_learning(&query);
@@ -2048,7 +2049,7 @@ mod tests {
                     importance_weight: 1.0,
                 },
                 quantum_encoding: QuantumContextState {
-                    quantum_amplitudes: Array1::zeros(256).mapv(|_| Complex64::new(1.0, 0.0)),
+                    quantum_amplitudes: Array1::zeros(256).mapv(|_: f64| Complex64::new(1.0, 0.0)),
                     classical_features: Array1::from_vec(vec![0.1, 0.2, 0.3]),
                     entanglement_measure: 0.5,
                     coherence_time: 1.0,
@@ -2077,7 +2078,7 @@ mod tests {
         let mut memory = QuantumEpisodicMemory::new(&config).unwrap();
         
         let test_state = QuantumContextState {
-            quantum_amplitudes: Array1::zeros(256).mapv(|_| Complex64::new(1.0, 0.0)),
+            quantum_amplitudes: Array1::zeros(256).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             classical_features: Array1::from_vec(vec![0.1, 0.2, 0.3]),
             entanglement_measure: 0.7,
             coherence_time: 0.9,
@@ -2119,7 +2120,7 @@ mod tests {
         let mut bank = PrototypeBank::new(&config).unwrap();
         
         let test_state = QuantumContextState {
-            quantum_amplitudes: Array1::zeros(256).mapv(|_| Complex64::new(1.0, 0.0)),
+            quantum_amplitudes: Array1::zeros(256).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             classical_features: Array1::from_vec(vec![0.1, 0.2, 0.3]),
             entanglement_measure: 0.5,
             coherence_time: 1.0,
@@ -2154,7 +2155,7 @@ mod tests {
         let attention = QuantumContextAttention::new(&config).unwrap();
         
         let query_state = QuantumContextState {
-            quantum_amplitudes: Array1::zeros(256).mapv(|_| Complex64::new(1.0, 0.0)),
+            quantum_amplitudes: Array1::zeros(256).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             classical_features: Array1::from_vec(vec![0.1, 0.2, 0.3]),
             entanglement_measure: 0.5,
             coherence_time: 1.0,

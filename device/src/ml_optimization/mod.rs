@@ -41,7 +41,7 @@ use scirs2_stats::{
 };
 
 // Fallback implementations when SciRS2 is not available
-mod fallback_scirs2;
+pub mod fallback_scirs2;
 pub use fallback_scirs2::*;
 
 use ndarray::{s, Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};

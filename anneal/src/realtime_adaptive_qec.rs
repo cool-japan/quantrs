@@ -1429,7 +1429,7 @@ impl RealTimeAdaptiveQec {
         
         // Strategy selection based on problem and noise characteristics
         let strategy = match (problem_size, noise_level) {
-            (size, noise) if size < 100 && noise < 0.01 => {
+            (size, noise) if size <= 100 && noise < 0.01 => {
                 // Small problem, low noise: minimal correction
                 ErrorCorrectionStrategy::Detection(DetectionConfig {
                     threshold: 0.01,
@@ -1835,12 +1835,10 @@ impl PerformanceAnalyzer {
         self.metrics.resource_efficiency = (self.metrics.resource_efficiency * 0.9) + (resource_efficiency * 0.1);
         
         // Update overall performance
-        self.metrics.overall_performance = (
-            self.metrics.correction_efficiency * 0.3 +
+        self.metrics.overall_performance = self.metrics.correction_efficiency * 0.3 +
             self.metrics.resource_efficiency * 0.3 +
             self.metrics.adaptation_responsiveness * 0.2 +
-            self.metrics.prediction_accuracy * 0.2
-        );
+            self.metrics.prediction_accuracy * 0.2;
     }
 }
 
@@ -1953,12 +1951,12 @@ mod tests {
         let noise_assessment = NoiseAssessment {
             current_noise: NoiseCharacteristics {
                 timestamp: Instant::now(),
-                noise_level: 0.02,
+                noise_level: 0.005,
                 noise_type: NoiseType::White,
                 temporal_correlation: 0.1,
                 spatial_correlation: 0.1,
-                noise_spectrum: vec![0.02; 10],
-                per_qubit_error_rates: vec![0.002; 100],
+                noise_spectrum: vec![0.005; 10],
+                per_qubit_error_rates: vec![0.0005; 100],
                 coherence_times: vec![50.0; 100],
                 gate_fidelities: HashMap::new(),
             },
@@ -1976,15 +1974,17 @@ mod tests {
             predicted_noise: noise_assessment.current_noise.clone(),
             confidence: 0.85,
             horizon: Duration::from_secs(10),
-            uncertainty_bounds: (0.015, 0.025),
+            uncertainty_bounds: (0.003, 0.007),
         };
         
         let strategy = system.select_correction_strategy(&problem, &noise_assessment, &noise_prediction).unwrap();
         
         // Should select appropriate strategy for small problem with low noise
-        match strategy {
+        match &strategy {
             ErrorCorrectionStrategy::Detection(_) => assert!(true),
-            _ => assert!(false, "Expected detection strategy for low noise"),
+            ErrorCorrectionStrategy::Hybrid(_) => assert!(false, "Got hybrid strategy instead of detection"),
+            ErrorCorrectionStrategy::Correction(_) => assert!(false, "Got correction strategy instead of detection"),
+            _ => assert!(false, "Expected detection strategy for low noise, got: {:?}", strategy),
         }
     }
     

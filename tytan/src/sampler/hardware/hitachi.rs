@@ -6,6 +6,7 @@
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::Array2;
 use std::collections::HashMap;
+use std::cell::RefCell;
 
 /// Hitachi CMOS Annealing Machine configuration
 #[derive(Debug, Clone)]
@@ -78,7 +79,7 @@ impl Default for HitachiConfig {
 pub struct HitachiCMOSSampler {
     config: HitachiConfig,
     /// Problem embedding cache
-    embedding_cache: HashMap<String, KingGraphEmbedding>,
+    embedding_cache: RefCell<HashMap<String, KingGraphEmbedding>>,
 }
 
 /// King graph embedding information
@@ -97,17 +98,17 @@ impl HitachiCMOSSampler {
     pub fn new(config: HitachiConfig) -> Self {
         Self {
             config,
-            embedding_cache: HashMap::new(),
+            embedding_cache: RefCell::new(HashMap::new()),
         }
     }
 
     /// Find embedding for the problem
-    fn find_embedding(&mut self, qubo: &Array2<f64>) -> Result<KingGraphEmbedding, SamplerError> {
+    fn find_embedding(&self, qubo: &Array2<f64>) -> Result<KingGraphEmbedding, SamplerError> {
         let n = qubo.shape()[0];
         
         // Check cache
         let cache_key = format!("embed_{}_{}", n, qubo.sum());
-        if let Some(embedding) = self.embedding_cache.get(&cache_key) {
+        if let Some(embedding) = self.embedding_cache.borrow().get(&cache_key) {
             return Ok(embedding.clone());
         }
         
@@ -115,7 +116,7 @@ impl HitachiCMOSSampler {
         let embedding = self.create_king_graph_embedding(qubo)?;
         
         // Cache it
-        self.embedding_cache.insert(cache_key, embedding.clone());
+        self.embedding_cache.borrow_mut().insert(cache_key, embedding.clone());
         
         Ok(embedding)
     }

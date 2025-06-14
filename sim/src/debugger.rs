@@ -7,6 +7,7 @@ use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::error::{Result, SimulatorError};
@@ -70,7 +71,7 @@ pub struct ExecutionSnapshot {
     /// Timestamp
     pub timestamp: Instant,
     /// Gate that was just executed (None for initial state)
-    pub last_gate: Option<Box<dyn GateOp>>,
+    pub last_gate: Option<Arc<dyn GateOp + Send + Sync>>,
     /// Cumulative gate count by type
     pub gate_counts: HashMap<String, usize>,
     /// Entanglement entropies at different cuts

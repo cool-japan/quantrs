@@ -5,6 +5,7 @@
 
 use petgraph::visit::EdgeRef;
 use rand::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 
@@ -57,7 +58,7 @@ struct RoutingState {
 }
 
 /// Swap operation details
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SwapOperation {
     /// Physical qubits to swap
     pub phys_qubit1: usize,

@@ -1000,8 +1000,8 @@ pub struct QuantumState {
 impl Default for QuantumState {
     fn default() -> Self {
         Self {
-            amplitudes: Array1::ones(1).mapv(|_| Complex64::new(1.0, 0.0)),
-            phases: Array1::ones(1).mapv(|_| Complex64::new(1.0, 0.0)),
+            amplitudes: Array1::ones(1).mapv(|_: f64| Complex64::new(1.0, 0.0)),
+            phases: Array1::ones(1).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             entanglement_measure: 0.0,
             coherence_time: 1.0,
             fidelity: 1.0,
@@ -1041,8 +1041,8 @@ impl QuantumSelfSupervisedLearner {
                 momentum_coefficient: config.momentum_coefficient,
                 quantum_ema_state: QuantumEMAState {
                     quantum_parameters: Array1::zeros(config.num_qubits * 6),
-                    entanglement_state: Array2::eye(config.num_qubits).mapv(|x| Complex64::new(x, 0.0)),
-                    phase_tracking: Array1::ones(config.num_qubits).mapv(|_| Complex64::new(1.0, 0.0)),
+                    entanglement_state: Array2::<f64>::eye(config.num_qubits).mapv(|x| Complex64::new(x, 0.0)),
+                    phase_tracking: Array1::ones(config.num_qubits).mapv(|_: f64| Complex64::new(1.0, 0.0)),
                     fidelity_history: Vec::new(),
                 },
             })
@@ -1128,8 +1128,9 @@ impl QuantumSelfSupervisedLearner {
             self.update_learning_schedule(epoch, &epoch_metrics)?;
             
             // Update target network (if applicable)
-            if let Some(ref mut target_net) = self.target_network {
-                self.update_target_network(target_net)?;
+            if self.target_network.is_some() {
+                let target_net_clone = self.target_network.as_ref().unwrap().clone();
+                self.update_target_network_internal(&target_net_clone)?;
             }
             
             self.training_history.push(epoch_metrics.clone());
@@ -1285,20 +1286,22 @@ impl QuantumSelfSupervisedLearner {
                     activation: QuantumActivation::QuantumReLU,
                 },
                 quantum_parameters: Array1::zeros(config.num_qubits * 3),
-                entanglement_connectivity: Array2::eye(config.num_qubits),
+                entanglement_connectivity: Array2::<f64>::eye(config.num_qubits).mapv(|x| x != 0.0),
                 quantum_gates: Vec::new(),
             }
         ];
+        
+        let layers_len = layers.len();
         
         Ok(QuantumEncoder {
             layers,
             quantum_state_evolution: QuantumStateEvolution {
                 evolution_type: EvolutionType::Unitary,
                 time_steps: Array1::linspace(0.0, 1.0, 10),
-                hamiltonian: Array2::eye(config.num_qubits).mapv(|x| Complex64::new(x, 0.0)),
+                hamiltonian: Array2::<f64>::eye(config.num_qubits).mapv(|x| Complex64::new(x, 0.0)),
                 decoherence_model: DecoherenceModel::default(),
             },
-            measurement_points: vec![0, layers.len() - 1],
+            measurement_points: vec![0, layers_len - 1],
         })
     }
     
@@ -1421,7 +1424,7 @@ impl QuantumSelfSupervisedLearner {
     }
     
     // Additional method stubs
-    fn create_contrastive_learner(&self, _config: &QuantumSelfSupervisedConfig) -> Result<QuantumContrastiveLearner> {
+    fn create_contrastive_learner(_config: &QuantumSelfSupervisedConfig) -> Result<QuantumContrastiveLearner> {
         Ok(QuantumContrastiveLearner {
             similarity_computer: QuantumSimilarityComputer {
                 similarity_metric: QuantumSimilarityMetric::QuantumCosine,
@@ -1454,7 +1457,7 @@ impl QuantumSelfSupervisedLearner {
         })
     }
     
-    fn create_masked_learner(&self, _config: &QuantumSelfSupervisedConfig) -> Result<QuantumMaskedLearner> {
+    fn create_masked_learner(_config: &QuantumSelfSupervisedConfig) -> Result<QuantumMaskedLearner> {
         Ok(QuantumMaskedLearner {
             masking_engine: QuantumMaskingEngine {
                 masking_strategy: QuantumMaskingStrategy::Random { mask_probability: 0.15 },
@@ -1486,7 +1489,11 @@ impl QuantumSelfSupervisedLearner {
         })
     }
     
-    fn create_momentum_learner(&self, _config: &QuantumSelfSupervisedConfig) -> Result<QuantumMomentumLearner> {
+    fn create_momentum_learner(config: &QuantumSelfSupervisedConfig) -> Result<QuantumMomentumLearner> {
+        // Create encoder and projector for target network
+        let encoder = Self::create_quantum_encoder(config)?;
+        let projector = Self::create_quantum_projector(config)?;
+        
         // Placeholder implementation
         Ok(QuantumMomentumLearner {
             momentum_updater: QuantumMomentumUpdater {
@@ -1499,13 +1506,13 @@ impl QuantumSelfSupervisedLearner {
                 },
             },
             target_network: QuantumTargetNetwork {
-                encoder: self.quantum_encoder.clone(),
-                projector: self.quantum_projector.clone(),
+                encoder,
+                projector,
                 momentum_coefficient: 0.999,
                 quantum_ema_state: QuantumEMAState {
                     quantum_parameters: Array1::zeros(16),
-                    entanglement_state: Array2::eye(16).mapv(|x| Complex64::new(x, 0.0)),
-                    phase_tracking: Array1::ones(16).mapv(|_| Complex64::new(1.0, 0.0)),
+                    entanglement_state: Array2::<f64>::eye(16).mapv(|x| Complex64::new(x, 0.0)),
+                    phase_tracking: Array1::ones(16).mapv(|_: f64| Complex64::new(1.0, 0.0)),
                     fidelity_history: Vec::new(),
                 },
             },
@@ -1517,12 +1524,12 @@ impl QuantumSelfSupervisedLearner {
         })
     }
     
-    fn create_clustering_learner(&self, _config: &QuantumSelfSupervisedConfig) -> Result<QuantumClusteringLearner> {
+    fn create_clustering_learner(_config: &QuantumSelfSupervisedConfig) -> Result<QuantumClusteringLearner> {
         // Placeholder implementation
         Ok(QuantumClusteringLearner {
             prototype_bank: QuantumPrototypeBank {
                 prototypes: Array2::zeros((256, 128)),
-                quantum_prototypes: Array2::zeros((256, 128)).mapv(|_| Complex64::new(0.0, 0.0)),
+                quantum_prototypes: Array2::zeros((256, 128)).mapv(|_: f64| Complex64::new(0.0, 0.0)),
                 prototype_evolution: PrototypeEvolution {
                     evolution_strategy: PrototypeEvolutionStrategy::MovingAverage,
                     learning_rate: 0.01,
@@ -1558,7 +1565,7 @@ impl QuantumSelfSupervisedLearner {
         Ok(())
     }
     
-    fn update_target_network(&mut self, _target_net: &mut QuantumTargetNetwork) -> Result<()> {
+    fn update_target_network_internal(&mut self, _target_net: &QuantumTargetNetwork) -> Result<()> {
         // Placeholder for target network updates
         Ok(())
     }
@@ -1599,11 +1606,11 @@ impl QuantumAugmenter {
     fn apply_augmentation_strategy(&self, data: &Array1<f64>, strategy: &QuantumAugmentationStrategy) -> Result<Array1<f64>> {
         match strategy {
             QuantumAugmentationStrategy::QuantumNoise { noise_type: _, strength } => {
-                let mut rng = ChaCha20Rng::from_entropy();
+                let mut rng = rand::thread_rng();
                 Ok(data.mapv(|x| x + rng.gen::<f64>() * strength))
             },
             QuantumAugmentationStrategy::PhaseShift { phase_range } => {
-                let mut rng = ChaCha20Rng::from_entropy();
+                let mut rng = rand::thread_rng();
                 let phase = rng.gen::<f64>() * phase_range;
                 Ok(data.mapv(|x| x * phase.cos() - x * phase.sin()))
             },
@@ -1853,7 +1860,7 @@ mod tests {
                         quantum_state_evolution: QuantumStateEvolution {
                             evolution_type: EvolutionType::Unitary,
                             time_steps: Array1::linspace(0.0, 1.0, 10),
-                            hamiltonian: Array2::eye(8).mapv(|x| Complex64::new(x, 0.0)),
+                            hamiltonian: Array2::<f64>::eye(8).mapv(|x| Complex64::new(x, 0.0)),
                             decoherence_model: DecoherenceModel::default(),
                         },
                         measurement_points: vec![0, 1],

@@ -40,7 +40,8 @@ impl AnomalyDetectorTrait for QuantumKMeansDetection {
             "kmeans_detection".to_string(),
             MethodSpecificResult::Clustering {
                 cluster_assignments: Array1::from_shape_fn(n_samples, |_| {
-                    rand::random::<usize>() % 3
+                    use rand::Rng;
+                    rand::thread_rng().gen_range(0..3)
                 }),
                 cluster_distances: anomaly_scores.clone(),
             },

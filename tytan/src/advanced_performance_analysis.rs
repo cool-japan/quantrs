@@ -508,7 +508,7 @@ pub struct NetworkInterface {
 }
 
 /// Performance monitor trait
-pub trait PerformanceMonitor: Send + Sync {
+pub trait PerformanceMonitor: Send + Sync + std::fmt::Debug {
     /// Start monitoring
     fn start_monitoring(&mut self) -> Result<(), AnalysisError>;
     
@@ -538,7 +538,7 @@ pub struct BenchmarkingSuite {
 }
 
 /// Benchmark trait
-pub trait Benchmark: Send + Sync {
+pub trait Benchmark: Send + Sync + std::fmt::Debug {
     /// Run benchmark
     fn run_benchmark(&self, config: &BenchmarkConfig) -> Result<BenchmarkResult, AnalysisError>;
     
@@ -889,7 +889,7 @@ pub enum StorageType {
 }
 
 /// Performance prediction model trait
-pub trait PerformancePredictionModel: Send + Sync {
+pub trait PerformancePredictionModel: Send + Sync + std::fmt::Debug {
     /// Predict performance metrics
     fn predict_performance(&self, problem_characteristics: &ProblemCharacteristics) -> Result<HashMap<String, f64>, AnalysisError>;
     
@@ -1835,11 +1835,13 @@ impl AdvancedPerformanceAnalyzer {
     
     /// Collect metrics from all monitors
     fn collect_metrics(&mut self) -> Result<(), AnalysisError> {
+        let mut all_metrics = Vec::new();
         for monitor in &self.monitors {
             let metrics = monitor.get_current_metrics()?;
-            for (metric_name, value) in metrics {
-                self.add_metric_value(&metric_name, value);
-            }
+            all_metrics.extend(metrics);
+        }
+        for (metric_name, value) in all_metrics {
+            self.add_metric_value(&metric_name, value);
         }
         Ok(())
     }
@@ -2034,6 +2036,7 @@ impl AdvancedPerformanceAnalyzer {
 }
 
 // Implementations for various monitor and benchmark types
+#[derive(Debug)]
 struct CpuMonitor {
     active: bool,
 }
@@ -2074,6 +2077,7 @@ impl PerformanceMonitor for CpuMonitor {
     }
 }
 
+#[derive(Debug)]
 struct MemoryMonitor {
     active: bool,
 }
@@ -2114,6 +2118,7 @@ impl PerformanceMonitor for MemoryMonitor {
     }
 }
 
+#[derive(Debug)]
 struct IoMonitor {
     active: bool,
 }
@@ -2154,6 +2159,7 @@ impl PerformanceMonitor for IoMonitor {
     }
 }
 
+#[derive(Debug)]
 struct NetworkMonitor {
     active: bool,
 }
@@ -2195,6 +2201,7 @@ impl PerformanceMonitor for NetworkMonitor {
 }
 
 // Benchmark implementations
+#[derive(Debug)]
 struct QuboEvaluationBenchmark;
 
 impl QuboEvaluationBenchmark {
@@ -2274,6 +2281,7 @@ impl Benchmark for QuboEvaluationBenchmark {
     }
 }
 
+#[derive(Debug)]
 struct SamplingBenchmark;
 
 impl SamplingBenchmark {
@@ -2341,6 +2349,7 @@ impl Benchmark for SamplingBenchmark {
     }
 }
 
+#[derive(Debug)]
 struct ConvergenceBenchmark;
 
 impl ConvergenceBenchmark {
@@ -2409,6 +2418,7 @@ impl Benchmark for ConvergenceBenchmark {
 }
 
 // Prediction model implementations
+#[derive(Debug)]
 struct LinearRegressionModel {
     coefficients: Vec<f64>,
     accuracy: f64,
@@ -2447,6 +2457,7 @@ impl PerformancePredictionModel for LinearRegressionModel {
     }
 }
 
+#[derive(Debug)]
 struct RandomForestModel {
     accuracy: f64,
 }

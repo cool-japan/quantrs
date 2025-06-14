@@ -47,6 +47,8 @@ use crate::{
     CircuitResult, DeviceError, DeviceResult,
 };
 
+use self::optimization::DDSequenceOptimizer;
+
 /// Main result type for dynamical decoupling operations
 #[derive(Debug, Clone)]
 pub struct DynamicalDecouplingResult {
@@ -138,7 +140,7 @@ impl DynamicalDecouplingManager {
     pub fn initialize_multi_qubit_coordination(
         &mut self,
         crosstalk_mitigation: CrosstalkMitigationStrategy,
-        synchronization: SynchronizationRequirements,
+        synchronization: sequences::SynchronizationRequirements,
     ) {
         self.multi_qubit_coordinator = Some(MultiQubitDDCoordinator::new(
             crosstalk_mitigation,
@@ -256,7 +258,7 @@ impl DynamicalDecouplingManager {
             // Generate coordinated sequence
             coordinator.generate_coordinated_sequence()
         } else {
-            Err(crate::DeviceError::InvalidParameters(
+            Err(crate::DeviceError::InvalidInput(
                 "Multi-qubit coordinator not initialized".to_string()
             ))
         }
@@ -307,19 +309,19 @@ pub struct DDSystemStatus {
     pub optimization_success_rate: f64,
 }
 
-/// Circuit executor trait for DD operations
-pub trait DDCircuitExecutor {
+/// Circuit executor trait for DD operations  
+pub trait DDCircuitExecutor: Send + Sync {
     /// Execute a circuit and return results
-    fn execute_circuit<const N: usize>(
+    fn execute_circuit(
         &self,
-        circuit: &Circuit<N>,
+        circuit: &Circuit<16>,
     ) -> Result<CircuitExecutionResults, DeviceError>;
 
     /// Get backend capabilities
     fn get_capabilities(&self) -> BackendCapabilities;
 
     /// Estimate execution time
-    fn estimate_execution_time<const N: usize>(&self, circuit: &Circuit<N>) -> Duration;
+    fn estimate_execution_time(&self, circuit: &Circuit<16>) -> Duration;
 }
 
 /// Circuit execution results

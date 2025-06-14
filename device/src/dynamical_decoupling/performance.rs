@@ -324,7 +324,7 @@ impl DDPerformanceAnalyzer {
                     self.measure_process_fidelity(sequence, executor).await?
                 },
                 DDPerformanceMetric::GateOverhead => {
-                    sequence.properties.gate_count as f64
+                    sequence.properties.pulse_count as f64
                 },
                 DDPerformanceMetric::TimeOverhead => {
                     sequence.duration * 1e6 // Convert to microseconds
@@ -347,7 +347,7 @@ impl DDPerformanceAnalyzer {
     }
 
     /// Measure coherence time
-    async fn measure_coherence_time(
+    pub async fn measure_coherence_time(
         &self,
         sequence: &DDSequence,
         _executor: &dyn DDCircuitExecutor,
@@ -361,7 +361,7 @@ impl DDPerformanceAnalyzer {
     }
 
     /// Measure process fidelity
-    async fn measure_process_fidelity(
+    pub async fn measure_process_fidelity(
         &self,
         sequence: &DDSequence,
         _executor: &dyn DDCircuitExecutor,
@@ -369,13 +369,13 @@ impl DDPerformanceAnalyzer {
         // Simplified fidelity calculation
         let base_fidelity = 0.99;
         let order_factor = 0.001 * (sequence.properties.sequence_order as f64);
-        let overhead_penalty = -0.0001 * (sequence.properties.gate_count as f64);
+        let overhead_penalty = -0.0001 * (sequence.properties.pulse_count as f64);
         
         Ok((base_fidelity + order_factor + overhead_penalty).max(0.0).min(1.0))
     }
 
     /// Calculate robustness score
-    async fn calculate_robustness_score(
+    pub async fn calculate_robustness_score(
         &self,
         sequence: &DDSequence,
         _executor: &dyn DDCircuitExecutor,
@@ -413,7 +413,7 @@ impl DDPerformanceAnalyzer {
         _executor: &dyn DDCircuitExecutor,
     ) -> DeviceResult<f64> {
         let coherence_improvement = self.measure_coherence_time(sequence, _executor).await? / 50.0; // Relative to base T2
-        let resource_cost = sequence.properties.gate_count as f64;
+        let resource_cost = sequence.properties.pulse_count as f64;
         
         Ok(coherence_improvement / resource_cost.max(1.0))
     }

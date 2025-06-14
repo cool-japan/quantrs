@@ -504,7 +504,7 @@ impl DecompositionValidator {
 }
 
 /// Backend capabilities query
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BackendCapabilities {
     /// Backend identifier
     pub backend: HardwareBackend,
@@ -528,7 +528,7 @@ impl Default for BackendCapabilities {
 }
 
 /// Backend feature support
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BackendFeatures {
     /// Supports mid-circuit measurements
     pub mid_circuit_measurement: bool,
@@ -579,7 +579,7 @@ impl Default for BackendFeatures {
 }
 
 /// Backend performance characteristics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BackendPerformance {
     /// Single-qubit gate time (ns)
     pub single_qubit_gate_time: f64,

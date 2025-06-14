@@ -13,6 +13,7 @@ pub mod adiabatic_quantum_computing;
 pub mod autodiff_vqe;
 pub mod circuit_interfaces;
 pub mod concatenated_error_correction;
+pub mod cuda;
 pub mod cuda_kernels;
 pub mod debugger;
 pub mod decision_diagram;
@@ -38,6 +39,7 @@ pub mod pauli;
 pub mod photonic;
 pub mod precision;
 pub mod qmc;
+pub mod qml;
 pub mod qml_integration;
 pub mod quantum_algorithms;
 pub mod quantum_annealing;
@@ -137,10 +139,12 @@ pub mod prelude {
         HierarchicalDecodingMethod, LevelDecodingResult,
     };
     pub use crate::cuda_kernels::{
-        CudaBenchmarkResults, CudaDeviceInfo, CudaGateType, CudaKernelConfig, CudaKernelStats,
-        CudaKernelUtils, CudaQuantumKernels, DeviceProperties,
+        GateType as CudaGateType, CudaKernelConfig, CudaKernelStats,
+        CudaQuantumKernels,
         OptimizationLevel as CudaOptimizationLevel,
     };
+    #[cfg(feature = "advanced_math")]
+    pub use crate::cuda_kernels::{CudaContext, CudaDeviceProperties, CudaKernel};
     pub use crate::debugger::{
         BreakCondition, DebugConfig, DebugReport, PerformanceMetrics, QuantumDebugger, StepResult,
         WatchFrequency, WatchProperty, Watchpoint,

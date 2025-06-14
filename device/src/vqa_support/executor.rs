@@ -11,6 +11,7 @@ use super::{
     statistical::VQAStatistics,
 };
 use crate::DeviceResult;
+use ndarray::Array1;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -132,7 +133,7 @@ impl VQAExecutor {
 
         for iteration in 0..self.config.max_iterations {
             // Evaluate objective
-            let result = objective.evaluate(&circuit.parameters)?;
+            let result = objective.evaluate(&Array1::from_vec(circuit.parameters.clone()))?;
             history.push(result.value);
 
             // Update best if improved

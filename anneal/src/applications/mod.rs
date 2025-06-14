@@ -34,6 +34,8 @@ pub mod manufacturing;
 pub mod materials_science;
 pub mod performance_benchmarks;
 pub mod protein_folding;
+pub mod quantum_computational_chemistry;
+pub mod scientific_computing_integration_tests;
 pub mod telecommunications;
 pub mod transportation;
 pub mod unified;
@@ -78,6 +80,18 @@ impl From<crate::ising::IsingError> for ApplicationError {
 impl From<crate::advanced_quantum_algorithms::AdvancedQuantumError> for ApplicationError {
     fn from(err: crate::advanced_quantum_algorithms::AdvancedQuantumError) -> Self {
         ApplicationError::OptimizationError(format!("Advanced quantum algorithm error: {}", err))
+    }
+}
+
+impl From<crate::quantum_error_correction::QuantumErrorCorrectionError> for ApplicationError {
+    fn from(err: crate::quantum_error_correction::QuantumErrorCorrectionError) -> Self {
+        ApplicationError::OptimizationError(format!("Quantum error correction error: {}", err))
+    }
+}
+
+impl From<crate::simulator::AnnealingError> for ApplicationError {
+    fn from(err: crate::simulator::AnnealingError) -> Self {
+        ApplicationError::OptimizationError(format!("Annealing error: {}", err))
     }
 }
 
@@ -329,6 +343,31 @@ pub fn create_benchmark_suite(
             }).collect())
         },
 
+        ("quantum_computational_chemistry", "small") => {
+            let chemistry_problems = quantum_computational_chemistry::create_benchmark_problems(5)?;
+            Ok(chemistry_problems.into_iter().map(|problem| {
+                let wrapper: Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>> = 
+                    Box::new(ChemistryToBinaryWrapper { inner: problem });
+                wrapper
+            }).collect())
+        },
+        ("quantum_computational_chemistry", "medium") => {
+            let chemistry_problems = quantum_computational_chemistry::create_benchmark_problems(15)?;
+            Ok(chemistry_problems.into_iter().map(|problem| {
+                let wrapper: Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>> = 
+                    Box::new(ChemistryToBinaryWrapper { inner: problem });
+                wrapper
+            }).collect())
+        },
+        ("quantum_computational_chemistry", "large") => {
+            let chemistry_problems = quantum_computational_chemistry::create_benchmark_problems(30)?;
+            Ok(chemistry_problems.into_iter().map(|problem| {
+                let wrapper: Box<dyn OptimizationProblem<Solution = Vec<i8>, ObjectiveValue = f64>> = 
+                    Box::new(ChemistryToBinaryWrapper { inner: problem });
+                wrapper
+            }).collect())
+        },
+
         _ => Err(ApplicationError::InvalidConfiguration(format!(
             "Unknown benchmark: {} / {}",
             industry, size
@@ -412,6 +451,13 @@ pub fn generate_performance_report(
             report.push_str("- Protein compactness optimized\n");
             report.push_str("- Folding energy minimized\n");
             report.push_str("- Structural stability enhanced\n");
+        }
+        "quantum_computational_chemistry" => {
+            report.push_str("- Electronic structure optimized\n");
+            report.push_str("- Molecular orbitals calculated\n");
+            report.push_str("- Chemical properties predicted\n");
+            report.push_str("- Reaction pathways analyzed\n");
+            report.push_str("- Catalytic activity optimized\n");
         }
         _ => {
             report.push_str("- Domain-specific analysis completed\n");
@@ -745,5 +791,110 @@ impl OptimizationProblem for ProteinToBinaryWrapper {
 
     fn is_feasible(&self, solution: &Self::Solution) -> bool {
         solution.len() == 32
+    }
+}
+
+/// Wrapper to convert quantum computational chemistry problems to binary representation
+pub struct ChemistryToBinaryWrapper {
+    inner: Box<dyn OptimizationProblem<Solution = quantum_computational_chemistry::QuantumChemistryResult, ObjectiveValue = f64>>,
+}
+
+impl OptimizationProblem for ChemistryToBinaryWrapper {
+    type Solution = Vec<i8>;
+    type ObjectiveValue = f64;
+
+    fn description(&self) -> String {
+        format!("Binary wrapper for quantum computational chemistry problem")
+    }
+
+    fn size_metrics(&self) -> HashMap<String, usize> {
+        let mut metrics = HashMap::new();
+        metrics.insert("binary_dimension".to_string(), 64);
+        metrics.insert("molecular_orbitals".to_string(), 32);
+        metrics
+    }
+
+    fn validate(&self) -> ApplicationResult<()> {
+        self.inner.validate()
+    }
+
+    fn to_qubo(&self) -> ApplicationResult<(crate::ising::QuboModel, HashMap<String, usize>)> {
+        self.inner.to_qubo()
+    }
+
+    fn evaluate_solution(&self, solution: &Self::Solution) -> ApplicationResult<Self::ObjectiveValue> {
+        // Create a mock QuantumChemistryResult from binary solution
+        let chemistry_result = self.binary_to_chemistry_result(solution)?;
+        self.inner.evaluate_solution(&chemistry_result)
+    }
+
+    fn is_feasible(&self, solution: &Self::Solution) -> bool {
+        solution.len() == 64 && solution.iter().all(|&x| x == 0 || x == 1)
+    }
+}
+
+impl ChemistryToBinaryWrapper {
+    fn binary_to_chemistry_result(&self, solution: &[i8]) -> ApplicationResult<quantum_computational_chemistry::QuantumChemistryResult> {
+        use quantum_computational_chemistry::*;
+        
+        // Create molecular orbitals from binary solution
+        let mut molecular_orbitals = Vec::new();
+        for (i, &bit) in solution.iter().enumerate().take(32) {
+            molecular_orbitals.push(MolecularOrbital {
+                energy: -1.0 * i as f64,
+                coefficients: vec![if bit == 1 { 1.0 } else { 0.0 }; 10],
+                occupation: if bit == 1 { 2.0 } else { 0.0 },
+                symmetry: None,
+                orbital_type: if i < 8 {
+                    OrbitalType::Core
+                } else if i < 16 {
+                    OrbitalType::Valence
+                } else {
+                    OrbitalType::Virtual
+                },
+            });
+        }
+        
+        // Calculate electronic energy from solution
+        let electronic_energy = solution.iter().map(|&x| if x == 1 { -1.0 } else { 0.0 }).sum::<f64>();
+        let nuclear_repulsion = 10.0; // Fixed value for simplicity
+        let total_energy = electronic_energy + nuclear_repulsion;
+        
+        Ok(QuantumChemistryResult {
+            system_id: "binary_chemistry".to_string(),
+            electronic_energy,
+            nuclear_repulsion,
+            total_energy,
+            molecular_orbitals,
+            electron_density: ElectronDensity {
+                grid_points: vec![[0.0, 0.0, 0.0]; 100],
+                density_values: vec![1.0; 100],
+                density_matrix: vec![vec![0.0; 10]; 10],
+                mulliken_charges: vec![0.0; 5],
+                electrostatic_potential: vec![0.0; 100],
+            },
+            dipole_moment: [0.0, 0.0, 0.0],
+            polarizability: [[0.0; 3]; 3],
+            vibrational_frequencies: vec![],
+            thermochemistry: ThermochemicalProperties {
+                zero_point_energy: 0.0,
+                thermal_energy: 0.0,
+                enthalpy: total_energy,
+                entropy: 0.0,
+                free_energy: total_energy,
+                heat_capacity: 0.0,
+                temperature: 298.15,
+            },
+            metadata: CalculationMetadata {
+                method: ElectronicStructureMethod::HartreeFock,
+                basis_set: BasisSet::STO3G,
+                scf_converged: true,
+                scf_iterations: 1,
+                cpu_time: 1.0,
+                wall_time: 1.0,
+                memory_usage: 1024,
+                error_correction_applied: true,
+            },
+        })
     }
 }

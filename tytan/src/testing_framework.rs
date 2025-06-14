@@ -690,7 +690,7 @@ impl TestingFramework {
     }
     
     /// Run test suite in parallel
-    pub fn run_suite_parallel<S: Sampler + Clone + Send + Sync>(&mut self, sampler: &S, num_threads: usize) -> Result<(), String> {
+    pub fn run_suite_parallel<S: Sampler + Clone + Send + Sync + 'static>(&mut self, sampler: &S, num_threads: usize) -> Result<(), String> {
         use std::sync::{Arc, Mutex};
         use std::thread;
         

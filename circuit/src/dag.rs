@@ -361,9 +361,9 @@ pub fn circuit_to_dag<const N: usize>(circuit: &crate::builder::Circuit<N>) -> C
     let mut dag = CircuitDag::new();
 
     for gate in circuit.gates() {
-        // Clone the gate since we need ownership
-        // In a real implementation, we'd have a better way to handle this
-        dag.add_gate(gate.clone());
+        // Convert Arc to Box for DAG compatibility
+        let boxed_gate = gate.clone_gate();
+        dag.add_gate(boxed_gate);
     }
 
     dag

@@ -4,38 +4,42 @@
 mod tests {
     use super::*;
     use crate::dynamical_decoupling::{
-        DynamicalDecouplingManager, DynamicalDecouplingConfig, DDSequenceType,
+        DynamicalDecouplingManager, DynamicalDecouplingConfig, 
         AdaptiveDDConfig, DDSequenceGenerator, MultiQubitDDCoordinator,
-        CrosstalkMitigationStrategy, SynchronizationRequirements,
+        CrosstalkMitigationStrategy, 
         DDPerformanceAnalyzer, DDNoiseAnalyzer, DDHardwareAnalyzer,
         DDSequenceOptimizer, AdaptiveDDSystem, CompositionStrategy,
     };
+    use crate::dynamical_decoupling::config::DDSequenceType;
+    use crate::dynamical_decoupling::sequences::SynchronizationRequirements;
     use quantrs2_core::qubit::QubitId;
+    use quantrs2_circuit::prelude::Circuit;
     use std::collections::HashMap;
+    use std::sync::{Arc, Mutex};
 
     /// Mock circuit executor for testing
-    struct MockCircuitExecutor {
-        execution_count: std::cell::RefCell<usize>,
+    pub struct MockCircuitExecutor {
+        execution_count: Arc<Mutex<usize>>,
     }
 
     impl MockCircuitExecutor {
-        fn new() -> Self {
+        pub fn new() -> Self {
             Self {
-                execution_count: std::cell::RefCell::new(0),
+                execution_count: Arc::new(Mutex::new(0)),
             }
         }
 
         fn get_execution_count(&self) -> usize {
-            *self.execution_count.borrow()
+            *self.execution_count.lock().unwrap()
         }
     }
 
     impl crate::dynamical_decoupling::DDCircuitExecutor for MockCircuitExecutor {
-        fn execute_circuit<const N: usize>(
+        fn execute_circuit(
             &self,
-            _circuit: &quantrs2_circuit::Circuit<N>,
+            _circuit: &Circuit<16>,
         ) -> Result<crate::dynamical_decoupling::CircuitExecutionResults, crate::DeviceError> {
-            *self.execution_count.borrow_mut() += 1;
+            *self.execution_count.lock().unwrap() += 1;
             
             let mut measurements = HashMap::new();
             measurements.insert("qubit_0".to_string(), vec![0, 1, 0, 1]);
@@ -60,29 +64,10 @@ mod tests {
         }
 
         fn get_capabilities(&self) -> crate::backend_traits::BackendCapabilities {
-            crate::backend_traits::BackendCapabilities {
-                max_qubits: 32,
-                native_gates: vec!["X".to_string(), "Y".to_string(), "Z".to_string(), "CNOT".to_string()],
-                supports_measurements: true,
-                supports_reset: true,
-                max_shots: 10000,
-                connectivity: crate::backend_traits::ConnectivityInfo::AllToAll,
-                timing_constraints: crate::backend_traits::TimingConstraints {
-                    gate_time: std::time::Duration::from_nanos(50),
-                    readout_time: std::time::Duration::from_micros(1),
-                    reset_time: std::time::Duration::from_micros(5),
-                },
-                error_rates: crate::backend_traits::ErrorRates {
-                    single_qubit_gate_error: 0.001,
-                    two_qubit_gate_error: 0.01,
-                    readout_error: 0.02,
-                    coherence_time_t1: std::time::Duration::from_micros(100),
-                    coherence_time_t2: std::time::Duration::from_micros(50),
-                },
-            }
+            crate::backend_traits::BackendCapabilities::default()
         }
 
-        fn estimate_execution_time<const N: usize>(&self, _circuit: &quantrs2_circuit::Circuit<N>) -> std::time::Duration {
+        fn estimate_execution_time(&self, _circuit: &Circuit<16>) -> std::time::Duration {
             std::time::Duration::from_micros(100)
         }
     }
@@ -181,7 +166,7 @@ mod tests {
         
         assert_eq!(composite.sequence_type, DDSequenceType::Composite);
         assert!(composite.duration > 50e-6); // Should be sum of components
-        assert!(composite.properties.gate_count > 1);
+        assert!(composite.properties.resource_requirements.gate_count > 1);
     }
 
     #[test]
@@ -269,7 +254,7 @@ mod tests {
         
         assert!(hardware_analysis.hardware_compatibility.compatibility_score >= 0.0);
         assert!(hardware_analysis.hardware_compatibility.compatibility_score <= 1.0);
-        assert!(hardware_analysis.resource_utilization.resource_efficiency >= 0.0);
+        assert!(hardware_analysis.resource_utilization.gate_resource_usage.resource_efficiency >= 0.0);
     }
 
     #[tokio::test]
@@ -286,8 +271,8 @@ mod tests {
         assert!(optimization_result.parameter_sensitivity.robustness_score >= 0.0);
     }
 
-    #[tokio::test]
-    async fn test_adaptive_dd_system() {
+    #[test]
+    fn test_adaptive_dd_system() {
         let adaptive_config = AdaptiveDDConfig::default();
         let initial_sequence = create_test_sequence();
         let available_sequences = vec![
@@ -445,26 +430,20 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn test_performance_metrics_calculation() {
+    #[tokio::test]
+    async fn test_performance_metrics_calculation() {
         let config = crate::dynamical_decoupling::config::DDPerformanceConfig::default();
         let analyzer = DDPerformanceAnalyzer::new(config);
         let sequence = create_test_sequence();
         
         // Test individual metric calculations
-        let coherence_time = tokio_test::block_on(
-            analyzer.measure_coherence_time(&sequence, &MockCircuitExecutor::new())
-        ).unwrap();
+        let coherence_time = analyzer.measure_coherence_time(&sequence, &MockCircuitExecutor::new()).await.unwrap();
         assert!(coherence_time > 0.0);
         
-        let fidelity = tokio_test::block_on(
-            analyzer.measure_process_fidelity(&sequence, &MockCircuitExecutor::new())
-        ).unwrap();
+        let fidelity = analyzer.measure_process_fidelity(&sequence, &MockCircuitExecutor::new()).await.unwrap();
         assert!(fidelity >= 0.0 && fidelity <= 1.0);
         
-        let robustness = tokio_test::block_on(
-            analyzer.calculate_robustness_score(&sequence, &MockCircuitExecutor::new())
-        ).unwrap();
+        let robustness = analyzer.calculate_robustness_score(&sequence, &MockCircuitExecutor::new()).await.unwrap();
         assert!(robustness >= 0.0 && robustness <= 1.0);
     }
 
@@ -528,9 +507,10 @@ mod tests {
 mod benchmarks {
     use super::*;
     use std::time::Instant;
+    use crate::dynamical_decoupling::config::DDSequenceType;
     
-    #[tokio::test]
-    async fn benchmark_sequence_generation() {
+    #[test]
+    fn benchmark_sequence_generation() {
         let target_qubits = vec![quantrs2_core::qubit::QubitId(0)];
         let iterations = 1000;
         

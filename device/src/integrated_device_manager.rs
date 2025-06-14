@@ -1130,7 +1130,7 @@ impl IntegratedQuantumDeviceManager {
                 DeviceCalibration::default(),
                 None,
                 BackendCapabilities::default(),
-            ))),
+            )?)),
             noise_modeler: Arc::new(Mutex::new(SciRS2NoiseModeler::new(
                 "default_device".to_string(),
             ))),

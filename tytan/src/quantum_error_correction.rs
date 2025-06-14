@@ -159,6 +159,56 @@ pub enum MLModelType {
     GNN,
     /// Variational autoencoder
     VAE,
+    /// Additional ML model types from test module
+    ConvolutionalNN,
+    RecurrentNN,
+    TransformerNetwork,
+    GraphNeuralNetwork,
+    ReinforcementLearning,
+    DeepQNetwork,
+}
+
+/// Error mitigation methods
+#[derive(Debug, Clone, PartialEq)]
+pub enum ErrorMitigationMethod {
+    ZeroNoiseExtrapolation,
+    ReadoutErrorCorrection,
+    VirtualDistillation,
+    SymmetryVerification,
+    PostSelection,
+    TwirlingProtocols,
+}
+
+
+/// Threshold update methods
+#[derive(Debug, Clone)]
+pub enum ThresholdUpdateMethod {
+    ExponentialMovingAverage { alpha: f64 },
+    GradientDescent { momentum: f64 },
+    AdaptiveLearningRate,
+    BayesianOptimization,
+    EvolutionaryStrategy,
+}
+
+
+/// Error models
+#[derive(Debug, Clone)]
+pub enum ErrorModel {
+    Depolarizing { probability: f64 },
+    Pauli { px: f64, py: f64, pz: f64 },
+    AmplitudeDamping { gamma: f64 },
+    PhaseDamping { gamma: f64 },
+}
+
+/// Correction operations
+#[derive(Debug, Clone)]
+pub enum CorrectionOperation {
+    PauliX { qubit: usize },
+    PauliY { qubit: usize },
+    PauliZ { qubit: usize },
+    TwoQubitCorrection { operation: String, qubits: (usize, usize) },
+    MultiQubitCorrection { operation: String, qubits: Vec<usize> },
+    LogicalCorrection { logical_operation: String },
 }
 
 /// Error mitigation configuration
@@ -435,7 +485,7 @@ pub struct SyndromeRecord {
 }
 
 /// Pattern detector for syndrome sequences
-#[derive(Clone)]
+#[derive(Debug)]
 pub struct PatternDetector {
     /// Detected patterns
     pub patterns: Vec<SyndromePattern>,
@@ -443,6 +493,16 @@ pub struct PatternDetector {
     pub pattern_frequency: HashMap<String, usize>,
     /// Pattern prediction model
     pub prediction_model: Option<Box<dyn PredictionModel>>,
+}
+
+impl Clone for PatternDetector {
+    fn clone(&self) -> Self {
+        Self {
+            patterns: self.patterns.clone(),
+            pattern_frequency: self.pattern_frequency.clone(),
+            prediction_model: None, // Cannot clone trait object
+        }
+    }
 }
 
 /// Syndrome pattern
@@ -473,10 +533,17 @@ pub enum ErrorType {
     Gate { gate_type: String, qubits: Vec<usize> },
     /// Coherent error
     Coherent { description: String },
+    /// Additional error types from test module
+    BitFlip,
+    PhaseFlip,
+    BitPhaseFlip,
+    Depolarizing,
+    AmplitudeDamping,
+    PhaseDamping,
 }
 
 /// Prediction model trait
-pub trait PredictionModel: Send + Sync {
+pub trait PredictionModel: Send + Sync + std::fmt::Debug {
     /// Predict next syndrome
     fn predict_syndrome(&self, history: &[Array1<u8>]) -> Result<Array1<u8>, QECError>;
     
@@ -667,7 +734,7 @@ pub enum OptimizationObjective {
 }
 
 /// Threshold calculator trait
-pub trait ThresholdCalculator: Send + Sync {
+pub trait ThresholdCalculator: Send + Sync + std::fmt::Debug {
     /// Calculate error threshold for a given code
     fn calculate_threshold(&self, code: &dyn QuantumCode) -> Result<f64, QECError>;
     
@@ -679,7 +746,7 @@ pub trait ThresholdCalculator: Send + Sync {
 }
 
 /// Fault propagation model trait
-pub trait FaultPropagationModel: Send + Sync {
+pub trait FaultPropagationModel: Send + Sync + std::fmt::Debug {
     /// Model fault propagation
     fn propagate_faults(&self, initial_faults: &Array1<u8>, circuit: &QuantumCircuit) -> Result<Array1<u8>, QECError>;
     
@@ -704,7 +771,7 @@ pub struct QuantumCircuit {
 }
 
 /// Resource estimator trait
-pub trait ResourceEstimator: Send + Sync {
+pub trait ResourceEstimator: Send + Sync + std::fmt::Debug {
     /// Estimate resources required
     fn estimate_resources(&self, code: &dyn QuantumCode, computation: &QuantumCircuit) -> Result<ResourceEstimate, QECError>;
     
@@ -759,6 +826,50 @@ pub struct QECMetrics {
     pub fault_tolerance_margin: f64,
     /// Overall QEC performance
     pub overall_performance: f64,
+}
+
+
+
+
+/// Syndrome data
+#[derive(Debug, Clone)]
+pub struct SyndromeData {
+    pub syndrome_bits: Vec<bool>,
+    pub measurement_round: usize,
+    pub timestamp: std::time::SystemTime,
+    pub confidence_scores: Vec<f64>,
+    pub measurement_errors: Vec<bool>,
+}
+
+/// Error syndrome
+#[derive(Debug, Clone)]
+pub struct ErrorSyndrome {
+    pub detected_errors: Vec<DetectedError>,
+    pub syndrome_weight: usize,
+    pub decoding_confidence: f64,
+    pub correction_success_probability: f64,
+}
+
+/// Detected error
+#[derive(Debug, Clone)]
+pub struct DetectedError {
+    pub error_type: ErrorType,
+    pub qubit_index: usize,
+    pub error_probability: f64,
+    pub correction_operation: CorrectionOperation,
+}
+
+
+/// Performance benchmark
+#[derive(Debug, Clone)]
+pub struct PerformanceBenchmark {
+    pub test_name: String,
+    pub error_rates: Vec<f64>,
+    pub logical_error_rates: Vec<f64>,
+    pub decoding_times: Vec<f64>,
+    pub memory_usage: Vec<f64>,
+    pub success_rates: Vec<f64>,
+    pub benchmark_timestamp: std::time::SystemTime,
 }
 
 /// QEC errors
@@ -934,7 +1045,7 @@ impl QuantumErrorCorrection {
             }
             
             // Check convergence
-            let diff = (&beliefs - &old_beliefs).mapv(|x| x.abs()).sum();
+            let diff = (&beliefs - &old_beliefs).mapv(|x: f64| x.abs()).sum();
             if diff < tolerance {
                 break;
             }
@@ -1009,6 +1120,13 @@ impl QuantumErrorCorrection {
             MLModelType::Transformer => self.decode_transformer(syndrome),
             MLModelType::GNN => self.decode_gnn(syndrome),
             MLModelType::VAE => self.decode_vae(syndrome),
+            // Handle additional enum variants
+            MLModelType::ConvolutionalNN => self.decode_cnn(syndrome),
+            MLModelType::RecurrentNN => self.decode_rnn(syndrome),
+            MLModelType::TransformerNetwork => self.decode_transformer(syndrome),
+            MLModelType::GraphNeuralNetwork => self.decode_gnn(syndrome),
+            MLModelType::ReinforcementLearning => self.decode_rnn(syndrome), // Use RNN as fallback
+            MLModelType::DeepQNetwork => self.decode_rnn(syndrome), // Use RNN as fallback
         }
     }
     
@@ -1016,13 +1134,13 @@ impl QuantumErrorCorrection {
     fn decode_rnn(&self, syndrome: &Array1<u8>) -> Result<Array1<u8>, QECError> {
         // Simplified RNN implementation
         let hidden_size = syndrome.len();
-        let mut hidden_state = Array1::zeros(hidden_size);
+        let mut hidden_state = Array1::<f64>::zeros(hidden_size);
         let mut output = Array1::zeros(self.num_physical_qubits);
         
         // Process syndrome sequentially
         for &syndrome_bit in syndrome.iter() {
             // Update hidden state (simplified LSTM-like operation)
-            hidden_state = hidden_state.mapv(|h| 0.5 * h + 0.5 * syndrome_bit as f64);
+            hidden_state = hidden_state.mapv(|h: f64| 0.5 * h + 0.5 * (syndrome_bit as f64));
         }
         
         // Generate output from final hidden state

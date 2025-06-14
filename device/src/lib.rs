@@ -22,7 +22,9 @@ pub mod backend_traits;
 pub mod benchmarking;
 pub mod calibration;
 pub mod characterization;
+pub mod circuit_migration;
 pub mod cloud;
+pub mod hardware_parallelization;
 pub mod compiler_passes;
 pub mod cross_platform_benchmarking;
 pub mod crosstalk;
@@ -123,6 +125,20 @@ pub enum DeviceError {
 impl From<quantrs2_core::error::QuantRS2Error> for DeviceError {
     fn from(err: quantrs2_core::error::QuantRS2Error) -> Self {
         DeviceError::APIError(err.to_string())
+    }
+}
+
+/// Convert String to DeviceError
+impl From<String> for DeviceError {
+    fn from(err: String) -> Self {
+        DeviceError::APIError(err)
+    }
+}
+
+/// Convert OptimizeError to DeviceError
+impl From<crate::ml_optimization::OptimizeError> for DeviceError {
+    fn from(err: crate::ml_optimization::OptimizeError) -> Self {
+        DeviceError::OptimizationError(err.to_string())
     }
 }
 
@@ -448,6 +464,15 @@ pub mod prelude {
         OptimizationObjective as DistributedOptimizationObjective, ReplicationStrategy,
         SecurityAuditTrail, SecurityConfig as DistributedSecurityConfig,
         WorkloadDistributionStrategy,
+    };
+    pub use crate::hardware_parallelization::{
+        HardwareParallelizationEngine, ParallelizationConfig, ParallelizationStrategy,
+        ResourceAllocationConfig, ParallelSchedulingConfig, HardwareAwarenessConfig,
+        PerformanceOptimizationConfig, LoadBalancingConfig as ParallelLoadBalancingConfig,
+        ParallelCircuitTask, ParallelGateTask, TaskPriority, ParallelResourceRequirements,
+        ExecutionConstraints, QualityRequirements, TimingConstraints, ResourceConstraints,
+        ParallelExecutionResult, LoadBalancingResult, PerformanceMetrics as ParallelPerformanceMetrics,
+        OptimizationSuggestion, ResourceUsage, ExecutionQualityMetrics,
     };
     pub use crate::ibm::IBMCircuitConfig;
     pub use crate::integrated_device_manager::{

@@ -823,7 +823,7 @@ impl MultiChipCoordinator {
             ApplicationError::OptimizationError("Failed to read partitions".to_string())
         })?;
         
-        for partition in partitions.values() {
+        if let Some(partition) = partitions.values().next() {
             // Simulate finding partition for this chip
             let solution_size = partition.variables.len();
             let mut solution = vec![1; solution_size]; // Dummy solution

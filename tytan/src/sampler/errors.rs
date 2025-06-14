@@ -38,6 +38,14 @@ pub enum SamplerError {
     /// Feature not implemented
     #[error("Not implemented: {0}")]
     NotImplemented(String),
+
+    /// Invalid model error
+    #[error("Invalid model: {0}")]
+    InvalidModel(String),
+
+    /// Unsupported operation error
+    #[error("Unsupported operation: {0}")]
+    UnsupportedOperation(String),
 }
 
 impl From<String> for SamplerError {

@@ -36,10 +36,13 @@ pub mod scirs2_matrices;
 pub mod scirs2_optimization;
 pub mod scirs2_benchmarking;
 pub mod scirs2_similarity;
+pub mod vqe;
+pub mod qc_co_optimization;
+pub mod distributed;
 
 // Re-exports of commonly used types and traits
 pub mod prelude {
-    pub use crate::builder::*;
+    pub use crate::builder::{*, CircuitStats};
     // Convenience re-export
     pub use crate::classical::{
         CircuitOp, ClassicalBit, ClassicalCircuit, ClassicalCircuitBuilder, ClassicalCondition,
@@ -167,6 +170,18 @@ pub mod prelude {
         CircuitSimilarityMetrics, EntanglementStructure, GraphKernelType, GraphSimilarityAlgorithm,
         MLModelType, SciRS2Graph, SimilarityAlgorithm, SimilarityConfig, SimilarityWeights,
     };
+    pub use crate::vqe::{
+        PauliOperator, VQEAnsatz, VQECircuit, VQEObservable, VQEOptimizer, VQEOptimizerType, VQEResult,
+    };
+    pub use crate::qc_co_optimization::{
+        ClassicalProcessingStep, ClassicalStepType, DataFlowGraph, DataType, HybridOptimizationAlgorithm,
+        HybridOptimizationProblem, HybridOptimizationResult, HybridOptimizer, LearningRateSchedule,
+        ObjectiveFunction as HybridObjectiveFunction, ObjectiveFunctionType, ParameterizedQuantumComponent, RegularizationType,
+    };
+    pub use crate::distributed::{
+        BackendType, DistributedExecutor, DistributedJob, DistributedResult, ExecutionBackend,
+        ExecutionParameters, ExecutionStatus, LoadBalancingStrategy, Priority, SystemHealthStatus,
+    };
     pub use quantrs2_core::qubit::QubitId as Qubit;
 }
 
@@ -177,7 +192,8 @@ pub mod prelude {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
+/// use quantrs2_circuit::qubits;
 /// let qs = qubits![0, 1, 2];
 /// ```
 #[macro_export]
@@ -197,13 +213,9 @@ macro_rules! qubits {
 ///
 /// # Example
 ///
-/// ```ignore
-/// let circuit = circuit![4; // 4 qubits
-///     h(0),
-///     cnot(0, 1),
-///     h(2),
-///     cnot(2, 3)
-/// ];
+/// ```
+/// use quantrs2_circuit::circuit;
+/// let circuit = circuit![4];
 /// ```
 #[macro_export]
 macro_rules! circuit {
@@ -216,19 +228,28 @@ macro_rules! circuit {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
 /// use quantrs2_circuit::quantum;
 ///
-/// quantum! {
+/// let my_circuit = quantum! {
 ///     let qc = circuit(4);  // 4 qubits
 ///     qc.h(0);
 ///     qc.cnot(0, 1);
 ///     qc.measure_all();
-/// }
+/// };
 /// ```
 #[macro_export]
 macro_rules! quantum {
-    ($($tokens:tt)*) => {
-        compile_error!("quantum! macro not fully implemented yet");
+    (
+        let $var:ident = circuit($n:expr);
+        $( $stmt_var:ident . $method:ident ( $( $args:expr ),* $(,)? ) ; )*
+    ) => {
+        {
+            let mut $var = quantrs2_circuit::builder::Circuit::<$n>::new();
+            $(
+                $stmt_var.$method($($args),*).unwrap();
+            )*
+            $var
+        }
     };
 }

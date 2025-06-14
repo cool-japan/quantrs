@@ -214,7 +214,7 @@ pub fn ks_2samp(x: &ArrayView1<f64>, y: &ArrayView1<f64>) -> Result<(f64, f64), 
     all_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
     all_values.dedup();
     
-    let mut max_diff = 0.0;
+    let mut max_diff = 0.0f64;
     
     for &value in &all_values {
         let cdf_x = x_sorted.iter().filter(|&&x| x <= value).count() as f64 / x_sorted.len() as f64;
@@ -228,7 +228,7 @@ pub fn ks_2samp(x: &ArrayView1<f64>, y: &ArrayView1<f64>) -> Result<(f64, f64), 
     let n_y = y.len() as f64;
     let sqrt_term = ((n_x + n_y) / (n_x * n_y)).sqrt();
     let ks_statistic = max_diff;
-    let p_value = 2.0 * (-2.0 * ks_statistic.powi(2) / sqrt_term.powi(2)).exp();
+    let p_value = 2.0f64 * (-2.0f64 * ks_statistic.powi(2) / sqrt_term.powi(2)).exp();
     
     Ok((ks_statistic, p_value.min(1.0)))
 }

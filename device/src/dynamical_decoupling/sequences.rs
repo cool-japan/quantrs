@@ -107,6 +107,21 @@ impl DDSequenceGenerator {
             DDSequenceType::Custom(name) => {
                 Self::generate_custom_sequence(name, target_qubits, duration)
             }
+            DDSequenceType::Composite => {
+                // Generate base sequences first
+                let base_xy4 = Self::generate_xy4_sequence(target_qubits, duration)?;
+                let base_cpmg = Self::generate_cpmg_sequence(target_qubits, duration)?;
+                let base_sequences = vec![base_xy4, base_cpmg];
+                Self::generate_composite_sequence(&base_sequences, CompositionStrategy::Sequential)
+            }
+            DDSequenceType::MultiQubitCoordinated => {
+                // Use XY4 as a fallback for multi-qubit coordinated
+                Self::generate_xy4_sequence(target_qubits, duration)
+            }
+            DDSequenceType::Adaptive => {
+                // Use optimized sequence as fallback for adaptive
+                Self::generate_optimized_sequence(target_qubits, duration)
+            }
         }
     }
 
@@ -467,12 +482,12 @@ impl DDSequenceGenerator {
     }
 
     /// Generate composite DD sequence
-    fn generate_composite_sequence(
+    pub fn generate_composite_sequence(
         base_sequences: &[DDSequence],
         composition_strategy: CompositionStrategy,
     ) -> DeviceResult<DDSequence> {
         if base_sequences.is_empty() {
-            return Err(crate::DeviceError::InvalidParameters("No base sequences provided".to_string()));
+            return Err(crate::DeviceError::InvalidInput("No base sequences provided".to_string()));
         }
 
         match composition_strategy {
@@ -491,7 +506,7 @@ impl DDSequenceGenerator {
                     }
                     composite_phases.extend(&sequence.pulse_phases);
                     total_duration += sequence.duration;
-                    total_gate_count += sequence.properties.gate_count;
+                    total_gate_count += sequence.properties.pulse_count;
                     
                     // Add gates from sequence circuit (simplified)
                     for qubit in &target_qubits {
@@ -554,19 +569,19 @@ impl DDSequenceGenerator {
 
     /// Generate other sequence types (placeholders)
     fn generate_qdd_sequence(target_qubits: &[QubitId], duration: f64) -> DeviceResult<DDSequence> {
-        let mut base = Self::generate_udd_sequence(target_qubits, duration)?;
+        let mut base = DDSequenceGenerator::generate_udd_sequence(target_qubits, duration)?;
         base.sequence_type = DDSequenceType::QDD;
         Ok(base)
     }
 
     fn generate_cdd_sequence(target_qubits: &[QubitId], duration: f64) -> DeviceResult<DDSequence> {
-        let mut base = Self::generate_xy8_sequence(target_qubits, duration)?;
+        let mut base = DDSequenceGenerator::generate_xy8_sequence(target_qubits, duration)?;
         base.sequence_type = DDSequenceType::CDD;
         Ok(base)
     }
 
     fn generate_rdd_sequence(target_qubits: &[QubitId], duration: f64) -> DeviceResult<DDSequence> {
-        let mut base = Self::generate_xy4_sequence(target_qubits, duration)?;
+        let mut base = DDSequenceGenerator::generate_xy4_sequence(target_qubits, duration)?;
         base.sequence_type = DDSequenceType::RDD;
         base.properties
             .noise_suppression
@@ -575,7 +590,7 @@ impl DDSequenceGenerator {
     }
 
     fn generate_cp_sequence(target_qubits: &[QubitId], duration: f64) -> DeviceResult<DDSequence> {
-        let mut base = Self::generate_cpmg_sequence(target_qubits, duration)?;
+        let mut base = DDSequenceGenerator::generate_cpmg_sequence(target_qubits, duration)?;
         base.sequence_type = DDSequenceType::CarrPurcell;
         base.properties.symmetry.phase_symmetry = false;
         Ok(base)
@@ -586,7 +601,7 @@ impl DDSequenceGenerator {
         duration: f64,
     ) -> DeviceResult<DDSequence> {
         // Start with XY8 as base for SciRS2 optimization
-        let mut base = Self::generate_xy8_sequence(target_qubits, duration)?;
+        let mut base = DDSequenceGenerator::generate_xy8_sequence(target_qubits, duration)?;
         base.sequence_type = DDSequenceType::SciRS2Optimized;
         base.properties.sequence_order = 5; // Higher order expected from optimization
         Ok(base)
@@ -598,7 +613,7 @@ impl DDSequenceGenerator {
         duration: f64,
     ) -> DeviceResult<DDSequence> {
         // Placeholder for custom sequences - use CPMG as default
-        let mut base = Self::generate_cpmg_sequence(target_qubits, duration)?;
+        let mut base = DDSequenceGenerator::generate_cpmg_sequence(target_qubits, duration)?;
         base.sequence_type = DDSequenceType::Custom(name.to_string());
         Ok(base)
     }
@@ -716,7 +731,7 @@ impl MultiQubitDDCoordinator {
     /// Generate coordinated multi-qubit DD sequence
     pub fn generate_coordinated_sequence(&self) -> DeviceResult<DDSequence> {
         if self.qubit_sequences.is_empty() {
-            return Err(crate::DeviceError::InvalidParameters("No sequences to coordinate".to_string()));
+            return Err(crate::DeviceError::InvalidInput("No sequences to coordinate".to_string()));
         }
         
         let sequences: Vec<_> = self.qubit_sequences.values().cloned().collect();
@@ -768,5 +783,62 @@ impl MultiQubitDDCoordinator {
         
         coordinated.sequence_type = DDSequenceType::MultiQubitCoordinated;
         Ok(coordinated)
+    }
+
+    /// Generate composite DD sequence
+    fn generate_composite_sequence(
+        target_qubits: &[QubitId], 
+        duration: f64
+    ) -> DeviceResult<DDSequence> {
+        // Placeholder implementation - combine multiple basic sequences
+        let xy4 = DDSequenceGenerator::generate_xy4_sequence(target_qubits, duration / 2.0)?;
+        let cpmg = DDSequenceGenerator::generate_cpmg_sequence(target_qubits, duration / 2.0)?;
+        
+        let mut composite = xy4;
+        composite.pulse_timings.extend(cpmg.pulse_timings);
+        composite.pulse_phases.extend(cpmg.pulse_phases);
+        composite.duration = duration;
+        composite.sequence_type = DDSequenceType::Composite;
+        
+        Ok(composite)
+    }
+
+    /// Generate multi-qubit coordinated sequence
+    fn generate_multi_qubit_coordinated_sequence(
+        target_qubits: &[QubitId],
+        duration: f64
+    ) -> DeviceResult<DDSequence> {
+        // Placeholder implementation - optimize for multi-qubit crosstalk mitigation
+        let mut base = DDSequenceGenerator::generate_xy4_sequence(target_qubits, duration)?;
+        base.sequence_type = DDSequenceType::MultiQubitCoordinated;
+        
+        // Apply time shifts to reduce crosstalk
+        let shift_increment = duration / (target_qubits.len() as f64 * 10.0);
+        for (i, _) in target_qubits.iter().enumerate() {
+            let time_shift = i as f64 * shift_increment;
+            for timing in &mut base.pulse_timings {
+                *timing += time_shift;
+            }
+        }
+        
+        Ok(base)
+    }
+
+    /// Generate adaptive DD sequence  
+    fn generate_adaptive_sequence(
+        target_qubits: &[QubitId],
+        duration: f64
+    ) -> DeviceResult<DDSequence> {
+        // Placeholder implementation - adapt based on real-time conditions
+        let mut base = DDSequenceGenerator::generate_xy8_sequence(target_qubits, duration)?;
+        base.sequence_type = DDSequenceType::Adaptive;
+        
+        // Simple adaptive logic - could be enhanced with ML
+        let adaptation_factor = 1.1; // Could be dynamically determined
+        for timing in &mut base.pulse_timings {
+            *timing *= adaptation_factor;
+        }
+        
+        Ok(base)
     }
 }

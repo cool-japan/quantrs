@@ -49,7 +49,7 @@ use scirs2_stats::{
     pearsonr, spearmanr, kendall_tau, ttest_1samp, ttest_ind,
     mannwhitneyu, wilcoxon, ks_2samp, chi2_gof,
     distributions::{norm, t, chi2 as chi2_dist, f as f_dist, gamma, beta},
-    Alternative, TTestResult,
+    Alternative, TTestResult, QuantileInterpolation,
 };
 // TODO: scirs2_ml crate not available yet
 // #[cfg(feature = "scirs2")]
@@ -2474,7 +2474,7 @@ impl MidCircuitExecutor {
         
         let performance_trends = PerformanceTrends {
             short_term_trend: TrendDirection::Stable,
-            long_term_trend: TrendDirection::Improving,
+            long_term_trend: TrendDirection::Increasing,
             trend_strength: 0.3,
             seasonal_patterns: None,
             volatility: 0.1,
@@ -2749,10 +2749,10 @@ impl StatisticalAnalyzer {
             let std_latency = std(&latencies.view(), 1).unwrap_or(1.0);
             let median_latency = median(&latencies.view()).unwrap_or(0.0);
             
-            let p25 = percentile(&latencies.view(), 25.0).unwrap_or(0.0);
-            let p75 = percentile(&latencies.view(), 75.0).unwrap_or(0.0);
-            let p95 = percentile(&latencies.view(), 95.0).unwrap_or(0.0);
-            let p99 = percentile(&latencies.view(), 99.0).unwrap_or(0.0);
+            let p25 = percentile(&latencies.view(), 25.0, QuantileInterpolation::Linear).unwrap_or(0.0);
+            let p75 = percentile(&latencies.view(), 75.0, QuantileInterpolation::Linear).unwrap_or(0.0);
+            let p95 = percentile(&latencies.view(), 95.0, QuantileInterpolation::Linear).unwrap_or(0.0);
+            let p99 = percentile(&latencies.view(), 99.0, QuantileInterpolation::Linear).unwrap_or(0.0);
             
             Ok(DescriptiveStatistics {
                 mean_latency,

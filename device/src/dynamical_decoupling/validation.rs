@@ -597,7 +597,7 @@ impl DDValidator {
             }
 
             let sensitivity_score = performance_variation.std(1.0);
-            let robustness_margin = performance_variation.min().unwrap_or(0.0);
+            let robustness_margin = *performance_variation.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or(&0.0);
 
             let critical_regions = vec![
                 CriticalRegion {

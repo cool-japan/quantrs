@@ -302,7 +302,7 @@ impl QuantumErrorCorrector {
         calibration_manager: CalibrationManager,
         device_topology: HardwareTopology,
     ) -> QuantRS2Result<Self> {
-        let noise_modeler = SciRS2NoiseModeler::new(&config, &device_topology)?;
+        let noise_modeler = SciRS2NoiseModeler::new("default_device".to_string());
         
         Ok(Self {
             config,
@@ -395,8 +395,8 @@ impl QuantumErrorCorrector {
         &self,
         execution_context: &ExecutionContext,
     ) -> QuantRS2Result<ErrorPatternAnalysis> {
-        let error_stats = self.error_statistics.read().await;
-        let syndrome_history = self.syndrome_history.read().await;
+        let error_stats = self.error_statistics.read().unwrap();
+        let syndrome_history = self.syndrome_history.read().unwrap();
 
         // Perform temporal pattern analysis using SciRS2
         let temporal_analysis = self.analyze_temporal_patterns(&syndrome_history).await?;
@@ -432,7 +432,7 @@ impl QuantumErrorCorrector {
     ) -> QuantRS2Result<QECStrategy> {
         // Check optimization cache first
         let context_hash = self.calculate_context_hash(circuit, execution_context);
-        let cache = self.optimization_cache.read().await;
+        let cache = self.optimization_cache.read().unwrap();
         
         if let Some(cached) = cache.get(&context_hash.to_string()) {
             if cached.timestamp.elapsed().unwrap_or(Duration::MAX) < Duration::from_secs(300) {
@@ -444,55 +444,59 @@ impl QuantumErrorCorrector {
         // Perform SciRS2-powered optimization
         let optimization_start = Instant::now();
         
-        // Define objective function for QEC strategy optimization
-        let objective = |strategy_params: &Array1<f64>| -> f64 {
-            self.evaluate_qec_strategy_objective(strategy_params, circuit, execution_context, error_analysis)
-        };
-
         // Initial guess based on current configuration
         let initial_params = self.encode_strategy_parameters(&self.config.correction_strategy);
         
         #[cfg(feature = "scirs2")]
-        let optimization_result = minimize(objective, &initial_params, "L-BFGS-B")
-            .unwrap_or_else(|_| OptimizeResult {
-                x: initial_params.clone(),
-                fun: objective(&initial_params),
-                success: false,
-                nit: 0,
-                nfev: 1,
-                message: "Fallback optimization".to_string(),
-            });
+        let (optimization_result, optimization_metadata) = {
+            use ndarray::ArrayView1;
+            let result = minimize(
+                |params: &ArrayView1<f64>| {
+                    let params_array = params.to_owned();
+                    self.evaluate_qec_strategy_objective(&params_array, circuit, execution_context, error_analysis)
+                },
+                initial_params.as_slice().unwrap(), 
+                scirs2_optimize::unconstrained::Method::LBFGSB,
+                None
+            );
+            
+            match result {
+                Ok(opt_result) => {
+                    let metadata = (opt_result.fun, opt_result.success);
+                    (opt_result.x, Some(metadata))
+                },
+                Err(_) => (initial_params.clone(), None)
+            }
+        };
 
         #[cfg(not(feature = "scirs2"))]
-        let optimization_result = fallback_scirs2::minimize(objective, &initial_params, "L-BFGS-B")
-            .unwrap_or_else(|_| fallback_scirs2::OptimizeResult {
-                x: initial_params.clone(),
-                fun: objective(&initial_params),
-                success: false,
-                nit: 0,
-                nfev: 1,
-                message: "Fallback optimization".to_string(),
-            });
+        let (optimization_result, optimization_metadata) = (initial_params.clone(), None::<(f64, bool)>); // Fallback: use initial params
 
-        let optimal_strategy = self.decode_strategy_parameters(&optimization_result.x);
+        let optimal_strategy = self.decode_strategy_parameters(&optimization_result);
         let optimization_time = optimization_start.elapsed();
 
         // Cache the optimization result
+        let (predicted_performance, confidence_score) = if let Some((fun_value, success)) = optimization_metadata {
+            (-fun_value, if success { 0.9 } else { 0.5 })
+        } else {
+            (0.5, 0.5) // Default values for fallback
+        };
+        
         let cached_result = CachedOptimization {
             optimization_result: OptimizationResult {
                 optimal_strategy: optimal_strategy.clone(),
-                predicted_performance: -optimization_result.fun, // Negative because we minimize
+                predicted_performance,
                 resource_requirements: self.estimate_resource_requirements(&optimal_strategy),
-                confidence_score: if optimization_result.success { 0.9 } else { 0.5 },
+                confidence_score,
                 optimization_time,
             },
             context_hash,
             timestamp: SystemTime::now(),
             hit_count: 0,
-            performance_score: -optimization_result.fun,
+            performance_score: predicted_performance,
         };
 
-        let mut cache = self.optimization_cache.write().await;
+        let mut cache = self.optimization_cache.write().unwrap();
         cache.insert(context_hash.to_string(), cached_result);
         drop(cache);
 
@@ -527,12 +531,14 @@ impl QuantumErrorCorrector {
         // Correlate with historical patterns
         let historical_correlation = self.correlate_with_history(&syndrome_measurements).await?;
 
+        let detection_confidence = self.calculate_detection_confidence(&syndrome_measurements);
+        
         Ok(SyndromeAnalysisResult {
             syndrome_measurements,
             pattern_recognition,
             statistical_analysis,
             historical_correlation,
-            detection_confidence: self.calculate_detection_confidence(&syndrome_measurements),
+            detection_confidence,
             timestamp: SystemTime::now(),
         })
     }
@@ -663,8 +669,8 @@ impl QuantumErrorCorrector {
             });
         }
 
-        // Get calibration matrix from calibration manager
-        let calibration = self.calibration_manager.get_latest_calibration()
+        // Get calibration matrix from calibration manager  
+        let calibration = self.calibration_manager.get_calibration("default_device")
             .ok_or_else(|| QuantRS2Error::InvalidInput("No calibration data available".into()))?;
 
         // Build readout error matrix
@@ -709,10 +715,10 @@ impl QuantumErrorCorrector {
     }
 
     /// Update machine learning models and adaptive thresholds
-    async fn update_learning_systems(
+    async fn update_learning_systems<const N: usize>(
         &self,
         syndrome_result: &SyndromeAnalysisResult,
-        mitigation_result: &MitigationResult<16>, // Using specific const generic
+        mitigation_result: &MitigationResult<N>,
     ) -> QuantRS2Result<()> {
         // Update syndrome pattern history
         let syndrome_pattern = SyndromePattern {
@@ -738,7 +744,7 @@ impl QuantumErrorCorrector {
 
         // Add to history (with circular buffer behavior)
         {
-            let mut history = self.syndrome_history.write().await;
+            let mut history = self.syndrome_history.write().unwrap();
             if history.len() >= 10000 {
                 history.pop_front();
             }
@@ -764,8 +770,8 @@ impl QuantumErrorCorrector {
         &self,
         error_analysis: &ErrorPatternAnalysis,
     ) -> QuantRS2Result<StatisticalAnalysisResult> {
-        let syndrome_history = self.syndrome_history.read().await;
-        let error_stats = self.error_statistics.read().await;
+        let syndrome_history = self.syndrome_history.read().unwrap();
+        let error_stats = self.error_statistics.read().unwrap();
 
         // Extract data for analysis
         let success_rates: Vec<f64> = syndrome_history.iter()
@@ -1176,12 +1182,12 @@ impl QuantumErrorCorrector {
         Ok(0.05) // 5% improvement
     }
 
-    async fn update_correction_metrics(
+    async fn update_correction_metrics<const N: usize>(
         &self,
-        mitigation_result: &MitigationResult<16>,
+        mitigation_result: &MitigationResult<N>,
         correction_time: Duration,
     ) -> QuantRS2Result<()> {
-        let mut metrics = self.correction_metrics.lock().await;
+        let mut metrics = self.correction_metrics.lock().unwrap();
         metrics.total_corrections += 1;
         metrics.successful_corrections += 1;
         metrics.average_correction_time = 
@@ -1234,7 +1240,7 @@ impl QuantumErrorCorrector {
 
 // Additional result and data structures
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct CorrectedCircuitResult<const N: usize> {
     pub original_circuit: Circuit<N>,
     pub corrected_circuit: Circuit<N>,
@@ -1315,7 +1321,7 @@ pub struct HistoricalCorrelation {
     pub deviation_analysis: HashMap<String, f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct MitigationResult<const N: usize> {
     pub circuit: Circuit<N>,
     pub applied_corrections: Vec<String>,
@@ -1325,7 +1331,7 @@ pub struct MitigationResult<const N: usize> {
     pub mitigation_time: SystemTime,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct GateMitigationResult<const N: usize> {
     pub circuit: Circuit<N>,
     pub corrections: Vec<String>,
@@ -1338,14 +1344,14 @@ pub struct SymmetryVerificationResult {
     pub overhead: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct VirtualDistillationResult<const N: usize> {
     pub circuit: Circuit<N>,
     pub corrections: Vec<String>,
     pub overhead: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct ZNEResult<const N: usize> {
     pub original_circuit: Circuit<N>,
     pub scaled_circuits: Vec<f64>,
@@ -1355,7 +1361,7 @@ pub struct ZNEResult<const N: usize> {
     pub zne_overhead: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct ReadoutCorrectedResult<const N: usize> {
     pub circuit: Circuit<N>,
     pub correction_matrix: Array2<f64>,

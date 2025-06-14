@@ -9,7 +9,7 @@ use std::time::{Duration, Instant, SystemTime};
 
 use serde::{Deserialize, Serialize};
 use tokio::time::timeout;
-use rand::thread_rng;
+use rand::{thread_rng, Rng};
 
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::{
@@ -1044,10 +1044,10 @@ impl CrossPlatformBenchmarker {
             for _ in 0..single_qubit_gates {
                 let qubit = rng.gen_range(0..complexity.qubit_count) as u32;
                 match rng.gen_range(0..4) {
-                    0 => circuit.h(QubitId(qubit)),
-                    1 => circuit.x(QubitId(qubit)),
-                    2 => circuit.y(QubitId(qubit)),
-                    3 => circuit.z(QubitId(qubit)),
+                    0 => { circuit.h(QubitId(qubit))?; },
+                    1 => { circuit.x(QubitId(qubit))?; },
+                    2 => { circuit.y(QubitId(qubit))?; },
+                    3 => { circuit.z(QubitId(qubit))?; },
                     _ => unreachable!(),
                 }
             }

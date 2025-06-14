@@ -859,7 +859,7 @@ mod integration_tests {
 }
 
 /// Performance and stress tests
-mod performance_tests {
+mod stress_tests {
     use super::*;
 
     #[tokio::test]

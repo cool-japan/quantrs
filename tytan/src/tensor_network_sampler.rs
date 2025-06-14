@@ -368,7 +368,7 @@ pub enum BoundaryConditions {
 }
 
 /// Tensor symmetry trait
-pub trait TensorSymmetry: Send + Sync {
+pub trait TensorSymmetry: Send + Sync + std::fmt::Debug {
     /// Apply symmetry transformation
     fn apply_symmetry(&self, tensor: &Tensor) -> Result<Tensor, TensorNetworkError>;
     
@@ -486,7 +486,7 @@ pub enum LineSearchMethod {
 }
 
 /// Tensor optimization algorithm trait
-pub trait TensorOptimizationAlgorithm: Send + Sync {
+pub trait TensorOptimizationAlgorithm: Send + Sync + std::fmt::Debug {
     /// Optimize tensor network
     fn optimize(&self, network: &mut TensorNetwork, target: &Tensor) -> Result<OptimizationResult, TensorNetworkError>;
     
@@ -515,7 +515,7 @@ pub struct OptimizationResult {
 }
 
 /// Convergence monitor trait
-pub trait ConvergenceMonitor: Send + Sync {
+pub trait ConvergenceMonitor: Send + Sync + std::fmt::Debug {
     /// Check convergence
     fn check_convergence(&self, iteration: usize, energy: f64, gradient_norm: f64) -> bool;
     
@@ -524,7 +524,7 @@ pub trait ConvergenceMonitor: Send + Sync {
 }
 
 /// Performance tracker trait
-pub trait PerformanceTracker: Send + Sync {
+pub trait PerformanceTracker: Send + Sync + std::fmt::Debug {
     /// Track performance metrics
     fn track_performance(&self, iteration: usize, metrics: &TensorNetworkMetrics);
     
@@ -600,7 +600,7 @@ pub enum RecoveryStrategy {
 }
 
 /// Compression algorithm trait
-pub trait CompressionAlgorithm: Send + Sync {
+pub trait CompressionAlgorithm: Send + Sync + std::fmt::Debug {
     /// Compress tensor
     fn compress(&self, tensor: &Tensor, target_dimension: usize) -> Result<Tensor, TensorNetworkError>;
     
@@ -612,7 +612,7 @@ pub trait CompressionAlgorithm: Send + Sync {
 }
 
 /// Compression quality assessor trait
-pub trait CompressionQualityAssessor: Send + Sync {
+pub trait CompressionQualityAssessor: Send + Sync + std::fmt::Debug {
     /// Assess compression quality
     fn assess_quality(&self, original: &Tensor, compressed: &Tensor) -> QualityAssessment;
     
@@ -1087,9 +1087,20 @@ impl TensorNetworkSampler {
         
         println!("Compressing tensor network...");
         
-        for tensor in &mut self.tensor_network.tensors {
-            if tensor.compression_info.compressed_dimension > self.config.max_bond_dimension {
-                self.compress_tensor(tensor)?;
+        let indices_to_compress: Vec<usize> = self.tensor_network.tensors.iter().enumerate()
+            .filter(|(_, tensor)| tensor.compression_info.compressed_dimension > self.config.max_bond_dimension)
+            .map(|(i, _)| i)
+            .collect();
+        
+        for index in indices_to_compress {
+            // Clone the tensor for compression
+            if let Some(tensor) = self.tensor_network.tensors.get(index) {
+                let mut tensor_copy = tensor.clone();
+                self.compress_tensor(&mut tensor_copy)?;
+                // Update the tensor in the network
+                if let Some(network_tensor) = self.tensor_network.tensors.get_mut(index) {
+                    *network_tensor = tensor_copy;
+                }
             }
         }
         
@@ -1158,9 +1169,11 @@ impl TensorNetworkSampler {
         let energy = self.calculate_sample_energy(&sample)?;
         
         Ok(SampleResult {
-            sample,
+            assignments: sample.into_iter().enumerate()
+                .map(|(i, val)| (format!("x{}", i), val != 0))
+                .collect(),
             energy,
-            num_occurrences: 1,
+            occurrences: 1,
         })
     }
     
@@ -1178,9 +1191,11 @@ impl TensorNetworkSampler {
         let energy = self.calculate_sample_energy(&sample)?;
         
         Ok(SampleResult {
-            sample,
+            assignments: sample.into_iter().enumerate()
+                .map(|(i, val)| (format!("x{}", i), val != 0))
+                .collect(),
             energy,
-            num_occurrences: 1,
+            occurrences: 1,
         })
     }
     
@@ -1198,9 +1213,11 @@ impl TensorNetworkSampler {
         let energy = self.calculate_sample_energy(&sample)?;
         
         Ok(SampleResult {
-            sample,
+            assignments: sample.into_iter().enumerate()
+                .map(|(i, val)| (format!("x{}", i), val != 0))
+                .collect(),
             energy,
-            num_occurrences: 1,
+            occurrences: 1,
         })
     }
     
@@ -1217,9 +1234,11 @@ impl TensorNetworkSampler {
         let energy = self.calculate_sample_energy(&sample)?;
         
         Ok(SampleResult {
-            sample,
+            assignments: sample.into_iter().enumerate()
+                .map(|(i, val)| (format!("x{}", i), val != 0))
+                .collect(),
             energy,
-            num_occurrences: 1,
+            occurrences: 1,
         })
     }
     
@@ -1327,7 +1346,13 @@ impl NetworkTopology {
     /// Create chain topology for MPS
     fn create_chain_topology() -> Self {
         Self {
-            adjacency: Array2::eye(10), // Default size
+            adjacency: {
+                let mut adj = Array2::from_elem((10, 10), false);
+                for i in 0..10 {
+                    adj[(i, i)] = true;
+                }
+                adj
+            }, // Default size
             topology_type: TopologyType::Chain,
             connectivity: ConnectivityGraph {
                 nodes: Vec::new(),
@@ -1345,7 +1370,13 @@ impl NetworkTopology {
         let num_sites = rows * cols;
         
         Self {
-            adjacency: Array2::eye(num_sites),
+            adjacency: {
+                let mut adj = Array2::from_elem((num_sites, num_sites), false);
+                for i in 0..num_sites {
+                    adj[(i, i)] = true;
+                }
+                adj
+            },
             topology_type: TopologyType::SquareLattice,
             connectivity: ConnectivityGraph {
                 nodes: Vec::new(),
@@ -1360,7 +1391,11 @@ impl NetworkTopology {
     /// Create default topology
     fn create_default_topology() -> Self {
         Self {
-            adjacency: Array2::eye(1),
+            adjacency: {
+                let mut adj = Array2::from_elem((1, 1), false);
+                adj[(0, 0)] = true;
+                adj
+            },
             topology_type: TopologyType::Chain,
             connectivity: ConnectivityGraph {
                 nodes: Vec::new(),
@@ -1505,7 +1540,7 @@ pub fn create_mera_sampler(layers: usize) -> TensorNetworkSampler {
 // Implement Sampler trait for TensorNetworkSampler
 impl Sampler for TensorNetworkSampler {
     fn run_qubo(&self, _qubo: &(ndarray::Array2<f64>, std::collections::HashMap<String, usize>), _num_reads: usize) -> SamplerResult<Vec<crate::sampler::SampleResult>> {
-        Err(SamplerError::NotImplemented("Use run_hobo instead".to_string()))
+        Err(SamplerError::NotImplemented("Use run_hobo instead ".to_string()))
     }
 
     fn run_hobo(&self, problem: &(ndarray::ArrayD<f64>, std::collections::HashMap<String, usize>), num_reads: usize) -> SamplerResult<Vec<crate::sampler::SampleResult>> {
@@ -1516,7 +1551,7 @@ impl Sampler for TensorNetworkSampler {
         
         match sampler_copy.sample(hamiltonian, num_reads) {
             Ok(results) => Ok(results),
-            Err(e) => Err(SamplerError::SamplingFailed(e.to_string())),
+            Err(e) => Err(SamplerError::InvalidParameter(e.to_string())),
         }
     }
 }
@@ -1533,7 +1568,7 @@ mod tests {
         if let TensorNetworkType::MPS { bond_dimension } = sampler.config.network_type {
             assert_eq!(bond_dimension, 32);
         } else {
-            panic!("Expected MPS network type");
+            panic!("Expected MPS network type ");
         }
     }
     
@@ -1545,7 +1580,7 @@ mod tests {
             assert_eq!(bond_dimension, 16);
             assert_eq!(lattice_shape, (4, 4));
         } else {
-            panic!("Expected PEPS network type");
+            panic!("Expected PEPS network type ");
         }
     }
     
@@ -1557,7 +1592,7 @@ mod tests {
             assert_eq!(layers, 3);
             assert_eq!(branching_factor, 2);
         } else {
-            panic!("Expected MERA network type");
+            panic!("Expected MERA network type ");
         }
     }
     

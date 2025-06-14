@@ -33,10 +33,23 @@ pub trait CircuitCostExt<const N: usize> {
 }
 
 impl<T: CostModel + ?Sized, const N: usize> CircuitCostExt<N> for T {
-    fn circuit_cost(&self, _circuit: &Circuit<N>) -> f64 {
-        // TODO: Implement actual circuit cost calculation
-        // For now, return a placeholder value
-        100.0
+    fn circuit_cost(&self, circuit: &Circuit<N>) -> f64 {
+        let mut total_cost = 0.0;
+        
+        // Calculate cost for each gate
+        for gate in circuit.gates() {
+            total_cost += self.gate_cost(gate.as_ref());
+        }
+        
+        // Add depth penalty for deep circuits
+        let depth = circuit.calculate_depth();
+        total_cost += depth as f64 * 0.1; // Small penalty per depth unit
+        
+        // Add two-qubit gate penalty (they're expensive)
+        let two_qubit_gates = circuit.count_two_qubit_gates();
+        total_cost += two_qubit_gates as f64 * 5.0; // Extra cost for two-qubit gates
+        
+        total_cost
     }
 }
 

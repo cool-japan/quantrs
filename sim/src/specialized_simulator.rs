@@ -142,7 +142,7 @@ impl SpecializedStateVectorSimulator {
     fn apply_gate(
         &mut self,
         state: &mut [Complex64],
-        gate: &Box<dyn GateOp>,
+        gate: &Arc<dyn GateOp + Send + Sync>,
         n_qubits: usize,
     ) -> QuantRS2Result<()> {
         self.stats.total_gates += 1;
@@ -187,7 +187,7 @@ impl SpecializedStateVectorSimulator {
     fn apply_gates_with_fusion(
         &mut self,
         state: &mut [Complex64],
-        gates: &[Box<dyn GateOp>],
+        gates: &[Arc<dyn GateOp + Send + Sync>],
         n_qubits: usize,
     ) -> QuantRS2Result<()> {
         let mut i = 0;
@@ -224,7 +224,7 @@ impl SpecializedStateVectorSimulator {
     }
 
     /// Reorder gates for better performance
-    fn reorder_gates(&self, gates: &[Box<dyn GateOp>]) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
+    fn reorder_gates(&self, gates: &[Arc<dyn GateOp + Send + Sync>]) -> QuantRS2Result<Vec<Arc<dyn GateOp + Send + Sync>>> {
         // Simple reordering: group gates by qubit locality
         // This is a placeholder for more sophisticated reordering
         let mut reordered = gates.to_vec();

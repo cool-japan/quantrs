@@ -788,7 +788,7 @@ impl QuantumNeRF {
         
         // Initialize quantum view embedding (simplified)
         let quantum_view_embedding = Array2::zeros((encoding_dimension, config.num_qubits))
-            .mapv(|_| Complex64::new(1.0, 0.0));
+            .mapv(|_: f64| Complex64::new(1.0, 0.0));
         
         Ok(QuantumViewEncoder {
             encoding_dimension,
@@ -863,8 +863,8 @@ impl QuantumNeRF {
         
         let quantum_material_model = QuantumMaterialModel {
             material_type: QuantumMaterialType::QuantumMaterial {
-                quantum_reflectance: Array2::eye(3).mapv(|x| Complex64::new(x, 0.0)),
-                quantum_transmittance: Array2::eye(3).mapv(|x| Complex64::new(x * 0.5, 0.0)),
+                quantum_reflectance: Array2::eye(3).mapv(|x: f64| Complex64::new(x, 0.0)),
+                quantum_transmittance: Array2::eye(3).mapv(|x: f64| Complex64::new(x * 0.5, 0.0)),
             },
             quantum_brdf: QuantumBRDF {
                 brdf_type: QuantumBRDFType::QuantumBRDF {
@@ -929,7 +929,7 @@ impl QuantumNeRF {
             density_grid: Array3::zeros((voxel_resolution[0], voxel_resolution[1], voxel_resolution[2])),
             color_grid: Array4::zeros((voxel_resolution[0], voxel_resolution[1], voxel_resolution[2], 3)),
             quantum_features: Array4::zeros((voxel_resolution[0], voxel_resolution[1], voxel_resolution[2], config.num_qubits))
-                .mapv(|_| Complex64::zero()),
+                .mapv(|_: f64| Complex64::new(0.0, 0.0)),
             entanglement_structure: VoxelEntanglementStructure {
                 entanglement_matrix: Array2::eye(voxel_resolution.iter().product()),
                 correlation_radius: 2.0,
@@ -952,7 +952,7 @@ impl QuantumNeRF {
             quantum_surface_properties: QuantumSurfaceProperties {
                 surface_normal: Array1::zeros(3),
                 curvature: 0.0,
-                quantum_surface_features: Array1::zeros(config.num_qubits).mapv(|_| Complex64::zero()),
+                quantum_surface_features: Array1::zeros(config.num_qubits).mapv(|_: f64| Complex64::new(0.0, 0.0)),
             },
         };
         
@@ -961,7 +961,7 @@ impl QuantumNeRF {
             root: QuantumOctreeNode {
                 bounds: config.scene_bounds.clone(),
                 children: None,
-                quantum_features: Array1::zeros(config.num_qubits).mapv(|_| Complex64::zero()),
+                quantum_features: Array1::zeros(config.num_qubits).mapv(|_: f64| Complex64::new(0.0, 0.0)),
                 occupancy_probability: 0.5,
                 entanglement_with_neighbors: Array1::zeros(8),
             },
@@ -985,7 +985,7 @@ impl QuantumNeRF {
                 level,
                 resolution: level_resolution.clone(),
                 quantum_features: Array4::zeros((level_resolution[0], level_resolution[1], level_resolution[2], config.num_qubits))
-                    .mapv(|_| Complex64::zero()),
+                    .mapv(|_: f64| Complex64::new(0.0, 0.0)),
                 downsampling_operator: QuantumDownsampling::QuantumAveragePooling,
                 upsampling_operator: QuantumUpsampling::QuantumBilinearInterpolation,
             });
@@ -1005,7 +1005,7 @@ impl QuantumNeRF {
         
         // Generate uniform sphere sampling
         let mut light_directions = Array2::zeros((num_directions, 3));
-        let mut rng = ChaCha20Rng::from_entropy();
+        let mut rng = rand::thread_rng();
         
         for i in 0..num_directions {
             let theta = rng.gen::<f64>() * 2.0 * PI;
@@ -1017,10 +1017,10 @@ impl QuantumNeRF {
         }
         
         let light_intensities = Array2::ones((num_directions, 3)) * 0.5; // Default ambient lighting
-        let quantum_light_coherence = Array2::zeros((num_directions, 3)).mapv(|_| Complex64::new(1.0, 0.0));
+        let quantum_light_coherence = Array2::zeros((num_directions, 3)).mapv(|_: f64| Complex64::new(1.0, 0.0));
         
         // Initialize spherical harmonics coefficients (up to order 4)
-        let num_sh_coefficients = (4 + 1).pow(2); // (L+1)^2
+        let num_sh_coefficients = (4u32 + 1).pow(2) as usize; // (L+1)^2
         let spherical_harmonics_coefficients = Array2::zeros((num_sh_coefficients, 3));
         
         Ok(QuantumLightField {
@@ -1030,7 +1030,7 @@ impl QuantumNeRF {
             spherical_harmonics_coefficients,
             quantum_environment_encoding: QuantumEnvironmentEncoding {
                 encoding_type: QuantumEnvironmentEncodingType::QuantumSphericalHarmonics,
-                quantum_coefficients: Array1::zeros(num_sh_coefficients).mapv(|_| Complex64::zero()),
+                quantum_coefficients: Array1::<f64>::zeros(num_sh_coefficients).mapv(|_| Complex64::new(0.0, 0.0)),
                 spatial_frequency_components: Array1::zeros(num_sh_coefficients),
             },
         })
@@ -1223,7 +1223,7 @@ impl QuantumNeRF {
                     let t = ray.near + (ray.far - ray.near) * i as f64 / (num_samples - 1) as f64;
                     
                     // Add quantum jitter
-                    let mut rng = ChaCha20Rng::from_entropy();
+                    let mut rng = rand::thread_rng();
                     let jitter = (rng.gen::<f64>() - 0.5) * quantum_jitter;
                     let t_jittered = t + jitter;
                     
@@ -1256,7 +1256,7 @@ impl QuantumNeRF {
             
             QuantumSamplingStrategy::EntanglementCorrelated { base_samples, correlation_strength, entanglement_radius } => {
                 // Generate correlated sampling points using quantum entanglement
-                let mut rng = ChaCha20Rng::from_entropy();
+                let mut rng = rand::thread_rng();
                 
                 for i in 0..*base_samples {
                     let base_t = ray.near + (ray.far - ray.near) * i as f64 / (*base_samples - 1) as f64;
@@ -1338,7 +1338,7 @@ impl QuantumNeRF {
         
         Ok(QuantumEncodingOutput {
             features: Array1::from_vec(features),
-            quantum_amplitudes: Array1::zeros(self.config.num_qubits).mapv(|_| Complex64::zero()),
+            quantum_amplitudes: Array1::zeros(self.config.num_qubits).mapv(|_: f64| Complex64::new(0.0, 0.0)),
             entanglement_measure: 0.5,
         })
     }
@@ -1395,7 +1395,7 @@ impl QuantumNeRF {
         }
         
         // Normalize quantum amplitudes
-        let norm = quantum_amplitudes.dot(&quantum_amplitudes.mapv(|x| x.conj())).norm();
+        let norm = quantum_amplitudes.dot(&quantum_amplitudes.mapv(|x: Complex64| x.conj())).norm();
         if norm > 1e-10 {
             quantum_amplitudes = quantum_amplitudes / norm;
         }
@@ -1436,7 +1436,7 @@ impl QuantumNeRF {
         
         Ok(QuantumEncodingOutput {
             features: Array1::from_vec(features),
-            quantum_amplitudes: Array1::zeros(self.config.num_qubits).mapv(|_| Complex64::zero()),
+            quantum_amplitudes: Array1::zeros(self.config.num_qubits).mapv(|_: f64| Complex64::new(0.0, 0.0)),
             entanglement_measure: 0.3,
         })
     }
@@ -1565,7 +1565,7 @@ impl QuantumNeRF {
     fn query_quantum_mlp(&self, mlp: &QuantumMLP, input: &Array1<f64>) -> Result<MLPOutput> {
         let mut current_features = input.clone();
         let mut quantum_state = QuantumMLPState {
-            quantum_amplitudes: Array1::zeros(self.config.num_qubits).mapv(|_| Complex64::zero()),
+            quantum_amplitudes: Array1::zeros(self.config.num_qubits).mapv(|_: f64| Complex64::new(0.0, 0.0)),
             entanglement_measure: 0.5,
             quantum_fidelity: 1.0,
         };
@@ -1622,13 +1622,13 @@ impl QuantumNeRF {
         // Apply activation
         let activated_output = match layer.activation {
             QuantumActivationType::QuantumReLU => {
-                linear_output.mapv(|x| x.max(0.0))
+                linear_output.mapv(|x: f64| x.max(0.0))
             },
             QuantumActivationType::QuantumSigmoid => {
                 linear_output.mapv(|x| 1.0 / (1.0 + (-x).exp()))
             },
             QuantumActivationType::QuantumSoftplus => {
-                linear_output.mapv(|x| (1.0 + x.exp()).ln())
+                linear_output.mapv(|x: f64| (1.0f64 + x.exp()).ln())
             },
             QuantumActivationType::QuantumEntanglementActivation => {
                 // Apply entanglement-based activation
@@ -1677,8 +1677,8 @@ impl QuantumNeRF {
                     if control < new_state.quantum_amplitudes.len() && target < new_state.quantum_amplitudes.len() {
                         // Simple CNOT-like operation
                         let entanglement_factor = 0.1;
-                        new_state.quantum_amplitudes[target] += 
-                            entanglement_factor * new_state.quantum_amplitudes[control];
+                        let control_amplitude = new_state.quantum_amplitudes[control];
+                        new_state.quantum_amplitudes[target] += entanglement_factor * control_amplitude;
                         new_state.entanglement_measure = (new_state.entanglement_measure + 0.1).min(1.0);
                     }
                 }
@@ -1729,7 +1729,7 @@ impl QuantumNeRF {
         let mut final_color = Array1::zeros(3);
         let mut accumulated_alpha = 0.0;
         let mut accumulated_quantum_state = QuantumMLPState {
-            quantum_amplitudes: Array1::zeros(self.config.num_qubits).mapv(|_| Complex64::zero()),
+            quantum_amplitudes: Array1::zeros(self.config.num_qubits).mapv(|_: f64| Complex64::new(0.0, 0.0)),
             entanglement_measure: 0.0,
             quantum_fidelity: 1.0,
         };
@@ -1855,7 +1855,7 @@ impl QuantumNeRF {
         }
         
         Ok(NeRFTrainingOutput {
-            training_losses,
+            training_losses: training_losses.clone(),
             quantum_metrics_history,
             final_rendering_quality: training_losses.last().copied().unwrap_or(0.0),
             convergence_analysis: self.analyze_nerf_convergence(&training_losses)?,
@@ -1949,11 +1949,11 @@ impl QuantumNeRF {
     
     /// Sample training rays from image
     fn sample_training_rays(&self, image: &TrainingImage, num_rays: usize) -> Result<Vec<RaySample>> {
-        let mut rng = ChaCha20Rng::from_entropy();
+        let mut rng = rand::thread_rng();
         let mut ray_samples = Vec::new();
         
-        let height = image.image.nrows();
-        let width = image.image.ncols();
+        let height = image.image.shape()[0];
+        let width = image.image.shape()[1];
         
         for _ in 0..num_rays {
             let pixel_x = rng.gen_range(0..width);
@@ -2360,7 +2360,7 @@ mod tests {
         let densities = vec![0.5, 0.3, 0.2];
         let quantum_states = vec![
             QuantumMLPState {
-                quantum_amplitudes: Array1::zeros(8).mapv(|_| Complex64::zero()),
+                quantum_amplitudes: Array1::zeros(8).mapv(|_: f64| Complex64::new(0.0, 0.0)),
                 entanglement_measure: 0.5,
                 quantum_fidelity: 0.9,
             };

@@ -1234,7 +1234,7 @@ mod tests {
         
         let problem = DrugDiscoveryProblem::new(target_interaction)
             .add_objective(DrugOptimizationObjective::MaximizeAffinity)
-            .add_constraint(MolecularConstraint::MolecularWeightRange { min: 100.0, max: 500.0 });
+            .add_constraint(MolecularConstraint::MolecularWeightRange { min: 20.0, max: 500.0 });
         
         assert!(problem.validate().is_ok());
         

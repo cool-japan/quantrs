@@ -1072,11 +1072,19 @@ impl QuantumNeuralNetwork {
         }
         
         // Clip parameters to bounds
-        for (i, &param) in self.parameters.quantum_params.iter().enumerate() {
-            if i < self.parameters.parameter_bounds.len() {
-                let (min_val, max_val) = self.parameters.parameter_bounds[i];
-                self.parameters.quantum_params[i] = param.max(min_val).min(max_val);
-            }
+        let clipped_params: Vec<f64> = self.parameters.quantum_params.iter().enumerate()
+            .map(|(i, &param)| {
+                if i < self.parameters.parameter_bounds.len() {
+                    let (min_val, max_val) = self.parameters.parameter_bounds[i];
+                    param.max(min_val).min(max_val)
+                } else {
+                    param
+                }
+            })
+            .collect();
+        
+        for (i, value) in clipped_params.into_iter().enumerate() {
+            self.parameters.quantum_params[i] = value;
         }
         
         Ok(())
@@ -1148,7 +1156,7 @@ impl QuantumNeuralNetwork {
         let mean = params.mean().unwrap_or(0.0);
         let std = params.std(0.0);
         
-        let ranges = vec![(params.min().unwrap_or(0.0), params.max().unwrap_or(0.0))];
+        let ranges = vec![(*params.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or(&0.0), *params.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or(&0.0))];
         let correlations = Array2::eye(params.len());
         
         ParameterStatistics {
