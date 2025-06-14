@@ -3,7 +3,7 @@
 #[cfg(test)]
 mod tests {
     use quantrs2_tytan::advanced_performance_analysis::*;
-    use quantrs2_tytan::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
+    // Note: Sampler types not needed for performance analysis tests
     use ndarray::{Array1, Array2, Array3, ArrayD};
     use std::collections::HashMap;
     use std::time::{Duration, Instant};
@@ -27,10 +27,16 @@ mod tests {
                 outlier_method: OutlierDetectionMethod::ZScore { threshold: 3.0 },
             },
             visualization: VisualizationConfig {
-                enable_plots: true,
-                plot_types: vec![PlotType::TimeSeries, PlotType::Histogram],
-                export_format: ExportFormat::PNG,
-                interactive_plots: true,
+                real_time_plots: true,
+                plot_update_frequency: 1.0,
+                export_formats: vec![ExportFormat::PNG],
+                dashboard: DashboardConfig {
+                    enable_web_dashboard: true,
+                    port: 8080,
+                    update_interval: 2.0,
+                    enable_alerts: true,
+                    alert_thresholds: HashMap::new(),
+                },
             },
         };
 
@@ -120,9 +126,9 @@ mod tests {
         let methods = vec![
             OutlierDetectionMethod::ZScore { threshold: 2.5 },
             OutlierDetectionMethod::IQR { multiplier: 1.5 },
-            OutlierDetectionMethod::ModifiedZScore { threshold: 3.5 },
-            OutlierDetectionMethod::IsolationForest { contamination: 0.1 },
-            OutlierDetectionMethod::LocalOutlierFactor { n_neighbors: 20 },
+            OutlierDetectionMethod::IsolationForest,
+            OutlierDetectionMethod::LocalOutlierFactor,
+            OutlierDetectionMethod::StatisticalTests,
         ];
 
         for method in methods {
@@ -133,14 +139,14 @@ mod tests {
                 OutlierDetectionMethod::IQR { multiplier } => {
                     assert_eq!(multiplier, 1.5);
                 }
-                OutlierDetectionMethod::ModifiedZScore { threshold } => {
-                    assert_eq!(threshold, 3.5);
+                OutlierDetectionMethod::IsolationForest => {
+                    assert!(true);
                 }
-                OutlierDetectionMethod::IsolationForest { contamination } => {
-                    assert_eq!(contamination, 0.1);
+                OutlierDetectionMethod::LocalOutlierFactor => {
+                    assert!(true);
                 }
-                OutlierDetectionMethod::LocalOutlierFactor { n_neighbors } => {
-                    assert_eq!(n_neighbors, 20);
+                OutlierDetectionMethod::StatisticalTests => {
+                    assert!(true);
                 }
             }
         }
@@ -150,52 +156,27 @@ mod tests {
     #[test]
     fn test_visualization_config() {
         let config = VisualizationConfig {
-            enable_plots: true,
-            plot_types: vec![
-                PlotType::TimeSeries,
-                PlotType::Histogram,
-                PlotType::ScatterPlot,
-                PlotType::Heatmap,
-            ],
-            export_format: ExportFormat::SVG,
-            interactive_plots: true,
+            real_time_plots: true,
+            plot_update_frequency: 0.5,
+            export_formats: vec![ExportFormat::SVG, ExportFormat::PNG],
+            dashboard: DashboardConfig {
+                enable_web_dashboard: true,
+                port: 8080,
+                update_interval: 2.0,
+                enable_alerts: true,
+                alert_thresholds: HashMap::new(),
+            },
         };
 
-        assert!(config.enable_plots);
-        assert_eq!(config.plot_types.len(), 4);
-        assert_eq!(config.export_format, ExportFormat::SVG);
-        assert!(config.interactive_plots);
-        assert!(config.plot_types.contains(&PlotType::TimeSeries));
-        assert!(config.plot_types.contains(&PlotType::Heatmap));
+        assert!(config.real_time_plots);
+        assert_eq!(config.plot_update_frequency, 0.5);
+        assert_eq!(config.export_formats.len(), 2);
+        assert!(config.export_formats.contains(&ExportFormat::SVG));
+        assert!(config.export_formats.contains(&ExportFormat::PNG));
+        assert!(config.dashboard.enable_web_dashboard);
     }
 
-    /// Test plot types
-    #[test]
-    fn test_plot_types() {
-        let plot_types = vec![
-            PlotType::TimeSeries,
-            PlotType::Histogram,
-            PlotType::ScatterPlot,
-            PlotType::BoxPlot,
-            PlotType::ViolinPlot,
-            PlotType::Heatmap,
-            PlotType::Surface3D,
-            PlotType::ParallelCoordinates,
-        ];
-
-        for plot_type in plot_types {
-            match plot_type {
-                PlotType::TimeSeries => assert!(true),
-                PlotType::Histogram => assert!(true),
-                PlotType::ScatterPlot => assert!(true),
-                PlotType::BoxPlot => assert!(true),
-                PlotType::ViolinPlot => assert!(true),
-                PlotType::Heatmap => assert!(true),
-                PlotType::Surface3D => assert!(true),
-                PlotType::ParallelCoordinates => assert!(true),
-            }
-        }
-    }
+    // Note: PlotType enum not available in current implementation
 
     /// Test export formats
     #[test]
@@ -221,685 +202,257 @@ mod tests {
         }
     }
 
-    /// Test performance metric
-    #[test]
-    fn test_performance_metric() {
-        let metric = PerformanceMetric {
-            name: "execution_time".to_string(),
-            value: MetricValue::Float(125.5),
-            unit: "ms".to_string(),
-            timestamp: Instant::now(),
-            category: MetricCategory::Performance,
-            tags: {
-                let mut tags = HashMap::new();
-                tags.insert("algorithm".to_string(), "DMRG".to_string());
-                tags.insert("problem_size".to_string(), "100".to_string());
-                tags
-            },
-            metadata: MetricMetadata {
-                source: "benchmark_suite".to_string(),
-                confidence: 0.95,
-                sample_size: 1000,
-                statistical_significance: Some(0.001),
-            },
-        };
-
-        assert_eq!(metric.name, "execution_time");
-        assert_eq!(metric.unit, "ms");
-        assert_eq!(metric.category, MetricCategory::Performance);
-        assert_eq!(metric.tags.len(), 2);
-        assert_eq!(metric.tags["algorithm"], "DMRG");
-        assert_eq!(metric.metadata.source, "benchmark_suite");
-        assert_eq!(metric.metadata.confidence, 0.95);
-
-        match metric.value {
-            MetricValue::Float(val) => assert_eq!(val, 125.5),
-            _ => panic!("Wrong metric value type"),
-        }
-    }
-
-    /// Test metric values
-    #[test]
-    fn test_metric_values() {
-        let values = vec![
-            MetricValue::Integer(42),
-            MetricValue::Float(3.14159),
-            MetricValue::Boolean(true),
-            MetricValue::String("test_value".to_string()),
-            MetricValue::Array(vec![1.0, 2.0, 3.0]),
-            MetricValue::Duration(Duration::from_millis(500)),
-        ];
-
-        for value in values {
-            match value {
-                MetricValue::Integer(val) => assert_eq!(val, 42),
-                MetricValue::Float(val) => assert_eq!(val, 3.14159),
-                MetricValue::Boolean(val) => assert!(val),
-                MetricValue::String(val) => assert_eq!(val, "test_value"),
-                MetricValue::Array(val) => assert_eq!(val, vec![1.0, 2.0, 3.0]),
-                MetricValue::Duration(val) => assert_eq!(val, Duration::from_millis(500)),
-            }
-        }
-    }
-
-    /// Test metric categories
-    #[test]
-    fn test_metric_categories() {
-        let categories = vec![
-            MetricCategory::Performance,
-            MetricCategory::Memory,
-            MetricCategory::CPU,
-            MetricCategory::GPU,
-            MetricCategory::Network,
-            MetricCategory::Disk,
-            MetricCategory::Energy,
-            MetricCategory::Quantum,
-            MetricCategory::Algorithm,
-            MetricCategory::Custom { name: "custom_category".to_string() },
-        ];
-
-        for category in categories {
-            match category {
-                MetricCategory::Performance => assert!(true),
-                MetricCategory::Memory => assert!(true),
-                MetricCategory::CPU => assert!(true),
-                MetricCategory::GPU => assert!(true),
-                MetricCategory::Network => assert!(true),
-                MetricCategory::Disk => assert!(true),
-                MetricCategory::Energy => assert!(true),
-                MetricCategory::Quantum => assert!(true),
-                MetricCategory::Algorithm => assert!(true),
-                MetricCategory::Custom { name } => {
-                    assert_eq!(name, "custom_category");
-                }
-            }
-        }
-    }
+    // Note: PerformanceMetric, MetricValue, and MetricCategory types not available in current implementation
 
     /// Test benchmark result
     #[test]
     fn test_benchmark_result() {
+        let mut descriptive_stats = HashMap::new();
+        descriptive_stats.insert("execution_time".to_string(), DescriptiveStats {
+            mean: 50.5,
+            std_dev: 5.3,
+            min: 42.1,
+            max: 65.8,
+            median: 48.2,
+            quartiles: (46.0, 48.2, 54.1),
+            skewness: 0.1,
+            kurtosis: 2.8,
+        });
+
+        let mut confidence_intervals = HashMap::new();
+        confidence_intervals.insert("execution_time".to_string(), (47.8, 53.2));
+
         let result = BenchmarkResult {
             benchmark_name: "QUBO_Solver_Benchmark".to_string(),
-            timestamp: Instant::now(),
-            duration: Duration::from_secs(120),
-            metrics: vec![
-                PerformanceMetric {
-                    name: "avg_execution_time".to_string(),
-                    value: MetricValue::Float(50.5),
-                    unit: "ms".to_string(),
-                    timestamp: Instant::now(),
-                    category: MetricCategory::Performance,
-                    tags: HashMap::new(),
-                    metadata: MetricMetadata {
-                        source: "benchmark".to_string(),
-                        confidence: 0.95,
-                        sample_size: 100,
-                        statistical_significance: None,
-                    },
+            execution_times: vec![Duration::from_millis(45), Duration::from_millis(52), Duration::from_millis(48)],
+            memory_usage: vec![1024, 1152, 1088],
+            solution_quality: vec![0.95, 0.97, 0.96],
+            convergence_metrics: ConvergenceMetrics {
+                time_to_convergence: vec![Duration::from_millis(30)],
+                iterations_to_convergence: vec![100],
+                convergence_rate: 0.95,
+                final_residual: vec![0.001],
+                stability_measure: 0.98,
+            },
+            scaling_analysis: ScalingAnalysis {
+                computational_complexity: ComplexityAnalysis {
+                    complexity_function: ComplexityFunction::Quadratic,
+                    goodness_of_fit: 0.95,
+                    confidence_intervals: vec![(1.8, 2.2)],
+                    predicted_scaling: HashMap::new(),
                 },
-            ],
-            configuration: BenchmarkConfiguration {
-                problem_sizes: vec![10, 50, 100, 500],
-                algorithms: vec!["SA".to_string(), "GA".to_string()],
-                iterations: 100,
-                warmup_iterations: 10,
-                timeout: Duration::from_secs(300),
-                statistical_tests: true,
+                memory_complexity: ComplexityAnalysis {
+                    complexity_function: ComplexityFunction::Linear,
+                    goodness_of_fit: 0.98,
+                    confidence_intervals: vec![(0.9, 1.1)],
+                    predicted_scaling: HashMap::new(),
+                },
+                parallel_efficiency: ParallelEfficiency {
+                    strong_scaling: vec![1.0, 0.9, 0.8, 0.7],
+                    weak_scaling: vec![1.0, 0.95, 0.9, 0.85],
+                    load_balancing: 0.95,
+                    communication_overhead: 0.1,
+                    optimal_threads: 4,
+                },
+                scaling_predictions: {
+                    let mut predictions = HashMap::new();
+                    predictions.insert(1000, 250.0);
+                    predictions
+                },
             },
             statistical_summary: StatisticalSummary {
-                mean: 50.5,
-                median: 48.2,
-                std_dev: 5.3,
-                min: 42.1,
-                max: 65.8,
-                percentiles: vec![
-                    (25.0, 46.0),
-                    (50.0, 48.2),
-                    (75.0, 54.1),
-                    (95.0, 61.5),
-                ],
-                confidence_intervals: vec![(47.8, 53.2)],
+                descriptive_stats,
+                confidence_intervals,
+                hypothesis_tests: vec![],
+                effect_sizes: HashMap::new(),
             },
         };
 
         assert_eq!(result.benchmark_name, "QUBO_Solver_Benchmark");
-        assert_eq!(result.duration, Duration::from_secs(120));
-        assert_eq!(result.metrics.len(), 1);
-        assert_eq!(result.configuration.problem_sizes.len(), 4);
-        assert_eq!(result.configuration.algorithms.len(), 2);
-        assert_eq!(result.statistical_summary.mean, 50.5);
-        assert_eq!(result.statistical_summary.percentiles.len(), 4);
+        assert_eq!(result.execution_times.len(), 3);
+        assert_eq!(result.memory_usage.len(), 3);
+        assert_eq!(result.solution_quality.len(), 3);
+        assert_eq!(result.statistical_summary.descriptive_stats.len(), 1);
     }
 
     /// Test benchmark configuration
     #[test]
     fn test_benchmark_configuration() {
-        let config = BenchmarkConfiguration {
-            problem_sizes: vec![5, 10, 20, 50, 100],
-            algorithms: vec![
-                "SimulatedAnnealing".to_string(),
-                "GeneticAlgorithm".to_string(),
-                "TensorNetwork".to_string(),
-            ],
+        let config = BenchmarkConfig {
             iterations: 500,
             warmup_iterations: 50,
-            timeout: Duration::from_secs(600),
-            statistical_tests: true,
+            problem_sizes: vec![5, 10, 20, 50, 100],
+            time_limit: Duration::from_secs(600),
+            memory_limit: 1024 * 1024 * 1024, // 1GB
+            detailed_profiling: true,
         };
 
-        assert_eq!(config.problem_sizes.len(), 5);
-        assert_eq!(config.algorithms.len(), 3);
         assert_eq!(config.iterations, 500);
         assert_eq!(config.warmup_iterations, 50);
-        assert_eq!(config.timeout, Duration::from_secs(600));
-        assert!(config.statistical_tests);
+        assert_eq!(config.problem_sizes.len(), 5);
+        assert_eq!(config.time_limit, Duration::from_secs(600));
+        assert_eq!(config.memory_limit, 1024 * 1024 * 1024);
+        assert!(config.detailed_profiling);
         assert_eq!(config.problem_sizes[0], 5);
-        assert_eq!(config.algorithms[0], "SimulatedAnnealing");
     }
 
     /// Test statistical summary
     #[test]
     fn test_statistical_summary() {
-        let summary = StatisticalSummary {
+        let mut descriptive_stats = HashMap::new();
+        descriptive_stats.insert("execution_time".to_string(), DescriptiveStats {
             mean: 100.0,
-            median: 95.0,
             std_dev: 15.0,
             min: 70.0,
             max: 130.0,
-            percentiles: vec![
-                (10.0, 78.0),
-                (25.0, 88.0),
-                (50.0, 95.0),
-                (75.0, 112.0),
-                (90.0, 125.0),
-            ],
-            confidence_intervals: vec![
-                (92.0, 108.0),
-                (87.0, 113.0),
-            ],
+            median: 95.0,
+            quartiles: (88.0, 95.0, 112.0),
+            skewness: 0.2,
+            kurtosis: 2.9,
+        });
+
+        let mut confidence_intervals = HashMap::new();
+        confidence_intervals.insert("execution_time".to_string(), (92.0, 108.0));
+        confidence_intervals.insert("memory_usage".to_string(), (87.0, 113.0));
+
+        let mut effect_sizes = HashMap::new();
+        effect_sizes.insert("algorithm_comparison".to_string(), 0.8);
+
+        let summary = StatisticalSummary {
+            descriptive_stats,
+            confidence_intervals,
+            hypothesis_tests: vec![],
+            effect_sizes,
         };
 
-        assert_eq!(summary.mean, 100.0);
-        assert_eq!(summary.median, 95.0);
-        assert_eq!(summary.std_dev, 15.0);
-        assert_eq!(summary.min, 70.0);
-        assert_eq!(summary.max, 130.0);
-        assert_eq!(summary.percentiles.len(), 5);
+        assert_eq!(summary.descriptive_stats.len(), 1);
         assert_eq!(summary.confidence_intervals.len(), 2);
-        assert_eq!(summary.percentiles[2], (50.0, 95.0));
-        assert_eq!(summary.confidence_intervals[0], (92.0, 108.0));
+        assert_eq!(summary.effect_sizes.len(), 1);
+        assert_eq!(summary.descriptive_stats["execution_time"].mean, 100.0);
+        assert_eq!(summary.confidence_intervals["execution_time"], (92.0, 108.0));
+        assert_eq!(summary.effect_sizes["algorithm_comparison"], 0.8);
     }
 
     /// Test bottleneck analysis
     #[test]
     fn test_bottleneck_analysis() {
         let analysis = BottleneckAnalysis {
-            detected_bottlenecks: vec![
+            bottlenecks: vec![
                 Bottleneck {
-                    component: "memory_allocation".to_string(),
-                    severity: BottleneckSeverity::High,
-                    impact_percentage: 35.0,
-                    description: "Memory allocation taking significant time".to_string(),
-                    recommendations: vec![
+                    bottleneck_type: BottleneckType::Memory,
+                    location: "memory_allocation".to_string(),
+                    severity: 35.0,
+                    resource: "RAM".to_string(),
+                    mitigation_strategies: vec![
                         "Use memory pools".to_string(),
                         "Pre-allocate arrays".to_string(),
                     ],
                 },
                 Bottleneck {
-                    component: "tensor_contraction".to_string(),
-                    severity: BottleneckSeverity::Medium,
-                    impact_percentage: 20.0,
-                    description: "Inefficient tensor contraction order".to_string(),
-                    recommendations: vec![
+                    bottleneck_type: BottleneckType::Algorithm,
+                    location: "tensor_contraction".to_string(),
+                    severity: 20.0,
+                    resource: "CPU".to_string(),
+                    mitigation_strategies: vec![
                         "Optimize contraction order".to_string(),
                     ],
                 },
             ],
-            analysis_timestamp: Instant::now(),
-            total_overhead: 55.0,
-            optimization_potential: 42.0,
-        };
-
-        assert_eq!(analysis.detected_bottlenecks.len(), 2);
-        assert_eq!(analysis.total_overhead, 55.0);
-        assert_eq!(analysis.optimization_potential, 42.0);
-        assert_eq!(analysis.detected_bottlenecks[0].component, "memory_allocation");
-        assert_eq!(analysis.detected_bottlenecks[0].severity, BottleneckSeverity::High);
-        assert_eq!(analysis.detected_bottlenecks[0].impact_percentage, 35.0);
-        assert_eq!(analysis.detected_bottlenecks[0].recommendations.len(), 2);
-    }
-
-    /// Test bottleneck severity
-    #[test]
-    fn test_bottleneck_severity() {
-        let severities = vec![
-            BottleneckSeverity::Low,
-            BottleneckSeverity::Medium,
-            BottleneckSeverity::High,
-            BottleneckSeverity::Critical,
-        ];
-
-        for severity in severities {
-            match severity {
-                BottleneckSeverity::Low => assert!(true),
-                BottleneckSeverity::Medium => assert!(true),
-                BottleneckSeverity::High => assert!(true),
-                BottleneckSeverity::Critical => assert!(true),
-            }
-        }
-    }
-
-    /// Test performance comparison
-    #[test]
-    fn test_performance_comparison() {
-        let comparison = PerformanceComparison {
-            baseline_name: "SimulatedAnnealing".to_string(),
-            comparison_name: "TensorNetwork".to_string(),
-            metrics_comparison: vec![
-                MetricComparison {
-                    metric_name: "execution_time".to_string(),
-                    baseline_value: 100.0,
-                    comparison_value: 80.0,
-                    improvement_percentage: 20.0,
-                    statistical_significance: 0.001,
-                    effect_size: 1.2,
+            resource_utilization: ResourceUtilizationAnalysis {
+                cpu_breakdown: CpuUtilizationBreakdown::default(),
+                memory_breakdown: MemoryUtilizationBreakdown::default(),
+                io_breakdown: IoUtilizationBreakdown::default(),
+                network_breakdown: NetworkUtilizationBreakdown::default(),
+            },
+            dependency_analysis: DependencyAnalysis {
+                critical_path: vec!["memory_allocation".to_string(), "tensor_contraction".to_string()],
+                dependency_graph: DependencyGraph {
+                    nodes: vec![
+                        DependencyNode {
+                            operation: "memory_allocation".to_string(),
+                            execution_time: Duration::from_millis(100),
+                            resource_requirements: ResourceRequirement {
+                                memory_mb: 256,
+                                cpu_cores: 1,
+                                gpu_memory_mb: None,
+                            },
+                        },
+                        DependencyNode {
+                            operation: "tensor_contraction".to_string(),
+                            execution_time: Duration::from_millis(200),
+                            resource_requirements: ResourceRequirement {
+                                memory_mb: 512,
+                                cpu_cores: 2,
+                                gpu_memory_mb: Some(1024),
+                            },
+                        },
+                    ],
+                    edges: vec![],
+                    properties: GraphProperties {
+                        node_count: 2,
+                        edge_count: 0,
+                        density: 0.0,
+                        avg_path_length: 1.0,
+                        clustering_coefficient: 0.0,
+                    },
                 },
-                MetricComparison {
-                    metric_name: "memory_usage".to_string(),
-                    baseline_value: 512.0,
-                    comparison_value: 768.0,
-                    improvement_percentage: -50.0,
-                    statistical_significance: 0.01,
-                    effect_size: -0.8,
-                },
-            ],
-            overall_performance_score: 1.15,
-            recommendation: ComparisonRecommendation::Prefer {
-                algorithm: "TensorNetwork".to_string(),
-                conditions: vec![
-                    "For problems with size > 50".to_string(),
-                    "When memory is not constrained".to_string(),
+                parallelization_opportunities: vec![
+                    ParallelizationOpportunity {
+                        operations: vec!["independent_calculations".to_string()],
+                        potential_speedup: 2.0,
+                        strategy: ParallelizationStrategy::DataParallelism,
+                        complexity: ComplexityLevel::Medium,
+                    }
                 ],
+                serialization_bottlenecks: vec![],
             },
-        };
-
-        assert_eq!(comparison.baseline_name, "SimulatedAnnealing");
-        assert_eq!(comparison.comparison_name, "TensorNetwork");
-        assert_eq!(comparison.metrics_comparison.len(), 2);
-        assert_eq!(comparison.overall_performance_score, 1.15);
-        assert_eq!(comparison.metrics_comparison[0].improvement_percentage, 20.0);
-        assert_eq!(comparison.metrics_comparison[1].improvement_percentage, -50.0);
-
-        match comparison.recommendation {
-            ComparisonRecommendation::Prefer { algorithm, conditions } => {
-                assert_eq!(algorithm, "TensorNetwork");
-                assert_eq!(conditions.len(), 2);
-            }
-            _ => panic!("Wrong recommendation type"),
-        }
-    }
-
-    /// Test comparison recommendations
-    #[test]
-    fn test_comparison_recommendations() {
-        let recommendations = vec![
-            ComparisonRecommendation::Prefer {
-                algorithm: "Algorithm_A".to_string(),
-                conditions: vec!["Condition 1".to_string()],
-            },
-            ComparisonRecommendation::Equivalent {
-                note: "Performance is similar".to_string(),
-            },
-            ComparisonRecommendation::Conditional {
-                primary: "Algorithm_A".to_string(),
-                secondary: "Algorithm_B".to_string(),
-                condition: "problem_size < 100".to_string(),
-            },
-            ComparisonRecommendation::Inconclusive {
-                reason: "Insufficient data".to_string(),
-            },
-        ];
-
-        for recommendation in recommendations {
-            match recommendation {
-                ComparisonRecommendation::Prefer { algorithm, conditions } => {
-                    assert_eq!(algorithm, "Algorithm_A");
-                    assert_eq!(conditions.len(), 1);
-                }
-                ComparisonRecommendation::Equivalent { note } => {
-                    assert_eq!(note, "Performance is similar");
-                }
-                ComparisonRecommendation::Conditional { primary, secondary, condition } => {
-                    assert_eq!(primary, "Algorithm_A");
-                    assert_eq!(secondary, "Algorithm_B");
-                    assert_eq!(condition, "problem_size < 100");
-                }
-                ComparisonRecommendation::Inconclusive { reason } => {
-                    assert_eq!(reason, "Insufficient data");
-                }
-            }
-        }
-    }
-
-    /// Test real-time monitoring data
-    #[test]
-    fn test_real_time_monitoring_data() {
-        let monitoring_data = RealTimeMonitoringData {
-            timestamp: Instant::now(),
-            cpu_usage: 75.5,
-            memory_usage: 1024.0,
-            gpu_usage: Some(85.2),
-            network_io: NetworkIO {
-                bytes_sent: 1024 * 1024,
-                bytes_received: 2048 * 1024,
-                packets_sent: 1000,
-                packets_received: 1500,
-            },
-            disk_io: DiskIO {
-                bytes_read: 512 * 1024,
-                bytes_written: 256 * 1024,
-                read_operations: 100,
-                write_operations: 50,
-            },
-            quantum_metrics: QuantumMetrics {
-                coherence_time: 50.0,
-                gate_fidelity: 0.995,
-                readout_fidelity: 0.98,
-                cross_talk: 0.02,
-            },
-            custom_metrics: {
-                let mut metrics = HashMap::new();
-                metrics.insert("algorithm_iteration".to_string(), 42.0);
-                metrics.insert("convergence_rate".to_string(), 0.85);
-                metrics
-            },
-        };
-
-        assert_eq!(monitoring_data.cpu_usage, 75.5);
-        assert_eq!(monitoring_data.memory_usage, 1024.0);
-        assert_eq!(monitoring_data.gpu_usage, Some(85.2));
-        assert_eq!(monitoring_data.network_io.bytes_sent, 1024 * 1024);
-        assert_eq!(monitoring_data.disk_io.bytes_read, 512 * 1024);
-        assert_eq!(monitoring_data.quantum_metrics.coherence_time, 50.0);
-        assert_eq!(monitoring_data.custom_metrics.len(), 2);
-        assert_eq!(monitoring_data.custom_metrics["algorithm_iteration"], 42.0);
-    }
-
-    /// Test performance prediction
-    #[test]
-    fn test_performance_prediction() {
-        let prediction = PerformancePrediction {
-            algorithm_name: "QuantumAnnealing".to_string(),
-            problem_parameters: ProblemParameters {
-                problem_size: 200,
-                problem_type: "QUBO".to_string(),
-                sparsity: 0.1,
-                constraint_density: 0.05,
-                custom_parameters: {
-                    let mut params = HashMap::new();
-                    params.insert("temperature_schedule".to_string(), "linear".to_string());
-                    params
-                },
-            },
-            predicted_metrics: vec![
-                PredictedMetric {
-                    metric_name: "execution_time".to_string(),
-                    predicted_value: 250.0,
-                    confidence_interval: (200.0, 300.0),
-                    prediction_confidence: 0.85,
-                },
-                PredictedMetric {
-                    metric_name: "memory_usage".to_string(),
-                    predicted_value: 2048.0,
-                    confidence_interval: (1800.0, 2300.0),
-                    prediction_confidence: 0.90,
+            optimization_opportunities: vec![
+                OptimizationOpportunity {
+                    optimization_type: OptimizationType::MemoryOptimization,
+                    description: "Reduce memory allocation overhead".to_string(),
+                    potential_improvement: 25.0,
+                    implementation_effort: EffortLevel::Medium,
+                    risk_level: RiskLevel::Low,
                 },
             ],
-            model_accuracy: 0.88,
-            prediction_timestamp: Instant::now(),
         };
 
-        assert_eq!(prediction.algorithm_name, "QuantumAnnealing");
-        assert_eq!(prediction.problem_parameters.problem_size, 200);
-        assert_eq!(prediction.problem_parameters.problem_type, "QUBO");
-        assert_eq!(prediction.predicted_metrics.len(), 2);
-        assert_eq!(prediction.model_accuracy, 0.88);
-        assert_eq!(prediction.predicted_metrics[0].predicted_value, 250.0);
-        assert_eq!(prediction.predicted_metrics[0].confidence_interval, (200.0, 300.0));
+        assert_eq!(analysis.bottlenecks.len(), 2);
+        assert_eq!(analysis.bottlenecks[0].bottleneck_type, BottleneckType::Memory);
+        assert_eq!(analysis.bottlenecks[0].location, "memory_allocation");
+        assert_eq!(analysis.bottlenecks[0].severity, 35.0);
+        assert_eq!(analysis.bottlenecks[0].mitigation_strategies.len(), 2);
+        assert_eq!(analysis.optimization_opportunities.len(), 1);
     }
-}
 
-// Mock structs and enums for compilation
-#[derive(Debug, Clone, PartialEq)]
-pub enum OutlierDetectionMethod {
-    ZScore { threshold: f64 },
-    IQR { multiplier: f64 },
-    ModifiedZScore { threshold: f64 },
-    IsolationForest { contamination: f64 },
-    LocalOutlierFactor { n_neighbors: usize },
-}
+    /// Test bottleneck types
+    #[test]
+    fn test_bottleneck_types() {
+        let types = vec![
+            BottleneckType::CPU,
+            BottleneckType::Memory,
+            BottleneckType::IO,
+            BottleneckType::Network,
+            BottleneckType::Algorithm,
+            BottleneckType::Synchronization,
+            BottleneckType::Custom { description: "Custom bottleneck".to_string() },
+        ];
 
-#[derive(Debug, Clone)]
-pub struct VisualizationConfig {
-    pub enable_plots: bool,
-    pub plot_types: Vec<PlotType>,
-    pub export_format: ExportFormat,
-    pub interactive_plots: bool,
-}
+        for bottleneck_type in types {
+            match bottleneck_type {
+                BottleneckType::CPU => assert!(true),
+                BottleneckType::Memory => assert!(true),
+                BottleneckType::IO => assert!(true),
+                BottleneckType::Network => assert!(true),
+                BottleneckType::Algorithm => assert!(true),
+                BottleneckType::Synchronization => assert!(true),
+                BottleneckType::Custom { description } => {
+                    assert_eq!(description, "Custom bottleneck");
+                }
+            }
+        }
+    }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum PlotType {
-    TimeSeries,
-    Histogram,
-    ScatterPlot,
-    BoxPlot,
-    ViolinPlot,
-    Heatmap,
-    Surface3D,
-    ParallelCoordinates,
+    // Note: PerformanceComparison, ComparisonRecommendation, RealTimeMonitoringData,
+    // and PerformancePrediction types not available in current implementation
 }
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum ExportFormat {
-    PNG,
-    SVG,
-    PDF,
-    HTML,
-    JSON,
-    CSV,
-}
-
-#[derive(Debug, Clone)]
-pub struct PerformanceMetric {
-    pub name: String,
-    pub value: MetricValue,
-    pub unit: String,
-    pub timestamp: Instant,
-    pub category: MetricCategory,
-    pub tags: HashMap<String, String>,
-    pub metadata: MetricMetadata,
-}
-
-#[derive(Debug, Clone)]
-pub enum MetricValue {
-    Integer(i64),
-    Float(f64),
-    Boolean(bool),
-    String(String),
-    Array(Vec<f64>),
-    Duration(Duration),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum MetricCategory {
-    Performance,
-    Memory,
-    CPU,
-    GPU,
-    Network,
-    Disk,
-    Energy,
-    Quantum,
-    Algorithm,
-    Custom { name: String },
-}
-
-#[derive(Debug, Clone)]
-pub struct MetricMetadata {
-    pub source: String,
-    pub confidence: f64,
-    pub sample_size: usize,
-    pub statistical_significance: Option<f64>,
-}
-
-#[derive(Debug, Clone)]
-pub struct BenchmarkResult {
-    pub benchmark_name: String,
-    pub timestamp: Instant,
-    pub duration: Duration,
-    pub metrics: Vec<PerformanceMetric>,
-    pub configuration: BenchmarkConfiguration,
-    pub statistical_summary: StatisticalSummary,
-}
-
-#[derive(Debug, Clone)]
-pub struct BenchmarkConfiguration {
-    pub problem_sizes: Vec<usize>,
-    pub algorithms: Vec<String>,
-    pub iterations: usize,
-    pub warmup_iterations: usize,
-    pub timeout: Duration,
-    pub statistical_tests: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct StatisticalSummary {
-    pub mean: f64,
-    pub median: f64,
-    pub std_dev: f64,
-    pub min: f64,
-    pub max: f64,
-    pub percentiles: Vec<(f64, f64)>,
-    pub confidence_intervals: Vec<(f64, f64)>,
-}
-
-#[derive(Debug, Clone)]
-pub struct BottleneckAnalysis {
-    pub detected_bottlenecks: Vec<Bottleneck>,
-    pub analysis_timestamp: Instant,
-    pub total_overhead: f64,
-    pub optimization_potential: f64,
-}
-
-#[derive(Debug, Clone)]
-pub struct Bottleneck {
-    pub component: String,
-    pub severity: BottleneckSeverity,
-    pub impact_percentage: f64,
-    pub description: String,
-    pub recommendations: Vec<String>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum BottleneckSeverity {
-    Low,
-    Medium,
-    High,
-    Critical,
-}
-
-#[derive(Debug, Clone)]
-pub struct PerformanceComparison {
-    pub baseline_name: String,
-    pub comparison_name: String,
-    pub metrics_comparison: Vec<MetricComparison>,
-    pub overall_performance_score: f64,
-    pub recommendation: ComparisonRecommendation,
-}
-
-#[derive(Debug, Clone)]
-pub struct MetricComparison {
-    pub metric_name: String,
-    pub baseline_value: f64,
-    pub comparison_value: f64,
-    pub improvement_percentage: f64,
-    pub statistical_significance: f64,
-    pub effect_size: f64,
-}
-
-#[derive(Debug, Clone)]
-pub enum ComparisonRecommendation {
-    Prefer { algorithm: String, conditions: Vec<String> },
-    Equivalent { note: String },
-    Conditional { primary: String, secondary: String, condition: String },
-    Inconclusive { reason: String },
-}
-
-#[derive(Debug, Clone)]
-pub struct RealTimeMonitoringData {
-    pub timestamp: Instant,
-    pub cpu_usage: f64,
-    pub memory_usage: f64,
-    pub gpu_usage: Option<f64>,
-    pub network_io: NetworkIO,
-    pub disk_io: DiskIO,
-    pub quantum_metrics: QuantumMetrics,
-    pub custom_metrics: HashMap<String, f64>,
-}
-
-#[derive(Debug, Clone)]
-pub struct NetworkIO {
-    pub bytes_sent: u64,
-    pub bytes_received: u64,
-    pub packets_sent: u64,
-    pub packets_received: u64,
-}
-
-#[derive(Debug, Clone)]
-pub struct DiskIO {
-    pub bytes_read: u64,
-    pub bytes_written: u64,
-    pub read_operations: u64,
-    pub write_operations: u64,
-}
-
-#[derive(Debug, Clone)]
-pub struct QuantumMetrics {
-    pub coherence_time: f64,
-    pub gate_fidelity: f64,
-    pub readout_fidelity: f64,
-    pub cross_talk: f64,
-}
-
-#[derive(Debug, Clone)]
-pub struct PerformancePrediction {
-    pub algorithm_name: String,
-    pub problem_parameters: ProblemParameters,
-    pub predicted_metrics: Vec<PredictedMetric>,
-    pub model_accuracy: f64,
-    pub prediction_timestamp: Instant,
-}
-
-#[derive(Debug, Clone)]
-pub struct ProblemParameters {
-    pub problem_size: usize,
-    pub problem_type: String,
-    pub sparsity: f64,
-    pub constraint_density: f64,
-    pub custom_parameters: HashMap<String, String>,
-}
-
-#[derive(Debug, Clone)]
-pub struct PredictedMetric {
-    pub metric_name: String,
-    pub predicted_value: f64,
-    pub confidence_interval: (f64, f64),
-    pub prediction_confidence: f64,
-}
-
-pub trait PerformanceMonitor {}
-pub trait PerformancePredictionModel {}
-pub struct MetricsDatabase;
-pub struct BenchmarkingSuite;
-pub struct AnalysisResults;

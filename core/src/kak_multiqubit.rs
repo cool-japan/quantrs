@@ -5,7 +5,7 @@
 //! decomposition techniques.
 
 use crate::{
-    cartan::{CartanCoefficients, CartanDecomposer, CartanDecomposition},
+    cartan::{CartanDecomposer, CartanDecomposition},
     error::{QuantRS2Error, QuantRS2Result},
     gate::{multi::*, single::*, GateOp},
     matrix_ops::{DenseMatrix, QuantumMatrix},
@@ -805,7 +805,7 @@ mod tests {
                                 basis: "ZYZ".to_string(),
                             },
                         ),
-                        interaction: CartanCoefficients::new(0.0, 0.0, 0.0),
+                        interaction: crate::prelude::CartanCoefficients::new(0.0, 0.0, 0.0),
                         global_phase: 0.0,
                     }),
                 },

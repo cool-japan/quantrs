@@ -5,14 +5,10 @@
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use crate::gate::{multi::*, single::*, GateOp};
-use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
-use crate::qubit::QubitId;
 use crate::synthesis::{identify_gate, synthesize_unitary};
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
-use std::collections::HashMap;
+use ndarray::Array2;
 
-use super::{gates_are_disjoint, OptimizationPass};
+use super::OptimizationPass;
 
 /// Gate fusion optimization pass
 pub struct GateFusion {
@@ -438,6 +434,7 @@ impl OptimizationPass for CliffordFusion {
 mod tests {
     use super::*;
     use crate::gate::single::{Hadamard, Phase, PhaseDagger, TDagger, T};
+    use crate::prelude::QubitId;
 
     #[test]
     fn test_rotation_fusion() {

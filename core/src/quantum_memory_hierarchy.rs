@@ -3,10 +3,8 @@
 //! Revolutionary multi-level quantum memory system with coherence-aware caching,
 //! quantum state persistence, and advanced memory optimization algorithms.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
-use crate::gate::GateOp;
-use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
+
 use crate::qubit::QubitId;
 use num_complex::Complex64;
 use ndarray::{Array1, Array2};
@@ -573,12 +571,12 @@ impl L1QuantumCache {
         }
     }
 
-    pub fn lookup(&self, address: &QuantumAddress) -> Result<Option<QuantumStateData>, QuantRS2Error> {
+    pub fn lookup(&self, _address: &QuantumAddress) -> Result<Option<QuantumStateData>, QuantRS2Error> {
         // Simplified lookup implementation
         Ok(None)
     }
 
-    pub fn insert(&mut self, address: &QuantumAddress, data: QuantumStateData) -> Result<(), QuantRS2Error> {
+    pub fn insert(&mut self, __address: &QuantumAddress, _data: QuantumStateData) -> Result<(), QuantRS2Error> {
         // Simplified insert implementation
         Ok(())
     }
@@ -599,11 +597,11 @@ impl L2QuantumCache {
         }
     }
 
-    pub fn lookup(&self, address: &QuantumAddress) -> Result<Option<QuantumStateData>, QuantRS2Error> {
+    pub fn lookup(&self, _address: &QuantumAddress) -> Result<Option<QuantumStateData>, QuantRS2Error> {
         Ok(None)
     }
 
-    pub fn insert(&mut self, address: &QuantumAddress, data: QuantumStateData) -> Result<(), QuantRS2Error> {
+    pub fn insert(&mut self, _address: &QuantumAddress, _data: QuantumStateData) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 }
@@ -623,11 +621,11 @@ impl L3QuantumCache {
         }
     }
 
-    pub fn lookup(&self, address: &QuantumAddress) -> Result<Option<QuantumStateData>, QuantRS2Error> {
+    pub fn lookup(&self, _address: &QuantumAddress) -> Result<Option<QuantumStateData>, QuantRS2Error> {
         Ok(None)
     }
 
-    pub fn insert(&mut self, address: &QuantumAddress, data: QuantumStateData) -> Result<(), QuantRS2Error> {
+    pub fn insert(&mut self, _address: &QuantumAddress, _data: QuantumStateData) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 }
@@ -645,7 +643,7 @@ impl QuantumMainMemory {
         }
     }
 
-    pub fn read_quantum_state(&self, address: &QuantumAddress) -> Result<QuantumStateData, QuantRS2Error> {
+    pub fn read_quantum_state(&self, _address: &QuantumAddress) -> Result<QuantumStateData, QuantRS2Error> {
         Ok(QuantumStateData {
             state_id: QuantumMemoryHierarchy::generate_id(),
             amplitudes: Array1::from(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]),

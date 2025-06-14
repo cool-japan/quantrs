@@ -22,6 +22,7 @@ pub mod backend_traits;
 pub mod benchmarking;
 pub mod calibration;
 pub mod characterization;
+pub mod circuit_integration;
 pub mod circuit_migration;
 pub mod cloud;
 // pub mod cost_optimization;
@@ -36,7 +37,7 @@ pub mod ibm;
 pub mod ibm_device;
 pub mod integrated_device_manager;
 pub mod job_scheduling;
-pub mod mapping_scirc2;
+// pub mod mapping_scirc2; // Temporarily disabled due to scirs2-graph API changes
 pub mod mid_circuit_measurements;
 pub mod ml_optimization;
 pub mod noise_model;
@@ -47,6 +48,7 @@ pub mod parametric;
 pub mod performance_analytics_dashboard;
 pub mod performance_dashboard;
 pub mod process_tomography;
+pub mod provider_capability_discovery;
 pub mod pulse;
 pub mod qec;
 pub mod quantum_algorithm_marketplace;
@@ -55,6 +57,7 @@ pub mod quantum_system_security;
 pub mod routing;
 pub mod routing_advanced;
 pub mod security;
+pub mod telemetry;
 pub mod topology;
 pub mod topology_analysis;
 pub mod translation;
@@ -62,6 +65,7 @@ pub mod transpiler;
 pub mod unified_benchmarking;
 pub mod vqa_support;
 pub mod zero_noise_extrapolation;
+pub mod quantum_ml_integration;
 
 // AWS authentication module
 #[cfg(feature = "aws")]
@@ -121,6 +125,15 @@ pub enum DeviceError {
 
     #[error("Not implemented: {0}")]
     NotImplemented(String),
+
+    #[error("Invalid mapping: {0}")]
+    InvalidMapping(String),
+
+    #[error("Graph analysis error: {0}")]
+    GraphAnalysisError(String),
+
+    #[error("Device not found: {0}")]
+    DeviceNotFound(String),
 }
 
 /// Convert QuantRS2Error to DeviceError
@@ -435,6 +448,12 @@ pub mod prelude {
         CrosstalkCharacterization as CharacterizationCrosstalk, DriftTracker, ProcessTomography,
         RandomizedBenchmarking, StateTomography,
     };
+    pub use crate::circuit_integration::{
+        UniversalCircuitInterface, IntegrationConfig, SelectionCriteria, OptimizationSettings,
+        AnalyticsConfig, CacheConfig, PlatformAdapter, PlatformConfig, ExecutionResult,
+        ExecutionMetadata, PerformanceMetrics as CircuitPerformanceMetrics, CostInfo, OptimizedCircuit, CircuitVariant,
+        PlatformMetrics, ExecutionAnalytics, create_universal_interface, create_high_performance_config,
+    };
     pub use crate::cloud::{
         allocation::{AllocationAlgorithm, ResourceOptimizationObjective},
         cost_management::CostOptimizationStrategy,
@@ -514,10 +533,11 @@ pub mod prelude {
         QuantumJob, QuantumJobScheduler, QueueAnalytics, ResourceRequirements, SchedulerEvent,
         SchedulingParams, SchedulingStrategy,
     };
-    pub use crate::mapping_scirc2::{
-        InitialMappingAlgorithm, OptimizationObjective as MappingObjective, SciRS2MappingConfig,
-        SciRS2MappingResult, SciRS2QubitMapper, SciRS2RoutingAlgorithm,
-    };
+    // Temporarily disabled due to scirs2-graph API changes
+    // pub use crate::mapping_scirc2::{
+    //     InitialMappingAlgorithm, OptimizationObjective as MappingObjective, SciRS2MappingConfig,
+    //     SciRS2MappingResult, SciRS2QubitMapper, SciRS2RoutingAlgorithm,
+    // };
     pub use crate::mid_circuit_measurements::{
         ExecutionStats, HardwareOptimizations, MeasurementEvent, MidCircuitCapabilities,
         MidCircuitConfig, MidCircuitDeviceExecutor, MidCircuitExecutionResult, MidCircuitExecutor,
@@ -541,6 +561,13 @@ pub mod prelude {
         ChannelType, MeasLevel, MeasurementData, PulseBackend, PulseBuilder, PulseCalibration,
         PulseInstruction, PulseLibrary, PulseResult, PulseSchedule, PulseShape, PulseTemplates,
     };
+    pub use crate::provider_capability_discovery::{
+        ProviderCapabilityDiscoverySystem, DiscoveryConfig, DiscoveryStrategy, VerificationConfig,
+        FilteringConfig, CapabilityRequirements, ProviderInfo, ProviderCapabilities, CachedCapability,
+        DiscoveryEvent, DiscoveryCommand, ComparisonResults, ProviderRanking, create_provider_discovery_system,
+        create_high_performance_discovery_config, VerificationStatus, ReportType as DiscoveryReportType,
+        ProviderType, ConnectivityRequirement, TopologyType, ProviderFeature,
+    };
     pub use crate::qec::{
         AdaptiveQECConfig, ErrorMitigationConfig, QECCodeType, QECConfig, QECMLConfig,
         QECMonitoringConfig, QECOptimizationConfig, QECStrategy, SyndromeDetectionConfig,
@@ -561,6 +588,14 @@ pub mod prelude {
     pub use crate::routing_advanced::{
         AdvancedQubitRouter, AdvancedRoutingResult, AdvancedRoutingStrategy, RoutingMetrics,
         SwapOperation,
+    };
+    pub use crate::telemetry::{
+        QuantumTelemetrySystem, TelemetryConfig, TelemetryEvent, TelemetryCommand, SystemStatus,
+        Metric, MetricType, MetricCollector, RealTimeMonitor, TelemetryAnalytics, AlertManager,
+        TelemetryStorage, Alert, AlertSeverity, AlertState, SystemHealth, TelemetryReport,
+        ReportType, create_telemetry_system, create_high_performance_telemetry_config,
+        MonitoringConfig, AnalyticsConfig as TelemetryAnalyticsConfig, AlertConfig, ExportConfig, RetentionConfig,
+        MetricConfig, HealthStatus, AnomalyDetector, AnomalyResult, AnomalyType as TelemetryAnomalyType, TrendDirection,
     };
     pub use crate::topology_analysis::{
         create_standard_topology, AllocationStrategy, HardwareMetrics, TopologyAnalysis,
@@ -592,5 +627,14 @@ pub mod prelude {
     pub use crate::zero_noise_extrapolation::{
         CircuitFolder, ExtrapolationFitter, ExtrapolationMethod, NoiseScalingMethod, Observable,
         ZNECapable, ZNEConfig, ZNEExecutor, ZNEResult,
+    };
+    pub use crate::quantum_ml_integration::{
+        QuantumMLIntegrationHub, QMLIntegrationConfig, QMLModel, QMLModelType, QMLArchitecture,
+        QMLTrainingConfig, QMLOptimizationConfig, QMLResourceConfig, QMLMonitoringConfig,
+        QMLDataset, QMLDataBatch, QMLTrainingResult, QMLInferenceResult, MLFramework,
+        QuantumNeuralNetworkExecutor, HybridMLOptimizer, QMLTrainingOrchestrator,
+        MLPerformanceAnalytics, QMLDataPipeline, FrameworkBridge, create_qml_integration_hub,
+        create_high_performance_qml_config, OptimizerType, GradientMethod as QMLGradientMethod, LossFunction,
+        TrainingPriority, QMLResourceRequirements, QuantumEncodingType, AnomalyType,
     };
 }

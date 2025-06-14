@@ -6,9 +6,9 @@
 use quantrs2_device::{
     process_tomography::{
         SciRS2ProcessTomographer, SciRS2ProcessTomographyConfig, ReconstructionMethod,
-        ProcessMonitor, ProcessMonitoringConfig, ProcessAlertThresholds,
-        MLProcessReconstructor, MLModelType, TrainingDataPoint, ExperimentalConditions,
-        ProcessTomographyExecutor, ProcessMeasurementResult, ExperimentalData
+        ProcessMonitoringResult, ProcessAnomalyDetector, ProcessDriftDetector,
+        ExperimentalConditions, ProcessTomographyExecutor, ExperimentalData,
+        AnomalyDetectionAlgorithm, DriftDetectionMethod
     },
     calibration::CalibrationManager,
     DeviceResult, DeviceError,

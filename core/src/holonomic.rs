@@ -3,7 +3,6 @@
 //! This module implements holonomic quantum computation using non-Abelian geometric phases
 //! for fault-tolerant quantum computation with adiabatic holonomy implementation.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
 use crate::qubit::QubitId;

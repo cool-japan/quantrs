@@ -5,10 +5,8 @@
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
-    gate::GateOp,
-    qubit::QubitId,
 };
-use ndarray::{Array1, Array2, Array3, Array4};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;

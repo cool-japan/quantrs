@@ -4,6 +4,7 @@
 //! operations using SIMD, parallelization, and algorithmic improvements.
 
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
@@ -149,17 +150,41 @@ impl OptimizedQUBOEvaluator {
         let n = x.len();
 
         // Linear terms in parallel
-        let linear_energy: f64 = (0..n)
-            .into_par_iter()
-            .filter(|&i| x[i] == 1)
-            .map(|i| self.cache[i])
-            .sum();
+        let linear_energy: f64 = {
+            #[cfg(feature = "parallel")]
+            {
+                (0..n)
+                    .into_par_iter()
+                    .filter(|&i| x[i] == 1)
+                    .map(|i| self.cache[i])
+                    .sum()
+            }
+            #[cfg(not(feature = "parallel"))]
+            {
+                (0..n)
+                    .into_iter()
+                    .filter(|&i| x[i] == 1)
+                    .map(|i| self.cache[i])
+                    .sum()
+            }
+        };
 
         // Quadratic terms in parallel (block-wise)
         let block_size = (n as f64).sqrt() as usize + 1;
-        let quadratic_energy: f64 = (0..n)
-            .into_par_iter()
-            .step_by(block_size)
+        let quadratic_energy: f64 = {
+            #[cfg(feature = "parallel")]
+            {
+                (0..n)
+                    .into_par_iter()
+                    .step_by(block_size)
+            }
+            #[cfg(not(feature = "parallel"))]
+            {
+                (0..n)
+                    .into_iter()
+                    .step_by(block_size)
+            }
+        }
             .map(|block_start| {
                 let block_end = (block_start + block_size).min(n);
                 let mut local_sum = 0.0;
@@ -335,13 +360,28 @@ impl OptimizedSA {
         let n = current.len();
 
         // Evaluate all possible moves in parallel
-        let deltas: Vec<_> = (0..n)
-            .into_par_iter()
-            .map(|bit| {
-                let delta = self.evaluator.delta_energy(&current.view(), bit);
-                (bit, delta)
-            })
-            .collect();
+        let deltas: Vec<_> = {
+            #[cfg(feature = "parallel")]
+            {
+                (0..n)
+                    .into_par_iter()
+                    .map(|bit| {
+                        let delta = self.evaluator.delta_energy(&current.view(), bit);
+                        (bit, delta)
+                    })
+                    .collect()
+            }
+            #[cfg(not(feature = "parallel"))]
+            {
+                (0..n)
+                    .into_iter()
+                    .map(|bit| {
+                        let delta = self.evaluator.delta_energy(&current.view(), bit);
+                        (bit, delta)
+                    })
+                    .collect()
+            }
+        };
 
         // Select moves to accept
         let mut accepted = Vec::new();

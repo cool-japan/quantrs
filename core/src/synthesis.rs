@@ -7,14 +7,13 @@
 //! - General n-qubit synthesis using Cosine-Sine decomposition
 
 use crate::cartan::{CartanDecomposer, CartanDecomposition};
-use crate::controlled::{make_controlled, ControlledGate};
+// use crate::controlled::{make_controlled, ControlledGate};
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use crate::gate::{multi::CNOT, single::*, GateOp};
+use crate::gate::{single::*, GateOp};
 use crate::matrix_ops::{matrices_approx_equal, DenseMatrix, QuantumMatrix};
 use crate::qubit::QubitId;
-use ndarray::{Array1, Array2, ArrayView2};
+use ndarray::{Array2, ArrayView2};
 use num_complex::Complex64;
-use scirs2_linalg::{det, eig, svd};
 use std::f64::consts::PI;
 
 /// Result of single-qubit decomposition

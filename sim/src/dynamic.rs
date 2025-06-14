@@ -470,7 +470,7 @@ impl DynamicCircuit {
     #[cfg(feature = "gpu")]
     pub fn run_gpu(&self) -> QuantRS2Result<DynamicResult> {
         // Try to create the GPU simulator
-        let gpu_simulator = match GpuStateVectorSimulator::new_blocking() {
+        let mut gpu_simulator = match GpuStateVectorSimulator::new_blocking() {
             Ok(sim) => sim,
             Err(e) => {
                 return Err(QuantRS2Error::BackendExecutionFailed(format!(

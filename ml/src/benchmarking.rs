@@ -37,6 +37,8 @@ pub struct BenchmarkConfig {
     pub analyze_convergence: bool,
     /// Statistical confidence level
     pub confidence_level: f64,
+    /// Output directory for benchmark results
+    pub output_directory: String,
 }
 
 impl Default for BenchmarkConfig {
@@ -48,6 +50,7 @@ impl Default for BenchmarkConfig {
             profile_memory: true,
             analyze_convergence: true,
             confidence_level: 0.95,
+            output_directory: "/tmp/quantum_ml_benchmarks".to_string(),
         }
     }
 }

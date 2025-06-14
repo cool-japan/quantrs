@@ -3,13 +3,11 @@
 //! Universal hardware-agnostic interface for quantum devices with
 //! adaptive middleware and cross-platform quantum operation optimization.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
-use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
 use crate::qubit::QubitId;
 use num_complex::Complex64;
-use ndarray::{Array1, Array2, Array3};
+use ndarray::Array2;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, Mutex};
 use std::time::{Duration, Instant, SystemTime};

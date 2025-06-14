@@ -37,6 +37,7 @@ broadcast = "0.1"
 chrono = { workspace = true, optional = true }
 async-trait = { workspace = true, optional = true }
 uuid = { version = "1.10.0", features = ["v4"], optional = true }
+url = { version = "2.5.0", features = ["serde"] }
 
 # For AWS authentication
 hmac = { workspace = true, optional = true }

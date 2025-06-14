@@ -4,14 +4,14 @@
 //! optimized for natural language processing tasks such as text classification,
 //! sentiment analysis, and language modeling.
 
-use super::{EncodingStrategy, EntanglementPattern, Parameter, QMLLayer};
+use super::{Parameter, QMLLayer};
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::{single::*, multi::*, GateOp},
     parametric::{ParametricRotationX, ParametricRotationY, ParametricRotationZ},
     qubit::QubitId,
 };
-use ndarray::{Array1, Array2, Array3};
+use ndarray::Array1;
 use num_complex::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;

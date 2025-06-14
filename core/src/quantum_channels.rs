@@ -5,13 +5,10 @@
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
-    matrix_ops::{partial_trace, tensor_product_many, DenseMatrix, QuantumMatrix},
-    qubit::QubitId,
+    matrix_ops::{DenseMatrix, QuantumMatrix},
 };
-use ndarray::{s, Array2, Array4, Axis};
+use ndarray::{s, Array2};
 use num_complex::Complex;
-use rustc_hash::FxHashMap;
-use std::f64::consts::PI;
 
 /// A quantum channel represented in various forms
 #[derive(Debug, Clone)]

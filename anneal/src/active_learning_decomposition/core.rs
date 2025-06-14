@@ -76,7 +76,7 @@ impl ActiveLearningDecomposer {
     }
 
     /// Analyze problem structure and characteristics
-    fn analyze_problem(&mut self, problem: &IsingModel) -> Result<ProblemAnalysis, String> {
+    pub fn analyze_problem(&mut self, problem: &IsingModel) -> Result<ProblemAnalysis, String> {
         // Calculate graph metrics
         let graph_metrics = self
             .problem_analyzer
@@ -118,7 +118,7 @@ impl ActiveLearningDecomposer {
     }
 
     /// Extract problem features for learning
-    fn extract_problem_features(&self, problem: &IsingModel) -> Result<Array1<f64>, String> {
+    pub fn extract_problem_features(&self, problem: &IsingModel) -> Result<Array1<f64>, String> {
         let mut features = Vec::new();
 
         // Basic features
@@ -426,7 +426,7 @@ impl ActiveLearningDecomposer {
     }
 
     /// Create subproblem from vertex subset
-    fn create_subproblem(
+    pub fn create_subproblem(
         &self,
         problem: &IsingModel,
         vertices: &[usize],
@@ -489,7 +489,7 @@ impl ActiveLearningDecomposer {
     }
 
     /// Validate decomposition quality
-    fn validate_decomposition_quality(
+    pub fn validate_decomposition_quality(
         &self,
         subproblems: &[Subproblem],
         original_problem: &IsingModel,

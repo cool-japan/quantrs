@@ -1,0 +1,54 @@
+# Testing Environment Configuration
+
+environment: testing
+debug: true
+secret_key: test-secret-key
+
+database:
+  host: localhost
+  port: 5432
+  database: quantrs2_test
+  username: quantrs2_test
+  max_connections: 5
+  connection_timeout: 10
+
+quantum_backends:
+  simulation:
+    provider: simulation
+    max_jobs: 1
+    timeout_seconds: 30
+    retry_attempts: 1
+    enable_caching: false  # Disable caching for consistent tests
+
+security:
+  session_timeout: 1800  # 30 minutes
+  max_login_attempts: 5
+  enable_2fa: false
+  allowed_origins:
+    - localhost
+    - 127.0.0.1
+  rate_limit_requests: 1000  # Higher limit for tests
+  rate_limit_window: 60
+
+performance:
+  max_circuit_qubits: 15  # Small for fast tests
+  simulation_memory_limit: 2048
+  max_concurrent_jobs: 1
+  circuit_cache_size: 50
+  result_cache_ttl: 300  # 5 minutes
+  enable_gpu: false
+
+logging:
+  level: DEBUG
+  log_to_console: true
+  enable_structured_logging: false  # Simpler logs for tests
+
+monitoring:
+  enable_metrics: false  # Disable to avoid port conflicts
+  enable_health_checks: false
+  enable_tracing: false
+
+custom:
+  test_mode: true
+  fast_simulation: true
+  mock_backends: true

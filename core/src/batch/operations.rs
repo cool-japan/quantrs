@@ -88,13 +88,15 @@ pub fn apply_two_qubit_gate_batch(
             .axis_iter_mut(Axis(0))
             .into_par_iter()
             .try_for_each(|mut state_row| -> QuantRS2Result<()> {
+                let mut state = state_row.to_owned();
                 apply_two_qubit_to_state(
-                    &mut state_row.to_owned(),
+                    &mut state,
                     gate_matrix,
                     control_idx,
                     target_idx,
                     n_qubits,
                 )?;
+                state_row.assign(&state);
                 Ok(())
             })?;
     } else {

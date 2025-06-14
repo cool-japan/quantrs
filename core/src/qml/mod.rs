@@ -12,13 +12,12 @@ pub mod reinforcement_learning;
 pub mod training;
 
 use crate::{
-    error::{QuantRS2Error, QuantRS2Result},
+    error::{QuantRS2Result, QuantRS2Error},
     gate::GateOp,
     qubit::QubitId,
 };
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use std::collections::HashMap;
 
 // Re-export Parameter from layers module
 pub use layers::Parameter;

@@ -5,25 +5,17 @@
 //! quantum advantage in generative modeling tasks.
 
 use crate::{
-    error::{QuantRS2Error, QuantRS2Result},
+    error::QuantRS2Result,
     gate::GateOp,
     gate::single::*,
     gate::multi::*,
-    qml::{
-        layers::{RotationLayer, EntanglingLayer, QuantumPoolingLayer},
-        training::{QMLTrainer, TrainingConfig, LossFunction, Optimizer},
-        QMLCircuit, QMLConfig, QMLLayer, EncodingStrategy, EntanglementPattern,
-    },
-    variational::{VariationalCircuit, VariationalGate, VariationalOptimizer},
+    qml::QMLLayer,
+    variational::VariationalOptimizer,
     qubit::QubitId,
 };
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
-use num_complex::Complex64;
+use ndarray::{Array1, Array2, Axis};
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::{Arc, RwLock},
-};
+use std::collections::VecDeque;
 use rand::{Rng, SeedableRng, rngs::StdRng};
 
 /// Configuration for Quantum Generative Adversarial Networks
@@ -286,7 +278,7 @@ impl QGAN {
         let mut batch = Array2::zeros((batch_size, real_data.ncols()));
         
         for i in 0..batch_size {
-            let idx = self.rng.gen_range(0..num_samples);
+            let idx = self.rng.random_range(0..num_samples);
             batch.row_mut(i).assign(&real_data.row(idx));
         }
         
@@ -313,12 +305,12 @@ impl QGAN {
         match self.config.noise_type {
             NoiseType::Gaussian => {
                 for i in 0..self.config.latent_qubits {
-                    noise[i] = self.rng.gen::<f64>() * 2.0 - 1.0; // Normal-like distribution
+                    noise[i] = self.rng.random::<f64>() * 2.0 - 1.0; // Normal-like distribution
                 }
             },
             NoiseType::Uniform => {
                 for i in 0..self.config.latent_qubits {
-                    noise[i] = self.rng.gen::<f64>() * 2.0 * std::f64::consts::PI - std::f64::consts::PI;
+                    noise[i] = self.rng.random::<f64>() * 2.0 * std::f64::consts::PI - std::f64::consts::PI;
                 }
             },
             NoiseType::QuantumSuperposition => {
@@ -329,7 +321,7 @@ impl QGAN {
             },
             NoiseType::BasisStates => {
                 // Random computational basis state
-                let state = self.rng.gen_range(0..(1 << self.config.latent_qubits));
+                let state = self.rng.random_range(0..(1 << self.config.latent_qubits));
                 for i in 0..self.config.latent_qubits {
                     noise[i] = if (state >> i) & 1 == 1 { std::f64::consts::PI } else { 0.0 };
                 }
@@ -434,7 +426,7 @@ impl QuantumGenerator {
         };
         
         for param in parameters.iter_mut() {
-            *param = rng.gen_range(-std::f64::consts::PI..std::f64::consts::PI);
+            *param = rng.random_range(-std::f64::consts::PI..std::f64::consts::PI);
         }
         
         let optimizer = VariationalOptimizer::new(0.01, 0.9);
@@ -524,7 +516,7 @@ impl QuantumDiscriminator {
         };
         
         for param in parameters.iter_mut() {
-            *param = rng.gen_range(-std::f64::consts::PI..std::f64::consts::PI);
+            *param = rng.random_range(-std::f64::consts::PI..std::f64::consts::PI);
         }
         
         let optimizer = VariationalOptimizer::new(0.01, 0.9);

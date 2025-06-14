@@ -13,8 +13,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex, RwLock};
-use std::thread;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime};
 
 use quantrs2_circuit::{optimization::analysis::CircuitAnalyzer, prelude::Circuit};
 use quantrs2_core::{
@@ -468,6 +467,34 @@ pub struct SciRS2SchedulingParams {
     pub feature_params: FeatureParams,
 }
 
+impl Default for SciRS2SchedulingParams {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            objective_weights: [
+                ("throughput".to_string(), 0.25),
+                ("fairness".to_string(), 0.25),
+                ("utilization".to_string(), 0.2),
+                ("cost".to_string(), 0.15),
+                ("energy".to_string(), 0.1),
+                ("sla_compliance".to_string(), 0.05),
+            ]
+            .into_iter()
+            .collect(),
+            learning_window: Duration::from_secs(86400), // 24 hours
+            optimization_frequency: Duration::from_secs(180), // 3 minutes
+            model_params: HashMap::new(),
+            ml_algorithm: MLAlgorithm::EnsembleMethod,
+            multi_objective_weights: MultiObjectiveWeights::default(),
+            rl_params: RLParameters::default(),
+            ga_params: GAParameters::default(),
+            enable_prediction: true,
+            retrain_frequency: Duration::from_secs(3600), // 1 hour
+            feature_params: FeatureParams::default(),
+        }
+    }
+}
+
 impl Default for SchedulingParams {
     fn default() -> Self {
         Self {
@@ -478,29 +505,7 @@ impl Default for SchedulingParams {
             fair_share_weights: HashMap::new(),
             backfill_threshold: Duration::from_secs(300),
             load_balance_factor: 0.8,
-            scirs2_params: SciRS2SchedulingParams {
-                enabled: true,
-                objective_weights: [
-                    ("throughput".to_string(), 0.25),
-                    ("fairness".to_string(), 0.25),
-                    ("utilization".to_string(), 0.2),
-                    ("cost".to_string(), 0.15),
-                    ("energy".to_string(), 0.1),
-                    ("sla_compliance".to_string(), 0.05),
-                ]
-                .into_iter()
-                .collect(),
-                learning_window: Duration::from_secs(86400), // 24 hours
-                optimization_frequency: Duration::from_secs(180), // 3 minutes
-                model_params: HashMap::new(),
-                ml_algorithm: MLAlgorithm::EnsembleMethod,
-                multi_objective_weights: MultiObjectiveWeights::default(),
-                rl_params: RLParameters::default(),
-                ga_params: GAParameters::default(),
-                enable_prediction: true,
-                retrain_frequency: Duration::from_secs(3600), // 1 hour
-                feature_params: FeatureParams::default(),
-            },
+            scirs2_params: SciRS2SchedulingParams::default(),
         }
     }
 }

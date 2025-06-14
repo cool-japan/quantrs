@@ -518,7 +518,7 @@ pub enum GateType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::gate::{multi::*, single::*};
+    use crate::gate::GateOp;
     use std::f64::consts::PI;
 
     #[test]

@@ -606,6 +606,21 @@ impl HardwareTopology {
         }
     }
 
+    /// Get shortest path distance between two qubits
+    pub fn shortest_path_distance(&self, q1: usize, q2: usize) -> Option<f64> {
+        // Find node indices for these qubits
+        let node1 = self.connectivity
+            .node_indices()
+            .find(|&n| self.connectivity[n] == q1 as u32)?;
+        let node2 = self.connectivity
+            .node_indices()
+            .find(|&n| self.connectivity[n] == q2 as u32)?;
+
+        // Use Dijkstra to find shortest path
+        let distances = dijkstra(&self.connectivity, node1, Some(node2), |e| *e.weight());
+        distances.get(&node2).cloned()
+    }
+
     /// Simple connectivity analysis
     pub fn analyze_connectivity(&self) -> ConnectivityAnalysis {
         let num_edges = self.connectivity.edge_count();

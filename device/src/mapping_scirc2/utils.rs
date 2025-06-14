@@ -122,11 +122,13 @@ pub fn calculate_mapping_quality(
     let mut edge_count = 0;
     
     for edge in logical_graph.edges() {
-        let source = logical_graph.node_weight(edge.source).unwrap();
-        let target = logical_graph.node_weight(edge.target).unwrap();
+        // Note: node_weight method not available in current scirs2-graph version
+        // Using edge source/target indices as usize directly
+        let source = edge.source as usize;
+        let target = edge.target as usize;
         
         if let (Some(&phys_source), Some(&phys_target)) = 
-            (mapping.get(source), mapping.get(target)) {
+            (mapping.get(&source), mapping.get(&target)) {
             
             // Calculate shortest path distance in physical topology
             let distance = topology.shortest_path_distance(phys_source, phys_target)

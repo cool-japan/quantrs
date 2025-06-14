@@ -9,7 +9,6 @@ use crate::{
     gate::GateOp,
     optimization::{OptimizationPass, OptimizationChain},
     qubit::QubitId,
-    compilation_cache::{CompilationCache, CompiledGate},
 };
 use std::{
     collections::{HashMap, HashSet, VecDeque},

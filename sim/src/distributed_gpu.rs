@@ -1464,7 +1464,7 @@ mod tests {
         assert!(sync_result.is_ok());
         
         let stats = simulator.get_stats();
-        assert!(stats.sync_events >= 0);
+        // sync_events is u32, so always >= 0
         assert!(stats.communication_time_ms >= 0.0);
     }
 
@@ -1481,7 +1481,7 @@ mod tests {
         // Test communication requirement detection
         let requires_comm = simulator.requires_inter_gpu_communication(0, 1);
         // Should be true for most gate configurations that span partitions
-        assert!(requires_comm || !requires_comm); // Either result is valid depending on partitioning
+        // Communication requirement depends on partitioning - both true and false are valid
         
         // Test with same qubit (should not require communication)
         let same_qubit_comm = simulator.requires_inter_gpu_communication(0, 0);

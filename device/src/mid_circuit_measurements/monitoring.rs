@@ -96,10 +96,13 @@ impl Default for PerformanceTrend {
 #[derive(Debug, Clone, Default)]
 pub struct CacheStatistics {
     pub total_entries: usize,
+    pub total_access_count: usize,
     pub hit_rate: f64,
+    pub cache_hit_rate: f64,
     pub miss_rate: f64,
     pub eviction_rate: f64,
     pub memory_usage: f64,
+    pub avg_age: Duration,
 }
 
 /// Performance monitor for tracking measurement execution metrics
@@ -750,7 +753,7 @@ impl OptimizationCache {
     /// Get cache statistics
     pub fn get_cache_stats(&self) -> CacheStatistics {
         let total_entries = self.cache.len();
-        let total_access_count = self.cache.values().map(|c| c.access_count).sum();
+        let total_access_count = self.cache.values().map(|c| c.access_count as usize).sum();
         
         let avg_age = if total_entries > 0 {
             let total_age: Duration = self.cache.values()
@@ -764,9 +767,12 @@ impl OptimizationCache {
         CacheStatistics {
             total_entries,
             total_access_count,
+            hit_rate: 0.8, // Placeholder - would need hit/miss tracking
             cache_hit_rate: 0.8, // Placeholder - would need hit/miss tracking
-            avg_age,
+            miss_rate: 0.2,
+            eviction_rate: 0.1,
             memory_usage: (total_entries * 100) as f64, // Estimated bytes
+            avg_age,
         }
     }
 

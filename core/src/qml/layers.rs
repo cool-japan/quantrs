@@ -9,11 +9,10 @@ use crate::{
     gate::GateOp,
     parametric::{
         ParametricGate, ParametricRotationX, ParametricRotationY, ParametricRotationZ,
-        SymbolicParameter,
     },
     qubit::QubitId,
 };
-use ndarray::{Array1, Array2};
+use ndarray::Array1;
 use num_complex::Complex64;
 use std::f64::consts::PI;
 

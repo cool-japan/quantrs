@@ -1,0 +1,160 @@
+# QuantRS2 Docker Build Ignore File
+# Optimize Docker build context by excluding unnecessary files
+
+# Version control
+.git
+.gitignore
+.gitattributes
+.github
+
+# Documentation
+*.md
+docs/
+README*
+CHANGELOG*
+LICENSE*
+
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+nosetests.xml
+coverage.xml
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+target/
+Cargo.lock
+
+# Test files and data
+tests/
+test_*.py
+*_test.py
+benchmark/
+benchmarks/
+test_data/
+.benchmarks/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.log
+*.pid
+
+# Docker files (don't include Docker stuff in Docker builds)
+docker/
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# CI/CD files
+.travis.yml
+.circleci/
+.github/workflows/
+azure-pipelines.yml
+Jenkinsfile
+
+# IDE and editor files
+*.sublime-*
+*.code-workspace
+.project
+.pydevproject
+
+# OS generated files
+.DS_Store*
+ehthumbs.db
+Icon?
+Thumbs.db
+
+# Package manager files
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Data directories (usually mounted as volumes)
+data/
+results/
+outputs/
+
+# Large files that shouldn't be in containers
+*.tar.gz
+*.zip
+*.rar
+*.7z
+*.iso
+*.dmg
+
+# Secrets and credentials
+secrets/
+credentials/
+*.pem
+*.key
+*.crt
+*.p12
+
+# Local configuration overrides
+local_config.py
+local_settings.py
+
+# Rust specific
+target/
+Cargo.lock
+**/*.rs.bk
+
+# Python wheel files
+*.whl
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Performance profiling results
+*.prof
+*.pyc
+*.pyo
+*.pyd
+__pycache__
+*.prof
+
+# Backup files
+*.bak
+*.backup
+*.old

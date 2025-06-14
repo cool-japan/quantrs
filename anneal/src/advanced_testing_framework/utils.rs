@@ -559,7 +559,7 @@ mod tests {
         ];
         
         let metrics = calculate_test_quality_metrics(&results);
-        assert_eq!(metrics.mean_quality, 0.85);
+        assert!((metrics.mean_quality - 0.85).abs() < 1e-10);
         assert_eq!(metrics.success_rate, 1.0);
         assert_eq!(metrics.min_quality, 0.8);
         assert_eq!(metrics.max_quality, 0.9);
@@ -601,7 +601,7 @@ mod tests {
         
         // Check that biases are zero (Max-Cut characteristic)
         for i in 0..5 {
-            assert_eq!(max_cut.bias(i), 0.0);
+            assert_eq!(max_cut.get_bias(i).unwrap(), 0.0);
         }
     }
     

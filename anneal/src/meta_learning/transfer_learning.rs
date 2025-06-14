@@ -322,7 +322,7 @@ pub struct TransferStatistics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::meta_learning::nas::{
+    use crate::meta_learning::config::{
         ActivationFunction, ConnectionPattern, LayerSpec, LayerType, OptimizationSettings,
         OptimizerType, RegularizationConfig,
     };

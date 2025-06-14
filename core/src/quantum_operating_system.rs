@@ -3,10 +3,9 @@
 //! Revolutionary quantum OS with resource management, process isolation,
 //! quantum memory hierarchy, and distributed quantum process scheduling.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
-use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
+
 use crate::qubit::QubitId;
 use crate::quantum_process_isolation::{IsolationLevel, QuantumSandbox};
 use num_complex::Complex64;

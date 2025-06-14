@@ -488,7 +488,7 @@ impl GpuStateVectorSimulator {
 }
 
 impl Simulator for GpuStateVectorSimulator {
-    fn run<const N: usize>(&self, circuit: &Circuit<N>) -> crate::simulator::SimulatorResult<N> {
+    fn run<const N: usize>(&mut self, circuit: &Circuit<N>) -> crate::simulator::SimulatorResult<N> {
         // We'll extract gate information manually since we're using our own GateType enum
 
         // Skip GPU simulation for small circuits (less than 4 qubits)

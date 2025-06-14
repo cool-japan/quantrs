@@ -3,16 +3,15 @@
 //! Hardware-specific quantum ML gate optimizations with tensor network decompositions
 //! and variational quantum eigenstate preparation.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
 use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
-use crate::qubit::QubitId;
+// use crate::qubit::QubitId;
 use crate::tensor_network::{Tensor, TensorNetwork};
-use crate::variational::{VariationalGate, VariationalOptimizer};
+// use crate::variational::{VariationalGate, VariationalOptimizer};
 use num_complex::Complex64;
 // use scirs2_linalg::{decompose_svd, matrix_exp, qr_decompose};
-use ndarray::{Array1, Array2, Array3, Axis};
+use ndarray::{Array1, Array2, Axis};
 
 // Fallback optimization types when scirs2_optimize is not available
 #[derive(Debug, Clone)]
@@ -54,7 +53,7 @@ where
         iterations: 1,
     })
 }
-use std::collections::HashMap;
+// use std::collections::HashMap;
 use std::f64::consts::PI;
 
 /// Simple SVD decomposition function using eigenvalue decomposition fallback
@@ -587,7 +586,7 @@ impl HardwareEfficientMLLayer {
     /// Initialize parameters randomly
     pub fn initialize_parameters(&mut self, rng: &mut impl rand::Rng) {
         for param in self.parameters.iter_mut() {
-            *param = rng.gen_range(-PI..PI);
+            *param = rng.random_range(-PI..PI);
         }
     }
 
@@ -827,7 +826,7 @@ impl TensorNetworkMLAccelerator {
             return Err(QuantRS2Error::TensorNetwork("Invalid tensor dimensions".to_string()));
         }
         
-        Ok(result.into_shape((sqrt_dim, sqrt_dim))
+        Ok(result.into_shape_with_order((sqrt_dim, sqrt_dim))
             .map_err(|e| QuantRS2Error::TensorNetwork(format!("Shape error: {}", e)))?)
     }
 

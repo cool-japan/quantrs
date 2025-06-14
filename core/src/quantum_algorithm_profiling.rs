@@ -3,7 +3,6 @@
 //! Revolutionary quantum algorithm profiling with deep performance analysis,
 //! bottleneck detection, optimization recommendations, and quantum advantage quantification.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
 use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
@@ -11,7 +10,7 @@ use crate::qubit::QubitId;
 use num_complex::Complex64;
 use ndarray::{Array1, Array2};
 use std::collections::{HashMap, VecDeque, BTreeMap, HashSet, BinaryHeap};
-use std::sync::{Arc, RwLock, Mutex, Condvar};
+use std::sync::{Arc, RwLock, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
@@ -1022,24 +1021,60 @@ impl OptimizationRecommendationEngine {
     }
 }
 
+impl Default for GateOptimizationAdvisor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GateOptimizationAdvisor {
     pub fn new() -> Self { Self }
+}
+
+impl Default for CircuitOptimizationAdvisor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CircuitOptimizationAdvisor {
     pub fn new() -> Self { Self }
 }
 
+impl Default for ResourceOptimizationAdvisor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResourceOptimizationAdvisor {
     pub fn new() -> Self { Self }
+}
+
+impl Default for AlgorithmOptimizationAdvisor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AlgorithmOptimizationAdvisor {
     pub fn new() -> Self { Self }
 }
 
+impl Default for MLOptimizationEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MLOptimizationEngine {
     pub fn new() -> Self { Self }
+}
+
+impl Default for QuantumSpeedupCalculator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl QuantumSpeedupCalculator {
@@ -1054,20 +1089,50 @@ impl QuantumSpeedupCalculator {
     }
 }
 
+impl Default for ComplexityAdvantageCalculator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ComplexityAdvantageCalculator {
     pub fn new() -> Self { Self }
+}
+
+impl Default for ResourceAdvantageCalculator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ResourceAdvantageCalculator {
     pub fn new() -> Self { Self }
 }
 
+impl Default for PracticalAdvantageAssessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PracticalAdvantageAssessor {
     pub fn new() -> Self { Self }
 }
 
+impl Default for AdvantagePredictionEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AdvantagePredictionEngine {
     pub fn new() -> Self { Self }
+}
+
+impl Default for QubitUtilizationMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl QubitUtilizationMonitor {
@@ -1086,24 +1151,60 @@ impl GateUtilizationMonitor {
     pub fn new() -> Self { Self }
 }
 
+impl Default for GateUtilizationMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumMemoryMonitor {
     pub fn new() -> Self { Self }
+}
+
+impl Default for QuantumMemoryMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl QuantumCommunicationMonitor {
     pub fn new() -> Self { Self }
 }
 
+impl Default for QuantumCommunicationMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EnergyConsumptionMonitor {
     pub fn new() -> Self { Self }
+}
+
+impl Default for EnergyConsumptionMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RealTimeResourceMonitor {
     pub fn new() -> Self { Self }
 }
 
+impl Default for RealTimeResourceMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumExecutionTracer {
     pub fn new() -> Self { Self }
+}
+
+impl Default for QuantumExecutionTracer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl QuantumBenchmarkEngine {
@@ -1126,11 +1227,23 @@ impl QuantumBenchmarkEngine {
     }
 }
 
+impl Default for QuantumBenchmarkEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ProfilingDashboard {
     pub fn new() -> Self { Self }
     
     pub fn update_dashboard(&mut self, _report: &QuantumProfilingReport) -> Result<(), QuantRS2Error> {
         Ok(())
+    }
+}
+
+impl Default for ProfilingDashboard {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

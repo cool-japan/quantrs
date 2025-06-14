@@ -2,6 +2,7 @@ use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::gate::{multi, single, GateOp};
 use serde_json::json;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::DeviceError;
 use crate::DeviceResult;
@@ -39,7 +40,7 @@ pub fn circuit_to_braket_ir<const N: usize>(circuit: &Circuit<N>) -> DeviceResul
 }
 
 /// Convert a Quantrs gate to Amazon Braket IR instruction
-fn gate_to_braket_ir(gate: &Box<dyn GateOp>) -> DeviceResult<serde_json::Value> {
+fn gate_to_braket_ir(gate: &Arc<dyn GateOp + Send + Sync>) -> DeviceResult<serde_json::Value> {
     match gate.name() {
         // Single-qubit gates
         "H" => {

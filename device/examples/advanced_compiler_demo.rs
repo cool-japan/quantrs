@@ -9,10 +9,15 @@ use tokio;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
 use quantrs2_device::{
-    compiler_passes::*,
+    compiler_passes::{
+        CompilerConfig, CompilationTarget, BraketProvider, AzureProvider,
+        OptimizationObjective, SciRS2Config, SciRS2OptimizationMethod,
+        AnalysisDepth, CompilationResult, HardwareCompiler
+    },
     backend_traits::BackendCapabilities,
     calibration::create_ideal_calibration,
     topology_analysis::create_standard_topology,
+    prelude::OptimizationLevel,
 };
 
 #[tokio::main]
@@ -147,19 +152,17 @@ async fn demo_scirs2_integration() -> Result<(), Box<dyn std::error::Error>> {
         enable_statistical_analysis: true,
         enable_advanced_optimization: true,
         enable_linalg_optimization: true,
-        optimization_method: SciRS2OptimizationMethod::BayesianOptimization,
+        optimization_method: SciRS2OptimizationMethod::GeneticAlgorithm,
         significance_threshold: 0.01,
     };
     
     let result = compile_for_platform(circuit, config).await?;
     
     println!("🔬 SciRS2 Analysis Results:");
-    if let Some(graph_result) = &result.advanced_metrics.scirs2_results.graph_optimization {
-        println!("  - Graph optimization efficiency: {:.2}%", 
-                 graph_result.routing_efficiency * 100.0);
-        println!("  - Connectivity improvement: {:.2}%", 
-                 graph_result.improvement_score * 100.0);
-    }
+    println!("  - Complexity score: {:.3}", result.advanced_metrics.complexity_score);
+    println!("  - Resource efficiency: {:.2}%", result.advanced_metrics.resource_efficiency * 100.0);
+    println!("  - Error resilience: {:.3}", result.advanced_metrics.error_resilience);
+    println!("  - Quantum volume: {}", result.advanced_metrics.quantum_volume);
     
     println!("  - Statistical analysis: {} passes applied", 
              result.applied_passes.iter()
@@ -205,11 +208,9 @@ async fn demo_performance_analysis() -> Result<(), Box<dyn std::error::Error>> {
                  pass.improvement * 100.0);
     }
     
-    println!("  - Memory efficiency: {:.1}%", 
-             result.advanced_metrics.resource_analysis.memory_footprint as f64 / 1024.0);
+    println!("  - Compatibility score: {:.3}", result.advanced_metrics.compatibility_score);
     
-    println!("  - Parallel efficiency: {:.1}%", 
-             result.advanced_metrics.performance_benchmarks.parallel_efficiency * 100.0);
+    println!("  - Expressivity: {:.3}", result.advanced_metrics.expressivity);
     
     Ok(())
 }
@@ -247,7 +248,7 @@ async fn demo_adaptive_compilation() -> Result<(), Box<dyn std::error::Error>> {
         println!("  - Passes applied: {}", 
                  result.applied_passes.len());
         println!("  - Final fidelity estimate: {:.4}", 
-                 result.predicted_performance.expected_fidelity);
+                 result.predicted_performance.fidelity);
     }
     
     Ok(())
@@ -318,9 +319,9 @@ fn print_compilation_summary(platform: &str, result: &CompilationResult) {
              platform, 
              result.compilation_time.as_millis());
     println!("    - Passes applied: {}", result.applied_passes.len());
-    println!("    - Expected fidelity: {:.4}", result.predicted_performance.expected_fidelity);
-    println!("    - Resource efficiency: {:.1}%", 
-             result.predicted_performance.resource_efficiency * 100.0);
+    println!("    - Expected fidelity: {:.4}", result.predicted_performance.fidelity);
+    println!("    - Success probability: {:.1}%", 
+             result.predicted_performance.success_probability * 100.0);
 }
 
 fn estimate_circuit_depth<const N: usize>(circuit: &Circuit<N>) -> usize {
@@ -338,36 +339,36 @@ fn create_simple_circuit() -> Circuit<3> {
     circuit
 }
 
-fn create_medium_circuit() -> Circuit<5> {
-    let mut circuit = Circuit::<5>::new();
-    for i in 0..5 {
+fn create_medium_circuit() -> Circuit<3> {
+    let mut circuit = Circuit::<3>::new();
+    for i in 0..3 {
         circuit.h(QubitId(i));
     }
-    for i in 0..4 {
+    for i in 0..2 {
         circuit.cnot(QubitId(i), QubitId(i + 1));
     }
-    circuit.cnot(QubitId(4), QubitId(0)); // Add cycle
+    circuit.cnot(QubitId(2), QubitId(0)); // Add cycle
     circuit
 }
 
-fn create_complex_circuit() -> Circuit<8> {
-    let mut circuit = Circuit::<8>::new();
+fn create_complex_circuit() -> Circuit<3> {
+    let mut circuit = Circuit::<3>::new();
     
     // Create complex entanglement pattern
-    for i in 0..8 {
+    for i in 0..3 {
         circuit.h(QubitId(i));
     }
     
     // Create multiple CNOT layers
-    for layer in 0..3 {
-        for i in 0..4 {
-            let target = (i + layer + 1) % 8;
+    for layer in 0..2 {
+        for i in 0..2 {
+            let target = (i + layer + 1) % 3;
             circuit.cnot(QubitId(i), QubitId(target));
         }
     }
     
     // Add some single-qubit rotations
-    for i in 0..8 {
+    for i in 0..3 {
         circuit.z(QubitId(i));
     }
     

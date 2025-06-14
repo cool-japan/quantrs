@@ -20,6 +20,7 @@ use rayon::prelude::*;
 /// This sampler uses simulated annealing to find solutions to
 /// QUBO/HOBO problems. It is a local search method that uses
 /// temperature to control the acceptance of worse solutions.
+#[derive(Clone)]
 pub struct SASampler {
     /// Random number generator seed
     seed: Option<u64>,

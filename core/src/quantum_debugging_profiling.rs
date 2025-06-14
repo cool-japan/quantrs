@@ -3,7 +3,6 @@
 //! Comprehensive debugging and profiling infrastructure for quantum computing,
 //! including circuit analysis, performance monitoring, and error diagnostics.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
 use crate::matrix_ops::{DenseMatrix, QuantumMatrix};

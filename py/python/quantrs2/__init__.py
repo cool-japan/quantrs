@@ -1036,6 +1036,180 @@ try:
 except ImportError:
     pass
 
+# Try to import security modules
+try:
+    from . import security
+except ImportError:
+    pass
+
+# Import security functions (if available)
+try:
+    from .security import (
+        SecretsManager,
+        CredentialStore,
+        InputValidator,
+        ValidationError,
+        AuthenticationManager,
+        AuthorizationManager,
+        SecurityConfig,
+        encrypt_data,
+        decrypt_data,
+        QuantumInputValidator,
+        QuantumValidationConfig,
+        get_quantum_validator,
+        validate_quantum_input
+    )
+except ImportError:
+    pass
+
+# Try to import validated gates module
+try:
+    from . import validated_gates
+except ImportError:
+    pass
+
+# Import validated gates functions (if available)
+try:
+    from .validated_gates import (
+        ValidatedGateFactory,
+        CircuitValidator,
+        validate_circuit,
+        validate_gate_sequence,
+        set_validation_config
+    )
+except ImportError:
+    pass
+
+# Try to import secure QASM module
+try:
+    from . import secure_qasm
+except ImportError:
+    pass
+
+# Import secure QASM functions (if available)
+try:
+    from .secure_qasm import (
+        SecureQasmParser,
+        SecureQasmExporter,
+        SecureQasmConfig,
+        QasmSecurityError,
+        secure_parse_qasm,
+        secure_parse_qasm_file,
+        secure_export_qasm,
+        secure_export_qasm_file
+    )
+except ImportError:
+    pass
+
+# Try to import secure circuit builder module
+try:
+    from . import secure_circuit_builder
+except ImportError:
+    pass
+
+# Import secure circuit builder functions (if available)
+try:
+    from .secure_circuit_builder import (
+        SecureCircuitBuilder,
+        SecureWebCircuitBuilder,
+        SecureBuilderConfig,
+        SecureGateInfo,
+        CircuitBuilderSecurityError,
+        create_secure_builder,
+        create_secure_web_builder
+    )
+except ImportError:
+    pass
+
+# Try to import error handling module
+try:
+    from . import error_handling
+except ImportError:
+    pass
+
+# Import error handling functions (if available)
+try:
+    from .error_handling import (
+        ErrorSeverity,
+        ErrorCategory,
+        RecoveryStrategy,
+        ErrorContext,
+        ErrorDetails,
+        RecoveryConfig,
+        QuantumError,
+        QuantumHardwareError,
+        CircuitCompilationError,
+        SimulationError,
+        ValidationError,
+        SecurityError,
+        ResourceError,
+        ErrorRecoveryManager,
+        quantum_error_handler,
+        quantum_error_context,
+        get_error_manager,
+        configure_error_handling,
+        create_error_context,
+        create_hardware_error,
+        create_compilation_error,
+        create_simulation_error,
+        create_validation_error,
+        create_security_error,
+        create_resource_error
+    )
+except ImportError:
+    pass
+
+# Try to import resilient execution module
+try:
+    from . import resilient_execution
+except ImportError:
+    pass
+
+# Import resilient execution functions (if available)
+try:
+    from .resilient_execution import (
+        ExecutionMode,
+        ExecutionStatus,
+        ExecutionConfig,
+        ExecutionResult,
+        CircuitExecutionEngine,
+        get_execution_engine,
+        execute_circuit_resilient,
+        execute_circuits_batch,
+        execute_circuit_async,
+        configure_resilient_execution
+    )
+except ImportError:
+    pass
+
+# Try to import configuration management module
+try:
+    from . import config_management
+except ImportError:
+    pass
+
+# Import configuration management functions (if available)
+try:
+    from .config_management import (
+        Environment,
+        ConfigFormat,
+        DatabaseConfig,
+        QuantumBackendConfig,
+        SecurityConfig,
+        PerformanceConfig,
+        LoggingConfig,
+        MonitoringConfig,
+        QuantRS2Config,
+        ConfigurationManager,
+        ConfigurationError,
+        get_config_manager,
+        load_config,
+        get_current_config,
+        create_default_configs
+    )
+except ImportError:
+    pass
+
 # Convenience aliases
 Circuit = PyCircuit
 SimulationResult = PySimulationResult

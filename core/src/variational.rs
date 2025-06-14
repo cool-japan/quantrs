@@ -7,14 +7,11 @@
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
-    matrix_ops::{DenseMatrix, QuantumMatrix},
     qubit::QubitId,
-    register::Register,
 };
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 use num_complex::Complex;
 use rustc_hash::FxHashMap;
-use std::any::Any;
 use std::f64::consts::PI;
 use std::sync::Arc;
 
@@ -806,6 +803,7 @@ impl VariationalOptimizer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
 
     #[test]
     fn test_dual_arithmetic() {

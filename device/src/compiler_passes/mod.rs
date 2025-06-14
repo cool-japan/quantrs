@@ -160,8 +160,6 @@ mod tests {
         circuit.cnot(QubitId(1), QubitId(2));
 
         let result = compiler.compile_circuit(&circuit).await.unwrap();
-        
-        assert!(result.compilation_time.as_millis() >= 0);
         assert!(!result.applied_passes.is_empty());
         assert!(!result.optimization_history.is_empty());
         assert!(result.verification_results.equivalence_verified);

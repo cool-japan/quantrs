@@ -6,20 +6,16 @@
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
-    matrix_ops::{matrices_approx_equal, DenseMatrix},
+    matrix_ops::matrices_approx_equal,
     qubit::QubitId,
 };
+use scirs2_optimize::prelude::DifferentialEvolutionOptions;
 use ndarray::{Array2, ArrayView2};
 use num_complex::Complex64;
 use scirs2_linalg::lowrank::{randomized_svd, truncated_svd};
 // Tucker decomposition temporarily disabled due to scirs2-linalg compilation issues
 // use scirs2_linalg::tensor_contraction::tucker::{tucker_decomposition, Tucker};
-use scirs2_optimize::{
-    differential_evolution,
-    error::OptimizeError,
-    global::DifferentialEvolutionOptions,
-    unconstrained::{minimize, Method as OptMethod, Options as OptOptions},
-};
+use scirs2_optimize::differential_evolution;
 use std::any::Any;
 use std::collections::HashMap;
 

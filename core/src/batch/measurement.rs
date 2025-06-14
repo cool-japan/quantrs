@@ -8,7 +8,7 @@ use crate::{
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use rand::prelude::*;
-use rand::{thread_rng, SeedableRng};
+use rand::{rng, SeedableRng, thread_rng};
 use rayon::prelude::*;
 use std::collections::HashMap;
 
@@ -114,7 +114,7 @@ fn measure_single_state(
     let mut rng = if let Some(seed) = config.seed {
         StdRng::seed_from_u64(seed)
     } else {
-        StdRng::from_seed(thread_rng().gen())
+        StdRng::from_seed(rng().random())
     };
 
     let mut outcomes = Vec::with_capacity(qubits_to_measure.len());
@@ -146,7 +146,7 @@ fn measure_qubit(state: &Array1<Complex64>, qubit: QubitId, rng: &mut StdRng) ->
     }
 
     // Perform measurement
-    let outcome = if rng.gen::<f64>() < prob_zero { 0 } else { 1 };
+    let outcome = if rng.random::<f64>() < prob_zero { 0 } else { 1 };
     let probability = if outcome == 0 {
         prob_zero
     } else {

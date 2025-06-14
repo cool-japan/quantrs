@@ -3,10 +3,8 @@
 //! Revolutionary quantum security with advanced process isolation,
 //! quantum state sandboxing, and cryptographic protection mechanisms.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
-use crate::gate::GateOp;
-use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
+
 use crate::qubit::QubitId;
 use num_complex::Complex64;
 use ndarray::{Array1, Array2};

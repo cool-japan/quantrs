@@ -368,7 +368,7 @@ mod tests {
         let config = high_performance_config();
         assert!(config.enable_realtime_processing);
         assert!(config.hardware_optimizations.batch_measurements);
-        assert!(config.analytics_config.enable_statistical_analysis);
+        assert!(config.analytics_config.enable_realtime_stats);
     }
 
     #[test]

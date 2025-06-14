@@ -10,19 +10,16 @@
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
-    qubit::QubitId,
-    register::Register,
-    variational::{DiffMode, VariationalCircuit, VariationalGate},
+    variational::VariationalCircuit,
 };
 use ndarray::{Array1, Array2};
-use num_complex::Complex64;
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 use std::sync::{Arc, Mutex};
 
 // Import SciRS2 optimization
 extern crate scirs2_optimize;
-use scirs2_optimize::unconstrained::{minimize, Method, OptimizeResult, Options};
+use scirs2_optimize::unconstrained::{minimize, Method, Options};
 
 // Import SciRS2 linear algebra for natural gradient
 extern crate scirs2_linalg;

@@ -5,13 +5,12 @@
 
 use super::{natural_gradient, quantum_fisher_information, QMLCircuit};
 use crate::{
-    error::{QuantRS2Error, QuantRS2Result},
-    gpu::{GpuBackendFactory, GpuStateVector},
+    error::{QuantRS2Result, QuantRS2Error},
+    gpu::GpuBackendFactory,
 };
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
-// Note: scirs2_optimize functions would be used here if available
 use std::collections::HashMap;
+use ndarray::Array1;
+// Note: scirs2_optimize functions would be used here if available
 
 /// Loss functions for QML
 #[derive(Debug, Clone, Copy)]

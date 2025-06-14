@@ -1,0 +1,60 @@
+# Development Environment Configuration
+
+environment: development
+debug: true
+secret_key: dev-secret-key-change-me
+
+database:
+  host: localhost
+  port: 5432
+  database: quantrs2_dev
+  username: quantrs2_dev
+  max_connections: 5
+
+quantum_backends:
+  simulation:
+    provider: simulation
+    max_jobs: 2
+    timeout_seconds: 60
+  
+  # Optional development backends
+  # ibm_quantum:
+  #   provider: ibm_quantum
+  #   api_token: null  # Set via environment or secrets
+  #   project_id: dev-project
+  #   max_jobs: 1
+
+security:
+  session_timeout: 7200  # 2 hours for dev convenience
+  max_login_attempts: 10
+  enable_2fa: false
+  allowed_origins:
+    - localhost
+    - 127.0.0.1
+    - localhost:3000  # For frontend dev server
+    - localhost:8080
+
+performance:
+  max_circuit_qubits: 20  # Smaller for faster development
+  simulation_memory_limit: 4096
+  max_concurrent_jobs: 2
+  circuit_cache_size: 100
+  result_cache_ttl: 1800  # 30 minutes
+  enable_gpu: false
+
+logging:
+  level: DEBUG
+  log_to_console: true
+  enable_structured_logging: true
+
+monitoring:
+  enable_metrics: true
+  metrics_port: 9090
+  enable_health_checks: true
+  health_check_port: 8080
+  enable_tracing: true  # Enable for debugging
+
+custom:
+  development_mode: true
+  hot_reload: true
+  verbose_errors: true

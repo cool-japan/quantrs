@@ -459,7 +459,7 @@ impl BatchQAOA {
         };
 
         // Create batch of superposition initial states
-        let mut batch = BatchStateVector::new(num_samples, n_qubits, Default::default())?;
+        let batch = BatchStateVector::new(num_samples, n_qubits, Default::default())?;
         // Initialize to uniform superposition (would apply Hadamards)
 
         // Define cost function

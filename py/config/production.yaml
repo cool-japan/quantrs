@@ -1,0 +1,93 @@
+# Production Environment Configuration
+
+environment: production
+debug: false
+secret_key: null  # MUST be set via environment variable
+
+database:
+  host: prod-db.quantrs2.com
+  port: 5432
+  database: quantrs2_prod
+  username: quantrs2_prod
+  max_connections: 50
+  ssl_mode: require
+  connection_timeout: 30
+
+quantum_backends:
+  simulation:
+    provider: simulation
+    max_jobs: 10
+    timeout_seconds: 300
+    retry_attempts: 3
+    enable_caching: true
+  
+  ibm_quantum:
+    provider: ibm_quantum
+    api_token: null  # MUST be loaded from secrets manager
+    project_id: production-project
+    region: us-east-1
+    max_jobs: 5
+    timeout_seconds: 600
+    retry_attempts: 3
+  
+  google_quantum_ai:
+    provider: google_quantum_ai
+    api_token: null  # MUST be loaded from secrets manager
+    project_id: quantrs2-prod
+    region: us-central1
+    max_jobs: 3
+    timeout_seconds: 600
+  
+  aws_braket:
+    provider: aws_braket
+    api_token: null  # MUST be loaded from secrets manager
+    region: us-east-1
+    max_jobs: 3
+    timeout_seconds: 600
+
+security:
+  encryption_key: null  # MUST be loaded from secrets manager
+  jwt_secret: null      # MUST be loaded from secrets manager
+  session_timeout: 1800  # 30 minutes for security
+  max_login_attempts: 3
+  enable_2fa: true
+  allowed_origins:
+    - quantrs2.com
+    - app.quantrs2.com
+    - api.quantrs2.com
+  rate_limit_requests: 100
+  rate_limit_window: 60
+
+performance:
+  max_circuit_qubits: 50
+  simulation_memory_limit: 32768  # 32GB
+  max_concurrent_jobs: 20
+  circuit_cache_size: 10000
+  result_cache_ttl: 7200  # 2 hours
+  enable_gpu: true
+  gpu_memory_fraction: 0.9
+
+logging:
+  level: WARNING
+  file_path: /var/log/quantrs2/production.log
+  max_file_size: 104857600  # 100MB
+  backup_count: 30
+  enable_structured_logging: true
+  log_to_console: false
+
+monitoring:
+  enable_metrics: true
+  metrics_port: 9090
+  enable_health_checks: true
+  health_check_port: 8080
+  alert_webhook_url: https://hooks.slack.com/production-alerts
+  enable_tracing: true
+  tracing_endpoint: http://jaeger-prod:14268/api/traces
+
+custom:
+  production_mode: true
+  data_retention_days: 365
+  enable_analytics: true
+  backup_frequency: daily
+  enable_disaster_recovery: true
+  compliance_mode: true

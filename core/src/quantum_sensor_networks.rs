@@ -3,15 +3,12 @@
 //! Revolutionary quantum sensing with distributed quantum sensors,
 //! quantum metrology, and entangled sensor arrays for precision beyond classical limits.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
-use crate::gate::GateOp;
-use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
+
 use crate::qubit::QubitId;
 use num_complex::Complex64;
 use ndarray::{Array1, Array2};
 use std::collections::{HashMap, VecDeque, BinaryHeap};
-use std::sync::{Arc, RwLock, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 use std::cmp::Ordering;
 

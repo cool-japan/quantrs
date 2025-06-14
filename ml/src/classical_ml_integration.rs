@@ -861,6 +861,23 @@ impl HybridPipeline {
         Ok(current_X)
     }
 
+    /// Transform data through the pipeline (without prediction)
+    pub fn transform(&self, X: &ArrayD<f64>) -> Result<ArrayD<f64>> {
+        if !self.fitted {
+            return Err(MLError::InvalidConfiguration(
+                "Pipeline must be fitted before transformation".to_string(),
+            ));
+        }
+
+        let mut current_X = X.clone();
+
+        for stage in &self.stages {
+            current_X = stage.transform(&current_X)?;
+        }
+
+        Ok(current_X)
+    }
+
     /// Get pipeline performance
     pub fn get_performance(&self) -> Option<&ModelPerformance> {
         self.performance.as_ref()

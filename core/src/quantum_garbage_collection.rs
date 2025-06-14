@@ -3,7 +3,6 @@
 //! Revolutionary automatic quantum state cleanup with coherence-aware garbage collection,
 //! quantum memory optimization, and advanced lifecycle management for quantum computations.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
 use crate::matrix_ops::{DenseMatrix, QuantumMatrix};

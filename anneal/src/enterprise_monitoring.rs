@@ -1624,6 +1624,6 @@ mod tests {
 
         let dashboard = dashboard.unwrap();
         assert!(dashboard.system_health.overall_health > 0.0);
-        assert!(dashboard.slo_compliance.total_slos >= 0);
+        // total_slos is u32, so always >= 0
     }
 }

@@ -374,7 +374,7 @@ impl MeasurementPredictor {
         
         // Total uncertainty
         let total_uncertainty = Array1::from_shape_fn(horizon, |i| {
-            (aleatoric_uncertainty[i].powi(2) + epistemic_uncertainty[i].powi(2)).sqrt()
+            ((aleatoric_uncertainty[i] as f64).powi(2) + (epistemic_uncertainty[i] as f64).powi(2)).sqrt()
         });
         
         // Uncertainty bounds

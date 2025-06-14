@@ -2,15 +2,14 @@
 //!
 //! Quantum-resistant cryptographic operations with lattice-based and code-based quantum gates.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
-use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
-use crate::qubit::QubitId;
+// use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
+// use crate::qubit::QubitId;
 use num_complex::Complex64;
 // use scirs2_linalg::{matrix_exp, qr_decompose};
-use ndarray::{Array1, Array2, Array3};
-use std::collections::HashMap;
+use ndarray::{Array1, Array2};
+// use std::collections::HashMap;
 use std::f64::consts::PI;
 // use sha3::{Digest, Sha3_256, Sha3_512};
 use rand::{Rng, SeedableRng};
@@ -432,8 +431,8 @@ impl QuantumDigitalSignature {
         // Generate random private key
         let private_key = Array1::from_shape_fn(signature_length, |_| {
             Complex64::new(
-                rng.gen_range(-1.0..1.0),
-                rng.gen_range(-1.0..1.0),
+                rng.random_range(-1.0..1.0),
+                rng.random_range(-1.0..1.0),
             )
         });
         
@@ -659,15 +658,15 @@ impl QuantumKeyDistribution {
         
         // Alice's random bits and bases
         let alice_bits: Vec<bool> = (0..self.key_length * 2)
-            .map(|_| rng.gen())
+            .map(|_| rng.random())
             .collect();
         let alice_bases: Vec<bool> = (0..self.key_length * 2)
-            .map(|_| rng.gen())
+            .map(|_| rng.random())
             .collect();
         
         // Bob's random bases
         let bob_bases: Vec<bool> = (0..self.key_length * 2)
-            .map(|_| rng.gen())
+            .map(|_| rng.random())
             .collect();
         
         // Quantum state preparation and measurement
@@ -737,7 +736,7 @@ impl QuantumKeyDistribution {
         if basis {
             // X basis measurement
             let prob_plus = (state[0] + state[1]).norm_sqr() / 2.0;
-            let measurement = rng.gen::<f64>() < prob_plus;
+            let measurement = rng.random::<f64>() < prob_plus;
             Ok((measurement, true))
         } else {
             // Z basis measurement
@@ -758,8 +757,8 @@ impl QuantumKeyDistribution {
             let entangled_state = self.create_bell_state()?;
             
             // Alice and Bob choose random measurement bases
-            let alice_basis = rng.gen_range(0..3);
-            let bob_basis = rng.gen_range(0..3);
+            let alice_basis = rng.random_range(0..3);
+            let bob_basis = rng.random_range(0..3);
             
             // Perform measurements
             let alice_result = self.measure_entangled_qubit(&entangled_state, alice_basis, 0)?;

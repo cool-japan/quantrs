@@ -3,10 +3,8 @@
 //! Revolutionary quantum operating system with advanced resource allocation,
 //! coherence-aware scheduling, and multi-level quantum resource management.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
-use crate::gate::GateOp;
-use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
+
 use crate::qubit::QubitId;
 use num_complex::Complex64;
 use ndarray::{Array1, Array2};

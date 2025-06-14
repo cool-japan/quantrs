@@ -3,8 +3,8 @@
 //! QAOA is a hybrid quantum-classical algorithm for solving combinatorial optimization problems.
 //! This implementation leverages SciRS2 for enhanced performance.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::simd_ops;
+use crate::complex_ext::QuantumComplexExt;
 use ndarray::Array2;
 use num_complex::Complex64;
 use std::f64::consts::PI;

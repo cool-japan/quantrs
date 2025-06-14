@@ -184,11 +184,15 @@ mod tests {
         // Test setting and getting amplitudes
         let amplitude = Complex64::new(0.5, 0.3);
         assert!(state.set_amplitude(0, amplitude).is_ok());
-        assert_eq!(state.amplitude(0).unwrap(), amplitude);
+        
+        // For single precision, we need to account for precision loss
+        let retrieved_amplitude = state.amplitude(0).unwrap();
+        assert!((retrieved_amplitude.re - amplitude.re).abs() < 1e-6);
+        assert!((retrieved_amplitude.im - amplitude.im).abs() < 1e-6);
 
         // Test probability calculation
         let prob = state.probability(0).unwrap();
-        assert!((prob - amplitude.norm_sqr()).abs() < 1e-10);
+        assert!((prob - amplitude.norm_sqr()).abs() < 1e-6);
     }
 
     #[test]
@@ -242,10 +246,7 @@ mod tests {
     #[test]
     fn test_analyzer() {
         let mut analyzer = PrecisionAnalyzer::new();
-        let analysis = analyzer.analyze_for_tolerance(1e-6);
-        
-        assert!(analysis.is_ok());
-        let result = analysis.unwrap();
+        let result = analyzer.analyze_for_tolerance(1e-6);
         assert!(!result.error_estimates.is_empty());
         assert!(!result.performance_metrics.is_empty());
     }

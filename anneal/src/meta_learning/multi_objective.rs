@@ -484,7 +484,7 @@ impl MultiObjectiveOptimizer {
 mod tests {
     use super::*;
     use crate::meta_learning::config::*;
-    use crate::meta_learning::portfolio::{AlgorithmType, ResourceAllocation};
+    use crate::meta_learning::config::{AlgorithmType, ResourceAllocation};
 
     #[test]
     fn test_multi_objective_optimizer_creation() {

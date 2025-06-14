@@ -299,11 +299,10 @@ impl SciRS2QubitMapper {
                 let q1 = qubits[0].id() as usize;
                 let q2 = qubits[1].id() as usize;
 
-                    if let (Some(&node1), Some(&node2)) = (node_map.get(&q1), node_map.get(&q2)) {
-                        // Weight based on gate frequency/importance
-                        let weight = self.calculate_gate_weight(gate);
-                        graph.add_edge(node1, node2, weight);
-                    }
+                if let (Some(&node1), Some(&node2)) = (node_map.get(&q1), node_map.get(&q2)) {
+                    // Weight based on gate frequency/importance
+                    let weight = self.calculate_gate_weight(gate);
+                    graph.add_edge(node1, node2, weight);
                 }
             }
         }

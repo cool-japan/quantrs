@@ -6,15 +6,12 @@
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
-    matrix_ops::{DenseMatrix, QuantumMatrix},
-    qubit::QubitId,
     register::Register,
 };
-use ndarray::{Array, Array2, Array3, Array4, ArrayD, Axis, IxDyn};
+use ndarray::{Array, Array2, ArrayD, IxDyn};
 use num_complex::Complex;
-use rustc_hash::FxHashMap;
 use scirs2_linalg::svd;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 
 /// Type alias for complex numbers
 type Complex64 = Complex<f64>;
@@ -206,13 +203,13 @@ impl Tensor {
         let self_mat = self
             .data
             .view()
-            .into_shape((self_left_dims, contract_dim * self_right_dims))
+            .into_shape_with_order((self_left_dims, contract_dim * self_right_dims))
             .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {}", e)))?
             .to_owned();
         let other_mat = other
             .data
             .view()
-            .into_shape((other_left_dims * contract_dim, other_right_dims))
+            .into_shape_with_order((other_left_dims * contract_dim, other_right_dims))
             .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {}", e)))?
             .to_owned();
 
@@ -292,7 +289,7 @@ impl Tensor {
         let matrix = self
             .data
             .view()
-            .into_shape((left_dim, right_dim))
+            .into_shape_with_order((left_dim, right_dim))
             .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {}", e)))?
             .to_owned();
 
@@ -695,7 +692,7 @@ impl TensorNetworkBuilder {
 
         // Reshape to rank-4 tensor
         let tensor_data = matrix
-            .into_shape((2, 2, 2, 2))
+            .into_shape_with_order((2, 2, 2, 2))
             .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {}", e)))?
             .into_dyn();
 

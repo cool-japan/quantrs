@@ -2,10 +2,10 @@
 
 #[cfg(test)]
 mod tests {
-    use super::super::src::quantum_neural_networks::*;
-    use super::super::src::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-    use super::super::src::compile::QuboFormulation;
-    use super::super::src::symbol::Symbol;
+    use quantrs2_tytan::quantum_neural_networks::*;
+    use quantrs2_tytan::sampler_framework::{SampleResult, SamplerError, SamplerResult};
+    use quantrs2_tytan::compile::QuboFormulation;
+    use quantrs2_tytan::symbol::Symbol;
     use ndarray::{Array1, Array2, Array3};
     use std::collections::HashMap;
 

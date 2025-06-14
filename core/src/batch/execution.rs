@@ -143,8 +143,6 @@ impl BatchCircuitExecutor {
             
             for i in 0..batch.batch_size() {
                 let state_data = batch.get_state(i)?;
-                let mut gpu_state = crate::gpu::GpuStateVector::new(gpu_backend.clone(), batch.n_qubits)?;
-                
                 // Upload state to GPU
                 let mut gpu_buffer = gpu_backend.allocate_state_vector(batch.n_qubits)?;
                 gpu_buffer.upload(state_data.as_slice().unwrap())?;
@@ -301,7 +299,7 @@ impl BatchCircuitExecutor {
             states.row_mut(i).assign(initial_state);
         }
 
-        let mut batch = BatchStateVector::from_states(states, self.config.clone())?;
+        let batch = BatchStateVector::from_states(states, self.config.clone())?;
 
         // Execute with different parameters in parallel
         let results: Vec<_> = parameter_sets

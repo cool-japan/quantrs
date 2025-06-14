@@ -3,15 +3,11 @@
 //! Comprehensive implementation of quantum algorithms that demonstrate
 //! computational advantage over classical computers in specific domains.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
-use crate::gate::GateOp;
-use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
 use crate::qubit::QubitId;
 use num_complex::Complex64;
 use ndarray::{Array1, Array2};
 use std::collections::{HashMap, VecDeque, BinaryHeap};
-use std::sync::{Arc, RwLock, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 use std::cmp::Ordering;
 
@@ -722,8 +718,7 @@ impl QuantumSupremacyEngine {
         // Configure linear interferometer
         let interferometer = self.boson_sampling
             .interferometer
-            .configure_interferometer(mode_count)?
-            .clone();
+            .configure_interferometer(mode_count)?;
         
         // Generate photon inputs
         let photon_inputs = self.boson_sampling

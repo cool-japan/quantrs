@@ -317,7 +317,7 @@ fn generate_hierarchical_data(n_samples: usize, n_features: usize) -> Array2<f64
             }
             _ => {
                 // Pattern C: random with structure
-                let shift = rand::random::<usize>() % 4;
+                let shift = (rand::random::<f64>() * 4.0) as usize;
                 for j in 0..n_features {
                     data[[i, j]] = if (j + shift) % 3 == 0 { 1.0 } else { 0.0 };
                 }

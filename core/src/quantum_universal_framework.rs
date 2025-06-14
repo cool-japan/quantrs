@@ -3,7 +3,6 @@
 //! Revolutionary universal quantum computing framework supporting all major architectures
 //! with advanced cross-platform compilation, hardware abstraction, and adaptive optimization.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
 use crate::matrix_ops::{DenseMatrix, QuantumMatrix};

@@ -3,17 +3,15 @@
 //! Quantum gates that operate across spatially separated qubits with
 //! advanced networking protocols and fault-tolerant communication.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
-use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
 use crate::qubit::QubitId;
 use num_complex::Complex64;
-use ndarray::{Array1, Array2, Array3};
+use ndarray::Array2;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
-use tokio::sync::{mpsc, Semaphore};
+use tokio::sync::Semaphore;
 use uuid::Uuid;
 
 /// Distributed quantum node representation
@@ -438,7 +436,7 @@ impl QuantumNetwork {
         _entanglement: &EntanglementResult,
     ) -> Result<StepExecutionResult, QuantRS2Error> {
         match step {
-            ExecutionStep::LocalGate { node_id, gate_op, qubits } => {
+            ExecutionStep::LocalGate { node_id, gate_op: _, qubits: _ } => {
                 if let Some(node) = self.get_node(*node_id) {
                     // Simulate local gate execution
                     let fidelity = node.capabilities.fidelity;

@@ -3,7 +3,6 @@
 //! Just-in-time compilation of quantum gates during execution with
 //! adaptive optimization and hardware-specific targeting.
 
-use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
 use crate::matrix_ops::{DenseMatrix, QuantumMatrix};

@@ -5,25 +5,16 @@
 //! exploration strategies in reinforcement learning tasks.
 
 use crate::{
-    error::{QuantRS2Error, QuantRS2Result},
+    error::QuantRS2Result,
     gate::GateOp,
     gate::single::*,
     gate::multi::*,
-    qml::{
-        layers::{RotationLayer, EntanglingLayer, QuantumPoolingLayer},
-        training::{QMLTrainer, TrainingConfig, LossFunction, Optimizer},
-        QMLCircuit, QMLConfig,
-    },
-    variational::{VariationalCircuit, VariationalGate, VariationalOptimizer},
+    variational::VariationalOptimizer,
     qubit::QubitId,
 };
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
-use num_complex::Complex64;
+use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::{Arc, RwLock},
-};
+use std::collections::VecDeque;
 use rand::{Rng, SeedableRng, rngs::StdRng};
 
 /// Configuration for quantum reinforcement learning
@@ -135,7 +126,7 @@ impl ReplayBuffer {
         }
 
         for _ in 0..batch_size {
-            let idx = self.rng.gen_range(0..buffer_size);
+            let idx = self.rng.random_range(0..buffer_size);
             samples.push(self.buffer[idx].clone());
         }
 
@@ -258,10 +249,10 @@ impl QuantumDQN {
     /// Select action using epsilon-greedy policy with quantum enhancement
     pub fn select_action(&mut self, state: &Array1<f64>) -> QuantRS2Result<usize> {
         // Epsilon-greedy exploration
-        if self.rng.gen::<f64>() < self.current_exploration_rate {
+        if self.rng.random::<f64>() < self.current_exploration_rate {
             // Random action
             let num_actions = 1 << self.config.action_qubits;
-            Ok(self.rng.gen_range(0..num_actions))
+            Ok(self.rng.random_range(0..num_actions))
         } else {
             // Greedy action using quantum policy network
             self.policy_network.get_best_action(state)
@@ -453,7 +444,7 @@ impl QuantumValueNetwork {
         };
         
         for param in parameters.iter_mut() {
-            *param = rng.gen_range(-std::f64::consts::PI..std::f64::consts::PI);
+            *param = rng.random_range(-std::f64::consts::PI..std::f64::consts::PI);
         }
 
         let optimizer = VariationalOptimizer::new(0.01, 0.9);
@@ -521,7 +512,7 @@ impl QuantumPolicyNetwork {
         };
         
         for param in parameters.iter_mut() {
-            *param = rng.gen_range(-std::f64::consts::PI..std::f64::consts::PI);
+            *param = rng.random_range(-std::f64::consts::PI..std::f64::consts::PI);
         }
 
         let optimizer = VariationalOptimizer::new(0.01, 0.9);
