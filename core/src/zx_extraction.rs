@@ -517,7 +517,6 @@ impl Default for ZXPipeline {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::gate::single::*;
 
     #[test]
     fn test_circuit_extraction_identity() {

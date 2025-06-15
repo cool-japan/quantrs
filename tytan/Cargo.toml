@@ -22,7 +22,9 @@ ndarray.workspace = true
 num-bigint = "0.4"
 num-integer = "0.1"
 chrono = "0.4"
-# symengine = { workspace = true, optional = true }
+symengine = { git = "https://github.com/cool-japan/symengine-rs.git", branch = "fixed-macos", optional = true }
+symengine-sys = { git = "https://github.com/cool-japan/symengine-sys.git", branch = "fixed-macos", optional = true }
+num-traits = "0.2"
 regex = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -46,8 +48,7 @@ default = ["parallel"]
 parallel = ["dep:rayon"]
 gpu = ["dep:ocl"]
 # The dwave feature is optional and requires symengine to be installed
-# dwave = ["dep:symengine", "dep:regex"]
-dwave = ["dep:regex"]
+dwave = ["dep:symengine", "dep:symengine-sys", "dep:regex"]
 scirs = ["dep:scirs2-core", "dep:scirs2-linalg", "dep:scirs2-optimize"]
 advanced_optimization = ["scirs", "dep:scirs2-optimize"]
 # Combined accelerated features

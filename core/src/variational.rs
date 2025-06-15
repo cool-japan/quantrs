@@ -8,9 +8,8 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
-    register::Register,
 };
-use ndarray::{Array1, Array2, ArrayView1};
+use ndarray::{Array1, Array2};
 use num_complex::Complex;
 use rustc_hash::FxHashMap;
 use std::f64::consts::PI;
@@ -822,10 +821,10 @@ impl QuantumAutoencoder {
     /// Create a new quantum autoencoder
     pub fn new(input_qubits: usize, latent_qubits: usize, learning_rate: f64) -> Self {
         let total_qubits = input_qubits + latent_qubits;
-        
+
         // Create encoder circuit (input + latent qubits)
         let mut encoder = VariationalCircuit::new(total_qubits);
-        
+
         // Add parameterized encoding layers
         for i in 0..input_qubits {
             encoder.add_gate(VariationalGate::ry(
@@ -834,7 +833,7 @@ impl QuantumAutoencoder {
                 0.1 * (i as f64 + 1.0),
             ));
         }
-        
+
         // Add entangling gates between input and latent qubits
         for i in 0..input_qubits {
             for j in input_qubits..(input_qubits + latent_qubits) {
@@ -846,10 +845,10 @@ impl QuantumAutoencoder {
                 ));
             }
         }
-        
+
         // Create decoder circuit (latent + output qubits)
         let mut decoder = VariationalCircuit::new(total_qubits);
-        
+
         // Add decoding layers
         for j in input_qubits..(input_qubits + latent_qubits) {
             for i in 0..input_qubits {
@@ -861,7 +860,7 @@ impl QuantumAutoencoder {
                 ));
             }
         }
-        
+
         for i in 0..input_qubits {
             decoder.add_gate(VariationalGate::ry(
                 QubitId(i as u32),
@@ -879,26 +878,26 @@ impl QuantumAutoencoder {
             optimizer: VariationalOptimizer::new(learning_rate, 0.9),
         }
     }
-    
+
     /// Train the autoencoder on a batch of training data
     pub fn train_step(&mut self, training_data: &[Array1<Complex<f64>>]) -> QuantRS2Result<f64> {
         let mut total_loss = 0.0;
         let mut encoder_gradients = FxHashMap::default();
         let mut decoder_gradients = FxHashMap::default();
-        
+
         for input_state in training_data {
             // Forward pass
             let encoded = self.encode(input_state)?;
             let reconstructed = self.decode(&encoded)?;
-            
+
             // Compute reconstruction loss (fidelity-based)
             let loss = self.reconstruction_loss(input_state, &reconstructed);
             total_loss += loss;
-            
+
             // Compute gradients using parameter shift rule
             let enc_grads = self.compute_encoder_gradients(input_state, &reconstructed)?;
             let dec_grads = self.compute_decoder_gradients(&encoded, input_state)?;
-            
+
             // Accumulate gradients
             for (param, grad) in enc_grads {
                 *encoder_gradients.entry(param).or_insert(0.0) += grad;
@@ -907,7 +906,7 @@ impl QuantumAutoencoder {
                 *decoder_gradients.entry(param).or_insert(0.0) += grad;
             }
         }
-        
+
         // Average gradients
         let batch_size = training_data.len() as f64;
         for grad in encoder_gradients.values_mut() {
@@ -916,78 +915,95 @@ impl QuantumAutoencoder {
         for grad in decoder_gradients.values_mut() {
             *grad /= batch_size;
         }
-        
+
         // Update parameters
         self.optimizer.step(&mut self.encoder, &encoder_gradients)?;
         self.optimizer.step(&mut self.decoder, &decoder_gradients)?;
-        
+
         Ok(total_loss / batch_size)
     }
-    
+
     /// Encode input data to latent representation
-    pub fn encode(&self, input_state: &Array1<Complex<f64>>) -> QuantRS2Result<Array1<Complex<f64>>> {
+    pub fn encode(
+        &self,
+        input_state: &Array1<Complex<f64>>,
+    ) -> QuantRS2Result<Array1<Complex<f64>>> {
         if input_state.len() != 1 << self.input_qubits {
             return Err(QuantRS2Error::InvalidInput(
                 "Input state dimension mismatch".to_string(),
             ));
         }
-        
+
         // Apply encoder circuit to input state
         let full_state = self.apply_encoder_circuit(input_state)?;
-        
+
         // Extract latent qubits by tracing out input qubits
         self.extract_latent_state(&full_state)
     }
-    
+
     /// Decode latent representation back to output
-    pub fn decode(&self, latent_state: &Array1<Complex<f64>>) -> QuantRS2Result<Array1<Complex<f64>>> {
+    pub fn decode(
+        &self,
+        latent_state: &Array1<Complex<f64>>,
+    ) -> QuantRS2Result<Array1<Complex<f64>>> {
         if latent_state.len() != 1 << self.latent_qubits {
             return Err(QuantRS2Error::InvalidInput(
                 "Latent state dimension mismatch".to_string(),
             ));
         }
-        
+
         // Prepare full state with latent qubits
         let full_state = self.prepare_full_state_for_decoding(latent_state)?;
-        
+
         // Apply decoder circuit
         let decoded_state = self.apply_decoder_circuit(&full_state)?;
-        
+
         // Extract output qubits
         self.extract_output_state(&decoded_state)
     }
-    
+
     /// Compute reconstruction loss between original and reconstructed states
-    fn reconstruction_loss(&self, original: &Array1<Complex<f64>>, reconstructed: &Array1<Complex<f64>>) -> f64 {
+    fn reconstruction_loss(
+        &self,
+        original: &Array1<Complex<f64>>,
+        reconstructed: &Array1<Complex<f64>>,
+    ) -> f64 {
         // Use negative fidelity as loss (want to maximize fidelity)
-        let fidelity = original.iter()
+        let fidelity = original
+            .iter()
             .zip(reconstructed.iter())
             .map(|(a, b)| a * b.conj())
             .sum::<Complex<f64>>()
             .norm_sqr();
-        
+
         1.0 - fidelity
     }
-    
+
     /// Apply encoder circuit to input state
-    fn apply_encoder_circuit(&self, input_state: &Array1<Complex<f64>>) -> QuantRS2Result<Array1<Complex<f64>>> {
+    fn apply_encoder_circuit(
+        &self,
+        input_state: &Array1<Complex<f64>>,
+    ) -> QuantRS2Result<Array1<Complex<f64>>> {
         // This is a simplified implementation
         let total_dim = 1 << (self.input_qubits + self.latent_qubits);
         let mut full_state = Array1::zeros(total_dim);
-        
+
         // Initialize with input state on input qubits, |0...0⟩ on latent qubits
         for (i, &amp) in input_state.iter().enumerate() {
             full_state[i] = amp;
         }
-        
+
         Ok(full_state)
     }
-    
+
     /// Extract latent state by partial trace
-    fn extract_latent_state(&self, full_state: &Array1<Complex<f64>>) -> QuantRS2Result<Array1<Complex<f64>>> {
+    fn extract_latent_state(
+        &self,
+        full_state: &Array1<Complex<f64>>,
+    ) -> QuantRS2Result<Array1<Complex<f64>>> {
         let latent_dim = 1 << self.latent_qubits;
         let mut latent_state: Array1<Complex<f64>> = Array1::zeros(latent_dim);
-        
+
         // Simplified partial trace over input qubits
         let input_dim = 1 << self.input_qubits;
         for j in 0..latent_dim {
@@ -999,50 +1015,63 @@ impl QuantumAutoencoder {
             }
             latent_state[j] = latent_state[j].sqrt();
         }
-        
+
         Ok(latent_state)
     }
-    
+
     /// Prepare full state for decoding
-    fn prepare_full_state_for_decoding(&self, latent_state: &Array1<Complex<f64>>) -> QuantRS2Result<Array1<Complex<f64>>> {
+    fn prepare_full_state_for_decoding(
+        &self,
+        latent_state: &Array1<Complex<f64>>,
+    ) -> QuantRS2Result<Array1<Complex<f64>>> {
         let total_dim = 1 << (self.input_qubits + self.latent_qubits);
         let mut full_state = Array1::zeros(total_dim);
-        
+
         // Place latent state in latent qubits, initialize output qubits to |0...0⟩
         let input_dim = 1 << self.input_qubits;
         for (j, &amp) in latent_state.iter().enumerate() {
             full_state[j * input_dim] = amp;
         }
-        
+
         Ok(full_state)
     }
-    
+
     /// Apply decoder circuit to state
-    fn apply_decoder_circuit(&self, state: &Array1<Complex<f64>>) -> QuantRS2Result<Array1<Complex<f64>>> {
+    fn apply_decoder_circuit(
+        &self,
+        state: &Array1<Complex<f64>>,
+    ) -> QuantRS2Result<Array1<Complex<f64>>> {
         Ok(state.clone())
     }
-    
+
     /// Extract output state from full state
-    fn extract_output_state(&self, full_state: &Array1<Complex<f64>>) -> QuantRS2Result<Array1<Complex<f64>>> {
+    fn extract_output_state(
+        &self,
+        full_state: &Array1<Complex<f64>>,
+    ) -> QuantRS2Result<Array1<Complex<f64>>> {
         let output_dim = 1 << self.input_qubits;
         let mut output_state = Array1::zeros(output_dim);
-        
+
         // Extract first part as output state (simplified)
         for i in 0..output_dim.min(full_state.len()) {
             output_state[i] = full_state[i];
         }
-        
+
         // Normalize
-        let norm = output_state.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
+        let norm = output_state
+            .iter()
+            .map(|x| x.norm_sqr())
+            .sum::<f64>()
+            .sqrt();
         if norm > 1e-10 {
             for element in output_state.iter_mut() {
                 *element /= norm;
             }
         }
-        
+
         Ok(output_state)
     }
-    
+
     /// Compute encoder gradients
     fn compute_encoder_gradients(
         &self,
@@ -1050,17 +1079,17 @@ impl QuantumAutoencoder {
         reconstructed: &Array1<Complex<f64>>,
     ) -> QuantRS2Result<FxHashMap<String, f64>> {
         let mut gradients = FxHashMap::default();
-        
+
         let loss = self.reconstruction_loss(input_state, reconstructed);
-        
+
         // Use finite differences for gradient approximation
         for param_name in self.encoder.parameter_names() {
             gradients.insert(param_name, loss * 0.1);
         }
-        
+
         Ok(gradients)
     }
-    
+
     /// Compute decoder gradients
     fn compute_decoder_gradients(
         &self,
@@ -1068,15 +1097,15 @@ impl QuantumAutoencoder {
         target: &Array1<Complex<f64>>,
     ) -> QuantRS2Result<FxHashMap<String, f64>> {
         let mut gradients = FxHashMap::default();
-        
+
         let reconstructed = self.decode(latent_state)?;
         let loss = self.reconstruction_loss(target, &reconstructed);
-        
+
         // Use finite differences for gradient approximation
         for param_name in self.decoder.parameter_names() {
             gradients.insert(param_name, loss * 0.1);
         }
-        
+
         Ok(gradients)
     }
 }
@@ -1119,63 +1148,65 @@ impl VariationalQuantumEigensolver {
             max_iterations,
         }
     }
-    
+
     /// Run VQE optimization to find ground state energy
     pub fn optimize(&mut self) -> QuantRS2Result<f64> {
         let mut prev_energy = f64::INFINITY;
-        
+
         for _iteration in 0..self.max_iterations {
             // Compute current energy
             let energy = self.compute_energy()?;
             self.energy_history.push(energy);
-            
+
             // Check convergence
             if (energy - prev_energy).abs() < self.tolerance {
                 return Ok(energy);
             }
-            
+
             // Compute gradients
             let gradients = self.compute_energy_gradients()?;
-            self.gradient_history.push(gradients.values().cloned().collect());
-            
+            self.gradient_history
+                .push(gradients.values().cloned().collect());
+
             // Update parameters
             self.optimizer.step(&mut self.ansatz, &gradients)?;
-            
+
             prev_energy = energy;
         }
-        
+
         Ok(self.energy_history.last().copied().unwrap_or(f64::INFINITY))
     }
-    
+
     /// Compute expectation value of Hamiltonian
     fn compute_energy(&self) -> QuantRS2Result<f64> {
         // Get current ansatz state
         let state = self.prepare_ansatz_state()?;
-        
+
         // Compute ⟨ψ|H|ψ⟩
         let h_psi = self.hamiltonian.dot(&state);
-        let energy = state.iter()
+        let energy = state
+            .iter()
             .zip(h_psi.iter())
             .map(|(psi, h_psi)| (psi.conj() * h_psi).re)
             .sum();
-        
+
         Ok(energy)
     }
-    
+
     /// Prepare the ansatz state vector
     fn prepare_ansatz_state(&self) -> QuantRS2Result<Array1<Complex<f64>>> {
         let dim = 1 << self.ansatz.num_qubits;
         let mut state = Array1::zeros(dim);
         state[0] = Complex::new(1.0, 0.0); // Start with |0...0⟩
-        
+
         // Apply ansatz gates (simplified implementation)
         for gate in &self.ansatz.gates {
             state = self.apply_gate_to_state(&state, gate)?;
         }
-        
+
         Ok(state)
     }
-    
+
     /// Apply a single gate to the state vector
     fn apply_gate_to_state(
         &self,
@@ -1184,12 +1215,12 @@ impl VariationalQuantumEigensolver {
     ) -> QuantRS2Result<Array1<Complex<f64>>> {
         // Simplified gate application
         let mut new_state = state.clone();
-        
+
         if gate.qubits.len() == 1 {
             // Single-qubit gate
             let matrix_vec = gate.matrix()?;
             let matrix = Array2::from_shape_vec((2, 2), matrix_vec).unwrap();
-            
+
             // Apply to specific qubit (simplified)
             let qubit_idx = gate.qubits[0].0;
             if qubit_idx < self.ansatz.num_qubits as u32 {
@@ -1198,31 +1229,31 @@ impl VariationalQuantumEigensolver {
                     let bit = (i >> qubit_idx) & 1;
                     let new_bit = 1 - bit;
                     let j = i ^ (1 << qubit_idx);
-                    
+
                     let old_val = new_state[i];
                     new_state[i] = matrix[[bit, bit]] * old_val + matrix[[bit, new_bit]] * state[j];
                 }
             }
         }
-        
+
         Ok(new_state)
     }
-    
+
     /// Compute gradients of energy with respect to parameters
     fn compute_energy_gradients(&self) -> QuantRS2Result<FxHashMap<String, f64>> {
         let loss_fn = |_gates: &[VariationalGate]| -> f64 {
             // Simplified energy computation for gradient
             self.compute_energy().unwrap_or(0.0)
         };
-        
+
         self.ansatz.compute_gradients(loss_fn)
     }
-    
+
     /// Get the optimized parameters
     pub fn get_optimal_parameters(&self) -> FxHashMap<String, f64> {
         self.ansatz.get_parameters()
     }
-    
+
     /// Get the final ground state
     pub fn get_ground_state(&self) -> QuantRS2Result<Array1<Complex<f64>>> {
         self.prepare_ansatz_state()
@@ -1236,7 +1267,7 @@ impl HardwareEfficientAnsatz {
     /// Create a hardware-efficient ansatz circuit
     pub fn create(num_qubits: usize, num_layers: usize) -> VariationalCircuit {
         let mut circuit = VariationalCircuit::new(num_qubits);
-        
+
         for layer in 0..num_layers {
             // Single-qubit rotations
             for qubit in 0..num_qubits {
@@ -1246,7 +1277,7 @@ impl HardwareEfficientAnsatz {
                     0.1 * (layer as f64 + qubit as f64 + 1.0),
                 ));
             }
-            
+
             // Entangling gates
             for qubit in 0..(num_qubits - 1) {
                 circuit.add_gate(VariationalGate::cry(
@@ -1257,7 +1288,7 @@ impl HardwareEfficientAnsatz {
                 ));
             }
         }
-        
+
         circuit
     }
 }
@@ -1267,9 +1298,13 @@ pub struct QAOAAnsatz;
 
 impl QAOAAnsatz {
     /// Create QAOA ansatz for MaxCut problem
-    pub fn create_maxcut(num_qubits: usize, num_layers: usize, edges: &[(usize, usize)]) -> VariationalCircuit {
+    pub fn create_maxcut(
+        num_qubits: usize,
+        num_layers: usize,
+        edges: &[(usize, usize)],
+    ) -> VariationalCircuit {
         let mut circuit = VariationalCircuit::new(num_qubits);
-        
+
         for layer in 0..num_layers {
             // Problem Hamiltonian evolution (ZZ gates for edges)
             for (i, &(u, v)) in edges.iter().enumerate() {
@@ -1282,7 +1317,7 @@ impl QAOAAnsatz {
                     ));
                 }
             }
-            
+
             // Mixer Hamiltonian evolution (X rotations)
             for qubit in 0..num_qubits {
                 circuit.add_gate(VariationalGate::rx(
@@ -1292,7 +1327,7 @@ impl QAOAAnsatz {
                 ));
             }
         }
-        
+
         circuit
     }
 }
@@ -1418,7 +1453,7 @@ mod tests {
     #[test]
     fn test_quantum_autoencoder() {
         let mut autoencoder = QuantumAutoencoder::new(2, 1, 0.01);
-        
+
         // Create dummy training data
         let mut training_data = Vec::new();
         let state1 = Array1::from_vec(vec![
@@ -1428,11 +1463,11 @@ mod tests {
             Complex::new(0.0, 0.0),
         ]);
         training_data.push(state1);
-        
+
         // Run one training step
         let loss = autoencoder.train_step(&training_data).unwrap();
         assert!(loss >= 0.0);
-        
+
         // Test encoding and decoding
         let input = Array1::from_vec(vec![
             Complex::new(0.6, 0.0),
@@ -1440,10 +1475,10 @@ mod tests {
             Complex::new(0.0, 0.0),
             Complex::new(0.0, 0.0),
         ]);
-        
+
         let encoded = autoencoder.encode(&input).unwrap();
         assert_eq!(encoded.len(), 2); // 2^1 = 2 for 1 latent qubit
-        
+
         let decoded = autoencoder.decode(&encoded).unwrap();
         assert_eq!(decoded.len(), 4); // 2^2 = 4 for 2 input qubits
     }
@@ -1459,25 +1494,23 @@ mod tests {
                 Complex::new(0.0, 0.0),
                 Complex::new(-1.0, 0.0),
             ],
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         // Create hardware-efficient ansatz
         let ansatz = HardwareEfficientAnsatz::create(1, 2);
-        
-        let mut vqe = VariationalQuantumEigensolver::new(
-            hamiltonian,
-            ansatz,
-            0.01,
-            1e-6,
-            10,
-        );
-        
+
+        let mut vqe = VariationalQuantumEigensolver::new(hamiltonian, ansatz, 0.01, 1e-6, 10);
+
         let energy = vqe.optimize().unwrap();
-        
+
         // For Pauli-Z, ground state energy should be close to -1 (or at least converging)
         // Note: This is a simplified VQE test, may not converge to exact ground state
-        assert!(vqe.energy_history.len() <= 10, "Should not exceed max iterations");
-        
+        assert!(
+            vqe.energy_history.len() <= 10,
+            "Should not exceed max iterations"
+        );
+
         // Check that energy is reasonable (not NaN or infinite)
         assert!(energy.is_finite(), "Energy should be finite");
     }
@@ -1486,15 +1519,15 @@ mod tests {
     fn test_qaoa_ansatz() {
         let edges = vec![(0, 1), (1, 2), (2, 0)]; // Triangle graph
         let circuit = QAOAAnsatz::create_maxcut(3, 2, &edges);
-        
+
         assert_eq!(circuit.num_qubits, 3);
         assert!(!circuit.gates.is_empty());
-        
+
         // Should have both gamma and beta parameters
         let param_names = circuit.parameter_names();
         let has_gamma = param_names.iter().any(|name| name.starts_with("gamma"));
         let has_beta = param_names.iter().any(|name| name.starts_with("beta"));
-        
+
         assert!(has_gamma, "Should have gamma parameters");
         assert!(has_beta, "Should have beta parameters");
     }
@@ -1502,15 +1535,15 @@ mod tests {
     #[test]
     fn test_hardware_efficient_ansatz() {
         let circuit = HardwareEfficientAnsatz::create(3, 2);
-        
+
         assert_eq!(circuit.num_qubits, 3);
         assert!(!circuit.gates.is_empty());
-        
+
         // Should have RY and CRY gates
         let param_names = circuit.parameter_names();
         let has_ry = param_names.iter().any(|name| name.starts_with("ry"));
         let has_cry = param_names.iter().any(|name| name.starts_with("cry"));
-        
+
         assert!(has_ry, "Should have RY parameters");
         assert!(has_cry, "Should have CRY parameters");
     }

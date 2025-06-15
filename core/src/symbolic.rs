@@ -18,17 +18,17 @@ use std::fmt;
 pub enum SymbolicExpression {
     /// Constant floating-point value
     Constant(f64),
-    
+
     /// Complex constant value  
     ComplexConstant(Complex64),
-    
+
     /// Variable with a name
     Variable(String),
-    
+
     /// SymEngine expression (only available with "symbolic" feature)
     #[cfg(feature = "symbolic")]
     SymEngine(SymEngine),
-    
+
     /// Simple arithmetic expression for when SymEngine is not available
     #[cfg(not(feature = "symbolic"))]
     Simple(SimpleExpression),
@@ -58,23 +58,23 @@ impl SymbolicExpression {
     pub fn zero() -> Self {
         SymbolicExpression::Constant(0.0)
     }
-    
+
     /// Create a complex constant expression
     pub fn complex_constant(value: Complex64) -> Self {
         SymbolicExpression::ComplexConstant(value)
     }
-    
+
     /// Create a variable expression
     pub fn variable(name: &str) -> Self {
         SymbolicExpression::Variable(name.to_string())
     }
-    
+
     /// Create a SymEngine expression (requires "symbolic" feature)
     #[cfg(feature = "symbolic")]
     pub fn from_symengine(expr: SymEngine) -> Self {
         SymbolicExpression::SymEngine(expr)
     }
-    
+
     /// Parse an expression from a string
     pub fn parse(expr: &str) -> QuantRS2Result<Self> {
         #[cfg(feature = "symbolic")]
@@ -87,26 +87,26 @@ impl SymbolicExpression {
                 }
             }
         }
-        
+
         #[cfg(not(feature = "symbolic"))]
         {
             Self::parse_simple(expr)
         }
     }
-    
+
     /// Simple expression parsing (fallback)
     fn parse_simple(expr: &str) -> QuantRS2Result<Self> {
         let trimmed = expr.trim();
-        
+
         // Try to parse as a number
         if let Ok(value) = trimmed.parse::<f64>() {
             return Ok(SymbolicExpression::Constant(value));
         }
-        
+
         // Otherwise treat as a variable
         Ok(SymbolicExpression::Variable(trimmed.to_string()))
     }
-    
+
     /// Evaluate the expression with given variable values
     pub fn evaluate(&self, variables: &HashMap<String, f64>) -> QuantRS2Result<f64> {
         match self {
@@ -116,16 +116,14 @@ impl SymbolicExpression {
                     Ok(value.re)
                 } else {
                     Err(QuantRS2Error::InvalidInput(
-                        "Cannot evaluate complex expression to real number".to_string()
+                        "Cannot evaluate complex expression to real number".to_string(),
                     ))
                 }
-            },
-            SymbolicExpression::Variable(name) => {
-                variables.get(name).copied().ok_or_else(|| {
-                    QuantRS2Error::InvalidInput(format!("Variable '{}' not found", name))
-                })
-            },
-            
+            }
+            SymbolicExpression::Variable(name) => variables.get(name).copied().ok_or_else(|| {
+                QuantRS2Error::InvalidInput(format!("Variable '{}' not found", name))
+            }),
+
             #[cfg(feature = "symbolic")]
             SymbolicExpression::SymEngine(expr) => {
                 // For SymEngine evaluation, we would need to substitute variables
@@ -134,55 +132,51 @@ impl SymbolicExpression {
                     Ok(value)
                 } else {
                     Err(QuantRS2Error::UnsupportedOperation(
-                        "SymEngine evaluation not yet implemented".to_string()
+                        "SymEngine evaluation not yet implemented".to_string(),
                     ))
                 }
-            },
-            
+            }
+
             #[cfg(not(feature = "symbolic"))]
             SymbolicExpression::Simple(simple_expr) => {
                 Self::evaluate_simple(simple_expr, variables)
-            },
+            }
         }
     }
-    
+
     /// Evaluate complex expression with given variable values
-    pub fn evaluate_complex(&self, variables: &HashMap<String, Complex64>) -> QuantRS2Result<Complex64> {
+    pub fn evaluate_complex(
+        &self,
+        variables: &HashMap<String, Complex64>,
+    ) -> QuantRS2Result<Complex64> {
         match self {
             SymbolicExpression::Constant(value) => Ok(Complex64::new(*value, 0.0)),
             SymbolicExpression::ComplexConstant(value) => Ok(*value),
-            SymbolicExpression::Variable(name) => {
-                variables.get(name).copied().ok_or_else(|| {
-                    QuantRS2Error::InvalidInput(format!("Variable '{}' not found", name))
-                })
-            },
-            
+            SymbolicExpression::Variable(name) => variables.get(name).copied().ok_or_else(|| {
+                QuantRS2Error::InvalidInput(format!("Variable '{}' not found", name))
+            }),
+
             #[cfg(feature = "symbolic")]
-            SymbolicExpression::SymEngine(_) => {
-                Err(QuantRS2Error::UnsupportedOperation(
-                    "Complex SymEngine evaluation not yet implemented".to_string()
-                ))
-            },
-            
+            SymbolicExpression::SymEngine(_) => Err(QuantRS2Error::UnsupportedOperation(
+                "Complex SymEngine evaluation not yet implemented".to_string(),
+            )),
+
             #[cfg(not(feature = "symbolic"))]
             SymbolicExpression::Simple(simple_expr) => {
                 Self::evaluate_simple_complex(simple_expr, variables)
-            },
+            }
         }
     }
-    
+
     #[cfg(not(feature = "symbolic"))]
-    fn evaluate_simple(expr: &SimpleExpression, variables: &HashMap<String, f64>) -> QuantRS2Result<f64> {
+    fn evaluate_simple(
+        expr: &SimpleExpression,
+        variables: &HashMap<String, f64>,
+    ) -> QuantRS2Result<f64> {
         match expr {
-            SimpleExpression::Add(a, b) => {
-                Ok(a.evaluate(variables)? + b.evaluate(variables)?)
-            },
-            SimpleExpression::Sub(a, b) => {
-                Ok(a.evaluate(variables)? - b.evaluate(variables)?)
-            },
-            SimpleExpression::Mul(a, b) => {
-                Ok(a.evaluate(variables)? * b.evaluate(variables)?)
-            },
+            SimpleExpression::Add(a, b) => Ok(a.evaluate(variables)? + b.evaluate(variables)?),
+            SimpleExpression::Sub(a, b) => Ok(a.evaluate(variables)? - b.evaluate(variables)?),
+            SimpleExpression::Mul(a, b) => Ok(a.evaluate(variables)? * b.evaluate(variables)?),
             SimpleExpression::Div(a, b) => {
                 let b_val = b.evaluate(variables)?;
                 if b_val.abs() < 1e-12 {
@@ -190,34 +184,32 @@ impl SymbolicExpression {
                 } else {
                     Ok(a.evaluate(variables)? / b_val)
                 }
-            },
-            SimpleExpression::Pow(a, b) => {
-                Ok(a.evaluate(variables)?.powf(b.evaluate(variables)?))
-            },
-            SimpleExpression::Sin(a) => {
-                Ok(a.evaluate(variables)?.sin())
-            },
-            SimpleExpression::Cos(a) => {
-                Ok(a.evaluate(variables)?.cos())
-            },
-            SimpleExpression::Exp(a) => {
-                Ok(a.evaluate(variables)?.exp())
-            },
+            }
+            SimpleExpression::Pow(a, b) => Ok(a.evaluate(variables)?.powf(b.evaluate(variables)?)),
+            SimpleExpression::Sin(a) => Ok(a.evaluate(variables)?.sin()),
+            SimpleExpression::Cos(a) => Ok(a.evaluate(variables)?.cos()),
+            SimpleExpression::Exp(a) => Ok(a.evaluate(variables)?.exp()),
             SimpleExpression::Log(a) => {
                 let a_val = a.evaluate(variables)?;
                 if a_val <= 0.0 {
-                    Err(QuantRS2Error::InvalidInput("Logarithm of non-positive number".to_string()))
+                    Err(QuantRS2Error::InvalidInput(
+                        "Logarithm of non-positive number".to_string(),
+                    ))
                 } else {
                     Ok(a_val.ln())
                 }
-            },
+            }
         }
     }
-    
+
     #[cfg(not(feature = "symbolic"))]
-    fn evaluate_simple_complex(expr: &SimpleExpression, variables: &HashMap<String, Complex64>) -> QuantRS2Result<Complex64> {
+    fn evaluate_simple_complex(
+        expr: &SimpleExpression,
+        variables: &HashMap<String, Complex64>,
+    ) -> QuantRS2Result<Complex64> {
         // Convert variables to real for this simple implementation
-        let real_vars: HashMap<String, f64> = variables.iter()
+        let real_vars: HashMap<String, f64> = variables
+            .iter()
             .filter_map(|(k, v)| {
                 if v.im.abs() < 1e-12 {
                     Some((k.clone(), v.re))
@@ -226,87 +218,95 @@ impl SymbolicExpression {
                 }
             })
             .collect();
-            
+
         let real_result = Self::evaluate_simple(expr, &real_vars)?;
         Ok(Complex64::new(real_result, 0.0))
     }
-    
+
     /// Get all variable names in the expression
     pub fn variables(&self) -> Vec<String> {
         match self {
             SymbolicExpression::Constant(_) | SymbolicExpression::ComplexConstant(_) => Vec::new(),
             SymbolicExpression::Variable(name) => vec![name.clone()],
-            
+
             #[cfg(feature = "symbolic")]
             SymbolicExpression::SymEngine(_) => {
                 // Would need to implement variable extraction from SymEngine
                 Vec::new()
-            },
-            
+            }
+
             #[cfg(not(feature = "symbolic"))]
-            SymbolicExpression::Simple(simple_expr) => {
-                Self::variables_simple(simple_expr)
-            },
+            SymbolicExpression::Simple(simple_expr) => Self::variables_simple(simple_expr),
         }
     }
-    
+
     #[cfg(not(feature = "symbolic"))]
     fn variables_simple(expr: &SimpleExpression) -> Vec<String> {
         match expr {
-            SimpleExpression::Add(a, b) | SimpleExpression::Sub(a, b) |
-            SimpleExpression::Mul(a, b) | SimpleExpression::Div(a, b) |
-            SimpleExpression::Pow(a, b) => {
+            SimpleExpression::Add(a, b)
+            | SimpleExpression::Sub(a, b)
+            | SimpleExpression::Mul(a, b)
+            | SimpleExpression::Div(a, b)
+            | SimpleExpression::Pow(a, b) => {
                 let mut vars = a.variables();
                 vars.extend(b.variables());
                 vars.sort();
                 vars.dedup();
                 vars
-            },
-            SimpleExpression::Sin(a) | SimpleExpression::Cos(a) |
-            SimpleExpression::Exp(a) | SimpleExpression::Log(a) => a.variables(),
+            }
+            SimpleExpression::Sin(a)
+            | SimpleExpression::Cos(a)
+            | SimpleExpression::Exp(a)
+            | SimpleExpression::Log(a) => a.variables(),
         }
     }
-    
+
     /// Check if the expression is constant (has no variables)
     pub fn is_constant(&self) -> bool {
         match self {
             SymbolicExpression::Constant(_) | SymbolicExpression::ComplexConstant(_) => true,
             SymbolicExpression::Variable(_) => false,
-            
+
             #[cfg(feature = "symbolic")]
             SymbolicExpression::SymEngine(_) => {
                 // Would need to check if SymEngine expression has variables
                 false
-            },
-            
+            }
+
             #[cfg(not(feature = "symbolic"))]
             SymbolicExpression::Simple(_) => false,
         }
     }
-    
+
     /// Substitute variables with expressions
-    pub fn substitute(&self, substitutions: &HashMap<String, SymbolicExpression>) -> QuantRS2Result<Self> {
+    pub fn substitute(
+        &self,
+        substitutions: &HashMap<String, SymbolicExpression>,
+    ) -> QuantRS2Result<Self> {
         match self {
-            SymbolicExpression::Constant(_) | SymbolicExpression::ComplexConstant(_) => Ok(self.clone()),
-            SymbolicExpression::Variable(name) => {
-                Ok(substitutions.get(name).cloned().unwrap_or_else(|| self.clone()))
-            },
-            
+            SymbolicExpression::Constant(_) | SymbolicExpression::ComplexConstant(_) => {
+                Ok(self.clone())
+            }
+            SymbolicExpression::Variable(name) => Ok(substitutions
+                .get(name)
+                .cloned()
+                .unwrap_or_else(|| self.clone())),
+
             #[cfg(feature = "symbolic")]
             SymbolicExpression::SymEngine(_) => {
                 // Would implement SymEngine substitution
                 Err(QuantRS2Error::UnsupportedOperation(
-                    "SymEngine substitution not yet implemented".to_string()
+                    "SymEngine substitution not yet implemented".to_string(),
                 ))
-            },
-            
+            }
+
             #[cfg(not(feature = "symbolic"))]
             SymbolicExpression::Simple(_) => {
                 // Would implement simple expression substitution
                 Err(QuantRS2Error::UnsupportedOperation(
-                    "Simple expression substitution not yet implemented".to_string()
+                    "Simple expression substitution not yet implemented".to_string(),
                 ))
-            },
+            }
         }
     }
 }
@@ -314,14 +314,14 @@ impl SymbolicExpression {
 // Arithmetic operations for SymbolicExpression
 impl std::ops::Add for SymbolicExpression {
     type Output = Self;
-    
+
     fn add(self, rhs: Self) -> Self::Output {
         #[cfg(feature = "symbolic")]
         {
             match (self, rhs) {
                 (SymbolicExpression::SymEngine(a), SymbolicExpression::SymEngine(b)) => {
                     SymbolicExpression::SymEngine(a + b)
-                },
+                }
                 (a, b) => {
                     // Convert to SymEngine if possible
                     let a_sym = match a {
@@ -340,13 +340,13 @@ impl std::ops::Add for SymbolicExpression {
                 }
             }
         }
-        
+
         #[cfg(not(feature = "symbolic"))]
         {
             match (self, rhs) {
                 (SymbolicExpression::Constant(a), SymbolicExpression::Constant(b)) => {
                     SymbolicExpression::Constant(a + b)
-                },
+                }
                 (a, b) => {
                     SymbolicExpression::Simple(SimpleExpression::Add(Box::new(a), Box::new(b)))
                 }
@@ -357,14 +357,14 @@ impl std::ops::Add for SymbolicExpression {
 
 impl std::ops::Sub for SymbolicExpression {
     type Output = Self;
-    
+
     fn sub(self, rhs: Self) -> Self::Output {
         #[cfg(feature = "symbolic")]
         {
             match (self, rhs) {
                 (SymbolicExpression::SymEngine(a), SymbolicExpression::SymEngine(b)) => {
                     SymbolicExpression::SymEngine(a - b)
-                },
+                }
                 (a, b) => {
                     let a_sym = match a {
                         SymbolicExpression::Constant(val) => SymEngine::from(val),
@@ -382,13 +382,13 @@ impl std::ops::Sub for SymbolicExpression {
                 }
             }
         }
-        
+
         #[cfg(not(feature = "symbolic"))]
         {
             match (self, rhs) {
                 (SymbolicExpression::Constant(a), SymbolicExpression::Constant(b)) => {
                     SymbolicExpression::Constant(a - b)
-                },
+                }
                 (a, b) => {
                     SymbolicExpression::Simple(SimpleExpression::Sub(Box::new(a), Box::new(b)))
                 }
@@ -399,14 +399,14 @@ impl std::ops::Sub for SymbolicExpression {
 
 impl std::ops::Mul for SymbolicExpression {
     type Output = Self;
-    
+
     fn mul(self, rhs: Self) -> Self::Output {
         #[cfg(feature = "symbolic")]
         {
             match (self, rhs) {
                 (SymbolicExpression::SymEngine(a), SymbolicExpression::SymEngine(b)) => {
                     SymbolicExpression::SymEngine(a * b)
-                },
+                }
                 (a, b) => {
                     let a_sym = match a {
                         SymbolicExpression::Constant(val) => SymEngine::from(val),
@@ -424,13 +424,13 @@ impl std::ops::Mul for SymbolicExpression {
                 }
             }
         }
-        
+
         #[cfg(not(feature = "symbolic"))]
         {
             match (self, rhs) {
                 (SymbolicExpression::Constant(a), SymbolicExpression::Constant(b)) => {
                     SymbolicExpression::Constant(a * b)
-                },
+                }
                 (a, b) => {
                     SymbolicExpression::Simple(SimpleExpression::Mul(Box::new(a), Box::new(b)))
                 }
@@ -441,14 +441,14 @@ impl std::ops::Mul for SymbolicExpression {
 
 impl std::ops::Div for SymbolicExpression {
     type Output = Self;
-    
+
     fn div(self, rhs: Self) -> Self::Output {
         #[cfg(feature = "symbolic")]
         {
             match (self, rhs) {
                 (SymbolicExpression::SymEngine(a), SymbolicExpression::SymEngine(b)) => {
                     SymbolicExpression::SymEngine(a / b)
-                },
+                }
                 (a, b) => {
                     let a_sym = match a {
                         SymbolicExpression::Constant(val) => SymEngine::from(val),
@@ -466,7 +466,7 @@ impl std::ops::Div for SymbolicExpression {
                 }
             }
         }
-        
+
         #[cfg(not(feature = "symbolic"))]
         {
             match (self, rhs) {
@@ -476,7 +476,7 @@ impl std::ops::Div for SymbolicExpression {
                     } else {
                         SymbolicExpression::Constant(a / b)
                     }
-                },
+                }
                 (a, b) => {
                     SymbolicExpression::Simple(SimpleExpression::Div(Box::new(a), Box::new(b)))
                 }
@@ -497,12 +497,12 @@ impl fmt::Display for SymbolicExpression {
                 } else {
                     write!(f, "{} + {}*I", value.re, value.im)
                 }
-            },
+            }
             SymbolicExpression::Variable(name) => write!(f, "{}", name),
-            
+
             #[cfg(feature = "symbolic")]
             SymbolicExpression::SymEngine(expr) => write!(f, "{}", expr),
-            
+
             #[cfg(not(feature = "symbolic"))]
             SymbolicExpression::Simple(expr) => Self::display_simple(expr, f),
         }
@@ -552,7 +552,7 @@ impl Zero for SymbolicExpression {
     fn zero() -> Self {
         SymbolicExpression::Constant(0.0)
     }
-    
+
     fn is_zero(&self) -> bool {
         match self {
             SymbolicExpression::Constant(val) => *val == 0.0,
@@ -566,7 +566,7 @@ impl One for SymbolicExpression {
     fn one() -> Self {
         SymbolicExpression::Constant(1.0)
     }
-    
+
     fn is_one(&self) -> bool {
         match self {
             SymbolicExpression::Constant(val) => *val == 1.0,
@@ -581,7 +581,7 @@ impl One for SymbolicExpression {
 pub mod calculus {
     use super::*;
     use symengine::ops::calculus;
-    
+
     /// Differentiate an expression with respect to a variable
     pub fn diff(expr: &SymbolicExpression, var: &str) -> QuantRS2Result<SymbolicExpression> {
         match expr {
@@ -589,15 +589,18 @@ pub mod calculus {
                 let var_expr = SymEngine::symbol(var);
                 match calculus::diff(sym_expr, &var_expr) {
                     Ok(result) => Ok(SymbolicExpression::SymEngine(result)),
-                    Err(e) => Err(QuantRS2Error::ComputationError(format!("Differentiation failed: {}", e))),
+                    Err(e) => Err(QuantRS2Error::ComputationError(format!(
+                        "Differentiation failed: {}",
+                        e
+                    ))),
                 }
-            },
+            }
             _ => Err(QuantRS2Error::UnsupportedOperation(
-                "Differentiation requires SymEngine expressions".to_string()
+                "Differentiation requires SymEngine expressions".to_string(),
             )),
         }
     }
-    
+
     /// Integrate an expression with respect to a variable
     pub fn integrate(expr: &SymbolicExpression, var: &str) -> QuantRS2Result<SymbolicExpression> {
         match expr {
@@ -605,49 +608,59 @@ pub mod calculus {
                 let var_expr = SymEngine::symbol(var);
                 match calculus::integrate(sym_expr, &var_expr) {
                     Ok(result) => Ok(SymbolicExpression::SymEngine(result)),
-                    Err(e) => Err(QuantRS2Error::ComputationError(format!("Integration failed: {}", e))),
+                    Err(e) => Err(QuantRS2Error::ComputationError(format!(
+                        "Integration failed: {}",
+                        e
+                    ))),
                 }
-            },
+            }
             _ => Err(QuantRS2Error::UnsupportedOperation(
-                "Integration requires SymEngine expressions".to_string()
+                "Integration requires SymEngine expressions".to_string(),
             )),
         }
     }
-    
+
     /// Compute the limit of an expression
-    pub fn limit(expr: &SymbolicExpression, var: &str, value: f64) -> QuantRS2Result<SymbolicExpression> {
+    pub fn limit(
+        expr: &SymbolicExpression,
+        var: &str,
+        value: f64,
+    ) -> QuantRS2Result<SymbolicExpression> {
         match expr {
             SymbolicExpression::SymEngine(sym_expr) => {
                 let var_expr = SymEngine::symbol(var);
                 let value_expr = SymEngine::from(value);
                 match calculus::limit(sym_expr, &var_expr, &value_expr) {
                     Ok(result) => Ok(SymbolicExpression::SymEngine(result)),
-                    Err(e) => Err(QuantRS2Error::ComputationError(format!("Limit computation failed: {}", e))),
+                    Err(e) => Err(QuantRS2Error::ComputationError(format!(
+                        "Limit computation failed: {}",
+                        e
+                    ))),
                 }
-            },
+            }
             _ => Err(QuantRS2Error::UnsupportedOperation(
-                "Limit computation requires SymEngine expressions".to_string()
+                "Limit computation requires SymEngine expressions".to_string(),
             )),
         }
     }
-    
+
     /// Expand an expression
     pub fn expand(expr: &SymbolicExpression) -> QuantRS2Result<SymbolicExpression> {
         match expr {
             SymbolicExpression::SymEngine(sym_expr) => {
                 Ok(SymbolicExpression::SymEngine(sym_expr.expand()))
-            },
+            }
             _ => Ok(expr.clone()), // No expansion needed for simple expressions
         }
     }
-    
+
     /// Simplify an expression
     pub fn simplify(expr: &SymbolicExpression) -> QuantRS2Result<SymbolicExpression> {
         match expr {
             SymbolicExpression::SymEngine(sym_expr) => {
                 // SymEngine's simplify would go here
                 Ok(SymbolicExpression::SymEngine(sym_expr.expand()))
-            },
+            }
             _ => Ok(expr.clone()),
         }
     }
@@ -656,8 +669,8 @@ pub mod calculus {
 /// Symbolic matrix operations for quantum gates
 pub mod matrix {
     use super::*;
-    use ndarray::{Array2, Array1};
-    
+    use ndarray::Array2;
+
     /// A symbolic matrix for representing quantum gates
     #[derive(Debug, Clone)]
     pub struct SymbolicMatrix {
@@ -665,14 +678,18 @@ pub mod matrix {
         pub cols: usize,
         pub elements: Vec<Vec<SymbolicExpression>>,
     }
-    
+
     impl SymbolicMatrix {
         /// Create a new symbolic matrix
         pub fn new(rows: usize, cols: usize) -> Self {
             let elements = vec![vec![SymbolicExpression::zero(); cols]; rows];
-            SymbolicMatrix { rows, cols, elements }
+            SymbolicMatrix {
+                rows,
+                cols,
+                elements,
+            }
         }
-        
+
         /// Create an identity matrix
         pub fn identity(size: usize) -> Self {
             let mut matrix = Self::new(size, size);
@@ -681,11 +698,12 @@ pub mod matrix {
             }
             matrix
         }
-        
+
         /// Create a symbolic rotation matrix around X-axis
+        #[allow(unused_variables)]
         pub fn rotation_x(theta: SymbolicExpression) -> Self {
             let mut matrix = Self::new(2, 2);
-            
+
             #[cfg(feature = "symbolic")]
             {
                 let half_theta = theta.clone() / SymbolicExpression::constant(2.0);
@@ -693,61 +711,74 @@ pub mod matrix {
                     symengine::ops::trig::cos(&match &half_theta {
                         SymbolicExpression::SymEngine(expr) => expr.clone(),
                         _ => return matrix,
-                    }).unwrap_or_else(|_| symengine::Expression::from(1.0))
+                    })
+                    .unwrap_or_else(|_| symengine::Expression::from(1.0)),
                 );
                 let sin_expr = SymbolicExpression::SymEngine(
                     symengine::ops::trig::sin(&match &half_theta {
                         SymbolicExpression::SymEngine(expr) => expr.clone(),
                         _ => return matrix,
-                    }).unwrap_or_else(|_| symengine::Expression::from(0.0))
+                    })
+                    .unwrap_or_else(|_| symengine::Expression::from(0.0)),
                 );
-                
+
                 matrix.elements[0][0] = cos_expr.clone();
-                matrix.elements[0][1] = SymbolicExpression::complex_constant(Complex64::new(0.0, -1.0)) * sin_expr.clone();
-                matrix.elements[1][0] = SymbolicExpression::complex_constant(Complex64::new(0.0, -1.0)) * sin_expr;
+                matrix.elements[0][1] =
+                    SymbolicExpression::complex_constant(Complex64::new(0.0, -1.0))
+                        * sin_expr.clone();
+                matrix.elements[1][0] =
+                    SymbolicExpression::complex_constant(Complex64::new(0.0, -1.0)) * sin_expr;
                 matrix.elements[1][1] = cos_expr;
             }
-            
+
             #[cfg(not(feature = "symbolic"))]
             {
                 // Simplified representation
-                matrix.elements[0][0] = SymbolicExpression::parse("cos(theta/2)").unwrap_or_else(|_| SymbolicExpression::one());
-                matrix.elements[0][1] = SymbolicExpression::parse("-i*sin(theta/2)").unwrap_or_else(|_| SymbolicExpression::zero());
-                matrix.elements[1][0] = SymbolicExpression::parse("-i*sin(theta/2)").unwrap_or_else(|_| SymbolicExpression::zero());
-                matrix.elements[1][1] = SymbolicExpression::parse("cos(theta/2)").unwrap_or_else(|_| SymbolicExpression::one());
+                matrix.elements[0][0] = SymbolicExpression::parse("cos(theta/2)")
+                    .unwrap_or_else(|_| SymbolicExpression::one());
+                matrix.elements[0][1] = SymbolicExpression::parse("-i*sin(theta/2)")
+                    .unwrap_or_else(|_| SymbolicExpression::zero());
+                matrix.elements[1][0] = SymbolicExpression::parse("-i*sin(theta/2)")
+                    .unwrap_or_else(|_| SymbolicExpression::zero());
+                matrix.elements[1][1] = SymbolicExpression::parse("cos(theta/2)")
+                    .unwrap_or_else(|_| SymbolicExpression::one());
             }
-            
+
             matrix
         }
-        
+
         /// Evaluate the matrix with given variable values
-        pub fn evaluate(&self, variables: &HashMap<String, f64>) -> QuantRS2Result<Array2<Complex64>> {
+        pub fn evaluate(
+            &self,
+            variables: &HashMap<String, f64>,
+        ) -> QuantRS2Result<Array2<Complex64>> {
             let mut result = Array2::<Complex64>::zeros((self.rows, self.cols));
-            
+
             for i in 0..self.rows {
                 for j in 0..self.cols {
-                    let complex_vars: HashMap<String, Complex64> = variables.iter()
+                    let complex_vars: HashMap<String, Complex64> = variables
+                        .iter()
                         .map(|(k, v)| (k.clone(), Complex64::new(*v, 0.0)))
                         .collect();
-                    
+
                     let value = self.elements[i][j].evaluate_complex(&complex_vars)?;
                     result[[i, j]] = value;
                 }
             }
-            
+
             Ok(result)
         }
-        
+
         /// Matrix multiplication
         pub fn multiply(&self, other: &SymbolicMatrix) -> QuantRS2Result<SymbolicMatrix> {
             if self.cols != other.rows {
                 return Err(QuantRS2Error::InvalidInput(
-                    "Matrix dimensions don't match for multiplication".to_string()
+                    "Matrix dimensions don't match for multiplication".to_string(),
                 ));
             }
-            
+
             let mut result = SymbolicMatrix::new(self.rows, other.cols);
-            
+
             for i in 0..self.rows {
                 for j in 0..other.cols {
                     let mut sum = SymbolicExpression::zero();
@@ -758,18 +789,20 @@ pub mod matrix {
                     result.elements[i][j] = sum;
                 }
             }
-            
+
             Ok(result)
         }
     }
-    
+
     impl fmt::Display for SymbolicMatrix {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             writeln!(f, "SymbolicMatrix[{}x{}]:", self.rows, self.cols)?;
             for row in &self.elements {
                 write!(f, "[")?;
                 for (j, elem) in row.iter().enumerate() {
-                    if j > 0 { write!(f, ", ")?; }
+                    if j > 0 {
+                        write!(f, ", ")?;
+                    }
                     write!(f, "{}", elem)?;
                 }
                 writeln!(f, "]")?;
@@ -782,39 +815,39 @@ pub mod matrix {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_symbolic_expression_creation() {
         let const_expr = SymbolicExpression::constant(3.14);
         assert!(const_expr.is_constant());
-        
+
         let var_expr = SymbolicExpression::variable("x");
         assert!(!var_expr.is_constant());
         assert_eq!(var_expr.variables(), vec!["x"]);
     }
-    
+
     #[test]
     fn test_symbolic_arithmetic() {
         let a = SymbolicExpression::constant(2.0);
         let b = SymbolicExpression::constant(3.0);
         let sum = a + b;
-        
+
         match sum {
             SymbolicExpression::Constant(value) => assert_eq!(value, 5.0),
             _ => panic!("Expected constant result"),
         }
     }
-    
+
     #[test]
     fn test_symbolic_evaluation() {
         let mut vars = HashMap::new();
         vars.insert("x".to_string(), 2.0);
-        
+
         let var_expr = SymbolicExpression::variable("x");
         let result = var_expr.evaluate(&vars).unwrap();
         assert_eq!(result, 2.0);
     }
-    
+
     #[test]
     fn test_symbolic_matrix() {
         let matrix = matrix::SymbolicMatrix::identity(2);
@@ -824,7 +857,7 @@ mod tests {
         assert!(matrix.elements[1][1].is_one());
         assert!(matrix.elements[0][1].is_zero());
     }
-    
+
     #[cfg(feature = "symbolic")]
     #[test]
     fn test_symengine_integration() {
@@ -833,7 +866,7 @@ mod tests {
             SymbolicExpression::SymEngine(_) => {
                 // Test SymEngine functionality
                 assert!(!expr.is_constant());
-            },
+            }
             _ => {
                 // Fallback to simple parsing
                 assert!(!expr.is_constant());

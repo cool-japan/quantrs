@@ -141,6 +141,7 @@ pub enum RegionSelectionStrategy {
     CriticalPath,
     Uniform,
     Adaptive,
+    Automatic,
 }
 
 /// Overlap handling strategies
@@ -161,6 +162,22 @@ pub struct GateSpecificFoldingConfig {
     pub priority_ordering: Vec<String>,
     /// Error rate weighting
     pub error_rate_weighting: bool,
+    /// Folding strategies (alias for folding_rules)
+    pub folding_strategies: HashMap<String, GateFoldingRule>,
+    /// Default folding strategy
+    pub default_strategy: DefaultFoldingStrategy,
+    /// Prioritized gates (alias for priority_ordering)
+    pub prioritized_gates: Vec<String>,
+}
+
+/// Default folding strategies
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum DefaultFoldingStrategy {
+    Identity,
+    Inverse,
+    Decomposition,
+    Random,
+    None,
 }
 
 /// Gate folding rule
@@ -707,4 +724,40 @@ pub enum OptimizationAlgorithm {
     QuasiNewton,
     EvolutionaryAlgorithm,
     BayesianOptimization,
+}
+
+// Default implementations
+
+impl Default for FoldingConfig {
+    fn default() -> Self {
+        Self {
+            folding_type: FoldingType::Global,
+            global_folding: true,
+            local_folding: LocalFoldingConfig::default(),
+            gate_specific: GateSpecificFoldingConfig::default(),
+        }
+    }
+}
+
+impl Default for LocalFoldingConfig {
+    fn default() -> Self {
+        Self {
+            regions: vec![],
+            selection_strategy: RegionSelectionStrategy::Automatic,
+            overlap_handling: OverlapHandling::Merge,
+        }
+    }
+}
+
+impl Default for GateSpecificFoldingConfig {
+    fn default() -> Self {
+        Self {
+            folding_rules: HashMap::new(),
+            priority_ordering: vec![],
+            error_rate_weighting: false,
+            folding_strategies: HashMap::new(),
+            default_strategy: DefaultFoldingStrategy::Identity,
+            prioritized_gates: vec![],
+        }
+    }
 }

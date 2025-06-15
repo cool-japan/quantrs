@@ -1084,7 +1084,7 @@ impl Clone for VariationalCircuit {
 mod tests {
     use super::*;
     use crate::qubit::QubitId;
-    use crate::variational::{DiffMode, VariationalGate};
+    use crate::variational::VariationalGate;
 
     #[test]
     fn test_gradient_descent_optimizer() {

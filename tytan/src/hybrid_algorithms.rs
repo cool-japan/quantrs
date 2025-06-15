@@ -5,8 +5,8 @@
 
 #[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, IxDyn};
+use crate::sampler::{SampleResult, Sampler};
+use ndarray::Array2;
 use rand::thread_rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -569,7 +569,11 @@ impl WarmStartStrategy {
     ) -> Result<WarmStartResult, String> {
         // Run classical pre-solver
         let qubo = problem.to_qubo();
-        let classical_results = self.pre_solver.run_qubo(&qubo, self.classical_iterations)?;
+        let qubo_tuple = (qubo.to_dense_matrix(), qubo.variable_map());
+        let classical_results = self
+            .pre_solver
+            .run_qubo(&qubo_tuple, self.classical_iterations)
+            .map_err(|e| format!("Classical solver error: {:?}", e))?;
 
         // Extract best solution
         let best_solution = classical_results
@@ -697,11 +701,15 @@ impl IterativeRefinement {
 
         for iteration in 0..self.max_refinements {
             // Run quantum solver
-            let quantum_results = self.quantum_solver.run_qubo(&qubo.clone(), initial_shots)?;
+            let qubo_tuple = (qubo.to_dense_matrix(), qubo.variable_map());
+            let quantum_results = self
+                .quantum_solver
+                .run_qubo(&qubo_tuple, initial_shots)
+                .map_err(|e| format!("Quantum solver error: {:?}", e))?;
 
             // Apply classical refinement
             let refined_results =
-                self.apply_classical_refinement(&quantum_results, &qubo.0, &qubo.1)?;
+                self.apply_classical_refinement(&quantum_results, &qubo_tuple.0, &qubo_tuple.1)?;
 
             // Track best solution
             for result in &refined_results {
@@ -735,8 +743,8 @@ impl IterativeRefinement {
 
         Ok(RefinementResult {
             best_solution: best_solution.ok_or("No solution found")?,
-            refinement_history: history,
             total_iterations: history.len(),
+            refinement_history: history,
         })
     }
 

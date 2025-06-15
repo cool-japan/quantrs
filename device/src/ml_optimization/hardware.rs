@@ -1,9 +1,10 @@
 //! Hardware Prediction Configuration Types
 
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 /// Hardware prediction configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HardwarePredictionConfig {
     /// Enable hardware prediction
     pub enable_prediction: bool,
@@ -20,7 +21,7 @@ pub struct HardwarePredictionConfig {
 }
 
 /// Prediction targets
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PredictionTarget {
     CircuitFidelity,
     ExecutionTime,
@@ -35,7 +36,7 @@ pub enum PredictionTarget {
 }
 
 /// Hardware adaptation configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HardwareAdaptationConfig {
     /// Enable adaptive optimization
     pub enable_adaptation: bool,
@@ -48,7 +49,7 @@ pub struct HardwareAdaptationConfig {
 }
 
 /// Adaptation triggers
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum AdaptationTrigger {
     PerformanceDegradation,
     CalibrationDrift,

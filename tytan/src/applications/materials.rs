@@ -3,10 +3,10 @@
 //! This module provides quantum optimization tools for materials science
 //! including crystal structure prediction, phase transitions, and property optimization.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, Array3, IxDyn};
+// Sampler types available for materials applications
+use ndarray::Array2;
 use rand::prelude::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::f64::consts::PI;
 
 /// Crystal structure predictor

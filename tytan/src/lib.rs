@@ -136,7 +136,7 @@ pub use advanced_performance_analysis::{
 };
 pub use analysis::{calculate_diversity, cluster_solutions, visualize_energy_distribution};
 #[cfg(feature = "dwave")]
-pub use auto_array::Auto_array;
+pub use auto_array::AutoArray;
 #[cfg(feature = "dwave")]
 pub use compile::{Compile, PieckCompile};
 #[cfg(feature = "gpu")]

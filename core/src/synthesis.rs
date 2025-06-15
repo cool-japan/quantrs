@@ -353,7 +353,6 @@ pub fn identify_gate(unitary: &ArrayView2<Complex64>, tolerance: f64) -> Option<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::f64::consts::PI;
 
     #[test]
     #[ignore] // TODO: Fix ZYZ decomposition algorithm

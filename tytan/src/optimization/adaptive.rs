@@ -4,10 +4,9 @@
 //! during optimization based on performance feedback.
 
 use crate::{
-    optimization::penalty::{CompiledModel, PenaltyConfig},
+    optimization::penalty::CompiledModel,
     sampler::{SampleResult, Sampler},
 };
-use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

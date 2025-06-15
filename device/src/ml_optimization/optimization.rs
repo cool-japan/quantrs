@@ -1,9 +1,10 @@
 //! Optimization Strategy Configuration Types
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Optimization strategy configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptimizationStrategyConfig {
     /// Multi-objective optimization
     pub multi_objective: MultiObjectiveConfig,
@@ -18,7 +19,7 @@ pub struct OptimizationStrategyConfig {
 }
 
 /// Multi-objective optimization configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MultiObjectiveConfig {
     /// Enable multi-objective optimization
     pub enable_multi_objective: bool,
@@ -31,7 +32,7 @@ pub struct MultiObjectiveConfig {
 }
 
 /// Scalarization methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ScalarizationMethod {
     WeightedSum,
     Chebyshev,
@@ -41,7 +42,7 @@ pub enum ScalarizationMethod {
 }
 
 /// Constraint handling configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConstraintHandlingConfig {
     /// Constraint types
     pub constraint_types: Vec<ConstraintType>,
@@ -54,7 +55,7 @@ pub struct ConstraintHandlingConfig {
 }
 
 /// Constraint types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ConstraintType {
     Equality,
     Inequality,
@@ -64,7 +65,7 @@ pub enum ConstraintType {
 }
 
 /// Penalty methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PenaltyMethod {
     ExteriorPenalty,
     InteriorPenalty,
@@ -74,7 +75,7 @@ pub enum PenaltyMethod {
 }
 
 /// Search strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SearchStrategy {
     GradientBased,
     EvolutionaryAlgorithm,
@@ -86,7 +87,7 @@ pub enum SearchStrategy {
 }
 
 /// Exploration-exploitation configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExplorationExploitationConfig {
     /// Initial exploration rate
     pub initial_exploration_rate: f64,
@@ -101,7 +102,7 @@ pub struct ExplorationExploitationConfig {
 }
 
 /// Adaptive strategy configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AdaptiveStrategyConfig {
     /// Enable adaptive strategies
     pub enable_adaptive: bool,
@@ -114,7 +115,7 @@ pub struct AdaptiveStrategyConfig {
 }
 
 /// Strategy selection methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum StrategySelectionMethod {
     PerformanceBased,
     BanditAlgorithm,

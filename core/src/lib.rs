@@ -40,6 +40,7 @@
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::needless_question_mark)]
 
+pub mod adiabatic;
 pub mod batch;
 pub mod bosonic;
 pub mod cartan;
@@ -61,18 +62,23 @@ pub mod kak_multiqubit;
 pub mod matrix_ops;
 pub mod mbqc;
 pub mod memory_efficient;
+pub mod neutral_atom;
 pub mod operations;
 pub mod optimization;
 pub mod parametric;
+pub mod photonic;
 pub mod post_quantum_crypto;
+pub mod pulse;
 pub mod qaoa;
 pub mod qml;
 pub mod qpca;
 pub mod quantum_algorithm_profiling;
 pub mod quantum_aware_interpreter;
+pub mod quantum_cellular_automata;
 pub mod quantum_channels;
 pub mod quantum_counting;
 pub mod quantum_debugging_profiling;
+pub mod quantum_game_theory;
 pub mod quantum_garbage_collection;
 pub mod quantum_hardware_abstraction;
 pub mod quantum_internet;
@@ -90,6 +96,7 @@ pub mod qubit;
 pub mod real_time_compilation;
 pub mod register;
 pub mod shannon;
+pub mod silicon_quantum_dots;
 pub mod simd_ops;
 pub mod symbolic;
 pub mod symbolic_hamiltonian;
@@ -98,6 +105,7 @@ pub mod synthesis;
 pub mod tensor_network;
 pub mod testing;
 pub mod topological;
+pub mod trapped_ion;
 pub mod ultra_high_fidelity_synthesis;
 pub mod ultrathink_core;
 pub mod variational;
@@ -108,6 +116,10 @@ pub mod zx_extraction;
 /// Re-exports of commonly used types and traits
 pub mod prelude {
     // Import specific items from each module to avoid ambiguous glob re-exports
+    pub use crate::adiabatic::{
+        AdiabaticQuantumComputer, AnnealingSchedule, IsingProblem, ProblemGenerator, ProblemType,
+        QUBOProblem, QuantumAnnealer, QuantumAnnealingSnapshot,
+    };
     pub use crate::batch::execution::{
         create_optimized_executor, BatchCircuit, BatchCircuitExecutor,
     };
@@ -194,6 +206,10 @@ pub mod prelude {
         MeasurementPattern,
     };
     pub use crate::memory_efficient::{EfficientStateVector, StateMemoryStats};
+    pub use crate::neutral_atom::{
+        AtomSpecies, AtomState, LaserSystem, NeutralAtom, NeutralAtomErrorModel, NeutralAtomGates,
+        NeutralAtomQC, OpticalTweezer, Position3D,
+    };
     pub use crate::operations::{
         apply_and_sample, sample_outcome, MeasurementOutcome, OperationResult, POVMMeasurement,
         ProjectiveMeasurement, QuantumOperation, Reset,
@@ -213,9 +229,17 @@ pub mod prelude {
         gates_are_disjoint, gates_can_commute, OptimizationChain, OptimizationPass,
     };
     pub use crate::parametric::{Parameter, ParametricGate, SymbolicParameter};
+    pub use crate::photonic::{
+        OpticalMode, PhotonicCircuit, PhotonicEncoding, PhotonicErrorCorrection, PhotonicGate,
+        PhotonicGateType, PhotonicSystem,
+    };
     pub use crate::post_quantum_crypto::{
         CompressionFunction, QKDProtocol, QKDResult, QuantumDigitalSignature, QuantumHashFunction,
         QuantumKeyDistribution, QuantumSignature,
+    };
+    pub use crate::pulse::{
+        CouplingParams, HardwareCalibration, Pulse, PulseCompiler, PulseEnvelope, PulseNoiseModel,
+        PulseSequence, QubitControlParams, TimingConstraints,
     };
     pub use crate::qaoa::{
         CostHamiltonian, MixerHamiltonian, QAOACircuit, QAOAOptimizer, QAOAParams,
@@ -252,6 +276,10 @@ pub mod prelude {
         ExecutionStrategy, OperationResult as InterpreterOperationResult, QuantumAwareInterpreter,
         QuantumJITCompiler, QuantumStateTracker, RuntimeOptimizationEngine,
     };
+    pub use crate::quantum_cellular_automata::{
+        BoundaryCondition, QCARule, QCAType, QuantumCellularAutomaton1D,
+        QuantumCellularAutomaton2D, UnitaryRule,
+    };
     pub use crate::quantum_channels::{
         ChoiRepresentation, KrausRepresentation, ProcessTomography, QuantumChannel,
         QuantumChannels, StinespringRepresentation,
@@ -264,6 +292,9 @@ pub mod prelude {
         CircuitAnalysisReport, ProfilingReport, QuantumCircuitAnalyzer, QuantumDebugProfiling,
         QuantumDebugProfilingReport, QuantumDebugger, QuantumErrorTracker,
         QuantumPerformanceProfiler, QuantumStateInspector, StateInspectionReport,
+    };
+    pub use crate::quantum_game_theory::{
+        GameOutcome, GameType, QuantumGame, QuantumMechanism, QuantumPlayer, QuantumStrategy,
     };
     pub use crate::quantum_garbage_collection::{
         CoherenceBasedGC, GCCollectionMode, GCCollectionResult, QuantumAllocationRequest,
@@ -326,8 +357,8 @@ pub mod prelude {
         UniversalQuantumFramework,
     };
     pub use crate::quantum_walk::{
-        CoinOperator, ContinuousQuantumWalk, DiscreteQuantumWalk, Graph, GraphType,
-        QuantumWalkSearch, SearchOracle,
+        CoinOperator, ContinuousQuantumWalk, DecoherentQuantumWalk, DiscreteQuantumWalk, Graph,
+        GraphType, MultiWalkerQuantumWalk, QuantumWalkSearch, SearchOracle, SzegedyQuantumWalk,
     };
     pub use crate::qubit::*;
     pub use crate::real_time_compilation::{
@@ -336,26 +367,27 @@ pub mod prelude {
     };
     pub use crate::register::*;
     pub use crate::shannon::{shannon_decompose, OptimizedShannonDecomposer, ShannonDecomposer};
+    pub use crate::silicon_quantum_dots::{
+        DeviceParams, QuantumDotParams, QuantumDotType, SiliconQuantumDot, SiliconQuantumDotGates,
+        SiliconQuantumDotSystem,
+    };
     pub use crate::simd_ops::{
         apply_phase_simd, controlled_phase_simd, expectation_z_simd, inner_product, normalize_simd,
     };
-    pub use crate::symbolic::{
-        SymbolicExpression,
-        matrix::SymbolicMatrix,
-    };
     #[cfg(feature = "symbolic")]
-    pub use crate::symbolic::{
-        calculus::{diff, integrate, limit, expand, simplify},
-    };
+    pub use crate::symbolic::calculus::{diff, expand, integrate, limit, simplify};
+    pub use crate::symbolic::{matrix::SymbolicMatrix, SymbolicExpression};
     pub use crate::symbolic_hamiltonian::{
-        PauliOperator as SymbolicPauliOperator, PauliString as SymbolicPauliString, 
+        hamiltonians::{
+            heisenberg, maxcut, molecular_h2, number_partitioning, transverse_field_ising,
+        },
+        PauliOperator as SymbolicPauliOperator, PauliString as SymbolicPauliString,
         SymbolicHamiltonian, SymbolicHamiltonianTerm,
-        hamiltonians::{transverse_field_ising, heisenberg, maxcut, number_partitioning, molecular_h2},
     };
     pub use crate::symbolic_optimization::{
-        SymbolicOptimizationConfig, SymbolicOptimizer, OptimizationResult, 
-        SymbolicObjective, HamiltonianExpectation, QAOACostFunction,
-        circuit_optimization::{optimize_parametric_circuit, extract_circuit_parameters},
+        circuit_optimization::{extract_circuit_parameters, optimize_parametric_circuit},
+        HamiltonianExpectation, OptimizationResult, QAOACostFunction, SymbolicObjective,
+        SymbolicOptimizationConfig, SymbolicOptimizer,
     };
     pub use crate::synthesis::{
         decompose_single_qubit_xyx, decompose_single_qubit_zyz, decompose_two_qubit_kak,
@@ -372,6 +404,10 @@ pub mod prelude {
     pub use crate::topological::{
         AnyonModel, AnyonType, AnyonWorldline, BraidingOperation, FibonacciModel, FusionTree,
         IsingModel, TopologicalGate, TopologicalQC, ToricCode,
+    };
+    pub use crate::trapped_ion::{
+        IonLevel, IonSpecies, LaserPulse, MotionalMode, MotionalModeType, TrappedIon,
+        TrappedIonGates, TrappedIonSystem,
     };
     pub use crate::ultra_high_fidelity_synthesis::{
         ErrorSuppressedSequence, ErrorSuppressionSynthesis, GateOperation, GrapeOptimizer,

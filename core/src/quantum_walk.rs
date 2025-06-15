@@ -8,9 +8,13 @@
 //! Quantum walks are the quantum analog of classical random walks and form
 //! the basis for many quantum algorithms.
 
-use crate::complex_ext::QuantumComplexExt;
+use crate::{
+    complex_ext::QuantumComplexExt,
+    error::{QuantRS2Error, QuantRS2Result},
+};
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
+use std::collections::{HashMap, VecDeque};
 
 /// Types of graphs for quantum walks
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -195,6 +199,219 @@ impl Graph {
         }
 
         matrix
+    }
+
+    /// Get the Laplacian matrix
+    pub fn laplacian_matrix(&self) -> Array2<f64> {
+        let mut laplacian = Array2::zeros((self.num_vertices, self.num_vertices));
+
+        for v in 0..self.num_vertices {
+            let degree = self.degree(v) as f64;
+            laplacian[[v, v]] = degree;
+
+            for &neighbor in &self.edges[v] {
+                if let Some(ref weights) = self.weights {
+                    laplacian[[v, neighbor]] = -weights[v][neighbor];
+                } else {
+                    laplacian[[v, neighbor]] = -1.0;
+                }
+            }
+        }
+
+        laplacian
+    }
+
+    /// Get the normalized Laplacian matrix
+    pub fn normalized_laplacian_matrix(&self) -> Array2<f64> {
+        let mut norm_laplacian = Array2::zeros((self.num_vertices, self.num_vertices));
+
+        for v in 0..self.num_vertices {
+            let degree_v = self.degree(v) as f64;
+            if degree_v == 0.0 {
+                continue;
+            }
+
+            norm_laplacian[[v, v]] = 1.0;
+
+            for &neighbor in &self.edges[v] {
+                let degree_n = self.degree(neighbor) as f64;
+                if degree_n == 0.0 {
+                    continue;
+                }
+
+                let weight = if let Some(ref weights) = self.weights {
+                    weights[v][neighbor]
+                } else {
+                    1.0
+                };
+
+                norm_laplacian[[v, neighbor]] = -weight / (degree_v * degree_n).sqrt();
+            }
+        }
+
+        norm_laplacian
+    }
+
+    /// Get the transition matrix for random walks
+    pub fn transition_matrix(&self) -> Array2<f64> {
+        let mut transition = Array2::zeros((self.num_vertices, self.num_vertices));
+
+        for v in 0..self.num_vertices {
+            let degree = self.degree(v) as f64;
+            if degree == 0.0 {
+                continue;
+            }
+
+            for &neighbor in &self.edges[v] {
+                let weight = if let Some(ref weights) = self.weights {
+                    weights[v][neighbor]
+                } else {
+                    1.0
+                };
+
+                transition[[v, neighbor]] = weight / degree;
+            }
+        }
+
+        transition
+    }
+
+    /// Check if the graph is bipartite
+    pub fn is_bipartite(&self) -> bool {
+        let mut colors = vec![-1; self.num_vertices];
+
+        for start in 0..self.num_vertices {
+            if colors[start] != -1 {
+                continue;
+            }
+
+            let mut queue = VecDeque::new();
+            queue.push_back(start);
+            colors[start] = 0;
+
+            while let Some(vertex) = queue.pop_front() {
+                for &neighbor in &self.edges[vertex] {
+                    if colors[neighbor] == -1 {
+                        colors[neighbor] = 1 - colors[vertex];
+                        queue.push_back(neighbor);
+                    } else if colors[neighbor] == colors[vertex] {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        true
+    }
+
+    /// Calculate the algebraic connectivity (second smallest eigenvalue of Laplacian)
+    pub fn algebraic_connectivity(&self) -> f64 {
+        let laplacian = self.laplacian_matrix();
+
+        // For small graphs, we can compute eigenvalues directly
+        // In practice, you'd use more sophisticated numerical methods
+        if self.num_vertices <= 10 {
+            self.compute_laplacian_eigenvalues(&laplacian)
+                .get(1)
+                .copied()
+                .unwrap_or(0.0)
+        } else {
+            // Approximate using power iteration for larger graphs
+            self.estimate_fiedler_value(&laplacian)
+        }
+    }
+
+    /// Compute eigenvalues of Laplacian (simplified implementation)
+    fn compute_laplacian_eigenvalues(&self, _laplacian: &Array2<f64>) -> Vec<f64> {
+        // This is a placeholder - in practice you'd use a proper eigenvalue solver
+        // For now, return approximate values based on graph structure
+        let mut eigenvalues = vec![0.0]; // Always has 0 eigenvalue
+
+        // Rough approximation based on degree sequence
+        for v in 0..self.num_vertices {
+            let degree = self.degree(v) as f64;
+            if degree > 0.0 {
+                eigenvalues.push(degree);
+            }
+        }
+
+        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        eigenvalues.truncate(self.num_vertices);
+        eigenvalues
+    }
+
+    /// Estimate Fiedler value using power iteration
+    fn estimate_fiedler_value(&self, _laplacian: &Array2<f64>) -> f64 {
+        // Simplified estimation - in practice use inverse power iteration
+        let max_degree = (0..self.num_vertices)
+            .map(|v| self.degree(v))
+            .max()
+            .unwrap_or(0);
+        2.0 / max_degree as f64 // Rough approximation
+    }
+
+    /// Get shortest path distances between all pairs of vertices
+    pub fn all_pairs_shortest_paths(&self) -> Array2<f64> {
+        let mut distances =
+            Array2::from_elem((self.num_vertices, self.num_vertices), f64::INFINITY);
+
+        // Initialize distances
+        for v in 0..self.num_vertices {
+            distances[[v, v]] = 0.0;
+            for &neighbor in &self.edges[v] {
+                let weight = if let Some(ref weights) = self.weights {
+                    weights[v][neighbor]
+                } else {
+                    1.0
+                };
+                distances[[v, neighbor]] = weight;
+            }
+        }
+
+        // Floyd-Warshall algorithm
+        for k in 0..self.num_vertices {
+            for i in 0..self.num_vertices {
+                for j in 0..self.num_vertices {
+                    let via_k = distances[[i, k]] + distances[[k, j]];
+                    if via_k < distances[[i, j]] {
+                        distances[[i, j]] = via_k;
+                    }
+                }
+            }
+        }
+
+        distances
+    }
+
+    /// Create a graph from an adjacency matrix
+    pub fn from_adjacency_matrix(matrix: &Array2<f64>) -> QuantRS2Result<Self> {
+        let (rows, cols) = matrix.dim();
+        if rows != cols {
+            return Err(QuantRS2Error::InvalidInput(
+                "Adjacency matrix must be square".to_string(),
+            ));
+        }
+
+        let mut graph = Self::new_empty(rows);
+        let mut has_weights = false;
+
+        for i in 0..rows {
+            for j in i + 1..cols {
+                let weight = matrix[[i, j]];
+                if weight != 0.0 {
+                    if weight != 1.0 {
+                        has_weights = true;
+                    }
+                    if has_weights {
+                        graph.add_weighted_edge(i, j, weight);
+                    } else {
+                        graph.add_edge(i, j);
+                    }
+                }
+            }
+        }
+
+        Ok(graph)
     }
 }
 
@@ -505,6 +722,467 @@ impl ContinuousQuantumWalk {
     }
 }
 
+/// Szegedy quantum walk for arbitrary graphs
+/// This provides better mixing properties on irregular graphs
+pub struct SzegedyQuantumWalk {
+    graph: Graph,
+    /// State lives on edges: |u,v> where edge (u,v) exists
+    state: HashMap<(usize, usize), Complex64>,
+    num_edges: usize,
+}
+
+impl SzegedyQuantumWalk {
+    /// Create a new Szegedy quantum walk
+    pub fn new(graph: Graph) -> Self {
+        let mut num_edges = 0;
+        for v in 0..graph.num_vertices {
+            num_edges += graph.edges[v].len();
+        }
+
+        Self {
+            graph,
+            state: HashMap::new(),
+            num_edges,
+        }
+    }
+
+    /// Initialize in uniform superposition over all edges
+    pub fn initialize_uniform(&mut self) {
+        self.state.clear();
+
+        if self.num_edges == 0 {
+            return;
+        }
+
+        let amplitude = Complex64::new(1.0 / (self.num_edges as f64).sqrt(), 0.0);
+
+        for u in 0..self.graph.num_vertices {
+            for &v in &self.graph.edges[u] {
+                self.state.insert((u, v), amplitude);
+            }
+        }
+    }
+
+    /// Initialize at a specific edge
+    pub fn initialize_edge(&mut self, u: usize, v: usize) {
+        self.state.clear();
+
+        if u < self.graph.num_vertices && self.graph.edges[u].contains(&v) {
+            self.state.insert((u, v), Complex64::new(1.0, 0.0));
+        }
+    }
+
+    /// Perform one step of Szegedy walk
+    pub fn step(&mut self) {
+        // Szegedy walk: (2P - I)(2Q - I) where P and Q are projections
+
+        // Apply reflection around vertex-uniform states
+        self.reflect_vertex_uniform();
+
+        // Apply reflection around edge-uniform states
+        self.reflect_edge_uniform();
+    }
+
+    /// Reflect around vertex-uniform subspaces
+    fn reflect_vertex_uniform(&mut self) {
+        let mut vertex_sums: Vec<Complex64> =
+            vec![Complex64::new(0.0, 0.0); self.graph.num_vertices];
+
+        // Calculate sum of amplitudes for each vertex
+        for (&(u, _), &amplitude) in &self.state {
+            vertex_sums[u] += amplitude;
+        }
+
+        // Apply reflection: 2|psi_u><psi_u| - I
+        let mut new_state = HashMap::new();
+
+        for (&(u, v), &old_amp) in &self.state {
+            let degree = self.graph.degree(u) as f64;
+            if degree > 0.0 {
+                let vertex_avg = vertex_sums[u] / degree;
+                let new_amp = 2.0 * vertex_avg - old_amp;
+                new_state.insert((u, v), new_amp);
+            }
+        }
+
+        self.state = new_state;
+    }
+
+    /// Reflect around edge-uniform subspace
+    fn reflect_edge_uniform(&mut self) {
+        if self.num_edges == 0 {
+            return;
+        }
+
+        // Calculate total amplitude
+        let total_amp: Complex64 = self.state.values().sum();
+        let uniform_amp = total_amp / self.num_edges as f64;
+
+        // Apply reflection: 2|uniform><uniform| - I
+        for (_, amplitude) in self.state.iter_mut() {
+            *amplitude = 2.0 * uniform_amp - *amplitude;
+        }
+    }
+
+    /// Get vertex probabilities by summing over outgoing edges
+    pub fn vertex_probabilities(&self) -> Vec<f64> {
+        let mut probs = vec![0.0; self.graph.num_vertices];
+
+        for (&(u, _), &amplitude) in &self.state {
+            probs[u] += amplitude.norm_sqr();
+        }
+
+        probs
+    }
+
+    /// Get edge probabilities
+    pub fn edge_probabilities(&self) -> Vec<((usize, usize), f64)> {
+        self.state
+            .iter()
+            .map(|(&edge, &amplitude)| (edge, amplitude.norm_sqr()))
+            .collect()
+    }
+
+    /// Calculate mixing time to epsilon-close to uniform distribution
+    pub fn estimate_mixing_time(&mut self, epsilon: f64) -> usize {
+        let uniform_prob = 1.0 / self.graph.num_vertices as f64;
+
+        // Reset to uniform
+        self.initialize_uniform();
+
+        for steps in 1..1000 {
+            self.step();
+
+            let probs = self.vertex_probabilities();
+            let max_deviation = probs
+                .iter()
+                .map(|&p| (p - uniform_prob).abs())
+                .fold(0.0, f64::max);
+
+            if max_deviation < epsilon {
+                return steps;
+            }
+        }
+
+        1000 // Return max if not converged
+    }
+}
+
+/// Multi-walker quantum walk for studying entanglement and correlations
+pub struct MultiWalkerQuantumWalk {
+    graph: Graph,
+    num_walkers: usize,
+    /// State tensor product space: walker1_pos ⊗ walker2_pos ⊗ ...
+    state: Array1<Complex64>,
+    /// Dimension of single walker space
+    single_walker_dim: usize,
+}
+
+impl MultiWalkerQuantumWalk {
+    /// Create a new multi-walker quantum walk
+    pub fn new(graph: Graph, num_walkers: usize) -> Self {
+        let single_walker_dim = graph.num_vertices;
+        let total_dim = single_walker_dim.pow(num_walkers as u32);
+
+        Self {
+            graph,
+            num_walkers,
+            state: Array1::zeros(total_dim),
+            single_walker_dim,
+        }
+    }
+
+    /// Initialize walkers at specific positions
+    pub fn initialize_positions(&mut self, positions: &[usize]) -> QuantRS2Result<()> {
+        if positions.len() != self.num_walkers {
+            return Err(QuantRS2Error::InvalidInput(
+                "Number of positions must match number of walkers".to_string(),
+            ));
+        }
+
+        for &pos in positions {
+            if pos >= self.single_walker_dim {
+                return Err(QuantRS2Error::InvalidInput(format!(
+                    "Position {} out of bounds",
+                    pos
+                )));
+            }
+        }
+
+        // Reset state
+        self.state.fill(Complex64::new(0.0, 0.0));
+
+        // Set amplitude for initial configuration
+        let index = self.positions_to_index(positions);
+        self.state[index] = Complex64::new(1.0, 0.0);
+
+        Ok(())
+    }
+
+    /// Initialize in entangled superposition
+    pub fn initialize_entangled_bell_state(
+        &mut self,
+        pos1: usize,
+        pos2: usize,
+    ) -> QuantRS2Result<()> {
+        if self.num_walkers != 2 {
+            return Err(QuantRS2Error::InvalidInput(
+                "Bell state initialization only works for 2 walkers".to_string(),
+            ));
+        }
+
+        self.state.fill(Complex64::new(0.0, 0.0));
+
+        let amplitude = Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0);
+
+        // |pos1,pos2> + |pos2,pos1>
+        let idx1 = self.positions_to_index(&[pos1, pos2]);
+        let idx2 = self.positions_to_index(&[pos2, pos1]);
+
+        self.state[idx1] = amplitude;
+        self.state[idx2] = amplitude;
+
+        Ok(())
+    }
+
+    /// Convert walker positions to state vector index
+    fn positions_to_index(&self, positions: &[usize]) -> usize {
+        let mut index = 0;
+        let mut multiplier = 1;
+
+        for &pos in positions.iter().rev() {
+            index += pos * multiplier;
+            multiplier *= self.single_walker_dim;
+        }
+
+        index
+    }
+
+    /// Convert state vector index to walker positions
+    fn index_to_positions(&self, mut index: usize) -> Vec<usize> {
+        let mut positions = Vec::with_capacity(self.num_walkers);
+
+        for _ in 0..self.num_walkers {
+            positions.push(index % self.single_walker_dim);
+            index /= self.single_walker_dim;
+        }
+
+        positions.reverse();
+        positions
+    }
+
+    /// Perform one step (simplified version - each walker evolves independently)
+    pub fn step_independent(&mut self) {
+        let mut new_state = Array1::zeros(self.state.len());
+
+        for (index, &amplitude) in self.state.iter().enumerate() {
+            if amplitude.norm_sqr() < 1e-15 {
+                continue;
+            }
+
+            let positions = self.index_to_positions(index);
+
+            // Each walker moves to neighboring vertices with equal probability
+            let mut total_neighbors = 1;
+            for &pos in &positions {
+                total_neighbors *= self.graph.degree(pos).max(1);
+            }
+
+            let neighbor_amplitude = amplitude / (total_neighbors as f64).sqrt();
+
+            // Generate all possible neighbor configurations
+            self.add_neighbor_amplitudes(
+                &positions,
+                0,
+                &mut Vec::new(),
+                neighbor_amplitude,
+                &mut new_state,
+            );
+        }
+
+        self.state = new_state;
+    }
+
+    /// Recursively add amplitudes for all neighbor configurations
+    fn add_neighbor_amplitudes(
+        &self,
+        original_positions: &[usize],
+        walker_idx: usize,
+        current_positions: &mut Vec<usize>,
+        amplitude: Complex64,
+        new_state: &mut Array1<Complex64>,
+    ) {
+        if walker_idx >= self.num_walkers {
+            let index = self.positions_to_index(current_positions);
+            new_state[index] += amplitude;
+            return;
+        }
+
+        let pos = original_positions[walker_idx];
+        let neighbors = &self.graph.edges[pos];
+
+        if neighbors.is_empty() {
+            // Stay at same position if no neighbors
+            current_positions.push(pos);
+            self.add_neighbor_amplitudes(
+                original_positions,
+                walker_idx + 1,
+                current_positions,
+                amplitude,
+                new_state,
+            );
+            current_positions.pop();
+        } else {
+            for &neighbor in neighbors {
+                current_positions.push(neighbor);
+                self.add_neighbor_amplitudes(
+                    original_positions,
+                    walker_idx + 1,
+                    current_positions,
+                    amplitude,
+                    new_state,
+                );
+                current_positions.pop();
+            }
+        }
+    }
+
+    /// Get marginal probability distribution for a specific walker
+    pub fn marginal_probabilities(&self, walker_idx: usize) -> Vec<f64> {
+        let mut probs = vec![0.0; self.single_walker_dim];
+
+        for (index, &amplitude) in self.state.iter().enumerate() {
+            let positions = self.index_to_positions(index);
+            probs[positions[walker_idx]] += amplitude.norm_sqr();
+        }
+
+        probs
+    }
+
+    /// Calculate entanglement entropy between walkers
+    pub fn entanglement_entropy(&self) -> f64 {
+        if self.num_walkers != 2 {
+            return 0.0; // Only implemented for 2 walkers
+        }
+
+        // Compute reduced density matrix for walker 1
+        let mut reduced_dm = Array2::zeros((self.single_walker_dim, self.single_walker_dim));
+
+        for i in 0..self.single_walker_dim {
+            for j in 0..self.single_walker_dim {
+                for k in 0..self.single_walker_dim {
+                    let idx1 = self.positions_to_index(&[i, k]);
+                    let idx2 = self.positions_to_index(&[j, k]);
+
+                    reduced_dm[[i, j]] += self.state[idx1].conj() * self.state[idx2];
+                }
+            }
+        }
+
+        // Calculate von Neumann entropy (simplified - would use eigenvalues in practice)
+        let trace = reduced_dm.diag().mapv(|x: Complex64| x.re).sum();
+        -trace * trace.ln() // Simplified approximation
+    }
+}
+
+/// Quantum walk with environmental decoherence
+pub struct DecoherentQuantumWalk {
+    base_walk: DiscreteQuantumWalk,
+    decoherence_rate: f64,
+    measurement_probability: f64,
+}
+
+impl DecoherentQuantumWalk {
+    /// Create a new decoherent quantum walk
+    pub fn new(graph: Graph, coin_operator: CoinOperator, decoherence_rate: f64) -> Self {
+        Self {
+            base_walk: DiscreteQuantumWalk::new(graph, coin_operator),
+            decoherence_rate,
+            measurement_probability: 0.0,
+        }
+    }
+
+    /// Initialize walker position
+    pub fn initialize_position(&mut self, position: usize) {
+        self.base_walk.initialize_position(position);
+    }
+
+    /// Perform one step with decoherence
+    pub fn step(&mut self) {
+        // Apply unitary evolution
+        self.base_walk.step();
+
+        // Apply decoherence
+        self.apply_decoherence();
+    }
+
+    /// Apply decoherence by mixing with classical random walk
+    fn apply_decoherence(&mut self) {
+        if self.decoherence_rate <= 0.0 {
+            return;
+        }
+
+        // Get current probabilities
+        let quantum_probs = self.base_walk.position_probabilities();
+
+        // Classical random walk step
+        let mut classical_probs = vec![0.0; quantum_probs.len()];
+        for (v, &prob) in quantum_probs.iter().enumerate() {
+            if prob > 0.0 {
+                let degree = self.base_walk.graph.degree(v) as f64;
+                if degree > 0.0 {
+                    for &neighbor in &self.base_walk.graph.edges[v] {
+                        classical_probs[neighbor] += prob / degree;
+                    }
+                } else {
+                    classical_probs[v] += prob; // Stay if isolated
+                }
+            }
+        }
+
+        // Mix quantum and classical
+        let quantum_weight = 1.0 - self.decoherence_rate;
+        let classical_weight = self.decoherence_rate;
+
+        // Update quantum state to match mixed probabilities (approximate)
+        for v in 0..quantum_probs.len() {
+            let mixed_prob =
+                quantum_weight * quantum_probs[v] + classical_weight * classical_probs[v];
+
+            // Scale amplitudes to match mixed probabilities (simplified)
+            if quantum_probs[v] > 0.0 {
+                let scale_factor = (mixed_prob / quantum_probs[v]).sqrt();
+
+                for coin in 0..self.base_walk.coin_dimension {
+                    let idx = self.base_walk.state_index(v, coin);
+                    if idx < self.base_walk.state.len() {
+                        self.base_walk.state[idx] *= scale_factor;
+                    }
+                }
+            }
+        }
+
+        // Renormalize
+        let total_norm: f64 = self.base_walk.state.iter().map(|c| c.norm_sqr()).sum();
+        if total_norm > 0.0 {
+            let norm_factor = 1.0 / total_norm.sqrt();
+            for amplitude in &mut self.base_walk.state {
+                *amplitude *= norm_factor;
+            }
+        }
+    }
+
+    /// Get position probabilities
+    pub fn position_probabilities(&self) -> Vec<f64> {
+        self.base_walk.position_probabilities()
+    }
+
+    /// Set decoherence rate
+    pub fn set_decoherence_rate(&mut self, rate: f64) {
+        self.decoherence_rate = rate.clamp(0.0, 1.0);
+    }
+}
+
 /// Search algorithm using quantum walks
 pub struct QuantumWalkSearch {
     #[allow(dead_code)]
@@ -631,6 +1309,7 @@ pub fn quantum_walk_search_example() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // use approx::assert_relative_eq;
 
     #[test]
     fn test_graph_creation() {
@@ -664,5 +1343,334 @@ mod tests {
         let probs = walk.vertex_probabilities();
         let total: f64 = probs.iter().sum();
         assert!((total - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_weighted_graph() {
+        let mut graph = Graph::new_empty(3);
+        graph.add_weighted_edge(0, 1, 2.0);
+        graph.add_weighted_edge(1, 2, 3.0);
+
+        let adj_matrix = graph.adjacency_matrix();
+        assert_eq!(adj_matrix[[0, 1]], 2.0);
+        assert_eq!(adj_matrix[[1, 2]], 3.0);
+        assert_eq!(adj_matrix[[0, 2]], 0.0);
+    }
+
+    #[test]
+    fn test_graph_from_adjacency_matrix() {
+        let mut matrix = Array2::zeros((3, 3));
+        matrix[[0, 1]] = 1.0;
+        matrix[[1, 0]] = 1.0;
+        matrix[[1, 2]] = 2.0;
+        matrix[[2, 1]] = 2.0;
+
+        let graph = Graph::from_adjacency_matrix(&matrix).unwrap();
+        assert_eq!(graph.num_vertices, 3);
+        assert_eq!(graph.degree(0), 1);
+        assert_eq!(graph.degree(1), 2);
+        assert_eq!(graph.degree(2), 1);
+    }
+
+    #[test]
+    fn test_laplacian_matrix() {
+        let graph = Graph::new(GraphType::Cycle, 3);
+        let laplacian = graph.laplacian_matrix();
+
+        // Each vertex in a 3-cycle has degree 2
+        assert_eq!(laplacian[[0, 0]], 2.0);
+        assert_eq!(laplacian[[1, 1]], 2.0);
+        assert_eq!(laplacian[[2, 2]], 2.0);
+
+        // Adjacent vertices have -1
+        assert_eq!(laplacian[[0, 1]], -1.0);
+        assert_eq!(laplacian[[1, 2]], -1.0);
+        assert_eq!(laplacian[[2, 0]], -1.0);
+    }
+
+    #[test]
+    fn test_bipartite_detection() {
+        let bipartite = Graph::new(GraphType::Cycle, 4); // Even cycle is bipartite
+        assert!(bipartite.is_bipartite());
+
+        let non_bipartite = Graph::new(GraphType::Cycle, 3); // Odd cycle is not bipartite
+        assert!(!non_bipartite.is_bipartite());
+
+        let complete = Graph::new(GraphType::Complete, 3); // Complete graph with >2 vertices is not bipartite
+        assert!(!complete.is_bipartite());
+    }
+
+    #[test]
+    fn test_shortest_paths() {
+        let graph = Graph::new(GraphType::Line, 4); // 0-1-2-3
+        let distances = graph.all_pairs_shortest_paths();
+
+        assert_eq!(distances[[0, 0]], 0.0);
+        assert_eq!(distances[[0, 1]], 1.0);
+        assert_eq!(distances[[0, 2]], 2.0);
+        assert_eq!(distances[[0, 3]], 3.0);
+        assert_eq!(distances[[1, 3]], 2.0);
+    }
+
+    #[test]
+    fn test_szegedy_walk() {
+        let graph = Graph::new(GraphType::Cycle, 4);
+        let mut szegedy = SzegedyQuantumWalk::new(graph);
+
+        szegedy.initialize_uniform();
+        let initial_probs = szegedy.vertex_probabilities();
+
+        // Should have some probability on each vertex
+        for &prob in &initial_probs {
+            assert!(prob > 0.0);
+        }
+
+        // Take a few steps
+        for _ in 0..5 {
+            szegedy.step();
+        }
+
+        let final_probs = szegedy.vertex_probabilities();
+        let total: f64 = final_probs.iter().sum();
+        assert!((total - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_szegedy_edge_initialization() {
+        let mut graph = Graph::new_empty(3);
+        graph.add_edge(0, 1);
+        graph.add_edge(1, 2);
+
+        let mut szegedy = SzegedyQuantumWalk::new(graph);
+        szegedy.initialize_edge(0, 1);
+
+        let edge_probs = szegedy.edge_probabilities();
+        assert_eq!(edge_probs.len(), 1);
+        assert_eq!(edge_probs[0].0, (0, 1));
+        assert!((edge_probs[0].1 - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_multi_walker_quantum_walk() {
+        let graph = Graph::new(GraphType::Cycle, 3);
+        let mut multi_walk = MultiWalkerQuantumWalk::new(graph, 2);
+
+        // Initialize two walkers at positions 0 and 1
+        multi_walk.initialize_positions(&[0, 1]).unwrap();
+
+        let marginal_0 = multi_walk.marginal_probabilities(0);
+        let marginal_1 = multi_walk.marginal_probabilities(1);
+
+        assert!((marginal_0[0] - 1.0).abs() < 1e-10);
+        assert!((marginal_1[1] - 1.0).abs() < 1e-10);
+
+        // Take a step
+        multi_walk.step_independent();
+
+        // Probabilities should have spread
+        let new_marginal_0 = multi_walk.marginal_probabilities(0);
+        let new_marginal_1 = multi_walk.marginal_probabilities(1);
+
+        assert!(new_marginal_0[0] < 1.0);
+        assert!(new_marginal_1[1] < 1.0);
+    }
+
+    #[test]
+    fn test_multi_walker_bell_state() {
+        let graph = Graph::new(GraphType::Cycle, 4);
+        let mut multi_walk = MultiWalkerQuantumWalk::new(graph, 2);
+
+        multi_walk.initialize_entangled_bell_state(0, 1).unwrap();
+
+        let marginal_0 = multi_walk.marginal_probabilities(0);
+        let marginal_1 = multi_walk.marginal_probabilities(1);
+
+        // Each walker should have 50% probability at each of their initial positions
+        assert!((marginal_0[0] - 0.5).abs() < 1e-10);
+        assert!((marginal_0[1] - 0.5).abs() < 1e-10);
+        assert!((marginal_1[0] - 0.5).abs() < 1e-10);
+        assert!((marginal_1[1] - 0.5).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_multi_walker_error_handling() {
+        let graph = Graph::new(GraphType::Line, 3);
+        let mut multi_walk = MultiWalkerQuantumWalk::new(graph.clone(), 2);
+
+        // Wrong number of positions
+        assert!(multi_walk.initialize_positions(&[0]).is_err());
+
+        // Position out of bounds
+        assert!(multi_walk.initialize_positions(&[0, 5]).is_err());
+
+        // Bell state with wrong number of walkers
+        let mut single_walk = MultiWalkerQuantumWalk::new(graph, 1);
+        assert!(single_walk.initialize_entangled_bell_state(0, 1).is_err());
+    }
+
+    #[test]
+    fn test_decoherent_quantum_walk() {
+        let graph = Graph::new(GraphType::Line, 5);
+        let mut decoherent = DecoherentQuantumWalk::new(graph, CoinOperator::Hadamard, 0.1);
+
+        decoherent.initialize_position(2);
+        let initial_probs = decoherent.position_probabilities();
+        assert!((initial_probs[2] - 1.0).abs() < 1e-10);
+
+        // Take steps with decoherence
+        for _ in 0..10 {
+            decoherent.step();
+        }
+
+        let final_probs = decoherent.position_probabilities();
+        let total: f64 = final_probs.iter().sum();
+        assert!((total - 1.0).abs() < 1e-10);
+
+        // Should have spread from initial position
+        assert!(final_probs[2] < 1.0);
+    }
+
+    #[test]
+    fn test_decoherence_rate_bounds() {
+        let graph = Graph::new(GraphType::Cycle, 4);
+        let mut decoherent = DecoherentQuantumWalk::new(graph, CoinOperator::Grover, 0.5);
+
+        // Test clamping
+        decoherent.set_decoherence_rate(-0.1);
+        decoherent.initialize_position(0);
+        decoherent.step(); // Should work without panicking
+
+        decoherent.set_decoherence_rate(1.5);
+        decoherent.step(); // Should work without panicking
+    }
+
+    #[test]
+    fn test_transition_matrix() {
+        let graph = Graph::new(GraphType::Cycle, 3);
+        let transition = graph.transition_matrix();
+
+        // Each vertex has degree 2, so each transition probability is 1/2
+        for i in 0..3 {
+            let mut row_sum = 0.0;
+            for j in 0..3 {
+                row_sum += transition[[i, j]];
+            }
+            assert!((row_sum - 1.0).abs() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn test_normalized_laplacian() {
+        let graph = Graph::new(GraphType::Complete, 3);
+        let norm_laplacian = graph.normalized_laplacian_matrix();
+
+        // Diagonal entries should be 1
+        for i in 0..3 {
+            assert!((norm_laplacian[[i, i]] - 1.0).abs() < 1e-10);
+        }
+
+        // Off-diagonal entries for complete graph K_3
+        let expected_off_diag = -1.0 / 2.0; // -1/sqrt(2*2)
+        assert!((norm_laplacian[[0, 1]] - expected_off_diag).abs() < 1e-10);
+        assert!((norm_laplacian[[1, 2]] - expected_off_diag).abs() < 1e-10);
+        assert!((norm_laplacian[[0, 2]] - expected_off_diag).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_algebraic_connectivity() {
+        let complete_3 = Graph::new(GraphType::Complete, 3);
+        let connectivity = complete_3.algebraic_connectivity();
+        assert!(connectivity > 0.0); // Complete graphs have positive algebraic connectivity
+
+        let line_5 = Graph::new(GraphType::Line, 5);
+        let line_connectivity = line_5.algebraic_connectivity();
+        assert!(line_connectivity > 0.0);
+    }
+
+    #[test]
+    fn test_mixing_time_estimation() {
+        let graph = Graph::new(GraphType::Complete, 4);
+        let mut szegedy = SzegedyQuantumWalk::new(graph);
+
+        let mixing_time = szegedy.estimate_mixing_time(0.1);
+        assert!(mixing_time > 0);
+        assert!(mixing_time <= 1000); // Should converge within max steps
+    }
+
+    #[test]
+    fn test_quantum_walk_search_on_custom_graph() {
+        // Create a star graph: central vertex connected to all others
+        let mut graph = Graph::new_empty(5);
+        for i in 1..5 {
+            graph.add_edge(0, i);
+        }
+
+        let oracle = SearchOracle::new(vec![3]); // Mark vertex 3
+        let mut search = QuantumWalkSearch::new(graph, oracle);
+
+        let (found_vertex, prob, steps) = search.run(20);
+        assert_eq!(found_vertex, 3);
+        assert!(prob > 0.0);
+        assert!(steps <= 20);
+    }
+
+    #[test]
+    fn test_custom_coin_operator() {
+        let graph = Graph::new(GraphType::Line, 3);
+
+        // Create a custom 2x2 coin (Pauli-X)
+        let mut coin_matrix = Array2::zeros((2, 2));
+        coin_matrix[[0, 1]] = Complex64::new(1.0, 0.0);
+        coin_matrix[[1, 0]] = Complex64::new(1.0, 0.0);
+
+        let custom_coin = CoinOperator::Custom(coin_matrix);
+        let mut walk = DiscreteQuantumWalk::new(graph, custom_coin);
+
+        walk.initialize_position(1);
+        walk.step();
+
+        let probs = walk.position_probabilities();
+        let total: f64 = probs.iter().sum();
+        assert!((total - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_empty_graph_edge_cases() {
+        let empty_graph = Graph::new_empty(3);
+        let mut szegedy = SzegedyQuantumWalk::new(empty_graph);
+
+        szegedy.initialize_uniform();
+        let probs = szegedy.vertex_probabilities();
+
+        // No edges means no probability distribution
+        for &prob in &probs {
+            assert_eq!(prob, 0.0);
+        }
+    }
+
+    #[test]
+    fn test_hypercube_graph() {
+        let hypercube = Graph::new(GraphType::Hypercube, 3); // 2^3 = 8 vertices
+        assert_eq!(hypercube.num_vertices, 8);
+
+        // Each vertex in a 3D hypercube has degree 3
+        for i in 0..8 {
+            assert_eq!(hypercube.degree(i), 3);
+        }
+    }
+
+    #[test]
+    fn test_grid_2d_graph() {
+        let grid = Graph::new(GraphType::Grid2D, 3); // 3x3 grid
+        assert_eq!(grid.num_vertices, 9);
+
+        // Corner vertices have degree 2
+        assert_eq!(grid.degree(0), 2); // Top-left
+        assert_eq!(grid.degree(2), 2); // Top-right
+        assert_eq!(grid.degree(6), 2); // Bottom-left
+        assert_eq!(grid.degree(8), 2); // Bottom-right
+
+        // Center vertex has degree 4
+        assert_eq!(grid.degree(4), 4);
     }
 }

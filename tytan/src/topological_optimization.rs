@@ -4,8 +4,8 @@
 //! topological quantum computing concepts, anyonic computation, and
 //! topological data analysis for optimization.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, Array3, IxDyn};
+use crate::sampler::{SampleResult, Sampler};
+use ndarray::{Array2, Array3};
 use num_complex::Complex64;
 use rand::prelude::*;
 use rand::thread_rng;

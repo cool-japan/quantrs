@@ -1,7 +1,9 @@
 //! Ensemble Learning Configuration Types
 
+use serde::{Deserialize, Serialize};
+
 /// Ensemble configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnsembleConfig {
     /// Enable ensemble methods
     pub enable_ensemble: bool,
@@ -18,7 +20,7 @@ pub struct EnsembleConfig {
 }
 
 /// Ensemble methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum EnsembleMethod {
     Bagging,
     Boosting,
@@ -29,7 +31,7 @@ pub enum EnsembleMethod {
 }
 
 /// Voting strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum VotingStrategy {
     Majority,
     Weighted,
@@ -39,7 +41,7 @@ pub enum VotingStrategy {
 }
 
 /// Diversity measures
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DiversityMeasure {
     PairwiseDisagreement,
     EntropyMeasure,

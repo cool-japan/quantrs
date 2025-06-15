@@ -3,7 +3,6 @@
 //! This module provides advanced penalty weight optimization using SciRS2
 //! for automatic tuning and constraint satisfaction analysis.
 
-use crate::sampler::SampleResult;
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

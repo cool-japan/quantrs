@@ -1,7 +1,6 @@
 //! Benchmark visualization utilities
 
-use crate::benchmark::{analysis::PerformanceReport, metrics::BenchmarkMetrics};
-use std::collections::HashMap;
+use crate::benchmark::analysis::PerformanceReport;
 
 /// Benchmark visualizer for generating plots and charts
 pub struct BenchmarkVisualizer {

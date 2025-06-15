@@ -3,9 +3,9 @@
 //! This module provides comprehensive benchmarking tools for GPU samplers,
 //! including automated testing, scaling analysis, and energy efficiency metrics.
 
-use crate::gpu_performance::{GpuProfiler, PerformanceReport};
-use crate::sampler::{SampleResult, Sampler};
-use ndarray::{Array, Array2};
+use crate::gpu_performance::GpuProfiler;
+use crate::sampler::Sampler;
+use ndarray::Array2;
 use rand::thread_rng;
 use std::collections::HashMap;
 use std::fs::File;

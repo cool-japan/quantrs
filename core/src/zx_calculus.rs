@@ -1525,7 +1525,7 @@ impl CircuitToZX {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::gate::multi::{CNOT, CZ};
+    use crate::gate::multi::CNOT;
 
     #[test]
     fn test_spider_creation() {

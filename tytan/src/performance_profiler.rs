@@ -5,8 +5,7 @@
 
 #[cfg(feature = "dwave")]
 use crate::compile::{Compile, CompiledModel};
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, IxDyn};
+use crate::sampler::{SampleResult, Sampler};
 #[cfg(feature = "plotters")]
 use plotters::prelude::*;
 use serde::{Deserialize, Serialize};

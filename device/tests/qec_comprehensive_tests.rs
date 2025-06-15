@@ -4,9 +4,23 @@
 //! error codes, detection strategies, correction algorithms, and adaptive systems.
 
 use ndarray::{Array1, Array2};
+use num_complex::Complex64;
 use quantrs2_core::prelude::*;
+use quantrs2_device::ml_optimization::FeatureExtractionConfig;
 use quantrs2_device::prelude::*;
-use quantrs2_device::qec::*;
+use quantrs2_device::qec::codes::SurfaceCodeLayout;
+use quantrs2_device::qec::{
+    AdaptiveQECConfig, AdaptiveQECSystem, CircuitFoldingMethod, ConstraintSatisfactionConfig,
+    CorrectionOperation, CorrectionType, ErrorCorrectionCycleResult, ErrorCorrector, ErrorModel,
+    ExecutionContext, ExtrapolationMethod, HardwareConstraint, LogicalOperatorType,
+    MitigationStrategy as QECMitigationStrategy, OptimizationObjective as QECOptimizationObjective,
+    PerformanceConstraint, QECCodeType, QECConfig, QECMLConfig, QECMonitoringConfig,
+    QECOptimizationConfig, QECPerformanceMetrics, QECPerformanceTracker, QECResult, QECStrategy,
+    QuantumErrorCode, QuantumErrorCorrector, ResourceConstraint, ShorCode, StabilizerGroup,
+    StabilizerType, SteaneCode, SurfaceCode, SyndromeDetectionConfig, SyndromeDetector,
+    SyndromePattern, SyndromeType, ToricCode, ZNEConfig as QECZNEConfig,
+};
+use quantrs2_device::unified_benchmarking::config::{MLModelType, OptimizationAlgorithm};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -17,7 +31,10 @@ mod test_helpers {
     /// Create basic QEC configuration for testing
     pub fn create_test_qec_config() -> QECConfig {
         QECConfig {
-            code_type: QECCodeType::SurfaceCode,
+            code_type: QECCodeType::SurfaceCode {
+                distance: 3,
+                layout: SurfaceCodeLayout::Square,
+            },
             distance: 3,
             strategies: vec![QECStrategy::ActiveCorrection],
             enable_ml_optimization: true,
@@ -66,9 +83,9 @@ mod test_helpers {
                 enable_scheduling_optimization: true,
                 optimization_algorithm: OptimizationAlgorithm::GeneticAlgorithm,
                 optimization_objectives: vec![
-                    OptimizationObjective::MaximizeLogicalFidelity,
-                    OptimizationObjective::MinimizeOverhead,
-                    OptimizationObjective::MinimizeLatency,
+                    QECOptimizationObjective::MaximizeLogicalFidelity,
+                    QECOptimizationObjective::MinimizeOverhead,
+                    QECOptimizationObjective::MinimizeLatency,
                 ],
                 constraint_satisfaction: ConstraintSatisfactionConfig {
                     hardware_constraints: vec![
@@ -93,11 +110,11 @@ mod test_helpers {
                 enable_readout_correction: true,
                 enable_dynamical_decoupling: true,
                 mitigation_strategies: vec![
-                    MitigationStrategy::ZeroNoiseExtrapolation,
-                    MitigationStrategy::SymmetryVerification,
-                    MitigationStrategy::ReadoutErrorMitigation,
+                    QECMitigationStrategy::ZeroNoiseExtrapolation,
+                    QECMitigationStrategy::SymmetryVerification,
+                    QECMitigationStrategy::ReadoutErrorMitigation,
                 ],
-                zne_config: ZNEConfig {
+                zne_config: QECZNEConfig {
                     noise_factors: vec![1.0, 1.5, 2.0, 2.5, 3.0],
                     extrapolation_method: ExtrapolationMethod::Linear,
                     circuit_folding: CircuitFoldingMethod::GlobalFolding,
@@ -226,7 +243,7 @@ mod config_tests {
     fn test_qec_config_creation() {
         let config = create_test_qec_config();
 
-        assert_eq!(config.code_type, QECCodeType::SurfaceCode);
+        assert!(matches!(config.code_type, QECCodeType::SurfaceCode { .. }));
         assert_eq!(config.distance, 3);
         assert!(config.enable_ml_optimization);
         assert!(config.enable_adaptive_thresholds);
@@ -236,15 +253,17 @@ mod config_tests {
     #[test]
     fn test_all_code_types() {
         let code_types = vec![
-            QECCodeType::SurfaceCode,
-            QECCodeType::StabilizerCode,
-            QECCodeType::ColorCode,
-            QECCodeType::ToricCode,
+            QECCodeType::SurfaceCode {
+                distance: 3,
+                layout: SurfaceCodeLayout::Square,
+            },
             QECCodeType::SteaneCode,
             QECCodeType::ShorCode,
-            QECCodeType::CSS,
-            QECCodeType::LDPC,
-            QECCodeType::Custom("TestCode".to_string()),
+            QECCodeType::RepetitionCode { length: 3 },
+            QECCodeType::CustomCode {
+                name: "TestCode".to_string(),
+                parameters: std::collections::HashMap::new(),
+            },
         ];
 
         for code_type in code_types {
@@ -303,7 +322,7 @@ mod error_code_tests {
     #[test]
     fn test_surface_code_creation() {
         let distance = 3;
-        let code = SurfaceCode::new(distance);
+        let code = SurfaceCode::new(distance, distance);
 
         assert_eq!(code.distance(), distance);
         assert!(code.num_data_qubits() > 0);
@@ -314,7 +333,7 @@ mod error_code_tests {
     #[test]
     fn test_surface_code_stabilizers() {
         let distance = 3;
-        let code = SurfaceCode::new(distance);
+        let code = SurfaceCode::new(distance, distance);
         let stabilizers = code.get_stabilizers();
 
         assert!(!stabilizers.is_empty());
@@ -331,7 +350,7 @@ mod error_code_tests {
     #[test]
     fn test_surface_code_logical_operators() {
         let distance = 3;
-        let code = SurfaceCode::new(distance);
+        let code = SurfaceCode::new(distance, distance);
         let logical_ops = code.get_logical_operators();
 
         assert!(!logical_ops.is_empty());
@@ -379,7 +398,7 @@ mod error_code_tests {
     #[test]
     fn test_code_properties() {
         let codes: Vec<Box<dyn QuantumErrorCode>> = vec![
-            Box::new(SurfaceCode::new(3)),
+            Box::new(SurfaceCode::new(3, 3)),
             Box::new(SteaneCode::new()),
             Box::new(ShorCode::new()),
             Box::new(ToricCode::new((3, 3))),
@@ -443,11 +462,19 @@ mod syndrome_detection_tests {
     fn test_syndrome_validation() {
         let detector = MockSyndromeDetector::new();
         let syndrome = SyndromePattern {
-            stabilizer_violations: vec![1, 0, 1, 0],
-            confidence: 0.9,
             timestamp: std::time::SystemTime::now(),
-            spatial_location: (1, 1),
+            syndrome_bits: vec![true, false, true, false],
+            error_locations: vec![0, 2],
+            correction_applied: vec!["X".to_string(), "X".to_string()],
+            success_probability: 0.9,
+            execution_context: ExecutionContext {
+                device_id: "test_device".to_string(),
+                timestamp: std::time::SystemTime::now(),
+            },
             syndrome_type: SyndromeType::XError,
+            confidence: 0.9,
+            stabilizer_violations: vec![1, 0, 1, 0],
+            spatial_location: (1, 1),
         };
 
         let history = vec![];
@@ -480,11 +507,19 @@ mod syndrome_detection_tests {
 
         for syndrome_type in syndrome_types {
             let syndrome = SyndromePattern {
-                stabilizer_violations: vec![1, 0],
-                confidence: 0.9,
                 timestamp: std::time::SystemTime::now(),
-                spatial_location: (0, 0),
+                syndrome_bits: vec![true, false],
+                error_locations: vec![0],
+                correction_applied: vec!["X".to_string()],
+                success_probability: 0.9,
+                execution_context: ExecutionContext {
+                    device_id: "test_device".to_string(),
+                    timestamp: std::time::SystemTime::now(),
+                },
                 syndrome_type: syndrome_type.clone(),
+                confidence: 0.9,
+                stabilizer_violations: vec![1, 0],
+                spatial_location: (0, 0),
             };
 
             assert_eq!(syndrome.syndrome_type, syndrome_type);
@@ -507,7 +542,7 @@ mod error_correction_tests {
     #[test]
     fn test_error_correction() {
         let corrector = MockErrorCorrector::new();
-        let code = SurfaceCode::new(3);
+        let code = SurfaceCode::new(3, 3);
 
         let syndromes = vec![
             SyndromePattern {
@@ -590,7 +625,7 @@ mod quantum_error_corrector_tests {
     async fn test_quantum_error_corrector_creation() {
         let config = create_test_qec_config();
         let device_id = "test_device".to_string();
-        let calibration_manager = crate::calibration::CalibrationManager::new();
+        let calibration_manager = CalibrationManager::new();
 
         let result =
             QuantumErrorCorrector::new(config, device_id, Some(calibration_manager), None).await;
@@ -607,7 +642,7 @@ mod quantum_error_corrector_tests {
     async fn test_qec_system_initialization() {
         let config = create_test_qec_config();
         let device_id = "test_device".to_string();
-        let calibration_manager = crate::calibration::CalibrationManager::new();
+        let calibration_manager = CalibrationManager::new();
 
         let mut corrector =
             QuantumErrorCorrector::new(config, device_id, Some(calibration_manager), None)
@@ -624,7 +659,7 @@ mod quantum_error_corrector_tests {
     async fn test_error_correction_cycle() {
         let config = create_test_qec_config();
         let device_id = "test_device".to_string();
-        let calibration_manager = crate::calibration::CalibrationManager::new();
+        let calibration_manager = CalibrationManager::new();
 
         let mut corrector =
             QuantumErrorCorrector::new(config, device_id, Some(calibration_manager), None)
@@ -867,7 +902,7 @@ mod integration_tests {
         // 1. Create QEC system
         let config = create_test_qec_config();
         let device_id = "integration_test_device".to_string();
-        let calibration_manager = crate::calibration::CalibrationManager::new();
+        let calibration_manager = CalibrationManager::new();
 
         let mut corrector =
             QuantumErrorCorrector::new(config, device_id, Some(calibration_manager), None)
@@ -903,7 +938,7 @@ mod integration_tests {
     #[test]
     fn test_multi_code_support() {
         let codes: Vec<Box<dyn QuantumErrorCode>> = vec![
-            Box::new(SurfaceCode::new(3)),
+            Box::new(SurfaceCode::new(3, 3)),
             Box::new(SteaneCode::new()),
             Box::new(ShorCode::new()),
         ];
@@ -916,7 +951,8 @@ mod integration_tests {
             assert!(!code.get_logical_operators().is_empty());
 
             // Test encoding/decoding interface
-            let logical_state = Array1::from_vec(vec![1.0, 0.0]); // |0⟩ state
+            let logical_state =
+                Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]); // |0⟩ state
             let encoding_result = code.encode_logical_state(&logical_state);
             assert!(
                 encoding_result.is_ok(),
@@ -966,10 +1002,13 @@ mod error_handling_tests {
 
     #[test]
     fn test_insufficient_qubits() {
-        let surface_code = SurfaceCode::new(5); // Requires many qubits
+        let surface_code = SurfaceCode::new(5, 5); // Requires many qubits
         let insufficient_qubits = create_test_qubit_ids(2); // Not enough
 
-        let encoding_result = surface_code.encode_logical_state(&Array1::from_vec(vec![1.0, 0.0]));
+        let encoding_result = surface_code.encode_logical_state(&Array1::from_vec(vec![
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
+        ]));
 
         // Should handle insufficient qubits gracefully
         match encoding_result {
@@ -984,7 +1023,7 @@ mod error_handling_tests {
     #[test]
     fn test_empty_syndrome_list() {
         let corrector = MockErrorCorrector::new();
-        let code = SurfaceCode::new(3);
+        let code = SurfaceCode::new(3, 3);
         let empty_syndromes = vec![];
 
         let result = corrector.correct_errors(&empty_syndromes, &code);
@@ -1003,11 +1042,19 @@ mod error_handling_tests {
     #[test]
     fn test_invalid_syndrome_confidence() {
         let syndrome = SyndromePattern {
-            stabilizer_violations: vec![1, 0, 1, 0],
-            confidence: -0.5, // Invalid confidence
             timestamp: std::time::SystemTime::now(),
-            spatial_location: (1, 1),
+            syndrome_bits: vec![true, false, true, false],
+            error_locations: vec![0, 2],
+            correction_applied: vec!["X".to_string(), "X".to_string()],
+            success_probability: 0.9,
+            execution_context: ExecutionContext {
+                device_id: "test_device".to_string(),
+                timestamp: std::time::SystemTime::now(),
+            },
             syndrome_type: SyndromeType::XError,
+            confidence: -0.5, // Invalid confidence
+            stabilizer_violations: vec![1, 0, 1, 0],
+            spatial_location: (1, 1),
         };
 
         // System should handle invalid confidence values

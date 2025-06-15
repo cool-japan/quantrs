@@ -3,8 +3,7 @@
 //! This module provides comprehensive constraint management including
 //! automatic penalty term generation and constraint analysis.
 
-use crate::optimization::penalty::{CompiledModel, ConstraintExpr};
-use ndarray::{Array1, Array2};
+// Optimization penalty types
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

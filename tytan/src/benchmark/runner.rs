@@ -4,13 +4,11 @@ use crate::{
     benchmark::{
         analysis::PerformanceReport,
         hardware::{CpuBackend, HardwareBackend},
-        metrics::{
-            BenchmarkMetrics, MemoryMetrics, QualityMetrics, TimingMetrics, UtilizationMetrics,
-        },
+        metrics::{BenchmarkMetrics, QualityMetrics, TimingMetrics, UtilizationMetrics},
     },
-    sampler::{GASampler, SASampler},
+    sampler::SASampler,
 };
-use ndarray::{Array, Array2};
+use ndarray::Array2;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{

@@ -10,7 +10,7 @@ use ndarray::Array2;
 use quantrs2_tytan::{
     analysis::graph::generate_graph,
     auto_array,
-    compile::{Model, SimpleExpr},
+    compile::Model,
     constraints::PenaltyFunction,
     optimization::{
         penalty::{PenaltyConfig, PenaltyOptimizer, PenaltyType},
@@ -24,6 +24,10 @@ use quantrs2_tytan::{
         solution_analysis::{analyze_solution_distribution, DistributionConfig},
     },
 };
+
+#[cfg(not(feature = "dwave"))]
+use quantrs2_tytan::compile::SimpleExpr;
+
 use std::collections::HashMap;
 use std::time::Instant;
 

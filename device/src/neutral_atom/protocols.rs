@@ -344,7 +344,7 @@ impl CommandExecutionProtocol {
         parameters: HashMap<String, serde_json::Value>,
     ) -> DeviceResult<String> {
         let command_id = format!("cmd_{}", uuid::Uuid::new_v4());
-        
+
         let pending_command = PendingCommand {
             command_id: command_id.clone(),
             command_type: command_type.to_string(),
@@ -355,7 +355,8 @@ impl CommandExecutionProtocol {
             status: CommandStatus::Queued,
         };
 
-        self.pending_commands.insert(command_id.clone(), pending_command);
+        self.pending_commands
+            .insert(command_id.clone(), pending_command);
         Ok(command_id)
     }
 
@@ -364,9 +365,7 @@ impl CommandExecutionProtocol {
         self.pending_commands
             .get(command_id)
             .map(|cmd| cmd.status.clone())
-            .ok_or_else(|| {
-                DeviceError::InvalidInput(format!("Command {} not found", command_id))
-            })
+            .ok_or_else(|| DeviceError::InvalidInput(format!("Command {} not found", command_id)))
     }
 
     /// Cancel a command
@@ -439,7 +438,8 @@ impl StatusMonitoringProtocol {
             metrics: HashMap::new(),
         };
 
-        self.monitored_devices.insert(device_id.to_string(), monitoring_info);
+        self.monitored_devices
+            .insert(device_id.to_string(), monitoring_info);
         Ok(())
     }
 
@@ -648,11 +648,11 @@ mod uuid {
             let mut hasher = DefaultHasher::new();
             SystemTime::now().hash(&mut hasher);
             let hash = hasher.finish();
-            
+
             let mut bytes = [0u8; 16];
             bytes[0..8].copy_from_slice(&hash.to_le_bytes());
             bytes[8..16].copy_from_slice(&hash.to_be_bytes());
-            
+
             Self(bytes)
         }
     }

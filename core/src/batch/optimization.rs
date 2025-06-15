@@ -518,7 +518,7 @@ mod tests {
         let mut optimizer = BatchParameterOptimizer::new(executor, Default::default());
 
         // Simple circuit function
-        let circuit_fn = |params: &[f64]| -> QuantRS2Result<BatchCircuit> {
+        let circuit_fn = |_params: &[f64]| -> QuantRS2Result<BatchCircuit> {
             let mut circuit = BatchCircuit::new(1);
             // Add parameterized rotation based on params[0]
             circuit.add_gate(Box::new(Hadamard { target: QubitId(0) }))?;

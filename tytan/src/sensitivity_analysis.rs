@@ -214,9 +214,9 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         let baseline_objective = baseline_result.best_objective;
 
         // Vary each parameter
-        for param in &self.parameters {
-            let param_name = self.get_parameter_name(param);
-            let (min_val, max_val) = self.get_parameter_range(param);
+        for param in self.parameters.clone() {
+            let param_name = self.get_parameter_name(&param);
+            let (min_val, max_val) = self.get_parameter_range(&param);
 
             let mut response_curve = Vec::new();
             let mut objectives = Vec::new();
@@ -401,8 +401,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
 
         let var_total = variance(&y_a);
 
-        for param in &self.parameters {
-            let param_name = self.get_parameter_name(param);
+        for param in self.parameters.clone() {
+            let param_name = self.get_parameter_name(&param);
 
             // Create sample where only this parameter varies
             let mut y_ab_i = Vec::new();
@@ -433,8 +433,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
 
         // Convert to sensitivity results
         let mut sensitivities = HashMap::new();
-        for param in &self.parameters {
-            let param_name = self.get_parameter_name(param);
+        for param in self.parameters.clone() {
+            let param_name = self.get_parameter_name(&param);
             sensitivities.insert(
                 param_name.clone(),
                 ParameterSensitivity {
@@ -570,7 +570,10 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
 
         // Run sampler
         let qubo = problem.to_qubo();
-        let solutions = self.sampler.run_qubo(&qubo, self.num_reads_per_eval)?;
+        let qubo_tuple = (qubo.to_dense_matrix(), qubo.variable_map());
+        let solutions = self
+            .sampler
+            .run_qubo(&qubo_tuple, self.num_reads_per_eval)?;
 
         // Extract best objective
         let best_objective = solutions
@@ -626,13 +629,13 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     fn get_default_parameters(&self) -> HashMap<String, f64> {
         let mut params = HashMap::new();
 
-        for param in &self.parameters {
-            let name = self.get_parameter_name(param);
+        for param in self.parameters.clone() {
+            let name = self.get_parameter_name(&param);
             let value = match param {
-                ParameterType::SamplerParameter { default_value, .. } => *default_value,
-                ParameterType::PenaltyWeight { default_weight, .. } => *default_weight,
-                ParameterType::FormulationParameter { default_value, .. } => *default_value,
-                ParameterType::DiscreteChoice { default_index, .. } => *default_index as f64,
+                ParameterType::SamplerParameter { default_value, .. } => default_value,
+                ParameterType::PenaltyWeight { default_weight, .. } => default_weight,
+                ParameterType::FormulationParameter { default_value, .. } => default_value,
+                ParameterType::DiscreteChoice { default_index, .. } => default_index as f64,
             };
             params.insert(name, value);
         }
@@ -769,9 +772,9 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             let mut params_a = HashMap::new();
             let mut params_b = HashMap::new();
 
-            for param in &self.parameters {
-                let name = self.get_parameter_name(param);
-                let (min_val, max_val) = self.get_parameter_range(param);
+            for param in self.parameters.clone() {
+                let name = self.get_parameter_name(&param);
+                let (min_val, max_val) = self.get_parameter_range(&param);
 
                 params_a.insert(name.clone(), rng.gen_range(min_val..max_val));
                 params_b.insert(name, rng.gen_range(min_val..max_val));
@@ -873,8 +876,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             let mut sample = HashMap::new();
 
             for (j, param) in self.parameters.iter().enumerate() {
-                let name = self.get_parameter_name(param);
-                let (min_val, max_val) = self.get_parameter_range(param);
+                let name = self.get_parameter_name(&param);
+                let (min_val, max_val) = self.get_parameter_range(&param);
 
                 let level = permutations[j][i];
                 let value = min_val
@@ -896,8 +899,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         // Simplified linear regression
         let mut sensitivities = HashMap::new();
 
-        for param in &self.parameters {
-            let param_name = self.get_parameter_name(param);
+        for param in self.parameters.clone() {
+            let param_name = self.get_parameter_name(&param);
 
             // Extract x and y values
             let x: Vec<f64> = results
@@ -965,9 +968,9 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             let mut config = HashMap::new();
             let mut idx = i;
 
-            for param in &self.parameters {
-                let name = self.get_parameter_name(param);
-                let (min_val, max_val) = self.get_parameter_range(param);
+            for param in self.parameters.clone() {
+                let name = self.get_parameter_name(&param);
+                let (min_val, max_val) = self.get_parameter_range(&param);
 
                 let level = idx % levels_per_factor;
                 idx /= levels_per_factor;
@@ -997,15 +1000,15 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         let mut interaction_effects = HashMap::new();
 
         // Compute main effects
-        for param in &self.parameters {
-            let param_name = self.get_parameter_name(param);
+        for param in self.parameters.clone() {
+            let param_name = self.get_parameter_name(&param);
 
             let mut level_sums = vec![0.0; levels_per_factor];
             let mut level_counts = vec![0; levels_per_factor];
 
             for (config, obj) in results {
                 let value = config[&param_name];
-                let (min_val, max_val) = self.get_parameter_range(param);
+                let (min_val, max_val) = self.get_parameter_range(&param);
 
                 let level = if levels_per_factor == 1 {
                     0

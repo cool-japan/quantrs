@@ -4,7 +4,6 @@
 //! solving QUBO and HOBO problems, using SciRS2 when available.
 
 use ndarray::{Array, ArrayD, Ix2};
-use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 use thiserror::Error;
 

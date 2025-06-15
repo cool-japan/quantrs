@@ -3,11 +3,10 @@
 //! This module provides quantum optimization tools for drug discovery
 //! including molecular design, lead optimization, and virtual screening.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, Array3, IxDyn};
+// Sampler types available for drug discovery applications
+use ndarray::Array2;
 use rand::prelude::*;
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::f64::consts::PI;
+use std::collections::{HashMap, HashSet};
 
 /// Molecular design optimizer
 pub struct MolecularDesignOptimizer {

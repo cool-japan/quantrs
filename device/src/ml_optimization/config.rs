@@ -1,10 +1,11 @@
 //! ML Optimization Configuration Types
 
 use ndarray::Array1;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Configuration for ML-driven optimization with SciRS2
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MLOptimizationConfig {
     /// ML model configuration
     pub model_config: MLModelConfig,
@@ -27,7 +28,7 @@ pub struct MLOptimizationConfig {
 }
 
 /// ML model configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MLModelConfig {
     /// Primary ML algorithms to use
     pub primary_algorithms: Vec<MLAlgorithm>,
@@ -44,7 +45,7 @@ pub struct MLModelConfig {
 }
 
 /// ML algorithms available
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MLAlgorithm {
     /// Deep Neural Network
     DeepNeuralNetwork,
@@ -73,7 +74,7 @@ pub enum MLAlgorithm {
 }
 
 /// ML hyperparameter definition
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MLHyperparameter {
     pub parameter_type: HyperparameterType,
     pub value: HyperparameterValue,
@@ -82,7 +83,7 @@ pub struct MLHyperparameter {
 }
 
 /// Hyperparameter types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum HyperparameterType {
     Integer,
     Float,
@@ -92,7 +93,7 @@ pub enum HyperparameterType {
 }
 
 /// Hyperparameter values
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum HyperparameterValue {
     Integer(i64),
     Float(f64),
@@ -102,7 +103,7 @@ pub enum HyperparameterValue {
 }
 
 /// Hyperparameter search space
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum HyperparameterSearchSpace {
     IntegerRange(i64, i64),
     FloatRange(f64, f64),
@@ -112,7 +113,7 @@ pub enum HyperparameterSearchSpace {
 }
 
 /// Model selection strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ModelSelectionStrategy {
     CrossValidation,
     HoldoutValidation,

@@ -7,7 +7,7 @@
 use ndarray::Array;
 use std::fmt::Write;
 #[cfg(feature = "dwave")]
-use symengine::{self, Symbol as SymengineSymbol};
+use symengine::Expression as SymEngineExpression;
 use thiserror::Error;
 
 /// Errors that can occur when working with symbols
@@ -50,8 +50,8 @@ pub type SymbolResult<T> = Result<T, SymbolError>;
 /// let (x, y, z) = symbols("x y z");
 /// ```
 #[cfg(feature = "dwave")]
-pub fn symbols<T: AsRef<str>>(name: T) -> SymengineSymbol {
-    symengine::symbols(name.as_ref())
+pub fn symbols<T: AsRef<str>>(name: T) -> SymEngineExpression {
+    SymEngineExpression::symbol(name.as_ref())
 }
 
 /// Placeholder for when dwave feature is not enabled
@@ -86,7 +86,7 @@ pub fn symbols<T: AsRef<str>>(_name: T) {
 pub fn symbols_list<T>(
     shape: T,
     format_txt: &str,
-) -> SymbolResult<Array<SymengineSymbol, ndarray::IxDyn>>
+) -> SymbolResult<Array<SymEngineExpression, ndarray::IxDyn>>
 where
     T: Into<Vec<usize>>,
 {
@@ -108,7 +108,7 @@ where
 
     // Create the array
     let shape_dim = ndarray::IxDyn(&shape);
-    let mut array = Array::default(shape_dim);
+    let mut array = Array::from_elem(shape_dim, SymEngineExpression::from_i64(0));
 
     // Fill the array with symbols
     let mut indices = vec![0; dim];
@@ -120,7 +120,7 @@ where
 // Helper function to recursively fill the symbol array
 #[cfg(feature = "dwave")]
 fn fill_symbol_array(
-    array: &mut Array<SymengineSymbol, ndarray::IxDyn>,
+    array: &mut Array<SymEngineExpression, ndarray::IxDyn>,
     indices: &mut Vec<usize>,
     level: usize,
     max_level: usize,
@@ -137,7 +137,7 @@ fn fill_symbol_array(
         }
 
         // Create the symbol and store it in the array
-        let sym = symengine::symbols(&symbol_name);
+        let sym = SymEngineExpression::symbol(symbol_name.clone());
         let idx = ndarray::IxDyn(indices);
         array[idx] = sym;
 
@@ -264,14 +264,14 @@ pub fn symbols_nbit(
     stop: u64,
     format_txt: &str,
     num: usize,
-) -> SymbolResult<SymengineSymbol> {
+) -> SymbolResult<SymEngineExpression> {
     // Validate format
     if format_txt.matches("{}").count() != 1 {
         return Err(SymbolError::FormatMismatch);
     }
 
     // Create bit variables
-    let mut result = SymengineSymbol::new("0");
+    let mut result = SymEngineExpression::from_i64(0);
     let range = (stop - start) as f64;
 
     for n in 0..num {
@@ -279,17 +279,57 @@ pub fn symbols_nbit(
         let bit_name = format_txt.replacen("{}", &n.to_string(), 1);
 
         // Create the symbolic weight * bit
-        let bit = symengine::symbols(&bit_name);
+        let bit = SymEngineExpression::symbol(bit_name);
         let weight = range * 2.0_f64.powi((num as i32) - 1 - (n as i32)) / 2.0_f64.powi(num as i32);
 
         // Add to the result
-        result = result + SymengineSymbol::new(&(weight.to_string())) * bit;
+        result = result + (SymEngineExpression::from_f64(weight) * bit);
     }
 
     // Add the start offset
     if start > 0 {
-        result = result + SymengineSymbol::new(&(start.to_string()));
+        result = result + SymEngineExpression::from_i64(start as i64);
     }
 
     Ok(result)
+}
+
+/// Type alias for SymEngine Expression when dwave feature is enabled
+#[cfg(feature = "dwave")]
+pub type Symbol = SymEngineExpression;
+
+/// Type alias for SymEngine Expression when dwave feature is enabled
+#[cfg(feature = "dwave")]
+pub type Expression = SymEngineExpression;
+
+/// Placeholder Symbol type when dwave feature is not enabled
+#[cfg(not(feature = "dwave"))]
+#[derive(Debug, Clone)]
+pub struct Symbol {
+    name: String,
+}
+
+#[cfg(not(feature = "dwave"))]
+impl Symbol {
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+        }
+    }
+}
+
+/// Placeholder Expression type when dwave feature is not enabled
+#[cfg(not(feature = "dwave"))]
+#[derive(Debug, Clone)]
+pub struct Expression {
+    value: String,
+}
+
+#[cfg(not(feature = "dwave"))]
+impl Expression {
+    pub fn new(value: &str) -> Self {
+        Self {
+            value: value.to_string(),
+        }
+    }
 }

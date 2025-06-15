@@ -1,7 +1,7 @@
 //! Benchmark analysis and reporting
 
 use crate::benchmark::{
-    metrics::{aggregation, statistics, BenchmarkMetrics},
+    metrics::{aggregation, BenchmarkMetrics},
     runner::BenchmarkResult,
 };
 use serde::{Deserialize, Serialize};

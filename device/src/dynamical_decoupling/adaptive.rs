@@ -1037,7 +1037,10 @@ mod tests {
         let system = AdaptiveDDSystem::new(config, initial_sequence, available_sequences);
         let state = system.get_current_state();
 
-        assert!(matches!(state.current_sequence.sequence_type, DDSequenceType::CPMG { .. }));
+        assert!(matches!(
+            state.current_sequence.sequence_type,
+            DDSequenceType::CPMG { .. }
+        ));
         assert_eq!(state.system_health.health_score, 1.0);
     }
 
@@ -1086,6 +1089,9 @@ mod tests {
 
         assert_eq!(stats.total_adaptations, 0);
         assert_eq!(stats.success_rate, 0.0);
-        assert!(matches!(stats.most_used_sequence, DDSequenceType::CPMG { .. }));
+        assert!(matches!(
+            stats.most_used_sequence,
+            DDSequenceType::CPMG { .. }
+        ));
     }
 }

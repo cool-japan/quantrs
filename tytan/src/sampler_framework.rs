@@ -253,11 +253,12 @@ impl HyperparameterOptimizer {
             }
         }
 
+        let convergence_curve = self.compute_convergence_curve(&history);
         Ok(OptimizationResult {
             best_parameters: best_params,
             best_score,
             history,
-            convergence_curve: self.compute_convergence_curve(&history),
+            convergence_curve,
         })
     }
 
@@ -295,11 +296,12 @@ impl HyperparameterOptimizer {
             }
         }
 
+        let convergence_curve = self.compute_convergence_curve(&history);
         Ok(OptimizationResult {
             best_parameters: best_params,
             best_score,
             history,
-            convergence_curve: self.compute_convergence_curve(&history),
+            convergence_curve,
         })
     }
 
@@ -378,11 +380,12 @@ impl HyperparameterOptimizer {
 
         let best_params = self.array_to_params(&x_data[best_idx])?;
 
+        let convergence_curve = self.compute_convergence_curve(&history);
         Ok(OptimizationResult {
             best_parameters: best_params,
             best_score,
             history,
-            convergence_curve: self.compute_convergence_curve(&history),
+            convergence_curve,
         })
     }
 
@@ -501,7 +504,10 @@ impl HyperparameterOptimizer {
             let qubo = problem.to_qubo();
             let start = Instant::now();
 
-            let results = sampler.run_qubo(&qubo, 100)?;
+            let qubo_tuple = (qubo.to_dense_matrix(), qubo.variable_map());
+            let results = sampler
+                .run_qubo(&qubo_tuple, 100)
+                .map_err(|e| format!("Sampler error: {:?}", e))?;
 
             let elapsed = start.elapsed();
 
@@ -1060,8 +1066,11 @@ impl SamplerCrossValidation {
         shots: usize,
     ) -> Result<f64, String> {
         let qubo = problem.to_qubo();
+        let qubo_tuple = (qubo.to_dense_matrix(), qubo.variable_map());
         let start = Instant::now();
-        let results = sampler.run_qubo(&qubo, shots)?;
+        let results = sampler
+            .run_qubo(&qubo_tuple, shots)
+            .map_err(|e| format!("Sampler error: {:?}", e))?;
         let elapsed = start.elapsed();
 
         match &self.metric {

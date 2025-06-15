@@ -1356,6 +1356,25 @@ try:
 except ImportError:
     pass
 
+# Try to import Cirq integration module
+try:
+    from . import cirq_integration
+except ImportError:
+    pass
+
+# Import Cirq integration functions (if available)
+try:
+    from .cirq_integration import (
+        CirqQuantRS2Converter,
+        CirqBackend, 
+        QuantRS2CirqError,
+        create_bell_state_cirq,
+        convert_qiskit_to_cirq,
+        test_cirq_quantrs2_integration
+    )
+except ImportError:
+    pass
+
 # Convenience aliases
 Circuit = PyCircuit
 SimulationResult = PySimulationResult

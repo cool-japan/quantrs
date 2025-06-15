@@ -1,7 +1,9 @@
 //! Transfer Learning Configuration Types
 
+use serde::{Deserialize, Serialize};
+
 /// Transfer learning configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransferLearningConfig {
     /// Enable transfer learning
     pub enable_transfer_learning: bool,
@@ -16,7 +18,7 @@ pub struct TransferLearningConfig {
 }
 
 /// Transfer learning methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TransferMethod {
     FeatureTransfer,
     ParameterTransfer,
@@ -27,7 +29,7 @@ pub enum TransferMethod {
 }
 
 /// Domain adaptation configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DomainAdaptationConfig {
     /// Enable domain adaptation
     pub enable_adaptation: bool,
@@ -40,7 +42,7 @@ pub struct DomainAdaptationConfig {
 }
 
 /// Domain adaptation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DomainAdaptationMethod {
     CausalInference,
     DistributionMatching,
@@ -50,7 +52,7 @@ pub enum DomainAdaptationMethod {
 }
 
 /// Meta-learning configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetaLearningConfig {
     /// Enable meta-learning
     pub enable_meta_learning: bool,
@@ -63,7 +65,7 @@ pub struct MetaLearningConfig {
 }
 
 /// Meta-learning algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MetaLearningAlgorithm {
     MAML,
     Reptile,

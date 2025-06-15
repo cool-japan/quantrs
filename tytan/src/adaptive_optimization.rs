@@ -4,9 +4,8 @@
 //! and solution history to improve performance over time.
 
 use crate::performance_profiler::*;
-use crate::sampler::{SampleResult, Sampler, SamplerError};
-use crate::solution_debugger::*;
-use ndarray::{Array1, Array2};
+use crate::sampler::{SampleResult, Sampler};
+use ndarray::Array2;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};

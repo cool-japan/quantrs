@@ -3,11 +3,11 @@
 //! This module provides various encoding schemes to represent different types
 //! of variables and constraints as binary optimization problems.
 
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 use std::collections::HashMap;
 
 #[cfg(feature = "dwave")]
-use crate::symbol::{Expression, Symbol};
+use crate::symbol::Expression;
 
 /// Variable encoding scheme
 #[derive(Debug, Clone)]

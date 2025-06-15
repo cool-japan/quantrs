@@ -35,7 +35,10 @@ pub enum RydbergState {
     /// Rydberg excited state
     Rydberg,
     /// Superposition state
-    Superposition { amplitude_ground: f64, amplitude_rydberg: f64 },
+    Superposition {
+        amplitude_ground: f64,
+        amplitude_rydberg: f64,
+    },
 }
 
 /// Rydberg gate types
@@ -191,7 +194,7 @@ impl RydbergSimulator {
     /// Create a new Rydberg simulator
     pub fn new(config: RydbergConfig, num_atoms: usize) -> Self {
         let atom_states = vec![RydbergState::Ground; num_atoms];
-        
+
         Self {
             config,
             atom_states,
@@ -246,7 +249,9 @@ impl RydbergSimulator {
         // Calculate excitation probability based on laser parameters
         let rabi_freq = gate_params.laser_params.rabi_frequency;
         let duration = gate_params.timing.pulse_duration.as_secs_f64() * 1e6; // Convert to μs
-        let excitation_prob = (rabi_freq * duration * std::f64::consts::PI / 2.0).sin().powi(2);
+        let excitation_prob = (rabi_freq * duration * std::f64::consts::PI / 2.0)
+            .sin()
+            .powi(2);
 
         // Apply excitation (simplified model)
         if excitation_prob > 0.5 {
@@ -281,7 +286,10 @@ impl RydbergSimulator {
         }
 
         // Apply blockade interaction (simplified)
-        match (&self.atom_states[control_atom], &self.atom_states[target_atom]) {
+        match (
+            &self.atom_states[control_atom],
+            &self.atom_states[target_atom],
+        ) {
             (RydbergState::Rydberg, RydbergState::Ground) => {
                 // |10⟩ state - no change due to blockade
             }
@@ -338,7 +346,9 @@ impl RydbergSimulator {
     /// Calculate distance between two atoms
     fn calculate_atom_distance(&self, atom1: usize, atom2: usize) -> DeviceResult<f64> {
         if atom1 >= self.atom_states.len() || atom2 >= self.atom_states.len() {
-            return Err(DeviceError::InvalidInput("Atom index out of bounds".to_string()));
+            return Err(DeviceError::InvalidInput(
+                "Atom index out of bounds".to_string(),
+            ));
         }
 
         // Simplified distance calculation assuming regular spacing
@@ -366,16 +376,18 @@ impl RydbergSimulator {
             let measurement_result = match &self.atom_states[atom_index] {
                 RydbergState::Ground => false,
                 RydbergState::Rydberg => true,
-                RydbergState::Superposition { amplitude_rydberg, .. } => {
+                RydbergState::Superposition {
+                    amplitude_rydberg, ..
+                } => {
                     // Probabilistic measurement
                     use std::collections::hash_map::DefaultHasher;
                     use std::hash::{Hash, Hasher};
-                    
+
                     let mut hasher = DefaultHasher::new();
                     atom_index.hash(&mut hasher);
                     let hash = hasher.finish();
                     let random_value = (hash % 1000) as f64 / 1000.0;
-                    
+
                     random_value < amplitude_rydberg.powi(2)
                 }
             };
@@ -410,7 +422,9 @@ impl RydbergSimulator {
                 RydbergState::Rydberg => {
                     energy += 1.0; // Rydberg excitation energy (normalized)
                 }
-                RydbergState::Superposition { amplitude_rydberg, .. } => {
+                RydbergState::Superposition {
+                    amplitude_rydberg, ..
+                } => {
                     energy += amplitude_rydberg.powi(2);
                 }
                 _ => {} // Ground state has zero energy
@@ -420,7 +434,8 @@ impl RydbergSimulator {
         // Add interaction energies
         for interaction in &self.interactions {
             for &(atom1, atom2) in &interaction.atom_pairs {
-                let interaction_energy = match (&self.atom_states[atom1], &self.atom_states[atom2]) {
+                let interaction_energy = match (&self.atom_states[atom1], &self.atom_states[atom2])
+                {
                     (RydbergState::Rydberg, RydbergState::Rydberg) => interaction.strength,
                     _ => 0.0,
                 };
@@ -543,16 +558,19 @@ mod tests {
     fn test_rydberg_simulator_creation() {
         let config = RydbergConfig::default();
         let simulator = RydbergSimulator::new(config, 5);
-        
+
         assert_eq!(simulator.get_atom_states().len(), 5);
-        assert!(simulator.get_atom_states().iter().all(|s| *s == RydbergState::Ground));
+        assert!(simulator
+            .get_atom_states()
+            .iter()
+            .all(|s| *s == RydbergState::Ground));
     }
 
     #[test]
     fn test_single_excitation_gate() {
         let config = RydbergConfig::default();
         let mut simulator = RydbergSimulator::new(config, 3);
-        
+
         let gate = create_single_excitation_gate(0, 1.0, Duration::from_micros(1));
         assert!(simulator.apply_gate(&gate).is_ok());
     }
@@ -561,7 +579,7 @@ mod tests {
     fn test_measurement() {
         let config = RydbergConfig::default();
         let mut simulator = RydbergSimulator::new(config, 2);
-        
+
         let results = simulator.measure_atoms(&[0, 1]).unwrap();
         assert_eq!(results.len(), 2);
         assert!(results.iter().all(|&r| !r)); // All should be false (ground state)
@@ -571,7 +589,7 @@ mod tests {
     fn test_energy_calculation() {
         let config = RydbergConfig::default();
         let simulator = RydbergSimulator::new(config, 2);
-        
+
         let energy = simulator.calculate_energy();
         assert_eq!(energy, 0.0); // All atoms in ground state
     }

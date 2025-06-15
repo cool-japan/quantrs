@@ -1,9 +1,10 @@
 //! Online Learning Configuration Types
 
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 /// Online learning configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OnlineLearningConfig {
     /// Enable online learning
     pub enable_online_learning: bool,
@@ -18,7 +19,7 @@ pub struct OnlineLearningConfig {
 }
 
 /// Learning rate schedule
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum LearningRateSchedule {
     Constant,
     ExponentialDecay,
@@ -29,7 +30,7 @@ pub enum LearningRateSchedule {
 }
 
 /// Memory management configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryManagementConfig {
     /// Maximum memory buffer size
     pub max_buffer_size: usize,
@@ -42,7 +43,7 @@ pub struct MemoryManagementConfig {
 }
 
 /// Memory eviction strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MemoryEvictionStrategy {
     FIFO,
     LRU,
@@ -53,7 +54,7 @@ pub enum MemoryEvictionStrategy {
 }
 
 /// Forgetting prevention configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ForgettingPreventionConfig {
     /// Enable elastic weight consolidation
     pub elastic_weight_consolidation: bool,
@@ -66,7 +67,7 @@ pub struct ForgettingPreventionConfig {
 }
 
 /// Incremental learning configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IncrementalLearningConfig {
     /// Batch size for incremental updates
     pub incremental_batch_size: usize,

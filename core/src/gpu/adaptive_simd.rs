@@ -595,7 +595,7 @@ mod tests {
 
     #[test]
     fn test_performance_caching() {
-        let mut dispatcher = AdaptiveSimdDispatcher {
+        let dispatcher = AdaptiveSimdDispatcher {
             cpu_features: AdaptiveSimdDispatcher::detect_cpu_features(),
             selected_variant: SimdVariant::Avx2,
             performance_cache: Mutex::new(std::collections::HashMap::new()),

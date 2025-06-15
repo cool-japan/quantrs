@@ -4,11 +4,9 @@
 //! using CUDA kernels via SciRS2, with support for multi-GPU distributed sampling.
 
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, ArrayD, Ix2, IxDyn};
+use ndarray::{Array, ArrayD, Ix2};
 use rand::prelude::*;
-use rand::thread_rng;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "scirs")]
 use crate::scirs_stub::{

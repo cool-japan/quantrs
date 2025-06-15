@@ -260,9 +260,9 @@ impl NeutralAtomGateBuilder {
 
     /// Build the gate parameters
     pub fn build(self) -> DeviceResult<NeutralAtomGateParams> {
-        let gate_type = self.gate_type.ok_or_else(|| {
-            DeviceError::InvalidInput("Gate type must be specified".to_string())
-        })?;
+        let gate_type = self
+            .gate_type
+            .ok_or_else(|| DeviceError::InvalidInput("Gate type must be specified".to_string()))?;
 
         let duration = self.duration.ok_or_else(|| {
             DeviceError::InvalidInput("Gate duration must be specified".to_string())
@@ -405,7 +405,7 @@ pub fn create_single_qubit_rotation(
         RotationAxis::X => "x".to_string(),
         RotationAxis::Y => "y".to_string(),
         RotationAxis::Z => "z".to_string(),
-        RotationAxis::Arbitrary { x, y, z } => format!("arbitrary_{}_{}_{}",  x, y, z),
+        RotationAxis::Arbitrary { x, y, z } => format!("arbitrary_{}_{}_{}", x, y, z),
     };
 
     NeutralAtomGateBuilder::new()
@@ -490,7 +490,8 @@ mod tests {
             std::f64::consts::PI,
             RotationAxis::X,
             Duration::from_micros(100),
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(gate.gate_type, NeutralAtomGateType::SingleQubitRotation);
         assert_eq!(gate.target_atoms, vec![0]);

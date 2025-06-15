@@ -1,9 +1,10 @@
 //! ML Monitoring Configuration Types
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// ML monitoring configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MLMonitoringConfig {
     /// Real-time monitoring
     pub enable_real_time_monitoring: bool,
@@ -18,7 +19,7 @@ pub struct MLMonitoringConfig {
 }
 
 /// Drift detection configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DriftDetectionConfig {
     /// Enable drift detection
     pub enable_detection: bool,
@@ -31,7 +32,7 @@ pub struct DriftDetectionConfig {
 }
 
 /// Drift detection methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DriftDetectionMethod {
     ADWIN,
     DDM,

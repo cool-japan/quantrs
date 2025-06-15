@@ -18,7 +18,7 @@ use quantrs2_tytan::{
         },
         runner::{BenchmarkConfig, BenchmarkRunner},
     },
-    compile::{Model, SimpleExpr},
+    compile::Model,
     optimization::{
         adaptive::{AdaptiveConfig, AdaptiveOptimizer},
         penalty::{PenaltyConfig, PenaltyOptimizer},
@@ -30,6 +30,10 @@ use quantrs2_tytan::{
         problem_specific::{ProblemVisualizer, VisualizationConfig, VisualizationType},
     },
 };
+
+#[cfg(not(feature = "dwave"))]
+use quantrs2_tytan::compile::SimpleExpr;
+
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::time::Instant;

@@ -8,7 +8,7 @@
 
 use ndarray::{Array2, Array3};
 use quantrs2_tytan::{
-    compile::{Model, SimpleExpr},
+    compile::Model,
     constraints::PenaltyFunction,
     optimization::{
         adaptive::{AdaptiveConfig, AdaptiveOptimizer, AdaptiveStrategy},
@@ -21,6 +21,10 @@ use quantrs2_tytan::{
         solution_analysis::analyze_solution_distribution,
     },
 };
+
+#[cfg(not(feature = "dwave"))]
+use quantrs2_tytan::compile::SimpleExpr;
+
 use std::collections::{HashMap, HashSet};
 use std::f64::consts::PI;
 use std::fmt::Write;

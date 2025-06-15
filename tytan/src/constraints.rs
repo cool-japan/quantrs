@@ -4,11 +4,10 @@
 //! to enhance the expressiveness and efficiency of optimization problems.
 
 use ndarray::Array2;
-use std::cmp::{max, min};
 use std::collections::{HashMap, HashSet};
 
 #[cfg(feature = "dwave")]
-use crate::symbol::{Expression, Symbol};
+use crate::symbol::Expression;
 
 /// Global constraint types
 #[derive(Debug, Clone)]

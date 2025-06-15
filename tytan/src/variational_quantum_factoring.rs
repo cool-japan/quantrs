@@ -4,8 +4,7 @@
 //! using variational approaches.
 
 use crate::hybrid_algorithms::{AnsatzType, ClassicalOptimizer, Hamiltonian, PauliTerm, VQE};
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, IxDyn};
+use crate::sampler::{SampleResult, Sampler};
 use num_bigint::BigUint;
 use num_integer::Integer;
 use rand::prelude::*;

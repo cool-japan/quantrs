@@ -1078,7 +1078,7 @@ impl Default for AdvancedBenchmarkConfig {
 
 impl AdvancedHardwareBenchmarkSuite {
     /// Create a new advanced benchmarking suite
-    pub fn new(
+    pub async fn new(
         config: AdvancedBenchmarkConfig,
         calibration_manager: CalibrationManager,
         device_topology: crate::topology::HardwareTopology,
@@ -1094,9 +1094,11 @@ impl AdvancedHardwareBenchmarkSuite {
 
         let error_corrector = QuantumErrorCorrector::new(
             Default::default(),
-            calibration_manager.clone(),
-            device_topology,
-        )?;
+            "benchmark_device".to_string(),
+            Some(calibration_manager.clone()),
+            Some(device_topology),
+        )
+        .await?;
 
         Ok(Self {
             anomaly_detector: Mutex::new(AnomalyDetector::new(&config.anomaly_config)),
@@ -1790,14 +1792,15 @@ mod tests {
         assert!(config.prediction_config.enable_prediction);
     }
 
-    #[test]
-    fn test_feature_extraction() {
+    #[tokio::test]
+    async fn test_feature_extraction() {
         let config = AdvancedBenchmarkConfig::default();
         let calibration_manager = CalibrationManager::new();
         let topology = crate::topology::HardwareTopology::linear_topology(4);
 
-        let suite =
-            AdvancedHardwareBenchmarkSuite::new(config, calibration_manager, topology).unwrap();
+        let suite = AdvancedHardwareBenchmarkSuite::new(config, calibration_manager, topology)
+            .await
+            .unwrap();
 
         // Create mock benchmark results
         let base_results = crate::benchmarking::BenchmarkSuite {

@@ -8,7 +8,7 @@
 
 use ndarray::Array2;
 use quantrs2_tytan::{
-    compile::{Model, SimpleExpr},
+    compile::Model,
     constraints::PenaltyFunction,
     optimization::{
         adaptive::{AdaptiveConfig, AdaptiveOptimizer},
@@ -16,6 +16,10 @@ use quantrs2_tytan::{
     },
     sampler::{SASampler, Sampler},
 };
+
+#[cfg(not(feature = "dwave"))]
+use quantrs2_tytan::compile::SimpleExpr;
+
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::collections::{HashMap, HashSet};

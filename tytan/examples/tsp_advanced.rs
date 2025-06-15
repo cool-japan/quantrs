@@ -8,7 +8,7 @@
 
 use ndarray::Array2;
 use quantrs2_tytan::{
-    compile::{Model, SimpleExpr},
+    compile::Model,
     constraints::PenaltyFunction,
     optimization::{
         penalty::{PenaltyConfig, PenaltyOptimizer, PenaltyType},
@@ -20,6 +20,10 @@ use quantrs2_tytan::{
         problem_specific::{ProblemVisualizer, VisualizationConfig, VisualizationType},
     },
 };
+
+#[cfg(not(feature = "dwave"))]
+use quantrs2_tytan::compile::SimpleExpr;
+
 use std::collections::HashMap;
 use std::f64::consts::PI;
 

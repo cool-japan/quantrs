@@ -434,7 +434,7 @@ impl OptimizationPass for CliffordFusion {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::gate::single::{Hadamard, Phase, PhaseDagger, TDagger, T};
+    use crate::gate::single::{Hadamard, Phase};
     use crate::prelude::QubitId;
 
     #[test]

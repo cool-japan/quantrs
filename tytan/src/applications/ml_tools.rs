@@ -3,12 +3,11 @@
 //! This module provides quantum optimization tools for machine learning
 //! including feature selection, hyperparameter optimization, and model selection.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, Array3, IxDyn};
+// Sampler types available for ML applications
+use ndarray::{Array1, Array2};
 use rand::prelude::*;
 use rand::thread_rng;
-use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /// Feature selector using quantum optimization
 pub struct QuantumFeatureSelector {

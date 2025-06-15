@@ -59,7 +59,7 @@ class TestCircuitVisualizer:
         
         circuit = quantrs2.Circuit(2)
         circuit.h(0)
-        circuit.cx(0, 1)
+        circuit.cnot(0, 1)
         
         visualizer = CircuitVisualizer(circuit)
         
@@ -226,7 +226,7 @@ class TestProbabilityHistogram:
         
         circuit = quantrs2.Circuit(2)
         circuit.h(0)
-        circuit.cx(0, 1)
+        circuit.cnot(0, 1)
         result = circuit.run()
         
         histogram = ProbabilityHistogram(result)

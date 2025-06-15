@@ -10,10 +10,44 @@ use std::collections::{HashMap, HashSet};
 #[cfg(feature = "scirs")]
 use crate::scirs_stub;
 #[cfg(feature = "dwave")]
-use symengine::{self, Expr, Symbol as SymengineSymbol};
+use symengine::Expression as SymEngineExpression;
+
+#[cfg(feature = "dwave")]
+type Expr = SymEngineExpression;
 use thiserror::Error;
 
 use quantrs2_anneal::QuboError;
+
+/// Unified expression interface for examples
+#[cfg(feature = "dwave")]
+pub mod expr {
+    use symengine::Expression as SymEngineExpression;
+
+    pub type Expr = SymEngineExpression;
+
+    pub fn constant(value: f64) -> Expr {
+        SymEngineExpression::from_f64(value)
+    }
+
+    pub fn var(name: &str) -> Expr {
+        SymEngineExpression::symbol(name)
+    }
+}
+
+#[cfg(not(feature = "dwave"))]
+pub mod expr {
+    use super::SimpleExpr;
+
+    pub type Expr = SimpleExpr;
+
+    pub fn constant(value: f64) -> Expr {
+        SimpleExpr::constant(value)
+    }
+
+    pub fn var(name: &str) -> Expr {
+        SimpleExpr::var(name)
+    }
+}
 
 /// Errors that can occur during compilation
 #[derive(Error, Debug)]
@@ -144,7 +178,7 @@ impl Model {
     /// Add a variable to the model
     pub fn add_variable(&mut self, name: &str) -> CompileResult<Expr> {
         self.variables.insert(name.to_string());
-        Ok(SymengineSymbol::new(name).into())
+        Ok(SymEngineExpression::symbol(name))
     }
 
     /// Set the objective function
@@ -679,7 +713,7 @@ impl Compile {
         &self,
     ) -> CompileResult<((Array<f64, ndarray::Ix2>, HashMap<String, usize>), f64)> {
         // Expand the expression to simplify
-        let expr = symengine::expand(&self.expr);
+        let expr = self.expr.expand();
 
         // Check the degree of each term
         let max_degree = calc_highest_degree(&expr)?;
@@ -691,7 +725,7 @@ impl Compile {
         let expr = replace_squared_terms(&expr)?;
 
         // Expand again to collect like terms
-        let expr = symengine::expand(&expr);
+        let expr = expr.expand();
 
         // Extract the coefficients and variables
         let (coeffs, offset) = extract_coefficients(&expr)?;
@@ -730,7 +764,7 @@ impl Compile {
         &self,
     ) -> CompileResult<((Array<f64, ndarray::IxDyn>, HashMap<String, usize>), f64)> {
         // Expand the expression to simplify
-        let expr = symengine::expand(&self.expr);
+        let expr = self.expr.expand();
 
         // Calculate highest degree (dimension of the tensor)
         let max_degree = calc_highest_degree(&expr)?;
@@ -739,7 +773,7 @@ impl Compile {
         let expr = replace_squared_terms(&expr)?;
 
         // Expand again to collect like terms
-        let expr = symengine::expand(&expr);
+        let expr = expr.expand();
 
         // Extract the coefficients and variables
         let (coeffs, offset) = extract_coefficients(&expr)?;
@@ -957,7 +991,7 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
 
     // If it's a symbol, it's a linear term with coefficient 1
     if term.is_symbol() {
-        let var_name = term.as_symbol().unwrap().to_string();
+        let var_name = term.as_symbol().unwrap();
         let vars = vec![var_name];
         coeffs.insert(vars, 1.0);
         return Ok((coeffs, 0.0));
@@ -982,7 +1016,7 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
                 coeff *= value;
             } else if factor.is_symbol() {
                 // Symbol is a variable
-                let var_name = factor.as_symbol().unwrap().to_string();
+                let var_name = factor.as_symbol().unwrap();
                 vars.push(var_name);
             } else {
                 // More complex factors not supported in this example
@@ -1181,6 +1215,6 @@ impl PieckCompile {
     ) -> CompileResult<((Array<f64, ndarray::Ix2>, HashMap<String, usize>), f64)> {
         // Implementation will compile the expression using specialized techniques
         // For now, call the regular compiler
-        Compile::new(&self.expr).get_qubo()
+        Compile::new(self.expr.clone()).get_qubo()
     }
 }

@@ -791,9 +791,9 @@ mod tests {
             target: crate::qubit::QubitId(1),
         });
 
-        let h_id = pipeline.add_gate(h_gate).unwrap();
-        let x_id = pipeline.add_gate(x_gate).unwrap();
-        let z_id = pipeline.add_gate(z_gate).unwrap();
+        let _h_id = pipeline.add_gate(h_gate).unwrap();
+        let _x_id = pipeline.add_gate(x_gate).unwrap();
+        let _z_id = pipeline.add_gate(z_gate).unwrap();
 
         // X gate should depend on H gate (same qubit)
         // Z gate should be independent (different qubit)

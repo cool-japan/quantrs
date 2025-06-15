@@ -7,7 +7,7 @@
 //! The module prepares data that can be used with external plotting libraries
 //! or exported for visualization in other tools.
 
-use ndarray::{Array1, Array2, Axis};
+use ndarray::{Array2, Axis};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;

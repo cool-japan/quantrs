@@ -90,11 +90,15 @@ impl DDSequenceGenerator {
         duration: f64,
     ) -> DeviceResult<DDSequence> {
         match sequence_type {
-            DDSequenceType::CPMG { n_pulses } => Self::generate_cpmg_sequence_with_pulses(target_qubits, duration, *n_pulses),
+            DDSequenceType::CPMG { n_pulses } => {
+                Self::generate_cpmg_sequence_with_pulses(target_qubits, duration, *n_pulses)
+            }
             DDSequenceType::XY4 => Self::generate_xy4_sequence(target_qubits, duration),
             DDSequenceType::XY8 => Self::generate_xy8_sequence(target_qubits, duration),
             DDSequenceType::XY16 => Self::generate_xy16_sequence(target_qubits, duration),
-            DDSequenceType::UDD { n_pulses } => Self::generate_udd_sequence_with_pulses(target_qubits, duration, *n_pulses),
+            DDSequenceType::UDD { n_pulses } => {
+                Self::generate_udd_sequence_with_pulses(target_qubits, duration, *n_pulses)
+            }
             DDSequenceType::KDD => Self::generate_kdd_sequence(target_qubits, duration),
             DDSequenceType::QDD => Self::generate_qdd_sequence(target_qubits, duration),
             DDSequenceType::CDD => Self::generate_cdd_sequence(target_qubits, duration),
@@ -419,7 +423,11 @@ impl DDSequenceGenerator {
     }
 
     /// Generate Uhrig Dynamical Decoupling (UDD) sequence
-    fn generate_udd_sequence_with_pulses(target_qubits: &[QubitId], duration: f64, n_pulses: usize) -> DeviceResult<DDSequence> {
+    fn generate_udd_sequence_with_pulses(
+        target_qubits: &[QubitId],
+        duration: f64,
+        n_pulses: usize,
+    ) -> DeviceResult<DDSequence> {
         let mut pulse_timings = Vec::new();
         let mut pulse_phases = Vec::new();
 
@@ -594,7 +602,8 @@ impl DDSequenceGenerator {
 
     /// Generate other sequence types (placeholders)
     fn generate_qdd_sequence(target_qubits: &[QubitId], duration: f64) -> DeviceResult<DDSequence> {
-        let mut base = DDSequenceGenerator::generate_udd_sequence_with_pulses(target_qubits, duration, 8)?;
+        let mut base =
+            DDSequenceGenerator::generate_udd_sequence_with_pulses(target_qubits, duration, 8)?;
         base.sequence_type = DDSequenceType::QDD;
         Ok(base)
     }

@@ -465,7 +465,7 @@ pub enum DDOptimizationObjective {
     Custom(String),
 }
 
-/// DD-specific optimization objectives 
+/// DD-specific optimization objectives
 #[derive(Debug, Clone, PartialEq)]
 pub enum DDOptimizationObjectiveType {
     /// Maximize fidelity

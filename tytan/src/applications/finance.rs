@@ -3,8 +3,8 @@
 //! This module provides quantum optimization tools for financial applications
 //! including portfolio optimization, risk management, and asset allocation.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, IxDyn};
+// Sampler types available for finance applications
+use ndarray::{Array1, Array2};
 use rand::prelude::*;
 use std::collections::HashMap;
 use std::f64::consts::PI;

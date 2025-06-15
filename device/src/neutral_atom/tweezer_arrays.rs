@@ -202,7 +202,8 @@ pub struct OptimizationSettings {
 impl TweezerArrayManager {
     /// Create a new tweezer array manager
     pub fn new(config: TweezerArrayConfig) -> Self {
-        let total_tweezers = config.array_dimensions.0 * config.array_dimensions.1 * config.array_dimensions.2;
+        let total_tweezers =
+            config.array_dimensions.0 * config.array_dimensions.1 * config.array_dimensions.2;
         let mut tweezers = HashMap::new();
 
         // Initialize tweezers
@@ -242,7 +243,10 @@ impl TweezerArrayManager {
     }
 
     /// Convert linear index to 3D coordinates
-    fn index_to_coordinates(index: usize, dimensions: &(usize, usize, usize)) -> (usize, usize, usize) {
+    fn index_to_coordinates(
+        index: usize,
+        dimensions: &(usize, usize, usize),
+    ) -> (usize, usize, usize) {
         let z_idx = index / (dimensions.0 * dimensions.1);
         let y_idx = (index % (dimensions.0 * dimensions.1)) / dimensions.0;
         let x_idx = index % dimensions.0;
@@ -250,7 +254,12 @@ impl TweezerArrayManager {
     }
 
     /// Convert 3D coordinates to linear index
-    fn coordinates_to_index(x: usize, y: usize, z: usize, dimensions: &(usize, usize, usize)) -> usize {
+    fn coordinates_to_index(
+        x: usize,
+        y: usize,
+        z: usize,
+        dimensions: &(usize, usize, usize),
+    ) -> usize {
         z * dimensions.0 * dimensions.1 + y * dimensions.0 + x
     }
 
@@ -280,17 +289,23 @@ impl TweezerArrayManager {
     async fn load_single_atom(&mut self, tweezer_id: usize) -> DeviceResult<bool> {
         // First, get the tweezer info for loading calculation
         let (loading_attempts, base_success_rate) = {
-            let tweezer = self.state.tweezers.get(&tweezer_id)
-                .ok_or_else(|| DeviceError::InvalidInput(format!("Tweezer {} not found", tweezer_id)))?;
-            (tweezer.loading_attempts, self.state.config.loading_efficiency)
+            let tweezer = self.state.tweezers.get(&tweezer_id).ok_or_else(|| {
+                DeviceError::InvalidInput(format!("Tweezer {} not found", tweezer_id))
+            })?;
+            (
+                tweezer.loading_attempts,
+                self.state.config.loading_efficiency,
+            )
         };
 
         // Calculate loading success
-        let loading_success = self.simulate_atom_loading_from_params(loading_attempts, base_success_rate);
+        let loading_success =
+            self.simulate_atom_loading_from_params(loading_attempts, base_success_rate);
 
         // Now update the tweezer
-        let tweezer = self.state.tweezers.get_mut(&tweezer_id)
-            .ok_or_else(|| DeviceError::InvalidInput(format!("Tweezer {} not found", tweezer_id)))?;
+        let tweezer = self.state.tweezers.get_mut(&tweezer_id).ok_or_else(|| {
+            DeviceError::InvalidInput(format!("Tweezer {} not found", tweezer_id))
+        })?;
 
         tweezer.loading_attempts += 1;
         tweezer.last_update = std::time::SystemTime::now();
@@ -305,11 +320,18 @@ impl TweezerArrayManager {
 
     /// Simulate atom loading (mock implementation)
     fn simulate_atom_loading(&self, tweezer: &TweezerInfo) -> bool {
-        self.simulate_atom_loading_from_params(tweezer.loading_attempts, self.state.config.loading_efficiency)
+        self.simulate_atom_loading_from_params(
+            tweezer.loading_attempts,
+            self.state.config.loading_efficiency,
+        )
     }
 
     /// Simulate atom loading from parameters
-    fn simulate_atom_loading_from_params(&self, loading_attempts: usize, base_success_rate: f64) -> bool {
+    fn simulate_atom_loading_from_params(
+        &self,
+        loading_attempts: usize,
+        base_success_rate: f64,
+    ) -> bool {
         // Simple mock based on loading efficiency and number of attempts
         let attempt_penalty = 0.05 * (loading_attempts as f64).max(1.0);
         let effective_success_rate = (base_success_rate - attempt_penalty).max(0.1);
@@ -333,8 +355,9 @@ impl TweezerArrayManager {
         target_position: TweezerPosition,
         parameters: MovementParameters,
     ) -> DeviceResult<String> {
-        let tweezer = self.state.tweezers.get(&tweezer_id)
-            .ok_or_else(|| DeviceError::InvalidInput(format!("Tweezer {} not found", tweezer_id)))?;
+        let tweezer = self.state.tweezers.get(&tweezer_id).ok_or_else(|| {
+            DeviceError::InvalidInput(format!("Tweezer {} not found", tweezer_id))
+        })?;
 
         if tweezer.atom_state != AtomState::Loaded {
             return Err(DeviceError::InvalidInput(
@@ -342,7 +365,8 @@ impl TweezerArrayManager {
             ));
         }
 
-        let movement_time = self.calculate_movement_time(&tweezer.position, &target_position, &parameters);
+        let movement_time =
+            self.calculate_movement_time(&tweezer.position, &target_position, &parameters);
         let operation_id = format!("move_{}", uuid::Uuid::new_v4());
 
         let movement_op = MovementOperation {
@@ -442,7 +466,11 @@ impl TweezerArrayManager {
     }
 
     /// Update loading statistics
-    fn update_loading_statistics(&mut self, results: &HashMap<usize, bool>, start_time: std::time::SystemTime) {
+    fn update_loading_statistics(
+        &mut self,
+        results: &HashMap<usize, bool>,
+        start_time: std::time::SystemTime,
+    ) {
         let successful = results.values().filter(|&&success| success).count();
         let failed = results.values().filter(|&&success| !success).count();
         let loading_time = start_time.elapsed().unwrap_or(Duration::ZERO);
@@ -458,10 +486,14 @@ impl TweezerArrayManager {
         self.state.loading_stats.average_loading_time = new_avg;
 
         // Update fill factor
-        let loaded_count = self.state.tweezers.values()
+        let loaded_count = self
+            .state
+            .tweezers
+            .values()
             .filter(|t| t.atom_state == AtomState::Loaded)
             .count();
-        self.state.loading_stats.fill_factor = loaded_count as f64 / self.state.tweezers.len() as f64;
+        self.state.loading_stats.fill_factor =
+            loaded_count as f64 / self.state.tweezers.len() as f64;
     }
 
     /// Get current array state
@@ -476,7 +508,8 @@ impl TweezerArrayManager {
 
     /// Get atom positions
     pub fn get_atom_positions(&self) -> Vec<(usize, TweezerPosition)> {
-        self.state.tweezers
+        self.state
+            .tweezers
             .iter()
             .filter(|(_, tweezer)| tweezer.atom_state == AtomState::Loaded)
             .map(|(&id, tweezer)| (id, tweezer.position))
@@ -517,11 +550,13 @@ impl TweezerArrayManager {
 
     /// Auto-reload failed tweezers
     async fn auto_reload_failed_tweezers(&mut self) -> DeviceResult<usize> {
-        let failed_tweezer_ids: Vec<usize> = self.state.tweezers
+        let failed_tweezer_ids: Vec<usize> = self
+            .state
+            .tweezers
             .iter()
             .filter(|(_, tweezer)| {
-                tweezer.atom_state == AtomState::LoadingFailed && 
-                tweezer.loading_attempts < self.optimization_settings.max_reload_attempts
+                tweezer.atom_state == AtomState::LoadingFailed
+                    && tweezer.loading_attempts < self.optimization_settings.max_reload_attempts
             })
             .map(|(&id, _)| id)
             .collect();
@@ -614,7 +649,7 @@ impl Default for OptimizationSettings {
 impl Default for MovementParameters {
     fn default() -> Self {
         Self {
-            speed: 10.0, // μm/s
+            speed: 10.0,       // μm/s
             acceleration: 5.0, // μm/s²
             trajectory: MovementTrajectory::Linear,
             power_ramping: PowerRampingConfig::default(),
@@ -634,11 +669,7 @@ impl Default for PowerRampingConfig {
 }
 
 /// Create a basic tweezer array configuration
-pub fn create_basic_array_config(
-    rows: usize,
-    cols: usize,
-    spacing: f64,
-) -> TweezerArrayConfig {
+pub fn create_basic_array_config(rows: usize, cols: usize, spacing: f64) -> TweezerArrayConfig {
     TweezerArrayConfig {
         array_dimensions: (rows, cols, 1),
         tweezer_spacing: (spacing, spacing, 0.0),
@@ -669,19 +700,23 @@ mod tests {
     fn test_tweezer_array_creation() {
         let config = TweezerArrayConfig::default();
         let manager = TweezerArrayManager::new(config);
-        
+
         assert_eq!(manager.state.tweezers.len(), 100); // 10x10x1 array
-        assert!(manager.state.tweezers.values().all(|t| t.atom_state == AtomState::Empty));
+        assert!(manager
+            .state
+            .tweezers
+            .values()
+            .all(|t| t.atom_state == AtomState::Empty));
     }
 
     #[test]
     fn test_coordinate_conversion() {
         let dimensions = (3, 3, 2);
-        
+
         // Test index to coordinates
         let (x, y, z) = TweezerArrayManager::index_to_coordinates(10, &dimensions);
         assert_eq!((x, y, z), (1, 0, 1));
-        
+
         // Test coordinates to index
         let index = TweezerArrayManager::coordinates_to_index(1, 0, 1, &dimensions);
         assert_eq!(index, 10);
@@ -689,9 +724,17 @@ mod tests {
 
     #[test]
     fn test_distance_calculation() {
-        let pos1 = TweezerPosition { x: 0.0, y: 0.0, z: 0.0 };
-        let pos2 = TweezerPosition { x: 3.0, y: 4.0, z: 0.0 };
-        
+        let pos1 = TweezerPosition {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        };
+        let pos2 = TweezerPosition {
+            x: 3.0,
+            y: 4.0,
+            z: 0.0,
+        };
+
         let distance = TweezerArrayManager::calculate_distance(&pos1, &pos2);
         assert_eq!(distance, 5.0);
     }
@@ -712,11 +755,11 @@ mod uuid {
             let mut hasher = DefaultHasher::new();
             SystemTime::now().hash(&mut hasher);
             let hash = hasher.finish();
-            
+
             let mut bytes = [0u8; 16];
             bytes[0..8].copy_from_slice(&hash.to_le_bytes());
             bytes[8..16].copy_from_slice(&hash.to_be_bytes());
-            
+
             Self(bytes)
         }
     }

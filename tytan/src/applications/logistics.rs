@@ -3,12 +3,11 @@
 //! This module provides quantum optimization tools for logistics applications
 //! including vehicle routing, supply chain optimization, and warehouse management.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, Array3, IxDyn};
+// Sampler types available for logistics applications
+use ndarray::{Array1, Array2};
 use rand::prelude::*;
 use rand::thread_rng;
-use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 /// Vehicle Routing Problem (VRP) optimizer
 pub struct VehicleRoutingOptimizer {
@@ -440,14 +439,15 @@ impl VehicleRoutingOptimizer {
             // Time window checks
             if let Some(time_windows) = &self.time_windows {
                 for (i, &loc) in route.path.iter().enumerate() {
-                    if loc < time_windows.len() && i < route.arrival_times.len() {
-                        if route.arrival_times[i] > time_windows[loc].end {
-                            violations.push(ConstraintViolation::TimeWindowViolation {
-                                location: loc,
-                                arrival: route.arrival_times[i],
-                                window_end: time_windows[loc].end,
-                            });
-                        }
+                    if loc < time_windows.len()
+                        && i < route.arrival_times.len()
+                        && route.arrival_times[i] > time_windows[loc].end
+                    {
+                        violations.push(ConstraintViolation::TimeWindowViolation {
+                            location: loc,
+                            arrival: route.arrival_times[i],
+                            window_end: time_windows[loc].end,
+                        });
                     }
                 }
             }

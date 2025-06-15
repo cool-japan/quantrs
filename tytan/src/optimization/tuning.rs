@@ -7,7 +7,7 @@ use crate::{
     optimization::penalty::CompiledModel,
     sampler::{SampleResult, Sampler},
 };
-use ndarray::{Array1, Array2};
+use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

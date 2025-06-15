@@ -1,6 +1,6 @@
 use num_complex::Complex64;
-use std::ops::{Add, Mul, Sub, Div};
 use std::collections::HashMap;
+use std::ops::{Add, Div, Mul, Sub};
 
 use crate::error::QuantRS2Result;
 use crate::gate::GateOp;
@@ -60,7 +60,7 @@ impl Parameter {
         if let Ok(value) = expr.parse::<f64>() {
             return Ok(Parameter::Constant(value));
         }
-        
+
         // Otherwise parse as symbolic expression
         let symbolic_expr = SymbolicExpression::parse(expr)?;
         Ok(Parameter::Symbolic(symbolic_expr))
@@ -76,12 +76,12 @@ impl Parameter {
                 } else {
                     None // Cannot convert complex to real
                 }
-            },
+            }
             Parameter::Symbol(sym) => sym.value,
             Parameter::Symbolic(expr) => {
                 // Try to evaluate with empty variables
                 expr.evaluate(&HashMap::new()).ok()
-            },
+            }
         }
     }
 
@@ -94,7 +94,7 @@ impl Parameter {
             Parameter::Symbolic(expr) => {
                 // Try to evaluate with empty variables
                 expr.evaluate_complex(&HashMap::new()).ok()
-            },
+            }
         }
     }
 
@@ -116,27 +116,31 @@ impl Parameter {
                     Ok(val.re)
                 } else {
                     Err(crate::error::QuantRS2Error::InvalidInput(
-                        "Cannot evaluate complex parameter to real number".to_string()
+                        "Cannot evaluate complex parameter to real number".to_string(),
                     ))
                 }
-            },
+            }
             Parameter::Symbol(sym) => {
                 if let Some(value) = sym.value {
                     Ok(value)
                 } else {
                     variables.get(&sym.name).copied().ok_or_else(|| {
-                        crate::error::QuantRS2Error::InvalidInput(
-                            format!("Variable '{}' not found", sym.name)
-                        )
+                        crate::error::QuantRS2Error::InvalidInput(format!(
+                            "Variable '{}' not found",
+                            sym.name
+                        ))
                     })
                 }
-            },
+            }
             Parameter::Symbolic(expr) => expr.evaluate(variables),
         }
     }
 
     /// Evaluate the parameter with given variable values (complex)
-    pub fn evaluate_complex(&self, variables: &HashMap<String, Complex64>) -> QuantRS2Result<Complex64> {
+    pub fn evaluate_complex(
+        &self,
+        variables: &HashMap<String, Complex64>,
+    ) -> QuantRS2Result<Complex64> {
         match self {
             Parameter::Constant(val) => Ok(Complex64::new(*val, 0.0)),
             Parameter::ComplexConstant(val) => Ok(*val),
@@ -145,12 +149,13 @@ impl Parameter {
                     Ok(Complex64::new(value, 0.0))
                 } else {
                     variables.get(&sym.name).copied().ok_or_else(|| {
-                        crate::error::QuantRS2Error::InvalidInput(
-                            format!("Variable '{}' not found", sym.name)
-                        )
+                        crate::error::QuantRS2Error::InvalidInput(format!(
+                            "Variable '{}' not found",
+                            sym.name
+                        ))
                     })
                 }
-            },
+            }
             Parameter::Symbolic(expr) => expr.evaluate_complex(variables),
         }
     }
@@ -165,7 +170,7 @@ impl Parameter {
                 } else {
                     vec![sym.name.clone()]
                 }
-            },
+            }
             Parameter::Symbolic(expr) => expr.variables(),
         }
     }
@@ -180,16 +185,17 @@ impl Parameter {
                 } else {
                     Ok(self.clone())
                 }
-            },
+            }
             Parameter::Symbolic(expr) => {
                 // Convert Parameter substitutions to SymbolicExpression substitutions
-                let symbolic_subs: HashMap<String, SymbolicExpression> = substitutions.iter()
+                let symbolic_subs: HashMap<String, SymbolicExpression> = substitutions
+                    .iter()
                     .map(|(k, v)| (k.clone(), v.to_symbolic_expression()))
                     .collect();
-                    
+
                 let new_expr = expr.substitute(&symbolic_subs)?;
                 Ok(Parameter::Symbolic(new_expr))
-            },
+            }
         }
     }
 
@@ -204,7 +210,7 @@ impl Parameter {
                 } else {
                     SymbolicExpression::variable(&sym.name)
                 }
-            },
+            }
             Parameter::Symbolic(expr) => expr.clone(),
         }
     }
@@ -213,7 +219,7 @@ impl Parameter {
     #[cfg(feature = "symbolic")]
     pub fn diff(&self, var: &str) -> QuantRS2Result<Self> {
         use crate::symbolic::calculus;
-        
+
         let expr = self.to_symbolic_expression();
         let diff_expr = calculus::diff(&expr, var)?;
         Ok(Parameter::Symbolic(diff_expr))
@@ -223,7 +229,7 @@ impl Parameter {
     #[cfg(feature = "symbolic")]
     pub fn integrate(&self, var: &str) -> QuantRS2Result<Self> {
         use crate::symbolic::calculus;
-        
+
         let expr = self.to_symbolic_expression();
         let int_expr = calculus::integrate(&expr, var)?;
         Ok(Parameter::Symbolic(int_expr))
@@ -266,13 +272,13 @@ impl Add for Parameter {
             (Parameter::Constant(a), Parameter::Constant(b)) => Parameter::Constant(a + b),
             (Parameter::ComplexConstant(a), Parameter::ComplexConstant(b)) => {
                 Parameter::ComplexConstant(a + b)
-            },
+            }
             (Parameter::Constant(a), Parameter::ComplexConstant(b)) => {
                 Parameter::ComplexConstant(Complex64::new(a, 0.0) + b)
-            },
+            }
             (Parameter::ComplexConstant(a), Parameter::Constant(b)) => {
                 Parameter::ComplexConstant(a + Complex64::new(b, 0.0))
-            },
+            }
             (a, b) => {
                 // Convert to symbolic expressions and add
                 let a_expr = a.to_symbolic_expression();
@@ -291,13 +297,13 @@ impl Sub for Parameter {
             (Parameter::Constant(a), Parameter::Constant(b)) => Parameter::Constant(a - b),
             (Parameter::ComplexConstant(a), Parameter::ComplexConstant(b)) => {
                 Parameter::ComplexConstant(a - b)
-            },
+            }
             (Parameter::Constant(a), Parameter::ComplexConstant(b)) => {
                 Parameter::ComplexConstant(Complex64::new(a, 0.0) - b)
-            },
+            }
             (Parameter::ComplexConstant(a), Parameter::Constant(b)) => {
                 Parameter::ComplexConstant(a - Complex64::new(b, 0.0))
-            },
+            }
             (a, b) => {
                 // Convert to symbolic expressions and subtract
                 let a_expr = a.to_symbolic_expression();
@@ -316,13 +322,13 @@ impl Mul for Parameter {
             (Parameter::Constant(a), Parameter::Constant(b)) => Parameter::Constant(a * b),
             (Parameter::ComplexConstant(a), Parameter::ComplexConstant(b)) => {
                 Parameter::ComplexConstant(a * b)
-            },
+            }
             (Parameter::Constant(a), Parameter::ComplexConstant(b)) => {
                 Parameter::ComplexConstant(Complex64::new(a, 0.0) * b)
-            },
+            }
             (Parameter::ComplexConstant(a), Parameter::Constant(b)) => {
                 Parameter::ComplexConstant(a * Complex64::new(b, 0.0))
-            },
+            }
             (a, b) => {
                 // Convert to symbolic expressions and multiply
                 let a_expr = a.to_symbolic_expression();
@@ -341,13 +347,13 @@ impl Div for Parameter {
             (Parameter::Constant(a), Parameter::Constant(b)) => Parameter::Constant(a / b),
             (Parameter::ComplexConstant(a), Parameter::ComplexConstant(b)) => {
                 Parameter::ComplexConstant(a / b)
-            },
+            }
             (Parameter::Constant(a), Parameter::ComplexConstant(b)) => {
                 Parameter::ComplexConstant(Complex64::new(a, 0.0) / b)
-            },
+            }
             (Parameter::ComplexConstant(a), Parameter::Constant(b)) => {
                 Parameter::ComplexConstant(a / Complex64::new(b, 0.0))
-            },
+            }
             (a, b) => {
                 // Convert to symbolic expressions and divide
                 let a_expr = a.to_symbolic_expression();

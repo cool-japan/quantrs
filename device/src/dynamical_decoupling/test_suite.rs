@@ -78,8 +78,12 @@ mod tests {
 
     fn create_test_sequence() -> crate::dynamical_decoupling::DDSequence {
         let target_qubits = vec![QubitId(0), QubitId(1)];
-        DDSequenceGenerator::generate_base_sequence(&DDSequenceType::CPMG { n_pulses: 1 }, &target_qubits, 100e-6)
-            .unwrap()
+        DDSequenceGenerator::generate_base_sequence(
+            &DDSequenceType::CPMG { n_pulses: 1 },
+            &target_qubits,
+            100e-6,
+        )
+        .unwrap()
     }
 
     #[test]
@@ -183,9 +187,12 @@ mod tests {
 
         // Add sequences for different qubit groups
         let group1 = vec![QubitId(0), QubitId(1)];
-        let sequence1 =
-            DDSequenceGenerator::generate_base_sequence(&DDSequenceType::CPMG { n_pulses: 16 }, &group1, 100e-6)
-                .unwrap();
+        let sequence1 = DDSequenceGenerator::generate_base_sequence(
+            &DDSequenceType::CPMG { n_pulses: 16 },
+            &group1,
+            100e-6,
+        )
+        .unwrap();
         coordinator.add_sequence(group1, sequence1);
 
         let group2 = vec![QubitId(2), QubitId(3)];

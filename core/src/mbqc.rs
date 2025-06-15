@@ -849,7 +849,7 @@ mod tests {
         assert_eq!(pattern.measurements.len(), 2);
 
         // Convert CNOT
-        let (graph, pattern) = converter.convert_cnot(0, 1);
+        let (graph, _pattern) = converter.convert_cnot(0, 1);
         assert_eq!(graph.num_vertices, 15);
     }
 }

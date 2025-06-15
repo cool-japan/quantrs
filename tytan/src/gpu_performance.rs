@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 #[cfg(feature = "scirs")]
 use crate::scirs_stub::scirs2_core::gpu::{DeviceInfo, GpuContext};

@@ -8,7 +8,8 @@ use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::prelude::*;
 use quantrs2_device::adaptive_compilation::strategies::{AdaptationTrigger, OptimizationAlgorithm};
 use quantrs2_device::dynamical_decoupling::config::{
-    DDNoiseConfig, DDOptimizationAlgorithm, DDOptimizationObjectiveType, DDPerformanceConfig, DDPerformanceMetric, NoiseType,
+    DDNoiseConfig, DDOptimizationAlgorithm, DDOptimizationObjectiveType, DDPerformanceConfig,
+    DDPerformanceMetric, NoiseType,
 };
 use quantrs2_device::dynamical_decoupling::hardware::SynchronizationRequirements;
 use quantrs2_device::dynamical_decoupling::optimization::DDSequenceOptimizer;
@@ -96,12 +97,12 @@ mod test_helpers {
     pub fn create_mock_performance_analysis() -> DDPerformanceAnalysis {
         use quantrs2_device::dynamical_decoupling::performance::*;
         use std::collections::HashMap;
-        
+
         let mut metrics = HashMap::new();
         metrics.insert(DDPerformanceMetric::CoherenceTime, 100.0);
         metrics.insert(DDPerformanceMetric::ProcessFidelity, 0.99);
         metrics.insert(DDPerformanceMetric::GateOverhead, 4.0);
-        
+
         DDPerformanceAnalysis {
             metrics,
             benchmark_results: BenchmarkResults {
@@ -184,8 +185,11 @@ mod sequence_generation_tests {
         let qubits = create_test_qubits();
         let duration = 2000.0;
 
-        let sequence =
-            DDSequenceGenerator::generate_base_sequence(&DDSequenceType::CPMG { n_pulses: 16 }, &qubits, duration);
+        let sequence = DDSequenceGenerator::generate_base_sequence(
+            &DDSequenceType::CPMG { n_pulses: 16 },
+            &qubits,
+            duration,
+        );
 
         assert!(sequence.is_ok(), "CPMG generation should succeed");
         let seq = sequence.unwrap();
@@ -240,8 +244,11 @@ mod sequence_generation_tests {
         let qubits = vec![QubitId(0)];
         let duration = 1800.0;
 
-        let sequence =
-            DDSequenceGenerator::generate_base_sequence(&DDSequenceType::UDD { n_pulses: 3 }, &qubits, duration);
+        let sequence = DDSequenceGenerator::generate_base_sequence(
+            &DDSequenceType::UDD { n_pulses: 3 },
+            &qubits,
+            duration,
+        );
 
         assert!(sequence.is_ok(), "UDD generation should succeed");
         let seq = sequence.unwrap();
@@ -517,8 +524,12 @@ mod performance_tests {
         let analysis = result.unwrap();
         assert!(!analysis.metrics.is_empty());
         // Check that metrics contain expected values
-        assert!(analysis.metrics.contains_key(&DDPerformanceMetric::ProcessFidelity));
-        assert!(analysis.metrics.contains_key(&DDPerformanceMetric::CoherenceTime));
+        assert!(analysis
+            .metrics
+            .contains_key(&DDPerformanceMetric::ProcessFidelity));
+        assert!(analysis
+            .metrics
+            .contains_key(&DDPerformanceMetric::CoherenceTime));
     }
 
     #[test]

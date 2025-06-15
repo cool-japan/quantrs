@@ -531,6 +531,31 @@ impl QuboModel {
             .collect()
     }
 
+    /// Convert to dense QUBO matrix for sampler compatibility
+    pub fn to_dense_matrix(&self) -> ndarray::Array2<f64> {
+        let mut matrix = ndarray::Array2::zeros((self.num_variables, self.num_variables));
+
+        // Set linear terms on diagonal
+        for (var, value) in self.linear_terms.iter() {
+            matrix[[var, var]] = *value;
+        }
+
+        // Set quadratic terms
+        for (var1, var2, value) in self.quadratic_terms.iter() {
+            matrix[[var1, var2]] = *value;
+            matrix[[var2, var1]] = *value; // Symmetric
+        }
+
+        matrix
+    }
+
+    /// Create variable name mapping for sampler compatibility
+    pub fn variable_map(&self) -> std::collections::HashMap<String, usize> {
+        (0..self.num_variables)
+            .map(|i| (format!("x{}", i), i))
+            .collect()
+    }
+
     /// Calculate the objective value for a specific binary configuration
     ///
     /// The objective value is calculated as:

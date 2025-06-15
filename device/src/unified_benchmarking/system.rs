@@ -80,11 +80,14 @@ impl UnifiedQuantumBenchmarkSystem {
         // Initialize advanced benchmarking suite
         let advanced_config = AdvancedBenchmarkConfig::default();
         let topology = HardwareTopology::linear_topology(8); // Default topology
-        let advanced_suite = Arc::new(Mutex::new(AdvancedHardwareBenchmarkSuite::new(
-            advanced_config,
-            calibration_manager.clone(),
-            topology,
-        )?));
+        let advanced_suite = Arc::new(Mutex::new(
+            AdvancedHardwareBenchmarkSuite::new(
+                advanced_config,
+                calibration_manager.clone(),
+                topology,
+            )
+            .await?,
+        ));
 
         let historical_data = Arc::new(RwLock::new(VecDeque::with_capacity(10000)));
         let baselines = Arc::new(RwLock::new(HashMap::new()));

@@ -718,14 +718,45 @@ impl HardwareEfficientMLLayer {
         &self,
         circuit: &Array2<Complex64>,
         rotations: &[Array2<Complex64>],
-        _qubit: usize,
+        qubit: usize,
     ) -> Result<Array2<Complex64>, QuantRS2Error> {
         let mut result = circuit.clone();
         for rotation in rotations {
-            // Apply single qubit rotation (simplified implementation)
-            result = result.dot(rotation);
+            // Create tensor product gate for multi-qubit system
+            let full_gate = self.create_single_qubit_gate(rotation, qubit)?;
+            result = result.dot(&full_gate);
         }
         Ok(result)
+    }
+    
+    /// Create single-qubit gate for multi-qubit system
+    fn create_single_qubit_gate(
+        &self,
+        gate: &Array2<Complex64>,
+        target_qubit: usize,
+    ) -> Result<Array2<Complex64>, QuantRS2Error> {
+        let dim = 2_usize.pow(self.num_qubits as u32);
+        let mut full_gate = Array2::eye(dim);
+        
+        // Apply gate to target qubit in multi-qubit system
+        for i in 0..dim {
+            let target_bit = (i >> target_qubit) & 1;
+            if target_bit == 0 {
+                let j = i | (1 << target_qubit);
+                if j < dim {
+                    full_gate[[i, i]] = gate[[0, 0]];
+                    full_gate[[j, i]] = gate[[1, 0]];
+                }
+            } else {
+                let j = i & !(1 << target_qubit);
+                if j < dim {
+                    full_gate[[j, i]] = gate[[0, 1]];
+                    full_gate[[i, i]] = gate[[1, 1]];
+                }
+            }
+        }
+        
+        Ok(full_gate)
     }
 
     /// Apply entanglement layer
@@ -970,17 +1001,19 @@ mod tests {
     fn test_hardware_efficient_ml_layer() {
         let mut layer = HardwareEfficientMLLayer::new(2, 2, EntanglementPattern::Linear);
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         layer.initialize_parameters(&mut rng);
 
         let circuit = layer.build_circuit();
         assert!(circuit.is_ok());
 
         let observable = array![
-            [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
-            [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)]
+            [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)],
+            [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)],
+            [Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0), Complex64::new(0.0, 0.0)],
+            [Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)]
         ];
-        let state = array![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
+        let state = array![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)];
 
         let expectation = layer.expectation_value(&observable, &state);
         assert!(expectation.is_ok());
