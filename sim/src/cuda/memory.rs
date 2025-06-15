@@ -3,8 +3,8 @@
 //! This module provides efficient GPU memory allocation, pooling,
 //! and management for quantum state vectors and operations.
 
-use std::collections::HashMap;
 use num_complex::Complex64;
+use std::collections::HashMap;
 
 use crate::error::{Result, SimulatorError};
 
@@ -48,7 +48,7 @@ pub struct GpuMemoryBlock {
 #[cfg(feature = "advanced_math")]
 impl GpuMemory {
     pub fn new() -> Self {
-        Self { 
+        Self {
             allocated: 0,
             device_ptr: None,
             host_ptr: None,
@@ -56,7 +56,7 @@ impl GpuMemory {
             alignment: 256, // Default GPU memory alignment
         }
     }
-    
+
     pub fn new_with_type(memory_type: GpuMemoryType) -> Self {
         Self {
             allocated: 0,
@@ -87,7 +87,7 @@ impl GpuMemory {
                 self.host_ptr = Some(ptr);
             }
         }
-        
+
         self.allocated = size;
         Ok(())
     }
@@ -95,16 +95,16 @@ impl GpuMemory {
     pub fn allocate_and_copy(&mut self, data: &[Complex64]) -> Result<GpuMemory> {
         let size = data.len() * std::mem::size_of::<Complex64>();
         let mut gpu_memory = GpuMemory::new_with_type(self.memory_type);
-        
+
         gpu_memory.allocate_pool(size)?;
         gpu_memory.copy_from_host(data)?;
-        
+
         Ok(gpu_memory)
     }
-    
+
     pub fn copy_from_host(&mut self, data: &[Complex64]) -> Result<()> {
         let size = data.len() * std::mem::size_of::<Complex64>();
-        
+
         match self.memory_type {
             GpuMemoryType::Device => {
                 if let Some(device_ptr) = self.device_ptr {
@@ -140,28 +140,27 @@ impl GpuMemory {
                 }
             }
         }
-        
+
         Ok(())
     }
 
     pub fn as_ptr(&self) -> *const std::ffi::c_void {
         match self.memory_type {
-            GpuMemoryType::Device => {
-                self.device_ptr.map(|p| p as *const std::ffi::c_void).unwrap_or(std::ptr::null())
-            }
-            _ => {
-                self.host_ptr.unwrap_or(std::ptr::null())
-            }
+            GpuMemoryType::Device => self
+                .device_ptr
+                .map(|p| p as *const std::ffi::c_void)
+                .unwrap_or(std::ptr::null()),
+            _ => self.host_ptr.unwrap_or(std::ptr::null()),
         }
     }
-    
+
     pub fn as_device_ptr(&self) -> Option<CudaDevicePointer> {
         self.device_ptr
     }
 
     pub fn copy_to_host(&self, data: &mut [Complex64]) -> Result<()> {
         let size = data.len() * std::mem::size_of::<Complex64>();
-        
+
         match self.memory_type {
             GpuMemoryType::Device => {
                 if let Some(device_ptr) = self.device_ptr {
@@ -197,48 +196,52 @@ impl GpuMemory {
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     pub fn get_size(&self) -> usize {
         self.allocated
     }
-    
+
     pub fn get_memory_type(&self) -> GpuMemoryType {
         self.memory_type
     }
-    
+
     // CUDA memory management functions (placeholders for actual CUDA calls)
     fn cuda_malloc(size: usize) -> Result<CudaDevicePointer> {
         // In real implementation: cudaMalloc
         if size == 0 {
-            return Err(SimulatorError::InvalidInput("Cannot allocate zero bytes".to_string()));
+            return Err(SimulatorError::InvalidInput(
+                "Cannot allocate zero bytes".to_string(),
+            ));
         }
         Ok(size) // Use size as a mock pointer
     }
-    
+
     fn cuda_malloc_host(size: usize) -> Result<*mut std::ffi::c_void> {
         // In real implementation: cudaMallocHost
         let layout = std::alloc::Layout::from_size_align(size, 256).unwrap();
         let ptr = unsafe { std::alloc::alloc(layout) };
         if ptr.is_null() {
-            Err(SimulatorError::ResourceExhausted("Failed to allocate host memory".to_string()))
+            Err(SimulatorError::ResourceExhausted(
+                "Failed to allocate host memory".to_string(),
+            ))
         } else {
             Ok(ptr as *mut std::ffi::c_void)
         }
     }
-    
+
     fn cuda_malloc_managed(size: usize) -> Result<*mut std::ffi::c_void> {
         // In real implementation: cudaMallocManaged
         Self::cuda_malloc_host(size)
     }
-    
+
     fn cuda_host_alloc(size: usize) -> Result<*mut std::ffi::c_void> {
         // In real implementation: cudaHostAlloc
         Self::cuda_malloc_host(size)
     }
-    
+
     fn cuda_memcpy_h2d(
         dst: CudaDevicePointer,
         src: *const std::ffi::c_void,
@@ -247,7 +250,7 @@ impl GpuMemory {
         // In real implementation: cudaMemcpy with cudaMemcpyHostToDevice
         Ok(())
     }
-    
+
     fn cuda_memcpy_d2h(
         dst: *mut std::ffi::c_void,
         src: CudaDevicePointer,
@@ -256,16 +259,12 @@ impl GpuMemory {
         // In real implementation: cudaMemcpy with cudaMemcpyDeviceToHost
         Ok(())
     }
-    
-    fn cuda_mem_prefetch_async(
-        ptr: CudaDevicePointer,
-        size: usize,
-        device: i32,
-    ) -> Result<()> {
+
+    fn cuda_mem_prefetch_async(ptr: CudaDevicePointer, size: usize, device: i32) -> Result<()> {
         // In real implementation: cudaMemPrefetchAsync
         Ok(())
     }
-    
+
     fn cuda_device_synchronize() -> Result<()> {
         // In real implementation: cudaDeviceSynchronize
         Ok(())
@@ -275,7 +274,7 @@ impl GpuMemory {
         // In real implementation: cudaFree
         Ok(())
     }
-    
+
     fn cuda_free_host(ptr: *mut std::ffi::c_void) -> Result<()> {
         // In real implementation: cudaFreeHost
         if !ptr.is_null() {
@@ -319,7 +318,11 @@ impl GpuMemoryPool {
 
     pub fn allocate(&mut self, size: usize) -> Result<GpuMemoryBlock> {
         // Find a suitable free block or allocate a new one
-        if let Some(index) = self.free_blocks.iter().position(|block| block.size >= size && !block.in_use) {
+        if let Some(index) = self
+            .free_blocks
+            .iter()
+            .position(|block| block.size >= size && !block.in_use)
+        {
             let mut block = self.free_blocks.remove(index);
             block.in_use = true;
             self.allocated_blocks.insert(block.ptr, block);
@@ -334,13 +337,13 @@ impl GpuMemoryPool {
             alignment: 256,
             in_use: true,
         };
-        
+
         self.allocated_blocks.insert(ptr, block);
         self.total_allocated += size;
         if self.total_allocated > self.peak_usage {
             self.peak_usage = self.total_allocated;
         }
-        
+
         Ok(block)
     }
 
@@ -351,7 +354,9 @@ impl GpuMemoryPool {
             self.free_blocks.push(block);
             Ok(())
         } else {
-            Err(SimulatorError::InvalidInput("Attempting to free unknown pointer".to_string()))
+            Err(SimulatorError::InvalidInput(
+                "Attempting to free unknown pointer".to_string(),
+            ))
         }
     }
 

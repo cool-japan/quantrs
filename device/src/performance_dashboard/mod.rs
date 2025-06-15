@@ -58,7 +58,6 @@ pub mod optimization;
 pub mod reporting;
 pub mod visualization;
 
-
 // Re-exports for public API
 pub use alerting::*;
 pub use config::*;

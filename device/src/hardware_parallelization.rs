@@ -4,7 +4,7 @@
 //! and respect hardware constraints, topology, and resource limitations to maximize
 //! throughput while maintaining circuit fidelity and correctness.
 
-use std::collections::{HashMap, HashSet, VecDeque, BTreeMap};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 
@@ -18,26 +18,25 @@ use quantrs2_core::{
 // SciRS2 integration for advanced parallelization analysis
 #[cfg(feature = "scirs2")]
 use scirs2_graph::{
-    Graph, shortest_path, minimum_spanning_tree, 
-    betweenness_centrality, closeness_centrality,
-    strongly_connected_components, topological_sort
+    betweenness_centrality, closeness_centrality, minimum_spanning_tree, shortest_path,
+    strongly_connected_components, topological_sort, Graph,
 };
 #[cfg(feature = "scirs2")]
-use scirs2_optimize::{minimize, differential_evolution, OptimizeResult};
+use scirs2_optimize::{differential_evolution, minimize, OptimizeResult};
 #[cfg(feature = "scirs2")]
-use scirs2_stats::{mean, std, pearsonr, corrcoef};
+use scirs2_stats::{corrcoef, mean, pearsonr, std};
 
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex as AsyncMutex, RwLock as AsyncRwLock, Semaphore};
 
 use crate::{
-    backend_traits::{BackendCapabilities, query_backend_capabilities},
+    backend_traits::{query_backend_capabilities, BackendCapabilities},
     calibration::{CalibrationManager, DeviceCalibration},
-    topology::{HardwareTopology},
-    translation::HardwareBackend,
+    integrated_device_manager::{DeviceInfo, IntegratedQuantumDeviceManager},
     routing_advanced::{AdvancedQubitRouter, AdvancedRoutingResult},
-    integrated_device_manager::{IntegratedQuantumDeviceManager, DeviceInfo},
+    topology::HardwareTopology,
+    translation::HardwareBackend,
     DeviceError, DeviceResult,
 };
 
@@ -1548,9 +1547,9 @@ impl Default for ResourceQuotas {
     fn default() -> Self {
         Self {
             cpu_quota: Some(Duration::from_secs(3600 * 24)), // 24 hours per day
-            qpu_quota: Some(Duration::from_secs(3600)),       // 1 hour per day
-            memory_quota: Some(16384.0),                      // 16GB
-            circuit_quota: Some(1000),                        // 1000 circuits per day
+            qpu_quota: Some(Duration::from_secs(3600)),      // 1 hour per day
+            memory_quota: Some(16384.0),                     // 16GB
+            circuit_quota: Some(1000),                       // 1000 circuits per day
         }
     }
 }
@@ -1988,10 +1987,7 @@ impl Default for ReportingConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            report_types: vec![
-                ReportType::Performance,
-                ReportType::ResourceUtilization,
-            ],
+            report_types: vec![ReportType::Performance, ReportType::ResourceUtilization],
             frequency: Duration::from_secs(3600 * 24), // Daily reports
             format: ReportFormat::JSON,
             distribution: ReportDistribution::default(),
@@ -2480,11 +2476,15 @@ impl HardwareParallelizationEngine {
         calibration_manager: Arc<RwLock<CalibrationManager>>,
         router: Arc<RwLock<AdvancedQubitRouter>>,
     ) -> Self {
-        let circuit_semaphore = Arc::new(Semaphore::new(config.resource_allocation.max_concurrent_circuits));
-        let gate_semaphore = Arc::new(Semaphore::new(config.resource_allocation.max_concurrent_gates));
+        let circuit_semaphore = Arc::new(Semaphore::new(
+            config.resource_allocation.max_concurrent_circuits,
+        ));
+        let gate_semaphore = Arc::new(Semaphore::new(
+            config.resource_allocation.max_concurrent_gates,
+        ));
         let memory_semaphore = Arc::new(Semaphore::new(
-            (config.resource_allocation.memory_limits.max_total_memory_mb / 
-             config.resource_allocation.memory_limits.max_per_circuit_mb) as usize
+            (config.resource_allocation.memory_limits.max_total_memory_mb
+                / config.resource_allocation.memory_limits.max_per_circuit_mb) as usize,
         ));
 
         Self {
@@ -2496,7 +2496,9 @@ impl HardwareParallelizationEngine {
             gate_pool: Arc::new(AsyncMutex::new(VecDeque::new())),
             resource_monitor: Arc::new(RwLock::new(ResourceMonitor::new())),
             performance_tracker: Arc::new(RwLock::new(PerformanceTracker::new())),
-            load_balancer: Arc::new(RwLock::new(LoadBalancer::new(config.load_balancing.algorithm.clone()))),
+            load_balancer: Arc::new(RwLock::new(LoadBalancer::new(
+                config.load_balancing.algorithm.clone(),
+            ))),
             circuit_semaphore,
             gate_semaphore,
             memory_semaphore,
@@ -2512,10 +2514,11 @@ impl HardwareParallelizationEngine {
         constraints: ExecutionConstraints,
     ) -> DeviceResult<String> {
         let task_id = uuid::Uuid::new_v4().to_string();
-        
+
         // Calculate resource requirements
-        let resource_requirements = self.calculate_resource_requirements(&circuit, &target_backend)?;
-        
+        let resource_requirements =
+            self.calculate_resource_requirements(&circuit, &target_backend)?;
+
         // Create parallel task
         let task = ParallelCircuitTask {
             id: task_id.clone(),
@@ -2548,10 +2551,10 @@ impl HardwareParallelizationEngine {
         priority: TaskPriority,
     ) -> DeviceResult<String> {
         let task_id = uuid::Uuid::new_v4().to_string();
-        
+
         // Build dependency graph
         let dependency_graph = self.build_dependency_graph(&gate_operations)?;
-        
+
         // Create parallel gate task
         let task = ParallelGateTask {
             id: task_id.clone(),
@@ -2577,12 +2580,20 @@ impl HardwareParallelizationEngine {
     /// Execute parallel circuits using the configured strategy
     pub async fn execute_parallel_circuits(&self) -> DeviceResult<Vec<ParallelExecutionResult>> {
         match self.config.strategy {
-            ParallelizationStrategy::CircuitLevel => self.execute_circuit_level_parallelization().await,
+            ParallelizationStrategy::CircuitLevel => {
+                self.execute_circuit_level_parallelization().await
+            }
             ParallelizationStrategy::GateLevel => self.execute_gate_level_parallelization().await,
             ParallelizationStrategy::Hybrid => self.execute_hybrid_parallelization().await,
-            ParallelizationStrategy::TopologyAware => self.execute_topology_aware_parallelization().await,
-            ParallelizationStrategy::ResourceConstrained => self.execute_resource_constrained_parallelization().await,
-            ParallelizationStrategy::SciRS2Optimized => self.execute_scirs2_optimized_parallelization().await,
+            ParallelizationStrategy::TopologyAware => {
+                self.execute_topology_aware_parallelization().await
+            }
+            ParallelizationStrategy::ResourceConstrained => {
+                self.execute_resource_constrained_parallelization().await
+            }
+            ParallelizationStrategy::SciRS2Optimized => {
+                self.execute_scirs2_optimized_parallelization().await
+            }
             ParallelizationStrategy::Custom { .. } => self.execute_custom_parallelization().await,
         }
     }
@@ -2640,12 +2651,16 @@ impl HardwareParallelizationEngine {
         Ok(HashMap::new())
     }
 
-    async fn execute_circuit_level_parallelization(&self) -> DeviceResult<Vec<ParallelExecutionResult>> {
+    async fn execute_circuit_level_parallelization(
+        &self,
+    ) -> DeviceResult<Vec<ParallelExecutionResult>> {
         // Implementation for circuit-level parallelization
         Ok(vec![])
     }
 
-    async fn execute_gate_level_parallelization(&self) -> DeviceResult<Vec<ParallelExecutionResult>> {
+    async fn execute_gate_level_parallelization(
+        &self,
+    ) -> DeviceResult<Vec<ParallelExecutionResult>> {
         // Implementation for gate-level parallelization
         Ok(vec![])
     }
@@ -2655,17 +2670,23 @@ impl HardwareParallelizationEngine {
         Ok(vec![])
     }
 
-    async fn execute_topology_aware_parallelization(&self) -> DeviceResult<Vec<ParallelExecutionResult>> {
+    async fn execute_topology_aware_parallelization(
+        &self,
+    ) -> DeviceResult<Vec<ParallelExecutionResult>> {
         // Implementation for topology-aware parallelization
         Ok(vec![])
     }
 
-    async fn execute_resource_constrained_parallelization(&self) -> DeviceResult<Vec<ParallelExecutionResult>> {
+    async fn execute_resource_constrained_parallelization(
+        &self,
+    ) -> DeviceResult<Vec<ParallelExecutionResult>> {
         // Implementation for resource-constrained parallelization
         Ok(vec![])
     }
 
-    async fn execute_scirs2_optimized_parallelization(&self) -> DeviceResult<Vec<ParallelExecutionResult>> {
+    async fn execute_scirs2_optimized_parallelization(
+        &self,
+    ) -> DeviceResult<Vec<ParallelExecutionResult>> {
         // Implementation for SciRS2-optimized parallelization
         Ok(vec![])
     }
@@ -2802,24 +2823,19 @@ mod tests {
         let devices = HashMap::new();
         let cal_mgr = CalibrationManager::new();
         let device_manager = Arc::new(RwLock::new(
-            IntegratedQuantumDeviceManager::new(Default::default(), devices, cal_mgr.clone()).unwrap()
+            IntegratedQuantumDeviceManager::new(Default::default(), devices, cal_mgr.clone())
+                .unwrap(),
         ));
         let calibration_manager = Arc::new(RwLock::new(cal_mgr));
-        let router = Arc::new(RwLock::new(
-            AdvancedQubitRouter::new(
-                Default::default(), 
-                crate::routing_advanced::AdvancedRoutingStrategy::Hybrid, 
-                42
-            )
-        ));
-        
-        let _engine = HardwareParallelizationEngine::new(
-            config,
-            device_manager,
-            calibration_manager,
-            router,
-        );
-        
+        let router = Arc::new(RwLock::new(AdvancedQubitRouter::new(
+            Default::default(),
+            crate::routing_advanced::AdvancedRoutingStrategy::Hybrid,
+            42,
+        )));
+
+        let _engine =
+            HardwareParallelizationEngine::new(config, device_manager, calibration_manager, router);
+
         // Should create without error
         assert!(true);
     }

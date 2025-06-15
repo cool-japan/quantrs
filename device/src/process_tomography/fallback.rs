@@ -56,7 +56,13 @@ pub fn minimize(
 /// Fallback eigenvalue decomposition
 pub fn eig(
     _matrix: &ArrayView2<f64>,
-) -> Result<(Array1<num_complex::Complex64>, Array2<num_complex::Complex64>), String> {
+) -> Result<
+    (
+        Array1<num_complex::Complex64>,
+        Array2<num_complex::Complex64>,
+    ),
+    String,
+> {
     let eigenvalues = Array1::from_vec(vec![
         num_complex::Complex64::new(1.0, 0.0),
         num_complex::Complex64::new(0.0, 0.0),
@@ -71,7 +77,7 @@ pub fn eig(
         ],
     )
     .map_err(|e| format!("Array creation error: {}", e))?;
-    
+
     Ok((eigenvalues, eigenvectors))
 }
 
@@ -81,16 +87,12 @@ pub fn det(_matrix: &ArrayView2<f64>) -> Result<f64, String> {
 }
 
 /// Fallback QR decomposition
-pub fn qr(
-    _matrix: &ArrayView2<f64>,
-) -> Result<(Array2<f64>, Array2<f64>), String> {
+pub fn qr(_matrix: &ArrayView2<f64>) -> Result<(Array2<f64>, Array2<f64>), String> {
     Ok((Array2::eye(2), Array2::eye(2)))
 }
 
 /// Fallback SVD decomposition
-pub fn svd(
-    _matrix: &ArrayView2<f64>,
-) -> Result<(Array2<f64>, Array1<f64>, Array2<f64>), String> {
+pub fn svd(_matrix: &ArrayView2<f64>) -> Result<(Array2<f64>, Array1<f64>, Array2<f64>), String> {
     Ok((Array2::eye(2), Array1::ones(2), Array2::eye(2)))
 }
 
@@ -110,10 +112,7 @@ pub fn var(_data: &ArrayView1<f64>, _ddof: i32) -> Result<f64, String> {
 }
 
 /// Fallback correlation coefficient calculation
-pub fn corrcoef(
-    _x: &ArrayView1<f64>,
-    _y: &ArrayView1<f64>,
-) -> Result<Array2<f64>, String> {
+pub fn corrcoef(_x: &ArrayView1<f64>, _y: &ArrayView1<f64>) -> Result<Array2<f64>, String> {
     Ok(Array2::eye(2))
 }
 

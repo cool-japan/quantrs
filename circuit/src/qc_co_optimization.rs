@@ -4,11 +4,11 @@
 //! where quantum circuits and classical processing are interleaved and optimized together.
 
 use crate::builder::Circuit;
+use num_complex::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
-use num_complex::Complex64;
 use std::collections::HashMap;
 
 /// A hybrid quantum-classical optimization problem
@@ -513,7 +513,7 @@ impl<const N: usize> HybridOptimizationProblem<N> {
         // Check for circular dependencies
         if self.has_circular_dependencies()? {
             return Err(QuantRS2Error::InvalidInput(
-                "Circular dependencies detected in data flow graph".to_string()
+                "Circular dependencies detected in data flow graph".to_string(),
             ));
         }
 
@@ -587,7 +587,7 @@ impl HybridOptimizer {
 
             // Evaluate objective function
             let current_value = self.evaluate_objective(problem, &current_parameters)?;
-            
+
             if current_value < best_value {
                 best_value = current_value;
                 best_parameters = current_parameters.clone();
@@ -652,7 +652,7 @@ impl HybridOptimizer {
         // 2. Run classical processing steps
         // 3. Combine results according to objective function
         // 4. Apply regularization terms
-        
+
         // For now, return a dummy value
         Ok(1.0)
     }
@@ -667,7 +667,7 @@ impl HybridOptimizer {
         // 1. Parameter shift rule for quantum gradients
         // 2. Automatic differentiation for classical components
         // 3. Chain rule for hybrid components
-        
+
         // For now, return dummy gradients
         Ok(vec![0.001; problem.global_parameters.len()])
     }
@@ -677,17 +677,21 @@ impl HybridOptimizer {
         match self.learning_rate_schedule.schedule_type {
             ScheduleType::Constant => self.learning_rate_schedule.initial_rate,
             ScheduleType::LinearDecay => {
-                let decay_rate = self.learning_rate_schedule.parameters
+                let decay_rate = self
+                    .learning_rate_schedule
+                    .parameters
                     .get("decay_rate")
                     .unwrap_or(&0.001);
                 self.learning_rate_schedule.initial_rate / (1.0 + decay_rate * iteration as f64)
-            },
+            }
             ScheduleType::ExponentialDecay => {
-                let decay_rate = self.learning_rate_schedule.parameters
+                let decay_rate = self
+                    .learning_rate_schedule
+                    .parameters
                     .get("decay_rate")
                     .unwrap_or(&0.95);
                 self.learning_rate_schedule.initial_rate * decay_rate.powi(iteration as i32)
-            },
+            }
             _ => self.learning_rate_schedule.initial_rate, // Simplified
         }
     }
@@ -701,7 +705,7 @@ impl HybridOptimizer {
         // 1. Final quantum states from each circuit
         // 2. Measurement statistics
         // 3. Entanglement measures
-        
+
         Ok(QuantumStateInfo {
             final_states: HashMap::new(),
             measurement_stats: HashMap::new(),
@@ -731,14 +735,12 @@ mod tests {
     fn test_component_addition() {
         let mut problem = HybridOptimizationProblem::<2>::new();
         problem.set_global_parameters(vec![0.1, 0.2, 0.3]);
-        
+
         let circuit = Circuit::<2>::new();
-        problem.add_quantum_component(
-            "q1".to_string(),
-            circuit,
-            vec![0, 1],
-        ).unwrap();
-        
+        problem
+            .add_quantum_component("q1".to_string(), circuit, vec![0, 1])
+            .unwrap();
+
         assert_eq!(problem.quantum_circuits.len(), 1);
         assert_eq!(problem.data_flow.nodes.len(), 1);
     }
@@ -747,29 +749,38 @@ mod tests {
     fn test_data_flow() {
         let mut problem = HybridOptimizationProblem::<2>::new();
         problem.set_global_parameters(vec![0.1, 0.2]);
-        
+
         let circuit = Circuit::<2>::new();
-        problem.add_quantum_component("q1".to_string(), circuit, vec![0]).unwrap();
-        problem.add_classical_step(
-            "c1".to_string(),
-            ClassicalStepType::LinearAlgebra(LinearAlgebraOp::MatrixMultiplication),
-            vec!["q1".to_string()],
-            vec!["output".to_string()],
-        ).unwrap();
-        
-        problem.add_data_flow(
-            "q1".to_string(),
-            "c1".to_string(),
-            DataType::Measurements(vec![0.1, 0.2]),
-        ).unwrap();
-        
+        problem
+            .add_quantum_component("q1".to_string(), circuit, vec![0])
+            .unwrap();
+        problem
+            .add_classical_step(
+                "c1".to_string(),
+                ClassicalStepType::LinearAlgebra(LinearAlgebraOp::MatrixMultiplication),
+                vec!["q1".to_string()],
+                vec!["output".to_string()],
+            )
+            .unwrap();
+
+        problem
+            .add_data_flow(
+                "q1".to_string(),
+                "c1".to_string(),
+                DataType::Measurements(vec![0.1, 0.2]),
+            )
+            .unwrap();
+
         assert_eq!(problem.data_flow.edges.len(), 1);
     }
 
     #[test]
     fn test_optimizer_creation() {
         let optimizer = HybridOptimizer::new(HybridOptimizationAlgorithm::SimultaneousOptimization);
-        assert_eq!(optimizer.algorithm, HybridOptimizationAlgorithm::SimultaneousOptimization);
+        assert_eq!(
+            optimizer.algorithm,
+            HybridOptimizationAlgorithm::SimultaneousOptimization
+        );
         assert_eq!(optimizer.max_iterations, 1000);
     }
 }

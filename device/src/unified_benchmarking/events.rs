@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 use std::time::SystemTime;
 
-use super::types::QuantumPlatform;
 use super::results::{PlatformBenchmarkResult, UnifiedBenchmarkResult};
+use super::types::QuantumPlatform;
 
 /// Benchmark events for real-time monitoring
 #[derive(Debug, Clone)]

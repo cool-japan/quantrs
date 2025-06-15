@@ -20,28 +20,22 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 // SciRS2 imports for advanced analysis
 #[cfg(feature = "scirs2")]
+use scirs2_linalg::{det, eig, inv, matrix_norm, qr, svd, trace, LinalgResult};
+#[cfg(feature = "scirs2")]
+use scirs2_optimize::{minimize, OptimizeResult};
+#[cfg(feature = "scirs2")]
 use scirs2_stats::{
-    mean, std, var, pearsonr, spearmanr, ttest_1samp, ttest_ind, ks_2samp,
-    distributions::{norm, gamma, chi2, beta},
-    Alternative, TTestResult
-};
-#[cfg(feature = "scirs2")]
-use scirs2_linalg::{
-    eig, svd, qr, inv, det, trace, matrix_norm, LinalgResult
-};
-#[cfg(feature = "scirs2")]
-use scirs2_optimize::{
-    minimize, OptimizeResult
+    distributions::{beta, chi2, gamma, norm},
+    ks_2samp, mean, pearsonr, spearmanr, std, ttest_1samp, ttest_ind, var, Alternative,
+    TTestResult,
 };
 
 #[cfg(not(feature = "scirs2"))]
-use crate::ml_optimization::fallback_scirs2::{
-    mean, std, var, pearsonr, minimize, OptimizeResult
-};
+use crate::ml_optimization::fallback_scirs2::{mean, minimize, pearsonr, std, var, OptimizeResult};
 
 use crate::{
     calibration::{CalibrationManager, DeviceCalibration},
-    noise_modeling_scirs2::{SciRS2NoiseModeler, SciRS2NoiseConfig, StatisticalNoiseAnalysis},
+    noise_modeling_scirs2::{SciRS2NoiseConfig, SciRS2NoiseModeler, StatisticalNoiseAnalysis},
     topology::HardwareTopology,
     CircuitResult, DeviceError, DeviceResult,
 };
@@ -765,7 +759,7 @@ impl AdvancedNoiseCharacterizer {
             enable_spatial_modeling: config.enable_crosstalk_analysis,
             ..Default::default()
         };
-        
+
         let noise_modeler = SciRS2NoiseModeler::with_config(device_id.clone(), noise_config);
 
         Self {
@@ -786,7 +780,8 @@ impl AdvancedNoiseCharacterizer {
         let timestamp = SystemTime::now();
 
         // Get current calibration
-        let calibration = self.calibration_manager
+        let calibration = self
+            .calibration_manager
             .get_calibration(&self.device_id)
             .ok_or_else(|| DeviceError::APIError("No calibration data available".into()))?;
 
@@ -799,7 +794,10 @@ impl AdvancedNoiseCharacterizer {
         }
 
         // Randomized benchmarking for error rates
-        if let Ok(result) = self.run_randomized_benchmarking(executor, calibration).await {
+        if let Ok(result) = self
+            .run_randomized_benchmarking(executor, calibration)
+            .await
+        {
             protocol_results.insert(CharacterizationProtocol::RandomizedBenchmarking, result);
         }
 
@@ -810,8 +808,12 @@ impl AdvancedNoiseCharacterizer {
 
         // Crosstalk characterization
         let crosstalk_analysis = if self.config.enable_crosstalk_analysis {
-            if let Ok(result) = self.run_crosstalk_characterization(executor, calibration).await {
-                protocol_results.insert(CharacterizationProtocol::CrosstalkCharacterization, result);
+            if let Ok(result) = self
+                .run_crosstalk_characterization(executor, calibration)
+                .await
+            {
+                protocol_results
+                    .insert(CharacterizationProtocol::CrosstalkCharacterization, result);
                 Some(self.analyze_crosstalk_patterns(calibration)?)
             } else {
                 None
@@ -881,14 +883,17 @@ impl AdvancedNoiseCharacterizer {
         for (gate_name, _) in &calibration.single_qubit_gates {
             for qubit_id in 0..calibration.topology.num_qubits.min(4) {
                 let qubit = QubitId(qubit_id as u32);
-                
+
                 // Create process tomography circuit
                 let circuit = self.create_process_tomography_circuit(gate_name, vec![qubit])?;
-                
+
                 // Execute circuit multiple times
                 let mut fidelities = Vec::new();
                 for _ in 0..self.config.protocol_repetitions.min(20) {
-                    match executor.execute_characterization_circuit(&circuit, 1000).await {
+                    match executor
+                        .execute_characterization_circuit(&circuit, 1000)
+                        .await
+                    {
                         Ok(result) => {
                             let fidelity = self.calculate_process_fidelity(&result, gate_name)?;
                             fidelities.push(fidelity);
@@ -901,7 +906,7 @@ impl AdvancedNoiseCharacterizer {
                 if !fidelities.is_empty() {
                     let avg_fidelity = fidelities.iter().sum::<f64>() / fidelities.len() as f64;
                     let error_rate = 1.0 - avg_fidelity;
-                    
+
                     gate_fidelities.insert(format!("{}_{}", gate_name, qubit_id), avg_fidelity);
                     error_rates.insert(format!("{}_{}", gate_name, qubit_id), error_rate);
                 }
@@ -911,10 +916,13 @@ impl AdvancedNoiseCharacterizer {
         // Test two-qubit gates
         for (&(q1, q2), _) in calibration.two_qubit_gates.iter().take(6) {
             let circuit = self.create_process_tomography_circuit("CNOT", vec![q1, q2])?;
-            
+
             let mut fidelities = Vec::new();
             for _ in 0..self.config.protocol_repetitions.min(10) {
-                match executor.execute_characterization_circuit(&circuit, 1000).await {
+                match executor
+                    .execute_characterization_circuit(&circuit, 1000)
+                    .await
+                {
                     Ok(result) => {
                         let fidelity = self.calculate_process_fidelity(&result, "CNOT")?;
                         fidelities.push(fidelity);
@@ -927,14 +935,17 @@ impl AdvancedNoiseCharacterizer {
             if !fidelities.is_empty() {
                 let avg_fidelity = fidelities.iter().sum::<f64>() / fidelities.len() as f64;
                 let error_rate = 1.0 - avg_fidelity;
-                
+
                 gate_fidelities.insert(format!("CNOT_{}_{}", q1.0, q2.0), avg_fidelity);
                 error_rates.insert(format!("CNOT_{}_{}", q1.0, q2.0), error_rate);
             }
         }
 
-        let avg_fidelity = gate_fidelities.values().sum::<f64>() / gate_fidelities.len().max(1) as f64;
-        let success_rate = gate_fidelities.len() as f64 / (calibration.single_qubit_gates.len() + calibration.two_qubit_gates.len().min(6)) as f64;
+        let avg_fidelity =
+            gate_fidelities.values().sum::<f64>() / gate_fidelities.len().max(1) as f64;
+        let success_rate = gate_fidelities.len() as f64
+            / (calibration.single_qubit_gates.len() + calibration.two_qubit_gates.len().min(6))
+                as f64;
 
         Ok(ProtocolResult {
             protocol_type: CharacterizationProtocol::ProcessTomography,
@@ -962,22 +973,25 @@ impl AdvancedNoiseCharacterizer {
 
         // Test different sequence lengths
         let lengths = vec![1, 2, 4, 8, 16, 32];
-        
+
         for qubit_id in 0..calibration.topology.num_qubits.min(4) {
             let qubit = QubitId(qubit_id as u32);
             let rb = RandomizedBenchmarking::new(vec![qubit]);
-            
+
             let mut survival_data = HashMap::new();
-            
+
             for &length in &lengths {
                 let circuits = rb.generate_rb_circuits(&[length], 10);
                 let mut survival_probs = Vec::new();
-                
+
                 if let Some(length_circuits) = circuits.get(&length) {
                     for circuit_gates in length_circuits {
                         let circuit = self.convert_gates_to_circuit(circuit_gates)?;
-                        
-                        match executor.execute_characterization_circuit(&circuit, 1000).await {
+
+                        match executor
+                            .execute_characterization_circuit(&circuit, 1000)
+                            .await
+                        {
                             Ok(result) => {
                                 let survival_prob = self.calculate_survival_probability(&result)?;
                                 survival_probs.push(survival_prob);
@@ -987,12 +1001,12 @@ impl AdvancedNoiseCharacterizer {
                         }
                     }
                 }
-                
+
                 if !survival_probs.is_empty() {
                     survival_data.insert(length, survival_probs);
                 }
             }
-            
+
             // Extract error rate from RB data
             if let Ok(error_rate) = rb.extract_error_rate(&survival_data) {
                 error_rates.insert(format!("RB_{}", qubit_id), error_rate);
@@ -1000,8 +1014,10 @@ impl AdvancedNoiseCharacterizer {
             }
         }
 
-        let avg_fidelity = gate_fidelities.values().sum::<f64>() / gate_fidelities.len().max(1) as f64;
-        let success_rate = gate_fidelities.len() as f64 / calibration.topology.num_qubits.min(4) as f64;
+        let avg_fidelity =
+            gate_fidelities.values().sum::<f64>() / gate_fidelities.len().max(1) as f64;
+        let success_rate =
+            gate_fidelities.len() as f64 / calibration.topology.num_qubits.min(4) as f64;
 
         Ok(ProtocolResult {
             protocol_type: CharacterizationProtocol::RandomizedBenchmarking,
@@ -1029,15 +1045,18 @@ impl AdvancedNoiseCharacterizer {
         // Measure T1 and T2 for each qubit
         for qubit_id in 0..calibration.topology.num_qubits.min(4) {
             let qubit = QubitId(qubit_id as u32);
-            
+
             // T1 measurement (energy decay)
             let t1_times = vec![0.0, 5000.0, 10000.0, 20000.0, 40000.0]; // nanoseconds
             let mut t1_data = Vec::new();
-            
+
             for &wait_time in &t1_times {
                 let circuit = self.create_t1_measurement_circuit(qubit, wait_time)?;
-                
-                match executor.execute_characterization_circuit(&circuit, 1000).await {
+
+                match executor
+                    .execute_characterization_circuit(&circuit, 1000)
+                    .await
+                {
                     Ok(result) => {
                         let population = self.calculate_excited_population(&result)?;
                         t1_data.push((wait_time, population));
@@ -1046,18 +1065,21 @@ impl AdvancedNoiseCharacterizer {
                     Err(_) => continue,
                 }
             }
-            
+
             // Fit exponential decay to extract T1
             let t1 = self.fit_exponential_decay(&t1_data)?;
-            
+
             // T2 measurement (dephasing with echo)
             let t2_times = vec![0.0, 2000.0, 5000.0, 10000.0, 20000.0]; // nanoseconds
             let mut t2_data = Vec::new();
-            
+
             for &wait_time in &t2_times {
                 let circuit = self.create_t2_echo_circuit(qubit, wait_time)?;
-                
-                match executor.execute_characterization_circuit(&circuit, 1000).await {
+
+                match executor
+                    .execute_characterization_circuit(&circuit, 1000)
+                    .await
+                {
                     Ok(result) => {
                         let coherence = self.calculate_coherence_amplitude(&result)?;
                         t2_data.push((wait_time, coherence));
@@ -1066,19 +1088,24 @@ impl AdvancedNoiseCharacterizer {
                     Err(_) => continue,
                 }
             }
-            
+
             let t2_echo = self.fit_exponential_decay(&t2_data)?;
-            
-            coherence_times.insert(qubit, CoherenceMetrics {
-                t1,
-                t2: t2_echo * 0.5, // Approximate T2* from T2_echo
-                t2_echo,
-                thermal_population: 0.01, // Default value
-            });
+
+            coherence_times.insert(
+                qubit,
+                CoherenceMetrics {
+                    t1,
+                    t2: t2_echo * 0.5, // Approximate T2* from T2_echo
+                    t2_echo,
+                    thermal_population: 0.01, // Default value
+                },
+            );
         }
 
-        let avg_t1 = coherence_times.values().map(|c| c.t1).sum::<f64>() / coherence_times.len().max(1) as f64;
-        let success_rate = coherence_times.len() as f64 / calibration.topology.num_qubits.min(4) as f64;
+        let avg_t1 = coherence_times.values().map(|c| c.t1).sum::<f64>()
+            / coherence_times.len().max(1) as f64;
+        let success_rate =
+            coherence_times.len() as f64 / calibration.topology.num_qubits.min(4) as f64;
 
         Ok(ProtocolResult {
             protocol_type: CharacterizationProtocol::CoherenceDecay,
@@ -1107,18 +1134,22 @@ impl AdvancedNoiseCharacterizer {
         for (&(q1, q2), _) in calibration.two_qubit_gates.iter().take(6) {
             let crosstalk_char = CrosstalkCharacterization::new(calibration.topology.num_qubits);
             let circuits = crosstalk_char.generate_crosstalk_circuits(q1, &[q2]);
-            
+
             let mut baseline_fidelity = 0.0;
             let mut crosstalk_fidelity = 0.0;
-            
+
             for (circuit_idx, circuit_gates) in circuits.iter().enumerate() {
                 let circuit = self.convert_gates_to_circuit(circuit_gates)?;
-                
-                match executor.execute_characterization_circuit(&circuit, 1000).await {
+
+                match executor
+                    .execute_characterization_circuit(&circuit, 1000)
+                    .await
+                {
                     Ok(result) => {
-                        let fidelity = self.calculate_process_fidelity(&result, "crosstalk_test")?;
+                        let fidelity =
+                            self.calculate_process_fidelity(&result, "crosstalk_test")?;
                         raw_data.push(fidelity);
-                        
+
                         if circuit_idx == 0 {
                             baseline_fidelity = fidelity;
                         } else {
@@ -1128,16 +1159,20 @@ impl AdvancedNoiseCharacterizer {
                     Err(_) => continue,
                 }
             }
-            
+
             if circuits.len() > 1 {
                 crosstalk_fidelity /= (circuits.len() - 1) as f64;
                 let crosstalk_error = baseline_fidelity - crosstalk_fidelity;
-                error_rates.insert(format!("crosstalk_{}_{}", q1.0, q2.0), crosstalk_error.max(0.0));
+                error_rates.insert(
+                    format!("crosstalk_{}_{}", q1.0, q2.0),
+                    crosstalk_error.max(0.0),
+                );
             }
         }
 
         let avg_error = error_rates.values().sum::<f64>() / error_rates.len().max(1) as f64;
-        let success_rate = error_rates.len() as f64 / calibration.two_qubit_gates.len().min(6) as f64;
+        let success_rate =
+            error_rates.len() as f64 / calibration.two_qubit_gates.len().min(6) as f64;
 
         Ok(ProtocolResult {
             protocol_type: CharacterizationProtocol::CrosstalkCharacterization,
@@ -1164,38 +1199,46 @@ impl AdvancedNoiseCharacterizer {
 
         for qubit_id in 0..calibration.topology.num_qubits.min(4) {
             let qubit = QubitId(qubit_id as u32);
-            
+
             // Measure |0> state readout
             let circuit_0 = self.create_readout_circuit(qubit, false)?;
             let mut prob_0_given_0 = 0.0;
-            
-            match executor.execute_characterization_circuit(&circuit_0, 1000).await {
+
+            match executor
+                .execute_characterization_circuit(&circuit_0, 1000)
+                .await
+            {
                 Ok(result) => {
                     prob_0_given_0 = self.calculate_state_probability(&result, false)?;
                     raw_data.push(prob_0_given_0);
                 }
                 Err(_) => {}
             }
-            
+
             // Measure |1> state readout
             let circuit_1 = self.create_readout_circuit(qubit, true)?;
             let mut prob_1_given_1 = 0.0;
-            
-            match executor.execute_characterization_circuit(&circuit_1, 1000).await {
+
+            match executor
+                .execute_characterization_circuit(&circuit_1, 1000)
+                .await
+            {
                 Ok(result) => {
                     prob_1_given_1 = self.calculate_state_probability(&result, true)?;
                     raw_data.push(prob_1_given_1);
                 }
                 Err(_) => {}
             }
-            
+
             // Calculate readout fidelity
             let readout_fidelity = (prob_0_given_0 + prob_1_given_1) / 2.0;
             readout_fidelities.insert(qubit, readout_fidelity);
         }
 
-        let avg_fidelity = readout_fidelities.values().sum::<f64>() / readout_fidelities.len().max(1) as f64;
-        let success_rate = readout_fidelities.len() as f64 / calibration.topology.num_qubits.min(4) as f64;
+        let avg_fidelity =
+            readout_fidelities.values().sum::<f64>() / readout_fidelities.len().max(1) as f64;
+        let success_rate =
+            readout_fidelities.len() as f64 / calibration.topology.num_qubits.min(4) as f64;
 
         Ok(ProtocolResult {
             protocol_type: CharacterizationProtocol::ReadoutFidelity,
@@ -1222,11 +1265,11 @@ impl AdvancedNoiseCharacterizer {
         // Collect all measurement data
         let mut all_fidelities: Vec<f64> = Vec::new();
         let mut all_error_rates: Vec<f64> = Vec::new();
-        
+
         for result in protocol_results.values() {
             all_fidelities.extend(result.gate_fidelities.values());
             all_error_rates.extend(result.error_rates.values());
-            
+
             if let Some(ref raw_data) = result.raw_data {
                 all_fidelities.extend(raw_data);
             }
@@ -1235,41 +1278,55 @@ impl AdvancedNoiseCharacterizer {
         // Statistical analysis on fidelities
         if !all_fidelities.is_empty() {
             let fidelity_array = Array1::from_vec(all_fidelities.clone());
-            
+
             // Fit normal distribution
             let mean_fid = mean(&fidelity_array.view()).unwrap_or(0.9);
             let std_fid = std(&fidelity_array.view(), 1).unwrap_or(0.1);
-            
-            distribution_fits.insert("fidelity_normal".to_string(), DistributionFitResult {
-                distribution_name: "Normal".to_string(),
-                parameters: vec![mean_fid, std_fid],
-                goodness_of_fit: 0.9, // Would calculate actual GoF
-                p_value: 0.05,
-                aic: 100.0,
-                bic: 105.0,
-            });
-            
+
+            distribution_fits.insert(
+                "fidelity_normal".to_string(),
+                DistributionFitResult {
+                    distribution_name: "Normal".to_string(),
+                    parameters: vec![mean_fid, std_fid],
+                    goodness_of_fit: 0.9, // Would calculate actual GoF
+                    p_value: 0.05,
+                    aic: 100.0,
+                    bic: 105.0,
+                },
+            );
+
             // Calculate confidence interval
             let ci_margin = 1.96 * std_fid / (all_fidelities.len() as f64).sqrt();
-            confidence_intervals.insert("fidelity".to_string(), (mean_fid - ci_margin, mean_fid + ci_margin));
-            
+            confidence_intervals.insert(
+                "fidelity".to_string(),
+                (mean_fid - ci_margin, mean_fid + ci_margin),
+            );
+
             // Test if fidelity meets threshold
             if fidelity_array.len() >= 8 {
                 let threshold = 0.95;
-                match ttest_1samp(&fidelity_array.view(), threshold, Alternative::Greater, "propagate") {
+                match ttest_1samp(
+                    &fidelity_array.view(),
+                    threshold,
+                    Alternative::Greater,
+                    "propagate",
+                ) {
                     Ok(test_result) => {
-                        hypothesis_tests.insert("fidelity_threshold_test".to_string(), StatisticalTestResult {
-                            test_name: "One-sample t-test (fidelity > 0.95)".to_string(),
-                            statistic: test_result.statistic,
-                            p_value: test_result.pvalue,
-                            significant: test_result.pvalue < 0.05,
-                            effect_size: Some((mean_fid - threshold) / std_fid),
-                            interpretation: if test_result.pvalue < 0.05 {
-                                "Fidelity significantly exceeds threshold".to_string()
-                            } else {
-                                "Fidelity does not significantly exceed threshold".to_string()
+                        hypothesis_tests.insert(
+                            "fidelity_threshold_test".to_string(),
+                            StatisticalTestResult {
+                                test_name: "One-sample t-test (fidelity > 0.95)".to_string(),
+                                statistic: test_result.statistic,
+                                p_value: test_result.pvalue,
+                                significant: test_result.pvalue < 0.05,
+                                effect_size: Some((mean_fid - threshold) / std_fid),
+                                interpretation: if test_result.pvalue < 0.05 {
+                                    "Fidelity significantly exceeds threshold".to_string()
+                                } else {
+                                    "Fidelity does not significantly exceed threshold".to_string()
+                                },
                             },
-                        });
+                        );
                     }
                     Err(_) => {}
                 }
@@ -1278,10 +1335,10 @@ impl AdvancedNoiseCharacterizer {
 
         // Correlation analysis
         let correlation_analysis = self.perform_correlation_analysis(protocol_results)?;
-        
+
         // Outlier detection
         let outlier_detection = self.detect_outliers(protocol_results)?;
-        
+
         // Trend analysis
         let trend_analysis = self.analyze_trends(protocol_results)?;
 
@@ -1297,44 +1354,64 @@ impl AdvancedNoiseCharacterizer {
 
     /// Additional helper methods for the characterization system...
     /// (Implementation details for circuit creation, data analysis, etc.)
-    
+
     fn create_process_tomography_circuit(
         &self,
         gate_name: &str,
         qubits: Vec<QubitId>,
     ) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
-        
+
         // Add preparation
         if !qubits.is_empty() {
             circuit.h(qubits[0]);
         }
-        
+
         // Add target gate
         match gate_name {
-            "H" => if !qubits.is_empty() { circuit.h(qubits[0]); },
-            "X" => if !qubits.is_empty() { circuit.x(qubits[0]); },
-            "CNOT" => if qubits.len() >= 2 { circuit.cnot(qubits[0], qubits[1]); },
+            "H" => {
+                if !qubits.is_empty() {
+                    circuit.h(qubits[0]);
+                }
+            }
+            "X" => {
+                if !qubits.is_empty() {
+                    circuit.x(qubits[0]);
+                }
+            }
+            "CNOT" => {
+                if qubits.len() >= 2 {
+                    circuit.cnot(qubits[0], qubits[1]);
+                }
+            }
             _ => return Err(DeviceError::UnsupportedOperation(gate_name.to_string())),
         }
-        
+
         // Add measurement preparation
         if !qubits.is_empty() {
             circuit.h(qubits[0]);
         }
-        
+
         Ok(circuit)
     }
 
-    fn calculate_process_fidelity(&self, result: &CircuitResult, _gate_name: &str) -> DeviceResult<f64> {
+    fn calculate_process_fidelity(
+        &self,
+        result: &CircuitResult,
+        _gate_name: &str,
+    ) -> DeviceResult<f64> {
         // Simplified fidelity calculation
         let total_shots = result.shots as f64;
-        let successful_outcomes = result.counts.values().map(|&count| count as f64).sum::<f64>();
+        let successful_outcomes = result
+            .counts
+            .values()
+            .map(|&count| count as f64)
+            .sum::<f64>();
         Ok(successful_outcomes / total_shots)
     }
-    
+
     // Additional helper methods would be implemented here...
-    
+
     fn perform_correlation_analysis(
         &self,
         _protocol_results: &HashMap<CharacterizationProtocol, ProtocolResult>,
@@ -1346,7 +1423,7 @@ impl AdvancedNoiseCharacterizer {
             correlation_network: HashMap::new(),
         })
     }
-    
+
     fn detect_outliers(
         &self,
         _protocol_results: &HashMap<CharacterizationProtocol, ProtocolResult>,
@@ -1359,7 +1436,7 @@ impl AdvancedNoiseCharacterizer {
             detection_method: "IQR".to_string(),
         })
     }
-    
+
     fn analyze_trends(
         &self,
         _protocol_results: &HashMap<CharacterizationProtocol, ProtocolResult>,
@@ -1372,7 +1449,7 @@ impl AdvancedNoiseCharacterizer {
             residuals: HashMap::new(),
         })
     }
-    
+
     fn analyze_drift_patterns(&self) -> DeviceResult<DriftAnalysisResult> {
         // Placeholder implementation
         Ok(DriftAnalysisResult {
@@ -1383,13 +1460,13 @@ impl AdvancedNoiseCharacterizer {
             stability_score: 0.9,
         })
     }
-    
+
     fn analyze_crosstalk_patterns(
         &self,
         calibration: &DeviceCalibration,
     ) -> DeviceResult<AdvancedCrosstalkAnalysis> {
         let n = calibration.topology.num_qubits;
-        
+
         Ok(AdvancedCrosstalkAnalysis {
             crosstalk_matrix: {
                 let matrix = &calibration.crosstalk_matrix.matrix;
@@ -1409,7 +1486,7 @@ impl AdvancedNoiseCharacterizer {
             mitigation_strategies: Vec::new(),
         })
     }
-    
+
     fn build_predictive_models(
         &self,
         _protocol_results: &HashMap<CharacterizationProtocol, ProtocolResult>,
@@ -1419,7 +1496,11 @@ impl AdvancedNoiseCharacterizer {
         Ok(PredictiveModels {
             fidelity_predictor: ModelPrediction {
                 predicted_values: Array1::from_vec(vec![0.95, 0.94, 0.93]),
-                prediction_intervals: Array2::from_shape_vec((3, 2), vec![0.93, 0.97, 0.92, 0.96, 0.91, 0.95]).unwrap(),
+                prediction_intervals: Array2::from_shape_vec(
+                    (3, 2),
+                    vec![0.93, 0.97, 0.92, 0.96, 0.91, 0.95],
+                )
+                .unwrap(),
                 feature_importance: HashMap::new(),
                 model_type: "Linear Regression".to_string(),
                 accuracy_metrics: ModelAccuracyMetrics {
@@ -1431,7 +1512,11 @@ impl AdvancedNoiseCharacterizer {
             },
             coherence_predictor: ModelPrediction {
                 predicted_values: Array1::from_vec(vec![50000.0, 48000.0, 46000.0]),
-                prediction_intervals: Array2::from_shape_vec((3, 2), vec![48000.0, 52000.0, 46000.0, 50000.0, 44000.0, 48000.0]).unwrap(),
+                prediction_intervals: Array2::from_shape_vec(
+                    (3, 2),
+                    vec![48000.0, 52000.0, 46000.0, 50000.0, 44000.0, 48000.0],
+                )
+                .unwrap(),
                 feature_importance: HashMap::new(),
                 model_type: "Random Forest".to_string(),
                 accuracy_metrics: ModelAccuracyMetrics {
@@ -1443,7 +1528,11 @@ impl AdvancedNoiseCharacterizer {
             },
             error_rate_predictor: ModelPrediction {
                 predicted_values: Array1::from_vec(vec![0.001, 0.0012, 0.0015]),
-                prediction_intervals: Array2::from_shape_vec((3, 2), vec![0.0008, 0.0012, 0.001, 0.0014, 0.0012, 0.0018]).unwrap(),
+                prediction_intervals: Array2::from_shape_vec(
+                    (3, 2),
+                    vec![0.0008, 0.0012, 0.001, 0.0014, 0.0012, 0.0018],
+                )
+                .unwrap(),
                 feature_importance: HashMap::new(),
                 model_type: "Support Vector Regression".to_string(),
                 accuracy_metrics: ModelAccuracyMetrics {
@@ -1455,7 +1544,11 @@ impl AdvancedNoiseCharacterizer {
             },
             drift_predictor: ModelPrediction {
                 predicted_values: Array1::from_vec(vec![0.0001, 0.0002, 0.0003]),
-                prediction_intervals: Array2::from_shape_vec((3, 2), vec![0.00005, 0.00015, 0.00015, 0.00025, 0.00025, 0.00035]).unwrap(),
+                prediction_intervals: Array2::from_shape_vec(
+                    (3, 2),
+                    vec![0.00005, 0.00015, 0.00015, 0.00025, 0.00025, 0.00035],
+                )
+                .unwrap(),
                 feature_importance: HashMap::new(),
                 model_type: "ARIMA".to_string(),
                 accuracy_metrics: ModelAccuracyMetrics {
@@ -1470,10 +1563,13 @@ impl AdvancedNoiseCharacterizer {
                 ("coherence".to_string(), 0.85),
                 ("error_rate".to_string(), 0.7),
                 ("drift".to_string(), 0.6),
-            ].iter().cloned().collect(),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
         })
     }
-    
+
     fn update_noise_model(
         &self,
         calibration: &DeviceCalibration,
@@ -1481,7 +1577,7 @@ impl AdvancedNoiseCharacterizer {
     ) -> DeviceResult<crate::noise_model::CalibrationNoiseModel> {
         self.noise_modeler.model_noise(calibration)
     }
-    
+
     fn generate_recommendations(
         &self,
         protocol_results: &HashMap<CharacterizationProtocol, ProtocolResult>,
@@ -1492,9 +1588,11 @@ impl AdvancedNoiseCharacterizer {
         let mut recommendations = Vec::new();
 
         // Check overall fidelity
-        let avg_fidelity = protocol_results.values()
+        let avg_fidelity = protocol_results
+            .values()
             .map(|r| r.average_fidelity)
-            .sum::<f64>() / protocol_results.len().max(1) as f64;
+            .sum::<f64>()
+            / protocol_results.len().max(1) as f64;
 
         if avg_fidelity < 0.9 {
             recommendations.push(CharacterizationRecommendation {
@@ -1513,7 +1611,8 @@ impl AdvancedNoiseCharacterizer {
                 recommendations.push(CharacterizationRecommendation {
                     priority: RecommendationPriority::Medium,
                     category: RecommendationCategory::Maintenance,
-                    description: "Parameter drift detected. Increase monitoring frequency.".to_string(),
+                    description: "Parameter drift detected. Increase monitoring frequency."
+                        .to_string(),
                     expected_impact: 0.7,
                     implementation_effort: 0.3,
                     urgency_score: 0.6,
@@ -1527,7 +1626,10 @@ impl AdvancedNoiseCharacterizer {
                 recommendations.push(CharacterizationRecommendation {
                     priority: RecommendationPriority::Medium,
                     category: RecommendationCategory::Analysis,
-                    description: format!("Statistical test '{}' not significant. Review protocols.", test_name),
+                    description: format!(
+                        "Statistical test '{}' not significant. Review protocols.",
+                        test_name
+                    ),
                     expected_impact: 0.5,
                     implementation_effort: 0.4,
                     urgency_score: 0.4,
@@ -1537,61 +1639,65 @@ impl AdvancedNoiseCharacterizer {
 
         Ok(recommendations)
     }
-    
+
     // Additional helper methods for circuit creation and analysis
     fn convert_gates_to_circuit(&self, gates: &[Box<dyn GateOp>]) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
         // Convert gate operations to circuit - simplified implementation
         Ok(circuit)
     }
-    
+
     fn calculate_survival_probability(&self, result: &CircuitResult) -> DeviceResult<f64> {
         let total_shots = result.shots as f64;
         let ground_state_count = result.counts.get("0").unwrap_or(&0);
         Ok(*ground_state_count as f64 / total_shots)
     }
-    
-    fn create_t1_measurement_circuit(&self, qubit: QubitId, wait_time: f64) -> DeviceResult<Circuit<8>> {
+
+    fn create_t1_measurement_circuit(
+        &self,
+        qubit: QubitId,
+        wait_time: f64,
+    ) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
         circuit.x(qubit); // Prepare excited state
-        // Add wait time (would be implemented with delays in real hardware)
+                          // Add wait time (would be implemented with delays in real hardware)
         Ok(circuit)
     }
-    
+
     fn create_t2_echo_circuit(&self, qubit: QubitId, wait_time: f64) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
         circuit.h(qubit); // Create superposition
-        // Add echo sequence with wait time
+                          // Add echo sequence with wait time
         circuit.h(qubit); // Return to computational basis
         Ok(circuit)
     }
-    
+
     fn calculate_excited_population(&self, result: &CircuitResult) -> DeviceResult<f64> {
         let total_shots = result.shots as f64;
         let excited_count = result.counts.get("1").unwrap_or(&0);
         Ok(*excited_count as f64 / total_shots)
     }
-    
+
     fn calculate_coherence_amplitude(&self, result: &CircuitResult) -> DeviceResult<f64> {
         // Simplified coherence calculation
         let total_shots = result.shots as f64;
         let coherent_count = result.counts.values().max().unwrap_or(&0);
         Ok(*coherent_count as f64 / total_shots)
     }
-    
+
     fn fit_exponential_decay(&self, data: &[(f64, f64)]) -> DeviceResult<f64> {
         // Simplified exponential fitting - would use proper optimization
         if data.len() < 2 {
             return Ok(50000.0); // Default value
         }
-        
+
         // Simple linear fit on log scale
         let mut sum_x = 0.0;
         let mut sum_y = 0.0;
         let mut sum_xy = 0.0;
         let mut sum_x2 = 0.0;
         let n = data.len() as f64;
-        
+
         for &(x, y) in data {
             let log_y = (y.max(1e-6)).ln();
             sum_x += x;
@@ -1599,14 +1705,18 @@ impl AdvancedNoiseCharacterizer {
             sum_xy += x * log_y;
             sum_x2 += x * x;
         }
-        
+
         let slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x);
         let decay_constant = -1.0 / slope;
-        
+
         Ok(decay_constant.abs().max(1000.0).min(200000.0)) // Reasonable bounds
     }
-    
-    fn create_readout_circuit(&self, qubit: QubitId, excited_state: bool) -> DeviceResult<Circuit<8>> {
+
+    fn create_readout_circuit(
+        &self,
+        qubit: QubitId,
+        excited_state: bool,
+    ) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
         if excited_state {
             circuit.x(qubit); // Prepare |1> state
@@ -1614,8 +1724,12 @@ impl AdvancedNoiseCharacterizer {
         // |0> state is prepared by default
         Ok(circuit)
     }
-    
-    fn calculate_state_probability(&self, result: &CircuitResult, target_state: bool) -> DeviceResult<f64> {
+
+    fn calculate_state_probability(
+        &self,
+        result: &CircuitResult,
+        target_state: bool,
+    ) -> DeviceResult<f64> {
         let total_shots = result.shots as f64;
         let target_key = if target_state { "1" } else { "0" };
         let target_count = result.counts.get(target_key).unwrap_or(&0);

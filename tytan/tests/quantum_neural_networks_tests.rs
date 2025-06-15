@@ -3,10 +3,12 @@
 #[cfg(test)]
 mod tests {
     use quantrs2_tytan::quantum_neural_networks::*;
-    use quantrs2_tytan::sampler_framework::{SampleResult, SamplerError, SamplerResult};
-    use quantrs2_tytan::compile::QuboFormulation;
-    use quantrs2_tytan::symbol::Symbol;
+    use quantrs2_tytan::sampler::{SampleResult, SamplerError, SamplerResult};
+    use quantrs2_tytan::QuboFormulation;
+    // Note: Symbol type doesn't exist, use symbols function instead
     use ndarray::{Array1, Array2, Array3};
+    #[cfg(feature = "dwave")]
+    use quantrs2_tytan::symbol::symbols;
     use std::collections::HashMap;
 
     /// Test basic QNN architecture creation
@@ -26,7 +28,10 @@ mod tests {
         assert_eq!(architecture.output_dim, 2);
         assert_eq!(architecture.num_qubits, 8);
         assert_eq!(architecture.circuit_depth, 3);
-        assert_eq!(architecture.entanglement_pattern, EntanglementPattern::Linear);
+        assert_eq!(
+            architecture.entanglement_pattern,
+            EntanglementPattern::Linear
+        );
     }
 
     /// Test entanglement patterns
@@ -65,7 +70,7 @@ mod tests {
         let shadow = MeasurementScheme::ShadowTomography { num_shadows: 100 };
 
         assert_eq!(computational, MeasurementScheme::Computational);
-        
+
         if let MeasurementScheme::Pauli { bases } = pauli {
             assert_eq!(bases.len(), 3);
             assert!(bases.contains(&PauliBasis::X));
@@ -83,8 +88,14 @@ mod tests {
             layer_id: 0,
             num_qubits: 4,
             gates: vec![
-                QuantumGate::RX { qubit: 0, angle: std::f64::consts::PI / 4.0 },
-                QuantumGate::CNOT { control: 0, target: 1 },
+                QuantumGate::RX {
+                    qubit: 0,
+                    angle: std::f64::consts::PI / 4.0,
+                },
+                QuantumGate::CNOT {
+                    control: 0,
+                    target: 1,
+                },
             ],
             parametrized_gates: vec![],
             layer_type: QuantumLayerType::Variational,
@@ -100,9 +111,18 @@ mod tests {
     /// Test quantum gates
     #[test]
     fn test_quantum_gates() {
-        let rx_gate = QuantumGate::RX { qubit: 0, angle: std::f64::consts::PI / 2.0 };
-        let cnot_gate = QuantumGate::CNOT { control: 0, target: 1 };
-        let toffoli_gate = QuantumGate::Toffoli { controls: vec![0, 1], target: 2 };
+        let rx_gate = QuantumGate::RX {
+            qubit: 0,
+            angle: std::f64::consts::PI / 2.0,
+        };
+        let cnot_gate = QuantumGate::CNOT {
+            control: 0,
+            target: 1,
+        };
+        let toffoli_gate = QuantumGate::Toffoli {
+            controls: vec![0, 1],
+            target: 2,
+        };
 
         match rx_gate {
             QuantumGate::RX { qubit, angle } => {
@@ -133,7 +153,9 @@ mod tests {
     #[test]
     fn test_parametrized_gates() {
         let param_gate = ParametrizedGate {
-            gate_type: ParametrizedGateType::Rotation { axis: RotationAxis::X },
+            gate_type: ParametrizedGateType::Rotation {
+                axis: RotationAxis::X,
+            },
             qubits: vec![0],
             parameter_indices: vec![0],
             gate_function: GateFunction::StandardRotation,
@@ -141,7 +163,7 @@ mod tests {
 
         assert_eq!(param_gate.qubits, vec![0]);
         assert_eq!(param_gate.parameter_indices, vec![0]);
-        
+
         match param_gate.gate_type {
             ParametrizedGateType::Rotation { axis } => {
                 assert_eq!(axis, RotationAxis::X);
@@ -212,7 +234,10 @@ mod tests {
         assert_eq!(config.batch_size, 32);
         assert_eq!(config.num_epochs, 100);
         assert_eq!(config.loss_function, LossFunction::MeanSquaredError);
-        assert_eq!(config.gradient_estimation, GradientEstimationMethod::ParameterShift);
+        assert_eq!(
+            config.gradient_estimation,
+            GradientEstimationMethod::ParameterShift
+        );
     }
 
     /// Test optimizer types
@@ -227,7 +252,11 @@ mod tests {
         let sgd = OptimizerType::SGD { momentum: 0.9 };
 
         match adam {
-            OptimizerType::Adam { beta1, beta2, epsilon } => {
+            OptimizerType::Adam {
+                beta1,
+                beta2,
+                epsilon,
+            } => {
                 assert_eq!(beta1, 0.9);
                 assert_eq!(beta2, 0.999);
                 assert_eq!(epsilon, 1e-8);
@@ -264,8 +293,14 @@ mod tests {
     /// Test parameter initialization schemes
     #[test]
     fn test_parameter_initialization() {
-        let uniform = ParameterInitializationScheme::RandomUniform { min: -1.0, max: 1.0 };
-        let normal = ParameterInitializationScheme::RandomNormal { mean: 0.0, std: 0.1 };
+        let uniform = ParameterInitializationScheme::RandomUniform {
+            min: -1.0,
+            max: 1.0,
+        };
+        let normal = ParameterInitializationScheme::RandomNormal {
+            mean: 0.0,
+            std: 0.1,
+        };
         let xavier = ParameterInitializationScheme::Xavier;
 
         match uniform {
@@ -307,7 +342,10 @@ mod tests {
         assert_eq!(params.classical_params.len(), 2);
         assert_eq!(params.bias_params.len(), 2);
         assert_eq!(params.parameter_bounds.len(), 10);
-        assert_eq!(params.initialization_scheme, ParameterInitializationScheme::Xavier);
+        assert_eq!(
+            params.initialization_scheme,
+            ParameterInitializationScheme::Xavier
+        );
     }
 
     /// Test training epoch data
@@ -445,7 +483,9 @@ mod tests {
         let schemes = vec![
             PostprocessingScheme::None,
             PostprocessingScheme::Linear,
-            PostprocessingScheme::NonlinearNN { hidden_dims: vec![64, 32] },
+            PostprocessingScheme::NonlinearNN {
+                hidden_dims: vec![64, 32],
+            },
             PostprocessingScheme::Attention,
             PostprocessingScheme::GraphNN,
         ];
@@ -512,7 +552,9 @@ mod tests {
         let cross_entropy = LossFunction::CrossEntropy;
         let huber = LossFunction::HuberLoss { delta: 1.0 };
         let qfi = LossFunction::QuantumFisherInformation;
-        let custom = LossFunction::Custom { name: "CustomLoss".to_string() };
+        let custom = LossFunction::Custom {
+            name: "CustomLoss".to_string(),
+        };
 
         assert_eq!(mse, LossFunction::MeanSquaredError);
         assert_eq!(cross_entropy, LossFunction::CrossEntropy);

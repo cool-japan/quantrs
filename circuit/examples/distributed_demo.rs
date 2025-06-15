@@ -4,8 +4,8 @@
 //! for running quantum circuits across multiple backends with load balancing,
 //! fault tolerance, and resource management.
 
-use quantrs2_circuit::prelude::*;
 use quantrs2_circuit::distributed::*;
+use quantrs2_circuit::prelude::*;
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -16,63 +16,78 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 1: Setting up a distributed executor
     println!("1. Creating Distributed Executor");
     println!("--------------------------------");
-    
+
     let mut executor = DistributedExecutor::new();
     println!("Created distributed executor with default configuration");
     println!("  Load balancing: {:?}", executor.load_balancer.strategy);
     println!("  Scheduling policy: {:?}", executor.scheduler.policy);
-    println!("  Fault tolerance enabled: {}", executor.fault_tolerance.enable_failover);
-    println!("  Redundancy level: {}", executor.fault_tolerance.redundancy_level);
+    println!(
+        "  Fault tolerance enabled: {}",
+        executor.fault_tolerance.enable_failover
+    );
+    println!(
+        "  Redundancy level: {}",
+        executor.fault_tolerance.redundancy_level
+    );
 
     // Example 2: Adding different types of backends
     println!("\n2. Adding Execution Backends");
     println!("----------------------------");
-    
+
     // Add a quantum hardware backend
     let hardware_backend = create_hardware_backend();
     println!("Adding hardware backend: {}", hardware_backend.id);
     executor.add_backend(hardware_backend)?;
-    
+
     // Add a simulator backend
     let simulator_backend = create_simulator_backend();
     println!("Adding simulator backend: {}", simulator_backend.id);
     executor.add_backend(simulator_backend)?;
-    
+
     // Add a cloud service backend
     let cloud_backend = create_cloud_backend();
     println!("Adding cloud backend: {}", cloud_backend.id);
     executor.add_backend(cloud_backend)?;
-    
+
     // Add a hybrid backend
     let hybrid_backend = create_hybrid_backend();
     println!("Adding hybrid backend: {}", hybrid_backend.id);
     executor.add_backend(hybrid_backend)?;
-    
+
     println!("Total backends added: {}", executor.backends.len());
 
     // Example 3: System health status
     println!("\n3. System Health Status");
     println!("-----------------------");
-    
+
     let health = executor.get_health_status();
     println!("System health:");
     println!("  Total backends: {}", health.total_backends);
     println!("  Available backends: {}", health.available_backends);
     println!("  Total qubits: {}", health.total_qubits);
-    println!("  Average queue time: {:.2} seconds", health.average_queue_time);
+    println!(
+        "  Average queue time: {:.2} seconds",
+        health.average_queue_time
+    );
     println!("  System load: {:.1}%", health.system_load * 100.0);
 
     // Example 4: Creating and submitting jobs
     println!("\n4. Creating and Submitting Jobs");
     println!("-------------------------------");
-    
+
     // Create different types of circuits for testing
     let jobs = create_test_jobs();
-    
+
     for (i, job) in jobs.iter().enumerate() {
-        println!("Job {}: {} ({} qubits, {} gates, priority: {:?})", 
-                 i + 1, job.id, job.circuit.num_qubits(), job.circuit.num_gates(), job.priority);
-        
+        println!(
+            "Job {}: {} ({} qubits, {} gates, priority: {:?})",
+            i + 1,
+            job.id,
+            job.circuit.num_qubits(),
+            job.circuit.num_gates(),
+            job.priority
+        );
+
         match executor.submit_job(job.clone()) {
             Ok(job_id) => println!("  ✅ Submitted successfully: {}", job_id),
             Err(e) => println!("  ❌ Submission failed: {}", e),
@@ -82,14 +97,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 5: Different load balancing strategies
     println!("\n5. Load Balancing Strategies");
     println!("----------------------------");
-    
+
     let strategies = vec![
         ("Round Robin", LoadBalancingStrategy::RoundRobin),
         ("Least Connections", LoadBalancingStrategy::LeastConnections),
         ("Least Queue Time", LoadBalancingStrategy::LeastQueueTime),
         ("Best Performance", LoadBalancingStrategy::BestPerformance),
     ];
-    
+
     for (name, strategy) in strategies {
         executor.load_balancer.strategy = strategy.clone();
         println!("  {}: {:?}", name, strategy);
@@ -98,57 +113,100 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 6: Backend types and capabilities
     println!("\n6. Backend Types and Capabilities");
     println!("---------------------------------");
-    
+
     for backend in &executor.backends {
         println!("Backend: {} ({:?})", backend.id, backend.status);
         match &backend.backend_type {
-            BackendType::Hardware { vendor, model, location } => {
+            BackendType::Hardware {
+                vendor,
+                model,
+                location,
+            } => {
                 println!("  Type: Hardware ({} {} in {})", vendor, model, location);
-            },
-            BackendType::Simulator { simulator_type, host } => {
+            }
+            BackendType::Simulator {
+                simulator_type,
+                host,
+            } => {
                 println!("  Type: Simulator ({:?} on {})", simulator_type, host);
-            },
-            BackendType::CloudService { provider, service_name, region } => {
-                println!("  Type: Cloud ({} {} in {})", provider, service_name, region);
-            },
-            BackendType::Hybrid { quantum_backend: _, classical_resources } => {
-                println!("  Type: Hybrid ({} CPU cores, {:.1} GB memory)", 
-                         classical_resources.cpu_cores, classical_resources.memory_gb);
-            },
+            }
+            BackendType::CloudService {
+                provider,
+                service_name,
+                region,
+            } => {
+                println!(
+                    "  Type: Cloud ({} {} in {})",
+                    provider, service_name, region
+                );
+            }
+            BackendType::Hybrid {
+                quantum_backend: _,
+                classical_resources,
+            } => {
+                println!(
+                    "  Type: Hybrid ({} CPU cores, {:.1} GB memory)",
+                    classical_resources.cpu_cores, classical_resources.memory_gb
+                );
+            }
         }
-        
+
         println!("  Capabilities:");
         println!("    Max qubits: {}", backend.performance.max_qubits);
         println!("    Max depth: {}", backend.performance.max_depth);
-        println!("    Supported gates: {:?}", backend.capabilities.supported_gates);
-        println!("    Mid-circuit measurements: {}", backend.capabilities.mid_circuit_measurements);
-        println!("    Queue length: {}/{}", backend.queue_info.queue_length, backend.queue_info.max_queue_size);
-        println!("    Estimated wait time: {:.1} seconds", backend.queue_info.estimated_wait_time);
+        println!(
+            "    Supported gates: {:?}",
+            backend.capabilities.supported_gates
+        );
+        println!(
+            "    Mid-circuit measurements: {}",
+            backend.capabilities.mid_circuit_measurements
+        );
+        println!(
+            "    Queue length: {}/{}",
+            backend.queue_info.queue_length, backend.queue_info.max_queue_size
+        );
+        println!(
+            "    Estimated wait time: {:.1} seconds",
+            backend.queue_info.estimated_wait_time
+        );
         println!();
     }
 
     // Example 7: Execution parameters and error mitigation
     println!("7. Execution Parameters and Error Mitigation");
     println!("--------------------------------------------");
-    
+
     let error_mitigation_techniques = vec![
-        ("Readout Error Mitigation", ErrorMitigation::ReadoutErrorMitigation),
-        ("Zero Noise Extrapolation", ErrorMitigation::ZeroNoiseExtrapolation),
-        ("Clifford Data Regression", ErrorMitigation::CliffordDataRegression),
-        ("Symmetry Verification", ErrorMitigation::SymmetryVerification),
+        (
+            "Readout Error Mitigation",
+            ErrorMitigation::ReadoutErrorMitigation,
+        ),
+        (
+            "Zero Noise Extrapolation",
+            ErrorMitigation::ZeroNoiseExtrapolation,
+        ),
+        (
+            "Clifford Data Regression",
+            ErrorMitigation::CliffordDataRegression,
+        ),
+        (
+            "Symmetry Verification",
+            ErrorMitigation::SymmetryVerification,
+        ),
     ];
-    
+
     for (name, technique) in error_mitigation_techniques {
         println!("  {}: {:?}", name, technique);
     }
-    
+
     let result_formats = vec![
         ("Counts", ResultFormat::Counts),
         ("Probabilities", ResultFormat::Probabilities),
         ("Statevector", ResultFormat::Statevector),
         ("Expectation Values", ResultFormat::ExpectationValues),
     ];
-    
+
     println!("\nResult formats:");
     for (name, format) in result_formats {
         println!("  {}: {:?}", name, format);
@@ -157,20 +215,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 8: Fault tolerance and redundancy
     println!("\n8. Fault Tolerance and Redundancy");
     println!("---------------------------------");
-    
+
     println!("Current fault tolerance configuration:");
-    println!("  Failover enabled: {}", executor.fault_tolerance.enable_failover);
-    println!("  Redundancy level: {}", executor.fault_tolerance.redundancy_level);
-    println!("  Error correction: {:?}", executor.fault_tolerance.error_correction);
-    
+    println!(
+        "  Failover enabled: {}",
+        executor.fault_tolerance.enable_failover
+    );
+    println!(
+        "  Redundancy level: {}",
+        executor.fault_tolerance.redundancy_level
+    );
+    println!(
+        "  Error correction: {:?}",
+        executor.fault_tolerance.error_correction
+    );
+
     // Demonstrate different error correction strategies
     let error_correction_strategies = vec![
         ("None", ErrorCorrectionStrategy::None),
         ("Majority Voting", ErrorCorrectionStrategy::MajorityVoting),
-        ("Quantum Error Correction", ErrorCorrectionStrategy::QuantumErrorCorrection),
-        ("Classical Post-processing", ErrorCorrectionStrategy::ClassicalPostProcessing),
+        (
+            "Quantum Error Correction",
+            ErrorCorrectionStrategy::QuantumErrorCorrection,
+        ),
+        (
+            "Classical Post-processing",
+            ErrorCorrectionStrategy::ClassicalPostProcessing,
+        ),
     ];
-    
+
     println!("\nAvailable error correction strategies:");
     for (name, strategy) in error_correction_strategies {
         println!("  {}: {:?}", name, strategy);
@@ -179,44 +252,92 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 9: Resource management and allocation
     println!("\n9. Resource Management and Allocation");
     println!("------------------------------------");
-    
+
     println!("Resource pool:");
-    println!("  Total qubits: {}", executor.resource_manager.resource_pool.total_qubits);
-    println!("  Available slots: {}", executor.resource_manager.resource_pool.available_slots);
-    println!("  Memory pool: {:.1} GB", executor.resource_manager.resource_pool.memory_pool);
-    println!("  Compute pool: {:.1} CPU hours", executor.resource_manager.resource_pool.compute_pool);
-    
+    println!(
+        "  Total qubits: {}",
+        executor.resource_manager.resource_pool.total_qubits
+    );
+    println!(
+        "  Available slots: {}",
+        executor.resource_manager.resource_pool.available_slots
+    );
+    println!(
+        "  Memory pool: {:.1} GB",
+        executor.resource_manager.resource_pool.memory_pool
+    );
+    println!(
+        "  Compute pool: {:.1} CPU hours",
+        executor.resource_manager.resource_pool.compute_pool
+    );
+
     println!("\nAllocation policies:");
-    if let Some(max_qubits) = executor.resource_manager.allocation_policies.max_qubits_per_user {
+    if let Some(max_qubits) = executor
+        .resource_manager
+        .allocation_policies
+        .max_qubits_per_user
+    {
         println!("  Max qubits per user: {}", max_qubits);
     }
-    if let Some(max_time) = executor.resource_manager.allocation_policies.max_execution_time {
+    if let Some(max_time) = executor
+        .resource_manager
+        .allocation_policies
+        .max_execution_time
+    {
         println!("  Max execution time: {:.1} seconds", max_time);
     }
-    println!("  Fair share: {}", executor.resource_manager.allocation_policies.fair_share);
-    println!("  Reserved resources: {:.1}%", executor.resource_manager.allocation_policies.reserved_resources * 100.0);
+    println!(
+        "  Fair share: {}",
+        executor.resource_manager.allocation_policies.fair_share
+    );
+    println!(
+        "  Reserved resources: {:.1}%",
+        executor
+            .resource_manager
+            .allocation_policies
+            .reserved_resources
+            * 100.0
+    );
 
     // Example 10: Network configuration and authentication
     println!("\n10. Network Configuration and Authentication");
     println!("-------------------------------------------");
-    
+
     for backend in &executor.backends {
-        println!("Backend {}: {}", backend.id, backend.network_config.endpoint);
-        println!("  Auth type: {:?}", backend.network_config.credentials.auth_type);
-        println!("  Connection timeout: {:.1}s", backend.network_config.timeouts.connection_timeout);
-        println!("  Request timeout: {:.1}s", backend.network_config.timeouts.request_timeout);
-        println!("  Max retries: {}", backend.network_config.retry_policy.max_retries);
-        println!("  Backoff strategy: {:?}", backend.network_config.retry_policy.backoff_strategy);
+        println!(
+            "Backend {}: {}",
+            backend.id, backend.network_config.endpoint
+        );
+        println!(
+            "  Auth type: {:?}",
+            backend.network_config.credentials.auth_type
+        );
+        println!(
+            "  Connection timeout: {:.1}s",
+            backend.network_config.timeouts.connection_timeout
+        );
+        println!(
+            "  Request timeout: {:.1}s",
+            backend.network_config.timeouts.request_timeout
+        );
+        println!(
+            "  Max retries: {}",
+            backend.network_config.retry_policy.max_retries
+        );
+        println!(
+            "  Backoff strategy: {:?}",
+            backend.network_config.retry_policy.backoff_strategy
+        );
     }
 
     // Example 11: Job status and results (mock)
     println!("\n11. Job Status and Results");
     println!("--------------------------");
-    
+
     for job in jobs.iter().take(3) {
         let status = executor.get_job_status(&job.id)?;
         println!("Job {}: {:?}", job.id, status);
-        
+
         // Mock getting results for completed jobs
         if status == ExecutionStatus::Queued {
             let result = executor.get_results(&job.id)?;
@@ -225,24 +346,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("  Total time: {:?}", result.metadata.total_time);
             println!("  Queue time: {:?}", result.metadata.queue_time);
             println!("  Resource usage:");
-            println!("    CPU hours: {:.3}", result.metadata.resource_usage.cpu_hours);
-            println!("    Memory hours: {:.3}", result.metadata.resource_usage.memory_hours);
-            println!("    Qubit hours: {:.3}", result.metadata.resource_usage.qubit_hours);
-            println!("    Network usage: {:.3} GB", result.metadata.resource_usage.network_usage);
+            println!(
+                "    CPU hours: {:.3}",
+                result.metadata.resource_usage.cpu_hours
+            );
+            println!(
+                "    Memory hours: {:.3}",
+                result.metadata.resource_usage.memory_hours
+            );
+            println!(
+                "    Qubit hours: {:.3}",
+                result.metadata.resource_usage.qubit_hours
+            );
+            println!(
+                "    Network usage: {:.3} GB",
+                result.metadata.resource_usage.network_usage
+            );
         }
     }
 
     // Example 12: Connectivity topologies
     println!("\n12. Connectivity Topologies");
     println!("---------------------------");
-    
+
     let topologies = vec![
         ("Linear", TopologyType::Linear),
         ("2D Grid (3x3)", TopologyType::Grid2D { rows: 3, cols: 3 }),
         ("All-to-all", TopologyType::AllToAll),
-        ("Random (70% density)", TopologyType::Random { density: 0.7 }),
+        (
+            "Random (70% density)",
+            TopologyType::Random { density: 0.7 },
+        ),
     ];
-    
+
     for (name, topology) in topologies {
         println!("  {}: {:?}", name, topology);
     }
@@ -250,7 +386,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n✅ Distributed Circuit Execution Demo completed!");
     println!("\nNote: This demo shows the distributed execution framework structure.");
     println!("Real distributed execution requires actual quantum backends and networking.");
-    
+
     Ok(())
 }
 
@@ -294,7 +430,12 @@ fn create_hardware_backend() -> ExecutionBackend {
             priority_levels: vec![Priority::Normal, Priority::High, Priority::Critical],
         },
         capabilities: BackendCapabilities {
-            supported_gates: vec!["u1".to_string(), "u2".to_string(), "u3".to_string(), "cx".to_string()],
+            supported_gates: vec![
+                "u1".to_string(),
+                "u2".to_string(),
+                "u3".to_string(),
+                "cx".to_string(),
+            ],
             mid_circuit_measurements: false,
             classical_control: false,
             reset_operations: true,
@@ -376,15 +517,21 @@ fn create_simulator_backend() -> ExecutionBackend {
         },
         capabilities: BackendCapabilities {
             supported_gates: vec![
-                "u1".to_string(), "u2".to_string(), "u3".to_string(), 
-                "cx".to_string(), "ccx".to_string(), "cswap".to_string()
+                "u1".to_string(),
+                "u2".to_string(),
+                "u3".to_string(),
+                "cx".to_string(),
+                "ccx".to_string(),
+                "cswap".to_string(),
             ],
             mid_circuit_measurements: true,
             classical_control: true,
             reset_operations: true,
             connectivity: ConnectivityGraph {
                 num_qubits: 32,
-                edges: (0..32).flat_map(|i| (0..32).filter(move |&j| i != j).map(move |j| (i, j))).collect(),
+                edges: (0..32)
+                    .flat_map(|i| (0..32).filter(move |&j| i != j).map(move |j| (i, j)))
+                    .collect(),
                 topology: TopologyType::AllToAll,
             },
             noise_model: None, // Ideal simulator
@@ -442,13 +589,22 @@ fn create_cloud_backend() -> ExecutionBackend {
             priority_levels: vec![Priority::Normal, Priority::High],
         },
         capabilities: BackendCapabilities {
-            supported_gates: vec!["h".to_string(), "x".to_string(), "cnot".to_string(), "rx".to_string(), "ry".to_string(), "rz".to_string()],
+            supported_gates: vec![
+                "h".to_string(),
+                "x".to_string(),
+                "cnot".to_string(),
+                "rx".to_string(),
+                "ry".to_string(),
+                "rz".to_string(),
+            ],
             mid_circuit_measurements: false,
             classical_control: false,
             reset_operations: false,
             connectivity: ConnectivityGraph {
                 num_qubits: 34,
-                edges: (0..34).flat_map(|i| (0..34).filter(move |&j| i != j).map(move |j| (i, j))).collect(),
+                edges: (0..34)
+                    .flat_map(|i| (0..34).filter(move |&j| i != j).map(move |j| (i, j)))
+                    .collect(),
                 topology: TopologyType::AllToAll,
             },
             noise_model: None,
@@ -470,7 +626,11 @@ fn create_cloud_backend() -> ExecutionBackend {
                 max_retries: 5,
                 base_delay: 1.0,
                 backoff_strategy: BackoffStrategy::Exponential { multiplier: 1.5 },
-                retryable_errors: vec![ErrorType::NetworkError, ErrorType::RateLimited, ErrorType::ServiceUnavailable],
+                retryable_errors: vec![
+                    ErrorType::NetworkError,
+                    ErrorType::RateLimited,
+                    ErrorType::ServiceUnavailable,
+                ],
             },
         },
     }
@@ -542,7 +702,9 @@ fn create_hybrid_backend() -> ExecutionBackend {
             reset_operations: true,
             connectivity: ConnectivityGraph {
                 num_qubits: 25,
-                edges: (0..25).flat_map(|i| ((i+1)..25).map(move |j| (i, j))).collect(),
+                edges: (0..25)
+                    .flat_map(|i| ((i + 1)..25).map(move |j| (i, j)))
+                    .collect(),
                 topology: TopologyType::AllToAll,
             },
             noise_model: Some(NoiseCharacteristics {
@@ -591,7 +753,7 @@ fn create_test_jobs() -> Vec<DistributedJob<4>> {
     let mut bell_circuit = Circuit::<4>::new();
     bell_circuit.h(Qubit(0)).unwrap();
     bell_circuit.cnot(Qubit(0), Qubit(1)).unwrap();
-    
+
     jobs.push(DistributedJob {
         id: "bell_state_job".to_string(),
         circuit: bell_circuit,
@@ -614,7 +776,7 @@ fn create_test_jobs() -> Vec<DistributedJob<4>> {
     ghz_circuit.cnot(Qubit(0), Qubit(1)).unwrap();
     ghz_circuit.cnot(Qubit(1), Qubit(2)).unwrap();
     ghz_circuit.cnot(Qubit(2), Qubit(3)).unwrap();
-    
+
     jobs.push(DistributedJob {
         id: "ghz_state_job".to_string(),
         circuit: ghz_circuit,
@@ -629,7 +791,10 @@ fn create_test_jobs() -> Vec<DistributedJob<4>> {
             memory_requirement: Some(1.0), // 1 GB
         },
         priority: Priority::High,
-        target_backends: Some(vec!["qiskit_aer_simulator".to_string(), "aws_braket_sv1".to_string()]),
+        target_backends: Some(vec![
+            "qiskit_aer_simulator".to_string(),
+            "aws_braket_sv1".to_string(),
+        ]),
         submitted_at: Instant::now(),
         deadline: Some(Instant::now() + std::time::Duration::from_secs(300)),
     });
@@ -642,7 +807,7 @@ fn create_test_jobs() -> Vec<DistributedJob<4>> {
     for i in 0..3 {
         var_circuit.cnot(Qubit(i), Qubit(i + 1)).unwrap();
     }
-    
+
     jobs.push(DistributedJob {
         id: "variational_job".to_string(),
         circuit: var_circuit,

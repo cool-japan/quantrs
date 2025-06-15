@@ -1,11 +1,11 @@
 //! Analytics engine and analysis components
 
-pub mod statistical;
-pub mod correlation;
-pub mod time_series;
 pub mod anomaly;
-pub mod distribution;
 pub mod causal;
+pub mod correlation;
+pub mod distribution;
+pub mod statistical;
+pub mod time_series;
 
 use super::config::AdvancedAnalyticsConfig;
 use super::results::*;
@@ -60,10 +60,14 @@ impl AdvancedAnalyticsEngine {
         let timestamps: Vec<f64> = measurement_history.iter().map(|e| e.timestamp).collect();
 
         // Statistical analysis
-        let statistical_analysis = self.statistical_analyzer.analyze(&latencies, &confidences)?;
+        let statistical_analysis = self
+            .statistical_analyzer
+            .analyze(&latencies, &confidences)?;
 
         // Correlation analysis
-        let correlation_analysis = self.correlation_analyzer.analyze(&latencies, &confidences, &timestamps)?;
+        let correlation_analysis =
+            self.correlation_analyzer
+                .analyze(&latencies, &confidences, &timestamps)?;
 
         // Time series analysis (if enabled)
         let time_series_analysis = if let Some(ref analyzer) = self.time_series_analyzer {

@@ -126,11 +126,14 @@ pub mod testing_framework;
 pub mod topological_optimization;
 pub mod variable_correlation;
 pub mod variational_quantum_factoring;
-pub mod visualization;
 pub mod visual_problem_builder;
+pub mod visualization;
 
 // Re-export key types for convenience
-pub use advanced_performance_analysis::{AdvancedPerformanceAnalyzer, AnalysisConfig, create_comprehensive_analyzer, create_lightweight_analyzer};
+pub use advanced_performance_analysis::{
+    create_comprehensive_analyzer, create_lightweight_analyzer, AdvancedPerformanceAnalyzer,
+    AnalysisConfig,
+};
 pub use analysis::{calculate_diversity, cluster_solutions, visualize_energy_distribution};
 #[cfg(feature = "dwave")]
 pub use auto_array::Auto_array;
@@ -140,11 +143,16 @@ pub use compile::{Compile, PieckCompile};
 pub use gpu::{gpu_solve_hobo, gpu_solve_qubo, is_available as is_gpu_available_internal};
 pub use optimize::{calculate_energy, optimize_hobo, optimize_qubo};
 pub use sampler::{ArminSampler, DWaveSampler, GASampler, MIKASAmpler, SASampler};
-pub use tensor_network_sampler::{TensorNetworkSampler, create_mps_sampler, create_peps_sampler, create_mera_sampler};
 pub use scirs_stub::SCIRS2_AVAILABLE;
 #[cfg(feature = "dwave")]
 pub use symbol::{symbols, symbols_define, symbols_list, symbols_nbit};
-pub use visual_problem_builder::{VisualProblemBuilder, VisualProblem, BuilderConfig, VariableType, ConstraintType, ObjectiveExpression, ExportFormat};
+pub use tensor_network_sampler::{
+    create_mera_sampler, create_mps_sampler, create_peps_sampler, TensorNetworkSampler,
+};
+pub use visual_problem_builder::{
+    BuilderConfig, ConstraintType, ExportFormat, ObjectiveExpression, VariableType, VisualProblem,
+    VisualProblemBuilder,
+};
 
 // Expose QuantRS2-anneal types as well for advanced usage
 pub use quantrs2_anneal::{IsingError, IsingModel, IsingResult, QuboModel};

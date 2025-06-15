@@ -5,14 +5,17 @@ use super::*;
 /// Performance prediction model trait
 pub trait PerformancePredictionModel: Send + Sync + std::fmt::Debug {
     /// Predict performance metrics
-    fn predict_performance(&self, problem_characteristics: &ProblemCharacteristics) -> Result<HashMap<String, f64>, AnalysisError>;
-    
+    fn predict_performance(
+        &self,
+        problem_characteristics: &ProblemCharacteristics,
+    ) -> Result<HashMap<String, f64>, AnalysisError>;
+
     /// Train model with new data
     fn train(&mut self, training_data: &[TrainingExample]) -> Result<(), AnalysisError>;
-    
+
     /// Get model accuracy
     fn get_accuracy(&self) -> f64;
-    
+
     /// Get model name
     fn get_model_name(&self) -> &str;
 }
@@ -45,24 +48,27 @@ impl LinearRegressionModel {
 }
 
 impl PerformancePredictionModel for LinearRegressionModel {
-    fn predict_performance(&self, _characteristics: &ProblemCharacteristics) -> Result<HashMap<String, f64>, AnalysisError> {
+    fn predict_performance(
+        &self,
+        _characteristics: &ProblemCharacteristics,
+    ) -> Result<HashMap<String, f64>, AnalysisError> {
         let mut predictions = HashMap::new();
         predictions.insert("execution_time".to_string(), 1.2);
         predictions.insert("memory_usage".to_string(), 0.8);
         predictions.insert("solution_quality".to_string(), 0.9);
         Ok(predictions)
     }
-    
+
     fn train(&mut self, _training_data: &[TrainingExample]) -> Result<(), AnalysisError> {
         // Mock training
         self.accuracy = 0.87;
         Ok(())
     }
-    
+
     fn get_accuracy(&self) -> f64 {
         self.accuracy
     }
-    
+
     fn get_model_name(&self) -> &str {
         "Linear Regression Model"
     }
@@ -76,31 +82,32 @@ pub struct RandomForestModel {
 
 impl RandomForestModel {
     pub fn new() -> Self {
-        Self {
-            accuracy: 0.92,
-        }
+        Self { accuracy: 0.92 }
     }
 }
 
 impl PerformancePredictionModel for RandomForestModel {
-    fn predict_performance(&self, _characteristics: &ProblemCharacteristics) -> Result<HashMap<String, f64>, AnalysisError> {
+    fn predict_performance(
+        &self,
+        _characteristics: &ProblemCharacteristics,
+    ) -> Result<HashMap<String, f64>, AnalysisError> {
         let mut predictions = HashMap::new();
         predictions.insert("execution_time".to_string(), 1.1);
         predictions.insert("memory_usage".to_string(), 0.75);
         predictions.insert("solution_quality".to_string(), 0.93);
         Ok(predictions)
     }
-    
+
     fn train(&mut self, _training_data: &[TrainingExample]) -> Result<(), AnalysisError> {
         // Mock training
         self.accuracy = 0.94;
         Ok(())
     }
-    
+
     fn get_accuracy(&self) -> f64 {
         self.accuracy
     }
-    
+
     fn get_model_name(&self) -> &str {
         "Random Forest Model"
     }

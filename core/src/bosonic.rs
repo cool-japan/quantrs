@@ -310,7 +310,7 @@ impl BosonTerm {
     }
 
     /// Create an identity term
-    pub fn identity(truncation: usize) -> Self {
+    pub fn identity(_truncation: usize) -> Self {
         Self {
             operators: vec![],
             coefficient: Complex64::new(1.0, 0.0),
@@ -676,7 +676,7 @@ pub fn boson_to_qubit_encoding(
         "binary" => {
             // Binary encoding: |n⟩ → |binary(n)⟩
             // Number of qubits needed: ceil(log2(truncation))
-            let n_qubits = (op.truncation as f64).log2().ceil() as usize;
+            let _n_qubits = (op.truncation as f64).log2().ceil() as usize;
 
             // This would require implementing the specific encoding
             Err(QuantRS2Error::UnsupportedOperation(

@@ -1,8 +1,8 @@
 //! Statistical analysis components
 
-use std::collections::HashMap;
-use crate::DeviceResult;
 use super::super::results::*;
+use crate::DeviceResult;
+use std::collections::HashMap;
 
 /// Statistical analyzer for measurement data
 pub struct StatisticalAnalyzer {
@@ -45,9 +45,11 @@ impl StatisticalAnalyzer {
         }
 
         let mean_latency = latencies.iter().sum::<f64>() / latencies.len() as f64;
-        let variance = latencies.iter()
+        let variance = latencies
+            .iter()
             .map(|&x| (x - mean_latency).powi(2))
-            .sum::<f64>() / latencies.len() as f64;
+            .sum::<f64>()
+            / latencies.len() as f64;
         let std_latency = variance.sqrt();
 
         // Calculate median
@@ -86,11 +88,11 @@ impl StatisticalAnalyzer {
         if sorted_data.is_empty() {
             return 0.0;
         }
-        
+
         let index = (percentile / 100.0) * (sorted_data.len() - 1) as f64;
         let lower = index.floor() as usize;
         let upper = index.ceil() as usize;
-        
+
         if lower == upper {
             sorted_data[lower]
         } else {
@@ -109,7 +111,7 @@ impl StatisticalAnalyzer {
 
         let high_confidence_count = confidences.iter().filter(|&&c| c > 0.95).count();
         let overall_success_rate = high_confidence_count as f64 / confidences.len() as f64;
-        
+
         // Simple confidence interval calculation
         let n = confidences.len() as f64;
         let p = overall_success_rate;
@@ -131,7 +133,7 @@ impl StatisticalAnalyzer {
         confidences: &[f64],
     ) -> DeviceResult<ErrorRateDistribution> {
         let error_rates: Vec<f64> = confidences.iter().map(|&c| 1.0 - c).collect();
-        
+
         // Simple histogram (10 bins)
         let mut histogram = vec![(0.0, 0); 10];
         for &error_rate in &error_rates {
@@ -160,13 +162,16 @@ impl StatisticalAnalyzer {
         let mut comparison_tests = HashMap::new();
 
         // Mock tests for now
-        independence_tests.insert("latency_independence".to_string(), StatisticalTest {
-            statistic: 1.23,
-            p_value: 0.15,
-            critical_value: 1.96,
-            is_significant: false,
-            effect_size: Some(0.1),
-        });
+        independence_tests.insert(
+            "latency_independence".to_string(),
+            StatisticalTest {
+                statistic: 1.23,
+                p_value: 0.15,
+                critical_value: 1.96,
+                is_significant: false,
+                effect_size: Some(0.1),
+            },
+        );
 
         Ok(HypothesisTestResults {
             independence_tests,
@@ -190,7 +195,7 @@ impl StatisticalAnalyzer {
             let mean = latencies.iter().sum::<f64>() / latencies.len() as f64;
             let se = self.calculate_standard_error(latencies);
             let margin = 1.96 * se; // 95% confidence
-            
+
             mean_intervals.insert("latency".to_string(), (mean - margin, mean + margin));
         }
 
@@ -207,12 +212,11 @@ impl StatisticalAnalyzer {
         if data.len() < 2 {
             return 0.0;
         }
-        
+
         let mean = data.iter().sum::<f64>() / data.len() as f64;
-        let variance = data.iter()
-            .map(|&x| (x - mean).powi(2))
-            .sum::<f64>() / (data.len() - 1) as f64;
-        
+        let variance =
+            data.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / (data.len() - 1) as f64;
+
         (variance / data.len() as f64).sqrt()
     }
 
@@ -232,7 +236,8 @@ impl StatisticalAnalyzer {
             let correlation = self.calculate_correlation(latencies, confidences);
             correlations.insert("latency_confidence".to_string(), correlation);
             r_squared.insert("latency_confidence".to_string(), correlation.powi(2));
-            practical_significance.insert("latency_confidence".to_string(), correlation.abs() > 0.3);
+            practical_significance
+                .insert("latency_confidence".to_string(), correlation.abs() > 0.3);
         }
 
         Ok(EffectSizeAnalysis {
@@ -253,7 +258,9 @@ impl StatisticalAnalyzer {
         let mean_x = x.iter().sum::<f64>() / n;
         let mean_y = y.iter().sum::<f64>() / n;
 
-        let numerator: f64 = x.iter().zip(y.iter())
+        let numerator: f64 = x
+            .iter()
+            .zip(y.iter())
             .map(|(&xi, &yi)| (xi - mean_x) * (yi - mean_y))
             .sum();
 

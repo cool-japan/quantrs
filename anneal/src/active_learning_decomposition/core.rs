@@ -1,12 +1,12 @@
 //! Core active learning decomposer implementation
 
-use std::collections::{HashMap, HashSet};
-use std::time::Instant;
 use ndarray::Array1;
 use rand::{Rng, SeedableRng};
+use std::collections::{HashMap, HashSet};
+use std::time::Instant;
 
-use crate::ising::IsingModel;
 use super::*;
+use crate::ising::IsingModel;
 
 /// Active learning decomposer for optimization problems
 #[derive(Debug, Clone)]

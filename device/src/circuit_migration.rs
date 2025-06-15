@@ -17,31 +17,39 @@ use quantrs2_core::{
 
 // SciRS2 integration for advanced migration optimization
 #[cfg(feature = "scirs2")]
-use scirs2_stats::{mean, std, pearsonr, spearmanr, corrcoef};
-#[cfg(feature = "scirs2")]
-use scirs2_optimize::{minimize, differential_evolution, OptimizeResult};
-#[cfg(feature = "scirs2")]
 use scirs2_graph::{
-    Graph, shortest_path, minimum_spanning_tree, 
-    betweenness_centrality, closeness_centrality
+    betweenness_centrality, closeness_centrality, minimum_spanning_tree, shortest_path, Graph,
 };
+#[cfg(feature = "scirs2")]
+use scirs2_optimize::{differential_evolution, minimize, OptimizeResult};
+#[cfg(feature = "scirs2")]
+use scirs2_stats::{corrcoef, mean, pearsonr, spearmanr, std};
 
 // Fallback implementations
 #[cfg(not(feature = "scirs2"))]
 mod fallback_scirs2 {
     use ndarray::{Array1, Array2};
-    
-    pub fn mean(_data: &Array1<f64>) -> Result<f64, String> { Ok(0.0) }
-    pub fn std(_data: &Array1<f64>, _ddof: i32) -> Result<f64, String> { Ok(1.0) }
-    pub fn pearsonr(_x: &Array1<f64>, _y: &Array1<f64>) -> Result<(f64, f64), String> { Ok((0.0, 0.5)) }
-    
+
+    pub fn mean(_data: &Array1<f64>) -> Result<f64, String> {
+        Ok(0.0)
+    }
+    pub fn std(_data: &Array1<f64>, _ddof: i32) -> Result<f64, String> {
+        Ok(1.0)
+    }
+    pub fn pearsonr(_x: &Array1<f64>, _y: &Array1<f64>) -> Result<(f64, f64), String> {
+        Ok((0.0, 0.5))
+    }
+
     pub struct OptimizeResult {
         pub x: Array1<f64>,
         pub fun: f64,
         pub success: bool,
     }
-    
-    pub fn minimize(_func: fn(&Array1<f64>) -> f64, _x0: &Array1<f64>) -> Result<OptimizeResult, String> {
+
+    pub fn minimize(
+        _func: fn(&Array1<f64>) -> f64,
+        _x0: &Array1<f64>,
+    ) -> Result<OptimizeResult, String> {
         Ok(OptimizeResult {
             x: Array1::zeros(2),
             fun: 0.0,
@@ -57,13 +65,14 @@ use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    backend_traits::{BackendCapabilities, query_backend_capabilities},
+    backend_traits::{query_backend_capabilities, BackendCapabilities},
     calibration::{CalibrationManager, DeviceCalibration},
     // mapping_scirc2::{SciRS2QubitMapper, SciRS2MappingConfig, SciRS2MappingResult}, // Temporarily disabled
     optimization::{CalibrationOptimizer, OptimizationConfig},
     topology::HardwareTopology,
-    translation::{HardwareBackend, GateTranslator},
-    DeviceError, DeviceResult,
+    translation::{GateTranslator, HardwareBackend},
+    DeviceError,
+    DeviceResult,
 };
 
 /// Cross-platform circuit migration configuration
@@ -101,7 +110,7 @@ pub enum MigrationStrategy {
     /// Minimize resource usage
     ResourceOptimized,
     /// Custom strategy with weights
-    Custom { 
+    Custom {
         fidelity_weight: f64,
         time_weight: f64,
         resource_weight: f64,
@@ -541,7 +550,10 @@ impl Default for MigrationConfig {
                     ("fidelity".to_string(), 0.4),
                     ("time".to_string(), 0.3),
                     ("resources".to_string(), 0.3),
-                ].iter().cloned().collect(),
+                ]
+                .iter()
+                .cloned()
+                .collect(),
             },
             mapping_config: MigrationMappingConfig {
                 strategy: MappingStrategy::SciRS2Optimized,
@@ -654,42 +666,48 @@ impl CircuitMigrationEngine {
 
         // Stage 1: Analysis
         let analysis = self.analyze_circuit(circuit, config)?;
-        
+
         // Stage 2: Translation
-        let (translated_circuit, translation_transforms) = 
+        let (translated_circuit, translation_transforms) =
             self.translate_circuit(circuit, config, &analysis).await?;
         transformations.extend(translation_transforms);
 
         // Stage 3: Mapping
-        let (mapped_circuit, mapping_transforms) = 
-            self.map_circuit(&translated_circuit, config, &analysis).await?;
+        let (mapped_circuit, mapping_transforms) = self
+            .map_circuit(&translated_circuit, config, &analysis)
+            .await?;
         transformations.extend(mapping_transforms);
 
         // Stage 4: Optimization
-        let (optimized_circuit, optimization_transforms) = 
-            self.optimize_migrated_circuit(&mapped_circuit, config, &analysis).await?;
+        let (optimized_circuit, optimization_transforms) = self
+            .optimize_migrated_circuit(&mapped_circuit, config, &analysis)
+            .await?;
         transformations.extend(optimization_transforms);
 
         // Stage 5: Validation
         let validation_result = if config.validation_config.enable_validation {
-            Some(self.validate_migration(circuit, &optimized_circuit, config).await?)
+            Some(
+                self.validate_migration(circuit, &optimized_circuit, config)
+                    .await?,
+            )
         } else {
             None
         };
 
         // Stage 6: Metrics calculation
         let metrics = self.calculate_migration_metrics(
-            circuit, 
-            &optimized_circuit, 
+            circuit,
+            &optimized_circuit,
             &transformations,
-            start_time.elapsed()
+            start_time.elapsed(),
         )?;
 
         // Check if migration meets requirements
         let success = self.check_migration_requirements(&metrics, config, &mut warnings)?;
 
         // Record performance
-        self.record_migration_performance(config, start_time.elapsed(), success, &metrics).await?;
+        self.record_migration_performance(config, start_time.elapsed(), success, &metrics)
+            .await?;
 
         Ok(MigrationResult {
             migrated_circuit: optimized_circuit,
@@ -711,7 +729,7 @@ impl CircuitMigrationEngine {
         let gate_analysis = self.analyze_gates(circuit, config)?;
         let connectivity_analysis = self.analyze_connectivity(circuit, config)?;
         let resource_analysis = self.analyze_resources(circuit, config)?;
-        
+
         Ok(CircuitAnalysis {
             gate_analysis,
             connectivity_analysis,
@@ -732,23 +750,44 @@ impl CircuitMigrationEngine {
 
         // Get target platform capabilities
         let target_caps = query_backend_capabilities(config.target_platform.clone());
-        
+
         // Translate gates based on strategy
         match config.translation_config.gate_strategy {
             GateTranslationStrategy::PreferNative => {
-                self.translate_to_native_gates(&mut translated_circuit, &target_caps, &mut transformations)?;
+                self.translate_to_native_gates(
+                    &mut translated_circuit,
+                    &target_caps,
+                    &mut transformations,
+                )?;
             }
             GateTranslationStrategy::MinimizeGates => {
-                self.translate_minimize_gates(&mut translated_circuit, &target_caps, &mut transformations)?;
+                self.translate_minimize_gates(
+                    &mut translated_circuit,
+                    &target_caps,
+                    &mut transformations,
+                )?;
             }
             GateTranslationStrategy::PreserveFidelity => {
-                self.translate_preserve_fidelity(&mut translated_circuit, &target_caps, &mut transformations)?;
+                self.translate_preserve_fidelity(
+                    &mut translated_circuit,
+                    &target_caps,
+                    &mut transformations,
+                )?;
             }
             GateTranslationStrategy::MinimizeDepth => {
-                self.translate_minimize_depth(&mut translated_circuit, &target_caps, &mut transformations)?;
+                self.translate_minimize_depth(
+                    &mut translated_circuit,
+                    &target_caps,
+                    &mut transformations,
+                )?;
             }
             GateTranslationStrategy::CustomPriority(ref priorities) => {
-                self.translate_custom_priority(&mut translated_circuit, &target_caps, priorities, &mut transformations)?;
+                self.translate_custom_priority(
+                    &mut translated_circuit,
+                    &target_caps,
+                    priorities,
+                    &mut transformations,
+                )?;
             }
         }
 
@@ -771,7 +810,7 @@ impl CircuitMigrationEngine {
 
             // Apply the mapping to create new circuit
             // mapped_circuit = self.apply_qubit_mapping(circuit, &mapping_result)?;
-            
+
             transformations.push(AppliedTransformation {
                 transformation_type: TransformationType::QubitMapping,
                 description: "SciRS2 mapping (placeholder)".to_string(),
@@ -787,7 +826,7 @@ impl CircuitMigrationEngine {
             // Use simple mapping strategy
             let simple_mapping = self.create_simple_mapping(circuit, config)?;
             mapped_circuit = self.apply_simple_mapping(circuit, &simple_mapping)?;
-            
+
             transformations.push(AppliedTransformation {
                 transformation_type: TransformationType::QubitMapping,
                 description: "Simple qubit mapping".to_string(),
@@ -817,21 +856,18 @@ impl CircuitMigrationEngine {
         if config.optimization.enable_optimization {
             // Apply optimization passes
             for pass in &config.optimization.optimization_passes {
-                let (new_circuit, pass_transforms) = self.apply_optimization_pass(
-                    &optimized_circuit, 
-                    pass, 
-                    config
-                ).await?;
+                let (new_circuit, pass_transforms) = self
+                    .apply_optimization_pass(&optimized_circuit, pass, config)
+                    .await?;
                 optimized_circuit = new_circuit;
                 transformations.extend(pass_transforms);
             }
 
             // SciRS2-powered multi-objective optimization
             if config.optimization.enable_scirs2_optimization {
-                let (sci_optimized, sci_transforms) = self.apply_scirs2_optimization(
-                    &optimized_circuit,
-                    config
-                ).await?;
+                let (sci_optimized, sci_transforms) = self
+                    .apply_scirs2_optimization(&optimized_circuit, config)
+                    .await?;
                 optimized_circuit = sci_optimized;
                 transformations.extend(sci_transforms);
             }
@@ -848,32 +884,40 @@ impl CircuitMigrationEngine {
         config: &MigrationConfig,
     ) -> DeviceResult<ValidationResult> {
         let mut method_results = HashMap::new();
-        
+
         for method in &config.validation_config.validation_methods {
             let result = match method {
                 ValidationMethod::FunctionalEquivalence => {
-                    self.validate_functional_equivalence(original, migrated).await?
+                    self.validate_functional_equivalence(original, migrated)
+                        .await?
                 }
                 ValidationMethod::StatisticalComparison => {
-                    self.validate_statistical_comparison(original, migrated, config).await?
+                    self.validate_statistical_comparison(original, migrated, config)
+                        .await?
                 }
                 ValidationMethod::FidelityMeasurement => {
-                    self.validate_fidelity_measurement(original, migrated, config).await?
+                    self.validate_fidelity_measurement(original, migrated, config)
+                        .await?
                 }
                 ValidationMethod::ProcessTomography => {
-                    self.validate_process_tomography(original, migrated, config).await?
+                    self.validate_process_tomography(original, migrated, config)
+                        .await?
                 }
                 ValidationMethod::BenchmarkTesting => {
-                    self.validate_benchmark_testing(original, migrated, config).await?
+                    self.validate_benchmark_testing(original, migrated, config)
+                        .await?
                 }
             };
             method_results.insert(method.clone(), result);
         }
 
         let overall_success = method_results.values().all(|r| r.success);
-        let confidence_score = method_results.values().map(|r| r.score).sum::<f64>() / method_results.len() as f64;
+        let confidence_score =
+            method_results.values().map(|r| r.score).sum::<f64>() / method_results.len() as f64;
 
-        let statistical_results = self.perform_statistical_validation(original, migrated, config).await?;
+        let statistical_results = self
+            .perform_statistical_validation(original, migrated, config)
+            .await?;
 
         Ok(ValidationResult {
             overall_success,
@@ -895,11 +939,12 @@ impl CircuitMigrationEngine {
     ) -> DeviceResult<MigrationMetrics> {
         let original_metrics = self.calculate_circuit_metrics(original)?;
         let migrated_metrics = self.calculate_circuit_metrics(migrated)?;
-        
+
         let migration_stats = MigrationStatistics {
             migration_time,
             transformations_applied: transformations.len(),
-            optimization_iterations: transformations.iter()
+            optimization_iterations: transformations
+                .iter()
                 .filter(|t| t.transformation_type == TransformationType::CircuitOptimization)
                 .count(),
             mapping_overhead: self.calculate_mapping_overhead(transformations),
@@ -907,11 +952,15 @@ impl CircuitMigrationEngine {
         };
 
         let performance_comparison = PerformanceComparison {
-            fidelity_change: migrated_metrics.estimated_fidelity - original_metrics.estimated_fidelity,
-            execution_time_change: (migrated_metrics.estimated_execution_time.as_secs_f64() / 
-                                   original_metrics.estimated_execution_time.as_secs_f64()) - 1.0,
+            fidelity_change: migrated_metrics.estimated_fidelity
+                - original_metrics.estimated_fidelity,
+            execution_time_change: (migrated_metrics.estimated_execution_time.as_secs_f64()
+                / original_metrics.estimated_execution_time.as_secs_f64())
+                - 1.0,
             depth_change: (migrated_metrics.depth as f64 / original_metrics.depth as f64) - 1.0,
-            gate_count_change: (migrated_metrics.gate_count as f64 / original_metrics.gate_count as f64) - 1.0,
+            gate_count_change: (migrated_metrics.gate_count as f64
+                / original_metrics.gate_count as f64)
+                - 1.0,
             resource_change: self.calculate_resource_change(&original_metrics, &migrated_metrics),
             quality_score: self.calculate_quality_score(&original_metrics, &migrated_metrics),
         };
@@ -933,7 +982,7 @@ impl CircuitMigrationEngine {
         metrics: &MigrationMetrics,
     ) -> DeviceResult<()> {
         let mut tracker = self.performance_tracker.lock().unwrap();
-        
+
         let record = MigrationPerformanceRecord {
             config: config.clone(),
             execution_time,
@@ -943,16 +992,20 @@ impl CircuitMigrationEngine {
         };
 
         tracker.migration_history.push(record);
-        
+
         // Update statistics
         let total_migrations = tracker.migration_history.len();
-        let successful_migrations = tracker.migration_history.iter()
+        let successful_migrations = tracker
+            .migration_history
+            .iter()
             .filter(|r| r.success)
             .count();
-        
+
         tracker.success_rate = successful_migrations as f64 / total_migrations as f64;
-        
-        let total_time: Duration = tracker.migration_history.iter()
+
+        let total_time: Duration = tracker
+            .migration_history
+            .iter()
             .map(|r| r.execution_time)
             .sum();
         tracker.average_migration_time = total_time / total_migrations as u32;
@@ -961,23 +1014,42 @@ impl CircuitMigrationEngine {
     }
 
     // Placeholder implementations for helper methods
-    fn analyze_gates<const N: usize>(&self, _circuit: &Circuit<N>, _config: &MigrationConfig) -> DeviceResult<GateAnalysis> {
+    fn analyze_gates<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+        _config: &MigrationConfig,
+    ) -> DeviceResult<GateAnalysis> {
         Ok(GateAnalysis::default())
     }
 
-    fn analyze_connectivity<const N: usize>(&self, _circuit: &Circuit<N>, _config: &MigrationConfig) -> DeviceResult<ConnectivityAnalysis> {
+    fn analyze_connectivity<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+        _config: &MigrationConfig,
+    ) -> DeviceResult<ConnectivityAnalysis> {
         Ok(ConnectivityAnalysis::default())
     }
 
-    fn analyze_resources<const N: usize>(&self, _circuit: &Circuit<N>, _config: &MigrationConfig) -> DeviceResult<ResourceAnalysis> {
+    fn analyze_resources<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+        _config: &MigrationConfig,
+    ) -> DeviceResult<ResourceAnalysis> {
         Ok(ResourceAnalysis::default())
     }
 
-    fn calculate_compatibility_score<const N: usize>(&self, _circuit: &Circuit<N>, _config: &MigrationConfig) -> DeviceResult<f64> {
+    fn calculate_compatibility_score<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+        _config: &MigrationConfig,
+    ) -> DeviceResult<f64> {
         Ok(0.85) // Placeholder
     }
 
-    fn calculate_circuit_metrics<const N: usize>(&self, circuit: &Circuit<N>) -> DeviceResult<CircuitMetrics> {
+    fn calculate_circuit_metrics<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+    ) -> DeviceResult<CircuitMetrics> {
         Ok(CircuitMetrics {
             qubit_count: N,
             depth: circuit.calculate_depth(),
@@ -995,36 +1067,151 @@ impl CircuitMigrationEngine {
     }
 
     // Additional helper method placeholders...
-    fn translate_to_native_gates<const N: usize>(&self, _circuit: &mut Circuit<N>, _caps: &BackendCapabilities, _transforms: &mut Vec<AppliedTransformation>) -> DeviceResult<()> { Ok(()) }
-    fn translate_minimize_gates<const N: usize>(&self, _circuit: &mut Circuit<N>, _caps: &BackendCapabilities, _transforms: &mut Vec<AppliedTransformation>) -> DeviceResult<()> { Ok(()) }
-    fn translate_preserve_fidelity<const N: usize>(&self, _circuit: &mut Circuit<N>, _caps: &BackendCapabilities, _transforms: &mut Vec<AppliedTransformation>) -> DeviceResult<()> { Ok(()) }
-    fn translate_minimize_depth<const N: usize>(&self, _circuit: &mut Circuit<N>, _caps: &BackendCapabilities, _transforms: &mut Vec<AppliedTransformation>) -> DeviceResult<()> { Ok(()) }
-    fn translate_custom_priority<const N: usize>(&self, _circuit: &mut Circuit<N>, _caps: &BackendCapabilities, _priorities: &[String], _transforms: &mut Vec<AppliedTransformation>) -> DeviceResult<()> { Ok(()) }
-    
+    fn translate_to_native_gates<const N: usize>(
+        &self,
+        _circuit: &mut Circuit<N>,
+        _caps: &BackendCapabilities,
+        _transforms: &mut Vec<AppliedTransformation>,
+    ) -> DeviceResult<()> {
+        Ok(())
+    }
+    fn translate_minimize_gates<const N: usize>(
+        &self,
+        _circuit: &mut Circuit<N>,
+        _caps: &BackendCapabilities,
+        _transforms: &mut Vec<AppliedTransformation>,
+    ) -> DeviceResult<()> {
+        Ok(())
+    }
+    fn translate_preserve_fidelity<const N: usize>(
+        &self,
+        _circuit: &mut Circuit<N>,
+        _caps: &BackendCapabilities,
+        _transforms: &mut Vec<AppliedTransformation>,
+    ) -> DeviceResult<()> {
+        Ok(())
+    }
+    fn translate_minimize_depth<const N: usize>(
+        &self,
+        _circuit: &mut Circuit<N>,
+        _caps: &BackendCapabilities,
+        _transforms: &mut Vec<AppliedTransformation>,
+    ) -> DeviceResult<()> {
+        Ok(())
+    }
+    fn translate_custom_priority<const N: usize>(
+        &self,
+        _circuit: &mut Circuit<N>,
+        _caps: &BackendCapabilities,
+        _priorities: &[String],
+        _transforms: &mut Vec<AppliedTransformation>,
+    ) -> DeviceResult<()> {
+        Ok(())
+    }
+
     // fn apply_qubit_mapping<const N: usize>(&self, circuit: &Circuit<N>, _mapping: &SciRS2MappingResult) -> DeviceResult<Circuit<N>> { Ok(circuit.clone()) }
-    fn create_simple_mapping<const N: usize>(&self, _circuit: &Circuit<N>, _config: &MigrationConfig) -> DeviceResult<HashMap<QubitId, QubitId>> { Ok(HashMap::new()) }
-    fn apply_simple_mapping<const N: usize>(&self, circuit: &Circuit<N>, _mapping: &HashMap<QubitId, QubitId>) -> DeviceResult<Circuit<N>> { Ok(circuit.clone()) }
-    
-    async fn apply_optimization_pass<const N: usize>(&self, circuit: &Circuit<N>, _pass: &OptimizationPass, _config: &MigrationConfig) -> DeviceResult<(Circuit<N>, Vec<AppliedTransformation>)> { Ok((circuit.clone(), vec![])) }
-    async fn apply_scirs2_optimization<const N: usize>(&self, circuit: &Circuit<N>, _config: &MigrationConfig) -> DeviceResult<(Circuit<N>, Vec<AppliedTransformation>)> { Ok((circuit.clone(), vec![])) }
-    
-    async fn validate_functional_equivalence<const N: usize>(&self, _original: &Circuit<N>, _migrated: &Circuit<N>) -> DeviceResult<ValidationMethodResult> {
-        Ok(ValidationMethodResult { success: true, score: 0.95, details: "Functional equivalence validated".to_string(), p_value: Some(0.01) })
+    fn create_simple_mapping<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+        _config: &MigrationConfig,
+    ) -> DeviceResult<HashMap<QubitId, QubitId>> {
+        Ok(HashMap::new())
     }
-    async fn validate_statistical_comparison<const N: usize>(&self, _original: &Circuit<N>, _migrated: &Circuit<N>, _config: &MigrationConfig) -> DeviceResult<ValidationMethodResult> {
-        Ok(ValidationMethodResult { success: true, score: 0.92, details: "Statistical comparison passed".to_string(), p_value: Some(0.02) })
+    fn apply_simple_mapping<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+        _mapping: &HashMap<QubitId, QubitId>,
+    ) -> DeviceResult<Circuit<N>> {
+        Ok(circuit.clone())
     }
-    async fn validate_fidelity_measurement<const N: usize>(&self, _original: &Circuit<N>, _migrated: &Circuit<N>, _config: &MigrationConfig) -> DeviceResult<ValidationMethodResult> {
-        Ok(ValidationMethodResult { success: true, score: 0.94, details: "Fidelity measurement validated".to_string(), p_value: Some(0.01) })
+
+    async fn apply_optimization_pass<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+        _pass: &OptimizationPass,
+        _config: &MigrationConfig,
+    ) -> DeviceResult<(Circuit<N>, Vec<AppliedTransformation>)> {
+        Ok((circuit.clone(), vec![]))
     }
-    async fn validate_process_tomography<const N: usize>(&self, _original: &Circuit<N>, _migrated: &Circuit<N>, _config: &MigrationConfig) -> DeviceResult<ValidationMethodResult> {
-        Ok(ValidationMethodResult { success: true, score: 0.91, details: "Process tomography validated".to_string(), p_value: Some(0.03) })
+    async fn apply_scirs2_optimization<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+        _config: &MigrationConfig,
+    ) -> DeviceResult<(Circuit<N>, Vec<AppliedTransformation>)> {
+        Ok((circuit.clone(), vec![]))
     }
-    async fn validate_benchmark_testing<const N: usize>(&self, _original: &Circuit<N>, _migrated: &Circuit<N>, _config: &MigrationConfig) -> DeviceResult<ValidationMethodResult> {
-        Ok(ValidationMethodResult { success: true, score: 0.93, details: "Benchmark testing passed".to_string(), p_value: Some(0.02) })
+
+    async fn validate_functional_equivalence<const N: usize>(
+        &self,
+        _original: &Circuit<N>,
+        _migrated: &Circuit<N>,
+    ) -> DeviceResult<ValidationMethodResult> {
+        Ok(ValidationMethodResult {
+            success: true,
+            score: 0.95,
+            details: "Functional equivalence validated".to_string(),
+            p_value: Some(0.01),
+        })
     }
-    
-    async fn perform_statistical_validation<const N: usize>(&self, _original: &Circuit<N>, _migrated: &Circuit<N>, _config: &MigrationConfig) -> DeviceResult<StatisticalValidationResult> {
+    async fn validate_statistical_comparison<const N: usize>(
+        &self,
+        _original: &Circuit<N>,
+        _migrated: &Circuit<N>,
+        _config: &MigrationConfig,
+    ) -> DeviceResult<ValidationMethodResult> {
+        Ok(ValidationMethodResult {
+            success: true,
+            score: 0.92,
+            details: "Statistical comparison passed".to_string(),
+            p_value: Some(0.02),
+        })
+    }
+    async fn validate_fidelity_measurement<const N: usize>(
+        &self,
+        _original: &Circuit<N>,
+        _migrated: &Circuit<N>,
+        _config: &MigrationConfig,
+    ) -> DeviceResult<ValidationMethodResult> {
+        Ok(ValidationMethodResult {
+            success: true,
+            score: 0.94,
+            details: "Fidelity measurement validated".to_string(),
+            p_value: Some(0.01),
+        })
+    }
+    async fn validate_process_tomography<const N: usize>(
+        &self,
+        _original: &Circuit<N>,
+        _migrated: &Circuit<N>,
+        _config: &MigrationConfig,
+    ) -> DeviceResult<ValidationMethodResult> {
+        Ok(ValidationMethodResult {
+            success: true,
+            score: 0.91,
+            details: "Process tomography validated".to_string(),
+            p_value: Some(0.03),
+        })
+    }
+    async fn validate_benchmark_testing<const N: usize>(
+        &self,
+        _original: &Circuit<N>,
+        _migrated: &Circuit<N>,
+        _config: &MigrationConfig,
+    ) -> DeviceResult<ValidationMethodResult> {
+        Ok(ValidationMethodResult {
+            success: true,
+            score: 0.93,
+            details: "Benchmark testing passed".to_string(),
+            p_value: Some(0.02),
+        })
+    }
+
+    async fn perform_statistical_validation<const N: usize>(
+        &self,
+        _original: &Circuit<N>,
+        _migrated: &Circuit<N>,
+        _config: &MigrationConfig,
+    ) -> DeviceResult<StatisticalValidationResult> {
         Ok(StatisticalValidationResult {
             distribution_comparison: DistributionComparison {
                 ks_test_p_value: 0.8,
@@ -1046,34 +1233,46 @@ impl CircuitMigrationEngine {
             },
         })
     }
-    
+
     fn calculate_mapping_overhead(&self, transformations: &[AppliedTransformation]) -> f64 {
-        transformations.iter()
+        transformations
+            .iter()
             .filter(|t| t.transformation_type == TransformationType::QubitMapping)
             .map(|t| t.impact.time_impact.abs())
             .sum()
     }
-    
+
     fn calculate_translation_efficiency(&self, transformations: &[AppliedTransformation]) -> f64 {
-        let translation_transforms = transformations.iter()
+        let translation_transforms = transformations
+            .iter()
             .filter(|t| t.transformation_type == TransformationType::GateTranslation)
             .count();
-        
+
         if translation_transforms > 0 {
             1.0 / (1.0 + translation_transforms as f64 * 0.1)
         } else {
             1.0
         }
     }
-    
-    fn calculate_resource_change(&self, original: &CircuitMetrics, migrated: &CircuitMetrics) -> f64 {
-        let memory_change = migrated.resource_requirements.memory_mb / original.resource_requirements.memory_mb - 1.0;
-        let cpu_change = migrated.resource_requirements.cpu_time.as_secs_f64() / original.resource_requirements.cpu_time.as_secs_f64() - 1.0;
-        let qpu_change = migrated.resource_requirements.qpu_time.as_secs_f64() / original.resource_requirements.qpu_time.as_secs_f64() - 1.0;
-        
+
+    fn calculate_resource_change(
+        &self,
+        original: &CircuitMetrics,
+        migrated: &CircuitMetrics,
+    ) -> f64 {
+        let memory_change = migrated.resource_requirements.memory_mb
+            / original.resource_requirements.memory_mb
+            - 1.0;
+        let cpu_change = migrated.resource_requirements.cpu_time.as_secs_f64()
+            / original.resource_requirements.cpu_time.as_secs_f64()
+            - 1.0;
+        let qpu_change = migrated.resource_requirements.qpu_time.as_secs_f64()
+            / original.resource_requirements.qpu_time.as_secs_f64()
+            - 1.0;
+
         (memory_change + cpu_change + qpu_change) / 3.0
     }
-    
+
     fn calculate_quality_score(&self, original: &CircuitMetrics, migrated: &CircuitMetrics) -> f64 {
         let fidelity_ratio = migrated.estimated_fidelity / original.estimated_fidelity;
         let depth_penalty = if migrated.depth > original.depth {
@@ -1082,14 +1281,17 @@ impl CircuitMigrationEngine {
             1.0
         };
         let gate_penalty = if migrated.gate_count > original.gate_count {
-            1.0 - (migrated.gate_count - original.gate_count) as f64 / original.gate_count as f64 * 0.05
+            1.0 - (migrated.gate_count - original.gate_count) as f64 / original.gate_count as f64
+                * 0.05
         } else {
             1.0
         };
-        
-        (fidelity_ratio * depth_penalty * gate_penalty).min(1.0).max(0.0)
+
+        (fidelity_ratio * depth_penalty * gate_penalty)
+            .min(1.0)
+            .max(0.0)
     }
-    
+
     fn check_migration_requirements(
         &self,
         metrics: &MigrationMetrics,
@@ -1097,49 +1299,55 @@ impl CircuitMigrationEngine {
         warnings: &mut Vec<MigrationWarning>,
     ) -> DeviceResult<bool> {
         let mut success = true;
-        
+
         // Check fidelity requirement
         if let Some(min_fidelity) = config.performance_requirements.min_fidelity {
             if metrics.migrated.estimated_fidelity < min_fidelity {
                 warnings.push(MigrationWarning {
                     warning_type: WarningType::FidelityLoss,
-                    message: format!("Migrated fidelity ({:.3}) below requirement ({:.3})", 
-                                   metrics.migrated.estimated_fidelity, min_fidelity),
+                    message: format!(
+                        "Migrated fidelity ({:.3}) below requirement ({:.3})",
+                        metrics.migrated.estimated_fidelity, min_fidelity
+                    ),
                     severity: WarningSeverity::Error,
-                    suggested_actions: vec!["Adjust migration strategy to preserve fidelity".to_string()],
+                    suggested_actions: vec![
+                        "Adjust migration strategy to preserve fidelity".to_string()
+                    ],
                 });
                 success = false;
             }
         }
-        
+
         // Check depth increase
         if let Some(max_depth_increase) = config.performance_requirements.max_depth_increase {
             if metrics.performance_comparison.depth_change > max_depth_increase {
                 warnings.push(MigrationWarning {
                     warning_type: WarningType::PerformanceDegradation,
-                    message: format!("Circuit depth increased by {:.1}%, exceeding limit of {:.1}%", 
-                                   metrics.performance_comparison.depth_change * 100.0, 
-                                   max_depth_increase * 100.0),
+                    message: format!(
+                        "Circuit depth increased by {:.1}%, exceeding limit of {:.1}%",
+                        metrics.performance_comparison.depth_change * 100.0,
+                        max_depth_increase * 100.0
+                    ),
                     severity: WarningSeverity::Warning,
                     suggested_actions: vec!["Enable depth optimization passes".to_string()],
                 });
             }
         }
-        
+
         // Check gate count increase
         if let Some(max_gate_increase) = config.performance_requirements.max_gate_increase {
             if metrics.performance_comparison.gate_count_change > max_gate_increase {
                 warnings.push(MigrationWarning {
                     warning_type: WarningType::PerformanceDegradation,
                     message: format!("Gate count increased by {:.1}%, exceeding limit of {:.1}%", 
-                                   metrics.performance_comparison.gate_count_change * 100.0, 
+                                   metrics.performance_comparison.gate_count_change * 100.0,
                                    max_gate_increase * 100.0),
                     severity: WarningSeverity::Warning,
                     suggested_actions: vec!["Enable gate reduction optimization passes".to_string()],
                 });
             }
         }
-        
+
         Ok(success)
     }
 }
@@ -1196,9 +1404,13 @@ mod tests {
             time_weight: 0.3,
             resource_weight: 0.2,
         };
-        
+
         match strategy {
-            MigrationStrategy::Custom { fidelity_weight, time_weight, resource_weight } => {
+            MigrationStrategy::Custom {
+                fidelity_weight,
+                time_weight,
+                resource_weight,
+            } => {
                 assert_eq!(fidelity_weight, 0.5);
                 assert_eq!(time_weight, 0.3);
                 assert_eq!(resource_weight, 0.2);
@@ -1232,7 +1444,7 @@ mod tests {
                 network_bandwidth: Some(1.0),
             },
         };
-        
+
         assert_eq!(metrics.qubit_count, 5);
         assert_eq!(metrics.depth, 10);
         assert_eq!(metrics.gate_count, 25);

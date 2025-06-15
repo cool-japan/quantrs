@@ -1,9 +1,9 @@
 //! Distribution analysis components
 
-use std::collections::HashMap;
-use ndarray::Array1;
-use crate::DeviceResult;
 use super::super::results::*;
+use crate::DeviceResult;
+use ndarray::Array1;
+use std::collections::HashMap;
 
 /// Distribution analyzer for measurement data
 pub struct DistributionAnalyzer {
@@ -20,9 +20,7 @@ impl DistributionAnalyzer {
 
     /// Create distribution analyzer with custom confidence level
     pub fn with_confidence_level(confidence_level: f64) -> Self {
-        Self {
-            confidence_level,
-        }
+        Self { confidence_level }
     }
 
     /// Analyze distributions in measurement data
@@ -33,17 +31,18 @@ impl DistributionAnalyzer {
 
         // Fit various distributions
         let best_fit_distributions = self.fit_distributions(values)?;
-        
+
         // Compare distributions
-        let distribution_comparisons = self.compare_distributions(values, &best_fit_distributions)?;
-        
+        let distribution_comparisons =
+            self.compare_distributions(values, &best_fit_distributions)?;
+
         // Fit mixture models if warranted
         let mixture_models = if values.len() > 50 {
             Some(self.fit_mixture_models(values)?)
         } else {
             None
         };
-        
+
         // Assess normality
         let normality_assessment = self.assess_normality(values)?;
 
@@ -85,9 +84,8 @@ impl DistributionAnalyzer {
     /// Fit normal distribution
     fn fit_normal_distribution(&self, values: &[f64]) -> DeviceResult<DistributionFit> {
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance = values.iter()
-            .map(|&x| (x - mean).powi(2))
-            .sum::<f64>() / (values.len() - 1) as f64;
+        let variance =
+            values.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64;
         let std_dev = variance.sqrt();
 
         let parameters = vec![mean, std_dev];
@@ -101,7 +99,8 @@ impl DistributionAnalyzer {
             log_likelihood,
             aic,
             bic,
-            ks_statistic: self.calculate_ks_statistic(values, |x| self.normal_cdf(x, mean, std_dev)),
+            ks_statistic: self
+                .calculate_ks_statistic(values, |x| self.normal_cdf(x, mean, std_dev)),
             ks_p_value: 0.1, // Placeholder
         })
     }
@@ -123,11 +122,12 @@ impl DistributionAnalyzer {
 
         let lambda = 1.0 / (values.iter().sum::<f64>() / values.len() as f64);
         let parameters = vec![lambda];
-        
-        let log_likelihood = values.iter()
+
+        let log_likelihood = values
+            .iter()
             .map(|&x| lambda.ln() - lambda * x)
             .sum::<f64>();
-        
+
         let aic = -2.0 * log_likelihood + 2.0 * parameters.len() as f64;
         let bic = -2.0 * log_likelihood + (parameters.len() as f64) * (values.len() as f64).ln();
 
@@ -146,16 +146,16 @@ impl DistributionAnalyzer {
     fn fit_uniform_distribution(&self, values: &[f64]) -> DeviceResult<DistributionFit> {
         let min_val = values.iter().cloned().fold(f64::INFINITY, f64::min);
         let max_val = values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        
+
         let parameters = vec![min_val, max_val];
         let range = max_val - min_val;
-        
+
         let log_likelihood = if range > 0.0 {
             -(values.len() as f64) * range.ln()
         } else {
             f64::NEG_INFINITY
         };
-        
+
         let aic = -2.0 * log_likelihood + 2.0 * parameters.len() as f64;
         let bic = -2.0 * log_likelihood + (parameters.len() as f64) * (values.len() as f64).ln();
 
@@ -165,7 +165,8 @@ impl DistributionAnalyzer {
             log_likelihood,
             aic,
             bic,
-            ks_statistic: self.calculate_ks_statistic(values, |x| self.uniform_cdf(x, min_val, max_val)),
+            ks_statistic: self
+                .calculate_ks_statistic(values, |x| self.uniform_cdf(x, min_val, max_val)),
             ks_p_value: 0.1, // Placeholder
         })
     }
@@ -185,14 +186,13 @@ impl DistributionAnalyzer {
         }
 
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance = values.iter()
-            .map(|&x| (x - mean).powi(2))
-            .sum::<f64>() / (values.len() - 1) as f64;
+        let variance =
+            values.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64;
 
         // Method of moments estimators
         let scale = variance / mean;
         let shape = mean / scale;
-        
+
         let parameters = vec![shape, scale];
         let log_likelihood = 0.0; // Placeholder - would need gamma function
         let aic = -2.0 * log_likelihood + 2.0 * parameters.len() as f64;
@@ -225,15 +225,14 @@ impl DistributionAnalyzer {
         }
 
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance = values.iter()
-            .map(|&x| (x - mean).powi(2))
-            .sum::<f64>() / (values.len() - 1) as f64;
+        let variance =
+            values.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64;
 
         // Method of moments estimators
         let common_factor = mean * (1.0 - mean) / variance - 1.0;
         let alpha = mean * common_factor;
         let beta = (1.0 - mean) * common_factor;
-        
+
         let parameters = vec![alpha, beta];
         let log_likelihood = 0.0; // Placeholder - would need beta function
         let aic = -2.0 * log_likelihood + 2.0 * parameters.len() as f64;
@@ -259,7 +258,7 @@ impl DistributionAnalyzer {
         let mut comparisons = Vec::new();
 
         let dist_names: Vec<String> = distributions.keys().cloned().collect();
-        
+
         for i in 0..dist_names.len() {
             for j in (i + 1)..dist_names.len() {
                 let dist1 = &distributions[&dist_names[i]];
@@ -304,13 +303,18 @@ impl DistributionAnalyzer {
         // Simple two-component Gaussian mixture (simplified EM algorithm)
         let n = values.len();
         let overall_mean = values.iter().sum::<f64>() / n as f64;
-        let overall_var = values.iter()
+        let overall_var = values
+            .iter()
             .map(|&x| (x - overall_mean).powi(2))
-            .sum::<f64>() / n as f64;
+            .sum::<f64>()
+            / n as f64;
 
         // Initialize two components
         let mut weights = vec![0.5, 0.5];
-        let mut means = vec![overall_mean - overall_var.sqrt(), overall_mean + overall_var.sqrt()];
+        let mut means = vec![
+            overall_mean - overall_var.sqrt(),
+            overall_mean + overall_var.sqrt(),
+        ];
         let mut variances = vec![overall_var / 2.0, overall_var / 2.0];
 
         // Run simplified EM for a few iterations
@@ -335,26 +339,31 @@ impl DistributionAnalyzer {
             for k in 0..2 {
                 let nk: f64 = responsibilities.iter().map(|r| r[k]).sum();
                 weights[k] = nk / n as f64;
-                
+
                 if nk > 0.0 {
-                    means[k] = responsibilities.iter()
+                    means[k] = responsibilities
+                        .iter()
                         .zip(values.iter())
                         .map(|(r, &x)| r[k] * x)
-                        .sum::<f64>() / nk;
-                    
-                    variances[k] = responsibilities.iter()
+                        .sum::<f64>()
+                        / nk;
+
+                    variances[k] = responsibilities
+                        .iter()
                         .zip(values.iter())
                         .map(|(r, &x)| r[k] * (x - means[k]).powi(2))
-                        .sum::<f64>() / nk;
+                        .sum::<f64>()
+                        / nk;
                 }
             }
         }
 
         // Calculate log-likelihood
-        let log_likelihood = values.iter()
+        let log_likelihood = values
+            .iter()
             .map(|&x| {
                 let mixture_prob = weights[0] * self.gaussian_pdf(x, means[0], variances[0].sqrt())
-                                 + weights[1] * self.gaussian_pdf(x, means[1], variances[1].sqrt());
+                    + weights[1] * self.gaussian_pdf(x, means[1], variances[1].sqrt());
                 mixture_prob.ln()
             })
             .sum::<f64>();
@@ -380,19 +389,20 @@ impl DistributionAnalyzer {
     fn assess_normality(&self, values: &[f64]) -> DeviceResult<NormalityAssessment> {
         // Shapiro-Wilk test (simplified)
         let shapiro_wilk = self.shapiro_wilk_test(values)?;
-        
+
         // Anderson-Darling test (simplified)
         let anderson_darling = self.anderson_darling_test(values)?;
-        
+
         // Jarque-Bera test
         let jarque_bera = self.jarque_bera_test(values)?;
 
         // Overall assessment
-        let is_normal = shapiro_wilk.p_value > 0.05 && 
-                       anderson_darling.p_value > 0.05 && 
-                       jarque_bera.p_value > 0.05;
+        let is_normal = shapiro_wilk.p_value > 0.05
+            && anderson_darling.p_value > 0.05
+            && jarque_bera.p_value > 0.05;
 
-        let normality_confidence = (shapiro_wilk.p_value + anderson_darling.p_value + jarque_bera.p_value) / 3.0;
+        let normality_confidence =
+            (shapiro_wilk.p_value + anderson_darling.p_value + jarque_bera.p_value) / 3.0;
 
         Ok(NormalityAssessment {
             shapiro_wilk,
@@ -417,9 +427,8 @@ impl DistributionAnalyzer {
 
         // Simplified calculation - in practice would use proper SW coefficients
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance = values.iter()
-            .map(|&x| (x - mean).powi(2))
-            .sum::<f64>() / values.len() as f64;
+        let variance =
+            values.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
 
         let mut sorted_values = values.to_vec();
         sorted_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -457,7 +466,7 @@ impl DistributionAnalyzer {
 
         let n = values.len() as f64;
         let mean = values.iter().sum::<f64>() / n;
-        
+
         // Calculate moments
         let m2 = values.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / n;
         let m3 = values.iter().map(|&x| (x - mean).powi(3)).sum::<f64>() / n;
@@ -502,7 +511,8 @@ impl DistributionAnalyzer {
 
     /// Calculate normal log-likelihood
     fn calculate_normal_log_likelihood(&self, values: &[f64], mean: f64, std_dev: f64) -> f64 {
-        values.iter()
+        values
+            .iter()
             .map(|&x| {
                 let z = (x - mean) / std_dev;
                 -0.5 * (2.0 * std::f64::consts::PI).ln() - std_dev.ln() - 0.5 * z * z

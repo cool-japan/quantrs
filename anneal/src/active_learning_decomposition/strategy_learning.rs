@@ -1,11 +1,11 @@
 //! Strategy learning components for active learning decomposition
 
+use ndarray::Array1;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use ndarray::Array1;
 
-use crate::ising::IsingModel;
 use super::*;
+use crate::ising::IsingModel;
 
 /// Decomposition strategy learner
 #[derive(Debug, Clone)]

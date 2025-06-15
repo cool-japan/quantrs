@@ -117,7 +117,11 @@ use crate::{
     process_tomography::{SciRS2ProcessTomographer, SciRS2ProcessTomographyConfig},
     topology::HardwareTopology,
     vqa_support::{VQAConfig, VQAExecutor, VQAResult},
-    CircuitExecutor, CircuitResult, DeviceError, DeviceResult, QuantumDevice,
+    CircuitExecutor,
+    CircuitResult,
+    DeviceError,
+    DeviceResult,
+    QuantumDevice,
 };
 
 // Module declarations

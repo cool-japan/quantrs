@@ -142,7 +142,7 @@ impl NoiseAnalyzer {
         let mut analyzer = Self {
             noise_models: HashMap::new(),
         };
-        
+
         // Load common device noise models
         analyzer.load_device_noise_models();
         analyzer
@@ -164,7 +164,9 @@ impl NoiseAnalyzer {
         circuit: &Circuit<N>,
         device: &str,
     ) -> QuantRS2Result<NoiseAnalysisResult> {
-        let noise_model = self.noise_models.get(device)
+        let noise_model = self
+            .noise_models
+            .get(device)
             .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown device: {}", device)))?;
 
         let mut total_error = 0.0;
@@ -191,7 +193,8 @@ impl NoiseAnalyzer {
             crosstalk_error = self.calculate_crosstalk_error(circuit, crosstalk)?;
         }
 
-        let total_fidelity = 1.0 - (total_error + decoherence_error + readout_error + crosstalk_error);
+        let total_fidelity =
+            1.0 - (total_error + decoherence_error + readout_error + crosstalk_error);
 
         Ok(NoiseAnalysisResult {
             total_error: total_error + decoherence_error + readout_error + crosstalk_error,
@@ -201,13 +204,20 @@ impl NoiseAnalyzer {
             readout_error,
             crosstalk_error,
             dominant_error_source: self.identify_dominant_error_source(
-                total_error, decoherence_error, readout_error, crosstalk_error
+                total_error,
+                decoherence_error,
+                readout_error,
+                crosstalk_error,
             ),
         })
     }
 
     /// Calculate error for a single gate
-    fn calculate_gate_error(&self, gate: &dyn GateOp, noise_model: &NoiseModel) -> QuantRS2Result<f64> {
+    fn calculate_gate_error(
+        &self,
+        gate: &dyn GateOp,
+        noise_model: &NoiseModel,
+    ) -> QuantRS2Result<f64> {
         let gate_name = gate.name();
         let qubits = gate.qubits();
 
@@ -217,22 +227,32 @@ impl NoiseAnalyzer {
                     Ok(error.depolarizing + error.amplitude_damping + error.phase_damping)
                 } else {
                     // Use average single-qubit error if specific gate not found
-                    let avg_error = noise_model.single_qubit_errors.values()
+                    let avg_error = noise_model
+                        .single_qubit_errors
+                        .values()
                         .map(|e| e.depolarizing + e.amplitude_damping + e.phase_damping)
-                        .sum::<f64>() / noise_model.single_qubit_errors.len() as f64;
+                        .sum::<f64>()
+                        / noise_model.single_qubit_errors.len() as f64;
                     Ok(avg_error)
                 }
             }
             2 => {
                 if let Some(error) = noise_model.two_qubit_errors.get(gate_name) {
-                    Ok(error.depolarizing + error.amplitude_damping.iter().sum::<f64>() 
-                       + error.phase_damping.iter().sum::<f64>())
+                    Ok(error.depolarizing
+                        + error.amplitude_damping.iter().sum::<f64>()
+                        + error.phase_damping.iter().sum::<f64>())
                 } else {
                     // Use average two-qubit error if specific gate not found
-                    let avg_error = noise_model.two_qubit_errors.values()
-                        .map(|e| e.depolarizing + e.amplitude_damping.iter().sum::<f64>() 
-                             + e.phase_damping.iter().sum::<f64>())
-                        .sum::<f64>() / noise_model.two_qubit_errors.len() as f64;
+                    let avg_error = noise_model
+                        .two_qubit_errors
+                        .values()
+                        .map(|e| {
+                            e.depolarizing
+                                + e.amplitude_damping.iter().sum::<f64>()
+                                + e.phase_damping.iter().sum::<f64>()
+                        })
+                        .sum::<f64>()
+                        / noise_model.two_qubit_errors.len() as f64;
                     Ok(avg_error)
                 }
             }
@@ -256,10 +276,10 @@ impl NoiseAnalyzer {
             if let Some(decoherence) = noise_model.decoherence.get(&qubit_id) {
                 // T1 relaxation error
                 let t1_error = 1.0 - (-total_time / decoherence.t1).exp();
-                
+
                 // T2 dephasing error
                 let t2_error = 1.0 - (-total_time / decoherence.t2).exp();
-                
+
                 total_decoherence += t1_error + t2_error;
             }
         }
@@ -268,7 +288,11 @@ impl NoiseAnalyzer {
     }
 
     /// Estimate total circuit execution time
-    fn estimate_circuit_time<const N: usize>(&self, circuit: &Circuit<N>, noise_model: &NoiseModel) -> f64 {
+    fn estimate_circuit_time<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+        noise_model: &NoiseModel,
+    ) -> f64 {
         let mut total_time = 0.0;
 
         for gate in circuit.gates() {
@@ -276,10 +300,16 @@ impl NoiseAnalyzer {
             let qubits = gate.qubits();
 
             let duration = match qubits.len() {
-                1 => noise_model.single_qubit_errors.get(gate_name)
-                    .map(|e| e.duration).unwrap_or(10.0), // Default 10ns
-                2 => noise_model.two_qubit_errors.get(gate_name)
-                    .map(|e| e.duration).unwrap_or(200.0), // Default 200ns
+                1 => noise_model
+                    .single_qubit_errors
+                    .get(gate_name)
+                    .map(|e| e.duration)
+                    .unwrap_or(10.0), // Default 10ns
+                2 => noise_model
+                    .two_qubit_errors
+                    .get(gate_name)
+                    .map(|e| e.duration)
+                    .unwrap_or(200.0), // Default 200ns
                 _ => 500.0, // Multi-qubit gates take longer
             };
 
@@ -339,7 +369,10 @@ impl NoiseAnalyzer {
         readout_error: f64,
         crosstalk_error: f64,
     ) -> ErrorSource {
-        let max_error = gate_error.max(decoherence_error).max(readout_error).max(crosstalk_error);
+        let max_error = gate_error
+            .max(decoherence_error)
+            .max(readout_error)
+            .max(crosstalk_error);
 
         if max_error == gate_error {
             ErrorSource::GateErrors
@@ -356,10 +389,10 @@ impl NoiseAnalyzer {
     fn load_device_noise_models(&mut self) {
         // IBM Quantum noise model
         self.add_noise_model("ibm_quantum".to_string(), NoiseModel::ibm_quantum());
-        
+
         // Google Quantum AI noise model
         self.add_noise_model("google_quantum".to_string(), NoiseModel::google_quantum());
-        
+
         // AWS Braket noise model
         self.add_noise_model("aws_braket".to_string(), NoiseModel::aws_braket());
     }
@@ -397,58 +430,73 @@ impl NoiseModel {
     /// Create IBM Quantum noise model based on typical device characteristics
     pub fn ibm_quantum() -> Self {
         let mut single_qubit_errors = HashMap::new();
-        
-        // Typical IBM single-qubit gate errors
-        single_qubit_errors.insert("X".to_string(), SingleQubitError {
-            depolarizing: 0.0001,
-            pauli_x: 0.00005,
-            pauli_y: 0.00005,
-            pauli_z: 0.0001,
-            amplitude_damping: 0.0002,
-            phase_damping: 0.0003,
-            duration: 35.0, // nanoseconds
-        });
 
-        single_qubit_errors.insert("RZ".to_string(), SingleQubitError {
-            depolarizing: 0.0,
-            pauli_x: 0.0,
-            pauli_y: 0.0,
-            pauli_z: 0.00001,
-            amplitude_damping: 0.0,
-            phase_damping: 0.00002,
-            duration: 0.0, // Virtual gate
-        });
+        // Typical IBM single-qubit gate errors
+        single_qubit_errors.insert(
+            "X".to_string(),
+            SingleQubitError {
+                depolarizing: 0.0001,
+                pauli_x: 0.00005,
+                pauli_y: 0.00005,
+                pauli_z: 0.0001,
+                amplitude_damping: 0.0002,
+                phase_damping: 0.0003,
+                duration: 35.0, // nanoseconds
+            },
+        );
+
+        single_qubit_errors.insert(
+            "RZ".to_string(),
+            SingleQubitError {
+                depolarizing: 0.0,
+                pauli_x: 0.0,
+                pauli_y: 0.0,
+                pauli_z: 0.00001,
+                amplitude_damping: 0.0,
+                phase_damping: 0.00002,
+                duration: 0.0, // Virtual gate
+            },
+        );
 
         let mut two_qubit_errors = HashMap::new();
-        
+
         // CNOT gate error
-        two_qubit_errors.insert("CNOT".to_string(), TwoQubitError {
-            depolarizing: 0.01,
-            pauli_errors: [[0.0; 4]; 4], // Simplified for now
-            amplitude_damping: [0.002, 0.002],
-            phase_damping: [0.003, 0.003],
-            duration: 300.0, // nanoseconds
-            crosstalk_strength: 0.001,
-        });
+        two_qubit_errors.insert(
+            "CNOT".to_string(),
+            TwoQubitError {
+                depolarizing: 0.01,
+                pauli_errors: [[0.0; 4]; 4], // Simplified for now
+                amplitude_damping: [0.002, 0.002],
+                phase_damping: [0.003, 0.003],
+                duration: 300.0, // nanoseconds
+                crosstalk_strength: 0.001,
+            },
+        );
 
         let mut decoherence = HashMap::new();
         for i in 0..127 {
-            decoherence.insert(i, DecoherenceParams {
-                t1: 100.0, // microseconds
-                t2: 80.0,  // microseconds
-                t2_star: 70.0,
-                temperature: 15.0, // mK
-            });
+            decoherence.insert(
+                i,
+                DecoherenceParams {
+                    t1: 100.0, // microseconds
+                    t2: 80.0,  // microseconds
+                    t2_star: 70.0,
+                    temperature: 15.0, // mK
+                },
+            );
         }
 
         let mut readout_errors = HashMap::new();
         for i in 0..127 {
-            readout_errors.insert(i, ReadoutError {
-                prob_0_to_1: 0.01,
-                prob_1_to_0: 0.02,
-                fidelity: 0.985,
-                duration: 1000.0, // nanoseconds
-            });
+            readout_errors.insert(
+                i,
+                ReadoutError {
+                    prob_0_to_1: 0.01,
+                    prob_1_to_0: 0.02,
+                    fidelity: 0.985,
+                    duration: 1000.0, // nanoseconds
+                },
+            );
         }
 
         Self {
@@ -470,56 +518,71 @@ impl NoiseModel {
     /// Create Google Quantum AI noise model
     pub fn google_quantum() -> Self {
         let mut single_qubit_errors = HashMap::new();
-        
-        single_qubit_errors.insert("RZ".to_string(), SingleQubitError {
-            depolarizing: 0.0,
-            pauli_x: 0.0,
-            pauli_y: 0.0,
-            pauli_z: 0.00001,
-            amplitude_damping: 0.0,
-            phase_damping: 0.00001,
-            duration: 0.0,
-        });
 
-        single_qubit_errors.insert("SQRT_X".to_string(), SingleQubitError {
-            depolarizing: 0.0005,
-            pauli_x: 0.0002,
-            pauli_y: 0.0002,
-            pauli_z: 0.0001,
-            amplitude_damping: 0.0001,
-            phase_damping: 0.0002,
-            duration: 25.0,
-        });
+        single_qubit_errors.insert(
+            "RZ".to_string(),
+            SingleQubitError {
+                depolarizing: 0.0,
+                pauli_x: 0.0,
+                pauli_y: 0.0,
+                pauli_z: 0.00001,
+                amplitude_damping: 0.0,
+                phase_damping: 0.00001,
+                duration: 0.0,
+            },
+        );
+
+        single_qubit_errors.insert(
+            "SQRT_X".to_string(),
+            SingleQubitError {
+                depolarizing: 0.0005,
+                pauli_x: 0.0002,
+                pauli_y: 0.0002,
+                pauli_z: 0.0001,
+                amplitude_damping: 0.0001,
+                phase_damping: 0.0002,
+                duration: 25.0,
+            },
+        );
 
         let mut two_qubit_errors = HashMap::new();
-        
-        two_qubit_errors.insert("CZ".to_string(), TwoQubitError {
-            depolarizing: 0.005,
-            pauli_errors: [[0.0; 4]; 4],
-            amplitude_damping: [0.001, 0.001],
-            phase_damping: [0.002, 0.002],
-            duration: 20.0,
-            crosstalk_strength: 0.0005,
-        });
+
+        two_qubit_errors.insert(
+            "CZ".to_string(),
+            TwoQubitError {
+                depolarizing: 0.005,
+                pauli_errors: [[0.0; 4]; 4],
+                amplitude_damping: [0.001, 0.001],
+                phase_damping: [0.002, 0.002],
+                duration: 20.0,
+                crosstalk_strength: 0.0005,
+            },
+        );
 
         let mut decoherence = HashMap::new();
         for i in 0..70 {
-            decoherence.insert(i, DecoherenceParams {
-                t1: 50.0,
-                t2: 40.0,
-                t2_star: 35.0,
-                temperature: 10.0,
-            });
+            decoherence.insert(
+                i,
+                DecoherenceParams {
+                    t1: 50.0,
+                    t2: 40.0,
+                    t2_star: 35.0,
+                    temperature: 10.0,
+                },
+            );
         }
 
         let mut readout_errors = HashMap::new();
         for i in 0..70 {
-            readout_errors.insert(i, ReadoutError {
-                prob_0_to_1: 0.005,
-                prob_1_to_0: 0.008,
-                fidelity: 0.99,
-                duration: 500.0,
-            });
+            readout_errors.insert(
+                i,
+                ReadoutError {
+                    prob_0_to_1: 0.005,
+                    prob_1_to_0: 0.008,
+                    fidelity: 0.99,
+                    duration: 500.0,
+                },
+            );
         }
 
         Self {
@@ -542,46 +605,58 @@ impl NoiseModel {
     pub fn aws_braket() -> Self {
         // Simplified model that varies by backend
         let mut single_qubit_errors = HashMap::new();
-        
-        single_qubit_errors.insert("RZ".to_string(), SingleQubitError {
-            depolarizing: 0.0001,
-            pauli_x: 0.00005,
-            pauli_y: 0.00005,
-            pauli_z: 0.00002,
-            amplitude_damping: 0.0001,
-            phase_damping: 0.0002,
-            duration: 0.0,
-        });
+
+        single_qubit_errors.insert(
+            "RZ".to_string(),
+            SingleQubitError {
+                depolarizing: 0.0001,
+                pauli_x: 0.00005,
+                pauli_y: 0.00005,
+                pauli_z: 0.00002,
+                amplitude_damping: 0.0001,
+                phase_damping: 0.0002,
+                duration: 0.0,
+            },
+        );
 
         let mut two_qubit_errors = HashMap::new();
-        
-        two_qubit_errors.insert("CNOT".to_string(), TwoQubitError {
-            depolarizing: 0.008,
-            pauli_errors: [[0.0; 4]; 4],
-            amplitude_damping: [0.0015, 0.0015],
-            phase_damping: [0.0025, 0.0025],
-            duration: 200.0,
-            crosstalk_strength: 0.0008,
-        });
+
+        two_qubit_errors.insert(
+            "CNOT".to_string(),
+            TwoQubitError {
+                depolarizing: 0.008,
+                pauli_errors: [[0.0; 4]; 4],
+                amplitude_damping: [0.0015, 0.0015],
+                phase_damping: [0.0025, 0.0025],
+                duration: 200.0,
+                crosstalk_strength: 0.0008,
+            },
+        );
 
         let mut decoherence = HashMap::new();
         for i in 0..100 {
-            decoherence.insert(i, DecoherenceParams {
-                t1: 80.0,
-                t2: 60.0,
-                t2_star: 50.0,
-                temperature: 12.0,
-            });
+            decoherence.insert(
+                i,
+                DecoherenceParams {
+                    t1: 80.0,
+                    t2: 60.0,
+                    t2_star: 50.0,
+                    temperature: 12.0,
+                },
+            );
         }
 
         let mut readout_errors = HashMap::new();
         for i in 0..100 {
-            readout_errors.insert(i, ReadoutError {
-                prob_0_to_1: 0.008,
-                prob_1_to_0: 0.012,
-                fidelity: 0.988,
-                duration: 800.0,
-            });
+            readout_errors.insert(
+                i,
+                ReadoutError {
+                    prob_0_to_1: 0.008,
+                    prob_1_to_0: 0.012,
+                    fidelity: 0.988,
+                    duration: 800.0,
+                },
+            );
         }
 
         Self {
@@ -621,8 +696,8 @@ impl Default for NoiseAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use quantrs2_core::gate::single::Hadamard;
     use quantrs2_core::gate::multi::CNOT;
+    use quantrs2_core::gate::single::Hadamard;
 
     #[test]
     fn test_noise_analyzer_creation() {
@@ -643,9 +718,16 @@ mod tests {
         let analyzer = NoiseAnalyzer::new();
         let mut circuit = Circuit::<2>::new();
         circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(CNOT { control: QubitId(0), target: QubitId(1) }).unwrap();
+        circuit
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .unwrap();
 
-        let result = analyzer.analyze_circuit_noise(&circuit, "ibm_quantum").unwrap();
+        let result = analyzer
+            .analyze_circuit_noise(&circuit, "ibm_quantum")
+            .unwrap();
         assert!(result.total_fidelity > 0.0 && result.total_fidelity < 1.0);
         assert!(!result.gate_errors.is_empty());
     }
@@ -655,7 +737,7 @@ mod tests {
         let analyzer = NoiseAnalyzer::new();
         let model = NoiseModel::ibm_quantum();
         let h_gate = Hadamard { target: QubitId(0) };
-        
+
         let error = analyzer.calculate_gate_error(&h_gate, &model).unwrap();
         assert!(error > 0.0);
     }
@@ -668,7 +750,7 @@ mod tests {
             t2_star: 70.0,
             temperature: 15.0,
         };
-        
+
         assert!(params.t1 > params.t2);
         assert!(params.t2 > params.t2_star);
     }
@@ -681,7 +763,7 @@ mod tests {
             fidelity: 0.985,
             duration: 1000.0,
         };
-        
+
         assert!(error.fidelity < 1.0);
         assert!(error.prob_0_to_1 + error.prob_1_to_0 < 1.0);
     }

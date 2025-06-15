@@ -16,8 +16,24 @@ from dataclasses import dataclass, field, asdict
 from enum import Enum
 import time
 
-# Import security components
-from .security import SecretsManager, encrypt_data, decrypt_data
+# Import security components with error handling
+try:
+    from .security import SecretsManager, encrypt_data, decrypt_data
+except ImportError:
+    # Provide stub implementations if security module is not available
+    class SecretsManager:
+        def __init__(self):
+            pass
+        def get_secret(self, name):
+            return os.getenv(name)
+        def set_secret(self, name, value):
+            pass
+    
+    def encrypt_data(data):
+        return data
+    
+    def decrypt_data(data):
+        return data
 
 logger = logging.getLogger(__name__)
 

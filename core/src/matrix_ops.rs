@@ -308,7 +308,7 @@ fn reconstruct_index(
     trace_idx: usize,
     keep_qubits: &[usize],
     trace_qubits: &[usize],
-    total_qubits: usize,
+    _total_qubits: usize,
 ) -> usize {
     let mut index = 0;
 

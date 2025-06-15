@@ -12,7 +12,7 @@ pub mod reinforcement_learning;
 pub mod training;
 
 use crate::{
-    error::{QuantRS2Result, QuantRS2Error},
+    error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
 };
@@ -252,10 +252,10 @@ pub fn create_entangling_gates(
 /// Compute the quantum Fisher information matrix
 pub fn quantum_fisher_information(
     circuit: &QMLCircuit,
-    state: &Array1<Complex64>,
+    _state: &Array1<Complex64>,
 ) -> QuantRS2Result<Array2<f64>> {
     let num_params = circuit.num_parameters;
-    let mut fisher = Array2::zeros((num_params, num_params));
+    let fisher = Array2::zeros((num_params, num_params));
 
     // Compute Fisher information using parameter shift rule
     // F_ij = 4 * Re(<∂_i ψ | ∂_j ψ> - <∂_i ψ | ψ><ψ | ∂_j ψ>)
@@ -280,7 +280,7 @@ pub fn natural_gradient(
 
     // Solve F * natural_grad = grad using LU decomposition
     // This is a placeholder - would use SciRS2's linear solver when available
-    let grad_array = Array1::from_vec(gradients.to_vec());
+    let _grad_array = Array1::from_vec(gradients.to_vec());
 
     // For now, return the regular gradient
     // In practice, would solve: regularized_fisher * natural_grad = grad

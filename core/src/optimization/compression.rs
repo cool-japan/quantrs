@@ -9,10 +9,10 @@ use crate::{
     matrix_ops::matrices_approx_equal,
     qubit::QubitId,
 };
-use scirs2_optimize::prelude::DifferentialEvolutionOptions;
 use ndarray::{Array2, ArrayView2};
 use num_complex::Complex64;
 use scirs2_linalg::lowrank::{randomized_svd, truncated_svd};
+use scirs2_optimize::prelude::DifferentialEvolutionOptions;
 // Tucker decomposition temporarily disabled due to scirs2-linalg compilation issues
 // use scirs2_linalg::tensor_contraction::tucker::{tucker_decomposition, Tucker};
 use scirs2_optimize::differential_evolution;
@@ -259,7 +259,7 @@ impl GateSequenceCompressor {
     /// Try Tucker decomposition for multi-qubit gates
     fn try_tucker_decomposition(
         &self,
-        matrix: &ArrayView2<Complex64>,
+        _matrix: &ArrayView2<Complex64>,
     ) -> QuantRS2Result<Option<CompressedGate>> {
         // Tucker decomposition temporarily disabled due to scirs2-linalg compilation issues
         // TODO: Re-enable when scirs2-linalg tensor_contraction feature is fixed
@@ -304,7 +304,7 @@ impl GateSequenceCompressor {
         // Clone values needed for the closure to avoid borrowing self
         let target_matrix_clone = target_matrix.clone();
         let gate_type_clone = gate_type.clone();
-        let tolerance = self.config.tolerance;
+        let _tolerance = self.config.tolerance;
 
         // Create objective function
         let objective = move |x: &ndarray::ArrayView1<f64>| -> f64 {
@@ -506,6 +506,7 @@ impl GateSequenceCompressor {
     }
 
     /// Convert tensor data to complex matrix
+    #[allow(dead_code)]
     fn tensor_to_complex_matrix(&self, tensor: &[f64]) -> QuantRS2Result<Array2<Complex64>> {
         let size = (tensor.len() / 2) as f64;
         let dim = size.sqrt() as usize;
@@ -522,6 +523,7 @@ impl GateSequenceCompressor {
     }
 
     /// Convert ArrayD to complex matrix
+    #[allow(dead_code)]
     fn tensor_to_complex_matrix_from_array(
         &self,
         tensor: &ndarray::ArrayD<f64>,
@@ -569,6 +571,7 @@ impl GateSequenceCompressor {
     }
 
     /// Evaluate gate parameters for optimization
+    #[allow(dead_code)]
     fn evaluate_gate_parameters(
         &self,
         target: &Array2<Complex64>,
@@ -587,7 +590,7 @@ impl GateSequenceCompressor {
         diff.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt()
     }
 
-    fn rotation_matrix_from_params(&self, params: &[f64], dim: usize) -> Array2<Complex64> {
+    fn rotation_matrix_from_params(&self, _params: &[f64], dim: usize) -> Array2<Complex64> {
         // Construct rotation matrix from Euler angles
         // This is a placeholder - would need proper implementation
         Array2::eye(dim)
@@ -602,6 +605,7 @@ impl GateSequenceCompressor {
         matrix
     }
 
+    #[allow(dead_code)]
     fn general_matrix_from_params(&self, _params: &[f64], dim: usize) -> Array2<Complex64> {
         // General parameterization - would need proper implementation
         Array2::eye(dim)
@@ -611,7 +615,7 @@ impl GateSequenceCompressor {
     fn try_runtime_compression(&self, gate: &dyn GateOp) -> QuantRS2Result<Option<CompressedGate>> {
         let matrix_vec = gate.matrix()?;
         let n = (matrix_vec.len() as f64).sqrt() as usize;
-        
+
         // Create gate metadata
         let metadata = GateMetadata {
             name: gate.name().to_string(),
@@ -624,10 +628,10 @@ impl GateSequenceCompressor {
 
         // Serialize the matrix to bytes
         let matrix_bytes = self.serialize_matrix(&matrix_vec)?;
-        
+
         // Try different compression algorithms
         let best_compression = self.find_best_compression(&matrix_bytes, &metadata)?;
-        
+
         // Only compress if we achieve significant compression ratio
         if best_compression.compression_ratio < 0.8 {
             Ok(Some(CompressedGate::RuntimeCompressed {
@@ -643,7 +647,8 @@ impl GateSequenceCompressor {
 
     /// Calculate sparsity ratio of a matrix
     fn calculate_sparsity_ratio(&self, matrix: &[Complex64]) -> f64 {
-        let zero_count = matrix.iter()
+        let zero_count = matrix
+            .iter()
             .filter(|&c| c.norm() < self.config.tolerance)
             .count();
         zero_count as f64 / matrix.len() as f64
@@ -656,7 +661,7 @@ impl GateSequenceCompressor {
         if n > 8 {
             return false; // Skip check for large matrices
         }
-        
+
         // Convert to Array2 for easier computation
         let mut u = Array2::zeros((n, n));
         for j in 0..n {
@@ -664,33 +669,37 @@ impl GateSequenceCompressor {
                 u[(i, j)] = matrix[j * n + i];
             }
         }
-        
+
         // Compute U†U
         let u_dagger = u.t().mapv(|c| c.conj());
         let product = u_dagger.dot(&u);
-        
+
         // Check if close to identity
         let identity = Array2::<Complex64>::eye(n);
         let diff = &product - &identity;
         let frobenius_norm: f64 = diff.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
-        
+
         frobenius_norm < self.config.tolerance
     }
 
     /// Serialize matrix to bytes
     fn serialize_matrix(&self, matrix: &[Complex64]) -> QuantRS2Result<Vec<u8>> {
         let mut bytes = Vec::with_capacity(matrix.len() * 16); // 16 bytes per Complex64
-        
+
         for &complex in matrix {
             bytes.extend_from_slice(&complex.re.to_le_bytes());
             bytes.extend_from_slice(&complex.im.to_le_bytes());
         }
-        
+
         Ok(bytes)
     }
 
     /// Find the best compression algorithm for the data
-    fn find_best_compression(&self, data: &[u8], metadata: &GateMetadata) -> QuantRS2Result<CompressionResult> {
+    fn find_best_compression(
+        &self,
+        data: &[u8],
+        metadata: &GateMetadata,
+    ) -> QuantRS2Result<CompressionResult> {
         let mut best_compression = CompressionResult {
             data: data.to_vec(),
             compression_type: CompressionType::None,
@@ -743,14 +752,17 @@ impl GateSequenceCompressor {
         #[cfg(feature = "compression")]
         {
             use std::io::Write;
-            let mut encoder = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
-            encoder.write_all(_data)
-                .map_err(|e| QuantRS2Error::RuntimeError(format!("Zlib compression failed: {}", e)))?;
-            
-            encoder.finish()
+            let mut encoder =
+                flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+            encoder.write_all(_data).map_err(|e| {
+                QuantRS2Error::RuntimeError(format!("Zlib compression failed: {}", e))
+            })?;
+
+            encoder
+                .finish()
                 .map_err(|e| QuantRS2Error::RuntimeError(format!("Zlib compression failed: {}", e)))
         }
-        
+
         #[cfg(not(feature = "compression"))]
         {
             // Fallback: return uncompressed data
@@ -762,19 +774,19 @@ impl GateSequenceCompressor {
     fn compress_lz4(&self, data: &[u8]) -> QuantRS2Result<Vec<u8>> {
         // This is a simplified simulation of LZ4 compression
         // In a real implementation, you would use the lz4 crate
-        
+
         // Simple run-length encoding as a placeholder
         let mut compressed = Vec::new();
         let mut i = 0;
-        
+
         while i < data.len() {
             let byte = data[i];
             let mut count = 1;
-            
+
             while i + count < data.len() && data[i + count] == byte && count < 255 {
                 count += 1;
             }
-            
+
             if count > 3 {
                 // Run-length encode
                 compressed.push(0xFF); // Marker for run-length
@@ -786,31 +798,35 @@ impl GateSequenceCompressor {
                     compressed.push(byte);
                 }
             }
-            
+
             i += count;
         }
-        
+
         Ok(compressed)
     }
 
     /// Quantum-optimized compression for sparse matrices
-    fn compress_quantum_optimized(&self, data: &[u8], metadata: &GateMetadata) -> QuantRS2Result<Vec<u8>> {
+    fn compress_quantum_optimized(
+        &self,
+        data: &[u8],
+        metadata: &GateMetadata,
+    ) -> QuantRS2Result<Vec<u8>> {
         // Custom compression for quantum gate matrices
         let mut compressed = Vec::new();
-        
+
         // Add metadata header
         compressed.extend_from_slice(&(metadata.num_qubits as u32).to_le_bytes());
         compressed.extend_from_slice(&metadata.sparsity_ratio.to_le_bytes());
-        
+
         // For sparse matrices, store only non-zero elements with their indices
         if metadata.sparsity_ratio > 0.5 {
             let complex_data = self.deserialize_matrix_from_bytes(data)?;
-            let n = metadata.matrix_dims.0;
-            
+            let _n = metadata.matrix_dims.0;
+
             // Store as (index, real, imag) triples for non-zero elements
             let mut non_zero_count = 0u32;
             let mut non_zero_data = Vec::new();
-            
+
             for (idx, &complex) in complex_data.iter().enumerate() {
                 if complex.norm() >= self.config.tolerance {
                     non_zero_data.extend_from_slice(&(idx as u32).to_le_bytes());
@@ -819,14 +835,14 @@ impl GateSequenceCompressor {
                     non_zero_count += 1;
                 }
             }
-            
+
             compressed.extend_from_slice(&non_zero_count.to_le_bytes());
             compressed.extend_from_slice(&non_zero_data);
         } else {
             // For dense matrices, use delta encoding
             compressed.extend_from_slice(data);
         }
-        
+
         Ok(compressed)
     }
 
@@ -834,25 +850,24 @@ impl GateSequenceCompressor {
     fn deserialize_matrix_from_bytes(&self, bytes: &[u8]) -> QuantRS2Result<Vec<Complex64>> {
         if bytes.len() % 16 != 0 {
             return Err(QuantRS2Error::InvalidInput(
-                "Invalid byte length for Complex64 array".to_string()
+                "Invalid byte length for Complex64 array".to_string(),
             ));
         }
-        
+
         let mut matrix = Vec::with_capacity(bytes.len() / 16);
-        
+
         for chunk in bytes.chunks_exact(16) {
             let re = f64::from_le_bytes([
-                chunk[0], chunk[1], chunk[2], chunk[3],
-                chunk[4], chunk[5], chunk[6], chunk[7],
+                chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
             ]);
             let im = f64::from_le_bytes([
-                chunk[8], chunk[9], chunk[10], chunk[11],
-                chunk[12], chunk[13], chunk[14], chunk[15],
+                chunk[8], chunk[9], chunk[10], chunk[11], chunk[12], chunk[13], chunk[14],
+                chunk[15],
             ]);
-            
+
             matrix.push(Complex64::new(re, im));
         }
-        
+
         Ok(matrix)
     }
 
@@ -872,10 +887,10 @@ impl GateSequenceCompressor {
                     *original_size,
                     gate_metadata,
                 )?;
-                
+
                 // Deserialize back to matrix
                 let matrix = self.deserialize_matrix_from_bytes(&decompressed_bytes)?;
-                
+
                 // Create a custom gate with the decompressed matrix
                 let n = gate_metadata.matrix_dims.0;
                 let mut matrix_2d = Array2::zeros((n, n));
@@ -884,13 +899,13 @@ impl GateSequenceCompressor {
                         matrix_2d[(i, j)] = matrix[j * n + i];
                     }
                 }
-                
+
                 Ok(Box::new(CustomGate::with_qubits(
                     gate_metadata.name.clone(),
                     matrix_2d,
                     gate_metadata.qubits.clone(),
                 )))
-            },
+            }
             CompressedGate::LowRank { left, right, .. } => {
                 // Reconstruct from low-rank approximation
                 let reconstructed = left.dot(&right.t());
@@ -898,22 +913,24 @@ impl GateSequenceCompressor {
                     "LowRank".to_string(),
                     reconstructed,
                 )))
-            },
-            CompressedGate::Tucker { core, factors } => {
+            }
+            CompressedGate::Tucker { core, factors: _ } => {
                 // Reconstruct from Tucker decomposition
                 // Simplified reconstruction - would need proper tensor contraction
                 Ok(Box::new(CustomGate::new(
                     "Tucker".to_string(),
                     core.clone(),
                 )))
-            },
-            CompressedGate::Parameterized { gate_type, parameters, qubits } => {
+            }
+            CompressedGate::Parameterized {
+                gate_type,
+                parameters,
+                qubits,
+            } => {
                 // Reconstruct parameterized gate
                 self.reconstruct_parameterized_gate(gate_type, parameters, qubits)
-            },
-            CompressedGate::Original(gate) => {
-                Ok(gate.clone_gate())
-            },
+            }
+            CompressedGate::Original(gate) => Ok(gate.clone_gate()),
         }
     }
 
@@ -931,11 +948,11 @@ impl GateSequenceCompressor {
             CompressionType::LZ4 => self.decompress_lz4(compressed_data, original_size),
             CompressionType::QuantumOptimized => {
                 self.decompress_quantum_optimized(compressed_data, metadata)
-            },
+            }
             CompressionType::Huffman => {
                 // Placeholder for Huffman decompression
                 Ok(compressed_data.to_vec())
-            },
+            }
         }
     }
 
@@ -944,16 +961,17 @@ impl GateSequenceCompressor {
         #[cfg(feature = "compression")]
         {
             use std::io::Read;
-            
+
             let mut decoder = flate2::read::ZlibDecoder::new(compressed_data);
             let mut decompressed = Vec::new();
-            
-            decoder.read_to_end(&mut decompressed)
-                .map_err(|e| QuantRS2Error::RuntimeError(format!("Zlib decompression failed: {}", e)))?;
-            
+
+            decoder.read_to_end(&mut decompressed).map_err(|e| {
+                QuantRS2Error::RuntimeError(format!("Zlib decompression failed: {}", e))
+            })?;
+
             Ok(decompressed)
         }
-        
+
         #[cfg(not(feature = "compression"))]
         {
             // Fallback: return compressed data as-is (since we didn't really compress it)
@@ -962,21 +980,25 @@ impl GateSequenceCompressor {
     }
 
     /// Decompress LZ4 data (simulated)
-    fn decompress_lz4(&self, compressed_data: &[u8], original_size: usize) -> QuantRS2Result<Vec<u8>> {
+    fn decompress_lz4(
+        &self,
+        compressed_data: &[u8],
+        original_size: usize,
+    ) -> QuantRS2Result<Vec<u8>> {
         // Reverse of the simple run-length encoding
         let mut decompressed = Vec::with_capacity(original_size);
         let mut i = 0;
-        
+
         while i < compressed_data.len() {
             if compressed_data[i] == 0xFF && i + 2 < compressed_data.len() {
                 // Run-length encoded
                 let count = compressed_data[i + 1] as usize;
                 let byte = compressed_data[i + 2];
-                
+
                 for _ in 0..count {
                     decompressed.push(byte);
                 }
-                
+
                 i += 3;
             } else {
                 // Regular byte
@@ -984,7 +1006,7 @@ impl GateSequenceCompressor {
                 i += 1;
             }
         }
-        
+
         Ok(decompressed)
     }
 
@@ -996,21 +1018,21 @@ impl GateSequenceCompressor {
     ) -> QuantRS2Result<Vec<u8>> {
         if compressed_data.len() < 12 {
             return Err(QuantRS2Error::InvalidInput(
-                "Invalid quantum-optimized compressed data".to_string()
+                "Invalid quantum-optimized compressed data".to_string(),
             ));
         }
-        
+
         let mut cursor = 0;
-        
+
         // Read header
-        let num_qubits = u32::from_le_bytes([
+        let _num_qubits = u32::from_le_bytes([
             compressed_data[cursor],
             compressed_data[cursor + 1],
             compressed_data[cursor + 2],
             compressed_data[cursor + 3],
         ]);
         cursor += 4;
-        
+
         let sparsity_ratio = f64::from_le_bytes([
             compressed_data[cursor],
             compressed_data[cursor + 1],
@@ -1022,7 +1044,7 @@ impl GateSequenceCompressor {
             compressed_data[cursor + 7],
         ]);
         cursor += 8;
-        
+
         if sparsity_ratio > 0.5 {
             // Sparse format: reconstruct from (index, real, imag) triples
             let non_zero_count = u32::from_le_bytes([
@@ -1032,10 +1054,10 @@ impl GateSequenceCompressor {
                 compressed_data[cursor + 3],
             ]);
             cursor += 4;
-            
+
             let matrix_size = metadata.matrix_dims.0 * metadata.matrix_dims.1;
             let mut matrix = vec![Complex64::new(0.0, 0.0); matrix_size];
-            
+
             for _ in 0..non_zero_count {
                 let index = u32::from_le_bytes([
                     compressed_data[cursor],
@@ -1044,7 +1066,7 @@ impl GateSequenceCompressor {
                     compressed_data[cursor + 3],
                 ]) as usize;
                 cursor += 4;
-                
+
                 let re = f64::from_le_bytes([
                     compressed_data[cursor],
                     compressed_data[cursor + 1],
@@ -1056,7 +1078,7 @@ impl GateSequenceCompressor {
                     compressed_data[cursor + 7],
                 ]);
                 cursor += 8;
-                
+
                 let im = f64::from_le_bytes([
                     compressed_data[cursor],
                     compressed_data[cursor + 1],
@@ -1068,12 +1090,12 @@ impl GateSequenceCompressor {
                     compressed_data[cursor + 7],
                 ]);
                 cursor += 8;
-                
+
                 if index < matrix_size {
                     matrix[index] = Complex64::new(re, im);
                 }
             }
-            
+
             // Serialize back to bytes
             self.serialize_matrix(&matrix)
         } else {
@@ -1101,10 +1123,10 @@ impl GateSequenceCompressor {
                     )))
                 } else {
                     Err(QuantRS2Error::InvalidInput(
-                        "Invalid rotation parameters".to_string()
+                        "Invalid rotation parameters".to_string(),
                     ))
                 }
-            },
+            }
             "phase" => {
                 if !parameters.is_empty() && !qubits.is_empty() {
                     let matrix = self.phase_matrix_from_params(parameters, 2);
@@ -1115,10 +1137,10 @@ impl GateSequenceCompressor {
                     )))
                 } else {
                     Err(QuantRS2Error::InvalidInput(
-                        "Invalid phase parameters".to_string()
+                        "Invalid phase parameters".to_string(),
                     ))
                 }
-            },
+            }
             _ => {
                 // General case - create identity for now
                 let dim = 1 << qubits.len();
@@ -1240,7 +1262,9 @@ impl GateSequenceCompressor {
                     stats.parameterized_compressions += 1;
                     stats.total_parameters_after += parameters.len();
                 }
-                CompressedGate::RuntimeCompressed { compressed_data, .. } => {
+                CompressedGate::RuntimeCompressed {
+                    compressed_data, ..
+                } => {
                     // For runtime compressed gates, count the compressed data size
                     stats.total_parameters_after += compressed_data.len();
                 }

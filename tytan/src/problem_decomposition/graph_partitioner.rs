@@ -208,16 +208,24 @@ impl GraphPartitioner {
         // Compute change in edge cut
         for edge in &graph.edges {
             let (u, v) = (edge.from, edge.to);
-            
+
             if u == i || u == j || v == i || v == j {
-                let current_cut = if partition[u] != partition[v] { edge.weight } else { 0.0 };
-                
+                let current_cut = if partition[u] != partition[v] {
+                    edge.weight
+                } else {
+                    0.0
+                };
+
                 // Simulate swap
                 let mut new_partition = partition.to_vec();
                 new_partition[i] = partition[j];
                 new_partition[j] = partition[i];
-                
-                let new_cut = if new_partition[u] != new_partition[v] { edge.weight } else { 0.0 };
+
+                let new_cut = if new_partition[u] != new_partition[v] {
+                    edge.weight
+                } else {
+                    0.0
+                };
                 gain += current_cut - new_cut;
             }
         }
@@ -228,13 +236,13 @@ impl GraphPartitioner {
     /// Spectral partitioning using Laplacian eigenvector
     fn spectral_partition(&self, graph: &Graph) -> Result<Vec<usize>, String> {
         let n = graph.num_nodes;
-        
+
         // Build Laplacian matrix
         let laplacian = self.build_laplacian(graph)?;
-        
+
         // Find second smallest eigenvector (Fiedler vector)
         let fiedler_vector = self.compute_fiedler_vector(&laplacian)?;
-        
+
         // Partition based on sign of Fiedler vector
         let mut partition = vec![0; n];
         for i in 0..n {
@@ -263,7 +271,9 @@ impl GraphPartitioner {
 
         // Add diagonal elements (node degrees)
         for i in 0..n {
-            let degree: f64 = graph.edges.iter()
+            let degree: f64 = graph
+                .edges
+                .iter()
                 .filter(|e| e.from == i || e.to == i)
                 .map(|e| e.weight)
                 .sum();
@@ -276,11 +286,11 @@ impl GraphPartitioner {
     /// Compute Fiedler vector (second smallest eigenvector)
     fn compute_fiedler_vector(&self, laplacian: &Array2<f64>) -> Result<Array1<f64>, String> {
         let n = laplacian.shape()[0];
-        
+
         // Simple power iteration for demonstration
         // In practice, would use proper eigenvalue solver
         let mut vector = Array1::from_vec((0..n).map(|i| (i as f64).sin()).collect());
-        
+
         for _iter in 0..100 {
             // Multiply by Laplacian
             let mut new_vector = Array1::zeros(n);
@@ -289,7 +299,7 @@ impl GraphPartitioner {
                     new_vector[i] += laplacian[[i, j]] * vector[j];
                 }
             }
-            
+
             // Normalize
             let norm = new_vector.mapv(|x: f64| x * x).sum().sqrt();
             if norm > 1e-10 {
@@ -301,7 +311,11 @@ impl GraphPartitioner {
     }
 
     /// Multilevel partitioning with recursion depth tracking
-    fn multilevel_partition_with_depth(&self, graph: &Graph, depth: usize) -> Result<Vec<usize>, String> {
+    fn multilevel_partition_with_depth(
+        &self,
+        graph: &Graph,
+        depth: usize,
+    ) -> Result<Vec<usize>, String> {
         if depth >= self.max_recursion_depth || graph.num_nodes < 10 {
             // Base case: use simple algorithm
             return self.kernighan_lin_partition(graph);
@@ -309,13 +323,13 @@ impl GraphPartitioner {
 
         // Coarsen graph
         let (coarse_graph, mapping) = self.coarsen_graph(graph)?;
-        
+
         // Recursively partition coarse graph
         let coarse_partition = self.multilevel_partition_with_depth(&coarse_graph, depth + 1)?;
-        
+
         // Uncoarsen and refine
         let fine_partition = self.uncoarsen_partition(graph, &coarse_partition, &mapping)?;
-        
+
         Ok(fine_partition)
     }
 
@@ -328,7 +342,7 @@ impl GraphPartitioner {
 
         // Simple coarsening: merge nodes with strong connections
         let mut visited = vec![false; graph.num_nodes];
-        
+
         for i in 0..graph.num_nodes {
             if !visited[i] {
                 let mut cluster_weight = graph.node_weights[i];
@@ -357,7 +371,7 @@ impl GraphPartitioner {
         for edge in &graph.edges {
             let coarse_from = mapping[edge.from];
             let coarse_to = mapping[edge.to];
-            
+
             if coarse_from != coarse_to {
                 *coarse_edges.entry((coarse_from, coarse_to)).or_insert(0.0) += edge.weight;
             }
@@ -368,11 +382,14 @@ impl GraphPartitioner {
             .map(|((from, to), weight)| Edge { from, to, weight })
             .collect();
 
-        Ok((Graph {
-            num_nodes: num_coarse_nodes,
-            edges,
-            node_weights: coarse_weights,
-        }, mapping))
+        Ok((
+            Graph {
+                num_nodes: num_coarse_nodes,
+                edges,
+                node_weights: coarse_weights,
+            },
+            mapping,
+        ))
     }
 
     /// Uncoarsen partition
@@ -394,30 +411,35 @@ impl GraphPartitioner {
     }
 
     /// Refine partition using local search
-    fn refine_partition(&self, graph: &Graph, mut partition: Vec<usize>) -> Result<Vec<usize>, String> {
+    fn refine_partition(
+        &self,
+        graph: &Graph,
+        mut partition: Vec<usize>,
+    ) -> Result<Vec<usize>, String> {
         let max_refinement_iterations = 10;
-        
+
         for _iter in 0..max_refinement_iterations {
             let mut improved = false;
-            
+
             for i in 0..graph.num_nodes {
                 let current_part = partition[i];
                 let mut best_part = current_part;
                 let mut best_gain = 0.0;
-                
+
                 // Try moving to different partitions
                 for new_part in 0..self.num_partitions {
                     if new_part != current_part {
                         partition[i] = new_part;
-                        let gain = self.compute_node_gain(graph, &partition, i, current_part, new_part);
-                        
+                        let gain =
+                            self.compute_node_gain(graph, &partition, i, current_part, new_part);
+
                         if gain > best_gain {
                             best_gain = gain;
                             best_part = new_part;
                         }
                     }
                 }
-                
+
                 if best_part != current_part {
                     partition[i] = best_part;
                     improved = true;
@@ -425,19 +447,26 @@ impl GraphPartitioner {
                     partition[i] = current_part;
                 }
             }
-            
+
             if !improved {
                 break;
             }
         }
-        
+
         Ok(partition)
     }
 
     /// Compute gain from moving a node between partitions
-    fn compute_node_gain(&self, graph: &Graph, partition: &[usize], node: usize, old_part: usize, new_part: usize) -> f64 {
+    fn compute_node_gain(
+        &self,
+        graph: &Graph,
+        partition: &[usize],
+        node: usize,
+        old_part: usize,
+        new_part: usize,
+    ) -> f64 {
         let mut gain = 0.0;
-        
+
         for edge in &graph.edges {
             if edge.from == node {
                 let neighbor_part = partition[edge.to];
@@ -455,12 +484,16 @@ impl GraphPartitioner {
                 }
             }
         }
-        
+
         gain
     }
 
     /// Extend bisection to k-way partition
-    fn extend_to_kway(&self, graph: &Graph, mut partition: Vec<usize>) -> Result<Vec<usize>, String> {
+    fn extend_to_kway(
+        &self,
+        graph: &Graph,
+        mut partition: Vec<usize>,
+    ) -> Result<Vec<usize>, String> {
         if self.num_partitions <= 2 {
             return Ok(partition);
         }
@@ -697,7 +730,7 @@ impl GraphPartitioner {
     /// Compute conductance (ratio of edge cut to smallest partition volume)
     fn compute_conductance(&self, graph: &Graph, partition: &[usize]) -> f64 {
         let edge_cut = self.compute_edge_cut(graph, partition);
-        
+
         let mut part_volumes = vec![0.0; self.num_partitions];
         for edge in &graph.edges {
             part_volumes[partition[edge.from]] += edge.weight;
@@ -705,7 +738,7 @@ impl GraphPartitioner {
         }
 
         let min_volume = part_volumes.iter().cloned().fold(f64::INFINITY, f64::min);
-        
+
         if min_volume > 0.0 {
             edge_cut / min_volume
         } else {

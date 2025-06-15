@@ -16,10 +16,10 @@
 use crate::error::{MLError, Result};
 use ndarray::{Array1, Array2, Array3, Array4, ArrayView1, Axis};
 use num_complex::Complex64;
-use std::collections::HashMap;
-use std::f64::consts::PI;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use std::collections::HashMap;
+use std::f64::consts::PI;
 
 /// Configuration for Quantum Implicit Neural Representations
 #[derive(Debug, Clone)]
@@ -41,17 +41,50 @@ pub struct QuantumINRConfig {
 
 #[derive(Debug, Clone)]
 pub enum SignalType {
-    Image2D { height: usize, width: usize, channels: usize },
-    Image3D { depth: usize, height: usize, width: usize, channels: usize },
-    Audio { sample_rate: usize, channels: usize },
-    Video { frames: usize, height: usize, width: usize, channels: usize },
-    Shape3D { vertices: usize, faces: usize },
-    VolumetricData { resolution: Vec<usize> },
-    SignedDistanceField { bounds: Array2<f64> },
-    Occupancy { resolution: Vec<usize> },
-    Radiance { viewing_directions: bool },
-    LightField { angular_resolution: usize },
-    CustomSignal { input_dim: usize, output_dim: usize },
+    Image2D {
+        height: usize,
+        width: usize,
+        channels: usize,
+    },
+    Image3D {
+        depth: usize,
+        height: usize,
+        width: usize,
+        channels: usize,
+    },
+    Audio {
+        sample_rate: usize,
+        channels: usize,
+    },
+    Video {
+        frames: usize,
+        height: usize,
+        width: usize,
+        channels: usize,
+    },
+    Shape3D {
+        vertices: usize,
+        faces: usize,
+    },
+    VolumetricData {
+        resolution: Vec<usize>,
+    },
+    SignedDistanceField {
+        bounds: Array2<f64>,
+    },
+    Occupancy {
+        resolution: Vec<usize>,
+    },
+    Radiance {
+        viewing_directions: bool,
+    },
+    LightField {
+        angular_resolution: usize,
+    },
+    CustomSignal {
+        input_dim: usize,
+        output_dim: usize,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -61,14 +94,14 @@ pub enum RepresentationMethod {
         layer_config: QuantumLayerConfig,
         skip_connections: Vec<usize>,
     },
-    
+
     /// Quantum SIREN with quantum sinusoidal activations
     QuantumSIREN {
         omega_0: f64,
         omega_hidden: f64,
         quantum_frequency_modulation: bool,
     },
-    
+
     /// Quantum Neural Radiance Fields for 3D scene representation
     QuantumNeRF {
         position_encoding_levels: usize,
@@ -76,28 +109,28 @@ pub enum RepresentationMethod {
         density_activation: QuantumActivation,
         color_activation: QuantumActivation,
     },
-    
+
     /// Quantum Hash Encoding for high-frequency details
     QuantumHashEncoding {
         hash_table_size: usize,
         levels: usize,
         quantum_hash_function: QuantumHashFunction,
     },
-    
+
     /// Quantum Fourier Features for periodic signals
     QuantumFourierFeatures {
         num_frequencies: usize,
         frequency_scale: f64,
         quantum_fourier_basis: bool,
     },
-    
+
     /// Quantum Multi-Resolution Networks
     QuantumMultiRes {
         resolution_levels: Vec<usize>,
         level_weights: Array1<f64>,
         quantum_level_fusion: bool,
     },
-    
+
     /// Quantum Compositional Networks for structured signals
     QuantumCompositional {
         component_networks: Vec<ComponentNetwork>,
@@ -115,8 +148,8 @@ pub struct QuantumLayerConfig {
 
 #[derive(Debug, Clone)]
 pub enum QuantumLayerType {
-    QuantumLinear { 
-        input_dim: usize, 
+    QuantumLinear {
+        input_dim: usize,
         output_dim: usize,
         quantum_weight_encoding: WeightEncodingType,
     },
@@ -208,35 +241,35 @@ pub struct QuantumPositionalEncoding {
 #[derive(Debug, Clone)]
 pub enum PositionalEncodingType {
     /// Standard sinusoidal encoding with quantum enhancement
-    QuantumSinusoidal { 
+    QuantumSinusoidal {
         base_frequency: f64,
         frequency_progression: FrequencyProgression,
     },
-    
+
     /// Quantum Fourier features
     QuantumFourier {
         bandwidth: f64,
         random_features: bool,
     },
-    
+
     /// Hash-based encoding with quantum hash functions
     QuantumHash {
         hash_table_size: usize,
         collision_resolution: CollisionResolution,
     },
-    
+
     /// Learnable quantum embedding
     QuantumLearnable {
         embedding_dim: usize,
         initialization_strategy: InitializationStrategy,
     },
-    
+
     /// Spherical harmonics encoding for 3D data
     QuantumSphericalHarmonics {
         max_degree: usize,
         quantum_coefficients: bool,
     },
-    
+
     /// Multi-scale encoding
     QuantumMultiScale {
         scale_levels: Vec<f64>,
@@ -280,33 +313,36 @@ pub struct QuantumActivationConfig {
 pub enum QuantumActivation {
     /// Quantum SIREN activation with learnable frequencies
     QuantumSiren { omega: f64 },
-    
+
     /// Quantum ReLU with quantum gates
     QuantumReLU { threshold: f64 },
-    
+
     /// Quantum Gaussian activation
     QuantumGaussian { sigma: f64 },
-    
+
     /// Quantum sinusoidal activation
     QuantumSin { frequency: f64, phase: f64 },
-    
+
     /// Quantum polynomial activation
-    QuantumPolynomial { degree: usize, coefficients: Array1<f64> },
-    
+    QuantumPolynomial {
+        degree: usize,
+        coefficients: Array1<f64>,
+    },
+
     /// Quantum exponential linear unit
     QuantumELU { alpha: f64 },
-    
+
     /// Quantum swish activation
     QuantumSwish { beta: f64 },
-    
+
     /// Entanglement-based activation
     EntanglementActivation { entanglement_strength: f64 },
-    
+
     /// Phase-based activation
     PhaseActivation { phase_range: f64 },
-    
+
     /// Superposition activation
-    SuperpositionActivation { 
+    SuperpositionActivation {
         component_activations: Vec<QuantumActivation>,
         weights: Array1<f64>,
     },
@@ -352,25 +388,25 @@ pub enum CompressionMethod {
         sparsity_target: f64,
         pruning_strategy: PruningStrategy,
     },
-    
+
     /// Quantum quantization
     QuantumQuantization {
         bit_width: usize,
         quantization_scheme: QuantizationScheme,
     },
-    
+
     /// Quantum low-rank decomposition
     QuantumLowRank {
         rank_reduction_factor: f64,
         decomposition_method: DecompositionMethod,
     },
-    
+
     /// Quantum knowledge distillation
     QuantumDistillation {
         teacher_config: Box<QuantumINRConfig>,
         distillation_temperature: f64,
     },
-    
+
     /// Quantum neural architecture search for compression
     QuantumNAS {
         search_space: SearchSpace,
@@ -435,25 +471,25 @@ pub enum MetaLearningMethod {
         first_order: bool,
         quantum_gradient_estimation: bool,
     },
-    
+
     /// Quantum Reptile algorithm
     QuantumReptile {
         reptile_step_size: f64,
         quantum_interpolation: bool,
     },
-    
+
     /// Quantum hypernetwork-based meta-learning
     QuantumHyperNetwork {
         hypernetwork_architecture: HyperNetworkArchitecture,
         context_encoding: ContextEncoding,
     },
-    
+
     /// Quantum gradient-based meta-learning
     QuantumGradientBased {
         gradient_steps: usize,
         learned_loss: bool,
     },
-    
+
     /// Quantum memory-augmented meta-learning
     QuantumMemoryAugmented {
         memory_size: usize,
@@ -502,25 +538,25 @@ pub enum QuantumOptimizerType {
         epsilon: f64,
         quantum_momentum: bool,
     },
-    
+
     /// Quantum natural gradient
     QuantumNaturalGradient {
         damping_parameter: f64,
         quantum_fisher_information: bool,
     },
-    
+
     /// Parameter-shift rule optimizer
     ParameterShiftRule {
         shift_value: f64,
         second_order: bool,
     },
-    
+
     /// Quantum annealing optimizer
     QuantumAnnealing {
         temperature_schedule: Array1<f64>,
         annealing_steps: usize,
     },
-    
+
     /// Quantum evolutionary strategy
     QuantumEvolutionStrategy {
         population_size: usize,
@@ -531,11 +567,24 @@ pub enum QuantumOptimizerType {
 
 #[derive(Debug, Clone)]
 pub enum LearningRateSchedule {
-    Constant { rate: f64 },
-    Exponential { initial_rate: f64, decay_rate: f64 },
-    Cosine { max_rate: f64, min_rate: f64, period: usize },
-    Adaptive { adaptation_strategy: AdaptationStrategy },
-    QuantumAdaptive { quantum_feedback: bool },
+    Constant {
+        rate: f64,
+    },
+    Exponential {
+        initial_rate: f64,
+        decay_rate: f64,
+    },
+    Cosine {
+        max_rate: f64,
+        min_rate: f64,
+        period: usize,
+    },
+    Adaptive {
+        adaptation_strategy: AdaptationStrategy,
+    },
+    QuantumAdaptive {
+        quantum_feedback: bool,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -592,28 +641,28 @@ pub enum QuantumConvergenceMetric {
 /// Main Quantum Implicit Neural Representation model
 pub struct QuantumImplicitNeuralRepresentation {
     config: QuantumINRConfig,
-    
+
     // Core network components
     coordinate_network: QuantumCoordinateNetwork,
     positional_encoder: QuantumPositionalEncoder,
-    
+
     // Quantum components
     quantum_layers: Vec<QuantumLayer>,
     quantum_state_manager: QuantumStateManager,
     entanglement_manager: EntanglementManager,
-    
+
     // Meta-learning components
     meta_learner: Option<QuantumMetaLearner>,
     adaptation_parameters: AdaptationParameters,
-    
+
     // Optimization components
     optimizer: QuantumOptimizer,
     gradient_estimator: QuantumGradientEstimator,
-    
+
     // Training state
     training_history: Vec<INRTrainingMetrics>,
     quantum_metrics: QuantumINRMetrics,
-    
+
     // Compression state
     compression_manager: CompressionManager,
     compressed_representation: Option<CompressedRepresentation>,
@@ -1007,34 +1056,34 @@ impl QuantumImplicitNeuralRepresentation {
     /// Create a new Quantum Implicit Neural Representation
     pub fn new(config: QuantumINRConfig) -> Result<Self> {
         println!("🎯 Initializing Quantum Implicit Neural Representation in UltraThink Mode");
-        
+
         // Initialize coordinate network
         let coordinate_network = Self::create_coordinate_network(&config)?;
-        
+
         // Initialize positional encoder
         let positional_encoder = Self::create_positional_encoder(&config)?;
-        
+
         // Initialize quantum layers
         let quantum_layers = Self::create_quantum_layers(&config)?;
-        
+
         // Initialize quantum state management
         let quantum_state_manager = QuantumStateManager::new(&config)?;
         let entanglement_manager = EntanglementManager::new(&config)?;
-        
+
         // Initialize meta-learning components
         let meta_learner = if Self::requires_meta_learning(&config) {
             Some(QuantumMetaLearner::new(&config)?)
         } else {
             None
         };
-        
+
         // Initialize optimization components
         let optimizer = QuantumOptimizer::new(&config)?;
         let gradient_estimator = QuantumGradientEstimator::new(&config)?;
-        
+
         // Initialize compression manager
         let compression_manager = CompressionManager::new(&config)?;
-        
+
         Ok(Self {
             config,
             coordinate_network,
@@ -1052,21 +1101,21 @@ impl QuantumImplicitNeuralRepresentation {
             compressed_representation: None,
         })
     }
-    
+
     /// Query the implicit representation at given coordinates
     pub fn query(&self, coordinates: &Array2<f64>) -> Result<INRQueryOutput> {
         // Encode coordinates with quantum positional encoding
         let encoded_coords = self.positional_encoder.encode(coordinates)?;
-        
+
         // Process through quantum coordinate network
         let network_output = self.coordinate_network.forward(&encoded_coords)?;
-        
+
         // Apply quantum processing through layers
         let quantum_output = self.process_through_quantum_layers(&network_output)?;
-        
+
         // Compute quantum metrics
         let quantum_metrics = self.compute_query_quantum_metrics(&quantum_output)?;
-        
+
         Ok(INRQueryOutput {
             values: quantum_output.values,
             gradients: quantum_output.gradients,
@@ -1074,7 +1123,7 @@ impl QuantumImplicitNeuralRepresentation {
             confidence_estimates: quantum_output.confidence,
         })
     }
-    
+
     /// Fit the representation to training data
     pub fn fit(
         &mut self,
@@ -1083,33 +1132,33 @@ impl QuantumImplicitNeuralRepresentation {
         training_config: &INRTrainingConfig,
     ) -> Result<INRTrainingOutput> {
         println!("🚀 Training Quantum Implicit Neural Representation");
-        
+
         let mut training_losses = Vec::new();
         let mut quantum_metrics_history = Vec::new();
         let mut compression_history = Vec::new();
-        
+
         for epoch in 0..training_config.epochs {
             let epoch_metrics = self.train_epoch(coordinates, values, training_config, epoch)?;
-            
+
             training_losses.push(epoch_metrics.loss);
-            
+
             // Update quantum state and entanglement
             self.update_quantum_states(&epoch_metrics)?;
-            
+
             // Apply adaptive compression if enabled
             if self.config.compression_config.adaptive_compression {
                 let compression_result = self.adaptive_compression(&epoch_metrics)?;
                 compression_history.push(compression_result);
             }
-            
+
             // Meta-learning adaptation if applicable
             if let Some(ref mut meta_learner) = self.meta_learner {
                 meta_learner.adapt(&epoch_metrics, &self.adaptation_parameters)?;
             }
-            
+
             self.training_history.push(epoch_metrics.clone());
             quantum_metrics_history.push(self.quantum_metrics.clone());
-            
+
             // Logging
             if epoch % training_config.log_interval == 0 {
                 println!(
@@ -1122,10 +1171,10 @@ impl QuantumImplicitNeuralRepresentation {
                 );
             }
         }
-        
+
         // Final compression
         let final_compressed = self.compress_representation()?;
-        
+
         Ok(INRTrainingOutput {
             training_losses: training_losses.clone(),
             quantum_metrics_history,
@@ -1135,7 +1184,7 @@ impl QuantumImplicitNeuralRepresentation {
             convergence_analysis: self.analyze_convergence(&training_losses)?,
         })
     }
-    
+
     /// Adapt to new signal with meta-learning
     pub fn adapt_to_signal(
         &mut self,
@@ -1146,27 +1195,22 @@ impl QuantumImplicitNeuralRepresentation {
         if self.meta_learner.is_some() {
             // Extract meta_learner temporarily to avoid double borrow
             let mut meta_learner = self.meta_learner.take().unwrap();
-            let result = meta_learner.fast_adaptation(
-                self,
-                coordinates,
-                values,
-                adaptation_steps,
-            );
+            let result = meta_learner.fast_adaptation(self, coordinates, values, adaptation_steps);
             self.meta_learner = Some(meta_learner);
             result
         } else {
             Err(MLError::ModelCreationError(
-                "Meta-learning not enabled for this model".to_string()
+                "Meta-learning not enabled for this model".to_string(),
             ))
         }
     }
-    
+
     /// Compress the representation
     pub fn compress_representation(&mut self) -> Result<CompressedRepresentation> {
         // Extract needed data to avoid self-borrowing
         let config = self.config.clone();
         let coordinate_network = self.coordinate_network.clone();
-        
+
         // Create temporary representation for compression
         let temp_repr = QuantumImplicitNeuralRepresentation {
             config,
@@ -1184,10 +1228,11 @@ impl QuantumImplicitNeuralRepresentation {
             compression_manager: self.compression_manager.clone(),
             compressed_representation: self.compressed_representation.clone(),
         };
-        
-        self.compression_manager.compress_full_representation(&temp_repr)
+
+        self.compression_manager
+            .compress_full_representation(&temp_repr)
     }
-    
+
     /// Helper method implementations
     fn create_coordinate_network(config: &QuantumINRConfig) -> Result<QuantumCoordinateNetwork> {
         // Implementation for creating quantum coordinate network
@@ -1198,21 +1243,28 @@ impl QuantumImplicitNeuralRepresentation {
             quantum_parameters: Array1::zeros(config.num_qubits * 6),
         })
     }
-    
+
     fn create_positional_encoder(config: &QuantumINRConfig) -> Result<QuantumPositionalEncoder> {
         // Implementation for creating quantum positional encoder
         Ok(QuantumPositionalEncoder {
             encoding_config: config.positional_encoding.clone(),
-            frequency_parameters: Array2::zeros((config.coordinate_dim, config.positional_encoding.num_frequencies)),
-            quantum_frequencies: Array2::<f64>::zeros((config.coordinate_dim, config.positional_encoding.num_frequencies)).mapv(|_: f64| Complex64::new(1.0, 0.0)),
+            frequency_parameters: Array2::zeros((
+                config.coordinate_dim,
+                config.positional_encoding.num_frequencies,
+            )),
+            quantum_frequencies: Array2::<f64>::zeros((
+                config.coordinate_dim,
+                config.positional_encoding.num_frequencies,
+            ))
+            .mapv(|_: f64| Complex64::new(1.0, 0.0)),
             phase_offsets: Array1::zeros(config.positional_encoding.num_frequencies),
             learnable_parameters: Array1::zeros(config.positional_encoding.num_frequencies * 2),
         })
     }
-    
+
     fn create_quantum_layers(config: &QuantumINRConfig) -> Result<Vec<QuantumLayer>> {
         let mut layers = Vec::new();
-        
+
         for layer_id in 0..config.network_depth {
             let layer = QuantumLayer {
                 layer_id,
@@ -1221,7 +1273,8 @@ impl QuantumImplicitNeuralRepresentation {
                     output_dim: config.hidden_dim,
                     quantum_weight_encoding: WeightEncodingType::AmplitudeEncoding,
                 },
-                quantum_weights: Array2::zeros((config.hidden_dim, config.hidden_dim)).mapv(|_: f64| Complex64::new(1.0, 0.0)),
+                quantum_weights: Array2::zeros((config.hidden_dim, config.hidden_dim))
+                    .mapv(|_: f64| Complex64::new(1.0, 0.0)),
                 classical_weights: Array2::zeros((config.hidden_dim, config.hidden_dim)),
                 bias: Array1::zeros(config.hidden_dim),
                 activation: config.activation_config.activation_type.clone(),
@@ -1231,28 +1284,36 @@ impl QuantumImplicitNeuralRepresentation {
             };
             layers.push(layer);
         }
-        
+
         Ok(layers)
     }
-    
+
     fn requires_meta_learning(config: &QuantumINRConfig) -> bool {
-        matches!(config.meta_learning_config.meta_learning_method, 
-                 MetaLearningMethod::QuantumMAML { .. } |
-                 MetaLearningMethod::QuantumReptile { .. } |
-                 MetaLearningMethod::QuantumHyperNetwork { .. } |
-                 MetaLearningMethod::QuantumGradientBased { .. } |
-                 MetaLearningMethod::QuantumMemoryAugmented { .. })
+        matches!(
+            config.meta_learning_config.meta_learning_method,
+            MetaLearningMethod::QuantumMAML { .. }
+                | MetaLearningMethod::QuantumReptile { .. }
+                | MetaLearningMethod::QuantumHyperNetwork { .. }
+                | MetaLearningMethod::QuantumGradientBased { .. }
+                | MetaLearningMethod::QuantumMemoryAugmented { .. }
+        )
     }
-    
+
     // Additional placeholder implementations for brevity
-    fn process_through_quantum_layers(&self, input: &NetworkOutput) -> Result<QuantumProcessingOutput> {
+    fn process_through_quantum_layers(
+        &self,
+        input: &NetworkOutput,
+    ) -> Result<QuantumProcessingOutput> {
         Ok(QuantumProcessingOutput::default())
     }
-    
-    fn compute_query_quantum_metrics(&self, output: &QuantumProcessingOutput) -> Result<QueryQuantumMetrics> {
+
+    fn compute_query_quantum_metrics(
+        &self,
+        output: &QuantumProcessingOutput,
+    ) -> Result<QueryQuantumMetrics> {
         Ok(QueryQuantumMetrics::default())
     }
-    
+
     fn train_epoch(
         &mut self,
         coordinates: &Array2<f64>,
@@ -1273,17 +1334,17 @@ impl QuantumImplicitNeuralRepresentation {
             quantum_advantage_ratio: 2.5,
         })
     }
-    
+
     fn update_quantum_states(&mut self, metrics: &INRTrainingMetrics) -> Result<()> {
         // Update quantum states based on training metrics
         Ok(())
     }
-    
+
     fn adaptive_compression(&mut self, metrics: &INRTrainingMetrics) -> Result<CompressionResult> {
         // Adaptive compression implementation
         Ok(CompressionResult::default())
     }
-    
+
     fn analyze_convergence(&self, losses: &[f64]) -> Result<ConvergenceAnalysis> {
         // Convergence analysis implementation
         Ok(ConvergenceAnalysis::default())
@@ -1337,12 +1398,16 @@ impl QuantumMetaLearner {
             meta_optimizer: QuantumOptimizer::new(config)?,
         })
     }
-    
-    pub fn adapt(&mut self, metrics: &INRTrainingMetrics, params: &AdaptationParameters) -> Result<()> {
+
+    pub fn adapt(
+        &mut self,
+        metrics: &INRTrainingMetrics,
+        params: &AdaptationParameters,
+    ) -> Result<()> {
         // Meta-learning adaptation implementation
         Ok(())
     }
-    
+
     pub fn fast_adaptation(
         &mut self,
         model: &mut QuantumImplicitNeuralRepresentation,
@@ -1413,10 +1478,10 @@ impl CompressionManager {
             },
         })
     }
-    
+
     pub fn compress_full_representation(
         &mut self,
-        model: &QuantumImplicitNeuralRepresentation
+        model: &QuantumImplicitNeuralRepresentation,
     ) -> Result<CompressedRepresentation> {
         // Full compression implementation
         Ok(CompressedRepresentation {
@@ -1431,7 +1496,8 @@ impl CompressionManager {
             },
             reconstruction_instructions: ReconstructionInstructions {
                 decompression_steps: vec![DecompressionStep::QuantumStateReconstruction],
-                quantum_reconstruction_protocol: QuantumReconstructionProtocol::DirectReconstruction,
+                quantum_reconstruction_protocol:
+                    QuantumReconstructionProtocol::DirectReconstruction,
                 verification_checksums: Array1::zeros(10),
             },
             quantum_compression_state: QuantumCompressionState {
@@ -1447,25 +1513,29 @@ impl QuantumPositionalEncoder {
     pub fn encode(&self, coordinates: &Array2<f64>) -> Result<Array2<f64>> {
         match &self.encoding_config.encoding_type {
             PositionalEncodingType::QuantumSinusoidal { base_frequency, .. } => {
-                let mut encoded = Array2::zeros((coordinates.nrows(), self.encoding_config.num_frequencies * coordinates.ncols() * 2));
-                
+                let mut encoded = Array2::zeros((
+                    coordinates.nrows(),
+                    self.encoding_config.num_frequencies * coordinates.ncols() * 2,
+                ));
+
                 for (batch_idx, coord_row) in coordinates.rows().into_iter().enumerate() {
                     for (dim_idx, &coord) in coord_row.iter().enumerate() {
                         for freq_idx in 0..self.encoding_config.num_frequencies {
                             let frequency = base_frequency * 2.0_f64.powi(freq_idx as i32);
                             let phase = self.phase_offsets[freq_idx];
-                            
-                            let sin_idx = (dim_idx * self.encoding_config.num_frequencies + freq_idx) * 2;
+
+                            let sin_idx =
+                                (dim_idx * self.encoding_config.num_frequencies + freq_idx) * 2;
                             let cos_idx = sin_idx + 1;
-                            
+
                             encoded[[batch_idx, sin_idx]] = (coord * frequency + phase).sin();
                             encoded[[batch_idx, cos_idx]] = (coord * frequency + phase).cos();
                         }
                     }
                 }
-                
+
                 Ok(encoded)
-            },
+            }
             _ => {
                 // Simplified fallback
                 Ok(coordinates.clone())
@@ -1605,7 +1675,11 @@ pub struct QuantumAdaptationMetrics {
 impl Default for QuantumINRConfig {
     fn default() -> Self {
         Self {
-            signal_type: SignalType::Image2D { height: 256, width: 256, channels: 3 },
+            signal_type: SignalType::Image2D {
+                height: 256,
+                width: 256,
+                channels: 3,
+            },
             coordinate_dim: 2,
             output_dim: 3,
             num_qubits: 8,
@@ -1733,11 +1807,12 @@ mod tests {
             phase_offsets: Array1::zeros(10),
             learnable_parameters: Array1::zeros(20),
         };
-        
-        let coordinates = Array2::from_shape_vec((4, 2), vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]).unwrap();
+
+        let coordinates =
+            Array2::from_shape_vec((4, 2), vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]).unwrap();
         let result = encoder.encode(&coordinates);
         assert!(result.is_ok());
-        
+
         let encoded = result.unwrap();
         assert_eq!(encoded.nrows(), 4);
         assert_eq!(encoded.ncols(), 40); // 2 * 10 * 2
@@ -1751,14 +1826,16 @@ mod tests {
             ..Default::default()
         };
         let inr = QuantumImplicitNeuralRepresentation::new(config).unwrap();
-        
-        let coordinates = Array2::from_shape_vec((5, 2), vec![
-            0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
-        ]).unwrap();
-        
+
+        let coordinates = Array2::from_shape_vec(
+            (5, 2),
+            vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+        )
+        .unwrap();
+
         let result = inr.query(&coordinates);
         assert!(result.is_ok());
-        
+
         let output = result.unwrap();
         assert_eq!(output.values.nrows(), 5);
     }
@@ -1778,7 +1855,7 @@ mod tests {
             },
             ..Default::default()
         };
-        
+
         let inr = QuantumImplicitNeuralRepresentation::new(config);
         assert!(inr.is_ok());
     }
@@ -1802,7 +1879,7 @@ mod tests {
             },
             ..Default::default()
         };
-        
+
         let inr = QuantumImplicitNeuralRepresentation::new(config);
         assert!(inr.is_ok());
     }
@@ -1810,12 +1887,26 @@ mod tests {
     #[test]
     fn test_signal_type_configurations() {
         let signal_types = vec![
-            SignalType::Audio { sample_rate: 44100, channels: 2 },
-            SignalType::Video { frames: 30, height: 256, width: 256, channels: 3 },
-            SignalType::Shape3D { vertices: 1000, faces: 2000 },
-            SignalType::SignedDistanceField { bounds: Array2::from_shape_vec((3, 2), vec![-1.0, 1.0, -1.0, 1.0, -1.0, 1.0]).unwrap() },
+            SignalType::Audio {
+                sample_rate: 44100,
+                channels: 2,
+            },
+            SignalType::Video {
+                frames: 30,
+                height: 256,
+                width: 256,
+                channels: 3,
+            },
+            SignalType::Shape3D {
+                vertices: 1000,
+                faces: 2000,
+            },
+            SignalType::SignedDistanceField {
+                bounds: Array2::from_shape_vec((3, 2), vec![-1.0, 1.0, -1.0, 1.0, -1.0, 1.0])
+                    .unwrap(),
+            },
         ];
-        
+
         for signal_type in signal_types {
             let config = QuantumINRConfig {
                 signal_type,
@@ -1831,16 +1922,21 @@ mod tests {
         let activations = vec![
             QuantumActivation::QuantumSiren { omega: 30.0 },
             QuantumActivation::QuantumGaussian { sigma: 1.0 },
-            QuantumActivation::EntanglementActivation { entanglement_strength: 0.5 },
+            QuantumActivation::EntanglementActivation {
+                entanglement_strength: 0.5,
+            },
             QuantumActivation::SuperpositionActivation {
                 component_activations: vec![
-                    QuantumActivation::QuantumSin { frequency: 1.0, phase: 0.0 },
+                    QuantumActivation::QuantumSin {
+                        frequency: 1.0,
+                        phase: 0.0,
+                    },
                     QuantumActivation::QuantumReLU { threshold: 0.0 },
                 ],
                 weights: Array1::from_vec(vec![0.5, 0.5]),
             },
         ];
-        
+
         for activation in activations {
             let config = QuantumINRConfig {
                 activation_config: QuantumActivationConfig {

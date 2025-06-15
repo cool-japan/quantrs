@@ -5,9 +5,9 @@
 //! comparative analysis, performance benchmarking, and intelligent provider selection
 //! with SciRS2-powered analytics.
 
-use std::collections::{HashMap, HashSet, BTreeMap};
-use std::sync::{Arc, RwLock, Mutex};
-use std::time::{Duration, SystemTime, Instant};
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::sync::{Arc, Mutex, RwLock};
+use std::time::{Duration, Instant, SystemTime};
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::{broadcast, mpsc};
@@ -23,34 +23,34 @@ use quantrs2_core::{
 // SciRS2 integration for advanced analytics
 #[cfg(feature = "scirs2")]
 use scirs2_stats::{
-    mean, std, var, percentile,
-    distributions::{norm, gamma, chi2},
-    kstest, shapiro_wilk,
-    corrcoef, pearsonr, spearmanr,
-    ttest_ind, wilcoxon,
+    corrcoef,
+    distributions::{chi2, gamma, norm},
+    kstest, mean, pearsonr, percentile, shapiro_wilk, spearmanr, std, ttest_ind, var, wilcoxon,
     Alternative, TTestResult,
 };
 
 #[cfg(feature = "scirs2")]
-use scirs2_optimize::{
-    minimize, differential_evolution,
-    OptimizeResult,
-};
+use scirs2_optimize::{differential_evolution, minimize, OptimizeResult};
 
 #[cfg(feature = "scirs2")]
 use scirs2_graph::{
-    Graph, shortest_path, minimum_spanning_tree,
-    betweenness_centrality, closeness_centrality,
+    betweenness_centrality, closeness_centrality, minimum_spanning_tree, shortest_path, Graph,
 };
 
 // Fallback implementations
 #[cfg(not(feature = "scirs2"))]
 mod fallback_scirs2 {
     use ndarray::{Array1, ArrayView1};
-    
-    pub fn mean(_data: &ArrayView1<f64>) -> Result<f64, String> { Ok(0.0) }
-    pub fn std(_data: &ArrayView1<f64>, _ddof: i32) -> Result<f64, String> { Ok(1.0) }
-    pub fn percentile(_data: &ArrayView1<f64>, _q: f64) -> Result<f64, String> { Ok(0.0) }
+
+    pub fn mean(_data: &ArrayView1<f64>) -> Result<f64, String> {
+        Ok(0.0)
+    }
+    pub fn std(_data: &ArrayView1<f64>, _ddof: i32) -> Result<f64, String> {
+        Ok(1.0)
+    }
+    pub fn percentile(_data: &ArrayView1<f64>, _q: f64) -> Result<f64, String> {
+        Ok(0.0)
+    }
 }
 
 #[cfg(not(feature = "scirs2"))]
@@ -59,11 +59,8 @@ use fallback_scirs2::*;
 use ndarray::{Array1, Array2, ArrayView1};
 
 use crate::{
-    backend_traits::BackendCapabilities,
-    calibration::DeviceCalibration,
-    topology::HardwareTopology,
-    translation::HardwareBackend,
-    DeviceError, DeviceResult,
+    backend_traits::BackendCapabilities, calibration::DeviceCalibration,
+    topology::HardwareTopology, translation::HardwareBackend, DeviceError, DeviceResult,
 };
 
 /// Comprehensive provider capability discovery and management system
@@ -373,7 +370,7 @@ pub enum ComparisonCriterion {
 pub enum RankingAlgorithm {
     WeightedSum,
     TOPSIS,
-    AHP,  // Analytic Hierarchy Process
+    AHP, // Analytic Hierarchy Process
     ELECTRE,
     PROMETHEE,
     MachineLearning,
@@ -1814,10 +1811,10 @@ pub struct VerificationResult {
 pub trait DiscoveryStrategyImpl: Send + Sync {
     /// Execute discovery
     fn discover(&self) -> DeviceResult<Vec<ProviderInfo>>;
-    
+
     /// Get strategy name
     fn name(&self) -> &str;
-    
+
     /// Check if strategy is available
     fn is_available(&self) -> bool;
 }
@@ -1825,8 +1822,12 @@ pub trait DiscoveryStrategyImpl: Send + Sync {
 /// Verification strategy implementation trait
 pub trait VerificationStrategyImpl: Send + Sync {
     /// Verify provider capabilities
-    fn verify(&self, provider_id: &str, capabilities: &ProviderCapabilities) -> DeviceResult<VerificationResult>;
-    
+    fn verify(
+        &self,
+        provider_id: &str,
+        capabilities: &ProviderCapabilities,
+    ) -> DeviceResult<VerificationResult>;
+
     /// Get strategy name
     fn name(&self) -> &str;
 }
@@ -1834,8 +1835,12 @@ pub trait VerificationStrategyImpl: Send + Sync {
 /// Ranking algorithm implementation trait
 pub trait RankingAlgorithmImpl: Send + Sync {
     /// Rank providers
-    fn rank(&self, providers: &[ProviderInfo], criteria: &[ComparisonCriterion]) -> DeviceResult<Vec<ProviderRanking>>;
-    
+    fn rank(
+        &self,
+        providers: &[ProviderInfo],
+        criteria: &[ComparisonCriterion],
+    ) -> DeviceResult<Vec<ProviderRanking>>;
+
     /// Get algorithm name
     fn name(&self) -> &str;
 }
@@ -1933,9 +1938,15 @@ impl ProviderCapabilityDiscoverySystem {
             providers: Arc::new(RwLock::new(HashMap::new())),
             capability_cache: Arc::new(RwLock::new(HashMap::new())),
             discovery_engine: Arc::new(RwLock::new(CapabilityDiscoveryEngine::new())),
-            analytics: Arc::new(RwLock::new(CapabilityAnalytics::new(config.analytics_config.clone()))),
-            comparison_engine: Arc::new(RwLock::new(ProviderComparisonEngine::new(config.comparison_config.clone()))),
-            monitor: Arc::new(RwLock::new(CapabilityMonitor::new(config.monitoring_config.clone()))),
+            analytics: Arc::new(RwLock::new(CapabilityAnalytics::new(
+                config.analytics_config.clone(),
+            ))),
+            comparison_engine: Arc::new(RwLock::new(ProviderComparisonEngine::new(
+                config.comparison_config.clone(),
+            ))),
+            monitor: Arc::new(RwLock::new(CapabilityMonitor::new(
+                config.monitoring_config.clone(),
+            ))),
             event_sender,
             command_receiver: Arc::new(Mutex::new(command_receiver)),
         }
@@ -1965,7 +1976,10 @@ impl ProviderCapabilityDiscoverySystem {
     }
 
     /// Get provider capabilities
-    pub async fn get_provider_capabilities(&self, provider_id: &str) -> DeviceResult<Option<ProviderCapabilities>> {
+    pub async fn get_provider_capabilities(
+        &self,
+        provider_id: &str,
+    ) -> DeviceResult<Option<ProviderCapabilities>> {
         // Check cache first
         {
             let cache = self.capability_cache.read().unwrap();
@@ -1986,16 +2000,27 @@ impl ProviderCapabilityDiscoverySystem {
     }
 
     /// Compare providers
-    pub async fn compare_providers(&self, provider_ids: &[String], criteria: &[ComparisonCriterion]) -> DeviceResult<ComparisonResults> {
+    pub async fn compare_providers(
+        &self,
+        provider_ids: &[String],
+        criteria: &[ComparisonCriterion],
+    ) -> DeviceResult<ComparisonResults> {
         let comparison_engine = self.comparison_engine.read().unwrap();
-        comparison_engine.compare_providers(provider_ids, criteria).await
+        comparison_engine
+            .compare_providers(provider_ids, criteria)
+            .await
     }
 
     /// Get provider recommendations
-    pub async fn get_recommendations(&self, requirements: &CapabilityRequirements) -> DeviceResult<Vec<ProviderRecommendation>> {
+    pub async fn get_recommendations(
+        &self,
+        requirements: &CapabilityRequirements,
+    ) -> DeviceResult<Vec<ProviderRecommendation>> {
         let providers = self.discover_providers().await?;
         let filtered_providers = self.filter_providers(&providers, requirements)?;
-        let recommendations = self.generate_recommendations(&filtered_providers, requirements).await?;
+        let recommendations = self
+            .generate_recommendations(&filtered_providers, requirements)
+            .await?;
         Ok(recommendations)
     }
 
@@ -2016,7 +2041,10 @@ impl ProviderCapabilityDiscoverySystem {
         Ok(())
     }
 
-    async fn discover_provider_capabilities(&self, provider_id: &str) -> DeviceResult<Option<ProviderCapabilities>> {
+    async fn discover_provider_capabilities(
+        &self,
+        provider_id: &str,
+    ) -> DeviceResult<Option<ProviderCapabilities>> {
         // Implementation would discover actual capabilities
         // For now, return a mock capability
         Ok(Some(ProviderCapabilities {
@@ -2266,7 +2294,11 @@ impl ProviderCapabilityDiscoverySystem {
         }))
     }
 
-    async fn cache_capabilities(&self, provider_id: &str, capabilities: ProviderCapabilities) -> DeviceResult<()> {
+    async fn cache_capabilities(
+        &self,
+        provider_id: &str,
+        capabilities: ProviderCapabilities,
+    ) -> DeviceResult<()> {
         let mut cache = self.capability_cache.write().unwrap();
         let cached_capability = CachedCapability {
             provider_id: provider_id.to_string(),
@@ -2280,12 +2312,20 @@ impl ProviderCapabilityDiscoverySystem {
         Ok(())
     }
 
-    fn filter_providers(&self, providers: &[ProviderInfo], requirements: &CapabilityRequirements) -> DeviceResult<Vec<ProviderInfo>> {
+    fn filter_providers(
+        &self,
+        providers: &[ProviderInfo],
+        requirements: &CapabilityRequirements,
+    ) -> DeviceResult<Vec<ProviderInfo>> {
         // Implementation would filter providers based on requirements
         Ok(providers.to_vec())
     }
 
-    async fn generate_recommendations(&self, providers: &[ProviderInfo], requirements: &CapabilityRequirements) -> DeviceResult<Vec<ProviderRecommendation>> {
+    async fn generate_recommendations(
+        &self,
+        providers: &[ProviderInfo],
+        requirements: &CapabilityRequirements,
+    ) -> DeviceResult<Vec<ProviderRecommendation>> {
         // Implementation would generate intelligent recommendations
         Ok(Vec::new())
     }
@@ -2328,7 +2368,11 @@ impl ProviderComparisonEngine {
         }
     }
 
-    async fn compare_providers(&self, provider_ids: &[String], criteria: &[ComparisonCriterion]) -> DeviceResult<ComparisonResults> {
+    async fn compare_providers(
+        &self,
+        provider_ids: &[String],
+        criteria: &[ComparisonCriterion],
+    ) -> DeviceResult<ComparisonResults> {
         // Implementation would perform comprehensive comparison
         Ok(ComparisonResults {
             rankings: Vec::new(),
@@ -2402,12 +2446,18 @@ pub fn create_high_performance_discovery_config() -> DiscoveryConfig {
             min_requirements: CapabilityRequirements {
                 min_qubits: Some(5),
                 max_error_rate: Some(0.05),
-                required_gates: ["H", "CNOT", "RZ", "RY", "RX"].iter().map(|s| s.to_string()).collect(),
+                required_gates: ["H", "CNOT", "RZ", "RY", "RX"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect(),
                 required_connectivity: Some(ConnectivityRequirement::MinimumDegree(2)),
                 required_features: [
                     ProviderFeature::QuantumComputing,
                     ProviderFeature::NoiseModeling,
-                ].iter().cloned().collect(),
+                ]
+                .iter()
+                .cloned()
+                .collect(),
                 performance_requirements: PerformanceRequirements {
                     max_execution_time: Some(Duration::from_secs(300)),
                     min_throughput: Some(50.0),
@@ -2443,7 +2493,10 @@ pub fn create_high_performance_discovery_config() -> DiscoveryConfig {
                 ("availability".to_string(), 0.95),
                 ("error_rate".to_string(), 0.05),
                 ("response_time".to_string(), 5000.0),
-            ].iter().cloned().collect(),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
             enable_anomaly_detection: true,
             anomaly_sensitivity: 0.9,
         },
@@ -2469,7 +2522,10 @@ pub fn create_high_performance_discovery_config() -> DiscoveryConfig {
                 ("availability".to_string(), 0.15),
                 ("features".to_string(), 0.1),
                 ("security".to_string(), 0.05),
-            ].iter().cloned().collect(),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
             enable_multidimensional_analysis: true,
         },
     }
@@ -2533,7 +2589,10 @@ mod tests {
             max_error_rate: Some(0.01),
             required_gates: ["H", "CNOT"].iter().map(|s| s.to_string()).collect(),
             required_connectivity: Some(ConnectivityRequirement::FullyConnected),
-            required_features: [ProviderFeature::QuantumComputing].iter().cloned().collect(),
+            required_features: [ProviderFeature::QuantumComputing]
+                .iter()
+                .cloned()
+                .collect(),
             performance_requirements: PerformanceRequirements {
                 max_execution_time: Some(Duration::from_secs(300)),
                 min_throughput: Some(100.0),
@@ -2545,7 +2604,9 @@ mod tests {
 
         assert_eq!(requirements.min_qubits, Some(5));
         assert_eq!(requirements.max_error_rate, Some(0.01));
-        assert!(requirements.required_features.contains(&ProviderFeature::QuantumComputing));
+        assert!(requirements
+            .required_features
+            .contains(&ProviderFeature::QuantumComputing));
     }
 
     #[test]
@@ -2559,7 +2620,10 @@ mod tests {
     fn test_high_performance_config() {
         let config = create_high_performance_discovery_config();
         assert_eq!(config.discovery_interval, 1800);
-        assert_eq!(config.analytics_config.analysis_depth, AnalysisDepth::Comprehensive);
+        assert_eq!(
+            config.analytics_config.analysis_depth,
+            AnalysisDepth::Comprehensive
+        );
         assert_eq!(config.verification_config.min_verification_confidence, 0.9);
     }
 
@@ -2567,7 +2631,7 @@ mod tests {
     async fn test_discovery_system_start() {
         let config = DiscoveryConfig::default();
         let system = ProviderCapabilityDiscoverySystem::new(config);
-        
+
         let start_result = system.start().await;
         assert!(start_result.is_ok());
     }

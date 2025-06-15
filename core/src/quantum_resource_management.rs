@@ -3,16 +3,15 @@
 //! Revolutionary quantum operating system with advanced resource allocation,
 //! coherence-aware scheduling, and multi-level quantum resource management.
 
+#![allow(dead_code)]
+
 use crate::error::QuantRS2Error;
 
 use crate::qubit::QubitId;
-use num_complex::Complex64;
-use ndarray::{Array1, Array2};
-use std::collections::{HashMap, VecDeque, BinaryHeap, BTreeMap};
-use std::sync::{Arc, RwLock, Mutex, Condvar};
-use std::time::{Duration, Instant, SystemTime};
 use std::cmp::Ordering;
-use std::thread;
+use std::collections::{BinaryHeap, HashMap, VecDeque};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant, SystemTime};
 
 /// Advanced Quantum Resource Management System
 #[derive(Debug)]
@@ -345,29 +344,33 @@ impl QuantumResourceManager {
         optimization_level: OptimizationLevel,
     ) -> Result<AdvancedSchedulingResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Analyze workload characteristics
-        let workload_analysis = self.workload_optimizer.analyze_workload(&processes)?;
-        
+        let _workload_analysis = self.workload_optimizer.analyze_workload(&processes)?;
+
         // Predict resource requirements
         let resource_predictions = self.resource_allocator.predict_resource_usage(&processes)?;
-        
+
         // Optimize scheduling based on coherence requirements
-        let coherence_optimized_schedule = self.coherence_manager
+        let coherence_optimized_schedule = self
+            .coherence_manager
             .optimize_for_coherence(&processes, &resource_predictions)?;
-        
+
         // Apply advanced scheduling algorithms
-        let optimized_schedule = self.quantum_scheduler
+        let optimized_schedule = self
+            .quantum_scheduler
             .apply_multi_level_scheduling(&coherence_optimized_schedule, optimization_level)?;
-        
+
         // Execute dynamic load balancing
-        let balanced_schedule = self.load_balancer
+        let balanced_schedule = self
+            .load_balancer
             .balance_quantum_workload(&optimized_schedule)?;
-        
+
         // Monitor execution performance
-        let execution_metrics = self.performance_monitor
+        let execution_metrics = self
+            .performance_monitor
             .monitor_execution(&balanced_schedule)?;
-        
+
         Ok(AdvancedSchedulingResult {
             schedule_id: Self::generate_id(),
             total_processes: processes.len(),
@@ -383,31 +386,30 @@ impl QuantumResourceManager {
     /// Demonstrate advanced quantum resource management advantages
     pub fn demonstrate_resource_management_advantages(&mut self) -> QuantumResourceAdvantageReport {
         let mut report = QuantumResourceAdvantageReport::new();
-        
+
         // Benchmark scheduling efficiency
         report.scheduling_efficiency = self.benchmark_scheduling_efficiency();
-        
+
         // Benchmark resource utilization
         report.resource_utilization_efficiency = self.benchmark_resource_utilization();
-        
+
         // Benchmark coherence preservation
         report.coherence_preservation_advantage = self.benchmark_coherence_preservation();
-        
+
         // Benchmark fault tolerance
         report.fault_tolerance_improvement = self.benchmark_fault_tolerance();
-        
+
         // Benchmark scalability
         report.scalability_advantage = self.benchmark_scalability();
-        
+
         // Calculate overall quantum resource management advantage
-        report.overall_advantage = (
-            report.scheduling_efficiency +
-            report.resource_utilization_efficiency +
-            report.coherence_preservation_advantage +
-            report.fault_tolerance_improvement +
-            report.scalability_advantage
-        ) / 5.0;
-        
+        report.overall_advantage = (report.scheduling_efficiency
+            + report.resource_utilization_efficiency
+            + report.coherence_preservation_advantage
+            + report.fault_tolerance_improvement
+            + report.scalability_advantage)
+            / 5.0;
+
         report
     }
 
@@ -415,7 +417,7 @@ impl QuantumResourceManager {
     fn generate_id() -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         SystemTime::now().hash(&mut hasher);
         hasher.finish()
@@ -499,10 +501,19 @@ impl QuantumResourceAllocator {
         }
     }
 
-    pub fn predict_resource_usage(&self, processes: &[QuantumProcess]) -> Result<ResourcePredictions, QuantRS2Error> {
+    pub fn predict_resource_usage(
+        &self,
+        processes: &[QuantumProcess],
+    ) -> Result<ResourcePredictions, QuantRS2Error> {
         Ok(ResourcePredictions {
-            predicted_qubit_usage: processes.iter().map(|p| p.quantum_requirements.required_qubits).sum(),
-            predicted_memory_usage: processes.iter().map(|p| p.quantum_requirements.required_memory).sum(),
+            predicted_qubit_usage: processes
+                .iter()
+                .map(|p| p.quantum_requirements.required_qubits)
+                .sum(),
+            predicted_memory_usage: processes
+                .iter()
+                .map(|p| p.quantum_requirements.required_memory)
+                .sum(),
             predicted_execution_time: Duration::from_secs(processes.len() as u64 * 10),
             confidence_level: 0.95,
         })
@@ -513,7 +524,9 @@ impl QuantumResourcePool {
     pub fn new() -> Self {
         Self {
             total_qubits: 10000, // Large quantum computer
-            available_qubits: (0..10000).map(|i| QubitResource::new(QubitId::new(i as u32))).collect(),
+            available_qubits: (0..10000)
+                .map(|i| QubitResource::new(QubitId::new(i as u32)))
+                .collect(),
             quantum_memory_pool: QuantumMemoryPool::new(),
             classical_compute_pool: ClassicalComputePool::new(),
             network_resources: NetworkResourcePool::new(),
@@ -572,7 +585,10 @@ impl QuantumWorkloadOptimizer {
         }
     }
 
-    pub fn analyze_workload(&self, processes: &[QuantumProcess]) -> Result<WorkloadAnalysis, QuantRS2Error> {
+    pub fn analyze_workload(
+        &self,
+        processes: &[QuantumProcess],
+    ) -> Result<WorkloadAnalysis, QuantRS2Error> {
         Ok(WorkloadAnalysis {
             total_processes: processes.len(),
             workload_complexity: 0.8,
@@ -655,8 +671,7 @@ pub struct ClassicalComputePool;
 pub struct NetworkResourcePool;
 #[derive(Debug)]
 pub struct SpecializedResourcePool;
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct MaintenanceSchedule;
 #[derive(Debug)]
 pub struct DecoherencePredictor;
@@ -704,55 +719,81 @@ pub struct WorkloadAnalysis {
     pub resource_intensity: f64,
     pub parallelization_potential: f64,
 }
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ProcessMetrics;
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SecurityContext;
 
 // Implementation of placeholder structures
 impl ResourceAwareScheduler {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl CoherenceAwareScheduler {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl PriorityQuantumScheduler {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl RealTimeQuantumScheduler {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl DistributedQuantumScheduler {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl SchedulerMetrics {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl AllocationHistory {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl ResourcePredictor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl ResourceContentionResolver {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl QuantumMemoryPool {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl ClassicalComputePool {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl NetworkResourcePool {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl SpecializedResourcePool {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl MaintenanceSchedule {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl CoherenceMonitor {
     pub fn new() -> Self {
@@ -765,33 +806,54 @@ impl CoherenceMonitor {
     }
 }
 impl DecoherencePredictor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl CoherenceOptimizer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl AdaptiveCoherenceScheduler {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl DecoherenceTracking {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl FidelityMonitoring {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl WorkloadAnalyzer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl ResourceUsagePredictor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl PerformanceOptimizer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl ResourcePerformanceMonitor {
-    pub fn new() -> Self { Self }
-    
-    pub fn monitor_execution(&self, _schedule: &OptimizedSchedule) -> Result<ExecutionMetrics, QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn monitor_execution(
+        &self,
+        _schedule: &OptimizedSchedule,
+    ) -> Result<ExecutionMetrics, QuantRS2Error> {
         Ok(ExecutionMetrics {
             resource_efficiency: 0.95,
             coherence_preservation: 0.92,
@@ -801,12 +863,19 @@ impl ResourcePerformanceMonitor {
     }
 }
 impl QuantumResourceSecurity {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl QuantumLoadBalancer {
-    pub fn new() -> Self { Self }
-    
-    pub fn balance_quantum_workload(&self, schedule: &OptimizedSchedule) -> Result<OptimizedSchedule, QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn balance_quantum_workload(
+        &self,
+        schedule: &OptimizedSchedule,
+    ) -> Result<OptimizedSchedule, QuantRS2Error> {
         Ok(OptimizedSchedule {
             schedule_id: schedule.schedule_id,
             processes: schedule.processes.clone(),
@@ -817,7 +886,9 @@ impl QuantumLoadBalancer {
     }
 }
 impl QuantumFaultHandler {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 #[derive(Debug)]
@@ -862,57 +933,55 @@ mod tests {
     #[test]
     fn test_advanced_scheduling() {
         let mut manager = QuantumResourceManager::new();
-        let processes = vec![
-            QuantumProcess {
-                process_id: 1,
-                process_type: QuantumProcessType::QuantumCircuitExecution,
-                priority: ProcessPriority::High,
-                quantum_requirements: QuantumRequirements {
-                    required_qubits: 100,
-                    required_gates: 1000,
-                    required_measurements: 50,
-                    required_memory: 1024,
-                    required_classical_compute: 1.0,
-                    required_entanglement_pairs: 50,
-                    required_fidelity: 0.99,
-                    quantum_volume_requirement: 64.0,
+        let processes = vec![QuantumProcess {
+            process_id: 1,
+            process_type: QuantumProcessType::QuantumCircuitExecution,
+            priority: ProcessPriority::High,
+            quantum_requirements: QuantumRequirements {
+                required_qubits: 100,
+                required_gates: 1000,
+                required_measurements: 50,
+                required_memory: 1024,
+                required_classical_compute: 1.0,
+                required_entanglement_pairs: 50,
+                required_fidelity: 0.99,
+                quantum_volume_requirement: 64.0,
+            },
+            coherence_requirements: CoherenceRequirements {
+                min_coherence_time: Duration::from_millis(100),
+                max_decoherence_rate: 0.01,
+                required_gate_fidelity: 0.999,
+                coherence_budget: 0.95,
+                error_rate_threshold: 0.001,
+            },
+            resource_allocation: ResourceAllocation {
+                allocated_qubits: vec![],
+                allocated_memory: MemoryAllocation {
+                    quantum_memory: 1024,
+                    classical_memory: 2048,
+                    cache_memory: 512,
+                    persistent_storage: 4096,
+                    memory_type: MemoryType::HighCoherence,
                 },
-                coherence_requirements: CoherenceRequirements {
-                    min_coherence_time: Duration::from_millis(100),
-                    max_decoherence_rate: 0.01,
-                    required_gate_fidelity: 0.999,
-                    coherence_budget: 0.95,
-                    error_rate_threshold: 0.001,
+                allocated_compute: ComputeAllocation {
+                    quantum_gates_per_second: 1000.0,
+                    classical_flops: 1e9,
+                    parallel_threads: 8,
+                    gpu_allocation: None,
                 },
-                resource_allocation: ResourceAllocation {
-                    allocated_qubits: vec![],
-                    allocated_memory: MemoryAllocation {
-                        quantum_memory: 1024,
-                        classical_memory: 2048,
-                        cache_memory: 512,
-                        persistent_storage: 4096,
-                        memory_type: MemoryType::HighCoherence,
-                    },
-                    allocated_compute: ComputeAllocation {
-                        quantum_gates_per_second: 1000.0,
-                        classical_flops: 1e9,
-                        parallel_threads: 8,
-                        gpu_allocation: None,
-                    },
-                    allocated_bandwidth: 1000.0,
-                    allocation_timestamp: Instant::now(),
-                    allocation_duration: Duration::from_secs(10),
-                    exclusive_access: false,
-                },
-                execution_state: ProcessExecutionState::Created,
-                performance_metrics: ProcessMetrics,
-                security_context: SecurityContext,
-                creation_time: Instant::now(),
-                deadline: None,
-                estimated_execution_time: Duration::from_secs(10),
-                actual_execution_time: Duration::from_secs(0),
-            }
-        ];
+                allocated_bandwidth: 1000.0,
+                allocation_timestamp: Instant::now(),
+                allocation_duration: Duration::from_secs(10),
+                exclusive_access: false,
+            },
+            execution_state: ProcessExecutionState::Created,
+            performance_metrics: ProcessMetrics,
+            security_context: SecurityContext,
+            creation_time: Instant::now(),
+            deadline: None,
+            estimated_execution_time: Duration::from_secs(10),
+            actual_execution_time: Duration::from_secs(0),
+        }];
 
         let result = manager.execute_advanced_scheduling(processes, OptimizationLevel::Advanced);
         assert!(result.is_ok());
@@ -927,7 +996,7 @@ mod tests {
     fn test_resource_management_advantages() {
         let mut manager = QuantumResourceManager::new();
         let report = manager.demonstrate_resource_management_advantages();
-        
+
         // All advantages should demonstrate quantum superiority
         assert!(report.scheduling_efficiency > 1.0);
         assert!(report.resource_utilization_efficiency > 1.0);
@@ -949,11 +1018,14 @@ mod tests {
         let pool = QuantumResourcePool::new();
         assert_eq!(pool.total_qubits, 10000);
         assert_eq!(pool.available_qubits.len(), 10000);
-        
+
         // Check that qubits are properly initialized
         for (i, qubit) in pool.available_qubits.iter().take(10).enumerate() {
             assert_eq!(qubit.qubit_id, QubitId::new(i as u32));
-            assert!(matches!(qubit.allocation_status, AllocationStatus::Available));
+            assert!(matches!(
+                qubit.allocation_status,
+                AllocationStatus::Available
+            ));
             assert!(matches!(qubit.current_state, QubitState::Idle));
         }
     }

@@ -553,25 +553,26 @@ impl SciRS2SpectralAnalyzer {
         let energy_min = energy_range.0;
         let energy_max = energy_range.1;
         let energy_step = (energy_max - energy_min) / (num_energy_points - 1) as f64;
-        
+
         let mut energy_grid = Vec::new();
         let mut density = Vec::new();
-        
+
         for i in 0..num_energy_points {
             let energy = energy_min + i as f64 * energy_step;
             energy_grid.push(energy);
-            
+
             // Count energy eigenvalues within a small window around this energy
             let window = energy_step * 2.0; // Use 2x step size as window
-            let count = all_energies.iter()
+            let count = all_energies
+                .iter()
                 .filter(|&&e| (e - energy).abs() < window)
                 .count() as f64;
-            
+
             // Normalize by window size and number of k-points for proper density
             let dos_value = count / (window * k_path.len() as f64);
             density.push(dos_value);
         }
-        
+
         // Calculate integrated DOS
         let mut integrated_dos = Vec::new();
         let mut integral = 0.0;
@@ -579,10 +580,10 @@ impl SciRS2SpectralAnalyzer {
             integral += dos_val * energy_step;
             integrated_dos.push(integral);
         }
-        
+
         // Placeholder for local DOS (would need more sophisticated calculation)
         let local_dos = Array2::zeros((all_energies.len().min(50), num_energy_points));
-        
+
         let dos = SpectralDensityResult {
             energy_grid,
             density,
@@ -593,21 +594,21 @@ impl SciRS2SpectralAnalyzer {
 
         // Calculate effective masses using numerical second derivative
         let mut effective_masses = Vec::new();
-        
+
         for band in 0..num_bands {
             let mut band_effective_masses = Vec::new();
-            
+
             // Calculate effective mass for each k-segment
             for k_idx in 1..k_path.len() - 1 {
                 let e_prev = energy_bands[[k_idx - 1, band]];
                 let e_curr = energy_bands[[k_idx, band]];
                 let e_next = energy_bands[[k_idx + 1, band]];
-                
+
                 // Numerical second derivative: d²E/dk² ≈ (E(k+dk) - 2E(k) + E(k-dk)) / dk²
                 // Assuming uniform k-spacing
                 let dk = 0.1; // Approximate k-spacing in units of π/a
                 let second_derivative = (e_next - 2.0 * e_curr + e_prev) / (dk * dk);
-                
+
                 // Effective mass: m* = ħ² / (d²E/dk²)
                 // Using atomic units where ħ = 1
                 let effective_mass = if second_derivative.abs() > 1e-10 {
@@ -615,17 +616,17 @@ impl SciRS2SpectralAnalyzer {
                 } else {
                     f64::INFINITY // Flat band
                 };
-                
+
                 band_effective_masses.push(effective_mass);
             }
-            
+
             // Average effective mass for this band
             let avg_effective_mass = if band_effective_masses.is_empty() {
                 1.0 // Default for single k-point
             } else {
                 band_effective_masses.iter().sum::<f64>() / band_effective_masses.len() as f64
             };
-            
+
             effective_masses.push(avg_effective_mass);
         }
 
@@ -759,35 +760,42 @@ impl SciRS2SpectralAnalyzer {
         let max_time_steps = 100;
         let max_time = 10.0 * level_spacing_mean; // Time in units of mean level spacing
         let dt = max_time / max_time_steps as f64;
-        
+
         let mut spectral_form_factor = Vec::new();
         let mut thouless_time = 1.0 / level_spacing_mean; // Default fallback
-        
+
         for t_idx in 0..max_time_steps {
             let t = t_idx as f64 * dt;
-            
+
             // Calculate form factor K(t) = |∑ᵢ exp(iEᵢt)|² / N
             let mut sum_exp = Complex64::new(0.0, 0.0);
             for &energy in eigenvalues {
                 let phase = energy * t;
                 sum_exp += Complex64::new(phase.cos(), phase.sin());
             }
-            
+
             let form_factor_value = sum_exp.norm_sqr() / eigenvalues.len() as f64;
             spectral_form_factor.push(Complex64::new(form_factor_value, 0.0));
-            
+
             // Find Thouless time as the time when form factor transitions from ramp to plateau
             if t_idx >= 5 && t_idx < spectral_form_factor.len().saturating_sub(5) {
                 // Check if we're transitioning from linear ramp to plateau
                 let prev_values: Vec<f64> = spectral_form_factor[t_idx.saturating_sub(5)..t_idx]
-                    .iter().map(|c| c.re).collect();
-                let next_values: Vec<f64> = spectral_form_factor[t_idx..(t_idx+5).min(spectral_form_factor.len())]
-                    .iter().map(|c| c.re).collect();
-                
+                    .iter()
+                    .map(|c| c.re)
+                    .collect();
+                let next_values: Vec<f64> = spectral_form_factor
+                    [t_idx..(t_idx + 5).min(spectral_form_factor.len())]
+                    .iter()
+                    .map(|c| c.re)
+                    .collect();
+
                 // Calculate slopes
-                let prev_slope = (prev_values.last().unwrap() - prev_values.first().unwrap()) / (5.0 * dt);
-                let next_slope = (next_values.last().unwrap() - next_values.first().unwrap()) / (5.0 * dt);
-                
+                let prev_slope =
+                    (prev_values.last().unwrap() - prev_values.first().unwrap()) / (5.0 * dt);
+                let next_slope =
+                    (next_values.last().unwrap() - next_values.first().unwrap()) / (5.0 * dt);
+
                 // Detect plateau (slope change from positive to near zero)
                 if prev_slope > 0.1 && next_slope.abs() < 0.05 && t > dt * 5.0 {
                     thouless_time = t;
@@ -941,43 +949,45 @@ impl SciRS2SpectralAnalyzer {
         // For small matrices, implement simplified power iteration for dominant eigenvalue
         if n <= 8 {
             let mut eigenvalues = Vec::new();
-            
+
             // Power iteration to find largest eigenvalue
             let mut x = Array1::from_vec(vec![Complex64::new(1.0, 0.0); n]);
             let max_iterations = 100;
             let tolerance = 1e-10;
-            
+
             for _ in 0..max_iterations {
                 // x = A * x
                 let new_x = matrix.dot(&x);
-                
+
                 // Normalize
                 let norm = new_x.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
                 if norm < tolerance {
                     break;
                 }
-                
+
                 for (old, new) in x.iter_mut().zip(new_x.iter()) {
                     *old = *new / norm;
                 }
             }
-            
+
             // Compute Rayleigh quotient: λ = x†Ax / x†x
             let ax = matrix.dot(&x);
-            let numerator: Complex64 = x.iter().zip(ax.iter())
+            let numerator: Complex64 = x
+                .iter()
+                .zip(ax.iter())
                 .map(|(xi, axi)| xi.conj() * axi)
                 .sum();
             let denominator: f64 = x.iter().map(|xi| xi.norm_sqr()).sum();
-            
+
             if denominator > tolerance {
                 eigenvalues.push(numerator.re / denominator);
             }
-            
+
             // For small matrices, estimate remaining eigenvalues using trace and determinant
             if n == 2 {
                 let trace = matrix[[0, 0]].re + matrix[[1, 1]].re;
                 let det = (matrix[[0, 0]] * matrix[[1, 1]] - matrix[[0, 1]] * matrix[[1, 0]]).re;
-                
+
                 // Solve characteristic polynomial: λ² - trace*λ + det = 0
                 let discriminant = trace * trace - 4.0 * det;
                 if discriminant >= 0.0 {
@@ -987,15 +997,17 @@ impl SciRS2SpectralAnalyzer {
                     eigenvalues.push((trace - sqrt_disc) / 2.0);
                 }
             }
-            
+
             // If no eigenvalues computed, fall back to diagonal elements with warning
             if eigenvalues.is_empty() {
-                eprintln!("Warning: Failed to compute eigenvalues properly, using diagonal approximation");
+                eprintln!(
+                    "Warning: Failed to compute eigenvalues properly, using diagonal approximation"
+                );
                 for i in 0..n {
                     eigenvalues.push(matrix[[i, i]].re);
                 }
             }
-            
+
             eigenvalues.sort_by(|a, b| b.partial_cmp(a).unwrap());
             Ok(eigenvalues)
         } else {

@@ -12,10 +12,10 @@
 use crate::error::{MLError, Result};
 use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
 use num_complex::Complex64;
-use std::collections::HashMap;
-use std::f64::consts::PI;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use std::collections::HashMap;
+use std::f64::consts::PI;
 
 /// Configuration for Quantum Self-Supervised Learning
 #[derive(Debug, Clone)]
@@ -43,49 +43,49 @@ pub enum QuantumSSLMethod {
         negative_sampling_strategy: NegativeSamplingStrategy,
         quantum_projection_head: QuantumProjectionHead,
     },
-    
+
     /// Quantum Masked Learning (language/image modeling)
     QuantumMasked {
         masking_strategy: QuantumMaskingStrategy,
         reconstruction_objective: ReconstructionObjective,
         quantum_encoder_decoder: QuantumEncoderDecoder,
     },
-    
+
     /// Quantum SimCLR - Simple Contrastive Learning
     QuantumSimCLR {
         batch_size: usize,
         augmentation_strength: f64,
         quantum_projector: QuantumProjector,
     },
-    
+
     /// Quantum SimSiam - Simple Siamese Networks
     QuantumSimSiam {
         predictor_hidden_dim: usize,
         stop_gradient: bool,
         quantum_momentum: QuantumMomentum,
     },
-    
+
     /// Quantum BYOL - Bootstrap Your Own Latent
     QuantumBYOL {
         target_update_rate: f64,
         quantum_ema_config: QuantumEMAConfig,
         asymmetric_loss: bool,
     },
-    
+
     /// Quantum SwAV - Swapping Assignments between Views
     QuantumSwAV {
         num_prototypes: usize,
         queue_length: usize,
         quantum_sinkhorn_iterations: usize,
     },
-    
+
     /// Quantum Momentum Contrast (MoCo)
     QuantumMoCo {
         queue_size: usize,
         momentum_coefficient: f64,
         quantum_key_encoder: QuantumKeyEncoder,
     },
-    
+
     /// Quantum Barlow Twins
     QuantumBarlowTwins {
         lambda_off_diagonal: f64,
@@ -131,10 +131,19 @@ pub struct QuantumProjectionLayer {
 
 #[derive(Debug, Clone)]
 pub enum ProjectionLayerType {
-    QuantumLinear { input_dim: usize, output_dim: usize },
-    QuantumNonlinear { activation: QuantumActivation },
-    QuantumNormalization { normalization_type: QuantumNormType },
-    QuantumResidual { inner_layers: Vec<QuantumProjectionLayer> },
+    QuantumLinear {
+        input_dim: usize,
+        output_dim: usize,
+    },
+    QuantumNonlinear {
+        activation: QuantumActivation,
+    },
+    QuantumNormalization {
+        normalization_type: QuantumNormType,
+    },
+    QuantumResidual {
+        inner_layers: Vec<QuantumProjectionLayer>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -559,27 +568,27 @@ pub enum QuantumAssignmentMethod {
 /// Main Quantum Self-Supervised Learning Framework
 pub struct QuantumSelfSupervisedLearner {
     config: QuantumSelfSupervisedConfig,
-    
+
     // Core components
     online_network: QuantumOnlineNetwork,
     target_network: Option<QuantumTargetNetwork>,
-    
+
     // Quantum components
     quantum_augmenter: QuantumAugmenter,
     quantum_encoder: QuantumEncoder,
     quantum_projector: QuantumProjector,
     quantum_predictor: Option<QuantumPredictor>,
-    
+
     // Self-supervised learning components
     contrastive_learner: Option<QuantumContrastiveLearner>,
     masked_learner: Option<QuantumMaskedLearner>,
     momentum_learner: Option<QuantumMomentumLearner>,
     clustering_learner: Option<QuantumClusteringLearner>,
-    
+
     // Training state
     training_history: Vec<SSLTrainingMetrics>,
     quantum_ssl_metrics: QuantumSSLMetrics,
-    
+
     // Optimization state
     optimizer_state: SSLOptimizerState,
     lr_scheduler: LearningRateScheduler,
@@ -618,18 +627,36 @@ pub struct QuantumAugmenter {
 
 #[derive(Debug, Clone)]
 pub enum QuantumAugmentationStrategy {
-    QuantumRotation { axes: Vec<RotationAxis> },
-    QuantumNoise { noise_type: NoiseType, strength: f64 },
-    EntanglementCorruption { corruption_rate: f64 },
-    PhaseShift { phase_range: f64 },
-    QuantumMixup { alpha: f64 },
-    QuantumCutout { mask_size: f64 },
-    SuperpositionAugmentation { superposition_strength: f64 },
+    QuantumRotation {
+        axes: Vec<RotationAxis>,
+    },
+    QuantumNoise {
+        noise_type: NoiseType,
+        strength: f64,
+    },
+    EntanglementCorruption {
+        corruption_rate: f64,
+    },
+    PhaseShift {
+        phase_range: f64,
+    },
+    QuantumMixup {
+        alpha: f64,
+    },
+    QuantumCutout {
+        mask_size: f64,
+    },
+    SuperpositionAugmentation {
+        superposition_strength: f64,
+    },
 }
 
 #[derive(Debug, Clone)]
 pub enum RotationAxis {
-    X, Y, Z, Custom { direction: Array1<f64> },
+    X,
+    Y,
+    Z,
+    Custom { direction: Array1<f64> },
 }
 
 #[derive(Debug, Clone)]
@@ -965,7 +992,9 @@ pub enum QuantumGateType {
 #[derive(Debug, Clone)]
 pub enum MeasurementBasis {
     Computational,
-    PauliX, PauliY, PauliZ,
+    PauliX,
+    PauliY,
+    PauliZ,
     Bell,
     Custom { basis_vectors: Array2<Complex64> },
 }
@@ -1014,13 +1043,13 @@ impl QuantumSelfSupervisedLearner {
     /// Create a new Quantum Self-Supervised Learner
     pub fn new(config: QuantumSelfSupervisedConfig) -> Result<Self> {
         println!("🧠 Initializing Quantum Self-Supervised Learning Framework in UltraThink Mode");
-        
+
         // Initialize quantum encoder
         let quantum_encoder = Self::create_quantum_encoder(&config)?;
-        
+
         // Initialize quantum projector
         let quantum_projector = Self::create_quantum_projector(&config)?;
-        
+
         // Initialize online network
         let online_network = QuantumOnlineNetwork {
             encoder: quantum_encoder.clone(),
@@ -1032,7 +1061,7 @@ impl QuantumSelfSupervisedLearner {
             },
             quantum_parameters: Array1::zeros(config.num_qubits * 6),
         };
-        
+
         // Initialize target network (if needed)
         let target_network = if Self::requires_target_network(&config.ssl_method) {
             Some(QuantumTargetNetwork {
@@ -1041,48 +1070,50 @@ impl QuantumSelfSupervisedLearner {
                 momentum_coefficient: config.momentum_coefficient,
                 quantum_ema_state: QuantumEMAState {
                     quantum_parameters: Array1::zeros(config.num_qubits * 6),
-                    entanglement_state: Array2::<f64>::eye(config.num_qubits).mapv(|x| Complex64::new(x, 0.0)),
-                    phase_tracking: Array1::ones(config.num_qubits).mapv(|_: f64| Complex64::new(1.0, 0.0)),
+                    entanglement_state: Array2::<f64>::eye(config.num_qubits)
+                        .mapv(|x| Complex64::new(x, 0.0)),
+                    phase_tracking: Array1::ones(config.num_qubits)
+                        .mapv(|_: f64| Complex64::new(1.0, 0.0)),
                     fidelity_history: Vec::new(),
                 },
             })
         } else {
             None
         };
-        
+
         // Initialize quantum augmenter
         let quantum_augmenter = Self::create_quantum_augmenter(&config)?;
-        
+
         // Initialize SSL method-specific components
         let contrastive_learner = if Self::uses_contrastive_learning(&config.ssl_method) {
             Some(Self::create_contrastive_learner(&config)?)
         } else {
             None
         };
-        
+
         let masked_learner = if Self::uses_masked_learning(&config.ssl_method) {
             Some(Self::create_masked_learner(&config)?)
         } else {
             None
         };
-        
+
         let momentum_learner = if Self::uses_momentum_learning(&config.ssl_method) {
             Some(Self::create_momentum_learner(&config)?)
         } else {
             None
         };
-        
+
         let clustering_learner = if Self::uses_clustering(&config.ssl_method) {
             Some(Self::create_clustering_learner(&config)?)
         } else {
             None
         };
-        
+
         // Initialize metrics and optimization
         let quantum_ssl_metrics = QuantumSSLMetrics::default();
         let optimizer_state = SSLOptimizerState::default();
         let lr_scheduler = LearningRateScheduler::default();
-        
+
         Ok(Self {
             config,
             online_network,
@@ -1101,7 +1132,7 @@ impl QuantumSelfSupervisedLearner {
             lr_scheduler,
         })
     }
-    
+
     /// Learn representations from unlabeled data
     pub fn learn_representations(
         &mut self,
@@ -1109,32 +1140,32 @@ impl QuantumSelfSupervisedLearner {
         config: &SSLTrainingConfig,
     ) -> Result<SSLLearningOutput> {
         println!("🚀 Starting Quantum Self-Supervised Learning");
-        
+
         let mut training_losses = Vec::new();
         let mut representation_quality_history = Vec::new();
         let mut quantum_metrics_history = Vec::new();
-        
+
         for epoch in 0..config.epochs {
             let epoch_metrics = self.train_epoch(data, config, epoch)?;
-            
+
             training_losses.push(epoch_metrics.loss);
             representation_quality_history.push(epoch_metrics.representation_quality);
-            
+
             // Update quantum metrics
             self.update_quantum_ssl_metrics(&epoch_metrics)?;
             quantum_metrics_history.push(self.quantum_ssl_metrics.clone());
-            
+
             // Update learning rate and momentum
             self.update_learning_schedule(epoch, &epoch_metrics)?;
-            
+
             // Update target network (if applicable)
             if self.target_network.is_some() {
                 let target_net_clone = self.target_network.as_ref().unwrap().clone();
                 self.update_target_network_internal(&target_net_clone)?;
             }
-            
+
             self.training_history.push(epoch_metrics.clone());
-            
+
             // Logging
             if epoch % config.log_interval == 0 {
                 println!(
@@ -1147,13 +1178,13 @@ impl QuantumSelfSupervisedLearner {
                 );
             }
         }
-        
+
         // Extract learned representations
         let learned_representations = self.extract_representations(data)?;
-        
+
         // Evaluate representation quality
         let evaluation_results = self.evaluate_representations(&learned_representations, data)?;
-        
+
         Ok(SSLLearningOutput {
             learned_representations,
             training_losses,
@@ -1163,7 +1194,7 @@ impl QuantumSelfSupervisedLearner {
             final_ssl_metrics: self.quantum_ssl_metrics.clone(),
         })
     }
-    
+
     /// Train single epoch
     fn train_epoch(
         &mut self,
@@ -1177,15 +1208,15 @@ impl QuantumSelfSupervisedLearner {
         let mut quantum_fidelity_sum = 0.0;
         let mut entanglement_sum = 0.0;
         let mut num_batches = 0;
-        
+
         let num_samples = data.nrows();
-        
+
         for batch_start in (0..num_samples).step_by(config.batch_size) {
             let batch_end = (batch_start + config.batch_size).min(num_samples);
             let batch_data = data.slice(ndarray::s![batch_start..batch_end, ..]);
-            
+
             let batch_metrics = self.train_batch(&batch_data, config)?;
-            
+
             epoch_loss += batch_metrics.loss;
             contrastive_loss_sum += batch_metrics.contrastive_loss;
             reconstruction_loss_sum += batch_metrics.reconstruction_loss;
@@ -1193,7 +1224,7 @@ impl QuantumSelfSupervisedLearner {
             entanglement_sum += batch_metrics.entanglement_measure;
             num_batches += 1;
         }
-        
+
         let num_batches_f = num_batches as f64;
         Ok(SSLTrainingMetrics {
             epoch,
@@ -1207,7 +1238,7 @@ impl QuantumSelfSupervisedLearner {
             quantum_advantage_ratio: 1.0 + entanglement_sum / num_batches_f,
         })
     }
-    
+
     /// Train single batch
     fn train_batch(
         &mut self,
@@ -1218,51 +1249,43 @@ impl QuantumSelfSupervisedLearner {
         let mut contrastive_loss = 0.0;
         let mut reconstruction_loss = 0.0;
         let mut quantum_metrics_sum = QuantumBatchMetrics::default();
-        
+
         // Process each sample in the batch
         for sample_idx in 0..batch_data.nrows() {
             let sample = batch_data.row(sample_idx).to_owned();
-            
+
             // Apply quantum augmentations
-            let augmented_views = self.quantum_augmenter.generate_augmented_views(&sample, 2)?;
-            
+            let augmented_views = self
+                .quantum_augmenter
+                .generate_augmented_views(&sample, 2)?;
+
             // Forward pass through the method-specific learning
             let learning_output = match &self.config.ssl_method {
                 QuantumSSLMethod::QuantumContrastive { .. } => {
                     self.contrastive_forward(&augmented_views)?
-                },
-                QuantumSSLMethod::QuantumMasked { .. } => {
-                    self.masked_forward(&sample)?
-                },
-                QuantumSSLMethod::QuantumSimCLR { .. } => {
-                    self.simclr_forward(&augmented_views)?
-                },
+                }
+                QuantumSSLMethod::QuantumMasked { .. } => self.masked_forward(&sample)?,
+                QuantumSSLMethod::QuantumSimCLR { .. } => self.simclr_forward(&augmented_views)?,
                 QuantumSSLMethod::QuantumSimSiam { .. } => {
                     self.simsiam_forward(&augmented_views)?
-                },
-                QuantumSSLMethod::QuantumBYOL { .. } => {
-                    self.byol_forward(&augmented_views)?
-                },
-                QuantumSSLMethod::QuantumSwAV { .. } => {
-                    self.swav_forward(&augmented_views)?
-                },
-                QuantumSSLMethod::QuantumMoCo { .. } => {
-                    self.moco_forward(&augmented_views)?
-                },
+                }
+                QuantumSSLMethod::QuantumBYOL { .. } => self.byol_forward(&augmented_views)?,
+                QuantumSSLMethod::QuantumSwAV { .. } => self.swav_forward(&augmented_views)?,
+                QuantumSSLMethod::QuantumMoCo { .. } => self.moco_forward(&augmented_views)?,
                 QuantumSSLMethod::QuantumBarlowTwins { .. } => {
                     self.barlow_twins_forward(&augmented_views)?
-                },
+                }
             };
-            
+
             batch_loss += learning_output.total_loss;
             contrastive_loss += learning_output.contrastive_loss;
             reconstruction_loss += learning_output.reconstruction_loss;
             quantum_metrics_sum.accumulate(&learning_output.quantum_metrics);
-            
+
             // Backward pass and parameter update (placeholder)
             self.update_parameters(&learning_output, config)?;
         }
-        
+
         let num_samples = batch_data.nrows() as f64;
         Ok(SSLTrainingMetrics {
             epoch: 0, // Will be set by caller
@@ -1276,23 +1299,21 @@ impl QuantumSelfSupervisedLearner {
             quantum_advantage_ratio: quantum_metrics_sum.quantum_advantage_ratio / num_samples,
         })
     }
-    
+
     /// Helper method implementations (simplified for space)
     fn create_quantum_encoder(config: &QuantumSelfSupervisedConfig) -> Result<QuantumEncoder> {
-        let layers = vec![
-            QuantumEncoderLayer {
-                layer_type: EncoderLayerType::QuantumFeedForward {
-                    hidden_dim: 128,
-                    activation: QuantumActivation::QuantumReLU,
-                },
-                quantum_parameters: Array1::zeros(config.num_qubits * 3),
-                entanglement_connectivity: Array2::<f64>::eye(config.num_qubits).mapv(|x| x != 0.0),
-                quantum_gates: Vec::new(),
-            }
-        ];
-        
+        let layers = vec![QuantumEncoderLayer {
+            layer_type: EncoderLayerType::QuantumFeedForward {
+                hidden_dim: 128,
+                activation: QuantumActivation::QuantumReLU,
+            },
+            quantum_parameters: Array1::zeros(config.num_qubits * 3),
+            entanglement_connectivity: Array2::<f64>::eye(config.num_qubits).mapv(|x| x != 0.0),
+            quantum_gates: Vec::new(),
+        }];
+
         let layers_len = layers.len();
-        
+
         Ok(QuantumEncoder {
             layers,
             quantum_state_evolution: QuantumStateEvolution {
@@ -1304,42 +1325,38 @@ impl QuantumSelfSupervisedLearner {
             measurement_points: vec![0, layers_len - 1],
         })
     }
-    
+
     fn create_quantum_projector(config: &QuantumSelfSupervisedConfig) -> Result<QuantumProjector> {
         Ok(QuantumProjector {
-            projection_layers: vec![
-                QuantumProjectionLayer {
-                    layer_type: ProjectionLayerType::QuantumLinear {
-                        input_dim: config.representation_dim,
-                        output_dim: config.representation_dim / 2,
-                    },
-                    quantum_parameters: Array1::zeros(config.num_qubits * 2),
-                    entanglement_pattern: EntanglementPattern::Linear,
-                    measurement_strategy: MeasurementStrategy::ExpectationValue,
-                }
-            ],
+            projection_layers: vec![QuantumProjectionLayer {
+                layer_type: ProjectionLayerType::QuantumLinear {
+                    input_dim: config.representation_dim,
+                    output_dim: config.representation_dim / 2,
+                },
+                quantum_parameters: Array1::zeros(config.num_qubits * 2),
+                entanglement_pattern: EntanglementPattern::Linear,
+                measurement_strategy: MeasurementStrategy::ExpectationValue,
+            }],
             output_normalization: true,
             quantum_enhancement: config.quantum_enhancement_level,
         })
     }
-    
+
     fn create_quantum_predictor(config: &QuantumSelfSupervisedConfig) -> Result<QuantumPredictor> {
         Ok(QuantumPredictor {
-            prediction_layers: vec![
-                QuantumPredictionLayer {
-                    layer_type: PredictionLayerType::Linear {
-                        input_dim: config.representation_dim / 2,
-                        output_dim: config.representation_dim / 2,
-                    },
-                    quantum_parameters: Array1::zeros(config.num_qubits),
-                    activation: QuantumActivation::QuantumReLU,
-                }
-            ],
+            prediction_layers: vec![QuantumPredictionLayer {
+                layer_type: PredictionLayerType::Linear {
+                    input_dim: config.representation_dim / 2,
+                    output_dim: config.representation_dim / 2,
+                },
+                quantum_parameters: Array1::zeros(config.num_qubits),
+                activation: QuantumActivation::QuantumReLU,
+            }],
             stop_gradient: true,
             quantum_prediction_strategy: QuantumPredictionStrategy::Direct,
         })
     }
-    
+
     fn create_quantum_augmenter(config: &QuantumSelfSupervisedConfig) -> Result<QuantumAugmenter> {
         Ok(QuantumAugmenter {
             augmentation_strategies: vec![
@@ -1356,75 +1373,78 @@ impl QuantumSelfSupervisedLearner {
             quantum_coherence_preservation: 0.9,
         })
     }
-    
+
     // Additional helper methods would be implemented here
     // (Simplified for space constraints)
-    
+
     fn requires_target_network(method: &QuantumSSLMethod) -> bool {
-        matches!(method, 
-            QuantumSSLMethod::QuantumBYOL { .. } | 
-            QuantumSSLMethod::QuantumMoCo { .. }
+        matches!(
+            method,
+            QuantumSSLMethod::QuantumBYOL { .. } | QuantumSSLMethod::QuantumMoCo { .. }
         )
     }
-    
+
     fn uses_contrastive_learning(method: &QuantumSSLMethod) -> bool {
-        matches!(method, 
-            QuantumSSLMethod::QuantumContrastive { .. } |
-            QuantumSSLMethod::QuantumSimCLR { .. } |
-            QuantumSSLMethod::QuantumMoCo { .. }
+        matches!(
+            method,
+            QuantumSSLMethod::QuantumContrastive { .. }
+                | QuantumSSLMethod::QuantumSimCLR { .. }
+                | QuantumSSLMethod::QuantumMoCo { .. }
         )
     }
-    
+
     fn uses_masked_learning(method: &QuantumSSLMethod) -> bool {
         matches!(method, QuantumSSLMethod::QuantumMasked { .. })
     }
-    
+
     fn uses_momentum_learning(method: &QuantumSSLMethod) -> bool {
-        matches!(method, 
-            QuantumSSLMethod::QuantumBYOL { .. } |
-            QuantumSSLMethod::QuantumMoCo { .. }
+        matches!(
+            method,
+            QuantumSSLMethod::QuantumBYOL { .. } | QuantumSSLMethod::QuantumMoCo { .. }
         )
     }
-    
+
     fn uses_clustering(method: &QuantumSSLMethod) -> bool {
         matches!(method, QuantumSSLMethod::QuantumSwAV { .. })
     }
-    
+
     // Placeholder implementations for various SSL methods
     fn contrastive_forward(&self, _views: &[Array1<f64>]) -> Result<SSLLearningOutputBatch> {
         Ok(SSLLearningOutputBatch::default())
     }
-    
+
     fn masked_forward(&self, _sample: &Array1<f64>) -> Result<SSLLearningOutputBatch> {
         Ok(SSLLearningOutputBatch::default())
     }
-    
+
     fn simclr_forward(&self, _views: &[Array1<f64>]) -> Result<SSLLearningOutputBatch> {
         Ok(SSLLearningOutputBatch::default())
     }
-    
+
     fn simsiam_forward(&self, _views: &[Array1<f64>]) -> Result<SSLLearningOutputBatch> {
         Ok(SSLLearningOutputBatch::default())
     }
-    
+
     fn byol_forward(&self, _views: &[Array1<f64>]) -> Result<SSLLearningOutputBatch> {
         Ok(SSLLearningOutputBatch::default())
     }
-    
+
     fn swav_forward(&self, _views: &[Array1<f64>]) -> Result<SSLLearningOutputBatch> {
         Ok(SSLLearningOutputBatch::default())
     }
-    
+
     fn moco_forward(&self, _views: &[Array1<f64>]) -> Result<SSLLearningOutputBatch> {
         Ok(SSLLearningOutputBatch::default())
     }
-    
+
     fn barlow_twins_forward(&self, _views: &[Array1<f64>]) -> Result<SSLLearningOutputBatch> {
         Ok(SSLLearningOutputBatch::default())
     }
-    
+
     // Additional method stubs
-    fn create_contrastive_learner(_config: &QuantumSelfSupervisedConfig) -> Result<QuantumContrastiveLearner> {
+    fn create_contrastive_learner(
+        _config: &QuantumSelfSupervisedConfig,
+    ) -> Result<QuantumContrastiveLearner> {
         Ok(QuantumContrastiveLearner {
             similarity_computer: QuantumSimilarityComputer {
                 similarity_metric: QuantumSimilarityMetric::QuantumCosine,
@@ -1456,11 +1476,15 @@ impl QuantumSelfSupervisedLearner {
             },
         })
     }
-    
-    fn create_masked_learner(_config: &QuantumSelfSupervisedConfig) -> Result<QuantumMaskedLearner> {
+
+    fn create_masked_learner(
+        _config: &QuantumSelfSupervisedConfig,
+    ) -> Result<QuantumMaskedLearner> {
         Ok(QuantumMaskedLearner {
             masking_engine: QuantumMaskingEngine {
-                masking_strategy: QuantumMaskingStrategy::Random { mask_probability: 0.15 },
+                masking_strategy: QuantumMaskingStrategy::Random {
+                    mask_probability: 0.15,
+                },
                 mask_generator: QuantumMaskGenerator {
                     generator_type: MaskGeneratorType::Random,
                     quantum_randomness: QuantumRandomness {
@@ -1488,12 +1512,14 @@ impl QuantumSelfSupervisedLearner {
             },
         })
     }
-    
-    fn create_momentum_learner(config: &QuantumSelfSupervisedConfig) -> Result<QuantumMomentumLearner> {
+
+    fn create_momentum_learner(
+        config: &QuantumSelfSupervisedConfig,
+    ) -> Result<QuantumMomentumLearner> {
         // Create encoder and projector for target network
         let encoder = Self::create_quantum_encoder(config)?;
         let projector = Self::create_quantum_projector(config)?;
-        
+
         // Placeholder implementation
         Ok(QuantumMomentumLearner {
             momentum_updater: QuantumMomentumUpdater {
@@ -1523,13 +1549,16 @@ impl QuantumSelfSupervisedLearner {
             },
         })
     }
-    
-    fn create_clustering_learner(_config: &QuantumSelfSupervisedConfig) -> Result<QuantumClusteringLearner> {
+
+    fn create_clustering_learner(
+        _config: &QuantumSelfSupervisedConfig,
+    ) -> Result<QuantumClusteringLearner> {
         // Placeholder implementation
         Ok(QuantumClusteringLearner {
             prototype_bank: QuantumPrototypeBank {
                 prototypes: Array2::zeros((256, 128)),
-                quantum_prototypes: Array2::zeros((256, 128)).mapv(|_: f64| Complex64::new(0.0, 0.0)),
+                quantum_prototypes: Array2::zeros((256, 128))
+                    .mapv(|_: f64| Complex64::new(0.0, 0.0)),
                 prototype_evolution: PrototypeEvolution {
                     evolution_strategy: PrototypeEvolutionStrategy::MovingAverage,
                     learning_rate: 0.01,
@@ -1549,36 +1578,48 @@ impl QuantumSelfSupervisedLearner {
             },
         })
     }
-    
-    fn update_parameters(&mut self, _output: &SSLLearningOutputBatch, _config: &SSLTrainingConfig) -> Result<()> {
+
+    fn update_parameters(
+        &mut self,
+        _output: &SSLLearningOutputBatch,
+        _config: &SSLTrainingConfig,
+    ) -> Result<()> {
         // Placeholder for parameter updates
         Ok(())
     }
-    
+
     fn update_quantum_ssl_metrics(&mut self, _metrics: &SSLTrainingMetrics) -> Result<()> {
         // Placeholder for metrics updates
         Ok(())
     }
-    
-    fn update_learning_schedule(&mut self, _epoch: usize, _metrics: &SSLTrainingMetrics) -> Result<()> {
+
+    fn update_learning_schedule(
+        &mut self,
+        _epoch: usize,
+        _metrics: &SSLTrainingMetrics,
+    ) -> Result<()> {
         // Placeholder for schedule updates
         Ok(())
     }
-    
+
     fn update_target_network_internal(&mut self, _target_net: &QuantumTargetNetwork) -> Result<()> {
         // Placeholder for target network updates
         Ok(())
     }
-    
+
     fn extract_representations(&self, data: &Array2<f64>) -> Result<Array2<f64>> {
         // Simplified representation extraction
         Ok(data.clone())
     }
-    
-    fn evaluate_representations(&self, _representations: &Array2<f64>, _data: &Array2<f64>) -> Result<RepresentationEvaluationResults> {
+
+    fn evaluate_representations(
+        &self,
+        _representations: &Array2<f64>,
+        _data: &Array2<f64>,
+    ) -> Result<RepresentationEvaluationResults> {
         Ok(RepresentationEvaluationResults::default())
     }
-    
+
     fn estimate_representation_quality(&self) -> Result<f64> {
         Ok(0.8) // Placeholder
     }
@@ -1586,34 +1627,45 @@ impl QuantumSelfSupervisedLearner {
 
 // Implementation for QuantumAugmenter
 impl QuantumAugmenter {
-    pub fn generate_augmented_views(&self, sample: &Array1<f64>, num_views: usize) -> Result<Vec<Array1<f64>>> {
+    pub fn generate_augmented_views(
+        &self,
+        sample: &Array1<f64>,
+        num_views: usize,
+    ) -> Result<Vec<Array1<f64>>> {
         let mut views = Vec::new();
-        
+
         for _ in 0..num_views {
             let mut augmented = sample.clone();
-            
+
             // Apply quantum augmentations
             for strategy in &self.augmentation_strategies {
                 augmented = self.apply_augmentation_strategy(&augmented, strategy)?;
             }
-            
+
             views.push(augmented);
         }
-        
+
         Ok(views)
     }
-    
-    fn apply_augmentation_strategy(&self, data: &Array1<f64>, strategy: &QuantumAugmentationStrategy) -> Result<Array1<f64>> {
+
+    fn apply_augmentation_strategy(
+        &self,
+        data: &Array1<f64>,
+        strategy: &QuantumAugmentationStrategy,
+    ) -> Result<Array1<f64>> {
         match strategy {
-            QuantumAugmentationStrategy::QuantumNoise { noise_type: _, strength } => {
+            QuantumAugmentationStrategy::QuantumNoise {
+                noise_type: _,
+                strength,
+            } => {
                 let mut rng = rand::thread_rng();
                 Ok(data.mapv(|x| x + rng.gen::<f64>() * strength))
-            },
+            }
             QuantumAugmentationStrategy::PhaseShift { phase_range } => {
                 let mut rng = rand::thread_rng();
                 let phase = rng.gen::<f64>() * phase_range;
                 Ok(data.mapv(|x| x * phase.cos() - x * phase.sin()))
-            },
+            }
             _ => Ok(data.clone()), // Simplified for other strategies
         }
     }
@@ -1804,16 +1856,14 @@ mod tests {
     fn test_quantum_augmentations() {
         let config = QuantumSelfSupervisedConfig::default();
         let augmenter = QuantumAugmenter {
-            augmentation_strategies: vec![
-                QuantumAugmentationStrategy::QuantumNoise {
-                    noise_type: NoiseType::Gaussian,
-                    strength: 0.1,
-                },
-            ],
+            augmentation_strategies: vec![QuantumAugmentationStrategy::QuantumNoise {
+                noise_type: NoiseType::Gaussian,
+                strength: 0.1,
+            }],
             augmentation_strength: 0.5,
             quantum_coherence_preservation: 0.9,
         };
-        
+
         let sample = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
         let views = augmenter.generate_augmented_views(&sample, 2);
         assert!(views.is_ok());
@@ -1843,7 +1893,7 @@ mod tests {
             },
             ..Default::default()
         };
-        
+
         let ssl = QuantumSelfSupervisedLearner::new(config);
         assert!(ssl.is_ok());
     }
@@ -1852,7 +1902,9 @@ mod tests {
     fn test_quantum_masked_method() {
         let config = QuantumSelfSupervisedConfig {
             ssl_method: QuantumSSLMethod::QuantumMasked {
-                masking_strategy: QuantumMaskingStrategy::Random { mask_probability: 0.15 },
+                masking_strategy: QuantumMaskingStrategy::Random {
+                    mask_probability: 0.15,
+                },
                 reconstruction_objective: ReconstructionObjective::MSE,
                 quantum_encoder_decoder: QuantumEncoderDecoder {
                     encoder: QuantumEncoder {
@@ -1880,7 +1932,7 @@ mod tests {
             },
             ..Default::default()
         };
-        
+
         let ssl = QuantumSelfSupervisedLearner::new(config);
         assert!(ssl.is_ok());
     }

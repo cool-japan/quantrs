@@ -4,37 +4,37 @@
 //! that works across all quantum cloud providers (IBM, Azure, AWS) with advanced
 //! statistical analysis, optimization, and reporting capabilities powered by SciRS2.
 
+pub mod analysis;
 pub mod config;
-pub mod types;
 pub mod events;
-pub mod results;
-pub mod system;
 pub mod optimization;
 pub mod reporting;
-pub mod analysis;
+pub mod results;
+pub mod system;
+pub mod types;
 
 // Re-export commonly used types
 pub use config::{
-    UnifiedBenchmarkConfig, BenchmarkSuiteConfig, GateBenchmarkConfig, CircuitBenchmarkConfig,
-    AlgorithmBenchmarkConfig, SystemBenchmarkConfig, SciRS2AnalysisConfig, ReportingConfig,
-    ResourceOptimizationConfig, HistoricalTrackingConfig, SingleQubitGate, TwoQubitGate,
-    MultiQubitGate, FidelityMeasurementMethod, CircuitType, QuantumAlgorithm, 
-    BenchmarkExecutionParams, StatisticalTest, MLModelType, OptimizationObjective,
-    OptimizationAlgorithm, ReportFormat, VisualizationType, CustomBenchmarkDefinition,
+    AlgorithmBenchmarkConfig, BenchmarkExecutionParams, BenchmarkSuiteConfig,
+    CircuitBenchmarkConfig, CircuitType, CustomBenchmarkDefinition, FidelityMeasurementMethod,
+    GateBenchmarkConfig, HistoricalTrackingConfig, MLModelType, MultiQubitGate,
+    OptimizationAlgorithm, OptimizationObjective, QuantumAlgorithm, ReportFormat, ReportingConfig,
+    ResourceOptimizationConfig, SciRS2AnalysisConfig, SingleQubitGate, StatisticalTest,
+    SystemBenchmarkConfig, TwoQubitGate, UnifiedBenchmarkConfig, VisualizationType,
 };
 
-pub use types::{QuantumPlatform, BaselineMetric, BaselineMetricValue, PerformanceBaseline};
+pub use types::{BaselineMetric, BaselineMetricValue, PerformanceBaseline, QuantumPlatform};
 
 pub use events::BenchmarkEvent;
 
 pub use results::{
-    UnifiedBenchmarkResult, PlatformBenchmarkResult, DeviceInfo, GateLevelResults,
-    CircuitLevelResults, AlgorithmLevelResults, SystemLevelResults, StatisticalSummary,
-    CrossPlatformAnalysis, SciRS2AnalysisResult, ResourceAnalysisResult, CostAnalysisResult,
+    AlgorithmLevelResults, CircuitLevelResults, CostAnalysisResult, CrossPlatformAnalysis,
+    DeviceInfo, GateLevelResults, PlatformBenchmarkResult, ResourceAnalysisResult,
+    SciRS2AnalysisResult, StatisticalSummary, SystemLevelResults, UnifiedBenchmarkResult,
 };
 
 pub use system::UnifiedQuantumBenchmarkSystem;
 
 // Commonly used error and result types
-use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
 use crate::{DeviceError, DeviceResult};
+use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};

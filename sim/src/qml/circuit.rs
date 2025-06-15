@@ -4,11 +4,11 @@
 //! hardware-aware optimizations for different quantum computing architectures.
 
 use ndarray::{Array1, Array2};
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGateType};
 use super::config::HardwareArchitecture;
+use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGateType};
 
 /// Parameterized quantum circuit for machine learning
 #[derive(Debug, Clone)]
@@ -49,8 +49,9 @@ impl ParameterizedQuantumCircuit {
         hardware_architecture: HardwareArchitecture,
     ) -> Self {
         let num_qubits = circuit.num_qubits;
-        let hardware_optimizations = HardwareOptimizations::for_hardware(hardware_architecture, num_qubits);
-        
+        let hardware_optimizations =
+            HardwareOptimizations::for_hardware(hardware_architecture, num_qubits);
+
         Self {
             circuit,
             parameters,
@@ -104,7 +105,8 @@ impl ParameterizedQuantumCircuit {
 
     /// Add parameter mapping for a gate
     pub fn add_parameter_mapping(&mut self, gate_index: usize, parameter_indices: Vec<usize>) {
-        self.gate_parameter_map.insert(gate_index, parameter_indices);
+        self.gate_parameter_map
+            .insert(gate_index, parameter_indices);
     }
 
     /// Get parameter mapping for a gate
@@ -115,7 +117,7 @@ impl ParameterizedQuantumCircuit {
     /// Estimate circuit fidelity based on hardware optimizations
     pub fn estimate_fidelity(&self) -> f64 {
         let mut total_fidelity = 1.0;
-        
+
         for gate in &self.circuit.gates {
             let gate_name = Self::gate_type_to_string(&gate.gate_type);
             if let Some(&fidelity) = self.hardware_optimizations.gate_fidelities.get(&gate_name) {
@@ -125,14 +127,14 @@ impl ParameterizedQuantumCircuit {
                 total_fidelity *= 0.99;
             }
         }
-        
+
         total_fidelity
     }
 
     /// Estimate total execution time
     pub fn estimate_execution_time(&self) -> f64 {
         let mut total_time = 0.0;
-        
+
         for gate in &self.circuit.gates {
             let gate_name = Self::gate_type_to_string(&gate.gate_type);
             if let Some(&time) = self.hardware_optimizations.gate_times.get(&gate_name) {
@@ -142,7 +144,7 @@ impl ParameterizedQuantumCircuit {
                 total_time += 1e-6;
             }
         }
-        
+
         total_time
     }
 
@@ -156,7 +158,10 @@ impl ParameterizedQuantumCircuit {
 
     /// Get decoherence time for a specific qubit
     pub fn get_decoherence_time(&self, qubit: usize) -> Option<f64> {
-        self.hardware_optimizations.decoherence_times.get(qubit).copied()
+        self.hardware_optimizations
+            .decoherence_times
+            .get(qubit)
+            .copied()
     }
 
     /// Clone the circuit with new parameters
@@ -362,6 +367,10 @@ impl HardwareOptimizations {
         if qubit >= self.connectivity_graph.nrows() {
             return 0;
         }
-        self.connectivity_graph.row(qubit).iter().map(|&x| if x { 1 } else { 0 }).sum()
+        self.connectivity_graph
+            .row(qubit)
+            .iter()
+            .map(|&x| if x { 1 } else { 0 })
+            .sum()
     }
 }

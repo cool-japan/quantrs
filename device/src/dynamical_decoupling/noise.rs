@@ -1,15 +1,15 @@
 //! Noise characterization and analysis for dynamical decoupling
 
+use ndarray::{Array1, Array2, Array3};
 use std::collections::HashMap;
 use std::time::Duration;
-use ndarray::{Array1, Array2, Array3};
 
-use crate::DeviceResult;
 use super::{
     config::{DDNoiseConfig, NoiseType},
-    sequences::DDSequence,
     performance::DDPerformanceAnalysis,
+    sequences::DDSequence,
 };
+use crate::DeviceResult;
 
 /// Noise analysis results for DD sequences
 #[derive(Debug, Clone)]
@@ -872,7 +872,7 @@ impl DDNoiseAnalyzer {
         println!("Starting DD noise analysis");
 
         let noise_characterization = self.characterize_noise(sequence, performance_analysis)?;
-        
+
         let spectral_analysis = if self.config.spectral_analysis {
             Some(self.perform_spectral_analysis(sequence)?)
         } else {
@@ -917,7 +917,7 @@ impl DDNoiseAnalyzer {
     ) -> DeviceResult<NoiseCharacterization> {
         // Simplified noise characterization
         let mut noise_types = HashMap::new();
-        
+
         for noise_type in &self.config.noise_types {
             let characteristics = NoiseCharacteristics {
                 strength: 0.1, // Simplified
@@ -962,15 +962,13 @@ impl DDNoiseAnalyzer {
 
         Ok(NoiseCharacterization {
             noise_types,
-            dominant_sources: vec![
-                NoiseSource {
-                    source_type: NoiseSourceType::ThermalFluctuations,
-                    strength: 0.05,
-                    location: None,
-                    frequency_range: (1e3, 1e9),
-                    mitigation_strategies: vec!["Temperature control".to_string()],
-                }
-            ],
+            dominant_sources: vec![NoiseSource {
+                source_type: NoiseSourceType::ThermalFluctuations,
+                strength: 0.05,
+                location: None,
+                frequency_range: (1e3, 1e9),
+                mitigation_strategies: vec!["Temperature control".to_string()],
+            }],
             environment_classification: NoiseEnvironmentClassification {
                 environment_type: NoiseEnvironmentType::ComplexMarkovian,
                 complexity_score: 0.6,
@@ -1077,7 +1075,7 @@ impl DDNoiseAnalyzer {
     /// Perform spatial analysis (simplified)
     fn perform_spatial_analysis(&self, _sequence: &DDSequence) -> DeviceResult<SpatialAnalysis> {
         let n_qubits = 10; // Simplified
-        
+
         Ok(SpatialAnalysis {
             spatial_correlations: SpatialCorrelations {
                 correlation_matrix: Array2::eye(n_qubits),
@@ -1117,7 +1115,10 @@ impl DDNoiseAnalyzer {
     }
 
     /// Perform non-Markovian analysis (simplified)
-    fn perform_non_markovian_analysis(&self, _sequence: &DDSequence) -> DeviceResult<NonMarkovianAnalysis> {
+    fn perform_non_markovian_analysis(
+        &self,
+        _sequence: &DDSequence,
+    ) -> DeviceResult<NonMarkovianAnalysis> {
         Ok(NonMarkovianAnalysis {
             non_markovianity_measures: NonMarkovianityMeasures {
                 blp_measure: 0.15,
@@ -1143,23 +1144,24 @@ impl DDNoiseAnalyzer {
                     feedback_loops: Vec::new(),
                 },
             },
-            non_markovian_models: vec![
-                NonMarkovianModel {
-                    model_type: NonMarkovianModelType::GeneralizedLangevin,
-                    parameters: Array1::from_vec(vec![0.1, 0.5, 1.0]),
-                    accuracy: 0.85,
-                    predictive_power: 0.75,
-                }
-            ],
+            non_markovian_models: vec![NonMarkovianModel {
+                model_type: NonMarkovianModelType::GeneralizedLangevin,
+                parameters: Array1::from_vec(vec![0.1, 0.5, 1.0]),
+                accuracy: 0.85,
+                predictive_power: 0.75,
+            }],
         })
     }
 
     /// Analyze suppression effectiveness
-    fn analyze_suppression_effectiveness(&self, sequence: &DDSequence) -> DeviceResult<SuppressionEffectiveness> {
+    fn analyze_suppression_effectiveness(
+        &self,
+        sequence: &DDSequence,
+    ) -> DeviceResult<SuppressionEffectiveness> {
         let suppression_by_type = sequence.properties.noise_suppression.clone();
 
-        let overall_suppression = suppression_by_type.values().sum::<f64>() 
-                                / suppression_by_type.len() as f64;
+        let overall_suppression =
+            suppression_by_type.values().sum::<f64>() / suppression_by_type.len() as f64;
 
         Ok(SuppressionEffectiveness {
             suppression_by_type,

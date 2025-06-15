@@ -4,23 +4,23 @@
 //! with hardware-aware optimization, adaptive training strategies, and
 //! support for various quantum computing architectures.
 
-pub mod config;
-pub mod circuit;
-pub mod trainer;
 pub mod benchmarks;
+pub mod circuit;
+pub mod config;
+pub mod trainer;
 
 // Re-export commonly used types and structs
-pub use config::{
-    QMLConfig, HardwareArchitecture, QMLAlgorithmType, GradientMethod, OptimizerType,
-};
-pub use circuit::{ParameterizedQuantumCircuit, HardwareOptimizations};
-pub use trainer::{
-    QuantumMLTrainer, OptimizerState, TrainingHistory, HardwareMetrics,
-    HardwareAwareCompiler, CompilationStats, TrainingResult,
-};
 pub use benchmarks::{
-    benchmark_quantum_ml_algorithms, benchmark_gradient_methods, benchmark_optimizers,
+    benchmark_gradient_methods, benchmark_optimizers, benchmark_quantum_ml_algorithms,
     run_comprehensive_benchmarks,
+};
+pub use circuit::{HardwareOptimizations, ParameterizedQuantumCircuit};
+pub use config::{
+    GradientMethod, HardwareArchitecture, OptimizerType, QMLAlgorithmType, QMLConfig,
+};
+pub use trainer::{
+    CompilationStats, HardwareAwareCompiler, HardwareMetrics, OptimizerState, QuantumMLTrainer,
+    TrainingHistory, TrainingResult,
 };
 
 use crate::error::Result;
@@ -98,7 +98,9 @@ pub fn create_hardware_config(hardware: HardwareArchitecture) -> QMLConfig {
 
 /// Validate QML configuration
 pub fn validate_config(config: &QMLConfig) -> Result<()> {
-    config.validate().map_err(|e| crate::error::SimulatorError::InvalidInput(e))
+    config
+        .validate()
+        .map_err(|e| crate::error::SimulatorError::InvalidInput(e))
 }
 
 #[cfg(test)]
@@ -136,7 +138,10 @@ mod tests {
     #[test]
     fn test_hardware_config_creation() {
         let config = create_hardware_config(HardwareArchitecture::Superconducting);
-        assert_eq!(config.hardware_architecture, HardwareArchitecture::Superconducting);
+        assert_eq!(
+            config.hardware_architecture,
+            HardwareArchitecture::Superconducting
+        );
         assert!(validate_config(&config).is_ok());
     }
 
@@ -144,7 +149,7 @@ mod tests {
     fn test_config_validation() {
         let mut config = QMLConfig::default();
         assert!(validate_config(&config).is_ok());
-        
+
         // Test invalid configuration
         config.num_qubits = 0;
         assert!(validate_config(&config).is_err());
@@ -153,18 +158,23 @@ mod tests {
     #[test]
     fn test_parameterized_circuit_creation() {
         use crate::circuit_interfaces::InterfaceCircuit;
-        
+
         let circuit = InterfaceCircuit::new(4, 0);
         let parameters = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
-        let parameter_names = vec!["p0".to_string(), "p1".to_string(), "p2".to_string(), "p3".to_string()];
-        
+        let parameter_names = vec![
+            "p0".to_string(),
+            "p1".to_string(),
+            "p2".to_string(),
+            "p3".to_string(),
+        ];
+
         let pqc = ParameterizedQuantumCircuit::new(
             circuit,
             parameters,
             parameter_names,
             HardwareArchitecture::NISQ,
         );
-        
+
         assert_eq!(pqc.num_parameters(), 4);
         assert_eq!(pqc.num_qubits(), 4);
     }
@@ -172,12 +182,12 @@ mod tests {
     #[test]
     fn test_hardware_optimizations() {
         let opts = HardwareOptimizations::for_hardware(HardwareArchitecture::Superconducting, 4);
-        
+
         // Test connectivity for superconducting (linear)
         assert!(opts.connectivity_graph[[0, 1]]);
         assert!(opts.connectivity_graph[[1, 2]]);
         assert!(!opts.connectivity_graph[[0, 2]]);
-        
+
         // Test gate fidelities
         assert!(opts.gate_fidelities.contains_key("X"));
         assert!(opts.gate_fidelities.contains_key("CNOT"));
@@ -186,21 +196,21 @@ mod tests {
     #[test]
     fn test_trainer_creation() {
         use crate::circuit_interfaces::InterfaceCircuit;
-        
+
         let config = QMLConfig::default();
         let circuit = InterfaceCircuit::new(config.num_qubits, 0);
         let parameters = Array1::zeros(config.num_parameters);
         let parameter_names = (0..config.num_parameters)
             .map(|i| format!("param_{}", i))
             .collect();
-        
+
         let pqc = ParameterizedQuantumCircuit::new(
             circuit,
             parameters,
             parameter_names,
             config.hardware_architecture,
         );
-        
+
         let trainer = QuantumMLTrainer::new(config, pqc, None);
         assert!(trainer.is_ok());
     }
@@ -219,7 +229,7 @@ mod tests {
         history.loss_history.push(1.0);
         history.loss_history.push(0.5);
         history.loss_history.push(0.2);
-        
+
         assert_eq!(history.latest_loss(), Some(0.2));
         assert_eq!(history.best_loss(), Some(0.2));
     }

@@ -15,34 +15,34 @@
 //! - Automated test generation and execution
 
 // Re-export all public types
-pub use config::*;
-pub use types::*;
-pub use core::*;
-pub use scenario_engine::*;
-pub use regression_detector::*;
-pub use platform_validator::*;
-pub use stress_tester::*;
-pub use property_tester::*;
 pub use analytics::*;
+pub use config::*;
+pub use core::*;
+pub use platform_validator::*;
+pub use property_tester::*;
+pub use regression_detector::*;
+pub use scenario_engine::*;
+pub use stress_tester::*;
+pub use types::*;
 pub use utils::*;
 
 // Module declarations
-pub mod config;
-pub mod types;
-pub mod core;
-pub mod scenario_engine;
-pub mod regression_detector;
-pub mod platform_validator;
-pub mod stress_tester;
-pub mod property_tester;
 pub mod analytics;
+pub mod config;
+pub mod core;
+pub mod platform_validator;
+pub mod property_tester;
+pub mod regression_detector;
+pub mod scenario_engine;
+pub mod stress_tester;
+pub mod types;
 pub mod utils;
 
 // Common imports for all submodules
 pub use std::collections::{HashMap, VecDeque};
 pub use std::sync::{Arc, Mutex, RwLock};
-pub use std::time::{Duration, Instant};
 pub use std::thread;
+pub use std::time::{Duration, Instant};
 
 pub use crate::applications::{ApplicationError, ApplicationResult};
 pub use crate::ising::IsingModel;

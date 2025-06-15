@@ -339,6 +339,7 @@ impl GateCharacterizer {
     }
 
     /// Compare two matrices for equality
+    #[allow(dead_code)]
     fn matrix_equals(&self, a: &Array2<Complex>, b: &Array2<Complex>, tolerance: f64) -> bool {
         a.shape() == b.shape()
             && a.iter()

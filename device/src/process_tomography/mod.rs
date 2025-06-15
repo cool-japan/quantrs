@@ -3,23 +3,23 @@
 //! This module provides advanced quantum process tomography capabilities using SciRS2
 //! for statistical analysis, optimization, and machine learning.
 
-pub mod config;
-pub mod results;
-pub mod core;
-pub mod reconstruction;
 pub mod analysis;
-pub mod validation;
-pub mod utils;
+pub mod config;
+pub mod core;
 pub mod fallback;
+pub mod reconstruction;
+pub mod results;
+pub mod utils;
+pub mod validation;
 
 // Re-export main types and functions
-pub use config::*;
-pub use results::*;
-pub use core::{SciRS2ProcessTomographer, ProcessTomographyExecutor};
-pub use reconstruction::*;
 pub use analysis::*;
-pub use validation::*;
+pub use config::*;
+pub use core::{ProcessTomographyExecutor, SciRS2ProcessTomographer};
+pub use reconstruction::*;
+pub use results::*;
 pub use utils::*;
+pub use validation::*;
 
 // Conditional exports based on feature availability
 #[cfg(feature = "scirs2")]
@@ -28,15 +28,12 @@ pub use fallback as scirs2_fallback;
 #[cfg(not(feature = "scirs2"))]
 pub use fallback::*;
 
-use std::collections::HashMap;
 use ndarray::{Array1, Array2, Array4};
 use num_complex::Complex64;
 use quantrs2_circuit::prelude::*;
+use std::collections::HashMap;
 
-use crate::{
-    calibration::CalibrationManager,
-    DeviceResult,
-};
+use crate::{calibration::CalibrationManager, DeviceResult};
 
 /// Create a new process tomographer with default configuration
 pub fn create_process_tomographer(
@@ -62,23 +59,24 @@ pub async fn quick_process_tomography<const N: usize, E: ProcessTomographyExecut
 ) -> DeviceResult<ProcessMetrics> {
     let calibration_manager = CalibrationManager::new();
     let mut tomographer = create_process_tomographer(calibration_manager);
-    
+
     // Generate input states and measurements
     tomographer.generate_input_states(num_qubits)?;
     tomographer.generate_measurement_operators(num_qubits)?;
-    
+
     // Perform tomography
-    let result = tomographer.perform_process_tomography(
-        "quick_tomography",
-        process_circuit,
-        executor,
-    ).await?;
-    
+    let result = tomographer
+        .perform_process_tomography("quick_tomography", process_circuit, executor)
+        .await?;
+
     Ok(result.process_metrics)
 }
 
 /// Comprehensive process characterization with full analysis
-pub async fn comprehensive_process_characterization<const N: usize, E: ProcessTomographyExecutor>(
+pub async fn comprehensive_process_characterization<
+    const N: usize,
+    E: ProcessTomographyExecutor,
+>(
     device_id: &str,
     process_circuit: &Circuit<N>,
     executor: &E,
@@ -88,17 +86,15 @@ pub async fn comprehensive_process_characterization<const N: usize, E: ProcessTo
     let calibration_manager = CalibrationManager::new();
     let config = config.unwrap_or_else(SciRS2ProcessTomographyConfig::default);
     let mut tomographer = SciRS2ProcessTomographer::new(config, calibration_manager);
-    
+
     // Generate input states and measurements
     tomographer.generate_input_states(num_qubits)?;
     tomographer.generate_measurement_operators(num_qubits)?;
-    
+
     // Perform comprehensive tomography
-    tomographer.perform_process_tomography(
-        device_id,
-        process_circuit,
-        executor,
-    ).await
+    tomographer
+        .perform_process_tomography(device_id, process_circuit, executor)
+        .await
 }
 
 /// Create process monitoring system for continuous characterization
@@ -111,13 +107,13 @@ pub fn create_process_monitoring_system(
         anomaly_threshold,
         AnomalyDetectionAlgorithm::StatisticalThreshold,
     );
-    
+
     let drift_detector = ProcessDriftDetector::new(
         reference_metrics,
         drift_sensitivity,
         DriftDetectionMethod::StatisticalTest,
     );
-    
+
     (anomaly_detector, drift_detector)
 }
 
@@ -132,20 +128,18 @@ pub async fn benchmark_process<const N: usize, E: ProcessTomographyExecutor>(
     let mut config = SciRS2ProcessTomographyConfig::default();
     config.validation_config.enable_benchmarking = true;
     config.validation_config.benchmark_processes = benchmark_channels.to_vec();
-    
+
     let mut tomographer = SciRS2ProcessTomographer::new(config, calibration_manager);
-    
+
     // Generate input states and measurements
     tomographer.generate_input_states(num_qubits)?;
     tomographer.generate_measurement_operators(num_qubits)?;
-    
+
     // Perform tomography
-    let result = tomographer.perform_process_tomography(
-        "benchmark",
-        process_circuit,
-        executor,
-    ).await?;
-    
+    let result = tomographer
+        .perform_process_tomography("benchmark", process_circuit, executor)
+        .await?;
+
     Ok(result.process_comparisons.standard_process_fidelities)
 }
 
@@ -156,12 +150,12 @@ pub fn compare_processes(
 ) -> DeviceResult<ProcessComparisonResult> {
     // Calculate various distance measures
     let trace_distance = utils::process_utils::trace_distance(process1, process2)?;
-    
+
     // Calculate fidelity (simplified)
     let mut fidelity = 0.0;
     let mut norm1 = 0.0;
     let mut norm2 = 0.0;
-    
+
     let dim = process1.dim();
     for i in 0..dim.0 {
         for j in 0..dim.1 {
@@ -169,7 +163,7 @@ pub fn compare_processes(
                 for l in 0..dim.3 {
                     let element1 = process1[[i, j, k, l]];
                     let element2 = process2[[i, j, k, l]];
-                    
+
                     fidelity += (element1.conj() * element2).re;
                     norm1 += element1.norm_sqr();
                     norm2 += element2.norm_sqr();
@@ -177,13 +171,13 @@ pub fn compare_processes(
             }
         }
     }
-    
+
     let process_fidelity = if norm1 > 1e-12 && norm2 > 1e-12 {
         fidelity / (norm1 * norm2).sqrt()
     } else {
         0.0
     };
-    
+
     Ok(ProcessComparisonResult {
         process_fidelity,
         trace_distance,
@@ -206,49 +200,57 @@ pub fn validate_process_result(
 ) -> ProcessValidationReport {
     let mut issues = Vec::new();
     let mut warnings = Vec::new();
-    
+
     // Check physical validity
-    let physical_validity = &result.statistical_analysis.reconstruction_quality.physical_validity;
-    
+    let physical_validity = &result
+        .statistical_analysis
+        .reconstruction_quality
+        .physical_validity;
+
     if !physical_validity.is_completely_positive {
         issues.push("Process is not completely positive".to_string());
     }
-    
+
     if !physical_validity.is_trace_preserving {
         issues.push("Process is not trace preserving".to_string());
     }
-    
+
     if physical_validity.positivity_measure < 0.9 {
         warnings.push(format!(
             "Low positivity measure: {:.3}",
             physical_validity.positivity_measure
         ));
     }
-    
+
     if physical_validity.trace_preservation_measure < 0.95 {
         warnings.push(format!(
             "Poor trace preservation: {:.3}",
             physical_validity.trace_preservation_measure
         ));
     }
-    
+
     // Check process metrics
     if result.process_metrics.process_fidelity < 0.5 {
         warnings.push("Low process fidelity detected".to_string());
     }
-    
+
     if result.process_metrics.unitarity < 0.1 {
         warnings.push("Very low unitarity detected".to_string());
     }
-    
+
     // Check reconstruction quality
-    if result.statistical_analysis.reconstruction_quality.condition_number > 1e10 {
+    if result
+        .statistical_analysis
+        .reconstruction_quality
+        .condition_number
+        > 1e10
+    {
         warnings.push("High condition number indicates numerical instability".to_string());
     }
-    
+
     let is_valid = issues.is_empty();
     let quality_score = calculate_overall_quality_score(result);
-    
+
     ProcessValidationReport {
         is_valid,
         quality_score,
@@ -268,17 +270,33 @@ pub struct ProcessValidationReport {
 
 /// Calculate overall quality score for a process tomography result
 fn calculate_overall_quality_score(result: &SciRS2ProcessTomographyResult) -> f64 {
-    let physical_score = (result.statistical_analysis.reconstruction_quality.physical_validity.positivity_measure +
-                         result.statistical_analysis.reconstruction_quality.physical_validity.trace_preservation_measure) / 2.0;
-    
+    let physical_score = (result
+        .statistical_analysis
+        .reconstruction_quality
+        .physical_validity
+        .positivity_measure
+        + result
+            .statistical_analysis
+            .reconstruction_quality
+            .physical_validity
+            .trace_preservation_measure)
+        / 2.0;
+
     let fidelity_score = result.process_metrics.process_fidelity;
     let unitarity_score = result.process_metrics.unitarity;
-    
-    let numerical_score = 1.0 / (1.0 + result.statistical_analysis.reconstruction_quality.condition_number / 1e6);
-    
+
+    let numerical_score = 1.0
+        / (1.0
+            + result
+                .statistical_analysis
+                .reconstruction_quality
+                .condition_number
+                / 1e6);
+
     // Weighted average
     (physical_score * 0.3 + fidelity_score * 0.3 + unitarity_score * 0.2 + numerical_score * 0.2)
-        .max(0.0).min(1.0)
+        .max(0.0)
+        .min(1.0)
 }
 
 /// Export process tomography results in various formats
@@ -321,9 +339,12 @@ fn export_as_json(result: &SciRS2ProcessTomographyResult) -> DeviceResult<String
         result.process_metrics.unitarity,
         result.process_metrics.entangling_power,
         result.config.reconstruction_method,
-        result.statistical_analysis.reconstruction_quality.log_likelihood
+        result
+            .statistical_analysis
+            .reconstruction_quality
+            .log_likelihood
     );
-    
+
     Ok(json_data)
 }
 
@@ -337,7 +358,7 @@ fn export_as_csv(result: &SciRS2ProcessTomographyResult) -> DeviceResult<String>
         result.process_metrics.entangling_power,
         result.statistical_analysis.reconstruction_quality.log_likelihood
     );
-    
+
     Ok(csv_data)
 }
 

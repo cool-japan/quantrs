@@ -10,7 +10,6 @@ use ndarray::{s, Array1, Array2, Array3, Axis};
 use num_complex::Complex64;
 use rayon::prelude::*;
 
-
 /// Apply a single-qubit gate to all states in a batch
 pub fn apply_single_qubit_gate_batch(
     batch: &mut BatchStateVector,
@@ -25,7 +24,7 @@ pub fn apply_single_qubit_gate_batch(
     }
 
     let batch_size = batch.batch_size();
-    let state_size = 1 << n_qubits;
+    let _state_size = 1 << n_qubits;
 
     // Use optimized SIMD batch processing for large batches
     if batch_size > 32 && cfg!(target_feature = "avx2") {
@@ -38,7 +37,12 @@ pub fn apply_single_qubit_gate_batch(
             .into_par_iter()
             .try_for_each(|mut state_row| -> QuantRS2Result<()> {
                 let mut state = state_row.to_owned();
-                apply_single_qubit_to_state_optimized(&mut state, gate_matrix, target_idx, n_qubits)?;
+                apply_single_qubit_to_state_optimized(
+                    &mut state,
+                    gate_matrix,
+                    target_idx,
+                    n_qubits,
+                )?;
                 state_row.assign(&state);
                 Ok(())
             })?;
@@ -145,11 +149,11 @@ fn apply_single_qubit_batch_simd(
     n_qubits: usize,
 ) -> QuantRS2Result<()> {
     use std::arch::x86_64::*;
-    
+
     let batch_size = batch.batch_size();
     let state_size = 1 << n_qubits;
     let target_mask = 1 << target_idx;
-    
+
     // Extract gate matrix components for SIMD
     let g00_re = gate_matrix[0].re;
     let g00_im = gate_matrix[0].im;
@@ -159,7 +163,7 @@ fn apply_single_qubit_batch_simd(
     let g10_im = gate_matrix[2].im;
     let g11_re = gate_matrix[3].re;
     let g11_im = gate_matrix[3].im;
-    
+
     unsafe {
         // Broadcast gate matrix elements to SIMD registers
         let g00_re_vec = _mm256_set1_pd(g00_re);
@@ -170,101 +174,103 @@ fn apply_single_qubit_batch_simd(
         let g10_im_vec = _mm256_set1_pd(g10_im);
         let g11_re_vec = _mm256_set1_pd(g11_re);
         let g11_im_vec = _mm256_set1_pd(g11_im);
-        
+
         // Process batches in groups of 4 (AVX2 width for double precision)
         for batch_start in (0..batch_size).step_by(4) {
             let batch_end = (batch_start + 4).min(batch_size);
             let actual_batch_size = batch_end - batch_start;
-            
+
             for i in 0..state_size {
                 if i & target_mask == 0 {
                     let j = i | target_mask;
-                    
+
                     // Load state amplitudes for multiple batch elements
                     let mut a_re = [0.0; 4];
                     let mut a_im = [0.0; 4];
                     let mut b_re = [0.0; 4];
                     let mut b_im = [0.0; 4];
-                    
+
                     for k in 0..actual_batch_size {
                         a_re[k] = batch.states[[batch_start + k, i]].re;
                         a_im[k] = batch.states[[batch_start + k, i]].im;
                         b_re[k] = batch.states[[batch_start + k, j]].re;
                         b_im[k] = batch.states[[batch_start + k, j]].im;
                     }
-                    
+
                     // Load into SIMD registers
                     let a_re_vec = _mm256_loadu_pd(a_re.as_ptr());
                     let a_im_vec = _mm256_loadu_pd(a_im.as_ptr());
                     let b_re_vec = _mm256_loadu_pd(b_re.as_ptr());
                     let b_im_vec = _mm256_loadu_pd(b_im.as_ptr());
-                    
+
                     // Compute new_a = g00 * a + g01 * b
                     let new_a_re = _mm256_add_pd(
                         _mm256_sub_pd(
                             _mm256_mul_pd(g00_re_vec, a_re_vec),
-                            _mm256_mul_pd(g00_im_vec, a_im_vec)
+                            _mm256_mul_pd(g00_im_vec, a_im_vec),
                         ),
                         _mm256_sub_pd(
                             _mm256_mul_pd(g01_re_vec, b_re_vec),
-                            _mm256_mul_pd(g01_im_vec, b_im_vec)
-                        )
+                            _mm256_mul_pd(g01_im_vec, b_im_vec),
+                        ),
                     );
-                    
+
                     let new_a_im = _mm256_add_pd(
                         _mm256_add_pd(
                             _mm256_mul_pd(g00_re_vec, a_im_vec),
-                            _mm256_mul_pd(g00_im_vec, a_re_vec)
+                            _mm256_mul_pd(g00_im_vec, a_re_vec),
                         ),
                         _mm256_add_pd(
                             _mm256_mul_pd(g01_re_vec, b_im_vec),
-                            _mm256_mul_pd(g01_im_vec, b_re_vec)
-                        )
+                            _mm256_mul_pd(g01_im_vec, b_re_vec),
+                        ),
                     );
-                    
+
                     // Compute new_b = g10 * a + g11 * b
                     let new_b_re = _mm256_add_pd(
                         _mm256_sub_pd(
                             _mm256_mul_pd(g10_re_vec, a_re_vec),
-                            _mm256_mul_pd(g10_im_vec, a_im_vec)
+                            _mm256_mul_pd(g10_im_vec, a_im_vec),
                         ),
                         _mm256_sub_pd(
                             _mm256_mul_pd(g11_re_vec, b_re_vec),
-                            _mm256_mul_pd(g11_im_vec, b_im_vec)
-                        )
+                            _mm256_mul_pd(g11_im_vec, b_im_vec),
+                        ),
                     );
-                    
+
                     let new_b_im = _mm256_add_pd(
                         _mm256_add_pd(
                             _mm256_mul_pd(g10_re_vec, a_im_vec),
-                            _mm256_mul_pd(g10_im_vec, a_re_vec)
+                            _mm256_mul_pd(g10_im_vec, a_re_vec),
                         ),
                         _mm256_add_pd(
                             _mm256_mul_pd(g11_re_vec, b_im_vec),
-                            _mm256_mul_pd(g11_im_vec, b_re_vec)
-                        )
+                            _mm256_mul_pd(g11_im_vec, b_re_vec),
+                        ),
                     );
-                    
+
                     // Store results back
                     let mut result_a_re = [0.0; 4];
                     let mut result_a_im = [0.0; 4];
                     let mut result_b_re = [0.0; 4];
                     let mut result_b_im = [0.0; 4];
-                    
+
                     _mm256_storeu_pd(result_a_re.as_mut_ptr(), new_a_re);
                     _mm256_storeu_pd(result_a_im.as_mut_ptr(), new_a_im);
                     _mm256_storeu_pd(result_b_re.as_mut_ptr(), new_b_re);
                     _mm256_storeu_pd(result_b_im.as_mut_ptr(), new_b_im);
-                    
+
                     for k in 0..actual_batch_size {
-                        batch.states[[batch_start + k, i]] = Complex64::new(result_a_re[k], result_a_im[k]);
-                        batch.states[[batch_start + k, j]] = Complex64::new(result_b_re[k], result_b_im[k]);
+                        batch.states[[batch_start + k, i]] =
+                            Complex64::new(result_a_re[k], result_a_im[k]);
+                        batch.states[[batch_start + k, j]] =
+                            Complex64::new(result_b_re[k], result_b_im[k]);
                     }
                 }
             }
         }
     }
-    
+
     Ok(())
 }
 

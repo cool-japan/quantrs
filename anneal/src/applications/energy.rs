@@ -390,11 +390,11 @@ impl OptimizationProblem for SmartGridOptimization {
 /// Grid optimization solution
 #[derive(Debug, Clone)]
 pub struct GridSolution {
-    /// Generation schedule [generator][time]
+    /// Generation schedule \[generator\]\[time\]
     pub generation_schedule: Vec<Vec<f64>>,
-    /// Transmission flows [line][time]
+    /// Transmission flows \[line\]\[time\]
     pub transmission_flows: HashMap<(usize, usize), Vec<f64>>,
-    /// Storage operations [storage][time]
+    /// Storage operations \[storage\]\[time\]
     pub storage_operations: Vec<Vec<f64>>,
     /// Total cost
     pub total_cost: f64,

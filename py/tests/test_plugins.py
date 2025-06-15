@@ -46,150 +46,324 @@ try:
 except ImportError:
     HAS_PLUGINS = False
     HAS_PLUGIN_CLASSES = False
+    # Create stub classes for when plugins module is not available
+    class PluginType:
+        GATE = "gate"
+        ALGORITHM = "algorithm"
+        BACKEND = "backend"
+        OPTIMIZER = "optimizer"
+        VISUALIZER = "visualizer"
+        CONVERTER = "converter"
+        MIDDLEWARE = "middleware"
+        EXTENSION = "extension"
+    class PluginMetadata:
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+    class PluginInterface:
+        pass
+    class PluginInfo:
+        pass
+    class PluginRegistry:
+        pass
+    class PluginManager:
+        pass
+    def get_plugin_manager():
+        return None
+    def register_plugin():
+        pass
+    def load_plugin():
+        pass
+    def get_available_gates():
+        return []
+    def get_available_algorithms():
+        return []
+    def get_available_backends():
+        return []
 
 
 # Mock plugin implementations for testing
-class MockGatePlugin(GatePlugin):
-    """Mock gate plugin for testing."""
-    
-    @property
-    def metadata(self) -> PluginMetadata:
-        return PluginMetadata(
-            name="MockGatePlugin",
-            version="1.0.0",
-            description="A mock gate plugin for testing",
-            author="Test Author",
-            plugin_type=PluginType.GATE,
-            keywords=["test", "gate"]
-        )
-    
-    def initialize(self, config: Optional[Dict[str, Any]] = None) -> bool:
-        self._initialized = True
-        return True
-    
-    def cleanup(self) -> None:
-        self._initialized = False
-    
-    def get_gate_classes(self) -> Dict[str, Type]:
-        return {
-            "MockGate": object,  # Simplified for testing
-            "TestGate": object
-        }
-    
-    def get_gate_functions(self) -> Dict[str, Callable]:
-        return {
-            "mock_gate": lambda: "mock gate",
-            "test_gate": lambda: "test gate"
-        }
-
-
-class MockAlgorithmPlugin(AlgorithmPlugin):
-    """Mock algorithm plugin for testing."""
-    
-    @property
-    def metadata(self) -> PluginMetadata:
-        return PluginMetadata(
-            name="MockAlgorithmPlugin",
-            version="2.0.0",
-            description="A mock algorithm plugin for testing",
-            author="Algorithm Author",
-            plugin_type=PluginType.ALGORITHM,
-            dependencies=["numpy"],
-            keywords=["test", "algorithm"]
-        )
-    
-    def initialize(self, config: Optional[Dict[str, Any]] = None) -> bool:
-        self._config = config or {}
-        return True
-    
-    def cleanup(self) -> None:
-        self._config = {}
-    
-    def get_algorithms(self) -> Dict[str, Type]:
-        return {
-            "MockVQE": object,
-            "TestQAOA": object
-        }
-    
-    def get_algorithm_templates(self) -> Dict[str, Callable]:
-        return {
-            "mock_template": lambda: "mock template",
-            "test_template": lambda: "test template"
-        }
-
-
-class MockBackendPlugin(BackendPlugin):
-    """Mock backend plugin for testing."""
-    
-    def __init__(self, available: bool = True):
-        self._available = available
-    
-    @property
-    def metadata(self) -> PluginMetadata:
-        return PluginMetadata(
-            name="MockBackendPlugin",
-            version="1.5.0",
-            description="A mock backend plugin for testing",
-            author="Backend Author",
-            plugin_type=PluginType.BACKEND,
-            config_schema={
-                "required": ["backend_url"],
-                "properties": {
-                    "backend_url": {"type": "string"},
-                    "timeout": {"type": "integer", "default": 30}
-                }
+if HAS_PLUGIN_CLASSES:
+    class MockGatePlugin(GatePlugin):
+        """Mock gate plugin for testing."""
+        
+        @property
+        def metadata(self) -> PluginMetadata:
+            return PluginMetadata(
+                name="MockGatePlugin",
+                version="1.0.0",
+                description="A mock gate plugin for testing",
+                author="Test Author",
+                plugin_type=PluginType.GATE,
+                keywords=["test", "gate"]
+            )
+else:
+    class MockGatePlugin:
+        """Mock gate plugin for testing."""
+        
+        @property
+        def metadata(self) -> PluginMetadata:
+            return PluginMetadata(
+                name="MockGatePlugin",
+                version="1.0.0",
+                description="A mock gate plugin for testing",
+                author="Test Author",
+                plugin_type=PluginType.GATE,
+                keywords=["test", "gate"]
+            )
+        
+        def initialize(self, config: Optional[Dict[str, Any]] = None) -> bool:
+            self._initialized = True
+            return True
+        
+        def cleanup(self) -> None:
+            self._initialized = False
+        
+        def get_gate_classes(self) -> Dict[str, Type]:
+            return {
+                "MockGate": object,  # Simplified for testing
+                "TestGate": object
             }
-        )
-    
-    def initialize(self, config: Optional[Dict[str, Any]] = None) -> bool:
-        if config and not self.validate_config(config):
-            return False
-        self._config = config or {}
-        return True
-    
-    def cleanup(self) -> None:
-        self._config = {}
-    
-    def get_backend_class(self) -> Type:
-        return object  # Simplified for testing
-    
-    def is_available(self) -> bool:
-        return self._available
+        
+        def get_gate_functions(self) -> Dict[str, Callable]:
+            return {
+                "mock_gate": lambda: "mock gate",
+                "test_gate": lambda: "test gate"
+            }
 
 
-class MockMiddlewarePlugin(MiddlewarePlugin):
-    """Mock middleware plugin for testing."""
-    
-    def __init__(self, priority: int = 10):
-        self._priority = priority
-        self._processed_circuits = []
-    
-    @property
-    def metadata(self) -> PluginMetadata:
-        return PluginMetadata(
-            name="MockMiddlewarePlugin",
-            version="1.0.0",
-            description="A mock middleware plugin for testing",
-            author="Middleware Author",
-            plugin_type=PluginType.MIDDLEWARE
-        )
-    
-    def initialize(self, config: Optional[Dict[str, Any]] = None) -> bool:
-        self._processed_circuits = []
-        return True
-    
-    def cleanup(self) -> None:
-        self._processed_circuits = []
-    
-    def process_circuit(self, circuit: Any, context: Dict[str, Any]) -> Any:
-        self._processed_circuits.append(circuit)
-        # Simple transformation for testing
-        if isinstance(circuit, str):
-            return f"processed_{circuit}"
-        return circuit
-    
-    def get_middleware_priority(self) -> int:
-        return self._priority
+# Mock algorithm plugin implementation
+if HAS_PLUGIN_CLASSES:
+    class MockAlgorithmPlugin(AlgorithmPlugin):
+        """Mock algorithm plugin for testing."""
+        
+        @property
+        def metadata(self) -> PluginMetadata:
+            return PluginMetadata(
+                name="MockAlgorithmPlugin",
+                version="2.0.0",
+                description="A mock algorithm plugin for testing",
+                author="Algorithm Author",
+                plugin_type=PluginType.ALGORITHM,
+                dependencies=["numpy"],
+                keywords=["test", "algorithm"]
+            )
+        
+        def initialize(self, config: Optional[Dict[str, Any]] = None) -> bool:
+            self._config = config or {}
+            return True
+        
+        def cleanup(self) -> None:
+            self._config = {}
+        
+        def get_algorithms(self) -> Dict[str, Type]:
+            return {
+                "MockVQE": object,
+                "TestQAOA": object
+            }
+        
+        def get_algorithm_templates(self) -> Dict[str, Callable]:
+            return {
+                "mock_template": lambda: "mock template",
+                "test_template": lambda: "test template"
+            }
+else:
+    class MockAlgorithmPlugin:
+        """Mock algorithm plugin for testing."""
+        
+        @property
+        def metadata(self) -> PluginMetadata:
+            return PluginMetadata(
+                name="MockAlgorithmPlugin",
+                version="2.0.0",
+                description="A mock algorithm plugin for testing",
+                author="Algorithm Author",
+                plugin_type=PluginType.ALGORITHM,
+                dependencies=["numpy"],
+                keywords=["test", "algorithm"]
+            )
+        
+        def initialize(self, config: Optional[Dict[str, Any]] = None) -> bool:
+            self._config = config or {}
+            return True
+        
+        def cleanup(self) -> None:
+            self._config = {}
+        
+        def get_algorithms(self) -> Dict[str, Type]:
+            return {
+                "MockVQE": object,
+                "TestQAOA": object
+            }
+        
+        def get_algorithm_templates(self) -> Dict[str, Callable]:
+            return {
+                "mock_template": lambda: "mock template",
+                "test_template": lambda: "test template"
+            }
+
+
+if HAS_PLUGIN_CLASSES:
+    class MockBackendPlugin(BackendPlugin):
+        """Mock backend plugin for testing."""
+        
+        def __init__(self, available: bool = True):
+            self._available = available
+        
+        @property
+        def metadata(self) -> PluginMetadata:
+            return PluginMetadata(
+                name="MockBackendPlugin",
+                version="1.5.0",
+                description="A mock backend plugin for testing",
+                author="Backend Author",
+                plugin_type=PluginType.BACKEND,
+                config_schema={
+                    "required": ["backend_url"],
+                    "properties": {
+                        "backend_url": {"type": "string"},
+                        "timeout": {"type": "integer", "default": 30}
+                    }
+                }
+            )
+        
+        def initialize(self, config: Optional[Dict[str, Any]] = None) -> bool:
+            if config and not self.validate_config(config):
+                return False
+            self._config = config or {}
+            return True
+        
+        def cleanup(self) -> None:
+            self._config = {}
+        
+        def get_backend_class(self) -> Type:
+            return object  # Simplified for testing
+        
+        def is_available(self) -> bool:
+            return self._available
+else:
+    class MockBackendPlugin:
+        """Mock backend plugin for testing."""
+        
+        def __init__(self, available: bool = True):
+            self._available = available
+        
+        @property
+        def metadata(self) -> PluginMetadata:
+            return PluginMetadata(
+                name="MockBackendPlugin",
+                version="1.5.0",
+                description="A mock backend plugin for testing",
+                author="Backend Author",
+                plugin_type=PluginType.BACKEND,
+                config_schema={
+                    "required": ["backend_url"],
+                    "properties": {
+                        "backend_url": {"type": "string"},
+                        "timeout": {"type": "integer", "default": 30}
+                    }
+                }
+            )
+        
+        def initialize(self, config: Optional[Dict[str, Any]] = None) -> bool:
+            if config and not self.validate_config(config):
+                return False
+            self._config = config or {}
+            return True
+        
+        def cleanup(self) -> None:
+            self._config = {}
+        
+        def get_backend_class(self) -> Type:
+            return object  # Simplified for testing
+        
+        def is_available(self) -> bool:
+            return self._available
+        
+        def validate_config(self, config: Dict[str, Any]) -> bool:
+            """Validate configuration against schema."""
+            if not hasattr(self, 'metadata') or not self.metadata.config_schema:
+                return True
+            
+            schema = self.metadata.config_schema
+            required_fields = schema.get('required', [])
+            
+            # Check required fields
+            for field in required_fields:
+                if field not in config:
+                    return False
+            
+            return True
+
+
+if HAS_PLUGIN_CLASSES:
+    class MockMiddlewarePlugin(MiddlewarePlugin):
+        """Mock middleware plugin for testing."""
+        
+        def __init__(self, priority: int = 10):
+            self._priority = priority
+            self._processed_circuits = []
+        
+        @property
+        def metadata(self) -> PluginMetadata:
+            return PluginMetadata(
+                name="MockMiddlewarePlugin",
+                version="1.0.0",
+                description="A mock middleware plugin for testing",
+                author="Middleware Author",
+                plugin_type=PluginType.MIDDLEWARE
+            )
+        
+        def initialize(self, config: Optional[Dict[str, Any]] = None) -> bool:
+            self._processed_circuits = []
+            return True
+        
+        def cleanup(self) -> None:
+            self._processed_circuits = []
+        
+        def process_circuit(self, circuit: Any, context: Dict[str, Any]) -> Any:
+            self._processed_circuits.append(circuit)
+            # Simple transformation for testing
+            if isinstance(circuit, str):
+                return f"processed_{circuit}"
+            return circuit
+        
+        def get_middleware_priority(self) -> int:
+            return self._priority
+else:
+    class MockMiddlewarePlugin:
+        """Mock middleware plugin for testing."""
+        
+        def __init__(self, priority: int = 10):
+            self._priority = priority
+            self._processed_circuits = []
+        
+        @property
+        def metadata(self) -> PluginMetadata:
+            return PluginMetadata(
+                name="MockMiddlewarePlugin",
+                version="1.0.0",
+                description="A mock middleware plugin for testing",
+                author="Middleware Author",
+                plugin_type=PluginType.MIDDLEWARE
+            )
+        
+        def initialize(self, config: Optional[Dict[str, Any]] = None) -> bool:
+            self._processed_circuits = []
+            return True
+        
+        def cleanup(self) -> None:
+            self._processed_circuits = []
+        
+        def process_circuit(self, circuit: Any, context: Dict[str, Any]) -> Any:
+            self._processed_circuits.append(circuit)
+            # Simple transformation for testing
+            if isinstance(circuit, str):
+                return f"processed_{circuit}"
+            return circuit
+        
+        def get_middleware_priority(self) -> int:
+            return self._priority
 
 
 class FailingPlugin(PluginInterface):
@@ -212,6 +386,7 @@ class FailingPlugin(PluginInterface):
         pass
 
 
+@pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
 @pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
 class TestPluginMetadata:
     """Test PluginMetadata functionality."""
@@ -259,6 +434,7 @@ class TestPluginMetadata:
         assert metadata.config_schema == config_schema
 
 
+@pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
 @pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
 class TestPluginRegistry:
     """Test PluginRegistry functionality."""
@@ -476,6 +652,7 @@ class TestPluginRegistry:
 
 
 @pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
+@pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
 class TestPluginManager:
     """Test PluginManager functionality."""
     
@@ -580,6 +757,7 @@ class TestPluginManager:
 
 
 @pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
+@pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
 class TestConvenienceFunctions:
     """Test convenience functions."""
     
@@ -648,6 +826,7 @@ class TestConvenienceFunctions:
 
 
 @pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
+@pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
 class TestPluginValidation:
     """Test plugin validation functionality."""
     
@@ -688,6 +867,7 @@ class TestPluginValidation:
         assert success is False
 
 
+@pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
 @pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
 class TestPluginErrorHandling:
     """Test error handling in plugin system."""
@@ -748,6 +928,7 @@ class TestPluginErrorHandling:
         assert success is False
 
 
+@pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
 @pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
 class TestPluginIntegration:
     """Test plugin integration scenarios."""
@@ -837,6 +1018,7 @@ class TestPluginIntegration:
         assert "SecondGate" in gates
 
 
+@pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
 @pytest.mark.skipif(not HAS_PLUGINS, reason="plugins module not available")
 class TestPluginPerformance:
     """Test plugin system performance characteristics."""

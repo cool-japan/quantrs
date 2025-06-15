@@ -24,7 +24,7 @@ pub struct NetworkTopologyOptimization {
     pub connection_costs: Vec<f64>,
     /// Connection capacities
     pub connection_capacities: Vec<f64>,
-    /// Traffic demand matrix [source][destination]
+    /// Traffic demand matrix \[source\]\[destination\]
     pub traffic_demands: Vec<Vec<f64>>,
     /// Reliability requirements for connections
     pub reliability_requirements: Vec<f64>,
@@ -649,7 +649,7 @@ impl SpectrumAllocation {
 /// Spectrum Allocation Solution
 #[derive(Debug, Clone)]
 pub struct SpectrumSolution {
-    /// Band assignments [region][band] = assigned
+    /// Band assignments \[region\]\[band\] = assigned
     pub band_assignments: Vec<Vec<bool>>,
     /// Total interference
     pub total_interference: f64,

@@ -7,8 +7,8 @@ use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
 
 use crate::qubit::QubitId;
-use num_complex::Complex64;
 use ndarray::{Array1, Array2};
+use num_complex::Complex64;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -200,7 +200,16 @@ pub struct NativeGate {
 
 #[derive(Debug, Clone)]
 pub enum NativeGateType {
-    RX, RY, RZ, CNOT, CZ, SWAP, Hadamard, Phase, T, Custom,
+    RX,
+    RY,
+    RZ,
+    CNOT,
+    CZ,
+    SWAP,
+    Hadamard,
+    Phase,
+    T,
+    Custom,
 }
 
 #[derive(Debug)]
@@ -309,13 +318,15 @@ impl UltraThinkQuantumComputer {
         target_qubits: Vec<QubitId>,
     ) -> Result<HolonomicExecutionResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Calculate Wilson loop for the holonomic path
-        let wilson_loop = self.holonomic_processor.calculate_wilson_loop(&path_parameters)?;
-        
+        let wilson_loop = self
+            .holonomic_processor
+            .calculate_wilson_loop(&path_parameters)?;
+
         // Generate geometric phase from Wilson loop
         let geometric_phase = wilson_loop.arg();
-        
+
         // Create holonomic gate
         let holonomic_gate = HolonomicGate {
             path_parameters,
@@ -323,10 +334,10 @@ impl UltraThinkQuantumComputer {
             target_qubits: target_qubits.clone(),
             fidelity: 0.9999, // Ultra-high fidelity due to geometric protection
         };
-        
+
         // Apply gate with geometric error correction
-        let gate_result = self.apply_holonomic_gate(&holonomic_gate)?;
-        
+        let _gate_result = self.apply_holonomic_gate(&holonomic_gate)?;
+
         Ok(HolonomicExecutionResult {
             geometric_phase,
             wilson_loop_value: wilson_loop,
@@ -343,23 +354,25 @@ impl UltraThinkQuantumComputer {
         circuit_parameters: &[f64],
     ) -> Result<QuantumMLResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Encode classical data into quantum feature map
-        let encoded_state = self.quantum_ml_accelerator
-            .encode_features(input_data)?;
-        
+        let encoded_state = self.quantum_ml_accelerator.encode_features(input_data)?;
+
         // Apply variational quantum circuit
-        let processed_state = self.quantum_ml_accelerator
+        let processed_state = self
+            .quantum_ml_accelerator
             .apply_variational_circuit(&encoded_state, circuit_parameters)?;
-        
+
         // Calculate quantum natural gradients for optimization
-        let gradients = self.quantum_ml_accelerator
+        let gradients = self
+            .quantum_ml_accelerator
             .calculate_natural_gradients(&processed_state, circuit_parameters)?;
-        
+
         // Use tensor network for efficient computation
-        let tensor_result = self.quantum_ml_accelerator
+        let tensor_result = self
+            .quantum_ml_accelerator
             .tensor_network_computation(&processed_state)?;
-        
+
         Ok(QuantumMLResult {
             output_state: processed_state,
             natural_gradients: gradients,
@@ -376,12 +389,10 @@ impl UltraThinkQuantumComputer {
         coherence_time: Duration,
     ) -> Result<u64, QuantRS2Error> {
         let state_id = Self::generate_id();
-        
+
         // Apply quantum error correction encoding
-        let encoded_state = self.quantum_memory
-            .error_correction
-            .encode_state(&state)?;
-        
+        let encoded_state = self.quantum_memory.error_correction.encode_state(&state)?;
+
         // Store in quantum memory
         let state_entry = QuantumStateEntry {
             state_id,
@@ -391,13 +402,17 @@ impl UltraThinkQuantumComputer {
             access_count: 0,
             encoded: true,
         };
-        
-        self.quantum_memory.stored_states.insert(state_id, state_entry);
-        
+
+        self.quantum_memory
+            .stored_states
+            .insert(state_id, state_entry);
+
         // Start coherence tracking
-        self.quantum_memory.coherence_tracker
-            .coherence_times.insert(state_id, coherence_time);
-        
+        self.quantum_memory
+            .coherence_tracker
+            .coherence_times
+            .insert(state_id, coherence_time);
+
         Ok(state_id)
     }
 
@@ -408,35 +423,38 @@ impl UltraThinkQuantumComputer {
         optimization_level: u32,
     ) -> Result<CompiledOperation, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Check compilation cache
         let cache_key = format!("{}_{}", operation.name(), optimization_level);
         if let Some(cached) = self.real_time_compiler.compilation_cache.get(&cache_key) {
             return Ok(cached.clone());
         }
-        
+
         // Decompose operation into native gates
-        let native_gates = self.real_time_compiler
+        let native_gates = self
+            .real_time_compiler
             .decompose_to_native_gates(operation)?;
-        
+
         // Apply optimization passes
-        let optimized_gates = self.real_time_compiler
+        let optimized_gates = self
+            .real_time_compiler
             .apply_optimization_passes(&native_gates, optimization_level)?;
-        
+
         // Calculate compilation metrics
         let estimated_fidelity = self.calculate_gate_sequence_fidelity(&optimized_gates);
-        
+
         let compiled_operation = CompiledOperation {
             native_gates: optimized_gates,
             compilation_time: start_time.elapsed(),
             optimization_level,
             estimated_fidelity,
         };
-        
+
         // Cache result
-        self.real_time_compiler.compilation_cache
+        self.real_time_compiler
+            .compilation_cache
             .insert(cache_key, compiled_operation.clone());
-        
+
         Ok(compiled_operation)
     }
 
@@ -446,23 +464,21 @@ impl UltraThinkQuantumComputer {
         operation: DistributedOperation,
     ) -> Result<DistributedExecutionResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Schedule operation across network nodes
-        let execution_plan = self.distributed_network
+        let execution_plan = self
+            .distributed_network
             .network_scheduler
             .schedule_operation(&operation)?;
-        
+
         // Establish entanglement between required nodes
-        let entanglement_results = self.establish_distributed_entanglement(
-            &operation.involved_nodes,
-        )?;
-        
+        let entanglement_results =
+            self.establish_distributed_entanglement(&operation.involved_nodes)?;
+
         // Execute operation with distributed quantum gates
-        let operation_result = self.execute_distributed_gates(
-            &execution_plan,
-            &entanglement_results,
-        )?;
-        
+        let operation_result =
+            self.execute_distributed_gates(&execution_plan, &entanglement_results)?;
+
         Ok(DistributedExecutionResult {
             operation_id: operation.operation_id,
             execution_time: start_time.elapsed(),
@@ -476,31 +492,30 @@ impl UltraThinkQuantumComputer {
     /// Demonstrate quantum advantage across all UltraThink capabilities
     pub fn demonstrate_quantum_advantage(&mut self) -> QuantumAdvantageReport {
         let mut report = QuantumAdvantageReport::new();
-        
+
         // Holonomic quantum computing advantage
         report.holonomic_advantage = self.benchmark_holonomic_gates();
-        
+
         // Quantum ML acceleration advantage
         report.quantum_ml_advantage = self.benchmark_quantum_ml();
-        
+
         // Quantum memory advantage
         report.quantum_memory_advantage = self.benchmark_quantum_memory();
-        
+
         // Real-time compilation advantage
         report.compilation_advantage = self.benchmark_real_time_compilation();
-        
+
         // Distributed quantum advantage
         report.distributed_advantage = self.benchmark_distributed_quantum();
-        
+
         // Calculate overall quantum advantage
-        report.overall_quantum_advantage = (
-            report.holonomic_advantage +
-            report.quantum_ml_advantage +
-            report.quantum_memory_advantage +
-            report.compilation_advantage +
-            report.distributed_advantage
-        ) / 5.0;
-        
+        report.overall_quantum_advantage = (report.holonomic_advantage
+            + report.quantum_ml_advantage
+            + report.quantum_memory_advantage
+            + report.compilation_advantage
+            + report.distributed_advantage)
+            / 5.0;
+
         report
     }
 
@@ -509,13 +524,16 @@ impl UltraThinkQuantumComputer {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
         use std::time::SystemTime;
-        
+
         let mut hasher = DefaultHasher::new();
         SystemTime::now().hash(&mut hasher);
         hasher.finish()
     }
 
-    fn apply_holonomic_gate(&self, gate: &HolonomicGate) -> Result<GateApplicationResult, QuantRS2Error> {
+    fn apply_holonomic_gate(
+        &self,
+        gate: &HolonomicGate,
+    ) -> Result<GateApplicationResult, QuantRS2Error> {
         // Simplified holonomic gate application
         Ok(GateApplicationResult {
             success: true,
@@ -530,7 +548,10 @@ impl UltraThinkQuantumComputer {
             .product()
     }
 
-    fn establish_distributed_entanglement(&self, nodes: &[u64]) -> Result<EntanglementResults, QuantRS2Error> {
+    fn establish_distributed_entanglement(
+        &self,
+        nodes: &[u64],
+    ) -> Result<EntanglementResults, QuantRS2Error> {
         // Simplified entanglement establishment
         Ok(EntanglementResults {
             average_fidelity: 0.95,
@@ -538,7 +559,11 @@ impl UltraThinkQuantumComputer {
         })
     }
 
-    fn execute_distributed_gates(&self, _plan: &ExecutionPlan, _entanglement: &EntanglementResults) -> Result<OperationResult, QuantRS2Error> {
+    fn execute_distributed_gates(
+        &self,
+        _plan: &ExecutionPlan,
+        _entanglement: &EntanglementResults,
+    ) -> Result<OperationResult, QuantRS2Error> {
         Ok(OperationResult {
             fidelity: 0.98,
             quantum_advantage: 3.7,
@@ -577,7 +602,10 @@ impl HolonomicProcessor {
         }
     }
 
-    pub fn calculate_wilson_loop(&self, path_parameters: &[f64]) -> Result<Complex64, QuantRS2Error> {
+    pub fn calculate_wilson_loop(
+        &self,
+        path_parameters: &[f64],
+    ) -> Result<Complex64, QuantRS2Error> {
         // Simplified Wilson loop calculation
         let phase = path_parameters.iter().sum::<f64>();
         Ok(Complex64::from_polar(1.0, phase))
@@ -609,17 +637,28 @@ impl QuantumMLAccelerator {
         Ok(encoded.clone() / (encoded.dot(&encoded.mapv(|x| x.conj())).norm()))
     }
 
-    pub fn apply_variational_circuit(&self, state: &Array1<Complex64>, _parameters: &[f64]) -> Result<Array1<Complex64>, QuantRS2Error> {
+    pub fn apply_variational_circuit(
+        &self,
+        state: &Array1<Complex64>,
+        _parameters: &[f64],
+    ) -> Result<Array1<Complex64>, QuantRS2Error> {
         // Simplified variational circuit application
         Ok(state.clone())
     }
 
-    pub fn calculate_natural_gradients(&self, _state: &Array1<Complex64>, parameters: &[f64]) -> Result<Array1<f64>, QuantRS2Error> {
+    pub fn calculate_natural_gradients(
+        &self,
+        _state: &Array1<Complex64>,
+        parameters: &[f64],
+    ) -> Result<Array1<f64>, QuantRS2Error> {
         // Simplified natural gradient calculation
         Ok(Array1::from(parameters.to_vec()))
     }
 
-    pub fn tensor_network_computation(&self, state: &Array1<Complex64>) -> Result<Array1<Complex64>, QuantRS2Error> {
+    pub fn tensor_network_computation(
+        &self,
+        state: &Array1<Complex64>,
+    ) -> Result<Array1<Complex64>, QuantRS2Error> {
         // Simplified tensor network computation
         Ok(state.clone())
     }
@@ -684,7 +723,10 @@ impl ErrorCorrectionEngine {
         }
     }
 
-    pub fn encode_state(&self, state: &Array1<Complex64>) -> Result<Array1<Complex64>, QuantRS2Error> {
+    pub fn encode_state(
+        &self,
+        state: &Array1<Complex64>,
+    ) -> Result<Array1<Complex64>, QuantRS2Error> {
         // Simplified Steane code encoding
         let mut encoded = Array1::zeros(state.len() * 7);
         for (i, &amplitude) in state.iter().enumerate() {
@@ -717,7 +759,10 @@ impl RealTimeCompiler {
         }
     }
 
-    pub fn decompose_to_native_gates(&self, operation: &dyn GateOp) -> Result<Vec<NativeGate>, QuantRS2Error> {
+    pub fn decompose_to_native_gates(
+        &self,
+        operation: &dyn GateOp,
+    ) -> Result<Vec<NativeGate>, QuantRS2Error> {
         // Simplified gate decomposition
         Ok(vec![NativeGate {
             gate_type: NativeGateType::RX,
@@ -727,7 +772,11 @@ impl RealTimeCompiler {
         }])
     }
 
-    pub fn apply_optimization_passes(&self, gates: &[NativeGate], _level: u32) -> Result<Vec<NativeGate>, QuantRS2Error> {
+    pub fn apply_optimization_passes(
+        &self,
+        gates: &[NativeGate],
+        _level: u32,
+    ) -> Result<Vec<NativeGate>, QuantRS2Error> {
         // Simplified optimization
         Ok(gates.to_vec())
     }
@@ -751,7 +800,10 @@ impl NetworkScheduler {
         }
     }
 
-    pub fn schedule_operation(&self, operation: &DistributedOperation) -> Result<ExecutionPlan, QuantRS2Error> {
+    pub fn schedule_operation(
+        &self,
+        operation: &DistributedOperation,
+    ) -> Result<ExecutionPlan, QuantRS2Error> {
         Ok(ExecutionPlan {
             operation_id: operation.operation_id,
             steps: Vec::new(),
@@ -858,10 +910,10 @@ mod tests {
         let mut computer = UltraThinkQuantumComputer::new(4);
         let path_params = vec![1.0, 2.0, 3.0];
         let qubits = vec![QubitId::new(0), QubitId::new(1)];
-        
+
         let result = computer.execute_holonomic_gate(path_params, qubits);
         assert!(result.is_ok());
-        
+
         let execution_result = result.unwrap();
         assert!(execution_result.gate_fidelity > 0.999);
         assert!(execution_result.error_corrected);
@@ -872,10 +924,10 @@ mod tests {
         let mut computer = UltraThinkQuantumComputer::new(4);
         let input_data = Array1::from(vec![1.0, 2.0, 3.0, 4.0]);
         let parameters = vec![0.1, 0.2, 0.3, 0.4];
-        
+
         let result = computer.execute_quantum_ml_circuit(&input_data, &parameters);
         assert!(result.is_ok());
-        
+
         let ml_result = result.unwrap();
         assert!(ml_result.quantum_advantage_factor > 1.0);
     }
@@ -890,19 +942,22 @@ mod tests {
             Complex64::new(0.5, 0.0),
         ]);
         let coherence_time = Duration::from_millis(100);
-        
+
         let result = computer.store_quantum_state(state, coherence_time);
         assert!(result.is_ok());
-        
+
         let state_id = result.unwrap();
-        assert!(computer.quantum_memory.stored_states.contains_key(&state_id));
+        assert!(computer
+            .quantum_memory
+            .stored_states
+            .contains_key(&state_id));
     }
 
     #[test]
     fn test_quantum_advantage_demonstration() {
         let mut computer = UltraThinkQuantumComputer::new(10);
         let report = computer.demonstrate_quantum_advantage();
-        
+
         // All advantages should be greater than 1.0 (quantum advantage)
         assert!(report.holonomic_advantage > 1.0);
         assert!(report.quantum_ml_advantage > 1.0);

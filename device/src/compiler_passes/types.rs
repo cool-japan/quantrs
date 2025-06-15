@@ -3,8 +3,8 @@
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, SystemTime};
 
-use crate::backend_traits::BackendCapabilities;
 use super::config::HardwareConstraints;
+use crate::backend_traits::BackendCapabilities;
 
 /// Multi-platform compilation target specifications
 #[derive(Debug, Clone, PartialEq)]

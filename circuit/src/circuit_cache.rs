@@ -154,9 +154,7 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
 
         let result = {
             let entries = self.entries.read().unwrap();
-            entries.get(&key_hash).map(|entry| {
-                entry.value.clone()
-            })
+            entries.get(&key_hash).map(|entry| entry.value.clone())
         };
 
         if let Some(value) = &result {
@@ -202,7 +200,7 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
     /// Remove entry from cache
     pub fn remove(&self, key: &CircuitSignature) -> Option<T> {
         let key_hash = self.hash_signature(key);
-        
+
         let removed = {
             let mut entries = self.entries.write().unwrap();
             entries.remove(&key_hash)
@@ -222,7 +220,7 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
             let mut entries = self.entries.write().unwrap();
             entries.clear();
         }
-        
+
         {
             let mut access_order = self.access_order.lock().unwrap();
             access_order.clear();
@@ -258,7 +256,7 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
         let handle = std::thread::spawn(move || {
             loop {
                 std::thread::sleep(interval);
-                
+
                 if let Ok(mut entries_guard) = entries.write() {
                     let now = SystemTime::now();
                     let mut to_remove = Vec::new();
@@ -277,7 +275,9 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
                             if let Some(entry) = entries_guard.remove(&key) {
                                 if let Ok(mut stats_guard) = stats.lock() {
                                     stats_guard.evictions += 1;
-                                    stats_guard.memory_usage_bytes = stats_guard.memory_usage_bytes.saturating_sub(entry.size_bytes);
+                                    stats_guard.memory_usage_bytes = stats_guard
+                                        .memory_usage_bytes
+                                        .saturating_sub(entry.size_bytes);
                                 }
                             }
                         }
@@ -310,10 +310,10 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
         // Update access order for LRU
         if matches!(self.config.eviction_policy, EvictionPolicy::LRU) {
             let mut access_order = self.access_order.lock().unwrap();
-            
+
             // Remove from current position
             access_order.retain(|&x| x != key_hash);
-            
+
             // Add to front
             access_order.push_front(key_hash);
         }
@@ -339,7 +339,9 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
 
             // Update average access time (simple moving average)
             let current_avg_nanos = stats.avg_access_time.as_nanos() as f64;
-            let new_avg_nanos = (current_avg_nanos * (total_accesses - 1) as f64 + access_time.as_nanos() as f64) / total_accesses as f64;
+            let new_avg_nanos = (current_avg_nanos * (total_accesses - 1) as f64
+                + access_time.as_nanos() as f64)
+                / total_accesses as f64;
             stats.avg_access_time = Duration::from_nanos(new_avg_nanos as u64);
         }
     }
@@ -350,7 +352,8 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
             if delta > 0 {
                 stats.memory_usage_bytes = stats.memory_usage_bytes.saturating_add(delta as usize);
             } else {
-                stats.memory_usage_bytes = stats.memory_usage_bytes.saturating_sub((-delta) as usize);
+                stats.memory_usage_bytes =
+                    stats.memory_usage_bytes.saturating_sub((-delta) as usize);
             }
         }
     }
@@ -358,7 +361,8 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
     /// Ensure cache has capacity for new entry
     fn ensure_capacity(&self, new_entry_size: usize) -> QuantRS2Result<()> {
         let current_stats = self.get_stats();
-        let would_exceed_memory = current_stats.memory_usage_bytes + new_entry_size > self.config.max_memory_bytes;
+        let would_exceed_memory =
+            current_stats.memory_usage_bytes + new_entry_size > self.config.max_memory_bytes;
         let would_exceed_count = self.size() >= self.config.max_entries;
 
         if would_exceed_memory || would_exceed_count {
@@ -420,7 +424,8 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
         while freed_space < needed_space && self.size() > 0 {
             let key_to_evict = {
                 let entries = self.entries.read().unwrap();
-                entries.iter()
+                entries
+                    .iter()
                     .min_by_key(|(_, entry)| entry.access_count)
                     .map(|(key, _)| *key)
             };
@@ -454,7 +459,8 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
         while freed_space < needed_space && self.size() > 0 {
             let key_to_evict = {
                 let entries = self.entries.read().unwrap();
-                entries.iter()
+                entries
+                    .iter()
                     .min_by_key(|(_, entry)| entry.created_at)
                     .map(|(key, _)| *key)
             };
@@ -522,7 +528,8 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
         while freed_space < needed_space && self.size() > 0 {
             let key_to_evict = {
                 let entries = self.entries.read().unwrap();
-                entries.iter()
+                entries
+                    .iter()
                     .max_by_key(|(_, entry)| entry.size_bytes)
                     .map(|(key, _)| *key)
             };
@@ -575,7 +582,7 @@ impl SignatureGenerator {
         options_hash: u64,
     ) -> CircuitSignature {
         use std::collections::hash_map::DefaultHasher;
-        
+
         let mut gate_hasher = DefaultHasher::new();
         let mut param_hasher = DefaultHasher::new();
 
@@ -585,7 +592,7 @@ impl SignatureGenerator {
             for qubit in gate.qubits() {
                 qubit.id().hash(&mut gate_hasher);
             }
-            
+
             // Hash parameters if any (simplified)
             // In practice, this would extract actual gate parameters
             0u64.hash(&mut param_hasher);
@@ -606,11 +613,11 @@ impl SignatureGenerator {
         optimization_level: u32,
     ) -> CircuitSignature {
         use std::collections::hash_map::DefaultHasher;
-        
+
         let mut options_hasher = DefaultHasher::new();
         backend.hash(&mut options_hasher);
         optimization_level.hash(&mut options_hasher);
-        
+
         Self::generate_circuit_signature(circuit, options_hasher.finish())
     }
 
@@ -621,11 +628,11 @@ impl SignatureGenerator {
         strategy: &str,
     ) -> CircuitSignature {
         use std::collections::hash_map::DefaultHasher;
-        
+
         let mut options_hasher = DefaultHasher::new();
         device.hash(&mut options_hasher);
         strategy.hash(&mut options_hasher);
-        
+
         Self::generate_circuit_signature(circuit, options_hasher.finish())
     }
 }
@@ -698,7 +705,9 @@ mod tests {
             options_hash: 11111,
         };
 
-        cache.put(signature.clone(), "test_value".to_string()).unwrap();
+        cache
+            .put(signature.clone(), "test_value".to_string())
+            .unwrap();
         let result = cache.get(&signature);
         assert_eq!(result, Some("test_value".to_string()));
     }
@@ -739,7 +748,7 @@ mod tests {
 
         // Miss
         cache.get(&signature);
-        
+
         // Put and hit
         cache.put(signature.clone(), "test".to_string()).unwrap();
         cache.get(&signature);

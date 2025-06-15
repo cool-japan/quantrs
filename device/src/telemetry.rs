@@ -5,8 +5,8 @@
 //! tracking, resource monitoring, error analysis, and automated alerting with
 //! SciRS2-powered statistical analysis.
 
-use std::collections::{HashMap, VecDeque, BTreeMap};
-use std::sync::{Arc, RwLock, Mutex};
+use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
@@ -23,29 +23,32 @@ use quantrs2_core::{
 // SciRS2 integration for advanced analytics
 #[cfg(feature = "scirs2")]
 use scirs2_stats::{
-    mean, std, var, skew, kurtosis, percentile,
-    distributions::{norm, gamma, chi2, exponential},
-    kstest, shapiro_wilk,
-    corrcoef, pearsonr, spearmanr,
-    ttest_1samp, ttest_ind, wilcoxon,
-    Alternative, TTestResult,
+    corrcoef,
+    distributions::{chi2, exponential, gamma, norm},
+    kstest, kurtosis, mean, pearsonr, percentile, shapiro_wilk, skew, spearmanr, std, ttest_1samp,
+    ttest_ind, var, wilcoxon, Alternative, TTestResult,
 };
 
 #[cfg(feature = "scirs2")]
-use scirs2_optimize::{
-    minimize, differential_evolution, least_squares,
-    OptimizeResult,
-};
+use scirs2_optimize::{differential_evolution, least_squares, minimize, OptimizeResult};
 
 // Fallback implementations
 #[cfg(not(feature = "scirs2"))]
 mod fallback_scirs2 {
     use ndarray::{Array1, ArrayView1};
-    
-    pub fn mean(_data: &ArrayView1<f64>) -> Result<f64, String> { Ok(0.0) }
-    pub fn std(_data: &ArrayView1<f64>, _ddof: i32) -> Result<f64, String> { Ok(1.0) }
-    pub fn var(_data: &ArrayView1<f64>, _ddof: i32) -> Result<f64, String> { Ok(1.0) }
-    pub fn percentile(_data: &ArrayView1<f64>, _q: f64) -> Result<f64, String> { Ok(0.0) }
+
+    pub fn mean(_data: &ArrayView1<f64>) -> Result<f64, String> {
+        Ok(0.0)
+    }
+    pub fn std(_data: &ArrayView1<f64>, _ddof: i32) -> Result<f64, String> {
+        Ok(1.0)
+    }
+    pub fn var(_data: &ArrayView1<f64>, _ddof: i32) -> Result<f64, String> {
+        Ok(1.0)
+    }
+    pub fn percentile(_data: &ArrayView1<f64>, _q: f64) -> Result<f64, String> {
+        Ok(0.0)
+    }
 }
 
 #[cfg(not(feature = "scirs2"))]
@@ -54,10 +57,8 @@ use fallback_scirs2::*;
 use ndarray::{Array1, Array2, ArrayView1};
 
 use crate::{
-    backend_traits::BackendCapabilities,
-    calibration::DeviceCalibration,
-    topology::HardwareTopology,
-    DeviceError, DeviceResult,
+    backend_traits::BackendCapabilities, calibration::DeviceCalibration,
+    topology::HardwareTopology, DeviceError, DeviceResult,
 };
 
 /// Comprehensive telemetry and monitoring system for quantum computing
@@ -475,13 +476,13 @@ pub enum ReportType {
 pub trait MetricCollector: Send + Sync {
     /// Collect metrics
     fn collect(&self) -> DeviceResult<Vec<Metric>>;
-    
+
     /// Get collector name
     fn name(&self) -> &str;
-    
+
     /// Get collection interval
     fn interval(&self) -> Duration;
-    
+
     /// Check if collector is enabled
     fn is_enabled(&self) -> bool;
 }
@@ -591,10 +592,10 @@ pub struct HealthIssue {
 pub trait AnomalyDetector: Send + Sync {
     /// Detect anomalies in metric data
     fn detect(&self, data: &[f64]) -> Vec<AnomalyResult>;
-    
+
     /// Update detector with new data
     fn update(&mut self, data: &[f64]);
-    
+
     /// Get detector configuration
     fn config(&self) -> AnomalyDetectorConfig;
 }
@@ -881,10 +882,10 @@ pub struct EscalationEvent {
 pub trait NotificationChannel: Send + Sync {
     /// Send notification
     fn send(&self, alert: &Alert) -> DeviceResult<()>;
-    
+
     /// Get channel name
     fn name(&self) -> &str;
-    
+
     /// Check if channel is enabled
     fn is_enabled(&self) -> bool;
 }
@@ -966,9 +967,9 @@ impl Default for StorageConfig {
         Self {
             realtime_buffer_size: 10000,
             aggregation_intervals: vec![
-                Duration::from_secs(60),     // 1 minute
-                Duration::from_secs(3600),   // 1 hour
-                Duration::from_secs(86400),  // 1 day
+                Duration::from_secs(60),    // 1 minute
+                Duration::from_secs(3600),  // 1 hour
+                Duration::from_secs(86400), // 1 day
             ],
             compression: CompressionConfig {
                 enabled: true,
@@ -1106,8 +1107,12 @@ impl QuantumTelemetrySystem {
         Self {
             config: config.clone(),
             collectors: Arc::new(RwLock::new(HashMap::new())),
-            monitor: Arc::new(RwLock::new(RealTimeMonitor::new(config.monitoring_config.clone()))),
-            analytics: Arc::new(RwLock::new(TelemetryAnalytics::new(config.analytics_config.clone()))),
+            monitor: Arc::new(RwLock::new(RealTimeMonitor::new(
+                config.monitoring_config.clone(),
+            ))),
+            analytics: Arc::new(RwLock::new(TelemetryAnalytics::new(
+                config.analytics_config.clone(),
+            ))),
             alert_manager: Arc::new(RwLock::new(AlertManager::new(config.alert_config.clone()))),
             storage: Arc::new(RwLock::new(TelemetryStorage::new(StorageConfig::default()))),
             event_sender,
@@ -1149,7 +1154,10 @@ impl QuantumTelemetrySystem {
     }
 
     /// Register a metric collector
-    pub fn register_collector(&self, collector: Box<dyn MetricCollector + Send + Sync>) -> DeviceResult<()> {
+    pub fn register_collector(
+        &self,
+        collector: Box<dyn MetricCollector + Send + Sync>,
+    ) -> DeviceResult<()> {
         let mut collectors = self.collectors.write().unwrap();
         collectors.insert(collector.name().to_string(), collector);
         Ok(())
@@ -1166,7 +1174,11 @@ impl QuantumTelemetrySystem {
                     Ok(mut metrics) => all_metrics.append(&mut metrics),
                     Err(e) => {
                         // Log error but continue with other collectors
-                        eprintln!("Error collecting metrics from {}: {:?}", collector.name(), e);
+                        eprintln!(
+                            "Error collecting metrics from {}: {:?}",
+                            collector.name(),
+                            e
+                        );
                     }
                 }
             }
@@ -1208,7 +1220,7 @@ impl QuantumTelemetrySystem {
     async fn start_metric_collection(&self) -> DeviceResult<()> {
         let interval_duration = Duration::from_secs(self.config.collection_interval);
         let mut interval = interval(interval_duration);
-        
+
         // This would be spawned as a background task
         // For now, just return Ok
         Ok(())
@@ -1344,9 +1356,17 @@ impl RealTimeMonitor {
     }
 
     fn get_system_health(&self) -> SystemHealth {
-        let overall_status = if self.health_status.values().any(|h| h.status == SystemStatus::Critical) {
+        let overall_status = if self
+            .health_status
+            .values()
+            .any(|h| h.status == SystemStatus::Critical)
+        {
             SystemStatus::Critical
-        } else if self.health_status.values().any(|h| h.status == SystemStatus::Degraded) {
+        } else if self
+            .health_status
+            .values()
+            .any(|h| h.status == SystemStatus::Degraded)
+        {
             SystemStatus::Degraded
         } else {
             SystemStatus::Healthy
@@ -1355,12 +1375,21 @@ impl RealTimeMonitor {
         let health_score = if self.health_status.is_empty() {
             1.0
         } else {
-            self.health_status.values().map(|h| h.health_score).sum::<f64>() / self.health_status.len() as f64
+            self.health_status
+                .values()
+                .map(|h| h.health_score)
+                .sum::<f64>()
+                / self.health_status.len() as f64
         };
 
-        let critical_issues: Vec<HealthIssue> = self.health_status
+        let critical_issues: Vec<HealthIssue> = self
+            .health_status
             .values()
-            .flat_map(|h| h.issues.iter().filter(|i| i.severity == AlertSeverity::Critical))
+            .flat_map(|h| {
+                h.issues
+                    .iter()
+                    .filter(|i| i.severity == AlertSeverity::Critical)
+            })
             .cloned()
             .collect();
 
@@ -1443,7 +1472,10 @@ impl TelemetryStorage {
     fn store_metrics(&mut self, metrics: &[Metric]) -> DeviceResult<()> {
         for metric in metrics {
             // Store in real-time buffer
-            let buffer = self.realtime_buffer.entry(metric.name.clone()).or_insert_with(VecDeque::new);
+            let buffer = self
+                .realtime_buffer
+                .entry(metric.name.clone())
+                .or_insert_with(VecDeque::new);
             buffer.push_back(metric.clone());
 
             // Limit buffer size
@@ -1452,7 +1484,10 @@ impl TelemetryStorage {
             }
 
             // Update time series index
-            let metric_names = self.time_series_index.entry(metric.timestamp).or_insert_with(Vec::new);
+            let metric_names = self
+                .time_series_index
+                .entry(metric.timestamp)
+                .or_insert_with(Vec::new);
             metric_names.push(metric.name.clone());
         }
 
@@ -1575,10 +1610,10 @@ mod tests {
     async fn test_telemetry_start_stop() {
         let config = TelemetryConfig::default();
         let system = QuantumTelemetrySystem::new(config);
-        
+
         let start_result = system.start().await;
         assert!(start_result.is_ok());
-        
+
         let stop_result = system.stop().await;
         assert!(stop_result.is_ok());
     }

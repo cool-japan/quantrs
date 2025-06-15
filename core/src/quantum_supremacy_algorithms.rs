@@ -4,12 +4,10 @@
 //! computational advantage over classical computers in specific domains.
 
 use crate::error::QuantRS2Error;
-use crate::qubit::QubitId;
-use num_complex::Complex64;
 use ndarray::{Array1, Array2};
-use std::collections::{HashMap, VecDeque, BinaryHeap};
+use num_complex::Complex64;
+use std::collections::HashMap;
 use std::time::{Duration, Instant, SystemTime};
-use std::cmp::Ordering;
 
 /// Quantum supremacy demonstration engine
 #[derive(Debug)]
@@ -61,7 +59,7 @@ pub enum QuantumGateType {
     SWAP,
     Toffoli,
     Fredkin,
-    iSWAP,
+    ISwap,
     SqrtSWAP,
     RandomUnitary,
 }
@@ -569,7 +567,11 @@ impl SupremacyVerification {
         }
     }
 
-    pub fn verify_supremacy(&self, _samples: &[QuantumSample], _params: &RandomCircuitParameters) -> Result<VerificationResult, QuantRS2Error> {
+    pub fn verify_supremacy(
+        &self,
+        _samples: &[QuantumSample],
+        _params: &RandomCircuitParameters,
+    ) -> Result<VerificationResult, QuantRS2Error> {
         Ok(VerificationResult {
             fidelity: 0.99,
             cross_entropy: 0.95,
@@ -667,32 +669,37 @@ impl QuantumSupremacyEngine {
         sampling_parameters: SamplingParameters,
     ) -> Result<RandomCircuitSupremacyResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Generate random quantum circuit
-        let random_circuit = self.random_circuit_sampling
+        let random_circuit = self
+            .random_circuit_sampling
             .circuit_generator
             .generate_random_circuit(&circuit_parameters)?;
-        
+
         // Execute quantum sampling
-        let quantum_samples = self.random_circuit_sampling
+        let quantum_samples = self
+            .random_circuit_sampling
             .sampling_engine
             .sample_quantum_circuit(&random_circuit, &sampling_parameters)?;
-        
+
         // Apply error mitigation
-        let mitigated_samples = self.random_circuit_sampling
+        let mitigated_samples = self
+            .random_circuit_sampling
             .sampling_engine
             .error_mitigation
             .apply_mitigation(&quantum_samples)?;
-        
+
         // Verify quantum supremacy
-        let verification_result = self.supremacy_verification
+        let verification_result = self
+            .supremacy_verification
             .verify_supremacy(&mitigated_samples, &circuit_parameters)?;
-        
+
         // Calculate classical simulation bounds
-        let classical_bounds = self.random_circuit_sampling
+        let classical_bounds = self
+            .random_circuit_sampling
             .classical_simulation_bounds
             .calculate_bounds(&circuit_parameters)?;
-        
+
         Ok(RandomCircuitSupremacyResult {
             quantum_samples: mitigated_samples,
             circuit_depth: circuit_parameters.depth,
@@ -701,7 +708,8 @@ impl QuantumSupremacyEngine {
             cross_entropy: verification_result.cross_entropy,
             classical_simulation_time: classical_bounds.estimated_time,
             quantum_execution_time: start_time.elapsed(),
-            supremacy_factor: classical_bounds.estimated_time.as_secs_f64() / start_time.elapsed().as_secs_f64(),
+            supremacy_factor: classical_bounds.estimated_time.as_secs_f64()
+                / start_time.elapsed().as_secs_f64(),
             verification_confidence: verification_result.confidence,
         })
     }
@@ -714,33 +722,41 @@ impl QuantumSupremacyEngine {
         sampling_count: usize,
     ) -> Result<BosonSamplingSupremacyResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Configure linear interferometer
-        let interferometer = self.boson_sampling
+        let interferometer = self
+            .boson_sampling
             .interferometer
             .configure_interferometer(mode_count)?;
-        
+
         // Generate photon inputs
-        let photon_inputs = self.boson_sampling
+        let photon_inputs = self
+            .boson_sampling
             .photon_sources
             .iter()
             .take(photon_count)
             .map(|source| source.generate_photon())
             .collect::<Result<Vec<_>, _>>()?;
-        
+
         // Execute boson sampling
-        let boson_samples = BosonSampling::sample_boson_distribution_static(&interferometer, &photon_inputs, sampling_count)?;
-        
+        let boson_samples = BosonSampling::sample_boson_distribution_static(
+            &interferometer,
+            &photon_inputs,
+            sampling_count,
+        )?;
+
         // Calculate sampling complexity
-        let complexity_analysis = self.boson_sampling
+        let complexity_analysis = self
+            .boson_sampling
             .sampling_complexity
             .analyze_complexity(photon_count, mode_count)?;
-        
+
         // Verify classical hardness
-        let hardness_verification = self.boson_sampling
+        let hardness_verification = self
+            .boson_sampling
             .classical_hardness
             .verify_hardness(&boson_samples, &complexity_analysis)?;
-        
+
         Ok(BosonSamplingSupremacyResult {
             boson_samples,
             photon_count,
@@ -761,25 +777,29 @@ impl QuantumSupremacyEngine {
         sample_count: usize,
     ) -> Result<IQPSupremacyResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Generate IQP circuit
-        let iqp_circuit = self.iqp_sampling
+        let iqp_circuit = self
+            .iqp_sampling
             .iqp_circuit_generator
             .generate_iqp_circuit(qubit_count, circuit_depth)?;
-        
+
         // Execute IQP sampling
-        let iqp_samples = self.iqp_sampling
+        let iqp_samples = self
+            .iqp_sampling
             .sample_iqp_circuit(&iqp_circuit, sample_count)?;
-        
+
         // Analyze computational complexity
-        let complexity = self.iqp_sampling
+        let complexity = self
+            .iqp_sampling
             .computational_complexity
             .analyze_iqp_complexity(&iqp_circuit)?;
-        
+
         // Verify hardness assumptions
-        let hardness_verification = self.iqp_sampling
+        let hardness_verification = self
+            .iqp_sampling
             .verify_hardness_assumptions(&iqp_samples, &complexity)?;
-        
+
         Ok(IQPSupremacyResult {
             iqp_samples,
             circuit_depth,
@@ -799,29 +819,30 @@ impl QuantumSupremacyEngine {
         evolution_time: f64,
     ) -> Result<QuantumSimulationAdvantageResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Prepare many-body system
-        let many_body_system = self.quantum_simulation_advantage
+        let many_body_system = self
+            .quantum_simulation_advantage
             .many_body_systems
             .prepare_system(system_type.clone(), system_size)?;
-        
+
         // Execute Hamiltonian simulation
-        let simulation_result = self.quantum_simulation_advantage
+        let simulation_result = self
+            .quantum_simulation_advantage
             .many_body_systems
             .hamiltonian_simulation
             .simulate_evolution(&many_body_system, evolution_time)?;
-        
+
         // Calculate advantage metrics
-        let advantage_metrics = self.quantum_simulation_advantage
+        let advantage_metrics = self
+            .quantum_simulation_advantage
             .advantage_metrics
             .calculate_simulation_advantage(&simulation_result, system_size)?;
-        
+
         // Verify quantum advantage
-        let advantage_verification = self.verify_simulation_advantage(
-            &simulation_result,
-            &advantage_metrics,
-        )?;
-        
+        let advantage_verification =
+            self.verify_simulation_advantage(&simulation_result, &advantage_metrics)?;
+
         Ok(QuantumSimulationAdvantageResult {
             system_type,
             system_size,
@@ -837,31 +858,30 @@ impl QuantumSupremacyEngine {
     /// Comprehensive quantum supremacy benchmarking
     pub fn benchmark_quantum_supremacy(&mut self) -> QuantumSupremacyBenchmarkReport {
         let mut report = QuantumSupremacyBenchmarkReport::new();
-        
+
         // Benchmark random circuit sampling
         report.random_circuit_advantage = self.benchmark_random_circuits();
-        
+
         // Benchmark boson sampling
         report.boson_sampling_advantage = self.benchmark_boson_sampling();
-        
+
         // Benchmark IQP sampling
         report.iqp_sampling_advantage = self.benchmark_iqp_sampling();
-        
+
         // Benchmark quantum simulation
         report.quantum_simulation_advantage = self.benchmark_quantum_simulation();
-        
+
         // Benchmark verification protocols
         report.verification_efficiency = self.benchmark_verification_protocols();
-        
+
         // Calculate overall supremacy demonstration
-        report.overall_supremacy_factor = (
-            report.random_circuit_advantage +
-            report.boson_sampling_advantage +
-            report.iqp_sampling_advantage +
-            report.quantum_simulation_advantage +
-            report.verification_efficiency
-        ) / 5.0;
-        
+        report.overall_supremacy_factor = (report.random_circuit_advantage
+            + report.boson_sampling_advantage
+            + report.iqp_sampling_advantage
+            + report.quantum_simulation_advantage
+            + report.verification_efficiency)
+            / 5.0;
+
         report
     }
 
@@ -869,7 +889,7 @@ impl QuantumSupremacyEngine {
     fn generate_id() -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         SystemTime::now().hash(&mut hasher);
         hasher.finish()
@@ -933,7 +953,7 @@ impl RandomCircuitGenerator {
                 QuantumGateType::Hadamard,
                 QuantumGateType::CNOT,
                 QuantumGateType::RotationZ(0.0),
-                QuantumGateType::iSWAP,
+                QuantumGateType::ISwap,
             ],
             gate_density: 0.8,
             entanglement_pattern: EntanglementPattern::NearestNeighbor,
@@ -941,7 +961,10 @@ impl RandomCircuitGenerator {
         }
     }
 
-    pub fn generate_random_circuit(&self, _parameters: &RandomCircuitParameters) -> Result<RandomCircuit, QuantRS2Error> {
+    pub fn generate_random_circuit(
+        &self,
+        _parameters: &RandomCircuitParameters,
+    ) -> Result<RandomCircuit, QuantRS2Error> {
         Ok(RandomCircuit {
             qubit_count: self.qubit_count,
             circuit_depth: self.circuit_depth,
@@ -1180,11 +1203,14 @@ impl SamplingEngine {
         _circuit: &RandomCircuit,
         _parameters: &SamplingParameters,
     ) -> Result<Vec<QuantumSample>, QuantRS2Error> {
-        Ok(vec![QuantumSample {
-            bitstring: vec![true, false, true, false],
-            amplitude: Complex64::new(0.5, 0.0),
-            probability: 0.25,
-        }; self.sample_count])
+        Ok(vec![
+            QuantumSample {
+                bitstring: vec![true, false, true, false],
+                amplitude: Complex64::new(0.5, 0.0),
+                probability: 0.25,
+            };
+            self.sample_count
+        ])
     }
 }
 
@@ -1200,7 +1226,10 @@ impl ErrorMitigation {
         }
     }
 
-    pub fn apply_mitigation(&self, samples: &[QuantumSample]) -> Result<Vec<QuantumSample>, QuantRS2Error> {
+    pub fn apply_mitigation(
+        &self,
+        samples: &[QuantumSample],
+    ) -> Result<Vec<QuantumSample>, QuantRS2Error> {
         Ok(samples.to_vec()) // Simplified implementation
     }
 }
@@ -1283,14 +1312,25 @@ impl IQPSampling {
         }
     }
 
-    pub fn sample_iqp_circuit(&self, _circuit: &IQPCircuit, sample_count: usize) -> Result<Vec<IQPSample>, QuantRS2Error> {
-        Ok(vec![IQPSample {
-            bitstring: vec![true, false],
-            phase: 0.5,
-        }; sample_count])
+    pub fn sample_iqp_circuit(
+        &self,
+        _circuit: &IQPCircuit,
+        sample_count: usize,
+    ) -> Result<Vec<IQPSample>, QuantRS2Error> {
+        Ok(vec![
+            IQPSample {
+                bitstring: vec![true, false],
+                phase: 0.5,
+            };
+            sample_count
+        ])
     }
 
-    pub fn verify_hardness_assumptions(&self, _samples: &[IQPSample], _complexity: &ComputationalComplexity) -> Result<HardnessVerification, QuantRS2Error> {
+    pub fn verify_hardness_assumptions(
+        &self,
+        _samples: &[IQPSample],
+        _complexity: &ComputationalComplexity,
+    ) -> Result<HardnessVerification, QuantRS2Error> {
         Ok(HardnessVerification {
             verified: true,
             confidence: 0.99,
@@ -1308,14 +1348,21 @@ impl IQPCircuitGenerator {
         }
     }
 
-    pub fn generate_iqp_circuit(&self, qubit_count: usize, depth: usize) -> Result<IQPCircuit, QuantRS2Error> {
+    pub fn generate_iqp_circuit(
+        &self,
+        qubit_count: usize,
+        depth: usize,
+    ) -> Result<IQPCircuit, QuantRS2Error> {
         Ok(IQPCircuit {
             qubit_count,
-            diagonal_gates: vec![DiagonalGate {
-                gate_type: DiagonalGateType::CZ,
-                phase_angle: 0.5,
-                target_qubits: vec![0, 1],
-            }; depth],
+            diagonal_gates: vec![
+                DiagonalGate {
+                    gate_type: DiagonalGateType::CZ,
+                    phase_angle: 0.5,
+                    target_qubits: vec![0, 1],
+                };
+                depth
+            ],
         })
     }
 }
@@ -1329,7 +1376,10 @@ mod tests {
     #[test]
     fn test_quantum_supremacy_engine_creation() {
         let engine = QuantumSupremacyEngine::new(50);
-        assert_eq!(engine.random_circuit_sampling.circuit_generator.qubit_count, 50);
+        assert_eq!(
+            engine.random_circuit_sampling.circuit_generator.qubit_count,
+            50
+        );
     }
 
     #[test]
@@ -1347,7 +1397,7 @@ mod tests {
 
         let result = engine.execute_random_circuit_sampling(circuit_params, sampling_params);
         assert!(result.is_ok());
-        
+
         let supremacy_result = result.unwrap();
         assert!(supremacy_result.supremacy_factor > 1.0);
         assert!(supremacy_result.verification_confidence > 0.5);
@@ -1358,7 +1408,7 @@ mod tests {
         let mut engine = QuantumSupremacyEngine::new(20);
         let result = engine.execute_boson_sampling(6, 20, 10000);
         assert!(result.is_ok());
-        
+
         let boson_result = result.unwrap();
         assert_eq!(boson_result.photon_count, 6);
         assert_eq!(boson_result.mode_count, 20);
@@ -1370,7 +1420,7 @@ mod tests {
         let mut engine = QuantumSupremacyEngine::new(30);
         let result = engine.execute_iqp_sampling(30, 10, 100000);
         assert!(result.is_ok());
-        
+
         let iqp_result = result.unwrap();
         assert_eq!(iqp_result.circuit_depth, 10);
         assert!(iqp_result.computational_advantage > 1.0);
@@ -1380,13 +1430,10 @@ mod tests {
     #[test]
     fn test_quantum_simulation_advantage() {
         let mut engine = QuantumSupremacyEngine::new(40);
-        let result = engine.execute_quantum_simulation_advantage(
-            ManyBodySystemType::Hubbard,
-            40,
-            1.0,
-        );
+        let result =
+            engine.execute_quantum_simulation_advantage(ManyBodySystemType::Hubbard, 40, 1.0);
         assert!(result.is_ok());
-        
+
         let simulation_result = result.unwrap();
         assert_eq!(simulation_result.system_size, 40);
         assert!(simulation_result.advantage_factor > 1.0);
@@ -1397,7 +1444,7 @@ mod tests {
     fn test_supremacy_benchmarking() {
         let mut engine = QuantumSupremacyEngine::new(50);
         let report = engine.benchmark_quantum_supremacy();
-        
+
         // All advantages should demonstrate quantum supremacy
         assert!(report.random_circuit_advantage > 1e6);
         assert!(report.boson_sampling_advantage > 1e6);
@@ -1412,7 +1459,7 @@ mod tests {
         let source = PhotonSource::spdc();
         let photon = source.generate_photon();
         assert!(photon.is_ok());
-        
+
         let p = photon.unwrap();
         assert_eq!(p.wavelength, 800e-9);
     }
@@ -1484,7 +1531,11 @@ impl ManyBodySystems {
         }
     }
 
-    pub fn prepare_system(&self, system_type: ManyBodySystemType, size: usize) -> Result<ManyBodySystem, QuantRS2Error> {
+    pub fn prepare_system(
+        &self,
+        system_type: ManyBodySystemType,
+        size: usize,
+    ) -> Result<ManyBodySystem, QuantRS2Error> {
         Ok(ManyBodySystem {
             system_type,
             size,
@@ -1510,7 +1561,11 @@ impl HamiltonianSimulation {
         }
     }
 
-    pub fn simulate_evolution(&self, _system: &ManyBodySystem, _time: f64) -> Result<SimulationResult, QuantRS2Error> {
+    pub fn simulate_evolution(
+        &self,
+        _system: &ManyBodySystem,
+        _time: f64,
+    ) -> Result<SimulationResult, QuantRS2Error> {
         Ok(SimulationResult {
             fidelity: 0.99,
             final_state: Array1::zeros(16),
@@ -1586,7 +1641,11 @@ impl AdvantageMetrics {
         }
     }
 
-    pub fn calculate_simulation_advantage(&self, _result: &SimulationResult, _size: usize) -> Result<&Self, QuantRS2Error> {
+    pub fn calculate_simulation_advantage(
+        &self,
+        _result: &SimulationResult,
+        _size: usize,
+    ) -> Result<&Self, QuantRS2Error> {
         Ok(self)
     }
 }
@@ -1618,7 +1677,10 @@ impl ClassicalSimulationBounds {
         }
     }
 
-    pub fn calculate_bounds(&self, _params: &RandomCircuitParameters) -> Result<&Self, QuantRS2Error> {
+    pub fn calculate_bounds(
+        &self,
+        _params: &RandomCircuitParameters,
+    ) -> Result<&Self, QuantRS2Error> {
         Ok(self)
     }
 }
@@ -1652,7 +1714,11 @@ impl SamplingComplexity {
         }
     }
 
-    pub fn analyze_complexity(&self, photon_count: usize, mode_count: usize) -> Result<&Self, QuantRS2Error> {
+    pub fn analyze_complexity(
+        &self,
+        _photon_count: usize,
+        _mode_count: usize,
+    ) -> Result<&Self, QuantRS2Error> {
         Ok(self)
     }
 }
@@ -1669,10 +1735,12 @@ impl ClassicalHardness {
         }
     }
 
-    pub fn verify_hardness(&self, _samples: &[BosonSample], _complexity: &SamplingComplexity) -> Result<HardnessResult, QuantRS2Error> {
-        Ok(HardnessResult {
-            confidence: 0.99,
-        })
+    pub fn verify_hardness(
+        &self,
+        _samples: &[BosonSample],
+        _complexity: &SamplingComplexity,
+    ) -> Result<HardnessResult, QuantRS2Error> {
+        Ok(HardnessResult { confidence: 0.99 })
     }
 }
 

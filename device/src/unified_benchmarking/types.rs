@@ -5,13 +5,31 @@ use serde::{Deserialize, Serialize};
 /// Quantum computing platforms
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QuantumPlatform {
-    IBMQuantum { device_name: String, hub: Option<String> },
-    AWSBraket { device_arn: String, region: String },
-    AzureQuantum { target_id: String, workspace: String },
-    IonQ { device_name: String },
-    Rigetti { device_name: String },
-    GoogleQuantumAI { device_name: String },
-    Custom { platform_id: String, endpoint: String },
+    IBMQuantum {
+        device_name: String,
+        hub: Option<String>,
+    },
+    AWSBraket {
+        device_arn: String,
+        region: String,
+    },
+    AzureQuantum {
+        target_id: String,
+        workspace: String,
+    },
+    IonQ {
+        device_name: String,
+    },
+    Rigetti {
+        device_name: String,
+    },
+    GoogleQuantumAI {
+        device_name: String,
+    },
+    Custom {
+        platform_id: String,
+        endpoint: String,
+    },
 }
 
 /// Performance baseline metrics

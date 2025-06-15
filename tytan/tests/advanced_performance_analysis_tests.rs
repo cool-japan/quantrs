@@ -55,8 +55,8 @@ mod tests {
             MetricsLevel::Basic,
             MetricsLevel::Detailed,
             MetricsLevel::Comprehensive,
-            MetricsLevel::Custom { 
-                metrics: vec!["cpu_usage".to_string(), "memory_usage".to_string()] 
+            MetricsLevel::Custom {
+                metrics: vec!["cpu_usage".to_string(), "memory_usage".to_string()],
             },
         ];
 
@@ -208,23 +208,30 @@ mod tests {
     #[test]
     fn test_benchmark_result() {
         let mut descriptive_stats = HashMap::new();
-        descriptive_stats.insert("execution_time".to_string(), DescriptiveStats {
-            mean: 50.5,
-            std_dev: 5.3,
-            min: 42.1,
-            max: 65.8,
-            median: 48.2,
-            quartiles: (46.0, 48.2, 54.1),
-            skewness: 0.1,
-            kurtosis: 2.8,
-        });
+        descriptive_stats.insert(
+            "execution_time".to_string(),
+            DescriptiveStats {
+                mean: 50.5,
+                std_dev: 5.3,
+                min: 42.1,
+                max: 65.8,
+                median: 48.2,
+                quartiles: (46.0, 48.2, 54.1),
+                skewness: 0.1,
+                kurtosis: 2.8,
+            },
+        );
 
         let mut confidence_intervals = HashMap::new();
         confidence_intervals.insert("execution_time".to_string(), (47.8, 53.2));
 
         let result = BenchmarkResult {
             benchmark_name: "QUBO_Solver_Benchmark".to_string(),
-            execution_times: vec![Duration::from_millis(45), Duration::from_millis(52), Duration::from_millis(48)],
+            execution_times: vec![
+                Duration::from_millis(45),
+                Duration::from_millis(52),
+                Duration::from_millis(48),
+            ],
             memory_usage: vec![1024, 1152, 1088],
             solution_quality: vec![0.95, 0.97, 0.96],
             convergence_metrics: ConvergenceMetrics {
@@ -300,16 +307,19 @@ mod tests {
     #[test]
     fn test_statistical_summary() {
         let mut descriptive_stats = HashMap::new();
-        descriptive_stats.insert("execution_time".to_string(), DescriptiveStats {
-            mean: 100.0,
-            std_dev: 15.0,
-            min: 70.0,
-            max: 130.0,
-            median: 95.0,
-            quartiles: (88.0, 95.0, 112.0),
-            skewness: 0.2,
-            kurtosis: 2.9,
-        });
+        descriptive_stats.insert(
+            "execution_time".to_string(),
+            DescriptiveStats {
+                mean: 100.0,
+                std_dev: 15.0,
+                min: 70.0,
+                max: 130.0,
+                median: 95.0,
+                quartiles: (88.0, 95.0, 112.0),
+                skewness: 0.2,
+                kurtosis: 2.9,
+            },
+        );
 
         let mut confidence_intervals = HashMap::new();
         confidence_intervals.insert("execution_time".to_string(), (92.0, 108.0));
@@ -329,7 +339,10 @@ mod tests {
         assert_eq!(summary.confidence_intervals.len(), 2);
         assert_eq!(summary.effect_sizes.len(), 1);
         assert_eq!(summary.descriptive_stats["execution_time"].mean, 100.0);
-        assert_eq!(summary.confidence_intervals["execution_time"], (92.0, 108.0));
+        assert_eq!(
+            summary.confidence_intervals["execution_time"],
+            (92.0, 108.0)
+        );
         assert_eq!(summary.effect_sizes["algorithm_comparison"], 0.8);
     }
 
@@ -353,9 +366,7 @@ mod tests {
                     location: "tensor_contraction".to_string(),
                     severity: 20.0,
                     resource: "CPU".to_string(),
-                    mitigation_strategies: vec![
-                        "Optimize contraction order".to_string(),
-                    ],
+                    mitigation_strategies: vec!["Optimize contraction order".to_string()],
                 },
             ],
             resource_utilization: ResourceUtilizationAnalysis {
@@ -365,25 +376,33 @@ mod tests {
                 network_breakdown: NetworkUtilizationBreakdown::default(),
             },
             dependency_analysis: DependencyAnalysis {
-                critical_path: vec!["memory_allocation".to_string(), "tensor_contraction".to_string()],
+                critical_path: vec![
+                    "memory_allocation".to_string(),
+                    "tensor_contraction".to_string(),
+                ],
                 dependency_graph: DependencyGraph {
                     nodes: vec![
                         DependencyNode {
+                            id: "node_1".to_string(),
                             operation: "memory_allocation".to_string(),
                             execution_time: Duration::from_millis(100),
-                            resource_requirements: ResourceRequirement {
-                                memory_mb: 256,
-                                cpu_cores: 1,
-                                gpu_memory_mb: None,
+                            resource_requirements: {
+                                let mut req = HashMap::new();
+                                req.insert("memory_mb".to_string(), 256.0);
+                                req.insert("cpu_cores".to_string(), 1.0);
+                                req
                             },
                         },
                         DependencyNode {
+                            id: "node_2".to_string(),
                             operation: "tensor_contraction".to_string(),
                             execution_time: Duration::from_millis(200),
-                            resource_requirements: ResourceRequirement {
-                                memory_mb: 512,
-                                cpu_cores: 2,
-                                gpu_memory_mb: Some(1024),
+                            resource_requirements: {
+                                let mut req = HashMap::new();
+                                req.insert("memory_mb".to_string(), 512.0);
+                                req.insert("cpu_cores".to_string(), 2.0);
+                                req.insert("gpu_memory_mb".to_string(), 1024.0);
+                                req
                             },
                         },
                     ],
@@ -396,29 +415,28 @@ mod tests {
                         clustering_coefficient: 0.0,
                     },
                 },
-                parallelization_opportunities: vec![
-                    ParallelizationOpportunity {
-                        operations: vec!["independent_calculations".to_string()],
-                        potential_speedup: 2.0,
-                        strategy: ParallelizationStrategy::DataParallelism,
-                        complexity: ComplexityLevel::Medium,
-                    }
-                ],
+                parallelization_opportunities: vec![ParallelizationOpportunity {
+                    operations: vec!["independent_calculations".to_string()],
+                    potential_speedup: 2.0,
+                    strategy: ParallelizationStrategy::DataParallelism,
+                    complexity: ComplexityLevel::Medium,
+                }],
                 serialization_bottlenecks: vec![],
             },
-            optimization_opportunities: vec![
-                OptimizationOpportunity {
-                    optimization_type: OptimizationType::MemoryOptimization,
-                    description: "Reduce memory allocation overhead".to_string(),
-                    potential_improvement: 25.0,
-                    implementation_effort: EffortLevel::Medium,
-                    risk_level: RiskLevel::Low,
-                },
-            ],
+            optimization_opportunities: vec![OptimizationOpportunity {
+                optimization_type: OptimizationType::MemoryOptimization,
+                description: "Reduce memory allocation overhead".to_string(),
+                potential_improvement: 25.0,
+                implementation_effort: EffortLevel::Medium,
+                risk_level: RiskLevel::Low,
+            }],
         };
 
         assert_eq!(analysis.bottlenecks.len(), 2);
-        assert_eq!(analysis.bottlenecks[0].bottleneck_type, BottleneckType::Memory);
+        assert_eq!(
+            analysis.bottlenecks[0].bottleneck_type,
+            BottleneckType::Memory
+        );
         assert_eq!(analysis.bottlenecks[0].location, "memory_allocation");
         assert_eq!(analysis.bottlenecks[0].severity, 35.0);
         assert_eq!(analysis.bottlenecks[0].mitigation_strategies.len(), 2);
@@ -435,7 +453,9 @@ mod tests {
             BottleneckType::Network,
             BottleneckType::Algorithm,
             BottleneckType::Synchronization,
-            BottleneckType::Custom { description: "Custom bottleneck".to_string() },
+            BottleneckType::Custom {
+                description: "Custom bottleneck".to_string(),
+            },
         ];
 
         for bottleneck_type in types {

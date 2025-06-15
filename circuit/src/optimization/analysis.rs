@@ -86,23 +86,23 @@ impl CircuitAnalyzer {
     /// Analyze a circuit and compute metrics
     pub fn analyze<const N: usize>(&self, circuit: &Circuit<N>) -> QuantRS2Result<CircuitMetrics> {
         let stats = circuit.get_stats();
-        
+
         // Calculate execution time estimate (simplified model)
         let mut execution_time = 0.0;
         for gate in circuit.gates() {
             execution_time += self.estimate_gate_time(gate.as_ref());
         }
-        
+
         // Calculate total error estimate
         let total_error = self.estimate_total_error(circuit);
-        
+
         // Calculate parallelism (average gates per layer)
         let parallelism = if stats.depth > 0 {
             stats.total_gates as f64 / stats.depth as f64
         } else {
             0.0
         };
-        
+
         Ok(CircuitMetrics {
             gate_count: stats.total_gates,
             gate_types: stats.gate_counts,
@@ -116,7 +116,7 @@ impl CircuitAnalyzer {
             parallelism,
         })
     }
-    
+
     /// Estimate execution time for a single gate
     fn estimate_gate_time(&self, gate: &dyn GateOp) -> f64 {
         match gate.name() {
@@ -132,22 +132,22 @@ impl CircuitAnalyzer {
             _ => 100.0,
         }
     }
-    
+
     /// Estimate total error for the circuit
     fn estimate_total_error<const N: usize>(&self, circuit: &Circuit<N>) -> f64 {
         let mut total_error = 0.0;
-        
+
         for gate in circuit.gates() {
             total_error += self.estimate_gate_error(gate.as_ref());
         }
-        
+
         // Add coherence errors based on circuit depth and execution time
         let stats = circuit.get_stats();
         let coherence_error = stats.depth as f64 * 0.001; // 0.1% error per depth layer
-        
+
         total_error + coherence_error
     }
-    
+
     /// Estimate error for a single gate
     fn estimate_gate_error(&self, gate: &dyn GateOp) -> f64 {
         match gate.name() {

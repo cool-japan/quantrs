@@ -3,17 +3,17 @@
 //! Revolutionary quantum OS with resource management, process isolation,
 //! quantum memory hierarchy, and distributed quantum process scheduling.
 
+#![allow(dead_code)]
+
 use crate::error::QuantRS2Error;
-use crate::gate::GateOp;
 
 use crate::qubit::QubitId;
-use crate::quantum_process_isolation::{IsolationLevel, QuantumSandbox};
-use num_complex::Complex64;
 use ndarray::{Array1, Array2};
-use std::collections::{HashMap, VecDeque, BinaryHeap};
-use std::sync::{Arc, RwLock, Mutex};
-use std::time::{Duration, Instant, SystemTime};
+use num_complex::Complex64;
 use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap, VecDeque};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant, SystemTime};
 
 /// Quantum Operating System with revolutionary capabilities
 #[derive(Debug)]
@@ -64,22 +64,59 @@ pub struct QuantumProgram {
 
 #[derive(Debug, Clone)]
 pub enum QuantumInstruction {
-    QuantumGate { gate: String, qubits: Vec<QubitId>, parameters: Vec<f64> },
-    QuantumMeasurement { qubits: Vec<QubitId>, basis: MeasurementBasis },
-    QuantumReset { qubits: Vec<QubitId> },
-    QuantumBarrier { qubits: Vec<QubitId> },
-    QuantumConditional { condition: String, instruction: Box<QuantumInstruction> },
-    QuantumTeleportation { source: QubitId, target: QubitId, ancilla: Vec<QubitId> },
-    QuantumErrorCorrection { logical_qubits: Vec<QubitId>, code: ErrorCorrectionCode },
+    QuantumGate {
+        gate: String,
+        qubits: Vec<QubitId>,
+        parameters: Vec<f64>,
+    },
+    QuantumMeasurement {
+        qubits: Vec<QubitId>,
+        basis: MeasurementBasis,
+    },
+    QuantumReset {
+        qubits: Vec<QubitId>,
+    },
+    QuantumBarrier {
+        qubits: Vec<QubitId>,
+    },
+    QuantumConditional {
+        condition: String,
+        instruction: Box<QuantumInstruction>,
+    },
+    QuantumTeleportation {
+        source: QubitId,
+        target: QubitId,
+        ancilla: Vec<QubitId>,
+    },
+    QuantumErrorCorrection {
+        logical_qubits: Vec<QubitId>,
+        code: ErrorCorrectionCode,
+    },
 }
 
 #[derive(Debug, Clone)]
 pub enum ClassicalInstruction {
-    Assignment { variable: String, value: ClassicalValue },
-    Conditional { condition: String, then_block: Vec<ClassicalInstruction>, else_block: Vec<ClassicalInstruction> },
-    Loop { condition: String, body: Vec<ClassicalInstruction> },
-    FunctionCall { function: String, args: Vec<String> },
-    QuantumFeedback { measurement_result: String, quantum_operation: QuantumInstruction },
+    Assignment {
+        variable: String,
+        value: ClassicalValue,
+    },
+    Conditional {
+        condition: String,
+        then_block: Vec<ClassicalInstruction>,
+        else_block: Vec<ClassicalInstruction>,
+    },
+    Loop {
+        condition: String,
+        body: Vec<ClassicalInstruction>,
+    },
+    FunctionCall {
+        function: String,
+        args: Vec<String>,
+    },
+    QuantumFeedback {
+        measurement_result: String,
+        quantum_operation: QuantumInstruction,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -264,11 +301,11 @@ pub struct CachedQuantumState {
 
 #[derive(Debug, Clone)]
 pub enum QuantumCachePolicy {
-    LRU, // Least Recently Used
-    LFU, // Least Frequently Used
+    LRU,            // Least Recently Used
+    LFU,            // Least Frequently Used
     CoherenceAware, // Based on coherence time
-    FidelityAware, // Based on state fidelity
-    DeadlineAware, // Based on process deadlines
+    FidelityAware,  // Based on state fidelity
+    DeadlineAware,  // Based on process deadlines
 }
 
 #[derive(Debug)]
@@ -348,14 +385,16 @@ impl QuantumOperatingSystem {
         security_context: QuantumSecurityContext,
     ) -> Result<u64, QuantRS2Error> {
         let process_id = Self::generate_id();
-        
+
         // Validate security permissions
-        self.quantum_security_manager.validate_process_creation(&security_context)?;
-        
+        self.quantum_security_manager
+            .validate_process_creation(&security_context)?;
+
         // Allocate resources
-        let resource_allocation = self.quantum_resource_manager
+        let resource_allocation = self
+            .quantum_resource_manager
             .allocate_resources_for_program(&program)?;
-        
+
         // Create process
         let quantum_process = QuantumProcess {
             process_id,
@@ -369,46 +408,52 @@ impl QuantumOperatingSystem {
             creation_time: Instant::now(),
             quantum_deadline: None,
         };
-        
+
         // Register process
-        self.quantum_process_manager.register_process(quantum_process.clone())?;
-        
+        self.quantum_process_manager
+            .register_process(quantum_process.clone())?;
+
         // Schedule process
         self.quantum_scheduler.schedule_process(quantum_process)?;
-        
+
         // Start profiling
         self.quantum_profiler.start_process_profiling(process_id);
-        
+
         Ok(process_id)
     }
 
     /// Execute quantum scheduler tick
     pub fn scheduler_tick(&mut self) -> Result<QuantumSchedulingResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Update coherence information
-        self.quantum_scheduler.coherence_scheduler.update_coherence_info();
-        
+        self.quantum_scheduler
+            .coherence_scheduler
+            .update_coherence_info();
+
         // Check for deadlocks
-        let deadlock_info = self.quantum_scheduler.quantum_deadlock_detector.check_deadlocks()?;
+        let deadlock_info = self
+            .quantum_scheduler
+            .quantum_deadlock_detector
+            .check_deadlocks()?;
         if !deadlock_info.deadlocked_processes.is_empty() {
             self.resolve_quantum_deadlocks(&deadlock_info)?;
         }
-        
+
         // Perform scheduling decision
         let scheduling_decision = self.quantum_scheduler.make_scheduling_decision()?;
-        
+
         // Execute scheduled operations
         let execution_results = self.execute_scheduled_operations(&scheduling_decision)?;
-        
+
         // Update memory hierarchy
         self.quantum_memory_manager.update_memory_hierarchy()?;
-        
+
         // Perform garbage collection if needed
         if self.quantum_garbage_collector.should_collect() {
             self.quantum_garbage_collector.collect_quantum_garbage()?;
         }
-        
+
         Ok(QuantumSchedulingResult {
             scheduled_processes: scheduling_decision.selected_processes.len(),
             execution_time: start_time.elapsed(),
@@ -421,31 +466,30 @@ impl QuantumOperatingSystem {
     /// Demonstrate quantum OS advantages
     pub fn demonstrate_quantum_os_advantages(&mut self) -> QuantumOSAdvantageReport {
         let mut report = QuantumOSAdvantageReport::new();
-        
+
         // Benchmark quantum scheduling
         report.scheduling_advantage = self.benchmark_quantum_scheduling();
-        
+
         // Benchmark quantum memory management
         report.memory_advantage = self.benchmark_quantum_memory();
-        
+
         // Benchmark quantum process isolation
         report.isolation_advantage = self.benchmark_quantum_isolation();
-        
+
         // Benchmark quantum resource management
         report.resource_advantage = self.benchmark_quantum_resources();
-        
+
         // Benchmark quantum security
         report.security_advantage = self.benchmark_quantum_security();
-        
+
         // Calculate overall quantum OS advantage
-        report.overall_advantage = (
-            report.scheduling_advantage +
-            report.memory_advantage +
-            report.isolation_advantage +
-            report.resource_advantage +
-            report.security_advantage
-        ) / 5.0;
-        
+        report.overall_advantage = (report.scheduling_advantage
+            + report.memory_advantage
+            + report.isolation_advantage
+            + report.resource_advantage
+            + report.security_advantage)
+            / 5.0;
+
         report
     }
 
@@ -453,13 +497,16 @@ impl QuantumOperatingSystem {
     fn generate_id() -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         SystemTime::now().hash(&mut hasher);
         hasher.finish()
     }
 
-    fn resolve_quantum_deadlocks(&mut self, deadlock_info: &QuantumDeadlockInfo) -> Result<(), QuantRS2Error> {
+    fn resolve_quantum_deadlocks(
+        &mut self,
+        deadlock_info: &QuantumDeadlockInfo,
+    ) -> Result<(), QuantRS2Error> {
         // Implement quantum deadlock resolution
         for &process_id in &deadlock_info.deadlocked_processes {
             self.quantum_scheduler.preempt_process(process_id)?;
@@ -467,23 +514,29 @@ impl QuantumOperatingSystem {
         Ok(())
     }
 
-    fn execute_scheduled_operations(&mut self, decision: &QuantumSchedulingDecision) -> Result<QuantumExecutionResults, QuantRS2Error> {
+    fn execute_scheduled_operations(
+        &mut self,
+        decision: &QuantumSchedulingDecision,
+    ) -> Result<QuantumExecutionResults, QuantRS2Error> {
         let mut total_fidelity = 0.0;
         let mut executed_operations = 0;
-        
+
         for process_id in &decision.selected_processes {
             let execution_result = self.execute_process_operations(*process_id)?;
             total_fidelity += execution_result.fidelity;
             executed_operations += 1;
         }
-        
+
         Ok(QuantumExecutionResults {
             average_fidelity: total_fidelity / executed_operations as f64,
             total_operations: executed_operations,
         })
     }
 
-    fn execute_process_operations(&mut self, process_id: u64) -> Result<ProcessExecutionResult, QuantRS2Error> {
+    fn execute_process_operations(
+        &mut self,
+        _process_id: u64,
+    ) -> Result<ProcessExecutionResult, QuantRS2Error> {
         // Simplified process execution
         Ok(ProcessExecutionResult {
             fidelity: 0.99,
@@ -533,7 +586,7 @@ impl QuantumScheduler {
 
     pub fn make_scheduling_decision(&mut self) -> Result<QuantumSchedulingDecision, QuantRS2Error> {
         let mut selected_processes = Vec::new();
-        
+
         // Simple scheduling logic
         while let Some(process) = self.ready_queue.pop() {
             if self.can_schedule_process(&process) {
@@ -542,13 +595,13 @@ impl QuantumScheduler {
             } else {
                 self.waiting_queue.push_back(process);
             }
-            
+
             // Limit concurrent processes
             if selected_processes.len() >= 4 {
                 break;
             }
         }
-        
+
         Ok(QuantumSchedulingDecision {
             selected_processes,
             scheduling_algorithm: self.scheduling_algorithm.clone(),
@@ -602,7 +655,8 @@ impl CoherenceAwareScheduler {
             let elapsed = coherence_info.last_operation.elapsed();
             if elapsed < coherence_info.remaining_coherence_time {
                 coherence_info.remaining_coherence_time -= elapsed;
-                coherence_info.current_fidelity *= (-elapsed.as_secs_f64() * coherence_info.decoherence_rate).exp();
+                coherence_info.current_fidelity *=
+                    (-elapsed.as_secs_f64() * coherence_info.decoherence_rate).exp();
             } else {
                 coherence_info.remaining_coherence_time = Duration::ZERO;
                 coherence_info.current_fidelity = 0.0;
@@ -640,10 +694,13 @@ impl QuantumResourceManager {
         }
     }
 
-    pub fn allocate_resources_for_program(&mut self, program: &QuantumProgram) -> Result<ResourceAllocation, QuantRS2Error> {
+    pub fn allocate_resources_for_program(
+        &mut self,
+        program: &QuantumProgram,
+    ) -> Result<ResourceAllocation, QuantRS2Error> {
         let required_qubits = self.calculate_required_qubits(program);
         let allocated_qubits = self.allocate_qubits(required_qubits)?;
-        
+
         Ok(ResourceAllocation {
             allocated_qubits,
             classical_memory: 1024 * 1024, // 1MB
@@ -660,9 +717,11 @@ impl QuantumResourceManager {
 
     fn allocate_qubits(&mut self, count: usize) -> Result<Vec<QubitId>, QuantRS2Error> {
         if self.available_qubits.len() < count {
-            return Err(QuantRS2Error::NoHardwareAvailable("Not enough qubits available".to_string()));
+            return Err(QuantRS2Error::NoHardwareAvailable(
+                "Not enough qubits available".to_string(),
+            ));
         }
-        
+
         let allocated: Vec<QubitId> = self.available_qubits.drain(0..count).collect();
         Ok(allocated)
     }
@@ -684,9 +743,15 @@ impl QuantumSecurityManager {
         }
     }
 
-    pub fn validate_process_creation(&self, security_context: &QuantumSecurityContext) -> Result<(), QuantRS2Error> {
+    pub fn validate_process_creation(
+        &self,
+        security_context: &QuantumSecurityContext,
+    ) -> Result<(), QuantRS2Error> {
         // Validate security context
-        if matches!(security_context.security_level, QuantumSecurityLevel::Public) {
+        if matches!(
+            security_context.security_level,
+            QuantumSecurityLevel::Public
+        ) {
             Ok(())
         } else {
             // More complex validation for higher security levels
@@ -815,7 +880,8 @@ impl QuantumSystemProfiler {
     }
 
     pub fn start_process_profiling(&mut self, process_id: u64) {
-        self.profiling_data.insert(process_id, ProcessProfilingData::new());
+        self.profiling_data
+            .insert(process_id, ProcessProfilingData::new());
     }
 }
 
@@ -890,7 +956,6 @@ pub enum GCStrategy {
     GenerationalGC,
     RealTimeGC,
 }
-
 
 impl QuantumMemoryManager {
     pub fn new() -> Self {
@@ -1031,7 +1096,6 @@ impl QuantumMemoryAllocator {
         }
     }
 }
-
 
 impl QuantumProcessManager {
     pub fn new() -> Self {
@@ -1303,7 +1367,6 @@ impl QuantumSynchronization {
     }
 }
 
-
 impl QuantumProcessIsolation {
     pub fn new() -> Self {
         Self {
@@ -1333,9 +1396,7 @@ impl QuantumStorage {
 
 impl DistributedQuantumMemory {
     pub fn new() -> Self {
-        Self {
-            nodes: Vec::new(),
-        }
+        Self { nodes: Vec::new() }
     }
 }
 
@@ -1386,7 +1447,7 @@ mod tests {
         let mut qos = QuantumOperatingSystem::new();
         let result = qos.scheduler_tick();
         assert!(result.is_ok());
-        
+
         let scheduling_result = result.unwrap();
         assert!(scheduling_result.execution_time < Duration::from_millis(100));
     }
@@ -1395,7 +1456,7 @@ mod tests {
     fn test_quantum_os_advantages() {
         let mut qos = QuantumOperatingSystem::new();
         let report = qos.demonstrate_quantum_os_advantages();
-        
+
         // All advantages should demonstrate quantum superiority
         assert!(report.scheduling_advantage > 1.0);
         assert!(report.memory_advantage > 1.0);
@@ -1408,17 +1469,20 @@ mod tests {
     #[test]
     fn test_coherence_aware_scheduling() {
         let mut scheduler = CoherenceAwareScheduler::new();
-        
+
         // Add a coherence info entry
-        scheduler.coherence_tracking.insert(1, CoherenceInfo {
-            remaining_coherence_time: Duration::from_millis(100),
-            current_fidelity: 0.99,
-            decoherence_rate: 0.01,
-            last_operation: Instant::now(),
-        });
-        
+        scheduler.coherence_tracking.insert(
+            1,
+            CoherenceInfo {
+                remaining_coherence_time: Duration::from_millis(100),
+                current_fidelity: 0.99,
+                decoherence_rate: 0.01,
+                last_operation: Instant::now(),
+            },
+        );
+
         scheduler.update_coherence_info();
-        
+
         let coherence_info = scheduler.coherence_tracking.get(&1).unwrap();
         assert!(coherence_info.current_fidelity > 0.0);
     }

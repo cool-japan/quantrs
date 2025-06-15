@@ -3,50 +3,39 @@
 //! This module provides comprehensive support for mid-circuit measurements in quantum circuits,
 //! including advanced analytics, machine learning optimization, and adaptive learning capabilities.
 
-pub mod config;
-pub mod results;
-pub mod fallback;
-pub mod executor;
 pub mod analytics;
+pub mod config;
+pub mod executor;
+pub mod fallback;
 pub mod ml;
 pub mod monitoring;
+pub mod results;
 
 // Re-export main types and interfaces
 pub use config::{
-    MidCircuitConfig, HardwareOptimizations, ValidationConfig, 
-    AdvancedAnalyticsConfig, MLOptimizationConfig, PredictionConfig, AdaptiveConfig,
-    MLModelType, MLTrainingConfig, FeatureEngineeringConfig, OnlineLearningConfig,
-    TimeSeriesConfig, UncertaintyConfig
+    AdaptiveConfig, AdvancedAnalyticsConfig, FeatureEngineeringConfig, HardwareOptimizations,
+    MLModelType, MLOptimizationConfig, MLTrainingConfig, MidCircuitConfig, OnlineLearningConfig,
+    PredictionConfig, TimeSeriesConfig, UncertaintyConfig, ValidationConfig,
 };
 
 pub use results::{
-    MidCircuitExecutionResult, MeasurementEvent, ExecutionStats, PerformanceMetrics,
-    ErrorAnalysis, AdvancedAnalyticsResults, MeasurementPredictionResults,
-    OptimizationRecommendations, AdaptiveLearningInsights, MidCircuitCapabilities,
-    StorageLocation, MeasurementType, TimingConstraints, TrendDirection
+    AdaptiveLearningInsights, AdvancedAnalyticsResults, ErrorAnalysis, ExecutionStats,
+    MeasurementEvent, MeasurementPredictionResults, MeasurementType, MidCircuitCapabilities,
+    MidCircuitExecutionResult, OptimizationRecommendations, PerformanceMetrics, StorageLocation,
+    TimingConstraints, TrendDirection,
 };
 
-pub use executor::{
-    MidCircuitExecutor, MidCircuitDeviceExecutor, ValidationResult
-};
+pub use executor::{MidCircuitDeviceExecutor, MidCircuitExecutor, ValidationResult};
 
 pub use analytics::{
-    AdvancedAnalyticsEngine,
-    statistical::StatisticalAnalyzer,
-    correlation::CorrelationAnalyzer,
-    time_series::TimeSeriesAnalyzer,
-    anomaly::AnomalyDetector,
-    distribution::DistributionAnalyzer,
-    causal::CausalAnalyzer,
+    anomaly::AnomalyDetector, causal::CausalAnalyzer, correlation::CorrelationAnalyzer,
+    distribution::DistributionAnalyzer, statistical::StatisticalAnalyzer,
+    time_series::TimeSeriesAnalyzer, AdvancedAnalyticsEngine,
 };
 
-pub use ml::{
-    MLOptimizer, MeasurementPredictor, AdaptiveMeasurementManager
-};
+pub use ml::{AdaptiveMeasurementManager, MLOptimizer, MeasurementPredictor};
 
-pub use monitoring::{
-    PerformanceMonitor, OptimizationCache, AlertThresholds, ExportFormat
-};
+pub use monitoring::{AlertThresholds, ExportFormat, OptimizationCache, PerformanceMonitor};
 
 use crate::DeviceResult;
 use std::time::Duration;
@@ -100,7 +89,9 @@ pub fn high_performance_config() -> MidCircuitConfig {
         },
         ml_optimization_config: MLOptimizationConfig {
             enable_ml_optimization: true,
-            model_types: vec![MLModelType::NeuralNetwork { hidden_layers: vec![64, 32] }],
+            model_types: vec![MLModelType::NeuralNetwork {
+                hidden_layers: vec![64, 32],
+            }],
             training_config: MLTrainingConfig::default(),
             feature_engineering: FeatureEngineeringConfig::default(),
             enable_transfer_learning: true,
@@ -274,17 +265,21 @@ impl MidCircuitMeasurementSystem {
         shots: usize,
     ) -> DeviceResult<MidCircuitExecutionResult> {
         // Execute the circuit
-        let mut result = self.executor.execute_circuit(circuit, device_executor, shots).await?;
+        let mut result = self
+            .executor
+            .execute_circuit(circuit, device_executor, shots)
+            .await?;
 
         // Record performance metrics
-        self.performance_monitor.record_metrics(&result.performance_metrics)?;
+        self.performance_monitor
+            .record_metrics(&result.performance_metrics)?;
 
         // Perform additional analytics if enabled
         if self.config.analytics_config.enable_realtime_stats {
-            let enhanced_analytics = self.analytics_engine.analyze(
-                &result.measurement_history,
-                &result.execution_stats,
-            ).await?;
+            let enhanced_analytics = self
+                .analytics_engine
+                .analyze(&result.measurement_history, &result.execution_stats)
+                .await?;
             result.analytics_results = enhanced_analytics;
         }
 

@@ -4,7 +4,7 @@
 //! problems without requiring direct code writing. It includes drag-and-drop
 //! variable creation, constraint specification, and real-time validation.
 
-use crate::problem_dsl::ast::{AST, Expression, Constraint as DslConstraint};
+use crate::problem_dsl::ast::{Constraint as DslConstraint, Expression, AST};
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -300,9 +300,7 @@ pub enum ConstraintType {
         rhs: f64,
     },
     /// Logical constraint
-    Logical {
-        expression: LogicalExpression,
-    },
+    Logical { expression: LogicalExpression },
     /// Cardinality constraint
     Cardinality {
         min: Option<usize>,
@@ -311,10 +309,7 @@ pub enum ConstraintType {
     /// All different constraint
     AllDifferent,
     /// Custom constraint
-    Custom {
-        name: String,
-        expression: String,
-    },
+    Custom { name: String, expression: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -783,7 +778,11 @@ impl VisualProblemBuilder {
                     parameters: HashMap::new(),
                 },
                 zoom: 1.0,
-                center: Position { x: 500.0, y: 400.0, z: None },
+                center: Position {
+                    x: 500.0,
+                    y: 400.0,
+                    z: None,
+                },
             },
             state: ProblemState::Editing,
         };
@@ -791,20 +790,30 @@ impl VisualProblemBuilder {
         let old_problem = self.problem.clone();
         self.problem = problem;
         let current_problem = self.problem.clone();
-        self.record_action(ActionType::BulkOperation(vec![]), &old_problem, &current_problem, "New problem created");
+        self.record_action(
+            ActionType::BulkOperation(vec![]),
+            &old_problem,
+            &current_problem,
+            "New problem created",
+        );
 
         Ok(())
     }
 
     /// Add variable to problem
-    pub fn add_variable(&mut self, name: &str, var_type: VariableType, position: Position) -> Result<String, String> {
+    pub fn add_variable(
+        &mut self,
+        name: &str,
+        var_type: VariableType,
+        position: Position,
+    ) -> Result<String, String> {
         // Check if variable already exists
         if self.problem.variables.iter().any(|v| v.name == name) {
             return Err(format!("Variable '{}' already exists", name));
         }
 
         let id = format!("var_{}", self.problem.variables.len());
-        
+
         let variable = VisualVariable {
             id: id.clone(),
             name: name.to_string(),
@@ -813,7 +822,9 @@ impl VisualProblemBuilder {
                 VariableType::Binary => VariableDomain::Binary,
                 VariableType::Integer { min, max } => VariableDomain::IntegerRange { min, max },
                 VariableType::Real { min, max } => VariableDomain::RealRange { min, max },
-                VariableType::Categorical { options } => VariableDomain::Discrete { values: options },
+                VariableType::Categorical { options } => {
+                    VariableDomain::Discrete { values: options }
+                }
             },
             position,
             visual_properties: VariableVisualProperties {
@@ -841,7 +852,7 @@ impl VisualProblemBuilder {
             ActionType::AddVariable(id.clone()),
             &before_state,
             &current_problem,
-            &format!("Added variable '{}'", name)
+            &format!("Added variable '{}'", name),
         );
 
         if self.config.real_time_validation {
@@ -853,7 +864,11 @@ impl VisualProblemBuilder {
 
     /// Remove variable
     pub fn remove_variable(&mut self, variable_id: &str) -> Result<(), String> {
-        let pos = self.problem.variables.iter().position(|v| v.id == variable_id)
+        let pos = self
+            .problem
+            .variables
+            .iter()
+            .position(|v| v.id == variable_id)
             .ok_or_else(|| format!("Variable '{}' not found", variable_id))?;
 
         let before_state = self.problem.clone();
@@ -874,7 +889,7 @@ impl VisualProblemBuilder {
             ActionType::RemoveVariable(variable_id.to_string()),
             &before_state,
             &current_problem,
-            &format!("Removed variable '{}'", variable.name)
+            &format!("Removed variable '{}'", variable.name),
         );
 
         if self.config.real_time_validation {
@@ -885,7 +900,12 @@ impl VisualProblemBuilder {
     }
 
     /// Add constraint
-    pub fn add_constraint(&mut self, name: &str, constraint_type: ConstraintType, variables: Vec<String>) -> Result<String, String> {
+    pub fn add_constraint(
+        &mut self,
+        name: &str,
+        constraint_type: ConstraintType,
+        variables: Vec<String>,
+    ) -> Result<String, String> {
         // Validate that all variables exist
         for var_id in &variables {
             if !self.problem.variables.iter().any(|v| &v.id == var_id) {
@@ -920,7 +940,7 @@ impl VisualProblemBuilder {
             ActionType::AddConstraint(id.clone()),
             &before_state,
             &current_problem,
-            &format!("Added constraint '{}'", name)
+            &format!("Added constraint '{}'", name),
         );
 
         if self.config.real_time_validation {
@@ -931,7 +951,12 @@ impl VisualProblemBuilder {
     }
 
     /// Set objective function
-    pub fn set_objective(&mut self, name: &str, expression: ObjectiveExpression, direction: OptimizationDirection) -> Result<(), String> {
+    pub fn set_objective(
+        &mut self,
+        name: &str,
+        expression: ObjectiveExpression,
+        direction: OptimizationDirection,
+    ) -> Result<(), String> {
         let objective = VisualObjective {
             id: "objective_0".to_string(),
             name: name.to_string(),
@@ -958,7 +983,7 @@ impl VisualProblemBuilder {
             ActionType::SetObjective,
             &before_state,
             &current_problem,
-            &format!("Set objective function '{}'", name)
+            &format!("Set objective function '{}'", name),
         );
 
         if self.config.real_time_validation {
@@ -992,7 +1017,7 @@ impl VisualProblemBuilder {
             ActionType::LayoutChange,
             &before_state,
             &current_problem,
-            &format!("Applied {:?} layout", algorithm)
+            &format!("Applied {:?} layout", algorithm),
         );
 
         Ok(())
@@ -1001,9 +1026,9 @@ impl VisualProblemBuilder {
     /// Validate current problem
     pub fn validate_problem(&mut self) -> Result<(), String> {
         self.problem.state = ProblemState::Validating;
-        
+
         let errors = self.validator.validate(&self.problem)?;
-        
+
         if errors.is_empty() {
             self.problem.state = ProblemState::Valid;
         } else {
@@ -1023,7 +1048,7 @@ impl VisualProblemBuilder {
     // pub fn export_qubo(&self) -> Result<(Array2<f64>, HashMap<String, usize>), String> {
     //     // Convert visual problem to DSL AST
     //     let ast = self.build_ast()?;
-    //     
+    //
     //     // Use existing compiler to generate QUBO
     //     let mut compiler = Compiler::new(ast);
     //     compiler.generate_qubo()
@@ -1056,8 +1081,8 @@ impl VisualProblemBuilder {
 
     /// Load problem from JSON
     pub fn load_problem(&mut self, json: &str) -> Result<(), String> {
-        let problem: VisualProblem = serde_json::from_str(json)
-            .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+        let problem: VisualProblem =
+            serde_json::from_str(json).map_err(|e| format!("Failed to parse JSON: {}", e))?;
 
         let before_state = self.problem.clone();
         let old_problem = self.problem.clone();
@@ -1068,7 +1093,7 @@ impl VisualProblemBuilder {
             ActionType::BulkOperation(vec![]),
             &before_state,
             &current_problem,
-            "Loaded problem from JSON"
+            "Loaded problem from JSON",
         );
 
         Ok(())
@@ -1139,7 +1164,13 @@ impl VisualProblemBuilder {
     // }
 
     /// Record action in history
-    fn record_action(&mut self, action_type: ActionType, before: &VisualProblem, after: &VisualProblem, description: &str) {
+    fn record_action(
+        &mut self,
+        action_type: ActionType,
+        before: &VisualProblem,
+        after: &VisualProblem,
+        description: &str,
+    ) {
         let entry = HistoryEntry {
             action_type,
             timestamp: std::time::Instant::now(),
@@ -1159,7 +1190,9 @@ impl VisualProblemBuilder {
         }
 
         // Simple spring-embedder algorithm
-        let mut positions: Vec<(f64, f64)> = self.problem.variables
+        let mut positions: Vec<(f64, f64)> = self
+            .problem
+            .variables
             .iter()
             .map(|v| (v.position.x, v.position.y))
             .collect();
@@ -1173,11 +1206,11 @@ impl VisualProblemBuilder {
                     let dx = positions[i].0 - positions[j].0;
                     let dy = positions[i].1 - positions[j].1;
                     let dist = (dx * dx + dy * dy).sqrt().max(1.0);
-                    
+
                     let force = 1000.0 / (dist * dist);
                     let fx = force * dx / dist;
                     let fy = force * dy / dist;
-                    
+
                     forces[i].0 += fx;
                     forces[i].1 += fy;
                     forces[j].0 -= fx;
@@ -1190,17 +1223,23 @@ impl VisualProblemBuilder {
                 for i in 0..constraint.variables.len() {
                     for j in i + 1..constraint.variables.len() {
                         if let (Some(idx1), Some(idx2)) = (
-                            self.problem.variables.iter().position(|v| v.id == constraint.variables[i]),
-                            self.problem.variables.iter().position(|v| v.id == constraint.variables[j])
+                            self.problem
+                                .variables
+                                .iter()
+                                .position(|v| v.id == constraint.variables[i]),
+                            self.problem
+                                .variables
+                                .iter()
+                                .position(|v| v.id == constraint.variables[j]),
                         ) {
                             let dx = positions[idx1].0 - positions[idx2].0;
                             let dy = positions[idx1].1 - positions[idx2].1;
                             let dist = (dx * dx + dy * dy).sqrt().max(1.0);
-                            
+
                             let force = 0.1 * dist;
                             let fx = force * dx / dist;
                             let fy = force * dy / dist;
-                            
+
                             forces[idx1].0 -= fx;
                             forces[idx1].1 -= fy;
                             forces[idx2].0 += fx;
@@ -1269,7 +1308,11 @@ impl VisualProblem {
                     parameters: HashMap::new(),
                 },
                 zoom: 1.0,
-                center: Position { x: 500.0, y: 400.0, z: None },
+                center: Position {
+                    x: 500.0,
+                    y: 400.0,
+                    z: None,
+                },
             },
             state: ProblemState::Editing,
         }
@@ -1316,7 +1359,8 @@ impl ProblemValidator {
                             id: format!("var_count_{}", count),
                             error_type: rule.rule_type.clone(),
                             severity: rule.severity.clone(),
-                            message: rule.message_template
+                            message: rule
+                                .message_template
                                 .replace("{min}", &min.to_string())
                                 .replace("{max}", &max.to_string()),
                             location: Some(ErrorLocation::Global),
@@ -1335,9 +1379,7 @@ impl ProblemValidator {
                             severity: rule.severity.clone(),
                             message: rule.message_template.clone(),
                             location: Some(ErrorLocation::Objective),
-                            suggestions: vec![
-                                "Add an objective function".to_string(),
-                            ],
+                            suggestions: vec!["Add an objective function".to_string()],
                         });
                     }
                 }
@@ -1385,7 +1427,8 @@ from quantrs2_tytan import *
 
 # Build and solve
 {solve_code}
-"#.to_string(),
+"#
+                .to_string(),
                 placeholders: vec![
                     "variables".to_string(),
                     "objective".to_string(),
@@ -1398,7 +1441,7 @@ from quantrs2_tytan import *
                     version: "1.0.0".to_string(),
                     author: "QuantRS2".to_string(),
                 },
-            }
+            },
         );
 
         templates.insert(
@@ -1423,7 +1466,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {{
     
     Ok(())
 }}
-"#.to_string(),
+"#
+                .to_string(),
                 placeholders: vec![
                     "variables".to_string(),
                     "objective".to_string(),
@@ -1436,38 +1480,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {{
                     version: "1.0.0".to_string(),
                     author: "QuantRS2".to_string(),
                 },
-            }
+            },
         );
 
         templates
     }
 
     /// Generate code
-    pub fn generate(&self, problem: &VisualProblem, format: ExportFormat) -> Result<String, String> {
+    pub fn generate(
+        &self,
+        problem: &VisualProblem,
+        format: ExportFormat,
+    ) -> Result<String, String> {
         match format {
-            ExportFormat::JSON => {
-                serde_json::to_string_pretty(problem)
-                    .map_err(|e| format!("JSON generation error: {}", e))
-            }
-            ExportFormat::Python => {
-                self.generate_python_code(problem)
-            }
-            ExportFormat::Rust => {
-                self.generate_rust_code(problem)
-            }
+            ExportFormat::JSON => serde_json::to_string_pretty(problem)
+                .map_err(|e| format!("JSON generation error: {}", e)),
+            ExportFormat::Python => self.generate_python_code(problem),
+            ExportFormat::Rust => self.generate_rust_code(problem),
             _ => Err("Format not supported yet".to_string()),
         }
     }
 
     /// Generate Python code
     fn generate_python_code(&self, problem: &VisualProblem) -> Result<String, String> {
-        let template = self.templates.get(&ExportFormat::Python)
+        let template = self
+            .templates
+            .get(&ExportFormat::Python)
             .ok_or("Python template not found")?;
 
         let mut code = template.template.clone();
 
         // Generate variables
-        let variables_code = problem.variables.iter()
+        let variables_code = problem
+            .variables
+            .iter()
             .map(|v| format!("{} = symbols(\"{}\")", v.name, v.name))
             .collect::<Vec<_>>()
             .join("\n");
@@ -1475,8 +1521,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {{
         // Generate objective
         let objective_code = if let Some(obj) = &problem.objective {
             match &obj.expression {
-                ObjectiveExpression::Linear { coefficients, constant } => {
-                    let terms: Vec<String> = coefficients.iter()
+                ObjectiveExpression::Linear {
+                    coefficients,
+                    constant,
+                } => {
+                    let terms: Vec<String> = coefficients
+                        .iter()
                         .map(|(var, coef)| {
                             if *coef == 1.0 {
                                 var.clone()
@@ -1485,7 +1535,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {{
                             }
                         })
                         .collect();
-                    
+
                     if *constant != 0.0 {
                         format!("h = {} + {}", terms.join(" + "), constant)
                     } else {
@@ -1499,7 +1549,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {{
         };
 
         // Generate constraints
-        let constraints_code = problem.constraints.iter()
+        let constraints_code = problem
+            .constraints
+            .iter()
             .map(|c| format!("# Constraint: {}", c.name))
             .collect::<Vec<_>>()
             .join("\n");
@@ -1518,7 +1570,8 @@ result = solver.run_qubo(qubo, 100)
 # Display results
 for r in result:
     print(r)
-"#.to_string();
+"#
+        .to_string();
 
         code = code.replace("{variables}", &variables_code);
         code = code.replace("{objective}", &objective_code);
@@ -1530,13 +1583,17 @@ for r in result:
 
     /// Generate Rust code
     fn generate_rust_code(&self, problem: &VisualProblem) -> Result<String, String> {
-        let template = self.templates.get(&ExportFormat::Rust)
+        let template = self
+            .templates
+            .get(&ExportFormat::Rust)
             .ok_or("Rust template not found")?;
 
         let mut code = template.template.clone();
 
         // Generate variables
-        let variables_code = problem.variables.iter()
+        let variables_code = problem
+            .variables
+            .iter()
             .map(|v| format!("    let {} = symbols(\"{}\");", v.name, v.name))
             .collect::<Vec<_>>()
             .join("\n");
@@ -1561,7 +1618,8 @@ for r in result:
     // Display results
     for r in &result {
         println!("{:?}", r);
-    }"#.to_string();
+    }"#
+        .to_string();
 
         code = code.replace("{variables}", &variables_code);
         code = code.replace("{objective}", &objective_code);
@@ -1622,10 +1680,13 @@ impl ProblemHistory {
 
 impl fmt::Display for VisualProblem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Problem '{}': {} variables, {} constraints", 
-               self.metadata.name, 
-               self.variables.len(), 
-               self.constraints.len())
+        write!(
+            f,
+            "Problem '{}': {} variables, {} constraints",
+            self.metadata.name,
+            self.variables.len(),
+            self.constraints.len()
+        )
     }
 }
 
@@ -1642,30 +1703,44 @@ mod tests {
         builder.new_problem("Test Problem").unwrap();
 
         // Add variables
-        let var1_id = builder.add_variable(
-            "x1",
-            VariableType::Binary,
-            Position { x: 100.0, y: 100.0, z: None }
-        ).unwrap();
+        let var1_id = builder
+            .add_variable(
+                "x1",
+                VariableType::Binary,
+                Position {
+                    x: 100.0,
+                    y: 100.0,
+                    z: None,
+                },
+            )
+            .unwrap();
 
-        let var2_id = builder.add_variable(
-            "x2",
-            VariableType::Binary,
-            Position { x: 200.0, y: 100.0, z: None }
-        ).unwrap();
+        let var2_id = builder
+            .add_variable(
+                "x2",
+                VariableType::Binary,
+                Position {
+                    x: 200.0,
+                    y: 100.0,
+                    z: None,
+                },
+            )
+            .unwrap();
 
         assert_eq!(builder.problem.variables.len(), 2);
 
         // Add constraint
-        let constraint_id = builder.add_constraint(
-            "Sum constraint",
-            ConstraintType::Linear {
-                coefficients: vec![1.0, 1.0],
-                operator: ComparisonOperator::LessEqual,
-                rhs: 1.0,
-            },
-            vec![var1_id.clone(), var2_id.clone()]
-        ).unwrap();
+        let constraint_id = builder
+            .add_constraint(
+                "Sum constraint",
+                ConstraintType::Linear {
+                    coefficients: vec![1.0, 1.0],
+                    operator: ComparisonOperator::LessEqual,
+                    rhs: 1.0,
+                },
+                vec![var1_id.clone(), var2_id.clone()],
+            )
+            .unwrap();
 
         assert_eq!(builder.problem.constraints.len(), 1);
 
@@ -1674,14 +1749,16 @@ mod tests {
         coefficients.insert(var1_id.clone(), 1.0);
         coefficients.insert(var2_id.clone(), 2.0);
 
-        builder.set_objective(
-            "Linear objective",
-            ObjectiveExpression::Linear {
-                coefficients,
-                constant: 0.0,
-            },
-            OptimizationDirection::Maximize
-        ).unwrap();
+        builder
+            .set_objective(
+                "Linear objective",
+                ObjectiveExpression::Linear {
+                    coefficients,
+                    constant: 0.0,
+                },
+                OptimizationDirection::Maximize,
+            )
+            .unwrap();
 
         assert!(builder.problem.objective.is_some());
 
@@ -1717,7 +1794,11 @@ mod tests {
             name: "x1".to_string(),
             var_type: VariableType::Binary,
             domain: VariableDomain::Binary,
-            position: Position { x: 0.0, y: 0.0, z: None },
+            position: Position {
+                x: 0.0,
+                y: 0.0,
+                z: None,
+            },
             visual_properties: VariableVisualProperties {
                 color: "#000000".to_string(),
                 size: 10.0,
@@ -1736,6 +1817,8 @@ mod tests {
 
         // Problem with variables but no objective should have warnings
         let errors = validator.validate(&problem).unwrap();
-        assert!(errors.iter().any(|e| matches!(e.severity, ValidationSeverity::Warning)));
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e.severity, ValidationSeverity::Warning)));
     }
 }

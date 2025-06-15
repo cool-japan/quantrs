@@ -1608,7 +1608,9 @@ impl Default for RLParameters {
                 ("throughput".to_string(), 1.0),
                 ("fairness".to_string(), 0.5),
                 ("cost".to_string(), -0.3),
-            ].into_iter().collect(),
+            ]
+            .into_iter()
+            .collect(),
             state_dimension: 64,
             action_space_size: 16,
         }
@@ -1719,7 +1721,7 @@ pub fn create_cost_optimized_config(budget_limit: f64) -> JobConfig {
     JobConfig {
         priority: JobPriority::BestEffort,
         max_execution_time: Duration::from_secs(7200), // 2 hours
-        max_queue_time: None, // No queue limit for cost optimization
+        max_queue_time: None,                          // No queue limit for cost optimization
         retry_attempts: 1,
         cost_limit: Some(budget_limit),
         preferred_backends: vec![], // Let cost optimizer choose
@@ -1732,7 +1734,7 @@ pub fn create_energy_efficient_config() -> JobConfig {
     JobConfig {
         priority: JobPriority::Low,
         max_execution_time: Duration::from_secs(3600), // 1 hour
-        max_queue_time: None, // Wait for renewable energy availability
+        max_queue_time: None,                          // Wait for renewable energy availability
         retry_attempts: 2,
         tags: [("energy_profile".to_string(), "green".to_string())]
             .into_iter()
@@ -1766,9 +1768,12 @@ pub fn create_deadline_config(deadline: SystemTime) -> JobConfig {
         max_queue_time: Some(Duration::from_secs(300)), // 5 minutes max wait
         retry_attempts: 2,
         deadline: Some(deadline),
-        tags: [("scheduling_type".to_string(), "deadline_sensitive".to_string())]
-            .into_iter()
-            .collect(),
+        tags: [(
+            "scheduling_type".to_string(),
+            "deadline_sensitive".to_string(),
+        )]
+        .into_iter()
+        .collect(),
         ..Default::default()
     }
 }
@@ -1786,7 +1791,10 @@ pub fn create_ml_training_config() -> JobConfig {
             min_fidelity: Some(0.95),
             memory_mb: Some(16384), // 16GB for ML workloads
             cpu_cores: Some(8),
-            required_features: vec!["variational_circuits".to_string(), "parametric_gates".to_string()],
+            required_features: vec![
+                "variational_circuits".to_string(),
+                "parametric_gates".to_string(),
+            ],
             ..Default::default()
         },
         tags: [
@@ -1826,10 +1834,10 @@ pub fn create_optimization_config() -> JobConfig {
 /// Create simulation job configuration for large-scale quantum simulation
 pub fn create_simulation_config(qubit_count: usize) -> JobConfig {
     let (max_execution_time, memory_requirement) = match qubit_count {
-        1..=20 => (Duration::from_secs(3600), 4096),    // 1 hour, 4GB
-        21..=30 => (Duration::from_secs(7200), 8192),   // 2 hours, 8GB
+        1..=20 => (Duration::from_secs(3600), 4096), // 1 hour, 4GB
+        21..=30 => (Duration::from_secs(7200), 8192), // 2 hours, 8GB
         31..=40 => (Duration::from_secs(14400), 16384), // 4 hours, 16GB
-        _ => (Duration::from_secs(28800), 32768),       // 8 hours, 32GB
+        _ => (Duration::from_secs(28800), 32768),    // 8 hours, 32GB
     };
 
     JobConfig {

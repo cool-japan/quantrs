@@ -5,7 +5,7 @@
 //! iterative optimization algorithms, real-time feedback control, and
 //! adaptive quantum-classical workflows.
 
-use std::collections::{HashMap, VecDeque, BTreeMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 
@@ -18,25 +18,25 @@ use quantrs2_core::{
 
 // SciRS2 integration for advanced optimization and analysis
 #[cfg(feature = "scirs2")]
-use scirs2_optimize::{minimize, differential_evolution, OptimizeResult};
+use scirs2_graph::{minimum_spanning_tree, shortest_path, Graph};
 #[cfg(feature = "scirs2")]
-use scirs2_stats::{mean, std, pearsonr, spearmanr, corrcoef};
+use scirs2_optimize::{differential_evolution, minimize, OptimizeResult};
 #[cfg(feature = "scirs2")]
-use scirs2_graph::{Graph, shortest_path, minimum_spanning_tree};
+use scirs2_stats::{corrcoef, mean, pearsonr, spearmanr, std};
 
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex as AsyncMutex, RwLock as AsyncRwLock, Semaphore};
 
 use crate::{
-    backend_traits::{BackendCapabilities, query_backend_capabilities},
+    backend_traits::{query_backend_capabilities, BackendCapabilities},
     calibration::{CalibrationManager, DeviceCalibration},
     hardware_parallelization::{HardwareParallelizationEngine, ParallelizationConfig},
-    integrated_device_manager::{IntegratedQuantumDeviceManager, DeviceInfo},
-    job_scheduling::{QuantumJobScheduler, JobPriority, SchedulingStrategy},
+    integrated_device_manager::{DeviceInfo, IntegratedQuantumDeviceManager},
+    job_scheduling::{JobPriority, QuantumJobScheduler, SchedulingStrategy},
     translation::HardwareBackend,
-    vqa_support::{VQAExecutor, VQAConfig, ObjectiveFunction},
-    DeviceError, DeviceResult, CircuitResult,
+    vqa_support::{ObjectiveFunction, VQAConfig, VQAExecutor},
+    CircuitResult, DeviceError, DeviceResult,
 };
 
 /// Hybrid quantum-classical loop configuration
@@ -318,8 +318,8 @@ pub struct ClassicalCachingConfig {
 /// Cache eviction policies
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum CacheEvictionPolicy {
-    LRU, // Least Recently Used
-    LFU, // Least Frequently Used
+    LRU,  // Least Recently Used
+    LFU,  // Least Frequently Used
     FIFO, // First In, First Out
     Random,
     TimeBasedExpiration,
@@ -1748,7 +1748,11 @@ struct ErrorRecord {
 /// Recovery strategy trait
 trait RecoveryStrategy {
     fn can_handle(&self, error: &DeviceError) -> bool;
-    fn recover(&self, error: &DeviceError, context: &HashMap<String, String>) -> DeviceResult<RecoveryAction>;
+    fn recover(
+        &self,
+        error: &DeviceError,
+        context: &HashMap<String, String>,
+    ) -> DeviceResult<RecoveryAction>;
 }
 
 /// Recovery action
@@ -1819,12 +1823,24 @@ impl HybridQuantumClassicalExecutor {
             parallelization_engine,
             scheduler,
             state: Arc::new(RwLock::new(initial_state)),
-            classical_executor: Arc::new(RwLock::new(ClassicalExecutor::new(config.classical_config.clone()))),
-            quantum_executor: Arc::new(RwLock::new(QuantumExecutor::new(config.quantum_config.clone()))),
-            feedback_controller: Arc::new(RwLock::new(FeedbackController::new(config.feedback_config.clone()))),
-            convergence_monitor: Arc::new(RwLock::new(ConvergenceMonitor::new(config.convergence_config.clone()))),
-            performance_tracker: Arc::new(RwLock::new(PerformanceTracker::new(config.performance_config.clone()))),
-            error_handler: Arc::new(RwLock::new(ErrorHandler::new(config.error_handling_config.clone()))),
+            classical_executor: Arc::new(RwLock::new(ClassicalExecutor::new(
+                config.classical_config.clone(),
+            ))),
+            quantum_executor: Arc::new(RwLock::new(QuantumExecutor::new(
+                config.quantum_config.clone(),
+            ))),
+            feedback_controller: Arc::new(RwLock::new(FeedbackController::new(
+                config.feedback_config.clone(),
+            ))),
+            convergence_monitor: Arc::new(RwLock::new(ConvergenceMonitor::new(
+                config.convergence_config.clone(),
+            ))),
+            performance_tracker: Arc::new(RwLock::new(PerformanceTracker::new(
+                config.performance_config.clone(),
+            ))),
+            error_handler: Arc::new(RwLock::new(ErrorHandler::new(
+                config.error_handling_config.clone(),
+            ))),
         }
     }
 
@@ -1840,7 +1856,7 @@ impl HybridQuantumClassicalExecutor {
         C: Fn(&[f64]) -> DeviceResult<Circuit<16>> + Send + Sync + Clone + 'static,
     {
         let start_time = Instant::now();
-        
+
         // Initialize state
         {
             let mut state = self.state.write().unwrap();
@@ -1860,7 +1876,10 @@ impl HybridQuantumClassicalExecutor {
             let iteration_start = Instant::now();
 
             // Check for convergence
-            if self.check_convergence(&current_parameters, best_objective, iteration).await? {
+            if self
+                .check_convergence(&current_parameters, best_objective, iteration)
+                .await?
+            {
                 break;
             }
 
@@ -1868,14 +1887,14 @@ impl HybridQuantumClassicalExecutor {
             let circuit = quantum_circuit_generator(&current_parameters)?;
 
             // Execute quantum computation
-            let quantum_result = self.execute_quantum_computation(&circuit, iteration).await?;
+            let quantum_result = self
+                .execute_quantum_computation(&circuit, iteration)
+                .await?;
 
             // Execute classical computation
-            let classical_result = self.execute_classical_computation(
-                &current_parameters,
-                &quantum_result,
-                iteration
-            ).await?;
+            let classical_result = self
+                .execute_classical_computation(&current_parameters, &quantum_result, iteration)
+                .await?;
 
             // Evaluate objective function
             let objective_value = objective_function(&current_parameters, &quantum_result)?;
@@ -1887,28 +1906,25 @@ impl HybridQuantumClassicalExecutor {
             }
 
             // Compute gradient (if applicable)
-            let gradient = self.compute_gradient(
-                &current_parameters,
-                &quantum_circuit_generator,
-                &objective_function,
-                iteration
-            ).await?;
+            let gradient = self
+                .compute_gradient(
+                    &current_parameters,
+                    &quantum_circuit_generator,
+                    &objective_function,
+                    iteration,
+                )
+                .await?;
 
             // Update parameters using optimizer
-            current_parameters = self.update_parameters(
-                &current_parameters,
-                &gradient,
-                objective_value,
-                iteration
-            ).await?;
+            current_parameters = self
+                .update_parameters(&current_parameters, &gradient, objective_value, iteration)
+                .await?;
 
             // Apply feedback control (if enabled)
             if self.config.feedback_config.enable_realtime_feedback {
-                current_parameters = self.apply_feedback_control(
-                    &current_parameters,
-                    &quantum_result,
-                    iteration
-                ).await?;
+                current_parameters = self
+                    .apply_feedback_control(&current_parameters, &quantum_result, iteration)
+                    .await?;
             }
 
             // Record iteration result
@@ -1933,7 +1949,7 @@ impl HybridQuantumClassicalExecutor {
                 state.objective_value = objective_value;
                 state.gradient = gradient;
                 state.history.push_back(iteration_result);
-                
+
                 // Limit history size
                 if state.history.len() > 1000 {
                     state.history.pop_front();
@@ -1941,17 +1957,19 @@ impl HybridQuantumClassicalExecutor {
             }
 
             // Monitor performance
-            self.update_performance_metrics(iteration, iteration_start.elapsed()).await?;
+            self.update_performance_metrics(iteration, iteration_start.elapsed())
+                .await?;
 
             iteration += 1;
         }
 
         // Finalize results
-        let final_convergence_status = if iteration >= self.config.optimization_config.max_iterations {
-            ConvergenceStatus::Converged(ConvergenceReason::MaxIterations)
-        } else {
-            ConvergenceStatus::Converged(ConvergenceReason::ValueTolerance)
-        };
+        let final_convergence_status =
+            if iteration >= self.config.optimization_config.max_iterations {
+                ConvergenceStatus::Converged(ConvergenceReason::MaxIterations)
+            } else {
+                ConvergenceStatus::Converged(ConvergenceReason::ValueTolerance)
+            };
 
         let performance_metrics = {
             let tracker = self.performance_tracker.read().unwrap();
@@ -1960,7 +1978,9 @@ impl HybridQuantumClassicalExecutor {
 
         let optimization_summary = OptimizationSummary {
             total_iterations: iteration,
-            objective_improvement: if execution_history.is_empty() { 0.0 } else {
+            objective_improvement: if execution_history.is_empty() {
+                0.0
+            } else {
                 execution_history[0].objective_value - best_objective
             },
             convergence_rate: self.calculate_convergence_rate(&execution_history),
@@ -1986,20 +2006,20 @@ impl HybridQuantumClassicalExecutor {
         iteration: usize,
     ) -> DeviceResult<QuantumExecutionResult> {
         let quantum_executor = self.quantum_executor.read().unwrap();
-        
+
         // Select optimal backend
         let backend = self.select_optimal_backend(circuit, iteration).await?;
-        
+
         // Execute circuit
         let shots = self.calculate_optimal_shots(circuit, iteration);
         let circuit_results = vec![]; // Placeholder implementation
-        
+
         // Calculate fidelity estimates
         let fidelity_estimates = self.estimate_fidelity(circuit, &backend).await?;
-        
+
         // Monitor error rates
         let error_rates = self.monitor_error_rates(&backend).await?;
-        
+
         // Track resource usage
         let resource_usage = QuantumResourceUsage {
             qpu_time: Duration::from_millis(100), // Placeholder
@@ -2026,14 +2046,14 @@ impl HybridQuantumClassicalExecutor {
         iteration: usize,
     ) -> DeviceResult<ClassicalComputationResult> {
         let classical_executor = self.classical_executor.read().unwrap();
-        
+
         // Process quantum results classically
         let processing_start = Instant::now();
-        
+
         // Placeholder classical computation
         let results = HashMap::new();
         let processing_time = processing_start.elapsed();
-        
+
         let resource_usage = ClassicalResourceUsage {
             cpu_time: processing_time,
             memory_mb: 128.0, // Placeholder
@@ -2066,25 +2086,29 @@ impl HybridQuantumClassicalExecutor {
                 // Compute gradient using finite differences
                 let mut gradient = vec![0.0; parameters.len()];
                 let eps = 1e-6;
-                
+
                 for i in 0..parameters.len() {
                     let mut params_plus = parameters.to_vec();
                     let mut params_minus = parameters.to_vec();
                     params_plus[i] += eps;
                     params_minus[i] -= eps;
-                    
+
                     let circuit_plus = circuit_generator(&params_plus)?;
                     let circuit_minus = circuit_generator(&params_minus)?;
-                    
-                    let quantum_result_plus = self.execute_quantum_computation(&circuit_plus, iteration).await?;
-                    let quantum_result_minus = self.execute_quantum_computation(&circuit_minus, iteration).await?;
-                    
+
+                    let quantum_result_plus = self
+                        .execute_quantum_computation(&circuit_plus, iteration)
+                        .await?;
+                    let quantum_result_minus = self
+                        .execute_quantum_computation(&circuit_minus, iteration)
+                        .await?;
+
                     let obj_plus = objective_function(&params_plus, &quantum_result_plus)?;
                     let obj_minus = objective_function(&params_minus, &quantum_result_minus)?;
-                    
+
                     gradient[i] = (obj_plus - obj_minus) / (2.0 * eps);
                 }
-                
+
                 Ok(Some(gradient))
             }
             _ => {
@@ -2105,26 +2129,31 @@ impl HybridQuantumClassicalExecutor {
         match self.config.optimization_config.optimizer {
             HybridOptimizer::Adam => {
                 if let Some(grad) = gradient {
-                    self.update_parameters_adam(current_parameters, grad, iteration).await
+                    self.update_parameters_adam(current_parameters, grad, iteration)
+                        .await
                 } else {
                     Ok(current_parameters.to_vec())
                 }
             }
             HybridOptimizer::GradientDescent => {
                 if let Some(grad) = gradient {
-                    self.update_parameters_gradient_descent(current_parameters, grad).await
+                    self.update_parameters_gradient_descent(current_parameters, grad)
+                        .await
                 } else {
                     Ok(current_parameters.to_vec())
                 }
             }
             HybridOptimizer::NelderMead => {
-                self.update_parameters_nelder_mead(current_parameters, objective_value, iteration).await
+                self.update_parameters_nelder_mead(current_parameters, objective_value, iteration)
+                    .await
             }
             HybridOptimizer::DifferentialEvolution => {
-                self.update_parameters_differential_evolution(current_parameters, iteration).await
+                self.update_parameters_differential_evolution(current_parameters, iteration)
+                    .await
             }
             HybridOptimizer::SPSA => {
-                self.update_parameters_spsa(current_parameters, iteration).await
+                self.update_parameters_spsa(current_parameters, iteration)
+                    .await
             }
             _ => {
                 // Default fallback
@@ -2141,17 +2170,18 @@ impl HybridQuantumClassicalExecutor {
         iteration: usize,
     ) -> DeviceResult<Vec<f64>> {
         let mut feedback_controller = self.feedback_controller.write().unwrap();
-        
+
         if !feedback_controller.control_loop_active {
             return Ok(parameters.to_vec());
         }
 
         // Estimate current state
         let state_estimate = feedback_controller.estimate_state(quantum_result)?;
-        
+
         // Compute control action
-        let control_action = feedback_controller.compute_control_action(&state_estimate, parameters)?;
-        
+        let control_action =
+            feedback_controller.compute_control_action(&state_estimate, parameters)?;
+
         // Apply control action to parameters
         let mut updated_parameters = parameters.to_vec();
         for (i, &action) in control_action.iter().enumerate() {
@@ -2173,24 +2203,33 @@ impl HybridQuantumClassicalExecutor {
     }
 
     // Helper methods for different optimizers
-    async fn update_parameters_adam(&self, params: &[f64], gradient: &[f64], iteration: usize) -> DeviceResult<Vec<f64>> {
+    async fn update_parameters_adam(
+        &self,
+        params: &[f64],
+        gradient: &[f64],
+        iteration: usize,
+    ) -> DeviceResult<Vec<f64>> {
         // Adam optimizer implementation
         let learning_rate = 0.001;
         let beta1 = 0.9;
         let beta2 = 0.999;
         let epsilon = 1e-8;
-        
+
         // This would need persistent state for m and v vectors
         // For now, simple gradient descent
         let mut new_params = params.to_vec();
         for (i, &grad) in gradient.iter().enumerate() {
             new_params[i] -= learning_rate * grad;
         }
-        
+
         Ok(new_params)
     }
 
-    async fn update_parameters_gradient_descent(&self, params: &[f64], gradient: &[f64]) -> DeviceResult<Vec<f64>> {
+    async fn update_parameters_gradient_descent(
+        &self,
+        params: &[f64],
+        gradient: &[f64],
+    ) -> DeviceResult<Vec<f64>> {
         let learning_rate = 0.01;
         let mut new_params = params.to_vec();
         for (i, &grad) in gradient.iter().enumerate() {
@@ -2199,32 +2238,49 @@ impl HybridQuantumClassicalExecutor {
         Ok(new_params)
     }
 
-    async fn update_parameters_nelder_mead(&self, params: &[f64], _objective: f64, _iteration: usize) -> DeviceResult<Vec<f64>> {
+    async fn update_parameters_nelder_mead(
+        &self,
+        params: &[f64],
+        _objective: f64,
+        _iteration: usize,
+    ) -> DeviceResult<Vec<f64>> {
         // Placeholder implementation
         Ok(params.to_vec())
     }
 
-    async fn update_parameters_differential_evolution(&self, params: &[f64], _iteration: usize) -> DeviceResult<Vec<f64>> {
+    async fn update_parameters_differential_evolution(
+        &self,
+        params: &[f64],
+        _iteration: usize,
+    ) -> DeviceResult<Vec<f64>> {
         // Placeholder implementation
         Ok(params.to_vec())
     }
 
-    async fn update_parameters_spsa(&self, params: &[f64], iteration: usize) -> DeviceResult<Vec<f64>> {
+    async fn update_parameters_spsa(
+        &self,
+        params: &[f64],
+        iteration: usize,
+    ) -> DeviceResult<Vec<f64>> {
         // SPSA implementation placeholder
         let a = 0.01;
         let c = 0.1;
         let alpha = 0.602;
         let gamma = 0.101;
-        
+
         let ak = a / ((iteration + 1) as f64).powf(alpha);
         let ck = c / ((iteration + 1) as f64).powf(gamma);
-        
+
         // This would need proper SPSA implementation
         Ok(params.to_vec())
     }
 
     // Helper methods
-    async fn select_optimal_backend(&self, _circuit: &Circuit<16>, _iteration: usize) -> DeviceResult<HardwareBackend> {
+    async fn select_optimal_backend(
+        &self,
+        _circuit: &Circuit<16>,
+        _iteration: usize,
+    ) -> DeviceResult<HardwareBackend> {
         // Placeholder implementation
         Ok(HardwareBackend::IBMQuantum)
     }
@@ -2233,18 +2289,30 @@ impl HybridQuantumClassicalExecutor {
         1000 // Placeholder
     }
 
-    async fn estimate_fidelity(&self, _circuit: &Circuit<16>, _backend: &HardwareBackend) -> DeviceResult<Vec<f64>> {
+    async fn estimate_fidelity(
+        &self,
+        _circuit: &Circuit<16>,
+        _backend: &HardwareBackend,
+    ) -> DeviceResult<Vec<f64>> {
         Ok(vec![0.95]) // Placeholder
     }
 
-    async fn monitor_error_rates(&self, _backend: &HardwareBackend) -> DeviceResult<HashMap<String, f64>> {
+    async fn monitor_error_rates(
+        &self,
+        _backend: &HardwareBackend,
+    ) -> DeviceResult<HashMap<String, f64>> {
         let mut error_rates = HashMap::new();
         error_rates.insert("readout_error".to_string(), 0.01);
         error_rates.insert("gate_error".to_string(), 0.005);
         Ok(error_rates)
     }
 
-    async fn check_convergence(&self, _parameters: &[f64], best_objective: f64, iteration: usize) -> DeviceResult<bool> {
+    async fn check_convergence(
+        &self,
+        _parameters: &[f64],
+        best_objective: f64,
+        iteration: usize,
+    ) -> DeviceResult<bool> {
         for criterion in &self.config.convergence_config.criteria {
             match criterion {
                 ConvergenceCriterion::ValueTolerance(tol) => {
@@ -2263,14 +2331,19 @@ impl HybridQuantumClassicalExecutor {
         Ok(false)
     }
 
-    async fn update_performance_metrics(&self, iteration: usize, iteration_time: Duration) -> DeviceResult<()> {
+    async fn update_performance_metrics(
+        &self,
+        iteration: usize,
+        iteration_time: Duration,
+    ) -> DeviceResult<()> {
         let mut tracker = self.performance_tracker.write().unwrap();
-        
-        tracker.metrics.average_iteration_time = 
-            (tracker.metrics.average_iteration_time * iteration as u32 + iteration_time) / (iteration + 1) as u32;
-        
+
+        tracker.metrics.average_iteration_time =
+            (tracker.metrics.average_iteration_time * iteration as u32 + iteration_time)
+                / (iteration + 1) as u32;
+
         tracker.metrics.throughput = 1.0 / tracker.metrics.average_iteration_time.as_secs_f64();
-        
+
         Ok(())
     }
 
@@ -2278,14 +2351,14 @@ impl HybridQuantumClassicalExecutor {
         if history.len() < 2 {
             return 0.0;
         }
-        
+
         let initial_value = history[0].objective_value;
         let final_value = history.last().unwrap().objective_value;
-        
+
         if initial_value == 0.0 {
             return 0.0;
         }
-        
+
         ((initial_value - final_value) / initial_value).abs()
     }
 
@@ -2293,23 +2366,26 @@ impl HybridQuantumClassicalExecutor {
         if history.is_empty() {
             return 0.0;
         }
-        
-        let total_qpu_time: Duration = history.iter()
+
+        let total_qpu_time: Duration = history
+            .iter()
             .map(|h| h.quantum_results.resource_usage.qpu_time)
             .sum();
-        
-        let total_time: Duration = history.iter()
-            .map(|h| h.execution_time)
-            .sum();
-        
+
+        let total_time: Duration = history.iter().map(|h| h.execution_time).sum();
+
         if total_time == Duration::from_secs(0) {
             return 0.0;
         }
-        
+
         total_qpu_time.as_secs_f64() / total_time.as_secs_f64()
     }
 
-    fn calculate_quality_metrics(&self, history: &[IterationResult], best_parameters: &[f64]) -> QualityMetrics {
+    fn calculate_quality_metrics(
+        &self,
+        history: &[IterationResult],
+        best_parameters: &[f64],
+    ) -> QualityMetrics {
         // Placeholder implementation
         QualityMetrics {
             solution_quality: 0.9,
@@ -2484,7 +2560,7 @@ mod tests {
             ConvergenceCriterion::ValueTolerance(1e-6),
             ConvergenceCriterion::MaxIterations(1000),
         ];
-        
+
         for criterion in criteria {
             match criterion {
                 ConvergenceCriterion::ValueTolerance(tol) => assert!(tol > 0.0),
@@ -2502,7 +2578,7 @@ mod tests {
             HybridOptimizer::SPSA,
             HybridOptimizer::SciRS2Optimized,
         ];
-        
+
         for optimizer in optimizers {
             // All optimizer types should be valid
             assert_ne!(optimizer, HybridOptimizer::Adam); // Just to check they're different
@@ -2518,10 +2594,11 @@ mod tests {
         let cal_mgr = crate::calibration::CalibrationManager::new();
         let device_manager = Arc::new(RwLock::new(
             crate::integrated_device_manager::IntegratedQuantumDeviceManager::new(
-                Default::default(), 
-                devices, 
-                cal_mgr.clone()
-            ).unwrap()
+                Default::default(),
+                devices,
+                cal_mgr.clone(),
+            )
+            .unwrap(),
         ));
         let calibration_manager = Arc::new(RwLock::new(cal_mgr));
         let parallelization_engine = Arc::new(
@@ -2533,15 +2610,15 @@ mod tests {
                     crate::routing_advanced::AdvancedQubitRouter::new(
                         Default::default(),
                         crate::routing_advanced::AdvancedRoutingStrategy::Hybrid,
-                        42
-                    )
-                ))
-            )
+                        42,
+                    ),
+                )),
+            ),
         );
-        let scheduler = Arc::new(
-            crate::job_scheduling::QuantumJobScheduler::new(Default::default())
-        );
-        
+        let scheduler = Arc::new(crate::job_scheduling::QuantumJobScheduler::new(
+            Default::default(),
+        ));
+
         let _executor = HybridQuantumClassicalExecutor::new(
             config,
             device_manager,
@@ -2549,7 +2626,7 @@ mod tests {
             parallelization_engine,
             scheduler,
         );
-        
+
         // Should create without error
         assert!(true);
     }

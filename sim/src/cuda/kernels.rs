@@ -3,21 +3,21 @@
 //! This module provides CUDA kernel management, compilation,
 //! and execution for GPU-accelerated quantum simulations.
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
-use crate::error::{Result, SimulatorError};
-use crate::scirs2_integration::SciRS2Backend;
 #[cfg(feature = "advanced_math")]
 use super::context::CudaContext;
 #[cfg(feature = "advanced_math")]
-use super::streams::CudaStream;
-#[cfg(feature = "advanced_math")]
 use super::memory::GpuMemory;
 pub use super::memory::GpuMemoryType;
+#[cfg(feature = "advanced_math")]
+use super::streams::CudaStream;
+use crate::error::{Result, SimulatorError};
+use crate::scirs2_integration::SciRS2Backend;
 
 // Placeholder types for actual CUDA handles
 #[cfg(feature = "advanced_math")]
@@ -124,14 +124,14 @@ impl CudaKernel {
     pub fn compile(source: &str, name: &str, config: &CudaKernelConfig) -> Result<Self> {
         // Compile CUDA source to PTX
         let ptx_code = Self::compile_cuda_source(source, config)?;
-        
+
         // Load and create function handle
         let function_handle = Self::load_cuda_function(&ptx_code, name)?;
-        
+
         // Query kernel properties
-        let (register_count, shared_memory_size, max_threads_per_block) = 
+        let (register_count, shared_memory_size, max_threads_per_block) =
             Self::query_kernel_properties(function_handle)?;
-        
+
         Ok(Self {
             name: name.to_string(),
             ptx_code,
@@ -152,13 +152,13 @@ impl CudaKernel {
         if let Some(function_handle) = self.function_handle {
             // Validate launch parameters
             self.validate_launch_parameters(grid_size, block_size)?;
-            
+
             // Get stream handle
             let stream_handle = {
                 let handle = stream.get_handle().lock().unwrap();
                 *handle
             };
-            
+
             // Launch kernel
             Self::cuda_launch_kernel(
                 function_handle,
@@ -168,26 +168,27 @@ impl CudaKernel {
                 stream_handle,
             )?;
         } else {
-            return Err(SimulatorError::UnsupportedOperation(
-                format!("Kernel '{}' not compiled", self.name)
-            ));
+            return Err(SimulatorError::UnsupportedOperation(format!(
+                "Kernel '{}' not compiled",
+                self.name
+            )));
         }
-        
+
         Ok(())
     }
-    
+
     pub fn get_occupancy(&self, block_size: usize) -> Result<f64> {
         if let Some(_function_handle) = self.function_handle {
             // Calculate theoretical occupancy
             let max_blocks_per_sm = self.calculate_max_blocks_per_sm(block_size)?;
             let active_warps = (block_size + 31) / 32; // Round up to warp size
             let max_warps_per_sm = 64; // Typical for modern GPUs
-            
+
             let occupancy = (max_blocks_per_sm * active_warps) as f64 / max_warps_per_sm as f64;
             Ok(occupancy.min(1.0))
         } else {
             Err(SimulatorError::UnsupportedOperation(
-                "Cannot calculate occupancy for uncompiled kernel".to_string()
+                "Cannot calculate occupancy for uncompiled kernel".to_string(),
             ))
         }
     }
@@ -207,7 +208,7 @@ impl CudaKernel {
     pub fn get_max_threads_per_block(&self) -> u32 {
         self.max_threads_per_block
     }
-    
+
     fn compile_cuda_source(source: &str, config: &CudaKernelConfig) -> Result<String> {
         // In real implementation: nvrtcCompileProgram
         let optimization_flags = match config.optimization_level {
@@ -215,24 +216,24 @@ impl CudaKernel {
             OptimizationLevel::Balanced => "-O2",
             OptimizationLevel::Aggressive => "-O3 --use_fast_math",
         };
-        
+
         // Simulate compilation process
         let ptx_header = format!(
             ".version 7.0\n.target sm_75\n.address_size 64\n// Compiled with {}\n",
             optimization_flags
         );
-        
+
         // In real implementation, this would be actual PTX code from nvrtc
         Ok(format!("{}{}", ptx_header, source))
     }
-    
+
     fn load_cuda_function(ptx_code: &str, name: &str) -> Result<CudaFunctionHandle> {
         // In real implementation: cuModuleLoadDataEx + cuModuleGetFunction
         let _module_handle = Self::cuda_module_load_data(ptx_code)?;
         let function_handle = Self::cuda_module_get_function(name)?;
         Ok(function_handle)
     }
-    
+
     fn query_kernel_properties(_function_handle: CudaFunctionHandle) -> Result<(u32, usize, u32)> {
         // In real implementation: cuFuncGetAttribute
         let register_count = 32; // Example values
@@ -243,15 +244,20 @@ impl CudaKernel {
 
     fn validate_launch_parameters(&self, grid_size: usize, block_size: usize) -> Result<()> {
         if block_size == 0 {
-            return Err(SimulatorError::InvalidInput("Block size cannot be zero".to_string()));
+            return Err(SimulatorError::InvalidInput(
+                "Block size cannot be zero".to_string(),
+            ));
         }
         if grid_size == 0 {
-            return Err(SimulatorError::InvalidInput("Grid size cannot be zero".to_string()));
+            return Err(SimulatorError::InvalidInput(
+                "Grid size cannot be zero".to_string(),
+            ));
         }
         if block_size > self.max_threads_per_block as usize {
-            return Err(SimulatorError::InvalidInput(
-                format!("Block size {} exceeds maximum {}", block_size, self.max_threads_per_block)
-            ));
+            return Err(SimulatorError::InvalidInput(format!(
+                "Block size {} exceeds maximum {}",
+                block_size, self.max_threads_per_block
+            )));
         }
         Ok(())
     }
@@ -264,18 +270,20 @@ impl CudaKernel {
         } else {
             usize::MAX
         };
-        Ok(max_blocks_by_registers.min(max_blocks_by_shared_memory).min(32)) // Max 32 blocks per SM
+        Ok(max_blocks_by_registers
+            .min(max_blocks_by_shared_memory)
+            .min(32)) // Max 32 blocks per SM
     }
-    
+
     // Placeholder CUDA functions
     fn cuda_module_load_data(_ptx_code: &str) -> Result<usize> {
         Ok(1) // Mock module handle
     }
-    
+
     fn cuda_module_get_function(_name: &str) -> Result<CudaFunctionHandle> {
         Ok(1) // Mock function handle
     }
-    
+
     fn cuda_launch_kernel(
         _function: CudaFunctionHandle,
         _grid_size: usize,
@@ -350,7 +358,8 @@ impl CudaQuantumKernels {
     fn compile_kernels(&mut self) -> Result<()> {
         // Compile standard quantum gate kernels
         let hadamard_source = include_str!("kernels/hadamard.cu");
-        let hadamard_kernel = CudaKernel::compile(hadamard_source, "hadamard_kernel", &self.config)?;
+        let hadamard_kernel =
+            CudaKernel::compile(hadamard_source, "hadamard_kernel", &self.config)?;
         self.kernels.insert("hadamard".to_string(), hadamard_kernel);
 
         let pauli_x_source = include_str!("kernels/pauli_x.cu");
@@ -358,7 +367,7 @@ impl CudaQuantumKernels {
         self.kernels.insert("pauli_x".to_string(), pauli_x_kernel);
 
         // Add more kernels as needed...
-        
+
         Ok(())
     }
 
@@ -369,33 +378,30 @@ impl CudaQuantumKernels {
     }
 
     /// Apply Hadamard gate using CUDA kernel
-    pub fn apply_hadamard(
-        &mut self,
-        state: &mut Array1<Complex64>,
-        qubit: usize,
-    ) -> Result<()> {
+    pub fn apply_hadamard(&mut self, state: &mut Array1<Complex64>, qubit: usize) -> Result<()> {
         #[cfg(feature = "advanced_math")]
         {
-            let kernel = self.kernels.get("hadamard")
-                .ok_or_else(|| SimulatorError::UnsupportedOperation("Hadamard kernel not available".to_string()))?;
-            
+            let kernel = self.kernels.get("hadamard").ok_or_else(|| {
+                SimulatorError::UnsupportedOperation("Hadamard kernel not available".to_string())
+            })?;
+
             let stream = &self.streams[0]; // Use first stream
-            
+
             // Prepare kernel parameters
             let params = vec![
                 state.as_ptr() as *const std::ffi::c_void,
                 &qubit as *const _ as *const std::ffi::c_void,
                 &state.len() as *const _ as *const std::ffi::c_void,
             ];
-            
+
             // Calculate grid and block sizes
             let block_size = self.config.block_size;
             let grid_size = (state.len() + block_size - 1) / block_size;
-            
+
             // Launch kernel
             kernel.launch(grid_size, block_size, &params, stream)?;
             stream.synchronize()?;
-            
+
             self.stats.total_kernels_launched += 1;
         }
 
@@ -412,7 +418,7 @@ impl CudaQuantumKernels {
     fn apply_hadamard_cpu(&self, state: &mut Array1<Complex64>, qubit: usize) -> Result<()> {
         let n = state.len();
         let mask = 1 << qubit;
-        
+
         for i in 0..n {
             if i & mask == 0 {
                 let j = i | mask;
@@ -421,7 +427,7 @@ impl CudaQuantumKernels {
                 state[j] = (temp - state[j]) / Complex64::new(2.0_f64.sqrt(), 0.0);
             }
         }
-        
+
         Ok(())
     }
 

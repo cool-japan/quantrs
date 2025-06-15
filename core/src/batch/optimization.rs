@@ -91,7 +91,7 @@ impl BatchParameterOptimizer {
         cost_fn: impl Fn(&BatchStateVector) -> f64 + Sync + Send + Clone + 'static,
         initial_states: &BatchStateVector,
     ) -> QuantRS2Result<OptimizeResult<f64>> {
-        let num_params = initial_params.len();
+        let _num_params = initial_params.len();
 
         // Define objective function
         let executor = Arc::new(self.executor.clone());
@@ -447,11 +447,11 @@ impl BatchQAOA {
         }
 
         // Create QAOA circuit constructor
-        let p = self.p;
-        let cost_ham = self.cost_hamiltonian.clone();
-        let mixer_ham = self.mixer_hamiltonian.clone();
+        let _p = self.p;
+        let _cost_ham = self.cost_hamiltonian.clone();
+        let _mixer_ham = self.mixer_hamiltonian.clone();
 
-        let qaoa_circuit = move |params: &[f64]| -> QuantRS2Result<BatchCircuit> {
+        let qaoa_circuit = move |_params: &[f64]| -> QuantRS2Result<BatchCircuit> {
             // This is a placeholder - actual QAOA circuit construction would go here
             let circuit = BatchCircuit::new(n_qubits);
             // Add QAOA layers based on params, cost_ham, mixer_ham

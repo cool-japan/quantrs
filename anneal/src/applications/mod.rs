@@ -604,7 +604,7 @@ mod tests {
     }
 }
 
-/// Wrapper to convert Molecule-based problems to Vec<i8>-based problems
+/// Wrapper to convert Molecule-based problems to `Vec<i8>`-based problems
 pub struct MoleculeToBinaryWrapper {
     inner: Box<dyn OptimizationProblem<Solution = Molecule, ObjectiveValue = f64>>,
 }

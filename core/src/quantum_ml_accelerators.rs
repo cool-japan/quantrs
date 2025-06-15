@@ -57,15 +57,17 @@ where
 use std::f64::consts::PI;
 
 /// Simple SVD decomposition function using eigenvalue decomposition fallback
-fn decompose_svd(matrix: &Array2<Complex64>) -> Result<(Array2<Complex64>, Array1<f64>, Array2<Complex64>), QuantRS2Error> {
+fn decompose_svd(
+    matrix: &Array2<Complex64>,
+) -> Result<(Array2<Complex64>, Array1<f64>, Array2<Complex64>), QuantRS2Error> {
     let (nrows, ncols) = matrix.dim();
     let min_dim = nrows.min(ncols);
-    
+
     // For a simplified implementation, return identity matrices of appropriate dimensions
     let u = Array2::eye(nrows);
     let s = Array1::ones(min_dim);
     let vt = Array2::eye(ncols);
-    
+
     Ok((u, s, vt))
 }
 
@@ -96,7 +98,7 @@ impl QuantumNaturalGradient {
     ) -> Result<(), QuantRS2Error> {
         let n_params = parameters.len();
         let eps = 1e-8;
-        
+
         // Compute Fisher information using parameter-shift rule
         for i in 0..n_params {
             for j in i..n_params {
@@ -104,29 +106,29 @@ impl QuantumNaturalGradient {
                 let mut params_minus = parameters.clone();
                 params_plus[i] += eps;
                 params_minus[i] -= eps;
-                
+
                 let circuit_plus = circuit_generator(&params_plus)?;
                 let circuit_minus = circuit_generator(&params_minus)?;
-                
+
                 let state_plus = circuit_plus.dot(state);
                 let state_minus = circuit_minus.dot(state);
-                
+
                 // Fisher information element
                 let overlap = state_plus.dot(&state_minus.mapv(|x| x.conj()));
                 let fisher_element = 4.0 * (1.0 - overlap.norm_sqr());
-                
+
                 self.fisher_information[[i, j]] = fisher_element;
                 if i != j {
                     self.fisher_information[[j, i]] = fisher_element;
                 }
             }
         }
-        
+
         // Add regularization
         for i in 0..n_params {
             self.fisher_information[[i, i]] += self.regularization;
         }
-        
+
         Ok(())
     }
 
@@ -183,7 +185,7 @@ impl ParameterShiftOptimizer {
     ) -> Result<Array1<f64>, QuantRS2Error> {
         let n_params = parameters.len();
         let mut gradient = Array1::zeros(n_params);
-        
+
         for i in 0..n_params {
             if self.use_finite_differences {
                 gradient[i] = self.finite_difference_gradient(&expectation_fn, parameters, i)?;
@@ -191,7 +193,7 @@ impl ParameterShiftOptimizer {
                 gradient[i] = self.parameter_shift_gradient(&expectation_fn, parameters, i)?;
             }
         }
-        
+
         Ok(gradient)
     }
 
@@ -204,13 +206,13 @@ impl ParameterShiftOptimizer {
     ) -> Result<f64, QuantRS2Error> {
         let mut params_plus = parameters.clone();
         let mut params_minus = parameters.clone();
-        
+
         params_plus[param_idx] += self.shift_value;
         params_minus[param_idx] -= self.shift_value;
-        
+
         let exp_plus = expectation_fn(&params_plus)?;
         let exp_minus = expectation_fn(&params_minus)?;
-        
+
         Ok((exp_plus - exp_minus) / 2.0)
     }
 
@@ -224,13 +226,13 @@ impl ParameterShiftOptimizer {
         let eps = 1e-7;
         let mut params_plus = parameters.clone();
         let mut params_minus = parameters.clone();
-        
+
         params_plus[param_idx] += eps;
         params_minus[param_idx] -= eps;
-        
+
         let exp_plus = expectation_fn(&params_plus)?;
         let exp_minus = expectation_fn(&params_minus)?;
-        
+
         Ok((exp_plus - exp_minus) / (2.0 * eps))
     }
 
@@ -243,7 +245,7 @@ impl ParameterShiftOptimizer {
     ) -> Result<f64, QuantRS2Error> {
         let mut gradient = 0.0;
         let weights = [0.5, -0.5, 0.0, 0.0]; // Coefficients for 4-point stencil
-        
+
         for (i, &shift) in self.higher_order_shifts.iter().enumerate() {
             if i < weights.len() {
                 let mut params = parameters.clone();
@@ -252,7 +254,7 @@ impl ParameterShiftOptimizer {
                 gradient += weights[i] * expectation;
             }
         }
-        
+
         Ok(gradient)
     }
 }
@@ -291,18 +293,18 @@ impl QuantumKernelOptimizer {
     ) -> Result<Array2<f64>, QuantRS2Error> {
         let n_samples = data_points.nrows();
         let mut kernel_matrix = Array2::zeros((n_samples, n_samples));
-        
+
         for i in 0..n_samples {
             for j in i..n_samples {
                 let x_i = data_points.row(i);
                 let x_j = data_points.row(j);
                 let kernel_value = self.compute_kernel_element(&x_i, &x_j)?;
-                
+
                 kernel_matrix[[i, j]] = kernel_value;
                 kernel_matrix[[j, i]] = kernel_value;
             }
         }
-        
+
         self.kernel_matrix = kernel_matrix.clone();
         Ok(kernel_matrix)
     }
@@ -315,25 +317,28 @@ impl QuantumKernelOptimizer {
     ) -> Result<f64, QuantRS2Error> {
         let circuit_i = self.create_feature_circuit(&x_i.to_owned())?;
         let circuit_j = self.create_feature_circuit(&x_j.to_owned())?;
-        
+
         // Quantum kernel is |<φ(x_i)|φ(x_j)>|²
         let overlap = circuit_i.t().dot(&circuit_j);
         Ok(overlap.diag().map(|x| x.norm_sqr()).sum())
     }
 
     /// Create feature mapping circuit
-    fn create_feature_circuit(&self, data_point: &Array1<f64>) -> Result<Array2<Complex64>, QuantRS2Error> {
+    fn create_feature_circuit(
+        &self,
+        data_point: &Array1<f64>,
+    ) -> Result<Array2<Complex64>, QuantRS2Error> {
         match &self.feature_map {
             QuantumFeatureMap::ZZFeatureMap { num_qubits, depth } => {
                 self.create_zz_feature_map(data_point, *num_qubits, *depth)
-            },
+            }
             QuantumFeatureMap::PauliFeatureMap { paulis, depth } => {
                 self.create_pauli_feature_map(data_point, paulis, *depth)
-            },
+            }
             QuantumFeatureMap::CustomFeatureMap { gates: _ } => {
                 // Custom implementation would go here
                 Ok(Array2::eye(2_usize.pow(data_point.len() as u32)))
-            },
+            }
         }
     }
 
@@ -346,7 +351,7 @@ impl QuantumKernelOptimizer {
     ) -> Result<Array2<Complex64>, QuantRS2Error> {
         let dim = 2_usize.pow(num_qubits as u32);
         let mut circuit = Array2::eye(dim);
-        
+
         for layer in 0..depth {
             // Rotation gates
             for qubit in 0..num_qubits {
@@ -354,16 +359,17 @@ impl QuantumKernelOptimizer {
                 let rotation = self.ry_gate(angle);
                 circuit = self.apply_single_qubit_gate(&circuit, &rotation, qubit, num_qubits)?;
             }
-            
+
             // Entangling gates (ZZ interactions)
             for qubit in 0..num_qubits - 1 {
-                let angle = data_point[qubit % data_point.len()] * 
-                           data_point[(qubit + 1) % data_point.len()];
+                let angle = data_point[qubit % data_point.len()]
+                    * data_point[(qubit + 1) % data_point.len()];
                 let zz_gate = self.zz_gate(angle);
-                circuit = self.apply_two_qubit_gate(&circuit, &zz_gate, qubit, qubit + 1, num_qubits)?;
+                circuit =
+                    self.apply_two_qubit_gate(&circuit, &zz_gate, qubit, qubit + 1, num_qubits)?;
             }
         }
-        
+
         Ok(circuit)
     }
 
@@ -377,7 +383,7 @@ impl QuantumKernelOptimizer {
         let num_qubits = paulis.len();
         let dim = 2_usize.pow(num_qubits as u32);
         let mut circuit = Array2::eye(dim);
-        
+
         for _layer in 0..depth {
             for (i, pauli_string) in paulis.iter().enumerate() {
                 let angle = data_point[i % data_point.len()];
@@ -385,7 +391,7 @@ impl QuantumKernelOptimizer {
                 circuit = circuit.dot(&pauli_rotation);
             }
         }
-        
+
         Ok(circuit)
     }
 
@@ -393,9 +399,12 @@ impl QuantumKernelOptimizer {
     fn ry_gate(&self, angle: f64) -> Array2<Complex64> {
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
-        
+
         ndarray::array![
-            [Complex64::new(cos_half, 0.0), Complex64::new(-sin_half, 0.0)],
+            [
+                Complex64::new(cos_half, 0.0),
+                Complex64::new(-sin_half, 0.0)
+            ],
             [Complex64::new(sin_half, 0.0), Complex64::new(cos_half, 0.0)]
         ]
     }
@@ -403,34 +412,73 @@ impl QuantumKernelOptimizer {
     /// Helper: ZZ interaction gate
     fn zz_gate(&self, angle: f64) -> Array2<Complex64> {
         let exp_factor = Complex64::from_polar(1.0, angle / 2.0);
-        
+
         ndarray::array![
-            [exp_factor.conj(), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)],
-            [Complex64::new(0.0, 0.0), exp_factor, Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)],
-            [Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), exp_factor, Complex64::new(0.0, 0.0)],
-            [Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), exp_factor.conj()]
+            [
+                exp_factor.conj(),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0)
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                exp_factor,
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0)
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                exp_factor,
+                Complex64::new(0.0, 0.0)
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                exp_factor.conj()
+            ]
         ]
     }
 
     /// Helper: Pauli rotation gate
-    fn pauli_rotation(&self, pauli_string: &str, angle: f64) -> Result<Array2<Complex64>, QuantRS2Error> {
+    fn pauli_rotation(
+        &self,
+        pauli_string: &str,
+        angle: f64,
+    ) -> Result<Array2<Complex64>, QuantRS2Error> {
         // Simplified implementation without matrix_exp for now
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
         match pauli_string {
             "X" => Ok(ndarray::array![
-                [Complex64::new(cos_half, 0.0), Complex64::new(0.0, -sin_half)],
-                [Complex64::new(0.0, -sin_half), Complex64::new(cos_half, 0.0)]
+                [
+                    Complex64::new(cos_half, 0.0),
+                    Complex64::new(0.0, -sin_half)
+                ],
+                [
+                    Complex64::new(0.0, -sin_half),
+                    Complex64::new(cos_half, 0.0)
+                ]
             ]),
             "Y" => Ok(ndarray::array![
-                [Complex64::new(cos_half, 0.0), Complex64::new(-sin_half, 0.0)],
+                [
+                    Complex64::new(cos_half, 0.0),
+                    Complex64::new(-sin_half, 0.0)
+                ],
                 [Complex64::new(sin_half, 0.0), Complex64::new(cos_half, 0.0)]
             ]),
             "Z" => Ok(ndarray::array![
-                [Complex64::new(cos_half, -sin_half), Complex64::new(0.0, 0.0)],
+                [
+                    Complex64::new(cos_half, -sin_half),
+                    Complex64::new(0.0, 0.0)
+                ],
                 [Complex64::new(0.0, 0.0), Complex64::new(cos_half, sin_half)]
             ]),
-            _ => Err(QuantRS2Error::InvalidGateOp(format!("Unknown Pauli string: {}", pauli_string))),
+            _ => Err(QuantRS2Error::InvalidGateOp(format!(
+                "Unknown Pauli string: {}",
+                pauli_string
+            ))),
         }
     }
 
@@ -465,7 +513,7 @@ impl QuantumKernelOptimizer {
         num_qubits: usize,
     ) -> Result<Array2<Complex64>, QuantRS2Error> {
         let mut full_gate = Array2::eye(2_usize.pow(num_qubits as u32));
-        
+
         // Tensor product construction
         for i in 0..num_qubits {
             let local_gate = if i == target_qubit {
@@ -473,7 +521,7 @@ impl QuantumKernelOptimizer {
             } else {
                 Array2::eye(2)
             };
-            
+
             if i == 0 {
                 full_gate = local_gate;
             } else {
@@ -482,7 +530,7 @@ impl QuantumKernelOptimizer {
                 full_gate = full_gate_matrix.tensor_product(&gate_matrix)?;
             }
         }
-        
+
         Ok(circuit.dot(&full_gate))
     }
 
@@ -491,9 +539,9 @@ impl QuantumKernelOptimizer {
         &self,
         circuit: &Array2<Complex64>,
         gate: &Array2<Complex64>,
-        control: usize,
-        target: usize,
-        num_qubits: usize,
+        _control: usize,
+        _target: usize,
+        _num_qubits: usize,
     ) -> Result<Array2<Complex64>, QuantRS2Error> {
         // This is a simplified implementation
         // In practice, would need proper tensor product construction
@@ -507,9 +555,9 @@ impl QuantumKernelOptimizer {
         training_labels: &Array1<f64>,
     ) -> Result<OptimizationResult, QuantRS2Error> {
         // Clone data for closure
-        let training_data_clone = training_data.clone();
-        let training_labels_clone = training_labels.clone();
-        
+        let _training_data_clone = training_data.clone();
+        let _training_labels_clone = training_labels.clone();
+
         let objective = |params: &Array1<f64>| -> Result<f64, String> {
             // Simplified loss computation (in practice would compute actual kernel)
             let loss = params.iter().map(|x| x * x).sum::<f64>();
@@ -518,13 +566,14 @@ impl QuantumKernelOptimizer {
 
         let initial_params = Array1::ones(4); // Example parameter count
         let config = OptimizationConfig::default();
-        
-        let result = minimize(objective, &initial_params, &config)
-            .map_err(|e| QuantRS2Error::OptimizationFailed(format!("Kernel optimization failed: {:?}", e)))?;
-        
+
+        let result = minimize(objective, &initial_params, &config).map_err(|e| {
+            QuantRS2Error::OptimizationFailed(format!("Kernel optimization failed: {:?}", e))
+        })?;
+
         // Update the feature map parameters with optimized values
         self.feature_map_parameters = result.parameters.clone();
-        
+
         Ok(result)
     }
 
@@ -539,13 +588,13 @@ impl QuantumKernelOptimizer {
         // Simple SVM-like loss
         let n = labels.len();
         let mut loss = 0.0;
-        
+
         for i in 0..n {
             for j in 0..n {
                 loss += labels[i] * labels[j] * kernel[[i, j]];
             }
         }
-        
+
         -loss / (n as f64)
     }
 }
@@ -594,7 +643,7 @@ impl HardwareEfficientMLLayer {
     pub fn build_circuit(&self) -> Result<Array2<Complex64>, QuantRS2Error> {
         let dim = 2_usize.pow(self.num_qubits as u32);
         let mut circuit = Array2::eye(dim);
-        
+
         let mut param_idx = 0;
         for layer in 0..self.num_layers {
             // Rotation layer
@@ -603,38 +652,40 @@ impl HardwareEfficientMLLayer {
                 let ry_angle = self.parameters[param_idx + 1];
                 let rz_angle = self.parameters[param_idx + 2];
                 param_idx += 3;
-                
+
                 // Apply RX, RY, RZ rotations
                 let rotation_gates = self.create_rotation_sequence(rx_angle, ry_angle, rz_angle);
                 circuit = self.apply_rotation_to_circuit(&circuit, &rotation_gates, qubit)?;
             }
-            
+
             // Entanglement layer
             if layer < self.num_layers - 1 {
                 circuit = self.apply_entanglement_layer(&circuit)?;
             }
         }
-        
+
         Ok(circuit)
     }
 
     /// Create rotation sequence for a qubit
     fn create_rotation_sequence(&self, rx: f64, ry: f64, rz: f64) -> Vec<Array2<Complex64>> {
-        vec![
-            self.rx_gate(rx),
-            self.ry_gate(ry),
-            self.rz_gate(rz),
-        ]
+        vec![self.rx_gate(rx), self.ry_gate(ry), self.rz_gate(rz)]
     }
 
     /// RX rotation gate
     fn rx_gate(&self, angle: f64) -> Array2<Complex64> {
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
-        
+
         ndarray::array![
-            [Complex64::new(cos_half, 0.0), Complex64::new(0.0, -sin_half)],
-            [Complex64::new(0.0, -sin_half), Complex64::new(cos_half, 0.0)]
+            [
+                Complex64::new(cos_half, 0.0),
+                Complex64::new(0.0, -sin_half)
+            ],
+            [
+                Complex64::new(0.0, -sin_half),
+                Complex64::new(cos_half, 0.0)
+            ]
         ]
     }
 
@@ -642,9 +693,12 @@ impl HardwareEfficientMLLayer {
     fn ry_gate(&self, angle: f64) -> Array2<Complex64> {
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
-        
+
         ndarray::array![
-            [Complex64::new(cos_half, 0.0), Complex64::new(-sin_half, 0.0)],
+            [
+                Complex64::new(cos_half, 0.0),
+                Complex64::new(-sin_half, 0.0)
+            ],
             [Complex64::new(sin_half, 0.0), Complex64::new(cos_half, 0.0)]
         ]
     }
@@ -652,7 +706,7 @@ impl HardwareEfficientMLLayer {
     /// RZ rotation gate
     fn rz_gate(&self, angle: f64) -> Array2<Complex64> {
         let exp_factor = Complex64::from_polar(1.0, angle / 2.0);
-        
+
         ndarray::array![
             [exp_factor.conj(), Complex64::new(0.0, 0.0)],
             [Complex64::new(0.0, 0.0), exp_factor]
@@ -664,7 +718,7 @@ impl HardwareEfficientMLLayer {
         &self,
         circuit: &Array2<Complex64>,
         rotations: &[Array2<Complex64>],
-        qubit: usize,
+        _qubit: usize,
     ) -> Result<Array2<Complex64>, QuantRS2Error> {
         let mut result = circuit.clone();
         for rotation in rotations {
@@ -675,20 +729,22 @@ impl HardwareEfficientMLLayer {
     }
 
     /// Apply entanglement layer
-    fn apply_entanglement_layer(&self, circuit: &Array2<Complex64>) -> Result<Array2<Complex64>, QuantRS2Error> {
+    fn apply_entanglement_layer(
+        &self,
+        circuit: &Array2<Complex64>,
+    ) -> Result<Array2<Complex64>, QuantRS2Error> {
         let mut result = circuit.clone();
-        
+
         let entangling_pairs = match &self.entanglement_pattern {
-            EntanglementPattern::Linear => {
-                (0..self.num_qubits - 1).map(|i| (i, i + 1)).collect()
-            },
+            EntanglementPattern::Linear => (0..self.num_qubits - 1).map(|i| (i, i + 1)).collect(),
             EntanglementPattern::Circular => {
-                let mut pairs: Vec<(usize, usize)> = (0..self.num_qubits - 1).map(|i| (i, i + 1)).collect();
+                let mut pairs: Vec<(usize, usize)> =
+                    (0..self.num_qubits - 1).map(|i| (i, i + 1)).collect();
                 if self.num_qubits > 2 {
                     pairs.push((self.num_qubits - 1, 0));
                 }
                 pairs
-            },
+            }
             EntanglementPattern::AllToAll => {
                 let mut pairs = Vec::new();
                 for i in 0..self.num_qubits {
@@ -697,25 +753,45 @@ impl HardwareEfficientMLLayer {
                     }
                 }
                 pairs
-            },
+            }
             EntanglementPattern::Custom(pairs) => pairs.clone(),
         };
-        
+
         for (control, target) in entangling_pairs {
             let cnot = self.cnot_gate();
             result = self.apply_cnot_to_circuit(&result, &cnot, control, target)?;
         }
-        
+
         Ok(result)
     }
 
     /// CNOT gate
     fn cnot_gate(&self) -> Array2<Complex64> {
         ndarray::array![
-            [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)],
-            [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)],
-            [Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
-            [Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]
+            [
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0)
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0)
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0)
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0)
+            ]
         ]
     }
 
@@ -760,9 +836,9 @@ pub struct TensorNetworkMLAccelerator {
 impl TensorNetworkMLAccelerator {
     /// Create a new tensor network ML accelerator
     pub fn new(num_qubits: usize, max_bond_dimension: usize) -> Self {
-        let mut network = TensorNetwork::new();
+        let network = TensorNetwork::new();
         let bond_dimensions = vec![max_bond_dimension; num_qubits];
-        
+
         Self {
             tensor_network: network,
             bond_dimensions,
@@ -771,24 +847,25 @@ impl TensorNetworkMLAccelerator {
     }
 
     /// Decompose quantum circuit into tensor network
-    pub fn decompose_circuit(
-        &mut self,
-        circuit: &Array2<Complex64>,
-    ) -> Result<(), QuantRS2Error> {
+    pub fn decompose_circuit(&mut self, circuit: &Array2<Complex64>) -> Result<(), QuantRS2Error> {
         // SVD decomposition for circuit compression
         let (u, s, vt) = decompose_svd(circuit)?;
-        
+
         // Create tensors from SVD components
         let tensor_u = Tensor::from_array(u, vec![0, 1]);
-        let s_complex: Array2<Complex64> = s.diag().insert_axis(Axis(1)).mapv(|x| Complex64::new(x, 0.0)).to_owned();
+        let s_complex: Array2<Complex64> = s
+            .diag()
+            .insert_axis(Axis(1))
+            .mapv(|x| Complex64::new(x, 0.0))
+            .to_owned();
         let tensor_s = Tensor::from_array(s_complex, vec![1, 2]);
         let tensor_vt = Tensor::from_array(vt, vec![2, 3]);
-        
+
         // Add tensors to network
         self.tensor_network.add_tensor(tensor_u);
         self.tensor_network.add_tensor(tensor_s);
         self.tensor_network.add_tensor(tensor_vt);
-        
+
         Ok(())
     }
 
@@ -796,37 +873,41 @@ impl TensorNetworkMLAccelerator {
     pub fn optimize_contraction(&mut self) -> Result<(), QuantRS2Error> {
         // Use dynamic programming to find optimal contraction order
         let n_tensors = self.tensor_network.tensors().len();
-        
+
         if n_tensors <= 1 {
             return Ok(());
         }
-        
+
         // Simple greedy optimization - can be improved
         self.contraction_order = (0..n_tensors).collect();
-        self.contraction_order.sort_by_key(|&i| {
-            self.tensor_network.tensors()[i].tensor().ndim()
-        });
-        
+        self.contraction_order
+            .sort_by_key(|&i| self.tensor_network.tensors()[i].tensor().ndim());
+
         Ok(())
     }
 
     /// Contract tensor network for efficient computation
     pub fn contract_network(&self) -> Result<Array2<Complex64>, QuantRS2Error> {
         if self.tensor_network.tensors().is_empty() {
-            return Err(QuantRS2Error::TensorNetwork("Empty tensor network".to_string()));
+            return Err(QuantRS2Error::TensorNetwork(
+                "Empty tensor network".to_string(),
+            ));
         }
-        
+
         // Simplified contraction - full implementation would follow contraction_order
         let first_tensor = &self.tensor_network.tensors()[0];
         let result = first_tensor.tensor().clone();
-        
+
         // Convert to proper shape for circuit representation
         let sqrt_dim = (result.len() as f64).sqrt() as usize;
         if sqrt_dim * sqrt_dim != result.len() {
-            return Err(QuantRS2Error::TensorNetwork("Invalid tensor dimensions".to_string()));
+            return Err(QuantRS2Error::TensorNetwork(
+                "Invalid tensor dimensions".to_string(),
+            ));
         }
-        
-        Ok(result.into_shape_with_order((sqrt_dim, sqrt_dim))
+
+        Ok(result
+            .into_shape_with_order((sqrt_dim, sqrt_dim))
             .map_err(|e| QuantRS2Error::TensorNetwork(format!("Shape error: {}", e)))?)
     }
 
@@ -846,13 +927,12 @@ mod tests {
     #[test]
     fn test_quantum_natural_gradient() {
         let mut qng = QuantumNaturalGradient::new(2, 1e-6);
-        let params = array![PI/4.0, PI/3.0];
+        let params = array![PI / 4.0, PI / 3.0];
         let state = array![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
-        
-        let circuit_gen = |_p: &Array1<f64>| -> Result<Array2<Complex64>, QuantRS2Error> {
-            Ok(Array2::eye(2))
-        };
-        
+
+        let circuit_gen =
+            |_p: &Array1<f64>| -> Result<Array2<Complex64>, QuantRS2Error> { Ok(Array2::eye(2)) };
+
         let result = qng.compute_fisher_information(circuit_gen, &params, &state);
         assert!(result.is_ok());
     }
@@ -860,12 +940,11 @@ mod tests {
     #[test]
     fn test_parameter_shift_optimizer() {
         let optimizer = ParameterShiftOptimizer::default();
-        let params = array![PI/4.0, PI/3.0];
-        
-        let expectation_fn = |p: &Array1<f64>| -> Result<f64, QuantRS2Error> {
-            Ok(p[0].cos() + p[1].sin())
-        };
-        
+        let params = array![PI / 4.0, PI / 3.0];
+
+        let expectation_fn =
+            |p: &Array1<f64>| -> Result<f64, QuantRS2Error> { Ok(p[0].cos() + p[1].sin()) };
+
         let gradient = optimizer.compute_gradient(expectation_fn, &params);
         assert!(gradient.is_ok());
         assert_eq!(gradient.unwrap().len(), 2);
@@ -878,10 +957,10 @@ mod tests {
             depth: 1,
         };
         let mut optimizer = QuantumKernelOptimizer::new(feature_map);
-        
+
         let data = array![[0.1, 0.2], [0.3, 0.4]];
         let result = optimizer.compute_kernel_matrix(&data);
-        
+
         assert!(result.is_ok());
         let kernel = result.unwrap();
         assert_eq!(kernel.shape(), &[2, 2]);
@@ -889,24 +968,20 @@ mod tests {
 
     #[test]
     fn test_hardware_efficient_ml_layer() {
-        let mut layer = HardwareEfficientMLLayer::new(
-            2,
-            2,
-            EntanglementPattern::Linear,
-        );
-        
+        let mut layer = HardwareEfficientMLLayer::new(2, 2, EntanglementPattern::Linear);
+
         let mut rng = rand::thread_rng();
         layer.initialize_parameters(&mut rng);
-        
+
         let circuit = layer.build_circuit();
         assert!(circuit.is_ok());
-        
+
         let observable = array![
             [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
             [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)]
         ];
         let state = array![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
-        
+
         let expectation = layer.expectation_value(&observable, &state);
         assert!(expectation.is_ok());
     }
@@ -914,18 +989,18 @@ mod tests {
     #[test]
     fn test_tensor_network_ml_accelerator() {
         let mut accelerator = TensorNetworkMLAccelerator::new(2, 4);
-        
+
         let circuit = array![
             [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
             [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)]
         ];
-        
+
         let result = accelerator.decompose_circuit(&circuit);
         assert!(result.is_ok());
-        
+
         let optimization = accelerator.optimize_contraction();
         assert!(optimization.is_ok());
-        
+
         let (time_comp, space_comp) = accelerator.complexity_estimate();
         assert!(time_comp > 0);
         assert!(space_comp > 0);

@@ -4,29 +4,29 @@
 //! optimization, and analysis using SciRS2's advanced optimization and statistical capabilities
 //! for robust coherence preservation on quantum hardware.
 
-pub mod config;
-pub mod sequences;
 pub mod adaptive;
-pub mod noise;
-pub mod hardware;
 pub mod analysis;
-pub mod performance;
+pub mod config;
 pub mod executor;
-pub mod validation;
-pub mod optimization;
 pub mod fallback_scirs2;
+pub mod hardware;
+pub mod noise;
+pub mod optimization;
+pub mod performance;
+pub mod sequences;
+pub mod validation;
 
 #[cfg(test)]
 pub mod test_suite;
 
-pub use config::*;
-pub use sequences::*;
 pub use adaptive::*;
-pub use noise::*;
-pub use hardware::*;
 pub use analysis::*;
-pub use performance::*;
+pub use config::*;
+pub use hardware::*;
+pub use noise::*;
 pub use optimization::*;
+pub use performance::*;
+pub use sequences::*;
 
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -106,7 +106,7 @@ impl DynamicalDecouplingManager {
             topology,
         );
         let sequence_optimizer = DDSequenceOptimizer::new(config.optimization_config.clone());
-        
+
         Self {
             config,
             adaptive_system: None,
@@ -118,7 +118,7 @@ impl DynamicalDecouplingManager {
             multi_qubit_coordinator: None,
         }
     }
-    
+
     /// Initialize adaptive DD system
     pub fn initialize_adaptive_system(
         &mut self,
@@ -126,16 +126,13 @@ impl DynamicalDecouplingManager {
         initial_sequence: DDSequence,
         available_sequences: Vec<DDSequenceType>,
     ) -> DeviceResult<()> {
-        let adaptive_system = AdaptiveDDSystem::new(
-            adaptive_config,
-            initial_sequence,
-            available_sequences,
-        );
-        
+        let adaptive_system =
+            AdaptiveDDSystem::new(adaptive_config, initial_sequence, available_sequences);
+
         self.adaptive_system = Some(adaptive_system);
         Ok(())
     }
-    
+
     /// Initialize multi-qubit coordination
     pub fn initialize_multi_qubit_coordination(
         &mut self,
@@ -147,7 +144,7 @@ impl DynamicalDecouplingManager {
             synchronization,
         ));
     }
-    
+
     /// Generate optimized DD sequence
     pub async fn generate_optimized_sequence(
         &mut self,
@@ -157,7 +154,7 @@ impl DynamicalDecouplingManager {
         executor: &dyn DDCircuitExecutor,
     ) -> DeviceResult<DynamicalDecouplingResult> {
         let start_time = std::time::Instant::now();
-        
+
         // Check cache first
         let cache_key = format!("{:?}_{}_{}", sequence_type, target_qubits.len(), duration);
         if let Some(cached_sequence) = self.sequence_cache.get_sequence(&cache_key) {
@@ -173,50 +170,47 @@ impl DynamicalDecouplingManager {
                 adaptation_stats: None,
             });
         }
-        
+
         // Generate base sequence
-        let base_sequence = DDSequenceGenerator::generate_base_sequence(
-            sequence_type,
-            target_qubits,
-            duration,
-        )?;
-        
+        let base_sequence =
+            DDSequenceGenerator::generate_base_sequence(sequence_type, target_qubits, duration)?;
+
         // Optimize sequence
-        let optimization_result = self.sequence_optimizer.optimize_sequence(
-            &base_sequence,
-            executor,
-        ).await?;
-        
+        let optimization_result = self
+            .sequence_optimizer
+            .optimize_sequence(&base_sequence, executor)
+            .await?;
+
         let optimized_sequence = optimization_result.optimized_sequence;
-        
+
         // Analyze performance
-        let performance_analysis = self.performance_analyzer.analyze_performance(
-            &optimized_sequence,
-            executor,
-        ).await?;
-        
+        let performance_analysis = self
+            .performance_analyzer
+            .analyze_performance(&optimized_sequence, executor)
+            .await?;
+
         // Analyze noise characteristics
-        let noise_analysis = self.noise_analyzer.analyze_noise_characteristics(
-            &optimized_sequence,
-            &performance_analysis,
-        )?;
-        
+        let noise_analysis = self
+            .noise_analyzer
+            .analyze_noise_characteristics(&optimized_sequence, &performance_analysis)?;
+
         // Analyze hardware compatibility
         let hardware_analysis = self.hardware_analyzer.analyze_hardware_implementation(
             &format!("device_{}", target_qubits.len()),
             &optimized_sequence,
         )?;
-        
+
         // Cache the optimized sequence
-        self.sequence_cache.store_sequence(cache_key, optimized_sequence.clone());
-        
+        self.sequence_cache
+            .store_sequence(cache_key, optimized_sequence.clone());
+
         // Calculate quality score
         let quality_score = self.calculate_quality_score(
             &performance_analysis,
             &noise_analysis,
             &hardware_analysis,
         );
-        
+
         let result = DynamicalDecouplingResult {
             optimized_sequence,
             execution_time: start_time.elapsed(),
@@ -225,19 +219,24 @@ impl DynamicalDecouplingManager {
             performance_analysis: Some(performance_analysis),
             noise_analysis: Some(noise_analysis),
             hardware_analysis: Some(hardware_analysis),
-            adaptation_stats: self.adaptive_system.as_ref().map(|sys| sys.get_adaptation_statistics()),
+            adaptation_stats: self
+                .adaptive_system
+                .as_ref()
+                .map(|sys| sys.get_adaptation_statistics()),
         };
-        
+
         // Update adaptive system if available
         if let Some(ref mut adaptive_system) = self.adaptive_system {
-            if let (Some(ref perf), Some(ref noise)) = (&result.performance_analysis, &result.noise_analysis) {
+            if let (Some(ref perf), Some(ref noise)) =
+                (&result.performance_analysis, &result.noise_analysis)
+            {
                 adaptive_system.update_performance(perf, noise)?;
             }
         }
-        
+
         Ok(result)
     }
-    
+
     /// Generate coordinated multi-qubit sequence
     pub fn generate_multi_qubit_sequence(
         &mut self,
@@ -247,23 +246,20 @@ impl DynamicalDecouplingManager {
         if let Some(ref mut coordinator) = self.multi_qubit_coordinator {
             // Add sequences for each qubit group
             for (qubits, sequence_type) in qubit_groups {
-                let sequence = DDSequenceGenerator::generate_base_sequence(
-                    &sequence_type,
-                    &qubits,
-                    duration,
-                )?;
+                let sequence =
+                    DDSequenceGenerator::generate_base_sequence(&sequence_type, &qubits, duration)?;
                 coordinator.add_sequence(qubits, sequence);
             }
-            
+
             // Generate coordinated sequence
             coordinator.generate_coordinated_sequence()
         } else {
             Err(crate::DeviceError::InvalidInput(
-                "Multi-qubit coordinator not initialized".to_string()
+                "Multi-qubit coordinator not initialized".to_string(),
             ))
         }
     }
-    
+
     /// Calculate overall quality score
     fn calculate_quality_score(
         &self,
@@ -271,17 +267,22 @@ impl DynamicalDecouplingManager {
         noise: &DDNoiseAnalysis,
         hardware: &DDHardwareAnalysis,
     ) -> f64 {
-        let performance_score = performance.metrics.values().sum::<f64>() / performance.metrics.len() as f64;
+        let performance_score =
+            performance.metrics.values().sum::<f64>() / performance.metrics.len() as f64;
         let noise_score = noise.suppression_effectiveness.overall_suppression;
         let hardware_score = hardware.hardware_compatibility.compatibility_score;
-        
+
         // Weighted average
         let weights = [0.4, 0.3, 0.3]; // Performance, noise, hardware
         let scores = [performance_score, noise_score, hardware_score];
-        
-        weights.iter().zip(scores.iter()).map(|(w, s)| w * s).sum::<f64>()
+
+        weights
+            .iter()
+            .zip(scores.iter())
+            .map(|(w, s)| w * s)
+            .sum::<f64>()
     }
-    
+
     /// Get system status
     pub fn get_system_status(&self) -> DDSystemStatus {
         DDSystemStatus {

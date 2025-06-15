@@ -6,16 +6,16 @@ use super::*;
 pub trait PerformanceMonitor: Send + Sync + std::fmt::Debug {
     /// Start monitoring
     fn start_monitoring(&mut self) -> Result<(), AnalysisError>;
-    
+
     /// Stop monitoring
     fn stop_monitoring(&mut self) -> Result<(), AnalysisError>;
-    
+
     /// Get current metrics
     fn get_current_metrics(&self) -> Result<HashMap<String, f64>, AnalysisError>;
-    
+
     /// Get monitor name
     fn get_monitor_name(&self) -> &str;
-    
+
     /// Check if monitor is active
     fn is_active(&self) -> bool;
 }
@@ -37,26 +37,28 @@ impl PerformanceMonitor for CpuMonitor {
         self.active = true;
         Ok(())
     }
-    
+
     fn stop_monitoring(&mut self) -> Result<(), AnalysisError> {
         self.active = false;
         Ok(())
     }
-    
+
     fn get_current_metrics(&self) -> Result<HashMap<String, f64>, AnalysisError> {
         if !self.active {
-            return Err(AnalysisError::DataCollectionError("Monitor not active".to_string()));
+            return Err(AnalysisError::DataCollectionError(
+                "Monitor not active".to_string(),
+            ));
         }
-        
+
         let mut metrics = HashMap::new();
         metrics.insert("cpu_utilization".to_string(), 45.5); // Mock value
         Ok(metrics)
     }
-    
+
     fn get_monitor_name(&self) -> &str {
         "CPU Monitor"
     }
-    
+
     fn is_active(&self) -> bool {
         self.active
     }
@@ -79,26 +81,28 @@ impl PerformanceMonitor for MemoryMonitor {
         self.active = true;
         Ok(())
     }
-    
+
     fn stop_monitoring(&mut self) -> Result<(), AnalysisError> {
         self.active = false;
         Ok(())
     }
-    
+
     fn get_current_metrics(&self) -> Result<HashMap<String, f64>, AnalysisError> {
         if !self.active {
-            return Err(AnalysisError::DataCollectionError("Monitor not active".to_string()));
+            return Err(AnalysisError::DataCollectionError(
+                "Monitor not active".to_string(),
+            ));
         }
-        
+
         let mut metrics = HashMap::new();
         metrics.insert("memory_utilization".to_string(), 65.2); // Mock value
         Ok(metrics)
     }
-    
+
     fn get_monitor_name(&self) -> &str {
         "Memory Monitor"
     }
-    
+
     fn is_active(&self) -> bool {
         self.active
     }
@@ -121,26 +125,28 @@ impl PerformanceMonitor for IoMonitor {
         self.active = true;
         Ok(())
     }
-    
+
     fn stop_monitoring(&mut self) -> Result<(), AnalysisError> {
         self.active = false;
         Ok(())
     }
-    
+
     fn get_current_metrics(&self) -> Result<HashMap<String, f64>, AnalysisError> {
         if !self.active {
-            return Err(AnalysisError::DataCollectionError("Monitor not active".to_string()));
+            return Err(AnalysisError::DataCollectionError(
+                "Monitor not active".to_string(),
+            ));
         }
-        
+
         let mut metrics = HashMap::new();
         metrics.insert("io_utilization".to_string(), 25.8); // Mock value
         Ok(metrics)
     }
-    
+
     fn get_monitor_name(&self) -> &str {
         "I/O Monitor"
     }
-    
+
     fn is_active(&self) -> bool {
         self.active
     }
@@ -163,26 +169,28 @@ impl PerformanceMonitor for NetworkMonitor {
         self.active = true;
         Ok(())
     }
-    
+
     fn stop_monitoring(&mut self) -> Result<(), AnalysisError> {
         self.active = false;
         Ok(())
     }
-    
+
     fn get_current_metrics(&self) -> Result<HashMap<String, f64>, AnalysisError> {
         if !self.active {
-            return Err(AnalysisError::DataCollectionError("Monitor not active".to_string()));
+            return Err(AnalysisError::DataCollectionError(
+                "Monitor not active".to_string(),
+            ));
         }
-        
+
         let mut metrics = HashMap::new();
         metrics.insert("network_utilization".to_string(), 15.3); // Mock value
         Ok(metrics)
     }
-    
+
     fn get_monitor_name(&self) -> &str {
         "Network Monitor"
     }
-    
+
     fn is_active(&self) -> bool {
         self.active
     }

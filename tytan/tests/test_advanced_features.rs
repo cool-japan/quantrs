@@ -162,7 +162,7 @@ mod decomposition_tests {
     fn test_parallel_coordination() {
         // Simplified test without unsupported coordinator
         let subproblems: Vec<Array2<f64>> = vec![Array2::eye(3), Array2::eye(3), Array2::eye(3)];
-        
+
         // Test basic functionality
         assert_eq!(subproblems.len(), 3);
         for subproblem in &subproblems {

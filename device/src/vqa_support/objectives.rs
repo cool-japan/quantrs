@@ -3,13 +3,13 @@
 //! This module provides objective functions commonly used in
 //! variational quantum algorithms with comprehensive evaluation strategies.
 
+use super::circuits::{GateType, ParametricCircuit};
+use super::config::{GradientMethod, VQAAlgorithmType};
 use crate::DeviceResult;
-use super::circuits::{ParametricCircuit, GateType};
-use super::config::{VQAAlgorithmType, GradientMethod};
 use ndarray::{Array1, Array2};
+use num_complex::Complex64;
 use std::collections::HashMap;
 use std::sync::Arc;
-use num_complex::Complex64;
 
 // SciRS2 imports for numerical computation
 // TODO: scirs2_core crate not available yet
@@ -24,20 +24,24 @@ use num_complex::Complex64;
 mod fallback_scirs2 {
     use ndarray::{Array1, Array2};
     use num_complex::Complex64;
-    
+
     pub struct Matrix(pub Array2<Complex64>);
     pub struct Vector(pub Array1<Complex64>);
     pub struct PauliOperator {
         pub coefficients: Array1<f64>,
         pub terms: Vec<String>,
     }
-    
+
     impl Matrix {
-        pub fn new(data: Array2<Complex64>) -> Self { Self(data) }
+        pub fn new(data: Array2<Complex64>) -> Self {
+            Self(data)
+        }
     }
-    
+
     impl Vector {
-        pub fn new(data: Array1<Complex64>) -> Self { Self(data) }
+        pub fn new(data: Array1<Complex64>) -> Self {
+            Self(data)
+        }
     }
 }
 
@@ -386,31 +390,34 @@ pub struct ObjectiveMetadata {
 pub trait ObjectiveFunction: Send + Sync {
     /// Evaluate the objective function
     fn evaluate(&self, parameters: &Array1<f64>) -> DeviceResult<ObjectiveResult>;
-    
+
     /// Compute gradient using specified method
     fn compute_gradient(&self, parameters: &Array1<f64>) -> DeviceResult<Array1<f64>> {
         self.compute_gradient_with_method(parameters, &GradientMethod::ParameterShift)
     }
-    
+
     /// Compute gradient with specific method
     fn compute_gradient_with_method(
-        &self, 
-        parameters: &Array1<f64>, 
-        method: &GradientMethod
+        &self,
+        parameters: &Array1<f64>,
+        method: &GradientMethod,
     ) -> DeviceResult<Array1<f64>>;
-    
+
     /// Estimate computational cost for given parameters
     fn estimate_cost(&self, parameters: &Array1<f64>) -> usize;
-    
+
     /// Get parameter bounds
     fn parameter_bounds(&self) -> Option<Vec<(f64, f64)>>;
-    
+
     /// Check if objective supports batched evaluation
-    fn supports_batch_evaluation(&self) -> bool { false }
-    
+    fn supports_batch_evaluation(&self) -> bool {
+        false
+    }
+
     /// Batch evaluate multiple parameter sets (if supported)
     fn batch_evaluate(&self, parameter_sets: &[Array1<f64>]) -> DeviceResult<Vec<ObjectiveResult>> {
-        parameter_sets.iter()
+        parameter_sets
+            .iter()
             .map(|params| self.evaluate(params))
             .collect()
     }
@@ -470,11 +477,11 @@ impl ObjectiveFunction for ObjectiveEvaluator {
     /// Comprehensive objective function evaluation
     fn evaluate(&self, parameters: &Array1<f64>) -> DeviceResult<ObjectiveResult> {
         let start_time = std::time::Instant::now();
-        
+
         // Update circuit parameters
         let mut circuit = (*self.circuit).clone();
         circuit.set_parameters(parameters.to_vec())?;
-        
+
         let result = match &self.config.objective_type {
             ObjectiveType::Energy => self.evaluate_energy(&circuit),
             ObjectiveType::Cost => self.evaluate_cost(&circuit),
@@ -486,36 +493,40 @@ impl ObjectiveFunction for ObjectiveEvaluator {
             ObjectiveType::ProcessFidelity => self.evaluate_process_fidelity(&circuit),
             ObjectiveType::Custom(name) => self.evaluate_custom(&circuit, name),
         };
-        
+
         let mut objective_result = result?;
-        
+
         // Apply regularization
         objective_result.value = self.apply_regularization(objective_result.value, parameters);
-        
+
         // Add metadata
         objective_result.metadata.computation_time = start_time.elapsed();
         objective_result.metadata.timestamp = start_time;
         objective_result.metadata.circuit_depth = circuit.circuit_depth();
-        
+
         Ok(objective_result)
     }
-    
+
     /// Compute gradient with specified method
     fn compute_gradient_with_method(
-        &self, 
-        parameters: &Array1<f64>, 
-        method: &GradientMethod
+        &self,
+        parameters: &Array1<f64>,
+        method: &GradientMethod,
     ) -> DeviceResult<Array1<f64>> {
         match method {
             GradientMethod::ParameterShift => self.compute_parameter_shift_gradient(parameters),
             GradientMethod::FiniteDifference => self.compute_finite_difference_gradient(parameters),
-            GradientMethod::CentralDifference => self.compute_central_difference_gradient(parameters),
-            GradientMethod::ForwardDifference => self.compute_forward_difference_gradient(parameters),
+            GradientMethod::CentralDifference => {
+                self.compute_central_difference_gradient(parameters)
+            }
+            GradientMethod::ForwardDifference => {
+                self.compute_forward_difference_gradient(parameters)
+            }
             GradientMethod::NaturalGradient => self.compute_natural_gradient(parameters),
             GradientMethod::AutomaticDifferentiation => self.compute_automatic_gradient(parameters),
         }
     }
-    
+
     /// Estimate computational cost
     fn estimate_cost(&self, parameters: &Array1<f64>) -> usize {
         let circuit_depth = self.circuit.circuit_depth();
@@ -524,31 +535,34 @@ impl ObjectiveFunction for ObjectiveEvaluator {
             Some(h) => h.pauli_terms.len(),
             None => 1,
         };
-        
+
         // Cost heuristic: circuit complexity * measurement complexity
         let circuit_cost = circuit_depth * (1 << num_qubits.min(10)); // Cap exponential growth
         let measurement_cost = num_terms * self.config.shot_allocation.total_shots;
-        
+
         circuit_cost + measurement_cost
     }
-    
+
     /// Get parameter bounds
     fn parameter_bounds(&self) -> Option<Vec<(f64, f64)>> {
         Some(self.circuit.bounds.clone())
     }
-    
+
     /// Check batch evaluation support
     fn supports_batch_evaluation(&self) -> bool {
-        matches!(self.backend, ObjectiveBackend::SciRS2Exact | ObjectiveBackend::Mock)
+        matches!(
+            self.backend,
+            ObjectiveBackend::SciRS2Exact | ObjectiveBackend::Mock
+        )
     }
 }
 
 impl ObjectiveEvaluator {
     /// Create new objective evaluator
     pub fn new(
-        config: ObjectiveConfig, 
+        config: ObjectiveConfig,
         circuit: ParametricCircuit,
-        backend: ObjectiveBackend
+        backend: ObjectiveBackend,
     ) -> Self {
         let circuit_arc = Arc::new(circuit);
         Self {
@@ -559,7 +573,7 @@ impl ObjectiveEvaluator {
             measurement_groups: None,
         }
     }
-    
+
     /// Initialize with Hamiltonian caching
     pub fn with_hamiltonian_caching(mut self) -> DeviceResult<Self> {
         if let Some(ref hamiltonian_spec) = self.config.hamiltonian {
@@ -567,7 +581,7 @@ impl ObjectiveEvaluator {
         }
         Ok(self)
     }
-    
+
     /// Initialize measurement grouping optimization
     pub fn with_measurement_grouping(mut self) -> DeviceResult<Self> {
         if let Some(ref hamiltonian_spec) = self.config.hamiltonian {
@@ -575,37 +589,41 @@ impl ObjectiveEvaluator {
         }
         Ok(self)
     }
-    
+
     /// Evaluate energy objective (VQE)
     fn evaluate_energy(&self, circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
-        let hamiltonian = self.config.hamiltonian.as_ref()
-            .ok_or_else(|| crate::DeviceError::InvalidInput(
-                "Hamiltonian specification required for energy evaluation".to_string()
-            ))?;
-            
+        let hamiltonian = self.config.hamiltonian.as_ref().ok_or_else(|| {
+            crate::DeviceError::InvalidInput(
+                "Hamiltonian specification required for energy evaluation".to_string(),
+            )
+        })?;
+
         match &self.backend {
             ObjectiveBackend::SciRS2Exact => self.evaluate_energy_exact(circuit, hamiltonian),
-            ObjectiveBackend::QuantRS2Simulator => self.evaluate_energy_sampling(circuit, hamiltonian),
+            ObjectiveBackend::QuantRS2Simulator => {
+                self.evaluate_energy_sampling(circuit, hamiltonian)
+            }
             ObjectiveBackend::Hardware(_) => self.evaluate_energy_hardware(circuit, hamiltonian),
             ObjectiveBackend::Mock => self.evaluate_energy_mock(circuit, hamiltonian),
         }
     }
-    
+
     /// Exact energy evaluation with SciRS2
     fn evaluate_energy_exact(
-        &self, 
-        circuit: &ParametricCircuit, 
-        hamiltonian: &HamiltonianSpec
+        &self,
+        circuit: &ParametricCircuit,
+        hamiltonian: &HamiltonianSpec,
     ) -> DeviceResult<ObjectiveResult> {
         #[cfg(feature = "scirs2")]
         {
             // Generate quantum state from circuit
             let state_vector = self.simulate_circuit_exact(circuit)?;
-            
+
             // Compute expectation value H|ψ⟩ with SciRS2
             let hamiltonian_matrix = self.get_or_build_hamiltonian(hamiltonian)?;
-            let energy = self.compute_expectation_value_exact(&state_vector, &hamiltonian_matrix)?;
-            
+            let energy =
+                self.compute_expectation_value_exact(&state_vector, &hamiltonian_matrix)?;
+
             let mut measurement_results = MeasurementResults {
                 raw_counts: HashMap::new(),
                 expectation_values: vec![energy],
@@ -613,7 +631,7 @@ impl ObjectiveEvaluator {
                 shots_used: vec![0],
                 total_shots: 0,
             };
-            
+
             Ok(ObjectiveResult {
                 value: energy,
                 gradient: None,
@@ -621,7 +639,9 @@ impl ObjectiveEvaluator {
                 term_contributions: vec![energy],
                 uncertainty: Some(0.0),
                 variance: Some(0.0),
-                metrics: [("exact_evaluation".to_string(), 1.0)].into_iter().collect(),
+                metrics: [("exact_evaluation".to_string(), 1.0)]
+                    .into_iter()
+                    .collect(),
                 measurement_results,
                 metadata: ObjectiveMetadata {
                     timestamp: std::time::Instant::now(),
@@ -633,19 +653,19 @@ impl ObjectiveEvaluator {
                 },
             })
         }
-        
+
         #[cfg(not(feature = "scirs2"))]
         {
             // Fallback implementation
             self.evaluate_energy_mock(circuit, hamiltonian)
         }
     }
-    
+
     /// Sampling-based energy evaluation
     fn evaluate_energy_sampling(
-        &self, 
-        circuit: &ParametricCircuit, 
-        hamiltonian: &HamiltonianSpec
+        &self,
+        circuit: &ParametricCircuit,
+        hamiltonian: &HamiltonianSpec,
     ) -> DeviceResult<ObjectiveResult> {
         let mut total_energy = 0.0;
         let mut term_contributions = Vec::new();
@@ -657,26 +677,26 @@ impl ObjectiveEvaluator {
             shots_used: Vec::new(),
             total_shots: 0,
         };
-        
+
         // Allocate shots to terms
         let shot_allocation = self.allocate_shots_to_terms(hamiltonian)?;
-        
+
         // Measure each Pauli term
         for (term_idx, term) in hamiltonian.pauli_terms.iter().enumerate() {
             let shots = shot_allocation[term_idx];
             let (expectation, variance) = self.measure_pauli_term(circuit, term, shots)?;
-            
+
             let contribution = term.coefficient.re * expectation;
             total_energy += contribution;
             term_contributions.push(contribution);
             total_variance += (term.coefficient.norm_sqr() * variance) / shots as f64;
-            
+
             measurement_results.expectation_values.push(expectation);
             measurement_results.variances.push(variance);
             measurement_results.shots_used.push(shots);
             measurement_results.total_shots += shots;
         }
-        
+
         Ok(ObjectiveResult {
             value: total_energy,
             gradient: None,
@@ -684,7 +704,9 @@ impl ObjectiveEvaluator {
             term_contributions,
             uncertainty: Some(total_variance.sqrt()),
             variance: Some(total_variance),
-            metrics: [("sampling_evaluation".to_string(), 1.0)].into_iter().collect(),
+            metrics: [("sampling_evaluation".to_string(), 1.0)]
+                .into_iter()
+                .collect(),
             measurement_results,
             metadata: ObjectiveMetadata {
                 timestamp: std::time::Instant::now(),
@@ -696,34 +718,36 @@ impl ObjectiveEvaluator {
             },
         })
     }
-    
+
     /// Hardware-based energy evaluation
     fn evaluate_energy_hardware(
-        &self, 
-        circuit: &ParametricCircuit, 
-        hamiltonian: &HamiltonianSpec
+        &self,
+        circuit: &ParametricCircuit,
+        hamiltonian: &HamiltonianSpec,
     ) -> DeviceResult<ObjectiveResult> {
         // For now, use sampling-based evaluation as placeholder
         // In practice, this would interface with actual quantum hardware
         self.evaluate_energy_sampling(circuit, hamiltonian)
     }
-    
+
     /// Mock energy evaluation for testing
     fn evaluate_energy_mock(
-        &self, 
-        _circuit: &ParametricCircuit, 
-        hamiltonian: &HamiltonianSpec
+        &self,
+        _circuit: &ParametricCircuit,
+        hamiltonian: &HamiltonianSpec,
     ) -> DeviceResult<ObjectiveResult> {
         // Simple mock that returns sum of squares with noise
         use rand::prelude::*;
         let mut rng = rand::thread_rng();
-        
-        let energy = hamiltonian.pauli_terms.iter()
+
+        let energy = hamiltonian
+            .pauli_terms
+            .iter()
             .map(|term| term.coefficient.re * rng.gen_range(-1.0..1.0))
             .sum::<f64>();
-            
+
         let variance: f64 = 0.01; // Mock variance
-        
+
         Ok(ObjectiveResult {
             value: energy,
             gradient: None,
@@ -749,118 +773,129 @@ impl ObjectiveEvaluator {
             },
         })
     }
-    
+
     /// Apply regularization to objective value
     fn apply_regularization(&self, value: f64, parameters: &Array1<f64>) -> f64 {
-        let l1_penalty = self.config.regularization.l1_coeff * 
-            parameters.iter().map(|&x| x.abs()).sum::<f64>();
-        let l2_penalty = self.config.regularization.l2_coeff * 
-            parameters.iter().map(|&x| x * x).sum::<f64>();
-            
+        let l1_penalty =
+            self.config.regularization.l1_coeff * parameters.iter().map(|&x| x.abs()).sum::<f64>();
+        let l2_penalty =
+            self.config.regularization.l2_coeff * parameters.iter().map(|&x| x * x).sum::<f64>();
+
         value + l1_penalty + l2_penalty
     }
-    
+
     /// Compute parameter shift gradient
-    fn compute_parameter_shift_gradient(&self, parameters: &Array1<f64>) -> DeviceResult<Array1<f64>> {
+    fn compute_parameter_shift_gradient(
+        &self,
+        parameters: &Array1<f64>,
+    ) -> DeviceResult<Array1<f64>> {
         let mut gradient = Array1::zeros(parameters.len());
         let shift = std::f64::consts::PI / 2.0;
-        
+
         for i in 0..parameters.len() {
             let mut params_plus = parameters.clone();
             let mut params_minus = parameters.clone();
-            
+
             params_plus[i] += shift;
             params_minus[i] -= shift;
-            
+
             let f_plus = self.evaluate(&params_plus)?.value;
             let f_minus = self.evaluate(&params_minus)?.value;
-            
+
             gradient[i] = (f_plus - f_minus) / 2.0;
         }
-        
+
         Ok(gradient)
     }
-    
+
     /// Build Hamiltonian matrix from specification
     fn build_hamiltonian_matrix(&self, spec: &HamiltonianSpec) -> DeviceResult<HamiltonianMatrix> {
         let dim = 1 << spec.num_qubits;
         let mut matrix = Array2::zeros((dim, dim));
-        
+
         for term in &spec.pauli_terms {
             let term_matrix = self.build_pauli_term_matrix(term, spec.num_qubits)?;
             matrix = matrix + term_matrix;
         }
-        
+
         Ok(HamiltonianMatrix {
             matrix,
             eigenvalues: None,
             eigenvectors: None,
         })
     }
-    
+
     /// Build matrix for single Pauli term
-    fn build_pauli_term_matrix(&self, term: &PauliTerm, num_qubits: usize) -> DeviceResult<Array2<Complex64>> {
+    fn build_pauli_term_matrix(
+        &self,
+        term: &PauliTerm,
+        num_qubits: usize,
+    ) -> DeviceResult<Array2<Complex64>> {
         // Implementation would build the tensor product of Pauli matrices
         // For now, return identity as placeholder
         let dim = 1 << num_qubits;
         let mut matrix = Array2::zeros((dim, dim));
-        
+
         // Add diagonal elements (simplified)
         for i in 0..dim {
             matrix[[i, i]] = term.coefficient;
         }
-        
+
         Ok(matrix)
     }
-    
+
     /// Get cached Hamiltonian or build it
     fn get_or_build_hamiltonian(&self, spec: &HamiltonianSpec) -> DeviceResult<&HamiltonianMatrix> {
         // In practice, would implement proper caching logic
         // For now, return error indicating need for caching
         Err(crate::DeviceError::InvalidInput(
-            "Hamiltonian caching not yet implemented".to_string()
+            "Hamiltonian caching not yet implemented".to_string(),
         ))
     }
-    
+
     /// Compute exact expectation value
     fn compute_expectation_value_exact(
-        &self, 
-        state: &Array1<Complex64>, 
-        hamiltonian: &HamiltonianMatrix
+        &self,
+        state: &Array1<Complex64>,
+        hamiltonian: &HamiltonianMatrix,
     ) -> DeviceResult<f64> {
         // ⟨ψ|H|ψ⟩ = ψ* H ψ
         let h_psi = hamiltonian.matrix.dot(state);
-        let expectation = state.iter()
+        let expectation = state
+            .iter()
             .zip(h_psi.iter())
             .map(|(psi_i, h_psi_i)| psi_i.conj() * h_psi_i)
             .sum::<Complex64>()
             .re;
-            
+
         Ok(expectation)
     }
-    
+
     /// Allocate shots to Hamiltonian terms
     fn allocate_shots_to_terms(&self, hamiltonian: &HamiltonianSpec) -> DeviceResult<Vec<usize>> {
         let total_shots = self.config.shot_allocation.total_shots;
         let num_terms = hamiltonian.pauli_terms.len();
-        
+
         match self.config.shot_allocation.allocation_strategy {
             ShotAllocationStrategy::Uniform => {
                 let shots_per_term = total_shots / num_terms;
                 Ok(vec![shots_per_term; num_terms])
-            },
+            }
             ShotAllocationStrategy::ProportionalToCoeff => {
-                let coeffs: Vec<f64> = hamiltonian.pauli_terms.iter()
+                let coeffs: Vec<f64> = hamiltonian
+                    .pauli_terms
+                    .iter()
                     .map(|term| term.coefficient.norm())
                     .collect();
                 let total_coeff: f64 = coeffs.iter().sum();
-                
-                let allocation: Vec<usize> = coeffs.iter()
+
+                let allocation: Vec<usize> = coeffs
+                    .iter()
                     .map(|&coeff| ((coeff / total_coeff) * total_shots as f64) as usize)
                     .collect();
-                    
+
                 Ok(allocation)
-            },
+            }
             _ => {
                 // Default to uniform for other strategies
                 let shots_per_term = total_shots / num_terms;
@@ -868,132 +903,219 @@ impl ObjectiveEvaluator {
             }
         }
     }
-    
+
     /// Measure expectation value of single Pauli term
     fn measure_pauli_term(
-        &self, 
-        circuit: &ParametricCircuit, 
-        term: &PauliTerm, 
-        shots: usize
+        &self,
+        circuit: &ParametricCircuit,
+        term: &PauliTerm,
+        shots: usize,
     ) -> DeviceResult<(f64, f64)> {
         // Simulate measurement of Pauli term
         // For now, return random values as placeholder
         use rand::prelude::*;
         let mut rng = rand::thread_rng();
-        
+
         let expectation: f64 = rng.gen_range(-1.0..1.0);
         let variance = 1.0 - expectation.powi(2); // Var = 1 - ⟨P⟩² for Pauli operators
-        
+
         Ok((expectation, variance))
     }
-    
+
     /// Group measurements for efficiency
-    fn group_measurements(&self, hamiltonian: &HamiltonianSpec) -> DeviceResult<Vec<MeasurementGroup>> {
+    fn group_measurements(
+        &self,
+        hamiltonian: &HamiltonianSpec,
+    ) -> DeviceResult<Vec<MeasurementGroup>> {
         // Simplified grouping - each term in its own group
-        let groups = hamiltonian.pauli_terms.iter().enumerate()
+        let groups = hamiltonian
+            .pauli_terms
+            .iter()
+            .enumerate()
             .map(|(i, term)| MeasurementGroup {
                 terms: vec![i],
                 measurement_basis: term.operators.clone(),
                 shot_allocation: 1000 / hamiltonian.pauli_terms.len(),
             })
             .collect();
-            
+
         Ok(groups)
     }
-    
+
     /// Additional placeholder methods for evaluation types
-    fn evaluate_tsp_cost(&self, _circuit: &ParametricCircuit, _spec: &CostFunctionSpec) -> DeviceResult<ObjectiveResult> {
-        Err(crate::DeviceError::NotImplemented("TSP cost evaluation not yet implemented".to_string()))
+    fn evaluate_tsp_cost(
+        &self,
+        _circuit: &ParametricCircuit,
+        _spec: &CostFunctionSpec,
+    ) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented(
+            "TSP cost evaluation not yet implemented".to_string(),
+        ))
     }
-    
-    fn evaluate_mis_cost(&self, _circuit: &ParametricCircuit, _spec: &CostFunctionSpec) -> DeviceResult<ObjectiveResult> {
-        Err(crate::DeviceError::NotImplemented("MIS cost evaluation not yet implemented".to_string()))
+
+    fn evaluate_mis_cost(
+        &self,
+        _circuit: &ParametricCircuit,
+        _spec: &CostFunctionSpec,
+    ) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented(
+            "MIS cost evaluation not yet implemented".to_string(),
+        ))
     }
-    
-    fn evaluate_portfolio_cost(&self, _circuit: &ParametricCircuit, _spec: &CostFunctionSpec) -> DeviceResult<ObjectiveResult> {
-        Err(crate::DeviceError::NotImplemented("Portfolio cost evaluation not yet implemented".to_string()))
+
+    fn evaluate_portfolio_cost(
+        &self,
+        _circuit: &ParametricCircuit,
+        _spec: &CostFunctionSpec,
+    ) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented(
+            "Portfolio cost evaluation not yet implemented".to_string(),
+        ))
     }
-    
-    fn evaluate_custom_cost(&self, _circuit: &ParametricCircuit, _spec: &CostFunctionSpec, _name: &str) -> DeviceResult<ObjectiveResult> {
-        Err(crate::DeviceError::NotImplemented("Custom cost evaluation not yet implemented".to_string()))
+
+    fn evaluate_custom_cost(
+        &self,
+        _circuit: &ParametricCircuit,
+        _spec: &CostFunctionSpec,
+        _name: &str,
+    ) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented(
+            "Custom cost evaluation not yet implemented".to_string(),
+        ))
     }
-    
+
     fn encode_features_into_circuit(
-        &self, 
-        circuit: &ParametricCircuit, 
-        _features: &Array1<f64>
+        &self,
+        circuit: &ParametricCircuit,
+        _features: &Array1<f64>,
     ) -> DeviceResult<ParametricCircuit> {
         // Placeholder - return original circuit
         Ok(circuit.clone())
     }
-    
+
     fn get_classification_prediction(&self, _circuit: &ParametricCircuit) -> DeviceResult<f64> {
         // Placeholder prediction
         use rand::prelude::*;
         Ok(rand::thread_rng().gen_range(0.0..1.0))
     }
-    
+
     fn get_regression_prediction(&self, _circuit: &ParametricCircuit) -> DeviceResult<f64> {
         // Placeholder prediction
         use rand::prelude::*;
         Ok(rand::thread_rng().gen_range(-1.0..1.0))
     }
-    
+
     /// Missing method implementations
-    fn evaluate_state_preparation(&self, _circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
-        Err(crate::DeviceError::NotImplemented("State preparation evaluation not yet implemented".to_string()))
+    fn evaluate_state_preparation(
+        &self,
+        _circuit: &ParametricCircuit,
+    ) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented(
+            "State preparation evaluation not yet implemented".to_string(),
+        ))
     }
-    
-    fn evaluate_process_fidelity(&self, _circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
-        Err(crate::DeviceError::NotImplemented("Process fidelity evaluation not yet implemented".to_string()))
+
+    fn evaluate_process_fidelity(
+        &self,
+        _circuit: &ParametricCircuit,
+    ) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented(
+            "Process fidelity evaluation not yet implemented".to_string(),
+        ))
     }
-    
-    fn evaluate_custom(&self, _circuit: &ParametricCircuit, _name: &str) -> DeviceResult<ObjectiveResult> {
-        Err(crate::DeviceError::NotImplemented("Custom evaluation not yet implemented".to_string()))
+
+    fn evaluate_custom(
+        &self,
+        _circuit: &ParametricCircuit,
+        _name: &str,
+    ) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented(
+            "Custom evaluation not yet implemented".to_string(),
+        ))
     }
-    
-    fn compute_finite_difference_gradient(&self, _parameters: &Array1<f64>) -> DeviceResult<Array1<f64>> {
-        Err(crate::DeviceError::NotImplemented("Finite difference gradient not yet implemented".to_string()))
+
+    fn compute_finite_difference_gradient(
+        &self,
+        _parameters: &Array1<f64>,
+    ) -> DeviceResult<Array1<f64>> {
+        Err(crate::DeviceError::NotImplemented(
+            "Finite difference gradient not yet implemented".to_string(),
+        ))
     }
-    
-    fn compute_central_difference_gradient(&self, _parameters: &Array1<f64>) -> DeviceResult<Array1<f64>> {
-        Err(crate::DeviceError::NotImplemented("Central difference gradient not yet implemented".to_string()))
+
+    fn compute_central_difference_gradient(
+        &self,
+        _parameters: &Array1<f64>,
+    ) -> DeviceResult<Array1<f64>> {
+        Err(crate::DeviceError::NotImplemented(
+            "Central difference gradient not yet implemented".to_string(),
+        ))
     }
-    
-    fn compute_forward_difference_gradient(&self, _parameters: &Array1<f64>) -> DeviceResult<Array1<f64>> {
-        Err(crate::DeviceError::NotImplemented("Forward difference gradient not yet implemented".to_string()))
+
+    fn compute_forward_difference_gradient(
+        &self,
+        _parameters: &Array1<f64>,
+    ) -> DeviceResult<Array1<f64>> {
+        Err(crate::DeviceError::NotImplemented(
+            "Forward difference gradient not yet implemented".to_string(),
+        ))
     }
-    
+
     fn compute_natural_gradient(&self, _parameters: &Array1<f64>) -> DeviceResult<Array1<f64>> {
-        Err(crate::DeviceError::NotImplemented("Natural gradient not yet implemented".to_string()))
+        Err(crate::DeviceError::NotImplemented(
+            "Natural gradient not yet implemented".to_string(),
+        ))
     }
-    
+
     fn compute_automatic_gradient(&self, _parameters: &Array1<f64>) -> DeviceResult<Array1<f64>> {
-        Err(crate::DeviceError::NotImplemented("Automatic gradient not yet implemented".to_string()))
+        Err(crate::DeviceError::NotImplemented(
+            "Automatic gradient not yet implemented".to_string(),
+        ))
     }
-    
-    fn simulate_circuit_exact(&self, _circuit: &ParametricCircuit) -> DeviceResult<Array1<Complex64>> {
-        Err(crate::DeviceError::NotImplemented("Exact circuit simulation not yet implemented".to_string()))
+
+    fn simulate_circuit_exact(
+        &self,
+        _circuit: &ParametricCircuit,
+    ) -> DeviceResult<Array1<Complex64>> {
+        Err(crate::DeviceError::NotImplemented(
+            "Exact circuit simulation not yet implemented".to_string(),
+        ))
     }
-    
+
     fn evaluate_cost(&self, _circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
-        Err(crate::DeviceError::NotImplemented("Cost evaluation not yet implemented".to_string()))
+        Err(crate::DeviceError::NotImplemented(
+            "Cost evaluation not yet implemented".to_string(),
+        ))
     }
-    
-    fn evaluate_classification(&self, _circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
-        Err(crate::DeviceError::NotImplemented("Classification evaluation not yet implemented".to_string()))
+
+    fn evaluate_classification(
+        &self,
+        _circuit: &ParametricCircuit,
+    ) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented(
+            "Classification evaluation not yet implemented".to_string(),
+        ))
     }
-    
+
     fn evaluate_regression(&self, _circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
-        Err(crate::DeviceError::NotImplemented("Regression evaluation not yet implemented".to_string()))
+        Err(crate::DeviceError::NotImplemented(
+            "Regression evaluation not yet implemented".to_string(),
+        ))
     }
-    
+
     fn evaluate_fidelity(&self, _circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
-        Err(crate::DeviceError::NotImplemented("Fidelity evaluation not yet implemented".to_string()))
+        Err(crate::DeviceError::NotImplemented(
+            "Fidelity evaluation not yet implemented".to_string(),
+        ))
     }
-    
-    fn evaluate_expectation_value(&self, _circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
-        Err(crate::DeviceError::NotImplemented("Expectation value evaluation not yet implemented".to_string()))
+
+    fn evaluate_expectation_value(
+        &self,
+        _circuit: &ParametricCircuit,
+    ) -> DeviceResult<ObjectiveResult> {
+        Err(crate::DeviceError::NotImplemented(
+            "Expectation value evaluation not yet implemented".to_string(),
+        ))
     }
 }
 

@@ -1,12 +1,12 @@
 //! Process monitoring and anomaly detection
 
-use std::collections::HashMap;
-use std::time::{Duration, SystemTime};
 use ndarray::{Array1, Array2, Array4};
 use num_complex::Complex64;
+use std::collections::HashMap;
+use std::time::{Duration, SystemTime};
 
-use crate::DeviceResult;
 use super::super::results::*;
+use crate::DeviceResult;
 
 impl ProcessAnomalyDetector {
     /// Create new anomaly detector
@@ -21,7 +21,7 @@ impl ProcessAnomalyDetector {
     /// Add process metrics to historical data
     pub fn add_process_metrics(&mut self, metrics: ProcessMetrics) {
         self.historical_data.push(metrics);
-        
+
         // Keep only recent data (e.g., last 1000 measurements)
         if self.historical_data.len() > 1000 {
             self.historical_data.remove(0);
@@ -53,29 +53,34 @@ impl ProcessAnomalyDetector {
     /// Statistical threshold-based anomaly detection
     fn detect_statistical_anomaly(&self, current_metrics: &ProcessMetrics) -> DeviceResult<bool> {
         // Calculate statistics for historical data
-        let historical_fidelities: Vec<f64> = self.historical_data
+        let historical_fidelities: Vec<f64> = self
+            .historical_data
             .iter()
             .map(|m| m.process_fidelity)
             .collect();
-        
-        let historical_unitarities: Vec<f64> = self.historical_data
-            .iter()
-            .map(|m| m.unitarity)
-            .collect();
 
-        let mean_fidelity = historical_fidelities.iter().sum::<f64>() / historical_fidelities.len() as f64;
+        let historical_unitarities: Vec<f64> =
+            self.historical_data.iter().map(|m| m.unitarity).collect();
+
+        let mean_fidelity =
+            historical_fidelities.iter().sum::<f64>() / historical_fidelities.len() as f64;
         let std_fidelity = {
-            let variance = historical_fidelities.iter()
+            let variance = historical_fidelities
+                .iter()
                 .map(|&x| (x - mean_fidelity).powi(2))
-                .sum::<f64>() / historical_fidelities.len() as f64;
+                .sum::<f64>()
+                / historical_fidelities.len() as f64;
             variance.sqrt()
         };
 
-        let mean_unitarity = historical_unitarities.iter().sum::<f64>() / historical_unitarities.len() as f64;
+        let mean_unitarity =
+            historical_unitarities.iter().sum::<f64>() / historical_unitarities.len() as f64;
         let std_unitarity = {
-            let variance = historical_unitarities.iter()
+            let variance = historical_unitarities
+                .iter()
                 .map(|&x| (x - mean_unitarity).powi(2))
-                .sum::<f64>() / historical_unitarities.len() as f64;
+                .sum::<f64>()
+                / historical_unitarities.len() as f64;
             variance.sqrt()
         };
 
@@ -96,7 +101,10 @@ impl ProcessAnomalyDetector {
     }
 
     /// Isolation forest anomaly detection (simplified)
-    fn detect_isolation_forest_anomaly(&self, current_metrics: &ProcessMetrics) -> DeviceResult<bool> {
+    fn detect_isolation_forest_anomaly(
+        &self,
+        current_metrics: &ProcessMetrics,
+    ) -> DeviceResult<bool> {
         // Simplified isolation forest
         let features = self.extract_features(current_metrics);
         let anomaly_score = self.calculate_isolation_score(&features);
@@ -137,18 +145,20 @@ impl ProcessAnomalyDetector {
     fn calculate_isolation_score(&self, features: &[f64]) -> f64 {
         // Simplified isolation score based on distance from historical mean
         let mut total_distance = 0.0;
-        
+
         for (i, &feature) in features.iter().enumerate() {
-            let historical_values: Vec<f64> = self.historical_data.iter()
+            let historical_values: Vec<f64> = self
+                .historical_data
+                .iter()
                 .map(|m| self.extract_features(m)[i])
                 .collect();
-            
+
             if !historical_values.is_empty() {
                 let mean = historical_values.iter().sum::<f64>() / historical_values.len() as f64;
                 total_distance += (feature - mean).abs();
             }
         }
-        
+
         total_distance / features.len() as f64
     }
 
@@ -156,12 +166,12 @@ impl ProcessAnomalyDetector {
     fn calculate_svm_distance(&self, features: &[f64]) -> f64 {
         // Simplified SVM distance calculation
         let mut weighted_sum = 0.0;
-        
+
         for (i, &feature) in features.iter().enumerate() {
             let weight = 1.0 / (i + 1) as f64; // Simple weight scheme
             weighted_sum += weight * feature;
         }
-        
+
         weighted_sum - 0.5 // Assume hyperplane at 0.5
     }
 
@@ -169,21 +179,23 @@ impl ProcessAnomalyDetector {
     fn calculate_lof_score(&self, features: &[f64]) -> f64 {
         // Simplified LOF calculation
         let k = 5.min(self.historical_data.len()); // Number of nearest neighbors
-        
+
         if k == 0 {
             return 1.0;
         }
-        
+
         // Calculate distances to historical data
-        let mut distances: Vec<f64> = self.historical_data.iter()
+        let mut distances: Vec<f64> = self
+            .historical_data
+            .iter()
             .map(|historical_metrics| {
                 let historical_features = self.extract_features(historical_metrics);
                 self.euclidean_distance(features, &historical_features)
             })
             .collect();
-        
+
         distances.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        
+
         // Calculate local reachability density
         let k_distance = distances[k.min(distances.len()) - 1];
         let lrd = if k_distance > 1e-12 {
@@ -191,14 +203,15 @@ impl ProcessAnomalyDetector {
         } else {
             f64::INFINITY
         };
-        
+
         // Return LOF score (simplified)
         1.0 / lrd.max(1e-12)
     }
 
     /// Calculate Euclidean distance between feature vectors
     fn euclidean_distance(&self, features1: &[f64], features2: &[f64]) -> f64 {
-        features1.iter()
+        features1
+            .iter()
             .zip(features2.iter())
             .map(|(a, b)| (a - b).powi(2))
             .sum::<f64>()
@@ -227,15 +240,11 @@ impl ProcessDriftDetector {
         }
 
         match self.method {
-            DriftDetectionMethod::StatisticalTest => {
-                self.detect_statistical_drift(historical_data)
-            }
+            DriftDetectionMethod::StatisticalTest => self.detect_statistical_drift(historical_data),
             DriftDetectionMethod::ChangePointDetection => {
                 self.detect_change_point_drift(historical_data)
             }
-            DriftDetectionMethod::KLDivergence => {
-                self.detect_kl_divergence_drift(historical_data)
-            }
+            DriftDetectionMethod::KLDivergence => self.detect_kl_divergence_drift(historical_data),
             DriftDetectionMethod::WassersteinDistance => {
                 self.detect_wasserstein_drift(historical_data)
             }
@@ -257,10 +266,10 @@ impl ProcessDriftDetector {
 
         let recent_mean = recent_fidelities.iter().sum::<f64>() / recent_fidelities.len() as f64;
         let reference_fidelity = self.reference_metrics.process_fidelity;
-        
+
         let difference = (recent_mean - reference_fidelity).abs();
         let threshold = self.sensitivity * reference_fidelity;
-        
+
         Ok(difference > threshold)
     }
 
@@ -270,9 +279,7 @@ impl ProcessDriftDetector {
             return Ok(false);
         }
 
-        let fidelities: Vec<f64> = historical_data.iter()
-            .map(|m| m.process_fidelity)
-            .collect();
+        let fidelities: Vec<f64> = historical_data.iter().map(|m| m.process_fidelity).collect();
 
         // CUSUM (Cumulative Sum) change point detection
         let reference_mean = self.reference_metrics.process_fidelity;
@@ -284,7 +291,7 @@ impl ProcessDriftDetector {
             let deviation = fidelity - reference_mean;
             cusum_pos = (cusum_pos + deviation).max(0.0);
             cusum_neg = (cusum_neg - deviation).max(0.0);
-            
+
             if cusum_pos > threshold || cusum_neg > threshold {
                 return Ok(true);
             }
@@ -296,7 +303,8 @@ impl ProcessDriftDetector {
     /// KL divergence-based drift detection
     fn detect_kl_divergence_drift(&self, historical_data: &[ProcessMetrics]) -> DeviceResult<bool> {
         // Simplified KL divergence calculation
-        let recent_data: Vec<f64> = historical_data.iter()
+        let recent_data: Vec<f64> = historical_data
+            .iter()
             .rev()
             .take(50)
             .map(|m| m.process_fidelity)
@@ -309,16 +317,17 @@ impl ProcessDriftDetector {
         // Create histograms
         let reference_hist = self.create_histogram(&[self.reference_metrics.process_fidelity]);
         let recent_hist = self.create_histogram(&recent_data);
-        
+
         let kl_divergence = self.calculate_kl_divergence(&reference_hist, &recent_hist);
-        
+
         Ok(kl_divergence > self.sensitivity)
     }
 
     /// Wasserstein distance-based drift detection
     fn detect_wasserstein_drift(&self, historical_data: &[ProcessMetrics]) -> DeviceResult<bool> {
         // Simplified Wasserstein distance
-        let recent_data: Vec<f64> = historical_data.iter()
+        let recent_data: Vec<f64> = historical_data
+            .iter()
             .rev()
             .take(50)
             .map(|m| m.process_fidelity)
@@ -330,9 +339,9 @@ impl ProcessDriftDetector {
 
         let reference_value = self.reference_metrics.process_fidelity;
         let recent_mean = recent_data.iter().sum::<f64>() / recent_data.len() as f64;
-        
+
         let wasserstein_distance = (reference_value - recent_mean).abs();
-        
+
         Ok(wasserstein_distance > self.sensitivity * 0.1)
     }
 
@@ -340,27 +349,27 @@ impl ProcessDriftDetector {
     fn create_histogram(&self, data: &[f64]) -> Vec<f64> {
         let num_bins = 10;
         let mut histogram = vec![0.0; num_bins];
-        
+
         if data.is_empty() {
             return histogram;
         }
 
         let min_val = data.iter().cloned().fold(f64::INFINITY, f64::min);
         let max_val = data.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        
+
         if (max_val - min_val).abs() < 1e-12 {
             histogram[0] = 1.0;
             return histogram;
         }
 
         let bin_width = (max_val - min_val) / num_bins as f64;
-        
+
         for &value in data {
             let bin_idx = ((value - min_val) / bin_width).floor() as usize;
             let bin_idx = bin_idx.min(num_bins - 1);
             histogram[bin_idx] += 1.0;
         }
-        
+
         // Normalize
         let total = histogram.iter().sum::<f64>();
         if total > 1e-12 {
@@ -368,7 +377,7 @@ impl ProcessDriftDetector {
                 *bin /= total;
             }
         }
-        
+
         histogram
     }
 
@@ -376,13 +385,13 @@ impl ProcessDriftDetector {
     fn calculate_kl_divergence(&self, p: &[f64], q: &[f64]) -> f64 {
         let mut kl_div = 0.0;
         let epsilon = 1e-12; // Small value to avoid log(0)
-        
+
         for (p_i, q_i) in p.iter().zip(q.iter()) {
             let p_safe = p_i.max(epsilon);
             let q_safe = q_i.max(epsilon);
             kl_div += p_safe * (p_safe / q_safe).ln();
         }
-        
+
         kl_div
     }
 }

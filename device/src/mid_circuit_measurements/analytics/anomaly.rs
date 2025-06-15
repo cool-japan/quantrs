@@ -1,9 +1,9 @@
 //! Anomaly detection components
 
+use super::super::results::*;
+use crate::DeviceResult;
 use ndarray::Array1;
 use std::collections::HashMap;
-use crate::DeviceResult;
-use super::super::results::*;
 
 /// Anomaly detector for measurement data
 pub struct AnomalyDetector {
@@ -40,16 +40,16 @@ impl AnomalyDetector {
 
         // Detect statistical anomalies
         let statistical_anomalies = self.detect_statistical_anomalies(latencies, confidences)?;
-        
+
         // Detect temporal anomalies
         let temporal_anomalies = self.detect_temporal_anomalies(latencies)?;
-        
+
         // Detect pattern anomalies
         let pattern_anomalies = self.detect_pattern_anomalies(latencies, confidences)?;
-        
+
         // Calculate anomaly scores
         let anomaly_scores = self.calculate_anomaly_scores(latencies, confidences)?;
-        
+
         // Generate anomaly summary
         let anomaly_summary = self.generate_anomaly_summary(
             &statistical_anomalies,
@@ -61,12 +61,13 @@ impl AnomalyDetector {
             anomalies: vec![], // TODO: Convert different anomaly types to AnomalyEvent
             anomaly_scores,
             thresholds: HashMap::new(), // Placeholder - would need to be computed
-            method_performance: crate::mid_circuit_measurements::results::AnomalyMethodPerformance {
-                precision: HashMap::new(),
-                recall: HashMap::new(),
-                f1_scores: HashMap::new(),
-                false_positive_rates: HashMap::new(),
-            },
+            method_performance:
+                crate::mid_circuit_measurements::results::AnomalyMethodPerformance {
+                    precision: HashMap::new(),
+                    recall: HashMap::new(),
+                    f1_scores: HashMap::new(),
+                    false_positive_rates: HashMap::new(),
+                },
         })
     }
 
@@ -100,9 +101,8 @@ impl AnomalyDetector {
         }
 
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance = values.iter()
-            .map(|&x| (x - mean).powi(2))
-            .sum::<f64>() / values.len() as f64;
+        let variance =
+            values.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
         let std_dev = variance.sqrt();
 
         let mut anomalies = Vec::new();
@@ -152,7 +152,8 @@ impl AnomalyDetector {
             };
 
             // Detect significant changes
-            if relative_change > 0.3 { // 30% change threshold
+            if relative_change > 0.3 {
+                // 30% change threshold
                 anomalies.push(TemporalAnomaly {
                     start_index: i - self.window_size,
                     end_index: i + self.window_size,
@@ -182,9 +183,10 @@ impl AnomalyDetector {
         // Detect correlation anomalies
         if latencies.len() == confidences.len() && latencies.len() > 10 {
             let correlation = self.calculate_correlation(latencies, confidences);
-            
+
             // Expected negative correlation (higher latency -> lower confidence)
-            if correlation > -0.1 { // Unexpectedly positive or weak correlation
+            if correlation > -0.1 {
+                // Unexpectedly positive or weak correlation
                 anomalies.push(PatternAnomaly {
                     pattern_type: PatternType::CorrelationAnomaly,
                     description: format!(
@@ -225,7 +227,8 @@ impl AnomalyDetector {
             if (values[i] - values[i - 1]).abs() < 1e-6 {
                 constant_length += 1;
             } else {
-                if constant_length >= 5 { // 5+ identical measurements
+                if constant_length >= 5 {
+                    // 5+ identical measurements
                     anomalies.push(PatternAnomaly {
                         pattern_type: PatternType::ConstantSequence,
                         description: format!(
@@ -233,7 +236,8 @@ impl AnomalyDetector {
                             constant_length, values[constant_start]
                         ),
                         severity: AnomalySeverity::Medium,
-                        affected_indices: (constant_start..constant_start + constant_length).collect(),
+                        affected_indices: (constant_start..constant_start + constant_length)
+                            .collect(),
                         confidence: 0.9,
                     });
                 }
@@ -275,18 +279,22 @@ impl AnomalyDetector {
         // Calculate z-scores for latencies
         let latency_mean = latencies.iter().sum::<f64>() / latencies.len() as f64;
         let latency_std = {
-            let variance = latencies.iter()
+            let variance = latencies
+                .iter()
                 .map(|&x| (x - latency_mean).powi(2))
-                .sum::<f64>() / latencies.len() as f64;
+                .sum::<f64>()
+                / latencies.len() as f64;
             variance.sqrt()
         };
 
         // Calculate z-scores for confidences
         let confidence_mean = confidences.iter().sum::<f64>() / confidences.len() as f64;
         let confidence_std = {
-            let variance = confidences.iter()
+            let variance = confidences
+                .iter()
                 .map(|&x| (x - confidence_mean).powi(2))
-                .sum::<f64>() / confidences.len() as f64;
+                .sum::<f64>()
+                / confidences.len() as f64;
             variance.sqrt()
         };
 
@@ -317,22 +325,27 @@ impl AnomalyDetector {
         temporal_anomalies: &[TemporalAnomaly],
         pattern_anomalies: &[PatternAnomaly],
     ) -> DeviceResult<AnomalySummary> {
-        let total_anomalies = statistical_anomalies.len() + temporal_anomalies.len() + pattern_anomalies.len();
-        
+        let total_anomalies =
+            statistical_anomalies.len() + temporal_anomalies.len() + pattern_anomalies.len();
+
         // Count by severity
-        let high_severity = statistical_anomalies.iter()
+        let high_severity = statistical_anomalies
+            .iter()
             .filter(|a| matches!(a.anomaly_severity, AnomalySeverity::High))
             .count()
-            + pattern_anomalies.iter()
-            .filter(|a| matches!(a.severity, AnomalySeverity::High))
-            .count();
+            + pattern_anomalies
+                .iter()
+                .filter(|a| matches!(a.severity, AnomalySeverity::High))
+                .count();
 
-        let medium_severity = statistical_anomalies.iter()
+        let medium_severity = statistical_anomalies
+            .iter()
             .filter(|a| matches!(a.anomaly_severity, AnomalySeverity::Medium))
             .count()
-            + pattern_anomalies.iter()
-            .filter(|a| matches!(a.severity, AnomalySeverity::Medium))
-            .count();
+            + pattern_anomalies
+                .iter()
+                .filter(|a| matches!(a.severity, AnomalySeverity::Medium))
+                .count();
 
         let low_severity = total_anomalies - high_severity - medium_severity;
 
@@ -363,7 +376,10 @@ impl AnomalyDetector {
         if temporal_anomalies.len() > 3 {
             recommendations.push("Review measurement timing and calibration".to_string());
         }
-        if pattern_anomalies.iter().any(|a| matches!(a.pattern_type, PatternType::ConstantSequence)) {
+        if pattern_anomalies
+            .iter()
+            .any(|a| matches!(a.pattern_type, PatternType::ConstantSequence))
+        {
             recommendations.push("Check for stuck measurement equipment".to_string());
         }
 
@@ -422,7 +438,9 @@ impl AnomalyDetector {
         let mean_x = x.iter().sum::<f64>() / n;
         let mean_y = y.iter().sum::<f64>() / n;
 
-        let numerator: f64 = x.iter().zip(y.iter())
+        let numerator: f64 = x
+            .iter()
+            .zip(y.iter())
             .map(|(&xi, &yi)| (xi - mean_x) * (yi - mean_y))
             .sum();
 
@@ -451,12 +469,13 @@ impl Default for AnomalyDetectionResults {
             anomalies: vec![],
             anomaly_scores: Array1::zeros(0),
             thresholds: HashMap::new(),
-            method_performance: crate::mid_circuit_measurements::results::AnomalyMethodPerformance {
-                precision: HashMap::new(),
-                recall: HashMap::new(),
-                f1_scores: HashMap::new(),
-                false_positive_rates: HashMap::new(),
-            },
+            method_performance:
+                crate::mid_circuit_measurements::results::AnomalyMethodPerformance {
+                    precision: HashMap::new(),
+                    recall: HashMap::new(),
+                    f1_scores: HashMap::new(),
+                    false_positive_rates: HashMap::new(),
+                },
         }
     }
 }

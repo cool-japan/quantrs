@@ -3,8 +3,8 @@
 //! This module provides tools for testing quantum circuits, states, and operations
 //! with proper handling of quantum-specific properties like phase and entanglement.
 
-use crate::error::QuantRS2Error;
 use crate::complex_ext::QuantumComplexExt;
+use crate::error::QuantRS2Error;
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use std::fmt;

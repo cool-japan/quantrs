@@ -9,7 +9,6 @@
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
-    gate::GateOp,
     variational::VariationalCircuit,
 };
 use ndarray::{Array1, Array2};
@@ -499,11 +498,15 @@ impl VariationalQuantumOptimizer {
         let mut rng = if let Some(seed) = self.config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            StdRng::from_seed(rand::thread_rng().gen())
+            StdRng::from_seed(rand::rng().random())
         };
 
         let current_params = circuit.get_parameters();
-        let perturbation = if rng.gen::<bool>() { epsilon } else { -epsilon };
+        let perturbation = if rng.random::<bool>() {
+            epsilon
+        } else {
+            -epsilon
+        };
 
         // Positive perturbation
         let mut circuit_plus = circuit.clone();
@@ -632,9 +635,7 @@ impl VariationalQuantumOptimizer {
                     }
                 }
             }
-            OptimizationMethod::SPSA {
-                a, alpha, gamma, ..
-            } => {
+            OptimizationMethod::SPSA { a, alpha, .. } => {
                 // SPSA parameter update
                 let ak = a / (state.iteration as f64 + 1.0).powf(*alpha);
 
@@ -1000,16 +1001,16 @@ impl HyperparameterOptimizer {
     ) -> QuantRS2Result<HyperparameterResult> {
         use rand::{rngs::StdRng, Rng, SeedableRng};
 
-        let mut rng = StdRng::from_seed(rand::thread_rng().gen());
+        let mut rng = StdRng::from_seed(rand::rng().random());
         let mut best_hyperparams = FxHashMap::default();
         let mut best_loss = f64::INFINITY;
         let mut all_trials = Vec::new();
 
-        for trial in 0..self.n_trials {
+        for _trial in 0..self.n_trials {
             // Sample hyperparameters
             let mut hyperparams = FxHashMap::default();
             for (name, &(min_val, max_val)) in &self.search_space {
-                let value = rng.gen_range(min_val..max_val);
+                let value = rng.random_range(min_val..max_val);
                 hyperparams.insert(name.clone(), value);
             }
 

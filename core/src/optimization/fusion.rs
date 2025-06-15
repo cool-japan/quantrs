@@ -338,6 +338,7 @@ impl OptimizationPass for GateFusion {
 
 /// Specialized fusion for Clifford gates
 pub struct CliffordFusion {
+    #[allow(dead_code)]
     tolerance: f64,
 }
 

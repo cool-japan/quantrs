@@ -5,17 +5,13 @@
 //! exploration strategies in reinforcement learning tasks.
 
 use crate::{
-    error::QuantRS2Result,
-    gate::GateOp,
-    gate::single::*,
-    gate::multi::*,
+    error::QuantRS2Result, gate::multi::*, gate::single::*, gate::GateOp, qubit::QubitId,
     variational::VariationalOptimizer,
-    qubit::QubitId,
 };
 use ndarray::{Array1, Array2};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
-use rand::{Rng, SeedableRng, rngs::StdRng};
 
 /// Configuration for quantum reinforcement learning
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -120,7 +116,7 @@ impl ReplayBuffer {
     pub fn sample(&mut self, batch_size: usize) -> Vec<Experience> {
         let mut samples = Vec::new();
         let buffer_size = self.buffer.len();
-        
+
         if buffer_size < batch_size {
             return self.buffer.iter().cloned().collect();
         }
@@ -223,7 +219,7 @@ impl QuantumDQN {
         // Create Q-network
         let q_network = QuantumValueNetwork::new(&config)?;
         let mut target_q_network = QuantumValueNetwork::new(&config)?;
-        
+
         // Initialize target network with same parameters
         target_q_network.parameters = q_network.parameters.clone();
 
@@ -274,7 +270,8 @@ impl QuantumDQN {
         let experiences = self.replay_buffer.sample(self.config.batch_size);
 
         // Prepare training data
-        let (states, actions, rewards, next_states, dones) = self.prepare_training_data(&experiences);
+        let (states, actions, rewards, next_states, dones) =
+            self.prepare_training_data(&experiences);
 
         // Compute target Q-values using quantum advantage
         let target_q_values = self.compute_target_q_values(&next_states, &rewards, &dones)?;
@@ -310,12 +307,22 @@ impl QuantumDQN {
 
     /// Update exploration rate with decay
     fn update_exploration_rate(&mut self) {
-        self.current_exploration_rate = (self.current_exploration_rate * self.config.exploration_decay)
+        self.current_exploration_rate = (self.current_exploration_rate
+            * self.config.exploration_decay)
             .max(self.config.min_exploration_rate);
     }
 
     /// Prepare training data from experiences
-    fn prepare_training_data(&self, experiences: &[Experience]) -> (Array2<f64>, Array1<usize>, Array1<f64>, Array2<f64>, Array1<bool>) {
+    fn prepare_training_data(
+        &self,
+        experiences: &[Experience],
+    ) -> (
+        Array2<f64>,
+        Array1<usize>,
+        Array1<f64>,
+        Array2<f64>,
+        Array1<bool>,
+    ) {
         let batch_size = experiences.len();
         let state_dim = experiences[0].state.len();
 
@@ -383,7 +390,8 @@ impl QuantumDQN {
 
             // Compute quantum gradients and update parameters
             let gradients = self.q_network.compute_gradients(&state, action, target)?;
-            self.q_network.update_parameters(&gradients, self.config.learning_rate)?;
+            self.q_network
+                .update_parameters(&gradients, self.config.learning_rate)?;
         }
 
         Ok(total_loss / batch_size as f64)
@@ -398,19 +406,24 @@ impl QuantumDQN {
             let state = states.row(i).to_owned();
 
             // Compute policy loss using quantum advantage
-            let policy_loss = self.policy_network.compute_policy_loss(&state, &self.q_network)?;
+            let policy_loss = self
+                .policy_network
+                .compute_policy_loss(&state, &self.q_network)?;
             total_loss += policy_loss;
 
             // Update policy parameters
-            let gradients = self.policy_network.compute_policy_gradients(&state, &self.q_network)?;
-            self.policy_network.update_parameters(&gradients, self.config.learning_rate)?;
+            let gradients = self
+                .policy_network
+                .compute_policy_gradients(&state, &self.q_network)?;
+            self.policy_network
+                .update_parameters(&gradients, self.config.learning_rate)?;
         }
 
         Ok(total_loss / batch_size as f64)
     }
 
     /// End episode and update statistics
-    pub fn end_episode(&mut self, total_reward: f64) {
+    pub fn end_episode(&mut self, _total_reward: f64) {
         self.episodes += 1;
     }
 
@@ -436,13 +449,13 @@ impl QuantumValueNetwork {
 
         let num_parameters = circuit.get_parameter_count();
         let mut parameters = Array1::zeros(num_parameters);
-        
+
         // Initialize parameters randomly
         let mut rng = match config.random_seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => StdRng::from_seed([0; 32]),
         };
-        
+
         for param in parameters.iter_mut() {
             *param = rng.random_range(-std::f64::consts::PI..std::f64::consts::PI);
         }
@@ -458,7 +471,8 @@ impl QuantumValueNetwork {
 
     /// Get Q-value for a specific state-action pair
     fn get_q_value(&self, state: &Array1<f64>, action: usize) -> QuantRS2Result<f64> {
-        self.circuit.evaluate_q_value(state, action, &self.parameters)
+        self.circuit
+            .evaluate_q_value(state, action, &self.parameters)
     }
 
     /// Get maximum Q-value for a state over all actions
@@ -481,11 +495,16 @@ impl QuantumValueNetwork {
         action: usize,
         target: f64,
     ) -> QuantRS2Result<Array1<f64>> {
-        self.circuit.compute_parameter_gradients(state, action, target, &self.parameters)
+        self.circuit
+            .compute_parameter_gradients(state, action, target, &self.parameters)
     }
 
     /// Update parameters using gradients
-    fn update_parameters(&mut self, gradients: &Array1<f64>, learning_rate: f64) -> QuantRS2Result<()> {
+    fn update_parameters(
+        &mut self,
+        gradients: &Array1<f64>,
+        learning_rate: f64,
+    ) -> QuantRS2Result<()> {
         for (param, &grad) in self.parameters.iter_mut().zip(gradients.iter()) {
             *param -= learning_rate * grad;
         }
@@ -504,13 +523,13 @@ impl QuantumPolicyNetwork {
 
         let num_parameters = circuit.get_parameter_count();
         let mut parameters = Array1::zeros(num_parameters);
-        
+
         // Initialize parameters randomly
         let mut rng = match config.random_seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => StdRng::from_seed([0; 32]),
         };
-        
+
         for param in parameters.iter_mut() {
             *param = rng.random_range(-std::f64::consts::PI..std::f64::consts::PI);
         }
@@ -536,15 +555,17 @@ impl QuantumPolicyNetwork {
         q_network: &QuantumValueNetwork,
     ) -> QuantRS2Result<f64> {
         // Use expected Q-value as policy loss (to maximize)
-        let action_probs = self.circuit.get_action_probabilities(state, &self.parameters)?;
+        let action_probs = self
+            .circuit
+            .get_action_probabilities(state, &self.parameters)?;
         let num_actions = action_probs.len();
-        
+
         let mut expected_q = 0.0;
         for action in 0..num_actions {
             let q_value = q_network.get_q_value(state, action)?;
             expected_q += action_probs[action] * q_value;
         }
-        
+
         // Negative because we want to maximize (minimize negative)
         Ok(-expected_q)
     }
@@ -555,11 +576,16 @@ impl QuantumPolicyNetwork {
         state: &Array1<f64>,
         q_network: &QuantumValueNetwork,
     ) -> QuantRS2Result<Array1<f64>> {
-        self.circuit.compute_policy_gradients(state, q_network, &self.parameters)
+        self.circuit
+            .compute_policy_gradients(state, q_network, &self.parameters)
     }
 
     /// Update parameters
-    fn update_parameters(&mut self, gradients: &Array1<f64>, learning_rate: f64) -> QuantRS2Result<()> {
+    fn update_parameters(
+        &mut self,
+        gradients: &Array1<f64>,
+        learning_rate: f64,
+    ) -> QuantRS2Result<()> {
         for (param, &grad) in self.parameters.iter_mut().zip(gradients.iter()) {
             *param -= learning_rate * grad;
         }
@@ -595,7 +621,7 @@ impl QuantumValueCircuit {
 
     /// Get number of action qubits (for external interface)
     fn get_action_qubits(&self) -> usize {
-        // This is a bit of a hack - in a real implementation, 
+        // This is a bit of a hack - in a real implementation,
         // the value circuit wouldn't directly know about actions
         2 // Default action qubits
     }
@@ -609,7 +635,7 @@ impl QuantumValueCircuit {
     ) -> QuantRS2Result<f64> {
         // Encode state into quantum circuit
         let mut gates = Vec::new();
-        
+
         // State encoding
         for i in 0..self.state_qubits {
             let state_value = if i < state.len() { state[i] } else { 0.0 };
@@ -620,7 +646,8 @@ impl QuantumValueCircuit {
         }
 
         // Action encoding (simple binary encoding)
-        for i in 0..2 { // Assuming 2 action qubits
+        for i in 0..2 {
+            // Assuming 2 action qubits
             if (action >> i) & 1 == 1 {
                 gates.push(Box::new(PauliX {
                     target: QubitId((self.state_qubits + i) as u32),
@@ -630,7 +657,7 @@ impl QuantumValueCircuit {
 
         // Variational circuit layers
         let mut param_idx = 0;
-        for layer in 0..self.depth {
+        for _layer in 0..self.depth {
             // Rotation layer
             for qubit in 0..self.get_total_qubits() {
                 if param_idx + 2 < parameters.len() {
@@ -670,7 +697,7 @@ impl QuantumValueCircuit {
         // Simplified evaluation: return a mock Q-value
         // In a real implementation, this would involve quantum simulation
         let q_value = self.simulate_circuit_expectation(&gates)?;
-        
+
         Ok(q_value)
     }
 
@@ -678,7 +705,7 @@ impl QuantumValueCircuit {
     fn simulate_circuit_expectation(&self, gates: &[Box<dyn GateOp>]) -> QuantRS2Result<f64> {
         // Simplified simulation: compute a hash-based mock expectation
         let mut hash_value = 0u64;
-        
+
         for gate in gates {
             // Simple hash of gate parameters
             if let Ok(matrix) = gate.matrix() {
@@ -688,7 +715,7 @@ impl QuantumValueCircuit {
                 }
             }
         }
-        
+
         // Convert to expectation value in [-1, 1]
         let expectation = (hash_value % 2000) as f64 / 1000.0 - 1.0;
         Ok(expectation)
@@ -711,7 +738,7 @@ impl QuantumValueCircuit {
             params_plus[i] += shift;
             let q_plus = self.evaluate_q_value(state, action, &params_plus)?;
 
-            // Backward shift  
+            // Backward shift
             let mut params_minus = parameters.clone();
             params_minus[i] -= shift;
             let q_minus = self.evaluate_q_value(state, action, &params_minus)?;
@@ -719,7 +746,7 @@ impl QuantumValueCircuit {
             // Parameter-shift rule gradient
             let current_q = self.evaluate_q_value(state, action, parameters)?;
             let loss_gradient = 2.0 * (current_q - target); // d/dθ (q - target)²
-            
+
             gradients[i] = loss_gradient * (q_plus - q_minus) / 2.0;
         }
 
@@ -749,46 +776,54 @@ impl QuantumPolicyCircuit {
     }
 
     /// Get best action for a state
-    fn get_best_action(&self, state: &Array1<f64>, parameters: &Array1<f64>) -> QuantRS2Result<usize> {
+    fn get_best_action(
+        &self,
+        state: &Array1<f64>,
+        parameters: &Array1<f64>,
+    ) -> QuantRS2Result<usize> {
         let action_probs = self.get_action_probabilities(state, parameters)?;
-        
+
         // Find action with highest probability
         let mut best_action = 0;
         let mut best_prob = action_probs[0];
-        
+
         for (action, &prob) in action_probs.iter().enumerate() {
             if prob > best_prob {
                 best_prob = prob;
                 best_action = action;
             }
         }
-        
+
         Ok(best_action)
     }
 
     /// Get action probabilities
-    fn get_action_probabilities(&self, state: &Array1<f64>, parameters: &Array1<f64>) -> QuantRS2Result<Vec<f64>> {
+    fn get_action_probabilities(
+        &self,
+        state: &Array1<f64>,
+        parameters: &Array1<f64>,
+    ) -> QuantRS2Result<Vec<f64>> {
         let num_actions = 1 << self.action_qubits;
         let mut probabilities = vec![0.0; num_actions];
-        
+
         // Simplified: uniform distribution with slight variations based on state and parameters
         let base_prob = 1.0 / num_actions as f64;
-        
+
         for action in 0..num_actions {
             // Add state and parameter-dependent variation
             let state_hash = state.iter().sum::<f64>();
             let param_hash = parameters.iter().take(10).sum::<f64>();
             let variation = 0.1 * ((state_hash + param_hash + action as f64).sin());
-            
+
             probabilities[action] = base_prob + variation;
         }
-        
+
         // Normalize probabilities
         let sum: f64 = probabilities.iter().sum();
         for prob in &mut probabilities {
             *prob /= sum;
         }
-        
+
         Ok(probabilities)
     }
 
@@ -811,7 +846,8 @@ impl QuantumPolicyCircuit {
             // Backward shift
             let mut params_minus = parameters.clone();
             params_minus[i] -= shift;
-            let loss_minus = self.compute_policy_loss_with_params(state, q_network, &params_minus)?;
+            let loss_minus =
+                self.compute_policy_loss_with_params(state, q_network, &params_minus)?;
 
             // Parameter-shift rule
             gradients[i] = (loss_plus - loss_minus) / 2.0;
@@ -829,13 +865,13 @@ impl QuantumPolicyCircuit {
     ) -> QuantRS2Result<f64> {
         let action_probs = self.get_action_probabilities(state, parameters)?;
         let num_actions = action_probs.len();
-        
+
         let mut expected_q = 0.0;
         for action in 0..num_actions {
             let q_value = q_network.get_q_value(state, action)?;
             expected_q += action_probs[action] * q_value;
         }
-        
+
         Ok(-expected_q) // Negative to maximize
     }
 }
@@ -883,7 +919,7 @@ impl QuantumActorCritic {
     pub fn new(config: QuantumRLConfig) -> QuantRS2Result<Self> {
         let actor = QuantumPolicyNetwork::new(&config)?;
         let critic = QuantumValueNetwork::new(&config)?;
-        
+
         Ok(Self {
             config,
             actor,
@@ -896,7 +932,7 @@ impl QuantumActorCritic {
     pub fn update(
         &mut self,
         state: &Array1<f64>,
-        action: usize,
+        _action: usize,
         reward: f64,
         next_state: &Array1<f64>,
         done: bool,
@@ -908,18 +944,20 @@ impl QuantumActorCritic {
         } else {
             self.critic.get_max_q_value(next_state)?
         };
-        
+
         let target_value = reward + self.config.discount_factor * next_value;
         let td_error = target_value - current_value;
 
         // Update critic
         let critic_gradients = self.critic.compute_gradients(state, 0, target_value)?;
-        self.critic.update_parameters(&critic_gradients, self.config.learning_rate)?;
+        self.critic
+            .update_parameters(&critic_gradients, self.config.learning_rate)?;
 
         // Update actor using policy gradient scaled by TD error
         let actor_gradients = self.actor.compute_policy_gradients(state, &self.critic)?;
         let scaled_gradients = actor_gradients * td_error; // Scale by advantage
-        self.actor.update_parameters(&scaled_gradients, self.config.learning_rate)?;
+        self.actor
+            .update_parameters(&scaled_gradients, self.config.learning_rate)?;
 
         // Update metrics
         self.metrics.q_loss = td_error.abs();
@@ -947,7 +985,7 @@ mod tests {
     fn test_quantum_dqn_creation() {
         let config = QuantumRLConfig::default();
         let agent = QuantumDQN::new(config).unwrap();
-        
+
         let stats = agent.get_statistics();
         assert_eq!(stats.episodes, 0);
         assert_eq!(stats.training_steps, 0);
@@ -956,7 +994,7 @@ mod tests {
     #[test]
     fn test_replay_buffer() {
         let mut buffer = ReplayBuffer::new(10, Some(42));
-        
+
         let experience = Experience {
             state: Array1::from_vec(vec![1.0, 0.0, -1.0]),
             action: 1,
@@ -964,10 +1002,10 @@ mod tests {
             next_state: Array1::from_vec(vec![0.0, 1.0, 0.0]),
             done: false,
         };
-        
+
         buffer.add(experience);
         assert_eq!(buffer.size(), 1);
-        
+
         let samples = buffer.sample(1);
         assert_eq!(samples.len(), 1);
     }
@@ -977,10 +1015,10 @@ mod tests {
         let circuit = QuantumValueCircuit::new(3, 2, 4).unwrap();
         let param_count = circuit.get_parameter_count();
         assert!(param_count > 0);
-        
+
         let state = Array1::from_vec(vec![0.5, -0.5, 0.0]);
         let parameters = Array1::zeros(param_count);
-        
+
         let q_value = circuit.evaluate_q_value(&state, 1, &parameters).unwrap();
         assert!(q_value.is_finite());
     }
@@ -989,15 +1027,17 @@ mod tests {
     fn test_quantum_actor_critic() {
         let config = QuantumRLConfig::default();
         let mut agent = QuantumActorCritic::new(config).unwrap();
-        
+
         let state = Array1::from_vec(vec![0.5, -0.5]);
         let next_state = Array1::from_vec(vec![0.0, 1.0]);
-        
+
         let action = agent.select_action(&state).unwrap();
         assert!(action < 4); // 2^2 actions for 2 action qubits
-        
-        agent.update(&state, action, 1.0, &next_state, false).unwrap();
-        
+
+        agent
+            .update(&state, action, 1.0, &next_state, false)
+            .unwrap();
+
         let metrics = agent.get_metrics();
         assert!(metrics.q_loss >= 0.0);
     }

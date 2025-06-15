@@ -63,17 +63,11 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
     ) -> Result<SampleResult, String> {
         // Decompose problem into domains
         let domains = self.decompose_into_domains(qubo, var_map)?;
-        
+
         match self.strategy {
-            DecompositionStrategy::Schwarz => {
-                self.schwarz_solve(&domains, shots)
-            }
-            DecompositionStrategy::BlockJacobi => {
-                self.block_jacobi_solve(&domains, shots)
-            }
-            DecompositionStrategy::AdditiveSchwarz => {
-                self.additive_schwarz_solve(&domains, shots)
-            }
+            DecompositionStrategy::Schwarz => self.schwarz_solve(&domains, shots),
+            DecompositionStrategy::BlockJacobi => self.block_jacobi_solve(&domains, shots),
+            DecompositionStrategy::AdditiveSchwarz => self.additive_schwarz_solve(&domains, shots),
             DecompositionStrategy::MultiplicativeSchwarz => {
                 self.multiplicative_schwarz_solve(&domains, shots)
             }
@@ -89,15 +83,16 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
         let n = qubo.shape()[0];
         let num_domains = (n as f64 / 10.0).ceil() as usize; // Target ~10 variables per domain
         let domain_size = n / num_domains + self.overlap_size;
-        
+
         let mut domains = Vec::new();
-        let reverse_var_map: HashMap<usize, String> = 
+        let reverse_var_map: HashMap<usize, String> =
             var_map.iter().map(|(k, v)| (*v, k.clone())).collect();
 
         for domain_id in 0..num_domains {
             let start_idx = domain_id * (domain_size - self.overlap_size);
-            let end_idx = ((domain_id + 1) * (domain_size - self.overlap_size) + self.overlap_size).min(n);
-            
+            let end_idx =
+                ((domain_id + 1) * (domain_size - self.overlap_size) + self.overlap_size).min(n);
+
             if start_idx >= n {
                 break;
             }
@@ -159,14 +154,14 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
         domain_indices: &[usize],
     ) -> bool {
         let n = qubo.shape()[0];
-        
+
         // Check if variable has connections outside the domain
         for j in 0..n {
             if !domain_indices.contains(&j) && qubo[[var_idx, j]].abs() > 1e-10 {
                 return true;
             }
         }
-        
+
         false
     }
 
@@ -187,10 +182,12 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
             coordination_state.iteration = iteration;
 
             // Solve all subdomains in parallel
-            let subdomain_solutions = self.solve_subdomains_parallel(domains, &coordination_state, shots)?;
+            let subdomain_solutions =
+                self.solve_subdomains_parallel(domains, &coordination_state, shots)?;
 
             // Update coordination variables
-            let converged = self.update_coordination(&mut coordination_state, &subdomain_solutions, domains)?;
+            let converged =
+                self.update_coordination(&mut coordination_state, &subdomain_solutions, domains)?;
 
             if converged {
                 break;
@@ -202,7 +199,11 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
     }
 
     /// Block Jacobi method (parallel subdomain solving)
-    fn block_jacobi_solve(&mut self, domains: &[Domain], shots: usize) -> Result<SampleResult, String> {
+    fn block_jacobi_solve(
+        &mut self,
+        domains: &[Domain],
+        shots: usize,
+    ) -> Result<SampleResult, String> {
         let mut coordination_state = CoordinationState {
             iteration: 0,
             lagrange_multipliers: None,
@@ -217,10 +218,12 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
             coordination_state.iteration = iteration;
 
             // Solve all subdomains simultaneously
-            let subdomain_solutions = self.solve_subdomains_parallel(domains, &coordination_state, shots)?;
+            let subdomain_solutions =
+                self.solve_subdomains_parallel(domains, &coordination_state, shots)?;
 
             // Update all coordination variables simultaneously
-            let converged = self.update_coordination(&mut coordination_state, &subdomain_solutions, domains)?;
+            let converged =
+                self.update_coordination(&mut coordination_state, &subdomain_solutions, domains)?;
 
             if converged {
                 break;
@@ -231,13 +234,21 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
     }
 
     /// Additive Schwarz method
-    fn additive_schwarz_solve(&mut self, domains: &[Domain], shots: usize) -> Result<SampleResult, String> {
+    fn additive_schwarz_solve(
+        &mut self,
+        domains: &[Domain],
+        shots: usize,
+    ) -> Result<SampleResult, String> {
         // Similar to block Jacobi but with additive updates
         self.block_jacobi_solve(domains, shots)
     }
 
     /// Multiplicative Schwarz method
-    fn multiplicative_schwarz_solve(&mut self, domains: &[Domain], shots: usize) -> Result<SampleResult, String> {
+    fn multiplicative_schwarz_solve(
+        &mut self,
+        domains: &[Domain],
+        shots: usize,
+    ) -> Result<SampleResult, String> {
         let mut coordination_state = CoordinationState {
             iteration: 0,
             lagrange_multipliers: None,
@@ -254,7 +265,7 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
             // Solve subdomains sequentially with immediate updates
             for domain in domains {
                 let solution = self.solve_single_subdomain(domain, &coordination_state, shots)?;
-                
+
                 // Update coordination immediately after each subdomain
                 self.update_coordination_single(&mut coordination_state, &solution, domain)?;
             }
@@ -342,7 +353,9 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
             .map_err(|e| format!("Sampler error: {:?}", e))?;
 
         // Take the best result (first one, since they're sorted by energy)
-        let results = results_vec.into_iter().next()
+        let results = results_vec
+            .into_iter()
+            .next()
             .ok_or_else(|| "No solutions found for subdomain".to_string())?;
 
         Ok(SubdomainSolution {
@@ -428,7 +441,9 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
                     // Collect values from all domains containing this variable
                     for solution in solutions {
                         if let Some(sample) = solution.results.best_sample() {
-                            if let Some(var_name) = domain.var_map.iter()
+                            if let Some(var_name) = domain
+                                .var_map
+                                .iter()
                                 .find(|(_, &idx)| idx == boundary_var)
                                 .map(|(name, _)| name)
                             {
@@ -451,7 +466,11 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
                     consensus.insert(boundary_var, new_consensus);
 
                     // Track residual
-                    let residual = if new_consensus != old_consensus { 1.0 } else { 0.0 };
+                    let residual = if new_consensus != old_consensus {
+                        1.0
+                    } else {
+                        0.0
+                    };
                     max_residual = max_residual.max(residual);
                 }
             }
@@ -461,7 +480,9 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
                 for &boundary_var in &domain.boundary_vars {
                     if let Some(solution) = solutions.iter().find(|s| s.domain_id == domain.id) {
                         if let Some(sample) = solution.results.best_sample() {
-                            if let Some(var_name) = domain.var_map.iter()
+                            if let Some(var_name) = domain
+                                .var_map
+                                .iter()
                                 .find(|(_, &idx)| idx == boundary_var)
                                 .map(|(name, _)| name)
                             {
@@ -499,7 +520,9 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
         if let Some(consensus) = &mut state.consensus_variables {
             for &boundary_var in &domain.boundary_vars {
                 if let Some(sample) = solution.results.best_sample() {
-                    if let Some(var_name) = domain.var_map.iter()
+                    if let Some(var_name) = domain
+                        .var_map
+                        .iter()
                         .find(|(_, &idx)| idx == boundary_var)
                         .map(|(name, _)| name)
                     {
@@ -528,7 +551,7 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
         // Use consensus variables as final solution
         if let Some(consensus) = &coordination_state.consensus_variables {
             let mut final_sample = HashMap::new();
-            
+
             // Collect all variables from all domains
             for domain in domains {
                 for (var_name, &local_idx) in &domain.var_map {
@@ -562,7 +585,7 @@ mod tests {
     fn test_domain_decomposer_creation() {
         let base_sampler = SASampler::new(None);
         let decomposer = DomainDecomposer::new(base_sampler);
-        
+
         assert_eq!(decomposer.max_coordination_iterations, 50);
         assert_eq!(decomposer.overlap_size, 2);
     }
@@ -571,21 +594,22 @@ mod tests {
     fn test_domain_decomposition() {
         let base_sampler = SASampler::new(None);
         let decomposer = DomainDecomposer::new(base_sampler);
-        
+
         // Create test QUBO
-        let qubo = Array2::from_shape_vec((6, 6), (0..36).map(|x| x as f64 * 0.1).collect()).unwrap();
-        
+        let qubo =
+            Array2::from_shape_vec((6, 6), (0..36).map(|x| x as f64 * 0.1).collect()).unwrap();
+
         let mut var_map = HashMap::new();
         for i in 0..6 {
             var_map.insert(format!("x{}", i), i);
         }
-        
+
         let domains = decomposer.decompose_into_domains(&qubo, &var_map);
         assert!(domains.is_ok());
-        
+
         let domains = domains.unwrap();
         assert!(!domains.is_empty());
-        
+
         // Check that domains cover all variables
         let mut all_vars = std::collections::HashSet::new();
         for domain in &domains {
@@ -600,15 +624,15 @@ mod tests {
     fn test_boundary_variable_detection() {
         let base_sampler = SASampler::new(None);
         let decomposer = DomainDecomposer::new(base_sampler);
-        
+
         // Create QUBO with clear structure
         let mut qubo = Array2::zeros((4, 4));
         qubo[[0, 1]] = 1.0; // Connection within domain
         qubo[[2, 3]] = 1.0; // Connection within domain
         qubo[[1, 2]] = 1.0; // Cross-domain connection
-        
+
         let domain_indices = vec![0, 1];
-        
+
         // Variable 1 should be boundary (connects to variable 2 outside domain)
         assert!(decomposer.is_boundary_variable(&qubo, 1, &domain_indices));
         // Variable 0 should not be boundary

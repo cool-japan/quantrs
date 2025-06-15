@@ -77,7 +77,7 @@ fn eigen_2x2(matrix: &Array2<Complex>, tolerance: f64) -> QuantRS2Result<EigenDe
     // For each eigenvalue, solve (A - λI)v = 0
     for (i, &lambda) in eigenvalues.iter().enumerate() {
         // Use the first row of (A - λI) to find eigenvector
-        let a_minus_lambda = a - lambda;
+        let _a_minus_lambda = a - lambda;
 
         if b.norm() > tolerance {
             // v = [b, λ - a]ᵀ (normalized)

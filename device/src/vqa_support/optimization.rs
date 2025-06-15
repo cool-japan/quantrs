@@ -488,16 +488,18 @@ impl OptimizationStrategy {
         #[cfg(feature = "scirs2")]
         {
             use super::scirs2_optimize::{minimize, unconstrained::Method};
-            
+
             // Define objective function closure
             let mut objective = |x: &ndarray::ArrayView1<f64>| -> f64 {
                 let owned_array = Array1::from_vec(x.to_vec());
-                problem.evaluate_objective(&owned_array).unwrap_or(f64::INFINITY)
+                problem
+                    .evaluate_objective(&owned_array)
+                    .unwrap_or(f64::INFINITY)
             };
 
             // Set up options with bounds if available
             let options = if let Some(ref bounds) = problem.bounds {
-                use super::scirs2_optimize::unconstrained::{Options, Bounds};
+                use super::scirs2_optimize::unconstrained::{Bounds, Options};
                 let bound_pairs: Vec<(Option<f64>, Option<f64>)> = bounds
                     .iter()
                     .map(|(low, high)| (Some(*low), Some(*high)))
@@ -523,15 +525,20 @@ impl OptimizationStrategy {
                 &initial_params.as_slice().unwrap(),
                 Method::LBFGSB,
                 options,
-            ).map_err(|e| crate::DeviceError::OptimizationError(format!("L-BFGS-B failed: {}", e)))?;
+            )
+            .map_err(|e| {
+                crate::DeviceError::OptimizationError(format!("L-BFGS-B failed: {}", e))
+            })?;
 
             let mut trajectory = OptimizationTrajectory::new();
             trajectory.objective_history = Array1::from(vec![result.fun]);
             trajectory.convergence_indicators.objective_convergence = result.success;
 
-            Ok(OptimizationResult::new(result.x, result.fun, result.success)
-                .with_iterations(result.nit, result.nfev)
-                .with_trajectory(trajectory))
+            Ok(
+                OptimizationResult::new(result.x, result.fun, result.success)
+                    .with_iterations(result.nit, result.nfev)
+                    .with_trajectory(trajectory),
+            )
         }
 
         #[cfg(not(feature = "scirs2"))]
@@ -545,19 +552,19 @@ impl OptimizationStrategy {
 
             for iteration in 0..max_iterations {
                 history.push(value);
-                
+
                 let gradient = problem.compute_gradient(&params)?;
                 let gradient_norm = gradient.iter().map(|&x| x * x).sum::<f64>().sqrt();
-                
+
                 if gradient_norm < self.config.convergence_tolerance {
                     break;
                 }
-                
+
                 // Simple line search
                 let step_size = learning_rate / (1.0 + iteration as f64 * 0.01);
                 params = &params - &(&gradient * step_size);
                 value = problem.evaluate_objective(&params)?;
-                
+
                 if value < self.config.convergence_tolerance {
                     break;
                 }
@@ -565,7 +572,8 @@ impl OptimizationStrategy {
 
             let mut trajectory = OptimizationTrajectory::new();
             trajectory.objective_history = Array1::from(history);
-            trajectory.convergence_indicators.objective_convergence = value < self.config.convergence_tolerance;
+            trajectory.convergence_indicators.objective_convergence =
+                value < self.config.convergence_tolerance;
 
             Ok(OptimizationResult::new(params, value, true)
                 .with_iterations(history.len(), history.len())
@@ -582,11 +590,13 @@ impl OptimizationStrategy {
         #[cfg(feature = "scirs2")]
         {
             use super::scirs2_optimize::{minimize, unconstrained::Method};
-            
+
             // Define objective function closure
             let mut objective = |x: &ndarray::ArrayView1<f64>| -> f64 {
                 let owned_array = Array1::from_vec(x.to_vec());
-                problem.evaluate_objective(&owned_array).unwrap_or(f64::INFINITY)
+                problem
+                    .evaluate_objective(&owned_array)
+                    .unwrap_or(f64::INFINITY)
             };
 
             let result = minimize(
@@ -594,15 +604,20 @@ impl OptimizationStrategy {
                 &initial_params.as_slice().unwrap(),
                 Method::NelderMead,
                 None,
-            ).map_err(|e| crate::DeviceError::OptimizationError(format!("Optimization failed: {}", e)))?;
+            )
+            .map_err(|e| {
+                crate::DeviceError::OptimizationError(format!("Optimization failed: {}", e))
+            })?;
 
             let mut trajectory = OptimizationTrajectory::new();
             trajectory.objective_history = Array1::from(vec![result.fun]);
             trajectory.convergence_indicators.objective_convergence = result.success;
 
-            Ok(OptimizationResult::new(result.x, result.fun, result.success)
-                .with_iterations(result.nit, result.nfev)
-                .with_trajectory(trajectory))
+            Ok(
+                OptimizationResult::new(result.x, result.fun, result.success)
+                    .with_iterations(result.nit, result.nfev)
+                    .with_trajectory(trajectory),
+            )
         }
 
         #[cfg(not(feature = "scirs2"))]
@@ -615,7 +630,7 @@ impl OptimizationStrategy {
 
             for iteration in 0..self.config.max_iterations {
                 history.push(value);
-                
+
                 // Compute penalty for constraint violations
                 let mut penalty = 0.0;
                 for constraint in &problem.constraints {
@@ -623,21 +638,21 @@ impl OptimizationStrategy {
                         penalty += penalty_weight;
                     }
                 }
-                
+
                 let penalized_value = value + penalty;
-                
+
                 if penalized_value < self.config.convergence_tolerance {
                     break;
                 }
-                
+
                 // Simple random perturbation with constraint projection
                 use rand::prelude::*;
                 let mut rng = rand::thread_rng();
-                
+
                 for param in params.iter_mut() {
                     *param += rng.gen_range(-0.1..0.1);
                 }
-                
+
                 // Project back to feasible region
                 if let Some(ref bounds) = problem.bounds {
                     for (i, param) in params.iter_mut().enumerate() {
@@ -646,13 +661,14 @@ impl OptimizationStrategy {
                         }
                     }
                 }
-                
+
                 value = problem.evaluate_objective(&params)?;
             }
 
             let mut trajectory = OptimizationTrajectory::new();
             trajectory.objective_history = Array1::from(history);
-            trajectory.convergence_indicators.objective_convergence = value < self.config.convergence_tolerance;
+            trajectory.convergence_indicators.objective_convergence =
+                value < self.config.convergence_tolerance;
 
             Ok(OptimizationResult::new(params, value, true)
                 .with_iterations(history.len(), history.len())
@@ -683,8 +699,10 @@ impl OptimizationStrategy {
     ) -> DeviceResult<OptimizationResult> {
         #[cfg(feature = "scirs2")]
         {
-            use super::scirs2_optimize::{differential_evolution, global::DifferentialEvolutionOptions};
-            
+            use super::scirs2_optimize::{
+                differential_evolution, global::DifferentialEvolutionOptions,
+            };
+
             // Define objective function closure
             let objective = |x: &ArrayView1<f64>| -> f64 {
                 let array1 = x.to_owned();
@@ -702,13 +720,13 @@ impl OptimizationStrategy {
             // Configure DE parameters
             let de_params = DifferentialEvolutionOptions {
                 popsize: (initial_params.len() * 15).max(30), // Population size heuristic
-                mutation: (0.5, 1.0),    // Mutation factor range
-                recombination: 0.7, // Crossover probability
+                mutation: (0.5, 1.0),                         // Mutation factor range
+                recombination: 0.7,                           // Crossover probability
                 seed: None,
                 atol: self.config.convergence_tolerance,
                 tol: self.config.convergence_tolerance,
                 maxiter: self.config.max_iterations,
-                polish: true,      // Polish the best result
+                polish: true, // Polish the best result
                 init: "latinhypercube".to_string(),
                 updating: "immediate".to_string(),
                 x0: Some(initial_params.clone()),
@@ -720,15 +738,23 @@ impl OptimizationStrategy {
                 bounds,
                 Some(de_params),
                 None, // No label
-            ).map_err(|e| crate::DeviceError::OptimizationError(format!("Differential Evolution failed: {}", e)))?;
+            )
+            .map_err(|e| {
+                crate::DeviceError::OptimizationError(format!(
+                    "Differential Evolution failed: {}",
+                    e
+                ))
+            })?;
 
             let mut trajectory = OptimizationTrajectory::new();
             trajectory.objective_history = Array1::from(vec![result.fun]);
             trajectory.convergence_indicators.objective_convergence = result.success;
 
-            Ok(OptimizationResult::new(result.x, result.fun, result.success)
-                .with_iterations(result.nit, result.nfev)
-                .with_trajectory(trajectory))
+            Ok(
+                OptimizationResult::new(result.x, result.fun, result.success)
+                    .with_iterations(result.nit, result.nfev)
+                    .with_trajectory(trajectory),
+            )
         }
 
         #[cfg(not(feature = "scirs2"))]
@@ -738,30 +764,29 @@ impl OptimizationStrategy {
             let population_size = (num_params * 10).max(20);
             let mutation_factor = 0.8;
             let crossover_prob = 0.7;
-            
+
             // Initialize population
             use rand::prelude::*;
             let mut rng = rand::thread_rng();
             let mut population = Vec::new();
             let mut fitness = Vec::new();
-            
+
             // Get bounds
             let bounds = if let Some(ref bounds) = problem.bounds {
                 bounds.clone()
             } else {
                 vec![(-std::f64::consts::PI, std::f64::consts::PI); num_params]
             };
-            
+
             // Initialize population randomly within bounds
             for _ in 0..population_size {
-                let individual = Array1::from_shape_fn(num_params, |i| {
-                    rng.gen_range(bounds[i].0..bounds[i].1)
-                });
+                let individual =
+                    Array1::from_shape_fn(num_params, |i| rng.gen_range(bounds[i].0..bounds[i].1));
                 let fit = problem.evaluate_objective(&individual)?;
                 population.push(individual);
                 fitness.push(fit);
             }
-            
+
             let mut best_idx = 0;
             let mut best_fitness = fitness[0];
             for (i, &fit) in fitness.iter().enumerate() {
@@ -770,25 +795,27 @@ impl OptimizationStrategy {
                     best_idx = i;
                 }
             }
-            
+
             let mut history = vec![best_fitness];
-            
+
             // Evolution loop
             for _generation in 0..self.config.max_iterations {
                 for i in 0..population_size {
                     // Select three random individuals different from current
-                    let mut indices: Vec<usize> = (0..population_size).filter(|&x| x != i).collect();
+                    let mut indices: Vec<usize> =
+                        (0..population_size).filter(|&x| x != i).collect();
                     indices.shuffle(&mut rng);
                     let (a, b, c) = (indices[0], indices[1], indices[2]);
-                    
+
                     // Mutation: v = a + F * (b - c)
-                    let mut mutant = &population[a] + &((&population[b] - &population[c]) * mutation_factor);
-                    
+                    let mut mutant =
+                        &population[a] + &((&population[b] - &population[c]) * mutation_factor);
+
                     // Apply bounds
                     for (j, param) in mutant.iter_mut().enumerate() {
                         *param = param.clamp(bounds[j].0, bounds[j].1);
                     }
-                    
+
                     // Crossover
                     let mut trial = population[i].clone();
                     let crossover_point = rng.gen_range(0..num_params);
@@ -797,34 +824,40 @@ impl OptimizationStrategy {
                             trial[j] = mutant[j];
                         }
                     }
-                    
+
                     // Selection
                     let trial_fitness = problem.evaluate_objective(&trial)?;
                     if trial_fitness < fitness[i] {
                         population[i] = trial;
                         fitness[i] = trial_fitness;
-                        
+
                         if trial_fitness < best_fitness {
                             best_fitness = trial_fitness;
                             best_idx = i;
                         }
                     }
                 }
-                
+
                 history.push(best_fitness);
-                
+
                 if best_fitness < self.config.convergence_tolerance {
                     break;
                 }
             }
-            
+
             let mut trajectory = OptimizationTrajectory::new();
             trajectory.objective_history = Array1::from(history);
-            trajectory.convergence_indicators.objective_convergence = best_fitness < self.config.convergence_tolerance;
+            trajectory.convergence_indicators.objective_convergence =
+                best_fitness < self.config.convergence_tolerance;
 
-            Ok(OptimizationResult::new(population[best_idx].clone(), best_fitness, true)
-                .with_iterations(trajectory.objective_history.len(), trajectory.objective_history.len() * population_size)
-                .with_trajectory(trajectory))
+            Ok(
+                OptimizationResult::new(population[best_idx].clone(), best_fitness, true)
+                    .with_iterations(
+                        trajectory.objective_history.len(),
+                        trajectory.objective_history.len() * population_size,
+                    )
+                    .with_trajectory(trajectory),
+            )
         }
     }
 

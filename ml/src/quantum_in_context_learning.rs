@@ -15,10 +15,10 @@
 use crate::error::{MLError, Result};
 use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
 use num_complex::Complex64;
-use std::collections::HashMap;
-use std::f64::consts::PI;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use std::collections::HashMap;
+use std::f64::consts::PI;
 
 /// Configuration for Quantum In-Context Learning
 #[derive(Debug, Clone)]
@@ -42,29 +42,25 @@ pub struct QuantumInContextLearningConfig {
 pub enum QuantumContextEncoding {
     /// Direct amplitude encoding of context
     AmplitudeEncoding,
-    
+
     /// Angle encoding with rotational gates
-    AngleEncoding {
-        rotation_axes: Vec<RotationAxis>,
-    },
-    
+    AngleEncoding { rotation_axes: Vec<RotationAxis> },
+
     /// Basis encoding using computational basis states
-    BasisEncoding {
-        encoding_depth: usize,
-    },
-    
+    BasisEncoding { encoding_depth: usize },
+
     /// Entanglement-based encoding for complex patterns
     EntanglementEncoding {
         entanglement_pattern: EntanglementPattern,
         encoding_layers: usize,
     },
-    
+
     /// Quantum Fourier encoding for frequency domain representation
     QuantumFourierEncoding {
         frequency_bins: usize,
         phase_precision: usize,
     },
-    
+
     /// Hierarchical encoding for multi-scale context
     HierarchicalEncoding {
         hierarchy_levels: usize,
@@ -76,30 +72,28 @@ pub enum QuantumContextEncoding {
 pub enum AdaptationStrategy {
     /// Direct context conditioning
     DirectConditioning,
-    
+
     /// Gradient-free adaptation using quantum interference
-    QuantumInterference {
-        interference_strength: f64,
-    },
-    
+    QuantumInterference { interference_strength: f64 },
+
     /// Meta-learning with quantum episodic memory
     QuantumMetaLearning {
         memory_capacity: usize,
         update_strategy: MetaUpdateStrategy,
     },
-    
+
     /// Prototype-based adaptation
     PrototypeBased {
         num_prototypes: usize,
         prototype_update_rate: f64,
     },
-    
+
     /// Attention-based context fusion
     AttentionFusion {
         fusion_layers: usize,
         attention_temperature: f64,
     },
-    
+
     /// Quantum state interpolation
     QuantumInterpolation {
         interpolation_method: InterpolationMethod,
@@ -108,9 +102,9 @@ pub enum AdaptationStrategy {
 
 #[derive(Debug, Clone)]
 pub enum MetaUpdateStrategy {
-    MAML,          // Model-Agnostic Meta-Learning
-    Reptile,       // First-order meta-learning
-    QuantumMAML,   // Quantum-enhanced MAML
+    MAML,        // Model-Agnostic Meta-Learning
+    Reptile,     // First-order meta-learning
+    QuantumMAML, // Quantum-enhanced MAML
     ContextualBandit,
 }
 
@@ -129,19 +123,19 @@ pub enum ContextRetrievalMethod {
         distance_metric: QuantumDistanceMetric,
         k_neighbors: usize,
     },
-    
+
     /// Attention-based retrieval
     AttentionRetrieval {
         attention_heads: usize,
         retrieval_temperature: f64,
     },
-    
+
     /// Quantum associative memory
     QuantumAssociativeMemory {
         memory_size: usize,
         association_strength: f64,
     },
-    
+
     /// Hierarchical retrieval with quantum tree search
     HierarchicalRetrieval {
         tree_depth: usize,
@@ -160,7 +154,9 @@ pub enum QuantumDistanceMetric {
 
 #[derive(Debug, Clone)]
 pub enum RotationAxis {
-    X, Y, Z, 
+    X,
+    Y,
+    Z,
     Custom { direction: Array1<f64> },
 }
 
@@ -177,24 +173,24 @@ pub enum EntanglementPattern {
 /// Main Quantum In-Context Learning model
 pub struct QuantumInContextLearner {
     config: QuantumInContextLearningConfig,
-    
+
     // Core components
     context_encoder: QuantumContextEncoder,
     task_adapter: QuantumTaskAdapter,
     quantum_memory: Option<QuantumEpisodicMemory>,
-    
+
     // Context processing
     context_attention: QuantumContextAttention,
     context_compressor: QuantumContextCompressor,
-    
+
     // Adaptation mechanisms
     adaptation_controller: AdaptationController,
     prototype_bank: PrototypeBank,
-    
+
     // Training state
     training_history: Vec<InContextLearningMetrics>,
     adaptation_performance: AdaptationPerformanceTracker,
-    
+
     // Quantum state management
     quantum_context_states: Vec<QuantumContextState>,
     entanglement_tracker: EntanglementTracker,
@@ -372,17 +368,28 @@ pub enum ClassicalOperation {
 
 #[derive(Debug, Clone)]
 pub enum ActivationFunction {
-    ReLU, Sigmoid, Tanh, GELU, Swish, None,
+    ReLU,
+    Sigmoid,
+    Tanh,
+    GELU,
+    Swish,
+    None,
 }
 
 #[derive(Debug, Clone)]
 pub enum NormalizationMethod {
-    BatchNorm, LayerNorm, InstanceNorm, GroupNorm,
+    BatchNorm,
+    LayerNorm,
+    InstanceNorm,
+    GroupNorm,
 }
 
 #[derive(Debug, Clone)]
 pub enum PoolingType {
-    Max, Average, Adaptive, Attention,
+    Max,
+    Average,
+    Adaptive,
+    Attention,
 }
 
 #[derive(Debug, Clone)]
@@ -435,9 +442,16 @@ pub enum AdaptationTarget {
 
 #[derive(Debug, Clone)]
 pub enum ActionSpace {
-    Discrete { num_actions: usize },
-    Continuous { action_dim: usize },
-    Hybrid { discrete_actions: usize, continuous_dim: usize },
+    Discrete {
+        num_actions: usize,
+    },
+    Continuous {
+        action_dim: usize,
+    },
+    Hybrid {
+        discrete_actions: usize,
+        continuous_dim: usize,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -481,9 +495,15 @@ pub struct QuantumRetrievalNetwork {
 #[derive(Debug, Clone)]
 pub enum RetrievalIndex {
     LinearScan,
-    QuantumHashTable { hash_functions: Vec<QuantumHashFunction> },
-    QuantumTree { tree_structure: QuantumTreeNode },
-    AssociativeNetwork { associations: Array2<f64> },
+    QuantumHashTable {
+        hash_functions: Vec<QuantumHashFunction>,
+    },
+    QuantumTree {
+        tree_structure: QuantumTreeNode,
+    },
+    AssociativeNetwork {
+        associations: Array2<f64>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -522,7 +542,9 @@ pub enum QuantumSplitFunction {
 #[derive(Debug, Clone)]
 pub enum MeasurementBasis {
     Computational,
-    PauliX, PauliY, PauliZ,
+    PauliX,
+    PauliY,
+    PauliZ,
     Bell,
     Custom { basis_vectors: Array2<Complex64> },
 }
@@ -563,8 +585,8 @@ pub enum ConsolidationStrategy {
 #[derive(Debug, Clone)]
 pub enum ForgettingMechanism {
     NoForgetting,
-    LRU,  // Least Recently Used
-    LFU,  // Least Frequently Used
+    LRU, // Least Recently Used
+    LFU, // Least Frequently Used
     ExponentialDecay { decay_rate: f64 },
     ImportanceBased { importance_threshold: f64 },
     QuantumForgetting { decoherence_rate: f64 },
@@ -752,36 +774,36 @@ impl QuantumInContextLearner {
     /// Create a new Quantum In-Context Learner
     pub fn new(config: QuantumInContextLearningConfig) -> Result<Self> {
         println!("🧠 Initializing Quantum In-Context Learning in UltraThink Mode");
-        
+
         // Initialize context encoder
         let context_encoder = QuantumContextEncoder::new(&config)?;
-        
+
         // Initialize task adapter
         let task_adapter = QuantumTaskAdapter::new(&config)?;
-        
+
         // Initialize quantum memory if enabled
         let quantum_memory = if config.use_quantum_memory {
             Some(QuantumEpisodicMemory::new(&config)?)
         } else {
             None
         };
-        
+
         // Initialize attention mechanism
         let context_attention = QuantumContextAttention::new(&config)?;
-        
+
         // Initialize context compressor
         let context_compressor = QuantumContextCompressor::new(&config)?;
-        
+
         // Initialize adaptation controller
         let adaptation_controller = AdaptationController::new(&config)?;
-        
+
         // Initialize prototype bank
         let prototype_bank = PrototypeBank::new(&config)?;
-        
+
         // Initialize trackers
         let entanglement_tracker = EntanglementTracker::new(&config)?;
         let adaptation_performance = AdaptationPerformanceTracker::default();
-        
+
         Ok(Self {
             config,
             context_encoder,
@@ -797,7 +819,7 @@ impl QuantumInContextLearner {
             entanglement_tracker,
         })
     }
-    
+
     /// Perform in-context learning for a new task
     pub fn learn_in_context(
         &mut self,
@@ -807,31 +829,33 @@ impl QuantumInContextLearner {
     ) -> Result<InContextLearningOutput> {
         // Encode context examples into quantum states
         let encoded_contexts = self.encode_context_examples(context_examples)?;
-        
+
         // Compress context if necessary
         let compressed_contexts = self.compress_contexts(&encoded_contexts)?;
-        
+
         // Apply attention to select relevant context
         let attended_context = self.apply_context_attention(&compressed_contexts, query_input)?;
-        
+
         // Adapt to the task using the attended context
-        let adaptation_result = self.adapt_to_task(&attended_context, query_input, adaptation_budget)?;
-        
+        let adaptation_result =
+            self.adapt_to_task(&attended_context, query_input, adaptation_budget)?;
+
         // Generate prediction
         let prediction = self.generate_prediction(&adaptation_result, query_input)?;
-        
+
         // Update quantum memory if enabled
         if let Some(ref mut memory) = self.quantum_memory {
             memory.update_with_experience(&attended_context, &adaptation_result)?;
         }
-        
+
         // Update prototype bank
-        self.prototype_bank.update_with_example(&attended_context, adaptation_result.performance)?;
-        
+        self.prototype_bank
+            .update_with_example(&attended_context, adaptation_result.performance)?;
+
         // Track performance metrics
         let metrics = self.compute_learning_metrics(&adaptation_result)?;
         self.training_history.push(metrics.clone());
-        
+
         Ok(InContextLearningOutput {
             prediction,
             adaptation_result,
@@ -839,28 +863,34 @@ impl QuantumInContextLearner {
             learning_metrics: metrics,
         })
     }
-    
+
     /// Encode context examples into quantum states
-    fn encode_context_examples(&self, examples: &[ContextExample]) -> Result<Vec<QuantumContextState>> {
+    fn encode_context_examples(
+        &self,
+        examples: &[ContextExample],
+    ) -> Result<Vec<QuantumContextState>> {
         let mut encoded_contexts = Vec::new();
-        
+
         for example in examples {
             let encoded_state = self.context_encoder.encode_example(example)?;
             encoded_contexts.push(encoded_state);
         }
-        
+
         Ok(encoded_contexts)
     }
-    
+
     /// Compress contexts to fit within quantum memory constraints
-    fn compress_contexts(&self, contexts: &[QuantumContextState]) -> Result<Vec<QuantumContextState>> {
+    fn compress_contexts(
+        &self,
+        contexts: &[QuantumContextState],
+    ) -> Result<Vec<QuantumContextState>> {
         if contexts.len() <= self.config.max_context_examples {
             return Ok(contexts.to_vec());
         }
-        
+
         self.context_compressor.compress_context_sequence(contexts)
     }
-    
+
     /// Apply quantum attention to select relevant context
     fn apply_context_attention(
         &self,
@@ -869,14 +899,17 @@ impl QuantumInContextLearner {
     ) -> Result<QuantumContextState> {
         // Encode query into quantum state
         let query_state = self.context_encoder.encode_query(query)?;
-        
+
         // Compute attention weights using quantum mechanisms
-        let attention_weights = self.context_attention.compute_attention_weights(&query_state, contexts)?;
-        
+        let attention_weights = self
+            .context_attention
+            .compute_attention_weights(&query_state, contexts)?;
+
         // Combine contexts using attention weights
-        self.context_attention.combine_contexts(contexts, &attention_weights)
+        self.context_attention
+            .combine_contexts(contexts, &attention_weights)
     }
-    
+
     /// Adapt the model to the specific task
     fn adapt_to_task(
         &mut self,
@@ -888,30 +921,43 @@ impl QuantumInContextLearner {
         match &adaptation_strategy {
             AdaptationStrategy::DirectConditioning => {
                 self.direct_conditioning_adaptation(context, query)
-            },
-            
-            AdaptationStrategy::QuantumInterference { interference_strength } => {
-                self.quantum_interference_adaptation(context, query, *interference_strength)
-            },
-            
-            AdaptationStrategy::QuantumMetaLearning { memory_capacity, update_strategy } => {
-                self.meta_learning_adaptation(context, query, *memory_capacity, update_strategy)
-            },
-            
-            AdaptationStrategy::PrototypeBased { num_prototypes, prototype_update_rate } => {
-                self.prototype_based_adaptation(context, query, *num_prototypes, *prototype_update_rate)
-            },
-            
-            AdaptationStrategy::AttentionFusion { fusion_layers, attention_temperature } => {
-                self.attention_fusion_adaptation(context, query, *fusion_layers, *attention_temperature)
-            },
-            
-            AdaptationStrategy::QuantumInterpolation { interpolation_method } => {
-                self.quantum_interpolation_adaptation(context, query, interpolation_method)
-            },
+            }
+
+            AdaptationStrategy::QuantumInterference {
+                interference_strength,
+            } => self.quantum_interference_adaptation(context, query, *interference_strength),
+
+            AdaptationStrategy::QuantumMetaLearning {
+                memory_capacity,
+                update_strategy,
+            } => self.meta_learning_adaptation(context, query, *memory_capacity, update_strategy),
+
+            AdaptationStrategy::PrototypeBased {
+                num_prototypes,
+                prototype_update_rate,
+            } => self.prototype_based_adaptation(
+                context,
+                query,
+                *num_prototypes,
+                *prototype_update_rate,
+            ),
+
+            AdaptationStrategy::AttentionFusion {
+                fusion_layers,
+                attention_temperature,
+            } => self.attention_fusion_adaptation(
+                context,
+                query,
+                *fusion_layers,
+                *attention_temperature,
+            ),
+
+            AdaptationStrategy::QuantumInterpolation {
+                interpolation_method,
+            } => self.quantum_interpolation_adaptation(context, query, interpolation_method),
         }
     }
-    
+
     /// Direct conditioning adaptation strategy
     fn direct_conditioning_adaptation(
         &self,
@@ -920,7 +966,7 @@ impl QuantumInContextLearner {
     ) -> Result<AdaptationResult> {
         // Directly condition the quantum state on the context
         let conditioned_state = self.apply_direct_conditioning(context, query)?;
-        
+
         Ok(AdaptationResult {
             adapted_state: conditioned_state,
             adaptation_steps: 1,
@@ -929,7 +975,7 @@ impl QuantumInContextLearner {
             adaptation_trajectory: Vec::new(),
         })
     }
-    
+
     /// Quantum interference-based adaptation
     fn quantum_interference_adaptation(
         &self,
@@ -938,9 +984,10 @@ impl QuantumInContextLearner {
         interference_strength: f64,
     ) -> Result<AdaptationResult> {
         // Use quantum interference to adapt without parameter updates
-        let interference_pattern = self.compute_interference_pattern(context, query, interference_strength)?;
+        let interference_pattern =
+            self.compute_interference_pattern(context, query, interference_strength)?;
         let adapted_state = self.apply_interference_adaptation(context, &interference_pattern)?;
-        
+
         Ok(AdaptationResult {
             adapted_state,
             adaptation_steps: 1,
@@ -949,7 +996,7 @@ impl QuantumInContextLearner {
             adaptation_trajectory: Vec::new(),
         })
     }
-    
+
     /// Meta-learning based adaptation
     fn meta_learning_adaptation(
         &mut self,
@@ -964,15 +1011,11 @@ impl QuantumInContextLearner {
         } else {
             Vec::new()
         };
-        
+
         // Apply meta-learning update
-        let adapted_state = self.apply_meta_learning_update(
-            context, 
-            query, 
-            &similar_contexts, 
-            update_strategy
-        )?;
-        
+        let adapted_state =
+            self.apply_meta_learning_update(context, query, &similar_contexts, update_strategy)?;
+
         Ok(AdaptationResult {
             adapted_state,
             adaptation_steps: similar_contexts.len() + 1,
@@ -981,7 +1024,7 @@ impl QuantumInContextLearner {
             adaptation_trajectory: Vec::new(),
         })
     }
-    
+
     /// Prototype-based adaptation
     fn prototype_based_adaptation(
         &self,
@@ -991,11 +1034,17 @@ impl QuantumInContextLearner {
         update_rate: f64,
     ) -> Result<AdaptationResult> {
         // Find nearest prototypes
-        let nearest_prototypes = self.prototype_bank.find_nearest_prototypes(context, num_prototypes)?;
-        
+        let nearest_prototypes = self
+            .prototype_bank
+            .find_nearest_prototypes(context, num_prototypes)?;
+
         // Interpolate between prototypes
-        let adapted_state = self.interpolate_prototypes(&nearest_prototypes.into_iter().cloned().collect::<Vec<_>>(), context, update_rate)?;
-        
+        let adapted_state = self.interpolate_prototypes(
+            &nearest_prototypes.into_iter().cloned().collect::<Vec<_>>(),
+            context,
+            update_rate,
+        )?;
+
         Ok(AdaptationResult {
             adapted_state,
             adaptation_steps: 1,
@@ -1004,7 +1053,7 @@ impl QuantumInContextLearner {
             adaptation_trajectory: Vec::new(),
         })
     }
-    
+
     /// Attention fusion adaptation
     fn attention_fusion_adaptation(
         &self,
@@ -1014,17 +1063,17 @@ impl QuantumInContextLearner {
         attention_temperature: f64,
     ) -> Result<AdaptationResult> {
         let mut current_state = context.clone();
-        
+
         // Apply multiple layers of attention fusion
         for layer in 0..fusion_layers {
             current_state = self.apply_attention_fusion_layer(
-                &current_state, 
-                query, 
+                &current_state,
+                query,
                 attention_temperature,
-                layer
+                layer,
             )?;
         }
-        
+
         Ok(AdaptationResult {
             adapted_state: current_state,
             adaptation_steps: fusion_layers,
@@ -1033,7 +1082,7 @@ impl QuantumInContextLearner {
             adaptation_trajectory: Vec::new(),
         })
     }
-    
+
     /// Quantum interpolation adaptation
     fn quantum_interpolation_adaptation(
         &self,
@@ -1043,23 +1092,23 @@ impl QuantumInContextLearner {
     ) -> Result<AdaptationResult> {
         // Find reference states for interpolation
         let reference_states = self.find_reference_states(context, query)?;
-        
+
         // Perform quantum interpolation
         let adapted_state = match interpolation_method {
             InterpolationMethod::LinearInterpolation => {
                 self.linear_quantum_interpolation(&reference_states, context)?
-            },
+            }
             InterpolationMethod::SphericalInterpolation => {
                 self.spherical_quantum_interpolation(&reference_states, context)?
-            },
+            }
             InterpolationMethod::QuantumGeodetic => {
                 self.geodetic_quantum_interpolation(&reference_states, context)?
-            },
+            }
             InterpolationMethod::EntanglementBased => {
                 self.entanglement_based_interpolation(&reference_states, context)?
-            },
+            }
         };
-        
+
         Ok(AdaptationResult {
             adapted_state,
             adaptation_steps: 1,
@@ -1068,7 +1117,7 @@ impl QuantumInContextLearner {
             adaptation_trajectory: Vec::new(),
         })
     }
-    
+
     /// Generate prediction from adapted state
     fn generate_prediction(
         &self,
@@ -1076,12 +1125,17 @@ impl QuantumInContextLearner {
         query: &Array1<f64>,
     ) -> Result<Array1<f64>> {
         // Apply the adapted quantum state to generate prediction
-        let prediction = self.task_adapter.apply_adapted_state(&adaptation_result.adapted_state, query)?;
+        let prediction = self
+            .task_adapter
+            .apply_adapted_state(&adaptation_result.adapted_state, query)?;
         Ok(prediction)
     }
-    
+
     /// Compute learning metrics for tracking performance
-    fn compute_learning_metrics(&self, adaptation_result: &AdaptationResult) -> Result<InContextLearningMetrics> {
+    fn compute_learning_metrics(
+        &self,
+        adaptation_result: &AdaptationResult,
+    ) -> Result<InContextLearningMetrics> {
         Ok(InContextLearningMetrics {
             episode: self.training_history.len(),
             task_performance: adaptation_result.performance,
@@ -1095,15 +1149,17 @@ impl QuantumInContextLearner {
             adaptation_stability: self.compute_adaptation_stability()?,
         })
     }
-    
+
     /// Zero-shot learning without any context examples
     pub fn zero_shot_learning(&self, query: &Array1<f64>) -> Result<Array1<f64>> {
         // Apply pre-trained quantum state directly
         let zero_shot_state = self.get_base_quantum_state()?;
-        let prediction = self.task_adapter.apply_adapted_state(&zero_shot_state, query)?;
+        let prediction = self
+            .task_adapter
+            .apply_adapted_state(&zero_shot_state, query)?;
         Ok(prediction)
     }
-    
+
     /// Few-shot learning with minimal examples
     pub fn few_shot_learning(
         &mut self,
@@ -1117,10 +1173,10 @@ impl QuantumInContextLearner {
         } else {
             examples
         };
-        
+
         self.learn_in_context(limited_examples, query, None)
     }
-    
+
     /// Evaluate transfer learning performance
     pub fn evaluate_transfer_learning(
         &mut self,
@@ -1129,40 +1185,43 @@ impl QuantumInContextLearner {
         evaluation_queries: &[Array1<f64>],
     ) -> Result<TransferLearningResults> {
         let mut results = TransferLearningResults::default();
-        
+
         // Train on source tasks
         for (task_idx, source_task) in source_tasks.iter().enumerate() {
             for example in source_task {
                 // Update internal representations with source task
                 self.update_with_source_task(example)?;
             }
-            
+
             // Evaluate on target task
-            let target_performance = self.evaluate_on_target_task(target_task, evaluation_queries)?;
+            let target_performance =
+                self.evaluate_on_target_task(target_task, evaluation_queries)?;
             results.source_task_performances.push(target_performance);
         }
-        
+
         // Final evaluation on target task
-        results.final_target_performance = self.evaluate_on_target_task(target_task, evaluation_queries)?;
-        results.transfer_ratio = results.final_target_performance / results.source_task_performances[0];
-        
+        results.final_target_performance =
+            self.evaluate_on_target_task(target_task, evaluation_queries)?;
+        results.transfer_ratio =
+            results.final_target_performance / results.source_task_performances[0];
+
         Ok(results)
     }
-    
+
     /// Update model with experience from source task
     fn update_with_source_task(&mut self, example: &ContextExample) -> Result<()> {
         // Update prototype bank
         let encoded_state = self.context_encoder.encode_example(example)?;
         self.prototype_bank.add_prototype(encoded_state.clone())?;
-        
+
         // Update quantum memory if enabled
         if let Some(ref mut memory) = self.quantum_memory {
             memory.add_experience(encoded_state)?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Evaluate performance on target task
     fn evaluate_on_target_task(
         &mut self,
@@ -1170,28 +1229,37 @@ impl QuantumInContextLearner {
         queries: &[Array1<f64>],
     ) -> Result<f64> {
         let mut total_performance = 0.0;
-        
+
         for query in queries {
             let result = self.learn_in_context(target_examples, query, None)?;
             total_performance += result.learning_metrics.task_performance;
         }
-        
+
         Ok(total_performance / queries.len() as f64)
     }
-    
+
     /// Get current learning statistics
     pub fn get_learning_statistics(&self) -> InContextLearningStatistics {
         InContextLearningStatistics {
             total_episodes: self.training_history.len(),
-            average_performance: self.training_history.iter()
+            average_performance: self
+                .training_history
+                .iter()
                 .map(|m| m.task_performance)
-                .sum::<f64>() / self.training_history.len().max(1) as f64,
-            average_adaptation_speed: self.training_history.iter()
+                .sum::<f64>()
+                / self.training_history.len().max(1) as f64,
+            average_adaptation_speed: self
+                .training_history
+                .iter()
                 .map(|m| m.adaptation_speed)
-                .sum::<f64>() / self.training_history.len().max(1) as f64,
-            quantum_advantage: self.training_history.iter()
+                .sum::<f64>()
+                / self.training_history.len().max(1) as f64,
+            quantum_advantage: self
+                .training_history
+                .iter()
                 .map(|m| m.quantum_advantage)
-                .sum::<f64>() / self.training_history.len().max(1) as f64,
+                .sum::<f64>()
+                / self.training_history.len().max(1) as f64,
             memory_utilization: if let Some(ref memory) = self.quantum_memory {
                 memory.get_utilization()
             } else {
@@ -1201,14 +1269,23 @@ impl QuantumInContextLearner {
             entanglement_efficiency: self.entanglement_tracker.compute_efficiency(),
         }
     }
-    
+
     // Helper methods (implementation details would be extensive)
-    fn apply_direct_conditioning(&self, context: &QuantumContextState, query: &Array1<f64>) -> Result<QuantumContextState> {
+    fn apply_direct_conditioning(
+        &self,
+        context: &QuantumContextState,
+        query: &Array1<f64>,
+    ) -> Result<QuantumContextState> {
         // Placeholder implementation
         Ok(context.clone())
     }
-    
-    fn compute_interference_pattern(&self, context: &QuantumContextState, query: &Array1<f64>, strength: f64) -> Result<InterferencePattern> {
+
+    fn compute_interference_pattern(
+        &self,
+        context: &QuantumContextState,
+        query: &Array1<f64>,
+        strength: f64,
+    ) -> Result<InterferencePattern> {
         Ok(InterferencePattern {
             pattern_type: InterferencePatternType::Constructive,
             amplitude: strength,
@@ -1217,12 +1294,16 @@ impl QuantumInContextLearner {
             spatial_extent: Array1::zeros(self.config.num_qubits),
         })
     }
-    
-    fn apply_interference_adaptation(&self, context: &QuantumContextState, pattern: &InterferencePattern) -> Result<QuantumContextState> {
+
+    fn apply_interference_adaptation(
+        &self,
+        context: &QuantumContextState,
+        pattern: &InterferencePattern,
+    ) -> Result<QuantumContextState> {
         // Placeholder implementation
         Ok(context.clone())
     }
-    
+
     fn apply_meta_learning_update(
         &self,
         context: &QuantumContextState,
@@ -1233,7 +1314,7 @@ impl QuantumInContextLearner {
         // Placeholder implementation
         Ok(context.clone())
     }
-    
+
     fn interpolate_prototypes(
         &self,
         prototypes: &[QuantumPrototype],
@@ -1243,7 +1324,7 @@ impl QuantumInContextLearner {
         // Placeholder implementation
         Ok(context.clone())
     }
-    
+
     fn apply_attention_fusion_layer(
         &self,
         state: &QuantumContextState,
@@ -1254,44 +1335,64 @@ impl QuantumInContextLearner {
         // Placeholder implementation
         Ok(state.clone())
     }
-    
-    fn find_reference_states(&self, context: &QuantumContextState, query: &Array1<f64>) -> Result<Vec<QuantumContextState>> {
+
+    fn find_reference_states(
+        &self,
+        context: &QuantumContextState,
+        query: &Array1<f64>,
+    ) -> Result<Vec<QuantumContextState>> {
         // Placeholder implementation
         Ok(vec![context.clone()])
     }
-    
-    fn linear_quantum_interpolation(&self, states: &[QuantumContextState], target: &QuantumContextState) -> Result<QuantumContextState> {
+
+    fn linear_quantum_interpolation(
+        &self,
+        states: &[QuantumContextState],
+        target: &QuantumContextState,
+    ) -> Result<QuantumContextState> {
         // Placeholder implementation
         Ok(target.clone())
     }
-    
-    fn spherical_quantum_interpolation(&self, states: &[QuantumContextState], target: &QuantumContextState) -> Result<QuantumContextState> {
+
+    fn spherical_quantum_interpolation(
+        &self,
+        states: &[QuantumContextState],
+        target: &QuantumContextState,
+    ) -> Result<QuantumContextState> {
         // Placeholder implementation
         Ok(target.clone())
     }
-    
-    fn geodetic_quantum_interpolation(&self, states: &[QuantumContextState], target: &QuantumContextState) -> Result<QuantumContextState> {
+
+    fn geodetic_quantum_interpolation(
+        &self,
+        states: &[QuantumContextState],
+        target: &QuantumContextState,
+    ) -> Result<QuantumContextState> {
         // Placeholder implementation
         Ok(target.clone())
     }
-    
-    fn entanglement_based_interpolation(&self, states: &[QuantumContextState], target: &QuantumContextState) -> Result<QuantumContextState> {
+
+    fn entanglement_based_interpolation(
+        &self,
+        states: &[QuantumContextState],
+        target: &QuantumContextState,
+    ) -> Result<QuantumContextState> {
         // Placeholder implementation
         Ok(target.clone())
     }
-    
+
     fn estimate_quantum_advantage(&self, adaptation_result: &AdaptationResult) -> Result<f64> {
         // Estimate quantum advantage based on entanglement and quantum resources
         let entanglement_contribution = adaptation_result.adapted_state.entanglement_measure * 2.0;
         let coherence_contribution = adaptation_result.adapted_state.coherence_time;
         Ok(1.0 + entanglement_contribution + coherence_contribution)
     }
-    
+
     fn compute_context_utilization(&self) -> Result<f64> {
         // Placeholder implementation
         Ok(0.8)
     }
-    
+
     fn compute_memory_efficiency(&self) -> Result<f64> {
         if let Some(ref memory) = self.quantum_memory {
             Ok(memory.compute_efficiency())
@@ -1299,31 +1400,35 @@ impl QuantumInContextLearner {
             Ok(1.0)
         }
     }
-    
+
     fn compute_adaptation_stability(&self) -> Result<f64> {
         if self.training_history.len() < 2 {
             return Ok(1.0);
         }
-        
-        let recent_performances: Vec<f64> = self.training_history
+
+        let recent_performances: Vec<f64> = self
+            .training_history
             .iter()
             .rev()
             .take(10)
             .map(|m| m.task_performance)
             .collect();
-        
+
         let mean = recent_performances.iter().sum::<f64>() / recent_performances.len() as f64;
-        let variance = recent_performances.iter()
+        let variance = recent_performances
+            .iter()
             .map(|&x| (x - mean).powi(2))
-            .sum::<f64>() / recent_performances.len() as f64;
-        
+            .sum::<f64>()
+            / recent_performances.len() as f64;
+
         Ok(1.0 / (1.0 + variance))
     }
-    
+
     fn get_base_quantum_state(&self) -> Result<QuantumContextState> {
         // Return default quantum state for zero-shot learning
         Ok(QuantumContextState {
-            quantum_amplitudes: Array1::ones(2_usize.pow(self.config.num_qubits as u32)).mapv(|_: f64| Complex64::new(1.0, 0.0)),
+            quantum_amplitudes: Array1::ones(2_usize.pow(self.config.num_qubits as u32))
+                .mapv(|_: f64| Complex64::new(1.0, 0.0)),
             classical_features: Array1::zeros(self.config.model_dim),
             entanglement_measure: 0.0,
             coherence_time: 1.0,
@@ -1352,11 +1457,12 @@ impl QuantumContextEncoder {
             parameter_cache: HashMap::new(),
         })
     }
-    
+
     pub fn encode_example(&self, example: &ContextExample) -> Result<QuantumContextState> {
         // Placeholder implementation
         Ok(QuantumContextState {
-            quantum_amplitudes: Array1::ones(2_usize.pow(self.num_qubits as u32)).mapv(|_: f64| Complex64::new(1.0, 0.0)),
+            quantum_amplitudes: Array1::ones(2_usize.pow(self.num_qubits as u32))
+                .mapv(|_: f64| Complex64::new(1.0, 0.0)),
             classical_features: example.input.clone(),
             entanglement_measure: 0.5,
             coherence_time: 1.0,
@@ -1365,11 +1471,12 @@ impl QuantumContextEncoder {
             context_metadata: example.metadata.clone(),
         })
     }
-    
+
     pub fn encode_query(&self, query: &Array1<f64>) -> Result<QuantumContextState> {
         // Placeholder implementation
         Ok(QuantumContextState {
-            quantum_amplitudes: Array1::ones(2_usize.pow(self.num_qubits as u32)).mapv(|_: f64| Complex64::new(1.0, 0.0)),
+            quantum_amplitudes: Array1::ones(2_usize.pow(self.num_qubits as u32))
+                .mapv(|_: f64| Complex64::new(1.0, 0.0)),
             classical_features: query.clone(),
             entanglement_measure: 0.0,
             coherence_time: 1.0,
@@ -1395,8 +1502,12 @@ impl QuantumTaskAdapter {
             adaptation_history: Vec::new(),
         })
     }
-    
-    pub fn apply_adapted_state(&self, state: &QuantumContextState, query: &Array1<f64>) -> Result<Array1<f64>> {
+
+    pub fn apply_adapted_state(
+        &self,
+        state: &QuantumContextState,
+        query: &Array1<f64>,
+    ) -> Result<Array1<f64>> {
         // Apply quantum state to generate prediction
         // This would involve quantum measurements and classical post-processing
         Ok(state.classical_features.clone())
@@ -1413,8 +1524,12 @@ impl QuantumEpisodicMemory {
             forgetting_mechanism: ForgettingMechanism::LRU,
         })
     }
-    
-    pub fn update_with_experience(&mut self, context: &QuantumContextState, result: &AdaptationResult) -> Result<()> {
+
+    pub fn update_with_experience(
+        &mut self,
+        context: &QuantumContextState,
+        result: &AdaptationResult,
+    ) -> Result<()> {
         // Add new memory entry
         let entry = EpisodicMemoryEntry {
             episode_id: self.memory_entries.len(),
@@ -1425,31 +1540,39 @@ impl QuantumEpisodicMemory {
             importance_score: result.performance,
             consolidation_level: 0.0,
         };
-        
+
         self.memory_entries.push(entry);
-        
+
         // Apply forgetting mechanism if at capacity
         if self.memory_entries.len() > self.memory_capacity {
             self.apply_forgetting_mechanism()?;
         }
-        
+
         Ok(())
     }
-    
-    pub fn retrieve_similar_contexts(&self, query: &QuantumContextState, k: usize) -> Result<Vec<QuantumContextState>> {
+
+    pub fn retrieve_similar_contexts(
+        &self,
+        query: &QuantumContextState,
+        k: usize,
+    ) -> Result<Vec<QuantumContextState>> {
         // Retrieve k most similar contexts
         let mut similarities = Vec::new();
-        
+
         for entry in &self.memory_entries {
             let similarity = self.compute_similarity(query, &entry.context_state)?;
             similarities.push((similarity, entry.context_state.clone()));
         }
-        
+
         // Sort by similarity and return top k
         similarities.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
-        Ok(similarities.into_iter().take(k).map(|(_, state)| state).collect())
+        Ok(similarities
+            .into_iter()
+            .take(k)
+            .map(|(_, state)| state)
+            .collect())
     }
-    
+
     pub fn add_experience(&mut self, state: QuantumContextState) -> Result<()> {
         // Simplified version of update_with_experience
         let entry = EpisodicMemoryEntry {
@@ -1461,48 +1584,62 @@ impl QuantumEpisodicMemory {
             importance_score: 0.8,
             consolidation_level: 0.0,
         };
-        
+
         self.memory_entries.push(entry);
         Ok(())
     }
-    
+
     pub fn get_utilization(&self) -> f64 {
         self.memory_entries.len() as f64 / self.memory_capacity as f64
     }
-    
+
     pub fn compute_efficiency(&self) -> f64 {
         if self.memory_entries.is_empty() {
             return 1.0;
         }
-        
-        let avg_performance = self.memory_entries.iter()
+
+        let avg_performance = self
+            .memory_entries
+            .iter()
             .map(|entry| entry.task_performance)
-            .sum::<f64>() / self.memory_entries.len() as f64;
-        
+            .sum::<f64>()
+            / self.memory_entries.len() as f64;
+
         avg_performance
     }
-    
-    fn compute_similarity(&self, query: &QuantumContextState, stored: &QuantumContextState) -> Result<f64> {
+
+    fn compute_similarity(
+        &self,
+        query: &QuantumContextState,
+        stored: &QuantumContextState,
+    ) -> Result<f64> {
         // Simplified similarity computation
-        let feature_similarity = 1.0 - (&query.classical_features - &stored.classical_features)
-            .mapv(|x| x.abs()).sum() / query.classical_features.len() as f64;
-        
-        let entanglement_similarity = 1.0 - (query.entanglement_measure - stored.entanglement_measure).abs();
-        
+        let feature_similarity = 1.0
+            - (&query.classical_features - &stored.classical_features)
+                .mapv(|x| x.abs())
+                .sum()
+                / query.classical_features.len() as f64;
+
+        let entanglement_similarity =
+            1.0 - (query.entanglement_measure - stored.entanglement_measure).abs();
+
         Ok((feature_similarity + entanglement_similarity) / 2.0)
     }
-    
+
     fn apply_forgetting_mechanism(&mut self) -> Result<()> {
         match self.forgetting_mechanism {
             ForgettingMechanism::LRU => {
                 // Remove least recently used entry
-                if let Some(min_idx) = self.memory_entries.iter()
+                if let Some(min_idx) = self
+                    .memory_entries
+                    .iter()
                     .enumerate()
                     .min_by_key(|(_, entry)| entry.last_accessed)
-                    .map(|(idx, _)| idx) {
+                    .map(|(idx, _)| idx)
+                {
                     self.memory_entries.remove(min_idx);
                 }
-            },
+            }
             _ => {
                 // Default: remove oldest entry
                 if !self.memory_entries.is_empty() {
@@ -1547,7 +1684,7 @@ impl QuantumContextAttention {
                 entanglement_strength: config.entanglement_strength,
             })
             .collect();
-        
+
         Ok(Self {
             attention_mechanism: config.quantum_context_encoding.clone().into(),
             attention_heads,
@@ -1555,52 +1692,55 @@ impl QuantumContextAttention {
             attention_cache: AttentionCache::default(),
         })
     }
-    
+
     pub fn compute_attention_weights(
         &self,
         query: &QuantumContextState,
         contexts: &[QuantumContextState],
     ) -> Result<Array1<f64>> {
         let mut weights = Array1::zeros(contexts.len());
-        
+
         for (i, context) in contexts.iter().enumerate() {
             // Compute quantum attention weight
             let similarity = self.compute_quantum_similarity(query, context)?;
             weights[i] = similarity;
         }
-        
+
         // Apply softmax normalization
         let max_weight = weights.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
         let exp_weights = weights.mapv(|w| (w - max_weight).exp());
         let sum_exp = exp_weights.sum();
-        
+
         Ok(exp_weights / sum_exp)
     }
-    
+
     pub fn combine_contexts(
         &self,
         contexts: &[QuantumContextState],
         weights: &Array1<f64>,
     ) -> Result<QuantumContextState> {
         if contexts.is_empty() {
-            return Err(MLError::ModelCreationError("No contexts to combine".to_string()));
+            return Err(MLError::ModelCreationError(
+                "No contexts to combine".to_string(),
+            ));
         }
-        
+
         // Weighted combination of quantum states
         let mut combined_amplitudes = Array1::zeros(contexts[0].quantum_amplitudes.len());
         let mut combined_features = Array1::zeros(contexts[0].classical_features.len());
         let mut combined_entanglement = 0.0;
         let mut combined_coherence = 0.0;
         let mut combined_fidelity = 0.0;
-        
+
         for (context, &weight) in contexts.iter().zip(weights.iter()) {
-            combined_amplitudes = &combined_amplitudes + &(weight * &context.quantum_amplitudes.mapv(|c| c.re));
+            combined_amplitudes =
+                &combined_amplitudes + &(weight * &context.quantum_amplitudes.mapv(|c| c.re));
             combined_features = &combined_features + &(weight * &context.classical_features);
             combined_entanglement += weight * context.entanglement_measure;
             combined_coherence += weight * context.coherence_time;
             combined_fidelity += weight * context.fidelity;
         }
-        
+
         Ok(QuantumContextState {
             quantum_amplitudes: combined_amplitudes.mapv(|x| Complex64::new(x, 0.0)),
             classical_features: combined_features,
@@ -1611,17 +1751,26 @@ impl QuantumContextAttention {
             context_metadata: contexts[0].context_metadata.clone(),
         })
     }
-    
-    fn compute_quantum_similarity(&self, query: &QuantumContextState, context: &QuantumContextState) -> Result<f64> {
+
+    fn compute_quantum_similarity(
+        &self,
+        query: &QuantumContextState,
+        context: &QuantumContextState,
+    ) -> Result<f64> {
         // Simplified quantum fidelity computation
-        let amplitude_similarity = query.quantum_amplitudes.iter()
+        let amplitude_similarity = query
+            .quantum_amplitudes
+            .iter()
             .zip(context.quantum_amplitudes.iter())
             .map(|(a, b)| (a.conj() * b).norm())
             .sum::<f64>();
-        
-        let feature_similarity = 1.0 - (&query.classical_features - &context.classical_features)
-            .mapv(|x| x.abs()).sum() / query.classical_features.len() as f64;
-        
+
+        let feature_similarity = 1.0
+            - (&query.classical_features - &context.classical_features)
+                .mapv(|x| x.abs())
+                .sum()
+                / query.classical_features.len() as f64;
+
         Ok((amplitude_similarity + feature_similarity) / 2.0)
     }
 }
@@ -1629,10 +1778,21 @@ impl QuantumContextAttention {
 impl From<QuantumContextEncoding> for QuantumAttentionMechanism {
     fn from(encoding: QuantumContextEncoding) -> Self {
         match encoding {
-            QuantumContextEncoding::AmplitudeEncoding => QuantumAttentionMechanism::SingleHead { attention_dim: 64 },
-            QuantumContextEncoding::AngleEncoding { .. } => QuantumAttentionMechanism::MultiHead { num_heads: 4, head_dim: 16 },
-            QuantumContextEncoding::EntanglementEncoding { .. } => QuantumAttentionMechanism::EntanglementBased { entanglement_strength: 0.5 },
-            QuantumContextEncoding::QuantumFourierEncoding { .. } => QuantumAttentionMechanism::QuantumFourier { frequency_bins: 32 },
+            QuantumContextEncoding::AmplitudeEncoding => {
+                QuantumAttentionMechanism::SingleHead { attention_dim: 64 }
+            }
+            QuantumContextEncoding::AngleEncoding { .. } => QuantumAttentionMechanism::MultiHead {
+                num_heads: 4,
+                head_dim: 16,
+            },
+            QuantumContextEncoding::EntanglementEncoding { .. } => {
+                QuantumAttentionMechanism::EntanglementBased {
+                    entanglement_strength: 0.5,
+                }
+            }
+            QuantumContextEncoding::QuantumFourierEncoding { .. } => {
+                QuantumAttentionMechanism::QuantumFourier { frequency_bins: 32 }
+            }
             _ => QuantumAttentionMechanism::SingleHead { attention_dim: 64 },
         }
     }
@@ -1642,30 +1802,40 @@ impl QuantumContextCompressor {
     pub fn new(config: &QuantumInContextLearningConfig) -> Result<Self> {
         Ok(Self {
             compression_ratio: config.context_compression_ratio,
-            compression_method: CompressionMethod::QuantumPCA { num_components: (config.context_length as f64 * config.context_compression_ratio) as usize },
+            compression_method: CompressionMethod::QuantumPCA {
+                num_components: (config.context_length as f64 * config.context_compression_ratio)
+                    as usize,
+            },
             compression_parameters: Array1::zeros(10),
             decompression_fidelity: 0.95,
         })
     }
-    
-    pub fn compress_context_sequence(&self, contexts: &[QuantumContextState]) -> Result<Vec<QuantumContextState>> {
+
+    pub fn compress_context_sequence(
+        &self,
+        contexts: &[QuantumContextState],
+    ) -> Result<Vec<QuantumContextState>> {
         if contexts.is_empty() {
             return Ok(Vec::new());
         }
-        
+
         // Simple compression: select most important contexts
         let target_size = (contexts.len() as f64 * self.compression_ratio) as usize;
         let target_size = target_size.max(1);
-        
-        let mut indexed_contexts: Vec<(usize, &QuantumContextState)> = contexts.iter().enumerate().collect();
-        
+
+        let mut indexed_contexts: Vec<(usize, &QuantumContextState)> =
+            contexts.iter().enumerate().collect();
+
         // Sort by importance (simplified as entanglement measure)
         indexed_contexts.sort_by(|a, b| {
-            b.1.entanglement_measure.partial_cmp(&a.1.entanglement_measure).unwrap()
+            b.1.entanglement_measure
+                .partial_cmp(&a.1.entanglement_measure)
+                .unwrap()
         });
-        
+
         // Take top contexts
-        Ok(indexed_contexts.into_iter()
+        Ok(indexed_contexts
+            .into_iter()
             .take(target_size)
             .map(|(_, context)| context.clone())
             .collect())
@@ -1702,29 +1872,39 @@ impl PrototypeBank {
         Ok(Self {
             prototypes: Vec::new(),
             prototype_capacity: 100, // Default capacity
-            update_strategy: PrototypeUpdateStrategy::OnlineUpdate { learning_rate: 0.01 },
+            update_strategy: PrototypeUpdateStrategy::OnlineUpdate {
+                learning_rate: 0.01,
+            },
             similarity_threshold: 0.8,
         })
     }
-    
+
     pub fn find_nearest_prototypes(
         &self,
         query: &QuantumContextState,
         k: usize,
     ) -> Result<Vec<&QuantumPrototype>> {
         let mut similarities = Vec::new();
-        
+
         for prototype in &self.prototypes {
             let similarity = self.compute_prototype_similarity(query, &prototype.quantum_state)?;
             similarities.push((similarity, prototype));
         }
-        
+
         // Sort by similarity and return top k
         similarities.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
-        Ok(similarities.into_iter().take(k).map(|(_, proto)| proto).collect())
+        Ok(similarities
+            .into_iter()
+            .take(k)
+            .map(|(_, proto)| proto)
+            .collect())
     }
-    
-    pub fn update_with_example(&mut self, context: &QuantumContextState, performance: f64) -> Result<()> {
+
+    pub fn update_with_example(
+        &mut self,
+        context: &QuantumContextState,
+        performance: f64,
+    ) -> Result<()> {
         // Find nearest prototype or create new one
         if let Some(nearest_proto) = self.find_nearest_prototype(context)? {
             // Update existing prototype
@@ -1733,10 +1913,10 @@ impl PrototypeBank {
             // Create new prototype
             self.create_new_prototype(context, performance)?;
         }
-        
+
         Ok(())
     }
-    
+
     pub fn add_prototype(&mut self, state: QuantumContextState) -> Result<()> {
         let prototype = QuantumPrototype {
             prototype_id: self.prototypes.len(),
@@ -1751,85 +1931,107 @@ impl PrototypeBank {
             },
             update_count: 0,
         };
-        
+
         self.prototypes.push(prototype);
         Ok(())
     }
-    
+
     pub fn get_prototype_count(&self) -> usize {
         self.prototypes.len()
     }
-    
-    fn compute_prototype_similarity(&self, query: &QuantumContextState, prototype: &QuantumContextState) -> Result<f64> {
+
+    fn compute_prototype_similarity(
+        &self,
+        query: &QuantumContextState,
+        prototype: &QuantumContextState,
+    ) -> Result<f64> {
         // Simplified similarity computation
-        let feature_sim = 1.0 - (&query.classical_features - &prototype.classical_features)
-            .mapv(|x| x.abs()).sum() / query.classical_features.len() as f64;
-        
-        let entanglement_sim = 1.0 - (query.entanglement_measure - prototype.entanglement_measure).abs();
-        
+        let feature_sim = 1.0
+            - (&query.classical_features - &prototype.classical_features)
+                .mapv(|x| x.abs())
+                .sum()
+                / query.classical_features.len() as f64;
+
+        let entanglement_sim =
+            1.0 - (query.entanglement_measure - prototype.entanglement_measure).abs();
+
         Ok((feature_sim + entanglement_sim) / 2.0)
     }
-    
+
     fn find_nearest_prototype(&self, context: &QuantumContextState) -> Result<Option<usize>> {
         if self.prototypes.is_empty() {
             return Ok(None);
         }
-        
+
         let mut best_similarity = 0.0;
         let mut best_idx = 0;
-        
+
         for (idx, prototype) in self.prototypes.iter().enumerate() {
-            let similarity = self.compute_prototype_similarity(context, &prototype.quantum_state)?;
+            let similarity =
+                self.compute_prototype_similarity(context, &prototype.quantum_state)?;
             if similarity > best_similarity {
                 best_similarity = similarity;
                 best_idx = idx;
             }
         }
-        
+
         if best_similarity > self.similarity_threshold {
             Ok(Some(best_idx))
         } else {
             Ok(None)
         }
     }
-    
-    fn update_prototype(&mut self, prototype_idx: usize, context: &QuantumContextState, performance: f64) -> Result<()> {
+
+    fn update_prototype(
+        &mut self,
+        prototype_idx: usize,
+        context: &QuantumContextState,
+        performance: f64,
+    ) -> Result<()> {
         if prototype_idx < self.prototypes.len() {
             let prototype = &mut self.prototypes[prototype_idx];
-            
+
             // Update statistics
             let old_avg = prototype.performance_statistics.average_performance;
             let count = prototype.update_count as f64 + 1.0;
-            prototype.performance_statistics.average_performance = 
+            prototype.performance_statistics.average_performance =
                 (old_avg * (count - 1.0) + performance) / count;
-            
+
             prototype.update_count += 1;
-            
+
             // Update quantum state (simplified linear interpolation)
             let learning_rate = 0.1;
-            prototype.quantum_state.classical_features = 
-                &prototype.quantum_state.classical_features * (1.0 - learning_rate) + 
-                &context.classical_features * learning_rate;
+            prototype.quantum_state.classical_features =
+                &prototype.quantum_state.classical_features * (1.0 - learning_rate)
+                    + &context.classical_features * learning_rate;
         }
-        
+
         Ok(())
     }
-    
-    fn create_new_prototype(&mut self, context: &QuantumContextState, performance: f64) -> Result<()> {
+
+    fn create_new_prototype(
+        &mut self,
+        context: &QuantumContextState,
+        performance: f64,
+    ) -> Result<()> {
         if self.prototypes.len() >= self.prototype_capacity {
             // Remove least performing prototype
-            if let Some(min_idx) = self.prototypes.iter()
+            if let Some(min_idx) = self
+                .prototypes
+                .iter()
                 .enumerate()
                 .min_by(|(_, a), (_, b)| {
-                    a.performance_statistics.average_performance
+                    a.performance_statistics
+                        .average_performance
                         .partial_cmp(&b.performance_statistics.average_performance)
                         .unwrap()
                 })
-                .map(|(idx, _)| idx) {
+                .map(|(idx, _)| idx)
+            {
                 self.prototypes.remove(min_idx);
             }
         }
-        
+
         let prototype = QuantumPrototype {
             prototype_id: self.prototypes.len(),
             quantum_state: context.clone(),
@@ -1843,7 +2045,7 @@ impl PrototypeBank {
             },
             update_count: 1,
         };
-        
+
         self.prototypes.push(prototype);
         Ok(())
     }
@@ -1855,19 +2057,24 @@ impl EntanglementTracker {
             entanglement_history: Vec::new(),
             current_entanglement: 0.0,
             entanglement_budget: 1.0,
-            optimization_strategy: EntanglementOptimization::OptimalEntanglement { target_value: config.entanglement_strength },
+            optimization_strategy: EntanglementOptimization::OptimalEntanglement {
+                target_value: config.entanglement_strength,
+            },
         })
     }
-    
+
     pub fn compute_efficiency(&self) -> f64 {
         if self.entanglement_history.is_empty() {
             return 1.0;
         }
-        
-        let avg_entanglement = self.entanglement_history.iter()
+
+        let avg_entanglement = self
+            .entanglement_history
+            .iter()
             .map(|m| m.entanglement_value)
-            .sum::<f64>() / self.entanglement_history.len() as f64;
-        
+            .sum::<f64>()
+            / self.entanglement_history.len() as f64;
+
         avg_entanglement / self.entanglement_budget
     }
 }
@@ -1983,7 +2190,7 @@ mod tests {
     fn test_context_encoding() {
         let config = QuantumInContextLearningConfig::default();
         let encoder = QuantumContextEncoder::new(&config).unwrap();
-        
+
         let example = ContextExample {
             input: Array1::from_vec(vec![0.1, 0.2, 0.3]),
             output: Array1::from_vec(vec![0.8]),
@@ -2010,7 +2217,7 @@ mod tests {
                 },
             },
         };
-        
+
         let encoded = encoder.encode_example(&example);
         assert!(encoded.is_ok());
     }
@@ -2019,10 +2226,10 @@ mod tests {
     fn test_zero_shot_learning() {
         let config = QuantumInContextLearningConfig::default();
         let learner = QuantumInContextLearner::new(config.clone()).unwrap();
-        
+
         let query = Array1::from_vec(vec![0.5, -0.3, 0.8]);
         let result = learner.zero_shot_learning(&query);
-        
+
         assert!(result.is_ok());
         let prediction = result.unwrap();
         assert_eq!(prediction.len(), config.model_dim);
@@ -2036,39 +2243,37 @@ mod tests {
             ..Default::default()
         };
         let mut learner = QuantumInContextLearner::new(config).unwrap();
-        
-        let examples = vec![
-            ContextExample {
-                input: Array1::from_vec(vec![0.1, 0.2, 0.3]),
-                output: Array1::from_vec(vec![0.8]),
-                metadata: ContextMetadata {
+
+        let examples = vec![ContextExample {
+            input: Array1::from_vec(vec![0.1, 0.2, 0.3]),
+            output: Array1::from_vec(vec![0.8]),
+            metadata: ContextMetadata {
+                task_type: "test".to_string(),
+                difficulty_level: 0.5,
+                modality: ContextModality::Tabular,
+                timestamp: 0,
+                importance_weight: 1.0,
+            },
+            quantum_encoding: QuantumContextState {
+                quantum_amplitudes: Array1::zeros(256).mapv(|_: f64| Complex64::new(1.0, 0.0)),
+                classical_features: Array1::from_vec(vec![0.1, 0.2, 0.3]),
+                entanglement_measure: 0.5,
+                coherence_time: 1.0,
+                fidelity: 1.0,
+                phase_information: Complex64::new(1.0, 0.0),
+                context_metadata: ContextMetadata {
                     task_type: "test".to_string(),
                     difficulty_level: 0.5,
                     modality: ContextModality::Tabular,
                     timestamp: 0,
                     importance_weight: 1.0,
                 },
-                quantum_encoding: QuantumContextState {
-                    quantum_amplitudes: Array1::zeros(256).mapv(|_: f64| Complex64::new(1.0, 0.0)),
-                    classical_features: Array1::from_vec(vec![0.1, 0.2, 0.3]),
-                    entanglement_measure: 0.5,
-                    coherence_time: 1.0,
-                    fidelity: 1.0,
-                    phase_information: Complex64::new(1.0, 0.0),
-                    context_metadata: ContextMetadata {
-                        task_type: "test".to_string(),
-                        difficulty_level: 0.5,
-                        modality: ContextModality::Tabular,
-                        timestamp: 0,
-                        importance_weight: 1.0,
-                    },
-                },
-            }
-        ];
-        
+            },
+        }];
+
         let query = Array1::from_vec(vec![0.5, -0.3, 0.8]);
         let result = learner.few_shot_learning(&examples, &query, 3);
-        
+
         assert!(result.is_ok());
     }
 
@@ -2076,7 +2281,7 @@ mod tests {
     fn test_quantum_memory_operations() {
         let config = QuantumInContextLearningConfig::default();
         let mut memory = QuantumEpisodicMemory::new(&config).unwrap();
-        
+
         let test_state = QuantumContextState {
             quantum_amplitudes: Array1::zeros(256).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             classical_features: Array1::from_vec(vec![0.1, 0.2, 0.3]),
@@ -2092,11 +2297,11 @@ mod tests {
                 importance_weight: 1.0,
             },
         };
-        
+
         // Test adding experience
         let result = memory.add_experience(test_state.clone());
         assert!(result.is_ok());
-        
+
         // Test retrieval
         let retrieved = memory.retrieve_similar_contexts(&test_state, 1);
         assert!(retrieved.is_ok());
@@ -2106,10 +2311,12 @@ mod tests {
     #[test]
     fn test_adaptation_strategies() {
         let config = QuantumInContextLearningConfig {
-            adaptation_strategy: AdaptationStrategy::QuantumInterference { interference_strength: 0.8 },
+            adaptation_strategy: AdaptationStrategy::QuantumInterference {
+                interference_strength: 0.8,
+            },
             ..Default::default()
         };
-        
+
         let learner = QuantumInContextLearner::new(config);
         assert!(learner.is_ok());
     }
@@ -2118,7 +2325,7 @@ mod tests {
     fn test_prototype_bank_operations() {
         let config = QuantumInContextLearningConfig::default();
         let mut bank = PrototypeBank::new(&config).unwrap();
-        
+
         let test_state = QuantumContextState {
             quantum_amplitudes: Array1::zeros(256).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             classical_features: Array1::from_vec(vec![0.1, 0.2, 0.3]),
@@ -2134,12 +2341,12 @@ mod tests {
                 importance_weight: 1.0,
             },
         };
-        
+
         // Test adding prototype
         let result = bank.add_prototype(test_state.clone());
         assert!(result.is_ok());
         assert_eq!(bank.get_prototype_count(), 1);
-        
+
         // Test finding prototypes
         let found = bank.find_nearest_prototypes(&test_state, 1);
         assert!(found.is_ok());
@@ -2153,7 +2360,7 @@ mod tests {
             ..Default::default()
         };
         let attention = QuantumContextAttention::new(&config).unwrap();
-        
+
         let query_state = QuantumContextState {
             quantum_amplitudes: Array1::zeros(256).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             classical_features: Array1::from_vec(vec![0.1, 0.2, 0.3]),
@@ -2169,9 +2376,9 @@ mod tests {
                 importance_weight: 1.0,
             },
         };
-        
+
         let contexts = vec![query_state.clone(), query_state.clone()];
-        
+
         let weights = attention.compute_attention_weights(&query_state, &contexts);
         assert!(weights.is_ok());
         assert_eq!(weights.unwrap().len(), 2);

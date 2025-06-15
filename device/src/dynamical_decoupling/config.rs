@@ -261,9 +261,9 @@ impl Default for SafetyMargins {
     fn default() -> Self {
         Self {
             temperature_margin: 0.1, // 10%
-            power_margin: 0.2, // 20%
-            coherence_margin: 0.15, // 15%
-            fidelity_margin: 0.05, // 5%
+            power_margin: 0.2,       // 20%
+            coherence_margin: 0.15,  // 15%
+            fidelity_margin: 0.05,   // 5%
         }
     }
 }

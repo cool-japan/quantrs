@@ -6,7 +6,7 @@
 //! capture complex node relationships and global graph properties.
 
 use crate::error::Result;
-use ndarray::{Array1, Array2, Array3, ArrayD, Axis, s};
+use ndarray::{s, Array1, Array2, Array3, ArrayD, Axis};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -288,7 +288,7 @@ impl Graph {
     ) -> Self {
         let num_nodes = node_features.nrows();
         let num_edges = edge_indices.ncols();
-        
+
         Self {
             node_features,
             edge_indices,
@@ -302,7 +302,7 @@ impl Graph {
     /// Get neighbors of a node
     pub fn get_neighbors(&self, node: usize) -> Vec<usize> {
         let mut neighbors = Vec::new();
-        
+
         for edge in 0..self.num_edges {
             if self.edge_indices[[0, edge]] == node {
                 neighbors.push(self.edge_indices[[1, edge]]);
@@ -310,21 +310,21 @@ impl Graph {
                 neighbors.push(self.edge_indices[[0, edge]]);
             }
         }
-        
+
         neighbors
     }
 
     /// Get adjacency matrix
     pub fn get_adjacency_matrix(&self) -> Array2<f64> {
         let mut adj_matrix = Array2::zeros((self.num_nodes, self.num_nodes));
-        
+
         for edge in 0..self.num_edges {
             let src = self.edge_indices[[0, edge]];
             let dst = self.edge_indices[[1, edge]];
             adj_matrix[[src, dst]] = 1.0;
             adj_matrix[[dst, src]] = 1.0; // Assume undirected
         }
-        
+
         adj_matrix
     }
 }
@@ -382,8 +382,11 @@ pub struct QuantumGate {
 /// Gate types for quantum circuits
 #[derive(Debug, Clone)]
 pub enum GateType {
-    RX, RY, RZ,
-    CNOT, CZ,
+    RX,
+    RY,
+    RZ,
+    CNOT,
+    CZ,
     Hadamard,
     Custom(String),
 }
@@ -429,12 +432,12 @@ impl QuantumGraphAttentionNetwork {
     pub fn new(config: QGATConfig) -> Result<Self> {
         let mut layers = Vec::new();
         let mut quantum_circuits = Vec::new();
-        
+
         // Create QGAT layers
         for layer_id in 0..config.num_layers {
             let layer = QGATLayer::new(layer_id, &config)?;
             layers.push(layer);
-            
+
             // Create quantum circuit for this layer
             let circuit = QuantumCircuit::new(
                 config.node_qubits + config.edge_qubits,
@@ -442,13 +445,13 @@ impl QuantumGraphAttentionNetwork {
             )?;
             quantum_circuits.push(circuit);
         }
-        
+
         // Create pooling layer
         let pooling_layer = QuantumPoolingLayer::new(&config)?;
-        
+
         // Create output layer
         let output_layer = QuantumOutputLayer::new(&config)?;
-        
+
         Ok(Self {
             config,
             layers,
@@ -462,22 +465,19 @@ impl QuantumGraphAttentionNetwork {
     /// Forward pass through the network
     pub fn forward(&self, graph: &Graph) -> Result<Array2<f64>> {
         let mut node_embeddings = graph.node_features.clone();
-        
+
         // Process through QGAT layers
         for (layer_idx, layer) in self.layers.iter().enumerate() {
-            node_embeddings = layer.forward(
-                &node_embeddings,
-                graph,
-                &self.quantum_circuits[layer_idx],
-            )?;
+            node_embeddings =
+                layer.forward(&node_embeddings, graph, &self.quantum_circuits[layer_idx])?;
         }
-        
+
         // Apply pooling
         let graph_embedding = self.pooling_layer.forward(&node_embeddings, graph)?;
-        
+
         // Apply output layer
         let output = self.output_layer.forward(&graph_embedding)?;
-        
+
         Ok(output)
     }
 
@@ -485,31 +485,31 @@ impl QuantumGraphAttentionNetwork {
     pub fn train(&mut self, training_data: &[(Graph, Array1<f64>)]) -> Result<()> {
         let num_epochs = self.config.training_config.epochs;
         let batch_size = self.config.training_config.batch_size;
-        
+
         for epoch in 0..num_epochs {
             let mut epoch_loss = 0.0;
             let mut epoch_accuracy = 0.0;
             let mut num_batches = 0;
-            
+
             // Process in batches
             for batch_start in (0..training_data.len()).step_by(batch_size) {
                 let batch_end = (batch_start + batch_size).min(training_data.len());
                 let batch = &training_data[batch_start..batch_end];
-                
+
                 let (batch_loss, batch_accuracy) = self.train_batch(batch)?;
                 epoch_loss += batch_loss;
                 epoch_accuracy += batch_accuracy;
                 num_batches += 1;
             }
-            
+
             // Average metrics over batches
             epoch_loss /= num_batches as f64;
             epoch_accuracy /= num_batches as f64;
-            
+
             // Compute additional metrics
             let attention_entropy = self.compute_attention_entropy()?;
             let quantum_fidelity = self.compute_quantum_fidelity()?;
-            
+
             let metrics = TrainingMetrics {
                 epoch,
                 training_loss: epoch_loss,
@@ -519,15 +519,17 @@ impl QuantumGraphAttentionNetwork {
                 attention_entropy,
                 quantum_fidelity,
             };
-            
+
             self.training_history.push(metrics);
-            
+
             if epoch % 10 == 0 {
-                println!("Epoch {}: Loss = {:.6}, Accuracy = {:.4}, Attention Entropy = {:.4}",
-                         epoch, epoch_loss, epoch_accuracy, attention_entropy);
+                println!(
+                    "Epoch {}: Loss = {:.6}, Accuracy = {:.4}, Attention Entropy = {:.4}",
+                    epoch, epoch_loss, epoch_accuracy, attention_entropy
+                );
             }
         }
-        
+
         Ok(())
     }
 
@@ -535,24 +537,27 @@ impl QuantumGraphAttentionNetwork {
     fn train_batch(&mut self, batch: &[(Graph, Array1<f64>)]) -> Result<(f64, f64)> {
         let mut total_loss = 0.0;
         let mut total_accuracy = 0.0;
-        
+
         for (graph, target) in batch {
             // Forward pass
             let prediction = self.forward(graph)?;
-            
+
             // Compute loss
             let loss = self.compute_loss(&prediction, target)?;
             total_loss += loss;
-            
+
             // Compute accuracy
             let accuracy = self.compute_accuracy(&prediction, target)?;
             total_accuracy += accuracy;
-            
+
             // Backward pass (simplified)
             self.backward_pass(&prediction, target, graph)?;
         }
-        
-        Ok((total_loss / batch.len() as f64, total_accuracy / batch.len() as f64))
+
+        Ok((
+            total_loss / batch.len() as f64,
+            total_accuracy / batch.len() as f64,
+        ))
     }
 
     /// Compute loss
@@ -570,10 +575,12 @@ impl QuantumGraphAttentionNetwork {
             }
             LossFunction::MeanSquaredError => {
                 let pred_flat = prediction.row(0);
-                let mse = pred_flat.iter()
+                let mse = pred_flat
+                    .iter()
                     .zip(target.iter())
                     .map(|(p, t)| (p - t).powi(2))
-                    .sum::<f64>() / pred_flat.len() as f64;
+                    .sum::<f64>()
+                    / pred_flat.len() as f64;
                 Ok(mse)
             }
             _ => {
@@ -585,35 +592,42 @@ impl QuantumGraphAttentionNetwork {
     /// Compute accuracy
     fn compute_accuracy(&self, prediction: &Array2<f64>, target: &Array1<f64>) -> Result<f64> {
         let pred_flat = prediction.row(0);
-        
+
         // For classification: compute accuracy as correct predictions
-        let pred_class = pred_flat.iter()
+        let pred_class = pred_flat
+            .iter()
             .enumerate()
             .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
             .map(|(i, _)| i)
             .unwrap_or(0);
-        
-        let target_class = target.iter()
+
+        let target_class = target
+            .iter()
             .enumerate()
             .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
             .map(|(i, _)| i)
             .unwrap_or(0);
-        
+
         Ok(if pred_class == target_class { 1.0 } else { 0.0 })
     }
 
     /// Backward pass (simplified gradient computation)
-    fn backward_pass(&mut self, _prediction: &Array2<f64>, _target: &Array1<f64>, _graph: &Graph) -> Result<()> {
+    fn backward_pass(
+        &mut self,
+        _prediction: &Array2<f64>,
+        _target: &Array1<f64>,
+        _graph: &Graph,
+    ) -> Result<()> {
         // Simplified parameter updates
         let learning_rate = self.config.training_config.learning_rate;
-        
+
         // Update quantum circuit parameters
         for circuit in &mut self.quantum_circuits {
             for param in circuit.parameters.iter_mut() {
                 *param += learning_rate * (fastrand::f64() - 0.5) * 0.01; // Random update for demo
             }
         }
-        
+
         Ok(())
     }
 
@@ -621,11 +635,13 @@ impl QuantumGraphAttentionNetwork {
     fn compute_attention_entropy(&self) -> Result<f64> {
         let mut total_entropy = 0.0;
         let mut num_heads = 0;
-        
+
         for layer in &self.layers {
             for head in &layer.attention_heads {
                 // Simplified entropy computation
-                let entropy = head.attention_parameters.iter()
+                let entropy = head
+                    .attention_parameters
+                    .iter()
                     .map(|p| {
                         let prob = (p.abs() + 1e-10).min(1.0);
                         -prob * prob.ln()
@@ -635,15 +651,19 @@ impl QuantumGraphAttentionNetwork {
                 num_heads += 1;
             }
         }
-        
-        Ok(if num_heads > 0 { total_entropy / num_heads as f64 } else { 0.0 })
+
+        Ok(if num_heads > 0 {
+            total_entropy / num_heads as f64
+        } else {
+            0.0
+        })
     }
 
     /// Compute quantum fidelity measure
     fn compute_quantum_fidelity(&self) -> Result<f64> {
         let mut total_fidelity = 0.0;
         let mut num_circuits = 0;
-        
+
         for circuit in &self.quantum_circuits {
             // Simplified fidelity computation
             let param_norm = circuit.parameters.iter().map(|p| p * p).sum::<f64>().sqrt();
@@ -651,8 +671,12 @@ impl QuantumGraphAttentionNetwork {
             total_fidelity += fidelity;
             num_circuits += 1;
         }
-        
-        Ok(if num_circuits > 0 { total_fidelity / num_circuits as f64 } else { 0.0 })
+
+        Ok(if num_circuits > 0 {
+            total_fidelity / num_circuits as f64
+        } else {
+            0.0
+        })
     }
 
     /// Predict on new graphs
@@ -669,19 +693,19 @@ impl QuantumGraphAttentionNetwork {
     pub fn analyze_attention(&self, graph: &Graph) -> Result<AttentionAnalysis> {
         let mut attention_weights = Vec::new();
         let mut head_entropies = Vec::new();
-        
+
         for layer in &self.layers {
             for head in &layer.attention_heads {
                 let weights = head.compute_attention_weights(graph)?;
                 let entropy = Self::compute_entropy(&weights);
-                
+
                 attention_weights.push(weights);
                 head_entropies.push(entropy);
             }
         }
-        
+
         let average_entropy = head_entropies.iter().sum::<f64>() / head_entropies.len() as f64;
-        
+
         Ok(AttentionAnalysis {
             attention_weights,
             head_entropies,
@@ -693,7 +717,7 @@ impl QuantumGraphAttentionNetwork {
     fn compute_entropy(weights: &Array2<f64>) -> f64 {
         let mut entropy = 0.0;
         let total_weight = weights.sum();
-        
+
         if total_weight > 1e-10 {
             for &weight in weights.iter() {
                 let prob = weight / total_weight;
@@ -702,7 +726,7 @@ impl QuantumGraphAttentionNetwork {
                 }
             }
         }
-        
+
         entropy
     }
 }
@@ -711,25 +735,24 @@ impl QGATLayer {
     /// Create a new QGAT layer
     pub fn new(layer_id: usize, config: &QGATConfig) -> Result<Self> {
         let mut attention_heads = Vec::new();
-        
+
         // Create attention heads
         for head_id in 0..config.num_attention_heads {
             let head = QuantumAttentionHead::new(head_id, config)?;
             attention_heads.push(head);
         }
-        
+
         // Initialize linear projection
         let input_dim = config.hidden_dim * config.num_attention_heads;
         let output_dim = config.hidden_dim;
-        let linear_projection = Array2::from_shape_fn((output_dim, input_dim), |_| {
-            (fastrand::f64() - 0.5) * 0.1
-        });
-        
+        let linear_projection =
+            Array2::from_shape_fn((output_dim, input_dim), |_| (fastrand::f64() - 0.5) * 0.1);
+
         let bias = Array1::zeros(output_dim);
-        
+
         // Initialize normalization
         let normalization = LayerNormalization::new(output_dim);
-        
+
         Ok(Self {
             layer_id,
             attention_heads,
@@ -748,29 +771,29 @@ impl QGATLayer {
     ) -> Result<Array2<f64>> {
         let num_nodes = node_embeddings.nrows();
         let hidden_dim = self.linear_projection.nrows();
-        
+
         // Compute attention for each head
         let mut head_outputs = Vec::new();
         for head in &self.attention_heads {
             let head_output = head.forward(node_embeddings, graph, quantum_circuit)?;
             head_outputs.push(head_output);
         }
-        
+
         // Concatenate head outputs
         let concat_dim = head_outputs.len() * head_outputs[0].ncols();
         let mut concatenated = Array2::zeros((num_nodes, concat_dim));
-        
+
         for (head_idx, head_output) in head_outputs.iter().enumerate() {
             let start_col = head_idx * head_output.ncols();
             let end_col = start_col + head_output.ncols();
-            
+
             for i in 0..num_nodes {
                 for (j, col) in (start_col..end_col).enumerate() {
                     concatenated[[i, col]] = head_output[[i, j]];
                 }
             }
         }
-        
+
         // Apply linear projection
         let mut projected = Array2::zeros((num_nodes, hidden_dim));
         for i in 0..num_nodes {
@@ -782,11 +805,11 @@ impl QGATLayer {
                 projected[[i, j]] = sum;
             }
         }
-        
+
         // Apply normalization and residual connection
         let normalized = self.normalization.forward(&projected)?;
         let output = &normalized + node_embeddings; // Residual connection
-        
+
         Ok(output)
     }
 }
@@ -795,18 +818,16 @@ impl QuantumAttentionHead {
     /// Create a new quantum attention head
     pub fn new(head_id: usize, config: &QGATConfig) -> Result<Self> {
         let node_qubits = config.node_qubits;
-        
+
         // Create quantum circuits for query, key, and value
         let query_circuit = QuantumCircuit::new(node_qubits, &config.circuit_config)?;
         let key_circuit = QuantumCircuit::new(node_qubits, &config.circuit_config)?;
         let value_circuit = QuantumCircuit::new(node_qubits, &config.circuit_config)?;
-        
+
         // Initialize attention parameters
         let num_params = 16; // Configurable
-        let attention_parameters = Array1::from_shape_fn(num_params, |_| {
-            fastrand::f64() * 0.1
-        });
-        
+        let attention_parameters = Array1::from_shape_fn(num_params, |_| fastrand::f64() * 0.1);
+
         Ok(Self {
             head_id,
             node_qubits,
@@ -826,18 +847,18 @@ impl QuantumAttentionHead {
     ) -> Result<Array2<f64>> {
         let num_nodes = node_embeddings.nrows();
         let feature_dim = node_embeddings.ncols();
-        
+
         // Compute quantum queries, keys, and values
         let queries = self.compute_quantum_queries(node_embeddings)?;
         let keys = self.compute_quantum_keys(node_embeddings)?;
         let values = self.compute_quantum_values(node_embeddings)?;
-        
+
         // Compute attention scores using quantum interference
         let attention_scores = self.compute_quantum_attention_scores(&queries, &keys, graph)?;
-        
+
         // Apply attention to values
         let attended_values = self.apply_attention(&attention_scores, &values)?;
-        
+
         Ok(attended_values)
     }
 
@@ -846,17 +867,17 @@ impl QuantumAttentionHead {
         let num_nodes = node_embeddings.nrows();
         let output_dim = 1 << self.node_qubits;
         let mut queries = Array2::zeros((num_nodes, output_dim));
-        
+
         for i in 0..num_nodes {
             let node_features = node_embeddings.row(i);
             let quantum_state = self.encode_features_to_quantum_state(&node_features.to_owned())?;
             let evolved_state = self.query_circuit.apply(&quantum_state)?;
-            
+
             for (j, &val) in evolved_state.iter().enumerate() {
                 queries[[i, j]] = val;
             }
         }
-        
+
         Ok(queries)
     }
 
@@ -865,17 +886,17 @@ impl QuantumAttentionHead {
         let num_nodes = node_embeddings.nrows();
         let output_dim = 1 << self.node_qubits;
         let mut keys = Array2::zeros((num_nodes, output_dim));
-        
+
         for i in 0..num_nodes {
             let node_features = node_embeddings.row(i);
             let quantum_state = self.encode_features_to_quantum_state(&node_features.to_owned())?;
             let evolved_state = self.key_circuit.apply(&quantum_state)?;
-            
+
             for (j, &val) in evolved_state.iter().enumerate() {
                 keys[[i, j]] = val;
             }
         }
-        
+
         Ok(keys)
     }
 
@@ -884,17 +905,17 @@ impl QuantumAttentionHead {
         let num_nodes = node_embeddings.nrows();
         let output_dim = 1 << self.node_qubits;
         let mut values = Array2::zeros((num_nodes, output_dim));
-        
+
         for i in 0..num_nodes {
             let node_features = node_embeddings.row(i);
             let quantum_state = self.encode_features_to_quantum_state(&node_features.to_owned())?;
             let evolved_state = self.value_circuit.apply(&quantum_state)?;
-            
+
             for (j, &val) in evolved_state.iter().enumerate() {
                 values[[i, j]] = val;
             }
         }
-        
+
         Ok(values)
     }
 
@@ -902,13 +923,13 @@ impl QuantumAttentionHead {
     fn encode_features_to_quantum_state(&self, features: &Array1<f64>) -> Result<Array1<f64>> {
         let state_dim = 1 << self.node_qubits;
         let mut quantum_state = Array1::zeros(state_dim);
-        
+
         // Amplitude encoding (simplified)
         let copy_len = features.len().min(state_dim);
         for i in 0..copy_len {
             quantum_state[i] = features[i];
         }
-        
+
         // Normalize
         let norm = quantum_state.iter().map(|x| x * x).sum::<f64>().sqrt();
         if norm > 1e-10 {
@@ -916,7 +937,7 @@ impl QuantumAttentionHead {
         } else {
             quantum_state[0] = 1.0;
         }
-        
+
         Ok(quantum_state)
     }
 
@@ -929,43 +950,52 @@ impl QuantumAttentionHead {
     ) -> Result<Array2<f64>> {
         let num_nodes = queries.nrows();
         let mut attention_scores = Array2::zeros((num_nodes, num_nodes));
-        
+
         for i in 0..num_nodes {
             for j in 0..num_nodes {
                 // Quantum interference between query and key states
                 let query_state = queries.row(i);
                 let key_state = keys.row(j);
-                
+
                 // Compute overlap (inner product)
-                let overlap = query_state.iter()
+                let overlap = query_state
+                    .iter()
                     .zip(key_state.iter())
                     .map(|(q, k)| q * k)
                     .sum::<f64>();
-                
+
                 // Apply graph structure weighting
-                let graph_weight = if self.are_connected(i, j, graph) { 1.0 } else { 0.1 };
-                
+                let graph_weight = if self.are_connected(i, j, graph) {
+                    1.0
+                } else {
+                    0.1
+                };
+
                 attention_scores[[i, j]] = overlap * graph_weight;
             }
         }
-        
+
         // Apply softmax normalization
         for i in 0..num_nodes {
-            let row_max = attention_scores.row(i).iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            let row_max = attention_scores
+                .row(i)
+                .iter()
+                .cloned()
+                .fold(f64::NEG_INFINITY, f64::max);
             let mut row_sum = 0.0;
-            
+
             for j in 0..num_nodes {
                 attention_scores[[i, j]] = (attention_scores[[i, j]] - row_max).exp();
                 row_sum += attention_scores[[i, j]];
             }
-            
+
             if row_sum > 1e-10 {
                 for j in 0..num_nodes {
                     attention_scores[[i, j]] /= row_sum;
                 }
             }
         }
-        
+
         Ok(attention_scores)
     }
 
@@ -974,7 +1004,7 @@ impl QuantumAttentionHead {
         for edge in 0..graph.num_edges {
             let src = graph.edge_indices[[0, edge]];
             let dst = graph.edge_indices[[1, edge]];
-            
+
             if (src == node1 && dst == node2) || (src == node2 && dst == node1) {
                 return true;
             }
@@ -983,11 +1013,15 @@ impl QuantumAttentionHead {
     }
 
     /// Apply attention weights to values
-    fn apply_attention(&self, attention_scores: &Array2<f64>, values: &Array2<f64>) -> Result<Array2<f64>> {
+    fn apply_attention(
+        &self,
+        attention_scores: &Array2<f64>,
+        values: &Array2<f64>,
+    ) -> Result<Array2<f64>> {
         let num_nodes = attention_scores.nrows();
         let value_dim = values.ncols();
         let mut attended_values = Array2::zeros((num_nodes, value_dim));
-        
+
         for i in 0..num_nodes {
             for k in 0..value_dim {
                 let mut weighted_sum = 0.0;
@@ -997,7 +1031,7 @@ impl QuantumAttentionHead {
                 attended_values[[i, k]] = weighted_sum;
             }
         }
-        
+
         Ok(attended_values)
     }
 
@@ -1006,15 +1040,20 @@ impl QuantumAttentionHead {
         // Simplified attention weight computation for analysis
         let num_nodes = graph.num_nodes;
         let mut weights = Array2::zeros((num_nodes, num_nodes));
-        
+
         for i in 0..num_nodes {
             for j in 0..num_nodes {
-                let base_weight = self.attention_parameters[i % self.attention_parameters.len()].abs();
-                let graph_weight = if self.are_connected(i, j, graph) { 1.0 } else { 0.1 };
+                let base_weight =
+                    self.attention_parameters[i % self.attention_parameters.len()].abs();
+                let graph_weight = if self.are_connected(i, j, graph) {
+                    1.0
+                } else {
+                    0.1
+                };
                 weights[[i, j]] = base_weight * graph_weight;
             }
         }
-        
+
         Ok(weights)
     }
 }
@@ -1024,7 +1063,7 @@ impl QuantumCircuit {
     pub fn new(num_qubits: usize, config: &CircuitConfig) -> Result<Self> {
         let mut gates = Vec::new();
         let mut parameters = Vec::new();
-        
+
         // Build circuit based on ansatz type
         match config.ansatz_type {
             CircuitAnsatz::EfficientSU2 => {
@@ -1038,7 +1077,7 @@ impl QuantumCircuit {
                             is_parametric: true,
                         });
                         parameters.push(fastrand::f64() * 2.0 * std::f64::consts::PI);
-                        
+
                         gates.push(QuantumGate {
                             gate_type: GateType::RZ,
                             qubits: vec![qubit],
@@ -1047,7 +1086,7 @@ impl QuantumCircuit {
                         });
                         parameters.push(fastrand::f64() * 2.0 * std::f64::consts::PI);
                     }
-                    
+
                     // Entangling gates
                     for qubit in 0..num_qubits - 1 {
                         gates.push(QuantumGate {
@@ -1065,10 +1104,10 @@ impl QuantumCircuit {
                 ));
             }
         }
-        
+
         let parameters_array = Array1::from_vec(parameters);
         let circuit_depth = gates.len();
-        
+
         Ok(Self {
             gates,
             num_qubits,
@@ -1080,7 +1119,7 @@ impl QuantumCircuit {
     /// Apply the quantum circuit to a state
     pub fn apply(&self, input_state: &Array1<f64>) -> Result<Array1<f64>> {
         let mut state = input_state.clone();
-        
+
         for gate in &self.gates {
             match gate.gate_type {
                 GateType::RY => {
@@ -1107,7 +1146,7 @@ impl QuantumCircuit {
                 }
             }
         }
-        
+
         Ok(state)
     }
 
@@ -1116,9 +1155,9 @@ impl QuantumCircuit {
         let mut new_state = state.clone();
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
-        
+
         let qubit_mask = 1 << qubit;
-        
+
         for i in 0..state.len() {
             if i & qubit_mask == 0 {
                 let j = i | qubit_mask;
@@ -1130,7 +1169,7 @@ impl QuantumCircuit {
                 }
             }
         }
-        
+
         Ok(new_state)
     }
 
@@ -1138,31 +1177,36 @@ impl QuantumCircuit {
     fn apply_rz_gate(&self, state: &Array1<f64>, qubit: usize, angle: f64) -> Result<Array1<f64>> {
         let mut new_state = state.clone();
         let phase_factor = (angle / 2.0).cos(); // Simplified real-valued implementation
-        
+
         let qubit_mask = 1 << qubit;
-        
+
         for i in 0..state.len() {
             if i & qubit_mask != 0 {
                 new_state[i] *= phase_factor;
             }
         }
-        
+
         Ok(new_state)
     }
 
     /// Apply CNOT gate
-    fn apply_cnot_gate(&self, state: &Array1<f64>, control: usize, target: usize) -> Result<Array1<f64>> {
+    fn apply_cnot_gate(
+        &self,
+        state: &Array1<f64>,
+        control: usize,
+        target: usize,
+    ) -> Result<Array1<f64>> {
         let mut new_state = state.clone();
         let control_mask = 1 << control;
         let target_mask = 1 << target;
-        
+
         for i in 0..state.len() {
             if i & control_mask != 0 {
                 let j = i ^ target_mask;
                 new_state[i] = state[j];
             }
         }
-        
+
         Ok(new_state)
     }
 }
@@ -1182,18 +1226,18 @@ impl LayerNormalization {
         let num_samples = input.nrows();
         let feature_dim = input.ncols();
         let mut normalized = Array2::zeros((num_samples, feature_dim));
-        
+
         for i in 0..num_samples {
             let row = input.row(i);
             let mean = row.mean().unwrap();
             let variance = row.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / feature_dim as f64;
             let std = (variance + self.epsilon).sqrt();
-            
+
             for j in 0..feature_dim {
                 normalized[[i, j]] = (row[j] - mean) / std * self.gamma[j] + self.beta[j];
             }
         }
-        
+
         Ok(normalized)
     }
 }
@@ -1201,13 +1245,10 @@ impl LayerNormalization {
 impl QuantumPoolingLayer {
     /// Create new quantum pooling layer
     pub fn new(config: &QGATConfig) -> Result<Self> {
-        let pooling_circuit = QuantumCircuit::new(
-            config.node_qubits,
-            &config.circuit_config,
-        )?;
-        
+        let pooling_circuit = QuantumCircuit::new(config.node_qubits, &config.circuit_config)?;
+
         let pooling_parameters = Array1::from_shape_fn(16, |_| fastrand::f64() * 0.1);
-        
+
         Ok(Self {
             pooling_type: config.pooling_config.pooling_type.clone(),
             pooling_circuit,
@@ -1218,21 +1259,15 @@ impl QuantumPoolingLayer {
     /// Forward pass
     pub fn forward(&self, node_embeddings: &Array2<f64>, _graph: &Graph) -> Result<Array1<f64>> {
         match self.pooling_type {
-            PoolingType::GlobalMeanPool => {
-                Ok(node_embeddings.mean_axis(Axis(0)).unwrap())
-            }
+            PoolingType::GlobalMeanPool => Ok(node_embeddings.mean_axis(Axis(0)).unwrap()),
             PoolingType::GlobalMaxPool => {
                 let max_values = node_embeddings.map_axis(Axis(0), |row| {
                     row.iter().cloned().fold(f64::NEG_INFINITY, f64::max)
                 });
                 Ok(max_values)
             }
-            PoolingType::QuantumGlobalPool => {
-                self.quantum_global_pooling(node_embeddings)
-            }
-            _ => {
-                Ok(node_embeddings.mean_axis(Axis(0)).unwrap())
-            }
+            PoolingType::QuantumGlobalPool => self.quantum_global_pooling(node_embeddings),
+            _ => Ok(node_embeddings.mean_axis(Axis(0)).unwrap()),
         }
     }
 
@@ -1240,11 +1275,11 @@ impl QuantumPoolingLayer {
     fn quantum_global_pooling(&self, node_embeddings: &Array2<f64>) -> Result<Array1<f64>> {
         let num_nodes = node_embeddings.nrows();
         let feature_dim = node_embeddings.ncols();
-        
+
         // Create superposition of all node embeddings
         let state_dim = 1 << self.pooling_circuit.num_qubits;
         let mut superposition_state = Array1::zeros(state_dim);
-        
+
         for i in 0..num_nodes {
             let node_embedding = node_embeddings.row(i);
             for (j, &feature) in node_embedding.iter().enumerate() {
@@ -1253,17 +1288,17 @@ impl QuantumPoolingLayer {
                 }
             }
         }
-        
+
         // Apply quantum pooling circuit
         let pooled_state = self.pooling_circuit.apply(&superposition_state)?;
-        
+
         // Extract features from pooled quantum state
         let output_dim = feature_dim.min(pooled_state.len());
         let mut output = Array1::zeros(output_dim);
         for i in 0..output_dim {
             output[i] = pooled_state[i];
         }
-        
+
         Ok(output)
     }
 }
@@ -1271,20 +1306,16 @@ impl QuantumPoolingLayer {
 impl QuantumOutputLayer {
     /// Create new quantum output layer
     pub fn new(config: &QGATConfig) -> Result<Self> {
-        let output_circuit = QuantumCircuit::new(
-            config.node_qubits,
-            &config.circuit_config,
-        )?;
-        
+        let output_circuit = QuantumCircuit::new(config.node_qubits, &config.circuit_config)?;
+
         let input_dim = config.hidden_dim;
         let output_dim = config.output_dim;
-        
-        let classical_weights = Array2::from_shape_fn((output_dim, input_dim), |_| {
-            (fastrand::f64() - 0.5) * 0.1
-        });
-        
+
+        let classical_weights =
+            Array2::from_shape_fn((output_dim, input_dim), |_| (fastrand::f64() - 0.5) * 0.1);
+
         let bias = Array1::zeros(output_dim);
-        
+
         Ok(Self {
             output_circuit,
             classical_weights,
@@ -1296,11 +1327,11 @@ impl QuantumOutputLayer {
     pub fn forward(&self, graph_embedding: &Array1<f64>) -> Result<Array2<f64>> {
         // Apply quantum transformation
         let quantum_output = self.output_circuit.apply(graph_embedding)?;
-        
+
         // Apply classical linear layer
         let output_dim = self.classical_weights.nrows();
         let mut output = Array1::zeros(output_dim);
-        
+
         for i in 0..output_dim {
             let mut sum = self.bias[i];
             for (j, &weight) in self.classical_weights.row(i).iter().enumerate() {
@@ -1310,7 +1341,7 @@ impl QuantumOutputLayer {
             }
             output[i] = sum;
         }
-        
+
         // Return as 2D array (batch size 1)
         Ok(output.insert_axis(Axis(0)))
     }
@@ -1330,7 +1361,7 @@ pub fn benchmark_qgat_vs_classical(
     test_graphs: &[Graph],
 ) -> Result<BenchmarkResults> {
     let start_time = std::time::Instant::now();
-    
+
     let mut quantum_accuracy = 0.0;
     for graph in test_graphs {
         let prediction = qgat.predict(graph)?;
@@ -1338,13 +1369,13 @@ pub fn benchmark_qgat_vs_classical(
         quantum_accuracy += prediction.sum() / prediction.len() as f64;
     }
     quantum_accuracy /= test_graphs.len() as f64;
-    
+
     let quantum_time = start_time.elapsed();
-    
+
     // Classical comparison would go here
     let classical_accuracy = quantum_accuracy * 0.9; // Placeholder
     let classical_time = quantum_time / 3; // Placeholder
-    
+
     Ok(BenchmarkResults {
         quantum_accuracy,
         classical_accuracy,
@@ -1377,18 +1408,16 @@ mod tests {
 
     #[test]
     fn test_graph_creation() {
-        let node_features = Array2::from_shape_vec((4, 3), vec![
-            1.0, 2.0, 3.0,
-            4.0, 5.0, 6.0,
-            7.0, 8.0, 9.0,
-            10.0, 11.0, 12.0,
-        ]).unwrap();
-        
-        let edge_indices = Array2::from_shape_vec((2, 3), vec![
-            0, 1, 2,
-            1, 2, 3,
-        ]).unwrap();
-        
+        let node_features = Array2::from_shape_vec(
+            (4, 3),
+            vec![
+                1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+            ],
+        )
+        .unwrap();
+
+        let edge_indices = Array2::from_shape_vec((2, 3), vec![0, 1, 2, 1, 2, 3]).unwrap();
+
         let graph = Graph::new(node_features, edge_indices, None, None);
         assert_eq!(graph.num_nodes, 4);
         assert_eq!(graph.num_edges, 3);
@@ -1398,11 +1427,12 @@ mod tests {
     fn test_forward_pass() {
         let config = QGATConfig::default();
         let qgat = QuantumGraphAttentionNetwork::new(config).unwrap();
-        
-        let node_features = Array2::from_shape_vec((4, 64), (0..256).map(|x| x as f64 * 0.01).collect()).unwrap();
+
+        let node_features =
+            Array2::from_shape_vec((4, 64), (0..256).map(|x| x as f64 * 0.01).collect()).unwrap();
         let edge_indices = Array2::from_shape_vec((2, 3), vec![0, 1, 2, 1, 2, 3]).unwrap();
         let graph = Graph::new(node_features, edge_indices, None, None);
-        
+
         let result = qgat.forward(&graph);
         assert!(result.is_ok());
     }
@@ -1411,11 +1441,12 @@ mod tests {
     fn test_attention_analysis() {
         let config = QGATConfig::default();
         let qgat = QuantumGraphAttentionNetwork::new(config).unwrap();
-        
-        let node_features = Array2::from_shape_vec((3, 64), (0..192).map(|x| x as f64 * 0.01).collect()).unwrap();
+
+        let node_features =
+            Array2::from_shape_vec((3, 64), (0..192).map(|x| x as f64 * 0.01).collect()).unwrap();
         let edge_indices = Array2::from_shape_vec((2, 2), vec![0, 1, 1, 2]).unwrap();
         let graph = Graph::new(node_features, edge_indices, None, None);
-        
+
         let analysis = qgat.analyze_attention(&graph);
         assert!(analysis.is_ok());
     }

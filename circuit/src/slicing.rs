@@ -435,7 +435,11 @@ impl CircuitSlicer {
     }
 
     /// Add dependencies based on qubit usage
-    fn add_qubit_dependencies(&self, slices: &mut [CircuitSlice], gates: &[Arc<dyn GateOp + Send + Sync>]) {
+    fn add_qubit_dependencies(
+        &self,
+        slices: &mut [CircuitSlice],
+        gates: &[Arc<dyn GateOp + Send + Sync>],
+    ) {
         let mut qubit_last_slice: HashMap<u32, usize> = HashMap::new();
 
         for slice in slices.iter_mut() {

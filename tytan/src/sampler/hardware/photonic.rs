@@ -5,8 +5,8 @@
 
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::Array2;
-use std::collections::HashMap;
 use std::cell::RefCell;
+use std::collections::HashMap;
 
 /// Photonic Ising machine configuration
 #[derive(Debug, Clone)]
@@ -200,13 +200,17 @@ impl PhotonicIsingMachineSampler {
     pub fn new(config: PhotonicConfig) -> Self {
         let num_modes = match &config.platform {
             PhotonicPlatform::CoherentIsingMachine { .. } => 2048,
-            PhotonicPlatform::SpatialPhotonicIsingMachine { spatial_light_modulator, .. } => {
-                (spatial_light_modulator.resolution.0 * spatial_light_modulator.resolution.1 / 64) as usize
+            PhotonicPlatform::SpatialPhotonicIsingMachine {
+                spatial_light_modulator,
+                ..
+            } => {
+                (spatial_light_modulator.resolution.0 * spatial_light_modulator.resolution.1 / 64)
+                    as usize
             }
             PhotonicPlatform::QuantumPhotonicProcessor { num_modes, .. } => *num_modes as usize,
             _ => 1024,
         };
-        
+
         Self {
             config,
             optical_network: RefCell::new(OpticalNetwork {
@@ -233,14 +237,15 @@ impl PhotonicIsingMachineSampler {
     /// Configure optical network for problem
     fn configure_network(&self, qubo: &Array2<f64>) -> Result<(), SamplerError> {
         let n = qubo.shape()[0];
-        
+
         if n > self.optical_network.borrow().num_modes {
             return Err(SamplerError::InvalidModel(format!(
                 "Problem size {} exceeds optical capacity {}",
-                n, self.optical_network.borrow().num_modes
+                n,
+                self.optical_network.borrow().num_modes
             )));
         }
-        
+
         // Map QUBO to optical coupling
         match &self.config.platform {
             PhotonicPlatform::CoherentIsingMachine { pump_power, .. } => {
@@ -249,7 +254,10 @@ impl PhotonicIsingMachineSampler {
             PhotonicPlatform::SpatialPhotonicIsingMachine { .. } => {
                 self.configure_spatial_network(qubo)?;
             }
-            PhotonicPlatform::QuantumPhotonicProcessor { squeezing_parameter, .. } => {
+            PhotonicPlatform::QuantumPhotonicProcessor {
+                squeezing_parameter,
+                ..
+            } => {
                 self.configure_quantum_network(qubo, *squeezing_parameter)?;
             }
             _ => {
@@ -257,19 +265,24 @@ impl PhotonicIsingMachineSampler {
                 self.configure_generic_network(qubo)?;
             }
         }
-        
+
         Ok(())
     }
 
     /// Configure Coherent Ising Machine network
-    fn configure_cim_network(&self, qubo: &Array2<f64>, pump_power: f64) -> Result<(), SamplerError> {
+    fn configure_cim_network(
+        &self,
+        qubo: &Array2<f64>,
+        pump_power: f64,
+    ) -> Result<(), SamplerError> {
         let n = qubo.shape()[0];
-        
+
         // Set injection gains based on linear terms
         for i in 0..n {
-            self.optical_network.borrow_mut().gain_loss[i] = pump_power * (1.0 + 0.1 * qubo[[i, i]].tanh());
+            self.optical_network.borrow_mut().gain_loss[i] =
+                pump_power * (1.0 + 0.1 * qubo[[i, i]].tanh());
         }
-        
+
         // Set mutual coupling based on quadratic terms
         for i in 0..n {
             for j in 0..n {
@@ -280,7 +293,7 @@ impl PhotonicIsingMachineSampler {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -292,7 +305,11 @@ impl PhotonicIsingMachineSampler {
     }
 
     /// Configure quantum photonic network
-    fn configure_quantum_network(&self, qubo: &Array2<f64>, squeezing: f64) -> Result<(), SamplerError> {
+    fn configure_quantum_network(
+        &self,
+        qubo: &Array2<f64>,
+        squeezing: f64,
+    ) -> Result<(), SamplerError> {
         // Configure squeezed states and beamsplitter network
         Ok(())
     }
@@ -300,26 +317,29 @@ impl PhotonicIsingMachineSampler {
     /// Generic network configuration
     fn configure_generic_network(&self, qubo: &Array2<f64>) -> Result<(), SamplerError> {
         let n = qubo.shape()[0];
-        
+
         // Direct mapping of QUBO to optical parameters
         for i in 0..n {
             for j in 0..n {
                 self.optical_network.borrow_mut().coupling_matrix[[i, j]] = qubo[[i, j]] / 100.0;
             }
         }
-        
+
         Ok(())
     }
 
     /// Run optical computation
-    fn run_optical_computation(&self, shots: usize) -> Result<Vec<OpticalMeasurement>, SamplerError> {
+    fn run_optical_computation(
+        &self,
+        shots: usize,
+    ) -> Result<Vec<OpticalMeasurement>, SamplerError> {
         // Simulate or interface with actual hardware
         let mut measurements = Vec::new();
-        
+
         for _ in 0..shots {
             measurements.push(self.perform_measurement()?);
         }
-        
+
         Ok(measurements)
     }
 
@@ -327,11 +347,11 @@ impl PhotonicIsingMachineSampler {
     fn perform_measurement(&self) -> Result<OpticalMeasurement, SamplerError> {
         // In real implementation, this would interface with optical hardware
         // For now, return simulated measurement
-        
+
         let n = self.optical_network.borrow().num_modes;
         let amplitudes = vec![0.8; n];
         let phases = vec![0.0; n];
-        
+
         Ok(OpticalMeasurement {
             amplitudes,
             phases,
@@ -347,7 +367,7 @@ impl PhotonicIsingMachineSampler {
         var_map: &HashMap<String, usize>,
     ) -> SampleResult {
         let mut assignments = HashMap::new();
-        
+
         // Threshold detection
         for (var_name, &idx) in var_map {
             if idx < measurement.amplitudes.len() {
@@ -355,10 +375,10 @@ impl PhotonicIsingMachineSampler {
                 assignments.insert(var_name.clone(), value);
             }
         }
-        
+
         // Calculate energy (would need actual QUBO for this)
         let energy = -measurement.quality_metric * 100.0;
-        
+
         SampleResult {
             assignments,
             energy,
@@ -368,12 +388,17 @@ impl PhotonicIsingMachineSampler {
 
     /// Perform calibration if needed
     fn calibrate_if_needed(&self) -> Result<(), SamplerError> {
-        let elapsed = self.calibration.borrow().last_calibration.elapsed().as_secs_f64();
-        
+        let elapsed = self
+            .calibration
+            .borrow()
+            .last_calibration
+            .elapsed()
+            .as_secs_f64();
+
         if elapsed > self.config.error_correction.calibration_interval {
             self.perform_calibration()?;
         }
-        
+
         Ok(())
     }
 
@@ -382,17 +407,19 @@ impl PhotonicIsingMachineSampler {
         // Phase calibration
         if self.config.error_correction.phase_stabilization {
             // Measure phase drifts and compensate
-            self.calibration.borrow_mut().phase_offsets = vec![0.0; self.optical_network.borrow().num_modes];
+            self.calibration.borrow_mut().phase_offsets =
+                vec![0.0; self.optical_network.borrow().num_modes];
         }
-        
+
         // Amplitude calibration
         if self.config.error_correction.amplitude_correction {
             // Measure amplitude variations
-            self.calibration.borrow_mut().amplitude_factors = vec![1.0; self.optical_network.borrow().num_modes];
+            self.calibration.borrow_mut().amplitude_factors =
+                vec![1.0; self.optical_network.borrow().num_modes];
         }
-        
+
         self.calibration.borrow_mut().last_calibration = std::time::Instant::now();
-        
+
         Ok(())
     }
 }
@@ -416,25 +443,25 @@ impl Sampler for PhotonicIsingMachineSampler {
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         let (qubo, var_map) = model;
-        
+
         // Calibrate if needed
         self.calibrate_if_needed()?;
-        
+
         // Configure optical network
         self.configure_network(qubo)?;
-        
+
         // Run optical computation
         let measurements = self.run_optical_computation(shots)?;
-        
+
         // Convert to solutions
         let mut results: Vec<SampleResult> = measurements
             .iter()
             .map(|m| self.measurement_to_solution(m, var_map))
             .collect();
-        
+
         // Sort by energy
         results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
-        
+
         Ok(results)
     }
 
@@ -443,9 +470,10 @@ impl Sampler for PhotonicIsingMachineSampler {
         _hobo: &(ndarray::ArrayD<f64>, HashMap<String, usize>),
         _shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
-        Err(SamplerError::NotImplemented("HOBO not supported by photonic hardware".to_string()))
+        Err(SamplerError::NotImplemented(
+            "HOBO not supported by photonic hardware".to_string(),
+        ))
     }
-
 }
 
 #[cfg(test)]
@@ -455,14 +483,14 @@ mod tests {
     #[test]
     fn test_photonic_config() {
         let config = PhotonicConfig::default();
-        
+
         match config.platform {
             PhotonicPlatform::CoherentIsingMachine { pump_power, .. } => {
                 assert_eq!(pump_power, 100.0);
             }
             _ => panic!("Wrong platform"),
         }
-        
+
         assert_eq!(config.optical_params.wavelength, 1550.0);
     }
 
@@ -476,7 +504,7 @@ mod tests {
             },
             ..PhotonicConfig::default()
         };
-        
+
         let sampler = PhotonicIsingMachineSampler::new(config);
         assert_eq!(sampler.optical_network.borrow().num_modes, 64);
     }
@@ -484,10 +512,11 @@ mod tests {
     #[test]
     fn test_calibration_timing() {
         let mut sampler = PhotonicIsingMachineSampler::new(PhotonicConfig::default());
-        
+
         // Force calibration by setting last calibration to past
-        sampler.calibration.borrow_mut().last_calibration = std::time::Instant::now() - std::time::Duration::from_secs(120);
-        
+        sampler.calibration.borrow_mut().last_calibration =
+            std::time::Instant::now() - std::time::Duration::from_secs(120);
+
         // Should trigger calibration
         assert!(sampler.calibrate_if_needed().is_ok());
     }

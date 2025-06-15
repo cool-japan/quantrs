@@ -345,7 +345,7 @@ impl OptimizationProblem for PortfolioOptimization {
     }
 }
 
-/// Binary wrapper for portfolio optimization that works with Vec<i8> solutions
+/// Binary wrapper for portfolio optimization that works with `Vec<i8>` solutions
 #[derive(Debug, Clone)]
 pub struct BinaryPortfolioOptimization {
     inner: PortfolioOptimization,

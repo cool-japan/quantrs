@@ -1,9 +1,9 @@
 //! Performance monitoring and optimization caching components
 
+use super::results::*;
+use crate::DeviceResult;
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant, SystemTime};
-use crate::DeviceResult;
-use super::results::*;
 
 /// Performance summary for aggregated metrics
 #[derive(Debug, Clone)]
@@ -123,19 +123,16 @@ impl PerformanceMonitor {
             alert_thresholds: AlertThresholds::default(),
             monitoring_window: Duration::from_secs(3600), // 1 hour
             aggregation_intervals: vec![
-                Duration::from_secs(60),    // 1 minute
-                Duration::from_secs(300),   // 5 minutes
-                Duration::from_secs(900),   // 15 minutes
-                Duration::from_secs(3600),  // 1 hour
+                Duration::from_secs(60),   // 1 minute
+                Duration::from_secs(300),  // 5 minutes
+                Duration::from_secs(900),  // 15 minutes
+                Duration::from_secs(3600), // 1 hour
             ],
         }
     }
 
     /// Create performance monitor with custom configuration
-    pub fn with_config(
-        alert_thresholds: AlertThresholds,
-        monitoring_window: Duration,
-    ) -> Self {
+    pub fn with_config(alert_thresholds: AlertThresholds, monitoring_window: Duration) -> Self {
         Self {
             monitoring_enabled: true,
             metrics_history: VecDeque::with_capacity(10000),
@@ -195,7 +192,7 @@ impl PerformanceMonitor {
             total_executions: overall_stats.total_executions,
             average_execution_time: overall_stats.average_latency,
             success_rate: overall_stats.overall_success_rate,
-            cache_hit_rate: 0.8, // Placeholder
+            cache_hit_rate: 0.8,       // Placeholder
             optimization_savings: 0.1, // Placeholder
             resource_utilization: 0.7, // Placeholder
             interval_summaries: interval_summaries.into_values().collect(),
@@ -218,7 +215,8 @@ impl PerformanceMonitor {
         start_time: SystemTime,
         end_time: SystemTime,
     ) -> DeviceResult<Vec<TimestampedMetrics>> {
-        let metrics = self.metrics_history
+        let metrics = self
+            .metrics_history
             .iter()
             .filter(|m| m.timestamp >= start_time && m.timestamp <= end_time)
             .cloned()
@@ -259,7 +257,8 @@ impl PerformanceMonitor {
             .checked_sub(interval)
             .unwrap_or(SystemTime::UNIX_EPOCH);
 
-        let recent_metrics: Vec<&PerformanceMetrics> = self.metrics_history
+        let recent_metrics: Vec<&PerformanceMetrics> = self
+            .metrics_history
             .iter()
             .filter(|m| m.timestamp >= cutoff_time)
             .map(|m| &m.metrics)
@@ -271,32 +270,44 @@ impl PerformanceMonitor {
 
         // Calculate aggregated statistics
         let count = recent_metrics.len();
-        let avg_success_rate = recent_metrics.iter()
+        let avg_success_rate = recent_metrics
+            .iter()
             .map(|m| m.measurement_success_rate)
-            .sum::<f64>() / count as f64;
-        
-        let avg_efficiency = recent_metrics.iter()
+            .sum::<f64>()
+            / count as f64;
+
+        let avg_efficiency = recent_metrics
+            .iter()
             .map(|m| m.classical_efficiency)
-            .sum::<f64>() / count as f64;
-        
-        let avg_fidelity = recent_metrics.iter()
+            .sum::<f64>()
+            / count as f64;
+
+        let avg_fidelity = recent_metrics
+            .iter()
             .map(|m| m.circuit_fidelity)
-            .sum::<f64>() / count as f64;
-        
-        let avg_error_rate = recent_metrics.iter()
+            .sum::<f64>()
+            / count as f64;
+
+        let avg_error_rate = recent_metrics
+            .iter()
             .map(|m| m.measurement_error_rate)
-            .sum::<f64>() / count as f64;
-        
-        let avg_timing_overhead = recent_metrics.iter()
+            .sum::<f64>()
+            / count as f64;
+
+        let avg_timing_overhead = recent_metrics
+            .iter()
             .map(|m| m.timing_overhead)
-            .sum::<f64>() / count as f64;
+            .sum::<f64>()
+            / count as f64;
 
         // Calculate min/max
-        let min_success_rate = recent_metrics.iter()
+        let min_success_rate = recent_metrics
+            .iter()
             .map(|m| m.measurement_success_rate)
             .fold(f64::INFINITY, f64::min);
-        
-        let max_success_rate = recent_metrics.iter()
+
+        let max_success_rate = recent_metrics
+            .iter()
             .map(|m| m.measurement_success_rate)
             .fold(f64::NEG_INFINITY, f64::max);
 
@@ -315,10 +326,8 @@ impl PerformanceMonitor {
             return Ok(OverallStatistics::default());
         }
 
-        let all_metrics: Vec<&PerformanceMetrics> = self.metrics_history
-            .iter()
-            .map(|m| &m.metrics)
-            .collect();
+        let all_metrics: Vec<&PerformanceMetrics> =
+            self.metrics_history.iter().map(|m| &m.metrics).collect();
 
         let total_samples = all_metrics.len();
         let uptime = self.calculate_uptime()?;
@@ -391,8 +400,7 @@ impl PerformanceMonitor {
                 alert_type: "HighLatency".to_string(),
                 message: format!(
                     "Timing overhead ({:.2}) above threshold ({:.2})",
-                    latest_metrics.timing_overhead,
-                    self.alert_thresholds.max_timing_overhead
+                    latest_metrics.timing_overhead, self.alert_thresholds.max_timing_overhead
                 ),
                 severity: "Warning".to_string(),
                 timestamp: SystemTime::now(),
@@ -429,11 +437,12 @@ impl PerformanceMonitor {
         }
 
         // Success rate trend
-        let success_rates: Vec<f64> = self.metrics_history
+        let success_rates: Vec<f64> = self
+            .metrics_history
             .iter()
             .map(|m| m.metrics.measurement_success_rate)
             .collect();
-        
+
         let success_rate_trend = self.calculate_trend(&success_rates);
         trends.push(PerformanceTrend {
             trend_direction: format!("{:?}", self.classify_trend_direction(success_rate_trend)),
@@ -443,11 +452,12 @@ impl PerformanceMonitor {
         });
 
         // Error rate trend
-        let error_rates: Vec<f64> = self.metrics_history
+        let error_rates: Vec<f64> = self
+            .metrics_history
             .iter()
             .map(|m| m.metrics.measurement_error_rate)
             .collect();
-        
+
         let error_rate_trend = self.calculate_trend(&error_rates);
         trends.push(PerformanceTrend {
             trend_direction: format!("{:?}", self.classify_trend_direction(error_rate_trend)),
@@ -463,15 +473,24 @@ impl PerformanceMonitor {
     fn export_as_json(&self) -> DeviceResult<String> {
         // Simplified JSON export
         let mut json_data = String::from("{\n");
-        json_data.push_str(&format!("  \"total_samples\": {},\n", self.metrics_history.len()));
-        json_data.push_str(&format!("  \"monitoring_window_secs\": {},\n", self.monitoring_window.as_secs()));
+        json_data.push_str(&format!(
+            "  \"total_samples\": {},\n",
+            self.metrics_history.len()
+        ));
+        json_data.push_str(&format!(
+            "  \"monitoring_window_secs\": {},\n",
+            self.monitoring_window.as_secs()
+        ));
         json_data.push_str("  \"metrics\": [\n");
-        
+
         for (i, metric) in self.metrics_history.iter().enumerate() {
             json_data.push_str(&format!(
                 "    {{\"timestamp\": {}, \"success_rate\": {:.4}, \"error_rate\": {:.4}}}",
-                metric.timestamp.duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap_or(Duration::ZERO).as_secs(),
+                metric
+                    .timestamp
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap_or(Duration::ZERO)
+                    .as_secs(),
                 metric.metrics.measurement_success_rate,
                 metric.metrics.measurement_error_rate
             ));
@@ -480,20 +499,24 @@ impl PerformanceMonitor {
             }
             json_data.push('\n');
         }
-        
+
         json_data.push_str("  ]\n}");
         Ok(json_data)
     }
 
     /// Export metrics as CSV
     fn export_as_csv(&self) -> DeviceResult<String> {
-        let mut csv_data = String::from("timestamp,success_rate,error_rate,efficiency,fidelity,timing_overhead\n");
-        
+        let mut csv_data =
+            String::from("timestamp,success_rate,error_rate,efficiency,fidelity,timing_overhead\n");
+
         for metric in &self.metrics_history {
             csv_data.push_str(&format!(
                 "{},{:.4},{:.4},{:.4},{:.4},{:.4}\n",
-                metric.timestamp.duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap_or(Duration::ZERO).as_secs(),
+                metric
+                    .timestamp
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap_or(Duration::ZERO)
+                    .as_secs(),
                 metric.metrics.measurement_success_rate,
                 metric.metrics.measurement_error_rate,
                 metric.metrics.classical_efficiency,
@@ -501,7 +524,7 @@ impl PerformanceMonitor {
                 metric.metrics.timing_overhead
             ));
         }
-        
+
         Ok(csv_data)
     }
 
@@ -518,35 +541,30 @@ impl PerformanceMonitor {
             .as_millis();
 
         let mut prometheus_data = String::new();
-        
+
         prometheus_data.push_str(&format!(
             "measurement_success_rate {} {}\n",
-            latest.measurement_success_rate,
-            timestamp
+            latest.measurement_success_rate, timestamp
         ));
-        
+
         prometheus_data.push_str(&format!(
             "measurement_error_rate {} {}\n",
-            latest.measurement_error_rate,
-            timestamp
+            latest.measurement_error_rate, timestamp
         ));
-        
+
         prometheus_data.push_str(&format!(
             "classical_efficiency {} {}\n",
-            latest.classical_efficiency,
-            timestamp
+            latest.classical_efficiency, timestamp
         ));
-        
+
         prometheus_data.push_str(&format!(
             "circuit_fidelity {} {}\n",
-            latest.circuit_fidelity,
-            timestamp
+            latest.circuit_fidelity, timestamp
         ));
-        
+
         prometheus_data.push_str(&format!(
             "timing_overhead {} {}\n",
-            latest.timing_overhead,
-            timestamp
+            latest.timing_overhead, timestamp
         ));
 
         Ok(prometheus_data)
@@ -559,10 +577,9 @@ impl PerformanceMonitor {
         }
 
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance = values.iter()
-            .map(|&x| (x - mean).powi(2))
-            .sum::<f64>() / (values.len() - 1) as f64;
-        
+        let variance =
+            values.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64;
+
         variance.sqrt()
     }
 
@@ -573,8 +590,10 @@ impl PerformanceMonitor {
 
         let first_timestamp = self.metrics_history.front().unwrap().timestamp;
         let last_timestamp = self.metrics_history.back().unwrap().timestamp;
-        
-        Ok(last_timestamp.duration_since(first_timestamp).unwrap_or(Duration::ZERO))
+
+        Ok(last_timestamp
+            .duration_since(first_timestamp)
+            .unwrap_or(Duration::ZERO))
     }
 
     fn calculate_availability(&self, metrics: &[&PerformanceMetrics]) -> f64 {
@@ -582,10 +601,11 @@ impl PerformanceMonitor {
             return 0.0;
         }
 
-        let successful_measurements = metrics.iter()
+        let successful_measurements = metrics
+            .iter()
             .filter(|m| m.measurement_success_rate > 0.9)
             .count();
-        
+
         successful_measurements as f64 / metrics.len() as f64
     }
 
@@ -607,13 +627,14 @@ impl PerformanceMonitor {
             return 0.0;
         }
 
-        let avg_success_rate = metrics.iter()
+        let avg_success_rate = metrics
+            .iter()
             .map(|m| m.measurement_success_rate)
-            .sum::<f64>() / metrics.len() as f64;
-        
-        let avg_fidelity = metrics.iter()
-            .map(|m| m.circuit_fidelity)
-            .sum::<f64>() / metrics.len() as f64;
+            .sum::<f64>()
+            / metrics.len() as f64;
+
+        let avg_fidelity =
+            metrics.iter().map(|m| m.circuit_fidelity).sum::<f64>() / metrics.len() as f64;
 
         (avg_success_rate + avg_fidelity) / 2.0
     }
@@ -624,10 +645,11 @@ impl PerformanceMonitor {
         }
 
         // Simple data quality based on completeness and consistency
-        let complete_measurements = metrics.iter()
+        let complete_measurements = metrics
+            .iter()
             .filter(|m| m.measurement_success_rate > 0.0 && m.circuit_fidelity > 0.0)
             .count();
-        
+
         complete_measurements as f64 / metrics.len() as f64
     }
 
@@ -639,7 +661,11 @@ impl PerformanceMonitor {
         let n = values.len() as f64;
         let x_sum = (0..values.len()).map(|i| i as f64).sum::<f64>();
         let y_sum = values.iter().sum::<f64>();
-        let xy_sum = values.iter().enumerate().map(|(i, &y)| i as f64 * y).sum::<f64>();
+        let xy_sum = values
+            .iter()
+            .enumerate()
+            .map(|(i, &y)| i as f64 * y)
+            .sum::<f64>();
         let x2_sum = (0..values.len()).map(|i| (i as f64).powi(2)).sum::<f64>();
 
         let denominator = n * x2_sum - x_sum * x_sum;
@@ -650,7 +676,10 @@ impl PerformanceMonitor {
         }
     }
 
-    fn classify_trend_direction(&self, trend_slope: f64) -> crate::mid_circuit_measurements::results::TrendDirection {
+    fn classify_trend_direction(
+        &self,
+        trend_slope: f64,
+    ) -> crate::mid_circuit_measurements::results::TrendDirection {
         if trend_slope > 0.01 {
             crate::mid_circuit_measurements::results::TrendDirection::Increasing
         } else if trend_slope < -0.01 {
@@ -714,7 +743,10 @@ impl OptimizationCache {
 
         // Check if entry exists and is valid
         let is_valid = if let Some(cached) = self.cache.get(key) {
-            SystemTime::now().duration_since(cached.cached_at).unwrap_or(Duration::MAX) < self.cache_ttl
+            SystemTime::now()
+                .duration_since(cached.cached_at)
+                .unwrap_or(Duration::MAX)
+                < self.cache_ttl
         } else {
             false
         };
@@ -739,7 +771,10 @@ impl OptimizationCache {
         }
 
         if let Some(cached) = self.cache.get(key) {
-            SystemTime::now().duration_since(cached.cached_at).unwrap_or(Duration::MAX) < self.cache_ttl
+            SystemTime::now()
+                .duration_since(cached.cached_at)
+                .unwrap_or(Duration::MAX)
+                < self.cache_ttl
         } else {
             false
         }
@@ -754,10 +789,16 @@ impl OptimizationCache {
     pub fn get_cache_stats(&self) -> CacheStatistics {
         let total_entries = self.cache.len();
         let total_access_count = self.cache.values().map(|c| c.access_count as usize).sum();
-        
+
         let avg_age = if total_entries > 0 {
-            let total_age: Duration = self.cache.values()
-                .map(|c| SystemTime::now().duration_since(c.cached_at).unwrap_or(Duration::ZERO))
+            let total_age: Duration = self
+                .cache
+                .values()
+                .map(|c| {
+                    SystemTime::now()
+                        .duration_since(c.cached_at)
+                        .unwrap_or(Duration::ZERO)
+                })
                 .sum();
             total_age / total_entries as u32
         } else {
@@ -767,7 +808,7 @@ impl OptimizationCache {
         CacheStatistics {
             total_entries,
             total_access_count,
-            hit_rate: 0.8, // Placeholder - would need hit/miss tracking
+            hit_rate: 0.8,       // Placeholder - would need hit/miss tracking
             cache_hit_rate: 0.8, // Placeholder - would need hit/miss tracking
             miss_rate: 0.2,
             eviction_rate: 0.1,
@@ -779,20 +820,24 @@ impl OptimizationCache {
     /// Cleanup old cache entries
     fn cleanup_cache(&mut self) -> DeviceResult<()> {
         let now = SystemTime::now();
-        
+
         // Remove expired entries
         self.cache.retain(|_, cached| {
-            now.duration_since(cached.cached_at).unwrap_or(Duration::MAX) < self.cache_ttl
+            now.duration_since(cached.cached_at)
+                .unwrap_or(Duration::MAX)
+                < self.cache_ttl
         });
 
         // If still over limit, remove least recently used entries
         if self.cache.len() > self.max_cache_size {
-            let mut entries: Vec<(String, u32)> = self.cache.iter()
+            let mut entries: Vec<(String, u32)> = self
+                .cache
+                .iter()
                 .map(|(k, v)| (k.clone(), v.access_count))
                 .collect();
-            
+
             entries.sort_by_key(|(_, count)| *count);
-            
+
             let to_remove = self.cache.len() - self.max_cache_size;
             for (key, _) in entries.iter().take(to_remove) {
                 self.cache.remove(key);
@@ -870,4 +915,3 @@ impl Default for OptimizationCache {
         Self::new()
     }
 }
-

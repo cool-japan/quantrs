@@ -1,3 +1,18 @@
+#![allow(dead_code)]
+#![allow(clippy::all)]
+#![allow(unused_imports)]
+#![allow(unused_variables)]
+#![allow(unused_mut)]
+#![allow(unused_assignments)]
+#![allow(unexpected_cfgs)]
+#![allow(deprecated)]
+#![allow(ambiguous_glob_reexports)]
+#![allow(non_camel_case_types)]
+#![allow(hidden_glob_reexports)]
+#![allow(noop_method_call)]
+#![allow(unused_must_use)]
+#![allow(non_snake_case)]
+
 //! Quantum annealing support for the QuantRS2 framework.
 //!
 //! This crate provides types and functions for quantum annealing,

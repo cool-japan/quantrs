@@ -49,7 +49,8 @@ impl WilsonLoop {
         // For a closed loop, holonomy should be independent of gauge choice
         // Simplified check: for 2x2 matrix det = a*d - b*c
         let det = if self.holonomy.nrows() == 2 && self.holonomy.ncols() == 2 {
-            self.holonomy[[0, 0]] * self.holonomy[[1, 1]] - self.holonomy[[0, 1]] * self.holonomy[[1, 0]]
+            self.holonomy[[0, 0]] * self.holonomy[[1, 1]]
+                - self.holonomy[[0, 1]] * self.holonomy[[1, 0]]
         } else {
             Complex64::new(1.0, 0.0) // Simplified for larger matrices
         };
@@ -61,6 +62,7 @@ impl WilsonLoop {
 #[derive(Debug, Clone)]
 pub struct HolonomicGateOpSynthesis {
     target_gate: Array2<Complex64>,
+    #[allow(dead_code)]
     parameter_space_dim: usize,
     optimization_config: PathOptimizationConfig,
 }
@@ -98,7 +100,7 @@ impl HolonomicGateOpSynthesis {
     pub fn synthesize(&self) -> Result<HolonomicPath, QuantRS2Error> {
         let initial_path = self.generate_initial_path();
         let optimized_path = self.optimize_path(initial_path)?;
-        
+
         Ok(HolonomicPath::new(
             optimized_path.clone(),
             self.compute_gauge_field(&optimized_path)?,
@@ -109,13 +111,13 @@ impl HolonomicGateOpSynthesis {
     fn generate_initial_path(&self) -> Vec<Complex64> {
         let n_points = 100;
         let mut path = Vec::with_capacity(n_points);
-        
+
         // Start with a circular path in complex plane
         for i in 0..n_points {
             let theta = 2.0 * PI * (i as f64) / (n_points as f64);
             path.push(Complex64::new(theta.cos(), theta.sin()));
         }
-        
+
         path
     }
 
@@ -124,25 +126,25 @@ impl HolonomicGateOpSynthesis {
         for iteration in 0..self.optimization_config.max_iterations {
             let gauge_field = self.compute_gauge_field(&path)?;
             let wilson_loop = WilsonLoop::new(path.clone(), gauge_field);
-            
+
             let error = self.compute_gate_error(&wilson_loop.holonomy);
             if error < self.optimization_config.tolerance {
                 return Ok(path);
             }
-            
+
             // Gradient-based optimization
             let gradient = self.compute_path_gradient(&path, &wilson_loop.holonomy)?;
             for (point, grad) in path.iter_mut().zip(gradient.iter()) {
                 *point -= self.optimization_config.step_size * grad;
             }
-            
+
             if iteration % 100 == 0 {
                 println!("Iteration {}: Error = {:.2e}", iteration, error);
             }
         }
-        
+
         Err(QuantRS2Error::OptimizationFailed(
-            "Holonomic path optimization did not converge".to_string()
+            "Holonomic path optimization did not converge".to_string(),
         ))
     }
 
@@ -150,25 +152,25 @@ impl HolonomicGateOpSynthesis {
     fn compute_gauge_field(&self, path: &[Complex64]) -> Result<Array2<Complex64>, QuantRS2Error> {
         let n = self.target_gate.nrows();
         let mut gauge_field = Array2::zeros((n, n));
-        
+
         // Compute Berry connection
         for i in 0..path.len() - 1 {
             let param = path[i];
             let next_param = path[i + 1];
-            
+
             // Parametric Hamiltonian (example: spin-1/2 in magnetic field)
             let hamiltonian = self.parametric_hamiltonian(param);
-            let next_hamiltonian = self.parametric_hamiltonian(next_param);
-            
+            let _next_hamiltonian = self.parametric_hamiltonian(next_param);
+
             // Berry connection A = <ψ|∂/∂λ|ψ>
             // Simplified - use identity matrices for eigenvectors
-            let eigenvals: Array1<f64> = Array1::ones(hamiltonian.nrows());
+            let _eigenvals: Array1<f64> = Array1::ones(hamiltonian.nrows());
             let eigenvecs = Array2::eye(hamiltonian.nrows());
             let connection = self.compute_berry_connection(&eigenvecs, param, next_param)?;
-            
+
             gauge_field = gauge_field + connection * (next_param - param);
         }
-        
+
         Ok(gauge_field)
     }
 
@@ -176,7 +178,7 @@ impl HolonomicGateOpSynthesis {
     fn parametric_hamiltonian(&self, param: Complex64) -> Array2<Complex64> {
         let n = self.target_gate.nrows();
         let mut h = Array2::zeros((n, n));
-        
+
         // Example: Spin-1/2 in rotating magnetic field
         if n == 2 {
             h[[0, 0]] = param.re.into();
@@ -195,7 +197,7 @@ impl HolonomicGateOpSynthesis {
                 }
             }
         }
-        
+
         h
     }
 
@@ -209,12 +211,12 @@ impl HolonomicGateOpSynthesis {
         let n = eigenvecs.nrows();
         let mut connection = Array2::zeros((n, n));
         let delta_param = next_param - param;
-        
+
         // Numerical derivative of eigenvectors
         let next_hamiltonian = self.parametric_hamiltonian(next_param);
         // Simplified - use identity matrices for eigenvectors
         let next_eigenvecs = Array2::eye(next_hamiltonian.nrows());
-        
+
         for i in 0..n {
             for j in 0..n {
                 if i != j {
@@ -224,7 +226,7 @@ impl HolonomicGateOpSynthesis {
                 }
             }
         }
-        
+
         Ok(connection)
     }
 
@@ -239,30 +241,30 @@ impl HolonomicGateOpSynthesis {
     fn compute_path_gradient(
         &self,
         path: &[Complex64],
-        achieved_gate: &Array2<Complex64>,
+        _achieved_gate: &Array2<Complex64>,
     ) -> Result<Vec<Complex64>, QuantRS2Error> {
         let mut gradient = vec![Complex64::new(0.0, 0.0); path.len()];
         let eps = 1e-8;
-        
+
         for i in 0..path.len() {
             let mut path_plus = path.to_vec();
             let mut path_minus = path.to_vec();
-            
+
             path_plus[i] += eps;
             path_minus[i] -= eps;
-            
+
             let gauge_plus = self.compute_gauge_field(&path_plus)?;
             let gauge_minus = self.compute_gauge_field(&path_minus)?;
-            
+
             let wilson_plus = WilsonLoop::new(path_plus, gauge_plus);
             let wilson_minus = WilsonLoop::new(path_minus, gauge_minus);
-            
+
             let error_plus = self.compute_gate_error(&wilson_plus.holonomy);
             let error_minus = self.compute_gate_error(&wilson_minus.holonomy);
-            
+
             gradient[i] = Complex64::new((error_plus - error_minus) / (2.0 * eps), 0.0);
         }
-        
+
         Ok(gradient)
     }
 }
@@ -344,7 +346,12 @@ impl GeometricErrorCorrection {
         // and has distinct geometric phases for different logical operators
         self.stabilizers.iter().all(|stab| {
             let anticommutator = error.dot(stab) + stab.dot(error);
-            anticommutator.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt() < 1e-10
+            anticommutator
+                .iter()
+                .map(|x| x.norm_sqr())
+                .sum::<f64>()
+                .sqrt()
+                < 1e-10
         })
     }
 
@@ -360,13 +367,13 @@ impl GeometricErrorCorrection {
 
         // Use geometric phases to determine correction
         let mut correction = Array2::eye(self.code_space_dimension);
-        
+
         for (i, &syn) in syndrome.iter().enumerate() {
             if syn && i < self.stabilizers.len() {
                 let phase_key = format!("stabilizer_{}", i);
                 if let Some(&phase) = self.geometric_phases.get(&phase_key) {
-                    let phase_correction = Array2::eye(self.code_space_dimension) * 
-                        Complex64::from_polar(1.0, phase);
+                    let phase_correction =
+                        Array2::eye(self.code_space_dimension) * Complex64::from_polar(1.0, phase);
                     correction = correction.dot(&phase_correction);
                 }
             }
@@ -377,10 +384,13 @@ impl GeometricErrorCorrection {
 
     /// Compute the geometric phase for error syndrome
     pub fn syndrome_phase(&self, syndrome: &[bool]) -> f64 {
-        syndrome.iter().enumerate()
+        syndrome
+            .iter()
+            .enumerate()
             .filter(|(_, &bit)| bit)
             .map(|(i, _)| {
-                self.geometric_phases.get(&format!("stabilizer_{}", i))
+                self.geometric_phases
+                    .get(&format!("stabilizer_{}", i))
                     .copied()
                     .unwrap_or(0.0)
             })
@@ -479,32 +489,35 @@ impl HolonomicQuantumComputer {
     }
 
     /// Execute the holonomic computation
-    pub fn execute(&self, initial_state: &Array1<Complex64>) -> Result<Array1<Complex64>, QuantRS2Error> {
+    pub fn execute(
+        &self,
+        initial_state: &Array1<Complex64>,
+    ) -> Result<Array1<Complex64>, QuantRS2Error> {
         let mut state = initial_state.clone();
-        
+
         for gate in &self.gates {
             state = gate.path.execute(&state);
-            
+
             // Apply error correction if needed
             let syndrome = self.detect_errors(&state)?;
             if syndrome.iter().any(|&x| x) {
                 state = self.error_correction.correct_error(&state, &syndrome)?;
             }
         }
-        
+
         Ok(state)
     }
 
     /// Detect errors in the current state
     fn detect_errors(&self, state: &Array1<Complex64>) -> Result<Vec<bool>, QuantRS2Error> {
         let mut syndrome = Vec::new();
-        
+
         for stabilizer in &self.error_correction.stabilizers {
             let measurement = stabilizer.dot(state);
             let expectation = measurement.iter().map(|x| x.norm_sqr()).sum::<f64>();
             syndrome.push(expectation < 0.5); // Error detected if expectation < 0.5
         }
-        
+
         Ok(syndrome)
     }
 
@@ -516,9 +529,9 @@ impl HolonomicQuantumComputer {
     /// Check if the computation is topologically protected
     pub fn is_topologically_protected(&self) -> bool {
         // Computation is topologically protected if all gates use non-trivial Wilson loops
-        self.gates.iter().all(|gate| {
-            gate.path.wilson_loop.is_gauge_invariant(1e-10)
-        })
+        self.gates
+            .iter()
+            .all(|gate| gate.path.wilson_loop.is_gauge_invariant(1e-10))
     }
 }
 
@@ -536,14 +549,14 @@ mod tests {
             Complex64::new(0.0, 1.0),
             Complex64::new(0.0, 0.0),
         ];
-        
+
         let gauge_field = array![
             [Complex64::new(0.0, 1.0), Complex64::new(1.0, 0.0)],
             [Complex64::new(1.0, 0.0), Complex64::new(0.0, -1.0)]
         ];
-        
+
         let wilson_loop = WilsonLoop::new(path, gauge_field);
-        
+
         assert!(wilson_loop.holonomy.nrows() == 2);
         assert!(wilson_loop.holonomy.ncols() == 2);
         assert!(wilson_loop.is_gauge_invariant(1e-10));
@@ -555,10 +568,10 @@ mod tests {
             [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
             [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)]
         ];
-        
+
         let synthesis = HolonomicGateOpSynthesis::new(target_gate.clone(), 2);
         let result = synthesis.synthesize();
-        
+
         assert!(result.is_ok());
         let path = result.unwrap();
         assert!(path.fidelity(&target_gate) > 0.8);
@@ -567,31 +580,31 @@ mod tests {
     #[test]
     fn test_geometric_error_correction() {
         let mut gec = GeometricErrorCorrection::new(4);
-        
+
         let logical_x = array![
             [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
             [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]
         ];
-        gec.add_logical_operator(logical_x, PI/2.0);
-        
+        gec.add_logical_operator(logical_x, PI / 2.0);
+
         let stabilizer = array![
             [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
             [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)]
         ];
         gec.add_stabilizer(stabilizer);
-        
+
         let error = array![
             [Complex64::new(0.0, 0.0), Complex64::new(0.1, 0.0)],
             [Complex64::new(0.1, 0.0), Complex64::new(0.0, 0.0)]
         ];
-        
+
         assert!(gec.is_correctable(&error));
     }
 
     #[test]
     fn test_holonomic_quantum_computer() {
         let mut hqc = HolonomicQuantumComputer::new(2);
-        
+
         // Create a simple holonomic path
         let path = vec![
             Complex64::new(0.0, 0.0),
@@ -599,24 +612,20 @@ mod tests {
             Complex64::new(0.0, 1.0),
             Complex64::new(0.0, 0.0),
         ];
-        
+
         let gauge_field = array![
             [Complex64::new(0.0, 1.0), Complex64::new(1.0, 0.0)],
             [Complex64::new(1.0, 0.0), Complex64::new(0.0, -1.0)]
         ];
-        
+
         let holonomic_path = HolonomicPath::new(path, gauge_field);
-        let gate = HolonomicGateOp::new(
-            holonomic_path,
-            vec![QubitId::new(0)],
-            1.0,
-        );
-        
+        let gate = HolonomicGateOp::new(holonomic_path, vec![QubitId::new(0)], 1.0);
+
         hqc.add_gate(gate);
-        
+
         let initial_state = array![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
         let result = hqc.execute(&initial_state);
-        
+
         assert!(result.is_ok());
         assert!(hqc.is_topologically_protected());
     }

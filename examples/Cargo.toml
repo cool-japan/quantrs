@@ -22,7 +22,7 @@ quantrs2-device = { path = "../device", version = "0.1.0-alpha.5", features = []
 num-complex.workspace = true
 ndarray.workspace = true
 rand.workspace = true
-fastrand = "2.0"
+fastrand = "2.3"
 petgraph = "0.6"
 thiserror = "2.0"
 

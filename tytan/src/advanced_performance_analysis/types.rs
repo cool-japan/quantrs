@@ -29,7 +29,9 @@ impl std::fmt::Display for AnalysisError {
             AnalysisError::ComputationError(msg) => write!(f, "Computation error: {}", msg),
             AnalysisError::InsufficientData(msg) => write!(f, "Insufficient data: {}", msg),
             AnalysisError::ModelTrainingError(msg) => write!(f, "Model training error: {}", msg),
-            AnalysisError::ReportGenerationError(msg) => write!(f, "Report generation error: {}", msg),
+            AnalysisError::ReportGenerationError(msg) => {
+                write!(f, "Report generation error: {}", msg)
+            }
             AnalysisError::SystemError(msg) => write!(f, "System error: {}", msg),
         }
     }
@@ -424,14 +426,12 @@ impl SystemInfo {
                 memory_bandwidth: 448.0,
             }),
             network: NetworkInfo {
-                interfaces: vec![
-                    NetworkInterface {
-                        name: "eth0".to_string(),
-                        interface_type: "Ethernet".to_string(),
-                        max_speed: 1.0,
-                        utilization: 15.5,
-                    },
-                ],
+                interfaces: vec![NetworkInterface {
+                    name: "eth0".to_string(),
+                    interface_type: "Ethernet".to_string(),
+                    max_speed: 1.0,
+                    utilization: 15.5,
+                }],
                 latency_measurements: HashMap::new(),
                 bandwidth_measurements: HashMap::new(),
             },

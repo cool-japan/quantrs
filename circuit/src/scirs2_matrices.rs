@@ -140,7 +140,7 @@ impl SparseMatrix {
 
         // Simplified sparse matrix multiplication
         let mut result = SparseMatrix::new(self.shape.0, other.shape.1, SparseFormat::COO);
-        
+
         // This is a naive implementation - SciRS2 would use optimized algorithms
         for &(i, k, a_val) in &self.entries {
             for &(k2, j, b_val) in &other.entries {
@@ -299,7 +299,7 @@ impl SparseGate {
     /// Compose with another gate
     pub fn compose(&self, other: &SparseGate) -> QuantRS2Result<SparseGate> {
         let composed_matrix = other.matrix.matmul(&self.matrix)?;
-        
+
         // Merge qubit lists (simplified)
         let mut qubits = self.qubits.clone();
         for qubit in &other.qubits {
@@ -320,7 +320,7 @@ impl SparseGate {
         // Simplified fidelity calculation
         // F = |Tr(U†V)|²/d where d is the dimension
         let dim = self.matrix.shape.0 as f64;
-        
+
         // This would use SciRS2's trace calculation
         // For now, return a placeholder
         0.99 // High fidelity placeholder
@@ -342,7 +342,7 @@ impl SparseGateLibrary {
             gates: HashMap::new(),
             parameterized_gates: HashMap::new(),
         };
-        
+
         library.initialize_standard_gates();
         library
     }
@@ -409,11 +409,11 @@ impl SparseGateLibrary {
             Box::new(|params: &[f64]| {
                 let theta = params[0];
                 let mut rz_gate = SparseMatrix::new(2, 2, SparseFormat::COO);
-                
+
                 let half_theta = theta / 2.0;
                 rz_gate.insert(0, 0, Complex64::new(half_theta.cos(), -half_theta.sin()));
                 rz_gate.insert(1, 1, Complex64::new(half_theta.cos(), half_theta.sin()));
-                
+
                 rz_gate
             }),
         );
@@ -424,13 +424,13 @@ impl SparseGateLibrary {
             Box::new(|params: &[f64]| {
                 let theta = params[0];
                 let mut rx_gate = SparseMatrix::new(2, 2, SparseFormat::COO);
-                
+
                 let half_theta = theta / 2.0;
                 rx_gate.insert(0, 0, Complex64::new(half_theta.cos(), 0.0));
                 rx_gate.insert(0, 1, Complex64::new(0.0, -half_theta.sin()));
                 rx_gate.insert(1, 0, Complex64::new(0.0, -half_theta.sin()));
                 rx_gate.insert(1, 1, Complex64::new(half_theta.cos(), 0.0));
-                
+
                 rx_gate
             }),
         );
@@ -441,13 +441,13 @@ impl SparseGateLibrary {
             Box::new(|params: &[f64]| {
                 let theta = params[0];
                 let mut ry_gate = SparseMatrix::new(2, 2, SparseFormat::COO);
-                
+
                 let half_theta = theta / 2.0;
                 ry_gate.insert(0, 0, Complex64::new(half_theta.cos(), 0.0));
                 ry_gate.insert(0, 1, Complex64::new(-half_theta.sin(), 0.0));
                 ry_gate.insert(1, 0, Complex64::new(half_theta.sin(), 0.0));
                 ry_gate.insert(1, 1, Complex64::new(half_theta.cos(), 0.0));
-                
+
                 ry_gate
             }),
         );
@@ -460,7 +460,9 @@ impl SparseGateLibrary {
 
     /// Get parameterized gate
     pub fn get_parameterized_gate(&self, name: &str, parameters: &[f64]) -> Option<SparseMatrix> {
-        self.parameterized_gates.get(name).map(|generator| generator(parameters))
+        self.parameterized_gates
+            .get(name)
+            .map(|generator| generator(parameters))
     }
 
     /// Create multi-qubit gate by tensor product
@@ -472,9 +474,13 @@ impl SparseGateLibrary {
         let mut result = SparseMatrix::identity(1);
 
         for qubit_idx in 0..total_qubits {
-            let gate_matrix = if let Some((_, gate_name)) = single_qubit_gates.iter().find(|(idx, _)| *idx == qubit_idx) {
+            let gate_matrix = if let Some((_, gate_name)) =
+                single_qubit_gates.iter().find(|(idx, _)| *idx == qubit_idx)
+            {
                 self.get_gate(gate_name)
-                    .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown gate: {}", gate_name)))?
+                    .ok_or_else(|| {
+                        QuantRS2Error::InvalidInput(format!("Unknown gate: {}", gate_name))
+                    })?
                     .clone()
             } else {
                 SparseMatrix::identity(2) // Identity for unused qubits
@@ -493,7 +499,8 @@ impl SparseGateLibrary {
         target_qubit: usize,
         total_qubits: usize,
     ) -> QuantRS2Result<SparseMatrix> {
-        let single_qubit_gate = self.get_gate(gate_name)
+        let single_qubit_gate = self
+            .get_gate(gate_name)
             .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown gate: {}", gate_name)))?;
 
         let mut result = SparseMatrix::identity(1);
@@ -537,7 +544,7 @@ impl SparseGateLibrary {
 
         // Apply CNOT logic based on qubit positions
         // This is greatly simplified - SciRS2 would have optimized implementations
-        
+
         Ok(result)
     }
 }
@@ -569,25 +576,33 @@ impl CircuitToSparseMatrix {
     }
 
     /// Convert single gate to sparse matrix
-    fn gate_to_sparse_matrix(&self, gate: &dyn GateOp, total_qubits: usize) -> QuantRS2Result<SparseMatrix> {
+    fn gate_to_sparse_matrix(
+        &self,
+        gate: &dyn GateOp,
+        total_qubits: usize,
+    ) -> QuantRS2Result<SparseMatrix> {
         let gate_name = gate.name();
         let qubits = gate.qubits();
 
         match qubits.len() {
             1 => {
                 let target_qubit = qubits[0].id() as usize;
-                self.gate_library.embed_single_qubit_gate(gate_name, target_qubit, total_qubits)
+                self.gate_library
+                    .embed_single_qubit_gate(gate_name, target_qubit, total_qubits)
             }
             2 => {
                 let control_qubit = qubits[0].id() as usize;
                 let target_qubit = qubits[1].id() as usize;
-                self.gate_library.embed_two_qubit_gate(gate_name, control_qubit, target_qubit, total_qubits)
+                self.gate_library.embed_two_qubit_gate(
+                    gate_name,
+                    control_qubit,
+                    target_qubit,
+                    total_qubits,
+                )
             }
-            _ => {
-                Err(QuantRS2Error::InvalidInput(
-                    "Multi-qubit gates beyond 2 qubits not yet supported".to_string(),
-                ))
-            }
+            _ => Err(QuantRS2Error::InvalidInput(
+                "Multi-qubit gates beyond 2 qubits not yet supported".to_string(),
+            )),
         }
     }
 
@@ -604,10 +619,12 @@ impl SparseOptimizer {
     /// Optimize sparse matrix representation
     pub fn optimize_sparsity(matrix: &SparseMatrix, threshold: f64) -> SparseMatrix {
         let mut optimized = matrix.clone();
-        
+
         // Remove entries below threshold
-        optimized.entries.retain(|(_, _, val)| val.norm_sqr() > threshold);
-        
+        optimized
+            .entries
+            .retain(|(_, _, val)| val.norm_sqr() > threshold);
+
         optimized
     }
 
@@ -668,11 +685,11 @@ mod tests {
     fn test_complex_arithmetic() {
         let c1 = Complex64::new(1.0, 2.0);
         let c2 = Complex64::new(3.0, 4.0);
-        
+
         let sum = c1 + c2;
         assert_eq!(sum.re, 4.0);
         assert_eq!(sum.im, 6.0);
-        
+
         let product = c1 * c2;
         assert_eq!(product.re, -5.0); // (1*3 - 2*4)
         assert_eq!(product.im, 10.0); // (1*4 + 2*3)
@@ -688,13 +705,13 @@ mod tests {
     #[test]
     fn test_gate_library() {
         let library = SparseGateLibrary::new();
-        
+
         let x_gate = library.get_gate("X");
         assert!(x_gate.is_some());
-        
+
         let h_gate = library.get_gate("H");
         assert!(h_gate.is_some());
-        
+
         let rz_gate = library.get_parameterized_gate("RZ", &[std::f64::consts::PI]);
         assert!(rz_gate.is_some());
     }
@@ -705,7 +722,7 @@ mod tests {
         let mut x_gate = SparseMatrix::new(2, 2, SparseFormat::COO);
         x_gate.insert(0, 1, Complex64::new(1.0, 0.0));
         x_gate.insert(1, 0, Complex64::new(1.0, 0.0));
-        
+
         // X * X = I
         let result = x_gate.matmul(&x_gate).unwrap();
         assert!(result.matrices_equal(&id, 1e-12));
@@ -715,11 +732,11 @@ mod tests {
     fn test_unitary_check() {
         let library = SparseGateLibrary::new();
         let h_gate = library.get_gate("H").unwrap();
-        
+
         // TODO: Fix matrix multiplication to ensure proper unitary check
         // The issue is in the sparse matrix multiplication implementation
         // assert!(h_gate.is_unitary(1e-10));
-        
+
         // For now, just verify that the gate exists and has correct dimensions
         assert_eq!(h_gate.shape, (2, 2));
     }
@@ -729,7 +746,7 @@ mod tests {
         let converter = CircuitToSparseMatrix::new();
         let mut circuit = Circuit::<1>::new();
         circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        
+
         let matrix = converter.convert(&circuit).unwrap();
         assert_eq!(matrix.shape, (2, 2));
     }
@@ -738,7 +755,7 @@ mod tests {
     fn test_gate_properties_analysis() {
         let library = SparseGateLibrary::new();
         let x_gate = library.get_gate("X").unwrap();
-        
+
         let properties = SparseOptimizer::analyze_gate_properties(x_gate);
         assert!(properties.is_unitary);
         assert!(properties.is_hermitian);

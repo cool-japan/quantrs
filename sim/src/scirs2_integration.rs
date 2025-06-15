@@ -203,26 +203,26 @@ impl FftEngine {
     pub fn forward(&self, input: &Vector) -> Result<Vector> {
         // Implement forward FFT using ndrustfft
         use ndrustfft::{ndfft, FftHandler};
-        
+
         let array = input.to_array1()?;
         let mut handler = FftHandler::new(array.len());
         let mut fft_result = array.clone();
-        
+
         ndfft(&array, &mut fft_result, &mut handler, 0);
-        
+
         Vector::from_array1(&fft_result.view(), &MemoryPool::new())
     }
 
     pub fn inverse(&self, input: &Vector) -> Result<Vector> {
         // Implement inverse FFT using ndrustfft
         use ndrustfft::{ndifft, FftHandler};
-        
+
         let array = input.to_array1()?;
         let mut handler = FftHandler::new(array.len());
         let mut ifft_result = array.clone();
-        
+
         ndifft(&array, &mut ifft_result, &mut handler, 0);
-        
+
         Vector::from_array1(&ifft_result.view(), &MemoryPool::new())
     }
 }
@@ -459,27 +459,34 @@ impl SparseMatrix {
         // Improved sparse solver using nalgebra-sparse capabilities
         use nalgebra::{Complex, DVector};
         use sprs::CsMat;
-        
+
         let rhs_array = rhs.to_array1()?;
-        
+
         // Convert to sprs format for better sparse solving
-        let values: Vec<Complex<f64>> = self.csr_matrix.values().iter()
-            .map(|&c| Complex::new(c.re, c.im)).collect();
+        let values: Vec<Complex<f64>> = self
+            .csr_matrix
+            .values()
+            .iter()
+            .map(|&c| Complex::new(c.re, c.im))
+            .collect();
         let (rows, cols) = self.csr_matrix.csr_data();
-        
+
         // Use iterative solver for sparse systems
         // This is a simplified implementation - production would use better solvers
         let mut solution = rhs_array.clone();
-        
+
         // Simple Jacobi iteration for demonstration
         for _ in 0..100 {
             let mut new_solution = solution.clone();
             for i in 0..solution.len() {
                 if i < self.csr_matrix.nrows() {
                     // Get diagonal element
-                    let diag = self.csr_matrix.get_entry(i, i)
-                        .map(|&v| v).unwrap_or(Complex64::new(1.0, 0.0));
-                    
+                    let diag = self
+                        .csr_matrix
+                        .get_entry(i, i)
+                        .map(|&v| v)
+                        .unwrap_or(Complex64::new(1.0, 0.0));
+
                     if diag.norm() > 1e-14 {
                         new_solution[i] = rhs_array[i] / diag;
                     }
@@ -487,7 +494,7 @@ impl SparseMatrix {
             }
             solution = new_solution;
         }
-        
+
         Vector::from_array1(&solution.view(), &MemoryPool::new())
     }
 
@@ -621,14 +628,15 @@ impl LAPACK {
     pub fn eig(matrix: &Matrix) -> Result<EigResult> {
         // Eigenvalue decomposition using SciRS2
         use ndarray_linalg::Eig;
-        
-        let eig_result = matrix.data.eig()
-            .map_err(|_| SimulatorError::ComputationError("Eigenvalue decomposition failed".to_string()))?;
-        
+
+        let eig_result = matrix.data.eig().map_err(|_| {
+            SimulatorError::ComputationError("Eigenvalue decomposition failed".to_string())
+        })?;
+
         let pool = MemoryPool::new();
         let values = Vector::from_array1(&eig_result.0.view(), &pool)?;
         let vectors = Matrix::from_array2(&eig_result.1.view(), &pool)?;
-        
+
         Ok(EigResult { values, vectors })
     }
 
@@ -640,7 +648,7 @@ impl LAPACK {
         let pool = MemoryPool::new();
         let l_matrix = Matrix::from_array2(&l.view(), &pool)?;
         let u_matrix = Matrix::from_array2(&u.view(), &pool)?;
-        
+
         Ok((l_matrix, u_matrix, p))
     }
 
@@ -652,7 +660,7 @@ impl LAPACK {
         let pool = MemoryPool::new();
         let q_matrix = Matrix::from_array2(&q.view(), &pool)?;
         let r_matrix = Matrix::from_array2(&r.view(), &pool)?;
-        
+
         Ok((q_matrix, r_matrix))
     }
 }

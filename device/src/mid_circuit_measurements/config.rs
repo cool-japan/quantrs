@@ -216,12 +216,23 @@ impl Default for MLOptimizationConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MLModelType {
     LinearRegression,
-    RandomForest { n_estimators: usize },
-    GradientBoosting { n_estimators: usize, learning_rate: f64 },
-    NeuralNetwork { hidden_layers: Vec<usize> },
-    SupportVectorMachine { kernel: String },
+    RandomForest {
+        n_estimators: usize,
+    },
+    GradientBoosting {
+        n_estimators: usize,
+        learning_rate: f64,
+    },
+    NeuralNetwork {
+        hidden_layers: Vec<usize>,
+    },
+    SupportVectorMachine {
+        kernel: String,
+    },
     GaussianProcess,
-    ReinforcementLearning { algorithm: String },
+    ReinforcementLearning {
+        algorithm: String,
+    },
 }
 
 /// ML training configuration
@@ -379,9 +390,17 @@ impl Default for DriftDetectionConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DriftDetectionMethod {
     KolmogorovSmirnov,
-    PageHinkley { delta: f64, lambda: f64 },
-    ADWIN { delta: f64 },
-    DDM { alpha_warning: f64, alpha_drift: f64 },
+    PageHinkley {
+        delta: f64,
+        lambda: f64,
+    },
+    ADWIN {
+        delta: f64,
+    },
+    DDM {
+        alpha_warning: f64,
+        alpha_drift: f64,
+    },
 }
 
 /// Real-time prediction configuration
@@ -451,11 +470,25 @@ impl Default for TimeSeriesConfig {
 /// Forecasting methods
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ForecastingMethod {
-    ARIMA { p: usize, d: usize, q: usize },
-    ExponentialSmoothing { alpha: f64, beta: f64, gamma: f64 },
+    ARIMA {
+        p: usize,
+        d: usize,
+        q: usize,
+    },
+    ExponentialSmoothing {
+        alpha: f64,
+        beta: f64,
+        gamma: f64,
+    },
     Prophet,
-    LSTM { hidden_size: usize, num_layers: usize },
-    Transformer { d_model: usize, n_heads: usize },
+    LSTM {
+        hidden_size: usize,
+        num_layers: usize,
+    },
+    Transformer {
+        d_model: usize,
+        n_heads: usize,
+    },
 }
 
 /// Uncertainty quantification configuration

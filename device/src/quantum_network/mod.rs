@@ -4,6 +4,7 @@
 //! efficient, and reliable communication in distributed quantum computing environments.
 
 pub mod config;
+pub mod distributed_protocols;
 pub mod entanglement;
 pub mod error_correction;
 pub mod managers;
@@ -15,6 +16,7 @@ pub mod types;
 
 // Re-export main types
 pub use config::*;
+pub use distributed_protocols::*;
 pub use entanglement::*;
 pub use error_correction::*;
 pub use managers::*;

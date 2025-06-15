@@ -7,9 +7,9 @@ use ndarray::Array1;
 use scirs2_graph::Graph;
 use scirs2_optimize::OptimizeResult;
 
-use crate::{DeviceError, DeviceResult};
 use super::config::SciRS2Config;
 use super::types::{AdvancedOptimizationResult, LinalgOptimizationResult};
+use crate::{DeviceError, DeviceResult};
 
 /// SciRS2 optimization engine
 pub struct SciRS2OptimizationEngine {

@@ -7,9 +7,9 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::time::{Duration, Instant, SystemTime};
 
+use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use tokio::time::timeout;
-use rand::{thread_rng, Rng};
 
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::{
@@ -20,33 +20,26 @@ use quantrs2_core::{
 
 // SciRS2 imports for advanced analysis
 #[cfg(feature = "scirs2")]
+use scirs2_linalg::{correlation_matrix, eig, matrix_norm, svd, LinalgResult};
+#[cfg(feature = "scirs2")]
+use scirs2_optimize::{minimize, OptimizeResult};
+#[cfg(feature = "scirs2")]
 use scirs2_stats::{
-    mean, std, var, median, pearsonr, spearmanr, ttest_ind, ks_2samp,
-    distributions::{norm, t, chi2},
-    Alternative, TTestResult
-};
-#[cfg(feature = "scirs2")]
-use scirs2_linalg::{
-    correlation_matrix, eig, svd, matrix_norm, LinalgResult
-};
-#[cfg(feature = "scirs2")]
-use scirs2_optimize::{
-    minimize, OptimizeResult
+    distributions::{chi2, norm, t},
+    ks_2samp, mean, median, pearsonr, spearmanr, std, ttest_ind, var, Alternative, TTestResult,
 };
 
 #[cfg(not(feature = "scirs2"))]
-use crate::ml_optimization::fallback_scirs2::{
-    mean, std, var, pearsonr, minimize, OptimizeResult
-};
+use crate::ml_optimization::fallback_scirs2::{mean, minimize, pearsonr, std, var, OptimizeResult};
 
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 
 use crate::{
-    backend_traits::{query_backend_capabilities, BackendCapabilities},
-    benchmarking::{HardwareBenchmarkSuite, BenchmarkConfig, DeviceExecutor},
-    calibration::{CalibrationManager, DeviceCalibration},
     aws::AWSBraketClient,
     azure::AzureQuantumClient,
+    backend_traits::{query_backend_capabilities, BackendCapabilities},
+    benchmarking::{BenchmarkConfig, DeviceExecutor, HardwareBenchmarkSuite},
+    calibration::{CalibrationManager, DeviceCalibration},
     ibm::IBMQuantumClient,
     CircuitResult, DeviceError, DeviceResult,
 };
@@ -79,13 +72,13 @@ pub struct CrossPlatformBenchmarkConfig {
 /// Quantum computing platforms
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QuantumPlatform {
-    IBMQuantum(String), // Device name
-    AWSBraket(String),  // Device ARN
-    AzureQuantum(String), // Target ID
-    IonQ(String),       // Device name
-    Rigetti(String),    // Device name
+    IBMQuantum(String),      // Device name
+    AWSBraket(String),       // Device ARN
+    AzureQuantum(String),    // Target ID
+    IonQ(String),            // Device name
+    Rigetti(String),         // Device name
     GoogleQuantumAI(String), // Device name
-    Custom(String),     // Custom platform identifier
+    Custom(String),          // Custom platform identifier
 }
 
 /// Circuit complexity levels for benchmarking
@@ -721,7 +714,9 @@ impl Default for CrossPlatformBenchmarkConfig {
         Self {
             target_platforms: vec![
                 QuantumPlatform::IBMQuantum("ibmq_qasm_simulator".to_string()),
-                QuantumPlatform::AWSBraket("arn:aws:braket:::device/quantum-simulator/amazon/sv1".to_string()),
+                QuantumPlatform::AWSBraket(
+                    "arn:aws:braket:::device/quantum-simulator/amazon/sv1".to_string(),
+                ),
             ],
             complexity_levels: vec![
                 ComplexityLevel {
@@ -817,7 +812,13 @@ impl CrossPlatformBenchmarker {
     ) -> DeviceResult<CrossPlatformBenchmarkResult> {
         let start_time = Instant::now();
         let timestamp = SystemTime::now();
-        let benchmark_id = format!("benchmark_{}", timestamp.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs());
+        let benchmark_id = format!(
+            "benchmark_{}",
+            timestamp
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+        );
 
         // Initialize platform clients
         self.initialize_platform_clients().await?;
@@ -833,18 +834,26 @@ impl CrossPlatformBenchmarker {
         for platform in &self.config.target_platforms {
             match timeout(
                 self.config.benchmark_timeout,
-                self.run_platform_benchmark(platform)
-            ).await {
+                self.run_platform_benchmark(platform),
+            )
+            .await
+            {
                 Ok(Ok(result)) => {
                     total_benchmarks += result.circuit_results.len();
-                    successful_benchmarks += result.circuit_results.values()
+                    successful_benchmarks += result
+                        .circuit_results
+                        .values()
                         .map(|results| results.len())
                         .sum::<usize>();
-                    total_shots += result.circuit_results.values()
+                    total_shots += result
+                        .circuit_results
+                        .values()
                         .flat_map(|results| results.iter())
                         .map(|r| r.shots)
                         .sum::<usize>();
-                    total_cost += result.circuit_results.values()
+                    total_cost += result
+                        .circuit_results
+                        .values()
                         .flat_map(|results| results.iter())
                         .map(|r| r.cost)
                         .sum::<f64>();
@@ -865,7 +874,8 @@ impl CrossPlatformBenchmarker {
         let comparative_analysis = self.perform_comparative_analysis(&platform_results)?;
 
         // Perform statistical analysis
-        let statistical_analysis = self.perform_cross_platform_statistical_analysis(&platform_results)?;
+        let statistical_analysis =
+            self.perform_cross_platform_statistical_analysis(&platform_results)?;
 
         // Perform cost analysis
         let cost_analysis = if self.config.enable_cost_analysis {
@@ -890,7 +900,8 @@ impl CrossPlatformBenchmarker {
             platforms_tested: platform_results.len(),
             total_shots_executed: total_shots,
             total_cost,
-            data_points_collected: platform_results.values()
+            data_points_collected: platform_results
+                .values()
                 .map(|r| r.circuit_results.values().map(|v| v.len()).sum::<usize>())
                 .sum(),
         };
@@ -999,13 +1010,41 @@ impl CrossPlatformBenchmarker {
         // This would query the actual device information from the platform
         // For now, return mock data
         let (device_name, provider, technology) = match platform {
-            QuantumPlatform::IBMQuantum(name) => (name.clone(), "IBM".to_string(), QuantumTechnology::Superconducting),
-            QuantumPlatform::AWSBraket(arn) => (arn.clone(), "AWS".to_string(), QuantumTechnology::Superconducting),
-            QuantumPlatform::AzureQuantum(target) => (target.clone(), "Microsoft".to_string(), QuantumTechnology::TrappedIon),
-            QuantumPlatform::IonQ(name) => (name.clone(), "IonQ".to_string(), QuantumTechnology::TrappedIon),
-            QuantumPlatform::Rigetti(name) => (name.clone(), "Rigetti".to_string(), QuantumTechnology::Superconducting),
-            QuantumPlatform::GoogleQuantumAI(name) => (name.clone(), "Google".to_string(), QuantumTechnology::Superconducting),
-            QuantumPlatform::Custom(name) => (name.clone(), "Custom".to_string(), QuantumTechnology::Other("Custom".to_string())),
+            QuantumPlatform::IBMQuantum(name) => (
+                name.clone(),
+                "IBM".to_string(),
+                QuantumTechnology::Superconducting,
+            ),
+            QuantumPlatform::AWSBraket(arn) => (
+                arn.clone(),
+                "AWS".to_string(),
+                QuantumTechnology::Superconducting,
+            ),
+            QuantumPlatform::AzureQuantum(target) => (
+                target.clone(),
+                "Microsoft".to_string(),
+                QuantumTechnology::TrappedIon,
+            ),
+            QuantumPlatform::IonQ(name) => (
+                name.clone(),
+                "IonQ".to_string(),
+                QuantumTechnology::TrappedIon,
+            ),
+            QuantumPlatform::Rigetti(name) => (
+                name.clone(),
+                "Rigetti".to_string(),
+                QuantumTechnology::Superconducting,
+            ),
+            QuantumPlatform::GoogleQuantumAI(name) => (
+                name.clone(),
+                "Google".to_string(),
+                QuantumTechnology::Superconducting,
+            ),
+            QuantumPlatform::Custom(name) => (
+                name.clone(),
+                "Custom".to_string(),
+                QuantumTechnology::Other("Custom".to_string()),
+            ),
         };
 
         Ok(DeviceInfo {
@@ -1019,13 +1058,18 @@ impl CrossPlatformBenchmarker {
                 average_connectivity: 2.5,
                 max_path_length: 5,
             },
-            capabilities: query_backend_capabilities(crate::translation::HardwareBackend::IBMQuantum),
+            capabilities: query_backend_capabilities(
+                crate::translation::HardwareBackend::IBMQuantum,
+            ),
             calibration_date: Some(SystemTime::now()),
         })
     }
 
     /// Generate benchmark circuits for a complexity level
-    fn generate_benchmark_circuits(&self, complexity: &ComplexityLevel) -> DeviceResult<Vec<Circuit<16>>> {
+    fn generate_benchmark_circuits(
+        &self,
+        complexity: &ComplexityLevel,
+    ) -> DeviceResult<Vec<Circuit<16>>> {
         let mut circuits = Vec::new();
 
         // Generate random circuits within the complexity constraints
@@ -1036,7 +1080,8 @@ impl CrossPlatformBenchmarker {
 
         for i in 0..num_circuits {
             let mut circuit = Circuit::<16>::new();
-            let gate_count = rng.gen_range(complexity.gate_count_range.0..=complexity.gate_count_range.1);
+            let gate_count =
+                rng.gen_range(complexity.gate_count_range.0..=complexity.gate_count_range.1);
             let two_qubit_gates = (gate_count as f64 * complexity.two_qubit_gate_ratio) as usize;
             let single_qubit_gates = gate_count - two_qubit_gates;
 
@@ -1044,10 +1089,18 @@ impl CrossPlatformBenchmarker {
             for _ in 0..single_qubit_gates {
                 let qubit = rng.gen_range(0..complexity.qubit_count) as u32;
                 match rng.gen_range(0..4) {
-                    0 => { circuit.h(QubitId(qubit))?; },
-                    1 => { circuit.x(QubitId(qubit))?; },
-                    2 => { circuit.y(QubitId(qubit))?; },
-                    3 => { circuit.z(QubitId(qubit))?; },
+                    0 => {
+                        circuit.h(QubitId(qubit))?;
+                    }
+                    1 => {
+                        circuit.x(QubitId(qubit))?;
+                    }
+                    2 => {
+                        circuit.y(QubitId(qubit))?;
+                    }
+                    3 => {
+                        circuit.z(QubitId(qubit))?;
+                    }
                     _ => unreachable!(),
                 }
             }
@@ -1093,11 +1146,14 @@ impl CrossPlatformBenchmarker {
 
         // Simulate measurement results
         let mut measurement_counts = HashMap::new();
-        let num_qubits = circuit.gates().iter()
+        let num_qubits = circuit
+            .gates()
+            .iter()
             .flat_map(|g| g.qubits())
             .map(|q| q.0 as usize)
             .max()
-            .unwrap_or(0) + 1;
+            .unwrap_or(0)
+            + 1;
 
         let num_outcomes = 2_usize.pow(num_qubits.min(8) as u32); // Limit for simulation
         for i in 0..num_outcomes.min(8) {
@@ -1110,7 +1166,8 @@ impl CrossPlatformBenchmarker {
 
         // Calculate metrics
         let fidelity = self.calculate_circuit_fidelity(&measurement_counts, circuit)?;
-        let success_rate = measurement_counts.values().map(|&c| c as f64).sum::<f64>() / shots as f64;
+        let success_rate =
+            measurement_counts.values().map(|&c| c as f64).sum::<f64>() / shots as f64;
         let cost = self.calculate_execution_cost(platform, shots, execution_time)?;
 
         Ok(CircuitBenchmarkResult {
@@ -1166,7 +1223,8 @@ impl CrossPlatformBenchmarker {
         &self,
         circuit_results: &HashMap<String, Vec<CircuitBenchmarkResult>>,
     ) -> DeviceResult<BenchmarkMetrics> {
-        let all_results: Vec<&CircuitBenchmarkResult> = circuit_results.values()
+        let all_results: Vec<&CircuitBenchmarkResult> = circuit_results
+            .values()
             .flat_map(|results| results.iter())
             .collect();
 
@@ -1182,11 +1240,15 @@ impl CrossPlatformBenchmarker {
             });
         }
 
-        let avg_fidelity = all_results.iter().map(|r| r.fidelity).sum::<f64>() / all_results.len() as f64;
-        let avg_execution_time = all_results.iter()
+        let avg_fidelity =
+            all_results.iter().map(|r| r.fidelity).sum::<f64>() / all_results.len() as f64;
+        let avg_execution_time = all_results
+            .iter()
             .map(|r| r.execution_time.as_secs_f64())
-            .sum::<f64>() / all_results.len() as f64;
-        let avg_success_rate = all_results.iter().map(|r| r.success_rate).sum::<f64>() / all_results.len() as f64;
+            .sum::<f64>()
+            / all_results.len() as f64;
+        let avg_success_rate =
+            all_results.iter().map(|r| r.success_rate).sum::<f64>() / all_results.len() as f64;
         let avg_cost = all_results.iter().map(|r| r.cost).sum::<f64>() / all_results.len() as f64;
 
         let fidelity_score = avg_fidelity * 100.0;
@@ -1195,8 +1257,12 @@ impl CrossPlatformBenchmarker {
         let cost_efficiency_score = (1.0 / (avg_cost + 0.001) * 10.0).min(100.0);
         let scalability_score = 75.0; // Would calculate based on circuit complexity scaling
 
-        let overall_score = (fidelity_score * 0.3 + speed_score * 0.2 + reliability_score * 0.2 
-                           + cost_efficiency_score * 0.15 + scalability_score * 0.15).min(100.0);
+        let overall_score = (fidelity_score * 0.3
+            + speed_score * 0.2
+            + reliability_score * 0.2
+            + cost_efficiency_score * 0.15
+            + scalability_score * 0.15)
+            .min(100.0);
 
         let mut detailed_metrics = HashMap::new();
         detailed_metrics.insert("avg_fidelity".to_string(), avg_fidelity);
@@ -1219,12 +1285,15 @@ impl CrossPlatformBenchmarker {
         &self,
         circuit_results: &HashMap<String, Vec<CircuitBenchmarkResult>>,
     ) -> DeviceResult<PlatformPerformanceAnalysis> {
-        let all_results: Vec<&CircuitBenchmarkResult> = circuit_results.values()
+        let all_results: Vec<&CircuitBenchmarkResult> = circuit_results
+            .values()
             .flat_map(|results| results.iter())
             .collect();
 
         if all_results.is_empty() {
-            return Err(DeviceError::APIError("No results available for analysis".into()));
+            return Err(DeviceError::APIError(
+                "No results available for analysis".into(),
+            ));
         }
 
         // Calculate throughput (circuits per second)
@@ -1232,9 +1301,12 @@ impl CrossPlatformBenchmarker {
         let throughput = all_results.len() as f64 / total_time;
 
         // Latency distribution
-        let latencies: Vec<f64> = all_results.iter().map(|r| r.total_time.as_secs_f64()).collect();
+        let latencies: Vec<f64> = all_results
+            .iter()
+            .map(|r| r.total_time.as_secs_f64())
+            .collect();
         let latency_array = Array1::from_vec(latencies.clone());
-        
+
         let mean_latency = mean(&latency_array.view()).unwrap_or(0.0);
         let median_latency = {
             let mut sorted_latencies = latencies.clone();
@@ -1252,8 +1324,14 @@ impl CrossPlatformBenchmarker {
         let mut sorted_latencies = latencies.clone();
         sorted_latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
         percentiles.insert(50, median_latency);
-        percentiles.insert(95, sorted_latencies[(sorted_latencies.len() as f64 * 0.95) as usize]);
-        percentiles.insert(99, sorted_latencies[(sorted_latencies.len() as f64 * 0.99) as usize]);
+        percentiles.insert(
+            95,
+            sorted_latencies[(sorted_latencies.len() as f64 * 0.95) as usize],
+        );
+        percentiles.insert(
+            99,
+            sorted_latencies[(sorted_latencies.len() as f64 * 0.99) as usize],
+        );
 
         let latency_distribution = LatencyDistribution {
             mean: mean_latency,
@@ -1329,16 +1407,22 @@ impl CrossPlatformBenchmarker {
         &self,
         circuit_results: &HashMap<String, Vec<CircuitBenchmarkResult>>,
     ) -> DeviceResult<ReliabilityMetrics> {
-        let all_results: Vec<&CircuitBenchmarkResult> = circuit_results.values()
+        let all_results: Vec<&CircuitBenchmarkResult> = circuit_results
+            .values()
             .flat_map(|results| results.iter())
             .collect();
 
-        let successful_runs = all_results.iter().filter(|r| r.error_messages.is_empty()).count();
+        let successful_runs = all_results
+            .iter()
+            .filter(|r| r.error_messages.is_empty())
+            .count();
         let uptime_percentage = (successful_runs as f64 / all_results.len() as f64) * 100.0;
 
         let mut error_rates = HashMap::new();
-        error_rates.insert("execution_error".to_string(), 
-                          (all_results.len() - successful_runs) as f64 / all_results.len() as f64);
+        error_rates.insert(
+            "execution_error".to_string(),
+            (all_results.len() - successful_runs) as f64 / all_results.len() as f64,
+        );
 
         Ok(ReliabilityMetrics {
             uptime_percentage,
@@ -1353,19 +1437,29 @@ impl CrossPlatformBenchmarker {
         &self,
         circuit_results: &HashMap<String, Vec<CircuitBenchmarkResult>>,
     ) -> DeviceResult<LatencyAnalysis> {
-        let all_results: Vec<&CircuitBenchmarkResult> = circuit_results.values()
+        let all_results: Vec<&CircuitBenchmarkResult> = circuit_results
+            .values()
             .flat_map(|results| results.iter())
             .collect();
 
         if all_results.is_empty() {
-            return Err(DeviceError::APIError("No results for latency analysis".into()));
+            return Err(DeviceError::APIError(
+                "No results for latency analysis".into(),
+            ));
         }
 
-        let avg_queue = all_results.iter().map(|r| r.queue_time).sum::<Duration>() / all_results.len() as u32;
-        let avg_execution = all_results.iter().map(|r| r.execution_time).sum::<Duration>() / all_results.len() as u32;
-        let avg_total = all_results.iter().map(|r| r.total_time).sum::<Duration>() / all_results.len() as u32;
+        let avg_queue =
+            all_results.iter().map(|r| r.queue_time).sum::<Duration>() / all_results.len() as u32;
+        let avg_execution = all_results
+            .iter()
+            .map(|r| r.execution_time)
+            .sum::<Duration>()
+            / all_results.len() as u32;
+        let avg_total =
+            all_results.iter().map(|r| r.total_time).sum::<Duration>() / all_results.len() as u32;
 
-        let latency_values: Vec<f64> = all_results.iter()
+        let latency_values: Vec<f64> = all_results
+            .iter()
             .map(|r| r.total_time.as_secs_f64())
             .collect();
         let latency_array = Array1::from_vec(latency_values);
@@ -1385,13 +1479,14 @@ impl CrossPlatformBenchmarker {
         &self,
         circuit_results: &HashMap<String, Vec<CircuitBenchmarkResult>>,
     ) -> DeviceResult<ErrorAnalysis> {
-        let all_results: Vec<&CircuitBenchmarkResult> = circuit_results.values()
+        let all_results: Vec<&CircuitBenchmarkResult> = circuit_results
+            .values()
             .flat_map(|results| results.iter())
             .collect();
 
         let mut systematic_errors = HashMap::new();
         let mut random_errors = HashMap::new();
-        
+
         // Simple error analysis
         systematic_errors.insert("gate_error".to_string(), 0.001);
         random_errors.insert("thermal_noise".to_string(), 0.0005);
@@ -1439,10 +1534,8 @@ impl CrossPlatformBenchmarker {
             ]);
         }
 
-        let performance_matrix = Array2::from_shape_vec(
-            (n_platforms, 4),
-            performance_matrix_data
-        ).map_err(|e| DeviceError::APIError(format!("Matrix creation error: {}", e)))?;
+        let performance_matrix = Array2::from_shape_vec((n_platforms, 4), performance_matrix_data)
+            .map_err(|e| DeviceError::APIError(format!("Matrix creation error: {}", e)))?;
 
         // Cost effectiveness analysis
         let mut cost_per_shot = HashMap::new();
@@ -1451,19 +1544,30 @@ impl CrossPlatformBenchmarker {
         let mut value_for_money_score = HashMap::new();
 
         for (platform, result) in platform_results {
-            let total_cost: f64 = result.circuit_results.values()
+            let total_cost: f64 = result
+                .circuit_results
+                .values()
                 .flat_map(|results| results.iter())
                 .map(|r| r.cost)
                 .sum();
-            let total_shots: usize = result.circuit_results.values()
+            let total_shots: usize = result
+                .circuit_results
+                .values()
                 .flat_map(|results| results.iter())
                 .map(|r| r.shots)
                 .sum();
 
             cost_per_shot.insert(platform.clone(), total_cost / total_shots as f64);
             cost_per_gate.insert(platform.clone(), total_cost / 100.0); // Simplified
-            cost_per_successful_result.insert(platform.clone(), total_cost / (total_shots as f64 * result.benchmark_metrics.reliability_score / 100.0));
-            value_for_money_score.insert(platform.clone(), result.benchmark_metrics.overall_score / (total_cost + 0.001));
+            cost_per_successful_result.insert(
+                platform.clone(),
+                total_cost
+                    / (total_shots as f64 * result.benchmark_metrics.reliability_score / 100.0),
+            );
+            value_for_money_score.insert(
+                platform.clone(),
+                result.benchmark_metrics.overall_score / (total_cost + 0.001),
+            );
         }
 
         let cost_effectiveness_analysis = CostEffectivenessAnalysis {
@@ -1476,7 +1580,10 @@ impl CrossPlatformBenchmarker {
 
         // Use case recommendations (simplified)
         let mut use_case_recommendations = HashMap::new();
-        use_case_recommendations.insert("general_purpose".to_string(), platforms.iter().map(|&p| p.clone()).collect());
+        use_case_recommendations.insert(
+            "general_purpose".to_string(),
+            platforms.iter().map(|&p| p.clone()).collect(),
+        );
 
         Ok(ComparativeAnalysisResult {
             platform_rankings,
@@ -1542,27 +1649,35 @@ impl CrossPlatformBenchmarker {
         let mut cost_trends = HashMap::new();
 
         for (platform, result) in platform_results {
-            let total_cost: f64 = result.circuit_results.values()
+            let total_cost: f64 = result
+                .circuit_results
+                .values()
                 .flat_map(|results| results.iter())
                 .map(|r| r.cost)
                 .sum();
 
             total_costs.insert(platform.clone(), total_cost);
 
-            cost_breakdown.insert(platform.clone(), CostBreakdown {
-                compute_cost: total_cost * 0.8,
-                queue_cost: total_cost * 0.1,
-                storage_cost: total_cost * 0.05,
-                data_transfer_cost: total_cost * 0.05,
-                other_costs: HashMap::new(),
-            });
+            cost_breakdown.insert(
+                platform.clone(),
+                CostBreakdown {
+                    compute_cost: total_cost * 0.8,
+                    queue_cost: total_cost * 0.1,
+                    storage_cost: total_cost * 0.05,
+                    data_transfer_cost: total_cost * 0.05,
+                    other_costs: HashMap::new(),
+                },
+            );
 
-            cost_trends.insert(platform.clone(), CostTrend {
-                trend_direction: TrendDirection::Stable,
-                cost_per_month: vec![total_cost; 6], // Mock 6 months of data
-                projected_costs: vec![total_cost; 6],
-                cost_volatility: 0.1,
-            });
+            cost_trends.insert(
+                platform.clone(),
+                CostTrend {
+                    trend_direction: TrendDirection::Stable,
+                    cost_per_month: vec![total_cost; 6], // Mock 6 months of data
+                    projected_costs: vec![total_cost; 6],
+                    cost_volatility: 0.1,
+                },
+            );
         }
 
         let cost_optimization = CostOptimizationAnalysis {
@@ -1595,10 +1710,12 @@ impl CrossPlatformBenchmarker {
         let mut recommendations = Vec::new();
 
         // Find best overall platform
-        if let Some((best_platform, _)) = platform_results.iter()
-            .max_by(|a, b| a.1.benchmark_metrics.overall_score
-                        .partial_cmp(&b.1.benchmark_metrics.overall_score)
-                        .unwrap()) {
+        if let Some((best_platform, _)) = platform_results.iter().max_by(|a, b| {
+            a.1.benchmark_metrics
+                .overall_score
+                .partial_cmp(&b.1.benchmark_metrics.overall_score)
+                .unwrap()
+        }) {
             recommendations.push(PlatformRecommendation {
                 recommendation_type: RecommendationType::BestOverall,
                 target_platform: best_platform.clone(),
@@ -1610,9 +1727,12 @@ impl CrossPlatformBenchmarker {
         }
 
         // Find most cost-effective platform
-        if let Some((most_cost_effective, _)) = comparative_analysis.cost_effectiveness_analysis
-            .value_for_money_score.iter()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap()) {
+        if let Some((most_cost_effective, _)) = comparative_analysis
+            .cost_effectiveness_analysis
+            .value_for_money_score
+            .iter()
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+        {
             recommendations.push(PlatformRecommendation {
                 recommendation_type: RecommendationType::MostCostEffective,
                 target_platform: most_cost_effective.clone(),
@@ -1658,7 +1778,9 @@ mod tests {
     #[test]
     fn test_platform_enum() {
         let ibm_platform = QuantumPlatform::IBMQuantum("ibmq_qasm_simulator".to_string());
-        let aws_platform = QuantumPlatform::AWSBraket("arn:aws:braket:::device/quantum-simulator/amazon/sv1".to_string());
+        let aws_platform = QuantumPlatform::AWSBraket(
+            "arn:aws:braket:::device/quantum-simulator/amazon/sv1".to_string(),
+        );
 
         assert_ne!(ibm_platform, aws_platform);
     }

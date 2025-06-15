@@ -1,10 +1,10 @@
 //! Result and data structures for process tomography
 
-use std::collections::HashMap;
-use std::time::{Duration, SystemTime};
+use super::config::SciRS2ProcessTomographyConfig;
 use ndarray::{Array1, Array2, Array3, Array4};
 use num_complex::Complex64;
-use super::config::SciRS2ProcessTomographyConfig;
+use std::collections::HashMap;
+use std::time::{Duration, SystemTime};
 
 // Type placeholders for missing complex types
 pub type DistributionType = String;

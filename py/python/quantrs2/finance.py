@@ -21,6 +21,11 @@ try:
     from quantrs2 import Circuit, SimulationResult
     HAS_QUANTRS2 = True
 except ImportError:
+    # Create stub classes for type hints when quantrs2 is not available
+    class Circuit:
+        pass
+    class SimulationResult:
+        pass
     HAS_QUANTRS2 = False
     warnings.warn("quantrs2 not available. Finance module will use classical simulations.")
 

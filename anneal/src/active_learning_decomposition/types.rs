@@ -1,10 +1,10 @@
 //! Type definitions for active learning decomposition
 
+use super::{DecompositionStrategy, PerformanceRecord};
+use crate::ising::IsingModel;
 use ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use crate::ising::IsingModel;
-use super::{DecompositionStrategy, PerformanceRecord};
 
 /// Types of learning models
 #[derive(Debug, Clone, PartialEq)]

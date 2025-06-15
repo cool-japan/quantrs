@@ -511,11 +511,20 @@ impl GraphOptimizer {
                     match gate.name() {
                         "RX" | "RY" | "RZ" => {
                             // Try to extract rotation parameters using downcast
-                            if let Some(rx_gate) = gate.as_any().downcast_ref::<quantrs2_core::gate::single::RotationX>() {
+                            if let Some(rx_gate) =
+                                gate.as_any()
+                                    .downcast_ref::<quantrs2_core::gate::single::RotationX>()
+                            {
                                 vec![rx_gate.theta]
-                            } else if let Some(ry_gate) = gate.as_any().downcast_ref::<quantrs2_core::gate::single::RotationY>() {
+                            } else if let Some(ry_gate) =
+                                gate.as_any()
+                                    .downcast_ref::<quantrs2_core::gate::single::RotationY>()
+                            {
                                 vec![ry_gate.theta]
-                            } else if let Some(rz_gate) = gate.as_any().downcast_ref::<quantrs2_core::gate::single::RotationZ>() {
+                            } else if let Some(rz_gate) =
+                                gate.as_any()
+                                    .downcast_ref::<quantrs2_core::gate::single::RotationZ>()
+                            {
                                 vec![rz_gate.theta]
                             } else {
                                 vec![] // Default for unknown parameterized gates
@@ -523,11 +532,20 @@ impl GraphOptimizer {
                         }
                         "CRX" | "CRY" | "CRZ" => {
                             // Try to extract controlled rotation parameters
-                            if let Some(crx_gate) = gate.as_any().downcast_ref::<quantrs2_core::gate::multi::CRX>() {
+                            if let Some(crx_gate) = gate
+                                .as_any()
+                                .downcast_ref::<quantrs2_core::gate::multi::CRX>()
+                            {
                                 vec![crx_gate.theta]
-                            } else if let Some(cry_gate) = gate.as_any().downcast_ref::<quantrs2_core::gate::multi::CRY>() {
+                            } else if let Some(cry_gate) =
+                                gate.as_any()
+                                    .downcast_ref::<quantrs2_core::gate::multi::CRY>()
+                            {
                                 vec![cry_gate.theta]
-                            } else if let Some(crz_gate) = gate.as_any().downcast_ref::<quantrs2_core::gate::multi::CRZ>() {
+                            } else if let Some(crz_gate) =
+                                gate.as_any()
+                                    .downcast_ref::<quantrs2_core::gate::multi::CRZ>()
+                            {
                                 vec![crz_gate.theta]
                             } else {
                                 vec![]

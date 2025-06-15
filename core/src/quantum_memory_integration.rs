@@ -4,16 +4,14 @@
 //! advanced memory management for quantum computing systems.
 
 use crate::error::QuantRS2Error;
-use crate::gate::GateOp;
 
-use crate::qubit::QubitId;
+use ndarray::Array1;
 use num_complex::Complex64;
-use ndarray::{Array1, Array2, Array3};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 use uuid::Uuid;
-use serde::{Serialize, Deserialize};
 
 /// Quantum memory interface for persistent state storage
 #[derive(Debug)]
@@ -69,11 +67,11 @@ pub struct StorageLayerInfo {
 
 #[derive(Debug, Clone)]
 pub enum StorageLayerType {
-    UltraFast,    // RAM-like
-    Fast,         // SSD-like
-    Persistent,   // HDD-like
-    Archive,      // Tape-like
-    Distributed,  // Network storage
+    UltraFast,   // RAM-like
+    Fast,        // SSD-like
+    Persistent,  // HDD-like
+    Archive,     // Tape-like
+    Distributed, // Network storage
 }
 
 impl QuantumMemory {
@@ -81,7 +79,7 @@ impl QuantumMemory {
     pub fn new() -> Self {
         let memory_id = Uuid::new_v4();
         let cache = Arc::new(RwLock::new(QuantumCache::new(1000))); // 1000 state cache
-        
+
         Self {
             memory_id,
             storage_layers: Vec::new(),
@@ -97,7 +95,9 @@ impl QuantumMemory {
         self.storage_layers.push(layer);
         // Sort layers by access speed (fastest first)
         self.storage_layers.sort_by(|a, b| {
-            a.get_storage_info().latency.cmp(&b.get_storage_info().latency)
+            a.get_storage_info()
+                .latency
+                .cmp(&b.get_storage_info().latency)
         });
     }
 
@@ -105,31 +105,36 @@ impl QuantumMemory {
     pub async fn store_state(&self, state: QuantumState) -> Result<Uuid, QuantRS2Error> {
         // Check access permissions
         self.access_controller.check_write_permission(&state)?;
-        
+
         // Apply error correction encoding
         let encoded_state = self.error_correction.encode_state(&state)?;
-        
+
         // Update cache
         {
             let mut cache = self.cache.write().unwrap();
             cache.insert(state.state_id, encoded_state.clone());
         }
-        
+
         // Store in appropriate layer based on access pattern prediction
         let target_layer = self.select_storage_layer(&encoded_state).await?;
         target_layer.store_state(encoded_state.state_id, &encoded_state)?;
-        
+
         // Start coherence tracking
-        self.coherence_manager.start_tracking(encoded_state.state_id, encoded_state.coherence_time).await;
-        
+        self.coherence_manager
+            .start_tracking(encoded_state.state_id, encoded_state.coherence_time)
+            .await;
+
         Ok(encoded_state.state_id)
     }
 
     /// Retrieve a quantum state with automatic error correction
-    pub async fn retrieve_state(&self, state_id: Uuid) -> Result<Option<QuantumState>, QuantRS2Error> {
+    pub async fn retrieve_state(
+        &self,
+        state_id: Uuid,
+    ) -> Result<Option<QuantumState>, QuantRS2Error> {
         // Check access permissions
         self.access_controller.check_read_permission(state_id)?;
-        
+
         // Check cache first
         {
             let mut cache = self.cache.write().unwrap();
@@ -139,7 +144,7 @@ impl QuantumMemory {
                 return Ok(Some(self.error_correction.decode_state(cached_state)?));
             }
         }
-        
+
         // Search through storage layers
         for layer in &self.storage_layers {
             if let Some(encoded_state) = layer.retrieve_state(state_id)? {
@@ -147,24 +152,25 @@ impl QuantumMemory {
                 if self.coherence_manager.is_coherent(state_id).await {
                     // Decode and cache
                     let decoded_state = self.error_correction.decode_state(&encoded_state)?;
-                    
+
                     {
                         let mut cache = self.cache.write().unwrap();
                         cache.insert(state_id, encoded_state);
                     }
-                    
+
                     self.update_access_stats(state_id).await;
                     return Ok(Some(decoded_state));
                 } else {
                     // State has decoherent, remove it
                     layer.delete_state(state_id)?;
-                    return Err(QuantRS2Error::QuantumDecoherence(
-                        format!("State {} has decoherent", state_id)
-                    ));
+                    return Err(QuantRS2Error::QuantumDecoherence(format!(
+                        "State {} has decoherent",
+                        state_id
+                    )));
                 }
             }
         }
-        
+
         Ok(None)
     }
 
@@ -172,69 +178,79 @@ impl QuantumMemory {
     pub async fn delete_state(&self, state_id: Uuid) -> Result<(), QuantRS2Error> {
         // Check permissions
         self.access_controller.check_delete_permission(state_id)?;
-        
+
         // Remove from cache
         {
             let mut cache = self.cache.write().unwrap();
             cache.remove(&state_id);
         }
-        
+
         // Remove from all storage layers
         for layer in &self.storage_layers {
             let _ = layer.delete_state(state_id); // Ignore errors for layers that don't have the state
         }
-        
+
         // Stop coherence tracking
         self.coherence_manager.stop_tracking(state_id).await;
-        
+
         Ok(())
     }
 
     /// Select optimal storage layer for a state
-    async fn select_storage_layer(&self, state: &QuantumState) -> Result<Arc<dyn QuantumStorageLayer>, QuantRS2Error> {
+    async fn select_storage_layer(
+        &self,
+        state: &QuantumState,
+    ) -> Result<Arc<dyn QuantumStorageLayer>, QuantRS2Error> {
         // Analyze state characteristics
         let access_pattern = self.predict_access_pattern(state).await;
-        let importance_score = self.calculate_importance_score(state);
-        
+        let _importance_score = self.calculate_importance_score(state);
+
         // Select layer based on predicted usage
         for layer in &self.storage_layers {
             let info = layer.get_storage_info();
-            
+
             match (&access_pattern, info.layer_type.clone()) {
-                (&AccessPattern::Frequent, StorageLayerType::UltraFast) |
-                (&AccessPattern::Frequent, StorageLayerType::Fast) => {
+                (&AccessPattern::Frequent, StorageLayerType::UltraFast)
+                | (&AccessPattern::Frequent, StorageLayerType::Fast) => {
                     return Ok(layer.clone());
-                },
-                (&AccessPattern::Moderate, StorageLayerType::Fast) |
-                (&AccessPattern::Moderate, StorageLayerType::Persistent) => {
+                }
+                (&AccessPattern::Moderate, StorageLayerType::Fast)
+                | (&AccessPattern::Moderate, StorageLayerType::Persistent) => {
                     return Ok(layer.clone());
-                },
-                (&AccessPattern::Rare, StorageLayerType::Persistent) |
-                (&AccessPattern::Rare, StorageLayerType::Archive) => {
+                }
+                (&AccessPattern::Rare, StorageLayerType::Persistent)
+                | (&AccessPattern::Rare, StorageLayerType::Archive) => {
                     return Ok(layer.clone());
-                },
+                }
                 _ => continue,
             }
         }
-        
+
         // Fallback to first available layer
-        self.storage_layers.first()
-            .cloned()
-            .ok_or_else(|| QuantRS2Error::NoStorageAvailable("No storage layers configured".to_string()))
+        self.storage_layers.first().cloned().ok_or_else(|| {
+            QuantRS2Error::NoStorageAvailable("No storage layers configured".to_string())
+        })
     }
 
     /// Predict access pattern for a state
     async fn predict_access_pattern(&self, state: &QuantumState) -> AccessPattern {
         // Simple heuristic-based prediction
         // In practice, this could use ML models
-        
-        let recency_factor = state.last_access.elapsed()
+
+        let recency_factor = state
+            .last_access
+            .elapsed()
             .unwrap_or(Duration::ZERO)
-            .as_secs() as f64 / 3600.0; // Hours since last access
-        
-        let access_frequency = state.metadata.access_count as f64 / 
-            state.creation_time.elapsed().unwrap_or(Duration::from_secs(1)).as_secs() as f64;
-        
+            .as_secs() as f64
+            / 3600.0; // Hours since last access
+
+        let access_frequency = state.metadata.access_count as f64
+            / state
+                .creation_time
+                .elapsed()
+                .unwrap_or(Duration::from_secs(1))
+                .as_secs() as f64;
+
         if access_frequency > 0.1 && recency_factor < 1.0 {
             AccessPattern::Frequent
         } else if access_frequency > 0.01 && recency_factor < 24.0 {
@@ -247,27 +263,30 @@ impl QuantumMemory {
     /// Calculate importance score for a state
     fn calculate_importance_score(&self, state: &QuantumState) -> f64 {
         let mut score = 0.0;
-        
+
         // Fidelity contributes to importance
         score += state.fidelity * 10.0;
-        
+
         // Entanglement entropy (higher = more complex/important)
         score += state.metadata.entanglement_entropy * 5.0;
-        
+
         // Recent access increases importance
-        let hours_since_access = state.last_access.elapsed()
+        let hours_since_access = state
+            .last_access
+            .elapsed()
             .unwrap_or(Duration::ZERO)
-            .as_secs() as f64 / 3600.0;
+            .as_secs() as f64
+            / 3600.0;
         score += (24.0 - hours_since_access.min(24.0)) / 24.0 * 3.0;
-        
+
         // Access frequency
         score += (state.metadata.access_count as f64).ln().max(0.0);
-        
+
         score
     }
 
     /// Update access statistics for a state
-    async fn update_access_stats(&self, state_id: Uuid) {
+    async fn update_access_stats(&self, _state_id: Uuid) {
         // This would update access patterns in a real implementation
         // For now, it's a placeholder
     }
@@ -277,14 +296,14 @@ impl QuantumMemory {
         let mut collected_states = 0;
         let mut freed_space = 0;
         let start_time = Instant::now();
-        
+
         // Get list of all states from all layers
         let mut all_states = Vec::new();
         for layer in &self.storage_layers {
             let layer_states = layer.list_states()?;
             all_states.extend(layer_states);
         }
-        
+
         // Check each state for coherence and importance
         for state_id in all_states {
             if !self.coherence_manager.is_coherent(state_id).await {
@@ -294,13 +313,13 @@ impl QuantumMemory {
                 freed_space += 1; // Simplified space calculation
             }
         }
-        
+
         // Compact cache
         {
             let mut cache = self.cache.write().unwrap();
             cache.compact();
         }
-        
+
         Ok(GarbageCollectionResult {
             collected_states,
             freed_space,
@@ -331,11 +350,11 @@ impl QuantumCache {
         if self.cache.contains_key(&state_id) {
             self.remove(&state_id);
         }
-        
+
         // Add to cache
         self.cache.insert(state_id, state);
         self.access_order.push(state_id);
-        
+
         // Evict if necessary (LRU)
         while self.cache.len() > self.max_size {
             if let Some(oldest) = self.access_order.first().cloned() {
@@ -378,9 +397,16 @@ pub struct QuantumMemoryErrorCorrection {
 pub enum QuantumErrorCode {
     ShorCode,
     SteaneCode,
-    SurfaceCode { distance: usize },
-    ColorCode { distance: usize },
-    Custom { name: String, parameters: HashMap<String, f64> },
+    SurfaceCode {
+        distance: usize,
+    },
+    ColorCode {
+        distance: usize,
+    },
+    Custom {
+        name: String,
+        parameters: HashMap<String, f64>,
+    },
 }
 
 impl QuantumMemoryErrorCorrection {
@@ -404,11 +430,16 @@ impl QuantumMemoryErrorCorrection {
     }
 
     /// Decode a quantum state with error correction
-    pub fn decode_state(&self, encoded_state: &QuantumState) -> Result<QuantumState, QuantRS2Error> {
+    pub fn decode_state(
+        &self,
+        encoded_state: &QuantumState,
+    ) -> Result<QuantumState, QuantRS2Error> {
         match &self.code_type {
             QuantumErrorCode::SteaneCode => self.decode_steane(encoded_state),
             QuantumErrorCode::ShorCode => self.decode_shor(encoded_state),
-            QuantumErrorCode::SurfaceCode { distance } => self.decode_surface(encoded_state, *distance),
+            QuantumErrorCode::SurfaceCode { distance } => {
+                self.decode_surface(encoded_state, *distance)
+            }
             QuantumErrorCode::ColorCode { distance } => self.decode_color(encoded_state, *distance),
             QuantumErrorCode::Custom { .. } => self.decode_custom(encoded_state),
         }
@@ -418,7 +449,7 @@ impl QuantumMemoryErrorCorrection {
     fn encode_steane(&self, state: &QuantumState) -> Result<QuantumState, QuantRS2Error> {
         // Simplified Steane code implementation
         let encoded_amplitudes = self.apply_steane_encoding(&state.amplitudes)?;
-        
+
         Ok(QuantumState {
             state_id: state.state_id,
             amplitudes: encoded_amplitudes,
@@ -432,17 +463,20 @@ impl QuantumMemoryErrorCorrection {
     }
 
     /// Apply Steane encoding matrix
-    fn apply_steane_encoding(&self, amplitudes: &[Complex64]) -> Result<Vec<Complex64>, QuantRS2Error> {
+    fn apply_steane_encoding(
+        &self,
+        amplitudes: &[Complex64],
+    ) -> Result<Vec<Complex64>, QuantRS2Error> {
         // Simplified implementation - in practice would use proper Steane encoding
         let mut encoded = Vec::new();
-        
+
         for amp in amplitudes {
             // Replicate amplitude across 7 qubits with redundancy
             for _ in 0..7 {
                 encoded.push(*amp / (7.0_f64.sqrt()));
             }
         }
-        
+
         Ok(encoded)
     }
 
@@ -450,7 +484,7 @@ impl QuantumMemoryErrorCorrection {
     fn decode_steane(&self, encoded_state: &QuantumState) -> Result<QuantumState, QuantRS2Error> {
         // Simplified decoding - measure syndromes and correct
         let decoded_amplitudes = self.apply_steane_decoding(&encoded_state.amplitudes)?;
-        
+
         Ok(QuantumState {
             state_id: encoded_state.state_id,
             amplitudes: decoded_amplitudes,
@@ -464,18 +498,22 @@ impl QuantumMemoryErrorCorrection {
     }
 
     /// Apply Steane decoding
-    fn apply_steane_decoding(&self, encoded_amplitudes: &[Complex64]) -> Result<Vec<Complex64>, QuantRS2Error> {
+    fn apply_steane_decoding(
+        &self,
+        encoded_amplitudes: &[Complex64],
+    ) -> Result<Vec<Complex64>, QuantRS2Error> {
         // Simplified majority voting
         let mut decoded = Vec::new();
-        
+
         for chunk in encoded_amplitudes.chunks(7) {
             if chunk.len() == 7 {
                 // Simple majority decoding
-                let recovered_amp = chunk.iter().sum::<Complex64>() / Complex64::new(7.0, 0.0) * Complex64::new(7.0_f64.sqrt(), 0.0);
+                let recovered_amp = chunk.iter().sum::<Complex64>() / Complex64::new(7.0, 0.0)
+                    * Complex64::new(7.0_f64.sqrt(), 0.0);
                 decoded.push(recovered_amp);
             }
         }
-        
+
         Ok(decoded)
     }
 
@@ -493,25 +531,41 @@ impl QuantumMemoryErrorCorrection {
         Ok(decoded_state)
     }
 
-    fn encode_surface(&self, state: &QuantumState, distance: usize) -> Result<QuantumState, QuantRS2Error> {
+    fn encode_surface(
+        &self,
+        state: &QuantumState,
+        distance: usize,
+    ) -> Result<QuantumState, QuantRS2Error> {
         let mut encoded_state = state.clone();
         encoded_state.qubit_count *= distance * distance;
         Ok(encoded_state)
     }
 
-    fn decode_surface(&self, encoded_state: &QuantumState, distance: usize) -> Result<QuantumState, QuantRS2Error> {
+    fn decode_surface(
+        &self,
+        encoded_state: &QuantumState,
+        distance: usize,
+    ) -> Result<QuantumState, QuantRS2Error> {
         let mut decoded_state = encoded_state.clone();
         decoded_state.qubit_count /= distance * distance;
         Ok(decoded_state)
     }
 
-    fn encode_color(&self, state: &QuantumState, distance: usize) -> Result<QuantumState, QuantRS2Error> {
+    fn encode_color(
+        &self,
+        state: &QuantumState,
+        distance: usize,
+    ) -> Result<QuantumState, QuantRS2Error> {
         let mut encoded_state = state.clone();
         encoded_state.qubit_count *= distance * distance * 2;
         Ok(encoded_state)
     }
 
-    fn decode_color(&self, encoded_state: &QuantumState, distance: usize) -> Result<QuantumState, QuantRS2Error> {
+    fn decode_color(
+        &self,
+        encoded_state: &QuantumState,
+        distance: usize,
+    ) -> Result<QuantumState, QuantRS2Error> {
         let mut decoded_state = encoded_state.clone();
         decoded_state.qubit_count /= distance * distance * 2;
         Ok(decoded_state)
@@ -555,8 +609,11 @@ impl CoherenceManager {
             last_check: Instant::now(),
             predicted_fidelity: 1.0,
         };
-        
-        self.coherence_tracking.lock().unwrap().insert(state_id, info);
+
+        self.coherence_tracking
+            .lock()
+            .unwrap()
+            .insert(state_id, info);
     }
 
     /// Stop tracking coherence for a quantum state
@@ -579,7 +636,7 @@ impl CoherenceManager {
         if let Some(info) = self.coherence_tracking.lock().unwrap().get(&state_id) {
             let elapsed = info.creation_time.elapsed();
             let decay_factor = elapsed.as_secs_f64() / info.coherence_time.as_secs_f64();
-            
+
             // Exponential decay model
             (1.0 - decay_factor).max(0.0)
         } else {
@@ -637,7 +694,9 @@ impl MemoryAccessController {
                 Ok(())
             } else {
                 self.log_access(state_id, AccessOperation::Read, false);
-                Err(QuantRS2Error::AccessDenied("Read access denied".to_string()))
+                Err(QuantRS2Error::AccessDenied(
+                    "Read access denied".to_string(),
+                ))
             }
         } else {
             // Default: allow read if no permissions set
@@ -654,7 +713,9 @@ impl MemoryAccessController {
                 Ok(())
             } else {
                 self.log_access(state.state_id, AccessOperation::Write, false);
-                Err(QuantRS2Error::AccessDenied("Write access denied".to_string()))
+                Err(QuantRS2Error::AccessDenied(
+                    "Write access denied".to_string(),
+                ))
             }
         } else {
             // Default: allow write if no permissions set
@@ -671,7 +732,9 @@ impl MemoryAccessController {
                 Ok(())
             } else {
                 self.log_access(state_id, AccessOperation::Delete, false);
-                Err(QuantRS2Error::AccessDenied("Delete access denied".to_string()))
+                Err(QuantRS2Error::AccessDenied(
+                    "Delete access denied".to_string(),
+                ))
             }
         } else {
             // Default: allow delete if no permissions set
@@ -688,7 +751,7 @@ impl MemoryAccessController {
             user: None, // Would get from current context
             success,
         };
-        
+
         self.access_log.lock().unwrap().push(entry);
     }
 }
@@ -719,7 +782,9 @@ impl QuantumStorageLayer for InMemoryStorage {
     fn store_state(&self, state_id: Uuid, state: &QuantumState) -> Result<(), QuantRS2Error> {
         let mut states = self.states.write().unwrap();
         if states.len() >= self.info.capacity {
-            return Err(QuantRS2Error::StorageCapacityExceeded("Memory storage full".to_string()));
+            return Err(QuantRS2Error::StorageCapacityExceeded(
+                "Memory storage full".to_string(),
+            ));
         }
         states.insert(state_id, state.clone());
         Ok(())
@@ -774,7 +839,7 @@ mod tests {
     #[tokio::test]
     async fn test_in_memory_storage() {
         let storage = InMemoryStorage::new(100);
-        
+
         let state = QuantumState {
             state_id: Uuid::new_v4(),
             amplitudes: vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
@@ -793,10 +858,10 @@ mod tests {
                 entanglement_entropy: 0.0,
             },
         };
-        
+
         let state_id = state.state_id;
         storage.store_state(state_id, &state).unwrap();
-        
+
         let retrieved = storage.retrieve_state(state_id).unwrap();
         assert!(retrieved.is_some());
         assert_eq!(retrieved.unwrap().state_id, state_id);
@@ -805,7 +870,7 @@ mod tests {
     #[tokio::test]
     async fn test_quantum_cache() {
         let mut cache = QuantumCache::new(2);
-        
+
         let state1 = QuantumState {
             state_id: Uuid::new_v4(),
             amplitudes: vec![Complex64::new(1.0, 0.0)],
@@ -824,21 +889,21 @@ mod tests {
                 entanglement_entropy: 0.0,
             },
         };
-        
+
         let state2 = QuantumState {
             state_id: Uuid::new_v4(),
             ..state1.clone()
         };
-        
+
         let state3 = QuantumState {
             state_id: Uuid::new_v4(),
             ..state1.clone()
         };
-        
+
         cache.insert(state1.state_id, state1.clone());
         cache.insert(state2.state_id, state2.clone());
         assert_eq!(cache.cache.len(), 2);
-        
+
         // This should evict state1 (LRU)
         cache.insert(state3.state_id, state3.clone());
         assert_eq!(cache.cache.len(), 2);
@@ -849,10 +914,12 @@ mod tests {
     async fn test_coherence_manager() {
         let manager = CoherenceManager::new();
         let state_id = Uuid::new_v4();
-        
-        manager.start_tracking(state_id, Duration::from_millis(100)).await;
+
+        manager
+            .start_tracking(state_id, Duration::from_millis(100))
+            .await;
         assert!(manager.is_coherent(state_id).await);
-        
+
         // Simulate time passage
         tokio::time::sleep(Duration::from_millis(150)).await;
         assert!(!manager.is_coherent(state_id).await);

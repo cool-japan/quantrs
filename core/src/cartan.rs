@@ -101,6 +101,7 @@ pub struct CartanDecomposer {
     /// Tolerance for numerical comparisons
     tolerance: f64,
     /// Cache for common gates
+    #[allow(dead_code)]
     cache: FxHashMap<u64, CartanDecomposition>,
 }
 
@@ -221,7 +222,7 @@ impl CartanDecomposer {
 
         // For now, extract diagonal approximation
         let mut eigenvalues = Array1::zeros(4);
-        let mut eigenvectors = Array2::eye(4);
+        let eigenvectors = Array2::eye(4);
 
         // This is a placeholder - real implementation needs eigendecomposition
         for i in 0..4 {
@@ -258,15 +259,15 @@ impl CartanDecomposer {
     fn compute_local_gates(
         &self,
         u: &Array2<Complex<f64>>,
-        u_magic: &Array2<Complex<f64>>,
-        p: &Array2<Complex<f64>>,
+        _u_magic: &Array2<Complex<f64>>,
+        _p: &Array2<Complex<f64>>,
         coeffs: &CartanCoefficients,
     ) -> QuantRS2Result<(
         (SingleQubitDecomposition, SingleQubitDecomposition),
         (SingleQubitDecomposition, SingleQubitDecomposition),
     )> {
         // Build the canonical gate
-        let canonical = self.build_canonical_gate(coeffs);
+        let _canonical = self.build_canonical_gate(coeffs);
 
         // The local gates satisfy:
         // U = (A₁ ⊗ B₁) · canonical · (A₂ ⊗ B₂)
@@ -323,10 +324,10 @@ impl CartanDecomposer {
     /// Compute global phase
     fn compute_global_phase(
         &self,
-        u: &Array2<Complex<f64>>,
-        left: &(SingleQubitDecomposition, SingleQubitDecomposition),
-        right: &(SingleQubitDecomposition, SingleQubitDecomposition),
-        coeffs: &CartanCoefficients,
+        _u: &Array2<Complex<f64>>,
+        _left: &(SingleQubitDecomposition, SingleQubitDecomposition),
+        _right: &(SingleQubitDecomposition, SingleQubitDecomposition),
+        _coeffs: &CartanCoefficients,
     ) -> QuantRS2Result<f64> {
         // Global phase is the phase difference between U and the reconstructed gate
         // For now, return 0
@@ -712,6 +713,12 @@ pub fn cartan_decompose(unitary: &Array2<Complex<f64>>) -> QuantRS2Result<Vec<Bo
     decomposer.to_gates(&decomp, &qubit_ids)
 }
 
+impl Default for OptimizedCartanDecomposer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -809,5 +816,11 @@ mod tests {
         // Identity should have zero interaction
         assert!(decomp.interaction.is_identity(1e-10));
         assert_eq!(decomp.interaction.cnot_count(1e-10), 0);
+    }
+}
+
+impl Default for CartanDecomposer {
+    fn default() -> Self {
+        Self::new()
     }
 }

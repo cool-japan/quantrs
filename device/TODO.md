@@ -43,7 +43,7 @@ This document outlines the development plans and future tasks for the QuantRS2-D
 
 ## Planned Enhancements
 
-### Near-term (v0.1.x)
+### Near-term (v0.1.0)
 
 - [x] Implement hardware topology analysis using SciRS2 graphs ✅
 - [x] Add qubit routing algorithms with SciRS2 optimization ✅
@@ -63,9 +63,6 @@ This document outlines the development plans and future tasks for the QuantRS2-D
 - [x] Implement hardware-aware parallelization ✅
 - [x] Add support for hybrid quantum-classical loops ✅
 - [x] Create provider cost optimization engine ✅
-
-### Long-term (Future Versions)
-
 - [ ] Implement quantum network protocols for distributed computing
 - [ ] Add support for photonic quantum computers
 - [ ] Create neutral atom quantum computer interfaces

@@ -5,21 +5,18 @@
 //! of quantum computations, leveraging performance optimization while
 //! maintaining required accuracy.
 
-pub mod config;
 pub mod analysis;
-pub mod state_vector;
+pub mod config;
 pub mod simulator;
+pub mod state_vector;
 
 // Re-export commonly used types and structs
+pub use analysis::{AnalysisSummary, PerformanceMetrics, PrecisionAnalysis, PrecisionAnalyzer};
 pub use config::{
-    QuantumPrecision, MixedPrecisionConfig, MixedPrecisionContext,
-    PrecisionLevel, AdaptiveStrategy,
+    AdaptiveStrategy, MixedPrecisionConfig, MixedPrecisionContext, PrecisionLevel, QuantumPrecision,
 };
-pub use analysis::{
-    PrecisionAnalysis, PerformanceMetrics, PrecisionAnalyzer, AnalysisSummary,
-};
-pub use state_vector::MixedPrecisionStateVector;
 pub use simulator::{MixedPrecisionSimulator, MixedPrecisionStats};
+pub use state_vector::MixedPrecisionStateVector;
 
 use crate::error::Result;
 
@@ -31,7 +28,7 @@ pub fn initialize() -> Result<()> {
         // Initialize SciRS2 mixed precision context if available
         let _context = MixedPrecisionContext::new(AdaptiveStrategy::ErrorBased(1e-6));
     }
-    
+
     Ok(())
 }
 
@@ -116,13 +113,22 @@ mod tests {
     #[test]
     fn test_config_creation() {
         let accuracy_config = default_accuracy_config();
-        assert_eq!(accuracy_config.state_vector_precision, QuantumPrecision::Double);
+        assert_eq!(
+            accuracy_config.state_vector_precision,
+            QuantumPrecision::Double
+        );
 
         let performance_config = default_performance_config();
-        assert_eq!(performance_config.state_vector_precision, QuantumPrecision::Half);
+        assert_eq!(
+            performance_config.state_vector_precision,
+            QuantumPrecision::Half
+        );
 
         let balanced_config = default_balanced_config();
-        assert_eq!(balanced_config.state_vector_precision, QuantumPrecision::Single);
+        assert_eq!(
+            balanced_config.state_vector_precision,
+            QuantumPrecision::Single
+        );
     }
 
     #[test]
@@ -140,7 +146,7 @@ mod tests {
         let config = MixedPrecisionConfig::default();
         let memory_4q = estimate_memory_usage(&config, 4);
         let memory_8q = estimate_memory_usage(&config, 8);
-        
+
         // Memory should scale exponentially with qubits
         assert!(memory_8q > memory_4q * 10);
     }
@@ -152,17 +158,31 @@ mod tests {
         assert_eq!(QuantumPrecision::Double.memory_factor(), 1.0);
 
         assert!(QuantumPrecision::Half.typical_error() > QuantumPrecision::Single.typical_error());
-        assert!(QuantumPrecision::Single.typical_error() > QuantumPrecision::Double.typical_error());
+        assert!(
+            QuantumPrecision::Single.typical_error() > QuantumPrecision::Double.typical_error()
+        );
     }
 
     #[test]
     fn test_precision_transitions() {
-        assert_eq!(QuantumPrecision::Half.higher_precision(), Some(QuantumPrecision::Single));
-        assert_eq!(QuantumPrecision::Single.higher_precision(), Some(QuantumPrecision::Double));
+        assert_eq!(
+            QuantumPrecision::Half.higher_precision(),
+            Some(QuantumPrecision::Single)
+        );
+        assert_eq!(
+            QuantumPrecision::Single.higher_precision(),
+            Some(QuantumPrecision::Double)
+        );
         assert_eq!(QuantumPrecision::Double.higher_precision(), None);
 
-        assert_eq!(QuantumPrecision::Double.lower_precision(), Some(QuantumPrecision::Single));
-        assert_eq!(QuantumPrecision::Single.lower_precision(), Some(QuantumPrecision::Half));
+        assert_eq!(
+            QuantumPrecision::Double.lower_precision(),
+            Some(QuantumPrecision::Single)
+        );
+        assert_eq!(
+            QuantumPrecision::Single.lower_precision(),
+            Some(QuantumPrecision::Half)
+        );
         assert_eq!(QuantumPrecision::Half.lower_precision(), None);
     }
 
@@ -172,7 +192,8 @@ mod tests {
         assert_eq!(state.len(), 4);
         assert_eq!(state.precision(), QuantumPrecision::Single);
 
-        let basis_state = MixedPrecisionStateVector::computational_basis(2, QuantumPrecision::Double);
+        let basis_state =
+            MixedPrecisionStateVector::computational_basis(2, QuantumPrecision::Double);
         assert_eq!(basis_state.len(), 4);
         assert_eq!(basis_state.precision(), QuantumPrecision::Double);
     }
@@ -180,11 +201,11 @@ mod tests {
     #[test]
     fn test_state_vector_operations() {
         let mut state = MixedPrecisionStateVector::new(4, QuantumPrecision::Single);
-        
+
         // Test setting and getting amplitudes
         let amplitude = Complex64::new(0.5, 0.3);
         assert!(state.set_amplitude(0, amplitude).is_ok());
-        
+
         // For single precision, we need to account for precision loss
         let retrieved_amplitude = state.amplitude(0).unwrap();
         assert!((retrieved_amplitude.re - amplitude.re).abs() < 1e-6);
@@ -199,7 +220,7 @@ mod tests {
     fn test_precision_conversion() {
         let state_single = MixedPrecisionStateVector::new(4, QuantumPrecision::Single);
         let state_double = state_single.to_precision(QuantumPrecision::Double);
-        
+
         assert!(state_double.is_ok());
         let converted = state_double.unwrap();
         assert_eq!(converted.precision(), QuantumPrecision::Double);
@@ -210,7 +231,7 @@ mod tests {
     fn test_simulator_creation() {
         let config = MixedPrecisionConfig::default();
         let simulator = MixedPrecisionSimulator::new(2, config);
-        
+
         assert!(simulator.is_ok());
         let sim = simulator.unwrap();
         assert!(sim.get_state().is_some());
@@ -233,13 +254,16 @@ mod tests {
         let mut analysis = PrecisionAnalysis::new();
         analysis.add_recommendation("test_op".to_string(), QuantumPrecision::Single);
         analysis.add_error_estimate(QuantumPrecision::Single, 1e-6);
-        
+
         let metrics = PerformanceMetrics::new(50.0, 512, 20.0, 10.0);
         analysis.add_performance_metrics(QuantumPrecision::Single, metrics);
-        
+
         analysis.calculate_quality_score();
-        
-        assert_eq!(analysis.get_best_precision("test_op"), Some(QuantumPrecision::Single));
+
+        assert_eq!(
+            analysis.get_best_precision("test_op"),
+            Some(QuantumPrecision::Single)
+        );
         assert!(analysis.quality_score > 0.0);
     }
 

@@ -4,12 +4,12 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
-use tokio::sync::Mutex as AsyncMutex;
 use quantrs2_circuit::{
     classical::{ClassicalCondition, ClassicalValue, ComparisonOp},
-    measurement::{CircuitOp, Measurement, MeasurementCircuit, FeedForward},
+    measurement::{CircuitOp, FeedForward, Measurement, MeasurementCircuit},
 };
 use quantrs2_core::{error::QuantRS2Result, gate::GateOp, qubit::QubitId};
+use tokio::sync::Mutex as AsyncMutex;
 
 use crate::{
     calibration::CalibrationManager,
@@ -17,30 +17,30 @@ use crate::{
     DeviceError, DeviceResult,
 };
 
-use super::config::MidCircuitConfig;
-use super::results::*;
 use super::analytics::AdvancedAnalyticsEngine;
-use super::ml::{MLOptimizer, MeasurementPredictor, AdaptiveMeasurementManager};
-use super::monitoring::{PerformanceMonitor, OptimizationCache};
+use super::config::MidCircuitConfig;
+use super::ml::{AdaptiveMeasurementManager, MLOptimizer, MeasurementPredictor};
+use super::monitoring::{OptimizationCache, PerformanceMonitor};
+use super::results::*;
 
 /// Trait for device-specific mid-circuit measurement execution
 #[async_trait::async_trait]
 pub trait MidCircuitDeviceExecutor {
     /// Get device identifier
     fn device_id(&self) -> &str;
-    
+
     /// Execute a quantum gate
     async fn execute_gate(&self, gate: &dyn GateOp) -> DeviceResult<()>;
-    
+
     /// Measure a specific qubit
     async fn measure_qubit(&self, qubit: QubitId) -> DeviceResult<u8>;
-    
+
     /// Measure all qubits
     async fn measure_all(&self) -> DeviceResult<HashMap<String, usize>>;
-    
+
     /// Synchronize execution (barrier)
     async fn synchronize(&self) -> DeviceResult<()>;
-    
+
     /// Reset a qubit to |0⟩ state
     async fn reset_qubit(&self, qubit: QubitId) -> DeviceResult<()>;
 }
@@ -60,13 +60,13 @@ pub struct MidCircuitExecutor {
     calibration_manager: CalibrationManager,
     capabilities: Option<MidCircuitCapabilities>,
     gate_translator: GateTranslator,
-    
+
     // Advanced analytics components
     analytics_engine: Arc<RwLock<AdvancedAnalyticsEngine>>,
     ml_optimizer: Arc<AsyncMutex<MLOptimizer>>,
     predictor: Arc<AsyncMutex<MeasurementPredictor>>,
     adaptive_manager: Arc<AsyncMutex<AdaptiveMeasurementManager>>,
-    
+
     // Performance monitoring
     performance_monitor: Arc<RwLock<PerformanceMonitor>>,
     measurement_history: Arc<RwLock<VecDeque<MeasurementEvent>>>,
@@ -81,10 +81,18 @@ impl MidCircuitExecutor {
             calibration_manager,
             capabilities: None,
             gate_translator: GateTranslator::new(),
-            analytics_engine: Arc::new(RwLock::new(AdvancedAnalyticsEngine::new(&config.analytics_config))),
-            ml_optimizer: Arc::new(AsyncMutex::new(MLOptimizer::new(&config.ml_optimization_config))),
-            predictor: Arc::new(AsyncMutex::new(MeasurementPredictor::new(&config.prediction_config))),
-            adaptive_manager: Arc::new(AsyncMutex::new(AdaptiveMeasurementManager::new(&config.adaptive_config))),
+            analytics_engine: Arc::new(RwLock::new(AdvancedAnalyticsEngine::new(
+                &config.analytics_config,
+            ))),
+            ml_optimizer: Arc::new(AsyncMutex::new(MLOptimizer::new(
+                &config.ml_optimization_config,
+            ))),
+            predictor: Arc::new(AsyncMutex::new(MeasurementPredictor::new(
+                &config.prediction_config,
+            ))),
+            adaptive_manager: Arc::new(AsyncMutex::new(AdaptiveMeasurementManager::new(
+                &config.adaptive_config,
+            ))),
             performance_monitor: Arc::new(RwLock::new(PerformanceMonitor::new())),
             measurement_history: Arc::new(RwLock::new(VecDeque::with_capacity(10000))),
             optimization_cache: Arc::new(RwLock::new(OptimizationCache::new())),
@@ -233,32 +241,41 @@ impl MidCircuitExecutor {
         } else {
             None
         };
-        
+
         // Perform advanced analytics
-        let analytics_results = self.perform_advanced_analytics(&measurement_history, &execution_stats).await?;
-        
+        let analytics_results = self
+            .perform_advanced_analytics(&measurement_history, &execution_stats)
+            .await?;
+
         // Generate predictions if enabled
         let prediction_results = if self.config.prediction_config.enable_prediction {
-            Some(self.predict_measurements(&measurement_history, self.config.prediction_config.prediction_horizon).await?)
+            Some(
+                self.predict_measurements(
+                    &measurement_history,
+                    self.config.prediction_config.prediction_horizon,
+                )
+                .await?,
+            )
         } else {
             None
         };
-        
+
         // Generate optimization recommendations
-        let optimization_recommendations = self.generate_optimization_recommendations(
-            &performance_metrics,
-            &analytics_results,
-            &measurement_history,
-        ).await?;
-        
+        let optimization_recommendations = self
+            .generate_optimization_recommendations(
+                &performance_metrics,
+                &analytics_results,
+                &measurement_history,
+            )
+            .await?;
+
         // Generate adaptive learning insights
-        let adaptive_insights = self.generate_adaptive_insights(
-            &performance_metrics,
-            &measurement_history,
-        ).await?;
+        let adaptive_insights = self
+            .generate_adaptive_insights(&performance_metrics, &measurement_history)
+            .await?;
 
         execution_stats.total_execution_time = start_time.elapsed();
-        
+
         let execution_result = MidCircuitExecutionResult {
             final_measurements,
             classical_registers,
@@ -271,9 +288,10 @@ impl MidCircuitExecutor {
             optimization_recommendations,
             adaptive_insights,
         };
-        
+
         // Update performance monitoring
-        self.update_performance_monitoring(&execution_result).await?;
+        self.update_performance_monitoring(&execution_result)
+            .await?;
 
         Ok(execution_result)
     }
@@ -558,7 +576,7 @@ impl MidCircuitExecutor {
                         thermal_relaxation: 0.005,
                         dephasing: 0.008,
                     });
-            
+
             // Update error statistics based on measurement confidence
             if event.confidence < 0.95 {
                 error_stats.readout_error_rate += 0.001;
@@ -664,7 +682,10 @@ impl MidCircuitExecutor {
         BackendCapabilities::default()
     }
 
-    fn get_supported_measurement_types(&self, backend: HardwareBackend) -> DeviceResult<Vec<MeasurementType>> {
+    fn get_supported_measurement_types(
+        &self,
+        backend: HardwareBackend,
+    ) -> DeviceResult<Vec<MeasurementType>> {
         Ok(vec![MeasurementType::ZBasis])
     }
 
@@ -672,7 +693,11 @@ impl MidCircuitExecutor {
         vec!["standard".to_string()]
     }
 
-    fn get_timing_constraints(&self, backend: HardwareBackend, device_id: &str) -> DeviceResult<TimingConstraints> {
+    fn get_timing_constraints(
+        &self,
+        backend: HardwareBackend,
+        device_id: &str,
+    ) -> DeviceResult<TimingConstraints> {
         Ok(TimingConstraints {
             min_measurement_spacing: 100.0,
             max_measurement_duration: 1000.0,
@@ -842,7 +867,6 @@ impl Default for NormalityAssessment {
         }
     }
 }
-
 
 impl Default for MeasurementPredictionResults {
     fn default() -> Self {

@@ -7,15 +7,15 @@
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
-    optimization::{OptimizationPass, OptimizationChain},
+    optimization::OptimizationChain,
     qubit::QubitId,
 };
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     sync::{Arc, RwLock},
     time::{Duration, Instant},
 };
-use serde::{Deserialize, Serialize};
 
 /// Configuration for lazy evaluation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -197,7 +197,7 @@ impl LazyOptimizationPipeline {
 
         // Analyze dependencies based on qubit overlap
         let dependencies = self.analyze_dependencies(gate.as_ref())?;
-        
+
         // Calculate priority based on gate type and dependencies
         let priority = self.calculate_priority(gate.as_ref(), &dependencies);
 
@@ -240,10 +240,9 @@ impl LazyOptimizationPipeline {
         // Get the gate context
         let context = {
             let buffer = self.gate_buffer.read().unwrap();
-            buffer.get(&gate_id).cloned()
-                .ok_or_else(|| QuantRS2Error::InvalidInput(
-                    format!("Gate {} not found in buffer", gate_id)
-                ))?
+            buffer.get(&gate_id).cloned().ok_or_else(|| {
+                QuantRS2Error::InvalidInput(format!("Gate {} not found in buffer", gate_id))
+            })?
         };
 
         // Ensure dependencies are evaluated first
@@ -258,7 +257,7 @@ impl LazyOptimizationPipeline {
         // Mark as evaluated
         {
             let mut buffer = self.gate_buffer.write().unwrap();
-            if let Some(mut ctx) = buffer.get_mut(&gate_id) {
+            if let Some(ctx) = buffer.get_mut(&gate_id) {
                 ctx.is_evaluated = true;
                 ctx.cached_result = Some(result.clone());
             }
@@ -295,11 +294,11 @@ impl LazyOptimizationPipeline {
     pub fn get_statistics(&self) -> LazyEvaluationStats {
         let buffer = self.gate_buffer.read().unwrap();
         let cache = self.optimization_cache.read().unwrap();
-        
+
         let total_gates = buffer.len();
         let evaluated_gates = buffer.values().filter(|ctx| ctx.is_evaluated).count();
         let pending_gates = total_gates - evaluated_gates;
-        
+
         LazyEvaluationStats {
             total_gates,
             evaluated_gates,
@@ -318,7 +317,7 @@ impl LazyOptimizationPipeline {
         let buffer = self.gate_buffer.read().unwrap();
         for (gate_id, context) in buffer.iter() {
             let context_qubits: HashSet<QubitId> = context.gate.qubits().into_iter().collect();
-            
+
             // If there's qubit overlap, this gate depends on the previous one
             if !gate_qubits.is_disjoint(&context_qubits) {
                 dependencies.insert(*gate_id);
@@ -352,7 +351,7 @@ impl LazyOptimizationPipeline {
     /// Check if forced evaluation is needed
     fn check_forced_evaluation(&self) -> QuantRS2Result<()> {
         let buffer = self.gate_buffer.read().unwrap();
-        
+
         // Check buffer size
         if buffer.len() >= self.config.max_buffer_size {
             drop(buffer);
@@ -375,7 +374,8 @@ impl LazyOptimizationPipeline {
     fn force_oldest_evaluation(&self) -> QuantRS2Result<()> {
         let oldest_gate_id = {
             let buffer = self.gate_buffer.read().unwrap();
-            buffer.values()
+            buffer
+                .values()
                 .filter(|ctx| !ctx.is_evaluated)
                 .min_by_key(|ctx| ctx.created_at)
                 .map(|ctx| ctx.gate_id)
@@ -401,21 +401,25 @@ impl LazyOptimizationPipeline {
     /// Check if a gate has been evaluated
     fn is_gate_evaluated(&self, gate_id: usize) -> bool {
         let buffer = self.gate_buffer.read().unwrap();
-        buffer.get(&gate_id)
+        buffer
+            .get(&gate_id)
             .map(|ctx| ctx.is_evaluated)
             .unwrap_or(false)
     }
 
     /// Optimize a gate context
-    fn optimize_gate_context(&self, context: &LazyGateContext) -> QuantRS2Result<OptimizationResult> {
+    fn optimize_gate_context(
+        &self,
+        context: &LazyGateContext,
+    ) -> QuantRS2Result<OptimizationResult> {
         let start_time = Instant::now();
-        
+
         // Apply optimization chain
         let input_gates = vec![context.gate.clone_gate()];
         let optimized_gates = self.optimization_chain.optimize(input_gates)?;
-        
+
         let optimization_time = start_time.elapsed();
-        
+
         // Calculate statistics
         let stats = OptimizationStats {
             gates_before: 1,
@@ -436,22 +440,21 @@ impl LazyOptimizationPipeline {
     fn estimate_performance_improvement(&self, gates: &[Box<dyn GateOp>]) -> f64 {
         // Simple heuristic: fewer gates = better performance
         let base_improvement = 1.0 / (gates.len() as f64 + 1.0);
-        
+
         // Bonus for single-qubit gates
-        let single_qubit_bonus = gates.iter()
-            .filter(|g| g.num_qubits() == 1)
-            .count() as f64 * 0.1;
-            
+        let single_qubit_bonus = gates.iter().filter(|g| g.num_qubits() == 1).count() as f64 * 0.1;
+
         base_improvement + single_qubit_bonus
     }
 
     /// Estimate memory savings from optimization
     fn estimate_memory_savings(&self, gates: &[Box<dyn GateOp>]) -> usize {
         // Simple heuristic based on gate complexity
-        gates.iter()
+        gates
+            .iter()
             .map(|g| match g.num_qubits() {
-                1 => 16,  // 2x2 complex matrix
-                2 => 64,  // 4x4 complex matrix
+                1 => 16,                  // 2x2 complex matrix
+                2 => 64,                  // 4x4 complex matrix
                 n => (1 << (2 * n)) * 16, // 2^n x 2^n complex matrix
             })
             .sum()
@@ -484,13 +487,13 @@ impl LazyOptimizationPipeline {
     ) -> QuantRS2Result<()> {
         let gate_hash = self.compute_gate_hash(gate_id)?;
         let mut cache = self.optimization_cache.write().unwrap();
-        
+
         let cached = CachedOptimization {
             result: result.clone(),
             access_count: 1,
             last_accessed: Instant::now(),
         };
-        
+
         cache.insert(gate_hash, cached);
         Ok(())
     }
@@ -501,14 +504,13 @@ impl LazyOptimizationPipeline {
         use std::hash::{Hash, Hasher};
 
         let buffer = self.gate_buffer.read().unwrap();
-        let context = buffer.get(&gate_id)
-            .ok_or_else(|| QuantRS2Error::InvalidInput(
-                format!("Gate {} not found", gate_id)
-            ))?;
+        let context = buffer
+            .get(&gate_id)
+            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Gate {} not found", gate_id)))?;
 
         let mut hasher = DefaultHasher::new();
         context.gate.name().hash(&mut hasher);
-        
+
         // Hash the gate matrix
         if let Ok(matrix) = context.gate.matrix() {
             for elem in &matrix {
@@ -516,22 +518,22 @@ impl LazyOptimizationPipeline {
                 elem.im.to_bits().hash(&mut hasher);
             }
         }
-        
+
         Ok(hasher.finish())
     }
 
     /// Start a worker thread for async optimization
     fn start_worker_thread(
-        worker_id: usize,
+        _worker_id: usize,
         gate_buffer: Arc<RwLock<HashMap<usize, LazyGateContext>>>,
-        dependency_graph: Arc<RwLock<DependencyGraph>>,
-        optimization_cache: Arc<RwLock<OptimizationCache>>,
+        _dependency_graph: Arc<RwLock<DependencyGraph>>,
+        _optimization_cache: Arc<RwLock<OptimizationCache>>,
         shutdown_signal: Arc<RwLock<bool>>,
         config: LazyEvaluationConfig,
     ) -> std::thread::JoinHandle<()> {
         std::thread::spawn(move || {
             let sleep_duration = Duration::from_millis(10);
-            
+
             loop {
                 // Check shutdown signal
                 {
@@ -545,7 +547,8 @@ impl LazyOptimizationPipeline {
                 if config.enable_speculative_optimization {
                     let high_priority_gates = {
                         let buffer = gate_buffer.read().unwrap();
-                        buffer.values()
+                        buffer
+                            .values()
                             .filter(|ctx| !ctx.is_evaluated && ctx.priority > 5.0)
                             .map(|ctx| ctx.gate_id)
                             .collect::<Vec<_>>()
@@ -587,12 +590,15 @@ impl DependencyGraph {
     /// Add a gate with its dependencies
     fn add_gate(&mut self, gate_id: usize, dependencies: HashSet<usize>) {
         self.edges.insert(gate_id, dependencies.clone());
-        
+
         // Update reverse edges
         for dep in dependencies {
-            self.reverse_edges.entry(dep).or_insert_with(HashSet::new).insert(gate_id);
+            self.reverse_edges
+                .entry(dep)
+                .or_insert_with(HashSet::new)
+                .insert(gate_id);
         }
-        
+
         // Invalidate topological order cache
         self.topo_order_cache = None;
     }
@@ -625,7 +631,7 @@ impl DependencyGraph {
         // Process nodes
         while let Some(node) = queue.pop_front() {
             result.push(node);
-            
+
             if let Some(dependents) = self.reverse_edges.get(&node) {
                 for &dependent in dependents {
                     if let Some(degree) = in_degree.get_mut(&dependent) {
@@ -655,11 +661,11 @@ impl OptimizationCache {
         if let Some(cached) = self.entries.get_mut(&hash) {
             cached.access_count += 1;
             cached.last_accessed = Instant::now();
-            
+
             // Update LRU
             self.lru_queue.retain(|&h| h != hash);
             self.lru_queue.push_front(hash);
-            
+
             Some(cached)
         } else {
             None
@@ -689,10 +695,12 @@ impl OptimizationCache {
             return Duration::ZERO;
         }
 
-        let total_time: Duration = self.entries.values()
+        let total_time: Duration = self
+            .entries
+            .values()
             .map(|c| c.result.optimization_time)
             .sum();
-        
+
         total_time / self.entries.len() as u32
     }
 }
@@ -718,10 +726,10 @@ mod tests {
     fn test_lazy_pipeline_creation() {
         let config = LazyEvaluationConfig::default();
         let chain = OptimizationChain::new();
-        
+
         let pipeline = LazyOptimizationPipeline::new(config, chain).unwrap();
         let stats = pipeline.get_statistics();
-        
+
         assert_eq!(stats.total_gates, 0);
         assert_eq!(stats.evaluated_gates, 0);
     }
@@ -730,14 +738,16 @@ mod tests {
     fn test_gate_addition() {
         let config = LazyEvaluationConfig::default();
         let chain = OptimizationChain::new();
-        
+
         let pipeline = LazyOptimizationPipeline::new(config, chain).unwrap();
-        
-        let h_gate = Box::new(Hadamard { target: crate::qubit::QubitId(0) });
+
+        let h_gate = Box::new(Hadamard {
+            target: crate::qubit::QubitId(0),
+        });
         let gate_id = pipeline.add_gate(h_gate).unwrap();
-        
+
         assert_eq!(gate_id, 0);
-        
+
         let stats = pipeline.get_statistics();
         assert_eq!(stats.total_gates, 1);
         assert_eq!(stats.pending_gates, 1);
@@ -747,15 +757,17 @@ mod tests {
     fn test_gate_evaluation() {
         let config = LazyEvaluationConfig::default();
         let chain = OptimizationChain::new();
-        
+
         let pipeline = LazyOptimizationPipeline::new(config, chain).unwrap();
-        
-        let h_gate = Box::new(Hadamard { target: crate::qubit::QubitId(0) });
+
+        let h_gate = Box::new(Hadamard {
+            target: crate::qubit::QubitId(0),
+        });
         let gate_id = pipeline.add_gate(h_gate).unwrap();
-        
+
         let result = pipeline.evaluate_gate(gate_id).unwrap();
         assert!(result.optimization_time > Duration::ZERO);
-        
+
         let stats = pipeline.get_statistics();
         assert_eq!(stats.evaluated_gates, 1);
         assert_eq!(stats.pending_gates, 0);
@@ -765,21 +777,27 @@ mod tests {
     fn test_dependency_analysis() {
         let config = LazyEvaluationConfig::default();
         let chain = OptimizationChain::new();
-        
+
         let pipeline = LazyOptimizationPipeline::new(config, chain).unwrap();
-        
+
         // Add gates that share qubits
-        let h_gate = Box::new(Hadamard { target: crate::qubit::QubitId(0) });
-        let x_gate = Box::new(PauliX { target: crate::qubit::QubitId(0) });
-        let z_gate = Box::new(PauliZ { target: crate::qubit::QubitId(1) });
-        
+        let h_gate = Box::new(Hadamard {
+            target: crate::qubit::QubitId(0),
+        });
+        let x_gate = Box::new(PauliX {
+            target: crate::qubit::QubitId(0),
+        });
+        let z_gate = Box::new(PauliZ {
+            target: crate::qubit::QubitId(1),
+        });
+
         let h_id = pipeline.add_gate(h_gate).unwrap();
         let x_id = pipeline.add_gate(x_gate).unwrap();
         let z_id = pipeline.add_gate(z_gate).unwrap();
-        
+
         // X gate should depend on H gate (same qubit)
         // Z gate should be independent (different qubit)
-        
+
         let results = pipeline.evaluate_all().unwrap();
         // Results may be filtered or combined during optimization
         assert!(results.len() <= 3);
@@ -789,18 +807,20 @@ mod tests {
     fn test_optimization_caching() {
         let config = LazyEvaluationConfig::default();
         let chain = OptimizationChain::new();
-        
+
         let pipeline = LazyOptimizationPipeline::new(config, chain).unwrap();
-        
-        let h_gate = Box::new(Hadamard { target: crate::qubit::QubitId(0) });
+
+        let h_gate = Box::new(Hadamard {
+            target: crate::qubit::QubitId(0),
+        });
         let gate_id = pipeline.add_gate(h_gate).unwrap();
-        
+
         // First evaluation
         let result1 = pipeline.evaluate_gate(gate_id).unwrap();
-        
+
         // Second evaluation should use cache
         let result2 = pipeline.evaluate_gate(gate_id).unwrap();
-        
+
         // Results should be identical
         assert_eq!(result1.stats.gates_before, result2.stats.gates_before);
         assert_eq!(result1.stats.gates_after, result2.stats.gates_after);

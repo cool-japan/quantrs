@@ -224,7 +224,10 @@ impl SpecializedStateVectorSimulator {
     }
 
     /// Reorder gates for better performance
-    fn reorder_gates(&self, gates: &[Arc<dyn GateOp + Send + Sync>]) -> QuantRS2Result<Vec<Arc<dyn GateOp + Send + Sync>>> {
+    fn reorder_gates(
+        &self,
+        gates: &[Arc<dyn GateOp + Send + Sync>],
+    ) -> QuantRS2Result<Vec<Arc<dyn GateOp + Send + Sync>>> {
         // Simple reordering: group gates by qubit locality
         // This is a placeholder for more sophisticated reordering
         let mut reordered = gates.to_vec();

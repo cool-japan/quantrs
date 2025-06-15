@@ -199,7 +199,7 @@ impl CrossPlatformValidator {
             platform_configs: HashMap::new(),
         }
     }
-    
+
     /// Create default platform configurations
     fn create_default_platforms() -> Vec<Platform> {
         vec![
@@ -232,10 +232,7 @@ impl CrossPlatformValidator {
                 availability: PlatformAvailability::RequiresAuth,
                 capabilities: PlatformCapabilities {
                     max_problem_size: 5000,
-                    supported_types: vec![
-                        ProblemType::RandomIsing,
-                        ProblemType::MaxCut,
-                    ],
+                    supported_types: vec![ProblemType::RandomIsing, ProblemType::MaxCut],
                     native_constraints: false,
                     requires_embedding: true,
                 },
@@ -252,10 +249,7 @@ impl CrossPlatformValidator {
                 availability: PlatformAvailability::RequiresAuth,
                 capabilities: PlatformCapabilities {
                     max_problem_size: 2000,
-                    supported_types: vec![
-                        ProblemType::RandomIsing,
-                        ProblemType::MaxCut,
-                    ],
+                    supported_types: vec![ProblemType::RandomIsing, ProblemType::MaxCut],
                     native_constraints: false,
                     requires_embedding: true,
                 },
@@ -265,35 +259,37 @@ impl CrossPlatformValidator {
                     reliability: 0.92,
                     cost_per_problem: Some(0.001),
                 },
-            }
+            },
         ]
     }
-    
+
     /// Add platform
     pub fn add_platform(&mut self, platform: Platform) {
         self.platforms.push(platform);
     }
-    
+
     /// Get platform by ID
     pub fn get_platform(&self, platform_id: &str) -> Option<&Platform> {
         self.platforms.iter().find(|p| p.id == platform_id)
     }
-    
+
     /// Add test suite
     pub fn add_test_suite(&mut self, suite: CrossPlatformTestSuite) {
         self.test_suites.insert(suite.id.clone(), suite);
     }
-    
+
     /// Run cross-platform validation
-    pub fn run_validation(&self, suite_id: &str) -> ApplicationResult<CrossPlatformValidationResult> {
-        let suite = self.test_suites.get(suite_id)
-            .ok_or_else(|| ApplicationError::ConfigurationError(
-                format!("Test suite not found: {}", suite_id)
-            ))?;
-        
+    pub fn run_validation(
+        &self,
+        suite_id: &str,
+    ) -> ApplicationResult<CrossPlatformValidationResult> {
+        let suite = self.test_suites.get(suite_id).ok_or_else(|| {
+            ApplicationError::ConfigurationError(format!("Test suite not found: {}", suite_id))
+        })?;
+
         let mut platform_results = HashMap::new();
         let mut comparison_results = Vec::new();
-        
+
         // Run tests on each available platform
         for platform in &self.platforms {
             if platform.availability == PlatformAvailability::Available {
@@ -301,16 +297,16 @@ impl CrossPlatformValidator {
                 platform_results.insert(platform.id.clone(), results);
             }
         }
-        
+
         // Compare results across platforms
         for criterion in &suite.comparison_criteria {
             let comparison = self.compare_platforms(&platform_results, criterion)?;
             comparison_results.push(comparison);
         }
-        
+
         // Calculate overall compatibility score
         let compatibility_score = self.calculate_compatibility_score(&comparison_results);
-        
+
         Ok(CrossPlatformValidationResult {
             suite_id: suite_id.to_string(),
             platform_results,
@@ -319,25 +315,25 @@ impl CrossPlatformValidator {
             validation_time: Duration::from_secs(60), // Simplified
         })
     }
-    
+
     /// Run test suite on specific platform
     fn run_suite_on_platform(
         &self,
         suite: &CrossPlatformTestSuite,
-        platform: &Platform
+        platform: &Platform,
     ) -> ApplicationResult<PlatformTestResults> {
         let mut test_results = HashMap::new();
-        
+
         for test_case in &suite.test_cases {
             // Check if platform supports this test case
             if !self.is_test_supported(test_case, platform) {
                 continue;
             }
-            
+
             let result = self.run_test_case_on_platform(test_case, platform)?;
             test_results.insert(test_case.id.clone(), result);
         }
-        
+
         Ok(PlatformTestResults {
             platform_id: platform.id.clone(),
             test_results,
@@ -345,17 +341,20 @@ impl CrossPlatformValidator {
             execution_time: Duration::from_secs(30), // Simplified
         })
     }
-    
+
     /// Check if test is supported on platform
     fn is_test_supported(&self, test_case: &CrossPlatformTestCase, platform: &Platform) -> bool {
-        platform.capabilities.supported_types.contains(&test_case.problem.problem_type)
+        platform
+            .capabilities
+            .supported_types
+            .contains(&test_case.problem.problem_type)
     }
-    
+
     /// Run individual test case on platform
     fn run_test_case_on_platform(
         &self,
         test_case: &CrossPlatformTestCase,
-        platform: &Platform
+        platform: &Platform,
     ) -> ApplicationResult<TestExecutionResult> {
         // Simplified implementation - would interface with actual platform
         let base_quality = match platform.platform_type {
@@ -365,11 +364,11 @@ impl CrossPlatformValidator {
             PlatformType::FujitsuDA => 0.88,
             PlatformType::Custom(_) => 0.75,
         };
-        
+
         let problem_size = (test_case.problem.size_range.0 + test_case.problem.size_range.1) / 2;
         let size_factor = (problem_size as f64 / 1000.0).min(1.0);
         let quality = base_quality * (1.0 - size_factor * 0.2);
-        
+
         Ok(TestExecutionResult {
             solution_quality: quality,
             execution_time: Duration::from_millis((problem_size as u64).min(5000)),
@@ -379,53 +378,59 @@ impl CrossPlatformValidator {
             memory_used: problem_size * 8,
         })
     }
-    
+
     /// Compare results across platforms
     fn compare_platforms(
         &self,
         platform_results: &HashMap<String, PlatformTestResults>,
-        criterion: &ComparisonCriterion
+        criterion: &ComparisonCriterion,
     ) -> ApplicationResult<ComparisonResult> {
         let mut metric_values = HashMap::new();
-        
+
         // Extract metric values from each platform
         for (platform_id, results) in platform_results {
-            let values: Vec<f64> = results.test_results.values()
+            let values: Vec<f64> = results
+                .test_results
+                .values()
                 .map(|result| self.extract_metric_value(result, &criterion.metric))
                 .collect();
-            
+
             if !values.is_empty() {
                 let mean_value = values.iter().sum::<f64>() / values.len() as f64;
                 metric_values.insert(platform_id.clone(), mean_value);
             }
         }
-        
+
         // Calculate differences between platforms
         let mut differences = HashMap::new();
         let platforms: Vec<_> = metric_values.keys().collect();
-        
+
         for i in 0..platforms.len() {
             for j in (i + 1)..platforms.len() {
                 let platform1 = platforms[i];
                 let platform2 = platforms[j];
                 let value1 = metric_values[platform1];
                 let value2 = metric_values[platform2];
-                
+
                 let difference = match criterion.comparison_type {
                     ComparisonType::AbsoluteDifference => (value1 - value2).abs(),
-                    ComparisonType::RelativeDifference => ((value1 - value2) / value1.max(value2)).abs(),
+                    ComparisonType::RelativeDifference => {
+                        ((value1 - value2) / value1.max(value2)).abs()
+                    }
                     _ => (value1 - value2).abs(), // Simplified
                 };
-                
+
                 let pair_key = format!("{}_{}", platform1, platform2);
                 differences.insert(pair_key, difference);
             }
         }
-        
+
         // Check if differences are within tolerance
-        let max_difference = differences.values().fold(0.0f64, |max, &diff| max.max(diff));
+        let max_difference = differences
+            .values()
+            .fold(0.0f64, |max, &diff| max.max(diff));
         let within_tolerance = max_difference <= criterion.tolerance;
-        
+
         Ok(ComparisonResult {
             criterion_id: criterion.id.clone(),
             metric: criterion.metric.clone(),
@@ -436,7 +441,7 @@ impl CrossPlatformValidator {
             critical: criterion.critical,
         })
     }
-    
+
     /// Extract metric value from test result
     fn extract_metric_value(&self, result: &TestExecutionResult, metric: &str) -> f64 {
         match metric {
@@ -447,45 +452,53 @@ impl CrossPlatformValidator {
             _ => 0.0,
         }
     }
-    
+
     /// Calculate overall compatibility score
     fn calculate_compatibility_score(&self, comparison_results: &[ComparisonResult]) -> f64 {
         if comparison_results.is_empty() {
             return 1.0;
         }
-        
-        let total_weight: f64 = comparison_results.iter()
+
+        let total_weight: f64 = comparison_results
+            .iter()
             .map(|r| if r.critical { 2.0 } else { 1.0 })
             .sum();
-        
-        let weighted_score: f64 = comparison_results.iter()
+
+        let weighted_score: f64 = comparison_results
+            .iter()
             .map(|r| {
                 let score = if r.within_tolerance { 1.0 } else { 0.0 };
                 let weight = if r.critical { 2.0 } else { 1.0 };
                 score * weight
             })
             .sum();
-        
+
         weighted_score / total_weight
     }
-    
+
     /// Get compatibility information between platforms
     pub fn get_compatibility(&self, platform1: &str, platform2: &str) -> CompatibilityInfo {
-        let feature_compat = self.compatibility_matrix.feature_compatibility
+        let feature_compat = self
+            .compatibility_matrix
+            .feature_compatibility
             .get(platform1)
             .and_then(|map| map.get(platform2))
             .unwrap_or(&CompatibilityLevel::Unknown);
-        
-        let performance_compat = self.compatibility_matrix.performance_compatibility
+
+        let performance_compat = self
+            .compatibility_matrix
+            .performance_compatibility
             .get(platform1)
             .and_then(|map| map.get(platform2))
             .unwrap_or(&0.5);
-        
+
         let default_issues = Vec::new();
-        let issues = self.compatibility_matrix.known_issues
+        let issues = self
+            .compatibility_matrix
+            .known_issues
             .get(&format!("{}_{}", platform1, platform2))
             .unwrap_or(&default_issues);
-        
+
         CompatibilityInfo {
             platform_pair: (platform1.to_string(), platform2.to_string()),
             feature_compatibility: feature_compat.clone(),

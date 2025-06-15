@@ -18,13 +18,13 @@ pub struct BenchmarkingSuite {
 pub trait Benchmark: Send + Sync + std::fmt::Debug {
     /// Run benchmark
     fn run_benchmark(&self, config: &BenchmarkConfig) -> Result<BenchmarkResult, AnalysisError>;
-    
+
     /// Get benchmark name
     fn get_benchmark_name(&self) -> &str;
-    
+
     /// Get benchmark description
     fn get_description(&self) -> &str;
-    
+
     /// Get estimated runtime
     fn get_estimated_runtime(&self) -> Duration;
 }
@@ -380,7 +380,7 @@ impl Benchmark for QuboEvaluationBenchmark {
         let mut execution_times = Vec::new();
         let mut memory_usage = Vec::new();
         let mut solution_quality = Vec::new();
-        
+
         for _ in 0..config.iterations {
             let start = Instant::now();
             // Mock QUBO evaluation
@@ -389,7 +389,7 @@ impl Benchmark for QuboEvaluationBenchmark {
             memory_usage.push(1024 * 1024); // 1MB
             solution_quality.push(0.95); // 95% quality
         }
-        
+
         Ok(BenchmarkResult {
             benchmark_name: self.get_benchmark_name().to_string(),
             execution_times,
@@ -432,15 +432,15 @@ impl Benchmark for QuboEvaluationBenchmark {
             },
         })
     }
-    
+
     fn get_benchmark_name(&self) -> &str {
         "QUBO Evaluation Benchmark"
     }
-    
+
     fn get_description(&self) -> &str {
         "Benchmarks QUBO matrix evaluation performance"
     }
-    
+
     fn get_estimated_runtime(&self) -> Duration {
         Duration::from_secs(30)
     }
@@ -501,15 +501,15 @@ impl Benchmark for SamplingBenchmark {
             },
         })
     }
-    
+
     fn get_benchmark_name(&self) -> &str {
         "Sampling Benchmark"
     }
-    
+
     fn get_description(&self) -> &str {
         "Benchmarks quantum annealing sampling performance"
     }
-    
+
     fn get_estimated_runtime(&self) -> Duration {
         Duration::from_secs(60)
     }
@@ -570,15 +570,15 @@ impl Benchmark for ConvergenceBenchmark {
             },
         })
     }
-    
+
     fn get_benchmark_name(&self) -> &str {
         "Convergence Benchmark"
     }
-    
+
     fn get_description(&self) -> &str {
         "Benchmarks algorithm convergence characteristics"
     }
-    
+
     fn get_estimated_runtime(&self) -> Duration {
         Duration::from_secs(45)
     }

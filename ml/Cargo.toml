@@ -28,7 +28,7 @@ rand_chacha = "0.3"
 rayon.workspace = true
 num-complex.workspace = true
 fastrand.workspace = true
-num_cpus = "1.16"
+num_cpus = "1.17"
 
 [features]
 default = []

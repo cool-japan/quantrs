@@ -75,6 +75,7 @@ pub struct MultiQubitKAKDecomposer {
     /// Maximum recursion depth
     max_depth: usize,
     /// Cache for decompositions
+    #[allow(dead_code)]
     cache: FxHashMap<u64, MultiQubitKAK>,
     /// Use optimized methods
     use_optimization: bool,
@@ -264,7 +265,7 @@ impl MultiQubitKAKDecomposer {
         depth: usize,
     ) -> QuantRS2Result<(DecompositionTree, Vec<Box<dyn GateOp>>)> {
         let n = qubit_ids.len();
-        let size = 1 << n;
+        let _size = 1 << n;
         let pivot_size = 1 << pivot;
 
         // Split unitary into blocks based on pivot
@@ -325,7 +326,7 @@ impl MultiQubitKAKDecomposer {
         unitary: &Array2<Complex<f64>>,
         qubit_ids: &[QubitId],
         partition: usize,
-        depth: usize,
+        _depth: usize,
     ) -> QuantRS2Result<(DecompositionTree, Vec<Box<dyn GateOp>>)> {
         // Use the Shannon decomposer for this
         let mut shannon = ShannonDecomposer::new();
@@ -398,7 +399,7 @@ impl MultiQubitKAKDecomposer {
 
         let size = a.shape()[0];
         let identity = Array2::eye(size);
-        let zero: Array2<Complex<f64>> = Array2::zeros((size, size));
+        let _zero: Array2<Complex<f64>> = Array2::zeros((size, size));
 
         // For now, return identity transformations
         let u1 = identity.clone();
@@ -479,7 +480,7 @@ impl MultiQubitKAKDecomposer {
     }
 
     /// Check if matrix has block diagonal structure
-    fn has_block_structure(&self, unitary: &Array2<Complex<f64>>, n: usize) -> bool {
+    fn has_block_structure(&self, unitary: &Array2<Complex<f64>>, _n: usize) -> bool {
         // Simple check - look for zeros in off-diagonal blocks
         let size = unitary.shape()[0];
         let block_size = size / 2;
@@ -560,15 +561,21 @@ impl MultiQubitKAKDecomposer {
     }
 
     /// Check cache for existing decomposition
-    fn check_cache(&self, unitary: &Array2<Complex<f64>>) -> Option<&MultiQubitKAK> {
+    fn check_cache(&self, _unitary: &Array2<Complex<f64>>) -> Option<&MultiQubitKAK> {
         // Simple hash based on first few elements
         // Real implementation would use better hashing
         None
     }
 
     /// Cache decomposition result
-    fn cache_result(&mut self, unitary: &Array2<Complex<f64>>, result: &MultiQubitKAK) {
+    fn cache_result(&mut self, _unitary: &Array2<Complex<f64>>, _result: &MultiQubitKAK) {
         // Cache implementation
+    }
+}
+
+impl Default for MultiQubitKAKDecomposer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -607,7 +614,10 @@ impl KAKTreeAnalyzer {
         self.stats.max_depth = self.stats.max_depth.max(depth);
 
         match tree {
-            DecompositionTree::Leaf { qubits, gate_type } => {
+            DecompositionTree::Leaf {
+                qubits: _qubits,
+                gate_type,
+            } => {
                 self.stats.leaf_nodes += 1;
 
                 match gate_type {

@@ -43,7 +43,7 @@ pub enum TemperatureSchedule {
     /// Geometric temperature decrease
     Geometric { start: f64, ratio: f64 },
     /// Adaptive temperature control
-    Adaptive { 
+    Adaptive {
         initial: f64,
         target_acceptance: f64,
     },
@@ -162,7 +162,7 @@ impl NECVectorAnnealingSampler {
         let mut processed = qubo.clone();
         let mut fixed_vars = HashMap::new();
         let mut transformations = Vec::new();
-        
+
         if self.preprocessor.variable_fixing {
             // Identify and fix obvious variables
             for i in 0..qubo.shape()[0] {
@@ -171,7 +171,7 @@ impl NECVectorAnnealingSampler {
                     .filter(|&j| j != i)
                     .map(|j| qubo[[i, j]].abs())
                     .sum();
-                
+
                 // Fix variable if diagonal dominates
                 if diagonal.abs() > 2.0 * off_diagonal_sum {
                     let value = diagonal < 0.0;
@@ -180,12 +180,12 @@ impl NECVectorAnnealingSampler {
                 }
             }
         }
-        
+
         if self.preprocessor.constraint_tightening {
             // Tighten constraints by identifying redundancies
             transformations.push(Transformation::TightenConstraints);
         }
-        
+
         Ok(PreprocessedProblem {
             qubo: processed,
             fixed_variables: fixed_vars,
@@ -221,10 +221,10 @@ impl NECVectorAnnealingSampler {
         var_map: &HashMap<String, usize>,
     ) -> Vec<SampleResult> {
         let mut results = Vec::new();
-        
+
         for solution in solutions {
             let mut assignments = HashMap::new();
-            
+
             // Map solution back through preprocessing transformations
             for (var_name, &var_idx) in var_map {
                 let value = if let Some(&fixed_value) = preprocessed.fixed_variables.get(&var_idx) {
@@ -234,17 +234,17 @@ impl NECVectorAnnealingSampler {
                 } else {
                     false
                 };
-                
+
                 assignments.insert(var_name.clone(), value);
             }
-            
+
             results.push(SampleResult {
                 assignments,
                 energy: solution.energy,
                 occurrences: 1,
             });
         }
-        
+
         // Apply postprocessing
         if self.postprocessor.local_search {
             // Refine solutions with local search
@@ -252,12 +252,12 @@ impl NECVectorAnnealingSampler {
                 self.local_search_refinement(result, &preprocessed.qubo);
             }
         }
-        
+
         if self.postprocessor.diversity_filtering {
             // Filter similar solutions
             results = self.filter_diverse_solutions(results);
         }
-        
+
         results
     }
 
@@ -272,25 +272,26 @@ impl NECVectorAnnealingSampler {
         if solutions.is_empty() {
             return solutions;
         }
-        
+
         let mut filtered = vec![solutions[0].clone()];
-        
+
         for solution in solutions.into_iter().skip(1) {
             // Check if solution is sufficiently different from existing ones
             let is_diverse = filtered.iter().all(|existing| {
-                let difference: usize = solution.assignments
+                let difference: usize = solution
+                    .assignments
                     .iter()
                     .filter(|(k, v)| existing.assignments.get(*k) != Some(v))
                     .count();
-                
+
                 difference >= 3 // Minimum Hamming distance
             });
-            
+
             if is_diverse {
                 filtered.push(solution);
             }
         }
-        
+
         filtered
     }
 }
@@ -328,31 +329,31 @@ impl Sampler for NECVectorAnnealingSampler {
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         let (qubo, var_map) = model;
-        
+
         // Preprocess problem
         let preprocessed = self.preprocess_qubo(qubo)?;
-        
+
         // Submit to vector annealing service
         let job_id = self.submit_to_service(&preprocessed)?;
-        
+
         // Get results
         let vector_solutions = self.get_service_results(&job_id)?;
-        
+
         // Postprocess solutions
         let mut results = self.postprocess_solutions(vector_solutions, &preprocessed, var_map);
-        
+
         // Sort by energy
         results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
-        
+
         // Generate additional samples if needed
         while results.len() < shots && !results.is_empty() {
             // Duplicate best solutions with small perturbations
             let to_duplicate = results[results.len() % 10].clone();
             results.push(to_duplicate);
         }
-        
+
         results.truncate(shots);
-        
+
         Ok(results)
     }
 
@@ -361,9 +362,10 @@ impl Sampler for NECVectorAnnealingSampler {
         _hobo: &(ndarray::ArrayD<f64>, HashMap<String, usize>),
         _shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
-        Err(SamplerError::NotImplemented("HOBO not supported by NEC hardware".to_string()))
+        Err(SamplerError::NotImplemented(
+            "HOBO not supported by NEC hardware".to_string(),
+        ))
     }
-
 }
 
 #[cfg(test)]
@@ -375,7 +377,7 @@ mod tests {
         let config = NECVectorConfig::default();
         assert_eq!(config.va_params.num_vectors, 1024);
         assert_eq!(config.va_params.vector_dimension, 64);
-        
+
         match config.va_params.temperature_schedule {
             TemperatureSchedule::Geometric { start, ratio } => {
                 assert_eq!(start, 10.0);
@@ -388,15 +390,15 @@ mod tests {
     #[test]
     fn test_preprocessing() {
         let sampler = NECVectorAnnealingSampler::new(NECVectorConfig::default());
-        
+
         let mut qubo = Array2::zeros((3, 3));
         qubo[[0, 0]] = -100.0; // Should be fixed to 1
-        qubo[[1, 1]] = 100.0;  // Should be fixed to 0
+        qubo[[1, 1]] = 100.0; // Should be fixed to 0
         qubo[[0, 1]] = 1.0;
         qubo[[1, 0]] = 1.0;
-        
+
         let preprocessed = sampler.preprocess_qubo(&qubo).unwrap();
-        
+
         // Check that obvious variables were fixed
         assert!(preprocessed.fixed_variables.contains_key(&0));
         assert!(preprocessed.fixed_variables.contains_key(&1));
@@ -405,25 +407,25 @@ mod tests {
     #[test]
     fn test_diversity_filtering() {
         let sampler = NECVectorAnnealingSampler::new(NECVectorConfig::default());
-        
+
         let mut solutions = Vec::new();
-        
+
         // Create similar solutions
         for i in 0..5 {
             let mut assignments = HashMap::new();
             assignments.insert("x0".to_string(), true);
             assignments.insert("x1".to_string(), true);
             assignments.insert("x2".to_string(), i % 2 == 0);
-            
+
             solutions.push(SampleResult {
                 assignments,
                 energy: i as f64,
                 occurrences: 1,
             });
         }
-        
+
         let filtered = sampler.filter_diverse_solutions(solutions);
-        
+
         // Should keep only diverse solutions
         assert!(filtered.len() < 5);
     }

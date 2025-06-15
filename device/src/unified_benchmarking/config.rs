@@ -1,10 +1,10 @@
 //! Configuration types for the unified benchmarking system
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
-use serde::{Deserialize, Serialize};
 
-use super::types::{QuantumPlatform, BaselineMetric};
+use super::types::{BaselineMetric, QuantumPlatform};
 
 /// Unified benchmarking system configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -222,7 +222,16 @@ pub struct HistoricalTrackingConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SingleQubitGate {
-    X, Y, Z, H, S, T, SqrtX, RX(f64), RY(f64), RZ(f64),
+    X,
+    Y,
+    Z,
+    H,
+    S,
+    T,
+    SqrtX,
+    RX(f64),
+    RY(f64),
+    RZ(f64),
 }
 
 // Custom implementations for SingleQubitGate
@@ -259,22 +268,28 @@ impl std::hash::Hash for SingleQubitGate {
             SingleQubitGate::RX(f) => {
                 7u8.hash(state);
                 (*f as u64).hash(state);
-            },
+            }
             SingleQubitGate::RY(f) => {
                 8u8.hash(state);
                 (*f as u64).hash(state);
-            },
+            }
             SingleQubitGate::RZ(f) => {
                 9u8.hash(state);
                 (*f as u64).hash(state);
-            },
+            }
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TwoQubitGate {
-    CNOT, CZ, SWAP, iSWAP, CRX(f64), CRY(f64), CRZ(f64),
+    CNOT,
+    CZ,
+    SWAP,
+    iSWAP,
+    CRX(f64),
+    CRY(f64),
+    CRZ(f64),
 }
 
 // Custom implementations to work around f64 issues
@@ -305,22 +320,25 @@ impl std::hash::Hash for TwoQubitGate {
             TwoQubitGate::CRX(f) => {
                 4u8.hash(state);
                 (*f as u64).hash(state); // Approximate hash for f64
-            },
+            }
             TwoQubitGate::CRY(f) => {
                 5u8.hash(state);
                 (*f as u64).hash(state);
-            },
+            }
             TwoQubitGate::CRZ(f) => {
                 6u8.hash(state);
                 (*f as u64).hash(state);
-            },
+            }
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MultiQubitGate {
-    Toffoli, Fredkin, CCZ, Controlled(Box<SingleQubitGate>, usize),
+    Toffoli,
+    Fredkin,
+    CCZ,
+    Controlled(Box<SingleQubitGate>, usize),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -6,9 +6,9 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use crate::error::{Result, SimulatorError};
 #[cfg(feature = "advanced_math")]
-use super::memory::{GpuMemoryPool, GpuMemoryBlock};
+use super::memory::{GpuMemoryBlock, GpuMemoryPool};
+use crate::error::{Result, SimulatorError};
 
 // Placeholder types for actual CUDA handles
 #[cfg(feature = "advanced_math")]
@@ -55,8 +55,8 @@ impl CudaContext {
         } else {
             None
         };
-        
-        Ok(Self { 
+
+        Ok(Self {
             device_id,
             device_properties,
             memory_pool,
@@ -78,12 +78,12 @@ impl CudaContext {
             Ok(0)
         }
     }
-    
+
     fn query_device_properties(device_id: i32) -> Result<CudaDeviceProperties> {
         // In real implementation, would call cudaGetDeviceProperties
         Ok(CudaDeviceProperties {
             name: format!("CUDA Device {}", device_id),
-            compute_capability: (7, 5), // Example: RTX 20xx series
+            compute_capability: (7, 5),         // Example: RTX 20xx series
             total_global_memory: 8_000_000_000, // 8GB
             max_threads_per_block: 1024,
             max_block_dimensions: [1024, 1024, 64],
@@ -93,17 +93,21 @@ impl CudaContext {
             memory_bus_width: 256,
         })
     }
-    
+
     fn query_cuda_devices() -> Result<i32> {
         // In real implementation: cudaGetDeviceCount(&count)
         // For now, simulate detection of available devices
-        Ok(if std::env::var("CUDA_VISIBLE_DEVICES").is_ok() { 1 } else { 0 })
+        Ok(if std::env::var("CUDA_VISIBLE_DEVICES").is_ok() {
+            1
+        } else {
+            0
+        })
     }
-    
+
     pub fn get_device_properties(&self) -> &CudaDeviceProperties {
         &self.device_properties
     }
-    
+
     pub fn get_memory_info(&self) -> Result<(usize, usize)> {
         // Return (free_memory, total_memory)
         // In real implementation: cudaMemGetInfo
@@ -138,7 +142,10 @@ impl CudaProfiler {
     }
 
     pub fn record_timing(&mut self, operation: String, time_ms: f64) {
-        self.timing_data.entry(operation).or_insert_with(Vec::new).push(time_ms);
+        self.timing_data
+            .entry(operation)
+            .or_insert_with(Vec::new)
+            .push(time_ms);
     }
 
     pub fn record_memory_usage(&mut self, operation: String, bytes: usize) {
@@ -146,12 +153,16 @@ impl CudaProfiler {
     }
 
     pub fn get_average_timing(&self, operation: &str) -> Option<f64> {
-        self.timing_data.get(operation).map(|times| {
-            times.iter().sum::<f64>() / times.len() as f64
-        })
+        self.timing_data
+            .get(operation)
+            .map(|times| times.iter().sum::<f64>() / times.len() as f64)
     }
 
     pub fn get_peak_memory_usage(&self) -> usize {
-        self.memory_usage.iter().map(|(_, bytes)| *bytes).max().unwrap_or(0)
+        self.memory_usage
+            .iter()
+            .map(|(_, bytes)| *bytes)
+            .max()
+            .unwrap_or(0)
     }
 }

@@ -1,10 +1,10 @@
 //! Measurement prediction components
 
-use std::collections::VecDeque;
-use ndarray::{Array1, Array2};
-use crate::DeviceResult;
-use super::super::config::{PredictionConfig, MLOptimizationConfig};
+use super::super::config::{MLOptimizationConfig, PredictionConfig};
 use super::super::results::*;
+use crate::DeviceResult;
+use ndarray::{Array1, Array2};
+use std::collections::VecDeque;
 
 /// ML-powered measurement predictor
 pub struct MeasurementPredictor {
@@ -50,7 +50,7 @@ impl MeasurementPredictor {
 
         // Evaluate model performance
         let model_performance = self.evaluate_model_performance()?;
-        
+
         // Calculate prediction uncertainty
         let uncertainty = self.calculate_prediction_uncertainty(&predictions)?;
 
@@ -72,7 +72,7 @@ impl MeasurementPredictor {
     fn update_training_data(&mut self, new_measurements: &[MeasurementEvent]) -> DeviceResult<()> {
         for measurement in new_measurements {
             self.training_data.push_back(measurement.clone());
-            
+
             // Keep only recent data
             if self.training_data.len() > 1000 {
                 self.training_data.pop_front();
@@ -105,15 +105,17 @@ impl MeasurementPredictor {
 
     /// Train prediction model
     async fn train_prediction_model(&mut self) -> DeviceResult<()> {
-        if self.training_data.len() < 50 { // Default minimum training samples
+        if self.training_data.len() < 50 {
+            // Default minimum training samples
             return Ok(());
         }
 
         // Prepare training data
         let (features, targets) = self.prepare_training_data()?;
-        
+
         // Train model using different algorithms based on config
-        let model = match "linear_regression" { // Default algorithm
+        let model = match "linear_regression" {
+            // Default algorithm
             "linear_regression" => self.train_linear_regression(&features, &targets)?,
             "autoregressive" => self.train_autoregressive_model(&features, &targets)?,
             "neural_network" => self.train_neural_network(&features, &targets).await?,
@@ -128,7 +130,7 @@ impl MeasurementPredictor {
     fn prepare_training_data(&self) -> DeviceResult<(Array2<f64>, Array1<f64>)> {
         let sequence_length = self.config.sequence_length.min(self.training_data.len());
         let n_samples = self.training_data.len() - sequence_length;
-        
+
         if n_samples == 0 {
             return Ok((Array2::zeros((0, 0)), Array1::zeros(0)));
         }
@@ -147,7 +149,7 @@ impl MeasurementPredictor {
                 features[[i, j * n_features + 1]] = measurements[idx].confidence;
                 features[[i, j * n_features + 2]] = measurements[idx].timestamp;
             }
-            
+
             // Target is the next measurement's latency
             targets[i] = measurements[i + sequence_length].latency;
         }
@@ -167,25 +169,31 @@ impl MeasurementPredictor {
 
         // Simple linear regression: y = X * beta
         // Normal equation: beta = (X^T * X)^(-1) * X^T * y
-        
+
         // For simplicity, use the mean of targets as prediction
         let mean_target = targets.mean().unwrap_or(0.0);
         let coefficients = vec![mean_target]; // Simplified coefficients
 
         // Calculate training accuracy
         let predictions: Vec<f64> = (0..features.nrows()).map(|_| mean_target).collect();
-        let mse = targets.iter()
+        let mse = targets
+            .iter()
             .zip(predictions.iter())
             .map(|(&actual, &pred)| (actual - pred).powi(2_i32))
-            .sum::<f64>() / targets.len() as f64;
-        
+            .sum::<f64>()
+            / targets.len() as f64;
+
         let rmse = mse.sqrt();
         let training_accuracy = 1.0 / (1.0 + rmse); // Simple accuracy metric
 
         Ok(PredictionModel {
             model_type: "Linear Regression".to_string(),
             coefficients,
-            feature_names: vec!["latency_seq".to_string(), "confidence_seq".to_string(), "timestamp_seq".to_string()],
+            feature_names: vec![
+                "latency_seq".to_string(),
+                "confidence_seq".to_string(),
+                "timestamp_seq".to_string(),
+            ],
             training_accuracy,
             validation_accuracy: training_accuracy * 0.95, // Estimate
             last_trained: std::time::SystemTime::now(),
@@ -202,7 +210,7 @@ impl MeasurementPredictor {
         // Simplified AR model - use recent measurements to predict next
         let ar_order = 3.min(self.config.sequence_length);
         let mut coefficients = vec![0.0; ar_order];
-        
+
         // Simple approach: equal weights for recent measurements
         for i in 0..ar_order {
             coefficients[i] = 1.0 / ar_order as f64;
@@ -231,7 +239,7 @@ impl MeasurementPredictor {
         let hidden_size = 10;
         let input_size = features.ncols();
         let output_size = 1;
-        
+
         // Initialize random weights (simplified)
         let mut coefficients = Vec::new();
         for _ in 0..(input_size * hidden_size + hidden_size * output_size) {
@@ -264,9 +272,10 @@ impl MeasurementPredictor {
         };
 
         let mut predictions = Array1::zeros(horizon);
-        
+
         // Use recent measurements as seed
-        let recent_measurements: Vec<f64> = self.training_data
+        let recent_measurements: Vec<f64> = self
+            .training_data
             .iter()
             .rev()
             .take(self.config.sequence_length)
@@ -278,7 +287,7 @@ impl MeasurementPredictor {
                 "Linear Regression" => {
                     // Simple prediction using mean
                     model.coefficients.get(0).copied().unwrap_or(0.0)
-                },
+                }
                 "Autoregressive" => {
                     // AR prediction using recent values
                     let start_idx = if i < recent_measurements.len() {
@@ -286,7 +295,7 @@ impl MeasurementPredictor {
                     } else {
                         0
                     };
-                    
+
                     let mut prediction = 0.0;
                     for (j, &coef) in model.coefficients.iter().enumerate() {
                         if start_idx + j < recent_measurements.len() {
@@ -296,14 +305,14 @@ impl MeasurementPredictor {
                         }
                     }
                     prediction
-                },
+                }
                 "Neural Network" => {
                     // Simplified NN prediction
                     model.coefficients.get(0).copied().unwrap_or(0.0)
-                },
+                }
                 _ => 0.0,
             };
-            
+
             predictions[i] = prediction;
         }
 
@@ -311,17 +320,20 @@ impl MeasurementPredictor {
     }
 
     /// Calculate confidence intervals for predictions
-    fn calculate_confidence_intervals(&self, predictions: &Array1<f64>) -> DeviceResult<Array2<f64>> {
+    fn calculate_confidence_intervals(
+        &self,
+        predictions: &Array1<f64>,
+    ) -> DeviceResult<Array2<f64>> {
         let horizon = predictions.len();
         let mut confidence_intervals = Array2::zeros((horizon, 2));
-        
+
         // Calculate prediction uncertainty (simplified)
         let base_uncertainty = 0.1; // 10% base uncertainty
-        
+
         for i in 0..horizon {
             let uncertainty = base_uncertainty * (1.0 + i as f64 * 0.1); // Increasing uncertainty
             let margin = predictions[i] * uncertainty;
-            
+
             confidence_intervals[[i, 0]] = predictions[i] - margin; // Lower bound
             confidence_intervals[[i, 1]] = predictions[i] + margin; // Upper bound
         }
@@ -331,11 +343,12 @@ impl MeasurementPredictor {
 
     /// Generate prediction timestamps
     fn generate_prediction_timestamps(&self, horizon: usize) -> DeviceResult<Vec<f64>> {
-        let last_timestamp = self.training_data
+        let last_timestamp = self
+            .training_data
             .back()
             .map(|m| m.timestamp)
             .unwrap_or(0.0);
-        
+
         let time_step = 1.0; // 1 unit time step
         let timestamps = (1..=horizon)
             .map(|i| last_timestamp + i as f64 * time_step)
@@ -353,30 +366,34 @@ impl MeasurementPredictor {
 
         // Use stored metrics from model training
         Ok(PredictionModelPerformance {
-            mae: 0.05, // Mean Absolute Error
-            mse: 0.003, // Mean Squared Error
-            rmse: 0.055, // Root Mean Squared Error
-            mape: 5.0, // Mean Absolute Percentage Error
+            mae: 0.05,      // Mean Absolute Error
+            mse: 0.003,     // Mean Squared Error
+            rmse: 0.055,    // Root Mean Squared Error
+            mape: 5.0,      // Mean Absolute Percentage Error
             r2_score: 0.85, // R-squared
             accuracy: model.validation_accuracy,
         })
     }
 
     /// Calculate prediction uncertainty
-    fn calculate_prediction_uncertainty(&self, predictions: &Array1<f64>) -> DeviceResult<PredictionUncertainty> {
+    fn calculate_prediction_uncertainty(
+        &self,
+        predictions: &Array1<f64>,
+    ) -> DeviceResult<PredictionUncertainty> {
         let horizon = predictions.len();
-        
+
         // Aleatoric uncertainty (data noise)
         let aleatoric_uncertainty = Array1::from_elem(horizon, 0.02); // 2% noise
-        
+
         // Epistemic uncertainty (model uncertainty, increases with prediction horizon)
         let epistemic_uncertainty = Array1::from_shape_fn(horizon, |i| 0.01 + i as f64 * 0.005);
-        
+
         // Total uncertainty
         let total_uncertainty = Array1::from_shape_fn(horizon, |i| {
-            ((aleatoric_uncertainty[i] as f64).powi(2) + (epistemic_uncertainty[i] as f64).powi(2)).sqrt()
+            ((aleatoric_uncertainty[i] as f64).powi(2) + (epistemic_uncertainty[i] as f64).powi(2))
+                .sqrt()
         });
-        
+
         // Uncertainty bounds
         let mut uncertainty_bounds = Array2::zeros((horizon, 2));
         for i in 0..horizon {
@@ -393,17 +410,20 @@ impl MeasurementPredictor {
     }
 
     /// Store prediction result for validation
-    fn store_prediction_result(&mut self, result: &MeasurementPredictionResults) -> DeviceResult<()> {
+    fn store_prediction_result(
+        &mut self,
+        result: &MeasurementPredictionResults,
+    ) -> DeviceResult<()> {
         let prediction_result = PredictionResult {
             timestamp: std::time::SystemTime::now(),
             predictions: result.predictions.clone(),
             actual_values: Array1::zeros(0), // Will be filled when actual measurements arrive
-            accuracy_score: 0.0, // Will be calculated later
+            accuracy_score: 0.0,             // Will be calculated later
             horizon: result.predictions.len(),
         };
 
         self.prediction_history.push_back(prediction_result);
-        
+
         // Keep only recent predictions
         if self.prediction_history.len() > 100 {
             self.prediction_history.pop_front();
@@ -413,7 +433,10 @@ impl MeasurementPredictor {
     }
 
     /// Validate previous predictions against actual measurements
-    pub async fn validate_predictions(&mut self, recent_measurements: &[MeasurementEvent]) -> DeviceResult<ValidationResults> {
+    pub async fn validate_predictions(
+        &mut self,
+        recent_measurements: &[MeasurementEvent],
+    ) -> DeviceResult<ValidationResults> {
         let mut validation_results = ValidationResults {
             validated_predictions: 0,
             average_accuracy: 0.0,
@@ -428,18 +451,25 @@ impl MeasurementPredictor {
             if prediction_result.actual_values.len() == 0 && !recent_measurements.is_empty() {
                 // Fill actual values (simplified)
                 let actual_values = Array1::from_vec(
-                    recent_measurements.iter().take(prediction_result.horizon).map(|m| m.latency).collect()
+                    recent_measurements
+                        .iter()
+                        .take(prediction_result.horizon)
+                        .map(|m| m.latency)
+                        .collect(),
                 );
-                
+
                 if actual_values.len() == prediction_result.predictions.len() {
                     prediction_result.actual_values = actual_values;
-                    
+
                     // Calculate accuracy
-                    let mse = prediction_result.predictions.iter()
+                    let mse = prediction_result
+                        .predictions
+                        .iter()
                         .zip(prediction_result.actual_values.iter())
                         .map(|(&pred, &actual)| (pred - actual).powi(2_i32))
-                        .sum::<f64>() / prediction_result.predictions.len() as f64;
-                    
+                        .sum::<f64>()
+                        / prediction_result.predictions.len() as f64;
+
                     prediction_result.accuracy_score = 1.0 / (1.0 + mse);
                     validation_results.validated_predictions += 1;
                 }
@@ -447,12 +477,16 @@ impl MeasurementPredictor {
         }
 
         // Calculate overall validation metrics
-        let total_accuracy: f64 = self.prediction_history.iter()
+        let total_accuracy: f64 = self
+            .prediction_history
+            .iter()
             .filter(|p| p.actual_values.len() > 0)
             .map(|p| p.accuracy_score)
             .sum();
-        
-        let validated_count = self.prediction_history.iter()
+
+        let validated_count = self
+            .prediction_history
+            .iter()
             .filter(|p| p.actual_values.len() > 0)
             .count();
 

@@ -6,7 +6,6 @@
 use super::{GpuBackend, GpuBuffer, GpuKernel};
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
-    gate::GateOp,
     qubit::QubitId,
 };
 use ndarray::Array2;
@@ -220,7 +219,7 @@ impl GpuKernel for CpuKernel {
         let gate_flat: Vec<Complex64> = gate_matrix.iter().cloned().collect();
 
         // Calculate indices for all affected basis states
-        let total_states = 1 << n_qubits;
+        let _total_states = 1 << n_qubits;
         let affected_states = 1 << gate_qubits;
         let unaffected_qubits = n_qubits - gate_qubits;
         let iterations = 1 << unaffected_qubits;
@@ -278,7 +277,7 @@ impl GpuKernel for CpuKernel {
 
         let data = cpu_buffer.data();
         let qubit_idx = qubit.0 as usize;
-        let stride = 1 << qubit_idx;
+        let _stride = 1 << qubit_idx;
 
         // Calculate probability of measuring |1⟩
         let mut prob_one = 0.0;
@@ -351,6 +350,12 @@ impl CpuBackend {
     /// Create a new CPU backend
     pub fn new() -> Self {
         Self { kernel: CpuKernel }
+    }
+}
+
+impl Default for CpuBackend {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

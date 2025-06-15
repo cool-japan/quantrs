@@ -21,19 +21,18 @@ pub mod metal_backend;
 pub mod vulkan_backend;
 
 // Enhanced GPU optimization modules
-pub mod specialized_kernels;
 pub mod adaptive_simd;
+pub mod specialized_kernels;
 
 // Re-export key optimization components
 pub use adaptive_simd::{
-    AdaptiveSimdDispatcher, SimdVariant, CpuFeatures, 
-    initialize_adaptive_simd, apply_single_qubit_adaptive,
-    apply_two_qubit_adaptive, apply_batch_gates_adaptive,
-    get_adaptive_performance_report
+    apply_batch_gates_adaptive, apply_single_qubit_adaptive, apply_two_qubit_adaptive,
+    get_adaptive_performance_report, initialize_adaptive_simd, AdaptiveSimdDispatcher, CpuFeatures,
+    SimdVariant,
 };
 pub use specialized_kernels::{
-    SpecializedGpuKernels, OptimizationConfig, PostQuantumCompressionType,
-    PerformanceReport, FusionType
+    FusionType, OptimizationConfig, PerformanceReport, PostQuantumCompressionType,
+    SpecializedGpuKernels,
 };
 
 /// GPU memory buffer abstraction
@@ -165,7 +164,7 @@ pub trait EnhancedGpuBackend: GpuBackend {
             kernel.apply_holonomic_gate(state, holonomy_matrix, target_qubits)
         } else {
             Err(QuantRS2Error::UnsupportedOperation(
-                "Holonomic gates not supported by this backend".to_string()
+                "Holonomic gates not supported by this backend".to_string(),
             ))
         }
     }
@@ -181,7 +180,7 @@ pub trait EnhancedGpuBackend: GpuBackend {
             kernel.apply_post_quantum_hash_gate(state, hash_circuit, compression_type)
         } else {
             Err(QuantRS2Error::UnsupportedOperation(
-                "Post-quantum crypto gates not supported by this backend".to_string()
+                "Post-quantum crypto gates not supported by this backend".to_string(),
             ))
         }
     }
@@ -196,10 +195,16 @@ pub trait EnhancedGpuBackend: GpuBackend {
         num_heads: usize,
     ) -> QuantRS2Result<()> {
         if let Some(kernel) = self.specialized_kernel() {
-            kernel.apply_quantum_ml_attention(state, query_params, key_params, value_params, num_heads)
+            kernel.apply_quantum_ml_attention(
+                state,
+                query_params,
+                key_params,
+                value_params,
+                num_heads,
+            )
         } else {
             Err(QuantRS2Error::UnsupportedOperation(
-                "Quantum ML attention not supported by this backend".to_string()
+                "Quantum ML attention not supported by this backend".to_string(),
             ))
         }
     }
@@ -427,6 +432,7 @@ impl GpuBackendFactory {
 
     /// List available backends
     pub fn available_backends() -> Vec<&'static str> {
+        #[allow(unused_mut)]
         let mut backends = vec!["cpu"];
 
         #[cfg(feature = "cuda")]

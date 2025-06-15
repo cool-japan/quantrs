@@ -3,7 +3,7 @@
 //! This module provides basic implementations of SciRS2 functions that are used
 //! in the ML optimization module when the scirs2 feature is not enabled.
 
-use ndarray::{Array1, Array2, s};
+use ndarray::{s, Array1, Array2};
 use std::collections::HashMap;
 
 /// Fallback error type for optimization
@@ -304,20 +304,18 @@ impl KMeans {
     pub fn new(n_clusters: usize) -> Self {
         Self { n_clusters }
     }
-    
+
     pub fn fit(&mut self, data: &Array2<f64>) -> Result<KMeansResult, String> {
         // Fallback implementation with realistic dummy values
         let n_points = data.nrows();
         let n_features = data.ncols();
-        
+
         // Create dummy cluster labels (distribute points across clusters)
-        let labels: Vec<usize> = (0..n_points)
-            .map(|i| i % self.n_clusters)
-            .collect();
-        
+        let labels: Vec<usize> = (0..n_points).map(|i| i % self.n_clusters).collect();
+
         // Create dummy cluster centers (mean of each feature dimension)
         let centers = Array2::zeros((self.n_clusters, n_features));
-        
+
         Ok(KMeansResult {
             labels,
             centers,
@@ -325,13 +323,13 @@ impl KMeans {
             inertia: 100.0,        // Dummy inertia
         })
     }
-    
+
     pub fn predict(&self, _data: &Array2<f64>) -> Result<Array1<usize>, String> {
         // Fallback - return cluster 0 for all points
         let n_points = _data.nrows();
         Ok(Array1::zeros(n_points))
     }
-    
+
     pub fn fit_predict(&mut self, data: &Array2<f64>) -> Result<Array1<usize>, String> {
         let result = self.fit(data)?;
         Ok(Array1::from_vec(result.labels))
@@ -343,7 +341,9 @@ impl KMeans {
 pub struct DBSCAN;
 
 impl DBSCAN {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
     pub fn fit_predict(&mut self, _data: &Array2<f64>) -> Result<Array1<i32>, String> {
         let n_points = _data.nrows();
         Ok(Array1::zeros(n_points)) // All points in cluster 0
@@ -354,8 +354,12 @@ impl DBSCAN {
 pub struct IsolationForest;
 
 impl IsolationForest {
-    pub fn new() -> Self { Self }
-    pub fn fit(&mut self, _data: &Array2<f64>) -> Result<(), String> { Ok(()) }
+    pub fn new() -> Self {
+        Self
+    }
+    pub fn fit(&mut self, _data: &Array2<f64>) -> Result<(), String> {
+        Ok(())
+    }
     pub fn predict(&self, _data: &Array2<f64>) -> Result<Array1<i32>, String> {
         let n_points = _data.nrows();
         Ok(Array1::ones(n_points)) // All points are inliers (1)
@@ -367,19 +371,19 @@ impl IsolationForest {
 }
 
 pub fn train_test_split<T: Clone>(
-    data: &Array2<T>, 
-    targets: &Array1<T>, 
-    test_size: f64
+    data: &Array2<T>,
+    targets: &Array1<T>,
+    test_size: f64,
 ) -> (Array2<T>, Array2<T>, Array1<T>, Array1<T>) {
     let n = data.nrows();
     let test_n = (n as f64 * test_size) as usize;
     let train_n = n - test_n;
-    
+
     // Simple split without shuffling for fallback
     let x_train = data.slice(ndarray::s![0..train_n, ..]).to_owned();
-    let x_test = data.slice(ndarray::s![train_n.., ..]).to_owned(); 
+    let x_test = data.slice(ndarray::s![train_n.., ..]).to_owned();
     let y_train = targets.slice(ndarray::s![0..train_n]).to_owned();
     let y_test = targets.slice(ndarray::s![train_n..]).to_owned();
-    
+
     (x_train, x_test, y_train, y_test)
 }

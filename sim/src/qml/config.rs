@@ -134,7 +134,7 @@ impl QMLConfig {
     pub fn for_algorithm(algorithm_type: QMLAlgorithmType) -> Self {
         let mut config = Self::default();
         config.algorithm_type = algorithm_type;
-        
+
         // Adjust default parameters based on algorithm
         match algorithm_type {
             QMLAlgorithmType::VQE => {
@@ -180,7 +180,7 @@ impl QMLConfig {
                 config.gradient_method = GradientMethod::StochasticParameterShift;
             }
         }
-        
+
         config
     }
 
@@ -188,7 +188,7 @@ impl QMLConfig {
     pub fn for_hardware(hardware: HardwareArchitecture) -> Self {
         let mut config = Self::default();
         config.hardware_architecture = hardware;
-        
+
         // Adjust parameters based on hardware constraints
         match hardware {
             HardwareArchitecture::NISQ => {
@@ -227,7 +227,7 @@ impl QMLConfig {
                 config.noise_adaptive_training = false;
             }
         }
-        
+
         config
     }
 
@@ -257,7 +257,7 @@ impl QMLConfig {
         if self.shot_budget == 0 {
             return Err("Shot budget must be positive".to_string());
         }
-        
+
         Ok(())
     }
 }

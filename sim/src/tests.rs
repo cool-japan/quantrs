@@ -283,3 +283,404 @@ mod tests {
         );
     }
 }
+
+/// Tests for the new ultrathink mode implementations
+#[cfg(test)]
+mod ultrathink_tests {
+    use super::*;
+    use crate::adaptive_gate_fusion::{
+        AdaptiveFusionConfig, AdaptiveGateFusion, CircuitPatternAnalyzer, FusionStrategy, GateType,
+        MLFusionPredictor, QuantumGate,
+    };
+    use crate::distributed_gpu::{
+        DistributedGpuConfig, DistributedGpuStateVector, PartitionScheme, SyncStrategy,
+    };
+    use crate::mixed_precision_impl::{
+        MixedPrecisionConfig, MixedPrecisionSimulator, QuantumPrecision,
+    };
+    use ndarray::Array2;
+    use num_complex::Complex64;
+
+    #[test]
+    fn test_distributed_gpu_config() {
+        let config = DistributedGpuConfig::default();
+        assert_eq!(config.num_gpus, 0); // Auto-detect
+        assert_eq!(config.min_qubits_for_gpu, 15);
+        assert_eq!(config.sync_strategy, SyncStrategy::AllReduce);
+        assert_eq!(config.memory_overlap_ratio, 0.1);
+    }
+
+    #[test]
+    fn test_distributed_gpu_state_vector_creation() {
+        let config = DistributedGpuConfig {
+            num_gpus: 2,
+            min_qubits_for_gpu: 2,
+            max_state_size_per_gpu: 1024,
+            auto_load_balance: true,
+            memory_overlap_ratio: 0.1,
+            use_mixed_precision: false,
+            sync_strategy: SyncStrategy::AllReduce,
+        };
+
+        let result = DistributedGpuStateVector::new(3, config);
+        assert!(result.is_ok());
+
+        let state_vector = result.unwrap();
+        assert_eq!(state_vector.num_qubits(), 3);
+        assert_eq!(state_vector.state_size(), 8); // 2^3
+    }
+
+    #[test]
+    fn test_distributed_gpu_partition_schemes() {
+        let config = DistributedGpuConfig::default();
+
+        // Test different partition schemes
+        for &scheme in &[
+            PartitionScheme::Block,
+            PartitionScheme::Interleaved,
+            PartitionScheme::Adaptive,
+        ] {
+            let mut test_config = config.clone();
+            test_config.num_gpus = 2;
+
+            let result = DistributedGpuStateVector::new(4, test_config);
+            assert!(
+                result.is_ok(),
+                "Failed to create state vector with {:?} partitioning",
+                scheme
+            );
+        }
+    }
+
+    #[test]
+    fn test_distributed_gpu_hilbert_partitioning() {
+        let config = DistributedGpuConfig {
+            num_gpus: 2,
+            min_qubits_for_gpu: 2,
+            max_state_size_per_gpu: 1024,
+            auto_load_balance: true,
+            memory_overlap_ratio: 0.1,
+            use_mixed_precision: false,
+            sync_strategy: SyncStrategy::AllReduce,
+        };
+
+        // Hilbert partitioning should work or fall back gracefully
+        let result = DistributedGpuStateVector::new(4, config);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_distributed_gpu_synchronization_strategies() {
+        let sync_strategies = [
+            SyncStrategy::AllReduce,
+            SyncStrategy::RingReduce,
+            SyncStrategy::TreeReduce,
+            SyncStrategy::PointToPoint,
+        ];
+
+        for &strategy in &sync_strategies {
+            let config = DistributedGpuConfig {
+                num_gpus: 3,
+                min_qubits_for_gpu: 2,
+                max_state_size_per_gpu: 1024,
+                auto_load_balance: true,
+                memory_overlap_ratio: 0.1,
+                use_mixed_precision: false,
+                sync_strategy: strategy,
+            };
+
+            let mut state_vector = DistributedGpuStateVector::new(3, config).unwrap();
+
+            // Test synchronization
+            let result = state_vector.synchronize();
+            assert!(
+                result.is_ok(),
+                "Synchronization failed for strategy {:?}",
+                strategy
+            );
+        }
+    }
+
+    #[test]
+    fn test_adaptive_gate_fusion_config() {
+        let config = AdaptiveFusionConfig::default();
+        assert_eq!(config.strategy, FusionStrategy::Adaptive);
+        assert_eq!(config.max_fusion_size, 8);
+        assert!(config.enable_cross_qubit_fusion);
+        assert!(config.enable_temporal_fusion);
+        assert!(config.enable_ml_predictions);
+    }
+
+    #[test]
+    fn test_quantum_gate_creation() {
+        let gate = QuantumGate::new(GateType::Hadamard, vec![0], vec![]);
+        assert_eq!(gate.gate_type, GateType::Hadamard);
+        assert_eq!(gate.qubits, vec![0]);
+        assert_eq!(gate.parameters.len(), 0);
+        assert_eq!(gate.matrix.shape(), [2, 2]);
+    }
+
+    #[test]
+    fn test_rotation_gate_creation() {
+        let angle = std::f64::consts::PI / 4.0;
+        let gate = QuantumGate::new(GateType::RotationX, vec![0], vec![angle]);
+
+        assert_eq!(gate.gate_type, GateType::RotationX);
+        assert_eq!(gate.qubits, vec![0]);
+        assert_eq!(gate.parameters, vec![angle]);
+
+        // Check that matrix has correct structure for RX gate
+        assert_eq!(gate.matrix.shape(), [2, 2]);
+        assert!((gate.matrix[[0, 0]].re - (angle / 2.0).cos()).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_adaptive_gate_fusion_creation() {
+        let config = AdaptiveFusionConfig::default();
+        let result = AdaptiveGateFusion::new(config);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_gate_fusion_basic_sequence() {
+        let config = AdaptiveFusionConfig::default();
+        let mut fusion_engine = AdaptiveGateFusion::new(config).unwrap();
+
+        // Create a simple gate sequence
+        let gates = vec![
+            QuantumGate::new(
+                GateType::RotationX,
+                vec![0],
+                vec![std::f64::consts::PI / 4.0],
+            ),
+            QuantumGate::new(
+                GateType::RotationX,
+                vec![0],
+                vec![std::f64::consts::PI / 6.0],
+            ),
+        ];
+
+        let result = fusion_engine.fuse_gates(&gates);
+        assert!(result.is_ok());
+
+        let (fused_blocks, remaining_gates) = result.unwrap();
+        assert!(!fused_blocks.is_empty() || !remaining_gates.is_empty());
+    }
+
+    #[test]
+    fn test_ml_fusion_predictor() {
+        let predictor = MLFusionPredictor::new();
+
+        let gates = vec![
+            QuantumGate::new(GateType::RotationX, vec![0], vec![0.1]),
+            QuantumGate::new(GateType::RotationX, vec![0], vec![0.2]),
+        ];
+
+        let benefit = predictor.predict_benefit(&gates);
+        assert!(benefit >= 0.0 && benefit <= 1.0);
+    }
+
+    #[test]
+    fn test_circuit_pattern_analyzer() {
+        let mut analyzer = CircuitPatternAnalyzer::new();
+
+        let gates = vec![
+            QuantumGate::new(GateType::RotationX, vec![0], vec![0.1]),
+            QuantumGate::new(GateType::RotationX, vec![0], vec![0.2]),
+        ];
+
+        let result = analyzer.analyze_pattern(&gates);
+        assert!(!result.pattern.is_empty());
+        assert!(result.confidence >= 0.0 && result.confidence <= 1.0);
+        assert!(result.expected_benefit >= 0.0);
+    }
+
+    #[test]
+    fn test_gate_fusion_known_beneficial_patterns() {
+        let config = AdaptiveFusionConfig::default();
+        let mut fusion_engine = AdaptiveGateFusion::new(config).unwrap();
+
+        // Test known beneficial pattern: consecutive rotation gates
+        let gates = vec![
+            QuantumGate::new(GateType::RotationX, vec![0], vec![0.1]),
+            QuantumGate::new(GateType::RotationX, vec![0], vec![0.2]),
+            QuantumGate::new(GateType::RotationX, vec![0], vec![0.3]),
+        ];
+
+        let result = fusion_engine.fuse_gates(&gates);
+        assert!(result.is_ok());
+
+        let (fused_blocks, _) = result.unwrap();
+        assert!(
+            !fused_blocks.is_empty(),
+            "Should have identified beneficial fusion opportunity"
+        );
+    }
+
+    #[test]
+    fn test_mixed_precision_config() {
+        let config = MixedPrecisionConfig::default();
+        assert_eq!(config.state_vector_precision, QuantumPrecision::Single);
+        assert!(config.gate_precision.contains_key(&GateType::Hadamard));
+        assert!(config.error_tolerance > 0.0);
+    }
+
+    #[test]
+    fn test_quantum_precision_properties() {
+        assert_eq!(QuantumPrecision::Half.memory_factor(), 0.25);
+        assert_eq!(QuantumPrecision::Single.memory_factor(), 0.5);
+        assert_eq!(QuantumPrecision::Double.memory_factor(), 1.0);
+
+        assert!(QuantumPrecision::Half.typical_error() > QuantumPrecision::Single.typical_error());
+        assert!(
+            QuantumPrecision::Single.typical_error() > QuantumPrecision::Double.typical_error()
+        );
+    }
+
+    #[test]
+    fn test_mixed_precision_simulator_creation() {
+        let config = MixedPrecisionConfig::default();
+        let result = MixedPrecisionSimulator::new(3, config);
+        assert!(result.is_ok());
+
+        let simulator = result.unwrap();
+        assert!(simulator.get_state().is_some());
+    }
+
+    #[test]
+    fn test_mixed_precision_gate_application() {
+        let config = MixedPrecisionConfig::default();
+        let mut simulator = MixedPrecisionSimulator::new(2, config).unwrap();
+
+        let gate = QuantumGate::new(GateType::Hadamard, vec![0], vec![]);
+        let result = simulator.apply_gate(&gate);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_precision_adaptation() {
+        let mut config = MixedPrecisionConfig::default();
+        config.adaptive_strategy = crate::mixed_precision_impl::AdaptiveStrategy::ErrorBased(1e-6);
+
+        let mut simulator = MixedPrecisionSimulator::new(2, config).unwrap();
+
+        // Apply several gates and check that precision adaptation works
+        let gates = vec![
+            QuantumGate::new(GateType::Hadamard, vec![0], vec![]),
+            QuantumGate::new(GateType::CNOT, vec![0, 1], vec![]),
+            QuantumGate::new(GateType::RotationZ, vec![1], vec![0.001]), // Small rotation
+        ];
+
+        for gate in &gates {
+            let result = simulator.apply_gate(gate);
+            assert!(result.is_ok());
+        }
+
+        let stats = simulator.get_stats();
+        assert!(stats.total_gates > 0);
+    }
+
+    #[test]
+    fn test_memory_estimation() {
+        let config = MixedPrecisionConfig::default();
+
+        let memory_4q = crate::mixed_precision_impl::estimate_memory_usage(&config, 4);
+        let memory_8q = crate::mixed_precision_impl::estimate_memory_usage(&config, 8);
+
+        // Memory should scale exponentially with qubits
+        assert!(memory_8q > memory_4q * 10);
+    }
+
+    #[test]
+    fn test_performance_benchmarking() {
+        let config = MixedPrecisionConfig::default();
+        let mut simulator = MixedPrecisionSimulator::new(3, config).unwrap();
+
+        // Create a benchmark circuit
+        let gates = vec![
+            QuantumGate::new(GateType::Hadamard, vec![0], vec![]),
+            QuantumGate::new(GateType::CNOT, vec![0, 1], vec![]),
+            QuantumGate::new(GateType::RotationZ, vec![1], vec![0.5]),
+            QuantumGate::new(GateType::CNOT, vec![1, 2], vec![]),
+        ];
+
+        let start_time = std::time::Instant::now();
+
+        for gate in &gates {
+            simulator.apply_gate(gate).unwrap();
+        }
+
+        let execution_time = start_time.elapsed();
+        assert!(execution_time.as_millis() < 1000); // Should complete quickly
+
+        let stats = simulator.get_stats();
+        assert_eq!(stats.total_gates, gates.len());
+    }
+
+    #[test]
+    fn test_integration_distributed_gpu_with_fusion() {
+        let gpu_config = DistributedGpuConfig {
+            num_gpus: 2,
+            min_qubits_for_gpu: 2,
+            max_state_size_per_gpu: 1024,
+            auto_load_balance: true,
+            memory_overlap_ratio: 0.1,
+            use_mixed_precision: false,
+            sync_strategy: SyncStrategy::AllReduce,
+        };
+
+        let fusion_config = AdaptiveFusionConfig::default();
+
+        // Test that both systems can be initialized together
+        let gpu_result = DistributedGpuStateVector::new(4, gpu_config);
+        let fusion_result = AdaptiveGateFusion::new(fusion_config);
+
+        assert!(gpu_result.is_ok());
+        assert!(fusion_result.is_ok());
+    }
+
+    #[test]
+    fn test_integration_mixed_precision_with_fusion() {
+        let precision_config = MixedPrecisionConfig::default();
+        let fusion_config = AdaptiveFusionConfig::default();
+
+        let precision_result = MixedPrecisionSimulator::new(3, precision_config);
+        let fusion_result = AdaptiveGateFusion::new(fusion_config);
+
+        assert!(precision_result.is_ok());
+        assert!(fusion_result.is_ok());
+    }
+
+    #[test]
+    fn test_comprehensive_ultrathink_pipeline() {
+        // Test a complete pipeline using all new features
+        let precision_config = MixedPrecisionConfig::default();
+        let mut precision_sim = MixedPrecisionSimulator::new(3, precision_config).unwrap();
+
+        let fusion_config = AdaptiveFusionConfig::default();
+        let mut fusion_engine = AdaptiveGateFusion::new(fusion_config).unwrap();
+
+        // Create a test circuit
+        let gates = vec![
+            QuantumGate::new(GateType::Hadamard, vec![0], vec![]),
+            QuantumGate::new(GateType::RotationX, vec![1], vec![0.5]),
+            QuantumGate::new(GateType::RotationX, vec![1], vec![0.3]),
+            QuantumGate::new(GateType::CNOT, vec![0, 1], vec![]),
+            QuantumGate::new(GateType::RotationZ, vec![2], vec![0.8]),
+        ];
+
+        // First, apply fusion optimization
+        let fusion_result = fusion_engine.fuse_gates(&gates);
+        assert!(fusion_result.is_ok());
+
+        // Then run on mixed-precision simulator
+        for gate in &gates {
+            let result = precision_sim.apply_gate(gate);
+            assert!(result.is_ok());
+        }
+
+        let stats = precision_sim.get_stats();
+        assert!(stats.total_gates > 0);
+        assert!(stats.total_time_ms >= 0.0);
+    }
+}

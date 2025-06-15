@@ -81,6 +81,18 @@ pub enum SimulatorError {
     /// Operation not supported
     #[error("Operation not supported: {0}")]
     OperationNotSupported(String),
+
+    /// Invalid parameter
+    #[error("Invalid parameter: {0}")]
+    InvalidParameter(String),
+
+    /// Not implemented
+    #[error("Not implemented: {0}")]
+    NotImplemented(String),
+
+    /// Memory allocation failed
+    #[error("Memory allocation failed: {0}")]
+    MemoryAllocationFailed(String),
 }
 
 /// Result type for simulator operations

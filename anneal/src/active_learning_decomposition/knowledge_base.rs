@@ -1,8 +1,8 @@
 //! Knowledge base components for decomposition
 
+use ndarray::Array2;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use ndarray::Array2;
 
 use super::*;
 

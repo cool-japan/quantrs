@@ -90,9 +90,9 @@ use crate::{
     backend_traits::{query_backend_capabilities, BackendCapabilities},
     calibration::{CalibrationManager, DeviceCalibration},
     noise_model::CalibrationNoiseModel,
+    prelude::SciRS2NoiseModeler,
     topology::HardwareTopology,
     CircuitResult, DeviceError, DeviceResult,
-    prelude::SciRS2NoiseModeler,
 };
 
 // Module declarations
@@ -303,7 +303,7 @@ impl QuantumErrorCorrector {
         device_topology: HardwareTopology,
     ) -> QuantRS2Result<Self> {
         let noise_modeler = SciRS2NoiseModeler::new("default_device".to_string());
-        
+
         Ok(Self {
             config,
             calibration_manager,
@@ -327,51 +327,59 @@ impl QuantumErrorCorrector {
         let start_time = Instant::now();
 
         // Step 1: Analyze current error patterns and device state
-        let error_analysis = self.analyze_current_error_patterns(execution_context).await?;
-        
+        let error_analysis = self
+            .analyze_current_error_patterns(execution_context)
+            .await?;
+
         // Step 2: Select optimal QEC strategy using ML predictions
-        let optimal_strategy = self.select_optimal_qec_strategy(
-            circuit, 
-            execution_context, 
-            &error_analysis
-        ).await?;
+        let optimal_strategy = self
+            .select_optimal_qec_strategy(circuit, execution_context, &error_analysis)
+            .await?;
 
         // Step 3: Apply syndrome detection and pattern recognition
-        let syndrome_result = self.detect_and_analyze_syndromes(
-            circuit, 
-            &optimal_strategy
-        ).await?;
+        let syndrome_result = self
+            .detect_and_analyze_syndromes(circuit, &optimal_strategy)
+            .await?;
 
         // Step 4: Perform adaptive error mitigation
-        let mitigation_result = self.apply_adaptive_error_mitigation(
-            circuit,
-            &syndrome_result,
-            &optimal_strategy,
-            execution_context,
-        ).await?;
+        let mitigation_result = self
+            .apply_adaptive_error_mitigation(
+                circuit,
+                &syndrome_result,
+                &optimal_strategy,
+                execution_context,
+            )
+            .await?;
 
         // Step 5: Apply zero-noise extrapolation if configured
         let zne_result = if self.config.error_mitigation.zne.enable_zne {
-            Some(self.apply_zero_noise_extrapolation(
-                &mitigation_result,
-                &self.config.error_mitigation.zne,
-            ).await?)
+            Some(
+                self.apply_zero_noise_extrapolation(
+                    &mitigation_result,
+                    &self.config.error_mitigation.zne,
+                )
+                .await?,
+            )
         } else {
             None
         };
 
         // Step 6: Perform readout error mitigation
-        let readout_corrected = self.apply_readout_error_mitigation(
-            &mitigation_result,
-            &self.config.error_mitigation.readout_mitigation,
-        ).await?;
+        let readout_corrected = self
+            .apply_readout_error_mitigation(
+                &mitigation_result,
+                &self.config.error_mitigation.readout_mitigation,
+            )
+            .await?;
 
         // Step 7: Update ML models and adaptive thresholds
-        self.update_learning_systems(&syndrome_result, &mitigation_result).await?;
+        self.update_learning_systems(&syndrome_result, &mitigation_result)
+            .await?;
 
         // Step 8: Update performance metrics
         let correction_time = start_time.elapsed();
-        self.update_correction_metrics(&mitigation_result, correction_time).await?;
+        self.update_correction_metrics(&mitigation_result, correction_time)
+            .await?;
 
         Ok(CorrectedCircuitResult {
             original_circuit: circuit.clone(),
@@ -400,15 +408,14 @@ impl QuantumErrorCorrector {
 
         // Perform temporal pattern analysis using SciRS2
         let temporal_analysis = self.analyze_temporal_patterns(&syndrome_history).await?;
-        
+
         // Perform spatial pattern analysis
         let spatial_analysis = self.analyze_spatial_patterns(&syndrome_history).await?;
 
         // Correlate with environmental conditions
-        let environmental_correlations = self.analyze_environmental_correlations(
-            &syndrome_history,
-            execution_context,
-        ).await?;
+        let environmental_correlations = self
+            .analyze_environmental_correlations(&syndrome_history, execution_context)
+            .await?;
 
         // Predict future error patterns using ML
         let ml_predictions = self.predict_error_patterns(execution_context).await?;
@@ -433,7 +440,7 @@ impl QuantumErrorCorrector {
         // Check optimization cache first
         let context_hash = self.calculate_context_hash(circuit, execution_context);
         let cache = self.optimization_cache.read().unwrap();
-        
+
         if let Some(cached) = cache.get(&context_hash.to_string()) {
             if cached.timestamp.elapsed().unwrap_or(Duration::MAX) < Duration::from_secs(300) {
                 return Ok(cached.optimization_result.optimal_strategy.clone());
@@ -443,45 +450,52 @@ impl QuantumErrorCorrector {
 
         // Perform SciRS2-powered optimization
         let optimization_start = Instant::now();
-        
+
         // Initial guess based on current configuration
         let initial_params = self.encode_strategy_parameters(&self.config.correction_strategy);
-        
+
         #[cfg(feature = "scirs2")]
         let (optimization_result, optimization_metadata) = {
             use ndarray::ArrayView1;
             let result = minimize(
                 |params: &ArrayView1<f64>| {
                     let params_array = params.to_owned();
-                    self.evaluate_qec_strategy_objective(&params_array, circuit, execution_context, error_analysis)
+                    self.evaluate_qec_strategy_objective(
+                        &params_array,
+                        circuit,
+                        execution_context,
+                        error_analysis,
+                    )
                 },
-                initial_params.as_slice().unwrap(), 
+                initial_params.as_slice().unwrap(),
                 scirs2_optimize::unconstrained::Method::LBFGSB,
-                None
+                None,
             );
-            
+
             match result {
                 Ok(opt_result) => {
                     let metadata = (opt_result.fun, opt_result.success);
                     (opt_result.x, Some(metadata))
-                },
-                Err(_) => (initial_params.clone(), None)
+                }
+                Err(_) => (initial_params.clone(), None),
             }
         };
 
         #[cfg(not(feature = "scirs2"))]
-        let (optimization_result, optimization_metadata) = (initial_params.clone(), None::<(f64, bool)>); // Fallback: use initial params
+        let (optimization_result, optimization_metadata) =
+            (initial_params.clone(), None::<(f64, bool)>); // Fallback: use initial params
 
         let optimal_strategy = self.decode_strategy_parameters(&optimization_result);
         let optimization_time = optimization_start.elapsed();
 
         // Cache the optimization result
-        let (predicted_performance, confidence_score) = if let Some((fun_value, success)) = optimization_metadata {
-            (-fun_value, if success { 0.9 } else { 0.5 })
-        } else {
-            (0.5, 0.5) // Default values for fallback
-        };
-        
+        let (predicted_performance, confidence_score) =
+            if let Some((fun_value, success)) = optimization_metadata {
+                (-fun_value, if success { 0.9 } else { 0.5 })
+            } else {
+                (0.5, 0.5) // Default values for fallback
+            };
+
         let cached_result = CachedOptimization {
             optimization_result: OptimizationResult {
                 optimal_strategy: optimal_strategy.clone(),
@@ -510,20 +524,28 @@ impl QuantumErrorCorrector {
         strategy: &QECStrategy,
     ) -> QuantRS2Result<SyndromeAnalysisResult> {
         let detection_config = &self.config.syndrome_detection;
-        
+
         // Perform syndrome measurements
-        let syndrome_measurements = self.perform_syndrome_measurements(circuit, strategy).await?;
-        
+        let syndrome_measurements = self
+            .perform_syndrome_measurements(circuit, strategy)
+            .await?;
+
         // Apply pattern recognition using ML models
         let pattern_recognition = if detection_config.pattern_recognition.enable_recognition {
-            Some(self.apply_pattern_recognition(&syndrome_measurements).await?)
+            Some(
+                self.apply_pattern_recognition(&syndrome_measurements)
+                    .await?,
+            )
         } else {
             None
         };
 
         // Perform statistical analysis of syndromes
         let statistical_analysis = if detection_config.statistical_analysis.enable_statistics {
-            Some(self.analyze_syndrome_statistics(&syndrome_measurements).await?)
+            Some(
+                self.analyze_syndrome_statistics(&syndrome_measurements)
+                    .await?,
+            )
         } else {
             None
         };
@@ -532,7 +554,7 @@ impl QuantumErrorCorrector {
         let historical_correlation = self.correlate_with_history(&syndrome_measurements).await?;
 
         let detection_confidence = self.calculate_detection_confidence(&syndrome_measurements);
-        
+
         Ok(SyndromeAnalysisResult {
             syndrome_measurements,
             pattern_recognition,
@@ -558,11 +580,13 @@ impl QuantumErrorCorrector {
 
         // Apply gate-level mitigation if enabled
         if mitigation_config.gate_mitigation.enable_mitigation {
-            let gate_result = self.apply_gate_mitigation(
-                &corrected_circuit,
-                &mitigation_config.gate_mitigation,
-                syndrome_result,
-            ).await?;
+            let gate_result = self
+                .apply_gate_mitigation(
+                    &corrected_circuit,
+                    &mitigation_config.gate_mitigation,
+                    syndrome_result,
+                )
+                .await?;
             corrected_circuit = gate_result.circuit;
             applied_corrections.extend(gate_result.corrections);
             total_overhead += gate_result.resource_overhead;
@@ -570,31 +594,33 @@ impl QuantumErrorCorrector {
 
         // Apply symmetry verification if enabled
         if mitigation_config.symmetry_verification.enable_verification {
-            let symmetry_result = self.apply_symmetry_verification(
-                &corrected_circuit,
-                &mitigation_config.symmetry_verification,
-            ).await?;
+            let symmetry_result = self
+                .apply_symmetry_verification(
+                    &corrected_circuit,
+                    &mitigation_config.symmetry_verification,
+                )
+                .await?;
             applied_corrections.extend(symmetry_result.corrections);
             total_overhead += symmetry_result.overhead;
         }
 
         // Apply virtual distillation if enabled
         if mitigation_config.virtual_distillation.enable_distillation {
-            let distillation_result = self.apply_virtual_distillation(
-                &corrected_circuit,
-                &mitigation_config.virtual_distillation,
-            ).await?;
+            let distillation_result = self
+                .apply_virtual_distillation(
+                    &corrected_circuit,
+                    &mitigation_config.virtual_distillation,
+                )
+                .await?;
             corrected_circuit = distillation_result.circuit;
             applied_corrections.extend(distillation_result.corrections);
             total_overhead += distillation_result.overhead;
         }
 
         // Calculate mitigation effectiveness
-        let effectiveness = self.calculate_mitigation_effectiveness(
-            circuit,
-            &corrected_circuit,
-            &applied_corrections,
-        ).await?;
+        let effectiveness = self
+            .calculate_mitigation_effectiveness(circuit, &corrected_circuit, &applied_corrections)
+            .await?;
 
         Ok(MitigationResult {
             circuit: corrected_circuit,
@@ -613,31 +639,37 @@ impl QuantumErrorCorrector {
         zne_config: &ZNEConfig,
     ) -> QuantRS2Result<ZNEResult<N>> {
         // Generate noise-scaled circuits
-        let scaled_circuits = self.generate_noise_scaled_circuits(
-            &mitigation_result.circuit,
-            &zne_config.noise_scaling_factors,
-            &zne_config.folding,
-        ).await?;
+        let scaled_circuits = self
+            .generate_noise_scaled_circuits(
+                &mitigation_result.circuit,
+                &zne_config.noise_scaling_factors,
+                &zne_config.folding,
+            )
+            .await?;
 
         // Execute circuits at different noise levels (simulated)
         let mut noise_level_results = Vec::new();
         for (scaling_factor, scaled_circuit) in scaled_circuits {
-            let result = self.simulate_noisy_execution(&scaled_circuit, scaling_factor).await?;
+            let result = self
+                .simulate_noisy_execution(&scaled_circuit, scaling_factor)
+                .await?;
             noise_level_results.push((scaling_factor, result));
         }
 
         // Perform extrapolation using SciRS2
-        let extrapolated_result = self.perform_statistical_extrapolation(
-            &noise_level_results,
-            &zne_config.extrapolation_method,
-        ).await?;
+        let extrapolated_result = self
+            .perform_statistical_extrapolation(
+                &noise_level_results,
+                &zne_config.extrapolation_method,
+            )
+            .await?;
 
         // Apply Richardson extrapolation if enabled
         let richardson_result = if zne_config.richardson.enable_richardson {
-            Some(self.apply_richardson_extrapolation(
-                &noise_level_results,
-                &zne_config.richardson,
-            ).await?)
+            Some(
+                self.apply_richardson_extrapolation(&noise_level_results, &zne_config.richardson)
+                    .await?,
+            )
         } else {
             None
         };
@@ -648,7 +680,7 @@ impl QuantumErrorCorrector {
             extrapolated_result,
             richardson_result,
             statistical_confidence: 0.95, // Would calculate based on fit quality
-            zne_overhead: 2.5, // Typical ZNE overhead
+            zne_overhead: 2.5,            // Typical ZNE overhead
         })
     }
 
@@ -669,40 +701,37 @@ impl QuantumErrorCorrector {
             });
         }
 
-        // Get calibration matrix from calibration manager  
-        let calibration = self.calibration_manager.get_calibration("default_device")
+        // Get calibration matrix from calibration manager
+        let calibration = self
+            .calibration_manager
+            .get_calibration("default_device")
             .ok_or_else(|| QuantRS2Error::InvalidInput("No calibration data available".into()))?;
 
         // Build readout error matrix
         let readout_matrix = self.build_readout_error_matrix(&calibration).await?;
 
         // Apply matrix inversion based on configuration
-        let correction_matrix = self.invert_readout_matrix(
-            &readout_matrix,
-            &readout_config.matrix_inversion,
-        ).await?;
+        let correction_matrix = self
+            .invert_readout_matrix(&readout_matrix, &readout_config.matrix_inversion)
+            .await?;
 
         // Apply tensored mitigation if configured
         let final_correction = if !readout_config.tensored_mitigation.groups.is_empty() {
-            self.apply_tensored_mitigation(
-                &correction_matrix,
-                &readout_config.tensored_mitigation,
-            ).await?
+            self.apply_tensored_mitigation(&correction_matrix, &readout_config.tensored_mitigation)
+                .await?
         } else {
             correction_matrix
         };
 
         // Simulate corrected measurement results
-        let corrected_counts = self.apply_readout_correction(
-            &mitigation_result.circuit,
-            &final_correction,
-        ).await?;
+        let corrected_counts = self
+            .apply_readout_correction(&mitigation_result.circuit, &final_correction)
+            .await?;
 
         // Calculate fidelity improvement
-        let fidelity_improvement = self.calculate_readout_fidelity_improvement(
-            &mitigation_result.circuit,
-            &corrected_counts,
-        ).await?;
+        let fidelity_improvement = self
+            .calculate_readout_fidelity_improvement(&mitigation_result.circuit, &corrected_counts)
+            .await?;
 
         Ok(ReadoutCorrectedResult {
             circuit: mitigation_result.circuit.clone(),
@@ -724,7 +753,10 @@ impl QuantumErrorCorrector {
         let syndrome_pattern = SyndromePattern {
             timestamp: SystemTime::now(),
             syndrome_bits: syndrome_result.syndrome_measurements.syndrome_bits.clone(),
-            error_locations: syndrome_result.syndrome_measurements.detected_errors.clone(),
+            error_locations: syndrome_result
+                .syndrome_measurements
+                .detected_errors
+                .clone(),
             correction_applied: mitigation_result.applied_corrections.clone(),
             success_probability: mitigation_result.effectiveness_score,
             execution_context: ExecutionContext {
@@ -774,7 +806,8 @@ impl QuantumErrorCorrector {
         let error_stats = self.error_statistics.read().unwrap();
 
         // Extract data for analysis
-        let success_rates: Vec<f64> = syndrome_history.iter()
+        let success_rates: Vec<f64> = syndrome_history
+            .iter()
             .map(|p| p.success_probability)
             .collect();
 
@@ -803,7 +836,10 @@ impl QuantumErrorCorrector {
             trend_analysis,
             correlation_analysis,
             prediction_accuracy: error_stats.prediction_accuracy,
-            confidence_interval: (mean_success - 1.96 * std_success, mean_success + 1.96 * std_success),
+            confidence_interval: (
+                mean_success - 1.96 * std_success,
+                mean_success + 1.96 * std_success,
+            ),
             sample_size: syndrome_history.len(),
             last_updated: SystemTime::now(),
         })
@@ -818,12 +854,12 @@ impl QuantumErrorCorrector {
     ) -> u64 {
         use std::hash::Hash;
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        
+
         // Hash circuit properties
         circuit.gates().len().hash(&mut hasher);
         execution_context.circuit_depth.hash(&mut hasher);
         execution_context.qubit_count.hash(&mut hasher);
-        
+
         hasher.finish()
     }
 
@@ -841,15 +877,17 @@ impl QuantumErrorCorrector {
 
         // Estimate fidelity improvement (higher is better)
         let fidelity_score = strategy_params[0].min(1.0).max(0.0);
-        
+
         // Estimate resource usage (lower is better, so we negate)
         let resource_score = -strategy_params.get(1).unwrap_or(&0.5).min(1.0).max(0.0);
-        
+
         // Estimate time overhead (lower is better, so we negate)
         let time_score = -strategy_params.get(2).unwrap_or(&0.3).min(1.0).max(0.0);
 
         // Return negative for minimization (we want to maximize the overall score)
-        -(fidelity_weight * fidelity_score + resource_weight * resource_score + time_weight * time_score)
+        -(fidelity_weight * fidelity_score
+            + resource_weight * resource_score
+            + time_weight * time_score)
     }
 
     fn encode_strategy_parameters(&self, strategy: &QECStrategy) -> Array1<f64> {
@@ -865,7 +903,7 @@ impl QuantumErrorCorrector {
 
     fn decode_strategy_parameters(&self, params: &Array1<f64>) -> QECStrategy {
         let fidelity_score = params[0];
-        
+
         if fidelity_score > 0.9 {
             QECStrategy::FaultTolerant
         } else if fidelity_score > 0.85 {
@@ -873,7 +911,9 @@ impl QuantumErrorCorrector {
         } else if fidelity_score > 0.7 {
             QECStrategy::Adaptive
         } else if fidelity_score > 0.5 {
-            QECStrategy::ActivePeriodic { cycle_time: Duration::from_millis(100) }
+            QECStrategy::ActivePeriodic {
+                cycle_time: Duration::from_millis(100),
+            }
         } else {
             QECStrategy::Passive
         }
@@ -913,13 +953,14 @@ impl QuantumErrorCorrector {
     ) -> QuantRS2Result<Vec<TemporalPattern>> {
         // Extract temporal data and analyze using SciRS2
         let mut patterns = Vec::new();
-        
+
         if syndrome_history.len() < 10 {
             return Ok(patterns);
         }
 
         // Analyze periodic patterns in error rates
-        let error_rates: Vec<f64> = syndrome_history.iter()
+        let error_rates: Vec<f64> = syndrome_history
+            .iter()
             .map(|p| 1.0 - p.success_probability)
             .collect();
 
@@ -960,11 +1001,11 @@ impl QuantumErrorCorrector {
         execution_context: &ExecutionContext,
     ) -> QuantRS2Result<HashMap<String, f64>> {
         let mut correlations = HashMap::new();
-        
+
         // Correlate error rates with environmental conditions
         correlations.insert("temperature_correlation".to_string(), 0.3);
         correlations.insert("magnetic_field_correlation".to_string(), 0.1);
-        
+
         Ok(correlations)
     }
 
@@ -973,7 +1014,7 @@ impl QuantumErrorCorrector {
         execution_context: &ExecutionContext,
     ) -> QuantRS2Result<Vec<PredictedPattern>> {
         let mut predictions = Vec::new();
-        
+
         // Use ML models to predict future error patterns
         predictions.push(PredictedPattern {
             pattern_type: "gate_error_increase".to_string(),
@@ -998,7 +1039,7 @@ impl QuantumErrorCorrector {
         // Simulate syndrome measurements
         Ok(SyndromeMeasurements {
             syndrome_bits: vec![false, true, false, true], // Mock syndrome
-            detected_errors: vec![1, 3], // Qubits with detected errors
+            detected_errors: vec![1, 3],                   // Qubits with detected errors
             measurement_fidelity: 0.95,
             measurement_time: Duration::from_millis(10),
             raw_measurements: HashMap::new(),
@@ -1098,12 +1139,12 @@ impl QuantumErrorCorrector {
         folding_config: &FoldingConfig,
     ) -> QuantRS2Result<Vec<(f64, Circuit<N>)>> {
         let mut scaled_circuits = Vec::new();
-        
+
         for &factor in scaling_factors {
             // Apply noise scaling (simplified)
             scaled_circuits.push((factor, circuit.clone()));
         }
-        
+
         Ok(scaled_circuits)
     }
 
@@ -1141,7 +1182,10 @@ impl QuantumErrorCorrector {
         Ok(result)
     }
 
-    async fn build_readout_error_matrix(&self, calibration: &DeviceCalibration) -> QuantRS2Result<Array2<f64>> {
+    async fn build_readout_error_matrix(
+        &self,
+        calibration: &DeviceCalibration,
+    ) -> QuantRS2Result<Array2<f64>> {
         // Build readout error matrix from calibration data
         Ok(Array2::eye(4)) // 2-qubit example
     }
@@ -1190,8 +1234,9 @@ impl QuantumErrorCorrector {
         let mut metrics = self.correction_metrics.lock().unwrap();
         metrics.total_corrections += 1;
         metrics.successful_corrections += 1;
-        metrics.average_correction_time = 
-            (metrics.average_correction_time * (metrics.total_corrections - 1) as u32 + correction_time) 
+        metrics.average_correction_time = (metrics.average_correction_time
+            * (metrics.total_corrections - 1) as u32
+            + correction_time)
             / metrics.total_corrections as u32;
         Ok(())
     }

@@ -379,12 +379,12 @@ impl CircuitBenchmark {
         noise_model: Option<&NoiseModel>,
     ) -> QuantRS2Result<BenchmarkReport> {
         self.benchmark_data.clear();
-        
+
         let total_runs = self.config.num_runs + self.config.warmup_runs;
-        
+
         for run_id in 0..total_runs {
             let is_warmup = run_id < self.config.warmup_runs;
-            
+
             match self.run_single_benchmark(circuit, simulator, noise_model, run_id) {
                 Ok(run_data) => {
                     if !is_warmup {
@@ -431,7 +431,7 @@ impl CircuitBenchmark {
 
         // Simulate circuit execution (placeholder)
         let execution_results = None; // Would call simulator.execute()
-        
+
         let end_time = Instant::now();
         let end_memory = if self.config.collect_memory {
             Some(self.get_memory_usage())
@@ -475,7 +475,7 @@ impl CircuitBenchmark {
         for gate in circuit.gates() {
             let gate_name = gate.name();
             *gate_counts.entry(gate_name.to_string()).or_insert(0) += 1;
-            
+
             if gate.qubits().len() == 2 {
                 two_qubit_gates += 1;
             }
@@ -500,27 +500,36 @@ impl CircuitBenchmark {
     /// Generate comprehensive benchmark report
     fn generate_benchmark_report(&self) -> QuantRS2Result<BenchmarkReport> {
         let completed_runs = self.benchmark_data.len();
-        let successful_runs: Vec<_> = self.benchmark_data.iter()
+        let successful_runs: Vec<_> = self
+            .benchmark_data
+            .iter()
             .filter(|run| run.success)
             .collect();
-        
+
         let success_rate = successful_runs.len() as f64 / completed_runs as f64;
 
         // Extract timing data
-        let timing_data: Vec<f64> = successful_runs.iter()
+        let timing_data: Vec<f64> = successful_runs
+            .iter()
             .map(|run| run.execution_time.as_secs_f64())
             .collect();
 
-        let timing_stats = self.stats_analyzer.calculate_descriptive_stats(&timing_data)?;
+        let timing_stats = self
+            .stats_analyzer
+            .calculate_descriptive_stats(&timing_data)?;
 
         // Extract memory data if available
         let memory_stats = if self.config.collect_memory {
-            let memory_data: Vec<f64> = successful_runs.iter()
+            let memory_data: Vec<f64> = successful_runs
+                .iter()
                 .filter_map(|run| run.memory_usage.map(|m| m as f64))
                 .collect();
-            
+
             if !memory_data.is_empty() {
-                Some(self.stats_analyzer.calculate_descriptive_stats(&memory_data)?)
+                Some(
+                    self.stats_analyzer
+                        .calculate_descriptive_stats(&memory_data)?,
+                )
             } else {
                 None
             }
@@ -529,7 +538,9 @@ impl CircuitBenchmark {
         };
 
         // Perform regression analysis to detect performance trends
-        let regression_analysis = self.stats_analyzer.perform_regression_analysis(&timing_data)?;
+        let regression_analysis = self
+            .stats_analyzer
+            .perform_regression_analysis(&timing_data)?;
 
         // Fit distributions to timing data
         let distribution_fit = self.stats_analyzer.fit_distributions(&timing_data)?;
@@ -537,7 +548,7 @@ impl CircuitBenchmark {
         // Detect outliers
         let outlier_analysis = self.stats_analyzer.detect_outliers(
             &timing_data,
-            OutlierDetectionMethod::IQR { multiplier: 1.5 }
+            OutlierDetectionMethod::IQR { multiplier: 1.5 },
         )?;
 
         // Generate insights
@@ -608,7 +619,10 @@ impl CircuitBenchmark {
                 evidence: vec![
                     format!("Standard deviation: {:.4} seconds", timing_stats.std_dev),
                     format!("Mean: {:.4} seconds", timing_stats.mean),
-                    format!("Coefficient of variation: {:.2}%", coefficient_of_variation * 100.0),
+                    format!(
+                        "Coefficient of variation: {:.2}%",
+                        coefficient_of_variation * 100.0
+                    ),
                 ],
                 recommendations: vec![
                     "Increase warm-up runs to stabilize performance".to_string(),
@@ -620,7 +634,8 @@ impl CircuitBenchmark {
 
         // Check for outliers
         if outliers.num_outliers > 0 {
-            let outlier_percentage = outliers.num_outliers as f64 / timing_stats.count as f64 * 100.0;
+            let outlier_percentage =
+                outliers.num_outliers as f64 / timing_stats.count as f64 * 100.0;
             insights.push(PerformanceInsight {
                 category: InsightCategory::OutliersDetected,
                 message: format!(
@@ -645,14 +660,14 @@ impl CircuitBenchmark {
         if success_rate < 0.95 {
             insights.push(PerformanceInsight {
                 category: InsightCategory::ErrorRate,
-                message: format!(
-                    "Low success rate detected: {:.1}%",
-                    success_rate * 100.0
-                ),
+                message: format!("Low success rate detected: {:.1}%", success_rate * 100.0),
                 confidence: 1.0,
                 evidence: vec![
                     format!("Success rate: {:.1}%", success_rate * 100.0),
-                    format!("Failed runs: {}", timing_stats.count - (timing_stats.count as f64 * success_rate) as usize),
+                    format!(
+                        "Failed runs: {}",
+                        timing_stats.count - (timing_stats.count as f64 * success_rate) as usize
+                    ),
                 ],
                 recommendations: vec![
                     "Investigate failure causes".to_string(),
@@ -666,20 +681,28 @@ impl CircuitBenchmark {
     }
 
     /// Compare with baseline benchmark
-    pub fn compare_with_baseline(&self, baseline: &BenchmarkReport) -> QuantRS2Result<BaselineComparison> {
+    pub fn compare_with_baseline(
+        &self,
+        baseline: &BenchmarkReport,
+    ) -> QuantRS2Result<BaselineComparison> {
         if self.benchmark_data.is_empty() {
             return Err(QuantRS2Error::InvalidInput(
                 "No benchmark data available for comparison".to_string(),
             ));
         }
 
-        let current_timing: Vec<f64> = self.benchmark_data.iter()
+        let current_timing: Vec<f64> = self
+            .benchmark_data
+            .iter()
             .filter(|run| run.success)
             .map(|run| run.execution_time.as_secs_f64())
             .collect();
 
         let baseline_mean = baseline.timing_stats.mean;
-        let current_mean = self.stats_analyzer.calculate_descriptive_stats(&current_timing)?.mean;
+        let current_mean = self
+            .stats_analyzer
+            .calculate_descriptive_stats(&current_timing)?
+            .mean;
 
         let performance_factor = current_mean / baseline_mean;
 
@@ -737,7 +760,7 @@ impl StatisticalAnalyzer {
         let std_dev = variance.sqrt();
         let min = sorted_data[0];
         let max = sorted_data[count - 1];
-        
+
         let median = if count % 2 == 0 {
             (sorted_data[count / 2 - 1] + sorted_data[count / 2]) / 2.0
         } else {
@@ -778,7 +801,8 @@ impl StatisticalAnalyzer {
     /// Calculate skewness
     fn calculate_skewness(&self, data: &[f64], mean: f64, std_dev: f64) -> f64 {
         let n = data.len() as f64;
-        let skew_sum = data.iter()
+        let skew_sum = data
+            .iter()
             .map(|x| ((x - mean) / std_dev).powi(3))
             .sum::<f64>();
         skew_sum / n
@@ -787,7 +811,8 @@ impl StatisticalAnalyzer {
     /// Calculate kurtosis
     fn calculate_kurtosis(&self, data: &[f64], mean: f64, std_dev: f64) -> f64 {
         let n = data.len() as f64;
-        let kurt_sum = data.iter()
+        let kurt_sum = data
+            .iter()
             .map(|x| ((x - mean) / std_dev).powi(4))
             .sum::<f64>();
         kurt_sum / n - 3.0 // Excess kurtosis
@@ -796,35 +821,39 @@ impl StatisticalAnalyzer {
     /// Perform linear regression analysis
     pub fn perform_regression_analysis(&self, data: &[f64]) -> QuantRS2Result<RegressionAnalysis> {
         if data.len() < 3 {
-            return Err(QuantRS2Error::InvalidInput("Insufficient data for regression".to_string()));
+            return Err(QuantRS2Error::InvalidInput(
+                "Insufficient data for regression".to_string(),
+            ));
         }
 
         let n = data.len() as f64;
         let x_values: Vec<f64> = (0..data.len()).map(|i| i as f64).collect();
-        
+
         let x_mean = x_values.iter().sum::<f64>() / n;
         let y_mean = data.iter().sum::<f64>() / n;
 
-        let numerator: f64 = x_values.iter().zip(data.iter())
+        let numerator: f64 = x_values
+            .iter()
+            .zip(data.iter())
             .map(|(x, y)| (x - x_mean) * (y - y_mean))
             .sum();
-        
-        let denominator: f64 = x_values.iter()
-            .map(|x| (x - x_mean).powi(2))
-            .sum();
+
+        let denominator: f64 = x_values.iter().map(|x| (x - x_mean).powi(2)).sum();
 
         let slope = numerator / denominator;
         let intercept = y_mean - slope * x_mean;
 
         // Calculate R-squared
         let ss_tot: f64 = data.iter().map(|y| (y - y_mean).powi(2)).sum();
-        let ss_res: f64 = x_values.iter().zip(data.iter())
+        let ss_res: f64 = x_values
+            .iter()
+            .zip(data.iter())
             .map(|(x, y)| {
                 let predicted = slope * x + intercept;
                 (y - predicted).powi(2)
             })
             .sum();
-        
+
         let r_squared = 1.0 - (ss_res / ss_tot);
 
         // Calculate p-value for slope (simplified)
@@ -844,7 +873,7 @@ impl StatisticalAnalyzer {
     /// Fit probability distributions to data
     pub fn fit_distributions(&self, data: &[f64]) -> QuantRS2Result<DistributionFit> {
         let stats = self.calculate_descriptive_stats(data)?;
-        
+
         // Fit normal distribution
         let normal_dist = Distribution::Normal {
             mean: stats.mean,
@@ -880,7 +909,7 @@ impl StatisticalAnalyzer {
         };
 
         let num_outliers = outlier_indices.len();
-        
+
         // Calculate outlier impact
         let outlier_impact = if num_outliers > 0 {
             self.calculate_outlier_impact(data, &outlier_indices)?
@@ -923,7 +952,7 @@ impl StatisticalAnalyzer {
     /// Detect outliers using Z-score method
     fn detect_outliers_zscore(&self, data: &[f64], threshold: f64) -> Vec<usize> {
         let stats = self.calculate_descriptive_stats(data).unwrap();
-        
+
         data.iter()
             .enumerate()
             .filter_map(|(i, &value)| {
@@ -944,9 +973,10 @@ impl StatisticalAnalyzer {
         outlier_indices: &[usize],
     ) -> QuantRS2Result<OutlierImpact> {
         let original_stats = self.calculate_descriptive_stats(data)?;
-        
+
         // Create data without outliers
-        let filtered_data: Vec<f64> = data.iter()
+        let filtered_data: Vec<f64> = data
+            .iter()
             .enumerate()
             .filter_map(|(i, &value)| {
                 if outlier_indices.contains(&i) {
@@ -1016,7 +1046,7 @@ mod tests {
     fn test_descriptive_stats() {
         let analyzer = StatisticalAnalyzer::new();
         let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        
+
         let stats = analyzer.calculate_descriptive_stats(&data).unwrap();
         assert_eq!(stats.mean, 3.0);
         assert_eq!(stats.median, 3.0);
@@ -1028,7 +1058,7 @@ mod tests {
     fn test_outlier_detection_iqr() {
         let analyzer = StatisticalAnalyzer::new();
         let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 100.0]; // 100.0 is an outlier
-        
+
         let outliers = analyzer.detect_outliers_iqr(&data, 1.5);
         assert_eq!(outliers.len(), 1);
         assert_eq!(outliers[0], 5); // Index of 100.0
@@ -1038,7 +1068,7 @@ mod tests {
     fn test_regression_analysis() {
         let analyzer = StatisticalAnalyzer::new();
         let data = vec![1.0, 2.0, 3.0, 4.0, 5.0]; // Perfect linear trend
-        
+
         let regression = analyzer.perform_regression_analysis(&data).unwrap();
         assert!((regression.slope - 1.0).abs() < 1e-10);
         assert!((regression.r_squared - 1.0).abs() < 1e-10);
@@ -1054,7 +1084,10 @@ mod tests {
 
     #[test]
     fn test_distribution_creation() {
-        let normal = Distribution::Normal { mean: 0.0, std_dev: 1.0 };
+        let normal = Distribution::Normal {
+            mean: 0.0,
+            std_dev: 1.0,
+        };
         match normal {
             Distribution::Normal { mean, std_dev } => {
                 assert_eq!(mean, 0.0);

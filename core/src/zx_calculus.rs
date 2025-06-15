@@ -11,12 +11,11 @@
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
-    gate::{multi::*, single::*, GateOp},
+    gate::{single::*, GateOp},
     qubit::QubitId,
 };
-use num_complex::Complex64 as Complex;
 use rustc_hash::FxHashMap;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashSet, VecDeque};
 use std::f64::consts::PI;
 
 /// Type of spider in the ZX-diagram
@@ -444,18 +443,18 @@ impl ZXDiagram {
 
             // Phase 1: Basic cleanup
             rewrites += self.remove_identities();
-            
+
             // Phase 2: Spider fusion
             rewrites += self.apply_spider_fusion();
-            
+
             // Phase 3: Advanced optimizations
             rewrites += self.apply_pivot_rules();
             rewrites += self.apply_local_complementation();
             rewrites += self.apply_stabilizer_decomposition();
-            
+
             // Phase 4: Clifford circuit extraction and optimization
             rewrites += self.optimize_clifford_subcircuits();
-            
+
             total_rewrites += rewrites;
             if rewrites == 0 {
                 break;
@@ -469,7 +468,7 @@ impl ZXDiagram {
     fn apply_spider_fusion(&mut self) -> usize {
         let mut rewrites = 0;
         let spider_ids: Vec<_> = self.spiders.keys().cloned().collect();
-        
+
         for i in 0..spider_ids.len() {
             for j in i + 1..spider_ids.len() {
                 let id1 = spider_ids[i];
@@ -487,7 +486,7 @@ impl ZXDiagram {
                 break;
             }
         }
-        
+
         rewrites
     }
 
@@ -495,26 +494,26 @@ impl ZXDiagram {
     fn apply_pivot_rules(&mut self) -> usize {
         let mut rewrites = 0;
         let spider_ids: Vec<_> = self.spiders.keys().cloned().collect();
-        
+
         for &spider_id in &spider_ids {
             if !self.spiders.contains_key(&spider_id) {
                 continue;
             }
-            
+
             let spider = self.spiders[&spider_id].clone();
-            
+
             // Apply pivot if this is a green spider (Z-spider) with even phase
-            if spider.spider_type == SpiderType::Z && 
-               self.is_even_multiple_of_pi(spider.phase, 1e-10) &&
-               self.degree(spider_id) >= 2 {
-                
+            if spider.spider_type == SpiderType::Z
+                && self.is_even_multiple_of_pi(spider.phase, 1e-10)
+                && self.degree(spider_id) >= 2
+            {
                 if let Ok(()) = self.pivot_around_spider(spider_id) {
                     rewrites += 1;
                     break;
                 }
             }
         }
-        
+
         rewrites
     }
 
@@ -522,36 +521,36 @@ impl ZXDiagram {
     fn apply_local_complementation(&mut self) -> usize {
         let mut rewrites = 0;
         let spider_ids: Vec<_> = self.spiders.keys().cloned().collect();
-        
+
         for &spider_id in &spider_ids {
             if !self.spiders.contains_key(&spider_id) {
                 continue;
             }
-            
+
             let spider = self.spiders[&spider_id].clone();
-            
+
             // Apply local complementation for certain patterns
-            if spider.spider_type == SpiderType::X && 
-               self.is_odd_multiple_of_pi(spider.phase, 1e-10) &&
-               self.degree(spider_id) >= 3 {
-                
+            if spider.spider_type == SpiderType::X
+                && self.is_odd_multiple_of_pi(spider.phase, 1e-10)
+                && self.degree(spider_id) >= 3
+            {
                 if let Ok(()) = self.local_complement_around_spider(spider_id) {
                     rewrites += 1;
                     break;
                 }
             }
         }
-        
+
         rewrites
     }
 
     /// Apply stabilizer decomposition for Clifford subcircuits
     fn apply_stabilizer_decomposition(&mut self) -> usize {
         let mut rewrites = 0;
-        
+
         // Find connected Clifford components
         let clifford_components = self.find_clifford_components();
-        
+
         for component in clifford_components {
             if component.len() > 2 {
                 if let Ok(()) = self.decompose_clifford_component(&component) {
@@ -559,24 +558,24 @@ impl ZXDiagram {
                 }
             }
         }
-        
+
         rewrites
     }
 
     /// Optimize Clifford subcircuits using tableau methods
     fn optimize_clifford_subcircuits(&mut self) -> usize {
         let mut rewrites = 0;
-        
+
         // Extract Clifford parts and optimize using tableau representation
         let clifford_regions = self.identify_clifford_regions();
-        
+
         for region in clifford_regions {
             let optimized_size = self.optimize_clifford_region(&region);
             if optimized_size < region.len() {
                 rewrites += region.len() - optimized_size;
             }
         }
-        
+
         rewrites
     }
 
@@ -595,17 +594,16 @@ impl ZXDiagram {
     /// Pivot around a spider (local complementation + color change)
     fn pivot_around_spider(&mut self, spider_id: usize) -> QuantRS2Result<()> {
         let neighbors = self.neighbors(spider_id);
-        
+
         // Add edges between all pairs of neighbors
         for i in 0..neighbors.len() {
             for j in i + 1..neighbors.len() {
                 let (n1, _) = neighbors[i];
                 let (n2, _) = neighbors[j];
-                
+
                 // Check if edge already exists
-                let existing_edge = self.neighbors(n1).iter()
-                    .any(|(id, _)| *id == n2);
-                
+                let existing_edge = self.neighbors(n1).iter().any(|(id, _)| *id == n2);
+
                 if existing_edge {
                     // Remove edge if it exists
                     self.remove_edge(n1, n2);
@@ -615,48 +613,50 @@ impl ZXDiagram {
                 }
             }
         }
-        
+
         // Remove the pivot spider
         self.remove_spider(spider_id);
-        
+
         Ok(())
     }
 
     /// Apply local complementation around a spider
     fn local_complement_around_spider(&mut self, spider_id: usize) -> QuantRS2Result<()> {
         let neighbors = self.neighbors(spider_id);
-        
+
         // Toggle edges between neighbors
         for i in 0..neighbors.len() {
             for j in i + 1..neighbors.len() {
                 let (n1, _) = neighbors[i];
                 let (n2, _) = neighbors[j];
-                
-                let existing_edge = self.neighbors(n1).iter()
-                    .find(|(id, edge_type)| *id == n2)
+
+                let existing_edge = self
+                    .neighbors(n1)
+                    .iter()
+                    .find(|(id, _edge_type)| *id == n2)
                     .map(|(_, edge_type)| *edge_type);
-                
+
                 match existing_edge {
                     Some(EdgeType::Regular) => {
                         self.remove_edge(n1, n2);
                         self.add_edge(n1, n2, EdgeType::Hadamard);
-                    },
+                    }
                     Some(EdgeType::Hadamard) => {
                         self.remove_edge(n1, n2);
                         self.add_edge(n1, n2, EdgeType::Regular);
-                    },
+                    }
                     None => {
                         self.add_edge(n1, n2, EdgeType::Regular);
                     }
                 }
             }
         }
-        
+
         // Flip the phase of the central spider
         if let Some(spider) = self.spiders.get_mut(&spider_id) {
             spider.phase += PI;
         }
-        
+
         Ok(())
     }
 
@@ -664,14 +664,12 @@ impl ZXDiagram {
     fn find_clifford_components(&self) -> Vec<Vec<usize>> {
         let mut visited = HashSet::new();
         let mut components = Vec::new();
-        
+
         for &spider_id in self.spiders.keys() {
             if !visited.contains(&spider_id) {
                 let spider = &self.spiders[&spider_id];
-                
-                if spider.spider_type != SpiderType::Boundary && 
-                   spider.is_clifford(1e-10) {
-                    
+
+                if spider.spider_type != SpiderType::Boundary && spider.is_clifford(1e-10) {
                     let component = self.dfs_clifford_component(spider_id, &mut visited);
                     if component.len() > 1 {
                         components.push(component);
@@ -679,7 +677,7 @@ impl ZXDiagram {
                 }
             }
         }
-        
+
         components
     }
 
@@ -687,24 +685,25 @@ impl ZXDiagram {
     fn dfs_clifford_component(&self, start: usize, visited: &mut HashSet<usize>) -> Vec<usize> {
         let mut component = Vec::new();
         let mut stack = vec![start];
-        
+
         while let Some(spider_id) = stack.pop() {
             if visited.contains(&spider_id) {
                 continue;
             }
-            
+
             visited.insert(spider_id);
-            
+
             if let Some(spider) = self.spiders.get(&spider_id) {
                 if spider.spider_type != SpiderType::Boundary && spider.is_clifford(1e-10) {
                     component.push(spider_id);
-                    
+
                     // Add neighbors to stack
                     for (neighbor, _) in self.neighbors(spider_id) {
                         if !visited.contains(&neighbor) {
                             if let Some(neighbor_spider) = self.spiders.get(&neighbor) {
-                                if neighbor_spider.spider_type != SpiderType::Boundary && 
-                                   neighbor_spider.is_clifford(1e-10) {
+                                if neighbor_spider.spider_type != SpiderType::Boundary
+                                    && neighbor_spider.is_clifford(1e-10)
+                                {
                                     stack.push(neighbor);
                                 }
                             }
@@ -713,7 +712,7 @@ impl ZXDiagram {
                 }
             }
         }
-        
+
         component
     }
 
@@ -725,7 +724,7 @@ impl ZXDiagram {
         // 2. Convert to stabilizer tableau representation
         // 3. Optimize using Gaussian elimination
         // 4. Convert back to ZX-diagram
-        
+
         // For now, just remove redundant identity spiders in the component
         for &spider_id in component {
             if let Some(spider) = self.spiders.get(&spider_id) {
@@ -734,13 +733,13 @@ impl ZXDiagram {
                     if neighbors.len() == 2 {
                         let (n1, e1) = neighbors[0];
                         let (n2, e2) = neighbors[1];
-                        
+
                         let new_edge_type = match (e1, e2) {
                             (EdgeType::Regular, EdgeType::Regular) => EdgeType::Regular,
                             (EdgeType::Hadamard, EdgeType::Hadamard) => EdgeType::Regular,
                             _ => EdgeType::Hadamard,
                         };
-                        
+
                         self.remove_spider(spider_id);
                         self.add_edge(n1, n2, new_edge_type);
                         return Ok(());
@@ -748,7 +747,7 @@ impl ZXDiagram {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -756,7 +755,7 @@ impl ZXDiagram {
     fn identify_clifford_regions(&self) -> Vec<Vec<usize>> {
         let mut regions = Vec::new();
         let mut visited = HashSet::new();
-        
+
         for &spider_id in self.spiders.keys() {
             if !visited.contains(&spider_id) {
                 if let Some(spider) = self.spiders.get(&spider_id) {
@@ -769,7 +768,7 @@ impl ZXDiagram {
                 }
             }
         }
-        
+
         regions
     }
 
@@ -777,21 +776,22 @@ impl ZXDiagram {
     fn expand_clifford_region(&self, start: usize, visited: &mut HashSet<usize>) -> Vec<usize> {
         let mut region = Vec::new();
         let mut queue = VecDeque::new();
-        
+
         queue.push_back(start);
         visited.insert(start);
-        
+
         while let Some(spider_id) = queue.pop_front() {
             if let Some(spider) = self.spiders.get(&spider_id) {
                 if spider.spider_type != SpiderType::Boundary && spider.is_clifford(1e-10) {
                     region.push(spider_id);
-                    
+
                     // Add Clifford neighbors to queue
                     for (neighbor, _) in self.neighbors(spider_id) {
                         if !visited.contains(&neighbor) {
                             if let Some(neighbor_spider) = self.spiders.get(&neighbor) {
-                                if neighbor_spider.spider_type != SpiderType::Boundary && 
-                                   neighbor_spider.is_clifford(1e-10) {
+                                if neighbor_spider.spider_type != SpiderType::Boundary
+                                    && neighbor_spider.is_clifford(1e-10)
+                                {
                                     visited.insert(neighbor);
                                     queue.push_back(neighbor);
                                 }
@@ -801,7 +801,7 @@ impl ZXDiagram {
                 }
             }
         }
-        
+
         region
     }
 
@@ -813,7 +813,7 @@ impl ZXDiagram {
         // 2. Gaussian elimination on the tableau
         // 3. Synthesis of optimized Clifford circuit
         // 4. Conversion back to ZX-diagram
-        
+
         // For now, return the original size
         region.len()
     }
@@ -953,7 +953,7 @@ impl ZXOptimizer {
     /// Apply comprehensive optimization to a ZX-diagram
     pub fn optimize(&self, diagram: &mut ZXDiagram) -> usize {
         let initial_size = diagram.spiders.len();
-        
+
         if self.verbose {
             println!("ZX Optimizer: Starting with {} spiders", initial_size);
         }
@@ -1088,7 +1088,7 @@ impl ZXOptimizer {
     }
 
     /// Apply graph state decomposition
-    fn apply_graph_state_decomposition(&self, diagram: &mut ZXDiagram) -> usize {
+    fn apply_graph_state_decomposition(&self, _diagram: &mut ZXDiagram) -> usize {
         // Placeholder for graph state decomposition
         // This would implement decomposition of large graph states
         // into smaller, more efficient representations
@@ -1096,7 +1096,7 @@ impl ZXOptimizer {
     }
 
     /// Apply Clifford tableau reduction
-    fn apply_tableau_reduction(&self, diagram: &mut ZXDiagram) -> usize {
+    fn apply_tableau_reduction(&self, _diagram: &mut ZXDiagram) -> usize {
         // Placeholder for tableau-based Clifford reduction
         // This would implement:
         // 1. Convert Clifford subcircuits to stabilizer tableaux
@@ -1113,8 +1113,11 @@ impl ZXOptimizer {
         for &spider_id in diagram.spiders.keys() {
             if !visited.contains(&spider_id) {
                 if let Some(spider) = diagram.spiders.get(&spider_id) {
-                    if spider.spider_type != SpiderType::Boundary && !spider.is_clifford(self.tolerance) {
-                        let polynomial = self.extract_connected_polynomial(diagram, spider_id, &mut visited);
+                    if spider.spider_type != SpiderType::Boundary
+                        && !spider.is_clifford(self.tolerance)
+                    {
+                        let polynomial =
+                            self.extract_connected_polynomial(diagram, spider_id, &mut visited);
                         if polynomial.len() > 1 {
                             polynomials.push(polynomial);
                         }
@@ -1148,8 +1151,9 @@ impl ZXOptimizer {
                     for (neighbor, _) in diagram.neighbors(spider_id) {
                         if !visited.contains(&neighbor) {
                             if let Some(neighbor_spider) = diagram.spiders.get(&neighbor) {
-                                if neighbor_spider.spider_type != SpiderType::Boundary &&
-                                   !neighbor_spider.is_clifford(self.tolerance) {
+                                if neighbor_spider.spider_type != SpiderType::Boundary
+                                    && !neighbor_spider.is_clifford(self.tolerance)
+                                {
                                     visited.insert(neighbor);
                                     queue.push_back(neighbor);
                                 }
@@ -1164,7 +1168,7 @@ impl ZXOptimizer {
     }
 
     /// Optimize a phase polynomial
-    fn optimize_phase_polynomial(&self, diagram: &mut ZXDiagram, polynomial: &[usize]) -> usize {
+    fn optimize_phase_polynomial(&self, _diagram: &mut ZXDiagram, _polynomial: &[usize]) -> usize {
         // Placeholder for phase polynomial optimization
         // This would implement:
         // 1. Convert to phase polynomial representation
@@ -1174,14 +1178,14 @@ impl ZXOptimizer {
     }
 
     /// Optimize CNOT routing
-    fn optimize_cnot_routing(&self, diagram: &mut ZXDiagram) -> usize {
+    fn optimize_cnot_routing(&self, _diagram: &mut ZXDiagram) -> usize {
         // Placeholder for CNOT routing optimization
         // This would implement connectivity-aware gate routing
         0
     }
 
     /// Apply commutation-based optimization
-    fn apply_commutation_optimization(&self, diagram: &mut ZXDiagram) -> usize {
+    fn apply_commutation_optimization(&self, _diagram: &mut ZXDiagram) -> usize {
         // Placeholder for commutation-based optimization
         // This would implement gate commutation and reordering
         0
@@ -1193,8 +1197,7 @@ impl ZXOptimizer {
             .spiders
             .values()
             .filter(|spider| {
-                spider.spider_type != SpiderType::Boundary
-                    && !spider.is_clifford(self.tolerance)
+                spider.spider_type != SpiderType::Boundary && !spider.is_clifford(self.tolerance)
             })
             .count()
     }
@@ -1519,10 +1522,10 @@ impl CircuitToZX {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::gate::multi::{CNOT, CZ};
 
     #[test]
     fn test_spider_creation() {

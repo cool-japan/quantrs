@@ -94,7 +94,11 @@ impl PrecisionAnalysis {
     }
 
     /// Add performance metrics for a precision level
-    pub fn add_performance_metrics(&mut self, precision: QuantumPrecision, metrics: PerformanceMetrics) {
+    pub fn add_performance_metrics(
+        &mut self,
+        precision: QuantumPrecision,
+        metrics: PerformanceMetrics,
+    ) {
         self.performance_metrics.insert(precision, metrics);
     }
 
@@ -160,9 +164,12 @@ impl PrecisionAnalysis {
             overall_precision: self.get_overall_recommendation(),
             quality_score: self.quality_score,
             total_error_estimate: self.error_estimates.values().sum(),
-            avg_execution_time: self.performance_metrics.values()
+            avg_execution_time: self
+                .performance_metrics
+                .values()
                 .map(|m| m.execution_time_ms)
-                .sum::<f64>() / self.performance_metrics.len().max(1) as f64,
+                .sum::<f64>()
+                / self.performance_metrics.len().max(1) as f64,
         }
     }
 }
@@ -205,11 +212,16 @@ impl PerformanceMetrics {
         } else {
             0.0
         };
-        
+
         // Estimate energy efficiency (simplified model)
         let energy_efficiency = throughput / (memory_usage_bytes as f64 / 1e6);
-        
-        Self::new(execution_time_ms, memory_usage_bytes, throughput, energy_efficiency)
+
+        Self::new(
+            execution_time_ms,
+            memory_usage_bytes,
+            throughput,
+            energy_efficiency,
+        )
     }
 
     /// Calculate performance score (0-1, higher is better)
@@ -218,7 +230,7 @@ impl PerformanceMetrics {
         let memory_score = 1.0 / (1.0 + self.memory_usage_bytes as f64 / 1e9);
         let throughput_score = self.throughput_ops_per_sec / 1000.0;
         let energy_score = self.energy_efficiency / 1000.0;
-        
+
         (time_score + memory_score + throughput_score + energy_score) / 4.0
     }
 
@@ -245,7 +257,7 @@ impl PrecisionAnalyzer {
     /// Analyze optimal precision for a given error tolerance
     pub fn analyze_for_tolerance(&mut self, tolerance: f64) -> PrecisionAnalysis {
         let mut analysis = PrecisionAnalysis::new();
-        
+
         // Test each precision level
         for &precision in &[
             QuantumPrecision::Half,
@@ -254,27 +266,27 @@ impl PrecisionAnalyzer {
         ] {
             let error = precision.typical_error();
             analysis.add_error_estimate(precision, error);
-            
+
             // Create synthetic performance metrics
             let metrics = self.create_synthetic_metrics(precision);
             analysis.add_performance_metrics(precision, metrics);
-            
+
             // Add recommendations based on tolerance
             if precision.is_sufficient_for_tolerance(tolerance) {
                 analysis.add_recommendation("default".to_string(), precision);
             }
         }
-        
+
         // Set rationale
         let rationale = format!(
             "Analysis for tolerance {:.2e}: recommended precision based on error bounds and performance trade-offs",
             tolerance
         );
         analysis.set_rationale(rationale);
-        
+
         // Calculate quality score
         analysis.calculate_quality_score();
-        
+
         analysis
     }
 
@@ -283,23 +295,28 @@ impl PrecisionAnalyzer {
         if let Some(cached) = self.benchmark_cache.get(&precision) {
             return cached.clone();
         }
-        
+
         let start_time = Instant::now();
-        
+
         // Simulate some work (in real implementation, this would run actual benchmarks)
         std::thread::sleep(std::time::Duration::from_millis(1));
-        
+
         let execution_time = start_time.elapsed().as_millis() as f64;
         let memory_usage = self.estimate_memory_usage(precision);
-        
+
         let metrics = PerformanceMetrics::from_time_and_memory(execution_time, memory_usage);
         self.benchmark_cache.insert(precision, metrics.clone());
-        
+
         metrics
     }
 
     /// Add an error sample to the history
-    pub fn record_error(&mut self, precision: QuantumPrecision, error: f64, operation_type: String) {
+    pub fn record_error(
+        &mut self,
+        precision: QuantumPrecision,
+        error: f64,
+        operation_type: String,
+    ) {
         self.error_history.push(ErrorSample {
             precision,
             error,
@@ -310,12 +327,13 @@ impl PrecisionAnalyzer {
 
     /// Get average error for a precision level
     pub fn get_average_error(&self, precision: QuantumPrecision) -> f64 {
-        let errors: Vec<f64> = self.error_history
+        let errors: Vec<f64> = self
+            .error_history
             .iter()
             .filter(|sample| sample.precision == precision)
             .map(|sample| sample.error)
             .collect();
-        
+
         if errors.is_empty() {
             precision.typical_error()
         } else {
@@ -335,10 +353,10 @@ impl PrecisionAnalyzer {
     fn create_synthetic_metrics(&self, precision: QuantumPrecision) -> PerformanceMetrics {
         let base_time = 100.0; // Base execution time in ms
         let execution_time = base_time * precision.computation_factor();
-        
+
         let base_memory = 1024 * 1024; // Base memory usage in bytes
         let memory_usage = (base_memory as f64 * precision.memory_factor()) as usize;
-        
+
         PerformanceMetrics::from_time_and_memory(execution_time, memory_usage)
     }
 

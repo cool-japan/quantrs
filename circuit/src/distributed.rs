@@ -4,11 +4,11 @@
 //! multiple quantum devices, simulators, or cloud services in a distributed manner.
 
 use crate::builder::Circuit;
+use num_complex::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
-use num_complex::Complex64;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -783,7 +783,7 @@ impl DistributedExecutor {
                 usage_tracking: UsageTracking {
                     per_user_tracking: true,
                     per_project_tracking: true,
-                    reporting_interval: 3600.0, // 1 hour
+                    reporting_interval: 3600.0,             // 1 hour
                     retention_period: 3600.0 * 24.0 * 30.0, // 30 days
                 },
             },
@@ -795,7 +795,7 @@ impl DistributedExecutor {
         // Validate backend configuration
         if backend.id.is_empty() {
             return Err(QuantRS2Error::InvalidInput(
-                "Backend ID cannot be empty".to_string()
+                "Backend ID cannot be empty".to_string(),
             ));
         }
 
@@ -816,14 +816,11 @@ impl DistributedExecutor {
     }
 
     /// Submit a job for distributed execution
-    pub fn submit_job<const N: usize>(
-        &mut self,
-        job: DistributedJob<N>,
-    ) -> QuantRS2Result<String> {
+    pub fn submit_job<const N: usize>(&mut self, job: DistributedJob<N>) -> QuantRS2Result<String> {
         // Validate job
         if job.circuit.num_gates() == 0 {
             return Err(QuantRS2Error::InvalidInput(
-                "Cannot submit empty circuit".to_string()
+                "Cannot submit empty circuit".to_string(),
             ));
         }
 
@@ -832,7 +829,10 @@ impl DistributedExecutor {
         if required_qubits > self.resource_manager.resource_pool.total_qubits {
             return Err(QuantRS2Error::UnsupportedQubits(
                 required_qubits,
-                format!("Maximum available qubits: {}", self.resource_manager.resource_pool.total_qubits)
+                format!(
+                    "Maximum available qubits: {}",
+                    self.resource_manager.resource_pool.total_qubits
+                ),
             ));
         }
 
@@ -840,7 +840,7 @@ impl DistributedExecutor {
         let selected_backends = self.select_backends(&job)?;
         if selected_backends.is_empty() {
             return Err(QuantRS2Error::BackendExecutionFailed(
-                "No suitable backends available".to_string()
+                "No suitable backends available".to_string(),
             ));
         }
 
@@ -872,18 +872,28 @@ impl DistributedExecutor {
             LoadBalancingStrategy::RoundRobin => {
                 // Simple round-robin selection
                 suitable_backends.truncate(self.fault_tolerance.redundancy_level.max(1));
-            },
+            }
             LoadBalancingStrategy::LeastQueueTime => {
                 // Sort by queue time
                 suitable_backends.sort_by(|a, b| {
-                    let backend_a = self.backends.iter().find(|backend| backend.id == *a).unwrap();
-                    let backend_b = self.backends.iter().find(|backend| backend.id == *b).unwrap();
-                    backend_a.queue_info.estimated_wait_time
+                    let backend_a = self
+                        .backends
+                        .iter()
+                        .find(|backend| backend.id == *a)
+                        .unwrap();
+                    let backend_b = self
+                        .backends
+                        .iter()
+                        .find(|backend| backend.id == *b)
+                        .unwrap();
+                    backend_a
+                        .queue_info
+                        .estimated_wait_time
                         .partial_cmp(&backend_b.queue_info.estimated_wait_time)
                         .unwrap()
                 });
                 suitable_backends.truncate(self.fault_tolerance.redundancy_level.max(1));
-            },
+            }
             _ => {
                 // Default to first available
                 suitable_backends.truncate(1);
@@ -968,11 +978,15 @@ impl DistributedExecutor {
 
     /// Get system health status
     pub fn get_health_status(&self) -> SystemHealthStatus {
-        let available_backends = self.backends.iter()
+        let available_backends = self
+            .backends
+            .iter()
             .filter(|b| b.status == BackendStatus::Available)
             .count();
 
-        let total_qubits = self.backends.iter()
+        let total_qubits = self
+            .backends
+            .iter()
             .filter(|b| b.status == BackendStatus::Available)
             .map(|b| b.performance.max_qubits)
             .sum();
@@ -981,9 +995,12 @@ impl DistributedExecutor {
             total_backends: self.backends.len(),
             available_backends,
             total_qubits,
-            average_queue_time: self.backends.iter()
+            average_queue_time: self
+                .backends
+                .iter()
                 .map(|b| b.queue_info.estimated_wait_time)
-                .sum::<f64>() / self.backends.len() as f64,
+                .sum::<f64>()
+                / self.backends.len() as f64,
             system_load: self.calculate_system_load(),
         }
     }
@@ -994,11 +1011,15 @@ impl DistributedExecutor {
             return 0.0;
         }
 
-        let total_capacity: f64 = self.backends.iter()
+        let total_capacity: f64 = self
+            .backends
+            .iter()
             .map(|b| b.queue_info.max_queue_size as f64)
             .sum();
 
-        let current_load: f64 = self.backends.iter()
+        let current_load: f64 = self
+            .backends
+            .iter()
             .map(|b| b.queue_info.queue_length as f64)
             .sum();
 
@@ -1045,7 +1066,7 @@ mod tests {
     #[test]
     fn test_backend_addition() {
         let mut executor = DistributedExecutor::new();
-        
+
         let backend = ExecutionBackend {
             id: "test_backend".to_string(),
             backend_type: BackendType::Simulator {
@@ -1115,11 +1136,11 @@ mod tests {
     #[test]
     fn test_job_submission() {
         let mut executor = DistributedExecutor::new();
-        
+
         // Add a backend first
         let backend = create_test_backend();
         executor.add_backend(backend).unwrap();
-        
+
         // Create a test job
         let mut circuit = Circuit::<2>::new();
         circuit.h(QubitId(0)).unwrap(); // Add a gate so it's not empty

@@ -21,20 +21,20 @@ use std::sync::{Arc, Mutex};
 pub trait ObjectiveFunction: Send + Sync {
     /// Evaluate the objective at given parameters
     fn evaluate(&self, parameters: &[f64]) -> f64;
-    
+
     /// Compute gradient if available
     fn gradient(&self, parameters: &[f64]) -> Option<Vec<f64>> {
         None
     }
-    
+
     /// Compute Hessian if available
     fn hessian(&self, parameters: &[f64]) -> Option<Vec<Vec<f64>>> {
         None
     }
-    
+
     /// Get parameter bounds
     fn bounds(&self) -> Vec<(f64, f64)>;
-    
+
     /// Get objective name
     fn name(&self) -> &str;
 }
@@ -43,10 +43,7 @@ pub trait ObjectiveFunction: Send + Sync {
 #[derive(Debug, Clone, PartialEq)]
 pub enum OptimizationAlgorithm {
     /// Gradient descent variants
-    GradientDescent {
-        learning_rate: f64,
-        momentum: f64,
-    },
+    GradientDescent { learning_rate: f64, momentum: f64 },
     /// Adam optimizer
     Adam {
         learning_rate: f64,
@@ -143,7 +140,10 @@ impl std::fmt::Debug for OptimizationConfig {
             .field("seed", &self.seed)
             .field("parallel", &self.parallel)
             .field("num_threads", &self.num_threads)
-            .field("progress_callback", &self.progress_callback.as_ref().map(|_| "Some(callback)"))
+            .field(
+                "progress_callback",
+                &self.progress_callback.as_ref().map(|_| "Some(callback)"),
+            )
             .field("early_stopping", &self.early_stopping)
             .finish()
     }
@@ -286,9 +286,11 @@ impl QuantumCircuitOptimizer {
         objective: Arc<dyn ObjectiveFunction>,
     ) -> QuantRS2Result<OptimizationResult> {
         let start_time = std::time::Instant::now();
-        
+
         // Get initial parameters
-        let initial_params: Vec<f64> = self.circuit_template.parameters
+        let initial_params: Vec<f64> = self
+            .circuit_template
+            .parameters
             .iter()
             .map(|p| p.initial_value)
             .collect();
@@ -303,27 +305,61 @@ impl QuantumCircuitOptimizer {
 
         // Run optimization based on algorithm
         let result = match &self.config.algorithm {
-            OptimizationAlgorithm::GradientDescent { learning_rate, momentum } => {
-                self.optimize_gradient_descent(objective, &initial_params, *learning_rate, *momentum)
-            }
-            OptimizationAlgorithm::Adam { learning_rate, beta1, beta2, epsilon } => {
-                self.optimize_adam(objective, &initial_params, *learning_rate, *beta1, *beta2, *epsilon)
-            }
-            OptimizationAlgorithm::LBFGSB { max_iterations, tolerance } => {
-                self.optimize_lbfgs(objective, &initial_params, *max_iterations, *tolerance)
-            }
-            OptimizationAlgorithm::NelderMead { max_iterations, tolerance } => {
-                self.optimize_nelder_mead(objective, &initial_params, *max_iterations, *tolerance)
-            }
-            OptimizationAlgorithm::SimulatedAnnealing { initial_temperature, cooling_rate, min_temperature } => {
-                self.optimize_simulated_annealing(objective, &initial_params, *initial_temperature, *cooling_rate, *min_temperature)
-            }
-            OptimizationAlgorithm::BayesianOptimization { acquisition_function, kernel, num_initial_samples } => {
-                self.optimize_bayesian(objective, &initial_params, acquisition_function, kernel, *num_initial_samples)
-            }
-            _ => {
-                Err(QuantRS2Error::InvalidInput("Algorithm not yet implemented".to_string()))
-            }
+            OptimizationAlgorithm::GradientDescent {
+                learning_rate,
+                momentum,
+            } => self.optimize_gradient_descent(
+                objective,
+                &initial_params,
+                *learning_rate,
+                *momentum,
+            ),
+            OptimizationAlgorithm::Adam {
+                learning_rate,
+                beta1,
+                beta2,
+                epsilon,
+            } => self.optimize_adam(
+                objective,
+                &initial_params,
+                *learning_rate,
+                *beta1,
+                *beta2,
+                *epsilon,
+            ),
+            OptimizationAlgorithm::LBFGSB {
+                max_iterations,
+                tolerance,
+            } => self.optimize_lbfgs(objective, &initial_params, *max_iterations, *tolerance),
+            OptimizationAlgorithm::NelderMead {
+                max_iterations,
+                tolerance,
+            } => self.optimize_nelder_mead(objective, &initial_params, *max_iterations, *tolerance),
+            OptimizationAlgorithm::SimulatedAnnealing {
+                initial_temperature,
+                cooling_rate,
+                min_temperature,
+            } => self.optimize_simulated_annealing(
+                objective,
+                &initial_params,
+                *initial_temperature,
+                *cooling_rate,
+                *min_temperature,
+            ),
+            OptimizationAlgorithm::BayesianOptimization {
+                acquisition_function,
+                kernel,
+                num_initial_samples,
+            } => self.optimize_bayesian(
+                objective,
+                &initial_params,
+                acquisition_function,
+                kernel,
+                *num_initial_samples,
+            ),
+            _ => Err(QuantRS2Error::InvalidInput(
+                "Algorithm not yet implemented".to_string(),
+            )),
         }?;
 
         Ok(OptimizationResult {
@@ -384,7 +420,7 @@ impl QuantumCircuitOptimizer {
             for i in 0..params.len() {
                 velocity[i] = momentum * velocity[i] - learning_rate * gradient[i];
                 params[i] += velocity[i];
-                
+
                 // Apply bounds
                 let bounds = objective.bounds();
                 params[i] = params[i].max(bounds[i].0).min(bounds[i].1);
@@ -417,7 +453,7 @@ impl QuantumCircuitOptimizer {
 
         for iteration in 0..self.config.max_evaluations {
             let t = iteration + 1;
-            
+
             // Evaluate objective
             let value = objective.evaluate(&params);
             evaluations += 1;
@@ -451,14 +487,14 @@ impl QuantumCircuitOptimizer {
             for i in 0..params.len() {
                 m[i] = beta1 * m[i] + (1.0 - beta1) * gradient[i];
                 v[i] = beta2 * v[i] + (1.0 - beta2) * gradient[i] * gradient[i];
-                
+
                 // Bias correction
                 let m_hat = m[i] / (1.0 - beta1.powi(t as i32));
                 let v_hat = v[i] / (1.0 - beta2.powi(t as i32));
-                
+
                 // Update parameters
                 params[i] -= learning_rate * m_hat / (v_hat.sqrt() + epsilon);
-                
+
                 // Apply bounds
                 let bounds = objective.bounds();
                 params[i] = params[i].max(bounds[i].0).min(bounds[i].1);
@@ -502,12 +538,17 @@ impl QuantumCircuitOptimizer {
         simplex.push(initial_params.to_vec());
         for i in 0..n {
             let mut vertex = initial_params.to_vec();
-            vertex[i] += if vertex[i] != 0.0 { vertex[i] * 0.05 } else { 0.00025 };
+            vertex[i] += if vertex[i] != 0.0 {
+                vertex[i] * 0.05
+            } else {
+                0.00025
+            };
             simplex.push(vertex);
         }
 
         // Evaluate initial simplex
-        let mut values: Vec<f64> = simplex.iter()
+        let mut values: Vec<f64> = simplex
+            .iter()
             .map(|params| {
                 evaluations += 1;
                 objective.evaluate(params)
@@ -549,7 +590,7 @@ impl QuantumCircuitOptimizer {
             for j in 0..n {
                 reflected[j] = centroid[j] + alpha * (centroid[j] - simplex[worst_idx][j]);
             }
-            
+
             // Apply bounds
             let bounds = objective.bounds();
             for j in 0..n {
@@ -571,7 +612,7 @@ impl QuantumCircuitOptimizer {
                     expanded[j] = centroid[j] + gamma * (reflected[j] - centroid[j]);
                     expanded[j] = expanded[j].max(bounds[j].0).min(bounds[j].1);
                 }
-                
+
                 let expanded_value = objective.evaluate(&expanded);
                 evaluations += 1;
 
@@ -590,7 +631,7 @@ impl QuantumCircuitOptimizer {
                     contracted[j] = centroid[j] + rho * (simplex[worst_idx][j] - centroid[j]);
                     contracted[j] = contracted[j].max(bounds[j].0).min(bounds[j].1);
                 }
-                
+
                 let contracted_value = objective.evaluate(&contracted);
                 evaluations += 1;
 
@@ -602,7 +643,8 @@ impl QuantumCircuitOptimizer {
                     let sigma = 0.5;
                     for i in 1..=n {
                         for j in 0..n {
-                            simplex[i][j] = simplex[indices[0]][j] + sigma * (simplex[i][j] - simplex[indices[0]][j]);
+                            simplex[i][j] = simplex[indices[0]][j]
+                                + sigma * (simplex[i][j] - simplex[indices[0]][j]);
                             simplex[i][j] = simplex[i][j].max(bounds[j].0).min(bounds[j].1);
                         }
                         values[i] = objective.evaluate(&simplex[i]);
@@ -641,7 +683,7 @@ impl QuantumCircuitOptimizer {
     ) -> QuantRS2Result<(Vec<f64>, f64, usize, bool)> {
         use rand::Rng;
         let mut rng = rand::thread_rng();
-        
+
         let mut current_params = initial_params.to_vec();
         let mut current_value = objective.evaluate(&current_params);
         let mut best_params = current_params.clone();
@@ -661,7 +703,9 @@ impl QuantumCircuitOptimizer {
             for i in 0..neighbor_params.len() {
                 let range = bounds[i].1 - bounds[i].0;
                 let step = rng.gen_range(-0.1..0.1) * range * temperature / initial_temperature;
-                neighbor_params[i] = (neighbor_params[i] + step).max(bounds[i].0).min(bounds[i].1);
+                neighbor_params[i] = (neighbor_params[i] + step)
+                    .max(bounds[i].0)
+                    .min(bounds[i].1);
             }
 
             let neighbor_value = objective.evaluate(&neighbor_params);
@@ -691,7 +735,12 @@ impl QuantumCircuitOptimizer {
             }
         }
 
-        Ok((best_params, best_value, evaluations, temperature < min_temperature))
+        Ok((
+            best_params,
+            best_value,
+            evaluations,
+            temperature < min_temperature,
+        ))
     }
 
     /// Bayesian optimization (simplified implementation)
@@ -705,7 +754,12 @@ impl QuantumCircuitOptimizer {
     ) -> QuantRS2Result<(Vec<f64>, f64, usize, bool)> {
         // This is a simplified placeholder for Bayesian optimization
         // Real implementation would use SciRS2's Gaussian process implementation
-        self.optimize_nelder_mead(objective, initial_params, self.config.max_evaluations, self.config.tolerance)
+        self.optimize_nelder_mead(
+            objective,
+            initial_params,
+            self.config.max_evaluations,
+            self.config.tolerance,
+        )
     }
 
     /// Compute numerical gradient
@@ -720,13 +774,13 @@ impl QuantumCircuitOptimizer {
         for i in 0..params.len() {
             let mut params_plus = params.to_vec();
             let mut params_minus = params.to_vec();
-            
+
             params_plus[i] += epsilon;
             params_minus[i] -= epsilon;
 
             let f_plus = objective.evaluate(&params_plus);
             let f_minus = objective.evaluate(&params_minus);
-            
+
             gradient[i] = (f_plus - f_minus) / (2.0 * epsilon);
         }
 
@@ -764,7 +818,7 @@ impl QuantumCircuitOptimizer {
 
         // This is a simplified circuit building - would need actual gate implementations
         let mut circuit = Circuit::<32>::new();
-        
+
         // Build circuit from template using parameters
         for gate_template in &self.circuit_template.structure {
             // Apply parameters to gate and add to circuit
@@ -788,10 +842,12 @@ pub struct VQEObjective {
 impl VQEObjective {
     /// Create new VQE objective
     pub fn new(hamiltonian: SparseMatrix, circuit_template: CircuitTemplate) -> Self {
-        let bounds = circuit_template.parameters.iter()
+        let bounds = circuit_template
+            .parameters
+            .iter()
             .map(|p| (p.lower_bound, p.upper_bound))
             .collect();
-            
+
         Self {
             hamiltonian,
             circuit_template,
@@ -805,12 +861,12 @@ impl ObjectiveFunction for VQEObjective {
         // Build quantum circuit from parameters
         // Simulate circuit to get state vector
         // Compute expectation value ⟨ψ|H|ψ⟩
-        
+
         // This is a placeholder - real implementation would:
         // 1. Build circuit from template and parameters
         // 2. Simulate circuit to get final state
         // 3. Compute expectation value with Hamiltonian
-        
+
         // For now, return a simple quadratic function for testing
         parameters.iter().map(|x| x * x).sum::<f64>()
     }
@@ -845,7 +901,7 @@ impl QAOAObjective {
     ) -> Self {
         // Beta and gamma parameters for each layer
         let bounds = vec![(0.0, 2.0 * std::f64::consts::PI); 2 * num_layers];
-        
+
         Self {
             problem_hamiltonian,
             mixer_hamiltonian,
@@ -860,7 +916,7 @@ impl ObjectiveFunction for QAOAObjective {
         // Build QAOA circuit from beta and gamma parameters
         // Simulate circuit starting from |+⟩^n state
         // Compute expectation value with problem Hamiltonian
-        
+
         // Placeholder implementation
         parameters.iter().map(|x| x.sin().powi(2)).sum::<f64>()
     }
@@ -919,7 +975,7 @@ mod tests {
             }],
             num_qubits: 2,
         };
-        
+
         let objective = VQEObjective::new(hamiltonian, template);
         let value = objective.evaluate(&[0.5]);
         assert!(value >= 0.0);
@@ -929,10 +985,10 @@ mod tests {
     fn test_qaoa_objective() {
         let problem_h = SparseMatrix::identity(4);
         let mixer_h = SparseMatrix::identity(4);
-        
+
         let objective = QAOAObjective::new(problem_h, mixer_h, 2);
         assert_eq!(objective.bounds().len(), 4); // 2 parameters per layer
-        
+
         let value = objective.evaluate(&[0.5, 1.0, 1.5, 2.0]);
         assert!(value >= 0.0);
     }
@@ -955,22 +1011,22 @@ mod tests {
             }],
             num_qubits: 1,
         };
-        
+
         assert_eq!(template.parameters.len(), 1);
         assert_eq!(template.structure.len(), 1);
     }
 
     struct TestObjective;
-    
+
     impl ObjectiveFunction for TestObjective {
         fn evaluate(&self, parameters: &[f64]) -> f64 {
             parameters.iter().map(|x| (x - 1.0).powi(2)).sum()
         }
-        
+
         fn bounds(&self) -> Vec<(f64, f64)> {
             vec![(-5.0, 5.0); 2]
         }
-        
+
         fn name(&self) -> &str {
             "test"
         }
@@ -998,10 +1054,10 @@ mod tests {
             ],
             num_qubits: 1,
         };
-        
+
         let config = OptimizationConfig::default();
         let optimizer = QuantumCircuitOptimizer::new(template, config);
-        
+
         assert_eq!(optimizer.circuit_template.parameters.len(), 2);
     }
 }

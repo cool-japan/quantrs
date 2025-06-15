@@ -1,15 +1,18 @@
 //! Comprehensive test suite for unified benchmarking system
-//! 
+//!
 //! This module provides extensive test coverage for all components of the unified
 //! benchmarking system, including unit tests, integration tests, and performance tests.
 
-use quantrs2_device::prelude::*;
-use quantrs2_device::unified_benchmarking::*;
-use quantrs2_core::prelude::*;
-use std::collections::HashMap;
-use tokio;
-use std::time::Duration;
+use futures;
 use ndarray::Array1;
+use quantrs2_core::prelude::*;
+use quantrs2_device::prelude::*;
+use quantrs2_device::unified_benchmarking::config::*;
+use quantrs2_device::unified_benchmarking::types::*;
+use quantrs2_device::unified_benchmarking::*;
+use std::collections::HashMap;
+use std::time::Duration;
+use tokio;
 
 /// Test configuration helper
 fn create_test_config() -> UnifiedBenchmarkConfig {
@@ -35,9 +38,9 @@ fn create_test_config() -> UnifiedBenchmarkConfig {
         optimization: OptimizationConfig {
             enable_multi_objective: true,
             optimization_targets: vec![
-                OptimizationTarget::Performance,
-                OptimizationTarget::Cost,
-                OptimizationTarget::Fidelity,
+                OptimizationObjective::MaximizeFidelity,
+                OptimizationObjective::MinimizeCost,
+                OptimizationObjective::MaximizeReliability,
             ],
             max_iterations: 100,
             convergence_tolerance: 1e-6,
@@ -82,24 +85,35 @@ fn create_test_calibration_manager() -> CalibrationManager {
 async fn test_unified_benchmark_system_creation() {
     let config = create_test_config();
     let calibration_manager = create_test_calibration_manager();
-    
+
     let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await;
-    assert!(system.is_ok(), "Failed to create unified benchmark system: {:?}", system.err());
-    
+    assert!(
+        system.is_ok(),
+        "Failed to create unified benchmark system: {:?}",
+        system.err()
+    );
+
     let system = system.unwrap();
     assert_eq!(system.get_config().enabled_platforms.len(), 3);
-    assert!(system.get_config().statistical_analysis.enable_advanced_stats);
+    assert!(
+        system
+            .get_config()
+            .statistical_analysis
+            .enable_advanced_stats
+    );
 }
 
 #[tokio::test]
 async fn test_comprehensive_benchmark_execution() {
     let config = create_test_config();
     let calibration_manager = create_test_calibration_manager();
-    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-    
+    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+        .await
+        .unwrap();
+
     // This would normally execute real benchmarks, but for testing we'll use mock data
     let result = system.run_comprehensive_benchmark().await;
-    
+
     // In a real implementation, this would succeed with actual hardware
     // For testing purposes, we expect it might fail due to missing hardware connections
     // but the important thing is that the API is correctly structured
@@ -107,10 +121,13 @@ async fn test_comprehensive_benchmark_execution() {
         Ok(benchmark_result) => {
             assert!(!benchmark_result.platform_results.is_empty());
             assert!(benchmark_result.overall_performance.execution_time > 0.0);
-        },
+        }
         Err(e) => {
             // Expected in test environment without real hardware connections
-            println!("Benchmark execution failed as expected in test environment: {:?}", e);
+            println!(
+                "Benchmark execution failed as expected in test environment: {:?}",
+                e
+            );
         }
     }
 }
@@ -119,17 +136,32 @@ async fn test_comprehensive_benchmark_execution() {
 async fn test_statistical_analysis_engine() {
     let config = create_test_config();
     let calibration_manager = create_test_calibration_manager();
-    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-    
+    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+        .await
+        .unwrap();
+
     // Create mock benchmark data
     let mut mock_data = HashMap::new();
-    mock_data.insert("gate_fidelity".to_string(), Array1::from_vec(vec![0.995, 0.994, 0.996, 0.993, 0.997]));
-    mock_data.insert("execution_time".to_string(), Array1::from_vec(vec![100.0, 105.0, 98.0, 102.0, 99.0]));
-    mock_data.insert("error_rate".to_string(), Array1::from_vec(vec![0.005, 0.006, 0.004, 0.007, 0.003]));
-    
+    mock_data.insert(
+        "gate_fidelity".to_string(),
+        Array1::from_vec(vec![0.995, 0.994, 0.996, 0.993, 0.997]),
+    );
+    mock_data.insert(
+        "execution_time".to_string(),
+        Array1::from_vec(vec![100.0, 105.0, 98.0, 102.0, 99.0]),
+    );
+    mock_data.insert(
+        "error_rate".to_string(),
+        Array1::from_vec(vec![0.005, 0.006, 0.004, 0.007, 0.003]),
+    );
+
     let analysis_result = system.analyze_benchmark_data(&mock_data).await;
-    assert!(analysis_result.is_ok(), "Statistical analysis failed: {:?}", analysis_result.err());
-    
+    assert!(
+        analysis_result.is_ok(),
+        "Statistical analysis failed: {:?}",
+        analysis_result.err()
+    );
+
     let analysis = analysis_result.unwrap();
     assert!(analysis.basic_statistics.contains_key("gate_fidelity"));
     assert!(analysis.correlation_analysis.is_some());
@@ -140,45 +172,51 @@ async fn test_statistical_analysis_engine() {
 async fn test_optimization_engine() {
     let config = create_test_config();
     let calibration_manager = create_test_calibration_manager();
-    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-    
+    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+        .await
+        .unwrap();
+
     // Create mock optimization parameters
     let optimization_params = OptimizationParameters {
         objectives: vec![
             OptimizationObjective {
                 name: "performance".to_string(),
-                target: OptimizationTarget::Performance,
+                target: OptimizationObjective::MaximizeThroughput,
                 weight: 0.4,
                 direction: OptimizationDirection::Maximize,
             },
             OptimizationObjective {
                 name: "cost".to_string(),
-                target: OptimizationTarget::Cost,
+                target: OptimizationObjective::MinimizeCost,
                 weight: 0.3,
                 direction: OptimizationDirection::Minimize,
             },
             OptimizationObjective {
                 name: "fidelity".to_string(),
-                target: OptimizationTarget::Fidelity,
+                target: OptimizationObjective::MaximizeFidelity,
                 weight: 0.3,
                 direction: OptimizationDirection::Maximize,
             },
         ],
-        constraints: vec![
-            OptimizationConstraint {
-                name: "budget".to_string(),
-                constraint_type: ConstraintType::UpperBound,
-                value: 1000.0,
-            },
-        ],
+        constraints: vec![OptimizationConstraint {
+            name: "budget".to_string(),
+            constraint_type: ConstraintType::UpperBound,
+            value: 1000.0,
+        }],
         algorithm: OptimizationAlgorithm::MultiObjective,
         max_iterations: 50,
         convergence_tolerance: 1e-6,
     };
-    
-    let optimization_result = system.optimize_benchmark_configuration(optimization_params).await;
-    assert!(optimization_result.is_ok(), "Optimization failed: {:?}", optimization_result.err());
-    
+
+    let optimization_result = system
+        .optimize_benchmark_configuration(optimization_params)
+        .await;
+    assert!(
+        optimization_result.is_ok(),
+        "Optimization failed: {:?}",
+        optimization_result.err()
+    );
+
     let result = optimization_result.unwrap();
     assert!(!result.pareto_front.is_empty());
     assert!(result.convergence_info.converged);
@@ -189,8 +227,10 @@ async fn test_optimization_engine() {
 async fn test_report_generation() {
     let config = create_test_config();
     let calibration_manager = create_test_calibration_manager();
-    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-    
+    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+        .await
+        .unwrap();
+
     // Test custom report generation
     let report_config = CustomReportConfig {
         report_type: "performance_analysis".to_string(),
@@ -209,10 +249,14 @@ async fn test_report_generation() {
         custom_styling: None,
         export_path: Some("/tmp/test_report.html".to_string()),
     };
-    
+
     let report_result = system.generate_custom_report(report_config).await;
-    assert!(report_result.is_ok(), "Report generation failed: {:?}", report_result.err());
-    
+    assert!(
+        report_result.is_ok(),
+        "Report generation failed: {:?}",
+        report_result.err()
+    );
+
     let report = report_result.unwrap();
     assert!(!report.content.is_empty());
     assert_eq!(report.format, ReportFormat::HTML);
@@ -223,12 +267,18 @@ async fn test_report_generation() {
 async fn test_real_time_monitoring() {
     let config = create_test_config();
     let calibration_manager = create_test_calibration_manager();
-    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-    
+    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+        .await
+        .unwrap();
+
     // Start real-time monitoring
     let monitoring_result = system.start_realtime_monitoring().await;
-    assert!(monitoring_result.is_ok(), "Failed to start monitoring: {:?}", monitoring_result.err());
-    
+    assert!(
+        monitoring_result.is_ok(),
+        "Failed to start monitoring: {:?}",
+        monitoring_result.err()
+    );
+
     // Simulate some monitoring events
     let mock_event = MonitoringEvent {
         event_id: "test_event_001".to_string(),
@@ -250,18 +300,24 @@ async fn test_real_time_monitoring() {
             "Check environmental factors".to_string(),
         ],
     };
-    
+
     // In a real system, this would be processed by the monitoring engine
     let event_processing_result = system.process_monitoring_event(mock_event).await;
-    assert!(event_processing_result.is_ok(), "Failed to process monitoring event: {:?}", event_processing_result.err());
+    assert!(
+        event_processing_result.is_ok(),
+        "Failed to process monitoring event: {:?}",
+        event_processing_result.err()
+    );
 }
 
 #[tokio::test]
 async fn test_platform_comparison() {
     let config = create_test_config();
     let calibration_manager = create_test_calibration_manager();
-    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-    
+    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+        .await
+        .unwrap();
+
     let comparison_config = PlatformComparisonConfig {
         platforms: vec![
             QuantumPlatform::IBMQuantum,
@@ -285,7 +341,7 @@ async fn test_platform_comparison() {
                 complexity_level: ComplexityLevel::Basic,
             },
             BenchmarkCircuit {
-                name: "grover_3qubit".to_string(), 
+                name: "grover_3qubit".to_string(),
                 description: "3-qubit Grover algorithm".to_string(),
                 qubits: 3,
                 depth: 12,
@@ -297,19 +353,24 @@ async fn test_platform_comparison() {
         include_cost_analysis: true,
         normalization_method: NormalizationMethod::ZScore,
     };
-    
+
     let comparison_result = system.compare_platforms(comparison_config).await;
-    
+
     // In test environment, this might fail due to lack of real hardware
     // but we can verify the API structure is correct
     match comparison_result {
         Ok(comparison) => {
             assert_eq!(comparison.platforms.len(), 3);
             assert!(!comparison.metric_comparisons.is_empty());
-            assert!(comparison.rankings.contains_key(&ComparisonMetric::Performance));
-        },
+            assert!(comparison
+                .rankings
+                .contains_key(&ComparisonMetric::Performance));
+        }
         Err(e) => {
-            println!("Platform comparison failed as expected in test environment: {:?}", e);
+            println!(
+                "Platform comparison failed as expected in test environment: {:?}",
+                e
+            );
         }
     }
 }
@@ -318,8 +379,10 @@ async fn test_platform_comparison() {
 async fn test_benchmark_suite_configuration() {
     let config = create_test_config();
     let calibration_manager = create_test_calibration_manager();
-    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-    
+    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+        .await
+        .unwrap();
+
     // Create custom benchmark suite
     let custom_suite = CustomBenchmarkSuite {
         name: "quantum_machine_learning_suite".to_string(),
@@ -338,7 +401,12 @@ async fn test_benchmark_suite_configuration() {
                 description: "Quantum autoencoder benchmark".to_string(),
                 qubits: 6,
                 depth: 30,
-                gates: vec!["RY".to_string(), "RZ".to_string(), "CNOT".to_string(), "RX".to_string()],
+                gates: vec![
+                    "RY".to_string(),
+                    "RZ".to_string(),
+                    "CNOT".to_string(),
+                    "RX".to_string(),
+                ],
                 complexity_level: ComplexityLevel::Expert,
             },
         ],
@@ -379,21 +447,30 @@ async fn test_benchmark_suite_configuration() {
             },
         ],
     };
-    
+
     let suite_registration_result = system.register_custom_benchmark_suite(custom_suite).await;
-    assert!(suite_registration_result.is_ok(), "Failed to register custom benchmark suite: {:?}", suite_registration_result.err());
-    
+    assert!(
+        suite_registration_result.is_ok(),
+        "Failed to register custom benchmark suite: {:?}",
+        suite_registration_result.err()
+    );
+
     let registered_suites = system.list_available_benchmark_suites().await;
     assert!(registered_suites.is_ok());
-    assert!(registered_suites.unwrap().iter().any(|suite| suite.name == "quantum_machine_learning_suite"));
+    assert!(registered_suites
+        .unwrap()
+        .iter()
+        .any(|suite| suite.name == "quantum_machine_learning_suite"));
 }
 
 #[tokio::test]
 async fn test_cost_optimization() {
     let config = create_test_config();
     let calibration_manager = create_test_calibration_manager();
-    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-    
+    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+        .await
+        .unwrap();
+
     let cost_analysis_config = CostAnalysisConfig {
         platforms: vec![
             QuantumPlatform::IBMQuantum,
@@ -416,17 +493,20 @@ async fn test_cost_optimization() {
         }),
         include_predictive_modeling: true,
     };
-    
+
     let cost_analysis_result = system.analyze_platform_costs(cost_analysis_config).await;
-    
+
     match cost_analysis_result {
         Ok(analysis) => {
             assert!(!analysis.platform_costs.is_empty());
             assert!(analysis.total_estimated_cost > 0.0);
             assert!(!analysis.optimization_recommendations.is_empty());
-        },
+        }
         Err(e) => {
-            println!("Cost analysis failed as expected in test environment: {:?}", e);
+            println!(
+                "Cost analysis failed as expected in test environment: {:?}",
+                e
+            );
         }
     }
 }
@@ -435,8 +515,10 @@ async fn test_cost_optimization() {
 async fn test_historical_data_management() {
     let config = create_test_config();
     let calibration_manager = create_test_calibration_manager();
-    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-    
+    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+        .await
+        .unwrap();
+
     // Test historical data storage and retrieval
     let mock_historical_data = HistoricalBenchmarkData {
         timestamp: chrono::Utc::now() - chrono::Duration::days(7),
@@ -460,10 +542,14 @@ async fn test_historical_data_management() {
             metadata
         },
     };
-    
+
     let storage_result = system.store_historical_data(mock_historical_data).await;
-    assert!(storage_result.is_ok(), "Failed to store historical data: {:?}", storage_result.err());
-    
+    assert!(
+        storage_result.is_ok(),
+        "Failed to store historical data: {:?}",
+        storage_result.err()
+    );
+
     // Test historical data query
     let query_config = HistoricalDataQuery {
         platforms: vec![QuantumPlatform::IBMQuantum],
@@ -476,17 +562,23 @@ async fn test_historical_data_management() {
         aggregation_method: AggregationMethod::Average,
         include_metadata: true,
     };
-    
+
     let query_result = system.query_historical_data(query_config).await;
-    assert!(query_result.is_ok(), "Failed to query historical data: {:?}", query_result.err());
+    assert!(
+        query_result.is_ok(),
+        "Failed to query historical data: {:?}",
+        query_result.err()
+    );
 }
 
 #[tokio::test]
 async fn test_alert_system() {
     let config = create_test_config();
     let calibration_manager = create_test_calibration_manager();
-    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-    
+    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+        .await
+        .unwrap();
+
     // Configure alert rules
     let alert_rules = vec![
         AlertRule {
@@ -502,7 +594,8 @@ async fn test_alert_system() {
             actions: vec![
                 AlertAction::SendNotification {
                     channels: vec!["email".to_string(), "slack".to_string()],
-                    message_template: "Gate fidelity has dropped to {current_value} on {platform}".to_string(),
+                    message_template: "Gate fidelity has dropped to {current_value} on {platform}"
+                        .to_string(),
                 },
                 AlertAction::TriggerRecalibration {
                     affected_qubits: vec![], // Will be determined dynamically
@@ -532,10 +625,14 @@ async fn test_alert_system() {
             enabled: true,
         },
     ];
-    
+
     let alert_config_result = system.configure_alerts(alert_rules).await;
-    assert!(alert_config_result.is_ok(), "Failed to configure alerts: {:?}", alert_config_result.err());
-    
+    assert!(
+        alert_config_result.is_ok(),
+        "Failed to configure alerts: {:?}",
+        alert_config_result.err()
+    );
+
     // Test alert triggering
     let mock_metric_update = MetricUpdate {
         platform: QuantumPlatform::IBMQuantum,
@@ -544,17 +641,23 @@ async fn test_alert_system() {
         timestamp: chrono::Utc::now(),
         metadata: HashMap::new(),
     };
-    
+
     let alert_processing_result = system.process_metric_update(mock_metric_update).await;
-    assert!(alert_processing_result.is_ok(), "Failed to process metric update: {:?}", alert_processing_result.err());
+    assert!(
+        alert_processing_result.is_ok(),
+        "Failed to process metric update: {:?}",
+        alert_processing_result.err()
+    );
 }
 
 #[tokio::test]
 async fn test_performance_baseline_management() {
     let config = create_test_config();
     let calibration_manager = create_test_calibration_manager();
-    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-    
+    let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+        .await
+        .unwrap();
+
     // Create performance baselines
     let baseline_config = BaselineConfig {
         name: "production_baseline_v1".to_string(),
@@ -580,19 +683,29 @@ async fn test_performance_baseline_management() {
             "no_critical_failures".to_string(),
         ],
     };
-    
+
     let baseline_creation_result = system.create_performance_baseline(baseline_config).await;
-    assert!(baseline_creation_result.is_ok(), "Failed to create performance baseline: {:?}", baseline_creation_result.err());
-    
+    assert!(
+        baseline_creation_result.is_ok(),
+        "Failed to create performance baseline: {:?}",
+        baseline_creation_result.err()
+    );
+
     // Test baseline comparison
     let current_metrics = HashMap::from([
         ("gate_fidelity".to_string(), 0.992),
         ("execution_time".to_string(), 105.0),
     ]);
-    
-    let comparison_result = system.compare_against_baseline("production_baseline_v1", current_metrics).await;
-    assert!(comparison_result.is_ok(), "Failed to compare against baseline: {:?}", comparison_result.err());
-    
+
+    let comparison_result = system
+        .compare_against_baseline("production_baseline_v1", current_metrics)
+        .await;
+    assert!(
+        comparison_result.is_ok(),
+        "Failed to compare against baseline: {:?}",
+        comparison_result.err()
+    );
+
     let comparison = comparison_result.unwrap();
     assert!(!comparison.deviations.is_empty());
     assert!(comparison.overall_health_score >= 0.0 && comparison.overall_health_score <= 1.0);
@@ -606,22 +719,22 @@ mod integration_tests {
     async fn test_complete_benchmark_workflow() {
         let config = create_test_config();
         let calibration_manager = create_test_calibration_manager();
-        let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-        
+        let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+            .await
+            .unwrap();
+
         // 1. Configure custom benchmark suite
         let suite = CustomBenchmarkSuite {
             name: "integration_test_suite".to_string(),
             description: "End-to-end integration test benchmark suite".to_string(),
-            circuits: vec![
-                BenchmarkCircuit {
-                    name: "test_circuit".to_string(),
-                    description: "Simple test circuit for integration testing".to_string(),
-                    qubits: 2,
-                    depth: 3,
-                    gates: vec!["H".to_string(), "CNOT".to_string(), "RZ".to_string()],
-                    complexity_level: ComplexityLevel::Basic,
-                },
-            ],
+            circuits: vec![BenchmarkCircuit {
+                name: "test_circuit".to_string(),
+                description: "Simple test circuit for integration testing".to_string(),
+                qubits: 2,
+                depth: 3,
+                gates: vec!["H".to_string(), "CNOT".to_string(), "RZ".to_string()],
+                complexity_level: ComplexityLevel::Basic,
+            }],
             performance_targets: vec![],
             resource_requirements: ResourceRequirements {
                 min_qubits: 2,
@@ -633,13 +746,13 @@ mod integration_tests {
             },
             validation_criteria: vec![],
         };
-        
+
         let suite_result = system.register_custom_benchmark_suite(suite).await;
         assert!(suite_result.is_ok());
-        
+
         // 2. Execute benchmark (mock execution in test environment)
         // In a real scenario, this would execute on actual hardware
-        
+
         // 3. Generate comprehensive report
         let report_config = CustomReportConfig {
             report_type: "integration_test_report".to_string(),
@@ -658,10 +771,10 @@ mod integration_tests {
             custom_styling: None,
             export_path: None,
         };
-        
+
         let report_result = system.generate_custom_report(report_config).await;
         assert!(report_result.is_ok());
-        
+
         println!("Integration test workflow completed successfully");
     }
 }
@@ -675,58 +788,76 @@ mod performance_tests {
     async fn test_concurrent_benchmark_execution() {
         let config = create_test_config();
         let calibration_manager = create_test_calibration_manager();
-        let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-        
+        let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+            .await
+            .unwrap();
+
         let start_time = Instant::now();
-        
+
         // Create multiple concurrent benchmark tasks
         let mut tasks = vec![];
         for i in 0..5 {
             let system_clone = system.clone();
             let task = tokio::spawn(async move {
                 // Mock concurrent benchmark execution
-                let mock_data = HashMap::from([
-                    (format!("metric_{}", i), Array1::from_vec(vec![0.995, 0.994, 0.996])),
-                ]);
+                let mock_data = HashMap::from([(
+                    format!("metric_{}", i),
+                    Array1::from_vec(vec![0.995, 0.994, 0.996]),
+                )]);
                 system_clone.analyze_benchmark_data(&mock_data).await
             });
             tasks.push(task);
         }
-        
+
         // Wait for all tasks to complete
         let results = futures::future::join_all(tasks).await;
         let execution_time = start_time.elapsed();
-        
+
         // Verify all tasks completed successfully
         for result in results {
             assert!(result.is_ok());
             assert!(result.unwrap().is_ok());
         }
-        
+
         // Performance assertion: concurrent execution should be efficient
-        assert!(execution_time < Duration::from_secs(10), "Concurrent execution took too long: {:?}", execution_time);
-        
-        println!("Concurrent benchmark execution completed in {:?}", execution_time);
+        assert!(
+            execution_time < Duration::from_secs(10),
+            "Concurrent execution took too long: {:?}",
+            execution_time
+        );
+
+        println!(
+            "Concurrent benchmark execution completed in {:?}",
+            execution_time
+        );
     }
 
     #[tokio::test]
     async fn test_large_dataset_statistical_analysis() {
         let config = create_test_config();
         let calibration_manager = create_test_calibration_manager();
-        let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-        
+        let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+            .await
+            .unwrap();
+
         // Create large mock dataset
-        let large_dataset = (0..10000).map(|i| 0.995 + (i as f64 % 100.0) * 0.0001).collect::<Vec<f64>>();
+        let large_dataset = (0..10000)
+            .map(|i| 0.995 + (i as f64 % 100.0) * 0.0001)
+            .collect::<Vec<f64>>();
         let mut mock_data = HashMap::new();
         mock_data.insert("large_dataset".to_string(), Array1::from_vec(large_dataset));
-        
+
         let start_time = Instant::now();
         let analysis_result = system.analyze_benchmark_data(&mock_data).await;
         let analysis_time = start_time.elapsed();
-        
+
         assert!(analysis_result.is_ok(), "Large dataset analysis failed");
-        assert!(analysis_time < Duration::from_secs(30), "Large dataset analysis took too long: {:?}", analysis_time);
-        
+        assert!(
+            analysis_time < Duration::from_secs(30),
+            "Large dataset analysis took too long: {:?}",
+            analysis_time
+        );
+
         println!("Large dataset analysis completed in {:?}", analysis_time);
     }
 }
@@ -739,13 +870,14 @@ mod error_handling_tests {
     async fn test_invalid_configuration_handling() {
         let mut invalid_config = create_test_config();
         invalid_config.timeout = Duration::from_secs(0); // Invalid timeout
-        
+
         let calibration_manager = create_test_calibration_manager();
-        let system_result = UnifiedQuantumBenchmarkSystem::new(invalid_config, calibration_manager).await;
-        
+        let system_result =
+            UnifiedQuantumBenchmarkSystem::new(invalid_config, calibration_manager).await;
+
         // Should handle invalid configuration gracefully
         match system_result {
-            Ok(_) => {}, // System corrected the configuration
+            Ok(_) => {} // System corrected the configuration
             Err(e) => println!("Invalid configuration properly rejected: {:?}", e),
         }
     }
@@ -754,11 +886,13 @@ mod error_handling_tests {
     async fn test_empty_dataset_analysis() {
         let config = create_test_config();
         let calibration_manager = create_test_calibration_manager();
-        let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-        
+        let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+            .await
+            .unwrap();
+
         let empty_data = HashMap::new();
         let analysis_result = system.analyze_benchmark_data(&empty_data).await;
-        
+
         // Should handle empty dataset gracefully
         assert!(analysis_result.is_err() || analysis_result.unwrap().basic_statistics.is_empty());
     }
@@ -767,8 +901,10 @@ mod error_handling_tests {
     async fn test_network_failure_resilience() {
         let config = create_test_config();
         let calibration_manager = create_test_calibration_manager();
-        let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager).await.unwrap();
-        
+        let system = UnifiedQuantumBenchmarkSystem::new(config, calibration_manager)
+            .await
+            .unwrap();
+
         // Test resilience to network failures (simulated by attempting operations that would fail)
         let comparison_config = PlatformComparisonConfig {
             platforms: vec![QuantumPlatform::IBMQuantum],
@@ -778,13 +914,16 @@ mod error_handling_tests {
             include_cost_analysis: false,
             normalization_method: NormalizationMethod::MinMax,
         };
-        
+
         let comparison_result = system.compare_platforms(comparison_config).await;
-        
+
         // Should handle network failures gracefully
         match comparison_result {
             Ok(_) => println!("Platform comparison succeeded unexpectedly"),
-            Err(e) => println!("Platform comparison failed as expected due to network issues: {:?}", e),
+            Err(e) => println!(
+                "Platform comparison failed as expected due to network issues: {:?}",
+                e
+            ),
         }
     }
 }

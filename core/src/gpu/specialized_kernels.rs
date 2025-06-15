@@ -4,11 +4,7 @@
 //! including holonomic gates, post-quantum cryptography gates, and quantum ML gates.
 //! It leverages tensor cores, optimized memory access patterns, and gate fusion for maximum performance.
 
-use crate::{
-    error::QuantRS2Result,
-    gate::GateOp,
-    qubit::QubitId,
-};
+use crate::{error::QuantRS2Result, gate::GateOp, qubit::QubitId};
 use num_complex::Complex64;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -30,12 +26,15 @@ pub struct SpecializedGpuKernels {
 /// CUDA context specialized for quantum gates
 pub struct CudaSpecializedContext {
     /// Device compute capability
+    #[allow(dead_code)]
     compute_capability: (i32, i32),
     /// Tensor core availability
     has_tensor_cores: bool,
     /// Maximum shared memory per block
+    #[allow(dead_code)]
     max_shared_memory: usize,
     /// Warp size
+    #[allow(dead_code)]
     warp_size: usize,
     /// Compiled kernels
     kernels: HashMap<String, CompiledKernel>,
@@ -44,18 +43,23 @@ pub struct CudaSpecializedContext {
 /// WebGPU context for cross-platform support
 pub struct WebGpuSpecializedContext {
     /// Device limits
+    #[allow(dead_code)]
     device_limits: WebGpuLimits,
     /// Compiled shaders
+    #[allow(dead_code)]
     shaders: HashMap<String, CompiledShader>,
     /// Buffer pools for efficient memory management
+    #[allow(dead_code)]
     buffer_pools: HashMap<String, BufferPool>,
 }
 
 /// Kernel cache for compiled GPU kernels
 pub struct KernelCache {
     /// Cached CUDA kernels
+    #[allow(dead_code)]
     cuda_kernels: HashMap<String, CachedCudaKernel>,
     /// Cached WebGPU shaders
+    #[allow(dead_code)]
     webgpu_shaders: HashMap<String, CachedWebGpuShader>,
     /// Cache hit statistics
     cache_stats: CacheStatistics,
@@ -70,6 +74,7 @@ pub struct PerformanceStats {
     /// Tensor core utilization
     tensor_core_utilization: f64,
     /// Cache hit rates
+    #[allow(dead_code)]
     cache_hit_rates: HashMap<String, f64>,
 }
 
@@ -108,7 +113,7 @@ impl SpecializedGpuKernels {
     pub fn new(config: OptimizationConfig) -> QuantRS2Result<Self> {
         let cuda_context = Self::initialize_cuda_context(&config)?;
         let webgpu_context = Self::initialize_webgpu_context(&config)?;
-        
+
         Ok(Self {
             cuda_context,
             webgpu_context,
@@ -119,7 +124,9 @@ impl SpecializedGpuKernels {
     }
 
     /// Initialize CUDA context with specialized kernel compilation
-    fn initialize_cuda_context(config: &OptimizationConfig) -> QuantRS2Result<Option<CudaSpecializedContext>> {
+    fn initialize_cuda_context(
+        config: &OptimizationConfig,
+    ) -> QuantRS2Result<Option<CudaSpecializedContext>> {
         // Check if CUDA is available
         if !Self::is_cuda_available() {
             return Ok(None);
@@ -130,13 +137,28 @@ impl SpecializedGpuKernels {
         let device_props = Self::get_device_properties()?;
 
         let mut kernels = HashMap::new();
-        
+
         // Compile specialized gate kernels
-        kernels.insert("holonomic_gate".to_string(), Self::compile_holonomic_kernel(config)?);
-        kernels.insert("post_quantum_hash".to_string(), Self::compile_post_quantum_kernel(config)?);
-        kernels.insert("quantum_ml_attention".to_string(), Self::compile_qml_attention_kernel(config)?);
-        kernels.insert("fused_rotation_sequence".to_string(), Self::compile_fused_rotation_kernel(config)?);
-        kernels.insert("tensor_core_matmul".to_string(), Self::compile_tensor_core_kernel(config)?);
+        kernels.insert(
+            "holonomic_gate".to_string(),
+            Self::compile_holonomic_kernel(config)?,
+        );
+        kernels.insert(
+            "post_quantum_hash".to_string(),
+            Self::compile_post_quantum_kernel(config)?,
+        );
+        kernels.insert(
+            "quantum_ml_attention".to_string(),
+            Self::compile_qml_attention_kernel(config)?,
+        );
+        kernels.insert(
+            "fused_rotation_sequence".to_string(),
+            Self::compile_fused_rotation_kernel(config)?,
+        );
+        kernels.insert(
+            "tensor_core_matmul".to_string(),
+            Self::compile_tensor_core_kernel(config)?,
+        );
 
         Ok(Some(CudaSpecializedContext {
             compute_capability,
@@ -148,15 +170,26 @@ impl SpecializedGpuKernels {
     }
 
     /// Initialize WebGPU context with cross-platform shaders
-    fn initialize_webgpu_context(config: &OptimizationConfig) -> QuantRS2Result<Option<WebGpuSpecializedContext>> {
+    fn initialize_webgpu_context(
+        config: &OptimizationConfig,
+    ) -> QuantRS2Result<Option<WebGpuSpecializedContext>> {
         let device_limits = Self::get_webgpu_limits()?;
         let mut shaders = HashMap::new();
         let mut buffer_pools = HashMap::new();
 
         // Compile WebGPU shaders for specialized gates
-        shaders.insert("holonomic_gate".to_string(), Self::compile_holonomic_shader(config)?);
-        shaders.insert("post_quantum_hash".to_string(), Self::compile_post_quantum_shader(config)?);
-        shaders.insert("quantum_ml_attention".to_string(), Self::compile_qml_attention_shader(config)?);
+        shaders.insert(
+            "holonomic_gate".to_string(),
+            Self::compile_holonomic_shader(config)?,
+        );
+        shaders.insert(
+            "post_quantum_hash".to_string(),
+            Self::compile_post_quantum_shader(config)?,
+        );
+        shaders.insert(
+            "quantum_ml_attention".to_string(),
+            Self::compile_qml_attention_shader(config)?,
+        );
 
         // Initialize buffer pools
         buffer_pools.insert("state_vectors".to_string(), BufferPool::new(1024 * 1024)); // 1MB initial
@@ -177,7 +210,7 @@ impl SpecializedGpuKernels {
         holonomy_matrix: &[Complex64],
         target_qubits: &[QubitId],
     ) -> QuantRS2Result<()> {
-        let num_qubits = target_qubits.len();
+        let _num_qubits = target_qubits.len();
         let state_size = state.len();
 
         // Choose optimal execution path based on size and hardware
@@ -202,10 +235,12 @@ impl SpecializedGpuKernels {
         let kernel = cuda_ctx.kernels.get("holonomic_gate").unwrap();
 
         // Optimize block and grid dimensions
-        let (block_dim, grid_dim) = self.calculate_optimal_dimensions(state.len(), target_qubits.len())?;
+        let (block_dim, grid_dim) =
+            self.calculate_optimal_dimensions(state.len(), target_qubits.len())?;
 
         // Use tensor cores if available and matrix size is suitable
-        if cuda_ctx.has_tensor_cores && self.config.use_tensor_cores && holonomy_matrix.len() >= 256 {
+        if cuda_ctx.has_tensor_cores && self.config.use_tensor_cores && holonomy_matrix.len() >= 256
+        {
             self.launch_tensor_core_holonomic_kernel(
                 kernel,
                 state,
@@ -261,16 +296,28 @@ impl SpecializedGpuKernels {
         num_heads: usize,
     ) -> QuantRS2Result<()> {
         let attention_dim = state.len() / num_heads;
-        
+
         if self.cuda_context.is_some() && attention_dim >= 64 {
             // Use CUDA for large attention computations
             self.apply_qml_attention_cuda(state, query_params, key_params, value_params, num_heads)
         } else if self.webgpu_context.is_some() {
             // Use WebGPU for medium-sized computations
-            self.apply_qml_attention_webgpu(state, query_params, key_params, value_params, num_heads)
+            self.apply_qml_attention_webgpu(
+                state,
+                query_params,
+                key_params,
+                value_params,
+                num_heads,
+            )
         } else {
             // CPU fallback with vectorization
-            self.apply_qml_attention_cpu_vectorized(state, query_params, key_params, value_params, num_heads)
+            self.apply_qml_attention_cpu_vectorized(
+                state,
+                query_params,
+                key_params,
+                value_params,
+                num_heads,
+            )
         }
     }
 
@@ -290,7 +337,7 @@ impl SpecializedGpuKernels {
 
         // Analyze gates for fusion opportunities
         let fusion_chains = self.analyze_gate_fusion_opportunities(gates)?;
-        
+
         for chain in fusion_chains {
             match chain.fusion_type {
                 FusionType::RotationSequence => {
@@ -320,12 +367,12 @@ impl SpecializedGpuKernels {
         state_size: usize,
         num_target_qubits: usize,
     ) -> QuantRS2Result<(u32, u32)> {
-        let cuda_ctx = self.cuda_context.as_ref().unwrap();
-        
+        let _cuda_ctx = self.cuda_context.as_ref().unwrap();
+
         // Calculate work per thread
         let work_per_thread = 1 << num_target_qubits; // 2^num_target_qubits
         let total_work_items = state_size / work_per_thread;
-        
+
         // Optimize for memory coalescing
         let threads_per_block = if total_work_items >= 1024 {
             1024
@@ -336,16 +383,17 @@ impl SpecializedGpuKernels {
         } else {
             128.max(32) // Minimum warp size
         };
-        
+
         let blocks = (total_work_items + threads_per_block - 1) / threads_per_block;
-        
+
         Ok((threads_per_block as u32, blocks as u32))
     }
 
     /// Update performance statistics
     fn update_performance_stats(&self, kernel_name: &str, execution_time: f64) {
         let mut stats = self.performance_stats.lock().unwrap();
-        stats.kernel_times
+        stats
+            .kernel_times
             .entry(kernel_name.to_string())
             .or_insert_with(Vec::new)
             .push(execution_time);
@@ -355,74 +403,225 @@ impl SpecializedGpuKernels {
     pub fn get_performance_report(&self) -> PerformanceReport {
         let stats = self.performance_stats.lock().unwrap();
         let cache = self.kernel_cache.lock().unwrap();
-        
+
         PerformanceReport {
-            average_kernel_times: stats.kernel_times
+            average_kernel_times: stats
+                .kernel_times
                 .iter()
                 .map(|(k, v)| (k.clone(), v.iter().sum::<f64>() / v.len() as f64))
                 .collect(),
             cache_hit_rate: cache.cache_stats.overall_hit_rate(),
             tensor_core_utilization: stats.tensor_core_utilization,
-            memory_bandwidth_utilization: stats.memory_bandwidth.values().sum::<f64>() / stats.memory_bandwidth.len() as f64,
+            memory_bandwidth_utilization: stats.memory_bandwidth.values().sum::<f64>()
+                / stats.memory_bandwidth.len() as f64,
         }
     }
 
     // Placeholder implementations for specialized kernel methods
-    fn is_cuda_available() -> bool { false } // Would check actual CUDA availability
-    fn get_compute_capability() -> QuantRS2Result<(i32, i32)> { Ok((7, 5)) }
-    fn get_device_properties() -> QuantRS2Result<DeviceProperties> { 
-        Ok(DeviceProperties { max_shared_memory: 49152, warp_size: 32 })
+    fn is_cuda_available() -> bool {
+        false
+    } // Would check actual CUDA availability
+    fn get_compute_capability() -> QuantRS2Result<(i32, i32)> {
+        Ok((7, 5))
     }
-    fn get_webgpu_limits() -> QuantRS2Result<WebGpuLimits> { 
-        Ok(WebGpuLimits { max_compute_workgroup_size: 256 })
+    fn get_device_properties() -> QuantRS2Result<DeviceProperties> {
+        Ok(DeviceProperties {
+            max_shared_memory: 49152,
+            warp_size: 32,
+        })
     }
-    
+    fn get_webgpu_limits() -> QuantRS2Result<WebGpuLimits> {
+        Ok(WebGpuLimits {
+            max_compute_workgroup_size: 256,
+        })
+    }
+
     fn compile_holonomic_kernel(_config: &OptimizationConfig) -> QuantRS2Result<CompiledKernel> {
-        Ok(CompiledKernel { name: "holonomic".to_string(), last_execution_time: 0.0 })
+        Ok(CompiledKernel {
+            name: "holonomic".to_string(),
+            last_execution_time: 0.0,
+        })
     }
     fn compile_post_quantum_kernel(_config: &OptimizationConfig) -> QuantRS2Result<CompiledKernel> {
-        Ok(CompiledKernel { name: "post_quantum".to_string(), last_execution_time: 0.0 })
+        Ok(CompiledKernel {
+            name: "post_quantum".to_string(),
+            last_execution_time: 0.0,
+        })
     }
-    fn compile_qml_attention_kernel(_config: &OptimizationConfig) -> QuantRS2Result<CompiledKernel> {
-        Ok(CompiledKernel { name: "qml_attention".to_string(), last_execution_time: 0.0 })
+    fn compile_qml_attention_kernel(
+        _config: &OptimizationConfig,
+    ) -> QuantRS2Result<CompiledKernel> {
+        Ok(CompiledKernel {
+            name: "qml_attention".to_string(),
+            last_execution_time: 0.0,
+        })
     }
-    fn compile_fused_rotation_kernel(_config: &OptimizationConfig) -> QuantRS2Result<CompiledKernel> {
-        Ok(CompiledKernel { name: "fused_rotation".to_string(), last_execution_time: 0.0 })
+    fn compile_fused_rotation_kernel(
+        _config: &OptimizationConfig,
+    ) -> QuantRS2Result<CompiledKernel> {
+        Ok(CompiledKernel {
+            name: "fused_rotation".to_string(),
+            last_execution_time: 0.0,
+        })
     }
     fn compile_tensor_core_kernel(_config: &OptimizationConfig) -> QuantRS2Result<CompiledKernel> {
-        Ok(CompiledKernel { name: "tensor_core".to_string(), last_execution_time: 0.0 })
+        Ok(CompiledKernel {
+            name: "tensor_core".to_string(),
+            last_execution_time: 0.0,
+        })
     }
-    
+
     fn compile_holonomic_shader(_config: &OptimizationConfig) -> QuantRS2Result<CompiledShader> {
-        Ok(CompiledShader { name: "holonomic".to_string() })
+        Ok(CompiledShader {
+            name: "holonomic".to_string(),
+        })
     }
     fn compile_post_quantum_shader(_config: &OptimizationConfig) -> QuantRS2Result<CompiledShader> {
-        Ok(CompiledShader { name: "post_quantum".to_string() })
+        Ok(CompiledShader {
+            name: "post_quantum".to_string(),
+        })
     }
-    fn compile_qml_attention_shader(_config: &OptimizationConfig) -> QuantRS2Result<CompiledShader> {
-        Ok(CompiledShader { name: "qml_attention".to_string() })
+    fn compile_qml_attention_shader(
+        _config: &OptimizationConfig,
+    ) -> QuantRS2Result<CompiledShader> {
+        Ok(CompiledShader {
+            name: "qml_attention".to_string(),
+        })
     }
-    
+
     // Placeholder kernel launch methods
-    fn launch_tensor_core_holonomic_kernel(&self, _kernel: &CompiledKernel, _state: &mut [Complex64], _matrix: &[Complex64], _qubits: &[QubitId], _block: u32, _grid: u32) -> QuantRS2Result<()> { Ok(()) }
-    fn launch_standard_holonomic_kernel(&self, _kernel: &CompiledKernel, _state: &mut [Complex64], _matrix: &[Complex64], _qubits: &[QubitId], _block: u32, _grid: u32) -> QuantRS2Result<()> { Ok(()) }
-    
-    fn apply_holonomic_gate_webgpu(&self, _state: &mut [Complex64], _matrix: &[Complex64], _qubits: &[QubitId]) -> QuantRS2Result<()> { Ok(()) }
-    fn apply_holonomic_gate_cpu_optimized(&self, _state: &mut [Complex64], _matrix: &[Complex64], _qubits: &[QubitId]) -> QuantRS2Result<()> { Ok(()) }
-    
-    fn apply_quantum_sponge_gpu(&self, _state: &mut [Complex64], _circuit: &[Complex64], _rate: usize, _capacity: usize) -> QuantRS2Result<()> { Ok(()) }
-    fn apply_quantum_merkle_gpu(&self, _state: &mut [Complex64], _circuit: &[Complex64], _depth: usize, _arity: usize) -> QuantRS2Result<()> { Ok(()) }
-    fn apply_quantum_grover_gpu(&self, _state: &mut [Complex64], _circuit: &[Complex64], _iterations: usize) -> QuantRS2Result<()> { Ok(()) }
-    
-    fn apply_qml_attention_cuda(&self, _state: &mut [Complex64], _query: &[Complex64], _key: &[Complex64], _value: &[Complex64], _heads: usize) -> QuantRS2Result<()> { Ok(()) }
-    fn apply_qml_attention_webgpu(&self, _state: &mut [Complex64], _query: &[Complex64], _key: &[Complex64], _value: &[Complex64], _heads: usize) -> QuantRS2Result<()> { Ok(()) }
-    fn apply_qml_attention_cpu_vectorized(&self, _state: &mut [Complex64], _query: &[Complex64], _key: &[Complex64], _value: &[Complex64], _heads: usize) -> QuantRS2Result<()> { Ok(()) }
-    
-    fn apply_single_gate_optimized(&self, _state: &mut [Complex64], _gate: &dyn GateOp) -> QuantRS2Result<()> { Ok(()) }
-    fn analyze_gate_fusion_opportunities(&self, _gates: &[Box<dyn GateOp>]) -> QuantRS2Result<Vec<FusionChain>> { Ok(vec![]) }
-    fn apply_fused_rotation_sequence(&self, _state: &mut [Complex64], _gates: &[Box<dyn GateOp>]) -> QuantRS2Result<()> { Ok(()) }
-    fn apply_fused_pauli_string(&self, _state: &mut [Complex64], _gates: &[Box<dyn GateOp>]) -> QuantRS2Result<()> { Ok(()) }
-    fn apply_fused_controlled_sequence(&self, _state: &mut [Complex64], _gates: &[Box<dyn GateOp>]) -> QuantRS2Result<()> { Ok(()) }
+    fn launch_tensor_core_holonomic_kernel(
+        &self,
+        _kernel: &CompiledKernel,
+        _state: &mut [Complex64],
+        _matrix: &[Complex64],
+        _qubits: &[QubitId],
+        _block: u32,
+        _grid: u32,
+    ) -> QuantRS2Result<()> {
+        Ok(())
+    }
+    fn launch_standard_holonomic_kernel(
+        &self,
+        _kernel: &CompiledKernel,
+        _state: &mut [Complex64],
+        _matrix: &[Complex64],
+        _qubits: &[QubitId],
+        _block: u32,
+        _grid: u32,
+    ) -> QuantRS2Result<()> {
+        Ok(())
+    }
+
+    fn apply_holonomic_gate_webgpu(
+        &self,
+        _state: &mut [Complex64],
+        _matrix: &[Complex64],
+        _qubits: &[QubitId],
+    ) -> QuantRS2Result<()> {
+        Ok(())
+    }
+    fn apply_holonomic_gate_cpu_optimized(
+        &self,
+        _state: &mut [Complex64],
+        _matrix: &[Complex64],
+        _qubits: &[QubitId],
+    ) -> QuantRS2Result<()> {
+        Ok(())
+    }
+
+    fn apply_quantum_sponge_gpu(
+        &self,
+        _state: &mut [Complex64],
+        _circuit: &[Complex64],
+        _rate: usize,
+        _capacity: usize,
+    ) -> QuantRS2Result<()> {
+        Ok(())
+    }
+    fn apply_quantum_merkle_gpu(
+        &self,
+        _state: &mut [Complex64],
+        _circuit: &[Complex64],
+        _depth: usize,
+        _arity: usize,
+    ) -> QuantRS2Result<()> {
+        Ok(())
+    }
+    fn apply_quantum_grover_gpu(
+        &self,
+        _state: &mut [Complex64],
+        _circuit: &[Complex64],
+        _iterations: usize,
+    ) -> QuantRS2Result<()> {
+        Ok(())
+    }
+
+    fn apply_qml_attention_cuda(
+        &self,
+        _state: &mut [Complex64],
+        _query: &[Complex64],
+        _key: &[Complex64],
+        _value: &[Complex64],
+        _heads: usize,
+    ) -> QuantRS2Result<()> {
+        Ok(())
+    }
+    fn apply_qml_attention_webgpu(
+        &self,
+        _state: &mut [Complex64],
+        _query: &[Complex64],
+        _key: &[Complex64],
+        _value: &[Complex64],
+        _heads: usize,
+    ) -> QuantRS2Result<()> {
+        Ok(())
+    }
+    fn apply_qml_attention_cpu_vectorized(
+        &self,
+        _state: &mut [Complex64],
+        _query: &[Complex64],
+        _key: &[Complex64],
+        _value: &[Complex64],
+        _heads: usize,
+    ) -> QuantRS2Result<()> {
+        Ok(())
+    }
+
+    fn apply_single_gate_optimized(
+        &self,
+        _state: &mut [Complex64],
+        _gate: &dyn GateOp,
+    ) -> QuantRS2Result<()> {
+        Ok(())
+    }
+    fn analyze_gate_fusion_opportunities(
+        &self,
+        _gates: &[Box<dyn GateOp>],
+    ) -> QuantRS2Result<Vec<FusionChain>> {
+        Ok(vec![])
+    }
+    fn apply_fused_rotation_sequence(
+        &self,
+        _state: &mut [Complex64],
+        _gates: &[Box<dyn GateOp>],
+    ) -> QuantRS2Result<()> {
+        Ok(())
+    }
+    fn apply_fused_pauli_string(
+        &self,
+        _state: &mut [Complex64],
+        _gates: &[Box<dyn GateOp>],
+    ) -> QuantRS2Result<()> {
+        Ok(())
+    }
+    fn apply_fused_controlled_sequence(
+        &self,
+        _state: &mut [Complex64],
+        _gates: &[Box<dyn GateOp>],
+    ) -> QuantRS2Result<()> {
+        Ok(())
+    }
 }
 
 /// Supporting types and structures
@@ -517,6 +716,12 @@ impl KernelCache {
     }
 }
 
+impl Default for KernelCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PerformanceStats {
     pub fn new() -> Self {
         Self {
@@ -525,6 +730,12 @@ impl PerformanceStats {
             tensor_core_utilization: 0.0,
             cache_hit_rates: HashMap::new(),
         }
+    }
+}
+
+impl Default for PerformanceStats {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -543,12 +754,16 @@ mod tests {
     fn test_holonomic_gate_application() {
         let config = OptimizationConfig::default();
         let kernels = SpecializedGpuKernels::new(config).unwrap();
-        
+
         let mut state = vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
-        let holonomy_matrix = vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), 
-                                  Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)];
+        let holonomy_matrix = vec![
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(1.0, 0.0),
+        ];
         let target_qubits = vec![QubitId(0)];
-        
+
         let result = kernels.apply_holonomic_gate(&mut state, &holonomy_matrix, &target_qubits);
         assert!(result.is_ok());
     }
@@ -557,7 +772,7 @@ mod tests {
     fn test_performance_reporting() {
         let config = OptimizationConfig::default();
         let kernels = SpecializedGpuKernels::new(config).unwrap();
-        
+
         let report = kernels.get_performance_report();
         assert!(report.cache_hit_rate >= 0.0 && report.cache_hit_rate <= 1.0);
     }

@@ -5,25 +5,24 @@
 //! device context management.
 
 pub mod context;
+pub mod kernels;
 pub mod memory;
 pub mod streams;
-pub mod kernels;
 
 // Re-export commonly used types and structs
 #[cfg(feature = "advanced_math")]
 pub use context::{CudaContext, CudaDeviceProperties, CudaProfiler};
 #[cfg(feature = "advanced_math")]
-pub use memory::{GpuMemory, GpuMemoryPool, GpuMemoryBlock};
-pub use memory::GpuMemoryType;
-pub use streams::{StreamPriority, StreamFlags};
-#[cfg(feature = "advanced_math")]
-pub use streams::CudaStream;
-#[cfg(feature = "advanced_math")]
 pub use kernels::CudaKernel;
 pub use kernels::{
-    CudaQuantumKernels, CudaKernelConfig, CudaKernelStats,
-    OptimizationLevel, GateType,
+    CudaKernelConfig, CudaKernelStats, CudaQuantumKernels, GateType, OptimizationLevel,
 };
+pub use memory::GpuMemoryType;
+#[cfg(feature = "advanced_math")]
+pub use memory::{GpuMemory, GpuMemoryBlock, GpuMemoryPool};
+#[cfg(feature = "advanced_math")]
+pub use streams::CudaStream;
+pub use streams::{StreamFlags, StreamPriority};
 
 use crate::error::Result;
 
@@ -35,19 +34,19 @@ pub fn initialize() -> Result<()> {
         let device_count = CudaContext::get_device_count()?;
         if device_count == 0 {
             return Err(crate::error::SimulatorError::ResourceExhausted(
-                "No CUDA devices available".to_string()
+                "No CUDA devices available".to_string(),
             ));
         }
-        
+
         // Initialize default context
         let _context = CudaContext::new(0)?;
     }
-    
+
     #[cfg(not(feature = "advanced_math"))]
     {
         // CUDA not available, return success anyway
     }
-    
+
     Ok(())
 }
 
@@ -57,7 +56,7 @@ pub fn is_available() -> bool {
     {
         CudaContext::get_device_count().unwrap_or(0) > 0
     }
-    
+
     #[cfg(not(feature = "advanced_math"))]
     {
         false
@@ -70,7 +69,7 @@ pub fn get_device_count() -> Result<i32> {
     {
         CudaContext::get_device_count()
     }
-    
+
     #[cfg(not(feature = "advanced_math"))]
     {
         Ok(0)
@@ -87,7 +86,7 @@ pub fn get_device_properties(device_id: i32) -> Result<CudaDeviceProperties> {
 #[cfg(not(feature = "advanced_math"))]
 pub fn get_device_properties(_device_id: i32) -> Result<()> {
     Err(crate::error::SimulatorError::UnsupportedOperation(
-        "CUDA not available".to_string()
+        "CUDA not available".to_string(),
     ))
 }
 

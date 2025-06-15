@@ -6,7 +6,7 @@
 //! with quantum advantages in memory capacity and computational complexity.
 
 use crate::error::Result;
-use ndarray::{Array1, Array2, Array3, ArrayD, Axis, s};
+use ndarray::{s, Array1, Array2, Array3, ArrayD, Axis};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -339,11 +339,11 @@ pub struct QuantumReservoirComputer {
 #[derive(Debug, Clone)]
 pub struct QuantumReservoir {
     num_qubits: usize,
-    current_state: Array1<f64>, // Quantum state vector
-    hamiltonian: Array2<f64>,   // Reservoir Hamiltonian
+    current_state: Array1<f64>,      // Quantum state vector
+    hamiltonian: Array2<f64>,        // Reservoir Hamiltonian
     evolution_operator: Array2<f64>, // Time evolution operator
-    coupling_matrix: Array2<f64>, // Inter-qubit couplings
-    random_fields: Array1<f64>,  // Random magnetic fields
+    coupling_matrix: Array2<f64>,    // Inter-qubit couplings
+    random_fields: Array1<f64>,      // Random magnetic fields
 }
 
 /// Input encoder for quantum states
@@ -416,36 +416,40 @@ impl QuantumReservoirComputer {
         let sequence_length = input_sequence.nrows();
         let feature_dim = input_sequence.ncols();
         let num_observables = self.config.readout_config.observables.len();
-        
+
         let mut reservoir_outputs = Array2::zeros((sequence_length, num_observables));
-        
+
         // Reset reservoir state
         self.reservoir.reset_state()?;
-        
+
         for t in 0..sequence_length {
             let input = input_sequence.row(t);
-            
+
             // Encode input into quantum state
             let encoded_input = self.input_encoder.encode(&input.to_owned())?;
-            
+
             // Inject input into reservoir
             self.reservoir.inject_input(&encoded_input)?;
-            
+
             // Evolve reservoir
-            self.reservoir.evolve_dynamics(self.config.reservoir_dynamics.evolution_time)?;
-            
+            self.reservoir
+                .evolve_dynamics(self.config.reservoir_dynamics.evolution_time)?;
+
             // Measure observables
-            let measurements = self.reservoir.measure_observables(&self.config.readout_config.observables)?;
-            
+            let measurements = self
+                .reservoir
+                .measure_observables(&self.config.readout_config.observables)?;
+
             // Store measurements
             for (i, &measurement) in measurements.iter().enumerate() {
                 reservoir_outputs[[t, i]] = measurement;
             }
-            
+
             // Store reservoir state for analysis
-            self.reservoir_states.push(self.reservoir.current_state.clone());
+            self.reservoir_states
+                .push(self.reservoir.current_state.clone());
         }
-        
+
         Ok(reservoir_outputs)
     }
 
@@ -453,40 +457,44 @@ impl QuantumReservoirComputer {
     pub fn train(&mut self, training_data: &[(Array2<f64>, Array2<f64>)]) -> Result<()> {
         let num_epochs = self.config.training_config.epochs;
         let washout = self.config.training_config.washout_period;
-        
+
         // Collect all reservoir states and targets
         let mut all_states = Vec::new();
         let mut all_targets = Vec::new();
-        
+
         for (input_sequence, target_sequence) in training_data {
             let reservoir_output = self.process_sequence(input_sequence)?;
-            
+
             // Skip washout period
             for t in washout..reservoir_output.nrows() {
                 all_states.push(reservoir_output.row(t).to_owned());
                 all_targets.push(target_sequence.row(t).to_owned());
             }
         }
-        
+
         // Convert to arrays
         let states_matrix = Array2::from_shape_vec(
             (all_states.len(), all_states[0].len()),
-            all_states.into_iter().flatten().collect()
+            all_states.into_iter().flatten().collect(),
         )?;
-        
+
         let targets_matrix = Array2::from_shape_vec(
             (all_targets.len(), all_targets[0].len()),
-            all_targets.into_iter().flatten().collect()
+            all_targets.into_iter().flatten().collect(),
         )?;
-        
+
         // Train readout layer
-        self.readout_layer.train(&states_matrix, &targets_matrix, &self.config.training_config)?;
-        
+        self.readout_layer.train(
+            &states_matrix,
+            &targets_matrix,
+            &self.config.training_config,
+        )?;
+
         // Record training metrics
         for epoch in 0..num_epochs {
             let training_loss = self.evaluate_loss(&states_matrix, &targets_matrix)?;
             let training_accuracy = self.evaluate_accuracy(&states_matrix, &targets_matrix)?;
-            
+
             let metrics = TrainingMetrics {
                 epoch,
                 training_loss,
@@ -496,15 +504,17 @@ impl QuantumReservoirComputer {
                 reservoir_capacity: self.compute_reservoir_capacity()?,
                 memory_function: self.compute_memory_function()?,
             };
-            
+
             self.training_history.push(metrics);
-            
+
             if epoch % 10 == 0 {
-                println!("Epoch {}: Loss = {:.6}, Accuracy = {:.4}", 
-                         epoch, training_loss, training_accuracy);
+                println!(
+                    "Epoch {}: Loss = {:.6}, Accuracy = {:.4}",
+                    epoch, training_loss, training_accuracy
+                );
             }
         }
-        
+
         Ok(())
     }
 
@@ -517,25 +527,31 @@ impl QuantumReservoirComputer {
     /// Evaluate loss on given data
     fn evaluate_loss(&self, states: &Array2<f64>, targets: &Array2<f64>) -> Result<f64> {
         let predictions = self.readout_layer.predict(states)?;
-        let mse = predictions.iter()
+        let mse = predictions
+            .iter()
             .zip(targets.iter())
             .map(|(p, t)| (p - t).powi(2))
-            .sum::<f64>() / predictions.len() as f64;
+            .sum::<f64>()
+            / predictions.len() as f64;
         Ok(mse)
     }
 
     /// Evaluate accuracy on given data
     fn evaluate_accuracy(&self, states: &Array2<f64>, targets: &Array2<f64>) -> Result<f64> {
         let predictions = self.readout_layer.predict(states)?;
-        
+
         // For regression tasks, use R² coefficient
         let target_mean = targets.mean().unwrap();
-        let ss_tot = targets.iter().map(|t| (t - target_mean).powi(2)).sum::<f64>();
-        let ss_res = predictions.iter()
+        let ss_tot = targets
+            .iter()
+            .map(|t| (t - target_mean).powi(2))
+            .sum::<f64>();
+        let ss_res = predictions
+            .iter()
             .zip(targets.iter())
             .map(|(p, t)| (t - p).powi(2))
             .sum::<f64>();
-        
+
         let r_squared = 1.0 - (ss_res / ss_tot);
         Ok(r_squared.max(0.0))
     }
@@ -546,17 +562,18 @@ impl QuantumReservoirComputer {
         if self.reservoir_states.is_empty() {
             return Ok(0.0);
         }
-        
+
         let num_states = self.reservoir_states.len();
         let state_dim = self.reservoir_states[0].len();
-        
+
         // Compute pairwise distances between states
         let mut total_distance = 0.0;
         let mut count = 0;
-        
+
         for i in 0..num_states {
             for j in i + 1..num_states {
-                let distance = self.reservoir_states[i].iter()
+                let distance = self.reservoir_states[i]
+                    .iter()
                     .zip(self.reservoir_states[j].iter())
                     .map(|(a, b)| (a - b).powi(2))
                     .sum::<f64>()
@@ -565,10 +582,14 @@ impl QuantumReservoirComputer {
                 count += 1;
             }
         }
-        
-        let average_distance = if count > 0 { total_distance / count as f64 } else { 0.0 };
+
+        let average_distance = if count > 0 {
+            total_distance / count as f64
+        } else {
+            0.0
+        };
         let capacity = average_distance / (state_dim as f64).sqrt();
-        
+
         Ok(capacity)
     }
 
@@ -578,32 +599,37 @@ impl QuantumReservoirComputer {
         if self.reservoir_states.len() < 2 {
             return Ok(0.0);
         }
-        
+
         let mut autocorrelations = Vec::new();
-        let max_lag = self.config.reservoir_dynamics.memory_length.min(self.reservoir_states.len() / 2);
-        
+        let max_lag = self
+            .config
+            .reservoir_dynamics
+            .memory_length
+            .min(self.reservoir_states.len() / 2);
+
         for lag in 1..=max_lag {
             let mut correlation = 0.0;
             let mut count = 0;
-            
+
             for t in lag..self.reservoir_states.len() {
                 let state_t = &self.reservoir_states[t];
                 let state_t_lag = &self.reservoir_states[t - lag];
-                
-                let dot_product = state_t.iter()
+
+                let dot_product = state_t
+                    .iter()
                     .zip(state_t_lag.iter())
                     .map(|(a, b)| a * b)
                     .sum::<f64>();
-                
+
                 correlation += dot_product;
                 count += 1;
             }
-            
+
             if count > 0 {
                 autocorrelations.push(correlation / count as f64);
             }
         }
-        
+
         // Memory function as the sum of autocorrelations
         let memory_function = autocorrelations.iter().sum::<f64>().abs();
         Ok(memory_function)
@@ -624,7 +650,7 @@ impl QuantumReservoirComputer {
         let spectral_radius = self.reservoir.compute_spectral_radius()?;
         let lyapunov_exponent = self.reservoir.compute_lyapunov_exponent()?;
         let entanglement_measure = self.reservoir.compute_entanglement()?;
-        
+
         Ok(DynamicsAnalysis {
             spectral_radius,
             lyapunov_exponent,
@@ -640,20 +666,26 @@ impl QuantumReservoir {
     pub fn new(config: &QRCConfig) -> Result<Self> {
         let num_qubits = config.reservoir_qubits;
         let state_dim = 1 << num_qubits;
-        
+
         // Initialize in |0...0⟩ state
         let mut current_state = Array1::zeros(state_dim);
         current_state[0] = 1.0;
-        
+
         // Build Hamiltonian
         let hamiltonian = Self::build_hamiltonian(config)?;
-        
+
         // Compute evolution operator
-        let evolution_operator = Self::compute_evolution_operator(&hamiltonian, config.reservoir_dynamics.evolution_time)?;
-        
+        let evolution_operator = Self::compute_evolution_operator(
+            &hamiltonian,
+            config.reservoir_dynamics.evolution_time,
+        )?;
+
         // Generate coupling matrix
-        let coupling_matrix = Self::generate_coupling_matrix(num_qubits, config.reservoir_dynamics.coupling_strength)?;
-        
+        let coupling_matrix = Self::generate_coupling_matrix(
+            num_qubits,
+            config.reservoir_dynamics.coupling_strength,
+        )?;
+
         // Generate random fields
         let random_fields = Array1::from_shape_fn(num_qubits, |_| {
             if config.reservoir_dynamics.random_interactions {
@@ -662,7 +694,7 @@ impl QuantumReservoir {
                 0.0
             }
         });
-        
+
         Ok(Self {
             num_qubits,
             current_state,
@@ -678,22 +710,26 @@ impl QuantumReservoir {
         let num_qubits = config.reservoir_qubits;
         let dim = 1 << num_qubits;
         let mut hamiltonian = Array2::zeros((dim, dim));
-        
+
         match &config.reservoir_dynamics.hamiltonian_type {
             HamiltonianType::TransverseFieldIsing => {
                 // H = -J∑⟨i,j⟩ZᵢZⱼ - h∑ᵢXᵢ
                 let coupling = config.reservoir_dynamics.coupling_strength;
                 let field = config.reservoir_dynamics.external_field;
-                
+
                 // Nearest-neighbor ZZ interactions
                 for i in 0..num_qubits - 1 {
                     for state in 0..dim {
                         let zi = if (state >> i) & 1 == 0 { 1.0 } else { -1.0 };
-                        let zj = if (state >> (i + 1)) & 1 == 0 { 1.0 } else { -1.0 };
+                        let zj = if (state >> (i + 1)) & 1 == 0 {
+                            1.0
+                        } else {
+                            -1.0
+                        };
                         hamiltonian[[state, state]] -= coupling * zi * zj;
                     }
                 }
-                
+
                 // Transverse field (X terms)
                 for i in 0..num_qubits {
                     for state in 0..dim {
@@ -705,20 +741,24 @@ impl QuantumReservoir {
             HamiltonianType::Heisenberg => {
                 // H = J∑⟨i,j⟩(XᵢXⱼ + YᵢYⱼ + ZᵢZⱼ)
                 let coupling = config.reservoir_dynamics.coupling_strength;
-                
+
                 for i in 0..num_qubits - 1 {
                     // ZZ terms
                     for state in 0..dim {
                         let zi = if (state >> i) & 1 == 0 { 1.0 } else { -1.0 };
-                        let zj = if (state >> (i + 1)) & 1 == 0 { 1.0 } else { -1.0 };
+                        let zj = if (state >> (i + 1)) & 1 == 0 {
+                            1.0
+                        } else {
+                            -1.0
+                        };
                         hamiltonian[[state, state]] += coupling * zi * zj;
                     }
-                    
+
                     // XX + YY terms (simplified as combined flip-flip terms)
                     for state in 0..dim {
                         let bit_i = (state >> i) & 1;
                         let bit_j = (state >> (i + 1)) & 1;
-                        
+
                         if bit_i != bit_j {
                             let flipped_state = state ^ (1 << i) ^ (1 << (i + 1));
                             hamiltonian[[state, flipped_state]] += coupling;
@@ -732,7 +772,7 @@ impl QuantumReservoir {
                 ));
             }
         }
-        
+
         Ok(hamiltonian)
     }
 
@@ -741,7 +781,7 @@ impl QuantumReservoir {
         // Simplified evolution: U = exp(-iHt) ≈ I - iHt (first-order approximation)
         let dim = hamiltonian.nrows();
         let mut evolution_op = Array2::eye(dim);
-        
+
         for i in 0..dim {
             for j in 0..dim {
                 if i != j {
@@ -751,31 +791,32 @@ impl QuantumReservoir {
                 }
             }
         }
-        
+
         Ok(evolution_op)
     }
 
     /// Generate coupling matrix
     fn generate_coupling_matrix(num_qubits: usize, coupling_strength: f64) -> Result<Array2<f64>> {
         let mut coupling_matrix = Array2::zeros((num_qubits, num_qubits));
-        
+
         // Nearest-neighbor coupling
         for i in 0..num_qubits - 1 {
             coupling_matrix[[i, i + 1]] = coupling_strength;
             coupling_matrix[[i + 1, i]] = coupling_strength;
         }
-        
+
         // Add some random long-range couplings
         for i in 0..num_qubits {
             for j in i + 2..num_qubits {
-                if fastrand::f64() < 0.1 { // 10% chance of long-range coupling
+                if fastrand::f64() < 0.1 {
+                    // 10% chance of long-range coupling
                     let strength = coupling_strength * 0.1;
                     coupling_matrix[[i, j]] = strength;
                     coupling_matrix[[j, i]] = strength;
                 }
             }
         }
-        
+
         Ok(coupling_matrix)
     }
 
@@ -791,19 +832,19 @@ impl QuantumReservoir {
     pub fn inject_input(&mut self, encoded_input: &Array1<f64>) -> Result<()> {
         // Simple input injection: add to the current state (with normalization)
         let input_strength = 0.1; // Configurable parameter
-        
+
         for (i, &input_val) in encoded_input.iter().enumerate() {
             if i < self.current_state.len() {
                 self.current_state[i] += input_strength * input_val;
             }
         }
-        
+
         // Normalize the state
         let norm = self.current_state.iter().map(|x| x * x).sum::<f64>().sqrt();
         if norm > 1e-10 {
             self.current_state /= norm;
         }
-        
+
         Ok(())
     }
 
@@ -811,7 +852,7 @@ impl QuantumReservoir {
     pub fn evolve_dynamics(&mut self, evolution_time: f64) -> Result<()> {
         // Apply evolution operator
         let evolved_state = self.evolution_operator.dot(&self.current_state);
-        
+
         // Apply random noise if configured
         let mut noisy_state = evolved_state;
         for i in 0..self.num_qubits {
@@ -822,13 +863,13 @@ impl QuantumReservoir {
                 }
             }
         }
-        
+
         // Normalize
         let norm = noisy_state.iter().map(|x| x * x).sum::<f64>().sqrt();
         if norm > 1e-10 {
             noisy_state /= norm;
         }
-        
+
         self.current_state = noisy_state;
         Ok(())
     }
@@ -836,18 +877,12 @@ impl QuantumReservoir {
     /// Measure observables
     pub fn measure_observables(&self, observables: &[Observable]) -> Result<Array1<f64>> {
         let mut measurements = Array1::zeros(observables.len());
-        
+
         for (i, observable) in observables.iter().enumerate() {
             measurements[i] = match observable {
-                Observable::PauliZ(qubit) => {
-                    self.measure_pauli_z(*qubit)?
-                }
-                Observable::PauliX(qubit) => {
-                    self.measure_pauli_x(*qubit)?
-                }
-                Observable::PauliY(qubit) => {
-                    self.measure_pauli_y(*qubit)?
-                }
+                Observable::PauliZ(qubit) => self.measure_pauli_z(*qubit)?,
+                Observable::PauliX(qubit) => self.measure_pauli_x(*qubit)?,
+                Observable::PauliY(qubit) => self.measure_pauli_y(*qubit)?,
                 Observable::Correlation(qubit1, qubit2) => {
                     self.measure_correlation(*qubit1, *qubit2)?
                 }
@@ -857,33 +892,33 @@ impl QuantumReservoir {
                 }
             };
         }
-        
+
         Ok(measurements)
     }
 
     /// Measure Pauli-Z expectation value
     fn measure_pauli_z(&self, qubit: usize) -> Result<f64> {
         let mut expectation = 0.0;
-        
+
         for (state, &amplitude) in self.current_state.iter().enumerate() {
             let z_eigenvalue = if (state >> qubit) & 1 == 0 { 1.0 } else { -1.0 };
             expectation += amplitude * amplitude * z_eigenvalue;
         }
-        
+
         Ok(expectation)
     }
 
     /// Measure Pauli-X expectation value
     fn measure_pauli_x(&self, qubit: usize) -> Result<f64> {
         let mut expectation = 0.0;
-        
+
         for (state, &amplitude) in self.current_state.iter().enumerate() {
             let flipped_state = state ^ (1 << qubit);
             if flipped_state < self.current_state.len() {
                 expectation += amplitude * self.current_state[flipped_state];
             }
         }
-        
+
         Ok(expectation)
     }
 
@@ -899,24 +934,31 @@ impl QuantumReservoir {
     fn measure_correlation(&self, qubit1: usize, qubit2: usize) -> Result<f64> {
         let z1 = self.measure_pauli_z(qubit1)?;
         let z2 = self.measure_pauli_z(qubit2)?;
-        
+
         // Compute ⟨Z₁Z₂⟩
         let mut correlation = 0.0;
         for (state, &amplitude) in self.current_state.iter().enumerate() {
-            let z1_val = if (state >> qubit1) & 1 == 0 { 1.0 } else { -1.0 };
-            let z2_val = if (state >> qubit2) & 1 == 0 { 1.0 } else { -1.0 };
+            let z1_val = if (state >> qubit1) & 1 == 0 {
+                1.0
+            } else {
+                -1.0
+            };
+            let z2_val = if (state >> qubit2) & 1 == 0 {
+                1.0
+            } else {
+                -1.0
+            };
             correlation += amplitude * amplitude * z1_val * z2_val;
         }
-        
+
         Ok(correlation - z1 * z2) // Connected correlation
     }
 
     /// Compute spectral radius of the evolution operator
     pub fn compute_spectral_radius(&self) -> Result<f64> {
         // Simplified spectral radius computation
-        let matrix_norm = self.evolution_operator.iter()
-            .map(|x| x.abs())
-            .sum::<f64>() / (self.evolution_operator.nrows() as f64);
+        let matrix_norm = self.evolution_operator.iter().map(|x| x.abs()).sum::<f64>()
+            / (self.evolution_operator.nrows() as f64);
         Ok(matrix_norm)
     }
 
@@ -929,10 +971,12 @@ impl QuantumReservoir {
     /// Compute entanglement measure
     pub fn compute_entanglement(&self) -> Result<f64> {
         // Simplified entanglement measure based on state complexity
-        let state_complexity = self.current_state.iter()
+        let state_complexity = self
+            .current_state
+            .iter()
             .map(|x| if x.abs() > 1e-10 { 1.0 } else { 0.0 })
             .sum::<f64>();
-        
+
         let max_complexity = self.current_state.len() as f64;
         Ok(state_complexity / max_complexity)
     }
@@ -943,7 +987,7 @@ impl InputEncoder {
     pub fn new(config: &QRCConfig) -> Result<Self> {
         let feature_dimension = 1 << config.input_qubits; // Assume power-of-2 encoding
         let encoding_gates = Self::build_encoding_gates(config)?;
-        
+
         Ok(Self {
             encoding_type: config.input_encoding.encoding_type.clone(),
             feature_dimension,
@@ -955,7 +999,7 @@ impl InputEncoder {
     /// Build encoding gates
     fn build_encoding_gates(config: &QRCConfig) -> Result<Vec<EncodingGate>> {
         let mut gates = Vec::new();
-        
+
         match config.input_encoding.encoding_type {
             EncodingType::Amplitude => {
                 // Direct amplitude encoding (no additional gates needed)
@@ -974,37 +1018,31 @@ impl InputEncoder {
                 // Other encoding types can be implemented
             }
         }
-        
+
         Ok(gates)
     }
 
     /// Encode classical input into quantum state
     pub fn encode(&self, input: &Array1<f64>) -> Result<Array1<f64>> {
         match self.encoding_type {
-            EncodingType::Amplitude => {
-                self.amplitude_encoding(input)
-            }
-            EncodingType::Angle => {
-                self.angle_encoding(input)
-            }
-            _ => {
-                Err(crate::error::MLError::InvalidConfiguration(
-                    "Encoding type not implemented".to_string(),
-                ))
-            }
+            EncodingType::Amplitude => self.amplitude_encoding(input),
+            EncodingType::Angle => self.angle_encoding(input),
+            _ => Err(crate::error::MLError::InvalidConfiguration(
+                "Encoding type not implemented".to_string(),
+            )),
         }
     }
 
     /// Amplitude encoding
     fn amplitude_encoding(&self, input: &Array1<f64>) -> Result<Array1<f64>> {
         let mut encoded = Array1::zeros(self.feature_dimension);
-        
+
         // Copy input values to encoded state (with padding/truncation)
         let copy_len = input.len().min(encoded.len());
         for i in 0..copy_len {
             encoded[i] = input[i];
         }
-        
+
         // Normalize
         let norm = encoded.iter().map(|x| x * x).sum::<f64>().sqrt();
         if norm > 1e-10 {
@@ -1012,7 +1050,7 @@ impl InputEncoder {
         } else {
             encoded[0] = 1.0; // Default to |0⟩ state
         }
-        
+
         Ok(encoded)
     }
 
@@ -1020,7 +1058,7 @@ impl InputEncoder {
     fn angle_encoding(&self, input: &Array1<f64>) -> Result<Array1<f64>> {
         let mut encoded = Array1::zeros(self.feature_dimension);
         encoded[0] = 1.0; // Start with |0...0⟩
-        
+
         // Apply rotation gates based on input values
         for (i, &value) in input.iter().enumerate() {
             if i < self.encoding_gates.len() {
@@ -1028,18 +1066,23 @@ impl InputEncoder {
                 encoded = self.apply_ry_rotation(&encoded, i, angle)?;
             }
         }
-        
+
         Ok(encoded)
     }
 
     /// Apply RY rotation for angle encoding
-    fn apply_ry_rotation(&self, state: &Array1<f64>, qubit: usize, angle: f64) -> Result<Array1<f64>> {
+    fn apply_ry_rotation(
+        &self,
+        state: &Array1<f64>,
+        qubit: usize,
+        angle: f64,
+    ) -> Result<Array1<f64>> {
         let mut new_state = state.clone();
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
-        
+
         let qubit_mask = 1 << qubit;
-        
+
         for i in 0..state.len() {
             if i & qubit_mask == 0 {
                 let j = i | qubit_mask;
@@ -1051,7 +1094,7 @@ impl InputEncoder {
                 }
             }
         }
-        
+
         Ok(new_state)
     }
 }
@@ -1061,12 +1104,11 @@ impl ReadoutLayer {
     pub fn new(config: &QRCConfig) -> Result<Self> {
         let input_size = config.readout_config.observables.len();
         let output_size = config.readout_size;
-        
-        let weights = Array2::from_shape_fn((output_size, input_size), |_| {
-            (fastrand::f64() - 0.5) * 0.1
-        });
+
+        let weights =
+            Array2::from_shape_fn((output_size, input_size), |_| (fastrand::f64() - 0.5) * 0.1);
         let biases = Array1::zeros(output_size);
-        
+
         Ok(Self {
             weights,
             biases,
@@ -1077,7 +1119,12 @@ impl ReadoutLayer {
     }
 
     /// Train the readout layer
-    pub fn train(&mut self, inputs: &Array2<f64>, targets: &Array2<f64>, config: &QRCTrainingConfig) -> Result<()> {
+    pub fn train(
+        &mut self,
+        inputs: &Array2<f64>,
+        targets: &Array2<f64>,
+        config: &QRCTrainingConfig,
+    ) -> Result<()> {
         match self.readout_type {
             ReadoutType::LinearRegression => {
                 self.train_linear_regression(inputs, targets)?;
@@ -1095,46 +1142,58 @@ impl ReadoutLayer {
     }
 
     /// Train using linear regression (least squares)
-    fn train_linear_regression(&mut self, inputs: &Array2<f64>, targets: &Array2<f64>) -> Result<()> {
+    fn train_linear_regression(
+        &mut self,
+        inputs: &Array2<f64>,
+        targets: &Array2<f64>,
+    ) -> Result<()> {
         // Solve: W = (X^T X)^(-1) X^T Y
         // For simplicity, use gradient descent
-        
+
         let learning_rate = 0.01;
         let epochs = 100;
-        
+
         for _epoch in 0..epochs {
             let predictions = self.predict(inputs)?;
             let errors = &predictions - targets;
-            
+
             // Update weights and biases
             for i in 0..self.weights.nrows() {
                 for j in 0..self.weights.ncols() {
-                    let gradient = errors.column(i).iter()
+                    let gradient = errors
+                        .column(i)
+                        .iter()
                         .zip(inputs.column(j).iter())
                         .map(|(e, x)| e * x)
-                        .sum::<f64>() / inputs.nrows() as f64;
-                    
+                        .sum::<f64>()
+                        / inputs.nrows() as f64;
+
                     self.weights[[i, j]] -= learning_rate * gradient;
                 }
-                
+
                 let bias_gradient = errors.column(i).mean().unwrap();
                 self.biases[i] -= learning_rate * bias_gradient;
             }
         }
-        
+
         Ok(())
     }
 
     /// Train using ridge regression
-    fn train_ridge_regression(&mut self, inputs: &Array2<f64>, targets: &Array2<f64>, alpha: f64) -> Result<()> {
+    fn train_ridge_regression(
+        &mut self,
+        inputs: &Array2<f64>,
+        targets: &Array2<f64>,
+        alpha: f64,
+    ) -> Result<()> {
         // Add L2 regularization to linear regression
         self.train_linear_regression(inputs, targets)?;
-        
+
         // Apply L2 penalty
         for weight in self.weights.iter_mut() {
             *weight *= 1.0 - alpha;
         }
-        
+
         Ok(())
     }
 
@@ -1143,19 +1202,21 @@ impl ReadoutLayer {
         let batch_size = inputs.nrows();
         let output_size = self.weights.nrows();
         let mut outputs = Array2::zeros((batch_size, output_size));
-        
+
         for i in 0..batch_size {
             let input_row = inputs.row(i);
             for j in 0..output_size {
-                let weighted_sum = input_row.iter()
+                let weighted_sum = input_row
+                    .iter()
                     .zip(self.weights.row(j).iter())
                     .map(|(x, w)| x * w)
-                    .sum::<f64>() + self.biases[j];
-                
+                    .sum::<f64>()
+                    + self.biases[j];
+
                 outputs[[i, j]] = self.apply_activation(weighted_sum);
             }
         }
-        
+
         Ok(outputs)
     }
 
@@ -1187,24 +1248,26 @@ pub fn benchmark_qrc_vs_classical(
     test_data: &[(Array2<f64>, Array2<f64>)],
 ) -> Result<BenchmarkResults> {
     let start_time = std::time::Instant::now();
-    
+
     let mut quantum_loss = 0.0;
     for (input, target) in test_data {
         let prediction = qrc.predict(input)?;
-        let mse = prediction.iter()
+        let mse = prediction
+            .iter()
             .zip(target.iter())
             .map(|(p, t)| (p - t).powi(2))
-            .sum::<f64>() / prediction.len() as f64;
+            .sum::<f64>()
+            / prediction.len() as f64;
         quantum_loss += mse;
     }
     quantum_loss /= test_data.len() as f64;
-    
+
     let quantum_time = start_time.elapsed();
-    
+
     // Classical comparison would go here
     let classical_loss = quantum_loss * 1.2; // Placeholder
     let classical_time = quantum_time / 2; // Placeholder
-    
+
     Ok(BenchmarkResults {
         quantum_loss,
         classical_loss,
@@ -1239,8 +1302,9 @@ mod tests {
     fn test_sequence_processing() {
         let config = QRCConfig::default();
         let mut qrc = QuantumReservoirComputer::new(config).unwrap();
-        
-        let input_sequence = Array2::from_shape_vec((10, 4), (0..40).map(|x| x as f64 * 0.1).collect()).unwrap();
+
+        let input_sequence =
+            Array2::from_shape_vec((10, 4), (0..40).map(|x| x as f64 * 0.1).collect()).unwrap();
         let result = qrc.process_sequence(&input_sequence);
         assert!(result.is_ok());
     }
@@ -1249,10 +1313,12 @@ mod tests {
     fn test_training() {
         let config = QRCConfig::default();
         let mut qrc = QuantumReservoirComputer::new(config).unwrap();
-        
-        let input_sequence = Array2::from_shape_vec((20, 4), (0..80).map(|x| x as f64 * 0.05).collect()).unwrap();
-        let target_sequence = Array2::from_shape_vec((20, 8), (0..160).map(|x| x as f64 * 0.02).collect()).unwrap();
-        
+
+        let input_sequence =
+            Array2::from_shape_vec((20, 4), (0..80).map(|x| x as f64 * 0.05).collect()).unwrap();
+        let target_sequence =
+            Array2::from_shape_vec((20, 8), (0..160).map(|x| x as f64 * 0.02).collect()).unwrap();
+
         let training_data = vec![(input_sequence, target_sequence)];
         let result = qrc.train(&training_data);
         assert!(result.is_ok());

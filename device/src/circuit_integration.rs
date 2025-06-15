@@ -20,7 +20,7 @@ use quantrs2_core::{
 };
 
 use crate::{
-    backend_traits::{BackendCapabilities, query_backend_capabilities},
+    backend_traits::{query_backend_capabilities, BackendCapabilities},
     calibration::{CalibrationManager, DeviceCalibration},
     topology::HardwareTopology,
     DeviceError, DeviceResult,
@@ -486,7 +486,7 @@ pub trait SelectionAlgorithm {
         platforms: &[PlatformAdapter],
         criteria: &SelectionCriteria,
     ) -> DeviceResult<String>;
-    
+
     /// Get algorithm name
     fn name(&self) -> &str;
 }
@@ -505,7 +505,7 @@ impl std::fmt::Debug for PlatformSelector {
 pub trait SelectionLearningModel {
     /// Update model with execution results
     fn update(&mut self, record: &SelectionRecord, result: &ExecutionResult);
-    
+
     /// Predict platform performance
     fn predict_performance(&self, circuit: &dyn CircuitInterface, platform: &str) -> f64;
 }
@@ -586,13 +586,35 @@ pub struct ResourceUsage {
 /// Monitoring events
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MonitoringEvent {
-    ExecutionStarted { execution_id: String, platform_id: String },
-    ExecutionProgress { execution_id: String, progress: f64 },
-    ExecutionCompleted { execution_id: String, result: ExecutionResult },
-    ExecutionFailed { execution_id: String, error: String },
-    PlatformStatusChanged { platform_id: String, status: PlatformStatus },
-    PerformanceAlert { platform_id: String, metric: String, value: f64 },
-    CostAlert { platform_id: String, cost: f64 },
+    ExecutionStarted {
+        execution_id: String,
+        platform_id: String,
+    },
+    ExecutionProgress {
+        execution_id: String,
+        progress: f64,
+    },
+    ExecutionCompleted {
+        execution_id: String,
+        result: ExecutionResult,
+    },
+    ExecutionFailed {
+        execution_id: String,
+        error: String,
+    },
+    PlatformStatusChanged {
+        platform_id: String,
+        status: PlatformStatus,
+    },
+    PerformanceAlert {
+        platform_id: String,
+        metric: String,
+        value: f64,
+    },
+    CostAlert {
+        platform_id: String,
+        cost: f64,
+    },
 }
 
 /// Alert thresholds
@@ -763,14 +785,14 @@ impl UniversalCircuitInterface {
             execution_monitor: Arc::new(RwLock::new(ExecutionMonitor::new())),
         }
     }
-    
+
     /// Register a quantum platform
     pub fn register_platform(&self, adapter: PlatformAdapter) -> DeviceResult<()> {
         let mut platforms = self.platforms.write().unwrap();
         platforms.insert(adapter.platform_id.clone(), adapter);
         Ok(())
     }
-    
+
     /// Execute a circuit with automatic platform selection and optimization
     pub async fn execute_circuit<const N: usize>(
         &self,
@@ -779,73 +801,77 @@ impl UniversalCircuitInterface {
     ) -> DeviceResult<ExecutionResult> {
         // Get circuit hash for caching
         let circuit_hash = self.calculate_circuit_hash(circuit);
-        
+
         // Check optimization cache
         if self.config.enable_optimization {
             if let Some(optimized) = self.get_cached_optimization(&circuit_hash) {
                 return self.execute_optimized_circuit(&optimized, shots).await;
             }
         }
-        
+
         // Select optimal platform
         let platform_id = if self.config.auto_platform_selection {
             self.select_optimal_platform(circuit).await?
         } else {
             self.get_default_platform()?
         };
-        
+
         // Optimize circuit for selected platform
         let optimized_circuit = if self.config.enable_optimization {
-            self.optimize_circuit_for_platform(circuit, &platform_id).await?
+            self.optimize_circuit_for_platform(circuit, &platform_id)
+                .await?
         } else {
             self.create_basic_circuit_variant(circuit, &platform_id)?
         };
-        
+
         // Cache optimization if enabled
         if self.config.enable_optimization && self.config.cache_config.enable_caching {
             self.cache_optimization(&circuit_hash, optimized_circuit.clone());
         }
-        
+
         // Execute circuit
-        let result = self.execute_on_platform(&optimized_circuit, &platform_id, shots).await?;
-        
+        let result = self
+            .execute_on_platform(&optimized_circuit, &platform_id, shots)
+            .await?;
+
         // Record analytics
         if self.config.enable_analytics {
-            self.record_execution_analytics(&circuit_hash, &platform_id, &result).await;
+            self.record_execution_analytics(&circuit_hash, &platform_id, &result)
+                .await;
         }
-        
+
         Ok(result)
     }
-    
+
     /// Get available platforms
     pub fn get_available_platforms(&self) -> Vec<String> {
         let platforms = self.platforms.read().unwrap();
         platforms.keys().cloned().collect()
     }
-    
+
     /// Get platform capabilities
     pub fn get_platform_capabilities(&self, platform_id: &str) -> Option<BackendCapabilities> {
         let platforms = self.platforms.read().unwrap();
         platforms.get(platform_id).map(|p| p.capabilities.clone())
     }
-    
+
     /// Get execution analytics
     pub fn get_analytics(&self) -> ExecutionAnalytics {
         self.analytics.read().unwrap().clone()
     }
-    
+
     // Private implementation methods
-    
+
     fn calculate_circuit_hash<const N: usize>(&self, circuit: &Circuit<N>) -> String {
         // Simplified hash calculation - in production would use proper circuit hashing
         format!("circuit_{}_{}", N, circuit.gates().len())
     }
-    
+
     fn get_cached_optimization(&self, circuit_hash: &str) -> Option<OptimizedCircuit> {
         let cache = self.optimization_cache.read().unwrap();
         cache.get(circuit_hash).cloned()
     }
-    
+
     async fn select_optimal_platform<const N: usize>(
         &self,
         circuit: &Circuit<N>,
@@ -855,19 +881,23 @@ impl UniversalCircuitInterface {
         if let Some((platform_id, _)) = platforms.iter().next() {
             Ok(platform_id.clone())
         } else {
-            Err(DeviceError::DeviceNotFound("No platforms available".to_string()))
+            Err(DeviceError::DeviceNotFound(
+                "No platforms available".to_string(),
+            ))
         }
     }
-    
+
     fn get_default_platform(&self) -> DeviceResult<String> {
         let platforms = self.platforms.read().unwrap();
         if let Some((platform_id, _)) = platforms.iter().next() {
             Ok(platform_id.clone())
         } else {
-            Err(DeviceError::DeviceNotFound("No platforms available".to_string()))
+            Err(DeviceError::DeviceNotFound(
+                "No platforms available".to_string(),
+            ))
         }
     }
-    
+
     async fn optimize_circuit_for_platform<const N: usize>(
         &self,
         circuit: &Circuit<N>,
@@ -876,7 +906,7 @@ impl UniversalCircuitInterface {
         // Simplified optimization - would implement sophisticated optimization algorithms
         let circuit_hash = self.calculate_circuit_hash(circuit);
         let mut platform_circuits = HashMap::new();
-        
+
         let variant = CircuitVariant {
             circuit: Box::new(GenericCircuitWrapper::new(circuit.clone())),
             metadata: PlatformMetadata {
@@ -906,9 +936,9 @@ impl UniversalCircuitInterface {
             },
             optimizations_applied: vec![OptimizationType::GateOptimization],
         };
-        
+
         platform_circuits.insert(platform_id.to_string(), variant);
-        
+
         Ok(OptimizedCircuit {
             original_hash: circuit_hash,
             platform_circuits,
@@ -923,7 +953,7 @@ impl UniversalCircuitInterface {
             last_accessed: SystemTime::now(),
         })
     }
-    
+
     fn create_basic_circuit_variant<const N: usize>(
         &self,
         circuit: &Circuit<N>,
@@ -932,7 +962,7 @@ impl UniversalCircuitInterface {
         // Create basic variant without optimization
         let circuit_hash = self.calculate_circuit_hash(circuit);
         let mut platform_circuits = HashMap::new();
-        
+
         let variant = CircuitVariant {
             circuit: Box::new(GenericCircuitWrapper::new(circuit.clone())),
             metadata: PlatformMetadata {
@@ -962,9 +992,9 @@ impl UniversalCircuitInterface {
             },
             optimizations_applied: vec![],
         };
-        
+
         platform_circuits.insert(platform_id.to_string(), variant);
-        
+
         Ok(OptimizedCircuit {
             original_hash: circuit_hash,
             platform_circuits,
@@ -979,23 +1009,22 @@ impl UniversalCircuitInterface {
             last_accessed: SystemTime::now(),
         })
     }
-    
+
     fn cache_optimization(&self, circuit_hash: &str, optimized: OptimizedCircuit) {
         let mut cache = self.optimization_cache.write().unwrap();
-        
+
         // Implement LRU eviction if cache is full
         if cache.len() >= self.config.cache_config.max_cache_size {
             // Find oldest entry
-            if let Some((oldest_key, _)) = cache.iter()
-                .min_by_key(|(_, opt)| opt.last_accessed) {
+            if let Some((oldest_key, _)) = cache.iter().min_by_key(|(_, opt)| opt.last_accessed) {
                 let oldest_key = oldest_key.clone();
                 cache.remove(&oldest_key);
             }
         }
-        
+
         cache.insert(circuit_hash.to_string(), optimized);
     }
-    
+
     async fn execute_optimized_circuit(
         &self,
         optimized: &OptimizedCircuit,
@@ -1003,12 +1032,15 @@ impl UniversalCircuitInterface {
     ) -> DeviceResult<ExecutionResult> {
         // Select best platform variant
         if let Some((platform_id, variant)) = optimized.platform_circuits.iter().next() {
-            self.execute_circuit_variant(variant, platform_id, shots).await
+            self.execute_circuit_variant(variant, platform_id, shots)
+                .await
         } else {
-            Err(DeviceError::InvalidInput("No platform variants available".to_string()))
+            Err(DeviceError::InvalidInput(
+                "No platform variants available".to_string(),
+            ))
         }
     }
-    
+
     async fn execute_on_platform(
         &self,
         optimized: &OptimizedCircuit,
@@ -1016,12 +1048,16 @@ impl UniversalCircuitInterface {
         shots: usize,
     ) -> DeviceResult<ExecutionResult> {
         if let Some(variant) = optimized.platform_circuits.get(platform_id) {
-            self.execute_circuit_variant(variant, platform_id, shots).await
+            self.execute_circuit_variant(variant, platform_id, shots)
+                .await
         } else {
-            Err(DeviceError::InvalidInput(format!("No variant for platform {}", platform_id)))
+            Err(DeviceError::InvalidInput(format!(
+                "No variant for platform {}",
+                platform_id
+            )))
         }
     }
-    
+
     async fn execute_circuit_variant(
         &self,
         variant: &CircuitVariant,
@@ -1029,15 +1065,20 @@ impl UniversalCircuitInterface {
         shots: usize,
     ) -> DeviceResult<ExecutionResult> {
         // Simplified execution - would interface with actual quantum backends
-        let execution_id = format!("exec_{}_{}", platform_id, SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis());
-        
+        let execution_id = format!(
+            "exec_{}_{}",
+            platform_id,
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis()
+        );
+
         // Simulate execution
         tokio::time::sleep(Duration::from_millis(100)).await;
-        
+
         Ok(ExecutionResult {
-            measurements: HashMap::from([
-                ("c".to_string(), vec![0, 1, 0, 1, 1, 0, 1, 0])
-            ]),
+            measurements: HashMap::from([("c".to_string(), vec![0, 1, 0, 1, 1, 0, 1, 0])]),
             metadata: ExecutionMetadata {
                 execution_id,
                 platform_id: platform_id.to_string(),
@@ -1057,13 +1098,19 @@ impl UniversalCircuitInterface {
                 cost_per_shot: variant.estimated_performance.estimated_cost / shots as f64,
                 currency: "USD".to_string(),
                 cost_breakdown: HashMap::from([
-                    ("execution".to_string(), variant.estimated_performance.estimated_cost * 0.8),
-                    ("overhead".to_string(), variant.estimated_performance.estimated_cost * 0.2),
+                    (
+                        "execution".to_string(),
+                        variant.estimated_performance.estimated_cost * 0.8,
+                    ),
+                    (
+                        "overhead".to_string(),
+                        variant.estimated_performance.estimated_cost * 0.2,
+                    ),
                 ]),
             },
         })
     }
-    
+
     async fn record_execution_analytics(
         &self,
         circuit_hash: &str,
@@ -1092,9 +1139,7 @@ impl<const N: usize> CircuitInterface for GenericCircuitWrapper<N> {
     fn execute(&self, shots: usize) -> DeviceResult<ExecutionResult> {
         // Simplified execution - would interface with quantum simulators/hardware
         Ok(ExecutionResult {
-            measurements: HashMap::from([
-                ("c".to_string(), vec![0; shots])
-            ]),
+            measurements: HashMap::from([("c".to_string(), vec![0; shots])]),
             metadata: ExecutionMetadata {
                 execution_id: "generic_exec".to_string(),
                 platform_id: "generic".to_string(),
@@ -1117,20 +1162,20 @@ impl<const N: usize> CircuitInterface for GenericCircuitWrapper<N> {
             },
         })
     }
-    
+
     fn depth(&self) -> usize {
         // Simplified depth calculation
         self.circuit.gates().len()
     }
-    
+
     fn num_qubits(&self) -> usize {
         N
     }
-    
+
     fn gate_count(&self) -> usize {
         self.circuit.gates().len()
     }
-    
+
     fn clone_circuit(&self) -> Box<dyn CircuitInterface> {
         Box::new(self.clone())
     }
@@ -1179,8 +1224,13 @@ impl ExecutionAnalytics {
             platform_comparisons: HashMap::new(),
         }
     }
-    
-    pub fn record_execution(&mut self, circuit_hash: &str, platform_id: &str, result: &ExecutionResult) {
+
+    pub fn record_execution(
+        &mut self,
+        circuit_hash: &str,
+        platform_id: &str,
+        result: &ExecutionResult,
+    ) {
         let record = ExecutionRecord {
             execution_id: result.metadata.execution_id.clone(),
             circuit_hash: circuit_hash.to_string(),
@@ -1192,34 +1242,39 @@ impl ExecutionAnalytics {
             cost: result.cost_info.total_cost,
             timestamp: SystemTime::now(),
         };
-        
+
         self.execution_history.push(record);
-        
+
         // Update performance trends
         self.update_performance_trends(platform_id, result);
-        
+
         // Update cost analytics
         self.update_cost_analytics(platform_id, result);
     }
-    
+
     fn update_performance_trends(&mut self, platform_id: &str, result: &ExecutionResult) {
         let trend_key = format!("{}_fidelity", platform_id);
-        let trend_data = self.performance_trends.entry(trend_key).or_insert_with(|| {
-            TrendData {
+        let trend_data = self
+            .performance_trends
+            .entry(trend_key)
+            .or_insert_with(|| TrendData {
                 data_points: Vec::new(),
                 trend_direction: TrendDirection::Stable,
                 trend_strength: 0.0,
                 prediction: None,
-            }
-        });
-        
-        trend_data.data_points.push((SystemTime::now(), result.performance.fidelity));
-        
+            });
+
+        trend_data
+            .data_points
+            .push((SystemTime::now(), result.performance.fidelity));
+
         // Keep only recent data points (last 100)
         if trend_data.data_points.len() > 100 {
-            trend_data.data_points.drain(0..trend_data.data_points.len() - 100);
+            trend_data
+                .data_points
+                .drain(0..trend_data.data_points.len() - 100);
         }
-        
+
         // Update trend analysis (analyze after the borrow ends)
         if trend_data.data_points.len() >= 2 {
             // Simple trend analysis inline to avoid borrowing issues
@@ -1229,9 +1284,9 @@ impl ExecutionAnalytics {
             let sum_y: f64 = values.iter().sum();
             let sum_xy: f64 = values.iter().enumerate().map(|(i, &y)| i as f64 * y).sum();
             let sum_x2: f64 = (0..n).map(|i| (i as f64).powi(2)).sum();
-            
+
             let slope = (n as f64 * sum_xy - sum_x * sum_y) / (n as f64 * sum_x2 - sum_x.powi(2));
-            
+
             trend_data.trend_strength = slope.abs();
             trend_data.trend_direction = if slope > 0.01 {
                 TrendDirection::Increasing
@@ -1242,26 +1297,35 @@ impl ExecutionAnalytics {
             };
         }
     }
-    
+
     fn update_cost_analytics(&mut self, platform_id: &str, result: &ExecutionResult) {
-        *self.cost_analytics.total_cost_by_platform.entry(platform_id.to_string()).or_insert(0.0) += result.cost_info.total_cost;
-        
+        *self
+            .cost_analytics
+            .total_cost_by_platform
+            .entry(platform_id.to_string())
+            .or_insert(0.0) += result.cost_info.total_cost;
+
         // Update average cost
-        let exec_count = self.execution_history.iter()
+        let exec_count = self
+            .execution_history
+            .iter()
             .filter(|r| r.platform_id == platform_id)
             .count();
-        
+
         if exec_count > 0 {
-            let avg_cost = self.cost_analytics.total_cost_by_platform[platform_id] / exec_count as f64;
-            self.cost_analytics.avg_cost_per_execution.insert(platform_id.to_string(), avg_cost);
+            let avg_cost =
+                self.cost_analytics.total_cost_by_platform[platform_id] / exec_count as f64;
+            self.cost_analytics
+                .avg_cost_per_execution
+                .insert(platform_id.to_string(), avg_cost);
         }
     }
-    
+
     fn analyze_trend(&self, trend_data: &mut TrendData) {
         if trend_data.data_points.len() < 2 {
             return;
         }
-        
+
         // Simple linear trend analysis
         let values: Vec<f64> = trend_data.data_points.iter().map(|(_, v)| *v).collect();
         let n = values.len();
@@ -1269,9 +1333,9 @@ impl ExecutionAnalytics {
         let sum_y: f64 = values.iter().sum();
         let sum_xy: f64 = values.iter().enumerate().map(|(i, &y)| i as f64 * y).sum();
         let sum_x2: f64 = (0..n).map(|i| (i as f64).powi(2)).sum();
-        
+
         let slope = (n as f64 * sum_xy - sum_x * sum_y) / (n as f64 * sum_x2 - sum_x.powi(2));
-        
+
         trend_data.trend_strength = slope.abs();
         trend_data.trend_direction = if slope > 0.01 {
             TrendDirection::Increasing
@@ -1394,7 +1458,7 @@ mod tests {
     async fn test_circuit_execution() {
         let interface = create_universal_interface();
         let circuit = Circuit::<2>::new();
-        
+
         // Register a mock platform
         let platform = PlatformAdapter {
             platform_id: "test_platform".to_string(),
@@ -1425,13 +1489,13 @@ mod tests {
             },
             status: PlatformStatus::Available,
         };
-        
+
         interface.register_platform(platform).unwrap();
-        
+
         // Test execution
         let result = interface.execute_circuit(&circuit, 1000).await;
         assert!(result.is_ok());
-        
+
         let execution_result = result.unwrap();
         assert!(execution_result.performance.success);
         assert_eq!(execution_result.metadata.shots, 1000);

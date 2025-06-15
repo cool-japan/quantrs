@@ -1,9 +1,9 @@
 //! Causal analysis components
 
-use std::collections::HashMap;
-use ndarray::{Array1, Array2};
-use crate::DeviceResult;
 use super::super::results::*;
+use crate::DeviceResult;
+use ndarray::{Array1, Array2};
+use std::collections::HashMap;
 
 /// Causal analyzer for measurement data
 pub struct CausalAnalyzer {
@@ -35,9 +35,10 @@ impl CausalAnalyzer {
         confidences: &[f64],
         timestamps: &[f64],
     ) -> DeviceResult<CausalAnalysisResults> {
-        if latencies.len() < self.min_observations || 
-           confidences.len() < self.min_observations || 
-           timestamps.len() < self.min_observations {
+        if latencies.len() < self.min_observations
+            || confidences.len() < self.min_observations
+            || timestamps.len() < self.min_observations
+        {
             return Ok(CausalAnalysisResults::default());
         }
 
@@ -48,17 +49,19 @@ impl CausalAnalyzer {
         let timestamps = &timestamps[..min_len];
 
         // Discover causal relationships
-        let causal_relationships = self.discover_causal_relationships(latencies, confidences, timestamps)?;
-        
+        let causal_relationships =
+            self.discover_causal_relationships(latencies, confidences, timestamps)?;
+
         // Estimate causal effects
         let causal_effects = self.estimate_causal_effects(latencies, confidences, timestamps)?;
-        
+
         // Build causal graph
         let causal_graph = self.build_causal_graph(latencies, confidences, timestamps)?;
-        
+
         // Perform intervention analysis
-        let intervention_analysis = self.analyze_interventions(latencies, confidences, timestamps)?;
-        
+        let intervention_analysis =
+            self.analyze_interventions(latencies, confidences, timestamps)?;
+
         // Assess confounding
         let confounding_assessment = self.assess_confounding(latencies, confidences, timestamps)?;
 
@@ -81,11 +84,11 @@ impl CausalAnalyzer {
 
         // Test for causal relationship: latency -> confidence
         let latency_confidence_relationship = self.test_causal_relationship(
-            latencies, 
-            confidences, 
-            timestamps, 
-            "latency", 
-            "confidence"
+            latencies,
+            confidences,
+            timestamps,
+            "latency",
+            "confidence",
         )?;
         if latency_confidence_relationship.causal_strength > 0.1 {
             relationships.push(latency_confidence_relationship);
@@ -93,11 +96,11 @@ impl CausalAnalyzer {
 
         // Test for causal relationship: timestamp -> latency (temporal effects)
         let timestamp_latency_relationship = self.test_causal_relationship(
-            timestamps, 
-            latencies, 
-            confidences, 
-            "timestamp", 
-            "latency"
+            timestamps,
+            latencies,
+            confidences,
+            "timestamp",
+            "latency",
         )?;
         if timestamp_latency_relationship.causal_strength > 0.1 {
             relationships.push(timestamp_latency_relationship);
@@ -105,11 +108,11 @@ impl CausalAnalyzer {
 
         // Test for causal relationship: timestamp -> confidence
         let timestamp_confidence_relationship = self.test_causal_relationship(
-            timestamps, 
-            confidences, 
-            latencies, 
-            "timestamp", 
-            "confidence"
+            timestamps,
+            confidences,
+            latencies,
+            "timestamp",
+            "confidence",
         )?;
         if timestamp_confidence_relationship.causal_strength > 0.1 {
             relationships.push(timestamp_confidence_relationship);
@@ -129,16 +132,18 @@ impl CausalAnalyzer {
     ) -> DeviceResult<CausalRelationship> {
         // Calculate unconditional correlation
         let unconditional_corr = self.calculate_correlation(cause, effect);
-        
+
         // Calculate partial correlation (controlling for confounder)
         let partial_corr = self.calculate_partial_correlation(cause, effect, confounder)?;
-        
+
         // Granger causality test (simplified)
         let granger_causality = self.granger_causality_test(cause, effect)?;
-        
+
         // Calculate causal strength
-        let causal_strength = (unconditional_corr.abs() + partial_corr.abs() + granger_causality.statistic.abs()) / 3.0;
-        
+        let causal_strength =
+            (unconditional_corr.abs() + partial_corr.abs() + granger_causality.statistic.abs())
+                / 3.0;
+
         // Determine causal direction using temporal precedence
         let causal_direction = if cause_name == "timestamp" {
             CausalDirection::Forward
@@ -180,21 +185,13 @@ impl CausalAnalyzer {
         let mut effects = Vec::new();
 
         // Estimate effect of latency on confidence
-        let latency_effect = self.estimate_treatment_effect(
-            latencies, 
-            confidences, 
-            "latency", 
-            "confidence"
-        )?;
+        let latency_effect =
+            self.estimate_treatment_effect(latencies, confidences, "latency", "confidence")?;
         effects.push(latency_effect);
 
         // Estimate temporal effects
-        let temporal_effect = self.estimate_temporal_effect(
-            timestamps, 
-            confidences, 
-            "time", 
-            "confidence"
-        )?;
+        let temporal_effect =
+            self.estimate_temporal_effect(timestamps, confidences, "time", "confidence")?;
         effects.push(temporal_effect);
 
         Ok(effects)
@@ -222,43 +219,51 @@ impl CausalAnalyzer {
         }
 
         // Calculate average treatment effect
-        let treated_mean = if treated_outcomes.is_empty() { 
-            0.0 
-        } else { 
-            treated_outcomes.iter().sum::<f64>() / treated_outcomes.len() as f64 
+        let treated_mean = if treated_outcomes.is_empty() {
+            0.0
+        } else {
+            treated_outcomes.iter().sum::<f64>() / treated_outcomes.len() as f64
         };
-        
-        let control_mean = if control_outcomes.is_empty() { 
-            0.0 
-        } else { 
-            control_outcomes.iter().sum::<f64>() / control_outcomes.len() as f64 
+
+        let control_mean = if control_outcomes.is_empty() {
+            0.0
+        } else {
+            control_outcomes.iter().sum::<f64>() / control_outcomes.len() as f64
         };
 
         let average_treatment_effect = treated_mean - control_mean;
-        
+
         // Calculate standard error
         let treated_var = if treated_outcomes.len() > 1 {
-            treated_outcomes.iter()
+            treated_outcomes
+                .iter()
                 .map(|&x| (x - treated_mean).powi(2))
-                .sum::<f64>() / (treated_outcomes.len() - 1) as f64
-        } else {
-            0.0
-        };
-        
-        let control_var = if control_outcomes.len() > 1 {
-            control_outcomes.iter()
-                .map(|&x| (x - control_mean).powi(2))
-                .sum::<f64>() / (control_outcomes.len() - 1) as f64
+                .sum::<f64>()
+                / (treated_outcomes.len() - 1) as f64
         } else {
             0.0
         };
 
-        let standard_error = ((treated_var / treated_outcomes.len() as f64) + 
-                             (control_var / control_outcomes.len() as f64)).sqrt();
+        let control_var = if control_outcomes.len() > 1 {
+            control_outcomes
+                .iter()
+                .map(|&x| (x - control_mean).powi(2))
+                .sum::<f64>()
+                / (control_outcomes.len() - 1) as f64
+        } else {
+            0.0
+        };
+
+        let standard_error = ((treated_var / treated_outcomes.len() as f64)
+            + (control_var / control_outcomes.len() as f64))
+            .sqrt();
 
         // Calculate confidence interval
         let margin = 1.96 * standard_error;
-        let confidence_interval = (average_treatment_effect - margin, average_treatment_effect + margin);
+        let confidence_interval = (
+            average_treatment_effect - margin,
+            average_treatment_effect + margin,
+        );
 
         // Calculate p-value (t-test approximation)
         let t_statistic = if standard_error > 1e-10 {
@@ -289,11 +294,11 @@ impl CausalAnalyzer {
         // Simple temporal effect: correlation with time trend
         let time_trend: Vec<f64> = (0..time_series.len()).map(|i| i as f64).collect();
         let trend_correlation = self.calculate_correlation(&time_trend, outcome);
-        
+
         let standard_error = self.calculate_standard_error_correlation(outcome.len());
         let margin = 1.96 * standard_error;
         let confidence_interval = (trend_correlation - margin, trend_correlation + margin);
-        
+
         let t_statistic = if standard_error > 1e-10 {
             trend_correlation / standard_error
         } else {
@@ -318,20 +323,25 @@ impl CausalAnalyzer {
         confidences: &[f64],
         timestamps: &[f64],
     ) -> DeviceResult<CausalGraph> {
-        let variables = vec!["latency".to_string(), "confidence".to_string(), "timestamp".to_string()];
+        let variables = vec![
+            "latency".to_string(),
+            "confidence".to_string(),
+            "timestamp".to_string(),
+        ];
         let n_vars = variables.len();
-        
+
         // Initialize adjacency matrix (undirected graph)
         let mut adjacency_matrix = Array2::zeros((n_vars, n_vars));
-        
+
         // Test for edges using conditional independence
         let data = vec![latencies, confidences, timestamps];
-        
+
         for i in 0..n_vars {
             for j in (i + 1)..n_vars {
                 // Test independence between variables i and j
                 let correlation = self.calculate_correlation(data[i], data[j]);
-                if correlation.abs() > 0.1 { // Threshold for edge existence
+                if correlation.abs() > 0.1 {
+                    // Threshold for edge existence
                     adjacency_matrix[[i, j]] = 1.0;
                     adjacency_matrix[[j, i]] = 1.0;
                 }
@@ -340,15 +350,17 @@ impl CausalAnalyzer {
 
         // Orient edges based on temporal constraints
         let mut edge_directions = HashMap::new();
-        
+
         // Time always comes before other variables
-        if adjacency_matrix[[2, 0]] > 0.0 { // timestamp -> latency
+        if adjacency_matrix[[2, 0]] > 0.0 {
+            // timestamp -> latency
             edge_directions.insert((2, 0), EdgeType::Directed);
         }
-        if adjacency_matrix[[2, 1]] > 0.0 { // timestamp -> confidence
+        if adjacency_matrix[[2, 1]] > 0.0 {
+            // timestamp -> confidence
             edge_directions.insert((2, 1), EdgeType::Directed);
         }
-        
+
         // Latency might cause confidence issues
         if adjacency_matrix[[0, 1]] > 0.0 {
             edge_directions.insert((0, 1), EdgeType::Directed);
@@ -376,16 +388,14 @@ impl CausalAnalyzer {
             intervention_type: "Latency Reduction".to_string(),
             target_variable: "latency".to_string(),
             intervention_magnitude: -0.2, // 20% reduction
-            predicted_effects: vec![
-                PredictedEffect {
-                    variable: "confidence".to_string(),
-                    effect_size: 0.15, // Expected improvement
-                    confidence_interval: (0.05, 0.25),
-                    p_value: 0.01,
-                },
-            ],
+            predicted_effects: vec![PredictedEffect {
+                variable: "confidence".to_string(),
+                effect_size: 0.15, // Expected improvement
+                confidence_interval: (0.05, 0.25),
+                p_value: 0.01,
+            }],
             intervention_cost: 0.5, // Moderate cost
-            benefit_ratio: 0.3, // 15% improvement / 50% cost
+            benefit_ratio: 0.3,     // 15% improvement / 50% cost
         };
         interventions.push(latency_intervention);
 
@@ -425,10 +435,11 @@ impl CausalAnalyzer {
     ) -> DeviceResult<ConfoundingAnalysis> {
         // Test if timestamp confounds the latency-confidence relationship
         let direct_correlation = self.calculate_correlation(latencies, confidences);
-        let partial_correlation = self.calculate_partial_correlation(latencies, confidences, timestamps)?;
-        
+        let partial_correlation =
+            self.calculate_partial_correlation(latencies, confidences, timestamps)?;
+
         let confounding_strength = (direct_correlation - partial_correlation).abs();
-        
+
         let confounders = if confounding_strength > 0.1 {
             vec![ConfoundingVariable {
                 variable: "timestamp".to_string(),
@@ -452,7 +463,8 @@ impl CausalAnalyzer {
         let confounder_names = confounders.iter().map(|c| c.variable.clone()).collect();
         let mut confounder_strength = HashMap::new();
         for confounder in &confounders {
-            confounder_strength.insert(confounder.variable.clone(), confounder.confounding_strength);
+            confounder_strength
+                .insert(confounder.variable.clone(), confounder.confounding_strength);
         }
 
         Ok(ConfoundingAnalysis {
@@ -473,7 +485,9 @@ impl CausalAnalyzer {
         let mean_x = x.iter().sum::<f64>() / n;
         let mean_y = y.iter().sum::<f64>() / n;
 
-        let numerator: f64 = x.iter().zip(y.iter())
+        let numerator: f64 = x
+            .iter()
+            .zip(y.iter())
             .map(|(&xi, &yi)| (xi - mean_x) * (yi - mean_y))
             .sum();
 
@@ -514,11 +528,11 @@ impl CausalAnalyzer {
 
         let lag = 1;
         let n = x.len().min(y.len()) - lag;
-        
+
         // Correlation between lagged x and current y
         let x_lagged = &x[0..n];
         let y_current = &y[lag..lag + n];
-        
+
         let lagged_correlation = self.calculate_correlation(x_lagged, y_current);
         let f_statistic = lagged_correlation.abs() * (n as f64).sqrt(); // Simplified F-stat
         let p_value = if f_statistic > 1.96 { 0.05 } else { 0.1 };
@@ -536,7 +550,7 @@ impl CausalAnalyzer {
     fn median(&self, values: &[f64]) -> f64 {
         let mut sorted = values.to_vec();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        
+
         if sorted.len() % 2 == 0 {
             let mid = sorted.len() / 2;
             (sorted[mid - 1] + sorted[mid]) / 2.0
@@ -555,14 +569,18 @@ impl CausalAnalyzer {
     }
 
     /// Calculate graph score (simplified BIC-like score)
-    fn calculate_graph_score(&self, adjacency_matrix: &Array2<f64>, data: &[&[f64]]) -> DeviceResult<f64> {
+    fn calculate_graph_score(
+        &self,
+        adjacency_matrix: &Array2<f64>,
+        data: &[&[f64]],
+    ) -> DeviceResult<f64> {
         let n_edges = adjacency_matrix.iter().filter(|&&x| x > 0.0).count() / 2; // Undirected
         let n_observations = data[0].len() as f64;
-        
+
         // Simplified score: negative log-likelihood + penalty for complexity
         let likelihood_score = 0.0; // Placeholder
         let complexity_penalty = (n_edges as f64) * n_observations.ln();
-        
+
         Ok(likelihood_score - complexity_penalty)
     }
 }

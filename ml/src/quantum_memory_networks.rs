@@ -6,7 +6,7 @@
 //! entanglement, enabling enhanced learning capabilities and long-term memory.
 
 use crate::error::Result;
-use ndarray::{Array1, Array2, Array3, ArrayD, Axis, s};
+use ndarray::{s, Array1, Array2, Array3, ArrayD, Axis};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -312,7 +312,7 @@ pub struct QuantumController {
 /// Quantum external memory
 #[derive(Debug, Clone)]
 pub struct QuantumExternalMemory {
-    memory_matrix: Array2<f64>, // [memory_size, memory_qubits]
+    memory_matrix: Array2<f64>,       // [memory_size, memory_qubits]
     quantum_states: Vec<Array1<f64>>, // Quantum state for each memory slot
     usage_weights: Array1<f64>,
     write_weights: Array2<f64>, // [num_write_heads, memory_size]
@@ -366,8 +366,12 @@ pub struct QuantumGate {
 /// Gate types
 #[derive(Debug, Clone)]
 pub enum GateType {
-    RX, RY, RZ,
-    CNOT, CZ, CY,
+    RX,
+    RY,
+    RZ,
+    CNOT,
+    CZ,
+    CY,
     Hadamard,
     Toffoli,
     Custom(String),
@@ -466,25 +470,26 @@ pub struct TrainingMetrics {
 impl QuantumMemoryAugmentedNetwork {
     /// Create a new Quantum Memory Augmented Network
     pub fn new(config: QMANConfig) -> Result<Self> {
-        let controller = QuantumController::new(&config.controller_config, config.controller_qubits)?;
+        let controller =
+            QuantumController::new(&config.controller_config, config.controller_qubits)?;
         let memory = QuantumExternalMemory::new(&config)?;
-        
+
         // Create read heads
         let mut read_heads = Vec::new();
         for head_id in 0..config.head_config.num_read_heads {
             let read_head = QuantumReadHead::new(head_id, &config)?;
             read_heads.push(read_head);
         }
-        
+
         // Create write heads
         let mut write_heads = Vec::new();
         for head_id in 0..config.head_config.num_write_heads {
             let write_head = QuantumWriteHead::new(head_id, &config)?;
             write_heads.push(write_head);
         }
-        
+
         let episodic_memory = EpisodicMemory::new(&config)?;
-        
+
         Ok(Self {
             config,
             controller,
@@ -500,42 +505,50 @@ impl QuantumMemoryAugmentedNetwork {
     pub fn forward(&mut self, input: &Array1<f64>) -> Result<Array1<f64>> {
         // Process input through controller
         let controller_output = self.controller.forward(input)?;
-        
+
         // Generate read/write parameters
         let (read_params, write_params) = self.generate_head_parameters(&controller_output)?;
-        
+
         // Read from memory
         let read_vectors = self.read_from_memory(&read_params)?;
-        
+
         // Write to memory
         self.write_to_memory(&write_params)?;
-        
+
         // Combine controller output with read vectors
         let combined_output = self.combine_outputs(&controller_output, &read_vectors)?;
-        
+
         // Update episodic memory
         self.update_episodic_memory(input, &combined_output)?;
-        
+
         Ok(combined_output)
     }
 
     /// Generate parameters for read and write heads
-    fn generate_head_parameters(&self, controller_output: &Array1<f64>) -> Result<(Vec<ReadParams>, Vec<WriteParams>)> {
+    fn generate_head_parameters(
+        &self,
+        controller_output: &Array1<f64>,
+    ) -> Result<(Vec<ReadParams>, Vec<WriteParams>)> {
         let mut read_params = Vec::new();
         let mut write_params = Vec::new();
-        
+
         // Generate read parameters
         for (head_id, _) in self.read_heads.iter().enumerate() {
             let params = ReadParams {
                 content_key: self.extract_content_key(controller_output, head_id, true)?,
                 key_strength: self.extract_scalar(controller_output, head_id * 4)?.abs(),
-                interpolation_gate: self.extract_scalar(controller_output, head_id * 4 + 1)?.tanh(),
+                interpolation_gate: self
+                    .extract_scalar(controller_output, head_id * 4 + 1)?
+                    .tanh(),
                 shift_weighting: self.extract_shift_weighting(controller_output, head_id)?,
-                sharpening_factor: self.extract_scalar(controller_output, head_id * 4 + 2)?.abs() + 1.0,
+                sharpening_factor: self
+                    .extract_scalar(controller_output, head_id * 4 + 2)?
+                    .abs()
+                    + 1.0,
             };
             read_params.push(params);
         }
-        
+
         // Generate write parameters
         for (head_id, _) in self.write_heads.iter().enumerate() {
             let params = WriteParams {
@@ -543,50 +556,61 @@ impl QuantumMemoryAugmentedNetwork {
                 key_strength: self.extract_scalar(controller_output, head_id * 6)?.abs(),
                 write_vector: self.extract_write_vector(controller_output, head_id)?,
                 erase_vector: self.extract_erase_vector(controller_output, head_id)?,
-                allocation_gate: self.extract_scalar(controller_output, head_id * 6 + 1)?.tanh(),
-                write_gate: self.extract_scalar(controller_output, head_id * 6 + 2)?.tanh(),
-                sharpening_factor: self.extract_scalar(controller_output, head_id * 6 + 3)?.abs() + 1.0,
+                allocation_gate: self
+                    .extract_scalar(controller_output, head_id * 6 + 1)?
+                    .tanh(),
+                write_gate: self
+                    .extract_scalar(controller_output, head_id * 6 + 2)?
+                    .tanh(),
+                sharpening_factor: self
+                    .extract_scalar(controller_output, head_id * 6 + 3)?
+                    .abs()
+                    + 1.0,
             };
             write_params.push(params);
         }
-        
+
         Ok((read_params, write_params))
     }
 
     /// Read from quantum memory
     fn read_from_memory(&mut self, read_params: &[ReadParams]) -> Result<Vec<Array1<f64>>> {
         let mut read_vectors = Vec::new();
-        
+
         for (head_id, params) in read_params.iter().enumerate() {
             // Content-based addressing
-            let content_weights = self.content_addressing(&params.content_key, params.key_strength)?;
-            
+            let content_weights =
+                self.content_addressing(&params.content_key, params.key_strength)?;
+
             // Location-based addressing (using previous read weights)
             let location_weights = self.location_addressing(head_id, &params.shift_weighting)?;
-            
+
             // Interpolate between content and location addressing
             let mut addressing_weights = Array1::zeros(self.memory.memory_matrix.nrows());
             for i in 0..addressing_weights.len() {
-                addressing_weights[i] = params.interpolation_gate * content_weights[i] + 
-                                      (1.0 - params.interpolation_gate) * location_weights[i];
+                addressing_weights[i] = params.interpolation_gate * content_weights[i]
+                    + (1.0 - params.interpolation_gate) * location_weights[i];
             }
-            
+
             // Apply sharpening
             self.apply_sharpening(&mut addressing_weights, params.sharpening_factor)?;
-            
+
             // Apply quantum superposition if enabled
             if self.config.addressing_config.quantum_superposition {
                 addressing_weights = self.apply_quantum_superposition(&addressing_weights)?;
             }
-            
+
             // Update read weights
-            self.memory.read_weights.row_mut(head_id).assign(&addressing_weights);
-            
+            self.memory
+                .read_weights
+                .row_mut(head_id)
+                .assign(&addressing_weights);
+
             // Read from memory using quantum circuit
             let read_vector = self.quantum_read(head_id, &addressing_weights)?;
             read_vectors.push(read_vector);
         }
-        
+
         Ok(read_vectors)
     }
 
@@ -594,36 +618,45 @@ impl QuantumMemoryAugmentedNetwork {
     fn write_to_memory(&mut self, write_params: &[WriteParams]) -> Result<()> {
         for (head_id, params) in write_params.iter().enumerate() {
             // Content-based addressing for write
-            let content_weights = self.content_addressing(&params.content_key, params.key_strength)?;
-            
+            let content_weights =
+                self.content_addressing(&params.content_key, params.key_strength)?;
+
             // Allocation weights (for writing to unused locations)
             let allocation_weights = self.compute_allocation_weights()?;
-            
+
             // Combine content and allocation weights
             let mut write_weights = Array1::zeros(self.memory.memory_matrix.nrows());
             for i in 0..write_weights.len() {
-                write_weights[i] = params.allocation_gate * allocation_weights[i] + 
-                                  (1.0 - params.allocation_gate) * content_weights[i];
+                write_weights[i] = params.allocation_gate * allocation_weights[i]
+                    + (1.0 - params.allocation_gate) * content_weights[i];
             }
-            
+
             // Apply write gate
             for weight in write_weights.iter_mut() {
                 *weight *= params.write_gate;
             }
-            
+
             // Apply sharpening
             self.apply_sharpening(&mut write_weights, params.sharpening_factor)?;
-            
+
             // Update write weights
-            self.memory.write_weights.row_mut(head_id).assign(&write_weights);
-            
+            self.memory
+                .write_weights
+                .row_mut(head_id)
+                .assign(&write_weights);
+
             // Perform quantum write operation
-            self.quantum_write(head_id, &write_weights, &params.write_vector, &params.erase_vector)?;
-            
+            self.quantum_write(
+                head_id,
+                &write_weights,
+                &params.write_vector,
+                &params.erase_vector,
+            )?;
+
             // Update usage weights
             self.update_usage_weights(&write_weights)?;
         }
-        
+
         Ok(())
     }
 
@@ -631,63 +664,75 @@ impl QuantumMemoryAugmentedNetwork {
     fn content_addressing(&self, key: &Array1<f64>, strength: f64) -> Result<Array1<f64>> {
         let memory_size = self.memory.memory_matrix.nrows();
         let mut similarities = Array1::zeros(memory_size);
-        
+
         for i in 0..memory_size {
             let memory_vector = self.memory.memory_matrix.row(i);
-            
+
             // Compute quantum similarity
             let similarity = if self.config.addressing_config.quantum_superposition {
                 self.quantum_similarity(key, &memory_vector.to_owned())?
             } else {
                 // Classical cosine similarity
-                let dot_product = key.iter().zip(memory_vector.iter()).map(|(a, b)| a * b).sum::<f64>();
+                let dot_product = key
+                    .iter()
+                    .zip(memory_vector.iter())
+                    .map(|(a, b)| a * b)
+                    .sum::<f64>();
                 let key_norm = key.iter().map(|x| x * x).sum::<f64>().sqrt();
                 let mem_norm = memory_vector.iter().map(|x| x * x).sum::<f64>().sqrt();
-                
+
                 if key_norm > 1e-10 && mem_norm > 1e-10 {
                     dot_product / (key_norm * mem_norm)
                 } else {
                     0.0
                 }
             };
-            
+
             similarities[i] = similarity;
         }
-        
+
         // Apply exponential and normalize (softmax with strength)
         let mut weights = Array1::zeros(memory_size);
-        let max_sim = similarities.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let max_sim = similarities
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
         let mut sum = 0.0;
-        
+
         for i in 0..memory_size {
             weights[i] = ((similarities[i] - max_sim) * strength).exp();
             sum += weights[i];
         }
-        
+
         if sum > 1e-10 {
             weights /= sum;
         }
-        
+
         Ok(weights)
     }
 
     /// Location-based addressing using shift operations
-    fn location_addressing(&self, head_id: usize, shift_weighting: &Array1<f64>) -> Result<Array1<f64>> {
+    fn location_addressing(
+        &self,
+        head_id: usize,
+        shift_weighting: &Array1<f64>,
+    ) -> Result<Array1<f64>> {
         let memory_size = self.memory.memory_matrix.nrows();
         let prev_weights = self.memory.read_weights.row(head_id);
         let mut location_weights = Array1::zeros(memory_size);
-        
+
         // Convolutional shift
         for i in 0..memory_size {
             let mut shifted_weight = 0.0;
             for j in 0..shift_weighting.len() {
                 let shift = j as i32 - (shift_weighting.len() / 2) as i32;
-                let shifted_idx = ((i as i32 + shift) % memory_size as i32 + memory_size as i32) % memory_size as i32;
+                let shifted_idx = ((i as i32 + shift) % memory_size as i32 + memory_size as i32)
+                    % memory_size as i32;
                 shifted_weight += prev_weights[shifted_idx as usize] * shift_weighting[j];
             }
             location_weights[i] = shifted_weight;
         }
-        
+
         Ok(location_weights)
     }
 
@@ -699,11 +744,11 @@ impl QuantumMemoryAugmentedNetwork {
             *weight = weight.powf(sharpening_factor);
             sum += *weight;
         }
-        
+
         if sum > 1e-10 {
             *weights /= sum;
         }
-        
+
         Ok(())
     }
 
@@ -712,7 +757,7 @@ impl QuantumMemoryAugmentedNetwork {
         let memory_size = weights.len();
         let num_qubits = (memory_size as f64).log2().ceil() as usize;
         let state_dim = 1 << num_qubits;
-        
+
         // Create quantum superposition state
         let mut quantum_state = Array1::zeros(state_dim);
         for (i, &weight) in weights.iter().enumerate() {
@@ -720,28 +765,28 @@ impl QuantumMemoryAugmentedNetwork {
                 quantum_state[i] = weight.sqrt();
             }
         }
-        
+
         // Normalize quantum state
         let norm = quantum_state.iter().map(|x| x * x).sum::<f64>().sqrt();
         if norm > 1e-10 {
             quantum_state /= norm;
         }
-        
+
         // Apply quantum circuit transformation
         let evolved_state = self.apply_addressing_circuit(&quantum_state)?;
-        
+
         // Extract weights from quantum amplitudes
         let mut new_weights = Array1::zeros(memory_size);
         for i in 0..memory_size.min(evolved_state.len()) {
             new_weights[i] = evolved_state[i] * evolved_state[i];
         }
-        
+
         // Renormalize
         let sum = new_weights.sum();
         if sum > 1e-10 {
             new_weights /= sum;
         }
-        
+
         Ok(new_weights)
     }
 
@@ -749,12 +794,12 @@ impl QuantumMemoryAugmentedNetwork {
     fn apply_addressing_circuit(&self, state: &Array1<f64>) -> Result<Array1<f64>> {
         // Simplified quantum circuit for addressing enhancement
         let mut evolved_state = state.clone();
-        
+
         // Apply random quantum gates to enhance superposition
         for _ in 0..3 {
             evolved_state = self.apply_random_quantum_operation(&evolved_state)?;
         }
-        
+
         Ok(evolved_state)
     }
 
@@ -762,14 +807,14 @@ impl QuantumMemoryAugmentedNetwork {
     fn apply_random_quantum_operation(&self, state: &Array1<f64>) -> Result<Array1<f64>> {
         let num_qubits = (state.len() as f64).log2() as usize;
         let mut new_state = state.clone();
-        
+
         // Apply random single-qubit rotation
         if num_qubits > 0 {
             let target_qubit = fastrand::usize(..num_qubits);
             let angle = fastrand::f64() * std::f64::consts::PI;
             new_state = self.apply_ry_gate(&new_state, target_qubit, angle)?;
         }
-        
+
         Ok(new_state)
     }
 
@@ -778,9 +823,9 @@ impl QuantumMemoryAugmentedNetwork {
         let mut new_state = state.clone();
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
-        
+
         let qubit_mask = 1 << qubit;
-        
+
         for i in 0..state.len() {
             if i & qubit_mask == 0 {
                 let j = i | qubit_mask;
@@ -792,7 +837,7 @@ impl QuantumMemoryAugmentedNetwork {
                 }
             }
         }
-        
+
         Ok(new_state)
     }
 
@@ -801,14 +846,15 @@ impl QuantumMemoryAugmentedNetwork {
         // Encode vectors as quantum states
         let state1 = self.encode_as_quantum_state(vec1)?;
         let state2 = self.encode_as_quantum_state(vec2)?;
-        
+
         // Compute quantum fidelity
-        let fidelity = state1.iter()
+        let fidelity = state1
+            .iter()
             .zip(state2.iter())
             .map(|(a, b)| a * b)
             .sum::<f64>()
             .abs();
-        
+
         Ok(fidelity)
     }
 
@@ -817,13 +863,13 @@ impl QuantumMemoryAugmentedNetwork {
         let num_qubits = self.config.memory_qubits;
         let state_dim = 1 << num_qubits;
         let mut quantum_state = Array1::zeros(state_dim);
-        
+
         // Amplitude encoding
         let copy_len = vector.len().min(state_dim);
         for i in 0..copy_len {
             quantum_state[i] = vector[i];
         }
-        
+
         // Normalize
         let norm = quantum_state.iter().map(|x| x * x).sum::<f64>().sqrt();
         if norm > 1e-10 {
@@ -831,7 +877,7 @@ impl QuantumMemoryAugmentedNetwork {
         } else {
             quantum_state[0] = 1.0;
         }
-        
+
         Ok(quantum_state)
     }
 
@@ -839,18 +885,18 @@ impl QuantumMemoryAugmentedNetwork {
     fn compute_allocation_weights(&self) -> Result<Array1<f64>> {
         let memory_size = self.memory.usage_weights.len();
         let mut allocation_weights = Array1::zeros(memory_size);
-        
+
         // Allocation weights are inversely proportional to usage
         for i in 0..memory_size {
             allocation_weights[i] = 1.0 - self.memory.usage_weights[i];
         }
-        
+
         // Normalize
         let sum = allocation_weights.sum();
         if sum > 1e-10 {
             allocation_weights /= sum;
         }
-        
+
         Ok(allocation_weights)
     }
 
@@ -858,7 +904,7 @@ impl QuantumMemoryAugmentedNetwork {
     fn quantum_read(&self, head_id: usize, weights: &Array1<f64>) -> Result<Array1<f64>> {
         let memory_dim = self.memory.memory_matrix.ncols();
         let mut read_vector = Array1::zeros(memory_dim);
-        
+
         // Weighted sum of memory vectors
         for (i, &weight) in weights.iter().enumerate() {
             let memory_row = self.memory.memory_matrix.row(i);
@@ -866,101 +912,134 @@ impl QuantumMemoryAugmentedNetwork {
                 read_vector[j] += weight * memory_row[j];
             }
         }
-        
+
         // Apply quantum enhancement if enabled
         if self.config.head_config.entangled_heads {
             read_vector = self.apply_quantum_read_enhancement(&read_vector, head_id)?;
         }
-        
+
         Ok(read_vector)
     }
 
     /// Apply quantum enhancement to read operation
-    fn apply_quantum_read_enhancement(&self, read_vector: &Array1<f64>, head_id: usize) -> Result<Array1<f64>> {
+    fn apply_quantum_read_enhancement(
+        &self,
+        read_vector: &Array1<f64>,
+        head_id: usize,
+    ) -> Result<Array1<f64>> {
         let quantum_state = self.encode_as_quantum_state(read_vector)?;
         let read_head = &self.read_heads[head_id];
         let enhanced_state = read_head.read_circuit.apply(&quantum_state)?;
-        
+
         // Decode back to classical vector
         let output_dim = read_vector.len().min(enhanced_state.len());
         let mut enhanced_vector = Array1::zeros(read_vector.len());
-        
+
         for i in 0..output_dim {
             enhanced_vector[i] = enhanced_state[i];
         }
-        
+
         Ok(enhanced_vector)
     }
 
     /// Perform quantum write operation
-    fn quantum_write(&mut self, head_id: usize, weights: &Array1<f64>, write_vector: &Array1<f64>, erase_vector: &Array1<f64>) -> Result<()> {
+    fn quantum_write(
+        &mut self,
+        head_id: usize,
+        weights: &Array1<f64>,
+        write_vector: &Array1<f64>,
+        erase_vector: &Array1<f64>,
+    ) -> Result<()> {
         let memory_dim = self.memory.memory_matrix.ncols();
-        
+
         for (i, &weight) in weights.iter().enumerate() {
             if weight > 1e-10 {
                 // Erase operation
                 for j in 0..memory_dim {
                     self.memory.memory_matrix[[i, j]] *= 1.0 - weight * erase_vector[j];
                 }
-                
+
                 // Write operation
                 for j in 0..memory_dim {
                     self.memory.memory_matrix[[i, j]] += weight * write_vector[j];
                 }
-                
+
                 // Update quantum state for this memory location
                 if i < self.memory.quantum_states.len() {
-                    let updated_state = self.apply_quantum_write_enhancement(&self.memory.quantum_states[i], write_vector, head_id)?;
+                    let updated_state = self.apply_quantum_write_enhancement(
+                        &self.memory.quantum_states[i],
+                        write_vector,
+                        head_id,
+                    )?;
                     self.memory.quantum_states[i] = updated_state;
                 }
             }
         }
-        
+
         Ok(())
     }
 
     /// Apply quantum enhancement to write operation
-    fn apply_quantum_write_enhancement(&self, current_state: &Array1<f64>, write_vector: &Array1<f64>, head_id: usize) -> Result<Array1<f64>> {
+    fn apply_quantum_write_enhancement(
+        &self,
+        current_state: &Array1<f64>,
+        write_vector: &Array1<f64>,
+        head_id: usize,
+    ) -> Result<Array1<f64>> {
         let write_head = &self.write_heads[head_id];
         let write_quantum_state = self.encode_as_quantum_state(write_vector)?;
         let enhanced_state = write_head.write_circuit.apply(&write_quantum_state)?;
-        
+
         // Combine with current state using quantum superposition
         let mut combined_state = Array1::zeros(current_state.len().max(enhanced_state.len()));
-        
+
         for i in 0..combined_state.len() {
-            let current_val = if i < current_state.len() { current_state[i] } else { 0.0 };
-            let enhanced_val = if i < enhanced_state.len() { enhanced_state[i] } else { 0.0 };
+            let current_val = if i < current_state.len() {
+                current_state[i]
+            } else {
+                0.0
+            };
+            let enhanced_val = if i < enhanced_state.len() {
+                enhanced_state[i]
+            } else {
+                0.0
+            };
             combined_state[i] = (current_val + enhanced_val) / 2.0_f64.sqrt();
         }
-        
+
         // Normalize
         let norm = combined_state.iter().map(|x| x * x).sum::<f64>().sqrt();
         if norm > 1e-10 {
             combined_state /= norm;
         }
-        
+
         Ok(combined_state)
     }
 
     /// Update memory usage weights
     fn update_usage_weights(&mut self, write_weights: &Array1<f64>) -> Result<()> {
         for (i, &write_weight) in write_weights.iter().enumerate() {
-            self.memory.usage_weights[i] = (self.memory.usage_weights[i] * 0.99 + write_weight * 0.01).min(1.0);
+            self.memory.usage_weights[i] =
+                (self.memory.usage_weights[i] * 0.99 + write_weight * 0.01).min(1.0);
         }
         Ok(())
     }
 
     /// Combine controller output with read vectors
-    fn combine_outputs(&self, controller_output: &Array1<f64>, read_vectors: &[Array1<f64>]) -> Result<Array1<f64>> {
-        let output_dim = controller_output.len() + read_vectors.iter().map(|v| v.len()).sum::<usize>();
+    fn combine_outputs(
+        &self,
+        controller_output: &Array1<f64>,
+        read_vectors: &[Array1<f64>],
+    ) -> Result<Array1<f64>> {
+        let output_dim =
+            controller_output.len() + read_vectors.iter().map(|v| v.len()).sum::<usize>();
         let mut combined = Array1::zeros(output_dim);
-        
+
         // Copy controller output
         for (i, &val) in controller_output.iter().enumerate() {
             combined[i] = val;
         }
-        
+
         // Append read vectors
         let mut offset = controller_output.len();
         for read_vector in read_vectors {
@@ -969,7 +1048,7 @@ impl QuantumMemoryAugmentedNetwork {
                 offset += 1;
             }
         }
-        
+
         Ok(combined)
     }
 
@@ -977,43 +1056,52 @@ impl QuantumMemoryAugmentedNetwork {
     fn update_episodic_memory(&mut self, input: &Array1<f64>, output: &Array1<f64>) -> Result<()> {
         // Create quantum signature for this experience
         let quantum_signature = self.create_quantum_signature(input, output)?;
-        
+
         // Store in episodic memory with importance weighting
         let importance = self.compute_importance_weight(input, output)?;
-        
+
         // Add to current episode or create new episode
         if let Some(current_episode) = self.episodic_memory.episodes.last_mut() {
             current_episode.states.push(input.clone());
             current_episode.actions.push(output.clone());
-            current_episode.importance_weight = (current_episode.importance_weight + importance) / 2.0;
+            current_episode.importance_weight =
+                (current_episode.importance_weight + importance) / 2.0;
         }
-        
+
         Ok(())
     }
 
     /// Create quantum signature for experience
-    fn create_quantum_signature(&self, input: &Array1<f64>, output: &Array1<f64>) -> Result<Array1<f64>> {
+    fn create_quantum_signature(
+        &self,
+        input: &Array1<f64>,
+        output: &Array1<f64>,
+    ) -> Result<Array1<f64>> {
         let combined_input = self.combine_vectors(input, output)?;
         let quantum_state = self.encode_as_quantum_state(&combined_input)?;
-        
+
         // Apply signature circuit
-        let signature_state = self.episodic_memory.similarity_network.embedding_circuit.apply(&quantum_state)?;
-        
+        let signature_state = self
+            .episodic_memory
+            .similarity_network
+            .embedding_circuit
+            .apply(&quantum_state)?;
+
         Ok(signature_state)
     }
 
     /// Combine two vectors
     fn combine_vectors(&self, vec1: &Array1<f64>, vec2: &Array1<f64>) -> Result<Array1<f64>> {
         let mut combined = Array1::zeros(vec1.len() + vec2.len());
-        
+
         for (i, &val) in vec1.iter().enumerate() {
             combined[i] = val;
         }
-        
+
         for (i, &val) in vec2.iter().enumerate() {
             combined[vec1.len() + i] = val;
         }
-        
+
         Ok(combined)
     }
 
@@ -1022,7 +1110,7 @@ impl QuantumMemoryAugmentedNetwork {
         // Simplified importance based on novelty
         let novelty = self.compute_novelty(input)?;
         let output_magnitude = output.iter().map(|x| x * x).sum::<f64>().sqrt();
-        
+
         Ok(novelty * output_magnitude.min(1.0))
     }
 
@@ -1030,14 +1118,14 @@ impl QuantumMemoryAugmentedNetwork {
     fn compute_novelty(&self, input: &Array1<f64>) -> Result<f64> {
         // Compare with recent experiences
         let mut min_similarity: f64 = 1.0;
-        
+
         for episode in self.episodic_memory.episodes.iter().rev().take(10) {
             for state in &episode.states {
                 let similarity = self.quantum_similarity(input, state)?;
                 min_similarity = min_similarity.min(similarity);
             }
         }
-        
+
         Ok(1.0 - min_similarity)
     }
 
@@ -1045,65 +1133,73 @@ impl QuantumMemoryAugmentedNetwork {
     pub fn train(&mut self, training_data: &[(Array1<f64>, Array1<f64>)]) -> Result<()> {
         let num_epochs = self.config.training_config.epochs;
         let batch_size = self.config.training_config.batch_size;
-        
+
         for epoch in 0..num_epochs {
             let mut epoch_loss = 0.0;
             let mut num_batches = 0;
-            
+
             // Process in batches
             for batch_start in (0..training_data.len()).step_by(batch_size) {
                 let batch_end = (batch_start + batch_size).min(training_data.len());
                 let batch = &training_data[batch_start..batch_end];
-                
+
                 let batch_loss = self.train_batch(batch)?;
                 epoch_loss += batch_loss;
                 num_batches += 1;
             }
-            
+
             epoch_loss /= num_batches as f64;
-            
+
             // Compute metrics
             let metrics = self.compute_training_metrics(epoch, epoch_loss)?;
             self.training_history.push(metrics);
-            
+
             if epoch % 20 == 0 {
-                println!("Epoch {}: Loss = {:.6}, Memory Utilization = {:.3}, Quantum Coherence = {:.4}",
-                         epoch, epoch_loss, 
-                         self.training_history.last().unwrap().memory_utilization,
-                         self.training_history.last().unwrap().quantum_memory_coherence);
+                println!(
+                    "Epoch {}: Loss = {:.6}, Memory Utilization = {:.3}, Quantum Coherence = {:.4}",
+                    epoch,
+                    epoch_loss,
+                    self.training_history.last().unwrap().memory_utilization,
+                    self.training_history
+                        .last()
+                        .unwrap()
+                        .quantum_memory_coherence
+                );
             }
         }
-        
+
         Ok(())
     }
 
     /// Train on a single batch
     fn train_batch(&mut self, batch: &[(Array1<f64>, Array1<f64>)]) -> Result<f64> {
         let mut total_loss = 0.0;
-        
+
         for (input, target) in batch {
             // Forward pass
             let output = self.forward(input)?;
-            
+
             // Compute loss
             let loss = self.compute_loss(&output, target)?;
             total_loss += loss;
-            
+
             // Backward pass (simplified)
             self.backward_pass(&output, target)?;
         }
-        
+
         Ok(total_loss / batch.len() as f64)
     }
 
     /// Compute loss function
     fn compute_loss(&self, output: &Array1<f64>, target: &Array1<f64>) -> Result<f64> {
         // Mean squared error
-        let mse = output.iter()
+        let mse = output
+            .iter()
             .zip(target.iter())
             .map(|(o, t)| (o - t).powi(2))
-            .sum::<f64>() / output.len() as f64;
-        
+            .sum::<f64>()
+            / output.len() as f64;
+
         Ok(mse)
     }
 
@@ -1111,25 +1207,25 @@ impl QuantumMemoryAugmentedNetwork {
     fn backward_pass(&mut self, _output: &Array1<f64>, _target: &Array1<f64>) -> Result<()> {
         // Simplified parameter updates
         let learning_rate = self.config.training_config.learning_rate;
-        
+
         // Update controller parameters
         for param in self.controller.parameters.iter_mut() {
             *param += learning_rate * (fastrand::f64() - 0.5) * 0.01;
         }
-        
+
         // Update head parameters
         for head in &mut self.read_heads {
             for param in head.read_circuit.parameters.iter_mut() {
                 *param += learning_rate * (fastrand::f64() - 0.5) * 0.01;
             }
         }
-        
+
         for head in &mut self.write_heads {
             for param in head.write_circuit.parameters.iter_mut() {
                 *param += learning_rate * (fastrand::f64() - 0.5) * 0.01;
             }
         }
-        
+
         Ok(())
     }
 
@@ -1150,7 +1246,7 @@ impl QuantumMemoryAugmentedNetwork {
     /// Compute attention entropy
     fn compute_attention_entropy(&self, weights: &Array2<f64>) -> Result<f64> {
         let mut total_entropy = 0.0;
-        
+
         for row in weights.rows() {
             let mut entropy = 0.0;
             for &weight in row.iter() {
@@ -1160,22 +1256,21 @@ impl QuantumMemoryAugmentedNetwork {
             }
             total_entropy += entropy;
         }
-        
+
         Ok(total_entropy / weights.nrows() as f64)
     }
 
     /// Compute quantum coherence of memory
     fn compute_quantum_coherence(&self) -> Result<f64> {
         let mut total_coherence = 0.0;
-        
+
         for quantum_state in &self.memory.quantum_states {
             // Compute coherence as sum of off-diagonal density matrix elements
-            let coherence = quantum_state.iter()
-                .map(|x| x.abs())
-                .sum::<f64>() / quantum_state.len() as f64;
+            let coherence =
+                quantum_state.iter().map(|x| x.abs()).sum::<f64>() / quantum_state.len() as f64;
             total_coherence += coherence;
         }
-        
+
         Ok(total_coherence / self.memory.quantum_states.len() as f64)
     }
 
@@ -1186,7 +1281,7 @@ impl QuantumMemoryAugmentedNetwork {
         if num_episodes == 0 {
             return Ok(0.0);
         }
-        
+
         let diversity = num_episodes as f64 / (num_episodes as f64 + 10.0);
         Ok(diversity)
     }
@@ -1197,16 +1292,21 @@ impl QuantumMemoryAugmentedNetwork {
     }
 
     /// Extract helper functions
-    fn extract_content_key(&self, output: &Array1<f64>, head_id: usize, is_read: bool) -> Result<Array1<f64>> {
+    fn extract_content_key(
+        &self,
+        output: &Array1<f64>,
+        head_id: usize,
+        is_read: bool,
+    ) -> Result<Array1<f64>> {
         let key_dim = self.config.memory_qubits;
         let start_idx = head_id * key_dim;
         let end_idx = (start_idx + key_dim).min(output.len());
-        
+
         let mut key = Array1::zeros(key_dim);
         for i in 0..(end_idx - start_idx) {
             key[i] = output[start_idx + i];
         }
-        
+
         Ok(key)
     }
 
@@ -1218,18 +1318,22 @@ impl QuantumMemoryAugmentedNetwork {
         let shift_size = 3; // -1, 0, +1 shifts
         let start_idx = head_id * shift_size;
         let mut shift_weights = Array1::zeros(shift_size);
-        
+
         for i in 0..shift_size {
             let idx = start_idx + i;
-            shift_weights[i] = if idx < output.len() { output[idx].exp() } else { 1.0 };
+            shift_weights[i] = if idx < output.len() {
+                output[idx].exp()
+            } else {
+                1.0
+            };
         }
-        
+
         // Normalize
         let sum = shift_weights.sum();
         if sum > 1e-10 {
             shift_weights /= sum;
         }
-        
+
         Ok(shift_weights)
     }
 
@@ -1241,12 +1345,16 @@ impl QuantumMemoryAugmentedNetwork {
         let erase_dim = self.config.memory_qubits;
         let start_idx = head_id * erase_dim + 100; // Offset to avoid overlap
         let mut erase_vec = Array1::zeros(erase_dim);
-        
+
         for i in 0..erase_dim {
             let idx = start_idx + i;
-            erase_vec[i] = if idx < output.len() { output[idx].tanh() } else { 0.0 };
+            erase_vec[i] = if idx < output.len() {
+                output[idx].tanh()
+            } else {
+                0.0
+            };
         }
-        
+
         Ok(erase_vec)
     }
 }
@@ -1279,7 +1387,7 @@ impl QuantumController {
         let num_params = 64; // Simplified
         let parameters = Array1::from_shape_fn(num_params, |_| fastrand::f64() * 0.1);
         let hidden_state = Array1::zeros(config.hidden_dims[0]);
-        
+
         Ok(Self {
             architecture: config.architecture.clone(),
             layers: vec![], // Simplified
@@ -1293,7 +1401,7 @@ impl QuantumController {
         // Simplified controller forward pass
         let output_dim = self.hidden_state.len();
         let mut output = Array1::zeros(output_dim);
-        
+
         for i in 0..output_dim {
             let mut sum = 0.0;
             for (j, &inp) in input.iter().enumerate() {
@@ -1302,7 +1410,7 @@ impl QuantumController {
             }
             output[i] = sum.tanh();
         }
-        
+
         self.hidden_state = output.clone();
         Ok(output)
     }
@@ -1400,7 +1508,7 @@ impl QuantumCircuit {
     pub fn new(num_qubits: usize) -> Result<Self> {
         let num_params = num_qubits * 4; // Simplified
         let parameters = Array1::from_shape_fn(num_params, |_| fastrand::f64() * 0.1);
-        
+
         Ok(Self {
             gates: vec![], // Simplified
             num_qubits,
@@ -1412,19 +1520,19 @@ impl QuantumCircuit {
     pub fn apply(&self, input_state: &Array1<f64>) -> Result<Array1<f64>> {
         // Simplified quantum circuit application
         let mut state = input_state.clone();
-        
+
         // Apply some random quantum operations for demonstration
         for _ in 0..3 {
             if self.num_qubits > 0 {
                 let qubit = fastrand::usize(..self.num_qubits);
                 let param_idx = fastrand::usize(..self.parameters.len());
                 let angle = self.parameters[param_idx];
-                
+
                 // Apply RY rotation
                 let qubit_mask = 1 << qubit;
                 let cos_half = (angle / 2.0).cos();
                 let sin_half = (angle / 2.0).sin();
-                
+
                 for i in 0..state.len() {
                     if i & qubit_mask == 0 {
                         let j = i | qubit_mask;
@@ -1438,7 +1546,7 @@ impl QuantumCircuit {
                 }
             }
         }
-        
+
         Ok(state)
     }
 }
@@ -1467,7 +1575,7 @@ pub fn benchmark_qman_vs_classical(
     test_data: &[(Array1<f64>, Array1<f64>)],
 ) -> Result<BenchmarkResults> {
     let start_time = std::time::Instant::now();
-    
+
     let mut quantum_loss = 0.0;
     for (input, target) in test_data {
         let output = qman.forward(input)?;
@@ -1475,13 +1583,13 @@ pub fn benchmark_qman_vs_classical(
         quantum_loss += loss;
     }
     quantum_loss /= test_data.len() as f64;
-    
+
     let quantum_time = start_time.elapsed();
-    
+
     // Classical comparison would go here
     let classical_loss = quantum_loss * 1.3; // Placeholder
     let classical_time = quantum_time * 2; // Placeholder
-    
+
     Ok(BenchmarkResults {
         quantum_loss,
         classical_loss,
@@ -1518,7 +1626,7 @@ mod tests {
     fn test_memory_operations() {
         let config = QMANConfig::default();
         let mut qman = QuantumMemoryAugmentedNetwork::new(config).unwrap();
-        
+
         let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6]);
         let result = qman.forward(&input);
         assert!(result.is_ok());
@@ -1528,11 +1636,11 @@ mod tests {
     fn test_quantum_addressing() {
         let config = QMANConfig::default();
         let qman = QuantumMemoryAugmentedNetwork::new(config).unwrap();
-        
+
         let key = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
         let weights = qman.content_addressing(&key, 2.0);
         assert!(weights.is_ok());
-        
+
         let weights = weights.unwrap();
         let sum = weights.sum();
         assert!((sum - 1.0).abs() < 1e-6); // Should sum to 1
@@ -1542,10 +1650,10 @@ mod tests {
     fn test_episodic_memory() {
         let config = QMANConfig::default();
         let mut qman = QuantumMemoryAugmentedNetwork::new(config).unwrap();
-        
+
         let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6]);
         let output = Array1::from_vec(vec![0.7, 0.8, 0.9, 1.0, 1.1, 1.2]);
-        
+
         let result = qman.update_episodic_memory(&input, &output);
         assert!(result.is_ok());
     }

@@ -269,7 +269,7 @@ impl TestAnalytics {
             visualization_tools: Self::create_default_visualization_tools(),
         }
     }
-    
+
     /// Create default analytics engines
     fn create_default_engines() -> Vec<AnalyticsEngine> {
         vec![
@@ -288,47 +288,43 @@ impl TestAnalytics {
                         algorithm_type: "correlation".to_string(),
                         parameters: HashMap::new(),
                         input_types: vec!["time_series".to_string()],
-                    }
+                    },
                 ],
                 output_format: AnalyticsOutputFormat::JSON,
             },
             AnalyticsEngine {
                 id: "trend_analyzer".to_string(),
                 engine_type: AnalyticsEngineType::TimeSeries,
-                algorithms: vec![
-                    AnalysisAlgorithm {
-                        id: "trend_detection".to_string(),
-                        algorithm_type: "linear_regression".to_string(),
-                        parameters: {
-                            let mut params = HashMap::new();
-                            params.insert("window_size".to_string(), 30.0);
-                            params
-                        },
-                        input_types: vec!["time_series".to_string()],
-                    }
-                ],
+                algorithms: vec![AnalysisAlgorithm {
+                    id: "trend_detection".to_string(),
+                    algorithm_type: "linear_regression".to_string(),
+                    parameters: {
+                        let mut params = HashMap::new();
+                        params.insert("window_size".to_string(), 30.0);
+                        params
+                    },
+                    input_types: vec!["time_series".to_string()],
+                }],
                 output_format: AnalyticsOutputFormat::CSV,
             },
             AnalyticsEngine {
                 id: "pattern_recognizer".to_string(),
                 engine_type: AnalyticsEngineType::PatternRecognition,
-                algorithms: vec![
-                    AnalysisAlgorithm {
-                        id: "failure_clustering".to_string(),
-                        algorithm_type: "k_means".to_string(),
-                        parameters: {
-                            let mut params = HashMap::new();
-                            params.insert("num_clusters".to_string(), 5.0);
-                            params
-                        },
-                        input_types: vec!["failure_data".to_string()],
-                    }
-                ],
+                algorithms: vec![AnalysisAlgorithm {
+                    id: "failure_clustering".to_string(),
+                    algorithm_type: "k_means".to_string(),
+                    parameters: {
+                        let mut params = HashMap::new();
+                        params.insert("num_clusters".to_string(), 5.0);
+                        params
+                    },
+                    input_types: vec!["failure_data".to_string()],
+                }],
                 output_format: AnalyticsOutputFormat::JSON,
-            }
+            },
         ]
     }
-    
+
     /// Create default report generators
     fn create_default_generators() -> Vec<ReportGenerator> {
         vec![
@@ -337,7 +333,9 @@ impl TestAnalytics {
                 report_type: ReportType::PerformanceSummary,
                 template_config: ReportTemplate {
                     id: "performance_template".to_string(),
-                    content: "# Performance Summary\n\n{{performance_metrics}}\n\n{{trend_analysis}}".to_string(),
+                    content:
+                        "# Performance Summary\n\n{{performance_metrics}}\n\n{{trend_analysis}}"
+                            .to_string(),
                     variables: HashMap::new(),
                     styling: ReportStyling {
                         color_scheme: "blue".to_string(),
@@ -352,7 +350,8 @@ impl TestAnalytics {
                 report_type: ReportType::FailureAnalysis,
                 template_config: ReportTemplate {
                     id: "failure_template".to_string(),
-                    content: "# Failure Analysis\n\n{{failure_patterns}}\n\n{{recommendations}}".to_string(),
+                    content: "# Failure Analysis\n\n{{failure_patterns}}\n\n{{recommendations}}"
+                        .to_string(),
                     variables: HashMap::new(),
                     styling: ReportStyling {
                         color_scheme: "red".to_string(),
@@ -361,10 +360,10 @@ impl TestAnalytics {
                     },
                 },
                 output_format: ReportFormat::PDF,
-            }
+            },
         ]
     }
-    
+
     /// Create default visualization tools
     fn create_default_visualization_tools() -> Vec<VisualizationTool> {
         vec![
@@ -399,69 +398,77 @@ impl TestAnalytics {
                     InteractiveFeature::Tooltips,
                     InteractiveFeature::DrillDown,
                 ],
-            }
+            },
         ]
     }
-    
+
     /// Process test results
     pub fn process_test_results(&mut self, results: &TestSuiteResults) -> ApplicationResult<()> {
         println!("Processing test results for analytics");
-        
+
         // Process scenario results
         for scenario_result in &results.scenario_results {
             self.process_scenario_result(scenario_result)?;
         }
-        
+
         // Process regression results
         for regression_result in &results.regression_results {
             self.process_regression_result(regression_result)?;
         }
-        
+
         // Process platform results
         for platform_result in &results.platform_results {
             self.process_platform_result(platform_result)?;
         }
-        
+
         // Process stress results
         for stress_result in &results.stress_results {
             self.process_stress_result(stress_result)?;
         }
-        
+
         // Process property results
         for property_result in &results.property_results {
             self.process_property_result(property_result)?;
         }
-        
+
         // Update database statistics
         self.update_database_statistics()?;
-        
+
         // Analyze trends and patterns
         self.analyze_trends_and_patterns()?;
-        
+
         Ok(())
     }
-    
+
     /// Process scenario test result
     fn process_scenario_result(&mut self, result: &ScenarioTestResult) -> ApplicationResult<()> {
         let record = TestExecutionRecord {
-            id: format!("scenario_{}_{}", result.scenario_id, Instant::now().elapsed().as_nanos()),
+            id: format!(
+                "scenario_{}_{}",
+                result.scenario_id,
+                Instant::now().elapsed().as_nanos()
+            ),
             test_id: result.scenario_id.clone(),
             timestamp: Instant::now(),
             result: result.test_result.clone(),
             config: HashMap::new(),
             environment: HashMap::new(),
         };
-        
-        self.result_database.execution_records
+
+        self.result_database
+            .execution_records
             .entry(result.scenario_id.clone())
             .or_insert_with(Vec::new)
             .push(record);
-        
+
         Ok(())
     }
-    
+
     /// Process regression test result
-    fn process_regression_result(&mut self, result: &RegressionTestResult) -> ApplicationResult<()> {
+    fn process_regression_result(
+        &mut self,
+        result: &RegressionTestResult,
+    ) -> ApplicationResult<()> {
         if result.regression_detected {
             // Record as potential failure pattern
             let failure = FailureInstance {
@@ -481,9 +488,11 @@ impl TestAnalytics {
                     context
                 },
             };
-            
+
             let pattern_id = format!("regression_{}", result.test_id);
-            let pattern = self.result_database.failure_patterns
+            let pattern = self
+                .result_database
+                .failure_patterns
                 .entry(pattern_id.clone())
                 .or_insert_with(|| FailurePattern {
                     id: pattern_id,
@@ -492,19 +501,23 @@ impl TestAnalytics {
                     conditions: Vec::new(),
                     failures: Vec::new(),
                 });
-            
+
             pattern.failures.push(failure);
             pattern.frequency = pattern.failures.len() as f64;
         }
-        
+
         Ok(())
     }
-    
+
     /// Process platform test result
     fn process_platform_result(&mut self, result: &PlatformTestResult) -> ApplicationResult<()> {
         // Store platform compatibility data
-        let record_id = format!("platform_{}_{}", result.platform_id, Instant::now().elapsed().as_nanos());
-        
+        let record_id = format!(
+            "platform_{}_{}",
+            result.platform_id,
+            Instant::now().elapsed().as_nanos()
+        );
+
         // Create a synthetic execution result for platform test
         let execution_result = TestExecutionResult {
             solution_quality: result.compatibility_score,
@@ -514,7 +527,7 @@ impl TestAnalytics {
             convergence_achieved: result.compatibility_score > 0.9,
             memory_used: 1024,
         };
-        
+
         let record = TestExecutionRecord {
             id: record_id,
             test_id: result.platform_id.clone(),
@@ -524,23 +537,31 @@ impl TestAnalytics {
             environment: {
                 let mut env = HashMap::new();
                 env.insert("test_type".to_string(), "platform_validation".to_string());
-                env.insert("compatibility_score".to_string(), result.compatibility_score.to_string());
+                env.insert(
+                    "compatibility_score".to_string(),
+                    result.compatibility_score.to_string(),
+                );
                 env
             },
         };
-        
-        self.result_database.execution_records
+
+        self.result_database
+            .execution_records
             .entry(result.platform_id.clone())
             .or_insert_with(Vec::new)
             .push(record);
-        
+
         Ok(())
     }
-    
+
     /// Process stress test result
     fn process_stress_result(&mut self, result: &StressTestResult) -> ApplicationResult<()> {
-        let record_id = format!("stress_{}_{}", result.test_id, Instant::now().elapsed().as_nanos());
-        
+        let record_id = format!(
+            "stress_{}_{}",
+            result.test_id,
+            Instant::now().elapsed().as_nanos()
+        );
+
         let execution_result = TestExecutionResult {
             solution_quality: result.success_rate,
             execution_time: Duration::from_secs(60), // Simplified
@@ -549,7 +570,7 @@ impl TestAnalytics {
             convergence_achieved: result.success_rate > 0.9,
             memory_used: 2048,
         };
-        
+
         let record = TestExecutionRecord {
             id: record_id,
             test_id: result.test_id.clone(),
@@ -564,19 +585,24 @@ impl TestAnalytics {
                 env
             },
         };
-        
-        self.result_database.execution_records
+
+        self.result_database
+            .execution_records
             .entry(result.test_id.clone())
             .or_insert_with(Vec::new)
             .push(record);
-        
+
         Ok(())
     }
-    
+
     /// Process property test result
     fn process_property_result(&mut self, result: &PropertyTestResult) -> ApplicationResult<()> {
-        let record_id = format!("property_{}_{}", result.property_id, Instant::now().elapsed().as_nanos());
-        
+        let record_id = format!(
+            "property_{}_{}",
+            result.property_id,
+            Instant::now().elapsed().as_nanos()
+        );
+
         let execution_result = TestExecutionResult {
             solution_quality: result.confidence,
             execution_time: result.execution_time,
@@ -585,7 +611,7 @@ impl TestAnalytics {
             convergence_achieved: result.confidence > 0.95,
             memory_used: 512,
         };
-        
+
         let record = TestExecutionRecord {
             id: record_id,
             test_id: result.property_id.clone(),
@@ -600,77 +626,86 @@ impl TestAnalytics {
                 env
             },
         };
-        
-        self.result_database.execution_records
+
+        self.result_database
+            .execution_records
             .entry(result.property_id.clone())
             .or_insert_with(Vec::new)
             .push(record);
-        
+
         Ok(())
     }
-    
+
     /// Update database statistics
     fn update_database_statistics(&mut self) -> ApplicationResult<()> {
         let mut total_executions = 0;
         let mut successful_executions = 0;
         let mut total_time = Duration::default();
-        
+
         for records in self.result_database.execution_records.values() {
             for record in records {
                 total_executions += 1;
                 total_time += record.result.execution_time;
-                
+
                 if record.result.convergence_achieved {
                     successful_executions += 1;
                 }
             }
         }
-        
+
         self.result_database.statistics.total_executions = total_executions;
         self.result_database.statistics.success_rate = if total_executions > 0 {
             successful_executions as f64 / total_executions as f64
         } else {
             0.0
         };
-        
+
         self.result_database.statistics.avg_execution_time = if total_executions > 0 {
             total_time / total_executions as u32
         } else {
             Duration::default()
         };
-        
+
         Ok(())
     }
-    
+
     /// Analyze trends and patterns
     fn analyze_trends_and_patterns(&mut self) -> ApplicationResult<()> {
         // Analyze performance trends for each test type
         for (test_id, records) in &self.result_database.execution_records {
-            if records.len() >= 5 { // Need minimum data points
+            if records.len() >= 5 {
+                // Need minimum data points
                 let trend = self.calculate_performance_trend(test_id, records)?;
-                self.result_database.performance_trends.insert(test_id.clone(), trend);
+                self.result_database
+                    .performance_trends
+                    .insert(test_id.clone(), trend);
             }
         }
-        
+
         // Analyze failure patterns
         self.analyze_failure_patterns()?;
-        
+
         Ok(())
     }
-    
+
     /// Calculate performance trend
-    fn calculate_performance_trend(&self, test_id: &str, records: &[TestExecutionRecord]) -> ApplicationResult<PerformanceTrend> {
+    fn calculate_performance_trend(
+        &self,
+        test_id: &str,
+        records: &[TestExecutionRecord],
+    ) -> ApplicationResult<PerformanceTrend> {
         let mut data_points = VecDeque::new();
-        
+
         // Extract quality data points
-        for record in records.iter().rev().take(50) { // Last 50 records
+        for record in records.iter().rev().take(50) {
+            // Last 50 records
             data_points.push_back((record.timestamp, record.result.solution_quality));
         }
-        
+
         // Simple trend analysis
         let values: Vec<f64> = data_points.iter().map(|(_, v)| *v).collect();
         let n = values.len() as f64;
-        
+
         if n < 2.0 {
             return Ok(PerformanceTrend {
                 metric: "solution_quality".to_string(),
@@ -680,15 +715,19 @@ impl TestAnalytics {
                 data_points,
             });
         }
-        
+
         // Calculate linear trend
         let x_sum = (0..values.len()).map(|i| i as f64).sum::<f64>();
         let y_sum = values.iter().sum::<f64>();
-        let xy_sum = values.iter().enumerate().map(|(i, &y)| i as f64 * y).sum::<f64>();
+        let xy_sum = values
+            .iter()
+            .enumerate()
+            .map(|(i, &y)| i as f64 * y)
+            .sum::<f64>();
         let x2_sum = (0..values.len()).map(|i| (i as f64).powi(2)).sum::<f64>();
-        
+
         let slope = (n * xy_sum - x_sum * y_sum) / (n * x2_sum - x_sum.powi(2));
-        
+
         let trend_direction = if slope > 0.01 {
             TrendDirection::Improving
         } else if slope < -0.01 {
@@ -696,7 +735,7 @@ impl TestAnalytics {
         } else {
             TrendDirection::Stable
         };
-        
+
         Ok(PerformanceTrend {
             metric: "solution_quality".to_string(),
             trend_direction,
@@ -705,37 +744,46 @@ impl TestAnalytics {
             data_points,
         })
     }
-    
+
     /// Analyze failure patterns
     fn analyze_failure_patterns(&mut self) -> ApplicationResult<()> {
         // Update frequency for existing patterns
         for pattern in self.result_database.failure_patterns.values_mut() {
             // Calculate recent frequency (last 30 days)
             let cutoff = Instant::now() - Duration::from_secs(30 * 24 * 3600);
-            let recent_failures = pattern.failures.iter()
+            let recent_failures = pattern
+                .failures
+                .iter()
                 .filter(|f| f.timestamp > cutoff)
                 .count();
-            
+
             pattern.frequency = recent_failures as f64;
         }
-        
+
         Ok(())
     }
-    
+
     /// Generate reports
     pub fn generate_reports(&mut self) -> ApplicationResult<()> {
         println!("Generating test reports");
-        
+
         for generator in &self.report_generators {
             let report = self.generate_report_with_generator(generator)?;
-            println!("Generated {:?} report: {} bytes", generator.report_type, report.len());
+            println!(
+                "Generated {:?} report: {} bytes",
+                generator.report_type,
+                report.len()
+            );
         }
-        
+
         Ok(())
     }
-    
+
     /// Generate report with specific generator
-    fn generate_report_with_generator(&self, generator: &ReportGenerator) -> ApplicationResult<String> {
+    fn generate_report_with_generator(
+        &self,
+        generator: &ReportGenerator,
+    ) -> ApplicationResult<String> {
         match generator.report_type {
             ReportType::PerformanceSummary => self.generate_performance_summary(),
             ReportType::FailureAnalysis => self.generate_failure_analysis(),
@@ -743,12 +791,12 @@ impl TestAnalytics {
             _ => Ok("Report type not implemented".to_string()),
         }
     }
-    
+
     /// Generate performance summary report
     fn generate_performance_summary(&self) -> ApplicationResult<String> {
         let mut report = String::new();
         report.push_str("# Performance Summary Report\n\n");
-        
+
         // Overall statistics
         report.push_str(&format!(
             "## Overall Statistics\n- Total Executions: {}\n- Success Rate: {:.2}%\n- Average Execution Time: {:?}\n\n",
@@ -756,24 +804,28 @@ impl TestAnalytics {
             self.result_database.statistics.success_rate * 100.0,
             self.result_database.statistics.avg_execution_time
         ));
-        
+
         // Performance by test type
         report.push_str("## Performance by Test Type\n");
         for (test_id, records) in &self.result_database.execution_records {
             if !records.is_empty() {
-                let avg_quality = records.iter()
+                let avg_quality = records
+                    .iter()
                     .map(|r| r.result.solution_quality)
-                    .sum::<f64>() / records.len() as f64;
-                
+                    .sum::<f64>()
+                    / records.len() as f64;
+
                 report.push_str(&format!(
                     "- {}: {:.3} average quality ({} executions)\n",
-                    test_id, avg_quality, records.len()
+                    test_id,
+                    avg_quality,
+                    records.len()
                 ));
             }
         }
-        
+
         report.push_str("\n");
-        
+
         // Trend analysis
         if !self.result_database.performance_trends.is_empty() {
             report.push_str("## Performance Trends\n");
@@ -784,20 +836,20 @@ impl TestAnalytics {
                 ));
             }
         }
-        
+
         Ok(report)
     }
-    
+
     /// Generate failure analysis report
     fn generate_failure_analysis(&self) -> ApplicationResult<String> {
         let mut report = String::new();
         report.push_str("# Failure Analysis Report\n\n");
-        
+
         if self.result_database.failure_patterns.is_empty() {
             report.push_str("No failure patterns detected.\n");
             return Ok(report);
         }
-        
+
         report.push_str("## Detected Failure Patterns\n");
         for pattern in self.result_database.failure_patterns.values() {
             report.push_str(&format!(
@@ -808,20 +860,20 @@ impl TestAnalytics {
                 pattern.failures.len()
             ));
         }
-        
+
         Ok(report)
     }
-    
+
     /// Generate trend analysis report
     fn generate_trend_analysis(&self) -> ApplicationResult<String> {
         let mut report = String::new();
         report.push_str("# Trend Analysis Report\n\n");
-        
+
         if self.result_database.performance_trends.is_empty() {
             report.push_str("No trends detected.\n");
             return Ok(report);
         }
-        
+
         for (test_id, trend) in &self.result_database.performance_trends {
             report.push_str(&format!(
                 "## {}\n- Metric: {}\n- Direction: {:?}\n- Magnitude: {:.4}\n- Confidence: {:.2}\n- Data Points: {}\n\n",
@@ -833,10 +885,10 @@ impl TestAnalytics {
                 trend.data_points.len()
             ));
         }
-        
+
         Ok(report)
     }
-    
+
     /// Get analytics summary
     pub fn get_analytics_summary(&self) -> AnalyticsSummary {
         AnalyticsSummary {
@@ -845,7 +897,13 @@ impl TestAnalytics {
             avg_execution_time: self.result_database.statistics.avg_execution_time,
             active_trends: self.result_database.performance_trends.len(),
             detected_patterns: self.result_database.failure_patterns.len(),
-            data_retention_days: self.result_database.statistics.retention_policy.retention_period.as_secs() / (24 * 3600),
+            data_retention_days: self
+                .result_database
+                .statistics
+                .retention_policy
+                .retention_period
+                .as_secs()
+                / (24 * 3600),
         }
     }
 }

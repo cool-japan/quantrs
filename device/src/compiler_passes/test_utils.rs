@@ -2,9 +2,9 @@
 
 use std::collections::HashSet;
 
-use crate::backend_traits::BackendCapabilities;
 use super::config::*;
 use super::types::*;
+use crate::backend_traits::BackendCapabilities;
 
 /// Utility functions for creating test configurations
 pub fn create_test_ibm_target() -> CompilationTarget {

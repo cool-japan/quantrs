@@ -11,10 +11,10 @@
 use crate::error::{MLError, Result};
 use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
 use num_complex::Complex64;
-use std::collections::HashMap;
-use std::f64::consts::PI;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use std::collections::HashMap;
+use std::f64::consts::PI;
 
 /// Configuration for Quantum Continuous Normalization Flows
 #[derive(Debug, Clone)]
@@ -42,28 +42,28 @@ pub enum FlowArchitecture {
         num_coupling_layers: usize,
         quantum_coupling_type: QuantumCouplingType,
     },
-    
+
     /// Quantum Glow with invertible 1x1 convolutions
     QuantumGlow {
         num_levels: usize,
         num_steps_per_level: usize,
         quantum_invertible_conv: bool,
     },
-    
+
     /// Quantum Neural Spline Flows
     QuantumNeuralSplineFlow {
         num_bins: usize,
         spline_range: f64,
         quantum_spline_parameters: bool,
     },
-    
+
     /// Quantum Continuous Normalizing Flows with Neural ODEs
     QuantumContinuousNormalizing {
         ode_net_dims: Vec<usize>,
         quantum_ode_solver: QuantumODESolver,
         trace_estimation_method: TraceEstimationMethod,
     },
-    
+
     /// Quantum Autoregressive Flows
     QuantumAutoregressiveFlow {
         num_layers: usize,
@@ -136,20 +136,20 @@ pub struct FlowRegularizationConfig {
 /// Main Quantum Continuous Normalization Flow model
 pub struct QuantumContinuousFlow {
     config: QuantumContinuousFlowConfig,
-    
+
     // Flow components
     flow_layers: Vec<QuantumFlowLayer>,
     base_distribution: QuantumBaseDistribution,
-    
+
     // Quantum components
     quantum_transformations: Vec<QuantumTransformation>,
     entanglement_couplings: Vec<EntanglementCoupling>,
-    
+
     // Training state
     training_history: Vec<FlowTrainingMetrics>,
     quantum_flow_metrics: QuantumFlowMetrics,
     optimization_state: FlowOptimizationState,
-    
+
     // Invertibility tracking
     invertibility_tracker: InvertibilityTracker,
 }
@@ -279,7 +279,10 @@ pub enum QuantumFlowGateType {
 
 #[derive(Debug, Clone)]
 pub enum RotationAxis {
-    X, Y, Z, Custom { direction: Array1<f64> },
+    X,
+    Y,
+    Z,
+    Custom { direction: Array1<f64> },
 }
 
 #[derive(Debug, Clone)]
@@ -323,12 +326,20 @@ pub enum ClassicalFlowLayerType {
 
 #[derive(Debug, Clone)]
 pub enum FlowActivation {
-    ReLU, Swish, GELU, Tanh, LeakyReLU, ELU,
+    ReLU,
+    Swish,
+    GELU,
+    Tanh,
+    LeakyReLU,
+    ELU,
 }
 
 #[derive(Debug, Clone)]
 pub enum FlowNormalization {
-    BatchNorm, LayerNorm, InstanceNorm, GroupNorm,
+    BatchNorm,
+    LayerNorm,
+    InstanceNorm,
+    GroupNorm,
 }
 
 #[derive(Debug, Clone)]
@@ -442,9 +453,15 @@ pub struct IntegrationConfig {
 #[derive(Debug, Clone)]
 pub enum JacobianComputation {
     ExactJacobian,
-    ApproximateJacobian { epsilon: f64 },
-    QuantumJacobian { trace_estimator: TraceEstimationMethod },
-    HutchinsonEstimator { num_samples: usize },
+    ApproximateJacobian {
+        epsilon: f64,
+    },
+    QuantumJacobian {
+        trace_estimator: TraceEstimationMethod,
+    },
+    HutchinsonEstimator {
+        num_samples: usize,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -637,22 +654,22 @@ impl QuantumContinuousFlow {
     /// Create a new Quantum Continuous Normalization Flow
     pub fn new(config: QuantumContinuousFlowConfig) -> Result<Self> {
         println!("🌌 Initializing Quantum Continuous Normalization Flow in UltraThink Mode");
-        
+
         // Initialize flow layers
         let flow_layers = Self::create_flow_layers(&config)?;
-        
+
         // Initialize base distribution
         let base_distribution = Self::create_quantum_base_distribution(&config)?;
-        
+
         // Initialize quantum components
         let quantum_transformations = Self::create_quantum_transformations(&config)?;
         let entanglement_couplings = Self::create_entanglement_couplings(&config)?;
-        
+
         // Initialize tracking and optimization
         let quantum_flow_metrics = QuantumFlowMetrics::default();
         let optimization_state = FlowOptimizationState::default();
         let invertibility_tracker = InvertibilityTracker::default();
-        
+
         Ok(Self {
             config,
             flow_layers,
@@ -665,13 +682,17 @@ impl QuantumContinuousFlow {
             invertibility_tracker,
         })
     }
-    
+
     /// Create flow layers based on architecture
     fn create_flow_layers(config: &QuantumContinuousFlowConfig) -> Result<Vec<QuantumFlowLayer>> {
         let mut layers = Vec::new();
-        
+
         match &config.flow_architecture {
-            FlowArchitecture::QuantumRealNVP { hidden_dims, num_coupling_layers, quantum_coupling_type } => {
+            FlowArchitecture::QuantumRealNVP {
+                hidden_dims,
+                num_coupling_layers,
+                quantum_coupling_type,
+            } => {
                 for i in 0..*num_coupling_layers {
                     let layer = QuantumFlowLayer {
                         layer_id: i,
@@ -687,9 +708,13 @@ impl QuantumContinuousFlow {
                     };
                     layers.push(layer);
                 }
-            },
-            
-            FlowArchitecture::QuantumContinuousNormalizing { ode_net_dims, quantum_ode_solver, trace_estimation_method } => {
+            }
+
+            FlowArchitecture::QuantumContinuousNormalizing {
+                ode_net_dims,
+                quantum_ode_solver,
+                trace_estimation_method,
+            } => {
                 let ode_func = QuantumODEFunction {
                     quantum_dynamics: QuantumDynamics {
                         hamiltonian: Array2::eye(config.num_qubits),
@@ -706,7 +731,7 @@ impl QuantumContinuousFlow {
                         coupling_strength: config.entanglement_coupling_strength,
                     },
                 };
-                
+
                 let layer = QuantumFlowLayer {
                     layer_id: 0,
                     layer_type: FlowLayerType::QuantumNeuralODE {
@@ -720,8 +745,8 @@ impl QuantumContinuousFlow {
                     entanglement_pattern: Self::create_entanglement_pattern(config)?,
                 };
                 layers.push(layer);
-            },
-            
+            }
+
             _ => {
                 // Default coupling layer
                 let layer = QuantumFlowLayer {
@@ -739,42 +764,38 @@ impl QuantumContinuousFlow {
                 layers.push(layer);
             }
         }
-        
+
         Ok(layers)
     }
-    
+
     /// Create coupling network for flow layer
     fn create_coupling_network(
-        config: &QuantumContinuousFlowConfig, 
-        hidden_dims: &[usize]
+        config: &QuantumContinuousFlowConfig,
+        hidden_dims: &[usize],
     ) -> Result<QuantumCouplingNetwork> {
-        let quantum_layers = vec![
-            QuantumFlowNetworkLayer {
-                layer_type: QuantumFlowLayerType::QuantumLinear {
-                    input_features: config.input_dim / 2,
-                    output_features: hidden_dims[0],
-                },
-                num_qubits: config.num_qubits,
-                parameters: Array1::zeros(config.num_qubits * 3),
-                quantum_gates: Self::create_quantum_flow_gates(config)?,
-                measurement_strategy: MeasurementStrategy::ExpectationValue {
-                    observables: vec![Self::create_pauli_z_observable(0)],
-                },
-            }
-        ];
-        
-        let classical_layers = vec![
-            ClassicalFlowLayer {
-                layer_type: ClassicalFlowLayerType::Dense {
-                    input_dim: config.input_dim / 2,
-                    output_dim: hidden_dims[0],
-                },
-                parameters: Array2::zeros((config.input_dim / 2, hidden_dims[0])),
-                activation: FlowActivation::Swish,
-                normalization: Some(FlowNormalization::LayerNorm),
-            }
-        ];
-        
+        let quantum_layers = vec![QuantumFlowNetworkLayer {
+            layer_type: QuantumFlowLayerType::QuantumLinear {
+                input_features: config.input_dim / 2,
+                output_features: hidden_dims[0],
+            },
+            num_qubits: config.num_qubits,
+            parameters: Array1::zeros(config.num_qubits * 3),
+            quantum_gates: Self::create_quantum_flow_gates(config)?,
+            measurement_strategy: MeasurementStrategy::ExpectationValue {
+                observables: vec![Self::create_pauli_z_observable(0)],
+            },
+        }];
+
+        let classical_layers = vec![ClassicalFlowLayer {
+            layer_type: ClassicalFlowLayerType::Dense {
+                input_dim: config.input_dim / 2,
+                output_dim: hidden_dims[0],
+            },
+            parameters: Array2::zeros((config.input_dim / 2, hidden_dims[0])),
+            activation: FlowActivation::Swish,
+            normalization: Some(FlowNormalization::LayerNorm),
+        }];
+
         Ok(QuantumCouplingNetwork {
             network_type: CouplingNetworkType::HybridQuantumClassical,
             quantum_layers,
@@ -782,11 +803,13 @@ impl QuantumContinuousFlow {
             hybrid_connections: Vec::new(),
         })
     }
-    
+
     /// Create quantum flow gates
-    fn create_quantum_flow_gates(config: &QuantumContinuousFlowConfig) -> Result<Vec<QuantumFlowGate>> {
+    fn create_quantum_flow_gates(
+        config: &QuantumContinuousFlowConfig,
+    ) -> Result<Vec<QuantumFlowGate>> {
         let mut gates = Vec::new();
-        
+
         // Add parameterized rotation gates
         for i in 0..config.num_qubits {
             gates.push(QuantumFlowGate {
@@ -799,7 +822,7 @@ impl QuantumContinuousFlow {
                 is_invertible: true,
             });
         }
-        
+
         // Add entanglement gates
         for i in 0..config.num_qubits - 1 {
             gates.push(QuantumFlowGate {
@@ -812,26 +835,28 @@ impl QuantumContinuousFlow {
                 is_invertible: true,
             });
         }
-        
+
         Ok(gates)
     }
-    
+
     /// Create Pauli-Z observable
     fn create_pauli_z_observable(qubit: usize) -> Observable {
         let pauli_z = ndarray::array![
             [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
             [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)]
         ];
-        
+
         Observable {
             name: format!("PauliZ_{}", qubit),
             matrix: pauli_z,
             qubits: vec![qubit],
         }
     }
-    
+
     /// Create invertible component
-    fn create_invertible_component(config: &QuantumContinuousFlowConfig) -> Result<InvertibleComponent> {
+    fn create_invertible_component(
+        config: &QuantumContinuousFlowConfig,
+    ) -> Result<InvertibleComponent> {
         let forward_transform = InvertibleTransform::QuantumCouplingTransform {
             coupling_function: CouplingFunction {
                 scale_function: QuantumNetwork {
@@ -848,9 +873,9 @@ impl QuantumContinuousFlow {
             },
             mask: Array1::from_shape_fn(config.input_dim, |i| i < config.input_dim / 2),
         };
-        
+
         let inverse_transform = forward_transform.clone(); // Would be computed properly
-        
+
         Ok(InvertibleComponent {
             forward_transform,
             inverse_transform,
@@ -862,40 +887,47 @@ impl QuantumContinuousFlow {
             },
         })
     }
-    
+
     /// Create entanglement pattern
-    fn create_entanglement_pattern(config: &QuantumContinuousFlowConfig) -> Result<EntanglementPattern> {
+    fn create_entanglement_pattern(
+        config: &QuantumContinuousFlowConfig,
+    ) -> Result<EntanglementPattern> {
         let connectivity = ConnectivityGraph {
             adjacency_matrix: Array2::<f64>::eye(config.num_qubits).mapv(|x| x != 0.0),
             edge_weights: Array2::ones((config.num_qubits, config.num_qubits)),
             num_nodes: config.num_qubits,
         };
-        
+
         Ok(EntanglementPattern {
             pattern_type: EntanglementPatternType::Circular,
             connectivity,
-            entanglement_strength: Array1::ones(config.num_qubits) * config.entanglement_coupling_strength,
+            entanglement_strength: Array1::ones(config.num_qubits)
+                * config.entanglement_coupling_strength,
         })
     }
-    
+
     /// Create quantum base distribution
-    fn create_quantum_base_distribution(config: &QuantumContinuousFlowConfig) -> Result<QuantumBaseDistribution> {
+    fn create_quantum_base_distribution(
+        config: &QuantumContinuousFlowConfig,
+    ) -> Result<QuantumBaseDistribution> {
         let distribution_type = QuantumDistributionType::QuantumGaussian {
             mean: Array1::zeros(config.latent_dim),
             covariance: Array2::eye(config.latent_dim),
             quantum_enhancement: config.quantum_enhancement_level,
         };
-        
+
         let parameters = DistributionParameters {
             location: Array1::zeros(config.latent_dim),
             scale: Array1::ones(config.latent_dim),
             shape: Array1::ones(config.latent_dim),
             quantum_parameters: Array1::ones(config.latent_dim).mapv(|x| Complex64::new(x, 0.0)),
         };
-        
+
         let quantum_state = QuantumDistributionState {
-            quantum_state_vector: Array1::zeros(2_usize.pow(config.num_qubits as u32)).mapv(|_: f64| Complex64::new(0.0, 0.0)),
-            density_matrix: Array2::eye(2_usize.pow(config.num_qubits as u32)).mapv(|x| Complex64::new(x, 0.0)),
+            quantum_state_vector: Array1::zeros(2_usize.pow(config.num_qubits as u32))
+                .mapv(|_: f64| Complex64::new(0.0, 0.0)),
+            density_matrix: Array2::eye(2_usize.pow(config.num_qubits as u32))
+                .mapv(|x| Complex64::new(x, 0.0)),
             entanglement_structure: EntanglementStructure {
                 entanglement_measure: 0.5,
                 schmidt_decomposition: SchmidtDecomposition {
@@ -906,41 +938,47 @@ impl QuantumContinuousFlow {
                 quantum_correlations: Array2::zeros((config.num_qubits, config.num_qubits)),
             },
         };
-        
+
         Ok(QuantumBaseDistribution {
             distribution_type,
             parameters,
             quantum_state,
         })
     }
-    
+
     /// Create quantum transformations
-    fn create_quantum_transformations(config: &QuantumContinuousFlowConfig) -> Result<Vec<QuantumTransformation>> {
+    fn create_quantum_transformations(
+        config: &QuantumContinuousFlowConfig,
+    ) -> Result<Vec<QuantumTransformation>> {
         let mut transformations = Vec::new();
-        
+
         // Add quantum Fourier transform
         transformations.push(QuantumTransformation {
             transformation_type: QuantumTransformationType::QuantumFourierTransform,
-            unitary_matrix: Array2::eye(2_usize.pow(config.num_qubits as u32)).mapv(|x| Complex64::new(x, 0.0)),
+            unitary_matrix: Array2::eye(2_usize.pow(config.num_qubits as u32))
+                .mapv(|x| Complex64::new(x, 0.0)),
             parameters: Array1::zeros(config.num_qubits),
             invertibility_guaranteed: true,
         });
-        
+
         // Add parameterized quantum circuit
         transformations.push(QuantumTransformation {
             transformation_type: QuantumTransformationType::ParameterizedQuantumCircuit,
-            unitary_matrix: Array2::eye(2_usize.pow(config.num_qubits as u32)).mapv(|x| Complex64::new(x, 0.0)),
+            unitary_matrix: Array2::eye(2_usize.pow(config.num_qubits as u32))
+                .mapv(|x| Complex64::new(x, 0.0)),
             parameters: Array1::zeros(config.num_qubits * 3),
             invertibility_guaranteed: true,
         });
-        
+
         Ok(transformations)
     }
-    
+
     /// Create entanglement couplings
-    fn create_entanglement_couplings(config: &QuantumContinuousFlowConfig) -> Result<Vec<EntanglementCoupling>> {
+    fn create_entanglement_couplings(
+        config: &QuantumContinuousFlowConfig,
+    ) -> Result<Vec<EntanglementCoupling>> {
         let mut couplings = Vec::new();
-        
+
         for i in 0..config.num_qubits - 1 {
             couplings.push(EntanglementCoupling {
                 coupling_qubits: vec![i, i + 1],
@@ -953,38 +991,35 @@ impl QuantumContinuousFlow {
                 },
             });
         }
-        
+
         Ok(couplings)
     }
-    
+
     /// Forward pass through the quantum flow
-    pub fn forward(
-        &self,
-        x: &Array1<f64>,
-    ) -> Result<FlowForwardOutput> {
+    pub fn forward(&self, x: &Array1<f64>) -> Result<FlowForwardOutput> {
         let mut z = x.clone();
         let mut log_jacobian_det = 0.0;
         let mut quantum_states = Vec::new();
         let mut entanglement_history = Vec::new();
-        
+
         // Process through flow layers
         for (layer_idx, layer) in self.flow_layers.iter().enumerate() {
             let layer_output = self.apply_flow_layer(layer, &z, layer_idx)?;
-            
+
             z = layer_output.transformed_data;
             log_jacobian_det += layer_output.log_jacobian_det;
             quantum_states.push(layer_output.quantum_state);
             entanglement_history.push(layer_output.entanglement_measure);
         }
-        
+
         // Compute likelihood under base distribution
         let base_log_prob = self.compute_base_log_probability(&z)?;
         let total_log_prob = base_log_prob + log_jacobian_det;
-        
+
         // Compute quantum enhancement
         let quantum_enhancement = self.compute_quantum_enhancement(&quantum_states)?;
         let quantum_log_prob = total_log_prob + quantum_enhancement.log_enhancement;
-        
+
         Ok(FlowForwardOutput {
             latent_sample: z,
             log_probability: total_log_prob,
@@ -995,7 +1030,7 @@ impl QuantumContinuousFlow {
             quantum_enhancement,
         })
     }
-    
+
     /// Apply single flow layer
     fn apply_flow_layer(
         &self,
@@ -1004,18 +1039,21 @@ impl QuantumContinuousFlow {
         layer_idx: usize,
     ) -> Result<LayerOutput> {
         match &layer.layer_type {
-            FlowLayerType::QuantumCouplingLayer { coupling_type, split_dimension } => {
-                self.apply_quantum_coupling_layer(layer, x, *split_dimension, coupling_type)
-            },
-            
-            FlowLayerType::QuantumNeuralODE { ode_func, integration_time } => {
-                self.apply_quantum_neural_ode_layer(layer, x, ode_func, *integration_time)
-            },
-            
-            FlowLayerType::QuantumAffineCoupling { scale_network, translation_network } => {
-                self.apply_quantum_affine_coupling(layer, x, scale_network, translation_network)
-            },
-            
+            FlowLayerType::QuantumCouplingLayer {
+                coupling_type,
+                split_dimension,
+            } => self.apply_quantum_coupling_layer(layer, x, *split_dimension, coupling_type),
+
+            FlowLayerType::QuantumNeuralODE {
+                ode_func,
+                integration_time,
+            } => self.apply_quantum_neural_ode_layer(layer, x, ode_func, *integration_time),
+
+            FlowLayerType::QuantumAffineCoupling {
+                scale_network,
+                translation_network,
+            } => self.apply_quantum_affine_coupling(layer, x, scale_network, translation_network),
+
             _ => {
                 // Default processing
                 Ok(LayerOutput {
@@ -1027,7 +1065,7 @@ impl QuantumContinuousFlow {
             }
         }
     }
-    
+
     /// Apply quantum coupling layer
     fn apply_quantum_coupling_layer(
         &self,
@@ -1039,10 +1077,10 @@ impl QuantumContinuousFlow {
         // Split input
         let x1 = x.slice(ndarray::s![..split_dim]).to_owned();
         let x2 = x.slice(ndarray::s![split_dim..]).to_owned();
-        
+
         // Apply quantum coupling network to first half
         let coupling_output = self.apply_quantum_coupling_network(&layer.coupling_network, &x1)?;
-        
+
         // Apply coupling transformation to second half
         let (z2, log_jacobian) = match coupling_type {
             QuantumCouplingType::AffineCoupling => {
@@ -1051,30 +1089,30 @@ impl QuantumContinuousFlow {
                 let z2 = &x2 * scale + translation;
                 let log_jac = scale.mapv(|s| s.ln()).sum();
                 (z2, log_jac)
-            },
-            
+            }
+
             QuantumCouplingType::QuantumEntangledCoupling => {
                 // Apply quantum entanglement-based coupling
                 let entanglement_factor = coupling_output.entanglement_factor;
                 let quantum_phase = coupling_output.quantum_phase;
-                
+
                 let mut z2 = x2.clone();
                 for i in 0..z2.len() {
                     z2[i] = z2[i] * entanglement_factor + quantum_phase.re * 0.1;
                 }
-                
+
                 let log_jac = z2.len() as f64 * entanglement_factor.ln();
                 (z2, log_jac)
-            },
-            
+            }
+
             _ => (x2.clone(), 0.0),
         };
-        
+
         // Combine outputs
         let mut z = Array1::zeros(x.len());
         z.slice_mut(ndarray::s![..split_dim]).assign(&x1); // First half unchanged
         z.slice_mut(ndarray::s![split_dim..]).assign(&z2); // Second half transformed
-        
+
         Ok(LayerOutput {
             transformed_data: z,
             log_jacobian_det: log_jacobian,
@@ -1082,7 +1120,7 @@ impl QuantumContinuousFlow {
             entanglement_measure: coupling_output.entanglement_factor,
         })
     }
-    
+
     /// Apply quantum coupling network
     fn apply_quantum_coupling_network(
         &self,
@@ -1091,24 +1129,25 @@ impl QuantumContinuousFlow {
     ) -> Result<CouplingNetworkOutput> {
         // Process through quantum layers
         let mut quantum_state = self.classical_to_quantum_encoding(x)?;
-        
+
         for layer in &network.quantum_layers {
             quantum_state = self.apply_quantum_flow_layer(layer, &quantum_state)?;
         }
-        
+
         // Extract outputs from quantum state
         let measurement_results = self.measure_quantum_state(&quantum_state)?;
-        
+
         // Process through classical layers
         let mut classical_output = x.clone();
         for layer in &network.classical_layers {
             classical_output = self.apply_classical_flow_layer(layer, &classical_output)?;
         }
-        
+
         // Combine quantum and classical outputs
         let scale_params = &measurement_results.expectation_values * 0.5 + &classical_output * 0.5;
-        let translation_params = &measurement_results.variance_measures * 0.3 + &classical_output * 0.7;
-        
+        let translation_params =
+            &measurement_results.variance_measures * 0.3 + &classical_output * 0.7;
+
         Ok(CouplingNetworkOutput {
             scale_params,
             translation_params,
@@ -1122,13 +1161,13 @@ impl QuantumContinuousFlow {
             },
         })
     }
-    
+
     /// Convert classical data to quantum encoding
     fn classical_to_quantum_encoding(&self, x: &Array1<f64>) -> Result<QuantumFlowState> {
         // Simple amplitude encoding (would be more sophisticated in practice)
         let norm = x.dot(x).sqrt();
         let normalized_x = if norm > 1e-10 { x / norm } else { x.clone() };
-        
+
         Ok(QuantumFlowState {
             amplitudes: normalized_x.mapv(|x_i| Complex64::new(x_i, 0.0)),
             phases: Array1::zeros(x.len()).mapv(|_: f64| Complex64::new(1.0, 0.0)),
@@ -1137,7 +1176,7 @@ impl QuantumContinuousFlow {
             fidelity: 1.0,
         })
     }
-    
+
     /// Apply quantum flow layer to quantum state
     fn apply_quantum_flow_layer(
         &self,
@@ -1145,12 +1184,12 @@ impl QuantumContinuousFlow {
         state: &QuantumFlowState,
     ) -> Result<QuantumFlowState> {
         let mut new_state = state.clone();
-        
+
         // Apply quantum gates
         for gate in &layer.quantum_gates {
             new_state = self.apply_quantum_flow_gate(gate, &new_state)?;
         }
-        
+
         // Apply measurement strategy
         match &layer.measurement_strategy {
             MeasurementStrategy::ExpectationValue { observables } => {
@@ -1160,16 +1199,16 @@ impl QuantumContinuousFlow {
                     // Use expectation to modulate quantum state (simplified)
                     new_state.fidelity *= (1.0 + expectation * 0.1);
                 }
-            },
+            }
             _ => {
                 // Default processing
                 new_state.fidelity *= 0.99; // Small decoherence
             }
         }
-        
+
         Ok(new_state)
     }
-    
+
     /// Apply quantum flow gate
     fn apply_quantum_flow_gate(
         &self,
@@ -1177,7 +1216,7 @@ impl QuantumContinuousFlow {
         state: &QuantumFlowState,
     ) -> Result<QuantumFlowState> {
         let mut new_state = state.clone();
-        
+
         match &gate.gate_type {
             QuantumFlowGateType::ParameterizedRotation { axis } => {
                 let angle = gate.parameters[0];
@@ -1189,33 +1228,34 @@ impl QuantumContinuousFlow {
                         new_state.phases[target_qubit] *= rotation_factor;
                     }
                 }
-            },
-            
+            }
+
             QuantumFlowGateType::EntanglementGate { entanglement_type } => {
                 // Apply entanglement (simplified)
                 if gate.target_qubits.len() >= 2 {
                     let control = gate.control_qubits[0];
                     let target = gate.target_qubits[0];
-                    
+
                     if control < new_state.amplitudes.len() && target < new_state.amplitudes.len() {
                         // Simple entanglement operation
                         let entanglement_factor = 0.1;
                         let control_amplitude = new_state.amplitudes[control];
                         new_state.amplitudes[target] += entanglement_factor * control_amplitude;
-                        new_state.entanglement_measure = (new_state.entanglement_measure + 0.1).min(1.0);
+                        new_state.entanglement_measure =
+                            (new_state.entanglement_measure + 0.1).min(1.0);
                     }
                 }
-            },
-            
+            }
+
             _ => {
                 // Default gate application
                 new_state.fidelity *= 0.99;
             }
         }
-        
+
         Ok(new_state)
     }
-    
+
     /// Compute expectation value of observable
     fn compute_expectation_value(
         &self,
@@ -1224,22 +1264,24 @@ impl QuantumContinuousFlow {
     ) -> Result<f64> {
         // Simplified expectation value computation
         let mut expectation = 0.0;
-        
+
         for &qubit in &observable.qubits {
             if qubit < state.amplitudes.len() {
                 expectation += state.amplitudes[qubit].norm_sqr();
             }
         }
-        
+
         Ok(expectation)
     }
-    
+
     /// Measure quantum state
     fn measure_quantum_state(&self, state: &QuantumFlowState) -> Result<MeasurementOutput> {
         let expectation_values = state.amplitudes.mapv(|amp| amp.norm_sqr());
-        let variance_measures = state.amplitudes.mapv(|amp| amp.norm_sqr() * (1.0 - amp.norm_sqr()));
+        let variance_measures = state
+            .amplitudes
+            .mapv(|amp| amp.norm_sqr() * (1.0 - amp.norm_sqr()));
         let average_phase = state.phases.iter().sum::<Complex64>() / state.phases.len() as f64;
-        
+
         Ok(MeasurementOutput {
             expectation_values,
             variance_measures,
@@ -1247,7 +1289,7 @@ impl QuantumContinuousFlow {
             average_phase,
         })
     }
-    
+
     /// Apply classical flow layer
     fn apply_classical_flow_layer(
         &self,
@@ -1255,31 +1297,38 @@ impl QuantumContinuousFlow {
         x: &Array1<f64>,
     ) -> Result<Array1<f64>> {
         match &layer.layer_type {
-            ClassicalFlowLayerType::Dense { input_dim, output_dim } => {
+            ClassicalFlowLayerType::Dense {
+                input_dim,
+                output_dim,
+            } => {
                 if x.len() != *input_dim {
-                    return Err(MLError::ModelCreationError(
-                        format!("Input dimension mismatch: expected {}, got {}", input_dim, x.len())
-                    ));
+                    return Err(MLError::ModelCreationError(format!(
+                        "Input dimension mismatch: expected {}, got {}",
+                        input_dim,
+                        x.len()
+                    )));
                 }
-                
+
                 // Linear transformation
                 let output = layer.parameters.dot(x);
-                
+
                 // Apply activation
                 let activated_output = match layer.activation {
                     FlowActivation::ReLU => output.mapv(|x| x.max(0.0)),
                     FlowActivation::Swish => output.mapv(|x| x / (1.0 + (-x).exp())),
-                    FlowActivation::GELU => output.mapv(|x| 0.5 * x * (1.0 + (0.7978845608 * (x + 0.044715 * x.powi(3))).tanh())),
+                    FlowActivation::GELU => output.mapv(|x| {
+                        0.5 * x * (1.0 + (0.7978845608 * (x + 0.044715 * x.powi(3))).tanh())
+                    }),
                     FlowActivation::Tanh => output.mapv(|x| x.tanh()),
                     _ => output,
                 };
-                
+
                 Ok(activated_output)
-            },
+            }
             _ => Ok(x.clone()),
         }
     }
-    
+
     /// Apply quantum Neural ODE layer
     fn apply_quantum_neural_ode_layer(
         &self,
@@ -1290,16 +1339,18 @@ impl QuantumContinuousFlow {
     ) -> Result<LayerOutput> {
         // Convert to quantum state
         let mut quantum_state = self.classical_to_quantum_encoding(x)?;
-        
+
         // Integrate quantum ODE
-        let integrated_state = self.integrate_quantum_ode(&quantum_state, ode_func, integration_time)?;
-        
+        let integrated_state =
+            self.integrate_quantum_ode(&quantum_state, ode_func, integration_time)?;
+
         // Convert back to classical
         let output_data = integrated_state.amplitudes.mapv(|amp| amp.re);
-        
+
         // Compute jacobian determinant (simplified)
-        let log_jacobian_det = self.compute_quantum_ode_jacobian(&integrated_state, integration_time)?;
-        
+        let log_jacobian_det =
+            self.compute_quantum_ode_jacobian(&integrated_state, integration_time)?;
+
         Ok(LayerOutput {
             transformed_data: output_data,
             log_jacobian_det,
@@ -1312,7 +1363,7 @@ impl QuantumContinuousFlow {
             entanglement_measure: integrated_state.entanglement_measure,
         })
     }
-    
+
     /// Integrate quantum ODE
     fn integrate_quantum_ode(
         &self,
@@ -1322,29 +1373,37 @@ impl QuantumContinuousFlow {
     ) -> Result<QuantumFlowState> {
         let num_steps = 100; // Configurable
         let dt = integration_time / num_steps as f64;
-        
+
         let mut state = initial_state.clone();
-        
+
         for step in 0..num_steps {
             let current_time = step as f64 * dt;
-            
+
             // Quantum dynamics
             state = self.apply_quantum_dynamics(&ode_func.quantum_dynamics, &state, dt)?;
-            
+
             // Classical dynamics (if hybrid)
-            let classical_contribution = self.apply_classical_dynamics(&ode_func.classical_dynamics, &state, dt)?;
-            
+            let classical_contribution =
+                self.apply_classical_dynamics(&ode_func.classical_dynamics, &state, dt)?;
+
             // Hybrid coupling
-            state = self.apply_hybrid_coupling(&ode_func.hybrid_coupling, &state, &classical_contribution, dt)?;
-            
+            state = self.apply_hybrid_coupling(
+                &ode_func.hybrid_coupling,
+                &state,
+                &classical_contribution,
+                dt,
+            )?;
+
             // Apply decoherence
-            state.coherence_time *= (-dt / ode_func.quantum_dynamics.decoherence_model.t2_time).exp();
-            state.fidelity *= (1.0 - ode_func.quantum_dynamics.decoherence_model.gate_error_rate * dt);
+            state.coherence_time *=
+                (-dt / ode_func.quantum_dynamics.decoherence_model.t2_time).exp();
+            state.fidelity *=
+                (1.0 - ode_func.quantum_dynamics.decoherence_model.gate_error_rate * dt);
         }
-        
+
         Ok(state)
     }
-    
+
     /// Apply quantum dynamics
     fn apply_quantum_dynamics(
         &self,
@@ -1353,21 +1412,24 @@ impl QuantumContinuousFlow {
         dt: f64,
     ) -> Result<QuantumFlowState> {
         let mut new_state = state.clone();
-        
+
         // Apply Hamiltonian evolution (simplified)
         for i in 0..new_state.amplitudes.len() {
-            let energy = dynamics.hamiltonian[[i % dynamics.hamiltonian.nrows(), i % dynamics.hamiltonian.ncols()]];
+            let energy = dynamics.hamiltonian[[
+                i % dynamics.hamiltonian.nrows(),
+                i % dynamics.hamiltonian.ncols(),
+            ]];
             let time_evolution = Complex64::from_polar(1.0, -energy.re * dt);
             new_state.amplitudes[i] *= time_evolution;
             new_state.phases[i] *= time_evolution;
         }
-        
+
         // Update entanglement (simplified)
         new_state.entanglement_measure = (new_state.entanglement_measure * 1.01).min(1.0);
-        
+
         Ok(new_state)
     }
-    
+
     /// Apply classical dynamics
     fn apply_classical_dynamics(
         &self,
@@ -1377,17 +1439,17 @@ impl QuantumContinuousFlow {
     ) -> Result<Array1<f64>> {
         // Extract classical data from quantum state
         let classical_data = state.amplitudes.mapv(|amp| amp.re);
-        
+
         // Apply classical dynamics network
         let mut output = classical_data;
         for layer in &dynamics.dynamics_network {
             output = self.apply_classical_flow_layer(layer, &output)?;
         }
-        
+
         // Scale by time step
         Ok(output * dt)
     }
-    
+
     /// Apply hybrid coupling
     fn apply_hybrid_coupling(
         &self,
@@ -1397,23 +1459,26 @@ impl QuantumContinuousFlow {
         dt: f64,
     ) -> Result<QuantumFlowState> {
         let mut new_state = quantum_state.clone();
-        
+
         // Classical to quantum coupling
         for i in 0..new_state.amplitudes.len().min(classical_contribution.len()) {
             let coupling_strength = coupling.coupling_strength * dt;
             let classical_influence = classical_contribution[i] * coupling_strength;
             new_state.amplitudes[i] += Complex64::new(classical_influence, 0.0);
         }
-        
+
         // Renormalize
-        let norm = new_state.amplitudes.dot(&new_state.amplitudes.mapv(|x| x.conj())).norm();
+        let norm = new_state
+            .amplitudes
+            .dot(&new_state.amplitudes.mapv(|x| x.conj()))
+            .norm();
         if norm > 1e-10 {
             new_state.amplitudes = new_state.amplitudes / norm;
         }
-        
+
         Ok(new_state)
     }
-    
+
     /// Compute quantum ODE Jacobian determinant
     fn compute_quantum_ode_jacobian(
         &self,
@@ -1422,13 +1487,15 @@ impl QuantumContinuousFlow {
     ) -> Result<f64> {
         // Simplified Jacobian computation
         // In practice, would use more sophisticated trace estimation
-        let trace_estimate = state.amplitudes.iter()
+        let trace_estimate = state
+            .amplitudes
+            .iter()
             .map(|amp| amp.norm_sqr().ln())
             .sum::<f64>();
-        
+
         Ok(trace_estimate * integration_time)
     }
-    
+
     /// Apply quantum affine coupling
     fn apply_quantum_affine_coupling(
         &self,
@@ -1441,20 +1508,20 @@ impl QuantumContinuousFlow {
         let split_dim = x.len() / 2;
         let x1 = x.slice(ndarray::s![..split_dim]).to_owned();
         let x2 = x.slice(ndarray::s![split_dim..]).to_owned();
-        
+
         // Apply networks to first half
         let scale_output = self.apply_quantum_network(scale_network, &x1)?;
         let translation_output = self.apply_quantum_network(translation_network, &x1)?;
-        
+
         // Transform second half
         let z2 = &x2 * &scale_output.output + &translation_output.output;
         let log_jacobian = scale_output.output.mapv(|s| s.ln()).sum();
-        
+
         // Combine
         let mut z = Array1::zeros(x.len());
         z.slice_mut(ndarray::s![..split_dim]).assign(&x1);
         z.slice_mut(ndarray::s![split_dim..]).assign(&z2);
-        
+
         Ok(LayerOutput {
             transformed_data: z,
             log_jacobian_det: log_jacobian,
@@ -1462,20 +1529,26 @@ impl QuantumContinuousFlow {
             entanglement_measure: scale_output.entanglement_measure,
         })
     }
-    
+
     /// Apply quantum network
-    fn apply_quantum_network(&self, network: &QuantumNetwork, x: &Array1<f64>) -> Result<QuantumNetworkOutput> {
+    fn apply_quantum_network(
+        &self,
+        network: &QuantumNetwork,
+        x: &Array1<f64>,
+    ) -> Result<QuantumNetworkOutput> {
         let quantum_state = self.classical_to_quantum_encoding(x)?;
-        
+
         // Process through quantum layers (simplified)
         let mut processed_state = quantum_state;
         for layer in &network.layers {
             processed_state = self.apply_quantum_flow_layer(layer, &processed_state)?;
         }
-        
+
         // Extract output
-        let output = processed_state.amplitudes.mapv(|amp| amp.re * network.quantum_enhancement);
-        
+        let output = processed_state
+            .amplitudes
+            .mapv(|amp| amp.re * network.quantum_enhancement);
+
         Ok(QuantumNetworkOutput {
             output,
             quantum_state: QuantumLayerState {
@@ -1487,47 +1560,61 @@ impl QuantumContinuousFlow {
             entanglement_measure: processed_state.entanglement_measure,
         })
     }
-    
+
     /// Compute base distribution log probability
     fn compute_base_log_probability(&self, z: &Array1<f64>) -> Result<f64> {
         match &self.base_distribution.distribution_type {
-            QuantumDistributionType::QuantumGaussian { mean, covariance, quantum_enhancement } => {
+            QuantumDistributionType::QuantumGaussian {
+                mean,
+                covariance,
+                quantum_enhancement,
+            } => {
                 let diff = z - mean;
                 // Simplified distance computation (assuming diagonal covariance)
-                let mahalanobis_distance = diff.iter().zip(covariance.diag().iter())
+                let mahalanobis_distance = diff
+                    .iter()
+                    .zip(covariance.diag().iter())
                     .map(|(d, cov)| d * d / cov.max(1e-8))
                     .sum::<f64>();
-                let log_prob = -0.5 * (
-                    mahalanobis_distance + 
-                    z.len() as f64 * (2.0 * PI).ln() + 
-                    covariance.diag().iter().map(|x| x.ln()).sum::<f64>()
-                );
-                
+                let log_prob = -0.5
+                    * (mahalanobis_distance
+                        + z.len() as f64 * (2.0 * PI).ln()
+                        + covariance.diag().iter().map(|x| x.ln()).sum::<f64>());
+
                 // Add quantum enhancement
                 let quantum_log_prob = log_prob * (1.0 + quantum_enhancement);
                 Ok(quantum_log_prob)
-            },
+            }
             _ => Ok(0.0), // Default case
         }
     }
-    
+
     /// Compute quantum enhancement
-    fn compute_quantum_enhancement(&self, quantum_states: &[QuantumLayerState]) -> Result<QuantumEnhancement> {
-        let average_entanglement = quantum_states.iter()
+    fn compute_quantum_enhancement(
+        &self,
+        quantum_states: &[QuantumLayerState],
+    ) -> Result<QuantumEnhancement> {
+        let average_entanglement = quantum_states
+            .iter()
             .map(|state| state.entanglement_measure)
-            .sum::<f64>() / quantum_states.len() as f64;
-            
-        let average_fidelity = quantum_states.iter()
+            .sum::<f64>()
+            / quantum_states.len() as f64;
+
+        let average_fidelity = quantum_states
+            .iter()
             .map(|state| state.quantum_fidelity)
-            .sum::<f64>() / quantum_states.len() as f64;
-            
-        let average_coherence = quantum_states.iter()
+            .sum::<f64>()
+            / quantum_states.len() as f64;
+
+        let average_coherence = quantum_states
+            .iter()
             .map(|state| state.coherence_time)
-            .sum::<f64>() / quantum_states.len() as f64;
-        
+            .sum::<f64>()
+            / quantum_states.len() as f64;
+
         let log_enhancement = 0.1 * (average_entanglement + average_fidelity + average_coherence);
         let quantum_advantage_ratio = 1.0 + average_entanglement * 2.0 + average_fidelity;
-        
+
         Ok(QuantumEnhancement {
             log_enhancement,
             entanglement_contribution: average_entanglement,
@@ -1536,16 +1623,13 @@ impl QuantumContinuousFlow {
             quantum_advantage_ratio,
         })
     }
-    
+
     /// Inverse transform (sampling)
-    pub fn inverse(
-        &self,
-        z: &Array1<f64>,
-    ) -> Result<FlowInverseOutput> {
+    pub fn inverse(&self, z: &Array1<f64>) -> Result<FlowInverseOutput> {
         let mut x = z.clone();
         let mut log_jacobian_det = 0.0;
         let mut quantum_states = Vec::new();
-        
+
         // Process through flow layers in reverse
         for layer in self.flow_layers.iter().rev() {
             let inverse_output = self.apply_inverse_flow_layer(layer, &x)?;
@@ -1553,11 +1637,11 @@ impl QuantumContinuousFlow {
             log_jacobian_det += inverse_output.log_jacobian_det;
             quantum_states.push(inverse_output.quantum_state);
         }
-        
+
         // Compute likelihood
         let base_log_prob = self.compute_base_log_probability(z)?;
         let total_log_prob = base_log_prob - log_jacobian_det; // Note: minus for inverse
-        
+
         Ok(FlowInverseOutput {
             data_sample: x,
             log_probability: total_log_prob,
@@ -1565,7 +1649,7 @@ impl QuantumContinuousFlow {
             quantum_states,
         })
     }
-    
+
     /// Apply inverse flow layer
     fn apply_inverse_flow_layer(
         &self,
@@ -1574,9 +1658,10 @@ impl QuantumContinuousFlow {
     ) -> Result<LayerOutput> {
         // Use inverse component
         match &layer.invertible_component.inverse_transform {
-            InvertibleTransform::QuantumCouplingTransform { coupling_function, mask } => {
-                self.apply_inverse_quantum_coupling(layer, z, coupling_function, mask)
-            },
+            InvertibleTransform::QuantumCouplingTransform {
+                coupling_function,
+                mask,
+            } => self.apply_inverse_quantum_coupling(layer, z, coupling_function, mask),
             _ => {
                 // Default inverse (identity for now)
                 Ok(LayerOutput {
@@ -1588,7 +1673,7 @@ impl QuantumContinuousFlow {
             }
         }
     }
-    
+
     /// Apply inverse quantum coupling
     fn apply_inverse_quantum_coupling(
         &self,
@@ -1598,24 +1683,25 @@ impl QuantumContinuousFlow {
         mask: &Array1<bool>,
     ) -> Result<LayerOutput> {
         let split_dim = mask.iter().filter(|&&m| m).count();
-        
+
         // Split according to mask
         let z1 = z.slice(ndarray::s![..split_dim]).to_owned();
         let z2 = z.slice(ndarray::s![split_dim..]).to_owned();
-        
+
         // Apply inverse coupling (z1 unchanged, invert transformation on z2)
         let scale_output = self.apply_quantum_network(&coupling_function.scale_function, &z1)?;
-        let translation_output = self.apply_quantum_network(&coupling_function.translation_function, &z1)?;
-        
+        let translation_output =
+            self.apply_quantum_network(&coupling_function.translation_function, &z1)?;
+
         // Inverse transformation: x2 = (z2 - translation) / scale
         let x2 = (&z2 - &translation_output.output) / &scale_output.output;
         let log_jacobian = -scale_output.output.mapv(|s| s.ln()).sum(); // Negative for inverse
-        
+
         // Combine
         let mut x = Array1::zeros(z.len());
         x.slice_mut(ndarray::s![..split_dim]).assign(&z1);
         x.slice_mut(ndarray::s![split_dim..]).assign(&x2);
-        
+
         Ok(LayerOutput {
             transformed_data: x,
             log_jacobian_det: log_jacobian,
@@ -1623,39 +1709,48 @@ impl QuantumContinuousFlow {
             entanglement_measure: scale_output.entanglement_measure,
         })
     }
-    
+
     /// Sample from the flow
     pub fn sample(&self, num_samples: usize) -> Result<FlowSamplingOutput> {
         let mut samples = Array2::zeros((num_samples, self.config.input_dim));
         let mut log_probabilities = Array1::zeros(num_samples);
         let mut quantum_metrics = Vec::new();
-        
+
         for i in 0..num_samples {
             // Sample from base distribution
             let z = self.sample_base_distribution()?;
-            
+
             // Apply inverse transform
             let inverse_output = self.inverse(&z)?;
-            
+
             samples.row_mut(i).assign(&inverse_output.data_sample);
             log_probabilities[i] = inverse_output.log_probability;
-            
+
             // Compute quantum metrics for this sample
             let sample_metrics = SampleQuantumMetrics {
                 sample_idx: i,
-                entanglement_measure: inverse_output.quantum_states.iter()
+                entanglement_measure: inverse_output
+                    .quantum_states
+                    .iter()
                     .map(|state| state.entanglement_measure)
-                    .sum::<f64>() / inverse_output.quantum_states.len() as f64,
-                quantum_fidelity: inverse_output.quantum_states.iter()
+                    .sum::<f64>()
+                    / inverse_output.quantum_states.len() as f64,
+                quantum_fidelity: inverse_output
+                    .quantum_states
+                    .iter()
                     .map(|state| state.quantum_fidelity)
-                    .sum::<f64>() / inverse_output.quantum_states.len() as f64,
-                coherence_time: inverse_output.quantum_states.iter()
+                    .sum::<f64>()
+                    / inverse_output.quantum_states.len() as f64,
+                coherence_time: inverse_output
+                    .quantum_states
+                    .iter()
                     .map(|state| state.coherence_time)
-                    .sum::<f64>() / inverse_output.quantum_states.len() as f64,
+                    .sum::<f64>()
+                    / inverse_output.quantum_states.len() as f64,
             };
             quantum_metrics.push(sample_metrics);
         }
-        
+
         Ok(FlowSamplingOutput {
             samples,
             log_probabilities,
@@ -1663,13 +1758,17 @@ impl QuantumContinuousFlow {
             overall_quantum_performance: self.quantum_flow_metrics.clone(),
         })
     }
-    
+
     /// Sample from base distribution
     fn sample_base_distribution(&self) -> Result<Array1<f64>> {
         match &self.base_distribution.distribution_type {
-            QuantumDistributionType::QuantumGaussian { mean, covariance, quantum_enhancement } => {
+            QuantumDistributionType::QuantumGaussian {
+                mean,
+                covariance,
+                quantum_enhancement,
+            } => {
                 let mut rng = rand::thread_rng();
-                
+
                 // Sample from standard Gaussian
                 let mut z = Array1::zeros(mean.len());
                 for i in 0..z.len() {
@@ -1677,27 +1776,27 @@ impl QuantumContinuousFlow {
                     let u2 = rng.gen::<f64>();
                     z[i] = (-2.0 * u1.ln()).sqrt() * (2.0 * PI * u2).cos();
                 }
-                
+
                 // Transform to desired distribution
                 let cholesky = self.compute_cholesky_decomposition(covariance)?;
                 let sample = mean + &cholesky.dot(&z);
-                
+
                 // Apply quantum enhancement
                 let enhanced_sample = &sample * (1.0 + quantum_enhancement * 0.1);
-                
+
                 Ok(enhanced_sample)
-            },
+            }
             _ => Ok(Array1::zeros(self.config.latent_dim)),
         }
     }
-    
+
     /// Compute Cholesky decomposition (simplified)
     fn compute_cholesky_decomposition(&self, matrix: &Array2<f64>) -> Result<Array2<f64>> {
         // Simplified Cholesky decomposition
         // In practice, would use proper numerical library
         Ok(matrix.clone())
     }
-    
+
     /// Train the quantum flow model
     pub fn train(
         &mut self,
@@ -1706,25 +1805,25 @@ impl QuantumContinuousFlow {
         training_config: &FlowTrainingConfig,
     ) -> Result<FlowTrainingOutput> {
         println!("🌌 Training Quantum Continuous Normalization Flow in UltraThink Mode");
-        
+
         let mut training_losses = Vec::new();
         let mut validation_losses = Vec::new();
         let mut quantum_metrics_history = Vec::new();
-        
+
         for epoch in 0..training_config.epochs {
             let epoch_metrics = self.train_epoch(data, training_config, epoch)?;
             training_losses.push(epoch_metrics.negative_log_likelihood);
-            
+
             // Validation
             if let Some(val_data) = validation_data {
                 let val_metrics = self.validate_epoch(val_data)?;
                 validation_losses.push(val_metrics.negative_log_likelihood);
             }
-            
+
             // Update quantum metrics
             self.update_quantum_flow_metrics(&epoch_metrics)?;
             quantum_metrics_history.push(self.quantum_flow_metrics.clone());
-            
+
             // Logging
             if epoch % training_config.log_interval == 0 {
                 println!(
@@ -1737,16 +1836,21 @@ impl QuantumContinuousFlow {
                 );
             }
         }
-        
+
         Ok(FlowTrainingOutput {
             training_losses: training_losses.clone(),
             validation_losses,
             quantum_metrics_history,
-            final_invertibility_score: self.invertibility_tracker.inversion_errors.last().copied().unwrap_or(0.0),
+            final_invertibility_score: self
+                .invertibility_tracker
+                .inversion_errors
+                .last()
+                .copied()
+                .unwrap_or(0.0),
             convergence_analysis: self.analyze_flow_convergence(&training_losses)?,
         })
     }
-    
+
     /// Train single epoch
     fn train_epoch(
         &mut self,
@@ -1759,27 +1863,28 @@ impl QuantumContinuousFlow {
         let mut entanglement_sum = 0.0;
         let mut jacobian_det_sum = 0.0;
         let mut num_batches = 0;
-        
+
         let num_samples = data.nrows();
-        
+
         for batch_start in (0..num_samples).step_by(config.batch_size) {
             let batch_end = (batch_start + config.batch_size).min(num_samples);
             let batch_data = data.slice(ndarray::s![batch_start..batch_end, ..]);
-            
+
             let batch_metrics = self.train_batch(&batch_data, config)?;
-            
+
             epoch_nll += batch_metrics.negative_log_likelihood;
             quantum_fidelity_sum += batch_metrics.quantum_fidelity;
             entanglement_sum += batch_metrics.entanglement_measure;
             jacobian_det_sum += batch_metrics.jacobian_determinant_mean;
             num_batches += 1;
         }
-        
+
         let num_batches_f = num_batches as f64;
         Ok(FlowTrainingMetrics {
             epoch,
             negative_log_likelihood: epoch_nll / num_batches_f,
-            bits_per_dimension: (epoch_nll / num_batches_f) / (data.ncols() as f64 * (2.0_f64).ln()),
+            bits_per_dimension: (epoch_nll / num_batches_f)
+                / (data.ncols() as f64 * (2.0_f64).ln()),
             quantum_likelihood: epoch_nll / num_batches_f, // Simplified
             entanglement_measure: entanglement_sum / num_batches_f,
             invertibility_score: 1.0, // Will be computed properly
@@ -1790,7 +1895,7 @@ impl QuantumContinuousFlow {
             quantum_advantage_ratio: 1.0 + entanglement_sum / num_batches_f,
         })
     }
-    
+
     /// Train single batch
     fn train_batch(
         &mut self,
@@ -1799,29 +1904,30 @@ impl QuantumContinuousFlow {
     ) -> Result<FlowTrainingMetrics> {
         let mut batch_nll = 0.0;
         let mut quantum_metrics_sum = QuantumFlowBatchMetrics::default();
-        
+
         for sample_idx in 0..batch_data.nrows() {
             let x = batch_data.row(sample_idx).to_owned();
-            
+
             // Forward pass
             let forward_output = self.forward(&x)?;
-            
+
             // Compute loss
             let nll = -forward_output.quantum_log_probability;
             batch_nll += nll;
-            
+
             // Accumulate quantum metrics
             quantum_metrics_sum.accumulate(&forward_output)?;
-            
+
             // Backward pass and parameter update (placeholder)
             self.update_flow_parameters(&forward_output, config)?;
         }
-        
+
         let num_samples = batch_data.nrows() as f64;
         Ok(FlowTrainingMetrics {
             epoch: 0, // Will be set by caller
             negative_log_likelihood: batch_nll / num_samples,
-            bits_per_dimension: (batch_nll / num_samples) / (batch_data.ncols() as f64 * (2.0_f64).ln()),
+            bits_per_dimension: (batch_nll / num_samples)
+                / (batch_data.ncols() as f64 * (2.0_f64).ln()),
             quantum_likelihood: batch_nll / num_samples,
             entanglement_measure: quantum_metrics_sum.entanglement_measure / num_samples,
             invertibility_score: quantum_metrics_sum.invertibility_score / num_samples,
@@ -1832,39 +1938,44 @@ impl QuantumContinuousFlow {
             quantum_advantage_ratio: quantum_metrics_sum.quantum_advantage_ratio / num_samples,
         })
     }
-    
+
     /// Update flow parameters (placeholder)
-    fn update_flow_parameters(&mut self, forward_output: &FlowForwardOutput, config: &FlowTrainingConfig) -> Result<()> {
+    fn update_flow_parameters(
+        &mut self,
+        forward_output: &FlowForwardOutput,
+        config: &FlowTrainingConfig,
+    ) -> Result<()> {
         // Placeholder for parameter updates
         // Would compute gradients and apply optimization
-        
+
         // Update optimization state
         self.optimization_state.learning_rate *= config.learning_rate_decay;
-        
+
         Ok(())
     }
-    
+
     /// Validate epoch
     fn validate_epoch(&self, validation_data: &Array2<f64>) -> Result<FlowTrainingMetrics> {
         let mut val_nll = 0.0;
         let mut quantum_fidelity_sum = 0.0;
         let mut entanglement_sum = 0.0;
         let mut num_samples = 0;
-        
+
         for sample_idx in 0..validation_data.nrows() {
             let x = validation_data.row(sample_idx).to_owned();
             let forward_output = self.forward(&x)?;
-            
+
             val_nll += -forward_output.quantum_log_probability;
             quantum_fidelity_sum += forward_output.quantum_enhancement.fidelity_contribution;
             entanglement_sum += forward_output.quantum_enhancement.entanglement_contribution;
             num_samples += 1;
         }
-        
+
         Ok(FlowTrainingMetrics {
             epoch: 0,
             negative_log_likelihood: val_nll / num_samples as f64,
-            bits_per_dimension: (val_nll / num_samples as f64) / (validation_data.ncols() as f64 * (2.0_f64).ln()),
+            bits_per_dimension: (val_nll / num_samples as f64)
+                / (validation_data.ncols() as f64 * (2.0_f64).ln()),
             quantum_likelihood: val_nll / num_samples as f64,
             entanglement_measure: entanglement_sum / num_samples as f64,
             invertibility_score: 1.0,
@@ -1875,39 +1986,43 @@ impl QuantumContinuousFlow {
             quantum_advantage_ratio: 1.0 + entanglement_sum / num_samples as f64,
         })
     }
-    
+
     /// Update quantum flow metrics
     fn update_quantum_flow_metrics(&mut self, epoch_metrics: &FlowTrainingMetrics) -> Result<()> {
-        self.quantum_flow_metrics.average_entanglement = 
-            0.9 * self.quantum_flow_metrics.average_entanglement + 0.1 * epoch_metrics.entanglement_measure;
-        
-        self.quantum_flow_metrics.coherence_preservation = 
-            0.9 * self.quantum_flow_metrics.coherence_preservation + 0.1 * epoch_metrics.coherence_time;
-        
+        self.quantum_flow_metrics.average_entanglement = 0.9
+            * self.quantum_flow_metrics.average_entanglement
+            + 0.1 * epoch_metrics.entanglement_measure;
+
+        self.quantum_flow_metrics.coherence_preservation = 0.9
+            * self.quantum_flow_metrics.coherence_preservation
+            + 0.1 * epoch_metrics.coherence_time;
+
         self.quantum_flow_metrics.invertibility_accuracy = epoch_metrics.invertibility_score;
         self.quantum_flow_metrics.quantum_speedup_factor = epoch_metrics.quantum_advantage_ratio;
-        
+
         Ok(())
     }
-    
+
     /// Analyze flow convergence
     fn analyze_flow_convergence(&self, losses: &[f64]) -> Result<FlowConvergenceAnalysis> {
         if losses.len() < 10 {
             return Ok(FlowConvergenceAnalysis::default());
         }
-        
+
         let recent_losses = &losses[losses.len() - 10..];
         let early_losses = &losses[0..10];
-        
+
         let recent_avg = recent_losses.iter().sum::<f64>() / recent_losses.len() as f64;
         let early_avg = early_losses.iter().sum::<f64>() / early_losses.len() as f64;
-        
+
         let convergence_rate = (early_avg - recent_avg) / early_avg;
-        
-        let variance = recent_losses.iter()
+
+        let variance = recent_losses
+            .iter()
             .map(|&x| (x - recent_avg).powi(2))
-            .sum::<f64>() / recent_losses.len() as f64;
-            
+            .sum::<f64>()
+            / recent_losses.len() as f64;
+
         Ok(FlowConvergenceAnalysis {
             convergence_rate,
             final_loss: recent_avg,
@@ -1916,7 +2031,7 @@ impl QuantumContinuousFlow {
             invertibility_maintained: true, // Would check properly
         })
     }
-    
+
     /// Get current quantum metrics
     pub fn quantum_metrics(&self) -> &QuantumFlowMetrics {
         &self.quantum_flow_metrics
@@ -2186,13 +2301,13 @@ mod tests {
             num_flow_layers: 2,
             ..Default::default()
         };
-        
+
         let flow = QuantumContinuousFlow::new(config).unwrap();
         let x = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
-        
+
         let result = flow.forward(&x);
         assert!(result.is_ok());
-        
+
         let output = result.unwrap();
         assert_eq!(output.latent_sample.len(), 4);
         assert!(output.quantum_enhancement.quantum_advantage_ratio >= 1.0);
@@ -2206,13 +2321,13 @@ mod tests {
             num_qubits: 4,
             ..Default::default()
         };
-        
+
         let flow = QuantumContinuousFlow::new(config).unwrap();
         let z = Array1::from_vec(vec![0.5, -0.3, 0.8, -0.1]);
-        
+
         let result = flow.inverse(&z);
         assert!(result.is_ok());
-        
+
         let output = result.unwrap();
         assert_eq!(output.data_sample.len(), 4);
     }
@@ -2225,10 +2340,10 @@ mod tests {
             num_qubits: 3,
             ..Default::default()
         };
-        
+
         let flow = QuantumContinuousFlow::new(config).unwrap();
         let result = flow.sample(5);
-        
+
         assert!(result.is_ok());
         let output = result.unwrap();
         assert_eq!(output.samples.shape(), &[5, 2]);
@@ -2245,7 +2360,7 @@ mod tests {
             },
             ..Default::default()
         };
-        
+
         let flow = QuantumContinuousFlow::new(config);
         assert!(flow.is_ok());
     }
@@ -2260,7 +2375,7 @@ mod tests {
             },
             ..Default::default()
         };
-        
+
         let flow = QuantumContinuousFlow::new(config);
         assert!(flow.is_ok());
     }
@@ -2271,10 +2386,10 @@ mod tests {
             latent_dim: 3,
             ..Default::default()
         };
-        
+
         let flow = QuantumContinuousFlow::new(config).unwrap();
         let sample = flow.sample_base_distribution();
-        
+
         assert!(sample.is_ok());
         assert_eq!(sample.unwrap().len(), 3);
     }
@@ -2285,14 +2400,14 @@ mod tests {
             invertibility_tolerance: 1e-8,
             ..Default::default()
         };
-        
+
         let flow = QuantumContinuousFlow::new(config).unwrap();
-        
+
         // Test round-trip consistency
         let x = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
         let forward_output = flow.forward(&x).unwrap();
         let inverse_output = flow.inverse(&forward_output.latent_sample).unwrap();
-        
+
         // Check if we get back approximately the same result
         let error = (&x - &inverse_output.data_sample).mapv(|x| x.abs()).sum();
         assert!(error < 1e-3); // Allow for numerical errors

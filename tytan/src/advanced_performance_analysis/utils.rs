@@ -17,7 +17,7 @@ pub mod test_utils {
             detailed_profiling: true,
         }
     }
-    
+
     /// Create test problem characteristics
     pub fn create_test_problem_characteristics() -> ProblemCharacteristics {
         ProblemCharacteristics {
@@ -28,41 +28,39 @@ pub mod test_utils {
             hardness_indicators: HashMap::new(),
         }
     }
-    
+
     /// Create mock training data
     pub fn create_mock_training_data() -> Vec<TrainingExample> {
-        vec![
-            TrainingExample {
-                features: {
-                    let mut features = HashMap::new();
-                    features.insert("problem_size".to_string(), 100.0);
-                    features.insert("density".to_string(), 0.5);
-                    features
-                },
-                targets: {
-                    let mut targets = HashMap::new();
-                    targets.insert("execution_time".to_string(), 1.2);
-                    targets.insert("memory_usage".to_string(), 0.8);
-                    targets
-                },
-                metadata: HashMap::new(),
-            }
-        ]
+        vec![TrainingExample {
+            features: {
+                let mut features = HashMap::new();
+                features.insert("problem_size".to_string(), 100.0);
+                features.insert("density".to_string(), 0.5);
+                features
+            },
+            targets: {
+                let mut targets = HashMap::new();
+                targets.insert("execution_time".to_string(), 1.2);
+                targets.insert("memory_usage".to_string(), 0.8);
+                targets
+            },
+            metadata: HashMap::new(),
+        }]
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::test_utils::*;
-    
+    use super::*;
+
     #[test]
     fn test_analyzer_creation() {
         let analyzer = create_comprehensive_analyzer();
         assert_eq!(analyzer.config.real_time_monitoring, true);
         assert_eq!(analyzer.config.monitoring_frequency, 1.0);
     }
-    
+
     #[test]
     fn test_lightweight_analyzer() {
         let analyzer = create_lightweight_analyzer();
@@ -70,24 +68,33 @@ mod tests {
         assert_eq!(analyzer.config.analysis_depth, AnalysisDepth::Surface);
         assert_eq!(analyzer.config.comparative_analysis, false);
     }
-    
+
     #[test]
     fn test_trend_calculation() {
         let analyzer = create_comprehensive_analyzer();
-        
+
         // Test improving trend
         let improving_values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        assert_eq!(analyzer.calculate_trend(&improving_values), TrendDirection::Improving);
-        
+        assert_eq!(
+            analyzer.calculate_trend(&improving_values),
+            TrendDirection::Improving
+        );
+
         // Test degrading trend
         let degrading_values = vec![5.0, 4.0, 3.0, 2.0, 1.0];
-        assert_eq!(analyzer.calculate_trend(&degrading_values), TrendDirection::Degrading);
-        
+        assert_eq!(
+            analyzer.calculate_trend(&degrading_values),
+            TrendDirection::Degrading
+        );
+
         // Test stable trend
         let stable_values = vec![3.0, 3.01, 2.99, 3.0, 3.01];
-        assert_eq!(analyzer.calculate_trend(&stable_values), TrendDirection::Stable);
+        assert_eq!(
+            analyzer.calculate_trend(&stable_values),
+            TrendDirection::Stable
+        );
     }
-    
+
     #[test]
     fn test_system_info_collection() {
         let system_info = SystemInfo::collect();
@@ -95,57 +102,57 @@ mod tests {
         assert!(system_info.cpu.cores > 0);
         assert!(system_info.memory.total_memory > 0.0);
     }
-    
+
     #[test]
     fn test_monitor_functionality() {
         let mut monitor = CpuMonitor::new();
         assert_eq!(monitor.is_active(), false);
-        
+
         monitor.start_monitoring().unwrap();
         assert_eq!(monitor.is_active(), true);
-        
+
         let metrics = monitor.get_current_metrics().unwrap();
         assert!(metrics.contains_key("cpu_utilization"));
-        
+
         monitor.stop_monitoring().unwrap();
         assert_eq!(monitor.is_active(), false);
     }
-    
+
     #[test]
     fn test_benchmark_execution() {
         let benchmark = QuboEvaluationBenchmark::new();
         let config = create_test_benchmark_config();
-        
+
         let result = benchmark.run_benchmark(&config).unwrap();
         assert_eq!(result.execution_times.len(), 5);
         assert_eq!(result.memory_usage.len(), 5);
         assert_eq!(result.solution_quality.len(), 5);
     }
-    
+
     #[test]
     fn test_prediction_model() {
         let mut model = LinearRegressionModel::new();
-        
+
         let characteristics = create_test_problem_characteristics();
-        
+
         let predictions = model.predict_performance(&characteristics).unwrap();
         assert!(predictions.contains_key("execution_time"));
         assert!(predictions.contains_key("memory_usage"));
         assert!(predictions.contains_key("solution_quality"));
-        
+
         // Test training
         let training_data = create_mock_training_data();
         model.train(&training_data).unwrap();
         assert!(model.get_accuracy() > 0.0);
     }
-    
+
     #[test]
     fn test_config_creation() {
         let config = create_default_analysis_config();
         assert_eq!(config.real_time_monitoring, true);
         assert_eq!(config.monitoring_frequency, 1.0);
         assert_eq!(config.collection_level, MetricsLevel::Detailed);
-        
+
         let lightweight_config = create_lightweight_config();
         assert_eq!(lightweight_config.collection_level, MetricsLevel::Basic);
         assert_eq!(lightweight_config.analysis_depth, AnalysisDepth::Surface);

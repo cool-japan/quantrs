@@ -4,12 +4,12 @@
 //! process tomography, and quantum system characterization using advanced
 //! techniques including shadow tomography and compressed sensing.
 
+use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
+use ndarray::{s, Array, Array1, Array2, Array3, Array4, ArrayD, Axis, Zip};
+use rand::{prelude::*, thread_rng};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::sync::{Arc, Mutex};
-use ndarray::{Array, Array1, Array2, Array3, Array4, Axis, Zip, ArrayD, s};
-use rand::{prelude::*, thread_rng};
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 
 /// Quantum state tomography system
 pub struct QuantumStateTomography {
@@ -446,16 +446,23 @@ pub struct TemporalCorrelationData {
 /// Reconstruction method trait
 pub trait ReconstructionMethod: Send + Sync {
     /// Reconstruct quantum state from measurement data
-    fn reconstruct_state(&self, data: &MeasurementDatabase) -> Result<ReconstructedState, TomographyError>;
-    
+    fn reconstruct_state(
+        &self,
+        data: &MeasurementDatabase,
+    ) -> Result<ReconstructedState, TomographyError>;
+
     /// Get method name
     fn get_method_name(&self) -> &str;
-    
+
     /// Get method parameters
     fn get_parameters(&self) -> HashMap<String, f64>;
-    
+
     /// Validate reconstruction
-    fn validate_reconstruction(&self, state: &ReconstructedState, data: &MeasurementDatabase) -> ValidationResult;
+    fn validate_reconstruction(
+        &self,
+        state: &ReconstructedState,
+        data: &MeasurementDatabase,
+    ) -> ValidationResult;
 }
 
 /// Reconstructed quantum state
@@ -559,11 +566,19 @@ pub struct QualityMetrics {
 /// Fidelity estimator trait
 pub trait FidelityEstimator: Send + Sync {
     /// Estimate fidelity between two states
-    fn estimate_fidelity(&self, state1: &ReconstructedState, state2: &ReconstructedState) -> Result<f64, TomographyError>;
-    
+    fn estimate_fidelity(
+        &self,
+        state1: &ReconstructedState,
+        state2: &ReconstructedState,
+    ) -> Result<f64, TomographyError>;
+
     /// Estimate fidelity with measurement data
-    fn estimate_fidelity_from_data(&self, state: &ReconstructedState, data: &MeasurementDatabase) -> Result<f64, TomographyError>;
-    
+    fn estimate_fidelity_from_data(
+        &self,
+        state: &ReconstructedState,
+        data: &MeasurementDatabase,
+    ) -> Result<f64, TomographyError>;
+
     /// Get estimator name
     fn get_estimator_name(&self) -> &str;
 }
@@ -584,8 +599,12 @@ pub struct ErrorAnalysisTools {
 /// Error propagation method trait
 pub trait ErrorPropagationMethod: Send + Sync + std::fmt::Debug {
     /// Propagate measurement errors to state reconstruction
-    fn propagate_errors(&self, measurement_errors: &Array1<f64>, reconstruction: &ReconstructedState) -> Array2<f64>;
-    
+    fn propagate_errors(
+        &self,
+        measurement_errors: &Array1<f64>,
+        reconstruction: &ReconstructedState,
+    ) -> Array2<f64>;
+
     /// Get method name
     fn get_method_name(&self) -> &str;
 }
@@ -593,8 +612,12 @@ pub trait ErrorPropagationMethod: Send + Sync + std::fmt::Debug {
 /// Uncertainty quantification method trait
 pub trait UncertaintyQuantificationMethod: Send + Sync + std::fmt::Debug {
     /// Quantify reconstruction uncertainty
-    fn quantify_uncertainty(&self, data: &MeasurementDatabase, reconstruction: &ReconstructedState) -> UncertaintyAnalysis;
-    
+    fn quantify_uncertainty(
+        &self,
+        data: &MeasurementDatabase,
+        reconstruction: &ReconstructedState,
+    ) -> UncertaintyAnalysis;
+
     /// Get method name
     fn get_method_name(&self) -> &str;
 }
@@ -704,7 +727,9 @@ impl std::fmt::Display for TomographyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             TomographyError::InsufficientData(msg) => write!(f, "Insufficient data: {}", msg),
-            TomographyError::ReconstructionFailed(msg) => write!(f, "Reconstruction failed: {}", msg),
+            TomographyError::ReconstructionFailed(msg) => {
+                write!(f, "Reconstruction failed: {}", msg)
+            }
             TomographyError::InvalidBasis(msg) => write!(f, "Invalid basis: {}", msg),
             TomographyError::ConvergenceFailed(msg) => write!(f, "Convergence failed: {}", msg),
             TomographyError::ValidationFailed(msg) => write!(f, "Validation failed: {}", msg),
@@ -764,65 +789,75 @@ impl QuantumStateTomography {
             },
         }
     }
-    
+
     /// Perform quantum state tomography
     pub fn perform_tomography(&mut self) -> Result<ReconstructedState, TomographyError> {
-        println!("Starting quantum state tomography for {} qubits", self.num_qubits);
-        
+        println!(
+            "Starting quantum state tomography for {} qubits",
+            self.num_qubits
+        );
+
         // Step 1: Generate measurement settings
         let measurement_settings = self.generate_measurement_settings()?;
-        
+
         // Step 2: Collect measurement data
         self.collect_measurement_data(&measurement_settings)?;
-        
+
         // Step 3: Process measurement statistics
         self.process_measurement_statistics()?;
-        
+
         // Step 4: Reconstruct quantum state
         let reconstructed_state = self.reconstruct_quantum_state()?;
-        
+
         // Step 5: Validate reconstruction
         let validation_result = self.validate_reconstruction(&reconstructed_state)?;
-        
+
         // Step 6: Perform error analysis
         self.perform_error_analysis(&reconstructed_state)?;
-        
+
         // Step 7: Compute tomography metrics
         self.compute_tomography_metrics(&reconstructed_state, &validation_result);
-        
+
         println!("Quantum state tomography completed");
-        println!("Reconstruction fidelity: {:.4}", self.metrics.reconstruction_accuracy);
+        println!(
+            "Reconstruction fidelity: {:.4}",
+            self.metrics.reconstruction_accuracy
+        );
         println!("Overall quality score: {:.4}", self.metrics.overall_quality);
-        
+
         Ok(reconstructed_state)
     }
-    
+
     /// Generate measurement settings based on tomography type
     fn generate_measurement_settings(&self) -> Result<Vec<MeasurementBasis>, TomographyError> {
         match &self.config.tomography_type {
             TomographyType::QuantumState => self.generate_pauli_measurements(),
-            TomographyType::ShadowTomography { num_shadows } => self.generate_shadow_measurements(*num_shadows),
-            TomographyType::CompressedSensing { sparsity_level: _ } => self.generate_compressed_sensing_measurements(),
+            TomographyType::ShadowTomography { num_shadows } => {
+                self.generate_shadow_measurements(*num_shadows)
+            }
+            TomographyType::CompressedSensing { sparsity_level: _ } => {
+                self.generate_compressed_sensing_measurements()
+            }
             TomographyType::AdaptiveTomography => self.generate_adaptive_measurements(),
             _ => self.generate_pauli_measurements(),
         }
     }
-    
+
     /// Generate Pauli measurement settings
     fn generate_pauli_measurements(&self) -> Result<Vec<MeasurementBasis>, TomographyError> {
         let mut measurements = Vec::new();
         let pauli_ops = [PauliOperator::X, PauliOperator::Y, PauliOperator::Z];
-        
+
         // Generate all possible Pauli measurements
         for measurement_index in 0..(3_usize.pow(self.num_qubits as u32)) {
             let mut operators = Vec::new();
             let mut temp_index = measurement_index;
-            
+
             for _ in 0..self.num_qubits {
                 operators.push(pauli_ops[temp_index % 3].clone());
                 temp_index /= 3;
             }
-            
+
             measurements.push(MeasurementBasis {
                 name: format!("pauli_{}", measurement_index),
                 operators,
@@ -830,19 +865,22 @@ impl QuantumStateTomography {
                 basis_type: BasisType::Pauli,
             });
         }
-        
+
         Ok(measurements)
     }
-    
+
     /// Generate shadow measurement settings
-    fn generate_shadow_measurements(&self, num_shadows: usize) -> Result<Vec<MeasurementBasis>, TomographyError> {
+    fn generate_shadow_measurements(
+        &self,
+        num_shadows: usize,
+    ) -> Result<Vec<MeasurementBasis>, TomographyError> {
         let mut measurements = Vec::new();
         let mut rng = thread_rng();
-        
+
         for shadow_idx in 0..num_shadows {
             let mut operators = Vec::new();
             let mut angles = Vec::new();
-            
+
             for _ in 0..self.num_qubits {
                 // Random Pauli measurement
                 let pauli_choice: usize = rng.gen_range(0..3);
@@ -851,11 +889,11 @@ impl QuantumStateTomography {
                     1 => PauliOperator::Y,
                     _ => PauliOperator::Z,
                 });
-                
+
                 // Random angle for measurement
                 angles.push(rng.gen_range(0.0..2.0 * PI));
             }
-            
+
             measurements.push(MeasurementBasis {
                 name: format!("shadow_{}", shadow_idx),
                 operators,
@@ -863,20 +901,22 @@ impl QuantumStateTomography {
                 basis_type: BasisType::RandomPauli,
             });
         }
-        
+
         Ok(measurements)
     }
-    
+
     /// Generate compressed sensing measurements
-    fn generate_compressed_sensing_measurements(&self) -> Result<Vec<MeasurementBasis>, TomographyError> {
+    fn generate_compressed_sensing_measurements(
+        &self,
+    ) -> Result<Vec<MeasurementBasis>, TomographyError> {
         // Use random Pauli measurements optimized for sparse reconstruction
         let num_measurements = self.num_qubits * self.num_qubits * 2; // Reduced measurement count
         let mut measurements = Vec::new();
         let mut rng = thread_rng();
-        
+
         for measurement_idx in 0..num_measurements {
             let mut operators = Vec::new();
-            
+
             for _ in 0..self.num_qubits {
                 let pauli_choice: usize = rng.gen_range(0..4);
                 operators.push(match pauli_choice {
@@ -886,7 +926,7 @@ impl QuantumStateTomography {
                     _ => PauliOperator::Z,
                 });
             }
-            
+
             measurements.push(MeasurementBasis {
                 name: format!("compressed_sensing_{}", measurement_idx),
                 operators,
@@ -894,21 +934,21 @@ impl QuantumStateTomography {
                 basis_type: BasisType::RandomPauli,
             });
         }
-        
+
         Ok(measurements)
     }
-    
+
     /// Generate adaptive measurements
     fn generate_adaptive_measurements(&self) -> Result<Vec<MeasurementBasis>, TomographyError> {
         // Start with standard Pauli measurements
         let mut measurements = self.generate_pauli_measurements()?;
-        
+
         // Add informationally optimal measurements
         // This would be determined by the Fisher information matrix
         for optimal_idx in 0..self.num_qubits {
             let mut operators = vec![PauliOperator::Z; self.num_qubits];
             operators[optimal_idx] = PauliOperator::X;
-            
+
             measurements.push(MeasurementBasis {
                 name: format!("adaptive_{}", optimal_idx),
                 operators,
@@ -916,79 +956,88 @@ impl QuantumStateTomography {
                 basis_type: BasisType::Adaptive,
             });
         }
-        
+
         Ok(measurements)
     }
-    
+
     /// Collect measurement data (simulated)
-    fn collect_measurement_data(&mut self, measurement_settings: &[MeasurementBasis]) -> Result<(), TomographyError> {
+    fn collect_measurement_data(
+        &mut self,
+        measurement_settings: &[MeasurementBasis],
+    ) -> Result<(), TomographyError> {
         let mut rng = thread_rng();
-        
+
         for setting in measurement_settings {
             let mut outcomes = Vec::new();
-            
+
             for _ in 0..self.config.shots_per_setting {
                 let mut outcome = Vec::new();
-                
+
                 // Simulate measurement outcomes
                 for qubit in 0..self.num_qubits {
                     // Random outcome for simulation
                     outcome.push(if rng.gen::<f64>() < 0.5 { 0 } else { 1 });
                 }
-                
+
                 outcomes.push(outcome);
             }
-            
-            self.measurement_data.raw_outcomes.insert(setting.name.clone(), outcomes);
-            
+
+            self.measurement_data
+                .raw_outcomes
+                .insert(setting.name.clone(), outcomes);
+
             // Store metadata
-            self.measurement_data.metadata.insert(setting.name.clone(), MeasurementMetadata {
-                basis: setting.clone(),
-                num_shots: self.config.shots_per_setting,
-                timestamp: std::time::Instant::now(),
-                hardware_info: HardwareInfo {
-                    device_name: "simulator".to_string(),
-                    connectivity: {
-                        let mut conn = Array2::from_elem((self.num_qubits, self.num_qubits), false);
-                        for i in 0..self.num_qubits {
-                            conn[(i, i)] = true;
-                        }
-                        conn
+            self.measurement_data.metadata.insert(
+                setting.name.clone(),
+                MeasurementMetadata {
+                    basis: setting.clone(),
+                    num_shots: self.config.shots_per_setting,
+                    timestamp: std::time::Instant::now(),
+                    hardware_info: HardwareInfo {
+                        device_name: "simulator".to_string(),
+                        connectivity: {
+                            let mut conn =
+                                Array2::from_elem((self.num_qubits, self.num_qubits), false);
+                            for i in 0..self.num_qubits {
+                                conn[(i, i)] = true;
+                            }
+                            conn
+                        },
+                        gate_fidelities: HashMap::new(),
+                        readout_fidelities: Array1::ones(self.num_qubits) * 0.99,
+                        coherence_times: CoherenceTimes {
+                            t1_times: Array1::ones(self.num_qubits) * 100e-6, // 100 μs
+                            t2_times: Array1::ones(self.num_qubits) * 50e-6,  // 50 μs
+                            t2_echo_times: Array1::ones(self.num_qubits) * 80e-6, // 80 μs
+                        },
                     },
-                    gate_fidelities: HashMap::new(),
-                    readout_fidelities: Array1::ones(self.num_qubits) * 0.99,
-                    coherence_times: CoherenceTimes {
-                        t1_times: Array1::ones(self.num_qubits) * 100e-6, // 100 μs
-                        t2_times: Array1::ones(self.num_qubits) * 50e-6,  // 50 μs
-                        t2_echo_times: Array1::ones(self.num_qubits) * 80e-6, // 80 μs
+                    calibration_data: CalibrationData {
+                        readout_matrix: Array2::eye(1 << self.num_qubits),
+                        gate_parameters: HashMap::new(),
+                        state_prep_fidelity: 0.99,
+                        measurement_fidelity: 0.99,
                     },
                 },
-                calibration_data: CalibrationData {
-                    readout_matrix: Array2::eye(1 << self.num_qubits),
-                    gate_parameters: HashMap::new(),
-                    state_prep_fidelity: 0.99,
-                    measurement_fidelity: 0.99,
-                },
-            });
+            );
         }
-        
+
         Ok(())
     }
-    
+
     /// Process measurement statistics
     fn process_measurement_statistics(&mut self) -> Result<(), TomographyError> {
         for (setting_name, outcomes) in &self.measurement_data.raw_outcomes {
             let num_outcomes = 1 << self.num_qubits;
             let mut probabilities = Array1::zeros(num_outcomes);
             let mut expectation_values = Array1::zeros(self.num_qubits);
-            
+
             // Compute outcome probabilities
             for outcome in outcomes {
                 let outcome_index = self.outcome_to_index(outcome);
                 probabilities[outcome_index] += 1.0;
             }
             probabilities /= outcomes.len() as f64;
-            
+
             // Compute expectation values for each qubit
             for qubit in 0..self.num_qubits {
                 let mut expectation = 0.0;
@@ -997,23 +1046,26 @@ impl QuantumStateTomography {
                 }
                 expectation_values[qubit] = expectation / outcomes.len() as f64;
             }
-            
+
             // Compute variances and covariances
             let variances = Array1::ones(self.num_qubits) - expectation_values.mapv(|x| x * x);
             let covariances = Array2::zeros((self.num_qubits, self.num_qubits));
-            
-            self.measurement_data.statistics.insert(setting_name.clone(), MeasurementStatistics {
-                probabilities,
-                expectation_values,
-                variances,
-                covariances,
-                higher_moments: HashMap::new(),
-            });
+
+            self.measurement_data.statistics.insert(
+                setting_name.clone(),
+                MeasurementStatistics {
+                    probabilities,
+                    expectation_values,
+                    variances,
+                    covariances,
+                    higher_moments: HashMap::new(),
+                },
+            );
         }
-        
+
         Ok(())
     }
-    
+
     /// Convert outcome vector to index
     fn outcome_to_index(&self, outcome: &[u8]) -> usize {
         let mut index = 0;
@@ -1022,54 +1074,54 @@ impl QuantumStateTomography {
         }
         index
     }
-    
+
     /// Reconstruct quantum state using maximum likelihood estimation
     fn reconstruct_quantum_state(&self) -> Result<ReconstructedState, TomographyError> {
         let state_dim = 1 << self.num_qubits;
-        
+
         // Initialize density matrix as maximally mixed state
         let mut density_matrix = Array2::eye(state_dim) / state_dim as f64;
-        
+
         // Perform maximum likelihood reconstruction
         let max_iterations = self.config.optimization.max_iterations;
         let tolerance = self.config.optimization.tolerance;
-        
+
         let mut log_likelihood = self.compute_log_likelihood(&density_matrix)?;
         let mut converged = false;
         let mut iteration = 0;
         let mut history = Vec::new();
-        
+
         while iteration < max_iterations && !converged {
             let gradient = self.compute_likelihood_gradient(&density_matrix)?;
-            
+
             // Simple gradient ascent step
             let step_size = 0.01;
             density_matrix = &density_matrix + &(gradient * step_size);
-            
+
             // Project back to valid density matrix
             density_matrix = self.project_to_density_matrix(density_matrix)?;
-            
+
             let new_log_likelihood = self.compute_log_likelihood(&density_matrix)?;
-            
+
             if (new_log_likelihood - log_likelihood).abs() < tolerance {
                 converged = true;
             }
-            
+
             log_likelihood = new_log_likelihood;
             history.push(log_likelihood);
             iteration += 1;
         }
-        
+
         // Compute eigendecomposition
         let eigendecomposition = self.compute_eigendecomposition(&density_matrix)?;
-        
+
         // Compute entanglement measures
         let entanglement_measures = self.compute_entanglement_measures(&density_matrix)?;
-        
+
         // Compute purity and entropy
         let purity = self.compute_purity(&density_matrix);
         let entropy = self.compute_von_neumann_entropy(&density_matrix);
-        
+
         Ok(ReconstructedState {
             density_matrix,
             uncertainty: Array2::zeros((state_dim, state_dim)), // Placeholder
@@ -1105,45 +1157,54 @@ impl QuantumStateTomography {
             },
         })
     }
-    
+
     /// Compute log-likelihood of measurement data given density matrix
     fn compute_log_likelihood(&self, density_matrix: &Array2<f64>) -> Result<f64, TomographyError> {
         let mut log_likelihood = 0.0;
-        
+
         for (setting_name, statistics) in &self.measurement_data.statistics {
             if let Some(metadata) = self.measurement_data.metadata.get(setting_name) {
                 // Compute predicted probabilities from density matrix
-                let predicted_probs = self.compute_predicted_probabilities(density_matrix, &metadata.basis)?;
-                
+                let predicted_probs =
+                    self.compute_predicted_probabilities(density_matrix, &metadata.basis)?;
+
                 // Add to log-likelihood
-                for (observed, predicted) in statistics.probabilities.iter().zip(predicted_probs.iter()) {
+                for (observed, predicted) in
+                    statistics.probabilities.iter().zip(predicted_probs.iter())
+                {
                     if *observed > 0.0 && *predicted > 1e-15 {
                         log_likelihood += observed * predicted.ln();
                     }
                 }
             }
         }
-        
+
         Ok(log_likelihood)
     }
-    
+
     /// Compute gradient of log-likelihood
-    fn compute_likelihood_gradient(&self, density_matrix: &Array2<f64>) -> Result<Array2<f64>, TomographyError> {
+    fn compute_likelihood_gradient(
+        &self,
+        density_matrix: &Array2<f64>,
+    ) -> Result<Array2<f64>, TomographyError> {
         let state_dim = density_matrix.nrows();
         let mut gradient = Array2::zeros((state_dim, state_dim));
-        
+
         // Simplified gradient computation
         for i in 0..state_dim {
             for j in 0..state_dim {
                 gradient[[i, j]] = 1.0 / (density_matrix[[i, j]] + 1e-15);
             }
         }
-        
+
         Ok(gradient)
     }
-    
+
     /// Project matrix to valid density matrix (positive semidefinite, unit trace)
-    fn project_to_density_matrix(&self, mut matrix: Array2<f64>) -> Result<Array2<f64>, TomographyError> {
+    fn project_to_density_matrix(
+        &self,
+        mut matrix: Array2<f64>,
+    ) -> Result<Array2<f64>, TomographyError> {
         // Ensure Hermiticity
         for i in 0..matrix.nrows() {
             for j in i..matrix.ncols() {
@@ -1152,15 +1213,15 @@ impl QuantumStateTomography {
                 matrix[[j, i]] = avg;
             }
         }
-        
+
         // Ensure positive semidefiniteness by eigendecomposition
         let (mut eigenvals, eigenvecs) = self.compute_eigendecomposition(&matrix)?;
-        
+
         // Clip negative eigenvalues
         for eigenval in eigenvals.iter_mut() {
             *eigenval = eigenval.max(0.0);
         }
-        
+
         // Reconstruct matrix
         let mut reconstructed = Array2::zeros(matrix.raw_dim());
         for i in 0..eigenvals.len() {
@@ -1171,44 +1232,52 @@ impl QuantumStateTomography {
                 }
             }
         }
-        
+
         // Normalize trace to 1
         let trace = reconstructed.diag().sum();
         if trace > 1e-15 {
             reconstructed /= trace;
         }
-        
+
         Ok(reconstructed)
     }
-    
+
     /// Compute predicted probabilities for a measurement basis
-    fn compute_predicted_probabilities(&self, density_matrix: &Array2<f64>, basis: &MeasurementBasis) -> Result<Array1<f64>, TomographyError> {
+    fn compute_predicted_probabilities(
+        &self,
+        density_matrix: &Array2<f64>,
+        basis: &MeasurementBasis,
+    ) -> Result<Array1<f64>, TomographyError> {
         let num_outcomes = 1 << self.num_qubits;
         let mut probabilities = Array1::zeros(num_outcomes);
-        
+
         // For each possible outcome, compute Born rule probability
         for outcome_idx in 0..num_outcomes {
             let measurement_operator = self.construct_measurement_operator(outcome_idx, basis)?;
-            
+
             // Tr(ρ * M) where M is the measurement operator
             let prob = self.matrix_trace(&measurement_operator.dot(density_matrix));
             probabilities[outcome_idx] = prob.max(0.0);
         }
-        
+
         // Normalize probabilities
         let total_prob = probabilities.sum();
         if total_prob > 1e-15 {
             probabilities /= total_prob;
         }
-        
+
         Ok(probabilities)
     }
-    
+
     /// Construct measurement operator for given outcome and basis
-    fn construct_measurement_operator(&self, outcome_idx: usize, basis: &MeasurementBasis) -> Result<Array2<f64>, TomographyError> {
+    fn construct_measurement_operator(
+        &self,
+        outcome_idx: usize,
+        basis: &MeasurementBasis,
+    ) -> Result<Array2<f64>, TomographyError> {
         let state_dim = 1 << self.num_qubits;
         let mut operator = Array2::eye(state_dim);
-        
+
         // Convert outcome index to bit string
         let mut temp_outcome = outcome_idx;
         let mut outcome_bits = Vec::new();
@@ -1216,19 +1285,19 @@ impl QuantumStateTomography {
             outcome_bits.push(temp_outcome % 2);
             temp_outcome /= 2;
         }
-        
+
         // Apply Pauli measurement for each qubit
         for (qubit, pauli_op) in basis.operators.iter().enumerate() {
             let qubit_outcome = outcome_bits[qubit];
             let pauli_matrix = self.get_pauli_matrix(pauli_op, qubit_outcome);
-            
+
             // Tensor product with existing operator
             operator = self.tensor_product_with_identity(&operator, &pauli_matrix, qubit)?;
         }
-        
+
         Ok(operator)
     }
-    
+
     /// Get Pauli matrix for given operator and outcome
     fn get_pauli_matrix(&self, pauli_op: &PauliOperator, outcome: usize) -> Array2<f64> {
         match pauli_op {
@@ -1239,26 +1308,31 @@ impl QuantumStateTomography {
                 } else {
                     Array2::from_shape_vec((2, 2), vec![0.5, -0.5, -0.5, 0.5]).unwrap()
                 }
-            },
+            }
             PauliOperator::Y => {
                 if outcome == 0 {
                     Array2::from_shape_vec((2, 2), vec![0.5, 0.0, 0.0, 0.5]).unwrap()
                 } else {
                     Array2::from_shape_vec((2, 2), vec![0.5, 0.0, 0.0, 0.5]).unwrap()
                 }
-            },
+            }
             PauliOperator::Z => {
                 if outcome == 0 {
                     Array2::from_shape_vec((2, 2), vec![1.0, 0.0, 0.0, 0.0]).unwrap()
                 } else {
                     Array2::from_shape_vec((2, 2), vec![0.0, 0.0, 0.0, 1.0]).unwrap()
                 }
-            },
+            }
         }
     }
-    
+
     /// Tensor product with identity (simplified implementation)
-    fn tensor_product_with_identity(&self, operator: &Array2<f64>, pauli: &Array2<f64>, qubit: usize) -> Result<Array2<f64>, TomographyError> {
+    fn tensor_product_with_identity(
+        &self,
+        operator: &Array2<f64>,
+        pauli: &Array2<f64>,
+        qubit: usize,
+    ) -> Result<Array2<f64>, TomographyError> {
         // Simplified: assume applying to first qubit only
         if qubit == 0 {
             Ok(pauli.clone())
@@ -1266,109 +1340,140 @@ impl QuantumStateTomography {
             Ok(operator.clone())
         }
     }
-    
+
     /// Compute matrix trace
     fn matrix_trace(&self, matrix: &Array2<f64>) -> f64 {
         matrix.diag().sum()
     }
-    
+
     /// Compute eigendecomposition
-    fn compute_eigendecomposition(&self, matrix: &Array2<f64>) -> Result<(Array1<f64>, Array2<f64>), TomographyError> {
+    fn compute_eigendecomposition(
+        &self,
+        matrix: &Array2<f64>,
+    ) -> Result<(Array1<f64>, Array2<f64>), TomographyError> {
         // Simplified eigendecomposition for symmetric matrices
         let n = matrix.nrows();
         let eigenvals = Array1::ones(n) / n as f64;
         let eigenvecs = Array2::eye(n);
-        
+
         Ok((eigenvals, eigenvecs))
     }
-    
+
     /// Compute entanglement measures
-    fn compute_entanglement_measures(&self, density_matrix: &Array2<f64>) -> Result<EntanglementMeasures, TomographyError> {
+    fn compute_entanglement_measures(
+        &self,
+        density_matrix: &Array2<f64>,
+    ) -> Result<EntanglementMeasures, TomographyError> {
         // Simplified entanglement computation
         let purity = self.compute_purity(density_matrix);
-        
+
         Ok(EntanglementMeasures {
-            concurrence: if purity < 1.0 { 2.0 * (0.5 - purity / 2.0).sqrt() } else { 0.0 },
-            negativity: 0.0, // Placeholder
+            concurrence: if purity < 1.0 {
+                2.0 * (0.5 - purity / 2.0).sqrt()
+            } else {
+                0.0
+            },
+            negativity: 0.0,                // Placeholder
             entanglement_of_formation: 0.0, // Placeholder
-            distillable_entanglement: 0.0, // Placeholder
-            logarithmic_negativity: 0.0, // Placeholder
-            schmidt_number: 1.0, // Placeholder
+            distillable_entanglement: 0.0,  // Placeholder
+            logarithmic_negativity: 0.0,    // Placeholder
+            schmidt_number: 1.0,            // Placeholder
         })
     }
-    
+
     /// Compute purity of quantum state
     fn compute_purity(&self, density_matrix: &Array2<f64>) -> f64 {
         let squared = density_matrix.dot(density_matrix);
         self.matrix_trace(&squared)
     }
-    
+
     /// Compute von Neumann entropy
     fn compute_von_neumann_entropy(&self, density_matrix: &Array2<f64>) -> f64 {
-        let (eigenvals, _) = self.compute_eigendecomposition(density_matrix).unwrap_or_else(|_| {
-            (Array1::ones(density_matrix.nrows()) / density_matrix.nrows() as f64, Array2::eye(density_matrix.nrows()))
-        });
-        
+        let (eigenvals, _) = self
+            .compute_eigendecomposition(density_matrix)
+            .unwrap_or_else(|_| {
+                (
+                    Array1::ones(density_matrix.nrows()) / density_matrix.nrows() as f64,
+                    Array2::eye(density_matrix.nrows()),
+                )
+            });
+
         let mut entropy = 0.0;
         for &eigenval in eigenvals.iter() {
             if eigenval > 1e-15 {
                 entropy -= eigenval * eigenval.ln();
             }
         }
-        
+
         entropy
     }
-    
+
     /// Validate reconstruction
-    fn validate_reconstruction(&self, state: &ReconstructedState) -> Result<ValidationResult, TomographyError> {
+    fn validate_reconstruction(
+        &self,
+        state: &ReconstructedState,
+    ) -> Result<ValidationResult, TomographyError> {
         let mut test_results = HashMap::new();
         let mut passed = true;
-        
+
         // Test 1: Positive semidefiniteness
         let eigenvals_positive = state.eigenvalues.iter().all(|&eigenval| eigenval >= -1e-10);
-        test_results.insert("positive_semidefinite".to_string(), TestResult {
-            statistic: *state.eigenvalues.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or(&0.0),
-            p_value: if eigenvals_positive { 1.0 } else { 0.0 },
-            critical_value: 0.0,
-            passed: eigenvals_positive,
-            effect_size: 1.0,
-        });
-        
+        test_results.insert(
+            "positive_semidefinite".to_string(),
+            TestResult {
+                statistic: *state
+                    .eigenvalues
+                    .iter()
+                    .min_by(|a, b| a.partial_cmp(b).unwrap())
+                    .unwrap_or(&0.0),
+                p_value: if eigenvals_positive { 1.0 } else { 0.0 },
+                critical_value: 0.0,
+                passed: eigenvals_positive,
+                effect_size: 1.0,
+            },
+        );
+
         if !eigenvals_positive {
             passed = false;
         }
-        
+
         // Test 2: Unit trace
         let trace = self.matrix_trace(&state.density_matrix);
         let trace_valid = (trace - 1.0).abs() < 1e-6;
-        test_results.insert("unit_trace".to_string(), TestResult {
-            statistic: trace,
-            p_value: if trace_valid { 1.0 } else { 0.0 },
-            critical_value: 1.0,
-            passed: trace_valid,
-            effect_size: (trace - 1.0).abs(),
-        });
-        
+        test_results.insert(
+            "unit_trace".to_string(),
+            TestResult {
+                statistic: trace,
+                p_value: if trace_valid { 1.0 } else { 0.0 },
+                critical_value: 1.0,
+                passed: trace_valid,
+                effect_size: (trace - 1.0).abs(),
+            },
+        );
+
         if !trace_valid {
             passed = false;
         }
-        
+
         // Test 3: Hermiticity
         let hermitian = self.is_hermitian(&state.density_matrix);
-        test_results.insert("hermitian".to_string(), TestResult {
-            statistic: 1.0,
-            p_value: if hermitian { 1.0 } else { 0.0 },
-            critical_value: 1.0,
-            passed: hermitian,
-            effect_size: 1.0,
-        });
-        
+        test_results.insert(
+            "hermitian".to_string(),
+            TestResult {
+                statistic: 1.0,
+                p_value: if hermitian { 1.0 } else { 0.0 },
+                critical_value: 1.0,
+                passed: hermitian,
+                effect_size: 1.0,
+            },
+        );
+
         if !hermitian {
             passed = false;
         }
-        
+
         let score = if passed { 1.0 } else { 0.5 };
-        
+
         Ok(ValidationResult {
             passed,
             score,
@@ -1380,7 +1485,7 @@ impl QuantumStateTomography {
             },
         })
     }
-    
+
     /// Check if matrix is Hermitian
     fn is_hermitian(&self, matrix: &Array2<f64>) -> bool {
         for i in 0..matrix.nrows() {
@@ -1392,36 +1497,56 @@ impl QuantumStateTomography {
         }
         true
     }
-    
+
     /// Perform error analysis
-    fn perform_error_analysis(&mut self, _state: &ReconstructedState) -> Result<(), TomographyError> {
+    fn perform_error_analysis(
+        &mut self,
+        _state: &ReconstructedState,
+    ) -> Result<(), TomographyError> {
         // Simplified error analysis
         println!("Performing error analysis...");
-        
+
         // Update sensitivity analysis
-        self.error_analysis.sensitivity_analysis.parameter_sensitivities.fill(0.1);
-        self.error_analysis.sensitivity_analysis.robustness_indicators.fill(0.8);
-        
+        self.error_analysis
+            .sensitivity_analysis
+            .parameter_sensitivities
+            .fill(0.1);
+        self.error_analysis
+            .sensitivity_analysis
+            .robustness_indicators
+            .fill(0.8);
+
         // Update bootstrap methods
-        self.error_analysis.bootstrap_methods.bias_estimates.fill(0.01);
-        
+        self.error_analysis
+            .bootstrap_methods
+            .bias_estimates
+            .fill(0.01);
+
         Ok(())
     }
-    
+
     /// Compute tomography metrics
-    fn compute_tomography_metrics(&mut self, state: &ReconstructedState, validation: &ValidationResult) {
+    fn compute_tomography_metrics(
+        &mut self,
+        state: &ReconstructedState,
+        validation: &ValidationResult,
+    ) {
         self.metrics.reconstruction_accuracy = validation.score;
-        self.metrics.computational_efficiency = 1.0 / (state.metadata.computational_cost.wall_time + 1.0);
+        self.metrics.computational_efficiency =
+            1.0 / (state.metadata.computational_cost.wall_time + 1.0);
         self.metrics.statistical_power = state.metadata.quality_metrics.p_value.min(0.95);
-        self.metrics.robustness_score = self.error_analysis.sensitivity_analysis.robustness_indicators.mean().unwrap_or(0.0);
-        
+        self.metrics.robustness_score = self
+            .error_analysis
+            .sensitivity_analysis
+            .robustness_indicators
+            .mean()
+            .unwrap_or(0.0);
+
         // Overall quality score
-        self.metrics.overall_quality = (
-            self.metrics.reconstruction_accuracy * 0.4 +
-            self.metrics.computational_efficiency * 0.2 +
-            self.metrics.statistical_power * 0.2 +
-            self.metrics.robustness_score * 0.2
-        );
+        self.metrics.overall_quality = (self.metrics.reconstruction_accuracy * 0.4
+            + self.metrics.computational_efficiency * 0.2
+            + self.metrics.statistical_power * 0.2
+            + self.metrics.robustness_score * 0.2);
     }
 }
 
@@ -1460,7 +1585,10 @@ pub fn create_default_tomography_config() -> TomographyConfig {
                 completely_positive: true,
                 hermitian: true,
                 positive_semidefinite: true,
-                physical_constraints: vec![PhysicalConstraint::UnitTrace, PhysicalConstraint::PositiveEigenvalues],
+                physical_constraints: vec![
+                    PhysicalConstraint::UnitTrace,
+                    PhysicalConstraint::PositiveEigenvalues,
+                ],
             },
             algorithm: OptimizationAlgorithm::GradientDescent,
         },
@@ -1491,28 +1619,31 @@ pub fn create_shadow_tomography_config(num_shadows: usize) -> TomographyConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_tomography_creation() {
         let tomography = create_tomography_system(2);
         assert_eq!(tomography.num_qubits, 2);
-        assert_eq!(tomography.config.tomography_type, TomographyType::QuantumState);
+        assert_eq!(
+            tomography.config.tomography_type,
+            TomographyType::QuantumState
+        );
     }
-    
+
     #[test]
     fn test_pauli_measurement_generation() {
         let tomography = create_tomography_system(2);
         let measurements = tomography.generate_pauli_measurements().unwrap();
         assert_eq!(measurements.len(), 9); // 3^2 = 9 Pauli measurements for 2 qubits
     }
-    
+
     #[test]
     fn test_shadow_measurement_generation() {
         let tomography = create_tomography_system(2);
         let measurements = tomography.generate_shadow_measurements(100).unwrap();
         assert_eq!(measurements.len(), 100);
     }
-    
+
     #[test]
     fn test_outcome_to_index() {
         let tomography = create_tomography_system(3);
@@ -1521,19 +1652,19 @@ mod tests {
         assert_eq!(tomography.outcome_to_index(&[0, 1, 0]), 2);
         assert_eq!(tomography.outcome_to_index(&[1, 1, 1]), 7);
     }
-    
+
     #[test]
     fn test_purity_computation() {
         let tomography = create_tomography_system(1);
         let pure_state = Array2::from_shape_vec((2, 2), vec![1.0, 0.0, 0.0, 0.0]).unwrap();
         let purity = tomography.compute_purity(&pure_state);
         assert!((purity - 1.0).abs() < 1e-10);
-        
+
         let mixed_state = Array2::eye(2) / 2.0;
         let mixed_purity = tomography.compute_purity(&mixed_state);
         assert!((mixed_purity - 0.5).abs() < 1e-10);
     }
-    
+
     #[test]
     fn test_entropy_computation() {
         let tomography = create_tomography_system(1);

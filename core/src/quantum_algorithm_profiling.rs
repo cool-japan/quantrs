@@ -3,17 +3,14 @@
 //! Revolutionary quantum algorithm profiling with deep performance analysis,
 //! bottleneck detection, optimization recommendations, and quantum advantage quantification.
 
+#![allow(dead_code)]
+
 use crate::error::QuantRS2Error;
-use crate::gate::GateOp;
-use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
 use crate::qubit::QubitId;
-use num_complex::Complex64;
-use ndarray::{Array1, Array2};
-use std::collections::{HashMap, VecDeque, BTreeMap, HashSet, BinaryHeap};
-use std::sync::{Arc, RwLock, Mutex};
-use std::time::{Duration, Instant, SystemTime};
-use std::cmp::Ordering;
+use ndarray::Array2;
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
+use std::time::{Duration, Instant, SystemTime};
 
 /// Advanced Quantum Algorithm Performance Profiling System
 #[derive(Debug)]
@@ -333,32 +330,38 @@ impl QuantumAlgorithmProfiler {
         profiling_config: ProfilingConfiguration,
     ) -> Result<QuantumProfilingReport, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Start comprehensive profiling
         self.start_profiling_session(&algorithm, &profiling_config)?;
-        
+
         // Analyze performance characteristics
         let performance_analysis = self.performance_analyzer.analyze_performance(&algorithm)?;
-        
+
         // Analyze algorithmic complexity
         let complexity_analysis = self.complexity_analyzer.analyze_complexity(&algorithm)?;
-        
+
         // Detect bottlenecks
-        let bottleneck_analysis = self.bottleneck_detector.detect_bottlenecks(&algorithm, &performance_analysis)?;
-        
+        let bottleneck_analysis = self
+            .bottleneck_detector
+            .detect_bottlenecks(&algorithm, &performance_analysis)?;
+
         // Calculate quantum advantage
-        let quantum_advantage = self.quantum_advantage_calculator.calculate_advantage(&algorithm, &complexity_analysis)?;
-        
+        let quantum_advantage = self
+            .quantum_advantage_calculator
+            .calculate_advantage(&algorithm, &complexity_analysis)?;
+
         // Generate optimization recommendations
         let optimization_recommendations = self.optimization_advisor.generate_recommendations(
-            &algorithm, 
-            &bottleneck_analysis, 
-            &performance_analysis
+            &algorithm,
+            &bottleneck_analysis,
+            &performance_analysis,
         )?;
-        
+
         // Monitor resource utilization
-        let resource_analysis = self.resource_monitor.analyze_resource_utilization(&algorithm)?;
-        
+        let resource_analysis = self
+            .resource_monitor
+            .analyze_resource_utilization(&algorithm)?;
+
         // Create comprehensive profiling report
         let profiling_report = QuantumProfilingReport {
             report_id: Self::generate_id(),
@@ -370,13 +373,14 @@ impl QuantumAlgorithmProfiler {
             quantum_advantage,
             optimization_recommendations,
             resource_analysis,
-            profiling_overhead: 0.023, // 2.3% profiling overhead
+            profiling_overhead: 0.023,          // 2.3% profiling overhead
             quantum_profiling_advantage: 534.2, // 534.2x more detailed than classical profiling
         };
-        
+
         // Update profiling dashboard
-        self.profiling_dashboard.update_dashboard(&profiling_report)?;
-        
+        self.profiling_dashboard
+            .update_dashboard(&profiling_report)?;
+
         Ok(profiling_report)
     }
 
@@ -387,19 +391,27 @@ impl QuantumAlgorithmProfiler {
         benchmark_suite: BenchmarkSuite,
     ) -> Result<QuantumBenchmarkResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Execute comprehensive benchmarking
-        let benchmark_results = self.benchmark_engine.execute_benchmark_suite(&algorithm, &benchmark_suite)?;
-        
+        let benchmark_results = self
+            .benchmark_engine
+            .execute_benchmark_suite(&algorithm, &benchmark_suite)?;
+
         // Compare with classical alternatives
-        let classical_comparison = self.benchmark_engine.compare_with_classical(&algorithm, &benchmark_results)?;
-        
+        let classical_comparison = self
+            .benchmark_engine
+            .compare_with_classical(&algorithm, &benchmark_results)?;
+
         // Analyze scalability characteristics
-        let scalability_analysis = self.benchmark_engine.analyze_scalability(&algorithm, &benchmark_results)?;
-        
+        let scalability_analysis = self
+            .benchmark_engine
+            .analyze_scalability(&algorithm, &benchmark_results)?;
+
         // Calculate performance projections
-        let performance_projections = self.benchmark_engine.project_performance(&algorithm, &scalability_analysis)?;
-        
+        let performance_projections = self
+            .benchmark_engine
+            .project_performance(&algorithm, &scalability_analysis)?;
+
         Ok(QuantumBenchmarkResult {
             benchmark_id: Self::generate_id(),
             algorithm_info: algorithm,
@@ -416,44 +428,49 @@ impl QuantumAlgorithmProfiler {
     /// Demonstrate quantum algorithm profiling advantages
     pub fn demonstrate_profiling_advantages(&mut self) -> QuantumProfilingAdvantageReport {
         let mut report = QuantumProfilingAdvantageReport::new();
-        
+
         // Benchmark profiling depth
         report.profiling_depth_advantage = self.benchmark_profiling_depth();
-        
+
         // Benchmark bottleneck detection
         report.bottleneck_detection_advantage = self.benchmark_bottleneck_detection();
-        
+
         // Benchmark optimization recommendations
-        report.optimization_recommendation_advantage = self.benchmark_optimization_recommendations();
-        
+        report.optimization_recommendation_advantage =
+            self.benchmark_optimization_recommendations();
+
         // Benchmark quantum advantage calculation
-        report.quantum_advantage_calculation_advantage = self.benchmark_quantum_advantage_calculation();
-        
+        report.quantum_advantage_calculation_advantage =
+            self.benchmark_quantum_advantage_calculation();
+
         // Benchmark real-time monitoring
         report.real_time_monitoring_advantage = self.benchmark_real_time_monitoring();
-        
+
         // Calculate overall quantum profiling advantage
-        report.overall_advantage = (
-            report.profiling_depth_advantage +
-            report.bottleneck_detection_advantage +
-            report.optimization_recommendation_advantage +
-            report.quantum_advantage_calculation_advantage +
-            report.real_time_monitoring_advantage
-        ) / 5.0;
-        
+        report.overall_advantage = (report.profiling_depth_advantage
+            + report.bottleneck_detection_advantage
+            + report.optimization_recommendation_advantage
+            + report.quantum_advantage_calculation_advantage
+            + report.real_time_monitoring_advantage)
+            / 5.0;
+
         report
     }
 
     // Helper methods
     fn generate_id() -> u64 {
         use std::collections::hash_map::DefaultHasher;
-        
+
         let mut hasher = DefaultHasher::new();
         SystemTime::now().hash(&mut hasher);
         hasher.finish()
     }
 
-    fn start_profiling_session(&mut self, _algorithm: &QuantumAlgorithm, _config: &ProfilingConfiguration) -> Result<(), QuantRS2Error> {
+    fn start_profiling_session(
+        &mut self,
+        _algorithm: &QuantumAlgorithm,
+        _config: &ProfilingConfiguration,
+    ) -> Result<(), QuantRS2Error> {
         // Initialize profiling session
         Ok(())
     }
@@ -495,7 +512,10 @@ impl QuantumPerformanceAnalyzer {
         }
     }
 
-    pub fn analyze_performance(&self, algorithm: &QuantumAlgorithm) -> Result<PerformanceAnalysisResult, QuantRS2Error> {
+    pub fn analyze_performance(
+        &self,
+        algorithm: &QuantumAlgorithm,
+    ) -> Result<PerformanceAnalysisResult, QuantRS2Error> {
         Ok(PerformanceAnalysisResult {
             algorithm_name: algorithm.name.clone(),
             execution_time: Duration::from_millis(100),
@@ -520,7 +540,10 @@ impl QuantumComplexityAnalyzer {
         }
     }
 
-    pub fn analyze_complexity(&self, algorithm: &QuantumAlgorithm) -> Result<ComplexityAnalysisResult, QuantRS2Error> {
+    pub fn analyze_complexity(
+        &self,
+        algorithm: &QuantumAlgorithm,
+    ) -> Result<ComplexityAnalysisResult, QuantRS2Error> {
         Ok(ComplexityAnalysisResult {
             algorithm_name: algorithm.name.clone(),
             time_complexity: ComplexityClass::Polynomial(2),
@@ -545,7 +568,11 @@ impl QuantumBottleneckDetector {
         }
     }
 
-    pub fn detect_bottlenecks(&self, _algorithm: &QuantumAlgorithm, _performance: &PerformanceAnalysisResult) -> Result<BottleneckAnalysisResult, QuantRS2Error> {
+    pub fn detect_bottlenecks(
+        &self,
+        _algorithm: &QuantumAlgorithm,
+        _performance: &PerformanceAnalysisResult,
+    ) -> Result<BottleneckAnalysisResult, QuantRS2Error> {
         Ok(BottleneckAnalysisResult {
             critical_bottlenecks: vec![],
             optimization_opportunities: vec![],
@@ -568,7 +595,12 @@ impl QuantumOptimizationAdvisor {
         }
     }
 
-    pub fn generate_recommendations(&self, _algorithm: &QuantumAlgorithm, _bottlenecks: &BottleneckAnalysisResult, _performance: &PerformanceAnalysisResult) -> Result<OptimizationRecommendations, QuantRS2Error> {
+    pub fn generate_recommendations(
+        &self,
+        _algorithm: &QuantumAlgorithm,
+        _bottlenecks: &BottleneckAnalysisResult,
+        _performance: &PerformanceAnalysisResult,
+    ) -> Result<OptimizationRecommendations, QuantRS2Error> {
         Ok(OptimizationRecommendations {
             high_priority_recommendations: vec![],
             medium_priority_recommendations: vec![],
@@ -591,13 +623,17 @@ impl QuantumAdvantageCalculator {
         }
     }
 
-    pub fn calculate_advantage(&self, _algorithm: &QuantumAlgorithm, _complexity: &ComplexityAnalysisResult) -> Result<QuantumAdvantageResult, QuantRS2Error> {
+    pub fn calculate_advantage(
+        &self,
+        _algorithm: &QuantumAlgorithm,
+        _complexity: &ComplexityAnalysisResult,
+    ) -> Result<QuantumAdvantageResult, QuantRS2Error> {
         Ok(QuantumAdvantageResult {
             theoretical_speedup: 1000.0, // 1000x theoretical speedup
-            practical_speedup: 50.0, // 50x practical speedup
-            resource_advantage: 20.0, // 20x resource advantage
-            complexity_advantage: 2.0, // Quadratic to exponential improvement
-            crossover_point: 1000, // Advantage becomes apparent at 1000 problem size
+            practical_speedup: 50.0,     // 50x practical speedup
+            resource_advantage: 20.0,    // 20x resource advantage
+            complexity_advantage: 2.0,   // Quadratic to exponential improvement
+            crossover_point: 1000,       // Advantage becomes apparent at 1000 problem size
         })
     }
 }
@@ -615,13 +651,16 @@ impl QuantumResourceMonitor {
         }
     }
 
-    pub fn analyze_resource_utilization(&self, _algorithm: &QuantumAlgorithm) -> Result<ResourceUtilizationResult, QuantRS2Error> {
+    pub fn analyze_resource_utilization(
+        &self,
+        _algorithm: &QuantumAlgorithm,
+    ) -> Result<ResourceUtilizationResult, QuantRS2Error> {
         Ok(ResourceUtilizationResult {
-            qubit_utilization: 0.85, // 85% qubit utilization
-            gate_utilization: 0.90, // 90% gate utilization
-            memory_utilization: 0.75, // 75% memory utilization
+            qubit_utilization: 0.85,      // 85% qubit utilization
+            gate_utilization: 0.90,       // 90% gate utilization
+            memory_utilization: 0.75,     // 75% memory utilization
             communication_overhead: 0.05, // 5% communication overhead
-            energy_efficiency: 0.88, // 88% energy efficiency
+            energy_efficiency: 0.88,      // 88% energy efficiency
         })
     }
 }
@@ -804,7 +843,12 @@ pub struct ApplicabilityCondition;
 #[derive(Debug, Clone)]
 pub struct ExpectedImprovement;
 #[derive(Debug, Clone)]
-pub enum ImplementationComplexity { Low, Medium, High, Expert }
+pub enum ImplementationComplexity {
+    Low,
+    Medium,
+    High,
+    Expert,
+}
 #[derive(Debug, Clone)]
 pub struct ResourceRequirements;
 #[derive(Debug)]
@@ -888,7 +932,12 @@ pub struct OptimizationRecommendations {
     pub implementation_effort: ImplementationEffort,
 }
 #[derive(Debug)]
-pub enum ImplementationEffort { Low, Medium, High, Expert }
+pub enum ImplementationEffort {
+    Low,
+    Medium,
+    High,
+    Expert,
+}
 #[derive(Debug)]
 pub struct ResourceUtilizationResult {
     pub qubit_utilization: f64,
@@ -900,7 +949,9 @@ pub struct ResourceUtilizationResult {
 #[derive(Debug)]
 pub struct BenchmarkMetrics;
 #[derive(Debug, Clone)]
-pub struct ClassicalComparison { pub speedup_factor: f64 }
+pub struct ClassicalComparison {
+    pub speedup_factor: f64,
+}
 #[derive(Debug)]
 pub struct ScalabilityAnalysisResult;
 #[derive(Debug)]
@@ -910,7 +961,7 @@ pub struct CircuitTimingStatistics;
 
 // Implement required traits and methods
 impl QuantumTimingProfiler {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         Self {
             profiler_id: QuantumAlgorithmProfiler::generate_id(),
             execution_timings: HashMap::new(),
@@ -923,7 +974,7 @@ impl QuantumTimingProfiler {
 }
 
 impl QuantumGateProfiler {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         Self {
             profiler_id: QuantumAlgorithmProfiler::generate_id(),
             gate_usage_statistics: HashMap::new(),
@@ -936,37 +987,43 @@ impl QuantumGateProfiler {
 }
 
 impl QuantumCircuitProfiler {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         QuantumCircuitProfiler
     }
 }
 
 impl QuantumFidelityAnalyzer {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         QuantumFidelityAnalyzer
     }
 }
 
 impl CoherenceProfiler {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         CoherenceProfiler
     }
 }
 
 impl ErrorRateAnalyzer {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         ErrorRateAnalyzer
     }
 }
 
 impl ScalabilityAnalyzer {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         ScalabilityAnalyzer
     }
 }
 
+impl Default for ScalabilityAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TimeComplexityAnalyzer {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         Self {
             analyzer_id: QuantumAlgorithmProfiler::generate_id(),
             algorithm_complexities: HashMap::new(),
@@ -977,40 +1034,86 @@ impl TimeComplexityAnalyzer {
     }
 }
 
+impl Default for TimeComplexityAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SpaceComplexityAnalyzer {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         SpaceComplexityAnalyzer
     }
 }
 
+impl Default for SpaceComplexityAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumResourceComplexityAnalyzer {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         QuantumResourceComplexityAnalyzer
     }
 }
 
+impl Default for QuantumResourceComplexityAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ClassicalComplexityComparator {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         ClassicalComplexityComparator
     }
 }
 
+impl Default for ClassicalComplexityComparator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AsymptoticAnalyzer {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         AsymptoticAnalyzer
     }
 }
 
+impl Default for AsymptoticAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BottleneckAnalyzer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for BottleneckAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CriticalPathAnalyzer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for CriticalPathAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl OptimizationRecommendationEngine {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         Self {
             engine_id: QuantumAlgorithmProfiler::generate_id(),
             optimization_strategies: Vec::new(),
@@ -1021,14 +1124,22 @@ impl OptimizationRecommendationEngine {
     }
 }
 
-impl Default for GateOptimizationAdvisor {
+impl Default for OptimizationRecommendationEngine {
     fn default() -> Self {
         Self::new()
     }
 }
 
 impl GateOptimizationAdvisor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for GateOptimizationAdvisor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Default for CircuitOptimizationAdvisor {
@@ -1038,7 +1149,9 @@ impl Default for CircuitOptimizationAdvisor {
 }
 
 impl CircuitOptimizationAdvisor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for ResourceOptimizationAdvisor {
@@ -1048,7 +1161,9 @@ impl Default for ResourceOptimizationAdvisor {
 }
 
 impl ResourceOptimizationAdvisor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for AlgorithmOptimizationAdvisor {
@@ -1058,7 +1173,9 @@ impl Default for AlgorithmOptimizationAdvisor {
 }
 
 impl AlgorithmOptimizationAdvisor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for MLOptimizationEngine {
@@ -1068,7 +1185,9 @@ impl Default for MLOptimizationEngine {
 }
 
 impl MLOptimizationEngine {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for QuantumSpeedupCalculator {
@@ -1078,7 +1197,7 @@ impl Default for QuantumSpeedupCalculator {
 }
 
 impl QuantumSpeedupCalculator {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         Self {
             calculator_id: QuantumAlgorithmProfiler::generate_id(),
             theoretical_speedups: HashMap::new(),
@@ -1096,7 +1215,9 @@ impl Default for ComplexityAdvantageCalculator {
 }
 
 impl ComplexityAdvantageCalculator {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for ResourceAdvantageCalculator {
@@ -1106,7 +1227,9 @@ impl Default for ResourceAdvantageCalculator {
 }
 
 impl ResourceAdvantageCalculator {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for PracticalAdvantageAssessor {
@@ -1116,7 +1239,9 @@ impl Default for PracticalAdvantageAssessor {
 }
 
 impl PracticalAdvantageAssessor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for AdvantagePredictionEngine {
@@ -1126,7 +1251,9 @@ impl Default for AdvantagePredictionEngine {
 }
 
 impl AdvantagePredictionEngine {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for QubitUtilizationMonitor {
@@ -1136,7 +1263,7 @@ impl Default for QubitUtilizationMonitor {
 }
 
 impl QubitUtilizationMonitor {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         Self {
             monitor_id: QuantumAlgorithmProfiler::generate_id(),
             qubit_usage_stats: HashMap::new(),
@@ -1148,7 +1275,9 @@ impl QubitUtilizationMonitor {
 }
 
 impl GateUtilizationMonitor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for GateUtilizationMonitor {
@@ -1158,7 +1287,9 @@ impl Default for GateUtilizationMonitor {
 }
 
 impl QuantumMemoryMonitor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for QuantumMemoryMonitor {
@@ -1168,7 +1299,9 @@ impl Default for QuantumMemoryMonitor {
 }
 
 impl QuantumCommunicationMonitor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for QuantumCommunicationMonitor {
@@ -1178,7 +1311,9 @@ impl Default for QuantumCommunicationMonitor {
 }
 
 impl EnergyConsumptionMonitor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for EnergyConsumptionMonitor {
@@ -1188,7 +1323,9 @@ impl Default for EnergyConsumptionMonitor {
 }
 
 impl RealTimeResourceMonitor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for RealTimeResourceMonitor {
@@ -1198,7 +1335,9 @@ impl Default for RealTimeResourceMonitor {
 }
 
 impl QuantumExecutionTracer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for QuantumExecutionTracer {
@@ -1208,21 +1347,41 @@ impl Default for QuantumExecutionTracer {
 }
 
 impl QuantumBenchmarkEngine {
-    pub fn new() -> Self { Self }
-    
-    pub fn execute_benchmark_suite(&self, _algorithm: &QuantumAlgorithm, _suite: &BenchmarkSuite) -> Result<BenchmarkMetrics, QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn execute_benchmark_suite(
+        &self,
+        _algorithm: &QuantumAlgorithm,
+        _suite: &BenchmarkSuite,
+    ) -> Result<BenchmarkMetrics, QuantRS2Error> {
         Ok(BenchmarkMetrics)
     }
-    
-    pub fn compare_with_classical(&self, _algorithm: &QuantumAlgorithm, _metrics: &BenchmarkMetrics) -> Result<ClassicalComparison, QuantRS2Error> {
-        Ok(ClassicalComparison { speedup_factor: 534.2 })
+
+    pub fn compare_with_classical(
+        &self,
+        _algorithm: &QuantumAlgorithm,
+        _metrics: &BenchmarkMetrics,
+    ) -> Result<ClassicalComparison, QuantRS2Error> {
+        Ok(ClassicalComparison {
+            speedup_factor: 534.2,
+        })
     }
-    
-    pub fn analyze_scalability(&self, _algorithm: &QuantumAlgorithm, _metrics: &BenchmarkMetrics) -> Result<ScalabilityAnalysisResult, QuantRS2Error> {
+
+    pub fn analyze_scalability(
+        &self,
+        _algorithm: &QuantumAlgorithm,
+        _metrics: &BenchmarkMetrics,
+    ) -> Result<ScalabilityAnalysisResult, QuantRS2Error> {
         Ok(ScalabilityAnalysisResult)
     }
-    
-    pub fn project_performance(&self, _algorithm: &QuantumAlgorithm, _scalability: &ScalabilityAnalysisResult) -> Result<PerformanceProjections, QuantRS2Error> {
+
+    pub fn project_performance(
+        &self,
+        _algorithm: &QuantumAlgorithm,
+        _scalability: &ScalabilityAnalysisResult,
+    ) -> Result<PerformanceProjections, QuantRS2Error> {
         Ok(PerformanceProjections)
     }
 }
@@ -1234,9 +1393,14 @@ impl Default for QuantumBenchmarkEngine {
 }
 
 impl ProfilingDashboard {
-    pub fn new() -> Self { Self }
-    
-    pub fn update_dashboard(&mut self, _report: &QuantumProfilingReport) -> Result<(), QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn update_dashboard(
+        &mut self,
+        _report: &QuantumProfilingReport,
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 }
@@ -1266,10 +1430,17 @@ mod tests {
             circuit: QuantumCircuit,
             parameters: AlgorithmParameters,
         };
-        
+
         let config = ProfilingConfiguration {
             profiling_level: ProfilingLevel::Standard,
-            metrics_to_collect: [MetricType::Timing, MetricType::Fidelity, MetricType::ResourceUtilization].iter().cloned().collect(),
+            metrics_to_collect: [
+                MetricType::Timing,
+                MetricType::Fidelity,
+                MetricType::ResourceUtilization,
+            ]
+            .iter()
+            .cloned()
+            .collect(),
             sampling_rate: 1.0,
             real_time_monitoring: true,
         };
@@ -1306,7 +1477,7 @@ mod tests {
     fn test_profiling_advantages() {
         let mut profiler = QuantumAlgorithmProfiler::new();
         let report = profiler.demonstrate_profiling_advantages();
-        
+
         // All advantages should demonstrate quantum superiority
         assert!(report.profiling_depth_advantage > 1.0);
         assert!(report.bottleneck_detection_advantage > 1.0);
@@ -1330,7 +1501,10 @@ mod tests {
         assert!(result.is_ok());
 
         let complexity_result = result.unwrap();
-        assert!(matches!(complexity_result.time_complexity, ComplexityClass::Polynomial(_)));
+        assert!(matches!(
+            complexity_result.time_complexity,
+            ComplexityClass::Polynomial(_)
+        ));
         assert!(complexity_result.quantum_gate_complexity > 0);
     }
 

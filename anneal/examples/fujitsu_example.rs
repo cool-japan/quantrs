@@ -10,7 +10,7 @@
 use quantrs2_anneal::{
     fujitsu::{FujitsuAnnealingParams, FujitsuClient, GuidanceConfig},
     ising::IsingModel,
-    qubo::QuboBuilder,
+    qubo::{QuboBuilder, QuboFormulation},
     simulator::{AnnealingParams, QuantumAnnealingSimulator},
 };
 use std::time::Instant;
@@ -116,7 +116,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let start = Instant::now();
-    let qubo_solution = client.solve_qubo(&qubo, params).await?;
+    let qubo_model = qubo.build();
+    let qubo_solution = client.solve_qubo(&qubo_model, params).await?;
     let qubo_time = start.elapsed();
 
     println!("Portfolio optimization results:");
@@ -154,7 +155,7 @@ fn create_maxcut_instance(n: usize) -> Result<IsingModel, Box<dyn std::error::Er
 #[cfg(feature = "fujitsu")]
 fn create_portfolio_optimization(
     n_assets: usize,
-) -> Result<Box<dyn quantrs2_anneal::qubo::QuboFormulation>, Box<dyn std::error::Error>> {
+) -> Result<QuboBuilder, Box<dyn std::error::Error>> {
     let mut builder = QuboBuilder::new();
 
     // Generate random returns and risks
@@ -178,7 +179,7 @@ fn create_portfolio_optimization(
     // Constraint: select exactly k assets
     let k = n_assets / 3;
     builder.set_constraint_weight(10.0)?;
-    builder.constrain_equal(&vars, k as f64)?;
+    builder.constrain_sum_equal(&vars, k as f64)?;
 
     // Add correlation penalties between assets
     for i in 0..n_assets {
@@ -191,7 +192,7 @@ fn create_portfolio_optimization(
         }
     }
 
-    Ok(Box::new(builder.build()))
+    Ok(builder)
 }
 
 #[cfg(not(feature = "fujitsu"))]

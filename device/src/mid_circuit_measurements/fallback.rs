@@ -21,14 +21,14 @@ pub fn pearsonr(
     if x.len() != y.len() || x.len() < 2 {
         return Ok((0.0, 0.5));
     }
-    
+
     let x_mean = x.mean().unwrap_or(0.0);
     let y_mean = y.mean().unwrap_or(0.0);
-    
+
     let mut num = 0.0;
     let mut x_sum_sq = 0.0;
     let mut y_sum_sq = 0.0;
-    
+
     for i in 0..x.len() {
         let x_diff = x[i] - x_mean;
         let y_diff = y[i] - y_mean;
@@ -36,10 +36,10 @@ pub fn pearsonr(
         x_sum_sq += x_diff * x_diff;
         y_sum_sq += y_diff * y_diff;
     }
-    
+
     let denom = (x_sum_sq * y_sum_sq).sqrt();
     let corr = if denom > 1e-10 { num / denom } else { 0.0 };
-    
+
     Ok((corr, 0.05)) // p-value placeholder
 }
 
@@ -80,11 +80,11 @@ impl LinearRegression {
             intercept: 0.0,
         }
     }
-    
+
     pub fn fit(&mut self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<(), String> {
         Ok(())
     }
-    
+
     pub fn predict(&self, x: &Array2<f64>) -> Array1<f64> {
         Array1::zeros(x.nrows())
     }

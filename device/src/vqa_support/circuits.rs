@@ -143,7 +143,9 @@ impl ParametricCircuit {
                     gate_type: GateType::RY,
                     qubits: vec![qubit],
                     parameter_indices: vec![param_count],
-                    metadata: [("layer".to_string(), layer.to_string())].into_iter().collect(),
+                    metadata: [("layer".to_string(), layer.to_string())]
+                        .into_iter()
+                        .collect(),
                 });
                 param_count += 1;
 
@@ -152,7 +154,9 @@ impl ParametricCircuit {
                     gate_type: GateType::RZ,
                     qubits: vec![qubit],
                     parameter_indices: vec![param_count],
-                    metadata: [("layer".to_string(), layer.to_string())].into_iter().collect(),
+                    metadata: [("layer".to_string(), layer.to_string())]
+                        .into_iter()
+                        .collect(),
                 });
                 param_count += 1;
             }
@@ -160,14 +164,16 @@ impl ParametricCircuit {
             // Entangling layer with CNOT gates
             for qubit in 0..config.num_qubits {
                 let target = (qubit + 1) % config.num_qubits;
-                
+
                 gates.push(ParametricGate {
                     gate_type: GateType::CNOT,
                     qubits: vec![qubit, target],
                     parameter_indices: vec![], // Non-parametric
-                    metadata: [("layer".to_string(), layer.to_string())].into_iter().collect(),
+                    metadata: [("layer".to_string(), layer.to_string())]
+                        .into_iter()
+                        .collect(),
                 });
-                
+
                 connectivity.push((qubit, target));
             }
         }
@@ -193,7 +199,9 @@ impl ParametricCircuit {
                 gate_type: GateType::H,
                 qubits: vec![qubit],
                 parameter_indices: vec![],
-                metadata: [("layer".to_string(), "initial".to_string())].into_iter().collect(),
+                metadata: [("layer".to_string(), "initial".to_string())]
+                    .into_iter()
+                    .collect(),
             });
         }
 
@@ -205,29 +213,44 @@ impl ParametricCircuit {
             // Problem Hamiltonian layer (ZZ interactions)
             for qubit in 0..config.num_qubits {
                 let neighbor = (qubit + 1) % config.num_qubits;
-                
+
                 // ZZ interaction implemented as CNOT-RZ-CNOT
                 gates.push(ParametricGate {
                     gate_type: GateType::CNOT,
                     qubits: vec![qubit, neighbor],
                     parameter_indices: vec![],
-                    metadata: [("layer".to_string(), layer.to_string()), ("type".to_string(), "problem".to_string())].into_iter().collect(),
+                    metadata: [
+                        ("layer".to_string(), layer.to_string()),
+                        ("type".to_string(), "problem".to_string()),
+                    ]
+                    .into_iter()
+                    .collect(),
                 });
-                
+
                 gates.push(ParametricGate {
                     gate_type: GateType::RZ,
                     qubits: vec![neighbor],
                     parameter_indices: vec![gamma_idx],
-                    metadata: [("layer".to_string(), layer.to_string()), ("type".to_string(), "problem".to_string())].into_iter().collect(),
+                    metadata: [
+                        ("layer".to_string(), layer.to_string()),
+                        ("type".to_string(), "problem".to_string()),
+                    ]
+                    .into_iter()
+                    .collect(),
                 });
-                
+
                 gates.push(ParametricGate {
                     gate_type: GateType::CNOT,
                     qubits: vec![qubit, neighbor],
                     parameter_indices: vec![],
-                    metadata: [("layer".to_string(), layer.to_string()), ("type".to_string(), "problem".to_string())].into_iter().collect(),
+                    metadata: [
+                        ("layer".to_string(), layer.to_string()),
+                        ("type".to_string(), "problem".to_string()),
+                    ]
+                    .into_iter()
+                    .collect(),
                 });
-                
+
                 connectivity.push((qubit, neighbor));
             }
 
@@ -237,7 +260,12 @@ impl ParametricCircuit {
                     gate_type: GateType::RX,
                     qubits: vec![qubit],
                     parameter_indices: vec![beta_idx],
-                    metadata: [("layer".to_string(), layer.to_string()), ("type".to_string(), "mixer".to_string())].into_iter().collect(),
+                    metadata: [
+                        ("layer".to_string(), layer.to_string()),
+                        ("type".to_string(), "mixer".to_string()),
+                    ]
+                    .into_iter()
+                    .collect(),
                 });
             }
         }
@@ -245,7 +273,8 @@ impl ParametricCircuit {
         let structure = CircuitStructure {
             gates,
             connectivity,
-            estimated_depth: config.num_qubits + config.depth * (3 * config.num_qubits + config.num_qubits), // H + (CNOT-RZ-CNOT + RX) per layer
+            estimated_depth: config.num_qubits
+                + config.depth * (3 * config.num_qubits + config.num_qubits), // H + (CNOT-RZ-CNOT + RX) per layer
         };
 
         (param_count, structure)
@@ -264,7 +293,9 @@ impl ParametricCircuit {
                     gate_type: GateType::RY,
                     qubits: vec![qubit],
                     parameter_indices: vec![param_count],
-                    metadata: [("layer".to_string(), layer.to_string())].into_iter().collect(),
+                    metadata: [("layer".to_string(), layer.to_string())]
+                        .into_iter()
+                        .collect(),
                 });
                 param_count += 1;
             }
@@ -275,7 +306,9 @@ impl ParametricCircuit {
                     gate_type: GateType::CNOT,
                     qubits: vec![qubit, qubit + 1],
                     parameter_indices: vec![],
-                    metadata: [("layer".to_string(), layer.to_string())].into_iter().collect(),
+                    metadata: [("layer".to_string(), layer.to_string())]
+                        .into_iter()
+                        .collect(),
                 });
                 connectivity.push((qubit, qubit + 1));
             }
@@ -287,7 +320,9 @@ impl ParametricCircuit {
                 gate_type: GateType::RY,
                 qubits: vec![qubit],
                 parameter_indices: vec![param_count],
-                metadata: [("layer".to_string(), "final".to_string())].into_iter().collect(),
+                metadata: [("layer".to_string(), "final".to_string())]
+                    .into_iter()
+                    .collect(),
             });
             param_count += 1;
         }
@@ -302,7 +337,10 @@ impl ParametricCircuit {
     }
 
     /// Generate custom ansatz
-    fn generate_custom(_config: &ParametricCircuitConfig, _name: &str) -> (usize, CircuitStructure) {
+    fn generate_custom(
+        _config: &ParametricCircuitConfig,
+        _name: &str,
+    ) -> (usize, CircuitStructure) {
         // Placeholder for custom ansatz - would be implemented based on specific requirements
         let structure = CircuitStructure {
             gates: Vec::new(),
@@ -315,9 +353,11 @@ impl ParametricCircuit {
     /// Update circuit parameters
     pub fn set_parameters(&mut self, params: Vec<f64>) -> DeviceResult<()> {
         if params.len() != self.parameters.len() {
-            return Err(crate::DeviceError::InvalidInput(
-                format!("Parameter count mismatch: expected {}, got {}", self.parameters.len(), params.len())
-            ));
+            return Err(crate::DeviceError::InvalidInput(format!(
+                "Parameter count mismatch: expected {}, got {}",
+                self.parameters.len(),
+                params.len()
+            )));
         }
         self.parameters = params;
         Ok(())
@@ -347,10 +387,11 @@ impl ParametricCircuit {
     pub fn random_parameters(&self) -> Vec<f64> {
         use rand::prelude::*;
         let mut rng = rand::thread_rng();
-        
-        self.bounds.iter().map(|(min, max)| {
-            rng.gen_range(*min..*max)
-        }).collect()
+
+        self.bounds
+            .iter()
+            .map(|(min, max)| rng.gen_range(*min..*max))
+            .collect()
     }
 
     /// Set parameter bounds
@@ -366,11 +407,13 @@ impl ParametricCircuit {
 
     /// Validate parameters are within bounds
     pub fn validate_parameters(&self) -> DeviceResult<()> {
-        for (i, (&param, &(min, max))) in self.parameters.iter().zip(self.bounds.iter()).enumerate() {
+        for (i, (&param, &(min, max))) in self.parameters.iter().zip(self.bounds.iter()).enumerate()
+        {
             if param < min || param > max {
-                return Err(crate::DeviceError::InvalidInput(
-                    format!("Parameter {} ({}) out of bounds [{}, {}]", i, param, min, max)
-                ));
+                return Err(crate::DeviceError::InvalidInput(format!(
+                    "Parameter {} ({}) out of bounds [{}, {}]",
+                    i, param, min, max
+                )));
             }
         }
         Ok(())

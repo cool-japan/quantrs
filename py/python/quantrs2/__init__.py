@@ -1177,7 +1177,35 @@ try:
         execute_circuit_resilient,
         execute_circuits_batch,
         execute_circuit_async,
-        configure_resilient_execution
+        configure_resilient_execution,
+        ResourceType,
+        ResourceStatus,
+        ResourceConfig,
+        ResourceException,
+        analyze_circuit_resources
+    )
+except ImportError:
+    pass
+
+# Try to import resource management module
+try:
+    from . import resource_management
+except ImportError:
+    pass
+
+# Import resource management functions (if available)
+try:
+    from .resource_management import (
+        ResourceType,
+        ResourceStatus,
+        ResourceLimit,
+        ResourceUsage,
+        ResourceConfig,
+        ResourceException,
+        ResourceMonitor,
+        ResourcePool,
+        resource_context,
+        analyze_circuit_resources
     )
 except ImportError:
     pass
@@ -1206,6 +1234,124 @@ try:
         load_config,
         get_current_config,
         create_default_configs
+    )
+except ImportError:
+    pass
+
+# Try to import connection pooling module
+try:
+    from . import connection_pooling
+except ImportError:
+    pass
+
+# Import connection pooling functions (if available)
+try:
+    from .connection_pooling import (
+        CacheBackend,
+        CacheStrategy,
+        CacheConfig,
+        ConnectionPoolConfig,
+        DatabaseConnectionPool,
+        QuantumResultCache
+    )
+except ImportError:
+    pass
+
+# Try to import circuit optimization cache module
+try:
+    from . import circuit_optimization_cache
+except ImportError:
+    pass
+
+# Import circuit optimization cache functions (if available)
+try:
+    from .circuit_optimization_cache import (
+        OptimizationLevel,
+        CircuitPattern,
+        CircuitSignature,
+        OptimizationResult,
+        ExecutionProfile,
+        CircuitPatternDetector,
+        CircuitOptimizationCache
+    )
+except ImportError:
+    pass
+
+# Try to import performance manager module
+try:
+    from . import performance_manager
+except ImportError:
+    pass
+
+# Import performance manager functions (if available)
+try:
+    from .performance_manager import (
+        PerformanceProfile,
+        PerformanceConfig,
+        ConnectionManager,
+        CacheManager,
+        PerformanceMonitor,
+        PerformanceManager,
+        get_performance_manager,
+        close_performance_manager
+    )
+except ImportError:
+    pass
+
+# Try to import monitoring and alerting module
+try:
+    from . import monitoring_alerting
+except ImportError:
+    pass
+
+# Import monitoring and alerting functions (if available)
+try:
+    from .monitoring_alerting import (
+        AlertSeverity,
+        AlertStatus,
+        NotificationChannel,
+        MetricType,
+        AlertRule,
+        Alert,
+        NotificationConfig,
+        MetricDataPoint,
+        MetricsCollector,
+        NotificationManager,
+        AlertManager,
+        MonitoringSystem
+    )
+except ImportError:
+    pass
+
+# Try to import monitoring dashboard module
+try:
+    from . import monitoring_dashboard
+except ImportError:
+    pass
+
+# Import monitoring dashboard functions (if available)
+try:
+    from .monitoring_dashboard import (
+        DashboardServer
+    )
+except ImportError:
+    pass
+
+# Try to import external monitoring integrations module
+try:
+    from . import external_monitoring_integrations
+except ImportError:
+    pass
+
+# Import external monitoring integrations functions (if available)
+try:
+    from .external_monitoring_integrations import (
+        IntegrationType,
+        IntegrationConfig,
+        PrometheusIntegration,
+        DatadogIntegration,
+        GrafanaIntegration,
+        ExternalMonitoringManager
     )
 except ImportError:
     pass

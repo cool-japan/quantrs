@@ -255,7 +255,7 @@ The QuantRS2-Core module has achieved **Ultimate UltraThink Mode** - the most ad
 - [x] Leverage SciRS2 parallel algorithms for batch operations
 - [x] Use SciRS2 optimization for variational parameters
 
-## Medium-term Goals (v0.1.x)
+## Medium-term Goals (v0.1.0)
 
 ### Quantum Computing Frontiers
 - [ ] Implement distributed quantum computing protocols

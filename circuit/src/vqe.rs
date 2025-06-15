@@ -4,11 +4,11 @@
 //! algorithm, which is used to find ground state energies of quantum systems.
 
 use crate::builder::Circuit;
+use num_complex::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
-use num_complex::Complex64;
 use std::collections::HashMap;
 
 /// A parameterized quantum circuit for VQE applications
@@ -35,7 +35,10 @@ pub enum VQEAnsatz {
     /// Hardware-efficient ansatz with alternating rotation and entangling layers
     HardwareEfficient { layers: usize },
     /// Unitary Coupled-Cluster Singles and Doubles
-    UCCSD { occupied_orbitals: usize, virtual_orbitals: usize },
+    UCCSD {
+        occupied_orbitals: usize,
+        virtual_orbitals: usize,
+    },
     /// Real-space ansatz for condensed matter systems
     RealSpace { geometry: Vec<(f64, f64, f64)> },
     /// Custom ansatz defined by user
@@ -83,17 +86,39 @@ impl<const N: usize> VQECircuit<N> {
 
         match ansatz {
             VQEAnsatz::HardwareEfficient { layers } => {
-                Self::build_hardware_efficient_ansatz(&mut circuit, &mut parameters, &mut parameter_names, &mut parameter_map, layers)?;
-            },
-            VQEAnsatz::UCCSD { occupied_orbitals, virtual_orbitals } => {
-                Self::build_uccsd_ansatz(&mut circuit, &mut parameters, &mut parameter_names, &mut parameter_map, occupied_orbitals, virtual_orbitals)?;
-            },
+                Self::build_hardware_efficient_ansatz(
+                    &mut circuit,
+                    &mut parameters,
+                    &mut parameter_names,
+                    &mut parameter_map,
+                    layers,
+                )?;
+            }
+            VQEAnsatz::UCCSD {
+                occupied_orbitals,
+                virtual_orbitals,
+            } => {
+                Self::build_uccsd_ansatz(
+                    &mut circuit,
+                    &mut parameters,
+                    &mut parameter_names,
+                    &mut parameter_map,
+                    occupied_orbitals,
+                    virtual_orbitals,
+                )?;
+            }
             VQEAnsatz::RealSpace { geometry } => {
-                Self::build_real_space_ansatz(&mut circuit, &mut parameters, &mut parameter_names, &mut parameter_map, &geometry)?;
-            },
+                Self::build_real_space_ansatz(
+                    &mut circuit,
+                    &mut parameters,
+                    &mut parameter_names,
+                    &mut parameter_map,
+                    &geometry,
+                )?;
+            }
             VQEAnsatz::Custom => {
                 // Custom ansatz - circuit will be built by user
-            },
+            }
         }
 
         Ok(Self {
@@ -120,24 +145,24 @@ impl<const N: usize> VQECircuit<N> {
                 parameter_names.push(param_name.clone());
                 parameter_map.insert(param_name, parameters.len());
                 parameters.push(0.0); // Initialize to 0
-                
+
                 circuit.ry(QubitId(qubit as u32), 0.0)?; // Placeholder angle
-                
+
                 // RZ rotation
                 let param_name = format!("rz_{}_q{}", layer, qubit);
                 parameter_names.push(param_name.clone());
                 parameter_map.insert(param_name, parameters.len());
                 parameters.push(0.0); // Initialize to 0
-                
+
                 circuit.rz(QubitId(qubit as u32), 0.0)?; // Placeholder angle
             }
-            
+
             // Entangling layer (linear connectivity)
-            for qubit in 0..(N-1) {
+            for qubit in 0..(N - 1) {
                 circuit.cnot(QubitId(qubit as u32), QubitId((qubit + 1) as u32))?;
             }
         }
-        
+
         Ok(())
     }
 
@@ -170,7 +195,7 @@ impl<const N: usize> VQECircuit<N> {
                 parameter_names.push(param_name.clone());
                 parameter_map.insert(param_name, parameters.len());
                 parameters.push(0.0);
-                
+
                 // Simplified single excitation (real implementation would use more sophisticated operators)
                 circuit.cnot(QubitId(i as u32), QubitId(a as u32))?;
                 circuit.ry(QubitId(a as u32), 0.0)?; // Placeholder
@@ -180,15 +205,15 @@ impl<const N: usize> VQECircuit<N> {
 
         // Double excitations (simplified)
         for i in 0..occupied_orbitals {
-            for j in (i+1)..occupied_orbitals {
+            for j in (i + 1)..occupied_orbitals {
                 for a in occupied_orbitals..(occupied_orbitals + virtual_orbitals) {
-                    for b in (a+1)..(occupied_orbitals + virtual_orbitals) {
+                    for b in (a + 1)..(occupied_orbitals + virtual_orbitals) {
                         if a < N && b < N {
-                            let param_name = format!("t2_{}_{}_{}_{}",  i, j, a, b);
+                            let param_name = format!("t2_{}_{}_{}_{}", i, j, a, b);
                             parameter_names.push(param_name.clone());
                             parameter_map.insert(param_name, parameters.len());
                             parameters.push(0.0);
-                            
+
                             // Simplified double excitation
                             circuit.cnot(QubitId(i as u32), QubitId(a as u32))?;
                             circuit.cnot(QubitId(j as u32), QubitId(b as u32))?;
@@ -224,14 +249,15 @@ impl<const N: usize> VQECircuit<N> {
         for (i, &(x1, y1, z1)) in geometry.iter().enumerate() {
             for (j, &(x2, y2, z2)) in geometry.iter().enumerate().skip(i + 1) {
                 let distance = ((x2 - x1).powi(2) + (y2 - y1).powi(2) + (z2 - z1).powi(2)).sqrt();
-                
+
                 // Only include interactions within a cutoff distance
-                if distance < 3.0 { // Cutoff distance
+                if distance < 3.0 {
+                    // Cutoff distance
                     let param_name = format!("j_{}_{}", i, j);
                     parameter_names.push(param_name.clone());
                     parameter_map.insert(param_name, parameters.len());
                     parameters.push(0.0);
-                    
+
                     // Add parameterized interaction
                     circuit.cnot(QubitId(i as u32), QubitId(j as u32))?;
                     circuit.rz(QubitId(j as u32), 0.0)?; // Placeholder
@@ -254,59 +280,71 @@ impl<const N: usize> VQECircuit<N> {
         }
 
         self.parameters = new_parameters.to_vec();
-        
+
         // TODO: Rebuild circuit with new parameters
-        // This is a simplified implementation - a full version would 
+        // This is a simplified implementation - a full version would
         // track which gates use which parameters and update them accordingly
-        
+
         Ok(())
     }
 
     /// Get a parameter by name
     pub fn get_parameter(&self, name: &str) -> Option<f64> {
-        self.parameter_map.get(name)
+        self.parameter_map
+            .get(name)
             .map(|&index| self.parameters[index])
     }
 
     /// Set a parameter by name
     pub fn set_parameter(&mut self, name: &str, value: f64) -> QuantRS2Result<()> {
-        let index = self.parameter_map.get(name)
-            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Parameter '{}' not found", name)))?;
-        
+        let index = self.parameter_map.get(name).ok_or_else(|| {
+            QuantRS2Error::InvalidInput(format!("Parameter '{}' not found", name))
+        })?;
+
         self.parameters[*index] = value;
         Ok(())
     }
 
     /// Add a custom parameterized gate
-    pub fn add_parameterized_ry(&mut self, qubit: QubitId, parameter_name: &str) -> QuantRS2Result<()> {
+    pub fn add_parameterized_ry(
+        &mut self,
+        qubit: QubitId,
+        parameter_name: &str,
+    ) -> QuantRS2Result<()> {
         if self.parameter_map.contains_key(parameter_name) {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Parameter '{}' already exists", 
+                "Parameter '{}' already exists",
                 parameter_name
             )));
         }
 
         self.parameter_names.push(parameter_name.to_string());
-        self.parameter_map.insert(parameter_name.to_string(), self.parameters.len());
+        self.parameter_map
+            .insert(parameter_name.to_string(), self.parameters.len());
         self.parameters.push(0.0);
-        
+
         self.circuit.ry(qubit, 0.0)?; // Placeholder angle
         Ok(())
     }
 
     /// Add a custom parameterized gate
-    pub fn add_parameterized_rz(&mut self, qubit: QubitId, parameter_name: &str) -> QuantRS2Result<()> {
+    pub fn add_parameterized_rz(
+        &mut self,
+        qubit: QubitId,
+        parameter_name: &str,
+    ) -> QuantRS2Result<()> {
         if self.parameter_map.contains_key(parameter_name) {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Parameter '{}' already exists", 
+                "Parameter '{}' already exists",
                 parameter_name
             )));
         }
 
         self.parameter_names.push(parameter_name.to_string());
-        self.parameter_map.insert(parameter_name.to_string(), self.parameters.len());
+        self.parameter_map
+            .insert(parameter_name.to_string(), self.parameters.len());
         self.parameters.push(0.0);
-        
+
         self.circuit.rz(qubit, 0.0)?; // Placeholder angle
         Ok(())
     }
@@ -331,40 +369,55 @@ impl VQEObservable {
     /// Create a Heisenberg model Hamiltonian
     pub fn heisenberg_model(num_qubits: usize, j_coupling: f64) -> Self {
         let mut observable = Self::new();
-        
+
         for i in 0..(num_qubits - 1) {
             // XX term
-            observable.add_pauli_term(j_coupling, vec![(i, PauliOperator::X), (i + 1, PauliOperator::X)]);
-            // YY term  
-            observable.add_pauli_term(j_coupling, vec![(i, PauliOperator::Y), (i + 1, PauliOperator::Y)]);
+            observable.add_pauli_term(
+                j_coupling,
+                vec![(i, PauliOperator::X), (i + 1, PauliOperator::X)],
+            );
+            // YY term
+            observable.add_pauli_term(
+                j_coupling,
+                vec![(i, PauliOperator::Y), (i + 1, PauliOperator::Y)],
+            );
             // ZZ term
-            observable.add_pauli_term(j_coupling, vec![(i, PauliOperator::Z), (i + 1, PauliOperator::Z)]);
+            observable.add_pauli_term(
+                j_coupling,
+                vec![(i, PauliOperator::Z), (i + 1, PauliOperator::Z)],
+            );
         }
-        
+
         observable
     }
 
     /// Create a transverse field Ising model Hamiltonian
     pub fn tfim(num_qubits: usize, j_coupling: f64, h_field: f64) -> Self {
         let mut observable = Self::new();
-        
+
         // ZZ interactions
         for i in 0..(num_qubits - 1) {
-            observable.add_pauli_term(-j_coupling, vec![(i, PauliOperator::Z), (i + 1, PauliOperator::Z)]);
+            observable.add_pauli_term(
+                -j_coupling,
+                vec![(i, PauliOperator::Z), (i + 1, PauliOperator::Z)],
+            );
         }
-        
+
         // X field terms
         for i in 0..num_qubits {
             observable.add_pauli_term(-h_field, vec![(i, PauliOperator::X)]);
         }
-        
+
         observable
     }
 
     /// Create a molecular Hamiltonian (simplified version)
-    pub fn molecular_hamiltonian(one_body: &[(usize, usize, f64)], two_body: &[(usize, usize, usize, usize, f64)]) -> Self {
+    pub fn molecular_hamiltonian(
+        one_body: &[(usize, usize, f64)],
+        two_body: &[(usize, usize, usize, usize, f64)],
+    ) -> Self {
         let mut observable = Self::new();
-        
+
         // One-body terms (simplified representation)
         for &(i, j, coeff) in one_body {
             if i == j {
@@ -372,23 +425,28 @@ impl VQEObservable {
                 observable.add_pauli_term(coeff, vec![(i, PauliOperator::Z)]);
             } else {
                 // Off-diagonal terms (simplified)
-                observable.add_pauli_term(coeff, vec![(i, PauliOperator::X), (j, PauliOperator::X)]);
-                observable.add_pauli_term(coeff, vec![(i, PauliOperator::Y), (j, PauliOperator::Y)]);
+                observable
+                    .add_pauli_term(coeff, vec![(i, PauliOperator::X), (j, PauliOperator::X)]);
+                observable
+                    .add_pauli_term(coeff, vec![(i, PauliOperator::Y), (j, PauliOperator::Y)]);
             }
         }
-        
+
         // Two-body terms (very simplified representation)
         for &(i, j, k, l, coeff) in two_body {
             // This is a simplified representation - real molecular Hamiltonians
             // require more sophisticated fermion-to-qubit mappings
-            observable.add_pauli_term(coeff, vec![
-                (i, PauliOperator::Z), 
-                (j, PauliOperator::Z), 
-                (k, PauliOperator::Z), 
-                (l, PauliOperator::Z)
-            ]);
+            observable.add_pauli_term(
+                coeff,
+                vec![
+                    (i, PauliOperator::Z),
+                    (j, PauliOperator::Z),
+                    (k, PauliOperator::Z),
+                    (l, PauliOperator::Z),
+                ],
+            );
         }
-        
+
         observable
     }
 }
@@ -448,28 +506,28 @@ impl VQEOptimizer {
         // 2. Compute gradients (analytically or numerically)
         // 3. Update parameters using the chosen optimization algorithm
         // 4. Check for convergence
-        
+
         let mut current_energy = self.evaluate_energy(circuit, observable)?;
         let mut best_parameters = circuit.parameters.clone();
         let mut best_energy = current_energy;
-        
+
         for iteration in 0..self.max_iterations {
             // Simplified gradient descent step
             let gradients = self.compute_gradients(circuit, observable)?;
-            
+
             // Update parameters
             for (i, gradient) in gradients.iter().enumerate() {
                 circuit.parameters[i] -= self.learning_rate * gradient;
             }
-            
+
             // Evaluate new energy
             current_energy = self.evaluate_energy(circuit, observable)?;
-            
+
             if current_energy < best_energy {
                 best_energy = current_energy;
                 best_parameters = circuit.parameters.clone();
             }
-            
+
             // Check convergence
             let gradient_norm = gradients.iter().map(|g| g * g).sum::<f64>().sqrt();
             if gradient_norm < self.tolerance {
@@ -483,7 +541,7 @@ impl VQEOptimizer {
                 });
             }
         }
-        
+
         circuit.parameters = best_parameters;
         Ok(VQEResult {
             optimal_parameters: circuit.parameters.clone(),
@@ -504,7 +562,7 @@ impl VQEOptimizer {
         // 1. Execute the circuit on a quantum simulator/device
         // 2. Measure expectation values of Pauli strings
         // 3. Combine measurements according to observable coefficients
-        
+
         // For now, return a dummy energy value
         Ok(-1.0)
     }
@@ -519,7 +577,7 @@ impl VQEOptimizer {
         // 1. Parameter shift rule for analytic gradients
         // 2. Finite differences for numerical gradients
         // 3. Or other gradient estimation methods
-        
+
         // For now, return dummy gradients
         Ok(vec![0.001; circuit.parameters.len()])
     }

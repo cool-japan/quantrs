@@ -17,10 +17,10 @@
 use crate::error::{MLError, Result};
 use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
 use num_complex::Complex64;
-use std::collections::HashMap;
-use std::f64::consts::PI;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use std::collections::HashMap;
+use std::f64::consts::PI;
 
 /// Configuration for Quantum Mixture of Experts
 #[derive(Debug, Clone)]
@@ -49,31 +49,31 @@ pub enum QuantumRoutingStrategy {
         superposition_strength: f64,
         interference_pattern: InterferencePattern,
     },
-    
+
     /// Entanglement-based routing for correlated experts
     EntanglementRouting {
         entanglement_strength: f64,
         coupling_topology: CouplingTopology,
     },
-    
+
     /// Quantum attention-based routing
     QuantumAttentionRouting {
         attention_heads: usize,
         attention_mechanism: QuantumAttentionMechanism,
     },
-    
+
     /// Hierarchical quantum routing
     HierarchicalRouting {
         hierarchy_levels: usize,
         routing_per_level: RoutingType,
     },
-    
+
     /// Adaptive quantum routing that learns optimal patterns
     AdaptiveQuantumRouting {
         adaptation_rate: f64,
         exploration_strategy: ExplorationStrategy,
     },
-    
+
     /// Topological routing based on quantum graph structures
     TopologicalRouting {
         graph_structure: QuantumGraphStructure,
@@ -150,41 +150,41 @@ pub enum ExpertArchitecture {
         hidden_layers: Vec<usize>,
         activation: ActivationFunction,
     },
-    
+
     /// Convolutional experts for spatial data
     Convolutional {
         channels: Vec<usize>,
         kernel_sizes: Vec<usize>,
         strides: Vec<usize>,
     },
-    
+
     /// Attention-based experts
     AttentionBased {
         attention_type: AttentionType,
         attention_heads: usize,
         key_dim: usize,
     },
-    
+
     /// Recurrent experts for sequential data
     Recurrent {
         cell_type: RecurrentCellType,
         hidden_size: usize,
         num_layers: usize,
     },
-    
+
     /// Quantum experts with quantum gates
     QuantumExperts {
         quantum_layers: Vec<QuantumExpertLayer>,
         measurement_strategy: MeasurementStrategy,
     },
-    
+
     /// Hybrid quantum-classical experts
     HybridExperts {
         quantum_component: QuantumComponent,
         classical_component: ClassicalComponent,
         interaction_method: InteractionMethod,
     },
-    
+
     /// Specialized experts for specific modalities
     SpecializedExperts {
         expert_specializations: Vec<ExpertSpecialization>,
@@ -194,8 +194,15 @@ pub enum ExpertArchitecture {
 
 #[derive(Debug, Clone)]
 pub enum ActivationFunction {
-    ReLU, GELU, Swish, Tanh, Sigmoid, Mish,
-    QuantumActivation { activation_type: QuantumActivationType },
+    ReLU,
+    GELU,
+    Swish,
+    Tanh,
+    Sigmoid,
+    Mish,
+    QuantumActivation {
+        activation_type: QuantumActivationType,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -259,13 +266,18 @@ pub enum GateType {
 
 #[derive(Debug, Clone)]
 pub enum RotationAxis {
-    X, Y, Z, Custom { direction: Array1<f64> },
+    X,
+    Y,
+    Z,
+    Custom { direction: Array1<f64> },
 }
 
 #[derive(Debug, Clone)]
 pub enum MeasurementBasis {
     Computational,
-    PauliX, PauliY, PauliZ,
+    PauliX,
+    PauliY,
+    PauliZ,
     Bell,
     Custom { basis_vectors: Array2<Complex64> },
 }
@@ -333,10 +345,20 @@ pub struct ClassicalLayer {
 
 #[derive(Debug, Clone)]
 pub enum ClassicalLayerType {
-    Dense { input_dim: usize, output_dim: usize },
-    Convolutional { channels: usize, kernel_size: usize },
-    Attention { attention_dim: usize },
-    Normalization { normalization_type: NormalizationType },
+    Dense {
+        input_dim: usize,
+        output_dim: usize,
+    },
+    Convolutional {
+        channels: usize,
+        kernel_size: usize,
+    },
+    Attention {
+        attention_dim: usize,
+    },
+    Normalization {
+        normalization_type: NormalizationType,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -379,38 +401,34 @@ pub enum ExpertSpecialization {
 #[derive(Debug, Clone)]
 pub enum QuantumGatingMechanism {
     /// Quantum superposition gating
-    SuperpositionGating {
-        coherence_preservation: f64,
-    },
-    
+    SuperpositionGating { coherence_preservation: f64 },
+
     /// Measurement-based gating
     MeasurementGating {
         measurement_basis: MeasurementBasis,
         post_selection: bool,
     },
-    
+
     /// Entanglement-based gating
     EntanglementGating {
         entanglement_threshold: f64,
         gating_strength: f64,
     },
-    
+
     /// Quantum attention gating
     QuantumAttentionGating {
         attention_mechanism: QuantumAttentionMechanism,
         temperature: f64,
     },
-    
+
     /// Adaptive quantum gating
     AdaptiveGating {
         adaptation_strategy: AdaptationStrategy,
         learning_rate: f64,
     },
-    
+
     /// Hierarchical gating with quantum circuits
-    HierarchicalGating {
-        gating_hierarchy: GatingHierarchy,
-    },
+    HierarchicalGating { gating_hierarchy: GatingHierarchy },
 }
 
 #[derive(Debug, Clone)]
@@ -447,32 +465,28 @@ pub struct ExpertGroup {
 pub enum LoadBalancingStrategy {
     /// No load balancing
     None,
-    
+
     /// Uniform load balancing
     Uniform,
-    
+
     /// Capacity-aware balancing
-    CapacityAware {
-        capacity_factors: Array1<f64>,
-    },
-    
+    CapacityAware { capacity_factors: Array1<f64> },
+
     /// Performance-based balancing
-    PerformanceBased {
-        performance_weights: Array1<f64>,
-    },
-    
+    PerformanceBased { performance_weights: Array1<f64> },
+
     /// Quantum fairness balancing
     QuantumFairness {
         fairness_metric: FairnessMetric,
         balancing_strength: f64,
     },
-    
+
     /// Dynamic balancing with adaptation
     DynamicBalancing {
         adaptation_rate: f64,
         balancing_history: usize,
     },
-    
+
     /// Entropy-based balancing
     EntropyBalancing {
         target_entropy: f64,
@@ -540,25 +554,25 @@ impl Default for EntanglementConfig {
 /// Main Quantum Mixture of Experts model
 pub struct QuantumMixtureOfExperts {
     config: QuantumMixtureOfExpertsConfig,
-    
+
     // Core components
     experts: Vec<QuantumExpert>,
     quantum_router: QuantumRouter,
     quantum_gate_network: QuantumGateNetwork,
-    
+
     // Load balancing and fairness
     load_balancer: LoadBalancer,
     expert_statistics: ExpertStatistics,
-    
+
     // Training and optimization
     training_history: Vec<MoETrainingMetrics>,
     routing_optimizer: RoutingOptimizer,
     expert_optimizer: ExpertOptimizer,
-    
+
     // Quantum state management
     quantum_state_tracker: QuantumStateTracker,
     entanglement_manager: EntanglementManager,
-    
+
     // Performance monitoring
     performance_monitor: PerformanceMonitor,
     capacity_manager: CapacityManager,
@@ -1002,32 +1016,32 @@ impl QuantumMixtureOfExperts {
     /// Create a new Quantum Mixture of Experts
     pub fn new(config: QuantumMixtureOfExpertsConfig) -> Result<Self> {
         println!("🧠 Initializing Quantum Mixture of Experts in UltraThink Mode");
-        
+
         // Initialize experts
         let experts = Self::create_experts(&config)?;
-        
+
         // Initialize quantum router
         let quantum_router = QuantumRouter::new(&config)?;
-        
+
         // Initialize quantum gate network
         let quantum_gate_network = QuantumGateNetwork::new(&config)?;
-        
+
         // Initialize load balancer
         let load_balancer = LoadBalancer::new(&config)?;
-        
+
         // Initialize statistics and monitoring
         let expert_statistics = ExpertStatistics::new(config.num_experts);
         let performance_monitor = PerformanceMonitor::new(&config)?;
         let capacity_manager = CapacityManager::new(&config)?;
-        
+
         // Initialize optimizers
         let routing_optimizer = RoutingOptimizer::new(&config)?;
         let expert_optimizer = ExpertOptimizer::new(&config)?;
-        
+
         // Initialize quantum state management
         let quantum_state_tracker = QuantumStateTracker::new(&config)?;
         let entanglement_manager = EntanglementManager::new(&config)?;
-        
+
         Ok(Self {
             config,
             experts,
@@ -1044,33 +1058,36 @@ impl QuantumMixtureOfExperts {
             capacity_manager,
         })
     }
-    
+
     /// Forward pass through the quantum mixture of experts
     pub fn forward(&mut self, input: &Array1<f64>) -> Result<MoEOutput> {
         // Quantum routing to determine expert weights
         let routing_result = self.quantum_router.route(input)?;
-        
+
         // Apply quantum gating mechanism
         let gating_result = self.quantum_gate_network.gate(&routing_result)?;
-        
+
         // Apply load balancing
-        let balanced_weights = self.load_balancer.balance_loads(&gating_result.expert_weights)?;
-        
+        let balanced_weights = self
+            .load_balancer
+            .balance_loads(&gating_result.expert_weights)?;
+
         // Process through selected experts in quantum superposition
         let expert_outputs = self.process_through_experts(input, &balanced_weights)?;
-        
+
         // Combine expert outputs using quantum interference
         let combined_output = self.combine_expert_outputs(&expert_outputs, &balanced_weights)?;
-        
+
         // Update quantum states and entanglement
         self.update_quantum_states(&routing_result, &gating_result)?;
-        
+
         // Update statistics
         self.update_expert_statistics(&balanced_weights, &expert_outputs)?;
-        
+
         // Monitor performance
-        self.performance_monitor.update(&combined_output, &balanced_weights)?;
-        
+        self.performance_monitor
+            .update(&combined_output, &balanced_weights)?;
+
         Ok(MoEOutput {
             output: combined_output.prediction,
             expert_weights: balanced_weights,
@@ -1080,19 +1097,19 @@ impl QuantumMixtureOfExperts {
             quantum_metrics: combined_output.quantum_metrics,
         })
     }
-    
+
     /// Create experts based on configuration
     fn create_experts(config: &QuantumMixtureOfExpertsConfig) -> Result<Vec<QuantumExpert>> {
         let mut experts = Vec::new();
-        
+
         for expert_id in 0..config.num_experts {
             let expert = QuantumExpert::new(expert_id, config)?;
             experts.push(expert);
         }
-        
+
         Ok(experts)
     }
-    
+
     /// Process input through selected experts
     fn process_through_experts(
         &mut self,
@@ -1100,24 +1117,24 @@ impl QuantumMixtureOfExperts {
         expert_weights: &Array1<f64>,
     ) -> Result<Vec<ExpertOutput>> {
         let mut expert_outputs = Vec::new();
-        
+
         for (expert_id, expert) in self.experts.iter_mut().enumerate() {
             let weight = expert_weights[expert_id];
-            
+
             // Skip experts with negligible weights for efficiency
             if weight < 1e-6 {
                 expert_outputs.push(ExpertOutput::default());
                 continue;
             }
-            
+
             // Process through expert
             let output = expert.process(input, weight)?;
             expert_outputs.push(output);
         }
-        
+
         Ok(expert_outputs)
     }
-    
+
     /// Combine expert outputs using quantum interference
     fn combine_expert_outputs(
         &self,
@@ -1128,7 +1145,7 @@ impl QuantumMixtureOfExperts {
         let mut combined_prediction = Array1::zeros(output_dim);
         let mut total_weight = 0.0;
         let mut quantum_metrics = QuantumCombinationMetrics::default();
-        
+
         // Weighted combination with quantum interference effects
         for (expert_id, output) in expert_outputs.iter().enumerate() {
             let weight = weights[expert_id];
@@ -1136,67 +1153,73 @@ impl QuantumMixtureOfExperts {
                 // Apply quantum interference pattern
                 let interference_factor = self.compute_interference_factor(expert_id, &weights)?;
                 let effective_weight = weight * interference_factor;
-                
-                combined_prediction = &combined_prediction + &(effective_weight * &output.prediction);
+
+                combined_prediction =
+                    &combined_prediction + &(effective_weight * &output.prediction);
                 total_weight += effective_weight;
-                
+
                 // Accumulate quantum metrics
                 quantum_metrics.accumulate(&output.quantum_metrics, effective_weight);
             }
         }
-        
+
         // Normalize
         if total_weight > 1e-10 {
             combined_prediction = combined_prediction / total_weight;
         }
-        
+
         // Finalize quantum metrics
         quantum_metrics.finalize(total_weight);
-        
+
         Ok(CombinedOutput {
             prediction: combined_prediction,
             quantum_metrics,
         })
     }
-    
+
     /// Compute quantum interference factor between experts
     fn compute_interference_factor(&self, expert_id: usize, weights: &Array1<f64>) -> Result<f64> {
         let mut interference_factor = 1.0;
-        
+
         match &self.config.routing_strategy {
-            QuantumRoutingStrategy::QuantumSuperposition { interference_pattern, .. } => {
+            QuantumRoutingStrategy::QuantumSuperposition {
+                interference_pattern,
+                ..
+            } => {
                 match interference_pattern {
                     InterferencePattern::Constructive => {
                         // Enhance contributions from highly weighted experts
                         interference_factor = 1.0 + 0.1 * weights[expert_id];
-                    },
+                    }
                     InterferencePattern::Destructive => {
                         // Reduce contributions based on other expert weights
-                        let other_weights_sum: f64 = weights.iter().enumerate()
+                        let other_weights_sum: f64 = weights
+                            .iter()
+                            .enumerate()
                             .filter(|(i, _)| *i != expert_id)
                             .map(|(_, w)| *w)
                             .sum();
                         interference_factor = 1.0 - 0.05 * other_weights_sum;
-                    },
+                    }
                     InterferencePattern::Mixed => {
                         // Combine constructive and destructive effects
                         let constructive = 1.0 + 0.05 * weights[expert_id];
                         let destructive = 1.0 - 0.025 * (weights.sum() - weights[expert_id]);
                         interference_factor = 0.5 * (constructive + destructive);
-                    },
+                    }
                     _ => {
                         interference_factor = 1.0;
                     }
                 }
-            },
+            }
             _ => {
                 interference_factor = 1.0;
             }
         }
-        
+
         Ok(interference_factor.max(0.1)) // Ensure positive interference
     }
-    
+
     /// Update quantum states after processing
     fn update_quantum_states(
         &mut self,
@@ -1204,11 +1227,13 @@ impl QuantumMixtureOfExperts {
         gating_result: &GatingResult,
     ) -> Result<()> {
         // Update entanglement between experts
-        self.entanglement_manager.update_entanglement(&routing_result.expert_weights)?;
-        
+        self.entanglement_manager
+            .update_entanglement(&routing_result.expert_weights)?;
+
         // Track quantum coherence
-        self.quantum_state_tracker.update_coherence(routing_result.quantum_coherence)?;
-        
+        self.quantum_state_tracker
+            .update_coherence(routing_result.quantum_coherence)?;
+
         // Update expert quantum states
         for (expert_id, expert) in self.experts.iter_mut().enumerate() {
             expert.update_quantum_state(
@@ -1216,10 +1241,10 @@ impl QuantumMixtureOfExperts {
                 gating_result.quantum_efficiency,
             )?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Update expert utilization statistics
     fn update_expert_statistics(
         &mut self,
@@ -1228,30 +1253,30 @@ impl QuantumMixtureOfExperts {
     ) -> Result<()> {
         // Update utilization statistics
         for (expert_id, &weight) in weights.iter().enumerate() {
-            self.expert_statistics.expert_utilizations[expert_id] = 
+            self.expert_statistics.expert_utilizations[expert_id] =
                 0.9 * self.expert_statistics.expert_utilizations[expert_id] + 0.1 * weight;
-                
+
             if let Some(output) = outputs.get(expert_id) {
-                self.expert_statistics.expert_performances[expert_id] = 
-                    0.9 * self.expert_statistics.expert_performances[expert_id] + 
-                    0.1 * output.quality_score;
+                self.expert_statistics.expert_performances[expert_id] = 0.9
+                    * self.expert_statistics.expert_performances[expert_id]
+                    + 0.1 * output.quality_score;
             }
         }
-        
+
         // Update expert interaction matrix
         for i in 0..self.config.num_experts {
-            for j in i+1..self.config.num_experts {
+            for j in i + 1..self.config.num_experts {
                 let interaction = weights[i] * weights[j];
-                self.expert_statistics.expert_interactions[[i, j]] = 
+                self.expert_statistics.expert_interactions[[i, j]] =
                     0.9 * self.expert_statistics.expert_interactions[[i, j]] + 0.1 * interaction;
-                self.expert_statistics.expert_interactions[[j, i]] = 
+                self.expert_statistics.expert_interactions[[j, i]] =
                     self.expert_statistics.expert_interactions[[i, j]];
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Train the quantum mixture of experts
     pub fn train(
         &mut self,
@@ -1262,24 +1287,24 @@ impl QuantumMixtureOfExperts {
         let mut training_losses = Vec::new();
         let mut routing_efficiency_history = Vec::new();
         let mut quantum_metrics_history = Vec::new();
-        
+
         println!("🚀 Starting Quantum Mixture of Experts Training in UltraThink Mode");
-        
+
         for epoch in 0..training_config.epochs {
             let epoch_metrics = self.train_epoch(data, targets, training_config, epoch)?;
-            
+
             training_losses.push(epoch_metrics.loss);
             routing_efficiency_history.push(epoch_metrics.routing_efficiency);
-            
+
             // Update learning rates and strategies
             self.update_training_strategies(&epoch_metrics)?;
-            
+
             // Apply load balancing adjustments
             self.load_balancer.adapt_strategy(&epoch_metrics)?;
-            
+
             // Optimize quantum parameters
             self.optimize_quantum_parameters(&epoch_metrics)?;
-            
+
             self.training_history.push(epoch_metrics.clone());
             quantum_metrics_history.push(QuantumMoEMetrics {
                 quantum_coherence: epoch_metrics.quantum_coherence,
@@ -1287,7 +1312,7 @@ impl QuantumMixtureOfExperts {
                 quantum_advantage: epoch_metrics.quantum_advantage,
                 routing_efficiency: epoch_metrics.routing_efficiency,
             });
-            
+
             // Logging
             if epoch % training_config.log_interval == 0 {
                 println!(
@@ -1300,9 +1325,9 @@ impl QuantumMixtureOfExperts {
                 );
             }
         }
-        
+
         let convergence_analysis = self.analyze_convergence(&training_losses)?;
-        
+
         Ok(MoETrainingOutput {
             training_losses,
             routing_efficiency_history,
@@ -1311,7 +1336,7 @@ impl QuantumMixtureOfExperts {
             convergence_analysis,
         })
     }
-    
+
     /// Train single epoch
     fn train_epoch(
         &mut self,
@@ -1326,16 +1351,16 @@ impl QuantumMixtureOfExperts {
         let mut quantum_coherence_sum = 0.0;
         let mut entanglement_sum = 0.0;
         let mut num_batches = 0;
-        
+
         let num_samples = data.nrows();
-        
+
         for batch_start in (0..num_samples).step_by(config.batch_size) {
             let batch_end = (batch_start + config.batch_size).min(num_samples);
             let batch_data = data.slice(ndarray::s![batch_start..batch_end, ..]);
             let batch_targets = targets.slice(ndarray::s![batch_start..batch_end, ..]);
-            
+
             let batch_metrics = self.train_batch(&batch_data, &batch_targets, config)?;
-            
+
             epoch_loss += batch_metrics.loss;
             routing_efficiency_sum += batch_metrics.routing_efficiency;
             expert_utilization_sum += batch_metrics.expert_utilization;
@@ -1343,7 +1368,7 @@ impl QuantumMixtureOfExperts {
             entanglement_sum += batch_metrics.entanglement_utilization;
             num_batches += 1;
         }
-        
+
         let num_batches_f = num_batches as f64;
         Ok(MoETrainingMetrics {
             epoch,
@@ -1358,7 +1383,7 @@ impl QuantumMixtureOfExperts {
             quantum_advantage: self.estimate_quantum_advantage()?,
         })
     }
-    
+
     /// Train single batch
     fn train_batch(
         &mut self,
@@ -1371,28 +1396,33 @@ impl QuantumMixtureOfExperts {
         let mut expert_utilization_sum = 0.0;
         let mut quantum_coherence_sum = 0.0;
         let mut entanglement_sum = 0.0;
-        
-        for (sample_idx, (input, target)) in batch_data.rows().into_iter().zip(batch_targets.rows()).enumerate() {
+
+        for (sample_idx, (input, target)) in batch_data
+            .rows()
+            .into_iter()
+            .zip(batch_targets.rows())
+            .enumerate()
+        {
             let input_array = input.to_owned();
             let target_array = target.to_owned();
-            
+
             // Forward pass
             let output = self.forward(&input_array)?;
-            
+
             // Compute loss
             let loss = self.compute_loss(&output.output, &target_array, &output)?;
             batch_loss += loss;
-            
+
             // Accumulate metrics
             routing_efficiency_sum += output.routing_decision.routing_confidence;
             expert_utilization_sum += output.expert_weights.sum() / self.config.num_experts as f64;
             quantum_coherence_sum += output.quantum_metrics.coherence;
             entanglement_sum += output.quantum_metrics.entanglement;
-            
+
             // Backward pass and parameter updates
             self.update_parameters(&output, &target_array, config)?;
         }
-        
+
         let num_samples = batch_data.nrows() as f64;
         Ok(MoETrainingMetrics {
             epoch: 0, // Will be set by caller
@@ -1407,7 +1437,7 @@ impl QuantumMixtureOfExperts {
             quantum_advantage: self.estimate_quantum_advantage()?,
         })
     }
-    
+
     /// Compute loss function
     fn compute_loss(
         &self,
@@ -1417,25 +1447,23 @@ impl QuantumMixtureOfExperts {
     ) -> Result<f64> {
         // Base prediction loss (MSE)
         let mse_loss = (prediction - target).mapv(|x| x * x).sum() / prediction.len() as f64;
-        
+
         // Load balancing loss
         let load_balance_loss = self.compute_load_balance_loss(&output.expert_weights)?;
-        
+
         // Sparsity loss
         let sparsity_loss = self.compute_sparsity_loss(&output.expert_weights)?;
-        
+
         // Quantum coherence preservation loss
         let coherence_loss = 1.0 - output.quantum_metrics.coherence;
-        
+
         // Total loss
-        let total_loss = mse_loss + 
-                        0.01 * load_balance_loss + 
-                        0.001 * sparsity_loss + 
-                        0.1 * coherence_loss;
-        
+        let total_loss =
+            mse_loss + 0.01 * load_balance_loss + 0.001 * sparsity_loss + 0.1 * coherence_loss;
+
         Ok(total_loss)
     }
-    
+
     /// Update model parameters
     fn update_parameters(
         &mut self,
@@ -1453,13 +1481,13 @@ impl QuantumMixtureOfExperts {
             entanglement_measure: 0.0, // Default value
             decision_quality: output.routing_decision.routing_confidence,
         };
-        
+
         self.routing_optimizer.update_routing_parameters(
             &routing_decision,
             target,
             config.routing_learning_rate,
         )?;
-        
+
         // Update expert parameters
         self.expert_optimizer.update_expert_parameters(
             &self.experts,
@@ -1468,13 +1496,13 @@ impl QuantumMixtureOfExperts {
             target,
             config.expert_learning_rate,
         )?;
-        
+
         // Update quantum parameters
         self.update_quantum_parameters_from_loss(output, target)?;
-        
+
         Ok(())
     }
-    
+
     /// Get current model statistics
     pub fn get_statistics(&self) -> MoEStatistics {
         MoEStatistics {
@@ -1488,61 +1516,68 @@ impl QuantumMixtureOfExperts {
             memory_usage: self.estimate_memory_usage(),
         }
     }
-    
+
     // Helper methods (implementation details)
     fn compute_load_balance_score(&self) -> Result<f64> {
         let utilizations = &self.expert_statistics.expert_utilizations;
         let mean_util = utilizations.sum() / utilizations.len() as f64;
-        let variance = utilizations.iter()
+        let variance = utilizations
+            .iter()
             .map(|&x| (x - mean_util).powi(2))
-            .sum::<f64>() / utilizations.len() as f64;
+            .sum::<f64>()
+            / utilizations.len() as f64;
         Ok(1.0 / (1.0 + variance))
     }
-    
+
     fn compute_sparsity_achieved(&self) -> Result<f64> {
         // Compute average sparsity across recent routing decisions
         let recent_decisions = 10.min(self.quantum_router.routing_history.len());
         if recent_decisions == 0 {
             return Ok(0.0);
         }
-        
-        let total_sparsity = self.quantum_router.routing_history
+
+        let total_sparsity = self
+            .quantum_router
+            .routing_history
             .iter()
             .rev()
             .take(recent_decisions)
             .map(|decision| {
-                let active_experts = decision.expert_weights.iter()
+                let active_experts = decision
+                    .expert_weights
+                    .iter()
                     .filter(|&&w| w > 1e-6)
                     .count();
                 1.0 - (active_experts as f64 / self.config.num_experts as f64)
             })
             .sum::<f64>();
-        
+
         Ok(total_sparsity / recent_decisions as f64)
     }
-    
+
     fn estimate_quantum_advantage(&self) -> Result<f64> {
-        let quantum_contribution = self.quantum_state_tracker.get_current_coherence() * 
-                                 self.entanglement_manager.get_utilization();
+        let quantum_contribution = self.quantum_state_tracker.get_current_coherence()
+            * self.entanglement_manager.get_utilization();
         Ok(1.0 + quantum_contribution * 2.0)
     }
-    
+
     fn compute_load_balance_loss(&self, expert_weights: &Array1<f64>) -> Result<f64> {
         let ideal_weight = 1.0 / self.config.num_experts as f64;
-        let balance_loss = expert_weights.iter()
+        let balance_loss = expert_weights
+            .iter()
             .map(|&w| (w - ideal_weight).powi(2))
             .sum::<f64>();
         Ok(balance_loss)
     }
-    
+
     fn compute_sparsity_loss(&self, expert_weights: &Array1<f64>) -> Result<f64> {
         let target_sparsity = self.config.sparsity_config.target_sparsity;
-        let current_sparsity = 1.0 - expert_weights.iter()
-            .filter(|&&w| w > 1e-6)
-            .count() as f64 / expert_weights.len() as f64;
+        let current_sparsity = 1.0
+            - expert_weights.iter().filter(|&&w| w > 1e-6).count() as f64
+                / expert_weights.len() as f64;
         Ok((current_sparsity - target_sparsity).powi(2))
     }
-    
+
     fn update_training_strategies(&mut self, metrics: &MoETrainingMetrics) -> Result<()> {
         // Adaptive learning rate adjustment
         if metrics.routing_efficiency < 0.7 {
@@ -1550,51 +1585,58 @@ impl QuantumMixtureOfExperts {
         } else if metrics.routing_efficiency > 0.9 {
             self.routing_optimizer.learning_rate *= 0.95;
         }
-        
+
         // Sparsity adjustment
         if metrics.sparsity_achieved < self.config.sparsity_config.target_sparsity {
             // Increase sparsity pressure
         }
-        
+
         Ok(())
     }
-    
+
     fn optimize_quantum_parameters(&mut self, metrics: &MoETrainingMetrics) -> Result<()> {
         // Optimize entanglement parameters
         if metrics.entanglement_utilization < 0.5 {
             self.entanglement_manager.increase_entanglement_strength()?;
         }
-        
+
         // Optimize coherence preservation
         if metrics.quantum_coherence < 0.8 {
-            self.quantum_state_tracker.enhance_coherence_preservation()?;
+            self.quantum_state_tracker
+                .enhance_coherence_preservation()?;
         }
-        
+
         Ok(())
     }
-    
-    fn update_quantum_parameters_from_loss(&mut self, output: &MoEOutput, target: &Array1<f64>) -> Result<()> {
+
+    fn update_quantum_parameters_from_loss(
+        &mut self,
+        output: &MoEOutput,
+        target: &Array1<f64>,
+    ) -> Result<()> {
         // Placeholder for quantum parameter updates based on loss
         Ok(())
     }
-    
+
     fn analyze_convergence(&self, losses: &[f64]) -> Result<ConvergenceAnalysis> {
         if losses.len() < 10 {
             return Ok(ConvergenceAnalysis::default());
         }
-        
+
         let recent_losses = &losses[losses.len() - 10..];
         let early_losses = &losses[0..10];
-        
+
         let recent_avg = recent_losses.iter().sum::<f64>() / recent_losses.len() as f64;
         let early_avg = early_losses.iter().sum::<f64>() / early_losses.len() as f64;
-        
+
         let convergence_rate = (early_avg - recent_avg) / early_avg;
-        
-        let variance = recent_losses.iter()
+
+        let variance = recent_losses
+            .iter()
             .map(|&x| (x - recent_avg).powi(2))
-            .sum::<f64>() / recent_losses.len() as f64;
-        
+            .sum::<f64>()
+            / recent_losses.len() as f64;
+
         Ok(ConvergenceAnalysis {
             convergence_rate,
             is_converged: variance < 1e-6,
@@ -1602,46 +1644,49 @@ impl QuantumMixtureOfExperts {
             loss_variance: variance,
         })
     }
-    
+
     fn compute_routing_efficiency(&self) -> f64 {
         if self.quantum_router.routing_history.is_empty() {
             return 0.0;
         }
-        
-        let recent_efficiency = self.quantum_router.routing_history
+
+        let recent_efficiency = self
+            .quantum_router
+            .routing_history
             .iter()
             .rev()
             .take(10)
             .map(|decision| decision.routing_confidence)
-            .sum::<f64>() / 10.0_f64.min(self.quantum_router.routing_history.len() as f64);
-        
+            .sum::<f64>()
+            / 10.0_f64.min(self.quantum_router.routing_history.len() as f64);
+
         recent_efficiency
     }
-    
+
     fn count_total_parameters(&self) -> usize {
         let mut total = 0;
-        
+
         // Count expert parameters
         for expert in &self.experts {
             total += expert.quantum_parameters.len();
             total += expert.classical_parameters.len();
         }
-        
+
         // Count routing parameters
         total += self.quantum_router.routing_parameters.len();
-        
+
         // Count gating parameters
         total += self.quantum_gate_network.gate_parameters.len();
-        
+
         total
     }
-    
+
     fn estimate_memory_usage(&self) -> usize {
         // Simplified memory usage estimation
         let expert_memory = self.experts.len() * 1000; // Placeholder
         let routing_memory = self.quantum_router.routing_parameters.len() * 8;
         let state_memory = self.quantum_state_tracker.state_history.len() * 100;
-        
+
         expert_memory + routing_memory + state_memory
     }
 }
@@ -1660,7 +1705,10 @@ impl QuantumExpert {
             current_load: 0,
             performance_history: Vec::new(),
             quantum_state: QuantumExpertState {
-                quantum_amplitudes: Array1::<Complex64>::ones(2_usize.pow(config.num_qubits as u32)).mapv(|_| Complex64::new(1.0, 0.0)),
+                quantum_amplitudes: Array1::<Complex64>::ones(
+                    2_usize.pow(config.num_qubits as u32),
+                )
+                .mapv(|_| Complex64::new(1.0, 0.0)),
                 entanglement_connections: Vec::new(),
                 coherence_time: 1.0,
                 fidelity: 1.0,
@@ -1668,15 +1716,15 @@ impl QuantumExpert {
             },
         })
     }
-    
+
     pub fn process(&mut self, input: &Array1<f64>, weight: f64) -> Result<ExpertOutput> {
         // Simplified expert processing
         let prediction = input.clone(); // Placeholder
         let quality_score = 0.8; // Placeholder
-        
+
         self.current_load += 1;
         self.performance_history.push(quality_score);
-        
+
         Ok(ExpertOutput {
             prediction,
             quality_score,
@@ -1689,7 +1737,7 @@ impl QuantumExpert {
             },
         })
     }
-    
+
     pub fn update_quantum_state(&mut self, weight: f64, efficiency: f64) -> Result<()> {
         // Update quantum state based on usage
         self.quantum_state.coherence_time *= 0.99; // Gradual decoherence
@@ -1706,19 +1754,20 @@ impl QuantumRouter {
             routing_parameters: Array1::zeros(config.num_experts * 10),
             routing_history: Vec::new(),
             quantum_routing_state: QuantumRoutingState {
-                routing_amplitudes: Array1::<Complex64>::ones(config.num_experts).mapv(|_| Complex64::new(1.0, 0.0)),
+                routing_amplitudes: Array1::<Complex64>::ones(config.num_experts)
+                    .mapv(|_| Complex64::new(1.0, 0.0)),
                 routing_entanglement: 0.0,
                 routing_coherence: 1.0,
                 routing_fidelity: 1.0,
             },
         })
     }
-    
+
     pub fn route(&mut self, input: &Array1<f64>) -> Result<RoutingResult> {
         // Simplified routing implementation
         let num_experts = input.len().min(16); // Simplified
         let mut expert_weights = Array1::zeros(num_experts);
-        
+
         // Simple softmax routing
         for i in 0..num_experts {
             expert_weights[i] = (input[i % input.len()]).exp();
@@ -1727,7 +1776,7 @@ impl QuantumRouter {
         if sum_weights > 0.0 {
             expert_weights = expert_weights / sum_weights;
         }
-        
+
         let routing_decision = RoutingDecision {
             decision_id: self.routing_history.len(),
             expert_weights: expert_weights.clone(),
@@ -1736,9 +1785,9 @@ impl QuantumRouter {
             entanglement_measure: self.quantum_routing_state.routing_entanglement,
             decision_quality: 0.8,
         };
-        
+
         self.routing_history.push(routing_decision.clone());
-        
+
         Ok(RoutingResult {
             expert_weights: expert_weights.clone(),
             routing_confidence: 0.8,
@@ -1746,9 +1795,10 @@ impl QuantumRouter {
             routing_entropy: self.compute_routing_entropy(&expert_weights)?,
         })
     }
-    
+
     fn compute_routing_entropy(&self, weights: &Array1<f64>) -> Result<f64> {
-        let entropy = -weights.iter()
+        let entropy = -weights
+            .iter()
             .filter(|&&w| w > 1e-10)
             .map(|&w| w * w.ln())
             .sum::<f64>();
@@ -1773,38 +1823,41 @@ impl QuantumGateNetwork {
             gate_parameters: Array1::zeros(config.num_experts),
             gating_history: Vec::new(),
             quantum_gate_state: QuantumGateState {
-                gate_amplitudes: Array1::<Complex64>::ones(config.num_experts).mapv(|_| Complex64::new(1.0, 0.0)),
+                gate_amplitudes: Array1::<Complex64>::ones(config.num_experts)
+                    .mapv(|_| Complex64::new(1.0, 0.0)),
                 gate_entanglement: 0.0,
                 gate_coherence: 1.0,
             },
         })
     }
-    
+
     pub fn gate(&mut self, routing_result: &RoutingResult) -> Result<GatingResult> {
         // Apply gating mechanism to routing weights
         let gated_weights = match &self.gating_mechanism {
-            QuantumGatingMechanism::SuperpositionGating { coherence_preservation } => {
-                routing_result.expert_weights.mapv(|w| w * coherence_preservation)
-            },
+            QuantumGatingMechanism::SuperpositionGating {
+                coherence_preservation,
+            } => routing_result
+                .expert_weights
+                .mapv(|w| w * coherence_preservation),
             _ => routing_result.expert_weights.clone(),
         };
-        
+
         let gating_decision = GatingDecision {
             gate_weights: gated_weights.clone(),
             gate_confidence: routing_result.routing_confidence,
             sparsity_level: self.compute_sparsity(&gated_weights)?,
             quantum_efficiency: 0.9,
         };
-        
+
         self.gating_history.push(gating_decision.clone());
-        
+
         Ok(GatingResult {
             expert_weights: gated_weights,
             sparsity_achieved: gating_decision.sparsity_level,
             quantum_efficiency: gating_decision.quantum_efficiency,
         })
     }
-    
+
     fn compute_sparsity(&self, weights: &Array1<f64>) -> Result<f64> {
         let active_count = weights.iter().filter(|&&w| w > 1e-6).count();
         Ok(1.0 - active_count as f64 / weights.len() as f64)
@@ -1825,7 +1878,7 @@ impl LoadBalancer {
             },
         })
     }
-    
+
     pub fn balance_loads(&mut self, weights: &Array1<f64>) -> Result<Array1<f64>> {
         match &self.strategy {
             LoadBalancingStrategy::Uniform => {
@@ -1833,7 +1886,7 @@ impl LoadBalancer {
                 let mean_weight = weights.sum() / weights.len() as f64;
                 let balanced = weights.mapv(|w| 0.8 * w + 0.2 * mean_weight);
                 Ok(balanced)
-            },
+            }
             LoadBalancingStrategy::CapacityAware { capacity_factors } => {
                 // Apply capacity-aware balancing
                 let mut balanced = weights.clone();
@@ -1841,11 +1894,11 @@ impl LoadBalancer {
                     balanced[i] *= capacity_factors[i.min(capacity_factors.len() - 1)];
                 }
                 Ok(balanced)
-            },
+            }
             _ => Ok(weights.clone()),
         }
     }
-    
+
     pub fn adapt_strategy(&mut self, metrics: &MoETrainingMetrics) -> Result<()> {
         // Adapt balancing strategy based on performance
         if metrics.load_balance_score < 0.7 {
@@ -1889,7 +1942,7 @@ impl PerformanceMonitor {
             },
         })
     }
-    
+
     pub fn update(&mut self, output: &CombinedOutput, weights: &Array1<f64>) -> Result<()> {
         // Update performance metrics
         self.performance_metrics.quantum_efficiency = output.quantum_metrics.coherence;
@@ -1912,13 +1965,16 @@ impl CapacityManager {
 impl RoutingOptimizer {
     pub fn new(config: &QuantumMixtureOfExpertsConfig) -> Result<Self> {
         Ok(Self {
-            optimizer_type: OptimizerType::Adam { beta1: 0.9, beta2: 0.999 },
+            optimizer_type: OptimizerType::Adam {
+                beta1: 0.9,
+                beta2: 0.999,
+            },
             learning_rate: 0.001,
             optimization_history: Vec::new(),
             gradient_estimator: GradientEstimator::ParameterShift,
         })
     }
-    
+
     pub fn update_routing_parameters(
         &mut self,
         routing_decision: &RoutingDecision,
@@ -1933,12 +1989,15 @@ impl RoutingOptimizer {
 impl ExpertOptimizer {
     pub fn new(config: &QuantumMixtureOfExpertsConfig) -> Result<Self> {
         Ok(Self {
-            optimizer_type: OptimizerType::Adam { beta1: 0.9, beta2: 0.999 },
+            optimizer_type: OptimizerType::Adam {
+                beta1: 0.9,
+                beta2: 0.999,
+            },
             expert_learning_rates: Array1::ones(config.num_experts) * 0.001,
             expert_optimization_history: Vec::new(),
         })
     }
-    
+
     pub fn update_expert_parameters(
         &mut self,
         experts: &[QuantumExpert],
@@ -1973,16 +2032,20 @@ impl QuantumStateTracker {
             },
         })
     }
-    
+
     pub fn update_coherence(&mut self, coherence: f64) -> Result<()> {
         self.coherence_tracking.coherence_history.push(coherence);
         Ok(())
     }
-    
+
     pub fn get_current_coherence(&self) -> f64 {
-        self.coherence_tracking.coherence_history.last().copied().unwrap_or(1.0)
+        self.coherence_tracking
+            .coherence_history
+            .last()
+            .copied()
+            .unwrap_or(1.0)
     }
-    
+
     pub fn enhance_coherence_preservation(&mut self) -> Result<()> {
         // Implement coherence enhancement strategies
         Ok(())
@@ -2001,11 +2064,11 @@ impl EntanglementManager {
             },
         })
     }
-    
+
     pub fn update_entanglement(&mut self, expert_weights: &Array1<f64>) -> Result<()> {
         // Update entanglement based on expert interactions
         for i in 0..expert_weights.len() {
-            for j in i+1..expert_weights.len() {
+            for j in i + 1..expert_weights.len() {
                 if expert_weights[i] * expert_weights[j] > 0.1 {
                     // Create entanglement between interacting experts
                     let operation = EntanglementOperation {
@@ -2020,18 +2083,21 @@ impl EntanglementManager {
         }
         Ok(())
     }
-    
+
     pub fn get_utilization(&self) -> f64 {
         if self.entanglement_operations.is_empty() {
             0.0
         } else {
-            let avg_strength = self.entanglement_operations.iter()
+            let avg_strength = self
+                .entanglement_operations
+                .iter()
                 .map(|op| op.entanglement_strength)
-                .sum::<f64>() / self.entanglement_operations.len() as f64;
+                .sum::<f64>()
+                / self.entanglement_operations.len() as f64;
             avg_strength
         }
     }
-    
+
     pub fn increase_entanglement_strength(&mut self) -> Result<()> {
         // Increase entanglement strength across the system
         Ok(())
@@ -2102,7 +2168,7 @@ impl QuantumCombinationMetrics {
         self.fidelity += weight * expert_metrics.fidelity;
         self.quantum_volume += weight * expert_metrics.quantum_volume;
     }
-    
+
     pub fn finalize(&mut self, total_weight: f64) {
         if total_weight > 1e-10 {
             self.coherence /= total_weight;
@@ -2266,10 +2332,10 @@ mod tests {
         let config = QuantumMixtureOfExpertsConfig::default();
         let mut router = QuantumRouter::new(&config).unwrap();
         let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
-        
+
         let result = router.route(&input);
         assert!(result.is_ok());
-        
+
         let routing_result = result.unwrap();
         assert_eq!(routing_result.expert_weights.len(), 4);
         assert!(routing_result.routing_confidence >= 0.0);
@@ -2286,10 +2352,10 @@ mod tests {
         };
         let mut moe = QuantumMixtureOfExperts::new(config).unwrap();
         let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
-        
+
         let result = moe.forward(&input);
         assert!(result.is_ok());
-        
+
         let output = result.unwrap();
         assert_eq!(output.expert_weights.len(), 3);
         assert!(output.routing_decision.routing_confidence >= 0.0);
@@ -2303,10 +2369,10 @@ mod tests {
         };
         let mut balancer = LoadBalancer::new(&config).unwrap();
         let weights = Array1::from_vec(vec![0.8, 0.1, 0.1]);
-        
+
         let balanced = balancer.balance_loads(&weights);
         assert!(balanced.is_ok());
-        
+
         let balanced_weights = balanced.unwrap();
         assert_eq!(balanced_weights.len(), 3);
     }
@@ -2316,7 +2382,7 @@ mod tests {
         let config = QuantumMixtureOfExpertsConfig::default();
         let gate_network = QuantumGateNetwork::new(&config).unwrap();
         let weights = Array1::from_vec(vec![0.8, 0.0, 0.2, 0.0]);
-        
+
         let sparsity = gate_network.compute_sparsity(&weights);
         assert!(sparsity.is_ok());
         assert_eq!(sparsity.unwrap(), 0.5); // 2 out of 4 are zero
@@ -2333,7 +2399,7 @@ mod tests {
         };
         let moe = QuantumMixtureOfExperts::new(config).unwrap();
         let weights = Array1::from_vec(vec![0.5, 0.3, 0.2]);
-        
+
         let interference = moe.compute_interference_factor(0, &weights);
         assert!(interference.is_ok());
         assert!(interference.unwrap() > 0.0);
@@ -2351,10 +2417,10 @@ mod tests {
         };
         let mut manager = EntanglementManager::new(&config).unwrap();
         let expert_weights = Array1::from_vec(vec![0.4, 0.6, 0.0]);
-        
+
         let result = manager.update_entanglement(&expert_weights);
         assert!(result.is_ok());
-        
+
         let utilization = manager.get_utilization();
         assert!(utilization >= 0.0);
     }
@@ -2371,7 +2437,7 @@ mod tests {
             },
             ..Default::default()
         };
-        
+
         let moe = QuantumMixtureOfExperts::new(config);
         assert!(moe.is_ok());
     }
@@ -2385,7 +2451,7 @@ mod tests {
             },
             ..Default::default()
         };
-        
+
         let moe = QuantumMixtureOfExperts::new(config);
         assert!(moe.is_ok());
     }

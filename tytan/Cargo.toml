@@ -26,9 +26,9 @@ symengine = { workspace = true, optional = true }
 regex = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-num_cpus = "1.16"
+num_cpus = "1.17"
 plotters = { version = "0.3", optional = true }
-colored = "2.0"
+colored = "2.2"
 
 # SciRS2 dependencies for performance optimization
 scirs2-core = { workspace = true, optional = true }
@@ -59,7 +59,7 @@ plotters = ["dep:plotters"]
 criterion = { version = "0.5", features = ["html_reports"] }
 ndarray-rand.workspace = true
 rand_chacha.workspace = true
-colored = "2.0"
+colored = "2.2"
 
 # [[bench]]
 # name = "performance_benchmark"

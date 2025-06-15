@@ -46,6 +46,7 @@ impl PeepholeOptimizer {
     }
 
     /// Try to simplify a window of gates
+    #[allow(dead_code)]
     fn simplify_window(
         &self,
         window: &[Box<dyn GateOp>],
@@ -189,21 +190,36 @@ impl PeepholeOptimizer {
         }
 
         // H-X-H = Z pattern
-        if gate1.name() == "H" && gate2.name() == "X" && gate3.name() == "H" && gate1.qubits() == gate2.qubits() && gate2.qubits() == gate3.qubits() {
+        if gate1.name() == "H"
+            && gate2.name() == "X"
+            && gate3.name() == "H"
+            && gate1.qubits() == gate2.qubits()
+            && gate2.qubits() == gate3.qubits()
+        {
             return Ok(Some(vec![Box::new(PauliZ {
                 target: gate1.qubits()[0],
             })]));
         }
 
         // H-Z-H = X pattern
-        if gate1.name() == "H" && gate2.name() == "Z" && gate3.name() == "H" && gate1.qubits() == gate2.qubits() && gate2.qubits() == gate3.qubits() {
+        if gate1.name() == "H"
+            && gate2.name() == "Z"
+            && gate3.name() == "H"
+            && gate1.qubits() == gate2.qubits()
+            && gate2.qubits() == gate3.qubits()
+        {
             return Ok(Some(vec![Box::new(PauliX {
                 target: gate1.qubits()[0],
             })]));
         }
 
         // X-Y-X = -Y pattern
-        if gate1.name() == "X" && gate2.name() == "Y" && gate3.name() == "X" && gate1.qubits() == gate2.qubits() && gate2.qubits() == gate3.qubits() {
+        if gate1.name() == "X"
+            && gate2.name() == "Y"
+            && gate3.name() == "X"
+            && gate1.qubits() == gate2.qubits()
+            && gate2.qubits() == gate3.qubits()
+        {
             let qubit = gate1.qubits()[0];
             return Ok(Some(vec![
                 Box::new(PauliY { target: qubit }),
@@ -338,7 +354,10 @@ impl TCountOptimizer {
             for i in 0..gates.len() - 2 {
                 if gates[i].name() == "T"
                     && gates[i + 1].name() == "S"
-                    && gates[i + 2].name() == "T" && gates[i].qubits() == gates[i + 1].qubits() && gates[i + 1].qubits() == gates[i + 2].qubits() {
+                    && gates[i + 2].name() == "T"
+                    && gates[i].qubits() == gates[i + 1].qubits()
+                    && gates[i + 1].qubits() == gates[i + 2].qubits()
+                {
                     let qubit = gates[i].qubits()[0];
                     let mut result = Vec::new();
 

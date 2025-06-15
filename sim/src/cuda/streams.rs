@@ -5,9 +5,9 @@
 
 use std::sync::{Arc, Mutex};
 
-use crate::error::{Result, SimulatorError};
 #[cfg(feature = "advanced_math")]
 use super::context::CudaEvent;
+use crate::error::{Result, SimulatorError};
 
 // Placeholder types for actual CUDA handles
 #[cfg(feature = "advanced_math")]
@@ -39,12 +39,12 @@ impl CudaStream {
     pub fn new() -> Result<Self> {
         Self::with_priority_and_flags(StreamPriority::Normal, StreamFlags::Default)
     }
-    
+
     pub fn with_priority_and_flags(priority: StreamPriority, flags: StreamFlags) -> Result<Self> {
         let id = Self::allocate_stream_id();
         let handle = Arc::new(Mutex::new(Self::create_cuda_stream(priority, flags)?));
-        
-        Ok(Self { 
+
+        Ok(Self {
             id,
             handle,
             priority,
@@ -72,7 +72,7 @@ impl CudaStream {
         }
         Ok(())
     }
-    
+
     pub fn query(&self) -> Result<bool> {
         let handle = self.handle.lock().unwrap();
         if let Some(cuda_handle) = *handle {
@@ -82,7 +82,7 @@ impl CudaStream {
             Ok(true) // Stream is ready if not created
         }
     }
-    
+
     pub fn record_event(&self, event: &mut CudaEvent) -> Result<()> {
         let handle = self.handle.lock().unwrap();
         if let Some(cuda_handle) = *handle {
@@ -104,14 +104,17 @@ impl CudaStream {
     pub fn is_ready(&self) -> Result<bool> {
         self.query()
     }
-    
+
     fn allocate_stream_id() -> usize {
         use std::sync::atomic::{AtomicUsize, Ordering};
         static STREAM_COUNTER: AtomicUsize = AtomicUsize::new(0);
         STREAM_COUNTER.fetch_add(1, Ordering::SeqCst)
     }
-    
-    fn create_cuda_stream(priority: StreamPriority, flags: StreamFlags) -> Result<Option<CudaStreamHandle>> {
+
+    fn create_cuda_stream(
+        priority: StreamPriority,
+        flags: StreamFlags,
+    ) -> Result<Option<CudaStreamHandle>> {
         // In real implementation: cudaStreamCreateWithPriority
         let _priority_val = match priority {
             StreamPriority::Low => -1,
@@ -122,22 +125,22 @@ impl CudaStream {
             StreamFlags::Default => 0,
             StreamFlags::NonBlocking => 1,
         };
-        
+
         // Simulate stream creation
         Ok(Some(Self::allocate_stream_id()))
     }
-    
+
     fn cuda_stream_synchronize(_handle: CudaStreamHandle) -> Result<()> {
         // Placeholder for actual CUDA synchronization
         std::thread::sleep(std::time::Duration::from_micros(10));
         Ok(())
     }
-    
+
     fn cuda_stream_query(_handle: CudaStreamHandle) -> Result<bool> {
         // Placeholder for actual CUDA stream query
         Ok(true)
     }
-    
+
     fn cuda_event_record(_event: CudaEvent, _stream: CudaStreamHandle) -> Result<()> {
         // Placeholder for actual CUDA event recording
         Ok(())
@@ -185,7 +188,7 @@ impl CudaStreamPool {
         for _ in 0..num_streams {
             streams.push(CudaStream::new()?);
         }
-        
+
         Ok(Self {
             streams,
             current_index: std::sync::atomic::AtomicUsize::new(0),
@@ -193,7 +196,9 @@ impl CudaStreamPool {
     }
 
     pub fn get_next_stream(&self) -> &CudaStream {
-        let index = self.current_index.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let index = self
+            .current_index
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         &self.streams[index % self.streams.len()]
     }
 

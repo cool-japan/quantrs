@@ -4,10 +4,9 @@
 //! advanced networking protocols and fault-tolerant communication.
 
 use crate::error::QuantRS2Error;
-use crate::gate::GateOp;
 use crate::qubit::QubitId;
-use num_complex::Complex64;
 use ndarray::Array2;
+use num_complex::Complex64;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
@@ -52,16 +51,10 @@ pub enum NodeState {
 
 impl QuantumNode {
     /// Create a new quantum node
-    pub fn new(
-        location: NodeLocation,
-        max_qubits: usize,
-        capabilities: NodeCapabilities,
-    ) -> Self {
+    pub fn new(location: NodeLocation, max_qubits: usize, capabilities: NodeCapabilities) -> Self {
         let node_id = Uuid::new_v4();
-        let qubits = (0..max_qubits)
-            .map(|i| QubitId::new(i as u32))
-            .collect();
-        
+        let qubits = (0..max_qubits).map(|i| QubitId::new(i as u32)).collect();
+
         Self {
             node_id,
             location,
@@ -119,7 +112,10 @@ pub enum DistributedGateType {
     DistributedControlledPhase,
     DistributedQuantumFourierTransform,
     DistributedEntanglingGate,
-    CustomDistributedGate { name: String, matrix: Array2<Complex64> },
+    CustomDistributedGate {
+        name: String,
+        matrix: Array2<Complex64>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -150,17 +146,16 @@ impl DistributedQuantumGate {
     /// Estimate execution time across the network
     pub fn estimate_execution_time(&self, network: &QuantumNetwork) -> Duration {
         let mut max_latency = Duration::ZERO;
-        
+
         // Find maximum communication latency between involved nodes
         for i in 0..self.target_qubits.len() {
             for j in i + 1..self.target_qubits.len() {
                 let node1_id = self.target_qubits[i].0;
                 let node2_id = self.target_qubits[j].0;
-                
-                if let (Some(node1), Some(node2)) = (
-                    network.get_node(node1_id),
-                    network.get_node(node2_id),
-                ) {
+
+                if let (Some(node1), Some(node2)) =
+                    (network.get_node(node1_id), network.get_node(node2_id))
+                {
                     let latency = node1.communication_latency(node2);
                     if latency > max_latency {
                         max_latency = latency;
@@ -168,7 +163,7 @@ impl DistributedQuantumGate {
                 }
             }
         }
-        
+
         // Add gate execution time and protocol overhead
         let gate_time = Duration::from_millis(100); // Base gate time
         let protocol_overhead = match self.entanglement_protocol {
@@ -176,12 +171,12 @@ impl DistributedQuantumGate {
             EntanglementProtocol::EntanglementSwapping => Duration::from_millis(50),
             EntanglementProtocol::QuantumRepeater { num_repeaters } => {
                 Duration::from_millis(20 * num_repeaters as u64)
-            },
-            EntanglementProtocol::PurificationBased { purification_rounds } => {
-                Duration::from_millis(30 * purification_rounds as u64)
-            },
+            }
+            EntanglementProtocol::PurificationBased {
+                purification_rounds,
+            } => Duration::from_millis(30 * purification_rounds as u64),
         };
-        
+
         max_latency + gate_time + protocol_overhead
     }
 }
@@ -241,7 +236,7 @@ impl QuantumNetwork {
                         }
                     }
                 }
-            },
+            }
             NetworkTopology::Mesh => {
                 // Connect to all other nodes
                 for other_id in self.nodes.keys() {
@@ -249,14 +244,22 @@ impl QuantumNetwork {
                         node.connect_to(*other_id);
                     }
                 }
-            },
+            }
             NetworkTopology::Ring => {
                 // Connect to adjacent nodes in ring
                 let node_ids: Vec<Uuid> = self.nodes.keys().cloned().collect();
                 if let Some(pos) = node_ids.iter().position(|&id| id == node.node_id) {
-                    let prev = if pos == 0 { node_ids.len() - 1 } else { pos - 1 };
-                    let next = if pos == node_ids.len() - 1 { 0 } else { pos + 1 };
-                    
+                    let prev = if pos == 0 {
+                        node_ids.len() - 1
+                    } else {
+                        pos - 1
+                    };
+                    let next = if pos == node_ids.len() - 1 {
+                        0
+                    } else {
+                        pos + 1
+                    };
+
                     if prev < node_ids.len() {
                         node.connect_to(node_ids[prev]);
                     }
@@ -264,16 +267,16 @@ impl QuantumNetwork {
                         node.connect_to(node_ids[next]);
                     }
                 }
-            },
+            }
             NetworkTopology::Grid { width, height } => {
                 // Connect to grid neighbors
-                let total_nodes = width * height;
+                let _total_nodes = width * height;
                 let node_ids: Vec<Uuid> = self.nodes.keys().cloned().collect();
-                
+
                 if let Some(index) = node_ids.iter().position(|&id| id == node.node_id) {
                     let row = index / width;
                     let col = index % width;
-                    
+
                     // Connect to adjacent grid positions
                     let neighbors = [
                         (row.wrapping_sub(1), col), // Up
@@ -281,7 +284,7 @@ impl QuantumNetwork {
                         (row, col.wrapping_sub(1)), // Left
                         (row, col + 1),             // Right
                     ];
-                    
+
                     for (r, c) in neighbors {
                         if r < *height && c < *width {
                             let neighbor_index = r * width + c;
@@ -291,14 +294,19 @@ impl QuantumNetwork {
                         }
                     }
                 }
-            },
-            NetworkTopology::Tree { root_node: _, depth: _ } => {
+            }
+            NetworkTopology::Tree {
+                root_node: _,
+                depth: _,
+            } => {
                 // Tree topology implementation
                 // Simplified: connect to parent and children
-            },
-            NetworkTopology::Custom { adjacency_matrix: _ } => {
+            }
+            NetworkTopology::Custom {
+                adjacency_matrix: _,
+            } => {
                 // Custom connections based on adjacency matrix
-            },
+            }
         }
     }
 
@@ -306,20 +314,20 @@ impl QuantumNetwork {
     fn update_routing_table(&self) {
         let mut routing_table = self.routing_table.write().unwrap();
         routing_table.clear();
-        
+
         // Floyd-Warshall algorithm for shortest paths
         let node_ids: Vec<Uuid> = self.nodes.keys().cloned().collect();
         let n = node_ids.len();
-        
+
         // Initialize distance matrix
         let mut distances = vec![vec![f64::INFINITY; n]; n];
         let mut next_hop = vec![vec![None; n]; n];
-        
+
         // Set direct connections
         for (i, &node_id) in node_ids.iter().enumerate() {
             distances[i][i] = 0.0;
             next_hop[i][i] = Some(node_id);
-            
+
             if let Some(node) = self.nodes.get(&node_id) {
                 for &neighbor_id in &node.connectivity {
                     if let Some(j) = node_ids.iter().position(|&id| id == neighbor_id) {
@@ -331,7 +339,7 @@ impl QuantumNetwork {
                 }
             }
         }
-        
+
         // Floyd-Warshall
         for k in 0..n {
             for i in 0..n {
@@ -343,14 +351,14 @@ impl QuantumNetwork {
                 }
             }
         }
-        
+
         // Build routing table
         for (i, &source) in node_ids.iter().enumerate() {
             for (j, &dest) in node_ids.iter().enumerate() {
                 if i != j && next_hop[i][j].is_some() {
                     let mut path = vec![source];
                     let mut current = i;
-                    
+
                     while current != j {
                         if let Some(next_node) = next_hop[current][j] {
                             path.push(next_node);
@@ -359,7 +367,7 @@ impl QuantumNetwork {
                             break;
                         }
                     }
-                    
+
                     routing_table.insert((source, dest), path);
                 }
             }
@@ -378,16 +386,20 @@ impl QuantumNetwork {
     ) -> Result<DistributedExecutionResult, QuantRS2Error> {
         // Schedule the gate execution
         let execution_plan = self.scheduler.schedule_gate(gate, self).await?;
-        
+
         // Establish entanglement between required qubits
-        let entanglement_result = self.entanglement_manager
-            .establish_entanglement(&gate.target_qubits, &gate.entanglement_protocol, self).await?;
-        
+        let entanglement_result = self
+            .entanglement_manager
+            .establish_entanglement(&gate.target_qubits, &gate.entanglement_protocol, self)
+            .await?;
+
         // Execute the gate across the network
         let start_time = Instant::now();
-        let result = self.execute_gate_with_plan(&execution_plan, &entanglement_result).await?;
+        let result = self
+            .execute_gate_with_plan(&execution_plan, &entanglement_result)
+            .await?;
         let execution_time = start_time.elapsed();
-        
+
         Ok(DistributedExecutionResult {
             gate_id: gate.gate_id,
             execution_time,
@@ -406,22 +418,22 @@ impl QuantumNetwork {
         let mut success = true;
         let mut total_fidelity = 1.0;
         let mut error_rates = HashMap::new();
-        
+
         // Execute each step in the plan
         for step in &plan.steps {
             let step_result = self.execute_step(step, entanglement).await?;
-            
+
             if !step_result.success {
                 success = false;
             }
-            
+
             total_fidelity *= step_result.fidelity;
-            
+
             for (node_id, error_rate) in step_result.node_error_rates {
                 *error_rates.entry(node_id).or_insert(0.0) += error_rate;
             }
         }
-        
+
         Ok(GateExecutionResult {
             success,
             fidelity: total_fidelity,
@@ -436,34 +448,45 @@ impl QuantumNetwork {
         _entanglement: &EntanglementResult,
     ) -> Result<StepExecutionResult, QuantRS2Error> {
         match step {
-            ExecutionStep::LocalGate { node_id, gate_op: _, qubits: _ } => {
+            ExecutionStep::LocalGate {
+                node_id,
+                gate_op: _,
+                qubits: _,
+            } => {
                 if let Some(node) = self.get_node(*node_id) {
                     // Simulate local gate execution
                     let fidelity = node.capabilities.fidelity;
                     let error_rate = 1.0 - fidelity;
-                    
+
                     // Add realistic execution delay
                     tokio::time::sleep(node.capabilities.gate_time).await;
-                    
+
                     Ok(StepExecutionResult {
                         success: true,
                         fidelity,
                         node_error_rates: vec![(*node_id, error_rate)].into_iter().collect(),
                     })
                 } else {
-                    Err(QuantRS2Error::NodeNotFound(format!("Node {} not found", node_id)))
+                    Err(QuantRS2Error::NodeNotFound(format!(
+                        "Node {} not found",
+                        node_id
+                    )))
                 }
-            },
-            ExecutionStep::RemoteEntanglement { source_node, target_node, protocol } => {
-                if let (Some(source), Some(target)) = (
-                    self.get_node(*source_node),
-                    self.get_node(*target_node),
-                ) {
+            }
+            ExecutionStep::RemoteEntanglement {
+                source_node,
+                target_node,
+                protocol,
+            } => {
+                if let (Some(source), Some(target)) =
+                    (self.get_node(*source_node), self.get_node(*target_node))
+                {
                     // Simulate entanglement establishment
                     let latency = source.communication_latency(target);
                     tokio::time::sleep(latency).await;
-                    
-                    let base_fidelity = (source.capabilities.fidelity + target.capabilities.fidelity) / 2.0;
+
+                    let base_fidelity =
+                        (source.capabilities.fidelity + target.capabilities.fidelity) / 2.0;
                     let distance_penalty = 1.0 - (source.distance_to(target) / 1000.0).min(0.1);
                     let protocol_fidelity = match protocol {
                         EntanglementProtocol::DirectEntanglement => 0.95,
@@ -471,37 +494,44 @@ impl QuantumNetwork {
                         EntanglementProtocol::QuantumRepeater { .. } => 0.90,
                         EntanglementProtocol::PurificationBased { .. } => 0.98,
                     };
-                    
+
                     let fidelity = base_fidelity * distance_penalty * protocol_fidelity;
-                    
+
                     Ok(StepExecutionResult {
                         success: fidelity > 0.5,
                         fidelity,
                         node_error_rates: vec![
                             (*source_node, 1.0 - fidelity),
                             (*target_node, 1.0 - fidelity),
-                        ].into_iter().collect(),
+                        ]
+                        .into_iter()
+                        .collect(),
                     })
                 } else {
-                    Err(QuantRS2Error::NodeNotFound("Source or target node not found".to_string()))
+                    Err(QuantRS2Error::NodeNotFound(
+                        "Source or target node not found".to_string(),
+                    ))
                 }
-            },
-            ExecutionStep::Measurement { node_id, qubits } => {
+            }
+            ExecutionStep::Measurement { node_id, qubits: _ } => {
                 if let Some(node) = self.get_node(*node_id) {
                     // Simulate measurement
                     tokio::time::sleep(node.capabilities.measurement_time).await;
-                    
+
                     let fidelity = node.capabilities.fidelity * 0.95; // Measurement reduces fidelity
-                    
+
                     Ok(StepExecutionResult {
                         success: true,
                         fidelity,
                         node_error_rates: vec![(*node_id, 1.0 - fidelity)].into_iter().collect(),
                     })
                 } else {
-                    Err(QuantRS2Error::NodeNotFound(format!("Node {} not found", node_id)))
+                    Err(QuantRS2Error::NodeNotFound(format!(
+                        "Node {} not found",
+                        node_id
+                    )))
                 }
-            },
+            }
         }
     }
 }
@@ -546,22 +576,22 @@ impl EntanglementManager {
     ) -> Result<EntanglementResult, QuantRS2Error> {
         let mut established_pairs = Vec::new();
         let mut total_fidelity = 1.0;
-        
+
         // Create entanglement between all required qubit pairs
         for i in 0..target_qubits.len() {
             for j in i + 1..target_qubits.len() {
                 let (node1, qubit1) = target_qubits[i];
                 let (node2, qubit2) = target_qubits[j];
-                
-                let pair_result = self.establish_pair_entanglement(
-                    node1, qubit1, node2, qubit2, protocol, network
-                ).await?;
-                
+
+                let pair_result = self
+                    .establish_pair_entanglement(node1, qubit1, node2, qubit2, protocol, network)
+                    .await?;
+
                 established_pairs.push(pair_result.clone());
                 total_fidelity *= pair_result.fidelity;
             }
         }
-        
+
         Ok(EntanglementResult {
             pairs: established_pairs,
             total_fidelity,
@@ -581,21 +611,37 @@ impl EntanglementManager {
     ) -> Result<EntangledPair, QuantRS2Error> {
         match protocol {
             EntanglementProtocol::DirectEntanglement => {
-                self.direct_entanglement(node1, qubit1, node2, qubit2, network).await
-            },
+                self.direct_entanglement(node1, qubit1, node2, qubit2, network)
+                    .await
+            }
             EntanglementProtocol::EntanglementSwapping => {
-                self.entanglement_swapping(node1, qubit1, node2, qubit2, network).await
-            },
+                self.entanglement_swapping(node1, qubit1, node2, qubit2, network)
+                    .await
+            }
             EntanglementProtocol::QuantumRepeater { num_repeaters } => {
                 self.quantum_repeater_entanglement(
-                    node1, qubit1, node2, qubit2, *num_repeaters, network
-                ).await
-            },
-            EntanglementProtocol::PurificationBased { purification_rounds } => {
+                    node1,
+                    qubit1,
+                    node2,
+                    qubit2,
+                    *num_repeaters,
+                    network,
+                )
+                .await
+            }
+            EntanglementProtocol::PurificationBased {
+                purification_rounds,
+            } => {
                 self.purification_based_entanglement(
-                    node1, qubit1, node2, qubit2, *purification_rounds, network
-                ).await
-            },
+                    node1,
+                    qubit1,
+                    node2,
+                    qubit2,
+                    *purification_rounds,
+                    network,
+                )
+                .await
+            }
         }
     }
 
@@ -613,23 +659,28 @@ impl EntanglementManager {
             let distance = n1.distance_to(n2);
             let transmission_fidelity = (-distance / 22000.0).exp(); // Fiber loss ~22km attenuation length
             let detection_fidelity = 0.95; // Detector efficiency
-            
-            let fidelity = transmission_fidelity * detection_fidelity * 
-                          (n1.capabilities.fidelity + n2.capabilities.fidelity) / 2.0;
-            
+
+            let fidelity = transmission_fidelity
+                * detection_fidelity
+                * (n1.capabilities.fidelity + n2.capabilities.fidelity)
+                / 2.0;
+
             // Add to entangled pairs registry
             let entanglement_state = EntanglementState {
                 fidelity,
                 creation_time: Instant::now(),
-                coherence_time: Duration::min(n1.capabilities.coherence_time, n2.capabilities.coherence_time),
+                coherence_time: Duration::min(
+                    n1.capabilities.coherence_time,
+                    n2.capabilities.coherence_time,
+                ),
                 bell_state_type: BellStateType::PhiPlus,
             };
-            
-            self.entangled_pairs.lock().unwrap().insert(
-                (node1, qubit1, node2, qubit2),
-                entanglement_state,
-            );
-            
+
+            self.entangled_pairs
+                .lock()
+                .unwrap()
+                .insert((node1, qubit1, node2, qubit2), entanglement_state);
+
             Ok(EntangledPair {
                 node1,
                 qubit1,
@@ -639,7 +690,9 @@ impl EntanglementManager {
                 bell_state: BellStateType::PhiPlus,
             })
         } else {
-            Err(QuantRS2Error::NodeNotFound("One or both nodes not found".to_string()))
+            Err(QuantRS2Error::NodeNotFound(
+                "One or both nodes not found".to_string(),
+            ))
         }
     }
 
@@ -657,20 +710,20 @@ impl EntanglementManager {
         if let Some(path) = routing_table.get(&(node1, node2)) {
             if path.len() >= 3 {
                 let intermediate_node = path[1];
-                
+
                 // Create entanglement: node1 <-> intermediate, intermediate <-> node2
-                let pair1 = self.direct_entanglement(
-                    node1, qubit1, intermediate_node, QubitId::new(0), network
-                ).await?;
-                
-                let pair2 = self.direct_entanglement(
-                    intermediate_node, QubitId::new(1), node2, qubit2, network
-                ).await?;
-                
+                let pair1 = self
+                    .direct_entanglement(node1, qubit1, intermediate_node, QubitId::new(0), network)
+                    .await?;
+
+                let pair2 = self
+                    .direct_entanglement(intermediate_node, QubitId::new(1), node2, qubit2, network)
+                    .await?;
+
                 // Perform Bell measurement at intermediate node to swap entanglement
                 let swapping_fidelity = 0.85; // Typical swapping fidelity
                 let final_fidelity = pair1.fidelity * pair2.fidelity * swapping_fidelity;
-                
+
                 Ok(EntangledPair {
                     node1,
                     qubit1,
@@ -681,10 +734,13 @@ impl EntanglementManager {
                 })
             } else {
                 // Fall back to direct entanglement
-                self.direct_entanglement(node1, qubit1, node2, qubit2, network).await
+                self.direct_entanglement(node1, qubit1, node2, qubit2, network)
+                    .await
             }
         } else {
-            Err(QuantRS2Error::NetworkError("No path found between nodes".to_string()))
+            Err(QuantRS2Error::NetworkError(
+                "No path found between nodes".to_string(),
+            ))
         }
     }
 
@@ -696,18 +752,18 @@ impl EntanglementManager {
         node2: Uuid,
         qubit2: QubitId,
         num_repeaters: usize,
-        network: &QuantumNetwork,
+        _network: &QuantumNetwork,
     ) -> Result<EntangledPair, QuantRS2Error> {
         // Simplified quantum repeater protocol
         // In practice, this would involve multiple rounds of entanglement creation and swapping
-        
+
         let base_fidelity = 0.9f64; // Initial entanglement fidelity
         let repeater_fidelity = base_fidelity.powi(num_repeaters as i32 + 1);
-        
+
         // Simulate repeater protocol execution time
         let protocol_time = Duration::from_millis(100 * (num_repeaters + 1) as u64);
         tokio::time::sleep(protocol_time).await;
-        
+
         Ok(EntangledPair {
             node1,
             qubit1,
@@ -729,23 +785,24 @@ impl EntanglementManager {
         network: &QuantumNetwork,
     ) -> Result<EntangledPair, QuantRS2Error> {
         // Start with direct entanglement
-        let mut current_fidelity = self.direct_entanglement(
-            node1, qubit1, node2, qubit2, network
-        ).await?.fidelity;
-        
+        let mut current_fidelity = self
+            .direct_entanglement(node1, qubit1, node2, qubit2, network)
+            .await?
+            .fidelity;
+
         // Apply purification rounds
         for _ in 0..purification_rounds {
             if current_fidelity < self.purification_threshold {
                 // Create additional entangled pair for purification
-                let aux_pair = self.direct_entanglement(
-                    node1, QubitId::new(99), node2, QubitId::new(99), network
-                ).await?;
-                
+                let aux_pair = self
+                    .direct_entanglement(node1, QubitId::new(99), node2, QubitId::new(99), network)
+                    .await?;
+
                 // Purification protocol improves fidelity
                 current_fidelity = self.purify_entanglement(current_fidelity, aux_pair.fidelity);
             }
         }
-        
+
         Ok(EntangledPair {
             node1,
             qubit1,
@@ -761,11 +818,11 @@ impl EntanglementManager {
         // Simplified purification formula
         let f1 = fidelity1;
         let f2 = fidelity2;
-        
+
         // Bennett et al. purification protocol
         let numerator = f1 * f2 + (1.0 - f1) * (1.0 - f2) / 3.0;
         let denominator = f1 * f2 + 2.0 * (1.0 - f1) * (1.0 - f2) / 3.0;
-        
+
         if denominator > 0.0 {
             numerator / denominator
         } else {
@@ -814,31 +871,35 @@ impl NetworkScheduler {
     ) -> Result<ExecutionPlan, QuantRS2Error> {
         // Acquire scheduling semaphore
         let _permit = self.resource_semaphore.acquire().await.unwrap();
-        
+
         // Analyze gate requirements
-        let involved_nodes: Vec<Uuid> = gate.target_qubits
+        let involved_nodes: Vec<Uuid> = gate
+            .target_qubits
             .iter()
             .map(|(node_id, _)| *node_id)
             .collect();
-        
+
         // Check node availability
         for &node_id in &involved_nodes {
             if let Some(node) = network.get_node(node_id) {
                 if !node.is_available() {
-                    return Err(QuantRS2Error::NodeUnavailable(format!("Node {} is not available", node_id)));
+                    return Err(QuantRS2Error::NodeUnavailable(format!(
+                        "Node {} is not available",
+                        node_id
+                    )));
                 }
             }
         }
-        
+
         // Create execution plan
         let mut steps = Vec::new();
-        
+
         // Step 1: Establish required entanglements
         for i in 0..gate.target_qubits.len() {
             for j in i + 1..gate.target_qubits.len() {
-                let (node1, qubit1) = gate.target_qubits[i];
-                let (node2, qubit2) = gate.target_qubits[j];
-                
+                let (node1, _qubit1) = gate.target_qubits[i];
+                let (node2, _qubit2) = gate.target_qubits[j];
+
                 steps.push(ExecutionStep::RemoteEntanglement {
                     source_node: node1,
                     target_node: node2,
@@ -846,21 +907,21 @@ impl NetworkScheduler {
                 });
             }
         }
-        
+
         // Step 2: Execute local operations
         match &gate.gate_type {
             DistributedGateType::DistributedCNOT => {
                 if gate.target_qubits.len() == 2 {
                     let (control_node, control_qubit) = gate.target_qubits[0];
                     let (target_node, target_qubit) = gate.target_qubits[1];
-                    
+
                     // Control node applies local operation
                     steps.push(ExecutionStep::LocalGate {
                         node_id: control_node,
                         gate_op: "LocalCNOTControl".to_string(),
                         qubits: vec![control_qubit],
                     });
-                    
+
                     // Target node applies conditional operation
                     steps.push(ExecutionStep::LocalGate {
                         node_id: target_node,
@@ -868,7 +929,7 @@ impl NetworkScheduler {
                         qubits: vec![target_qubit],
                     });
                 }
-            },
+            }
             DistributedGateType::DistributedToffoli => {
                 // Three-qubit distributed Toffoli implementation
                 if gate.target_qubits.len() == 3 {
@@ -878,7 +939,7 @@ impl NetworkScheduler {
                             2 => "ToffoliTarget",
                             _ => "ToffoliAux",
                         };
-                        
+
                         steps.push(ExecutionStep::LocalGate {
                             node_id,
                             gate_op: gate_name.to_string(),
@@ -886,7 +947,7 @@ impl NetworkScheduler {
                         });
                     }
                 }
-            },
+            }
             _ => {
                 // Generic distributed gate execution
                 for &(node_id, qubit_id) in &gate.target_qubits {
@@ -896,9 +957,9 @@ impl NetworkScheduler {
                         qubits: vec![qubit_id],
                     });
                 }
-            },
+            }
         }
-        
+
         // Step 3: Final measurements if required
         if gate.error_correction {
             for &(node_id, qubit_id) in &gate.target_qubits {
@@ -908,9 +969,9 @@ impl NetworkScheduler {
                 });
             }
         }
-        
+
         let estimated_duration = gate.estimate_execution_time(network);
-        
+
         // Register the scheduled operation
         let scheduled_op = ScheduledOperation {
             operation_id: gate.gate_id,
@@ -919,9 +980,9 @@ impl NetworkScheduler {
             involved_nodes,
             priority: Priority::Medium,
         };
-        
+
         self.active_schedules.lock().unwrap().push(scheduled_op);
-        
+
         Ok(ExecutionPlan {
             gate_id: gate.gate_id,
             steps,
@@ -931,12 +992,15 @@ impl NetworkScheduler {
     }
 
     /// Calculate resource requirements for a gate
-    fn calculate_resource_requirements(&self, gate: &DistributedQuantumGate) -> ResourceRequirements {
+    fn calculate_resource_requirements(
+        &self,
+        gate: &DistributedQuantumGate,
+    ) -> ResourceRequirements {
         ResourceRequirements {
             node_count: gate.target_qubits.len(),
             qubit_count: gate.target_qubits.len(),
             memory_mb: gate.target_qubits.len() * 10, // Estimate
-            communication_bandwidth: 1000, // kbps
+            communication_bandwidth: 1000,            // kbps
             entanglement_pairs: (gate.target_qubits.len() * (gate.target_qubits.len() - 1)) / 2,
         }
     }
@@ -1026,7 +1090,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_quantum_node_creation() {
-        let location = NodeLocation { x: 0.0, y: 0.0, z: 0.0 };
+        let location = NodeLocation {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        };
         let capabilities = NodeCapabilities {
             max_qubits: 10,
             gate_set: vec!["X".to_string(), "CNOT".to_string()],
@@ -1035,7 +1103,7 @@ mod tests {
             gate_time: Duration::from_micros(100),
             measurement_time: Duration::from_micros(1000),
         };
-        
+
         let node = QuantumNode::new(location, 10, capabilities);
         assert_eq!(node.qubits.len(), 10);
         assert!(node.is_available());
@@ -1044,9 +1112,13 @@ mod tests {
     #[tokio::test]
     async fn test_network_creation() {
         let mut network = QuantumNetwork::new(NetworkTopology::Mesh);
-        
+
         let node1 = QuantumNode::new(
-            NodeLocation { x: 0.0, y: 0.0, z: 0.0 },
+            NodeLocation {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
             5,
             NodeCapabilities {
                 max_qubits: 5,
@@ -1057,10 +1129,10 @@ mod tests {
                 measurement_time: Duration::from_micros(500),
             },
         );
-        
+
         let node1_id = node1.node_id;
         network.add_node(node1);
-        
+
         assert!(network.get_node(node1_id).is_some());
     }
 
@@ -1068,22 +1140,25 @@ mod tests {
     async fn test_distributed_gate_creation() {
         let node1_id = Uuid::new_v4();
         let node2_id = Uuid::new_v4();
-        
+
         let gate = DistributedQuantumGate::new(
             DistributedGateType::DistributedCNOT,
             vec![(node1_id, QubitId::new(0)), (node2_id, QubitId::new(0))],
             EntanglementProtocol::DirectEntanglement,
         );
-        
+
         assert_eq!(gate.target_qubits.len(), 2);
-        assert!(matches!(gate.gate_type, DistributedGateType::DistributedCNOT));
+        assert!(matches!(
+            gate.gate_type,
+            DistributedGateType::DistributedCNOT
+        ));
     }
 
     #[tokio::test]
     async fn test_entanglement_manager() {
         let manager = EntanglementManager::new();
         assert_eq!(manager.entangled_pairs.lock().unwrap().len(), 0);
-        
+
         // Test entanglement establishment would require full network setup
         // This is a basic structure test
         assert!(manager.purification_threshold > 0.0);

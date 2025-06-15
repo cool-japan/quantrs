@@ -557,7 +557,7 @@ impl VariationalGate {
         loss_fn: impl Fn(&Array2<Complex<f64>>) -> f64,
     ) -> QuantRS2Result<Vec<f64>> {
         // Simplified implementation - would use dual numbers throughout
-        let mut gradients = vec![0.0; self.params.len()];
+        let _gradients = vec![0.0; self.params.len()];
 
         // For demonstration, use finite differences as fallback
         self.finite_diff_gradient(loss_fn, 1e-8)
@@ -572,7 +572,7 @@ impl VariationalGate {
         let mut graph = ComputationGraph::new();
 
         // Add parameters to graph
-        let param_nodes: Vec<_> = self
+        let _param_nodes: Vec<_> = self
             .params
             .iter()
             .zip(&self.values)

@@ -1,15 +1,15 @@
 //! Validation and testing for dynamical decoupling sequences
 
+use ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::time::Duration;
-use ndarray::{Array1, Array2};
 
-use crate::DeviceResult;
 use super::{
     config::{DDValidationConfig, RobustnessTestConfig},
     sequences::DDSequence,
     DDCircuitExecutor,
 };
+use crate::DeviceResult;
 
 /// Validation results for DD sequences
 #[derive(Debug, Clone)]
@@ -379,7 +379,10 @@ impl DDValidator {
         };
 
         let out_of_sample = if self.config.enable_validation {
-            Some(self.perform_out_of_sample_validation(sequence, executor).await?)
+            Some(
+                self.perform_out_of_sample_validation(sequence, executor)
+                    .await?,
+            )
         } else {
             None
         };
@@ -404,7 +407,8 @@ impl DDValidator {
         };
 
         let generalization_analysis = if self.config.enable_generalization {
-            self.perform_generalization_analysis(sequence, executor).await?
+            self.perform_generalization_analysis(sequence, executor)
+                .await?
         } else {
             GeneralizationAnalysis {
                 generalization_score: 0.8,
@@ -564,7 +568,8 @@ impl DDValidator {
         sequence: &DDSequence,
         executor: &dyn DDCircuitExecutor,
     ) -> DeviceResult<RobustnessTestResults> {
-        let parameter_sensitivity_results = self.test_parameter_sensitivity(sequence, executor).await?;
+        let parameter_sensitivity_results =
+            self.test_parameter_sensitivity(sequence, executor).await?;
         let noise_sensitivity_results = self.test_noise_sensitivity(sequence, executor).await?;
         let hardware_variation_results = self.test_hardware_variations(sequence, executor).await?;
         let systematic_error_results = self.test_systematic_errors(sequence, executor).await?;
@@ -585,7 +590,9 @@ impl DDValidator {
     ) -> DeviceResult<HashMap<String, ParameterSensitivityResult>> {
         let mut results = HashMap::new();
 
-        for (param_name, (min_val, max_val)) in &self.config.robustness_test_config.parameter_variations {
+        for (param_name, (min_val, max_val)) in
+            &self.config.robustness_test_config.parameter_variations
+        {
             let n_points = 20;
             let mut performance_variation = Array1::zeros(n_points);
 
@@ -597,25 +604,29 @@ impl DDValidator {
             }
 
             let sensitivity_score = performance_variation.std(1.0);
-            let robustness_margin = *performance_variation.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or(&0.0);
+            let robustness_margin = *performance_variation
+                .iter()
+                .min_by(|a, b| a.partial_cmp(b).unwrap())
+                .unwrap_or(&0.0);
 
-            let critical_regions = vec![
-                CriticalRegion {
-                    bounds: (*min_val, min_val + 0.1 * (max_val - min_val)),
-                    degradation: 0.15,
-                    risk_level: RiskLevel::Medium,
-                    mitigation_strategies: vec!["Parameter bounds checking".to_string()],
-                }
-            ];
+            let critical_regions = vec![CriticalRegion {
+                bounds: (*min_val, min_val + 0.1 * (max_val - min_val)),
+                degradation: 0.15,
+                risk_level: RiskLevel::Medium,
+                mitigation_strategies: vec!["Parameter bounds checking".to_string()],
+            }];
 
-            results.insert(param_name.clone(), ParameterSensitivityResult {
-                parameter_name: param_name.clone(),
-                sensitivity_score,
-                performance_variation,
-                variation_range: (*min_val, *max_val),
-                critical_regions,
-                robustness_margin,
-            });
+            results.insert(
+                param_name.clone(),
+                ParameterSensitivityResult {
+                    parameter_name: param_name.clone(),
+                    sensitivity_score,
+                    performance_variation,
+                    variation_range: (*min_val, *max_val),
+                    critical_regions,
+                    robustness_margin,
+                },
+            );
         }
 
         Ok(results)
@@ -643,19 +654,22 @@ impl DDValidator {
             let sensitivity_measure = degradation_curve.std(1.0);
             let breakdown_threshold = noise_level * 0.8;
 
-            results.insert(noise_type.clone(), NoiseSensitivityResult {
-                noise_type,
-                sensitivity_measure,
-                degradation_curve,
-                noise_level_range: (0.0, noise_level),
-                breakdown_threshold,
-                recovery_characteristics: RecoveryCharacteristics {
-                    recovery_time: Duration::from_millis(100),
-                    recovery_completeness: 0.9,
-                    hysteresis_present: false,
-                    recovery_strategies: vec!["Error correction".to_string()],
+            results.insert(
+                noise_type.clone(),
+                NoiseSensitivityResult {
+                    noise_type,
+                    sensitivity_measure,
+                    degradation_curve,
+                    noise_level_range: (0.0, noise_level),
+                    breakdown_threshold,
+                    recovery_characteristics: RecoveryCharacteristics {
+                        recovery_time: Duration::from_millis(100),
+                        recovery_completeness: 0.9,
+                        hysteresis_present: false,
+                        recovery_strategies: vec!["Error correction".to_string()],
+                    },
                 },
-            });
+            );
         }
 
         Ok(results)
@@ -751,14 +765,12 @@ impl DDValidator {
                     computational_complexity: "O(n^1.3)".to_string(),
                     sample_complexity: 500,
                     communication_complexity: "O(n)".to_string(),
-                    bottlenecks: vec![
-                        ComplexityBottleneck {
-                            bottleneck_type: BottleneckType::Computational,
-                            scaling_impact: 0.3,
-                            mitigation_strategies: vec!["Parallel processing".to_string()],
-                            criticality: 0.6,
-                        }
-                    ],
+                    bottlenecks: vec![ComplexityBottleneck {
+                        bottleneck_type: BottleneckType::Computational,
+                        scaling_impact: 0.3,
+                        mitigation_strategies: vec!["Parallel processing".to_string()],
+                        criticality: 0.6,
+                    }],
                 },
             },
         })

@@ -3,17 +3,14 @@
 //! Revolutionary universal quantum computing framework supporting all major architectures
 //! with advanced cross-platform compilation, hardware abstraction, and adaptive optimization.
 
+#![allow(dead_code)]
+
 use crate::error::QuantRS2Error;
-use crate::gate::GateOp;
-use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
-use crate::qubit::QubitId;
-use num_complex::Complex64;
-use ndarray::{Array1, Array2};
-use std::collections::{HashMap, VecDeque, BTreeMap, HashSet, BinaryHeap};
-use std::sync::{Arc, RwLock, Mutex, Condvar};
-use std::time::{Duration, Instant, SystemTime};
+use ndarray::Array2;
 use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
+use std::time::{Duration, Instant, SystemTime};
 
 /// Universal Quantum Computer Support Framework
 #[derive(Debug)]
@@ -51,7 +48,7 @@ pub enum ArchitectureType {
     Topological,
     SpinQubit,
     NMR,
-    Quantum_Dot,
+    QuantumDot,
     Anyonic,
     QuantumAnnealer,
     AdiabatticQuantum,
@@ -76,15 +73,41 @@ pub struct ArchitectureInfo {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum NativeGateType {
     // Universal single-qubit gates
-    I, X, Y, Z, H, S, T, Rx, Ry, Rz, U1, U2, U3,
+    I,
+    X,
+    Y,
+    Z,
+    H,
+    S,
+    T,
+    Rx,
+    Ry,
+    Rz,
+    U1,
+    U2,
+    U3,
     // Two-qubit gates
-    CNOT, CZ, SWAP, iSWAP, FSim, MS, Molmer_Sorensen,
+    CNOT,
+    CZ,
+    SWAP,
+    ISwap,
+    FSim,
+    MS,
+    MolmerSorensen,
     // Multi-qubit gates
-    Toffoli, Fredkin, CCZ,
+    Toffoli,
+    Fredkin,
+    CCZ,
     // Architecture-specific gates
-    RXX, RYY, RZZ, Sycamore, CrossResonance,
+    RXX,
+    RYY,
+    RZZ,
+    Sycamore,
+    CrossResonance,
     // Measurement and reset
-    Measure, Reset, Barrier,
+    Measure,
+    Reset,
+    Barrier,
     // Custom gates
     Custom(String),
 }
@@ -273,35 +296,35 @@ impl UniversalQuantumFramework {
         provider_info: HardwareProvider,
     ) -> Result<ArchitectureRegistrationResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Validate architecture compatibility
         let compatibility_analysis = self.analyze_architecture_compatibility(&architecture_info)?;
-        
+
         // Register architecture in hardware registry
         self.hardware_registry.supported_architectures.insert(
             architecture_info.architecture_type.clone(),
-            architecture_info.clone()
+            architecture_info.clone(),
         );
-        
+
         // Register hardware provider
-        self.hardware_registry.hardware_providers.insert(
-            provider_info.provider_name.clone(),
-            provider_info.clone()
-        );
-        
+        self.hardware_registry
+            .hardware_providers
+            .insert(provider_info.provider_name.clone(), provider_info.clone());
+
         // Update capability matrix
-        self.hardware_registry.capability_matrix.update_capabilities(&architecture_info)?;
-        
+        self.hardware_registry
+            .capability_matrix
+            .update_capabilities(&architecture_info)?;
+
         // Generate compilation strategies
         let compilation_strategies = self.generate_compilation_strategies(&architecture_info)?;
-        
+
         // Create architecture adaptor
         let adaptor = self.create_architecture_adaptor(&architecture_info)?;
-        self.cross_platform_optimizer.architecture_adaptors.insert(
-            architecture_info.architecture_type.clone(),
-            adaptor
-        );
-        
+        self.cross_platform_optimizer
+            .architecture_adaptors
+            .insert(architecture_info.architecture_type.clone(), adaptor);
+
         Ok(ArchitectureRegistrationResult {
             registration_id: Self::generate_id(),
             architecture_type: architecture_info.architecture_type,
@@ -320,29 +343,28 @@ impl UniversalQuantumFramework {
         optimization_level: OptimizationLevel,
     ) -> Result<UniversalCompilationResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Analyze circuit complexity and requirements
         let circuit_analysis = self.analyze_circuit_requirements(&circuit)?;
-        
+
         // Generate optimized compilations for each target architecture
         let mut compilations = HashMap::new();
         for architecture in &target_architectures {
-            let architecture_compilation = self.compile_for_architecture(
-                &circuit, 
-                architecture, 
-                &optimization_level
-            )?;
+            let architecture_compilation =
+                self.compile_for_architecture(&circuit, architecture, &optimization_level)?;
             compilations.insert(architecture.clone(), architecture_compilation);
         }
-        
+
         // Perform cross-platform optimization
-        let cross_platform_optimization = self.cross_platform_optimizer
+        let cross_platform_optimization = self
+            .cross_platform_optimizer
             .optimize_across_platforms(&compilations, &circuit_analysis)?;
-        
+
         // Generate portable code
-        let portable_code = self.portability_engine
+        let portable_code = self
+            .portability_engine
             .generate_portable_code(&compilations)?;
-        
+
         Ok(UniversalCompilationResult {
             compilation_id: Self::generate_id(),
             source_circuit: circuit,
@@ -363,25 +385,27 @@ impl UniversalQuantumFramework {
         execution_preferences: ExecutionPreferences,
     ) -> Result<AdaptiveExecutionResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Select optimal execution platform
-        let platform_selection = self.select_optimal_platform(&compiled_circuit, &execution_preferences)?;
-        
+        let platform_selection =
+            self.select_optimal_platform(&compiled_circuit, &execution_preferences)?;
+
         // Prepare adaptive execution environment
-        let execution_environment = self.adaptive_runtime.prepare_execution_environment(&platform_selection)?;
-        
+        let execution_environment = self
+            .adaptive_runtime
+            .prepare_execution_environment(&platform_selection)?;
+
         // Execute with real-time adaptation
-        let execution_result = self.adaptive_runtime.execute_with_adaptation(
-            &compiled_circuit,
-            &execution_environment
-        )?;
-        
+        let execution_result = self
+            .adaptive_runtime
+            .execute_with_adaptation(&compiled_circuit, &execution_environment)?;
+
         // Apply post-execution optimization
         let optimized_result = self.apply_post_execution_optimization(&execution_result)?;
-        
+
         // Update performance models
         self.update_performance_models(&platform_selection, &optimized_result)?;
-        
+
         Ok(AdaptiveExecutionResult {
             execution_id: Self::generate_id(),
             selected_platform: platform_selection.platform,
@@ -394,55 +418,65 @@ impl UniversalQuantumFramework {
     }
 
     /// Demonstrate universal framework advantages
-    pub fn demonstrate_universal_framework_advantages(&mut self) -> UniversalFrameworkAdvantageReport {
+    pub fn demonstrate_universal_framework_advantages(
+        &mut self,
+    ) -> UniversalFrameworkAdvantageReport {
         let mut report = UniversalFrameworkAdvantageReport::new();
-        
+
         // Benchmark architecture support
         report.architecture_support_advantage = self.benchmark_architecture_support();
-        
+
         // Benchmark compilation universality
         report.compilation_universality_advantage = self.benchmark_compilation_universality();
-        
+
         // Benchmark cross-platform optimization
         report.cross_platform_optimization_advantage = self.benchmark_cross_platform_optimization();
-        
+
         // Benchmark adaptive execution
         report.adaptive_execution_advantage = self.benchmark_adaptive_execution();
-        
+
         // Benchmark portability
         report.portability_advantage = self.benchmark_portability();
-        
+
         // Calculate overall universal framework advantage
-        report.overall_advantage = (
-            report.architecture_support_advantage +
-            report.compilation_universality_advantage +
-            report.cross_platform_optimization_advantage +
-            report.adaptive_execution_advantage +
-            report.portability_advantage
-        ) / 5.0;
-        
+        report.overall_advantage = (report.architecture_support_advantage
+            + report.compilation_universality_advantage
+            + report.cross_platform_optimization_advantage
+            + report.adaptive_execution_advantage
+            + report.portability_advantage)
+            / 5.0;
+
         report
     }
 
     // Helper methods
     fn generate_id() -> u64 {
         use std::collections::hash_map::DefaultHasher;
-        
+
         let mut hasher = DefaultHasher::new();
         SystemTime::now().hash(&mut hasher);
         hasher.finish()
     }
 
-    fn analyze_architecture_compatibility(&self, architecture: &ArchitectureInfo) -> Result<CompatibilityAnalysis, QuantRS2Error> {
+    fn analyze_architecture_compatibility(
+        &self,
+        _architecture: &ArchitectureInfo,
+    ) -> Result<CompatibilityAnalysis, QuantRS2Error> {
         Ok(CompatibilityAnalysis {
             compatibility_score: 0.95, // 95% compatibility
-            supported_features: ["quantum_gates", "measurements", "classical_control"].iter().map(|s| s.to_string()).collect(),
+            supported_features: ["quantum_gates", "measurements", "classical_control"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
             missing_features: vec![],
             adaptation_requirements: vec![],
         })
     }
 
-    fn generate_compilation_strategies(&self, _architecture: &ArchitectureInfo) -> Result<Vec<CompilationStrategy>, QuantRS2Error> {
+    fn generate_compilation_strategies(
+        &self,
+        _architecture: &ArchitectureInfo,
+    ) -> Result<Vec<CompilationStrategy>, QuantRS2Error> {
         Ok(vec![
             CompilationStrategy::OptimalFidelity,
             CompilationStrategy::MinimalDepth,
@@ -451,7 +485,10 @@ impl UniversalQuantumFramework {
         ])
     }
 
-    fn create_architecture_adaptor(&self, architecture: &ArchitectureInfo) -> Result<ArchitectureAdaptor, QuantRS2Error> {
+    fn create_architecture_adaptor(
+        &self,
+        architecture: &ArchitectureInfo,
+    ) -> Result<ArchitectureAdaptor, QuantRS2Error> {
         Ok(ArchitectureAdaptor {
             adaptor_id: Self::generate_id(),
             source_architecture: ArchitectureType::Custom("universal".to_string()),
@@ -462,7 +499,10 @@ impl UniversalQuantumFramework {
         })
     }
 
-    fn analyze_circuit_requirements(&self, _circuit: &UniversalQuantumCircuit) -> Result<CircuitAnalysis, QuantRS2Error> {
+    fn analyze_circuit_requirements(
+        &self,
+        _circuit: &UniversalQuantumCircuit,
+    ) -> Result<CircuitAnalysis, QuantRS2Error> {
         Ok(CircuitAnalysis {
             qubit_count: 10,
             gate_count: 100,
@@ -472,7 +512,12 @@ impl UniversalQuantumFramework {
         })
     }
 
-    fn compile_for_architecture(&self, _circuit: &UniversalQuantumCircuit, _architecture: &ArchitectureType, _optimization: &OptimizationLevel) -> Result<ArchitectureCompiledCircuit, QuantRS2Error> {
+    fn compile_for_architecture(
+        &self,
+        _circuit: &UniversalQuantumCircuit,
+        _architecture: &ArchitectureType,
+        _optimization: &OptimizationLevel,
+    ) -> Result<ArchitectureCompiledCircuit, QuantRS2Error> {
         Ok(ArchitectureCompiledCircuit {
             circuit_id: Self::generate_id(),
             architecture: _architecture.clone(),
@@ -482,7 +527,11 @@ impl UniversalQuantumFramework {
         })
     }
 
-    fn select_optimal_platform(&self, _circuit: &UniversalCompiledCircuit, _preferences: &ExecutionPreferences) -> Result<PlatformSelection, QuantRS2Error> {
+    fn select_optimal_platform(
+        &self,
+        _circuit: &UniversalCompiledCircuit,
+        _preferences: &ExecutionPreferences,
+    ) -> Result<PlatformSelection, QuantRS2Error> {
         Ok(PlatformSelection {
             platform: ArchitectureType::Superconducting,
             selection_score: 0.95,
@@ -490,14 +539,21 @@ impl UniversalQuantumFramework {
         })
     }
 
-    fn apply_post_execution_optimization(&self, result: &ExecutionResult) -> Result<OptimizedExecutionResult, QuantRS2Error> {
+    fn apply_post_execution_optimization(
+        &self,
+        result: &ExecutionResult,
+    ) -> Result<OptimizedExecutionResult, QuantRS2Error> {
         Ok(OptimizedExecutionResult {
             fidelity: result.fidelity * 1.05, // 5% improvement
             performance_improvement: 15.3,
         })
     }
 
-    fn update_performance_models(&mut self, _selection: &PlatformSelection, _result: &OptimizedExecutionResult) -> Result<(), QuantRS2Error> {
+    fn update_performance_models(
+        &mut self,
+        _selection: &PlatformSelection,
+        _result: &OptimizedExecutionResult,
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
@@ -539,43 +595,87 @@ impl QuantumHardwareRegistry {
 
     fn create_default_architectures() -> HashMap<ArchitectureType, ArchitectureInfo> {
         let mut architectures = HashMap::new();
-        
+
         // Superconducting architecture
-        architectures.insert(ArchitectureType::Superconducting, ArchitectureInfo {
-            architecture_type: ArchitectureType::Superconducting,
-            native_gates: [NativeGateType::X, NativeGateType::Y, NativeGateType::Z, NativeGateType::H, NativeGateType::CNOT, NativeGateType::CZ].iter().cloned().collect(),
-            qubit_connectivity: ConnectivityType::Grid2D,
-            coherence_characteristics: CoherenceCharacteristics::superconducting_default(),
-            error_models: vec![ErrorModel::Depolarizing, ErrorModel::Dephasing],
-            performance_metrics: PerformanceMetrics::superconducting_default(),
-            calibration_requirements: CalibrationRequirements::standard(),
-            optimization_strategies: vec![OptimizationStrategy::GateReduction, OptimizationStrategy::DepthOptimization],
-        });
-        
+        architectures.insert(
+            ArchitectureType::Superconducting,
+            ArchitectureInfo {
+                architecture_type: ArchitectureType::Superconducting,
+                native_gates: [
+                    NativeGateType::X,
+                    NativeGateType::Y,
+                    NativeGateType::Z,
+                    NativeGateType::H,
+                    NativeGateType::CNOT,
+                    NativeGateType::CZ,
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+                qubit_connectivity: ConnectivityType::Grid2D,
+                coherence_characteristics: CoherenceCharacteristics::superconducting_default(),
+                error_models: vec![ErrorModel::Depolarizing, ErrorModel::Dephasing],
+                performance_metrics: PerformanceMetrics::superconducting_default(),
+                calibration_requirements: CalibrationRequirements::standard(),
+                optimization_strategies: vec![
+                    OptimizationStrategy::GateReduction,
+                    OptimizationStrategy::DepthOptimization,
+                ],
+            },
+        );
+
         // Trapped Ion architecture
-        architectures.insert(ArchitectureType::TrappedIon, ArchitectureInfo {
-            architecture_type: ArchitectureType::TrappedIon,
-            native_gates: [NativeGateType::Rx, NativeGateType::Ry, NativeGateType::Rz, NativeGateType::MS].iter().cloned().collect(),
-            qubit_connectivity: ConnectivityType::AllToAll,
-            coherence_characteristics: CoherenceCharacteristics::trapped_ion_default(),
-            error_models: vec![ErrorModel::AmplitudeDamping, ErrorModel::PhaseDamping],
-            performance_metrics: PerformanceMetrics::trapped_ion_default(),
-            calibration_requirements: CalibrationRequirements::high_precision(),
-            optimization_strategies: vec![OptimizationStrategy::FidelityOptimization, OptimizationStrategy::ParallelGates],
-        });
-        
+        architectures.insert(
+            ArchitectureType::TrappedIon,
+            ArchitectureInfo {
+                architecture_type: ArchitectureType::TrappedIon,
+                native_gates: [
+                    NativeGateType::Rx,
+                    NativeGateType::Ry,
+                    NativeGateType::Rz,
+                    NativeGateType::MS,
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+                qubit_connectivity: ConnectivityType::AllToAll,
+                coherence_characteristics: CoherenceCharacteristics::trapped_ion_default(),
+                error_models: vec![ErrorModel::AmplitudeDamping, ErrorModel::PhaseDamping],
+                performance_metrics: PerformanceMetrics::trapped_ion_default(),
+                calibration_requirements: CalibrationRequirements::high_precision(),
+                optimization_strategies: vec![
+                    OptimizationStrategy::FidelityOptimization,
+                    OptimizationStrategy::ParallelGates,
+                ],
+            },
+        );
+
         // Photonic architecture
-        architectures.insert(ArchitectureType::Photonic, ArchitectureInfo {
-            architecture_type: ArchitectureType::Photonic,
-            native_gates: [NativeGateType::H, NativeGateType::S, NativeGateType::CZ, NativeGateType::Measure].iter().cloned().collect(),
-            qubit_connectivity: ConnectivityType::Linear,
-            coherence_characteristics: CoherenceCharacteristics::photonic_default(),
-            error_models: vec![ErrorModel::PhotonLoss, ErrorModel::DetectorNoise],
-            performance_metrics: PerformanceMetrics::photonic_default(),
-            calibration_requirements: CalibrationRequirements::low(),
-            optimization_strategies: vec![OptimizationStrategy::PhotonEfficiency, OptimizationStrategy::LinearOptical],
-        });
-        
+        architectures.insert(
+            ArchitectureType::Photonic,
+            ArchitectureInfo {
+                architecture_type: ArchitectureType::Photonic,
+                native_gates: [
+                    NativeGateType::H,
+                    NativeGateType::S,
+                    NativeGateType::CZ,
+                    NativeGateType::Measure,
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+                qubit_connectivity: ConnectivityType::Linear,
+                coherence_characteristics: CoherenceCharacteristics::photonic_default(),
+                error_models: vec![ErrorModel::PhotonLoss, ErrorModel::DetectorNoise],
+                performance_metrics: PerformanceMetrics::photonic_default(),
+                calibration_requirements: CalibrationRequirements::low(),
+                optimization_strategies: vec![
+                    OptimizationStrategy::PhotonEfficiency,
+                    OptimizationStrategy::LinearOptical,
+                ],
+            },
+        );
+
         architectures
     }
 }
@@ -613,7 +713,11 @@ impl CrossPlatformOptimizer {
         }
     }
 
-    pub fn optimize_across_platforms(&self, _compilations: &HashMap<ArchitectureType, ArchitectureCompiledCircuit>, _analysis: &CircuitAnalysis) -> Result<CrossPlatformOptimizationResult, QuantRS2Error> {
+    pub fn optimize_across_platforms(
+        &self,
+        _compilations: &HashMap<ArchitectureType, ArchitectureCompiledCircuit>,
+        _analysis: &CircuitAnalysis,
+    ) -> Result<CrossPlatformOptimizationResult, QuantRS2Error> {
         Ok(CrossPlatformOptimizationResult {
             optimization_score: 0.95,
             platform_rankings: vec![],
@@ -635,7 +739,10 @@ impl AdaptiveQuantumRuntime {
         }
     }
 
-    pub fn prepare_execution_environment(&self, _selection: &PlatformSelection) -> Result<ExecutionEnvironment, QuantRS2Error> {
+    pub fn prepare_execution_environment(
+        &self,
+        _selection: &PlatformSelection,
+    ) -> Result<ExecutionEnvironment, QuantRS2Error> {
         Ok(ExecutionEnvironment {
             platform: _selection.platform.clone(),
             calibration_state: CalibrationState::Optimal,
@@ -643,7 +750,11 @@ impl AdaptiveQuantumRuntime {
         })
     }
 
-    pub fn execute_with_adaptation(&self, _circuit: &UniversalCompiledCircuit, _environment: &ExecutionEnvironment) -> Result<ExecutionResult, QuantRS2Error> {
+    pub fn execute_with_adaptation(
+        &self,
+        _circuit: &UniversalCompiledCircuit,
+        _environment: &ExecutionEnvironment,
+    ) -> Result<ExecutionResult, QuantRS2Error> {
         Ok(ExecutionResult {
             success: true,
             fidelity: 0.99,
@@ -665,7 +776,10 @@ impl QuantumPortabilityEngine {
         }
     }
 
-    pub fn generate_portable_code(&self, _compilations: &HashMap<ArchitectureType, ArchitectureCompiledCircuit>) -> Result<PortableCode, QuantRS2Error> {
+    pub fn generate_portable_code(
+        &self,
+        _compilations: &HashMap<ArchitectureType, ArchitectureCompiledCircuit>,
+    ) -> Result<PortableCode, QuantRS2Error> {
         Ok(PortableCode {
             universal_bytecode: vec![],
             metadata: PortabilityMetadata::default(),
@@ -830,7 +944,14 @@ pub struct PerformanceMetrics;
 #[derive(Debug, Clone)]
 pub struct CalibrationRequirements;
 #[derive(Debug, Clone)]
-pub enum OptimizationStrategy { GateReduction, DepthOptimization, FidelityOptimization, ParallelGates, PhotonEfficiency, LinearOptical }
+pub enum OptimizationStrategy {
+    GateReduction,
+    DepthOptimization,
+    FidelityOptimization,
+    ParallelGates,
+    PhotonEfficiency,
+    LinearOptical,
+}
 #[derive(Debug)]
 pub struct UniversalCircuitOptimizer;
 #[derive(Debug)]
@@ -860,7 +981,12 @@ pub struct PerformanceModel;
 #[derive(Debug)]
 pub struct CostFunction;
 #[derive(Debug, Clone)]
-pub enum OptimizationAlgorithm { SimulatedAnnealing, GeneticAlgorithm, GradientDescent, BayesianOptimization }
+pub enum OptimizationAlgorithm {
+    SimulatedAnnealing,
+    GeneticAlgorithm,
+    GradientDescent,
+    BayesianOptimization,
+}
 #[derive(Debug)]
 pub struct ParetoOptimizer;
 #[derive(Debug)]
@@ -927,7 +1053,12 @@ pub struct CompatibilityAnalysis {
     pub adaptation_requirements: Vec<String>,
 }
 #[derive(Debug, Clone)]
-pub enum CompilationStrategy { OptimalFidelity, MinimalDepth, MinimalGates, Hybrid }
+pub enum CompilationStrategy {
+    OptimalFidelity,
+    MinimalDepth,
+    MinimalGates,
+    Hybrid,
+}
 #[derive(Debug)]
 pub struct CircuitAnalysis {
     pub qubit_count: usize,
@@ -965,7 +1096,11 @@ pub struct ExecutionEnvironment {
     pub resource_allocation: ResourceAllocation,
 }
 #[derive(Debug)]
-pub enum CalibrationState { Optimal, Good, Needs_Calibration }
+pub enum CalibrationState {
+    Optimal,
+    Good,
+    NeedsCalibration,
+}
 #[derive(Debug)]
 pub struct ResourceAllocation;
 #[derive(Debug)]
@@ -1015,94 +1150,145 @@ impl CoherenceCharacteristics {
 }
 
 impl PerformanceMetrics {
-    pub fn superconducting_default() -> Self { Self }
-    pub fn trapped_ion_default() -> Self { Self }
-    pub fn photonic_default() -> Self { Self }
+    pub fn superconducting_default() -> Self {
+        Self
+    }
+    pub fn trapped_ion_default() -> Self {
+        Self
+    }
+    pub fn photonic_default() -> Self {
+        Self
+    }
 }
 
 impl CalibrationRequirements {
-    pub fn standard() -> Self { Self }
-    pub fn high_precision() -> Self { Self }
-    pub fn low() -> Self { Self }
+    pub fn standard() -> Self {
+        Self
+    }
+    pub fn high_precision() -> Self {
+        Self
+    }
+    pub fn low() -> Self {
+        Self
+    }
 }
 
 impl CapabilityMatrix {
-    pub fn new() -> Self { Self }
-    pub fn update_capabilities(&mut self, _architecture: &ArchitectureInfo) -> Result<(), QuantRS2Error> { Ok(()) }
+    pub fn new() -> Self {
+        Self
+    }
+    pub fn update_capabilities(
+        &mut self,
+        _architecture: &ArchitectureInfo,
+    ) -> Result<(), QuantRS2Error> {
+        Ok(())
+    }
 }
 
 impl CompatibilityGraph {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl DeviceDiscoveryEngine {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl DynamicRegistrationSystem {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
-
 impl UniversalCircuitOptimizer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl UniversalRoutingEngine {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl QuantumTranspiler {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl InstructionScheduler {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl ResourceAllocator {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl CompilationCache {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl ParetoOptimizer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl MultiObjectiveOptimizer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl CompatibilityLayer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
-
 impl RealTimeCalibration {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl DynamicErrorCorrection {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl RuntimePerformanceMonitor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl AdaptiveScheduler {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl RuntimeResourceManager {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl UniversalIntermediateRepresentation {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         Self {
             ir_version: "1.0".to_string(),
             instruction_set: UniversalInstructionSet,
@@ -1114,39 +1300,55 @@ impl UniversalIntermediateRepresentation {
 }
 
 impl CompatibilityChecker {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl QuantumMigrationTools {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl UniversalCalibrationManager {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl UniversalErrorMitigation {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl UniversalPerformanceAnalyzer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl QuantumCompatibilityLayer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for PortabilityMetadata {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl Default for ResourceAllocation {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl UniversalGateSynthesis {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         Self {
             synthesis_id: UniversalQuantumFramework::generate_id(),
             synthesis_algorithms: HashMap::new(),
@@ -1163,7 +1365,7 @@ impl UniversalGateSynthesis {
 }
 
 impl AdaptiveExecutionEngine {
-    pub fn new() -> Self { 
+    pub fn new() -> Self {
         Self {
             engine_id: UniversalQuantumFramework::generate_id(),
             execution_strategies: HashMap::new(),
@@ -1177,7 +1379,9 @@ impl AdaptiveExecutionEngine {
 
 // Implement ordering for DecompositionRanking
 impl PartialEq for DecompositionRanking {
-    fn eq(&self, _other: &Self) -> bool { false }
+    fn eq(&self, _other: &Self) -> bool {
+        false
+    }
 }
 impl Eq for DecompositionRanking {}
 impl PartialOrd for DecompositionRanking {
@@ -1199,9 +1403,18 @@ mod tests {
     fn test_universal_framework_creation() {
         let framework = UniversalQuantumFramework::new();
         assert!(framework.hardware_registry.supported_architectures.len() >= 3);
-        assert!(framework.hardware_registry.supported_architectures.contains_key(&ArchitectureType::Superconducting));
-        assert!(framework.hardware_registry.supported_architectures.contains_key(&ArchitectureType::TrappedIon));
-        assert!(framework.hardware_registry.supported_architectures.contains_key(&ArchitectureType::Photonic));
+        assert!(framework
+            .hardware_registry
+            .supported_architectures
+            .contains_key(&ArchitectureType::Superconducting));
+        assert!(framework
+            .hardware_registry
+            .supported_architectures
+            .contains_key(&ArchitectureType::TrappedIon));
+        assert!(framework
+            .hardware_registry
+            .supported_architectures
+            .contains_key(&ArchitectureType::Photonic));
     }
 
     #[test]
@@ -1209,7 +1422,10 @@ mod tests {
         let mut framework = UniversalQuantumFramework::new();
         let architecture_info = ArchitectureInfo {
             architecture_type: ArchitectureType::NeutralAtom,
-            native_gates: [NativeGateType::Rx, NativeGateType::Ry, NativeGateType::Rz].iter().cloned().collect(),
+            native_gates: [NativeGateType::Rx, NativeGateType::Ry, NativeGateType::Rz]
+                .iter()
+                .cloned()
+                .collect(),
             qubit_connectivity: ConnectivityType::AllToAll,
             coherence_characteristics: CoherenceCharacteristics::trapped_ion_default(),
             error_models: vec![ErrorModel::Depolarizing],
@@ -1224,7 +1440,10 @@ mod tests {
             api_endpoints: vec!["https://api.test.com".to_string()],
             capabilities: ProviderCapabilities {
                 max_qubits: 100,
-                supported_gates: [NativeGateType::Rx, NativeGateType::Ry].iter().cloned().collect(),
+                supported_gates: [NativeGateType::Rx, NativeGateType::Ry]
+                    .iter()
+                    .cloned()
+                    .collect(),
                 connectivity: ConnectivityType::AllToAll,
             },
         };
@@ -1260,8 +1479,15 @@ mod tests {
             classical_bits: 2,
         };
 
-        let target_architectures = vec![ArchitectureType::Superconducting, ArchitectureType::TrappedIon];
-        let result = framework.compile_universal_circuit(circuit, target_architectures, OptimizationLevel::Standard);
+        let target_architectures = vec![
+            ArchitectureType::Superconducting,
+            ArchitectureType::TrappedIon,
+        ];
+        let result = framework.compile_universal_circuit(
+            circuit,
+            target_architectures,
+            OptimizationLevel::Standard,
+        );
         assert!(result.is_ok());
 
         let compilation_result = result.unwrap();
@@ -1274,7 +1500,7 @@ mod tests {
     fn test_universal_framework_advantages() {
         let mut framework = UniversalQuantumFramework::new();
         let report = framework.demonstrate_universal_framework_advantages();
-        
+
         // All advantages should demonstrate quantum superiority
         assert!(report.architecture_support_advantage > 1.0);
         assert!(report.compilation_universality_advantage > 1.0);
@@ -1287,32 +1513,47 @@ mod tests {
     #[test]
     fn test_architecture_support() {
         let registry = QuantumHardwareRegistry::new();
-        
+
         // Test that default architectures are properly registered
-        assert!(registry.supported_architectures.contains_key(&ArchitectureType::Superconducting));
-        assert!(registry.supported_architectures.contains_key(&ArchitectureType::TrappedIon));
-        assert!(registry.supported_architectures.contains_key(&ArchitectureType::Photonic));
-        
+        assert!(registry
+            .supported_architectures
+            .contains_key(&ArchitectureType::Superconducting));
+        assert!(registry
+            .supported_architectures
+            .contains_key(&ArchitectureType::TrappedIon));
+        assert!(registry
+            .supported_architectures
+            .contains_key(&ArchitectureType::Photonic));
+
         // Test architecture characteristics
         let superconducting = &registry.supported_architectures[&ArchitectureType::Superconducting];
         assert!(superconducting.native_gates.contains(&NativeGateType::CNOT));
-        assert!(matches!(superconducting.qubit_connectivity, ConnectivityType::Grid2D));
-        
+        assert!(matches!(
+            superconducting.qubit_connectivity,
+            ConnectivityType::Grid2D
+        ));
+
         let trapped_ion = &registry.supported_architectures[&ArchitectureType::TrappedIon];
         assert!(trapped_ion.native_gates.contains(&NativeGateType::MS));
-        assert!(matches!(trapped_ion.qubit_connectivity, ConnectivityType::AllToAll));
+        assert!(matches!(
+            trapped_ion.qubit_connectivity,
+            ConnectivityType::AllToAll
+        ));
     }
 
     #[test]
     fn test_coherence_characteristics() {
         let superconducting_coherence = CoherenceCharacteristics::superconducting_default();
-        assert_eq!(superconducting_coherence.t1_times[0], Duration::from_micros(100));
+        assert_eq!(
+            superconducting_coherence.t1_times[0],
+            Duration::from_micros(100)
+        );
         assert_eq!(superconducting_coherence.readout_fidelity, 0.99);
-        
+
         let trapped_ion_coherence = CoherenceCharacteristics::trapped_ion_default();
         assert_eq!(trapped_ion_coherence.t1_times[0], Duration::from_secs(60));
         assert_eq!(trapped_ion_coherence.readout_fidelity, 0.999);
-        
+
         let photonic_coherence = CoherenceCharacteristics::photonic_default();
         assert_eq!(photonic_coherence.readout_fidelity, 0.95);
         assert!(photonic_coherence.t1_times[0] > Duration::from_secs(100));

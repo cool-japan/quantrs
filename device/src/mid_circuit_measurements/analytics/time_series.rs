@@ -1,8 +1,8 @@
 //! Time series analysis components
 
-use ndarray::Array1;
-use crate::DeviceResult;
 use super::super::results::*;
+use crate::DeviceResult;
+use ndarray::Array1;
 
 /// Time series analyzer for measurement data
 pub struct TimeSeriesAnalyzer {
@@ -32,8 +32,9 @@ impl TimeSeriesAnalyzer {
         }
 
         let trend_analysis = self.analyze_trend(values, timestamps)?;
-        let seasonality_analysis = self.analyze_seasonality(values)
-            .ok_or_else(|| crate::DeviceError::APIError("Failed to analyze seasonality".to_string()))?;
+        let seasonality_analysis = self.analyze_seasonality(values).ok_or_else(|| {
+            crate::DeviceError::APIError("Failed to analyze seasonality".to_string())
+        })?;
         let autocorrelation = self.analyze_autocorrelation(values)?;
         let change_points = self.detect_change_points(values, timestamps)?;
         let stationarity = self.test_stationarity(values)?;
@@ -143,7 +144,8 @@ impl TimeSeriesAnalyzer {
         let mut pacf = Vec::with_capacity(max_lag);
 
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance = values.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
+        let variance =
+            values.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
 
         // Calculate autocorrelation function
         for lag in 1..=max_lag {
@@ -167,15 +169,21 @@ impl TimeSeriesAnalyzer {
 
         // Find significant lags (simplified)
         let threshold = 2.0 / (values.len() as f64).sqrt();
-        let significant_lags: Vec<usize> = acf.iter()
+        let significant_lags: Vec<usize> = acf
+            .iter()
             .enumerate()
             .filter(|(_, &corr)| corr.abs() > threshold)
             .map(|(i, _)| i + 1)
             .collect();
 
         // Ljung-Box test (simplified)
-        let ljung_box_statistic = acf.iter().take(10).map(|&x| x.powi(2)).sum::<f64>() * values.len() as f64;
-        let ljung_box_p_value = if ljung_box_statistic > 18.3 { 0.01 } else { 0.1 };
+        let ljung_box_statistic =
+            acf.iter().take(10).map(|&x| x.powi(2)).sum::<f64>() * values.len() as f64;
+        let ljung_box_p_value = if ljung_box_statistic > 18.3 {
+            0.01
+        } else {
+            0.1
+        };
 
         Ok(AutocorrelationAnalysis {
             acf: Array1::from_vec(acf),
@@ -187,7 +195,11 @@ impl TimeSeriesAnalyzer {
     }
 
     /// Detect change points
-    fn detect_change_points(&self, values: &[f64], timestamps: &[f64]) -> DeviceResult<Vec<ChangePoint>> {
+    fn detect_change_points(
+        &self,
+        values: &[f64],
+        timestamps: &[f64],
+    ) -> DeviceResult<Vec<ChangePoint>> {
         if values.len() < 10 {
             return Ok(vec![]);
         }
@@ -199,10 +211,11 @@ impl TimeSeriesAnalyzer {
         for i in window_size..(values.len() - window_size) {
             let before_mean = values[(i - window_size)..i].iter().sum::<f64>() / window_size as f64;
             let after_mean = values[i..(i + window_size)].iter().sum::<f64>() / window_size as f64;
-            
+
             let magnitude = (after_mean - before_mean).abs();
-            
-            if magnitude > 0.1 { // Threshold for change detection
+
+            if magnitude > 0.1 {
+                // Threshold for change detection
                 change_points.push(ChangePoint {
                     index: i,
                     timestamp: timestamps[i],

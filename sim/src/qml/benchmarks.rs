@@ -6,11 +6,11 @@
 use ndarray::Array1;
 use std::collections::HashMap;
 
-use crate::error::Result;
-use super::config::{QMLConfig, QMLAlgorithmType, HardwareArchitecture};
+use super::circuit::{HardwareOptimizations, ParameterizedQuantumCircuit};
+use super::config::{HardwareArchitecture, QMLAlgorithmType, QMLConfig};
 use super::trainer::QuantumMLTrainer;
-use super::circuit::{ParameterizedQuantumCircuit, HardwareOptimizations};
 use crate::circuit_interfaces::InterfaceCircuit;
+use crate::error::Result;
 
 /// Benchmark quantum ML algorithms across different configurations
 pub fn benchmark_quantum_ml_algorithms() -> Result<HashMap<String, f64>> {
@@ -65,12 +65,7 @@ fn benchmark_algorithm_hardware_combination(
         .map(|i| format!("param_{}", i))
         .collect();
 
-    let pqc = ParameterizedQuantumCircuit::new(
-        circuit,
-        parameters,
-        parameter_names,
-        hardware,
-    );
+    let pqc = ParameterizedQuantumCircuit::new(circuit, parameters, parameter_names, hardware);
 
     let mut trainer = QuantumMLTrainer::new(config, pqc, None)?;
 
@@ -96,10 +91,10 @@ fn create_test_circuit(num_qubits: usize) -> Result<InterfaceCircuit> {
 /// Benchmark gradient computation methods
 pub fn benchmark_gradient_methods() -> Result<HashMap<String, f64>> {
     let mut results = HashMap::new();
-    
+
     let methods = vec![
         "parameter_shift",
-        "finite_differences", 
+        "finite_differences",
         "automatic_differentiation",
         "natural_gradients",
     ];
@@ -115,14 +110,18 @@ pub fn benchmark_gradient_methods() -> Result<HashMap<String, f64>> {
 /// Benchmark a specific gradient computation method
 fn benchmark_gradient_method(method: &str) -> Result<f64> {
     let start = std::time::Instant::now();
-    
+
     // Create a simple function to differentiate
     let test_function = |params: &Array1<f64>| -> Result<f64> {
-        Ok(params.iter().enumerate().map(|(i, &x)| (i as f64 + 1.0) * x * x).sum::<f64>())
+        Ok(params
+            .iter()
+            .enumerate()
+            .map(|(i, &x)| (i as f64 + 1.0) * x * x)
+            .sum::<f64>())
     };
 
     let test_params = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
-    
+
     // Simulate gradient computation
     match method {
         "parameter_shift" => {
@@ -137,9 +136,12 @@ fn benchmark_gradient_method(method: &str) -> Result<f64> {
         "natural_gradients" => {
             compute_natural_gradient(&test_function, &test_params)?;
         }
-        _ => return Err(crate::error::SimulatorError::InvalidInput(
-            format!("Unknown gradient method: {}", method)
-        )),
+        _ => {
+            return Err(crate::error::SimulatorError::InvalidInput(format!(
+                "Unknown gradient method: {}",
+                method
+            )))
+        }
     }
 
     Ok(start.elapsed().as_secs_f64() * 1000.0)
@@ -148,7 +150,7 @@ fn benchmark_gradient_method(method: &str) -> Result<f64> {
 /// Compute parameter shift gradient (simplified implementation)
 fn compute_parameter_shift_gradient<F>(
     function: &F,
-    parameters: &Array1<f64>
+    parameters: &Array1<f64>,
 ) -> Result<Array1<f64>>
 where
     F: Fn(&Array1<f64>) -> Result<f64>,
@@ -160,13 +162,13 @@ where
     for i in 0..num_params {
         let mut params_plus = parameters.clone();
         let mut params_minus = parameters.clone();
-        
+
         params_plus[i] += shift;
         params_minus[i] -= shift;
-        
+
         let loss_plus = function(&params_plus)?;
         let loss_minus = function(&params_minus)?;
-        
+
         gradient[i] = (loss_plus - loss_minus) / 2.0;
     }
 
@@ -176,7 +178,7 @@ where
 /// Compute finite difference gradient
 fn compute_finite_difference_gradient<F>(
     function: &F,
-    parameters: &Array1<f64>
+    parameters: &Array1<f64>,
 ) -> Result<Array1<f64>>
 where
     F: Fn(&Array1<f64>) -> Result<f64>,
@@ -188,10 +190,10 @@ where
     for i in 0..num_params {
         let mut params_plus = parameters.clone();
         params_plus[i] += eps;
-        
+
         let loss_plus = function(&params_plus)?;
         let loss_current = function(parameters)?;
-        
+
         gradient[i] = (loss_plus - loss_current) / eps;
     }
 
@@ -199,10 +201,7 @@ where
 }
 
 /// Compute autodiff gradient (placeholder)
-fn compute_autodiff_gradient<F>(
-    function: &F,
-    parameters: &Array1<f64>
-) -> Result<Array1<f64>>
+fn compute_autodiff_gradient<F>(function: &F, parameters: &Array1<f64>) -> Result<Array1<f64>>
 where
     F: Fn(&Array1<f64>) -> Result<f64>,
 {
@@ -211,10 +210,7 @@ where
 }
 
 /// Compute natural gradient (placeholder)
-fn compute_natural_gradient<F>(
-    function: &F,
-    parameters: &Array1<f64>
-) -> Result<Array1<f64>>
+fn compute_natural_gradient<F>(function: &F, parameters: &Array1<f64>) -> Result<Array1<f64>>
 where
     F: Fn(&Array1<f64>) -> Result<f64>,
 {
@@ -225,13 +221,8 @@ where
 /// Benchmark optimizer performance
 pub fn benchmark_optimizers() -> Result<HashMap<String, f64>> {
     let mut results = HashMap::new();
-    
-    let optimizers = vec![
-        "adam",
-        "sgd",
-        "rmsprop",
-        "lbfgs",
-    ];
+
+    let optimizers = vec!["adam", "sgd", "rmsprop", "lbfgs"];
 
     for optimizer in optimizers {
         let benchmark_time = benchmark_optimizer(optimizer)?;
@@ -244,15 +235,15 @@ pub fn benchmark_optimizers() -> Result<HashMap<String, f64>> {
 /// Benchmark a specific optimizer
 fn benchmark_optimizer(optimizer: &str) -> Result<f64> {
     let start = std::time::Instant::now();
-    
+
     // Simulate optimizer performance on a simple quadratic function
     let mut params = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0]);
     let target = Array1::<f64>::zeros(4);
-    
+
     for _iteration in 0..100 {
         // Compute gradient
         let gradient = &params - &target;
-        
+
         // Apply optimizer update (simplified)
         match optimizer {
             "adam" => {
@@ -270,9 +261,12 @@ fn benchmark_optimizer(optimizer: &str) -> Result<f64> {
                 // Simplified L-BFGS update
                 params = &params - 0.01 * &gradient;
             }
-            _ => return Err(crate::error::SimulatorError::InvalidInput(
-                format!("Unknown optimizer: {}", optimizer)
-            )),
+            _ => {
+                return Err(crate::error::SimulatorError::InvalidInput(format!(
+                    "Unknown optimizer: {}",
+                    optimizer
+                )))
+            }
         }
     }
 
@@ -282,10 +276,10 @@ fn benchmark_optimizer(optimizer: &str) -> Result<f64> {
 /// Run comprehensive benchmarks
 pub fn run_comprehensive_benchmarks() -> Result<HashMap<String, HashMap<String, f64>>> {
     let mut all_results = HashMap::new();
-    
+
     all_results.insert("algorithms".to_string(), benchmark_quantum_ml_algorithms()?);
     all_results.insert("gradients".to_string(), benchmark_gradient_methods()?);
     all_results.insert("optimizers".to_string(), benchmark_optimizers()?);
-    
+
     Ok(all_results)
 }

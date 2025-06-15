@@ -1,21 +1,17 @@
 //! Analysis utilities for dynamical decoupling
 
-use std::collections::HashMap;
 use ndarray::{Array1, Array2};
+use std::collections::HashMap;
 
+use super::{config::NoiseType, performance::DDPerformanceAnalysis, sequences::DDSequence};
 use crate::DeviceResult;
-use super::{
-    config::NoiseType,
-    sequences::DDSequence,
-    performance::DDPerformanceAnalysis,
-};
 
 // SciRS2 dependencies with fallbacks
 #[cfg(feature = "scirs2")]
 use scirs2_stats::{mean, std};
 
 #[cfg(not(feature = "scirs2"))]
-use super::fallback_scirs2::{mean, std, trace, inv};
+use super::fallback_scirs2::{inv, mean, std, trace};
 
 /// Statistical analysis results for DD sequences
 #[derive(Debug, Clone)]
@@ -513,12 +509,12 @@ impl DDStatisticalAnalyzer {
     ) -> DeviceResult<DDStatisticalAnalysis> {
         // Create sample data for analysis
         let sample_data = Self::generate_sample_data(sequence, performance_analysis)?;
-        
+
         let basic_statistics = Self::calculate_basic_statistics(&sample_data)?;
         let advanced_statistics = Self::perform_advanced_analysis(&sample_data)?;
         let ml_insights = Self::extract_ml_insights(&sample_data)?;
         let uncertainty_analysis = Self::quantify_uncertainty(&sample_data)?;
-        
+
         Ok(DDStatisticalAnalysis {
             basic_statistics,
             advanced_statistics,
@@ -526,7 +522,7 @@ impl DDStatisticalAnalyzer {
             uncertainty_analysis,
         })
     }
-    
+
     /// Generate sample data for analysis
     fn generate_sample_data(
         _sequence: &DDSequence,
@@ -536,49 +532,54 @@ impl DDStatisticalAnalyzer {
         let n_samples = 100;
         let n_features = performance_analysis.metrics.len();
         let mut data = Array2::zeros((n_samples, n_features));
-        
+
         // Fill with simulated data
         for i in 0..n_samples {
             for j in 0..n_features {
                 data[[i, j]] = rand::random::<f64>();
             }
         }
-        
+
         Ok(data)
     }
-    
+
     /// Calculate basic statistics
     fn calculate_basic_statistics(data: &Array2<f64>) -> DeviceResult<BasicStatistics> {
         let flat_data = data.iter().cloned().collect::<Vec<f64>>();
         let n = flat_data.len() as f64;
-        
+
         let mean = flat_data.iter().sum::<f64>() / n;
         let variance = flat_data.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (n - 1.0);
         let std_deviation = variance.sqrt();
-        
+
         // Calculate higher moments
-        let skewness = flat_data.iter()
+        let skewness = flat_data
+            .iter()
             .map(|x| ((x - mean) / std_deviation).powi(3))
-            .sum::<f64>() / n;
-        
-        let kurtosis = flat_data.iter()
+            .sum::<f64>()
+            / n;
+
+        let kurtosis = flat_data
+            .iter()
             .map(|x| ((x - mean) / std_deviation).powi(4))
-            .sum::<f64>() / n - 3.0;
-        
+            .sum::<f64>()
+            / n
+            - 3.0;
+
         // Calculate median and IQR
         let mut sorted_data = flat_data.clone();
         sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        
+
         let median = if sorted_data.len() % 2 == 0 {
             (sorted_data[sorted_data.len() / 2 - 1] + sorted_data[sorted_data.len() / 2]) / 2.0
         } else {
             sorted_data[sorted_data.len() / 2]
         };
-        
+
         let q1 = sorted_data[sorted_data.len() / 4];
         let q3 = sorted_data[3 * sorted_data.len() / 4];
         let iqr = q3 - q1;
-        
+
         Ok(BasicStatistics {
             mean,
             std_deviation,
@@ -589,7 +590,7 @@ impl DDStatisticalAnalyzer {
             iqr,
         })
     }
-    
+
     /// Perform advanced statistical analysis (simplified)
     fn perform_advanced_analysis(_data: &Array2<f64>) -> DeviceResult<AdvancedStatistics> {
         // Simplified implementations
@@ -619,7 +620,7 @@ impl DDStatisticalAnalyzer {
                 feature_importance: Array1::from_vec(vec![0.7, 0.3]),
             },
         };
-        
+
         Ok(AdvancedStatistics {
             multivariate_analysis,
             time_series_analysis: None,
@@ -659,7 +660,7 @@ impl DDStatisticalAnalyzer {
             },
         })
     }
-    
+
     /// Extract ML insights (simplified)
     fn extract_ml_insights(_data: &Array2<f64>) -> DeviceResult<MLInsights> {
         Ok(MLInsights {
@@ -707,14 +708,14 @@ impl DDStatisticalAnalyzer {
             },
         })
     }
-    
+
     /// Quantify uncertainty (simplified)
     fn quantify_uncertainty(_data: &Array2<f64>) -> DeviceResult<UncertaintyAnalysis> {
         let mut uncertainty_sources = HashMap::new();
         uncertainty_sources.insert("measurement_noise".to_string(), 0.3);
         uncertainty_sources.insert("model_uncertainty".to_string(), 0.2);
         uncertainty_sources.insert("parameter_uncertainty".to_string(), 0.1);
-        
+
         Ok(UncertaintyAnalysis {
             aleatory_uncertainty: 0.3,
             epistemic_uncertainty: 0.2,

@@ -4,22 +4,19 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use quantrs2_circuit::prelude::Circuit;
 use ndarray::Array1;
+use quantrs2_circuit::prelude::Circuit;
 
 use crate::{
-    backend_traits::BackendCapabilities,
-    calibration::DeviceCalibration,
-    crosstalk::CrosstalkCharacterization,
-    noise_model::CalibrationNoiseModel,
-    topology::HardwareTopology,
-    DeviceError, DeviceResult,
+    backend_traits::BackendCapabilities, calibration::DeviceCalibration,
+    crosstalk::CrosstalkCharacterization, noise_model::CalibrationNoiseModel,
+    topology::HardwareTopology, DeviceError, DeviceResult,
 };
 
 use super::config::CompilerConfig;
-use super::types::*;
-use super::optimization::{SciRS2OptimizationEngine, CrosstalkModel, GlobalMitigationStrategy};
+use super::optimization::{CrosstalkModel, GlobalMitigationStrategy, SciRS2OptimizationEngine};
 use super::passes::{PassCoordinator, PerformanceMonitor};
+use super::types::*;
 
 /// Advanced hardware compiler with SciRS2 integration
 pub struct HardwareCompiler {
@@ -55,7 +52,7 @@ impl HardwareCompiler {
         backend_capabilities: BackendCapabilities,
     ) -> DeviceResult<Self> {
         let noise_model = CalibrationNoiseModel::from_calibration(&calibration);
-        
+
         let scirs2_engine = Arc::new(SciRS2OptimizationEngine::new(&config.scirs2_config)?);
         let performance_monitor = Arc::new(Mutex::new(PerformanceMonitor::new()));
         let pass_coordinator = PassCoordinator::new(&config)?;
@@ -74,13 +71,14 @@ impl HardwareCompiler {
             platform_optimizers,
         })
     }
-    
+
     /// Create platform-specific optimizers  
     fn create_platform_optimizers(
         target: &CompilationTarget,
-    ) -> DeviceResult<HashMap<String, String>> { // Simplified to avoid dyn trait issues
+    ) -> DeviceResult<HashMap<String, String>> {
+        // Simplified to avoid dyn trait issues
         let mut optimizers: HashMap<String, String> = HashMap::new();
-        
+
         match target {
             CompilationTarget::IBMQuantum { .. } => {
                 optimizers.insert("ibm".to_string(), "IBMQuantumOptimizer".to_string());
@@ -92,10 +90,13 @@ impl HardwareCompiler {
                 optimizers.insert("azure".to_string(), "AzureQuantumOptimizer".to_string());
             }
             _ => {
-                optimizers.insert("generic".to_string(), "GenericPlatformOptimizer".to_string());
+                optimizers.insert(
+                    "generic".to_string(),
+                    "GenericPlatformOptimizer".to_string(),
+                );
             }
         }
-        
+
         Ok(optimizers)
     }
 
@@ -108,7 +109,7 @@ impl HardwareCompiler {
         let mut optimized_circuit = circuit.clone();
         let mut optimization_stats = self.initialize_optimization_stats(circuit);
         let mut optimization_history = Vec::new();
-        
+
         // Initialize performance monitoring
         {
             let mut monitor = self.performance_monitor.lock().map_err(|_| {
@@ -116,7 +117,7 @@ impl HardwareCompiler {
             })?;
             monitor.start_compilation_monitoring();
         }
-        
+
         // Initial circuit analysis
         let initial_metrics = self.analyze_circuit_complexity(&optimized_circuit)?;
         optimization_history.push(OptimizationIteration {
@@ -128,23 +129,33 @@ impl HardwareCompiler {
         });
 
         // Execute compiler passes
-        let applied_passes = self.pass_coordinator.execute_passes(
-            &mut optimized_circuit,
-            &self.scirs2_engine,
-            &self.performance_monitor,
-        ).await?;
+        let applied_passes = self
+            .pass_coordinator
+            .execute_passes(
+                &mut optimized_circuit,
+                &self.scirs2_engine,
+                &self.performance_monitor,
+            )
+            .await?;
 
         // Perform advanced SciRS2 optimization if enabled
         if self.config.scirs2_config.enable_advanced_optimization {
-            let scirs2_result = self.scirs2_engine.optimize_circuit_parameters(
-                &optimized_circuit,
-                |params| self.evaluate_circuit_objective(&optimized_circuit, params).unwrap_or(f64::INFINITY),
-                &Array1::zeros(4), // Mock initial parameters
-            ).await?;
-            
+            let scirs2_result = self
+                .scirs2_engine
+                .optimize_circuit_parameters(
+                    &optimized_circuit,
+                    |params| {
+                        self.evaluate_circuit_objective(&optimized_circuit, params)
+                            .unwrap_or(f64::INFINITY)
+                    },
+                    &Array1::zeros(4), // Mock initial parameters
+                )
+                .await?;
+
             if scirs2_result.success && scirs2_result.improvement > 0.01 {
-                let _modified = self.apply_optimized_parameters(&mut optimized_circuit, &scirs2_result.x)?;
-                
+                let _modified =
+                    self.apply_optimized_parameters(&mut optimized_circuit, &scirs2_result.x)?;
+
                 optimization_history.push(OptimizationIteration {
                     iteration: optimization_history.len(),
                     objective_values: vec![scirs2_result.objective_value],
@@ -156,23 +167,32 @@ impl HardwareCompiler {
         }
 
         // Generate hardware allocation
-        let hardware_allocation = self.generate_hardware_allocation(&optimized_circuit).await?;
-        
+        let hardware_allocation = self
+            .generate_hardware_allocation(&optimized_circuit)
+            .await?;
+
         // Generate performance prediction
         let predicted_performance = self.predict_circuit_performance(&optimized_circuit).await?;
-        
+
         // Generate advanced metrics
-        let advanced_metrics = self.generate_advanced_metrics(&optimized_circuit, &initial_metrics).await?;
-        
+        let advanced_metrics = self
+            .generate_advanced_metrics(&optimized_circuit, &initial_metrics)
+            .await?;
+
         // Update optimization statistics
-        optimization_stats = self.finalize_optimization_stats(&optimized_circuit, optimization_stats);
-        
+        optimization_stats =
+            self.finalize_optimization_stats(&optimized_circuit, optimization_stats);
+
         // Generate platform-specific results
-        let platform_specific = self.generate_platform_specific_results(&optimized_circuit).await?;
-        
+        let platform_specific = self
+            .generate_platform_specific_results(&optimized_circuit)
+            .await?;
+
         // Perform verification
-        let verification_results = self.perform_circuit_verification(&optimized_circuit, circuit).await?;
-        
+        let verification_results = self
+            .perform_circuit_verification(&optimized_circuit, circuit)
+            .await?;
+
         let compilation_time = start_time.elapsed();
 
         Ok(CompilationResult {
@@ -191,7 +211,10 @@ impl HardwareCompiler {
     }
 
     /// Initialize optimization statistics
-    fn initialize_optimization_stats<const N: usize>(&self, circuit: &Circuit<N>) -> OptimizationStats {
+    fn initialize_optimization_stats<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+    ) -> OptimizationStats {
         OptimizationStats {
             original_gate_count: 10, // Mock value
             optimized_gate_count: 10,
@@ -205,13 +228,19 @@ impl HardwareCompiler {
     }
 
     /// Calculate objective values for current circuit state
-    fn calculate_objective_values<const N: usize>(&self, _circuit: &Circuit<N>) -> DeviceResult<Vec<f64>> {
+    fn calculate_objective_values<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+    ) -> DeviceResult<Vec<f64>> {
         // Mock implementation - would calculate actual objective values
         Ok(vec![0.95, 0.88, 0.92])
     }
 
     /// Extract circuit metrics for analysis
-    fn extract_circuit_metrics<const N: usize>(&self, _circuit: &Circuit<N>) -> DeviceResult<HashMap<String, f64>> {
+    fn extract_circuit_metrics<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+    ) -> DeviceResult<HashMap<String, f64>> {
         // Mock implementation
         let mut metrics = HashMap::new();
         metrics.insert("gate_count".to_string(), 10.0);
@@ -302,11 +331,14 @@ impl HardwareCompiler {
     ) -> DeviceResult<VerificationResults> {
         // Mock implementation
         let start_time = Instant::now();
-        
-        let equivalence_verified = self.verify_circuit_equivalence(optimized_circuit, original_circuit)?;
+
+        let equivalence_verified =
+            self.verify_circuit_equivalence(optimized_circuit, original_circuit)?;
         let constraints_satisfied = self.verify_circuit_constraints(optimized_circuit)?.is_valid;
-        let semantic_correctness = self.verify_semantic_correctness(optimized_circuit)?.is_valid;
-        
+        let semantic_correctness = self
+            .verify_semantic_correctness(optimized_circuit)?
+            .is_valid;
+
         let verification_time = start_time.elapsed();
 
         Ok(VerificationResults {
@@ -329,7 +361,10 @@ impl HardwareCompiler {
     }
 
     // Stub implementations for missing methods
-    fn analyze_circuit_complexity<const N: usize>(&self, _circuit: &Circuit<N>) -> DeviceResult<ComplexityMetrics> {
+    fn analyze_circuit_complexity<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+    ) -> DeviceResult<ComplexityMetrics> {
         Ok(ComplexityMetrics {
             depth_distribution: vec![],
             gate_distribution: HashMap::new(),
@@ -338,23 +373,37 @@ impl HardwareCompiler {
             quantum_volume: 0,
         })
     }
-    
-    fn verify_circuit_constraints<const N: usize>(&self, _circuit: &Circuit<N>) -> DeviceResult<ConstraintVerificationResult> {
+
+    fn verify_circuit_constraints<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+    ) -> DeviceResult<ConstraintVerificationResult> {
         Ok(ConstraintVerificationResult { is_valid: true })
     }
-    
-    fn verify_semantic_correctness<const N: usize>(&self, _circuit: &Circuit<N>) -> DeviceResult<SemanticVerificationResult> {
+
+    fn verify_semantic_correctness<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+    ) -> DeviceResult<SemanticVerificationResult> {
         Ok(SemanticVerificationResult { is_valid: true })
     }
-    
-    fn evaluate_circuit_objective<const N: usize>(&self, _circuit: &Circuit<N>, _params: &Array1<f64>) -> DeviceResult<f64> {
+
+    fn evaluate_circuit_objective<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+        _params: &Array1<f64>,
+    ) -> DeviceResult<f64> {
         Ok(0.95)
     }
-    
-    fn apply_optimized_parameters<const N: usize>(&self, _circuit: &mut Circuit<N>, _params: &Array1<f64>) -> DeviceResult<usize> {
+
+    fn apply_optimized_parameters<const N: usize>(
+        &self,
+        _circuit: &mut Circuit<N>,
+        _params: &Array1<f64>,
+    ) -> DeviceResult<usize> {
         Ok(0)
     }
-    
+
     async fn generate_advanced_metrics<const N: usize>(
         &self,
         _circuit: &Circuit<N>,

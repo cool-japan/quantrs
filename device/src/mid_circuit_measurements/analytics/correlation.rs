@@ -1,8 +1,8 @@
 //! Correlation analysis components
 
-use ndarray::Array2;
-use crate::DeviceResult;
 use super::super::results::*;
+use crate::DeviceResult;
+use ndarray::Array2;
 
 /// Correlation analyzer for measurement data
 pub struct CorrelationAnalyzer {
@@ -31,15 +31,19 @@ impl CorrelationAnalyzer {
         let n_samples = latencies.len();
 
         // Calculate correlation matrices
-        let pearson_correlations = self.calculate_pearson_correlations(latencies, confidences, timestamps)?;
-        let spearman_correlations = self.calculate_spearman_correlations(latencies, confidences, timestamps)?;
-        let kendall_correlations = self.calculate_kendall_correlations(latencies, confidences, timestamps)?;
+        let pearson_correlations =
+            self.calculate_pearson_correlations(latencies, confidences, timestamps)?;
+        let spearman_correlations =
+            self.calculate_spearman_correlations(latencies, confidences, timestamps)?;
+        let kendall_correlations =
+            self.calculate_kendall_correlations(latencies, confidences, timestamps)?;
 
         // Find significant correlations
         let significant_correlations = self.find_significant_correlations(&pearson_correlations)?;
 
         // Calculate partial correlations
-        let partial_correlations = self.calculate_partial_correlations(latencies, confidences, timestamps)?;
+        let partial_correlations =
+            self.calculate_partial_correlations(latencies, confidences, timestamps)?;
 
         // Perform network analysis
         let network_analysis = self.perform_network_analysis(&pearson_correlations)?;
@@ -143,7 +147,9 @@ impl CorrelationAnalyzer {
         let mean_x = x.iter().sum::<f64>() / n;
         let mean_y = y.iter().sum::<f64>() / n;
 
-        let numerator: f64 = x.iter().zip(y.iter())
+        let numerator: f64 = x
+            .iter()
+            .zip(y.iter())
             .map(|(&xi, &yi)| (xi - mean_x) * (yi - mean_y))
             .sum();
 
@@ -161,14 +167,15 @@ impl CorrelationAnalyzer {
 
     /// Convert values to ranks
     fn convert_to_ranks(&self, values: &[f64]) -> Vec<f64> {
-        let mut indexed_values: Vec<(usize, f64)> = values.iter().enumerate().map(|(i, &v)| (i, v)).collect();
+        let mut indexed_values: Vec<(usize, f64)> =
+            values.iter().enumerate().map(|(i, &v)| (i, v)).collect();
         indexed_values.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-        
+
         let mut ranks = vec![0.0; values.len()];
         for (rank, &(original_index, _)) in indexed_values.iter().enumerate() {
             ranks[original_index] = (rank + 1) as f64;
         }
-        
+
         ranks
     }
 
@@ -186,7 +193,7 @@ impl CorrelationAnalyzer {
             for j in (i + 1)..n {
                 let x_diff = x[i] - x[j];
                 let y_diff = y[i] - y[j];
-                
+
                 if x_diff * y_diff > 0.0 {
                     concordant += 1;
                 } else if x_diff * y_diff < 0.0 {
@@ -210,7 +217,7 @@ impl CorrelationAnalyzer {
     ) -> DeviceResult<Vec<CorrelationPair>> {
         let mut significant_correlations = Vec::new();
         let variable_names = ["latency", "confidence", "timestamp"];
-        
+
         let threshold = 0.3; // Significance threshold
 
         for i in 0..correlation_matrix.nrows() {
@@ -236,10 +243,10 @@ impl CorrelationAnalyzer {
         if n < 3 {
             return 0.5;
         }
-        
+
         // Simplified t-test approximation
         let t_stat = correlation * ((n - 2) as f64 / (1.0 - correlation.powi(2))).sqrt();
-        
+
         // Very rough p-value approximation
         if t_stat.abs() > 2.0 {
             0.01
@@ -269,7 +276,7 @@ impl CorrelationAnalyzer {
     ) -> DeviceResult<CorrelationNetworkAnalysis> {
         let threshold = 0.3;
         let n = correlation_matrix.nrows();
-        
+
         // Create adjacency matrix
         let mut adjacency_matrix = Array2::zeros((n, n));
         for i in 0..n {
@@ -313,7 +320,7 @@ impl CorrelationAnalyzer {
         adjacency_matrix: &Array2<f64>,
     ) -> DeviceResult<NodeCentralityMeasures> {
         let n = adjacency_matrix.nrows();
-        
+
         // Degree centrality
         let mut degree = vec![0.0; n];
         for i in 0..n {

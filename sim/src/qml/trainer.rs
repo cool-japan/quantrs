@@ -10,13 +10,15 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
-use crate::circuit_interfaces::{CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType};
+use crate::circuit_interfaces::{
+    CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
+};
 use crate::device_noise_models::DeviceNoiseModel;
 use crate::error::{Result, SimulatorError};
 use crate::statevector::StateVectorSimulator;
 
-use super::config::{QMLConfig, HardwareArchitecture, GradientMethod, OptimizerType};
-use super::circuit::{ParameterizedQuantumCircuit, HardwareOptimizations};
+use super::circuit::{HardwareOptimizations, ParameterizedQuantumCircuit};
+use super::config::{GradientMethod, HardwareArchitecture, OptimizerType, QMLConfig};
 
 /// Quantum machine learning trainer
 pub struct QuantumMLTrainer {
@@ -132,7 +134,7 @@ impl QuantumMLTrainer {
         noise_model: Option<Box<dyn DeviceNoiseModel>>,
     ) -> Result<Self> {
         let num_params = pqc.num_parameters();
-        
+
         let optimizer_state = OptimizerState {
             parameters: pqc.parameters.clone(),
             gradient: Array1::zeros(num_params),
@@ -166,31 +168,41 @@ impl QuantumMLTrainer {
         F: Fn(&Array1<f64>) -> Result<f64> + Send + Sync,
     {
         let start_time = std::time::Instant::now();
-        
+
         for epoch in 0..self.config.max_epochs {
             let epoch_start = std::time::Instant::now();
-            
+
             // Compute gradient
             let gradient = self.compute_gradient(&loss_function)?;
             self.optimizer_state.gradient = gradient;
-            
+
             // Update parameters
             self.update_parameters()?;
-            
+
             // Evaluate loss
             let current_loss = loss_function(&self.optimizer_state.parameters)?;
-            
+
             // Update training history
             let epoch_time = epoch_start.elapsed().as_secs_f64();
             self.training_history.loss_history.push(current_loss);
             self.training_history.gradient_norms.push(
-                self.optimizer_state.gradient.iter().map(|x| x * x).sum::<f64>().sqrt()
+                self.optimizer_state
+                    .gradient
+                    .iter()
+                    .map(|x| x * x)
+                    .sum::<f64>()
+                    .sqrt(),
             );
             self.training_history.parameter_norms.push(
-                self.optimizer_state.parameters.iter().map(|x| x * x).sum::<f64>().sqrt()
+                self.optimizer_state
+                    .parameters
+                    .iter()
+                    .map(|x| x * x)
+                    .sum::<f64>()
+                    .sqrt(),
             );
             self.training_history.epoch_times.push(epoch_time);
-            
+
             // Check convergence
             if self.check_convergence(current_loss)? {
                 return Ok(TrainingResult {
@@ -201,7 +213,7 @@ impl QuantumMLTrainer {
                     converged: true,
                 });
             }
-            
+
             self.optimizer_state.iteration += 1;
         }
 
@@ -222,18 +234,14 @@ impl QuantumMLTrainer {
         F: Fn(&Array1<f64>) -> Result<f64> + Send + Sync,
     {
         match self.config.gradient_method {
-            GradientMethod::ParameterShift => {
-                self.compute_parameter_shift_gradient(loss_function)
-            }
+            GradientMethod::ParameterShift => self.compute_parameter_shift_gradient(loss_function),
             GradientMethod::FiniteDifferences => {
                 self.compute_finite_difference_gradient(loss_function)
             }
             GradientMethod::AutomaticDifferentiation => {
                 self.compute_autodiff_gradient(loss_function)
             }
-            GradientMethod::NaturalGradients => {
-                self.compute_natural_gradient(loss_function)
-            }
+            GradientMethod::NaturalGradients => self.compute_natural_gradient(loss_function),
             GradientMethod::StochasticParameterShift => {
                 self.compute_stochastic_parameter_shift_gradient(loss_function)
             }
@@ -252,13 +260,13 @@ impl QuantumMLTrainer {
         for i in 0..num_params {
             let mut params_plus = self.optimizer_state.parameters.clone();
             let mut params_minus = self.optimizer_state.parameters.clone();
-            
+
             params_plus[i] += shift;
             params_minus[i] -= shift;
-            
+
             let loss_plus = loss_function(&params_plus)?;
             let loss_minus = loss_function(&params_minus)?;
-            
+
             gradient[i] = (loss_plus - loss_minus) / 2.0;
         }
 
@@ -277,10 +285,10 @@ impl QuantumMLTrainer {
         for i in 0..num_params {
             let mut params_plus = self.optimizer_state.parameters.clone();
             params_plus[i] += eps;
-            
+
             let loss_plus = loss_function(&params_plus)?;
             let loss_current = loss_function(&self.optimizer_state.parameters)?;
-            
+
             gradient[i] = (loss_plus - loss_current) / eps;
         }
 
@@ -304,14 +312,17 @@ impl QuantumMLTrainer {
     {
         // Simplified natural gradient implementation
         let gradient = self.compute_parameter_shift_gradient(loss_function)?;
-        
+
         // For simplicity, return regular gradient
         // In practice, this would compute the Fisher information matrix
         Ok(gradient)
     }
 
     /// Compute stochastic parameter shift gradient
-    fn compute_stochastic_parameter_shift_gradient<F>(&self, loss_function: &F) -> Result<Array1<f64>>
+    fn compute_stochastic_parameter_shift_gradient<F>(
+        &self,
+        loss_function: &F,
+    ) -> Result<Array1<f64>>
     where
         F: Fn(&Array1<f64>) -> Result<f64> + Send + Sync,
     {
@@ -336,29 +347,33 @@ impl QuantumMLTrainer {
         let beta1 = 0.9;
         let beta2 = 0.999;
         let eps = 1e-8;
-        
+
         // Update momentum and velocity
         for i in 0..self.optimizer_state.parameters.len() {
-            self.optimizer_state.momentum[i] = beta1 * self.optimizer_state.momentum[i] + 
-                (1.0 - beta1) * self.optimizer_state.gradient[i];
-            self.optimizer_state.velocity[i] = beta2 * self.optimizer_state.velocity[i] + 
-                (1.0 - beta2) * self.optimizer_state.gradient[i].powi(2);
-            
+            self.optimizer_state.momentum[i] = beta1 * self.optimizer_state.momentum[i]
+                + (1.0 - beta1) * self.optimizer_state.gradient[i];
+            self.optimizer_state.velocity[i] = beta2 * self.optimizer_state.velocity[i]
+                + (1.0 - beta2) * self.optimizer_state.gradient[i].powi(2);
+
             // Bias correction
-            let m_hat = self.optimizer_state.momentum[i] / (1.0 - beta1.powi(self.optimizer_state.iteration as i32 + 1));
-            let v_hat = self.optimizer_state.velocity[i] / (1.0 - beta2.powi(self.optimizer_state.iteration as i32 + 1));
-            
+            let m_hat = self.optimizer_state.momentum[i]
+                / (1.0 - beta1.powi(self.optimizer_state.iteration as i32 + 1));
+            let v_hat = self.optimizer_state.velocity[i]
+                / (1.0 - beta2.powi(self.optimizer_state.iteration as i32 + 1));
+
             // Update parameter
-            self.optimizer_state.parameters[i] -= self.optimizer_state.learning_rate * m_hat / (v_hat.sqrt() + eps);
+            self.optimizer_state.parameters[i] -=
+                self.optimizer_state.learning_rate * m_hat / (v_hat.sqrt() + eps);
         }
-        
+
         Ok(())
     }
 
     /// Update parameters using SGD
     fn update_parameters_sgd(&mut self) -> Result<()> {
         for i in 0..self.optimizer_state.parameters.len() {
-            self.optimizer_state.parameters[i] -= self.optimizer_state.learning_rate * self.optimizer_state.gradient[i];
+            self.optimizer_state.parameters[i] -=
+                self.optimizer_state.learning_rate * self.optimizer_state.gradient[i];
         }
         Ok(())
     }
@@ -367,14 +382,15 @@ impl QuantumMLTrainer {
     fn update_parameters_rmsprop(&mut self) -> Result<()> {
         let alpha = 0.99;
         let eps = 1e-8;
-        
+
         for i in 0..self.optimizer_state.parameters.len() {
-            self.optimizer_state.velocity[i] = alpha * self.optimizer_state.velocity[i] + 
-                (1.0 - alpha) * self.optimizer_state.gradient[i].powi(2);
-            self.optimizer_state.parameters[i] -= self.optimizer_state.learning_rate * 
-                self.optimizer_state.gradient[i] / (self.optimizer_state.velocity[i].sqrt() + eps);
+            self.optimizer_state.velocity[i] = alpha * self.optimizer_state.velocity[i]
+                + (1.0 - alpha) * self.optimizer_state.gradient[i].powi(2);
+            self.optimizer_state.parameters[i] -= self.optimizer_state.learning_rate
+                * self.optimizer_state.gradient[i]
+                / (self.optimizer_state.velocity[i].sqrt() + eps);
         }
-        
+
         Ok(())
     }
 
@@ -401,10 +417,11 @@ impl QuantumMLTrainer {
         if self.training_history.loss_history.len() < 2 {
             return Ok(false);
         }
-        
-        let prev_loss = self.training_history.loss_history[self.training_history.loss_history.len() - 1];
+
+        let prev_loss =
+            self.training_history.loss_history[self.training_history.loss_history.len() - 1];
         let loss_change = (current_loss - prev_loss).abs();
-        
+
         Ok(loss_change < self.config.convergence_tolerance)
     }
 
@@ -448,14 +465,14 @@ impl HardwareAwareCompiler {
     pub fn compile_circuit(&mut self, circuit: &InterfaceCircuit) -> Result<InterfaceCircuit> {
         let start_time = std::time::Instant::now();
         self.compilation_stats.original_depth = circuit.gates.len();
-        
+
         // For now, return the same circuit
         // In practice, this would perform hardware-specific optimizations
         let compiled_circuit = circuit.clone();
-        
+
         self.compilation_stats.compiled_depth = compiled_circuit.gates.len();
         self.compilation_stats.compilation_time = start_time.elapsed().as_secs_f64();
-        
+
         Ok(compiled_circuit)
     }
 
@@ -487,7 +504,10 @@ impl TrainingHistory {
 
     /// Get the best (minimum) loss value
     pub fn best_loss(&self) -> Option<f64> {
-        self.loss_history.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).copied()
+        self.loss_history
+            .iter()
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .copied()
     }
 
     /// Get average epoch time

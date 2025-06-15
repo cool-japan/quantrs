@@ -3,16 +3,15 @@
 //! Comprehensive debugging and profiling infrastructure for quantum computing,
 //! including circuit analysis, performance monitoring, and error diagnostics.
 
+#![allow(dead_code)]
+
 use crate::error::QuantRS2Error;
-use crate::gate::GateOp;
-use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
 use crate::qubit::QubitId;
-use num_complex::Complex64;
 use ndarray::{Array1, Array2};
-use std::collections::{HashMap, VecDeque, BTreeMap};
-use std::sync::{Arc, RwLock, Mutex};
-use std::time::{Duration, Instant, SystemTime};
+use num_complex::Complex64;
+use std::collections::HashMap;
 use std::fmt;
+use std::time::{Duration, Instant, SystemTime};
 
 /// Quantum debugging and profiling suite
 #[derive(Debug)]
@@ -53,12 +52,27 @@ pub struct QuantumBreakpoint {
 
 #[derive(Debug, Clone)]
 pub enum BreakpointLocation {
-    GateExecution { gate_name: String, qubit_ids: Vec<QubitId> },
-    Measurement { qubit_ids: Vec<QubitId> },
-    StateChange { target_state: String },
-    CircuitPoint { circuit_id: String, position: usize },
-    ErrorOccurrence { error_type: String },
-    ResourceThreshold { resource_type: ResourceType, threshold: f64 },
+    GateExecution {
+        gate_name: String,
+        qubit_ids: Vec<QubitId>,
+    },
+    Measurement {
+        qubit_ids: Vec<QubitId>,
+    },
+    StateChange {
+        target_state: String,
+    },
+    CircuitPoint {
+        circuit_id: String,
+        position: usize,
+    },
+    ErrorOccurrence {
+        error_type: String,
+    },
+    ResourceThreshold {
+        resource_type: ResourceType,
+        threshold: f64,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -368,7 +382,10 @@ impl QuantumCircuitAnalyzer {
         }
     }
 
-    pub fn analyze_circuit_structure(&self, _circuit: &dyn QuantumCircuit) -> Result<StaticAnalysisResult, QuantRS2Error> {
+    pub fn analyze_circuit_structure(
+        &self,
+        _circuit: &dyn QuantumCircuit,
+    ) -> Result<StaticAnalysisResult, QuantRS2Error> {
         Ok(StaticAnalysisResult {
             gate_count: 100,
             circuit_depth: 20,
@@ -376,7 +393,10 @@ impl QuantumCircuitAnalyzer {
         })
     }
 
-    pub fn analyze_execution_behavior(&self, _samples: &[PerformanceSample]) -> Result<DynamicAnalysisResult, QuantRS2Error> {
+    pub fn analyze_execution_behavior(
+        &self,
+        _samples: &[PerformanceSample],
+    ) -> Result<DynamicAnalysisResult, QuantRS2Error> {
         Ok(DynamicAnalysisResult {
             average_execution_time: Duration::from_millis(100),
             bottlenecks: vec![],
@@ -689,7 +709,7 @@ impl QuantumDebugProfiling {
         debugging_mode: DebuggingMode,
     ) -> Result<u64, QuantRS2Error> {
         let session_id = Self::generate_id();
-        
+
         // Initialize debugging session
         let session = DebuggingSession {
             session_id,
@@ -698,18 +718,19 @@ impl QuantumDebugProfiling {
             debugging_mode: debugging_mode.clone(),
             session_log: Vec::new(),
         };
-        
+
         self.quantum_debugger.debugging_session = Some(session);
-        
+
         // Setup initial breakpoints and watchpoints
         self.setup_default_debugging_environment(&target_circuit)?;
-        
+
         // Initialize state inspection
-        self.state_inspector.initialize_for_circuit(&target_circuit)?;
-        
+        self.state_inspector
+            .initialize_for_circuit(&target_circuit)?;
+
         // Start error tracking
         self.error_tracker.start_tracking(session_id)?;
-        
+
         Ok(session_id)
     }
 
@@ -720,37 +741,43 @@ impl QuantumDebugProfiling {
         profiling_mode: ProfilingMode,
     ) -> Result<ProfilingReport, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Start profiling session
-        let session_id = self.performance_profiler.start_profiling_session(profiling_mode)?;
-        
+        let session_id = self
+            .performance_profiler
+            .start_profiling_session(profiling_mode)?;
+
         // Begin execution tracing
         self.execution_tracer.start_tracing()?;
-        
+
         // Monitor resource usage
         self.resource_monitor.start_monitoring()?;
-        
+
         // Execute circuit with instrumentation
         let execution_result = self.execute_instrumented_circuit(circuit)?;
-        
+
         // Collect performance samples
         let performance_samples = self.performance_profiler.collect_samples()?;
-        
+
         // Analyze circuit structure
         let static_analysis = self.circuit_analyzer.analyze_circuit_structure(circuit)?;
-        
+
         // Perform dynamic analysis
-        let dynamic_analysis = self.circuit_analyzer.analyze_execution_behavior(&performance_samples)?;
-        
+        let dynamic_analysis = self
+            .circuit_analyzer
+            .analyze_execution_behavior(&performance_samples)?;
+
         // Generate optimization suggestions
-        let optimization_suggestions = self.optimization_advisor
+        let optimization_suggestions = self
+            .optimization_advisor
             .generate_suggestions(&static_analysis, &dynamic_analysis)?;
-        
+
         // Stop monitoring
         self.resource_monitor.stop_monitoring()?;
         self.execution_tracer.stop_tracing()?;
-        self.performance_profiler.end_profiling_session(session_id)?;
-        
+        self.performance_profiler
+            .end_profiling_session(session_id)?;
+
         Ok(ProfilingReport {
             session_id,
             execution_time: start_time.elapsed(),
@@ -770,26 +797,38 @@ impl QuantumDebugProfiling {
         circuit: &dyn QuantumCircuit,
     ) -> Result<CircuitAnalysisReport, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Static analysis
-        let static_analysis = self.circuit_analyzer.static_analysis.analyze_circuit(circuit)?;
-        
+        let static_analysis = self
+            .circuit_analyzer
+            .static_analysis
+            .analyze_circuit(circuit)?;
+
         // Complexity analysis
-        let complexity_analysis = self.circuit_analyzer.complexity_analysis.analyze_complexity(circuit)?;
-        
+        let complexity_analysis = self
+            .circuit_analyzer
+            .complexity_analysis
+            .analyze_complexity(circuit)?;
+
         // Optimization analysis
-        let optimization_analysis = self.circuit_analyzer.optimization_analysis.analyze_optimizations(circuit)?;
-        
+        let optimization_analysis = self
+            .circuit_analyzer
+            .optimization_analysis
+            .analyze_optimizations(circuit)?;
+
         // Verification analysis
-        let verification_analysis = self.circuit_analyzer.verification_analysis.verify_circuit(circuit)?;
-        
+        let verification_analysis = self
+            .circuit_analyzer
+            .verification_analysis
+            .verify_circuit(circuit)?;
+
         // Generate recommendations
         let recommendations = self.generate_circuit_recommendations(
             &static_analysis,
             &complexity_analysis,
             &optimization_analysis,
         )?;
-        
+
         Ok(CircuitAnalysisReport {
             analysis_time: start_time.elapsed(),
             static_analysis,
@@ -808,30 +847,42 @@ impl QuantumDebugProfiling {
         inspection_mode: InspectionMode,
     ) -> Result<StateInspectionReport, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Generate state visualizations
-        let visualizations = self.state_inspector.state_visualization
+        let visualizations = self
+            .state_inspector
+            .state_visualization
             .generate_visualizations(state, &inspection_mode)?;
-        
+
         // Analyze entanglement structure
-        let entanglement_analysis = self.state_inspector.entanglement_analyzer
+        let entanglement_analysis = self
+            .state_inspector
+            .entanglement_analyzer
             .analyze_entanglement(state)?;
-        
+
         // Monitor coherence
-        let coherence_analysis = self.state_inspector.coherence_monitor
+        let coherence_analysis = self
+            .state_inspector
+            .coherence_monitor
             .analyze_coherence(state)?;
-        
+
         // Track fidelity
-        let fidelity_analysis = self.state_inspector.fidelity_tracker
+        let fidelity_analysis = self
+            .state_inspector
+            .fidelity_tracker
             .analyze_fidelity(state)?;
-        
+
         // Perform state tomography if requested
         let tomography_result = if matches!(inspection_mode, InspectionMode::FullTomography) {
-            Some(self.state_inspector.tomography_engine.perform_tomography(state)?)
+            Some(
+                self.state_inspector
+                    .tomography_engine
+                    .perform_tomography(state)?,
+            )
         } else {
             None
         };
-        
+
         Ok(StateInspectionReport {
             inspection_time: start_time.elapsed(),
             visualizations,
@@ -846,31 +897,30 @@ impl QuantumDebugProfiling {
     /// Generate comprehensive debugging and profiling report
     pub fn generate_comprehensive_report(&self) -> QuantumDebugProfilingReport {
         let mut report = QuantumDebugProfilingReport::new();
-        
+
         // Debugging metrics
         report.debugging_efficiency = self.calculate_debugging_efficiency();
-        
+
         // Profiling performance
         report.profiling_overhead = self.calculate_profiling_overhead();
-        
+
         // Analysis accuracy
         report.analysis_accuracy = self.calculate_analysis_accuracy();
-        
+
         // Tool effectiveness
         report.tool_effectiveness = self.calculate_tool_effectiveness();
-        
+
         // Overall improvement metrics
         report.debugging_advantage = self.calculate_debugging_advantage();
         report.profiling_advantage = self.calculate_profiling_advantage();
         report.optimization_improvement = self.calculate_optimization_improvement();
-        
+
         // Calculate overall quantum debugging advantage
-        report.overall_advantage = (
-            report.debugging_advantage +
-            report.profiling_advantage +
-            report.optimization_improvement
-        ) / 3.0;
-        
+        report.overall_advantage = (report.debugging_advantage
+            + report.profiling_advantage
+            + report.optimization_improvement)
+            / 3.0;
+
         report
     }
 
@@ -878,7 +928,7 @@ impl QuantumDebugProfiling {
     fn generate_id() -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         SystemTime::now().hash(&mut hasher);
         hasher.finish()
@@ -889,7 +939,10 @@ impl QuantumDebugProfiling {
         Ok(())
     }
 
-    fn execute_instrumented_circuit(&self, _circuit: &dyn QuantumCircuit) -> Result<ExecutionResult, QuantRS2Error> {
+    fn execute_instrumented_circuit(
+        &self,
+        _circuit: &dyn QuantumCircuit,
+    ) -> Result<ExecutionResult, QuantRS2Error> {
         Ok(ExecutionResult {
             success: true,
             final_state: Array1::zeros(4),
@@ -907,7 +960,10 @@ impl QuantumDebugProfiling {
         Ok(vec![])
     }
 
-    fn calculate_circuit_metrics(&self, _circuit: &dyn QuantumCircuit) -> Result<CircuitMetrics, QuantRS2Error> {
+    fn calculate_circuit_metrics(
+        &self,
+        _circuit: &dyn QuantumCircuit,
+    ) -> Result<CircuitMetrics, QuantRS2Error> {
         Ok(CircuitMetrics {
             gate_count: 100,
             depth: 20,
@@ -916,7 +972,10 @@ impl QuantumDebugProfiling {
         })
     }
 
-    fn calculate_state_metrics(&self, _state: &Array1<Complex64>) -> Result<StateMetrics, QuantRS2Error> {
+    fn calculate_state_metrics(
+        &self,
+        _state: &Array1<Complex64>,
+    ) -> Result<StateMetrics, QuantRS2Error> {
         Ok(StateMetrics {
             purity: 0.99,
             entropy: 0.1,
@@ -1287,10 +1346,8 @@ mod tests {
     #[test]
     fn test_debugging_session_start() {
         let mut debug_suite = QuantumDebugProfiling::new();
-        let session_id = debug_suite.start_debugging_session(
-            "test_circuit".to_string(),
-            DebuggingMode::Interactive,
-        );
+        let session_id = debug_suite
+            .start_debugging_session("test_circuit".to_string(), DebuggingMode::Interactive);
         assert!(session_id.is_ok());
         assert!(debug_suite.quantum_debugger.debugging_session.is_some());
     }
@@ -1326,7 +1383,7 @@ mod tests {
         let session_id = profiler.start_profiling_session(ProfilingMode::Statistical);
         assert!(session_id.is_ok());
         assert!(profiler.profiling_session.is_some());
-        
+
         let result = profiler.end_profiling_session(session_id.unwrap());
         assert!(result.is_ok());
     }
@@ -1335,7 +1392,7 @@ mod tests {
     fn test_comprehensive_report_generation() {
         let debug_suite = QuantumDebugProfiling::new();
         let report = debug_suite.generate_comprehensive_report();
-        
+
         // All advantages should demonstrate quantum debugging superiority
         assert!(report.debugging_advantage > 1.0);
         assert!(report.profiling_advantage > 1.0);
@@ -1353,10 +1410,10 @@ mod tests {
             Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0),
         ]);
-        
+
         let metrics = debug_suite.calculate_state_metrics(&test_state);
         assert!(metrics.is_ok());
-        
+
         let m = metrics.unwrap();
         assert!(m.purity >= 0.0 && m.purity <= 1.0);
         assert!(m.entropy >= 0.0);
@@ -1407,9 +1464,7 @@ pub struct CallStack {
 
 impl CallStack {
     pub fn new() -> Self {
-        Self {
-            frames: Vec::new(),
-        }
+        Self { frames: Vec::new() }
     }
 }
 
@@ -1474,9 +1529,7 @@ pub struct MemoryAnalysis {
 
 impl MemoryAnalysis {
     pub fn new() -> Self {
-        Self {
-            peak_usage: 1024,
-        }
+        Self { peak_usage: 1024 }
     }
 }
 
@@ -1717,8 +1770,13 @@ pub struct FidelityTracker;
 pub struct QuantumTomographyEngine;
 
 impl StaticAnalysisEngine {
-    pub fn new() -> Self { Self }
-    pub fn analyze_circuit(&self, _circuit: &dyn QuantumCircuit) -> Result<StaticAnalysisResult, QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+    pub fn analyze_circuit(
+        &self,
+        _circuit: &dyn QuantumCircuit,
+    ) -> Result<StaticAnalysisResult, QuantRS2Error> {
         Ok(StaticAnalysisResult {
             gate_count: 100,
             circuit_depth: 20,
@@ -1728,8 +1786,13 @@ impl StaticAnalysisEngine {
 }
 
 impl ComplexityAnalysisEngine {
-    pub fn new() -> Self { Self }
-    pub fn analyze_complexity(&self, _circuit: &dyn QuantumCircuit) -> Result<ComplexityAnalysisResult, QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+    pub fn analyze_complexity(
+        &self,
+        _circuit: &dyn QuantumCircuit,
+    ) -> Result<ComplexityAnalysisResult, QuantRS2Error> {
         Ok(ComplexityAnalysisResult {
             time_complexity: "O(n^2)".to_string(),
             space_complexity: "O(n)".to_string(),
@@ -1738,8 +1801,13 @@ impl ComplexityAnalysisEngine {
 }
 
 impl OptimizationAnalysisEngine {
-    pub fn new() -> Self { Self }
-    pub fn analyze_optimizations(&self, _circuit: &dyn QuantumCircuit) -> Result<OptimizationAnalysisResult, QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+    pub fn analyze_optimizations(
+        &self,
+        _circuit: &dyn QuantumCircuit,
+    ) -> Result<OptimizationAnalysisResult, QuantRS2Error> {
         Ok(OptimizationAnalysisResult {
             optimization_opportunities: vec!["Gate fusion".to_string()],
             potential_speedup: 2.5,
@@ -1748,8 +1816,13 @@ impl OptimizationAnalysisEngine {
 }
 
 impl VerificationAnalysisEngine {
-    pub fn new() -> Self { Self }
-    pub fn verify_circuit(&self, _circuit: &dyn QuantumCircuit) -> Result<VerificationAnalysisResult, QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+    pub fn verify_circuit(
+        &self,
+        _circuit: &dyn QuantumCircuit,
+    ) -> Result<VerificationAnalysisResult, QuantRS2Error> {
         Ok(VerificationAnalysisResult {
             correctness_verified: true,
             verification_confidence: 0.99,
@@ -1758,10 +1831,21 @@ impl VerificationAnalysisEngine {
 }
 
 impl StateVisualizationEngine {
-    pub fn new() -> Self { Self }
-    pub fn generate_visualizations(&self, _state: &Array1<Complex64>, _mode: &InspectionMode) -> Result<StateVisualizations, QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+    pub fn generate_visualizations(
+        &self,
+        _state: &Array1<Complex64>,
+        _mode: &InspectionMode,
+    ) -> Result<StateVisualizations, QuantRS2Error> {
         Ok(StateVisualizations {
-            bloch_sphere: vec![BlochVector { x: 0.0, y: 0.0, z: 1.0, timestamp: Instant::now() }],
+            bloch_sphere: vec![BlochVector {
+                x: 0.0,
+                y: 0.0,
+                z: 1.0,
+                timestamp: Instant::now(),
+            }],
             amplitude_plot: AmplitudePlot {
                 real_amplitudes: vec![1.0, 0.0],
                 imaginary_amplitudes: vec![0.0, 0.0],
@@ -1778,8 +1862,13 @@ impl StateVisualizationEngine {
 }
 
 impl EntanglementAnalyzer {
-    pub fn new() -> Self { Self }
-    pub fn analyze_entanglement(&self, _state: &Array1<Complex64>) -> Result<EntanglementAnalysisResult, QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+    pub fn analyze_entanglement(
+        &self,
+        _state: &Array1<Complex64>,
+    ) -> Result<EntanglementAnalysisResult, QuantRS2Error> {
         Ok(EntanglementAnalysisResult {
             entanglement_measure: 0.5,
             entangled_subsystems: vec!["qubits_0_1".to_string()],
@@ -1788,8 +1877,13 @@ impl EntanglementAnalyzer {
 }
 
 impl CoherenceMonitor {
-    pub fn new() -> Self { Self }
-    pub fn analyze_coherence(&self, _state: &Array1<Complex64>) -> Result<CoherenceAnalysisResult, QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+    pub fn analyze_coherence(
+        &self,
+        _state: &Array1<Complex64>,
+    ) -> Result<CoherenceAnalysisResult, QuantRS2Error> {
         Ok(CoherenceAnalysisResult {
             coherence_time: Duration::from_millis(100),
             decoherence_rate: 0.01,
@@ -1798,8 +1892,13 @@ impl CoherenceMonitor {
 }
 
 impl FidelityTracker {
-    pub fn new() -> Self { Self }
-    pub fn analyze_fidelity(&self, _state: &Array1<Complex64>) -> Result<FidelityAnalysisResult, QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+    pub fn analyze_fidelity(
+        &self,
+        _state: &Array1<Complex64>,
+    ) -> Result<FidelityAnalysisResult, QuantRS2Error> {
         Ok(FidelityAnalysisResult {
             current_fidelity: 0.99,
             fidelity_trend: vec![1.0, 0.995, 0.99],
@@ -1808,10 +1907,18 @@ impl FidelityTracker {
 }
 
 impl QuantumTomographyEngine {
-    pub fn new() -> Self { Self }
-    pub fn perform_tomography(&self, _state: &Array1<Complex64>) -> Result<TomographyResult, QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+    pub fn perform_tomography(
+        &self,
+        _state: &Array1<Complex64>,
+    ) -> Result<TomographyResult, QuantRS2Error> {
         Ok(TomographyResult {
-            reconstructed_state: Array1::from(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]),
+            reconstructed_state: Array1::from(vec![
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+            ]),
             reconstruction_fidelity: 0.98,
         })
     }
@@ -1829,7 +1936,10 @@ impl StaticAnalysis {
         }
     }
 
-    pub fn analyze_circuit(&self, _circuit: &dyn QuantumCircuit) -> Result<StaticAnalysisResult, QuantRS2Error> {
+    pub fn analyze_circuit(
+        &self,
+        _circuit: &dyn QuantumCircuit,
+    ) -> Result<StaticAnalysisResult, QuantRS2Error> {
         Ok(StaticAnalysisResult {
             gate_count: 100,
             circuit_depth: 20,
@@ -1855,7 +1965,10 @@ impl ComplexityAnalysis {
         }
     }
 
-    pub fn analyze_complexity(&self, _circuit: &dyn QuantumCircuit) -> Result<ComplexityAnalysisResult, QuantRS2Error> {
+    pub fn analyze_complexity(
+        &self,
+        _circuit: &dyn QuantumCircuit,
+    ) -> Result<ComplexityAnalysisResult, QuantRS2Error> {
         Ok(ComplexityAnalysisResult {
             time_complexity: "O(n^2)".to_string(),
             space_complexity: "O(n)".to_string(),
@@ -1871,7 +1984,10 @@ impl OptimizationAnalysis {
         }
     }
 
-    pub fn analyze_optimizations(&self, _circuit: &dyn QuantumCircuit) -> Result<OptimizationAnalysisResult, QuantRS2Error> {
+    pub fn analyze_optimizations(
+        &self,
+        _circuit: &dyn QuantumCircuit,
+    ) -> Result<OptimizationAnalysisResult, QuantRS2Error> {
         Ok(OptimizationAnalysisResult {
             optimization_opportunities: vec!["Gate fusion".to_string()],
             potential_speedup: 2.5,
@@ -1887,7 +2003,10 @@ impl VerificationAnalysis {
         }
     }
 
-    pub fn verify_circuit(&self, _circuit: &dyn QuantumCircuit) -> Result<VerificationAnalysisResult, QuantRS2Error> {
+    pub fn verify_circuit(
+        &self,
+        _circuit: &dyn QuantumCircuit,
+    ) -> Result<VerificationAnalysisResult, QuantRS2Error> {
         Ok(VerificationAnalysisResult {
             correctness_verified: true,
             verification_confidence: 0.99,
@@ -1906,9 +2025,18 @@ impl StateVisualization {
         }
     }
 
-    pub fn generate_visualizations(&self, _state: &Array1<Complex64>, _mode: &InspectionMode) -> Result<StateVisualizations, QuantRS2Error> {
+    pub fn generate_visualizations(
+        &self,
+        _state: &Array1<Complex64>,
+        _mode: &InspectionMode,
+    ) -> Result<StateVisualizations, QuantRS2Error> {
         Ok(StateVisualizations {
-            bloch_sphere: vec![BlochVector { x: 0.0, y: 0.0, z: 1.0, timestamp: Instant::now() }],
+            bloch_sphere: vec![BlochVector {
+                x: 0.0,
+                y: 0.0,
+                z: 1.0,
+                timestamp: Instant::now(),
+            }],
             amplitude_plot: AmplitudePlot {
                 real_amplitudes: vec![1.0, 0.0],
                 imaginary_amplitudes: vec![0.0, 0.0],

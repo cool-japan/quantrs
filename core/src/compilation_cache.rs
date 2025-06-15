@@ -7,7 +7,6 @@
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
-    simd_ops,
 };
 use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
@@ -265,16 +264,16 @@ impl CompilationCache {
         // Cache miss - compile the gate
         self.record_miss()?;
         let start_time = std::time::Instant::now();
-        
+
         let mut compiled = compile_fn(gate)?;
-        
+
         let compilation_time = start_time.elapsed().as_micros() as u64;
         compiled.metadata.compilation_time_us = compilation_time;
         compiled.gate_id = gate_id;
 
         // Add to cache
         self.add_to_memory(compiled.clone())?;
-        
+
         if self.config.enable_persistence {
             if self.config.async_writes {
                 self.queue_for_write(compiled.clone())?;
@@ -289,22 +288,22 @@ impl CompilationCache {
     /// Compute unique gate identifier
     fn compute_gate_id(&self, gate: &dyn GateOp) -> QuantRS2Result<String> {
         let mut hasher = DefaultHasher::new();
-        
+
         // Hash gate name
         gate.name().hash(&mut hasher);
-        
+
         // Hash gate matrix
         let matrix = gate.matrix()?;
         for elem in &matrix {
             elem.re.to_bits().hash(&mut hasher);
             elem.im.to_bits().hash(&mut hasher);
         }
-        
+
         // Hash target qubits
         for qubit in gate.qubits() {
             qubit.0.hash(&mut hasher);
         }
-        
+
         let result = hasher.finish();
         Ok(format!("{:x}", result))
     }
@@ -312,17 +311,19 @@ impl CompilationCache {
     /// Get from memory cache
     fn get_from_memory(&self, gate_id: &str) -> QuantRS2Result<Option<CompiledGate>> {
         let mut cache = self.memory_cache.write().unwrap();
-        
+
         if let Some(compiled) = cache.gates.get(gate_id).cloned() {
             // Update LRU
             cache.lru_queue.retain(|id| id != gate_id);
             cache.lru_queue.push_front(gate_id.to_string());
-            
+
             // Update last accessed time
             let mut updated_compiled = compiled.clone();
             updated_compiled.metadata.last_accessed = current_timestamp();
-            cache.gates.insert(gate_id.to_string(), updated_compiled.clone());
-            
+            cache
+                .gates
+                .insert(gate_id.to_string(), updated_compiled.clone());
+
             Ok(Some(updated_compiled))
         } else {
             Ok(None)
@@ -333,10 +334,11 @@ impl CompilationCache {
     fn add_to_memory(&self, compiled: CompiledGate) -> QuantRS2Result<()> {
         let mut cache = self.memory_cache.write().unwrap();
         let gate_size = self.estimate_size(&compiled);
-        
+
         // Evict entries if needed
-        while cache.gates.len() >= self.config.max_memory_entries ||
-              cache.current_size + gate_size > self.config.max_size_bytes {
+        while cache.gates.len() >= self.config.max_memory_entries
+            || cache.current_size + gate_size > self.config.max_size_bytes
+        {
             if let Some(evict_id) = cache.lru_queue.pop_back() {
                 if let Some(evicted) = cache.gates.remove(&evict_id) {
                     cache.current_size -= self.estimate_size(&evicted);
@@ -345,62 +347,66 @@ impl CompilationCache {
                 break;
             }
         }
-        
+
         // Add new entry
-        cache.gates.insert(compiled.gate_id.clone(), compiled.clone());
+        cache
+            .gates
+            .insert(compiled.gate_id.clone(), compiled.clone());
         cache.lru_queue.push_front(compiled.gate_id.clone());
         cache.current_size += gate_size;
-        
+
         // Update statistics
         let mut stats = self.statistics.write().unwrap();
         stats.num_entries = cache.gates.len();
         stats.total_size_bytes = cache.current_size;
-        
+
         Ok(())
     }
 
     /// Get from persistent storage
     fn get_from_disk(&self, gate_id: &str) -> QuantRS2Result<Option<CompiledGate>> {
         let file_path = self.cache_file_path(gate_id);
-        
+
         if !file_path.exists() {
             return Ok(None);
         }
-        
+
         // Check expiration
         let metadata = fs::metadata(&file_path)?;
         let modified = metadata.modified()?;
-        let age = SystemTime::now().duration_since(modified).unwrap_or_default();
-        
+        let age = SystemTime::now()
+            .duration_since(modified)
+            .unwrap_or_default();
+
         if age > self.config.expiration_time {
             // Expired - remove file
             fs::remove_file(&file_path)?;
             return Ok(None);
         }
-        
+
         // Read and deserialize
         let file = File::open(&file_path)?;
         let reader = BufReader::new(file);
-        
+
         let compiled = bincode::deserialize_from(reader)?;
-        
+
         Ok(Some(compiled))
     }
 
     /// Write to persistent storage
     fn write_to_disk(&self, compiled: &CompiledGate) -> QuantRS2Result<()> {
         let file_path = self.cache_file_path(&compiled.gate_id);
-        
+
         // Ensure parent directory exists
         if let Some(parent) = file_path.parent() {
             fs::create_dir_all(parent)?;
         }
-        
+
         let file = File::create(&file_path)?;
         let writer = BufWriter::new(file);
-        
+
         bincode::serialize_into(writer, compiled)?;
-        
+
         Ok(())
     }
 
@@ -416,21 +422,19 @@ impl CompilationCache {
         cache_dir: PathBuf,
         write_queue: Arc<RwLock<VecDeque<CompiledGate>>>,
     ) -> std::thread::JoinHandle<()> {
-        std::thread::spawn(move || {
-            loop {
-                std::thread::sleep(Duration::from_millis(100));
-                
-                let gates_to_write: Vec<CompiledGate> = {
-                    let mut queue = write_queue.write().unwrap();
-                    queue.drain(..).collect()
-                };
-                
-                for compiled in gates_to_write {
-                    let file_path = cache_dir.join(format!("{}.cache", &compiled.gate_id[..16]));
-                    
-                    if let Err(e) = Self::write_gate_to_file(&file_path, &compiled, 3) {
-                        eprintln!("Failed to write gate to cache: {}", e);
-                    }
+        std::thread::spawn(move || loop {
+            std::thread::sleep(Duration::from_millis(100));
+
+            let gates_to_write: Vec<CompiledGate> = {
+                let mut queue = write_queue.write().unwrap();
+                queue.drain(..).collect()
+            };
+
+            for compiled in gates_to_write {
+                let file_path = cache_dir.join(format!("{}.cache", &compiled.gate_id[..16]));
+
+                if let Err(e) = Self::write_gate_to_file(&file_path, &compiled, 3) {
+                    eprintln!("Failed to write gate to cache: {}", e);
                 }
             }
         })
@@ -440,17 +444,17 @@ impl CompilationCache {
     fn write_gate_to_file(
         file_path: &Path,
         compiled: &CompiledGate,
-        compression_level: i32,
+        _compression_level: i32,
     ) -> QuantRS2Result<()> {
         if let Some(parent) = file_path.parent() {
             fs::create_dir_all(parent)?;
         }
-        
+
         let file = File::create(file_path)?;
         let writer = BufWriter::new(file);
-        
+
         bincode::serialize_into(writer, compiled)?;
-        
+
         Ok(())
     }
 
@@ -474,14 +478,14 @@ impl CompilationCache {
     fn record_hit(&self, gate_id: &str) -> QuantRS2Result<()> {
         let mut stats = self.statistics.write().unwrap();
         stats.total_hits += 1;
-        
+
         // Estimate time saved (average compilation time)
         if let Ok(cache) = self.memory_cache.read() {
             if let Some(compiled) = cache.gates.get(gate_id) {
                 stats.time_saved_us += compiled.metadata.compilation_time_us;
             }
         }
-        
+
         Ok(())
     }
 
@@ -499,19 +503,17 @@ impl CompilationCache {
         cache.gates.clear();
         cache.lru_queue.clear();
         cache.current_size = 0;
-        
+
         // Clear disk cache if enabled
-        if self.config.enable_persistence {
-            if self.config.cache_dir.exists() {
-                for entry in fs::read_dir(&self.config.cache_dir)? {
-                    let entry = entry?;
-                    if entry.path().extension().and_then(|s| s.to_str()) == Some("cache") {
-                        fs::remove_file(entry.path())?;
-                    }
+        if self.config.enable_persistence && self.config.cache_dir.exists() {
+            for entry in fs::read_dir(&self.config.cache_dir)? {
+                let entry = entry?;
+                if entry.path().extension().and_then(|s| s.to_str()) == Some("cache") {
+                    fs::remove_file(entry.path())?;
                 }
             }
         }
-        
+
         // Reset statistics
         let mut stats = self.statistics.write().unwrap();
         *stats = CacheStatistics {
@@ -522,7 +524,7 @@ impl CompilationCache {
             total_size_bytes: 0,
             created_at: current_timestamp(),
         };
-        
+
         Ok(())
     }
 
@@ -536,26 +538,31 @@ impl CompilationCache {
         if !self.config.enable_persistence {
             return Ok(());
         }
-        
+
         let mut removed_count = 0;
-        
+
         for entry in fs::read_dir(&self.config.cache_dir)? {
             let entry = entry?;
             let path = entry.path();
-            
+
             if path.extension().and_then(|s| s.to_str()) == Some("cache") {
                 let metadata = fs::metadata(&path)?;
                 let modified = metadata.modified()?;
-                let age = SystemTime::now().duration_since(modified).unwrap_or_default();
-                
+                let age = SystemTime::now()
+                    .duration_since(modified)
+                    .unwrap_or_default();
+
                 if age > self.config.expiration_time {
                     fs::remove_file(&path)?;
                     removed_count += 1;
                 }
             }
         }
-        
-        println!("Cache optimization: removed {} expired entries", removed_count);
+
+        println!(
+            "Cache optimization: removed {} expired entries",
+            removed_count
+        );
         Ok(())
     }
 
@@ -569,46 +576,55 @@ impl CompilationCache {
 
     /// Precompile and cache common gates
     pub fn precompile_common_gates(&self) -> QuantRS2Result<()> {
-        use crate::gate::{single::*, multi::*};
-        
+        use crate::gate::{multi::*, single::*};
+
         // Single-qubit gates
         let single_qubit_gates: Vec<Box<dyn GateOp>> = vec![
-            Box::new(Hadamard { target: crate::qubit::QubitId(0) }),
-            Box::new(PauliX { target: crate::qubit::QubitId(0) }),
-            Box::new(PauliY { target: crate::qubit::QubitId(0) }),
-            Box::new(PauliZ { target: crate::qubit::QubitId(0) }),
-            Box::new(Phase { target: crate::qubit::QubitId(0) }),
-            Box::new(RotationZ { target: crate::qubit::QubitId(0), theta: std::f64::consts::PI / 4.0 }),
+            Box::new(Hadamard {
+                target: crate::qubit::QubitId(0),
+            }),
+            Box::new(PauliX {
+                target: crate::qubit::QubitId(0),
+            }),
+            Box::new(PauliY {
+                target: crate::qubit::QubitId(0),
+            }),
+            Box::new(PauliZ {
+                target: crate::qubit::QubitId(0),
+            }),
+            Box::new(Phase {
+                target: crate::qubit::QubitId(0),
+            }),
+            Box::new(RotationZ {
+                target: crate::qubit::QubitId(0),
+                theta: std::f64::consts::PI / 4.0,
+            }),
         ];
-        
+
         for gate in single_qubit_gates {
-            let _ = self.get_or_compile(gate.as_ref(), |g| {
-                compile_single_qubit_gate(g)
-            })?;
+            let _ = self.get_or_compile(gate.as_ref(), |g| compile_single_qubit_gate(g))?;
         }
-        
+
         // Two-qubit gates
         let two_qubit_gates: Vec<Box<dyn GateOp>> = vec![
-            Box::new(CNOT { 
-                control: crate::qubit::QubitId(0), 
-                target: crate::qubit::QubitId(1) 
+            Box::new(CNOT {
+                control: crate::qubit::QubitId(0),
+                target: crate::qubit::QubitId(1),
             }),
-            Box::new(CZ { 
-                control: crate::qubit::QubitId(0), 
-                target: crate::qubit::QubitId(1) 
+            Box::new(CZ {
+                control: crate::qubit::QubitId(0),
+                target: crate::qubit::QubitId(1),
             }),
-            Box::new(SWAP { 
-                qubit1: crate::qubit::QubitId(0), 
-                qubit2: crate::qubit::QubitId(1) 
+            Box::new(SWAP {
+                qubit1: crate::qubit::QubitId(0),
+                qubit2: crate::qubit::QubitId(1),
             }),
         ];
-        
+
         for gate in two_qubit_gates {
-            let _ = self.get_or_compile(gate.as_ref(), |g| {
-                compile_two_qubit_gate(g)
-            })?;
+            let _ = self.get_or_compile(gate.as_ref(), |g| compile_two_qubit_gate(g))?;
         }
-        
+
         Ok(())
     }
 }
@@ -622,11 +638,10 @@ fn current_timestamp() -> u64 {
 }
 
 /// Default gate compilation functions
-
 fn compile_single_qubit_gate(gate: &dyn GateOp) -> QuantRS2Result<CompiledGate> {
     let matrix = gate.matrix()?;
     let gate_id = String::new(); // Will be set by cache
-    
+
     // Check if gate is diagonal
     let is_diagonal = matrix[1].norm() < 1e-10 && matrix[2].norm() < 1e-10;
     let diagonal = if is_diagonal {
@@ -634,9 +649,10 @@ fn compile_single_qubit_gate(gate: &dyn GateOp) -> QuantRS2Result<CompiledGate> 
     } else {
         None
     };
-    
+
     // Create SIMD layout
-    let simd_layout = if false { // Simplified - disable SIMD check
+    let simd_layout = if false {
+        // Simplified - disable SIMD check
         Some(SimdLayout {
             layout_type: "avx2".to_string(),
             data: matrix.clone(),
@@ -646,7 +662,7 @@ fn compile_single_qubit_gate(gate: &dyn GateOp) -> QuantRS2Result<CompiledGate> 
     } else {
         None
     };
-    
+
     Ok(CompiledGate {
         gate_id,
         matrix,
@@ -673,7 +689,7 @@ fn compile_single_qubit_gate(gate: &dyn GateOp) -> QuantRS2Result<CompiledGate> 
 fn compile_two_qubit_gate(gate: &dyn GateOp) -> QuantRS2Result<CompiledGate> {
     let matrix = gate.matrix()?;
     let gate_id = String::new(); // Will be set by cache
-    
+
     // Check for decomposition opportunities
     let decomposition = if gate.name() == "CNOT" {
         Some(GateDecomposition {
@@ -686,7 +702,7 @@ fn compile_two_qubit_gate(gate: &dyn GateOp) -> QuantRS2Result<CompiledGate> {
     } else {
         None
     };
-    
+
     Ok(CompiledGate {
         gate_id,
         matrix,
@@ -716,21 +732,20 @@ static GLOBAL_CACHE: OnceLock<Arc<CompilationCache>> = OnceLock::new();
 /// Initialize the global compilation cache
 pub fn initialize_compilation_cache(config: CacheConfig) -> QuantRS2Result<()> {
     let cache = CompilationCache::new(config)?;
-    
+
     GLOBAL_CACHE.set(Arc::new(cache)).map_err(|_| {
         QuantRS2Error::RuntimeError("Compilation cache already initialized".to_string())
     })?;
-    
+
     Ok(())
 }
 
 /// Get the global compilation cache
 pub fn get_compilation_cache() -> QuantRS2Result<Arc<CompilationCache>> {
-    GLOBAL_CACHE.get()
+    GLOBAL_CACHE
+        .get()
         .map(Arc::clone)
-        .ok_or_else(|| QuantRS2Error::RuntimeError(
-            "Compilation cache not initialized".to_string()
-        ))
+        .ok_or_else(|| QuantRS2Error::RuntimeError("Compilation cache not initialized".to_string()))
 }
 
 #[cfg(test)]
@@ -749,10 +764,10 @@ mod tests {
             enable_persistence: false, // Disable persistence for tests
             ..Default::default()
         };
-        
+
         let cache = CompilationCache::new(config).unwrap();
         let stats = cache.statistics();
-        
+
         assert_eq!(stats.total_hits, 0);
         assert_eq!(stats.total_misses, 0);
         assert_eq!(stats.num_entries, 0);
@@ -767,22 +782,26 @@ mod tests {
             async_writes: false,
             ..Default::default()
         };
-        
+
         let cache = CompilationCache::new(config).unwrap();
         let gate = Hadamard { target: QubitId(0) };
-        
+
         // First access - should compile
-        let compiled1 = cache.get_or_compile(&gate, compile_single_qubit_gate).unwrap();
+        let compiled1 = cache
+            .get_or_compile(&gate, compile_single_qubit_gate)
+            .unwrap();
         let stats1 = cache.statistics();
         assert_eq!(stats1.total_misses, 1);
         assert_eq!(stats1.total_hits, 0);
-        
+
         // Second access - should hit cache
-        let compiled2 = cache.get_or_compile(&gate, compile_single_qubit_gate).unwrap();
+        let compiled2 = cache
+            .get_or_compile(&gate, compile_single_qubit_gate)
+            .unwrap();
         let stats2 = cache.statistics();
         assert_eq!(stats2.total_misses, 1);
         assert_eq!(stats2.total_hits, 1);
-        
+
         // Verify same gate
         assert_eq!(compiled1.gate_id, compiled2.gate_id);
         assert_eq!(compiled1.matrix, compiled2.matrix);
@@ -797,15 +816,17 @@ mod tests {
             enable_persistence: false,
             ..Default::default()
         };
-        
+
         let cache = CompilationCache::new(config).unwrap();
-        
+
         // Add three gates to trigger eviction
         for i in 0..3 {
             let gate = PauliX { target: QubitId(i) };
-            let _ = cache.get_or_compile(&gate, compile_single_qubit_gate).unwrap();
+            let _ = cache
+                .get_or_compile(&gate, compile_single_qubit_gate)
+                .unwrap();
         }
-        
+
         let stats = cache.statistics();
         assert_eq!(stats.num_entries, 2); // One should have been evicted
     }
@@ -819,24 +840,28 @@ mod tests {
             async_writes: false,
             ..Default::default()
         };
-        
+
         let gate = Hadamard { target: QubitId(0) };
         let gate_id;
-        
+
         // Create cache and compile gate
         {
             let cache = CompilationCache::new(config.clone()).unwrap();
-            let compiled = cache.get_or_compile(&gate, compile_single_qubit_gate).unwrap();
+            let compiled = cache
+                .get_or_compile(&gate, compile_single_qubit_gate)
+                .unwrap();
             gate_id = compiled.gate_id.clone();
         }
-        
+
         // Create new cache instance and verify persistence
         {
             let cache = CompilationCache::new(config).unwrap();
-            let compiled = cache.get_or_compile(&gate, compile_single_qubit_gate).unwrap();
-            
+            let compiled = cache
+                .get_or_compile(&gate, compile_single_qubit_gate)
+                .unwrap();
+
             assert_eq!(compiled.gate_id, gate_id);
-            
+
             let stats = cache.statistics();
             assert_eq!(stats.total_hits, 1); // Should hit persistent cache
             assert_eq!(stats.total_misses, 0);
@@ -853,21 +878,25 @@ mod tests {
             async_writes: false,
             ..Default::default()
         };
-        
+
         let cache = CompilationCache::new(config).unwrap();
         let gate = Hadamard { target: QubitId(0) };
-        
+
         // Compile and cache gate
-        let _ = cache.get_or_compile(&gate, compile_single_qubit_gate).unwrap();
-        
+        let _ = cache
+            .get_or_compile(&gate, compile_single_qubit_gate)
+            .unwrap();
+
         // Wait a bit and optimize
         std::thread::sleep(Duration::from_millis(100));
         cache.optimize().unwrap();
-        
+
         // Try to access again - should miss due to expiration
         cache.clear().unwrap(); // Clear memory cache
-        let _ = cache.get_or_compile(&gate, compile_single_qubit_gate).unwrap();
-        
+        let _ = cache
+            .get_or_compile(&gate, compile_single_qubit_gate)
+            .unwrap();
+
         let stats = cache.statistics();
         assert_eq!(stats.total_misses, 1); // Should have missed
     }
@@ -879,10 +908,10 @@ mod tests {
             cache_dir: temp_dir,
             ..Default::default()
         };
-        
+
         let cache = CompilationCache::new(config).unwrap();
         cache.precompile_common_gates().unwrap();
-        
+
         let stats = cache.statistics();
         assert!(stats.num_entries > 0);
         println!("Precompiled {} gates", stats.num_entries);
@@ -895,23 +924,27 @@ mod tests {
             cache_dir: temp_dir.clone(),
             ..Default::default()
         };
-        
+
         let cache = CompilationCache::new(config).unwrap();
-        
+
         // Generate some statistics
         let gate = Hadamard { target: QubitId(0) };
-        let _ = cache.get_or_compile(&gate, compile_single_qubit_gate).unwrap();
-        let _ = cache.get_or_compile(&gate, compile_single_qubit_gate).unwrap();
-        
+        let _ = cache
+            .get_or_compile(&gate, compile_single_qubit_gate)
+            .unwrap();
+        let _ = cache
+            .get_or_compile(&gate, compile_single_qubit_gate)
+            .unwrap();
+
         // Export statistics
         let stats_path = temp_dir.join("stats.json");
         cache.export_statistics(&stats_path).unwrap();
-        
+
         // Verify file exists and contains valid JSON
         assert!(stats_path.exists());
         let contents = fs::read_to_string(&stats_path).unwrap();
         let parsed: CacheStatistics = serde_json::from_str(&contents).unwrap();
-        
+
         assert_eq!(parsed.total_hits, 1);
         assert_eq!(parsed.total_misses, 1);
     }

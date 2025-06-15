@@ -3,15 +3,14 @@
 //! Revolutionary quantum networking with global quantum communication,
 //! quantum teleportation networks, and distributed quantum computation protocols.
 
+#![allow(dead_code)]
+
 use crate::error::QuantRS2Error;
 
-use crate::qubit::QubitId;
 use num_complex::Complex64;
-use ndarray::{Array1, Array2};
-use std::collections::{HashMap, VecDeque, BinaryHeap};
-use std::sync::{Arc, RwLock, Mutex};
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant, SystemTime};
-use std::cmp::Ordering;
 
 /// Global Quantum Internet simulation with revolutionary capabilities
 #[derive(Debug)]
@@ -425,7 +424,7 @@ pub enum QKDProtocol {
     COW,
     DPS,
     CVQuantumCryptography,
-    MDI_QKD,
+    MdiQkd,
     TwinField,
 }
 
@@ -483,32 +482,34 @@ impl QuantumInternet {
     }
 
     /// Deploy global quantum network
-    pub fn deploy_global_quantum_network(&mut self) -> Result<GlobalDeploymentResult, QuantRS2Error> {
+    pub fn deploy_global_quantum_network(
+        &mut self,
+    ) -> Result<GlobalDeploymentResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Deploy major quantum internet nodes worldwide
         self.deploy_continental_nodes()?;
-        
+
         // Establish satellite constellation
         self.deploy_quantum_satellite_constellation()?;
-        
+
         // Create terrestrial fiber networks
         self.deploy_terrestrial_networks()?;
-        
+
         // Deploy underwater quantum cables
         self.deploy_underwater_quantum_cables()?;
-        
+
         // Configure quantum repeater networks
         self.configure_repeater_networks()?;
-        
+
         // Initialize global routing
         self.initialize_global_routing()?;
-        
+
         Ok(GlobalDeploymentResult {
             deployment_id: Self::generate_id(),
             total_nodes: self.quantum_network_infrastructure.quantum_nodes.len(),
             total_links: self.quantum_network_infrastructure.quantum_links.len(),
-            satellite_coverage: 95.7, // 95.7% global coverage
+            satellite_coverage: 95.7,   // 95.7% global coverage
             terrestrial_coverage: 87.3, // 87.3% populated areas
             deployment_time: start_time.elapsed(),
             network_reliability: 99.97,
@@ -524,19 +525,19 @@ impl QuantumInternet {
         key_length: usize,
     ) -> Result<GlobalQKDResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Find optimal QKD path
         let optimal_path = self.find_optimal_qkd_path(&source_location, &destination_location)?;
-        
+
         // Establish quantum key distribution
         let qkd_session = self.establish_qkd_session(&optimal_path, key_length)?;
-        
+
         // Execute key distribution with purification
         let distributed_key = self.execute_purified_key_distribution(&qkd_session)?;
-        
+
         // Verify key security
         let security_analysis = self.analyze_key_security(&distributed_key)?;
-        
+
         Ok(GlobalQKDResult {
             distributed_key,
             security_level: security_analysis.security_level as f64,
@@ -553,28 +554,34 @@ impl QuantumInternet {
         participating_nodes: Vec<u64>,
     ) -> Result<DistributedComputationResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Validate node capabilities
         self.validate_computation_requirements(&algorithm, &participating_nodes)?;
-        
+
         // Establish quantum entanglement between compute nodes
         let entanglement_network = self.establish_computation_entanglement(&participating_nodes)?;
-        
+
         // Distribute quantum algorithm across nodes
-        let computation_plan = self.create_distributed_computation_plan(&algorithm, &participating_nodes)?;
-        
+        let computation_plan =
+            self.create_distributed_computation_plan(&algorithm, &participating_nodes)?;
+
         // Execute distributed quantum algorithm
-        let computation_result = self.execute_distributed_algorithm(&computation_plan, &entanglement_network)?;
-        
+        let computation_result =
+            self.execute_distributed_algorithm(&computation_plan, &entanglement_network)?;
+
         // Aggregate results with error correction
         let final_result = self.aggregate_computation_results(&computation_result)?;
-        
+
         Ok(DistributedComputationResult {
             computation_id: Self::generate_id(),
-            algorithm_result: final_result.data.into_iter().map(|x| Complex64::new(x as f64, 0.0)).collect(),
+            algorithm_result: final_result
+                .data
+                .into_iter()
+                .map(|x| Complex64::new(x as f64, 0.0))
+                .collect(),
             computation_fidelity: final_result.fidelity,
             execution_time: start_time.elapsed(),
-            participating_nodes: participating_nodes,
+            participating_nodes,
             quantum_speedup: final_result.quantum_speedup,
             network_efficiency: computation_result.network_efficiency,
         })
@@ -586,58 +593,58 @@ impl QuantumInternet {
         simulation_parameters: SimulationParameters,
     ) -> QuantumInternetPerformanceReport {
         let mut report = QuantumInternetPerformanceReport::new();
-        
+
         // Simulate global QKD performance
         report.qkd_performance = self.simulate_global_qkd_performance(&simulation_parameters);
-        
+
         // Simulate distributed computing performance
-        report.distributed_computing_performance = self.simulate_distributed_computing_performance(&simulation_parameters);
-        
+        report.distributed_computing_performance =
+            self.simulate_distributed_computing_performance(&simulation_parameters);
+
         // Simulate quantum sensing network performance
-        report.sensing_network_performance = self.simulate_sensing_network_performance(&simulation_parameters);
-        
+        report.sensing_network_performance =
+            self.simulate_sensing_network_performance(&simulation_parameters);
+
         // Simulate network resilience
         report.resilience_metrics = self.simulate_network_resilience(&simulation_parameters);
-        
+
         // Calculate overall quantum internet advantage
-        report.overall_quantum_advantage = (
-            report.qkd_performance.quantum_advantage +
-            report.distributed_computing_performance.quantum_advantage +
-            report.sensing_network_performance.quantum_advantage +
-            report.resilience_metrics.quantum_advantage
-        ) / 4.0;
-        
+        report.overall_quantum_advantage = (report.qkd_performance.quantum_advantage
+            + report.distributed_computing_performance.quantum_advantage
+            + report.sensing_network_performance.quantum_advantage
+            + report.resilience_metrics.quantum_advantage)
+            / 4.0;
+
         report
     }
 
     /// Demonstrate quantum internet advantages
     pub fn demonstrate_quantum_internet_advantages(&mut self) -> QuantumInternetAdvantageReport {
         let mut report = QuantumInternetAdvantageReport::new();
-        
+
         // Benchmark quantum vs classical communication
         report.communication_advantage = self.benchmark_quantum_communication();
-        
+
         // Benchmark distributed quantum vs classical computing
         report.distributed_computing_advantage = self.benchmark_distributed_computing();
-        
+
         // Benchmark quantum sensing networks
         report.sensing_advantage = self.benchmark_quantum_sensing();
-        
+
         // Benchmark quantum security
         report.security_advantage = self.benchmark_quantum_security();
-        
+
         // Benchmark network scalability
         report.scalability_advantage = self.benchmark_network_scalability();
-        
+
         // Calculate overall advantage
-        report.overall_advantage = (
-            report.communication_advantage +
-            report.distributed_computing_advantage +
-            report.sensing_advantage +
-            report.security_advantage +
-            report.scalability_advantage
-        ) / 5.0;
-        
+        report.overall_advantage = (report.communication_advantage
+            + report.distributed_computing_advantage
+            + report.sensing_advantage
+            + report.security_advantage
+            + report.scalability_advantage)
+            / 5.0;
+
         report
     }
 
@@ -645,7 +652,7 @@ impl QuantumInternet {
     fn generate_id() -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         SystemTime::now().hash(&mut hasher);
         hasher.finish()
@@ -683,10 +690,12 @@ impl QuantumInternet {
                 network_interfaces: vec![QuantumNetworkInterface::fiber_optic()],
                 security_credentials: QuantumCredentials::high_security(),
             };
-            
-            self.quantum_network_infrastructure.quantum_nodes.insert(node.node_id, node);
+
+            self.quantum_network_infrastructure
+                .quantum_nodes
+                .insert(node.node_id, node);
         }
-        
+
         Ok(())
     }
 
@@ -695,14 +704,16 @@ impl QuantumInternet {
         let satellite_network = QuantumSatelliteNetwork {
             network_id: Self::generate_id(),
             constellation_name: "Global Quantum Constellation".to_string(),
-            satellite_count: 648, // Similar to Starlink scale
+            satellite_count: 648,    // Similar to Starlink scale
             orbital_altitude: 550.0, // km
-            coverage_area: 99.8, // % of Earth's surface
+            coverage_area: 99.8,     // % of Earth's surface
             inter_satellite_links: true,
             ground_station_links: 127,
         };
-        
-        self.quantum_network_infrastructure.satellite_networks.push(satellite_network);
+
+        self.quantum_network_infrastructure
+            .satellite_networks
+            .push(satellite_network);
         Ok(())
     }
 
@@ -712,11 +723,16 @@ impl QuantumInternet {
             network_id: Self::generate_id(),
             network_name: "Global Terrestrial Quantum Network".to_string(),
             fiber_length: 2_500_000.0, // km of quantum fiber
-            repeater_spacing: 50.0, // km average spacing
-            coverage_regions: ["North America", "Europe", "Asia", "Australia"].iter().map(|s| s.to_string()).collect(),
+            repeater_spacing: 50.0,    // km average spacing
+            coverage_regions: ["North America", "Europe", "Asia", "Australia"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
         };
-        
-        self.quantum_network_infrastructure.terrestrial_networks.push(terrestrial_network);
+
+        self.quantum_network_infrastructure
+            .terrestrial_networks
+            .push(terrestrial_network);
         Ok(())
     }
 
@@ -733,22 +749,25 @@ impl QuantumInternet {
             let cable = UnderwaterQuantumCable {
                 cable_id: Self::generate_id(),
                 cable_name: name.to_string(),
-                length: length,
+                length,
                 endpoints: (endpoint1.to_string(), endpoint2.to_string()),
                 depth: 4000.0, // average ocean depth
                 transmission_fidelity: 0.92,
                 bandwidth: 1000.0, // ebits/second
             };
-            
-            self.quantum_network_infrastructure.underwater_cables.push(cable);
+
+            self.quantum_network_infrastructure
+                .underwater_cables
+                .push(cable);
         }
-        
+
         Ok(())
     }
 
     fn configure_repeater_networks(&mut self) -> Result<(), QuantRS2Error> {
         // Configure quantum repeater networks for long-distance communication
-        for i in 0..500 { // 500 quantum repeaters globally
+        for i in 0..500 {
+            // 500 quantum repeaters globally
             let repeater = QuantumRepeater {
                 repeater_id: Self::generate_id(),
                 location: GeographicLocation {
@@ -761,7 +780,10 @@ impl QuantumInternet {
                 repeater_type: RepeaterType::QuantumMemoryRepeater,
                 memory_slots: 100,
                 purification_capability: PurificationCapability {
-                    purification_protocols: vec![PurificationProtocol::BBPSSW, PurificationProtocol::DEJMPS],
+                    purification_protocols: vec![
+                        PurificationProtocol::BBPSSW,
+                        PurificationProtocol::DEJMPS,
+                    ],
                     purification_rounds: 3,
                     target_fidelity: 0.99,
                 },
@@ -769,16 +791,20 @@ impl QuantumInternet {
                 memory_coherence_time: Duration::from_secs(1),
                 throughput: 100.0,
             };
-            
-            self.quantum_network_infrastructure.quantum_repeaters.insert(repeater.repeater_id, repeater);
+
+            self.quantum_network_infrastructure
+                .quantum_repeaters
+                .insert(repeater.repeater_id, repeater);
         }
-        
+
         Ok(())
     }
 
     fn initialize_global_routing(&mut self) -> Result<(), QuantRS2Error> {
         // Initialize global quantum routing protocols
-        self.quantum_routing.topology_discovery.discover_global_topology(&self.quantum_network_infrastructure)?;
+        self.quantum_routing
+            .topology_discovery
+            .discover_global_topology(&self.quantum_network_infrastructure)?;
         self.quantum_routing.build_initial_routing_table()?;
         Ok(())
     }
@@ -805,7 +831,10 @@ impl QuantumInternet {
     }
 
     // Simulation methods (simplified implementations)
-    fn simulate_global_qkd_performance(&self, _params: &SimulationParameters) -> QKDPerformanceMetrics {
+    fn simulate_global_qkd_performance(
+        &self,
+        _params: &SimulationParameters,
+    ) -> QKDPerformanceMetrics {
         QKDPerformanceMetrics {
             average_key_rate: 1000.0, // keys/second
             average_fidelity: 0.99,
@@ -814,7 +843,10 @@ impl QuantumInternet {
         }
     }
 
-    fn simulate_distributed_computing_performance(&self, _params: &SimulationParameters) -> DistributedComputingMetrics {
+    fn simulate_distributed_computing_performance(
+        &self,
+        _params: &SimulationParameters,
+    ) -> DistributedComputingMetrics {
         DistributedComputingMetrics {
             average_speedup: 23.4,
             network_efficiency: 0.87,
@@ -823,7 +855,10 @@ impl QuantumInternet {
         }
     }
 
-    fn simulate_sensing_network_performance(&self, _params: &SimulationParameters) -> SensingNetworkMetrics {
+    fn simulate_sensing_network_performance(
+        &self,
+        _params: &SimulationParameters,
+    ) -> SensingNetworkMetrics {
         SensingNetworkMetrics {
             sensitivity_improvement: 34.2,
             spatial_resolution: 0.001, // km
@@ -842,7 +877,11 @@ impl QuantumInternet {
     }
 
     // Placeholder methods for complex operations
-    fn find_optimal_qkd_path(&self, _source: &GeographicLocation, _destination: &GeographicLocation) -> Result<QuantumRoute, QuantRS2Error> {
+    fn find_optimal_qkd_path(
+        &self,
+        _source: &GeographicLocation,
+        _destination: &GeographicLocation,
+    ) -> Result<QuantumRoute, QuantRS2Error> {
         Ok(QuantumRoute {
             route_id: Self::generate_id(),
             source: 1,
@@ -856,7 +895,11 @@ impl QuantumInternet {
         })
     }
 
-    fn establish_qkd_session(&self, _path: &QuantumRoute, _key_length: usize) -> Result<QKDSession, QuantRS2Error> {
+    fn establish_qkd_session(
+        &self,
+        _path: &QuantumRoute,
+        _key_length: usize,
+    ) -> Result<QKDSession, QuantRS2Error> {
         Ok(QKDSession {
             session_id: Self::generate_id(),
             protocol: QKDProtocol::BB84,
@@ -865,7 +908,10 @@ impl QuantumInternet {
         })
     }
 
-    fn execute_purified_key_distribution(&self, _session: &QKDSession) -> Result<DistributedKey, QuantRS2Error> {
+    fn execute_purified_key_distribution(
+        &self,
+        _session: &QKDSession,
+    ) -> Result<DistributedKey, QuantRS2Error> {
         Ok(DistributedKey {
             key_data: vec![0u8; 256],
             key_length: 256,
@@ -873,18 +919,28 @@ impl QuantumInternet {
         })
     }
 
-    fn analyze_key_security(&self, _key: &DistributedKey) -> Result<SecurityAnalysis, QuantRS2Error> {
+    fn analyze_key_security(
+        &self,
+        _key: &DistributedKey,
+    ) -> Result<SecurityAnalysis, QuantRS2Error> {
         Ok(SecurityAnalysis {
             security_level: 256, // bits of security
             quantum_advantage_factor: 89.3,
         })
     }
 
-    fn validate_computation_requirements(&self, _algorithm: &DistributedQuantumAlgorithm, _nodes: &[u64]) -> Result<(), QuantRS2Error> {
+    fn validate_computation_requirements(
+        &self,
+        _algorithm: &DistributedQuantumAlgorithm,
+        _nodes: &[u64],
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
-    fn establish_computation_entanglement(&self, _nodes: &[u64]) -> Result<ComputationEntanglementNetwork, QuantRS2Error> {
+    fn establish_computation_entanglement(
+        &self,
+        _nodes: &[u64],
+    ) -> Result<ComputationEntanglementNetwork, QuantRS2Error> {
         Ok(ComputationEntanglementNetwork {
             network_id: Self::generate_id(),
             entangled_nodes: vec![],
@@ -892,7 +948,11 @@ impl QuantumInternet {
         })
     }
 
-    fn create_distributed_computation_plan(&self, _algorithm: &DistributedQuantumAlgorithm, _nodes: &[u64]) -> Result<ComputationPlan, QuantRS2Error> {
+    fn create_distributed_computation_plan(
+        &self,
+        _algorithm: &DistributedQuantumAlgorithm,
+        _nodes: &[u64],
+    ) -> Result<ComputationPlan, QuantRS2Error> {
         Ok(ComputationPlan {
             plan_id: Self::generate_id(),
             algorithm_steps: vec![],
@@ -900,7 +960,11 @@ impl QuantumInternet {
         })
     }
 
-    fn execute_distributed_algorithm(&self, _plan: &ComputationPlan, _entanglement: &ComputationEntanglementNetwork) -> Result<DistributedAlgorithmResult, QuantRS2Error> {
+    fn execute_distributed_algorithm(
+        &self,
+        _plan: &ComputationPlan,
+        _entanglement: &ComputationEntanglementNetwork,
+    ) -> Result<DistributedAlgorithmResult, QuantRS2Error> {
         Ok(DistributedAlgorithmResult {
             result_data: vec![],
             fidelity: 0.97,
@@ -909,7 +973,10 @@ impl QuantumInternet {
         })
     }
 
-    fn aggregate_computation_results(&self, _result: &DistributedAlgorithmResult) -> Result<AggregatedResult, QuantRS2Error> {
+    fn aggregate_computation_results(
+        &self,
+        _result: &DistributedAlgorithmResult,
+    ) -> Result<AggregatedResult, QuantRS2Error> {
         Ok(AggregatedResult {
             data: vec![],
             fidelity: 0.97,
@@ -978,7 +1045,10 @@ impl QuantumNodeCapabilities {
             max_qubits: 1000,
             max_entanglement_rate: 10000.0,
             quantum_memory_capacity: 100000,
-            error_correction_capability: vec![ErrorCorrectionCode::SurfaceCode, ErrorCorrectionCode::ColorCode],
+            error_correction_capability: vec![
+                ErrorCorrectionCode::SurfaceCode,
+                ErrorCorrectionCode::ColorCode,
+            ],
             supported_protocols: vec![QuantumProtocol::QKD, QuantumProtocol::QuantumTeleportation],
             teleportation_fidelity: 0.99,
             storage_coherence_time: Duration::from_secs(10),
@@ -1168,7 +1238,7 @@ impl QuantumSatelliteNetwork {
             constellation_name: "QuantRS-Constellation".to_string(),
             satellite_count: 100,
             orbital_altitude: 550.0, // km
-            coverage_area: 98.5, // percentage
+            coverage_area: 98.5,     // percentage
             inter_satellite_links: true,
             ground_station_links: 4,
         }
@@ -1432,7 +1502,10 @@ impl TopologyDiscovery {
         }
     }
 
-    pub fn discover_global_topology(&self, _infrastructure: &QuantumNetworkInfrastructure) -> Result<(), QuantRS2Error> {
+    pub fn discover_global_topology(
+        &self,
+        _infrastructure: &QuantumNetworkInfrastructure,
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 }
@@ -1731,7 +1804,6 @@ pub struct QKDSession {
     pub estimated_time: Duration,
 }
 
-
 #[derive(Debug)]
 pub struct SecurityAnalysis {
     pub security_level: u32,
@@ -1781,7 +1853,13 @@ mod tests {
     #[test]
     fn test_quantum_internet_creation() {
         let quantum_internet = QuantumInternet::new();
-        assert_eq!(quantum_internet.quantum_network_infrastructure.quantum_nodes.len(), 0);
+        assert_eq!(
+            quantum_internet
+                .quantum_network_infrastructure
+                .quantum_nodes
+                .len(),
+            0
+        );
     }
 
     #[test]
@@ -1789,7 +1867,7 @@ mod tests {
         let mut quantum_internet = QuantumInternet::new();
         let result = quantum_internet.deploy_global_quantum_network();
         assert!(result.is_ok());
-        
+
         let deployment_result = result.unwrap();
         assert!(deployment_result.total_nodes > 0);
         assert!(deployment_result.satellite_coverage > 90.0);
@@ -1800,7 +1878,7 @@ mod tests {
     fn test_quantum_internet_advantages() {
         let mut quantum_internet = QuantumInternet::new();
         let report = quantum_internet.demonstrate_quantum_internet_advantages();
-        
+
         // All advantages should show quantum superiority
         assert!(report.communication_advantage > 1.0);
         assert!(report.distributed_computing_advantage > 1.0);
@@ -1814,7 +1892,7 @@ mod tests {
     fn test_global_qkd() {
         let mut quantum_internet = QuantumInternet::new();
         quantum_internet.deploy_global_quantum_network().unwrap();
-        
+
         let source = GeographicLocation {
             latitude: 40.7128,
             longitude: -74.0060,
@@ -1822,7 +1900,7 @@ mod tests {
             country: "USA".to_string(),
             city: "New York".to_string(),
         };
-        
+
         let destination = GeographicLocation {
             latitude: 51.5074,
             longitude: -0.1278,
@@ -1830,10 +1908,10 @@ mod tests {
             country: "UK".to_string(),
             city: "London".to_string(),
         };
-        
+
         let result = quantum_internet.execute_global_qkd(source, destination, 256);
         assert!(result.is_ok());
-        
+
         let qkd_result = result.unwrap();
         assert_eq!(qkd_result.distributed_key.key_length, 256);
         assert!(qkd_result.quantum_advantage > 1.0);
@@ -1842,6 +1920,9 @@ mod tests {
     #[test]
     fn test_quantum_routing() {
         let routing = QuantumRouting::new();
-        assert!(matches!(routing.routing_algorithm, QuantumRoutingAlgorithm::MultiObjective));
+        assert!(matches!(
+            routing.routing_algorithm,
+            QuantumRoutingAlgorithm::MultiObjective
+        ));
     }
 }

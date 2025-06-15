@@ -4,7 +4,7 @@
 //! implemented in the QuantRS2-ML framework, representing the forefront of quantum machine learning research.
 //!
 //! ## Featured Algorithms:
-//! 
+//!
 //! 1. **Quantum Advanced Diffusion Models** - Revolutionary generative modeling with quantum enhancement
 //! 2. **Quantum Continuous Normalization Flows** - Advanced probabilistic modeling with quantum advantages
 //! 3. **Quantum Neural Radiance Fields (QNeRF)** - 3D scene representation with quantum superiority
@@ -18,9 +18,9 @@
 //! - Advanced optimization landscapes via quantum tunneling
 //! - Next-generation representational capacity
 
-use quantrs_ml::prelude::*;
 use ndarray::{Array1, Array2, Array3};
 use num_complex::Complex64;
+use quantrs_ml::prelude::*;
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -40,36 +40,36 @@ pub struct UltraThinkShowcaseConfig {
 
 #[derive(Debug, Clone)]
 pub enum ComplexityLevel {
-    Educational,      // Basic demonstration with clear explanations
-    Research,         // Advanced research-level complexity
-    Production,       // Production-ready with full optimization
-    Experimental,     // Cutting-edge experimental features
+    Educational,  // Basic demonstration with clear explanations
+    Research,     // Advanced research-level complexity
+    Production,   // Production-ready with full optimization
+    Experimental, // Cutting-edge experimental features
 }
 
 #[derive(Debug, Clone)]
 pub enum DemonstrationMode {
-    Sequential,       // Demonstrate algorithms one by one
-    Integrated,       // Show algorithms working together
-    Comparative,      // Compare quantum vs classical approaches
-    Interactive,      // Interactive exploration mode
+    Sequential,  // Demonstrate algorithms one by one
+    Integrated,  // Show algorithms working together
+    Comparative, // Compare quantum vs classical approaches
+    Interactive, // Interactive exploration mode
 }
 
 /// Main showcase orchestrator
 pub struct NextGenQuantumMLShowcase {
     config: UltraThinkShowcaseConfig,
-    
+
     // Core quantum ML components
     quantum_diffusion: QuantumAdvancedDiffusionModel,
     quantum_flows: QuantumContinuousFlow,
     quantum_nerf: QuantumNeRF,
     quantum_icl: QuantumInContextLearner,
     quantum_moe: QuantumMixtureOfExperts,
-    
+
     // Analysis and monitoring
     quantum_advantage_analyzer: QuantumAdvantageAnalyzer,
     performance_monitor: PerformanceMonitor,
     coherence_tracker: CoherenceTracker,
-    
+
     // Showcase state
     demonstration_results: Vec<DemonstrationResult>,
     quantum_metrics_history: Vec<QuantumMetrics>,
@@ -81,8 +81,11 @@ impl NextGenQuantumMLShowcase {
         println!("🌟 Initializing Next-Generation Quantum ML UltraThink Showcase");
         println!("   Complexity Level: {:?}", config.complexity_level);
         println!("   Demonstration Mode: {:?}", config.demonstration_mode);
-        println!("   Quantum Enhancement: {:.2}x", config.quantum_enhancement_level);
-        
+        println!(
+            "   Quantum Enhancement: {:.2}x",
+            config.quantum_enhancement_level
+        );
+
         // Initialize Quantum Advanced Diffusion Models
         let diffusion_config = QuantumAdvancedDiffusionConfig {
             data_dim: config.data_dimensions,
@@ -97,7 +100,7 @@ impl NextGenQuantumMLShowcase {
             ..Default::default()
         };
         let quantum_diffusion = QuantumAdvancedDiffusionModel::new(diffusion_config)?;
-        
+
         // Initialize Quantum Continuous Normalization Flows
         let flows_config = QuantumContinuousFlowConfig {
             input_dim: config.data_dimensions,
@@ -110,10 +113,10 @@ impl NextGenQuantumMLShowcase {
             ..Default::default()
         };
         let quantum_flows = QuantumContinuousFlow::new(flows_config)?;
-        
+
         // Initialize Quantum Neural Radiance Fields
         let nerf_config = QuantumNeRFConfig {
-            input_dim: 3, // 3D coordinates
+            input_dim: 3,  // 3D coordinates
             output_dim: 4, // RGB + density
             num_qubits: config.num_qubits,
             quantum_enhancement_level: config.quantum_enhancement_level,
@@ -123,7 +126,7 @@ impl NextGenQuantumMLShowcase {
             ..Default::default()
         };
         let quantum_nerf = QuantumNeRF::new(nerf_config)?;
-        
+
         // Initialize Quantum In-Context Learning
         let icl_config = QuantumInContextLearningConfig {
             model_dim: config.data_dimensions,
@@ -136,8 +139,8 @@ impl NextGenQuantumMLShowcase {
                 entanglement_pattern: EntanglementPattern::Hierarchical { levels: 3 },
                 encoding_layers: 4,
             },
-            adaptation_strategy: AdaptationStrategy::QuantumInterference { 
-                interference_strength: 0.8 
+            adaptation_strategy: AdaptationStrategy::QuantumInterference {
+                interference_strength: 0.8,
             },
             entanglement_strength: config.quantum_enhancement_level,
             use_quantum_memory: true,
@@ -145,7 +148,7 @@ impl NextGenQuantumMLShowcase {
             ..Default::default()
         };
         let quantum_icl = QuantumInContextLearner::new(icl_config)?;
-        
+
         // Initialize Quantum Mixture of Experts
         let moe_config = QuantumMixtureOfExpertsConfig {
             input_dim: config.data_dimensions,
@@ -167,12 +170,12 @@ impl NextGenQuantumMLShowcase {
             ..Default::default()
         };
         let quantum_moe = QuantumMixtureOfExperts::new(moe_config)?;
-        
+
         // Initialize analysis components
         let quantum_advantage_analyzer = QuantumAdvantageAnalyzer::new(&config)?;
         let performance_monitor = PerformanceMonitor::new(&config)?;
         let coherence_tracker = CoherenceTracker::new(&config)?;
-        
+
         Ok(Self {
             config,
             quantum_diffusion,
@@ -187,115 +190,121 @@ impl NextGenQuantumMLShowcase {
             quantum_metrics_history: Vec::new(),
         })
     }
-    
+
     /// Run the complete ultra-advanced quantum ML showcase
     pub fn run_ultrathink_showcase(&mut self) -> Result<ShowcaseResults> {
         println!("\n🚀 Starting Next-Generation Quantum ML UltraThink Showcase");
-        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        
+        println!(
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        );
+
         let start_time = Instant::now();
         let mut results = ShowcaseResults::new();
-        
+
         match self.config.demonstration_mode {
             DemonstrationMode::Sequential => {
                 results = self.run_sequential_demonstration()?;
-            },
+            }
             DemonstrationMode::Integrated => {
                 results = self.run_integrated_demonstration()?;
-            },
+            }
             DemonstrationMode::Comparative => {
                 results = self.run_comparative_demonstration()?;
-            },
+            }
             DemonstrationMode::Interactive => {
                 results = self.run_interactive_demonstration()?;
-            },
+            }
         }
-        
+
         let total_duration = start_time.elapsed();
         results.total_execution_time = total_duration;
-        
+
         // Final quantum advantage analysis
         if self.config.enable_quantum_advantage_analysis {
             results.quantum_advantage_summary = self.analyze_overall_quantum_advantage(&results)?;
         }
-        
+
         self.display_showcase_summary(&results)?;
-        
+
         Ok(results)
     }
-    
+
     /// Demonstrate each quantum ML algorithm sequentially
     fn run_sequential_demonstration(&mut self) -> Result<ShowcaseResults> {
         println!("\n📈 Sequential Demonstration: Showcasing Each Algorithm Individually");
         let mut results = ShowcaseResults::new();
-        
+
         // 1. Quantum Advanced Diffusion Models Demonstration
         println!("\n🌊 [1/5] Quantum Advanced Diffusion Models - Revolutionary Generative AI");
         let diffusion_demo = self.demonstrate_quantum_diffusion()?;
         results.add_result(diffusion_demo);
-        
+
         // 2. Quantum Continuous Normalization Flows Demonstration
-        println!("\n🌀 [2/5] Quantum Continuous Normalization Flows - Advanced Probabilistic Modeling");
+        println!(
+            "\n🌀 [2/5] Quantum Continuous Normalization Flows - Advanced Probabilistic Modeling"
+        );
         let flows_demo = self.demonstrate_quantum_flows()?;
         results.add_result(flows_demo);
-        
+
         // 3. Quantum Neural Radiance Fields Demonstration
         println!("\n🎯 [3/5] Quantum Neural Radiance Fields - 3D Scene Understanding");
         let nerf_demo = self.demonstrate_quantum_nerf()?;
         results.add_result(nerf_demo);
-        
+
         // 4. Quantum In-Context Learning Demonstration
         println!("\n🧠 [4/5] Quantum In-Context Learning - Zero-Shot Adaptation");
         let icl_demo = self.demonstrate_quantum_icl()?;
         results.add_result(icl_demo);
-        
+
         // 5. Quantum Mixture of Experts Demonstration
         println!("\n👥 [5/5] Quantum Mixture of Experts - Scalable Conditional Computation");
         let moe_demo = self.demonstrate_quantum_moe()?;
         results.add_result(moe_demo);
-        
+
         Ok(results)
     }
-    
+
     /// Demonstrate algorithms working together in an integrated fashion
     fn run_integrated_demonstration(&mut self) -> Result<ShowcaseResults> {
         println!("\n🔗 Integrated Demonstration: Algorithms Working in Harmony");
         let mut results = ShowcaseResults::new();
-        
+
         // Create synthetic multi-modal dataset
         let dataset = self.generate_multimodal_dataset()?;
-        
+
         // Integrated Pipeline Demonstration
         println!("\n⚡ Integrated Quantum ML Pipeline");
-        
+
         // Stage 1: Data generation with Quantum Diffusion
         println!("   Stage 1: Quantum Diffusion generates high-quality synthetic data");
         let generated_data = self.quantum_diffusion.quantum_generate(
-            self.config.num_samples / 4, 
-            None, 
-            Some(1.5)
+            self.config.num_samples / 4,
+            None,
+            Some(1.5),
         )?;
-        
+
         // Stage 2: Density modeling with Quantum Flows
         println!("   Stage 2: Quantum Flows model the data distribution");
         let flow_samples = self.quantum_flows.sample(self.config.num_samples / 4)?;
-        
+
         // Stage 3: 3D scene reconstruction with Quantum NeRF
         println!("   Stage 3: Quantum NeRF reconstructs 3D scene representation");
         let scene_coords = self.generate_3d_coordinates(100)?;
         let nerf_output = self.quantum_nerf.render_scene(&scene_coords, None)?;
-        
+
         // Stage 4: Few-shot adaptation with Quantum ICL
         println!("   Stage 4: Quantum ICL adapts to new tasks without parameter updates");
         let context_examples = self.create_context_examples(&dataset)?;
         let query = Array1::from_vec(vec![0.5, -0.3, 0.8, 0.2]);
-        let icl_output = self.quantum_icl.learn_in_context(&context_examples, &query, None)?;
-        
+        let icl_output = self
+            .quantum_icl
+            .learn_in_context(&context_examples, &query, None)?;
+
         // Stage 5: Expert routing with Quantum MoE
         println!("   Stage 5: Quantum MoE routes computation through quantum experts");
         let moe_input = Array1::from_vec(vec![0.2, 0.7, -0.4, 0.9]);
         let moe_output = self.quantum_moe.forward(&moe_input)?;
-        
+
         // Analyze integrated performance
         let integrated_metrics = self.analyze_integrated_performance(
             &generated_data,
@@ -304,7 +313,7 @@ impl NextGenQuantumMLShowcase {
             &icl_output,
             &moe_output,
         )?;
-        
+
         results.add_result(DemonstrationResult {
             algorithm_name: "Integrated Pipeline".to_string(),
             demonstration_type: DemonstrationType::Integrated,
@@ -321,32 +330,35 @@ impl NextGenQuantumMLShowcase {
                 "Superior performance compared to classical pipelines".to_string(),
             ],
         });
-        
+
         Ok(results)
     }
-    
+
     /// Run comparative analysis against classical methods
     fn run_comparative_demonstration(&mut self) -> Result<ShowcaseResults> {
         println!("\n⚖️  Comparative Demonstration: Quantum vs Classical Performance");
         let mut results = ShowcaseResults::new();
-        
+
         // Generate benchmark dataset
         let benchmark_data = self.generate_benchmark_dataset()?;
-        
+
         println!("\n📊 Running Comprehensive Benchmarks");
-        
+
         // Benchmark each algorithm against classical counterparts
         let algorithms = vec![
-            ("Quantum Diffusion vs Classical Diffusion", AlgorithmType::Diffusion),
+            (
+                "Quantum Diffusion vs Classical Diffusion",
+                AlgorithmType::Diffusion,
+            ),
             ("Quantum Flows vs Normalizing Flows", AlgorithmType::Flows),
             ("Quantum NeRF vs Classical NeRF", AlgorithmType::NeRF),
             ("Quantum ICL vs Few-Shot Learning", AlgorithmType::ICL),
             ("Quantum MoE vs Classical MoE", AlgorithmType::MoE),
         ];
-        
+
         for (name, algorithm_type) in algorithms {
             println!("   🔬 Benchmarking: {}", name);
-            
+
             let benchmark_result = match algorithm_type {
                 AlgorithmType::Diffusion => self.benchmark_diffusion(&benchmark_data)?,
                 AlgorithmType::Flows => self.benchmark_flows(&benchmark_data)?,
@@ -354,42 +366,57 @@ impl NextGenQuantumMLShowcase {
                 AlgorithmType::ICL => self.benchmark_icl(&benchmark_data)?,
                 AlgorithmType::MoE => self.benchmark_moe(&benchmark_data)?,
             };
-            
+
             results.add_result(benchmark_result);
         }
-        
+
         Ok(results)
     }
-    
+
     /// Interactive exploration of quantum ML capabilities
     fn run_interactive_demonstration(&mut self) -> Result<ShowcaseResults> {
         println!("\n🎮 Interactive Demonstration: Real-Time Quantum ML Exploration");
         let mut results = ShowcaseResults::new();
-        
+
         // Create interactive scenarios
         let scenarios = vec![
-            ("Real-time Quantum Image Generation", ScenarioType::ImageGeneration),
-            ("Interactive 3D Scene Manipulation", ScenarioType::SceneManipulation),
-            ("Adaptive Learning Playground", ScenarioType::AdaptiveLearning),
-            ("Quantum Expert Routing Visualizer", ScenarioType::ExpertRouting),
-            ("Multi-Modal Fusion Interface", ScenarioType::MultiModalFusion),
+            (
+                "Real-time Quantum Image Generation",
+                ScenarioType::ImageGeneration,
+            ),
+            (
+                "Interactive 3D Scene Manipulation",
+                ScenarioType::SceneManipulation,
+            ),
+            (
+                "Adaptive Learning Playground",
+                ScenarioType::AdaptiveLearning,
+            ),
+            (
+                "Quantum Expert Routing Visualizer",
+                ScenarioType::ExpertRouting,
+            ),
+            (
+                "Multi-Modal Fusion Interface",
+                ScenarioType::MultiModalFusion,
+            ),
         ];
-        
+
         for (name, scenario_type) in scenarios {
             println!("   🎯 Interactive Scenario: {}", name);
             let scenario_result = self.run_interactive_scenario(scenario_type)?;
             results.add_result(scenario_result);
         }
-        
+
         Ok(results)
     }
-    
+
     /// Demonstrate Quantum Advanced Diffusion Models
     fn demonstrate_quantum_diffusion(&mut self) -> Result<DemonstrationResult> {
         println!("   🎨 Generating high-fidelity samples using quantum diffusion...");
-        
+
         let start_time = Instant::now();
-        
+
         // Generate quantum-enhanced samples
         let num_samples = 50;
         let generation_output = self.quantum_diffusion.quantum_generate(
@@ -397,19 +424,27 @@ impl NextGenQuantumMLShowcase {
             None,
             Some(2.0), // Guidance scale for enhanced quality
         )?;
-        
+
         let execution_time = start_time.elapsed();
-        
+
         // Analyze quantum metrics
         let quantum_metrics = QuantumMetrics {
-            entanglement_measure: generation_output.overall_quantum_metrics.average_entanglement,
+            entanglement_measure: generation_output
+                .overall_quantum_metrics
+                .average_entanglement,
             coherence_time: generation_output.overall_quantum_metrics.coherence_time,
-            fidelity: generation_output.overall_quantum_metrics.fidelity_preservation,
-            quantum_volume_utilization: generation_output.overall_quantum_metrics.quantum_volume_utilization,
-            circuit_depth_efficiency: generation_output.overall_quantum_metrics.circuit_depth_efficiency,
+            fidelity: generation_output
+                .overall_quantum_metrics
+                .fidelity_preservation,
+            quantum_volume_utilization: generation_output
+                .overall_quantum_metrics
+                .quantum_volume_utilization,
+            circuit_depth_efficiency: generation_output
+                .overall_quantum_metrics
+                .circuit_depth_efficiency,
             noise_resilience: generation_output.overall_quantum_metrics.noise_resilience,
         };
-        
+
         // Performance analysis
         let performance_metrics = PerformanceMetrics {
             accuracy: 0.95, // High-quality generation
@@ -419,13 +454,12 @@ impl NextGenQuantumMLShowcase {
             throughput: num_samples as f64 / execution_time.as_secs_f64(),
             latency: execution_time.as_millis() as f64 / num_samples as f64,
         };
-        
+
         // Estimate quantum advantage
-        let quantum_advantage_factor = self.quantum_advantage_analyzer.estimate_diffusion_advantage(
-            &generation_output,
-            &quantum_metrics,
-        )?;
-        
+        let quantum_advantage_factor = self
+            .quantum_advantage_analyzer
+            .estimate_diffusion_advantage(&generation_output, &quantum_metrics)?;
+
         Ok(DemonstrationResult {
             algorithm_name: "Quantum Advanced Diffusion Models".to_string(),
             demonstration_type: DemonstrationType::Individual,
@@ -441,25 +475,37 @@ impl NextGenQuantumMLShowcase {
             execution_time,
             memory_usage: self.estimate_memory_usage("diffusion"),
             highlights: vec![
-                format!("Generated {} high-fidelity samples with quantum enhancement", num_samples),
-                format!("Achieved {:.1}x quantum advantage over classical diffusion", quantum_advantage_factor),
-                format!("Entanglement-enhanced denoising with {:.3} average entanglement", quantum_metrics.entanglement_measure),
-                format!("Quantum coherence preserved at {:.2}% throughout generation", quantum_metrics.coherence_time * 100.0),
+                format!(
+                    "Generated {} high-fidelity samples with quantum enhancement",
+                    num_samples
+                ),
+                format!(
+                    "Achieved {:.1}x quantum advantage over classical diffusion",
+                    quantum_advantage_factor
+                ),
+                format!(
+                    "Entanglement-enhanced denoising with {:.3} average entanglement",
+                    quantum_metrics.entanglement_measure
+                ),
+                format!(
+                    "Quantum coherence preserved at {:.2}% throughout generation",
+                    quantum_metrics.coherence_time * 100.0
+                ),
                 "Advanced quantum noise schedules with decoherence compensation".to_string(),
                 "Real-time quantum error mitigation and adaptive denoising".to_string(),
             ],
         })
     }
-    
+
     /// Demonstrate Quantum Continuous Normalization Flows
     fn demonstrate_quantum_flows(&mut self) -> Result<DemonstrationResult> {
         println!("   📈 Modeling complex distributions with quantum flows...");
-        
+
         let start_time = Instant::now();
-        
+
         // Create test data
         let test_data = self.generate_test_distribution(100)?;
-        
+
         // Forward pass through quantum flows
         let mut flow_outputs = Vec::new();
         for sample in test_data.rows() {
@@ -467,21 +513,25 @@ impl NextGenQuantumMLShowcase {
             let output = self.quantum_flows.forward(&sample_array)?;
             flow_outputs.push(output);
         }
-        
+
         // Sample from the learned distribution
         let samples = self.quantum_flows.sample(50)?;
-        
+
         let execution_time = start_time.elapsed();
-        
+
         // Compute quantum metrics
-        let avg_entanglement = flow_outputs.iter()
+        let avg_entanglement = flow_outputs
+            .iter()
             .map(|o| o.quantum_enhancement.entanglement_contribution)
-            .sum::<f64>() / flow_outputs.len() as f64;
-            
-        let avg_fidelity = flow_outputs.iter()
+            .sum::<f64>()
+            / flow_outputs.len() as f64;
+
+        let avg_fidelity = flow_outputs
+            .iter()
             .map(|o| o.quantum_enhancement.fidelity_contribution)
-            .sum::<f64>() / flow_outputs.len() as f64;
-        
+            .sum::<f64>()
+            / flow_outputs.len() as f64;
+
         let quantum_metrics = QuantumMetrics {
             entanglement_measure: avg_entanglement,
             coherence_time: 0.95, // High coherence preservation
@@ -490,7 +540,7 @@ impl NextGenQuantumMLShowcase {
             circuit_depth_efficiency: 0.92,
             noise_resilience: 0.89,
         };
-        
+
         let performance_metrics = PerformanceMetrics {
             accuracy: 0.91,
             precision: 0.89,
@@ -499,9 +549,9 @@ impl NextGenQuantumMLShowcase {
             throughput: flow_outputs.len() as f64 / execution_time.as_secs_f64(),
             latency: execution_time.as_millis() as f64 / flow_outputs.len() as f64,
         };
-        
+
         let quantum_advantage_factor = 1.0 + avg_entanglement * 2.0 + avg_fidelity;
-        
+
         Ok(DemonstrationResult {
             algorithm_name: "Quantum Continuous Normalization Flows".to_string(),
             demonstration_type: DemonstrationType::Individual,
@@ -517,33 +567,40 @@ impl NextGenQuantumMLShowcase {
             execution_time,
             memory_usage: self.estimate_memory_usage("flows"),
             highlights: vec![
-                "Quantum-enhanced invertible transformations with guaranteed reversibility".to_string(),
-                format!("Achieved {:.1}x quantum advantage in density modeling", quantum_advantage_factor),
-                format!("Superior log-likelihood estimation with {:.3} average quantum enhancement", avg_entanglement),
+                "Quantum-enhanced invertible transformations with guaranteed reversibility"
+                    .to_string(),
+                format!(
+                    "Achieved {:.1}x quantum advantage in density modeling",
+                    quantum_advantage_factor
+                ),
+                format!(
+                    "Superior log-likelihood estimation with {:.3} average quantum enhancement",
+                    avg_entanglement
+                ),
                 "Entanglement-based flow coupling for complex distribution modeling".to_string(),
                 "Quantum Neural ODE integration for continuous-time flows".to_string(),
                 "Advanced quantum attention mechanisms in flow layers".to_string(),
             ],
         })
     }
-    
+
     /// Demonstrate Quantum Neural Radiance Fields
     fn demonstrate_quantum_nerf(&mut self) -> Result<DemonstrationResult> {
         println!("   🎯 Reconstructing 3D scenes with quantum neural radiance fields...");
-        
+
         let start_time = Instant::now();
-        
+
         // Generate 3D coordinates for scene reconstruction
         let scene_coordinates = self.generate_3d_coordinates(200)?;
-        
+
         // Render scene using Quantum NeRF
         let render_output = self.quantum_nerf.render_scene(&scene_coordinates, None)?;
-        
+
         // Analyze volumetric rendering quality
         let volume_metrics = self.quantum_nerf.analyze_volume_rendering(&render_output)?;
-        
+
         let execution_time = start_time.elapsed();
-        
+
         let quantum_metrics = QuantumMetrics {
             entanglement_measure: render_output.quantum_metrics.entanglement_utilization,
             coherence_time: render_output.quantum_metrics.coherence_preservation,
@@ -552,19 +609,21 @@ impl NextGenQuantumMLShowcase {
             circuit_depth_efficiency: 0.88,
             noise_resilience: 0.91,
         };
-        
+
         let performance_metrics = PerformanceMetrics {
             accuracy: volume_metrics.reconstruction_accuracy,
             precision: volume_metrics.detail_precision,
             recall: volume_metrics.completeness,
-            f1_score: 2.0 * volume_metrics.reconstruction_accuracy * volume_metrics.detail_precision / 
-                     (volume_metrics.reconstruction_accuracy + volume_metrics.detail_precision),
+            f1_score: 2.0
+                * volume_metrics.reconstruction_accuracy
+                * volume_metrics.detail_precision
+                / (volume_metrics.reconstruction_accuracy + volume_metrics.detail_precision),
             throughput: scene_coordinates.len() as f64 / execution_time.as_secs_f64(),
             latency: execution_time.as_millis() as f64 / scene_coordinates.len() as f64,
         };
-        
+
         let quantum_advantage_factor = render_output.quantum_metrics.quantum_advantage_ratio;
-        
+
         Ok(DemonstrationResult {
             algorithm_name: "Quantum Neural Radiance Fields".to_string(),
             demonstration_type: DemonstrationType::Individual,
@@ -575,50 +634,62 @@ impl NextGenQuantumMLShowcase {
                 classical_performance: 0.72,
                 quantum_performance: volume_metrics.reconstruction_accuracy,
                 speedup_factor: quantum_advantage_factor,
-                quality_improvement: ((volume_metrics.reconstruction_accuracy - 0.72) / 0.72 * 100.0),
+                quality_improvement: ((volume_metrics.reconstruction_accuracy - 0.72) / 0.72
+                    * 100.0),
             }),
             execution_time,
             memory_usage: self.estimate_memory_usage("nerf"),
             highlights: vec![
-                format!("Rendered {} 3D coordinates with quantum enhancement", scene_coordinates.len()),
-                format!("Quantum volume rendering with {:.1}x advantage over classical NeRF", quantum_advantage_factor),
-                format!("Superior 3D reconstruction accuracy: {:.2}%", volume_metrics.reconstruction_accuracy * 100.0),
+                format!(
+                    "Rendered {} 3D coordinates with quantum enhancement",
+                    scene_coordinates.len()
+                ),
+                format!(
+                    "Quantum volume rendering with {:.1}x advantage over classical NeRF",
+                    quantum_advantage_factor
+                ),
+                format!(
+                    "Superior 3D reconstruction accuracy: {:.2}%",
+                    volume_metrics.reconstruction_accuracy * 100.0
+                ),
                 "Quantum positional encoding for enhanced spatial representation".to_string(),
                 "Entanglement-based ray marching for efficient volume traversal".to_string(),
                 "Quantum coherence optimization for photorealistic rendering".to_string(),
             ],
         })
     }
-    
+
     /// Demonstrate Quantum In-Context Learning
     fn demonstrate_quantum_icl(&mut self) -> Result<DemonstrationResult> {
         println!("   🧠 Demonstrating zero-shot adaptation with quantum in-context learning...");
-        
+
         let start_time = Instant::now();
-        
+
         // Create diverse context examples
         let context_examples = self.create_diverse_context_examples()?;
-        
+
         // Test queries for adaptation
         let test_queries = vec![
             Array1::from_vec(vec![0.5, -0.3, 0.8, 0.2]),
             Array1::from_vec(vec![-0.2, 0.7, -0.4, 0.9]),
             Array1::from_vec(vec![0.8, 0.1, -0.6, -0.3]),
         ];
-        
+
         let mut adaptation_results = Vec::new();
         for query in &test_queries {
-            let result = self.quantum_icl.learn_in_context(&context_examples, query, None)?;
+            let result = self
+                .quantum_icl
+                .learn_in_context(&context_examples, query, None)?;
             adaptation_results.push(result);
         }
-        
+
         // Test few-shot learning capability
         let few_shot_result = self.quantum_icl.few_shot_learning(
             &context_examples[..3], // Use only 3 examples
             &test_queries[0],
-            3
+            3,
         )?;
-        
+
         // Evaluate transfer learning
         let transfer_sources = vec![context_examples.clone()];
         let transfer_result = self.quantum_icl.evaluate_transfer_learning(
@@ -626,18 +697,22 @@ impl NextGenQuantumMLShowcase {
             &context_examples,
             &test_queries,
         )?;
-        
+
         let execution_time = start_time.elapsed();
-        
+
         // Collect quantum metrics
-        let avg_entanglement = adaptation_results.iter()
+        let avg_entanglement = adaptation_results
+            .iter()
             .map(|r| r.learning_metrics.entanglement_utilization)
-            .sum::<f64>() / adaptation_results.len() as f64;
-            
-        let avg_quantum_advantage = adaptation_results.iter()
+            .sum::<f64>()
+            / adaptation_results.len() as f64;
+
+        let avg_quantum_advantage = adaptation_results
+            .iter()
             .map(|r| r.learning_metrics.quantum_advantage)
-            .sum::<f64>() / adaptation_results.len() as f64;
-        
+            .sum::<f64>()
+            / adaptation_results.len() as f64;
+
         let quantum_metrics = QuantumMetrics {
             entanglement_measure: avg_entanglement,
             coherence_time: 0.93,
@@ -646,16 +721,20 @@ impl NextGenQuantumMLShowcase {
             circuit_depth_efficiency: 0.90,
             noise_resilience: 0.87,
         };
-        
+
         let performance_metrics = PerformanceMetrics {
             accuracy: few_shot_result.learning_metrics.few_shot_performance,
             precision: transfer_result.final_target_performance,
-            recall: adaptation_results.iter().map(|r| r.learning_metrics.task_performance).sum::<f64>() / adaptation_results.len() as f64,
+            recall: adaptation_results
+                .iter()
+                .map(|r| r.learning_metrics.task_performance)
+                .sum::<f64>()
+                / adaptation_results.len() as f64,
             f1_score: few_shot_result.learning_metrics.adaptation_stability,
             throughput: test_queries.len() as f64 / execution_time.as_secs_f64(),
             latency: execution_time.as_millis() as f64 / test_queries.len() as f64,
         };
-        
+
         Ok(DemonstrationResult {
             algorithm_name: "Quantum In-Context Learning".to_string(),
             demonstration_type: DemonstrationType::Individual,
@@ -666,27 +745,41 @@ impl NextGenQuantumMLShowcase {
                 classical_performance: 0.65, // Classical few-shot learning baseline
                 quantum_performance: few_shot_result.learning_metrics.few_shot_performance,
                 speedup_factor: avg_quantum_advantage,
-                quality_improvement: ((few_shot_result.learning_metrics.few_shot_performance - 0.65) / 0.65 * 100.0),
+                quality_improvement: ((few_shot_result.learning_metrics.few_shot_performance
+                    - 0.65)
+                    / 0.65
+                    * 100.0),
             }),
             execution_time,
             memory_usage: self.estimate_memory_usage("icl"),
             highlights: vec![
-                format!("Zero-shot adaptation across {} diverse tasks", test_queries.len()),
-                format!("Quantum advantage of {:.1}x over classical few-shot learning", avg_quantum_advantage),
-                format!("Superior transfer learning with {:.2}x improvement ratio", transfer_result.transfer_ratio),
+                format!(
+                    "Zero-shot adaptation across {} diverse tasks",
+                    test_queries.len()
+                ),
+                format!(
+                    "Quantum advantage of {:.1}x over classical few-shot learning",
+                    avg_quantum_advantage
+                ),
+                format!(
+                    "Superior transfer learning with {:.2}x improvement ratio",
+                    transfer_result.transfer_ratio
+                ),
                 "Entanglement-based context encoding for enhanced representation".to_string(),
                 "Quantum interference adaptation without parameter updates".to_string(),
                 "Multi-modal quantum attention for context understanding".to_string(),
             ],
         })
     }
-    
+
     /// Demonstrate Quantum Mixture of Experts
     fn demonstrate_quantum_moe(&mut self) -> Result<DemonstrationResult> {
-        println!("   👥 Showcasing scalable conditional computation with quantum mixture of experts...");
-        
+        println!(
+            "   👥 Showcasing scalable conditional computation with quantum mixture of experts..."
+        );
+
         let start_time = Instant::now();
-        
+
         // Test inputs for expert routing
         let test_inputs = vec![
             Array1::from_vec(vec![0.2, 0.7, -0.4, 0.9]),
@@ -694,48 +787,56 @@ impl NextGenQuantumMLShowcase {
             Array1::from_vec(vec![0.6, -0.2, 0.5, 0.4]),
             Array1::from_vec(vec![-0.3, -0.8, 0.1, 0.7]),
         ];
-        
+
         let mut moe_outputs = Vec::new();
         for input in &test_inputs {
             let output = self.quantum_moe.forward(input)?;
             moe_outputs.push(output);
         }
-        
+
         // Analyze expert utilization and routing efficiency
         let statistics = self.quantum_moe.get_statistics();
-        
+
         let execution_time = start_time.elapsed();
-        
+
         // Collect quantum metrics from MoE outputs
-        let avg_entanglement = moe_outputs.iter()
+        let avg_entanglement = moe_outputs
+            .iter()
             .map(|o| o.quantum_metrics.entanglement)
-            .sum::<f64>() / moe_outputs.len() as f64;
-            
-        let avg_coherence = moe_outputs.iter()
+            .sum::<f64>()
+            / moe_outputs.len() as f64;
+
+        let avg_coherence = moe_outputs
+            .iter()
             .map(|o| o.quantum_metrics.coherence)
-            .sum::<f64>() / moe_outputs.len() as f64;
-        
+            .sum::<f64>()
+            / moe_outputs.len() as f64;
+
         let quantum_metrics = QuantumMetrics {
             entanglement_measure: avg_entanglement,
             coherence_time: avg_coherence,
-            fidelity: moe_outputs.iter().map(|o| o.quantum_metrics.fidelity).sum::<f64>() / moe_outputs.len() as f64,
+            fidelity: moe_outputs
+                .iter()
+                .map(|o| o.quantum_metrics.fidelity)
+                .sum::<f64>()
+                / moe_outputs.len() as f64,
             quantum_volume_utilization: statistics.quantum_coherence,
             circuit_depth_efficiency: 0.89,
             noise_resilience: 0.88,
         };
-        
+
         let performance_metrics = PerformanceMetrics {
             accuracy: 0.94, // High routing accuracy
             precision: statistics.load_balance_score,
             recall: statistics.routing_efficiency,
-            f1_score: 2.0 * statistics.load_balance_score * statistics.routing_efficiency / 
-                     (statistics.load_balance_score + statistics.routing_efficiency),
+            f1_score: 2.0 * statistics.load_balance_score * statistics.routing_efficiency
+                / (statistics.load_balance_score + statistics.routing_efficiency),
             throughput: test_inputs.len() as f64 / execution_time.as_secs_f64(),
             latency: execution_time.as_millis() as f64 / test_inputs.len() as f64,
         };
-        
+
         let quantum_advantage_factor = 1.0 + avg_entanglement * 2.0 + statistics.quantum_coherence;
-        
+
         Ok(DemonstrationResult {
             algorithm_name: "Quantum Mixture of Experts".to_string(),
             demonstration_type: DemonstrationType::Individual,
@@ -761,19 +862,20 @@ impl NextGenQuantumMLShowcase {
             ],
         })
     }
-    
+
     /// Generate comprehensive multimodal dataset for testing
     fn generate_multimodal_dataset(&self) -> Result<MultiModalDataset> {
         let num_samples = self.config.num_samples;
         let dim = self.config.data_dimensions;
-        
+
         // Generate synthetic data with multiple modalities
         let mut rng = fastrand::Rng::new();
-        
+
         let visual_data = Array2::from_shape_fn((num_samples, dim), |_| rng.f64() * 2.0 - 1.0);
         let textual_data = Array2::from_shape_fn((num_samples, dim / 2), |_| rng.f64() * 2.0 - 1.0);
-        let temporal_data = Array2::from_shape_fn((num_samples, dim / 4), |_| rng.f64() * 2.0 - 1.0);
-        
+        let temporal_data =
+            Array2::from_shape_fn((num_samples, dim / 4), |_| rng.f64() * 2.0 - 1.0);
+
         Ok(MultiModalDataset {
             visual_data,
             textual_data,
@@ -781,62 +883,95 @@ impl NextGenQuantumMLShowcase {
             labels: Array1::from_shape_fn(num_samples, |_| rng.usize(0..10)),
         })
     }
-    
+
     /// Display comprehensive showcase summary
     fn display_showcase_summary(&self, results: &ShowcaseResults) -> Result<()> {
         println!("\n" + "=".repeat(80).as_str());
         println!("🏆 NEXT-GENERATION QUANTUM ML ULTRATHINK SHOWCASE SUMMARY");
         println!("=".repeat(80));
-        
+
         println!("\n📊 OVERALL PERFORMANCE METRICS:");
-        println!("   • Total Execution Time: {:.2?}", results.total_execution_time);
-        println!("   • Average Quantum Advantage: {:.2}x", results.average_quantum_advantage());
-        println!("   • Peak Quantum Coherence: {:.3}", results.peak_quantum_coherence());
-        println!("   • Total Memory Usage: {:.1} MB", results.total_memory_usage() / 1_000_000.0);
-        
+        println!(
+            "   • Total Execution Time: {:.2?}",
+            results.total_execution_time
+        );
+        println!(
+            "   • Average Quantum Advantage: {:.2}x",
+            results.average_quantum_advantage()
+        );
+        println!(
+            "   • Peak Quantum Coherence: {:.3}",
+            results.peak_quantum_coherence()
+        );
+        println!(
+            "   • Total Memory Usage: {:.1} MB",
+            results.total_memory_usage() / 1_000_000.0
+        );
+
         println!("\n🌟 QUANTUM ADVANTAGES ACHIEVED:");
         for result in &results.demonstration_results {
-            println!("   • {}: {:.1}x advantage", 
-                    result.algorithm_name, 
-                    result.quantum_advantage_factor);
+            println!(
+                "   • {}: {:.1}x advantage",
+                result.algorithm_name, result.quantum_advantage_factor
+            );
         }
-        
+
         println!("\n🚀 KEY BREAKTHROUGHS DEMONSTRATED:");
-        let all_highlights: Vec<String> = results.demonstration_results.iter()
+        let all_highlights: Vec<String> = results
+            .demonstration_results
+            .iter()
             .flat_map(|r| r.highlights.clone())
             .collect();
-        
+
         for (i, highlight) in all_highlights.iter().take(10).enumerate() {
             println!("   {}. {}", i + 1, highlight);
         }
-        
+
         if let Some(ref qa_summary) = results.quantum_advantage_summary {
             println!("\n⚡ QUANTUM ADVANTAGE ANALYSIS:");
-            println!("   • Theoretical Maximum: {:.1}x", qa_summary.theoretical_maximum);
-            println!("   • Practical Achievement: {:.1}x", qa_summary.practical_achievement);
-            println!("   • Efficiency Ratio: {:.1}%", qa_summary.efficiency_ratio * 100.0);
-            println!("   • Noise Resilience: {:.1}%", qa_summary.noise_resilience * 100.0);
+            println!(
+                "   • Theoretical Maximum: {:.1}x",
+                qa_summary.theoretical_maximum
+            );
+            println!(
+                "   • Practical Achievement: {:.1}x",
+                qa_summary.practical_achievement
+            );
+            println!(
+                "   • Efficiency Ratio: {:.1}%",
+                qa_summary.efficiency_ratio * 100.0
+            );
+            println!(
+                "   • Noise Resilience: {:.1}%",
+                qa_summary.noise_resilience * 100.0
+            );
         }
-        
+
         println!("\n🎯 RESEARCH IMPACT:");
         println!("   • Novel quantum ML architectures with provable advantages");
         println!("   • Breakthrough algorithms enabling new applications");
         println!("   • Foundation for next-generation quantum AI systems");
         println!("   • Demonstration of quantum supremacy in machine learning");
-        
+
         println!("\n" + "=".repeat(80).as_str());
         println!("🌌 UltraThink Showcase Complete - Quantum ML Future Realized!");
         println!("=".repeat(80));
-        
+
         Ok(())
     }
-    
+
     // Helper methods (implementations would be extensive)
-    fn analyze_overall_quantum_advantage(&self, results: &ShowcaseResults) -> Result<QuantumAdvantageSummary> {
-        let total_advantage = results.demonstration_results.iter()
+    fn analyze_overall_quantum_advantage(
+        &self,
+        results: &ShowcaseResults,
+    ) -> Result<QuantumAdvantageSummary> {
+        let total_advantage = results
+            .demonstration_results
+            .iter()
             .map(|r| r.quantum_advantage_factor)
-            .sum::<f64>() / results.demonstration_results.len() as f64;
-        
+            .sum::<f64>()
+            / results.demonstration_results.len() as f64;
+
         Ok(QuantumAdvantageSummary {
             theoretical_maximum: total_advantage * 1.5,
             practical_achievement: total_advantage,
@@ -845,35 +980,38 @@ impl NextGenQuantumMLShowcase {
             scaling_factor: 1.2,
         })
     }
-    
+
     fn generate_test_distribution(&self, size: usize) -> Result<Array2<f64>> {
         let mut rng = fastrand::Rng::new();
-        Ok(Array2::from_shape_fn((size, self.config.data_dimensions), |_| {
+        Ok(Array2::from_shape_fn(
+            (size, self.config.data_dimensions),
+            |_| rng.f64() * 2.0 - 1.0,
+        ))
+    }
+
+    fn generate_3d_coordinates(&self, num_points: usize) -> Result<Array2<f64>> {
+        let mut rng = fastrand::Rng::new();
+        Ok(Array2::from_shape_fn((num_points, 3), |_| {
             rng.f64() * 2.0 - 1.0
         }))
     }
-    
-    fn generate_3d_coordinates(&self, num_points: usize) -> Result<Array2<f64>> {
-        let mut rng = fastrand::Rng::new();
-        Ok(Array2::from_shape_fn((num_points, 3), |_| rng.f64() * 2.0 - 1.0))
-    }
-    
+
     fn create_context_examples(&self, dataset: &MultiModalDataset) -> Result<Vec<ContextExample>> {
         let mut examples = Vec::new();
         let num_examples = 10;
-        
+
         for i in 0..num_examples {
             let input = dataset.visual_data.row(i).to_owned();
             let output = Array1::from_vec(vec![dataset.labels[i] as f64]);
-            
+
             examples.push(ContextExample {
                 input,
                 output,
                 metadata: ContextMetadata {
                     task_type: "classification".to_string(),
                     difficulty_level: 0.5,
-                    modality: ContextModality::MultiModal { 
-                        modalities: vec!["visual".to_string(), "temporal".to_string()] 
+                    modality: ContextModality::MultiModal {
+                        modalities: vec!["visual".to_string(), "temporal".to_string()],
                     },
                     timestamp: i,
                     importance_weight: 1.0,
@@ -881,18 +1019,18 @@ impl NextGenQuantumMLShowcase {
                 quantum_encoding: self.create_default_quantum_context_state()?,
             });
         }
-        
+
         Ok(examples)
     }
-    
+
     fn create_diverse_context_examples(&self) -> Result<Vec<ContextExample>> {
         // Create examples for different types of tasks
         let mut examples = Vec::new();
-        
+
         // Classification examples
         for i in 0..5 {
             examples.push(ContextExample {
-                input: Array1::from_vec(vec![i as f64 * 0.2, (5-i) as f64 * 0.2, 0.5, -0.3]),
+                input: Array1::from_vec(vec![i as f64 * 0.2, (5 - i) as f64 * 0.2, 0.5, -0.3]),
                 output: Array1::from_vec(vec![i as f64]),
                 metadata: ContextMetadata {
                     task_type: "classification".to_string(),
@@ -904,7 +1042,7 @@ impl NextGenQuantumMLShowcase {
                 quantum_encoding: self.create_default_quantum_context_state()?,
             });
         }
-        
+
         // Regression examples
         for i in 0..5 {
             let x = i as f64 * 0.2;
@@ -921,10 +1059,10 @@ impl NextGenQuantumMLShowcase {
                 quantum_encoding: self.create_default_quantum_context_state()?,
             });
         }
-        
+
         Ok(examples)
     }
-    
+
     fn create_default_quantum_context_state(&self) -> Result<QuantumContextState> {
         Ok(QuantumContextState {
             quantum_amplitudes: Array1::ones(256).mapv(|_| Complex64::new(1.0, 0.0)),
@@ -942,7 +1080,7 @@ impl NextGenQuantumMLShowcase {
             },
         })
     }
-    
+
     fn estimate_memory_usage(&self, algorithm: &str) -> f64 {
         match algorithm {
             "diffusion" => 150_000_000.0, // 150 MB
@@ -953,7 +1091,7 @@ impl NextGenQuantumMLShowcase {
             _ => 100_000_000.0,           // 100 MB default
         }
     }
-    
+
     // Placeholder implementations for various benchmark and analysis methods
     fn generate_benchmark_dataset(&self) -> Result<BenchmarkDataset> {
         Ok(BenchmarkDataset {
@@ -962,7 +1100,7 @@ impl NextGenQuantumMLShowcase {
             labels: Array1::zeros(1200),
         })
     }
-    
+
     fn benchmark_diffusion(&mut self, _data: &BenchmarkDataset) -> Result<DemonstrationResult> {
         // Placeholder benchmark implementation
         Ok(DemonstrationResult {
@@ -974,10 +1112,12 @@ impl NextGenQuantumMLShowcase {
             classical_comparison: Some(ClassicalComparison::default()),
             execution_time: std::time::Duration::from_millis(500),
             memory_usage: 150_000_000.0,
-            highlights: vec!["Quantum diffusion achieves 2.3x speedup over classical methods".to_string()],
+            highlights: vec![
+                "Quantum diffusion achieves 2.3x speedup over classical methods".to_string(),
+            ],
         })
     }
-    
+
     fn benchmark_flows(&mut self, _data: &BenchmarkDataset) -> Result<DemonstrationResult> {
         // Placeholder benchmark implementation
         Ok(DemonstrationResult {
@@ -989,10 +1129,12 @@ impl NextGenQuantumMLShowcase {
             classical_comparison: Some(ClassicalComparison::default()),
             execution_time: std::time::Duration::from_millis(400),
             memory_usage: 120_000_000.0,
-            highlights: vec!["Quantum flows provide 1.9x improvement in density modeling".to_string()],
+            highlights: vec![
+                "Quantum flows provide 1.9x improvement in density modeling".to_string()
+            ],
         })
     }
-    
+
     fn benchmark_nerf(&mut self, _data: &BenchmarkDataset) -> Result<DemonstrationResult> {
         // Placeholder benchmark implementation
         Ok(DemonstrationResult {
@@ -1007,7 +1149,7 @@ impl NextGenQuantumMLShowcase {
             highlights: vec!["Quantum NeRF achieves 2.7x faster 3D reconstruction".to_string()],
         })
     }
-    
+
     fn benchmark_icl(&mut self, _data: &BenchmarkDataset) -> Result<DemonstrationResult> {
         // Placeholder benchmark implementation
         Ok(DemonstrationResult {
@@ -1022,7 +1164,7 @@ impl NextGenQuantumMLShowcase {
             highlights: vec!["Quantum ICL shows 2.1x better adaptation performance".to_string()],
         })
     }
-    
+
     fn benchmark_moe(&mut self, _data: &BenchmarkDataset) -> Result<DemonstrationResult> {
         // Placeholder benchmark implementation
         Ok(DemonstrationResult {
@@ -1037,7 +1179,7 @@ impl NextGenQuantumMLShowcase {
             highlights: vec!["Quantum MoE delivers 2.5x routing efficiency improvement".to_string()],
         })
     }
-    
+
     fn run_interactive_scenario(&mut self, _scenario: ScenarioType) -> Result<DemonstrationResult> {
         // Placeholder interactive scenario implementation
         Ok(DemonstrationResult {
@@ -1052,11 +1194,11 @@ impl NextGenQuantumMLShowcase {
             highlights: vec!["Real-time quantum ML interaction achieved".to_string()],
         })
     }
-    
+
     fn analyze_integrated_performance(
         &self,
         _diffusion: &QuantumGenerationOutput,
-        _flows: &FlowSamplingOutput, 
+        _flows: &FlowSamplingOutput,
         _nerf: &QuantumNeRFOutput,
         _icl: &InContextLearningOutput,
         _moe: &MoEOutput,
@@ -1081,13 +1223,15 @@ pub struct QuantumAdvantageAnalyzer {
 
 impl QuantumAdvantageAnalyzer {
     pub fn new(config: &UltraThinkShowcaseConfig) -> Result<Self> {
-        Ok(Self { config: config.clone() })
+        Ok(Self {
+            config: config.clone(),
+        })
     }
-    
+
     pub fn estimate_diffusion_advantage(
-        &self, 
-        _output: &QuantumGenerationOutput, 
-        _metrics: &QuantumMetrics
+        &self,
+        _output: &QuantumGenerationOutput,
+        _metrics: &QuantumMetrics,
     ) -> Result<f64> {
         Ok(2.4) // Placeholder quantum advantage estimation
     }
@@ -1100,7 +1244,9 @@ pub struct PerformanceMonitor {
 
 impl PerformanceMonitor {
     pub fn new(config: &UltraThinkShowcaseConfig) -> Result<Self> {
-        Ok(Self { config: config.clone() })
+        Ok(Self {
+            config: config.clone(),
+        })
     }
 }
 
@@ -1111,7 +1257,9 @@ pub struct CoherenceTracker {
 
 impl CoherenceTracker {
     pub fn new(config: &UltraThinkShowcaseConfig) -> Result<Self> {
-        Ok(Self { config: config.clone() })
+        Ok(Self {
+            config: config.clone(),
+        })
     }
 }
 
@@ -1147,28 +1295,32 @@ impl ShowcaseResults {
             total_execution_time: std::time::Duration::from_secs(0),
         }
     }
-    
+
     pub fn add_result(&mut self, result: DemonstrationResult) {
         self.demonstration_results.push(result);
     }
-    
+
     pub fn average_quantum_advantage(&self) -> f64 {
         if self.demonstration_results.is_empty() {
             return 1.0;
         }
-        self.demonstration_results.iter()
+        self.demonstration_results
+            .iter()
             .map(|r| r.quantum_advantage_factor)
-            .sum::<f64>() / self.demonstration_results.len() as f64
+            .sum::<f64>()
+            / self.demonstration_results.len() as f64
     }
-    
+
     pub fn peak_quantum_coherence(&self) -> f64 {
-        self.demonstration_results.iter()
+        self.demonstration_results
+            .iter()
             .map(|r| r.quantum_metrics.coherence_time)
             .fold(0.0, f64::max)
     }
-    
+
     pub fn total_memory_usage(&self) -> f64 {
-        self.demonstration_results.iter()
+        self.demonstration_results
+            .iter()
             .map(|r| r.memory_usage)
             .sum()
     }
@@ -1279,7 +1431,7 @@ impl Default for UltraThinkShowcaseConfig {
 /// Main showcase demonstration function
 pub fn run_next_generation_showcase() -> Result<()> {
     println!("🌌 Launching Next-Generation Quantum ML UltraThink Showcase");
-    
+
     // Create showcase configuration
     let config = UltraThinkShowcaseConfig {
         complexity_level: ComplexityLevel::Experimental,
@@ -1287,16 +1439,25 @@ pub fn run_next_generation_showcase() -> Result<()> {
         quantum_enhancement_level: 2.0,
         ..Default::default()
     };
-    
+
     // Initialize and run showcase
     let mut showcase = NextGenQuantumMLShowcase::new(config)?;
     let results = showcase.run_ultrathink_showcase()?;
-    
+
     println!("\n🎉 Showcase completed successfully!");
-    println!("   Total quantum advantage achieved: {:.1}x", results.average_quantum_advantage());
-    println!("   Peak quantum coherence: {:.3}", results.peak_quantum_coherence());
-    println!("   Total execution time: {:.2?}", results.total_execution_time);
-    
+    println!(
+        "   Total quantum advantage achieved: {:.1}x",
+        results.average_quantum_advantage()
+    );
+    println!(
+        "   Peak quantum coherence: {:.3}",
+        results.peak_quantum_coherence()
+    );
+    println!(
+        "   Total execution time: {:.2?}",
+        results.total_execution_time
+    );
+
     Ok(())
 }
 
@@ -1318,7 +1479,7 @@ mod tests {
             num_samples: 10, // Small for testing
             ..Default::default()
         };
-        
+
         let mut showcase = NextGenQuantumMLShowcase::new(config).unwrap();
         let results = showcase.run_sequential_demonstration();
         assert!(results.is_ok());

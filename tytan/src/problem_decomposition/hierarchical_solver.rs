@@ -1,8 +1,8 @@
 //! Hierarchical solving methods for large-scale problems
 
 use super::types::*;
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use crate::sampler::simulated_annealing::SASampler;
+use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::Array2;
 use std::collections::HashMap;
 
@@ -61,15 +61,9 @@ impl<S: Sampler> HierarchicalSolver<S> {
         shots: usize,
     ) -> Result<SampleResult, String> {
         match self.strategy {
-            HierarchicalStrategy::CoarsenSolve => {
-                self.coarsen_solve_approach(qubo, var_map, shots)
-            }
-            HierarchicalStrategy::MultiGrid => {
-                self.multigrid_approach(qubo, var_map, shots)
-            }
-            HierarchicalStrategy::VCycle => {
-                self.v_cycle_approach(qubo, var_map, shots)
-            }
+            HierarchicalStrategy::CoarsenSolve => self.coarsen_solve_approach(qubo, var_map, shots),
+            HierarchicalStrategy::MultiGrid => self.multigrid_approach(qubo, var_map, shots),
+            HierarchicalStrategy::VCycle => self.v_cycle_approach(qubo, var_map, shots),
         }
     }
 
@@ -82,17 +76,22 @@ impl<S: Sampler> HierarchicalSolver<S> {
     ) -> Result<SampleResult, String> {
         // Build hierarchy
         let hierarchy = self.build_hierarchy(qubo, var_map)?;
-        
+
         // Solve coarsest level
-        let coarsest_level = hierarchy.levels.last()
-            .ok_or("Empty hierarchy")?;
-        
-        let coarse_results = self.base_sampler
-            .run_qubo(&(coarsest_level.qubo.clone(), coarsest_level.var_map.clone()), shots)
+        let coarsest_level = hierarchy.levels.last().ok_or("Empty hierarchy")?;
+
+        let coarse_results = self
+            .base_sampler
+            .run_qubo(
+                &(coarsest_level.qubo.clone(), coarsest_level.var_map.clone()),
+                shots,
+            )
             .map_err(|e| format!("Sampler error: {:?}", e))?;
 
         // Take the best result (first one, since they're sorted by energy)
-        let coarse_result = coarse_results.into_iter().next()
+        let coarse_result = coarse_results
+            .into_iter()
+            .next()
             .ok_or_else(|| "No solutions found".to_string())?;
 
         // Refine solution back through levels
@@ -106,17 +105,21 @@ impl<S: Sampler> HierarchicalSolver<S> {
         var_map: &HashMap<String, usize>,
         shots: usize,
     ) -> Result<SampleResult, String> {
-        let initial_results = self.base_sampler
+        let initial_results = self
+            .base_sampler
             .run_qubo(&(qubo.clone(), var_map.clone()), shots / 4)
             .map_err(|e| format!("Initial sampler error: {:?}", e))?;
 
         // Take the best result (first one, since they're sorted by energy)
-        let mut current_solution = initial_results.into_iter().next()
+        let mut current_solution = initial_results
+            .into_iter()
+            .next()
             .ok_or_else(|| "No initial solutions found".to_string())?;
 
         // Perform multiple V-cycles for refinement
         for _cycle in 0..3 {
-            current_solution = self.v_cycle_refinement(qubo, var_map, &current_solution, shots / 4)?;
+            current_solution =
+                self.v_cycle_refinement(qubo, var_map, &current_solution, shots / 4)?;
         }
 
         Ok(current_solution)
@@ -142,31 +145,38 @@ impl<S: Sampler> HierarchicalSolver<S> {
     ) -> Result<SampleResult, String> {
         // Build hierarchy
         let hierarchy = self.build_hierarchy(qubo, var_map)?;
-        
+
         // Restrict solution to coarse levels
         let mut current_solution = initial_solution.clone();
-        
+
         // Down cycle: restrict to coarser levels
         for level in 1..hierarchy.levels.len() {
             current_solution = self.restrict_solution(&hierarchy, level - 1, &current_solution)?;
         }
-        
+
         // Solve at coarsest level
         if let Some(coarsest_level) = hierarchy.levels.last() {
-            let coarse_results = self.base_sampler
-                .run_qubo(&(coarsest_level.qubo.clone(), coarsest_level.var_map.clone()), shots)
+            let coarse_results = self
+                .base_sampler
+                .run_qubo(
+                    &(coarsest_level.qubo.clone(), coarsest_level.var_map.clone()),
+                    shots,
+                )
                 .map_err(|e| format!("Coarse sampler error: {:?}", e))?;
-            
+
             // Take the best result (first one, since they're sorted by energy)
-            current_solution = coarse_results.into_iter().next()
+            current_solution = coarse_results
+                .into_iter()
+                .next()
                 .ok_or_else(|| "No coarse solutions found".to_string())?;
         }
-        
+
         // Up cycle: interpolate and refine
         for level in (0..hierarchy.levels.len() - 1).rev() {
-            current_solution = self.interpolate_and_refine(&hierarchy, level, &current_solution, shots / 4)?;
+            current_solution =
+                self.interpolate_and_refine(&hierarchy, level, &current_solution, shots / 4)?;
         }
-        
+
         Ok(current_solution)
     }
 
@@ -178,7 +188,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
     ) -> Result<Hierarchy, String> {
         let mut levels = Vec::new();
         let mut projections = Vec::new();
-        
+
         let mut current_qubo = qubo.clone();
         let mut current_var_map = var_map.clone();
         let mut current_size = current_qubo.shape()[0];
@@ -194,9 +204,9 @@ impl<S: Sampler> HierarchicalSolver<S> {
 
         // Build coarser levels
         while current_size > self.min_problem_size && level < self.max_levels {
-            let (coarse_qubo, coarse_var_map, projection) = 
+            let (coarse_qubo, coarse_var_map, projection) =
                 self.coarsen_problem(&current_qubo, &current_var_map)?;
-            
+
             current_qubo = coarse_qubo;
             current_var_map = coarse_var_map;
             current_size = current_qubo.shape()[0];
@@ -208,7 +218,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
                 var_map: current_var_map.clone(),
                 size: current_size,
             });
-            
+
             projections.push(projection);
         }
 
@@ -311,7 +321,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
         // Interpolate solution from coarse to fine levels
         for level in (0..hierarchy.levels.len() - 1).rev() {
             current_solution = self.interpolate_solution(hierarchy, level, &current_solution)?;
-            
+
             // Refine at this level
             for _iter in 0..self.refinement_iterations {
                 current_solution = self.refine_solution(
@@ -339,18 +349,19 @@ impl<S: Sampler> HierarchicalSolver<S> {
 
         let projection = &hierarchy.projections[level];
         let coarse_level = &hierarchy.levels[level + 1];
-        
+
         // Create restricted solution
         let mut restricted_solution = SampleResult::default();
-        
+
         for (var_name, &coarse_idx) in &coarse_level.var_map {
             // Find corresponding fine variables
             let fine_vars = &projection.coarse_to_fine[coarse_idx];
-            
+
             // Simple majority vote for binary variables
             let mut votes = 0i32;
             for &fine_idx in fine_vars {
-                if let Some(fine_var_name) = hierarchy.levels[level].var_map
+                if let Some(fine_var_name) = hierarchy.levels[level]
+                    .var_map
                     .iter()
                     .find(|(_, &idx)| idx == fine_idx)
                     .map(|(name, _)| name)
@@ -362,7 +373,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
                     }
                 }
             }
-            
+
             // Set coarse variable value
             if let Some(mut best_sample) = restricted_solution.best_sample().cloned() {
                 best_sample.insert(var_name.clone(), votes > 0);
@@ -373,7 +384,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
                 // This is simplified - in practice would need proper SampleResult construction
             }
         }
-        
+
         Ok(restricted_solution)
     }
 
@@ -391,22 +402,24 @@ impl<S: Sampler> HierarchicalSolver<S> {
         let projection = &hierarchy.projections[level];
         let fine_level = &hierarchy.levels[level];
         let coarse_level = &hierarchy.levels[level + 1];
-        
+
         let mut interpolated_solution = SampleResult::default();
-        
+
         // Interpolate from coarse to fine
         for (fine_var_name, &fine_idx) in &fine_level.var_map {
             let coarse_idx = projection.fine_to_coarse[fine_idx];
-            
+
             // Find coarse variable name
-            if let Some((coarse_var_name, _)) = coarse_level.var_map
+            if let Some((coarse_var_name, _)) = coarse_level
+                .var_map
                 .iter()
                 .find(|(_, &idx)| idx == coarse_idx)
             {
                 if let Some(coarse_sample) = coarse_solution.best_sample() {
                     if let Some(&coarse_value) = coarse_sample.get(coarse_var_name) {
                         // Simple interpolation: copy coarse value to fine
-                        if let Some(mut fine_sample) = interpolated_solution.best_sample().cloned() {
+                        if let Some(mut fine_sample) = interpolated_solution.best_sample().cloned()
+                        {
                             fine_sample.insert(fine_var_name.clone(), coarse_value);
                         } else {
                             let mut new_sample = HashMap::new();
@@ -417,7 +430,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
                 }
             }
         }
-        
+
         Ok(interpolated_solution)
     }
 
@@ -431,7 +444,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
     ) -> Result<SampleResult, String> {
         // First interpolate
         let mut interpolated = self.interpolate_solution(hierarchy, level, coarse_solution)?;
-        
+
         // Then refine
         for _iter in 0..self.refinement_iterations {
             interpolated = self.refine_solution(
@@ -441,7 +454,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
                 shots,
             )?;
         }
-        
+
         Ok(interpolated)
     }
 
@@ -455,12 +468,15 @@ impl<S: Sampler> HierarchicalSolver<S> {
     ) -> Result<SampleResult, String> {
         // Use base sampler with warm start from current solution
         // This is simplified - in practice would implement warm starting
-        let results = self.base_sampler
+        let results = self
+            .base_sampler
             .run_qubo(&(qubo.clone(), var_map.clone()), shots)
             .map_err(|e| format!("Refinement sampler error: {:?}", e))?;
-        
+
         // Take the best result (first one, since they're sorted by energy)
-        results.into_iter().next()
+        results
+            .into_iter()
+            .next()
             .ok_or_else(|| "No refinement results found".to_string())
     }
 }
@@ -495,7 +511,7 @@ mod tests {
     fn test_hierarchical_solver_creation() {
         let base_sampler = SASampler::new(None);
         let solver = HierarchicalSolver::new(base_sampler);
-        
+
         // Test that solver is created with default parameters
         assert_eq!(solver.min_problem_size, 10);
         assert_eq!(solver.max_levels, 10);
@@ -505,23 +521,24 @@ mod tests {
     fn test_hierarchy_building() {
         let base_sampler = SASampler::new(None);
         let solver = HierarchicalSolver::new(base_sampler);
-        
+
         // Create simple QUBO
-        let qubo = Array2::from_shape_vec((4, 4), vec![
-            1.0, 0.5, 0.1, 0.0,
-            0.5, 1.0, 0.0, 0.1,
-            0.1, 0.0, 1.0, 0.5,
-            0.0, 0.1, 0.5, 1.0,
-        ]).unwrap();
-        
+        let qubo = Array2::from_shape_vec(
+            (4, 4),
+            vec![
+                1.0, 0.5, 0.1, 0.0, 0.5, 1.0, 0.0, 0.1, 0.1, 0.0, 1.0, 0.5, 0.0, 0.1, 0.5, 1.0,
+            ],
+        )
+        .unwrap();
+
         let mut var_map = HashMap::new();
         for i in 0..4 {
             var_map.insert(format!("x{}", i), i);
         }
-        
+
         let hierarchy = solver.build_hierarchy(&qubo, &var_map);
         assert!(hierarchy.is_ok());
-        
+
         let h = hierarchy.unwrap();
         assert!(!h.levels.is_empty());
         assert_eq!(h.levels[0].size, 4); // Finest level should have 4 variables

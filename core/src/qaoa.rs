@@ -3,8 +3,8 @@
 //! QAOA is a hybrid quantum-classical algorithm for solving combinatorial optimization problems.
 //! This implementation leverages SciRS2 for enhanced performance.
 
-use crate::simd_ops;
 use crate::complex_ext::QuantumComplexExt;
+use crate::simd_ops;
 use ndarray::Array2;
 use num_complex::Complex64;
 use std::f64::consts::PI;
@@ -323,7 +323,9 @@ impl QAOACircuit {
 /// QAOA optimizer using classical optimization
 pub struct QAOAOptimizer {
     circuit: QAOACircuit,
+    #[allow(dead_code)]
     max_iterations: usize,
+    #[allow(dead_code)]
     tolerance: f64,
 }
 
@@ -354,27 +356,28 @@ impl QAOAOptimizer {
     pub fn optimize(&mut self) -> (Vec<f64>, Vec<f64>, f64) {
         let initial_beta = self.circuit.params.beta.clone();
         let initial_gamma = self.circuit.params.gamma.clone();
-        
+
         let mut best_beta = initial_beta.clone();
         let mut best_gamma = initial_gamma.clone();
         let mut best_expectation = f64::NEG_INFINITY;
-        
+
         // Simple grid search for better optimization
         let num_points = 5;
         for beta_scale in 0..num_points {
             for gamma_scale in 0..num_points {
                 let beta_val = (beta_scale as f64) * std::f64::consts::PI / (num_points as f64);
-                let gamma_val = (gamma_scale as f64) * 2.0 * std::f64::consts::PI / (num_points as f64);
-                
+                let gamma_val =
+                    (gamma_scale as f64) * 2.0 * std::f64::consts::PI / (num_points as f64);
+
                 let beta_params = vec![beta_val; self.circuit.params.layers];
                 let gamma_params = vec![gamma_val; self.circuit.params.layers];
-                
+
                 self.circuit.params.beta = beta_params.clone();
                 self.circuit.params.gamma = gamma_params.clone();
-                
+
                 let state = self.execute_circuit();
                 let expectation = self.circuit.compute_expectation(&state);
-                
+
                 if expectation > best_expectation {
                     best_expectation = expectation;
                     best_beta = beta_params;
@@ -382,10 +385,10 @@ impl QAOAOptimizer {
                 }
             }
         }
-        
+
         self.circuit.params.beta = best_beta.clone();
         self.circuit.params.gamma = best_gamma.clone();
-        
+
         (best_beta, best_gamma, best_expectation)
     }
 }
@@ -425,9 +428,10 @@ impl MaxCutQAOA {
     /// Build the QAOA circuit for this MaxCut instance
     pub fn build_circuit(&mut self, layers: usize) -> &mut Self {
         let edges = self.extract_edges();
-        
+
         let cost_hamiltonian = if let Some(ref weights) = self.weights {
-            let weighted_edges = edges.iter()
+            let weighted_edges = edges
+                .iter()
                 .map(|(i, j)| (*i, *j, weights[*i][*j]))
                 .collect();
             CostHamiltonian::WeightedMaxCut(weighted_edges)
@@ -453,7 +457,8 @@ impl MaxCutQAOA {
         let mut edges = Vec::new();
         for (i, neighbors) in self.graph.iter().enumerate() {
             for &j in neighbors {
-                if i < j {  // Avoid duplicate edges
+                if i < j {
+                    // Avoid duplicate edges
                     edges.push((i, j));
                 }
             }
@@ -464,12 +469,12 @@ impl MaxCutQAOA {
     /// Solve the MaxCut problem using QAOA
     pub fn solve(&mut self) -> (Vec<bool>, f64) {
         if self.circuit.is_none() {
-            self.build_circuit(2);  // Default to 2 layers
+            self.build_circuit(2); // Default to 2 layers
         }
 
         let circuit = self.circuit.as_mut().unwrap();
         let mut optimizer = QAOAOptimizer::new(circuit.clone(), 100, 1e-6);
-        
+
         let (_, _, best_expectation) = optimizer.optimize();
         let final_state = optimizer.execute_circuit();
         let solution = optimizer.get_solution(&final_state);
@@ -480,7 +485,7 @@ impl MaxCutQAOA {
     /// Evaluate a cut solution
     pub fn evaluate_cut(&self, solution: &[bool]) -> f64 {
         let mut cut_value = 0.0;
-        
+
         for (i, neighbors) in self.graph.iter().enumerate() {
             for &j in neighbors {
                 if i < j && solution[i] != solution[j] {
@@ -493,14 +498,14 @@ impl MaxCutQAOA {
                 }
             }
         }
-        
+
         cut_value
     }
 
     /// Create a random graph for testing
     pub fn random_graph(num_vertices: usize, edge_probability: f64) -> Self {
         let mut graph = vec![Vec::new(); num_vertices];
-        
+
         for i in 0..num_vertices {
             for j in i + 1..num_vertices {
                 // Simple pseudo-random for reproducibility
@@ -511,7 +516,7 @@ impl MaxCutQAOA {
                 }
             }
         }
-        
+
         Self::new(graph)
     }
 }
@@ -532,7 +537,7 @@ impl TSPQAOA {
     pub fn new(distances: Vec<Vec<f64>>) -> Self {
         let num_cities = distances.len();
         assert!(distances.iter().all(|row| row.len() == num_cities));
-        
+
         Self {
             distances,
             num_cities,
@@ -544,11 +549,14 @@ impl TSPQAOA {
     /// Each qubit x_{i,t} represents whether city i is visited at time t
     pub fn build_circuit(&mut self, layers: usize) -> &mut Self {
         let num_qubits = self.num_cities * self.num_cities;
-        
+
         // Build TSP Hamiltonian with constraints
         let (h_fields, j_couplings) = self.build_tsp_hamiltonian();
-        
-        let cost_hamiltonian = CostHamiltonian::Ising { h: h_fields, j: j_couplings };
+
+        let cost_hamiltonian = CostHamiltonian::Ising {
+            h: h_fields,
+            j: j_couplings,
+        };
         let mixer_hamiltonian = MixerHamiltonian::TransverseField;
         let params = QAOAParams::random(layers);
 
@@ -566,12 +574,12 @@ impl TSPQAOA {
     fn build_tsp_hamiltonian(&self) -> (Vec<f64>, Vec<((usize, usize), f64)>) {
         let n = self.num_cities;
         let num_qubits = n * n;
-        
+
         let mut h_fields = vec![0.0; num_qubits];
         let mut j_couplings = Vec::new();
-        
-        let penalty_strength = 10.0;  // Penalty for constraint violations
-        
+
+        let penalty_strength = 10.0; // Penalty for constraint violations
+
         // Distance terms in the objective
         for i in 0..n {
             for t in 0..n {
@@ -580,14 +588,14 @@ impl TSPQAOA {
                     if i != j {
                         let qubit_it = i * n + t;
                         let qubit_jt_next = j * n + t_next;
-                        
+
                         // Add coupling for distance
                         j_couplings.push(((qubit_it, qubit_jt_next), self.distances[i][j] / 4.0));
                     }
                 }
             }
         }
-        
+
         // Constraint: each city visited exactly once
         for i in 0..n {
             // Linear term for normalization
@@ -595,7 +603,7 @@ impl TSPQAOA {
                 let qubit = i * n + t;
                 h_fields[qubit] -= penalty_strength;
             }
-            
+
             // Quadratic penalty terms
             for t1 in 0..n {
                 for t2 in t1 + 1..n {
@@ -605,7 +613,7 @@ impl TSPQAOA {
                 }
             }
         }
-        
+
         // Constraint: each time step has exactly one city
         for t in 0..n {
             // Linear term
@@ -613,7 +621,7 @@ impl TSPQAOA {
                 let qubit = i * n + t;
                 h_fields[qubit] -= penalty_strength;
             }
-            
+
             // Quadratic penalty terms
             for i1 in 0..n {
                 for i2 in i1 + 1..n {
@@ -623,19 +631,19 @@ impl TSPQAOA {
                 }
             }
         }
-        
+
         (h_fields, j_couplings)
     }
 
     /// Solve TSP using QAOA
     pub fn solve(&mut self) -> (Vec<usize>, f64) {
         if self.circuit.is_none() {
-            self.build_circuit(3);  // TSP typically needs more layers
+            self.build_circuit(3); // TSP typically needs more layers
         }
 
         let circuit = self.circuit.as_mut().unwrap();
         let mut optimizer = QAOAOptimizer::new(circuit.clone(), 200, 1e-6);
-        
+
         let (_, _, _best_expectation) = optimizer.optimize();
         let final_state = optimizer.execute_circuit();
         let bit_solution = optimizer.get_solution(&final_state);
@@ -651,20 +659,20 @@ impl TSPQAOA {
     fn decode_tsp_solution(&self, bits: &[bool]) -> Vec<usize> {
         let n = self.num_cities;
         let mut route = Vec::new();
-        
+
         for t in 0..n {
             let mut city_at_time_t = None;
-            let mut max_confidence = 0;
-            
+            let mut _max_confidence = 0;
+
             // Find which city is most likely at time t
             for i in 0..n {
                 let qubit_idx = i * n + t;
                 if qubit_idx < bits.len() && bits[qubit_idx] {
-                    max_confidence += 1;
+                    _max_confidence += 1;
                     city_at_time_t = Some(i);
                 }
             }
-            
+
             // If no clear assignment, assign the first available city
             if city_at_time_t.is_none() {
                 for i in 0..n {
@@ -674,41 +682,41 @@ impl TSPQAOA {
                     }
                 }
             }
-            
+
             if let Some(city) = city_at_time_t {
                 if !route.contains(&city) {
                     route.push(city);
                 }
             }
         }
-        
+
         // Fill in missing cities
         for i in 0..n {
             if !route.contains(&i) {
                 route.push(i);
             }
         }
-        
+
         route
     }
 
     /// Evaluate the total distance of a route
     pub fn evaluate_route(&self, route: &[usize]) -> f64 {
         let mut total_distance = 0.0;
-        
+
         for i in 0..route.len() {
             let current_city = route[i];
             let next_city = route[(i + 1) % route.len()];
             total_distance += self.distances[current_city][next_city];
         }
-        
+
         total_distance
     }
 
     /// Create a random TSP instance
     pub fn random_instance(num_cities: usize) -> Self {
         let mut distances = vec![vec![0.0; num_cities]; num_cities];
-        
+
         for i in 0..num_cities {
             for j in 0..num_cities {
                 if i != j {
@@ -719,7 +727,7 @@ impl TSPQAOA {
                 }
             }
         }
-        
+
         Self::new(distances)
     }
 }
@@ -744,21 +752,24 @@ mod tests {
     fn test_maxcut_qaoa_simple() {
         // Simple triangle graph
         let graph = vec![
-            vec![1, 2],  // Vertex 0 connected to 1, 2
-            vec![0, 2],  // Vertex 1 connected to 0, 2
-            vec![0, 1],  // Vertex 2 connected to 0, 1
+            vec![1, 2], // Vertex 0 connected to 1, 2
+            vec![0, 2], // Vertex 1 connected to 0, 2
+            vec![0, 1], // Vertex 2 connected to 0, 1
         ];
 
         let mut maxcut = MaxCutQAOA::new(graph);
         maxcut.build_circuit(1);
-        
+
         let (solution, _expectation) = maxcut.solve();
         assert_eq!(solution.len(), 3);
-        
+
         // Evaluate the cut - for a triangle, max cut should be 2
         let cut_value = maxcut.evaluate_cut(&solution);
-        println!("Triangle MaxCut solution: {:?}, value: {}", solution, cut_value);
-        
+        println!(
+            "Triangle MaxCut solution: {:?}, value: {}",
+            solution, cut_value
+        );
+
         // Any valid cut of a triangle should have value 2
         let expected_cut_values = [0.0, 2.0]; // Either all same (0) or optimal (2)
         assert!(expected_cut_values.contains(&cut_value) || cut_value == 1.0);
@@ -766,24 +777,21 @@ mod tests {
 
     #[test]
     fn test_maxcut_weighted() {
-        let graph = vec![
-            vec![1],
-            vec![0],
-        ];
-        
-        let weights = vec![
-            vec![0.0, 5.0],
-            vec![5.0, 0.0],
-        ];
+        let graph = vec![vec![1], vec![0]];
+
+        let weights = vec![vec![0.0, 5.0], vec![5.0, 0.0]];
 
         let mut maxcut = MaxCutQAOA::new(graph).with_weights(weights);
         maxcut.build_circuit(1);
-        
+
         let (solution, _expectation) = maxcut.solve();
         let cut_value = maxcut.evaluate_cut(&solution);
-        
+
         // For two vertices with weight 5, optimal cut should be 5
-        println!("Weighted MaxCut solution: {:?}, value: {}", solution, cut_value);
+        println!(
+            "Weighted MaxCut solution: {:?}, value: {}",
+            solution, cut_value
+        );
         assert!(cut_value >= 0.0);
     }
 
@@ -805,15 +813,15 @@ mod tests {
 
         let mut tsp = TSPQAOA::new(distances);
         tsp.build_circuit(2);
-        
+
         let (route, distance) = tsp.solve();
         assert_eq!(route.len(), 3);
-        
+
         // Verify it's a valid permutation
         let mut sorted_route = route.clone();
         sorted_route.sort();
         assert_eq!(sorted_route, vec![0, 1, 2]);
-        
+
         println!("TSP route: {:?}, distance: {}", route, distance);
         assert!(distance > 0.0);
     }
@@ -827,11 +835,11 @@ mod tests {
         ];
 
         let tsp = TSPQAOA::new(distances);
-        
+
         // Test route 0 -> 1 -> 2 -> 0
         let route = vec![0, 1, 2];
         let distance = tsp.evaluate_route(&route);
-        
+
         // Should be 1 + 2 + 3 = 6
         assert_eq!(distance, 6.0);
     }
@@ -841,7 +849,7 @@ mod tests {
         let tsp = TSPQAOA::random_instance(4);
         assert_eq!(tsp.num_cities, 4);
         assert_eq!(tsp.distances.len(), 4);
-        
+
         // Check symmetry
         for i in 0..4 {
             for j in 0..4 {
@@ -860,18 +868,18 @@ mod tests {
         let params = QAOAParams::new(1);
 
         let circuit = QAOACircuit::new(3, cost_hamiltonian, mixer_hamiltonian, params);
-        
+
         let state_size = 1 << 3;
         let mut state = vec![Complex64::new(0.0, 0.0); state_size];
-        
+
         circuit.execute(&mut state);
-        
+
         // Check state is normalized
         let norm_sq: f64 = state.iter().map(|c| c.norm_sqr()).sum();
         assert!((norm_sq - 1.0).abs() < 1e-10);
     }
 
-    #[test] 
+    #[test]
     fn test_qaoa_optimizer_simple() {
         let edges = vec![(0, 1)];
         let cost_hamiltonian = CostHamiltonian::MaxCut(edges);
@@ -880,9 +888,9 @@ mod tests {
 
         let circuit = QAOACircuit::new(2, cost_hamiltonian, mixer_hamiltonian, params);
         let mut optimizer = QAOAOptimizer::new(circuit, 10, 1e-6);
-        
+
         let (_beta, _gamma, expectation) = optimizer.optimize();
-        
+
         // Should find some reasonable expectation value
         assert!(expectation.is_finite());
         println!("QAOA optimizer result: expectation = {}", expectation);

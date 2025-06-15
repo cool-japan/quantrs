@@ -9,12 +9,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::adaptive_gate_fusion::{FusedGateBlock, GateType, QuantumGate};
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
-use crate::adaptive_gate_fusion::{QuantumGate, GateType, FusedGateBlock};
 
+use super::analysis::{PerformanceMetrics, PrecisionAnalysis, PrecisionAnalyzer};
 use super::config::{MixedPrecisionConfig, QuantumPrecision};
-use super::analysis::{PrecisionAnalysis, PerformanceMetrics, PrecisionAnalyzer};
 use super::state_vector::MixedPrecisionStateVector;
 
 /// Mixed-precision quantum simulator
@@ -55,7 +55,7 @@ impl MixedPrecisionSimulator {
     /// Create a new mixed-precision simulator
     pub fn new(num_qubits: usize, config: MixedPrecisionConfig) -> Result<Self> {
         config.validate()?;
-        
+
         let state = Some(MixedPrecisionStateVector::computational_basis(
             num_qubits,
             config.state_vector_precision,
@@ -82,22 +82,26 @@ impl MixedPrecisionSimulator {
     /// Apply a quantum gate with automatic precision selection
     pub fn apply_gate(&mut self, gate: &QuantumGate) -> Result<()> {
         let start_time = std::time::Instant::now();
-        
+
         // Select optimal precision for this gate
         let gate_precision = self.select_gate_precision(gate)?;
-        
+
         // Ensure state vector is in the correct precision
         self.adapt_state_precision(gate_precision)?;
-        
+
         // Apply the gate
         self.apply_gate_with_precision(gate, gate_precision)?;
-        
+
         // Update statistics
         let execution_time = start_time.elapsed().as_millis() as f64;
         self.stats.total_gates += 1;
         self.stats.total_time_ms += execution_time;
-        *self.stats.gate_time_by_precision.entry(gate_precision).or_insert(0.0) += execution_time;
-        
+        *self
+            .stats
+            .gate_time_by_precision
+            .entry(gate_precision)
+            .or_insert(0.0) += execution_time;
+
         Ok(())
     }
 
@@ -105,44 +109,45 @@ impl MixedPrecisionSimulator {
     pub fn apply_fused_block(&mut self, block: &FusedGateBlock) -> Result<()> {
         let optimal_precision = self.select_block_precision(block)?;
         self.adapt_state_precision(optimal_precision)?;
-        
+
         // Apply each gate in the block
         for gate in &block.gates {
             self.apply_gate_with_precision(gate, optimal_precision)?;
         }
-        
+
         Ok(())
     }
 
     /// Measure a qubit and return the result
     pub fn measure_qubit(&mut self, qubit: usize) -> Result<bool> {
         if qubit >= self.num_qubits {
-            return Err(SimulatorError::InvalidInput(
-                format!("Qubit {} out of range for {}-qubit system", qubit, self.num_qubits),
-            ));
+            return Err(SimulatorError::InvalidInput(format!(
+                "Qubit {} out of range for {}-qubit system",
+                qubit, self.num_qubits
+            )));
         }
 
         // Use measurement precision for this operation
         self.adapt_state_precision(self.config.measurement_precision)?;
-        
+
         let state = self.state.as_ref().unwrap();
-        
+
         // Calculate probability of measuring |1⟩
         let mut prob_one = 0.0;
         let mask = 1 << qubit;
-        
+
         for i in 0..state.len() {
             if i & mask != 0 {
                 prob_one += state.probability(i)?;
             }
         }
-        
+
         // Simulate random measurement
         let result = fastrand::f64() < prob_one;
-        
+
         // Collapse the state vector
         self.collapse_state(qubit, result)?;
-        
+
         Ok(result)
     }
 
@@ -174,7 +179,7 @@ impl MixedPrecisionSimulator {
         for i in 0..state.len() {
             let mut sign = 1.0;
             let mut amplitude = state.amplitude(i)?;
-            
+
             // Apply Pauli operators
             for (qubit, pauli) in pauli_string.chars().enumerate() {
                 match pauli {
@@ -199,12 +204,15 @@ impl MixedPrecisionSimulator {
                             sign *= -1.0;
                         }
                     }
-                    _ => return Err(SimulatorError::InvalidInput(
-                        format!("Invalid Pauli operator: {}", pauli),
-                    )),
+                    _ => {
+                        return Err(SimulatorError::InvalidInput(format!(
+                            "Invalid Pauli operator: {}",
+                            pauli
+                        )))
+                    }
                 }
             }
-            
+
             expectation += (amplitude.conj() * amplitude * sign).re;
         }
 
@@ -213,7 +221,9 @@ impl MixedPrecisionSimulator {
 
     /// Run precision analysis
     pub fn analyze_precision(&mut self) -> Result<PrecisionAnalysis> {
-        Ok(self.analyzer.analyze_for_tolerance(self.config.error_tolerance))
+        Ok(self
+            .analyzer
+            .analyze_for_tolerance(self.config.error_tolerance))
     }
 
     /// Get performance statistics
@@ -240,7 +250,16 @@ impl MixedPrecisionSimulator {
 
         // Use heuristics to select precision based on gate type
         let precision = match gate.gate_type {
-            GateType::PauliX | GateType::PauliY | GateType::PauliZ | GateType::Hadamard | GateType::Phase | GateType::T | GateType::RotationX | GateType::RotationY | GateType::RotationZ | GateType::Identity => {
+            GateType::PauliX
+            | GateType::PauliY
+            | GateType::PauliZ
+            | GateType::Hadamard
+            | GateType::Phase
+            | GateType::T
+            | GateType::RotationX
+            | GateType::RotationY
+            | GateType::RotationZ
+            | GateType::Identity => {
                 // Single qubit gates are usually numerically stable
                 if self.config.gate_precision == QuantumPrecision::Adaptive {
                     QuantumPrecision::Single
@@ -300,18 +319,24 @@ impl MixedPrecisionSimulator {
     }
 
     /// Apply a gate with a specific precision
-    fn apply_gate_with_precision(&mut self, gate: &QuantumGate, _precision: QuantumPrecision) -> Result<()> {
+    fn apply_gate_with_precision(
+        &mut self,
+        gate: &QuantumGate,
+        _precision: QuantumPrecision,
+    ) -> Result<()> {
         // This is a simplified implementation
         // In practice, this would apply the actual gate operation
         if let Some(ref mut state) = self.state {
             // For demonstration, just record that we applied a gate
             // Real implementation would perform matrix multiplication
-            
+
             // Update memory usage statistics
             let memory_usage = state.memory_usage();
-            self.stats.memory_usage_by_precision.insert(state.precision(), memory_usage);
+            self.stats
+                .memory_usage_by_precision
+                .insert(state.precision(), memory_usage);
         }
-        
+
         Ok(())
     }
 
@@ -320,7 +345,7 @@ impl MixedPrecisionSimulator {
         if let Some(ref mut state) = self.state {
             let mask = 1 << qubit;
             let mut norm_factor = 0.0;
-            
+
             // Calculate normalization factor
             for i in 0..state.len() {
                 let bit_value = (i & mask) != 0;
@@ -328,15 +353,15 @@ impl MixedPrecisionSimulator {
                     norm_factor += state.probability(i)?;
                 }
             }
-            
+
             if norm_factor == 0.0 {
                 return Err(SimulatorError::InvalidInput(
                     "Invalid measurement result: zero probability".to_string(),
                 ));
             }
-            
+
             norm_factor = norm_factor.sqrt();
-            
+
             // Update amplitudes
             for i in 0..state.len() {
                 let bit_value = (i & mask) != 0;
@@ -348,7 +373,7 @@ impl MixedPrecisionSimulator {
                 }
             }
         }
-        
+
         Ok(())
     }
 }
@@ -399,22 +424,22 @@ pub mod utils {
         precision: QuantumPrecision,
     ) -> Result<MixedPrecisionStateVector> {
         let mut mp_state = MixedPrecisionStateVector::new(state.len(), precision);
-        
+
         for (i, &amplitude) in state.iter().enumerate() {
             mp_state.set_amplitude(i, amplitude)?;
         }
-        
+
         Ok(mp_state)
     }
 
     /// Extract a regular state vector from mixed precision
     pub fn extract_state_vector(mp_state: &MixedPrecisionStateVector) -> Result<Array1<Complex64>> {
         let mut state = Array1::zeros(mp_state.len());
-        
+
         for i in 0..mp_state.len() {
             state[i] = mp_state.amplitude(i)?;
         }
-        
+
         Ok(state)
     }
 
@@ -422,7 +447,7 @@ pub mod utils {
     pub fn memory_savings(config: &MixedPrecisionConfig, num_qubits: usize) -> f64 {
         let double_precision_size = (1 << num_qubits) * std::mem::size_of::<Complex64>();
         let mixed_precision_size = config.estimate_memory_usage(num_qubits);
-        
+
         1.0 - (mixed_precision_size as f64 / double_precision_size as f64)
     }
 

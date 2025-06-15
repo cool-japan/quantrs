@@ -57,7 +57,6 @@ thiserror = "2.0.12"
 scirs2-core = { version = "0.1.0-alpha.4", default-features = false }
 scirs2-optimize = { version = "0.1.0-alpha.4", default-features = false }
 scirs2-linalg = { version = "0.1.0-alpha.4", default-features = false }
-pandrs = "0.1.0-alpha.3"
 
 # For randomization
 rand = "0.9.1"
@@ -68,34 +67,34 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # For GPU support
-wgpu = { version = "25.0.0" }
-bytemuck = { version = "1.23.0", features = ["derive"] }
+wgpu = { version = "25.0.2" }
+bytemuck = { version = "1.23.1", features = ["derive"] }
 
 # For D-Wave annealing and networking
-reqwest = { version = "0.12.15", features = ["json"] }
-tokio = { version = "1.45.0", features = ["full"] }
+reqwest = { version = "0.12.20", features = ["json"] }
+tokio = { version = "1.45.1", features = ["full"] }
 
 # For FFI and Python bindings
-pyo3 = { version = "0.25.0", features = ["extension-module"] }
+pyo3 = { version = "0.25.1", features = ["extension-module"] }
 
 # For UUIDs
-uuid = { version = "1.11.0", features = ["v4", "serde"] }
+uuid = { version = "1.17.0", features = ["v4", "serde"] }
 
 # For optional functionality
 symengine = { version = "0.2.2" }
-regex = "1.10.2"
+regex = "1.11.1"
 wide = "0.7.32"
 chrono = "0.4"
 async-trait = "0.1"
 hmac = "0.12.1"
-sha2 = "0.10.6"
+sha2 = "0.10.9"
 hex = "0.4.3"
 ndarray-rand = "0.15"
 ndarray-stats = "0.6"
 rand_distr = "0.5"
-ocl = "0.19.4"
+ocl = "0.19.7"
 nalgebra = "0.33.2"
-fastrand = "2.0.1"
+fastrand = "2.3.0"
 
 [profile.release]
 lto = "thin"

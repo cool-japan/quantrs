@@ -1,7 +1,7 @@
 //! Data structures and types for problem decomposition
 
 use crate::sampler::{SampleResult, Sampler};
-use ndarray::{Array2};
+use ndarray::Array2;
 use std::collections::{HashMap, HashSet};
 
 /// Graph representation for partitioning

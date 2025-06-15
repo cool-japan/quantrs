@@ -3,17 +3,15 @@
 //! Revolutionary automatic quantum state cleanup with coherence-aware garbage collection,
 //! quantum memory optimization, and advanced lifecycle management for quantum computations.
 
+#![allow(dead_code)]
+
 use crate::error::QuantRS2Error;
-use crate::gate::GateOp;
-use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
-use crate::qubit::QubitId;
+use ndarray::Array1;
 use num_complex::Complex64;
-use ndarray::{Array1, Array2};
-use std::collections::{HashMap, VecDeque, BTreeMap, HashSet, BinaryHeap};
-use std::sync::{Arc, RwLock, Mutex, Condvar, Weak};
-use std::time::{Duration, Instant, SystemTime};
 use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 use std::hash::{Hash, Hasher};
+use std::time::{Duration, Instant, SystemTime};
 
 /// Advanced Quantum Garbage Collection and Memory Management System
 #[derive(Debug)]
@@ -285,32 +283,37 @@ impl QuantumGarbageCollector {
         allocation_request: QuantumAllocationRequest,
     ) -> Result<QuantumAllocationResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Analyze memory requirements
         let memory_analysis = self.analyze_memory_requirements(&allocation_request)?;
-        
+
         // Select optimal memory pool
         let selected_pool = self.memory_manager.select_optimal_pool(&memory_analysis)?;
-        
+
         // Allocate memory block
-        let memory_block = self.memory_manager.allocate_block(&allocation_request, selected_pool.clone())?;
-        
+        let memory_block = self
+            .memory_manager
+            .allocate_block(&allocation_request, selected_pool.clone())?;
+
         // Create quantum state reference
-        let state_reference = self.create_quantum_state_reference(&allocation_request, &memory_block)?;
-        
+        let state_reference =
+            self.create_quantum_state_reference(&allocation_request, &memory_block)?;
+
         // Register with state tracker
-        self.state_tracker.register_quantum_state(&state_reference)?;
-        
+        self.state_tracker
+            .register_quantum_state(&state_reference)?;
+
         // Initialize reference counting
-        self.reference_counter.initialize_references(&state_reference)?;
-        
+        self.reference_counter
+            .initialize_references(&state_reference)?;
+
         // Set up lifecycle management
         self.lifecycle_manager.setup_lifecycle(&state_reference)?;
-        
+
         Ok(QuantumAllocationResult {
             allocation_id: Self::generate_id(),
             memory_block_id: memory_block.block_id,
-            state_reference: state_reference,
+            state_reference,
             allocation_time: start_time.elapsed(),
             pool_type: selected_pool,
             quantum_advantage: 234.7, // 234.7x more efficient than classical allocation
@@ -323,28 +326,29 @@ impl QuantumGarbageCollector {
         collection_mode: GCCollectionMode,
     ) -> Result<GCCollectionResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Analyze collection requirements
         let collection_analysis = self.analyze_collection_requirements(&collection_mode)?;
-        
+
         // Identify collection candidates
         let candidates = self.identify_collection_candidates(&collection_analysis)?;
-        
+
         // Apply coherence-based filtering
         let filtered_candidates = self.coherence_monitor.filter_by_coherence(&candidates)?;
-        
+
         // Execute collection process
         let mut collection_stats = self.execute_collection_process(&filtered_candidates)?;
-        
+
         // Compact memory if needed
         if collection_stats.fragmentation_level > 0.7 {
             let compaction_result = self.memory_manager.compact_memory()?;
             collection_stats.memory_compacted = compaction_result.blocks_compacted;
         }
-        
+
         // Update performance metrics
-        self.performance_monitor.update_collection_metrics(&collection_stats)?;
-        
+        self.performance_monitor
+            .update_collection_metrics(&collection_stats)?;
+
         Ok(GCCollectionResult {
             collection_id: Self::generate_id(),
             states_collected: collection_stats.states_collected,
@@ -358,50 +362,56 @@ impl QuantumGarbageCollector {
     /// Demonstrate quantum garbage collection advantages
     pub fn demonstrate_gc_advantages(&mut self) -> QuantumGCAdvantageReport {
         let mut report = QuantumGCAdvantageReport::new();
-        
+
         // Benchmark collection efficiency
         report.collection_efficiency = self.benchmark_collection_efficiency();
-        
+
         // Benchmark memory utilization
         report.memory_utilization_advantage = self.benchmark_memory_utilization();
-        
+
         // Benchmark coherence preservation
         report.coherence_preservation_advantage = self.benchmark_coherence_preservation();
-        
+
         // Benchmark allocation performance
         report.allocation_performance_advantage = self.benchmark_allocation_performance();
-        
+
         // Benchmark lifecycle management
         report.lifecycle_management_advantage = self.benchmark_lifecycle_management();
-        
+
         // Calculate overall quantum GC advantage
-        report.overall_advantage = (
-            report.collection_efficiency +
-            report.memory_utilization_advantage +
-            report.coherence_preservation_advantage +
-            report.allocation_performance_advantage +
-            report.lifecycle_management_advantage
-        ) / 5.0;
-        
+        report.overall_advantage = (report.collection_efficiency
+            + report.memory_utilization_advantage
+            + report.coherence_preservation_advantage
+            + report.allocation_performance_advantage
+            + report.lifecycle_management_advantage)
+            / 5.0;
+
         report
     }
 
     /// Optimize quantum memory usage
     pub fn optimize_memory_usage(&mut self) -> Result<MemoryOptimizationResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Analyze current memory usage patterns
-        let usage_analysis = self.optimization_engine.analyze_usage_patterns(&self.state_tracker)?;
-        
+        let usage_analysis = self
+            .optimization_engine
+            .analyze_usage_patterns(&self.state_tracker)?;
+
         // Identify optimization opportunities
-        let optimization_opportunities = self.optimization_engine.identify_optimizations(&usage_analysis)?;
-        
+        let optimization_opportunities = self
+            .optimization_engine
+            .identify_optimizations(&usage_analysis)?;
+
         // Apply memory optimizations
-        let optimization_results = self.optimization_engine.apply_optimizations(&optimization_opportunities)?;
-        
+        let optimization_results = self
+            .optimization_engine
+            .apply_optimizations(&optimization_opportunities)?;
+
         // Update allocation strategies
-        self.memory_manager.update_allocation_strategies(&optimization_results)?;
-        
+        self.memory_manager
+            .update_allocation_strategies(&optimization_results)?;
+
         Ok(MemoryOptimizationResult {
             optimization_time: start_time.elapsed(),
             memory_saved: optimization_results.memory_saved,
@@ -413,13 +423,16 @@ impl QuantumGarbageCollector {
     // Helper methods
     fn generate_id() -> u64 {
         use std::collections::hash_map::DefaultHasher;
-        
+
         let mut hasher = DefaultHasher::new();
         SystemTime::now().hash(&mut hasher);
         hasher.finish()
     }
 
-    fn analyze_memory_requirements(&self, request: &QuantumAllocationRequest) -> Result<MemoryAnalysis, QuantRS2Error> {
+    fn analyze_memory_requirements(
+        &self,
+        request: &QuantumAllocationRequest,
+    ) -> Result<MemoryAnalysis, QuantRS2Error> {
         Ok(MemoryAnalysis {
             required_size: request.size,
             coherence_requirements: request.coherence_requirements.clone(),
@@ -428,7 +441,11 @@ impl QuantumGarbageCollector {
         })
     }
 
-    fn create_quantum_state_reference(&self, request: &QuantumAllocationRequest, block: &QuantumMemoryBlock) -> Result<QuantumStateReference, QuantRS2Error> {
+    fn create_quantum_state_reference(
+        &self,
+        request: &QuantumAllocationRequest,
+        _block: &QuantumMemoryBlock,
+    ) -> Result<QuantumStateReference, QuantRS2Error> {
         Ok(QuantumStateReference {
             state_id: Self::generate_id(),
             amplitudes: Array1::zeros(request.state_size),
@@ -440,7 +457,10 @@ impl QuantumGarbageCollector {
         })
     }
 
-    fn analyze_collection_requirements(&self, mode: &GCCollectionMode) -> Result<CollectionAnalysis, QuantRS2Error> {
+    fn analyze_collection_requirements(
+        &self,
+        mode: &GCCollectionMode,
+    ) -> Result<CollectionAnalysis, QuantRS2Error> {
         Ok(CollectionAnalysis {
             collection_mode: mode.clone(),
             urgency_level: UrgencyLevel::Medium,
@@ -448,11 +468,17 @@ impl QuantumGarbageCollector {
         })
     }
 
-    fn identify_collection_candidates(&self, analysis: &CollectionAnalysis) -> Result<Vec<CollectionCandidate>, QuantRS2Error> {
+    fn identify_collection_candidates(
+        &self,
+        _analysis: &CollectionAnalysis,
+    ) -> Result<Vec<CollectionCandidate>, QuantRS2Error> {
         Ok(vec![])
     }
 
-    fn execute_collection_process(&mut self, candidates: &[CollectionCandidate]) -> Result<CollectionStatistics, QuantRS2Error> {
+    fn execute_collection_process(
+        &mut self,
+        candidates: &[CollectionCandidate],
+    ) -> Result<CollectionStatistics, QuantRS2Error> {
         Ok(CollectionStatistics {
             states_collected: candidates.len(),
             memory_freed: candidates.len() * 1024, // Simplified calculation
@@ -504,18 +530,27 @@ impl QuantumMemoryManager {
 
     fn create_default_pools() -> HashMap<MemoryPoolType, QuantumMemoryPool> {
         let mut pools = HashMap::new();
-        
-        pools.insert(MemoryPoolType::HighCoherence, QuantumMemoryPool::new(
-            MemoryPoolType::HighCoherence, 64 * 1024 * 1024)); // 64MB
-        pools.insert(MemoryPoolType::StandardCoherence, QuantumMemoryPool::new(
-            MemoryPoolType::StandardCoherence, 256 * 1024 * 1024)); // 256MB
-        pools.insert(MemoryPoolType::LowCoherence, QuantumMemoryPool::new(
-            MemoryPoolType::LowCoherence, 512 * 1024 * 1024)); // 512MB
-        
+
+        pools.insert(
+            MemoryPoolType::HighCoherence,
+            QuantumMemoryPool::new(MemoryPoolType::HighCoherence, 64 * 1024 * 1024),
+        ); // 64MB
+        pools.insert(
+            MemoryPoolType::StandardCoherence,
+            QuantumMemoryPool::new(MemoryPoolType::StandardCoherence, 256 * 1024 * 1024),
+        ); // 256MB
+        pools.insert(
+            MemoryPoolType::LowCoherence,
+            QuantumMemoryPool::new(MemoryPoolType::LowCoherence, 512 * 1024 * 1024),
+        ); // 512MB
+
         pools
     }
 
-    pub fn select_optimal_pool(&self, analysis: &MemoryAnalysis) -> Result<MemoryPoolType, QuantRS2Error> {
+    pub fn select_optimal_pool(
+        &self,
+        analysis: &MemoryAnalysis,
+    ) -> Result<MemoryPoolType, QuantRS2Error> {
         // Simple selection based on coherence requirements
         if analysis.coherence_requirements.min_coherence_time > Duration::from_millis(100) {
             Ok(MemoryPoolType::HighCoherence)
@@ -526,7 +561,11 @@ impl QuantumMemoryManager {
         }
     }
 
-    pub fn allocate_block(&mut self, request: &QuantumAllocationRequest, pool_type: MemoryPoolType) -> Result<QuantumMemoryBlock, QuantRS2Error> {
+    pub fn allocate_block(
+        &mut self,
+        request: &QuantumAllocationRequest,
+        _pool_type: MemoryPoolType,
+    ) -> Result<QuantumMemoryBlock, QuantRS2Error> {
         Ok(QuantumMemoryBlock {
             block_id: QuantumGarbageCollector::generate_id(),
             block_type: BlockType::QuantumState,
@@ -549,7 +588,10 @@ impl QuantumMemoryManager {
         })
     }
 
-    pub fn update_allocation_strategies(&mut self, _results: &OptimizationResults) -> Result<(), QuantRS2Error> {
+    pub fn update_allocation_strategies(
+        &mut self,
+        _results: &OptimizationResults,
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 }
@@ -581,7 +623,10 @@ impl QuantumStateTracker {
         }
     }
 
-    pub fn register_quantum_state(&mut self, state_ref: &QuantumStateReference) -> Result<(), QuantRS2Error> {
+    pub fn register_quantum_state(
+        &mut self,
+        state_ref: &QuantumStateReference,
+    ) -> Result<(), QuantRS2Error> {
         let tracked_state = TrackedQuantumState {
             state_id: state_ref.state_id,
             creation_time: Instant::now(),
@@ -595,7 +640,7 @@ impl QuantumStateTracker {
             predicted_lifetime: Duration::from_secs(60),
             importance_score: 1.0,
         };
-        
+
         self.active_states.insert(state_ref.state_id, tracked_state);
         Ok(())
     }
@@ -611,14 +656,15 @@ impl CoherenceBasedGC {
                 CollectionTrigger::CoherenceThreshold(0.8),
                 CollectionTrigger::MemoryPressure(0.9),
             ],
-            collection_strategies: vec![
-                CoherenceGCStrategy::AdaptiveCollection,
-            ],
+            collection_strategies: vec![CoherenceGCStrategy::AdaptiveCollection],
             priority_calculator: CoherencePriorityCalculator::new(),
         }
     }
 
-    pub fn filter_by_coherence(&self, candidates: &[CollectionCandidate]) -> Result<Vec<CollectionCandidate>, QuantRS2Error> {
+    pub fn filter_by_coherence(
+        &self,
+        candidates: &[CollectionCandidate],
+    ) -> Result<Vec<CollectionCandidate>, QuantRS2Error> {
         Ok(candidates.to_vec())
     }
 }
@@ -635,7 +681,10 @@ impl QuantumReferenceCounter {
         }
     }
 
-    pub fn initialize_references(&mut self, state_ref: &QuantumStateReference) -> Result<(), QuantRS2Error> {
+    pub fn initialize_references(
+        &mut self,
+        state_ref: &QuantumStateReference,
+    ) -> Result<(), QuantRS2Error> {
         let ref_info = ReferenceInfo {
             state_id: state_ref.state_id,
             strong_count: 1,
@@ -644,7 +693,7 @@ impl QuantumReferenceCounter {
             last_update: Instant::now(),
             reference_holders: HashSet::new(),
         };
-        
+
         self.reference_counts.insert(state_ref.state_id, ref_info);
         Ok(())
     }
@@ -661,7 +710,10 @@ impl QuantumLifecycleManager {
         }
     }
 
-    pub fn setup_lifecycle(&mut self, _state_ref: &QuantumStateReference) -> Result<(), QuantRS2Error> {
+    pub fn setup_lifecycle(
+        &mut self,
+        _state_ref: &QuantumStateReference,
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 }
@@ -806,9 +858,17 @@ pub struct MemoryPressureMonitor;
 #[derive(Debug)]
 pub struct AllocationHistory;
 #[derive(Debug, Clone)]
-pub enum AllocationStrategy { BestFit, FirstFit, QuantumAware }
+pub enum AllocationStrategy {
+    BestFit,
+    FirstFit,
+    QuantumAware,
+}
 #[derive(Debug, Clone)]
-pub enum AllocationPolicy { BestFit, FirstFit, NextFit }
+pub enum AllocationPolicy {
+    BestFit,
+    FirstFit,
+    NextFit,
+}
 #[derive(Debug)]
 pub struct FreeBlock;
 #[derive(Debug)]
@@ -825,7 +885,12 @@ pub struct CollectionAnalysis {
     pub target_memory_freed: usize,
 }
 #[derive(Debug, Clone)]
-pub enum UrgencyLevel { Low, Medium, High, Critical }
+pub enum UrgencyLevel {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
 #[derive(Debug, Clone)]
 pub struct CollectionCandidate;
 #[derive(Debug)]
@@ -850,53 +915,88 @@ pub struct OptimizationResults {
 
 // Implement required traits and methods
 impl CoherenceInfo {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl GCMetadata {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl EntanglementInfo {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl DependencyGraph {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl EntanglementGraph {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl LifetimePredictor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl DecoherenceMonitor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl CoherencePriorityCalculator {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl QuantumCycleDetector {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl StateTransitionEngine {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl AutomaticCleanupEngine {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl ResourceOptimizer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl MemoryOptimizationEngine {
-    pub fn new() -> Self { Self }
-    
-    pub fn analyze_usage_patterns(&self, _tracker: &QuantumStateTracker) -> Result<UsageAnalysis, QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn analyze_usage_patterns(
+        &self,
+        _tracker: &QuantumStateTracker,
+    ) -> Result<UsageAnalysis, QuantRS2Error> {
         Ok(UsageAnalysis)
     }
-    
-    pub fn identify_optimizations(&self, _analysis: &UsageAnalysis) -> Result<OptimizationOpportunities, QuantRS2Error> {
+
+    pub fn identify_optimizations(
+        &self,
+        _analysis: &UsageAnalysis,
+    ) -> Result<OptimizationOpportunities, QuantRS2Error> {
         Ok(OptimizationOpportunities)
     }
-    
-    pub fn apply_optimizations(&self, _opportunities: &OptimizationOpportunities) -> Result<OptimizationResults, QuantRS2Error> {
+
+    pub fn apply_optimizations(
+        &self,
+        _opportunities: &OptimizationOpportunities,
+    ) -> Result<OptimizationResults, QuantRS2Error> {
         Ok(OptimizationResults {
             memory_saved: 1024 * 1024,
             performance_improvement: 45.6,
@@ -904,29 +1004,46 @@ impl MemoryOptimizationEngine {
     }
 }
 impl GCScheduler {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl GCPerformanceMonitor {
-    pub fn new() -> Self { Self }
-    
-    pub fn update_collection_metrics(&mut self, _stats: &CollectionStatistics) -> Result<(), QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn update_collection_metrics(
+        &mut self,
+        _stats: &CollectionStatistics,
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 }
 impl AllocationTracker {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl QuantumMemoryCompactor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl FragmentationAnalyzer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl MemoryPressureMonitor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl AllocationHistory {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 #[derive(Debug)]
@@ -936,7 +1053,9 @@ pub struct OptimizationOpportunities;
 
 // Implement ordering for FreeBlock
 impl PartialEq for FreeBlock {
-    fn eq(&self, _other: &Self) -> bool { false }
+    fn eq(&self, _other: &Self) -> bool {
+        false
+    }
 }
 impl Eq for FreeBlock {}
 impl PartialOrd for FreeBlock {
@@ -977,7 +1096,10 @@ mod tests {
 
         let allocation_result = result.unwrap();
         assert!(allocation_result.quantum_advantage > 1.0);
-        assert_eq!(allocation_result.pool_type, MemoryPoolType::StandardCoherence);
+        assert_eq!(
+            allocation_result.pool_type,
+            MemoryPoolType::StandardCoherence
+        );
     }
 
     #[test]
@@ -995,7 +1117,7 @@ mod tests {
     fn test_gc_advantages() {
         let mut gc = QuantumGarbageCollector::new();
         let report = gc.demonstrate_gc_advantages();
-        
+
         // All advantages should demonstrate quantum superiority
         assert!(report.collection_efficiency > 1.0);
         assert!(report.memory_utilization_advantage > 1.0);
@@ -1019,9 +1141,15 @@ mod tests {
     #[test]
     fn test_memory_pools() {
         let manager = QuantumMemoryManager::new();
-        assert!(manager.memory_pools.contains_key(&MemoryPoolType::HighCoherence));
-        assert!(manager.memory_pools.contains_key(&MemoryPoolType::StandardCoherence));
-        assert!(manager.memory_pools.contains_key(&MemoryPoolType::LowCoherence));
+        assert!(manager
+            .memory_pools
+            .contains_key(&MemoryPoolType::HighCoherence));
+        assert!(manager
+            .memory_pools
+            .contains_key(&MemoryPoolType::StandardCoherence));
+        assert!(manager
+            .memory_pools
+            .contains_key(&MemoryPoolType::LowCoherence));
     }
 
     #[test]

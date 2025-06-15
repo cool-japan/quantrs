@@ -75,9 +75,6 @@ This document outlines the development plans and future tasks for the QuantRS2-C
 
 ## Known Issues
 
-- ~~The current DSL macros are incomplete and marked as `ignore` in doctests~~ ✅ Fixed
-- ~~Circuit cloning has inefficiencies due to trait object limitations~~ ✅ Fixed
-- ~~Need better error messages for invalid circuit operations~~ ✅ Fixed
 - Large circuits may have memory fragmentation issues
 
 ## Recent Enhancements (Latest Implementation Session)

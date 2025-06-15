@@ -15,28 +15,28 @@
 
 pub mod config;
 pub mod core;
-pub mod strategy_learning;
-pub mod problem_analysis;
-pub mod subproblem_generation;
-pub mod performance_evaluation;
 pub mod knowledge_base;
+pub mod performance_evaluation;
+pub mod problem_analysis;
+pub mod strategy_learning;
+pub mod subproblem_generation;
 pub mod types;
 pub mod utils;
 
 pub use config::*;
 pub use core::*;
-pub use strategy_learning::*;
-pub use problem_analysis::*;
-pub use subproblem_generation::*;
-pub use performance_evaluation::*;
 pub use knowledge_base::*;
+pub use performance_evaluation::*;
+pub use problem_analysis::*;
+pub use strategy_learning::*;
+pub use subproblem_generation::*;
 pub use types::*;
 pub use utils::*;
 
-use ndarray::Array1;
-use std::time::{Duration, Instant};
 use crate::ising::IsingModel;
 use crate::simulator::AnnealingResult;
+use ndarray::Array1;
+use std::time::{Duration, Instant};
 
 /// Decomposition strategies
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

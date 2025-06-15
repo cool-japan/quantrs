@@ -154,7 +154,7 @@ pub enum CspConstraint {
     /// At most one constraint: at most one variable is true/active
     AtMostOne { variables: Vec<String> },
 
-    /// Element constraint: var[index] = value
+    /// Element constraint: var\\[index\\] = value
     Element {
         array_var: String,
         index_var: String,

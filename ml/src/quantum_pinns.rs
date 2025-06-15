@@ -6,7 +6,7 @@
 //! conservation laws using quantum computing advantages.
 
 use crate::error::Result;
-use ndarray::{Array1, Array2, Array3, ArrayD, IxDyn, s};
+use ndarray::{s, Array1, Array2, Array3, ArrayD, IxDyn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -372,10 +372,15 @@ pub struct QuantumGate {
 /// Gate types for quantum circuits
 #[derive(Debug, Clone)]
 pub enum GateType {
-    RX, RY, RZ,
-    CNOT, CZ, CY,
+    RX,
+    RY,
+    RZ,
+    CNOT,
+    CZ,
+    CY,
     Hadamard,
-    S, T,
+    S,
+    T,
     Custom(String),
 }
 
@@ -513,7 +518,11 @@ impl QuantumPINN {
             }
             QuantumAnsatzType::PhysicsInformed => {
                 // Build physics-informed ansatz based on the equation type
-                gates = Self::build_physics_informed_ansatz(config, &mut param_index, &mut parameter_map)?;
+                gates = Self::build_physics_informed_ansatz(
+                    config,
+                    &mut param_index,
+                    &mut parameter_map,
+                )?;
             }
             _ => {
                 return Err(crate::error::MLError::InvalidConfiguration(
@@ -634,7 +643,9 @@ impl QuantumPINN {
 
     /// Count parameters in the quantum circuit
     fn count_parameters(circuit: &QuantumCircuit) -> usize {
-        circuit.gates.iter()
+        circuit
+            .gates
+            .iter()
             .filter(|gate| gate.is_parametric)
             .map(|gate| gate.parameters.len())
             .sum()
@@ -643,11 +654,9 @@ impl QuantumPINN {
     /// Initialize parameters based on configuration
     fn initialize_parameters(config: &QPINNConfig, num_params: usize) -> Result<Array1<f64>> {
         match &config.ansatz_config.parameter_init {
-            ParameterInitialization::Random => {
-                Ok(Array1::from_shape_fn(num_params, |_| {
-                    fastrand::f64() * 2.0 * std::f64::consts::PI
-                }))
-            }
+            ParameterInitialization::Random => Ok(Array1::from_shape_fn(num_params, |_| {
+                fastrand::f64() * 2.0 * std::f64::consts::PI
+            })),
             ParameterInitialization::Xavier => {
                 let limit = (6.0 / num_params as f64).sqrt();
                 Ok(Array1::from_shape_fn(num_params, |_| {
@@ -685,9 +694,7 @@ impl QuantumPINN {
                 }
                 Ok(Array1::from_vec(values.clone()))
             }
-            _ => {
-                Ok(Array1::zeros(num_params))
-            }
+            _ => Ok(Array1::zeros(num_params)),
         }
     }
 
@@ -702,7 +709,7 @@ impl QuantumPINN {
             for (j, &(min_val, max_val)) in config.domain_bounds.iter().enumerate() {
                 points[[i, j]] = min_val + fastrand::f64() * (max_val - min_val);
             }
-            
+
             // Temporal coordinate
             let (t_min, t_max) = config.time_bounds;
             points[[i, config.domain_bounds.len()]] = t_min + fastrand::f64() * (t_max - t_min);
@@ -804,9 +811,9 @@ impl QuantumPINN {
         let mut new_state = state.clone();
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
-        
+
         let qubit_mask = 1 << qubit;
-        
+
         for i in 0..state.len() {
             if i & qubit_mask == 0 {
                 let j = i | qubit_mask;
@@ -818,7 +825,7 @@ impl QuantumPINN {
                 }
             }
         }
-        
+
         Ok(new_state)
     }
 
@@ -827,9 +834,9 @@ impl QuantumPINN {
         let mut new_state = state.clone();
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
-        
+
         let qubit_mask = 1 << qubit;
-        
+
         for i in 0..state.len() {
             if i & qubit_mask == 0 {
                 let j = i | qubit_mask;
@@ -841,7 +848,7 @@ impl QuantumPINN {
                 }
             }
         }
-        
+
         Ok(new_state)
     }
 
@@ -850,9 +857,9 @@ impl QuantumPINN {
         let mut new_state = state.clone();
         let phase_0 = (-angle / 2.0); // For real-valued implementation
         let phase_1 = (angle / 2.0);
-        
+
         let qubit_mask = 1 << qubit;
-        
+
         for i in 0..state.len() {
             if i & qubit_mask == 0 {
                 new_state[i] *= phase_0.cos(); // Real part only for simplification
@@ -860,38 +867,48 @@ impl QuantumPINN {
                 new_state[i] *= phase_1.cos();
             }
         }
-        
+
         Ok(new_state)
     }
 
     /// Apply CNOT gate
-    fn apply_cnot_gate(&self, state: &Array1<f64>, control: usize, target: usize) -> Result<Array1<f64>> {
+    fn apply_cnot_gate(
+        &self,
+        state: &Array1<f64>,
+        control: usize,
+        target: usize,
+    ) -> Result<Array1<f64>> {
         let mut new_state = state.clone();
         let control_mask = 1 << control;
         let target_mask = 1 << target;
-        
+
         for i in 0..state.len() {
             if i & control_mask != 0 {
                 let j = i ^ target_mask;
                 new_state[i] = state[j];
             }
         }
-        
+
         Ok(new_state)
     }
 
     /// Apply CZ gate
-    fn apply_cz_gate(&self, state: &Array1<f64>, control: usize, target: usize) -> Result<Array1<f64>> {
+    fn apply_cz_gate(
+        &self,
+        state: &Array1<f64>,
+        control: usize,
+        target: usize,
+    ) -> Result<Array1<f64>> {
         let mut new_state = state.clone();
         let control_mask = 1 << control;
         let target_mask = 1 << target;
-        
+
         for i in 0..state.len() {
             if (i & control_mask != 0) && (i & target_mask != 0) {
                 new_state[i] *= -1.0; // Apply phase flip
             }
         }
-        
+
         Ok(new_state)
     }
 
@@ -899,7 +916,7 @@ impl QuantumPINN {
     fn decode_output(&self, quantum_state: &Array1<f64>) -> Result<f64> {
         // Expectation value of Z operator on first qubit
         let mut expectation = 0.0;
-        
+
         for (i, &amplitude) in quantum_state.iter().enumerate() {
             if i & 1 == 0 {
                 expectation += amplitude * amplitude;
@@ -907,7 +924,7 @@ impl QuantumPINN {
                 expectation -= amplitude * amplitude;
             }
         }
-        
+
         Ok(expectation)
     }
 
@@ -916,7 +933,7 @@ impl QuantumPINN {
         let h = 1e-5; // Finite difference step
         let num_points = points.nrows();
         let num_dims = points.ncols();
-        
+
         let mut first_derivatives = Array2::zeros((num_points, num_dims));
         let mut second_derivatives = Array2::zeros((num_points, num_dims));
         let mut mixed_derivatives = Array3::zeros((num_points, num_dims, num_dims));
@@ -928,15 +945,18 @@ impl QuantumPINN {
                 let mut point_minus = points.row(i).to_owned();
                 point_plus[j] += h;
                 point_minus[j] -= h;
-                
+
                 let output_plus = self.forward(&point_plus.insert_axis(ndarray::Axis(0)))?[[0, 0]];
-                let output_minus = self.forward(&point_minus.insert_axis(ndarray::Axis(0)))?[[0, 0]];
-                
+                let output_minus =
+                    self.forward(&point_minus.insert_axis(ndarray::Axis(0)))?[[0, 0]];
+
                 first_derivatives[[i, j]] = (output_plus - output_minus) / (2.0 * h);
 
                 // Second derivatives
-                let output_center = self.forward(&points.row(i).insert_axis(ndarray::Axis(0)).to_owned())?[[0, 0]];
-                second_derivatives[[i, j]] = (output_plus - 2.0 * output_center + output_minus) / (h * h);
+                let output_center =
+                    self.forward(&points.row(i).insert_axis(ndarray::Axis(0)).to_owned())?[[0, 0]];
+                second_derivatives[[i, j]] =
+                    (output_plus - 2.0 * output_center + output_minus) / (h * h);
 
                 // Mixed derivatives
                 for k in j + 1..num_dims {
@@ -944,18 +964,23 @@ impl QuantumPINN {
                     let mut point_pm = points.row(i).to_owned();
                     let mut point_mp = points.row(i).to_owned();
                     let mut point_mm = points.row(i).to_owned();
-                    
-                    point_pp[j] += h; point_pp[k] += h;
-                    point_pm[j] += h; point_pm[k] -= h;
-                    point_mp[j] -= h; point_mp[k] += h;
-                    point_mm[j] -= h; point_mm[k] -= h;
-                    
+
+                    point_pp[j] += h;
+                    point_pp[k] += h;
+                    point_pm[j] += h;
+                    point_pm[k] -= h;
+                    point_mp[j] -= h;
+                    point_mp[k] += h;
+                    point_mm[j] -= h;
+                    point_mm[k] -= h;
+
                     let output_pp = self.forward(&point_pp.insert_axis(ndarray::Axis(0)))?[[0, 0]];
                     let output_pm = self.forward(&point_pm.insert_axis(ndarray::Axis(0)))?[[0, 0]];
                     let output_mp = self.forward(&point_mp.insert_axis(ndarray::Axis(0)))?[[0, 0]];
                     let output_mm = self.forward(&point_mm.insert_axis(ndarray::Axis(0)))?[[0, 0]];
-                    
-                    let mixed_deriv = (output_pp - output_pm - output_mp + output_mm) / (4.0 * h * h);
+
+                    let mixed_deriv =
+                        (output_pp - output_pm - output_mp + output_mm) / (4.0 * h * h);
                     mixed_derivatives[[i, j, k]] = mixed_deriv;
                     mixed_derivatives[[i, k, j]] = mixed_deriv; // Symmetry
                 }
@@ -972,40 +997,46 @@ impl QuantumPINN {
     /// Train the Quantum PINN
     pub fn train(&mut self, epochs: Option<usize>) -> Result<()> {
         let num_epochs = epochs.unwrap_or(self.config.training_config.epochs);
-        
+
         for epoch in 0..num_epochs {
             // Adaptive sampling of collocation points
             if self.config.training_config.adaptive_sampling && epoch % 100 == 0 {
-                self.collocation_points = Self::generate_adaptive_collocation_points(&self.config, epoch)?;
+                self.collocation_points =
+                    Self::generate_adaptive_collocation_points(&self.config, epoch)?;
             }
 
             // Compute total loss
             let total_loss = self.compute_total_loss()?;
-            
+
             // Compute gradients
             let gradients = self.compute_gradients()?;
-            
+
             // Update parameters
             self.update_parameters(&gradients)?;
-            
+
             // Record metrics
             let metrics = self.compute_training_metrics(epoch, total_loss)?;
             self.training_history.push(metrics);
-            
+
             if epoch % 100 == 0 {
-                println!("Epoch {}: Total Loss = {:.6}, PDE Loss = {:.6}, Boundary Loss = {:.6}",
-                         epoch, 
-                         self.training_history.last().unwrap().total_loss,
-                         self.training_history.last().unwrap().pde_loss,
-                         self.training_history.last().unwrap().boundary_loss);
+                println!(
+                    "Epoch {}: Total Loss = {:.6}, PDE Loss = {:.6}, Boundary Loss = {:.6}",
+                    epoch,
+                    self.training_history.last().unwrap().total_loss,
+                    self.training_history.last().unwrap().pde_loss,
+                    self.training_history.last().unwrap().boundary_loss
+                );
             }
         }
-        
+
         Ok(())
     }
 
     /// Generate adaptive collocation points
-    fn generate_adaptive_collocation_points(config: &QPINNConfig, epoch: usize) -> Result<Array2<f64>> {
+    fn generate_adaptive_collocation_points(
+        config: &QPINNConfig,
+        epoch: usize,
+    ) -> Result<Array2<f64>> {
         // For now, use uniform random sampling (adaptive refinement would be more complex)
         Self::generate_collocation_points(config)
     }
@@ -1019,9 +1050,9 @@ impl QuantumPINN {
 
         let weights = &self.config.loss_weights;
         let total = weights.pde_loss_weight * pde_loss
-                  + weights.boundary_loss_weight * boundary_loss
-                  + weights.initial_loss_weight * initial_loss
-                  + weights.physics_constraint_weight * physics_constraint_loss;
+            + weights.boundary_loss_weight * boundary_loss
+            + weights.initial_loss_weight * initial_loss
+            + weights.physics_constraint_weight * physics_constraint_loss;
 
         Ok(TotalLoss {
             total,
@@ -1040,7 +1071,7 @@ impl QuantumPINN {
             &self.forward(&self.collocation_points)?,
             &derivatives,
         )?;
-        
+
         Ok(residuals.iter().map(|r| r * r).sum::<f64>() / residuals.len() as f64)
     }
 
@@ -1049,15 +1080,20 @@ impl QuantumPINN {
         // Generate boundary points
         let boundary_points = self.generate_boundary_points()?;
         let boundary_values = self.forward(&boundary_points)?;
-        
+
         let mut total_loss = 0.0;
-        for (bc, points) in self.config.boundary_conditions.iter().zip(boundary_values.rows()) {
+        for (bc, points) in self
+            .config
+            .boundary_conditions
+            .iter()
+            .zip(boundary_values.rows())
+        {
             let target_values = self.evaluate_boundary_condition(bc, &boundary_points)?;
             for (predicted, target) in points.iter().zip(target_values.iter()) {
                 total_loss += (predicted - target).powi(2);
             }
         }
-        
+
         Ok(total_loss)
     }
 
@@ -1066,15 +1102,20 @@ impl QuantumPINN {
         // Generate initial time points
         let initial_points = self.generate_initial_points()?;
         let initial_values = self.forward(&initial_points)?;
-        
+
         let mut total_loss = 0.0;
-        for (ic, points) in self.config.initial_conditions.iter().zip(initial_values.rows()) {
+        for (ic, points) in self
+            .config
+            .initial_conditions
+            .iter()
+            .zip(initial_values.rows())
+        {
             let target_values = self.evaluate_initial_condition(ic, &initial_points)?;
             for (predicted, target) in points.iter().zip(target_values.iter()) {
                 total_loss += (predicted - target).powi(2);
             }
         }
-        
+
         Ok(total_loss)
     }
 
@@ -1082,15 +1123,15 @@ impl QuantumPINN {
     fn compute_physics_constraint_loss(&self) -> Result<f64> {
         // Implement conservation law and symmetry constraints
         let mut constraint_loss = 0.0;
-        
+
         for conservation_law in &self.config.physics_constraints.conservation_laws {
             constraint_loss += self.evaluate_conservation_law(conservation_law)?;
         }
-        
+
         for symmetry in &self.config.physics_constraints.symmetries {
             constraint_loss += self.evaluate_symmetry_constraint(symmetry)?;
         }
-        
+
         Ok(constraint_loss)
     }
 
@@ -1100,7 +1141,7 @@ impl QuantumPINN {
         let num_boundary_points = 100;
         let num_dims = self.config.domain_bounds.len() + 1;
         let mut boundary_points = Array2::zeros((num_boundary_points, num_dims));
-        
+
         // Generate points on each boundary
         for i in 0..num_boundary_points {
             for (j, &(min_val, max_val)) in self.config.domain_bounds.iter().enumerate() {
@@ -1110,12 +1151,13 @@ impl QuantumPINN {
                     boundary_points[[i, j]] = max_val; // Right/top boundary
                 }
             }
-            
+
             // Random time coordinate
             let (t_min, t_max) = self.config.time_bounds;
-            boundary_points[[i, self.config.domain_bounds.len()]] = t_min + fastrand::f64() * (t_max - t_min);
+            boundary_points[[i, self.config.domain_bounds.len()]] =
+                t_min + fastrand::f64() * (t_max - t_min);
         }
-        
+
         Ok(boundary_points)
     }
 
@@ -1124,28 +1166,36 @@ impl QuantumPINN {
         let num_initial_points = 100;
         let num_dims = self.config.domain_bounds.len() + 1;
         let mut initial_points = Array2::zeros((num_initial_points, num_dims));
-        
+
         for i in 0..num_initial_points {
             // Random spatial coordinates
             for (j, &(min_val, max_val)) in self.config.domain_bounds.iter().enumerate() {
                 initial_points[[i, j]] = min_val + fastrand::f64() * (max_val - min_val);
             }
-            
+
             // Initial time
             initial_points[[i, self.config.domain_bounds.len()]] = self.config.time_bounds.0;
         }
-        
+
         Ok(initial_points)
     }
 
     /// Evaluate boundary condition
-    fn evaluate_boundary_condition(&self, _bc: &BoundaryCondition, _points: &Array2<f64>) -> Result<Array1<f64>> {
+    fn evaluate_boundary_condition(
+        &self,
+        _bc: &BoundaryCondition,
+        _points: &Array2<f64>,
+    ) -> Result<Array1<f64>> {
         // Simplified: return zeros for Dirichlet conditions
         Ok(Array1::zeros(_points.nrows()))
     }
 
     /// Evaluate initial condition
-    fn evaluate_initial_condition(&self, _ic: &InitialCondition, _points: &Array2<f64>) -> Result<Array1<f64>> {
+    fn evaluate_initial_condition(
+        &self,
+        _ic: &InitialCondition,
+        _points: &Array2<f64>,
+    ) -> Result<Array1<f64>> {
         // Simplified: return zeros
         Ok(Array1::zeros(_points.nrows()))
     }
@@ -1167,34 +1217,38 @@ impl QuantumPINN {
         let total_loss = self.compute_total_loss()?;
         let mut gradients = Array1::zeros(self.parameters.len());
         let epsilon = 1e-6;
-        
+
         for i in 0..self.parameters.len() {
             let mut params_plus = self.parameters.clone();
             params_plus[i] += epsilon;
-            
+
             let mut temp_pinn = self.clone();
             temp_pinn.parameters = params_plus;
             let loss_plus = temp_pinn.compute_total_loss()?.total;
-            
+
             gradients[i] = (loss_plus - total_loss.total) / epsilon;
         }
-        
+
         Ok(gradients)
     }
 
     /// Update parameters
     fn update_parameters(&mut self, gradients: &Array1<f64>) -> Result<()> {
         let learning_rate = self.config.training_config.learning_rate;
-        
+
         for i in 0..self.parameters.len() {
             self.parameters[i] -= learning_rate * gradients[i];
         }
-        
+
         Ok(())
     }
 
     /// Compute training metrics
-    fn compute_training_metrics(&self, epoch: usize, total_loss: TotalLoss) -> Result<TrainingMetrics> {
+    fn compute_training_metrics(
+        &self,
+        epoch: usize,
+        total_loss: TotalLoss,
+    ) -> Result<TrainingMetrics> {
         Ok(TrainingMetrics {
             epoch,
             total_loss: total_loss.total,
@@ -1203,7 +1257,7 @@ impl QuantumPINN {
             initial_loss: total_loss.initial_loss,
             physics_constraint_loss: total_loss.physics_constraint_loss,
             quantum_fidelity: 0.9, // Placeholder
-            solution_energy: 1.0,   // Placeholder
+            solution_energy: 1.0,  // Placeholder
         })
     }
 
@@ -1241,44 +1295,59 @@ impl PhysicsEvaluator {
     /// Create a new physics evaluator
     pub fn new(equation_type: &PhysicsEquationType) -> Result<Self> {
         let mut differential_operators = HashMap::new();
-        
+
         match equation_type {
             PhysicsEquationType::Poisson => {
-                differential_operators.insert("laplacian".to_string(), DifferentialOperator {
-                    operator_type: OperatorType::Laplacian,
-                    order: 2,
-                    direction: vec![0, 1], // x and y directions
-                });
+                differential_operators.insert(
+                    "laplacian".to_string(),
+                    DifferentialOperator {
+                        operator_type: OperatorType::Laplacian,
+                        order: 2,
+                        direction: vec![0, 1], // x and y directions
+                    },
+                );
             }
             PhysicsEquationType::Heat => {
-                differential_operators.insert("time_derivative".to_string(), DifferentialOperator {
-                    operator_type: OperatorType::TimeDerivative,
-                    order: 1,
-                    direction: vec![2], // time direction
-                });
-                differential_operators.insert("laplacian".to_string(), DifferentialOperator {
-                    operator_type: OperatorType::Laplacian,
-                    order: 2,
-                    direction: vec![0, 1],
-                });
+                differential_operators.insert(
+                    "time_derivative".to_string(),
+                    DifferentialOperator {
+                        operator_type: OperatorType::TimeDerivative,
+                        order: 1,
+                        direction: vec![2], // time direction
+                    },
+                );
+                differential_operators.insert(
+                    "laplacian".to_string(),
+                    DifferentialOperator {
+                        operator_type: OperatorType::Laplacian,
+                        order: 2,
+                        direction: vec![0, 1],
+                    },
+                );
             }
             PhysicsEquationType::Wave => {
-                differential_operators.insert("second_time_derivative".to_string(), DifferentialOperator {
-                    operator_type: OperatorType::TimeDerivative,
-                    order: 2,
-                    direction: vec![2],
-                });
-                differential_operators.insert("laplacian".to_string(), DifferentialOperator {
-                    operator_type: OperatorType::Laplacian,
-                    order: 2,
-                    direction: vec![0, 1],
-                });
+                differential_operators.insert(
+                    "second_time_derivative".to_string(),
+                    DifferentialOperator {
+                        operator_type: OperatorType::TimeDerivative,
+                        order: 2,
+                        direction: vec![2],
+                    },
+                );
+                differential_operators.insert(
+                    "laplacian".to_string(),
+                    DifferentialOperator {
+                        operator_type: OperatorType::Laplacian,
+                        order: 2,
+                        direction: vec![0, 1],
+                    },
+                );
             }
             _ => {
                 // Add more equation types as needed
             }
         }
-        
+
         Ok(Self {
             equation_type: equation_type.clone(),
             differential_operators,
@@ -1294,12 +1363,13 @@ impl PhysicsEvaluator {
     ) -> Result<Array1<f64>> {
         let num_points = points.nrows();
         let mut residuals = Array1::zeros(num_points);
-        
+
         match self.equation_type {
             PhysicsEquationType::Poisson => {
                 // ∇²u = f (assuming f = 0 for simplicity)
                 for i in 0..num_points {
-                    let laplacian = derivatives.second_derivatives[[i, 0]] + derivatives.second_derivatives[[i, 1]];
+                    let laplacian = derivatives.second_derivatives[[i, 0]]
+                        + derivatives.second_derivatives[[i, 1]];
                     residuals[i] = laplacian; // f = 0
                 }
             }
@@ -1307,7 +1377,8 @@ impl PhysicsEvaluator {
                 // ∂u/∂t = α∇²u (assuming α = 1)
                 for i in 0..num_points {
                     let time_deriv = derivatives.first_derivatives[[i, 2]]; // time direction
-                    let laplacian = derivatives.second_derivatives[[i, 0]] + derivatives.second_derivatives[[i, 1]];
+                    let laplacian = derivatives.second_derivatives[[i, 0]]
+                        + derivatives.second_derivatives[[i, 1]];
                     residuals[i] = time_deriv - laplacian;
                 }
             }
@@ -1315,7 +1386,8 @@ impl PhysicsEvaluator {
                 // ∂²u/∂t² = c²∇²u (assuming c = 1)
                 for i in 0..num_points {
                     let second_time_deriv = derivatives.second_derivatives[[i, 2]];
-                    let laplacian = derivatives.second_derivatives[[i, 0]] + derivatives.second_derivatives[[i, 1]];
+                    let laplacian = derivatives.second_derivatives[[i, 0]]
+                        + derivatives.second_derivatives[[i, 1]];
                     residuals[i] = second_time_deriv - laplacian;
                 }
             }
@@ -1325,7 +1397,7 @@ impl PhysicsEvaluator {
                 ));
             }
         }
-        
+
         Ok(residuals)
     }
 }
@@ -1345,14 +1417,14 @@ mod tests {
     fn test_forward_pass() {
         let config = QPINNConfig::default();
         let qpinn = QuantumPINN::new(config).unwrap();
-        let input_points = Array2::from_shape_vec((5, 3), vec![
-            0.1, 0.2, 0.0,
-            0.3, 0.4, 0.1,
-            0.5, 0.6, 0.2,
-            0.7, 0.8, 0.3,
-            0.9, 1.0, 0.4,
-        ]).unwrap();
-        
+        let input_points = Array2::from_shape_vec(
+            (5, 3),
+            vec![
+                0.1, 0.2, 0.0, 0.3, 0.4, 0.1, 0.5, 0.6, 0.2, 0.7, 0.8, 0.3, 0.9, 1.0, 0.4,
+            ],
+        )
+        .unwrap();
+
         let result = qpinn.forward(&input_points);
         assert!(result.is_ok());
         assert_eq!(result.unwrap().shape(), [5, 1]);
@@ -1362,12 +1434,10 @@ mod tests {
     fn test_derivative_computation() {
         let config = QPINNConfig::default();
         let qpinn = QuantumPINN::new(config).unwrap();
-        let points = Array2::from_shape_vec((3, 3), vec![
-            0.1, 0.2, 0.0,
-            0.3, 0.4, 0.1,
-            0.5, 0.6, 0.2,
-        ]).unwrap();
-        
+        let points =
+            Array2::from_shape_vec((3, 3), vec![0.1, 0.2, 0.0, 0.3, 0.4, 0.1, 0.5, 0.6, 0.2])
+                .unwrap();
+
         let result = qpinn.compute_derivatives(&points);
         assert!(result.is_ok());
     }
@@ -1377,7 +1447,7 @@ mod tests {
         let mut config = QPINNConfig::default();
         config.training_config.epochs = 5;
         config.training_config.num_collocation_points = 10;
-        
+
         let mut qpinn = QuantumPINN::new(config).unwrap();
         let result = qpinn.train(Some(5));
         assert!(result.is_ok());

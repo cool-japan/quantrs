@@ -2,7 +2,8 @@
 Resilient Quantum Circuit Execution for QuantRS2
 
 This module provides production-grade quantum circuit execution with
-comprehensive error handling, recovery mechanisms, and resilience patterns.
+comprehensive error handling, recovery mechanisms, resilience patterns,
+and advanced resource management.
 """
 
 import logging
@@ -31,6 +32,18 @@ from .error_handling import (
     quantum_error_context,
     get_error_manager,
     create_error_context
+)
+
+# Import resource management components
+from .resource_management import (
+    ResourceType,
+    ResourceStatus,
+    ResourceConfig,
+    ResourceMonitor,
+    ResourcePool,
+    ResourceException,
+    resource_context,
+    analyze_circuit_resources
 )
 
 logger = logging.getLogger(__name__)
@@ -66,6 +79,23 @@ class ExecutionConfig:
     resource_limits: Dict[str, Any] = field(default_factory=dict)
     enable_parallel_execution: bool = False
     max_parallel_jobs: int = 4
+    
+    # Resource management configuration
+    resource_config: Optional[ResourceConfig] = None
+    enable_resource_monitoring: bool = True
+    enable_resource_enforcement: bool = True
+    execution_priority: str = "normal"  # "high", "normal", "low"
+    
+    def get_resource_config(self) -> ResourceConfig:
+        """Get resource configuration, creating default if needed."""
+        if self.resource_config is None:
+            self.resource_config = ResourceConfig(
+                max_memory_mb=4096.0,
+                max_cpu_percent=80.0,
+                max_execution_time=self.timeout_seconds,
+                max_concurrent_executions=self.max_parallel_jobs
+            )
+        return self.resource_config
 
 @dataclass
 class ExecutionResult:
@@ -94,12 +124,24 @@ class ExecutionResult:
         }
 
 class CircuitExecutionEngine:
-    """Core engine for resilient quantum circuit execution."""
+    """Core engine for resilient quantum circuit execution with resource management."""
     
     def __init__(self, config: Optional[ExecutionConfig] = None):
         self.config = config or ExecutionConfig()
         self.error_manager = get_error_manager()
-        self.executor = ThreadPoolExecutor(max_workers=self.config.max_parallel_jobs)
+        
+        # Resource management
+        if self.config.enable_resource_monitoring:
+            self.resource_config = self.config.get_resource_config()
+            self.resource_monitor = ResourceMonitor(self.resource_config)
+            self.resource_pool = ResourcePool(self.resource_config, self.resource_monitor)
+            self.resource_monitor.start_monitoring()
+            logger.info("Resource monitoring enabled")
+        else:
+            self.resource_monitor = None
+            self.resource_pool = None
+            # Fallback to basic executor
+            self.executor = ThreadPoolExecutor(max_workers=self.config.max_parallel_jobs)
         
         # Execution tracking
         self.active_executions: Dict[str, ExecutionResult] = {}
@@ -111,13 +153,13 @@ class CircuitExecutionEngine:
         # Lock for thread safety
         self._lock = threading.RLock()
         
-        logger.info("Circuit execution engine initialized")
+        logger.info("Circuit execution engine initialized with advanced resource management")
     
     @quantum_error_handler("circuit_execution")
     def execute_circuit(self, circuit: Any, execution_id: Optional[str] = None,
                        config: Optional[ExecutionConfig] = None) -> ExecutionResult:
         """
-        Execute quantum circuit with resilience and error recovery.
+        Execute quantum circuit with resilience, error recovery, and resource management.
         
         Args:
             circuit: Quantum circuit to execute
@@ -136,10 +178,33 @@ class CircuitExecutionEngine:
         if execution_id is None:
             execution_id = str(uuid.uuid4())
         
+        # Analyze circuit resources
+        circuit_info = self._get_circuit_info(circuit)
+        resource_analysis = analyze_circuit_resources(circuit)
+        circuit_info.update(resource_analysis)
+        
+        # Check resource requirements before execution
+        if self.resource_monitor and exec_config.enable_resource_enforcement:
+            try:
+                self._check_circuit_resource_requirements(circuit_info)
+                self.resource_monitor.enforce_limits()
+            except ResourceException as e:
+                logger.error(f"Circuit {execution_id} exceeds resource limits: {e}")
+                return ExecutionResult(
+                    execution_id=execution_id,
+                    status=ExecutionStatus.FAILED,
+                    error_details={
+                        'error_type': 'ResourceException',
+                        'error_message': str(e),
+                        'timestamp': time.time()
+                    }
+                )
+        
         # Create execution result
         result = ExecutionResult(
             execution_id=execution_id,
-            status=ExecutionStatus.PENDING
+            status=ExecutionStatus.PENDING,
+            metadata={'circuit_info': circuit_info}
         )
         
         # Add to active executions
@@ -152,13 +217,17 @@ class CircuitExecutionEngine:
             with quantum_error_context(
                 "circuit_execution",
                 session_id=execution_id,
-                circuit_info=self._get_circuit_info(circuit)
+                circuit_info=circuit_info
             ) as context:
                 
                 result.status = ExecutionStatus.RUNNING
                 
-                # Execute with timeout
-                if exec_config.timeout_seconds > 0:
+                # Execute with resource management
+                if self.resource_pool and exec_config.enable_resource_monitoring:
+                    execution_result = self._execute_with_resource_management(
+                        circuit, exec_config, context, execution_id, circuit_info
+                    )
+                elif exec_config.timeout_seconds > 0:
                     execution_result = self._execute_with_timeout(
                         circuit, exec_config, context
                     )
@@ -172,8 +241,30 @@ class CircuitExecutionEngine:
                 result.result_data = execution_result
                 result.execution_time = time.time() - start_time
                 
+                # Add resource usage to metadata
+                if self.resource_monitor:
+                    result.metadata['resource_usage'] = {
+                        rt.value: usage.__dict__ for rt, usage in 
+                        self.resource_monitor.get_all_usage().items()
+                    }
+                
                 logger.info(f"Circuit execution {execution_id} completed successfully")
                 
+        except ResourceException as e:
+            result.status = ExecutionStatus.FAILED
+            result.error_details = {
+                'error_type': 'ResourceException',
+                'error_message': str(e),
+                'timestamp': time.time(),
+                'resource_type': e.resource_type.value,
+                'current_usage': e.current_usage,
+                'limit': e.limit
+            }
+            result.execution_time = time.time() - start_time
+            
+            logger.error(f"Circuit execution {execution_id} failed due to resource limits: {e}")
+            raise e
+            
         except Exception as e:
             result.status = ExecutionStatus.FAILED
             result.error_details = {
@@ -206,6 +297,76 @@ class CircuitExecutionEngine:
                 self.execution_history.append(result)
         
         return result
+    
+    def _check_circuit_resource_requirements(self, circuit_info: Dict[str, Any]) -> None:
+        """Check if circuit meets resource requirements."""
+        if not self.resource_monitor:
+            return
+        
+        # Check circuit complexity limits
+        qubits = circuit_info.get('qubits', 0)
+        gates = circuit_info.get('gates', 0)
+        depth = circuit_info.get('depth', 0)
+        estimated_memory = circuit_info.get('estimated_memory_mb', 0)
+        
+        # Check against limits
+        limits = self.resource_monitor.limits
+        
+        if ResourceType.QUBITS in limits and qubits > limits[ResourceType.QUBITS].hard_limit:
+            raise ResourceException(
+                f"Circuit requires {qubits} qubits, exceeds limit of {limits[ResourceType.QUBITS].hard_limit}",
+                ResourceType.QUBITS, qubits, limits[ResourceType.QUBITS].hard_limit
+            )
+        
+        if ResourceType.GATES in limits and gates > limits[ResourceType.GATES].hard_limit:
+            raise ResourceException(
+                f"Circuit has {gates} gates, exceeds limit of {limits[ResourceType.GATES].hard_limit}",
+                ResourceType.GATES, gates, limits[ResourceType.GATES].hard_limit
+            )
+        
+        if ResourceType.DEPTH in limits and depth > limits[ResourceType.DEPTH].hard_limit:
+            raise ResourceException(
+                f"Circuit depth {depth} exceeds limit of {limits[ResourceType.DEPTH].hard_limit}",
+                ResourceType.DEPTH, depth, limits[ResourceType.DEPTH].hard_limit
+            )
+        
+        if ResourceType.MEMORY in limits and estimated_memory > limits[ResourceType.MEMORY].hard_limit:
+            raise ResourceException(
+                f"Circuit requires {estimated_memory}MB memory, exceeds limit of {limits[ResourceType.MEMORY].hard_limit}MB",
+                ResourceType.MEMORY, estimated_memory, limits[ResourceType.MEMORY].hard_limit
+            )
+    
+    def _execute_with_resource_management(self, circuit: Any, config: ExecutionConfig,
+                                        context: ErrorContext, execution_id: str,
+                                        circuit_info: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute circuit using the resource management system."""
+        
+        def execution_func():
+            return self._execute_circuit_internal(circuit, config, context)
+        
+        # Submit to resource pool
+        future = self.resource_pool.submit_execution(
+            execution_id, circuit_info, execution_func, config.execution_priority
+        )
+        
+        try:
+            # Wait for completion with timeout
+            result = future.result(timeout=config.timeout_seconds if config.timeout_seconds > 0 else None)
+            return result
+        
+        except TimeoutError:
+            # Cancel the execution
+            self.resource_pool.cancel_execution(execution_id)
+            raise ResourceError(
+                f"Circuit execution timed out after {config.timeout_seconds} seconds",
+                resource_type="time",
+                required=int(config.timeout_seconds + 1)
+            )
+        
+        except Exception as e:
+            # Cancel the execution
+            self.resource_pool.cancel_execution(execution_id)
+            raise e
     
     def _execute_with_timeout(self, circuit: Any, config: ExecutionConfig,
                             context: ErrorContext) -> Dict[str, Any]:
@@ -615,13 +776,54 @@ class CircuitExecutionEngine:
                 for execution_id in list(self.active_executions.keys()):
                     self.cancel_execution(execution_id)
             
-            # Shutdown executor
-            self.executor.shutdown(wait=True)
+            # Cleanup resource management components
+            if self.resource_monitor:
+                self.resource_monitor.stop_monitoring()
+            
+            if self.resource_pool:
+                self.resource_pool.shutdown(wait=True)
+            elif hasattr(self, 'executor'):
+                # Cleanup fallback executor
+                self.executor.shutdown(wait=True)
             
             logger.info("Circuit execution engine cleanup completed")
             
         except Exception as e:
             logger.error(f"Cleanup failed: {e}")
+    
+    def get_resource_status(self) -> Dict[str, Any]:
+        """Get current resource status and statistics."""
+        if not self.resource_monitor:
+            return {'resource_monitoring': 'disabled'}
+        
+        status = {
+            'resource_monitoring': 'enabled',
+            'current_usage': {
+                rt.value: usage.__dict__ for rt, usage in 
+                self.resource_monitor.get_all_usage().items()
+            },
+            'resource_limits': {
+                rt.value: {
+                    'soft_limit': limit.soft_limit,
+                    'hard_limit': limit.hard_limit,
+                    'unit': limit.unit,
+                    'enabled': limit.enabled
+                } for rt, limit in self.resource_monitor.limits.items()
+            },
+            'system_resources': self.resource_monitor.get_system_resources()
+        }
+        
+        if self.resource_pool:
+            status['queue_status'] = self.resource_pool.get_queue_status()
+        
+        return status
+    
+    def force_resource_cleanup(self) -> Dict[str, Any]:
+        """Force garbage collection and resource cleanup."""
+        if not self.resource_monitor:
+            return {'resource_monitoring': 'disabled'}
+        
+        return self.resource_monitor.force_garbage_collection()
 
 # Global execution engine
 _execution_engine = CircuitExecutionEngine()
@@ -686,4 +888,11 @@ __all__ = [
     "execute_circuits_batch",
     "execute_circuit_async",
     "configure_resilient_execution",
+    
+    # Resource management (re-exported)
+    "ResourceType",
+    "ResourceStatus",
+    "ResourceConfig",
+    "ResourceException",
+    "analyze_circuit_resources",
 ]

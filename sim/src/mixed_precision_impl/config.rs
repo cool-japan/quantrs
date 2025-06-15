@@ -201,20 +201,20 @@ impl MixedPrecisionConfig {
     pub fn validate(&self) -> Result<()> {
         if self.error_tolerance <= 0.0 {
             return Err(SimulatorError::InvalidInput(
-                "Error tolerance must be positive".to_string()
+                "Error tolerance must be positive".to_string(),
             ));
         }
 
         if self.large_system_threshold == 0 {
             return Err(SimulatorError::InvalidInput(
-                "Large system threshold must be positive".to_string()
+                "Large system threshold must be positive".to_string(),
             ));
         }
 
         // Check precision consistency
         if self.min_precision as u8 > self.max_precision as u8 {
             return Err(SimulatorError::InvalidInput(
-                "Minimum precision cannot be higher than maximum precision".to_string()
+                "Minimum precision cannot be higher than maximum precision".to_string(),
             ));
         }
 
@@ -227,8 +227,12 @@ impl MixedPrecisionConfig {
             // For large systems, reduce precision to save memory
             if self.adaptive_precision {
                 match self.state_vector_precision {
-                    QuantumPrecision::Double => self.state_vector_precision = QuantumPrecision::Single,
-                    QuantumPrecision::Single => self.state_vector_precision = QuantumPrecision::Half,
+                    QuantumPrecision::Double => {
+                        self.state_vector_precision = QuantumPrecision::Single
+                    }
+                    QuantumPrecision::Single => {
+                        self.state_vector_precision = QuantumPrecision::Half
+                    }
                     _ => {}
                 }
             }
@@ -239,7 +243,7 @@ impl MixedPrecisionConfig {
     pub fn estimate_memory_usage(&self, num_qubits: usize) -> usize {
         let state_vector_size = 1 << num_qubits;
         let base_memory = state_vector_size * 16; // Complex64 size
-        
+
         let factor = self.state_vector_precision.memory_factor();
         (base_memory as f64 * factor) as usize
     }

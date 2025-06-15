@@ -7,10 +7,10 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::{multi::*, single::*, GateOp},
     qubit::QubitId,
-    zx_calculus::{CircuitToZX, EdgeType, Spider, SpiderType, ZXDiagram, ZXOptimizer},
+    zx_calculus::{CircuitToZX, EdgeType, SpiderType, ZXDiagram, ZXOptimizer},
 };
 use rustc_hash::FxHashMap;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashSet, VecDeque};
 use std::f64::consts::PI;
 
 /// Represents a layer of gates in the extracted circuit

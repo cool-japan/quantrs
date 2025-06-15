@@ -154,94 +154,98 @@ pub enum EvaluationMethod {
 impl TestScenarioEngine {
     pub fn new() -> Self {
         let mut scenarios = HashMap::new();
-        
+
         // Create default test scenarios
-        scenarios.insert("basic_optimization".to_string(), TestScenario {
-            id: "basic_optimization".to_string(),
-            description: "Basic optimization scenario".to_string(),
-            problem_specs: ProblemSpecification {
-                problem_type: ProblemType::RandomIsing,
-                size_range: (10, 100),
-                density: DensitySpec {
-                    edge_density: (0.1, 0.3),
-                    constraint_density: None,
-                    bias_sparsity: Some(0.5),
+        scenarios.insert(
+            "basic_optimization".to_string(),
+            TestScenario {
+                id: "basic_optimization".to_string(),
+                description: "Basic optimization scenario".to_string(),
+                problem_specs: ProblemSpecification {
+                    problem_type: ProblemType::RandomIsing,
+                    size_range: (10, 100),
+                    density: DensitySpec {
+                        edge_density: (0.1, 0.3),
+                        constraint_density: None,
+                        bias_sparsity: Some(0.5),
+                    },
+                    constraints: ConstraintSpec {
+                        num_constraints: None,
+                        constraint_types: Vec::new(),
+                        strength_range: (0.1, 1.0),
+                    },
+                    seed: Some(42),
                 },
-                constraints: ConstraintSpec {
-                    num_constraints: None,
-                    constraint_types: Vec::new(),
-                    strength_range: (0.1, 1.0),
+                expected_metrics: ExpectedMetrics {
+                    solution_quality: (0.7, 1.0),
+                    runtime: (Duration::from_millis(100), Duration::from_secs(10)),
+                    success_rate: 0.9,
+                    convergence: ConvergenceExpectation {
+                        convergence_time: Duration::from_secs(5),
+                        final_energy: None,
+                        energy_gap: None,
+                    },
                 },
-                seed: Some(42),
-            },
-            expected_metrics: ExpectedMetrics {
-                solution_quality: (0.7, 1.0),
-                runtime: (Duration::from_millis(100), Duration::from_secs(10)),
-                success_rate: 0.9,
-                convergence: ConvergenceExpectation {
-                    convergence_time: Duration::from_secs(5),
-                    final_energy: None,
-                    energy_gap: None,
-                },
-            },
-            validation_criteria: vec![
-                ValidationCriterion {
+                validation_criteria: vec![ValidationCriterion {
                     criterion_type: CriterionType::Performance,
                     expected_value: CriterionValue::Range(0.7, 1.0),
                     tolerance: 0.1,
                     mandatory: true,
-                }
-            ],
-            timeout: Duration::from_secs(30),
-            max_retries: 3,
-        });
-        
-        scenarios.insert("large_scale_test".to_string(), TestScenario {
-            id: "large_scale_test".to_string(),
-            description: "Large scale problem test".to_string(),
-            problem_specs: ProblemSpecification {
-                problem_type: ProblemType::RandomIsing,
-                size_range: (1000, 5000),
-                density: DensitySpec {
-                    edge_density: (0.05, 0.15),
-                    constraint_density: None,
-                    bias_sparsity: Some(0.3),
-                },
-                constraints: ConstraintSpec {
-                    num_constraints: None,
-                    constraint_types: Vec::new(),
-                    strength_range: (0.1, 1.0),
-                },
-                seed: Some(123),
+                }],
+                timeout: Duration::from_secs(30),
+                max_retries: 3,
             },
-            expected_metrics: ExpectedMetrics {
-                solution_quality: (0.6, 0.9),
-                runtime: (Duration::from_secs(10), Duration::from_secs(300)),
-                success_rate: 0.8,
-                convergence: ConvergenceExpectation {
-                    convergence_time: Duration::from_secs(60),
-                    final_energy: None,
-                    energy_gap: None,
+        );
+
+        scenarios.insert(
+            "large_scale_test".to_string(),
+            TestScenario {
+                id: "large_scale_test".to_string(),
+                description: "Large scale problem test".to_string(),
+                problem_specs: ProblemSpecification {
+                    problem_type: ProblemType::RandomIsing,
+                    size_range: (1000, 5000),
+                    density: DensitySpec {
+                        edge_density: (0.05, 0.15),
+                        constraint_density: None,
+                        bias_sparsity: Some(0.3),
+                    },
+                    constraints: ConstraintSpec {
+                        num_constraints: None,
+                        constraint_types: Vec::new(),
+                        strength_range: (0.1, 1.0),
+                    },
+                    seed: Some(123),
                 },
+                expected_metrics: ExpectedMetrics {
+                    solution_quality: (0.6, 0.9),
+                    runtime: (Duration::from_secs(10), Duration::from_secs(300)),
+                    success_rate: 0.8,
+                    convergence: ConvergenceExpectation {
+                        convergence_time: Duration::from_secs(60),
+                        final_energy: None,
+                        energy_gap: None,
+                    },
+                },
+                validation_criteria: vec![
+                    ValidationCriterion {
+                        criterion_type: CriterionType::Performance,
+                        expected_value: CriterionValue::Range(0.6, 0.9),
+                        tolerance: 0.1,
+                        mandatory: true,
+                    },
+                    ValidationCriterion {
+                        criterion_type: CriterionType::Runtime,
+                        expected_value: CriterionValue::Maximum(300.0),
+                        tolerance: 0.0,
+                        mandatory: true,
+                    },
+                ],
+                timeout: Duration::from_secs(600),
+                max_retries: 2,
             },
-            validation_criteria: vec![
-                ValidationCriterion {
-                    criterion_type: CriterionType::Performance,
-                    expected_value: CriterionValue::Range(0.6, 0.9),
-                    tolerance: 0.1,
-                    mandatory: true,
-                },
-                ValidationCriterion {
-                    criterion_type: CriterionType::Runtime,
-                    expected_value: CriterionValue::Maximum(300.0),
-                    tolerance: 0.0,
-                    mandatory: true,
-                }
-            ],
-            timeout: Duration::from_secs(600),
-            max_retries: 2,
-        });
-        
+        );
+
         Self {
             scenarios,
             execution_history: VecDeque::new(),
@@ -249,7 +253,7 @@ impl TestScenarioEngine {
             validation_rules: Self::create_default_validation_rules(),
         }
     }
-    
+
     /// Create default problem generators
     fn create_default_generators() -> Vec<ProblemGenerator> {
         vec![
@@ -275,10 +279,10 @@ impl TestScenarioEngine {
                     params
                 },
                 constraints: Vec::new(),
-            }
+            },
         ]
     }
-    
+
     /// Create default validation rules
     fn create_default_validation_rules() -> Vec<ValidationRule> {
         vec![
@@ -315,35 +319,35 @@ impl TestScenarioEngine {
                     comparison_op: ConditionOperator::Equal,
                 },
                 severity: RuleSeverity::Warning,
-            }
+            },
         ]
     }
-    
+
     /// Add new test scenario
     pub fn add_scenario(&mut self, scenario: TestScenario) {
         self.scenarios.insert(scenario.id.clone(), scenario);
     }
-    
+
     /// Remove test scenario
     pub fn remove_scenario(&mut self, scenario_id: &str) -> Option<TestScenario> {
         self.scenarios.remove(scenario_id)
     }
-    
+
     /// Get scenario by ID
     pub fn get_scenario(&self, scenario_id: &str) -> Option<&TestScenario> {
         self.scenarios.get(scenario_id)
     }
-    
+
     /// Record scenario execution
     pub fn record_execution(&mut self, execution: ScenarioExecution) {
         self.execution_history.push_back(execution);
-        
+
         // Keep only recent executions
         while self.execution_history.len() > 1000 {
             self.execution_history.pop_front();
         }
     }
-    
+
     /// Get execution history for scenario
     pub fn get_execution_history(&self, scenario_id: &str) -> Vec<&ScenarioExecution> {
         self.execution_history
@@ -351,22 +355,30 @@ impl TestScenarioEngine {
             .filter(|exec| exec.scenario_id == scenario_id)
             .collect()
     }
-    
+
     /// Generate problem from specification
     pub fn generate_problem(&self, spec: &ProblemSpecification) -> ApplicationResult<IsingModel> {
         // Find appropriate generator
-        let generator = self.generators
+        let generator = self
+            .generators
             .iter()
             .find(|g| self.can_generate_problem_type(g, &spec.problem_type))
-            .ok_or_else(|| ApplicationError::ConfigurationError(
-                format!("No generator available for problem type: {:?}", spec.problem_type)
-            ))?;
-        
+            .ok_or_else(|| {
+                ApplicationError::ConfigurationError(format!(
+                    "No generator available for problem type: {:?}",
+                    spec.problem_type
+                ))
+            })?;
+
         self.generate_with_generator(generator, spec)
     }
-    
+
     /// Check if generator can handle problem type
-    fn can_generate_problem_type(&self, generator: &ProblemGenerator, problem_type: &ProblemType) -> bool {
+    fn can_generate_problem_type(
+        &self,
+        generator: &ProblemGenerator,
+        problem_type: &ProblemType,
+    ) -> bool {
         match (generator.generator_type.clone(), problem_type) {
             (GeneratorType::Random, ProblemType::RandomIsing) => true,
             (GeneratorType::Structured, _) => true,
@@ -374,60 +386,64 @@ impl TestScenarioEngine {
             _ => false,
         }
     }
-    
+
     /// Generate problem using specific generator
-    fn generate_with_generator(&self, generator: &ProblemGenerator, spec: &ProblemSpecification) -> ApplicationResult<IsingModel> {
+    fn generate_with_generator(
+        &self,
+        generator: &ProblemGenerator,
+        spec: &ProblemSpecification,
+    ) -> ApplicationResult<IsingModel> {
         let size = (spec.size_range.0 + spec.size_range.1) / 2;
         let mut problem = IsingModel::new(size);
-        
+
         match generator.generator_type {
-            GeneratorType::Random => {
-                self.generate_random_problem(&mut problem, spec, generator)?
-            }
+            GeneratorType::Random => self.generate_random_problem(&mut problem, spec, generator)?,
             GeneratorType::Structured => {
                 self.generate_structured_problem(&mut problem, spec, generator)?
             }
             _ => {
-                return Err(ApplicationError::ConfigurationError(
-                    format!("Generator type {:?} not implemented", generator.generator_type)
-                ));
+                return Err(ApplicationError::ConfigurationError(format!(
+                    "Generator type {:?} not implemented",
+                    generator.generator_type
+                )));
             }
         }
-        
+
         Ok(problem)
     }
-    
+
     /// Generate random problem
     fn generate_random_problem(
         &self,
         problem: &mut IsingModel,
         spec: &ProblemSpecification,
-        generator: &ProblemGenerator
+        generator: &ProblemGenerator,
     ) -> ApplicationResult<()> {
         let size = problem.num_qubits;
         let bias_range = generator.parameters.get("bias_range").unwrap_or(&1.0);
         let coupling_range = generator.parameters.get("coupling_range").unwrap_or(&1.0);
-        
+
         // Set random biases
         for i in 0..size {
             let bias = (i as f64 % 10.0) / 10.0 * bias_range - bias_range / 2.0;
             problem.set_bias(i, bias)?;
         }
-        
+
         // Set random couplings based on density
         let target_density = (spec.density.edge_density.0 + spec.density.edge_density.1) / 2.0;
         let max_edges = size * (size - 1) / 2;
         let target_edges = (max_edges as f64 * target_density) as usize;
-        
+
         let mut edges_added = 0;
         for i in 0..size {
             for j in (i + 1)..size {
                 if edges_added >= target_edges {
                     break;
                 }
-                
+
                 if (i + j) % 3 == 0 {
-                    let coupling = ((i + j) as f64 % 20.0) / 20.0 * coupling_range - coupling_range / 2.0;
+                    let coupling =
+                        ((i + j) as f64 % 20.0) / 20.0 * coupling_range - coupling_range / 2.0;
                     problem.set_coupling(i, j, coupling)?;
                     edges_added += 1;
                 }
@@ -436,21 +452,21 @@ impl TestScenarioEngine {
                 break;
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Generate structured problem
     fn generate_structured_problem(
         &self,
         problem: &mut IsingModel,
         spec: &ProblemSpecification,
-        generator: &ProblemGenerator
+        generator: &ProblemGenerator,
     ) -> ApplicationResult<()> {
         let size = problem.num_qubits;
         let regularity = generator.parameters.get("regularity").unwrap_or(&0.8);
         let locality = generator.parameters.get("locality").unwrap_or(&0.9);
-        
+
         // Create structured biases
         for i in 0..size {
             let bias = if (i as f64) < size as f64 * regularity {
@@ -462,7 +478,7 @@ impl TestScenarioEngine {
             };
             problem.set_bias(i, bias)?;
         }
-        
+
         // Create local connections
         let local_range = (size as f64 * locality) as usize;
         for i in 0..size {
@@ -474,7 +490,7 @@ impl TestScenarioEngine {
                 }
             }
         }
-        
+
         Ok(())
     }
 }

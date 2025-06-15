@@ -85,7 +85,7 @@ impl BatchStateVector {
 
     /// Create from existing state vectors
     pub fn from_states(states: Array2<Complex64>, config: BatchConfig) -> QuantRS2Result<Self> {
-        let (batch_size, state_size) = states.dim();
+        let (_batch_size, state_size) = states.dim();
 
         // Determine number of qubits
         let n_qubits = (state_size as f64).log2().round() as usize;

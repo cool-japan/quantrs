@@ -3,9 +3,9 @@
 //! This module contains the Circuit type for building and
 //! executing quantum circuits.
 
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
-use std::collections::HashMap;
 
 /// Type alias for backwards compatibility
 pub type CircuitBuilder<const N: usize> = Circuit<N>;
@@ -61,45 +61,48 @@ impl GatePool {
     /// Create a new gate pool with common gates pre-allocated
     pub fn new() -> Self {
         let mut gates = HashMap::with_capacity(16);
-        
+
         // Pre-allocate common gates for different qubits
         for qubit_id in 0..32 {
             let qubit = QubitId::new(qubit_id);
-            
+
             // Common single-qubit gates
             gates.insert(
                 format!("H_{}", qubit_id),
-                Arc::new(Hadamard { target: qubit }) as Arc<dyn GateOp + Send + Sync>
+                Arc::new(Hadamard { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
             gates.insert(
                 format!("X_{}", qubit_id),
-                Arc::new(PauliX { target: qubit }) as Arc<dyn GateOp + Send + Sync>
+                Arc::new(PauliX { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
             gates.insert(
                 format!("Y_{}", qubit_id),
-                Arc::new(PauliY { target: qubit }) as Arc<dyn GateOp + Send + Sync>
+                Arc::new(PauliY { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
             gates.insert(
                 format!("Z_{}", qubit_id),
-                Arc::new(PauliZ { target: qubit }) as Arc<dyn GateOp + Send + Sync>
+                Arc::new(PauliZ { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
             gates.insert(
                 format!("S_{}", qubit_id),
-                Arc::new(Phase { target: qubit }) as Arc<dyn GateOp + Send + Sync>
+                Arc::new(Phase { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
             gates.insert(
                 format!("T_{}", qubit_id),
-                Arc::new(T { target: qubit }) as Arc<dyn GateOp + Send + Sync>
+                Arc::new(T { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
         }
-        
+
         Self { gates }
     }
-    
+
     /// Get a gate from the pool if available, otherwise create new
-    pub fn get_gate<G: GateOp + Clone + Send + Sync + 'static>(&mut self, gate: G) -> Arc<dyn GateOp + Send + Sync> {
+    pub fn get_gate<G: GateOp + Clone + Send + Sync + 'static>(
+        &mut self,
+        gate: G,
+    ) -> Arc<dyn GateOp + Send + Sync> {
         let key = format!("{}_{:?}", gate.name(), gate.qubits());
-        
+
         if let Some(cached_gate) = self.gates.get(&key) {
             cached_gate.clone()
         } else {
@@ -165,7 +168,7 @@ pub struct Circuit<const N: usize> {
 impl<const N: usize> Clone for Circuit<N> {
     fn clone(&self) -> Self {
         // With Arc, cloning is much more efficient - just clone the references
-        Self { 
+        Self {
             gates: self.gates.clone(),
             gate_pool: self.gate_pool.clone(),
         }
@@ -184,12 +187,12 @@ impl<const N: usize> fmt::Debug for Circuit<N> {
 impl<const N: usize> Circuit<N> {
     /// Create a new empty circuit with N qubits
     pub fn new() -> Self {
-        Self { 
-            gates: Vec::with_capacity(64),  // Pre-allocate capacity for better performance
+        Self {
+            gates: Vec::with_capacity(64), // Pre-allocate capacity for better performance
             gate_pool: GatePool::new(),
         }
     }
-    
+
     /// Create a new circuit with estimated capacity
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
@@ -199,7 +202,10 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Add a gate to the circuit
-    pub fn add_gate<G: GateOp + Clone + Send + Sync + 'static>(&mut self, gate: G) -> QuantRS2Result<&mut Self> {
+    pub fn add_gate<G: GateOp + Clone + Send + Sync + 'static>(
+        &mut self,
+        gate: G,
+    ) -> QuantRS2Result<&mut Self> {
         // Validate that all qubits are within range
         for qubit in gate.qubits() {
             if qubit.id() as usize >= N {
@@ -223,16 +229,17 @@ impl<const N: usize> Circuit<N> {
     pub fn gates(&self) -> &[Arc<dyn GateOp + Send + Sync>] {
         &self.gates
     }
-    
+
     /// Get gates as Vec for compatibility with existing optimization code
     pub fn gates_as_boxes(&self) -> Vec<Box<dyn GateOp>> {
-        self.gates.iter()
+        self.gates
+            .iter()
             .map(|arc_gate| arc_gate.clone_gate())
             .collect()
     }
-    
+
     /// Circuit introspection methods for optimization
-    
+
     /// Count gates by type
     pub fn count_gates_by_type(&self) -> HashMap<String, usize> {
         let mut counts = HashMap::new();
@@ -241,58 +248,61 @@ impl<const N: usize> Circuit<N> {
         }
         counts
     }
-    
+
     /// Calculate circuit depth (longest sequential path)
     pub fn calculate_depth(&self) -> usize {
         if self.gates.is_empty() {
             return 0;
         }
-        
+
         // Track the last time each qubit was used
         let mut qubit_last_used = vec![0; N];
         let mut max_depth = 0;
-        
+
         for (gate_idx, gate) in self.gates.iter().enumerate() {
             let gate_qubits = gate.qubits();
-            
+
             // Find the maximum depth among all qubits this gate uses
-            let gate_start_depth = gate_qubits.iter()
+            let gate_start_depth = gate_qubits
+                .iter()
                 .map(|q| qubit_last_used[q.id() as usize])
                 .max()
                 .unwrap_or(0);
-            
+
             let gate_end_depth = gate_start_depth + 1;
-            
+
             // Update the depth for all qubits this gate touches
             for qubit in gate_qubits {
                 qubit_last_used[qubit.id() as usize] = gate_end_depth;
             }
-            
+
             max_depth = max_depth.max(gate_end_depth);
         }
-        
+
         max_depth
     }
-    
+
     /// Count two-qubit gates
     pub fn count_two_qubit_gates(&self) -> usize {
-        self.gates.iter()
+        self.gates
+            .iter()
             .filter(|gate| gate.qubits().len() == 2)
             .count()
     }
-    
+
     /// Count multi-qubit gates (3 or more qubits)
     pub fn count_multi_qubit_gates(&self) -> usize {
-        self.gates.iter()
+        self.gates
+            .iter()
             .filter(|gate| gate.qubits().len() >= 3)
             .count()
     }
-    
+
     /// Calculate the critical path length (same as depth for now, but could be enhanced)
     pub fn calculate_critical_path(&self) -> usize {
         self.calculate_depth()
     }
-    
+
     /// Calculate gate density (gates per qubit)
     pub fn calculate_gate_density(&self) -> f64 {
         if N == 0 {
@@ -301,7 +311,7 @@ impl<const N: usize> Circuit<N> {
             self.gates.len() as f64 / N as f64
         }
     }
-    
+
     /// Get all unique qubits used in the circuit
     pub fn get_used_qubits(&self) -> HashSet<QubitId> {
         let mut used_qubits = HashSet::new();
@@ -312,31 +322,32 @@ impl<const N: usize> Circuit<N> {
         }
         used_qubits
     }
-    
+
     /// Check if the circuit uses all available qubits
     pub fn uses_all_qubits(&self) -> bool {
         self.get_used_qubits().len() == N
     }
-    
+
     /// Get gates that operate on a specific qubit
     pub fn gates_on_qubit(&self, target_qubit: QubitId) -> Vec<&Arc<dyn GateOp + Send + Sync>> {
-        self.gates.iter()
+        self.gates
+            .iter()
             .filter(|gate| gate.qubits().contains(&target_qubit))
             .collect()
     }
-    
+
     /// Get gates between two indices (inclusive)
     pub fn gates_in_range(&self, start: usize, end: usize) -> &[Arc<dyn GateOp + Send + Sync>] {
         let end = end.min(self.gates.len().saturating_sub(1));
         let start = start.min(end);
         &self.gates[start..=end]
     }
-    
+
     /// Check if circuit is empty
     pub fn is_empty(&self) -> bool {
         self.gates.is_empty()
     }
-    
+
     /// Get circuit statistics summary
     pub fn get_stats(&self) -> CircuitStats {
         let gate_counts = self.count_gates_by_type();
@@ -345,7 +356,7 @@ impl<const N: usize> Circuit<N> {
         let multi_qubit_gates = self.count_multi_qubit_gates();
         let gate_density = self.calculate_gate_density();
         let used_qubits = self.get_used_qubits().len();
-        
+
         CircuitStats {
             total_gates: self.gates.len(),
             gate_counts,
@@ -791,14 +802,16 @@ impl<const N: usize> Circuit<N> {
         // Validate all qubits are within range
         for &qubit in qubits {
             if qubit.id() as usize >= N {
-                return Err(quantrs2_core::error::QuantRS2Error::InvalidQubitId(qubit.id()));
+                return Err(quantrs2_core::error::QuantRS2Error::InvalidQubitId(
+                    qubit.id(),
+                ));
             }
         }
-        
+
         // For now, barriers are implicit - they don't add gates but could be used
         // by optimization passes. In a full implementation, we'd store barrier information
         // for use by the optimization framework.
-        
+
         // TODO: Implement barrier storage for optimization passes
         Ok(self)
     }
@@ -817,7 +830,7 @@ impl<const N: usize> Circuit<N> {
 
         // Convert Arc gates to Box gates for compatibility with decomposition utilities
         let boxed_gates = self.gates_as_boxes();
-        
+
         // Decompose all gates
         let simple_gates = decomp_utils::decompose_circuit(&boxed_gates)?;
 
@@ -843,7 +856,7 @@ impl<const N: usize> Circuit<N> {
 
         // Convert Arc gates to Box gates for compatibility with optimization utilities
         let boxed_gates = self.gates_as_boxes();
-        
+
         // Optimize the gate sequence
         let simplified_gates_result = decomp_utils::optimize_gate_sequence(&boxed_gates);
 
@@ -877,28 +890,37 @@ impl<const N: usize> Circuit<N> {
         // For now, convert via cloning until we can update all callers to use Arc directly
         // This maintains safety but has some performance cost
         let cloned_gate = gate.clone_gate();
-        
+
         // Convert the specific gate types to Arc using match
         if let Some(h_gate) = cloned_gate.as_any().downcast_ref::<Hadamard>() {
-            self.gates.push(Arc::new(h_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
+            self.gates
+                .push(Arc::new(h_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
         } else if let Some(x_gate) = cloned_gate.as_any().downcast_ref::<PauliX>() {
-            self.gates.push(Arc::new(x_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
+            self.gates
+                .push(Arc::new(x_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
         } else if let Some(y_gate) = cloned_gate.as_any().downcast_ref::<PauliY>() {
-            self.gates.push(Arc::new(y_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
+            self.gates
+                .push(Arc::new(y_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
         } else if let Some(z_gate) = cloned_gate.as_any().downcast_ref::<PauliZ>() {
-            self.gates.push(Arc::new(z_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
+            self.gates
+                .push(Arc::new(z_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
         } else if let Some(cnot_gate) = cloned_gate.as_any().downcast_ref::<CNOT>() {
-            self.gates.push(Arc::new(cnot_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
+            self.gates
+                .push(Arc::new(cnot_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
         } else if let Some(measure_gate) = cloned_gate.as_any().downcast_ref::<Measure>() {
-            self.gates.push(Arc::new(measure_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
+            self.gates
+                .push(Arc::new(measure_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
         } else {
             // For unknown gate types, we'll use a less efficient fallback
             // TODO: Extend this to cover all gate types or implement a better conversion mechanism
             return Err(quantrs2_core::error::QuantRS2Error::UnsupportedOperation(
-                format!("Gate type '{}' not yet supported in Arc conversion", gate.name())
+                format!(
+                    "Gate type '{}' not yet supported in Arc conversion",
+                    gate.name()
+                ),
             ));
         }
-        
+
         Ok(self)
     }
 

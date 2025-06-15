@@ -6,10 +6,10 @@
 use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
 use crate::qubit::QubitId;
-use num_complex::Complex64;
 use ndarray::Array2;
+use num_complex::Complex64;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 // use uuid::Uuid;
 
@@ -20,7 +20,7 @@ fn generate_uuid() -> Uuid {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
     use std::time::SystemTime;
-    
+
     let mut hasher = DefaultHasher::new();
     SystemTime::now().hash(&mut hasher);
     hasher.finish()
@@ -43,14 +43,26 @@ pub trait QuantumHardwareBackend: Send + Sync + std::fmt::Debug {
     fn hardware_type(&self) -> HardwareType;
     fn capabilities(&self) -> HardwareCapabilities;
     fn status(&self) -> HardwareStatus;
-    
+
     // Core operations
     fn initialize(&self) -> Result<(), QuantRS2Error>;
     fn calibrate(&self) -> Result<CalibrationResult, QuantRS2Error>;
-    fn execute_gate(&self, gate: &dyn GateOp, context: &ExecutionContext) -> Result<ExecutionResult, QuantRS2Error>;
-    fn execute_circuit(&self, circuit: &[Box<dyn GateOp>], context: &ExecutionContext) -> Result<CircuitResult, QuantRS2Error>;
-    fn measure_qubits(&self, qubits: &[QubitId], basis: MeasurementBasis) -> Result<MeasurementResult, QuantRS2Error>;
-    
+    fn execute_gate(
+        &self,
+        gate: &dyn GateOp,
+        context: &ExecutionContext,
+    ) -> Result<ExecutionResult, QuantRS2Error>;
+    fn execute_circuit(
+        &self,
+        circuit: &[Box<dyn GateOp>],
+        context: &ExecutionContext,
+    ) -> Result<CircuitResult, QuantRS2Error>;
+    fn measure_qubits(
+        &self,
+        qubits: &[QubitId],
+        basis: MeasurementBasis,
+    ) -> Result<MeasurementResult, QuantRS2Error>;
+
     // Advanced features
     fn get_noise_model(&self) -> NoiseModel;
     fn estimate_fidelity(&self, operation: &dyn GateOp) -> f64;
@@ -110,7 +122,8 @@ impl QuantumHardwareAbstraction {
     /// Register a hardware backend
     pub fn register_backend(&mut self, backend: Arc<dyn QuantumHardwareBackend>) {
         self.hardware_backends.push(backend);
-        self.resource_manager.register_hardware(self.hardware_backends.last().unwrap().clone());
+        self.resource_manager
+            .register_hardware(self.hardware_backends.last().unwrap().clone());
     }
 
     /// Execute operation with optimal backend selection
@@ -121,22 +134,31 @@ impl QuantumHardwareAbstraction {
     ) -> Result<QuantumOperationResult, QuantRS2Error> {
         // Select optimal backend
         let backend = self.select_optimal_backend(operation, requirements).await?;
-        
+
         // Apply middleware transformations
-        let optimized_operation = self.middleware.optimize_operation(operation, &backend).await?;
-        
+        let optimized_operation = self
+            .middleware
+            .optimize_operation(operation, &backend)
+            .await?;
+
         // Create execution context
-        let context = self.create_execution_context(requirements, &backend).await?;
-        
+        let context = self
+            .create_execution_context(requirements, &backend)
+            .await?;
+
         // Apply error mitigation preprocessing
-        let mitigated_operation = self.error_mitigation.preprocess_operation(optimized_operation.as_ref(), &backend)?;
-        
+        let mitigated_operation = self
+            .error_mitigation
+            .preprocess_operation(optimized_operation.as_ref(), &backend)?;
+
         // Execute on hardware
         let raw_result = backend.execute_gate(mitigated_operation.as_ref(), &context)?;
-        
+
         // Apply error mitigation postprocessing
-        let final_result = self.error_mitigation.postprocess_result(&raw_result, &backend)?;
-        
+        let final_result = self
+            .error_mitigation
+            .postprocess_result(&raw_result, &backend)?;
+
         Ok(QuantumOperationResult {
             result: final_result.clone(),
             backend_used: backend.backend_name().to_string(),
@@ -154,27 +176,33 @@ impl QuantumHardwareAbstraction {
     ) -> Result<QuantumCircuitResult, QuantRS2Error> {
         // Analyze circuit for optimal backend selection
         let circuit_analysis = self.analyze_circuit(circuit).await?;
-        let backend = self.select_optimal_backend_for_circuit(&circuit_analysis, requirements).await?;
-        
+        let backend = self
+            .select_optimal_backend_for_circuit(&circuit_analysis, requirements)
+            .await?;
+
         // Apply circuit-level optimizations
         let optimized_circuit = self.middleware.optimize_circuit(circuit, &backend).await?;
-        
+
         // Partition circuit if necessary for distributed execution
-        let partitions = self.partition_circuit_if_needed(&optimized_circuit, &backend).await?;
+        let partitions = self
+            .partition_circuit_if_needed(&optimized_circuit, &backend)
+            .await?;
         let partition_count = partitions.len();
-        
+
         let mut results = Vec::new();
         let start_time = Instant::now();
-        
+
         for partition in partitions {
-            let context = self.create_execution_context(requirements, &backend).await?;
+            let context = self
+                .create_execution_context(requirements, &backend)
+                .await?;
             let partition_result = backend.execute_circuit(&partition, &context)?;
             results.push(partition_result);
         }
-        
+
         // Merge distributed results
         let final_result = self.merge_circuit_results(results)?;
-        
+
         Ok(QuantumCircuitResult {
             circuit_result: final_result,
             backend_used: backend.backend_name().to_string(),
@@ -195,7 +223,9 @@ impl QuantumHardwareAbstraction {
 
         for backend in &self.hardware_backends {
             if matches!(backend.status(), HardwareStatus::Online) {
-                let score = self.calculate_backend_score(backend, operation, requirements).await;
+                let score = self
+                    .calculate_backend_score(backend, operation, requirements)
+                    .await;
                 if score > best_score {
                     best_score = score;
                     best_backend = Some(backend.clone());
@@ -203,7 +233,9 @@ impl QuantumHardwareAbstraction {
             }
         }
 
-        best_backend.ok_or_else(|| QuantRS2Error::NoHardwareAvailable("No suitable backends available".to_string()))
+        best_backend.ok_or_else(|| {
+            QuantRS2Error::NoHardwareAvailable("No suitable backends available".to_string())
+        })
     }
 
     /// Calculate backend suitability score
@@ -226,7 +258,10 @@ impl QuantumHardwareAbstraction {
         score += speed_score * requirements.speed_weight;
 
         // Native gate support
-        let native_support = if capabilities.native_gates.contains(&operation.name().to_string()) {
+        let native_support = if capabilities
+            .native_gates
+            .contains(&operation.name().to_string())
+        {
             1.0
         } else {
             0.5
@@ -241,7 +276,10 @@ impl QuantumHardwareAbstraction {
     }
 
     /// Analyze circuit characteristics
-    async fn analyze_circuit(&self, circuit: &[Box<dyn GateOp>]) -> Result<CircuitAnalysis, QuantRS2Error> {
+    async fn analyze_circuit(
+        &self,
+        circuit: &[Box<dyn GateOp>],
+    ) -> Result<CircuitAnalysis, QuantRS2Error> {
         let mut analysis = CircuitAnalysis {
             total_gates: circuit.len(),
             gate_types: HashMap::new(),
@@ -254,7 +292,10 @@ impl QuantumHardwareAbstraction {
 
         // Analyze gate distribution
         for gate in circuit {
-            *analysis.gate_types.entry(gate.name().to_string()).or_insert(0) += 1;
+            *analysis
+                .gate_types
+                .entry(gate.name().to_string())
+                .or_insert(0) += 1;
         }
 
         // Calculate circuit depth
@@ -299,7 +340,7 @@ impl QuantumHardwareAbstraction {
 
         let total_gates = circuit.len();
         let circuit_depth = self.calculate_circuit_depth(circuit);
-        
+
         if circuit_depth == 0 {
             return 0.0;
         }
@@ -308,13 +349,16 @@ impl QuantumHardwareAbstraction {
     }
 
     /// Analyze entanglement structure
-    fn analyze_entanglement_structure(&self, circuit: &[Box<dyn GateOp>]) -> Vec<EntanglementConnection> {
+    fn analyze_entanglement_structure(
+        &self,
+        circuit: &[Box<dyn GateOp>],
+    ) -> Vec<EntanglementConnection> {
         let mut connections = Vec::new();
-        
+
         for (i, gate) in circuit.iter().enumerate() {
             if gate.qubits().len() >= 2 {
                 for j in 0..gate.qubits().len() {
-                    for k in j+1..gate.qubits().len() {
+                    for k in j + 1..gate.qubits().len() {
                         connections.push(EntanglementConnection {
                             qubit1: gate.qubits()[j],
                             qubit2: gate.qubits()[k],
@@ -342,7 +386,10 @@ impl QuantumHardwareAbstraction {
             optimization_level: requirements.optimization_level.clone(),
             error_mitigation_enabled: requirements.enable_error_mitigation,
             execution_time: Instant::now(),
-            calibration_data: self.calibration_engine.get_latest_calibration(backend).await?,
+            calibration_data: self
+                .calibration_engine
+                .get_latest_calibration(backend)
+                .await?,
         })
     }
 
@@ -353,7 +400,7 @@ impl QuantumHardwareAbstraction {
         backend: &Arc<dyn QuantumHardwareBackend>,
     ) -> Result<Vec<Vec<Box<dyn GateOp>>>, QuantRS2Error> {
         let capabilities = backend.capabilities();
-        
+
         if circuit.len() <= capabilities.max_circuit_depth {
             // No partitioning needed
             Ok(vec![circuit.to_vec()])
@@ -392,9 +439,14 @@ impl QuantumHardwareAbstraction {
     }
 
     /// Merge results from distributed execution
-    fn merge_circuit_results(&self, results: Vec<CircuitResult>) -> Result<CircuitResult, QuantRS2Error> {
+    fn merge_circuit_results(
+        &self,
+        results: Vec<CircuitResult>,
+    ) -> Result<CircuitResult, QuantRS2Error> {
         if results.is_empty() {
-            return Err(QuantRS2Error::InvalidOperation("No results to merge".to_string()));
+            return Err(QuantRS2Error::InvalidOperation(
+                "No results to merge".to_string(),
+            ));
         }
 
         if results.len() == 1 {
@@ -433,7 +485,9 @@ impl QuantumHardwareAbstraction {
 
         for backend in &self.hardware_backends {
             if matches!(backend.status(), HardwareStatus::Online) {
-                let score = self.calculate_circuit_backend_score(backend, analysis, requirements).await;
+                let score = self
+                    .calculate_circuit_backend_score(backend, analysis, requirements)
+                    .await;
                 if score > best_score {
                     best_score = score;
                     best_backend = Some(backend.clone());
@@ -441,7 +495,9 @@ impl QuantumHardwareAbstraction {
             }
         }
 
-        best_backend.ok_or_else(|| QuantRS2Error::NoHardwareAvailable("No suitable backends available".to_string()))
+        best_backend.ok_or_else(|| {
+            QuantRS2Error::NoHardwareAvailable("No suitable backends available".to_string())
+        })
     }
 
     /// Calculate backend score for circuit
@@ -470,7 +526,8 @@ impl QuantumHardwareAbstraction {
         score += native_gate_ratio * requirements.native_gate_weight;
 
         // Fidelity score for circuit
-        let estimated_circuit_fidelity = capabilities.gate_fidelity.powi(analysis.total_gates as i32);
+        let estimated_circuit_fidelity =
+            capabilities.gate_fidelity.powi(analysis.total_gates as i32);
         score += estimated_circuit_fidelity * requirements.fidelity_weight;
 
         // Parallelism utilization
@@ -491,8 +548,16 @@ pub struct AdaptiveMiddleware {
 pub trait OptimizationStrategy: Send + Sync + std::fmt::Debug {
     fn strategy_name(&self) -> &str;
     fn applicable_to(&self, backend_type: &HardwareType) -> bool;
-    fn optimize_operation(&self, operation: &dyn GateOp, backend: &dyn QuantumHardwareBackend) -> Result<Box<dyn GateOp>, QuantRS2Error>;
-    fn optimize_circuit(&self, circuit: &[Box<dyn GateOp>], backend: &dyn QuantumHardwareBackend) -> Result<Vec<Box<dyn GateOp>>, QuantRS2Error>;
+    fn optimize_operation(
+        &self,
+        operation: &dyn GateOp,
+        backend: &dyn QuantumHardwareBackend,
+    ) -> Result<Box<dyn GateOp>, QuantRS2Error>;
+    fn optimize_circuit(
+        &self,
+        circuit: &[Box<dyn GateOp>],
+        backend: &dyn QuantumHardwareBackend,
+    ) -> Result<Vec<Box<dyn GateOp>>, QuantRS2Error>;
 }
 
 impl AdaptiveMiddleware {
@@ -522,18 +587,22 @@ impl AdaptiveMiddleware {
         let mut optimized_operation = operation.clone_gate();
         for strategy in &self.optimization_strategies {
             if strategy.applicable_to(&backend.hardware_type()) {
-                optimized_operation = strategy.optimize_operation(&*optimized_operation, &**backend)?;
+                optimized_operation =
+                    strategy.optimize_operation(&*optimized_operation, &**backend)?;
             }
         }
 
         // Cache result
         {
             let mut cache = self.transformation_cache.write().unwrap();
-            cache.insert(cache_key, TransformationResult {
-                optimized_operation: optimized_operation.clone(),
-                transformation_time: Instant::now(),
-                performance_gain: 1.0, // Simplified
-            });
+            cache.insert(
+                cache_key,
+                TransformationResult {
+                    optimized_operation: optimized_operation.clone(),
+                    transformation_time: Instant::now(),
+                    performance_gain: 1.0, // Simplified
+                },
+            );
         }
 
         Ok(optimized_operation)
@@ -556,7 +625,8 @@ impl AdaptiveMiddleware {
     }
 
     pub fn get_applied_optimizations(&self) -> Vec<String> {
-        self.optimization_strategies.iter()
+        self.optimization_strategies
+            .iter()
             .map(|s| s.strategy_name().to_string())
             .collect()
     }
@@ -613,11 +683,15 @@ impl CalibrationEngine {
         backend: &Arc<dyn QuantumHardwareBackend>,
     ) -> Result<CalibrationData, QuantRS2Error> {
         let calibration_data = self.calibration_data.read().unwrap();
-        calibration_data.get(backend.backend_name())
+        calibration_data
+            .get(backend.backend_name())
             .cloned()
-            .ok_or_else(|| QuantRS2Error::CalibrationNotFound(
-                format!("No calibration data for {}", backend.backend_name())
-            ))
+            .ok_or_else(|| {
+                QuantRS2Error::CalibrationNotFound(format!(
+                    "No calibration data for {}",
+                    backend.backend_name()
+                ))
+            })
     }
 }
 
@@ -631,8 +705,14 @@ pub struct ErrorMitigationLayer {
 pub trait ErrorMitigationProtocol: Send + Sync + std::fmt::Debug {
     fn protocol_name(&self) -> &str;
     fn applicable_to(&self, noise_model: &NoiseModel) -> bool;
-    fn preprocess_operation(&self, operation: &dyn GateOp) -> Result<Box<dyn GateOp>, QuantRS2Error>;
-    fn postprocess_result(&self, result: &ExecutionResult) -> Result<ExecutionResult, QuantRS2Error>;
+    fn preprocess_operation(
+        &self,
+        operation: &dyn GateOp,
+    ) -> Result<Box<dyn GateOp>, QuantRS2Error>;
+    fn postprocess_result(
+        &self,
+        result: &ExecutionResult,
+    ) -> Result<ExecutionResult, QuantRS2Error>;
 }
 
 impl ErrorMitigationLayer {
@@ -950,7 +1030,7 @@ mod tests {
             resource_weight: 0.1,
             parallelism_weight: 0.0,
         };
-        
+
         assert_eq!(requirements.shots, 1000);
         assert!(requirements.enable_error_mitigation);
     }

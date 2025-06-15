@@ -88,11 +88,25 @@ pub enum VisualizationType {
 /// Visualization data
 #[derive(Debug, Clone)]
 pub enum VisualizationData {
-    TimeSeries { x: Vec<f64>, y: Vec<f64> },
-    Scatter { x: Vec<f64>, y: Vec<f64> },
-    Histogram { values: Vec<f64>, bins: usize },
-    HeatMap { matrix: Array2<f64> },
-    Network { nodes: Vec<String>, edges: Vec<(usize, usize)> },
+    TimeSeries {
+        x: Vec<f64>,
+        y: Vec<f64>,
+    },
+    Scatter {
+        x: Vec<f64>,
+        y: Vec<f64>,
+    },
+    Histogram {
+        values: Vec<f64>,
+        bins: usize,
+    },
+    HeatMap {
+        matrix: Array2<f64>,
+    },
+    Network {
+        nodes: Vec<String>,
+        edges: Vec<(usize, usize)>,
+    },
 }
 
 /// Rendering configuration
@@ -124,9 +138,17 @@ pub struct Figure {
 /// Figure data
 #[derive(Debug, Clone)]
 pub enum FigureData {
-    Table { headers: Vec<String>, rows: Vec<Vec<String>> },
-    Image { path: String, alt_text: String },
-    Chart { visualization: Visualization },
+    Table {
+        headers: Vec<String>,
+        rows: Vec<Vec<String>>,
+    },
+    Image {
+        path: String,
+        alt_text: String,
+    },
+    Chart {
+        visualization: Visualization,
+    },
 }
 
 /// Figure position

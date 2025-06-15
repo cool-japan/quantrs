@@ -671,7 +671,7 @@ impl MWPMDecoder {
     }
 
     /// Find stabilizer defects from syndrome
-    fn find_defects(&self, syndrome: &[bool], stabilizers: &[Vec<usize>]) -> Vec<usize> {
+    fn find_defects(&self, syndrome: &[bool], _stabilizers: &[Vec<usize>]) -> Vec<usize> {
         syndrome
             .iter()
             .enumerate()
@@ -762,7 +762,7 @@ pub struct ColorCode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Color {
+pub enum Color {
     Red,
     Green,
     Blue,
@@ -819,7 +819,7 @@ impl ColorCode {
         let mut x_stabilizers = Vec::new();
         let mut z_stabilizers = Vec::new();
 
-        for (qubits, color) in &self.faces {
+        for (qubits, _color) in &self.faces {
             // X-type stabilizer
             let mut x_paulis = vec![Pauli::I; self.n];
             for &q in qubits {

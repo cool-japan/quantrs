@@ -95,18 +95,22 @@ impl FujitsuDigitalAnnealerSampler {
         // 1. Format QUBO for DA API
         // 2. Submit via HTTP POST
         // 3. Return job ID
-        
+
         // Placeholder implementation
         Ok("job_12345".to_string())
     }
 
     /// Poll for results
-    fn get_results(&self, job_id: &str, timeout: Duration) -> Result<Vec<DASolution>, SamplerError> {
+    fn get_results(
+        &self,
+        job_id: &str,
+        timeout: Duration,
+    ) -> Result<Vec<DASolution>, SamplerError> {
         // In a real implementation, this would:
         // 1. Poll the API for job completion
         // 2. Parse results
         // 3. Return solutions
-        
+
         // Placeholder implementation
         Ok(vec![DASolution {
             configuration: vec![0; self.max_variables],
@@ -116,15 +120,19 @@ impl FujitsuDigitalAnnealerSampler {
     }
 
     /// Convert DA solution to sample result
-    fn to_sample_result(&self, solution: &DASolution, var_map: &HashMap<String, usize>) -> SampleResult {
+    fn to_sample_result(
+        &self,
+        solution: &DASolution,
+        var_map: &HashMap<String, usize>,
+    ) -> SampleResult {
         let mut assignments = HashMap::new();
-        
+
         for (var_name, &index) in var_map {
             if index < solution.configuration.len() {
                 assignments.insert(var_name.clone(), solution.configuration[index] == 1);
             }
         }
-        
+
         SampleResult {
             assignments,
             energy: solution.energy,
@@ -151,7 +159,7 @@ impl Sampler for FujitsuDigitalAnnealerSampler {
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         let (qubo, var_map) = model;
-        
+
         // Check problem size
         if qubo.shape()[0] > self.max_variables {
             return Err(SamplerError::InvalidModel(format!(
@@ -160,26 +168,26 @@ impl Sampler for FujitsuDigitalAnnealerSampler {
                 self.max_variables
             )));
         }
-        
+
         // Submit problem
         let job_id = self.submit_problem(qubo)?;
-        
+
         // Get results
         let timeout = Duration::from_millis(self.config.annealing_time as u64 + 5000);
         let da_solutions = self.get_results(&job_id, timeout)?;
-        
+
         // Convert to sample results
         let mut results: Vec<SampleResult> = da_solutions
             .iter()
             .map(|sol| self.to_sample_result(sol, var_map))
             .collect();
-        
+
         // Sort by energy
         results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
-        
+
         // Limit to requested shots
         results.truncate(shots);
-        
+
         Ok(results)
     }
 
@@ -188,9 +196,10 @@ impl Sampler for FujitsuDigitalAnnealerSampler {
         _hobo: &(ndarray::ArrayD<f64>, HashMap<String, usize>),
         _shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
-        Err(SamplerError::NotImplemented("HOBO not supported by Fujitsu hardware".to_string()))
+        Err(SamplerError::NotImplemented(
+            "HOBO not supported by Fujitsu hardware".to_string(),
+        ))
     }
-
 }
 
 #[cfg(test)]
@@ -208,7 +217,7 @@ mod tests {
     fn test_connectivity_types() {
         let sampler = FujitsuDigitalAnnealerSampler::new(FujitsuConfig::default())
             .with_connectivity(ConnectivityType::KingsGraph);
-        
+
         match sampler.connectivity {
             ConnectivityType::KingsGraph => (),
             _ => panic!("Wrong connectivity type"),

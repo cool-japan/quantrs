@@ -4,36 +4,34 @@
 //! information including topology, calibration data, noise models, and backend
 //! capabilities to optimize quantum circuits for specific hardware platforms.
 
+pub mod compiler;
 pub mod config;
-pub mod types;
 pub mod optimization;
 pub mod passes;
-pub mod compiler;
 pub mod test_utils;
+pub mod types;
 
 // Re-export commonly used types
 pub use config::{
-    AnalysisDepth, CompilerConfig, HardwareConstraints, OptimizationObjective,
-    ParallelConfig, PassConfig, PassPriority, SciRS2Config, SciRS2OptimizationMethod,
+    AnalysisDepth, CompilerConfig, HardwareConstraints, OptimizationObjective, ParallelConfig,
+    PassConfig, PassPriority, SciRS2Config, SciRS2OptimizationMethod,
 };
 
 pub use types::{
-    AllocationStrategy, AdvancedMetrics, CompilationResult, CompilationTarget,
-    ComplexityMetrics, HardwareAllocation, OptimizationStats, PassInfo,
-    PerformancePrediction, PlatformSpecificResults, VerificationResults,
-    BraketProvider, AzureProvider, GoogleGateSet, GridTopology, RigettiLattice,
-    ConnectivityPattern, PlatformConstraints,
+    AdvancedMetrics, AllocationStrategy, AzureProvider, BraketProvider, CompilationResult,
+    CompilationTarget, ComplexityMetrics, ConnectivityPattern, GoogleGateSet, GridTopology,
+    HardwareAllocation, OptimizationStats, PassInfo, PerformancePrediction, PlatformConstraints,
+    PlatformSpecificResults, RigettiLattice, VerificationResults,
 };
 
 pub use optimization::{
-    SciRS2OptimizationEngine, GraphOptimizationResult, StatisticalAnalysisResult,
-    CrosstalkModel, CrosstalkAnalysisResult, AdvancedCrosstalkMitigation,
-    MitigationStrategyType, TrendDirection,
+    AdvancedCrosstalkMitigation, CrosstalkAnalysisResult, CrosstalkModel, GraphOptimizationResult,
+    MitigationStrategyType, SciRS2OptimizationEngine, StatisticalAnalysisResult, TrendDirection,
 };
 
 pub use passes::{
-    PassCoordinator, PerformanceMonitor, CompilerPass, PassExecutionResult,
-    PerformanceMetrics, PerformanceSummary,
+    CompilerPass, PassCoordinator, PassExecutionResult, PerformanceMetrics, PerformanceMonitor,
+    PerformanceSummary,
 };
 
 pub use compiler::HardwareCompiler;
@@ -43,11 +41,14 @@ pub use compiler::HardwareCompiler;
 pub use test_utils::*;
 
 // Helper functions for creating common configurations
-pub fn create_standard_topology(topology_type: &str, num_qubits: usize) -> crate::DeviceResult<crate::topology::HardwareTopology> {
+pub fn create_standard_topology(
+    topology_type: &str,
+    num_qubits: usize,
+) -> crate::DeviceResult<crate::topology::HardwareTopology> {
     match topology_type {
-        "linear" => {
-            Ok(crate::topology::HardwareTopology::linear_topology(num_qubits))
-        }
+        "linear" => Ok(crate::topology::HardwareTopology::linear_topology(
+            num_qubits,
+        )),
         "grid" => {
             let side = (num_qubits as f64).sqrt() as usize;
             Ok(crate::topology::HardwareTopology::grid_topology(side, side))
@@ -56,30 +57,34 @@ pub fn create_standard_topology(topology_type: &str, num_qubits: usize) -> crate
             let mut topology = crate::topology::HardwareTopology::new(num_qubits);
             // Add all possible connections for complete graph
             for i in 0..num_qubits {
-                for j in i+1..num_qubits {
+                for j in i + 1..num_qubits {
                     topology.add_connection(
-                        i as u32, 
-                        j as u32, 
+                        i as u32,
+                        j as u32,
                         crate::topology::GateProperties {
                             error_rate: 0.01,
                             duration: 100.0,
                             gate_type: "CZ".to_string(),
-                        }
+                        },
                     );
                 }
             }
             Ok(topology)
         }
-        _ => Err(crate::DeviceError::InvalidInput(
-            format!("Unknown topology type: {}", topology_type)
-        )),
+        _ => Err(crate::DeviceError::InvalidInput(format!(
+            "Unknown topology type: {}",
+            topology_type
+        ))),
     }
 }
 
-pub fn create_ideal_calibration(device_name: String, _num_qubits: usize) -> crate::calibration::DeviceCalibration {
+pub fn create_ideal_calibration(
+    device_name: String,
+    _num_qubits: usize,
+) -> crate::calibration::DeviceCalibration {
     use std::collections::HashMap;
-    use std::time::{SystemTime, Duration};
-    
+    use std::time::{Duration, SystemTime};
+
     // Create default calibration with minimal required fields
     crate::calibration::DeviceCalibration {
         device_id: device_name,
@@ -99,9 +104,9 @@ pub fn create_ideal_calibration(device_name: String, _num_qubits: usize) -> crat
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::backend_traits::BackendCapabilities;
     use quantrs2_circuit::prelude::Circuit;
     use quantrs2_core::qubit::QubitId;
-    use crate::backend_traits::BackendCapabilities;
 
     #[test]
     fn test_compiler_config_default() {
@@ -111,7 +116,7 @@ mod tests {
         assert_eq!(config.max_iterations, 50);
         assert_eq!(config.tolerance, 1e-6);
     }
-    
+
     #[test]
     fn test_compilation_targets() {
         let ibm_target = CompilationTarget::IBMQuantum {
@@ -122,7 +127,7 @@ mod tests {
             max_shots: 8192,
             simulator: true,
         };
-        
+
         match ibm_target {
             CompilationTarget::IBMQuantum { backend_name, .. } => {
                 assert_eq!(backend_name, "ibmq_qasm_simulator");
@@ -130,7 +135,7 @@ mod tests {
             _ => panic!("Expected IBM Quantum target"),
         }
     }
-    
+
     #[test]
     fn test_parallel_config() {
         let parallel_config = ParallelConfig {
@@ -139,12 +144,12 @@ mod tests {
             chunk_size: 100,
             enable_simd: true,
         };
-        
+
         assert!(parallel_config.enable_parallel_passes);
         assert_eq!(parallel_config.num_threads, 4);
         assert!(parallel_config.enable_simd);
     }
-    
+
     #[tokio::test]
     async fn test_advanced_compilation() {
         let topology = create_standard_topology("linear", 4).unwrap();
@@ -152,7 +157,9 @@ mod tests {
         let config = CompilerConfig::default();
         let backend_capabilities = BackendCapabilities::default();
 
-        let compiler = HardwareCompiler::new(config, topology, calibration, None, backend_capabilities).unwrap();
+        let compiler =
+            HardwareCompiler::new(config, topology, calibration, None, backend_capabilities)
+                .unwrap();
 
         let mut circuit = Circuit::<4>::new();
         circuit.h(QubitId(0));
@@ -169,7 +176,7 @@ mod tests {
     fn test_topology_creation() {
         let linear_topology = create_standard_topology("linear", 4).unwrap();
         assert!(linear_topology.num_qubits >= 4);
-        
+
         let grid_topology = create_standard_topology("grid", 4).unwrap();
         assert!(grid_topology.num_qubits >= 4);
     }

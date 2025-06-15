@@ -189,7 +189,7 @@ impl QuantumNeuralODE {
     /// Build the quantum circuit based on the configuration
     fn build_quantum_circuit(config: &QNODEConfig) -> Result<QuantumCircuit> {
         let mut gates = Vec::new();
-        
+
         match config.ansatz_type {
             AnsatzType::HardwareEfficient => {
                 for layer in 0..config.num_layers {
@@ -208,7 +208,7 @@ impl QuantumNeuralODE {
                             is_parametric: true,
                         });
                     }
-                    
+
                     // Entangling gates
                     for qubit in 0..config.num_qubits - 1 {
                         gates.push(QuantumGate {
@@ -231,7 +231,7 @@ impl QuantumNeuralODE {
                             is_parametric: true,
                         });
                     }
-                    
+
                     // Linear entanglement
                     for qubit in 0..config.num_qubits - 1 {
                         gates.push(QuantumGate {
@@ -290,37 +290,39 @@ impl QuantumNeuralODE {
 
     /// Count the number of parameters in the quantum circuit
     fn count_parameters(circuit: &QuantumCircuit) -> usize {
-        circuit.gates.iter()
+        circuit
+            .gates
+            .iter()
             .filter(|gate| gate.is_parametric)
             .map(|gate| gate.parameters.len())
             .sum()
     }
 
     /// Forward pass: solve the quantum neural ODE
-    pub fn forward(&mut self, initial_state: &Array1<f64>, time_span: (f64, f64)) -> Result<Array1<f64>> {
+    pub fn forward(
+        &mut self,
+        initial_state: &Array1<f64>,
+        time_span: (f64, f64),
+    ) -> Result<Array1<f64>> {
         match self.config.integration_method {
-            IntegrationMethod::Euler => {
-                self.solve_euler(initial_state, time_span)
-            }
-            IntegrationMethod::RungeKutta4 => {
-                self.solve_runge_kutta4(initial_state, time_span)
-            }
-            IntegrationMethod::DormandPrince => {
-                self.solve_dormand_prince(initial_state, time_span)
-            }
+            IntegrationMethod::Euler => self.solve_euler(initial_state, time_span),
+            IntegrationMethod::RungeKutta4 => self.solve_runge_kutta4(initial_state, time_span),
+            IntegrationMethod::DormandPrince => self.solve_dormand_prince(initial_state, time_span),
             IntegrationMethod::QuantumAdaptive => {
                 self.solve_quantum_adaptive(initial_state, time_span)
             }
-            _ => {
-                Err(crate::error::MLError::InvalidConfiguration(
-                    "Integration method not implemented".to_string(),
-                ))
-            }
+            _ => Err(crate::error::MLError::InvalidConfiguration(
+                "Integration method not implemented".to_string(),
+            )),
         }
     }
 
     /// Solve using Euler method
-    fn solve_euler(&mut self, initial_state: &Array1<f64>, time_span: (f64, f64)) -> Result<Array1<f64>> {
+    fn solve_euler(
+        &mut self,
+        initial_state: &Array1<f64>,
+        time_span: (f64, f64),
+    ) -> Result<Array1<f64>> {
         let num_steps = 1000; // Fixed for simplicity
         let dt = (time_span.1 - time_span.0) / num_steps as f64;
         let mut state = initial_state.clone();
@@ -336,7 +338,11 @@ impl QuantumNeuralODE {
     }
 
     /// Solve using 4th-order Runge-Kutta
-    fn solve_runge_kutta4(&mut self, initial_state: &Array1<f64>, time_span: (f64, f64)) -> Result<Array1<f64>> {
+    fn solve_runge_kutta4(
+        &mut self,
+        initial_state: &Array1<f64>,
+        time_span: (f64, f64),
+    ) -> Result<Array1<f64>> {
         let num_steps = 1000;
         let dt = (time_span.1 - time_span.0) / num_steps as f64;
         let mut state = initial_state.clone();
@@ -356,7 +362,11 @@ impl QuantumNeuralODE {
     }
 
     /// Solve using adaptive Dormand-Prince method
-    fn solve_dormand_prince(&mut self, initial_state: &Array1<f64>, time_span: (f64, f64)) -> Result<Array1<f64>> {
+    fn solve_dormand_prince(
+        &mut self,
+        initial_state: &Array1<f64>,
+        time_span: (f64, f64),
+    ) -> Result<Array1<f64>> {
         let mut state = initial_state.clone();
         let mut time = time_span.0;
         let mut dt = 0.01; // Initial step size
@@ -364,16 +374,16 @@ impl QuantumNeuralODE {
 
         while time < target_time {
             let (next_state, error, optimal_dt) = self.dormand_prince_step(&state, time, dt)?;
-            
+
             if error < self.config.rtol {
                 // Accept step
                 state = next_state;
                 time += dt;
             }
-            
+
             // Adjust step size
             dt = optimal_dt.min(target_time - time);
-            
+
             if dt < 1e-12 {
                 return Err(crate::error::MLError::NumericalError(
                     "Step size too small in adaptive integration".to_string(),
@@ -385,22 +395,36 @@ impl QuantumNeuralODE {
     }
 
     /// Single step of Dormand-Prince method
-    fn dormand_prince_step(&mut self, state: &Array1<f64>, time: f64, dt: f64) -> Result<(Array1<f64>, f64, f64)> {
+    fn dormand_prince_step(
+        &mut self,
+        state: &Array1<f64>,
+        time: f64,
+        dt: f64,
+    ) -> Result<(Array1<f64>, f64, f64)> {
         // Dormand-Prince coefficients (simplified version)
         let k1 = self.quantum_derivative(state, time)?;
         let k2 = self.quantum_derivative(&(state + &(&k1 * (dt / 5.0))), time + dt / 5.0)?;
-        let k3 = self.quantum_derivative(&(state + &(&k1 * (3.0 * dt / 40.0)) + &(&k2 * (9.0 * dt / 40.0))), time + 3.0 * dt / 10.0)?;
-        
+        let k3 = self.quantum_derivative(
+            &(state + &(&k1 * (3.0 * dt / 40.0)) + &(&k2 * (9.0 * dt / 40.0))),
+            time + 3.0 * dt / 10.0,
+        )?;
+
         // 5th order solution
-        let next_state_5th = state + &(&k1 * (35.0 * dt / 384.0)) + &(&k2 * (500.0 * dt / 1113.0)) + &(&k3 * (125.0 * dt / 192.0));
-        
+        let next_state_5th = state
+            + &(&k1 * (35.0 * dt / 384.0))
+            + &(&k2 * (500.0 * dt / 1113.0))
+            + &(&k3 * (125.0 * dt / 192.0));
+
         // 4th order solution (for error estimation)
-        let next_state_4th = state + &(&k1 * (5179.0 * dt / 57600.0)) + &(&k2 * (7571.0 * dt / 16695.0)) + &(&k3 * (393.0 * dt / 640.0));
-        
+        let next_state_4th = state
+            + &(&k1 * (5179.0 * dt / 57600.0))
+            + &(&k2 * (7571.0 * dt / 16695.0))
+            + &(&k3 * (393.0 * dt / 640.0));
+
         // Error estimate
         let error_vec = &next_state_5th - &next_state_4th;
         let error = error_vec.iter().map(|x| x.abs()).fold(0.0, f64::max);
-        
+
         // Optimal step size
         let safety_factor = 0.9;
         let optimal_dt = if error > 0.0 {
@@ -413,7 +437,11 @@ impl QuantumNeuralODE {
     }
 
     /// Quantum-inspired adaptive solver
-    fn solve_quantum_adaptive(&mut self, initial_state: &Array1<f64>, time_span: (f64, f64)) -> Result<Array1<f64>> {
+    fn solve_quantum_adaptive(
+        &mut self,
+        initial_state: &Array1<f64>,
+        time_span: (f64, f64),
+    ) -> Result<Array1<f64>> {
         let mut state = initial_state.clone();
         let mut time = time_span.0;
         let target_time = time_span.1;
@@ -422,14 +450,14 @@ impl QuantumNeuralODE {
         while time < target_time {
             // Quantum-inspired error estimation using entanglement measures
             let quantum_error = self.estimate_quantum_error(&state, time, dt)?;
-            
+
             if quantum_error < self.config.rtol {
                 // Perform quantum evolution step
                 let derivative = self.quantum_derivative(&state, time)?;
                 state = &state + &(derivative * dt);
                 time += dt;
             }
-            
+
             // Adaptive step size based on quantum coherence
             dt = self.adaptive_step_size_quantum(quantum_error, dt)?;
         }
@@ -441,13 +469,13 @@ impl QuantumNeuralODE {
     fn quantum_derivative(&self, state: &Array1<f64>, time: f64) -> Result<Array1<f64>> {
         // Encode the state into quantum amplitudes
         let quantum_state = self.encode_classical_state(state)?;
-        
+
         // Apply parameterized quantum circuit
         let evolved_state = self.apply_quantum_circuit(&quantum_state, time)?;
-        
+
         // Decode back to classical state and compute derivative
         let classical_output = self.decode_quantum_state(&evolved_state)?;
-        
+
         // Apply time-dependent scaling
         let time_factor = (time * 2.0 * std::f64::consts::PI).sin();
         Ok(&classical_output * time_factor)
@@ -457,7 +485,7 @@ impl QuantumNeuralODE {
     fn encode_classical_state(&self, state: &Array1<f64>) -> Result<Array1<f64>> {
         let num_amplitudes = 1 << self.config.num_qubits;
         let mut quantum_state = Array1::zeros(num_amplitudes);
-        
+
         // Simple amplitude encoding (normalized)
         let norm = state.iter().map(|x| x * x).sum::<f64>().sqrt();
         if norm > 1e-10 {
@@ -469,7 +497,7 @@ impl QuantumNeuralODE {
         } else {
             quantum_state[0] = 1.0; // Default to |0...0⟩ state
         }
-        
+
         Ok(quantum_state)
     }
 
@@ -519,10 +547,10 @@ impl QuantumNeuralODE {
         let mut new_state = state.clone();
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
-        
+
         let num_states = state.len();
         let qubit_mask = 1 << qubit;
-        
+
         for i in 0..num_states {
             if i & qubit_mask == 0 {
                 let j = i | qubit_mask;
@@ -534,7 +562,7 @@ impl QuantumNeuralODE {
                 }
             }
         }
-        
+
         Ok(new_state)
     }
 
@@ -542,10 +570,10 @@ impl QuantumNeuralODE {
     fn apply_rz_gate(&self, state: &Array1<f64>, qubit: usize, angle: f64) -> Result<Array1<f64>> {
         let mut new_state = state.clone();
         let phase_0 = (-angle / 2.0).exp(); // e^(-iθ/2)
-        let phase_1 = (angle / 2.0).exp();  // e^(iθ/2)
-        
+        let phase_1 = (angle / 2.0).exp(); // e^(iθ/2)
+
         let qubit_mask = 1 << qubit;
-        
+
         for i in 0..state.len() {
             if i & qubit_mask == 0 {
                 new_state[i] *= phase_0;
@@ -553,16 +581,21 @@ impl QuantumNeuralODE {
                 new_state[i] *= phase_1;
             }
         }
-        
+
         Ok(new_state)
     }
 
     /// Apply CNOT gate to quantum state
-    fn apply_cnot_gate(&self, state: &Array1<f64>, control: usize, target: usize) -> Result<Array1<f64>> {
+    fn apply_cnot_gate(
+        &self,
+        state: &Array1<f64>,
+        control: usize,
+        target: usize,
+    ) -> Result<Array1<f64>> {
         let mut new_state = state.clone();
         let control_mask = 1 << control;
         let target_mask = 1 << target;
-        
+
         for i in 0..state.len() {
             if i & control_mask != 0 {
                 // Control qubit is 1, flip target
@@ -570,7 +603,7 @@ impl QuantumNeuralODE {
                 new_state[i] = state[j];
             }
         }
-        
+
         Ok(new_state)
     }
 
@@ -578,11 +611,11 @@ impl QuantumNeuralODE {
     fn decode_quantum_state(&self, quantum_state: &Array1<f64>) -> Result<Array1<f64>> {
         // Simple expectation value decoding
         let mut classical_state = Array1::zeros(self.config.num_qubits);
-        
+
         for qubit in 0..self.config.num_qubits {
             let qubit_mask = 1 << qubit;
             let mut expectation = 0.0;
-            
+
             for (i, &amplitude) in quantum_state.iter().enumerate() {
                 if i & qubit_mask != 0 {
                     expectation += amplitude * amplitude;
@@ -590,10 +623,10 @@ impl QuantumNeuralODE {
                     expectation -= amplitude * amplitude;
                 }
             }
-            
+
             classical_state[qubit] = expectation;
         }
-        
+
         Ok(classical_state)
     }
 
@@ -602,12 +635,13 @@ impl QuantumNeuralODE {
         // Estimate error using quantum fidelity differences
         let state_t = self.quantum_derivative(state, time)?;
         let state_t_plus_dt = self.quantum_derivative(&(state + &(&state_t * dt)), time + dt)?;
-        
-        let error_estimate = (&state_t - &state_t_plus_dt).iter()
+
+        let error_estimate = (&state_t - &state_t_plus_dt)
+            .iter()
             .map(|x| x * x)
             .sum::<f64>()
             .sqrt();
-        
+
         Ok(error_estimate)
     }
 
@@ -615,41 +649,45 @@ impl QuantumNeuralODE {
     fn adaptive_step_size_quantum(&self, error: f64, current_dt: f64) -> Result<f64> {
         let target_error = self.config.rtol;
         let safety_factor = 0.8;
-        
+
         let new_dt = if error > 0.0 {
             current_dt * safety_factor * (target_error / error).powf(0.25)
         } else {
             current_dt * 1.5
         };
-        
+
         Ok(new_dt.clamp(1e-6, 0.1))
     }
 
     /// Train the Quantum Neural ODE
-    pub fn train(&mut self, training_data: &[(Array1<f64>, Array1<f64>)], epochs: usize) -> Result<()> {
+    pub fn train(
+        &mut self,
+        training_data: &[(Array1<f64>, Array1<f64>)],
+        epochs: usize,
+    ) -> Result<()> {
         for epoch in 0..epochs {
             let mut total_loss = 0.0;
             let mut total_gradient_norm = 0.0;
-            
+
             for (input, target) in training_data {
                 // Forward pass
                 let output = self.forward(input, self.config.time_span)?;
-                
+
                 // Compute loss
                 let loss = self.compute_loss(&output, target)?;
                 total_loss += loss;
-                
+
                 // Backward pass (simplified gradient computation)
                 let gradients = self.compute_gradients(input, target)?;
                 total_gradient_norm += gradients.iter().map(|g| g * g).sum::<f64>().sqrt();
-                
+
                 // Update parameters
                 self.update_parameters(&gradients, 0.01)?; // Fixed learning rate
             }
-            
+
             let avg_loss = total_loss / training_data.len() as f64;
             let avg_gradient_norm = total_gradient_norm / training_data.len() as f64;
-            
+
             let metrics = TrainingMetrics {
                 epoch,
                 loss: avg_loss,
@@ -658,25 +696,29 @@ impl QuantumNeuralODE {
                 quantum_fidelity: self.compute_quantum_fidelity()?,
                 classical_equivalent_loss: None,
             };
-            
+
             self.training_history.push(metrics);
-            
+
             if epoch % 10 == 0 {
-                println!("Epoch {}: Loss = {:.6}, Gradient Norm = {:.6}", 
-                         epoch, avg_loss, avg_gradient_norm);
+                println!(
+                    "Epoch {}: Loss = {:.6}, Gradient Norm = {:.6}",
+                    epoch, avg_loss, avg_gradient_norm
+                );
             }
         }
-        
+
         Ok(())
     }
 
     /// Compute loss function
     fn compute_loss(&self, output: &Array1<f64>, target: &Array1<f64>) -> Result<f64> {
-        let mse = output.iter()
+        let mse = output
+            .iter()
             .zip(target.iter())
             .map(|(o, t)| (o - t).powi(2))
-            .sum::<f64>() / output.len() as f64;
-        
+            .sum::<f64>()
+            / output.len() as f64;
+
         Ok(mse)
     }
 
@@ -684,39 +726,43 @@ impl QuantumNeuralODE {
     fn compute_gradients(&self, input: &Array1<f64>, target: &Array1<f64>) -> Result<Array1<f64>> {
         let mut gradients = Array1::zeros(self.parameters.len());
         let shift = std::f64::consts::PI / 2.0;
-        
+
         for i in 0..self.parameters.len() {
             // Forward pass with positive shift
             let mut params_plus = self.parameters.clone();
             params_plus[i] += shift;
             let output_plus = self.forward_with_params(input, &params_plus)?;
             let loss_plus = self.compute_loss(&output_plus, target)?;
-            
+
             // Forward pass with negative shift
             let mut params_minus = self.parameters.clone();
             params_minus[i] -= shift;
             let output_minus = self.forward_with_params(input, &params_minus)?;
             let loss_minus = self.compute_loss(&output_minus, target)?;
-            
+
             // Parameter shift rule
             gradients[i] = (loss_plus - loss_minus) / 2.0;
         }
-        
+
         Ok(gradients)
     }
 
     /// Forward pass with custom parameters
-    fn forward_with_params(&self, input: &Array1<f64>, params: &Array1<f64>) -> Result<Array1<f64>> {
+    fn forward_with_params(
+        &self,
+        input: &Array1<f64>,
+        params: &Array1<f64>,
+    ) -> Result<Array1<f64>> {
         // Temporarily store current parameters
         let original_params = self.parameters.clone();
-        
+
         // Create a mutable self (this is a simplification)
         let mut temp_self = self.clone();
         temp_self.parameters = params.clone();
-        
+
         // Perform forward pass
         let result = temp_self.forward(input, self.config.time_span);
-        
+
         result
     }
 
@@ -758,7 +804,10 @@ impl QuantumNeuralODE {
 /// Helper functions for quantum operations
 
 /// Create hardware-efficient ansatz
-pub fn create_hardware_efficient_ansatz(num_qubits: usize, num_layers: usize) -> Result<QuantumCircuit> {
+pub fn create_hardware_efficient_ansatz(
+    num_qubits: usize,
+    num_layers: usize,
+) -> Result<QuantumCircuit> {
     let config = QNODEConfig {
         num_qubits,
         num_layers,
@@ -769,7 +818,10 @@ pub fn create_hardware_efficient_ansatz(num_qubits: usize, num_layers: usize) ->
 }
 
 /// Create real amplitudes ansatz
-pub fn create_real_amplitudes_ansatz(num_qubits: usize, num_layers: usize) -> Result<QuantumCircuit> {
+pub fn create_real_amplitudes_ansatz(
+    num_qubits: usize,
+    num_layers: usize,
+) -> Result<QuantumCircuit> {
     let config = QNODEConfig {
         num_qubits,
         num_layers,
@@ -785,20 +837,20 @@ pub fn benchmark_qnode_vs_classical(
     test_data: &[(Array1<f64>, Array1<f64>)],
 ) -> Result<BenchmarkResults> {
     let start_time = std::time::Instant::now();
-    
+
     let mut quantum_loss = 0.0;
     for (input, target) in test_data {
         let output = qnode.forward(input, qnode.config.time_span)?;
         quantum_loss += qnode.compute_loss(&output, target)?;
     }
     quantum_loss /= test_data.len() as f64;
-    
+
     let quantum_time = start_time.elapsed();
-    
+
     // Classical comparison would go here
     let classical_loss = quantum_loss * 1.1; // Placeholder
     let classical_time = quantum_time * 2; // Placeholder
-    
+
     Ok(BenchmarkResults {
         quantum_loss,
         classical_loss,
@@ -842,12 +894,18 @@ mod tests {
     fn test_training() {
         let config = QNODEConfig::default();
         let mut qnode = QuantumNeuralODE::new(config).unwrap();
-        
+
         let training_data = vec![
-            (Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]), Array1::from_vec(vec![0.5, 0.6, 0.7, 0.8])),
-            (Array1::from_vec(vec![0.2, 0.3, 0.4, 0.5]), Array1::from_vec(vec![0.6, 0.7, 0.8, 0.9])),
+            (
+                Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]),
+                Array1::from_vec(vec![0.5, 0.6, 0.7, 0.8]),
+            ),
+            (
+                Array1::from_vec(vec![0.2, 0.3, 0.4, 0.5]),
+                Array1::from_vec(vec![0.6, 0.7, 0.8, 0.9]),
+            ),
         ];
-        
+
         let result = qnode.train(&training_data, 5);
         assert!(result.is_ok());
         assert!(!qnode.get_training_history().is_empty());

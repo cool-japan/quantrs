@@ -174,34 +174,30 @@ impl OptimizedQUBOEvaluator {
         let quadratic_energy: f64 = {
             #[cfg(feature = "parallel")]
             {
-                (0..n)
-                    .into_par_iter()
-                    .step_by(block_size)
+                (0..n).into_par_iter().step_by(block_size)
             }
             #[cfg(not(feature = "parallel"))]
             {
-                (0..n)
-                    .into_iter()
-                    .step_by(block_size)
+                (0..n).into_iter().step_by(block_size)
             }
         }
-            .map(|block_start| {
-                let block_end = (block_start + block_size).min(n);
-                let mut local_sum = 0.0;
+        .map(|block_start| {
+            let block_end = (block_start + block_size).min(n);
+            let mut local_sum = 0.0;
 
-                for i in block_start..block_end {
-                    if x[i] == 1 {
-                        for j in i + 1..n {
-                            if x[j] == 1 {
-                                local_sum += self.qubo[[i, j]];
-                            }
+            for i in block_start..block_end {
+                if x[i] == 1 {
+                    for j in i + 1..n {
+                        if x[j] == 1 {
+                            local_sum += self.qubo[[i, j]];
                         }
                     }
                 }
+            }
 
-                local_sum
-            })
-            .sum();
+            local_sum
+        })
+        .sum();
 
         linear_energy + 2.0 * quadratic_energy
     }

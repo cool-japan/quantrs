@@ -3,16 +3,14 @@
 //! Revolutionary quantum security with advanced process isolation,
 //! quantum state sandboxing, and cryptographic protection mechanisms.
 
+#![allow(dead_code)]
+
 use crate::error::QuantRS2Error;
 
 use crate::qubit::QubitId;
-use num_complex::Complex64;
-use ndarray::{Array1, Array2};
-use std::collections::{HashMap, VecDeque, BTreeMap, HashSet};
-use std::sync::{Arc, RwLock, Mutex, Condvar};
-use std::time::{Duration, Instant, SystemTime};
-use std::cmp::Ordering;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::{Hash, Hasher};
+use std::time::{Duration, Instant, SystemTime};
 
 /// Advanced Quantum Process Isolation and Security System
 #[derive(Debug)]
@@ -328,16 +326,17 @@ impl QuantumProcessIsolation {
         security_requirements: SecurityRequirements,
     ) -> Result<IsolatedProcessResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Create security domain for the process
         let security_domain = self.create_security_domain(&security_requirements)?;
-        
+
         // Allocate virtual quantum machine
         let virtual_machine = self.allocate_virtual_quantum_machine(&process_config)?;
-        
+
         // Set up quantum sandbox
-        let sandbox_config = self.configure_quantum_sandbox(&process_config, &security_requirements)?;
-        
+        let _sandbox_config =
+            self.configure_quantum_sandbox(&process_config, &security_requirements)?;
+
         // Create isolated process
         let isolated_process = IsolatedQuantumProcess {
             process_id: Self::generate_id(),
@@ -352,16 +351,18 @@ impl QuantumProcessIsolation {
             resource_limits: ResourceLimits::from_config(&process_config),
             isolation_state: IsolationState::Active,
         };
-        
+
         // Apply security policies
         self.apply_security_policies(&isolated_process, &security_requirements)?;
-        
+
         // Start monitoring
         self.security_monitor.start_monitoring(&isolated_process)?;
-        
+
         // Register process in sandbox
-        self.quantum_sandbox.isolated_processes.insert(isolated_process.process_id, isolated_process.clone());
-        
+        self.quantum_sandbox
+            .isolated_processes
+            .insert(isolated_process.process_id, isolated_process.clone());
+
         Ok(IsolatedProcessResult {
             process_id: isolated_process.process_id,
             isolation_level: isolated_process.isolation_level,
@@ -369,8 +370,8 @@ impl QuantumProcessIsolation {
             virtual_machine_id: virtual_machine.vm_id,
             creation_time: start_time.elapsed(),
             isolation_effectiveness: 99.97, // 99.97% isolation effectiveness
-            security_strength: 256.0, // 256-bit quantum security
-            quantum_advantage: 387.2, // 387.2x stronger than classical isolation
+            security_strength: 256.0,       // 256-bit quantum security
+            quantum_advantage: 387.2,       // 387.2x stronger than classical isolation
         })
     }
 
@@ -381,26 +382,28 @@ impl QuantumProcessIsolation {
         operation: SecureQuantumOperation,
     ) -> Result<SecureOperationResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Verify process exists and has permissions
         let process = self.get_isolated_process(process_id)?.clone();
         self.verify_operation_permissions(&process, &operation)?;
-        
+
         // Check security policies
-        self.policy_engine.evaluate_operation_security(&process, &operation)?;
-        
+        self.policy_engine
+            .evaluate_operation_security(&process, &operation)?;
+
         // Apply quantum state isolation
         let isolated_operation = self.state_isolator.isolate_operation(&operation)?;
-        
+
         // Execute operation in secure environment
         let execution_result = self.execute_in_isolation(&process, &isolated_operation)?;
-        
+
         // Apply post-execution security measures
         self.apply_post_execution_security(&process, &execution_result)?;
-        
+
         // Log security event
-        self.audit_logger.log_secure_operation(&process, &operation, &execution_result)?;
-        
+        self.audit_logger
+            .log_secure_operation(&process, &operation, &execution_result)?;
+
         Ok(SecureOperationResult {
             operation_id: Self::generate_id(),
             result_data: execution_result.data,
@@ -414,49 +417,56 @@ impl QuantumProcessIsolation {
     /// Demonstrate quantum security advantages
     pub fn demonstrate_quantum_security_advantages(&mut self) -> QuantumSecurityAdvantageReport {
         let mut report = QuantumSecurityAdvantageReport::new();
-        
+
         // Benchmark isolation effectiveness
         report.isolation_effectiveness = self.benchmark_isolation_effectiveness();
-        
+
         // Benchmark encryption strength
         report.encryption_strength_advantage = self.benchmark_encryption_strength();
-        
+
         // Benchmark access control
         report.access_control_advantage = self.benchmark_access_control();
-        
+
         // Benchmark intrusion detection
         report.intrusion_detection_advantage = self.benchmark_intrusion_detection();
-        
+
         // Benchmark audit capabilities
         report.audit_advantage = self.benchmark_audit_capabilities();
-        
+
         // Calculate overall quantum security advantage
-        report.overall_advantage = (
-            report.isolation_effectiveness +
-            report.encryption_strength_advantage +
-            report.access_control_advantage +
-            report.intrusion_detection_advantage +
-            report.audit_advantage
-        ) / 5.0;
-        
+        report.overall_advantage = (report.isolation_effectiveness
+            + report.encryption_strength_advantage
+            + report.access_control_advantage
+            + report.intrusion_detection_advantage
+            + report.audit_advantage)
+            / 5.0;
+
         report
     }
 
     // Helper methods
     fn generate_id() -> u64 {
         use std::collections::hash_map::DefaultHasher;
-        
+
         let mut hasher = DefaultHasher::new();
         SystemTime::now().hash(&mut hasher);
         hasher.finish()
     }
 
-    fn get_isolated_process(&self, process_id: u64) -> Result<&IsolatedQuantumProcess, QuantRS2Error> {
-        self.quantum_sandbox.isolated_processes.get(&process_id)
+    fn get_isolated_process(
+        &self,
+        process_id: u64,
+    ) -> Result<&IsolatedQuantumProcess, QuantRS2Error> {
+        self.quantum_sandbox
+            .isolated_processes
+            .get(&process_id)
             .ok_or_else(|| QuantRS2Error::InvalidOperation("Process not found".to_string()))
     }
 
-    fn create_security_domain(&mut self, requirements: &SecurityRequirements) -> Result<SecurityDomain, QuantRS2Error> {
+    fn create_security_domain(
+        &mut self,
+        requirements: &SecurityRequirements,
+    ) -> Result<SecurityDomain, QuantRS2Error> {
         Ok(SecurityDomain {
             domain_id: Self::generate_id(),
             domain_name: requirements.domain_name.clone(),
@@ -469,11 +479,16 @@ impl QuantumProcessIsolation {
         })
     }
 
-    fn allocate_virtual_quantum_machine(&mut self, config: &ProcessConfiguration) -> Result<VirtualQuantumMachine, QuantRS2Error> {
+    fn allocate_virtual_quantum_machine(
+        &mut self,
+        config: &ProcessConfiguration,
+    ) -> Result<VirtualQuantumMachine, QuantRS2Error> {
         Ok(VirtualQuantumMachine {
             vm_id: Self::generate_id(),
             vm_type: VirtualMachineType::QuantumNative,
-            allocated_qubits: (0..config.required_qubits).map(|i| QubitId::new(i as u32)).collect(),
+            allocated_qubits: (0..config.required_qubits)
+                .map(|i| QubitId::new(i as u32))
+                .collect(),
             virtual_memory: VirtualQuantumMemory::new(config.memory_size),
             hypervisor: QuantumHypervisor::new(),
             security_features: VMSecurityFeatures::new(),
@@ -481,19 +496,35 @@ impl QuantumProcessIsolation {
         })
     }
 
-    fn configure_quantum_sandbox(&mut self, _config: &ProcessConfiguration, _requirements: &SecurityRequirements) -> Result<SandboxConfiguration, QuantRS2Error> {
+    fn configure_quantum_sandbox(
+        &mut self,
+        _config: &ProcessConfiguration,
+        _requirements: &SecurityRequirements,
+    ) -> Result<SandboxConfiguration, QuantRS2Error> {
         Ok(SandboxConfiguration::new())
     }
 
-    fn apply_security_policies(&mut self, _process: &IsolatedQuantumProcess, _requirements: &SecurityRequirements) -> Result<(), QuantRS2Error> {
+    fn apply_security_policies(
+        &mut self,
+        _process: &IsolatedQuantumProcess,
+        _requirements: &SecurityRequirements,
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
-    fn verify_operation_permissions(&self, _process: &IsolatedQuantumProcess, _operation: &SecureQuantumOperation) -> Result<(), QuantRS2Error> {
+    fn verify_operation_permissions(
+        &self,
+        _process: &IsolatedQuantumProcess,
+        _operation: &SecureQuantumOperation,
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
-    fn execute_in_isolation(&self, _process: &IsolatedQuantumProcess, _operation: &SecureQuantumOperation) -> Result<ExecutionResult, QuantRS2Error> {
+    fn execute_in_isolation(
+        &self,
+        _process: &IsolatedQuantumProcess,
+        _operation: &SecureQuantumOperation,
+    ) -> Result<ExecutionResult, QuantRS2Error> {
         Ok(ExecutionResult {
             data: vec![],
             success: true,
@@ -501,7 +532,11 @@ impl QuantumProcessIsolation {
         })
     }
 
-    fn apply_post_execution_security(&mut self, _process: &IsolatedQuantumProcess, _result: &ExecutionResult) -> Result<(), QuantRS2Error> {
+    fn apply_post_execution_security(
+        &mut self,
+        _process: &IsolatedQuantumProcess,
+        _result: &ExecutionResult,
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
@@ -572,7 +607,10 @@ impl QuantumStateIsolator {
         }
     }
 
-    pub fn isolate_operation(&self, operation: &SecureQuantumOperation) -> Result<SecureQuantumOperation, QuantRS2Error> {
+    pub fn isolate_operation(
+        &self,
+        operation: &SecureQuantumOperation,
+    ) -> Result<SecureQuantumOperation, QuantRS2Error> {
         Ok(operation.clone())
     }
 }
@@ -701,11 +739,17 @@ impl QuantumSecurityAdvantageReport {
 #[derive(Debug, Clone)]
 pub struct ResourceQuotas;
 #[derive(Debug, Clone)]
-pub enum IsolationMechanism { VirtualMachine, ProcessSandbox, QuantumIsolation }
+pub enum IsolationMechanism {
+    VirtualMachine,
+    ProcessSandbox,
+    QuantumIsolation,
+}
 #[derive(Debug, Clone)]
 pub struct ContainmentPolicy;
 #[derive(Debug, Clone)]
-pub struct MemorySegment { size: usize }
+pub struct MemorySegment {
+    size: usize,
+}
 #[derive(Debug, Clone)]
 pub struct ProcessCapabilities;
 #[derive(Debug, Clone)]
@@ -715,7 +759,11 @@ pub struct SecurityContext;
 #[derive(Debug, Clone)]
 pub struct ResourceLimits;
 #[derive(Debug, Clone)]
-pub enum IsolationState { Active, Suspended, Terminated }
+pub enum IsolationState {
+    Active,
+    Suspended,
+    Terminated,
+}
 #[derive(Debug, Clone)]
 pub struct AccessPolicy;
 #[derive(Debug, Clone)]
@@ -723,18 +771,20 @@ pub struct EncryptionRequirements;
 #[derive(Debug, Clone)]
 pub struct QuantumIsolationPolicy;
 #[derive(Debug, Clone)]
-pub enum QuantumOperation { StatePreparation, GateOperation, Measurement }
-#[derive(Debug)]
-#[derive(Clone)]
-pub struct VirtualQuantumMemory { size: usize }
-#[derive(Debug)]
-#[derive(Clone)]
+pub enum QuantumOperation {
+    StatePreparation,
+    GateOperation,
+    Measurement,
+}
+#[derive(Debug, Clone)]
+pub struct VirtualQuantumMemory {
+    size: usize,
+}
+#[derive(Debug, Clone)]
 pub struct QuantumHypervisor;
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct VMSecurityFeatures;
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct IsolationGuarantees;
 #[derive(Debug)]
 pub struct RoleBasedAccessControl;
@@ -747,17 +797,42 @@ pub struct DiscretionaryAccessControl;
 #[derive(Debug)]
 pub struct QuantumAccessPolicy;
 #[derive(Debug, Clone)]
-pub enum SecurityClearance { Public, Confidential, Secret, TopSecret }
+pub enum SecurityClearance {
+    Public,
+    Confidential,
+    Secret,
+    TopSecret,
+}
 #[derive(Debug, Clone)]
-pub enum Role { User, Admin, Security, Quantum }
+pub enum Role {
+    User,
+    Admin,
+    Security,
+    Quantum,
+}
 #[derive(Debug, Clone)]
-pub enum Capability { Read, Write, Execute, Admin }
+pub enum Capability {
+    Read,
+    Write,
+    Execute,
+    Admin,
+}
 #[derive(Debug, Clone)]
-pub enum TrustLevel { Low, Medium, High, Verified }
+pub enum TrustLevel {
+    Low,
+    Medium,
+    High,
+    Verified,
+}
 #[derive(Debug, Clone)]
 pub struct SecurityLabel;
 #[derive(Debug, Clone)]
-pub enum ClassificationLevel { Unclassified, Confidential, Secret, TopSecret }
+pub enum ClassificationLevel {
+    Unclassified,
+    Confidential,
+    Secret,
+    TopSecret,
+}
 #[derive(Debug, Clone)]
 pub struct QuantumObjectProperties;
 #[derive(Debug, Clone)]
@@ -779,7 +854,11 @@ pub struct EntanglementCondition;
 #[derive(Debug)]
 pub struct EntanglementMonitor;
 #[derive(Debug, Clone)]
-pub enum MonitoringScope { Local, Global, Domain }
+pub enum MonitoringScope {
+    Local,
+    Global,
+    Domain,
+}
 #[derive(Debug)]
 pub struct QuantumAnomalyDetector;
 #[derive(Debug)]
@@ -807,11 +886,24 @@ pub struct QuantumSecurityPolicyEngine;
 #[derive(Debug)]
 pub struct SandboxConfiguration;
 #[derive(Debug)]
-pub struct ExecutionResult { data: Vec<u8>, success: bool, fidelity: f64 }
+pub struct ExecutionResult {
+    data: Vec<u8>,
+    success: bool,
+    fidelity: f64,
+}
 #[derive(Debug, Clone)]
-pub enum QuantumOperationType { StatePreparation, GateOperation, Measurement }
+pub enum QuantumOperationType {
+    StatePreparation,
+    GateOperation,
+    Measurement,
+}
 #[derive(Debug, Clone)]
-pub enum SecurityLevel { Low, Medium, High, Maximum }
+pub enum SecurityLevel {
+    Low,
+    Medium,
+    High,
+    Maximum,
+}
 #[derive(Debug)]
 pub struct QuantumStateProtection;
 #[derive(Debug)]
@@ -821,43 +913,63 @@ pub struct QuantumErrorIsolation;
 
 // Implement required traits and methods
 impl Default for ResourceQuotas {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl MemorySegment {
-    pub fn new(size: usize) -> Self { Self { size } }
+    pub fn new(size: usize) -> Self {
+        Self { size }
+    }
 }
 
 impl SecurityContext {
-    pub fn new(_requirements: &SecurityRequirements) -> Self { Self }
+    pub fn new(_requirements: &SecurityRequirements) -> Self {
+        Self
+    }
 }
 
 impl ResourceLimits {
-    pub fn from_config(_config: &ProcessConfiguration) -> Self { Self }
+    pub fn from_config(_config: &ProcessConfiguration) -> Self {
+        Self
+    }
 }
 
 impl AccessPolicy {
-    pub fn new(_requirements: &SecurityRequirements) -> Self { Self }
+    pub fn new(_requirements: &SecurityRequirements) -> Self {
+        Self
+    }
 }
 
 impl QuantumIsolationPolicy {
-    pub fn new(_requirements: &SecurityRequirements) -> Self { Self }
+    pub fn new(_requirements: &SecurityRequirements) -> Self {
+        Self
+    }
 }
 
 impl VirtualQuantumMemory {
-    pub fn new(size: usize) -> Self { Self { size } }
+    pub fn new(size: usize) -> Self {
+        Self { size }
+    }
 }
 
 impl QuantumHypervisor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl VMSecurityFeatures {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl IsolationGuarantees {
-    pub fn maximum() -> Self { Self }
+    pub fn maximum() -> Self {
+        Self
+    }
 }
 
 impl AccessControlMatrix {
@@ -872,91 +984,140 @@ impl AccessControlMatrix {
 }
 
 impl RoleBasedAccessControl {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl CapabilityBasedAccess {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl MandatoryAccessControl {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl DiscretionaryAccessControl {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl EntanglementMonitor {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl QuantumAnomalyDetector {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl QuantumThreatAnalyzer {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl QuantumIncidentResponder {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl SecurityMetrics {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl QuantumKeyManagement {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl QuantumCryptographyProtocols {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl PostQuantumCryptography {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl QuantumHomomorphicEncryption {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl QuantumAuthenticationSystem {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl QuantumIntrusionDetector {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl QuantumAuditLogger {
-    pub fn new() -> Self { Self }
-    
-    pub fn log_secure_operation(&self, _process: &IsolatedQuantumProcess, _operation: &SecureQuantumOperation, _result: &ExecutionResult) -> Result<(), QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn log_secure_operation(
+        &self,
+        _process: &IsolatedQuantumProcess,
+        _operation: &SecureQuantumOperation,
+        _result: &ExecutionResult,
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 }
 
 impl QuantumSecurityPolicyEngine {
-    pub fn new() -> Self { Self }
-    
-    pub fn evaluate_operation_security(&self, _process: &IsolatedQuantumProcess, _operation: &SecureQuantumOperation) -> Result<(), QuantRS2Error> {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn evaluate_operation_security(
+        &self,
+        _process: &IsolatedQuantumProcess,
+        _operation: &SecureQuantumOperation,
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 }
 
 impl SandboxConfiguration {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl QuantumStateProtection {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl QuantumErrorIsolation {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 #[cfg(test)]
@@ -999,7 +1160,7 @@ mod tests {
     #[test]
     fn test_secure_quantum_operation() {
         let mut isolation_system = QuantumProcessIsolation::new();
-        
+
         // First create an isolated process
         let config = ProcessConfiguration {
             required_qubits: 5,
@@ -1015,9 +1176,11 @@ mod tests {
             allowed_operations: HashSet::new(),
             restricted_operations: HashSet::new(),
         };
-        
-        let process_result = isolation_system.create_isolated_process(config, requirements).unwrap();
-        
+
+        let process_result = isolation_system
+            .create_isolated_process(config, requirements)
+            .unwrap();
+
         // Now test secure operation
         let operation = SecureQuantumOperation {
             operation_id: 1,
@@ -1026,7 +1189,8 @@ mod tests {
             security_level: SecurityLevel::High,
         };
 
-        let result = isolation_system.execute_secure_quantum_operation(process_result.process_id, operation);
+        let result =
+            isolation_system.execute_secure_quantum_operation(process_result.process_id, operation);
         assert!(result.is_ok());
 
         let operation_result = result.unwrap();
@@ -1039,7 +1203,7 @@ mod tests {
     fn test_quantum_security_advantages() {
         let mut isolation_system = QuantumProcessIsolation::new();
         let report = isolation_system.demonstrate_quantum_security_advantages();
-        
+
         // All advantages should demonstrate quantum superiority
         assert!(report.isolation_effectiveness > 1.0);
         assert!(report.encryption_strength_advantage > 1.0);
@@ -1068,7 +1232,7 @@ mod tests {
             security_features: VMSecurityFeatures::new(),
             isolation_guarantees: IsolationGuarantees::maximum(),
         };
-        
+
         assert_eq!(vm.allocated_qubits.len(), 2);
         assert!(matches!(vm.vm_type, VirtualMachineType::QuantumNative));
     }

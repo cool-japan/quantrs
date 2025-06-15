@@ -6,11 +6,10 @@
 use crate::error::QuantRS2Error;
 
 use crate::qubit::QubitId;
-use num_complex::Complex64;
 use ndarray::{Array1, Array2};
-use std::collections::{HashMap, VecDeque, BinaryHeap};
+use num_complex::Complex64;
+use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant, SystemTime};
-use std::cmp::Ordering;
 
 /// Quantum sensor network with distributed quantum sensing capabilities
 #[derive(Debug)]
@@ -83,12 +82,12 @@ pub enum ReferenceFrame {
 
 #[derive(Debug, Clone)]
 pub struct EnvironmentalConditions {
-    pub temperature: f64, // Kelvin
-    pub pressure: f64,    // Pascal
-    pub humidity: f64,    // %
-    pub magnetic_field: f64, // Tesla
+    pub temperature: f64,           // Kelvin
+    pub pressure: f64,              // Pascal
+    pub humidity: f64,              // %
+    pub magnetic_field: f64,        // Tesla
     pub electromagnetic_noise: f64, // dB
-    pub vibrations: f64,  // m/s²
+    pub vibrations: f64,            // m/s²
 }
 
 #[derive(Debug, Clone)]
@@ -237,7 +236,7 @@ pub enum ExtractionMethod {
     DirectMeasurement,
     Interferometry,
     Ramsey,
-    Spin_Echo,
+    SpinEcho,
     CPMG,
     QuantumBayesian,
 }
@@ -576,31 +575,26 @@ impl QuantumSensorNetwork {
         coverage_area: CoverageArea,
     ) -> Result<SensorDeploymentResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Calculate optimal sensor placement
         let sensor_positions = self.calculate_optimal_sensor_placement(
             &sensor_types,
             &deployment_pattern,
             &coverage_area,
         )?;
-        
+
         // Deploy individual sensors
-        let deployed_sensors = self.deploy_individual_sensors(
-            &sensor_types,
-            &sensor_positions,
-        )?;
-        
+        let deployed_sensors = self.deploy_individual_sensors(&sensor_types, &sensor_positions)?;
+
         // Establish entanglement network
-        let entanglement_network = self.establish_sensor_entanglement_network(
-            &deployed_sensors,
-        )?;
-        
+        let entanglement_network = self.establish_sensor_entanglement_network(&deployed_sensors)?;
+
         // Initialize sensor calibration
         self.initialize_sensor_calibration(&deployed_sensors)?;
-        
+
         // Configure data fusion protocols
         self.configure_data_fusion_protocols(&deployed_sensors)?;
-        
+
         Ok(SensorDeploymentResult {
             deployed_sensor_count: deployed_sensors.len(),
             coverage_efficiency: self.calculate_coverage_efficiency(&coverage_area),
@@ -619,38 +613,31 @@ impl QuantumSensorNetwork {
         precision_requirements: PrecisionRequirements,
     ) -> Result<DistributedSensingResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Select optimal sensor subset
-        let selected_sensors = self.select_optimal_sensor_subset(
-            &measurement_target,
-            &precision_requirements,
-        )?;
-        
+        let selected_sensors =
+            self.select_optimal_sensor_subset(&measurement_target, &precision_requirements)?;
+
         // Prepare entangled probe states
-        let entangled_probes = self.prepare_entangled_probe_states(
-            &selected_sensors,
-            &sensing_protocol,
-        )?;
-        
+        let entangled_probes =
+            self.prepare_entangled_probe_states(&selected_sensors, &sensing_protocol)?;
+
         // Execute coordinated measurements
         let measurement_results = self.execute_coordinated_measurements(
             &selected_sensors,
             &entangled_probes,
             &sensing_protocol,
         )?;
-        
+
         // Apply quantum data fusion
-        let fused_result = self.data_fusion_processor.fuse_quantum_measurements(
-            &measurement_results,
-            &precision_requirements,
-        )?;
-        
+        let fused_result = self
+            .data_fusion_processor
+            .fuse_quantum_measurements(&measurement_results, &precision_requirements)?;
+
         // Calculate quantum advantage
-        let quantum_advantage = self.calculate_quantum_sensing_advantage(
-            &fused_result,
-            &precision_requirements,
-        );
-        
+        let quantum_advantage =
+            self.calculate_quantum_sensing_advantage(&fused_result, &precision_requirements);
+
         Ok(DistributedSensingResult {
             measurement_value: fused_result.value,
             measurement_uncertainty: fused_result.uncertainty,
@@ -670,32 +657,23 @@ impl QuantumSensorNetwork {
         parameters: Vec<EnvironmentalParameter>,
         monitoring_duration: Duration,
     ) -> Result<EnvironmentalMonitoringResult, QuantRS2Error> {
-        let start_time = Instant::now();
-        
+        let _start_time = Instant::now();
+
         // Initialize continuous monitoring
-        let monitoring_schedule = self.create_monitoring_schedule(
-            &monitoring_region,
-            &parameters,
-            monitoring_duration,
-        )?;
-        
+        let monitoring_schedule =
+            self.create_monitoring_schedule(&monitoring_region, &parameters, monitoring_duration)?;
+
         // Deploy environmental sensing grid
-        let sensing_grid = self.deploy_environmental_sensing_grid(
-            &monitoring_region,
-            &parameters,
-        )?;
-        
+        let sensing_grid =
+            self.deploy_environmental_sensing_grid(&monitoring_region, &parameters)?;
+
         // Execute quantum-enhanced monitoring
-        let monitoring_results = self.execute_quantum_environmental_monitoring(
-            &sensing_grid,
-            &monitoring_schedule,
-        )?;
-        
+        let monitoring_results =
+            self.execute_quantum_environmental_monitoring(&sensing_grid, &monitoring_schedule)?;
+
         // Analyze environmental trends
-        let trend_analysis = self.analyze_environmental_trends(
-            &monitoring_results,
-        )?;
-        
+        let trend_analysis = self.analyze_environmental_trends(&monitoring_results)?;
+
         Ok(EnvironmentalMonitoringResult {
             monitoring_data: monitoring_results.data,
             spatial_resolution: sensing_grid.spatial_resolution,
@@ -710,31 +688,30 @@ impl QuantumSensorNetwork {
     /// Demonstrate quantum sensor network advantages
     pub fn demonstrate_quantum_sensing_advantages(&mut self) -> QuantumSensorAdvantageReport {
         let mut report = QuantumSensorAdvantageReport::new();
-        
+
         // Benchmark sensitivity improvements
         report.sensitivity_advantage = self.benchmark_sensitivity_improvements();
-        
+
         // Benchmark precision enhancements
         report.precision_advantage = self.benchmark_precision_enhancements();
-        
+
         // Benchmark distributed sensing
         report.distributed_sensing_advantage = self.benchmark_distributed_sensing();
-        
+
         // Benchmark environmental monitoring
         report.environmental_monitoring_advantage = self.benchmark_environmental_monitoring();
-        
+
         // Benchmark network scalability
         report.network_scalability_advantage = self.benchmark_network_scalability();
-        
+
         // Calculate overall quantum sensing advantage
-        report.overall_advantage = (
-            report.sensitivity_advantage +
-            report.precision_advantage +
-            report.distributed_sensing_advantage +
-            report.environmental_monitoring_advantage +
-            report.network_scalability_advantage
-        ) / 5.0;
-        
+        report.overall_advantage = (report.sensitivity_advantage
+            + report.precision_advantage
+            + report.distributed_sensing_advantage
+            + report.environmental_monitoring_advantage
+            + report.network_scalability_advantage)
+            / 5.0;
+
         report
     }
 
@@ -742,7 +719,7 @@ impl QuantumSensorNetwork {
     fn generate_id() -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         SystemTime::now().hash(&mut hasher);
         hasher.finish()
@@ -756,21 +733,41 @@ impl QuantumSensorNetwork {
     ) -> Result<Vec<SensorPosition>, QuantRS2Error> {
         // Simplified optimal placement calculation
         Ok(vec![
-            SensorPosition { x: 0.0, y: 0.0, z: 0.0, sensor_type: QuantumSensorType::QuantumMagnetometer },
-            SensorPosition { x: 100.0, y: 0.0, z: 0.0, sensor_type: QuantumSensorType::QuantumGravimeter },
-            SensorPosition { x: 0.0, y: 100.0, z: 0.0, sensor_type: QuantumSensorType::QuantumAccelerometer },
-            SensorPosition { x: 100.0, y: 100.0, z: 0.0, sensor_type: QuantumSensorType::QuantumGyroscope },
+            SensorPosition {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                sensor_type: QuantumSensorType::QuantumMagnetometer,
+            },
+            SensorPosition {
+                x: 100.0,
+                y: 0.0,
+                z: 0.0,
+                sensor_type: QuantumSensorType::QuantumGravimeter,
+            },
+            SensorPosition {
+                x: 0.0,
+                y: 100.0,
+                z: 0.0,
+                sensor_type: QuantumSensorType::QuantumAccelerometer,
+            },
+            SensorPosition {
+                x: 100.0,
+                y: 100.0,
+                z: 0.0,
+                sensor_type: QuantumSensorType::QuantumGyroscope,
+            },
         ])
     }
 
     fn deploy_individual_sensors(
         &mut self,
-        sensor_types: &[QuantumSensorType],
+        _sensor_types: &[QuantumSensorType],
         positions: &[SensorPosition],
     ) -> Result<Vec<u64>, QuantRS2Error> {
         let mut deployed_sensors = Vec::new();
-        
-        for (i, position) in positions.iter().enumerate() {
+
+        for (_i, position) in positions.iter().enumerate() {
             let sensor_id = Self::generate_id();
             let sensor = QuantumSensor {
                 sensor_id,
@@ -800,15 +797,18 @@ impl QuantumSensorNetwork {
                 measurement_history: VecDeque::new(),
                 operating_parameters: OperatingParameters::default(),
             };
-            
+
             self.quantum_sensors.insert(sensor_id, sensor);
             deployed_sensors.push(sensor_id);
         }
-        
+
         Ok(deployed_sensors)
     }
 
-    fn establish_sensor_entanglement_network(&self, sensors: &[u64]) -> Result<EntanglementNetwork, QuantRS2Error> {
+    fn establish_sensor_entanglement_network(
+        &self,
+        sensors: &[u64],
+    ) -> Result<EntanglementNetwork, QuantRS2Error> {
         Ok(EntanglementNetwork {
             connectivity_factor: 0.95,
             average_fidelity: 0.98,
@@ -850,22 +850,39 @@ impl QuantumSensorNetwork {
         Ok(())
     }
 
-    fn select_optimal_sensor_subset(&self, _target: &MeasurementTarget, _requirements: &PrecisionRequirements) -> Result<Vec<u64>, QuantRS2Error> {
+    fn select_optimal_sensor_subset(
+        &self,
+        _target: &MeasurementTarget,
+        _requirements: &PrecisionRequirements,
+    ) -> Result<Vec<u64>, QuantRS2Error> {
         Ok(self.quantum_sensors.keys().take(4).cloned().collect())
     }
 
-    fn prepare_entangled_probe_states(&self, _sensors: &[u64], _protocol: &SensingProtocol) -> Result<EntangledProbeStates, QuantRS2Error> {
+    fn prepare_entangled_probe_states(
+        &self,
+        _sensors: &[u64],
+        _protocol: &SensingProtocol,
+    ) -> Result<EntangledProbeStates, QuantRS2Error> {
         Ok(EntangledProbeStates {
             entanglement_strength: 0.95,
             probe_count: 4,
         })
     }
 
-    fn execute_coordinated_measurements(&self, _sensors: &[u64], _probes: &EntangledProbeStates, _protocol: &SensingProtocol) -> Result<Vec<SensorMeasurement>, QuantRS2Error> {
+    fn execute_coordinated_measurements(
+        &self,
+        _sensors: &[u64],
+        _probes: &EntangledProbeStates,
+        _protocol: &SensingProtocol,
+    ) -> Result<Vec<SensorMeasurement>, QuantRS2Error> {
         Ok(vec![])
     }
 
-    fn calculate_quantum_sensing_advantage(&self, _result: &FusedMeasurementResult, _requirements: &PrecisionRequirements) -> f64 {
+    fn calculate_quantum_sensing_advantage(
+        &self,
+        _result: &FusedMeasurementResult,
+        _requirements: &PrecisionRequirements,
+    ) -> f64 {
         34.2 // Quantum advantage factor
     }
 }
@@ -973,7 +990,11 @@ impl QuantumDataFusion {
         }
     }
 
-    pub fn fuse_quantum_measurements(&self, _measurements: &[SensorMeasurement], _requirements: &PrecisionRequirements) -> Result<FusedMeasurementResult, QuantRS2Error> {
+    pub fn fuse_quantum_measurements(
+        &self,
+        _measurements: &[SensorMeasurement],
+        _requirements: &PrecisionRequirements,
+    ) -> Result<FusedMeasurementResult, QuantRS2Error> {
         Ok(FusedMeasurementResult {
             value: 1.0,
             uncertainty: 1e-12,
@@ -1250,20 +1271,33 @@ pub struct TrendPrediction {
 
 // Placeholder implementations (simplified)
 impl QuantumSensorNetwork {
-    fn create_monitoring_schedule(&self, _region: &MonitoringRegion, _parameters: &[EnvironmentalParameter], _duration: Duration) -> Result<MonitoringSchedule, QuantRS2Error> {
+    fn create_monitoring_schedule(
+        &self,
+        _region: &MonitoringRegion,
+        _parameters: &[EnvironmentalParameter],
+        _duration: Duration,
+    ) -> Result<MonitoringSchedule, QuantRS2Error> {
         Ok(MonitoringSchedule {
             temporal_resolution: Duration::from_secs(1),
         })
     }
 
-    fn deploy_environmental_sensing_grid(&self, _region: &MonitoringRegion, _parameters: &[EnvironmentalParameter]) -> Result<SensingGrid, QuantRS2Error> {
+    fn deploy_environmental_sensing_grid(
+        &self,
+        _region: &MonitoringRegion,
+        _parameters: &[EnvironmentalParameter],
+    ) -> Result<SensingGrid, QuantRS2Error> {
         Ok(SensingGrid {
             spatial_resolution: 1.0, // meters
             coverage_percentage: 95.0,
         })
     }
 
-    fn execute_quantum_environmental_monitoring(&self, _grid: &SensingGrid, _schedule: &MonitoringSchedule) -> Result<MonitoringResults, QuantRS2Error> {
+    fn execute_quantum_environmental_monitoring(
+        &self,
+        _grid: &SensingGrid,
+        _schedule: &MonitoringSchedule,
+    ) -> Result<MonitoringResults, QuantRS2Error> {
         Ok(MonitoringResults {
             data: vec![],
             quantum_enhancement: 9.8,
@@ -1271,7 +1305,10 @@ impl QuantumSensorNetwork {
         })
     }
 
-    fn analyze_environmental_trends(&self, _results: &MonitoringResults) -> Result<TrendAnalysis, QuantRS2Error> {
+    fn analyze_environmental_trends(
+        &self,
+        _results: &MonitoringResults,
+    ) -> Result<TrendAnalysis, QuantRS2Error> {
         Ok(TrendAnalysis {
             predictions: vec![],
         })
@@ -1431,9 +1468,10 @@ mod tests {
             terrain_type: TerrainType::Urban,
         };
 
-        let result = network.deploy_quantum_sensors(sensor_types, deployment_pattern, coverage_area);
+        let result =
+            network.deploy_quantum_sensors(sensor_types, deployment_pattern, coverage_area);
         assert!(result.is_ok());
-        
+
         let deployment_result = result.unwrap();
         assert!(deployment_result.deployed_sensor_count > 0);
         assert!(deployment_result.quantum_advantage_factor > 1.0);
@@ -1443,7 +1481,7 @@ mod tests {
     #[test]
     fn test_distributed_sensing() {
         let mut network = QuantumSensorNetwork::new();
-        
+
         // Deploy some sensors first
         let sensor_types = vec![QuantumSensorType::QuantumMagnetometer];
         let deployment_pattern = DeploymentPattern::Grid;
@@ -1456,7 +1494,9 @@ mod tests {
             },
             terrain_type: TerrainType::Urban,
         };
-        network.deploy_quantum_sensors(sensor_types, deployment_pattern, coverage_area).unwrap();
+        network
+            .deploy_quantum_sensors(sensor_types, deployment_pattern, coverage_area)
+            .unwrap();
 
         let measurement_target = MeasurementTarget {
             target_type: TargetType::PointSource,
@@ -1479,9 +1519,13 @@ mod tests {
             measurement_time_limit: Duration::from_secs(1),
         };
 
-        let result = network.execute_distributed_sensing(measurement_target, sensing_protocol, precision_requirements);
+        let result = network.execute_distributed_sensing(
+            measurement_target,
+            sensing_protocol,
+            precision_requirements,
+        );
         assert!(result.is_ok());
-        
+
         let sensing_result = result.unwrap();
         assert!(sensing_result.quantum_advantage > 1.0);
         assert!(sensing_result.measurement_uncertainty < 1e-10);
@@ -1491,7 +1535,7 @@ mod tests {
     fn test_quantum_sensor_advantages() {
         let mut network = QuantumSensorNetwork::new();
         let report = network.demonstrate_quantum_sensing_advantages();
-        
+
         // All advantages should demonstrate quantum superiority
         assert!(report.sensitivity_advantage > 1.0);
         assert!(report.precision_advantage > 1.0);

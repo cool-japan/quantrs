@@ -3,13 +3,10 @@
 //! This module provides comprehensive statistical characterization of quantum noise,
 //! including distributional analysis, moment analysis, correlation analysis, and outlier detection.
 
-use crate::{DeviceError, DeviceResult};
 use super::config::DistributionType;
+use crate::{DeviceError, DeviceResult};
 use ndarray::{Array1, Array2, ArrayView2};
-use scirs2_stats::{
-    corrcoef,
-    kurtosis, mean, median, skew, spearmanr, std, var,
-};
+use scirs2_stats::{corrcoef, kurtosis, mean, median, skew, spearmanr, std, var};
 use std::collections::HashMap;
 
 /// Statistical noise characterization
@@ -149,7 +146,8 @@ impl StatisticalAnalyzer {
         let data_std = std(&data_array.view(), 1)
             .map_err(|e| DeviceError::APIError(format!("Std calculation error: {:?}", e)))?;
 
-        let (ks_stat, p_value) = self.kolmogorov_smirnov_test(&data_array, &DistributionType::Normal)?;
+        let (ks_stat, p_value) =
+            self.kolmogorov_smirnov_test(&data_array, &DistributionType::Normal)?;
         let score = -ks_stat;
 
         if score > best_score {
@@ -168,7 +166,8 @@ impl StatisticalAnalyzer {
 
         // Test gamma distribution for positive data
         if data_array.iter().all(|&x| x > 0.0) {
-            let (ks_stat, p_value) = self.kolmogorov_smirnov_test(&data_array, &DistributionType::Gamma)?;
+            let (ks_stat, p_value) =
+                self.kolmogorov_smirnov_test(&data_array, &DistributionType::Gamma)?;
             let score = -ks_stat;
 
             if score > best_score {
@@ -186,7 +185,8 @@ impl StatisticalAnalyzer {
 
         // Test exponential distribution for non-negative data
         if data_array.iter().all(|&x| x >= 0.0) {
-            let (ks_stat, p_value) = self.kolmogorov_smirnov_test(&data_array, &DistributionType::Exponential)?;
+            let (ks_stat, p_value) =
+                self.kolmogorov_smirnov_test(&data_array, &DistributionType::Exponential)?;
             let score = -ks_stat;
 
             if score > best_score {
@@ -416,13 +416,13 @@ impl StatisticalAnalyzer {
         let mut max_diff: f64 = 0.0;
         for (i, &value) in sorted_data.iter().enumerate() {
             let empirical_cdf = (i + 1) as f64 / n;
-            
+
             // Calculate theoretical CDF based on distribution type
             let theoretical_cdf = match distribution_type {
                 DistributionType::Normal => {
                     let z = (value - data_mean) / data_std;
                     0.5 * (1.0 + self.erf(z / 2.0_f64.sqrt()))
-                },
+                }
                 DistributionType::Exponential => {
                     if value >= 0.0 {
                         let rate = 1.0 / data_mean;
@@ -430,7 +430,7 @@ impl StatisticalAnalyzer {
                     } else {
                         0.0
                     }
-                },
+                }
                 DistributionType::Gamma => {
                     // Simplified gamma CDF approximation
                     let (shape, scale) = self.estimate_gamma_parameters(data)?;
@@ -439,10 +439,10 @@ impl StatisticalAnalyzer {
                     } else {
                         0.0
                     }
-                },
+                }
                 _ => 0.5, // Default fallback
             };
-            
+
             let diff = (empirical_cdf - theoretical_cdf).abs();
             max_diff = max_diff.max(diff);
         }
@@ -480,10 +480,10 @@ impl StatisticalAnalyzer {
         if x <= 0.0 {
             return 0.0;
         }
-        
+
         // Simple approximation using incomplete gamma function
         let normalized_x = x / scale;
-        
+
         // For simplicity, use normal approximation for large shape parameters
         if shape > 10.0 {
             let mean = shape * scale;

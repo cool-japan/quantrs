@@ -172,22 +172,46 @@ pub enum LoadPattern {
     /// Constant load
     Constant(f64),
     /// Linear ramp
-    LinearRamp { start: f64, end: f64, duration: Duration },
+    LinearRamp {
+        start: f64,
+        end: f64,
+        duration: Duration,
+    },
     /// Exponential ramp
-    ExponentialRamp { start: f64, end: f64, duration: Duration },
+    ExponentialRamp {
+        start: f64,
+        end: f64,
+        duration: Duration,
+    },
     /// Spike pattern
-    Spike { base_load: f64, spike_load: f64, spike_duration: Duration },
+    Spike {
+        base_load: f64,
+        spike_load: f64,
+        spike_duration: Duration,
+    },
     /// Cyclic pattern
-    Cyclic { min_load: f64, max_load: f64, period: Duration },
+    Cyclic {
+        min_load: f64,
+        max_load: f64,
+        period: Duration,
+    },
 }
 
 /// Size progression for stress testing
 #[derive(Debug, Clone)]
 pub enum SizeProgression {
     /// Linear progression
-    Linear { start: usize, end: usize, step: usize },
+    Linear {
+        start: usize,
+        end: usize,
+        step: usize,
+    },
     /// Exponential progression
-    Exponential { start: usize, end: usize, factor: f64 },
+    Exponential {
+        start: usize,
+        end: usize,
+        factor: f64,
+    },
     /// Custom sequence
     Custom(Vec<usize>),
 }

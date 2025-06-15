@@ -8,8 +8,8 @@ use ndarray::{Array1, ArrayView1};
 use num_complex::{Complex32, Complex64};
 use std::sync::Arc;
 
-use crate::error::{Result, SimulatorError};
 use super::config::QuantumPrecision;
+use crate::error::{Result, SimulatorError};
 
 /// Mixed-precision state vector
 pub enum MixedPrecisionStateVector {
@@ -31,15 +31,9 @@ impl MixedPrecisionStateVector {
     /// Create a new state vector with the specified precision
     pub fn new(size: usize, precision: QuantumPrecision) -> Self {
         match precision {
-            QuantumPrecision::Half => {
-                Self::Half(Array1::zeros(size))
-            }
-            QuantumPrecision::Single => {
-                Self::Single(Array1::zeros(size))
-            }
-            QuantumPrecision::Double => {
-                Self::Double(Array1::zeros(size))
-            }
+            QuantumPrecision::Half => Self::Half(Array1::zeros(size)),
+            QuantumPrecision::Single => Self::Single(Array1::zeros(size)),
+            QuantumPrecision::Double => Self::Double(Array1::zeros(size)),
             QuantumPrecision::Adaptive => {
                 // Start with single precision for adaptive
                 let primary = Box::new(Self::Single(Array1::zeros(size)));
@@ -56,17 +50,22 @@ impl MixedPrecisionStateVector {
     pub fn computational_basis(num_qubits: usize, precision: QuantumPrecision) -> Self {
         let size = 1 << num_qubits;
         let mut state = Self::new(size, precision);
-        
+
         // Set |0...0> state
         match &mut state {
             Self::Half(ref mut arr) => arr[0] = Complex32::new(1.0, 0.0),
             Self::Single(ref mut arr) => arr[0] = Complex32::new(1.0, 0.0),
             Self::Double(ref mut arr) => arr[0] = Complex64::new(1.0, 0.0),
-            Self::Adaptive { ref mut primary, .. } => {
-                *primary = Box::new(Self::computational_basis(num_qubits, QuantumPrecision::Single));
+            Self::Adaptive {
+                ref mut primary, ..
+            } => {
+                *primary = Box::new(Self::computational_basis(
+                    num_qubits,
+                    QuantumPrecision::Single,
+                ));
             }
         }
-        
+
         state
     }
 
@@ -168,7 +167,9 @@ impl MixedPrecisionStateVector {
                     *val /= norm;
                 }
             }
-            Self::Adaptive { ref mut primary, .. } => {
+            Self::Adaptive {
+                ref mut primary, ..
+            } => {
                 primary.normalize()?;
             }
         }
@@ -179,15 +180,17 @@ impl MixedPrecisionStateVector {
     /// Calculate the L2 norm of the state vector
     pub fn norm(&self) -> f64 {
         match self {
-            Self::Half(arr) => {
-                arr.iter().map(|x| (x.norm_sqr() as f64)).sum::<f64>().sqrt()
-            }
-            Self::Single(arr) => {
-                arr.iter().map(|x| (x.norm_sqr() as f64)).sum::<f64>().sqrt()
-            }
-            Self::Double(arr) => {
-                arr.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt()
-            }
+            Self::Half(arr) => arr
+                .iter()
+                .map(|x| (x.norm_sqr() as f64))
+                .sum::<f64>()
+                .sqrt(),
+            Self::Single(arr) => arr
+                .iter()
+                .map(|x| (x.norm_sqr() as f64))
+                .sum::<f64>()
+                .sqrt(),
+            Self::Double(arr) => arr.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt(),
             Self::Adaptive { primary, .. } => primary.norm(),
         }
     }
@@ -195,9 +198,11 @@ impl MixedPrecisionStateVector {
     /// Calculate probability of measuring a specific state
     pub fn probability(&self, index: usize) -> Result<f64> {
         if index >= self.len() {
-            return Err(SimulatorError::InvalidInput(
-                format!("Index {} out of bounds for state vector of length {}", index, self.len()),
-            ));
+            return Err(SimulatorError::InvalidInput(format!(
+                "Index {} out of bounds for state vector of length {}",
+                index,
+                self.len()
+            )));
         }
 
         let prob = match self {
@@ -213,9 +218,11 @@ impl MixedPrecisionStateVector {
     /// Get amplitude at a specific index as Complex64
     pub fn amplitude(&self, index: usize) -> Result<Complex64> {
         if index >= self.len() {
-            return Err(SimulatorError::InvalidInput(
-                format!("Index {} out of bounds for state vector of length {}", index, self.len()),
-            ));
+            return Err(SimulatorError::InvalidInput(format!(
+                "Index {} out of bounds for state vector of length {}",
+                index,
+                self.len()
+            )));
         }
 
         let amplitude = match self {
@@ -237,9 +244,11 @@ impl MixedPrecisionStateVector {
     /// Set amplitude at a specific index
     pub fn set_amplitude(&mut self, index: usize, amplitude: Complex64) -> Result<()> {
         if index >= self.len() {
-            return Err(SimulatorError::InvalidInput(
-                format!("Index {} out of bounds for state vector of length {}", index, self.len()),
-            ));
+            return Err(SimulatorError::InvalidInput(format!(
+                "Index {} out of bounds for state vector of length {}",
+                index,
+                self.len()
+            )));
         }
 
         match self {
@@ -252,7 +261,9 @@ impl MixedPrecisionStateVector {
             Self::Double(arr) => {
                 arr[index] = amplitude;
             }
-            Self::Adaptive { ref mut primary, .. } => {
+            Self::Adaptive {
+                ref mut primary, ..
+            } => {
                 primary.set_amplitude(index, amplitude)?;
             }
         }
@@ -269,7 +280,7 @@ impl MixedPrecisionStateVector {
         }
 
         let mut inner_product = Complex64::new(0.0, 0.0);
-        
+
         for i in 0..self.len() {
             let amp1 = self.amplitude(i)?;
             let amp2 = other.amplitude(i)?;
@@ -290,7 +301,9 @@ impl MixedPrecisionStateVector {
             Self::Half(arr) => arr.len() * std::mem::size_of::<Complex32>(),
             Self::Single(arr) => arr.len() * std::mem::size_of::<Complex32>(),
             Self::Double(arr) => arr.len() * std::mem::size_of::<Complex64>(),
-            Self::Adaptive { primary, secondary, .. } => {
+            Self::Adaptive {
+                primary, secondary, ..
+            } => {
                 let mut usage = primary.memory_usage();
                 if let Some(sec) = secondary {
                     usage += sec.memory_usage();
@@ -318,13 +331,15 @@ impl Clone for MixedPrecisionStateVector {
             Self::Half(arr) => Self::Half(arr.clone()),
             Self::Single(arr) => Self::Single(arr.clone()),
             Self::Double(arr) => Self::Double(arr.clone()),
-            Self::Adaptive { primary, secondary, precision_map } => {
-                Self::Adaptive {
-                    primary: primary.clone(),
-                    secondary: secondary.clone(),
-                    precision_map: precision_map.clone(),
-                }
-            }
+            Self::Adaptive {
+                primary,
+                secondary,
+                precision_map,
+            } => Self::Adaptive {
+                primary: primary.clone(),
+                secondary: secondary.clone(),
+                precision_map: precision_map.clone(),
+            },
         }
     }
 }
@@ -335,8 +350,14 @@ impl std::fmt::Debug for MixedPrecisionStateVector {
             Self::Half(arr) => write!(f, "Half({} elements)", arr.len()),
             Self::Single(arr) => write!(f, "Single({} elements)", arr.len()),
             Self::Double(arr) => write!(f, "Double({} elements)", arr.len()),
-            Self::Adaptive { primary, secondary, .. } => {
-                write!(f, "Adaptive(primary: {:?}, secondary: {:?})", primary, secondary)
+            Self::Adaptive {
+                primary, secondary, ..
+            } => {
+                write!(
+                    f,
+                    "Adaptive(primary: {:?}, secondary: {:?})",
+                    primary, secondary
+                )
             }
         }
     }

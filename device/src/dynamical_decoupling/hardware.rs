@@ -3,16 +3,12 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use quantrs2_core::qubit::QubitId;
-use crate::{
-    DeviceResult,
-    topology::HardwareTopology,
-    calibration::CalibrationManager,
-};
 use super::{
     config::{DDHardwareConfig, DDPulseConfig},
     sequences::DDSequence,
 };
+use crate::{calibration::CalibrationManager, topology::HardwareTopology, DeviceResult};
+use quantrs2_core::qubit::QubitId;
 
 /// Hardware analysis results for DD sequences
 #[derive(Debug, Clone)]
@@ -749,7 +745,8 @@ impl DDHardwareAnalyzer {
         let timing_analysis = self.perform_timing_analysis(sequence)?;
         let connectivity_analysis = self.analyze_connectivity(sequence)?;
         let error_characterization = self.characterize_hardware_errors(sequence)?;
-        let implementation_recommendations = self.generate_implementation_recommendations(sequence)?;
+        let implementation_recommendations =
+            self.generate_implementation_recommendations(sequence)?;
 
         Ok(DDHardwareAnalysis {
             hardware_compatibility,
@@ -762,7 +759,10 @@ impl DDHardwareAnalyzer {
     }
 
     /// Assess hardware compatibility
-    fn assess_hardware_compatibility(&self, sequence: &DDSequence) -> DeviceResult<HardwareCompatibility> {
+    fn assess_hardware_compatibility(
+        &self,
+        sequence: &DDSequence,
+    ) -> DeviceResult<HardwareCompatibility> {
         // Simplified implementation
         let gate_set_compatibility = GateSetCompatibility {
             available_gates: vec!["X".to_string(), "Y".to_string(), "Z".to_string()],
@@ -783,7 +783,10 @@ impl DDHardwareAnalyzer {
     }
 
     /// Analyze resource utilization
-    fn analyze_resource_utilization(&self, sequence: &DDSequence) -> DeviceResult<ResourceUtilization> {
+    fn analyze_resource_utilization(
+        &self,
+        sequence: &DDSequence,
+    ) -> DeviceResult<ResourceUtilization> {
         // Simplified implementation
         let qubit_utilization = QubitUtilization {
             total_qubits_used: sequence.target_qubits.len(),
@@ -887,7 +890,10 @@ impl DDHardwareAnalyzer {
     }
 
     /// Characterize hardware errors
-    fn characterize_hardware_errors(&self, _sequence: &DDSequence) -> DeviceResult<HardwareErrorCharacterization> {
+    fn characterize_hardware_errors(
+        &self,
+        _sequence: &DDSequence,
+    ) -> DeviceResult<HardwareErrorCharacterization> {
         Ok(HardwareErrorCharacterization {
             gate_error_rates: HashMap::new(),
             qubit_error_rates: HashMap::new(),
@@ -908,7 +914,10 @@ impl DDHardwareAnalyzer {
     }
 
     /// Generate implementation recommendations
-    fn generate_implementation_recommendations(&self, _sequence: &DDSequence) -> DeviceResult<ImplementationRecommendations> {
+    fn generate_implementation_recommendations(
+        &self,
+        _sequence: &DDSequence,
+    ) -> DeviceResult<ImplementationRecommendations> {
         Ok(ImplementationRecommendations {
             high_priority: Vec::new(),
             medium_priority: Vec::new(),

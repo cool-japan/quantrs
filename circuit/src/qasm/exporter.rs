@@ -291,7 +291,10 @@ impl QasmExporter {
     }
 
     /// Convert gate to QASM statement
-    fn convert_gate(&self, gate: &Arc<dyn GateOp + Send + Sync>) -> Result<QasmStatement, ExportError> {
+    fn convert_gate(
+        &self,
+        gate: &Arc<dyn GateOp + Send + Sync>,
+    ) -> Result<QasmStatement, ExportError> {
         let gate_name = gate.name();
 
         match gate_name.as_ref() {

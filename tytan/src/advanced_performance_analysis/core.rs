@@ -191,57 +191,57 @@ impl AdvancedPerformanceAnalyzer {
             prediction_models: Vec::new(),
         }
     }
-    
+
     /// Start performance analysis
     pub fn start_analysis(&mut self) -> Result<(), AnalysisError> {
         println!("Starting advanced performance analysis...");
-        
+
         // Start real-time monitoring
         if self.config.real_time_monitoring {
             self.start_real_time_monitoring()?;
         }
-        
+
         // Initialize system information
         self.initialize_system_info()?;
-        
+
         // Set up benchmarks
         self.setup_benchmarks()?;
-        
+
         // Initialize prediction models
         self.initialize_prediction_models()?;
-        
+
         println!("Advanced performance analysis started successfully");
         Ok(())
     }
-    
+
     /// Perform comprehensive analysis
     pub fn perform_comprehensive_analysis(&mut self) -> Result<(), AnalysisError> {
         println!("Performing comprehensive performance analysis...");
-        
+
         // Collect current metrics
         self.collect_metrics()?;
-        
+
         // Analyze performance trends
         self.analyze_trends()?;
-        
+
         // Identify bottlenecks
         self.identify_bottlenecks()?;
-        
+
         // Generate optimization recommendations
         self.generate_optimization_recommendations()?;
-        
+
         // Perform comparative analysis
         if self.config.comparative_analysis {
             self.perform_comparative_analysis()?;
         }
-        
+
         // Generate reports
         self.generate_reports()?;
-        
+
         println!("Comprehensive analysis completed");
         Ok(())
     }
-    
+
     /// Start real-time monitoring
     fn start_real_time_monitoring(&mut self) -> Result<(), AnalysisError> {
         // Add various monitors
@@ -249,36 +249,44 @@ impl AdvancedPerformanceAnalyzer {
         self.monitors.push(Box::new(MemoryMonitor::new()));
         self.monitors.push(Box::new(IoMonitor::new()));
         self.monitors.push(Box::new(NetworkMonitor::new()));
-        
+
         // Start all monitors
         for monitor in &mut self.monitors {
             monitor.start_monitoring()?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Initialize system information
     fn initialize_system_info(&mut self) -> Result<(), AnalysisError> {
         self.metrics_database.metadata.system_info = SystemInfo::collect();
         Ok(())
     }
-    
+
     /// Set up benchmarks
     fn setup_benchmarks(&mut self) -> Result<(), AnalysisError> {
-        self.benchmark_suite.benchmarks.push(Box::new(QuboEvaluationBenchmark::new()));
-        self.benchmark_suite.benchmarks.push(Box::new(SamplingBenchmark::new()));
-        self.benchmark_suite.benchmarks.push(Box::new(ConvergenceBenchmark::new()));
+        self.benchmark_suite
+            .benchmarks
+            .push(Box::new(QuboEvaluationBenchmark::new()));
+        self.benchmark_suite
+            .benchmarks
+            .push(Box::new(SamplingBenchmark::new()));
+        self.benchmark_suite
+            .benchmarks
+            .push(Box::new(ConvergenceBenchmark::new()));
         Ok(())
     }
-    
+
     /// Initialize prediction models
     fn initialize_prediction_models(&mut self) -> Result<(), AnalysisError> {
-        self.prediction_models.push(Box::new(LinearRegressionModel::new()));
-        self.prediction_models.push(Box::new(RandomForestModel::new()));
+        self.prediction_models
+            .push(Box::new(LinearRegressionModel::new()));
+        self.prediction_models
+            .push(Box::new(RandomForestModel::new()));
         Ok(())
     }
-    
+
     /// Collect metrics from all monitors
     fn collect_metrics(&mut self) -> Result<(), AnalysisError> {
         let mut all_metrics = Vec::new();
@@ -291,10 +299,12 @@ impl AdvancedPerformanceAnalyzer {
         }
         Ok(())
     }
-    
+
     /// Add metric value to time series
     fn add_metric_value(&mut self, metric_name: &str, value: f64) {
-        let time_series = self.metrics_database.time_series
+        let time_series = self
+            .metrics_database
+            .time_series
             .entry(metric_name.to_string())
             .or_insert_with(|| TimeSeries {
                 timestamps: Vec::new(),
@@ -303,38 +313,41 @@ impl AdvancedPerformanceAnalyzer {
                 units: "unknown".to_string(),
                 sampling_rate: self.config.monitoring_frequency,
             });
-        
+
         time_series.timestamps.push(Instant::now());
         time_series.values.push(value);
     }
-    
+
     /// Analyze performance trends
     fn analyze_trends(&mut self) -> Result<(), AnalysisError> {
         for (metric_name, time_series) in &self.metrics_database.time_series {
             if time_series.values.len() < 10 {
                 continue; // Need sufficient data for trend analysis
             }
-            
+
             let trend = self.calculate_trend(&time_series.values);
-            self.analysis_results.performance_summary.trends.insert(metric_name.clone(), trend);
+            self.analysis_results
+                .performance_summary
+                .trends
+                .insert(metric_name.clone(), trend);
         }
         Ok(())
     }
-    
+
     /// Calculate trend direction from time series data
     pub fn calculate_trend(&self, values: &[f64]) -> TrendDirection {
         if values.len() < 3 {
             return TrendDirection::Unknown;
         }
-        
+
         let n = values.len() as f64;
         let x_sum: f64 = (0..values.len()).map(|i| i as f64).sum();
         let y_sum: f64 = values.iter().sum();
         let xy_sum: f64 = values.iter().enumerate().map(|(i, &y)| i as f64 * y).sum();
         let x2_sum: f64 = (0..values.len()).map(|i| (i as f64).powi(2)).sum();
-        
+
         let slope = (n * xy_sum - x_sum * y_sum) / (n * x2_sum - x_sum.powi(2));
-        
+
         if slope > 0.01 {
             TrendDirection::Improving
         } else if slope < -0.01 {
@@ -343,57 +356,76 @@ impl AdvancedPerformanceAnalyzer {
             TrendDirection::Stable
         }
     }
-    
+
     /// Identify performance bottlenecks
     fn identify_bottlenecks(&mut self) -> Result<(), AnalysisError> {
         // Analyze CPU utilization
         if let Some(cpu_time_series) = self.metrics_database.time_series.get("cpu_utilization") {
-            if let Some(&max_cpu) = cpu_time_series.values.iter().max_by(|a, b| a.partial_cmp(b).unwrap()) {
+            if let Some(&max_cpu) = cpu_time_series
+                .values
+                .iter()
+                .max_by(|a, b| a.partial_cmp(b).unwrap())
+            {
                 if max_cpu > 80.0 {
-                    self.analysis_results.bottleneck_analysis.bottlenecks.push(Bottleneck {
-                        bottleneck_type: BottleneckType::CPU,
-                        location: "CPU cores".to_string(),
-                        severity: (max_cpu - 80.0) / 20.0,
-                        resource: "CPU".to_string(),
-                        mitigation_strategies: vec![
-                            "Consider CPU optimization".to_string(),
-                            "Implement parallel processing".to_string(),
-                            "Profile hot code paths".to_string(),
-                        ],
-                    });
+                    self.analysis_results
+                        .bottleneck_analysis
+                        .bottlenecks
+                        .push(Bottleneck {
+                            bottleneck_type: BottleneckType::CPU,
+                            location: "CPU cores".to_string(),
+                            severity: (max_cpu - 80.0) / 20.0,
+                            resource: "CPU".to_string(),
+                            mitigation_strategies: vec![
+                                "Consider CPU optimization".to_string(),
+                                "Implement parallel processing".to_string(),
+                                "Profile hot code paths".to_string(),
+                            ],
+                        });
                 }
             }
         }
-        
+
         // Analyze memory utilization
-        if let Some(memory_time_series) = self.metrics_database.time_series.get("memory_utilization") {
-            if let Some(&max_memory) = memory_time_series.values.iter().max_by(|a, b| a.partial_cmp(b).unwrap()) {
+        if let Some(memory_time_series) =
+            self.metrics_database.time_series.get("memory_utilization")
+        {
+            if let Some(&max_memory) = memory_time_series
+                .values
+                .iter()
+                .max_by(|a, b| a.partial_cmp(b).unwrap())
+            {
                 if max_memory > 85.0 {
-                    self.analysis_results.bottleneck_analysis.bottlenecks.push(Bottleneck {
-                        bottleneck_type: BottleneckType::Memory,
-                        location: "System memory".to_string(),
-                        severity: (max_memory - 85.0) / 15.0,
-                        resource: "Memory".to_string(),
-                        mitigation_strategies: vec![
-                            "Optimize memory usage".to_string(),
-                            "Implement memory pooling".to_string(),
-                            "Consider data structure optimization".to_string(),
-                        ],
-                    });
+                    self.analysis_results
+                        .bottleneck_analysis
+                        .bottlenecks
+                        .push(Bottleneck {
+                            bottleneck_type: BottleneckType::Memory,
+                            location: "System memory".to_string(),
+                            severity: (max_memory - 85.0) / 15.0,
+                            resource: "Memory".to_string(),
+                            mitigation_strategies: vec![
+                                "Optimize memory usage".to_string(),
+                                "Implement memory pooling".to_string(),
+                                "Consider data structure optimization".to_string(),
+                            ],
+                        });
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Generate optimization recommendations
     fn generate_optimization_recommendations(&mut self) -> Result<(), AnalysisError> {
         // Generate recommendations based on identified bottlenecks
         for bottleneck in &self.analysis_results.bottleneck_analysis.bottlenecks {
             let recommendation = OptimizationRecommendation {
                 title: format!("Optimize {} Performance", bottleneck.resource),
-                description: format!("Address {} bottleneck with severity {:.2}", bottleneck.resource, bottleneck.severity),
+                description: format!(
+                    "Address {} bottleneck with severity {:.2}",
+                    bottleneck.resource, bottleneck.severity
+                ),
                 priority: if bottleneck.severity > 0.8 {
                     PriorityLevel::Critical
                 } else if bottleneck.severity > 0.5 {
@@ -404,22 +436,22 @@ impl AdvancedPerformanceAnalyzer {
                 expected_benefit: bottleneck.severity * 0.3, // Rough estimate
                 implementation_steps: bottleneck.mitigation_strategies.clone(),
                 prerequisites: vec!["Performance profiling tools".to_string()],
-                risks_and_mitigation: vec![
-                    RiskMitigation {
-                        risk: "Performance regression during optimization".to_string(),
-                        probability: 0.2,
-                        impact: 0.3,
-                        mitigation: "Implement comprehensive testing".to_string(),
-                    },
-                ],
+                risks_and_mitigation: vec![RiskMitigation {
+                    risk: "Performance regression during optimization".to_string(),
+                    probability: 0.2,
+                    impact: 0.3,
+                    mitigation: "Implement comprehensive testing".to_string(),
+                }],
             };
-            
-            self.analysis_results.optimization_recommendations.push(recommendation);
+
+            self.analysis_results
+                .optimization_recommendations
+                .push(recommendation);
         }
-        
+
         Ok(())
     }
-    
+
     /// Perform comparative analysis
     fn perform_comparative_analysis(&mut self) -> Result<(), AnalysisError> {
         // This would compare current performance with baselines
@@ -429,7 +461,7 @@ impl AdvancedPerformanceAnalyzer {
             performance_changes: HashMap::new(),
             statistical_significance: HashMap::new(),
         };
-        
+
         self.analysis_results.comparative_analysis = Some(ComparativeAnalysis {
             baseline_comparison,
             algorithm_comparisons: Vec::new(),
@@ -446,10 +478,10 @@ impl AdvancedPerformanceAnalyzer {
             },
             ab_test_results: Vec::new(),
         });
-        
+
         Ok(())
     }
-    
+
     /// Generate analysis reports
     fn generate_reports(&mut self) -> Result<(), AnalysisError> {
         // Generate performance summary report
@@ -475,7 +507,7 @@ impl AdvancedPerformanceAnalyzer {
                 recipients: Vec::new(),
             },
         };
-        
+
         self.analysis_results.reports.push(summary_report);
         Ok(())
     }

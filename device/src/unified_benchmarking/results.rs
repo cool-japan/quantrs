@@ -1,11 +1,13 @@
 //! Result types for the unified benchmarking system
 
+use ndarray::Array2;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
-use serde::{Deserialize, Serialize};
-use ndarray::Array2;
 
-use super::config::{UnifiedBenchmarkConfig, CircuitType, SingleQubitGate, TwoQubitGate, MultiQubitGate};
+use super::config::{
+    CircuitType, MultiQubitGate, SingleQubitGate, TwoQubitGate, UnifiedBenchmarkConfig,
+};
 use super::types::QuantumPlatform;
 
 /// Main unified benchmarking result structure

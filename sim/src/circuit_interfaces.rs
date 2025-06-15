@@ -102,6 +102,97 @@ pub enum InterfaceGateType {
     Reset,
 }
 
+// Custom Hash implementation since f64 doesn't implement Hash
+impl std::hash::Hash for InterfaceGateType {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        use std::mem;
+        match self {
+            InterfaceGateType::Identity => 0u8.hash(state),
+            InterfaceGateType::PauliX => 1u8.hash(state),
+            InterfaceGateType::X => 2u8.hash(state),
+            InterfaceGateType::PauliY => 3u8.hash(state),
+            InterfaceGateType::PauliZ => 4u8.hash(state),
+            InterfaceGateType::Hadamard => 5u8.hash(state),
+            InterfaceGateType::H => 6u8.hash(state),
+            InterfaceGateType::S => 7u8.hash(state),
+            InterfaceGateType::T => 8u8.hash(state),
+            InterfaceGateType::Phase(angle) => {
+                9u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::RX(angle) => {
+                10u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::RY(angle) => {
+                11u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::RZ(angle) => {
+                12u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::U1(angle) => {
+                13u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::U2(theta, phi) => {
+                14u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*theta) }.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*phi) }.hash(state);
+            }
+            InterfaceGateType::U3(theta, phi, lambda) => {
+                15u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*theta) }.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*phi) }.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*lambda) }.hash(state);
+            }
+            InterfaceGateType::CNOT => 16u8.hash(state),
+            InterfaceGateType::CZ => 17u8.hash(state),
+            InterfaceGateType::CY => 18u8.hash(state),
+            InterfaceGateType::SWAP => 19u8.hash(state),
+            InterfaceGateType::ISwap => 20u8.hash(state),
+            InterfaceGateType::CRX(angle) => {
+                21u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::CRY(angle) => {
+                22u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::CRZ(angle) => {
+                23u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::CPhase(angle) => {
+                24u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::Toffoli => 25u8.hash(state),
+            InterfaceGateType::Fredkin => 26u8.hash(state),
+            InterfaceGateType::MultiControlledX(n) => {
+                27u8.hash(state);
+                n.hash(state);
+            }
+            InterfaceGateType::MultiControlledZ(n) => {
+                28u8.hash(state);
+                n.hash(state);
+            }
+            InterfaceGateType::Custom(name, matrix) => {
+                29u8.hash(state);
+                name.hash(state);
+                // Hash matrix shape instead of all elements
+                matrix.shape().hash(state);
+            }
+            InterfaceGateType::Measure => 30u8.hash(state),
+            InterfaceGateType::Reset => 31u8.hash(state),
+        }
+    }
+}
+
+// Custom Eq implementation since f64 doesn't implement Eq
+impl Eq for InterfaceGateType {}
+
 /// Quantum gate representation for circuit interface
 #[derive(Debug, Clone)]
 pub struct InterfaceGate {
@@ -351,31 +442,31 @@ impl InterfaceGate {
                 let total_qubits = num_controls + 1;
                 let dim = 1 << total_qubits;
                 let mut matrix = Array2::eye(dim);
-                
+
                 // Apply Z to the target when all control qubits are |1⟩
                 let target_state = (1 << total_qubits) - 1; // All qubits in |1⟩ state
                 matrix[(target_state, target_state)] = Complex64::new(-1.0, 0.0);
-                
+
                 Ok(matrix)
             }
             InterfaceGateType::MultiControlledX(num_controls) => {
                 let total_qubits = num_controls + 1;
                 let dim = 1 << total_qubits;
                 let mut matrix = Array2::eye(dim);
-                
+
                 // Apply X to the target when all control qubits are |1⟩
                 let control_pattern = (1 << *num_controls) - 1; // All control qubits in |1⟩
                 let target_bit = 1 << num_controls;
-                
+
                 // Swap the two states where only the target bit differs
                 let state0 = control_pattern; // Target qubit is |0⟩
                 let state1 = control_pattern | target_bit; // Target qubit is |1⟩
-                
+
                 matrix[(state0, state0)] = Complex64::new(0.0, 0.0);
                 matrix[(state1, state1)] = Complex64::new(0.0, 0.0);
                 matrix[(state0, state1)] = Complex64::new(1.0, 0.0);
                 matrix[(state1, state0)] = Complex64::new(1.0, 0.0);
-                
+
                 Ok(matrix)
             }
             InterfaceGateType::Custom(_, matrix) => Ok(matrix.clone()),

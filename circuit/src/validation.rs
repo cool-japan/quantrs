@@ -159,15 +159,9 @@ pub struct ValidationResult {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ValidationError {
     /// Too many qubits for backend
-    ExceedsQubitLimit {
-        required: usize,
-        available: usize,
-    },
+    ExceedsQubitLimit { required: usize, available: usize },
     /// Gate not supported by backend
-    UnsupportedGate {
-        gate_name: String,
-        position: usize,
-    },
+    UnsupportedGate { gate_name: String, position: usize },
     /// Qubit connectivity violation
     ConnectivityViolation {
         gate_name: String,
@@ -252,25 +246,15 @@ pub struct ValidationStats {
 #[derive(Debug, Clone)]
 pub enum ValidationSuggestion {
     /// Use transpilation to fix connectivity
-    UseTranspilation {
-        suggested_router: String,
-    },
+    UseTranspilation { suggested_router: String },
     /// Decompose gates to native set
-    DecomposeGates {
-        gates_to_decompose: Vec<String>,
-    },
+    DecomposeGates { gates_to_decompose: Vec<String> },
     /// Reduce circuit depth
-    ReduceDepth {
-        suggested_passes: Vec<String>,
-    },
+    ReduceDepth { suggested_passes: Vec<String> },
     /// Split circuit into subcircuits
-    SplitCircuit {
-        suggested_split_points: Vec<usize>,
-    },
+    SplitCircuit { suggested_split_points: Vec<usize> },
     /// Use different backend
-    SwitchBackend {
-        recommended_backends: Vec<String>,
-    },
+    SwitchBackend { recommended_backends: Vec<String> },
 }
 
 /// Circuit validator for different backends
@@ -288,7 +272,7 @@ impl CircuitValidator {
             backend_rules: HashMap::new(),
             validation_cache: HashMap::new(),
         };
-        
+
         // Load standard backend validation rules
         validator.load_standard_backends();
         validator
@@ -314,7 +298,9 @@ impl CircuitValidator {
         let start_time = std::time::Instant::now();
 
         // Check if backend is supported
-        let rules = self.backend_rules.get(backend)
+        let rules = self
+            .backend_rules
+            .get(backend)
             .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown backend: {}", backend)))?;
 
         let mut errors = Vec::new();
@@ -392,9 +378,21 @@ impl CircuitValidator {
 
             // Check if gate is native
             let is_native = match qubit_count {
-                1 => rules.gate_restrictions.native_gates.single_qubit.contains(gate_name),
-                2 => rules.gate_restrictions.native_gates.two_qubit.contains(gate_name),
-                _ => rules.gate_restrictions.native_gates.multi_qubit.contains(gate_name),
+                1 => rules
+                    .gate_restrictions
+                    .native_gates
+                    .single_qubit
+                    .contains(gate_name),
+                2 => rules
+                    .gate_restrictions
+                    .native_gates
+                    .two_qubit
+                    .contains(gate_name),
+                _ => rules
+                    .gate_restrictions
+                    .native_gates
+                    .multi_qubit
+                    .contains(gate_name),
             };
 
             if !is_native {
@@ -409,7 +407,11 @@ impl CircuitValidator {
             }
 
             // Check gate-specific qubit restrictions
-            if let Some(allowed_qubits) = rules.gate_restrictions.gate_qubit_restrictions.get(gate_name) {
+            if let Some(allowed_qubits) = rules
+                .gate_restrictions
+                .gate_qubit_restrictions
+                .get(gate_name)
+            {
                 for qubit in gate.qubits() {
                     let qubit_id = qubit.id() as usize;
                     if !allowed_qubits.contains(&qubit_id) {
@@ -451,14 +453,15 @@ impl CircuitValidator {
         for (i, gate) in circuit.gates().iter().enumerate() {
             if gate.qubits().len() >= 2 {
                 let qubits: Vec<usize> = gate.qubits().iter().map(|q| q.id() as usize).collect();
-                
+
                 // Check two-qubit connectivity
                 if gate.qubits().len() == 2 {
                     let q1 = qubits[0];
                     let q2 = qubits[1];
 
-                    if rules.connectivity.forbidden_pairs.contains(&(q1, q2)) ||
-                       rules.connectivity.forbidden_pairs.contains(&(q2, q1)) {
+                    if rules.connectivity.forbidden_pairs.contains(&(q1, q2))
+                        || rules.connectivity.forbidden_pairs.contains(&(q2, q1))
+                    {
                         errors.push(ValidationError::ConnectivityViolation {
                             gate_name: gate.name().to_string(),
                             qubits: vec![q1, q2],
@@ -483,7 +486,7 @@ impl CircuitValidator {
                 if let Some(max_dist) = rules.connectivity.max_distance {
                     if let Some(coupling) = coupling_map {
                         for i in 0..qubits.len() {
-                            for j in i+1..qubits.len() {
+                            for j in i + 1..qubits.len() {
                                 let distance = coupling.distance(qubits[i], qubits[j]);
                                 if distance > max_dist {
                                     errors.push(ValidationError::ConnectivityViolation {
@@ -529,7 +532,10 @@ impl CircuitValidator {
                     max_depth,
                 });
                 suggestions.push(ValidationSuggestion::ReduceDepth {
-                    suggested_passes: vec!["GateCommutation".to_string(), "GateCancellation".to_string()],
+                    suggested_passes: vec![
+                        "GateCommutation".to_string(),
+                        "GateCancellation".to_string(),
+                    ],
                 });
             }
         }
@@ -584,7 +590,7 @@ impl CircuitValidator {
     ) -> QuantRS2Result<()> {
         // Estimate memory usage
         let estimated_memory = self.estimate_memory_usage(circuit);
-        
+
         if let Some(max_memory) = rules.resource_limits.max_memory_mb {
             let estimated_memory_mb = estimated_memory / (1024 * 1024);
             if estimated_memory_mb > max_memory {
@@ -611,7 +617,11 @@ impl CircuitValidator {
     }
 
     /// Estimate execution time
-    fn estimate_execution_time<const N: usize>(&self, circuit: &Circuit<N>, rules: &ValidationRules) -> f64 {
+    fn estimate_execution_time<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+        rules: &ValidationRules,
+    ) -> f64 {
         // Simplified estimation based on gate count
         circuit.gates().len() as f64 * 0.1 // 0.1 microseconds per gate average
     }
@@ -634,14 +644,18 @@ impl CircuitValidator {
     ) -> QuantRS2Result<f64> {
         // Simplified fidelity estimation
         let mut total_error = 0.0;
-        
+
         for gate in circuit.gates() {
             let gate_name = gate.name();
             let error = match gate.qubits().len() {
-                1 => noise_model.single_qubit_errors.get(gate_name)
+                1 => noise_model
+                    .single_qubit_errors
+                    .get(gate_name)
                     .map(|e| e.depolarizing + e.amplitude_damping + e.phase_damping)
                     .unwrap_or(0.001),
-                2 => noise_model.two_qubit_errors.get(gate_name)
+                2 => noise_model
+                    .two_qubit_errors
+                    .get(gate_name)
                     .map(|e| e.depolarizing)
                     .unwrap_or(0.01),
                 _ => 0.05, // Multi-qubit gates
@@ -655,22 +669,29 @@ impl CircuitValidator {
     /// Count validation constraints
     fn count_constraints(&self, rules: &ValidationRules) -> usize {
         let mut count = 0;
-        
+
         count += 1; // Qubit count
         count += rules.gate_restrictions.native_gates.single_qubit.len();
         count += rules.gate_restrictions.native_gates.two_qubit.len();
         count += rules.gate_restrictions.native_gates.multi_qubit.len();
-        
-        if rules.depth_limits.max_depth.is_some() { count += 1; }
-        if rules.depth_limits.max_gates.is_some() { count += 1; }
-        if rules.depth_limits.max_execution_time.is_some() { count += 1; }
-        
+
+        if rules.depth_limits.max_depth.is_some() {
+            count += 1;
+        }
+        if rules.depth_limits.max_gates.is_some() {
+            count += 1;
+        }
+        if rules.depth_limits.max_execution_time.is_some() {
+            count += 1;
+        }
+
         count
     }
 
     /// Find backends that support the required number of qubits
     fn find_backends_with_qubits(&self, required_qubits: usize) -> Vec<String> {
-        self.backend_rules.iter()
+        self.backend_rules
+            .iter()
             .filter(|(_, rules)| rules.max_qubits >= required_qubits)
             .map(|(name, _)| name.clone())
             .collect()
@@ -680,13 +701,13 @@ impl CircuitValidator {
     fn load_standard_backends(&mut self) {
         // IBM Quantum validation rules
         self.add_backend_rules(ValidationRules::ibm_quantum());
-        
+
         // Google Quantum AI validation rules
         self.add_backend_rules(ValidationRules::google_quantum());
-        
+
         // AWS Braket validation rules
         self.add_backend_rules(ValidationRules::aws_braket());
-        
+
         // Simulator validation rules
         self.add_backend_rules(ValidationRules::simulator());
     }
@@ -697,11 +718,15 @@ impl ValidationRules {
     pub fn ibm_quantum() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY"]
-                .iter().map(|s| s.to_string()).collect(),
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
             two_qubit: ["CNOT", "CZ"].iter().map(|s| s.to_string()).collect(),
             multi_qubit: HashSet::new(),
             parameterized: [("RZ", 1), ("RX", 1), ("RY", 1)]
-                .iter().map(|(k, v)| (k.to_string(), *v)).collect(),
+                .iter()
+                .map(|(k, v)| (k.to_string(), *v))
+                .collect(),
         };
 
         Self {
@@ -752,10 +777,15 @@ impl ValidationRules {
     pub fn google_quantum() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "RZ", "SQRT_X"]
-                .iter().map(|s| s.to_string()).collect(),
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
             two_qubit: ["CZ", "ISWAP"].iter().map(|s| s.to_string()).collect(),
             multi_qubit: HashSet::new(),
-            parameterized: [("RZ", 1)].iter().map(|(k, v)| (k.to_string(), *v)).collect(),
+            parameterized: [("RZ", 1)]
+                .iter()
+                .map(|(k, v)| (k.to_string(), *v))
+                .collect(),
         };
 
         Self {
@@ -806,11 +836,18 @@ impl ValidationRules {
     pub fn aws_braket() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "RZ", "RX", "RY"]
-                .iter().map(|s| s.to_string()).collect(),
-            two_qubit: ["CNOT", "CZ", "ISWAP"].iter().map(|s| s.to_string()).collect(),
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+            two_qubit: ["CNOT", "CZ", "ISWAP"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
             multi_qubit: HashSet::new(),
             parameterized: [("RZ", 1), ("RX", 1), ("RY", 1)]
-                .iter().map(|(k, v)| (k.to_string(), *v)).collect(),
+                .iter()
+                .map(|(k, v)| (k.to_string(), *v))
+                .collect(),
         };
 
         Self {
@@ -861,12 +898,21 @@ impl ValidationRules {
     pub fn simulator() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY", "U"]
-                .iter().map(|s| s.to_string()).collect(),
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
             two_qubit: ["CNOT", "CZ", "ISWAP", "SWAP", "CX"]
-                .iter().map(|s| s.to_string()).collect(),
-            multi_qubit: ["Toffoli", "Fredkin"].iter().map(|s| s.to_string()).collect(),
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+            multi_qubit: ["Toffoli", "Fredkin"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
             parameterized: [("RZ", 1), ("RX", 1), ("RY", 1), ("U", 3)]
-                .iter().map(|(k, v)| (k.to_string(), *v)).collect(),
+                .iter()
+                .map(|(k, v)| (k.to_string(), *v))
+                .collect(),
         };
 
         Self {
@@ -923,8 +969,8 @@ impl Default for CircuitValidator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use quantrs2_core::gate::single::Hadamard;
     use quantrs2_core::gate::multi::CNOT;
+    use quantrs2_core::gate::single::Hadamard;
 
     #[test]
     fn test_validator_creation() {
@@ -964,7 +1010,12 @@ mod tests {
         let mut validator = CircuitValidator::new();
         let mut circuit = Circuit::<3>::new();
         // This would require checking actual connectivity constraints
-        circuit.add_gate(CNOT { control: QubitId(0), target: QubitId(1) }).unwrap();
+        circuit
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .unwrap();
 
         let result = validator.validate(&circuit, "ibm_quantum", None).unwrap();
         // Result depends on the specific connectivity of the coupling map

@@ -592,10 +592,12 @@ impl HardwareTopology {
     /// Check if two qubits are connected
     pub fn are_connected(&self, q1: usize, q2: usize) -> bool {
         // Find node indices for these qubits
-        let node1 = self.connectivity
+        let node1 = self
+            .connectivity
             .node_indices()
             .find(|&n| self.connectivity[n] == q1 as u32);
-        let node2 = self.connectivity
+        let node2 = self
+            .connectivity
             .node_indices()
             .find(|&n| self.connectivity[n] == q2 as u32);
 
@@ -609,10 +611,12 @@ impl HardwareTopology {
     /// Get shortest path distance between two qubits
     pub fn shortest_path_distance(&self, q1: usize, q2: usize) -> Option<f64> {
         // Find node indices for these qubits
-        let node1 = self.connectivity
+        let node1 = self
+            .connectivity
             .node_indices()
             .find(|&n| self.connectivity[n] == q1 as u32)?;
-        let node2 = self.connectivity
+        let node2 = self
+            .connectivity
             .node_indices()
             .find(|&n| self.connectivity[n] == q2 as u32)?;
 

@@ -200,12 +200,12 @@ impl QuantumAnnealingSampler {
         // Convert QuboModel to matrix format and delegate
         let n = qubo.num_variables;
         let mut matrix = Array2::<f64>::zeros((n, n));
-        
+
         // Copy linear terms to diagonal
         for (i, val) in qubo.linear_terms() {
             matrix[[i, i]] = val;
         }
-        
+
         // Copy quadratic terms
         for (i, j, val) in qubo.quadratic_terms() {
             matrix[[i, j]] = val;
@@ -213,7 +213,7 @@ impl QuantumAnnealingSampler {
                 matrix[[j, i]] = val; // Ensure symmetry
             }
         }
-        
+
         self.build_problem_hamiltonian_from_matrix(&matrix)
     }
 

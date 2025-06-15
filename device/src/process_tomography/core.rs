@@ -1,6 +1,5 @@
 //! Core process tomography implementation
 
-use std::collections::HashMap;
 use ndarray::{Array1, Array2, Array3, Array4, ArrayView1, ArrayView2};
 use num_complex::Complex64;
 use quantrs2_circuit::prelude::*;
@@ -9,6 +8,7 @@ use quantrs2_core::{
     gate::GateOp,
     qubit::QubitId,
 };
+use std::collections::HashMap;
 
 use crate::{
     backend_traits::{query_backend_capabilities, BackendCapabilities},
@@ -20,12 +20,12 @@ use crate::{
 };
 
 use super::{
-    config::{SciRS2ProcessTomographyConfig, ReconstructionMethod},
-    results::*,
-    reconstruction::*,
     analysis::*,
-    validation::*,
+    config::{ReconstructionMethod, SciRS2ProcessTomographyConfig},
+    reconstruction::*,
+    results::*,
     utils::*,
+    validation::*,
 };
 
 // Conditional imports for SciRS2
@@ -154,7 +154,8 @@ impl SciRS2ProcessTomographer {
         };
 
         // Step 8: Uncertainty quantification
-        let uncertainty_quantification = self.quantify_uncertainty(&process_matrix, &experimental_data)?;
+        let uncertainty_quantification =
+            self.quantify_uncertainty(&process_matrix, &experimental_data)?;
 
         // Step 9: Process comparisons
         let process_comparisons = self.compare_with_known_processes(&process_matrix)?;
@@ -244,7 +245,10 @@ impl SciRS2ProcessTomographer {
     }
 
     /// Create Pauli measurement operators
-    pub(crate) fn create_pauli_measurements(&self, num_qubits: usize) -> DeviceResult<Vec<Array2<Complex64>>> {
+    pub(crate) fn create_pauli_measurements(
+        &self,
+        num_qubits: usize,
+    ) -> DeviceResult<Vec<Array2<Complex64>>> {
         let mut measurements = Vec::new();
         let dim = 1 << num_qubits;
 
@@ -306,20 +310,23 @@ impl SciRS2ProcessTomographer {
     }
 
     /// Calculate process fidelity with an ideal process
-    pub fn calculate_process_fidelity(&self, process_matrix: &Array4<Complex64>) -> DeviceResult<f64> {
+    pub fn calculate_process_fidelity(
+        &self,
+        process_matrix: &Array4<Complex64>,
+    ) -> DeviceResult<f64> {
         // Convert to Choi representation for fidelity calculation
         let choi_matrix = self.convert_to_choi_matrix(process_matrix)?;
-        
+
         // Create ideal identity process for comparison
         let ideal_choi = self.create_ideal_identity_choi(choi_matrix.dim().0)?;
-        
+
         // Calculate process fidelity using Choi matrices
         #[cfg(feature = "scirs2")]
         {
             let fidelity = self.calculate_choi_fidelity(&choi_matrix, &ideal_choi)?;
             Ok(fidelity)
         }
-        
+
         #[cfg(not(feature = "scirs2"))]
         {
             // Fallback: simplified fidelity calculation
@@ -328,36 +335,39 @@ impl SciRS2ProcessTomographer {
     }
 
     /// Calculate entangling power of the process
-    pub fn calculate_entangling_power(&self, process_matrix: &Array4<Complex64>) -> DeviceResult<f64> {
+    pub fn calculate_entangling_power(
+        &self,
+        process_matrix: &Array4<Complex64>,
+    ) -> DeviceResult<f64> {
         let dim = process_matrix.dim().0;
-        
+
         // For single qubit processes, entangling power is zero
         if dim <= 2 {
             return Ok(0.0);
         }
-        
+
         #[cfg(feature = "scirs2")]
         {
             // Calculate entangling power using process matrix analysis
             let choi_matrix = self.convert_to_choi_matrix(process_matrix)?;
-            
+
             // Compute eigenvalues of the partial transpose
             let partial_transpose = self.partial_transpose(&choi_matrix)?;
-            
+
             if let Ok((eigenvalues, _)) = eig(&partial_transpose.view()) {
                 let negative_eigenvalues: Vec<f64> = eigenvalues
                     .iter()
                     .map(|x| x.re)
                     .filter(|&x| x < 0.0)
                     .collect();
-                
+
                 let entangling_power = negative_eigenvalues.iter().map(|x| x.abs()).sum::<f64>();
                 Ok(entangling_power)
             } else {
                 Ok(0.0)
             }
         }
-        
+
         #[cfg(not(feature = "scirs2"))]
         {
             // Fallback: check for off-diagonal elements as entanglement indicator

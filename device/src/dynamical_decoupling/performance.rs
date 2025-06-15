@@ -1,22 +1,22 @@
 //! Performance analysis for dynamical decoupling sequences
 
+use ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::time::Duration;
-use ndarray::{Array1, Array2};
 
-use crate::DeviceResult;
 use super::{
-    config::{DDPerformanceConfig, DDPerformanceMetric, StatisticalDepth, BenchmarkProtocol},
+    config::{BenchmarkProtocol, DDPerformanceConfig, DDPerformanceMetric, StatisticalDepth},
     sequences::DDSequence,
     DDCircuitExecutor,
 };
+use crate::DeviceResult;
 
 // SciRS2 dependencies with fallbacks
 #[cfg(feature = "scirs2")]
-use scirs2_stats::{mean, std, pearsonr, spearmanr, ttest_1samp, ks_2samp, shapiro_wilk};
+use scirs2_stats::{ks_2samp, mean, pearsonr, shapiro_wilk, spearmanr, std, ttest_1samp};
 
 #[cfg(not(feature = "scirs2"))]
-use super::fallback_scirs2::{mean, std, pearsonr};
+use super::fallback_scirs2::{mean, pearsonr, std};
 
 /// Performance analysis results for DD sequences
 #[derive(Debug, Clone)]
@@ -265,7 +265,9 @@ impl DDPerformanceAnalyzer {
         let start_time = std::time::Instant::now();
 
         // Calculate performance metrics
-        let metrics = self.calculate_performance_metrics(sequence, executor).await?;
+        let metrics = self
+            .calculate_performance_metrics(sequence, executor)
+            .await?;
 
         // Run benchmarks if enabled
         let benchmark_results = if self.config.enable_benchmarking {
@@ -302,8 +304,11 @@ impl DDPerformanceAnalyzer {
         };
 
         self.historical_data.push(analysis.clone());
-        
-        println!("DD performance analysis completed in {:?}", start_time.elapsed());
+
+        println!(
+            "DD performance analysis completed in {:?}",
+            start_time.elapsed()
+        );
         Ok(analysis)
     }
 
@@ -319,27 +324,26 @@ impl DDPerformanceAnalyzer {
             let value = match metric {
                 DDPerformanceMetric::CoherenceTime => {
                     self.measure_coherence_time(sequence, executor).await?
-                },
+                }
                 DDPerformanceMetric::ProcessFidelity => {
                     self.measure_process_fidelity(sequence, executor).await?
-                },
-                DDPerformanceMetric::GateOverhead => {
-                    sequence.properties.pulse_count as f64
-                },
+                }
+                DDPerformanceMetric::GateOverhead => sequence.properties.pulse_count as f64,
                 DDPerformanceMetric::TimeOverhead => {
                     sequence.duration * 1e6 // Convert to microseconds
-                },
+                }
                 DDPerformanceMetric::RobustnessScore => {
                     self.calculate_robustness_score(sequence, executor).await?
-                },
+                }
                 DDPerformanceMetric::NoiseSuppressionFactor => {
                     self.calculate_noise_suppression(sequence, executor).await?
-                },
+                }
                 DDPerformanceMetric::ResourceEfficiency => {
-                    self.calculate_resource_efficiency(sequence, executor).await?
-                },
+                    self.calculate_resource_efficiency(sequence, executor)
+                        .await?
+                }
             };
-            
+
             metrics.insert(metric.clone(), value);
         }
 
@@ -355,8 +359,9 @@ impl DDPerformanceAnalyzer {
         // Simplified coherence time measurement
         let base_t2 = 50e-6; // 50 μs base T2
         let enhancement_factor: f64 = sequence.properties.noise_suppression.values().sum();
-        let suppression_factor = 1.0 + enhancement_factor / sequence.properties.noise_suppression.len() as f64;
-        
+        let suppression_factor =
+            1.0 + enhancement_factor / sequence.properties.noise_suppression.len() as f64;
+
         Ok(base_t2 * suppression_factor * 1e6) // Return in microseconds
     }
 
@@ -370,8 +375,10 @@ impl DDPerformanceAnalyzer {
         let base_fidelity = 0.99;
         let order_factor = 0.001 * (sequence.properties.sequence_order as f64);
         let overhead_penalty = -0.0001 * (sequence.properties.pulse_count as f64);
-        
-        Ok((base_fidelity + order_factor + overhead_penalty).max(0.0).min(1.0))
+
+        Ok((base_fidelity + order_factor + overhead_penalty)
+            .max(0.0)
+            .min(1.0))
     }
 
     /// Calculate robustness score
@@ -381,17 +388,25 @@ impl DDPerformanceAnalyzer {
         _executor: &dyn DDCircuitExecutor,
     ) -> DeviceResult<f64> {
         let mut robustness = 0.0;
-        
+
         // Symmetry contributions
-        if sequence.properties.symmetry.time_reversal { robustness += 0.25; }
-        if sequence.properties.symmetry.phase_symmetry { robustness += 0.25; }
-        if sequence.properties.symmetry.rotational_symmetry { robustness += 0.25; }
-        if sequence.properties.symmetry.inversion_symmetry { robustness += 0.25; }
-        
+        if sequence.properties.symmetry.time_reversal {
+            robustness += 0.25;
+        }
+        if sequence.properties.symmetry.phase_symmetry {
+            robustness += 0.25;
+        }
+        if sequence.properties.symmetry.rotational_symmetry {
+            robustness += 0.25;
+        }
+        if sequence.properties.symmetry.inversion_symmetry {
+            robustness += 0.25;
+        }
+
         // Noise suppression diversity
         let noise_diversity = sequence.properties.noise_suppression.len() as f64 / 10.0;
         robustness += noise_diversity.min(0.5);
-        
+
         Ok(robustness)
     }
 
@@ -401,7 +416,7 @@ impl DDPerformanceAnalyzer {
         sequence: &DDSequence,
         _executor: &dyn DDCircuitExecutor,
     ) -> DeviceResult<f64> {
-        let avg_suppression: f64 = sequence.properties.noise_suppression.values().sum::<f64>() 
+        let avg_suppression: f64 = sequence.properties.noise_suppression.values().sum::<f64>()
             / sequence.properties.noise_suppression.len() as f64;
         Ok(avg_suppression)
     }
@@ -414,7 +429,7 @@ impl DDPerformanceAnalyzer {
     ) -> DeviceResult<f64> {
         let coherence_improvement = self.measure_coherence_time(sequence, _executor).await? / 50.0; // Relative to base T2
         let resource_cost = sequence.properties.pulse_count as f64;
-        
+
         Ok(coherence_improvement / resource_cost.max(1.0))
     }
 
@@ -435,20 +450,27 @@ impl DDPerformanceAnalyzer {
         for protocol in &self.config.benchmarking_config.protocols {
             match protocol {
                 BenchmarkProtocol::RandomizedBenchmarking => {
-                    results.randomized_benchmarking = Some(self.run_randomized_benchmarking(sequence, executor).await?);
-                },
+                    results.randomized_benchmarking =
+                        Some(self.run_randomized_benchmarking(sequence, executor).await?);
+                }
                 BenchmarkProtocol::ProcessTomography => {
-                    results.process_tomography = Some(self.run_process_tomography(sequence, executor).await?);
-                },
+                    results.process_tomography =
+                        Some(self.run_process_tomography(sequence, executor).await?);
+                }
                 BenchmarkProtocol::GateSetTomography => {
-                    results.gate_set_tomography = Some(self.run_gate_set_tomography(sequence, executor).await?);
-                },
+                    results.gate_set_tomography =
+                        Some(self.run_gate_set_tomography(sequence, executor).await?);
+                }
                 BenchmarkProtocol::CrossEntropyBenchmarking => {
-                    results.cross_entropy_benchmarking = Some(self.run_cross_entropy_benchmarking(sequence, executor).await?);
-                },
+                    results.cross_entropy_benchmarking = Some(
+                        self.run_cross_entropy_benchmarking(sequence, executor)
+                            .await?,
+                    );
+                }
                 BenchmarkProtocol::CycleBenchmarking => {
-                    results.cycle_benchmarking = Some(self.run_cycle_benchmarking(sequence, executor).await?);
-                },
+                    results.cycle_benchmarking =
+                        Some(self.run_cycle_benchmarking(sequence, executor).await?);
+                }
             }
         }
 
@@ -472,7 +494,11 @@ impl DDPerformanceAnalyzer {
     }
 
     /// Run other benchmark protocols (simplified implementations)
-    async fn run_process_tomography(&self, _sequence: &DDSequence, _executor: &dyn DDCircuitExecutor) -> DeviceResult<ProcessTomographyResults> {
+    async fn run_process_tomography(
+        &self,
+        _sequence: &DDSequence,
+        _executor: &dyn DDCircuitExecutor,
+    ) -> DeviceResult<ProcessTomographyResults> {
         Ok(ProcessTomographyResults {
             process_fidelity: 0.98,
             process_matrix: Array2::eye(4),
@@ -481,16 +507,20 @@ impl DDPerformanceAnalyzer {
         })
     }
 
-    async fn run_gate_set_tomography(&self, _sequence: &DDSequence, _executor: &dyn DDCircuitExecutor) -> DeviceResult<GateSetTomographyResults> {
+    async fn run_gate_set_tomography(
+        &self,
+        _sequence: &DDSequence,
+        _executor: &dyn DDCircuitExecutor,
+    ) -> DeviceResult<GateSetTomographyResults> {
         let mut gate_fidelities = HashMap::new();
         gate_fidelities.insert("X".to_string(), 0.995);
         gate_fidelities.insert("Y".to_string(), 0.994);
         gate_fidelities.insert("Z".to_string(), 0.999);
-        
+
         let mut spam_errors = HashMap::new();
         spam_errors.insert("prep_error".to_string(), 0.001);
         spam_errors.insert("meas_error".to_string(), 0.002);
-        
+
         Ok(GateSetTomographyResults {
             gate_set_fidelity: 0.996,
             gate_fidelities,
@@ -499,7 +529,11 @@ impl DDPerformanceAnalyzer {
         })
     }
 
-    async fn run_cross_entropy_benchmarking(&self, _sequence: &DDSequence, _executor: &dyn DDCircuitExecutor) -> DeviceResult<CrossEntropyResults> {
+    async fn run_cross_entropy_benchmarking(
+        &self,
+        _sequence: &DDSequence,
+        _executor: &dyn DDCircuitExecutor,
+    ) -> DeviceResult<CrossEntropyResults> {
         Ok(CrossEntropyResults {
             cross_entropy_score: 2.1,
             linear_xeb_fidelity: 0.92,
@@ -508,7 +542,11 @@ impl DDPerformanceAnalyzer {
         })
     }
 
-    async fn run_cycle_benchmarking(&self, _sequence: &DDSequence, _executor: &dyn DDCircuitExecutor) -> DeviceResult<CycleBenchmarkingResults> {
+    async fn run_cycle_benchmarking(
+        &self,
+        _sequence: &DDSequence,
+        _executor: &dyn DDCircuitExecutor,
+    ) -> DeviceResult<CycleBenchmarkingResults> {
         Ok(CycleBenchmarkingResults {
             cycle_fidelity: 0.993,
             systematic_error_rate: 0.002,
@@ -526,7 +564,7 @@ impl DDPerformanceAnalyzer {
         // Create sample data for analysis (simplified)
         let sample_size = 100;
         let mut sample_data: HashMap<String, Array1<f64>> = HashMap::new();
-        
+
         for (metric, &value) in metrics {
             let metric_name = format!("{:?}", metric);
             // Generate sample data around the measured value
@@ -575,30 +613,31 @@ impl DDPerformanceAnalyzer {
             #[cfg(not(feature = "scirs2"))]
             let std_val = {
                 let mean = mean_val;
-                let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64;
+                let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>()
+                    / (values.len() - 1) as f64;
                 variance.sqrt()
             };
 
             means.insert(metric_name.clone(), mean_val);
             standard_deviations.insert(metric_name.clone(), std_val);
-            
+
             // Calculate median and percentiles (simplified)
             let mut sorted = values.to_vec();
             sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
             let len = sorted.len();
-            
+
             let median = if len % 2 == 0 {
-                (sorted[len/2 - 1] + sorted[len/2]) / 2.0
+                (sorted[len / 2 - 1] + sorted[len / 2]) / 2.0
             } else {
-                sorted[len/2]
+                sorted[len / 2]
             };
             medians.insert(metric_name.clone(), median);
-            
+
             let p25 = sorted[len / 4];
             let p75 = sorted[3 * len / 4];
             let p95 = sorted[95 * len / 100];
             let p99 = sorted[99 * len / 100];
-            
+
             percentiles.insert(metric_name.clone(), vec![p25, p75, p95, p99]);
             ranges.insert(metric_name.clone(), (sorted[0], sorted[len - 1]));
         }
@@ -613,7 +652,10 @@ impl DDPerformanceAnalyzer {
     }
 
     /// Other statistical analysis methods (simplified implementations)
-    fn perform_hypothesis_tests(&self, _data: &HashMap<String, Array1<f64>>) -> DeviceResult<HypothesisTestResults> {
+    fn perform_hypothesis_tests(
+        &self,
+        _data: &HashMap<String, Array1<f64>>,
+    ) -> DeviceResult<HypothesisTestResults> {
         Ok(HypothesisTestResults {
             t_test_results: HashMap::new(),
             ks_test_results: HashMap::new(),
@@ -621,11 +663,14 @@ impl DDPerformanceAnalyzer {
         })
     }
 
-    fn perform_correlation_analysis(&self, data: &HashMap<String, Array1<f64>>) -> DeviceResult<CorrelationAnalysis> {
+    fn perform_correlation_analysis(
+        &self,
+        data: &HashMap<String, Array1<f64>>,
+    ) -> DeviceResult<CorrelationAnalysis> {
         let n_metrics = data.len();
         let pearson_correlations = Array2::eye(n_metrics);
         let spearman_correlations = Array2::eye(n_metrics);
-        
+
         Ok(CorrelationAnalysis {
             pearson_correlations,
             spearman_correlations,
@@ -633,7 +678,10 @@ impl DDPerformanceAnalyzer {
         })
     }
 
-    fn analyze_distributions(&self, _data: &HashMap<String, Array1<f64>>) -> DeviceResult<DistributionAnalysis> {
+    fn analyze_distributions(
+        &self,
+        _data: &HashMap<String, Array1<f64>>,
+    ) -> DeviceResult<DistributionAnalysis> {
         Ok(DistributionAnalysis {
             best_fit_distributions: HashMap::new(),
             distribution_parameters: HashMap::new(),
@@ -641,7 +689,10 @@ impl DDPerformanceAnalyzer {
         })
     }
 
-    fn calculate_confidence_intervals(&self, _data: &HashMap<String, Array1<f64>>) -> DeviceResult<ConfidenceIntervals> {
+    fn calculate_confidence_intervals(
+        &self,
+        _data: &HashMap<String, Array1<f64>>,
+    ) -> DeviceResult<ConfidenceIntervals> {
         Ok(ConfidenceIntervals {
             mean_intervals: HashMap::new(),
             bootstrap_intervals: HashMap::new(),
@@ -649,7 +700,10 @@ impl DDPerformanceAnalyzer {
         })
     }
 
-    fn perform_comparative_analysis(&self, _metrics: &HashMap<DDPerformanceMetric, f64>) -> DeviceResult<ComparativeAnalysis> {
+    fn perform_comparative_analysis(
+        &self,
+        _metrics: &HashMap<DDPerformanceMetric, f64>,
+    ) -> DeviceResult<ComparativeAnalysis> {
         Ok(ComparativeAnalysis {
             relative_improvements: HashMap::new(),
             significance_tests: HashMap::new(),
@@ -658,7 +712,10 @@ impl DDPerformanceAnalyzer {
         })
     }
 
-    fn analyze_performance_trends(&self, _metrics: &HashMap<DDPerformanceMetric, f64>) -> DeviceResult<PerformanceTrends> {
+    fn analyze_performance_trends(
+        &self,
+        _metrics: &HashMap<DDPerformanceMetric, f64>,
+    ) -> DeviceResult<PerformanceTrends> {
         Ok(PerformanceTrends {
             trend_slopes: HashMap::new(),
             trend_significance: HashMap::new(),

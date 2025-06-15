@@ -21,7 +21,6 @@ thiserror.workspace = true
 scirs2-core = { workspace = true, features = ["simd", "memory_management", "parallel", "linalg", "gpu"], optional = true }
 scirs2-linalg = { workspace = true, default-features = false, optional = true }
 scirs2-optimize = { workspace = true, default-features = false, optional = true }
-pandrs = { workspace = true, optional = true }
 pyo3.workspace = true
 
 # For GPU support (optional)
@@ -33,15 +32,15 @@ rand.workspace = true
 rand_chacha.workspace = true
 rand_xoshiro = "0.6"
 wide.workspace = true
-fastrand = "2.0.1"
+fastrand = "2.3.0"
 nalgebra-sparse = "0.9"
 dashmap = "5.5"
-half = { version = "2.4", features = ["num-traits"] }
+half = { version = "2.6", features = ["num-traits"] }
 ndarray-linalg = { version = "0.17", optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
-num_cpus = "1.16"
+num_cpus = "1.17"
 
 [dev-dependencies]
 approx = "0.5"
@@ -52,7 +51,7 @@ gpu = ["dep:wgpu", "dep:bytemuck", "dep:tokio", "dep:futures"]
 simd = []
 optimize = ["simd"] # Enable optimized implementations
 memory_efficient = [] # Enable memory-efficient algorithms for large state vectors
-advanced_math = ["dep:scirs2-core", "dep:scirs2-linalg", "dep:scirs2-optimize", "dep:pandrs"] # Enable advanced math using external libs
+advanced_math = ["dep:scirs2-core", "dep:scirs2-linalg", "dep:scirs2-optimize"] # Enable advanced math using external libs
 mps = ["dep:ndarray-linalg"] # Enable MPS simulator with linear algebra support
 
 [[bin]]

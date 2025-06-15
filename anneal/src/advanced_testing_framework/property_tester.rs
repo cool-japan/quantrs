@@ -131,7 +131,7 @@ impl PropertyBasedTester {
             execution_stats: PropertyTestStats::default(),
         }
     }
-    
+
     /// Create default property definitions
     fn create_default_properties() -> Vec<PropertyDefinition> {
         vec![
@@ -139,75 +139,59 @@ impl PropertyBasedTester {
                 id: "solution_feasibility".to_string(),
                 description: "All solutions must be feasible".to_string(),
                 property_type: PropertyType::Correctness,
-                preconditions: vec![
-                    Precondition {
-                        id: "valid_problem".to_string(),
-                        expression: "problem.is_valid()".to_string(),
-                        parameters: HashMap::new(),
-                    }
-                ],
-                postconditions: vec![
-                    Postcondition {
-                        id: "solution_valid".to_string(),
-                        expression: "solution.is_feasible()".to_string(),
-                        expected_result: PropertyValue::Boolean(true),
-                        tolerance: 0.0,
-                    }
-                ],
-                invariants: vec![
-                    Invariant {
-                        id: "energy_conservation".to_string(),
-                        expression: "energy_is_conserved".to_string(),
-                        scope: InvariantScope::Global,
-                    }
-                ],
+                preconditions: vec![Precondition {
+                    id: "valid_problem".to_string(),
+                    expression: "problem.is_valid()".to_string(),
+                    parameters: HashMap::new(),
+                }],
+                postconditions: vec![Postcondition {
+                    id: "solution_valid".to_string(),
+                    expression: "solution.is_feasible()".to_string(),
+                    expected_result: PropertyValue::Boolean(true),
+                    tolerance: 0.0,
+                }],
+                invariants: vec![Invariant {
+                    id: "energy_conservation".to_string(),
+                    expression: "energy_is_conserved".to_string(),
+                    scope: InvariantScope::Global,
+                }],
             },
             PropertyDefinition {
                 id: "optimization_monotonicity".to_string(),
                 description: "Optimization should improve or maintain solution quality".to_string(),
                 property_type: PropertyType::Performance,
-                preconditions: vec![
-                    Precondition {
-                        id: "initial_solution".to_string(),
-                        expression: "has_initial_solution".to_string(),
-                        parameters: HashMap::new(),
-                    }
-                ],
-                postconditions: vec![
-                    Postcondition {
-                        id: "quality_improvement".to_string(),
-                        expression: "final_quality >= initial_quality".to_string(),
-                        expected_result: PropertyValue::Boolean(true),
-                        tolerance: 0.001,
-                    }
-                ],
-                invariants: vec![
-                    Invariant {
-                        id: "quality_monotonic".to_string(),
-                        expression: "quality_non_decreasing".to_string(),
-                        scope: InvariantScope::Temporal,
-                    }
-                ],
+                preconditions: vec![Precondition {
+                    id: "initial_solution".to_string(),
+                    expression: "has_initial_solution".to_string(),
+                    parameters: HashMap::new(),
+                }],
+                postconditions: vec![Postcondition {
+                    id: "quality_improvement".to_string(),
+                    expression: "final_quality >= initial_quality".to_string(),
+                    expected_result: PropertyValue::Boolean(true),
+                    tolerance: 0.001,
+                }],
+                invariants: vec![Invariant {
+                    id: "quality_monotonic".to_string(),
+                    expression: "quality_non_decreasing".to_string(),
+                    scope: InvariantScope::Temporal,
+                }],
             },
             PropertyDefinition {
                 id: "deterministic_behavior".to_string(),
                 description: "Same input should produce same output with fixed seed".to_string(),
                 property_type: PropertyType::Consistency,
-                preconditions: vec![
-                    Precondition {
-                        id: "fixed_seed".to_string(),
-                        expression: "seed.is_fixed()".to_string(),
-                        parameters: HashMap::new(),
-                    }
-                ],
-                postconditions: vec![
-                    Postcondition {
-                        id: "reproducible_result".to_string(),
-                        expression: "result1 == result2".to_string(),
-                        expected_result: PropertyValue::Boolean(true),
-                        tolerance: 0.0,
-                    }
-                ],
+                preconditions: vec![Precondition {
+                    id: "fixed_seed".to_string(),
+                    expression: "seed.is_fixed()".to_string(),
+                    parameters: HashMap::new(),
+                }],
+                postconditions: vec![Postcondition {
+                    id: "reproducible_result".to_string(),
+                    expression: "result1 == result2".to_string(),
+                    expected_result: PropertyValue::Boolean(true),
+                    tolerance: 0.0,
+                }],
                 invariants: Vec::new(),
             },
             PropertyDefinition {
@@ -227,19 +211,17 @@ impl PropertyBasedTester {
                         expression: "execution_time <= max_time".to_string(),
                         expected_result: PropertyValue::Boolean(true),
                         tolerance: 0.0,
-                    }
+                    },
                 ],
-                invariants: vec![
-                    Invariant {
-                        id: "resource_limits".to_string(),
-                        expression: "within_resource_limits".to_string(),
-                        scope: InvariantScope::Global,
-                    }
-                ],
-            }
+                invariants: vec![Invariant {
+                    id: "resource_limits".to_string(),
+                    expression: "within_resource_limits".to_string(),
+                    scope: InvariantScope::Global,
+                }],
+            },
         ]
     }
-    
+
     /// Create default test case generators
     fn create_default_generators() -> Vec<TestCaseGenerator> {
         vec![
@@ -274,10 +256,10 @@ impl PropertyBasedTester {
                     params.insert("num_classes".to_string(), 5.0);
                     params
                 },
-            }
+            },
         ]
     }
-    
+
     /// Create default shrinking strategies
     fn create_default_shrinking_strategies() -> Vec<ShrinkingStrategy> {
         vec![
@@ -306,65 +288,74 @@ impl PropertyBasedTester {
                     params.insert("granularity".to_string(), 2.0);
                     params
                 },
-            }
+            },
         ]
     }
-    
+
     /// Run property-based tests
-    pub fn run_property_tests(&mut self, property_id: &str, num_cases: usize) -> ApplicationResult<PropertyTestResult> {
-        let property = self.properties.iter()
+    pub fn run_property_tests(
+        &mut self,
+        property_id: &str,
+        num_cases: usize,
+    ) -> ApplicationResult<PropertyTestResult> {
+        let property = self
+            .properties
+            .iter()
             .find(|p| p.id == property_id)
-            .ok_or_else(|| ApplicationError::ConfigurationError(
-                format!("Property not found: {}", property_id)
-            ))?
+            .ok_or_else(|| {
+                ApplicationError::ConfigurationError(format!("Property not found: {}", property_id))
+            })?
             .clone();
-        
+
         println!("Running property-based tests for: {}", property.id);
         let start_time = Instant::now();
-        
+
         let mut cases_tested = 0;
         let mut cases_passed = 0;
         let mut counterexamples = Vec::new();
-        
+
         // Generate and test cases
         for _ in 0..num_cases {
             let test_case = self.generate_test_case(&property)?;
             cases_tested += 1;
-            
+
             let result = self.test_property(&property, &test_case)?;
-            
+
             if result.passed {
                 cases_passed += 1;
             } else {
-                // Try to shrink the counterexample  
+                // Try to shrink the counterexample
                 let shrunk_case = {
                     self.execution_stats.shrinking_attempts += 1;
                     self.shrink_counterexample_internal(&property, &test_case)?
                 };
                 counterexamples.push(format!("Case {}: {:?}", cases_tested, shrunk_case));
-                
+
                 // For demonstration, stop after finding a few counterexamples
                 if counterexamples.len() >= 3 {
                     break;
                 }
             }
         }
-        
+
         let execution_time = start_time.elapsed();
         let confidence = if cases_tested > 0 {
             cases_passed as f64 / cases_tested as f64
         } else {
             0.0
         };
-        
+
         // Update statistics
         self.execution_stats.cases_generated += cases_tested;
         self.execution_stats.cases_passed += cases_passed;
         self.execution_stats.cases_failed += cases_tested - cases_passed;
         self.execution_stats.execution_time += execution_time;
-        
-        println!("Property test completed: {}/{} passed", cases_passed, cases_tested);
-        
+
+        println!(
+            "Property test completed: {}/{} passed",
+            cases_passed, cases_tested
+        );
+
         Ok(PropertyTestResult {
             property_id: property.id.clone(),
             cases_tested,
@@ -374,30 +365,41 @@ impl PropertyBasedTester {
             execution_time,
         })
     }
-    
+
     /// Generate test case for property
-    fn generate_test_case(&self, property: &PropertyDefinition) -> ApplicationResult<PropertyTestCase> {
+    fn generate_test_case(
+        &self,
+        property: &PropertyDefinition,
+    ) -> ApplicationResult<PropertyTestCase> {
         // Find appropriate generator
-        let generator = self.generators.iter()
+        let generator = self
+            .generators
+            .iter()
             .find(|g| self.is_generator_suitable(g, property))
-            .ok_or_else(|| ApplicationError::ConfigurationError(
-                "No suitable generator found for property".to_string()
-            ))?;
-        
+            .ok_or_else(|| {
+                ApplicationError::ConfigurationError(
+                    "No suitable generator found for property".to_string(),
+                )
+            })?;
+
         self.generate_with_strategy(generator, property)
     }
-    
+
     /// Check if generator is suitable for property
-    fn is_generator_suitable(&self, _generator: &TestCaseGenerator, _property: &PropertyDefinition) -> bool {
+    fn is_generator_suitable(
+        &self,
+        _generator: &TestCaseGenerator,
+        _property: &PropertyDefinition,
+    ) -> bool {
         // Simplified: assume all generators are suitable
         true
     }
-    
+
     /// Generate test case with specific strategy
     fn generate_with_strategy(
         &self,
         generator: &TestCaseGenerator,
-        _property: &PropertyDefinition
+        _property: &PropertyDefinition,
     ) -> ApplicationResult<PropertyTestCase> {
         match generator.strategy {
             GenerationStrategy::Random => self.generate_random_case(generator),
@@ -406,15 +408,18 @@ impl PropertyBasedTester {
             _ => self.generate_random_case(generator), // Fallback
         }
     }
-    
+
     /// Generate random test case
-    fn generate_random_case(&self, generator: &TestCaseGenerator) -> ApplicationResult<PropertyTestCase> {
+    fn generate_random_case(
+        &self,
+        generator: &TestCaseGenerator,
+    ) -> ApplicationResult<PropertyTestCase> {
         let mut rng = rand::thread_rng();
         let size = rng.gen_range(generator.size_bounds.0..=generator.size_bounds.1);
-        
+
         let density = generator.parameters.get("density").unwrap_or(&0.3);
         let bias_range = generator.parameters.get("bias_range").unwrap_or(&1.0);
-        
+
         Ok(PropertyTestCase {
             id: format!("random_case_{}", rand::random::<u32>()),
             problem_spec: ProblemSpecification {
@@ -441,9 +446,12 @@ impl PropertyBasedTester {
             expected_properties: Vec::new(),
         })
     }
-    
+
     /// Generate boundary value test case
-    fn generate_boundary_case(&self, generator: &TestCaseGenerator) -> ApplicationResult<PropertyTestCase> {
+    fn generate_boundary_case(
+        &self,
+        generator: &TestCaseGenerator,
+    ) -> ApplicationResult<PropertyTestCase> {
         // Use boundary values: minimum, maximum, and near-boundary values
         let boundary_sizes = vec![
             generator.size_bounds.0,
@@ -451,10 +459,10 @@ impl PropertyBasedTester {
             generator.size_bounds.1 - 1,
             generator.size_bounds.1,
         ];
-        
+
         let mut rng = rand::thread_rng();
         let size = boundary_sizes[rng.gen_range(0..boundary_sizes.len())];
-        
+
         Ok(PropertyTestCase {
             id: format!("boundary_case_{}", size),
             problem_spec: ProblemSpecification {
@@ -475,31 +483,37 @@ impl PropertyBasedTester {
             input_parameters: {
                 let mut params = HashMap::new();
                 params.insert("size".to_string(), PropertyValue::Numeric(size as f64));
-                params.insert("boundary_type".to_string(), PropertyValue::String("size_boundary".to_string()));
+                params.insert(
+                    "boundary_type".to_string(),
+                    PropertyValue::String("size_boundary".to_string()),
+                );
                 params
             },
             expected_properties: Vec::new(),
         })
     }
-    
+
     /// Generate equivalence class test case
-    fn generate_equivalence_case(&self, generator: &TestCaseGenerator) -> ApplicationResult<PropertyTestCase> {
+    fn generate_equivalence_case(
+        &self,
+        generator: &TestCaseGenerator,
+    ) -> ApplicationResult<PropertyTestCase> {
         let num_classes = *generator.parameters.get("num_classes").unwrap_or(&5.0) as usize;
         let mut rng = rand::thread_rng();
         let class_id = rng.gen_range(0..num_classes);
-        
+
         // Define equivalence classes based on problem characteristics
         let (problem_type, density) = match class_id {
-            0 => (ProblemType::RandomIsing, 0.1),   // Sparse problems
-            1 => (ProblemType::RandomIsing, 0.5),   // Dense problems
-            2 => (ProblemType::MaxCut, 0.3),        // MaxCut problems
-            3 => (ProblemType::VertexCover, 0.2),   // VertexCover problems
-            _ => (ProblemType::RandomIsing, 0.3),   // Default class
+            0 => (ProblemType::RandomIsing, 0.1), // Sparse problems
+            1 => (ProblemType::RandomIsing, 0.5), // Dense problems
+            2 => (ProblemType::MaxCut, 0.3),      // MaxCut problems
+            3 => (ProblemType::VertexCover, 0.2), // VertexCover problems
+            _ => (ProblemType::RandomIsing, 0.3), // Default class
         };
-        
+
         let mut rng = rand::thread_rng();
         let size = rng.gen_range(generator.size_bounds.0..=generator.size_bounds.1);
-        
+
         Ok(PropertyTestCase {
             id: format!("equiv_case_{}_{}", class_id, size),
             problem_spec: ProblemSpecification {
@@ -519,16 +533,23 @@ impl PropertyBasedTester {
             },
             input_parameters: {
                 let mut params = HashMap::new();
-                params.insert("equivalence_class".to_string(), PropertyValue::Numeric(class_id as f64));
+                params.insert(
+                    "equivalence_class".to_string(),
+                    PropertyValue::Numeric(class_id as f64),
+                );
                 params.insert("size".to_string(), PropertyValue::Numeric(size as f64));
                 params
             },
             expected_properties: Vec::new(),
         })
     }
-    
+
     /// Test property against test case
-    fn test_property(&self, property: &PropertyDefinition, test_case: &PropertyTestCase) -> ApplicationResult<PropertyTestCaseResult> {
+    fn test_property(
+        &self,
+        property: &PropertyDefinition,
+        test_case: &PropertyTestCase,
+    ) -> ApplicationResult<PropertyTestCaseResult> {
         // Check preconditions
         for precondition in &property.preconditions {
             if !self.evaluate_precondition(precondition, test_case)? {
@@ -541,33 +562,31 @@ impl PropertyBasedTester {
                 });
             }
         }
-        
+
         // Execute the test (simplified simulation)
         let start_time = Instant::now();
         let execution_result = self.simulate_test_execution(test_case)?;
         let execution_time = start_time.elapsed();
-        
+
         // Check postconditions
         let mut all_passed = true;
         let mut failure_reason = None;
         let mut property_values = HashMap::new();
-        
+
         for postcondition in &property.postconditions {
             let result = self.evaluate_postcondition(postcondition, &execution_result)?;
             property_values.insert(postcondition.id.clone(), result.actual_value.clone());
-            
+
             if !result.passed {
                 all_passed = false;
                 failure_reason = Some(format!(
-                    "Postcondition failed: {} (expected: {:?}, actual: {:?})", 
-                    postcondition.id, 
-                    postcondition.expected_result,
-                    result.actual_value
+                    "Postcondition failed: {} (expected: {:?}, actual: {:?})",
+                    postcondition.id, postcondition.expected_result, result.actual_value
                 ));
                 break;
             }
         }
-        
+
         // Check invariants
         if all_passed {
             for invariant in &property.invariants {
@@ -578,7 +597,7 @@ impl PropertyBasedTester {
                 }
             }
         }
-        
+
         Ok(PropertyTestCaseResult {
             test_case_id: test_case.id.clone(),
             passed: all_passed,
@@ -587,24 +606,31 @@ impl PropertyBasedTester {
             property_values,
         })
     }
-    
+
     /// Evaluate precondition
-    fn evaluate_precondition(&self, _precondition: &Precondition, _test_case: &PropertyTestCase) -> ApplicationResult<bool> {
+    fn evaluate_precondition(
+        &self,
+        _precondition: &Precondition,
+        _test_case: &PropertyTestCase,
+    ) -> ApplicationResult<bool> {
         // Simplified: assume all preconditions pass
         Ok(true)
     }
-    
+
     /// Simulate test execution
-    fn simulate_test_execution(&self, test_case: &PropertyTestCase) -> ApplicationResult<TestExecutionResult> {
+    fn simulate_test_execution(
+        &self,
+        test_case: &PropertyTestCase,
+    ) -> ApplicationResult<TestExecutionResult> {
         let size = match test_case.input_parameters.get("size") {
             Some(PropertyValue::Numeric(s)) => *s as usize,
             _ => 10,
         };
-        
+
         // Simulate execution with some variability
         let quality = 0.8 + (rand::random::<f64>() * 0.2);
         let execution_time = Duration::from_millis((size as u64 * 10).min(1000));
-        
+
         Ok(TestExecutionResult {
             solution_quality: quality,
             execution_time,
@@ -614,30 +640,34 @@ impl PropertyBasedTester {
             memory_used: size * 8,
         })
     }
-    
+
     /// Evaluate postcondition
     fn evaluate_postcondition(
-        &self, 
-        postcondition: &Postcondition, 
-        execution_result: &TestExecutionResult
+        &self,
+        postcondition: &Postcondition,
+        execution_result: &TestExecutionResult,
     ) -> ApplicationResult<PostconditionResult> {
         let actual_value = match postcondition.id.as_str() {
             "solution_valid" => PropertyValue::Boolean(execution_result.convergence_achieved),
             "quality_improvement" => PropertyValue::Numeric(execution_result.solution_quality),
             "reproducible_result" => PropertyValue::Boolean(true), // Simplified
             "memory_bounded" => PropertyValue::Boolean(execution_result.memory_used < 1000000),
-            "time_bounded" => PropertyValue::Boolean(execution_result.execution_time < Duration::from_secs(60)),
+            "time_bounded" => {
+                PropertyValue::Boolean(execution_result.execution_time < Duration::from_secs(60))
+            }
             _ => PropertyValue::Boolean(true),
         };
-        
+
         let passed = match (&postcondition.expected_result, &actual_value) {
-            (PropertyValue::Boolean(expected), PropertyValue::Boolean(actual)) => expected == actual,
+            (PropertyValue::Boolean(expected), PropertyValue::Boolean(actual)) => {
+                expected == actual
+            }
             (PropertyValue::Numeric(expected), PropertyValue::Numeric(actual)) => {
                 (expected - actual).abs() <= postcondition.tolerance
             }
             _ => false,
         };
-        
+
         Ok(PostconditionResult {
             postcondition_id: postcondition.id.clone(),
             passed,
@@ -646,50 +676,57 @@ impl PropertyBasedTester {
             deviation: 0.0, // Simplified
         })
     }
-    
+
     /// Evaluate invariant
-    fn evaluate_invariant(&self, _invariant: &Invariant, _execution_result: &TestExecutionResult) -> ApplicationResult<bool> {
+    fn evaluate_invariant(
+        &self,
+        _invariant: &Invariant,
+        _execution_result: &TestExecutionResult,
+    ) -> ApplicationResult<bool> {
         // Simplified: assume all invariants hold
         Ok(true)
     }
-    
+
     /// Shrink counterexample to minimal failing case (internal, doesn't update stats)
-    fn shrink_counterexample_internal(&self, _property: &PropertyDefinition, test_case: &PropertyTestCase) -> ApplicationResult<PropertyTestCase> {
-        
+    fn shrink_counterexample_internal(
+        &self,
+        _property: &PropertyDefinition,
+        test_case: &PropertyTestCase,
+    ) -> ApplicationResult<PropertyTestCase> {
         // Simplified shrinking: just reduce problem size
         let current_size = match test_case.input_parameters.get("size") {
             Some(PropertyValue::Numeric(s)) => (*s as usize).max(1),
             _ => 1,
         };
-        
+
         let shrunk_size = (current_size / 2).max(1);
-        
+
         let mut shrunk_case = test_case.clone();
         shrunk_case.id = format!("{}_shrunk", test_case.id);
         shrunk_case.problem_spec.size_range = (shrunk_size, shrunk_size);
         shrunk_case.input_parameters.insert(
-            "size".to_string(), 
-            PropertyValue::Numeric(shrunk_size as f64)
+            "size".to_string(),
+            PropertyValue::Numeric(shrunk_size as f64),
         );
-        
+
         Ok(shrunk_case)
     }
-    
+
     /// Add property definition
     pub fn add_property(&mut self, property: PropertyDefinition) {
         self.properties.push(property);
     }
-    
+
     /// Get property by ID
     pub fn get_property(&self, property_id: &str) -> Option<&PropertyDefinition> {
         self.properties.iter().find(|p| p.id == property_id)
     }
-    
+
     /// Add test case generator
     pub fn add_generator(&mut self, generator: TestCaseGenerator) {
         self.generators.push(generator);
     }
-    
+
     /// Get execution statistics
     pub fn get_stats(&self) -> &PropertyTestStats {
         &self.execution_stats

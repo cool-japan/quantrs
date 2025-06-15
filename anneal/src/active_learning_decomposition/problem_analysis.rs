@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use crate::ising::IsingModel;
 use super::*;
+use crate::ising::IsingModel;
 
 /// Problem analyzer for decomposition
 #[derive(Debug, Clone)]

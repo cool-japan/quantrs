@@ -7,10 +7,10 @@
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::time::{Duration, Instant, SystemTime};
 
-use serde::{Deserialize, Serialize};
-use std::sync::{RwLock, Mutex};
+use ndarray::{s, Array1, Array2};
 use rand::prelude::*;
-use ndarray::{Array1, Array2, s};
+use serde::{Deserialize, Serialize};
+use std::sync::{Mutex, RwLock};
 
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::{
@@ -22,37 +22,29 @@ use quantrs2_core::{
 // Enhanced SciRS2 imports for advanced analysis
 #[cfg(feature = "scirs2")]
 use scirs2_stats::{
-    mean, std, var, median, percentile, skew, kurtosis,
-    pearsonr, spearmanr, kendall_tau,
-    ttest_ind, ttest_1samp, mannwhitneyu, wilcoxon, ks_2samp,
-    chi2_gof, levene, bartlett,
-    distributions::{norm, t, chi2 as chi2_dist, f as f_dist, gamma, beta, exponential},
-    Alternative, TTestResult,
+    bartlett, chi2_gof,
+    distributions::{beta, chi2 as chi2_dist, exponential, f as f_dist, gamma, norm, t},
+    kendall_tau, ks_2samp, kurtosis, levene, mannwhitneyu, mean, median, pearsonr, percentile,
+    skew, spearmanr, std, ttest_1samp, ttest_ind, var, wilcoxon, Alternative, TTestResult,
 };
 
-#[cfg(feature = "scirs2")]
-use scirs2_linalg::{
-    correlation_matrix, covariance_matrix, svd, 
-    eig, det, matrix_norm, cond,
-    LinalgResult,
-};
 #[cfg(feature = "scirs2")]
 use scirs2_linalg::lowrank::pca;
-
 #[cfg(feature = "scirs2")]
-use scirs2_optimize::{
-    minimize, OptimizeResult,
-    differential_evolution, particle_swarm,
+use scirs2_linalg::{
+    cond, correlation_matrix, covariance_matrix, det, eig, matrix_norm, svd, LinalgResult,
 };
 
 #[cfg(feature = "scirs2")]
-use scirs2_graph::{
-    Graph, shortest_path, betweenness_centrality, closeness_centrality,
-    eigenvector_centrality, pagerank, clustering_coefficient,
-    louvain_communities, graph_density,
-};
+use scirs2_optimize::{differential_evolution, minimize, particle_swarm, OptimizeResult};
+
 #[cfg(feature = "scirs2")]
 use scirs2_graph::spectral::spectral_clustering;
+#[cfg(feature = "scirs2")]
+use scirs2_graph::{
+    betweenness_centrality, closeness_centrality, clustering_coefficient, eigenvector_centrality,
+    graph_density, louvain_communities, pagerank, shortest_path, Graph,
+};
 
 // TODO: scirs2_ml crate not available yet
 // #[cfg(feature = "scirs2")]
@@ -66,16 +58,15 @@ use scirs2_graph::spectral::spectral_clustering;
 // Fallback implementations
 #[cfg(not(feature = "scirs2"))]
 // Note: ML optimization types are conditionally available based on scirs2 feature
-
 use ndarray::{Array3, ArrayView1, ArrayView2, Axis};
 
 use crate::{
     backend_traits::{query_backend_capabilities, BackendCapabilities},
-    benchmarking::{BenchmarkConfig, HardwareBenchmarkSuite, DeviceExecutor},
+    benchmarking::{BenchmarkConfig, DeviceExecutor, HardwareBenchmarkSuite},
     calibration::{CalibrationManager, DeviceCalibration},
     characterization::AdvancedNoiseCharacterizer,
+    ml_optimization::{train_test_split, IsolationForest, KMeans, KMeansResult, DBSCAN},
     qec::QuantumErrorCorrector,
-    ml_optimization::{KMeans, KMeansResult, DBSCAN, IsolationForest, train_test_split},
     CircuitResult, DeviceError, DeviceResult,
 };
 
@@ -90,15 +81,15 @@ impl LinearRegression {
             coefficients: Array1::zeros(1),
         }
     }
-    
+
     pub fn fit(&mut self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<&Self, String> {
         Ok(self)
     }
-    
+
     pub fn predict(&self, _x: &Array2<f64>) -> Array1<f64> {
         Array1::zeros(1)
     }
-    
+
     pub fn score(&self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<f64, String> {
         Ok(0.95) // Mock score
     }
@@ -112,15 +103,15 @@ impl RandomForestRegressor {
     pub fn new(n_estimators: usize) -> Self {
         Self { n_estimators }
     }
-    
+
     pub fn fit(&mut self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<&Self, String> {
         Ok(self)
     }
-    
+
     pub fn predict(&self, _x: &Array2<f64>) -> Array1<f64> {
         Array1::zeros(1)
     }
-    
+
     pub fn score(&self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<f64, String> {
         Ok(0.92) // Mock score
     }
@@ -133,17 +124,20 @@ pub struct GradientBoostingRegressor {
 
 impl GradientBoostingRegressor {
     pub fn new(n_estimators: usize, learning_rate: f64) -> Self {
-        Self { n_estimators, learning_rate }
+        Self {
+            n_estimators,
+            learning_rate,
+        }
     }
-    
+
     pub fn fit(&mut self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<&Self, String> {
         Ok(self)
     }
-    
+
     pub fn predict(&self, _x: &Array2<f64>) -> Array1<f64> {
         Array1::zeros(1)
     }
-    
+
     pub fn score(&self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<f64, String> {
         Ok(0.89) // Mock score
     }
@@ -189,11 +183,22 @@ pub struct MLBenchmarkConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MLModelType {
     LinearRegression,
-    PolynomialRegression { degree: usize },
-    RandomForest { n_estimators: usize },
-    GradientBoosting { n_estimators: usize, learning_rate: f64 },
-    NeuralNetwork { hidden_layers: Vec<usize> },
-    SupportVectorMachine { kernel: String },
+    PolynomialRegression {
+        degree: usize,
+    },
+    RandomForest {
+        n_estimators: usize,
+    },
+    GradientBoosting {
+        n_estimators: usize,
+        learning_rate: f64,
+    },
+    NeuralNetwork {
+        hidden_layers: Vec<usize>,
+    },
+    SupportVectorMachine {
+        kernel: String,
+    },
     GaussianProcess,
 }
 
@@ -917,13 +922,13 @@ pub struct AdvancedHardwareBenchmarkSuite {
     calibration_manager: CalibrationManager,
     noise_characterizer: AdvancedNoiseCharacterizer,
     error_corrector: QuantumErrorCorrector,
-    
+
     // ML and analysis components
     ml_models: RwLock<HashMap<String, MLModelResult>>,
     performance_history: RwLock<VecDeque<PerformanceSnapshot>>,
     anomaly_detector: Mutex<AnomalyDetector>,
     predictor: Mutex<PerformancePredictor>,
-    
+
     // Real-time monitoring
     monitoring_active: RwLock<bool>,
     alert_system: Mutex<AlertSystem>,
@@ -970,7 +975,10 @@ impl Default for AdvancedBenchmarkConfig {
                 model_types: vec![
                     MLModelType::LinearRegression,
                     MLModelType::RandomForest { n_estimators: 100 },
-                    MLModelType::GradientBoosting { n_estimators: 100, learning_rate: 0.1 },
+                    MLModelType::GradientBoosting {
+                        n_estimators: 100,
+                        learning_rate: 0.1,
+                    },
                 ],
                 training_config: MLTrainingConfig {
                     test_size: 0.2,
@@ -994,12 +1002,16 @@ impl Default for AdvancedBenchmarkConfig {
                 degradation_threshold: 0.05,
                 retrain_triggers: vec![
                     RetrainTrigger::PerformanceDegradation { threshold: 0.1 },
-                    RetrainTrigger::TimeBasedInterval { interval: Duration::from_secs(3600) },
+                    RetrainTrigger::TimeBasedInterval {
+                        interval: Duration::from_secs(3600),
+                    },
                 ],
                 notification_config: NotificationConfig {
                     enable_alerts: true,
                     alert_thresholds: HashMap::new(),
-                    channels: vec![NotificationChannel::Log { level: "INFO".to_string() }],
+                    channels: vec![NotificationChannel::Log {
+                        level: "INFO".to_string(),
+                    }],
                 },
             },
             prediction_config: PredictiveModelingConfig {
@@ -1071,10 +1083,8 @@ impl AdvancedHardwareBenchmarkSuite {
         calibration_manager: CalibrationManager,
         device_topology: crate::topology::HardwareTopology,
     ) -> QuantRS2Result<Self> {
-        let base_suite = HardwareBenchmarkSuite::new(
-            calibration_manager.clone(),
-            config.base_config.clone(),
-        );
+        let base_suite =
+            HardwareBenchmarkSuite::new(calibration_manager.clone(), config.base_config.clone());
 
         let noise_characterizer = AdvancedNoiseCharacterizer::new(
             "benchmark_device".to_string(),
@@ -1091,7 +1101,9 @@ impl AdvancedHardwareBenchmarkSuite {
         Ok(Self {
             anomaly_detector: Mutex::new(AnomalyDetector::new(&config.anomaly_config)),
             predictor: Mutex::new(PerformancePredictor::new(&config.prediction_config)),
-            alert_system: Mutex::new(AlertSystem::new(&config.realtime_config.notification_config)),
+            alert_system: Mutex::new(AlertSystem::new(
+                &config.realtime_config.notification_config,
+            )),
             config,
             base_suite,
             calibration_manager,
@@ -1110,36 +1122,44 @@ impl AdvancedHardwareBenchmarkSuite {
         executor: &E,
     ) -> DeviceResult<AdvancedBenchmarkResult> {
         let start_time = Instant::now();
-        
+
         // Step 1: Run base benchmarking suite
-        let base_results = self.base_suite.run_benchmark_suite(device_id, executor).await?;
-        
+        let base_results = self
+            .base_suite
+            .run_benchmark_suite(device_id, executor)
+            .await?;
+
         // Step 2: Extract features for ML analysis
         let features = self.extract_features(&base_results)?;
-        
+
         // Step 3: Perform ML analysis
         let ml_analysis = self.perform_ml_analysis(&features).await?;
-        
+
         // Step 4: Run predictive modeling
         let prediction_results = self.perform_predictive_modeling(&features).await?;
-        
+
         // Step 5: Detect anomalies
         let anomaly_results = self.detect_anomalies(&features)?;
-        
+
         // Step 6: Advanced statistical analysis
-        let advanced_stats = self.perform_advanced_statistical_analysis(&base_results).await?;
-        
+        let advanced_stats = self
+            .perform_advanced_statistical_analysis(&base_results)
+            .await?;
+
         // Step 7: Optimization
         let optimization_results = self.perform_optimization(&features).await?;
-        
+
         // Step 8: Collect real-time monitoring data
         let realtime_data = self.collect_realtime_data()?;
-        
+
         // Step 9: Update models and history
         self.update_performance_history(&base_results)?;
-        
-        println!("Advanced benchmarking completed in {:?}", start_time.elapsed());
-        
+
+        println!(
+            "Advanced benchmarking completed in {:?}",
+            start_time.elapsed()
+        );
+
         Ok(AdvancedBenchmarkResult {
             base_results,
             ml_analysis,
@@ -1157,21 +1177,21 @@ impl AdvancedHardwareBenchmarkSuite {
         results: &crate::benchmarking::BenchmarkSuite,
     ) -> DeviceResult<Array2<f64>> {
         let mut features = Vec::new();
-        
+
         // Extract features from benchmark results
         for result in &results.benchmark_results {
             let mut feature_vector = Vec::new();
-            
+
             // Basic features
             feature_vector.push(result.num_qubits as f64);
             feature_vector.push(result.circuit_depth as f64);
             feature_vector.push(result.gate_count as f64);
-            
+
             // Statistical features
             let exec_times = Array1::from_vec(result.execution_times.clone());
             let fidelities = Array1::from_vec(result.fidelities.clone());
             let error_rates = Array1::from_vec(result.error_rates.clone());
-            
+
             #[cfg(feature = "scirs2")]
             {
                 feature_vector.push(mean(&exec_times.view()).unwrap_or(0.0));
@@ -1181,7 +1201,7 @@ impl AdvancedHardwareBenchmarkSuite {
                 feature_vector.push(mean(&error_rates.view()).unwrap_or(0.0));
                 feature_vector.push(std(&error_rates.view(), 1).unwrap_or(0.0));
             }
-            
+
             #[cfg(not(feature = "scirs2"))]
             {
                 feature_vector.push(exec_times.mean().unwrap_or(0.0));
@@ -1191,43 +1211,40 @@ impl AdvancedHardwareBenchmarkSuite {
                 feature_vector.push(error_rates.mean().unwrap_or(0.0));
                 feature_vector.push(error_rates.std(1.0));
             }
-            
+
             features.push(feature_vector);
         }
-        
+
         let n_samples = features.len();
         let n_features = features[0].len();
         let flat_features: Vec<f64> = features.into_iter().flatten().collect();
-        
+
         Array2::from_shape_vec((n_samples, n_features), flat_features)
             .map_err(|e| DeviceError::APIError(format!("Feature extraction error: {}", e)))
     }
 
     /// Perform comprehensive ML analysis
-    async fn perform_ml_analysis(
-        &self,
-        features: &Array2<f64>,
-    ) -> DeviceResult<MLAnalysisResult> {
+    async fn perform_ml_analysis(&self, features: &Array2<f64>) -> DeviceResult<MLAnalysisResult> {
         let mut models = HashMap::new();
         let mut model_metrics = HashMap::new();
-        
+
         // Train different ML models
         for model_type in &self.config.ml_config.model_types {
             let (model_result, metrics) = self.train_model(model_type, features).await?;
             models.insert(format!("{:?}", model_type), model_result);
             model_metrics.insert(format!("{:?}", model_type), metrics);
         }
-        
+
         // Calculate feature importance
         let feature_importance = self.calculate_feature_importance(features).await?;
-        
+
         // Perform clustering if enabled
         let clustering_results = if self.config.ml_config.enable_clustering {
             Some(self.perform_clustering(features).await?)
         } else {
             None
         };
-        
+
         Ok(MLAnalysisResult {
             models,
             feature_importance,
@@ -1246,11 +1263,12 @@ impl AdvancedHardwareBenchmarkSuite {
         // Generate synthetic target values for demonstration
         // In practice, these would be real performance metrics
         let targets = self.generate_synthetic_targets(features)?;
-        
+
         // Split data into training and testing
         let test_size = self.config.ml_config.training_config.test_size;
-        let (x_train, x_test, y_train, y_test) = self.train_test_split(features, &targets, test_size)?;
-        
+        let (x_train, x_test, y_train, y_test) =
+            self.train_test_split(features, &targets, test_size)?;
+
         // Train model based on type
         let (model_data, training_score, validation_score) = match model_type {
             MLModelType::LinearRegression => {
@@ -1259,22 +1277,30 @@ impl AdvancedHardwareBenchmarkSuite {
             MLModelType::RandomForest { n_estimators } => {
                 self.train_random_forest(&x_train, &y_train, &x_test, &y_test, *n_estimators)?
             }
-            MLModelType::GradientBoosting { n_estimators, learning_rate } => {
-                self.train_gradient_boosting(&x_train, &y_train, &x_test, &y_test, *n_estimators, *learning_rate)?
-            }
+            MLModelType::GradientBoosting {
+                n_estimators,
+                learning_rate,
+            } => self.train_gradient_boosting(
+                &x_train,
+                &y_train,
+                &x_test,
+                &y_test,
+                *n_estimators,
+                *learning_rate,
+            )?,
             _ => {
                 // Fallback for other model types
                 (vec![0u8; 100], 0.8, 0.75)
             }
         };
-        
+
         // Calculate cross-validation scores
         let cv_scores = self.cross_validate(&x_train, &y_train, model_type)?;
-        
+
         // Calculate model metrics
         let predictions = self.predict_with_model(&model_data, &x_test)?;
         let metrics = self.calculate_model_metrics(&y_test, &predictions)?;
-        
+
         let model_result = MLModelResult {
             model_type: model_type.clone(),
             parameters: HashMap::new(), // Would contain actual model parameters
@@ -1283,7 +1309,7 @@ impl AdvancedHardwareBenchmarkSuite {
             cv_scores,
             model_data,
         };
-        
+
         Ok((model_result, metrics))
     }
 
@@ -1291,14 +1317,14 @@ impl AdvancedHardwareBenchmarkSuite {
     fn generate_synthetic_targets(&self, features: &Array2<f64>) -> DeviceResult<Array1<f64>> {
         let n_samples = features.nrows();
         let mut targets = Array1::zeros(n_samples);
-        
+
         // Simple synthetic relationship: target = sum of features with noise
         for i in 0..n_samples {
             let feature_sum: f64 = features.row(i).sum();
             let noise = (rand::random::<f64>() - 0.5) * 0.1;
             targets[i] = feature_sum + noise;
         }
-        
+
         Ok(targets)
     }
 
@@ -1312,13 +1338,13 @@ impl AdvancedHardwareBenchmarkSuite {
         let n_samples = features.nrows();
         let n_test = (n_samples as f64 * test_size) as usize;
         let n_train = n_samples - n_test;
-        
+
         // Simple split (in practice, would use proper shuffling)
         let x_train = features.slice(s![..n_train, ..]).to_owned();
         let x_test = features.slice(s![n_train.., ..]).to_owned();
         let y_train = targets.slice(s![..n_train]).to_owned();
         let y_test = targets.slice(s![n_train..]).to_owned();
-        
+
         Ok((x_train, x_test, y_train, y_test))
     }
 
@@ -1335,16 +1361,16 @@ impl AdvancedHardwareBenchmarkSuite {
             // Use SciRS2 linear regression if available
             let mut model = LinearRegression::new();
             let trained_model = model.fit(x_train, y_train)?;
-            
+
             let train_score = trained_model.score(x_train, y_train)?;
             let test_score = trained_model.score(x_test, y_test)?;
-            
+
             // Serialize model (simplified)
             let model_data = vec![0u8; 100]; // Placeholder
-            
+
             Ok((model_data, train_score, test_score))
         }
-        
+
         #[cfg(not(feature = "scirs2"))]
         {
             // Fallback implementation
@@ -1365,15 +1391,15 @@ impl AdvancedHardwareBenchmarkSuite {
         {
             let mut model = RandomForestRegressor::new(n_estimators);
             let trained_model = model.fit(x_train, y_train)?;
-            
+
             let train_score = trained_model.score(x_train, y_train)?;
             let test_score = trained_model.score(x_test, y_test)?;
-            
+
             let model_data = vec![0u8; 100]; // Placeholder
-            
+
             Ok((model_data, train_score, test_score))
         }
-        
+
         #[cfg(not(feature = "scirs2"))]
         {
             // Fallback implementation
@@ -1395,15 +1421,15 @@ impl AdvancedHardwareBenchmarkSuite {
         {
             let mut model = GradientBoostingRegressor::new(n_estimators, learning_rate);
             let trained_model = model.fit(x_train, y_train)?;
-            
+
             let train_score = trained_model.score(x_train, y_train)?;
             let test_score = trained_model.score(x_test, y_test)?;
-            
+
             let model_data = vec![0u8; 100]; // Placeholder
-            
+
             Ok((model_data, train_score, test_score))
         }
-        
+
         #[cfg(not(feature = "scirs2"))]
         {
             // Fallback implementation
@@ -1420,13 +1446,13 @@ impl AdvancedHardwareBenchmarkSuite {
     ) -> DeviceResult<Vec<f64>> {
         let cv_folds = self.config.ml_config.training_config.cv_folds;
         let mut scores = Vec::new();
-        
+
         // Simple cross-validation (in practice, would use proper CV)
         for _ in 0..cv_folds {
             let score = 0.80 + (rand::random::<f64>() - 0.5) * 0.1;
             scores.push(score);
         }
-        
+
         Ok(scores)
     }
 
@@ -1439,12 +1465,12 @@ impl AdvancedHardwareBenchmarkSuite {
         // Simplified prediction (would use actual model)
         let n_samples = features.nrows();
         let mut predictions = Array1::zeros(n_samples);
-        
+
         for i in 0..n_samples {
             let feature_sum: f64 = features.row(i).sum();
             predictions[i] = feature_sum + (rand::random::<f64>() - 0.5) * 0.1;
         }
-        
+
         Ok(predictions)
     }
 
@@ -1455,25 +1481,28 @@ impl AdvancedHardwareBenchmarkSuite {
         y_pred: &Array1<f64>,
     ) -> DeviceResult<ModelMetrics> {
         let n = y_true.len() as f64;
-        
+
         // Calculate metrics
         let mae = (y_true - y_pred).mapv(|x| x.abs()).mean().unwrap_or(0.0);
         let mse = (y_true - y_pred).mapv(|x| x.powi(2)).mean().unwrap_or(0.0);
         let rmse = mse.sqrt();
-        
+
         // R-squared
         let y_mean = y_true.mean().unwrap_or(0.0);
         let ss_tot = (y_true.mapv(|x| (x - y_mean).powi(2))).sum();
         let ss_res = (y_true - y_pred).mapv(|x| x.powi(2)).sum();
         let r2_score = 1.0 - (ss_res / ss_tot);
-        
+
         // MAPE
         let mape = ((y_true - y_pred) / y_true.mapv(|x| x.max(1e-8)))
-            .mapv(|x| x.abs()).mean().unwrap_or(0.0) * 100.0;
-        
+            .mapv(|x| x.abs())
+            .mean()
+            .unwrap_or(0.0)
+            * 100.0;
+
         // Explained variance
         let explained_variance = 1.0 - (y_true - y_pred).var(1.0) / y_true.var(1.0);
-        
+
         Ok(ModelMetrics {
             r2_score,
             mae,
@@ -1490,15 +1519,20 @@ impl AdvancedHardwareBenchmarkSuite {
         features: &Array2<f64>,
     ) -> DeviceResult<HashMap<String, f64>> {
         let mut importance = HashMap::new();
-        
+
         // Feature names
         let feature_names = vec![
-            "num_qubits", "circuit_depth", "gate_count",
-            "mean_exec_time", "std_exec_time",
-            "mean_fidelity", "std_fidelity",
-            "mean_error_rate", "std_error_rate",
+            "num_qubits",
+            "circuit_depth",
+            "gate_count",
+            "mean_exec_time",
+            "std_exec_time",
+            "mean_fidelity",
+            "std_fidelity",
+            "mean_error_rate",
+            "std_error_rate",
         ];
-        
+
         // Calculate simple importance based on variance
         for (i, name) in feature_names.iter().enumerate() {
             if i < features.ncols() {
@@ -1507,21 +1541,18 @@ impl AdvancedHardwareBenchmarkSuite {
                 importance.insert(name.to_string(), variance);
             }
         }
-        
+
         Ok(importance)
     }
 
     /// Perform clustering analysis
-    async fn perform_clustering(
-        &self,
-        features: &Array2<f64>,
-    ) -> DeviceResult<ClusteringResult> {
+    async fn perform_clustering(&self, features: &Array2<f64>) -> DeviceResult<ClusteringResult> {
         #[cfg(feature = "scirs2")]
         {
             let n_clusters = 3; // Could be determined automatically
             let mut kmeans = KMeans::new(n_clusters);
             let result = kmeans.fit(features).map_err(DeviceError::from)?;
-            
+
             Ok(ClusteringResult {
                 cluster_labels: result.labels,
                 cluster_centers: result.centers,
@@ -1530,14 +1561,14 @@ impl AdvancedHardwareBenchmarkSuite {
                 n_clusters,
             })
         }
-        
+
         #[cfg(not(feature = "scirs2"))]
         {
             // Fallback clustering using our fallback KMeans
             let n_clusters = 3;
             let mut kmeans = KMeans::new(n_clusters);
             let result = kmeans.fit(features).map_err(DeviceError::from)?;
-            
+
             Ok(ClusteringResult {
                 cluster_labels: result.labels,
                 cluster_centers: result.centers,
@@ -1549,7 +1580,7 @@ impl AdvancedHardwareBenchmarkSuite {
     }
 
     // Additional implementation methods would continue here...
-    
+
     /// Perform predictive modeling
     async fn perform_predictive_modeling(
         &self,
@@ -1562,7 +1593,7 @@ impl AdvancedHardwareBenchmarkSuite {
         let confidence_intervals = Array2::zeros((horizon, 2));
         let timestamps = (0..horizon).map(|_| SystemTime::now()).collect();
         let uncertainty = Array1::from_iter((0..horizon).map(|_| rand::random::<f64>() * 0.1));
-        
+
         let trend_analysis = TrendAnalysis {
             trend_direction: TrendDirection::Stable,
             trend_strength: 0.3,
@@ -1570,7 +1601,7 @@ impl AdvancedHardwareBenchmarkSuite {
             change_points: vec![],
             forecast_accuracy: 0.85,
         };
-        
+
         Ok(PredictionResult {
             predictions,
             prediction_intervals,
@@ -1582,10 +1613,7 @@ impl AdvancedHardwareBenchmarkSuite {
     }
 
     /// Detect anomalies in the data
-    fn detect_anomalies(
-        &self,
-        features: &Array2<f64>,
-    ) -> DeviceResult<AnomalyDetectionResult> {
+    fn detect_anomalies(&self, features: &Array2<f64>) -> DeviceResult<AnomalyDetectionResult> {
         let mut anomaly_detector = self.anomaly_detector.lock().unwrap();
         anomaly_detector.detect_anomalies(features)
     }
@@ -1607,7 +1635,7 @@ impl AdvancedHardwareBenchmarkSuite {
             canonical_correlation: None,
             normality_tests: HashMap::new(),
         };
-        
+
         Ok(AdvancedStatisticalResult {
             bayesian_results: None,
             multivariate_results,
@@ -1655,7 +1683,7 @@ impl AdvancedHardwareBenchmarkSuite {
     /// Collect real-time monitoring data
     fn collect_realtime_data(&self) -> DeviceResult<RealtimeMonitoringData> {
         let performance_history = self.performance_history.read().unwrap().clone();
-        
+
         Ok(RealtimeMonitoringData {
             performance_history,
             alert_history: vec![],
@@ -1680,13 +1708,13 @@ impl AdvancedHardwareBenchmarkSuite {
             metrics: HashMap::new(), // Would extract from results
             system_state: SystemState::Healthy,
         };
-        
+
         let mut history = self.performance_history.write().unwrap();
         if history.len() >= 10000 {
             history.pop_front();
         }
         history.push_back(snapshot);
-        
+
         Ok(())
     }
 }
@@ -1700,11 +1728,11 @@ impl AnomalyDetector {
             history: VecDeque::with_capacity(config.window_size),
         }
     }
-    
+
     fn detect_anomalies(&mut self, features: &Array2<f64>) -> DeviceResult<AnomalyDetectionResult> {
         let n_samples = features.nrows();
         let anomaly_scores = Array1::from_iter((0..n_samples).map(|_| rand::random::<f64>()));
-        
+
         // Simplified anomaly detection
         let threshold = 0.8;
         let anomalies: Vec<AnomalyInfo> = anomaly_scores
@@ -1719,7 +1747,7 @@ impl AnomalyDetector {
                 affected_metrics: vec!["performance".to_string()],
             })
             .collect();
-        
+
         Ok(AnomalyDetectionResult {
             anomalies,
             anomaly_scores,
@@ -1767,13 +1795,10 @@ mod tests {
         let config = AdvancedBenchmarkConfig::default();
         let calibration_manager = CalibrationManager::new();
         let topology = crate::topology::HardwareTopology::linear_topology(4);
-        
-        let suite = AdvancedHardwareBenchmarkSuite::new(
-            config,
-            calibration_manager,
-            topology,
-        ).unwrap();
-        
+
+        let suite =
+            AdvancedHardwareBenchmarkSuite::new(config, calibration_manager, topology).unwrap();
+
         // Create mock benchmark results
         let base_results = crate::benchmarking::BenchmarkSuite {
             device_id: "test".to_string(),
@@ -1835,7 +1860,7 @@ mod tests {
             },
             execution_time: Duration::from_secs(60),
         };
-        
+
         let features = suite.extract_features(&base_results).unwrap();
         assert_eq!(features.nrows(), 0); // No benchmark results in mock data
     }

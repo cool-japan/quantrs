@@ -11,6 +11,7 @@ pub mod adaptive_gate_fusion;
 pub mod adaptive_ml_error_correction;
 pub mod adiabatic_quantum_computing;
 pub mod autodiff_vqe;
+pub mod cache_optimized_layouts;
 pub mod circuit_interfaces;
 pub mod concatenated_error_correction;
 pub mod cuda;
@@ -25,7 +26,10 @@ pub mod enhanced_tensor_networks;
 pub mod error;
 pub mod fermionic_simulation;
 pub mod fusion;
+pub mod jit_compilation;
 pub mod linalg_ops;
+pub mod memory_bandwidth_optimization;
+pub mod memory_prefetching_optimization;
 pub mod mixed_precision;
 pub mod mixed_precision_impl;
 pub mod mps_basic;
@@ -122,6 +126,11 @@ pub mod prelude {
         ParametricGate, ParametricRX, ParametricRY, ParametricRZ, VQEIteration, VQEResult,
         VQEWithAutodiff,
     };
+    pub use crate::cache_optimized_layouts::{
+        CacheHierarchyConfig, CacheLayoutAdaptationResult, CacheOperationStats,
+        CacheOptimizedGateManager, CacheOptimizedLayout, CacheOptimizedStateVector,
+        CachePerformanceStats, CacheReplacementPolicy,
+    };
     pub use crate::circuit_interfaces::{
         BackendCompiledData, CircuitExecutionResult, CircuitInterface, CircuitInterfaceConfig,
         CircuitInterfaceStats, CircuitInterfaceUtils, CircuitMetadata, CircuitOptimizationResult,
@@ -139,13 +148,12 @@ pub mod prelude {
         ConcatenationLevel, ConcatenationStats, DecodingResult, ErrorCorrectionCode, ErrorType,
         HierarchicalDecodingMethod, LevelDecodingResult,
     };
-    pub use crate::cuda_kernels::{
-        GateType as CudaGateType, CudaKernelConfig, CudaKernelStats,
-        CudaQuantumKernels,
-        OptimizationLevel as CudaOptimizationLevel,
-    };
     #[cfg(feature = "advanced_math")]
     pub use crate::cuda_kernels::{CudaContext, CudaDeviceProperties, CudaKernel};
+    pub use crate::cuda_kernels::{
+        CudaKernelConfig, CudaKernelStats, CudaQuantumKernels, GateType as CudaGateType,
+        OptimizationLevel as CudaOptimizationLevel,
+    };
     pub use crate::debugger::{
         BreakCondition, DebugConfig, DebugReport, PerformanceMetrics, QuantumDebugger, StepResult,
         WatchFrequency, WatchProperty, Watchpoint,
@@ -171,6 +179,22 @@ pub mod prelude {
     pub use crate::fusion::{
         benchmark_fusion_strategies, FusedGate, FusionStats, FusionStrategy, GateFusion, GateGroup,
         OptimizedCircuit, OptimizedGate,
+    };
+    pub use crate::jit_compilation::{
+        benchmark_jit_compilation, CompilationPriority, CompilationStatus, CompiledFunction,
+        CompiledGateSequence, GateSequencePattern, JITBenchmarkResults, JITCompiler, JITConfig,
+        JITOptimization, JITOptimizationLevel, JITPerformanceStats, JITQuantumSimulator,
+        JITSimulatorStats, OptimizationSuggestion, PatternAnalysisResult, PatternComplexity,
+        RuntimeProfiler, RuntimeProfilerStats,
+    };
+    pub use crate::memory_bandwidth_optimization::{
+        BandwidthMonitor, MemoryBandwidthOptimizer, MemoryLayout, MemoryOptimizationConfig,
+        MemoryOptimizationReport, MemoryStats, OptimizedStateVector,
+    };
+    pub use crate::memory_prefetching_optimization::{
+        AccessPatternPredictor, AccessPatternType, DataLocalityOptimizer,
+        LocalityOptimizationResult, LocalityStrategy, LoopPattern, MemoryPrefetcher, NUMATopology,
+        PerformanceFeedback, PrefetchConfig, PrefetchHint, PrefetchStats, PrefetchStrategy,
     };
     pub use crate::mps_basic::{BasicMPS, BasicMPSConfig, BasicMPSSimulator};
     #[cfg(feature = "mps")]
@@ -202,8 +226,8 @@ pub mod prelude {
     pub use crate::pauli::{PauliOperator, PauliOperatorSum, PauliString, PauliUtils};
     pub use crate::performance_benchmark::{
         run_comprehensive_benchmark, run_quick_benchmark, BenchmarkComparison, BenchmarkConfig,
-        BenchmarkResult, MemoryStats, QuantumBenchmarkSuite, ScalabilityAnalysis, ThroughputStats,
-        TimingStats,
+        BenchmarkResult, MemoryStats as BenchmarkMemoryStats, QuantumBenchmarkSuite,
+        ScalabilityAnalysis, ThroughputStats, TimingStats,
     };
     pub use crate::photonic::{
         benchmark_photonic_methods, FockState, PhotonicConfig, PhotonicMethod, PhotonicOperator,

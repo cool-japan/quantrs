@@ -121,7 +121,11 @@ use crate::{
     qec::QECConfig,
     translation::HardwareBackend,
     vqa_support::{VQAConfig, VQAExecutor, VQAResult},
-    CircuitExecutor, CircuitResult, DeviceError, DeviceResult, QuantumDevice,
+    CircuitExecutor,
+    CircuitResult,
+    DeviceError,
+    DeviceResult,
+    QuantumDevice,
 };
 
 /// Configuration for the Integrated Quantum Device Manager

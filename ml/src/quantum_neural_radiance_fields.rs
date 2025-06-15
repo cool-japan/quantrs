@@ -12,10 +12,10 @@
 use crate::error::{MLError, Result};
 use ndarray::{Array1, Array2, Array3, Array4, ArrayView1, Axis};
 use num_complex::Complex64;
-use std::collections::HashMap;
-use std::f64::consts::PI;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use std::collections::HashMap;
+use std::f64::consts::PI;
 
 /// Configuration for Quantum Neural Radiance Fields
 #[derive(Debug, Clone)]
@@ -37,8 +37,8 @@ pub struct QuantumNeRFConfig {
 
 #[derive(Debug, Clone)]
 pub struct SceneBounds {
-    pub min_bound: Array1<f64>, // [x, y, z] minimum
-    pub max_bound: Array1<f64>, // [x, y, z] maximum
+    pub min_bound: Array1<f64>,          // [x, y, z] minimum
+    pub max_bound: Array1<f64>,          // [x, y, z] maximum
     pub voxel_resolution: Array1<usize>, // [nx, ny, nz]
 }
 
@@ -50,14 +50,14 @@ pub enum QuantumSamplingStrategy {
         max_samples: usize,
         quantum_jitter: f64,
     },
-    
+
     /// Hierarchical sampling with quantum importance
     QuantumHierarchical {
         coarse_samples: usize,
         fine_samples: usize,
         quantum_importance_threshold: f64,
     },
-    
+
     /// Quantum adaptive sampling based on uncertainty
     QuantumAdaptive {
         initial_samples: usize,
@@ -65,14 +65,14 @@ pub enum QuantumSamplingStrategy {
         uncertainty_threshold: f64,
         quantum_uncertainty_estimation: bool,
     },
-    
+
     /// Entanglement-based correlated sampling
     EntanglementCorrelated {
         base_samples: usize,
         correlation_strength: f64,
         entanglement_radius: f64,
     },
-    
+
     /// Quantum Monte Carlo sampling
     QuantumMonteCarlo {
         num_chains: usize,
@@ -159,27 +159,27 @@ pub struct DecoherenceMitigationConfig {
 /// Main Quantum Neural Radiance Field model
 pub struct QuantumNeRF {
     config: QuantumNeRFConfig,
-    
+
     // Core quantum components
     quantum_mlp_coarse: QuantumMLP,
     quantum_mlp_fine: QuantumMLP,
     quantum_positional_encoder: QuantumPositionalEncoder,
     quantum_view_encoder: QuantumViewEncoder,
-    
+
     // Quantum attention mechanisms
     spatial_attention: QuantumSpatialAttention,
     view_attention: QuantumViewAttention,
     scale_attention: QuantumScaleAttention,
-    
+
     // Quantum rendering components
     quantum_volume_renderer: QuantumVolumeRenderer,
     quantum_ray_marcher: QuantumRayMarcher,
-    
+
     // Training state
     training_history: Vec<NeRFTrainingMetrics>,
     quantum_rendering_metrics: QuantumRenderingMetrics,
     optimization_state: NeRFOptimizationState,
-    
+
     // Scene representation
     quantum_scene_representation: QuantumSceneRepresentation,
     quantum_light_field: QuantumLightField,
@@ -249,7 +249,10 @@ pub enum QuantumMLPGateType {
 
 #[derive(Debug, Clone)]
 pub enum RotationAxis {
-    X, Y, Z, Custom { direction: Array1<f64> },
+    X,
+    Y,
+    Z,
+    Custom { direction: Array1<f64> },
 }
 
 #[derive(Debug, Clone)]
@@ -439,8 +442,10 @@ pub struct QuantumRayMarcher {
 
 #[derive(Debug, Clone)]
 pub enum QuantumMarchingStrategy {
-    UniformMarching { step_size: f64 },
-    AdaptiveMarching { 
+    UniformMarching {
+        step_size: f64,
+    },
+    AdaptiveMarching {
         initial_step_size: f64,
         min_step_size: f64,
         max_step_size: f64,
@@ -467,7 +472,7 @@ pub struct QuantumSceneRepresentation {
 #[derive(Debug, Clone)]
 pub struct QuantumVoxelGrid {
     density_grid: Array3<f64>,
-    color_grid: Array4<f64>, // [x, y, z, rgb]
+    color_grid: Array4<f64>,             // [x, y, z, rgb]
     quantum_features: Array4<Complex64>, // [x, y, z, feature_dim]
     entanglement_structure: VoxelEntanglementStructure,
 }
@@ -573,7 +578,7 @@ pub enum QuantumUpsampling {
 
 #[derive(Debug, Clone)]
 pub struct QuantumLightField {
-    light_directions: Array2<f64>, // [num_directions, 3]
+    light_directions: Array2<f64>,  // [num_directions, 3]
     light_intensities: Array2<f64>, // [num_directions, 3] (RGB)
     quantum_light_coherence: Array2<Complex64>,
     spherical_harmonics_coefficients: Array2<f64>,
@@ -636,32 +641,32 @@ impl QuantumNeRF {
     /// Create a new Quantum Neural Radiance Field
     pub fn new(config: QuantumNeRFConfig) -> Result<Self> {
         println!("🌌 Initializing Quantum Neural Radiance Fields in UltraThink Mode");
-        
+
         // Initialize quantum MLP networks
         let quantum_mlp_coarse = Self::create_quantum_mlp(&config, "coarse")?;
         let quantum_mlp_fine = Self::create_quantum_mlp(&config, "fine")?;
-        
+
         // Initialize encoders
         let quantum_positional_encoder = Self::create_quantum_positional_encoder(&config)?;
         let quantum_view_encoder = Self::create_quantum_view_encoder(&config)?;
-        
+
         // Initialize attention mechanisms
         let spatial_attention = Self::create_spatial_attention(&config)?;
         let view_attention = Self::create_view_attention(&config)?;
         let scale_attention = Self::create_scale_attention(&config)?;
-        
+
         // Initialize rendering components
         let quantum_volume_renderer = Self::create_quantum_volume_renderer(&config)?;
         let quantum_ray_marcher = Self::create_quantum_ray_marcher(&config)?;
-        
+
         // Initialize scene representation
         let quantum_scene_representation = Self::create_quantum_scene_representation(&config)?;
         let quantum_light_field = Self::create_quantum_light_field(&config)?;
-        
+
         // Initialize metrics and optimization
         let quantum_rendering_metrics = QuantumRenderingMetrics::default();
         let optimization_state = NeRFOptimizationState::default();
-        
+
         Ok(Self {
             config,
             quantum_mlp_coarse,
@@ -680,7 +685,7 @@ impl QuantumNeRF {
             quantum_light_field,
         })
     }
-    
+
     /// Create quantum MLP network
     fn create_quantum_mlp(config: &QuantumNeRFConfig, network_type: &str) -> Result<QuantumMLP> {
         let (hidden_dims, output_dim) = match network_type {
@@ -688,19 +693,23 @@ impl QuantumNeRF {
             "fine" => (vec![256, 256, 256, 256, 256, 256], 4),
             _ => (vec![128, 128], 4),
         };
-        
+
         let mut layers = Vec::new();
         let mut input_dim = 3 + config.quantum_encoding_levels * 6; // 3D position + quantum encoding
-        
+
         // Add view direction encoding if using view-dependent rendering
         if config.quantum_view_synthesis {
             input_dim += 3 + config.quantum_encoding_levels * 6; // 3D view direction + encoding
         }
-        
+
         for (i, &hidden_dim) in hidden_dims.iter().enumerate() {
             let layer = QuantumMLPLayer {
                 layer_type: QuantumMLPLayerType::QuantumLinear,
-                input_dim: if i == 0 { input_dim } else { hidden_dims[i - 1] },
+                input_dim: if i == 0 {
+                    input_dim
+                } else {
+                    hidden_dims[i - 1]
+                },
                 output_dim: hidden_dim,
                 quantum_gates: Self::create_quantum_mlp_gates(config, hidden_dim)?,
                 activation: QuantumActivationType::QuantumReLU,
@@ -708,7 +717,7 @@ impl QuantumNeRF {
             };
             layers.push(layer);
         }
-        
+
         // Output layer
         let output_layer = QuantumMLPLayer {
             layer_type: QuantumMLPLayerType::QuantumLinear,
@@ -719,10 +728,10 @@ impl QuantumNeRF {
             normalization: None,
         };
         layers.push(output_layer);
-        
+
         // Skip connections (commonly used in NeRF)
         let skip_connections = vec![layers.len() / 2]; // Middle layer skip connection
-        
+
         Ok(QuantumMLP {
             layers,
             skip_connections,
@@ -731,11 +740,14 @@ impl QuantumNeRF {
             quantum_enhancement_factor: config.quantum_enhancement_level,
         })
     }
-    
+
     /// Create quantum MLP gates for a layer
-    fn create_quantum_mlp_gates(config: &QuantumNeRFConfig, layer_dim: usize) -> Result<Vec<QuantumMLPGate>> {
+    fn create_quantum_mlp_gates(
+        config: &QuantumNeRFConfig,
+        layer_dim: usize,
+    ) -> Result<Vec<QuantumMLPGate>> {
         let mut gates = Vec::new();
-        
+
         // Add parameterized rotation gates
         for i in 0..config.num_qubits {
             gates.push(QuantumMLPGate {
@@ -748,7 +760,7 @@ impl QuantumNeRF {
                 is_trainable: true,
             });
         }
-        
+
         // Add entanglement gates
         for i in 0..config.num_qubits - 1 {
             gates.push(QuantumMLPGate {
@@ -761,17 +773,19 @@ impl QuantumNeRF {
                 is_trainable: false,
             });
         }
-        
+
         Ok(gates)
     }
-    
+
     /// Create quantum positional encoder
-    fn create_quantum_positional_encoder(config: &QuantumNeRFConfig) -> Result<QuantumPositionalEncoder> {
+    fn create_quantum_positional_encoder(
+        config: &QuantumNeRFConfig,
+    ) -> Result<QuantumPositionalEncoder> {
         let max_frequency = 2.0_f64.powi(config.quantum_encoding_levels as i32 - 1);
         let quantum_frequencies = Array1::from_shape_fn(config.quantum_encoding_levels, |i| {
             2.0_f64.powi(i as i32) * PI
         });
-        
+
         Ok(QuantumPositionalEncoder {
             encoding_type: QuantumPositionalEncodingType::QuantumFourierEncoding,
             num_frequencies: config.quantum_encoding_levels,
@@ -781,15 +795,15 @@ impl QuantumNeRF {
             max_frequency,
         })
     }
-    
+
     /// Create quantum view encoder
     fn create_quantum_view_encoder(config: &QuantumNeRFConfig) -> Result<QuantumViewEncoder> {
         let encoding_dimension = config.quantum_encoding_levels * 6; // 3 directions * 2 (sin, cos) * encoding levels
-        
+
         // Initialize quantum view embedding (simplified)
         let quantum_view_embedding = Array2::zeros((encoding_dimension, config.num_qubits))
             .mapv(|_: f64| Complex64::new(1.0, 0.0));
-        
+
         Ok(QuantumViewEncoder {
             encoding_dimension,
             quantum_view_embedding,
@@ -797,26 +811,28 @@ impl QuantumNeRF {
             quantum_spherical_harmonics: config.quantum_view_synthesis,
         })
     }
-    
+
     /// Create spatial attention
     fn create_spatial_attention(config: &QuantumNeRFConfig) -> Result<QuantumSpatialAttention> {
         let num_heads = config.quantum_attention_config.num_attention_heads;
         let head_dim = config.num_qubits / num_heads;
-        
+
         Ok(QuantumSpatialAttention {
             num_heads,
             head_dim,
-            quantum_query_projection: Array2::eye(config.num_qubits).mapv(|x| Complex64::new(x, 0.0)),
+            quantum_query_projection: Array2::eye(config.num_qubits)
+                .mapv(|x| Complex64::new(x, 0.0)),
             quantum_key_projection: Array2::eye(config.num_qubits).mapv(|x| Complex64::new(x, 0.0)),
-            quantum_value_projection: Array2::eye(config.num_qubits).mapv(|x| Complex64::new(x, 0.0)),
+            quantum_value_projection: Array2::eye(config.num_qubits)
+                .mapv(|x| Complex64::new(x, 0.0)),
             entanglement_weights: Array1::ones(num_heads) * 0.5,
         })
     }
-    
+
     /// Create view attention
     fn create_view_attention(config: &QuantumNeRFConfig) -> Result<QuantumViewAttention> {
         let view_embedding_dim = config.quantum_encoding_levels * 6;
-        
+
         Ok(QuantumViewAttention {
             view_embedding_dim,
             quantum_view_weights: Array2::eye(view_embedding_dim).mapv(|x| Complex64::new(x, 0.0)),
@@ -824,11 +840,15 @@ impl QuantumNeRF {
             quantum_view_interpolation: config.quantum_view_synthesis,
         })
     }
-    
+
     /// Create scale attention
     fn create_scale_attention(config: &QuantumNeRFConfig) -> Result<QuantumScaleAttention> {
-        let num_scales = if config.quantum_multiscale_features { 4 } else { 1 };
-        
+        let num_scales = if config.quantum_multiscale_features {
+            4
+        } else {
+            1
+        };
+
         Ok(QuantumScaleAttention {
             num_scales,
             scale_weights: Array1::ones(num_scales) / num_scales as f64,
@@ -836,20 +856,20 @@ impl QuantumNeRF {
             adaptive_scale_selection: config.quantum_multiscale_features,
         })
     }
-    
+
     /// Create quantum volume renderer
     fn create_quantum_volume_renderer(config: &QuantumNeRFConfig) -> Result<QuantumVolumeRenderer> {
         let rendering_equation = QuantumRenderingEquation::QuantumVolumeRendering {
             quantum_transmittance: true,
             entangled_scattering: config.entanglement_based_interpolation,
         };
-        
+
         let quantum_alpha_blending = QuantumAlphaBlending {
             blending_mode: QuantumBlendingMode::QuantumSuperpositionBlending,
             quantum_compositing: true,
             entanglement_based_blending: config.entanglement_based_interpolation,
         };
-        
+
         let quantum_illumination = QuantumIllumination {
             light_sources: Vec::new(), // Will be populated during training
             ambient_lighting: QuantumAmbientLight {
@@ -860,7 +880,7 @@ impl QuantumNeRF {
             quantum_shadows: true,
             quantum_global_illumination: config.volumetric_rendering_config.quantum_light_transport,
         };
-        
+
         let quantum_material_model = QuantumMaterialModel {
             material_type: QuantumMaterialType::QuantumMaterial {
                 quantum_reflectance: Array2::eye(3).mapv(|x: f64| Complex64::new(x, 0.0)),
@@ -885,7 +905,7 @@ impl QuantumNeRF {
                 },
             },
         };
-        
+
         Ok(QuantumVolumeRenderer {
             rendering_equation,
             quantum_alpha_blending,
@@ -893,25 +913,32 @@ impl QuantumNeRF {
             quantum_material_model,
         })
     }
-    
+
     /// Create quantum ray marcher
     fn create_quantum_ray_marcher(config: &QuantumNeRFConfig) -> Result<QuantumRayMarcher> {
         let marching_strategy = match &config.quantum_sampling_strategy {
-            QuantumSamplingStrategy::QuantumUniform { min_samples, max_samples, quantum_jitter } => {
-                QuantumMarchingStrategy::UniformMarching { 
-                    step_size: 1.0 / *max_samples as f64 
-                }
+            QuantumSamplingStrategy::QuantumUniform {
+                min_samples,
+                max_samples,
+                quantum_jitter,
+            } => QuantumMarchingStrategy::UniformMarching {
+                step_size: 1.0 / *max_samples as f64,
             },
-            QuantumSamplingStrategy::QuantumAdaptive { initial_samples, max_refinements, uncertainty_threshold, quantum_uncertainty_estimation } => {
-                QuantumMarchingStrategy::AdaptiveMarching {
-                    initial_step_size: 1.0 / *initial_samples as f64,
-                    min_step_size: 1e-4,
-                    max_step_size: 1e-1,
-                }
+            QuantumSamplingStrategy::QuantumAdaptive {
+                initial_samples,
+                max_refinements,
+                uncertainty_threshold,
+                quantum_uncertainty_estimation,
+            } => QuantumMarchingStrategy::AdaptiveMarching {
+                initial_step_size: 1.0 / *initial_samples as f64,
+                min_step_size: 1e-4,
+                max_step_size: 1e-1,
             },
-            _ => QuantumMarchingStrategy::UniformMarching { step_size: 1.0 / 64.0 },
+            _ => QuantumMarchingStrategy::UniformMarching {
+                step_size: 1.0 / 64.0,
+            },
         };
-        
+
         Ok(QuantumRayMarcher {
             marching_strategy,
             quantum_sampling_points: Array2::zeros((config.max_ray_samples, 3)),
@@ -919,24 +946,40 @@ impl QuantumNeRF {
             adaptive_step_size: true,
         })
     }
-    
+
     /// Create quantum scene representation
-    fn create_quantum_scene_representation(config: &QuantumNeRFConfig) -> Result<QuantumSceneRepresentation> {
+    fn create_quantum_scene_representation(
+        config: &QuantumNeRFConfig,
+    ) -> Result<QuantumSceneRepresentation> {
         let voxel_resolution = &config.scene_bounds.voxel_resolution;
-        
+
         // Initialize voxel grid
         let voxel_grid = QuantumVoxelGrid {
-            density_grid: Array3::zeros((voxel_resolution[0], voxel_resolution[1], voxel_resolution[2])),
-            color_grid: Array4::zeros((voxel_resolution[0], voxel_resolution[1], voxel_resolution[2], 3)),
-            quantum_features: Array4::zeros((voxel_resolution[0], voxel_resolution[1], voxel_resolution[2], config.num_qubits))
-                .mapv(|_: f64| Complex64::new(0.0, 0.0)),
+            density_grid: Array3::zeros((
+                voxel_resolution[0],
+                voxel_resolution[1],
+                voxel_resolution[2],
+            )),
+            color_grid: Array4::zeros((
+                voxel_resolution[0],
+                voxel_resolution[1],
+                voxel_resolution[2],
+                3,
+            )),
+            quantum_features: Array4::zeros((
+                voxel_resolution[0],
+                voxel_resolution[1],
+                voxel_resolution[2],
+                config.num_qubits,
+            ))
+            .mapv(|_: f64| Complex64::new(0.0, 0.0)),
             entanglement_structure: VoxelEntanglementStructure {
                 entanglement_matrix: Array2::eye(voxel_resolution.iter().product()),
                 correlation_radius: 2.0,
                 entanglement_strength: config.quantum_enhancement_level,
             },
         };
-        
+
         // Initialize implicit surface
         let implicit_surface = QuantumImplicitSurface {
             sdf_function: QuantumSDF {
@@ -952,16 +995,18 @@ impl QuantumNeRF {
             quantum_surface_properties: QuantumSurfaceProperties {
                 surface_normal: Array1::zeros(3),
                 curvature: 0.0,
-                quantum_surface_features: Array1::zeros(config.num_qubits).mapv(|_: f64| Complex64::new(0.0, 0.0)),
+                quantum_surface_features: Array1::zeros(config.num_qubits)
+                    .mapv(|_: f64| Complex64::new(0.0, 0.0)),
             },
         };
-        
+
         // Initialize quantum octree
         let quantum_octree = QuantumOctree {
             root: QuantumOctreeNode {
                 bounds: config.scene_bounds.clone(),
                 children: None,
-                quantum_features: Array1::zeros(config.num_qubits).mapv(|_: f64| Complex64::new(0.0, 0.0)),
+                quantum_features: Array1::zeros(config.num_qubits)
+                    .mapv(|_: f64| Complex64::new(0.0, 0.0)),
                 occupancy_probability: 0.5,
                 entanglement_with_neighbors: Array1::zeros(8),
             },
@@ -970,7 +1015,7 @@ impl QuantumNeRF {
                 uncertainty_threshold: 0.1,
             },
         };
-        
+
         // Initialize multi-scale features
         let mut multi_scale_features = Vec::new();
         for level in 0..4 {
@@ -980,17 +1025,22 @@ impl QuantumNeRF {
                 voxel_resolution[1] / scale_factor,
                 voxel_resolution[2] / scale_factor,
             ]);
-            
+
             multi_scale_features.push(QuantumFeatureLevel {
                 level,
                 resolution: level_resolution.clone(),
-                quantum_features: Array4::zeros((level_resolution[0], level_resolution[1], level_resolution[2], config.num_qubits))
-                    .mapv(|_: f64| Complex64::new(0.0, 0.0)),
+                quantum_features: Array4::zeros((
+                    level_resolution[0],
+                    level_resolution[1],
+                    level_resolution[2],
+                    config.num_qubits,
+                ))
+                .mapv(|_: f64| Complex64::new(0.0, 0.0)),
                 downsampling_operator: QuantumDownsampling::QuantumAveragePooling,
                 upsampling_operator: QuantumUpsampling::QuantumBilinearInterpolation,
             });
         }
-        
+
         Ok(QuantumSceneRepresentation {
             voxel_grid,
             implicit_surface,
@@ -998,31 +1048,32 @@ impl QuantumNeRF {
             multi_scale_features,
         })
     }
-    
+
     /// Create quantum light field
     fn create_quantum_light_field(config: &QuantumNeRFConfig) -> Result<QuantumLightField> {
         let num_directions = 256; // Standard light probe resolution
-        
+
         // Generate uniform sphere sampling
         let mut light_directions = Array2::zeros((num_directions, 3));
         let mut rng = rand::thread_rng();
-        
+
         for i in 0..num_directions {
             let theta = rng.gen::<f64>() * 2.0 * PI;
             let phi = (rng.gen::<f64>() * 2.0 - 1.0).acos();
-            
+
             light_directions[[i, 0]] = phi.sin() * theta.cos();
             light_directions[[i, 1]] = phi.sin() * theta.sin();
             light_directions[[i, 2]] = phi.cos();
         }
-        
+
         let light_intensities = Array2::ones((num_directions, 3)) * 0.5; // Default ambient lighting
-        let quantum_light_coherence = Array2::zeros((num_directions, 3)).mapv(|_: f64| Complex64::new(1.0, 0.0));
-        
+        let quantum_light_coherence =
+            Array2::zeros((num_directions, 3)).mapv(|_: f64| Complex64::new(1.0, 0.0));
+
         // Initialize spherical harmonics coefficients (up to order 4)
         let num_sh_coefficients = (4u32 + 1).pow(2) as usize; // (L+1)^2
         let spherical_harmonics_coefficients = Array2::zeros((num_sh_coefficients, 3));
-        
+
         Ok(QuantumLightField {
             light_directions,
             light_intensities,
@@ -1030,12 +1081,13 @@ impl QuantumNeRF {
             spherical_harmonics_coefficients,
             quantum_environment_encoding: QuantumEnvironmentEncoding {
                 encoding_type: QuantumEnvironmentEncodingType::QuantumSphericalHarmonics,
-                quantum_coefficients: Array1::<f64>::zeros(num_sh_coefficients).mapv(|_| Complex64::new(0.0, 0.0)),
+                quantum_coefficients: Array1::<f64>::zeros(num_sh_coefficients)
+                    .mapv(|_| Complex64::new(0.0, 0.0)),
                 spatial_frequency_components: Array1::zeros(num_sh_coefficients),
             },
         })
     }
-    
+
     /// Render image from camera viewpoint
     pub fn render(
         &self,
@@ -1047,24 +1099,26 @@ impl QuantumNeRF {
         fov: f64,
     ) -> Result<QuantumRenderOutput> {
         println!("🎨 Rendering with Quantum Neural Radiance Fields");
-        
+
         let mut rendered_image = Array3::zeros((image_height, image_width, 3));
         let mut quantum_depth_map = Array2::zeros((image_height, image_width));
         let mut quantum_uncertainty_map = Array2::zeros((image_height, image_width));
         let mut pixel_quantum_states = Vec::new();
-        
+
         // Camera matrix setup
-        let camera_matrix = self.setup_camera_matrix(camera_position, camera_direction, camera_up, fov)?;
-        
+        let camera_matrix =
+            self.setup_camera_matrix(camera_position, camera_direction, camera_up, fov)?;
+
         // Render each pixel
         for y in 0..image_height {
             for x in 0..image_width {
                 // Generate ray for this pixel
-                let ray = self.generate_camera_ray(&camera_matrix, x, y, image_width, image_height, fov)?;
-                
+                let ray =
+                    self.generate_camera_ray(&camera_matrix, x, y, image_width, image_height, fov)?;
+
                 // Quantum ray marching and rendering
                 let pixel_output = self.render_pixel_quantum(&ray)?;
-                
+
                 // Store results
                 rendered_image[[y, x, 0]] = pixel_output.color[0];
                 rendered_image[[y, x, 1]] = pixel_output.color[1];
@@ -1074,10 +1128,11 @@ impl QuantumNeRF {
                 pixel_quantum_states.push(pixel_output.quantum_state);
             }
         }
-        
+
         // Compute rendering metrics
-        let rendering_metrics = self.compute_rendering_metrics(&rendered_image, &pixel_quantum_states)?;
-        
+        let rendering_metrics =
+            self.compute_rendering_metrics(&rendered_image, &pixel_quantum_states)?;
+
         Ok(QuantumRenderOutput {
             rendered_image,
             quantum_depth_map,
@@ -1086,7 +1141,7 @@ impl QuantumNeRF {
             rendering_metrics,
         })
     }
-    
+
     /// Setup camera matrix
     fn setup_camera_matrix(
         &self,
@@ -1100,7 +1155,7 @@ impl QuantumNeRF {
         let right = Self::cross_product(&forward, up);
         let right = &right / right.dot(&right).sqrt();
         let up_corrected = Self::cross_product(&right, &forward);
-        
+
         Ok(CameraMatrix {
             position: position.clone(),
             forward,
@@ -1109,7 +1164,7 @@ impl QuantumNeRF {
             fov,
         })
     }
-    
+
     /// Cross product helper
     fn cross_product(a: &Array1<f64>, b: &Array1<f64>) -> Array1<f64> {
         Array1::from_vec(vec![
@@ -1118,7 +1173,7 @@ impl QuantumNeRF {
             a[0] * b[1] - a[1] * b[0],
         ])
     }
-    
+
     /// Generate camera ray for pixel
     fn generate_camera_ray(
         &self,
@@ -1133,16 +1188,16 @@ impl QuantumNeRF {
         let aspect_ratio = image_width as f64 / image_height as f64;
         let ndc_x = (2.0 * pixel_x as f64 / image_width as f64 - 1.0) * aspect_ratio;
         let ndc_y = 1.0 - 2.0 * pixel_y as f64 / image_height as f64;
-        
+
         // Convert to camera space
         let tan_half_fov = (fov / 2.0).tan();
         let camera_x = ndc_x * tan_half_fov;
         let camera_y = ndc_y * tan_half_fov;
-        
+
         // Compute ray direction in world space
         let ray_direction = &camera.forward + camera_x * &camera.right + camera_y * &camera.up;
         let ray_direction = &ray_direction / ray_direction.dot(&ray_direction).sqrt();
-        
+
         Ok(Ray {
             origin: camera.position.clone(),
             direction: ray_direction,
@@ -1150,47 +1205,51 @@ impl QuantumNeRF {
             far: 10.0,
         })
     }
-    
+
     /// Render single pixel using quantum ray marching
     fn render_pixel_quantum(&self, ray: &Ray) -> Result<PixelRenderOutput> {
         // Generate quantum sampling points along ray
         let sampling_points = self.quantum_ray_sampling(ray)?;
-        
+
         // Query quantum MLP at sampling points
         let mut colors = Vec::new();
         let mut densities = Vec::new();
         let mut quantum_states = Vec::new();
-        
+
         for point in &sampling_points.points {
             // Quantum positional encoding
             let encoded_position = self.quantum_positional_encoding(&point.position)?;
             let encoded_view = self.quantum_view_encoding(&ray.direction)?;
-            
+
             // Combine encodings
             let mut input_features = encoded_position.features;
-            input_features.append(Axis(0), encoded_view.features.view()).unwrap();
-            
+            input_features
+                .append(Axis(0), encoded_view.features.view())
+                .unwrap();
+
             // Apply quantum attention
-            let attended_features = self.apply_quantum_spatial_attention(&input_features, &point.position)?;
-            
+            let attended_features =
+                self.apply_quantum_spatial_attention(&input_features, &point.position)?;
+
             // Query coarse network
-            let coarse_output = self.query_quantum_mlp(&self.quantum_mlp_coarse, &attended_features)?;
-            
+            let coarse_output =
+                self.query_quantum_mlp(&self.quantum_mlp_coarse, &attended_features)?;
+
             // Fine network (hierarchical sampling)
             let fine_output = if sampling_points.is_hierarchical {
                 Some(self.query_quantum_mlp(&self.quantum_mlp_fine, &attended_features)?)
             } else {
                 None
             };
-            
+
             // Use fine output if available, otherwise coarse
             let output = fine_output.as_ref().unwrap_or(&coarse_output);
-            
+
             colors.push(output.color.clone());
             densities.push(output.density);
             quantum_states.push(output.quantum_state.clone());
         }
-        
+
         // Quantum volume rendering
         let volume_render_output = self.quantum_volume_rendering(
             &colors,
@@ -1198,7 +1257,7 @@ impl QuantumNeRF {
             &quantum_states,
             &sampling_points.distances,
         )?;
-        
+
         Ok(PixelRenderOutput {
             color: volume_render_output.final_color,
             depth: volume_render_output.depth,
@@ -1206,7 +1265,7 @@ impl QuantumNeRF {
             quantum_state: volume_render_output.accumulated_quantum_state,
         })
     }
-    
+
     /// Quantum ray sampling
     fn quantum_ray_sampling(&self, ray: &Ray) -> Result<QuantumSamplingOutput> {
         let mut sampling_points = Vec::new();
@@ -1215,18 +1274,22 @@ impl QuantumNeRF {
             self.config.quantum_sampling_strategy,
             QuantumSamplingStrategy::QuantumHierarchical { .. }
         );
-        
+
         match &self.config.quantum_sampling_strategy {
-            QuantumSamplingStrategy::QuantumUniform { min_samples, max_samples, quantum_jitter } => {
+            QuantumSamplingStrategy::QuantumUniform {
+                min_samples,
+                max_samples,
+                quantum_jitter,
+            } => {
                 let num_samples = *max_samples;
                 for i in 0..num_samples {
                     let t = ray.near + (ray.far - ray.near) * i as f64 / (num_samples - 1) as f64;
-                    
+
                     // Add quantum jitter
                     let mut rng = rand::thread_rng();
                     let jitter = (rng.gen::<f64>() - 0.5) * quantum_jitter;
                     let t_jittered = t + jitter;
-                    
+
                     let position = &ray.origin + t_jittered * &ray.direction;
                     sampling_points.push(SamplingPoint {
                         position,
@@ -1235,12 +1298,17 @@ impl QuantumNeRF {
                     });
                     distances.push(t_jittered);
                 }
-            },
-            
-            QuantumSamplingStrategy::QuantumHierarchical { coarse_samples, fine_samples, quantum_importance_threshold } => {
+            }
+
+            QuantumSamplingStrategy::QuantumHierarchical {
+                coarse_samples,
+                fine_samples,
+                quantum_importance_threshold,
+            } => {
                 // Coarse sampling
                 for i in 0..*coarse_samples {
-                    let t = ray.near + (ray.far - ray.near) * i as f64 / (*coarse_samples - 1) as f64;
+                    let t =
+                        ray.near + (ray.far - ray.near) * i as f64 / (*coarse_samples - 1) as f64;
                     let position = &ray.origin + t * &ray.direction;
                     sampling_points.push(SamplingPoint {
                         position,
@@ -1249,25 +1317,31 @@ impl QuantumNeRF {
                     });
                     distances.push(t);
                 }
-                
+
                 // TODO: Implement fine sampling based on coarse results
                 // This would require initial coarse evaluation and importance-based refinement
-            },
-            
-            QuantumSamplingStrategy::EntanglementCorrelated { base_samples, correlation_strength, entanglement_radius } => {
+            }
+
+            QuantumSamplingStrategy::EntanglementCorrelated {
+                base_samples,
+                correlation_strength,
+                entanglement_radius,
+            } => {
                 // Generate correlated sampling points using quantum entanglement
                 let mut rng = rand::thread_rng();
-                
+
                 for i in 0..*base_samples {
-                    let base_t = ray.near + (ray.far - ray.near) * i as f64 / (*base_samples - 1) as f64;
-                    
+                    let base_t =
+                        ray.near + (ray.far - ray.near) * i as f64 / (*base_samples - 1) as f64;
+
                     // Add entanglement correlation
                     let correlation = if i > 0 {
-                        correlation_strength * (-(distances[i-1] - base_t).abs() / entanglement_radius).exp()
+                        correlation_strength
+                            * (-(distances[i - 1] - base_t).abs() / entanglement_radius).exp()
                     } else {
                         0.0
                     };
-                    
+
                     let position = &ray.origin + base_t * &ray.direction;
                     sampling_points.push(SamplingPoint {
                         position,
@@ -1276,8 +1350,8 @@ impl QuantumNeRF {
                     });
                     distances.push(base_t);
                 }
-            },
-            
+            }
+
             _ => {
                 // Default uniform sampling
                 let num_samples = self.config.max_ray_samples;
@@ -1293,40 +1367,45 @@ impl QuantumNeRF {
                 }
             }
         }
-        
+
         Ok(QuantumSamplingOutput {
             points: sampling_points,
             distances,
             is_hierarchical,
         })
     }
-    
+
     /// Quantum positional encoding
     fn quantum_positional_encoding(&self, position: &Array1<f64>) -> Result<QuantumEncodingOutput> {
         match self.quantum_positional_encoder.encoding_type {
             QuantumPositionalEncodingType::QuantumFourierEncoding => {
                 self.quantum_fourier_encoding(position)
-            },
+            }
             QuantumPositionalEncodingType::EntanglementBasedEncoding => {
                 self.entanglement_based_encoding(position)
-            },
+            }
             _ => self.standard_quantum_encoding(position),
         }
     }
-    
+
     /// Standard quantum encoding
     fn standard_quantum_encoding(&self, position: &Array1<f64>) -> Result<QuantumEncodingOutput> {
         let mut features = Vec::new();
-        
+
         // Add original coordinates
         features.extend_from_slice(position.as_slice().unwrap());
-        
+
         // Add quantum Fourier features
-        for (i, &freq) in self.quantum_positional_encoder.quantum_frequencies.iter().enumerate() {
+        for (i, &freq) in self
+            .quantum_positional_encoder
+            .quantum_frequencies
+            .iter()
+            .enumerate()
+        {
             for &coord in position.iter() {
                 features.push((freq * coord).sin());
                 features.push((freq * coord).cos());
-                
+
                 // Add quantum phase encoding if enabled
                 if self.quantum_positional_encoder.phase_encoding {
                     let quantum_phase = Complex64::from_polar(1.0, freq * coord);
@@ -1335,97 +1414,111 @@ impl QuantumNeRF {
                 }
             }
         }
-        
+
         Ok(QuantumEncodingOutput {
             features: Array1::from_vec(features),
-            quantum_amplitudes: Array1::zeros(self.config.num_qubits).mapv(|_: f64| Complex64::new(0.0, 0.0)),
+            quantum_amplitudes: Array1::zeros(self.config.num_qubits)
+                .mapv(|_: f64| Complex64::new(0.0, 0.0)),
             entanglement_measure: 0.5,
         })
     }
-    
+
     /// Quantum Fourier encoding
     fn quantum_fourier_encoding(&self, position: &Array1<f64>) -> Result<QuantumEncodingOutput> {
         let mut features = Vec::new();
         let mut quantum_amplitudes = Array1::zeros(self.config.num_qubits);
-        
+
         // Quantum Fourier transform of position
-        for (i, &freq) in self.quantum_positional_encoder.quantum_frequencies.iter().enumerate() {
-            let fourier_coefficient = position.iter()
+        for (i, &freq) in self
+            .quantum_positional_encoder
+            .quantum_frequencies
+            .iter()
+            .enumerate()
+        {
+            let fourier_coefficient = position
+                .iter()
                 .enumerate()
                 .map(|(j, &coord)| Complex64::from_polar(1.0, freq * coord * (j + 1) as f64))
-                .sum::<Complex64>() / position.len() as f64;
-                
+                .sum::<Complex64>()
+                / position.len() as f64;
+
             features.push(fourier_coefficient.re);
             features.push(fourier_coefficient.im);
-            
+
             // Store quantum amplitude
             if i < quantum_amplitudes.len() {
                 quantum_amplitudes[i] = fourier_coefficient;
             }
         }
-        
+
         Ok(QuantumEncodingOutput {
             features: Array1::from_vec(features),
             quantum_amplitudes,
             entanglement_measure: 0.7,
         })
     }
-    
+
     /// Entanglement-based encoding
     fn entanglement_based_encoding(&self, position: &Array1<f64>) -> Result<QuantumEncodingOutput> {
         let mut features = Vec::new();
         let mut quantum_amplitudes = Array1::zeros(self.config.num_qubits);
-        
+
         // Create entangled encoding
         for i in 0..self.config.num_qubits {
             for j in i + 1..self.config.num_qubits {
                 // Entanglement between qubits i and j based on position
-                let entanglement_strength = (position[i % position.len()] * position[j % position.len()]).abs();
+                let entanglement_strength =
+                    (position[i % position.len()] * position[j % position.len()]).abs();
                 let entangled_amplitude = Complex64::from_polar(
                     entanglement_strength.sqrt(),
                     position.iter().sum::<f64>() * (i + j) as f64,
                 );
-                
+
                 features.push(entangled_amplitude.re);
                 features.push(entangled_amplitude.im);
-                
+
                 quantum_amplitudes[i] += entangled_amplitude * 0.5;
                 quantum_amplitudes[j] += entangled_amplitude.conj() * 0.5;
             }
         }
-        
+
         // Normalize quantum amplitudes
-        let norm = quantum_amplitudes.dot(&quantum_amplitudes.mapv(|x: Complex64| x.conj())).norm();
+        let norm = quantum_amplitudes
+            .dot(&quantum_amplitudes.mapv(|x: Complex64| x.conj()))
+            .norm();
         if norm > 1e-10 {
             quantum_amplitudes = quantum_amplitudes / norm;
         }
-        
+
         Ok(QuantumEncodingOutput {
             features: Array1::from_vec(features),
             quantum_amplitudes,
             entanglement_measure: 0.9,
         })
     }
-    
+
     /// Quantum view encoding
     fn quantum_view_encoding(&self, view_direction: &Array1<f64>) -> Result<QuantumEncodingOutput> {
         // Normalize view direction
         let normalized_view = view_direction / view_direction.dot(view_direction).sqrt();
-        
+
         if self.quantum_view_encoder.quantum_spherical_harmonics {
             self.quantum_spherical_harmonics_encoding(&normalized_view)
         } else {
             self.standard_view_encoding(&normalized_view)
         }
     }
-    
+
     /// Standard view encoding
-    fn standard_view_encoding(&self, view_direction: &Array1<f64>) -> Result<QuantumEncodingOutput> {
+    fn standard_view_encoding(
+        &self,
+        view_direction: &Array1<f64>,
+    ) -> Result<QuantumEncodingOutput> {
         let mut features = Vec::new();
-        
+
         // Add normalized view direction
         features.extend_from_slice(view_direction.as_slice().unwrap());
-        
+
         // Add frequency encodings
         for &freq in self.quantum_positional_encoder.quantum_frequencies.iter() {
             for &component in view_direction.iter() {
@@ -1433,35 +1526,39 @@ impl QuantumNeRF {
                 features.push((freq * component).cos());
             }
         }
-        
+
         Ok(QuantumEncodingOutput {
             features: Array1::from_vec(features),
-            quantum_amplitudes: Array1::zeros(self.config.num_qubits).mapv(|_: f64| Complex64::new(0.0, 0.0)),
+            quantum_amplitudes: Array1::zeros(self.config.num_qubits)
+                .mapv(|_: f64| Complex64::new(0.0, 0.0)),
             entanglement_measure: 0.3,
         })
     }
-    
+
     /// Quantum spherical harmonics encoding
-    fn quantum_spherical_harmonics_encoding(&self, view_direction: &Array1<f64>) -> Result<QuantumEncodingOutput> {
+    fn quantum_spherical_harmonics_encoding(
+        &self,
+        view_direction: &Array1<f64>,
+    ) -> Result<QuantumEncodingOutput> {
         // Convert Cartesian to spherical coordinates
         let x = view_direction[0];
         let y = view_direction[1];
         let z = view_direction[2];
-        
+
         let theta = z.acos(); // polar angle
         let phi = y.atan2(x); // azimuthal angle
-        
+
         let mut features = Vec::new();
         let mut quantum_amplitudes = Array1::zeros(self.config.num_qubits);
-        
+
         // Compute quantum spherical harmonics up to specified order
         for l in 0..=self.quantum_view_encoder.spherical_harmonics_order {
             for m in -(l as i32)..=(l as i32) {
                 let sh_value = self.compute_quantum_spherical_harmonic(l, m, theta, phi)?;
-                
+
                 features.push(sh_value.re);
                 features.push(sh_value.im);
-                
+
                 // Store in quantum amplitudes
                 let idx = l * (l + 1) + (m + l as i32) as usize;
                 if idx < quantum_amplitudes.len() {
@@ -1469,14 +1566,14 @@ impl QuantumNeRF {
                 }
             }
         }
-        
+
         Ok(QuantumEncodingOutput {
             features: Array1::from_vec(features),
             quantum_amplitudes,
             entanglement_measure: 0.8,
         })
     }
-    
+
     /// Compute quantum spherical harmonic
     fn compute_quantum_spherical_harmonic(
         &self,
@@ -1486,15 +1583,16 @@ impl QuantumNeRF {
         phi: f64,
     ) -> Result<Complex64> {
         // Simplified quantum spherical harmonics (real implementation would be more complex)
-        let associated_legendre = self.compute_associated_legendre(l, m.abs() as usize, theta.cos());
+        let associated_legendre =
+            self.compute_associated_legendre(l, m.abs() as usize, theta.cos());
         let normalization = self.compute_spherical_harmonic_normalization(l, m.abs() as usize);
         let phase = Complex64::from_polar(1.0, m as f64 * phi);
-        
+
         let quantum_enhancement = 1.0 + self.config.quantum_enhancement_level * 0.1;
-        
+
         Ok(normalization * associated_legendre * phase * quantum_enhancement)
     }
-    
+
     /// Compute associated Legendre polynomial (simplified)
     fn compute_associated_legendre(&self, l: usize, m: usize, x: f64) -> f64 {
         // Simplified implementation - real version would use proper recursion
@@ -1508,14 +1606,15 @@ impl QuantumNeRF {
             _ => 1.0, // Default
         }
     }
-    
+
     /// Compute spherical harmonic normalization
     fn compute_spherical_harmonic_normalization(&self, l: usize, m: usize) -> f64 {
         // Simplified normalization
-        let factorial_ratio = (1..=l - m).product::<usize>() as f64 / (1..=l + m).product::<usize>() as f64;
+        let factorial_ratio =
+            (1..=l - m).product::<usize>() as f64 / (1..=l + m).product::<usize>() as f64;
         ((2.0 * l as f64 + 1.0) * factorial_ratio / (4.0 * PI)).sqrt()
     }
-    
+
     /// Apply quantum spatial attention
     fn apply_quantum_spatial_attention(
         &self,
@@ -1524,68 +1623,80 @@ impl QuantumNeRF {
     ) -> Result<Array1<f64>> {
         // Convert features to quantum state
         let quantum_features = features.mapv(|x| Complex64::new(x, 0.0));
-        
+
         // Apply quantum attention mechanism
-        let query = self.spatial_attention.quantum_query_projection.dot(&quantum_features);
-        let key = self.spatial_attention.quantum_key_projection.dot(&quantum_features);
-        let value = self.spatial_attention.quantum_value_projection.dot(&quantum_features);
-        
+        let query = self
+            .spatial_attention
+            .quantum_query_projection
+            .dot(&quantum_features);
+        let key = self
+            .spatial_attention
+            .quantum_key_projection
+            .dot(&quantum_features);
+        let value = self
+            .spatial_attention
+            .quantum_value_projection
+            .dot(&quantum_features);
+
         // Compute attention weights with quantum enhancement
-        let attention_scores = query.iter()
+        let attention_scores = query
+            .iter()
             .zip(key.iter())
             .map(|(&q, &k)| (q * k.conj()).norm())
             .collect::<Vec<f64>>();
-            
+
         let max_score = attention_scores.iter().fold(0.0f64, |a, &b| a.max(b));
-        let attention_weights: Vec<f64> = attention_scores.iter()
+        let attention_weights: Vec<f64> = attention_scores
+            .iter()
             .map(|&score| ((score - max_score) / self.spatial_attention.head_dim as f64).exp())
             .collect();
-            
+
         let weight_sum: f64 = attention_weights.iter().sum();
-        let normalized_weights: Vec<f64> = attention_weights.iter()
-            .map(|&w| w / weight_sum)
-            .collect();
-        
+        let normalized_weights: Vec<f64> =
+            attention_weights.iter().map(|&w| w / weight_sum).collect();
+
         // Apply attention to values
-        let attended_features = value.iter()
+        let attended_features = value
+            .iter()
             .zip(normalized_weights.iter())
             .map(|(&v, &w)| v * w)
             .sum::<Complex64>();
-        
+
         // Convert back to real features (simplified)
         let mut output_features = features.clone();
         for (i, feature) in output_features.iter_mut().enumerate() {
             *feature += attended_features.re * 0.1; // Small attention contribution
         }
-        
+
         Ok(output_features)
     }
-    
+
     /// Query quantum MLP
     fn query_quantum_mlp(&self, mlp: &QuantumMLP, input: &Array1<f64>) -> Result<MLPOutput> {
         let mut current_features = input.clone();
         let mut quantum_state = QuantumMLPState {
-            quantum_amplitudes: Array1::zeros(self.config.num_qubits).mapv(|_: f64| Complex64::new(0.0, 0.0)),
+            quantum_amplitudes: Array1::zeros(self.config.num_qubits)
+                .mapv(|_: f64| Complex64::new(0.0, 0.0)),
             entanglement_measure: 0.5,
             quantum_fidelity: 1.0,
         };
-        
+
         // Process through layers
         for (layer_idx, layer) in mlp.layers.iter().enumerate() {
-            let layer_output = self.apply_quantum_mlp_layer(layer, &current_features, &quantum_state)?;
+            let layer_output =
+                self.apply_quantum_mlp_layer(layer, &current_features, &quantum_state)?;
             current_features = layer_output.features;
             quantum_state = layer_output.quantum_state;
-            
+
             // Apply skip connections
             if mlp.skip_connections.contains(&layer_idx) && layer_idx > 0 {
                 // Add skip connection (simplified)
-                let skip_contribution = input.iter()
-                    .take(current_features.len())
-                    .sum::<f64>() / input.len() as f64;
+                let skip_contribution =
+                    input.iter().take(current_features.len()).sum::<f64>() / input.len() as f64;
                 current_features = current_features.mapv(|x| x + skip_contribution * 0.1);
             }
         }
-        
+
         // Extract outputs
         let output_dim = current_features.len();
         if output_dim >= 4 {
@@ -1595,10 +1706,12 @@ impl QuantumNeRF {
                 quantum_state,
             })
         } else {
-            Err(MLError::ModelCreationError("Insufficient output dimensions".to_string()))
+            Err(MLError::ModelCreationError(
+                "Insufficient output dimensions".to_string(),
+            ))
         }
     }
-    
+
     /// Apply quantum MLP layer
     fn apply_quantum_mlp_layer(
         &self,
@@ -1612,45 +1725,43 @@ impl QuantumNeRF {
         } else {
             Array1::ones(layer.output_dim) * 0.5
         };
-        
+
         // Apply quantum gates
         let mut updated_quantum_state = quantum_state.clone();
         for gate in &layer.quantum_gates {
             updated_quantum_state = self.apply_quantum_mlp_gate(gate, &updated_quantum_state)?;
         }
-        
+
         // Apply activation
         let activated_output = match layer.activation {
-            QuantumActivationType::QuantumReLU => {
-                linear_output.mapv(|x: f64| x.max(0.0))
-            },
+            QuantumActivationType::QuantumReLU => linear_output.mapv(|x: f64| x.max(0.0)),
             QuantumActivationType::QuantumSigmoid => {
                 linear_output.mapv(|x| 1.0 / (1.0 + (-x).exp()))
-            },
+            }
             QuantumActivationType::QuantumSoftplus => {
                 linear_output.mapv(|x: f64| (1.0f64 + x.exp()).ln())
-            },
+            }
             QuantumActivationType::QuantumEntanglementActivation => {
                 // Apply entanglement-based activation
                 let entanglement_factor = updated_quantum_state.entanglement_measure;
                 linear_output.mapv(|x| x * (1.0 + entanglement_factor))
-            },
+            }
             _ => linear_output,
         };
-        
+
         // Apply normalization if specified
         let normalized_output = if let Some(ref norm_type) = layer.normalization {
             self.apply_quantum_normalization(&activated_output, norm_type)?
         } else {
             activated_output
         };
-        
+
         Ok(MLPLayerOutput {
             features: normalized_output,
             quantum_state: updated_quantum_state,
         })
     }
-    
+
     /// Apply quantum MLP gate
     fn apply_quantum_mlp_gate(
         &self,
@@ -1658,7 +1769,7 @@ impl QuantumNeRF {
         quantum_state: &QuantumMLPState,
     ) -> Result<QuantumMLPState> {
         let mut new_state = quantum_state.clone();
-        
+
         match &gate.gate_type {
             QuantumMLPGateType::ParameterizedRotation { axis } => {
                 let angle = gate.parameters[0];
@@ -1668,30 +1779,37 @@ impl QuantumNeRF {
                         new_state.quantum_amplitudes[target_qubit] *= rotation_factor;
                     }
                 }
-            },
+            }
             QuantumMLPGateType::EntanglementGate { gate_name } => {
-                if gate_name == "CNOT" && gate.control_qubits.len() > 0 && gate.target_qubits.len() > 0 {
+                if gate_name == "CNOT"
+                    && gate.control_qubits.len() > 0
+                    && gate.target_qubits.len() > 0
+                {
                     let control = gate.control_qubits[0];
                     let target = gate.target_qubits[0];
-                    
-                    if control < new_state.quantum_amplitudes.len() && target < new_state.quantum_amplitudes.len() {
+
+                    if control < new_state.quantum_amplitudes.len()
+                        && target < new_state.quantum_amplitudes.len()
+                    {
                         // Simple CNOT-like operation
                         let entanglement_factor = 0.1;
                         let control_amplitude = new_state.quantum_amplitudes[control];
-                        new_state.quantum_amplitudes[target] += entanglement_factor * control_amplitude;
-                        new_state.entanglement_measure = (new_state.entanglement_measure + 0.1).min(1.0);
+                        new_state.quantum_amplitudes[target] +=
+                            entanglement_factor * control_amplitude;
+                        new_state.entanglement_measure =
+                            (new_state.entanglement_measure + 0.1).min(1.0);
                     }
                 }
-            },
+            }
             _ => {
                 // Default gate processing
                 new_state.quantum_fidelity *= 0.99;
             }
         }
-        
+
         Ok(new_state)
     }
-    
+
     /// Apply quantum normalization
     fn apply_quantum_normalization(
         &self,
@@ -1701,23 +1819,25 @@ impl QuantumNeRF {
         match norm_type {
             QuantumNormalizationType::QuantumLayerNorm => {
                 let mean = input.sum() / input.len() as f64;
-                let variance = input.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / input.len() as f64;
+                let variance =
+                    input.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / input.len() as f64;
                 let std_dev = (variance + 1e-8).sqrt();
                 Ok(input.mapv(|x| (x - mean) / std_dev))
-            },
+            }
             QuantumNormalizationType::EntanglementNorm => {
                 // Normalize based on quantum entanglement principles
-                let quantum_norm = input.dot(input).sqrt() * (1.0 + self.config.quantum_enhancement_level);
+                let quantum_norm =
+                    input.dot(input).sqrt() * (1.0 + self.config.quantum_enhancement_level);
                 if quantum_norm > 1e-10 {
                     Ok(input / quantum_norm)
                 } else {
                     Ok(input.clone())
                 }
-            },
+            }
             _ => Ok(input.clone()),
         }
     }
-    
+
     /// Quantum volume rendering
     fn quantum_volume_rendering(
         &self,
@@ -1729,13 +1849,14 @@ impl QuantumNeRF {
         let mut final_color = Array1::zeros(3);
         let mut accumulated_alpha = 0.0;
         let mut accumulated_quantum_state = QuantumMLPState {
-            quantum_amplitudes: Array1::zeros(self.config.num_qubits).mapv(|_: f64| Complex64::new(0.0, 0.0)),
+            quantum_amplitudes: Array1::zeros(self.config.num_qubits)
+                .mapv(|_: f64| Complex64::new(0.0, 0.0)),
             entanglement_measure: 0.0,
             quantum_fidelity: 1.0,
         };
         let mut depth = 0.0;
         let mut quantum_uncertainty = 0.0;
-        
+
         // Volume rendering integration
         for i in 0..colors.len() {
             let delta = if i < distances.len() - 1 {
@@ -1743,55 +1864,59 @@ impl QuantumNeRF {
             } else {
                 0.01 // Default step size
             };
-            
+
             // Apply quantum alpha compositing
-            let quantum_alpha = match self.quantum_volume_renderer.quantum_alpha_blending.blending_mode {
+            let quantum_alpha = match self
+                .quantum_volume_renderer
+                .quantum_alpha_blending
+                .blending_mode
+            {
                 QuantumBlendingMode::QuantumSuperpositionBlending => {
                     let base_alpha = 1.0 - (-densities[i] * delta).exp();
                     let quantum_enhancement = quantum_states[i].entanglement_measure;
                     base_alpha * (1.0 + quantum_enhancement * self.config.quantum_enhancement_level)
-                },
+                }
                 QuantumBlendingMode::EntanglementBasedBlending => {
                     let entanglement_factor = quantum_states[i].entanglement_measure;
                     let base_alpha = 1.0 - (-densities[i] * delta).exp();
                     base_alpha * (1.0 + entanglement_factor * 0.5)
-                },
+                }
                 _ => 1.0 - (-densities[i] * delta).exp(),
             };
-            
+
             let transmittance = (1.0 - accumulated_alpha);
             let weight = quantum_alpha * transmittance;
-            
+
             // Accumulate color
             final_color = &final_color + weight * &colors[i];
-            
+
             // Accumulate depth
             depth += weight * distances[i];
-            
+
             // Accumulate quantum state
-            accumulated_quantum_state.entanglement_measure += 
+            accumulated_quantum_state.entanglement_measure +=
                 weight * quantum_states[i].entanglement_measure;
             accumulated_quantum_state.quantum_fidelity *= quantum_states[i].quantum_fidelity;
-            
+
             // Accumulate alpha
             accumulated_alpha += weight;
-            
+
             // Quantum uncertainty from superposition
             quantum_uncertainty += weight * (1.0 - quantum_states[i].quantum_fidelity);
-            
+
             // Early ray termination for efficiency
             if accumulated_alpha > 0.99 {
                 break;
             }
         }
-        
+
         // Normalize accumulated values
         if accumulated_alpha > 1e-10 {
             accumulated_quantum_state.entanglement_measure /= accumulated_alpha;
             depth /= accumulated_alpha;
             quantum_uncertainty /= accumulated_alpha;
         }
-        
+
         Ok(VolumeRenderOutput {
             final_color,
             depth,
@@ -1799,21 +1924,25 @@ impl QuantumNeRF {
             accumulated_quantum_state,
         })
     }
-    
+
     /// Compute rendering metrics
     fn compute_rendering_metrics(
         &self,
         rendered_image: &Array3<f64>,
         pixel_quantum_states: &[QuantumMLPState],
     ) -> Result<RenderingMetrics> {
-        let average_entanglement = pixel_quantum_states.iter()
+        let average_entanglement = pixel_quantum_states
+            .iter()
             .map(|state| state.entanglement_measure)
-            .sum::<f64>() / pixel_quantum_states.len() as f64;
-            
-        let average_fidelity = pixel_quantum_states.iter()
+            .sum::<f64>()
+            / pixel_quantum_states.len() as f64;
+
+        let average_fidelity = pixel_quantum_states
+            .iter()
             .map(|state| state.quantum_fidelity)
-            .sum::<f64>() / pixel_quantum_states.len() as f64;
-        
+            .sum::<f64>()
+            / pixel_quantum_states.len() as f64;
+
         Ok(RenderingMetrics {
             average_pixel_entanglement: average_entanglement,
             average_quantum_fidelity: average_fidelity,
@@ -1821,7 +1950,7 @@ impl QuantumNeRF {
             coherence_preservation: average_fidelity,
         })
     }
-    
+
     /// Train the quantum NeRF model
     pub fn train(
         &mut self,
@@ -1829,18 +1958,18 @@ impl QuantumNeRF {
         training_config: &NeRFTrainingConfig,
     ) -> Result<NeRFTrainingOutput> {
         println!("🚀 Training Quantum Neural Radiance Fields in UltraThink Mode");
-        
+
         let mut training_losses = Vec::new();
         let mut quantum_metrics_history = Vec::new();
-        
+
         for epoch in 0..training_config.epochs {
             let epoch_metrics = self.train_epoch(training_images, training_config, epoch)?;
             training_losses.push(epoch_metrics.loss);
-            
+
             // Update quantum metrics
             self.update_quantum_rendering_metrics(&epoch_metrics)?;
             quantum_metrics_history.push(self.quantum_rendering_metrics.clone());
-            
+
             // Logging
             if epoch % training_config.log_interval == 0 {
                 println!(
@@ -1853,7 +1982,7 @@ impl QuantumNeRF {
                 );
             }
         }
-        
+
         Ok(NeRFTrainingOutput {
             training_losses: training_losses.clone(),
             quantum_metrics_history,
@@ -1861,7 +1990,7 @@ impl QuantumNeRF {
             convergence_analysis: self.analyze_nerf_convergence(&training_losses)?,
         })
     }
-    
+
     /// Train single epoch
     fn train_epoch(
         &mut self,
@@ -1874,23 +2003,23 @@ impl QuantumNeRF {
         let mut entanglement_sum = 0.0;
         let mut psnr_sum = 0.0;
         let mut num_batches = 0;
-        
+
         for image in training_images {
             let batch_metrics = self.train_image(image, config)?;
-            
+
             epoch_loss += batch_metrics.loss;
             quantum_fidelity_sum += batch_metrics.quantum_fidelity;
             entanglement_sum += batch_metrics.entanglement_measure;
             psnr_sum += batch_metrics.psnr;
             num_batches += 1;
         }
-        
+
         let num_batches_f = num_batches as f64;
         Ok(NeRFTrainingMetrics {
             epoch,
             loss: epoch_loss / num_batches_f,
             psnr: psnr_sum / num_batches_f,
-            ssim: 0.8, // Would be computed properly
+            ssim: 0.8,  // Would be computed properly
             lpips: 0.1, // Would be computed properly
             quantum_fidelity: quantum_fidelity_sum / num_batches_f,
             entanglement_measure: entanglement_sum / num_batches_f,
@@ -1899,40 +2028,44 @@ impl QuantumNeRF {
             memory_usage: 1000.0, // Would be measured
         })
     }
-    
+
     /// Train on single image
-    fn train_image(&mut self, image: &TrainingImage, config: &NeRFTrainingConfig) -> Result<NeRFTrainingMetrics> {
+    fn train_image(
+        &mut self,
+        image: &TrainingImage,
+        config: &NeRFTrainingConfig,
+    ) -> Result<NeRFTrainingMetrics> {
         // Sample rays from the image
         let sampled_rays = self.sample_training_rays(image, config.rays_per_batch)?;
-        
+
         let mut batch_loss = 0.0;
         let mut quantum_fidelity_sum = 0.0;
         let mut entanglement_sum = 0.0;
-        
+
         for ray_sample in &sampled_rays {
             // Render ray
             let pixel_output = self.render_pixel_quantum(&ray_sample.ray)?;
-            
+
             // Compute loss
             let target_color = &ray_sample.target_color;
             let color_loss = (&pixel_output.color - target_color).mapv(|x| x * x).sum();
-            
+
             // Add quantum regularization
             let quantum_loss = self.compute_quantum_loss(&pixel_output.quantum_state)?;
             let total_loss = color_loss + config.quantum_loss_weight * quantum_loss;
-            
+
             batch_loss += total_loss;
             quantum_fidelity_sum += pixel_output.quantum_state.quantum_fidelity;
             entanglement_sum += pixel_output.quantum_state.entanglement_measure;
-            
+
             // Update parameters (placeholder)
             self.update_nerf_parameters(&pixel_output, total_loss, config)?;
         }
-        
+
         let num_rays = sampled_rays.len() as f64;
         let mse = batch_loss / num_rays;
         let psnr = -10.0 * mse.log10();
-        
+
         Ok(NeRFTrainingMetrics {
             epoch: 0, // Will be set by caller
             loss: batch_loss / num_rays,
@@ -1946,19 +2079,23 @@ impl QuantumNeRF {
             memory_usage: 0.0,
         })
     }
-    
+
     /// Sample training rays from image
-    fn sample_training_rays(&self, image: &TrainingImage, num_rays: usize) -> Result<Vec<RaySample>> {
+    fn sample_training_rays(
+        &self,
+        image: &TrainingImage,
+        num_rays: usize,
+    ) -> Result<Vec<RaySample>> {
         let mut rng = rand::thread_rng();
         let mut ray_samples = Vec::new();
-        
+
         let height = image.image.shape()[0];
         let width = image.image.shape()[1];
-        
+
         for _ in 0..num_rays {
             let pixel_x = rng.gen_range(0..width);
             let pixel_y = rng.gen_range(0..height);
-            
+
             // Generate ray for this pixel
             let ray = self.generate_camera_ray(
                 &image.camera_matrix,
@@ -1968,41 +2105,44 @@ impl QuantumNeRF {
                 height,
                 image.fov,
             )?;
-            
+
             // Get target color
             let target_color = Array1::from_vec(vec![
                 image.image[[pixel_y, pixel_x, 0]],
                 image.image[[pixel_y, pixel_x, 1]],
                 image.image[[pixel_y, pixel_x, 2]],
             ]);
-            
+
             ray_samples.push(RaySample {
                 ray,
                 target_color,
                 pixel_coords: [pixel_x, pixel_y],
             });
         }
-        
+
         Ok(ray_samples)
     }
-    
+
     /// Compute quantum loss
     fn compute_quantum_loss(&self, quantum_state: &QuantumMLPState) -> Result<f64> {
         // Entanglement preservation loss
         let target_entanglement = 0.7; // Desired entanglement level
         let entanglement_loss = (quantum_state.entanglement_measure - target_entanglement).powi(2);
-        
+
         // Fidelity preservation loss
         let fidelity_loss = 1.0 - quantum_state.quantum_fidelity;
-        
+
         // Quantum coherence loss
-        let coherence_loss = quantum_state.quantum_amplitudes.iter()
+        let coherence_loss = quantum_state
+            .quantum_amplitudes
+            .iter()
             .map(|amp| 1.0 - amp.norm())
-            .sum::<f64>() / quantum_state.quantum_amplitudes.len() as f64;
-        
+            .sum::<f64>()
+            / quantum_state.quantum_amplitudes.len() as f64;
+
         Ok(entanglement_loss + fidelity_loss + coherence_loss)
     }
-    
+
     /// Update NeRF parameters (placeholder)
     fn update_nerf_parameters(
         &mut self,
@@ -2012,43 +2152,46 @@ impl QuantumNeRF {
     ) -> Result<()> {
         // Placeholder for parameter updates
         // Would compute gradients and apply optimization
-        
+
         // Update optimization state
         self.optimization_state.learning_rate *= config.learning_rate_decay;
-        
+
         Ok(())
     }
-    
+
     /// Update quantum rendering metrics
-    fn update_quantum_rendering_metrics(&mut self, epoch_metrics: &NeRFTrainingMetrics) -> Result<()> {
-        self.quantum_rendering_metrics.entanglement_utilization = 
-            0.9 * self.quantum_rendering_metrics.entanglement_utilization + 
-            0.1 * epoch_metrics.entanglement_measure;
-        
-        self.quantum_rendering_metrics.coherence_preservation = 
-            0.9 * self.quantum_rendering_metrics.coherence_preservation + 
-            0.1 * epoch_metrics.quantum_fidelity;
-        
-        self.quantum_rendering_metrics.quantum_acceleration_factor = 
+    fn update_quantum_rendering_metrics(
+        &mut self,
+        epoch_metrics: &NeRFTrainingMetrics,
+    ) -> Result<()> {
+        self.quantum_rendering_metrics.entanglement_utilization = 0.9
+            * self.quantum_rendering_metrics.entanglement_utilization
+            + 0.1 * epoch_metrics.entanglement_measure;
+
+        self.quantum_rendering_metrics.coherence_preservation = 0.9
+            * self.quantum_rendering_metrics.coherence_preservation
+            + 0.1 * epoch_metrics.quantum_fidelity;
+
+        self.quantum_rendering_metrics.quantum_acceleration_factor =
             epoch_metrics.quantum_advantage_ratio;
-        
+
         Ok(())
     }
-    
+
     /// Analyze NeRF convergence
     fn analyze_nerf_convergence(&self, losses: &[f64]) -> Result<NeRFConvergenceAnalysis> {
         if losses.len() < 10 {
             return Ok(NeRFConvergenceAnalysis::default());
         }
-        
+
         let recent_losses = &losses[losses.len() - 10..];
         let early_losses = &losses[0..10];
-        
+
         let recent_avg = recent_losses.iter().sum::<f64>() / recent_losses.len() as f64;
         let early_avg = early_losses.iter().sum::<f64>() / early_losses.len() as f64;
-        
+
         let convergence_rate = (early_avg - recent_avg) / early_avg;
-        
+
         Ok(NeRFConvergenceAnalysis {
             convergence_rate,
             final_loss: recent_avg,
@@ -2056,7 +2199,7 @@ impl QuantumNeRF {
             quantum_advantage_achieved: convergence_rate > 0.1,
         })
     }
-    
+
     /// Get current quantum metrics
     pub fn quantum_metrics(&self) -> &QuantumRenderingMetrics {
         &self.quantum_rendering_metrics
@@ -2300,10 +2443,10 @@ mod tests {
     fn test_quantum_positional_encoding() {
         let config = QuantumNeRFConfig::default();
         let nerf = QuantumNeRF::new(config).unwrap();
-        
+
         let position = Array1::from_vec(vec![0.1, 0.2, 0.3]);
         let encoding = nerf.quantum_positional_encoding(&position);
-        
+
         assert!(encoding.is_ok());
         let output = encoding.unwrap();
         assert!(output.features.len() > 3);
@@ -2315,17 +2458,17 @@ mod tests {
     fn test_quantum_ray_sampling() {
         let config = QuantumNeRFConfig::default();
         let nerf = QuantumNeRF::new(config).unwrap();
-        
+
         let ray = Ray {
             origin: Array1::from_vec(vec![0.0, 0.0, 0.0]),
             direction: Array1::from_vec(vec![0.0, 0.0, 1.0]),
             near: 0.1,
             far: 5.0,
         };
-        
+
         let sampling = nerf.quantum_ray_sampling(&ray);
         assert!(sampling.is_ok());
-        
+
         let output = sampling.unwrap();
         assert!(!output.points.is_empty());
         assert!(!output.distances.is_empty());
@@ -2336,10 +2479,10 @@ mod tests {
     fn test_quantum_mlp_query() {
         let config = QuantumNeRFConfig::default();
         let nerf = QuantumNeRF::new(config).unwrap();
-        
+
         let input_features = Array1::ones(64); // Typical feature size
         let result = nerf.query_quantum_mlp(&nerf.quantum_mlp_coarse, &input_features);
-        
+
         assert!(result.is_ok());
         let output = result.unwrap();
         assert_eq!(output.color.len(), 3);
@@ -2351,7 +2494,7 @@ mod tests {
     fn test_quantum_volume_rendering() {
         let config = QuantumNeRFConfig::default();
         let nerf = QuantumNeRF::new(config).unwrap();
-        
+
         let colors = vec![
             Array1::from_vec(vec![1.0, 0.0, 0.0]),
             Array1::from_vec(vec![0.0, 1.0, 0.0]),
@@ -2367,10 +2510,11 @@ mod tests {
             3
         ];
         let distances = vec![1.0, 2.0, 3.0];
-        
-        let result = nerf.quantum_volume_rendering(&colors, &densities, &quantum_states, &distances);
+
+        let result =
+            nerf.quantum_volume_rendering(&colors, &densities, &quantum_states, &distances);
         assert!(result.is_ok());
-        
+
         let output = result.unwrap();
         assert_eq!(output.final_color.len(), 3);
         assert!(output.depth >= 0.0);
@@ -2380,10 +2524,10 @@ mod tests {
     fn test_quantum_spherical_harmonics() {
         let config = QuantumNeRFConfig::default();
         let nerf = QuantumNeRF::new(config).unwrap();
-        
+
         let view_direction = Array1::from_vec(vec![1.0, 0.0, 0.0]);
         let encoding = nerf.quantum_spherical_harmonics_encoding(&view_direction);
-        
+
         assert!(encoding.is_ok());
         let output = encoding.unwrap();
         assert!(!output.features.is_empty());
@@ -2394,7 +2538,7 @@ mod tests {
     fn test_camera_ray_generation() {
         let config = QuantumNeRFConfig::default();
         let nerf = QuantumNeRF::new(config).unwrap();
-        
+
         let camera = CameraMatrix {
             position: Array1::from_vec(vec![0.0, 0.0, 0.0]),
             forward: Array1::from_vec(vec![0.0, 0.0, 1.0]),
@@ -2402,10 +2546,10 @@ mod tests {
             up: Array1::from_vec(vec![0.0, 1.0, 0.0]),
             fov: PI / 4.0,
         };
-        
+
         let ray = nerf.generate_camera_ray(&camera, 100, 100, 200, 200, PI / 4.0);
         assert!(ray.is_ok());
-        
+
         let ray_output = ray.unwrap();
         assert_eq!(ray_output.origin.len(), 3);
         assert_eq!(ray_output.direction.len(), 3);
@@ -2420,13 +2564,16 @@ mod tests {
             ..Default::default()
         };
         let nerf = QuantumNeRF::new(config).unwrap();
-        
+
         let position = Array1::from_vec(vec![0.5, 0.3, 0.7]);
         let encoding = nerf.entanglement_based_encoding(&position);
-        
+
         assert!(encoding.is_ok());
         let output = encoding.unwrap();
         assert!(output.entanglement_measure > 0.8); // Should be high for entanglement-based encoding
-        assert!(!output.quantum_amplitudes.iter().all(|amp| amp.norm() < 1e-10));
+        assert!(!output
+            .quantum_amplitudes
+            .iter()
+            .all(|amp| amp.norm() < 1e-10));
     }
 }

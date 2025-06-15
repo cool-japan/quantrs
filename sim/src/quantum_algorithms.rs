@@ -543,14 +543,14 @@ impl OptimizedShorAlgorithm {
                 return Ok(a);
             }
         }
-        
+
         // Fallback to simple iteration for larger numbers
         for a in 2..n {
             if self.gcd(a, n) == 1 {
                 return Ok(a);
             }
         }
-        
+
         Err(SimulatorError::InvalidInput(
             "Cannot find suitable base for factoring".to_string(),
         ))
@@ -701,21 +701,21 @@ impl OptimizedGroverAlgorithm {
 
         // Create Grover circuit
         let mut circuit = InterfaceCircuit::new(num_qubits, num_qubits);
-        
+
         // Initial superposition
         for qubit in 0..num_qubits {
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![qubit]));
         }
-        
+
         // Apply Grover iterations
         for _ in 0..optimal_iterations {
             // Oracle phase (mark target items)
             self.add_oracle_to_circuit(&mut circuit, &oracle, num_qubits)?;
-            
+
             // Diffusion operator
             self.add_diffusion_to_circuit(&mut circuit, num_qubits)?;
         }
-        
+
         // Measure all qubits
         for qubit in 0..num_qubits {
             circuit.add_gate(InterfaceGate::measurement(qubit, qubit));
@@ -725,7 +725,7 @@ impl OptimizedGroverAlgorithm {
         let backend = crate::circuit_interfaces::SimulationBackend::StateVector;
         let compiled = self.circuit_interface.compile_circuit(&circuit, backend)?;
         let result = self.circuit_interface.execute_circuit(&compiled, None)?;
-        
+
         // Extract final state or create from measurement results
         let final_state = if let Some(state) = result.final_state {
             state.to_vec()
@@ -737,8 +737,8 @@ impl OptimizedGroverAlgorithm {
                 if oracle(i) {
                     state[i] = Complex64::new(1.0 / (num_targets as f64).sqrt(), 0.0);
                 } else {
-                    let remaining_amp = (1.0 - num_targets as f64 / num_items as f64).sqrt() 
-                                     / ((num_items - num_targets) as f64).sqrt();
+                    let remaining_amp = (1.0 - num_targets as f64 / num_items as f64).sqrt()
+                        / ((num_items - num_targets) as f64).sqrt();
                     state[i] = Complex64::new(remaining_amp, 0.0);
                 }
             }
@@ -836,19 +836,20 @@ impl OptimizedGroverAlgorithm {
                 // Convert state to qubit pattern and add controlled Z
                 let mut control_qubits = Vec::new();
                 let target_qubit = num_qubits - 1; // Use the highest bit as target
-                
+
                 for qubit in 0..num_qubits {
                     if qubit == target_qubit {
                         continue; // Skip target qubit
                     }
-                    
+
                     if (state >> qubit) & 1 == 0 {
                         // Apply X to flip qubit to 1 for control
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![qubit]));
+                        circuit
+                            .add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![qubit]));
                     }
                     control_qubits.push(qubit);
                 }
-                
+
                 // Add multi-controlled Z gate
                 if !control_qubits.is_empty() {
                     let mut qubits = control_qubits.clone();
@@ -859,13 +860,17 @@ impl OptimizedGroverAlgorithm {
                     ));
                 } else {
                     // Single qubit Z gate
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliZ, vec![target_qubit]));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::PauliZ,
+                        vec![target_qubit],
+                    ));
                 }
-                
+
                 // Undo X gates
                 for qubit in 0..num_qubits {
                     if qubit != target_qubit && (state >> qubit) & 1 == 0 {
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![qubit]));
+                        circuit
+                            .add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![qubit]));
                     }
                 }
             }
@@ -874,7 +879,11 @@ impl OptimizedGroverAlgorithm {
     }
 
     /// Add diffusion operator to circuit
-    fn add_diffusion_to_circuit(&self, circuit: &mut InterfaceCircuit, num_qubits: usize) -> Result<()> {
+    fn add_diffusion_to_circuit(
+        &self,
+        circuit: &mut InterfaceCircuit,
+        num_qubits: usize,
+    ) -> Result<()> {
         // Implement diffusion operator: 2|s⟩⟨s| - I where |s⟩ is uniform superposition
 
         // Apply H to all qubits
@@ -1137,23 +1146,23 @@ impl EnhancedPhaseEstimation {
         for _ in 0..power {
             exp_base = (exp_base * exp_base) % modulus;
         }
-        
+
         // Apply controlled modular multiplication
         // This is a simplified implementation - production would use optimized quantum arithmetic
         let num_targets = target_range.len();
-        
+
         // For each computational basis state in the target register
         for x in 0..(1 << num_targets) {
             if x < modulus as usize {
                 let result = ((x as u64 * exp_base) % modulus) as usize;
-                
+
                 // If x != result, we need to swap the amplitudes conditionally
                 if x != result {
                     // Apply controlled swap between |x⟩ and |result⟩ states
                     for i in 0..num_targets {
                         let x_bit = (x >> i) & 1;
                         let result_bit = (result >> i) & 1;
-                        
+
                         if x_bit != result_bit {
                             // Apply controlled Pauli-X to flip this bit when control is |1⟩
                             let target_qubit = target_range.start + i;
@@ -1163,7 +1172,7 @@ impl EnhancedPhaseEstimation {
                 }
             }
         }
-        
+
         Ok(())
     }
 }
@@ -1291,16 +1300,16 @@ mod tests {
 
         // Test with simple eigenstate |0⟩ of the Z gate
         let eigenstate = Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
-        
+
         // Define Z gate unitary operator
         let z_unitary = |sim: &mut StateVectorSimulator, _target_qubit: usize| -> Result<()> {
             // Z gate has eigenvalue +1 for |0⟩ state
-            Ok(())  // Identity operation since |0⟩ is eigenstate with eigenvalue +1
+            Ok(()) // Identity operation since |0⟩ is eigenstate with eigenvalue +1
         };
 
         let result = qpe.estimate_eigenvalues(z_unitary, &eigenstate, 1e-2);
         assert!(result.is_ok());
-        
+
         let qpe_result = result.unwrap();
         assert!(!qpe_result.eigenvalues.is_empty());
         assert_eq!(qpe_result.eigenvalues.len(), qpe_result.precisions.len());
@@ -1313,14 +1322,14 @@ mod tests {
 
         // Simple oracle: search for state |3⟩ in 3-qubit space
         let oracle = |x: usize| x == 3;
-        
+
         let result = grover.search(3, oracle, 1);
         match &result {
             Err(e) => eprintln!("Grover search failed: {:?}", e),
             Ok(_) => {}
         }
         assert!(result.is_ok());
-        
+
         let grover_result = result.unwrap();
         assert_eq!(grover_result.iterations, grover_result.optimal_iterations);
         assert!(grover_result.success_probability >= 0.0);
@@ -1346,19 +1355,23 @@ mod tests {
         }
     }
 
-    #[test] 
+    #[test]
     fn test_quantum_algorithm_benchmarks() {
         let benchmarks = benchmark_quantum_algorithms();
         assert!(benchmarks.is_ok());
-        
+
         let results = benchmarks.unwrap();
         assert!(results.contains_key("shor_15"));
         assert!(results.contains_key("grover_4qubits"));
         assert!(results.contains_key("phase_estimation"));
-        
+
         // Verify all benchmarks completed (non-zero times)
         for (algorithm, time) in results {
-            assert!(time >= 0.0, "Algorithm {} had negative execution time", algorithm);
+            assert!(
+                time >= 0.0,
+                "Algorithm {} had negative execution time",
+                algorithm
+            );
         }
     }
 
@@ -1368,9 +1381,9 @@ mod tests {
         let grover = OptimizedGroverAlgorithm::new(config).unwrap();
 
         // Test for different problem sizes
-        assert_eq!(grover.calculate_optimal_iterations(4, 1), 1);   // 4 items, 1 target
-        assert_eq!(grover.calculate_optimal_iterations(16, 1), 3);  // 16 items, 1 target
-        
+        assert_eq!(grover.calculate_optimal_iterations(4, 1), 1); // 4 items, 1 target
+        assert_eq!(grover.calculate_optimal_iterations(16, 1), 3); // 16 items, 1 target
+
         let iterations_64_1 = grover.calculate_optimal_iterations(64, 1); // 64 items, 1 target
         assert!(iterations_64_1 >= 6 && iterations_64_1 <= 8);
     }
@@ -1385,11 +1398,12 @@ mod tests {
 
         // Test with identity operator (eigenvalue should be 0)
         let eigenstate = Array1::from_vec(vec![Complex64::new(1.0, 0.0)]);
-        let identity_op = |_sim: &mut StateVectorSimulator, _target: usize| -> Result<()> { Ok(()) };
+        let identity_op =
+            |_sim: &mut StateVectorSimulator, _target: usize| -> Result<()> { Ok(()) };
 
         let result = qpe.estimate_eigenvalues(identity_op, &eigenstate, 1e-3);
         assert!(result.is_ok());
-        
+
         let qpe_result = result.unwrap();
         assert!(qpe_result.precisions[0] <= 1e-3);
         assert!(qpe_result.phase_qubits >= 3); // Should use enough qubits for target precision

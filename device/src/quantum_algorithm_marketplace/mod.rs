@@ -64,7 +64,6 @@ pub mod optimization;
 pub mod registry;
 pub mod security;
 
-
 // Re-exports for public API
 pub use analytics::*;
 pub use benchmarking::*;

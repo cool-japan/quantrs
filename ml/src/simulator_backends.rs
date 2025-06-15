@@ -91,13 +91,41 @@ impl DynamicCircuit {
     /// Get gates (placeholder implementation)
     pub fn gates(&self) -> Vec<&dyn quantrs2_core::gate::GateOp> {
         match self {
-            DynamicCircuit::Circuit1(c) => c.gates().iter().map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp).collect(),
-            DynamicCircuit::Circuit2(c) => c.gates().iter().map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp).collect(),
-            DynamicCircuit::Circuit4(c) => c.gates().iter().map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp).collect(),
-            DynamicCircuit::Circuit8(c) => c.gates().iter().map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp).collect(),
-            DynamicCircuit::Circuit16(c) => c.gates().iter().map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp).collect(),
-            DynamicCircuit::Circuit32(c) => c.gates().iter().map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp).collect(),
-            DynamicCircuit::Circuit64(c) => c.gates().iter().map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp).collect(),
+            DynamicCircuit::Circuit1(c) => c
+                .gates()
+                .iter()
+                .map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp)
+                .collect(),
+            DynamicCircuit::Circuit2(c) => c
+                .gates()
+                .iter()
+                .map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp)
+                .collect(),
+            DynamicCircuit::Circuit4(c) => c
+                .gates()
+                .iter()
+                .map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp)
+                .collect(),
+            DynamicCircuit::Circuit8(c) => c
+                .gates()
+                .iter()
+                .map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp)
+                .collect(),
+            DynamicCircuit::Circuit16(c) => c
+                .gates()
+                .iter()
+                .map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp)
+                .collect(),
+            DynamicCircuit::Circuit32(c) => c
+                .gates()
+                .iter()
+                .map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp)
+                .collect(),
+            DynamicCircuit::Circuit64(c) => c
+                .gates()
+                .iter()
+                .map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp)
+                .collect(),
         }
     }
 }

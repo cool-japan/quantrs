@@ -1,10 +1,10 @@
 //! Optimization engine for performance and cost optimization
 
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::SystemTime;
-use serde::{Deserialize, Serialize};
 
-use super::results::{UnifiedBenchmarkResult, OptimizationResult};
+use super::results::{OptimizationResult, UnifiedBenchmarkResult};
 
 /// Optimization engine for performance and cost optimization
 pub struct OptimizationEngine {
@@ -34,6 +34,6 @@ impl OptimizationEngine {
             },
         }
     }
-    
+
     // TODO: Implement optimization methods
 }

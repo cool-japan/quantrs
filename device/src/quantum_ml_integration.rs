@@ -6,7 +6,7 @@
 //! integration with popular ML frameworks including TensorFlow, PyTorch, and PennyLane.
 
 use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, RwLock, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 
 use serde::{Deserialize, Serialize};
@@ -24,27 +24,34 @@ use num_complex::Complex64;
 
 // SciRS2 integration for advanced ML optimization
 #[cfg(feature = "scirs2")]
-use scirs2_stats::{mean, std, pearsonr, spearmanr, corrcoef};
+use scirs2_linalg::{det, eig, inv, matrix_norm, qr, svd};
 #[cfg(feature = "scirs2")]
-use scirs2_optimize::{minimize, differential_evolution, OptimizeResult};
+use scirs2_optimize::{differential_evolution, minimize, OptimizeResult};
 #[cfg(feature = "scirs2")]
-use scirs2_linalg::{eig, svd, qr, inv, det, matrix_norm};
+use scirs2_stats::{corrcoef, mean, pearsonr, spearmanr, std};
 
 // Fallback implementations
 #[cfg(not(feature = "scirs2"))]
 mod fallback_scirs2 {
     use ndarray::{Array1, Array2};
-    
-    pub fn mean(_data: &Array1<f64>) -> Result<f64, String> { Ok(0.0) }
-    pub fn std(_data: &Array1<f64>, _ddof: i32) -> Result<f64, String> { Ok(1.0) }
-    
+
+    pub fn mean(_data: &Array1<f64>) -> Result<f64, String> {
+        Ok(0.0)
+    }
+    pub fn std(_data: &Array1<f64>, _ddof: i32) -> Result<f64, String> {
+        Ok(1.0)
+    }
+
     pub struct OptimizeResult {
         pub x: Array1<f64>,
         pub fun: f64,
         pub success: bool,
     }
-    
-    pub fn minimize(_func: fn(&Array1<f64>) -> f64, _x0: &Array1<f64>) -> Result<OptimizeResult, String> {
+
+    pub fn minimize(
+        _func: fn(&Array1<f64>) -> f64,
+        _x0: &Array1<f64>,
+    ) -> Result<OptimizeResult, String> {
         Ok(OptimizeResult {
             x: Array1::zeros(2),
             fun: 0.0,
@@ -57,9 +64,9 @@ mod fallback_scirs2 {
 use fallback_scirs2::*;
 
 use crate::{
-    backend_traits::{BackendCapabilities, query_backend_capabilities},
+    backend_traits::{query_backend_capabilities, BackendCapabilities},
     calibration::{CalibrationManager, DeviceCalibration},
-    circuit_integration::{UniversalCircuitInterface, ExecutionResult},
+    circuit_integration::{ExecutionResult, UniversalCircuitInterface},
     topology::HardwareTopology,
     vqa_support::{VQAConfig, VQAExecutor, VQAResult},
     DeviceError, DeviceResult,
@@ -927,9 +934,14 @@ impl std::fmt::Debug for HybridMLOptimizer {
 /// QML optimizer trait
 pub trait QMLOptimizer: Send + Sync {
     /// Compute gradients
-    fn compute_gradients(&self, model: &QMLModel, data: &QMLDataBatch) -> DeviceResult<Array1<f64>>;
+    fn compute_gradients(&self, model: &QMLModel, data: &QMLDataBatch)
+        -> DeviceResult<Array1<f64>>;
     /// Update parameters
-    fn update_parameters(&mut self, model: &mut QMLModel, gradients: &Array1<f64>) -> DeviceResult<()>;
+    fn update_parameters(
+        &mut self,
+        model: &mut QMLModel,
+        gradients: &Array1<f64>,
+    ) -> DeviceResult<()>;
     /// Get optimizer state
     fn get_state(&self) -> OptimizerState;
     /// Set optimizer state
@@ -2379,7 +2391,10 @@ impl Default for QMLOptimizationConfig {
                 ("beta1".to_string(), 0.9),
                 ("beta2".to_string(), 0.999),
                 ("epsilon".to_string(), 1e-8),
-            ].iter().cloned().collect(),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
             enable_parameter_sharing: false,
             circuit_optimization: CircuitOptimizationConfig {
                 enable_gate_fusion: true,
@@ -2422,7 +2437,10 @@ impl Default for QMLResourceConfig {
                     ("classical".to_string(), 0.3),
                     ("memory".to_string(), 0.2),
                     ("network".to_string(), 0.1),
-                ].iter().cloned().collect(),
+                ]
+                .iter()
+                .cloned()
+                .collect(),
                 dynamic_adjustment: true,
                 performance_reallocation: true,
             },
@@ -2451,7 +2469,10 @@ impl Default for QMLMonitoringConfig {
                     ("cpu".to_string(), 0.8),
                     ("memory".to_string(), 0.85),
                     ("quantum".to_string(), 0.9),
-                ].iter().cloned().collect(),
+                ]
+                .iter()
+                .cloned()
+                .collect(),
             },
             alert_config: AlertConfig {
                 enabled: true,
@@ -2459,7 +2480,10 @@ impl Default for QMLMonitoringConfig {
                     ("error_rate".to_string(), 0.1),
                     ("resource_usage".to_string(), 0.9),
                     ("cost_spike".to_string(), 2.0),
-                ].iter().cloned().collect(),
+                ]
+                .iter()
+                .cloned()
+                .collect(),
                 channels: vec![AlertChannel::Log],
                 escalation: AlertEscalation {
                     enabled: true,
@@ -2480,7 +2504,10 @@ impl Default for QMLMonitoringConfig {
                     timeouts: [
                         ("warning".to_string(), Duration::from_secs(300)),
                         ("critical".to_string(), Duration::from_secs(60)),
-                    ].iter().cloned().collect(),
+                    ]
+                    .iter()
+                    .cloned()
+                    .collect(),
                 },
             },
         }
@@ -2494,8 +2521,12 @@ impl QuantumMLIntegrationHub {
             config: config.clone(),
             model_registry: Arc::new(RwLock::new(HashMap::new())),
             qnn_executor: Arc::new(RwLock::new(QuantumNeuralNetworkExecutor::new()?)),
-            hybrid_optimizer: Arc::new(RwLock::new(HybridMLOptimizer::new(config.optimization_config.clone())?)),
-            training_orchestrator: Arc::new(RwLock::new(QMLTrainingOrchestrator::new(config.training_config.clone())?)),
+            hybrid_optimizer: Arc::new(RwLock::new(HybridMLOptimizer::new(
+                config.optimization_config.clone(),
+            )?)),
+            training_orchestrator: Arc::new(RwLock::new(QMLTrainingOrchestrator::new(
+                config.training_config.clone(),
+            )?)),
             ml_analytics: Arc::new(RwLock::new(MLPerformanceAnalytics::new())),
             data_pipeline: Arc::new(RwLock::new(QMLDataPipeline::new(config.clone())?)),
             framework_bridges: Arc::new(RwLock::new(HashMap::new())),
@@ -2517,11 +2548,12 @@ impl QuantumMLIntegrationHub {
         config: Option<QMLTrainingConfig>,
     ) -> DeviceResult<QMLTrainingResult> {
         let training_config = config.unwrap_or_else(|| self.config.training_config.clone());
-        
+
         // Get model from registry
         let model = {
             let registry = self.model_registry.read().unwrap();
-            registry.get(model_id)
+            registry
+                .get(model_id)
                 .ok_or_else(|| DeviceError::InvalidInput(format!("Model {} not found", model_id)))?
                 .clone()
         };
@@ -2549,7 +2581,8 @@ impl QuantumMLIntegrationHub {
     ) -> DeviceResult<QMLInferenceResult> {
         let model = {
             let registry = self.model_registry.read().unwrap();
-            registry.get(model_id)
+            registry
+                .get(model_id)
                 .ok_or_else(|| DeviceError::InvalidInput(format!("Model {} not found", model_id)))?
                 .clone()
         };
@@ -2640,9 +2673,9 @@ pub struct InferencePerformanceMetrics {
 impl QuantumNeuralNetworkExecutor {
     pub fn new() -> DeviceResult<Self> {
         Ok(Self {
-            circuit_interface: Arc::new(RwLock::new(
-                UniversalCircuitInterface::new(Default::default())
-            )),
+            circuit_interface: Arc::new(RwLock::new(UniversalCircuitInterface::new(
+                Default::default(),
+            ))),
             models: HashMap::new(),
             execution_cache: HashMap::new(),
             performance_tracker: QNNPerformanceTracker {
@@ -2660,12 +2693,12 @@ impl QuantumNeuralNetworkExecutor {
         input_data: &QMLDataBatch,
     ) -> DeviceResult<QMLInferenceResult> {
         let start_time = Instant::now();
-        
+
         // Simplified inference implementation
         let predictions = Array1::zeros(input_data.batch_size);
-        
+
         let inference_time = start_time.elapsed();
-        
+
         Ok(QMLInferenceResult {
             predictions,
             probabilities: None,
@@ -2744,7 +2777,7 @@ impl QMLTrainingOrchestrator {
         // Simplified training implementation
         let session_id = request.request_id.clone();
         let start_time = Instant::now();
-        
+
         // Create training session
         let session = TrainingSession {
             session_id: session_id.clone(),
@@ -2810,7 +2843,7 @@ impl QMLTrainingOrchestrator {
 
         // Simulate training completion
         let training_duration = Duration::from_secs(60);
-        
+
         Ok(QMLTrainingResult {
             session_id,
             trained_model: request.model,
@@ -3019,9 +3052,8 @@ impl AnomalyDetector for SimpleMLAnomalyDetector {
 
         let values: Vec<f64> = data.iter().map(|(_, v)| *v).collect();
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance = values.iter()
-            .map(|x| (x - mean).powi(2))
-            .sum::<f64>() / (values.len() - 1) as f64;
+        let variance =
+            values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64;
         let std_dev = variance.sqrt();
 
         data.iter()
@@ -3031,7 +3063,10 @@ impl AnomalyDetector for SimpleMLAnomalyDetector {
                     Some(DetectedAnomaly {
                         anomaly_type: AnomalyType::PerformanceDegradation,
                         severity: (value - mean).abs() / std_dev,
-                        description: format!("Value {} deviates significantly from mean {}", value, mean),
+                        description: format!(
+                            "Value {} deviates significantly from mean {}",
+                            value, mean
+                        ),
                         timestamp,
                         affected_metrics: vec!["performance".to_string()],
                     })
@@ -3142,7 +3177,10 @@ pub fn create_high_performance_qml_config() -> QMLIntegrationConfig {
                 ("beta1".to_string(), 0.9),
                 ("beta2".to_string(), 0.999),
                 ("epsilon".to_string(), 1e-8),
-            ].iter().cloned().collect(),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
             enable_parameter_sharing: true,
             circuit_optimization: CircuitOptimizationConfig {
                 enable_gate_fusion: true,
@@ -3159,7 +3197,10 @@ pub fn create_high_performance_qml_config() -> QMLIntegrationConfig {
                     ("speed".to_string(), 0.3),
                     ("resource_efficiency".to_string(), 0.2),
                     ("cost".to_string(), 0.1),
-                ].iter().cloned().collect(),
+                ]
+                .iter()
+                .cloned()
+                .collect(),
                 pareto_exploration: true,
                 constraint_handling: ConstraintHandling::Adaptive,
             },
@@ -3185,7 +3226,10 @@ pub fn create_high_performance_qml_config() -> QMLIntegrationConfig {
                     ("classical".to_string(), 0.25),
                     ("memory".to_string(), 0.15),
                     ("network".to_string(), 0.1),
-                ].iter().cloned().collect(),
+                ]
+                .iter()
+                .cloned()
+                .collect(),
                 dynamic_adjustment: true,
                 performance_reallocation: true,
             },
@@ -3209,7 +3253,10 @@ pub fn create_high_performance_qml_config() -> QMLIntegrationConfig {
                     ("cpu".to_string(), 0.9),
                     ("memory".to_string(), 0.9),
                     ("quantum".to_string(), 0.95),
-                ].iter().cloned().collect(),
+                ]
+                .iter()
+                .cloned()
+                .collect(),
             },
             alert_config: AlertConfig {
                 enabled: true,
@@ -3217,7 +3264,10 @@ pub fn create_high_performance_qml_config() -> QMLIntegrationConfig {
                     ("error_rate".to_string(), 0.05),
                     ("resource_usage".to_string(), 0.95),
                     ("cost_spike".to_string(), 3.0),
-                ].iter().cloned().collect(),
+                ]
+                .iter()
+                .cloned()
+                .collect(),
                 channels: vec![AlertChannel::Log, AlertChannel::Email],
                 escalation: AlertEscalation {
                     enabled: true,
@@ -3237,7 +3287,11 @@ pub fn create_high_performance_qml_config() -> QMLIntegrationConfig {
                         EscalationLevel {
                             name: "Emergency".to_string(),
                             threshold_multiplier: 5.0,
-                            channels: vec![AlertChannel::Log, AlertChannel::Email, AlertChannel::SMS],
+                            channels: vec![
+                                AlertChannel::Log,
+                                AlertChannel::Email,
+                                AlertChannel::SMS,
+                            ],
                             actions: vec![EscalationAction::Notify, EscalationAction::Pause],
                         },
                     ],
@@ -3245,7 +3299,10 @@ pub fn create_high_performance_qml_config() -> QMLIntegrationConfig {
                         ("warning".to_string(), Duration::from_secs(180)),
                         ("critical".to_string(), Duration::from_secs(60)),
                         ("emergency".to_string(), Duration::from_secs(30)),
-                    ].iter().cloned().collect(),
+                    ]
+                    .iter()
+                    .cloned()
+                    .collect(),
                 },
             },
         },
@@ -3298,7 +3355,7 @@ mod tests {
     #[tokio::test]
     async fn test_qml_hub_model_registration() {
         let hub = create_qml_integration_hub().unwrap();
-        
+
         let model = QMLModel {
             model_id: "test_model".to_string(),
             model_type: QMLModelType::QuantumClassifier,

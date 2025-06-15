@@ -7,10 +7,12 @@ use std::time::{Duration, Instant};
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::qubit::QubitId;
 
-use crate::{DeviceError, DeviceResult};
 use super::config::{CompilerConfig, PassConfig, PassPriority};
+use super::optimization::{
+    AdvancedCrosstalkMitigation, CrosstalkConflict, CrosstalkModel, SciRS2OptimizationEngine,
+};
 use super::types::PassInfo;
-use super::optimization::{SciRS2OptimizationEngine, CrosstalkConflict, AdvancedCrosstalkMitigation, CrosstalkModel};
+use crate::{DeviceError, DeviceResult};
 
 /// Pass coordinator for managing compilation passes
 pub struct PassCoordinator {
@@ -119,20 +121,23 @@ impl PassCoordinator {
                     self.apply_gate_synthesis_pass(circuit, scirs2_engine).await
                 }
                 CompilerPass::ErrorOptimization => {
-                    self.apply_error_optimization_pass(circuit, scirs2_engine).await
+                    self.apply_error_optimization_pass(circuit, scirs2_engine)
+                        .await
                 }
                 CompilerPass::TimingOptimization => {
-                    self.apply_timing_optimization_pass(circuit, scirs2_engine).await
+                    self.apply_timing_optimization_pass(circuit, scirs2_engine)
+                        .await
                 }
                 CompilerPass::CrosstalkMitigation => {
-                    self.apply_crosstalk_mitigation_pass(circuit, scirs2_engine).await
+                    self.apply_crosstalk_mitigation_pass(circuit, scirs2_engine)
+                        .await
                 }
             };
 
             let execution_time = start_time.elapsed();
 
             let success = result.is_ok();
-            
+
             match result {
                 Ok(pass_info) => {
                     applied_passes.push(PassInfo {

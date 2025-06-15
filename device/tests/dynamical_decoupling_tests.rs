@@ -1,11 +1,20 @@
 //! Comprehensive test suite for Dynamical Decoupling (DD) system
-//! 
+//!
 //! This module provides extensive test coverage for all DD components including
 //! sequence generation, optimization, adaptive strategies, and hardware integration.
 
-use quantrs2_device::prelude::*;
-use quantrs2_device::dynamical_decoupling::*;
+use futures::future;
+use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::prelude::*;
+use quantrs2_device::adaptive_compilation::strategies::{AdaptationTrigger, OptimizationAlgorithm};
+use quantrs2_device::dynamical_decoupling::config::{
+    DDOptimizationAlgorithm, DDPerformanceConfig, DDPerformanceMetric, NoiseType,
+};
+use quantrs2_device::dynamical_decoupling::hardware::SynchronizationRequirements;
+use quantrs2_device::dynamical_decoupling::optimization::DDSequenceOptimizer;
+use quantrs2_device::dynamical_decoupling::*;
+use quantrs2_device::prelude::*;
+use quantrs2_device::{backend_traits::BackendCapabilities, DeviceError};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -25,7 +34,7 @@ mod test_helpers {
             let mut error_rates = HashMap::new();
             error_rates.insert("dephasing".to_string(), 0.001);
             error_rates.insert("amplitude_damping".to_string(), 0.0005);
-            
+
             Self {
                 fidelity: 0.995,
                 execution_time: Duration::from_millis(100),
@@ -35,14 +44,14 @@ mod test_helpers {
     }
 
     impl DDCircuitExecutor for MockDDCircuitExecutor {
-        fn execute_circuit<const N: usize>(
+        fn execute_circuit(
             &self,
-            _circuit: &Circuit<N>,
+            _circuit: &Circuit<16>,
         ) -> Result<CircuitExecutionResults, DeviceError> {
             let mut measurements = HashMap::new();
             measurements.insert("qubit_0".to_string(), vec![0, 1, 0, 1, 0]);
             measurements.insert("qubit_1".to_string(), vec![1, 0, 1, 0, 1]);
-            
+
             Ok(CircuitExecutionResults {
                 measurements,
                 fidelity: self.fidelity,
@@ -58,39 +67,21 @@ mod test_helpers {
             })
         }
 
-        fn get_capabilities(&self) -> crate::backend_traits::BackendCapabilities {
-            crate::backend_traits::BackendCapabilities {
-                max_qubits: 16,
-                supported_gates: vec!["X".to_string(), "Y".to_string(), "Z".to_string()],
-                native_gates: vec!["RZ".to_string(), "SX".to_string(), "CNOT".to_string()],
-                coupling_graph: vec![(0, 1), (1, 2), (2, 3)],
-                gate_times: {
-                    let mut times = HashMap::new();
-                    times.insert("X".to_string(), 35.0);
-                    times.insert("Y".to_string(), 35.0);
-                    times.insert("Z".to_string(), 0.0);
-                    times
+        fn get_capabilities(&self) -> BackendCapabilities {
+            BackendCapabilities {
+                backend: quantrs2_device::prelude::HardwareBackend::Custom(0),
+                native_gates: quantrs2_device::prelude::NativeGateSet::default(),
+                features: quantrs2_device::backend_traits::BackendFeatures {
+                    max_qubits: 16,
+                    ..Default::default()
                 },
-                gate_errors: {
-                    let mut errors = HashMap::new();
-                    errors.insert("X".to_string(), 0.001);
-                    errors.insert("Y".to_string(), 0.001);
-                    errors.insert("CNOT".to_string(), 0.01);
-                    errors
-                },
-                readout_errors: vec![0.02, 0.025, 0.02, 0.03],
-                t1_times: vec![50000.0, 55000.0, 48000.0, 52000.0],
-                t2_times: vec![25000.0, 28000.0, 24000.0, 26000.0],
-                supports_reset: true,
-                supports_conditional: false,
-                max_shots: 100000,
-                simultaneous_measurement: true,
+                performance: quantrs2_device::backend_traits::BackendPerformance::default(),
             }
         }
 
-        fn estimate_execution_time<const N: usize>(&self, circuit: &Circuit<N>) -> Duration {
+        fn estimate_execution_time(&self, circuit: &Circuit<16>) -> Duration {
             // Simple estimation based on circuit depth
-            Duration::from_nanos((circuit.operations().len() * 35) as u64)
+            Duration::from_nanos((circuit.gates().len() * 35) as u64)
         }
     }
 
@@ -113,50 +104,47 @@ mod sequence_generation_tests {
     fn test_hahn_echo_generation() {
         let qubits = create_test_qubits();
         let duration = 1000.0; // microseconds
-        
+
         let sequence = DDSequenceGenerator::generate_base_sequence(
             &DDSequenceType::HahnEcho,
             &qubits,
             duration,
         );
-        
+
         assert!(sequence.is_ok(), "Hahn echo generation should succeed");
         let seq = sequence.unwrap();
         assert_eq!(seq.sequence_type, DDSequenceType::HahnEcho);
         assert_eq!(seq.target_qubits, qubits);
-        assert_eq!(seq.total_duration, duration);
-        assert!(!seq.pulses.is_empty(), "Sequence should have pulses");
+        assert_eq!(seq.duration, duration);
+        assert!(
+            !seq.pulse_timings.is_empty(),
+            "Sequence should have pulse timings"
+        );
     }
 
     #[test]
     fn test_cpmg_generation() {
         let qubits = create_test_qubits();
         let duration = 2000.0;
-        
-        let sequence = DDSequenceGenerator::generate_base_sequence(
-            &DDSequenceType::CPMG { n_pulses: 4 },
-            &qubits,
-            duration,
-        );
-        
+
+        let sequence =
+            DDSequenceGenerator::generate_base_sequence(&DDSequenceType::CPMG, &qubits, duration);
+
         assert!(sequence.is_ok(), "CPMG generation should succeed");
         let seq = sequence.unwrap();
-        assert!(matches!(seq.sequence_type, DDSequenceType::CPMG { n_pulses: 4 }));
+        assert!(matches!(seq.sequence_type, DDSequenceType::CPMG));
         assert_eq!(seq.target_qubits, qubits);
-        assert!(!seq.pulses.is_empty());
+        assert!(!seq.pulse_timings.is_empty());
     }
 
     #[test]
     fn test_xy4_generation() {
         let qubits = create_test_qubits();
         let duration = 1500.0;
-        
-        let sequence = DDSequenceGenerator::generate_base_sequence(
-            &DDSequenceType::XY4,
-            &qubits,
-            duration,
-        );
-        
+
+        let sequence =
+            DDSequenceGenerator::generate_base_sequence(&DDSequenceType::XY4, &qubits, duration);
+
         assert!(sequence.is_ok(), "XY-4 generation should succeed");
         let seq = sequence.unwrap();
         assert_eq!(seq.sequence_type, DDSequenceType::XY4);
@@ -167,13 +155,10 @@ mod sequence_generation_tests {
     fn test_xy8_generation() {
         let qubits = vec![QubitId(0)];
         let duration = 3000.0;
-        
-        let sequence = DDSequenceGenerator::generate_base_sequence(
-            &DDSequenceType::XY8,
-            &qubits,
-            duration,
-        );
-        
+
+        let sequence =
+            DDSequenceGenerator::generate_base_sequence(&DDSequenceType::XY8, &qubits, duration);
+
         assert!(sequence.is_ok(), "XY-8 generation should succeed");
         let seq = sequence.unwrap();
         assert_eq!(seq.sequence_type, DDSequenceType::XY8);
@@ -184,60 +169,59 @@ mod sequence_generation_tests {
     fn test_kdd_generation() {
         let qubits = create_test_qubits();
         let duration = 2500.0;
-        
-        let sequence = DDSequenceGenerator::generate_base_sequence(
-            &DDSequenceType::KDD { order: 2 },
-            &qubits,
-            duration,
-        );
-        
+
+        let sequence =
+            DDSequenceGenerator::generate_base_sequence(&DDSequenceType::KDD, &qubits, duration);
+
         assert!(sequence.is_ok(), "KDD generation should succeed");
         let seq = sequence.unwrap();
-        assert!(matches!(seq.sequence_type, DDSequenceType::KDD { order: 2 }));
+        assert!(matches!(seq.sequence_type, DDSequenceType::KDD));
     }
 
     #[test]
     fn test_udd_generation() {
         let qubits = vec![QubitId(0)];
         let duration = 1800.0;
-        
-        let sequence = DDSequenceGenerator::generate_base_sequence(
-            &DDSequenceType::UDD { n_pulses: 5 },
-            &qubits,
-            duration,
-        );
-        
+
+        let sequence =
+            DDSequenceGenerator::generate_base_sequence(&DDSequenceType::UDD, &qubits, duration);
+
         assert!(sequence.is_ok(), "UDD generation should succeed");
         let seq = sequence.unwrap();
-        assert!(matches!(seq.sequence_type, DDSequenceType::UDD { n_pulses: 5 }));
+        assert!(matches!(seq.sequence_type, DDSequenceType::UDD));
     }
 
     #[test]
     fn test_all_sequence_types() {
         let qubits = create_test_qubits();
         let duration = 1000.0;
-        
+
         let sequence_types = vec![
             DDSequenceType::HahnEcho,
-            DDSequenceType::CPMG { n_pulses: 2 },
+            DDSequenceType::CPMG,
             DDSequenceType::XY4,
             DDSequenceType::XY8,
             DDSequenceType::XY16,
-            DDSequenceType::KDD { order: 1 },
-            DDSequenceType::UDD { n_pulses: 3 },
+            DDSequenceType::KDD,
+            DDSequenceType::UDD,
         ];
-        
+
         for seq_type in sequence_types {
-            let sequence = DDSequenceGenerator::generate_base_sequence(
-                &seq_type,
-                &qubits,
-                duration,
+            let sequence =
+                DDSequenceGenerator::generate_base_sequence(&seq_type, &qubits, duration);
+
+            assert!(
+                sequence.is_ok(),
+                "Sequence generation should succeed for {:?}",
+                seq_type
             );
-            
-            assert!(sequence.is_ok(), "Sequence generation should succeed for {:?}", seq_type);
             let seq = sequence.unwrap();
             assert_eq!(seq.sequence_type, seq_type);
-            assert!(!seq.pulses.is_empty(), "Sequence {:?} should have pulses", seq_type);
+            assert!(
+                !seq.pulse_timings.is_empty(),
+                "Sequence {:?} should have pulse timings",
+                seq_type
+            );
         }
     }
 }
@@ -250,14 +234,9 @@ mod system_tests {
     async fn test_dd_manager_creation() {
         let config = create_test_dd_config();
         let device_id = "test_device".to_string();
-        
-        let manager = DynamicalDecouplingManager::new(
-            config,
-            device_id,
-            None,
-            None,
-        );
-        
+
+        let manager = DynamicalDecouplingManager::new(config, device_id, None, None);
+
         assert!(manager.adaptive_system.is_none());
         assert!(manager.multi_qubit_coordinator.is_none());
     }
@@ -266,32 +245,31 @@ mod system_tests {
     async fn test_adaptive_system_initialization() {
         let config = create_test_dd_config();
         let device_id = "test_device".to_string();
-        let mut manager = DynamicalDecouplingManager::new(
-            config,
-            device_id,
-            None,
-            None,
-        );
-        
+        let mut manager = DynamicalDecouplingManager::new(config, device_id, None, None);
+
         let adaptive_config = AdaptiveDDConfig::default();
         let initial_sequence = DDSequenceGenerator::generate_base_sequence(
             &DDSequenceType::HahnEcho,
             &create_test_qubits(),
             1000.0,
-        ).unwrap();
+        )
+        .unwrap();
         let available_sequences = vec![
             DDSequenceType::HahnEcho,
             DDSequenceType::XY4,
-            DDSequenceType::CPMG { n_pulses: 2 },
+            DDSequenceType::CPMG,
         ];
-        
+
         let result = manager.initialize_adaptive_system(
             adaptive_config,
             initial_sequence,
             available_sequences,
         );
-        
-        assert!(result.is_ok(), "Adaptive system initialization should succeed");
+
+        assert!(
+            result.is_ok(),
+            "Adaptive system initialization should succeed"
+        );
         assert!(manager.adaptive_system.is_some());
     }
 
@@ -299,18 +277,13 @@ mod system_tests {
     fn test_multi_qubit_coordination_initialization() {
         let config = create_test_dd_config();
         let device_id = "test_device".to_string();
-        let mut manager = DynamicalDecouplingManager::new(
-            config,
-            device_id,
-            None,
-            None,
-        );
-        
+        let mut manager = DynamicalDecouplingManager::new(config, device_id, None, None);
+
         manager.initialize_multi_qubit_coordination(
             CrosstalkMitigationStrategy::TemporalSeparation,
             SynchronizationRequirements::Loose,
         );
-        
+
         assert!(manager.multi_qubit_coordinator.is_some());
     }
 
@@ -318,25 +291,20 @@ mod system_tests {
     async fn test_optimized_sequence_generation() {
         let config = create_test_dd_config();
         let device_id = "test_device".to_string();
-        let mut manager = DynamicalDecouplingManager::new(
-            config,
-            device_id,
-            None,
-            None,
-        );
-        
+        let mut manager = DynamicalDecouplingManager::new(config, device_id, None, None);
+
         let executor = MockDDCircuitExecutor::new();
         let qubits = create_test_qubits();
         let duration = 1000.0;
-        
-        let result = manager.generate_optimized_sequence(
-            &DDSequenceType::HahnEcho,
-            &qubits,
-            duration,
-            &executor,
-        ).await;
-        
-        assert!(result.is_ok(), "Optimized sequence generation should succeed");
+
+        let result = manager
+            .generate_optimized_sequence(&DDSequenceType::HahnEcho, &qubits, duration, &executor)
+            .await;
+
+        assert!(
+            result.is_ok(),
+            "Optimized sequence generation should succeed"
+        );
         let dd_result = result.unwrap();
         assert!(dd_result.success);
         assert!(dd_result.quality_score > 0.0);
@@ -349,44 +317,40 @@ mod system_tests {
     fn test_multi_qubit_sequence_generation() {
         let config = create_test_dd_config();
         let device_id = "test_device".to_string();
-        let mut manager = DynamicalDecouplingManager::new(
-            config,
-            device_id,
-            None,
-            None,
-        );
-        
+        let mut manager = DynamicalDecouplingManager::new(config, device_id, None, None);
+
         manager.initialize_multi_qubit_coordination(
             CrosstalkMitigationStrategy::SpatialSeparation,
             SynchronizationRequirements::Strict,
         );
-        
+
         let qubit_groups = vec![
             (vec![QubitId(0), QubitId(1)], DDSequenceType::XY4),
-            (vec![QubitId(2), QubitId(3)], DDSequenceType::CPMG { n_pulses: 2 }),
+            (
+                vec![QubitId(2), QubitId(3)],
+                DDSequenceType::CPMG { n_pulses: 2 },
+            ),
         ];
         let duration = 2000.0;
-        
+
         let result = manager.generate_multi_qubit_sequence(qubit_groups, duration);
-        
-        assert!(result.is_ok(), "Multi-qubit sequence generation should succeed");
+
+        assert!(
+            result.is_ok(),
+            "Multi-qubit sequence generation should succeed"
+        );
         let sequence = result.unwrap();
-        assert!(!sequence.pulses.is_empty());
+        assert!(!sequence.pulse_timings.is_empty());
     }
 
     #[test]
     fn test_system_status() {
         let config = create_test_dd_config();
         let device_id = "test_device".to_string();
-        let manager = DynamicalDecouplingManager::new(
-            config,
-            device_id,
-            None,
-            None,
-        );
-        
+        let manager = DynamicalDecouplingManager::new(config, device_id, None, None);
+
         let status = manager.get_system_status();
-        
+
         assert!(!status.adaptive_enabled);
         assert!(!status.multi_qubit_enabled);
         assert_eq!(status.total_sequences_generated, 0);
@@ -400,7 +364,7 @@ mod adaptive_tests {
     #[test]
     fn test_adaptive_config_creation() {
         let config = AdaptiveDDConfig::default();
-        
+
         assert!(config.enable_real_time_adaptation);
         assert!(config.adaptation_threshold > 0.0);
         assert!(config.min_adaptation_interval > Duration::ZERO);
@@ -414,7 +378,7 @@ mod adaptive_tests {
             SequenceSelectionStrategy::HybridOptimization,
             SequenceSelectionStrategy::MLDriven,
         ];
-        
+
         for strategy in strategies {
             let mut config = AdaptiveDDConfig::default();
             config.selection_strategy = strategy.clone();
@@ -426,12 +390,12 @@ mod adaptive_tests {
     fn test_adaptation_triggers() {
         let triggers = vec![
             AdaptationTrigger::PerformanceDegradation,
-            AdaptationTrigger::NoisePatternChange,
+            AdaptationTrigger::ErrorRateIncrease,
             AdaptationTrigger::TimeInterval,
-            AdaptationTrigger::FidelityThreshold,
-            AdaptationTrigger::ExternalSignal,
+            AdaptationTrigger::ResourceConstraintViolation,
+            AdaptationTrigger::UserRequest,
         ];
-        
+
         for trigger in triggers {
             let mut config = AdaptiveDDConfig::default();
             config.adaptation_triggers.push(trigger.clone());
@@ -446,20 +410,20 @@ mod adaptive_tests {
             &DDSequenceType::HahnEcho,
             &create_test_qubits(),
             1000.0,
-        ).unwrap();
+        )
+        .unwrap();
         let available_sequences = vec![
             DDSequenceType::HahnEcho,
             DDSequenceType::XY4,
             DDSequenceType::XY8,
         ];
-        
-        let adaptive_system = AdaptiveDDSystem::new(
-            config,
-            initial_sequence,
-            available_sequences,
+
+        let adaptive_system = AdaptiveDDSystem::new(config, initial_sequence, available_sequences);
+
+        assert_eq!(
+            adaptive_system.current_sequence.sequence_type,
+            DDSequenceType::HahnEcho
         );
-        
-        assert_eq!(adaptive_system.current_sequence.sequence_type, DDSequenceType::HahnEcho);
         assert_eq!(adaptive_system.available_sequences.len(), 3);
     }
 }
@@ -471,7 +435,7 @@ mod performance_tests {
     #[test]
     fn test_performance_config_creation() {
         let config = DDPerformanceConfig::default();
-        
+
         assert!(config.enable_coherence_tracking);
         assert!(config.enable_fidelity_monitoring);
         assert!(config.measurement_shots > 0);
@@ -482,15 +446,16 @@ mod performance_tests {
         let config = DDPerformanceConfig::default();
         let analyzer = DDPerformanceAnalyzer::new(config);
         let executor = MockDDCircuitExecutor::new();
-        
+
         let sequence = DDSequenceGenerator::generate_base_sequence(
             &DDSequenceType::XY4,
             &create_test_qubits(),
             1500.0,
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         let result = analyzer.analyze_performance(&sequence, &executor).await;
-        
+
         assert!(result.is_ok(), "Performance analysis should succeed");
         let analysis = result.unwrap();
         assert!(!analysis.metrics.is_empty());
@@ -501,18 +466,18 @@ mod performance_tests {
     #[test]
     fn test_performance_metrics() {
         let metrics = vec![
-            PerformanceMetric::CoherenceTime,
-            PerformanceMetric::ProcessFidelity,
-            PerformanceMetric::SequenceEfficiency,
-            PerformanceMetric::NoiseSuppressionRatio,
-            PerformanceMetric::OverheadFactor,
+            DDPerformanceMetric::CoherenceTime,
+            DDPerformanceMetric::ProcessFidelity,
+            DDPerformanceMetric::ResourceEfficiency,
+            DDPerformanceMetric::NoiseSuppressionFactor,
+            DDPerformanceMetric::GateOverhead,
         ];
-        
+
         for metric in metrics {
             // Test that all metrics can be created and used
             let mut config = DDPerformanceConfig::default();
-            config.tracked_metrics.push(metric.clone());
-            assert!(config.tracked_metrics.contains(&metric));
+            config.metrics.push(metric.clone());
+            assert!(config.metrics.contains(&metric));
         }
     }
 }
@@ -524,7 +489,7 @@ mod noise_tests {
     #[test]
     fn test_noise_config_creation() {
         let config = DDNoiseCharacterizationConfig::default();
-        
+
         assert!(config.enable_spectral_analysis);
         assert!(config.enable_correlation_analysis);
         assert!(config.sampling_rate > 0.0);
@@ -534,13 +499,14 @@ mod noise_tests {
     fn test_noise_analysis() {
         let config = DDNoiseCharacterizationConfig::default();
         let analyzer = DDNoiseAnalyzer::new(config);
-        
+
         let sequence = DDSequenceGenerator::generate_base_sequence(
-            &DDSequenceType::CPMG { n_pulses: 4 },
+            &DDSequenceType::CPMG,
             &create_test_qubits(),
             2000.0,
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         let performance = DDPerformanceAnalysis {
             metrics: {
                 let mut metrics = HashMap::new();
@@ -560,9 +526,9 @@ mod noise_tests {
             pulse_accuracy: 0.999,
             timing_precision: 0.01,
         };
-        
+
         let result = analyzer.analyze_noise_characteristics(&sequence, &performance);
-        
+
         assert!(result.is_ok(), "Noise analysis should succeed");
         let analysis = result.unwrap();
         assert!(!analysis.noise_spectrum.frequencies.is_empty());
@@ -572,16 +538,16 @@ mod noise_tests {
     #[test]
     fn test_noise_types() {
         let noise_types = vec![
-            NoiseType::Dephasing,
+            NoiseType::PhaseDamping,
             NoiseType::AmplitudeDamping,
             NoiseType::Depolarizing,
-            NoiseType::PhaseFlip,
-            NoiseType::BitFlip,
-            NoiseType::Crosstalk,
+            NoiseType::Pauli,
+            NoiseType::CoherentErrors,
+            NoiseType::CrossTalk,
             NoiseType::ControlNoise,
-            NoiseType::ThermalNoise,
+            NoiseType::FluxNoise,
         ];
-        
+
         for noise_type in noise_types {
             // Test that all noise types can be used in configuration
             let mut config = DDNoiseCharacterizationConfig::default();
@@ -598,7 +564,7 @@ mod hardware_tests {
     #[test]
     fn test_hardware_config_creation() {
         let config = DDHardwareAdaptationConfig::default();
-        
+
         assert!(config.enable_platform_optimization);
         assert!(config.enable_calibration_integration);
         assert!(!config.supported_platforms.is_empty());
@@ -608,15 +574,16 @@ mod hardware_tests {
     fn test_hardware_analyzer() {
         let config = DDHardwareAdaptationConfig::default();
         let analyzer = DDHardwareAnalyzer::new(config, None, None);
-        
+
         let sequence = DDSequenceGenerator::generate_base_sequence(
             &DDSequenceType::XY8,
             &create_test_qubits(),
             1800.0,
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         let result = analyzer.analyze_hardware_implementation("test_device", &sequence);
-        
+
         assert!(result.is_ok(), "Hardware analysis should succeed");
         let analysis = result.unwrap();
         assert!(analysis.hardware_compatibility.compatibility_score >= 0.0);
@@ -633,7 +600,7 @@ mod hardware_tests {
             PlatformType::RigettiQCS,
             PlatformType::IonQCloud,
         ];
-        
+
         for platform in platforms {
             let mut config = DDHardwareAdaptationConfig::default();
             config.target_platform = Some(platform.clone());
@@ -649,7 +616,7 @@ mod optimization_tests {
     #[test]
     fn test_optimization_config_creation() {
         let config = DDOptimizationConfig::default();
-        
+
         assert!(config.enable_scirs2_optimization);
         assert!(config.max_optimization_iterations > 0);
         assert!(config.convergence_tolerance > 0.0);
@@ -660,15 +627,16 @@ mod optimization_tests {
         let config = DDOptimizationConfig::default();
         let optimizer = DDSequenceOptimizer::new(config);
         let executor = MockDDCircuitExecutor::new();
-        
+
         let sequence = DDSequenceGenerator::generate_base_sequence(
             &DDSequenceType::UDD { n_pulses: 3 },
             &create_test_qubits(),
             1200.0,
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         let result = optimizer.optimize_sequence(&sequence, &executor).await;
-        
+
         assert!(result.is_ok(), "Sequence optimization should succeed");
         let opt_result = result.unwrap();
         assert!(opt_result.optimization_metrics.success);
@@ -684,7 +652,7 @@ mod optimization_tests {
             OptimizationObjective::MinimizeNoiseAmplification,
             OptimizationObjective::MaximizeRobustness,
         ];
-        
+
         for objective in objectives {
             let mut config = DDOptimizationConfig::default();
             config.optimization_objectives.push(objective.clone());
@@ -695,14 +663,14 @@ mod optimization_tests {
     #[test]
     fn test_optimization_algorithms() {
         let algorithms = vec![
-            OptimizationAlgorithm::DifferentialEvolution,
-            OptimizationAlgorithm::ParticleSwarm,
-            OptimizationAlgorithm::SimulatedAnnealing,
-            OptimizationAlgorithm::GeneticAlgorithm,
-            OptimizationAlgorithm::BayesianOptimization,
-            OptimizationAlgorithm::GradientBased,
+            DDOptimizationAlgorithm::DifferentialEvolution,
+            DDOptimizationAlgorithm::ParticleSwarm,
+            DDOptimizationAlgorithm::SimulatedAnnealing,
+            DDOptimizationAlgorithm::GeneticAlgorithm,
+            DDOptimizationAlgorithm::BayesianOptimization,
+            DDOptimizationAlgorithm::GradientFree,
         ];
-        
+
         for algorithm in algorithms {
             let mut config = DDOptimizationConfig::default();
             config.optimization_algorithm = algorithm.clone();
@@ -720,54 +688,45 @@ mod integration_tests {
         // 1. Create DD manager
         let config = create_test_dd_config();
         let device_id = "integration_test_device".to_string();
-        let mut manager = DynamicalDecouplingManager::new(
-            config,
-            device_id,
-            None,
-            None,
-        );
-        
+        let mut manager = DynamicalDecouplingManager::new(config, device_id, None, None);
+
         // 2. Initialize adaptive system
         let adaptive_config = AdaptiveDDConfig::default();
         let initial_sequence = DDSequenceGenerator::generate_base_sequence(
             &DDSequenceType::HahnEcho,
             &create_test_qubits(),
             1000.0,
-        ).unwrap();
+        )
+        .unwrap();
         let available_sequences = vec![
             DDSequenceType::HahnEcho,
             DDSequenceType::XY4,
-            DDSequenceType::CPMG { n_pulses: 2 },
+            DDSequenceType::CPMG,
         ];
-        
-        manager.initialize_adaptive_system(
-            adaptive_config,
-            initial_sequence,
-            available_sequences,
-        ).unwrap();
-        
+
+        manager
+            .initialize_adaptive_system(adaptive_config, initial_sequence, available_sequences)
+            .unwrap();
+
         // 3. Generate optimized sequence
         let executor = MockDDCircuitExecutor::new();
         let qubits = create_test_qubits();
         let duration = 1500.0;
-        
-        let result = manager.generate_optimized_sequence(
-            &DDSequenceType::XY4,
-            &qubits,
-            duration,
-            &executor,
-        ).await;
-        
+
+        let result = manager
+            .generate_optimized_sequence(&DDSequenceType::XY4, &qubits, duration, &executor)
+            .await;
+
         assert!(result.is_ok(), "Complete DD workflow should succeed");
         let dd_result = result.unwrap();
         assert!(dd_result.success);
         assert!(dd_result.quality_score > 0.5);
-        
+
         // 4. Check system status
         let status = manager.get_system_status();
         assert!(status.adaptive_enabled);
         assert!(status.total_sequences_generated > 0);
-        
+
         println!("Complete DD workflow test passed successfully");
     }
 
@@ -775,38 +734,34 @@ mod integration_tests {
     async fn test_multiple_sequence_optimization() {
         let config = create_test_dd_config();
         let device_id = "multi_seq_test_device".to_string();
-        let mut manager = DynamicalDecouplingManager::new(
-            config,
-            device_id,
-            None,
-            None,
-        );
-        
+        let mut manager = DynamicalDecouplingManager::new(config, device_id, None, None);
+
         let executor = MockDDCircuitExecutor::new();
         let qubits = create_test_qubits();
         let duration = 1000.0;
-        
+
         let sequence_types = vec![
             DDSequenceType::HahnEcho,
             DDSequenceType::XY4,
-            DDSequenceType::CPMG { n_pulses: 2 },
-            DDSequenceType::UDD { n_pulses: 3 },
+            DDSequenceType::CPMG,
+            DDSequenceType::UDD,
         ];
-        
+
         for seq_type in sequence_types {
-            let result = manager.generate_optimized_sequence(
-                &seq_type,
-                &qubits,
-                duration,
-                &executor,
-            ).await;
-            
-            assert!(result.is_ok(), "Sequence optimization should succeed for {:?}", seq_type);
+            let result = manager
+                .generate_optimized_sequence(&seq_type, &qubits, duration, &executor)
+                .await;
+
+            assert!(
+                result.is_ok(),
+                "Sequence optimization should succeed for {:?}",
+                seq_type
+            );
             let dd_result = result.unwrap();
             assert!(dd_result.success);
             assert!(dd_result.quality_score > 0.0);
         }
-        
+
         let status = manager.get_system_status();
         assert_eq!(status.total_sequences_generated, 4);
     }
@@ -815,46 +770,43 @@ mod integration_tests {
     fn test_adaptive_and_multi_qubit_integration() {
         let config = create_test_dd_config();
         let device_id = "adaptive_multi_test_device".to_string();
-        let mut manager = DynamicalDecouplingManager::new(
-            config,
-            device_id,
-            None,
-            None,
-        );
-        
+        let mut manager = DynamicalDecouplingManager::new(config, device_id, None, None);
+
         // Initialize both adaptive and multi-qubit systems
         let adaptive_config = AdaptiveDDConfig::default();
         let initial_sequence = DDSequenceGenerator::generate_base_sequence(
             &DDSequenceType::HahnEcho,
             &create_test_qubits(),
             1000.0,
-        ).unwrap();
+        )
+        .unwrap();
         let available_sequences = vec![DDSequenceType::HahnEcho, DDSequenceType::XY4];
-        
-        manager.initialize_adaptive_system(
-            adaptive_config,
-            initial_sequence,
-            available_sequences,
-        ).unwrap();
-        
+
+        manager
+            .initialize_adaptive_system(adaptive_config, initial_sequence, available_sequences)
+            .unwrap();
+
         manager.initialize_multi_qubit_coordination(
             CrosstalkMitigationStrategy::HybridApproach,
             SynchronizationRequirements::Adaptive,
         );
-        
+
         let status = manager.get_system_status();
         assert!(status.adaptive_enabled);
         assert!(status.multi_qubit_enabled);
-        
+
         // Test multi-qubit sequence generation
         let qubit_groups = vec![
             (vec![QubitId(0)], DDSequenceType::HahnEcho),
             (vec![QubitId(1)], DDSequenceType::XY4),
         ];
         let duration = 1200.0;
-        
+
         let result = manager.generate_multi_qubit_sequence(qubit_groups, duration);
-        assert!(result.is_ok(), "Multi-qubit sequence generation should succeed");
+        assert!(
+            result.is_ok(),
+            "Multi-qubit sequence generation should succeed"
+        );
     }
 }
 
@@ -867,20 +819,20 @@ mod stress_tests {
         let config = create_test_dd_config();
         let device_id = "concurrent_test_device".to_string();
         let manager = std::sync::Arc::new(tokio::sync::RwLock::new(
-            DynamicalDecouplingManager::new(config, device_id, None, None)
+            DynamicalDecouplingManager::new(config, device_id, None, None),
         ));
-        
+
         let executor = std::sync::Arc::new(MockDDCircuitExecutor::new());
         let qubits = create_test_qubits();
         let duration = 1000.0;
-        
+
         // Generate multiple sequences concurrently
         let mut tasks = vec![];
         for i in 0..5 {
             let manager_clone = manager.clone();
             let executor_clone = executor.clone();
             let qubits_clone = qubits.clone();
-            
+
             let task = tokio::spawn(async move {
                 let mut mgr = manager_clone.write().await;
                 mgr.generate_optimized_sequence(
@@ -888,15 +840,20 @@ mod stress_tests {
                     &qubits_clone,
                     duration + i as f64 * 100.0,
                     executor_clone.as_ref(),
-                ).await
+                )
+                .await
             });
             tasks.push(task);
         }
-        
-        let results = futures::future::join_all(tasks).await;
-        
+
+        let results = futures::future::try_join_all(tasks).await.unwrap();
+
         for (i, result) in results.into_iter().enumerate() {
-            assert!(result.is_ok(), "Task {} should complete without panicking", i);
+            assert!(
+                result.is_ok(),
+                "Task {} should complete without panicking",
+                i
+            );
             let dd_result = result.unwrap();
             assert!(dd_result.is_ok(), "DD generation {} should succeed", i);
         }
@@ -906,34 +863,37 @@ mod stress_tests {
     fn test_large_qubit_count() {
         let qubits: Vec<QubitId> = (0..10).map(QubitId).collect(); // 10 qubits
         let duration = 2000.0;
-        
-        let sequence = DDSequenceGenerator::generate_base_sequence(
-            &DDSequenceType::XY4,
-            &qubits,
-            duration,
+
+        let sequence =
+            DDSequenceGenerator::generate_base_sequence(&DDSequenceType::XY4, &qubits, duration);
+
+        assert!(
+            sequence.is_ok(),
+            "Large qubit count sequence generation should succeed"
         );
-        
-        assert!(sequence.is_ok(), "Large qubit count sequence generation should succeed");
         let seq = sequence.unwrap();
         assert_eq!(seq.target_qubits.len(), 10);
-        assert!(!seq.pulses.is_empty());
+        assert!(!seq.pulse_timings.is_empty());
     }
 
     #[test]
     fn test_long_duration_sequences() {
         let qubits = create_test_qubits();
         let long_duration = 100000.0; // 100ms
-        
+
         let sequence = DDSequenceGenerator::generate_base_sequence(
             &DDSequenceType::CPMG { n_pulses: 100 },
             &qubits,
             long_duration,
         );
-        
-        assert!(sequence.is_ok(), "Long duration sequence generation should succeed");
+
+        assert!(
+            sequence.is_ok(),
+            "Long duration sequence generation should succeed"
+        );
         let seq = sequence.unwrap();
         assert_eq!(seq.total_duration, long_duration);
-        assert!(!seq.pulses.is_empty());
+        assert!(!seq.pulse_timings.is_empty());
     }
 }
 
@@ -945,13 +905,13 @@ mod error_handling_tests {
     fn test_invalid_sequence_parameters() {
         let qubits = vec![];
         let duration = 0.0;
-        
+
         let result = DDSequenceGenerator::generate_base_sequence(
             &DDSequenceType::HahnEcho,
             &qubits,
             duration,
         );
-        
+
         // Should handle invalid parameters gracefully
         assert!(result.is_err(), "Invalid parameters should be rejected");
     }
@@ -960,13 +920,13 @@ mod error_handling_tests {
     fn test_negative_duration() {
         let qubits = create_test_qubits();
         let negative_duration = -1000.0;
-        
+
         let result = DDSequenceGenerator::generate_base_sequence(
             &DDSequenceType::XY4,
             &qubits,
             negative_duration,
         );
-        
+
         assert!(result.is_err(), "Negative duration should be rejected");
     }
 
@@ -974,21 +934,17 @@ mod error_handling_tests {
     fn test_multi_qubit_without_coordinator() {
         let config = create_test_dd_config();
         let device_id = "error_test_device".to_string();
-        let mut manager = DynamicalDecouplingManager::new(
-            config,
-            device_id,
-            None,
-            None,
-        );
-        
-        let qubit_groups = vec![
-            (vec![QubitId(0)], DDSequenceType::HahnEcho),
-        ];
+        let mut manager = DynamicalDecouplingManager::new(config, device_id, None, None);
+
+        let qubit_groups = vec![(vec![QubitId(0)], DDSequenceType::HahnEcho)];
         let duration = 1000.0;
-        
+
         let result = manager.generate_multi_qubit_sequence(qubit_groups, duration);
-        
-        assert!(result.is_err(), "Multi-qubit generation without coordinator should fail");
+
+        assert!(
+            result.is_err(),
+            "Multi-qubit generation without coordinator should fail"
+        );
     }
 
     #[test]
@@ -996,11 +952,11 @@ mod error_handling_tests {
         let mut config = DDOptimizationConfig::default();
         config.max_optimization_iterations = 0; // Invalid
         config.convergence_tolerance = -1.0; // Invalid
-        
+
         // The system should handle invalid configuration gracefully
         assert_eq!(config.max_optimization_iterations, 0);
         assert_eq!(config.convergence_tolerance, -1.0);
-        
+
         // These would be caught during optimization
         config.max_optimization_iterations = 100;
         config.convergence_tolerance = 1e-6;

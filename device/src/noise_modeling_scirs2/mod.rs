@@ -25,10 +25,14 @@ pub use spectral::*;
 pub use statistical::*;
 pub use temporal::*;
 
-use crate::{calibration::DeviceCalibration, noise_model::{CalibrationNoiseModel, CrosstalkNoise}, DeviceResult, DeviceError};
+use crate::{
+    calibration::DeviceCalibration,
+    noise_model::{CalibrationNoiseModel, CrosstalkNoise},
+    DeviceError, DeviceResult,
+};
+use ndarray::{Array1, Array2};
 use quantrs2_core::{error::QuantRS2Result, qubit::QubitId};
 use std::collections::HashMap;
-use ndarray::{Array1, Array2};
 
 /// Statistical noise analysis results
 #[derive(Debug, Clone)]
@@ -110,7 +114,10 @@ impl SciRS2NoiseModeler {
     }
 
     /// Extract noise data from device calibration
-    fn extract_noise_data(&self, calibration: &DeviceCalibration) -> DeviceResult<HashMap<String, Array1<f64>>> {
+    fn extract_noise_data(
+        &self,
+        calibration: &DeviceCalibration,
+    ) -> DeviceResult<HashMap<String, Array1<f64>>> {
         use ndarray::Array1;
         let mut noise_data = HashMap::new();
 
@@ -125,7 +132,7 @@ impl SciRS2NoiseModeler {
 
         // Extract two-qubit gate noise
         for (qubit_pair, gate_cal) in &calibration.two_qubit_gates {
-            let key = format!("two_qubit_{}_{}", qubit_pair.0.0, qubit_pair.1.0);
+            let key = format!("two_qubit_{}_{}", qubit_pair.0 .0, qubit_pair.1 .0);
             let error_data = vec![gate_cal.error_rate, 1.0 - gate_cal.fidelity];
             noise_data.insert(key, Array1::from_vec(error_data));
         }
@@ -141,22 +148,28 @@ impl SciRS2NoiseModeler {
     }
 
     /// Perform statistical analysis using SciRS2
-    fn perform_statistical_analysis(&self, noise_data: &HashMap<String, Array1<f64>>) -> DeviceResult<StatisticalNoiseAnalysis> {
+    fn perform_statistical_analysis(
+        &self,
+        noise_data: &HashMap<String, Array1<f64>>,
+    ) -> DeviceResult<StatisticalNoiseAnalysis> {
         use scirs2_stats::{mean, std, var};
 
         let mut analysis_results = HashMap::new();
 
         for (noise_type, data) in noise_data {
             let data_view = data.view();
-            
-            let mean_val = mean(&data_view).map_err(|e| 
-                DeviceError::APIError(format!("Statistical analysis error: {:?}", e)))?;
-            
-            let std_val = std(&data_view, 1).map_err(|e| 
-                DeviceError::APIError(format!("Statistical analysis error: {:?}", e)))?;
-            
-            let var_val = var(&data_view, 1).map_err(|e| 
-                DeviceError::APIError(format!("Statistical analysis error: {:?}", e)))?;
+
+            let mean_val = mean(&data_view).map_err(|e| {
+                DeviceError::APIError(format!("Statistical analysis error: {:?}", e))
+            })?;
+
+            let std_val = std(&data_view, 1).map_err(|e| {
+                DeviceError::APIError(format!("Statistical analysis error: {:?}", e))
+            })?;
+
+            let var_val = var(&data_view, 1).map_err(|e| {
+                DeviceError::APIError(format!("Statistical analysis error: {:?}", e))
+            })?;
 
             let noise_stats = NoiseStatistics {
                 mean: mean_val,
@@ -177,7 +190,10 @@ impl SciRS2NoiseModeler {
     }
 
     /// Simple noise analysis fallback
-    fn simple_noise_analysis(&self, noise_data: &HashMap<String, Array1<f64>>) -> DeviceResult<StatisticalNoiseAnalysis> {
+    fn simple_noise_analysis(
+        &self,
+        noise_data: &HashMap<String, Array1<f64>>,
+    ) -> DeviceResult<StatisticalNoiseAnalysis> {
         let mut analysis_results = HashMap::new();
 
         for (noise_type, data) in noise_data {
@@ -206,7 +222,10 @@ impl SciRS2NoiseModeler {
     }
 
     /// Perform correlation analysis between noise sources
-    fn perform_correlation_analysis(&self, noise_data: &HashMap<String, Array1<f64>>) -> DeviceResult<CorrelationAnalysis> {
+    fn perform_correlation_analysis(
+        &self,
+        noise_data: &HashMap<String, Array1<f64>>,
+    ) -> DeviceResult<CorrelationAnalysis> {
         use ndarray::Array2;
 
         let n_sources = noise_data.len();
@@ -214,30 +233,33 @@ impl SciRS2NoiseModeler {
 
         // Calculate pairwise correlations
         let sources: Vec<_> = noise_data.keys().collect();
-        
+
         for (i, source1) in sources.iter().enumerate() {
             for (j, source2) in sources.iter().enumerate() {
                 if i != j {
                     let data1 = &noise_data[*source1];
                     let data2 = &noise_data[*source2];
-                    
+
                     // Simple correlation calculation
                     let corr = if data1.len() == data2.len() && data1.len() > 1 {
                         let mean1 = data1.mean().unwrap_or(0.0);
                         let mean2 = data2.mean().unwrap_or(0.0);
-                        
-                        let cov = data1.iter().zip(data2.iter())
+
+                        let cov = data1
+                            .iter()
+                            .zip(data2.iter())
                             .map(|(x, y)| (x - mean1) * (y - mean2))
-                            .sum::<f64>() / (data1.len() - 1) as f64;
-                        
+                            .sum::<f64>()
+                            / (data1.len() - 1) as f64;
+
                         let std1 = data1.std(1.0).max(1e-10);
                         let std2 = data2.std(1.0).max(1e-10);
-                        
+
                         cov / (std1 * std2)
                     } else {
                         0.0
                     };
-                    
+
                     correlation_matrix[[i, j]] = corr;
                 }
             }
@@ -246,7 +268,8 @@ impl SciRS2NoiseModeler {
         let avg_correlation = correlation_matrix.iter()
             .filter(|&&x| x != 1.0)  // Exclude diagonal
             .map(|&x| x.abs())
-            .sum::<f64>() / ((n_sources * n_sources - n_sources) as f64).max(1.0);
+            .sum::<f64>()
+            / ((n_sources * n_sources - n_sources) as f64).max(1.0);
 
         Ok(CorrelationAnalysis {
             correlation_matrix,
@@ -267,14 +290,14 @@ impl SciRS2NoiseModeler {
         let mut qubit_noise = HashMap::new();
         for i in 0..calibration.topology.num_qubits {
             let qubit_id = QubitId(i as u32);
-            
+
             // Get noise statistics for this qubit
             let t1_key = format!("t1_{}", i);
             let t2_key = format!("t2_{}", i);
-            
+
             let t1_stats = analysis.noise_statistics.get(&t1_key);
             let t2_stats = analysis.noise_statistics.get(&t2_key);
-            
+
             let qubit_params = QubitNoiseParams {
                 gamma_1: t1_stats.map(|s| 1.0 / s.mean).unwrap_or(1.0 / 50000.0), // 1/T1
                 gamma_phi: t2_stats.map(|s| 1.0 / s.mean).unwrap_or(1.0 / 25000.0), // 1/T2
@@ -282,7 +305,7 @@ impl SciRS2NoiseModeler {
                 frequency_drift: 0.001,
                 flicker_noise: 0.0005,
             };
-            
+
             qubit_noise.insert(qubit_id, qubit_params);
         }
 
@@ -290,7 +313,7 @@ impl SciRS2NoiseModeler {
         let mut gate_noise = HashMap::new();
         for (gate_name, _) in &calibration.single_qubit_gates {
             let noise_stats = analysis.noise_statistics.values().next();
-            
+
             let gate_params = GateNoiseParams {
                 depolarizing_rate: noise_stats.map(|s| s.mean).unwrap_or(0.001),
                 incoherent_error: noise_stats.map(|s| s.std_dev).unwrap_or(0.0005),
@@ -299,7 +322,7 @@ impl SciRS2NoiseModeler {
                 duration: 100.0, // 100ns default
                 phase_noise: 0.0001,
             };
-            
+
             gate_noise.insert(gate_name.clone(), gate_params);
         }
 
@@ -308,20 +331,17 @@ impl SciRS2NoiseModeler {
         for i in 0..calibration.topology.num_qubits {
             let qubit_id = QubitId(i as u32);
             let readout_key = format!("readout_{}", i);
-            
+
             let readout_stats = analysis.noise_statistics.get(&readout_key);
-            
+
             let error_01 = readout_stats.map(|s| s.mean).unwrap_or(0.02);
             let error_10 = readout_stats.map(|s| s.std_dev).unwrap_or(0.02);
             let readout_params = ReadoutNoiseParams {
-                assignment_matrix: [
-                    [1.0 - error_01, error_01],
-                    [error_10, 1.0 - error_10]
-                ],
+                assignment_matrix: [[1.0 - error_01, error_01], [error_10, 1.0 - error_10]],
                 readout_excitation: 0.001,
                 readout_relaxation: 0.001,
             };
-            
+
             readout_noise.insert(qubit_id, readout_params);
         }
 
@@ -381,10 +401,10 @@ mod tests {
     fn test_noise_data_extraction() {
         let calibration = create_ideal_calibration("test".to_string(), 4);
         let modeler = SciRS2NoiseModeler::new("test_device".to_string());
-        
+
         let noise_data = modeler.extract_noise_data(&calibration).unwrap();
         assert!(!noise_data.is_empty());
-        
+
         // Should have readout noise data for all qubits
         for i in 0..4 {
             let key = format!("readout_{}", i);
@@ -396,20 +416,23 @@ mod tests {
     fn test_simple_noise_analysis() {
         let modeler = SciRS2NoiseModeler::new("test_device".to_string());
         let mut noise_data = HashMap::new();
-        
+
         // Add test data
-        noise_data.insert("test_noise".to_string(), Array1::from_vec(vec![0.01, 0.02, 0.015]));
-        
+        noise_data.insert(
+            "test_noise".to_string(),
+            Array1::from_vec(vec![0.01, 0.02, 0.015]),
+        );
+
         let analysis = modeler.simple_noise_analysis(&noise_data).unwrap();
         assert!(analysis.noise_statistics.contains_key("test_noise"));
         assert!(analysis.correlation_analysis.correlation_strength >= 0.0);
     }
 
-    #[test] 
+    #[test]
     fn test_full_noise_modeling() {
         let calibration = create_ideal_calibration("test".to_string(), 2);
         let modeler = SciRS2NoiseModeler::new("test_device".to_string());
-        
+
         let noise_model = modeler.model_noise(&calibration).unwrap();
         assert_eq!(noise_model.device_id, "test_device");
         assert_eq!(noise_model.qubit_noise.len(), 2);
@@ -421,16 +444,22 @@ mod tests {
     fn test_correlation_analysis() {
         let modeler = SciRS2NoiseModeler::new("test_device".to_string());
         let mut noise_data = HashMap::new();
-        
+
         // Add correlated test data
-        noise_data.insert("noise1".to_string(), Array1::from_vec(vec![0.01, 0.02, 0.03]));
-        noise_data.insert("noise2".to_string(), Array1::from_vec(vec![0.02, 0.04, 0.06]));
-        
+        noise_data.insert(
+            "noise1".to_string(),
+            Array1::from_vec(vec![0.01, 0.02, 0.03]),
+        );
+        noise_data.insert(
+            "noise2".to_string(),
+            Array1::from_vec(vec![0.02, 0.04, 0.06]),
+        );
+
         let correlation = modeler.perform_correlation_analysis(&noise_data).unwrap();
         assert_eq!(correlation.correlation_matrix.shape(), [2, 2]);
         assert_eq!(correlation.correlation_matrix[[0, 0]], 1.0);
         assert_eq!(correlation.correlation_matrix[[1, 1]], 1.0);
-        
+
         // Off-diagonal should show correlation
         assert!(correlation.correlation_matrix[[0, 1]].abs() > 0.5);
     }

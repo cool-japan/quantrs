@@ -184,9 +184,7 @@ impl DeviceTranspiler {
         let hardware_spec = self
             .hardware_specs
             .get(device)
-            .ok_or_else(|| {
-                QuantRS2Error::InvalidInput(format!("Unknown device: {}", device))
-            })?
+            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown device: {}", device)))?
             .clone();
 
         let mut options = options.unwrap_or_default();
@@ -269,7 +267,7 @@ impl DeviceTranspiler {
         // Simple greedy layout optimization
         // In practice, this would use more sophisticated algorithms
         let mut layout = HashMap::new();
-        
+
         // For now, use a simple sequential mapping
         for i in 0..N {
             layout.insert(QubitId(i as u32), i);
@@ -279,11 +277,15 @@ impl DeviceTranspiler {
     }
 
     /// Check if circuit needs gate decomposition
-    fn needs_decomposition<const N: usize>(&self, circuit: &Circuit<N>, spec: &HardwareSpec) -> bool {
+    fn needs_decomposition<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+        spec: &HardwareSpec,
+    ) -> bool {
         circuit.gates().iter().any(|gate| {
             let gate_name = gate.name();
             let qubit_count = gate.qubits().len();
-            
+
             match qubit_count {
                 1 => !spec.native_gates.single_qubit.contains(gate_name),
                 2 => !spec.native_gates.two_qubit.contains(gate_name),
@@ -320,7 +322,7 @@ impl DeviceTranspiler {
     fn is_native_gate(&self, gate: &dyn GateOp, spec: &HardwareSpec) -> bool {
         let gate_name = gate.name();
         let qubit_count = gate.qubits().len();
-        
+
         match qubit_count {
             1 => spec.native_gates.single_qubit.contains(gate_name),
             2 => spec.native_gates.two_qubit.contains(gate_name),
@@ -337,7 +339,7 @@ impl DeviceTranspiler {
         // This would contain device-specific decomposition rules
         // For now, return a simple decomposition
         let gate_name = gate.name();
-        
+
         match gate_name {
             "T" if spec.native_gates.single_qubit.contains("RZ") => {
                 // T gate = RZ(π/4)
@@ -372,8 +374,12 @@ impl DeviceTranspiler {
                     let gate_qubits: Vec<_> = gate.qubits().iter().cloned().collect();
                     let physical_q1 = layout[&gate_qubits[0]];
                     let physical_q2 = layout[&gate_qubits[1]];
-                    
-                    if !options.hardware_spec.coupling_map.are_connected(physical_q1, physical_q2) {
+
+                    if !options
+                        .hardware_spec
+                        .coupling_map
+                        .are_connected(physical_q1, physical_q2)
+                    {
                         return true;
                     }
                 }
@@ -393,7 +399,7 @@ impl DeviceTranspiler {
     ) -> QuantRS2Result<RoutedCircuit<N>> {
         let config = crate::routing::SabreConfig::default();
         let router = SabreRouter::new(options.hardware_spec.coupling_map.clone(), config);
-        
+
         router.route(circuit)
     }
 
@@ -418,7 +424,8 @@ impl DeviceTranspiler {
             }
             _ => {
                 // Generic optimizations
-                optimized_circuit = self.apply_generic_optimizations(&optimized_circuit, options)?;
+                optimized_circuit =
+                    self.apply_generic_optimizations(&optimized_circuit, options)?;
             }
         }
 
@@ -486,7 +493,7 @@ impl DeviceTranspiler {
 
         // Check connectivity constraints
         // This would need actual qubit mapping information
-        
+
         Ok(())
     }
 
@@ -497,7 +504,11 @@ impl DeviceTranspiler {
     }
 
     /// Estimate error rate for transpiled circuit
-    fn estimate_error_rate<const N: usize>(&self, circuit: &Circuit<N>, spec: &HardwareSpec) -> f64 {
+    fn estimate_error_rate<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+        spec: &HardwareSpec,
+    ) -> f64 {
         let mut total_error = 0.0;
 
         for gate in circuit.gates() {
@@ -513,13 +524,13 @@ impl DeviceTranspiler {
     fn load_common_hardware_specs(&mut self) {
         // IBM Quantum specifications
         self.add_hardware_spec(HardwareSpec::ibm_quantum());
-        
+
         // Google Quantum AI specifications
         self.add_hardware_spec(HardwareSpec::google_quantum());
-        
+
         // AWS Braket specifications
         self.add_hardware_spec(HardwareSpec::aws_braket());
-        
+
         // Generic simulator
         self.add_hardware_spec(HardwareSpec::generic());
     }
@@ -535,7 +546,11 @@ impl HardwareSpec {
     /// Create IBM Quantum device specification
     pub fn ibm_quantum() -> Self {
         let mut single_qubit = HashSet::new();
-        single_qubit.extend(["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY"].iter().map(|s| s.to_string()));
+        single_qubit.extend(
+            ["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY"]
+                .iter()
+                .map(|s| s.to_string()),
+        );
 
         let mut two_qubit = HashSet::new();
         two_qubit.extend(["CNOT", "CZ"].iter().map(|s| s.to_string()));
@@ -573,7 +588,11 @@ impl HardwareSpec {
     /// Create Google Quantum AI device specification
     pub fn google_quantum() -> Self {
         let mut single_qubit = HashSet::new();
-        single_qubit.extend(["X", "Y", "Z", "H", "RZ", "SQRT_X"].iter().map(|s| s.to_string()));
+        single_qubit.extend(
+            ["X", "Y", "Z", "H", "RZ", "SQRT_X"]
+                .iter()
+                .map(|s| s.to_string()),
+        );
 
         let mut two_qubit = HashSet::new();
         two_qubit.extend(["CZ", "ISWAP"].iter().map(|s| s.to_string()));
@@ -611,7 +630,11 @@ impl HardwareSpec {
     /// Create AWS Braket device specification
     pub fn aws_braket() -> Self {
         let mut single_qubit = HashSet::new();
-        single_qubit.extend(["X", "Y", "Z", "H", "RZ", "RX", "RY"].iter().map(|s| s.to_string()));
+        single_qubit.extend(
+            ["X", "Y", "Z", "H", "RZ", "RX", "RY"]
+                .iter()
+                .map(|s| s.to_string()),
+        );
 
         let mut two_qubit = HashSet::new();
         two_qubit.extend(["CNOT", "CZ", "ISWAP"].iter().map(|s| s.to_string()));
@@ -649,10 +672,18 @@ impl HardwareSpec {
     /// Create generic device specification for testing
     pub fn generic() -> Self {
         let mut single_qubit = HashSet::new();
-        single_qubit.extend(["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY"].iter().map(|s| s.to_string()));
+        single_qubit.extend(
+            ["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY"]
+                .iter()
+                .map(|s| s.to_string()),
+        );
 
         let mut two_qubit = HashSet::new();
-        two_qubit.extend(["CNOT", "CZ", "ISWAP", "SWAP"].iter().map(|s| s.to_string()));
+        two_qubit.extend(
+            ["CNOT", "CZ", "ISWAP", "SWAP"]
+                .iter()
+                .map(|s| s.to_string()),
+        );
 
         let mut multi_qubit = HashSet::new();
         multi_qubit.extend(["Toffoli", "Fredkin"].iter().map(|s| s.to_string()));
@@ -685,8 +716,8 @@ impl HardwareSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use quantrs2_core::gate::single::Hadamard;
     use quantrs2_core::gate::multi::CNOT;
+    use quantrs2_core::gate::single::Hadamard;
 
     #[test]
     fn test_transpiler_creation() {
@@ -709,7 +740,7 @@ mod tests {
             max_iterations: 5,
             ..Default::default()
         };
-        
+
         assert_eq!(options.strategy, TranspilationStrategy::MinimizeDepth);
         assert_eq!(options.max_iterations, 5);
     }
@@ -718,7 +749,7 @@ mod tests {
     fn test_native_gate_checking() {
         let transpiler = DeviceTranspiler::new();
         let spec = HardwareSpec::ibm_quantum();
-        
+
         let h_gate = Hadamard { target: QubitId(0) };
         assert!(transpiler.is_native_gate(&h_gate, &spec));
     }
@@ -727,10 +758,10 @@ mod tests {
     fn test_needs_decomposition() {
         let transpiler = DeviceTranspiler::new();
         let spec = HardwareSpec::ibm_quantum();
-        
+
         let mut circuit = Circuit::<2>::new();
         circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        
+
         // H gate should be native to IBM
         assert!(!transpiler.needs_decomposition(&circuit, &spec));
     }

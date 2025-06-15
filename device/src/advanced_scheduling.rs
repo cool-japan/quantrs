@@ -22,15 +22,13 @@ use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
+    quantum_universal_framework::{
+        ErrorRecovery, ExecutionStrategy, FeedbackControl, PerformanceTuning, RuntimeOptimization,
+    },
     qubit::QubitId,
-    quantum_universal_framework::{ExecutionStrategy, RuntimeOptimization, FeedbackControl, ErrorRecovery, PerformanceTuning},
 };
 
-use crate::{
-    job_scheduling::*,
-    translation::HardwareBackend,
-    DeviceError, DeviceResult,
-};
+use crate::{job_scheduling::*, translation::HardwareBackend, DeviceError, DeviceResult};
 
 // Placeholder types for missing complex types
 type AnomalyDetector = String;
@@ -147,39 +145,47 @@ type PerformancePredictor = String;
 // SciRS2 dependencies for advanced algorithms
 #[cfg(feature = "scirs2")]
 use scirs2_graph::{
-    betweenness_centrality, closeness_centrality, minimum_spanning_tree, shortest_path,
-    strongly_connected_components, Graph, pagerank, louvain_communities,
+    betweenness_centrality, closeness_centrality, louvain_communities, minimum_spanning_tree,
+    pagerank, shortest_path, strongly_connected_components, Graph,
 };
 #[cfg(feature = "scirs2")]
+use scirs2_linalg::{eig, matrix_norm, svd, trace, LinalgResult};
+#[cfg(feature = "scirs2")]
 use scirs2_optimize::{
-    minimize, differential_evolution, least_squares, dual_annealing,
-    OptimizeResult,
+    differential_evolution, dual_annealing, least_squares, minimize, OptimizeResult,
 };
 #[cfg(feature = "scirs2")]
 use scirs2_stats::{
-    corrcoef, mean, std, var, pearsonr, spearmanr, ks_2samp,
-    distributions::{norm, gamma, chi2},
+    corrcoef,
+    distributions::{chi2, gamma, norm},
+    ks_2samp, mean, pearsonr, spearmanr, std, var,
 };
-#[cfg(feature = "scirs2")]
-use scirs2_linalg::{eig, svd, matrix_norm, trace, LinalgResult};
 
 // Fallback implementations
 #[cfg(not(feature = "scirs2"))]
 mod fallback_scirs2 {
     use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
-    
-    pub fn mean(_data: &ArrayView1<f64>) -> f64 { 0.0 }
-    pub fn std(_data: &ArrayView1<f64>, _ddof: i32) -> f64 { 1.0 }
-    pub fn pearsonr(_x: &ArrayView1<f64>, _y: &ArrayView1<f64>) -> (f64, f64) { (0.0, 0.5) }
-    
+
+    pub fn mean(_data: &ArrayView1<f64>) -> f64 {
+        0.0
+    }
+    pub fn std(_data: &ArrayView1<f64>, _ddof: i32) -> f64 {
+        1.0
+    }
+    pub fn pearsonr(_x: &ArrayView1<f64>, _y: &ArrayView1<f64>) -> (f64, f64) {
+        (0.0, 0.5)
+    }
+
     pub struct OptimizeResult {
         pub x: Array1<f64>,
         pub fun: f64,
         pub success: bool,
     }
-    
+
     pub fn minimize<F>(_func: F, _x0: &Array1<f64>) -> OptimizeResult
-    where F: Fn(&Array1<f64>) -> f64 {
+    where
+        F: Fn(&Array1<f64>) -> f64,
+    {
         OptimizeResult {
             x: Array1::zeros(2),
             fun: 0.0,
@@ -453,7 +459,7 @@ impl AdvancedQuantumScheduler {
     /// Create a new advanced quantum scheduler
     pub fn new(params: SchedulingParams) -> Self {
         let core_scheduler = Arc::new(QuantumJobScheduler::new(params));
-        
+
         Self {
             core_scheduler,
             decision_engine: Arc::new(Mutex::new(DecisionEngine::new())),
@@ -476,22 +482,26 @@ impl AdvancedQuantumScheduler {
         user_id: String,
     ) -> DeviceResult<JobId> {
         // Extract features for ML-based decision making
-        let features = self.extract_job_features(&circuit, shots, &config, &user_id).await?;
-        
+        let features = self
+            .extract_job_features(&circuit, shots, &config, &user_id)
+            .await?;
+
         // Use ML models to optimize job configuration
         let optimized_config = self.optimize_job_config(config, &features).await?;
-        
+
         // Predict optimal execution strategy
         let execution_strategy = self.predict_execution_strategy(&features).await?;
-        
+
         // Submit job with optimized configuration
-        let job_id = self.core_scheduler
+        let job_id = self
+            .core_scheduler
             .submit_job(circuit, shots, optimized_config, user_id)
             .await?;
-        
+
         // Register job for advanced monitoring and adaptation
-        self.register_for_advanced_monitoring(&job_id.to_string(), execution_strategy).await?;
-        
+        self.register_for_advanced_monitoring(&job_id.to_string(), execution_strategy)
+            .await?;
+
         Ok(job_id)
     }
 
@@ -502,7 +512,7 @@ impl AdvancedQuantumScheduler {
         user_preferences: &UserPreferences,
     ) -> DeviceResult<HardwareBackend> {
         let multi_obj = self.multi_objective_optimizer.lock().unwrap();
-        
+
         // Define objectives: performance, cost, energy, availability
         let objectives = vec![
             ("performance".to_string(), 0.3),
@@ -511,15 +521,17 @@ impl AdvancedQuantumScheduler {
             ("availability".to_string(), 0.15),
             ("fairness".to_string(), 0.1),
         ];
-        
+
         // Use SciRS2 optimization to find Pareto-optimal backend selection
         #[cfg(feature = "scirs2")]
         {
             let backend_scores = self.evaluate_backends(job_requirements).await?;
-            let optimal_backend = self.scirs2_backend_optimization(&backend_scores, &objectives).await?;
+            let optimal_backend = self
+                .scirs2_backend_optimization(&backend_scores, &objectives)
+                .await?;
             Ok(optimal_backend)
         }
-        
+
         #[cfg(not(feature = "scirs2"))]
         {
             // Fallback to simple selection
@@ -530,21 +542,21 @@ impl AdvancedQuantumScheduler {
     /// Predictive queue time estimation using SciRS2 forecasting
     pub async fn predict_queue_times(&self) -> DeviceResult<HashMap<HardwareBackend, Duration>> {
         let predictive_engine = self.predictive_engine.lock().unwrap();
-        
+
         #[cfg(feature = "scirs2")]
         {
             let mut predictions = HashMap::new();
-            
+
             for backend in self.get_available_backends().await? {
                 // Use time series forecasting with SciRS2
                 let historical_data = self.get_historical_queue_data(&backend).await?;
                 let forecast = self.scirs2_time_series_forecast(&historical_data).await?;
                 predictions.insert(backend, forecast);
             }
-            
+
             Ok(predictions)
         }
-        
+
         #[cfg(not(feature = "scirs2"))]
         {
             // Fallback prediction
@@ -559,47 +571,49 @@ impl AdvancedQuantumScheduler {
     /// Dynamic load balancing with real-time adaptation
     pub async fn dynamic_load_balance(&self) -> DeviceResult<()> {
         let adaptation_engine = self.adaptation_engine.lock().unwrap();
-        
+
         // Monitor platform performance in real-time
         let platform_metrics = self.collect_platform_metrics().await?;
-        
+
         // Detect performance anomalies
         let anomalies = self.detect_performance_anomalies(&platform_metrics).await?;
-        
+
         if !anomalies.is_empty() {
             // Apply load balancing strategies
             self.apply_load_balancing_strategies(&anomalies).await?;
-            
+
             // Migrate circuits if necessary
             self.migrate_circuits_if_needed(&anomalies).await?;
-            
+
             // Update routing policies
             self.update_routing_policies(&platform_metrics).await?;
         }
-        
+
         Ok(())
     }
 
     /// SLA compliance monitoring and violation prediction
     pub async fn monitor_sla_compliance(&self) -> DeviceResult<SLAComplianceReport> {
         let sla_manager = self.sla_manager.lock().unwrap();
-        
+
         // Collect current job statuses and performance metrics
         let job_metrics = self.collect_job_metrics().await?;
-        
+
         // Predict potential SLA violations
         let predicted_violations = self.predict_sla_violations(&job_metrics).await?;
-        
+
         // Generate mitigation strategies for predicted violations
-        let mitigation_strategies = self.generate_mitigation_strategies(&predicted_violations).await?;
-        
+        let mitigation_strategies = self
+            .generate_mitigation_strategies(&predicted_violations)
+            .await?;
+
         // Execute immediate mitigation actions if needed
         for strategy in &mitigation_strategies {
             if strategy.urgency == MitigationUrgency::Immediate {
                 self.execute_mitigation_strategy(strategy).await?;
             }
         }
-        
+
         Ok(SLAComplianceReport {
             current_compliance: self.calculate_current_compliance().await?,
             predicted_violations,
@@ -611,19 +625,21 @@ impl AdvancedQuantumScheduler {
     /// Cost optimization with dynamic pricing and budget management
     pub async fn optimize_costs(&self) -> DeviceResult<CostOptimizationReport> {
         let cost_optimizer = self.cost_optimizer.lock().unwrap();
-        
+
         // Analyze current spending patterns
         let spending_analysis = self.analyze_spending_patterns().await?;
-        
+
         // Update dynamic pricing models
         self.update_dynamic_pricing().await?;
-        
+
         // Optimize resource allocation for cost efficiency
         let allocation_optimizations = self.optimize_cost_allocations().await?;
-        
+
         // Generate budget recommendations
-        let budget_recommendations = self.generate_budget_recommendations(&spending_analysis).await?;
-        
+        let budget_recommendations = self
+            .generate_budget_recommendations(&spending_analysis)
+            .await?;
+
         Ok(CostOptimizationReport {
             current_costs: spending_analysis,
             optimizations: allocation_optimizations,
@@ -635,19 +651,19 @@ impl AdvancedQuantumScheduler {
     /// Energy optimization for sustainable quantum computing
     pub async fn optimize_energy_consumption(&self) -> DeviceResult<EnergyOptimizationReport> {
         let energy_optimizer = self.energy_optimizer.lock().unwrap();
-        
+
         // Monitor current energy consumption
         let energy_metrics = self.collect_energy_metrics().await?;
-        
+
         // Optimize for renewable energy usage
         let renewable_schedule = self.optimize_renewable_schedule().await?;
-        
+
         // Calculate carbon footprint reduction opportunities
         let carbon_reduction = self.calculate_carbon_reduction_opportunities().await?;
-        
+
         // Generate energy efficiency recommendations
         let efficiency_recommendations = self.generate_energy_recommendations().await?;
-        
+
         Ok(EnergyOptimizationReport {
             current_consumption: energy_metrics,
             renewable_optimization: renewable_schedule,
@@ -660,19 +676,19 @@ impl AdvancedQuantumScheduler {
     /// Game-theoretic fair scheduling for multi-user environments
     pub async fn apply_fair_scheduling(&self) -> DeviceResult<FairnessReport> {
         let fairness_engine = self.fairness_engine.lock().unwrap();
-        
+
         // Analyze user behavior and resource usage patterns
         let user_analysis = self.analyze_user_behavior().await?;
-        
+
         // Apply game-theoretic mechanisms for fair resource allocation
         let allocation_results = self.apply_game_theoretic_allocation(&user_analysis).await?;
-        
+
         // Calculate fairness metrics
         let fairness_metrics = self.calculate_fairness_metrics(&allocation_results).await?;
-        
+
         // Generate incentive mechanisms to promote fair usage
         let incentive_mechanisms = self.design_incentive_mechanisms(&user_analysis).await?;
-        
+
         Ok(FairnessReport {
             fairness_metrics,
             allocation_results,
@@ -711,16 +727,16 @@ impl AdvancedQuantumScheduler {
     ) -> DeviceResult<JobConfig> {
         // Use ML models to optimize job configuration
         let decision_engine = self.decision_engine.lock().unwrap();
-        
+
         // Predict optimal resource requirements
         config.resource_requirements = self.predict_optimal_resources(features).await?;
-        
+
         // Optimize retry strategy
         config.retry_attempts = self.predict_optimal_retries(features).await?;
-        
+
         // Set optimal timeouts
         config.max_execution_time = self.predict_optimal_timeout(features).await?;
-        
+
         Ok(config)
     }
 
@@ -744,9 +760,10 @@ impl AdvancedQuantumScheduler {
     ) -> DeviceResult<HardwareBackend> {
         // Use SciRS2 multi-objective optimization for backend selection
         // This would implement NSGA-II or similar algorithms
-        
+
         // For now, return the first available backend
-        backend_scores.first()
+        backend_scores
+            .first()
             .map(|_| HardwareBackend::IBMQuantum)
             .ok_or_else(|| DeviceError::APIError("No backends available".to_string()))
     }
@@ -754,7 +771,10 @@ impl AdvancedQuantumScheduler {
     // Helper methods for advanced scheduling
 
     /// Predict optimal execution strategy based on job features
-    async fn predict_execution_strategy(&self, features: &JobFeatures) -> DeviceResult<ExecutionStrategy> {
+    async fn predict_execution_strategy(
+        &self,
+        features: &JobFeatures,
+    ) -> DeviceResult<ExecutionStrategy> {
         // Placeholder implementation
         Ok(ExecutionStrategy)
     }
@@ -770,7 +790,10 @@ impl AdvancedQuantumScheduler {
     }
 
     /// Evaluate available backends for job requirements
-    async fn evaluate_backends(&self, job_requirements: &JobRequirements) -> DeviceResult<Vec<BackendScore>> {
+    async fn evaluate_backends(
+        &self,
+        job_requirements: &JobRequirements,
+    ) -> DeviceResult<Vec<BackendScore>> {
         // Placeholder implementation
         Ok(vec![])
     }
@@ -778,11 +801,17 @@ impl AdvancedQuantumScheduler {
     /// Get list of available backends
     async fn get_available_backends(&self) -> DeviceResult<Vec<HardwareBackend>> {
         // Placeholder implementation
-        Ok(vec![HardwareBackend::IBMQuantum, HardwareBackend::GoogleSycamore])
+        Ok(vec![
+            HardwareBackend::IBMQuantum,
+            HardwareBackend::GoogleSycamore,
+        ])
     }
 
     /// Get historical queue data for a specific backend
-    async fn get_historical_queue_data(&self, backend: &HardwareBackend) -> DeviceResult<Array1<f64>> {
+    async fn get_historical_queue_data(
+        &self,
+        backend: &HardwareBackend,
+    ) -> DeviceResult<Array1<f64>> {
         // Placeholder implementation
         Ok(Array1::zeros(10))
     }
@@ -794,19 +823,28 @@ impl AdvancedQuantumScheduler {
     }
 
     /// Detect performance anomalies in platform metrics
-    async fn detect_performance_anomalies(&self, metrics: &PlatformMetrics) -> DeviceResult<Vec<PerformanceAnomaly>> {
+    async fn detect_performance_anomalies(
+        &self,
+        metrics: &PlatformMetrics,
+    ) -> DeviceResult<Vec<PerformanceAnomaly>> {
         // Placeholder implementation
         Ok(vec![])
     }
 
     /// Apply load balancing strategies
-    async fn apply_load_balancing_strategies(&self, anomalies: &[PerformanceAnomaly]) -> DeviceResult<()> {
+    async fn apply_load_balancing_strategies(
+        &self,
+        anomalies: &[PerformanceAnomaly],
+    ) -> DeviceResult<()> {
         // Placeholder implementation
         Ok(())
     }
 
     /// Migrate circuits if needed
-    async fn migrate_circuits_if_needed(&self, anomalies: &[PerformanceAnomaly]) -> DeviceResult<()> {
+    async fn migrate_circuits_if_needed(
+        &self,
+        anomalies: &[PerformanceAnomaly],
+    ) -> DeviceResult<()> {
         // Placeholder implementation
         Ok(())
     }
@@ -824,13 +862,19 @@ impl AdvancedQuantumScheduler {
     }
 
     /// Predict SLA violations
-    async fn predict_sla_violations(&self, job_metrics: &[JobMetrics]) -> DeviceResult<Vec<PredictedViolation>> {
+    async fn predict_sla_violations(
+        &self,
+        job_metrics: &[JobMetrics],
+    ) -> DeviceResult<Vec<PredictedViolation>> {
         // Placeholder implementation
         Ok(vec![])
     }
 
     /// Generate mitigation strategies
-    async fn generate_mitigation_strategies(&self, violations: &[PredictedViolation]) -> DeviceResult<Vec<MitigationStrategy>> {
+    async fn generate_mitigation_strategies(
+        &self,
+        violations: &[PredictedViolation],
+    ) -> DeviceResult<Vec<MitigationStrategy>> {
         // Placeholder implementation
         Ok(vec![])
     }
@@ -872,7 +916,10 @@ impl AdvancedQuantumScheduler {
     }
 
     /// Generate budget recommendations
-    async fn generate_budget_recommendations(&self, analysis: &SpendingAnalysis) -> DeviceResult<Vec<String>> {
+    async fn generate_budget_recommendations(
+        &self,
+        analysis: &SpendingAnalysis,
+    ) -> DeviceResult<Vec<String>> {
         // Placeholder implementation
         Ok(vec!["Consider budget optimization".to_string()])
     }
@@ -920,19 +967,28 @@ impl AdvancedQuantumScheduler {
     }
 
     /// Apply game theoretic allocation
-    async fn apply_game_theoretic_allocation(&self, analysis: &UserAnalysis) -> DeviceResult<AllocationResults> {
+    async fn apply_game_theoretic_allocation(
+        &self,
+        analysis: &UserAnalysis,
+    ) -> DeviceResult<AllocationResults> {
         // Placeholder implementation
         Ok(AllocationResults::default())
     }
 
     /// Calculate fairness metrics
-    async fn calculate_fairness_metrics(&self, results: &AllocationResults) -> DeviceResult<FairnessMetrics> {
+    async fn calculate_fairness_metrics(
+        &self,
+        results: &AllocationResults,
+    ) -> DeviceResult<FairnessMetrics> {
         // Placeholder implementation
         Ok(FairnessMetrics::default())
     }
 
     /// Design incentive mechanisms
-    async fn design_incentive_mechanisms(&self, analysis: &UserAnalysis) -> DeviceResult<Vec<IncentiveMechanism>> {
+    async fn design_incentive_mechanisms(
+        &self,
+        analysis: &UserAnalysis,
+    ) -> DeviceResult<Vec<IncentiveMechanism>> {
         // Placeholder implementation
         Ok(vec![])
     }
@@ -951,13 +1007,19 @@ impl AdvancedQuantumScheduler {
 
     /// Simple backend selection fallback
     #[cfg(not(feature = "scirs2"))]
-    async fn simple_backend_selection(&self, requirements: &crate::job_scheduling::ResourceRequirements) -> DeviceResult<HardwareBackend> {
+    async fn simple_backend_selection(
+        &self,
+        requirements: &crate::job_scheduling::ResourceRequirements,
+    ) -> DeviceResult<HardwareBackend> {
         // Simple fallback implementation
         Ok(HardwareBackend::Custom(0))
     }
 
     /// Get user behavior features
-    async fn get_user_behavior_features(&self, user_id: &str) -> DeviceResult<UserBehaviorFeatures> {
+    async fn get_user_behavior_features(
+        &self,
+        user_id: &str,
+    ) -> DeviceResult<UserBehaviorFeatures> {
         Ok(UserBehaviorFeatures {
             avg_job_complexity: 1.0,
             submission_frequency: 0.5,
@@ -988,7 +1050,10 @@ impl AdvancedQuantumScheduler {
     }
 
     /// Predict optimal resources
-    async fn predict_optimal_resources(&self, features: &JobFeatures) -> DeviceResult<crate::job_scheduling::ResourceRequirements> {
+    async fn predict_optimal_resources(
+        &self,
+        features: &JobFeatures,
+    ) -> DeviceResult<crate::job_scheduling::ResourceRequirements> {
         Ok(crate::job_scheduling::ResourceRequirements {
             min_qubits: features.qubit_count,
             max_depth: None,
@@ -1243,7 +1308,10 @@ macro_rules! default_impl {
     ($type:ident) => {
         impl Default for $type {
             fn default() -> Self {
-                unimplemented!("Default implementation for {} not yet implemented", stringify!($type))
+                unimplemented!(
+                    "Default implementation for {} not yet implemented",
+                    stringify!($type)
+                )
             }
         }
     };
@@ -1283,7 +1351,7 @@ mod tests {
     async fn test_intelligent_job_submission() {
         let params = SchedulingParams::default();
         let scheduler = AdvancedQuantumScheduler::new(params);
-        
+
         // This would test the intelligent job submission features
         // when full implementation is complete
     }
@@ -1292,7 +1360,7 @@ mod tests {
     async fn test_multi_objective_optimization() {
         let params = SchedulingParams::default();
         let scheduler = AdvancedQuantumScheduler::new(params);
-        
+
         // Test multi-objective optimization features
         // when implementation is complete
     }

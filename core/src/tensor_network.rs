@@ -83,7 +83,10 @@ impl Tensor {
     }
 
     /// Create a tensor from an ndarray with specified indices
-    pub fn from_array<D>(array: ndarray::ArrayBase<ndarray::OwnedRepr<Complex64>, D>, indices: Vec<usize>) -> Self
+    pub fn from_array<D>(
+        array: ndarray::ArrayBase<ndarray::OwnedRepr<Complex64>, D>,
+        indices: Vec<usize>,
+    ) -> Self
     where
         D: ndarray::Dimension,
     {
@@ -214,7 +217,7 @@ impl Tensor {
             .to_owned();
 
         // Perform contraction via matrix multiplication
-        let result_mat: Array2<Complex64> = Array2::zeros((
+        let _result_mat: Array2<Complex64> = Array2::zeros((
             self_left_dims * self_right_dims,
             other_left_dims * other_right_dims,
         ));
@@ -227,9 +230,9 @@ impl Tensor {
                     for l in 0..other_right_dims {
                         let mut sum = Complex64::new(0.0, 0.0);
                         for c in 0..contract_dim {
-                            let self_idx =
+                            let _self_idx =
                                 i * contract_dim * self_right_dims + c * self_right_dims + j;
-                            let other_idx =
+                            let _other_idx =
                                 k * contract_dim * other_right_dims + c * other_right_dims + l;
                             sum += self_mat[[i, c * self_right_dims + j]]
                                 * other_mat[[k * contract_dim + c, l]];
@@ -526,7 +529,7 @@ impl TensorNetwork {
     }
 
     /// Estimate the computational cost of contracting two tensors
-    fn estimate_contraction_cost(&self, t1: usize, t2: usize) -> usize {
+    fn estimate_contraction_cost(&self, _t1: usize, _t2: usize) -> usize {
         // Cost is roughly the product of all dimensions in the result
         // This is a simplified estimate
         1000 // Placeholder
@@ -591,14 +594,14 @@ impl TensorNetwork {
     }
 
     /// Apply Matrix Product State (MPS) decomposition
-    pub fn to_mps(&self, max_bond_dim: Option<usize>) -> QuantRS2Result<Vec<Tensor>> {
+    pub fn to_mps(&self, _max_bond_dim: Option<usize>) -> QuantRS2Result<Vec<Tensor>> {
         // This would decompose the network into a chain of tensors
         // For now, return a placeholder
         Ok(vec![])
     }
 
     /// Apply Matrix Product Operator (MPO) representation
-    pub fn apply_mpo(&mut self, mpo: &[Tensor], qubits: &[usize]) -> QuantRS2Result<()> {
+    pub fn apply_mpo(&mut self, _mpo: &[Tensor], _qubits: &[usize]) -> QuantRS2Result<()> {
         // Apply an MPO to specified qubits
         Ok(())
     }
@@ -751,7 +754,7 @@ impl TensorNetworkBuilder {
     /// Contract the network and return the quantum state
     pub fn to_statevector(&mut self) -> QuantRS2Result<Vec<Complex64>> {
         let final_tensor = self.network.contract_all()?;
-        Ok(final_tensor.data.into_raw_vec())
+        Ok(final_tensor.data.into_raw_vec_and_offset().0)
     }
 }
 

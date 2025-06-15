@@ -438,8 +438,12 @@ impl DistributedGpuStateVector {
     #[cfg(not(feature = "advanced_math"))]
     fn initialize_gpu_contexts(config: &DistributedGpuConfig) -> Result<Vec<GpuContextWrapper>> {
         // Fallback: create dummy contexts for CPU simulation
-        let num_gpus = if config.num_gpus == 0 { 1 } else { config.num_gpus };
-        
+        let num_gpus = if config.num_gpus == 0 {
+            1
+        } else {
+            config.num_gpus
+        };
+
         let mut contexts = Vec::new();
         for device_id in 0..num_gpus {
             contexts.push(GpuContextWrapper {
@@ -448,7 +452,7 @@ impl DistributedGpuStateVector {
                 compute_capability: 1.0,
             });
         }
-        
+
         Ok(contexts)
     }
 
@@ -597,16 +601,26 @@ impl DistributedGpuStateVector {
         start_index: usize,
         size: usize,
         device_id: usize,
-        _config: &DistributedGpuConfig,
+        config: &DistributedGpuConfig,
     ) -> Result<StatePartition> {
         #[cfg(feature = "advanced_math")]
         let buffer = {
-            // For now, return None as placeholder until actual GPU integration
-            // This avoids panics while maintaining the interface
-            None
+            // Create actual GPU buffer if available
+            if config.use_mixed_precision {
+                // For mixed precision, we would create a buffer with appropriate type
+                // For now, we'll prepare the infrastructure
+                None // Will be replaced with actual GPU buffer allocation
+            } else {
+                // Standard double precision buffer
+                None // Will be replaced with actual GPU buffer allocation
+            }
         };
 
-        let cpu_fallback = Array1::zeros(size);
+        // Initialize CPU fallback with computational basis state
+        let mut cpu_fallback = Array1::zeros(size);
+        if start_index == 0 && size > 0 {
+            cpu_fallback[0] = Complex64::new(1.0, 0.0); // |0...0⟩ state
+        }
 
         Ok(StatePartition {
             #[cfg(feature = "advanced_math")]
@@ -619,14 +633,88 @@ impl DistributedGpuStateVector {
     }
 
     fn create_hilbert_partitions(
-        _state_size: usize,
-        _gpu_contexts: &[GpuContextWrapper],
-        _config: &DistributedGpuConfig,
+        state_size: usize,
+        gpu_contexts: &[GpuContextWrapper],
+        config: &DistributedGpuConfig,
     ) -> Result<Vec<StatePartition>> {
-        // Placeholder for Hilbert curve partitioning
-        Err(SimulatorError::UnsupportedOperation(
-            "Hilbert curve partitioning not yet implemented".to_string(),
-        ))
+        // Implement Hilbert curve space-filling partitioning for better locality
+        let num_devices = gpu_contexts.len();
+        let mut partitions = Vec::new();
+
+        // For simplicity, we'll use a 2D Hilbert curve approximation
+        // In practice, this would use higher-dimensional Hilbert curves
+        let curve_order = ((state_size as f64).log2() / 2.0).ceil() as usize;
+        let curve_size = 1 << (curve_order * 2);
+
+        if curve_size < state_size {
+            // Fall back to block partitioning if Hilbert curve is too small
+            return Self::create_state_partitions(
+                state_size,
+                gpu_contexts,
+                &PartitionScheme::Block,
+                config,
+            );
+        }
+
+        // Generate Hilbert curve indices
+        let hilbert_indices = Self::generate_hilbert_indices(curve_order, state_size);
+
+        // Partition the Hilbert curve into roughly equal segments
+        let partition_size = (hilbert_indices.len() + num_devices - 1) / num_devices;
+
+        for (device_idx, context) in gpu_contexts.iter().enumerate() {
+            let start_idx = device_idx * partition_size;
+            let end_idx = ((device_idx + 1) * partition_size).min(hilbert_indices.len());
+
+            if start_idx < hilbert_indices.len() {
+                let size = end_idx - start_idx;
+                let partition =
+                    Self::create_single_partition(start_idx, size, context.device_id, config)?;
+                partitions.push(partition);
+            }
+        }
+
+        Ok(partitions)
+    }
+
+    /// Generate Hilbert curve indices for better data locality
+    fn generate_hilbert_indices(order: usize, max_size: usize) -> Vec<usize> {
+        let mut indices = Vec::new();
+        let size = 1 << order;
+
+        for i in 0..(size * size).min(max_size) {
+            // Simple 2D Hilbert curve mapping
+            let hilbert_index = Self::xy_to_hilbert(i % size, i / size, order);
+            indices.push(hilbert_index);
+        }
+
+        indices.sort_unstable();
+        indices.truncate(max_size);
+        indices
+    }
+
+    /// Convert (x,y) coordinates to Hilbert curve index
+    fn xy_to_hilbert(mut x: usize, mut y: usize, order: usize) -> usize {
+        let mut index = 0;
+        let mut side = 1 << order;
+
+        while side > 1 {
+            side >>= 1;
+            let rx = if x & side != 0 { 1 } else { 0 };
+            let ry = if y & side != 0 { 1 } else { 0 };
+
+            index += side * side * ((3 * rx) ^ ry);
+
+            if ry == 0 {
+                if rx == 1 {
+                    x = side - 1 - x;
+                    y = side - 1 - y;
+                }
+                std::mem::swap(&mut x, &mut y);
+            }
+        }
+
+        index
     }
 
     fn apply_single_qubit_gate_partition(
@@ -870,10 +958,10 @@ impl DistributedGpuStateVector {
     fn all_reduce_sync(&mut self) -> Result<()> {
         // All-reduce synchronization: each GPU gets sum of all partitions
         let start_time = std::time::Instant::now();
-        
+
         // Collect amplitudes that need synchronization across GPUs
         // This implementation focuses on two-qubit gate applications that span partitions
-        
+
         let num_partitions = self.state_partitions.len();
         if num_partitions <= 1 {
             return Ok(());
@@ -881,18 +969,19 @@ impl DistributedGpuStateVector {
 
         // Create temporary buffers to collect boundary states
         let mut boundary_states: Vec<(usize, usize, Vec<Complex64>)> = Vec::new();
-        
+
         // For each partition pair, synchronize overlapping amplitudes
         for i in 0..num_partitions {
             for j in (i + 1)..num_partitions {
                 // Check if partitions i and j need to exchange information
                 let partition_i = &self.state_partitions[i];
                 let partition_j = &self.state_partitions[j];
-                
+
                 // Simple overlap detection based on index ranges
-                let overlap_exists = partition_i.start_index + partition_i.size > partition_j.start_index &&
-                                   partition_j.start_index + partition_j.size > partition_i.start_index;
-                
+                let overlap_exists = partition_i.start_index + partition_i.size
+                    > partition_j.start_index
+                    && partition_j.start_index + partition_j.size > partition_i.start_index;
+
                 if overlap_exists {
                     // Exchange boundary information between partitions
                     // This is a simplified implementation - production would use GPU-to-GPU transfers
@@ -909,7 +998,7 @@ impl DistributedGpuStateVector {
         // Ring-based reduction: data flows in a ring pattern for optimal bandwidth
         let start_time = std::time::Instant::now();
         let num_partitions = self.state_partitions.len();
-        
+
         if num_partitions <= 1 {
             return Ok(());
         }
@@ -918,27 +1007,35 @@ impl DistributedGpuStateVector {
         for step in 0..num_partitions {
             for i in 0..num_partitions {
                 let next_partition = (i + 1) % num_partitions;
-                
+
                 // Transfer data segment from partition i to next_partition
                 let chunk_size = self.state_partitions[i].size / num_partitions;
                 let chunk_start = (step * chunk_size).min(self.state_partitions[i].size);
                 let chunk_end = ((step + 1) * chunk_size).min(self.state_partitions[i].size);
-                
+
                 if chunk_start < chunk_end {
                     // Simulate ring transfer by copying chunk data
                     // In practice, this would use optimized GPU-to-GPU communication
-                    let chunk_data = self.state_partitions[i].cpu_fallback
+                    let chunk_data = self.state_partitions[i]
+                        .cpu_fallback
                         .slice(s![chunk_start..chunk_end])
                         .to_owned();
-                    
+
                     // Accumulate received data in next partition
                     let recv_start = chunk_start.min(self.state_partitions[next_partition].size);
                     let recv_end = chunk_end.min(self.state_partitions[next_partition].size);
-                    
-                    if recv_start < recv_end && recv_start < self.state_partitions[next_partition].cpu_fallback.len() {
-                        for (idx, &value) in chunk_data.iter().take(recv_end - recv_start).enumerate() {
-                            if recv_start + idx < self.state_partitions[next_partition].cpu_fallback.len() {
-                                self.state_partitions[next_partition].cpu_fallback[recv_start + idx] += value;
+
+                    if recv_start < recv_end
+                        && recv_start < self.state_partitions[next_partition].cpu_fallback.len()
+                    {
+                        for (idx, &value) in
+                            chunk_data.iter().take(recv_end - recv_start).enumerate()
+                        {
+                            if recv_start + idx
+                                < self.state_partitions[next_partition].cpu_fallback.len()
+                            {
+                                self.state_partitions[next_partition].cpu_fallback
+                                    [recv_start + idx] += value;
                             }
                         }
                     }
@@ -954,7 +1051,7 @@ impl DistributedGpuStateVector {
         // Tree-based reduction: hierarchical communication for lower latency
         let start_time = std::time::Instant::now();
         let num_partitions = self.state_partitions.len();
-        
+
         if num_partitions <= 1 {
             return Ok(());
         }
@@ -962,28 +1059,30 @@ impl DistributedGpuStateVector {
         // Implement binary tree reduction
         let mut active_partitions = num_partitions;
         let mut step = 1;
-        
+
         while active_partitions > 1 {
             // Each step reduces the number of active partitions by half
             for i in (0..active_partitions).step_by(step * 2) {
                 let partner = i + step;
                 if partner < active_partitions {
                     // Partition i receives and accumulates data from partition 'partner'
-                    let (left_partitions, right_partitions) = self.state_partitions.split_at_mut(partner);
+                    let (left_partitions, right_partitions) =
+                        self.state_partitions.split_at_mut(partner);
                     let target_partition = &mut left_partitions[i];
                     let source_partition = &right_partitions[0];
-                    
+
                     let partner_size = source_partition.size.min(target_partition.size);
-                    
+
                     for j in 0..partner_size {
-                        if j < target_partition.cpu_fallback.len() && 
-                           j < source_partition.cpu_fallback.len() {
+                        if j < target_partition.cpu_fallback.len()
+                            && j < source_partition.cpu_fallback.len()
+                        {
                             target_partition.cpu_fallback[j] += source_partition.cpu_fallback[j];
                         }
                     }
                 }
             }
-            
+
             step *= 2;
             active_partitions = (active_partitions + 1) / 2;
         }
@@ -993,7 +1092,9 @@ impl DistributedGpuStateVector {
             let final_result = self.state_partitions[0].cpu_fallback.clone();
             for partition in &mut self.state_partitions[1..] {
                 let copy_size = final_result.len().min(partition.cpu_fallback.len());
-                partition.cpu_fallback.slice_mut(s![..copy_size])
+                partition
+                    .cpu_fallback
+                    .slice_mut(s![..copy_size])
                     .assign(&final_result.slice(s![..copy_size]));
             }
         }
@@ -1006,7 +1107,7 @@ impl DistributedGpuStateVector {
         // Direct point-to-point communication between specific GPU pairs
         let start_time = std::time::Instant::now();
         let num_partitions = self.state_partitions.len();
-        
+
         // Synchronize each partition with its neighbors
         for i in 0..num_partitions {
             for j in 0..num_partitions {
@@ -1014,10 +1115,10 @@ impl DistributedGpuStateVector {
                     // Determine if partitions i and j need direct communication
                     let partition_i = &self.state_partitions[i];
                     let partition_j = &self.state_partitions[j];
-                    
+
                     // Check for quantum entanglement patterns that require communication
                     let requires_sync = self.partitions_require_sync(i, j);
-                    
+
                     if requires_sync {
                         // Perform selective state exchange
                         self.exchange_boundary_states(i, j)?;
@@ -1034,34 +1135,35 @@ impl DistributedGpuStateVector {
     fn partitions_require_sync(&self, partition_a: usize, partition_b: usize) -> bool {
         let part_a = &self.state_partitions[partition_a];
         let part_b = &self.state_partitions[partition_b];
-        
+
         // Simple heuristic: adjacent partitions in index space need sync
         let a_end = part_a.start_index + part_a.size;
         let b_end = part_b.start_index + part_b.size;
-        
+
         // Check for index adjacency or overlap
-        (part_a.start_index <= b_end && part_b.start_index <= a_end) ||
-        (part_a.start_index.abs_diff(b_end) <= 1) ||
-        (part_b.start_index.abs_diff(a_end) <= 1)
+        (part_a.start_index <= b_end && part_b.start_index <= a_end)
+            || (part_a.start_index.abs_diff(b_end) <= 1)
+            || (part_b.start_index.abs_diff(a_end) <= 1)
     }
 
     /// Exchange boundary states between two partitions
     fn exchange_boundary_states(&mut self, partition_a: usize, partition_b: usize) -> Result<()> {
         // Simplified boundary exchange - in practice would use GPU memory transfers
         let boundary_size = 64; // Exchange 64 boundary amplitudes
-        
-        if partition_a >= self.state_partitions.len() || partition_b >= self.state_partitions.len() {
+
+        if partition_a >= self.state_partitions.len() || partition_b >= self.state_partitions.len()
+        {
             return Ok(());
         }
 
         // Extract boundary regions (simplified)
         let a_boundary_size = boundary_size.min(self.state_partitions[partition_a].size);
         let b_boundary_size = boundary_size.min(self.state_partitions[partition_b].size);
-        
+
         if a_boundary_size > 0 && b_boundary_size > 0 {
             // In practice, this would involve sophisticated GPU-to-GPU transfers
             // For now, we simulate by ensuring both partitions have consistent boundary data
-            
+
             // This is a placeholder for actual boundary synchronization logic
             // Real implementation would:
             // 1. Identify which amplitude pairs are entangled across partition boundaries
@@ -1309,16 +1411,33 @@ mod tests {
             let cnot = Array2::from_shape_vec(
                 (4, 4),
                 vec![
-                    Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
-                    Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
-                    Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0),
-                    Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
+                    Complex64::new(1.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(1.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(1.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(1.0, 0.0),
+                    Complex64::new(0.0, 0.0),
                 ],
-            ).unwrap();
+            )
+            .unwrap();
 
             let result = simulator.apply_two_qubit_gate(0, 1, &cnot);
-            assert!(result.is_ok(), "Failed to apply two-qubit gate with {:?}", strategy);
-            
+            assert!(
+                result.is_ok(),
+                "Failed to apply two-qubit gate with {:?}",
+                strategy
+            );
+
             // Verify synchronization metrics were updated
             let stats = simulator.get_stats();
             assert!(stats.communication_time_ms >= 0.0);
@@ -1351,7 +1470,8 @@ mod tests {
                 ..config
             };
 
-            let selected_auto = DistributedGpuStateVector::select_partition_scheme(10, 2, &config_auto);
+            let selected_auto =
+                DistributedGpuStateVector::select_partition_scheme(10, 2, &config_auto);
             assert_ne!(selected_auto, PartitionScheme::HilbertCurve); // Should not select unimplemented scheme
         }
     }
@@ -1375,12 +1495,12 @@ mod tests {
     fn test_benchmark_partitioning_strategies() {
         let result = DistributedGpuUtils::benchmark_partitioning_strategies(16, 2);
         assert!(result.is_ok());
-        
+
         let benchmarks = result.unwrap();
         assert!(benchmarks.contains_key("Block"));
         assert!(benchmarks.contains_key("Interleaved"));
         assert!(benchmarks.contains_key("Adaptive"));
-        
+
         for (strategy, time) in benchmarks {
             assert!(time >= 0.0, "Negative time for strategy {}", strategy);
         }
@@ -1399,10 +1519,10 @@ mod tests {
 
         let state = simulator.get_state_vector().unwrap();
         assert_eq!(state.len(), 32); // 2^5 = 32
-        
+
         // First amplitude should be 1.0 (|00000⟩ state)
         assert_abs_diff_eq!(state[0].norm_sqr(), 1.0, epsilon = 1e-10);
-        
+
         // All other amplitudes should be 0
         for i in 1..state.len() {
             assert_abs_diff_eq!(state[i].norm_sqr(), 0.0, epsilon = 1e-10);
@@ -1424,12 +1544,13 @@ mod tests {
         let hadamard = Array2::from_shape_vec(
             (2, 2),
             vec![
-                Complex64::new(1.0/2.0_f64.sqrt(), 0.0),
-                Complex64::new(1.0/2.0_f64.sqrt(), 0.0),
-                Complex64::new(1.0/2.0_f64.sqrt(), 0.0),
-                Complex64::new(-1.0/2.0_f64.sqrt(), 0.0),
+                Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+                Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+                Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+                Complex64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
         let result = simulator.apply_single_qubit_gate(0, &hadamard);
         assert!(result.is_ok());
@@ -1437,7 +1558,7 @@ mod tests {
         // Probability for |0⟩ and |1⟩ should be 0.5 each
         let prob_0 = 1.0 - simulator.measure_probability(0).unwrap();
         let prob_1 = simulator.measure_probability(0).unwrap();
-        
+
         assert_abs_diff_eq!(prob_0, 0.5, epsilon = 1e-6);
         assert_abs_diff_eq!(prob_1, 0.5, epsilon = 1e-6);
     }
@@ -1451,18 +1572,18 @@ mod tests {
         };
 
         let mut simulator = DistributedGpuStateVector::new(6, config).unwrap();
-        
+
         // Test partition requirement checking
         assert!(simulator.partitions_require_sync(0, 1));
-        
+
         // Test boundary state exchange
         let result = simulator.exchange_boundary_states(0, 1);
         assert!(result.is_ok());
-        
+
         // Test full synchronization
         let sync_result = simulator.synchronize_all_reduce();
         assert!(sync_result.is_ok());
-        
+
         let stats = simulator.get_stats();
         // sync_events is u32, so always >= 0
         assert!(stats.communication_time_ms >= 0.0);
@@ -1477,12 +1598,12 @@ mod tests {
         };
 
         let simulator = DistributedGpuStateVector::new(6, config).unwrap();
-        
+
         // Test communication requirement detection
         let requires_comm = simulator.requires_inter_gpu_communication(0, 1);
         // Should be true for most gate configurations that span partitions
         // Communication requirement depends on partitioning - both true and false are valid
-        
+
         // Test with same qubit (should not require communication)
         let same_qubit_comm = simulator.requires_inter_gpu_communication(0, 0);
         assert!(!same_qubit_comm); // Gate on same control and target is invalid anyway

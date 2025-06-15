@@ -1,8 +1,8 @@
 //! Report generator for automated reporting
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::SystemTime;
-use serde::{Deserialize, Serialize};
 
 use super::config::ExportDestination;
 
@@ -147,6 +147,6 @@ impl ReportGenerator {
             },
         }
     }
-    
+
     // TODO: Implement report generation methods
 }

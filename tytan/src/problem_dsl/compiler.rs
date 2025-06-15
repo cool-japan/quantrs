@@ -1,6 +1,9 @@
 //! Compiler for the problem DSL.
 
-use super::ast::{AST, Declaration, Expression, Constraint, ConstraintExpression, Objective, ObjectiveType, ComparisonOp, BinaryOperator, UnaryOperator, AggregationOp, Value};
+use super::ast::{
+    AggregationOp, BinaryOperator, ComparisonOp, Constraint, ConstraintExpression, Declaration,
+    Expression, Objective, ObjectiveType, UnaryOperator, Value, AST,
+};
 use super::error::CompileError;
 use ndarray::Array2;
 use std::collections::HashMap;
@@ -84,8 +87,16 @@ impl VariableRegistry {
         idx
     }
 
-    fn register_indexed_variable(&mut self, base_name: &str, indices: Vec<usize>, domain: VariableDomain) -> usize {
-        let indexed_map = self.indexed_var_indices.entry(base_name.to_string()).or_insert_with(HashMap::new);
+    fn register_indexed_variable(
+        &mut self,
+        base_name: &str,
+        indices: Vec<usize>,
+        domain: VariableDomain,
+    ) -> usize {
+        let indexed_map = self
+            .indexed_var_indices
+            .entry(base_name.to_string())
+            .or_insert_with(HashMap::new);
         if let Some(&idx) = indexed_map.get(&indices) {
             return idx;
         }
@@ -107,20 +118,20 @@ pub fn compile_to_qubo(ast: &AST, options: &CompilerOptions) -> Result<Array2<f6
             constraints,
         } => {
             let mut compiler = Compiler::new(options.clone());
-            
+
             // Process declarations
             for decl in declarations {
                 compiler.process_declaration(decl)?;
             }
-            
+
             // Build QUBO from objective
             let mut qubo = compiler.build_objective_qubo(objective)?;
-            
+
             // Add constraint penalties
             for constraint in constraints {
                 compiler.add_constraint_penalty(&mut qubo, constraint)?;
             }
-            
+
             Ok(qubo)
         }
         _ => Err(CompileError {
@@ -150,9 +161,15 @@ impl Compiler {
 
     fn process_declaration(&mut self, decl: &Declaration) -> Result<(), CompileError> {
         match decl {
-            Declaration::Variable { name, var_type, domain, attributes } => {
+            Declaration::Variable {
+                name,
+                var_type,
+                domain,
+                attributes,
+            } => {
                 // For now, assume all variables are binary
-                self.registry.register_variable(name, VariableDomain::Binary);
+                self.registry
+                    .register_variable(name, VariableDomain::Binary);
                 Ok(())
             }
             Declaration::Parameter { name, value, .. } => {
@@ -166,7 +183,7 @@ impl Compiler {
     fn build_objective_qubo(&mut self, objective: &Objective) -> Result<Array2<f64>, CompileError> {
         let num_vars = self.registry.num_vars;
         let mut qubo = Array2::zeros((num_vars, num_vars));
-        
+
         match objective {
             Objective::Minimize(expr) => {
                 self.add_expression_to_qubo(&mut qubo, expr, 1.0)?;
@@ -184,11 +201,16 @@ impl Compiler {
                 }
             }
         }
-        
+
         Ok(qubo)
     }
 
-    fn add_expression_to_qubo(&mut self, qubo: &mut Array2<f64>, expr: &Expression, coefficient: f64) -> Result<(), CompileError> {
+    fn add_expression_to_qubo(
+        &mut self,
+        qubo: &mut Array2<f64>,
+        expr: &Expression,
+        coefficient: f64,
+    ) -> Result<(), CompileError> {
         match expr {
             Expression::Variable(name) => {
                 if let Some(&idx) = self.registry.var_indices.get(name) {
@@ -212,8 +234,13 @@ impl Compiler {
                     }
                     BinaryOperator::Multiply => {
                         // Handle multiplication of two variables (creates quadratic term)
-                        if let (Expression::Variable(v1), Expression::Variable(v2)) = (left.as_ref(), right.as_ref()) {
-                            if let (Some(&idx1), Some(&idx2)) = (self.registry.var_indices.get(v1), self.registry.var_indices.get(v2)) {
+                        if let (Expression::Variable(v1), Expression::Variable(v2)) =
+                            (left.as_ref(), right.as_ref())
+                        {
+                            if let (Some(&idx1), Some(&idx2)) = (
+                                self.registry.var_indices.get(v1),
+                                self.registry.var_indices.get(v2),
+                            ) {
                                 if idx1 == idx2 {
                                     // x*x = x for binary variables
                                     qubo[[idx1, idx1]] += coefficient;
@@ -242,7 +269,11 @@ impl Compiler {
                 // Constants don't affect the optimization, but we could track them
                 // for the objective value offset
             }
-            Expression::Aggregation { op, variables, expression } => {
+            Expression::Aggregation {
+                op,
+                variables,
+                expression,
+            } => {
                 match op {
                     AggregationOp::Sum => {
                         // TODO: Expand sum over index sets
@@ -270,7 +301,11 @@ impl Compiler {
         Ok(())
     }
 
-    fn add_constraint_penalty(&mut self, qubo: &mut Array2<f64>, constraint: &Constraint) -> Result<(), CompileError> {
+    fn add_constraint_penalty(
+        &mut self,
+        qubo: &mut Array2<f64>,
+        constraint: &Constraint,
+    ) -> Result<(), CompileError> {
         match &constraint.expression {
             ConstraintExpression::Comparison { left, op, right } => {
                 match op {
@@ -279,10 +314,14 @@ impl Compiler {
                         // Expand: left^2 - 2*left*right + right^2
                         self.add_expression_to_qubo(qubo, left, self.penalty_weight)?;
                         self.add_expression_to_qubo(qubo, right, self.penalty_weight)?;
-                        
+
                         // Cross term: -2*left*right
-                        if let (Expression::Variable(v1), Expression::Variable(v2)) = (left, right) {
-                            if let (Some(&idx1), Some(&idx2)) = (self.registry.var_indices.get(v1), self.registry.var_indices.get(v2)) {
+                        if let (Expression::Variable(v1), Expression::Variable(v2)) = (left, right)
+                        {
+                            if let (Some(&idx1), Some(&idx2)) = (
+                                self.registry.var_indices.get(v1),
+                                self.registry.var_indices.get(v2),
+                            ) {
                                 qubo[[idx1, idx2]] -= self.penalty_weight;
                                 qubo[[idx2, idx1]] -= self.penalty_weight;
                             }
@@ -349,7 +388,7 @@ mod tests {
 
         let options = CompilerOptions::default();
         let result = compile_to_qubo(&ast, &options);
-        
+
         assert!(result.is_ok());
         let qubo = result.unwrap();
         assert_eq!(qubo.shape(), &[2, 2]);
@@ -385,7 +424,7 @@ mod tests {
 
         let options = CompilerOptions::default();
         let result = compile_to_qubo(&ast, &options);
-        
+
         assert!(result.is_ok());
         let qubo = result.unwrap();
         assert_eq!(qubo.shape(), &[2, 2]);
@@ -412,22 +451,20 @@ mod tests {
                 },
             ],
             objective: Objective::Minimize(Expression::Literal(Value::Number(0.0))),
-            constraints: vec![
-                Constraint {
-                    name: None,
-                    expression: ConstraintExpression::Comparison {
-                        left: Expression::Variable("x".to_string()),
-                        op: ComparisonOp::Equal,
-                        right: Expression::Variable("y".to_string()),
-                    },
-                    tags: vec![],
+            constraints: vec![Constraint {
+                name: None,
+                expression: ConstraintExpression::Comparison {
+                    left: Expression::Variable("x".to_string()),
+                    op: ComparisonOp::Equal,
+                    right: Expression::Variable("y".to_string()),
                 },
-            ],
+                tags: vec![],
+            }],
         };
 
         let options = CompilerOptions::default();
         let result = compile_to_qubo(&ast, &options);
-        
+
         assert!(result.is_ok());
         let qubo = result.unwrap();
         assert_eq!(qubo.shape(), &[2, 2]);

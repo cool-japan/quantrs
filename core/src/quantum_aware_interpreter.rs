@@ -3,15 +3,17 @@
 //! Advanced interpreter with quantum state tracking, Just-in-Time compilation,
 //! and intelligent runtime optimization for quantum computing frameworks.
 
+#![allow(dead_code)]
+
 use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
 
 use crate::qubit::QubitId;
+use ndarray::{s, Array1, Array2, ArrayView1};
 use num_complex::Complex64;
-use ndarray::{Array1, Array2, Array3, ArrayView1, s};
-use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, RwLock, Mutex};
-use std::time::{Duration, Instant, SystemTime};
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+use std::time::{Duration, Instant};
 use uuid::Uuid;
 
 /// Quantum-aware interpreter with advanced optimization capabilities
@@ -79,44 +81,48 @@ impl QuantumAwareInterpreter {
         target_state_id: Uuid,
     ) -> Result<OperationResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Track operation execution for profiling
-        self.profiler.start_operation_tracking(operation.name()).await;
-        
+        self.profiler
+            .start_operation_tracking(operation.name())
+            .await;
+
         // Analyze operation for optimization opportunities
         let analysis = self.analyze_operation(operation, target_state_id).await?;
-        
+
         // Apply JIT compilation if beneficial
         let optimized_operation = if analysis.should_jit_compile {
-            self.jit_compiler.compile_operation(operation, &analysis).await?
+            self.jit_compiler
+                .compile_operation(operation, &analysis)
+                .await?
         } else {
             operation.clone_gate()
         };
-        
+
         // Execute with runtime optimizations
-        let execution_strategy = self.optimization_engine
-            .determine_execution_strategy(optimized_operation.as_ref(), &analysis).await?;
-        
-        let result = self.execute_with_strategy(
-            optimized_operation.as_ref(),
-            target_state_id,
-            &execution_strategy,
-        ).await?;
-        
+        let execution_strategy = self
+            .optimization_engine
+            .determine_execution_strategy(optimized_operation.as_ref(), &analysis)
+            .await?;
+
+        let result = self
+            .execute_with_strategy(
+                optimized_operation.as_ref(),
+                target_state_id,
+                &execution_strategy,
+            )
+            .await?;
+
         // Update state tracking
-        self.quantum_state_tracker.update_after_operation(
-            target_state_id,
-            optimized_operation.as_ref(),
-            &result,
-        ).await?;
-        
+        self.quantum_state_tracker
+            .update_after_operation(target_state_id, optimized_operation.as_ref(), &result)
+            .await?;
+
         // Update profiling data
-        self.profiler.end_operation_tracking(
-            operation.name(),
-            start_time.elapsed(),
-            result.fidelity,
-        ).await;
-        
+        self.profiler
+            .end_operation_tracking(operation.name(), start_time.elapsed(), result.fidelity)
+            .await;
+
         Ok(result)
     }
 
@@ -127,47 +133,51 @@ impl QuantumAwareInterpreter {
         initial_state_id: Uuid,
     ) -> Result<CircuitExecutionResult, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Analyze entire circuit for global optimizations
         let circuit_analysis = self.analyze_circuit(circuit, initial_state_id).await?;
-        
+
         // Apply circuit-level optimizations
-        let optimized_circuit = self.optimization_engine
-            .optimize_circuit(circuit, &circuit_analysis).await?;
-        
+        let optimized_circuit = self
+            .optimization_engine
+            .optimize_circuit(circuit, &circuit_analysis)
+            .await?;
+
         // Determine execution plan
-        let execution_plan = self.create_execution_plan(&optimized_circuit, &circuit_analysis).await?;
-        
+        let execution_plan = self
+            .create_execution_plan(&optimized_circuit, &circuit_analysis)
+            .await?;
+
         let mut current_state_id = initial_state_id;
         let mut operation_results = Vec::new();
         let mut accumulated_fidelity = 1.0;
-        
+
         // Execute operations according to plan
-        for (operation, strategy) in execution_plan.operations.iter().zip(execution_plan.strategies.iter()) {
-            let result = self.execute_with_strategy(
-                operation.as_ref(),
-                current_state_id,
-                strategy,
-            ).await?;
-            
+        for (operation, strategy) in execution_plan
+            .operations
+            .iter()
+            .zip(execution_plan.strategies.iter())
+        {
+            let result = self
+                .execute_with_strategy(operation.as_ref(), current_state_id, strategy)
+                .await?;
+
             accumulated_fidelity *= result.fidelity;
             operation_results.push(result.clone());
-            
+
             // Update state ID if operation created new state
             if let Some(new_state_id) = result.new_state_id {
                 current_state_id = new_state_id;
             }
         }
-        
+
         let total_time = start_time.elapsed();
-        
+
         // Update circuit-level statistics
-        self.profiler.record_circuit_execution(
-            circuit.len(),
-            total_time,
-            accumulated_fidelity,
-        ).await;
-        
+        self.profiler
+            .record_circuit_execution(circuit.len(), total_time, accumulated_fidelity)
+            .await;
+
         Ok(CircuitExecutionResult {
             final_state_id: current_state_id,
             operation_results,
@@ -184,9 +194,12 @@ impl QuantumAwareInterpreter {
         operation: &dyn GateOp,
         target_state_id: Uuid,
     ) -> Result<OperationAnalysis, QuantRS2Error> {
-        let state = self.quantum_state_tracker.get_state(target_state_id).await?;
+        let state = self
+            .quantum_state_tracker
+            .get_state(target_state_id)
+            .await?;
         let historical_data = self.profiler.get_operation_history(operation.name()).await;
-        
+
         let mut analysis = OperationAnalysis {
             operation_complexity: self.calculate_operation_complexity(operation),
             state_compatibility: self.check_state_compatibility(operation, &state),
@@ -196,16 +209,17 @@ impl QuantumAwareInterpreter {
             entanglement_impact: self.analyze_entanglement_impact(operation, &state),
             coherence_cost: self.estimate_coherence_cost(operation, &state),
         };
-        
+
         // Determine JIT compilation benefit
         if let Some(history) = historical_data {
-            if history.average_execution_time > Duration::from_millis(10) &&
-               history.execution_count > 5 {
+            if history.average_execution_time > Duration::from_millis(10)
+                && history.execution_count > 5
+            {
                 analysis.should_jit_compile = true;
                 analysis.expected_speedup = self.jit_compiler.estimate_speedup(operation, &history);
             }
         }
-        
+
         Ok(analysis)
     }
 
@@ -217,21 +231,23 @@ impl QuantumAwareInterpreter {
         strategy: &ExecutionStrategy,
     ) -> Result<OperationResult, QuantRS2Error> {
         match strategy {
-            ExecutionStrategy::Standard => {
-                self.execute_standard(operation, target_state_id).await
-            },
+            ExecutionStrategy::Standard => self.execute_standard(operation, target_state_id).await,
             ExecutionStrategy::Optimized { optimization_type } => {
-                self.execute_optimized(operation, target_state_id, optimization_type).await
-            },
+                self.execute_optimized(operation, target_state_id, optimization_type)
+                    .await
+            }
             ExecutionStrategy::Cached { cache_key } => {
-                self.execute_cached(operation, target_state_id, cache_key).await
-            },
+                self.execute_cached(operation, target_state_id, cache_key)
+                    .await
+            }
             ExecutionStrategy::Distributed { partition_strategy } => {
-                self.execute_distributed(operation, target_state_id, partition_strategy).await
-            },
+                self.execute_distributed(operation, target_state_id, partition_strategy)
+                    .await
+            }
             ExecutionStrategy::Approximate { fidelity_target } => {
-                self.execute_approximate(operation, target_state_id, *fidelity_target).await
-            },
+                self.execute_approximate(operation, target_state_id, *fidelity_target)
+                    .await
+            }
         }
     }
 
@@ -241,27 +257,31 @@ impl QuantumAwareInterpreter {
         operation: &dyn GateOp,
         target_state_id: Uuid,
     ) -> Result<OperationResult, QuantRS2Error> {
-        let mut state = self.quantum_state_tracker.get_state_mut(target_state_id).await?;
-        
+        let mut state = self
+            .quantum_state_tracker
+            .get_state_mut(target_state_id)
+            .await?;
+
         // Apply operation to quantum state
         let operation_matrix_data = operation.matrix()?;
         // Convert Vec<Complex64> to Array2<Complex64> (assuming square matrix)
         let matrix_size = (operation_matrix_data.len() as f64).sqrt() as usize;
-        let operation_matrix = Array2::from_shape_vec((matrix_size, matrix_size), operation_matrix_data)
-            .map_err(|e| QuantRS2Error::MatrixConstruction(format!("Matrix conversion error: {}", e)))?;
+        let operation_matrix =
+            Array2::from_shape_vec((matrix_size, matrix_size), operation_matrix_data).map_err(
+                |e| QuantRS2Error::MatrixConstruction(format!("Matrix conversion error: {}", e)),
+            )?;
         let new_amplitudes = operation_matrix.dot(&state.amplitudes);
-        
+
         // Update state
         state.amplitudes = new_amplitudes;
         state.last_operation = Some(operation.name().to_string());
         state.access_count += 1;
-        
+
         // Update entanglement tracking
-        self.quantum_state_tracker.update_entanglement_after_operation(
-            target_state_id,
-            operation,
-        ).await?;
-        
+        self.quantum_state_tracker
+            .update_entanglement_after_operation(target_state_id, operation)
+            .await?;
+
         Ok(OperationResult {
             success: true,
             fidelity: 0.999, // Simplified for standard execution
@@ -281,17 +301,21 @@ impl QuantumAwareInterpreter {
     ) -> Result<OperationResult, QuantRS2Error> {
         match optimization_type {
             OptimizationType::Sparse => {
-                self.execute_sparse_optimized(operation, target_state_id).await
-            },
+                self.execute_sparse_optimized(operation, target_state_id)
+                    .await
+            }
             OptimizationType::Parallel => {
-                self.execute_parallel_optimized(operation, target_state_id).await
-            },
+                self.execute_parallel_optimized(operation, target_state_id)
+                    .await
+            }
             OptimizationType::MemoryEfficient => {
-                self.execute_memory_efficient(operation, target_state_id).await
-            },
+                self.execute_memory_efficient(operation, target_state_id)
+                    .await
+            }
             OptimizationType::ApproximateComputation => {
-                self.execute_approximate_computation(operation, target_state_id).await
-            },
+                self.execute_approximate_computation(operation, target_state_id)
+                    .await
+            }
         }
     }
 
@@ -301,16 +325,21 @@ impl QuantumAwareInterpreter {
         operation: &dyn GateOp,
         target_state_id: Uuid,
     ) -> Result<OperationResult, QuantRS2Error> {
-        let state = self.quantum_state_tracker.get_state(target_state_id).await?;
-        
+        let state = self
+            .quantum_state_tracker
+            .get_state(target_state_id)
+            .await?;
+
         // Check if state is sparse enough to benefit from sparse operations
         let sparsity = self.calculate_sparsity(&state.amplitudes);
-        
+
         if sparsity > 0.9 {
             // Use sparse matrix operations
             let sparse_result = self.apply_sparse_operation(operation, &state).await?;
-            self.quantum_state_tracker.update_state(target_state_id, sparse_result.amplitudes).await?;
-            
+            self.quantum_state_tracker
+                .update_state(target_state_id, sparse_result.amplitudes)
+                .await?;
+
             Ok(OperationResult {
                 success: true,
                 fidelity: 0.999,
@@ -335,24 +364,31 @@ impl QuantumAwareInterpreter {
         operation: &dyn GateOp,
         target_state_id: Uuid,
     ) -> Result<OperationResult, QuantRS2Error> {
-        let state = self.quantum_state_tracker.get_state(target_state_id).await?;
-        
+        let state = self
+            .quantum_state_tracker
+            .get_state(target_state_id)
+            .await?;
+
         // Decompose operation for parallel execution
-        let parallel_chunks = self.decompose_for_parallel_execution(operation, &state).await?;
-        
+        let parallel_chunks = self
+            .decompose_for_parallel_execution(operation, &state)
+            .await?;
+
         // Execute chunks in parallel (simulated)
         let start_time = Instant::now();
         let mut results = Vec::new();
-        
+
         for chunk in parallel_chunks {
             let chunk_result = self.execute_chunk_parallel(&chunk).await?;
             results.push(chunk_result);
         }
-        
+
         // Combine results
         let combined_amplitudes = self.combine_parallel_results(results)?;
-        self.quantum_state_tracker.update_state(target_state_id, combined_amplitudes).await?;
-        
+        self.quantum_state_tracker
+            .update_state(target_state_id, combined_amplitudes)
+            .await?;
+
         Ok(OperationResult {
             success: true,
             fidelity: 0.998, // Slight fidelity loss due to parallelization
@@ -374,35 +410,42 @@ impl QuantumAwareInterpreter {
         target_state_id: Uuid,
     ) -> Result<OperationResult, QuantRS2Error> {
         // Use streaming computation to reduce memory footprint
-        let state = self.quantum_state_tracker.get_state(target_state_id).await?;
+        let state = self
+            .quantum_state_tracker
+            .get_state(target_state_id)
+            .await?;
         let operation_matrix_data = operation.matrix()?;
         // Convert Vec<Complex64> to Array2<Complex64> (assuming square matrix)
         let matrix_size = (operation_matrix_data.len() as f64).sqrt() as usize;
-        let operation_matrix = Array2::from_shape_vec((matrix_size, matrix_size), operation_matrix_data)
-            .map_err(|e| QuantRS2Error::MatrixConstruction(format!("Matrix conversion error: {}", e)))?;
-        
+        let operation_matrix =
+            Array2::from_shape_vec((matrix_size, matrix_size), operation_matrix_data).map_err(
+                |e| QuantRS2Error::MatrixConstruction(format!("Matrix conversion error: {}", e)),
+            )?;
+
         // Stream computation in chunks
         let chunk_size = 1024; // Process 1024 amplitudes at a time
         let mut new_amplitudes = Array1::zeros(state.amplitudes.len());
         let mut memory_peak = 0;
-        
+
         for chunk_start in (0..state.amplitudes.len()).step_by(chunk_size) {
             let chunk_end = (chunk_start + chunk_size).min(state.amplitudes.len());
             let chunk = state.amplitudes.slice(s![chunk_start..chunk_end]);
-            
+
             // Process chunk with reduced memory matrix
-            let chunk_result = self.process_memory_efficient_chunk(
-                &operation_matrix,
-                &chunk,
-                chunk_start,
-            ).await?;
-            
-            new_amplitudes.slice_mut(s![chunk_start..chunk_end]).assign(&chunk_result);
+            let chunk_result = self
+                .process_memory_efficient_chunk(&operation_matrix, &chunk, chunk_start)
+                .await?;
+
+            new_amplitudes
+                .slice_mut(s![chunk_start..chunk_end])
+                .assign(&chunk_result);
             memory_peak = memory_peak.max(chunk_result.len() * 16);
         }
-        
-        self.quantum_state_tracker.update_state(target_state_id, new_amplitudes).await?;
-        
+
+        self.quantum_state_tracker
+            .update_state(target_state_id, new_amplitudes)
+            .await?;
+
         Ok(OperationResult {
             success: true,
             fidelity: 0.999,
@@ -423,13 +466,20 @@ impl QuantumAwareInterpreter {
         operation: &dyn GateOp,
         target_state_id: Uuid,
     ) -> Result<OperationResult, QuantRS2Error> {
-        let state = self.quantum_state_tracker.get_state(target_state_id).await?;
-        
+        let state = self
+            .quantum_state_tracker
+            .get_state(target_state_id)
+            .await?;
+
         // Use approximate methods for faster computation
-        let approximate_result = self.compute_approximate_operation(operation, &state).await?;
-        
-        self.quantum_state_tracker.update_state(target_state_id, approximate_result.amplitudes).await?;
-        
+        let approximate_result = self
+            .compute_approximate_operation(operation, &state)
+            .await?;
+
+        self.quantum_state_tracker
+            .update_state(target_state_id, approximate_result.amplitudes)
+            .await?;
+
         Ok(OperationResult {
             success: true,
             fidelity: approximate_result.fidelity,
@@ -452,20 +502,30 @@ impl QuantumAwareInterpreter {
     }
 
     /// Check state compatibility with operation
-    fn check_state_compatibility(&self, operation: &dyn GateOp, state: &TrackedQuantumState) -> f64 {
+    fn check_state_compatibility(
+        &self,
+        operation: &dyn GateOp,
+        state: &TrackedQuantumState,
+    ) -> f64 {
         // Check if operation qubits are available in state
         let available_qubits: Vec<QubitId> = state.qubit_mapping.keys().cloned().collect();
         let required_qubits = operation.qubits();
-        
-        let compatibility = required_qubits.iter()
+
+        let compatibility = required_qubits
+            .iter()
             .filter(|&qubit| available_qubits.contains(qubit))
-            .count() as f64 / required_qubits.len() as f64;
-        
+            .count() as f64
+            / required_qubits.len() as f64;
+
         compatibility
     }
 
     /// Estimate memory requirements
-    fn estimate_memory_requirements(&self, operation: &dyn GateOp, state: &TrackedQuantumState) -> usize {
+    fn estimate_memory_requirements(
+        &self,
+        operation: &dyn GateOp,
+        state: &TrackedQuantumState,
+    ) -> usize {
         let operation_matrix_size = operation.matrix().unwrap_or_else(|_| vec![]).len() * 16; // Complex64 = 16 bytes
         let state_size = state.amplitudes.len() * 16;
         operation_matrix_size + state_size * 2 // Factor of 2 for intermediate results
@@ -473,9 +533,7 @@ impl QuantumAwareInterpreter {
 
     /// Calculate sparsity of quantum state
     fn calculate_sparsity(&self, amplitudes: &Array1<Complex64>) -> f64 {
-        let zero_count = amplitudes.iter()
-            .filter(|amp| amp.norm() < 1e-12)
-            .count();
+        let zero_count = amplitudes.iter().filter(|amp| amp.norm() < 1e-12).count();
         zero_count as f64 / amplitudes.len() as f64
     }
 
@@ -524,14 +582,14 @@ impl QuantumAwareInterpreter {
 
     async fn execute_approximate(
         &mut self,
-        operation: &dyn GateOp,
-        target_state_id: Uuid,
+        _operation: &dyn GateOp,
+        _target_state_id: Uuid,
         fidelity_target: f64,
     ) -> Result<OperationResult, QuantRS2Error> {
         // Trade off fidelity for speed
         let speedup = 1.0 / fidelity_target;
         let execution_time = Duration::from_micros((100.0 / speedup) as u64);
-        
+
         Ok(OperationResult {
             success: true,
             fidelity: fidelity_target,
@@ -547,46 +605,85 @@ impl QuantumAwareInterpreter {
     }
 
     // Placeholder implementations for helper methods
-    async fn analyze_circuit(&self, _circuit: &[Box<dyn GateOp>], _initial_state_id: Uuid) -> Result<CircuitAnalysis, QuantRS2Error> {
+    async fn analyze_circuit(
+        &self,
+        _circuit: &[Box<dyn GateOp>],
+        _initial_state_id: Uuid,
+    ) -> Result<CircuitAnalysis, QuantRS2Error> {
         Ok(CircuitAnalysis::default())
     }
 
-    async fn create_execution_plan(&self, _circuit: &[Box<dyn GateOp>], _analysis: &CircuitAnalysis) -> Result<ExecutionPlan, QuantRS2Error> {
+    async fn create_execution_plan(
+        &self,
+        _circuit: &[Box<dyn GateOp>],
+        _analysis: &CircuitAnalysis,
+    ) -> Result<ExecutionPlan, QuantRS2Error> {
         Ok(ExecutionPlan::default())
     }
 
-    fn analyze_entanglement_impact(&self, _operation: &dyn GateOp, _state: &TrackedQuantumState) -> f64 {
+    fn analyze_entanglement_impact(
+        &self,
+        _operation: &dyn GateOp,
+        _state: &TrackedQuantumState,
+    ) -> f64 {
         0.5 // Simplified
     }
 
-    fn estimate_coherence_cost(&self, _operation: &dyn GateOp, _state: &TrackedQuantumState) -> Duration {
+    fn estimate_coherence_cost(
+        &self,
+        _operation: &dyn GateOp,
+        _state: &TrackedQuantumState,
+    ) -> Duration {
         Duration::from_micros(10) // Simplified
     }
 
-    async fn apply_sparse_operation(&self, _operation: &dyn GateOp, _state: &TrackedQuantumState) -> Result<SparseOperationResult, QuantRS2Error> {
+    async fn apply_sparse_operation(
+        &self,
+        _operation: &dyn GateOp,
+        _state: &TrackedQuantumState,
+    ) -> Result<SparseOperationResult, QuantRS2Error> {
         Ok(SparseOperationResult {
             amplitudes: Array1::zeros(100),
             memory_saved: 1000,
         })
     }
 
-    async fn decompose_for_parallel_execution(&self, _operation: &dyn GateOp, _state: &TrackedQuantumState) -> Result<Vec<ParallelChunk>, QuantRS2Error> {
+    async fn decompose_for_parallel_execution(
+        &self,
+        _operation: &dyn GateOp,
+        _state: &TrackedQuantumState,
+    ) -> Result<Vec<ParallelChunk>, QuantRS2Error> {
         Ok(vec![ParallelChunk::default()])
     }
 
-    async fn execute_chunk_parallel(&self, _chunk: &ParallelChunk) -> Result<Array1<Complex64>, QuantRS2Error> {
+    async fn execute_chunk_parallel(
+        &self,
+        _chunk: &ParallelChunk,
+    ) -> Result<Array1<Complex64>, QuantRS2Error> {
         Ok(Array1::zeros(100))
     }
 
-    fn combine_parallel_results(&self, _results: Vec<Array1<Complex64>>) -> Result<Array1<Complex64>, QuantRS2Error> {
+    fn combine_parallel_results(
+        &self,
+        _results: Vec<Array1<Complex64>>,
+    ) -> Result<Array1<Complex64>, QuantRS2Error> {
         Ok(Array1::zeros(100))
     }
 
-    async fn process_memory_efficient_chunk(&self, _matrix: &Array2<Complex64>, _chunk: &ArrayView1<'_, Complex64>, _offset: usize) -> Result<Array1<Complex64>, QuantRS2Error> {
+    async fn process_memory_efficient_chunk(
+        &self,
+        _matrix: &Array2<Complex64>,
+        _chunk: &ArrayView1<'_, Complex64>,
+        _offset: usize,
+    ) -> Result<Array1<Complex64>, QuantRS2Error> {
         Ok(Array1::zeros(100))
     }
 
-    async fn compute_approximate_operation(&self, _operation: &dyn GateOp, _state: &TrackedQuantumState) -> Result<ApproximateResult, QuantRS2Error> {
+    async fn compute_approximate_operation(
+        &self,
+        _operation: &dyn GateOp,
+        _state: &TrackedQuantumState,
+    ) -> Result<ApproximateResult, QuantRS2Error> {
         Ok(ApproximateResult {
             amplitudes: Array1::zeros(100),
             fidelity: 0.95,
@@ -608,16 +705,24 @@ impl QuantumStateTracker {
 
     pub async fn get_state(&self, state_id: Uuid) -> Result<TrackedQuantumState, QuantRS2Error> {
         let states = self.active_states.read().unwrap();
-        states.get(&state_id)
+        states
+            .get(&state_id)
             .cloned()
             .ok_or_else(|| QuantRS2Error::StateNotFound(format!("State {} not found", state_id)))
     }
 
-    pub async fn get_state_mut(&self, state_id: Uuid) -> Result<TrackedQuantumState, QuantRS2Error> {
+    pub async fn get_state_mut(
+        &self,
+        state_id: Uuid,
+    ) -> Result<TrackedQuantumState, QuantRS2Error> {
         self.get_state(state_id).await
     }
 
-    pub async fn update_state(&self, state_id: Uuid, new_amplitudes: Array1<Complex64>) -> Result<(), QuantRS2Error> {
+    pub async fn update_state(
+        &self,
+        state_id: Uuid,
+        new_amplitudes: Array1<Complex64>,
+    ) -> Result<(), QuantRS2Error> {
         let mut states = self.active_states.write().unwrap();
         if let Some(state) = states.get_mut(&state_id) {
             state.amplitudes = new_amplitudes;
@@ -626,12 +731,21 @@ impl QuantumStateTracker {
         Ok(())
     }
 
-    pub async fn update_after_operation(&self, _state_id: Uuid, _operation: &dyn GateOp, _result: &OperationResult) -> Result<(), QuantRS2Error> {
+    pub async fn update_after_operation(
+        &self,
+        _state_id: Uuid,
+        _operation: &dyn GateOp,
+        _result: &OperationResult,
+    ) -> Result<(), QuantRS2Error> {
         // Update tracking after operation
         Ok(())
     }
 
-    pub async fn update_entanglement_after_operation(&self, _state_id: Uuid, _operation: &dyn GateOp) -> Result<(), QuantRS2Error> {
+    pub async fn update_entanglement_after_operation(
+        &self,
+        _state_id: Uuid,
+        _operation: &dyn GateOp,
+    ) -> Result<(), QuantRS2Error> {
         // Update entanglement tracking
         Ok(())
     }
@@ -652,7 +766,11 @@ impl QuantumJITCompiler {
         }
     }
 
-    pub async fn compile_operation(&self, operation: &dyn GateOp, _analysis: &OperationAnalysis) -> Result<Box<dyn GateOp>, QuantRS2Error> {
+    pub async fn compile_operation(
+        &self,
+        operation: &dyn GateOp,
+        _analysis: &OperationAnalysis,
+    ) -> Result<Box<dyn GateOp>, QuantRS2Error> {
         // JIT compilation logic
         Ok(operation.clone_gate())
     }
@@ -682,11 +800,19 @@ impl RuntimeOptimizationEngine {
         }
     }
 
-    pub async fn determine_execution_strategy(&self, _operation: &dyn GateOp, _analysis: &OperationAnalysis) -> Result<ExecutionStrategy, QuantRS2Error> {
+    pub async fn determine_execution_strategy(
+        &self,
+        _operation: &dyn GateOp,
+        _analysis: &OperationAnalysis,
+    ) -> Result<ExecutionStrategy, QuantRS2Error> {
         Ok(ExecutionStrategy::Standard)
     }
 
-    pub async fn optimize_circuit(&self, circuit: &[Box<dyn GateOp>], _analysis: &CircuitAnalysis) -> Result<Vec<Box<dyn GateOp>>, QuantRS2Error> {
+    pub async fn optimize_circuit(
+        &self,
+        circuit: &[Box<dyn GateOp>],
+        _analysis: &CircuitAnalysis,
+    ) -> Result<Vec<Box<dyn GateOp>>, QuantRS2Error> {
         Ok(circuit.to_vec())
     }
 }
@@ -706,10 +832,18 @@ pub struct OperationAnalysis {
 #[derive(Debug, Clone)]
 pub enum ExecutionStrategy {
     Standard,
-    Optimized { optimization_type: OptimizationType },
-    Cached { cache_key: String },
-    Distributed { partition_strategy: PartitionStrategy },
-    Approximate { fidelity_target: f64 },
+    Optimized {
+        optimization_type: OptimizationType,
+    },
+    Cached {
+        cache_key: String,
+    },
+    Distributed {
+        partition_strategy: PartitionStrategy,
+    },
+    Approximate {
+        fidelity_target: f64,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -801,20 +935,32 @@ impl QuantumProfiler {
         // Start tracking operation
     }
 
-    pub async fn end_operation_tracking(&self, _operation_name: &str, _duration: Duration, _fidelity: f64) {
+    pub async fn end_operation_tracking(
+        &self,
+        _operation_name: &str,
+        _duration: Duration,
+        _fidelity: f64,
+    ) {
         // End tracking and update statistics
     }
 
     pub async fn get_operation_history(&self, operation_name: &str) -> Option<OperationHistory> {
         let profiles = self.operation_profiles.read().unwrap();
-        profiles.get(operation_name).map(|profile| OperationHistory {
-            execution_count: profile.execution_count,
-            average_execution_time: profile.average_execution_time,
-            average_fidelity: profile.average_fidelity,
-        })
+        profiles
+            .get(operation_name)
+            .map(|profile| OperationHistory {
+                execution_count: profile.execution_count,
+                average_execution_time: profile.average_execution_time,
+                average_fidelity: profile.average_fidelity,
+            })
     }
 
-    pub async fn record_circuit_execution(&self, _gate_count: usize, _duration: Duration, _fidelity: f64) {
+    pub async fn record_circuit_execution(
+        &self,
+        _gate_count: usize,
+        _duration: Duration,
+        _fidelity: f64,
+    ) {
         // Record circuit execution statistics
     }
 }
@@ -1000,7 +1146,15 @@ mod tests {
     #[tokio::test]
     async fn test_quantum_aware_interpreter_creation() {
         let interpreter = QuantumAwareInterpreter::new();
-        assert_eq!(interpreter.quantum_state_tracker.active_states.read().unwrap().len(), 0);
+        assert_eq!(
+            interpreter
+                .quantum_state_tracker
+                .active_states
+                .read()
+                .unwrap()
+                .len(),
+            0
+        );
     }
 
     #[tokio::test]
