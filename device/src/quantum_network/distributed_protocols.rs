@@ -4,10 +4,12 @@
 //! enabling multi-node quantum computation with sophisticated state management,
 //! error correction, and optimization strategies.
 
+use async_trait::async_trait;
+use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use thiserror::Error;
 use tokio::sync::{mpsc, oneshot, Semaphore};
 use uuid::Uuid;
@@ -72,7 +74,7 @@ pub struct QubitId {
 pub struct ClassicalBit {
     pub bit_id: u32,
     pub value: Option<bool>,
-    pub timestamp: Instant,
+    pub timestamp: DateTime<Utc>,
 }
 
 /// Resource requirements for circuit partition execution
@@ -93,7 +95,7 @@ pub struct DistributedQuantumState {
     pub node_states: HashMap<NodeId, LocalQuantumState>,
     pub entanglement_map: HashMap<(QubitId, QubitId), EntanglementInfo>,
     pub coherence_time: Duration,
-    pub last_updated: Instant,
+    pub last_updated: DateTime<Utc>,
 }
 
 /// Local quantum state on a specific node
@@ -103,7 +105,7 @@ pub struct LocalQuantumState {
     pub state_vector: Vec<f64>, // Simplified representation
     pub fidelity: f64,
     pub decoherence_rate: f64,
-    pub last_measurement_time: Option<Instant>,
+    pub last_measurement_time: Option<DateTime<Utc>>,
 }
 
 /// Entanglement information between qubits
@@ -111,7 +113,7 @@ pub struct LocalQuantumState {
 pub struct EntanglementInfo {
     pub entanglement_type: EntanglementType,
     pub fidelity: f64,
-    pub creation_time: Instant,
+    pub creation_time: DateTime<Utc>,
     pub decay_rate: f64,
     pub verification_results: Vec<VerificationResult>,
 }
@@ -128,7 +130,7 @@ pub enum EntanglementType {
 /// Entanglement verification results
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VerificationResult {
-    pub timestamp: Instant,
+    pub timestamp: DateTime<Utc>,
     pub fidelity_measured: f64,
     pub verification_method: String,
     pub confidence: f64,
@@ -237,7 +239,7 @@ pub struct DistributedQuantumOrchestrator {
     state_manager: Arc<DistributedStateManager>,
     load_balancer: Arc<dyn LoadBalancer + Send + Sync>,
     fault_manager: Arc<FaultToleranceManager>,
-    consensus_engine: Arc<dyn ConsensusEngine + Send + Sync>,
+    consensus_engine: Arc<RaftConsensus>,
     metrics_collector: Arc<MetricsCollector>,
     execution_queue: Arc<Mutex<VecDeque<ExecutionRequest>>>,
     resource_allocator: Arc<ResourceAllocator>,
@@ -251,7 +253,7 @@ pub struct NodeInfo {
     pub current_load: NodeLoad,
     pub network_info: NetworkInfo,
     pub status: NodeStatus,
-    pub last_heartbeat: Instant,
+    pub last_heartbeat: DateTime<Utc>,
 }
 
 /// Capabilities of a quantum computing node
@@ -307,7 +309,7 @@ pub struct ExecutionRequest {
     pub circuit: QuantumCircuit,
     pub priority: Priority,
     pub requirements: ExecutionRequirements,
-    pub deadline: Option<Instant>,
+    pub deadline: Option<DateTime<Utc>>,
     pub callback: Option<String>,
 }
 
@@ -435,6 +437,7 @@ pub struct DistributedStateManager {
 }
 
 /// Trait for state synchronization protocols
+#[async_trait]
 pub trait StateSynchronizationProtocol: std::fmt::Debug {
     async fn synchronize_states(
         &self,
@@ -466,7 +469,7 @@ pub struct Inconsistency {
     pub inconsistency_type: InconsistencyType,
     pub affected_qubits: Vec<QubitId>,
     pub severity: f64,
-    pub detection_time: Instant,
+    pub detection_time: DateTime<Utc>,
 }
 
 /// Types of state inconsistencies
@@ -525,6 +528,7 @@ pub struct StateTransferEngine {
 }
 
 /// Trait for state transfer protocols
+#[async_trait]
 pub trait StateTransferProtocol: std::fmt::Debug {
     async fn transfer_state(
         &self,
@@ -609,7 +613,7 @@ pub struct PerformanceHistory {
     pub execution_times: VecDeque<Duration>,
     pub success_rate: f64,
     pub average_fidelity: f64,
-    pub last_updated: Instant,
+    pub last_updated: DateTime<Utc>,
 }
 
 /// ML-optimized load balancer
@@ -635,7 +639,7 @@ pub struct TrainingDataPoint {
     pub features: HashMap<String, f64>,
     pub target_node: NodeId,
     pub actual_performance: PerformanceMetrics,
-    pub timestamp: Instant,
+    pub timestamp: DateTime<Utc>,
 }
 
 /// Performance metrics for training
@@ -657,6 +661,7 @@ pub struct FaultToleranceManager {
 }
 
 /// Trait for fault detection
+#[async_trait]
 pub trait FaultDetector: std::fmt::Debug {
     async fn detect_faults(&self, nodes: &HashMap<NodeId, NodeInfo>) -> Vec<Fault>;
     fn get_detection_confidence(&self) -> f64;
@@ -670,7 +675,7 @@ pub struct Fault {
     pub fault_type: FaultType,
     pub affected_nodes: Vec<NodeId>,
     pub severity: Severity,
-    pub detection_time: Instant,
+    pub detection_time: DateTime<Utc>,
     pub predicted_impact: Impact,
 }
 
@@ -705,6 +710,7 @@ pub struct Impact {
 }
 
 /// Trait for recovery strategies
+#[async_trait]
 pub trait RecoveryStrategy: std::fmt::Debug {
     async fn recover_from_fault(
         &self,
@@ -765,6 +771,7 @@ pub struct CheckpointingSystem {
 }
 
 /// Trait for checkpoint storage
+#[async_trait]
 pub trait CheckpointStorage: std::fmt::Debug {
     async fn store_checkpoint(&self, checkpoint_id: Uuid, data: &CheckpointData) -> Result<()>;
 
@@ -777,7 +784,7 @@ pub trait CheckpointStorage: std::fmt::Debug {
 /// Checkpoint data structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CheckpointData {
-    pub timestamp: Instant,
+    pub timestamp: DateTime<Utc>,
     pub system_state: SystemState,
     pub computation_progress: HashMap<Uuid, ComputationProgress>,
     pub quantum_states: HashMap<Uuid, DistributedQuantumState>,
@@ -797,8 +804,8 @@ pub struct ComputationProgress {
 /// Execution statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutionStatistics {
-    pub start_time: Instant,
-    pub estimated_completion_time: Instant,
+    pub start_time: DateTime<Utc>,
+    pub estimated_completion_time: DateTime<Utc>,
     pub gates_executed: u32,
     pub measurements_completed: u32,
     pub average_fidelity: f64,
@@ -841,8 +848,9 @@ pub struct ComputationResult {
 }
 
 /// Consensus engine trait for distributed decision making
+#[async_trait]
 pub trait ConsensusEngine: std::fmt::Debug {
-    async fn reach_consensus<T: Serialize + for<'de> Deserialize<'de> + Clone>(
+    async fn reach_consensus<T: Serialize + for<'de> Deserialize<'de> + Clone + Send>(
         &self,
         proposal: T,
         participants: &[NodeId],
@@ -886,7 +894,7 @@ pub struct RaftConsensus {
 pub struct LeaderState {
     pub current_leader: Option<NodeId>,
     pub term: u64,
-    pub last_heartbeat: Instant,
+    pub last_heartbeat: DateTime<Utc>,
 }
 
 /// Message authenticator for secure consensus
@@ -911,7 +919,7 @@ pub struct LogEntry {
     pub term: u64,
     pub index: u64,
     pub command: Command,
-    pub timestamp: Instant,
+    pub timestamp: DateTime<Utc>,
 }
 
 /// Commands for consensus protocol
@@ -948,6 +956,7 @@ pub struct MetricsCollector {
 }
 
 /// Trait for metrics storage
+#[async_trait]
 pub trait MetricsStorage: std::fmt::Debug {
     async fn store_metric(&self, metric: &Metric) -> Result<()>;
     async fn query_metrics(&self, query: &MetricsQuery) -> Result<Vec<Metric>>;
@@ -959,7 +968,7 @@ pub trait MetricsStorage: std::fmt::Debug {
 pub struct Metric {
     pub metric_name: String,
     pub value: f64,
-    pub timestamp: Instant,
+    pub timestamp: DateTime<Utc>,
     pub tags: HashMap<String, String>,
     pub node_id: Option<NodeId>,
 }
@@ -968,7 +977,7 @@ pub struct Metric {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetricsQuery {
     pub metric_names: Vec<String>,
-    pub time_range: (Instant, Instant),
+    pub time_range: (DateTime<Utc>, DateTime<Utc>),
     pub filters: HashMap<String, String>,
     pub limit: Option<u32>,
 }
@@ -978,7 +987,7 @@ pub struct MetricsQuery {
 pub struct AggregationQuery {
     pub metric_name: String,
     pub aggregation_function: AggregationFunction,
-    pub time_range: (Instant, Instant),
+    pub time_range: (DateTime<Utc>, DateTime<Utc>),
     pub group_by: Vec<String>,
 }
 
@@ -1000,7 +1009,7 @@ pub struct AggregatedMetrics {
     pub metric_name: String,
     pub aggregation_function: AggregationFunction,
     pub value: f64,
-    pub time_range: (Instant, Instant),
+    pub time_range: (DateTime<Utc>, DateTime<Utc>),
     pub group_by_values: HashMap<String, f64>,
 }
 
@@ -1057,7 +1066,7 @@ pub enum AlertCondition {
 pub struct Alert {
     pub alert_id: Uuid,
     pub rule_id: String,
-    pub timestamp: Instant,
+    pub timestamp: DateTime<Utc>,
     pub severity: Severity,
     pub message: String,
     pub affected_nodes: Vec<NodeId>,
@@ -1065,6 +1074,7 @@ pub struct Alert {
 }
 
 /// Trait for notification channels
+#[async_trait]
 pub trait NotificationChannel: std::fmt::Debug {
     async fn send_notification(&self, alert: &Alert) -> Result<()>;
     fn get_channel_type(&self) -> String;
@@ -1109,7 +1119,7 @@ pub struct AllocationPlan {
     pub allocations: HashMap<NodeId, ResourceAllocation>,
     pub estimated_cost: f64,
     pub estimated_execution_time: Duration,
-    pub allocation_timestamp: Instant,
+    pub allocation_timestamp: DateTime<Utc>,
 }
 
 /// Resource allocation record
@@ -1132,6 +1142,7 @@ pub struct ResourceMonitor {
 }
 
 /// Trait for monitoring agents
+#[async_trait]
 pub trait MonitoringAgent: std::fmt::Debug {
     async fn collect_resource_metrics(&self) -> Result<ResourceMetrics>;
     async fn predict_resource_usage(&self, horizon: Duration) -> Result<ResourceUsagePrediction>;
@@ -1141,7 +1152,7 @@ pub trait MonitoringAgent: std::fmt::Debug {
 /// Resource metrics from monitoring
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceMetrics {
-    pub timestamp: Instant,
+    pub timestamp: DateTime<Utc>,
     pub cpu_utilization: f64,
     pub memory_utilization: f64,
     pub network_utilization: f64,
@@ -1165,7 +1176,7 @@ pub struct ResourceUsagePrediction {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentHealth {
     pub is_healthy: bool,
-    pub last_successful_collection: Instant,
+    pub last_successful_collection: DateTime<Utc>,
     pub error_rate: f64,
     pub response_time: Duration,
 }
@@ -1179,6 +1190,7 @@ pub struct ResourcePredictor {
 }
 
 /// Trait for prediction models
+#[async_trait]
 pub trait PredictionModel: std::fmt::Debug {
     async fn predict(
         &self,
@@ -1299,7 +1311,7 @@ impl DistributedQuantumOrchestrator {
         };
 
         if let Some(request) = request {
-            self.execute_distributed_computation(request).await?
+            self.execute_distributed_computation(request).await?;
         }
 
         Ok(())
@@ -1594,7 +1606,7 @@ impl BasicSynchronizationProtocol {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl StateSynchronizationProtocol for BasicSynchronizationProtocol {
     async fn synchronize_states(
         &self,
@@ -1757,7 +1769,7 @@ impl InMemoryCheckpointStorage {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl CheckpointStorage for InMemoryCheckpointStorage {
     async fn store_checkpoint(&self, checkpoint_id: Uuid, data: &CheckpointData) -> Result<()> {
         let mut checkpoints = self.checkpoints.write().unwrap();
@@ -1803,15 +1815,15 @@ impl RaftConsensus {
             leader_state: Arc::new(RwLock::new(LeaderState {
                 current_leader: None,
                 term: 0,
-                last_heartbeat: Instant::now(),
+                last_heartbeat: Utc::now(),
             })),
         }
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl ConsensusEngine for RaftConsensus {
-    async fn reach_consensus<T: Serialize + for<'de> Deserialize<'de> + Clone>(
+    async fn reach_consensus<T: Serialize + for<'de> Deserialize<'de> + Clone + Send>(
         &self,
         proposal: T,
         participants: &[NodeId],
@@ -1874,7 +1886,7 @@ impl InMemoryMetricsStorage {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl MetricsStorage for InMemoryMetricsStorage {
     async fn store_metric(&self, metric: &Metric) -> Result<()> {
         let mut metrics = self.metrics.write().unwrap();
@@ -1992,7 +2004,7 @@ impl ResourceAllocator {
             allocations,
             estimated_cost: 100.0,
             estimated_execution_time: Duration::from_secs(10),
-            allocation_timestamp: Instant::now(),
+            allocation_timestamp: Utc::now(),
         })
     }
 }
@@ -2090,7 +2102,7 @@ mod tests {
                 connection_quality: HashMap::new(),
             },
             status: NodeStatus::Active,
-            last_heartbeat: Instant::now(),
+            last_heartbeat: Utc::now(),
         };
 
         orchestrator.register_node(node_info).await.unwrap();
@@ -2155,7 +2167,7 @@ mod tests {
                     connection_quality: HashMap::new(),
                 },
                 status: NodeStatus::Active,
-                last_heartbeat: Instant::now(),
+                last_heartbeat: Utc::now(),
             },
         );
 
@@ -2222,7 +2234,7 @@ mod tests {
                 connection_quality: HashMap::new(),
             },
             status: NodeStatus::Active,
-            last_heartbeat: Instant::now(),
+            last_heartbeat: Utc::now(),
         };
 
         let execution_time = balancer.predict_execution_time(&partition, &node_info);
@@ -2246,7 +2258,7 @@ mod tests {
         let storage = InMemoryCheckpointStorage::new();
 
         let checkpoint_data = CheckpointData {
-            timestamp: Instant::now(),
+            timestamp: Utc::now(),
             system_state: SystemState {
                 nodes: HashMap::new(),
                 active_computations: HashMap::new(),
@@ -2286,7 +2298,7 @@ mod tests {
         let metric = Metric {
             metric_name: "cpu_utilization".to_string(),
             value: 0.75,
-            timestamp: Instant::now(),
+            timestamp: Utc::now(),
             tags: HashMap::new(),
             node_id: Some(NodeId("node1".to_string())),
         };
@@ -2295,7 +2307,7 @@ mod tests {
 
         let query = MetricsQuery {
             metric_names: vec!["cpu_utilization".to_string()],
-            time_range: (Instant::now() - Duration::from_secs(60), Instant::now()),
+            time_range: (Utc::now() - ChronoDuration::seconds(60), Utc::now()),
             filters: HashMap::new(),
             limit: None,
         };

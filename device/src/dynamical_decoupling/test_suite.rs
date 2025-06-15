@@ -4,7 +4,7 @@
 mod tests {
     use super::*;
     use crate::dynamical_decoupling::config::DDSequenceType;
-    use crate::dynamical_decoupling::sequences::SynchronizationRequirements;
+    use crate::dynamical_decoupling::hardware::SynchronizationRequirements;
     use crate::dynamical_decoupling::{
         AdaptiveDDConfig, AdaptiveDDSystem, CompositionStrategy, CrosstalkMitigationStrategy,
         DDHardwareAnalyzer, DDNoiseAnalyzer, DDPerformanceAnalyzer, DDSequenceGenerator,
@@ -78,7 +78,7 @@ mod tests {
 
     fn create_test_sequence() -> crate::dynamical_decoupling::DDSequence {
         let target_qubits = vec![QubitId(0), QubitId(1)];
-        DDSequenceGenerator::generate_base_sequence(&DDSequenceType::CPMG, &target_qubits, 100e-6)
+        DDSequenceGenerator::generate_base_sequence(&DDSequenceType::CPMG { n_pulses: 1 }, &target_qubits, 100e-6)
             .unwrap()
     }
 
@@ -111,12 +111,12 @@ mod tests {
 
         // Test CPMG
         let cpmg = DDSequenceGenerator::generate_base_sequence(
-            &DDSequenceType::CPMG,
+            &DDSequenceType::CPMG { n_pulses: 1 },
             &target_qubits,
             100e-6,
         )
         .unwrap();
-        assert_eq!(cpmg.sequence_type, DDSequenceType::CPMG);
+        assert!(matches!(cpmg.sequence_type, DDSequenceType::CPMG { .. }));
         assert!(cpmg.properties.pulse_count > 1);
 
         // Test XY-4
@@ -131,12 +131,12 @@ mod tests {
 
         // Test UDD
         let udd = DDSequenceGenerator::generate_base_sequence(
-            &DDSequenceType::UDD,
+            &DDSequenceType::UDD { n_pulses: 3 },
             &target_qubits,
             100e-6,
         )
         .unwrap();
-        assert_eq!(udd.sequence_type, DDSequenceType::UDD);
+        assert_eq!(udd.sequence_type, DDSequenceType::UDD { n_pulses: 3 });
         assert!(udd.properties.sequence_order > 1);
     }
 
@@ -172,11 +172,11 @@ mod tests {
     #[test]
     fn test_multi_qubit_coordination() {
         let crosstalk_mitigation = CrosstalkMitigationStrategy::TimeShifted;
-        let synchronization = SynchronizationRequirements {
-            global_sync: true,
-            phase_coherence: true,
-            timing_tolerance: 0.01,
-            sync_points: vec![0.5],
+        let synchronization = SynchronizationRequirements::Custom {
+            global_sync_required: true,
+            local_sync_points: vec![],
+            timing_tolerances: std::collections::HashMap::new(),
+            clock_domains: vec![],
         };
 
         let mut coordinator = MultiQubitDDCoordinator::new(crosstalk_mitigation, synchronization);
@@ -184,7 +184,7 @@ mod tests {
         // Add sequences for different qubit groups
         let group1 = vec![QubitId(0), QubitId(1)];
         let sequence1 =
-            DDSequenceGenerator::generate_base_sequence(&DDSequenceType::CPMG, &group1, 100e-6)
+            DDSequenceGenerator::generate_base_sequence(&DDSequenceType::CPMG { n_pulses: 16 }, &group1, 100e-6)
                 .unwrap();
         coordinator.add_sequence(group1, sequence1);
 
@@ -294,7 +294,7 @@ mod tests {
         let initial_sequence = create_test_sequence();
         let available_sequences = vec![
             DDSequenceType::HahnEcho,
-            DDSequenceType::CPMG,
+            DDSequenceType::CPMG { n_pulses: 16 },
             DDSequenceType::XY4,
             DDSequenceType::XY8,
         ];
@@ -306,10 +306,10 @@ mod tests {
         adaptive_system.start(&executor).unwrap();
 
         let initial_state = adaptive_system.get_current_state();
-        assert_eq!(
+        assert!(matches!(
             initial_state.current_sequence.sequence_type,
-            DDSequenceType::CPMG
-        );
+            DDSequenceType::CPMG { .. }
+        ));
         assert_eq!(initial_state.system_health.health_score, 1.0);
 
         let stats = adaptive_system.get_adaptation_statistics();
@@ -326,7 +326,7 @@ mod tests {
         // Initialize adaptive system
         let adaptive_config = AdaptiveDDConfig::default();
         let initial_sequence = create_test_sequence();
-        let available_sequences = vec![DDSequenceType::CPMG, DDSequenceType::XY4];
+        let available_sequences = vec![DDSequenceType::CPMG { n_pulses: 16 }, DDSequenceType::XY4];
 
         manager
             .initialize_adaptive_system(adaptive_config, initial_sequence, available_sequences)
@@ -335,11 +335,11 @@ mod tests {
         // Initialize multi-qubit coordination
         manager.initialize_multi_qubit_coordination(
             CrosstalkMitigationStrategy::PhaseRandomized,
-            SynchronizationRequirements {
-                global_sync: true,
-                phase_coherence: true,
-                timing_tolerance: 0.01,
-                sync_points: vec![],
+            SynchronizationRequirements::Custom {
+                global_sync_required: true,
+                local_sync_points: vec![],
+                timing_tolerances: std::collections::HashMap::new(),
+                clock_domains: vec![],
             },
         );
 
@@ -420,7 +420,7 @@ mod tests {
         // Test invalid parameters
         let empty_qubits: Vec<QubitId> = vec![];
         let result = DDSequenceGenerator::generate_base_sequence(
-            &DDSequenceType::CPMG,
+            &DDSequenceType::CPMG { n_pulses: 1 },
             &empty_qubits,
             100e-6,
         );
@@ -429,7 +429,7 @@ mod tests {
         // Test negative duration
         let target_qubits = vec![QubitId(0)];
         let result = DDSequenceGenerator::generate_base_sequence(
-            &DDSequenceType::CPMG,
+            &DDSequenceType::CPMG { n_pulses: 1 },
             &target_qubits,
             -1.0,
         );
@@ -548,7 +548,7 @@ mod benchmarks {
         for _ in 0..iterations {
             let _sequence =
                 crate::dynamical_decoupling::DDSequenceGenerator::generate_base_sequence(
-                    &DDSequenceType::CPMG,
+                    &DDSequenceType::CPMG { n_pulses: 1 },
                     &target_qubits,
                     100e-6,
                 )
@@ -571,7 +571,7 @@ mod benchmarks {
 
         let target_qubits = vec![quantrs2_core::qubit::QubitId(0)];
         let sequence = crate::dynamical_decoupling::DDSequenceGenerator::generate_base_sequence(
-            &DDSequenceType::CPMG,
+            &DDSequenceType::CPMG { n_pulses: 1 },
             &target_qubits,
             100e-6,
         )

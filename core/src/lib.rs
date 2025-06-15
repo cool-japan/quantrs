@@ -91,6 +91,9 @@ pub mod real_time_compilation;
 pub mod register;
 pub mod shannon;
 pub mod simd_ops;
+pub mod symbolic;
+pub mod symbolic_hamiltonian;
+pub mod symbolic_optimization;
 pub mod synthesis;
 pub mod tensor_network;
 pub mod testing;
@@ -335,6 +338,24 @@ pub mod prelude {
     pub use crate::shannon::{shannon_decompose, OptimizedShannonDecomposer, ShannonDecomposer};
     pub use crate::simd_ops::{
         apply_phase_simd, controlled_phase_simd, expectation_z_simd, inner_product, normalize_simd,
+    };
+    pub use crate::symbolic::{
+        SymbolicExpression,
+        matrix::SymbolicMatrix,
+    };
+    #[cfg(feature = "symbolic")]
+    pub use crate::symbolic::{
+        calculus::{diff, integrate, limit, expand, simplify},
+    };
+    pub use crate::symbolic_hamiltonian::{
+        PauliOperator as SymbolicPauliOperator, PauliString as SymbolicPauliString, 
+        SymbolicHamiltonian, SymbolicHamiltonianTerm,
+        hamiltonians::{transverse_field_ising, heisenberg, maxcut, number_partitioning, molecular_h2},
+    };
+    pub use crate::symbolic_optimization::{
+        SymbolicOptimizationConfig, SymbolicOptimizer, OptimizationResult, 
+        SymbolicObjective, HamiltonianExpectation, QAOACostFunction,
+        circuit_optimization::{optimize_parametric_circuit, extract_circuit_parameters},
     };
     pub use crate::synthesis::{
         decompose_single_qubit_xyx, decompose_single_qubit_zyz, decompose_two_qubit_kak,

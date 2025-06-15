@@ -90,11 +90,11 @@ impl DDSequenceGenerator {
         duration: f64,
     ) -> DeviceResult<DDSequence> {
         match sequence_type {
-            DDSequenceType::CPMG => Self::generate_cpmg_sequence(target_qubits, duration),
+            DDSequenceType::CPMG { n_pulses } => Self::generate_cpmg_sequence_with_pulses(target_qubits, duration, *n_pulses),
             DDSequenceType::XY4 => Self::generate_xy4_sequence(target_qubits, duration),
             DDSequenceType::XY8 => Self::generate_xy8_sequence(target_qubits, duration),
             DDSequenceType::XY16 => Self::generate_xy16_sequence(target_qubits, duration),
-            DDSequenceType::UDD => Self::generate_udd_sequence(target_qubits, duration),
+            DDSequenceType::UDD { n_pulses } => Self::generate_udd_sequence_with_pulses(target_qubits, duration, *n_pulses),
             DDSequenceType::KDD => Self::generate_kdd_sequence(target_qubits, duration),
             DDSequenceType::QDD => Self::generate_qdd_sequence(target_qubits, duration),
             DDSequenceType::CDD => Self::generate_cdd_sequence(target_qubits, duration),
@@ -179,11 +179,11 @@ impl DDSequenceGenerator {
     }
 
     /// Generate CPMG (Carr-Purcell-Meiboom-Gill) sequence
-    fn generate_cpmg_sequence(
+    fn generate_cpmg_sequence_with_pulses(
         target_qubits: &[QubitId],
         duration: f64,
+        n_pulses: usize,
     ) -> DeviceResult<DDSequence> {
-        let n_pulses = 16; // Default number of π pulses
         let pulse_spacing = duration / (n_pulses + 1) as f64;
 
         let mut circuit = Circuit::<32>::new();
@@ -226,7 +226,7 @@ impl DDSequenceGenerator {
         };
 
         Ok(DDSequence {
-            sequence_type: DDSequenceType::CPMG,
+            sequence_type: DDSequenceType::CPMG { n_pulses },
             target_qubits: target_qubits.to_vec(),
             duration,
             circuit,
@@ -234,6 +234,14 @@ impl DDSequenceGenerator {
             pulse_phases,
             properties,
         })
+    }
+
+    /// Generate CPMG sequence with default number of pulses (backward compatibility)
+    fn generate_cpmg_sequence(
+        target_qubits: &[QubitId],
+        duration: f64,
+    ) -> DeviceResult<DDSequence> {
+        Self::generate_cpmg_sequence_with_pulses(target_qubits, duration, 16)
     }
 
     /// Generate XY-4 sequence
@@ -411,8 +419,7 @@ impl DDSequenceGenerator {
     }
 
     /// Generate Uhrig Dynamical Decoupling (UDD) sequence
-    fn generate_udd_sequence(target_qubits: &[QubitId], duration: f64) -> DeviceResult<DDSequence> {
-        let n_pulses = 8;
+    fn generate_udd_sequence_with_pulses(target_qubits: &[QubitId], duration: f64, n_pulses: usize) -> DeviceResult<DDSequence> {
         let mut pulse_timings = Vec::new();
         let mut pulse_phases = Vec::new();
 
@@ -459,7 +466,7 @@ impl DDSequenceGenerator {
         };
 
         Ok(DDSequence {
-            sequence_type: DDSequenceType::UDD,
+            sequence_type: DDSequenceType::UDD { n_pulses },
             target_qubits: target_qubits.to_vec(),
             duration,
             circuit,
@@ -587,7 +594,7 @@ impl DDSequenceGenerator {
 
     /// Generate other sequence types (placeholders)
     fn generate_qdd_sequence(target_qubits: &[QubitId], duration: f64) -> DeviceResult<DDSequence> {
-        let mut base = DDSequenceGenerator::generate_udd_sequence(target_qubits, duration)?;
+        let mut base = DDSequenceGenerator::generate_udd_sequence_with_pulses(target_qubits, duration, 8)?;
         base.sequence_type = DDSequenceType::QDD;
         Ok(base)
     }
@@ -697,7 +704,7 @@ pub struct MultiQubitDDCoordinator {
     /// Cross-talk mitigation strategy
     pub crosstalk_mitigation: CrosstalkMitigationStrategy,
     /// Synchronization requirements
-    pub synchronization: SynchronizationRequirements,
+    pub synchronization: crate::dynamical_decoupling::hardware::SynchronizationRequirements,
 }
 
 /// Cross-talk mitigation strategies
@@ -713,6 +720,12 @@ pub enum CrosstalkMitigationStrategy {
     Orthogonal,
     /// Adaptive mitigation
     Adaptive,
+    /// Hybrid approach combining multiple strategies
+    HybridApproach,
+    /// Temporal separation mitigation
+    TemporalSeparation,
+    /// Spatial separation mitigation
+    SpatialSeparation,
 }
 
 /// Synchronization requirements
@@ -732,7 +745,7 @@ impl MultiQubitDDCoordinator {
     /// Create new multi-qubit coordinator
     pub fn new(
         crosstalk_mitigation: CrosstalkMitigationStrategy,
-        synchronization: SynchronizationRequirements,
+        synchronization: crate::dynamical_decoupling::hardware::SynchronizationRequirements,
     ) -> Self {
         Self {
             qubit_sequences: HashMap::new(),

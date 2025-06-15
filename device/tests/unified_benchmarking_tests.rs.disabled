@@ -10,6 +10,7 @@ use quantrs2_device::prelude::*;
 use quantrs2_device::unified_benchmarking::config::*;
 use quantrs2_device::unified_benchmarking::types::*;
 use quantrs2_device::unified_benchmarking::*;
+use quantrs2_device::adaptive_compilation::hardware_adaptation::AlertThresholds;
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio;
@@ -17,62 +18,18 @@ use tokio;
 /// Test configuration helper
 fn create_test_config() -> UnifiedBenchmarkConfig {
     UnifiedBenchmarkConfig {
-        enabled_platforms: vec![
+        target_platforms: vec![
             QuantumPlatform::IBMQuantum,
             QuantumPlatform::AWSBraket,
             QuantumPlatform::AzureQuantum,
         ],
-        benchmark_suites: vec![
-            BenchmarkSuite::GateLevel,
-            BenchmarkSuite::CircuitLevel,
-            BenchmarkSuite::AlgorithmLevel,
-        ],
-        statistical_analysis: StatisticalAnalysisConfig {
-            enable_advanced_stats: true,
-            confidence_level: 0.95,
-            bootstrap_samples: 1000,
-            enable_ml_analysis: true,
-            enable_correlation_analysis: true,
-            enable_anomaly_detection: true,
-        },
-        optimization: OptimizationConfig {
-            enable_multi_objective: true,
-            optimization_targets: vec![
-                OptimizationObjective::MaximizeFidelity,
-                OptimizationObjective::MinimizeCost,
-                OptimizationObjective::MaximizeReliability,
-            ],
-            max_iterations: 100,
-            convergence_tolerance: 1e-6,
-        },
-        reporting: ReportingConfig {
-            enable_realtime_dashboard: true,
-            auto_generate_reports: true,
-            export_formats: vec![ReportFormat::HTML, ReportFormat::JSON],
-            include_visualizations: true,
-            enable_historical_comparison: true,
-        },
-        monitoring: MonitoringConfig {
-            enable_realtime_monitoring: true,
-            alert_thresholds: AlertThresholds {
-                performance_degradation: 0.1,
-                error_rate_increase: 0.05,
-                cost_increase: 0.2,
-                latency_increase: 0.15,
-            },
-            monitoring_interval: Duration::from_secs(60),
-            enable_predictive_alerts: true,
-        },
-        resource_management: ResourceManagementConfig {
-            enable_intelligent_allocation: true,
-            max_concurrent_benchmarks: 10,
-            resource_utilization_target: 0.8,
-            enable_auto_scaling: true,
-            cost_optimization_strategy: CostOptimizationStrategy::Balanced,
-        },
-        timeout: Duration::from_secs(3600),
-        max_retries: 3,
-        enable_parallel_execution: true,
+        benchmark_suite: BenchmarkSuiteConfig::default(),
+        scirs2_config: SciRS2AnalysisConfig::default(),
+        reporting_config: ReportingConfig::default(),
+        optimization_config: ResourceOptimizationConfig::default(),
+        tracking_config: HistoricalTrackingConfig::default(),
+        custom_benchmarks: Vec::new(),
+        performance_targets: PerformanceTargets::default(),
     }
 }
 

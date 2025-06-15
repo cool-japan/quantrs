@@ -59,6 +59,8 @@ pub struct OptimizationMetrics {
     pub total_function_evaluations: usize,
     pub optimization_time: std::time::Duration,
     pub success: bool,
+    /// Alias for convergence_iterations for compatibility
+    pub iterations: usize,
 }
 
 /// Convergence analysis results
@@ -142,6 +144,7 @@ impl DDSequenceOptimizer {
         let initial_obj = self.evaluate_objective(&initial_params, base_sequence, executor);
         let final_obj = self.evaluate_objective(&optimal_params, base_sequence, executor);
 
+        let convergence_iters = 100; // Placeholder
         let metrics = OptimizationMetrics {
             initial_objective: initial_obj,
             final_objective: final_obj,
@@ -150,9 +153,10 @@ impl DDSequenceOptimizer {
             } else {
                 1.0
             },
-            convergence_iterations: 100,      // Placeholder
+            convergence_iterations: convergence_iters,
             total_function_evaluations: 1000, // Placeholder
             optimization_time: start_time.elapsed(),
+            iterations: convergence_iters,
             success: true,
         };
 

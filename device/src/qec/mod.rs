@@ -110,38 +110,62 @@ pub use mitigation::*;
 /// Configuration for Quantum Error Correction
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QECConfig {
+    /// QEC code type
+    pub code_type: QECCodeType,
+    /// Code distance
+    pub distance: usize,
+    /// QEC strategies
+    pub strategies: Vec<QECStrategy>,
+    /// Enable ML optimization
+    pub enable_ml_optimization: bool,
+    /// Enable adaptive thresholds
+    pub enable_adaptive_thresholds: bool,
+    /// Correction timeout
+    pub correction_timeout: Duration,
+    /// Syndrome detection configuration
+    pub syndrome_detection: SyndromeDetectionConfig,
+    /// ML configuration
+    pub ml_config: QECMLConfig,
+    /// Adaptive configuration
+    pub adaptive_config: AdaptiveQECConfig,
+    /// Monitoring configuration
+    pub monitoring_config: QECMonitoringConfig,
+    /// Optimization configuration
+    pub optimization_config: QECOptimizationConfig,
+    /// Error mitigation configuration
+    pub error_mitigation: ErrorMitigationConfig,
     /// Error correction codes to use
     pub error_codes: Vec<QECCodeType>,
     /// Error correction strategy
     pub correction_strategy: QECStrategy,
-    /// Syndrome detection configuration
-    pub syndrome_detection: SyndromeDetectionConfig,
-    /// Error mitigation configuration
-    pub error_mitigation: ErrorMitigationConfig,
     /// Adaptive QEC configuration
     pub adaptive_qec: AdaptiveQECConfig,
     /// Performance optimization
     pub performance_optimization: QECOptimizationConfig,
-    /// Machine learning configuration
-    pub ml_config: QECMLConfig,
-    /// Real-time monitoring
-    pub monitoring_config: QECMonitoringConfig,
 }
 
 /// Error correction strategies
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum QECStrategy {
+    /// Active error correction
+    ActiveCorrection,
+    /// Passive monitoring
+    PassiveMonitoring,
+    /// Adaptive threshold adjustment
+    AdaptiveThreshold,
+    /// ML-driven error correction
+    MLDriven,
+    /// Hybrid approach
+    HybridApproach,
     /// Passive error correction
     Passive,
     /// Active error correction with periodic syndrome measurement
     ActivePeriodic { cycle_time: Duration },
     /// Adaptive error correction based on noise levels
     Adaptive,
-    /// ML-driven error correction
-    MLDriven,
     /// Fault-tolerant error correction
     FaultTolerant,
-    /// Hybrid approach
+    /// Hybrid approach (legacy)
     Hybrid { strategies: Vec<QECStrategy> },
 }
 
@@ -892,6 +916,10 @@ impl QuantumErrorCorrector {
 
     fn encode_strategy_parameters(&self, strategy: &QECStrategy) -> Array1<f64> {
         match strategy {
+            QECStrategy::ActiveCorrection => Array1::from_vec(vec![0.7, 0.6, 0.5]),
+            QECStrategy::PassiveMonitoring => Array1::from_vec(vec![0.3, 0.2, 0.1]),
+            QECStrategy::AdaptiveThreshold => Array1::from_vec(vec![0.8, 0.7, 0.6]),
+            QECStrategy::HybridApproach => Array1::from_vec(vec![0.85, 0.75, 0.65]),
             QECStrategy::Passive => Array1::from_vec(vec![0.1, 0.1, 0.1]),
             QECStrategy::ActivePeriodic { .. } => Array1::from_vec(vec![0.6, 0.5, 0.4]),
             QECStrategy::Adaptive => Array1::from_vec(vec![0.8, 0.7, 0.6]),
@@ -1491,12 +1519,141 @@ impl Default for CorrectionMetrics {
 impl Default for QECConfig {
     fn default() -> Self {
         Self {
+            code_type: QECCodeType::SurfaceCode {
+                distance: 5,
+                layout: codes::SurfaceCodeLayout::Square,
+            },
+            distance: 5,
+            strategies: vec![QECStrategy::Adaptive],
+            enable_ml_optimization: true,
+            enable_adaptive_thresholds: true,
+            correction_timeout: Duration::from_millis(100),
+            adaptive_config: adaptive::AdaptiveQECConfig {
+                enable_real_time_adaptation: true,
+                adaptation_window: Duration::from_secs(60),
+                performance_threshold: 0.95,
+                enable_threshold_adaptation: true,
+                enable_strategy_switching: true,
+                learning_rate: 0.01,
+                enable_adaptive: true,
+                strategies: vec![],
+                learning: adaptive::AdaptiveLearningConfig {
+                    algorithms: vec![],
+                    online_learning: adaptive::OnlineLearningConfig {
+                        enable_online: true,
+                        learning_rate_adaptation: adaptive::LearningRateAdaptation::Adaptive,
+                        concept_drift: adaptive::ConceptDriftConfig {
+                            enable_detection: false,
+                            methods: vec![],
+                            responses: vec![],
+                        },
+                        model_updates: adaptive::ModelUpdateConfig {
+                            frequency: adaptive::UpdateFrequency::EventTriggered,
+                            triggers: vec![],
+                            strategies: vec![],
+                        },
+                    },
+                    transfer_learning: adaptive::TransferLearningConfig {
+                        enable_transfer: false,
+                        source_domains: vec![],
+                        strategies: vec![],
+                        domain_adaptation: adaptive::DomainAdaptationConfig {
+                            methods: vec![],
+                            validation: vec![],
+                        },
+                    },
+                    meta_learning: adaptive::MetaLearningConfig {
+                        enable_meta: false,
+                        algorithms: vec![],
+                        task_distribution: adaptive::TaskDistributionConfig {
+                            task_types: vec![],
+                            complexity_range: (0.0, 1.0),
+                            generation_strategy: adaptive::TaskGenerationStrategy::Random,
+                        },
+                        meta_optimization: adaptive::MetaOptimizationConfig {
+                            optimizer: adaptive::MetaOptimizer::Adam,
+                            learning_rates: adaptive::LearningRates {
+                                inner_lr: 0.01,
+                                outer_lr: 0.001,
+                                adaptive: true,
+                            },
+                            regularization: adaptive::MetaRegularization {
+                                regularization_type: adaptive::RegularizationType::L2,
+                                strength: 0.001,
+                            },
+                        },
+                    },
+                },
+                realtime_optimization: adaptive::RealtimeOptimizationConfig {
+                    enable_realtime: true,
+                    objectives: vec![],
+                    algorithms: vec![],
+                    constraints: adaptive::ResourceConstraints {
+                        time_limit: Duration::from_millis(100),
+                        memory_limit: 1024 * 1024,
+                        power_budget: 100.0,
+                        hardware_constraints: adaptive::HardwareConstraints {
+                            connectivity: adaptive::ConnectivityConstraints {
+                                coupling_map: vec![],
+                                max_distance: 10,
+                                routing_overhead: 1.2,
+                            },
+                            gate_fidelities: std::collections::HashMap::new(),
+                            coherence_times: adaptive::CoherenceTimes {
+                                t1_times: std::collections::HashMap::new(),
+                                t2_times: std::collections::HashMap::new(),
+                                gate_times: std::collections::HashMap::new(),
+                            },
+                        },
+                    },
+                },
+                feedback_control: adaptive::FeedbackControlConfig {
+                    enable_feedback: true,
+                    algorithms: vec![],
+                    sensors: adaptive::SensorConfig {
+                        sensor_types: vec![],
+                        sampling_rates: std::collections::HashMap::new(),
+                        noise_characteristics: adaptive::NoiseCharacteristics {
+                            gaussian_noise: 0.01,
+                            systematic_bias: 0.0,
+                            temporal_correlation: 0.1,
+                        },
+                    },
+                    actuators: adaptive::ActuatorConfig {
+                        actuator_types: vec![],
+                        response_times: std::collections::HashMap::new(),
+                        control_ranges: std::collections::HashMap::new(),
+                    },
+                },
+            },
+            optimization_config: QECOptimizationConfig {
+                enable_optimization: true,
+                enable_code_optimization: true,
+                enable_layout_optimization: true,
+                enable_scheduling_optimization: true,
+                optimization_algorithm: crate::unified_benchmarking::config::OptimizationAlgorithm::GradientDescent,
+                optimization_objectives: vec![],
+                constraint_satisfaction: adaptive::ConstraintSatisfactionConfig {
+                    hardware_constraints: vec![],
+                    resource_constraints: vec![],
+                    performance_constraints: vec![],
+                },
+                targets: vec![],
+                metrics: vec![],
+                strategies: vec![],
+            },
             error_codes: vec![QECCodeType::SurfaceCode {
                 distance: 5,
                 layout: codes::SurfaceCodeLayout::Square,
             }],
             correction_strategy: QECStrategy::Adaptive,
             syndrome_detection: detection::SyndromeDetectionConfig {
+                enable_parallel_detection: true,
+                detection_rounds: 3,
+                stabilizer_measurement_shots: 1000,
+                enable_syndrome_validation: true,
+                validation_threshold: 0.95,
+                enable_error_correlation: true,
                 enable_detection: true,
                 detection_frequency: 1000.0,
                 detection_methods: vec![],
@@ -1520,12 +1677,50 @@ impl Default for QECConfig {
                 },
             },
             error_mitigation: mitigation::ErrorMitigationConfig {
+                enable_zne: true,
+                enable_symmetry_verification: true,
+                enable_readout_correction: true,
+                enable_dynamical_decoupling: true,
+                mitigation_strategies: vec![],
+                zne_config: mitigation::ZNEConfig {
+                    noise_factors: vec![1.0, 1.5, 2.0],
+                    extrapolation_method: mitigation::ExtrapolationMethod::Linear,
+                    circuit_folding: mitigation::CircuitFoldingMethod::GlobalFolding,
+                    enable_zne: true,
+                    noise_scaling_factors: vec![1.0, 1.5, 2.0],
+                    folding: mitigation::FoldingConfig {
+                        folding_type: mitigation::FoldingType::Global,
+                        global_folding: true,
+                        local_folding: mitigation::LocalFoldingConfig {
+                            regions: vec![],
+                            selection_strategy: mitigation::RegionSelectionStrategy::Adaptive,
+                            overlap_handling: mitigation::OverlapHandling::Ignore,
+                        },
+                        gate_specific: mitigation::GateSpecificFoldingConfig {
+                            folding_rules: std::collections::HashMap::new(),
+                            priority_ordering: vec![],
+                            error_rate_weighting: false,
+                        },
+                    },
+                    richardson: mitigation::RichardsonConfig {
+                        enable_richardson: false,
+                        order: 2,
+                        stability_check: true,
+                        error_estimation: mitigation::ErrorEstimationConfig {
+                            method: mitigation::ErrorEstimationMethod::Bootstrap,
+                            bootstrap_samples: 100,
+                            confidence_level: 0.95,
+                        },
+                    },
+                },
                 enable_mitigation: true,
                 strategies: vec![],
                 zne: mitigation::ZNEConfig {
+                    noise_factors: vec![1.0, 1.5, 2.0],
+                    extrapolation_method: mitigation::ExtrapolationMethod::Linear,
+                    circuit_folding: mitigation::CircuitFoldingMethod::GlobalFolding,
                     enable_zne: true,
                     noise_scaling_factors: vec![1.0, 1.5, 2.0],
-                    extrapolation_method: mitigation::ExtrapolationMethod::Linear,
                     folding: mitigation::FoldingConfig {
                         folding_type: mitigation::FoldingType::Global,
                         global_folding: true,
@@ -1622,6 +1817,12 @@ impl Default for QECConfig {
                 },
             },
             adaptive_qec: adaptive::AdaptiveQECConfig {
+                enable_real_time_adaptation: true,
+                adaptation_window: Duration::from_secs(60),
+                performance_threshold: 0.95,
+                enable_threshold_adaptation: true,
+                enable_strategy_switching: true,
+                learning_rate: 0.01,
                 enable_adaptive: true,
                 strategies: vec![],
                 learning: adaptive::AdaptiveLearningConfig {
@@ -1715,11 +1916,84 @@ impl Default for QECConfig {
             },
             performance_optimization: QECOptimizationConfig {
                 enable_optimization: true,
+                enable_code_optimization: true,
+                enable_layout_optimization: true,
+                enable_scheduling_optimization: true,
+                optimization_algorithm: crate::unified_benchmarking::config::OptimizationAlgorithm::GradientDescent,
+                optimization_objectives: vec![],
+                constraint_satisfaction: adaptive::ConstraintSatisfactionConfig {
+                    hardware_constraints: vec![],
+                    resource_constraints: vec![],
+                    performance_constraints: vec![],
+                },
                 targets: vec![],
                 metrics: vec![],
                 strategies: vec![],
             },
             ml_config: QECMLConfig {
+                model_type: crate::unified_benchmarking::config::MLModelType::NeuralNetwork,
+                training_data_size: 10000,
+                validation_split: 0.2,
+                enable_online_learning: true,
+                feature_extraction: crate::ml_optimization::FeatureExtractionConfig {
+                    enable_syndrome_history: true,
+                    history_length: 100,
+                    enable_spatial_features: true,
+                    enable_temporal_features: true,
+                    enable_correlation_features: true,
+                    enable_auto_extraction: true,
+                    circuit_features: crate::ml_optimization::CircuitFeatureConfig {
+                        basic_properties: true,
+                        gate_distributions: true,
+                        depth_analysis: true,
+                        connectivity_patterns: true,
+                        entanglement_measures: false,
+                        symmetry_analysis: false,
+                        critical_path_analysis: false,
+                    },
+                    hardware_features: crate::ml_optimization::HardwareFeatureConfig {
+                        topology_features: true,
+                        calibration_features: true,
+                        error_rate_features: true,
+                        timing_features: false,
+                        resource_features: false,
+                        environmental_features: false,
+                    },
+                    temporal_features: crate::ml_optimization::TemporalFeatureConfig {
+                        time_series_analysis: true,
+                        trend_detection: true,
+                        seasonality_analysis: false,
+                        autocorrelation_features: false,
+                        fourier_features: false,
+                    },
+                    statistical_features: crate::ml_optimization::StatisticalFeatureConfig {
+                        moment_features: true,
+                        distribution_fitting: false,
+                        correlation_features: true,
+                        outlier_features: false,
+                        normality_tests: false,
+                    },
+                    graph_features: crate::ml_optimization::GraphFeatureConfig {
+                        centrality_measures: false,
+                        community_features: false,
+                        spectral_features: false,
+                        path_features: false,
+                        clustering_features: false,
+                    },
+                    feature_selection: crate::ml_optimization::FeatureSelectionConfig {
+                        enable_selection: true,
+                        selection_methods: vec![crate::ml_optimization::FeatureSelectionMethod::VarianceThreshold],
+                        num_features: Some(50),
+                        selection_threshold: 0.01,
+                    },
+                    dimensionality_reduction: crate::ml_optimization::DimensionalityReductionConfig {
+                        enable_reduction: false,
+                        reduction_methods: vec![],
+                        target_dimensions: None,
+                        variance_threshold: 0.95,
+                    },
+                },
+                model_update_frequency: Duration::from_secs(3600),
                 enable_ml: true,
                 models: vec![],
                 training: MLTrainingConfig {
@@ -1818,6 +2092,11 @@ impl Default for QECConfig {
                 },
             },
             monitoring_config: QECMonitoringConfig {
+                enable_performance_tracking: true,
+                enable_error_analysis: true,
+                enable_resource_monitoring: true,
+                reporting_interval: Duration::from_secs(60),
+                enable_predictive_analytics: false,
                 enable_monitoring: true,
                 targets: vec![],
                 dashboard: DashboardConfig {

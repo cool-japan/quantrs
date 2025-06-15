@@ -38,6 +38,7 @@ pub struct GpuMemoryPool {
 }
 
 #[cfg(feature = "advanced_math")]
+#[derive(Clone)]
 pub struct GpuMemoryBlock {
     pub ptr: CudaDevicePointer,
     pub size: usize,
@@ -150,7 +151,7 @@ impl GpuMemory {
                 .device_ptr
                 .map(|p| p as *const std::ffi::c_void)
                 .unwrap_or(std::ptr::null()),
-            _ => self.host_ptr.unwrap_or(std::ptr::null()),
+            _ => self.host_ptr.unwrap_or(std::ptr::null_mut()),
         }
     }
 

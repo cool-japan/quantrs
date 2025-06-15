@@ -122,6 +122,9 @@ pub enum QuantRS2Error {
 
     #[error("QKD failure: {0}")]
     QKDFailure(String),
+
+    #[error("Division by zero")]
+    DivisionByZero,
 }
 
 /// Result type for quantum operations

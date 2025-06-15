@@ -22,7 +22,7 @@ pub struct DynamicalDecouplingConfig {
 impl Default for DynamicalDecouplingConfig {
     fn default() -> Self {
         Self {
-            sequence_type: DDSequenceType::CPMG,
+            sequence_type: DDSequenceType::CPMG { n_pulses: 4 },
             optimization_config: DDOptimizationConfig::default(),
             hardware_adaptation: DDHardwareConfig::default(),
             noise_characterization: DDNoiseConfig::default(),
@@ -37,6 +37,12 @@ impl Default for DynamicalDecouplingConfig {
 pub struct AdaptiveDDConfig {
     /// Enable adaptive sequence selection
     pub enable_adaptive_selection: bool,
+    /// Enable real-time adaptation
+    pub enable_real_time_adaptation: bool,
+    /// Adaptation threshold
+    pub adaptation_threshold: f64,
+    /// Minimum adaptation interval
+    pub min_adaptation_interval: std::time::Duration,
     /// Adaptation criteria
     pub adaptation_criteria: AdaptationCriteria,
     /// Real-time monitoring configuration
@@ -45,16 +51,28 @@ pub struct AdaptiveDDConfig {
     pub feedback_control: FeedbackControlConfig,
     /// Learning parameters
     pub learning_config: LearningConfig,
+    /// Sequence selection strategy
+    pub selection_strategy: SequenceSelectionStrategy,
+    /// Adaptation triggers
+    pub adaptation_triggers: Vec<crate::adaptive_compilation::strategies::AdaptationTrigger>,
 }
 
 impl Default for AdaptiveDDConfig {
     fn default() -> Self {
         Self {
             enable_adaptive_selection: true,
+            enable_real_time_adaptation: true,
+            adaptation_threshold: 0.1,
+            min_adaptation_interval: std::time::Duration::from_millis(100),
             adaptation_criteria: AdaptationCriteria::default(),
             monitoring_config: MonitoringConfig::default(),
             feedback_control: FeedbackControlConfig::default(),
             learning_config: LearningConfig::default(),
+            selection_strategy: SequenceSelectionStrategy::PerformanceBased,
+            adaptation_triggers: vec![
+                crate::adaptive_compilation::strategies::AdaptationTrigger::PerformanceDegradation,
+                crate::adaptive_compilation::strategies::AdaptationTrigger::ErrorRateIncrease,
+            ],
         }
     }
 }
@@ -326,6 +344,23 @@ pub enum ExplorationStrategy {
     ThompsonSampling,
 }
 
+/// Sequence selection strategies for adaptive DD
+#[derive(Debug, Clone, PartialEq)]
+pub enum SequenceSelectionStrategy {
+    /// Performance-based selection
+    PerformanceBased,
+    /// Noise characteristic-based selection
+    NoiseCharacteristicBased,
+    /// Hybrid optimization approach
+    HybridOptimization,
+    /// Machine learning driven selection
+    MLDriven,
+    /// Rule-based selection
+    RuleBased,
+    /// Random selection
+    Random,
+}
+
 /// Types of dynamical decoupling sequences
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DDSequenceType {
@@ -334,7 +369,7 @@ pub enum DDSequenceType {
     /// Carr-Purcell (CP) sequence
     CarrPurcell,
     /// Carr-Purcell-Meiboom-Gill (CPMG) sequence
-    CPMG,
+    CPMG { n_pulses: usize },
     /// XY-4 sequence
     XY4,
     /// XY-8 sequence
@@ -344,7 +379,7 @@ pub enum DDSequenceType {
     /// Knill dynamical decoupling (KDD)
     KDD,
     /// Uhrig dynamical decoupling (UDD)
-    UDD,
+    UDD { n_pulses: usize },
     /// Quadratic dynamical decoupling (QDD)
     QDD,
     /// Concatenated dynamical decoupling (CDD)
@@ -382,6 +417,12 @@ pub struct DDOptimizationConfig {
     pub multi_objective_weights: HashMap<String, f64>,
     /// Enable adaptive optimization
     pub enable_adaptive: bool,
+    /// Enable SciRS2 optimization
+    pub enable_scirs2_optimization: bool,
+    /// Maximum optimization iterations
+    pub max_optimization_iterations: usize,
+    /// Optimization objectives
+    pub optimization_objectives: Vec<DDOptimizationObjectiveType>,
 }
 
 impl Default for DDOptimizationConfig {
@@ -395,6 +436,12 @@ impl Default for DDOptimizationConfig {
             parameter_bounds: None,
             multi_objective_weights: HashMap::new(),
             enable_adaptive: true,
+            enable_scirs2_optimization: true,
+            max_optimization_iterations: 1000,
+            optimization_objectives: vec![
+                DDOptimizationObjectiveType::MaximizeFidelity,
+                DDOptimizationObjectiveType::MaximizeCoherenceTime,
+            ],
         }
     }
 }
@@ -418,6 +465,23 @@ pub enum DDOptimizationObjective {
     Custom(String),
 }
 
+/// DD-specific optimization objectives 
+#[derive(Debug, Clone, PartialEq)]
+pub enum DDOptimizationObjectiveType {
+    /// Maximize fidelity
+    MaximizeFidelity,
+    /// Minimize execution time
+    MinimizeExecutionTime,
+    /// Maximize coherence time
+    MaximizeCoherenceTime,
+    /// Minimize noise amplification
+    MinimizeNoiseAmplification,
+    /// Maximize robustness
+    MaximizeRobustness,
+    /// Minimize resource usage
+    MinimizeResourceUsage,
+}
+
 /// DD optimization algorithms
 #[derive(Debug, Clone, PartialEq)]
 pub enum DDOptimizationAlgorithm {
@@ -437,6 +501,25 @@ pub enum DDOptimizationAlgorithm {
     ReinforcementLearning,
 }
 
+/// Platform types for hardware adaptation
+#[derive(Debug, Clone, PartialEq)]
+pub enum PlatformType {
+    /// IBM Quantum platform
+    IBMQuantum,
+    /// AWS Braket platform
+    AWSBraket,
+    /// Azure Quantum platform
+    AzureQuantum,
+    /// Google Quantum AI platform
+    GoogleQuantumAI,
+    /// Rigetti QCS platform
+    RigettiQCS,
+    /// IonQ Cloud platform
+    IonQCloud,
+    /// Generic platform
+    Generic,
+}
+
 /// Hardware adaptation configuration for DD
 #[derive(Debug, Clone)]
 pub struct DDHardwareConfig {
@@ -452,6 +535,14 @@ pub struct DDHardwareConfig {
     pub pulse_optimization: DDPulseConfig,
     /// Error characterization integration
     pub error_characterization: bool,
+    /// Enable platform optimization
+    pub enable_platform_optimization: bool,
+    /// Enable calibration integration
+    pub enable_calibration_integration: bool,
+    /// Supported platforms
+    pub supported_platforms: Vec<PlatformType>,
+    /// Target platform for optimization
+    pub target_platform: Option<PlatformType>,
 }
 
 impl Default for DDHardwareConfig {
@@ -463,6 +554,16 @@ impl Default for DDHardwareConfig {
             timing_constraints: true,
             pulse_optimization: DDPulseConfig::default(),
             error_characterization: true,
+            enable_platform_optimization: true,
+            enable_calibration_integration: true,
+            supported_platforms: vec![
+                PlatformType::IBMQuantum,
+                PlatformType::AWSBraket,
+                PlatformType::AzureQuantum,
+                PlatformType::GoogleQuantumAI,
+                PlatformType::Generic,
+            ],
+            target_platform: Some(PlatformType::Generic),
         }
     }
 }
@@ -509,6 +610,14 @@ pub struct DDNoiseConfig {
     pub spatial_correlation: bool,
     /// Non-Markovian noise modeling
     pub non_markovian_modeling: bool,
+    /// Enable spectral analysis
+    pub enable_spectral_analysis: bool,
+    /// Enable correlation analysis
+    pub enable_correlation_analysis: bool,
+    /// Sampling rate for noise characterization
+    pub sampling_rate: f64,
+    /// Target noise types for analysis
+    pub target_noise_types: Vec<NoiseType>,
 }
 
 impl Default for DDNoiseConfig {
@@ -524,6 +633,15 @@ impl Default for DDNoiseConfig {
             temporal_correlation: true,
             spatial_correlation: false,
             non_markovian_modeling: false,
+            enable_spectral_analysis: true,
+            enable_correlation_analysis: true,
+            sampling_rate: 1000.0,
+            target_noise_types: vec![
+                NoiseType::AmplitudeDamping,
+                NoiseType::PhaseDamping,
+                NoiseType::Depolarizing,
+                NoiseType::CoherentErrors,
+            ],
         }
     }
 }
@@ -570,6 +688,12 @@ pub struct DDPerformanceConfig {
     pub enable_benchmarking: bool,
     /// Benchmarking configuration
     pub benchmarking_config: DDBenchmarkingConfig,
+    /// Enable coherence tracking
+    pub enable_coherence_tracking: bool,
+    /// Enable fidelity monitoring
+    pub enable_fidelity_monitoring: bool,
+    /// Number of measurement shots
+    pub measurement_shots: usize,
 }
 
 impl Default for DDPerformanceConfig {
@@ -584,6 +708,9 @@ impl Default for DDPerformanceConfig {
             statistical_depth: StatisticalDepth::Comprehensive,
             enable_benchmarking: true,
             benchmarking_config: DDBenchmarkingConfig::default(),
+            enable_coherence_tracking: true,
+            enable_fidelity_monitoring: true,
+            measurement_shots: 1000,
         }
     }
 }
@@ -802,3 +929,6 @@ impl Default for LatencyRequirements {
         }
     }
 }
+
+/// Type alias for backward compatibility with tests
+pub type DDHardwareAdaptationConfig = DDHardwareConfig;

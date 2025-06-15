@@ -40,6 +40,7 @@ pub mod job_scheduling;
 // pub mod mapping_scirc2; // Temporarily disabled due to scirs2-graph API changes
 pub mod mid_circuit_measurements;
 pub mod ml_optimization;
+pub mod neutral_atom;
 pub mod noise_model;
 pub mod noise_modeling_scirs2;
 pub mod optimization;
@@ -134,6 +135,18 @@ pub enum DeviceError {
 
     #[error("Device not found: {0}")]
     DeviceNotFound(String),
+
+    #[error("Device not initialized: {0}")]
+    DeviceNotInitialized(String),
+
+    #[error("Job execution failed: {0}")]
+    JobExecutionFailed(String),
+
+    #[error("Invalid response: {0}")]
+    InvalidResponse(String),
+
+    #[error("Unknown job status: {0}")]
+    UnknownJobStatus(String),
 }
 
 /// Convert QuantRS2Error to DeviceError

@@ -25,6 +25,8 @@ pub struct DDHardwareAnalysis {
     pub error_characterization: HardwareErrorCharacterization,
     /// Implementation recommendations
     pub implementation_recommendations: ImplementationRecommendations,
+    /// Platform-specific optimizations
+    pub platform_optimizations: Vec<String>,
 }
 
 /// Hardware compatibility assessment
@@ -349,20 +351,29 @@ pub enum OptimizationRisk {
 }
 
 /// Synchronization requirements
-#[derive(Debug, Clone)]
-pub struct SynchronizationRequirements {
-    /// Global synchronization needed
-    pub global_sync_required: bool,
-    /// Local synchronization points
-    pub local_sync_points: Vec<SyncPoint>,
-    /// Timing tolerance requirements
-    pub timing_tolerances: HashMap<String, f64>,
-    /// Clock domain requirements
-    pub clock_domains: Vec<ClockDomain>,
+#[derive(Debug, Clone, PartialEq)]
+pub enum SynchronizationRequirements {
+    /// Loose synchronization requirements
+    Loose,
+    /// Strict synchronization requirements  
+    Strict,
+    /// Adaptive synchronization requirements
+    Adaptive,
+    /// Custom synchronization configuration
+    Custom {
+        /// Global synchronization needed
+        global_sync_required: bool,
+        /// Local synchronization points
+        local_sync_points: Vec<SyncPoint>,
+        /// Timing tolerance requirements
+        timing_tolerances: HashMap<String, f64>,
+        /// Clock domain requirements
+        clock_domains: Vec<ClockDomain>,
+    },
 }
 
 /// Synchronization point
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SyncPoint {
     /// Point location in sequence
     pub location: usize,
@@ -393,7 +404,7 @@ pub enum SyncCriticality {
 }
 
 /// Clock domain
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ClockDomain {
     /// Domain name
     pub name: String,
@@ -755,6 +766,11 @@ impl DDHardwareAnalyzer {
             connectivity_analysis,
             error_characterization,
             implementation_recommendations,
+            platform_optimizations: vec![
+                "Gate decomposition optimization".to_string(),
+                "Timing optimization".to_string(),
+                "Error mitigation integration".to_string(),
+            ],
         })
     }
 
@@ -851,12 +867,7 @@ impl DDHardwareAnalyzer {
                 sync_tolerances: HashMap::new(),
             },
             optimization_opportunities: Vec::new(),
-            synchronization_requirements: SynchronizationRequirements {
-                global_sync_required: false,
-                local_sync_points: Vec::new(),
-                timing_tolerances: HashMap::new(),
-                clock_domains: Vec::new(),
-            },
+            synchronization_requirements: SynchronizationRequirements::Loose,
         })
     }
 

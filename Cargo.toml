@@ -21,6 +21,7 @@ exclude-members = ["py", "examples"]
 
 [patch.crates-io]
 symengine-sys = { git = "https://github.com/cool-japan/symengine-sys.git", branch = "fixed-macos" }
+symengine = { git = "https://github.com/cool-japan/symengine-rs.git", branch = "fixed-macos" }
 
 [workspace.lints.rust]
 nonstandard_style = "warn"
@@ -81,7 +82,7 @@ pyo3 = { version = "0.25.1", features = ["extension-module"] }
 uuid = { version = "1.17.0", features = ["v4", "serde"] }
 
 # For optional functionality
-symengine = { version = "0.2.2" }
+symengine = { version = "0.3.0" }
 regex = "1.11.1"
 wide = "0.7.32"
 chrono = "0.4"

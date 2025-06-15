@@ -7,9 +7,21 @@ use std::time::Duration;
 /// Error mitigation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ErrorMitigationConfig {
+    /// Enable zero noise extrapolation
+    pub enable_zne: bool,
+    /// Enable symmetry verification
+    pub enable_symmetry_verification: bool,
+    /// Enable readout correction
+    pub enable_readout_correction: bool,
+    /// Enable dynamical decoupling
+    pub enable_dynamical_decoupling: bool,
+    /// Mitigation strategies
+    pub mitigation_strategies: Vec<MitigationStrategy>,
+    /// ZNE configuration
+    pub zne_config: ZNEConfig,
     /// Enable error mitigation
     pub enable_mitigation: bool,
-    /// Mitigation strategies
+    /// Mitigation strategies (legacy)
     pub strategies: Vec<MitigationStrategy>,
     /// Zero noise extrapolation
     pub zne: ZNEConfig,
@@ -27,9 +39,10 @@ pub struct ErrorMitigationConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MitigationStrategy {
     ZeroNoiseExtrapolation,
+    SymmetryVerification,
+    ReadoutErrorMitigation,
     ReadoutMitigation,
     GateMitigation,
-    SymmetryVerification,
     VirtualDistillation,
     ProbabilisticErrorCancellation,
     CliffordDeRandomization,
@@ -38,16 +51,29 @@ pub enum MitigationStrategy {
 /// Zero noise extrapolation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZNEConfig {
+    /// Noise factors for scaling
+    pub noise_factors: Vec<f64>,
+    /// Extrapolation method
+    pub extrapolation_method: ExtrapolationMethod,
+    /// Circuit folding method
+    pub circuit_folding: CircuitFoldingMethod,
     /// Enable ZNE
     pub enable_zne: bool,
     /// Noise scaling factors
     pub noise_scaling_factors: Vec<f64>,
-    /// Extrapolation method
-    pub extrapolation_method: ExtrapolationMethod,
     /// Folding configuration
     pub folding: FoldingConfig,
     /// Richardson extrapolation
     pub richardson: RichardsonConfig,
+}
+
+/// Circuit folding methods for ZNE
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum CircuitFoldingMethod {
+    GlobalFolding,
+    LocalFolding,
+    UniformFolding,
+    RandomFolding,
 }
 
 /// Extrapolation methods

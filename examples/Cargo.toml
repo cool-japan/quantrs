@@ -296,3 +296,9 @@ required-features = ["ml"]
 name = "qubit_routing_demo"
 path = "src/bin/qubit_routing_demo.rs"
 required-features = []
+
+# UltraThink demonstrations
+[[bin]]
+name = "ultrathink_simple_demo"
+path = "src/bin/ultrathink_simple_demo.rs"
+required-features = []

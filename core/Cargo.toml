@@ -32,6 +32,10 @@ bincode = "1.3"
 serde_json = "1.0"
 num_cpus = "1.17"
 flate2 = "1.1"
+# Symbolic computation with SymEngine
+symengine = { git = "https://github.com/cool-japan/symengine-rs.git", branch = "fixed-macos", optional = true }
+symengine-sys = { git = "https://github.com/cool-japan/symengine-sys.git", branch = "fixed-macos", optional = true }
+num-traits = "0.2"
 
 [features]
 default = []
@@ -41,3 +45,4 @@ metal = []
 vulkan = []
 mps = []
 compression = []
+symbolic = ["dep:symengine", "dep:symengine-sys"]  # Enable symbolic computation with SymEngine

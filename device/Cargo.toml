@@ -54,7 +54,7 @@ x25519-dalek = { version = "2.0.1", optional = true }
 tokio-test = "0.4"
 
 [features]
-default = ["scheduling", "scirs2", "security"]
+default = ["scheduling", "scirs2", "security", "neutral_atom"]
 ibm = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait"]
 azure = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait"]
 aws = [
@@ -67,6 +67,7 @@ aws = [
     "dep:hex",
     "dep:bytemuck"
 ]
+neutral_atom = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait", "dep:uuid", "dep:futures", "ibm"]
 scheduling = ["dep:tokio", "dep:async-trait", "dep:uuid", "dep:futures"]
 scirs2 = ["dep:scirs2-stats", "dep:scirs2-graph", "dep:scirs2-linalg", "dep:scirs2-optimize"]
 security = ["dep:aes-gcm", "dep:x25519-dalek", "dep:sha2", "dep:chrono"]

@@ -41,6 +41,9 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 num_cpus = "1.17"
+ndrustfft = { version = "0.5", optional = true }
+sprs = { version = "0.11", optional = true }
+nalgebra = { workspace = true, optional = true }
 
 [dev-dependencies]
 approx = "0.5"
@@ -51,7 +54,7 @@ gpu = ["dep:wgpu", "dep:bytemuck", "dep:tokio", "dep:futures"]
 simd = []
 optimize = ["simd"] # Enable optimized implementations
 memory_efficient = [] # Enable memory-efficient algorithms for large state vectors
-advanced_math = ["dep:scirs2-core", "dep:scirs2-linalg", "dep:scirs2-optimize"] # Enable advanced math using external libs
+advanced_math = ["dep:scirs2-core", "dep:scirs2-linalg", "dep:scirs2-optimize", "dep:ndrustfft", "dep:sprs", "dep:nalgebra"] # Enable advanced math using external libs
 mps = ["dep:ndarray-linalg"] # Enable MPS simulator with linear algebra support
 
 [[bin]]

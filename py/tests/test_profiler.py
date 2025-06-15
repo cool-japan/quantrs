@@ -6,8 +6,14 @@ Test suite for quantum circuit profiler.
 import pytest
 import tempfile
 import os
-import pandas as pd
 from pathlib import Path
+
+# Optional pandas import
+try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError:
+    HAS_PANDAS = False
 
 try:
     import quantrs2
@@ -16,12 +22,52 @@ try:
         ProfileMetrics, CircuitAnalysis, ProfileReport,
         profile_circuit, compare_circuits
     )
-    HAS_QUANTRS2 = True
+    HAS_PROFILER = True
 except ImportError:
-    HAS_QUANTRS2 = False
+    HAS_PROFILER = False
+    
+    # Stub implementations for when profiler is not available
+    class ProfileMetrics:
+        def __init__(self, execution_time=0.0, memory_usage_mb=0.0, gate_count=0, circuit_depth=0, additional=None):
+            self.execution_time = execution_time
+            self.memory_usage_mb = memory_usage_mb
+            self.gate_count = gate_count
+            self.circuit_depth = circuit_depth
+            self.additional = additional or {}
+    
+    class CircuitAnalysis:
+        def __init__(self, gate_distribution=None, qubit_utilization=None, circuit_layers=None, 
+                     critical_path_length=0, parallelism_factor=0.0):
+            self.gate_distribution = gate_distribution or {}
+            self.qubit_utilization = qubit_utilization or {}
+            self.circuit_layers = circuit_layers or []
+            self.critical_path_length = critical_path_length
+            self.parallelism_factor = parallelism_factor
+    
+    class ProfileReport:
+        def __init__(self, circuit_info, metrics, analysis, recommendations=None, timestamp=None):
+            self.circuit_info = circuit_info
+            self.metrics = metrics
+            self.analysis = analysis
+            self.recommendations = recommendations or []
+            self.timestamp = timestamp
+        
+        def to_dict(self):
+            return {"circuit_info": self.circuit_info, "metrics": "metrics", "analysis": "analysis", 
+                   "recommendations": self.recommendations, "timestamp": "now"}
+        
+        def to_json(self, file_path=None):
+            import json
+            data = self.to_dict()
+            json_str = json.dumps(data)
+            if file_path:
+                with open(file_path, 'w') as f:
+                    f.write(json_str)
+            return json_str
 
 
-@pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PROFILER, reason="quantrs2.profiler not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestProfileMetrics:
     """Test ProfileMetrics dataclass."""
     
@@ -48,7 +94,8 @@ class TestProfileMetrics:
         assert metrics.circuit_depth == 5
 
 
-@pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PROFILER, reason="quantrs2.profiler not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestCircuitAnalysis:
     """Test CircuitAnalysis dataclass."""
     
@@ -75,7 +122,8 @@ class TestCircuitAnalysis:
         assert analysis.parallelism_factor == 0.75
 
 
-@pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PROFILER, reason="quantrs2.profiler not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestProfileReport:
     """Test ProfileReport functionality."""
     
@@ -156,7 +204,8 @@ class TestProfileReport:
                 os.unlink(temp_path)
 
 
-@pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PROFILER, reason="quantrs2.profiler not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestMemoryProfiler:
     """Test MemoryProfiler functionality."""
     
@@ -197,7 +246,8 @@ class TestMemoryProfiler:
         assert stats['average'] == 0.0
 
 
-@pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PROFILER, reason="quantrs2.profiler not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestCircuitProfiler:
     """Test CircuitProfiler functionality."""
     
@@ -286,7 +336,8 @@ class TestCircuitProfiler:
         assert 'execution_time_ms' in comparison_df.columns
 
 
-@pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PROFILER, reason="quantrs2.profiler not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestProfilerSession:
     """Test ProfilerSession functionality."""
     
@@ -344,7 +395,8 @@ class TestProfilerSession:
             assert session_file.exists()
 
 
-@pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PROFILER, reason="quantrs2.profiler not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestConvenienceFunctions:
     """Test convenience functions."""
     
@@ -377,7 +429,8 @@ class TestConvenienceFunctions:
         assert len(comparison_df) == 2
 
 
-@pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PROFILER, reason="quantrs2.profiler not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestProfilerIntegration:
     """Test profiler integration with main module."""
     

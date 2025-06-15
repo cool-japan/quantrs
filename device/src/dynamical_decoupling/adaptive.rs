@@ -666,7 +666,7 @@ impl AdaptiveDDSystem {
         available_sequences: &[DDSequenceType],
     ) -> DeviceResult<DDSequenceType> {
         // Get Q-values for all available actions
-        let mut best_sequence = DDSequenceType::CPMG;
+        let mut best_sequence = DDSequenceType::CPMG { n_pulses: 1 };
         let mut best_q_value = f64::NEG_INFINITY;
 
         for sequence_type in available_sequences {
@@ -771,7 +771,7 @@ impl AdaptiveDDSystem {
         current_state: &str,
     ) -> DeviceResult<DDSequenceType> {
         // Get Q-values for all available actions
-        let mut best_sequence = DDSequenceType::CPMG;
+        let mut best_sequence = DDSequenceType::CPMG { n_pulses: 1 };
         let mut best_q_value = f64::NEG_INFINITY;
 
         for sequence_type in &self.available_sequences {
@@ -811,9 +811,9 @@ impl AdaptiveDDSystem {
         // Simple rule-based selection
         match current_state {
             s if s.contains("noise_high") => Ok(DDSequenceType::XY8),
-            s if s.contains("coherence_low") => Ok(DDSequenceType::UDD),
+            s if s.contains("coherence_low") => Ok(DDSequenceType::UDD { n_pulses: 3 }),
             s if s.contains("fidelity_low") => Ok(DDSequenceType::XY4),
-            _ => Ok(DDSequenceType::CPMG),
+            _ => Ok(DDSequenceType::CPMG { n_pulses: 1 }),
         }
     }
 
@@ -946,7 +946,7 @@ impl AdaptiveDDSystem {
             .into_iter()
             .max_by_key(|(_, count)| *count)
             .map(|(sequence, _)| sequence)
-            .unwrap_or(DDSequenceType::CPMG)
+            .unwrap_or(DDSequenceType::CPMG { n_pulses: 1 })
     }
 
     /// Calculate adaptation frequency
@@ -996,7 +996,7 @@ mod tests {
 
     fn create_test_sequence() -> DDSequence {
         DDSequence {
-            sequence_type: DDSequenceType::CPMG,
+            sequence_type: DDSequenceType::CPMG { n_pulses: 1 },
             target_qubits: vec![quantrs2_core::qubit::QubitId(0)],
             duration: 100e-6,
             circuit: Circuit::<32>::new(),
@@ -1029,7 +1029,7 @@ mod tests {
         let config = AdaptiveDDConfig::default();
         let initial_sequence = create_test_sequence();
         let available_sequences = vec![
-            DDSequenceType::CPMG,
+            DDSequenceType::CPMG { n_pulses: 1 },
             DDSequenceType::XY4,
             DDSequenceType::XY8,
         ];
@@ -1037,7 +1037,7 @@ mod tests {
         let system = AdaptiveDDSystem::new(config, initial_sequence, available_sequences);
         let state = system.get_current_state();
 
-        assert_eq!(state.current_sequence.sequence_type, DDSequenceType::CPMG);
+        assert!(matches!(state.current_sequence.sequence_type, DDSequenceType::CPMG { .. }));
         assert_eq!(state.system_health.health_score, 1.0);
     }
 
@@ -1046,7 +1046,7 @@ mod tests {
         let config = AdaptiveDDConfig::default();
         let initial_sequence = create_test_sequence();
         let available_sequences = vec![
-            DDSequenceType::CPMG,
+            DDSequenceType::CPMG { n_pulses: 1 },
             DDSequenceType::XY4,
             DDSequenceType::XY8,
         ];
@@ -1065,7 +1065,7 @@ mod tests {
             system
                 .select_sequence_rule_based(low_coherence_state)
                 .unwrap(),
-            DDSequenceType::UDD
+            DDSequenceType::UDD { n_pulses: 3 }
         );
         assert_eq!(
             system
@@ -1079,13 +1079,13 @@ mod tests {
     fn test_adaptation_statistics() {
         let config = AdaptiveDDConfig::default();
         let initial_sequence = create_test_sequence();
-        let available_sequences = vec![DDSequenceType::CPMG, DDSequenceType::XY4];
+        let available_sequences = vec![DDSequenceType::CPMG { n_pulses: 1 }, DDSequenceType::XY4];
 
         let system = AdaptiveDDSystem::new(config, initial_sequence, available_sequences);
         let stats = system.get_adaptation_statistics();
 
         assert_eq!(stats.total_adaptations, 0);
         assert_eq!(stats.success_rate, 0.0);
-        assert_eq!(stats.most_used_sequence, DDSequenceType::CPMG);
+        assert!(matches!(stats.most_used_sequence, DDSequenceType::CPMG { .. }));
     }
 }

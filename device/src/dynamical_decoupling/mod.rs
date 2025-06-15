@@ -137,7 +137,7 @@ impl DynamicalDecouplingManager {
     pub fn initialize_multi_qubit_coordination(
         &mut self,
         crosstalk_mitigation: CrosstalkMitigationStrategy,
-        synchronization: sequences::SynchronizationRequirements,
+        synchronization: hardware::SynchronizationRequirements,
     ) {
         self.multi_qubit_coordinator = Some(MultiQubitDDCoordinator::new(
             crosstalk_mitigation,

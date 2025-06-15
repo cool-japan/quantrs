@@ -5,8 +5,14 @@ Test suite for quantum finance algorithms.
 
 import pytest
 import numpy as np
-import pandas as pd
 from datetime import datetime, timedelta
+
+# Optional pandas import
+try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError:
+    HAS_PANDAS = False
 
 try:
     import quantrs2
@@ -23,6 +29,7 @@ except ImportError:
 
 
 @pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestFinancialAsset:
     """Test FinancialAsset dataclass."""
     
@@ -83,6 +90,7 @@ class TestFinancialAsset:
 
 
 @pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestPortfolio:
     """Test Portfolio dataclass."""
     
@@ -145,6 +153,7 @@ class TestPortfolio:
 
 
 @pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestOptionContract:
     """Test OptionContract dataclass."""
     
@@ -234,6 +243,7 @@ class TestOptionContract:
 
 
 @pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestQuantumFinanceResult:
     """Test QuantumFinanceResult dataclass."""
     
@@ -254,6 +264,7 @@ class TestQuantumFinanceResult:
 
 
 @pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestQuantumPortfolioOptimizer:
     """Test quantum portfolio optimization."""
     
@@ -302,6 +313,7 @@ class TestQuantumPortfolioOptimizer:
 
 
 @pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestQuantumOptionPricer:
     """Test quantum option pricing."""
     
@@ -358,6 +370,7 @@ class TestQuantumOptionPricer:
 
 
 @pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestQuantumRiskAnalyzer:
     """Test quantum risk analysis."""
     
@@ -391,6 +404,7 @@ class TestQuantumRiskAnalyzer:
 
 
 @pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestQuantumFraudDetector:
     """Test quantum fraud detection."""
     
@@ -444,6 +458,7 @@ class TestQuantumFraudDetector:
 
 
 @pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestUtilityFunctions:
     """Test utility functions."""
     
@@ -474,6 +489,7 @@ class TestUtilityFunctions:
 
 
 @pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestDemoFunctions:
     """Test demo functions."""
     
@@ -519,6 +535,7 @@ class TestDemoFunctions:
 
 
 @pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestEnumTypes:
     """Test enum types."""
     
@@ -536,6 +553,7 @@ class TestEnumTypes:
 
 
 @pytest.mark.skipif(not HAS_QUANTRS2, reason="quantrs2 not available")
+@pytest.mark.skipif(not HAS_PANDAS, reason="pandas not available")
 class TestFinanceIntegration:
     """Test finance module integration."""
     
