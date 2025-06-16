@@ -8,6 +8,9 @@ use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Type alias for job shop schedule representation (job, machine, start_time, duration)
+type JobShopSchedule = Vec<(usize, usize, usize, usize)>;
+
 #[cfg(feature = "scirs")]
 use crate::scirs_stub::{
     scirs2_graphs::{Graph, GraphLayout},
@@ -177,7 +180,7 @@ impl ProblemVisualizer {
         {
             use crate::scirs_stub::scirs2_plot::{Figure, Subplot};
 
-            let fig = Figure::new();
+            let mut fig = Figure::new();
 
             for (idx, sample) in best_samples.iter().enumerate() {
                 if idx >= self.config.top_k {
@@ -256,7 +259,7 @@ impl ProblemVisualizer {
                     .collect(),
             };
 
-            let mut json = serde_json::to_string_pretty(&export)?;
+            let json = serde_json::to_string_pretty(&export)?;
             std::fs::write("tsp_solution.json", json)?;
             println!("TSP solution exported to tsp_solution.json");
         }
@@ -281,8 +284,8 @@ impl ProblemVisualizer {
         for _ in 1..n_cities {
             let mut next_city = None;
 
-            for j in 0..n_cities {
-                if !visited[j] {
+            for (j, &is_visited) in visited.iter().enumerate().take(n_cities) {
+                if !is_visited {
                     let edge_var = format!("x_{}_{}", current, j);
                     if sample.assignments.get(&edge_var).copied().unwrap_or(false) {
                         next_city = Some(j);
@@ -297,10 +300,10 @@ impl ProblemVisualizer {
                 current = next;
             } else {
                 // Find first unvisited city as fallback
-                for j in 0..n_cities {
-                    if !visited[j] {
+                for (j, is_visited) in visited.iter_mut().enumerate().take(n_cities) {
+                    if !*is_visited {
                         tour.push(j);
-                        visited[j] = true;
+                        *is_visited = true;
                         current = j;
                         break;
                     }
@@ -329,7 +332,7 @@ impl ProblemVisualizer {
             use crate::scirs_stub::scirs2_graphs::spring_layout;
             use crate::scirs_stub::scirs2_plot::Figure;
 
-            let fig = Figure::new();
+            let mut fig = Figure::new();
             let ax = fig.add_subplot(1, 1, 1)?;
 
             // Create graph
@@ -401,7 +404,7 @@ impl ProblemVisualizer {
                 n_colors_used: node_colors.iter().max().copied().unwrap_or(0) + 1,
             };
 
-            let mut json = serde_json::to_string_pretty(&export)?;
+            let json = serde_json::to_string_pretty(&export)?;
             std::fs::write("graph_coloring.json", json)?;
             println!("Graph coloring exported to graph_coloring.json");
         }
@@ -418,11 +421,11 @@ impl ProblemVisualizer {
     ) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
         let mut colors = vec![0; n_nodes];
 
-        for i in 0..n_nodes {
+        for (i, color) in colors.iter_mut().enumerate().take(n_nodes) {
             for c in 0..max_colors {
                 let var_name = format!("node_{}_color_{}", i, c);
                 if sample.assignments.get(&var_name).copied().unwrap_or(false) {
-                    colors[i] = c;
+                    *color = c;
                     break;
                 }
             }
@@ -435,7 +438,7 @@ impl ProblemVisualizer {
     fn visualize_max_cut(
         &self,
         adjacency: &Array2<f64>,
-        _node_names: &Option<Vec<String>>,
+        node_names: &Option<Vec<String>>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let n_nodes = adjacency.nrows();
         let best_sample = self.get_best_sample()?;
@@ -447,7 +450,7 @@ impl ProblemVisualizer {
         {
             use crate::scirs_stub::scirs2_plot::Figure;
 
-            let fig = Figure::new();
+            let mut fig = Figure::new();
             let ax = fig.add_subplot(1, 1, 1)?;
 
             // Compute layout with force-directed algorithm
@@ -517,9 +520,9 @@ impl ProblemVisualizer {
     ) -> Result<Vec<bool>, Box<dyn std::error::Error>> {
         let mut partition = vec![false; n_nodes];
 
-        for i in 0..n_nodes {
+        for (i, part) in partition.iter_mut().enumerate().take(n_nodes) {
             let var_name = format!("x_{}", i);
-            partition[i] = sample.assignments.get(&var_name).copied().unwrap_or(false);
+            *part = sample.assignments.get(&var_name).copied().unwrap_or(false);
         }
 
         Ok(partition)
@@ -541,7 +544,7 @@ impl ProblemVisualizer {
         {
             use crate::scirs_stub::scirs2_plot::Figure;
 
-            let fig = Figure::new();
+            let mut fig = Figure::new();
             let ax = fig.add_subplot(1, 1, 1)?;
 
             // Create Gantt chart
@@ -587,7 +590,7 @@ impl ProblemVisualizer {
         n_jobs: usize,
         n_machines: usize,
         time_horizon: usize,
-    ) -> Result<Vec<(usize, usize, usize, usize)>, Box<dyn std::error::Error>> {
+    ) -> Result<JobShopSchedule, Box<dyn std::error::Error>> {
         let mut schedule = Vec::new();
 
         // This is problem-specific and would need the actual encoding scheme
@@ -615,13 +618,13 @@ impl ProblemVisualizer {
         numbers: &[f64],
     ) -> Result<(), Box<dyn std::error::Error>> {
         let best_sample = self.get_best_sample()?;
-        let partition = self.extract_partition(best_sample, numbers.len())?;
+        let _partition = self.extract_partition(best_sample, numbers.len())?;
 
         #[cfg(feature = "scirs")]
         {
             use crate::scirs_stub::scirs2_plot::Figure;
 
-            let fig = Figure::new();
+            let mut fig = Figure::new();
             let ax = fig.add_subplot(1, 1, 1)?;
 
             // Separate numbers into two sets
@@ -689,8 +692,8 @@ impl ProblemVisualizer {
 
         // Extract selected items
         let mut selected = vec![false; n_items];
-        let mut total_weight = 0.0;
-        let mut total_value = 0.0;
+        let mut _total_weight = 0.0;
+        let mut _total_value = 0.0;
 
         for i in 0..n_items {
             let var_name = format!("x_{}", i);
@@ -701,8 +704,8 @@ impl ProblemVisualizer {
                 .unwrap_or(false)
             {
                 selected[i] = true;
-                total_weight += weights[i];
-                total_value += values[i];
+                _total_weight += weights[i];
+                _total_value += values[i];
             }
         }
 
@@ -710,7 +713,7 @@ impl ProblemVisualizer {
         {
             use crate::scirs_stub::scirs2_plot::Figure;
 
-            let fig = Figure::new();
+            let mut fig = Figure::new();
 
             // Item selection visualization
             let ax1 = fig.add_subplot(2, 1, 1)?;
@@ -776,7 +779,7 @@ impl ProblemVisualizer {
         let n_assets = asset_names.len();
 
         // Extract portfolio weights
-        let mut weights = self.extract_portfolio_weights(best_sample, n_assets)?;
+        let weights = self.extract_portfolio_weights(best_sample, n_assets)?;
 
         // Calculate portfolio metrics
         let _portfolio_return: f64 = weights
@@ -797,13 +800,13 @@ impl ProblemVisualizer {
             })
             .sum();
 
-        let portfolio_risk = portfolio_variance.sqrt();
+        let _portfolio_risk = portfolio_variance.sqrt();
 
         #[cfg(feature = "scirs")]
         {
             use crate::scirs_stub::scirs2_plot::Figure;
 
-            let fig = Figure::new();
+            let mut fig = Figure::new();
 
             // Portfolio composition pie chart
             let ax1 = fig.add_subplot(2, 2, 1)?;
@@ -921,10 +924,10 @@ impl ProblemVisualizer {
             .count();
 
         if total_selected > 0 {
-            for i in 0..n_assets {
+            for (i, weight) in weights.iter_mut().enumerate().take(n_assets) {
                 let var_name = format!("x_{}", i);
                 if sample.assignments.get(&var_name).copied().unwrap_or(false) {
-                    weights[i] = 1.0 / total_selected as f64;
+                    *weight = 1.0 / total_selected as f64;
                 }
             }
         }

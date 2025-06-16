@@ -3,6 +3,8 @@
 //! This module provides comprehensive performance profiling tools
 //! for analyzing QUBO generation, solving, and optimization performance.
 
+#![allow(dead_code)]
+
 #[cfg(feature = "dwave")]
 use crate::compile::{Compile, CompiledModel};
 #[cfg(feature = "plotters")]
@@ -627,7 +629,7 @@ impl PerformanceProfiler {
             "$schema": "https://www.speedscope.app/file-format-schema.json",
             "version": "0.0.1",
             "shared": {
-                "frames": profile.call_graph.nodes.iter().enumerate().map(|(i, node)| {
+                "frames": profile.call_graph.nodes.iter().enumerate().map(|(_i, node)| {
                     serde_json::json!({
                         "name": node.name,
                         "file": "unknown",
@@ -1323,17 +1325,17 @@ impl PerformanceProfiler {
 
         // Profile metadata
         json.push_str("  \"metadata\": {\n");
-        write!(&mut json, "    \"id\": \"{}\",\n", profile.id).unwrap();
-        write!(
+        writeln!(&mut json, "    \"id\": \"{}\",", profile.id).unwrap();
+        writeln!(
             &mut json,
-            "    \"start_time\": {},\n",
+            "    \"start_time\": {},",
             profile.start_time.elapsed().as_millis()
         )
         .unwrap();
         if let Some(end_time) = profile.end_time {
-            write!(
+            writeln!(
                 &mut json,
-                "    \"end_time\": {},\n",
+                "    \"end_time\": {},",
                 end_time.elapsed().as_millis()
             )
             .unwrap();
@@ -1394,9 +1396,9 @@ impl PerformanceProfiler {
         for (i, (func, time)) in func_entries.iter().enumerate() {
             write!(&mut json, "      \"{}\": {}", func, time.as_millis()).unwrap();
             if i < func_entries.len() - 1 {
-                json.push_str(",");
+                json.push(',');
             }
-            json.push_str("\n");
+            json.push('\n');
         }
         json.push_str("    },\n");
 
@@ -1551,13 +1553,13 @@ impl PerformanceProfiler {
             .enumerate()
         {
             json.push_str("      {\n");
-            write!(&mut json, "        \"time_ms\": {},\n", time.as_millis()).unwrap();
+            writeln!(&mut json, "        \"time_ms\": {},", time.as_millis()).unwrap();
             write!(&mut json, "        \"quality\": {}\n", quality).unwrap();
             json.push_str("      }");
             if i < profile.metrics.quality_metrics.quality_timeline.len() - 1 {
-                json.push_str(",");
+                json.push(',');
             }
-            json.push_str("\n");
+            json.push('\n');
         }
         json.push_str("    ]\n");
         json.push_str("  },\n");
@@ -1595,9 +1597,9 @@ impl PerformanceProfiler {
             .unwrap();
             json.push_str("      }");
             if i < profile.call_graph.nodes.len() - 1 {
-                json.push_str(",");
+                json.push(',');
             }
-            json.push_str("\n");
+            json.push('\n');
         }
         json.push_str("    ],\n");
 
@@ -1615,9 +1617,9 @@ impl PerformanceProfiler {
             .unwrap();
             json.push_str("      }");
             if i < profile.call_graph.edges.len() - 1 {
-                json.push_str(",");
+                json.push(',');
             }
-            json.push_str("\n");
+            json.push('\n');
         }
         json.push_str("    ]\n");
         json.push_str("  },\n");
@@ -1651,9 +1653,9 @@ impl PerformanceProfiler {
         for (i, (event_type, count)) in count_entries.iter().enumerate() {
             write!(&mut json, "      \"{}\": {}", event_type, count).unwrap();
             if i < count_entries.len() - 1 {
-                json.push_str(",");
+                json.push(',');
             }
-            json.push_str("\n");
+            json.push('\n');
         }
         json.push_str("    }\n");
         json.push_str("  }\n");
@@ -1688,8 +1690,8 @@ impl PerformanceProfiler {
         let mut stacks = Vec::new();
 
         for node in &profile.call_graph.nodes {
-            let mut stack = vec![node.name.clone()];
-            let mut value = node.self_time.as_micros() as usize;
+            let stack = vec![node.name.clone()];
+            let value = node.self_time.as_micros() as usize;
             stacks.push((stack, value));
         }
 

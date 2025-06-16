@@ -148,6 +148,18 @@ pub struct QuantumFeatureExtractor {
     pub temporal_features: Arc<TemporalQuantumFeatureExtractor>,
 }
 
+impl Default for QuantumFeatureExtractor {
+    fn default() -> Self {
+        Self {
+            hardware_features: Arc::new(QuantumHardwareFeatureExtractor::default()),
+            state_features: Arc::new(QuantumStateFeatureExtractor::default()),
+            entanglement_features: Arc::new(EntanglementTopologyFeatureExtractor::default()),
+            error_features: Arc::new(QuantumErrorFeatureExtractor::default()),
+            temporal_features: Arc::new(TemporalQuantumFeatureExtractor::default()),
+        }
+    }
+}
+
 /// Quantum hardware feature extractor
 #[derive(Debug)]
 pub struct QuantumHardwareFeatureExtractor {
@@ -159,6 +171,17 @@ pub struct QuantumHardwareFeatureExtractor {
     pub coherence_analyzer: Arc<CoherenceTimeAnalyzer>,
     /// Error rate analyzer
     pub error_rate_analyzer: Arc<ErrorRateAnalyzer>,
+}
+
+impl Default for QuantumHardwareFeatureExtractor {
+    fn default() -> Self {
+        Self {
+            topology_analyzer: Arc::new(QubitTopologyAnalyzer::default()),
+            fidelity_analyzer: Arc::new(GateFidelityAnalyzer::default()),
+            coherence_analyzer: Arc::new(CoherenceTimeAnalyzer::default()),
+            error_rate_analyzer: Arc::new(ErrorRateAnalyzer::default()),
+        }
+    }
 }
 
 /// Quantum-aware scheduler with entanglement and coherence optimization
@@ -305,6 +328,17 @@ pub struct QuantumStateFeatureExtractor {
     pub entanglement_tracking: bool,
 }
 
+impl Default for QuantumStateFeatureExtractor {
+    fn default() -> Self {
+        Self {
+            state_dimensions: 8,
+            feature_types: vec!["amplitude".to_string(), "phase".to_string()],
+            coherence_tracking: true,
+            entanglement_tracking: true,
+        }
+    }
+}
+
 /// Entanglement topology feature extractor
 #[derive(Debug)]
 pub struct EntanglementTopologyFeatureExtractor {
@@ -312,6 +346,17 @@ pub struct EntanglementTopologyFeatureExtractor {
     pub connection_matrix_size: usize,
     pub feature_extraction_depth: usize,
     pub update_frequency: Duration,
+}
+
+impl Default for EntanglementTopologyFeatureExtractor {
+    fn default() -> Self {
+        Self {
+            topology_types: vec!["bell_state".to_string(), "ghz_state".to_string()],
+            connection_matrix_size: 32,
+            feature_extraction_depth: 3,
+            update_frequency: Duration::from_millis(50),
+        }
+    }
 }
 
 /// Quantum error feature extractor
@@ -323,6 +368,21 @@ pub struct QuantumErrorFeatureExtractor {
     pub error_rate_window: Duration,
 }
 
+impl Default for QuantumErrorFeatureExtractor {
+    fn default() -> Self {
+        Self {
+            error_syndrome_length: 16,
+            error_types: vec![
+                "bit_flip".to_string(),
+                "phase_flip".to_string(),
+                "depolarizing".to_string(),
+            ],
+            correction_tracking: true,
+            error_rate_window: Duration::from_secs(1),
+        }
+    }
+}
+
 /// Temporal quantum feature extractor
 #[derive(Debug)]
 pub struct TemporalQuantumFeatureExtractor {
@@ -330,6 +390,17 @@ pub struct TemporalQuantumFeatureExtractor {
     pub sampling_frequency: f64,
     pub feature_history_length: usize,
     pub quantum_process_types: Vec<String>,
+}
+
+impl Default for TemporalQuantumFeatureExtractor {
+    fn default() -> Self {
+        Self {
+            temporal_window: Duration::from_secs(10),
+            sampling_frequency: 1000.0,
+            feature_history_length: 100,
+            quantum_process_types: vec!["decoherence".to_string(), "gate_evolution".to_string()],
+        }
+    }
 }
 
 /// Qubit topology analyzer
@@ -341,6 +412,17 @@ pub struct QubitTopologyAnalyzer {
     pub analysis_metrics: Vec<String>,
 }
 
+impl Default for QubitTopologyAnalyzer {
+    fn default() -> Self {
+        Self {
+            connectivity_matrix: vec![vec![false; 8]; 8],
+            qubit_count: 8,
+            topology_type: "linear".to_string(),
+            analysis_metrics: vec!["connectivity".to_string(), "diameter".to_string()],
+        }
+    }
+}
+
 /// Gate fidelity analyzer
 #[derive(Debug)]
 pub struct GateFidelityAnalyzer {
@@ -348,6 +430,17 @@ pub struct GateFidelityAnalyzer {
     pub fidelity_thresholds: HashMap<String, f64>,
     pub measurement_window: Duration,
     pub calibration_data: HashMap<String, f64>,
+}
+
+impl Default for GateFidelityAnalyzer {
+    fn default() -> Self {
+        Self {
+            gate_types: vec!["CNOT".to_string(), "H".to_string(), "Rz".to_string()],
+            fidelity_thresholds: HashMap::new(),
+            measurement_window: Duration::from_secs(60),
+            calibration_data: HashMap::new(),
+        }
+    }
 }
 
 /// Coherence time analyzer
@@ -359,6 +452,17 @@ pub struct CoherenceTimeAnalyzer {
     pub tracking_interval: Duration,
 }
 
+impl Default for CoherenceTimeAnalyzer {
+    fn default() -> Self {
+        Self {
+            coherence_types: vec!["T1".to_string(), "T2".to_string()],
+            measurement_protocols: vec!["ramsey".to_string(), "echo".to_string()],
+            decay_models: HashMap::new(),
+            tracking_interval: Duration::from_secs(30),
+        }
+    }
+}
+
 /// Error rate analyzer for quantum systems
 #[derive(Debug)]
 pub struct ErrorRateAnalyzer {
@@ -366,6 +470,17 @@ pub struct ErrorRateAnalyzer {
     pub measurement_window: Duration,
     pub threshold_rates: HashMap<String, f64>,
     pub historical_data: Vec<f64>,
+}
+
+impl Default for ErrorRateAnalyzer {
+    fn default() -> Self {
+        Self {
+            error_types: vec!["readout".to_string(), "gate".to_string()],
+            measurement_window: Duration::from_secs(120),
+            threshold_rates: HashMap::new(),
+            historical_data: Vec::new(),
+        }
+    }
 }
 
 /// Syndrome detection scheduler
@@ -377,6 +492,17 @@ pub struct SyndromeDetectionScheduler {
     pub resource_allocation: HashMap<String, f64>,
 }
 
+impl Default for SyndromeDetectionScheduler {
+    fn default() -> Self {
+        Self {
+            detection_frequency: Duration::from_millis(100),
+            syndrome_types: vec!["bit_flip".to_string(), "phase_flip".to_string()],
+            priority_levels: vec![1, 2, 3],
+            resource_allocation: HashMap::new(),
+        }
+    }
+}
+
 /// Recovery operation scheduler
 #[derive(Debug)]
 pub struct RecoveryOperationScheduler {
@@ -384,6 +510,20 @@ pub struct RecoveryOperationScheduler {
     pub scheduling_algorithm: String,
     pub resource_requirements: HashMap<String, f64>,
     pub timeout_durations: HashMap<String, Duration>,
+}
+
+impl Default for RecoveryOperationScheduler {
+    fn default() -> Self {
+        Self {
+            recovery_strategies: vec![
+                "quantum_error_correction".to_string(),
+                "logical_qubit_recovery".to_string(),
+            ],
+            scheduling_algorithm: "priority_based".to_string(),
+            resource_requirements: HashMap::new(),
+            timeout_durations: HashMap::new(),
+        }
+    }
 }
 
 /// Cross-node error correction coordinator
@@ -395,6 +535,17 @@ pub struct CrossNodeErrorCorrectionCoordinator {
     pub coordination_timeout: Duration,
 }
 
+impl Default for CrossNodeErrorCorrectionCoordinator {
+    fn default() -> Self {
+        Self {
+            coordination_protocols: vec!["surface_code".to_string(), "color_code".to_string()],
+            node_communication_config: HashMap::new(),
+            error_sharing_strategy: "distributed_consensus".to_string(),
+            coordination_timeout: Duration::from_secs(5),
+        }
+    }
+}
+
 /// Coherence deadline calculator
 #[derive(Debug)]
 pub struct CoherenceDeadlineCalculator {
@@ -402,6 +553,17 @@ pub struct CoherenceDeadlineCalculator {
     pub decay_functions: Vec<String>,
     pub calculation_precision: f64,
     pub update_frequency: Duration,
+}
+
+impl Default for CoherenceDeadlineCalculator {
+    fn default() -> Self {
+        Self {
+            coherence_time_models: HashMap::new(),
+            decay_functions: vec!["exponential".to_string(), "gaussian".to_string()],
+            calculation_precision: 0.001,
+            update_frequency: Duration::from_millis(10),
+        }
+    }
 }
 
 /// Entanglement deadline tracker
@@ -413,6 +575,17 @@ pub struct EntanglementDeadlineTracker {
     pub alert_thresholds: Vec<f64>,
 }
 
+impl Default for EntanglementDeadlineTracker {
+    fn default() -> Self {
+        Self {
+            entanglement_lifetimes: HashMap::new(),
+            decay_monitoring: true,
+            tracking_precision: 0.01,
+            alert_thresholds: vec![0.1, 0.5, 0.9],
+        }
+    }
+}
+
 /// Quantum preemption policy
 #[derive(Debug)]
 pub struct QuantumPreemptionPolicy {
@@ -420,6 +593,17 @@ pub struct QuantumPreemptionPolicy {
     pub priority_levels: Vec<u32>,
     pub quantum_state_preservation: bool,
     pub rollback_capabilities: bool,
+}
+
+impl Default for QuantumPreemptionPolicy {
+    fn default() -> Self {
+        Self {
+            preemption_strategies: vec!["priority_based".to_string(), "deadline_aware".to_string()],
+            priority_levels: vec![1, 2, 3, 4, 5],
+            quantum_state_preservation: true,
+            rollback_capabilities: true,
+        }
+    }
 }
 
 /// Coherence urgency evaluator
@@ -431,6 +615,17 @@ pub struct CoherenceUrgencyEvaluator {
     pub urgency_scaling_factors: Vec<f64>,
 }
 
+impl Default for CoherenceUrgencyEvaluator {
+    fn default() -> Self {
+        Self {
+            urgency_metrics: vec!["T1".to_string(), "T2".to_string(), "fidelity".to_string()],
+            coherence_thresholds: HashMap::new(),
+            evaluation_frequency: Duration::from_millis(50),
+            urgency_scaling_factors: vec![1.0, 2.0, 3.0],
+        }
+    }
+}
+
 /// Entanglement urgency evaluator
 #[derive(Debug)]
 pub struct EntanglementUrgencyEvaluator {
@@ -438,6 +633,17 @@ pub struct EntanglementUrgencyEvaluator {
     pub degradation_models: HashMap<String, String>,
     pub urgency_calculation_method: String,
     pub monitoring_interval: Duration,
+}
+
+impl Default for EntanglementUrgencyEvaluator {
+    fn default() -> Self {
+        Self {
+            entanglement_metrics: vec!["concurrence".to_string(), "negativity".to_string()],
+            degradation_models: HashMap::new(),
+            urgency_calculation_method: "linear_decay".to_string(),
+            monitoring_interval: Duration::from_millis(25),
+        }
+    }
 }
 
 /// Error correction urgency evaluator
@@ -449,6 +655,21 @@ pub struct ErrorCorrectionUrgencyEvaluator {
     pub resource_allocation_strategy: String,
 }
 
+impl Default for ErrorCorrectionUrgencyEvaluator {
+    fn default() -> Self {
+        Self {
+            error_types: vec![
+                "bit_flip".to_string(),
+                "phase_flip".to_string(),
+                "depolarizing".to_string(),
+            ],
+            correction_priorities: HashMap::new(),
+            urgency_thresholds: vec![0.1, 0.05, 0.01],
+            resource_allocation_strategy: "priority_based".to_string(),
+        }
+    }
+}
+
 /// Measurement urgency evaluator
 #[derive(Debug)]
 pub struct MeasurementUrgencyEvaluator {
@@ -456,6 +677,22 @@ pub struct MeasurementUrgencyEvaluator {
     pub urgency_factors: HashMap<String, f64>,
     pub deadline_sensitivity: f64,
     pub resource_requirements: HashMap<String, f64>,
+}
+
+impl Default for MeasurementUrgencyEvaluator {
+    fn default() -> Self {
+        Self {
+            measurement_types: vec![
+                "computational".to_string(),
+                "X".to_string(),
+                "Y".to_string(),
+                "Z".to_string(),
+            ],
+            urgency_factors: HashMap::new(),
+            deadline_sensitivity: 0.9,
+            resource_requirements: HashMap::new(),
+        }
+    }
 }
 
 /// Entanglement graph analyzer
@@ -467,6 +704,17 @@ pub struct EntanglementGraphAnalyzer {
     pub update_frequency: Duration,
 }
 
+impl Default for EntanglementGraphAnalyzer {
+    fn default() -> Self {
+        Self {
+            graph_representation: Vec::new(),
+            entanglement_qualities: HashMap::new(),
+            analysis_algorithms: vec!["dijkstra".to_string(), "floyd_warshall".to_string()],
+            update_frequency: Duration::from_millis(200),
+        }
+    }
+}
+
 /// Entanglement dependency scheduler
 #[derive(Debug)]
 pub struct EntanglementDependencyScheduler {
@@ -476,6 +724,17 @@ pub struct EntanglementDependencyScheduler {
     pub timeout_handling: HashMap<String, Duration>,
 }
 
+impl Default for EntanglementDependencyScheduler {
+    fn default() -> Self {
+        Self {
+            dependency_graph: HashMap::new(),
+            scheduling_algorithm: "topological_sort".to_string(),
+            dependency_resolution_strategy: "greedy".to_string(),
+            timeout_handling: HashMap::new(),
+        }
+    }
+}
+
 /// Entanglement swapping coordinator
 #[derive(Debug)]
 pub struct EntanglementSwappingCoordinator {
@@ -483,6 +742,17 @@ pub struct EntanglementSwappingCoordinator {
     pub coordination_strategies: Vec<String>,
     pub success_probability_models: HashMap<String, f64>,
     pub resource_allocation: HashMap<String, f64>,
+}
+
+impl Default for EntanglementSwappingCoordinator {
+    fn default() -> Self {
+        Self {
+            swapping_protocols: vec!["basic_swap".to_string(), "nested_swap".to_string()],
+            coordination_strategies: vec!["centralized".to_string(), "distributed".to_string()],
+            success_probability_models: HashMap::new(),
+            resource_allocation: HashMap::new(),
+        }
+    }
 }
 
 /// Entanglement quality optimizer
@@ -514,6 +784,23 @@ pub struct QuantumResourceConflictDetector {
     pub monitoring_interval: Duration,
 }
 
+impl Default for QuantumResourceConflictDetector {
+    fn default() -> Self {
+        Self {
+            conflict_types: vec![
+                "resource_contention".to_string(),
+                "timing_conflict".to_string(),
+            ],
+            detection_algorithms: vec![
+                "graph_analysis".to_string(),
+                "pattern_matching".to_string(),
+            ],
+            resolution_priorities: HashMap::new(),
+            monitoring_interval: Duration::from_millis(50),
+        }
+    }
+}
+
 /// Quantum conflict resolution strategies
 #[derive(Debug)]
 pub struct QuantumConflictResolutionStrategies {
@@ -521,6 +808,21 @@ pub struct QuantumConflictResolutionStrategies {
     pub priority_schemes: HashMap<String, u32>,
     pub rollback_capabilities: bool,
     pub negotiation_protocols: Vec<String>,
+}
+
+impl Default for QuantumConflictResolutionStrategies {
+    fn default() -> Self {
+        Self {
+            resolution_methods: vec![
+                "priority_based".to_string(),
+                "negotiation".to_string(),
+                "rollback".to_string(),
+            ],
+            priority_schemes: HashMap::new(),
+            rollback_capabilities: true,
+            negotiation_protocols: vec!["cooperative".to_string(), "competitive".to_string()],
+        }
+    }
 }
 
 /// Quantum parallel execution optimizer
@@ -532,6 +834,20 @@ pub struct QuantumParallelExecutionOptimizer {
     pub synchronization_methods: Vec<String>,
 }
 
+impl Default for QuantumParallelExecutionOptimizer {
+    fn default() -> Self {
+        Self {
+            parallelization_strategies: vec![
+                "task_parallelism".to_string(),
+                "data_parallelism".to_string(),
+            ],
+            dependency_analysis: true,
+            resource_sharing_policies: HashMap::new(),
+            synchronization_methods: vec!["barrier".to_string(), "lock_free".to_string()],
+        }
+    }
+}
+
 /// Quantum timing coordinator
 #[derive(Debug)]
 pub struct QuantumTimingCoordinator {
@@ -539,6 +855,20 @@ pub struct QuantumTimingCoordinator {
     pub synchronization_precision: f64,
     pub coordination_algorithms: Vec<String>,
     pub timing_drift_compensation: bool,
+}
+
+impl Default for QuantumTimingCoordinator {
+    fn default() -> Self {
+        Self {
+            timing_protocols: vec!["precise_timing".to_string(), "adaptive_timing".to_string()],
+            synchronization_precision: 1e-9,
+            coordination_algorithms: vec![
+                "distributed_consensus".to_string(),
+                "centralized".to_string(),
+            ],
+            timing_drift_compensation: true,
+        }
+    }
 }
 
 /// Quantum reinforcement learning system
@@ -582,7 +912,10 @@ pub struct QuantumAdaptationStrategy {
 impl Default for QuantumAdaptationStrategy {
     fn default() -> Self {
         Self {
-            adaptation_methods: vec!["dynamic_weights".to_string(), "threshold_adjustment".to_string()],
+            adaptation_methods: vec![
+                "dynamic_weights".to_string(),
+                "threshold_adjustment".to_string(),
+            ],
             adaptation_triggers: HashMap::new(),
             response_times: HashMap::new(),
             effectiveness_metrics: vec!["throughput".to_string(), "latency".to_string()],
@@ -722,7 +1055,10 @@ pub struct FidelityPreservationStrategies {
 impl Default for FidelityPreservationStrategies {
     fn default() -> Self {
         Self {
-            preservation_methods: vec!["error_correction".to_string(), "decoherence_suppression".to_string()],
+            preservation_methods: vec![
+                "error_correction".to_string(),
+                "decoherence_suppression".to_string(),
+            ],
             strategy_effectiveness: HashMap::new(),
             resource_requirements: HashMap::new(),
             implementation_complexity: HashMap::new(),
@@ -742,7 +1078,10 @@ pub struct ErrorMitigationCoordinator {
 impl Default for ErrorMitigationCoordinator {
     fn default() -> Self {
         Self {
-            mitigation_strategies: vec!["surface_code".to_string(), "syndrome_detection".to_string()],
+            mitigation_strategies: vec![
+                "surface_code".to_string(),
+                "syndrome_detection".to_string(),
+            ],
             coordination_protocols: vec!["distributed_sync".to_string()],
             resource_allocation: HashMap::new(),
             effectiveness_tracking: true,
@@ -1185,6 +1524,12 @@ pub struct QuantumLoadBalancingMetricsCollector {
     pub performance_tracker: Arc<RealTimeQuantumPerformanceTracker>,
     /// Metrics aggregator
     pub metrics_aggregator: Arc<QuantumMetricsAggregator>,
+}
+
+impl QuantumLoadBalancingMetricsCollector {
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 /// Quantum-specific load balancing metrics
@@ -2104,6 +2449,12 @@ impl Default for QuantumAwareScheduler {
     }
 }
 
+impl QuantumAwareScheduler {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 impl Default for QuantumPerformanceLearner {
     fn default() -> Self {
         Self {
@@ -2126,6 +2477,12 @@ impl Default for EntanglementQualityTracker {
     }
 }
 
+impl EntanglementQualityTracker {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 impl Default for CoherenceTimeMonitor {
     fn default() -> Self {
         Self {
@@ -2137,6 +2494,12 @@ impl Default for CoherenceTimeMonitor {
     }
 }
 
+impl CoherenceTimeMonitor {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 impl Default for FidelityPreservationSystem {
     fn default() -> Self {
         Self {
@@ -2145,6 +2508,12 @@ impl Default for FidelityPreservationSystem {
             error_mitigation: Arc::new(ErrorMitigationCoordinator::default()),
             optimization_scheduler: Arc::new(FidelityOptimizationScheduler::default()),
         }
+    }
+}
+
+impl FidelityPreservationSystem {
+    pub fn new() -> Self {
+        Self::default()
     }
 }
 
@@ -2212,7 +2581,10 @@ impl SimpleMLModel {
 
 #[async_trait]
 impl crate::quantum_network::network_optimization::MLModel for SimpleMLModel {
-    async fn predict(&self, _features: &FeatureVector) -> std::result::Result<PredictionResult, OptimizationError> {
+    async fn predict(
+        &self,
+        _features: &FeatureVector,
+    ) -> std::result::Result<PredictionResult, OptimizationError> {
         Ok(PredictionResult {
             predicted_values: HashMap::new(),
             confidence_intervals: HashMap::new(),
@@ -2221,7 +2593,10 @@ impl crate::quantum_network::network_optimization::MLModel for SimpleMLModel {
         })
     }
 
-    async fn train(&mut self, _training_data: &[TrainingDataPoint]) -> std::result::Result<TrainingResult, OptimizationError> {
+    async fn train(
+        &mut self,
+        _training_data: &[TrainingDataPoint],
+    ) -> std::result::Result<TrainingResult, OptimizationError> {
         Ok(TrainingResult {
             training_accuracy: 0.85,
             validation_accuracy: 0.8,
@@ -2231,7 +2606,10 @@ impl crate::quantum_network::network_optimization::MLModel for SimpleMLModel {
         })
     }
 
-    async fn update_weights(&mut self, _feedback: &FeedbackData) -> std::result::Result<(), OptimizationError> {
+    async fn update_weights(
+        &mut self,
+        _feedback: &FeedbackData,
+    ) -> std::result::Result<(), OptimizationError> {
         Ok(())
     }
 
@@ -2270,6 +2648,10 @@ macro_rules! impl_default_with_placeholder {
 
 // Additional implementations for key functionality
 impl QuantumLoadPredictionModel {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub async fn predict_optimal_node(
         &self,
         _features: &FeatureVector,
@@ -2293,6 +2675,10 @@ impl QuantumLoadPredictionModel {
 }
 
 impl QuantumPerformanceLearner {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub async fn add_training_data(&self, _data: QuantumLearningDataPoint) -> Result<()> {
         // Placeholder implementation
         Ok(())

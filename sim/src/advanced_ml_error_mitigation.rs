@@ -637,7 +637,7 @@ impl AdvancedMLErrorMitigator {
         match strategy {
             MitigationAction::ZeroNoiseExtrapolation => {
                 // Simple linear extrapolation for demonstration
-                let noise_factors = vec![1.0, 1.5, 2.0];
+                let noise_factors = [1.0, 1.5, 2.0];
                 let values: Vec<f64> = noise_factors
                     .iter()
                     .zip(measurements.iter())

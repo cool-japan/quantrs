@@ -4,17 +4,16 @@
 //! simulation, enabling compilation of frequently used gate sequences into optimized
 //! machine code for dramatic performance improvements.
 
-use ndarray::{Array1, Array2, ArrayView1, ArrayViewMut1};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
-use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};
+use crate::circuit_interfaces::{InterfaceGate, InterfaceGateType};
 use crate::error::{Result, SimulatorError};
 
 /// JIT compilation configuration
@@ -674,11 +673,10 @@ impl JITCompiler {
         }
 
         // Simple pattern: look for immediate repetition
-        if instructions.len() >= 2 {
-            if std::mem::discriminant(&instructions[0]) == std::mem::discriminant(&instructions[1])
-            {
-                return Some(2);
-            }
+        if instructions.len() >= 2
+            && std::mem::discriminant(&instructions[0]) == std::mem::discriminant(&instructions[1])
+        {
+            return Some(2);
         }
 
         None
@@ -1749,10 +1747,11 @@ impl PatternAnalyzer {
 
         // Check for consecutive single-qubit gates on same target
         for window in gates.windows(2) {
-            if window[0].qubits.len() == 1 && window[1].qubits.len() == 1 {
-                if window[0].qubits[0] == window[1].qubits[0] {
-                    return true;
-                }
+            if window[0].qubits.len() == 1
+                && window[1].qubits.len() == 1
+                && window[0].qubits[0] == window[1].qubits[0]
+            {
+                return true;
             }
         }
 

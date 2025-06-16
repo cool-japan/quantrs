@@ -448,7 +448,7 @@ impl ConstraintLibrary {
     pub fn n_queens(n: usize) -> Vec<GlobalConstraint> {
         let vars: Vec<String> = (0..n).map(|i| format!("queen_{}", i)).collect();
 
-        let mut constraints = vec![
+        let constraints = vec![
             // All queens in different columns
             GlobalConstraint::AllDifferent {
                 variables: vars.clone(),
@@ -462,7 +462,7 @@ impl ConstraintLibrary {
     }
 
     /// Graph coloring constraint
-    pub fn graph_coloring(edges: &[(usize, usize)], num_colors: usize) -> Vec<GlobalConstraint> {
+    pub fn graph_coloring(edges: &[(usize, usize)], _num_colors: usize) -> Vec<GlobalConstraint> {
         let mut constraints = Vec::new();
 
         for &(i, j) in edges {
@@ -520,7 +520,7 @@ pub fn constraints_to_penalties(
         match &constraint.constraint {
             ConstraintExpression::LinearInequality {
                 coefficients,
-                bound,
+                bound: _,
             } => {
                 // Convert to quadratic penalty
                 // (sum(ai * xi) - b)^2 if violated

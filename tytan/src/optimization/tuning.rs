@@ -146,7 +146,7 @@ impl ParameterTuner {
 
         // Initial random sampling
         for i in 0..self.config.initial_samples {
-            let mut params = self.sample_random_parameters(i as u64);
+            let params = self.sample_random_parameters(i as u64);
             let obj_value =
                 self.evaluate_configuration(&params, &sampler_factory, model, &objective)?;
 
@@ -241,7 +241,7 @@ impl ParameterTuner {
         self.parameter_bounds
             .iter()
             .map(|b| {
-                let mut value = match b.scale {
+                let value = match b.scale {
                     ParameterScale::Linear => (b.min + b.max) / 2.0,
                     ParameterScale::Logarithmic => { (b.min.ln() + b.max.ln()) / 2.0 }.exp(),
                     ParameterScale::Sigmoid => (b.min + b.max) / 2.0,
@@ -264,7 +264,7 @@ impl ParameterTuner {
         self.parameter_bounds
             .iter()
             .map(|b| {
-                let mut value = match b.scale {
+                let value = match b.scale {
                     ParameterScale::Linear => rng.random_range(b.min..b.max),
                     ParameterScale::Logarithmic => {
                         let log_min = b.min.ln();
@@ -345,7 +345,7 @@ impl ParameterTuner {
             .enumerate()
             .map(|(i, b)| {
                 let unit_val = unit_values[i].clamp(0.0, 1.0);
-                let mut value = match b.scale {
+                let value = match b.scale {
                     ParameterScale::Linear => b.min + unit_val * (b.max - b.min),
                     ParameterScale::Logarithmic => {
                         let log_val = b.min.ln() + unit_val * (b.max.ln() - b.min.ln());
@@ -353,7 +353,7 @@ impl ParameterTuner {
                     }
                     ParameterScale::Sigmoid => {
                         let t = (unit_val - 0.5) * 4.0;
-                        let mut sigmoid = 0.5 + 0.5 * t.tanh();
+                        let sigmoid = 0.5 + 0.5 * t.tanh();
                         b.min + sigmoid * (b.max - b.min)
                     }
                 };
@@ -373,7 +373,7 @@ impl ParameterTuner {
         model: &CompiledModel,
         objective: &impl Fn(&[SampleResult]) -> f64,
     ) -> Result<f64, Box<dyn std::error::Error>> {
-        let start_time = std::time::Instant::now();
+        let _start_time = std::time::Instant::now();
 
         // Create sampler with parameters
         let sampler = sampler_factory(parameters.clone());
@@ -477,7 +477,7 @@ impl ParameterTuner {
             timestamp: std::time::SystemTime::now(),
         };
 
-        let mut json = serde_json::to_string_pretty(&export)?;
+        let json = serde_json::to_string_pretty(&export)?;
         std::fs::write(path, json)?;
 
         Ok(())
@@ -540,7 +540,7 @@ pub fn quick_tune<S: Sampler>(
     model: &CompiledModel,
     parameter_bounds: Vec<ParameterBounds>,
 ) -> Result<HashMap<String, f64>, Box<dyn std::error::Error>> {
-    let mut config = TuningConfig {
+    let config = TuningConfig {
         max_evaluations: 50,
         initial_samples: 10,
         ..Default::default()
@@ -549,7 +549,7 @@ pub fn quick_tune<S: Sampler>(
     let mut tuner = ParameterTuner::new(config);
     tuner.add_parameters(parameter_bounds);
 
-    let mut result = tuner.tune_sampler(sampler_factory, model, |samples| {
+    let result = tuner.tune_sampler(sampler_factory, model, |samples| {
         // Default objective: minimize average energy
         samples.iter().map(|s| s.energy).sum::<f64>() / samples.len() as f64
     })?;

@@ -5,6 +5,9 @@ use ndarray::Array2;
 use std::collections::HashMap;
 use std::time::Duration;
 
+#[cfg(feature = "scirs")]
+use scirs2_core::gpu;
+
 /// Hardware backend capabilities
 #[derive(Debug, Clone)]
 pub struct BackendCapabilities {
@@ -236,7 +239,7 @@ pub struct GpuBackend {
     capabilities: BackendCapabilities,
     device_id: usize,
     #[cfg(feature = "scirs")]
-    gpu_context: Option<crate::scirs_stub::scirs2_core::gpu::GpuContext>,
+    gpu_context: Option<gpu::GpuContext>,
 }
 
 #[cfg(feature = "gpu")]
@@ -273,7 +276,7 @@ impl HardwareBackend for GpuBackend {
         // Check if GPU is available
         #[cfg(feature = "scirs")]
         {
-            crate::scirs_stub::scirs2_core::gpu::get_device_count() > self.device_id
+            scirs2_core::gpu::get_device_count() > self.device_id
         }
         #[cfg(not(feature = "scirs"))]
         {

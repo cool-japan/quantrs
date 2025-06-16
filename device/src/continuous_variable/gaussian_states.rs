@@ -131,10 +131,11 @@ impl GaussianState {
         let sinh_r = r.sinh();
 
         // Squeezing transformation matrix
-        let s11 = cosh_r + sinh_r * cos_phi;
-        let s12 = sinh_r * sin_phi;
-        let s21 = sinh_r * sin_phi;
-        let s22 = cosh_r - sinh_r * cos_phi;
+        // Standard squeezing: S = [[e^(-r), 0], [0, e^r]] for φ=0
+        let s11 = cosh_r - sinh_r * cos_phi; // For φ=0: e^(-r) (squeeze position)
+        let s12 = -sinh_r * sin_phi; // For φ=0: 0
+        let s21 = -sinh_r * sin_phi; // For φ=0: 0
+        let s22 = cosh_r + sinh_r * cos_phi; // For φ=0: e^r (anti-squeeze momentum)
 
         // Apply to covariance matrix
         let i = 2 * mode;

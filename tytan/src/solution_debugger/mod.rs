@@ -316,7 +316,7 @@ impl SolutionDebugger {
     /// Estimate improvement potential
     fn estimate_improvement_potential(&self, breakdown: &energy_analyzer::EnergyBreakdown) -> f64 {
         // Simple heuristic: if energy landscape shows nearby local minima with lower energy
-        let mut current_energy = breakdown.total_energy;
+        let current_energy = breakdown.total_energy;
         let best_nearby = breakdown
             .energy_landscape
             .local_minima
@@ -348,7 +348,7 @@ pub struct InteractiveDebugger {
 impl InteractiveDebugger {
     /// Create new interactive debugger
     pub fn new(problem_info: types::ProblemInfo) -> Self {
-        let mut config = config::DebuggerConfig {
+        let config = config::DebuggerConfig {
             detailed_analysis: true,
             check_constraints: true,
             analyze_energy: true,
@@ -391,7 +391,7 @@ impl InteractiveDebugger {
             }
             "constraints" => {
                 if let Some(ref solution) = self.current_solution {
-                    let mut report = self.debugger.debug_solution(solution);
+                    let report = self.debugger.debug_solution(solution);
                     if let Some(constraint_analysis) = report.constraint_analysis {
                         format!(
                             "Constraint satisfaction rate: {:.2}%",

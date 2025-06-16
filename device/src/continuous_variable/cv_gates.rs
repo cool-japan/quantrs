@@ -702,6 +702,8 @@ mod tests {
         assert!(state.mean_vector[0] > 0.0);
 
         // Check that squeezing was applied
+        // For mode 1 (index 2 for x-quadrature), squeezing should reduce variance
+        // Expected: 0.5 * exp(-2*r) = 0.5 * exp(-1) ≈ 0.184
         assert!(state.covariance_matrix[2][2] < 0.5);
     }
 

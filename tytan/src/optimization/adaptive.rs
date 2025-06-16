@@ -70,11 +70,11 @@ pub struct AdaptiveOptimizer {
 
 /// Parameter state at a given iteration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct ParameterState {
-    iteration: usize,
-    parameters: HashMap<String, f64>,
-    penalty_weights: HashMap<String, f64>,
-    temperature: f64,
+pub struct ParameterState {
+    pub iteration: usize,
+    pub parameters: HashMap<String, f64>,
+    pub penalty_weights: HashMap<String, f64>,
+    pub temperature: f64,
 }
 
 /// Performance metrics
@@ -167,7 +167,7 @@ impl AdaptiveOptimizer {
                 self.run_sampling(&mut sampler, model, &current_params, &penalty_weights)?;
 
             // Evaluate performance
-            let mut metrics = self.evaluate_performance(model, &samples)?;
+            let metrics = self.evaluate_performance(model, &samples)?;
             self.performance_history.push(metrics.clone());
 
             // Update best solution
@@ -256,7 +256,7 @@ impl AdaptiveOptimizer {
         samples: &[SampleResult],
     ) -> Result<PerformanceMetrics, Box<dyn std::error::Error>> {
         let energies: Vec<f64> = samples.iter().map(|s| s.energy).collect();
-        let mut best_energy = energies.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+        let best_energy = energies.iter().fold(f64::INFINITY, |a, &b| a.min(b));
         let avg_energy = energies.iter().sum::<f64>() / energies.len() as f64;
 
         // Evaluate constraint violations
@@ -316,7 +316,7 @@ impl AdaptiveOptimizer {
         params: &mut HashMap<String, f64>,
         penalty_weights: &mut HashMap<String, f64>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut decay_rate = 0.95;
+        let decay_rate = 0.95;
 
         // Decay temperature parameter
         if let Some(temp) = params.get_mut("temperature") {
@@ -540,7 +540,7 @@ impl AdaptiveOptimizer {
     /// Check if solution is feasible
     fn is_feasible(
         &self,
-        sample: &SampleResult,
+        _sample: &SampleResult,
         constraint_violations: &HashMap<String, f64>,
     ) -> Result<bool, Box<dyn std::error::Error>> {
         let max_violation = constraint_violations
@@ -586,7 +586,7 @@ impl AdaptiveOptimizer {
     fn calculate_temperature(&self, iteration: usize, max_iterations: usize) -> f64 {
         let progress = iteration as f64 / max_iterations as f64;
         let initial_temp = 10.0f64;
-        let mut final_temp = 0.01f64;
+        let final_temp = 0.01f64;
 
         initial_temp * (final_temp / initial_temp).powf(progress)
     }
@@ -631,7 +631,7 @@ impl AdaptiveOptimizer {
             timestamp: std::time::SystemTime::now(),
         };
 
-        let mut json = serde_json::to_string_pretty(&export)?;
+        let json = serde_json::to_string_pretty(&export)?;
         std::fs::write(path, json)?;
 
         Ok(())

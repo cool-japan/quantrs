@@ -365,11 +365,11 @@ impl Sampler for GASampler {
         // For simplicity, if the tensor is 2D, convert to QUBO and use that implementation
         if tensor.ndim() == 2 && tensor.shape() == [n_vars, n_vars] {
             // Create a view as a 2D matrix and convert to owned matrix
-            let mut matrix = tensor
+            let matrix = tensor
                 .clone()
                 .into_dimensionality::<ndarray::Ix2>()
                 .unwrap();
-            let mut qubo = (matrix, var_map.clone());
+            let qubo = (matrix, var_map.clone());
 
             return self.run_qubo(&qubo, shots);
         }
@@ -702,7 +702,7 @@ impl Sampler for GASampler {
             }
 
             // Calculate energy one more time
-            let mut energy = calculate_energy(solution, matrix);
+            let energy = calculate_energy(solution, matrix);
 
             // Convert to variable assignments
             let assignments: HashMap<String, bool> = solution

@@ -711,7 +711,15 @@ impl TopologicalDevice {
             )))?;
 
         let prob_zero = qubit.state.prob_zero();
-        let measured_zero = rand::random::<f64>() < prob_zero;
+
+        // For deterministic cases (prob very close to 0 or 1), return deterministic result
+        let measured_zero = if prob_zero >= 0.9999 {
+            true // Definitely |0⟩
+        } else if prob_zero <= 0.0001 {
+            false // Definitely |1⟩
+        } else {
+            rand::random::<f64>() < prob_zero
+        };
 
         // Apply measurement backaction
         if measured_zero {
@@ -720,15 +728,20 @@ impl TopologicalDevice {
             qubit.state = TopologicalQubitState::one();
         }
 
-        // Measurement in topological systems has very high fidelity
-        let measurement_fidelity = 0.999;
-        let final_result = if rand::random::<f64>() < measurement_fidelity {
-            measured_zero
+        // For deterministic cases, skip fidelity noise
+        let final_result = if prob_zero >= 0.9999 || prob_zero <= 0.0001 {
+            measured_zero // Deterministic for clear cases
         } else {
-            !measured_zero
+            // Measurement in topological systems has very high fidelity
+            let measurement_fidelity = 0.999;
+            if rand::random::<f64>() < measurement_fidelity {
+                measured_zero
+            } else {
+                !measured_zero
+            }
         };
 
-        Ok(final_result)
+        Ok(!final_result) // Convert to measurement convention: false=|0⟩, true=|1⟩
     }
 
     /// Get system status

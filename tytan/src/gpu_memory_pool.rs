@@ -3,12 +3,21 @@
 //! This module provides memory pooling functionality to reduce allocation
 //! overhead in GPU computations, particularly for iterative algorithms.
 
+#![allow(dead_code)]
+
 use std::collections::{HashMap, VecDeque};
 use std::ptr::NonNull;
 use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "scirs")]
-use crate::scirs_stub::scirs2_core::gpu::{GpuContext, GpuMemory};
+use scirs2_core::gpu;
+
+// Stub for missing GPU functionality
+#[cfg(feature = "scirs")]
+pub struct GpuContext;
+
+#[cfg(feature = "scirs")]
+pub struct GpuMemory;
 
 /// Memory block information
 #[derive(Clone)]
@@ -295,6 +304,12 @@ impl Drop for ScopedGpuMemory {
 pub struct MultiDeviceMemoryPool {
     /// Pools for each device
     device_pools: HashMap<usize, Arc<Mutex<GpuMemoryPool>>>,
+}
+
+impl Default for MultiDeviceMemoryPool {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MultiDeviceMemoryPool {

@@ -118,7 +118,7 @@ impl EnergyLandscape {
     /// Generate 2D projected energy landscape
     pub fn project_2d(&mut self) -> Result<ProjectedLandscape, Box<dyn std::error::Error>> {
         // Convert samples to binary matrix
-        let (binary_matrix, var_names) = self.samples_to_matrix()?;
+        let (binary_matrix, _var_names) = self.samples_to_matrix()?;
 
         // Project to 2D
         let projected = match self.config.projection {
@@ -271,7 +271,7 @@ impl EnergyLandscape {
         let n_samples = data.nrows();
 
         // Find best solution
-        let mut best_idx = self
+        let best_idx = self
             .samples
             .iter()
             .enumerate()
@@ -279,7 +279,7 @@ impl EnergyLandscape {
             .map(|(i, _)| i)
             .unwrap_or(0);
 
-        let mut best_solution = data.row(best_idx);
+        let best_solution = data.row(best_idx);
 
         // Calculate Hamming distances
         let mut result = Array2::zeros((n_samples, 2));
@@ -383,7 +383,7 @@ pub fn plot_energy_landscape(
     samples: Vec<SampleResult>,
     config: Option<EnergyLandscapeConfig>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut config = config.unwrap_or_default();
+    let config = config.unwrap_or_default();
     let mut landscape = EnergyLandscape::new(config);
     landscape.add_samples(samples);
 
@@ -451,7 +451,7 @@ fn export_landscape_data(
         timestamp: std::time::SystemTime::now(),
     };
 
-    let mut json = serde_json::to_string_pretty(&export)?;
+    let json = serde_json::to_string_pretty(&export)?;
     std::fs::write(path, json)?;
 
     Ok(())

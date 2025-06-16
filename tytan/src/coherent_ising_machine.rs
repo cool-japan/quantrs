@@ -3,6 +3,8 @@
 //! This module provides a simulation of Coherent Ising Machines, which use
 //! optical parametric oscillators to solve optimization problems.
 
+#![allow(dead_code)]
+
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::{Array, Array1, Array2, IxDyn};
 use num_complex::Complex64;
@@ -122,7 +124,7 @@ impl CIMSimulator {
             .collect();
 
         // Normal distribution for noise
-        let noise_dist = Normal::new(0.0, self.noise_strength).unwrap();
+        let _noise_dist = Normal::new(0.0, self.noise_strength).unwrap();
 
         // Evolution loop
         for step in 0..steps {
@@ -289,7 +291,7 @@ impl Sampler for CIMSimulator {
             let spins = self.simulate_cim(&j_matrix, &h_vector, &mut rng)?;
 
             // Convert to binary
-            let mut binary = self.spins_to_binary(&spins);
+            let binary = self.spins_to_binary(&spins);
 
             // Calculate energy
             let ising_energy = self.calculate_ising_energy(&spins, &j_matrix, &h_vector);
@@ -324,7 +326,7 @@ impl Sampler for CIMSimulator {
 
     fn run_hobo(
         &self,
-        hobo: &(Array<f64, IxDyn>, HashMap<String, usize>),
+        _hobo: &(Array<f64, IxDyn>, HashMap<String, usize>),
         _shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         Err(SamplerError::NotImplemented(
@@ -506,7 +508,7 @@ impl AdvancedCIM {
                 initial + (final_param - initial) * (1.0 - (-5.0 * progress).exp())
             }
             RampType::Sigmoid => {
-                let mut x = 10.0 * (progress - 0.5);
+                let x = 10.0 * (progress - 0.5);
                 let sigmoid = 1.0 / (1.0 + (-x).exp());
                 initial + (final_param - initial) * sigmoid
             }

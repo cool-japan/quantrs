@@ -4,6 +4,8 @@
 //! including Matrix Product States (MPS), Projected Entangled Pair States (PEPS),
 //! and Multi-scale Entanglement Renormalization Ansatz (MERA) for optimization.
 
+#![allow(dead_code)]
+
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::{Array1, Array2, ArrayD};
 use rand::{prelude::*, rng};
@@ -839,11 +841,11 @@ impl TensorNetworkSampler {
             };
             let physical_dim = 2; // Assuming spin-1/2
 
-            let mut shape = vec![left_dim, physical_dim, right_dim];
+            let shape = vec![left_dim, physical_dim, right_dim];
             let mut rng = rng();
             let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
 
-            let mut tensor = Tensor {
+            let tensor = Tensor {
                 id: i,
                 data,
                 indices: vec![
@@ -888,7 +890,7 @@ impl TensorNetworkSampler {
     /// Initialize Projected Entangled Pair State
     fn initialize_peps(
         &mut self,
-        hamiltonian: &ArrayD<f64>,
+        _hamiltonian: &ArrayD<f64>,
         bond_dimension: usize,
         lattice_shape: (usize, usize),
     ) -> Result<(), TensorNetworkError> {
@@ -907,11 +909,11 @@ impl TensorNetworkSampler {
                 let left_dim = if j == 0 { 1 } else { bond_dimension };
                 let right_dim = if j == cols - 1 { 1 } else { bond_dimension };
 
-                let mut shape = vec![up_dim, down_dim, left_dim, right_dim, physical_dim];
+                let shape = vec![up_dim, down_dim, left_dim, right_dim, physical_dim];
                 let mut rng = rng();
                 let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
 
-                let mut tensor = Tensor {
+                let tensor = Tensor {
                     id: tensor_id,
                     data,
                     indices: vec![
@@ -983,11 +985,11 @@ impl TensorNetworkSampler {
             // Disentanglers
             for i in (0..current_sites).step_by(2) {
                 let tensor_id = tensors.len();
-                let mut shape = vec![2, 2, 2, 2]; // 2 inputs, 2 outputs
+                let shape = vec![2, 2, 2, 2]; // 2 inputs, 2 outputs
                 let mut rng = rng();
                 let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
 
-                let mut tensor = Tensor {
+                let tensor = Tensor {
                     id: tensor_id,
                     data,
                     indices: vec![
@@ -1033,11 +1035,11 @@ impl TensorNetworkSampler {
             current_sites /= branching_factor;
             for i in 0..current_sites {
                 let tensor_id = tensors.len();
-                let mut shape = vec![2, 2, 2]; // 2 inputs, 1 output (coarse-grained)
+                let shape = vec![2, 2, 2]; // 2 inputs, 1 output (coarse-grained)
                 let mut rng = rng();
                 let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
 
-                let mut tensor = Tensor {
+                let tensor = Tensor {
                     id: tensor_id,
                     data,
                     indices: vec![
@@ -1157,7 +1159,7 @@ impl TensorNetworkSampler {
 
         // Add small random perturbation
         let mut rng = rng();
-        let mut perturbation_strength = 0.01;
+        let perturbation_strength = 0.01;
 
         for value in self.tensor_network.tensors[site].data.iter_mut() {
             *value += rng.random_range(-perturbation_strength..perturbation_strength);
@@ -1263,7 +1265,7 @@ impl TensorNetworkSampler {
     /// Compress individual tensor
     fn compress_tensor(&self, tensor: &mut Tensor) -> Result<(), TensorNetworkError> {
         // Simplified SVD compression
-        let original_size = tensor.data.len();
+        let _original_size = tensor.data.len();
         let compression_factor = self.config.max_bond_dimension as f64
             / tensor.compression_info.compressed_dimension as f64;
 
@@ -1315,12 +1317,12 @@ impl TensorNetworkSampler {
         let mut sample = Vec::new();
 
         // Sequential sampling for MPS
-        for i in 0..num_sites {
+        for _i in 0..num_sites {
             let local_sample = if rng.random::<f64>() < 0.5 { 0 } else { 1 };
             sample.push(local_sample);
         }
 
-        let mut energy = self.calculate_sample_energy(&sample)?;
+        let energy = self.calculate_sample_energy(&sample)?;
 
         Ok(SampleResult {
             assignments: sample
@@ -1344,7 +1346,7 @@ impl TensorNetworkSampler {
             sample.push(local_sample);
         }
 
-        let mut energy = self.calculate_sample_energy(&sample)?;
+        let energy = self.calculate_sample_energy(&sample)?;
 
         Ok(SampleResult {
             assignments: sample
@@ -1368,7 +1370,7 @@ impl TensorNetworkSampler {
             sample.push(local_sample);
         }
 
-        let mut energy = self.calculate_sample_energy(&sample)?;
+        let energy = self.calculate_sample_energy(&sample)?;
 
         Ok(SampleResult {
             assignments: sample
@@ -1391,7 +1393,7 @@ impl TensorNetworkSampler {
             sample.push(local_sample);
         }
 
-        let mut energy = self.calculate_sample_energy(&sample)?;
+        let energy = self.calculate_sample_energy(&sample)?;
 
         Ok(SampleResult {
             assignments: sample

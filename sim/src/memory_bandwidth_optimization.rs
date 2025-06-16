@@ -4,15 +4,13 @@
 //! state vector simulations, including cache-optimized layouts, prefetching
 //! strategies, data locality optimizations, and NUMA-aware memory management.
 
-use ndarray::{Array1, Array2, ArrayView1, ArrayViewMut1, Axis};
+use ndarray::Array2;
 use num_complex::Complex64;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::collections::{HashMap, VecDeque};
 use std::ptr::NonNull;
 use std::sync::{Arc, Mutex, RwLock};
-use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::error::{Result, SimulatorError};

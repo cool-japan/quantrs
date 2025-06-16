@@ -3,6 +3,8 @@
 //! This module provides quantum algorithms for integer factorization
 //! using variational approaches.
 
+#![allow(dead_code)]
+
 use crate::hybrid_algorithms::{AnsatzType, ClassicalOptimizer, Hamiltonian, PauliTerm, VQE};
 use rand::prelude::*;
 use rand::rng;
@@ -33,7 +35,7 @@ impl VQF {
 
         // Estimate number of qubits needed
         let n_bits = 64 - n.leading_zeros() as usize;
-        let n_qubits_p = (n_bits + 1) / 2;
+        let n_qubits_p = n_bits.div_ceil(2);
         let n_qubits_q = n_bits - n_qubits_p;
 
         Ok(Self {
@@ -220,8 +222,8 @@ impl VQF {
             let mut q = 0u64;
 
             // Extract p
-            for i in 0..self.n_qubits_p {
-                if rng.random_bool(0.5 + 0.4 * params[i].sin()) {
+            for (i, &param) in params.iter().enumerate().take(self.n_qubits_p) {
+                if rng.random_bool(0.5 + 0.4 * param.sin()) {
                     p |= 1u64 << i;
                 }
             }
@@ -384,6 +386,7 @@ impl EnhancedVQF {
     fn pollard_rho(&self, n: u64, max_iter: usize) -> Option<u64> {
         let mut x = 2u64;
         let mut y = 2u64;
+        #[allow(unused_assignments)]
         let mut d = 1u64;
 
         for _ in 0..max_iter {
@@ -438,7 +441,7 @@ impl EnhancedVQF {
 
     /// Single-level quantum factorization
     fn single_level_factorization(&mut self) -> Result<EnhancedFactorizationResult, String> {
-        let mut result = self.base_vqf.factor()?;
+        let result = self.base_vqf.factor()?;
 
         Ok(EnhancedFactorizationResult {
             factors: vec![result.p, result.q],
@@ -524,7 +527,7 @@ impl ShorsAlgorithm {
         // Try random bases
         for attempt in 0..10 {
             // Choose random a coprime to n
-            let mut a = rng.random_range(2..self.n);
+            let a = rng.random_range(2..self.n);
             if gcd(a, self.n) != 1 {
                 let factor = gcd(a, self.n);
                 return Ok(ShorsResult {
@@ -569,7 +572,7 @@ impl ShorsAlgorithm {
     /// Check if n is a perfect power
     fn is_perfect_power(&self) -> Option<(u64, usize)> {
         for exp in 2..64 {
-            let mut base = (self.n as f64).powf(1.0 / exp as f64) as u64;
+            let base = (self.n as f64).powf(1.0 / exp as f64) as u64;
 
             if base.pow(exp) == self.n {
                 return Some((base, exp as usize));
@@ -594,7 +597,7 @@ impl ShorsAlgorithm {
         // Prepare superposition and apply modular exponentiation
         let amplitudes_len = amplitudes.len();
         for x in 0..max_period {
-            let mut state = mod_exp(a, x, self.n);
+            let state = mod_exp(a, x, self.n);
             amplitudes[state as usize % amplitudes_len] += 1.0;
         }
 

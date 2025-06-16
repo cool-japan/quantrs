@@ -173,7 +173,7 @@ impl EnergyAnalyzer {
         var_map: &HashMap<String, usize>,
     ) -> EnergyLandscape {
         let mut local_minima = Vec::new();
-        let mut current_energy = self.calculate_energy(qubo, assignments, var_map);
+        let current_energy = self.calculate_energy(qubo, assignments, var_map);
 
         // Explore 1-flip neighborhood
         for var in assignments.keys() {

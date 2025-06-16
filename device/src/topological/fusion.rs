@@ -280,15 +280,60 @@ impl FusionSpaceCalculator {
     ) -> TopologicalResult<Vec<FusionTree>> {
         let mut trees = Vec::new();
 
-        // This is a simplified implementation
-        // In practice, this would enumerate all possible fusion orderings
-        if let Ok(tree) = FusionTree::new(input_charges.to_vec(), &self.fusion_rules) {
-            if tree.final_charge.label == output_charge.label {
-                trees.push(tree);
+        // For two charges, check all possible fusion outcomes
+        if input_charges.len() == 2 {
+            let fusion_key = (
+                input_charges[0].label.clone(),
+                input_charges[1].label.clone(),
+            );
+            if let Some(fusion_products) = self.fusion_rules.rules.get(&fusion_key) {
+                for product in fusion_products {
+                    if product == &output_charge.label {
+                        // Create a valid fusion tree for this outcome
+                        let tree_result =
+                            self.create_specific_fusion_tree(input_charges, output_charge);
+                        if let Ok(tree) = tree_result {
+                            trees.push(tree);
+                        }
+                    }
+                }
+            }
+        } else {
+            // For other cases, use the simplified implementation
+            if let Ok(tree) = FusionTree::new(input_charges.to_vec(), &self.fusion_rules) {
+                if tree.final_charge.label == output_charge.label {
+                    trees.push(tree);
+                }
             }
         }
 
         Ok(trees)
+    }
+
+    /// Create a fusion tree with specific output charge
+    fn create_specific_fusion_tree(
+        &self,
+        input_charges: &[TopologicalCharge],
+        output_charge: &TopologicalCharge,
+    ) -> TopologicalResult<FusionTree> {
+        if input_charges.len() != 2 {
+            return Err(TopologicalError::FusionFailed(
+                "create_specific_fusion_tree only supports two input charges".to_string(),
+            ));
+        }
+
+        let root = FusionTreeNode {
+            input_charges: input_charges.to_vec(),
+            output_charge: output_charge.clone(),
+            channel: output_charge.label.clone(),
+            children: Vec::new(),
+        };
+
+        Ok(FusionTree {
+            root,
+            anyon_count: 2,
+            final_charge: output_charge.clone(),
+        })
     }
 
     /// Calculate fusion coefficients (N-symbols)

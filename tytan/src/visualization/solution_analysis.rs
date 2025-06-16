@@ -220,8 +220,8 @@ impl SolutionDistribution {
 
         let mut energy_quantiles = HashMap::new();
         for &q in &[25, 50, 75] {
-            let mut idx = (q as f64 / 100.0 * sorted_energies.len() as f64) as usize;
-            let mut idx = idx.min(sorted_energies.len() - 1);
+            let idx = (q as f64 / 100.0 * sorted_energies.len() as f64) as usize;
+            let idx = idx.min(sorted_energies.len() - 1);
             energy_quantiles.insert(format!("q{}", q), sorted_energies[idx]);
         }
 
@@ -437,9 +437,9 @@ impl SolutionDistribution {
         // Convert samples to feature matrix
         let (feature_matrix, _) = self.samples_to_matrix()?;
 
-        let mut clusters = match self.config.clustering_method {
+        let clusters = match self.config.clustering_method {
             ClusteringMethod::KMeans => {
-                let mut k = self.config.n_clusters.unwrap_or(5);
+                let k = self.config.n_clusters.unwrap_or(5);
                 self.cluster_kmeans(&feature_matrix, k)?
             }
             ClusteringMethod::DBSCAN => {
@@ -505,7 +505,7 @@ impl SolutionDistribution {
     /// Hierarchical clustering
     fn cluster_hierarchical(
         &self,
-        data: &Array2<f64>,
+        _data: &Array2<f64>,
     ) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
         #[cfg(feature = "scirs")]
         {
@@ -664,7 +664,7 @@ impl SolutionDistribution {
     /// Calculate silhouette score
     fn calculate_silhouette_score(
         &self,
-        clusters: &[usize],
+        _clusters: &[usize],
     ) -> Result<f64, Box<dyn std::error::Error>> {
         // Simplified silhouette calculation
         // In full implementation would use proper silhouette coefficient
@@ -745,8 +745,8 @@ impl SolutionDistribution {
 
         let mut percentile_values = HashMap::new();
         for p in [1, 5, 10, 25, 50, 75, 90, 95, 99].iter() {
-            let mut idx = ((*p as f64 / 100.0) * sorted_energies.len() as f64) as usize;
-            let mut idx = idx.min(sorted_energies.len() - 1);
+            let idx = ((*p as f64 / 100.0) * sorted_energies.len() as f64) as usize;
+            let idx = idx.min(sorted_energies.len() - 1);
             percentile_values.insert(*p, sorted_energies[idx]);
         }
 
@@ -836,7 +836,7 @@ pub fn analyze_solution_distribution(
     samples: Vec<SampleResult>,
     config: Option<DistributionConfig>,
 ) -> Result<DistributionAnalysis, Box<dyn std::error::Error>> {
-    let mut config = config.unwrap_or_default();
+    let config = config.unwrap_or_default();
     let mut analyzer = SolutionDistribution::new(config);
     analyzer.add_samples(samples);
     analyzer.analyze()
@@ -929,7 +929,7 @@ fn export_distribution_analysis(
     analysis: &DistributionAnalysis,
     path: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut json = serde_json::to_string_pretty(analysis)?;
+    let json = serde_json::to_string_pretty(analysis)?;
     std::fs::write(path, json)?;
     Ok(())
 }

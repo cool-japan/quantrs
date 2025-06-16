@@ -332,7 +332,7 @@ class QubitAllocator:
                     return candidate_range
             
             # Fallback to non-contiguous if contiguous not available
-            warnings.warn("Could not allocate contiguous qubits, using non-contiguous allocation")
+            pass
         
         if self.strategy == AllocationStrategy.COMPACT:
             available.sort()

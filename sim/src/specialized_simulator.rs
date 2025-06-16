@@ -431,7 +431,7 @@ pub fn benchmark_specialization(
                 let _ = circuit.x(qubit);
             }
             2 => {
-                circuit.ry(qubit, rng.gen_range(0.0..std::f64::consts::TAU));
+                let _ = circuit.ry(qubit, rng.gen_range(0.0..std::f64::consts::TAU));
             }
             3 => {
                 if n_qubits > 1 {

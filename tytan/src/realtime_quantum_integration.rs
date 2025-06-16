@@ -3,6 +3,8 @@
 //! This module provides live quantum hardware monitoring, dynamic resource allocation,
 //! queue management, and real-time performance analytics for quantum computing systems.
 
+#![allow(dead_code)]
+
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, VecDeque};
@@ -129,6 +131,7 @@ impl Default for AlertThresholds {
 }
 
 /// Live hardware monitor for quantum devices
+#[allow(dead_code)]
 pub struct HardwareMonitor {
     /// Device information
     device_info: DeviceInfo,
@@ -847,6 +850,7 @@ pub enum EscalationAction {
 }
 
 /// Dynamic resource allocator
+#[allow(dead_code)]
 pub struct ResourceAllocator {
     /// Available resources
     available_resources: HashMap<String, ResourceInfo>,
@@ -2231,7 +2235,7 @@ impl RealtimeQuantumManager {
 
     /// Get current system state
     pub fn get_system_state(&self) -> Result<SystemState, String> {
-        let mut state = self.system_state.read().map_err(|e| e.to_string())?;
+        let state = self.system_state.read().map_err(|e| e.to_string())?;
         Ok(state.clone())
     }
 
@@ -2308,7 +2312,7 @@ impl RealtimeQuantumManager {
     fn start_fault_detection(&self) -> Result<(), String> {
         let fault_detector = self.fault_detector.clone();
         let system_state = self.system_state.clone();
-        let mut config = self.config.clone();
+        let config = self.config.clone();
 
         thread::spawn(move || {
             loop {
@@ -2427,7 +2431,7 @@ impl HardwareMonitor {
 
     pub fn update_metrics(&mut self) -> Result<(), String> {
         // Simulate metric collection
-        let mut metrics = DeviceMetrics {
+        let metrics = DeviceMetrics {
             timestamp: SystemTime::now(),
             cpu_utilization: 0.5,
             memory_utilization: 0.6,
@@ -2488,7 +2492,7 @@ impl ResourceAllocator {
         _requirements: ResourceRequirements,
     ) -> Result<Vec<String>, String> {
         // Simplified resource allocation
-        let mut allocated_resources = vec!["resource_1".to_string(), "resource_2".to_string()];
+        let allocated_resources = vec!["resource_1".to_string(), "resource_2".to_string()];
 
         let allocation = AllocationInfo {
             job_id: job_id.to_string(),
@@ -2629,7 +2633,7 @@ impl FaultDetectionSystem {
     fn check_performance_degradation(
         &mut self,
         system_state: &SystemState,
-        config: &RealtimeConfig,
+        _config: &RealtimeConfig,
     ) -> Result<(), String> {
         if system_state.performance_summary.performance_score < 0.5 {
             self.detect_fault(

@@ -578,14 +578,25 @@ impl InterfaceCircuit {
         let mut qubit_depths = vec![0; self.num_qubits];
 
         for gate in &self.gates {
-            let max_depth = gate
+            // Skip gates with invalid qubit indices
+            let valid_qubits: Vec<usize> = gate
                 .qubits
+                .iter()
+                .filter(|&&q| q < self.num_qubits)
+                .copied()
+                .collect();
+
+            if valid_qubits.is_empty() {
+                continue;
+            }
+
+            let max_depth = valid_qubits
                 .iter()
                 .map(|&q| qubit_depths[q])
                 .max()
                 .unwrap_or(0);
 
-            for &qubit in &gate.qubits {
+            for &qubit in &valid_qubits {
                 qubit_depths[qubit] = max_depth + 1;
             }
         }

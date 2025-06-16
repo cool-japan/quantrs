@@ -3,6 +3,8 @@
 //! This crate provides a high-level interface for formulating and solving
 //! quantum annealing problems, with support for multiple backend solvers.
 //! It is inspired by the Python [Tytan](https://github.com/tytansdk/tytan) library.
+
+#![allow(warnings)]
 //!
 //! # Features
 //!

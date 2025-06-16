@@ -1782,7 +1782,15 @@ impl EnhancedPhaseEstimation {
         let mut probabilities = vec![0.0; phase_states];
 
         for (i, amplitude) in amplitudes.iter().enumerate() {
-            let phase_val = i >> (amplitudes.len().trailing_zeros() - phase_qubits as u32);
+            let trailing_zeros = amplitudes.len().trailing_zeros();
+            let phase_qubits_u32 = phase_qubits as u32;
+
+            let phase_val = if trailing_zeros >= phase_qubits_u32 {
+                i >> (trailing_zeros - phase_qubits_u32)
+            } else {
+                i << (phase_qubits_u32 - trailing_zeros)
+            };
+
             if phase_val < phase_states {
                 probabilities[phase_val] += amplitude.norm_sqr();
             }

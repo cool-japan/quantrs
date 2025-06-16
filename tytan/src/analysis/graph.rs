@@ -199,7 +199,7 @@ pub fn analyze_graph(n_nodes: usize, edges: &[(usize, usize)]) -> GraphPropertie
 
     let avg_degree = degrees.iter().sum::<usize>() as f64 / n_nodes as f64;
     let max_degree = *degrees.iter().max().unwrap_or(&0);
-    let mut min_degree = *degrees.iter().min().unwrap_or(&0);
+    let min_degree = *degrees.iter().min().unwrap_or(&0);
 
     // Simple connectivity check (BFS from node 0)
     let is_connected = if n_nodes > 0 {

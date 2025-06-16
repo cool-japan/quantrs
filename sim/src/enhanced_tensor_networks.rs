@@ -28,8 +28,8 @@ impl ContractionOptimizer {
     }
 }
 
-#[cfg(all(feature = "advanced_math", feature = "tensor_networks"))]
-use scirs2_linalg::tensor::{BondDimension, TensorNetwork};
+#[cfg(feature = "advanced_math")]
+use scirs2_linalg::{BondDimension, TensorNetwork};
 
 /// Advanced tensor network configuration
 #[derive(Debug, Clone)]

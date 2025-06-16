@@ -76,7 +76,7 @@ pub fn prepare_energy_landscape(
     results: &[SampleResult],
     config: Option<EnergyLandscapeConfig>,
 ) -> VisualizationResult<EnergyLandscapeData> {
-    let mut config = config.unwrap_or_default();
+    let config = config.unwrap_or_default();
 
     if results.is_empty() {
         return Err(VisualizationError::DataError(
@@ -173,7 +173,7 @@ pub fn analyze_solution_distribution(
     results: &[SampleResult],
     config: Option<SolutionDistributionConfig>,
 ) -> VisualizationResult<SolutionDistributionData> {
-    let mut config = config.unwrap_or_default();
+    let config = config.unwrap_or_default();
 
     if results.is_empty() {
         return Err(VisualizationError::DataError(
@@ -293,8 +293,8 @@ pub fn extract_tsp_tour(result: &SampleResult, n_cities: usize) -> Visualization
         let mut next = None;
 
         // Look for edge from current city
-        for j in 0..n_cities {
-            if !visited[j] {
+        for (j, &is_visited) in visited.iter().enumerate().take(n_cities) {
+            if !is_visited {
                 let var_name = format!("x_{}_{}", current, j);
                 if let Some(&value) = result.assignments.get(&var_name) {
                     if value {
@@ -311,10 +311,10 @@ pub fn extract_tsp_tour(result: &SampleResult, n_cities: usize) -> Visualization
             current = next_city;
         } else {
             // Find first unvisited city
-            for j in 0..n_cities {
-                if !visited[j] {
+            for (j, is_visited) in visited.iter_mut().enumerate().take(n_cities) {
+                if !*is_visited {
                     tour.push(j);
-                    visited[j] = true;
+                    *is_visited = true;
                     current = j;
                     break;
                 }
@@ -350,12 +350,12 @@ pub fn extract_graph_coloring(
     let mut node_colors = vec![0; n_nodes];
 
     // Extract color assignments
-    for node in 0..n_nodes {
+    for (node, node_color) in node_colors.iter_mut().enumerate().take(n_nodes) {
         for color in 0..n_colors {
             let var_name = format!("x_{}_{}", node, color);
             if let Some(&value) = result.assignments.get(&var_name) {
                 if value {
-                    node_colors[node] = color;
+                    *node_color = color;
                     break;
                 }
             }
@@ -415,7 +415,7 @@ pub fn analyze_convergence(
         let energies: Vec<f64> = iter_results.iter().map(|r| r.energy).collect();
 
         // Best energy
-        let mut best = energies.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+        let best = energies.iter().fold(f64::INFINITY, |a, &b| a.min(b));
         best_energies.push(best);
 
         // Average and std dev
@@ -501,7 +501,7 @@ fn compute_kde(
     let mut y_points = Vec::new();
 
     for i in 0..n_points {
-        let mut x = min_val + (i as f64 / (n_points - 1) as f64) * range;
+        let x = min_val + (i as f64 / (n_points - 1) as f64) * range;
         let mut density = 0.0;
 
         for &val in values {
@@ -599,7 +599,7 @@ fn simple_pca(
     // For simplicity, we'll just return a placeholder
     // In practice, you'd compute eigenvalues/eigenvectors
     let components = Array2::<f64>::zeros((n_samples, n_components));
-    let mut explained_variance = vec![1.0 / n_components as f64; n_components];
+    let explained_variance = vec![1.0 / n_components as f64; n_components];
 
     Ok((components, explained_variance))
 }
@@ -634,7 +634,7 @@ pub fn spring_layout(n_nodes: usize, edges: &[(usize, usize)]) -> Vec<(f64, f64)
 
     // Simple force-directed layout
     let iterations = 50;
-    let mut k = 1.0 / (n_nodes as f64).sqrt();
+    let k = 1.0 / (n_nodes as f64).sqrt();
 
     for _ in 0..iterations {
         let mut forces = vec![(0.0, 0.0); n_nodes];
@@ -710,7 +710,7 @@ mod tests {
 
     #[test]
     fn test_mean_std_calculation() {
-        let mut values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let (mean, std) = calculate_mean_std(&values);
         assert!((mean - 3.0).abs() < 1e-10);
         assert!((std - std::f64::consts::SQRT_2).abs() < 1e-5);
@@ -718,14 +718,14 @@ mod tests {
 
     #[test]
     fn test_moving_average() {
-        let mut values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let ma = moving_average(&values, 3);
         assert_eq!(ma, vec![2.0, 3.0, 4.0]);
     }
 
     #[test]
     fn test_kde_bandwidth() {
-        let mut values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let bandwidth = estimate_bandwidth(&values);
         assert!(bandwidth > 0.0);
     }

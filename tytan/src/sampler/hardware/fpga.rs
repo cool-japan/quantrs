@@ -3,6 +3,8 @@
 //! This module provides integration with FPGA-based quantum-inspired
 //! optimization accelerators.
 
+#![allow(dead_code)]
+
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::Array2;
 use std::cell::RefCell;
@@ -259,7 +261,7 @@ impl FPGASampler {
 
         // Execute kernel
         let kernel_start = std::time::Instant::now();
-        let mut results = match &self.config.algorithm {
+        let results = match &self.config.algorithm {
             FPGAAlgorithm::SimulatedBifurcation {
                 time_step,
                 damping,
@@ -315,7 +317,7 @@ impl FPGASampler {
     fn run_digital_annealing_kernel(
         &self,
         qubo: &Array2<f64>,
-        shots: usize,
+        _shots: usize,
     ) -> Result<Vec<FPGAResult>, SamplerError> {
         // Placeholder implementation
         let n = qubo.shape()[0];

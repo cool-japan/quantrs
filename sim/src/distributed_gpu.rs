@@ -14,7 +14,7 @@ use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
 
 #[cfg(feature = "advanced_math")]
-use scirs2_core::gpu::{GpuBackend, GpuBuffer, GpuContext, GpuError};
+use scirs2_core::gpu::{GpuBackend, GpuBuffer, GpuContext};
 
 /// Configuration for distributed GPU simulation
 #[derive(Debug, Clone)]
@@ -404,7 +404,6 @@ impl DistributedGpuStateVector {
     }
 
     /// Internal helper methods
-
     #[cfg(feature = "advanced_math")]
     fn initialize_gpu_contexts(config: &DistributedGpuConfig) -> Result<Vec<GpuContextWrapper>> {
         let mut contexts = Vec::new();

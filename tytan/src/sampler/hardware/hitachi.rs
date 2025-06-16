@@ -159,13 +159,13 @@ impl HitachiCMOSSampler {
     }
 
     /// Submit job to hardware
-    fn submit_job(&self, embedded_qubo: &Array2<f64>) -> Result<String, SamplerError> {
+    fn submit_job(&self, _embedded_qubo: &Array2<f64>) -> Result<String, SamplerError> {
         // Placeholder for API call
         Ok("hitachi_job_123".to_string())
     }
 
     /// Retrieve results
-    fn get_job_results(&self, job_id: &str) -> Result<Vec<CMOSResult>, SamplerError> {
+    fn get_job_results(&self, _job_id: &str) -> Result<Vec<CMOSResult>, SamplerError> {
         // Placeholder for API call
         Ok(vec![CMOSResult {
             spins: vec![1; 512],
@@ -193,7 +193,7 @@ impl HitachiCMOSSampler {
                     .map(|&p| cmos_result.spins[p] as i32)
                     .sum();
 
-                let mut value = spin_sum > 0;
+                let value = spin_sum > 0;
                 assignments.insert(var_name.clone(), value);
             }
         }

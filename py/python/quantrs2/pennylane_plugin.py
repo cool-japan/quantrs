@@ -17,7 +17,6 @@ try:
     PENNYLANE_AVAILABLE = True
 except ImportError:
     PENNYLANE_AVAILABLE = False
-    warnings.warn("PennyLane not available. Install with: pip install pennylane")
     
     # Mock classes for when PennyLane is not available
     class Device:
@@ -32,7 +31,6 @@ try:
     QUANTRS2_AVAILABLE = True
 except ImportError:
     QUANTRS2_AVAILABLE = False
-    warnings.warn("QuantRS2 core not available. Using mock implementation.")
     
     class QuantRS2Circuit:
         def __init__(self, n_qubits):
@@ -85,8 +83,6 @@ class QuantRS2Device(Device):
         
         # Allow mock backend when QuantRS2 native is not available
         self._use_mock = not QUANTRS2_AVAILABLE
-        if self._use_mock:
-            warnings.warn("Using mock QuantRS2 backend")
             
         super().__init__(wires, shots=shots, **kwargs)
         
@@ -227,7 +223,7 @@ class QuantRS2Device(Device):
                     self._circuit.z(wires[0])
         
         else:
-            warnings.warn(f"Operation {name} not supported, skipping")
+            pass
     
     def generate_samples(self):
         """Generate measurement samples from the circuit."""

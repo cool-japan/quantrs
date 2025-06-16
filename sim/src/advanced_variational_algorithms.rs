@@ -1778,7 +1778,6 @@ pub fn benchmark_advanced_vqa() -> Result<HashMap<String, f64>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use approx::assert_abs_diff_eq;
 
     #[test]
     fn test_vqa_trainer_creation() {

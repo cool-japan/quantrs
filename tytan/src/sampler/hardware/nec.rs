@@ -3,6 +3,8 @@
 //! This module provides integration with NEC's Vector Annealing Service,
 //! which uses vector processing for quantum-inspired optimization.
 
+#![allow(dead_code)]
+
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::Array2;
 use std::collections::HashMap;
@@ -174,7 +176,7 @@ impl NECVectorAnnealingSampler {
 
                 // Fix variable if diagonal dominates
                 if diagonal.abs() > 2.0 * off_diagonal_sum {
-                    let mut value = diagonal < 0.0;
+                    let value = diagonal < 0.0;
                     fixed_vars.insert(i, value);
                     transformations.push(Transformation::FixVariable { index: i, value });
                 }
@@ -194,7 +196,7 @@ impl NECVectorAnnealingSampler {
     }
 
     /// Submit to vector annealing service
-    fn submit_to_service(&self, problem: &PreprocessedProblem) -> Result<String, SamplerError> {
+    fn submit_to_service(&self, _problem: &PreprocessedProblem) -> Result<String, SamplerError> {
         // Format problem for API
         // Submit via HTTP
         // Return job ID
@@ -202,7 +204,7 @@ impl NECVectorAnnealingSampler {
     }
 
     /// Retrieve results from service
-    fn get_service_results(&self, job_id: &str) -> Result<Vec<VectorSolution>, SamplerError> {
+    fn get_service_results(&self, _job_id: &str) -> Result<Vec<VectorSolution>, SamplerError> {
         // Poll API for results
         // Parse vector solutions
         Ok(vec![VectorSolution {
@@ -227,7 +229,7 @@ impl NECVectorAnnealingSampler {
 
             // Map solution back through preprocessing transformations
             for (var_name, &var_idx) in var_map {
-                let mut value = if let Some(&fixed_value) = preprocessed.fixed_variables.get(&var_idx) {
+                let value = if let Some(&fixed_value) = preprocessed.fixed_variables.get(&var_idx) {
                     fixed_value
                 } else if var_idx < solution.binary_solution.len() {
                     solution.binary_solution[var_idx]
@@ -262,7 +264,7 @@ impl NECVectorAnnealingSampler {
     }
 
     /// Local search refinement
-    fn local_search_refinement(&self, result: &mut SampleResult, qubo: &Array2<f64>) {
+    fn local_search_refinement(&self, _result: &mut SampleResult, _qubo: &Array2<f64>) {
         // Simple 1-flip local search
         // In practice, would implement more sophisticated search
     }

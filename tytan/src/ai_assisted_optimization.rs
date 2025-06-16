@@ -4,6 +4,8 @@
 //! including neural networks for parameter optimization, reinforcement learning
 //! for sampling strategies, and automated algorithm selection.
 
+#![allow(dead_code)]
+
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
@@ -1458,7 +1460,7 @@ impl AIAssistedOptimizer {
         let size = features[0] as usize;
         let density = features[4];
 
-        let mut base_confidence = 0.7;
+        let base_confidence = 0.7;
 
         // Adjust based on problem characteristics and algorithm match
         let size_confidence = if size < 1000 { 0.9 } else { 0.6 };
@@ -1747,6 +1749,12 @@ impl AutomatedAlgorithmSelector {
     }
 }
 
+impl Default for ProblemStructureRecognizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ProblemStructureRecognizer {
     pub fn new() -> Self {
         Self {
@@ -1985,7 +1993,7 @@ impl SolutionQualityPredictor {
         };
 
         let expected_quality: f64 = (base_quality + quality_adjustment).max(0.0).min(1.0);
-        let mut confidence_width = 0.1;
+        let confidence_width = 0.1;
 
         Ok(QualityPrediction {
             expected_quality,

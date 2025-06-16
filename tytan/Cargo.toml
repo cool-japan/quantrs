@@ -34,11 +34,12 @@ plotters = { version = "0.3", optional = true }
 colored = "2.2"
 
 # SciRS2 dependencies for performance optimization
-scirs2-core = { workspace = true, optional = true }
-scirs2-linalg = { workspace = true, optional = true }
-scirs2-optimize = { workspace = true, optional = true }
-# Excluded due to dependency conflicts with symengine
-# scirs2-cluster = { version = "0.1.0-alpha.5", optional = true }
+scirs2-core = { version = "0.1.0-alpha.4", default-features = false, features = ["gpu"], optional = true }
+scirs2-linalg = { version = "0.1.0-alpha.4", default-features = false, optional = true }
+scirs2-optimize = { version = "0.1.0-alpha.4", default-features = false, optional = true }
+scirs2-cluster = { path = "../../scirs/scirs2-cluster", optional = true }
+# Add scirs2 metacrate for backward compatibility
+scirs2 = { path = "../../scirs/scirs2", optional = true }
 
 # Optional dependencies
 rayon = { workspace = true, optional = true }
@@ -50,12 +51,11 @@ parallel = ["dep:rayon"]
 gpu = ["dep:ocl"]
 # The dwave feature is optional and requires symengine to be installed
 dwave = ["dep:symengine", "dep:symengine-sys", "dep:regex"]
-scirs = ["dep:scirs2-core", "dep:scirs2-linalg", "dep:scirs2-optimize"]
+scirs = ["dep:scirs2-core", "dep:scirs2-linalg", "dep:scirs2-optimize", "dep:scirs2-cluster", "dep:scirs2"]
 advanced_optimization = ["scirs", "dep:scirs2-optimize"]
+clustering = ["dep:scirs2-cluster"]
 # Combined accelerated features
 gpu_accelerated = ["gpu", "scirs", "parallel"]
-# These features are placeholder stubs for conditional compilation
-clustering = []
 plotters = ["dep:plotters"]
 
 [dev-dependencies]

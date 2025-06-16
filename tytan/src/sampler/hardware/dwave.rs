@@ -1,6 +1,7 @@
 //! D-Wave Quantum Annealer Sampler Implementation
 
 use ndarray::{Array, Ix2};
+use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 
 use quantrs2_anneal::QuboModel;
@@ -81,17 +82,16 @@ impl Sampler for DWaveSampler {
             let mut results = Vec::new();
 
             // Create a simple random solution as placeholder
-            use rand::Rng;
-            let mut rng = rand::rng();
+            let mut rng = thread_rng();
 
             for _ in 0..shots.min(10) {
                 let assignments: HashMap<String, bool> = idx_to_var
                     .values()
-                    .map(|name| (name.clone(), rng.random::<bool>()))
+                    .map(|name| (name.clone(), rng.gen::<bool>()))
                     .collect();
 
                 // Calculate placeholder energy (random for now)
-                let mut energy = rng.random_range(-10.0..10.0);
+                let mut energy = rng.gen_range(-10.0..10.0);
 
                 // Create a result
                 let mut result = SampleResult {
@@ -122,7 +122,7 @@ impl Sampler for DWaveSampler {
         // For HOBO problems, we need to first convert to QUBO if possible
         if hobo.0.ndim() <= 2 {
             // If it's already 2D, just forward to run_qubo
-            let mut qubo = (
+            let qubo = (
                 hobo.0.clone().into_dimensionality::<Ix2>().unwrap(),
                 hobo.1.clone(),
             );

@@ -799,7 +799,13 @@ mod tests {
     #[test]
     fn test_gradient_based_optimizer() {
         let device = create_mock_quantum_device();
-        let mut optimizer = GradientBasedOptimizer::new(device, OptimizerConfig::default());
+        let config = OptimizerConfig {
+            learning_rate: 0.3, // Even higher learning rate for simple quadratic
+            max_iterations: 500,
+            tolerance: 1e-6,
+            ..Default::default()
+        };
+        let mut optimizer = GradientBasedOptimizer::new(device, config);
 
         let objective = Box::new(QuadraticObjective {
             target: vec![1.0, 2.0, 3.0],

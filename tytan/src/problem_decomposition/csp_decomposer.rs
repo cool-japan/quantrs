@@ -15,6 +15,12 @@ pub struct ConstraintSatisfactionDecomposer {
     max_cluster_size: usize,
 }
 
+impl Default for ConstraintSatisfactionDecomposer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConstraintSatisfactionDecomposer {
     /// Create new CSP decomposer
     pub fn new() -> Self {
@@ -62,7 +68,7 @@ impl ConstraintSatisfactionDecomposer {
         let tree_dec = self.find_tree_decomposition(&primal_graph, &var_names)?;
 
         // Extract clusters
-        let mut clusters = self.extract_clusters_from_tree(&tree_dec, csp)?;
+        let clusters = self.extract_clusters_from_tree(&tree_dec, csp)?;
 
         // Build cluster tree
         let cluster_tree = self.build_cluster_tree(&clusters, &tree_dec)?;
@@ -157,14 +163,8 @@ impl ConstraintSatisfactionDecomposer {
                 for j in i + 1..bag_vars.len() {
                     let var_i = bag_vars[i];
                     let var_j = bag_vars[j];
-                    adjacency
-                        .entry(var_i)
-                        .or_insert_with(HashSet::new)
-                        .insert(var_j);
-                    adjacency
-                        .entry(var_j)
-                        .or_insert_with(HashSet::new)
-                        .insert(var_i);
+                    adjacency.entry(var_i).or_default().insert(var_j);
+                    adjacency.entry(var_j).or_default().insert(var_i);
                 }
             }
 
@@ -249,14 +249,8 @@ impl ConstraintSatisfactionDecomposer {
                     for j in i + 1..active_neighbors.len() {
                         let var_i = active_neighbors[i];
                         let var_j = active_neighbors[j];
-                        adjacency
-                            .entry(var_i)
-                            .or_insert_with(HashSet::new)
-                            .insert(var_j);
-                        adjacency
-                            .entry(var_j)
-                            .or_insert_with(HashSet::new)
-                            .insert(var_i);
+                        adjacency.entry(var_i).or_default().insert(var_j);
+                        adjacency.entry(var_j).or_default().insert(var_i);
                     }
                 }
             }
@@ -270,7 +264,7 @@ impl ConstraintSatisfactionDecomposer {
         let mut ordering = Vec::new();
         let mut numbered = HashSet::new();
         let mut cardinality = vec![0; graph.num_nodes];
-        let mut adjacency = self.build_adjacency_list(graph);
+        let adjacency = self.build_adjacency_list(graph);
 
         for _ in 0..graph.num_nodes {
             // Find unnumbered vertex with maximum cardinality
@@ -334,14 +328,8 @@ impl ConstraintSatisfactionDecomposer {
                     for j in i + 1..active_neighbors.len() {
                         let var_i = active_neighbors[i];
                         let var_j = active_neighbors[j];
-                        adjacency
-                            .entry(var_i)
-                            .or_insert_with(HashSet::new)
-                            .insert(var_j);
-                        adjacency
-                            .entry(var_j)
-                            .or_insert_with(HashSet::new)
-                            .insert(var_i);
+                        adjacency.entry(var_i).or_default().insert(var_j);
+                        adjacency.entry(var_j).or_default().insert(var_i);
                     }
                 }
             }
@@ -389,17 +377,11 @@ impl ConstraintSatisfactionDecomposer {
 
     /// Build adjacency list from graph
     fn build_adjacency_list(&self, graph: &Graph) -> HashMap<usize, HashSet<usize>> {
-        let mut adjacency = HashMap::new();
+        let mut adjacency: HashMap<usize, HashSet<usize>> = HashMap::new();
 
         for edge in &graph.edges {
-            adjacency
-                .entry(edge.from)
-                .or_insert_with(HashSet::new)
-                .insert(edge.to);
-            adjacency
-                .entry(edge.to)
-                .or_insert_with(HashSet::new)
-                .insert(edge.from);
+            adjacency.entry(edge.from).or_default().insert(edge.to);
+            adjacency.entry(edge.to).or_default().insert(edge.from);
         }
 
         adjacency
@@ -412,7 +394,7 @@ impl ConstraintSatisfactionDecomposer {
         csp: &CSPProblem,
     ) -> Result<Vec<CSPCluster>, String> {
         let mut clusters = Vec::new();
-        let var_names: Vec<_> = csp.variables.keys().collect();
+        let _var_names: Vec<_> = csp.variables.keys().collect();
 
         for (i, bag) in tree_dec.bags.iter().enumerate() {
             let variables: HashSet<String> = bag.clone();
@@ -543,7 +525,7 @@ impl ConstraintSatisfactionDecomposer {
         let mut tree_nodes = Vec::new();
         let mut tree_edges = Vec::new();
 
-        for (i, cluster) in constraint_clusters.iter().enumerate() {
+        for (i, _cluster) in constraint_clusters.iter().enumerate() {
             tree_nodes.push(TreeNode {
                 id: i,
                 cluster_id: i,
@@ -580,7 +562,7 @@ impl ConstraintSatisfactionDecomposer {
     /// Cycle cutset decomposition
     fn cycle_cutset_decomposition(&self, csp: &CSPProblem) -> Result<CSPDecomposition, String> {
         // Find cycle cutset (variables whose removal makes graph acyclic)
-        let cutset = self.find_cycle_cutset(csp)?;
+        let _cutset = self.find_cycle_cutset(csp)?;
 
         // Create clusters based on remaining tree structure
         // This is simplified - a full implementation would be more complex

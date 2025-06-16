@@ -5,21 +5,19 @@
 //! entanglement. This framework enables error correction through holographic principles,
 //! where quantum information in a boundary theory is protected by geometry in the bulk.
 
-use ndarray::{Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 use std::f64::consts::PI;
-use std::sync::{Arc, Mutex, RwLock};
 
 use crate::error::{Result, SimulatorError};
 use crate::quantum_gravity_simulation::{
-    AdSCFTConfig, BackgroundMetric, BoundaryRegion, BoundaryTheory, BulkGeometry,
-    EntanglementStructure, HolographicDuality, QuantumGravitySimulator, RTSurface,
+    AdSCFTConfig, BoundaryRegion, BoundaryTheory, BulkGeometry, EntanglementStructure,
+    HolographicDuality, QuantumGravitySimulator, RTSurface,
 };
 use crate::scirs2_integration::SciRS2Backend;
-use crate::statevector::StateVectorSimulator;
 
 /// Holographic quantum error correction configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,7 +55,7 @@ impl Default for HolographicQECConfig {
         Self {
             ads_cft_config: AdSCFTConfig::default(),
             boundary_qubits: 8,
-            bulk_qubits: 64,
+            bulk_qubits: 20,
             ads_radius: 1.0,
             central_charge: 12.0,
             error_correction_code: HolographicCodeType::AdSRindler,
@@ -148,6 +146,21 @@ pub struct HolographicQECSimulator {
 }
 
 impl HolographicQECSimulator {
+    /// Maximum safe number of qubits to prevent overflow
+    const MAX_SAFE_QUBITS: usize = 30;
+
+    /// Safely calculate dimension from number of qubits
+    fn safe_dimension(qubits: usize) -> Result<usize> {
+        if qubits > Self::MAX_SAFE_QUBITS {
+            return Err(SimulatorError::InvalidConfiguration(format!(
+                "Number of qubits {} exceeds maximum safe limit {}",
+                qubits,
+                Self::MAX_SAFE_QUBITS
+            )));
+        }
+        Ok(1 << qubits)
+    }
+
     /// Create a new holographic quantum error correction simulator
     pub fn new(config: HolographicQECConfig) -> Self {
         Self {
@@ -210,7 +223,7 @@ impl HolographicQECSimulator {
 
     /// Initialize bulk quantum state
     fn initialize_bulk_state(&mut self) -> Result<()> {
-        let dim = 1 << self.config.bulk_qubits;
+        let dim = Self::safe_dimension(self.config.bulk_qubits)?;
         let mut state = Array1::zeros(dim);
 
         // Initialize bulk state using holographic encoding
@@ -222,8 +235,8 @@ impl HolographicQECSimulator {
 
     /// Encode boundary state into bulk using holographic principles
     fn holographic_encode_bulk_state(&self, bulk_state: &mut Array1<Complex64>) -> Result<()> {
-        let boundary_dim = 1 << self.config.boundary_qubits;
-        let bulk_dim = 1 << self.config.bulk_qubits;
+        let boundary_dim = Self::safe_dimension(self.config.boundary_qubits)?;
+        let bulk_dim = Self::safe_dimension(self.config.bulk_qubits)?;
 
         // Create holographic encoding transformation
         let encoding_matrix = self.create_holographic_encoding_matrix(boundary_dim, bulk_dim)?;
@@ -353,9 +366,9 @@ impl HolographicQECSimulator {
     /// Calculate region entropy
     fn calculate_region_entropy(&self, region_index: usize, is_bulk: bool) -> f64 {
         let max_index = if is_bulk {
-            1 << self.config.bulk_qubits
+            Self::safe_dimension(self.config.bulk_qubits).unwrap_or(1)
         } else {
-            1 << self.config.boundary_qubits
+            Self::safe_dimension(self.config.boundary_qubits).unwrap_or(1)
         };
         let region_size = (region_index as f64) / (max_index as f64);
 

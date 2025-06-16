@@ -4,6 +4,8 @@
 //! for quantum optimization systems, including interactive 3D energy landscapes,
 //! real-time convergence tracking, and comprehensive performance dashboards.
 
+#![allow(dead_code)]
+
 use ndarray::{Array1, Array2, Array3};
 use num;
 use serde::{Deserialize, Serialize};
@@ -2315,7 +2317,7 @@ pub fn create_advanced_visualization_manager() -> AdvancedVisualizationManager {
 
 /// Create a lightweight visualization manager for testing
 pub fn create_lightweight_visualization_manager() -> AdvancedVisualizationManager {
-    let mut config = VisualizationConfig {
+    let config = VisualizationConfig {
         interactive_mode: false,
         real_time_updates: false,
         enable_3d_rendering: false,

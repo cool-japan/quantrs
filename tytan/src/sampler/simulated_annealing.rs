@@ -126,7 +126,7 @@ impl SASampler {
                 let diag_val = match matrix_or_tensor.ndim() {
                     2 => {
                         // For 2D matrices (QUBO)
-                        let mut matrix = matrix_or_tensor
+                        let matrix = matrix_or_tensor
                             .to_owned()
                             .into_dimensionality::<Ix2>()
                             .ok();
@@ -143,7 +143,7 @@ impl SASampler {
                     let quad_val = match matrix_or_tensor.ndim() {
                         2 => {
                             // For 2D matrices (QUBO)
-                            let mut matrix = matrix_or_tensor
+                            let matrix = matrix_or_tensor
                                 .to_owned()
                                 .into_dimensionality::<Ix2>()
                                 .ok();
@@ -192,7 +192,7 @@ impl SASampler {
                 .collect();
 
             // Create a result
-            let mut result = SampleResult {
+            let result = SampleResult {
                 assignments,
                 energy: annealing_result.best_energy,
                 occurrences: 1,
@@ -227,7 +227,7 @@ impl SASampler {
             .collect();
 
         // Create RNG with seed if provided
-        let mut rng = match self.seed {
+        let _rng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => {
                 let seed: u64 = rand::rng().random();
@@ -250,7 +250,7 @@ impl SASampler {
 
         // Set up annealing parameters
         let initial_temp = 10.0;
-        let mut final_temp = 0.1;
+        let final_temp = 0.1;
         let sweeps = 1000;
 
         // Function to evaluate HOBO energy
@@ -354,7 +354,7 @@ impl SASampler {
                         // Perform n_vars updates per sweep
                         for _ in 0..n_vars {
                             // Select random bit to flip
-                            let mut idx = thread_rng.random_range(0..n_vars);
+                            let idx = thread_rng.random_range(0..n_vars);
 
                             // Flip the bit
                             state[idx] = !state[idx];

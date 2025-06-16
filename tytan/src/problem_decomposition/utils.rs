@@ -89,9 +89,9 @@ impl SolutionIntegrator {
     fn weighted_voting_integration(
         &self,
         component_solutions: &[ComponentSolution],
-        global_var_map: &HashMap<String, usize>,
+        _global_var_map: &HashMap<String, usize>,
     ) -> Result<IntegratedSolution, String> {
-        let mut weights = self.compute_weights(component_solutions)?;
+        let weights = self.compute_weights(component_solutions)?;
         let mut integrated_assignment = HashMap::new();
         let mut variable_votes: HashMap<String, f64> = HashMap::new();
 
@@ -111,7 +111,7 @@ impl SolutionIntegrator {
         }
 
         // Calculate integrated energy
-        let mut energy = self.calculate_integrated_energy(component_solutions, &weights);
+        let energy = self.calculate_integrated_energy(component_solutions, &weights);
         let confidence = self.calculate_integration_confidence(component_solutions, &weights);
 
         Ok(IntegratedSolution {
@@ -126,7 +126,7 @@ impl SolutionIntegrator {
     fn consensus_integration(
         &self,
         component_solutions: &[ComponentSolution],
-        global_var_map: &HashMap<String, usize>,
+        _global_var_map: &HashMap<String, usize>,
     ) -> Result<IntegratedSolution, String> {
         let mut consensus_assignment = HashMap::new();
         let mut conflicts = Vec::new();
@@ -138,7 +138,7 @@ impl SolutionIntegrator {
             for (var_name, &value) in &solution.assignment {
                 variable_values
                     .entry(var_name.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(value);
             }
         }
@@ -162,7 +162,7 @@ impl SolutionIntegrator {
             }
         }
 
-        let mut energy = component_solutions
+        let energy = component_solutions
             .iter()
             .map(|s| s.energy)
             .fold(0.0, |acc, e| acc + e);
@@ -180,10 +180,10 @@ impl SolutionIntegrator {
     fn best_selection_integration(
         &self,
         component_solutions: &[ComponentSolution],
-        global_var_map: &HashMap<String, usize>,
+        _global_var_map: &HashMap<String, usize>,
     ) -> Result<IntegratedSolution, String> {
         // Find best solution by energy
-        let mut best_solution = component_solutions
+        let best_solution = component_solutions
             .iter()
             .min_by(|a, b| {
                 a.energy
@@ -204,7 +204,7 @@ impl SolutionIntegrator {
     fn majority_voting_integration(
         &self,
         component_solutions: &[ComponentSolution],
-        global_var_map: &HashMap<String, usize>,
+        _global_var_map: &HashMap<String, usize>,
     ) -> Result<IntegratedSolution, String> {
         let mut integrated_assignment = HashMap::new();
         let mut variable_votes: HashMap<String, (usize, usize)> = HashMap::new(); // (true_votes, false_votes)
@@ -227,11 +227,11 @@ impl SolutionIntegrator {
             integrated_assignment.insert(var_name, true_votes > false_votes);
         }
 
-        let mut energy = component_solutions
+        let energy = component_solutions
             .iter()
             .map(|s| s.energy)
             .fold(0.0, |acc, e| acc + e);
-        let mut confidence = 0.8; // Default confidence for majority voting
+        let confidence = 0.8; // Default confidence for majority voting
 
         Ok(IntegratedSolution {
             assignment: integrated_assignment,
@@ -349,6 +349,12 @@ pub struct DecompositionAnalyzer {
     metrics_history: Vec<DecompositionMetrics>,
 }
 
+impl Default for DecompositionAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DecompositionAnalyzer {
     /// Create new decomposition analyzer
     pub fn new() -> Self {
@@ -361,7 +367,7 @@ impl DecompositionAnalyzer {
     pub fn analyze_decomposition(
         &mut self,
         decomposition: &Partitioning,
-        original_qubo: &Array2<f64>,
+        _original_qubo: &Array2<f64>,
     ) -> DecompositionMetrics {
         let start_time = std::time::Instant::now();
 
@@ -370,7 +376,7 @@ impl DecompositionAnalyzer {
         let balance_factor = self.calculate_balance_factor(decomposition);
         let separator_size = self.calculate_average_separator_size(decomposition);
 
-        let mut metrics = DecompositionMetrics {
+        let metrics = DecompositionMetrics {
             width,
             num_clusters,
             balance_factor,
@@ -593,7 +599,7 @@ impl DecompositionValidator {
     /// Check consistency of coupling terms
     fn check_coupling_consistency(
         partitioning: &Partitioning,
-        original_qubo: &Array2<f64>,
+        _original_qubo: &Array2<f64>,
     ) -> Option<ValidationIssue> {
         // Check that coupling terms match original off-diagonal elements
         let mut inconsistencies = 0;

@@ -90,7 +90,7 @@ impl FujitsuDigitalAnnealerSampler {
     }
 
     /// Submit problem to Digital Annealer
-    fn submit_problem(&self, qubo: &Array2<f64>) -> Result<String, SamplerError> {
+    fn submit_problem(&self, _qubo: &Array2<f64>) -> Result<String, SamplerError> {
         // In a real implementation, this would:
         // 1. Format QUBO for DA API
         // 2. Submit via HTTP POST
@@ -103,8 +103,8 @@ impl FujitsuDigitalAnnealerSampler {
     /// Poll for results
     fn get_results(
         &self,
-        job_id: &str,
-        timeout: Duration,
+        _job_id: &str,
+        _timeout: Duration,
     ) -> Result<Vec<DASolution>, SamplerError> {
         // In a real implementation, this would:
         // 1. Poll the API for job completion

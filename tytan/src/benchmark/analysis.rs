@@ -159,7 +159,7 @@ impl PerformanceReport {
             platform_info: Self::get_platform_info(),
         };
 
-        let mut summary = Self::calculate_summary(results);
+        let summary = Self::calculate_summary(results);
         let backend_analysis = Self::analyze_backends(results);
         let sampler_analysis = Self::analyze_samplers(results);
         let scaling_analysis = Self::analyze_scaling(results);
@@ -262,7 +262,7 @@ impl PerformanceReport {
         for result in results {
             by_backend
                 .entry(result.backend_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
 
@@ -288,7 +288,7 @@ impl PerformanceReport {
                 let efficiency = result.metrics.calculate_efficiency();
                 size_performance
                     .entry(result.problem_size)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(efficiency.samples_per_second);
             }
 
@@ -318,7 +318,7 @@ impl PerformanceReport {
                 let efficiency = result.metrics.calculate_efficiency();
                 density_performance
                     .entry(density_str)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(efficiency.samples_per_second);
             }
 
@@ -357,7 +357,7 @@ impl PerformanceReport {
         for result in results {
             by_sampler
                 .entry(result.sampler_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
 
@@ -379,7 +379,7 @@ impl PerformanceReport {
                 / sampler_results.len() as f64;
 
             // Placeholder for best parameters
-            let mut best_parameters = HashMap::new();
+            let best_parameters = HashMap::new();
 
             // Performance by problem type (density)
             let mut problem_type_performance: HashMap<String, Vec<f64>> = HashMap::new();
@@ -394,7 +394,7 @@ impl PerformanceReport {
 
                 problem_type_performance
                     .entry(problem_type.to_string())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(result.metrics.quality.best_energy);
             }
 
@@ -442,8 +442,8 @@ impl PerformanceReport {
         let memory_complexity = Self::fit_complexity_model(&memory_data);
 
         // Calculate scaling efficiencies (simplified)
-        let mut weak_scaling_efficiency = 0.8; // Placeholder
-        let mut strong_scaling_efficiency = 0.7; // Placeholder
+        let weak_scaling_efficiency = 0.8; // Placeholder
+        let strong_scaling_efficiency = 0.7; // Placeholder
 
         // Find optimal problem sizes based on efficiency
         let mut size_efficiencies: HashMap<usize, f64> = HashMap::new();
@@ -529,7 +529,7 @@ impl PerformanceReport {
         // Calculate average performance for each configuration
         let mut config_performance: HashMap<String, (f64, f64)> = HashMap::new();
         for result in results {
-            let mut config = format!("{}-{}", result.backend_name, result.sampler_name);
+            let config = format!("{}-{}", result.backend_name, result.sampler_name);
             let efficiency = result.metrics.calculate_efficiency();
             let quality = result.metrics.quality.best_energy;
 
@@ -673,7 +673,7 @@ impl PerformanceReport {
 
     /// Save report to file
     pub fn save_to_file(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let mut json = serde_json::to_string_pretty(self)?;
+        let json = serde_json::to_string_pretty(self)?;
         std::fs::write(path, json)?;
         Ok(())
     }

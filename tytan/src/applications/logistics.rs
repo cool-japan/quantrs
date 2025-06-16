@@ -4,6 +4,8 @@
 //! including vehicle routing, supply chain optimization, and warehouse management.
 
 // Sampler types available for logistics applications
+#![allow(dead_code)]
+
 use ndarray::{Array1, Array2};
 use rand::prelude::*;
 use rand::rng;
@@ -267,7 +269,7 @@ impl VehicleRoutingOptimizer {
 
         for v in 0..self.num_vehicles {
             // Approximate capacity usage
-            let mut route_demand = 0.0;
+            let route_demand = 0.0;
 
             for i in 0..n_locations {
                 for j in 1..n_locations {
@@ -547,7 +549,7 @@ impl VehicleRoutingProblem {
             for i in 0..n_locations {
                 for j in 0..n_locations {
                     if i != j {
-                        let mut decision = if x[var_idx] > 0.5 { 1.0 } else { 0.0 };
+                        let decision = if x[var_idx] > 0.5 { 1.0 } else { 0.0 };
                         energy += decision * self.optimizer.distance_matrix[[i, j]];
                     }
                     var_idx += 1;
@@ -576,7 +578,7 @@ impl VehicleRoutingProblem {
             for _v in 0..self.optimizer.num_vehicles {
                 for i in 0..n_locations {
                     if i != j {
-                        let mut decision = if x[var_idx + i * n_locations + j] > 0.5 {
+                        let decision = if x[var_idx + i * n_locations + j] > 0.5 {
                             1.0
                         } else {
                             0.0
@@ -871,7 +873,7 @@ impl TSPOptimizer {
     ) -> Result<(Array2<f64>, HashMap<String, usize>), String> {
         // Variables: x_{s,i,t} = 1 if salesman s visits city i at time t
         let n_vars = num_salesmen * n * n;
-        let mut qubo = Array2::zeros((n_vars, n_vars));
+        let qubo = Array2::zeros((n_vars, n_vars));
         let mut var_map = HashMap::new();
 
         // Create variable mapping

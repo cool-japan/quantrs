@@ -7,7 +7,6 @@ including advanced circuit conversion, optimization passes, noise model
 translation, and full algorithm compatibility.
 """
 
-import warnings
 import numpy as np
 import time
 import logging
@@ -37,7 +36,7 @@ try:
 except ImportError:
     QISKIT_AVAILABLE = False
     QISKIT_VERSION = "not_available"
-    warnings.warn("Qiskit not available. Install with: pip install qiskit qiskit-algorithms")
+    pass
 
 try:
     from qiskit.providers.aer import Aer, AerSimulator
@@ -52,7 +51,7 @@ try:
     QUANTRS2_AVAILABLE = True
 except ImportError:
     QUANTRS2_AVAILABLE = False
-    warnings.warn("QuantRS2 core not available. Using enhanced mock implementation.")
+    pass
 
 
 class ConversionMode(Enum):

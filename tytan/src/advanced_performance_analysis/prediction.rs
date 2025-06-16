@@ -38,6 +38,12 @@ pub struct LinearRegressionModel {
     accuracy: f64,
 }
 
+impl Default for LinearRegressionModel {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LinearRegressionModel {
     pub fn new() -> Self {
         Self {
@@ -78,6 +84,12 @@ impl PerformancePredictionModel for LinearRegressionModel {
 #[derive(Debug)]
 pub struct RandomForestModel {
     accuracy: f64,
+}
+
+impl Default for RandomForestModel {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RandomForestModel {

@@ -3,6 +3,8 @@
 //! This module provides quantum-inspired and quantum-enhanced machine learning
 //! algorithms for optimization problems.
 
+#![allow(dead_code)]
+
 #[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
 use ndarray::{Array1, Array2, Array3};
@@ -41,7 +43,7 @@ impl QuantumBoltzmannMachine {
         let mut rng = StdRng::seed_from_u64(42);
 
         // Initialize weights and biases with simple random values
-        let mut weights = Array2::from_shape_fn((n_visible, n_hidden), |_| rng.random_range(-0.1..0.1));
+        let weights = Array2::from_shape_fn((n_visible, n_hidden), |_| rng.random_range(-0.1..0.1));
         let visible_bias = Array1::from_shape_fn(n_visible, |_| rng.random_range(-0.1..0.1));
         let hidden_bias = Array1::from_shape_fn(n_hidden, |_| rng.random_range(-0.1..0.1));
 
@@ -117,7 +119,7 @@ impl QuantumBoltzmannMachine {
         }
 
         let final_loss = *loss_history.last().unwrap();
-        let mut converged = final_loss < 0.01;
+        let converged = final_loss < 0.01;
 
         Ok(TrainingResult {
             final_loss,
@@ -410,7 +412,7 @@ impl QuantumVAE {
             let decoded = self.decode(&z);
 
             // Convert to binary
-            let mut binary = decoded.mapv(|x| x > 0.5);
+            let binary = decoded.mapv(|x| x > 0.5);
             samples.push(binary);
         }
 
@@ -470,7 +472,7 @@ impl QuantumGAN {
         let generator = QuantumGenerator::new(latent_dim, output_dim, depth);
         let discriminator = QuantumDiscriminator::new(output_dim, depth);
 
-        let mut config = QGANConfig {
+        let config = QGANConfig {
             gen_lr: 0.0002,
             disc_lr: 0.0002,
             disc_steps: 5,
@@ -495,7 +497,7 @@ impl QuantumGAN {
         let mut disc_losses = Vec::new();
         let mut rng = rng();
 
-        for epoch in 0..epochs {
+        for _epoch in 0..epochs {
             let mut epoch_gen_loss = 0.0;
             let mut epoch_disc_loss = 0.0;
 
@@ -577,7 +579,7 @@ impl QuantumGenerator {
     fn new(latent_dim: usize, output_dim: usize, depth: usize) -> Self {
         let mut rng = rng();
 
-        let mut params = Array2::from_shape_fn(
+        let params = Array2::from_shape_fn(
             (depth, latent_dim + output_dim),
             |_| rng.random::<f64>() * PI / 2.0 - PI / 4.0, // Sample from [-PI/4, PI/4]
         );
@@ -592,7 +594,7 @@ impl QuantumGenerator {
 
     fn generate<R: Rng>(&self, rng: &mut R) -> Array1<bool> {
         // Sample latent vector using simple approach
-        let mut latent = Array1::from_shape_fn(
+        let latent = Array1::from_shape_fn(
             self.latent_dim,
             |_| rng.random::<f64>() * 2.0 - 1.0, // Sample from [-1, 1]
         );
@@ -633,7 +635,7 @@ impl QuantumDiscriminator {
         let mut rng = rng();
         let normal = Normal::new(0.0, PI / 4.0).unwrap();
 
-        let mut params = Array2::from_shape_fn((depth, input_dim), |_| normal.sample(&mut rng));
+        let params = Array2::from_shape_fn((depth, input_dim), |_| normal.sample(&mut rng));
 
         Self {
             input_dim,
@@ -727,12 +729,12 @@ struct QuantumQNetwork {
 }
 
 #[derive(Debug, Clone)]
-struct Experience {
-    state: Array1<f64>,
-    action: usize,
-    reward: f64,
-    next_state: Array1<f64>,
-    done: bool,
+pub struct Experience {
+    pub state: Array1<f64>,
+    pub action: usize,
+    pub reward: f64,
+    pub next_state: Array1<f64>,
+    pub done: bool,
 }
 
 impl QuantumRL {
@@ -789,7 +791,7 @@ impl QuantumRL {
 
         // Sample batch
         for _ in 0..batch_size {
-            let mut idx = rng.random_range(0..self.replay_buffer.len());
+            let idx = rng.random_range(0..self.replay_buffer.len());
             let experience = &self.replay_buffer[idx];
 
             // Compute target
@@ -829,7 +831,7 @@ impl QuantumQNetwork {
         let mut rng = rng();
         let normal = Normal::new(0.0, 0.1).unwrap();
 
-        let mut params = Array3::from_shape_fn(
+        let params = Array3::from_shape_fn(
             (n_layers, input_dim + output_dim, input_dim + output_dim),
             |_| normal.sample(&mut rng),
         );

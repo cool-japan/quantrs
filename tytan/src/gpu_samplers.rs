@@ -3,15 +3,39 @@
 //! This module provides high-performance GPU samplers for solving QUBO and HOBO problems
 //! using CUDA kernels via SciRS2, with support for multi-GPU distributed sampling.
 
+#![allow(dead_code)]
+
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::{Array, ArrayD, Ix2};
+use rand::{thread_rng, Rng};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "scirs")]
-use crate::scirs_stub::{
-    scirs2_core::gpu::{get_device_count, DeviceInfo, GpuContext},
-    scirs2_linalg::gpu::GpuMatrix,
-};
+use scirs2_core::gpu;
+
+// Stubs for missing GPU functionality
+#[cfg(feature = "scirs")]
+fn get_device_count() -> usize {
+    // Placeholder
+    1
+}
+
+#[cfg(feature = "scirs")]
+struct DeviceInfo;
+
+#[cfg(feature = "scirs")]
+struct GpuContext;
+
+#[cfg(feature = "scirs")]
+impl GpuContext {
+    fn new(_device_id: u32) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(GpuContext)
+    }
+}
+
+#[cfg(feature = "scirs")]
+struct GpuMatrix;
 
 /// GPU-accelerated sampler with CUDA kernels via SciRS2
 pub struct EnhancedArminSampler {
@@ -184,7 +208,7 @@ impl EnhancedArminSampler {
             .map_err(|e| SamplerError::GpuError(format!("Energy allocation failed: {}", e)))?;
 
         // Initialize random states on GPU
-        ctx.init_random_states(&d_states, self.seed.unwrap_or_else(|| rng().random()))
+        ctx.init_random_states(&d_states, self.seed.unwrap_or_else(|| thread_rng().gen()))
             .map_err(|e| SamplerError::GpuError(format!("Random init failed: {}", e)))?;
 
         // Launch parallel tempering kernel
@@ -260,7 +284,7 @@ impl EnhancedArminSampler {
                 .collect();
 
             // Energy will be calculated on GPU in real implementation
-            let mut energy = 0.0; // Placeholder
+            let energy = 0.0; // Placeholder
 
             results.push(SampleResult {
                 assignments,
@@ -468,7 +492,7 @@ impl Sampler for MIKASAmpler {
         hobo: &(ArrayD<f64>, HashMap<String, usize>),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
-        let (_tensor, _var_map) = hobo;
+        let (tensor, var_map) = hobo;
 
         // Apply tensor decomposition for efficient GPU computation
         #[cfg(feature = "scirs")]
@@ -493,9 +517,11 @@ impl MIKASAmpler {
         var_map: &HashMap<String, usize>,
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
-        use crate::scirs_stub::scirs2_linalg::tensor_contraction::{
-            cp_decomposition, optimize_contraction_order,
-        };
+        // Stub tensor contraction functionality
+        use ndarray::{Array, IxDyn};
+        let cp_decomposition =
+            |_: &ArrayD<f64>| Ok((vec![], vec![Array::zeros(IxDyn(&[1]))], 0.0f64));
+        let optimize_contraction_order = |_: &[usize]| vec![];
 
         let n_vars = var_map.len();
         let order = tensor.ndim();

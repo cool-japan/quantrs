@@ -4,6 +4,8 @@
 //! quantum annealing problems, featuring hybrid quantum-classical architectures
 //! and adaptive learning algorithms.
 
+#![allow(dead_code)]
+
 use crate::sampler::SamplerError;
 use ndarray::{s, Array1, Array2};
 use rand::{prelude::*, rng};
@@ -1056,7 +1058,7 @@ impl QuantumNeuralNetwork {
         input: &Array1<f64>,
         layer: &ClassicalLayer,
     ) -> Result<Array1<f64>, SamplerError> {
-        let mut output = layer.weights.dot(input) + &layer.biases;
+        let output = layer.weights.dot(input) + &layer.biases;
 
         let activated_output = match layer.activation {
             ActivationFunction::ReLU => output.mapv(|x| x.max(0.0)),
@@ -1321,11 +1323,11 @@ impl QuantumNeuralNetwork {
 
     /// Compute parameter statistics
     fn compute_parameter_statistics(&self) -> ParameterStatistics {
-        let mut params = &self.parameters.quantum_params;
+        let params = &self.parameters.quantum_params;
         let mean = params.mean().unwrap_or(0.0);
         let std = params.std(0.0);
 
-        let mut ranges = vec![(
+        let ranges = vec![(
             *params
                 .iter()
                 .min_by(|a, b| a.partial_cmp(b).unwrap())
@@ -1481,7 +1483,7 @@ impl QuantumNeuralNetwork {
 
         // Add a preprocessing layer if needed
         if architecture.input_dim != architecture.num_qubits {
-            let mut weights = Array2::zeros((architecture.num_qubits, architecture.input_dim));
+            let weights = Array2::zeros((architecture.num_qubits, architecture.input_dim));
             let biases = Array1::zeros(architecture.num_qubits);
 
             layers.push(ClassicalLayer {

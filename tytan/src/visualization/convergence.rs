@@ -231,7 +231,7 @@ impl ConvergencePlot {
         let mut convergence_iterations = HashMap::new();
         let tolerance = 1e-6;
 
-        for (name, _) in &final_violations {
+        for name in final_violations.keys() {
             for (i, constraints) in self.constraint_history.iter().enumerate() {
                 if let Some(&violation) = constraints.get(name) {
                     if violation.abs() < tolerance {
@@ -274,7 +274,7 @@ impl ConvergencePlot {
         let mut convergence_windows = HashMap::new();
         let mut stable_parameters = Vec::new();
 
-        for (param_name, _) in &final_values {
+        for param_name in final_values.keys() {
             // Extract parameter values over time
             let values: Vec<f64> = self
                 .parameter_history
@@ -325,7 +325,7 @@ impl ConvergencePlot {
             return Ok(None);
         }
 
-        let mut tolerance = 0.01; // 1% variation
+        let tolerance = 0.01; // 1% variation
         let window = self.config.smoothing_window;
 
         for start in 0..values.len() - window {
@@ -393,7 +393,7 @@ impl ConvergencePlot {
 
         // Fit exponential decay: f(t) = a * exp(-rate * t) + c
         // Using simple linear regression on log scale
-        let mut best_so_far = self.best_so_far(objectives);
+        let best_so_far = self.best_so_far(objectives);
         let final_value = best_so_far.last().copied().unwrap_or(0.0);
 
         let mut x_sum = 0.0;
@@ -405,8 +405,8 @@ impl ConvergencePlot {
         for (i, &value) in best_so_far.iter().enumerate() {
             let diff = (value - final_value).abs();
             if diff > 1e-10 {
-                let mut x = i as f64;
-                let mut y = diff.ln();
+                let x = i as f64;
+                let y = diff.ln();
 
                 x_sum += x;
                 y_sum += y;
@@ -435,6 +435,7 @@ impl ConvergencePlot {
             return Ok(0.0);
         }
 
+        #[allow(unused_variables)]
         let mut direction_changes = 0;
         let mut total_variation = 0.0;
 
@@ -495,9 +496,9 @@ impl ConvergencePlot {
         objectives: &[f64],
     ) -> Result<Vec<ImprovementEvent>, Box<dyn std::error::Error>> {
         let mut events = Vec::new();
-        let mut threshold = 0.01; // 1% improvement
+        let threshold = 0.01; // 1% improvement
 
-        let mut best_so_far = self.best_so_far(objectives);
+        let best_so_far = self.best_so_far(objectives);
 
         for i in 1..best_so_far.len() {
             if best_so_far[i] < best_so_far[i - 1] {
@@ -529,11 +530,11 @@ impl ConvergencePlot {
         }
 
         // Use exponential extrapolation on best-so-far
-        let mut best_so_far = self.best_so_far(objectives);
+        let best_so_far = self.best_so_far(objectives);
         let rate = self.estimate_convergence_rate(objectives)?;
 
         if rate > 0.0 {
-            let mut current = best_so_far.last().copied().unwrap();
+            let current = best_so_far.last().copied().unwrap();
             let initial = best_so_far[0];
 
             // Estimate asymptotic value
@@ -566,8 +567,8 @@ impl ConvergencePlot {
         let mut result = Vec::with_capacity(data.len());
 
         // Fill initial values
-        for i in 0..window / 2 {
-            result.push(data[i]);
+        for item in data.iter().take(window / 2) {
+            result.push(*item);
         }
 
         // Calculate moving average
@@ -577,8 +578,8 @@ impl ConvergencePlot {
         }
 
         // Fill final values
-        for i in data.len() - window / 2..data.len() {
-            result.push(data[i]);
+        for item in data.iter().skip(data.len() - window / 2) {
+            result.push(*item);
         }
 
         result
@@ -590,7 +591,7 @@ impl ConvergencePlot {
         {
             use crate::scirs_stub::scirs2_plot::{Figure, Subplot};
 
-            let fig = Figure::new();
+            let mut fig = Figure::new();
             let iterations: Vec<f64> = (0..self.objective_history.len())
                 .map(|i| i as f64)
                 .collect();
@@ -757,7 +758,7 @@ impl ConvergencePlot {
             timestamp: std::time::SystemTime::now(),
         };
 
-        let mut json = serde_json::to_string_pretty(&export)?;
+        let json = serde_json::to_string_pretty(&export)?;
         std::fs::write(path, json)?;
 
         Ok(())
@@ -783,7 +784,7 @@ pub fn plot_convergence(
     constraints: Option<Vec<HashMap<String, f64>>>,
     config: Option<ConvergenceConfig>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut config = config.unwrap_or_default();
+    let config = config.unwrap_or_default();
     let mut plotter = ConvergencePlot::new(config);
 
     // Add data
@@ -802,7 +803,7 @@ pub fn track_tuning_convergence(
     evaluations: &[TuningEvaluation],
     config: Option<ConvergenceConfig>,
 ) -> ConvergencePlot {
-    let mut config = config.unwrap_or_default();
+    let config = config.unwrap_or_default();
     let mut plotter = ConvergencePlot::new(config);
 
     for eval in evaluations {
@@ -823,7 +824,7 @@ pub fn track_adaptive_convergence(
     parameter_history: &[HashMap<String, f64>],
     config: Option<ConvergenceConfig>,
 ) -> ConvergencePlot {
-    let mut config = config.unwrap_or_default();
+    let config = config.unwrap_or_default();
     let mut plotter = ConvergencePlot::new(config);
 
     let elapsed = std::time::Duration::from_secs(1);

@@ -4,6 +4,8 @@
 //! process tomography, and quantum system characterization using advanced
 //! techniques including shadow tomography and compressed sensing.
 
+#![allow(dead_code)]
+
 use ndarray::{Array1, Array2, Array4};
 use rand::{prelude::*, rng};
 use std::collections::HashMap;
@@ -972,7 +974,7 @@ impl QuantumStateTomography {
                 let mut outcome = Vec::new();
 
                 // Simulate measurement outcomes
-                for qubit in 0..self.num_qubits {
+                for _qubit in 0..self.num_qubits {
                     // Random outcome for simulation
                     outcome.push(if rng.random::<f64>() < 0.5 { 0 } else { 1 });
                 }
@@ -1047,7 +1049,7 @@ impl QuantumStateTomography {
 
             // Compute variances and covariances
             let variances = Array1::ones(self.num_qubits) - expectation_values.mapv(|x| x * x);
-            let mut covariances = Array2::zeros((self.num_qubits, self.num_qubits));
+            let covariances = Array2::zeros((self.num_qubits, self.num_qubits));
 
             self.measurement_data.statistics.insert(
                 setting_name.clone(),
@@ -1093,7 +1095,7 @@ impl QuantumStateTomography {
             let gradient = self.compute_likelihood_gradient(&density_matrix)?;
 
             // Simple gradient ascent step
-            let mut step_size = 0.01;
+            let step_size = 0.01;
             density_matrix = &density_matrix + &(gradient * step_size);
 
             // Project back to valid density matrix
@@ -1353,10 +1355,10 @@ impl QuantumStateTomography {
 
         if n == 2 {
             // Analytical eigendecomposition for 2x2 matrices
-            let mut a = matrix[[0, 0]];
+            let a = matrix[[0, 0]];
             let b = matrix[[0, 1]];
             let c = matrix[[1, 0]];
-            let mut d = matrix[[1, 1]];
+            let d = matrix[[1, 1]];
 
             let trace = a + d;
             let det = a * d - b * c;
@@ -1490,7 +1492,7 @@ impl QuantumStateTomography {
             passed = false;
         }
 
-        let mut score = if passed { 1.0 } else { 0.5 };
+        let score = if passed { 1.0 } else { 0.5 };
 
         Ok(ValidationResult {
             passed,
@@ -1622,7 +1624,7 @@ pub fn create_default_tomography_config() -> TomographyConfig {
 
 /// Create tomography system for given number of qubits
 pub fn create_tomography_system(num_qubits: usize) -> QuantumStateTomography {
-    let mut config = create_default_tomography_config();
+    let config = create_default_tomography_config();
     QuantumStateTomography::new(num_qubits, config)
 }
 

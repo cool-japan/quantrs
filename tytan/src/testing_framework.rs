@@ -3,6 +3,8 @@
 //! This module provides comprehensive testing tools for QUBO problems,
 //! including test case generation, validation, and benchmarking.
 
+#![allow(dead_code)]
+
 #[cfg(feature = "dwave")]
 use crate::compile::{Compile, CompiledModel};
 use crate::sampler::Sampler;
@@ -742,7 +744,7 @@ impl TestingFramework {
         use std::thread;
 
         let test_cases = Arc::new(self.suite.test_cases.clone());
-        let mut results = Arc::new(Mutex::new(Vec::new()));
+        let results = Arc::new(Mutex::new(Vec::new()));
         let failures = Arc::new(Mutex::new(Vec::new()));
 
         let total_start = Instant::now();
@@ -911,7 +913,7 @@ impl TestingFramework {
 
     /// Add stress test cases
     pub fn add_stress_tests(&mut self) {
-        let mut stress_categories = vec![
+        let stress_categories = vec![
             TestCategory {
                 name: "Large Scale Tests".to_string(),
                 description: "Tests with large problem sizes".to_string(),
@@ -1189,7 +1191,7 @@ impl TestingFramework {
             for problem_type in &category.problem_types {
                 for difficulty in &category.difficulties {
                     for size in &self.config.problem_sizes {
-                        let mut config = GeneratorConfig {
+                        let config = GeneratorConfig {
                             problem_type: problem_type.clone(),
                             size: *size,
                             difficulty: difficulty.clone(),
@@ -1293,7 +1295,7 @@ impl TestingFramework {
         };
 
         for validator in &self.validators {
-            let mut result = validator.validate(
+            let result = validator.validate(
                 test_case,
                 &TestResult {
                     test_id: test_case.id.clone(),
@@ -1625,9 +1627,9 @@ impl TestingFramework {
             .unwrap();
             json.push_str("    }");
             if i < self.results.test_results.len() - 1 {
-                json.push_str(",");
+                json.push(',');
             }
-            json.push_str("\n");
+            json.push('\n');
         }
         json.push_str("  ],\n");
 
@@ -1650,9 +1652,9 @@ impl TestingFramework {
             .unwrap();
             json.push_str("    }");
             if i < self.results.failures.len() - 1 {
-                json.push_str(",");
+                json.push(',');
             }
-            json.push_str("\n");
+            json.push('\n');
         }
         json.push_str("  ]\n");
 
@@ -1783,7 +1785,7 @@ impl TestingFramework {
 
     /// Save report to file
     pub fn save_report(&self, filename: &str) -> Result<(), String> {
-        let mut report = self.generate_report()?;
+        let report = self.generate_report()?;
         let mut file =
             File::create(filename).map_err(|e| format!("Failed to create file: {}", e))?;
         file.write_all(report.as_bytes())
@@ -1893,7 +1895,7 @@ impl Validator for ObjectiveValidator {
         // Check against optimal if known
         if let Some(optimal_value) = test_case.optimal_value {
             let gap = (result.objective_value - optimal_value).abs() / optimal_value.abs();
-            let mut acceptable_gap = 0.05; // 5% gap
+            let acceptable_gap = 0.05; // 5% gap
 
             checks.push(ValidationCheck {
                 name: "Optimality gap".to_string(),
@@ -1927,8 +1929,8 @@ impl ObjectiveValidator {
 
         for _ in 0..samples {
             let mut x = vec![0.0; n];
-            for i in 0..n {
-                x[i] = if rng.random::<bool>() { 1.0 } else { 0.0 };
+            for x_item in x.iter_mut().take(n) {
+                *x_item = if rng.random::<bool>() { 1.0 } else { 0.0 };
             }
 
             let mut value = 0.0;
@@ -1952,8 +1954,8 @@ impl Validator for BoundsValidator {
     fn validate(&self, test_case: &TestCase, result: &TestResult) -> ValidationResult {
         let mut checks = Vec::new();
 
-        // Check all variables are binary
-        let all_binary = result.solution.values().all(|&v| v == true || v == false);
+        // Check all variables are binary (always true for bool type)
+        let all_binary = true;
 
         checks.push(ValidationCheck {
             name: "Binary variables".to_string(),
@@ -2148,7 +2150,7 @@ impl TestGenerator for TSPGenerator {
         // Variable mapping: x[i,j] = city i at position j
         for i in 0..n_cities {
             for j in 0..n_cities {
-                let mut idx = i * n_cities + j;
+                let idx = i * n_cities + j;
                 var_map.insert(format!("x_{}_{}", i, j), idx);
             }
         }
@@ -2283,7 +2285,7 @@ impl TestGenerator for GraphColoringGenerator {
         let mut test_cases = Vec::new();
 
         // Generate random graph
-        let mut edge_prob = 0.3;
+        let edge_prob = 0.3;
         let mut edges = Vec::new();
 
         for i in 0..n_vertices {
@@ -2302,7 +2304,7 @@ impl TestGenerator for GraphColoringGenerator {
         // Variable mapping: x[v,c] = vertex v has color c
         for v in 0..n_vertices {
             for c in 0..n_colors {
-                let mut idx = v * n_colors + c;
+                let idx = v * n_colors + c;
                 var_map.insert(format!("x_{}_{}", v, c), idx);
             }
         }
@@ -2310,7 +2312,7 @@ impl TestGenerator for GraphColoringGenerator {
         // Objective: minimize number of colors used (simplified)
         for v in 0..n_vertices {
             for c in 0..n_colors {
-                let mut idx = v * n_colors + c;
+                let idx = v * n_colors + c;
                 qubo[[idx, idx]] -= c as f64; // Prefer lower colors
             }
         }
@@ -2483,7 +2485,7 @@ impl TestGenerator for RandomQuboGenerator {
         for i in 0..n {
             for j in i..n {
                 if rng.random::<f64>() < density {
-                    let mut value = rng.random_range(-10.0..10.0);
+                    let value = rng.random_range(-10.0..10.0);
                     qubo[[i, j]] = value;
                     if i != j {
                         qubo[[j, i]] = value;
@@ -2633,7 +2635,7 @@ impl TestGenerator for LogisticsTestGenerator {
         for v in 0..n_vehicles {
             for i in 0..n_locations {
                 for j in 0..n_locations {
-                    let mut idx = v * n_locations * n_locations + i * n_locations + j;
+                    let idx = v * n_locations * n_locations + i * n_locations + j;
                     var_map.insert(format!("x_{}_{}_{}", v, i, j), idx);
                 }
             }
@@ -2644,7 +2646,7 @@ impl TestGenerator for LogisticsTestGenerator {
             for i in 0..n_locations {
                 for j in 0..n_locations {
                     if i != j {
-                        let mut idx = v * n_locations * n_locations + i * n_locations + j;
+                        let idx = v * n_locations * n_locations + i * n_locations + j;
                         let distance = rng.random_range(1.0..20.0);
                         qubo[[idx, idx]] += distance;
                     }
@@ -2706,7 +2708,7 @@ impl TestGenerator for ManufacturingTestGenerator {
         // Variable mapping: x[j][m] = job j on machine m
         for j in 0..n_jobs {
             for m in 0..n_machines {
-                let mut idx = j * n_machines + m;
+                let idx = j * n_machines + m;
                 var_map.insert(format!("job_{}_machine_{}", j, m), idx);
             }
         }
@@ -2714,7 +2716,7 @@ impl TestGenerator for ManufacturingTestGenerator {
         // Add processing time objective
         for j in 0..n_jobs {
             for m in 0..n_machines {
-                let mut idx = j * n_machines + m;
+                let idx = j * n_machines + m;
                 let processing_time = rng.random_range(1.0..10.0);
                 qubo[[idx, idx]] += processing_time;
             }

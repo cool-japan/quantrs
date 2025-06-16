@@ -133,8 +133,6 @@ try:
         
 except ImportError:
     # Stub implementations for when the native module is not available
-    import warnings
-    warnings.warn("Native QuantRS2 module not found. Using stub implementations.")
     
     # Import stub implementations
     from ._stub import PyCircuit, PySimulationResult

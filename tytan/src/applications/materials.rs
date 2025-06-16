@@ -4,6 +4,8 @@
 //! including crystal structure prediction, phase transitions, and property optimization.
 
 // Sampler types available for materials applications
+#![allow(dead_code)]
+
 use ndarray::Array2;
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -441,7 +443,7 @@ impl CrystalStructurePredictor {
         var_map: &mut HashMap<String, usize>,
         resolution: usize,
     ) -> Result<(), String> {
-        let mut params = ["a", "b", "c", "alpha", "beta", "gamma"];
+        let params = ["a", "b", "c", "alpha", "beta", "gamma"];
         let mut var_idx = 0;
 
         for param in &params {
@@ -824,7 +826,7 @@ impl CrystalStructurePredictor {
     fn add_fitness_function(
         &self,
         qubo: &mut Array2<f64>,
-        var_map: &HashMap<String, usize>,
+        _var_map: &HashMap<String, usize>,
     ) -> Result<(), String> {
         // Simplified fitness based on:
         // - Energy (lower is better)
@@ -873,7 +875,7 @@ impl CrystalStructurePredictor {
                 let var_name = format!("lattice_{}_{}", param, i);
                 if *solution.get(&var_name).unwrap_or(&false) {
                     // Map index to value
-                    let mut value = match param {
+                    let value = match param {
                         "a" | "b" | "c" => 3.0 + i as f64 * 0.5,             // 3-8 Å
                         "alpha" | "beta" | "gamma" => 60.0 + i as f64 * 6.0, // 60-120°
                         _ => 0.0,
@@ -933,7 +935,7 @@ impl CrystalStructurePredictor {
     fn determine_space_group(
         &self,
         lattice: &Lattice,
-        positions: &[AtomicPosition],
+        _positions: &[AtomicPosition],
     ) -> Result<SpaceGroup, String> {
         // Simplified: determine based on lattice type
         let lattice_type = lattice.determine_type();
@@ -1005,7 +1007,7 @@ impl Lattice {
 
     /// Determine lattice type
     pub fn determine_type(&self) -> LatticeType {
-        let mut tol = 0.01;
+        let tol = 0.01;
 
         if (self.a - self.b).abs() < tol && (self.b - self.c).abs() < tol {
             if (self.alpha - 90.0).abs() < tol

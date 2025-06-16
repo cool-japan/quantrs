@@ -3,6 +3,8 @@
 //! This module provides quantum-inspired ML algorithms that leverage
 //! quantum optimization principles for classical machine learning tasks.
 
+#![allow(dead_code)]
+
 use crate::sampler::Sampler;
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
 use rand::prelude::*;
@@ -93,13 +95,13 @@ impl QuantumSVM {
         let (qubo, var_map) = self.create_svm_qubo(&k_matrix, y)?;
 
         // Solve using quantum sampler
-        let mut results = sampler
+        let results = sampler
             .run_qubo(&(qubo, var_map.clone()), 100)
             .map_err(|e| format!("Sampling error: {:?}", e))?;
 
         if let Some(best) = results.first() {
             // Extract alphas from solution
-            let mut alphas = self.decode_alphas(&best.assignments, &var_map, n_samples);
+            let alphas = self.decode_alphas(&best.assignments, &var_map, n_samples);
 
             // Identify support vectors
             let sv_indices: Vec<usize> = alphas
@@ -138,8 +140,8 @@ impl QuantumSVM {
     /// Predict labels for new data
     pub fn predict(&self, x: &Array2<f64>) -> Result<Array1<f64>, String> {
         let support_vectors = self.support_vectors.as_ref().ok_or("Model not trained")?;
-        let mut alphas = self.alphas.as_ref().ok_or("Model not trained")?;
-        let mut sv_labels = self.sv_labels.as_ref().ok_or("Model not trained")?;
+        let alphas = self.alphas.as_ref().ok_or("Model not trained")?;
+        let sv_labels = self.sv_labels.as_ref().ok_or("Model not trained")?;
         let bias = self.bias.ok_or("Model not trained")?;
 
         let n_samples = x.shape()[0];
@@ -255,7 +257,7 @@ impl QuantumSVM {
         // Linear terms (maximize sum becomes minimize negative sum)
         for i in 0..n {
             for b in 0..n_bits {
-                let mut idx = i * n_bits + b;
+                let idx = i * n_bits + b;
                 let weight = -(1 << b) as f64 / (1 << n_bits) as f64;
                 qubo[[idx, idx]] += weight;
             }
@@ -264,7 +266,7 @@ impl QuantumSVM {
         // Quadratic terms
         for i in 0..n {
             for j in 0..n {
-                let mut coef = 0.5 * y[i] * y[j] * k_matrix[[i, j]];
+                let coef = 0.5 * y[i] * y[j] * k_matrix[[i, j]];
 
                 for bi in 0..n_bits {
                     for bj in 0..n_bits {
@@ -327,7 +329,7 @@ impl QuantumSVM {
             let mut alpha = 0.0;
             for b in 0..n_bits {
                 let var_name = format!("alpha_{}_{}", i, b);
-                if let Some(&var_idx) = var_map.get(&var_name) {
+                if let Some(&_var_idx) = var_map.get(&var_name) {
                     if assignments.get(&var_name).copied().unwrap_or(false) {
                         alpha += (1 << b) as f64 / (1 << n_bits) as f64 * self.c;
                     }
@@ -415,6 +417,7 @@ impl QuantumBoltzmannMachine {
         let batch_size = data.shape()[0];
 
         for epoch in 0..epochs {
+            #[allow(unused_assignments)]
             let mut epoch_loss = 0.0;
 
             // Positive phase - from data
@@ -480,7 +483,7 @@ impl QuantumBoltzmannMachine {
             }
 
             // Sample using quantum sampler
-            let mut results = sampler
+            let results = sampler
                 .run_qubo(&(qubo, var_map), 1)
                 .map_err(|e| format!("Sampling error: {:?}", e))?;
 
@@ -524,7 +527,7 @@ impl QuantumBoltzmannMachine {
                 qubo[[j, j]] = -linear / self.temperature;
             }
 
-            let mut results = sampler
+            let results = sampler
                 .run_qubo(&(qubo, var_map), 1)
                 .map_err(|e| format!("Sampling error: {:?}", e))?;
 
@@ -558,7 +561,7 @@ impl QuantumBoltzmannMachine {
 
         // Gibbs sampling
         for _ in 0..10 {
-            let mut visible = self.sample_visible_given_hidden(&hidden.view(), sampler)?;
+            let visible = self.sample_visible_given_hidden(&hidden.view(), sampler)?;
             hidden = self.sample_hidden_given_visible(&visible.view(), sampler)?;
         }
 
@@ -616,7 +619,7 @@ impl QuantumClustering {
         let (qubo, var_map) = self.create_clustering_qubo(&distances)?;
 
         // Solve using quantum sampler
-        let mut results = sampler
+        let results = sampler
             .run_qubo(&(qubo, var_map.clone()), 100)
             .map_err(|e| format!("Sampling error: {:?}", e))?;
 
@@ -752,7 +755,7 @@ impl QuantumClustering {
     fn decode_clusters(
         &self,
         assignments: &HashMap<String, bool>,
-        var_map: &HashMap<String, usize>,
+        _var_map: &HashMap<String, usize>,
         n_samples: usize,
     ) -> Array1<usize> {
         let mut clusters = Array1::zeros(n_samples);

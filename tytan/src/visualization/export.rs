@@ -115,7 +115,7 @@ impl VisualizationExporter {
         data: &T,
         path: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut json = if self.compression {
+        let json = if self.compression {
             serde_json::to_string(data)?
         } else {
             serde_json::to_string_pretty(data)?
@@ -228,7 +228,7 @@ impl VisualizationExporter {
 
             if let Some(constraints) = &data.constraints {
                 for name in &data.constraint_names {
-                    let mut value = constraints[i].get(name).copied().unwrap_or(0.0);
+                    let value = constraints[i].get(name).copied().unwrap_or(0.0);
                     write!(file, ",{}", value)?;
                 }
             }
@@ -570,7 +570,7 @@ pub fn export_visualization<T: Serialize>(
 
     match format {
         ExportFormat::JSON => {
-            let mut json = serde_json::to_string_pretty(data)?;
+            let json = serde_json::to_string_pretty(data)?;
             std::fs::write(path, json)?;
         }
         _ => {

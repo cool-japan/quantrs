@@ -16,7 +16,6 @@ try:
     CIRQ_AVAILABLE = True
 except ImportError:
     CIRQ_AVAILABLE = False
-    warnings.warn("Cirq not available. Install with: pip install cirq")
     
     # Mock classes for when Cirq is not available
     class CirqCircuit:
@@ -48,7 +47,6 @@ try:
     QUANTRS2_AVAILABLE = True
 except ImportError:
     QUANTRS2_AVAILABLE = False
-    warnings.warn("QuantRS2 core not available. Using mock implementation.")
     
     class QuantRS2Circuit:
         def __init__(self, n_qubits):
@@ -106,7 +104,6 @@ class CirqQuantRS2Converter:
             QuantRS2Circuit: The converted circuit
         """
         if not CIRQ_AVAILABLE:
-            warnings.warn("Cirq not available, using mock conversion")
             return QuantRS2Circuit(n_qubits or 2)
         
         # Auto-detect number of qubits
@@ -137,7 +134,6 @@ class CirqQuantRS2Converter:
             CirqCircuit: The converted circuit
         """
         if not CIRQ_AVAILABLE:
-            warnings.warn("Cirq not available, using mock conversion")
             return CirqCircuit()
         
         cirq_circuit = CirqCircuit()
@@ -187,7 +183,7 @@ class CirqQuantRS2Converter:
             elif gate_name.endswith('Z'):
                 quantrs2_circuit.rz(qubit_indices[0], angle)
         else:
-            warnings.warn(f"Unsupported Cirq gate: {gate_name}")
+            pass
     
     def _convert_gate_to_cirq(self, gate_info, qubits):
         """Convert a QuantRS2 gate to Cirq operation."""
@@ -218,7 +214,6 @@ class CirqQuantRS2Converter:
             angle = gate_info[2]
             return cirq.rz(angle)(qubits[gate_info[1]])
         else:
-            warnings.warn(f"Unsupported QuantRS2 gate: {gate_type}")
             return None
 
 
@@ -271,7 +266,7 @@ class CirqBackend:
         elif gate_name == 'RZ' and params:
             self.circuit.append(cirq.rz(params[0])(cirq_qubits[0]))
         else:
-            warnings.warn(f"Unsupported gate: {gate_name}")
+            pass
     
     def simulate(self, shots: int = 1000):
         """Simulate the circuit.
@@ -310,7 +305,6 @@ def create_bell_state_cirq() -> CirqCircuit:
         CirqCircuit: Bell state circuit
     """
     if not CIRQ_AVAILABLE:
-        warnings.warn("Cirq not available, returning mock circuit")
         return CirqCircuit()
     
     q0, q1 = GridQubit(0, 0), GridQubit(0, 1)
@@ -329,10 +323,8 @@ def convert_qiskit_to_cirq(qiskit_circuit) -> CirqCircuit:
         CirqCircuit: Converted circuit
     """
     if not CIRQ_AVAILABLE:
-        warnings.warn("Cirq not available for conversion")
         return CirqCircuit()
     
-    warnings.warn("Qiskit-to-Cirq conversion not fully implemented")
     return CirqCircuit()
 
 

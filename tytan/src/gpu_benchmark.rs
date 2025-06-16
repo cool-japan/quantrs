@@ -3,6 +3,8 @@
 //! This module provides comprehensive benchmarking tools for GPU samplers,
 //! including automated testing, scaling analysis, and energy efficiency metrics.
 
+#![allow(dead_code)]
+
 use crate::gpu_performance::GpuProfiler;
 use crate::sampler::Sampler;
 use ndarray::Array2;
@@ -13,10 +15,27 @@ use std::io::Write;
 use std::time::{Duration, Instant};
 
 #[cfg(feature = "scirs")]
-use crate::scirs_stub::{
-    scirs2_core::gpu::{get_device_count, GpuContext},
-    scirs2_plot::{Bar, Line, Plot, Scatter},
-};
+use scirs2_core::gpu;
+
+// Stub functions for missing GPU functionality
+#[cfg(feature = "scirs")]
+fn get_device_count() -> usize {
+    // Placeholder - in reality this would query the GPU backend
+    1
+}
+
+#[cfg(feature = "scirs")]
+struct GpuContext;
+
+#[cfg(feature = "scirs")]
+impl GpuContext {
+    fn new(_device_id: u32) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(GpuContext)
+    }
+}
+
+#[cfg(feature = "scirs")]
+use crate::scirs_stub::scirs2_plot::{Bar, Line, Plot, Scatter};
 
 /// Benchmark configuration
 #[derive(Clone)]
@@ -275,8 +294,8 @@ impl<S: Sampler> GpuBenchmark<S> {
             let elapsed = start.elapsed();
 
             // Get GPU metrics from profiler
-            let mut gpu_util = 0.75; // Placeholder - would get from profiler
-            let mut bandwidth_util = 0.60; // Placeholder
+            let gpu_util = 0.75; // Placeholder - would get from profiler
+            let bandwidth_util = 0.60; // Placeholder
 
             results.batch_results.insert(
                 batch_size,
@@ -442,7 +461,7 @@ impl<S: Sampler> GpuBenchmark<S> {
     }
 
     /// Plot scaling results
-    fn plot_scaling_results(&self, _results: &BenchmarkResults) -> Result<(), String> {
+    fn plot_scaling_results(&self, results: &BenchmarkResults) -> Result<(), String> {
         #[cfg(feature = "scirs")]
         {
             let plot = Plot::new();
@@ -482,7 +501,7 @@ impl<S: Sampler> GpuBenchmark<S> {
     }
 
     /// Plot batch size optimization
-    fn plot_batch_optimization(&self, _results: &BenchmarkResults) -> Result<(), String> {
+    fn plot_batch_optimization(&self, results: &BenchmarkResults) -> Result<(), String> {
         #[cfg(feature = "scirs")]
         {
             let plot = Plot::new();
@@ -522,10 +541,10 @@ impl<S: Sampler> GpuBenchmark<S> {
     }
 
     /// Plot temperature schedule comparison
-    fn plot_temperature_comparison(&self, _results: &BenchmarkResults) -> Result<(), String> {
+    fn plot_temperature_comparison(&self, results: &BenchmarkResults) -> Result<(), String> {
         #[cfg(feature = "scirs")]
         {
-            let plot = Plot::new();
+            let mut plot = Plot::new();
 
             let schedules: Vec<String> = results.temp_results.keys().cloned().collect();
             let qualities: Vec<f64> = schedules
@@ -562,7 +581,7 @@ fn generate_random_qubo(size: usize) -> (Array2<f64>, HashMap<String, usize>) {
 
         // Quadratic terms
         for j in i + 1..size {
-            let mut value = rng.random_range(-2.0..2.0);
+            let value = rng.random_range(-2.0..2.0);
             qubo[[i, j]] = value;
             qubo[[j, i]] = value;
         }

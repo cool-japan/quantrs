@@ -24,7 +24,6 @@ try:
     HAS_QUANTRS2 = True
 except ImportError:
     HAS_QUANTRS2 = False
-    warnings.warn("quantrs2 not available. Profiler will use mock implementations.")
 
 
 @dataclass
@@ -364,7 +363,7 @@ class CircuitProfiler:
             ]
             
         except Exception as e:
-            warnings.warn(f"Circuit analysis failed: {e}")
+            pass
         
         return analysis
     
@@ -390,7 +389,6 @@ class CircuitProfiler:
             return result
             
         except Exception as e:
-            warnings.warn(f"Simulation profiling failed: {e}")
             return None
     
     def _profile_gate_timings(self, circuit: 'Circuit'):

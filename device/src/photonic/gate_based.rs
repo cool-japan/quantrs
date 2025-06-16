@@ -172,13 +172,15 @@ impl PhotonicQubitState {
 
         let old_amp_0 = self.amplitude_0;
         let old_amp_1 = self.amplitude_1;
-        let old_phase = self.relative_phase;
 
-        self.amplitude_0 = (cos_half * old_amp_0 - sin_half * old_amp_1 * old_phase.cos()).abs();
-        self.amplitude_1 = (cos_half * old_amp_1 - sin_half * old_amp_0).abs();
+        // RX rotation: |0⟩ → cos(θ/2)|0⟩ - i*sin(θ/2)|1⟩
+        //              |1⟩ → -i*sin(θ/2)|0⟩ + cos(θ/2)|1⟩
+        // For real amplitudes, we approximate the complex rotation
+        self.amplitude_0 = (cos_half * old_amp_0 + sin_half * old_amp_1).abs();
+        self.amplitude_1 = (sin_half * old_amp_0 + cos_half * old_amp_1).abs();
 
-        // Update phase (simplified)
-        if sin_half * old_amp_1 * old_phase.sin() < 0.0 {
+        // Update phase to account for the imaginary components
+        if angle.abs() > PI / 2.0 {
             self.relative_phase += PI;
         }
     }
@@ -216,7 +218,7 @@ impl PhotonicGates {
         PhotonicGateImpl {
             gate_name: "PolarizationX".to_string(),
             encoding_required: PhotonicQubitEncoding::Polarization,
-            optical_elements: vec![OpticalElement::HalfWaveplate { angle: PI / 4.0 }],
+            optical_elements: vec![OpticalElement::HalfWaveplate { angle: PI / 2.0 }],
             success_probability: 1.0,
             fidelity: 0.995,
         }

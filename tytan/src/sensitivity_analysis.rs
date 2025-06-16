@@ -4,6 +4,8 @@
 //! are to changes in various parameters, including penalty weights, sampler
 //! parameters, and problem formulation choices.
 
+#![allow(dead_code)]
+
 #[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
 use crate::sampler::Sampler;
@@ -630,7 +632,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
 
         for param in self.parameters.clone() {
             let name = self.get_parameter_name(&param);
-            let mut value = match param {
+            let value = match param {
                 ParameterType::SamplerParameter { default_value, .. } => default_value,
                 ParameterType::PenaltyWeight { default_weight, .. } => default_weight,
                 ParameterType::FormulationParameter { default_value, .. } => default_value,
@@ -879,7 +881,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
                 let (min_val, max_val) = self.get_parameter_range(&param);
 
                 let level = permutations[j][i];
-                let mut value = min_val
+                let value = min_val
                     + (level as f64 + rng.random::<f64>()) / num_samples as f64
                         * (max_val - min_val);
 
@@ -975,7 +977,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
                 let level = idx % levels_per_factor;
                 idx /= levels_per_factor;
 
-                let mut value = if levels_per_factor == 1 {
+                let value = if levels_per_factor == 1 {
                     (min_val + max_val) / 2.0
                 } else {
                     min_val + level as f64 / (levels_per_factor - 1) as f64 * (max_val - min_val)
@@ -1007,7 +1009,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             let mut level_counts = vec![0; levels_per_factor];
 
             for (config, obj) in results {
-                let mut value = config[&param_name];
+                let value = config[&param_name];
                 let (min_val, max_val) = self.get_parameter_range(&param);
 
                 let level = if levels_per_factor == 1 {
@@ -1066,8 +1068,8 @@ pub mod visualization {
 
     /// Plot sensitivity tornado chart
     pub fn plot_tornado_chart(
-        _results: &SensitivityResults,
-        _output_path: &str,
+        results: &SensitivityResults,
+        output_path: &str,
     ) -> Result<(), Box<dyn Error>> {
         #[cfg(feature = "scirs")]
         {
@@ -1093,8 +1095,8 @@ pub mod visualization {
 
     /// Plot response curves
     pub fn plot_response_curves(
-        _results: &SensitivityResults,
-        _output_path: &str,
+        results: &SensitivityResults,
+        output_path: &str,
     ) -> Result<(), Box<dyn Error>> {
         #[cfg(feature = "scirs")]
         {

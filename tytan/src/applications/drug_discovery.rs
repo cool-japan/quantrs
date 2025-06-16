@@ -4,6 +4,8 @@
 //! including molecular design, lead optimization, and virtual screening.
 
 // Sampler types available for drug discovery applications
+#![allow(dead_code)]
+
 use ndarray::Array2;
 use std::collections::{HashMap, HashSet};
 
@@ -433,7 +435,7 @@ impl MolecularDesignOptimizer {
                 let var_name = format!("x_{}_{}", f, p);
                 if let Some(&var_idx) = var_map.get(&var_name) {
                     // Fragment score
-                    let mut score = self
+                    let score = self
                         .fragment_library
                         .fragment_scores
                         .get(&f)
@@ -658,7 +660,7 @@ impl MolecularDesignOptimizer {
             for f in 0..self.fragment_library.fragments.len() {
                 let var_name = format!("x_{}_{}", f, i);
                 if let Some(&var_idx) = var_map.get(&var_name) {
-                    let mut score = self
+                    let score = self
                         .fragment_library
                         .fragment_scores
                         .get(&f)
@@ -860,7 +862,7 @@ impl MolecularDesignOptimizer {
         }
 
         let properties = self.calculate_properties(&fragments);
-        let mut score = self.calculate_score(&fragments, &connections);
+        let score = self.calculate_score(&fragments, &connections);
 
         Ok(DesignedMolecule {
             fragments,
@@ -947,7 +949,7 @@ impl MolecularDesignOptimizer {
         match &self.scoring_function {
             ScoringFunction::Additive { weights } => {
                 let mut score = 0.0;
-                let mut props = self.calculate_properties(fragments);
+                let props = self.calculate_properties(fragments);
 
                 // Property penalties
                 if let Some((min, max)) = self.target_properties.molecular_weight {

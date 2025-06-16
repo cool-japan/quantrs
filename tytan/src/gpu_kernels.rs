@@ -4,7 +4,10 @@
 //! algorithms including simulated annealing, parallel tempering, and
 //! specialized operations for QUBO/HOBO problems.
 
+#![allow(dead_code)]
+
 /// CUDA kernel source code for optimized operations
+
 pub mod cuda {
     /// Coalesced memory access kernel for spin updates
     pub const COALESCED_SPIN_UPDATE: &str = r#"
@@ -500,6 +503,12 @@ enum KernelArg {
     Integer(i32),
 }
 
+impl Default for KernelManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KernelManager {
     /// Create new kernel manager
     pub fn new() -> Self {
@@ -571,8 +580,8 @@ impl KernelManager {
     }
 }
 
-#[cfg(feature = "gpu")]
-use crate::scirs_stub::scirs2_core::gpu::GpuMemory;
+#[cfg(feature = "scirs")]
+use crate::gpu_memory_pool::{GpuContext, GpuMemory};
 
 #[cfg(test)]
 mod tests {

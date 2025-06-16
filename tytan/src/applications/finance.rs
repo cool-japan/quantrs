@@ -4,6 +4,8 @@
 //! including portfolio optimization, risk management, and asset allocation.
 
 // Sampler types available for finance applications
+#![allow(dead_code)]
+
 use ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -163,7 +165,7 @@ impl PortfolioOptimizer {
         for i in 0..n_assets {
             for k in 0..bits_per_asset {
                 let weight = (1 << k) as f64 / ((1 << bits_per_asset) - 1) as f64;
-                let mut var_idx = i * bits_per_asset + k;
+                let var_idx = i * bits_per_asset + k;
                 qubo[[var_idx, var_idx]] -= self.returns[i] * weight;
             }
         }
@@ -240,7 +242,7 @@ impl PortfolioOptimizer {
         for i in 0..n_assets {
             for k in 0..bits_per_asset {
                 let weight = (1 << k) as f64 / ((1 << bits_per_asset) - 1) as f64;
-                let mut var_idx = i * bits_per_asset + k;
+                let var_idx = i * bits_per_asset + k;
 
                 // Scale by inverse of portfolio volatility (approximation)
                 let vol_scale = 1.0 / self.covariance.diag().mean().unwrap().sqrt();
@@ -309,7 +311,7 @@ impl PortfolioOptimizer {
         for i in 0..n_assets {
             for k in 0..bits_per_asset {
                 let weight = (1 << k) as f64 / ((1 << bits_per_asset) - 1) as f64;
-                let mut var_idx = i * bits_per_asset + k;
+                let var_idx = i * bits_per_asset + k;
                 qubo[[var_idx, var_idx]] -= 2.0 * penalty * weight;
             }
         }
@@ -383,7 +385,7 @@ impl PortfolioOptimizer {
         for i in 0..n_assets {
             for k in 0..bits_per_asset {
                 let weight = (1 << k) as f64 / ((1 << bits_per_asset) - 1) as f64;
-                let mut var_idx = i * bits_per_asset + k;
+                let var_idx = i * bits_per_asset + k;
                 qubo[[var_idx, var_idx]] -=
                     2.0 * penalty * target_return * self.returns[i] * weight;
             }
@@ -617,7 +619,7 @@ impl RiskParityOptimizer {
         for i in 0..n_assets {
             for k in 0..num_bits_per_asset {
                 let weight = (1 << k) as f64 / ((1 << num_bits_per_asset) - 1) as f64;
-                let mut var_idx = i * num_bits_per_asset + k;
+                let var_idx = i * num_bits_per_asset + k;
 
                 // Gradient of risk contribution
                 let gradient = self.risk_contribution_gradient(&initial_weights, i);

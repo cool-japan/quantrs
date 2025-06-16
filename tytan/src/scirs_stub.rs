@@ -4,6 +4,8 @@
 //! The actual integration would be more comprehensive once
 //! the SciRS2 API stabilizes.
 
+#![allow(dead_code)]
+
 use ndarray::{Array2, ArrayD};
 
 /// Placeholder for enhanced QUBO operations
@@ -35,7 +37,7 @@ pub fn parallel_sample_qubo(matrix: &Array2<f64>, num_samples: usize) -> Vec<(Ve
 
     for _ in 0..num_samples {
         let solution: Vec<bool> = (0..n).map(|_| rng.random()).collect();
-        let mut energy = evaluate_qubo(&solution, matrix);
+        let energy = evaluate_qubo(&solution, matrix);
         results.push((solution, energy));
     }
 

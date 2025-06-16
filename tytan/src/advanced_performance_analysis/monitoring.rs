@@ -26,6 +26,12 @@ pub struct CpuMonitor {
     active: bool,
 }
 
+impl Default for CpuMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CpuMonitor {
     pub fn new() -> Self {
         Self { active: false }
@@ -68,6 +74,12 @@ impl PerformanceMonitor for CpuMonitor {
 #[derive(Debug)]
 pub struct MemoryMonitor {
     active: bool,
+}
+
+impl Default for MemoryMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MemoryMonitor {
@@ -114,6 +126,12 @@ pub struct IoMonitor {
     active: bool,
 }
 
+impl Default for IoMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IoMonitor {
     pub fn new() -> Self {
         Self { active: false }
@@ -156,6 +174,12 @@ impl PerformanceMonitor for IoMonitor {
 #[derive(Debug)]
 pub struct NetworkMonitor {
     active: bool,
+}
+
+impl Default for NetworkMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl NetworkMonitor {

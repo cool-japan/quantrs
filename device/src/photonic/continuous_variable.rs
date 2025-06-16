@@ -123,11 +123,12 @@ impl GaussianState {
         let x_idx = 2 * mode;
         let p_idx = 2 * mode + 1;
 
-        // Update covariance matrix elements
+        // Update covariance matrix elements using correct squeezing formulas
+        // For phi=0: x-variance = 0.5 * e^(-2r), p-variance = 0.5 * e^(2r)
         state.covariance[x_idx][x_idx] =
-            0.5 * (exp_2r + exp_neg_2r + (exp_2r - exp_neg_2r) * cos_2phi) / 2.0;
+            0.5 * (exp_neg_2r + exp_2r - (exp_2r - exp_neg_2r) * cos_2phi) / 2.0;
         state.covariance[p_idx][p_idx] =
-            0.5 * (exp_2r + exp_neg_2r - (exp_2r - exp_neg_2r) * cos_2phi) / 2.0;
+            0.5 * (exp_2r + exp_neg_2r + (exp_2r - exp_neg_2r) * cos_2phi) / 2.0;
         state.covariance[x_idx][p_idx] = 0.5 * (exp_2r - exp_neg_2r) * sin_2phi / 2.0;
         state.covariance[p_idx][x_idx] = state.covariance[x_idx][p_idx];
 

@@ -118,7 +118,7 @@ impl<'a> AutoArray<'a> {
         let shape_dim = IxDyn(&shape);
 
         // Create array filled with -1 (representing missing values)
-        let array = Array::from_elem(shape_dim, -1);
+        let mut array = Array::from_elem(shape_dim, -1);
 
         // Fill the array with values from the result
         for (var_name, &value) in &self.result.assignments {
@@ -179,7 +179,7 @@ impl<'a> AutoArray<'a> {
         // If 1D, convert to 2D
         if dim_count == 1 {
             let shape = nd_array.shape();
-            let array = Array::zeros((1, shape[0]));
+            let mut array = Array::zeros((1, shape[0]));
             for i in 0..shape[0] {
                 array[[0, i]] = nd_array[IxDyn(&[i])];
             }
@@ -226,7 +226,7 @@ impl<'a> AutoArray<'a> {
         let (array, indices) = self.get_dframe(format)?;
 
         // Convert to u8 image (0 or 255)
-        let image = Array::zeros(array.dim());
+        let mut image = Array::zeros(array.dim());
         for i in 0..array.shape()[0] {
             for j in 0..array.shape()[1] {
                 image[[i, j]] = if array[[i, j]] > 0 { 255 } else { 0 };

@@ -4,6 +4,8 @@
 //! quantum annealing and optimization problems, featuring adaptive protocols,
 //! topological codes, and error mitigation techniques.
 
+#![allow(dead_code)]
+
 use ndarray::{Array1, Array2, Array3};
 use rand::prelude::*;
 use rand::rng;
@@ -982,10 +984,10 @@ impl QuantumErrorCorrection {
         let syndrome = self.extract_syndrome(quantum_state)?;
 
         // Step 2: Decode error from syndrome
-        let mut error_estimate = self.decode_syndrome(&syndrome)?;
+        let error_estimate = self.decode_syndrome(&syndrome)?;
 
         // Step 3: Apply error correction
-        let mut corrected_state = self.apply_correction(quantum_state, &error_estimate)?;
+        let corrected_state = self.apply_correction(quantum_state, &error_estimate)?;
 
         // Step 4: Verify correction success
         let correction_successful = self.verify_correction(&corrected_state, quantum_state)?;
@@ -1074,7 +1076,7 @@ impl QuantumErrorCorrection {
         for chunk in syndrome_positions.chunks(2) {
             if chunk.len() == 2 {
                 let start = chunk[0];
-                let mut end = chunk[1];
+                let end = chunk[1];
 
                 // Apply correction along shortest path (simplified)
                 for i in start..=end {
@@ -1095,7 +1097,7 @@ impl QuantumErrorCorrection {
         let max_iterations = 100;
         let tolerance = 1e-6;
 
-        for iteration in 0..max_iterations {
+        for _iteration in 0..max_iterations {
             let old_beliefs = beliefs.clone();
 
             // Update beliefs based on syndrome constraints
@@ -1118,7 +1120,7 @@ impl QuantumErrorCorrection {
         }
 
         // Threshold beliefs to get binary error estimate
-        let mut error_estimate = beliefs.mapv(|x| if x > 0.5 { 1 } else { 0 });
+        let error_estimate = beliefs.mapv(|x| if x > 0.5 { 1 } else { 0 });
         Ok(error_estimate)
     }
 
@@ -1138,13 +1140,13 @@ impl QuantumErrorCorrection {
         let syndrome_float = syndrome.mapv(|x| x as f64);
 
         // Forward pass
-        let mut hidden = w1
+        let hidden = w1
             .dot(&syndrome_float)
             .mapv(|x| if x > 0.0 { x } else { 0.0 }); // ReLU
-        let mut output = w2.dot(&hidden).mapv(|x| 1.0 / (1.0 + (-x).exp())); // Sigmoid
+        let output = w2.dot(&hidden).mapv(|x| 1.0 / (1.0 + (-x).exp())); // Sigmoid
 
         // Threshold to binary
-        let mut error_estimate = output.mapv(|x| if x > 0.5 { 1 } else { 0 });
+        let error_estimate = output.mapv(|x| if x > 0.5 { 1 } else { 0 });
         Ok(error_estimate)
     }
 
@@ -1237,7 +1239,7 @@ impl QuantumErrorCorrection {
         for i in 0..syndrome.len() {
             let mut sum = 0.0;
             for j in 0..kernel_size {
-                let mut idx = (i + j).saturating_sub(kernel_size / 2);
+                let idx = (i + j).saturating_sub(kernel_size / 2);
                 if idx < syndrome.len() {
                     sum += syndrome[idx] as f64;
                 }
@@ -1246,7 +1248,7 @@ impl QuantumErrorCorrection {
         }
 
         // Map to error estimate
-        let mut error_estimate = Array1::from_vec(
+        let error_estimate = Array1::from_vec(
             (0..self.num_physical_qubits)
                 .map(|i| {
                     if convolved[i % convolved.len()] > 0.5 {
@@ -1265,7 +1267,7 @@ impl QuantumErrorCorrection {
     fn decode_transformer(&self, syndrome: &Array1<u8>) -> Result<Array1<u8>, QECError> {
         // Simplified transformer implementation using attention mechanism
         let seq_len = syndrome.len();
-        let d_model = seq_len;
+        let _d_model = seq_len;
 
         // Self-attention (simplified)
         let mut attention_output = Array1::zeros(seq_len);
@@ -1287,7 +1289,7 @@ impl QuantumErrorCorrection {
         }
 
         // Map to error estimate
-        let mut error_estimate = Array1::from_vec(
+        let error_estimate = Array1::from_vec(
             (0..self.num_physical_qubits)
                 .map(|i| {
                     if attention_output[i % attention_output.len()] > 0.5 {
@@ -1334,7 +1336,7 @@ impl QuantumErrorCorrection {
         }
 
         // Map to error estimate
-        let mut error_estimate = Array1::from_vec(
+        let error_estimate = Array1::from_vec(
             (0..self.num_physical_qubits)
                 .map(|i| {
                     if node_features[i % node_features.len()] > 0.5 {
@@ -1479,7 +1481,7 @@ impl QuantumErrorCorrection {
         let mut mitigated_state = state.clone();
 
         // Apply simple denoising
-        let mut noise_threshold = 0.01;
+        let noise_threshold = 0.01;
         for value in mitigated_state.iter_mut() {
             if value.abs() < noise_threshold {
                 *value = 0.0;
@@ -1508,7 +1510,7 @@ impl QuantumErrorCorrection {
         self.metrics.syndrome_fidelity = 1.0 - syndrome_weight / total_syndromes;
 
         // Update decoding success rate (exponential moving average)
-        let mut alpha = 0.1;
+        let alpha = 0.1;
         let success_value = if success { 1.0 } else { 0.0 };
         self.metrics.decoding_success_rate =
             alpha * success_value + (1.0 - alpha) * self.metrics.decoding_success_rate;
@@ -1549,12 +1551,12 @@ impl QuantumErrorCorrection {
         match &config.code_type {
             QuantumCodeType::SurfaceCode { .. } => {
                 // Surface code: roughly d^2 physical qubits per logical qubit
-                let mut d = config.code_distance;
+                let d = config.code_distance;
                 num_logical * d * d
             }
             QuantumCodeType::ColorCode { .. } => {
                 // Color code: similar to surface code
-                let mut d = config.code_distance;
+                let d = config.code_distance;
                 num_logical * d * d
             }
             _ => {
@@ -1593,6 +1595,12 @@ impl SyndromeDetector {
                 },
             },
         }
+    }
+}
+
+impl Default for FaultToleranceAnalyzer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1677,7 +1685,7 @@ pub fn create_default_qec_config() -> QECConfig {
 
 /// Create QEC system for optimization problems
 pub fn create_optimization_qec(num_logical_qubits: usize) -> QuantumErrorCorrection {
-    let mut config = create_default_qec_config();
+    let config = create_default_qec_config();
     QuantumErrorCorrection::new(num_logical_qubits, config)
 }
 

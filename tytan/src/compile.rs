@@ -4,6 +4,8 @@
 //! into QUBO (Quadratic Unconstrained Binary Optimization) and
 //! HOBO (Higher-Order Binary Optimization) models.
 
+#![allow(dead_code)]
+
 use ndarray::Array;
 use std::collections::{HashMap, HashSet};
 
@@ -231,7 +233,7 @@ impl Model {
     /// Compile the model to a CompiledModel
     pub fn compile(&self) -> CompileResult<CompiledModel> {
         // Build the final expression with penalty terms
-        let final_expr = self.objective.clone().unwrap_or_else(|| Expr::from(0));
+        let mut final_expr = self.objective.clone().unwrap_or_else(|| Expr::from(0));
 
         // Default penalty weight
         let penalty_weight = 10.0;
@@ -369,6 +371,13 @@ enum Constraint {
         conditions: Vec<SimpleExpr>,
         result: SimpleExpr,
     },
+}
+
+#[cfg(not(feature = "dwave"))]
+impl Default for Model {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(not(feature = "dwave"))]
@@ -651,7 +660,7 @@ impl CompiledModel {
         // Set all the QUBO coefficients
         for i in 0..self.qubo_matrix.nrows() {
             for j in i..self.qubo_matrix.ncols() {
-                let mut value = self.qubo_matrix[[i, j]];
+                let value = self.qubo_matrix[[i, j]];
                 if value.abs() > 1e-10 {
                     if i == j {
                         // Diagonal term (linear)
@@ -999,7 +1008,7 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
 
     // If it's a product of terms
     if term.is_mul() {
-        let coeff = 1.0;
+        let mut coeff = 1.0;
         let mut vars = Vec::new();
 
         for factor in term.as_mul().unwrap() {
@@ -1180,7 +1189,7 @@ fn build_hobo_tensor(
         }
 
         // Set the coefficient in the tensor
-        let mut idx = ndarray::IxDyn(&indices);
+        let idx = ndarray::IxDyn(&indices);
         tensor[idx] += coeff;
     }
 

@@ -405,19 +405,19 @@ pub struct AdaptationStep {
 
 #[derive(Debug, Clone)]
 pub struct ContextExample {
-    input: Array1<f64>,
-    output: Array1<f64>,
-    metadata: ContextMetadata,
-    quantum_encoding: QuantumContextState,
+    pub input: Array1<f64>,
+    pub output: Array1<f64>,
+    pub metadata: ContextMetadata,
+    pub quantum_encoding: QuantumContextState,
 }
 
 #[derive(Debug, Clone)]
 pub struct ContextMetadata {
-    task_type: String,
-    difficulty_level: f64,
-    modality: ContextModality,
-    timestamp: usize,
-    importance_weight: f64,
+    pub task_type: String,
+    pub difficulty_level: f64,
+    pub modality: ContextModality,
+    pub timestamp: usize,
+    pub importance_weight: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -703,13 +703,13 @@ pub enum PrototypeUpdateStrategy {
 
 #[derive(Debug, Clone)]
 pub struct QuantumContextState {
-    quantum_amplitudes: Array1<Complex64>,
-    classical_features: Array1<f64>,
-    entanglement_measure: f64,
-    coherence_time: f64,
-    fidelity: f64,
-    phase_information: Complex64,
-    context_metadata: ContextMetadata,
+    pub quantum_amplitudes: Array1<Complex64>,
+    pub classical_features: Array1<f64>,
+    pub entanglement_measure: f64,
+    pub coherence_time: f64,
+    pub fidelity: f64,
+    pub phase_information: Complex64,
+    pub context_metadata: ContextMetadata,
 }
 
 #[derive(Debug, Clone)]

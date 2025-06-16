@@ -4,6 +4,8 @@
 //! for quantum computing systems, including real-time noise characterization,
 //! adaptive protocols, and quantum error correction integration.
 
+#![allow(dead_code)]
+
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, VecDeque};
@@ -1130,7 +1132,7 @@ impl AdvancedErrorMitigationManager {
         &self,
         circuit: &QuantumCircuit,
     ) -> Result<MitigatedResult, MitigationError> {
-        let mut state = self.state.read().unwrap();
+        let state = self.state.read().unwrap();
         let noise_model = &state.current_noise_model;
 
         self.mitigation_engine
@@ -1152,7 +1154,7 @@ impl AdvancedErrorMitigationManager {
         code_name: &str,
         circuit: &QuantumCircuit,
     ) -> Result<QECIntegrationResult, MitigationError> {
-        let mut state = self.state.read().unwrap();
+        let state = self.state.read().unwrap();
         let noise_model = &state.current_noise_model;
 
         self.qec_integrator
@@ -1626,7 +1628,7 @@ pub fn create_advanced_error_mitigation_manager() -> AdvancedErrorMitigationMana
 
 /// Create a lightweight error mitigation manager for testing
 pub fn create_lightweight_error_mitigation_manager() -> AdvancedErrorMitigationManager {
-    let mut config = ErrorMitigationConfig {
+    let config = ErrorMitigationConfig {
         real_time_monitoring: false,
         adaptive_protocols: true,
         device_calibration: false,

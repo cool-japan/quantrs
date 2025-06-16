@@ -305,7 +305,7 @@ pub fn visualize_energy_distribution(
         .map_err(|e| AnalysisError::VisualizationError(e.to_string()))?;
 
     // Sort energies for this plot
-    let sorted_energies = energies.clone();
+    let mut sorted_energies = energies.clone();
     sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
     chart

@@ -131,7 +131,7 @@ impl BenchmarkVisualizer {
                 .y_labels(backends)
                 .colorscale("Viridis");
 
-            let plot = Plot::new();
+            let mut plot = Plot::new();
             plot.add_trace(heatmap);
             plot.set_title("Backend-Sampler Efficiency Heatmap");
             plot.save(&format!("{}/efficiency_heatmap.html", output_dir))?;
@@ -323,7 +323,7 @@ impl BenchmarkVisualizer {
 
     /// Generate HTML report
     fn generate_html_report(&self, output_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let mut html = format!(
+        let html = format!(
             r#"
 <!DOCTYPE html>
 <html>

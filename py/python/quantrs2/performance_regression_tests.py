@@ -11,7 +11,6 @@ import json
 import pickle
 import hashlib
 import statistics
-import warnings
 from typing import Dict, List, Optional, Any, Callable, Tuple, Union
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -107,7 +106,7 @@ class PerformanceDatabase:
             with open(self.db_path, 'wb') as f:
                 pickle.dump(self.results, f)
         except Exception as e:
-            warnings.warn(f"Failed to save performance results: {e}")
+            pass
     
     def load_results(self):
         """Load results from disk."""
@@ -116,7 +115,6 @@ class PerformanceDatabase:
                 with open(self.db_path, 'rb') as f:
                     self.results = pickle.load(f)
         except Exception as e:
-            warnings.warn(f"Failed to load performance results: {e}")
             self.results = []
     
     def add_result(self, result: BenchmarkResult):

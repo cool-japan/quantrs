@@ -369,6 +369,12 @@ pub enum StorageType {
 #[derive(Debug)]
 pub struct QuboEvaluationBenchmark;
 
+impl Default for QuboEvaluationBenchmark {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuboEvaluationBenchmark {
     pub fn new() -> Self {
         Self
@@ -450,6 +456,12 @@ impl Benchmark for QuboEvaluationBenchmark {
 #[derive(Debug)]
 pub struct SamplingBenchmark;
 
+impl Default for SamplingBenchmark {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SamplingBenchmark {
     pub fn new() -> Self {
         Self
@@ -518,6 +530,12 @@ impl Benchmark for SamplingBenchmark {
 /// Convergence benchmark
 #[derive(Debug)]
 pub struct ConvergenceBenchmark;
+
+impl Default for ConvergenceBenchmark {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl ConvergenceBenchmark {
     pub fn new() -> Self {

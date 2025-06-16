@@ -318,8 +318,8 @@ impl HomodyneDetector {
         let noise_power = total_noise_variance;
         let snr_db = 10.0 * (signal_power / noise_power).log10();
 
-        // Calculate squeezing (clearance above shot noise)
-        let squeezing_db = 10.0 * (shot_noise / theoretical_variance).log10();
+        // Calculate squeezing (relative to shot noise)
+        let squeezing_db = 10.0 * (theoretical_variance / shot_noise).log10();
 
         // Estimate phase stability
         let phase_stability = self.estimate_phase_stability();

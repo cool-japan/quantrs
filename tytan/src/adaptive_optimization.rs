@@ -21,10 +21,12 @@ pub struct AdaptiveOptimizer {
     /// Strategy selector
     strategy_selector: StrategySelector,
     /// Parameter tuner
+    #[allow(dead_code)]
     parameter_tuner: ParameterTuner,
     /// Learning rate
     learning_rate: f64,
     /// Exploration vs exploitation
+    #[allow(dead_code)]
     exploration_rate: f64,
 }
 
@@ -144,6 +146,7 @@ pub struct StrategySelector {
     /// Selection strategy
     strategy: SelectionStrategy,
     /// Performance threshold
+    #[allow(dead_code)]
     performance_threshold: f64,
 }
 
@@ -162,10 +165,13 @@ pub enum SelectionStrategy {
 /// Parameter tuner
 pub struct ParameterTuner {
     /// Parameter ranges
+    #[allow(dead_code)]
     param_ranges: HashMap<String, (f64, f64)>,
     /// Tuning method
+    #[allow(dead_code)]
     tuning_method: TuningMethod,
     /// History
+    #[allow(dead_code)]
     tuning_history: HashMap<String, Vec<(HashMap<String, f64>, f64)>>,
 }
 
@@ -179,6 +185,12 @@ pub enum TuningMethod {
     Bayesian,
     /// Evolutionary
     Evolutionary { population_size: usize },
+}
+
+impl Default for AdaptiveOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AdaptiveOptimizer {
@@ -358,7 +370,7 @@ impl AdaptiveOptimizer {
                     if perf.n_runs > 10 && perf.success_rate > 0.8 {
                         // Exploit: use best known
                         let algorithm = self.get_best_algorithm_for_features(features);
-                        let mut params = perf.best_params.clone();
+                        let params = perf.best_params.clone();
                         Ok((algorithm, params))
                     } else {
                         // Explore: try different algorithm
@@ -393,7 +405,7 @@ impl AdaptiveOptimizer {
             _ => "GA",
         };
 
-        let mut params = self.get_default_params(algorithm);
+        let params = self.get_default_params(algorithm);
         Ok((algorithm.to_string(), params))
     }
 
@@ -601,9 +613,9 @@ impl AdaptiveOptimizer {
         &self,
         _features: &ProblemFeatures,
     ) -> Result<(String, HashMap<String, f64>), String> {
-        let mut idx = rng().random_range(0..self.samplers.len());
+        let idx = rng().random_range(0..self.samplers.len());
         let algorithm = self.samplers[idx].0.clone();
-        let mut params = self.get_default_params(&algorithm);
+        let params = self.get_default_params(&algorithm);
         Ok((algorithm, params))
     }
 
@@ -625,9 +637,9 @@ impl AdaptiveOptimizer {
     }
 
     fn random_select(&self) -> Result<(String, HashMap<String, f64>), String> {
-        let mut idx = rng().random_range(0..self.samplers.len());
+        let idx = rng().random_range(0..self.samplers.len());
         let algorithm = self.samplers[idx].0.clone();
-        let mut params = self.get_default_params(&algorithm);
+        let params = self.get_default_params(&algorithm);
         Ok((algorithm, params))
     }
 
@@ -645,14 +657,14 @@ impl AdaptiveOptimizer {
 
     /// Save history to file
     pub fn save_history(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let mut json = serde_json::to_string_pretty(&self.performance_history)?;
+        let json = serde_json::to_string_pretty(&self.performance_history)?;
         std::fs::write(path, json)?;
         Ok(())
     }
 
     /// Load history from file
     pub fn load_history(&mut self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let mut json = std::fs::read_to_string(path)?;
+        let json = std::fs::read_to_string(path)?;
         self.performance_history = serde_json::from_str(&json)?;
         Ok(())
     }

@@ -248,7 +248,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
     fn variable_clustering_coarsen(
         &self,
         qubo: &Array2<f64>,
-        var_map: &HashMap<String, usize>,
+        _var_map: &HashMap<String, usize>,
     ) -> Result<(Array2<f64>, HashMap<String, usize>, Projection), String> {
         let n = qubo.shape()[0];
 
@@ -462,12 +462,12 @@ impl<S: Sampler> HierarchicalSolver<S> {
         &mut self,
         qubo: &Array2<f64>,
         var_map: &HashMap<String, usize>,
-        current_solution: &SampleResult,
+        _current_solution: &SampleResult,
         shots: usize,
     ) -> Result<SampleResult, String> {
         // Use base sampler with warm start from current solution
         // This is simplified - in practice would implement warm starting
-        let mut results = self
+        let results = self
             .base_sampler
             .run_qubo(&(qubo.clone(), var_map.clone()), shots)
             .map_err(|e| format!("Refinement sampler error: {:?}", e))?;

@@ -3,6 +3,8 @@
 //! This module provides optimized implementations of performance-critical
 //! operations using SIMD, parallelization, and algorithmic improvements.
 
+#![allow(dead_code)]
+
 use ndarray::{Array1, Array2, ArrayView1};
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -293,7 +295,7 @@ impl OptimizedSA {
         // Temperature schedule
         let temperatures = self.generate_schedule(iterations);
 
-        for (iter, &temp) in temperatures.iter().enumerate() {
+        for (_iter, &temp) in temperatures.iter().enumerate() {
             if self.parallel_moves && n > 100 {
                 // Parallel neighborhood evaluation
                 self.parallel_step(
@@ -414,7 +416,7 @@ pub mod matrix_ops {
     pub fn sparse_qubo_multiply(
         qubo: &Array2<f64>,
         x: &ArrayView1<u8>,
-        threshold: f64,
+        _threshold: f64,
     ) -> Array1<f64> {
         let n = x.len();
         let mut result = Array1::zeros(n);

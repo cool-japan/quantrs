@@ -2,7 +2,7 @@
 
 use ndarray::{Array, Ix2};
 #[cfg(all(feature = "gpu", feature = "dwave"))]
-use rand::{rng, rngs::StdRng, Rng};
+use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 use std::collections::HashMap;
 
 #[cfg(all(feature = "gpu", feature = "dwave"))]
@@ -190,7 +190,7 @@ impl ArminSampler {
         }
 
         // Create a seed based on input seed or random value
-        let seed_val = self.seed.unwrap_or_else(rng().random());
+        let seed_val = self.seed.unwrap_or_else(|| thread_rng().gen());
 
         // Set up and run standard simulated annealing kernel
         let mut kernel = Kernel::builder()
@@ -266,7 +266,7 @@ impl ArminSampler {
         let mut rng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => {
-                let seed: u64 = rand::rng().random();
+                let seed: u64 = thread_rng().gen();
                 StdRng::seed_from_u64(seed)
             }
         };
@@ -457,7 +457,7 @@ impl ArminSampler {
             .arg(5000i32) // More sweeps for thorough optimization of a chunk
             .arg(5.0f32)  // Higher initial temperature
             .arg(0.01f32) // Lower final temperature
-            .arg(seed.unwrap_or_else(rng().random()))
+            .arg(seed.unwrap_or_else(|| thread_rng().gen()))
             .build()?;
 
         // Execute kernel

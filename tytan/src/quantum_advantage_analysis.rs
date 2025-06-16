@@ -3,6 +3,8 @@
 //! This module provides tools to analyze when quantum optimization approaches
 //! provide theoretical and practical advantages over classical methods.
 
+#![allow(dead_code)]
+
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -761,11 +763,11 @@ impl QuantumAdvantageAnalyzer {
         &self,
         classical_perf: &HashMap<ClassicalAlgorithm, PerformanceMetrics>,
         quantum_perf: &HashMap<QuantumAlgorithm, QuantumPerformanceMetrics>,
-        problem_chars: &ProblemCharacteristics,
+        _problem_chars: &ProblemCharacteristics,
     ) -> Result<AdvantageAnalysis, String> {
         let mut advantage_factors = HashMap::new();
         let mut conditional_advantages = Vec::new();
-        let mut break_even_points = HashMap::new();
+        let break_even_points = HashMap::new();
 
         // Find best classical performance
         let best_classical = classical_perf.values().min_by(|a, b| {
@@ -839,7 +841,7 @@ impl QuantumAdvantageAnalyzer {
     /// Analyze thresholds for quantum advantage
     fn analyze_thresholds(
         &self,
-        classical_perf: &HashMap<ClassicalAlgorithm, PerformanceMetrics>,
+        _classical_perf: &HashMap<ClassicalAlgorithm, PerformanceMetrics>,
         quantum_perf: &HashMap<QuantumAlgorithm, QuantumPerformanceMetrics>,
         problem_chars: &ProblemCharacteristics,
     ) -> Result<ThresholdAnalysis, String> {
@@ -1084,6 +1086,12 @@ fn reproduce_analysis() {{
     }
 }
 
+impl Default for ClassicalComplexityEstimator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ClassicalComplexityEstimator {
     pub fn new() -> Self {
         Self {
@@ -1204,6 +1212,12 @@ impl ClassicalComplexityEstimator {
                 fit_quality: 0.8,
             },
         })
+    }
+}
+
+impl Default for QuantumResourceEstimator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1408,6 +1422,12 @@ impl QuantumResourceEstimator {
     }
 }
 
+impl Default for QuantumSupremacyBenchmarker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumSupremacyBenchmarker {
     pub fn new() -> Self {
         Self {
@@ -1436,7 +1456,7 @@ impl QuantumSupremacyBenchmarker {
     fn run_size_benchmark(
         &mut self,
         size: usize,
-        config: &AnalysisConfig,
+        _config: &AnalysisConfig,
     ) -> Result<SizeBenchmarkResult, String> {
         // This would run actual benchmarks
         // For now, return simulated results

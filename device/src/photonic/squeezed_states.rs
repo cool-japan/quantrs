@@ -525,8 +525,8 @@ impl SqueezedStateGenerator {
         optimized.temperature_k = optimal_temp;
 
         // Enable feedback for high squeezing levels
-        optimized.feedback_control = target_squeezing_dB > 15.0;
-        optimized.phase_stabilization = target_squeezing_dB > 10.0;
+        optimized.feedback_control = target_squeezing_dB >= 15.0;
+        optimized.phase_stabilization = target_squeezing_dB >= 10.0;
 
         self.parameters = optimized.clone();
         Ok(optimized)

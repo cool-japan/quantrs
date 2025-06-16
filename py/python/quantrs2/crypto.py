@@ -22,7 +22,6 @@ try:
     HAS_QUANTRS2 = True
 except ImportError:
     HAS_QUANTRS2 = False
-    warnings.warn("quantrs2 not available. Crypto module will use classical simulations.")
 
 
 class BasisChoice(Enum):

@@ -20,7 +20,8 @@
 
 use ndarray::{Array1, Array2, Array3};
 use num_complex::Complex64;
-use quantrs_ml::prelude::*;
+use quantrs2_ml::prelude::*;
+use quantrs2_ml::quantum_neural_radiance_fields::SceneBounds;
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -116,13 +117,16 @@ impl NextGenQuantumMLShowcase {
 
         // Initialize Quantum Neural Radiance Fields
         let nerf_config = QuantumNeRFConfig {
-            input_dim: 3,  // 3D coordinates
-            output_dim: 4, // RGB + density
+            scene_bounds: SceneBounds {
+                min_bound: Array1::from_vec(vec![-2.0, -2.0, -2.0]),
+                max_bound: Array1::from_vec(vec![2.0, 2.0, 2.0]),
+                voxel_resolution: Array1::from_vec(vec![256, 256, 256]),
+            },
             num_qubits: config.num_qubits,
             quantum_enhancement_level: config.quantum_enhancement_level,
             use_quantum_positional_encoding: true,
-            enable_quantum_volume_rendering: true,
-            adaptive_sampling: true,
+            quantum_multiscale_features: true,
+            quantum_view_synthesis: true,
             ..Default::default()
         };
         let quantum_nerf = QuantumNeRF::new(nerf_config)?;
@@ -221,7 +225,8 @@ impl NextGenQuantumMLShowcase {
 
         // Final quantum advantage analysis
         if self.config.enable_quantum_advantage_analysis {
-            results.quantum_advantage_summary = self.analyze_overall_quantum_advantage(&results)?;
+            results.quantum_advantage_summary =
+                Some(self.analyze_overall_quantum_advantage(&results)?);
         }
 
         self.display_showcase_summary(&results)?;
@@ -290,7 +295,17 @@ impl NextGenQuantumMLShowcase {
         // Stage 3: 3D scene reconstruction with Quantum NeRF
         println!("   Stage 3: Quantum NeRF reconstructs 3D scene representation");
         let scene_coords = self.generate_3d_coordinates(100)?;
-        let nerf_output = self.quantum_nerf.render_scene(&scene_coords, None)?;
+        let camera_position = Array1::from_vec(vec![0.0, 0.0, 3.0]);
+        let camera_direction = Array1::from_vec(vec![0.0, 0.0, -1.0]);
+        let camera_up = Array1::from_vec(vec![0.0, 1.0, 0.0]);
+        let nerf_output = self.quantum_nerf.render(
+            &camera_position,
+            &camera_direction,
+            &camera_up,
+            512,
+            512,
+            60.0,
+        )?;
 
         // Stage 4: Few-shot adaptation with Quantum ICL
         println!("   Stage 4: Quantum ICL adapts to new tasks without parameter updates");
@@ -320,7 +335,7 @@ impl NextGenQuantumMLShowcase {
             quantum_metrics: integrated_metrics.quantum_metrics,
             performance_metrics: integrated_metrics.performance_metrics,
             quantum_advantage_factor: integrated_metrics.quantum_advantage_factor,
-            classical_comparison: integrated_metrics.classical_comparison,
+            classical_comparison: Some(integrated_metrics.classical_comparison),
             execution_time: integrated_metrics.execution_time,
             memory_usage: integrated_metrics.memory_usage,
             highlights: vec![
@@ -463,7 +478,7 @@ impl NextGenQuantumMLShowcase {
         Ok(DemonstrationResult {
             algorithm_name: "Quantum Advanced Diffusion Models".to_string(),
             demonstration_type: DemonstrationType::Individual,
-            quantum_metrics,
+            quantum_metrics: quantum_metrics.clone(),
             performance_metrics,
             quantum_advantage_factor,
             classical_comparison: Some(ClassicalComparison {
@@ -594,35 +609,46 @@ impl NextGenQuantumMLShowcase {
         let scene_coordinates = self.generate_3d_coordinates(200)?;
 
         // Render scene using Quantum NeRF
-        let render_output = self.quantum_nerf.render_scene(&scene_coordinates, None)?;
+        let camera_position = Array1::from_vec(vec![2.0, 2.0, 2.0]);
+        let camera_direction = Array1::from_vec(vec![-1.0, -1.0, -1.0]);
+        let camera_up = Array1::from_vec(vec![0.0, 1.0, 0.0]);
+        let render_output = self.quantum_nerf.render(
+            &camera_position,
+            &camera_direction,
+            &camera_up,
+            1024,
+            1024,
+            45.0,
+        )?;
 
-        // Analyze volumetric rendering quality
-        let volume_metrics = self.quantum_nerf.analyze_volume_rendering(&render_output)?;
+        // Analyze volumetric rendering quality from render output
+        let volume_metrics = &render_output.rendering_metrics;
 
         let execution_time = start_time.elapsed();
 
         let quantum_metrics = QuantumMetrics {
-            entanglement_measure: render_output.quantum_metrics.entanglement_utilization,
-            coherence_time: render_output.quantum_metrics.coherence_preservation,
-            fidelity: render_output.quantum_metrics.rendering_fidelity,
-            quantum_volume_utilization: render_output.quantum_metrics.quantum_volume_efficiency,
+            entanglement_measure: render_output.rendering_metrics.average_pixel_entanglement,
+            coherence_time: render_output.rendering_metrics.coherence_preservation,
+            fidelity: render_output.rendering_metrics.average_quantum_fidelity,
+            quantum_volume_utilization: render_output.rendering_metrics.rendering_quantum_advantage,
             circuit_depth_efficiency: 0.88,
             noise_resilience: 0.91,
         };
 
         let performance_metrics = PerformanceMetrics {
-            accuracy: volume_metrics.reconstruction_accuracy,
-            precision: volume_metrics.detail_precision,
-            recall: volume_metrics.completeness,
+            accuracy: volume_metrics.average_quantum_fidelity,
+            precision: volume_metrics.average_pixel_entanglement,
+            recall: volume_metrics.coherence_preservation,
             f1_score: 2.0
-                * volume_metrics.reconstruction_accuracy
-                * volume_metrics.detail_precision
-                / (volume_metrics.reconstruction_accuracy + volume_metrics.detail_precision),
+                * volume_metrics.average_quantum_fidelity
+                * volume_metrics.average_pixel_entanglement
+                / (volume_metrics.average_quantum_fidelity
+                    + volume_metrics.average_pixel_entanglement),
             throughput: scene_coordinates.len() as f64 / execution_time.as_secs_f64(),
             latency: execution_time.as_millis() as f64 / scene_coordinates.len() as f64,
         };
 
-        let quantum_advantage_factor = render_output.quantum_metrics.quantum_advantage_ratio;
+        let quantum_advantage_factor = render_output.rendering_metrics.rendering_quantum_advantage;
 
         Ok(DemonstrationResult {
             algorithm_name: "Quantum Neural Radiance Fields".to_string(),
@@ -632,9 +658,9 @@ impl NextGenQuantumMLShowcase {
             quantum_advantage_factor,
             classical_comparison: Some(ClassicalComparison {
                 classical_performance: 0.72,
-                quantum_performance: volume_metrics.reconstruction_accuracy,
+                quantum_performance: volume_metrics.average_quantum_fidelity,
                 speedup_factor: quantum_advantage_factor,
-                quality_improvement: ((volume_metrics.reconstruction_accuracy - 0.72) / 0.72
+                quality_improvement: ((volume_metrics.average_quantum_fidelity - 0.72) / 0.72
                     * 100.0),
             }),
             execution_time,
@@ -650,7 +676,7 @@ impl NextGenQuantumMLShowcase {
                 ),
                 format!(
                     "Superior 3D reconstruction accuracy: {:.2}%",
-                    volume_metrics.reconstruction_accuracy * 100.0
+                    volume_metrics.average_quantum_fidelity * 100.0
                 ),
                 "Quantum positional encoding for enhanced spatial representation".to_string(),
                 "Entanglement-based ray marching for efficient volume traversal".to_string(),
@@ -886,9 +912,9 @@ impl NextGenQuantumMLShowcase {
 
     /// Display comprehensive showcase summary
     fn display_showcase_summary(&self, results: &ShowcaseResults) -> Result<()> {
-        println!("\n" + "=".repeat(80).as_str());
+        println!("\n{}", "=".repeat(80));
         println!("🏆 NEXT-GENERATION QUANTUM ML ULTRATHINK SHOWCASE SUMMARY");
-        println!("=".repeat(80));
+        println!("{}", "=".repeat(80));
 
         println!("\n📊 OVERALL PERFORMANCE METRICS:");
         println!(
@@ -953,9 +979,9 @@ impl NextGenQuantumMLShowcase {
         println!("   • Foundation for next-generation quantum AI systems");
         println!("   • Demonstration of quantum supremacy in machine learning");
 
-        println!("\n" + "=".repeat(80).as_str());
+        println!("\n{}", "=".repeat(80));
         println!("🌌 UltraThink Showcase Complete - Quantum ML Future Realized!");
-        println!("=".repeat(80));
+        println!("{}", "=".repeat(80));
 
         Ok(())
     }
@@ -1065,7 +1091,7 @@ impl NextGenQuantumMLShowcase {
 
     fn create_default_quantum_context_state(&self) -> Result<QuantumContextState> {
         Ok(QuantumContextState {
-            quantum_amplitudes: Array1::ones(256).mapv(|_| Complex64::new(1.0, 0.0)),
+            quantum_amplitudes: Array1::from_elem(256, Complex64::new(1.0, 0.0)),
             classical_features: Array1::zeros(self.config.data_dimensions),
             entanglement_measure: 0.5,
             coherence_time: 1.0,
@@ -1199,7 +1225,7 @@ impl NextGenQuantumMLShowcase {
         &self,
         _diffusion: &QuantumGenerationOutput,
         _flows: &FlowSamplingOutput,
-        _nerf: &QuantumNeRFOutput,
+        _nerf: &QuantumRenderOutput,
         _icl: &InContextLearningOutput,
         _moe: &MoEOutput,
     ) -> Result<IntegratedAnalysis> {
@@ -1458,6 +1484,11 @@ pub fn run_next_generation_showcase() -> Result<()> {
         results.total_execution_time
     );
 
+    Ok(())
+}
+
+fn main() -> Result<()> {
+    run_next_generation_showcase()?;
     Ok(())
 }
 

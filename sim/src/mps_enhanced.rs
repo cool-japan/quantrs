@@ -850,6 +850,18 @@ impl EnhancedMPS {
 
         // Get singular values from the bond
         let tensor = &self.tensors[cut_position];
+
+        // Check if reshape is valid
+        let expected_size = tensor.left_dim * 2 * tensor.right_dim;
+        let actual_size = tensor.data.len();
+
+        if expected_size != actual_size {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Tensor reshape failed: expected size {} but actual size {} (left_dim={}, right_dim={})",
+                expected_size, actual_size, tensor.left_dim, tensor.right_dim
+            )));
+        }
+
         let matrix = tensor
             .data
             .view()

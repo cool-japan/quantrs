@@ -291,7 +291,7 @@ impl AdvancedPerformanceAnalyzer {
     fn collect_metrics(&mut self) -> Result<(), AnalysisError> {
         let mut all_metrics = Vec::new();
         for monitor in &self.monitors {
-            let mut metrics = monitor.get_current_metrics()?;
+            let metrics = monitor.get_current_metrics()?;
             all_metrics.extend(metrics);
         }
         for (metric_name, value) in all_metrics {
@@ -515,12 +515,12 @@ impl AdvancedPerformanceAnalyzer {
 
 /// Create comprehensive performance analyzer
 pub fn create_comprehensive_analyzer() -> AdvancedPerformanceAnalyzer {
-    let mut config = create_default_analysis_config();
+    let config = create_default_analysis_config();
     AdvancedPerformanceAnalyzer::new(config)
 }
 
 /// Create lightweight analyzer for basic monitoring
 pub fn create_lightweight_analyzer() -> AdvancedPerformanceAnalyzer {
-    let mut config = create_lightweight_config();
+    let config = create_lightweight_config();
     AdvancedPerformanceAnalyzer::new(config)
 }

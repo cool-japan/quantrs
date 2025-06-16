@@ -4,6 +4,8 @@
 //! including feature selection, hyperparameter optimization, and model selection.
 
 // Sampler types available for ML applications
+#![allow(dead_code)]
+
 use ndarray::{Array1, Array2};
 use rand::prelude::*;
 use rand::rng;
@@ -457,7 +459,7 @@ impl QuantumFeatureSelector {
 
     /// Add correlation penalty
     fn add_correlation_penalty(&self, qubo: &mut Array2<f64>) -> Result<(), String> {
-        let mut corr_threshold = 0.9;
+        let corr_threshold = 0.9;
         let penalty = 10.0;
 
         let corr_matrix = &self.features.statistics.feature_correlations;
@@ -666,10 +668,7 @@ impl QuantumFeatureSelector {
                 _ => "other",
             };
 
-            type_groups
-                .entry(type_key.to_string())
-                .or_insert_with(Vec::new)
-                .push(i);
+            type_groups.entry(type_key.to_string()).or_default().push(i);
         }
 
         // Bonus for selecting from different groups
@@ -783,7 +782,7 @@ impl QuantumFeatureSelector {
         for (i, name) in self.features.feature_names.iter().enumerate() {
             let var_name = format!("feature_{}", i);
             if *solution.get(&var_name).unwrap_or(&false) {
-                let mut score = self.features.statistics.target_correlations[i].abs();
+                let score = self.features.statistics.target_correlations[i].abs();
                 scores.insert(name.clone(), score);
             }
         }
@@ -974,7 +973,7 @@ impl HyperparameterOptimizer {
 
             for i in 0..n_points {
                 let t = i as f64 / (n_points - 1) as f64;
-                let mut value = match param.scale {
+                let value = match param.scale {
                     ScaleType::Linear => param.min + t * (param.max - param.min),
                     ScaleType::Log => {
                         let log_min = param.min.ln();
@@ -1148,7 +1147,7 @@ impl HyperparameterOptimizer {
         qubo: &mut Array2<f64>,
         var_map: &HashMap<String, usize>,
     ) -> Result<(), String> {
-        let mut regularization_strength = 0.01;
+        let regularization_strength = 0.01;
 
         // Penalize large jumps in parameter space
         for (var1, &idx1) in var_map {

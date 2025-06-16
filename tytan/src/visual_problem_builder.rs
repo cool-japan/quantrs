@@ -4,6 +4,8 @@
 //! problems without requiring direct code writing. It includes drag-and-drop
 //! variable creation, constraint specification, and real-time validation.
 
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -955,7 +957,7 @@ impl VisualProblemBuilder {
         expression: ObjectiveExpression,
         direction: OptimizationDirection,
     ) -> Result<(), String> {
-        let mut objective = VisualObjective {
+        let objective = VisualObjective {
             id: "objective_0".to_string(),
             name: name.to_string(),
             objective_type: match &expression {
@@ -1082,7 +1084,7 @@ impl VisualProblemBuilder {
             serde_json::from_str(json).map_err(|e| format!("Failed to parse JSON: {}", e))?;
 
         let before_state = self.problem.clone();
-        let old_problem = self.problem.clone();
+        let _old_problem = self.problem.clone();
         self.problem = problem;
 
         let current_problem = self.problem.clone();
@@ -1233,7 +1235,7 @@ impl VisualProblemBuilder {
                             let dy = positions[idx1].1 - positions[idx2].1;
                             let dist = (dx * dx + dy * dy).sqrt().max(1.0);
 
-                            let mut force = 0.1 * dist;
+                            let force = 0.1 * dist;
                             let fx = force * dx / dist;
                             let fy = force * dy / dist;
 
@@ -1275,6 +1277,12 @@ impl VisualProblemBuilder {
     }
 }
 
+impl Default for VisualProblem {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VisualProblem {
     /// Create new empty problem
     pub fn new() -> Self {
@@ -1313,6 +1321,12 @@ impl VisualProblem {
             },
             state: ProblemState::Editing,
         }
+    }
+}
+
+impl Default for ProblemValidator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1385,6 +1399,12 @@ impl ProblemValidator {
         }
 
         Ok(self.errors.clone())
+    }
+}
+
+impl Default for CodeGenerator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -3,6 +3,8 @@
 //! This module provides parallel tempering algorithms for better
 //! exploration of the solution space in quantum annealing problems.
 
+#![allow(dead_code)]
+
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::{Array, Ix2, IxDyn};
 use rand::prelude::*;
@@ -70,7 +72,7 @@ impl ParallelTemperingSampler {
             for _ in 0..self.sweeps {
                 // Update each chain
                 for (chain_idx, chain) in chains.iter_mut().enumerate() {
-                    let mut temperature = self.temperatures[chain_idx];
+                    let temperature = self.temperatures[chain_idx];
                     self.metropolis_update(chain, matrix, temperature);
                 }
 
@@ -93,7 +95,7 @@ impl ParallelTemperingSampler {
 
             // Extract best solution (from lowest temperature chain)
             let best_chain = &chains[0];
-            let mut energy = self.calculate_energy(best_chain, matrix);
+            let energy = self.calculate_energy(best_chain, matrix);
 
             let mut assignments = HashMap::new();
             for (var_name, &idx) in var_map {
@@ -120,7 +122,7 @@ impl ParallelTemperingSampler {
         let n = chain.len();
 
         for _ in 0..n {
-            let mut idx = self.rng.random_range(0..n);
+            let idx = self.rng.random_range(0..n);
             let old_value = chain[idx];
             let new_value = 1 - old_value;
 

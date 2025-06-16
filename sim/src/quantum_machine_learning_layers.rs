@@ -1639,6 +1639,15 @@ impl QuantumMLFramework {
 
     /// Compute loss function
     fn compute_loss(&self, prediction: &Array1<f64>, target: &Array1<f64>) -> Result<f64> {
+        // Check shape compatibility
+        if prediction.shape() != target.shape() {
+            return Err(SimulatorError::InvalidInput(format!(
+                "Shape mismatch: prediction shape {:?} != target shape {:?}",
+                prediction.shape(),
+                target.shape()
+            )));
+        }
+
         // Mean squared error
         let diff = prediction - target;
         let mse = diff.iter().map(|x| x * x).sum::<f64>() / diff.len() as f64;

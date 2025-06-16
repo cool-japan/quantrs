@@ -18,9 +18,7 @@
 use ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
-use crate::circuit_interfaces::{
-    CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
-};
+use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};
 use crate::error::{Result, SimulatorError};
 
 /// Fault-tolerant synthesis configuration
@@ -498,8 +496,18 @@ impl FaultTolerantSynthesizer {
         // Create logical operators
         let logical_operators = self.create_logical_operators(distance)?;
 
-        // Create error correction schedule
-        let error_correction_schedule = self.create_error_correction_schedule(distance)?;
+        // Create temporary surface code to generate error correction schedule
+        let temp_surface_code = SurfaceCodeSynthesizer {
+            distance,
+            layout: layout.clone(),
+            stabilizers: stabilizers.clone(),
+            logical_operators: logical_operators.clone(),
+            error_correction_schedule: Vec::new(), // Will be filled below
+        };
+
+        // Create error correction schedule using the temporary surface code
+        let error_correction_schedule =
+            self.create_error_correction_schedule_with_surface_code(distance, &temp_surface_code)?;
 
         Ok(SurfaceCodeSynthesizer {
             distance,
@@ -645,6 +653,37 @@ impl FaultTolerantSynthesizer {
         Ok(logical_operators)
     }
 
+    /// Create error correction schedule with provided surface code
+    fn create_error_correction_schedule_with_surface_code(
+        &self,
+        distance: usize,
+        surface_code: &SurfaceCodeSynthesizer,
+    ) -> Result<Vec<ErrorCorrectionRound>> {
+        let mut schedule = Vec::new();
+
+        // Create syndrome extraction round
+        let mut round = ErrorCorrectionRound {
+            stabilizer_measurements: Vec::new(),
+            syndrome_extraction: InterfaceCircuit::new(distance * distance + 100, 0), // Extra for ancillas
+            error_correction: InterfaceCircuit::new(distance * distance, 0),
+            duration: 1,
+        };
+
+        // Add stabilizer measurements
+        for (i, stabilizer) in surface_code.stabilizers.iter().enumerate() {
+            let measurement = StabilizerMeasurement {
+                stabilizer_index: i,
+                measurement_circuit: self.create_stabilizer_measurement_circuit(stabilizer)?,
+                syndrome_qubit: distance * distance + i,
+                data_qubits: self.get_stabilizer_data_qubits(stabilizer),
+            };
+            round.stabilizer_measurements.push(measurement);
+        }
+
+        schedule.push(round);
+        Ok(schedule)
+    }
+
     /// Create error correction schedule
     fn create_error_correction_schedule(
         &self,
@@ -661,14 +700,13 @@ impl FaultTolerantSynthesizer {
         };
 
         // Add stabilizer measurements
-        for (i, stabilizer) in self
-            .surface_code
-            .as_ref()
-            .unwrap()
-            .stabilizers
-            .iter()
-            .enumerate()
-        {
+        let surface_code = self.surface_code.as_ref().ok_or_else(|| {
+            crate::error::SimulatorError::InvalidConfiguration(
+                "Surface code not initialized".to_string(),
+            )
+        })?;
+
+        for (i, stabilizer) in surface_code.stabilizers.iter().enumerate() {
             let measurement = StabilizerMeasurement {
                 stabilizer_index: i,
                 measurement_circuit: self.create_stabilizer_measurement_circuit(stabilizer)?,
@@ -1424,6 +1462,7 @@ mod tests {
         let circuit = InterfaceCircuit::new(2, 0);
         let distance = synthesizer.calculate_optimal_distance(&circuit);
         assert!(distance.is_ok());
-        assert!(distance.unwrap() >= 3);
+        let distance_value = distance.unwrap();
+        assert!(distance_value >= 3);
     }
 }

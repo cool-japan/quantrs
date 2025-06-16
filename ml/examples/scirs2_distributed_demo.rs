@@ -18,8 +18,8 @@ fn main() -> Result<()> {
     println!("1. Initializing SciRS2 distributed environment...");
 
     let distributed_trainer = SciRS2DistributedTrainer::new(
-        4,     // world_size
-        0,     // rank
+        4, // world_size
+        0, // rank
     );
 
     println!("   - Workers: 4");
@@ -30,7 +30,8 @@ fn main() -> Result<()> {
     println!("\n2. Creating SciRS2 tensors and arrays...");
 
     let data_shape = (1000, 8);
-    let mut scirs2_array = SciRS2Array::new(ArrayD::zeros(IxDyn(&[data_shape.0, data_shape.1])), true);
+    let mut scirs2_array =
+        SciRS2Array::new(ArrayD::zeros(IxDyn(&[data_shape.0, data_shape.1])), true);
     scirs2_array.requires_grad = true;
 
     // Placeholder for quantum-friendly data initialization
@@ -53,8 +54,14 @@ fn main() -> Result<()> {
     );
     println!(
         "   - Parameter range: [{:.4}, {:.4}]",
-        quantum_params.data.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
-        quantum_params.data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b))
+        quantum_params
+            .data
+            .iter()
+            .fold(f64::INFINITY, |a, &b| a.min(b)),
+        quantum_params
+            .data
+            .iter()
+            .fold(f64::NEG_INFINITY, |a, &b| a.max(b))
     );
 
     // Step 3: Setup distributed quantum model
@@ -160,8 +167,11 @@ fn main() -> Result<()> {
         test_dataset.size
     );
 
-    let evaluation_results =
-        evaluate_distributed_model(&distributed_model, &mut SciRS2DataLoader::new(test_dataset, 64), &distributed_trainer)?;
+    let evaluation_results = evaluate_distributed_model(
+        &distributed_model,
+        &mut SciRS2DataLoader::new(test_dataset, 64),
+        &distributed_trainer,
+    )?;
 
     println!("   Distributed Evaluation Results:");
     println!("   - Test accuracy: {:.4}", evaluation_results.accuracy);
@@ -233,7 +243,10 @@ fn main() -> Result<()> {
     let serializer = SciRS2Serializer;
 
     // Save distributed model
-    SciRS2Serializer::save_model(&distributed_model.state_dict(), "distributed_quantum_model.h5")?;
+    SciRS2Serializer::save_model(
+        &distributed_model.state_dict(),
+        "distributed_quantum_model.h5",
+    )?;
     println!("    - Model saved with SciRS2 serializer");
 
     // Save training state for checkpointing
@@ -244,7 +257,12 @@ fn main() -> Result<()> {
         metrics: training_metrics.clone(),
     };
 
-    SciRS2Serializer::save_checkpoint(&checkpoint.model_state, &SciRS2Optimizer::new("adam"), checkpoint.epoch, "training_checkpoint.h5")?;
+    SciRS2Serializer::save_checkpoint(
+        &checkpoint.model_state,
+        &SciRS2Optimizer::new("adam"),
+        checkpoint.epoch,
+        "training_checkpoint.h5",
+    )?;
     println!("    - Training checkpoint saved");
 
     // Load and verify
@@ -311,13 +329,19 @@ fn create_test_quantum_dataset(num_samples: usize, num_features: usize) -> Resul
     create_large_quantum_dataset(num_samples, num_features)
 }
 
-fn compute_quantum_loss(outputs: &dyn SciRS2Tensor, targets: &dyn SciRS2Tensor) -> Result<SciRS2Array> {
+fn compute_quantum_loss(
+    outputs: &dyn SciRS2Tensor,
+    targets: &dyn SciRS2Tensor,
+) -> Result<SciRS2Array> {
     // Quantum-aware loss function (placeholder implementation)
     let outputs_array = outputs.to_scirs2()?;
     let targets_array = targets.to_scirs2()?;
     let diff = &outputs_array.data - &targets_array.data;
     let mse_data = &diff * &diff;
-    let mse_loss = SciRS2Array::new(mse_data.mean_axis(ndarray::Axis(0)).unwrap().into_dyn(), false);
+    let mse_loss = SciRS2Array::new(
+        mse_data.mean_axis(ndarray::Axis(0)).unwrap().into_dyn(),
+        false,
+    );
     Ok(mse_loss)
 }
 
@@ -331,7 +355,8 @@ fn evaluate_distributed_model(
     let mut total_fidelity = 0.0;
     let mut num_batches = 0;
 
-    for _batch_idx in 0..10 { // Mock evaluation loop
+    for _batch_idx in 0..10 {
+        // Mock evaluation loop
         let data = SciRS2Array::randn(vec![32, 8], SciRS2Device::CPU)?;
         let targets = SciRS2Array::randn(vec![32], SciRS2Device::CPU)?;
         let outputs = model.forward(&data)?;

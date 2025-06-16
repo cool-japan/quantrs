@@ -3,6 +3,8 @@
 //! This module provides implementations of hybrid algorithms that combine
 //! quantum and classical computing approaches for solving optimization problems.
 
+#![allow(dead_code)]
+
 #[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
 use crate::sampler::{SampleResult, Sampler};
@@ -104,7 +106,7 @@ impl VQE {
         // Optimization loop
         for iteration in 0..self.max_iterations {
             // Evaluate energy
-            let mut energy = self.evaluate_energy(&params, hamiltonian)?;
+            let energy = self.evaluate_energy(&params, hamiltonian)?;
             energy_history.push(energy);
             param_history.push(params.clone());
 
@@ -166,7 +168,7 @@ impl VQE {
         // 3. Return energy
 
         // Placeholder implementation
-        let mut energy = hamiltonian.evaluate_classical(params)?;
+        let energy = hamiltonian.evaluate_classical(params)?;
         Ok(energy)
     }
 
@@ -179,7 +181,7 @@ impl VQE {
         match &self.optimizer {
             ClassicalOptimizer::GradientDescent {
                 learning_rate,
-                momentum,
+                momentum: _,
             } => {
                 // Compute gradient
                 let gradient = self.compute_gradient(&current_params, hamiltonian)?;
@@ -391,7 +393,7 @@ impl QAOA {
 
         for iteration in 0..max_iterations {
             // Evaluate energy
-            let mut energy = self.evaluate_qaoa_energy(&betas, &gammas, &hamiltonian)?;
+            let energy = self.evaluate_qaoa_energy(&betas, &gammas, &hamiltonian)?;
             energy_history.push(energy);
 
             // Update parameters
@@ -413,7 +415,7 @@ impl QAOA {
         // Sample final state
         let samples = self.sample_qaoa_state(&betas, &gammas, &hamiltonian, 1000)?;
 
-        let mut best_energy = *energy_history.last().unwrap();
+        let best_energy = *energy_history.last().unwrap();
 
         Ok(QAOAResult {
             optimal_betas: betas,
@@ -429,7 +431,7 @@ impl QAOA {
         &self,
         betas: &[f64],
         gammas: &[f64],
-        hamiltonian: &Hamiltonian,
+        _hamiltonian: &Hamiltonian,
     ) -> Result<f64, String> {
         // This would:
         // 1. Prepare initial state
@@ -799,7 +801,7 @@ impl IterativeRefinement {
                 neighbor[flip_idx] = !neighbor[flip_idx];
 
                 // Evaluate energy
-                let mut energy = self.evaluate_qubo_energy(&neighbor, qubo_matrix);
+                let energy = self.evaluate_qubo_energy(&neighbor, qubo_matrix);
 
                 if energy < best_energy {
                     best_energy = energy;

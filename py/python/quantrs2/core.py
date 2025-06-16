@@ -80,8 +80,6 @@ try:
     _native_core = _core
     
 except ImportError as e:
-    import warnings
-    warnings.warn(f"Core native module not found: {e}. Using stub implementations.")
     
     # Stub implementations
     class QubitId:

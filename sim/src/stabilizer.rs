@@ -483,7 +483,10 @@ fn gate_to_stabilizer(gate: &Arc<dyn GateOp + Send + Sync>) -> Option<Stabilizer
 
 /// Implement the Simulator trait for StabilizerSimulator
 impl Simulator for StabilizerSimulator {
-    fn run<const N: usize>(&mut self, circuit: &Circuit<N>) -> SimulatorResult<N> {
+    fn run<const N: usize>(
+        &mut self,
+        circuit: &Circuit<N>,
+    ) -> crate::error::Result<SimulatorResult<N>> {
         // Create a new simulator instance
         let mut sim = StabilizerSimulator::new(N);
 
@@ -498,7 +501,7 @@ impl Simulator for StabilizerSimulator {
         // Get the state vector (expensive operation)
         let amplitudes = sim.get_statevector();
 
-        SimulatorResult::new(amplitudes)
+        Ok(SimulatorResult::new(amplitudes))
     }
 }
 

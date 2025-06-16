@@ -166,7 +166,7 @@ impl BenchmarkRunner {
         for &problem_size in &self.config.problem_sizes {
             for &density in &self.config.problem_densities {
                 // Generate test problem
-                let mut matrix = self.generate_qubo_problem(problem_size, density);
+                let matrix = self.generate_qubo_problem(problem_size, density);
 
                 for sampler_config in &self.config.sampler_configs {
                     for backend_idx in 0..self.backends.len() {
@@ -185,7 +185,7 @@ impl BenchmarkRunner {
                             density
                         );
 
-                        let mut result = {
+                        let result = {
                             let backend = &mut self.backends[backend_idx];
                             Self::run_single_benchmark(
                                 backend.as_mut(),
@@ -218,7 +218,7 @@ impl BenchmarkRunner {
         }
 
         // Generate performance report
-        let mut report = PerformanceReport::from_results(&self.results)?;
+        let report = PerformanceReport::from_results(&self.results)?;
 
         // Save final results
         if let Some(ref output_dir) = self.config.output_dir {
@@ -253,10 +253,10 @@ impl BenchmarkRunner {
             let mem_before = Self::get_memory_usage_static();
 
             let start = Instant::now();
-            let setup_start = start;
+            let _setup_start = start;
 
             // Run benchmark
-            let mut results = backend.run_qubo(matrix, num_reads, sampler_config.params.clone())?;
+            let results = backend.run_qubo(matrix, num_reads, sampler_config.params.clone())?;
 
             let total_time = start.elapsed();
 
@@ -285,7 +285,7 @@ impl BenchmarkRunner {
         // Calculate quality metrics
         if !all_results.is_empty() {
             let energies: Vec<f64> = all_results.iter().map(|r| r.energy).collect();
-            let mut best_energy = energies.iter().copied().fold(f64::INFINITY, f64::min);
+            let best_energy = energies.iter().copied().fold(f64::INFINITY, f64::min);
             let avg_energy = energies.iter().sum::<f64>() / energies.len() as f64;
             let variance = energies
                 .iter()
@@ -332,7 +332,7 @@ impl BenchmarkRunner {
         for i in 0..size {
             for j in i..size {
                 if rng.random::<f64>() < density {
-                    let mut value = rng.random_range(-10.0..10.0);
+                    let value = rng.random_range(-10.0..10.0);
                     matrix[[i, j]] = value;
                     if i != j {
                         matrix[[j, i]] = value;
@@ -379,7 +379,7 @@ impl BenchmarkRunner {
     fn save_intermediate_results(&self) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(ref dir) = self.config.output_dir {
             let path = format!("{}/intermediate_results.json", dir);
-            let mut json = serde_json::to_string_pretty(&self.results)?;
+            let json = serde_json::to_string_pretty(&self.results)?;
             std::fs::write(path, json)?;
         }
         Ok(())
@@ -391,7 +391,7 @@ impl BenchmarkRunner {
 
         // Save raw results
         let results_path = format!("{}/benchmark_results.json", output_dir);
-        let mut json = serde_json::to_string_pretty(&self.results)?;
+        let json = serde_json::to_string_pretty(&self.results)?;
         std::fs::write(results_path, json)?;
 
         // Save configuration
@@ -407,7 +407,7 @@ impl BenchmarkRunner {
 pub fn quick_benchmark(
     problem_size: usize,
 ) -> Result<BenchmarkMetrics, Box<dyn std::error::Error>> {
-    let mut config = BenchmarkConfig {
+    let config = BenchmarkConfig {
         problem_sizes: vec![problem_size],
         problem_densities: vec![0.5],
         num_reads: 10,
@@ -416,7 +416,7 @@ pub fn quick_benchmark(
     };
 
     let runner = BenchmarkRunner::new(config);
-    let mut report = runner.run_complete_suite()?;
+    let report = runner.run_complete_suite()?;
 
     Ok(report.summary.overall_metrics)
 }

@@ -249,7 +249,8 @@ fn test_algorithm_selection() {
     assert_eq!(tree_alg, "DynamicProgramming"); // Should prefer DP for tree structures
 
     // Large general problem
-    let mut large_features = Array1::from(vec![1000.0, 0.0, 2.0, 1.5, 0.4, 8.0, 2.0, 6.0, 1.0, 3.0]);
+    let mut large_features =
+        Array1::from(vec![1000.0, 0.0, 2.0, 1.5, 0.4, 8.0, 2.0, 6.0, 1.0, 3.0]);
     let large_patterns = vec![];
     let large_alg = selector
         .select_algorithm(&large_features, &large_patterns)

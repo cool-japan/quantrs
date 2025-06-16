@@ -186,7 +186,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
                         break;
                     }
                 }
-                let mut value = number.parse::<f64>().map_err(|_| ParseError {
+                let value = number.parse::<f64>().map_err(|_| ParseError {
                     message: format!("Invalid number: {}", number),
                     line,
                     column,

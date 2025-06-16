@@ -283,8 +283,10 @@ impl CacheOptimizedStateVector {
 
             if ry == 0 {
                 if rx == 1 {
-                    x = (1 << s) - 1 - x;
-                    y = (1 << s) - 1 - y;
+                    // Safely perform rotation using saturation to prevent underflow
+                    let max_val = (1usize << s).saturating_sub(1);
+                    x = max_val.saturating_sub(x);
+                    y = max_val.saturating_sub(y);
                 }
                 std::mem::swap(&mut x, &mut y);
             }

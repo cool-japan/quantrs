@@ -14,21 +14,16 @@
 //! - Cross-device QML model portability and optimization
 //! - Real-time device performance monitoring and adaptation
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
-use num_complex::Complex64;
+use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::f64::consts::PI;
-use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use crate::circuit_interfaces::{
-    CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
-};
-use crate::device_noise_models::{DeviceNoiseModel, DeviceTopology, GateErrorRates};
+use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};
+use crate::device_noise_models::DeviceTopology;
 use crate::error::{Result, SimulatorError};
-use crate::qml_integration::{QMLIntegrationConfig, QMLLayer, QMLLayerType};
-use crate::statevector::StateVectorSimulator;
+use crate::qml_integration::QMLIntegrationConfig;
 
 /// Hardware architecture types for quantum devices
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

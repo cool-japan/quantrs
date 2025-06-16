@@ -80,7 +80,7 @@ impl VariableRegistry {
         if let Some(&idx) = self.var_indices.get(name) {
             return idx;
         }
-        let mut idx = self.num_vars;
+        let idx = self.num_vars;
         self.var_indices.insert(name.to_string(), idx);
         self.domains.insert(name.to_string(), domain);
         self.num_vars += 1;
@@ -96,11 +96,11 @@ impl VariableRegistry {
         let indexed_map = self
             .indexed_var_indices
             .entry(base_name.to_string())
-            .or_insert_with(HashMap::new);
+            .or_default();
         if let Some(&idx) = indexed_map.get(&indices) {
             return idx;
         }
-        let mut idx = self.num_vars;
+        let idx = self.num_vars;
         indexed_map.insert(indices, idx);
         let full_name = format!("{}_{}", base_name, self.num_vars);
         self.domains.insert(full_name, domain);
@@ -394,7 +394,7 @@ impl Compiler {
             Expression::Variable(name) if name == var_name => {
                 // Replace with indexed variable or direct substitution
                 match value {
-                    Value::Number(n) => {
+                    Value::Number(_n) => {
                         let indexed_name = format!("{}_{}", var_name, index);
                         self.registry
                             .register_variable(&indexed_name, VariableDomain::Binary);

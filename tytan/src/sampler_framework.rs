@@ -3,6 +3,8 @@
 //! This module provides plugin architecture, hyperparameter optimization,
 //! ensemble methods, and adaptive sampling strategies.
 
+#![allow(dead_code)]
+
 #[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
@@ -96,7 +98,7 @@ impl PluginManager {
             .get_mut(name)
             .ok_or_else(|| format!("Plugin {} not found", name))?;
 
-        let mut config = self.configs.get(name).cloned().unwrap_or_default();
+        let config = self.configs.get(name).cloned().unwrap_or_default();
         plugin.initialize(&config)?;
 
         Ok(plugin.create_sampler())
@@ -409,7 +411,7 @@ impl HyperparameterOptimizer {
         let mut params = HashMap::new();
 
         for (name, space) in &self.search_space {
-            let mut value = match space {
+            let value = match space {
                 ParameterSpace::Continuous {
                     min,
                     max,
@@ -636,7 +638,7 @@ impl EnsembleSampler {
 
         // Run each sampler
         for sampler in &self.samplers {
-            let mut results = sampler.run_qubo(qubo, shots_per_sampler)?;
+            let results = sampler.run_qubo(qubo, shots_per_sampler)?;
             all_results.extend(results);
         }
 
@@ -684,7 +686,7 @@ impl EnsembleSampler {
         qubo: &(Array2<f64>, HashMap<String, usize>),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
-        let mut weights = self.weights.as_ref().ok_or_else(|| {
+        let weights = self.weights.as_ref().ok_or_else(|| {
             SamplerError::InvalidParameter("Weights not set for weighted voting".to_string())
         })?;
 
@@ -704,7 +706,7 @@ impl EnsembleSampler {
         for (sampler, &weight) in self.samplers.iter().zip(normalized.iter()) {
             let sampler_shots = (shots as f64 * weight).round() as usize;
             if sampler_shots > 0 {
-                let mut results = sampler.run_qubo(qubo, sampler_shots)?;
+                let results = sampler.run_qubo(qubo, sampler_shots)?;
                 all_results.extend(results);
             }
         }
@@ -725,7 +727,7 @@ impl EnsembleSampler {
 
         // Run each sampler and keep best
         for sampler in &self.samplers {
-            let mut results = sampler.run_qubo(qubo, shots_per_sampler)?;
+            let results = sampler.run_qubo(qubo, shots_per_sampler)?;
 
             if let Some(best) = results.first() {
                 if best.energy < best_energy {
@@ -773,14 +775,14 @@ impl EnsembleSampler {
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         let shots_per_sampler = shots / self.samplers.len();
-        let mut handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
+        let _handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
 
         // Would need to make samplers thread-safe for real parallel execution
         // For now, sequential execution
         let mut all_results = Vec::new();
 
         for sampler in &self.samplers {
-            let mut results = sampler.run_qubo(qubo, shots_per_sampler)?;
+            let results = sampler.run_qubo(qubo, shots_per_sampler)?;
             all_results.extend(results);
         }
 
@@ -841,7 +843,7 @@ impl EnsembleSampler {
         let mut all_results = Vec::new();
 
         for sampler in &self.samplers {
-            let mut results = sampler.run_hobo(hobo, shots_per_sampler)?;
+            let results = sampler.run_hobo(hobo, shots_per_sampler)?;
             all_results.extend(results);
         }
 
@@ -904,7 +906,7 @@ impl<S: Sampler> AdaptiveSampler<S> {
 
     /// Adapt parameters based on performance
     fn adapt_parameters(&self) -> HashMap<String, f64> {
-        let mut history = self.history.lock().unwrap();
+        let history = self.history.lock().unwrap();
 
         match &self.strategy {
             AdaptationStrategy::TemperatureAdaptive {
@@ -945,11 +947,11 @@ impl<S: Sampler> Sampler for AdaptiveSampler<S> {
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         // Adapt parameters
-        let mut params = self.adapt_parameters();
+        let params = self.adapt_parameters();
 
         // Run base sampler (would need to apply params)
         let start = Instant::now();
-        let mut results = self.base_sampler.run_qubo(qubo, shots)?;
+        let results = self.base_sampler.run_qubo(qubo, shots)?;
         let elapsed = start.elapsed();
 
         // Update history

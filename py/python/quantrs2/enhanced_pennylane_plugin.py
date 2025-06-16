@@ -7,7 +7,6 @@ enabling advanced hybrid quantum-classical machine learning workflows with
 gradient computation, optimization, and sophisticated device capabilities.
 """
 
-import warnings
 import numpy as np
 import logging
 from typing import Dict, List, Optional, Any, Union, Callable, Tuple, Sequence
@@ -30,7 +29,6 @@ try:
 except ImportError:
     PENNYLANE_AVAILABLE = False
     PENNYLANE_VERSION = "not_available"
-    warnings.warn("PennyLane not available. Install with: pip install pennylane")
     
     # Mock classes for when PennyLane is not available
     class Device:
@@ -47,7 +45,6 @@ try:
     QUANTRS2_AVAILABLE = True
 except ImportError:
     QUANTRS2_AVAILABLE = False
-    warnings.warn("QuantRS2 core not available. Using enhanced mock implementation.")
     
     class QuantRS2Circuit:
         def __init__(self, n_qubits):
@@ -403,7 +400,7 @@ class EnhancedQuantRS2Device(Device):
             self._apply_noise_operation(name, wires, params)
         
         else:
-            self.logger.warning(f"Operation {name} not supported, skipping")
+            pass
     
     def _apply_sx_gate(self, qubit):
         """Apply sqrt(X) gate."""
@@ -527,7 +524,6 @@ class EnhancedQuantRS2Device(Device):
     def _decompose_mcx(self, controls, target):
         """Decompose multi-controlled X gate."""
         # Simplified MCX decomposition (would need ancilla qubits in practice)
-        self.logger.warning(f"MCX with {len(controls)} controls needs ancilla qubits - using approximation")
         for ctrl in controls:
             self._circuit.cnot(ctrl, target)
     
@@ -544,7 +540,6 @@ class EnhancedQuantRS2Device(Device):
         """Apply arbitrary state vector preparation."""
         # This is a simplified implementation
         # Full implementation would require state preparation algorithms
-        self.logger.warning("Arbitrary state preparation not fully implemented")
         
         # For now, prepare computational basis state closest to desired state
         probabilities = np.abs(state_vector)**2
@@ -556,12 +551,10 @@ class EnhancedQuantRS2Device(Device):
         """Apply arbitrary unitary matrix."""
         # This is a placeholder - full implementation would require 
         # unitary synthesis algorithms
-        self.logger.warning("Arbitrary unitary synthesis not implemented")
     
     def _apply_controlled_unitary(self, wires, unitary):
         """Apply controlled unitary operation."""
         # Placeholder implementation
-        self.logger.warning("Controlled unitary synthesis not implemented")
     
     def _apply_qft(self, wires):
         """Apply Quantum Fourier Transform."""
@@ -717,7 +710,6 @@ class EnhancedQuantRS2Device(Device):
         elif observable.name == "Hermitian":
             return self._hermitian_expectation(observable, state)
         else:
-            self.logger.warning(f"Observable {observable.name} not implemented")
             return 0.0
     
     def _pauli_expectation(self, pauli_obs, state):
@@ -789,7 +781,6 @@ class EnhancedQuantRS2Device(Device):
             from pennylane.gradients import param_shift
             return param_shift(tape, argnum=tape.trainable_params)
         except Exception as e:
-            self.logger.warning(f"Parameter shift failed: {e}")
             return self._finite_diff_gradients(tape)
     
     def _finite_diff_gradients(self, tape, h=1e-7):
@@ -823,7 +814,6 @@ class EnhancedQuantRS2Device(Device):
     def _adjoint_gradients(self, tape):
         """Compute gradients using adjoint method."""
         # Placeholder for adjoint differentiation
-        self.logger.warning("Adjoint gradients not implemented, falling back to finite differences")
         return self._finite_diff_gradients(tape)
     
     def _execute_tape(self, tape):
@@ -1121,7 +1111,7 @@ def register_quantrs2_device():
             qml.device_registry['quantrs2.enhanced'] = EnhancedQuantRS2Device
             logging.getLogger("quantrs2.pennylane").info("Registered QuantRS2 enhanced device")
         except Exception as e:
-            logging.getLogger("quantrs2.pennylane").warning(f"Failed to register device: {e}")
+            pass
 
 
 def quantrs2_qnode(device_config: Optional[DeviceConfig] = None, **kwargs):

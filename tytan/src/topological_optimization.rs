@@ -4,6 +4,8 @@
 //! topological quantum computing concepts, anyonic computation, and
 //! topological data analysis for optimization.
 
+#![allow(dead_code)]
+
 use ndarray::{Array2, Array3};
 use num_complex::Complex64;
 use rand::prelude::*;
@@ -367,7 +369,7 @@ impl IsingAnyonState {
         let mut new_state = self.clone();
 
         // Braiding Majoranas: γ_i → γ_j, γ_j → -γ_i
-        let phase = Complex64::new(0.0, PI / 4.0).exp();
+        let _phase = Complex64::new(0.0, PI / 4.0).exp();
 
         // Update Majorana couplings
         for k in 0..self.n {
@@ -409,7 +411,7 @@ impl IsingAnyonState {
         if total_parity != 0 {
             // Flip a random parity sector to restore conservation
             let mut rng = rng();
-            let mut idx = rng.random_range(0..self.parity_sectors.len());
+            let idx = rng.random_range(0..self.parity_sectors.len());
             corrected.parity_sectors[idx] = !corrected.parity_sectors[idx];
         }
 
@@ -427,7 +429,7 @@ pub struct GenericAnyonState {
 impl GenericAnyonState {
     fn new(n: usize) -> Self {
         let dim = 1 << n;
-        let mut state_vector = vec![Complex64::new(1.0 / (dim as f64).sqrt(), 0.0); dim];
+        let state_vector = vec![Complex64::new(1.0 / (dim as f64).sqrt(), 0.0); dim];
 
         Self { n, state_vector }
     }
@@ -449,7 +451,7 @@ impl GenericAnyonState {
         let mut rng = StdRng::seed_from_u64(42);
         let probabilities: Vec<f64> = self.state_vector.iter().map(|a| a.norm_sqr()).collect();
 
-        let mut idx = weighted_sample(&probabilities, &mut rng);
+        let idx = weighted_sample(&probabilities, &mut rng);
 
         Ok((0..self.n).map(|i| idx & (1 << i) != 0).collect())
     }
@@ -725,7 +727,7 @@ impl PersistentHomology {
         for simplex in &filtration.simplices {
             by_dimension
                 .entry(simplex.dimension)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(simplex);
         }
 
@@ -796,11 +798,13 @@ impl PersistentHomology {
 
         for pair in pairs {
             let start = (pair.birth * resolution as f64) as usize;
-            let mut end = (pair.death * resolution as f64) as usize;
+            let end = (pair.death * resolution as f64) as usize;
 
             for i in start..end.min(resolution) {
-                landscape[pair.dimension][i] = (landscape[pair.dimension][i] as f64)
-                    .max(1.0 - (i as f64 / resolution as f64 - pair.birth).abs());
+                landscape[pair.dimension][i] = f64::max(
+                    landscape[pair.dimension][i],
+                    1.0 - (i as f64 / resolution as f64 - pair.birth).abs(),
+                );
             }
         }
 

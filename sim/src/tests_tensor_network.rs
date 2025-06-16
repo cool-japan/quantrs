@@ -128,7 +128,7 @@ fn test_bell_state_tensor_network() {
     let standard_result = standard_sim.run(&circuit).unwrap();
 
     // Run with tensor network simulator
-    let tensor_sim = TensorNetworkSimulator::new();
+    let mut tensor_sim = TensorNetworkSimulator::new(2);
     let tensor_result = tensor_sim.run(&circuit).unwrap();
 
     // Expected amplitudes for the Bell state
@@ -163,7 +163,7 @@ fn test_ghz_state_tensor_network() {
     let standard_result = standard_sim.run(&circuit).unwrap();
 
     // Run with tensor network simulator
-    let tensor_sim = TensorNetworkSimulator::new();
+    let mut tensor_sim = TensorNetworkSimulator::new(3);
     let tensor_result = tensor_sim.run(&circuit).unwrap();
 
     // Expected amplitudes for the GHZ state
@@ -188,7 +188,7 @@ fn test_qft_tensor_network() {
     let standard_result = standard_sim.run(&circuit).unwrap();
 
     // Run with tensor network simulator using QFT optimization
-    let tensor_sim = TensorNetworkSimulator::qft();
+    let mut tensor_sim = TensorNetworkSimulator::qft();
     let tensor_result = tensor_sim.run(&circuit).unwrap();
 
     // Check that both simulators produce equivalent results

@@ -294,6 +294,12 @@ pub struct EncodingOptimizer {
     constraint_graph: HashMap<String, Vec<String>>,
 }
 
+impl Default for EncodingOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EncodingOptimizer {
     /// Create new encoding optimizer
     pub fn new() -> Self {
@@ -313,11 +319,11 @@ impl EncodingOptimizer {
     pub fn add_constraint(&mut self, var1: &str, var2: &str) {
         self.constraint_graph
             .entry(var1.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(var2.to_string());
         self.constraint_graph
             .entry(var2.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(var1.to_string());
     }
 
@@ -433,6 +439,12 @@ pub struct EncodingConverter {
     encodings: HashMap<String, EncodedVariable>,
     /// Auxiliary variable generator
     aux_gen: AuxiliaryVariableGenerator,
+}
+
+impl Default for EncodingConverter {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl EncodingConverter {

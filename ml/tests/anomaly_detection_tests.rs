@@ -350,13 +350,7 @@ fn test_invalid_configurations() {
 /// Test performance monitor
 #[test]
 fn test_performance_monitor() {
-    let mut monitor = PerformanceMonitor {
-        detection_latency: Vec::new(),
-        throughput: Vec::new(),
-        accuracy_scores: Vec::new(),
-        false_positive_rate: Vec::new(),
-        resource_usage: Vec::new(),
-    };
+    let mut monitor = PerformanceMonitor::new();
 
     // Record some metrics
     monitor.record_latency(0.1);

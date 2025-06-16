@@ -128,7 +128,7 @@ impl Parser {
 
         let name = self.expect_identifier()?;
         self.expect(Token::Equal)?;
-        let mut value = self.parse_value()?;
+        let value = self.parse_value()?;
 
         self.expect(Token::Semicolon)?;
 
@@ -168,17 +168,17 @@ impl Parser {
     fn parse_value(&mut self) -> Result<Value, ParseError> {
         match self.current_token() {
             Token::Number(n) => {
-                let mut value = *n;
+                let value = *n;
                 self.advance();
                 Ok(Value::Number(value))
             }
             Token::Boolean(b) => {
-                let mut value = *b;
+                let value = *b;
                 self.advance();
                 Ok(Value::Boolean(value))
             }
             Token::String(s) => {
-                let mut value = s.clone();
+                let value = s.clone();
                 self.advance();
                 Ok(Value::String(value))
             }
@@ -212,13 +212,13 @@ impl Parser {
         match self.current_token() {
             Token::Minimize => {
                 self.advance();
-                let mut expr = self.parse_expression()?;
+                let expr = self.parse_expression()?;
                 self.expect(Token::Semicolon)?;
                 Ok(Objective::Minimize(expr))
             }
             Token::Maximize => {
                 self.advance();
-                let mut expr = self.parse_expression()?;
+                let expr = self.parse_expression()?;
                 self.expect(Token::Semicolon)?;
                 Ok(Objective::Maximize(expr))
             }
@@ -321,17 +321,17 @@ impl Parser {
     fn parse_primary(&mut self) -> Result<Expression, ParseError> {
         match self.current_token() {
             Token::Number(n) => {
-                let mut value = *n;
+                let value = *n;
                 self.advance();
                 Ok(Expression::Literal(Value::Number(value)))
             }
             Token::Boolean(b) => {
-                let mut value = *b;
+                let value = *b;
                 self.advance();
                 Ok(Expression::Literal(Value::Boolean(value)))
             }
             Token::String(s) => {
-                let mut value = s.clone();
+                let value = s.clone();
                 self.advance();
                 Ok(Expression::Literal(Value::String(value)))
             }
@@ -365,7 +365,7 @@ impl Parser {
             }
             Token::LeftParen => {
                 self.advance(); // consume '('
-                let mut expr = self.parse_expression()?;
+                let expr = self.parse_expression()?;
                 self.expect(Token::RightParen)?;
                 Ok(expr)
             }
@@ -412,7 +412,7 @@ impl Parser {
     fn expect_identifier(&mut self) -> Result<String, ParseError> {
         match self.current_token() {
             Token::Identifier(name) => {
-                let mut result = name.clone();
+                let result = name.clone();
                 self.advance();
                 Ok(result)
             }

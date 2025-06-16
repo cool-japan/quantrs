@@ -2125,41 +2125,430 @@ impl NetworkPerformancePredictor {
 
 // Supporting type implementations (continued in next part due to length)
 
-macro_rules! impl_new_for_stub_types {
-    ($($type:ty),*) => {
-        $(
-            impl $type {
-                pub fn new() -> Self {
-                    unsafe { std::mem::zeroed() }
-                }
-            }
-        )*
-    };
+impl CongestionControl {
+    pub fn new() -> Self {
+        Self {
+            algorithm: CongestionAlgorithm::TCP,
+            window_size: Arc::new(Mutex::new(10.0)),
+            rtt_estimator: Arc::new(RTTEstimator::new()),
+            quantum_aware_backoff: Arc::new(QuantumAwareBackoff::new()),
+            adaptive_rate_control: Arc::new(AdaptiveRateControl::new()),
+        }
+    }
 }
 
-impl_new_for_stub_types!(
-    CongestionControl,
-    QoSEnforcement,
-    QuantumPriorityScheduler,
-    ModelPredictor,
-    PriorityEnforcer,
-    QuantumChannelOptimizer,
-    RoutingOptimizer,
-    QueueOptimizer,
-    ProtocolOptimizer,
-    HardwareLatencyOptimizer,
-    LoadPredictionModel,
-    QuantumAwareScheduler,
-    PerformanceLearner,
-    ThroughputPredictor,
-    LatencyPredictor,
-    CongestionPredictor,
-    FailurePredictor,
-    CongestionController,
-    QoSEnforcer,
-    NetworkMetricsCollector,
-    QuantumPerformancePredictor
-);
+impl RTTEstimator {
+    pub fn new() -> Self {
+        Self {
+            smoothed_rtt: Arc::new(Mutex::new(Duration::from_millis(100))),
+            rtt_variance: Arc::new(Mutex::new(Duration::from_millis(50))),
+            alpha: 0.125,
+            beta: 0.25,
+            measurements: Arc::new(Mutex::new(VecDeque::new())),
+        }
+    }
+}
+
+impl QuantumAwareBackoff {
+    pub fn new() -> Self {
+        Self {
+            decoherence_factor: 0.5,
+            coherence_time_map: Arc::new(RwLock::new(HashMap::new())),
+            urgency_scheduler: Arc::new(UrgencyScheduler::new()),
+            backoff_multiplier: 2.0,
+        }
+    }
+}
+
+impl QoSEnforcement {
+    pub fn new() -> Self {
+        Self {
+            service_classes: HashMap::new(),
+            admission_controller: Arc::new(AdmissionController::new()),
+            resource_allocator: Arc::new(QoSResourceAllocator::new()),
+            monitoring_system: Arc::new(QoSMonitoringSystem::new()),
+            violation_handler: Arc::new(ViolationHandler::new()),
+        }
+    }
+}
+
+impl QuantumPriorityScheduler {
+    pub fn new() -> Self {
+        Self {
+            priority_queue: Vec::new(),
+            scheduling_algorithm: "priority_queue".to_string(),
+        }
+    }
+}
+
+impl ModelPredictor {
+    pub fn new() -> Self {
+        Self {
+            model_type: MLModelType::NeuralNetwork {
+                layers: vec![64, 32, 16],
+                activation_function: "relu".to_string(),
+                learning_rate: 0.001,
+            },
+            feature_extractor: Arc::new(NetworkFeatureExtractor::new()),
+            prediction_cache: Arc::new(Mutex::new(HashMap::new())),
+            model_updater: Arc::new(ModelUpdater::new()),
+            training_scheduler: Arc::new(TrainingScheduler::new()),
+        }
+    }
+}
+
+impl NetworkFeatureExtractor {
+    pub fn new() -> Self {
+        Self {
+            static_features: Arc::new(StaticFeatureExtractor::new()),
+            dynamic_features: Arc::new(DynamicFeatureExtractor::new()),
+            quantum_features: Arc::new(QuantumFeatureExtractor::new()),
+            temporal_features: Arc::new(TemporalFeatureExtractor::new()),
+        }
+    }
+}
+
+impl StaticFeatureExtractor {
+    pub fn new() -> Self {
+        Self {
+            topology_features: TopologyFeatures {
+                clustering_coefficient: 0.0,
+                average_path_length: 0.0,
+                network_diameter: 0,
+                node_degree_distribution: Vec::new(),
+                centrality_measures: HashMap::new(),
+            },
+            hardware_features: HashMap::new(),
+            connectivity_matrix: Vec::new(),
+        }
+    }
+}
+
+impl DynamicFeatureExtractor {
+    pub fn new() -> Self {
+        Self {
+            load_metrics: Arc::new(RwLock::new(HashMap::new())),
+            performance_metrics: Arc::new(RwLock::new(HashMap::new())),
+            traffic_patterns: Arc::new(TrafficPatternAnalyzer::new()),
+        }
+    }
+}
+
+impl TrafficPatternAnalyzer {
+    pub fn new() -> Self {
+        Self {
+            pattern_types: vec!["periodic".to_string(), "bursty".to_string()],
+            analysis_window: Duration::from_secs(300),
+            correlation_threshold: 0.8,
+            seasonal_detection: true,
+        }
+    }
+}
+
+impl QuantumFeatureExtractor {
+    pub fn new() -> Self {
+        Self {
+            entanglement_quality: Arc::new(RwLock::new(HashMap::new())),
+            coherence_metrics: Arc::new(RwLock::new(HashMap::new())),
+            error_syndrome_patterns: Arc::new(ErrorSyndromeAnalyzer::new()),
+            quantum_volume_metrics: Arc::new(QuantumVolumeCalculator::new()),
+        }
+    }
+}
+
+impl ErrorSyndromeAnalyzer {
+    pub fn new() -> Self {
+        Self {
+            syndrome_patterns: vec!["X_error".to_string(), "Z_error".to_string()],
+            error_threshold: 0.1,
+            correction_strategies: vec!["surface_code".to_string()],
+            analysis_depth: 10,
+        }
+    }
+}
+
+impl QuantumVolumeCalculator {
+    pub fn new() -> Self {
+        Self {
+            circuit_depths: vec![1, 2, 4, 8, 16],
+            qubit_counts: vec![2, 4, 8, 16, 32],
+            fidelity_threshold: 2.0_f64.powi(-16),
+            trial_count: 100,
+        }
+    }
+}
+
+impl TemporalFeatureExtractor {
+    pub fn new() -> Self {
+        Self {
+            window_size: 100,
+            feature_count: 20,
+            sampling_rate: 10.0,
+            feature_types: vec!["trend".to_string(), "seasonality".to_string()],
+        }
+    }
+}
+
+impl ModelUpdater {
+    pub fn new() -> Self {
+        Self {
+            update_frequency: Duration::from_secs(300),
+            batch_size: 32,
+            learning_rate: 0.001,
+            last_update: Utc::now(),
+        }
+    }
+}
+
+impl TrainingScheduler {
+    pub fn new() -> Self {
+        Self {
+            schedule_interval: Duration::from_secs(3600),
+            max_training_duration: Duration::from_secs(1800),
+            resource_threshold: 0.8,
+            priority_level: 1,
+        }
+    }
+}
+
+impl PriorityEnforcer {
+    pub fn new() -> Self {
+        Self {
+            enforcement_rules: vec!["strict_priority".to_string()],
+        }
+    }
+}
+
+impl QuantumChannelOptimizer {
+    pub fn new() -> Self {
+        Self {
+            channel_configs: vec!["low_noise".to_string(), "high_fidelity".to_string()],
+        }
+    }
+}
+
+impl RoutingOptimizer {
+    pub fn new() -> Self {
+        Self {
+            routing_table: HashMap::new(),
+        }
+    }
+}
+
+impl QueueOptimizer {
+    pub fn new() -> Self {
+        Self {
+            queue_configs: vec!["fifo".to_string(), "priority".to_string()],
+        }
+    }
+}
+
+impl ProtocolOptimizer {
+    pub fn new() -> Self {
+        Self {
+            protocol_configs: vec!["tcp".to_string(), "udp".to_string()],
+        }
+    }
+}
+
+impl HardwareLatencyOptimizer {
+    pub fn new() -> Self {
+        Self {
+            latency_configs: vec!["low_latency".to_string()],
+        }
+    }
+}
+
+impl LoadPredictionModel {
+    pub fn new() -> Self {
+        Self {
+            model: Arc::new(Mutex::new(Box::new(DummyMLModel))),
+            feature_history: Arc::new(RwLock::new(VecDeque::new())),
+            prediction_horizon: Duration::from_secs(300),
+            accuracy_tracker: Arc::new(AccuracyTracker::new()),
+        }
+    }
+}
+
+impl AccuracyTracker {
+    pub fn new() -> Self {
+        Self {
+            accuracy_history: Vec::new(),
+            tracking_window: Duration::from_secs(3600),
+            threshold_accuracy: 0.8,
+            performance_metrics: ModelMetrics {
+                accuracy: 0.8,
+                precision: 0.8,
+                recall: 0.8,
+                f1_score: 0.8,
+                mae: 0.1,
+                rmse: 0.1,
+            },
+        }
+    }
+}
+
+impl QuantumAwareScheduler {
+    pub fn new() -> Self {
+        Self {
+            entanglement_aware_scheduling: true,
+            coherence_time_optimization: true,
+            fidelity_preservation_priority: true,
+            error_correction_scheduling: Arc::new(ErrorCorrectionScheduler::new()),
+            deadline_scheduler: Arc::new(DeadlineScheduler::new()),
+            urgency_evaluator: Arc::new(UrgencyEvaluator::new()),
+        }
+    }
+}
+
+impl ErrorCorrectionScheduler {
+    pub fn new() -> Self {
+        Self {
+            correction_interval: Duration::from_millis(100),
+            max_correction_time: Duration::from_millis(10),
+            priority_levels: vec![1, 2, 3, 4, 5],
+            resource_allocation: HashMap::new(),
+        }
+    }
+}
+
+impl DeadlineScheduler {
+    pub fn new() -> Self {
+        Self {
+            deadline_window: Duration::from_secs(60),
+            urgency_factors: HashMap::new(),
+            preemption_enabled: true,
+            slack_time_threshold: Duration::from_millis(10),
+        }
+    }
+}
+
+impl UrgencyEvaluator {
+    pub fn new() -> Self {
+        Self {
+            urgency_metrics: vec!["deadline".to_string(), "priority".to_string()],
+            weight_factors: HashMap::new(),
+            threshold_levels: vec![0.2, 0.5, 0.8, 0.95],
+            evaluation_interval: Duration::from_millis(100),
+        }
+    }
+}
+
+impl PerformanceLearner {
+    pub fn new() -> Self {
+        Self {
+            learning_rate: 0.01,
+        }
+    }
+}
+
+impl ThroughputPredictor {
+    pub fn new() -> Self {
+        Self {
+            prediction_model: "linear_regression".to_string(),
+        }
+    }
+}
+
+impl LatencyPredictor {
+    pub fn new() -> Self {
+        Self {
+            prediction_model: "random_forest".to_string(),
+        }
+    }
+}
+
+impl CongestionPredictor {
+    pub fn new() -> Self {
+        Self {
+            prediction_model: "lstm".to_string(),
+        }
+    }
+}
+
+impl FailurePredictor {
+    pub fn new() -> Self {
+        Self {
+            prediction_model: "svm".to_string(),
+        }
+    }
+}
+
+impl CongestionController {
+    pub fn new() -> Self {
+        Self {
+            congestion_threshold: 0.8,
+            backoff_algorithm: "exponential".to_string(),
+        }
+    }
+}
+
+impl QoSEnforcer {
+    pub fn new() -> Self {
+        Self {
+            qos_policies: vec!["strict".to_string(), "best_effort".to_string()],
+            enforcement_mode: "strict".to_string(),
+        }
+    }
+}
+
+impl NetworkMetricsCollector {
+    pub fn new() -> Self {
+        Self {
+            collection_interval: Duration::from_secs(1),
+            metrics_buffer: Vec::new(),
+        }
+    }
+}
+
+impl QuantumPerformancePredictor {
+    pub fn new() -> Self {
+        Self {
+            prediction_model: "quantum_neural_network".to_string(),
+        }
+    }
+}
+
+// Dummy ML model for testing
+#[derive(Debug)]
+struct DummyMLModel;
+
+#[async_trait]
+impl MLModel for DummyMLModel {
+    async fn predict(&self, _features: &FeatureVector) -> Result<PredictionResult> {
+        Ok(PredictionResult {
+            predicted_values: HashMap::new(),
+            confidence_intervals: HashMap::new(),
+            uncertainty_estimate: 0.1,
+            prediction_timestamp: Utc::now(),
+        })
+    }
+
+    async fn train(&mut self, _training_data: &[TrainingDataPoint]) -> Result<TrainingResult> {
+        Ok(TrainingResult {
+            training_accuracy: 0.8,
+            validation_accuracy: 0.75,
+            loss_value: 0.2,
+            training_duration: Duration::from_secs(100),
+            model_size_bytes: 1024,
+        })
+    }
+
+    async fn update_weights(&mut self, _feedback: &FeedbackData) -> Result<()> {
+        Ok(())
+    }
+
+    fn get_model_metrics(&self) -> ModelMetrics {
+        ModelMetrics {
+            accuracy: 0.8,
+            precision: 0.8,
+            recall: 0.8,
+            f1_score: 0.8,
+            mae: 0.1,
+            rmse: 0.1,
+        }
+    }
+}
 
 // Missing type definitions
 /// Entanglement-aware routing system

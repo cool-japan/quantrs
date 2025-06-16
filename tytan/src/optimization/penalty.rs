@@ -244,7 +244,7 @@ impl PenaltyOptimizer {
     fn update_weights(
         &mut self,
         violations: &HashMap<String, f64>,
-        _iteration: usize,
+        iteration: usize,
     ) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(feature = "scirs")]
         {
@@ -307,7 +307,8 @@ impl PenaltyOptimizer {
 
         // Optimize
         if let Some(ref mut optimizer) = self.optimizer {
-            let mut result = optimizer.minimize(&objective, &current_weights, &bounds, iteration)?;
+            let mut result =
+                optimizer.minimize(&objective, &current_weights, &bounds, iteration)?;
 
             // Update weights
             for (i, name) in constraint_names.iter().enumerate() {
@@ -442,6 +443,12 @@ pub struct CompiledModel {
     variable_map: HashMap<String, usize>,
 }
 
+impl Default for CompiledModel {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CompiledModel {
     pub fn new() -> Self {
         Self {
@@ -481,7 +488,7 @@ trait TermEvaluator {
 
 /// Analyze penalty function behavior
 pub fn analyze_penalty_landscape(config: &PenaltyConfig, violations: &[f64]) -> PenaltyAnalysis {
-    let mut weights = Array1::linspace(config.min_weight, config.max_weight, 100);
+    let weights = Array1::linspace(config.min_weight, config.max_weight, 100);
     let mut penalties = Vec::new();
 
     for &weight in weights.iter() {
@@ -561,7 +568,7 @@ fn calculate_sensitivity(violations: &[f64], config: &PenaltyConfig) -> f64 {
         .map(|&v| calculate_penalty(v, weight, config.penalty_type))
         .collect();
 
-    let mut delta = 0.01 * weight;
+    let delta = 0.01 * weight;
     let penalties_delta: Vec<f64> = violations
         .iter()
         .map(|&v| calculate_penalty(v, weight + delta, config.penalty_type))

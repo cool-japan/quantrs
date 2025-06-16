@@ -771,6 +771,17 @@ pub struct AlertRulesEngine {
     pub performance_tracker: Arc<RulePerformanceTracker>,
 }
 
+impl AlertRulesEngine {
+    pub fn new() -> Self {
+        Self {
+            active_rules: Arc::new(RwLock::new(HashMap::new())),
+            evaluation_engine: Arc::new(RuleEvaluationEngine::new()),
+            rule_compiler: Arc::new(CustomRuleCompiler::new()),
+            performance_tracker: Arc::new(RulePerformanceTracker::new()),
+        }
+    }
+}
+
 /// Alert rule definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlertRule {
@@ -1928,10 +1939,16 @@ impl Default for QuantumNetworkAnalyticsEngine {
     fn default() -> Self {
         Self {
             real_time_processor: Arc::new(RealTimeAnalyticsProcessor {
-                stream_processor: Arc::new(StreamProcessingEngine { processing_threads: 4 }),
+                stream_processor: Arc::new(StreamProcessingEngine {
+                    processing_threads: 4,
+                }),
                 aggregators: Arc::new(RwLock::new(HashMap::new())),
-                cep_engine: Arc::new(ComplexEventProcessingEngine { event_rules: Vec::new() }),
-                ml_inference: Arc::new(RealTimeMLInference { model_path: "default_model.onnx".to_string() }),
+                cep_engine: Arc::new(ComplexEventProcessingEngine {
+                    event_rules: Vec::new(),
+                }),
+                ml_inference: Arc::new(RealTimeMLInference {
+                    model_path: "default_model.onnx".to_string(),
+                }),
             }),
             pattern_recognition: Arc::new(QuantumPatternRecognition {
                 pattern_algorithms: vec!["correlation".to_string(), "clustering".to_string()],
@@ -1946,7 +1963,10 @@ impl Default for QuantumNetworkAnalyticsEngine {
                 modeling_algorithms: vec!["linear".to_string(), "neural_network".to_string()],
             }),
             optimization_analytics: Arc::new(QuantumOptimizationAnalytics {
-                analytics_algorithms: vec!["gradient_descent".to_string(), "evolutionary".to_string()],
+                analytics_algorithms: vec![
+                    "gradient_descent".to_string(),
+                    "evolutionary".to_string(),
+                ],
             }),
         }
     }
@@ -1964,7 +1984,9 @@ impl QuantumAnomalyDetector {
             detection_models: Arc::new(RwLock::new(HashMap::new())),
             threshold_detectors: Arc::new(RwLock::new(HashMap::new())),
             ml_detectors: Arc::new(RwLock::new(HashMap::new())),
-            correlation_analyzer: Arc::new(QuantumCorrelationAnalyzer { correlation_threshold: 0.8 }),
+            correlation_analyzer: Arc::new(QuantumCorrelationAnalyzer {
+                correlation_threshold: 0.8,
+            }),
             severity_classifier: Arc::new(AnomalySeverityClassifier::new()),
         }
     }
@@ -2068,7 +2090,7 @@ macro_rules! impl_simple_new {
                     }
                 }
             }
-            
+
             impl Default for $type {
                 fn default() -> Self {
                     Self::new()
@@ -2128,7 +2150,6 @@ pub struct PerformanceForecaster {
 pub struct ScenarioAnalyzer {
     placeholder_field: String,
 }
-
 
 #[derive(Debug)]
 pub struct QuantumAlertAnalyzer {
@@ -2206,7 +2227,6 @@ pub struct OptimizationRecommendationEngine {
 pub struct OptimizationPerformanceTracker {
     placeholder_field: String,
 }
-
 
 impl_simple_new!(
     FeatureProcessorRegistry,

@@ -84,7 +84,7 @@ impl SolutionComparator {
 
         // Calculate metrics
         for metric in &self.metrics {
-            let mut value = match metric {
+            let value = match metric {
                 ComparisonMetric::HammingDistance => self.hamming_distance(sol1, sol2),
                 ComparisonMetric::EnergyDifference => (sol1.energy - sol2.energy).abs(),
                 ComparisonMetric::ConstraintSatisfaction => {

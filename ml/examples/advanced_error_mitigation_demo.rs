@@ -5,7 +5,12 @@
 //! and their adaptive application.
 
 use ndarray::{Array1, Array2, Axis};
-use quantrs2_ml::error_mitigation::{FidelityModel, TemporalCorrelationModel, TemporalFluctuation};
+use quantrs2_core::prelude::QuantumCircuit;
+use quantrs2_ml::error_mitigation::{
+    CDRModel, CliffordCircuit, CorrectionNetwork, CorrelationFunction, EntanglementProtocol,
+    FidelityModel, NoisePredictorModel, NoiseSpectrum, SymmetryGroup, TemporalCorrelationModel,
+    TemporalFluctuation, TrainingDataSet, VerificationCircuit,
+};
 use quantrs2_ml::prelude::*;
 use std::collections::HashMap;
 
@@ -470,7 +475,8 @@ fn create_mitigation_strategies() -> Result<Vec<MitigationStrategy>> {
         MitigationStrategy::CDR {
             training_circuits: vec![CliffordCircuit; 10],
             regression_model: CDRModel,
-            feature_extraction: FeatureExtractionMethod::CircuitDepth,
+            feature_extraction:
+                quantrs2_ml::error_mitigation::FeatureExtractionMethod::CircuitDepth,
         },
         MitigationStrategy::SymmetryVerification {
             symmetry_groups: vec![SymmetryGroup; 2],
@@ -717,8 +723,8 @@ fn create_smart_selection_policy() -> Result<StrategySelectionPolicy> {
     Ok(StrategySelectionPolicy)
 }
 
-fn create_performance_tracker() -> Result<PerformanceTracker> {
-    Ok(PerformanceTracker)
+fn create_performance_tracker() -> Result<quantrs2_ml::error_mitigation::PerformanceTracker> {
+    Ok(quantrs2_ml::error_mitigation::PerformanceTracker::default())
 }
 
 fn simulate_dynamic_noise(base_noise: &NoiseModel, step: usize) -> Result<NoiseModel> {
@@ -863,5 +869,3 @@ fn generate_mitigation_recommendations(
 }
 
 // Placeholder implementations for supporting types
-#[derive(Debug, Clone, Default)]
-pub struct PerformanceTracker;

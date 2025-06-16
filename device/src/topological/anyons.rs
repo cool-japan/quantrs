@@ -174,7 +174,38 @@ impl AnyonTracker {
         // Add to global interaction list
         self.interactions.push(interaction.clone());
 
-        // Add to individual worldlines
+        // Add to individual worldlines (create if they don't exist)
+        if !self.worldlines.contains_key(&anyon1_id) {
+            self.worldlines.insert(
+                anyon1_id,
+                AnyonWorldline {
+                    anyon_id: anyon1_id,
+                    positions: vec![(0.0, 0.0, timestamp)],
+                    charge_history: vec![TopologicalCharge {
+                        label: "I".to_string(),
+                        quantum_dimension: "1".to_string(),
+                        scaling_dimension: 0.0,
+                    }],
+                    interaction_history: vec![],
+                },
+            );
+        }
+        if !self.worldlines.contains_key(&anyon2_id) {
+            self.worldlines.insert(
+                anyon2_id,
+                AnyonWorldline {
+                    anyon_id: anyon2_id,
+                    positions: vec![(0.0, 0.0, timestamp)],
+                    charge_history: vec![TopologicalCharge {
+                        label: "I".to_string(),
+                        quantum_dimension: "1".to_string(),
+                        scaling_dimension: 0.0,
+                    }],
+                    interaction_history: vec![],
+                },
+            );
+        }
+
         if let Some(worldline1) = self.worldlines.get_mut(&anyon1_id) {
             worldline1.interaction_history.push(interaction.clone());
         }

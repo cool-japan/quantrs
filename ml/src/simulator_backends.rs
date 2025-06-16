@@ -9,6 +9,8 @@ use ndarray::{Array1, Array2, ArrayView1};
 use num_complex::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
+#[cfg(feature = "gpu")]
+use quantrs2_sim::gpu::GpuStateVectorSimulator;
 use quantrs2_sim::prelude::{MPSSimulator, PauliString, StateVectorSimulator};
 use std::collections::HashMap;
 
@@ -569,11 +571,9 @@ impl MPSBackend {
     }
 }
 
-/// GPU-accelerated simulator backend
+/// GPU-accelerated simulator backend (placeholder)
 #[cfg(feature = "gpu")]
 pub struct GPUBackend {
-    /// GPU simulator
-    simulator: GPUSimulator,
     /// Device ID
     device_id: usize,
     /// Maximum qubits
@@ -584,9 +584,7 @@ pub struct GPUBackend {
 impl GPUBackend {
     /// Create new GPU backend
     pub fn new(device_id: usize, max_qubits: usize) -> Result<Self> {
-        let simulator = GPUSimulator::new(device_id)?;
         Ok(Self {
-            simulator,
             device_id,
             max_qubits,
         })
@@ -643,6 +641,10 @@ impl SimulatorBackend for GPUBackend {
         match observable {
             Observable::PauliString(_pauli) => {
                 // Would run GPU simulation and compute expectation
+                Ok(0.0) // Placeholder
+            }
+            Observable::PauliZ(_qubits) => {
+                // Would run GPU simulation and compute Pauli Z expectation
                 Ok(0.0) // Placeholder
             }
             Observable::Hamiltonian(terms) => {

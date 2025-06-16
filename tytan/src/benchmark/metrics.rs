@@ -335,7 +335,7 @@ pub mod statistics {
     }
 
     fn percentile(sorted: &[f64], p: f64) -> f64 {
-        let mut k = (sorted.len() as f64 - 1.0) * p;
+        let k = (sorted.len() as f64 - 1.0) * p;
         let f = k.floor() as usize;
         let c = f + 1;
 

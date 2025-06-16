@@ -3,6 +3,8 @@
 //! This module provides advanced implementations of quantum optimization algorithms
 //! including QAOA extensions, ADAPT-QAOA, and other variants.
 
+#![allow(dead_code)]
+
 use crate::hybrid_algorithms::{ClassicalOptimizer, Hamiltonian};
 use rand::prelude::*;
 use rand::rng;
@@ -80,7 +82,7 @@ impl AdaptQAOA {
 
         while circuit.depth() < self.max_depth && !converged {
             // Compute gradients for all operators in pool
-            let mut gradients = self.compute_operator_gradients(&circuit, hamiltonian)?;
+            let gradients = self.compute_operator_gradients(&circuit, hamiltonian)?;
 
             // Find operator with largest gradient
             let (best_op_idx, max_gradient) = gradients
@@ -90,12 +92,15 @@ impl AdaptQAOA {
                 .ok_or("No operators in pool")?;
 
             if max_gradient.abs() < self.gradient_threshold {
-                converged = true;
+                #[allow(unused_assignments)]
+                {
+                    converged = true;
+                }
                 break;
             }
 
             // Add operator to circuit
-            let mut operator = self.operator_pool.get_operator(best_op_idx)?;
+            let operator = self.operator_pool.get_operator(best_op_idx)?;
             circuit.add_operator(operator.clone(), 0.0); // Initial parameter
 
             // Optimize parameters
@@ -643,7 +648,7 @@ impl MultiAngleQAOA {
             for qubit in 0..num_qubits {
                 // Interpolate between control points
                 let t = qubit as f64 / (num_qubits - 1) as f64;
-                let mut idx = (t * (control_points.len() - 1) as f64) as usize;
+                let idx = (t * (control_points.len() - 1) as f64) as usize;
                 let frac = t * (control_points.len() - 1) as f64 - idx as f64;
 
                 if idx + 1 < control_points.len() {
@@ -664,7 +669,7 @@ impl MultiAngleQAOA {
 
         for layer in 0..self.p {
             for qubit in 0..num_qubits {
-                let mut x = 2.0 * PI * qubit as f64 / num_qubits as f64;
+                let x = 2.0 * PI * qubit as f64 / num_qubits as f64;
 
                 for (k, &coeff) in coeffs.iter().enumerate() {
                     angles[layer][qubit] += coeff * (k as f64 * x).cos();
@@ -681,7 +686,7 @@ impl MultiAngleQAOA {
 
         for layer in 0..self.p {
             for (i, angle) in angles[layer].iter_mut().enumerate() {
-                let mut x = i as f64 / 10.0; // Normalized position
+                let x = i as f64 / 10.0; // Normalized position
 
                 for (power, &coeff) in coeffs.iter().enumerate().take(degree + 1) {
                     *angle += coeff * x.powi(power as i32);

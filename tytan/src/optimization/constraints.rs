@@ -63,6 +63,12 @@ pub enum EncodingType {
     Gray,
 }
 
+impl Default for ConstraintHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConstraintHandler {
     /// Create new constraint handler
     pub fn new() -> Self {
@@ -311,12 +317,12 @@ impl ConstraintHandler {
                 }
                 ConstraintType::OneHot => {
                     // (sum_i x_i - 1)^2
-                    let mut expr = constraint.expression.clone();
+                    let expr = constraint.expression.clone();
                     expr.clone() * expr
                 }
                 ConstraintType::Cardinality { k: _ } => {
                     // (sum_i x_i - k)^2
-                    let mut expr = constraint.expression.clone();
+                    let expr = constraint.expression.clone();
                     expr.clone() * expr
                 }
                 ConstraintType::IntegerEncoding { .. } => {

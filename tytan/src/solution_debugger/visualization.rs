@@ -218,10 +218,10 @@ impl SolutionVisualizer {
     pub fn visualize_energy_landscape(
         &self,
         solution: &Solution,
-        problem_info: &ProblemInfo,
+        _problem_info: &ProblemInfo,
     ) -> Visualization {
         let mut nodes = Vec::new();
-        let mut edges = Vec::new();
+        let edges = Vec::new();
 
         // Create node for current solution
         nodes.push(Node {

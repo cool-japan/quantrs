@@ -357,9 +357,9 @@ pub mod prelude {
     };
 
     pub use crate::quantum_advanced_diffusion::{
-        DenoisingArchitecture, GenerationMetrics, QuantumAdvancedDiffusionConfig,
-        QuantumAdvancedDiffusionModel, QuantumGenerationOutput, QuantumNoiseSchedule,
-        QuantumTrainingConfig,
+        DenoisingArchitecture, ErrorMitigationStrategy, GenerationMetrics,
+        QuantumAdvancedDiffusionConfig, QuantumAdvancedDiffusionModel, QuantumGenerationOutput,
+        QuantumNoiseSchedule, QuantumTrainingConfig,
     };
 
     pub use crate::quantum_continuous_flows::{
@@ -372,9 +372,9 @@ pub mod prelude {
     };
 
     pub use crate::quantum_mixture_of_experts::{
-        MoEOutput, MoEStatistics, MoETrainingConfig, QuantumCombinationMetrics,
-        QuantumGatingMechanism, QuantumMixtureOfExperts, QuantumMixtureOfExpertsConfig,
-        QuantumRoutingStrategy,
+        InterferencePattern, MoEOutput, MoEStatistics, MoETrainingConfig,
+        QuantumCombinationMetrics, QuantumGatingMechanism, QuantumMixtureOfExperts,
+        QuantumMixtureOfExpertsConfig, QuantumRoutingStrategy,
     };
 
     pub use crate::quantum_self_supervised_learning::{

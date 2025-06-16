@@ -20,9 +20,7 @@ use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::circuit_interfaces::{
-    CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
-};
+use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};
 use crate::error::{Result, SimulatorError};
 
 /// FPGA platform types

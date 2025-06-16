@@ -728,12 +728,20 @@ mod tests {
         let mut computer = MBQCComputer::new(cluster);
 
         let pattern = MeasurementPattern {
-            measurements: vec![MeasurementStep {
-                node_id: 1,
-                basis: MeasurementBasis::x(),
-                dependencies: vec![],
-                adaptive: false,
-            }],
+            measurements: vec![
+                MeasurementStep {
+                    node_id: 1,
+                    basis: MeasurementBasis::x(),
+                    dependencies: vec![],
+                    adaptive: false,
+                },
+                MeasurementStep {
+                    node_id: 2,
+                    basis: MeasurementBasis::z(),
+                    dependencies: vec![],
+                    adaptive: false,
+                },
+            ],
             corrections: vec![],
         };
 

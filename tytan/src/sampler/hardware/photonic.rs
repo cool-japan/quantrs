@@ -3,6 +3,8 @@
 //! This module provides integration with photonic computing platforms
 //! for solving Ising/QUBO problems using optical computing.
 
+#![allow(dead_code)]
+
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::Array2;
 use std::cell::RefCell;
@@ -298,7 +300,7 @@ impl PhotonicIsingMachineSampler {
     }
 
     /// Configure spatial photonic network
-    fn configure_spatial_network(&self, qubo: &Array2<f64>) -> Result<(), SamplerError> {
+    fn configure_spatial_network(&self, _qubo: &Array2<f64>) -> Result<(), SamplerError> {
         // Map QUBO to spatial light modulator patterns
         // This would involve hologram computation
         Ok(())
@@ -307,8 +309,8 @@ impl PhotonicIsingMachineSampler {
     /// Configure quantum photonic network
     fn configure_quantum_network(
         &self,
-        qubo: &Array2<f64>,
-        squeezing: f64,
+        _qubo: &Array2<f64>,
+        _squeezing: f64,
     ) -> Result<(), SamplerError> {
         // Configure squeezed states and beamsplitter network
         Ok(())
@@ -349,8 +351,8 @@ impl PhotonicIsingMachineSampler {
         // For now, return simulated measurement
 
         let n = self.optical_network.borrow().num_modes;
-        let mut amplitudes = vec![0.8; n];
-        let mut phases = vec![0.0; n];
+        let amplitudes = vec![0.8; n];
+        let phases = vec![0.0; n];
 
         Ok(OpticalMeasurement {
             amplitudes,
@@ -371,13 +373,13 @@ impl PhotonicIsingMachineSampler {
         // Threshold detection
         for (var_name, &idx) in var_map {
             if idx < measurement.amplitudes.len() {
-                let mut value = measurement.amplitudes[idx] > self.config.measurement.threshold;
+                let value = measurement.amplitudes[idx] > self.config.measurement.threshold;
                 assignments.insert(var_name.clone(), value);
             }
         }
 
         // Calculate energy (would need actual QUBO for this)
-        let mut energy = -measurement.quality_metric * 100.0;
+        let energy = -measurement.quality_metric * 100.0;
 
         SampleResult {
             assignments,
@@ -451,7 +453,7 @@ impl Sampler for PhotonicIsingMachineSampler {
         self.configure_network(qubo)?;
 
         // Run optical computation
-        let mut measurements = self.run_optical_computation(shots)?;
+        let measurements = self.run_optical_computation(shots)?;
 
         // Convert to solutions
         let mut results: Vec<SampleResult> = measurements

@@ -187,7 +187,7 @@ impl DebugReport {
                     issue.description
                 ));
             }
-            summary.push_str("\n");
+            summary.push('\n');
         }
 
         // Add suggestions
@@ -203,7 +203,7 @@ impl DebugReport {
                     suggestion.feasibility
                 ));
             }
-            summary.push_str("\n");
+            summary.push('\n');
         }
 
         summary

@@ -3,6 +3,8 @@
 //! This module provides utilities for creating and manipulating symbolic
 //! variables for QUBO/HOBO problem formulation.
 
+#![allow(dead_code)]
+
 #[cfg(feature = "dwave")]
 use ndarray::Array;
 use std::fmt::Write;

@@ -93,7 +93,7 @@ pub fn optimize_qubo(
 
     // Basic simulated annealing parameters
     let mut temperature = 10.0;
-    let mut cooling_rate = 0.99;
+    let cooling_rate = 0.99;
 
     // Simulated annealing loop
     let mut rng = rand::rng();

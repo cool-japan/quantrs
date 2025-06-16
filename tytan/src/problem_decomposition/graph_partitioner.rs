@@ -22,6 +22,12 @@ pub struct GraphPartitioner {
     max_recursion_depth: usize,
 }
 
+impl Default for GraphPartitioner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GraphPartitioner {
     /// Create new graph partitioner with default settings
     pub fn new() -> Self {
@@ -108,7 +114,7 @@ impl GraphPartitioner {
         let subproblems = self.extract_subproblems(qubo, var_map, &partition_assignment)?;
 
         // Compute partition metrics
-        let mut metrics = self.compute_partition_metrics(&graph, &partition_assignment);
+        let metrics = self.compute_partition_metrics(&graph, &partition_assignment);
 
         let coupling_terms = self.extract_coupling_terms(qubo, &partition_assignment)?;
 
