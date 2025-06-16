@@ -431,7 +431,7 @@ impl QuantumHashFunction {
         // Create tensor product gate for multi-qubit system
         let dim = 2_usize.pow(num_qubits as u32);
         let mut full_gate = Array2::eye(dim);
-        
+
         // Simple implementation: apply gate only to computational basis states
         // This is a simplified version - a full implementation would need proper tensor products
         for i in 0..dim {
@@ -444,7 +444,7 @@ impl QuantumHashFunction {
                     full_gate[[j, i]] = gate[[1, 0]];
                 }
             } else {
-                // Apply gate[0,1] and gate[1,1] components  
+                // Apply gate[0,1] and gate[1,1] components
                 let j = i & !(1 << target_qubit);
                 if j < dim {
                     full_gate[[j, i]] = gate[[0, 1]];
@@ -452,7 +452,7 @@ impl QuantumHashFunction {
                 }
             }
         }
-        
+
         Ok(circuit.dot(&full_gate))
     }
 
@@ -467,29 +467,29 @@ impl QuantumHashFunction {
         // Create tensor product gate for multi-qubit system
         let dim = 2_usize.pow(num_qubits as u32);
         let mut full_gate = Array2::eye(dim);
-        
+
         // Simplified implementation: apply gate to control-target qubit pairs
         // This is a placeholder - full implementation would need proper tensor products
         for i in 0..dim {
             let control_bit = (i >> control) & 1;
             let target_bit = (i >> target) & 1;
             let two_qubit_state = (control_bit << 1) | target_bit;
-            
+
             // Apply 4x4 gate to the two-qubit subspace
             if two_qubit_state < 4 {
                 for j in 0..4 {
                     let new_control = (j >> 1) & 1;
                     let new_target = j & 1;
-                    let new_i = (i & !((1 << control) | (1 << target))) 
-                               | (new_control << control) 
-                               | (new_target << target);
+                    let new_i = (i & !((1 << control) | (1 << target)))
+                        | (new_control << control)
+                        | (new_target << target);
                     if new_i < dim {
                         full_gate[[new_i, i]] = gate[[j, two_qubit_state]];
                     }
                 }
             }
         }
-        
+
         Ok(circuit.dot(&full_gate))
     }
 }
@@ -565,11 +565,11 @@ impl QuantumDigitalSignature {
 
         // Create identity matrix of the correct size
         let mut gate = Array2::eye(matrix_size);
-        
+
         // Apply rotation to specific indices (simplified approach)
         let i = index % matrix_size;
         let j = (index + 1) % matrix_size;
-        
+
         // Apply 2x2 rotation to positions (i,j)
         gate[[i, i]] = Complex64::new(cos_val, 0.0);
         gate[[i, j]] = Complex64::new(-sin_val, 0.0) * phase;
@@ -817,15 +817,15 @@ impl QuantumKeyDistribution {
             }
         }
 
-        let qber = if sifted_key.is_empty() { 
-            0.0 
-        } else { 
-            qber_errors as f64 / sifted_key.len() as f64 
+        let qber = if sifted_key.is_empty() {
+            0.0
+        } else {
+            qber_errors as f64 / sifted_key.len() as f64
         };
 
         if sifted_key.is_empty() {
             return Err(QuantRS2Error::QKDFailure(
-                "No sifted key bits available".to_string()
+                "No sifted key bits available".to_string(),
             ));
         }
 

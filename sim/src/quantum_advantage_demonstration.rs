@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 
 use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};
 use crate::error::{Result, SimulatorError};
-use crate::quantum_supremacy::{RandomCircuit, QuantumSupremacyVerifier};
+use crate::quantum_supremacy::{QuantumSupremacyVerifier, RandomCircuit};
 
 /// Types of quantum advantage demonstrations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -494,7 +494,8 @@ pub struct QuantumAdvantageDemonstrator {
     /// Quantum algorithm implementations
     quantum_algorithms: HashMap<ProblemDomain, Box<dyn QuantumAlgorithm + Send + Sync>>,
     /// Classical algorithm implementations
-    classical_algorithms: HashMap<ClassicalAlgorithmType, Box<dyn ClassicalAlgorithm + Send + Sync>>,
+    classical_algorithms:
+        HashMap<ClassicalAlgorithmType, Box<dyn ClassicalAlgorithm + Send + Sync>>,
     /// Results database
     results_database: Arc<Mutex<ResultsDatabase>>,
     /// Performance profiler
@@ -505,13 +506,13 @@ pub struct QuantumAdvantageDemonstrator {
 pub trait QuantumAlgorithm: Send + Sync {
     /// Execute quantum algorithm
     fn execute(&self, problem_instance: &ProblemInstance) -> Result<AlgorithmResult>;
-    
+
     /// Get resource requirements
     fn get_resource_requirements(&self, problem_size: usize) -> QuantumResources;
-    
+
     /// Get theoretical scaling
     fn get_theoretical_scaling(&self) -> f64;
-    
+
     /// Algorithm name
     fn name(&self) -> &str;
 }
@@ -520,13 +521,13 @@ pub trait QuantumAlgorithm: Send + Sync {
 pub trait ClassicalAlgorithm: Send + Sync {
     /// Execute classical algorithm
     fn execute(&self, problem_instance: &ProblemInstance) -> Result<AlgorithmResult>;
-    
+
     /// Get resource requirements
     fn get_resource_requirements(&self, problem_size: usize) -> ClassicalResources;
-    
+
     /// Get theoretical scaling
     fn get_theoretical_scaling(&self) -> f64;
-    
+
     /// Algorithm name
     fn name(&self) -> &str;
 }
@@ -577,9 +578,7 @@ pub enum ProblemData {
         evolution_time: f64,
     },
     /// Custom problem data
-    Custom {
-        data: HashMap<String, Vec<f64>>,
-    },
+    Custom { data: HashMap<String, Vec<f64>> },
 }
 
 /// Difficulty parameters
@@ -644,8 +643,10 @@ impl QuantumAdvantageDemonstrator {
         let mut all_speedups = Vec::new();
         let mut all_accuracies = Vec::new();
 
-        println!("Starting quantum advantage demonstration for {:?} in {:?} domain", 
-                 self.config.advantage_type, self.config.domain);
+        println!(
+            "Starting quantum advantage demonstration for {:?} in {:?} domain",
+            self.config.advantage_type, self.config.domain
+        );
 
         // Test each problem size
         let problem_sizes = self.config.problem_sizes.clone();
@@ -653,10 +654,10 @@ impl QuantumAdvantageDemonstrator {
             println!("Testing problem size: {}", problem_size);
 
             let detailed_result = self.test_problem_size(problem_size)?;
-            
+
             all_speedups.push(detailed_result.comparison.speedup);
             all_accuracies.push(detailed_result.quantum_results.solution_quality);
-            
+
             detailed_results.push(detailed_result);
         }
 
@@ -676,34 +677,51 @@ impl QuantumAdvantageDemonstrator {
         let projections = self.generate_projections(&detailed_results)?;
 
         // Overall metrics
-        let overall_speedup = all_speedups.iter().fold(1.0, |acc, &x| acc * x).powf(1.0 / all_speedups.len() as f64);
+        let overall_speedup = all_speedups
+            .iter()
+            .fold(1.0, |acc, &x| acc * x)
+            .powf(1.0 / all_speedups.len() as f64);
         let avg_accuracy = all_accuracies.iter().sum::<f64>() / all_accuracies.len() as f64;
 
-        let quantum_time = detailed_results.iter()
+        let quantum_time = detailed_results
+            .iter()
             .map(|r| r.quantum_results.execution_time)
-            .sum::<Duration>() / detailed_results.len() as u32;
+            .sum::<Duration>()
+            / detailed_results.len() as u32;
 
-        let best_classical_time = detailed_results.iter()
-            .map(|r| r.classical_results.iter()
-                .map(|c| c.execution_time)
-                .min()
-                .unwrap_or(Duration::new(0, 0)))
-            .sum::<Duration>() / detailed_results.len() as u32;
+        let best_classical_time = detailed_results
+            .iter()
+            .map(|r| {
+                r.classical_results
+                    .iter()
+                    .map(|c| c.execution_time)
+                    .min()
+                    .unwrap_or(Duration::new(0, 0))
+            })
+            .sum::<Duration>()
+            / detailed_results.len() as u32;
 
         let metrics = QuantumAdvantageMetrics {
             quantum_time,
             classical_time: best_classical_time,
             speedup_factor: overall_speedup,
             quantum_accuracy: avg_accuracy,
-            classical_accuracy: detailed_results.iter()
-                .map(|r| r.classical_results.iter()
-                    .map(|c| c.solution_quality)
-                    .max_by(|a, b| a.partial_cmp(b).unwrap())
-                    .unwrap_or(0.0))
-                .sum::<f64>() / detailed_results.len() as f64,
+            classical_accuracy: detailed_results
+                .iter()
+                .map(|r| {
+                    r.classical_results
+                        .iter()
+                        .map(|c| c.solution_quality)
+                        .max_by(|a, b| a.partial_cmp(b).unwrap())
+                        .unwrap_or(0.0)
+                })
+                .sum::<f64>()
+                / detailed_results.len() as f64,
             quantum_resources: self.aggregate_quantum_resources(&detailed_results),
             classical_resources: self.aggregate_classical_resources(&detailed_results),
-            statistical_significance: statistical_analysis.hypothesis_tests.iter()
+            statistical_significance: statistical_analysis
+                .hypothesis_tests
+                .iter()
                 .find(|t| t.test_name == "quantum_advantage")
                 .map(|t| 1.0 - t.p_value)
                 .unwrap_or(0.0),
@@ -711,8 +729,10 @@ impl QuantumAdvantageDemonstrator {
             scaling_analysis,
         };
 
-        let advantage_demonstrated = overall_speedup > 1.0 && 
-            statistical_analysis.hypothesis_tests.iter()
+        let advantage_demonstrated = overall_speedup > 1.0
+            && statistical_analysis
+                .hypothesis_tests
+                .iter()
                 .any(|t| t.test_name == "quantum_advantage" && t.reject_null);
 
         let result = QuantumAdvantageResult {
@@ -738,10 +758,15 @@ impl QuantumAdvantageDemonstrator {
 
         // Execute quantum algorithm
         let quantum_start = Instant::now();
-        let quantum_algorithm = self.quantum_algorithms.get(&self.config.domain)
-            .ok_or_else(|| SimulatorError::UnsupportedOperation(
-                format!("No quantum algorithm registered for domain {:?}", self.config.domain)
-            ))?;
+        let quantum_algorithm = self
+            .quantum_algorithms
+            .get(&self.config.domain)
+            .ok_or_else(|| {
+                SimulatorError::UnsupportedOperation(format!(
+                    "No quantum algorithm registered for domain {:?}",
+                    self.config.domain
+                ))
+            })?;
 
         let quantum_results = quantum_algorithm.execute(&problem_instance)?;
         let quantum_time = quantum_start.elapsed();
@@ -751,7 +776,7 @@ impl QuantumAdvantageDemonstrator {
         for &classical_type in &self.config.classical_algorithms {
             if let Some(classical_algorithm) = self.classical_algorithms.get(&classical_type) {
                 let classical_start = Instant::now();
-                
+
                 // Set timeout for classical algorithms
                 let result = if classical_start.elapsed() < self.config.classical_timeout {
                     classical_algorithm.execute(&problem_instance)?
@@ -771,7 +796,7 @@ impl QuantumAdvantageDemonstrator {
                         output_distribution: None,
                     }
                 };
-                
+
                 classical_results.push(result);
             }
         }
@@ -839,11 +864,9 @@ impl QuantumAdvantageDemonstrator {
                     evolution_time: 1.0,
                 }
             }
-            _ => {
-                ProblemData::Custom {
-                    data: HashMap::new(),
-                }
-            }
+            _ => ProblemData::Custom {
+                data: HashMap::new(),
+            },
         };
 
         Ok(ProblemInstance {
@@ -879,7 +902,10 @@ impl QuantumAdvantageDemonstrator {
             if layer % 2 == 1 {
                 for qubit in 0..num_qubits - 1 {
                     if rand::random::<f64>() < 0.5 {
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubit, qubit + 1]));
+                        circuit.add_gate(InterfaceGate::new(
+                            InterfaceGateType::CNOT,
+                            vec![qubit, qubit + 1],
+                        ));
                     }
                 }
             }
@@ -889,14 +915,21 @@ impl QuantumAdvantageDemonstrator {
     }
 
     /// Compare quantum and classical results
-    fn compare_results(&self, quantum: &AlgorithmResult, classical_results: &[AlgorithmResult]) -> Result<ComparisonResult> {
-        let best_classical = classical_results.iter()
+    fn compare_results(
+        &self,
+        quantum: &AlgorithmResult,
+        classical_results: &[AlgorithmResult],
+    ) -> Result<ComparisonResult> {
+        let best_classical = classical_results
+            .iter()
             .min_by(|a, b| a.execution_time.cmp(&b.execution_time))
             .ok_or_else(|| SimulatorError::InvalidInput("No classical results".to_string()))?;
 
-        let speedup = best_classical.execution_time.as_secs_f64() / quantum.execution_time.as_secs_f64();
+        let speedup =
+            best_classical.execution_time.as_secs_f64() / quantum.execution_time.as_secs_f64();
         let quality_improvement = quantum.solution_quality / best_classical.solution_quality;
-        let resource_efficiency = (best_classical.resource_usage.peak_memory as f64) / (quantum.resource_usage.peak_memory as f64);
+        let resource_efficiency = (best_classical.resource_usage.peak_memory as f64)
+            / (quantum.resource_usage.peak_memory as f64);
 
         // Simplified statistical significance calculation
         let significance = if speedup > 1.0 { 0.95 } else { 0.05 };
@@ -913,14 +946,19 @@ impl QuantumAdvantageDemonstrator {
     /// Analyze scaling behavior
     fn analyze_scaling(&self, results: &[DetailedResult]) -> Result<ScalingAnalysis> {
         let problem_sizes: Vec<usize> = results.iter().map(|r| r.problem_size).collect();
-        let quantum_times: Vec<f64> = results.iter()
+        let quantum_times: Vec<f64> = results
+            .iter()
             .map(|r| r.quantum_results.execution_time.as_secs_f64())
             .collect();
-        let classical_times: Vec<f64> = results.iter()
-            .map(|r| r.classical_results.iter()
-                .map(|c| c.execution_time.as_secs_f64())
-                .min_by(|a, b| a.partial_cmp(b).unwrap())
-                .unwrap_or(0.0))
+        let classical_times: Vec<f64> = results
+            .iter()
+            .map(|r| {
+                r.classical_results
+                    .iter()
+                    .map(|c| c.execution_time.as_secs_f64())
+                    .min_by(|a, b| a.partial_cmp(b).unwrap())
+                    .unwrap_or(0.0)
+            })
             .collect();
 
         // Fit power law scaling: T = a * n^b
@@ -928,7 +966,8 @@ impl QuantumAdvantageDemonstrator {
         let classical_scaling = self.fit_power_law(&problem_sizes, &classical_times)?;
 
         // Find crossover point
-        let crossover_point = self.find_crossover_point(&problem_sizes, &quantum_times, &classical_times);
+        let crossover_point =
+            self.find_crossover_point(&problem_sizes, &quantum_times, &classical_times);
 
         // Calculate asymptotic advantage
         let asymptotic_advantage = if classical_scaling > quantum_scaling {
@@ -959,7 +998,11 @@ impl QuantumAdvantageDemonstrator {
         let n = log_sizes.len() as f64;
         let sum_x = log_sizes.iter().sum::<f64>();
         let sum_y = log_times.iter().sum::<f64>();
-        let sum_xy = log_sizes.iter().zip(&log_times).map(|(x, y)| x * y).sum::<f64>();
+        let sum_xy = log_sizes
+            .iter()
+            .zip(&log_times)
+            .map(|(x, y)| x * y)
+            .sum::<f64>();
         let sum_x2 = log_sizes.iter().map(|x| x * x).sum::<f64>();
 
         let slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x);
@@ -967,8 +1010,17 @@ impl QuantumAdvantageDemonstrator {
     }
 
     /// Find crossover point where quantum becomes faster
-    fn find_crossover_point(&self, sizes: &[usize], quantum_times: &[f64], classical_times: &[f64]) -> Option<usize> {
-        for (i, (&size, (&qt, &ct))) in sizes.iter().zip(quantum_times.iter().zip(classical_times.iter())).enumerate() {
+    fn find_crossover_point(
+        &self,
+        sizes: &[usize],
+        quantum_times: &[f64],
+        classical_times: &[f64],
+    ) -> Option<usize> {
+        for (i, (&size, (&qt, &ct))) in sizes
+            .iter()
+            .zip(quantum_times.iter().zip(classical_times.iter()))
+            .enumerate()
+        {
             if qt < ct {
                 return Some(size);
             }
@@ -977,18 +1029,24 @@ impl QuantumAdvantageDemonstrator {
     }
 
     /// Perform statistical analysis
-    fn perform_statistical_analysis(&self, results: &[DetailedResult]) -> Result<StatisticalAnalysis> {
+    fn perform_statistical_analysis(
+        &self,
+        results: &[DetailedResult],
+    ) -> Result<StatisticalAnalysis> {
         let mut hypothesis_tests = Vec::new();
 
         // Test for quantum advantage (speedup > 1)
         let speedups: Vec<f64> = results.iter().map(|r| r.comparison.speedup).collect();
         let avg_speedup = speedups.iter().sum::<f64>() / speedups.len() as f64;
-        let speedup_variance = speedups.iter()
+        let speedup_variance = speedups
+            .iter()
             .map(|s| (s - avg_speedup).powi(2))
-            .sum::<f64>() / speedups.len() as f64;
+            .sum::<f64>()
+            / speedups.len() as f64;
 
         // One-sample t-test for speedup > 1
-        let t_statistic = (avg_speedup - 1.0) / (speedup_variance.sqrt() / (speedups.len() as f64).sqrt());
+        let t_statistic =
+            (avg_speedup - 1.0) / (speedup_variance.sqrt() / (speedups.len() as f64).sqrt());
         let p_value = self.compute_t_test_p_value(t_statistic, speedups.len() - 1);
 
         hypothesis_tests.push(HypothesisTest {
@@ -1004,12 +1062,15 @@ impl QuantumAdvantageDemonstrator {
         let margin_of_error = 1.96 * speedup_variance.sqrt() / (speedups.len() as f64).sqrt();
         confidence_intervals.insert(
             "speedup".to_string(),
-            (avg_speedup - margin_of_error, avg_speedup + margin_of_error)
+            (avg_speedup - margin_of_error, avg_speedup + margin_of_error),
         );
 
         // Effect sizes
         let mut effect_sizes = HashMap::new();
-        effect_sizes.insert("speedup_cohen_d".to_string(), (avg_speedup - 1.0) / speedup_variance.sqrt());
+        effect_sizes.insert(
+            "speedup_cohen_d".to_string(),
+            (avg_speedup - 1.0) / speedup_variance.sqrt(),
+        );
 
         // Power analysis
         let power_analysis = PowerAnalysis {
@@ -1076,22 +1137,22 @@ impl QuantumAdvantageDemonstrator {
     fn analyze_costs(&self, results: &[DetailedResult]) -> Result<CostAnalysis> {
         // Simplified cost analysis
         let quantum_hardware_cost = 10_000_000.0; // $10M quantum computer
-        let classical_hardware_cost = 100_000.0;   // $100K classical computer
+        let classical_hardware_cost = 100_000.0; // $100K classical computer
 
         let operational_costs = OperationalCosts {
-            energy: 1000.0,      // Daily energy cost
-            maintenance: 5000.0, // Daily maintenance
-            personnel: 2000.0,   // Daily personnel cost
+            energy: 1000.0,         // Daily energy cost
+            maintenance: 5000.0,    // Daily maintenance
+            personnel: 2000.0,      // Daily personnel cost
             infrastructure: 1000.0, // Daily infrastructure
         };
 
-        let daily_operational_cost = operational_costs.energy + 
-                                   operational_costs.maintenance + 
-                                   operational_costs.personnel + 
-                                   operational_costs.infrastructure;
+        let daily_operational_cost = operational_costs.energy
+            + operational_costs.maintenance
+            + operational_costs.personnel
+            + operational_costs.infrastructure;
 
         let total_cost_ownership = quantum_hardware_cost + daily_operational_cost * 365.0;
-        
+
         let num_solutions = results.len() as f64;
         let cost_per_solution = total_cost_ownership / num_solutions;
 
@@ -1126,7 +1187,10 @@ impl QuantumAdvantageDemonstrator {
         let timeline = TimelineProjection {
             milestones: vec![
                 ("Fault-tolerant quantum computers".to_string(), 2030),
-                ("Practical quantum advantage in optimization".to_string(), 2026),
+                (
+                    "Practical quantum advantage in optimization".to_string(),
+                    2026,
+                ),
                 ("Quantum supremacy in machine learning".to_string(), 2028),
                 ("Commercial quantum advantage".to_string(), 2032),
             ],
@@ -1176,10 +1240,8 @@ impl QuantumAdvantageDemonstrator {
             ProblemDomain::RandomCircuitSampling,
             Box::new(RandomCircuitSamplingAlgorithm),
         );
-        self.quantum_algorithms.insert(
-            ProblemDomain::QAOA,
-            Box::new(QAOAAlgorithm),
-        );
+        self.quantum_algorithms
+            .insert(ProblemDomain::QAOA, Box::new(QAOAAlgorithm));
 
         // Register classical algorithms
         self.classical_algorithms.insert(
@@ -1193,9 +1255,11 @@ impl QuantumAdvantageDemonstrator {
     }
 
     fn aggregate_quantum_resources(&self, results: &[DetailedResult]) -> QuantumResources {
-        let avg_depth = results.iter()
+        let avg_depth = results
+            .iter()
             .map(|r| r.quantum_results.resource_usage.operations)
-            .sum::<usize>() / results.len();
+            .sum::<usize>()
+            / results.len();
 
         QuantumResources {
             qubits: results.iter().map(|r| r.problem_size).max().unwrap_or(0),
@@ -1204,20 +1268,31 @@ impl QuantumAdvantageDemonstrator {
             coherence_time: Duration::from_millis(100),
             gate_fidelity: 0.999,
             shots: 1000,
-            quantum_volume: results.iter().map(|r| r.problem_size * r.problem_size).max().unwrap_or(0),
+            quantum_volume: results
+                .iter()
+                .map(|r| r.problem_size * r.problem_size)
+                .max()
+                .unwrap_or(0),
         }
     }
 
     fn aggregate_classical_resources(&self, results: &[DetailedResult]) -> ClassicalResources {
-        let total_time = results.iter()
+        let total_time = results
+            .iter()
             .flat_map(|r| &r.classical_results)
             .map(|c| c.execution_time)
             .sum::<Duration>();
 
-        let avg_memory = results.iter()
+        let avg_memory = results
+            .iter()
             .flat_map(|r| &r.classical_results)
             .map(|c| c.resource_usage.peak_memory)
-            .sum::<usize>() / results.iter().flat_map(|r| &r.classical_results).count().max(1);
+            .sum::<usize>()
+            / results
+                .iter()
+                .flat_map(|r| &r.classical_results)
+                .count()
+                .max(1);
 
         ClassicalResources {
             cpu_time: total_time,
@@ -1232,7 +1307,11 @@ impl QuantumAdvantageDemonstrator {
     fn store_results(&self, result: &QuantumAdvantageResult) -> Result<()> {
         let mut database = self.results_database.lock().unwrap();
         let key = format!("{:?}_{:?}", self.config.advantage_type, self.config.domain);
-        database.results.entry(key).or_insert_with(Vec::new).push(result.clone());
+        database
+            .results
+            .entry(key)
+            .or_insert_with(Vec::new)
+            .push(result.clone());
         Ok(())
     }
 }
@@ -1245,7 +1324,7 @@ struct RandomCircuitSamplingAlgorithm;
 impl QuantumAlgorithm for RandomCircuitSamplingAlgorithm {
     fn execute(&self, problem_instance: &ProblemInstance) -> Result<AlgorithmResult> {
         let start = Instant::now();
-        
+
         // Simulate random circuit execution
         let execution_time = Duration::from_millis(problem_instance.size as u64 * 10);
         std::thread::sleep(execution_time);
@@ -1379,7 +1458,7 @@ struct BruteForceAlgorithm;
 impl ClassicalAlgorithm for BruteForceAlgorithm {
     fn execute(&self, problem_instance: &ProblemInstance) -> Result<AlgorithmResult> {
         let execution_time = Duration::from_millis(2_u64.pow(problem_instance.size as u32));
-        
+
         // Timeout for large problems
         if execution_time > Duration::from_secs(60) {
             return Ok(AlgorithmResult {
@@ -1439,7 +1518,7 @@ pub fn benchmark_quantum_advantage() -> Result<HashMap<String, f64>> {
     let mut results = HashMap::new();
 
     let start = Instant::now();
-    
+
     let config = QuantumAdvantageConfig {
         advantage_type: QuantumAdvantageType::ComputationalAdvantage,
         domain: ProblemDomain::RandomCircuitSampling,

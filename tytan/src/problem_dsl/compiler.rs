@@ -2,7 +2,7 @@
 
 use super::ast::{
     AggregationOp, BinaryOperator, ComparisonOp, Constraint, ConstraintExpression, Declaration,
-    Expression, Objective, ObjectiveType, UnaryOperator, Value, AST,
+    Expression, Objective, ObjectiveType, Value, AST,
 };
 use super::error::CompileError;
 use ndarray::Array2;
@@ -179,13 +179,17 @@ impl Compiler {
             }
             Declaration::Set { name, elements } => {
                 // Register set as parameter for later use in aggregations
-                self.parameters.insert(name.clone(), Value::Array(elements.clone()));
+                self.parameters
+                    .insert(name.clone(), Value::Array(elements.clone()));
                 Ok(())
             }
             Declaration::Function { name, params, body } => {
                 // Store function definition for later expansion
                 // For now, treat as a complex parameter
-                self.parameters.insert(format!("func_{}", name), Value::String(format!("function_{}", name)));
+                self.parameters.insert(
+                    format!("func_{}", name),
+                    Value::String(format!("function_{}", name)),
+                );
                 Ok(())
             }
         }
@@ -290,7 +294,9 @@ impl Compiler {
                         // Expand sum over index sets
                         for (var_name, set_name) in variables {
                             // Clone the elements to avoid borrowing conflicts
-                            let elements = if let Some(Value::Array(elements)) = self.parameters.get(set_name) {
+                            let elements = if let Some(Value::Array(elements)) =
+                                self.parameters.get(set_name)
+                            {
                                 elements.clone()
                             } else {
                                 return Err(CompileError {
@@ -305,15 +311,16 @@ impl Compiler {
                                 let substituted_expr = {
                                     let mut compiler = self.clone();
                                     compiler.substitute_variable_in_expression(
-                                        expression, 
-                                        var_name, 
-                                        element, 
-                                        i
+                                        expression, var_name, element, i,
                                     )?
                                 };
                                 let mut qubo_mut = qubo.clone();
                                 let mut compiler = self.clone();
-                                compiler.add_expression_to_qubo(&mut qubo_mut, &substituted_expr, coefficient)?;
+                                compiler.add_expression_to_qubo(
+                                    &mut qubo_mut,
+                                    &substituted_expr,
+                                    coefficient,
+                                )?;
                                 *qubo = qubo_mut;
                             }
                         }
@@ -323,7 +330,9 @@ impl Compiler {
                         let mut product_expr = Expression::Literal(Value::Number(1.0));
                         for (var_name, set_name) in variables {
                             // Clone the elements to avoid borrowing conflicts
-                            let elements = if let Some(Value::Array(elements)) = self.parameters.get(set_name) {
+                            let elements = if let Some(Value::Array(elements)) =
+                                self.parameters.get(set_name)
+                            {
                                 elements.clone()
                             } else {
                                 continue; // Skip if set doesn't exist
@@ -333,10 +342,7 @@ impl Compiler {
                                 let substituted_expr = {
                                     let mut compiler = self.clone();
                                     compiler.substitute_variable_in_expression(
-                                        expression, 
-                                        var_name, 
-                                        element, 
-                                        i
+                                        expression, var_name, element, i,
                                     )?
                                 };
                                 product_expr = Expression::BinaryOp {
@@ -348,7 +354,11 @@ impl Compiler {
                         }
                         let mut qubo_mut = qubo.clone();
                         let mut compiler = self.clone();
-                        compiler.add_expression_to_qubo(&mut qubo_mut, &product_expr, coefficient)?;
+                        compiler.add_expression_to_qubo(
+                            &mut qubo_mut,
+                            &product_expr,
+                            coefficient,
+                        )?;
                         *qubo = qubo_mut;
                     }
                     _ => {
@@ -382,7 +392,8 @@ impl Compiler {
                 match value {
                     Value::Number(n) => {
                         let indexed_name = format!("{}_{}", var_name, index);
-                        self.registry.register_variable(&indexed_name, VariableDomain::Binary);
+                        self.registry
+                            .register_variable(&indexed_name, VariableDomain::Binary);
                         Ok(Expression::Variable(indexed_name))
                     }
                     _ => Ok(Expression::Literal(value.clone())),
@@ -390,8 +401,10 @@ impl Compiler {
             }
             Expression::Variable(name) => Ok(Expression::Variable(name.clone())),
             Expression::BinaryOp { op, left, right } => {
-                let new_left = self.substitute_variable_in_expression(left, var_name, value, index)?;
-                let new_right = self.substitute_variable_in_expression(right, var_name, value, index)?;
+                let new_left =
+                    self.substitute_variable_in_expression(left, var_name, value, index)?;
+                let new_right =
+                    self.substitute_variable_in_expression(right, var_name, value, index)?;
                 Ok(Expression::BinaryOp {
                     op: op.clone(),
                     left: Box::new(new_left),
@@ -441,8 +454,10 @@ impl Compiler {
                     ComparisonOp::LessEqual => {
                         // For a <= b, add slack variable: a + s = b, where s >= 0
                         let slack_name = format!("slack_{}", self.registry.num_vars);
-                        let slack_idx = self.registry.register_variable(&slack_name, VariableDomain::Binary);
-                        
+                        let slack_idx = self
+                            .registry
+                            .register_variable(&slack_name, VariableDomain::Binary);
+
                         // Convert to equality: (a + s - b)^2
                         let penalty_expr = Expression::BinaryOp {
                             op: BinaryOperator::Subtract,
@@ -453,15 +468,17 @@ impl Compiler {
                             }),
                             right: Box::new(right.clone()),
                         };
-                        
+
                         // Add squared penalty
                         self.add_squared_penalty_to_qubo(qubo, &penalty_expr)?;
                     }
                     ComparisonOp::GreaterEqual => {
                         // For a >= b, equivalent to b <= a
                         let slack_name = format!("slack_{}", self.registry.num_vars);
-                        let slack_idx = self.registry.register_variable(&slack_name, VariableDomain::Binary);
-                        
+                        let slack_idx = self
+                            .registry
+                            .register_variable(&slack_name, VariableDomain::Binary);
+
                         // Convert to equality: (b + s - a)^2
                         let penalty_expr = Expression::BinaryOp {
                             op: BinaryOperator::Subtract,
@@ -472,7 +489,7 @@ impl Compiler {
                             }),
                             right: Box::new(left.clone()),
                         };
-                        
+
                         // Add squared penalty
                         self.add_squared_penalty_to_qubo(qubo, &penalty_expr)?;
                     }
@@ -563,7 +580,6 @@ impl Compiler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::problem_dsl::parser::Parser;
     use crate::problem_dsl::types::VarType;
 
     #[test]

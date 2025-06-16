@@ -1273,7 +1273,6 @@ impl DistributedGpuStateVector {
         }
         Ok(())
     }
-
 }
 
 /// Utilities for distributed GPU simulation

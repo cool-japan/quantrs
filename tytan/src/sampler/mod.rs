@@ -10,7 +10,7 @@ pub mod gpu;
 pub mod hardware;
 pub mod simulated_annealing;
 
-use ndarray::{Array, Dimension, Ix2};
+use ndarray::Array;
 use std::collections::HashMap;
 
 pub use errors::{SamplerError, SamplerResult};

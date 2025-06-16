@@ -1384,25 +1384,25 @@ impl SyndromeDecoder for MLDecoder {
 /// that can be integrated with quantum hardware control systems.
 pub mod real_time {
     use super::*;
+    use std::collections::VecDeque;
     use std::sync::{Arc, Mutex, RwLock};
     use std::thread;
     use std::time::{Duration, Instant};
-    use std::collections::VecDeque;
 
     /// Hardware interface trait for quantum error correction
     pub trait QuantumHardwareInterface: Send + Sync {
         /// Get syndrome measurements from hardware
         fn measure_syndromes(&self) -> QuantRS2Result<Vec<bool>>;
-        
+
         /// Apply error correction operations to hardware
         fn apply_correction(&self, correction: &PauliString) -> QuantRS2Result<()>;
-        
+
         /// Get hardware error rates and characterization data
         fn get_error_characteristics(&self) -> QuantRS2Result<HardwareErrorCharacteristics>;
-        
+
         /// Check if hardware is ready for error correction
         fn is_ready(&self) -> bool;
-        
+
         /// Get hardware latency statistics
         fn get_latency_stats(&self) -> QuantRS2Result<LatencyStats>;
     }
@@ -1511,13 +1511,13 @@ pub mod real_time {
                 self.errors_corrected += 1;
             }
             self.latency_histogram.push(latency);
-            
+
             // Calculate current throughput
             let elapsed = self.start_time.elapsed();
             if elapsed.as_secs_f64() > 0.0 {
                 let throughput = self.cycles_processed as f64 / elapsed.as_secs_f64();
                 self.throughput_samples.push_back(throughput);
-                
+
                 // Keep only recent samples
                 if self.throughput_samples.len() > 100 {
                     self.throughput_samples.pop_front();
@@ -1529,8 +1529,9 @@ pub mod real_time {
             if self.latency_histogram.is_empty() {
                 return Duration::from_nanos(0);
             }
-            
-            let total_nanos: u64 = self.latency_histogram
+
+            let total_nanos: u64 = self
+                .latency_histogram
                 .iter()
                 .map(|d| d.as_nanos() as u64)
                 .sum();
@@ -1576,10 +1577,10 @@ pub mod real_time {
 
             let handle = thread::spawn(move || {
                 let mut sequence_number = 0u64;
-                
+
                 loop {
                     let cycle_start = Instant::now();
-                    
+
                     // Check if hardware is ready
                     if !hardware.is_ready() {
                         thread::sleep(Duration::from_micros(10));
@@ -1608,7 +1609,7 @@ pub mod real_time {
                             // Process syndrome if not all zeros (no error)
                             let has_error = syndrome.iter().any(|&x| x);
                             let mut error_corrected = false;
-                            
+
                             if has_error {
                                 match decoder.decode(&syndrome) {
                                     Ok(correction) => {
@@ -1690,14 +1691,17 @@ pub mod real_time {
         }
 
         /// Update error characteristics based on hardware feedback
-        pub fn update_characteristics(&mut self, new_characteristics: HardwareErrorCharacteristics) {
+        pub fn update_characteristics(
+            &mut self,
+            new_characteristics: HardwareErrorCharacteristics,
+        ) {
             *self.error_characteristics.write().unwrap() = new_characteristics;
         }
 
         /// Adapt thresholds based on observed error patterns
         pub fn adapt_thresholds(&mut self, syndrome: &[bool], correction_success: bool) {
             let error_weight = syndrome.iter().filter(|&&x| x).count() as f64;
-            
+
             if correction_success {
                 // Increase confidence in current threshold
                 self.threshold_history.push_back(error_weight);
@@ -1745,7 +1749,10 @@ pub mod real_time {
     }
 
     impl ParallelSyndromeDecoder {
-        pub fn new(base_decoder: Arc<dyn SyndromeDecoder + Send + Sync>, worker_count: usize) -> Self {
+        pub fn new(
+            base_decoder: Arc<dyn SyndromeDecoder + Send + Sync>,
+            worker_count: usize,
+        ) -> Self {
             Self {
                 base_decoder,
                 worker_count,
@@ -1760,18 +1767,20 @@ pub mod real_time {
             for chunk in syndromes.chunks(chunk_size) {
                 let decoder = Arc::clone(&self.base_decoder);
                 let chunk_data: Vec<Vec<bool>> = chunk.to_vec();
-                
+
                 let handle = thread::spawn(move || {
                     let mut results = Vec::new();
                     for syndrome in chunk_data {
                         match decoder.decode(&syndrome) {
                             Ok(correction) => results.push(correction),
-                            Err(_) => results.push(PauliString::new(vec![Pauli::I; syndrome.len()])),
+                            Err(_) => {
+                                results.push(PauliString::new(vec![Pauli::I; syndrome.len()]))
+                            }
                         }
                     }
                     results
                 });
-                
+
                 handles.push(handle);
             }
 
@@ -1779,7 +1788,11 @@ pub mod real_time {
             for handle in handles {
                 match handle.join() {
                     Ok(chunk_results) => all_results.extend(chunk_results),
-                    Err(_) => return Err(QuantRS2Error::ComputationError("Parallel decoding failed".to_string())),
+                    Err(_) => {
+                        return Err(QuantRS2Error::ComputationError(
+                            "Parallel decoding failed".to_string(),
+                        ))
+                    }
                 }
             }
 
@@ -1813,7 +1826,7 @@ pub mod real_time {
     impl QuantumHardwareInterface for MockQuantumHardware {
         fn measure_syndromes(&self) -> QuantRS2Result<Vec<bool>> {
             thread::sleep(self.latency);
-            
+
             // Simulate random syndrome measurements
             let mut syndrome = vec![false; self.syndrome_length];
             for i in 0..self.syndrome_length {
@@ -1821,7 +1834,7 @@ pub mod real_time {
                     syndrome[i] = true;
                 }
             }
-            
+
             Ok(syndrome)
         }
 
@@ -1861,9 +1874,6 @@ pub mod real_time {
 /// without decoding them first, which is essential for fault-tolerant quantum computation.
 pub mod logical_gates {
     use super::*;
-    use crate::gate::GateOp;
-    use crate::qubit::QubitId;
-    use std::collections::BTreeMap;
 
     /// Logical gate operation that can be applied to encoded quantum states
     #[derive(Debug, Clone)]
@@ -1973,16 +1983,21 @@ pub mod logical_gates {
         }
 
         /// Synthesize a logical Pauli-X gate
-        pub fn synthesize_logical_x(&self, code: &StabilizerCode, logical_qubit: usize) -> QuantRS2Result<LogicalGateOp> {
+        pub fn synthesize_logical_x(
+            &self,
+            code: &StabilizerCode,
+            logical_qubit: usize,
+        ) -> QuantRS2Result<LogicalGateOp> {
             if logical_qubit >= code.k {
-                return Err(QuantRS2Error::InvalidInput(
-                    format!("Logical qubit {} exceeds code dimension {}", logical_qubit, code.k)
-                ));
+                return Err(QuantRS2Error::InvalidInput(format!(
+                    "Logical qubit {} exceeds code dimension {}",
+                    logical_qubit, code.k
+                )));
             }
 
             // For most stabilizer codes, logical X can be implemented transversally
             let logical_x_operator = &code.logical_x[logical_qubit];
-            
+
             let physical_ops = vec![PhysicalGateSequence {
                 target_qubits: (0..code.n).collect(),
                 pauli_sequence: vec![logical_x_operator.clone()],
@@ -2001,15 +2016,20 @@ pub mod logical_gates {
         }
 
         /// Synthesize a logical Pauli-Z gate
-        pub fn synthesize_logical_z(&self, code: &StabilizerCode, logical_qubit: usize) -> QuantRS2Result<LogicalGateOp> {
+        pub fn synthesize_logical_z(
+            &self,
+            code: &StabilizerCode,
+            logical_qubit: usize,
+        ) -> QuantRS2Result<LogicalGateOp> {
             if logical_qubit >= code.k {
-                return Err(QuantRS2Error::InvalidInput(
-                    format!("Logical qubit {} exceeds code dimension {}", logical_qubit, code.k)
-                ));
+                return Err(QuantRS2Error::InvalidInput(format!(
+                    "Logical qubit {} exceeds code dimension {}",
+                    logical_qubit, code.k
+                )));
             }
 
             let logical_z_operator = &code.logical_z[logical_qubit];
-            
+
             let physical_ops = vec![PhysicalGateSequence {
                 target_qubits: (0..code.n).collect(),
                 pauli_sequence: vec![logical_z_operator.clone()],
@@ -2028,11 +2048,16 @@ pub mod logical_gates {
         }
 
         /// Synthesize a logical Hadamard gate
-        pub fn synthesize_logical_h(&self, code: &StabilizerCode, logical_qubit: usize) -> QuantRS2Result<LogicalGateOp> {
+        pub fn synthesize_logical_h(
+            &self,
+            code: &StabilizerCode,
+            logical_qubit: usize,
+        ) -> QuantRS2Result<LogicalGateOp> {
             if logical_qubit >= code.k {
-                return Err(QuantRS2Error::InvalidInput(
-                    format!("Logical qubit {} exceeds code dimension {}", logical_qubit, code.k)
-                ));
+                return Err(QuantRS2Error::InvalidInput(format!(
+                    "Logical qubit {} exceeds code dimension {}",
+                    logical_qubit, code.k
+                )));
             }
 
             // Hadamard can often be implemented transversally
@@ -2060,26 +2085,26 @@ pub mod logical_gates {
 
         /// Synthesize a logical CNOT gate
         pub fn synthesize_logical_cnot(
-            &self, 
-            code: &StabilizerCode, 
-            control_qubit: usize, 
-            target_qubit: usize
+            &self,
+            code: &StabilizerCode,
+            control_qubit: usize,
+            target_qubit: usize,
         ) -> QuantRS2Result<LogicalGateOp> {
             if control_qubit >= code.k || target_qubit >= code.k {
                 return Err(QuantRS2Error::InvalidInput(
-                    "Control or target qubit exceeds code dimension".to_string()
+                    "Control or target qubit exceeds code dimension".to_string(),
                 ));
             }
 
             if control_qubit == target_qubit {
                 return Err(QuantRS2Error::InvalidInput(
-                    "Control and target qubits must be different".to_string()
+                    "Control and target qubits must be different".to_string(),
                 ));
             }
 
             // CNOT can be implemented transversally for many codes
             let cnot_sequence = self.generate_cnot_sequence(code, control_qubit, target_qubit)?;
-            
+
             let physical_ops = vec![PhysicalGateSequence {
                 target_qubits: (0..code.n).collect(),
                 pauli_sequence: cnot_sequence,
@@ -2102,21 +2127,24 @@ pub mod logical_gates {
         }
 
         /// Synthesize a T gate using magic state distillation
-        pub fn synthesize_logical_t(&self, code: &StabilizerCode, logical_qubit: usize) -> QuantRS2Result<LogicalGateOp> {
+        pub fn synthesize_logical_t(
+            &self,
+            code: &StabilizerCode,
+            logical_qubit: usize,
+        ) -> QuantRS2Result<LogicalGateOp> {
             if logical_qubit >= code.k {
-                return Err(QuantRS2Error::InvalidInput(
-                    format!("Logical qubit {} exceeds code dimension {}", logical_qubit, code.k)
-                ));
+                return Err(QuantRS2Error::InvalidInput(format!(
+                    "Logical qubit {} exceeds code dimension {}",
+                    logical_qubit, code.k
+                )));
             }
 
             // T gate requires magic state distillation for fault-tolerant implementation
             let magic_state_prep = self.prepare_magic_state(code)?;
-            let injection_sequence = self.inject_magic_state(code, logical_qubit, &magic_state_prep)?;
-            
-            let physical_ops = vec![
-                magic_state_prep,
-                injection_sequence,
-            ];
+            let injection_sequence =
+                self.inject_magic_state(code, logical_qubit, &magic_state_prep)?;
+
+            let physical_ops = vec![magic_state_prep, injection_sequence];
 
             let error_analysis = self.analyze_error_propagation(code, &physical_ops)?;
 
@@ -2129,38 +2157,45 @@ pub mod logical_gates {
         }
 
         /// Generate Hadamard gate sequence for a logical qubit
-        fn generate_hadamard_sequence(&self, code: &StabilizerCode, logical_qubit: usize) -> QuantRS2Result<Vec<PauliString>> {
+        fn generate_hadamard_sequence(
+            &self,
+            code: &StabilizerCode,
+            _logical_qubit: usize,
+        ) -> QuantRS2Result<Vec<PauliString>> {
             // For transversal Hadamard, apply H to each physical qubit
             // This swaps X and Z logical operators
             let mut sequence = Vec::new();
-            
+
             // Create a Pauli string that represents applying H to all qubits
             // Since H|0⟩ = |+⟩ = (|0⟩ + |1⟩)/√2 and H|1⟩ = |-⟩ = (|0⟩ - |1⟩)/√2
             // We represent this as identity for simplicity in this implementation
             sequence.push(PauliString::new(vec![Pauli::I; code.n]));
-            
+
             Ok(sequence)
         }
 
         /// Generate CNOT gate sequence for logical qubits
         fn generate_cnot_sequence(
-            &self, 
-            code: &StabilizerCode, 
-            _control: usize, 
-            _target: usize
+            &self,
+            code: &StabilizerCode,
+            _control: usize,
+            _target: usize,
         ) -> QuantRS2Result<Vec<PauliString>> {
             // For transversal CNOT, apply CNOT between corresponding physical qubits
             // This is a simplified implementation
             let mut sequence = Vec::new();
-            
+
             // Represent CNOT as identity for this implementation
             sequence.push(PauliString::new(vec![Pauli::I; code.n]));
-            
+
             Ok(sequence)
         }
 
         /// Prepare magic state for T gate implementation
-        fn prepare_magic_state(&self, code: &StabilizerCode) -> QuantRS2Result<PhysicalGateSequence> {
+        fn prepare_magic_state(
+            &self,
+            code: &StabilizerCode,
+        ) -> QuantRS2Result<PhysicalGateSequence> {
             // Magic state |T⟩ = (|0⟩ + e^(iπ/4)|1⟩)/√2 for T gate
             // This is a simplified implementation
             Ok(PhysicalGateSequence {
@@ -2177,10 +2212,10 @@ pub mod logical_gates {
 
         /// Inject magic state to implement T gate
         fn inject_magic_state(
-            &self, 
-            code: &StabilizerCode, 
+            &self,
+            code: &StabilizerCode,
             _logical_qubit: usize,
-            _magic_state: &PhysicalGateSequence
+            _magic_state: &PhysicalGateSequence,
         ) -> QuantRS2Result<PhysicalGateSequence> {
             // Inject magic state using teleportation-based approach
             Ok(PhysicalGateSequence {
@@ -2197,9 +2232,9 @@ pub mod logical_gates {
 
         /// Analyze error propagation through logical gate operations
         fn analyze_error_propagation(
-            &self, 
-            code: &StabilizerCode, 
-            physical_ops: &[PhysicalGateSequence]
+            &self,
+            code: &StabilizerCode,
+            physical_ops: &[PhysicalGateSequence],
         ) -> QuantRS2Result<ErrorPropagationAnalysis> {
             let mut single_qubit_propagation = Vec::new();
             let mut two_qubit_propagation = Vec::new();
@@ -2230,8 +2265,9 @@ pub mod logical_gates {
             }
 
             // Analyze two-qubit errors (simplified)
-            for i in 0..code.n.min(5) { // Limit to first 5 for performance
-                for j in (i+1)..code.n.min(5) {
+            for i in 0..code.n.min(5) {
+                // Limit to first 5 for performance
+                for j in (i + 1)..code.n.min(5) {
                     let mut initial_error = vec![Pauli::I; code.n];
                     initial_error[i] = Pauli::X;
                     initial_error[j] = Pauli::X;
@@ -2262,9 +2298,9 @@ pub mod logical_gates {
 
         /// Propagate an error through physical gate operations
         fn propagate_error(
-            &self, 
-            error: &PauliString, 
-            _physical_ops: &[PhysicalGateSequence]
+            &self,
+            error: &PauliString,
+            _physical_ops: &[PhysicalGateSequence],
         ) -> QuantRS2Result<PauliString> {
             // Simplified error propagation - in reality this would track
             // how each gate operation transforms the error
@@ -2272,7 +2308,11 @@ pub mod logical_gates {
         }
 
         /// Check if an error is correctable by the code
-        fn is_error_correctable(&self, code: &StabilizerCode, error: &PauliString) -> QuantRS2Result<bool> {
+        fn is_error_correctable(
+            &self,
+            code: &StabilizerCode,
+            error: &PauliString,
+        ) -> QuantRS2Result<bool> {
             // An error is correctable if its weight is less than (d+1)/2
             // where d is the minimum distance of the code
             Ok(error.weight() <= (code.d + 1) / 2)
@@ -2320,7 +2360,7 @@ pub mod logical_gates {
         pub fn synthesize_circuit(
             &self,
             code: &StabilizerCode,
-            gate_sequence: &[(&str, Vec<usize>)] // (gate_name, target_qubits)
+            gate_sequence: &[(&str, Vec<usize>)], // (gate_name, target_qubits)
         ) -> QuantRS2Result<Vec<LogicalGateOp>> {
             let mut logical_gates = Vec::new();
 
@@ -2328,38 +2368,64 @@ pub mod logical_gates {
                 match gate_name.to_lowercase().as_str() {
                     "x" | "pauli_x" => {
                         if targets.len() != 1 {
-                            return Err(QuantRS2Error::InvalidInput("X gate requires exactly one target".to_string()));
+                            return Err(QuantRS2Error::InvalidInput(
+                                "X gate requires exactly one target".to_string(),
+                            ));
                         }
-                        logical_gates.push(self.gate_synthesizer.synthesize_logical_x(code, targets[0])?);
-                    },
+                        logical_gates.push(
+                            self.gate_synthesizer
+                                .synthesize_logical_x(code, targets[0])?,
+                        );
+                    }
                     "z" | "pauli_z" => {
                         if targets.len() != 1 {
-                            return Err(QuantRS2Error::InvalidInput("Z gate requires exactly one target".to_string()));
+                            return Err(QuantRS2Error::InvalidInput(
+                                "Z gate requires exactly one target".to_string(),
+                            ));
                         }
-                        logical_gates.push(self.gate_synthesizer.synthesize_logical_z(code, targets[0])?);
-                    },
+                        logical_gates.push(
+                            self.gate_synthesizer
+                                .synthesize_logical_z(code, targets[0])?,
+                        );
+                    }
                     "h" | "hadamard" => {
                         if targets.len() != 1 {
-                            return Err(QuantRS2Error::InvalidInput("H gate requires exactly one target".to_string()));
+                            return Err(QuantRS2Error::InvalidInput(
+                                "H gate requires exactly one target".to_string(),
+                            ));
                         }
-                        logical_gates.push(self.gate_synthesizer.synthesize_logical_h(code, targets[0])?);
-                    },
+                        logical_gates.push(
+                            self.gate_synthesizer
+                                .synthesize_logical_h(code, targets[0])?,
+                        );
+                    }
                     "cnot" | "cx" => {
                         if targets.len() != 2 {
-                            return Err(QuantRS2Error::InvalidInput("CNOT gate requires exactly two targets".to_string()));
+                            return Err(QuantRS2Error::InvalidInput(
+                                "CNOT gate requires exactly two targets".to_string(),
+                            ));
                         }
-                        logical_gates.push(self.gate_synthesizer.synthesize_logical_cnot(code, targets[0], targets[1])?);
-                    },
+                        logical_gates.push(
+                            self.gate_synthesizer
+                                .synthesize_logical_cnot(code, targets[0], targets[1])?,
+                        );
+                    }
                     "t" => {
                         if targets.len() != 1 {
-                            return Err(QuantRS2Error::InvalidInput("T gate requires exactly one target".to_string()));
+                            return Err(QuantRS2Error::InvalidInput(
+                                "T gate requires exactly one target".to_string(),
+                            ));
                         }
-                        logical_gates.push(self.gate_synthesizer.synthesize_logical_t(code, targets[0])?);
-                    },
+                        logical_gates.push(
+                            self.gate_synthesizer
+                                .synthesize_logical_t(code, targets[0])?,
+                        );
+                    }
                     _ => {
-                        return Err(QuantRS2Error::UnsupportedOperation(
-                            format!("Unsupported logical gate: {}", gate_name)
-                        ));
+                        return Err(QuantRS2Error::UnsupportedOperation(format!(
+                            "Unsupported logical gate: {}",
+                            gate_name
+                        )));
                     }
                 }
             }
@@ -2369,7 +2435,10 @@ pub mod logical_gates {
         }
 
         /// Apply optimization passes to the logical circuit
-        fn optimize_circuit(&self, mut circuit: Vec<LogicalGateOp>) -> QuantRS2Result<Vec<LogicalGateOp>> {
+        fn optimize_circuit(
+            &self,
+            mut circuit: Vec<LogicalGateOp>,
+        ) -> QuantRS2Result<Vec<LogicalGateOp>> {
             for pass in &self.optimization_passes {
                 circuit = self.apply_optimization_pass(circuit, pass)?;
             }
@@ -2378,38 +2447,54 @@ pub mod logical_gates {
 
         /// Apply a specific optimization pass
         fn apply_optimization_pass(
-            &self, 
-            circuit: Vec<LogicalGateOp>, 
-            pass: &OptimizationPass
+            &self,
+            circuit: Vec<LogicalGateOp>,
+            pass: &OptimizationPass,
         ) -> QuantRS2Result<Vec<LogicalGateOp>> {
             match pass {
                 OptimizationPass::PauliOptimization => self.optimize_pauli_gates(circuit),
-                OptimizationPass::ErrorCorrectionOptimization => self.optimize_error_correction(circuit),
-                OptimizationPass::ParallelizationOptimization => self.optimize_parallelization(circuit),
+                OptimizationPass::ErrorCorrectionOptimization => {
+                    self.optimize_error_correction(circuit)
+                }
+                OptimizationPass::ParallelizationOptimization => {
+                    self.optimize_parallelization(circuit)
+                }
                 OptimizationPass::MagicStateOptimization => self.optimize_magic_states(circuit),
             }
         }
 
         /// Optimize Pauli gate sequences
-        fn optimize_pauli_gates(&self, circuit: Vec<LogicalGateOp>) -> QuantRS2Result<Vec<LogicalGateOp>> {
+        fn optimize_pauli_gates(
+            &self,
+            circuit: Vec<LogicalGateOp>,
+        ) -> QuantRS2Result<Vec<LogicalGateOp>> {
             // Combine adjacent Pauli gates that act on the same logical qubits
             Ok(circuit) // Simplified implementation
         }
 
         /// Optimize error correction rounds
-        fn optimize_error_correction(&self, circuit: Vec<LogicalGateOp>) -> QuantRS2Result<Vec<LogicalGateOp>> {
+        fn optimize_error_correction(
+            &self,
+            circuit: Vec<LogicalGateOp>,
+        ) -> QuantRS2Result<Vec<LogicalGateOp>> {
             // Reduce redundant error correction rounds
             Ok(circuit) // Simplified implementation
         }
 
         /// Optimize parallelization of commuting operations
-        fn optimize_parallelization(&self, circuit: Vec<LogicalGateOp>) -> QuantRS2Result<Vec<LogicalGateOp>> {
+        fn optimize_parallelization(
+            &self,
+            circuit: Vec<LogicalGateOp>,
+        ) -> QuantRS2Result<Vec<LogicalGateOp>> {
             // Identify and parallelize commuting gates
             Ok(circuit) // Simplified implementation
         }
 
         /// Optimize magic state usage
-        fn optimize_magic_states(&self, circuit: Vec<LogicalGateOp>) -> QuantRS2Result<Vec<LogicalGateOp>> {
+        fn optimize_magic_states(
+            &self,
+            circuit: Vec<LogicalGateOp>,
+        ) -> QuantRS2Result<Vec<LogicalGateOp>> {
             // Reduce number of magic states required
             Ok(circuit) // Simplified implementation
         }
@@ -2429,7 +2514,7 @@ pub mod logical_gates {
                         max_parallelism = max_parallelism.max(constraints.parallel_groups.len());
                     }
                 }
-                
+
                 // Count T gates which require magic states
                 if gate.logical_qubits.len() == 1 {
                     // This is a heuristic - in practice we'd check the gate type
@@ -2444,7 +2529,7 @@ pub mod logical_gates {
                 magic_states_required,
                 estimated_depth: circuit.len(),
                 estimated_time: std::time::Duration::from_millis(
-                    (total_error_correction_rounds * 10) as u64
+                    (total_error_correction_rounds * 10) as u64,
                 ),
             }
         }
@@ -2463,7 +2548,7 @@ pub mod logical_gates {
 }
 
 /// Noise-adaptive error correction threshold estimation
-/// This module provides dynamic adjustment of error correction thresholds based on 
+/// This module provides dynamic adjustment of error correction thresholds based on
 /// observed noise characteristics and environmental conditions for optimal performance.
 pub mod adaptive_threshold {
     use super::*;
@@ -2565,9 +2650,7 @@ pub mod adaptive_threshold {
             measurement_noise: f64,
         },
         /// Exponential moving average
-        ExponentialAverage {
-            alpha: f64,
-        },
+        ExponentialAverage { alpha: f64 },
     }
 
     /// Machine learning model types
@@ -2746,27 +2829,50 @@ pub mod adaptive_threshold {
             self.update_performance_tracking(&observation);
 
             // Update noise model if real-time adaptation is enabled
-            if self.config.real_time_adaptation 
-                && self.error_history.len() >= self.config.min_observations {
+            if self.config.real_time_adaptation
+                && self.error_history.len() >= self.config.min_observations
+            {
                 self.update_noise_model();
             }
         }
 
         /// Estimate current error correction threshold
-        pub fn estimate_threshold(&self, syndrome: &[bool], environment: &EnvironmentalConditions) -> f64 {
+        pub fn estimate_threshold(
+            &self,
+            syndrome: &[bool],
+            environment: &EnvironmentalConditions,
+        ) -> f64 {
             match &self.estimation_algorithm {
-                ThresholdEstimationAlgorithm::Bayesian { prior_strength, update_rate } => {
-                    self.bayesian_threshold_estimation(syndrome, environment, *prior_strength, *update_rate)
-                },
-                ThresholdEstimationAlgorithm::MachineLearning { model_type, training_window } => {
-                    self.ml_threshold_estimation(syndrome, environment, model_type, *training_window)
-                },
-                ThresholdEstimationAlgorithm::KalmanFilter { process_noise, measurement_noise } => {
-                    self.kalman_threshold_estimation(syndrome, environment, *process_noise, *measurement_noise)
-                },
+                ThresholdEstimationAlgorithm::Bayesian {
+                    prior_strength,
+                    update_rate,
+                } => self.bayesian_threshold_estimation(
+                    syndrome,
+                    environment,
+                    *prior_strength,
+                    *update_rate,
+                ),
+                ThresholdEstimationAlgorithm::MachineLearning {
+                    model_type,
+                    training_window,
+                } => self.ml_threshold_estimation(
+                    syndrome,
+                    environment,
+                    model_type,
+                    *training_window,
+                ),
+                ThresholdEstimationAlgorithm::KalmanFilter {
+                    process_noise,
+                    measurement_noise,
+                } => self.kalman_threshold_estimation(
+                    syndrome,
+                    environment,
+                    *process_noise,
+                    *measurement_noise,
+                ),
                 ThresholdEstimationAlgorithm::ExponentialAverage { alpha } => {
                     self.exponential_average_threshold(syndrome, environment, *alpha)
-                },
+                }
             }
         }
 
@@ -2787,37 +2893,41 @@ pub mod adaptive_threshold {
         }
 
         /// Predict future error rate based on current conditions
-        pub fn predict_error_rate(&self, environment: &EnvironmentalConditions, horizon: Duration) -> f64 {
+        pub fn predict_error_rate(
+            &self,
+            environment: &EnvironmentalConditions,
+            horizon: Duration,
+        ) -> f64 {
             let base_rate = self.calculate_base_error_rate();
             let environmental_factor = self.calculate_environmental_factor(environment);
             let temporal_factor = self.calculate_temporal_factor(horizon);
-            
+
             base_rate * environmental_factor * temporal_factor
         }
 
         /// Bayesian threshold estimation
         fn bayesian_threshold_estimation(
-            &self, 
-            syndrome: &[bool], 
+            &self,
+            syndrome: &[bool],
             environment: &EnvironmentalConditions,
             prior_strength: f64,
-            update_rate: f64
+            update_rate: f64,
         ) -> f64 {
             let syndrome_weight = syndrome.iter().filter(|&&x| x).count() as f64;
             let base_threshold = self.calculate_base_threshold(syndrome_weight);
-            
+
             // Update based on historical observations
             let historical_adjustment = self.calculate_historical_adjustment(update_rate);
-            
+
             // Environmental adjustment
             let env_adjustment = self.calculate_environmental_adjustment(environment);
-            
+
             // Bayesian update
             let prior = base_threshold;
             let likelihood_weight = 1.0 / (1.0 + prior_strength);
-            
-            prior * (1.0 - likelihood_weight) + 
-            (base_threshold + historical_adjustment + env_adjustment) * likelihood_weight
+
+            prior * (1.0 - likelihood_weight)
+                + (base_threshold + historical_adjustment + env_adjustment) * likelihood_weight
         }
 
         /// Machine learning based threshold estimation
@@ -2826,22 +2936,22 @@ pub mod adaptive_threshold {
             syndrome: &[bool],
             environment: &EnvironmentalConditions,
             model_type: &MLModelType,
-            training_window: usize
+            training_window: usize,
         ) -> f64 {
             // Extract features
             let features = self.extract_features(syndrome, environment);
-            
+
             // Get recent training data
             let training_data = self.get_recent_observations(training_window);
-            
+
             match model_type {
                 MLModelType::LinearRegression => {
                     self.linear_regression_predict(&features, &training_data)
-                },
+                }
                 _ => {
                     // Simplified implementation for other ML models
                     self.linear_regression_predict(&features, &training_data)
-                },
+                }
             }
         }
 
@@ -2851,15 +2961,15 @@ pub mod adaptive_threshold {
             syndrome: &[bool],
             _environment: &EnvironmentalConditions,
             process_noise: f64,
-            measurement_noise: f64
+            measurement_noise: f64,
         ) -> f64 {
             let syndrome_weight = syndrome.iter().filter(|&&x| x).count() as f64;
             let base_threshold = self.calculate_base_threshold(syndrome_weight);
-            
+
             // Simplified Kalman filter implementation
             let prediction_error = self.calculate_prediction_error();
             let kalman_gain = process_noise / (process_noise + measurement_noise);
-            
+
             base_threshold + kalman_gain * prediction_error
         }
 
@@ -2868,11 +2978,11 @@ pub mod adaptive_threshold {
             &self,
             syndrome: &[bool],
             _environment: &EnvironmentalConditions,
-            alpha: f64
+            alpha: f64,
         ) -> f64 {
             let syndrome_weight = syndrome.iter().filter(|&&x| x).count() as f64;
             let current_threshold = self.calculate_base_threshold(syndrome_weight);
-            
+
             if let Some(_last_obs) = self.error_history.back() {
                 let last_threshold = syndrome_weight; // Simplified
                 alpha * current_threshold + (1.0 - alpha) * last_threshold
@@ -2887,36 +2997,28 @@ pub mod adaptive_threshold {
                 return 0.001; // Default 0.1% error rate
             }
 
-            let recent_errors: Vec<_> = self.error_history
-                .iter()
-                .rev()
-                .take(100)
-                .collect();
+            let recent_errors: Vec<_> = self.error_history.iter().rev().take(100).collect();
 
             let total_errors = recent_errors.len() as f64;
-            let failed_corrections = recent_errors
-                .iter()
-                .filter(|obs| !obs.success)
-                .count() as f64;
+            let failed_corrections = recent_errors.iter().filter(|obs| !obs.success).count() as f64;
 
             failed_corrections / total_errors
         }
 
         fn calculate_environmental_factor(&self, environment: &EnvironmentalConditions) -> f64 {
             let sensitivity = &self.noise_model.environment_sensitivity;
-            
-            1.0 + 
-            sensitivity.temperature_coeff * (environment.temperature - 300.0) +
-            sensitivity.magnetic_field_coeff * environment.magnetic_field +
-            sensitivity.vibration_coeff * environment.vibration_level +
-            sensitivity.emi_coeff * environment.emi_level +
-            sensitivity.drift_coeff * environment.uptime
+
+            1.0 + sensitivity.temperature_coeff * (environment.temperature - 300.0)
+                + sensitivity.magnetic_field_coeff * environment.magnetic_field
+                + sensitivity.vibration_coeff * environment.vibration_level
+                + sensitivity.emi_coeff * environment.emi_level
+                + sensitivity.drift_coeff * environment.uptime
         }
 
         fn calculate_temporal_factor(&self, horizon: Duration) -> f64 {
             let temporal_corr = self.noise_model.temporal_correlation;
             let time_factor = horizon.as_secs_f64() / 3600.0; // Hours
-            
+
             1.0 + temporal_corr * time_factor
         }
 
@@ -2945,7 +3047,8 @@ pub mod adaptive_threshold {
                 return 0.5;
             }
 
-            let recent_successes = self.error_history
+            let recent_successes = self
+                .error_history
                 .iter()
                 .rev()
                 .take(recent_window)
@@ -2962,7 +3065,11 @@ pub mod adaptive_threshold {
             target_success_rate - actual_success_rate
         }
 
-        fn extract_features(&self, syndrome: &[bool], environment: &EnvironmentalConditions) -> Vec<f64> {
+        fn extract_features(
+            &self,
+            syndrome: &[bool],
+            environment: &EnvironmentalConditions,
+        ) -> Vec<f64> {
             let mut features = vec![
                 syndrome.iter().filter(|&&x| x).count() as f64,
                 environment.temperature,
@@ -2971,12 +3078,12 @@ pub mod adaptive_threshold {
                 environment.emi_level,
                 environment.uptime,
             ];
-            
+
             // Add syndrome pattern features
             for &bit in syndrome {
                 features.push(if bit { 1.0 } else { 0.0 });
             }
-            
+
             features
         }
 
@@ -2989,17 +3096,22 @@ pub mod adaptive_threshold {
                 .collect()
         }
 
-        fn linear_regression_predict(&self, _features: &[f64], training_data: &[ErrorObservation]) -> f64 {
+        fn linear_regression_predict(
+            &self,
+            _features: &[f64],
+            training_data: &[ErrorObservation],
+        ) -> f64 {
             // Simplified linear regression
             if training_data.is_empty() {
                 return 0.5;
             }
-            
+
             let avg_syndrome_weight: f64 = training_data
                 .iter()
                 .map(|obs| obs.syndrome.iter().filter(|&&x| x).count() as f64)
-                .sum::<f64>() / training_data.len() as f64;
-            
+                .sum::<f64>()
+                / training_data.len() as f64;
+
             (avg_syndrome_weight + 1.0) / 10.0
         }
 
@@ -3011,17 +3123,18 @@ pub mod adaptive_threshold {
             }
 
             // Update accuracy
-            let total = self.performance_tracker.successful_corrections + 
-                       self.performance_tracker.failed_corrections;
+            let total = self.performance_tracker.successful_corrections
+                + self.performance_tracker.failed_corrections;
             if total > 0 {
-                self.performance_tracker.threshold_accuracy = 
+                self.performance_tracker.threshold_accuracy =
                     self.performance_tracker.successful_corrections as f64 / total as f64;
             }
         }
 
         fn update_noise_model(&mut self) {
             let recent_window = self.config.min_observations.min(self.error_history.len());
-            let recent_observations: Vec<ErrorObservation> = self.error_history
+            let recent_observations: Vec<ErrorObservation> = self
+                .error_history
                 .iter()
                 .rev()
                 .take(recent_window)
@@ -3030,7 +3143,7 @@ pub mod adaptive_threshold {
 
             // Update single-qubit error rates
             self.update_single_qubit_rates(&recent_observations);
-            
+
             // Update model confidence
             self.update_model_confidence(&recent_observations);
         }
@@ -3041,11 +3154,16 @@ pub mod adaptive_threshold {
                 for (i, pauli) in obs.correction.paulis.iter().enumerate() {
                     if *pauli != Pauli::I {
                         let key = (i, *pauli);
-                        let current_rate = self.noise_model.single_qubit_rates.get(&key).copied().unwrap_or(0.001);
-                        let new_rate = if obs.success { 
-                            current_rate * 0.99 
-                        } else { 
-                            current_rate * 1.01 
+                        let current_rate = self
+                            .noise_model
+                            .single_qubit_rates
+                            .get(&key)
+                            .copied()
+                            .unwrap_or(0.001);
+                        let new_rate = if obs.success {
+                            current_rate * 0.99
+                        } else {
+                            current_rate * 1.01
                         };
                         self.noise_model.single_qubit_rates.insert(key, new_rate);
                     }
@@ -3058,21 +3176,20 @@ pub mod adaptive_threshold {
                 return;
             }
 
-            let success_rate = observations.iter()
-                .filter(|obs| obs.success)
-                .count() as f64 / observations.len() as f64;
+            let success_rate = observations.iter().filter(|obs| obs.success).count() as f64
+                / observations.len() as f64;
 
             // Higher success rate increases confidence, but not linearly
             let stability = 1.0 - (success_rate - 0.5).abs() * 2.0;
-            self.noise_model.confidence = 
-                self.noise_model.confidence * 0.95 + stability * 0.05;
+            self.noise_model.confidence = self.noise_model.confidence * 0.95 + stability * 0.05;
         }
 
         fn assess_recommendation_quality(&self) -> f64 {
             // Quality based on model confidence and recent performance
             let confidence_component = self.noise_model.confidence;
             let performance_component = self.performance_tracker.threshold_accuracy;
-            let history_component = (self.error_history.len() as f64 / self.config.max_history_size as f64).min(1.0);
+            let history_component =
+                (self.error_history.len() as f64 / self.config.max_history_size as f64).min(1.0);
 
             (confidence_component + performance_component + history_component) / 3.0
         }
@@ -3273,19 +3390,19 @@ mod tests {
         use std::time::Duration;
 
         let hardware = MockQuantumHardware::new(0.01, Duration::from_micros(10), 4);
-        
+
         // Test syndrome measurement
         let syndrome = hardware.measure_syndromes().unwrap();
         assert_eq!(syndrome.len(), 4);
-        
+
         // Test error characteristics
         let characteristics = hardware.get_error_characteristics().unwrap();
         assert_eq!(characteristics.single_qubit_error_rates.len(), 4);
-        
+
         // Test latency stats
         let stats = hardware.get_latency_stats().unwrap();
         assert!(stats.throughput_hz > 0.0);
-        
+
         assert!(hardware.is_ready());
     }
 
@@ -3295,12 +3412,12 @@ mod tests {
         use std::time::Duration;
 
         let mut monitor = PerformanceMonitor::new();
-        
+
         // Record some cycles
         monitor.record_cycle(Duration::from_micros(10), true);
         monitor.record_cycle(Duration::from_micros(20), false);
         monitor.record_cycle(Duration::from_micros(15), true);
-        
+
         assert_eq!(monitor.cycles_processed, 3);
         assert_eq!(monitor.errors_corrected, 2);
         assert_eq!(monitor.error_correction_rate(), 2.0 / 3.0);
@@ -3324,17 +3441,17 @@ mod tests {
         };
 
         let mut adaptive_decoder = AdaptiveThresholdDecoder::new(base_decoder, characteristics);
-        
+
         // Test initial threshold
         let initial_threshold = adaptive_decoder.current_threshold();
         assert_eq!(initial_threshold, 1.0); // Default when no history
-        
+
         // Adapt thresholds based on feedback (use no-error syndromes)
-        adaptive_decoder.adapt_thresholds(&[false, false], true);  // No error, successful correction
-        
+        adaptive_decoder.adapt_thresholds(&[false, false], true); // No error, successful correction
+
         let new_threshold = adaptive_decoder.current_threshold();
         assert!(new_threshold != initial_threshold); // Should change from default 1.0 to 0.0
-        
+
         // Test decoding (use no-error syndrome which should always be valid)
         let syndrome = vec![false, false]; // No error syndrome
         let result = adaptive_decoder.decode(&syndrome);
@@ -3349,12 +3466,12 @@ mod tests {
         let code = StabilizerCode::repetition_code();
         let base_decoder = Arc::new(LookupDecoder::new(&code).unwrap());
         let parallel_decoder = ParallelSyndromeDecoder::new(base_decoder, 2);
-        
+
         // Test single syndrome decoding (use no-error syndrome)
         let syndrome = vec![false, false]; // No error syndrome
         let result = parallel_decoder.decode(&syndrome);
         assert!(result.is_ok(), "Decoding failed: {:?}", result.err());
-        
+
         // Test batch decoding (use only no-error syndromes for safety)
         let syndromes = vec![
             vec![false, false], // No error syndromes
@@ -3362,7 +3479,7 @@ mod tests {
             vec![false, false],
             vec![false, false],
         ];
-        
+
         let results = parallel_decoder.decode_batch(&syndromes);
         assert!(results.is_ok());
         let corrections = results.unwrap();
@@ -3388,12 +3505,12 @@ mod tests {
         };
 
         let processor = SyndromeStreamProcessor::new(decoder, hardware, config);
-        
+
         // Test buffer status
         let (current, max) = processor.get_buffer_status();
         assert_eq!(current, 0);
         assert_eq!(max, 10);
-        
+
         // Test performance stats (initial state)
         let stats = processor.get_performance_stats();
         assert_eq!(stats.cycles_processed, 0);
@@ -3410,7 +3527,7 @@ mod tests {
         // Test logical X gate synthesis
         let logical_x = synthesizer.synthesize_logical_x(&code, 0);
         assert!(logical_x.is_ok());
-        
+
         let x_gate = logical_x.unwrap();
         assert_eq!(x_gate.logical_qubits, vec![0]);
         assert_eq!(x_gate.physical_operations.len(), 1);
@@ -3419,7 +3536,7 @@ mod tests {
         // Test logical Z gate synthesis
         let logical_z = synthesizer.synthesize_logical_z(&code, 0);
         assert!(logical_z.is_ok());
-        
+
         let z_gate = logical_z.unwrap();
         assert_eq!(z_gate.logical_qubits, vec![0]);
         assert_eq!(z_gate.physical_operations.len(), 1);
@@ -3427,7 +3544,7 @@ mod tests {
         // Test logical H gate synthesis
         let logical_h = synthesizer.synthesize_logical_h(&code, 0);
         assert!(logical_h.is_ok());
-        
+
         let h_gate = logical_h.unwrap();
         assert_eq!(h_gate.logical_qubits, vec![0]);
         assert_eq!(h_gate.physical_operations.len(), 1);
@@ -3446,15 +3563,11 @@ mod tests {
         let synthesizer = LogicalCircuitSynthesizer::new(0.01);
 
         // Test simple circuit synthesis
-        let gate_sequence = vec![
-            ("x", vec![0]),
-            ("h", vec![0]),
-            ("z", vec![0]),
-        ];
+        let gate_sequence = vec![("x", vec![0]), ("h", vec![0]), ("z", vec![0])];
 
         let circuit = synthesizer.synthesize_circuit(&code, &gate_sequence);
         assert!(circuit.is_ok());
-        
+
         let logical_circuit = circuit.unwrap();
         assert_eq!(logical_circuit.len(), 3);
 
@@ -3485,11 +3598,11 @@ mod tests {
         // Test T gate synthesis (requires magic state distillation)
         let logical_t = synthesizer.synthesize_logical_t(&code, 0);
         assert!(logical_t.is_ok());
-        
+
         let t_gate = logical_t.unwrap();
         assert_eq!(t_gate.logical_qubits, vec![0]);
         assert_eq!(t_gate.physical_operations.len(), 2); // Magic state prep + injection
-        
+
         // Check that magic state prep has more error correction rounds
         assert!(t_gate.physical_operations[0].error_correction_rounds >= 5);
     }
@@ -3502,7 +3615,7 @@ mod tests {
         let synthesizer = LogicalGateSynthesizer::new(0.01);
 
         let logical_x = synthesizer.synthesize_logical_x(&code, 0).unwrap();
-        
+
         // Check error propagation analysis
         let analysis = &logical_x.error_propagation;
         assert!(analysis.single_qubit_propagation.len() > 0);
@@ -3510,7 +3623,8 @@ mod tests {
         assert_eq!(analysis.fault_tolerance_threshold, 0.01);
 
         // Check that some errors are marked as correctable
-        let correctable_count = analysis.single_qubit_propagation
+        let correctable_count = analysis
+            .single_qubit_propagation
             .iter()
             .filter(|path| path.correctable)
             .count();
@@ -3540,15 +3654,15 @@ mod tests {
 
         // Test a more complex circuit
         let gate_sequence = vec![
-            ("h", vec![0]),    // Hadamard on logical qubit 0
-            ("x", vec![0]),    // X on logical qubit 0  
-            ("z", vec![0]),    // Z on logical qubit 0
-            ("h", vec![0]),    // Another Hadamard
+            ("h", vec![0]), // Hadamard on logical qubit 0
+            ("x", vec![0]), // X on logical qubit 0
+            ("z", vec![0]), // Z on logical qubit 0
+            ("h", vec![0]), // Another Hadamard
         ];
 
         let circuit = synthesizer.synthesize_circuit(&code, &gate_sequence);
         assert!(circuit.is_ok());
-        
+
         let logical_circuit = circuit.unwrap();
         assert_eq!(logical_circuit.len(), 4);
 
@@ -3608,7 +3722,7 @@ mod tests {
         use crate::error_correction::adaptive_threshold::*;
 
         let mut tracker = PerformanceTracker::new();
-        
+
         // Test initial state
         assert_eq!(tracker.successful_corrections, 0);
         assert_eq!(tracker.failed_corrections, 0);
@@ -3624,7 +3738,7 @@ mod tests {
 
         // Test metrics
         assert_eq!(tracker.precision(), 8.0 / 9.0); // 8 / (8 + 1)
-        assert_eq!(tracker.recall(), 8.0 / 9.0);   // 8 / (8 + 1)
+        assert_eq!(tracker.recall(), 8.0 / 9.0); // 8 / (8 + 1)
         assert!(tracker.f1_score() > 0.0);
     }
 
@@ -3648,7 +3762,8 @@ mod tests {
 
         // Test that environmental conditions affect threshold
         let syndrome = vec![false, false];
-        let threshold_normal = estimator.estimate_threshold(&syndrome, &EnvironmentalConditions::default());
+        let threshold_normal =
+            estimator.estimate_threshold(&syndrome, &EnvironmentalConditions::default());
         let threshold_hot = estimator.estimate_threshold(&syndrome, &env);
 
         // Thresholds may be different due to environmental factors
@@ -3668,18 +3783,21 @@ mod tests {
             prior_strength: 1.0,
             update_rate: 0.1,
         };
-        let bayesian_estimator = AdaptiveThresholdEstimator::new(noise_model.clone(), bayesian_alg, config.clone());
+        let bayesian_estimator =
+            AdaptiveThresholdEstimator::new(noise_model.clone(), bayesian_alg, config.clone());
 
         // Test Kalman filter algorithm
         let kalman_alg = ThresholdEstimationAlgorithm::KalmanFilter {
             process_noise: 0.01,
             measurement_noise: 0.1,
         };
-        let kalman_estimator = AdaptiveThresholdEstimator::new(noise_model.clone(), kalman_alg, config.clone());
+        let kalman_estimator =
+            AdaptiveThresholdEstimator::new(noise_model.clone(), kalman_alg, config.clone());
 
         // Test exponential average algorithm
         let exp_alg = ThresholdEstimationAlgorithm::ExponentialAverage { alpha: 0.3 };
-        let exp_estimator = AdaptiveThresholdEstimator::new(noise_model.clone(), exp_alg, config.clone());
+        let exp_estimator =
+            AdaptiveThresholdEstimator::new(noise_model.clone(), exp_alg, config.clone());
 
         // Test ML algorithm
         let ml_alg = ThresholdEstimationAlgorithm::MachineLearning {

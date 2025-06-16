@@ -5,11 +5,9 @@
 //! and Multi-scale Entanglement Renormalization Ansatz (MERA) for optimization.
 
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{s, Array, Array1, Array2, Array3, Array4, ArrayD, Axis, Zip};
+use ndarray::{Array1, Array2, ArrayD};
 use rand::{prelude::*, thread_rng};
 use std::collections::HashMap;
-use std::f64::consts::PI;
-use std::sync::{Arc, Mutex};
 
 /// Tensor network sampler for quantum annealing
 pub struct TensorNetworkSampler {

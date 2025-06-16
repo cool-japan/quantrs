@@ -4,7 +4,7 @@
 //! optimization problem types including TSP, graph coloring, scheduling, etc.
 
 use crate::sampler::SampleResult;
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

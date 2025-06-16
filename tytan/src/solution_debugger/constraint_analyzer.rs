@@ -1,7 +1,7 @@
 //! Constraint analysis functionality for the solution debugger.
 
 use super::types::{ConstraintInfo, ConstraintType};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::collections::HashMap;
 
 /// Constraint analyzer

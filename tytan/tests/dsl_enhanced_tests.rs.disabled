@@ -123,9 +123,9 @@ fn test_dsl_standard_library_functions() {
     
     let abs_func = stdlib.get_function("abs").unwrap();
     assert_eq!(abs_func.name, "abs");
-    assert_eq!(abs_func.param_types.len(), 1);
-    assert_eq!(abs_func.param_types[0], VarType::Continuous);
-    assert_eq!(abs_func.return_type, VarType::Continuous);
+    assert_eq!(abs_func.signature.param_types.len(), 1);
+    assert_eq!(abs_func.signature.param_types[0], VarType::Continuous);
+    assert_eq!(abs_func.signature.return_type, VarType::Continuous);
 }
 
 #[test]

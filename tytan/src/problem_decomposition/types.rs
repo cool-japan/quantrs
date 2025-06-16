@@ -1,6 +1,6 @@
 //! Data structures and types for problem decomposition
 
-use crate::sampler::{SampleResult, Sampler};
+use crate::sampler::SampleResult;
 use ndarray::Array2;
 use std::collections::{HashMap, HashSet};
 

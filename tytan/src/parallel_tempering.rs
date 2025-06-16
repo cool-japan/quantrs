@@ -5,7 +5,6 @@
 
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::{Array, Ix2, IxDyn};
-use quantrs2_anneal::QuboModel;
 use rand::prelude::*;
 use std::collections::HashMap;
 

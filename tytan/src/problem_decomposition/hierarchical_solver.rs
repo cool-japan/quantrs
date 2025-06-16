@@ -1,8 +1,7 @@
 //! Hierarchical solving methods for large-scale problems
 
 use super::types::*;
-use crate::sampler::simulated_annealing::SASampler;
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
+use crate::sampler::{SampleResult, Sampler};
 use ndarray::Array2;
 use std::collections::HashMap;
 

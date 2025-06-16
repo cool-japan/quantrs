@@ -455,7 +455,12 @@ impl QuantumCloudService {
                 readout_errors: vec![0.02; 127],
                 coherence_times: Some((100e-6, 75e-6)), // T1, T2 in seconds
                 connectivity: Self::generate_heavy_hex_connectivity(127),
-                gate_set: vec!["cx".to_string(), "rz".to_string(), "sx".to_string(), "x".to_string()],
+                gate_set: vec![
+                    "cx".to_string(),
+                    "rz".to_string(),
+                    "sx".to_string(),
+                    "x".to_string(),
+                ],
                 queue_length: 25,
                 cost_per_shot: Some(0.00085),
                 max_shots: 20000,
@@ -476,7 +481,12 @@ impl QuantumCloudService {
                 readout_errors: vec![0.005; 30],
                 coherence_times: None,
                 connectivity: Self::generate_grid_connectivity(6, 5),
-                gate_set: vec!["cz".to_string(), "rz".to_string(), "ry".to_string(), "measure".to_string()],
+                gate_set: vec![
+                    "cz".to_string(),
+                    "rz".to_string(),
+                    "ry".to_string(),
+                    "measure".to_string(),
+                ],
                 queue_length: 0,
                 cost_per_shot: Some(0.0),
                 max_shots: 10000,
@@ -496,7 +506,11 @@ impl QuantumCloudService {
                 readout_errors: vec![0.015; 70],
                 coherence_times: Some((80e-6, 60e-6)),
                 connectivity: Self::generate_sycamore_connectivity(),
-                gate_set: vec!["cz".to_string(), "phased_x_pow".to_string(), "measure".to_string()],
+                gate_set: vec![
+                    "cz".to_string(),
+                    "phased_x_pow".to_string(),
+                    "measure".to_string(),
+                ],
                 queue_length: 15,
                 cost_per_shot: Some(0.001),
                 max_shots: 50000,
@@ -517,7 +531,12 @@ impl QuantumCloudService {
                 readout_errors: vec![0.0; 34],
                 coherence_times: None,
                 connectivity: (0..33).map(|i| (i, i + 1)).collect(),
-                gate_set: vec!["cnot".to_string(), "rx".to_string(), "ry".to_string(), "rz".to_string()],
+                gate_set: vec![
+                    "cnot".to_string(),
+                    "rx".to_string(),
+                    "ry".to_string(),
+                    "rz".to_string(),
+                ],
                 queue_length: 0,
                 cost_per_shot: Some(0.075),
                 max_shots: 100000,
@@ -565,10 +584,14 @@ impl QuantumCloudService {
             status: BackendStatus::Online,
         }];
 
-        self.backends.insert(CloudProvider::IBMQuantum, ibm_backends);
-        self.backends.insert(CloudProvider::GoogleQuantumAI, google_backends);
-        self.backends.insert(CloudProvider::AmazonBraket, braket_backends);
-        self.backends.insert(CloudProvider::LocalSimulation, local_backends);
+        self.backends
+            .insert(CloudProvider::IBMQuantum, ibm_backends);
+        self.backends
+            .insert(CloudProvider::GoogleQuantumAI, google_backends);
+        self.backends
+            .insert(CloudProvider::AmazonBraket, braket_backends);
+        self.backends
+            .insert(CloudProvider::LocalSimulation, local_backends);
 
         Ok(())
     }
@@ -576,7 +599,7 @@ impl QuantumCloudService {
     /// Generate heavy-hex connectivity for IBM quantum devices
     fn generate_heavy_hex_connectivity(num_qubits: usize) -> Vec<(usize, usize)> {
         let mut connectivity = Vec::new();
-        
+
         // Simplified heavy-hex pattern
         for i in 0..num_qubits {
             if i + 1 < num_qubits {
@@ -597,12 +620,12 @@ impl QuantumCloudService {
         for row in 0..rows {
             for col in 0..cols {
                 let qubit = row * cols + col;
-                
+
                 // Horizontal connections
                 if col + 1 < cols {
                     connectivity.push((qubit, qubit + 1));
                 }
-                
+
                 // Vertical connections
                 if row + 1 < rows {
                     connectivity.push((qubit, qubit + cols));
@@ -617,7 +640,7 @@ impl QuantumCloudService {
     fn generate_sycamore_connectivity() -> Vec<(usize, usize)> {
         // Simplified Sycamore connectivity pattern
         let mut connectivity = Vec::new();
-        
+
         for i in 0..70 {
             if i + 1 < 70 && (i + 1) % 10 != 0 {
                 connectivity.push((i, i + 1));
@@ -633,7 +656,7 @@ impl QuantumCloudService {
     /// Generate all-to-all connectivity
     fn generate_all_to_all_connectivity(num_qubits: usize) -> Vec<(usize, usize)> {
         let mut connectivity = Vec::new();
-        
+
         for i in 0..num_qubits {
             for j in (i + 1)..num_qubits {
                 connectivity.push((i, j));
@@ -661,7 +684,9 @@ impl QuantumCloudService {
         let backend = self.select_optimal_backend(&circuit, backend_name)?;
 
         // Translate circuit for the target provider
-        let translated_circuit = self.circuit_translator.translate(&circuit, backend.provider)?;
+        let translated_circuit = self
+            .circuit_translator
+            .translate(&circuit, backend.provider)?;
 
         // Generate job ID
         let job_id = format!(
@@ -753,30 +778,31 @@ impl QuantumCloudService {
 
         // Select based on optimization strategy
         let best_backend = match self.config.cost_optimization {
-            CostOptimization::MinimizeCost => {
-                candidates
-                    .iter()
-                    .min_by_key(|b| {
-                        (b.cost_per_shot.unwrap_or(0.0) * 1000.0) as u64 + b.queue_length as u64
-                    })
-                    .unwrap()
-            }
-            CostOptimization::MinimizeTime => {
-                candidates
-                    .iter()
-                    .min_by_key(|b| b.queue_length + if b.backend_type == BackendType::Hardware { 100 } else { 0 })
-                    .unwrap()
-            }
-            CostOptimization::Balanced => {
-                candidates
-                    .iter()
-                    .min_by_key(|b| {
-                        let cost_score = (b.cost_per_shot.unwrap_or(0.0) * 100.0) as u64;
-                        let time_score = b.queue_length as u64 * 10;
-                        cost_score + time_score
-                    })
-                    .unwrap()
-            }
+            CostOptimization::MinimizeCost => candidates
+                .iter()
+                .min_by_key(|b| {
+                    (b.cost_per_shot.unwrap_or(0.0) * 1000.0) as u64 + b.queue_length as u64
+                })
+                .unwrap(),
+            CostOptimization::MinimizeTime => candidates
+                .iter()
+                .min_by_key(|b| {
+                    b.queue_length
+                        + if b.backend_type == BackendType::Hardware {
+                            100
+                        } else {
+                            0
+                        }
+                })
+                .unwrap(),
+            CostOptimization::Balanced => candidates
+                .iter()
+                .min_by_key(|b| {
+                    let cost_score = (b.cost_per_shot.unwrap_or(0.0) * 100.0) as u64;
+                    let time_score = b.queue_length as u64 * 10;
+                    cost_score + time_score
+                })
+                .unwrap(),
             _ => candidates.first().unwrap(),
         };
 
@@ -784,7 +810,11 @@ impl QuantumCloudService {
     }
 
     /// Check result cache
-    fn check_cache(&mut self, circuit: &InterfaceCircuit, shots: usize) -> Option<QuantumJobResult> {
+    fn check_cache(
+        &mut self,
+        circuit: &InterfaceCircuit,
+        shots: usize,
+    ) -> Option<QuantumJobResult> {
         if !self.config.enable_caching {
             return None;
         }
@@ -842,7 +872,7 @@ impl QuantumCloudService {
     /// Get job status
     pub fn get_job_status(&self, job_id: &str) -> Result<JobStatus> {
         let active_jobs = self.active_jobs.lock().unwrap();
-        
+
         if let Some(job) = active_jobs.get(job_id) {
             // Simulate job progression
             let elapsed = SystemTime::now()
@@ -944,7 +974,7 @@ impl QuantumCloudService {
             } else {
                 fastrand::usize(0..job.shots / 8)
             };
-            
+
             if count > 0 {
                 measurements.insert(outcome, count);
             }
@@ -955,7 +985,9 @@ impl QuantumCloudService {
             _ => 10.0 + fastrand::f64() * 30.0,
         };
 
-        let actual_cost = job.cost_estimate.map(|cost| cost * (0.9 + fastrand::f64() * 0.2));
+        let actual_cost = job
+            .cost_estimate
+            .map(|cost| cost * (0.9 + fastrand::f64() * 0.2));
 
         let result = QuantumJobResult {
             job_id: job.job_id.clone(),
@@ -1010,16 +1042,14 @@ impl QuantumCloudService {
             }
 
             // Check convergence
-            if iteration > 0 && (best_cost.abs() < hybrid_config.iteration_config.convergence_threshold) {
+            if iteration > 0
+                && (best_cost.abs() < hybrid_config.iteration_config.convergence_threshold)
+            {
                 break;
             }
 
             // Update parameters using classical optimization
-            params = self.update_parameters(
-                params,
-                cost,
-                &hybrid_config.iteration_config,
-            )?;
+            params = self.update_parameters(params, cost, &hybrid_config.iteration_config)?;
 
             iteration += 1;
         }
@@ -1070,7 +1100,7 @@ impl QuantumCloudService {
     /// Cancel job
     pub fn cancel_job(&mut self, job_id: &str) -> Result<()> {
         let mut active_jobs = self.active_jobs.lock().unwrap();
-        
+
         if let Some(mut job) = active_jobs.get_mut(job_id) {
             if job.status == JobStatus::Queued || job.status == JobStatus::Running {
                 job.status = JobStatus::Cancelled;
@@ -1236,10 +1266,7 @@ pub fn benchmark_quantum_cloud_service() -> Result<HashMap<String, f64>> {
                 0.0
             },
         );
-        results.insert(
-            format!("cloud_config_{}_total_cost", i),
-            stats.total_cost,
-        );
+        results.insert(format!("cloud_config_{}_total_cost", i), stats.total_cost);
     }
 
     Ok(results)
@@ -1263,7 +1290,9 @@ mod tests {
         let service = QuantumCloudService::new(config).unwrap();
 
         assert!(!service.backends.is_empty());
-        assert!(service.backends.contains_key(&CloudProvider::LocalSimulation));
+        assert!(service
+            .backends
+            .contains_key(&CloudProvider::LocalSimulation));
         assert!(service.backends.contains_key(&CloudProvider::IBMQuantum));
     }
 
@@ -1292,7 +1321,7 @@ mod tests {
 
         let job_id = service.submit_job(circuit, 50, None).unwrap();
         let status = service.get_job_status(&job_id).unwrap();
-        
+
         assert!(matches!(
             status,
             JobStatus::Queued | JobStatus::Running | JobStatus::Completed
@@ -1324,7 +1353,7 @@ mod tests {
 
         let ibm_backends = service.list_backends(Some(CloudProvider::IBMQuantum));
         assert!(!ibm_backends.is_empty());
-        
+
         for backend in ibm_backends {
             assert_eq!(backend.provider, CloudProvider::IBMQuantum);
         }
@@ -1367,11 +1396,11 @@ mod tests {
         let mut service = QuantumCloudService::new(config).unwrap();
 
         let mut circuit = InterfaceCircuit::new(2, 0);
-        circuit.add_gate(InterfaceGate::new(InterfaceGateType::Y, vec![0]));
+        circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliY, vec![0]));
 
         let job_id = service.submit_job(circuit, 100, None).unwrap();
         let result = service.cancel_job(&job_id);
-        
+
         // Should succeed for queued/running jobs
         assert!(result.is_ok() || result.is_err());
     }
@@ -1396,7 +1425,7 @@ mod tests {
         let initial_jobs = service.stats.total_jobs;
 
         let mut circuit = InterfaceCircuit::new(2, 0);
-        circuit.add_gate(InterfaceGate::new(InterfaceGateType::Z, vec![1]));
+        circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliZ, vec![1]));
 
         let _job_id = service.submit_job(circuit, 100, None).unwrap();
 

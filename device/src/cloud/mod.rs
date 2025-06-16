@@ -112,17 +112,29 @@ use crate::{
 
 // Module declarations
 pub mod allocation;
+pub mod cost_estimation;
 pub mod cost_management;
 pub mod monitoring;
 pub mod orchestration;
+pub mod provider_migration;
+pub mod provider_optimizations;
 pub mod providers;
 
 // Re-exports for public API
 pub use allocation::*;
+pub use cost_estimation::*;
 pub use cost_management::*;
 pub use monitoring::*;
 pub use orchestration::*;
+pub use provider_migration::*;
+pub use provider_optimizations::*;
 pub use providers::*;
+
+// Re-export specific configuration types
+pub use orchestration::load_balancing::CloudLoadBalancingConfig;
+pub use orchestration::performance::AutoScalingConfig;
+pub use orchestration::performance::CloudPerformanceConfig;
+pub use orchestration::CloudSecurityConfig;
 
 /// Configuration for Quantum Cloud Resource Management System
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -146,7 +158,7 @@ pub struct QuantumCloudConfig {
     /// Auto-scaling and elasticity
     pub scaling_config: AutoScalingConfig,
     /// Budget and quota management
-    pub budget_config: BudgetManagementConfig,
+    pub budget_config: BudgetConfig,
 }
 
 /// Machine learning configuration for cloud optimization

@@ -1,15 +1,16 @@
 //! Comprehensive tests for advanced error mitigation and calibration.
 
-use quantrs2_tytan::advanced_error_mitigation::*;
 use ndarray::{Array1, Array2};
+use quantrs2_tytan::advanced_error_mitigation::*;
 use std::collections::HashMap;
+use std::f64::consts::PI;
 use std::time::{Duration, SystemTime};
 
 #[test]
 fn test_error_mitigation_manager_creation() {
     let config = ErrorMitigationConfig::default();
     let manager = AdvancedErrorMitigationManager::new(config);
-    
+
     // Test that manager is created successfully
     assert!(true);
 }
@@ -17,7 +18,7 @@ fn test_error_mitigation_manager_creation() {
 #[test]
 fn test_default_error_mitigation_config() {
     let config = ErrorMitigationConfig::default();
-    
+
     // Verify default configuration values
     assert!(config.real_time_monitoring);
     assert!(config.adaptive_protocols);
@@ -45,11 +46,14 @@ fn test_noise_characterization_config() {
         },
         history_length: 1000,
     };
-    
+
     // Test configuration values
     assert_eq!(config.sampling_frequency, 1000.0);
     assert_eq!(config.benchmarking_sequences, 100);
-    assert!(matches!(config.tomography_protocol, TomographyProtocol::MaximumLikelihood));
+    assert!(matches!(
+        config.tomography_protocol,
+        TomographyProtocol::MaximumLikelihood
+    ));
     assert_eq!(config.spectroscopy_config.frequency_points, 1000);
     assert_eq!(config.history_length, 1000);
 }
@@ -57,7 +61,7 @@ fn test_noise_characterization_config() {
 #[test]
 fn test_noise_model_creation() {
     let noise_model = NoiseModel::default();
-    
+
     // Verify default noise model structure
     assert!(noise_model.single_qubit_errors.is_empty());
     assert!(noise_model.two_qubit_errors.is_empty());
@@ -80,7 +84,7 @@ fn test_single_qubit_error_model() {
         thermal_population: 0.01,
         gate_errors: HashMap::new(),
     };
-    
+
     // Verify error model structure
     assert_eq!(error_model.depolarizing_rate, 0.001);
     assert_eq!(error_model.dephasing_rates.t1, 100e-6);
@@ -100,7 +104,7 @@ fn test_two_qubit_error_model() {
         conditional_phase_error: 0.005,
         gate_time_variation: 0.1,
     };
-    
+
     // Verify two-qubit error model
     assert_eq!(error_model.entangling_error, 0.01);
     assert_eq!(error_model.crosstalk_strength, 0.02);
@@ -117,7 +121,7 @@ fn test_gate_error_model() {
         incoherent_components: Array1::from(vec![0.0005, 0.0003, 0.0002]),
         leakage_probability: 0.0001,
     };
-    
+
     // Verify gate error model
     assert_eq!(gate_error.error_probability, 0.001);
     assert_eq!(gate_error.coherent_error_angle, 0.01);
@@ -138,7 +142,7 @@ fn test_temporal_correlation_model() {
             high_freq_rolloff: 0.01,
         },
     };
-    
+
     // Verify temporal correlation model
     assert_eq!(correlation_model.autocorrelation.len(), 5);
     assert_eq!(correlation_model.power_spectrum.len(), 5);
@@ -152,7 +156,7 @@ fn test_environmental_noise_model() {
     let mut control_line_noise = HashMap::new();
     control_line_noise.insert("control_1".to_string(), 0.001);
     control_line_noise.insert("control_2".to_string(), 0.0005);
-    
+
     let env_noise = EnvironmentalNoiseModel {
         temperature_noise: 0.01,
         magnetic_noise: 0.005,
@@ -160,7 +164,7 @@ fn test_environmental_noise_model() {
         vibration_sensitivity: 0.002,
         control_line_noise,
     };
-    
+
     // Verify environmental noise model
     assert_eq!(env_noise.temperature_noise, 0.01);
     assert_eq!(env_noise.magnetic_noise, 0.005);
@@ -177,37 +181,46 @@ fn test_mitigation_protocol_types() {
         scaling_factors: vec![1.0, 3.0, 5.0, 7.0],
         extrapolation_method: ExtrapolationMethod::Linear,
     };
-    
+
     match zne {
-        MitigationProtocol::ZeroNoiseExtrapolation { scaling_factors, extrapolation_method } => {
+        MitigationProtocol::ZeroNoiseExtrapolation {
+            scaling_factors,
+            extrapolation_method,
+        } => {
             assert_eq!(scaling_factors.len(), 4);
             assert!(matches!(extrapolation_method, ExtrapolationMethod::Linear));
         }
         _ => panic!("Unexpected protocol type"),
     }
-    
+
     // Test Probabilistic Error Cancellation
     let pec = MitigationProtocol::ProbabilisticErrorCancellation {
         inverse_map: HashMap::new(),
         sampling_overhead: 2.5,
     };
-    
+
     match pec {
-        MitigationProtocol::ProbabilisticErrorCancellation { inverse_map, sampling_overhead } => {
+        MitigationProtocol::ProbabilisticErrorCancellation {
+            inverse_map,
+            sampling_overhead,
+        } => {
             assert!(inverse_map.is_empty());
             assert_eq!(sampling_overhead, 2.5);
         }
         _ => panic!("Unexpected protocol type"),
     }
-    
+
     // Test Symmetry Verification
     let sv = MitigationProtocol::SymmetryVerification {
         symmetries: vec![],
         verification_threshold: 0.95,
     };
-    
+
     match sv {
-        MitigationProtocol::SymmetryVerification { symmetries, verification_threshold } => {
+        MitigationProtocol::SymmetryVerification {
+            symmetries,
+            verification_threshold,
+        } => {
             assert!(symmetries.is_empty());
             assert_eq!(verification_threshold, 0.95);
         }
@@ -224,7 +237,7 @@ fn test_extrapolation_methods() {
         ExtrapolationMethod::Richardson,
         ExtrapolationMethod::AdaptivePolynomial,
     ];
-    
+
     // Test each extrapolation method
     for method in methods {
         match method {
@@ -245,7 +258,7 @@ fn test_symmetry_operator() {
         eigenvalues: Array1::from(vec![1.0, -1.0, 1.0, -1.0]),
         symmetry_type: SymmetryType::Parity,
     };
-    
+
     // Verify symmetry operator
     assert_eq!(operator.name, "Parity");
     assert_eq!(operator.operator.dim(), (4, 4));
@@ -267,7 +280,7 @@ fn test_calibration_config() {
         },
         calibration_timeout: Duration::from_secs(300),
     };
-    
+
     // Verify calibration configuration
     assert!(config.auto_calibration);
     assert_eq!(config.calibration_frequency, Duration::from_secs(3600));
@@ -282,11 +295,11 @@ fn test_calibration_result() {
     let mut updated_params = HashMap::new();
     updated_params.insert("frequency".to_string(), 5.0e9);
     updated_params.insert("amplitude".to_string(), 0.5);
-    
+
     let mut achieved_precision = HashMap::new();
     achieved_precision.insert("gate_fidelity".to_string(), 0.998);
     achieved_precision.insert("readout_fidelity".to_string(), 0.94);
-    
+
     let result = CalibrationResult {
         success: true,
         updated_parameters: updated_params,
@@ -300,7 +313,7 @@ fn test_calibration_result() {
         },
         recommendations: vec![],
     };
-    
+
     // Verify calibration result
     assert!(result.success);
     assert_eq!(result.updated_parameters.len(), 2);
@@ -325,7 +338,7 @@ fn test_syndrome_prediction_config() {
             hidden_layers: vec![64, 32],
         },
     };
-    
+
     // Verify syndrome prediction configuration
     assert_eq!(config.prediction_horizon, Duration::from_secs(300));
     assert_eq!(config.model_update_frequency, Duration::from_secs(1800));
@@ -345,7 +358,7 @@ fn test_qec_integration_config() {
         error_threshold: 0.01,
         code_switching_threshold: 0.05,
     };
-    
+
     // Verify QEC integration configuration
     assert!(config.real_time_decoding);
     assert!(config.adaptive_code_selection);
@@ -358,11 +371,11 @@ fn test_qec_integration_config() {
 fn test_noise_characterizer_creation() {
     let config = ErrorMitigationConfig::default();
     let characterizer = NoiseCharacterizer::new(&config);
-    
+
     // Test that characterizer is created successfully
-    assert!(characterizer.history.is_empty());
-    assert_eq!(characterizer.config.sampling_frequency, 1000.0);
-    assert_eq!(characterizer.config.benchmarking_sequences, 100);
+    assert!(characterizer.history().is_empty());
+    assert_eq!(characterizer.config().sampling_frequency, 1000.0);
+    assert_eq!(characterizer.config().benchmarking_sequences, 100);
 }
 
 #[test]
@@ -379,7 +392,7 @@ fn test_randomized_benchmarking_result() {
             fidelities
         },
     };
-    
+
     // Verify randomized benchmarking result
     assert_eq!(rb_result.error_rate_per_clifford, 0.001);
     assert_eq!(rb_result.confidence_interval.0, 0.0008);
@@ -412,14 +425,20 @@ fn test_spectroscopy_data() {
             },
         ],
     };
-    
+
     // Verify spectroscopy data
     assert_eq!(spectroscopy_data.frequencies.len(), 4);
     assert_eq!(spectroscopy_data.signals.len(), 4);
     assert_eq!(spectroscopy_data.power_spectrum.len(), 4);
     assert_eq!(spectroscopy_data.noise_sources.len(), 2);
-    assert!(matches!(spectroscopy_data.noise_sources[0].source_type, NoiseSourceType::OneOverFNoise));
-    assert!(matches!(spectroscopy_data.noise_sources[1].source_type, NoiseSourceType::ChargeNoise));
+    assert!(matches!(
+        spectroscopy_data.noise_sources[0].source_type,
+        NoiseSourceType::OneOverFNoise
+    ));
+    assert!(matches!(
+        spectroscopy_data.noise_sources[1].source_type,
+        NoiseSourceType::ChargeNoise
+    ));
 }
 
 #[test]
@@ -427,18 +446,18 @@ fn test_confidence_intervals() {
     let mut gate_fidelities = HashMap::new();
     gate_fidelities.insert("X".to_string(), (0.998, 0.9995));
     gate_fidelities.insert("CNOT".to_string(), (0.985, 0.995));
-    
+
     let mut error_rates = HashMap::new();
     error_rates.insert("X".to_string(), (0.0005, 0.002));
     error_rates.insert("CNOT".to_string(), (0.005, 0.015));
-    
+
     let intervals = ConfidenceIntervals {
         process_fidelity: (0.95, 0.98),
         gate_fidelities,
         error_rates,
         coherence_times: HashMap::new(),
     };
-    
+
     // Verify confidence intervals
     assert_eq!(intervals.process_fidelity.0, 0.95);
     assert_eq!(intervals.process_fidelity.1, 0.98);
@@ -462,14 +481,17 @@ fn test_characterization_quality() {
             autocorrelation_coefficients: Array1::from(vec![1.0, 0.1, 0.05, 0.02]),
         },
     };
-    
+
     // Verify characterization quality
     assert_eq!(quality.overall_score, 0.9);
     assert_eq!(quality.statistical_significance, 0.95);
     assert_eq!(quality.model_validation_score, 0.85);
     assert_eq!(quality.cross_validation_results.len(), 5);
     assert_eq!(quality.residual_analysis.mean_residual, 0.001);
-    assert_eq!(quality.residual_analysis.autocorrelation_coefficients.len(), 4);
+    assert_eq!(
+        quality.residual_analysis.autocorrelation_coefficients.len(),
+        4
+    );
 }
 
 #[test]
@@ -481,7 +503,7 @@ fn test_adaptive_mitigation_config() {
         max_active_protocols: 3,
         learning_rate: 0.01,
     };
-    
+
     // Verify adaptive mitigation configuration
     assert_eq!(config.update_frequency, Duration::from_secs(300));
     assert_eq!(config.monitoring_window, Duration::from_secs(3600));
@@ -498,7 +520,7 @@ fn test_mitigated_result() {
         mitigation_overhead: 2.0,
         confidence: 0.9,
     };
-    
+
     // Verify mitigated result
     assert_eq!(result.original_result.len(), 4);
     assert_eq!(result.mitigated_result.len(), 4);
@@ -512,12 +534,13 @@ fn test_mitigated_result() {
 fn test_device_parameters() {
     let params = DeviceParameters {
         qubit_frequencies: Array1::from(vec![5.0e9, 5.1e9, 4.9e9, 5.05e9]),
-        coupling_strengths: Array2::from_shape_vec((4, 4), vec![
-            0.0, 1e6, 0.0, 0.0,
-            1e6, 0.0, 1e6, 0.0,
-            0.0, 1e6, 0.0, 1e6,
-            0.0, 0.0, 1e6, 0.0,
-        ]).unwrap(),
+        coupling_strengths: Array2::from_shape_vec(
+            (4, 4),
+            vec![
+                0.0, 1e6, 0.0, 0.0, 1e6, 0.0, 1e6, 0.0, 0.0, 1e6, 0.0, 1e6, 0.0, 0.0, 1e6, 0.0,
+            ],
+        )
+        .unwrap(),
         gate_times: {
             let mut times = HashMap::new();
             times.insert("X".to_string(), 20e-9);
@@ -526,7 +549,7 @@ fn test_device_parameters() {
         },
         readout_fidelities: Array1::from(vec![0.95, 0.96, 0.94, 0.97]),
     };
-    
+
     // Verify device parameters
     assert_eq!(params.qubit_frequencies.len(), 4);
     assert_eq!(params.coupling_strengths.dim(), (4, 4));
@@ -541,7 +564,7 @@ fn test_device_parameters() {
 fn test_error_mitigation_manager_start_monitoring() {
     let config = ErrorMitigationConfig::default();
     let mut manager = AdvancedErrorMitigationManager::new(config);
-    
+
     // Test starting monitoring
     let result = manager.start_monitoring();
     assert!(result.is_ok());
@@ -557,13 +580,13 @@ fn test_error_mitigation_manager_with_disabled_features() {
         qec_integration: false,
         ..Default::default()
     };
-    
+
     let mut manager = AdvancedErrorMitigationManager::new(config);
-    
+
     // Starting monitoring should fail when disabled
     let result = manager.start_monitoring();
     assert!(result.is_err());
-    
+
     match result {
         Err(MitigationError::InvalidParameters(msg)) => {
             assert!(msg.contains("Real-time monitoring is disabled"));
@@ -576,14 +599,14 @@ fn test_error_mitigation_manager_with_disabled_features() {
 fn test_error_mitigation_manager_apply_mitigation() {
     let config = ErrorMitigationConfig::default();
     let manager = AdvancedErrorMitigationManager::new(config);
-    
+
     // Create a test quantum circuit
     let circuit = vec!["X 0".to_string(), "CNOT 0 1".to_string(), "H 1".to_string()];
-    
+
     // Test applying mitigation
     let result = manager.apply_mitigation(&circuit);
     assert!(result.is_ok());
-    
+
     let mitigated_result = result.unwrap();
     assert!(mitigated_result.mitigation_overhead >= 1.0);
     assert!(mitigated_result.confidence >= 0.0);
@@ -599,7 +622,7 @@ fn test_qec_integration_result() {
         resource_overhead: 5.0,
         expected_logical_error_rate: 1e-6,
     };
-    
+
     // Verify QEC integration result
     assert_eq!(result.logical_circuit.len(), 1);
     assert_eq!(result.physical_circuit.len(), 3);
@@ -611,14 +634,14 @@ fn test_qec_integration_result() {
 #[test]
 fn test_syndrome_prediction() {
     use std::time::SystemTime;
-    
+
     let prediction = SyndromePrediction {
         predicted_syndrome: Array1::from(vec![1, 0, 1, 0]),
         confidence: 0.85,
         time_to_occurrence: Duration::from_millis(100),
         mitigation_recommendation: "Apply X correction on qubits 0 and 2".to_string(),
     };
-    
+
     // Verify syndrome prediction
     assert_eq!(prediction.predicted_syndrome.len(), 4);
     assert_eq!(prediction.confidence, 0.85);
@@ -640,7 +663,7 @@ fn test_noise_source_types() {
         NoiseSourceType::FluxNoise,
         NoiseSourceType::InstrumentNoise,
     ];
-    
+
     // Test that all noise source types can be created
     assert_eq!(noise_sources.len(), 8);
     for noise_type in noise_sources {
@@ -666,7 +689,7 @@ fn test_processing_window_types() {
         ProcessingWindow::Gaussian { sigma: 1.0 },
         ProcessingWindow::Rectangular,
     ];
-    
+
     // Test that all processing window types can be created
     assert_eq!(windows.len(), 5);
     for window in windows {
@@ -689,7 +712,7 @@ fn test_tomography_protocols() {
         TomographyProtocol::MaximumLikelihood,
         TomographyProtocol::LinearInversion,
     ];
-    
+
     // Test that all tomography protocols can be created
     assert_eq!(protocols.len(), 5);
     for protocol in protocols {
@@ -707,9 +730,12 @@ fn test_tomography_protocols() {
 fn test_create_advanced_error_mitigation_manager() {
     let manager = create_advanced_error_mitigation_manager();
     let status = manager.get_status();
-    
+
     // Test manager creation via helper function
-    assert!(matches!(status.calibration_status.overall_status, CalibrationOverallStatus::Good));
+    assert!(matches!(
+        status.calibration_status.overall_status,
+        CalibrationOverallStatus::Good
+    ));
     assert_eq!(status.error_statistics.total_errors_detected, 0);
     assert!(status.current_noise_model.single_qubit_errors.is_empty());
 }
@@ -718,9 +744,12 @@ fn test_create_advanced_error_mitigation_manager() {
 fn test_create_lightweight_error_mitigation_manager() {
     let manager = create_lightweight_error_mitigation_manager();
     let status = manager.get_status();
-    
+
     // Test lightweight manager creation
-    assert!(matches!(status.calibration_status.overall_status, CalibrationOverallStatus::Good));
+    assert!(matches!(
+        status.calibration_status.overall_status,
+        CalibrationOverallStatus::Good
+    ));
     assert_eq!(status.error_statistics.total_errors_detected, 0);
 }
 
@@ -737,7 +766,7 @@ fn test_error_types() {
         MitigationError::InsufficientData("Test error".to_string()),
         MitigationError::ComputationTimeout("Test error".to_string()),
     ];
-    
+
     // Verify error types can be created and matched
     assert_eq!(errors.len(), 8);
     for error in errors {
@@ -763,7 +792,7 @@ fn test_calibration_status_types() {
         CalibrationOverallStatus::Poor,
         CalibrationOverallStatus::CalibrationRequired,
     ];
-    
+
     // Test calibration status types
     assert_eq!(statuses.len(), 5);
     for status in statuses {
@@ -786,7 +815,7 @@ fn test_parameter_status_types() {
         ParameterStatus::Drifting,
         ParameterStatus::Unstable,
     ];
-    
+
     // Test parameter status types
     assert_eq!(statuses.len(), 5);
     for status in statuses {
@@ -804,39 +833,69 @@ fn test_parameter_status_types() {
 fn test_comprehensive_noise_characterization_workflow() {
     let config = ErrorMitigationConfig::default();
     let mut manager = AdvancedErrorMitigationManager::new(config);
-    
+
     // Create a test quantum device
     let mut device = HashMap::new();
     device.insert("qubit_count".to_string(), 4.0);
     device.insert("frequency_0".to_string(), 5.0e9);
     device.insert("frequency_1".to_string(), 5.1e9);
-    
+
     // Perform error characterization
     let result = manager.characterize_errors(&device);
     assert!(result.is_ok());
-    
+
     let characterization_result = result.unwrap();
-    
+
     // Verify characterization result structure
     assert!(characterization_result.noise_model.validation_score >= 0.0);
-    assert!(characterization_result.benchmarking_results.error_rate_per_clifford >= 0.0);
-    assert!(characterization_result.confidence_intervals.process_fidelity.0 <= characterization_result.confidence_intervals.process_fidelity.1);
+    assert!(
+        characterization_result
+            .benchmarking_results
+            .error_rate_per_clifford
+            >= 0.0
+    );
+    assert!(
+        characterization_result
+            .confidence_intervals
+            .process_fidelity
+            .0
+            <= characterization_result
+                .confidence_intervals
+                .process_fidelity
+                .1
+    );
     assert!(characterization_result.quality_metrics.overall_score >= 0.0);
     assert!(characterization_result.quality_metrics.overall_score <= 1.0);
-    
+
     println!("Noise characterization completed successfully");
-    println!("Process fidelity: {:.3} - {:.3}", 
-             characterization_result.confidence_intervals.process_fidelity.0,
-             characterization_result.confidence_intervals.process_fidelity.1);
-    println!("Error rate per Clifford: {:.6}", characterization_result.benchmarking_results.error_rate_per_clifford);
-    println!("Overall quality score: {:.3}", characterization_result.quality_metrics.overall_score);
+    println!(
+        "Process fidelity: {:.3} - {:.3}",
+        characterization_result
+            .confidence_intervals
+            .process_fidelity
+            .0,
+        characterization_result
+            .confidence_intervals
+            .process_fidelity
+            .1
+    );
+    println!(
+        "Error rate per Clifford: {:.6}",
+        characterization_result
+            .benchmarking_results
+            .error_rate_per_clifford
+    );
+    println!(
+        "Overall quality score: {:.3}",
+        characterization_result.quality_metrics.overall_score
+    );
 }
 
 #[test]
 fn test_integrated_error_mitigation_workflow() {
     let config = ErrorMitigationConfig::default();
     let mut manager = AdvancedErrorMitigationManager::new(config);
-    
+
     // Create test circuit
     let circuit = vec![
         "H 0".to_string(),
@@ -845,31 +904,37 @@ fn test_integrated_error_mitigation_workflow() {
         "CNOT 0 1".to_string(),
         "H 0".to_string(),
     ];
-    
+
     // Apply mitigation
     let mitigation_result = manager.apply_mitigation(&circuit);
     assert!(mitigation_result.is_ok());
-    
+
     let result = mitigation_result.unwrap();
     assert!(result.mitigation_overhead >= 1.0);
     assert!(result.confidence >= 0.0);
     assert!(result.confidence <= 1.0);
-    
+
     // Predict syndromes
     let syndrome_result = manager.predict_syndromes(&circuit, Duration::from_secs(60));
     assert!(syndrome_result.is_ok());
-    
+
     // Integrate QEC
     let qec_result = manager.integrate_qec("surface_code", &circuit);
     assert!(qec_result.is_ok());
-    
+
     let qec_integration = qec_result.unwrap();
     assert!(qec_integration.resource_overhead >= 1.0);
     assert!(qec_integration.expected_logical_error_rate >= 0.0);
-    
+
     println!("Integrated error mitigation workflow completed successfully");
     println!("Mitigation overhead: {:.2}x", result.mitigation_overhead);
     println!("Mitigation confidence: {:.3}", result.confidence);
-    println!("QEC resource overhead: {:.2}x", qec_integration.resource_overhead);
-    println!("Expected logical error rate: {:.2e}", qec_integration.expected_logical_error_rate);
+    println!(
+        "QEC resource overhead: {:.2}x",
+        qec_integration.resource_overhead
+    );
+    println!(
+        "Expected logical error rate: {:.2e}",
+        qec_integration.expected_logical_error_rate
+    );
 }

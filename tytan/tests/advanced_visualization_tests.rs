@@ -1,15 +1,16 @@
 //! Comprehensive tests for advanced visualization and analysis.
 
-use quantrs2_tytan::advanced_visualization::*;
 use ndarray::{Array1, Array2, Array3};
+use quantrs2_tytan::advanced_visualization::*;
 use std::collections::HashMap;
+use std::f64::consts::PI;
 use std::time::{Duration, SystemTime};
 
 #[test]
 fn test_visualization_manager_creation() {
     let config = VisualizationConfig::default();
     let manager = AdvancedVisualizationManager::new(config);
-    
+
     // Test that manager is created successfully
     assert!(true);
 }
@@ -17,7 +18,7 @@ fn test_visualization_manager_creation() {
 #[test]
 fn test_default_visualization_config() {
     let config = VisualizationConfig::default();
-    
+
     // Verify default configuration values
     assert!(config.interactive_mode);
     assert!(config.real_time_updates);
@@ -36,18 +37,18 @@ fn test_color_schemes() {
     let default_scheme = ColorScheme::default();
     let high_contrast_scheme = ColorScheme::high_contrast();
     let colorblind_friendly_scheme = ColorScheme::colorblind_friendly();
-    
+
     // Test default color scheme
     assert_eq!(default_scheme.primary, "#1f77b4");
     assert_eq!(default_scheme.background, "#ffffff");
     assert_eq!(default_scheme.energy_high, "#d62728");
     assert_eq!(default_scheme.energy_low, "#2ca02c");
-    
+
     // Test high contrast scheme
     assert_eq!(high_contrast_scheme.primary, "#000000");
     assert_eq!(high_contrast_scheme.secondary, "#ffffff");
     assert_eq!(high_contrast_scheme.accent, "#ffff00");
-    
+
     // Test colorblind friendly scheme
     assert_eq!(colorblind_friendly_scheme.primary, "#0173B2");
     assert_eq!(colorblind_friendly_scheme.secondary, "#DE8F05");
@@ -66,7 +67,7 @@ fn test_export_formats() {
         ExportFormat::WebGL,
         ExportFormat::ThreeJS,
     ];
-    
+
     // Test that all export formats can be created
     assert_eq!(formats.len(), 8);
     for format in formats {
@@ -91,7 +92,7 @@ fn test_rendering_quality_levels() {
         RenderingQuality::High,
         RenderingQuality::Ultra,
     ];
-    
+
     // Test rendering quality levels
     assert_eq!(qualities.len(), 4);
     for quality in qualities {
@@ -116,7 +117,7 @@ fn test_energy_sample() {
             weight: 1.0,
         },
     };
-    
+
     // Verify energy sample structure
     assert_eq!(sample.configuration.len(), 5);
     assert_eq!(sample.energy, -2.5);
@@ -157,7 +158,7 @@ fn test_landscape_data() {
         critical_points: vec![],
         solution_paths: vec![],
     };
-    
+
     // Verify landscape data structure
     assert_eq!(landscape_data.energy_samples.len(), 2);
     assert_eq!(landscape_data.problem_size, 2);
@@ -186,13 +187,19 @@ fn test_critical_point() {
             curvature_directions: Array2::eye(2),
         },
     };
-    
+
     // Verify critical point structure
     assert_eq!(critical_point.location.len(), 3);
-    assert!(matches!(critical_point.point_type, CriticalPointType::LocalMinimum));
+    assert!(matches!(
+        critical_point.point_type,
+        CriticalPointType::LocalMinimum
+    ));
     assert_eq!(critical_point.energy, -3.14);
     assert_eq!(critical_point.stability.eigenvalues.len(), 3);
-    assert!(matches!(critical_point.stability.stability_type, StabilityType::Stable));
+    assert!(matches!(
+        critical_point.stability.stability_type,
+        StabilityType::Stable
+    ));
     assert_eq!(critical_point.curvature.mean_curvature, 1.5);
 }
 
@@ -206,7 +213,7 @@ fn test_critical_point_types() {
         CriticalPointType::Plateau,
         CriticalPointType::Unknown,
     ];
-    
+
     // Test critical point types
     assert_eq!(types.len(), 6);
     for point_type in types {
@@ -230,7 +237,7 @@ fn test_stability_types() {
         StabilityType::SaddleStable,
         StabilityType::Unknown,
     ];
-    
+
     // Test stability types
     assert_eq!(types.len(), 5);
     for stability_type in types {
@@ -261,7 +268,7 @@ fn test_solution_path() {
         },
         algorithm: "GradientDescent".to_string(),
     };
-    
+
     // Verify solution path structure
     assert_eq!(path.points.len(), 3);
     assert_eq!(path.energy_trajectory.len(), 3);
@@ -277,11 +284,13 @@ fn test_interpolation_methods() {
         InterpolationMethod::Linear,
         InterpolationMethod::Cubic,
         InterpolationMethod::Spline,
-        InterpolationMethod::RadialBasisFunction { kernel: RBFKernel::Gaussian { bandwidth: 1.0 } },
+        InterpolationMethod::RadialBasisFunction {
+            kernel: RBFKernel::Gaussian { bandwidth: 1.0 },
+        },
         InterpolationMethod::Kriging,
         InterpolationMethod::InverseDistanceWeighting { power: 2.0 },
     ];
-    
+
     // Test interpolation methods
     assert_eq!(methods.len(), 6);
     for method in methods {
@@ -289,11 +298,9 @@ fn test_interpolation_methods() {
             InterpolationMethod::Linear => assert!(true),
             InterpolationMethod::Cubic => assert!(true),
             InterpolationMethod::Spline => assert!(true),
-            InterpolationMethod::RadialBasisFunction { kernel } => {
-                match kernel {
-                    RBFKernel::Gaussian { bandwidth } => assert_eq!(bandwidth, 1.0),
-                    _ => panic!("Unexpected RBF kernel"),
-                }
+            InterpolationMethod::RadialBasisFunction { kernel } => match kernel {
+                RBFKernel::Gaussian { bandwidth } => assert_eq!(bandwidth, 1.0),
+                _ => panic!("Unexpected RBF kernel"),
             },
             InterpolationMethod::Kriging => assert!(true),
             InterpolationMethod::InverseDistanceWeighting { power } => assert_eq!(power, 2.0),
@@ -309,7 +316,7 @@ fn test_rbf_kernels() {
         RBFKernel::InverseMultiquadric { c: 1.0 },
         RBFKernel::ThinPlateSpline,
     ];
-    
+
     // Test RBF kernels
     assert_eq!(kernels.len(), 4);
     for kernel in kernels {
@@ -328,10 +335,13 @@ fn test_smoothing_methods() {
         SmoothingMethod::Gaussian,
         SmoothingMethod::Bilateral,
         SmoothingMethod::MedianFilter,
-        SmoothingMethod::SavitzkyGolay { window_size: 5, polynomial_order: 2 },
+        SmoothingMethod::SavitzkyGolay {
+            window_size: 5,
+            polynomial_order: 2,
+        },
         SmoothingMethod::None,
     ];
-    
+
     // Test smoothing methods
     assert_eq!(methods.len(), 5);
     for method in methods {
@@ -339,10 +349,13 @@ fn test_smoothing_methods() {
             SmoothingMethod::Gaussian => assert!(true),
             SmoothingMethod::Bilateral => assert!(true),
             SmoothingMethod::MedianFilter => assert!(true),
-            SmoothingMethod::SavitzkyGolay { window_size, polynomial_order } => {
+            SmoothingMethod::SavitzkyGolay {
+                window_size,
+                polynomial_order,
+            } => {
                 assert_eq!(window_size, 5);
                 assert_eq!(polynomial_order, 2);
-            },
+            }
             SmoothingMethod::None => assert!(true),
         }
     }
@@ -395,14 +408,17 @@ fn test_convergence_session() {
             },
         },
     };
-    
+
     // Verify convergence session structure
     assert_eq!(session.session_id, "test_session_001");
     assert_eq!(session.algorithm, "SimulatedAnnealing");
     assert_eq!(session.problem_config.size, 100);
     assert_eq!(session.problem_config.problem_type, "QUBO");
     assert_eq!(session.problem_config.target_energy, Some(-10.0));
-    assert_eq!(session.problem_config.convergence_criteria.max_iterations, 10000);
+    assert_eq!(
+        session.problem_config.convergence_criteria.max_iterations,
+        10000
+    );
     assert!(matches!(session.metrics.status, ConvergenceStatus::Unknown));
 }
 
@@ -416,7 +432,7 @@ fn test_convergence_status_types() {
         ConvergenceStatus::Oscillating,
         ConvergenceStatus::Unknown,
     ];
-    
+
     // Test convergence status types
     assert_eq!(statuses.len(), 6);
     for status in statuses {
@@ -434,42 +450,42 @@ fn test_convergence_status_types() {
 #[test]
 fn test_quantum_state_data_types() {
     use num::Complex;
-    
+
     // Test pure state
     let pure_state = QuantumStateData::PureState(Array1::from(vec![
         Complex::new(1.0, 0.0),
         Complex::new(0.0, 0.0),
     ]));
-    
+
     match pure_state {
         QuantumStateData::PureState(state_vector) => {
             assert_eq!(state_vector.len(), 2);
             assert_eq!(state_vector[0], Complex::new(1.0, 0.0));
-        },
+        }
         _ => panic!("Expected pure state"),
     }
-    
+
     // Test mixed state
     let mixed_state = QuantumStateData::MixedState(Array2::eye(2));
-    
+
     match mixed_state {
         QuantumStateData::MixedState(density_matrix) => {
             assert_eq!(density_matrix.dim(), (2, 2));
-        },
+        }
         _ => panic!("Expected mixed state"),
     }
-    
+
     // Test stabilizer state
     let stabilizer_state = QuantumStateData::StabilizerState(StabilizerRepresentation {
         generators: vec![],
         phases: vec![],
     });
-    
+
     match stabilizer_state {
         QuantumStateData::StabilizerState(stabilizer_rep) => {
             assert!(stabilizer_rep.generators.is_empty());
             assert!(stabilizer_rep.phases.is_empty());
-        },
+        }
         _ => panic!("Expected stabilizer state"),
     }
 }
@@ -486,7 +502,7 @@ fn test_state_visualization_types() {
         StateVisualizationType::City,
         StateVisualizationType::Paulivec,
     ];
-    
+
     // Test state visualization types
     assert_eq!(viz_types.len(), 8);
     for viz_type in viz_types {
@@ -515,7 +531,7 @@ fn test_widget_types() {
         WidgetType::Text,
         WidgetType::Custom("CustomWidget".to_string()),
     ];
-    
+
     // Test widget types
     assert_eq!(widget_types.len(), 8);
     for widget_type in widget_types {
@@ -538,17 +554,17 @@ fn test_dashboard_data() {
     metrics.insert("cpu_usage".to_string(), 0.75);
     metrics.insert("memory_usage".to_string(), 0.60);
     metrics.insert("convergence_rate".to_string(), 0.85);
-    
+
     let mut metadata = HashMap::new();
     metadata.insert("algorithm".to_string(), "SimulatedAnnealing".to_string());
     metadata.insert("problem_size".to_string(), "100".to_string());
-    
+
     let dashboard_data = DashboardData {
         timestamp: SystemTime::now(),
         metrics,
         metadata,
     };
-    
+
     // Verify dashboard data structure
     assert_eq!(dashboard_data.metrics.len(), 3);
     assert_eq!(dashboard_data.metadata.len(), 2);
@@ -564,7 +580,7 @@ fn test_widget_config() {
         refresh_rate: Duration::from_secs(1),
         data_source: "convergence_tracker".to_string(),
     };
-    
+
     // Verify widget configuration
     assert_eq!(config.title, "Energy Convergence");
     assert_eq!(config.dimensions, (800, 600));
@@ -604,27 +620,26 @@ fn test_comparison_result() {
             convergence_rates: HashMap::new(),
             solution_quality: HashMap::new(),
         },
-        visualizations: vec![
-            VisualizationReference {
-                visualization_id: "comparison_chart_001".to_string(),
-                visualization_type: "BoxPlot".to_string(),
-                description: "Performance comparison box plot".to_string(),
-            }
-        ],
-        recommendations: vec![
-            ComparisonRecommendation {
-                recommendation_type: RecommendationType::BestAlgorithm,
-                description: "Simulated Annealing shows best performance".to_string(),
-                confidence: 0.95,
-            }
-        ],
+        visualizations: vec![VisualizationReference {
+            visualization_id: "comparison_chart_001".to_string(),
+            visualization_type: "BoxPlot".to_string(),
+            description: "Performance comparison box plot".to_string(),
+        }],
+        recommendations: vec![ComparisonRecommendation {
+            recommendation_type: RecommendationType::BestAlgorithm,
+            description: "Simulated Annealing shows best performance".to_string(),
+            confidence: 0.95,
+        }],
     };
-    
+
     // Verify comparison result structure
     assert_eq!(comparison_result.comparison_id, "test_comparison_001");
     assert_eq!(comparison_result.datasets_compared.len(), 3);
     assert_eq!(comparison_result.statistical_results.p_values.len(), 2);
-    assert_eq!(comparison_result.performance_metrics.execution_times.len(), 3);
+    assert_eq!(
+        comparison_result.performance_metrics.execution_times.len(),
+        3
+    );
     assert_eq!(comparison_result.visualizations.len(), 1);
     assert_eq!(comparison_result.recommendations.len(), 1);
 }
@@ -639,7 +654,7 @@ fn test_interactive_features() {
         InteractiveFeature::Measurement,
         InteractiveFeature::StateModification,
     ];
-    
+
     // Test interactive features
     assert_eq!(features.len(), 6);
     for feature in features {
@@ -663,7 +678,7 @@ fn test_visualization_types() {
         VisualizationType::PerformanceDashboard,
         VisualizationType::ComparativeAnalysis,
     ];
-    
+
     // Test visualization types
     assert_eq!(viz_types.len(), 5);
     for viz_type in viz_types {
@@ -688,7 +703,7 @@ fn test_interaction_types() {
         InteractionType::Select,
         InteractionType::Hover,
     ];
-    
+
     // Test interaction types
     assert_eq!(interaction_types.len(), 7);
     for interaction_type in interaction_types {
@@ -708,7 +723,7 @@ fn test_interaction_types() {
 fn test_energy_landscape_visualization() {
     let config = VisualizationConfig::default();
     let mut manager = AdvancedVisualizationManager::new(config);
-    
+
     // Create test energy samples
     let energy_samples = vec![
         EnergySample {
@@ -742,31 +757,37 @@ fn test_energy_landscape_visualization() {
             },
         },
     ];
-    
+
     // Create energy landscape visualization
     let result = manager.create_energy_landscape(&energy_samples);
     assert!(result.is_ok());
-    
+
     let viz_id = result.unwrap();
     assert!(!viz_id.is_empty());
     assert!(viz_id.starts_with("energy_landscape_"));
-    
+
     // Verify visualization was registered
     let status = manager.get_visualization_status(&viz_id);
     assert!(status.is_some());
-    
+
     let viz_status = status.unwrap();
     assert_eq!(viz_status.id, viz_id);
-    assert!(matches!(viz_status.viz_type, VisualizationType::EnergyLandscape3D));
-    
-    println!("Energy landscape visualization created successfully: {}", viz_id);
+    assert!(matches!(
+        viz_status.viz_type,
+        VisualizationType::EnergyLandscape3D
+    ));
+
+    println!(
+        "Energy landscape visualization created successfully: {}",
+        viz_id
+    );
 }
 
 #[test]
 fn test_convergence_tracking() {
     let config = VisualizationConfig::default();
     let mut manager = AdvancedVisualizationManager::new(config);
-    
+
     // Create problem configuration
     let problem_config = ProblemConfiguration {
         size: 50,
@@ -780,15 +801,15 @@ fn test_convergence_tracking() {
             time_limit: Some(Duration::from_secs(300)),
         },
     };
-    
+
     // Start convergence tracking
     let result = manager.start_convergence_tracking("SimulatedAnnealing", problem_config);
     assert!(result.is_ok());
-    
+
     let session_id = result.unwrap();
     assert!(!session_id.is_empty());
     assert!(session_id.starts_with("convergence_SimulatedAnnealing_"));
-    
+
     // Update convergence data
     let update_result = manager.update_convergence(
         &session_id,
@@ -797,7 +818,7 @@ fn test_convergence_tracking() {
         Array1::from(vec![0.8, 0.2, 0.9, 0.1]),
     );
     assert!(update_result.is_ok());
-    
+
     // Update again to track progression
     let update_result2 = manager.update_convergence(
         &session_id,
@@ -806,17 +827,17 @@ fn test_convergence_tracking() {
         Array1::from(vec![0.9, 0.1, 0.8, 0.2]),
     );
     assert!(update_result2.is_ok());
-    
+
     println!("Convergence tracking started successfully: {}", session_id);
 }
 
 #[test]
 fn test_quantum_state_visualization() {
     use num::Complex;
-    
+
     let config = VisualizationConfig::default();
     let mut manager = AdvancedVisualizationManager::new(config);
-    
+
     // Create a test quantum state (Bell state |00⟩ + |11⟩)
     let quantum_state = QuantumState {
         state_data: QuantumStateData::PureState(Array1::from(vec![
@@ -840,23 +861,26 @@ fn test_quantum_state_visualization() {
         },
         measurement_data: None,
     };
-    
+
     // Test different visualization types
     let viz_types = vec![
         StateVisualizationType::BlochSphere,
         StateVisualizationType::QSphere,
         StateVisualizationType::DensityMatrix,
     ];
-    
+
     for viz_type in viz_types {
         let result = manager.visualize_quantum_state(&quantum_state, viz_type.clone());
         assert!(result.is_ok());
-        
+
         let viz_id = result.unwrap();
         assert!(!viz_id.is_empty());
         assert!(viz_id.starts_with("quantum_state_"));
-        
-        println!("Quantum state visualization created: {} (type: {:?})", viz_id, viz_type);
+
+        println!(
+            "Quantum state visualization created: {} (type: {:?})",
+            viz_id, viz_type
+        );
     }
 }
 
@@ -864,29 +888,32 @@ fn test_quantum_state_visualization() {
 fn test_performance_dashboard() {
     let config = VisualizationConfig::default();
     let mut manager = AdvancedVisualizationManager::new(config);
-    
+
     // Create performance dashboard
     let data_sources = vec![
         "algorithm_performance".to_string(),
         "system_metrics".to_string(),
         "convergence_tracking".to_string(),
     ];
-    
+
     let result = manager.create_performance_dashboard(data_sources);
     assert!(result.is_ok());
-    
+
     let dashboard_id = result.unwrap();
     assert!(!dashboard_id.is_empty());
     assert!(dashboard_id.starts_with("dashboard_"));
-    
-    println!("Performance dashboard created successfully: {}", dashboard_id);
+
+    println!(
+        "Performance dashboard created successfully: {}",
+        dashboard_id
+    );
 }
 
 #[test]
 fn test_comparative_analysis() {
     let config = VisualizationConfig::default();
     let manager = AdvancedVisualizationManager::new(config);
-    
+
     // Create test datasets
     let datasets = vec![
         Dataset {
@@ -948,23 +975,26 @@ fn test_comparative_analysis() {
             },
         },
     ];
-    
+
     // Perform comparative analysis
     let result = manager.compare_algorithms(datasets);
     assert!(result.is_ok());
-    
+
     let comparison_result = result.unwrap();
     assert!(!comparison_result.comparison_id.is_empty());
     assert_eq!(comparison_result.datasets_compared.len(), 0); // Stub implementation
-    
-    println!("Comparative analysis completed: {}", comparison_result.comparison_id);
+
+    println!(
+        "Comparative analysis completed: {}",
+        comparison_result.comparison_id
+    );
 }
 
 #[test]
 fn test_export_functionality() {
     let config = VisualizationConfig::default();
     let manager = AdvancedVisualizationManager::new(config);
-    
+
     // Test different export formats
     let export_formats = vec![
         ExportFormat::PNG,
@@ -972,7 +1002,7 @@ fn test_export_functionality() {
         ExportFormat::HTML,
         ExportFormat::JSON,
     ];
-    
+
     let export_options = ExportOptions {
         resolution: (1920, 1080),
         quality: 0.9,
@@ -984,15 +1014,16 @@ fn test_export_functionality() {
             meta
         },
     };
-    
+
     for format in export_formats {
-        let result = manager.export_visualization("test_viz_001", format.clone(), export_options.clone());
+        let result =
+            manager.export_visualization("test_viz_001", format.clone(), export_options.clone());
         assert!(result.is_ok());
-        
+
         let export_path = result.unwrap();
         assert!(!export_path.is_empty());
         assert!(export_path.contains("exported_test_viz_001"));
-        
+
         println!("Export successful: {} (format: {:?})", export_path, format);
     }
 }
@@ -1000,20 +1031,20 @@ fn test_export_functionality() {
 #[test]
 fn test_lightweight_visualization_manager() {
     let manager = create_lightweight_visualization_manager();
-    
+
     // Test that lightweight manager has reduced capabilities
     assert!(true); // Stub implementation always succeeds
-    
+
     println!("Lightweight visualization manager created successfully");
 }
 
 #[test]
 fn test_advanced_visualization_manager() {
     let manager = create_advanced_visualization_manager();
-    
+
     // Test that advanced manager has full capabilities
     assert!(true); // Stub implementation always succeeds
-    
+
     println!("Advanced visualization manager created successfully");
 }
 
@@ -1021,7 +1052,7 @@ fn test_advanced_visualization_manager() {
 fn test_configuration_update() {
     let config = VisualizationConfig::default();
     let mut manager = AdvancedVisualizationManager::new(config);
-    
+
     // Create new configuration with different settings
     let new_config = VisualizationConfig {
         interactive_mode: false,
@@ -1035,11 +1066,11 @@ fn test_configuration_update() {
         rendering_quality: RenderingQuality::Low,
         color_schemes: HashMap::new(),
     };
-    
+
     // Update configuration
     let result = manager.update_config(new_config);
     assert!(result.is_ok());
-    
+
     println!("Configuration updated successfully");
 }
 
@@ -1047,11 +1078,11 @@ fn test_configuration_update() {
 fn test_error_handling() {
     let config = VisualizationConfig::default();
     let manager = AdvancedVisualizationManager::new(config);
-    
+
     // Test getting status for non-existent visualization
     let status = manager.get_visualization_status("non_existent_viz");
     assert!(status.is_none());
-    
+
     println!("Error handling test completed");
 }
 
@@ -1059,7 +1090,7 @@ fn test_error_handling() {
 fn test_comprehensive_visualization_workflow() {
     let config = VisualizationConfig::default();
     let mut manager = AdvancedVisualizationManager::new(config);
-    
+
     // Step 1: Create energy landscape visualization
     let energy_samples = vec![
         EnergySample {
@@ -1083,11 +1114,11 @@ fn test_comprehensive_visualization_workflow() {
             },
         },
     ];
-    
+
     let landscape_result = manager.create_energy_landscape(&energy_samples);
     assert!(landscape_result.is_ok());
     let landscape_id = landscape_result.unwrap();
-    
+
     // Step 2: Start convergence tracking
     let problem_config = ProblemConfiguration {
         size: 20,
@@ -1101,21 +1132,22 @@ fn test_comprehensive_visualization_workflow() {
             time_limit: Some(Duration::from_secs(120)),
         },
     };
-    
+
     let convergence_result = manager.start_convergence_tracking("TabuSearch", problem_config);
     assert!(convergence_result.is_ok());
     let convergence_id = convergence_result.unwrap();
-    
+
     // Step 3: Update convergence data multiple times
     for i in 0..10 {
         let energy = -1.0 - 0.2 * i as f64;
         let gradient_norm = 0.1 * (0.8_f64).powi(i);
         let parameters = Array1::from(vec![0.1 * i as f64, 0.9 - 0.1 * i as f64]);
-        
-        let update_result = manager.update_convergence(&convergence_id, energy, gradient_norm, parameters);
+
+        let update_result =
+            manager.update_convergence(&convergence_id, energy, gradient_norm, parameters);
         assert!(update_result.is_ok());
     }
-    
+
     // Step 4: Create performance dashboard
     let dashboard_result = manager.create_performance_dashboard(vec![
         "energy_landscape".to_string(),
@@ -1124,7 +1156,7 @@ fn test_comprehensive_visualization_workflow() {
     ]);
     assert!(dashboard_result.is_ok());
     let dashboard_id = dashboard_result.unwrap();
-    
+
     // Step 5: Export visualizations
     let export_options = ExportOptions {
         resolution: (1600, 1200),
@@ -1132,17 +1164,19 @@ fn test_comprehensive_visualization_workflow() {
         compression: false,
         metadata: HashMap::new(),
     };
-    
-    let landscape_export = manager.export_visualization(&landscape_id, ExportFormat::PNG, export_options.clone());
+
+    let landscape_export =
+        manager.export_visualization(&landscape_id, ExportFormat::PNG, export_options.clone());
     assert!(landscape_export.is_ok());
-    
-    let dashboard_export = manager.export_visualization(&dashboard_id, ExportFormat::HTML, export_options.clone());
+
+    let dashboard_export =
+        manager.export_visualization(&dashboard_id, ExportFormat::HTML, export_options.clone());
     assert!(dashboard_export.is_ok());
-    
+
     // Verify all visualizations are tracked
     let landscape_status = manager.get_visualization_status(&landscape_id);
     assert!(landscape_status.is_some());
-    
+
     println!("Comprehensive visualization workflow completed successfully");
     println!("Energy landscape: {}", landscape_id);
     println!("Convergence tracking: {}", convergence_id);
@@ -1157,19 +1191,22 @@ fn test_advanced_interactive_features() {
         button_info: "left_click".to_string(),
         modifiers: vec!["ctrl".to_string(), "shift".to_string()],
     };
-    
+
     let user_interaction = UserInteraction {
         interaction_type: InteractionType::Click,
         timestamp: SystemTime::now(),
         data: interaction_data,
     };
-    
+
     // Verify interaction data
     assert_eq!(user_interaction.data.position, (100.5, 200.3));
     assert_eq!(user_interaction.data.button_info, "left_click");
     assert_eq!(user_interaction.data.modifiers.len(), 2);
-    assert!(matches!(user_interaction.interaction_type, InteractionType::Click));
-    
+    assert!(matches!(
+        user_interaction.interaction_type,
+        InteractionType::Click
+    ));
+
     println!("Advanced interactive features test completed");
 }
 
@@ -1182,14 +1219,17 @@ fn test_geometry_and_rendering() {
         normals: Some(vec![(0.0, 0.0, 1.0), (0.0, 0.0, 1.0), (0.0, 0.0, 1.0)]),
         texture_coords: Some(vec![(0.0, 0.0), (1.0, 0.0), (0.5, 1.0)]),
     };
-    
+
     // Verify geometry element
-    assert!(matches!(geometry_element.element_type, GeometryType::Sphere));
+    assert!(matches!(
+        geometry_element.element_type,
+        GeometryType::Sphere
+    ));
     assert_eq!(geometry_element.vertices.len(), 3);
     assert_eq!(geometry_element.indices.len(), 3);
     assert!(geometry_element.normals.is_some());
     assert!(geometry_element.texture_coords.is_some());
-    
+
     println!("Geometry and rendering test completed");
 }
 
@@ -1209,19 +1249,19 @@ fn test_animation_system() {
             props
         },
     };
-    
+
     let animation_data = AnimationData {
         keyframes: vec![keyframe],
         duration: Duration::from_secs(2),
         loop_animation: true,
     };
-    
+
     // Verify animation data
     assert_eq!(animation_data.keyframes.len(), 1);
     assert_eq!(animation_data.duration, Duration::from_secs(2));
     assert!(animation_data.loop_animation);
     assert_eq!(animation_data.keyframes[0].time, 0.5);
     assert_eq!(animation_data.keyframes[0].properties.len(), 2);
-    
+
     println!("Animation system test completed");
 }

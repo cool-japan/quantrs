@@ -533,7 +533,9 @@ impl PhotonicConfigBuilder {
             ));
         }
 
-        if self.config.hardware.detector.efficiency < 0.0 || self.config.hardware.detector.efficiency > 1.0 {
+        if self.config.hardware.detector.efficiency < 0.0
+            || self.config.hardware.detector.efficiency > 1.0
+        {
             return Err(crate::DeviceError::InvalidInput(
                 "Detection efficiency must be between 0 and 1".to_string(),
             ));
@@ -644,9 +646,7 @@ mod tests {
 
     #[test]
     fn test_invalid_config() {
-        let config = PhotonicConfigBuilder::new()
-            .mode_count(0)
-            .build();
+        let config = PhotonicConfigBuilder::new().mode_count(0).build();
 
         assert!(config.is_err());
     }

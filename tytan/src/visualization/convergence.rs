@@ -3,10 +3,7 @@
 //! This module provides tools for tracking and visualizing the convergence
 //! of quantum annealing and optimization algorithms.
 
-use crate::optimization::{
-    adaptive::PerformanceMetrics, penalty::ConstraintViolation, tuning::TuningEvaluation,
-};
-use ndarray::{Array1, Array2};
+use crate::optimization::{adaptive::PerformanceMetrics, tuning::TuningEvaluation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

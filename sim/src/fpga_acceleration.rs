@@ -179,14 +179,12 @@ impl FPGADeviceInfo {
                 dsp_blocks: 1688,
                 block_ram_kb: 53000,
                 max_clock_frequency: 400.0,
-                memory_interfaces: vec![
-                    MemoryInterface {
-                        interface_type: MemoryInterfaceType::DDR4,
-                        bandwidth: 34.0,
-                        capacity: 32.0,
-                        latency: 200.0,
-                    },
-                ],
+                memory_interfaces: vec![MemoryInterface {
+                    interface_type: MemoryInterfaceType::DDR4,
+                    bandwidth: 34.0,
+                    capacity: 32.0,
+                    latency: 200.0,
+                }],
                 pcie_lanes: 16,
                 power_consumption: 100.0,
                 supported_precision: vec![
@@ -263,14 +261,12 @@ impl FPGADeviceInfo {
                 dsp_blocks: 6840,
                 block_ram_kb: 75900,
                 max_clock_frequency: 450.0,
-                memory_interfaces: vec![
-                    MemoryInterface {
-                        interface_type: MemoryInterfaceType::DDR4,
-                        bandwidth: 77.0,
-                        capacity: 64.0,
-                        latency: 190.0,
-                    },
-                ],
+                memory_interfaces: vec![MemoryInterface {
+                    interface_type: MemoryInterfaceType::DDR4,
+                    bandwidth: 77.0,
+                    capacity: 64.0,
+                    latency: 190.0,
+                }],
                 pcie_lanes: 16,
                 power_consumption: 130.0,
                 supported_precision: vec![
@@ -318,14 +314,12 @@ impl FPGADeviceInfo {
                 dsp_blocks: 2928,
                 block_ram_kb: 75900,
                 max_clock_frequency: 500.0,
-                memory_interfaces: vec![
-                    MemoryInterface {
-                        interface_type: MemoryInterfaceType::DDR4,
-                        bandwidth: 60.0,
-                        capacity: 32.0,
-                        latency: 200.0,
-                    },
-                ],
+                memory_interfaces: vec![MemoryInterface {
+                    interface_type: MemoryInterfaceType::DDR4,
+                    bandwidth: 60.0,
+                    capacity: 32.0,
+                    latency: 200.0,
+                }],
                 pcie_lanes: 8,
                 power_consumption: 80.0,
                 supported_precision: vec![
@@ -341,14 +335,12 @@ impl FPGADeviceInfo {
                 dsp_blocks: 10000,
                 block_ram_kb: 1000000,
                 max_clock_frequency: 1000.0,
-                memory_interfaces: vec![
-                    MemoryInterface {
-                        interface_type: MemoryInterfaceType::HBM3,
-                        bandwidth: 2000.0,
-                        capacity: 128.0,
-                        latency: 10.0,
-                    },
-                ],
+                memory_interfaces: vec![MemoryInterface {
+                    interface_type: MemoryInterfaceType::HBM3,
+                    bandwidth: 2000.0,
+                    capacity: 128.0,
+                    latency: 10.0,
+                }],
                 pcie_lanes: 64,
                 power_consumption: 50.0,
                 supported_precision: vec![
@@ -610,7 +602,8 @@ impl FPGAStats {
     pub fn update_operation(&mut self, execution_time: f64, clock_cycles: u64) {
         self.total_gate_operations += 1;
         self.total_execution_time += execution_time;
-        self.avg_gate_time = (self.total_execution_time * 1_000_000.0) / self.total_gate_operations as f64; // Convert to ns
+        self.avg_gate_time =
+            (self.total_execution_time * 1_000_000.0) / self.total_gate_operations as f64; // Convert to ns
         self.total_clock_cycles += clock_cycles;
     }
 
@@ -635,8 +628,10 @@ impl FPGAStats {
             "memory_bandwidth_utilization".to_string(),
             self.memory_bandwidth_utilization,
         );
-        metrics.insert("power_efficiency".to_string(), 
-            self.total_gate_operations as f64 / (self.power_consumption * self.total_execution_time / 1000.0)
+        metrics.insert(
+            "power_efficiency".to_string(),
+            self.total_gate_operations as f64
+                / (self.power_consumption * self.total_execution_time / 1000.0),
         );
 
         metrics
@@ -881,7 +876,9 @@ impl FPGAQuantumSimulator {
             reconfig_time_ms: 200.0,
             supports_partial_reconfig: matches!(
                 config.platform,
-                FPGAPlatform::IntelStratix10 | FPGAPlatform::IntelAgilex7 | FPGAPlatform::XilinxVersal
+                FPGAPlatform::IntelStratix10
+                    | FPGAPlatform::IntelAgilex7
+                    | FPGAPlatform::XilinxVersal
             ),
         })
     }
@@ -1055,7 +1052,8 @@ endmodule
     /// Generate Verilog code for single qubit gates
     fn generate_single_qubit_verilog(&self) -> String {
         // Simplified Verilog version
-        "// Verilog single qubit gate module (simplified)\nmodule single_qubit_gate(...);".to_string()
+        "// Verilog single qubit gate module (simplified)\nmodule single_qubit_gate(...);"
+            .to_string()
     }
 
     /// Generate VHDL code for single qubit gates
@@ -1103,7 +1101,8 @@ __kernel void single_qubit_gate(
         );
     }
 }
-"#.to_string()
+"#
+        .to_string()
     }
 
     /// Generate two qubit gate module (placeholder)
@@ -1229,7 +1228,7 @@ __kernel void single_qubit_gate(
         std::thread::sleep(std::time::Duration::from_millis(50)); // Simulate loading time
 
         self.bitstream_manager.current_config = Some("quantum_basic".to_string());
-        
+
         let config_time = start_time.elapsed().as_secs_f64() * 1000.0;
         self.stats.reconfigurations += 1;
         self.stats.total_reconfig_time += config_time;
@@ -1268,7 +1267,7 @@ __kernel void single_qubit_gate(
     ) -> Result<Array1<Complex64>> {
         // Select appropriate processing unit
         let unit_id = self.select_processing_unit(gate)?;
-        
+
         // Route gate to processing unit
         let result = match gate.gate_type {
             InterfaceGateType::Hadamard
@@ -1302,7 +1301,8 @@ __kernel void single_qubit_gate(
         let mut min_utilization = f64::INFINITY;
 
         for (i, unit) in self.processing_units.iter().enumerate() {
-            if unit.supported_gates.contains(&gate.gate_type) && unit.utilization < min_utilization {
+            if unit.supported_gates.contains(&gate.gate_type) && unit.utilization < min_utilization
+            {
                 best_unit = i;
                 min_utilization = unit.utilization;
             }
@@ -1326,8 +1326,11 @@ __kernel void single_qubit_gate(
         let mut result = state.clone();
 
         // Simulate FPGA execution with pipelining
-        let pipeline_latency = self.config.pipeline_depth as f64 / self.config.clock_frequency * 1000.0;
-        std::thread::sleep(std::time::Duration::from_micros((pipeline_latency * 10.0) as u64));
+        let pipeline_latency =
+            self.config.pipeline_depth as f64 / self.config.clock_frequency * 1000.0;
+        std::thread::sleep(std::time::Duration::from_micros(
+            (pipeline_latency * 10.0) as u64,
+        ));
 
         // Apply gate matrix (hardware simulation)
         for i in 0..state.len() {
@@ -1379,8 +1382,11 @@ __kernel void single_qubit_gate(
         let mut result = state.clone();
 
         // Simulate FPGA execution with higher latency for two-qubit gates
-        let pipeline_latency = self.config.pipeline_depth as f64 * 1.5 / self.config.clock_frequency * 1000.0;
-        std::thread::sleep(std::time::Duration::from_micros((pipeline_latency * 15.0) as u64));
+        let pipeline_latency =
+            self.config.pipeline_depth as f64 * 1.5 / self.config.clock_frequency * 1000.0;
+        std::thread::sleep(std::time::Duration::from_micros(
+            (pipeline_latency * 15.0) as u64,
+        ));
 
         match gate.gate_type {
             InterfaceGateType::CNOT => {
@@ -1435,7 +1441,8 @@ __kernel void single_qubit_gate(
         self.stats.memory_bandwidth_utilization = 0.7; // Simulated
 
         // Estimate power consumption
-        self.stats.power_consumption = self.device_info.power_consumption * self.stats.fpga_utilization;
+        self.stats.power_consumption =
+            self.device_info.power_consumption * self.stats.fpga_utilization;
     }
 
     /// Get device information
@@ -1455,7 +1462,11 @@ __kernel void single_qubit_gate(
 
     /// Reconfigure FPGA with new bitstream
     pub fn reconfigure(&mut self, bitstream_name: &str) -> Result<()> {
-        if !self.bitstream_manager.bitstreams.contains_key(bitstream_name) {
+        if !self
+            .bitstream_manager
+            .bitstreams
+            .contains_key(bitstream_name)
+        {
             return Err(SimulatorError::InvalidInput(format!(
                 "Bitstream {} not found",
                 bitstream_name

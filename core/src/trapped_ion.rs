@@ -882,10 +882,10 @@ mod tests {
         // π pulse (X gate)
         let rabi_freq = 1e6; // 1 MHz Rabi frequency
         let pulse = LaserPulse::carrier_pulse(
-            rabi_freq,                          // 1 MHz Rabi frequency
-            std::f64::consts::PI / rabi_freq,   // π pulse duration
-            0.0,                                // No phase
-            vec![0],                            // Target ion 0
+            rabi_freq,                        // 1 MHz Rabi frequency
+            std::f64::consts::PI / rabi_freq, // π pulse duration
+            0.0,                              // No phase
+            vec![0],                          // Target ion 0
         );
 
         system.apply_laser_pulse(&pulse).unwrap();

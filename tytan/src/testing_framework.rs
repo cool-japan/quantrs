@@ -5,14 +5,14 @@
 
 #[cfg(feature = "dwave")]
 use crate::compile::{Compile, CompiledModel};
-use crate::sampler::{SampleResult, Sampler, SamplerError};
+use crate::sampler::Sampler;
 use ndarray::Array2;
 use rand::prelude::*;
 use rand::{thread_rng, SeedableRng};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::Write;
 use std::time::{Duration, Instant};
 
 /// Automated testing framework

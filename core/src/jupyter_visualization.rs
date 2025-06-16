@@ -4,21 +4,12 @@
 //! enabling interactive quantum circuit visualization, quantum state plotting, and
 //! real-time quantum computation monitoring within Jupyter environments.
 
-#![cfg(feature = "python")]
-
-use crate::{
-    gate::GateOp,
-    qubit::QubitId,
-    matrix_ops::DenseMatrix,
-    error::QuantRS2Result,
-};
-
-use pyo3::prelude::*;
-use numpy::{PyArray1, PyArray2, PyArrayMethods};
+use ndarray::Array1;
 use num_complex::Complex64;
-use ndarray::{Array1, Array2};
+use numpy::{PyArray1, PyArrayMethods};
+use pyo3::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
 
 /// Quantum circuit visualization for Jupyter notebooks
 #[pyclass(name = "QuantumCircuitVisualizer")]
@@ -50,7 +41,13 @@ impl PyQuantumCircuitVisualizer {
     }
 
     /// Add a gate to the circuit visualization
-    fn add_gate(&mut self, gate_type: String, qubits: Vec<u32>, parameters: Option<Vec<f64>>, fidelity: Option<f64>) {
+    fn add_gate(
+        &mut self,
+        gate_type: String,
+        qubits: Vec<u32>,
+        parameters: Option<Vec<f64>>,
+        fidelity: Option<f64>,
+    ) {
         let gate_info = CircuitGateInfo {
             gate_type,
             qubits,
@@ -63,34 +60,45 @@ impl PyQuantumCircuitVisualizer {
 
     /// Generate HTML visualization for Jupyter notebooks
     fn to_html(&self) -> String {
-        let mut html = format!(r#"
+        let mut html = format!(
+            r#"
 <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; margin: 10px; border-radius: 8px;">
     <h3 style="color: #2E86C1; margin-top: 0;">{}</h3>
     <div style="background: #f8f9fa; padding: 15px; border-radius: 4px;">
         <div style="display: flex; flex-direction: column; gap: 8px;">
-"#, self.circuit_name);
+"#,
+            self.circuit_name
+        );
 
         // Draw qubit lines
         for qubit in 0..self.num_qubits {
-            html.push_str(&format!(r#"
+            html.push_str(&format!(
+                r#"
             <div style="display: flex; align-items: center; height: 40px;">
                 <span style="width: 60px; font-weight: bold; color: #34495e;">|q{}⟩</span>
                 <div style="flex: 1; height: 2px; background: #34495e; position: relative;">
-"#, qubit));
+"#,
+                qubit
+            ));
 
             // Add gates on this qubit line
             for (step, gate) in self.gates.iter().enumerate() {
                 if gate.qubits.contains(&(qubit as u32)) {
-                    let position_percent = (step as f64 / (self.gates.len().max(1) as f64 - 1.0)) * 100.0;
+                    let position_percent =
+                        (step as f64 / (self.gates.len().max(1) as f64 - 1.0)) * 100.0;
                     let color = match gate.gate_type.as_str() {
                         "H" => "#e74c3c",
-                        "X" | "Y" | "Z" => "#3498db", 
+                        "X" | "Y" | "Z" => "#3498db",
                         "RX" | "RY" | "RZ" => "#f39c12",
                         "CNOT" => "#9b59b6",
                         _ => "#95a5a6",
                     };
-                    let fidelity_info = gate.fidelity.map(|f| format!(" (F: {:.3})", f)).unwrap_or_default();
-                    html.push_str(&format!(r#"
+                    let fidelity_info = gate
+                        .fidelity
+                        .map(|f| format!(" (F: {:.3})", f))
+                        .unwrap_or_default();
+                    html.push_str(&format!(
+                        r#"
                     <div style="position: absolute; left: {}%; transform: translateX(-50%); 
                                 width: 30px; height: 30px; background: {}; color: white; 
                                 border-radius: 4px; display: flex; align-items: center; 
@@ -99,21 +107,33 @@ impl PyQuantumCircuitVisualizer {
                          title="{}{} at step {}">
                         {}
                     </div>
-"#, position_percent, color, gate.gate_type, fidelity_info, step, gate.gate_type));
+"#,
+                        position_percent,
+                        color,
+                        gate.gate_type,
+                        fidelity_info,
+                        step,
+                        gate.gate_type
+                    ));
                 }
             }
 
             html.push_str("                </div>\n            </div>");
         }
 
-        html.push_str(&format!(r#"
+        html.push_str(&format!(
+            r#"
         </div>
     </div>
     <div style="margin-top: 15px; font-size: 12px; color: #7f8c8d;">
         <strong>Circuit Statistics:</strong> {} gates, {} qubits, {} time steps
     </div>
 </div>
-"#, self.gates.len(), self.num_qubits, self.gates.len()));
+"#,
+            self.gates.len(),
+            self.num_qubits,
+            self.gates.len()
+        ));
 
         html
     }
@@ -122,7 +142,11 @@ impl PyQuantumCircuitVisualizer {
     fn to_svg(&self) -> String {
         let width = 800;
         let height = self.num_qubits * 80 + 100;
-        let gate_spacing = if self.gates.is_empty() { 80 } else { (width - 120) / self.gates.len().max(1) };
+        let gate_spacing = if self.gates.is_empty() {
+            80
+        } else {
+            (width - 120) / self.gates.len().max(1)
+        };
 
         let mut svg = format!("<svg width=\"{}\" height=\"{}\" xmlns=\"http://www.w3.org/2000/svg\">
     <defs>
@@ -142,18 +166,25 @@ impl PyQuantumCircuitVisualizer {
         // Draw qubit lines and labels
         for qubit in 0..self.num_qubits {
             let y = 60 + qubit * 80;
-            svg.push_str(&format!("
+            svg.push_str(&format!(
+                "
     <text x=\"50\" y=\"{}\" class=\"qubit-label\" dy=\"5\">|q{}⟩</text>
-    <line x1=\"80\" y1=\"{}\" x2=\"{}\" y2=\"{}\" class=\"qubit-line\"/>", y, qubit, y, width - 40, y));
+    <line x1=\"80\" y1=\"{}\" x2=\"{}\" y2=\"{}\" class=\"qubit-line\"/>",
+                y,
+                qubit,
+                y,
+                width - 40,
+                y
+            ));
         }
 
         // Draw gates
         for (step, gate) in self.gates.iter().enumerate() {
             let x = 100 + step * gate_spacing;
-            
+
             for &qubit_id in &gate.qubits {
                 let y = 60 + (qubit_id as usize) * 80;
-                let (gate_class, gate_color) = match gate.gate_type.as_str() {
+                let (gate_class, _gate_color) = match gate.gate_type.as_str() {
                     "H" => ("gate-h", "#e74c3c"),
                     "X" | "Y" | "Z" => ("gate-pauli", "#3498db"),
                     "RX" | "RY" | "RZ" => ("gate-rotation", "#f39c12"),
@@ -170,9 +201,12 @@ impl PyQuantumCircuitVisualizer {
             if gate.gate_type == "CNOT" && gate.qubits.len() == 2 {
                 let control_y = 60 + (gate.qubits[0] as usize) * 80;
                 let target_y = 60 + (gate.qubits[1] as usize) * 80;
-                svg.push_str(&format!("
+                svg.push_str(&format!(
+                    "
     <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#9b59b6\" stroke-width=\"3\"/>
-    <circle cx=\"{}\" cy=\"{}\" r=\"4\" fill=\"#9b59b6\"/>", x, control_y, x, target_y, x, control_y));
+    <circle cx=\"{}\" cy=\"{}\" r=\"4\" fill=\"#9b59b6\"/>",
+                    x, control_y, x, target_y, x, control_y
+                ));
             }
         }
 
@@ -185,13 +219,13 @@ impl PyQuantumCircuitVisualizer {
         let mut stats = HashMap::new();
         stats.insert("total_gates".to_string(), self.gates.len());
         stats.insert("num_qubits".to_string(), self.num_qubits);
-        
+
         // Count gate types
         for gate in &self.gates {
             let count = stats.entry(format!("gate_{}", gate.gate_type)).or_insert(0);
             *count += 1;
         }
-        
+
         stats
     }
 
@@ -201,13 +235,16 @@ impl PyQuantumCircuitVisualizer {
             name: self.circuit_name.clone(),
             num_qubits: self.num_qubits,
             gates: self.gates.clone(),
-        }).unwrap_or_else(|_| "{}".to_string())
+        })
+        .unwrap_or_else(|_| "{}".to_string())
     }
 
     fn __repr__(&self) -> String {
         format!(
             "QuantumCircuitVisualizer(name='{}', qubits={}, gates={})",
-            self.circuit_name, self.num_qubits, self.gates.len()
+            self.circuit_name,
+            self.num_qubits,
+            self.gates.len()
         )
     }
 }
@@ -232,10 +269,10 @@ impl PyQuantumStateVisualizer {
     fn new(state_vector: &Bound<'_, PyArray1<Complex64>>) -> PyResult<Self> {
         let state_array = state_vector.readonly().as_array().to_owned();
         let num_qubits = (state_array.len() as f64).log2() as usize;
-        
+
         if 2usize.pow(num_qubits as u32) != state_array.len() {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                "State vector length must be a power of 2"
+                "State vector length must be a power of 2",
             ));
         }
 
@@ -247,19 +284,31 @@ impl PyQuantumStateVisualizer {
 
     /// Generate amplitude bar chart visualization
     fn amplitude_plot_html(&self) -> String {
-        let max_amplitude = self.state_vector.iter().map(|c| c.norm()).fold(0.0f64, f64::max);
-        
-        let mut html = format!(r#"
+        let max_amplitude = self
+            .state_vector
+            .iter()
+            .map(|c| c.norm())
+            .fold(0.0f64, f64::max);
+
+        let mut html = format!(
+            r#"
 <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; margin: 10px; border-radius: 8px;">
     <h3 style="color: #2E86C1; margin-top: 0;">Quantum State Amplitudes ({} qubits)</h3>
     <div style="display: flex; flex-wrap: wrap; gap: 4px; margin: 20px 0;">
-"#, self.num_qubits);
+"#,
+            self.num_qubits
+        );
 
         for (i, amplitude) in self.state_vector.iter().enumerate() {
             let prob = amplitude.norm_sqr();
-            let height_percent = if max_amplitude > 0.0 { (amplitude.norm() / max_amplitude * 100.0).min(100.0) } else { 0.0 };
+            let height_percent = if max_amplitude > 0.0 {
+                (amplitude.norm() / max_amplitude * 100.0).min(100.0)
+            } else {
+                0.0
+            };
             let color = if prob > 0.001 { "#3498db" } else { "#ecf0f1" };
-            
+
+            let binary_state = format!("{:0width$b}", i, width = self.num_qubits);
             html.push_str(&format!(r#"
         <div style="display: flex; flex-direction: column; align-items: center; margin: 2px;">
             <div style="width: 20px; height: 100px; background: #f8f9fa; border: 1px solid #ddd; 
@@ -269,7 +318,7 @@ impl PyQuantumStateVisualizer {
             </div>
             <span style="font-size: 10px; margin-top: 4px; writing-mode: vertical-rl; text-orientation: mixed;">|{}⟩</span>
         </div>
-"#, height_percent, color, format!("{:0width$b}", i, width = self.num_qubits), prob, format!("{:0width$b}", i, width = self.num_qubits)));
+"#, height_percent, color, binary_state, prob, binary_state));
         }
 
         html.push_str(r#"
@@ -287,22 +336,23 @@ impl PyQuantumStateVisualizer {
     fn bloch_sphere_html(&self) -> PyResult<String> {
         if self.num_qubits != 1 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                "Bloch sphere visualization only available for single qubits"
+                "Bloch sphere visualization only available for single qubits",
             ));
         }
 
         let alpha = self.state_vector[0];
         let beta = self.state_vector[1];
-        
+
         // Calculate Bloch sphere coordinates
         let theta = 2.0 * (beta.norm() / alpha.norm()).atan();
         let phi = (beta / alpha).arg() - alpha.arg();
-        
+
         let x = theta.sin() * phi.cos();
         let y = theta.sin() * phi.sin();
         let z = theta.cos();
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; margin: 10px; border-radius: 8px;">
     <h3 style="color: #2E86C1; margin-top: 0;">Bloch Sphere Representation</h3>
     <div style="display: flex; align-items: center; gap: 20px;">
@@ -342,10 +392,20 @@ impl PyQuantumStateVisualizer {
         </div>
     </div>
 </div>
-"#, 
-            x * 140.0, -y * 140.0, x, y, z,
-            alpha.re, alpha.im, beta.re, beta.im,
-            theta, phi, alpha.norm_sqr(), beta.norm_sqr()
+"#,
+            x * 140.0,
+            -y * 140.0,
+            x,
+            y,
+            z,
+            alpha.re,
+            alpha.im,
+            beta.re,
+            beta.im,
+            theta,
+            phi,
+            alpha.norm_sqr(),
+            beta.norm_sqr()
         ))
     }
 
@@ -353,7 +413,8 @@ impl PyQuantumStateVisualizer {
     fn measurement_probabilities(&self) -> HashMap<String, f64> {
         let mut probs = HashMap::new();
         for (i, amplitude) in self.state_vector.iter().enumerate() {
-            let basis_state = format!("|{}⟩", format!("{:0width$b}", i, width = self.num_qubits));
+            let binary_repr = format!("{:0width$b}", i, width = self.num_qubits);
+            let basis_state = format!("|{}⟩", binary_repr);
             probs.insert(basis_state, amplitude.norm_sqr());
         }
         probs
@@ -362,7 +423,8 @@ impl PyQuantumStateVisualizer {
     fn __repr__(&self) -> String {
         format!(
             "QuantumStateVisualizer(qubits={}, dim={})",
-            self.num_qubits, self.state_vector.len()
+            self.num_qubits,
+            self.state_vector.len()
         )
     }
 }
@@ -395,14 +457,20 @@ impl PyQuantumPerformanceMonitor {
     }
 
     /// Add a performance measurement
-    fn add_measurement(&mut self, operation: String, duration_ms: f64, fidelity: Option<f64>, 
-                      gate_count: usize, qubit_count: usize) {
+    fn add_measurement(
+        &mut self,
+        operation: String,
+        duration_ms: f64,
+        fidelity: Option<f64>,
+        gate_count: usize,
+        qubit_count: usize,
+    ) {
         use std::time::{SystemTime, UNIX_EPOCH};
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs_f64();
-            
+
         self.measurements.push(PerformanceMeasurement {
             timestamp,
             operation,
@@ -419,29 +487,37 @@ impl PyQuantumPerformanceMonitor {
             return "<div>No performance data available</div>".to_string();
         }
 
-        let max_duration = self.measurements.iter().map(|m| m.duration_ms).fold(0.0f64, f64::max);
-        
-        let mut html = format!(r#"
+        let max_duration = self
+            .measurements
+            .iter()
+            .map(|m| m.duration_ms)
+            .fold(0.0f64, f64::max);
+
+        let mut html = format!(
+            r#"
 <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; margin: 10px; border-radius: 8px;">
     <h3 style="color: #2E86C1; margin-top: 0;">Performance Timeline: {}</h3>
     <div style="margin: 20px 0;">
-"#, self.algorithm_name);
+"#,
+            self.algorithm_name
+        );
 
-        for (i, measurement) in self.measurements.iter().enumerate() {
-            let width_percent = if max_duration > 0.0 { 
-                (measurement.duration_ms / max_duration * 80.0).max(2.0) 
-            } else { 
-                20.0 
+        for (_i, measurement) in self.measurements.iter().enumerate() {
+            let width_percent = if max_duration > 0.0 {
+                (measurement.duration_ms / max_duration * 80.0).max(2.0)
+            } else {
+                20.0
             };
-            
+
             let color = match measurement.operation.as_str() {
                 op if op.contains("gate") => "#3498db",
-                op if op.contains("measure") => "#e74c3c", 
+                op if op.contains("measure") => "#e74c3c",
                 op if op.contains("compile") => "#f39c12",
                 _ => "#95a5a6",
             };
-            
-            let fidelity_display = measurement.fidelity
+
+            let fidelity_display = measurement
+                .fidelity
                 .map(|f| format!(" (F: {:.3})", f))
                 .unwrap_or_default();
 
@@ -460,14 +536,19 @@ impl PyQuantumPerformanceMonitor {
     measurement.gate_count, measurement.qubit_count, fidelity_display, measurement.duration_ms));
         }
 
-        let avg_duration = self.measurements.iter().map(|m| m.duration_ms).sum::<f64>() / self.measurements.len() as f64;
-        html.push_str(&format!(r#"
+        let avg_duration = self.measurements.iter().map(|m| m.duration_ms).sum::<f64>()
+            / self.measurements.len() as f64;
+        html.push_str(&format!(
+            r#"
     </div>
     <div style="margin-top: 15px; font-size: 12px; color: #7f8c8d;">
         <strong>Total measurements:</strong> {} | <strong>Average duration:</strong> {:.2}ms
     </div>
 </div>
-"#, self.measurements.len(), avg_duration));
+"#,
+            self.measurements.len(),
+            avg_duration
+        ));
 
         html
     }
@@ -475,33 +556,47 @@ impl PyQuantumPerformanceMonitor {
     /// Get performance statistics
     fn get_statistics(&self) -> HashMap<String, f64> {
         let mut stats = HashMap::new();
-        
+
         if !self.measurements.is_empty() {
             let durations: Vec<f64> = self.measurements.iter().map(|m| m.duration_ms).collect();
             let total_duration: f64 = durations.iter().sum();
-            
+
             stats.insert("total_duration_ms".to_string(), total_duration);
-            stats.insert("average_duration_ms".to_string(), total_duration / durations.len() as f64);
-            stats.insert("max_duration_ms".to_string(), durations.iter().fold(0.0f64, |a, &b| a.max(b)));
-            stats.insert("min_duration_ms".to_string(), durations.iter().fold(f64::INFINITY, |a, &b| a.min(b)));
-            stats.insert("measurement_count".to_string(), self.measurements.len() as f64);
-            
+            stats.insert(
+                "average_duration_ms".to_string(),
+                total_duration / durations.len() as f64,
+            );
+            stats.insert(
+                "max_duration_ms".to_string(),
+                durations.iter().fold(0.0f64, |a, &b| a.max(b)),
+            );
+            stats.insert(
+                "min_duration_ms".to_string(),
+                durations.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
+            );
+            stats.insert(
+                "measurement_count".to_string(),
+                self.measurements.len() as f64,
+            );
+
             let total_gates: usize = self.measurements.iter().map(|m| m.gate_count).sum();
             stats.insert("total_gates".to_string(), total_gates as f64);
-            
+
             if let Some(avg_fidelity) = self.average_fidelity() {
                 stats.insert("average_fidelity".to_string(), avg_fidelity);
             }
         }
-        
+
         stats
     }
 
     fn average_fidelity(&self) -> Option<f64> {
-        let fidelities: Vec<f64> = self.measurements.iter()
+        let fidelities: Vec<f64> = self
+            .measurements
+            .iter()
             .filter_map(|m| m.fidelity)
             .collect();
-            
+
         if fidelities.is_empty() {
             None
         } else {
@@ -512,7 +607,8 @@ impl PyQuantumPerformanceMonitor {
     fn __repr__(&self) -> String {
         format!(
             "QuantumPerformanceMonitor(algorithm='{}', measurements={})",
-            self.algorithm_name, self.measurements.len()
+            self.algorithm_name,
+            self.measurements.len()
         )
     }
 }

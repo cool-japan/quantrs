@@ -12,16 +12,17 @@ use thiserror::Error;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::qubit::QubitId;
 
-use crate::{CircuitExecutor, CircuitResult, DeviceError, DeviceResult, QuantumDevice};
 use super::{
-    PhotonicClient, PhotonicDeviceConfig, PhotonicSystemType, PhotonicQuantumDevice,
-    PhotonicCircuitResult, PhotonicMeasurementData, PhotonicExecutionMetadata,
-    validate_photonic_config,
+    validate_photonic_config, PhotonicCircuitResult, PhotonicClient, PhotonicDeviceConfig,
+    PhotonicExecutionMetadata, PhotonicMeasurementData, PhotonicQuantumDevice, PhotonicSystemType,
 };
+use crate::{CircuitExecutor, CircuitResult, DeviceError, DeviceResult, QuantumDevice};
 
 /// Photonic quantum device implementation
 #[derive(Debug, Clone)]
 pub struct PhotonicQuantumDeviceImpl {
+    /// Device identifier
+    pub device_id: String,
     /// Client for hardware communication
     pub client: PhotonicClient,
     /// Device configuration
@@ -98,6 +99,7 @@ pub struct PhotonicPerformanceMetrics {
 impl PhotonicQuantumDeviceImpl {
     /// Create a new photonic quantum device
     pub async fn new(
+        device_id: String,
         client: PhotonicClient,
         config: PhotonicDeviceConfig,
     ) -> DeviceResult<Self> {
@@ -105,6 +107,7 @@ impl PhotonicQuantumDeviceImpl {
         validate_photonic_config(&config)?;
 
         let device = Self {
+            device_id,
             client,
             config,
             capabilities: Arc::new(RwLock::new(None)),
@@ -134,7 +137,7 @@ impl PhotonicQuantumDeviceImpl {
     /// Load device capabilities
     async fn load_capabilities(&self) -> DeviceResult<PhotonicCapabilities> {
         let mut supported_systems = vec![PhotonicSystemType::ContinuousVariable];
-        
+
         // Check system-specific capabilities
         match self.config.system_type {
             PhotonicSystemType::ContinuousVariable => {
@@ -178,7 +181,10 @@ impl PhotonicQuantumDeviceImpl {
         hardware_features.insert("squeezed_light_source".to_string(), true);
         hardware_features.insert("programmable_beamsplitters".to_string(), true);
         hardware_features.insert("high_efficiency_detectors".to_string(), true);
-        hardware_features.insert("real_time_feedback".to_string(), self.config.hardware_acceleration);
+        hardware_features.insert(
+            "real_time_feedback".to_string(),
+            self.config.hardware_acceleration,
+        );
 
         Ok(PhotonicCapabilities {
             supported_systems,
@@ -222,20 +228,23 @@ impl PhotonicQuantumDeviceImpl {
     /// Update performance metrics
     fn update_metrics(&self, execution_time: Duration, success: bool, fidelity: Option<f64>) {
         let mut metrics = self.metrics.write().unwrap();
-        
+
         metrics.circuits_executed += 1;
-        
+
         // Update average execution time
-        let total_time = metrics.avg_execution_time * (metrics.circuits_executed - 1) as u32 + execution_time;
+        let total_time =
+            metrics.avg_execution_time * (metrics.circuits_executed - 1) as u32 + execution_time;
         metrics.avg_execution_time = total_time / metrics.circuits_executed as u32;
-        
+
         // Update success rate
-        let total_success = metrics.success_rate * (metrics.circuits_executed - 1) as f64 + if success { 1.0 } else { 0.0 };
+        let total_success = metrics.success_rate * (metrics.circuits_executed - 1) as f64
+            + if success { 1.0 } else { 0.0 };
         metrics.success_rate = total_success / metrics.circuits_executed as f64;
-        
+
         // Update average fidelity if provided
         if let Some(fid) = fidelity {
-            let total_fidelity = metrics.avg_fidelity * (metrics.circuits_executed - 1) as f64 + fid;
+            let total_fidelity =
+                metrics.avg_fidelity * (metrics.circuits_executed - 1) as f64 + fid;
             metrics.avg_fidelity = total_fidelity / metrics.circuits_executed as f64;
         }
     }
@@ -270,28 +279,37 @@ impl QuantumDevice for PhotonicQuantumDeviceImpl {
 
     async fn properties(&self) -> DeviceResult<HashMap<String, String>> {
         let mut properties = HashMap::new();
-        
-        properties.insert("system_type".to_string(), format!("{:?}", self.config.system_type));
+
+        properties.insert(
+            "system_type".to_string(),
+            format!("{:?}", self.config.system_type),
+        );
         properties.insert("mode_count".to_string(), self.config.mode_count.to_string());
-        
+
         if let Some(cutoff) = self.config.cutoff_dimension {
             properties.insert("cutoff_dimension".to_string(), cutoff.to_string());
         }
-        
+
         if let Some(loss_rate) = self.config.loss_rate {
             properties.insert("loss_rate".to_string(), loss_rate.to_string());
         }
-        
+
         if let Some(efficiency) = self.config.detection_efficiency {
             properties.insert("detection_efficiency".to_string(), efficiency.to_string());
         }
-        
+
         // Add calibration status
-        properties.insert("calibration_valid".to_string(), self.is_calibration_valid().to_string());
-        
+        properties.insert(
+            "calibration_valid".to_string(),
+            self.is_calibration_valid().to_string(),
+        );
+
         // Add performance metrics
         let metrics = self.metrics.read().unwrap();
-        properties.insert("circuits_executed".to_string(), metrics.circuits_executed.to_string());
+        properties.insert(
+            "circuits_executed".to_string(),
+            metrics.circuits_executed.to_string(),
+        );
         properties.insert("success_rate".to_string(), metrics.success_rate.to_string());
         properties.insert("avg_fidelity".to_string(), metrics.avg_fidelity.to_string());
 
@@ -321,12 +339,12 @@ impl CircuitExecutor for PhotonicQuantumDeviceImpl {
         shots: usize,
     ) -> DeviceResult<Vec<CircuitResult>> {
         let mut results = Vec::new();
-        
+
         for circuit in circuits {
             let result = self.execute_circuit(circuit, shots).await?;
             results.push(result);
         }
-        
+
         Ok(results)
     }
 
@@ -335,15 +353,15 @@ impl CircuitExecutor for PhotonicQuantumDeviceImpl {
         circuit: &Circuit<N>,
     ) -> DeviceResult<bool> {
         // Check if circuit is compatible with photonic system
-        
+
         // Check mode count
         if N > self.config.mode_count {
             return Ok(false);
         }
-        
+
         // Check gate compatibility
         // TODO: Implement gate validation based on photonic capabilities
-        
+
         Ok(true)
     }
 
@@ -374,7 +392,9 @@ impl PhotonicQuantumDevice for PhotonicQuantumDeviceImpl {
     async fn supports_cv_operations(&self) -> DeviceResult<bool> {
         let capabilities = self.capabilities.read().unwrap();
         if let Some(caps) = capabilities.as_ref() {
-            Ok(caps.supported_systems.contains(&PhotonicSystemType::ContinuousVariable))
+            Ok(caps
+                .supported_systems
+                .contains(&PhotonicSystemType::ContinuousVariable))
         } else {
             Ok(false)
         }
@@ -383,7 +403,9 @@ impl PhotonicQuantumDevice for PhotonicQuantumDeviceImpl {
     async fn supports_gate_based(&self) -> DeviceResult<bool> {
         let capabilities = self.capabilities.read().unwrap();
         if let Some(caps) = capabilities.as_ref() {
-            Ok(caps.supported_systems.contains(&PhotonicSystemType::GateBased))
+            Ok(caps
+                .supported_systems
+                .contains(&PhotonicSystemType::GateBased))
         } else {
             Ok(false)
         }
@@ -392,7 +414,9 @@ impl PhotonicQuantumDevice for PhotonicQuantumDeviceImpl {
     async fn supports_measurement_based(&self) -> DeviceResult<bool> {
         let capabilities = self.capabilities.read().unwrap();
         if let Some(caps) = capabilities.as_ref() {
-            Ok(caps.supported_systems.contains(&PhotonicSystemType::MeasurementBased))
+            Ok(caps
+                .supported_systems
+                .contains(&PhotonicSystemType::MeasurementBased))
         } else {
             Ok(false)
         }
@@ -401,7 +425,7 @@ impl PhotonicQuantumDevice for PhotonicQuantumDeviceImpl {
     async fn quadrature_precision(&self) -> DeviceResult<f64> {
         // Return precision based on calibration data
         let calibration = self.calibration.read().unwrap();
-        let avg_precision = calibration.phase_accuracies.values().copied().sum::<f64>() 
+        let avg_precision = calibration.phase_accuracies.values().copied().sum::<f64>()
             / calibration.phase_accuracies.len() as f64;
         Ok(avg_precision)
     }
@@ -417,19 +441,40 @@ impl PhotonicQuantumDevice for PhotonicQuantumDeviceImpl {
         config: Option<PhotonicDeviceConfig>,
     ) -> DeviceResult<PhotonicCircuitResult> {
         let start_time = Instant::now();
-        
+
         // Ensure device is calibrated
         self.ensure_calibrated().await?;
-        
+
         // Use provided config or default
         let exec_config = config.unwrap_or_else(|| self.config.clone());
-        
+
+        // Create a simple circuit representation for API
+        let circuit_str = format!(
+            "{{\"gates\":{},\"qubits\":{}}}",
+            circuit.gates().len(),
+            circuit.num_qubits()
+        );
+
+        // Convert config to JSON
+        let config_json = serde_json::to_value(&exec_config).map_err(|e| {
+            DeviceError::CircuitConversion(format!("Failed to serialize config: {}", e))
+        })?;
+        let mut config_map = std::collections::HashMap::new();
+        if let serde_json::Value::Object(map) = config_json {
+            for (k, v) in map {
+                config_map.insert(k, v);
+            }
+        }
+
         // Execute circuit using client
-        let circuit_result = self.client.execute_photonic_circuit(circuit, shots, &exec_config).await?;
-        
+        let circuit_result = self
+            .client
+            .execute_photonic_circuit(&circuit_str, shots, &config_map)
+            .await?;
+
         // Generate photonic-specific measurement data
         let photonic_data = self.generate_photonic_measurements(circuit, shots).await?;
-        
+
         // Create execution metadata
         let execution_time = start_time.elapsed();
         let metadata = PhotonicExecutionMetadata {
@@ -438,16 +483,31 @@ impl PhotonicQuantumDevice for PhotonicQuantumDeviceImpl {
             execution_time,
             measured_loss_rate: self.config.loss_rate,
             thermal_noise: self.config.thermal_photons,
-            gate_sequence: vec![], // TODO: Extract from circuit
+            gate_sequence: vec![],         // TODO: Extract from circuit
             optimizations_applied: vec![], // TODO: Track optimizations
         };
-        
+
         // Update performance metrics
         let fidelity = photonic_data.fidelities.get("overall").copied();
         self.update_metrics(execution_time, true, fidelity);
-        
+
+        // Convert PhotonicJobResult to CircuitResult
+        let circuit_result_converted = CircuitResult {
+            counts: circuit_result
+                .results
+                .get("counts")
+                .and_then(|v| serde_json::from_value(v.clone()).ok())
+                .unwrap_or_else(|| {
+                    let mut counts = HashMap::new();
+                    counts.insert("0".repeat(circuit.num_qubits()), shots);
+                    counts
+                }),
+            shots: circuit_result.shots_completed,
+            metadata: circuit_result.metadata,
+        };
+
         Ok(PhotonicCircuitResult {
-            circuit_result,
+            circuit_result: circuit_result_converted,
             photonic_data,
             execution_metadata: metadata,
         })
@@ -458,11 +518,15 @@ impl PhotonicQuantumDevice for PhotonicQuantumDeviceImpl {
         modes: &[usize],
         angles: &[f64],
     ) -> DeviceResult<Vec<(f64, f64)>> {
-        self.client.measure_quadratures(modes, angles).await
+        self.client
+            .measure_quadratures(&self.device_id, modes, angles)
+            .await
     }
 
     async fn measure_photon_numbers(&self, modes: &[usize]) -> DeviceResult<Vec<usize>> {
-        self.client.measure_photon_numbers(modes).await
+        self.client
+            .measure_photon_numbers(&self.device_id, modes)
+            .await
     }
 
     async fn homodyne_detection(
@@ -471,7 +535,9 @@ impl PhotonicQuantumDevice for PhotonicQuantumDeviceImpl {
         phase: f64,
         shots: usize,
     ) -> DeviceResult<Vec<f64>> {
-        self.client.homodyne_detection(mode, phase, shots).await
+        self.client
+            .homodyne_detection(&self.device_id, mode, phase, shots)
+            .await
     }
 
     async fn heterodyne_detection(
@@ -479,7 +545,9 @@ impl PhotonicQuantumDevice for PhotonicQuantumDeviceImpl {
         mode: usize,
         shots: usize,
     ) -> DeviceResult<Vec<(f64, f64)>> {
-        self.client.heterodyne_detection(mode, shots).await
+        self.client
+            .heterodyne_detection(&self.device_id, mode, shots)
+            .await
     }
 
     async fn calculate_correlations(
@@ -487,7 +555,9 @@ impl PhotonicQuantumDevice for PhotonicQuantumDeviceImpl {
         modes: &[(usize, usize)],
         correlation_type: &str,
     ) -> DeviceResult<HashMap<String, f64>> {
-        self.client.calculate_correlations(modes, correlation_type).await
+        self.client
+            .calculate_correlations(modes, correlation_type)
+            .await
     }
 
     async fn estimate_fidelity(
@@ -495,7 +565,9 @@ impl PhotonicQuantumDevice for PhotonicQuantumDeviceImpl {
         target_state: &str,
         measurement_data: &PhotonicMeasurementData,
     ) -> DeviceResult<f64> {
-        self.client.estimate_fidelity(target_state, measurement_data).await
+        self.client
+            .estimate_fidelity(target_state, measurement_data)
+            .await
     }
 }
 
@@ -513,30 +585,34 @@ impl PhotonicQuantumDeviceImpl {
         let mut heterodyne_results = Vec::new();
         let mut correlations = HashMap::new();
         let mut fidelities = HashMap::new();
-        
+
         // Generate mock measurements for testing
-        for _ in 0..shots.min(100) { // Limit for demonstration
+        for _ in 0..shots.min(100) {
+            // Limit for demonstration
             // Random quadrature values
             quadratures.push((rand::random::<f64>() - 0.5, rand::random::<f64>() - 0.5));
-            
+
             // Random photon numbers (small numbers typical for CV systems)
             photon_numbers.push((rand::random::<f64>() * 5.0) as usize);
-            
+
             // Homodyne detection results
             homodyne_results.push(rand::random::<f64>() - 0.5);
-            
-            // Heterodyne detection results  
+
+            // Heterodyne detection results
             heterodyne_results.push((rand::random::<f64>() - 0.5, rand::random::<f64>() - 0.5));
         }
-        
+
         // Calculate correlations
         correlations.insert("g2".to_string(), 1.0 + rand::random::<f64>() * 0.1);
         correlations.insert("visibility".to_string(), 0.9 + rand::random::<f64>() * 0.09);
-        
+
         // Estimate fidelities
         fidelities.insert("overall".to_string(), 0.95 + rand::random::<f64>() * 0.04);
-        fidelities.insert("gate_fidelity".to_string(), self.config.gate_fidelity.unwrap_or(0.99));
-        
+        fidelities.insert(
+            "gate_fidelity".to_string(),
+            self.config.gate_fidelity.unwrap_or(0.99),
+        );
+
         Ok(PhotonicMeasurementData {
             quadratures,
             photon_numbers,
@@ -586,7 +662,7 @@ mod tests {
     async fn test_photonic_device_creation() {
         let client = PhotonicClient::new(PhotonicConfig::default()).unwrap();
         let config = PhotonicDeviceConfig::default();
-        
+
         let device = PhotonicQuantumDevice::new(client, config).await;
         assert!(device.is_ok());
     }
@@ -595,8 +671,10 @@ mod tests {
     async fn test_device_properties() {
         let client = PhotonicClient::new(PhotonicConfig::default()).unwrap();
         let config = PhotonicDeviceConfig::default();
-        let device = PhotonicQuantumDeviceImpl::new(client, config).await.unwrap();
-        
+        let device = PhotonicQuantumDeviceImpl::new(client, config)
+            .await
+            .unwrap();
+
         let properties = device.properties().await.unwrap();
         assert!(properties.contains_key("system_type"));
         assert!(properties.contains_key("mode_count"));
@@ -606,8 +684,10 @@ mod tests {
     async fn test_capabilities() {
         let client = PhotonicClient::new(PhotonicConfig::default()).unwrap();
         let config = PhotonicDeviceConfig::default();
-        let device = PhotonicQuantumDeviceImpl::new(client, config).await.unwrap();
-        
+        let device = PhotonicQuantumDeviceImpl::new(client, config)
+            .await
+            .unwrap();
+
         assert!(device.supports_cv_operations().await.unwrap());
         assert_eq!(device.mode_count().await.unwrap(), 8);
     }

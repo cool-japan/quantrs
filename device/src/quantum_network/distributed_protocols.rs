@@ -577,6 +577,7 @@ pub struct ConsistencyChecker {
 }
 
 /// Load balancer trait for distributing work across nodes
+#[async_trait]
 pub trait LoadBalancer: std::fmt::Debug {
     fn select_nodes(
         &self,
@@ -592,12 +593,110 @@ pub trait LoadBalancer: std::fmt::Debug {
     ) -> Option<HashMap<Uuid, NodeId>>;
 
     fn predict_execution_time(&self, partition: &CircuitPartition, node: &NodeInfo) -> Duration;
+
+    async fn select_node(
+        &self,
+        available_nodes: &[NodeInfo],
+        requirements: &ResourceRequirements,
+    ) -> Result<NodeId>;
+
+    async fn update_node_metrics(
+        &self,
+        node_id: &NodeId,
+        metrics: &PerformanceMetrics,
+    ) -> Result<()>;
+
+    fn get_balancer_metrics(&self) -> LoadBalancerMetrics;
 }
 
 /// Round-robin load balancer
 #[derive(Debug)]
 pub struct RoundRobinBalancer {
     current_index: Arc<Mutex<usize>>,
+}
+
+#[async_trait]
+impl LoadBalancer for RoundRobinBalancer {
+    fn select_nodes(
+        &self,
+        partitions: &[CircuitPartition],
+        available_nodes: &HashMap<NodeId, NodeInfo>,
+        _requirements: &ExecutionRequirements,
+    ) -> Result<HashMap<Uuid, NodeId>> {
+        let mut assignments = HashMap::new();
+        let nodes: Vec<_> = available_nodes.keys().cloned().collect();
+
+        if nodes.is_empty() {
+            return Err(DistributedComputationError::ResourceAllocation(
+                "No available nodes".to_string(),
+            ));
+        }
+
+        for partition in partitions {
+            let mut index = self.current_index.lock().unwrap();
+            let selected_node = nodes[*index % nodes.len()].clone();
+            *index += 1;
+            assignments.insert(partition.partition_id, selected_node);
+        }
+
+        Ok(assignments)
+    }
+
+    fn rebalance_load(
+        &self,
+        _current_allocation: &HashMap<Uuid, NodeId>,
+        _nodes: &HashMap<NodeId, NodeInfo>,
+    ) -> Option<HashMap<Uuid, NodeId>> {
+        None // Round robin doesn't need rebalancing
+    }
+
+    fn predict_execution_time(&self, partition: &CircuitPartition, _node: &NodeInfo) -> Duration {
+        partition.estimated_execution_time
+    }
+
+    async fn select_node(
+        &self,
+        available_nodes: &[NodeInfo],
+        _requirements: &ResourceRequirements,
+    ) -> Result<NodeId> {
+        if available_nodes.is_empty() {
+            return Err(DistributedComputationError::ResourceAllocation(
+                "No available nodes".to_string(),
+            ));
+        }
+
+        let mut index = self.current_index.lock().unwrap();
+        let selected_node = available_nodes[*index % available_nodes.len()]
+            .node_id
+            .clone();
+        *index += 1;
+        Ok(selected_node)
+    }
+
+    async fn update_node_metrics(
+        &self,
+        _node_id: &NodeId,
+        _metrics: &PerformanceMetrics,
+    ) -> Result<()> {
+        Ok(()) // Round robin doesn't use metrics
+    }
+
+    fn get_balancer_metrics(&self) -> LoadBalancerMetrics {
+        LoadBalancerMetrics {
+            total_decisions: 0,
+            average_decision_time: Duration::from_millis(1),
+            prediction_accuracy: 1.0,
+            load_distribution_variance: 0.0,
+        }
+    }
+}
+
+impl RoundRobinBalancer {
+    pub fn new() -> Self {
+        Self {
+            current_index: Arc::new(Mutex::new(0)),
+        }
+    }
 }
 
 /// Capability-based load balancer
@@ -1482,71 +1581,86 @@ impl PartitioningStrategy for GraphBasedPartitioning {
     ) -> Result<Vec<CircuitPartition>> {
         // Enhanced graph-based partitioning logic
         let mut partitions = Vec::new();
-        
+
         if nodes.is_empty() {
             return Err(DistributedComputationError::CircuitPartitioning(
-                "No nodes available for partitioning".to_string()
+                "No nodes available for partitioning".to_string(),
             ));
         }
 
         // Build dependency graph of gates
         let gate_dependencies = self.build_gate_dependency_graph(&circuit.gates);
-        
+
         // Use min-cut algorithm to partition gates
-        let gate_partitions = self.min_cut_partition(&circuit.gates, &gate_dependencies, nodes.len());
-        
+        let gate_partitions =
+            self.min_cut_partition(&circuit.gates, &gate_dependencies, nodes.len());
+
         let nodes_vec: Vec<_> = nodes.iter().collect();
-        
+
         for (partition_idx, gate_indices) in gate_partitions.iter().enumerate() {
             let node_idx = partition_idx % nodes_vec.len();
             let (node_id, node_info) = &nodes_vec[node_idx];
-            
-            let partition_gates: Vec<_> = gate_indices.iter()
+
+            let partition_gates: Vec<_> = gate_indices
+                .iter()
                 .map(|&idx| circuit.gates[idx].clone())
                 .collect();
-                
+
             // Calculate qubits involved in this partition
             let mut qubits_used = std::collections::HashSet::new();
             for gate in &partition_gates {
                 qubits_used.extend(&gate.target_qubits);
                 qubits_used.extend(&gate.control_qubits);
             }
-            
+
             let qubits_needed = qubits_used.len() as u32;
-            
+
             // Validate node capacity
             if qubits_needed > node_info.capabilities.max_qubits {
-                return Err(DistributedComputationError::ResourceAllocation(
-                    format!("Node {} insufficient capacity: needs {} qubits, has {}", 
-                           node_id.0, qubits_needed, node_info.capabilities.max_qubits)
-                ));
+                return Err(DistributedComputationError::ResourceAllocation(format!(
+                    "Node {} insufficient capacity: needs {} qubits, has {}",
+                    node_id.0, qubits_needed, node_info.capabilities.max_qubits
+                )));
             }
-            
+
             // Calculate communication overhead between partitions
             let communication_cost = self.calculate_inter_partition_communication(
-                &gate_indices, &gate_partitions, &circuit.gates
+                &gate_indices,
+                &gate_partitions,
+                &circuit.gates,
             );
-            
-            let estimated_time = self.estimate_partition_execution_time(&partition_gates, node_info);
+
+            let estimated_time =
+                self.estimate_partition_execution_time(&partition_gates, node_info);
             let gates_count = partition_gates.len() as u32;
             let memory_mb = self.estimate_memory_usage(&partition_gates);
             let entanglement_pairs_needed = self.count_entangling_operations(&partition_gates);
-            
+
             let partition = CircuitPartition {
                 partition_id: Uuid::new_v4(),
                 node_id: (*node_id).clone(),
                 gates: partition_gates.clone(),
-                dependencies: self.calculate_partition_dependencies(partition_idx, &gate_partitions, &gate_dependencies),
-                input_qubits: qubits_used.iter().map(|qubit_id| QubitId {
-                    node_id: (*node_id).clone(),
-                    local_id: qubit_id.local_id,
-                    global_id: Uuid::new_v4(),
-                }).collect(),
-                output_qubits: qubits_used.iter().map(|qubit_id| QubitId {
-                    node_id: (*node_id).clone(),
-                    local_id: qubit_id.local_id,
-                    global_id: Uuid::new_v4(),
-                }).collect(),
+                dependencies: self.calculate_partition_dependencies(
+                    partition_idx,
+                    &gate_partitions,
+                    &gate_dependencies,
+                ),
+                input_qubits: qubits_used
+                    .iter()
+                    .map(|qubit_id| QubitId {
+                        node_id: (*node_id).clone(),
+                        local_id: qubit_id.local_id,
+                        global_id: Uuid::new_v4(),
+                    })
+                    .collect(),
+                output_qubits: qubits_used
+                    .iter()
+                    .map(|qubit_id| QubitId {
+                        node_id: (*node_id).clone(),
+                        local_id: qubit_id.local_id,
+                        global_id: Uuid::new_v4(),
+                    })
+                    .collect(),
                 classical_inputs: vec![],
                 estimated_execution_time: estimated_time,
                 resource_requirements: ResourceRequirements {
@@ -1575,15 +1689,17 @@ impl PartitioningStrategy for GraphBasedPartitioning {
     ) -> f64 {
         // Calculate communication overhead based on inter-partition dependencies
         let mut total_overhead = 0.0;
-        
+
         for partition in partitions {
             // Communication cost based on entanglement pairs needed
-            total_overhead += partition.resource_requirements.entanglement_pairs_needed as f64 * 0.5;
-            
+            total_overhead +=
+                partition.resource_requirements.entanglement_pairs_needed as f64 * 0.5;
+
             // Add cost for classical communication
-            total_overhead += partition.resource_requirements.classical_communication_bits as f64 * 0.01;
+            total_overhead +=
+                partition.resource_requirements.classical_communication_bits as f64 * 0.01;
         }
-        
+
         total_overhead
     }
 }
@@ -1592,62 +1708,84 @@ impl GraphBasedPartitioning {
     // Private helper methods for enhanced partitioning
     fn build_gate_dependency_graph(&self, gates: &[QuantumGate]) -> Vec<Vec<usize>> {
         let mut dependencies = vec![Vec::new(); gates.len()];
-        
+
         for (i, gate) in gates.iter().enumerate() {
             for (j, other_gate) in gates.iter().enumerate().take(i) {
                 // Check if gates share qubits (dependency)
-                let gate_qubits: std::collections::HashSet<_> = gate.target_qubits.iter()
+                let gate_qubits: std::collections::HashSet<_> = gate
+                    .target_qubits
+                    .iter()
                     .chain(gate.control_qubits.iter())
                     .collect();
-                let other_qubits: std::collections::HashSet<_> = other_gate.target_qubits.iter()
+                let other_qubits: std::collections::HashSet<_> = other_gate
+                    .target_qubits
+                    .iter()
                     .chain(other_gate.control_qubits.iter())
                     .collect();
-                    
+
                 if !gate_qubits.is_disjoint(&other_qubits) {
                     dependencies[i].push(j);
                 }
             }
         }
-        
+
         dependencies
     }
-    
-    fn min_cut_partition(&self, gates: &[QuantumGate], _dependencies: &[Vec<usize>], num_partitions: usize) -> Vec<Vec<usize>> {
+
+    fn min_cut_partition(
+        &self,
+        gates: &[QuantumGate],
+        _dependencies: &[Vec<usize>],
+        num_partitions: usize,
+    ) -> Vec<Vec<usize>> {
         // Simplified min-cut algorithm using balanced partitioning
         let partition_size = gates.len() / num_partitions;
         let mut partitions = Vec::new();
-        
+
         for i in 0..num_partitions {
             let start = i * partition_size;
-            let end = if i == num_partitions - 1 { gates.len() } else { (i + 1) * partition_size };
+            let end = if i == num_partitions - 1 {
+                gates.len()
+            } else {
+                (i + 1) * partition_size
+            };
             let partition: Vec<usize> = (start..end).collect();
             partitions.push(partition);
         }
-        
+
         partitions
     }
-    
-    fn calculate_inter_partition_communication(&self, partition_indices: &[usize], all_partitions: &[Vec<usize>], gates: &[QuantumGate]) -> u32 {
+
+    fn calculate_inter_partition_communication(
+        &self,
+        partition_indices: &[usize],
+        all_partitions: &[Vec<usize>],
+        gates: &[QuantumGate],
+    ) -> u32 {
         let mut communication_bits = 0;
-        
+
         for &gate_idx in partition_indices {
             let gate = &gates[gate_idx];
-            
+
             // Check if this gate needs data from other partitions
             for other_partition in all_partitions {
                 if other_partition != partition_indices {
                     for &other_gate_idx in other_partition {
                         if other_gate_idx < gate_idx {
                             let other_gate = &gates[other_gate_idx];
-                            
+
                             // Check for qubit overlap (indicates communication needed)
-                            let gate_qubits: std::collections::HashSet<_> = gate.target_qubits.iter()
+                            let gate_qubits: std::collections::HashSet<_> = gate
+                                .target_qubits
+                                .iter()
                                 .chain(gate.control_qubits.iter())
                                 .collect();
-                            let other_qubits: std::collections::HashSet<_> = other_gate.target_qubits.iter()
+                            let other_qubits: std::collections::HashSet<_> = other_gate
+                                .target_qubits
+                                .iter()
                                 .chain(other_gate.control_qubits.iter())
                                 .collect();
-                                
+
                             if !gate_qubits.is_disjoint(&other_qubits) {
                                 communication_bits += 1; // One bit of communication per shared qubit
                             }
@@ -1656,72 +1794,87 @@ impl GraphBasedPartitioning {
                 }
             }
         }
-        
+
         communication_bits
     }
-    
-    fn calculate_partition_dependencies(&self, _partition_idx: usize, _all_partitions: &[Vec<usize>], _gate_dependencies: &[Vec<usize>]) -> Vec<Uuid> {
+
+    fn calculate_partition_dependencies(
+        &self,
+        _partition_idx: usize,
+        _all_partitions: &[Vec<usize>],
+        _gate_dependencies: &[Vec<usize>],
+    ) -> Vec<Uuid> {
         // For now, return empty dependencies as this requires more complex logic
         // In a full implementation, this would map partition dependencies to UUIDs
         vec![]
     }
-    
-    fn estimate_partition_execution_time(&self, gates: &[QuantumGate], node_info: &NodeInfo) -> Duration {
+
+    fn estimate_partition_execution_time(
+        &self,
+        gates: &[QuantumGate],
+        node_info: &NodeInfo,
+    ) -> Duration {
         let base_gate_time = Duration::from_nanos(100_000); // 100 microseconds per gate
         let mut total_time = Duration::ZERO;
-        
+
         for gate in gates {
-            let gate_fidelity = node_info.capabilities.gate_fidelities
+            let gate_fidelity = node_info
+                .capabilities
+                .gate_fidelities
                 .get(&gate.gate_type)
                 .unwrap_or(&0.95);
-                
+
             // Higher fidelity gates execute faster (better calibration)
-            let adjusted_time = Duration::from_nanos(
-                (base_gate_time.as_nanos() as f64 / gate_fidelity) as u64
-            );
+            let adjusted_time =
+                Duration::from_nanos((base_gate_time.as_nanos() as f64 / gate_fidelity) as u64);
             total_time += adjusted_time;
         }
-        
+
         // Add coherence time impact if coherence times are available
         if !node_info.capabilities.coherence_times.is_empty() {
-            let avg_coherence = node_info.capabilities.coherence_times
+            let avg_coherence = node_info
+                .capabilities
+                .coherence_times
                 .values()
                 .map(|t| t.as_nanos())
-                .sum::<u128>() as f64 / node_info.capabilities.coherence_times.len() as f64;
-                
+                .sum::<u128>() as f64
+                / node_info.capabilities.coherence_times.len() as f64;
+
             if total_time.as_nanos() as f64 > avg_coherence * 0.5 {
                 // Add penalty for operations close to coherence time
                 total_time = Duration::from_nanos((total_time.as_nanos() as f64 * 1.2) as u64);
             }
         }
-        
+
         total_time
     }
-    
+
     fn estimate_memory_usage(&self, gates: &[QuantumGate]) -> u32 {
-        let max_qubit_id = gates.iter()
+        let max_qubit_id = gates
+            .iter()
             .flat_map(|g| g.target_qubits.iter().chain(g.control_qubits.iter()))
             .map(|qubit_id| qubit_id.local_id)
             .max()
             .unwrap_or(0);
-            
+
         // Memory for state vector: 2^n complex numbers (16 bytes each)
         let state_vector_mb = (1u64 << (max_qubit_id + 1)) * 16 / (1024 * 1024);
-        
+
         // Add overhead for gate operations and classical storage
         let overhead_mb = gates.len() as u64 / 100; // 1MB per 100 gates
-        
+
         std::cmp::max(state_vector_mb + overhead_mb, 10) as u32 // Minimum 10MB
     }
-    
+
     fn count_entangling_operations(&self, gates: &[QuantumGate]) -> u32 {
-        gates.iter()
+        gates
+            .iter()
             .filter(|g| {
-                !g.control_qubits.is_empty() || 
-                g.gate_type.contains("CX") || 
-                g.gate_type.contains("CNOT") ||
-                g.gate_type.contains("CZ") ||
-                g.gate_type.contains("Bell")
+                !g.control_qubits.is_empty()
+                    || g.gate_type.contains("CX")
+                    || g.gate_type.contains("CNOT")
+                    || g.gate_type.contains("CZ")
+                    || g.gate_type.contains("Bell")
             })
             .count() as u32
     }
@@ -2242,6 +2395,15 @@ impl ModelEvaluator {
             benchmark_datasets: HashMap::new(),
         }
     }
+}
+
+/// Load balancer performance metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoadBalancerMetrics {
+    pub total_decisions: u64,
+    pub average_decision_time: Duration,
+    pub prediction_accuracy: f64,
+    pub load_distribution_variance: f64,
 }
 
 #[cfg(test)]

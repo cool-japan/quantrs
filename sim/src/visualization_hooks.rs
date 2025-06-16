@@ -144,13 +144,13 @@ pub struct GateVisualizationData {
 pub trait VisualizationHook: Send + Sync {
     /// Process visualization data
     fn process_data(&mut self, data: VisualizationData) -> Result<()>;
-    
+
     /// Export accumulated data
     fn export(&self, path: &str) -> Result<()>;
-    
+
     /// Clear accumulated data
     fn clear(&mut self);
-    
+
     /// Get visualization framework name
     fn framework(&self) -> VisualizationFramework;
 }
@@ -187,7 +187,11 @@ impl VisualizationManager {
     }
 
     /// Visualize quantum state
-    pub fn visualize_state(&mut self, state: &Array1<Complex64>, label: Option<String>) -> Result<()> {
+    pub fn visualize_state(
+        &mut self,
+        state: &Array1<Complex64>,
+        label: Option<String>,
+    ) -> Result<()> {
         let amplitudes = state.to_vec();
         let basis_labels = self.generate_basis_labels(state.len());
         let timestamp = SystemTime::now()
@@ -236,7 +240,7 @@ impl VisualizationManager {
         {
             let mut history = self.performance_history.lock().unwrap();
             history.push(metrics.clone());
-            
+
             // Keep only recent data
             if history.len() > self.config.max_data_points {
                 history.remove(0);
@@ -247,18 +251,14 @@ impl VisualizationManager {
         let data = {
             let history = self.performance_history.lock().unwrap();
             let timestamps: Vec<f64> = (0..history.len()).map(|i| i as f64).collect();
-            let execution_times: Vec<f64> = history
-                .iter()
-                .map(|m| m.total_time.as_secs_f64())
-                .collect();
+            let execution_times: Vec<f64> =
+                history.iter().map(|m| m.total_time.as_secs_f64()).collect();
             let memory_usage: Vec<f64> = history
                 .iter()
                 .map(|m| m.memory_usage.peak_statevector_memory as f64)
                 .collect();
-            let gate_counts: Vec<HashMap<String, usize>> = history
-                .iter()
-                .map(|m| m.gate_counts.clone())
-                .collect();
+            let gate_counts: Vec<HashMap<String, usize>> =
+                history.iter().map(|m| m.gate_counts.clone()).collect();
 
             VisualizationData::PerformanceTimeSeries {
                 timestamps,
@@ -279,13 +279,12 @@ impl VisualizationManager {
         qubit_labels: Option<Vec<String>>,
     ) -> Result<()> {
         let num_qubits = (state.len() as f64).log2().round() as usize;
-        let labels = qubit_labels.unwrap_or_else(|| {
-            (0..num_qubits).map(|i| format!("q{}", i)).collect()
-        });
+        let labels =
+            qubit_labels.unwrap_or_else(|| (0..num_qubits).map(|i| format!("q{}", i)).collect());
 
         // Calculate entanglement matrix (simplified)
         let entanglement_matrix = self.calculate_entanglement_matrix(state, num_qubits)?;
-        
+
         // Calculate bipartite entropies
         let bipartite_entropies = self.calculate_bipartite_entropies(state, num_qubits)?;
 
@@ -367,8 +366,9 @@ impl VisualizationManager {
         })?;
 
         for (i, hook) in self.hooks.iter().enumerate() {
-            let export_path = format!("{}/visualization_{}.{}", 
-                base_path, 
+            let export_path = format!(
+                "{}/visualization_{}.{}",
+                base_path,
                 i,
                 self.get_file_extension(hook.framework())
             );
@@ -477,10 +477,10 @@ impl VisualizationManager {
         // Simplified von Neumann entropy calculation
         let left_size = 1 << cut;
         let right_size = 1 << (num_qubits - cut);
-        
+
         // Calculate reduced density matrix for left subsystem (simplified)
         let mut reduced_dm = Array2::zeros((left_size, left_size));
-        
+
         for i in 0..left_size {
             for j in 0..left_size {
                 let mut trace_val = Complex64::new(0.0, 0.0);
@@ -541,12 +541,12 @@ impl JSONVisualizationHook {
 impl VisualizationHook for JSONVisualizationHook {
     fn process_data(&mut self, data: VisualizationData) -> Result<()> {
         self.data.push(data);
-        
+
         // Keep only recent data
         if self.data.len() > self.config.max_data_points {
             self.data.remove(0);
         }
-        
+
         Ok(())
     }
 
@@ -555,13 +555,11 @@ impl VisualizationHook for JSONVisualizationHook {
             SimulatorError::InvalidInput(format!("Failed to serialize data: {}", e))
         })?;
 
-        let mut file = File::create(path).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to create file: {}", e))
-        })?;
+        let mut file = File::create(path)
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {}", e)))?;
 
-        file.write_all(json_data.as_bytes()).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to write file: {}", e))
-        })?;
+        file.write_all(json_data.as_bytes())
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {}", e)))?;
 
         Ok(())
     }
@@ -600,10 +598,10 @@ impl ASCIIVisualizationHook {
         for (i, amplitude) in state.iter().enumerate().take(16) {
             let magnitude = amplitude.norm();
             let phase = amplitude.arg();
-            
+
             let bar_length = (magnitude * 20.0) as usize;
             let bar = "█".repeat(bar_length) + &"░".repeat(20 - bar_length);
-            
+
             output.push_str(&format!(
                 "|{:02}⟩: {} {:.4} ∠{:.2}π\n",
                 i,
@@ -626,19 +624,25 @@ impl VisualizationHook for ASCIIVisualizationHook {
         match data {
             VisualizationData::StateVector { amplitudes, .. } => {
                 let state = Array1::from_vec(amplitudes);
-                
+
                 if self.config.real_time {
                     println!("{}", self.state_to_ascii(&state));
                 }
-                
+
                 self.recent_states.push_back(state);
                 if self.recent_states.len() > 100 {
                     self.recent_states.pop_front();
                 }
             }
-            VisualizationData::CircuitDiagram { gates, num_qubits, .. } => {
+            VisualizationData::CircuitDiagram {
+                gates, num_qubits, ..
+            } => {
                 if self.config.real_time {
-                    println!("Circuit Diagram ({} qubits, {} gates):", num_qubits, gates.len());
+                    println!(
+                        "Circuit Diagram ({} qubits, {} gates):",
+                        num_qubits,
+                        gates.len()
+                    );
                     for gate in gates.iter().take(10) {
                         println!("  {} on qubits {:?}", gate.gate_type, gate.qubits);
                     }
@@ -651,7 +655,7 @@ impl VisualizationHook for ASCIIVisualizationHook {
                 // Handle other data types
             }
         }
-        
+
         Ok(())
     }
 
@@ -666,13 +670,11 @@ impl VisualizationHook for ASCIIVisualizationHook {
             output.push('\n');
         }
 
-        let mut file = File::create(path).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to create file: {}", e))
-        })?;
+        let mut file = File::create(path)
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {}", e)))?;
 
-        file.write_all(output.as_bytes()).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to write file: {}", e))
-        })?;
+        file.write_all(output.as_bytes())
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {}", e)))?;
 
         Ok(())
     }
@@ -693,7 +695,7 @@ pub fn benchmark_visualization() -> Result<HashMap<String, f64>> {
     // Test JSON hook performance
     let start = std::time::Instant::now();
     let mut json_hook = JSONVisualizationHook::new(VisualizationConfig::default());
-    
+
     for i in 0..1000 {
         let test_state = Array1::from_vec(vec![
             Complex64::new(0.5, 0.0),
@@ -701,16 +703,21 @@ pub fn benchmark_visualization() -> Result<HashMap<String, f64>> {
             Complex64::new(0.5, 0.0),
             Complex64::new(0.5, 0.0),
         ]);
-        
+
         let data = VisualizationData::StateVector {
             amplitudes: test_state.to_vec(),
-            basis_labels: vec!["00".to_string(), "01".to_string(), "10".to_string(), "11".to_string()],
+            basis_labels: vec![
+                "00".to_string(),
+                "01".to_string(),
+                "10".to_string(),
+                "11".to_string(),
+            ],
             timestamp: i as f64,
         };
-        
+
         json_hook.process_data(data)?;
     }
-    
+
     let json_time = start.elapsed().as_millis() as f64;
     results.insert("json_hook_1000_states".to_string(), json_time);
 
@@ -720,7 +727,7 @@ pub fn benchmark_visualization() -> Result<HashMap<String, f64>> {
         real_time: false,
         ..Default::default()
     });
-    
+
     for i in 0..100 {
         let test_state = Array1::from_vec(vec![
             Complex64::new(0.5, 0.0),
@@ -728,16 +735,21 @@ pub fn benchmark_visualization() -> Result<HashMap<String, f64>> {
             Complex64::new(0.5, 0.0),
             Complex64::new(0.5, 0.0),
         ]);
-        
+
         let data = VisualizationData::StateVector {
             amplitudes: test_state.to_vec(),
-            basis_labels: vec!["00".to_string(), "01".to_string(), "10".to_string(), "11".to_string()],
+            basis_labels: vec![
+                "00".to_string(),
+                "01".to_string(),
+                "10".to_string(),
+                "11".to_string(),
+            ],
             timestamp: i as f64,
         };
-        
+
         ascii_hook.process_data(data)?;
     }
-    
+
     let ascii_time = start.elapsed().as_millis() as f64;
     results.insert("ascii_hook_100_states".to_string(), ascii_time);
 
@@ -759,13 +771,13 @@ mod tests {
     #[test]
     fn test_json_hook() {
         let mut hook = JSONVisualizationHook::new(VisualizationConfig::default());
-        
+
         let test_data = VisualizationData::StateVector {
             amplitudes: vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
             basis_labels: vec!["0".to_string(), "1".to_string()],
             timestamp: 0.0,
         };
-        
+
         assert!(hook.process_data(test_data).is_ok());
         assert_eq!(hook.data.len(), 1);
     }
@@ -776,16 +788,13 @@ mod tests {
             real_time: false,
             ..Default::default()
         });
-        
+
         let test_data = VisualizationData::StateVector {
-            amplitudes: vec![
-                Complex64::new(0.707, 0.0),
-                Complex64::new(0.707, 0.0),
-            ],
+            amplitudes: vec![Complex64::new(0.707, 0.0), Complex64::new(0.707, 0.0)],
             basis_labels: vec!["0".to_string(), "1".to_string()],
             timestamp: 0.0,
         };
-        
+
         assert!(hook.process_data(test_data).is_ok());
         assert_eq!(hook.recent_states.len(), 1);
     }
@@ -794,14 +803,14 @@ mod tests {
     fn test_state_visualization() {
         let config = VisualizationConfig::default();
         let mut manager = VisualizationManager::new(config);
-        
+
         let test_state = Array1::from_vec(vec![
             Complex64::new(0.5, 0.0),
             Complex64::new(0.5, 0.0),
             Complex64::new(0.5, 0.0),
             Complex64::new(0.5, 0.0),
         ]);
-        
+
         assert!(manager.visualize_state(&test_state, None).is_ok());
     }
 
@@ -809,11 +818,11 @@ mod tests {
     fn test_circuit_visualization() {
         let config = VisualizationConfig::default();
         let mut manager = VisualizationManager::new(config);
-        
+
         let mut circuit = InterfaceCircuit::new(2, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]));
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]));
-        
+
         assert!(manager.visualize_circuit(&circuit).is_ok());
     }
 
@@ -821,13 +830,13 @@ mod tests {
     fn test_parameter_extraction() {
         let config = VisualizationConfig::default();
         let manager = VisualizationManager::new(config);
-        
+
         let params = manager.extract_gate_parameters(&InterfaceGateType::RX(1.5));
         assert_eq!(params, vec![1.5]);
-        
+
         let params = manager.extract_gate_parameters(&InterfaceGateType::U3(1.0, 2.0, 3.0));
         assert_eq!(params, vec![1.0, 2.0, 3.0]);
-        
+
         let params = manager.extract_gate_parameters(&InterfaceGateType::Hadamard);
         assert_eq!(params.len(), 0);
     }
@@ -836,10 +845,10 @@ mod tests {
     fn test_basis_label_generation() {
         let config = VisualizationConfig::default();
         let manager = VisualizationManager::new(config);
-        
+
         let labels = manager.generate_basis_labels(4);
         assert_eq!(labels, vec!["|00⟩", "|01⟩", "|10⟩", "|11⟩"]);
-        
+
         let labels = manager.generate_basis_labels(8);
         assert_eq!(labels.len(), 8);
         assert_eq!(labels[0], "|000⟩");
@@ -850,18 +859,22 @@ mod tests {
     fn test_entanglement_calculation() {
         let config = VisualizationConfig::default();
         let manager = VisualizationManager::new(config);
-        
+
         let bell_state = Array1::from_vec(vec![
             Complex64::new(0.707, 0.0),
             Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0),
             Complex64::new(0.707, 0.0),
         ]);
-        
-        let entanglement_matrix = manager.calculate_entanglement_matrix(&bell_state, 2).unwrap();
+
+        let entanglement_matrix = manager
+            .calculate_entanglement_matrix(&bell_state, 2)
+            .unwrap();
         assert_eq!(entanglement_matrix.shape(), [2, 2]);
-        
-        let entropies = manager.calculate_bipartite_entropies(&bell_state, 2).unwrap();
+
+        let entropies = manager
+            .calculate_bipartite_entropies(&bell_state, 2)
+            .unwrap();
         assert_eq!(entropies.len(), 1);
     }
 }

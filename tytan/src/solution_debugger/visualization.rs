@@ -1,7 +1,7 @@
 //! Visualization functionality for the solution debugger.
 
 use super::types::{ProblemInfo, Solution};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::collections::HashMap;
 
 /// Solution visualizer

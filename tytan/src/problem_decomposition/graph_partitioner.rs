@@ -4,7 +4,7 @@ use super::types::*;
 use ndarray::{Array1, Array2};
 use rand::prelude::*;
 use rand::thread_rng;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /// Automatic graph partitioner for QUBO problems
 pub struct GraphPartitioner {

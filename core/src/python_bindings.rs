@@ -4,42 +4,37 @@
 //! quantum computing framework using PyO3, enabling seamless integration
 //! with Python ecosystem tools like NumPy, Jupyter, and scientific computing libraries.
 
-#![cfg(feature = "python")]
-
 use crate::{
-    error::QuantRS2Result,
+    cartan::{CartanDecomposer, CartanDecomposition},
     gate::{
-        single::{Hadamard, PauliX, PauliY, PauliZ, RotationX, RotationY, RotationZ},
         multi::{CNOT, CZ, SWAP},
+        single::{Hadamard, PauliX, PauliY, PauliZ, RotationX, RotationY, RotationZ},
         GateOp,
     },
-    qubit::QubitId,
-    matrix_ops::DenseMatrix,
-    synthesis::{decompose_single_qubit_zyz, SingleQubitDecomposition},
-    variational::{VariationalCircuit, VariationalOptimizer},
-    cartan::{CartanDecomposer, CartanDecomposition},
-    quantum_sensor_networks::{QuantumSensorNetwork, QuantumSensor},
-    quantum_internet::QuantumInternet,
-    jupyter_visualization::{PyQuantumCircuitVisualizer, PyQuantumStateVisualizer, PyQuantumPerformanceMonitor},
-    quantum_complexity_analysis::{PyQuantumComplexityAnalyzer, analyze_algorithm_complexity, compare_quantum_classical_complexity, calculate_theoretical_quantum_volume},
-    realtime_monitoring::{
-        RealtimeMonitor, MonitoringConfig, MetricMeasurement, MetricType, MetricValue,
-        Alert, AlertLevel, AlertStatus, OptimizationRecommendation, RecommendationType,
-        MonitoringStatus, SystemStatus, AggregatedStats, AlertThresholds, ExportSettings,
+    jupyter_visualization::{
+        PyQuantumCircuitVisualizer, PyQuantumPerformanceMonitor, PyQuantumStateVisualizer,
     },
-    hardware_compilation::HardwarePlatform,
+    quantum_complexity_analysis::{
+        analyze_algorithm_complexity, calculate_theoretical_quantum_volume,
+        compare_quantum_classical_complexity, PyQuantumComplexityAnalyzer,
+    },
+    quantum_internet::QuantumInternet,
+    quantum_sensor_networks::QuantumSensorNetwork,
+    qubit::QubitId,
+    realtime_monitoring::{
+        AggregatedStats, Alert, MetricMeasurement, MetricType, MetricValue, MonitoringConfig,
+        MonitoringStatus, OptimizationRecommendation, RealtimeMonitor,
+    },
+    synthesis::{decompose_single_qubit_zyz, SingleQubitDecomposition},
+    variational::VariationalCircuit,
 };
 
-use pyo3::prelude::*;
-use pyo3::types::{PyFloat, PyInt, PyBool, PyString, PyList, PyTuple};
-use numpy::{PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
+use ndarray::Array2;
 use num_complex::Complex64;
-use ndarray::{Array1, Array2};
-use std::collections::HashMap;
+use numpy::{PyArray2, PyReadonlyArray2};
+use pyo3::prelude::*;
+use pyo3::types::PyString;
 use std::time::{Duration, SystemTime};
-
-// #[cfg(feature = "python")]
-// use numrs2::{Array as NumRS2Array, prelude::*};  // Temporarily disabled due to platform compilation issues
 
 /// Python wrapper for QubitId
 #[pyclass(name = "QubitId")]
@@ -94,7 +89,10 @@ impl PyQuantumGate {
         format!(
             "QuantumGate(type='{}', qubits={:?}, params={:?})",
             self.gate_type,
-            self.target_qubits.iter().map(|q| q.inner.0).collect::<Vec<_>>(),
+            self.target_qubits
+                .iter()
+                .map(|q| q.inner.0)
+                .collect::<Vec<_>>(),
             self.parameters
         )
     }
@@ -117,51 +115,78 @@ impl PyQuantumGate {
     /// Get the matrix representation of the gate
     fn matrix(&self, py: Python) -> PyResult<Py<PyArray2<Complex64>>> {
         let matrix_result = match self.gate_type.as_str() {
-            "H" => Hadamard { target: self.target_qubits[0].inner }.matrix(),
-            "X" => PauliX { target: self.target_qubits[0].inner }.matrix(),
-            "Y" => PauliY { target: self.target_qubits[0].inner }.matrix(),
-            "Z" => PauliZ { target: self.target_qubits[0].inner }.matrix(),
-            "RX" => RotationX { 
-                target: self.target_qubits[0].inner, 
-                theta: self.parameters[0] 
-            }.matrix(),
-            "RY" => RotationY { 
-                target: self.target_qubits[0].inner, 
-                theta: self.parameters[0] 
-            }.matrix(),
-            "RZ" => RotationZ { 
-                target: self.target_qubits[0].inner, 
-                theta: self.parameters[0] 
-            }.matrix(),
+            "H" => Hadamard {
+                target: self.target_qubits[0].inner,
+            }
+            .matrix(),
+            "X" => PauliX {
+                target: self.target_qubits[0].inner,
+            }
+            .matrix(),
+            "Y" => PauliY {
+                target: self.target_qubits[0].inner,
+            }
+            .matrix(),
+            "Z" => PauliZ {
+                target: self.target_qubits[0].inner,
+            }
+            .matrix(),
+            "RX" => RotationX {
+                target: self.target_qubits[0].inner,
+                theta: self.parameters[0],
+            }
+            .matrix(),
+            "RY" => RotationY {
+                target: self.target_qubits[0].inner,
+                theta: self.parameters[0],
+            }
+            .matrix(),
+            "RZ" => RotationZ {
+                target: self.target_qubits[0].inner,
+                theta: self.parameters[0],
+            }
+            .matrix(),
             "CNOT" => CNOT {
                 control: self.target_qubits[0].inner,
                 target: self.target_qubits[1].inner,
-            }.matrix(),
+            }
+            .matrix(),
             "CZ" => CZ {
                 control: self.target_qubits[0].inner,
                 target: self.target_qubits[1].inner,
-            }.matrix(),
+            }
+            .matrix(),
             "SWAP" => SWAP {
                 qubit1: self.target_qubits[0].inner,
                 qubit2: self.target_qubits[1].inner,
-            }.matrix(),
-            _ => return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                format!("Unknown gate type: {}", self.gate_type)
-            )),
+            }
+            .matrix(),
+            _ => {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                    "Unknown gate type: {}",
+                    self.gate_type
+                )))
+            }
         };
 
-        let matrix = matrix_result.map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
-        
+        let matrix = matrix_result
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
+
         // Convert Vec<Complex64> to Array2<Complex64>
         let dim = match self.gate_type.as_str() {
             "H" | "X" | "Y" | "Z" | "RX" | "RY" | "RZ" => 2,
             "CNOT" | "CZ" | "SWAP" => 4,
-            _ => return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>("Unknown gate dimension")),
+            _ => {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    "Unknown gate dimension",
+                ))
+            }
         };
-        
-        let array = Array2::from_shape_vec((dim, dim), matrix)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Array reshape error: {}", e)))?;
-            
+
+        let array = Array2::from_shape_vec((dim, dim), matrix).map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Array reshape error: {}", e))
+        })?;
+
         let np_array = PyArray2::from_array(py, &array);
         Ok(np_array.unbind())
     }
@@ -235,7 +260,7 @@ impl PyCartanDecomposition {
         format!(
             "CartanDecomposition(xx={:.6}, yy={:.6}, zz={:.6}, cnots={})",
             self.inner.interaction.xx,
-            self.inner.interaction.yy, 
+            self.inner.interaction.yy,
             self.inner.interaction.zz,
             self.cnot_count()
         )
@@ -267,7 +292,7 @@ impl PyVariationalCircuit {
         self.inner.get_parameters().len()
     }
 
-    fn add_rotation_layer(&mut self, axis: String) -> PyResult<()> {
+    fn add_rotation_layer(&mut self, _axis: String) -> PyResult<()> {
         // Simplified implementation for Python bindings
         Ok(())
     }
@@ -309,7 +334,12 @@ impl PyQuantumSensorNetwork {
         self.inner.quantum_sensors.len()
     }
 
-    fn add_sensor(&mut self, sensor_type: String, latitude: f64, longitude: f64) -> PyResult<u64> {
+    fn add_sensor(
+        &mut self,
+        _sensor_type: String,
+        _latitude: f64,
+        _longitude: f64,
+    ) -> PyResult<u64> {
         let sensor_id = self.inner.quantum_sensors.len() as u64;
         // Simplified sensor creation for Python bindings
         Ok(sensor_id)
@@ -329,16 +359,16 @@ impl PyQuantumSensorNetwork {
 }
 
 /// Python wrapper for quantum internet
-#[pyclass(name = "QuantumInternet")]  
+#[pyclass(name = "QuantumInternet")]
 pub struct PyQuantumInternet {
     pub inner: QuantumInternet,
 }
 
-/// Python wrapper for NumRS2 Array integration (simplified implementation)
+/// Python wrapper for NumRS2 Array integration (using ndarray as fallback)
 #[pyclass(name = "NumRS2Array")]
 #[derive(Clone)]
 pub struct PyNumRS2Array {
-    pub inner: Array2<Complex64>,
+    pub inner: Array2<Complex64>, // Using ndarray as fallback when NumRS2 is not available
 }
 
 #[pymethods]
@@ -355,11 +385,23 @@ impl PyQuantumInternet {
     }
 
     fn get_node_count(&self) -> usize {
-        self.inner.quantum_network_infrastructure.quantum_nodes.len()
+        self.inner
+            .quantum_network_infrastructure
+            .quantum_nodes
+            .len()
     }
 
-    fn add_quantum_node(&mut self, latitude: f64, longitude: f64, node_type: String) -> PyResult<u64> {
-        let node_id = self.inner.quantum_network_infrastructure.quantum_nodes.len() as u64;
+    fn add_quantum_node(
+        &mut self,
+        _latitude: f64,
+        _longitude: f64,
+        _node_type: String,
+    ) -> PyResult<u64> {
+        let node_id = self
+            .inner
+            .quantum_network_infrastructure
+            .quantum_nodes
+            .len() as u64;
         // Simplified node creation for Python bindings
         Ok(node_id)
     }
@@ -379,20 +421,30 @@ impl PyNumRS2Array {
     fn new(shape: Vec<usize>) -> PyResult<Self> {
         if shape.len() != 2 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                "Currently only 2D arrays are supported"
+                "Currently only 2D arrays are supported",
             ));
         }
         let array = Array2::<Complex64>::zeros((shape[0], shape[1]));
         Ok(Self { inner: array })
     }
 
+    /// Create NumRS2Array from NumPy array
+    #[staticmethod]
+    fn from_numpy(array: &Bound<'_, PyArray2<Complex64>>) -> PyResult<Self> {
+        use numpy::PyArrayMethods;
+        let readonly = array.readonly();
+        let ndarray_view = readonly.as_array();
+        let owned_array = ndarray_view.to_owned();
+        Ok(Self { inner: owned_array })
+    }
+
     /// Create array from nested Python lists
     #[staticmethod]
-    fn from_list(data: &Bound<'_, PyAny>) -> PyResult<Self> {
+    fn from_list(_data: &Bound<'_, PyAny>) -> PyResult<Self> {
         // Convert Python nested lists to NumRS2 array
         // For now, just create a placeholder array
         Err(PyErr::new::<pyo3::exceptions::PyNotImplementedError, _>(
-            "from_list not yet implemented - use from_numpy instead"
+            "from_list not yet implemented - use from_numpy instead",
         ))
     }
 
@@ -420,7 +472,7 @@ impl PyNumRS2Array {
     }
 
     /// Apply quantum gate to this array (treating it as a quantum state)
-    fn apply_gate(&mut self, gate: &PyQuantumGate) -> PyResult<()> {
+    fn apply_gate(&mut self, _gate: &PyQuantumGate) -> PyResult<()> {
         // This would implement quantum gate application to NumRS2 arrays
         // For now, just a placeholder that validates the array is quantum state-like
         let size = self.size();
@@ -429,58 +481,91 @@ impl PyNumRS2Array {
             Ok(())
         } else {
             Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                "Array size must be a power of 2 to represent a quantum state"
+                "Array size must be a power of 2 to represent a quantum state",
             ))
         }
     }
 
     /// Element-wise addition with another NumRS2Array
     fn add(&self, other: &PyNumRS2Array) -> PyResult<PyNumRS2Array> {
-        let result = self.inner.add(&other.inner)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Addition failed: {}", e)))?;
+        if self.inner.shape() != other.inner.shape() {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "Shape mismatch for addition",
+            ));
+        }
+        let result = &self.inner + &other.inner;
         Ok(PyNumRS2Array { inner: result })
     }
 
     /// Element-wise multiplication with another NumRS2Array
     fn multiply(&self, other: &PyNumRS2Array) -> PyResult<PyNumRS2Array> {
-        let result = self.inner.mul(&other.inner)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Multiplication failed: {}", e)))?;
+        if self.inner.shape() != other.inner.shape() {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "Shape mismatch for multiplication",
+            ));
+        }
+        let result = &self.inner * &other.inner;
         Ok(PyNumRS2Array { inner: result })
     }
 
     /// Matrix multiplication
     fn matmul(&self, other: &PyNumRS2Array) -> PyResult<PyNumRS2Array> {
-        let result = self.inner.matmul(&other.inner)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Matrix multiplication failed: {}", e)))?;
+        if self.inner.ncols() != other.inner.nrows() {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "Incompatible shapes for matrix multiplication",
+            ));
+        }
+        let result = self.inner.dot(&other.inner);
         Ok(PyNumRS2Array { inner: result })
     }
 
-    /// Reshape the array
+    /// Reshape the array (limited to 2D only for now)
     fn reshape(&self, new_shape: Vec<usize>) -> PyResult<PyNumRS2Array> {
-        let result = self.inner.reshape(&new_shape)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Reshape failed: {}", e)))?;
+        if new_shape.len() != 2 {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "Currently only 2D reshaping is supported",
+            ));
+        }
+        if new_shape[0] * new_shape[1] != self.inner.len() {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "Total size must remain the same for reshaping",
+            ));
+        }
+        // For simplicity, create a new array with the desired shape
+        let data = self.inner.as_slice().unwrap().to_vec();
+        let result = Array2::from_shape_vec((new_shape[0], new_shape[1]), data).map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Reshape failed: {}", e))
+        })?;
         Ok(PyNumRS2Array { inner: result })
     }
 
     /// Transpose the array
     fn transpose(&self) -> PyResult<PyNumRS2Array> {
-        let result = self.inner.transpose()
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Transpose failed: {}", e)))?;
+        let result = self.inner.t().to_owned();
         Ok(PyNumRS2Array { inner: result })
     }
 
     /// Get element at specified indices
     fn get_item(&self, indices: Vec<usize>) -> PyResult<(f64, f64)> {
-        let complex_val = self.inner.get(&indices)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIndexError, _>(format!("Index error: {}", e)))?;
+        if indices.len() != 2 {
+            return Err(PyErr::new::<pyo3::exceptions::PyIndexError, _>(
+                "Expected 2 indices for 2D array",
+            ));
+        }
+        let complex_val = self.inner[[indices[0], indices[1]]];
         Ok((complex_val.re, complex_val.im))
     }
 
     /// Set element at specified indices
     fn set_item(&mut self, indices: Vec<usize>, value: (f64, f64)) -> PyResult<()> {
+        if indices.len() != 2 {
+            return Err(PyErr::new::<pyo3::exceptions::PyIndexError, _>(
+                "Expected 2 indices for 2D array",
+            ));
+        }
         let complex_val = Complex64::new(value.0, value.1);
-        self.inner.set(&indices, complex_val)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIndexError, _>(format!("Index error: {}", e)))
+        self.inner[[indices[0], indices[1]]] = complex_val;
+        Ok(())
     }
 
     fn __repr__(&self) -> String {
@@ -509,84 +594,123 @@ impl PyRealtimeMonitor {
 
     /// Start monitoring all configured platforms
     fn start_monitoring(&self) -> PyResult<()> {
-        self.inner.start_monitoring()
+        self.inner
+            .start_monitoring()
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))
     }
 
     /// Stop monitoring
     fn stop_monitoring(&self) -> PyResult<()> {
-        self.inner.stop_monitoring()
+        self.inner
+            .stop_monitoring()
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))
     }
 
     /// Get current metrics for specified types
-    fn get_current_metrics(&self, metric_types: Option<Vec<String>>) -> PyResult<Vec<PyMetricMeasurement>> {
+    fn get_current_metrics(
+        &self,
+        metric_types: Option<Vec<String>>,
+    ) -> PyResult<Vec<PyMetricMeasurement>> {
         let converted_types = metric_types.map(|types| {
-            types.into_iter().map(|t| convert_string_to_metric_type(&t)).collect()
+            types
+                .into_iter()
+                .map(|t| convert_string_to_metric_type(&t))
+                .collect()
         });
-        
-        let measurements = self.inner.get_current_metrics(converted_types)
+
+        let measurements = self
+            .inner
+            .get_current_metrics(converted_types)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
-        
-        Ok(measurements.into_iter().map(|m| PyMetricMeasurement { inner: m }).collect())
+
+        Ok(measurements
+            .into_iter()
+            .map(|m| PyMetricMeasurement { inner: m })
+            .collect())
     }
 
     /// Get historical metrics for a specific type and time range
-    fn get_historical_metrics(&self, metric_type: String, start_timestamp: f64, end_timestamp: f64) -> PyResult<Vec<PyMetricMeasurement>> {
+    fn get_historical_metrics(
+        &self,
+        metric_type: String,
+        start_timestamp: f64,
+        end_timestamp: f64,
+    ) -> PyResult<Vec<PyMetricMeasurement>> {
         let metric_type = convert_string_to_metric_type(&metric_type);
         let start_time = SystemTime::UNIX_EPOCH + Duration::from_secs_f64(start_timestamp);
         let end_time = SystemTime::UNIX_EPOCH + Duration::from_secs_f64(end_timestamp);
-        
-        let measurements = self.inner.get_historical_metrics(metric_type, start_time, end_time)
+
+        let measurements = self
+            .inner
+            .get_historical_metrics(metric_type, start_time, end_time)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
-        
-        Ok(measurements.into_iter().map(|m| PyMetricMeasurement { inner: m }).collect())
+
+        Ok(measurements
+            .into_iter()
+            .map(|m| PyMetricMeasurement { inner: m })
+            .collect())
     }
 
     /// Get aggregated statistics for a metric type
     fn get_aggregated_stats(&self, metric_type: String) -> PyResult<Option<PyAggregatedStats>> {
         let metric_type = convert_string_to_metric_type(&metric_type);
-        let stats = self.inner.get_aggregated_stats(metric_type)
+        let stats = self
+            .inner
+            .get_aggregated_stats(metric_type)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
-        
+
         Ok(stats.map(|s| PyAggregatedStats { inner: s }))
     }
 
     /// Get active alerts
     fn get_active_alerts(&self) -> PyResult<Vec<PyAlert>> {
-        let alerts = self.inner.get_active_alerts()
+        let alerts = self
+            .inner
+            .get_active_alerts()
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
-        
+
         Ok(alerts.into_iter().map(|a| PyAlert { inner: a }).collect())
     }
 
     /// Get optimization recommendations
     fn get_optimization_recommendations(&self) -> PyResult<Vec<PyOptimizationRecommendation>> {
-        let recommendations = self.inner.get_optimization_recommendations()
+        let recommendations = self
+            .inner
+            .get_optimization_recommendations()
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
-        
-        Ok(recommendations.into_iter().map(|r| PyOptimizationRecommendation { inner: r }).collect())
+
+        Ok(recommendations
+            .into_iter()
+            .map(|r| PyOptimizationRecommendation { inner: r })
+            .collect())
     }
 
     /// Get monitoring status
     fn get_monitoring_status(&self) -> PyMonitoringStatus {
-        PyMonitoringStatus { inner: self.inner.get_monitoring_status() }
+        PyMonitoringStatus {
+            inner: self.inner.get_monitoring_status(),
+        }
     }
 
     /// Force immediate data collection
     fn collect_metrics_now(&self) -> PyResult<usize> {
-        self.inner.collect_metrics_now()
+        self.inner
+            .collect_metrics_now()
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))
     }
 
     /// Update analytics
     fn update_analytics(&self) -> PyResult<()> {
-        self.inner.update_analytics()
+        self.inner
+            .update_analytics()
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))
     }
 
     fn __repr__(&self) -> String {
-        format!("RealtimeMonitor(status={:?})", self.inner.get_monitoring_status().overall_status)
+        format!(
+            "RealtimeMonitor(status={:?})",
+            self.inner.get_monitoring_status().overall_status
+        )
     }
 }
 
@@ -608,15 +732,20 @@ impl PyMonitoringConfig {
     }
 
     /// Set alert thresholds
-    fn set_alert_thresholds(&mut self, max_gate_error_rate: f64, max_readout_error_rate: f64, 
-                           min_coherence_time_us: f64) {
+    fn set_alert_thresholds(
+        &mut self,
+        max_gate_error_rate: f64,
+        max_readout_error_rate: f64,
+        min_coherence_time_us: f64,
+    ) {
         self.inner.alert_thresholds.max_gate_error_rate = max_gate_error_rate;
         self.inner.alert_thresholds.max_readout_error_rate = max_readout_error_rate;
-        self.inner.alert_thresholds.min_coherence_time = Duration::from_secs_f64(min_coherence_time_us / 1_000_000.0);
+        self.inner.alert_thresholds.min_coherence_time =
+            Duration::from_secs_f64(min_coherence_time_us / 1_000_000.0);
     }
 
     /// Enable export to file
-    fn enable_file_export(&mut self, filename: String, format: String) {
+    fn enable_file_export(&mut self, _filename: String, _format: String) {
         self.inner.export_settings.enable_export = true;
         // Simplified export configuration for Python
     }
@@ -650,8 +779,11 @@ impl PyMetricMeasurement {
 
     #[getter]
     fn timestamp(&self) -> f64 {
-        self.inner.timestamp.duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap_or_default().as_secs_f64()
+        self.inner
+            .timestamp
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs_f64()
     }
 
     #[getter]
@@ -683,33 +815,52 @@ pub struct PyAggregatedStats {
 #[pymethods]
 impl PyAggregatedStats {
     #[getter]
-    fn mean(&self) -> f64 { self.inner.mean }
-    
+    fn mean(&self) -> f64 {
+        self.inner.mean
+    }
+
     #[getter]
-    fn std_dev(&self) -> f64 { self.inner.std_dev }
-    
+    fn std_dev(&self) -> f64 {
+        self.inner.std_dev
+    }
+
     #[getter]
-    fn min(&self) -> f64 { self.inner.min }
-    
+    fn min(&self) -> f64 {
+        self.inner.min
+    }
+
     #[getter]
-    fn max(&self) -> f64 { self.inner.max }
-    
+    fn max(&self) -> f64 {
+        self.inner.max
+    }
+
     #[getter]
-    fn median(&self) -> f64 { self.inner.median }
-    
+    fn median(&self) -> f64 {
+        self.inner.median
+    }
+
     #[getter]
-    fn p95(&self) -> f64 { self.inner.p95 }
-    
+    fn p95(&self) -> f64 {
+        self.inner.p95
+    }
+
     #[getter]
-    fn p99(&self) -> f64 { self.inner.p99 }
-    
+    fn p99(&self) -> f64 {
+        self.inner.p99
+    }
+
     #[getter]
-    fn sample_count(&self) -> usize { self.inner.sample_count }
-    
+    fn sample_count(&self) -> usize {
+        self.inner.sample_count
+    }
+
     #[getter]
     fn last_updated(&self) -> f64 {
-        self.inner.last_updated.duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap_or_default().as_secs_f64()
+        self.inner
+            .last_updated
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs_f64()
     }
 
     fn __repr__(&self) -> String {
@@ -729,37 +880,48 @@ pub struct PyAlert {
 #[pymethods]
 impl PyAlert {
     #[getter]
-    fn id(&self) -> &str { &self.inner.id }
-    
+    fn id(&self) -> &str {
+        &self.inner.id
+    }
+
     #[getter]
     fn level(&self) -> String {
         format!("{:?}", self.inner.level)
     }
-    
+
     #[getter]
-    fn message(&self) -> &str { &self.inner.message }
-    
+    fn message(&self) -> &str {
+        &self.inner.message
+    }
+
     #[getter]
     fn affected_metrics(&self) -> Vec<String> {
-        self.inner.affected_metrics.iter()
+        self.inner
+            .affected_metrics
+            .iter()
             .map(convert_metric_type_to_string)
             .collect()
     }
-    
+
     #[getter]
     fn timestamp(&self) -> f64 {
-        self.inner.timestamp.duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap_or_default().as_secs_f64()
+        self.inner
+            .timestamp
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs_f64()
     }
-    
+
     #[getter]
-    fn source(&self) -> &str { &self.inner.source }
-    
+    fn source(&self) -> &str {
+        &self.inner.source
+    }
+
     #[getter]
     fn suggested_actions(&self) -> Vec<String> {
         self.inner.suggested_actions.clone()
     }
-    
+
     #[getter]
     fn status(&self) -> String {
         format!("{:?}", self.inner.status)
@@ -784,45 +946,52 @@ pub struct PyOptimizationRecommendation {
 #[pymethods]
 impl PyOptimizationRecommendation {
     #[getter]
-    fn id(&self) -> &str { &self.inner.id }
-    
+    fn id(&self) -> &str {
+        &self.inner.id
+    }
+
     #[getter]
     fn recommendation_type(&self) -> String {
         format!("{:?}", self.inner.recommendation_type)
     }
-    
+
     #[getter]
-    fn description(&self) -> &str { &self.inner.description }
-    
+    fn description(&self) -> &str {
+        &self.inner.description
+    }
+
     #[getter]
     fn affected_components(&self) -> Vec<String> {
         self.inner.affected_components.clone()
     }
-    
+
     #[getter]
     fn expected_fidelity_improvement(&self) -> Option<f64> {
         self.inner.expected_improvement.fidelity_improvement
     }
-    
+
     #[getter]
     fn expected_speed_improvement(&self) -> Option<f64> {
         self.inner.expected_improvement.speed_improvement
     }
-    
+
     #[getter]
     fn implementation_difficulty(&self) -> String {
         format!("{:?}", self.inner.implementation_difficulty)
     }
-    
+
     #[getter]
     fn priority(&self) -> String {
         format!("{:?}", self.inner.priority)
     }
-    
+
     #[getter]
     fn timestamp(&self) -> f64 {
-        self.inner.timestamp.duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap_or_default().as_secs_f64()
+        self.inner
+            .timestamp
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs_f64()
     }
 
     fn __repr__(&self) -> String {
@@ -847,18 +1016,26 @@ impl PyMonitoringStatus {
     fn overall_status(&self) -> String {
         format!("{:?}", self.inner.overall_status)
     }
-    
+
     #[getter]
-    fn active_collectors(&self) -> usize { self.inner.active_collectors }
-    
+    fn active_collectors(&self) -> usize {
+        self.inner.active_collectors
+    }
+
     #[getter]
-    fn total_data_points(&self) -> u64 { self.inner.total_data_points }
-    
+    fn total_data_points(&self) -> u64 {
+        self.inner.total_data_points
+    }
+
     #[getter]
-    fn active_alerts(&self) -> usize { self.inner.active_alerts }
-    
+    fn active_alerts(&self) -> usize {
+        self.inner.active_alerts
+    }
+
     #[getter]
-    fn uptime_seconds(&self) -> f64 { self.inner.uptime.as_secs_f64() }
+    fn uptime_seconds(&self) -> f64 {
+        self.inner.uptime.as_secs_f64()
+    }
 
     fn __repr__(&self) -> String {
         format!(
@@ -914,31 +1091,34 @@ fn convert_metric_value_to_python(value: &MetricValue, py: Python) -> PyObject {
 
 /// Module-level functions for quantum computing operations
 #[pyfunction]
-fn decompose_single_qubit(py: Python, matrix: PyReadonlyArray2<Complex64>) -> PyResult<PySingleQubitDecomposition> {
+fn decompose_single_qubit(
+    _py: Python,
+    matrix: PyReadonlyArray2<Complex64>,
+) -> PyResult<PySingleQubitDecomposition> {
     let matrix_array = matrix.as_array();
     let decomp = decompose_single_qubit_zyz(&matrix_array.view())
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
-    
+
     Ok(PySingleQubitDecomposition { inner: decomp })
 }
 
 #[pyfunction]
-fn decompose_two_qubit_cartan(py: Python, matrix: PyReadonlyArray2<Complex64>) -> PyResult<PyCartanDecomposition> {
+fn decompose_two_qubit_cartan(
+    _py: Python,
+    matrix: PyReadonlyArray2<Complex64>,
+) -> PyResult<PyCartanDecomposition> {
     let matrix_array = matrix.as_array();
     let mut decomposer = CartanDecomposer::new();
-    let decomp = decomposer.decompose(&matrix_array.to_owned())
+    let decomp = decomposer
+        .decompose(&matrix_array.to_owned())
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
-    
+
     Ok(PyCartanDecomposition { inner: decomp })
 }
 
 #[pyfunction]
 fn create_hadamard_gate(qubit_id: u32) -> PyQuantumGate {
-    PyQuantumGate::new(
-        "H".to_string(),
-        vec![PyQubitId::new(qubit_id)],
-        None,
-    )
+    PyQuantumGate::new("H".to_string(), vec![PyQubitId::new(qubit_id)], None)
 }
 
 #[pyfunction]
@@ -979,28 +1159,40 @@ fn create_cnot_gate(control: u32, target: u32) -> PyQuantumGate {
 
 #[pyfunction]
 fn create_pauli_x_gate(qubit_id: u32) -> PyQuantumGate {
-    PyQuantumGate::new(
-        "X".to_string(),
-        vec![PyQubitId::new(qubit_id)],
-        None,
-    )
+    PyQuantumGate::new("X".to_string(), vec![PyQubitId::new(qubit_id)], None)
 }
 
 #[pyfunction]
 fn create_pauli_y_gate(qubit_id: u32) -> PyQuantumGate {
-    PyQuantumGate::new(
-        "Y".to_string(),
-        vec![PyQubitId::new(qubit_id)],
-        None,
-    )
+    PyQuantumGate::new("Y".to_string(), vec![PyQubitId::new(qubit_id)], None)
 }
 
 #[pyfunction]
 fn create_pauli_z_gate(qubit_id: u32) -> PyQuantumGate {
+    PyQuantumGate::new("Z".to_string(), vec![PyQubitId::new(qubit_id)], None)
+}
+
+#[pyfunction]
+fn create_s_gate(qubit_id: u32) -> PyQuantumGate {
+    PyQuantumGate::new("S".to_string(), vec![PyQubitId::new(qubit_id)], None)
+}
+
+#[pyfunction]
+fn create_t_gate(qubit_id: u32) -> PyQuantumGate {
+    PyQuantumGate::new("T".to_string(), vec![PyQubitId::new(qubit_id)], None)
+}
+
+#[pyfunction]
+fn create_identity_gate(qubit_id: u32) -> PyQuantumGate {
+    PyQuantumGate::new("I".to_string(), vec![PyQubitId::new(qubit_id)], None)
+}
+
+#[pyfunction]
+fn create_phase_gate(qubit_id: u32, phase: f64) -> PyQuantumGate {
     PyQuantumGate::new(
-        "Z".to_string(),
+        "Phase".to_string(),
         vec![PyQubitId::new(qubit_id)],
-        None,
+        Some(vec![phase]),
     )
 }
 
@@ -1019,42 +1211,54 @@ fn numrs2_zeros(shape: Vec<usize>) -> PyResult<PyNumRS2Array> {
 /// Create a NumRS2 array filled with ones
 #[pyfunction]
 fn numrs2_ones(shape: Vec<usize>) -> PyResult<PyNumRS2Array> {
-    let array = NumRS2Array::<Complex64>::ones(&shape)
-        .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Failed to create ones array: {}", e)))?;
+    if shape.len() != 2 {
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+            "Currently only 2D arrays are supported",
+        ));
+    }
+    let array = Array2::<Complex64>::ones((shape[0], shape[1]));
     Ok(PyNumRS2Array { inner: array })
 }
 
 /// Convert NumPy array to NumRS2 array
 #[pyfunction]
 fn numpy_to_numrs2(_py: Python, array: PyReadonlyArray2<Complex64>) -> PyResult<PyNumRS2Array> {
-    // Convert NumPy array to NumRS2 array
+    // Convert NumPy array to ndarray
     let data = array.as_array().to_owned();
-    let shape = data.shape().to_vec();
-    let flat_data = data.into_raw_vec();
-    
-    let numrs2_array = NumRS2Array::<Complex64>::from_vec(flat_data)
-        .reshape(&shape)
-        .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Failed to convert NumPy to NumRS2: {}", e)))?;
-    
-    Ok(PyNumRS2Array { inner: numrs2_array })
+    Ok(PyNumRS2Array { inner: data })
 }
 
 /// Create a NumRS2 array from a vector and shape
 #[pyfunction]
 fn numrs2_from_vec(data: Vec<(f64, f64)>, shape: Vec<usize>) -> PyResult<PyNumRS2Array> {
-    let complex_data: Vec<Complex64> = data.into_iter()
+    if shape.len() != 2 {
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+            "Currently only 2D arrays are supported",
+        ));
+    }
+    if data.len() != shape[0] * shape[1] {
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+            "Data length does not match shape",
+        ));
+    }
+
+    let complex_data: Vec<Complex64> = data
+        .into_iter()
         .map(|(re, im)| Complex64::new(re, im))
         .collect();
-    
-    let array = NumRS2Array::<Complex64>::from_vec(complex_data)
-        .reshape(&shape)
-        .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Failed to create array from vector: {}", e)))?;
+
+    let array = Array2::from_shape_vec((shape[0], shape[1]), complex_data).map_err(|e| {
+        PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+            "Failed to create array from vector: {}",
+            e
+        ))
+    })?;
     Ok(PyNumRS2Array { inner: array })
 }
 
 /// Python module for QuantRS2-Core
 #[pymodule]
-fn quantrs2_core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Classes
     m.add_class::<PyQubitId>()?;
     m.add_class::<PyQuantumGate>()?;
@@ -1064,15 +1268,15 @@ fn quantrs2_core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyQuantumSensorNetwork>()?;
     m.add_class::<PyQuantumInternet>()?;
     m.add_class::<PyNumRS2Array>()?;
-    
+
     // Jupyter visualization classes
     m.add_class::<PyQuantumCircuitVisualizer>()?;
     m.add_class::<PyQuantumStateVisualizer>()?;
     m.add_class::<PyQuantumPerformanceMonitor>()?;
-    
+
     // Quantum complexity analysis classes
     m.add_class::<PyQuantumComplexityAnalyzer>()?;
-    
+
     // Real-time monitoring classes
     m.add_class::<PyRealtimeMonitor>()?;
     m.add_class::<PyMonitoringConfig>()?;
@@ -1091,18 +1295,22 @@ fn quantrs2_core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(create_pauli_x_gate, m)?)?;
     m.add_function(wrap_pyfunction!(create_pauli_y_gate, m)?)?;
     m.add_function(wrap_pyfunction!(create_pauli_z_gate, m)?)?;
+    m.add_function(wrap_pyfunction!(create_s_gate, m)?)?;
+    m.add_function(wrap_pyfunction!(create_t_gate, m)?)?;
+    m.add_function(wrap_pyfunction!(create_identity_gate, m)?)?;
+    m.add_function(wrap_pyfunction!(create_phase_gate, m)?)?;
 
     // Functions for decomposition
     m.add_function(wrap_pyfunction!(decompose_single_qubit, m)?)?;
     m.add_function(wrap_pyfunction!(decompose_two_qubit_cartan, m)?)?;
-    
+
     // NumRS2 integration functions
     m.add_function(wrap_pyfunction!(create_numrs2_array, m)?)?;
     m.add_function(wrap_pyfunction!(numrs2_zeros, m)?)?;
     m.add_function(wrap_pyfunction!(numrs2_ones, m)?)?;
     m.add_function(wrap_pyfunction!(numpy_to_numrs2, m)?)?;
     m.add_function(wrap_pyfunction!(numrs2_from_vec, m)?)?;
-    
+
     // Quantum complexity analysis functions
     m.add_function(wrap_pyfunction!(analyze_algorithm_complexity, m)?)?;
     m.add_function(wrap_pyfunction!(compare_quantum_classical_complexity, m)?)?;
@@ -1111,7 +1319,10 @@ fn quantrs2_core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Module metadata
     m.add("__version__", "0.1.0-alpha.5")?;
     m.add("__author__", "QuantRS2 Team")?;
-    m.add("__description__", "Python bindings for QuantRS2-Core quantum computing framework")?;
+    m.add(
+        "__description__",
+        "Python bindings for QuantRS2-Core quantum computing framework",
+    )?;
 
     Ok(())
 }
@@ -1125,9 +1336,9 @@ pub fn init_python_bindings() {
 // Additional helper implementations needed for the quantum sensor and internet modules
 // Simplified implementations for Python bindings
 impl QuantumSensorNetwork {
-    pub fn new_for_python(network_id: u64) -> Self {
+    pub fn new_for_python(_network_id: u64) -> Self {
         // Create a minimal sensor network for Python bindings
-        unsafe { std::mem::zeroed() }
+        Self::new()
     }
 
     pub fn calculate_quantum_advantage(&self) -> f64 {
@@ -1138,8 +1349,8 @@ impl QuantumSensorNetwork {
 
 impl QuantumInternet {
     pub fn new_for_python() -> Self {
-        // Create a minimal quantum internet for Python bindings  
-        unsafe { std::mem::zeroed() }
+        // Create a minimal quantum internet for Python bindings
+        Self::new()
     }
 
     pub fn get_global_coverage_percentage(&self) -> f64 {

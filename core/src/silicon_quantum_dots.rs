@@ -560,7 +560,12 @@ impl SiliconQuantumDotGates {
         let omega = field_amplitude * 2.0 * std::f64::consts::PI;
         let duration = angle / omega;
 
-        system.apply_magnetic_pulse(&[dot_id], field_amplitude, duration, std::f64::consts::PI / 2.0)
+        system.apply_magnetic_pulse(
+            &[dot_id],
+            field_amplitude,
+            duration,
+            std::f64::consts::PI / 2.0,
+        )
     }
 
     /// Single-qubit Z rotation (virtual gate)

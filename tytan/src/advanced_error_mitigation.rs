@@ -4,12 +4,11 @@
 //! for quantum computing systems, including real-time noise characterization,
 //! adaptive protocols, and quantum error correction integration.
 
-use ndarray::{Array1, Array2, Array3, ArrayD, Axis, s};
+use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque, BTreeMap};
-use std::sync::{Arc, Mutex, RwLock};
-use std::time::{Duration, Instant, SystemTime};
-use std::f64::consts::PI;
+use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::sync::{Arc, RwLock};
+use std::time::{Duration, SystemTime};
 
 /// Advanced error mitigation and calibration manager
 pub struct AdvancedErrorMitigationManager {
@@ -297,7 +296,11 @@ pub struct AdaptiveMitigationConfig {
 
 pub trait MitigationProtocolImpl: Send + Sync {
     fn name(&self) -> &str;
-    fn apply(&self, circuit: &QuantumCircuit, noise_model: &NoiseModel) -> Result<MitigatedResult, MitigationError>;
+    fn apply(
+        &self,
+        circuit: &QuantumCircuit,
+        noise_model: &NoiseModel,
+    ) -> Result<MitigatedResult, MitigationError>;
     fn cost(&self) -> f64;
     fn effectiveness(&self, noise_model: &NoiseModel) -> f64;
     fn parameters(&self) -> HashMap<String, f64>;
@@ -387,7 +390,10 @@ pub struct CalibrationConfig {
 
 pub trait CalibrationRoutine: Send + Sync {
     fn name(&self) -> &str;
-    fn calibrate(&mut self, device: &mut QuantumDevice) -> Result<CalibrationResult, CalibrationError>;
+    fn calibrate(
+        &mut self,
+        device: &mut QuantumDevice,
+    ) -> Result<CalibrationResult, CalibrationError>;
     fn estimate_duration(&self) -> Duration;
     fn required_resources(&self) -> ResourceRequirements;
     fn dependencies(&self) -> Vec<String>;
@@ -486,7 +492,11 @@ pub trait ErrorCorrectionCode: Send + Sync {
 
 pub trait Decoder: Send + Sync {
     fn name(&self) -> &str;
-    fn decode(&self, syndrome: &Array1<i32>, code: &dyn ErrorCorrectionCode) -> Result<Array1<i32>, DecodingError>;
+    fn decode(
+        &self,
+        syndrome: &Array1<i32>,
+        code: &dyn ErrorCorrectionCode,
+    ) -> Result<Array1<i32>, DecodingError>;
     fn confidence(&self) -> f64;
     fn computational_cost(&self) -> usize;
 }
@@ -808,29 +818,44 @@ pub struct QECPerformanceTracker {
 
 // Simplified placeholder implementations for complex types
 #[derive(Debug, Clone)]
-pub struct NeuralNetworkModel { pub layers: Vec<usize> }
+pub struct NeuralNetworkModel {
+    pub layers: Vec<usize>,
+}
 
 #[derive(Debug, Clone)]
-pub struct EnsembleModel { pub models: Vec<String> }
+pub struct EnsembleModel {
+    pub models: Vec<String>,
+}
 
 #[derive(Debug, Clone)]
-pub struct BayesianModel { pub prior: String }
+pub struct BayesianModel {
+    pub prior: String,
+}
 
 #[derive(Debug, Clone)]
-pub struct ErrorPattern { 
+pub struct ErrorPattern {
     pub pattern_id: String,
     pub syndrome_sequence: Vec<Array1<i32>>,
     pub probability: f64,
 }
 
 #[derive(Debug, Clone)]
-pub struct SimilarityMetric { pub name: String, pub threshold: f64 }
+pub struct SimilarityMetric {
+    pub name: String,
+    pub threshold: f64,
+}
 
 #[derive(Debug, Clone)]
-pub struct ClassificationModel { pub model_type: String, pub accuracy: f64 }
+pub struct ClassificationModel {
+    pub model_type: String,
+    pub accuracy: f64,
+}
 
 #[derive(Debug, Clone)]
-pub struct TimeSeriesModel { pub model_type: String, pub parameters: HashMap<String, f64> }
+pub struct TimeSeriesModel {
+    pub model_type: String,
+    pub parameters: HashMap<String, f64>,
+}
 
 #[derive(Debug, Clone)]
 pub struct SyndromeRecord {
@@ -1067,7 +1092,7 @@ impl AdvancedErrorMitigationManager {
     pub fn start_monitoring(&mut self) -> Result<(), MitigationError> {
         if !self.config.real_time_monitoring {
             return Err(MitigationError::InvalidParameters(
-                "Real-time monitoring is disabled".to_string()
+                "Real-time monitoring is disabled".to_string(),
             ));
         }
 
@@ -1093,29 +1118,45 @@ impl AdvancedErrorMitigationManager {
     }
 
     /// Perform comprehensive error characterization
-    pub fn characterize_errors(&mut self, device: &QuantumDevice) -> Result<NoiseCharacterizationResult, MitigationError> {
+    pub fn characterize_errors(
+        &mut self,
+        device: &QuantumDevice,
+    ) -> Result<NoiseCharacterizationResult, MitigationError> {
         self.noise_characterizer.full_characterization(device)
     }
 
     /// Apply adaptive error mitigation to a quantum circuit
-    pub fn apply_mitigation(&self, circuit: &QuantumCircuit) -> Result<MitigatedResult, MitigationError> {
+    pub fn apply_mitigation(
+        &self,
+        circuit: &QuantumCircuit,
+    ) -> Result<MitigatedResult, MitigationError> {
         let state = self.state.read().unwrap();
         let noise_model = &state.current_noise_model;
-        
-        self.mitigation_engine.apply_optimal_mitigation(circuit, noise_model)
+
+        self.mitigation_engine
+            .apply_optimal_mitigation(circuit, noise_model)
     }
 
     /// Predict error syndromes for upcoming operations
-    pub fn predict_syndromes(&self, circuit: &QuantumCircuit, horizon: Duration) -> Result<Vec<SyndromePrediction>, MitigationError> {
+    pub fn predict_syndromes(
+        &self,
+        circuit: &QuantumCircuit,
+        horizon: Duration,
+    ) -> Result<Vec<SyndromePrediction>, MitigationError> {
         self.syndrome_predictor.predict_syndromes(circuit, horizon)
     }
 
     /// Integrate with quantum error correction
-    pub fn integrate_qec(&mut self, code_name: &str, circuit: &QuantumCircuit) -> Result<QECIntegrationResult, MitigationError> {
+    pub fn integrate_qec(
+        &mut self,
+        code_name: &str,
+        circuit: &QuantumCircuit,
+    ) -> Result<QECIntegrationResult, MitigationError> {
         let state = self.state.read().unwrap();
         let noise_model = &state.current_noise_model;
-        
-        self.qec_integrator.integrate_error_correction(code_name, circuit, noise_model)
+
+        self.qec_integrator
+            .integrate_error_correction(code_name, circuit, noise_model)
     }
 
     /// Get current system status
@@ -1124,16 +1165,19 @@ impl AdvancedErrorMitigationManager {
     }
 
     /// Update system configuration
-    pub fn update_config(&mut self, new_config: ErrorMitigationConfig) -> Result<(), MitigationError> {
+    pub fn update_config(
+        &mut self,
+        new_config: ErrorMitigationConfig,
+    ) -> Result<(), MitigationError> {
         self.config = new_config;
-        
+
         // Update all subsystems
         self.noise_characterizer.update_config(&self.config)?;
         self.mitigation_engine.update_config(&self.config)?;
         self.calibration_system.update_config(&self.config)?;
         self.syndrome_predictor.update_config(&self.config)?;
         self.qec_integrator.update_config(&self.config)?;
-        
+
         Ok(())
     }
 }
@@ -1266,7 +1310,10 @@ impl NoiseCharacterizer {
         Ok(())
     }
 
-    pub fn full_characterization(&mut self, _device: &QuantumDevice) -> Result<NoiseCharacterizationResult, MitigationError> {
+    pub fn full_characterization(
+        &mut self,
+        _device: &QuantumDevice,
+    ) -> Result<NoiseCharacterizationResult, MitigationError> {
         // Implementation stub
         Ok(NoiseCharacterizationResult {
             timestamp: SystemTime::now(),
@@ -1305,8 +1352,21 @@ impl NoiseCharacterizer {
         })
     }
 
-    pub fn update_config(&mut self, _config: &ErrorMitigationConfig) -> Result<(), MitigationError> {
+    pub fn update_config(
+        &mut self,
+        _config: &ErrorMitigationConfig,
+    ) -> Result<(), MitigationError> {
         Ok(())
+    }
+
+    /// Get a reference to the noise characterization history
+    pub fn history(&self) -> &VecDeque<NoiseCharacterizationResult> {
+        &self.history
+    }
+
+    /// Get a reference to the noise characterization config
+    pub fn config(&self) -> &NoiseCharacterizationConfig {
+        &self.config
     }
 }
 
@@ -1352,7 +1412,11 @@ impl AdaptiveMitigationEngine {
         Ok(())
     }
 
-    pub fn apply_optimal_mitigation(&self, _circuit: &QuantumCircuit, _noise_model: &NoiseModel) -> Result<MitigatedResult, MitigationError> {
+    pub fn apply_optimal_mitigation(
+        &self,
+        _circuit: &QuantumCircuit,
+        _noise_model: &NoiseModel,
+    ) -> Result<MitigatedResult, MitigationError> {
         Ok(MitigatedResult {
             original_result: Array1::zeros(1),
             mitigated_result: Array1::zeros(1),
@@ -1361,7 +1425,10 @@ impl AdaptiveMitigationEngine {
         })
     }
 
-    pub fn update_config(&mut self, _config: &ErrorMitigationConfig) -> Result<(), MitigationError> {
+    pub fn update_config(
+        &mut self,
+        _config: &ErrorMitigationConfig,
+    ) -> Result<(), MitigationError> {
         Ok(())
     }
 }
@@ -1396,7 +1463,10 @@ impl CalibrationSystem {
         Ok(())
     }
 
-    pub fn update_config(&mut self, _config: &ErrorMitigationConfig) -> Result<(), MitigationError> {
+    pub fn update_config(
+        &mut self,
+        _config: &ErrorMitigationConfig,
+    ) -> Result<(), MitigationError> {
         Ok(())
     }
 }
@@ -1405,9 +1475,15 @@ impl ErrorSyndromePredictor {
     pub fn new(_config: &ErrorMitigationConfig) -> Self {
         Self {
             ml_models: SyndromePredictionModels {
-                neural_network: NeuralNetworkModel { layers: vec![64, 32, 16] },
-                ensemble_model: EnsembleModel { models: vec!["RF".to_string(), "SVM".to_string()] },
-                bayesian_model: BayesianModel { prior: "Normal".to_string() },
+                neural_network: NeuralNetworkModel {
+                    layers: vec![64, 32, 16],
+                },
+                ensemble_model: EnsembleModel {
+                    models: vec!["RF".to_string(), "SVM".to_string()],
+                },
+                bayesian_model: BayesianModel {
+                    prior: "Normal".to_string(),
+                },
             },
             pattern_recognizer: PatternRecognizer {
                 pattern_database: Vec::new(),
@@ -1448,11 +1524,18 @@ impl ErrorSyndromePredictor {
         Ok(())
     }
 
-    pub fn predict_syndromes(&self, _circuit: &QuantumCircuit, _horizon: Duration) -> Result<Vec<SyndromePrediction>, MitigationError> {
+    pub fn predict_syndromes(
+        &self,
+        _circuit: &QuantumCircuit,
+        _horizon: Duration,
+    ) -> Result<Vec<SyndromePrediction>, MitigationError> {
         Ok(Vec::new())
     }
 
-    pub fn update_config(&mut self, _config: &ErrorMitigationConfig) -> Result<(), MitigationError> {
+    pub fn update_config(
+        &mut self,
+        _config: &ErrorMitigationConfig,
+    ) -> Result<(), MitigationError> {
         Ok(())
     }
 }
@@ -1495,7 +1578,12 @@ impl QECIntegrator {
         }
     }
 
-    pub fn integrate_error_correction(&self, _code_name: &str, _circuit: &QuantumCircuit, _noise_model: &NoiseModel) -> Result<QECIntegrationResult, MitigationError> {
+    pub fn integrate_error_correction(
+        &self,
+        _code_name: &str,
+        _circuit: &QuantumCircuit,
+        _noise_model: &NoiseModel,
+    ) -> Result<QECIntegrationResult, MitigationError> {
         Ok(QECIntegrationResult {
             logical_circuit: Vec::new(),
             physical_circuit: Vec::new(),
@@ -1505,7 +1593,10 @@ impl QECIntegrator {
         })
     }
 
-    pub fn update_config(&mut self, _config: &ErrorMitigationConfig) -> Result<(), MitigationError> {
+    pub fn update_config(
+        &mut self,
+        _config: &ErrorMitigationConfig,
+    ) -> Result<(), MitigationError> {
         Ok(())
     }
 }
@@ -1547,6 +1638,6 @@ pub fn create_lightweight_error_mitigation_manager() -> AdvancedErrorMitigationM
         mitigation_threshold: 0.2,
         history_retention: Duration::from_secs(3600),
     };
-    
+
     AdvancedErrorMitigationManager::new(config)
 }

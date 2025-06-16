@@ -4,12 +4,10 @@
 //! process tomography, and quantum system characterization using advanced
 //! techniques including shadow tomography and compressed sensing.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{s, Array, Array1, Array2, Array3, Array4, ArrayD, Axis, Zip};
+use ndarray::{Array1, Array2, Array4};
 use rand::{prelude::*, thread_rng};
 use std::collections::HashMap;
 use std::f64::consts::PI;
-use std::sync::{Arc, Mutex};
 
 /// Quantum state tomography system
 pub struct QuantumStateTomography {
@@ -1352,24 +1350,24 @@ impl QuantumStateTomography {
         matrix: &Array2<f64>,
     ) -> Result<(Array1<f64>, Array2<f64>), TomographyError> {
         let n = matrix.nrows();
-        
+
         if n == 2 {
             // Analytical eigendecomposition for 2x2 matrices
             let a = matrix[[0, 0]];
             let b = matrix[[0, 1]];
             let c = matrix[[1, 0]];
             let d = matrix[[1, 1]];
-            
+
             let trace = a + d;
             let det = a * d - b * c;
             let discriminant = (trace * trace - 4.0 * det).sqrt();
-            
+
             let eigenval1 = (trace + discriminant) / 2.0;
             let eigenval2 = (trace - discriminant) / 2.0;
-            
+
             let eigenvals = Array1::from_vec(vec![eigenval1.max(0.0), eigenval2.max(0.0)]);
             let eigenvecs = Array2::eye(n); // Simplified eigenvectors
-            
+
             Ok((eigenvals, eigenvecs))
         } else {
             // Fallback for larger matrices - use uniform distribution

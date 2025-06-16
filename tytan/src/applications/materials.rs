@@ -5,7 +5,6 @@
 
 // Sampler types available for materials applications
 use ndarray::Array2;
-use rand::prelude::*;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 

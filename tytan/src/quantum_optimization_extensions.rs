@@ -3,11 +3,9 @@
 //! This module provides advanced implementations of quantum optimization algorithms
 //! including QAOA extensions, ADAPT-QAOA, and other variants.
 
-use crate::hybrid_algorithms::{ClassicalOptimizer, Hamiltonian, PauliTerm};
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, IxDyn};
+use crate::hybrid_algorithms::{ClassicalOptimizer, Hamiltonian};
 use rand::prelude::*;
-use rand::thread_rng;
+use rand::rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -187,7 +185,7 @@ impl AdaptQAOA {
     ) -> Result<f64, String> {
         // Simplified gradient computation
         // In practice, would evaluate expectation values
-        let random_gradient = rand::thread_rng().gen_range(-1.0..1.0);
+        let random_gradient = rand::rng().random_range(-1.0..1.0);
         Ok(random_gradient * operator.coefficient)
     }
 
@@ -198,7 +196,7 @@ impl AdaptQAOA {
         hamiltonian: &Hamiltonian,
     ) -> Result<(), String> {
         // Simplified: random parameter updates
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         for param in circuit.parameters_mut() {
             *param += rng.gen_range(-0.1..0.1);

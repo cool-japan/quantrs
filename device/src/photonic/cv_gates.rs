@@ -3,11 +3,11 @@
 //! This module implements specific gate operations for continuous variable quantum computing,
 //! including displacement, squeezing, beamsplitters, and non-linear operations.
 
-use std::f64::consts::{PI, SQRT_2};
 use serde::{Deserialize, Serialize};
+use std::f64::consts::{PI, SQRT_2};
 use thiserror::Error;
 
-use super::continuous_variable::{Complex, GaussianState, CVResult, CVError};
+use super::continuous_variable::{CVError, CVResult, Complex, GaussianState};
 
 /// CV Gate operation errors
 #[derive(Error, Debug)]
@@ -87,7 +87,7 @@ impl DisplacementGate {
     /// Get gate matrix representation (for smaller Fock spaces)
     pub fn matrix(&self, cutoff: usize) -> Vec<Vec<Complex>> {
         let mut matrix = vec![vec![Complex::new(0.0, 0.0); cutoff]; cutoff];
-        
+
         for n in 0..cutoff {
             for m in 0..cutoff {
                 // Displacement matrix element <m|D(α)|n>
@@ -95,7 +95,7 @@ impl DisplacementGate {
                 matrix[m][n] = element;
             }
         }
-        
+
         matrix
     }
 
@@ -131,10 +131,10 @@ impl SqueezingGate {
     pub fn new(r: f64, phi: f64, mode: usize) -> Result<Self, CVGateError> {
         if r.abs() > 20.0 {
             return Err(CVGateError::InvalidParameter(
-                "Squeezing parameter too large".to_string()
+                "Squeezing parameter too large".to_string(),
             ));
         }
-        
+
         Ok(Self { r, phi, mode })
     }
 
@@ -175,17 +175,22 @@ impl TwoModeSqueezingGate {
     pub fn new(r: f64, phi: f64, mode1: usize, mode2: usize) -> Result<Self, CVGateError> {
         if mode1 == mode2 {
             return Err(CVGateError::InvalidParameter(
-                "Two-mode squeezing requires different modes".to_string()
+                "Two-mode squeezing requires different modes".to_string(),
             ));
         }
-        
+
         if r.abs() > 20.0 {
             return Err(CVGateError::InvalidParameter(
-                "Squeezing parameter too large".to_string()
+                "Squeezing parameter too large".to_string(),
             ));
         }
-        
-        Ok(Self { r, phi, mode1, mode2 })
+
+        Ok(Self {
+            r,
+            phi,
+            mode1,
+            mode2,
+        })
     }
 
     /// Apply two-mode squeezing to state
@@ -216,11 +221,16 @@ impl BeamsplitterGate {
     pub fn new(theta: f64, phi: f64, mode1: usize, mode2: usize) -> Result<Self, CVGateError> {
         if mode1 == mode2 {
             return Err(CVGateError::InvalidParameter(
-                "Beamsplitter requires different modes".to_string()
+                "Beamsplitter requires different modes".to_string(),
             ));
         }
-        
-        Ok(Self { theta, phi, mode1, mode2 })
+
+        Ok(Self {
+            theta,
+            phi,
+            mode1,
+            mode2,
+        })
     }
 
     /// Apply beamsplitter to state
@@ -244,13 +254,18 @@ impl BeamsplitterGate {
     }
 
     /// Create variable beamsplitter with transmission T
-    pub fn with_transmission(transmission: f64, phi: f64, mode1: usize, mode2: usize) -> Result<Self, CVGateError> {
+    pub fn with_transmission(
+        transmission: f64,
+        phi: f64,
+        mode1: usize,
+        mode2: usize,
+    ) -> Result<Self, CVGateError> {
         if transmission < 0.0 || transmission > 1.0 {
             return Err(CVGateError::InvalidParameter(
-                "Transmission must be between 0 and 1".to_string()
+                "Transmission must be between 0 and 1".to_string(),
             ));
         }
-        
+
         let theta = transmission.sqrt().acos();
         Self::new(theta, phi, mode1, mode2)
     }
@@ -299,11 +314,11 @@ impl KerrGate {
     pub fn apply(&self, state: &mut GaussianState) -> CVResult<()> {
         // Kerr interaction is non-Gaussian, so this is an approximation
         // In practice, this would require non-Gaussian state representation
-        
+
         // Apply phase shift proportional to photon number
         let n_avg = state.average_photon_number(self.mode)?;
         let phase_shift = self.kappa * n_avg * self.time;
-        
+
         state.phase_rotation(phase_shift, self.mode)
     }
 
@@ -329,11 +344,16 @@ impl CrossKerrGate {
     pub fn new(kappa: f64, mode1: usize, mode2: usize, time: f64) -> Result<Self, CVGateError> {
         if mode1 == mode2 {
             return Err(CVGateError::InvalidParameter(
-                "Cross-Kerr requires different modes".to_string()
+                "Cross-Kerr requires different modes".to_string(),
             ));
         }
-        
-        Ok(Self { kappa, mode1, mode2, time })
+
+        Ok(Self {
+            kappa,
+            mode1,
+            mode2,
+            time,
+        })
     }
 
     /// Apply Cross-Kerr interaction (approximation)
@@ -341,14 +361,14 @@ impl CrossKerrGate {
         // Cross-Kerr is non-Gaussian, approximation for Gaussian states
         let n1 = state.average_photon_number(self.mode1)?;
         let n2 = state.average_photon_number(self.mode2)?;
-        
+
         // Apply conditional phase shifts
         let phase_shift1 = self.kappa * n2 * self.time;
         let phase_shift2 = self.kappa * n1 * self.time;
-        
+
         state.phase_rotation(phase_shift1, self.mode1)?;
         state.phase_rotation(phase_shift2, self.mode2)?;
-        
+
         Ok(())
     }
 
@@ -376,7 +396,7 @@ impl CubicPhaseGate {
         // Cubic phase gate makes the state non-Gaussian
         // This would require a more general state representation
         Err(CVError::IncompatibleOperation(
-            "Cubic phase gate is non-Gaussian and not supported for Gaussian states".to_string()
+            "Cubic phase gate is non-Gaussian and not supported for Gaussian states".to_string(),
         ))
     }
 }
@@ -402,7 +422,7 @@ impl CVGateSequence {
         if mode >= self.num_modes {
             return Err(CVGateError::ModeOutOfBounds(mode));
         }
-        
+
         self.gates.push(CVGateParams {
             gate_type: CVGateType::Displacement,
             modes: vec![mode],
@@ -411,7 +431,7 @@ impl CVGateSequence {
             duration: None,
             fidelity: Some(0.99),
         });
-        
+
         Ok(self)
     }
 
@@ -420,7 +440,7 @@ impl CVGateSequence {
         if mode >= self.num_modes {
             return Err(CVGateError::ModeOutOfBounds(mode));
         }
-        
+
         self.gates.push(CVGateParams {
             gate_type: CVGateType::Squeezing,
             modes: vec![mode],
@@ -429,16 +449,22 @@ impl CVGateSequence {
             duration: None,
             fidelity: Some(0.98),
         });
-        
+
         Ok(self)
     }
 
     /// Add two-mode squeezing gate
-    pub fn two_mode_squeezing(&mut self, r: f64, phi: f64, mode1: usize, mode2: usize) -> Result<&mut Self, CVGateError> {
+    pub fn two_mode_squeezing(
+        &mut self,
+        r: f64,
+        phi: f64,
+        mode1: usize,
+        mode2: usize,
+    ) -> Result<&mut Self, CVGateError> {
         if mode1 >= self.num_modes || mode2 >= self.num_modes {
             return Err(CVGateError::ModeOutOfBounds(mode1.max(mode2)));
         }
-        
+
         self.gates.push(CVGateParams {
             gate_type: CVGateType::TwoModeSqueezing,
             modes: vec![mode1, mode2],
@@ -447,16 +473,22 @@ impl CVGateSequence {
             duration: None,
             fidelity: Some(0.97),
         });
-        
+
         Ok(self)
     }
 
     /// Add beamsplitter gate
-    pub fn beamsplitter(&mut self, theta: f64, phi: f64, mode1: usize, mode2: usize) -> Result<&mut Self, CVGateError> {
+    pub fn beamsplitter(
+        &mut self,
+        theta: f64,
+        phi: f64,
+        mode1: usize,
+        mode2: usize,
+    ) -> Result<&mut Self, CVGateError> {
         if mode1 >= self.num_modes || mode2 >= self.num_modes {
             return Err(CVGateError::ModeOutOfBounds(mode1.max(mode2)));
         }
-        
+
         self.gates.push(CVGateParams {
             gate_type: CVGateType::Beamsplitter,
             modes: vec![mode1, mode2],
@@ -465,7 +497,7 @@ impl CVGateSequence {
             duration: None,
             fidelity: Some(0.995),
         });
-        
+
         Ok(self)
     }
 
@@ -474,7 +506,7 @@ impl CVGateSequence {
         if mode >= self.num_modes {
             return Err(CVGateError::ModeOutOfBounds(mode));
         }
-        
+
         self.gates.push(CVGateParams {
             gate_type: CVGateType::PhaseRotation,
             modes: vec![mode],
@@ -483,7 +515,7 @@ impl CVGateSequence {
             duration: None,
             fidelity: Some(0.999),
         });
-        
+
         Ok(self)
     }
 
@@ -492,16 +524,16 @@ impl CVGateSequence {
         for gate in &self.gates {
             match gate.gate_type {
                 CVGateType::Displacement => {
-                    if let (Some(alpha), Some(&mode)) = (gate.complex_params.get(0), gate.modes.get(0)) {
+                    if let (Some(alpha), Some(&mode)) =
+                        (gate.complex_params.get(0), gate.modes.get(0))
+                    {
                         state.displace(*alpha, mode)?;
                     }
                 }
                 CVGateType::Squeezing => {
-                    if let (Some(&r), Some(&phi), Some(&mode)) = (
-                        gate.params.get(0),
-                        gate.params.get(1),
-                        gate.modes.get(0)
-                    ) {
+                    if let (Some(&r), Some(&phi), Some(&mode)) =
+                        (gate.params.get(0), gate.params.get(1), gate.modes.get(0))
+                    {
                         state.squeeze(r, phi, mode)?;
                     }
                 }
@@ -510,7 +542,7 @@ impl CVGateSequence {
                         gate.params.get(0),
                         gate.params.get(1),
                         gate.modes.get(0),
-                        gate.modes.get(1)
+                        gate.modes.get(1),
                     ) {
                         state.two_mode_squeeze(r, phi, mode1, mode2)?;
                     }
@@ -520,7 +552,7 @@ impl CVGateSequence {
                         gate.params.get(0),
                         gate.params.get(1),
                         gate.modes.get(0),
-                        gate.modes.get(1)
+                        gate.modes.get(1),
                     ) {
                         state.beamsplitter(theta, phi, mode1, mode2)?;
                     }
@@ -531,26 +563,29 @@ impl CVGateSequence {
                     }
                 }
                 _ => {
-                    return Err(CVError::IncompatibleOperation(
-                        format!("Gate type {:?} not yet implemented", gate.gate_type)
-                    ));
+                    return Err(CVError::IncompatibleOperation(format!(
+                        "Gate type {:?} not yet implemented",
+                        gate.gate_type
+                    )));
                 }
             }
         }
-        
+
         Ok(())
     }
 
     /// Get total sequence fidelity
     pub fn total_fidelity(&self) -> f64 {
-        self.gates.iter()
+        self.gates
+            .iter()
             .map(|gate| gate.fidelity.unwrap_or(1.0))
             .product()
     }
 
     /// Get gate count by type
     pub fn gate_count(&self, gate_type: CVGateType) -> usize {
-        self.gates.iter()
+        self.gates
+            .iter()
             .filter(|gate| gate.gate_type == gate_type)
             .count()
     }
@@ -558,29 +593,27 @@ impl CVGateSequence {
     /// Optimize sequence (basic optimization)
     pub fn optimize(&mut self) -> Result<(), CVGateError> {
         // Remove redundant identity operations
-        self.gates.retain(|gate| {
-            match gate.gate_type {
-                CVGateType::PhaseRotation => {
-                    if let Some(&phi) = gate.params.get(0) {
-                        (phi % (2.0 * PI)).abs() > 1e-10
-                    } else {
-                        true
-                    }
+        self.gates.retain(|gate| match gate.gate_type {
+            CVGateType::PhaseRotation => {
+                if let Some(&phi) = gate.params.get(0) {
+                    (phi % (2.0 * PI)).abs() > 1e-10
+                } else {
+                    true
                 }
-                CVGateType::Displacement => {
-                    if let Some(alpha) = gate.complex_params.get(0) {
-                        alpha.magnitude() > 1e-10
-                    } else {
-                        true
-                    }
-                }
-                _ => true,
             }
+            CVGateType::Displacement => {
+                if let Some(alpha) = gate.complex_params.get(0) {
+                    alpha.magnitude() > 1e-10
+                } else {
+                    true
+                }
+            }
+            _ => true,
         });
-        
+
         // Combine consecutive phase rotations on same mode
         // TODO: Implement more sophisticated optimizations
-        
+
         Ok(())
     }
 }
@@ -595,9 +628,9 @@ mod tests {
         let alpha = Complex::new(1.0, 0.5);
         let gate = DisplacementGate::new(alpha, 0);
         let mut state = GaussianState::vacuum(1);
-        
+
         gate.apply(&mut state).unwrap();
-        
+
         assert!((state.mean[0] - alpha.real * SQRT_2).abs() < 1e-10);
         assert!((state.mean[1] - alpha.imag * SQRT_2).abs() < 1e-10);
     }
@@ -606,9 +639,9 @@ mod tests {
     fn test_squeezing_gate() {
         let gate = SqueezingGate::new(1.0, 0.0, 0).unwrap();
         let mut state = GaussianState::vacuum(1);
-        
+
         gate.apply(&mut state).unwrap();
-        
+
         // Check that X quadrature is squeezed
         assert!(state.covariance[0][0] < 0.5);
         assert!(state.covariance[1][1] > 0.5);
@@ -618,9 +651,9 @@ mod tests {
     fn test_beamsplitter_gate() {
         let gate = BeamsplitterGate::fifty_fifty(0, 1).unwrap();
         let mut state = GaussianState::coherent(Complex::new(2.0, 0.0), 0, 2).unwrap();
-        
+
         gate.apply(&mut state).unwrap();
-        
+
         // Check that amplitude is distributed
         assert!(state.mean[0].abs() > 0.0);
         assert!(state.mean[2].abs() > 0.0);
@@ -630,11 +663,15 @@ mod tests {
     #[test]
     fn test_gate_sequence() {
         let mut sequence = CVGateSequence::new(2);
-        
-        sequence.displacement(Complex::new(1.0, 0.0), 0).unwrap()
-                .squeezing(0.5, 0.0, 0).unwrap()
-                .beamsplitter(PI/4.0, 0.0, 0, 1).unwrap();
-        
+
+        sequence
+            .displacement(Complex::new(1.0, 0.0), 0)
+            .unwrap()
+            .squeezing(0.5, 0.0, 0)
+            .unwrap()
+            .beamsplitter(PI / 4.0, 0.0, 0, 1)
+            .unwrap();
+
         assert_eq!(sequence.gates.len(), 3);
         assert_eq!(sequence.gate_count(CVGateType::Displacement), 1);
         assert_eq!(sequence.gate_count(CVGateType::Squeezing), 1);
@@ -644,12 +681,15 @@ mod tests {
     #[test]
     fn test_sequence_application() {
         let mut sequence = CVGateSequence::new(1);
-        sequence.displacement(Complex::new(1.0, 0.0), 0).unwrap()
-                .phase_rotation(PI/2.0, 0).unwrap();
-        
+        sequence
+            .displacement(Complex::new(1.0, 0.0), 0)
+            .unwrap()
+            .phase_rotation(PI / 2.0, 0)
+            .unwrap();
+
         let mut state = GaussianState::vacuum(1);
         sequence.apply(&mut state).unwrap();
-        
+
         // State should be displaced and rotated
         assert!(state.mean[0].abs() > 0.0 || state.mean[1].abs() > 0.0);
     }
@@ -659,9 +699,9 @@ mod tests {
         let mut sequence = CVGateSequence::new(1);
         sequence.displacement(Complex::new(0.0, 0.0), 0).unwrap() // Zero displacement
                 .phase_rotation(0.0, 0).unwrap(); // Zero rotation
-        
+
         sequence.optimize().unwrap();
-        
+
         // Should remove identity operations
         assert_eq!(sequence.gates.len(), 0);
     }

@@ -3,14 +3,14 @@
 //! This module implements optimization algorithms specifically designed for photonic
 //! quantum computing systems, including gate sequence optimization and resource allocation.
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use super::{PhotonicSystemType, PhotonicMode};
-use super::continuous_variable::{GaussianState, Complex};
-use super::gate_based::{PhotonicGateImpl, PhotonicCircuitImplementation};
+use super::continuous_variable::{Complex, GaussianState};
+use super::gate_based::{PhotonicCircuitImplementation, PhotonicGateImpl};
+use super::{PhotonicMode, PhotonicSystemType};
 use crate::DeviceResult;
 
 /// Photonic optimization errors
@@ -52,13 +52,25 @@ pub enum PhotonicOptimizationObjective {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PhotonicOptimizationAlgorithm {
     /// Gradient-based optimization
-    Gradient { learning_rate: f64, max_iterations: usize },
+    Gradient {
+        learning_rate: f64,
+        max_iterations: usize,
+    },
     /// Genetic algorithm
-    Genetic { population_size: usize, generations: usize },
+    Genetic {
+        population_size: usize,
+        generations: usize,
+    },
     /// Simulated annealing
-    SimulatedAnnealing { initial_temperature: f64, cooling_rate: f64 },
+    SimulatedAnnealing {
+        initial_temperature: f64,
+        cooling_rate: f64,
+    },
     /// Particle swarm optimization
-    ParticleSwarm { swarm_size: usize, iterations: usize },
+    ParticleSwarm {
+        swarm_size: usize,
+        iterations: usize,
+    },
     /// Quantum approximate optimization
     QAOA { layers: usize },
 }
@@ -176,38 +188,50 @@ impl PhotonicOptimizer {
         initial_circuit: PhotonicCircuitImplementation,
     ) -> Result<PhotonicOptimizationResult, PhotonicOptimizationError> {
         let start_time = std::time::Instant::now();
-        
+
         // Validate constraints
         self.validate_constraints(&initial_circuit)?;
-        
+
         // Initialize optimization
         let mut current_circuit = initial_circuit.clone();
         let mut best_objective = self.evaluate_objective(&current_circuit)?;
         let mut iterations = 0;
-        
+
         // Main optimization loop
         while start_time.elapsed() < self.config.max_time {
             let improved_circuit = match &self.config.algorithm {
-                PhotonicOptimizationAlgorithm::Gradient { learning_rate, max_iterations } => {
+                PhotonicOptimizationAlgorithm::Gradient {
+                    learning_rate,
+                    max_iterations,
+                } => {
                     if iterations >= *max_iterations {
                         break;
                     }
                     self.gradient_step(&current_circuit, *learning_rate)?
                 }
-                PhotonicOptimizationAlgorithm::Genetic { population_size, generations } => {
+                PhotonicOptimizationAlgorithm::Genetic {
+                    population_size,
+                    generations,
+                } => {
                     if iterations >= *generations {
                         break;
                     }
                     self.genetic_step(&current_circuit, *population_size)?
                 }
-                PhotonicOptimizationAlgorithm::SimulatedAnnealing { initial_temperature, cooling_rate } => {
+                PhotonicOptimizationAlgorithm::SimulatedAnnealing {
+                    initial_temperature,
+                    cooling_rate,
+                } => {
                     let temperature = initial_temperature * cooling_rate.powf(iterations as f64);
                     if temperature < 1e-6 {
                         break;
                     }
                     self.annealing_step(&current_circuit, temperature)?
                 }
-                PhotonicOptimizationAlgorithm::ParticleSwarm { swarm_size, iterations: max_iter } => {
+                PhotonicOptimizationAlgorithm::ParticleSwarm {
+                    swarm_size,
+                    iterations: max_iter,
+                } => {
                     if iterations >= *max_iter {
                         break;
                     }
@@ -217,9 +241,9 @@ impl PhotonicOptimizer {
                     self.qaoa_step(&current_circuit, *layers)?
                 }
             };
-            
+
             let objective = self.evaluate_objective(&improved_circuit)?;
-            
+
             // Record optimization step
             self.history.push(OptimizationStep {
                 step: iterations,
@@ -227,25 +251,25 @@ impl PhotonicOptimizer {
                 parameters: vec![], // Placeholder
                 elapsed_time: start_time.elapsed(),
             });
-            
+
             // Check for improvement
             if self.is_improvement(objective, best_objective) {
                 best_objective = objective;
                 current_circuit = improved_circuit;
                 self.best_solution = Some(current_circuit.clone());
             }
-            
+
             // Check convergence
             if self.check_convergence(&current_circuit)? {
                 break;
             }
-            
+
             iterations += 1;
         }
-        
-        let final_circuit = self.best_solution.unwrap_or(current_circuit);
+
+        let final_circuit = self.best_solution.clone().unwrap_or(current_circuit);
         let improvement = self.calculate_improvement(&initial_circuit, &final_circuit);
-        
+
         Ok(PhotonicOptimizationResult {
             optimized_circuit: final_circuit,
             objective_value: best_objective,
@@ -262,32 +286,35 @@ impl PhotonicOptimizer {
         circuit: &PhotonicCircuitImplementation,
     ) -> Result<(), PhotonicOptimizationError> {
         let constraints = &self.config.constraints;
-        
+
         if let Some(max_gates) = constraints.max_gates {
             if circuit.gates.len() > max_gates {
-                return Err(PhotonicOptimizationError::ResourceConstraints(
-                    format!("Circuit has {} gates, max allowed {}", circuit.gates.len(), max_gates)
-                ));
+                return Err(PhotonicOptimizationError::ResourceConstraints(format!(
+                    "Circuit has {} gates, max allowed {}",
+                    circuit.gates.len(),
+                    max_gates
+                )));
             }
         }
-        
+
         if let Some(min_fidelity) = constraints.min_fidelity {
             if circuit.total_fidelity < min_fidelity {
-                return Err(PhotonicOptimizationError::ResourceConstraints(
-                    format!("Circuit fidelity {} below minimum {}", circuit.total_fidelity, min_fidelity)
-                ));
+                return Err(PhotonicOptimizationError::ResourceConstraints(format!(
+                    "Circuit fidelity {} below minimum {}",
+                    circuit.total_fidelity, min_fidelity
+                )));
             }
         }
-        
+
         if let Some(max_time) = constraints.max_execution_time {
             if circuit.estimated_execution_time > max_time {
-                return Err(PhotonicOptimizationError::ResourceConstraints(
-                    format!("Execution time {:?} exceeds maximum {:?}", 
-                           circuit.estimated_execution_time, max_time)
-                ));
+                return Err(PhotonicOptimizationError::ResourceConstraints(format!(
+                    "Execution time {:?} exceeds maximum {:?}",
+                    circuit.estimated_execution_time, max_time
+                )));
             }
         }
-        
+
         Ok(())
     }
 
@@ -301,13 +328,11 @@ impl PhotonicOptimizer {
                 // Circuit depth approximation
                 Ok(-(circuit.gates.len() as f64))
             }
-            PhotonicOptimizationObjective::MaximizeFidelity => {
-                Ok(circuit.total_fidelity)
-            }
+            PhotonicOptimizationObjective::MaximizeFidelity => Ok(circuit.total_fidelity),
             PhotonicOptimizationObjective::MinimizeResources => {
-                let resource_count = circuit.resource_requirements.waveplates +
-                                   circuit.resource_requirements.beam_splitters +
-                                   circuit.resource_requirements.detectors;
+                let resource_count = circuit.resource_requirements.waveplates
+                    + circuit.resource_requirements.beam_splitters
+                    + circuit.resource_requirements.detectors;
                 Ok(-(resource_count as f64))
             }
             PhotonicOptimizationObjective::MinimizeTime => {
@@ -320,7 +345,10 @@ impl PhotonicOptimizer {
                 // Estimate photon loss from fidelity
                 Ok(circuit.total_fidelity)
             }
-            PhotonicOptimizationObjective::MultiObjective { objectives, weights } => {
+            PhotonicOptimizationObjective::MultiObjective {
+                objectives,
+                weights,
+            } => {
                 let mut total_objective = 0.0;
                 for (i, obj) in objectives.iter().enumerate() {
                     if let Some(&weight) = weights.get(i) {
@@ -341,9 +369,9 @@ impl PhotonicOptimizer {
     /// Check if a value represents an improvement
     fn is_improvement(&self, new_value: f64, current_best: f64) -> bool {
         match &self.config.objective {
-            PhotonicOptimizationObjective::MinimizeDepth |
-            PhotonicOptimizationObjective::MinimizeResources |
-            PhotonicOptimizationObjective::MinimizeTime => new_value < current_best,
+            PhotonicOptimizationObjective::MinimizeDepth
+            | PhotonicOptimizationObjective::MinimizeResources
+            | PhotonicOptimizationObjective::MinimizeTime => new_value < current_best,
             _ => new_value > current_best,
         }
     }
@@ -357,7 +385,7 @@ impl PhotonicOptimizer {
         // Simplified gradient step - in practice this would involve
         // computing gradients with respect to gate parameters
         let mut optimized = circuit.clone();
-        
+
         // Randomly perturb parameters (placeholder for gradient computation)
         for gate in &mut optimized.gates {
             if !gate.optical_elements.is_empty() {
@@ -367,7 +395,7 @@ impl PhotonicOptimizer {
                 optimized.total_fidelity *= 1.0 + perturbation * 0.01;
             }
         }
-        
+
         Ok(optimized)
     }
 
@@ -379,23 +407,23 @@ impl PhotonicOptimizer {
     ) -> Result<PhotonicCircuitImplementation, PhotonicOptimizationError> {
         // Simplified genetic algorithm step
         let mut best_circuit = circuit.clone();
-        
+
         for _ in 0..population_size {
             let mut candidate = circuit.clone();
-            
+
             // Random mutation
             if !candidate.gates.is_empty() {
                 let mutation_strength = 0.1;
                 candidate.total_fidelity *= 1.0 + (rand::random::<f64>() - 0.5) * mutation_strength;
                 candidate.total_fidelity = candidate.total_fidelity.max(0.0).min(1.0);
             }
-            
+
             // Select better candidate
             if self.evaluate_objective(&candidate)? > self.evaluate_objective(&best_circuit)? {
                 best_circuit = candidate;
             }
         }
-        
+
         Ok(best_circuit)
     }
 
@@ -406,16 +434,16 @@ impl PhotonicOptimizer {
         temperature: f64,
     ) -> Result<PhotonicCircuitImplementation, PhotonicOptimizationError> {
         let mut candidate = circuit.clone();
-        
+
         // Random perturbation
         let perturbation_strength = temperature * 0.01;
         candidate.total_fidelity *= 1.0 + (rand::random::<f64>() - 0.5) * perturbation_strength;
         candidate.total_fidelity = candidate.total_fidelity.max(0.0).min(1.0);
-        
+
         // Accept or reject based on temperature
         let current_obj = self.evaluate_objective(circuit)?;
         let candidate_obj = self.evaluate_objective(&candidate)?;
-        
+
         if self.is_improvement(candidate_obj, current_obj) {
             Ok(candidate)
         } else {
@@ -436,20 +464,20 @@ impl PhotonicOptimizer {
     ) -> Result<PhotonicCircuitImplementation, PhotonicOptimizationError> {
         // Simplified PSO step
         let mut best_circuit = circuit.clone();
-        
+
         for _ in 0..swarm_size {
             let mut particle = circuit.clone();
-            
+
             // Update particle position (simplified)
             let velocity = 0.1 * (rand::random::<f64>() - 0.5);
             particle.total_fidelity += velocity;
             particle.total_fidelity = particle.total_fidelity.max(0.0).min(1.0);
-            
+
             if self.evaluate_objective(&particle)? > self.evaluate_objective(&best_circuit)? {
                 best_circuit = particle;
             }
         }
-        
+
         Ok(best_circuit)
     }
 
@@ -462,17 +490,17 @@ impl PhotonicOptimizer {
         // Simplified QAOA step - in practice this would involve
         // quantum approximate optimization
         let mut optimized = circuit.clone();
-        
+
         for _ in 0..layers {
             // Apply variational parameters (simplified)
             let gamma = rand::random::<f64>() * std::f64::consts::PI;
             let beta = rand::random::<f64>() * std::f64::consts::PI;
-            
+
             // Update fidelity based on variational parameters
             optimized.total_fidelity *= 1.0 + 0.01 * (gamma + beta).cos();
             optimized.total_fidelity = optimized.total_fidelity.max(0.0).min(1.0);
         }
-        
+
         Ok(optimized)
     }
 
@@ -484,20 +512,24 @@ impl PhotonicOptimizer {
         if self.history.len() < 2 {
             return Ok(false);
         }
-        
-        let recent_values: Vec<f64> = self.history.iter()
+
+        let recent_values: Vec<f64> = self
+            .history
+            .iter()
             .rev()
             .take(5)
             .map(|step| step.objective_value)
             .collect();
-        
+
         if recent_values.len() < 2 {
             return Ok(false);
         }
-        
-        let max_val = recent_values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+
+        let max_val = recent_values
+            .iter()
+            .fold(f64::NEG_INFINITY, |a, &b| a.max(b));
         let min_val = recent_values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-        
+
         Ok((max_val - min_val).abs() < self.config.tolerance)
     }
 
@@ -517,21 +549,23 @@ impl PhotonicOptimizer {
         final_circuit: &PhotonicCircuitImplementation,
     ) -> OptimizationImprovement {
         let fidelity_improvement = final_circuit.total_fidelity - initial.total_fidelity;
-        let depth_reduction = (initial.gates.len() as f64 - final_circuit.gates.len() as f64) / initial.gates.len() as f64;
-        
-        let initial_resources = initial.resource_requirements.waveplates + 
-                               initial.resource_requirements.beam_splitters +
-                               initial.resource_requirements.detectors;
-        let final_resources = final_circuit.resource_requirements.waveplates + 
-                             final_circuit.resource_requirements.beam_splitters +
-                             final_circuit.resource_requirements.detectors;
-        
-        let resource_savings = (initial_resources as f64 - final_resources as f64) / initial_resources as f64;
-        
-        let time_savings = (initial.estimated_execution_time.as_secs_f64() - 
-                           final_circuit.estimated_execution_time.as_secs_f64()) /
-                           initial.estimated_execution_time.as_secs_f64();
-        
+        let depth_reduction = (initial.gates.len() as f64 - final_circuit.gates.len() as f64)
+            / initial.gates.len() as f64;
+
+        let initial_resources = initial.resource_requirements.waveplates
+            + initial.resource_requirements.beam_splitters
+            + initial.resource_requirements.detectors;
+        let final_resources = final_circuit.resource_requirements.waveplates
+            + final_circuit.resource_requirements.beam_splitters
+            + final_circuit.resource_requirements.detectors;
+
+        let resource_savings =
+            (initial_resources as f64 - final_resources as f64) / initial_resources as f64;
+
+        let time_savings = (initial.estimated_execution_time.as_secs_f64()
+            - final_circuit.estimated_execution_time.as_secs_f64())
+            / initial.estimated_execution_time.as_secs_f64();
+
         OptimizationImprovement {
             fidelity_improvement,
             depth_reduction,
@@ -560,15 +594,15 @@ mod tests {
     fn test_optimizer_creation() {
         let config = PhotonicOptimizationConfig {
             objective: PhotonicOptimizationObjective::MaximizeFidelity,
-            algorithm: PhotonicOptimizationAlgorithm::Gradient { 
-                learning_rate: 0.01, 
-                max_iterations: 100 
+            algorithm: PhotonicOptimizationAlgorithm::Gradient {
+                learning_rate: 0.01,
+                max_iterations: 100,
             },
             tolerance: 1e-6,
             max_time: Duration::from_secs(60),
             constraints: PhotonicConstraints::default(),
         };
-        
+
         let optimizer = PhotonicOptimizer::new(config);
         assert_eq!(optimizer.history.len(), 0);
     }
@@ -577,18 +611,18 @@ mod tests {
     fn test_objective_evaluation() {
         let config = PhotonicOptimizationConfig {
             objective: PhotonicOptimizationObjective::MaximizeFidelity,
-            algorithm: PhotonicOptimizationAlgorithm::Gradient { 
-                learning_rate: 0.01, 
-                max_iterations: 100 
+            algorithm: PhotonicOptimizationAlgorithm::Gradient {
+                learning_rate: 0.01,
+                max_iterations: 100,
             },
             tolerance: 1e-6,
             max_time: Duration::from_secs(60),
             constraints: PhotonicConstraints::default(),
         };
-        
+
         let optimizer = PhotonicOptimizer::new(config);
         let circuit = create_test_circuit();
-        
+
         let objective = optimizer.evaluate_objective(&circuit).unwrap();
         assert_eq!(objective, 0.95); // Should equal circuit fidelity
     }
@@ -597,21 +631,21 @@ mod tests {
     fn test_constraint_validation() {
         let mut constraints = PhotonicConstraints::default();
         constraints.min_fidelity = Some(0.99);
-        
+
         let config = PhotonicOptimizationConfig {
             objective: PhotonicOptimizationObjective::MaximizeFidelity,
-            algorithm: PhotonicOptimizationAlgorithm::Gradient { 
-                learning_rate: 0.01, 
-                max_iterations: 100 
+            algorithm: PhotonicOptimizationAlgorithm::Gradient {
+                learning_rate: 0.01,
+                max_iterations: 100,
             },
             tolerance: 1e-6,
             max_time: Duration::from_secs(60),
             constraints,
         };
-        
+
         let optimizer = PhotonicOptimizer::new(config);
         let circuit = create_test_circuit(); // Has fidelity 0.95 < 0.99
-        
+
         let result = optimizer.validate_constraints(&circuit);
         assert!(result.is_err());
     }

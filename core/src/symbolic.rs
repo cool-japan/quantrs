@@ -128,7 +128,7 @@ impl SymbolicExpression {
             SymbolicExpression::SymEngine(expr) => {
                 // For SymEngine evaluation, we would need to substitute variables
                 // This is a simplified implementation
-                if let Some(value) = expr.to_string().parse::<f64>().ok() {
+                if let Ok(value) = expr.to_string().parse::<f64>() {
                     Ok(value)
                 } else {
                     Err(QuantRS2Error::UnsupportedOperation(

@@ -65,34 +65,42 @@ impl PhotonicClient {
     /// Get available photonic devices
     pub async fn get_devices(&self) -> DeviceResult<Vec<PhotonicDeviceInfo>> {
         let url = format!("{}/devices", self.base_url);
-        let response = timeout(self.timeout, self.get_request(&url)).await
+        let response = timeout(self.timeout, self.get_request(&url))
+            .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
             .map_err(|e| DeviceError::APIError(format!("Failed to get devices: {}", e)))?;
 
-        response.json::<Vec<PhotonicDeviceInfo>>().await
+        response
+            .json::<Vec<PhotonicDeviceInfo>>()
+            .await
             .map_err(|e| DeviceError::Deserialization(format!("Failed to parse devices: {}", e)))
     }
 
     /// Get device information by ID
     pub async fn get_device(&self, device_id: &str) -> DeviceResult<PhotonicDeviceInfo> {
         let url = format!("{}/devices/{}", self.base_url, device_id);
-        let response = timeout(self.timeout, self.get_request(&url)).await
+        let response = timeout(self.timeout, self.get_request(&url))
+            .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
             .map_err(|e| DeviceError::APIError(format!("Failed to get device: {}", e)))?;
 
-        response.json::<PhotonicDeviceInfo>().await
+        response
+            .json::<PhotonicDeviceInfo>()
+            .await
             .map_err(|e| DeviceError::Deserialization(format!("Failed to parse device: {}", e)))
     }
 
     /// Submit a job to a photonic device
     pub async fn submit_job(&self, job_request: &PhotonicJobRequest) -> DeviceResult<String> {
         let url = format!("{}/jobs", self.base_url);
-        let response = timeout(self.timeout, self.post_request(&url, job_request)).await
+        let response = timeout(self.timeout, self.post_request(&url, job_request))
+            .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
             .map_err(|e| DeviceError::JobSubmission(format!("Failed to submit job: {}", e)))?;
 
-        let job_response: PhotonicJobResponse = response.json().await
-            .map_err(|e| DeviceError::Deserialization(format!("Failed to parse job response: {}", e)))?;
+        let job_response: PhotonicJobResponse = response.json().await.map_err(|e| {
+            DeviceError::Deserialization(format!("Failed to parse job response: {}", e))
+        })?;
 
         Ok(job_response.job_id)
     }
@@ -100,29 +108,35 @@ impl PhotonicClient {
     /// Get job status
     pub async fn get_job_status(&self, job_id: &str) -> DeviceResult<PhotonicJobStatus> {
         let url = format!("{}/jobs/{}", self.base_url, job_id);
-        let response = timeout(self.timeout, self.get_request(&url)).await
+        let response = timeout(self.timeout, self.get_request(&url))
+            .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
             .map_err(|e| DeviceError::APIError(format!("Failed to get job status: {}", e)))?;
 
-        response.json::<PhotonicJobStatus>().await
+        response
+            .json::<PhotonicJobStatus>()
+            .await
             .map_err(|e| DeviceError::Deserialization(format!("Failed to parse job status: {}", e)))
     }
 
     /// Get job results
     pub async fn get_job_results(&self, job_id: &str) -> DeviceResult<PhotonicJobResult> {
         let url = format!("{}/jobs/{}/results", self.base_url, job_id);
-        let response = timeout(self.timeout, self.get_request(&url)).await
+        let response = timeout(self.timeout, self.get_request(&url))
+            .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
             .map_err(|e| DeviceError::APIError(format!("Failed to get job results: {}", e)))?;
 
-        response.json::<PhotonicJobResult>().await
-            .map_err(|e| DeviceError::Deserialization(format!("Failed to parse job results: {}", e)))
+        response.json::<PhotonicJobResult>().await.map_err(|e| {
+            DeviceError::Deserialization(format!("Failed to parse job results: {}", e))
+        })
     }
 
     /// Cancel a job
     pub async fn cancel_job(&self, job_id: &str) -> DeviceResult<()> {
         let url = format!("{}/jobs/{}/cancel", self.base_url, job_id);
-        timeout(self.timeout, self.delete_request(&url)).await
+        timeout(self.timeout, self.delete_request(&url))
+            .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
             .map_err(|e| DeviceError::APIError(format!("Failed to cancel job: {}", e)))?;
 
@@ -136,18 +150,24 @@ impl PhotonicClient {
         modes: &[usize],
         phases: &[f64],
     ) -> DeviceResult<Vec<(f64, f64)>> {
-        let url = format!("{}/devices/{}/measure/quadratures", self.base_url, device_id);
+        let url = format!(
+            "{}/devices/{}/measure/quadratures",
+            self.base_url, device_id
+        );
         let request = QuadratureMeasurementRequest {
             modes: modes.to_vec(),
             phases: phases.to_vec(),
         };
 
-        let response = timeout(self.timeout, self.post_request(&url, &request)).await
+        let response = timeout(self.timeout, self.post_request(&url, &request))
+            .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
             .map_err(|e| DeviceError::APIError(format!("Failed to measure quadratures: {}", e)))?;
 
-        let measurement_response: QuadratureMeasurementResponse = response.json().await
-            .map_err(|e| DeviceError::Deserialization(format!("Failed to parse measurement: {}", e)))?;
+        let measurement_response: QuadratureMeasurementResponse =
+            response.json().await.map_err(|e| {
+                DeviceError::Deserialization(format!("Failed to parse measurement: {}", e))
+            })?;
 
         Ok(measurement_response.quadratures)
     }
@@ -163,12 +183,15 @@ impl PhotonicClient {
             modes: modes.to_vec(),
         };
 
-        let response = timeout(self.timeout, self.post_request(&url, &request)).await
+        let response = timeout(self.timeout, self.post_request(&url, &request))
+            .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
             .map_err(|e| DeviceError::APIError(format!("Failed to measure photons: {}", e)))?;
 
-        let measurement_response: PhotonMeasurementResponse = response.json().await
-            .map_err(|e| DeviceError::Deserialization(format!("Failed to parse measurement: {}", e)))?;
+        let measurement_response: PhotonMeasurementResponse =
+            response.json().await.map_err(|e| {
+                DeviceError::Deserialization(format!("Failed to parse measurement: {}", e))
+            })?;
 
         Ok(measurement_response.photon_numbers)
     }
@@ -182,18 +205,17 @@ impl PhotonicClient {
         shots: usize,
     ) -> DeviceResult<Vec<f64>> {
         let url = format!("{}/devices/{}/measure/homodyne", self.base_url, device_id);
-        let request = HomodyneMeasurementRequest {
-            mode,
-            phase,
-            shots,
-        };
+        let request = HomodyneMeasurementRequest { mode, phase, shots };
 
-        let response = timeout(self.timeout, self.post_request(&url, &request)).await
+        let response = timeout(self.timeout, self.post_request(&url, &request))
+            .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
             .map_err(|e| DeviceError::APIError(format!("Failed to perform homodyne: {}", e)))?;
 
-        let measurement_response: HomodyneMeasurementResponse = response.json().await
-            .map_err(|e| DeviceError::Deserialization(format!("Failed to parse homodyne: {}", e)))?;
+        let measurement_response: HomodyneMeasurementResponse =
+            response.json().await.map_err(|e| {
+                DeviceError::Deserialization(format!("Failed to parse homodyne: {}", e))
+            })?;
 
         Ok(measurement_response.measurements)
     }
@@ -206,25 +228,139 @@ impl PhotonicClient {
         shots: usize,
     ) -> DeviceResult<Vec<(f64, f64)>> {
         let url = format!("{}/devices/{}/measure/heterodyne", self.base_url, device_id);
-        let request = HeterodyneMeasurementRequest {
-            mode,
-            shots,
-        };
+        let request = HeterodyneMeasurementRequest { mode, shots };
 
-        let response = timeout(self.timeout, self.post_request(&url, &request)).await
+        let response = timeout(self.timeout, self.post_request(&url, &request))
+            .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
             .map_err(|e| DeviceError::APIError(format!("Failed to perform heterodyne: {}", e)))?;
 
-        let measurement_response: HeterodyneMeasurementResponse = response.json().await
-            .map_err(|e| DeviceError::Deserialization(format!("Failed to parse heterodyne: {}", e)))?;
+        let measurement_response: HeterodyneMeasurementResponse =
+            response.json().await.map_err(|e| {
+                DeviceError::Deserialization(format!("Failed to parse heterodyne: {}", e))
+            })?;
 
         Ok(measurement_response.measurements)
     }
 
+    /// Check device availability
+    pub async fn check_availability(&self) -> DeviceResult<bool> {
+        let url = format!("{}/status", self.base_url);
+        let response = timeout(self.timeout, self.get_request(&url))
+            .await
+            .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
+            .map_err(|e| DeviceError::APIError(format!("Failed to check availability: {}", e)))?;
+
+        let status: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| DeviceError::Deserialization(format!("Failed to parse status: {}", e)))?;
+
+        Ok(status
+            .get("available")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false))
+    }
+
+    /// Check if this is a simulator
+    pub async fn is_simulator(&self) -> DeviceResult<bool> {
+        let url = format!("{}/info", self.base_url);
+        let response = timeout(self.timeout, self.get_request(&url))
+            .await
+            .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
+            .map_err(|e| DeviceError::APIError(format!("Failed to get info: {}", e)))?;
+
+        let info: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| DeviceError::Deserialization(format!("Failed to parse info: {}", e)))?;
+
+        Ok(info
+            .get("is_simulator")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false))
+    }
+
+    /// Get queue time estimate
+    pub async fn get_queue_time(&self) -> DeviceResult<Duration> {
+        let url = format!("{}/queue", self.base_url);
+        let response = timeout(self.timeout, self.get_request(&url))
+            .await
+            .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
+            .map_err(|e| DeviceError::APIError(format!("Failed to get queue time: {}", e)))?;
+
+        let queue_info: serde_json::Value = response.json().await.map_err(|e| {
+            DeviceError::Deserialization(format!("Failed to parse queue info: {}", e))
+        })?;
+
+        let wait_time_secs = queue_info
+            .get("estimated_wait_time_seconds")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+
+        Ok(Duration::from_secs(wait_time_secs))
+    }
+
+    /// Execute a photonic circuit
+    pub async fn execute_photonic_circuit(
+        &self,
+        circuit: &str,
+        shots: usize,
+        config: &HashMap<String, serde_json::Value>,
+    ) -> DeviceResult<PhotonicJobResult> {
+        let job_request = PhotonicJobRequest {
+            device_id: "default".to_string(),
+            circuit: circuit.to_string(),
+            shots,
+            config: Some(config.clone()),
+            priority: None,
+            tags: None,
+        };
+
+        let job_id = self.submit_job(&job_request).await?;
+
+        // Poll for completion (simplified)
+        loop {
+            let status = self.get_job_status(&job_id).await?;
+            match status.status.as_str() {
+                "completed" => return self.get_job_results(&job_id).await,
+                "failed" => {
+                    return Err(DeviceError::ExecutionFailed(
+                        status.error_message.unwrap_or("Job failed".to_string()),
+                    ))
+                }
+                _ => tokio::time::sleep(Duration::from_millis(100)).await,
+            }
+        }
+    }
+
+    /// Calculate quantum correlations between modes
+    pub async fn calculate_correlations(
+        &self,
+        modes: &[(usize, usize)],
+        correlation_type: &str,
+    ) -> DeviceResult<HashMap<String, f64>> {
+        // Simplified implementation - returns mock correlations
+        let mut correlations = HashMap::new();
+        for (i, (mode1, mode2)) in modes.iter().enumerate() {
+            correlations.insert(format!("{}_{}_correlation", mode1, mode2), 0.85);
+        }
+        Ok(correlations)
+    }
+
+    /// Estimate state fidelity
+    pub async fn estimate_fidelity(
+        &self,
+        target_state: &str,
+        measurement_data: &super::PhotonicMeasurementData,
+    ) -> DeviceResult<f64> {
+        // Simplified implementation - returns mock fidelity
+        Ok(0.95)
+    }
+
     /// Perform GET request
     async fn get_request(&self, url: &str) -> Result<reqwest::Response, reqwest::Error> {
-        let mut request = self.client.get(url)
-            .bearer_auth(&self.auth_token);
+        let mut request = self.client.get(url).bearer_auth(&self.auth_token);
 
         for (key, value) in &self.headers {
             request = request.header(key, value);
@@ -234,8 +370,14 @@ impl PhotonicClient {
     }
 
     /// Perform POST request
-    async fn post_request<T: Serialize>(&self, url: &str, body: &T) -> Result<reqwest::Response, reqwest::Error> {
-        let mut request = self.client.post(url)
+    async fn post_request<T: Serialize>(
+        &self,
+        url: &str,
+        body: &T,
+    ) -> Result<reqwest::Response, reqwest::Error> {
+        let mut request = self
+            .client
+            .post(url)
             .bearer_auth(&self.auth_token)
             .json(body);
 
@@ -248,8 +390,7 @@ impl PhotonicClient {
 
     /// Perform DELETE request
     async fn delete_request(&self, url: &str) -> Result<reqwest::Response, reqwest::Error> {
-        let mut request = self.client.delete(url)
-            .bearer_auth(&self.auth_token);
+        let mut request = self.client.delete(url).bearer_auth(&self.auth_token);
 
         for (key, value) in &self.headers {
             request = request.header(key, value);
@@ -428,7 +569,8 @@ mod tests {
         let serialized = serde_json::to_string(&device_info);
         assert!(serialized.is_ok());
 
-        let deserialized: Result<PhotonicDeviceInfo, _> = serde_json::from_str(&serialized.unwrap());
+        let deserialized: Result<PhotonicDeviceInfo, _> =
+            serde_json::from_str(&serialized.unwrap());
         assert!(deserialized.is_ok());
     }
 }

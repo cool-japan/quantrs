@@ -3,7 +3,6 @@
 //! This module provides intelligent optimization that learns from problem structure
 //! and solution history to improve performance over time.
 
-use crate::performance_profiler::*;
 use crate::sampler::{SampleResult, Sampler};
 use ndarray::Array2;
 use rand::{thread_rng, Rng};

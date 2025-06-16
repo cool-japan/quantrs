@@ -2,7 +2,7 @@
 
 use super::constraint_analyzer::ConstraintViolation;
 use super::energy_analyzer::EnergyBreakdown;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 /// Constraint analysis results
 #[derive(Debug, Clone, Serialize)]

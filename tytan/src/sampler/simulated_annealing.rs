@@ -1,6 +1,6 @@
 //! Simulated Annealing Sampler Implementation
 
-use ndarray::{Array, Dimension, Ix2};
+use ndarray::{Array, Ix2};
 use rand::prelude::*;
 use rand::rngs::StdRng;
 use std::collections::HashMap;
@@ -10,7 +10,7 @@ use quantrs2_anneal::{
     QuboModel,
 };
 
-use super::{evaluate_qubo_energy, SampleResult, Sampler, SamplerError, SamplerResult};
+use super::{SampleResult, Sampler, SamplerResult};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;

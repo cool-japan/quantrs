@@ -5,13 +5,10 @@
 
 #[cfg(feature = "dwave")]
 use crate::compile::{Compile, CompiledModel};
-use crate::sampler::{SampleResult, Sampler};
 #[cfg(feature = "plotters")]
 use plotters::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
-use std::fs::File;
-use std::io::{BufWriter, Write};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};

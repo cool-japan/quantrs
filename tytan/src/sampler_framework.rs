@@ -772,8 +772,6 @@ impl EnsembleSampler {
         qubo: &(Array2<f64>, HashMap<String, usize>),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
-        use std::thread;
-
         let shots_per_sampler = shots / self.samplers.len();
         let mut handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
 

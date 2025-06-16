@@ -15,7 +15,7 @@ use std::io::Write;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate};
+use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};
 use crate::debugger::PerformanceMetrics;
 use crate::error::{Result, SimulatorError};
 
@@ -260,7 +260,9 @@ impl TelemetryCollector {
     pub fn new(config: TelemetryConfig) -> Self {
         let collector = Self {
             config: config.clone(),
-            metrics_history: Arc::new(RwLock::new(VecDeque::with_capacity(config.max_history_size))),
+            metrics_history: Arc::new(RwLock::new(VecDeque::with_capacity(
+                config.max_history_size,
+            ))),
             performance_history: Arc::new(RwLock::new(VecDeque::with_capacity(1000))),
             quantum_metrics_history: Arc::new(RwLock::new(VecDeque::with_capacity(1000))),
             active_alerts: Arc::new(RwLock::new(Vec::new())),
@@ -398,7 +400,11 @@ impl TelemetryCollector {
     }
 
     /// Record circuit execution metrics
-    pub fn record_circuit_execution(&self, circuit: &InterfaceCircuit, duration: Duration) -> Result<()> {
+    pub fn record_circuit_execution(
+        &self,
+        circuit: &InterfaceCircuit,
+        duration: Duration,
+    ) -> Result<()> {
         let mut tags = self.config.custom_tags.clone();
         tags.insert("num_qubits".to_string(), circuit.num_qubits.to_string());
         tags.insert("num_gates".to_string(), circuit.gates.len().to_string());
@@ -535,20 +541,18 @@ impl TelemetryCollector {
         let performance_history = Arc::clone(&self.performance_history);
         let config = self.config.clone();
 
-        let handle = std::thread::spawn(move || {
-            loop {
-                let snapshot = Self::collect_system_metrics();
-                
-                {
-                    let mut history = performance_history.write().unwrap();
-                    history.push_back(snapshot);
-                    if history.len() > 1000 {
-                        history.pop_front();
-                    }
-                }
+        let handle = std::thread::spawn(move || loop {
+            let snapshot = Self::collect_system_metrics();
 
-                std::thread::sleep(Duration::from_secs(1));
+            {
+                let mut history = performance_history.write().unwrap();
+                history.push_back(snapshot);
+                if history.len() > 1000 {
+                    history.pop_front();
+                }
             }
+
+            std::thread::sleep(Duration::from_secs(1));
         });
 
         self.system_monitor_handle = Some(handle);
@@ -596,27 +600,37 @@ impl TelemetryCollector {
 
         match metric {
             TelemetryMetric::Timer { name, duration, .. } => {
-                if name == "gate.execution_time" && duration.as_secs_f64() > self.config.alert_thresholds.max_gate_execution_time {
+                if name == "gate.execution_time"
+                    && duration.as_secs_f64() > self.config.alert_thresholds.max_gate_execution_time
+                {
                     alerts_to_add.push(Alert {
                         level: AlertLevel::Warning,
                         message: "Gate execution time exceeded threshold".to_string(),
                         metric_name: name.clone(),
                         current_value: duration.as_secs_f64(),
                         threshold_value: self.config.alert_thresholds.max_gate_execution_time,
-                        timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64(),
+                        timestamp: SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs_f64(),
                         context: HashMap::new(),
                     });
                 }
             }
             TelemetryMetric::Gauge { name, value, .. } => {
-                if name == "memory.usage_bytes" && *value > self.config.alert_thresholds.max_memory_usage as f64 {
+                if name == "memory.usage_bytes"
+                    && *value > self.config.alert_thresholds.max_memory_usage as f64
+                {
                     alerts_to_add.push(Alert {
                         level: AlertLevel::Error,
                         message: "Memory usage exceeded threshold".to_string(),
                         metric_name: name.clone(),
                         current_value: *value,
                         threshold_value: self.config.alert_thresholds.max_memory_usage as f64,
-                        timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64(),
+                        timestamp: SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs_f64(),
                         context: HashMap::new(),
                     });
                 }
@@ -628,7 +642,7 @@ impl TelemetryCollector {
         if !alerts_to_add.is_empty() {
             let mut active_alerts = self.active_alerts.write().unwrap();
             active_alerts.extend(alerts_to_add);
-            
+
             // Keep only recent alerts
             let len = active_alerts.len();
             if len > 1000 {
@@ -656,13 +670,11 @@ impl TelemetryCollector {
         })?;
 
         let file_path = format!("{}/telemetry.json", path);
-        let mut file = File::create(&file_path).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to create file: {}", e))
-        })?;
+        let mut file = File::create(&file_path)
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {}", e)))?;
 
-        file.write_all(data.as_bytes()).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to write file: {}", e))
-        })?;
+        file.write_all(data.as_bytes())
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {}", e)))?;
 
         Ok(())
     }
@@ -675,30 +687,40 @@ impl TelemetryCollector {
 
         for metric in metrics.iter() {
             let (name, metric_type, value, tags, timestamp) = match metric {
-                TelemetryMetric::Counter { name, value, tags, timestamp } => {
-                    (name, "counter", *value as f64, tags, *timestamp)
-                }
-                TelemetryMetric::Gauge { name, value, tags, timestamp } => {
-                    (name, "gauge", *value, tags, *timestamp)
-                }
-                TelemetryMetric::Timer { name, duration, tags, timestamp } => {
-                    (name, "timer", duration.as_secs_f64(), tags, *timestamp)
-                }
+                TelemetryMetric::Counter {
+                    name,
+                    value,
+                    tags,
+                    timestamp,
+                } => (name, "counter", *value as f64, tags, *timestamp),
+                TelemetryMetric::Gauge {
+                    name,
+                    value,
+                    tags,
+                    timestamp,
+                } => (name, "gauge", *value, tags, *timestamp),
+                TelemetryMetric::Timer {
+                    name,
+                    duration,
+                    tags,
+                    timestamp,
+                } => (name, "timer", duration.as_secs_f64(), tags, *timestamp),
                 _ => continue,
             };
 
             let tags_str = serde_json::to_string(tags).unwrap_or_default();
-            csv_data.push_str(&format!("{},{},{},{},{}\n", timestamp, name, metric_type, value, tags_str));
+            csv_data.push_str(&format!(
+                "{},{},{},{},{}\n",
+                timestamp, name, metric_type, value, tags_str
+            ));
         }
 
         let file_path = format!("{}/telemetry.csv", path);
-        let mut file = File::create(&file_path).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to create file: {}", e))
-        })?;
+        let mut file = File::create(&file_path)
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {}", e)))?;
 
-        file.write_all(csv_data.as_bytes()).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to write file: {}", e))
-        })?;
+        file.write_all(csv_data.as_bytes())
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {}", e)))?;
 
         Ok(())
     }
@@ -710,19 +732,31 @@ impl TelemetryCollector {
 
         for metric in metrics.iter() {
             match metric {
-                TelemetryMetric::Counter { name, value, tags, timestamp } => {
+                TelemetryMetric::Counter {
+                    name,
+                    value,
+                    tags,
+                    timestamp,
+                } => {
                     prometheus_data.push_str(&format!("# TYPE {} counter\n", name));
-                    prometheus_data.push_str(&format!("{}{} {} {}\n", 
-                        name, 
+                    prometheus_data.push_str(&format!(
+                        "{}{} {} {}\n",
+                        name,
                         self.format_prometheus_labels(tags),
                         value,
                         (*timestamp * 1000.0) as u64
                     ));
                 }
-                TelemetryMetric::Gauge { name, value, tags, timestamp } => {
+                TelemetryMetric::Gauge {
+                    name,
+                    value,
+                    tags,
+                    timestamp,
+                } => {
                     prometheus_data.push_str(&format!("# TYPE {} gauge\n", name));
-                    prometheus_data.push_str(&format!("{}{} {} {}\n", 
-                        name, 
+                    prometheus_data.push_str(&format!(
+                        "{}{} {} {}\n",
+                        name,
                         self.format_prometheus_labels(tags),
                         value,
                         (*timestamp * 1000.0) as u64
@@ -733,13 +767,11 @@ impl TelemetryCollector {
         }
 
         let file_path = format!("{}/telemetry.prom", path);
-        let mut file = File::create(&file_path).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to create file: {}", e))
-        })?;
+        let mut file = File::create(&file_path)
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {}", e)))?;
 
-        file.write_all(prometheus_data.as_bytes()).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to write file: {}", e))
-        })?;
+        file.write_all(prometheus_data.as_bytes())
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {}", e)))?;
 
         Ok(())
     }
@@ -751,24 +783,42 @@ impl TelemetryCollector {
 
         for metric in metrics.iter() {
             match metric {
-                TelemetryMetric::Counter { name, value, tags, timestamp } => {
-                    influx_data.push_str(&format!("{}{} value={} {}\n",
+                TelemetryMetric::Counter {
+                    name,
+                    value,
+                    tags,
+                    timestamp,
+                } => {
+                    influx_data.push_str(&format!(
+                        "{}{} value={} {}\n",
                         name,
                         self.format_influx_tags(tags),
                         value,
                         (*timestamp * 1_000_000_000.0) as u64
                     ));
                 }
-                TelemetryMetric::Gauge { name, value, tags, timestamp } => {
-                    influx_data.push_str(&format!("{}{} value={} {}\n",
+                TelemetryMetric::Gauge {
+                    name,
+                    value,
+                    tags,
+                    timestamp,
+                } => {
+                    influx_data.push_str(&format!(
+                        "{}{} value={} {}\n",
                         name,
                         self.format_influx_tags(tags),
                         value,
                         (*timestamp * 1_000_000_000.0) as u64
                     ));
                 }
-                TelemetryMetric::Timer { name, duration, tags, timestamp } => {
-                    influx_data.push_str(&format!("{}{} duration={} {}\n",
+                TelemetryMetric::Timer {
+                    name,
+                    duration,
+                    tags,
+                    timestamp,
+                } => {
+                    influx_data.push_str(&format!(
+                        "{}{} duration={} {}\n",
                         name,
                         self.format_influx_tags(tags),
                         duration.as_secs_f64(),
@@ -780,13 +830,11 @@ impl TelemetryCollector {
         }
 
         let file_path = format!("{}/telemetry.influx", path);
-        let mut file = File::create(&file_path).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to create file: {}", e))
-        })?;
+        let mut file = File::create(&file_path)
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {}", e)))?;
 
-        file.write_all(influx_data.as_bytes()).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to write file: {}", e))
-        })?;
+        file.write_all(influx_data.as_bytes())
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {}", e)))?;
 
         Ok(())
     }
@@ -817,10 +865,7 @@ impl TelemetryCollector {
             return String::new();
         }
 
-        let tag_pairs: Vec<String> = tags
-            .iter()
-            .map(|(k, v)| format!("{}={}", k, v))
-            .collect();
+        let tag_pairs: Vec<String> = tags.iter().map(|(k, v)| format!("{}={}", k, v)).collect();
 
         format!(",{}", tag_pairs.join(","))
     }
@@ -845,7 +890,7 @@ pub fn benchmark_telemetry() -> Result<HashMap<String, f64>> {
     // Test metric recording performance
     let start = std::time::Instant::now();
     let mut collector = TelemetryCollector::new(TelemetryConfig::default());
-    
+
     for i in 0..10000 {
         let metric = TelemetryMetric::Gauge {
             name: "test.metric".to_string(),
@@ -855,7 +900,7 @@ pub fn benchmark_telemetry() -> Result<HashMap<String, f64>> {
         };
         collector.record_metric(metric)?;
     }
-    
+
     let recording_time = start.elapsed().as_millis() as f64;
     results.insert("record_10000_metrics".to_string(), recording_time);
 
@@ -883,16 +928,16 @@ mod tests {
     #[test]
     fn test_metric_recording() {
         let collector = TelemetryCollector::new(TelemetryConfig::default());
-        
+
         let metric = TelemetryMetric::Gauge {
             name: "test.metric".to_string(),
             value: 42.0,
             tags: HashMap::new(),
             timestamp: 0.0,
         };
-        
+
         assert!(collector.record_metric(metric).is_ok());
-        
+
         let history = collector.metrics_history.read().unwrap();
         assert_eq!(history.len(), 1);
     }
@@ -900,7 +945,7 @@ mod tests {
     #[test]
     fn test_quantum_metrics_recording() {
         let collector = TelemetryCollector::new(TelemetryConfig::default());
-        
+
         let quantum_metrics = QuantumMetrics {
             num_qubits: 5,
             circuit_depth: 10,
@@ -911,9 +956,9 @@ mod tests {
             active_backends: vec!["statevector".to_string()],
             queue_depth: 0,
         };
-        
+
         assert!(collector.record_quantum_metrics(quantum_metrics).is_ok());
-        
+
         let history = collector.quantum_metrics_history.read().unwrap();
         assert_eq!(history.len(), 1);
     }
@@ -921,12 +966,9 @@ mod tests {
     #[test]
     fn test_gate_execution_recording() {
         let collector = TelemetryCollector::new(TelemetryConfig::default());
-        
-        let gate = InterfaceGate::new(
-            InterfaceGateType::Hadamard,
-            vec![0]
-        );
-        
+
+        let gate = InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]);
+
         let duration = Duration::from_millis(10);
         assert!(collector.record_gate_execution(&gate, duration).is_ok());
     }
@@ -934,9 +976,9 @@ mod tests {
     #[test]
     fn test_memory_usage_recording() {
         let collector = TelemetryCollector::new(TelemetryConfig::default());
-        
+
         assert!(collector.record_memory_usage(1024, "statevector").is_ok());
-        
+
         let history = collector.metrics_history.read().unwrap();
         assert_eq!(history.len(), 1);
     }
@@ -944,9 +986,11 @@ mod tests {
     #[test]
     fn test_error_recording() {
         let collector = TelemetryCollector::new(TelemetryConfig::default());
-        
-        assert!(collector.record_error("simulation_error", "Gate execution failed").is_ok());
-        
+
+        assert!(collector
+            .record_error("simulation_error", "Gate execution failed")
+            .is_ok());
+
         let history = collector.metrics_history.read().unwrap();
         assert_eq!(history.len(), 1);
     }
@@ -954,7 +998,7 @@ mod tests {
     #[test]
     fn test_metrics_summary() {
         let collector = TelemetryCollector::new(TelemetryConfig::default());
-        
+
         // Add some test metrics
         let metric = TelemetryMetric::Timer {
             name: "gate.execution_time".to_string(),
@@ -963,7 +1007,7 @@ mod tests {
             timestamp: 0.0,
         };
         collector.record_metric(metric).unwrap();
-        
+
         let summary = collector.get_metrics_summary().unwrap();
         assert_eq!(summary.total_metrics, 1);
         assert_abs_diff_eq!(summary.avg_gate_execution_time, 0.005, epsilon = 1e-6);
@@ -973,9 +1017,9 @@ mod tests {
     fn test_alert_thresholds() {
         let mut config = TelemetryConfig::default();
         config.alert_thresholds.max_gate_execution_time = 0.001; // 1ms
-        
+
         let collector = TelemetryCollector::new(config);
-        
+
         // Record a slow gate execution
         let metric = TelemetryMetric::Timer {
             name: "gate.execution_time".to_string(),
@@ -983,9 +1027,9 @@ mod tests {
             tags: HashMap::new(),
             timestamp: 0.0,
         };
-        
+
         collector.record_metric(metric).unwrap();
-        
+
         let alerts = collector.active_alerts.read().unwrap();
         assert_eq!(alerts.len(), 1);
         assert_eq!(alerts[0].level, AlertLevel::Warning);
@@ -994,11 +1038,11 @@ mod tests {
     #[test]
     fn test_prometheus_formatting() {
         let collector = TelemetryCollector::new(TelemetryConfig::default());
-        
+
         let mut tags = HashMap::new();
         tags.insert("gate_type".to_string(), "hadamard".to_string());
         tags.insert("qubits".to_string(), "1".to_string());
-        
+
         let formatted = collector.format_prometheus_labels(&tags);
         assert!(formatted.contains("gate_type=\"hadamard\""));
         assert!(formatted.contains("qubits=\"1\""));
@@ -1007,11 +1051,11 @@ mod tests {
     #[test]
     fn test_influx_formatting() {
         let collector = TelemetryCollector::new(TelemetryConfig::default());
-        
+
         let mut tags = HashMap::new();
         tags.insert("gate_type".to_string(), "hadamard".to_string());
         tags.insert("qubits".to_string(), "1".to_string());
-        
+
         let formatted = collector.format_influx_tags(&tags);
         assert!(formatted.starts_with(','));
         assert!(formatted.contains("gate_type=hadamard"));
@@ -1022,16 +1066,16 @@ mod tests {
     fn test_sampling_rate() {
         let mut config = TelemetryConfig::default();
         config.sampling_rate = 0.0; // No sampling
-        
+
         let collector = TelemetryCollector::new(config);
-        
+
         let metric = TelemetryMetric::Gauge {
             name: "test.metric".to_string(),
             value: 42.0,
             tags: HashMap::new(),
             timestamp: 0.0,
         };
-        
+
         // With 0% sampling rate, metric should still be recorded but might be filtered
         // The actual behavior depends on the random number generator
         collector.record_metric(metric).unwrap();

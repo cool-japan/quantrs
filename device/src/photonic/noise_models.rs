@@ -3,13 +3,13 @@
 //! This module implements noise models specific to photonic quantum computing systems,
 //! including loss, thermal noise, and detector inefficiencies.
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use super::{PhotonicSystemType, PhotonicMode};
-use super::continuous_variable::{GaussianState, Complex, CVResult, CVError};
+use super::continuous_variable::{CVError, CVResult, Complex, GaussianState};
+use super::{PhotonicMode, PhotonicSystemType};
 use crate::DeviceResult;
 
 /// Photonic noise model errors
@@ -70,9 +70,9 @@ impl Default for NoiseParameters {
     fn default() -> Self {
         Self {
             noise_strength: 0.01,
-            correlation_time: 1e-6, // 1 microsecond
+            correlation_time: 1e-6,        // 1 microsecond
             environment_temperature: 0.01, // 10 mK in energy units
-            bandwidth: 1e9, // 1 GHz
+            bandwidth: 1e9,                // 1 GHz
         }
     }
 }
@@ -128,7 +128,10 @@ impl PhotonicNoiseSimulator {
             PhotonicNoiseType::Loss { rate } => {
                 self.apply_loss_noise(state, *rate)?;
             }
-            PhotonicNoiseType::Thermal { temperature, frequency } => {
+            PhotonicNoiseType::Thermal {
+                temperature,
+                frequency,
+            } => {
                 self.apply_thermal_noise(state, *temperature, *frequency)?;
             }
             PhotonicNoiseType::PhaseNoise { variance } => {
@@ -157,27 +160,28 @@ impl PhotonicNoiseSimulator {
         loss_rate: f64,
     ) -> Result<(), PhotonicNoiseError> {
         if loss_rate < 0.0 || loss_rate > 1.0 {
-            return Err(PhotonicNoiseError::InvalidParameter(
-                format!("Loss rate must be between 0 and 1, got {}", loss_rate)
-            ));
+            return Err(PhotonicNoiseError::InvalidParameter(format!(
+                "Loss rate must be between 0 and 1, got {}",
+                loss_rate
+            )));
         }
 
         let transmission = 1.0 - loss_rate;
-        
+
         // Apply loss by scaling the covariance matrix
         for mode in 0..state.num_modes {
             let x_idx = 2 * mode;
             let p_idx = 2 * mode + 1;
-            
+
             // Scale mean values
             state.mean[x_idx] *= transmission.sqrt();
             state.mean[p_idx] *= transmission.sqrt();
-            
+
             // Scale covariance matrix elements
-            state.covariance[x_idx][x_idx] = transmission * state.covariance[x_idx][x_idx] + 
-                                            (1.0 - transmission) * 0.5;
-            state.covariance[p_idx][p_idx] = transmission * state.covariance[p_idx][p_idx] + 
-                                            (1.0 - transmission) * 0.5;
+            state.covariance[x_idx][x_idx] =
+                transmission * state.covariance[x_idx][x_idx] + (1.0 - transmission) * 0.5;
+            state.covariance[p_idx][p_idx] =
+                transmission * state.covariance[p_idx][p_idx] + (1.0 - transmission) * 0.5;
             state.covariance[x_idx][p_idx] *= transmission;
             state.covariance[p_idx][x_idx] *= transmission;
         }
@@ -194,19 +198,19 @@ impl PhotonicNoiseSimulator {
     ) -> Result<(), PhotonicNoiseError> {
         if temperature < 0.0 {
             return Err(PhotonicNoiseError::InvalidParameter(
-                "Temperature must be non-negative".to_string()
+                "Temperature must be non-negative".to_string(),
             ));
         }
 
         // Calculate thermal photon number: n_th = 1/(exp(hf/kT) - 1)
         // Simplified: n_th ≈ kT/hf for kT << hf
         let thermal_photons = temperature / frequency;
-        
+
         // Add thermal noise to all modes
         for mode in 0..state.num_modes {
             let x_idx = 2 * mode;
             let p_idx = 2 * mode + 1;
-            
+
             // Add thermal variance
             state.covariance[x_idx][x_idx] += thermal_photons;
             state.covariance[p_idx][p_idx] += thermal_photons;
@@ -223,7 +227,7 @@ impl PhotonicNoiseSimulator {
     ) -> Result<(), PhotonicNoiseError> {
         if variance < 0.0 {
             return Err(PhotonicNoiseError::InvalidParameter(
-                "Phase noise variance must be non-negative".to_string()
+                "Phase noise variance must be non-negative".to_string(),
             ));
         }
 
@@ -231,9 +235,10 @@ impl PhotonicNoiseSimulator {
         for mode in 0..state.num_modes {
             let phase_noise = self.generate_gaussian_noise(0.0, variance);
             if let Err(e) = state.phase_rotation(phase_noise, mode) {
-                return Err(PhotonicNoiseError::ApplicationFailed(
-                    format!("Failed to apply phase noise: {:?}", e)
-                ));
+                return Err(PhotonicNoiseError::ApplicationFailed(format!(
+                    "Failed to apply phase noise: {:?}",
+                    e
+                )));
             }
         }
 
@@ -248,7 +253,7 @@ impl PhotonicNoiseSimulator {
     ) -> Result<(), PhotonicNoiseError> {
         if variance < 0.0 {
             return Err(PhotonicNoiseError::InvalidParameter(
-                "Amplitude noise variance must be non-negative".to_string()
+                "Amplitude noise variance must be non-negative".to_string(),
             ));
         }
 
@@ -256,10 +261,10 @@ impl PhotonicNoiseSimulator {
         for mode in 0..state.num_modes {
             let x_idx = 2 * mode;
             let p_idx = 2 * mode + 1;
-            
+
             let x_noise = self.generate_gaussian_noise(0.0, variance);
             let p_noise = self.generate_gaussian_noise(0.0, variance);
-            
+
             state.mean[x_idx] += x_noise;
             state.mean[p_idx] += p_noise;
         }
@@ -274,9 +279,10 @@ impl PhotonicNoiseSimulator {
         efficiency: f64,
     ) -> Result<(), PhotonicNoiseError> {
         if efficiency < 0.0 || efficiency > 1.0 {
-            return Err(PhotonicNoiseError::InvalidParameter(
-                format!("Detector efficiency must be between 0 and 1, got {}", efficiency)
-            ));
+            return Err(PhotonicNoiseError::InvalidParameter(format!(
+                "Detector efficiency must be between 0 and 1, got {}",
+                efficiency
+            )));
         }
 
         // Detector inefficiency acts like loss but only affects measurements
@@ -298,9 +304,10 @@ impl PhotonicNoiseSimulator {
         for mode in 0..(state.num_modes - 1) {
             let coupling_angle = coupling_strength * PI / 4.0;
             if let Err(e) = state.beamsplitter(coupling_angle, 0.0, mode, mode + 1) {
-                return Err(PhotonicNoiseError::ApplicationFailed(
-                    format!("Failed to apply crosstalk: {:?}", e)
-                ));
+                return Err(PhotonicNoiseError::ApplicationFailed(format!(
+                    "Failed to apply crosstalk: {:?}",
+                    e
+                )));
             }
         }
 
@@ -330,18 +337,19 @@ impl PhotonicNoiseSimulator {
             PhotonicNoiseType::PhaseNoise { variance } => {
                 let phase_noise = self.generate_gaussian_noise(0.0, *variance);
                 if let Err(e) = state.phase_rotation(phase_noise, mode) {
-                    return Err(PhotonicNoiseError::ApplicationFailed(
-                        format!("Mode-specific phase noise failed: {:?}", e)
-                    ));
+                    return Err(PhotonicNoiseError::ApplicationFailed(format!(
+                        "Mode-specific phase noise failed: {:?}",
+                        e
+                    )));
                 }
             }
             PhotonicNoiseType::AmplitudeNoise { variance } => {
                 let x_idx = 2 * mode;
                 let p_idx = 2 * mode + 1;
-                
+
                 let x_noise = self.generate_gaussian_noise(0.0, *variance);
                 let p_noise = self.generate_gaussian_noise(0.0, *variance);
-                
+
                 state.mean[x_idx] += x_noise;
                 state.mean[p_idx] += p_noise;
             }
@@ -356,12 +364,18 @@ impl PhotonicNoiseSimulator {
     /// Generate Gaussian noise (simplified implementation)
     fn generate_gaussian_noise(&mut self, mean: f64, variance: f64) -> f64 {
         // Simple Box-Muller transform
-        self.rng_state = self.rng_state.wrapping_mul(1664525).wrapping_add(1013904223);
+        self.rng_state = self
+            .rng_state
+            .wrapping_mul(1664525)
+            .wrapping_add(1013904223);
         let u1 = (self.rng_state as f64) / (u64::MAX as f64);
-        
-        self.rng_state = self.rng_state.wrapping_mul(1664525).wrapping_add(1013904223);
+
+        self.rng_state = self
+            .rng_state
+            .wrapping_mul(1664525)
+            .wrapping_add(1013904223);
         let u2 = (self.rng_state as f64) / (u64::MAX as f64);
-        
+
         let z = (-2.0 * u1.ln()).sqrt() * (2.0 * PI * u2).cos();
         mean + variance.sqrt() * z
     }
@@ -374,12 +388,12 @@ impl PhotonicNoiseSimulator {
     ) -> PhotonicNoiseModel {
         let noise_types = vec![
             PhotonicNoiseType::Loss { rate: loss_rate },
-            PhotonicNoiseType::Thermal { 
-                temperature: thermal_temperature, 
-                frequency: 1e14 // Optical frequency
+            PhotonicNoiseType::Thermal {
+                temperature: thermal_temperature,
+                frequency: 1e14, // Optical frequency
             },
-            PhotonicNoiseType::DetectorInefficiency { 
-                efficiency: detector_efficiency 
+            PhotonicNoiseType::DetectorInefficiency {
+                efficiency: detector_efficiency,
             },
             PhotonicNoiseType::PhaseNoise { variance: 0.001 },
             PhotonicNoiseType::AmplitudeNoise { variance: 0.0005 },
@@ -399,7 +413,7 @@ impl PhotonicNoiseSimulator {
         noise_model: &PhotonicNoiseModel,
     ) -> f64 {
         let mut fidelity = initial_fidelity;
-        
+
         for noise_type in &noise_model.noise_types {
             match noise_type {
                 PhotonicNoiseType::Loss { rate } => {
@@ -419,7 +433,7 @@ impl PhotonicNoiseSimulator {
                 }
             }
         }
-        
+
         fidelity.max(0.0).min(1.0)
     }
 }
@@ -444,13 +458,11 @@ mod tests {
     #[test]
     fn test_loss_noise() {
         let mut simulator = PhotonicNoiseSimulator::new();
-        let mut state = GaussianState::coherent(
-            Complex::new(2.0, 0.0), 0, 1
-        ).unwrap();
-        
+        let mut state = GaussianState::coherent(Complex::new(2.0, 0.0), 0, 1).unwrap();
+
         let original_mean = state.mean[0];
         simulator.apply_loss_noise(&mut state, 0.1).unwrap();
-        
+
         // Mean should be reduced due to loss
         assert!(state.mean[0] < original_mean);
     }
@@ -459,10 +471,12 @@ mod tests {
     fn test_thermal_noise() {
         let mut simulator = PhotonicNoiseSimulator::new();
         let mut state = GaussianState::vacuum(1);
-        
+
         let original_variance = state.covariance[0][0];
-        simulator.apply_thermal_noise(&mut state, 0.01, 1e14).unwrap();
-        
+        simulator
+            .apply_thermal_noise(&mut state, 0.01, 1e14)
+            .unwrap();
+
         // Variance should increase due to thermal noise
         assert!(state.covariance[0][0] > original_variance);
     }
@@ -477,10 +491,10 @@ mod tests {
     fn test_noise_impact_estimation() {
         let simulator = PhotonicNoiseSimulator::new();
         let model = PhotonicNoiseSimulator::create_realistic_noise_model(0.1, 0.01, 0.95);
-        
+
         let initial_fidelity = 0.99;
         let final_fidelity = simulator.estimate_noise_impact(initial_fidelity, &model);
-        
+
         assert!(final_fidelity < initial_fidelity);
         assert!(final_fidelity > 0.0);
     }

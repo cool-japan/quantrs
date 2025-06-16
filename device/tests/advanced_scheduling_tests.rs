@@ -60,7 +60,7 @@ async fn test_ml_enhanced_job_configuration() {
 
     // Should succeed with optimized configuration
     match job_result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => panic!("Job submission failed: {:?}", e),
     }
 }
@@ -86,7 +86,7 @@ async fn test_multi_objective_backend_selection() {
         .select_optimal_backend(&requirements, &preferences)
         .await;
     match selected_backend {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => panic!("Backend selection failed: {:?}", e),
     }
 }
@@ -511,12 +511,21 @@ async fn create_test_scheduler() -> AdvancedQuantumScheduler {
     };
 
     let scheduler = AdvancedQuantumScheduler::new(params);
-    
+
     // Register test backends
-    scheduler.register_backend(HardwareBackend::IBMQuantum).await.unwrap();
-    scheduler.register_backend(HardwareBackend::AmazonBraket).await.unwrap();
-    scheduler.register_backend(HardwareBackend::AzureQuantum).await.unwrap();
-    
+    scheduler
+        .register_backend(HardwareBackend::IBMQuantum)
+        .await
+        .unwrap();
+    scheduler
+        .register_backend(HardwareBackend::AmazonBraket)
+        .await
+        .unwrap();
+    scheduler
+        .register_backend(HardwareBackend::AzureQuantum)
+        .await
+        .unwrap();
+
     scheduler
 }
 

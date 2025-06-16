@@ -339,10 +339,10 @@ pub struct AdvancedVQATrainer {
 pub trait CostFunction: Send + Sync {
     /// Evaluate cost function for given parameters
     fn evaluate(&self, parameters: &[f64], circuit: &InterfaceCircuit) -> Result<f64>;
-    
+
     /// Get observables for expectation value calculation
     fn get_observables(&self) -> Vec<String>;
-    
+
     /// Check if cost function is variational (depends on quantum state)
     fn is_variational(&self) -> bool;
 }
@@ -356,7 +356,7 @@ pub trait GradientCalculator: Send + Sync {
         cost_function: &dyn CostFunction,
         circuit: &InterfaceCircuit,
     ) -> Result<Vec<f64>>;
-    
+
     /// Get gradient calculation method name
     fn method_name(&self) -> &str;
 }
@@ -389,7 +389,7 @@ impl AdvancedVQATrainer {
         gradient_calculator: Box<dyn GradientCalculator + Send + Sync>,
     ) -> Result<Self> {
         let num_parameters = Self::count_parameters(&ansatz)?;
-        
+
         let state = VQATrainerState {
             parameters: Self::initialize_parameters(num_parameters, &config)?,
             current_cost: f64::INFINITY,
@@ -437,11 +437,13 @@ impl AdvancedVQATrainer {
 
             // Generate circuit with current parameters
             let circuit = self.generate_circuit(&self.state.parameters)?;
-            
+
             // Evaluate cost function
-            let cost = self.cost_function.evaluate(&self.state.parameters, &circuit)?;
+            let cost = self
+                .cost_function
+                .evaluate(&self.state.parameters, &circuit)?;
             self.state.current_cost = cost;
-            
+
             // Update best parameters
             if cost < self.state.best_cost {
                 self.state.best_cost = cost;
@@ -461,7 +463,10 @@ impl AdvancedVQATrainer {
             // Apply gradient clipping if configured
             let clipped_gradient = if let Some(clip_value) = self.config.gradient_clipping {
                 if gradient_norm > clip_value {
-                    gradient.iter().map(|g| g * clip_value / gradient_norm).collect()
+                    gradient
+                        .iter()
+                        .map(|g| g * clip_value / gradient_norm)
+                        .collect()
                 } else {
                     gradient
                 }
@@ -471,7 +476,7 @@ impl AdvancedVQATrainer {
 
             // Update parameters using optimizer
             let parameter_update = self.update_parameters(&clipped_gradient)?;
-            
+
             // Store statistics
             cost_history.push(cost);
             parameter_history.push(self.state.parameters.clone());
@@ -479,7 +484,11 @@ impl AdvancedVQATrainer {
             self.stats.function_evaluations.push(1); // Simplified
             self.stats.gradient_evaluations.push(1); // Simplified
             self.stats.parameter_update_magnitudes.push(
-                parameter_update.iter().map(|u| u.powi(2)).sum::<f64>().sqrt()
+                parameter_update
+                    .iter()
+                    .map(|u| u.powi(2))
+                    .sum::<f64>()
+                    .sqrt(),
             );
 
             // Check convergence
@@ -490,7 +499,8 @@ impl AdvancedVQATrainer {
             // Warm restart if configured
             if let Some(ref restart_config) = self.config.warm_restart {
                 if iteration % restart_config.restart_period == 0 && iteration > 0 {
-                    self.state.learning_rate = (self.state.learning_rate * restart_config.restart_factor)
+                    self.state.learning_rate = (self.state.learning_rate
+                        * restart_config.restart_factor)
                         .max(restart_config.min_learning_rate);
                 }
             }
@@ -506,8 +516,10 @@ impl AdvancedVQATrainer {
         // Calculate expectation values
         let expectation_values = self.calculate_expectation_values(&final_state)?;
 
-        let converged = gradient_norms.last().map_or(false, |&norm| norm < self.config.convergence_tolerance);
-        
+        let converged = gradient_norms
+            .last()
+            .map_or(false, |&norm| norm < self.config.convergence_tolerance);
+
         Ok(VQAResult {
             optimal_parameters: self.state.best_parameters.clone(),
             optimal_cost: self.state.best_cost,
@@ -525,24 +537,63 @@ impl AdvancedVQATrainer {
     /// Generate parametric circuit from ansatz
     fn generate_circuit(&self, parameters: &[f64]) -> Result<InterfaceCircuit> {
         match &self.ansatz {
-            VariationalAnsatz::HardwareEfficient { layers, entangling_gates, rotation_gates } => {
-                self.generate_hardware_efficient_circuit(parameters, *layers, entangling_gates, rotation_gates)
-            }
-            VariationalAnsatz::UCCSD { num_electrons, num_orbitals, include_triples } => {
-                self.generate_uccsd_circuit(parameters, *num_electrons, *num_orbitals, *include_triples)
-            }
-            VariationalAnsatz::QAOA { problem_hamiltonian, mixer_hamiltonian, layers } => {
-                self.generate_qaoa_circuit(parameters, problem_hamiltonian, mixer_hamiltonian, *layers)
-            }
-            VariationalAnsatz::Adaptive { max_layers, growth_criterion, operator_pool } => {
-                self.generate_adaptive_circuit(parameters, *max_layers, growth_criterion, operator_pool)
-            }
-            VariationalAnsatz::QuantumNeuralNetwork { hidden_layers, activation_type, connectivity } => {
+            VariationalAnsatz::HardwareEfficient {
+                layers,
+                entangling_gates,
+                rotation_gates,
+            } => self.generate_hardware_efficient_circuit(
+                parameters,
+                *layers,
+                entangling_gates,
+                rotation_gates,
+            ),
+            VariationalAnsatz::UCCSD {
+                num_electrons,
+                num_orbitals,
+                include_triples,
+            } => self.generate_uccsd_circuit(
+                parameters,
+                *num_electrons,
+                *num_orbitals,
+                *include_triples,
+            ),
+            VariationalAnsatz::QAOA {
+                problem_hamiltonian,
+                mixer_hamiltonian,
+                layers,
+            } => self.generate_qaoa_circuit(
+                parameters,
+                problem_hamiltonian,
+                mixer_hamiltonian,
+                *layers,
+            ),
+            VariationalAnsatz::Adaptive {
+                max_layers,
+                growth_criterion,
+                operator_pool,
+            } => self.generate_adaptive_circuit(
+                parameters,
+                *max_layers,
+                growth_criterion,
+                operator_pool,
+            ),
+            VariationalAnsatz::QuantumNeuralNetwork {
+                hidden_layers,
+                activation_type,
+                connectivity,
+            } => {
                 self.generate_qnn_circuit(parameters, hidden_layers, activation_type, connectivity)
             }
-            VariationalAnsatz::TensorNetworkAnsatz { bond_dimension, network_topology, compression_method } => {
-                self.generate_tensor_network_circuit(parameters, *bond_dimension, network_topology, compression_method)
-            }
+            VariationalAnsatz::TensorNetworkAnsatz {
+                bond_dimension,
+                network_topology,
+                compression_method,
+            } => self.generate_tensor_network_circuit(
+                parameters,
+                *bond_dimension,
+                network_topology,
+                compression_method,
+            ),
         }
     }
 
@@ -615,7 +666,10 @@ impl AdvancedVQATrainer {
                             param_idx += 1;
                         }
                         _ => {
-                            circuit.add_gate(InterfaceGate::new(gate_type.clone(), vec![qubit, qubit + 1]));
+                            circuit.add_gate(InterfaceGate::new(
+                                gate_type.clone(),
+                                vec![qubit, qubit + 1],
+                            ));
                         }
                     }
                 }
@@ -648,12 +702,12 @@ impl AdvancedVQATrainer {
                 if param_idx < parameters.len() {
                     // Apply single excitation operator exp(θ(a†a - aa†))
                     let theta = parameters[param_idx];
-                    
+
                     // Simplified single excitation - would need proper Jordan-Wigner transformation
                     circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(theta), vec![i]));
                     circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, a]));
                     circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(-theta), vec![a]));
-                    
+
                     param_idx += 1;
                 }
             }
@@ -667,14 +721,23 @@ impl AdvancedVQATrainer {
                         if param_idx < parameters.len() {
                             // Apply double excitation operator
                             let theta = parameters[param_idx];
-                            
+
                             // Simplified double excitation
-                            circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(theta), vec![i]));
-                            circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, j]));
-                            circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![j, a]));
-                            circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![a, b]));
-                            circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(-theta), vec![b]));
-                            
+                            circuit.add_gate(InterfaceGate::new(
+                                InterfaceGateType::RY(theta),
+                                vec![i],
+                            ));
+                            circuit
+                                .add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, j]));
+                            circuit
+                                .add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![j, a]));
+                            circuit
+                                .add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![a, b]));
+                            circuit.add_gate(InterfaceGate::new(
+                                InterfaceGateType::RY(-theta),
+                                vec![b],
+                            ));
+
                             param_idx += 1;
                         }
                     }
@@ -736,17 +799,29 @@ impl AdvancedVQATrainer {
     ) -> Result<()> {
         for term in &hamiltonian.terms {
             let angle = parameter * term.coefficient.re;
-            
+
             // Apply Pauli string evolution exp(-i*angle*P)
             // This is a simplified implementation - would need proper Pauli string decomposition
             match term.pauli_string.as_str() {
                 "ZZ" if term.qubits.len() == 2 => {
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, term.qubits.clone()));
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(angle), vec![term.qubits[1]]));
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, term.qubits.clone()));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::CNOT,
+                        term.qubits.clone(),
+                    ));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::RZ(angle),
+                        vec![term.qubits[1]],
+                    ));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::CNOT,
+                        term.qubits.clone(),
+                    ));
                 }
                 "Z" if term.qubits.len() == 1 => {
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(angle), term.qubits.clone()));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::RZ(angle),
+                        term.qubits.clone(),
+                    ));
                 }
                 _ => {
                     // More complex Pauli strings would be decomposed here
@@ -767,7 +842,10 @@ impl AdvancedVQATrainer {
             MixerType::XMixer => {
                 // Standard X mixer: sum_i X_i
                 for i in 0..circuit.num_qubits {
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::RX(parameter), vec![i]));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::RX(parameter),
+                        vec![i],
+                    ));
                 }
             }
             MixerType::XYMixer => {
@@ -775,7 +853,10 @@ impl AdvancedVQATrainer {
                 for i in 0..circuit.num_qubits - 1 {
                     // Implement XY evolution: (X_i X_{i+1} + Y_i Y_{i+1})
                     circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, i + 1]));
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(parameter), vec![i + 1]));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::RY(parameter),
+                        vec![i + 1],
+                    ));
                     circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, i + 1]));
                 }
             }
@@ -784,7 +865,10 @@ impl AdvancedVQATrainer {
                 for i in 0..circuit.num_qubits {
                     let next = (i + 1) % circuit.num_qubits;
                     circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, next]));
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(parameter), vec![next]));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::RY(parameter),
+                        vec![next],
+                    ));
                     circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, next]));
                 }
             }
@@ -794,7 +878,10 @@ impl AdvancedVQATrainer {
                     let angle = parameter * term.coefficient.re;
                     // Apply term evolution (simplified)
                     if !term.qubits.is_empty() {
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::RX(angle), vec![term.qubits[0]]));
+                        circuit.add_gate(InterfaceGate::new(
+                            InterfaceGateType::RX(angle),
+                            vec![term.qubits[0]],
+                        ));
                     }
                 }
             }
@@ -822,15 +909,21 @@ impl AdvancedVQATrainer {
                 // Select operator from pool (simplified selection)
                 let operator_idx = (layer * 13) % operator_pool.len(); // Deterministic but varied
                 let mut selected_gate = operator_pool[operator_idx].clone();
-                
+
                 // Parameterize the gate if it's parameterized
                 match &mut selected_gate.gate_type {
-                    InterfaceGateType::RX(_) => selected_gate.gate_type = InterfaceGateType::RX(parameters[param_idx]),
-                    InterfaceGateType::RY(_) => selected_gate.gate_type = InterfaceGateType::RY(parameters[param_idx]),
-                    InterfaceGateType::RZ(_) => selected_gate.gate_type = InterfaceGateType::RZ(parameters[param_idx]),
+                    InterfaceGateType::RX(_) => {
+                        selected_gate.gate_type = InterfaceGateType::RX(parameters[param_idx])
+                    }
+                    InterfaceGateType::RY(_) => {
+                        selected_gate.gate_type = InterfaceGateType::RY(parameters[param_idx])
+                    }
+                    InterfaceGateType::RZ(_) => {
+                        selected_gate.gate_type = InterfaceGateType::RZ(parameters[param_idx])
+                    }
                     _ => {}
                 }
-                
+
                 circuit.add_gate(selected_gate);
                 param_idx += 1;
             }
@@ -854,7 +947,10 @@ impl AdvancedVQATrainer {
         // Input encoding layer
         for qubit in 0..num_qubits {
             if param_idx < parameters.len() {
-                circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(parameters[param_idx]), vec![qubit]));
+                circuit.add_gate(InterfaceGate::new(
+                    InterfaceGateType::RY(parameters[param_idx]),
+                    vec![qubit],
+                ));
                 param_idx += 1;
             }
         }
@@ -866,25 +962,37 @@ impl AdvancedVQATrainer {
                 match activation_type {
                     QuantumActivation::RotationActivation => {
                         if param_idx < parameters.len() {
-                            circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(parameters[param_idx]), vec![neuron]));
+                            circuit.add_gate(InterfaceGate::new(
+                                InterfaceGateType::RY(parameters[param_idx]),
+                                vec![neuron],
+                            ));
                             param_idx += 1;
                         }
                     }
                     QuantumActivation::ControlledRotation => {
                         if neuron > 0 && param_idx < parameters.len() {
-                            circuit.add_gate(InterfaceGate::new(InterfaceGateType::CRY(parameters[param_idx]), vec![neuron - 1, neuron]));
+                            circuit.add_gate(InterfaceGate::new(
+                                InterfaceGateType::CRY(parameters[param_idx]),
+                                vec![neuron - 1, neuron],
+                            ));
                             param_idx += 1;
                         }
                     }
                     QuantumActivation::EntanglingActivation => {
                         if neuron < num_qubits - 1 {
-                            circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![neuron, neuron + 1]));
+                            circuit.add_gate(InterfaceGate::new(
+                                InterfaceGateType::CNOT,
+                                vec![neuron, neuron + 1],
+                            ));
                         }
                     }
                     QuantumActivation::QuantumReLU => {
                         // Quantum ReLU approximation using controlled gates
                         if param_idx < parameters.len() {
-                            circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(parameters[param_idx].max(0.0)), vec![neuron]));
+                            circuit.add_gate(InterfaceGate::new(
+                                InterfaceGateType::RY(parameters[param_idx].max(0.0)),
+                                vec![neuron],
+                            ));
                             param_idx += 1;
                         }
                     }
@@ -895,16 +1003,25 @@ impl AdvancedVQATrainer {
                     NetworkConnectivity::FullyConnected => {
                         for other in 0..num_qubits {
                             if other != neuron {
-                                circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![neuron, other]));
+                                circuit.add_gate(InterfaceGate::new(
+                                    InterfaceGateType::CNOT,
+                                    vec![neuron, other],
+                                ));
                             }
                         }
                     }
                     NetworkConnectivity::NearestNeighbor => {
                         if neuron > 0 {
-                            circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![neuron - 1, neuron]));
+                            circuit.add_gate(InterfaceGate::new(
+                                InterfaceGateType::CNOT,
+                                vec![neuron - 1, neuron],
+                            ));
                         }
                         if neuron < num_qubits - 1 {
-                            circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![neuron, neuron + 1]));
+                            circuit.add_gate(InterfaceGate::new(
+                                InterfaceGateType::CNOT,
+                                vec![neuron, neuron + 1],
+                            ));
                         }
                     }
                     _ => {
@@ -934,15 +1051,24 @@ impl AdvancedVQATrainer {
                 // Matrix Product State inspired ansatz
                 for qubit in 0..num_qubits {
                     if param_idx < parameters.len() {
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(parameters[param_idx]), vec![qubit]));
+                        circuit.add_gate(InterfaceGate::new(
+                            InterfaceGateType::RY(parameters[param_idx]),
+                            vec![qubit],
+                        ));
                         param_idx += 1;
                     }
-                    
+
                     if qubit < num_qubits - 1 {
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubit, qubit + 1]));
-                        
+                        circuit.add_gate(InterfaceGate::new(
+                            InterfaceGateType::CNOT,
+                            vec![qubit, qubit + 1],
+                        ));
+
                         if param_idx < parameters.len() {
-                            circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(parameters[param_idx]), vec![qubit + 1]));
+                            circuit.add_gate(InterfaceGate::new(
+                                InterfaceGateType::RY(parameters[param_idx]),
+                                vec![qubit + 1],
+                            ));
                             param_idx += 1;
                         }
                     }
@@ -954,9 +1080,15 @@ impl AdvancedVQATrainer {
                 while current_level > 1 {
                     for i in (0..current_level).step_by(2) {
                         if i + 1 < current_level && param_idx < parameters.len() {
-                            circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(parameters[param_idx]), vec![i]));
+                            circuit.add_gate(InterfaceGate::new(
+                                InterfaceGateType::RY(parameters[param_idx]),
+                                vec![i],
+                            ));
                             param_idx += 1;
-                            circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, i + 1]));
+                            circuit.add_gate(InterfaceGate::new(
+                                InterfaceGateType::CNOT,
+                                vec![i, i + 1],
+                            ));
                         }
                     }
                     current_level = (current_level + 1) / 2;
@@ -980,12 +1112,20 @@ impl AdvancedVQATrainer {
             AdvancedOptimizerType::SPSA => self.update_spsa(gradient),
             AdvancedOptimizerType::QuantumAdam => self.update_quantum_adam(gradient),
             AdvancedOptimizerType::NaturalGradient => self.update_natural_gradient(gradient),
-            AdvancedOptimizerType::QuantumNaturalGradient => self.update_quantum_natural_gradient(gradient),
+            AdvancedOptimizerType::QuantumNaturalGradient => {
+                self.update_quantum_natural_gradient(gradient)
+            }
             AdvancedOptimizerType::LBFGS => self.update_lbfgs(gradient),
             AdvancedOptimizerType::BayesianOptimization => self.update_bayesian(gradient),
-            AdvancedOptimizerType::ReinforcementLearning => self.update_reinforcement_learning(gradient),
-            AdvancedOptimizerType::EvolutionaryStrategy => self.update_evolutionary_strategy(gradient),
-            AdvancedOptimizerType::QuantumParticleSwarm => self.update_quantum_particle_swarm(gradient),
+            AdvancedOptimizerType::ReinforcementLearning => {
+                self.update_reinforcement_learning(gradient)
+            }
+            AdvancedOptimizerType::EvolutionaryStrategy => {
+                self.update_evolutionary_strategy(gradient)
+            }
+            AdvancedOptimizerType::QuantumParticleSwarm => {
+                self.update_quantum_particle_swarm(gradient)
+            }
             AdvancedOptimizerType::MetaLearningOptimizer => self.update_meta_learning(gradient),
         }
     }
@@ -997,7 +1137,11 @@ impl AdvancedVQATrainer {
 
         // SPSA uses simultaneous perturbation
         for i in 0..self.state.parameters.len() {
-            let perturbation = if rand::random::<f64>() > 0.5 { 1.0 } else { -1.0 };
+            let perturbation = if rand::random::<f64>() > 0.5 {
+                1.0
+            } else {
+                -1.0
+            };
             let update = learning_rate * perturbation;
             self.state.parameters[i] += update;
             updates.push(update);
@@ -1016,21 +1160,25 @@ impl AdvancedVQATrainer {
 
         for i in 0..self.state.parameters.len() {
             // Update biased first moment estimate
-            self.state.optimizer_state.momentum[i] = beta1 * self.state.optimizer_state.momentum[i] + (1.0 - beta1) * gradient[i];
-            
+            self.state.optimizer_state.momentum[i] =
+                beta1 * self.state.optimizer_state.momentum[i] + (1.0 - beta1) * gradient[i];
+
             // Update biased second raw moment estimate
-            self.state.optimizer_state.velocity[i] = beta2 * self.state.optimizer_state.velocity[i] + (1.0 - beta2) * gradient[i].powi(2);
-            
+            self.state.optimizer_state.velocity[i] = beta2 * self.state.optimizer_state.velocity[i]
+                + (1.0 - beta2) * gradient[i].powi(2);
+
             // Compute bias-corrected first moment estimate
-            let m_hat = self.state.optimizer_state.momentum[i] / (1.0 - beta1.powi(self.state.iteration as i32 + 1));
-            
+            let m_hat = self.state.optimizer_state.momentum[i]
+                / (1.0 - beta1.powi(self.state.iteration as i32 + 1));
+
             // Compute bias-corrected second raw moment estimate
-            let v_hat = self.state.optimizer_state.velocity[i] / (1.0 - beta2.powi(self.state.iteration as i32 + 1));
-            
+            let v_hat = self.state.optimizer_state.velocity[i]
+                / (1.0 - beta2.powi(self.state.iteration as i32 + 1));
+
             // Quantum-aware learning rate adaptation
             let quantum_factor = 1.0 / (1.0 + 0.1 * (self.state.iteration as f64).sqrt());
             let effective_lr = learning_rate * quantum_factor;
-            
+
             // Update parameters
             let update = effective_lr * m_hat / (v_hat.sqrt() + epsilon);
             self.state.parameters[i] -= update;
@@ -1044,14 +1192,15 @@ impl AdvancedVQATrainer {
     fn update_natural_gradient(&mut self, gradient: &[f64]) -> Result<Vec<f64>> {
         // Compute Fisher information matrix if not cached
         if self.state.optimizer_state.fisher_matrix.is_none() {
-            self.state.optimizer_state.fisher_matrix = Some(self.compute_fisher_information_matrix()?);
+            self.state.optimizer_state.fisher_matrix =
+                Some(self.compute_fisher_information_matrix()?);
         }
 
         let fisher_matrix = self.state.optimizer_state.fisher_matrix.as_ref().unwrap();
-        
+
         // Solve Fisher * update = gradient
         let natural_gradient = self.solve_linear_system(fisher_matrix, gradient)?;
-        
+
         let mut updates = Vec::new();
         for i in 0..self.state.parameters.len() {
             let update = self.state.learning_rate * natural_gradient[i];
@@ -1066,12 +1215,12 @@ impl AdvancedVQATrainer {
     fn update_quantum_natural_gradient(&mut self, gradient: &[f64]) -> Result<Vec<f64>> {
         // Quantum natural gradient uses quantum Fisher information
         let qfi_matrix = self.compute_quantum_fisher_information_matrix()?;
-        
+
         // Regularized inversion to handle singular matrices
         let regularized_qfi = self.regularize_matrix(&qfi_matrix, 1e-6)?;
-        
+
         let natural_gradient = self.solve_linear_system(&regularized_qfi, gradient)?;
-        
+
         let mut updates = Vec::new();
         for i in 0..self.state.parameters.len() {
             let update = self.state.learning_rate * natural_gradient[i];
@@ -1085,15 +1234,25 @@ impl AdvancedVQATrainer {
     /// L-BFGS parameter update
     fn update_lbfgs(&mut self, gradient: &[f64]) -> Result<Vec<f64>> {
         let max_history = 10;
-        
+
         // Store gradient and parameter differences
         if !self.state.optimizer_state.lbfgs_history.is_empty() {
             let (prev_params, prev_grad) = self.state.optimizer_state.lbfgs_history.back().unwrap();
-            let s = self.state.parameters.iter().zip(prev_params).map(|(x, px)| x - px).collect::<Vec<_>>();
-            let y = gradient.iter().zip(prev_grad).map(|(g, pg)| g - pg).collect::<Vec<_>>();
-            
+            let s = self
+                .state
+                .parameters
+                .iter()
+                .zip(prev_params)
+                .map(|(x, px)| x - px)
+                .collect::<Vec<_>>();
+            let y = gradient
+                .iter()
+                .zip(prev_grad)
+                .map(|(g, pg)| g - pg)
+                .collect::<Vec<_>>();
+
             self.state.optimizer_state.lbfgs_history.push_back((s, y));
-            
+
             if self.state.optimizer_state.lbfgs_history.len() > max_history {
                 self.state.optimizer_state.lbfgs_history.pop_front();
             }
@@ -1122,7 +1281,13 @@ impl AdvancedVQATrainer {
 
         // Second loop
         alphas.reverse();
-        for ((s, y), alpha) in self.state.optimizer_state.lbfgs_history.iter().zip(alphas.iter()) {
+        for ((s, y), alpha) in self
+            .state
+            .optimizer_state
+            .lbfgs_history
+            .iter()
+            .zip(alphas.iter())
+        {
             let sy = s.iter().zip(y).map(|(si, yi)| si * yi).sum::<f64>();
             if sy.abs() > 1e-10 {
                 let beta = y.iter().zip(&q).map(|(yi, qi)| yi * qi).sum::<f64>() / sy;
@@ -1141,7 +1306,10 @@ impl AdvancedVQATrainer {
         }
 
         // Store current state for next iteration
-        self.state.optimizer_state.lbfgs_history.push_back((self.state.parameters.clone(), gradient.to_vec()));
+        self.state
+            .optimizer_state
+            .lbfgs_history
+            .push_back((self.state.parameters.clone(), gradient.to_vec()));
 
         Ok(updates)
     }
@@ -1165,13 +1333,19 @@ impl AdvancedVQATrainer {
         }
 
         // Find next point using acquisition function (simplified)
-        let next_parameters = self.state.parameters.iter()
+        let next_parameters = self
+            .state
+            .parameters
+            .iter()
             .map(|p| p + (rand::random::<f64>() - 0.5) * 0.1)
             .collect::<Vec<_>>();
-        
-        let updates = next_parameters.iter().zip(&self.state.parameters)
-            .map(|(new, old)| new - old).collect();
-        
+
+        let updates = next_parameters
+            .iter()
+            .zip(&self.state.parameters)
+            .map(|(new, old)| new - old)
+            .collect();
+
         self.state.parameters = next_parameters;
 
         Ok(updates)
@@ -1239,9 +1413,12 @@ impl AdvancedVQATrainer {
             *param /= total_weight;
         }
 
-        let updates = new_parameters.iter().zip(&self.state.parameters)
-            .map(|(new, old)| new - old).collect();
-        
+        let updates = new_parameters
+            .iter()
+            .zip(&self.state.parameters)
+            .map(|(new, old)| new - old)
+            .collect();
+
         self.state.parameters = new_parameters;
 
         Ok(updates)
@@ -1256,12 +1433,20 @@ impl AdvancedVQATrainer {
 
         // Update velocity with quantum enhancement
         for i in 0..self.state.parameters.len() {
-            let quantum_factor = (2.0 * std::f64::consts::PI * rand::random::<f64>()).cos().abs();
-            
+            let quantum_factor = (2.0 * std::f64::consts::PI * rand::random::<f64>())
+                .cos()
+                .abs();
+
             // Update velocity (stored in momentum)
-            self.state.optimizer_state.momentum[i] = inertia * self.state.optimizer_state.momentum[i]
-                + cognitive * rand::random::<f64>() * (self.state.best_parameters[i] - self.state.parameters[i]) * quantum_factor
-                + social * rand::random::<f64>() * (self.state.best_parameters[i] - self.state.parameters[i]);
+            self.state.optimizer_state.momentum[i] = inertia
+                * self.state.optimizer_state.momentum[i]
+                + cognitive
+                    * rand::random::<f64>()
+                    * (self.state.best_parameters[i] - self.state.parameters[i])
+                    * quantum_factor
+                + social
+                    * rand::random::<f64>()
+                    * (self.state.best_parameters[i] - self.state.parameters[i]);
         }
 
         // Update position
@@ -1279,12 +1464,12 @@ impl AdvancedVQATrainer {
     fn update_meta_learning(&mut self, gradient: &[f64]) -> Result<Vec<f64>> {
         // Adapt learning rate based on gradient history and cost landscape
         let gradient_norm = gradient.iter().map(|g| g.powi(2)).sum::<f64>().sqrt();
-        
+
         // Meta-learning rule: adapt learning rate based on gradient consistency
         if self.state.iteration > 10 {
             let recent_gradients = &self.stats.parameter_update_magnitudes;
             let recent_avg = recent_gradients.iter().rev().take(5).sum::<f64>() / 5.0;
-            
+
             if gradient_norm > 2.0 * recent_avg {
                 self.state.learning_rate *= 0.8; // Reduce learning rate for large gradients
             } else if gradient_norm < 0.5 * recent_avg {
@@ -1300,22 +1485,32 @@ impl AdvancedVQATrainer {
 
     fn count_parameters(ansatz: &VariationalAnsatz) -> Result<usize> {
         match ansatz {
-            VariationalAnsatz::HardwareEfficient { layers, rotation_gates, .. } => {
+            VariationalAnsatz::HardwareEfficient {
+                layers,
+                rotation_gates,
+                ..
+            } => {
                 // Simplified parameter counting
                 Ok(layers * rotation_gates.len() * 4) // Assume 4 qubits
             }
-            VariationalAnsatz::UCCSD { num_electrons, num_orbitals, include_triples } => {
+            VariationalAnsatz::UCCSD {
+                num_electrons,
+                num_orbitals,
+                include_triples,
+            } => {
                 let singles = num_electrons * (2 * num_orbitals - num_electrons);
-                let doubles = num_electrons * (num_electrons - 1) * (2 * num_orbitals - num_electrons) * (2 * num_orbitals - num_electrons - 1) / 4;
+                let doubles = num_electrons
+                    * (num_electrons - 1)
+                    * (2 * num_orbitals - num_electrons)
+                    * (2 * num_orbitals - num_electrons - 1)
+                    / 4;
                 let triples = if *include_triples { doubles / 10 } else { 0 }; // Rough estimate
                 Ok(singles + doubles + triples)
             }
             VariationalAnsatz::QAOA { layers, .. } => {
                 Ok(2 * layers) // gamma and beta for each layer
             }
-            VariationalAnsatz::Adaptive { max_layers, .. } => {
-                Ok(*max_layers)
-            }
+            VariationalAnsatz::Adaptive { max_layers, .. } => Ok(*max_layers),
             VariationalAnsatz::QuantumNeuralNetwork { hidden_layers, .. } => {
                 Ok(hidden_layers.iter().sum::<usize>())
             }
@@ -1327,7 +1522,7 @@ impl AdvancedVQATrainer {
 
     fn initialize_parameters(num_parameters: usize, config: &VQAConfig) -> Result<Vec<f64>> {
         let mut parameters = Vec::with_capacity(num_parameters);
-        
+
         for _ in 0..num_parameters {
             let param = if let Some((min, max)) = config.parameter_bounds {
                 min + (max - min) * rand::random::<f64>()
@@ -1345,21 +1540,33 @@ impl AdvancedVQATrainer {
         Ok((num_params as f64 / layers as f64).sqrt().ceil() as usize)
     }
 
-    fn extract_num_qubits_from_hamiltonian(&self, hamiltonian: &ProblemHamiltonian) -> Result<usize> {
-        Ok(hamiltonian.terms.iter()
+    fn extract_num_qubits_from_hamiltonian(
+        &self,
+        hamiltonian: &ProblemHamiltonian,
+    ) -> Result<usize> {
+        Ok(hamiltonian
+            .terms
+            .iter()
             .flat_map(|term| &term.qubits)
             .max()
-            .unwrap_or(&0) + 1)
+            .unwrap_or(&0)
+            + 1)
     }
 
     fn infer_num_qubits_from_pool(&self, operator_pool: &[InterfaceGate]) -> Result<usize> {
-        Ok(operator_pool.iter()
+        Ok(operator_pool
+            .iter()
             .flat_map(|gate| &gate.qubits)
             .max()
-            .unwrap_or(&0) + 1)
+            .unwrap_or(&0)
+            + 1)
     }
 
-    fn determine_adaptive_layers(&self, max_layers: usize, _growth_criterion: &GrowthCriterion) -> Result<usize> {
+    fn determine_adaptive_layers(
+        &self,
+        max_layers: usize,
+        _growth_criterion: &GrowthCriterion,
+    ) -> Result<usize> {
         // Simplified adaptive layer determination
         let current_layers = (self.state.iteration / 10).min(max_layers);
         Ok(current_layers.max(1))
@@ -1373,9 +1580,12 @@ impl AdvancedVQATrainer {
         Ok(state)
     }
 
-    fn calculate_expectation_values(&self, _state: &Array1<Complex64>) -> Result<HashMap<String, f64>> {
+    fn calculate_expectation_values(
+        &self,
+        _state: &Array1<Complex64>,
+    ) -> Result<HashMap<String, f64>> {
         let mut expectations = HashMap::new();
-        
+
         for observable in self.cost_function.get_observables() {
             // Simplified expectation value calculation
             expectations.insert(observable, 0.0);
@@ -1448,7 +1658,9 @@ impl CostFunction for IsingCostFunction {
     }
 
     fn get_observables(&self) -> Vec<String> {
-        self.problem_hamiltonian.terms.iter()
+        self.problem_hamiltonian
+            .terms
+            .iter()
             .map(|term| term.pauli_string.clone())
             .collect()
     }
@@ -1477,7 +1689,7 @@ impl GradientCalculator for FiniteDifferenceGradient {
         for i in 0..parameters.len() {
             let mut params_plus = parameters.to_vec();
             let mut params_minus = parameters.to_vec();
-            
+
             params_plus[i] += self.epsilon;
             params_minus[i] -= self.epsilon;
 
@@ -1513,7 +1725,7 @@ impl GradientCalculator for ParameterShiftGradient {
         for i in 0..parameters.len() {
             let mut params_plus = parameters.to_vec();
             let mut params_minus = parameters.to_vec();
-            
+
             params_plus[i] += shift;
             params_minus[i] -= shift;
 
@@ -1548,13 +1760,11 @@ pub fn benchmark_advanced_vqa() -> Result<HashMap<String, f64>> {
     let config = VQAConfig::default();
     let cost_function = Box::new(IsingCostFunction {
         problem_hamiltonian: ProblemHamiltonian {
-            terms: vec![
-                HamiltonianTerm {
-                    coefficient: Complex64::new(-1.0, 0.0),
-                    pauli_string: "ZZ".to_string(),
-                    qubits: vec![0, 1],
-                },
-            ],
+            terms: vec![HamiltonianTerm {
+                coefficient: Complex64::new(-1.0, 0.0),
+                pauli_string: "ZZ".to_string(),
+                qubits: vec![0, 1],
+            }],
             problem_type: OptimizationProblemType::MaxCut,
         },
     });
@@ -1564,7 +1774,10 @@ pub fn benchmark_advanced_vqa() -> Result<HashMap<String, f64>> {
     let _result = trainer.train()?;
 
     let hardware_efficient_time = start.elapsed().as_millis() as f64;
-    results.insert("hardware_efficient_vqa".to_string(), hardware_efficient_time);
+    results.insert(
+        "hardware_efficient_vqa".to_string(),
+        hardware_efficient_time,
+    );
 
     Ok(results)
 }
@@ -1653,13 +1866,11 @@ mod tests {
     fn test_ising_cost_function() {
         let cost_function = IsingCostFunction {
             problem_hamiltonian: ProblemHamiltonian {
-                terms: vec![
-                    HamiltonianTerm {
-                        coefficient: Complex64::new(-1.0, 0.0),
-                        pauli_string: "ZZ".to_string(),
-                        qubits: vec![0, 1],
-                    },
-                ],
+                terms: vec![HamiltonianTerm {
+                    coefficient: Complex64::new(-1.0, 0.0),
+                    pauli_string: "ZZ".to_string(),
+                    qubits: vec![0, 1],
+                }],
                 problem_type: OptimizationProblemType::MaxCut,
             },
         };

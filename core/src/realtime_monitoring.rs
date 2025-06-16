@@ -5,19 +5,17 @@
 //! and optimization recommendations across all major quantum computing platforms.
 
 use crate::{
-    error::{QuantRS2Error, QuantRS2Result},
+    error::QuantRS2Result,
     hardware_compilation::{HardwarePlatform, NativeGateType},
-    gate_translation::UniversalGateSet,
     qubit::QubitId,
 };
-use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use std::{
-    collections::{HashMap, VecDeque, HashSet},
-    sync::{Arc, RwLock, Mutex},
-    time::{Duration, Instant, SystemTime},
-    thread,
+    collections::{HashMap, HashSet, VecDeque},
     fmt,
+    sync::{Arc, RwLock},
+    thread,
+    time::{Duration, SystemTime},
 };
 
 /// Real-time monitoring configuration
@@ -138,31 +136,31 @@ pub enum MetricType {
     GateFidelity,
     GateExecutionTime,
     GateCalibrationDrift,
-    
+
     // Qubit metrics
     QubitCoherenceTime,
     QubitReadoutError,
     QubitTemperature,
     QubitCrosstalk,
-    
+
     // System metrics
     SystemUptime,
     QueueDepth,
     Throughput,
     Latency,
-    
+
     // Environmental metrics
     EnvironmentalTemperature,
     MagneticField,
     Vibration,
     ElectromagneticNoise,
-    
+
     // Resource metrics
     CPUUsage,
     MemoryUsage,
     NetworkLatency,
     StorageUsage,
-    
+
     // Custom metrics
     Custom(String),
 }
@@ -194,19 +192,19 @@ pub struct RealtimeMonitor {
 pub trait MetricCollector: std::fmt::Debug + Send + Sync {
     /// Collect metrics from the platform
     fn collect_metrics(&self) -> QuantRS2Result<Vec<MetricMeasurement>>;
-    
+
     /// Get supported metric types
     fn supported_metrics(&self) -> HashSet<MetricType>;
-    
+
     /// Platform identifier
     fn platform(&self) -> HardwarePlatform;
-    
+
     /// Initialize connection to hardware
     fn initialize(&mut self) -> QuantRS2Result<()>;
-    
+
     /// Check connection status
     fn is_connected(&self) -> bool;
-    
+
     /// Disconnect from hardware
     fn disconnect(&mut self) -> QuantRS2Result<()>;
 }
@@ -299,7 +297,7 @@ pub struct AnalyticsEngine {
 pub trait TrendAnalyzer: std::fmt::Debug + Send + Sync {
     /// Analyze trend in metric data
     fn analyze_trend(&self, data: &[MetricMeasurement]) -> QuantRS2Result<TrendAnalysis>;
-    
+
     /// Get analyzer name
     fn name(&self) -> &str;
 }
@@ -308,10 +306,10 @@ pub trait TrendAnalyzer: std::fmt::Debug + Send + Sync {
 pub trait AnomalyDetector: std::fmt::Debug + Send + Sync {
     /// Detect anomalies in metric data
     fn detect_anomalies(&self, data: &[MetricMeasurement]) -> QuantRS2Result<Vec<Anomaly>>;
-    
+
     /// Get detector name
     fn name(&self) -> &str;
-    
+
     /// Get confidence threshold
     fn confidence_threshold(&self) -> f64;
 }
@@ -319,8 +317,11 @@ pub trait AnomalyDetector: std::fmt::Debug + Send + Sync {
 /// Correlation analysis trait
 pub trait CorrelationAnalyzer: std::fmt::Debug + Send + Sync {
     /// Analyze correlations between metrics
-    fn analyze_correlations(&self, data: &HashMap<MetricType, Vec<MetricMeasurement>>) -> QuantRS2Result<Vec<Correlation>>;
-    
+    fn analyze_correlations(
+        &self,
+        data: &HashMap<MetricType, Vec<MetricMeasurement>>,
+    ) -> QuantRS2Result<Vec<Correlation>>;
+
     /// Get analyzer name
     fn name(&self) -> &str;
 }
@@ -328,14 +329,18 @@ pub trait CorrelationAnalyzer: std::fmt::Debug + Send + Sync {
 /// Predictive modeling trait
 pub trait PredictiveModel: std::fmt::Debug + Send + Sync {
     /// Predict future values
-    fn predict(&self, historical_data: &[MetricMeasurement], horizon: Duration) -> QuantRS2Result<Prediction>;
-    
+    fn predict(
+        &self,
+        historical_data: &[MetricMeasurement],
+        horizon: Duration,
+    ) -> QuantRS2Result<Prediction>;
+
     /// Update model with new data
     fn update(&mut self, new_data: &[MetricMeasurement]) -> QuantRS2Result<()>;
-    
+
     /// Get model name
     fn name(&self) -> &str;
-    
+
     /// Get model accuracy
     fn accuracy(&self) -> f64;
 }
@@ -562,10 +567,10 @@ pub enum ComparisonOperator {
 pub trait AlertHandler: std::fmt::Debug + Send + Sync {
     /// Handle an alert
     fn handle_alert(&self, alert: &Alert) -> QuantRS2Result<()>;
-    
+
     /// Get handler name
     fn name(&self) -> &str;
-    
+
     /// Check if handler can handle this alert level
     fn can_handle(&self, level: AlertLevel) -> bool;
 }
@@ -611,10 +616,10 @@ pub struct OptimizationAdvisor {
 pub trait OptimizationStrategy: std::fmt::Debug + Send + Sync {
     /// Analyze performance data and generate recommendations
     fn analyze(&self, data: &RealtimeDataStore) -> QuantRS2Result<Vec<OptimizationRecommendation>>;
-    
+
     /// Get strategy name
     fn name(&self) -> &str;
-    
+
     /// Get strategy priority
     fn priority(&self) -> u32;
 }
@@ -698,13 +703,16 @@ pub struct RecommendationEngine {
 pub trait MLModel: std::fmt::Debug + Send + Sync {
     /// Train model with historical data
     fn train(&mut self, training_data: &[TrainingExample]) -> QuantRS2Result<()>;
-    
+
     /// Predict recommendations
-    fn predict(&self, input_data: &[MetricMeasurement]) -> QuantRS2Result<Vec<OptimizationRecommendation>>;
-    
+    fn predict(
+        &self,
+        input_data: &[MetricMeasurement],
+    ) -> QuantRS2Result<Vec<OptimizationRecommendation>>;
+
     /// Get model accuracy
     fn accuracy(&self) -> f64;
-    
+
     /// Get model name
     fn name(&self) -> &str;
 }
@@ -819,10 +827,10 @@ pub struct PerformanceDashboard {
 pub trait DashboardWidget: std::fmt::Debug + Send + Sync {
     /// Render widget with current data
     fn render(&self, data: &RealtimeDataStore) -> QuantRS2Result<WidgetData>;
-    
+
     /// Get widget configuration
     fn get_config(&self) -> WidgetConfig;
-    
+
     /// Update widget configuration
     fn update_config(&mut self, config: WidgetConfig) -> QuantRS2Result<()>;
 }
@@ -911,11 +919,15 @@ pub struct ExportManager {
 /// Data exporter trait
 pub trait DataExporter: std::fmt::Debug + Send + Sync {
     /// Export data in specific format
-    fn export(&self, data: &[MetricMeasurement], destination: &ExportDestination) -> QuantRS2Result<()>;
-    
+    fn export(
+        &self,
+        data: &[MetricMeasurement],
+        destination: &ExportDestination,
+    ) -> QuantRS2Result<()>;
+
     /// Get supported format
     fn format(&self) -> ExportFormat;
-    
+
     /// Validate export configuration
     fn validate_config(&self, destination: &ExportDestination) -> QuantRS2Result<()>;
 }
@@ -1017,7 +1029,9 @@ impl RealtimeMonitor {
         Ok(Self {
             config: config.clone(),
             collectors: Arc::new(RwLock::new(HashMap::new())),
-            data_store: Arc::new(RwLock::new(RealtimeDataStore::new(config.data_retention_period))),
+            data_store: Arc::new(RwLock::new(RealtimeDataStore::new(
+                config.data_retention_period,
+            ))),
             analytics_engine: Arc::new(RwLock::new(AnalyticsEngine::new())),
             alert_manager: Arc::new(RwLock::new(AlertManager::new(config.alert_thresholds))),
             optimization_advisor: Arc::new(RwLock::new(OptimizationAdvisor::new())),
@@ -1026,52 +1040,59 @@ impl RealtimeMonitor {
             monitoring_status: Arc::new(RwLock::new(MonitoringStatus::new())),
         })
     }
-    
+
     /// Start monitoring
     pub fn start_monitoring(&self) -> QuantRS2Result<()> {
         // Initialize collectors for each configured platform
         self.initialize_collectors()?;
-        
+
         // Start data collection threads
         self.start_data_collection_threads()?;
-        
+
         // Start analytics engine
         self.start_analytics_engine()?;
-        
+
         // Start alert processing
         self.start_alert_processing()?;
-        
+
         // Start export processing
         self.start_export_processing()?;
-        
+
         // Update monitoring status
         {
             let mut status = self.monitoring_status.write().unwrap();
             status.overall_status = SystemStatus::Healthy;
         }
-        
+
         Ok(())
     }
-    
+
     /// Stop monitoring
     pub fn stop_monitoring(&self) -> QuantRS2Result<()> {
         // Implementation would stop all background threads and cleanup
         Ok(())
     }
-    
+
     /// Register a metric collector for a platform
-    pub fn register_collector(&self, platform: HardwarePlatform, collector: Box<dyn MetricCollector>) -> QuantRS2Result<()> {
+    pub fn register_collector(
+        &self,
+        platform: HardwarePlatform,
+        collector: Box<dyn MetricCollector>,
+    ) -> QuantRS2Result<()> {
         let mut collectors = self.collectors.write().unwrap();
         collectors.insert(platform, collector);
         Ok(())
     }
-    
+
     /// Get current metrics
-    pub fn get_current_metrics(&self, metric_types: Option<Vec<MetricType>>) -> QuantRS2Result<Vec<MetricMeasurement>> {
+    pub fn get_current_metrics(
+        &self,
+        metric_types: Option<Vec<MetricType>>,
+    ) -> QuantRS2Result<Vec<MetricMeasurement>> {
         let data_store = self.data_store.read().unwrap();
-        
+
         let mut results = Vec::new();
-        
+
         match metric_types {
             Some(types) => {
                 for metric_type in types {
@@ -1090,10 +1111,10 @@ impl RealtimeMonitor {
                 }
             }
         }
-        
+
         Ok(results)
     }
-    
+
     /// Get historical metrics
     pub fn get_historical_metrics(
         &self,
@@ -1102,7 +1123,7 @@ impl RealtimeMonitor {
         end_time: SystemTime,
     ) -> QuantRS2Result<Vec<MetricMeasurement>> {
         let data_store = self.data_store.read().unwrap();
-        
+
         if let Some(time_series) = data_store.time_series.get(&metric_type) {
             let filtered: Vec<MetricMeasurement> = time_series
                 .iter()
@@ -1111,57 +1132,62 @@ impl RealtimeMonitor {
                 })
                 .cloned()
                 .collect();
-            
+
             Ok(filtered)
         } else {
             Ok(Vec::new())
         }
     }
-    
+
     /// Get aggregated statistics
-    pub fn get_aggregated_stats(&self, metric_type: MetricType) -> QuantRS2Result<Option<AggregatedStats>> {
+    pub fn get_aggregated_stats(
+        &self,
+        metric_type: MetricType,
+    ) -> QuantRS2Result<Option<AggregatedStats>> {
         let data_store = self.data_store.read().unwrap();
         Ok(data_store.aggregated_stats.get(&metric_type).cloned())
     }
-    
+
     /// Get active alerts
     pub fn get_active_alerts(&self) -> QuantRS2Result<Vec<Alert>> {
         let alert_manager = self.alert_manager.read().unwrap();
         Ok(alert_manager.active_alerts.values().cloned().collect())
     }
-    
+
     /// Get optimization recommendations
-    pub fn get_optimization_recommendations(&self) -> QuantRS2Result<Vec<OptimizationRecommendation>> {
+    pub fn get_optimization_recommendations(
+        &self,
+    ) -> QuantRS2Result<Vec<OptimizationRecommendation>> {
         let optimization_advisor = self.optimization_advisor.read().unwrap();
         Ok(optimization_advisor.active_recommendations.clone())
     }
-    
+
     /// Get monitoring status
     pub fn get_monitoring_status(&self) -> MonitoringStatus {
         self.monitoring_status.read().unwrap().clone()
     }
-    
+
     /// Force data collection from all platforms
     pub fn collect_metrics_now(&self) -> QuantRS2Result<usize> {
         let collectors = self.collectors.read().unwrap();
         let mut total_metrics = 0;
-        
+
         for collector in collectors.values() {
             let metrics = collector.collect_metrics()?;
             total_metrics += metrics.len();
-            
+
             // Store metrics
             self.store_metrics(metrics)?;
         }
-        
+
         Ok(total_metrics)
     }
-    
+
     /// Trigger analytics update
     pub fn update_analytics(&self) -> QuantRS2Result<()> {
         let data_store = self.data_store.read().unwrap();
-        let mut analytics = self.analytics_engine.write().unwrap();
-        
+        let analytics = self.analytics_engine.write().unwrap();
+
         // Run trend analysis on all metrics
         for (metric_type, time_series) in &data_store.time_series {
             if let Some(analyzer) = analytics.trend_analyzers.get(metric_type) {
@@ -1170,10 +1196,10 @@ impl RealtimeMonitor {
                 // Store trend analysis results
             }
         }
-        
+
         Ok(())
     }
-    
+
     // Private implementation methods
     fn initialize_collectors(&self) -> QuantRS2Result<()> {
         // Initialize collectors for each configured platform
@@ -1184,57 +1210,63 @@ impl RealtimeMonitor {
         }
         Ok(())
     }
-    
-    fn create_collector_for_platform(&self, platform: HardwarePlatform, config: &PlatformMonitoringConfig) -> QuantRS2Result<Box<dyn MetricCollector>> {
+
+    fn create_collector_for_platform(
+        &self,
+        platform: HardwarePlatform,
+        config: &PlatformMonitoringConfig,
+    ) -> QuantRS2Result<Box<dyn MetricCollector>> {
         match platform {
-            HardwarePlatform::Superconducting => Ok(Box::new(SuperconductingCollector::new(config.clone()))),
+            HardwarePlatform::Superconducting => {
+                Ok(Box::new(SuperconductingCollector::new(config.clone())))
+            }
             HardwarePlatform::TrappedIon => Ok(Box::new(TrappedIonCollector::new(config.clone()))),
             HardwarePlatform::Photonic => Ok(Box::new(PhotonicCollector::new(config.clone()))),
-            HardwarePlatform::NeutralAtom => Ok(Box::new(NeutralAtomCollector::new(config.clone()))),
+            HardwarePlatform::NeutralAtom => {
+                Ok(Box::new(NeutralAtomCollector::new(config.clone())))
+            }
             _ => Ok(Box::new(GenericCollector::new(config.clone()))),
         }
     }
-    
+
     fn start_data_collection_threads(&self) -> QuantRS2Result<()> {
         // Start background threads for data collection
         let collectors = Arc::clone(&self.collectors);
         let data_store = Arc::clone(&self.data_store);
         let monitoring_interval = self.config.monitoring_interval;
-        
-        thread::spawn(move || {
-            loop {
-                thread::sleep(monitoring_interval);
-                
-                let collectors_guard = collectors.read().unwrap();
-                for collector in collectors_guard.values() {
-                    if let Ok(metrics) = collector.collect_metrics() {
-                        let mut store = data_store.write().unwrap();
-                        for metric in metrics {
-                            store.add_measurement(metric);
-                        }
+
+        thread::spawn(move || loop {
+            thread::sleep(monitoring_interval);
+
+            let collectors_guard = collectors.read().unwrap();
+            for collector in collectors_guard.values() {
+                if let Ok(metrics) = collector.collect_metrics() {
+                    let mut store = data_store.write().unwrap();
+                    for metric in metrics {
+                        store.add_measurement(metric);
                     }
                 }
             }
         });
-        
+
         Ok(())
     }
-    
+
     fn start_analytics_engine(&self) -> QuantRS2Result<()> {
         // Start analytics processing
         Ok(())
     }
-    
+
     fn start_alert_processing(&self) -> QuantRS2Result<()> {
         // Start alert processing
         Ok(())
     }
-    
+
     fn start_export_processing(&self) -> QuantRS2Result<()> {
         // Start export processing
         Ok(())
     }
-    
+
     fn store_metrics(&self, metrics: Vec<MetricMeasurement>) -> QuantRS2Result<()> {
         let mut data_store = self.data_store.write().unwrap();
         for metric in metrics {
@@ -1264,7 +1296,7 @@ impl MetricCollector for SuperconductingCollector {
     fn collect_metrics(&self) -> QuantRS2Result<Vec<MetricMeasurement>> {
         // Simulate collecting superconducting metrics
         let mut metrics = Vec::new();
-        
+
         // Gate error rate
         metrics.push(MetricMeasurement {
             metric_type: MetricType::GateErrorRate,
@@ -1275,7 +1307,7 @@ impl MetricCollector for SuperconductingCollector {
             metadata: HashMap::new(),
             uncertainty: Some(0.0001),
         });
-        
+
         // Qubit coherence time
         metrics.push(MetricMeasurement {
             metric_type: MetricType::QubitCoherenceTime,
@@ -1286,10 +1318,10 @@ impl MetricCollector for SuperconductingCollector {
             metadata: HashMap::new(),
             uncertainty: Some(0.01),
         });
-        
+
         Ok(metrics)
     }
-    
+
     fn supported_metrics(&self) -> HashSet<MetricType> {
         let mut metrics = HashSet::new();
         metrics.insert(MetricType::GateErrorRate);
@@ -1298,20 +1330,20 @@ impl MetricCollector for SuperconductingCollector {
         metrics.insert(MetricType::QubitTemperature);
         metrics
     }
-    
+
     fn platform(&self) -> HardwarePlatform {
         HardwarePlatform::Superconducting
     }
-    
+
     fn initialize(&mut self) -> QuantRS2Result<()> {
         self.connected = true;
         Ok(())
     }
-    
+
     fn is_connected(&self) -> bool {
         self.connected
     }
-    
+
     fn disconnect(&mut self) -> QuantRS2Result<()> {
         self.connected = false;
         Ok(())
@@ -1327,7 +1359,10 @@ struct TrappedIonCollector {
 
 impl TrappedIonCollector {
     fn new(config: PlatformMonitoringConfig) -> Self {
-        Self { config, connected: false }
+        Self {
+            config,
+            connected: false,
+        }
     }
 }
 
@@ -1335,24 +1370,24 @@ impl MetricCollector for TrappedIonCollector {
     fn collect_metrics(&self) -> QuantRS2Result<Vec<MetricMeasurement>> {
         Ok(vec![])
     }
-    
+
     fn supported_metrics(&self) -> HashSet<MetricType> {
         HashSet::new()
     }
-    
+
     fn platform(&self) -> HardwarePlatform {
         HardwarePlatform::TrappedIon
     }
-    
+
     fn initialize(&mut self) -> QuantRS2Result<()> {
         self.connected = true;
         Ok(())
     }
-    
+
     fn is_connected(&self) -> bool {
         self.connected
     }
-    
+
     fn disconnect(&mut self) -> QuantRS2Result<()> {
         self.connected = false;
         Ok(())
@@ -1367,7 +1402,10 @@ struct PhotonicCollector {
 
 impl PhotonicCollector {
     fn new(config: PlatformMonitoringConfig) -> Self {
-        Self { config, connected: false }
+        Self {
+            config,
+            connected: false,
+        }
     }
 }
 
@@ -1375,24 +1413,24 @@ impl MetricCollector for PhotonicCollector {
     fn collect_metrics(&self) -> QuantRS2Result<Vec<MetricMeasurement>> {
         Ok(vec![])
     }
-    
+
     fn supported_metrics(&self) -> HashSet<MetricType> {
         HashSet::new()
     }
-    
+
     fn platform(&self) -> HardwarePlatform {
         HardwarePlatform::Photonic
     }
-    
+
     fn initialize(&mut self) -> QuantRS2Result<()> {
         self.connected = true;
         Ok(())
     }
-    
+
     fn is_connected(&self) -> bool {
         self.connected
     }
-    
+
     fn disconnect(&mut self) -> QuantRS2Result<()> {
         self.connected = false;
         Ok(())
@@ -1407,7 +1445,10 @@ struct NeutralAtomCollector {
 
 impl NeutralAtomCollector {
     fn new(config: PlatformMonitoringConfig) -> Self {
-        Self { config, connected: false }
+        Self {
+            config,
+            connected: false,
+        }
     }
 }
 
@@ -1415,24 +1456,24 @@ impl MetricCollector for NeutralAtomCollector {
     fn collect_metrics(&self) -> QuantRS2Result<Vec<MetricMeasurement>> {
         Ok(vec![])
     }
-    
+
     fn supported_metrics(&self) -> HashSet<MetricType> {
         HashSet::new()
     }
-    
+
     fn platform(&self) -> HardwarePlatform {
         HardwarePlatform::NeutralAtom
     }
-    
+
     fn initialize(&mut self) -> QuantRS2Result<()> {
         self.connected = true;
         Ok(())
     }
-    
+
     fn is_connected(&self) -> bool {
         self.connected
     }
-    
+
     fn disconnect(&mut self) -> QuantRS2Result<()> {
         self.connected = false;
         Ok(())
@@ -1447,7 +1488,10 @@ struct GenericCollector {
 
 impl GenericCollector {
     fn new(config: PlatformMonitoringConfig) -> Self {
-        Self { config, connected: false }
+        Self {
+            config,
+            connected: false,
+        }
     }
 }
 
@@ -1455,24 +1499,24 @@ impl MetricCollector for GenericCollector {
     fn collect_metrics(&self) -> QuantRS2Result<Vec<MetricMeasurement>> {
         Ok(vec![])
     }
-    
+
     fn supported_metrics(&self) -> HashSet<MetricType> {
         HashSet::new()
     }
-    
+
     fn platform(&self) -> HardwarePlatform {
         HardwarePlatform::Universal
     }
-    
+
     fn initialize(&mut self) -> QuantRS2Result<()> {
         self.connected = true;
         Ok(())
     }
-    
+
     fn is_connected(&self) -> bool {
         self.connected
     }
-    
+
     fn disconnect(&mut self) -> QuantRS2Result<()> {
         self.connected = false;
         Ok(())
@@ -1481,7 +1525,7 @@ impl MetricCollector for GenericCollector {
 
 // Implementation of data store and other components
 impl RealtimeDataStore {
-    fn new(retention_period: Duration) -> Self {
+    fn new(_retention_period: Duration) -> Self {
         Self {
             time_series: HashMap::new(),
             aggregated_stats: HashMap::new(),
@@ -1490,46 +1534,57 @@ impl RealtimeDataStore {
             max_data_size: 1_000_000, // 1M measurements max
         }
     }
-    
+
     fn add_measurement(&mut self, measurement: MetricMeasurement) {
         let metric_type = measurement.metric_type.clone();
-        
+
         // Add to time series
-        let time_series = self.time_series.entry(metric_type.clone()).or_insert_with(VecDeque::new);
+        let time_series = self
+            .time_series
+            .entry(metric_type.clone())
+            .or_insert_with(VecDeque::new);
         time_series.push_back(measurement.clone());
-        
+
         // Update aggregated stats
         self.update_aggregated_stats(metric_type, &measurement);
-        
+
         // Clean up old data if necessary
         self.cleanup_old_data();
     }
-    
-    fn update_aggregated_stats(&mut self, metric_type: MetricType, measurement: &MetricMeasurement) {
+
+    fn update_aggregated_stats(
+        &mut self,
+        metric_type: MetricType,
+        measurement: &MetricMeasurement,
+    ) {
         // Update statistical aggregates
-        let stats = self.aggregated_stats.entry(metric_type).or_insert_with(|| AggregatedStats {
-            mean: 0.0,
-            std_dev: 0.0,
-            min: f64::INFINITY,
-            max: f64::NEG_INFINITY,
-            median: 0.0,
-            p95: 0.0,
-            p99: 0.0,
-            sample_count: 0,
-            last_updated: SystemTime::now(),
-        });
-        
+        let stats = self
+            .aggregated_stats
+            .entry(metric_type)
+            .or_insert_with(|| AggregatedStats {
+                mean: 0.0,
+                std_dev: 0.0,
+                min: f64::INFINITY,
+                max: f64::NEG_INFINITY,
+                median: 0.0,
+                p95: 0.0,
+                p99: 0.0,
+                sample_count: 0,
+                last_updated: SystemTime::now(),
+            });
+
         if let MetricValue::Float(value) = measurement.value {
             stats.sample_count += 1;
             stats.min = stats.min.min(value);
             stats.max = stats.max.max(value);
             stats.last_updated = SystemTime::now();
-            
+
             // Update mean (simplified)
-            stats.mean = (stats.mean * (stats.sample_count - 1) as f64 + value) / stats.sample_count as f64;
+            stats.mean =
+                (stats.mean * (stats.sample_count - 1) as f64 + value) / stats.sample_count as f64;
         }
     }
-    
+
     fn cleanup_old_data(&mut self) {
         // Remove old data based on retention settings
         // Implementation would be more sophisticated in practice
@@ -1549,7 +1604,7 @@ impl AnalyticsEngine {
 }
 
 impl AlertManager {
-    fn new(thresholds: AlertThresholds) -> Self {
+    fn new(_thresholds: AlertThresholds) -> Self {
         Self {
             active_alerts: HashMap::new(),
             alert_rules: Vec::new(),
@@ -1611,7 +1666,7 @@ impl PerformanceDashboard {
 }
 
 impl ExportManager {
-    fn new(settings: ExportSettings) -> Self {
+    fn new(_settings: ExportSettings) -> Self {
         Self {
             exporters: HashMap::new(),
             export_queue: VecDeque::new(),
@@ -1713,7 +1768,7 @@ mod tests {
         let monitor = RealtimeMonitor::new(config);
         assert!(monitor.is_ok());
     }
-    
+
     #[test]
     fn test_metric_measurement() {
         let measurement = MetricMeasurement {
@@ -1725,11 +1780,11 @@ mod tests {
             metadata: HashMap::new(),
             uncertainty: Some(0.0001),
         };
-        
+
         assert_eq!(measurement.metric_type, MetricType::GateErrorRate);
         assert!(matches!(measurement.value, MetricValue::Float(0.001)));
     }
-    
+
     #[test]
     fn test_superconducting_collector() {
         let config = PlatformMonitoringConfig {
@@ -1739,23 +1794,23 @@ mod tests {
             custom_thresholds: HashMap::new(),
             connection_settings: HashMap::new(),
         };
-        
+
         let mut collector = SuperconductingCollector::new(config);
         assert_eq!(collector.platform(), HardwarePlatform::Superconducting);
         assert!(!collector.is_connected());
-        
+
         assert!(collector.initialize().is_ok());
         assert!(collector.is_connected());
-        
+
         let metrics = collector.collect_metrics();
         assert!(metrics.is_ok());
         assert!(!metrics.unwrap().is_empty());
     }
-    
+
     #[test]
     fn test_data_store() {
         let mut store = RealtimeDataStore::new(Duration::from_secs(3600));
-        
+
         let measurement = MetricMeasurement {
             metric_type: MetricType::GateErrorRate,
             value: MetricValue::Float(0.001),
@@ -1765,17 +1820,22 @@ mod tests {
             metadata: HashMap::new(),
             uncertainty: None,
         };
-        
+
         store.add_measurement(measurement);
-        
+
         assert!(store.time_series.contains_key(&MetricType::GateErrorRate));
-        assert!(store.aggregated_stats.contains_key(&MetricType::GateErrorRate));
-        
-        let stats = store.aggregated_stats.get(&MetricType::GateErrorRate).unwrap();
+        assert!(store
+            .aggregated_stats
+            .contains_key(&MetricType::GateErrorRate));
+
+        let stats = store
+            .aggregated_stats
+            .get(&MetricType::GateErrorRate)
+            .unwrap();
         assert_eq!(stats.sample_count, 1);
         assert_eq!(stats.mean, 0.001);
     }
-    
+
     #[test]
     fn test_alert_creation() {
         let alert = Alert {
@@ -1788,12 +1848,12 @@ mod tests {
             suggested_actions: vec!["Check calibration".to_string()],
             status: AlertStatus::Active,
         };
-        
+
         assert_eq!(alert.level, AlertLevel::Warning);
         assert_eq!(alert.status, AlertStatus::Active);
         assert!(alert.affected_metrics.contains(&MetricType::GateErrorRate));
     }
-    
+
     #[test]
     fn test_monitoring_config() {
         let config = MonitoringConfig::default();
@@ -1801,20 +1861,20 @@ mod tests {
         assert_eq!(config.data_retention_period, Duration::from_secs(24 * 3600));
         assert!(!config.export_settings.enable_export);
     }
-    
+
     #[test]
     fn test_metric_value_types() {
         let float_value = MetricValue::Float(1.23);
         let int_value = MetricValue::Integer(42);
         let bool_value = MetricValue::Boolean(true);
         let duration_value = MetricValue::Duration(Duration::from_millis(100));
-        
+
         assert!(matches!(float_value, MetricValue::Float(1.23)));
         assert!(matches!(int_value, MetricValue::Integer(42)));
         assert!(matches!(bool_value, MetricValue::Boolean(true)));
         assert!(matches!(duration_value, MetricValue::Duration(_)));
     }
-    
+
     #[test]
     fn test_alert_thresholds() {
         let thresholds = AlertThresholds::default();
@@ -1822,7 +1882,7 @@ mod tests {
         assert_eq!(thresholds.max_readout_error_rate, 0.05);
         assert_eq!(thresholds.min_coherence_time, Duration::from_micros(50));
     }
-    
+
     #[test]
     fn test_optimization_recommendation() {
         let recommendation = OptimizationRecommendation {
@@ -1840,12 +1900,18 @@ mod tests {
             priority: RecommendationPriority::High,
             timestamp: SystemTime::now(),
         };
-        
-        assert_eq!(recommendation.recommendation_type, RecommendationType::GateOptimization);
-        assert_eq!(recommendation.implementation_difficulty, DifficultyLevel::Medium);
+
+        assert_eq!(
+            recommendation.recommendation_type,
+            RecommendationType::GateOptimization
+        );
+        assert_eq!(
+            recommendation.implementation_difficulty,
+            DifficultyLevel::Medium
+        );
         assert_eq!(recommendation.priority, RecommendationPriority::High);
     }
-    
+
     #[test]
     fn test_export_settings() {
         let settings = ExportSettings {
@@ -1855,12 +1921,12 @@ mod tests {
             export_frequency: Duration::from_secs(1800),
             compression_enabled: true,
         };
-        
+
         assert!(settings.enable_export);
         assert_eq!(settings.export_formats.len(), 2);
         assert!(settings.compression_enabled);
     }
-    
+
     #[test]
     fn test_monitoring_status() {
         let status = MonitoringStatus::new();

@@ -4,10 +4,8 @@
 //! problems without requiring direct code writing. It includes drag-and-drop
 //! variable creation, constraint specification, and real-time validation.
 
-use crate::problem_dsl::ast::{Constraint as DslConstraint, Expression, AST};
-use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt;
 
 /// Visual problem builder for interactive QUBO construction
@@ -1053,7 +1051,6 @@ impl VisualProblemBuilder {
     //     let mut compiler = Compiler::new(ast);
     //     compiler.generate_qubo()
     // }
-
     /// Undo last action
     pub fn undo(&mut self) -> Result<(), String> {
         if let Some(entry) = self.history.undo() {

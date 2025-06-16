@@ -4,7 +4,7 @@
 //! including neural networks for parameter optimization, reinforcement learning
 //! for sampling strategies, and automated algorithm selection.
 
-use ndarray::{Array1, Array2, Array3, ArrayD, Axis};
+use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
@@ -375,11 +375,25 @@ pub struct AlgorithmClassifier {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ClassificationModel {
-    RandomForest { n_trees: usize, max_depth: Option<usize> },
-    SVM { kernel: SVMKernel, c: f64 },
-    NeuralNetwork { layers: Vec<usize> },
-    GradientBoosting { n_estimators: usize, learning_rate: f64 },
-    KNN { k: usize, distance_metric: DistanceMetric },
+    RandomForest {
+        n_trees: usize,
+        max_depth: Option<usize>,
+    },
+    SVM {
+        kernel: SVMKernel,
+        c: f64,
+    },
+    NeuralNetwork {
+        layers: Vec<usize>,
+    },
+    GradientBoosting {
+        n_estimators: usize,
+        learning_rate: f64,
+    },
+    KNN {
+        k: usize,
+        distance_metric: DistanceMetric,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -640,16 +654,41 @@ pub trait StructureDetector {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum StructurePattern {
-    Block { block_size: usize, num_blocks: usize },
-    Chain { length: usize },
-    Grid { dimensions: Vec<usize> },
-    Tree { depth: usize, branching_factor: f64 },
-    SmallWorld { clustering_coefficient: f64, path_length: f64 },
-    ScaleFree { power_law_exponent: f64 },
-    Bipartite { partition_sizes: (usize, usize) },
-    Modular { num_modules: usize, modularity: f64 },
-    Hierarchical { levels: usize, hierarchy_measure: f64 },
-    Random { randomness_measure: f64 },
+    Block {
+        block_size: usize,
+        num_blocks: usize,
+    },
+    Chain {
+        length: usize,
+    },
+    Grid {
+        dimensions: Vec<usize>,
+    },
+    Tree {
+        depth: usize,
+        branching_factor: f64,
+    },
+    SmallWorld {
+        clustering_coefficient: f64,
+        path_length: f64,
+    },
+    ScaleFree {
+        power_law_exponent: f64,
+    },
+    Bipartite {
+        partition_sizes: (usize, usize),
+    },
+    Modular {
+        num_modules: usize,
+        modularity: f64,
+    },
+    Hierarchical {
+        levels: usize,
+        hierarchy_measure: f64,
+    },
+    Random {
+        randomness_measure: f64,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -758,14 +797,36 @@ pub struct PredictionModel {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RegressionModel {
     LinearRegression,
-    RidgeRegression { alpha: f64 },
-    LassoRegression { alpha: f64 },
-    ElasticNet { alpha: f64, l1_ratio: f64 },
-    RandomForestRegressor { n_trees: usize, max_depth: Option<usize> },
-    GradientBoostingRegressor { n_estimators: usize, learning_rate: f64 },
-    SVMRegressor { kernel: SVMKernel, c: f64, epsilon: f64 },
-    NeuralNetworkRegressor { layers: Vec<usize>, dropout: f64 },
-    GaussianProcessRegressor { kernel: GPKernel },
+    RidgeRegression {
+        alpha: f64,
+    },
+    LassoRegression {
+        alpha: f64,
+    },
+    ElasticNet {
+        alpha: f64,
+        l1_ratio: f64,
+    },
+    RandomForestRegressor {
+        n_trees: usize,
+        max_depth: Option<usize>,
+    },
+    GradientBoostingRegressor {
+        n_estimators: usize,
+        learning_rate: f64,
+    },
+    SVMRegressor {
+        kernel: SVMKernel,
+        c: f64,
+        epsilon: f64,
+    },
+    NeuralNetworkRegressor {
+        layers: Vec<usize>,
+        dropout: f64,
+    },
+    GaussianProcessRegressor {
+        kernel: GPKernel,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -825,11 +886,24 @@ pub enum FeatureSelector {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DimensionalityReduction {
-    PCA { n_components: usize },
-    KernelPCA { n_components: usize, kernel: PCAAKernel },
-    ICA { n_components: usize },
-    TSNE { n_components: usize, perplexity: f64 },
-    UMAP { n_components: usize, n_neighbors: usize },
+    PCA {
+        n_components: usize,
+    },
+    KernelPCA {
+        n_components: usize,
+        kernel: PCAAKernel,
+    },
+    ICA {
+        n_components: usize,
+    },
+    TSNE {
+        n_components: usize,
+        perplexity: f64,
+    },
+    UMAP {
+        n_components: usize,
+        n_neighbors: usize,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1018,13 +1092,13 @@ impl AIAssistedOptimizer {
         &mut self,
         qubo: &Array2<f64>,
         target_quality: Option<f64>,
-        time_budget: Option<Duration>,
+        _time_budget: Option<Duration>,
     ) -> Result<AIOptimizationResult, String> {
         let start_time = Instant::now();
 
         // Extract problem features
         let features = self.extract_problem_features(qubo)?;
-        
+
         // Recognize problem structure
         let structure_patterns = if self.config.structure_recognition_enabled {
             self.structure_recognizer.recognize_structure(qubo)?
@@ -1034,7 +1108,8 @@ impl AIAssistedOptimizer {
 
         // Select best algorithm
         let recommended_algorithm = if self.config.auto_algorithm_selection_enabled {
-            self.algorithm_selector.select_algorithm(&features, &structure_patterns)?
+            self.algorithm_selector
+                .select_algorithm(&features, &structure_patterns)?
         } else {
             "SimulatedAnnealing".to_string() // Default fallback
         };
@@ -1097,7 +1172,7 @@ impl AIAssistedOptimizer {
             optimization_stats: OptimizationStatistics {
                 total_time,
                 nn_training_time: Duration::from_millis(100), // Placeholder
-                rl_episodes: 50, // Placeholder
+                rl_episodes: 50,                              // Placeholder
                 feature_extraction_time: Duration::from_millis(50),
                 model_selection_time: Duration::from_millis(30),
                 model_accuracy: 0.85,
@@ -1149,13 +1224,13 @@ impl AIAssistedOptimizer {
     }
 
     /// Extract comprehensive features from QUBO problem
-    fn extract_problem_features(&self, qubo: &Array2<f64>) -> Result<Array1<f64>, String> {
+    pub fn extract_problem_features(&self, qubo: &Array2<f64>) -> Result<Array1<f64>, String> {
         let n = qubo.shape()[0];
         let mut features = Vec::new();
 
         // Basic statistics
         features.push(n as f64); // Problem size
-        
+
         let coeffs: Vec<f64> = qubo.iter().cloned().collect();
         let mean = coeffs.iter().sum::<f64>() / coeffs.len() as f64;
         let variance = coeffs.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / coeffs.len() as f64;
@@ -1170,10 +1245,18 @@ impl AIAssistedOptimizer {
 
         // Min/Max values
         let max_val = coeffs.iter().map(|x| x.abs()).fold(0.0, f64::max);
-        let min_val = coeffs.iter().map(|x| x.abs()).filter(|&x| x > 1e-10).fold(f64::INFINITY, f64::min);
+        let min_val = coeffs
+            .iter()
+            .map(|x| x.abs())
+            .filter(|&x| x > 1e-10)
+            .fold(f64::INFINITY, f64::min);
         features.push(max_val);
         features.push(if min_val.is_finite() { min_val } else { 0.0 });
-        features.push(if min_val > 0.0 { max_val / min_val } else { 1.0 }); // Dynamic range
+        features.push(if min_val > 0.0 {
+            max_val / min_val
+        } else {
+            1.0
+        }); // Dynamic range
 
         // Connectivity features
         let mut degree_sum = 0;
@@ -1218,7 +1301,7 @@ impl AIAssistedOptimizer {
         // Frustration measure
         let mut frustration = 0.0;
         for i in 0..n {
-            for j in i+1..n {
+            for j in i + 1..n {
                 if qubo[[i, j]] > 0.0 {
                     frustration += qubo[[i, j]];
                 }
@@ -1235,9 +1318,15 @@ impl AIAssistedOptimizer {
         let density = features[4]; // Assuming density is at index 4
         let avg_degree = features[7]; // Assuming avg_degree is at index 7
 
-        if patterns.iter().any(|p| matches!(p, StructurePattern::Grid { .. })) {
+        if patterns
+            .iter()
+            .any(|p| matches!(p, StructurePattern::Grid { .. }))
+        {
             "Grid-based Optimization".to_string()
-        } else if patterns.iter().any(|p| matches!(p, StructurePattern::Tree { .. })) {
+        } else if patterns
+            .iter()
+            .any(|p| matches!(p, StructurePattern::Tree { .. }))
+        {
             "Tree-structured Problem".to_string()
         } else if density > 0.8 {
             "Dense QUBO".to_string()
@@ -1249,23 +1338,25 @@ impl AIAssistedOptimizer {
     }
 
     /// Assess problem difficulty
-    fn assess_difficulty(
+    pub fn assess_difficulty(
         &self,
-        qubo: &Array2<f64>,
+        _qubo: &Array2<f64>,
         features: &Array1<f64>,
-        patterns: &[StructurePattern],
+        _patterns: &[StructurePattern],
     ) -> Result<DifficultyAssessment, String> {
         let size = features[0] as usize;
         let variance = features[2];
         let density = features[4];
-        let frustration = features[9]; // Assuming frustration is at index 9
+        let frustration = features[11]; // Frustration is at index 11
 
         // Compute difficulty score (0 = easy, 1 = extremely hard)
-        let size_factor = (size as f64).log2() / 20.0; // Normalize by log scale
-        let complexity_factor = variance * density;
-        let frustration_factor = frustration / (size as f64);
-        
-        let difficulty_score = (0.3 * size_factor + 0.4 * complexity_factor + 0.3 * frustration_factor).min(1.0);
+        let size_factor = ((size as f64).log2() / 10.0).min(1.0); // More aggressive size scaling
+        let complexity_factor = (variance * density * 10.0).min(1.0); // Scale up complexity
+        let frustration_factor =
+            ((frustration / (size as f64 * size as f64 / 2.0)) * 100.0).min(1.0); // Better normalization
+
+        let difficulty_score =
+            (0.4 * size_factor + 0.4 * complexity_factor + 0.2 * frustration_factor).min(1.0);
 
         let mut difficulty_factors = HashMap::new();
         difficulty_factors.insert("size".to_string(), size_factor);
@@ -1300,7 +1391,7 @@ impl AIAssistedOptimizer {
         recommended: &str,
     ) -> Result<Vec<AlternativeRecommendation>, String> {
         let size = features[0] as usize;
-        let density = features[4];
+        let _density = features[4];
 
         let mut alternatives = Vec::new();
 
@@ -1329,7 +1420,10 @@ impl AIAssistedOptimizer {
                     map.insert("quality".to_string(), 0.85);
                     map
                 },
-                use_cases: vec!["Large problems".to_string(), "Population diversity".to_string()],
+                use_cases: vec![
+                    "Large problems".to_string(),
+                    "Population diversity".to_string(),
+                ],
             });
         }
 
@@ -1343,7 +1437,10 @@ impl AIAssistedOptimizer {
                     map.insert("quality".to_string(), 0.9);
                     map
                 },
-                use_cases: vec!["Local search".to_string(), "Escape local minima".to_string()],
+                use_cases: vec![
+                    "Local search".to_string(),
+                    "Escape local minima".to_string(),
+                ],
             });
         }
 
@@ -1354,7 +1451,7 @@ impl AIAssistedOptimizer {
     fn compute_recommendation_confidence(
         &self,
         features: &Array1<f64>,
-        algorithm: &str,
+        _algorithm: &str,
         parameters: &HashMap<String, f64>,
     ) -> Result<f64, String> {
         // Simplified confidence computation
@@ -1362,14 +1459,19 @@ impl AIAssistedOptimizer {
         let density = features[4];
 
         let base_confidence = 0.7;
-        
+
         // Adjust based on problem characteristics and algorithm match
         let size_confidence = if size < 1000 { 0.9 } else { 0.6 };
-        let density_confidence = if density > 0.1 && density < 0.9 { 0.8 } else { 0.6 };
+        let density_confidence = if density > 0.1 && density < 0.9 {
+            0.8
+        } else {
+            0.6
+        };
         let param_confidence = if parameters.is_empty() { 0.7 } else { 0.85 };
 
-        let overall_confidence: f64 = base_confidence * size_confidence * density_confidence * param_confidence;
-        
+        let overall_confidence: f64 =
+            base_confidence * size_confidence * density_confidence * param_confidence;
+
         Ok(overall_confidence.min(1.0))
     }
 }
@@ -1448,13 +1550,13 @@ impl ParameterOptimizationNetwork {
 
     pub fn optimize_parameters(
         &mut self,
-        features: &Array1<f64>,
+        _features: &Array1<f64>,
         algorithm: &str,
-        target_quality: Option<f64>,
+        _target_quality: Option<f64>,
     ) -> Result<HashMap<String, f64>, String> {
         // Simplified parameter optimization
         let mut params = HashMap::new();
-        
+
         match algorithm {
             "SimulatedAnnealing" => {
                 params.insert("initial_temperature".to_string(), 10.0);
@@ -1476,8 +1578,8 @@ impl ParameterOptimizationNetwork {
 
     pub fn train(
         &mut self,
-        train_data: &[TrainingExample],
-        val_data: &[TrainingExample],
+        _train_data: &[TrainingExample],
+        _val_data: &[TrainingExample],
     ) -> Result<ParameterOptimizerTrainingResults, String> {
         // Simplified training
         Ok(ParameterOptimizerTrainingResults {
@@ -1531,7 +1633,7 @@ impl SamplingStrategyAgent {
         }
     }
 
-    pub fn train(&mut self, data: &[TrainingExample]) -> Result<RLTrainingResults, String> {
+    pub fn train(&mut self, _data: &[TrainingExample]) -> Result<RLTrainingResults, String> {
         // Simplified RL training
         Ok(RLTrainingResults {
             episodes: 100,
@@ -1542,10 +1644,25 @@ impl SamplingStrategyAgent {
             exploration_history: vec![1.0, 0.8, 0.6, 0.4],
         })
     }
+
+    /// Get a reference to the Q-network
+    pub fn q_network(&self) -> &QNetwork {
+        &self.q_network
+    }
+
+    /// Get a reference to the replay buffer
+    pub fn replay_buffer(&self) -> &ExperienceReplayBuffer {
+        &self.replay_buffer
+    }
+
+    /// Get a reference to the training stats
+    pub fn training_stats(&self) -> &RLTrainingStats {
+        &self.training_stats
+    }
 }
 
 impl AutomatedAlgorithmSelector {
-    pub fn new(config: &AIOptimizerConfig) -> Self {
+    pub fn new(_config: &AIOptimizerConfig) -> Self {
         Self {
             feature_extractor: ProblemFeatureExtractor {
                 extraction_methods: vec![
@@ -1605,7 +1722,10 @@ impl AutomatedAlgorithmSelector {
             Ok("BranchAndBound".to_string())
         } else if density > 0.8 {
             Ok("SimulatedAnnealing".to_string())
-        } else if patterns.iter().any(|p| matches!(p, StructurePattern::Tree { .. })) {
+        } else if patterns
+            .iter()
+            .any(|p| matches!(p, StructurePattern::Tree { .. }))
+        {
             Ok("DynamicProgramming".to_string())
         } else {
             Ok("GeneticAlgorithm".to_string())
@@ -1614,8 +1734,8 @@ impl AutomatedAlgorithmSelector {
 
     pub fn train(
         &mut self,
-        train_data: &[TrainingExample],
-        val_data: &[TrainingExample],
+        _train_data: &[TrainingExample],
+        _val_data: &[TrainingExample],
     ) -> Result<AlgorithmSelectorTrainingResults, String> {
         // Simplified training
         Ok(AlgorithmSelectorTrainingResults {
@@ -1645,7 +1765,10 @@ impl ProblemStructureRecognizer {
                     ],
                 },
                 community_detectors: vec![CommunityDetectionMethod::Louvain],
-                centrality_measures: vec![CentralityMeasure::Degree, CentralityMeasure::Betweenness],
+                centrality_measures: vec![
+                    CentralityMeasure::Degree,
+                    CentralityMeasure::Betweenness,
+                ],
             },
         }
     }
@@ -1664,7 +1787,10 @@ impl ProblemStructureRecognizer {
 
         // Detect block structure
         if let Some((block_size, num_blocks)) = self.detect_block_structure(qubo) {
-            patterns.push(StructurePattern::Block { block_size, num_blocks });
+            patterns.push(StructurePattern::Block {
+                block_size,
+                num_blocks,
+            });
         }
 
         // Detect chain structure
@@ -1678,7 +1804,7 @@ impl ProblemStructureRecognizer {
     fn is_grid_like(&self, qubo: &Array2<f64>) -> bool {
         let n = qubo.shape()[0];
         let grid_dim = (n as f64).sqrt() as usize;
-        
+
         // Check if it's a perfect square and has grid-like connectivity
         grid_dim * grid_dim == n && self.check_grid_connectivity(qubo, grid_dim)
     }
@@ -1693,15 +1819,16 @@ impl ProblemStructureRecognizer {
             for j in 0..n {
                 if i != j && qubo[[i, j]].abs() > 1e-10 {
                     total_edges += 1;
-                    
+
                     let row_i = i / grid_dim;
                     let col_i = i % grid_dim;
                     let row_j = j / grid_dim;
                     let col_j = j % grid_dim;
-                    
+
                     // Check if it's a valid grid edge (adjacent cells)
-                    if (row_i == row_j && (col_i as i32 - col_j as i32).abs() == 1) ||
-                       (col_i == col_j && (row_i as i32 - row_j as i32).abs() == 1) {
+                    if (row_i == row_j && (col_i as i32 - col_j as i32).abs() == 1)
+                        || (col_i == col_j && (row_i as i32 - row_j as i32).abs() == 1)
+                    {
                         grid_edges += 1;
                     }
                 }
@@ -1717,9 +1844,9 @@ impl ProblemStructureRecognizer {
 
     fn detect_block_structure(&self, qubo: &Array2<f64>) -> Option<(usize, usize)> {
         let n = qubo.shape()[0];
-        
+
         // Try different block sizes
-        for block_size in 2..=n/2 {
+        for block_size in 2..=n / 2 {
             if n % block_size == 0 {
                 let num_blocks = n / block_size;
                 if self.check_block_structure(qubo, block_size, num_blocks) {
@@ -1727,11 +1854,16 @@ impl ProblemStructureRecognizer {
                 }
             }
         }
-        
+
         None
     }
 
-    fn check_block_structure(&self, qubo: &Array2<f64>, block_size: usize, num_blocks: usize) -> bool {
+    fn check_block_structure(
+        &self,
+        qubo: &Array2<f64>,
+        block_size: usize,
+        _num_blocks: usize,
+    ) -> bool {
         let mut intra_block_edges = 0;
         let mut inter_block_edges = 0;
 
@@ -1740,7 +1872,7 @@ impl ProblemStructureRecognizer {
                 if i != j && qubo[[i, j]].abs() > 1e-10 {
                     let block_i = i / block_size;
                     let block_j = j / block_size;
-                    
+
                     if block_i == block_j {
                         intra_block_edges += 1;
                     } else {
@@ -1767,7 +1899,7 @@ impl ProblemStructureRecognizer {
             for j in 0..n {
                 if i != j && qubo[[i, j]].abs() > 1e-10 {
                     total_edges += 1;
-                    
+
                     // Check if it's a chain edge (consecutive indices)
                     if (i as i32 - j as i32).abs() == 1 {
                         chain_edges += 1;
@@ -1785,7 +1917,7 @@ impl ProblemStructureRecognizer {
 }
 
 impl SolutionQualityPredictor {
-    pub fn new(config: &AIOptimizerConfig) -> Self {
+    pub fn new(_config: &AIOptimizerConfig) -> Self {
         Self {
             prediction_model: PredictionModel {
                 model_type: RegressionModel::RandomForestRegressor {
@@ -1826,23 +1958,35 @@ impl SolutionQualityPredictor {
         &self,
         features: &Array1<f64>,
         algorithm: &str,
-        parameters: &HashMap<String, f64>,
+        _parameters: &HashMap<String, f64>,
     ) -> Result<QualityPrediction, String> {
         // Simplified quality prediction
         let base_quality: f64 = 0.8;
         let size = features[0] as usize;
-        
+
         // Adjust prediction based on algorithm and problem size
         let quality_adjustment: f64 = match algorithm {
-            "SimulatedAnnealing" => if size < 100 { 0.1 } else { -0.1 },
-            "GeneticAlgorithm" => if size > 500 { 0.15 } else { 0.0 },
+            "SimulatedAnnealing" => {
+                if size < 100 {
+                    0.1
+                } else {
+                    -0.1
+                }
+            }
+            "GeneticAlgorithm" => {
+                if size > 500 {
+                    0.15
+                } else {
+                    0.0
+                }
+            }
             "TabuSearch" => 0.1,
             _ => 0.0,
         };
 
         let expected_quality: f64 = (base_quality + quality_adjustment).max(0.0).min(1.0);
         let confidence_width = 0.1;
-        
+
         Ok(QualityPrediction {
             expected_quality,
             confidence_interval: (
@@ -1856,8 +2000,8 @@ impl SolutionQualityPredictor {
 
     pub fn train(
         &mut self,
-        train_data: &[TrainingExample],
-        val_data: &[TrainingExample],
+        _train_data: &[TrainingExample],
+        _val_data: &[TrainingExample],
     ) -> Result<QualityPredictorTrainingResults, String> {
         // Simplified training
         Ok(QualityPredictorTrainingResults {

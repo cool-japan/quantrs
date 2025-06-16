@@ -95,13 +95,13 @@ impl DDSequenceGenerator {
                 "Target qubits cannot be empty".to_string(),
             ));
         }
-        
+
         if duration <= 0.0 {
             return Err(crate::DeviceError::InvalidInput(
                 "Duration must be positive".to_string(),
             ));
         }
-        
+
         if !duration.is_finite() {
             return Err(crate::DeviceError::InvalidInput(
                 "Duration must be finite".to_string(),

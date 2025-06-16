@@ -27,7 +27,9 @@ use crate::circuit_interfaces::{
     CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
 };
 use crate::error::{Result, SimulatorError};
-use crate::fermionic_simulation::{FermionicHamiltonian, FermionicOperator, FermionicString, JordanWignerTransform};
+use crate::fermionic_simulation::{
+    FermionicHamiltonian, FermionicOperator, FermionicString, JordanWignerTransform,
+};
 use crate::pauli::{PauliOperator, PauliOperatorSum, PauliString};
 use crate::scirs2_integration::SciRS2Backend;
 use crate::statevector::StateVectorSimulator;
@@ -369,7 +371,9 @@ impl QuantumChemistrySimulator {
 
         // Ensure molecule is set
         if self.molecule.is_none() {
-            return Err(SimulatorError::InvalidConfiguration("Molecule not set".to_string()));
+            return Err(SimulatorError::InvalidConfiguration(
+                "Molecule not set".to_string(),
+            ));
         }
 
         // Construct molecular Hamiltonian
@@ -383,21 +387,11 @@ impl QuantumChemistrySimulator {
 
         // Run main electronic structure method
         let result = match self.config.method {
-            ElectronicStructureMethod::HartreeFock => {
-                self.run_hartree_fock_only()
-            }
-            ElectronicStructureMethod::VQE => {
-                self.run_vqe()
-            }
-            ElectronicStructureMethod::QuantumCI => {
-                self.run_quantum_ci()
-            }
-            ElectronicStructureMethod::QuantumCC => {
-                self.run_quantum_coupled_cluster()
-            }
-            ElectronicStructureMethod::QPE => {
-                self.run_quantum_phase_estimation()
-            }
+            ElectronicStructureMethod::HartreeFock => self.run_hartree_fock_only(),
+            ElectronicStructureMethod::VQE => self.run_vqe(),
+            ElectronicStructureMethod::QuantumCI => self.run_quantum_ci(),
+            ElectronicStructureMethod::QuantumCC => self.run_quantum_coupled_cluster(),
+            ElectronicStructureMethod::QPE => self.run_quantum_phase_estimation(),
         }?;
 
         self.stats.total_time_ms = start_time.elapsed().as_millis() as f64;
@@ -407,7 +401,7 @@ impl QuantumChemistrySimulator {
     /// Construct molecular Hamiltonian from atomic structure
     fn construct_molecular_hamiltonian(&mut self, molecule: &Molecule) -> Result<()> {
         let num_atoms = molecule.atomic_numbers.len();
-        
+
         // For demonstration, we'll create a simple H2 molecule Hamiltonian
         // In practice, this would involve complex quantum chemistry integrals
         let num_orbitals = if molecule.basis_set == "STO-3G" {
@@ -416,7 +410,8 @@ impl QuantumChemistrySimulator {
             2 * num_atoms // Double-zeta basis
         };
 
-        let num_electrons = molecule.atomic_numbers.iter().sum::<u32>() as usize - molecule.charge as usize;
+        let num_electrons =
+            molecule.atomic_numbers.iter().sum::<u32>() as usize - molecule.charge as usize;
 
         // Construct one-electron integrals (kinetic + nuclear attraction)
         let one_electron_integrals = self.compute_one_electron_integrals(molecule, num_orbitals)?;
@@ -463,10 +458,14 @@ impl QuantumChemistrySimulator {
         let mut integrals = Array2::zeros((num_orbitals, num_orbitals));
 
         // For H2 molecule with STO-3G basis (simplified)
-        if molecule.atomic_numbers.len() == 2 && molecule.atomic_numbers[0] == 1 && molecule.atomic_numbers[1] == 1 {
-            let bond_length = ((molecule.positions[[0, 0]] - molecule.positions[[1, 0]]).powi(2) +
-                              (molecule.positions[[0, 1]] - molecule.positions[[1, 1]]).powi(2) +
-                              (molecule.positions[[0, 2]] - molecule.positions[[1, 2]]).powi(2)).sqrt();
+        if molecule.atomic_numbers.len() == 2
+            && molecule.atomic_numbers[0] == 1
+            && molecule.atomic_numbers[1] == 1
+        {
+            let bond_length = ((molecule.positions[[0, 0]] - molecule.positions[[1, 0]]).powi(2)
+                + (molecule.positions[[0, 1]] - molecule.positions[[1, 1]]).powi(2)
+                + (molecule.positions[[0, 2]] - molecule.positions[[1, 2]]).powi(2))
+            .sqrt();
 
             // STO-3G parameters for hydrogen
             let overlap = 0.6593 * (-0.1158 * bond_length * bond_length).exp();
@@ -480,15 +479,18 @@ impl QuantumChemistrySimulator {
         } else {
             // Generic case: use simplified model
             for i in 0..num_orbitals {
-                integrals[[i, i]] = -0.5 * molecule.atomic_numbers[i.min(molecule.atomic_numbers.len() - 1)] as f64;
+                integrals[[i, i]] =
+                    -0.5 * molecule.atomic_numbers[i.min(molecule.atomic_numbers.len() - 1)] as f64;
                 for j in i + 1..num_orbitals {
-                    let distance = if i < molecule.positions.nrows() && j < molecule.positions.nrows() {
-                        ((molecule.positions[[i, 0]] - molecule.positions[[j, 0]]).powi(2) +
-                         (molecule.positions[[i, 1]] - molecule.positions[[j, 1]]).powi(2) +
-                         (molecule.positions[[i, 2]] - molecule.positions[[j, 2]]).powi(2)).sqrt()
-                    } else {
-                        1.0
-                    };
+                    let distance =
+                        if i < molecule.positions.nrows() && j < molecule.positions.nrows() {
+                            ((molecule.positions[[i, 0]] - molecule.positions[[j, 0]]).powi(2)
+                                + (molecule.positions[[i, 1]] - molecule.positions[[j, 1]]).powi(2)
+                                + (molecule.positions[[i, 2]] - molecule.positions[[j, 2]]).powi(2))
+                            .sqrt()
+                        } else {
+                            1.0
+                        };
                     let coupling = -0.1 / (1.0 + distance);
                     integrals[[i, j]] = coupling;
                     integrals[[j, i]] = coupling;
@@ -531,11 +533,13 @@ impl QuantumChemistrySimulator {
 
         for i in 0..molecule.atomic_numbers.len() {
             for j in i + 1..molecule.atomic_numbers.len() {
-                let distance = ((molecule.positions[[i, 0]] - molecule.positions[[j, 0]]).powi(2) +
-                               (molecule.positions[[i, 1]] - molecule.positions[[j, 1]]).powi(2) +
-                               (molecule.positions[[i, 2]] - molecule.positions[[j, 2]]).powi(2)).sqrt();
+                let distance = ((molecule.positions[[i, 0]] - molecule.positions[[j, 0]]).powi(2)
+                    + (molecule.positions[[i, 1]] - molecule.positions[[j, 1]]).powi(2)
+                    + (molecule.positions[[i, 2]] - molecule.positions[[j, 2]]).powi(2))
+                .sqrt();
 
-                nuclear_repulsion += (molecule.atomic_numbers[i] * molecule.atomic_numbers[j]) as f64 / distance;
+                nuclear_repulsion +=
+                    (molecule.atomic_numbers[i] * molecule.atomic_numbers[j]) as f64 / distance;
             }
         }
 
@@ -657,7 +661,10 @@ impl QuantumChemistrySimulator {
     }
 
     /// Map fermionic Hamiltonian to Pauli operators
-    fn map_to_pauli_operators(&self, fermionic_ham: &FermionicHamiltonian) -> Result<PauliOperatorSum> {
+    fn map_to_pauli_operators(
+        &self,
+        fermionic_ham: &FermionicHamiltonian,
+    ) -> Result<PauliOperatorSum> {
         let mut pauli_terms = Vec::new();
 
         for fermionic_term in &fermionic_ham.terms {
@@ -665,7 +672,11 @@ impl QuantumChemistrySimulator {
             pauli_terms.push(pauli_string);
         }
 
-        let num_qubits = self.hamiltonian.as_ref().map(|h| h.num_orbitals * 2).unwrap_or(8);
+        let num_qubits = self
+            .hamiltonian
+            .as_ref()
+            .map(|h| h.num_orbitals * 2)
+            .unwrap_or(8);
         let mut pauli_sum = PauliOperatorSum::new(num_qubits);
         for term in pauli_terms {
             pauli_sum.add_term(term)?;
@@ -701,13 +712,19 @@ impl QuantumChemistrySimulator {
             let new_density = self.build_density_matrix(&orbitals, num_electrons)?;
 
             // Calculate SCF energy
-            let new_energy = self.calculate_scf_energy(&new_density, &hamiltonian.one_electron_integrals, &fock_matrix)?;
+            let new_energy = self.calculate_scf_energy(
+                &new_density,
+                &hamiltonian.one_electron_integrals,
+                &fock_matrix,
+            )?;
 
             // Check convergence
             let energy_change = (new_energy - scf_energy).abs();
             let density_change = (&new_density - &density_matrix).map(|x| x.abs()).sum();
 
-            if energy_change < self.config.convergence_threshold && density_change < self.config.convergence_threshold {
+            if energy_change < self.config.convergence_threshold
+                && density_change < self.config.convergence_threshold
+            {
                 converged = true;
             }
 
@@ -760,10 +777,13 @@ impl QuantumChemistrySimulator {
                 for k in 0..num_orbitals {
                     for l in 0..num_orbitals {
                         // Coulomb term: J_ij = sum_kl P_kl * (ij|kl)
-                        two_electron_contribution += density[[k, l]] * hamiltonian.two_electron_integrals[[i, j, k, l]];
+                        two_electron_contribution +=
+                            density[[k, l]] * hamiltonian.two_electron_integrals[[i, j, k, l]];
 
                         // Exchange term: K_ij = sum_kl P_kl * (ik|jl)
-                        two_electron_contribution -= 0.5 * density[[k, l]] * hamiltonian.two_electron_integrals[[i, k, j, l]];
+                        two_electron_contribution -= 0.5
+                            * density[[k, l]]
+                            * hamiltonian.two_electron_integrals[[i, k, j, l]];
                     }
                 }
 
@@ -780,24 +800,27 @@ impl QuantumChemistrySimulator {
             // Use SciRS2 for optimized eigenvalue decomposition
             use crate::scirs2_integration::{Matrix, MemoryPool, LAPACK};
             use num_complex::Complex64;
-            
+
             // Convert real Fock matrix to complex for SciRS2
             let complex_fock: Array2<Complex64> = fock.mapv(|x| Complex64::new(x, 0.0));
             let pool = MemoryPool::new();
-            let scirs2_matrix = Matrix::from_array2(&complex_fock.view(), &pool)
-                .map_err(|e| SimulatorError::ComputationError(format!("Failed to create SciRS2 matrix: {}", e)))?;
-            
+            let scirs2_matrix = Matrix::from_array2(&complex_fock.view(), &pool).map_err(|e| {
+                SimulatorError::ComputationError(format!("Failed to create SciRS2 matrix: {}", e))
+            })?;
+
             // Perform eigenvalue decomposition
-            let eig_result = LAPACK::eig(&scirs2_matrix)
-                .map_err(|e| SimulatorError::ComputationError(format!("Eigenvalue decomposition failed: {}", e)))?;
-            
+            let eig_result = LAPACK::eig(&scirs2_matrix).map_err(|e| {
+                SimulatorError::ComputationError(format!("Eigenvalue decomposition failed: {}", e))
+            })?;
+
             // Extract eigenvalues and eigenvectors
-            let eigenvalues_complex = eig_result.to_array1()
-                .map_err(|e| SimulatorError::ComputationError(format!("Failed to extract eigenvalues: {}", e)))?;
-            
+            let eigenvalues_complex = eig_result.to_array1().map_err(|e| {
+                SimulatorError::ComputationError(format!("Failed to extract eigenvalues: {}", e))
+            })?;
+
             // Convert back to real (taking real part, imaginary should be ~0 for Hermitian matrices)
             let eigenvalues: Array1<f64> = eigenvalues_complex.mapv(|c| c.re);
-            
+
             // For eigenvectors, we need to access the vectors matrix
             let eigenvectors = {
                 #[cfg(feature = "advanced_math")]
@@ -811,7 +834,7 @@ impl QuantumChemistrySimulator {
                     Array2::eye(fock.nrows())
                 }
             };
-            
+
             Ok((eigenvalues, eigenvectors))
         } else {
             // Simplified eigenvalue decomposition
@@ -823,18 +846,19 @@ impl QuantumChemistrySimulator {
             for i in 0..n {
                 // Start with diagonal as initial guess
                 eigenvalues[i] = fock[[i, i]];
-                
+
                 // Perform simplified power iteration for better accuracy
                 let mut v = Array1::zeros(n);
                 v[i] = 1.0;
-                
-                for _ in 0..10 { // 10 iterations for better convergence
+
+                for _ in 0..10 {
+                    // 10 iterations for better convergence
                     let new_v = fock.dot(&v);
                     let norm = new_v.norm_l2();
                     if norm > 1e-10 {
                         v = new_v / norm;
                         eigenvalues[i] = v.dot(&fock.dot(&v));
-                        
+
                         // Store eigenvector
                         for j in 0..n {
                             eigenvectors[[j, i]] = v[j];
@@ -848,7 +872,11 @@ impl QuantumChemistrySimulator {
     }
 
     /// Build density matrix from molecular orbitals
-    fn build_density_matrix(&self, orbitals: &Array2<f64>, num_electrons: usize) -> Result<Array2<f64>> {
+    fn build_density_matrix(
+        &self,
+        orbitals: &Array2<f64>,
+        num_electrons: usize,
+    ) -> Result<Array2<f64>> {
         let num_orbitals = orbitals.nrows();
         let mut density = Array2::zeros((num_orbitals, num_orbitals));
 
@@ -913,18 +941,27 @@ impl QuantumChemistrySimulator {
         let vqe_start = std::time::Instant::now();
 
         if self.hamiltonian.is_none() {
-            return Err(SimulatorError::InvalidConfiguration("Hamiltonian not constructed".to_string()));
+            return Err(SimulatorError::InvalidConfiguration(
+                "Hamiltonian not constructed".to_string(),
+            ));
         }
-        
+
         // Extract values we need before mutable operations
         let nuclear_repulsion = self.hamiltonian.as_ref().unwrap().nuclear_repulsion;
 
         if self.hartree_fock.is_none() {
-            return Err(SimulatorError::InvalidConfiguration("Hartree-Fock not converged".to_string()));
+            return Err(SimulatorError::InvalidConfiguration(
+                "Hartree-Fock not converged".to_string(),
+            ));
         }
-        
+
         // Extract values we need before mutable operations
-        let hf_molecular_orbitals = self.hartree_fock.as_ref().unwrap().molecular_orbitals.clone();
+        let hf_molecular_orbitals = self
+            .hartree_fock
+            .as_ref()
+            .unwrap()
+            .molecular_orbitals
+            .clone();
         let hf_density_matrix = self.hartree_fock.as_ref().unwrap().density_matrix.clone();
 
         // Prepare initial state (Hartree-Fock)
@@ -945,7 +982,8 @@ impl QuantumChemistrySimulator {
 
         while iteration < self.config.vqe_config.max_iterations {
             // Construct parameterized circuit
-            let parameterized_circuit = self.apply_ansatz_parameters(&ansatz_circuit, &self.vqe_optimizer.parameters)?;
+            let parameterized_circuit =
+                self.apply_ansatz_parameters(&ansatz_circuit, &self.vqe_optimizer.parameters)?;
 
             // Evaluate energy expectation value
             let energy = {
@@ -983,7 +1021,7 @@ impl QuantumChemistrySimulator {
         Ok(ElectronicStructureResult {
             ground_state_energy: best_energy + nuclear_repulsion,
             molecular_orbitals: hf_molecular_orbitals,
-            density_matrix: hf_density_matrix,
+            density_matrix: hf_density_matrix.clone(),
             dipole_moment: self.calculate_dipole_moment(&hf_density_matrix),
             converged: iteration < self.config.vqe_config.max_iterations,
             iterations: iteration,
@@ -994,7 +1032,10 @@ impl QuantumChemistrySimulator {
     }
 
     /// Prepare Hartree-Fock initial state
-    fn prepare_hartree_fock_state(&self, hf_result: &HartreeFockResult) -> Result<Array1<Complex64>> {
+    fn prepare_hartree_fock_state(
+        &self,
+        hf_result: &HartreeFockResult,
+    ) -> Result<Array1<Complex64>> {
         let num_qubits = 2 * hf_result.molecular_orbitals.num_orbitals; // Spin orbitals
         let mut state = Array1::zeros(1 << num_qubits);
 
@@ -1052,7 +1093,7 @@ impl QuantumChemistrySimulator {
                 } else {
                     (rand::random::<f64>() - 0.5) * 0.1
                 };
-                
+
                 circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(theta), vec![i]));
                 circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, j]));
                 circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(-theta), vec![j]));
@@ -1095,13 +1136,19 @@ impl QuantumChemistrySimulator {
 
             // Entangling gates
             for qubit in 0..num_qubits - 1 {
-                circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubit, qubit + 1]));
+                circuit.add_gate(InterfaceGate::new(
+                    InterfaceGateType::CNOT,
+                    vec![qubit, qubit + 1],
+                ));
             }
 
             // Additional entangling for better connectivity
             if layer % 2 == 1 {
                 for qubit in 1..num_qubits - 1 {
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubit, qubit + 1]));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::CNOT,
+                        vec![qubit, qubit + 1],
+                    ));
                 }
             }
         }
@@ -1179,10 +1226,10 @@ impl QuantumChemistrySimulator {
     fn get_circuit_final_state(&self, circuit: &InterfaceCircuit) -> Result<Array1<Complex64>> {
         let mut simulator = StateVectorSimulator::new();
         simulator.initialize_state(circuit.num_qubits)?;
-        
+
         // Use the interface circuit application method
         simulator.apply_interface_circuit(circuit)?;
-        
+
         Ok(Array1::from_vec(simulator.get_state().to_owned()))
     }
 
@@ -1211,7 +1258,7 @@ impl QuantumChemistrySimulator {
         // Apply Pauli operators to state and compute expectation value
         // This is a simplified implementation
         let mut result_state = state.clone();
-        
+
         // Apply Pauli operators (simplified)
         for (qubit, pauli_op) in pauli_string.operators.iter().enumerate() {
             match pauli_op {
@@ -1234,7 +1281,8 @@ impl QuantumChemistrySimulator {
         }
 
         // Compute <ψ|result_state>
-        let expectation = state.iter()
+        let expectation = state
+            .iter()
             .zip(result_state.iter())
             .map(|(a, b)| a.conj() * b)
             .sum::<Complex64>();
@@ -1246,7 +1294,7 @@ impl QuantumChemistrySimulator {
     fn apply_pauli_x(&self, state: &mut Array1<Complex64>, qubit: usize) -> Result<()> {
         let n = state.len();
         let bit_mask = 1 << qubit;
-        
+
         for i in 0..n {
             if (i & bit_mask) == 0 {
                 let j = i | bit_mask;
@@ -1257,7 +1305,7 @@ impl QuantumChemistrySimulator {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -1265,7 +1313,7 @@ impl QuantumChemistrySimulator {
     fn apply_pauli_y(&self, state: &mut Array1<Complex64>, qubit: usize) -> Result<()> {
         let n = state.len();
         let bit_mask = 1 << qubit;
-        
+
         for i in 0..n {
             if (i & bit_mask) == 0 {
                 let j = i | bit_mask;
@@ -1276,20 +1324,20 @@ impl QuantumChemistrySimulator {
                 }
             }
         }
-        
+
         Ok(())
     }
 
     /// Apply Pauli-Z operator to state
     fn apply_pauli_z(&self, state: &mut Array1<Complex64>, qubit: usize) -> Result<()> {
         let bit_mask = 1 << qubit;
-        
+
         for i in 0..state.len() {
             if (i & bit_mask) != 0 {
                 state[i] = -state[i];
             }
         }
-        
+
         Ok(())
     }
 
@@ -1323,7 +1371,7 @@ impl QuantumChemistrySimulator {
         hamiltonian: &MolecularHamiltonian,
     ) -> Result<()> {
         let gradient = self.compute_parameter_gradient(circuit, hamiltonian)?;
-        
+
         for i in 0..self.vqe_optimizer.parameters.len() {
             self.vqe_optimizer.parameters[i] -= self.vqe_optimizer.learning_rate * gradient[i];
         }
@@ -1367,7 +1415,7 @@ impl QuantumChemistrySimulator {
         hamiltonian: &MolecularHamiltonian,
     ) -> Result<()> {
         let gradient = self.compute_parameter_gradient(circuit, hamiltonian)?;
-        
+
         // Simplified Adam update (would need momentum terms in practice)
         for i in 0..self.vqe_optimizer.parameters.len() {
             self.vqe_optimizer.parameters[i] -= self.vqe_optimizer.learning_rate * gradient[i];
@@ -1388,7 +1436,7 @@ impl QuantumChemistrySimulator {
     /// Calculate molecular dipole moment from density matrix
     fn calculate_dipole_moment(&self, density_matrix: &Array2<f64>) -> Array1<f64> {
         let mut dipole = Array1::zeros(3);
-        
+
         // Calculate dipole moment components (x, y, z)
         if let Some(molecule) = &self.molecule {
             // Nuclear contribution
@@ -1399,14 +1447,14 @@ impl QuantumChemistrySimulator {
                     dipole[2] += atomic_number as f64 * molecule.positions[[i, 2]];
                 }
             }
-            
+
             // Electronic contribution (simplified calculation)
             // In practice, would need dipole integrals from basis set
             let num_orbitals = density_matrix.nrows();
             for i in 0..num_orbitals {
                 for j in 0..num_orbitals {
                     let density_element = density_matrix[[i, j]];
-                    
+
                     // Simplified position expectation value
                     // Real implementation would use proper dipole integrals
                     if i == j {
@@ -1419,14 +1467,14 @@ impl QuantumChemistrySimulator {
                 }
             }
         }
-        
+
         dipole
     }
 
     /// Placeholder implementations for other methods
     fn run_hartree_fock_only(&self) -> Result<ElectronicStructureResult> {
         let hf_result = self.hartree_fock.as_ref().unwrap();
-        
+
         Ok(ElectronicStructureResult {
             ground_state_energy: hf_result.scf_energy,
             molecular_orbitals: hf_result.molecular_orbitals.clone(),
@@ -1443,20 +1491,20 @@ impl QuantumChemistrySimulator {
     fn run_quantum_ci(&mut self) -> Result<ElectronicStructureResult> {
         // Enhanced quantum configuration interaction using VQE with CI-inspired ansatz
         let original_ansatz = self.config.vqe_config.ansatz.clone();
-        
+
         // Use a configuration interaction inspired ansatz
         self.config.vqe_config.ansatz = ChemistryAnsatz::Adaptive;
-        
+
         // Run VQE with enhanced convergence criteria for CI
         let original_threshold = self.config.vqe_config.energy_threshold;
         self.config.vqe_config.energy_threshold = original_threshold * 0.1; // Tighter convergence
-        
+
         let result = self.run_vqe();
-        
+
         // Restore original configuration
         self.config.vqe_config.ansatz = original_ansatz;
         self.config.vqe_config.energy_threshold = original_threshold;
-        
+
         result
     }
 
@@ -1464,71 +1512,74 @@ impl QuantumChemistrySimulator {
         // Enhanced quantum coupled cluster using UCCSD ansatz with optimized parameters
         let original_ansatz = self.config.vqe_config.ansatz.clone();
         let original_optimizer = self.config.vqe_config.optimizer.clone();
-        
+
         // Use UCCSD ansatz which is specifically designed for coupled cluster
         self.config.vqe_config.ansatz = ChemistryAnsatz::UCCSD;
         self.config.vqe_config.optimizer = ChemistryOptimizer::Adam;
-        
+
         // Initialize with more parameters for coupled cluster amplitudes
         let num_orbitals = if let Some(hf) = &self.hartree_fock {
             hf.molecular_orbitals.num_orbitals
         } else {
             4 // Default
         };
-        
+
         // Number of single and double excitation amplitudes
         let num_singles = num_orbitals * num_orbitals;
         let num_doubles = (num_orbitals * (num_orbitals - 1) / 2).pow(2);
         let total_params = num_singles + num_doubles;
-        
+
         self.vqe_optimizer.initialize_parameters(total_params);
-        
+
         let result = self.run_vqe();
-        
+
         // Restore original configuration
         self.config.vqe_config.ansatz = original_ansatz;
         self.config.vqe_config.optimizer = original_optimizer;
-        
+
         result
     }
 
     fn run_quantum_phase_estimation(&mut self) -> Result<ElectronicStructureResult> {
         // Enhanced quantum phase estimation for exact eigenvalue calculation
         // QPE provides more accurate energy estimates than VQE for smaller systems
-        
+
         if let (Some(hamiltonian), Some(hf)) = (&self.hamiltonian, &self.hartree_fock) {
             // Prepare initial state using Hartree-Fock
             let num_qubits = hamiltonian.num_orbitals * 2; // Spin orbitals
             let ancilla_qubits = 8; // Precision qubits for phase estimation
-            
+
             let mut qpe_circuit = InterfaceCircuit::new(num_qubits + ancilla_qubits, 0);
-            
+
             // Initialize ancilla qubits in superposition
             for i in 0..ancilla_qubits {
                 qpe_circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![i]));
             }
-            
+
             // Prepare Hartree-Fock state in system qubits
             self.prepare_qpe_hartree_fock_state(&mut qpe_circuit, ancilla_qubits)?;
-            
+
             // Apply controlled time evolution (simplified)
             for i in 0..ancilla_qubits {
                 let time_factor = 2.0_f64.powi(i as i32);
                 self.apply_controlled_hamiltonian_evolution(&mut qpe_circuit, i, time_factor)?;
             }
-            
+
             // Inverse QFT on ancilla qubits
             self.apply_inverse_qft(&mut qpe_circuit, 0, ancilla_qubits)?;
-            
+
             // Simulate and extract energy
             let final_state = self.get_circuit_final_state(&qpe_circuit)?;
-            let energy_estimate = self.extract_energy_from_qpe_state(&final_state, ancilla_qubits)?;
-            
+            let energy_estimate =
+                self.extract_energy_from_qpe_state(&final_state, ancilla_qubits)?;
+
             Ok(ElectronicStructureResult {
                 ground_state_energy: energy_estimate,
                 molecular_orbitals: hf.molecular_orbitals.clone(),
                 density_matrix: hf.density_matrix.clone(),
-                dipole_moment: self.fermion_mapper.calculate_dipole_moment(&hf.density_matrix)?,
+                dipole_moment: self
+                    .fermion_mapper
+                    .calculate_dipole_moment(&hf.density_matrix)?,
                 converged: true, // QPE provides exact results (in ideal case)
                 iterations: 1,
                 quantum_state: final_state,
@@ -1542,7 +1593,11 @@ impl QuantumChemistrySimulator {
     }
 
     /// Prepare Hartree-Fock state in the quantum circuit for QPE
-    fn prepare_qpe_hartree_fock_state(&self, circuit: &mut InterfaceCircuit, offset: usize) -> Result<()> {
+    fn prepare_qpe_hartree_fock_state(
+        &self,
+        circuit: &mut InterfaceCircuit,
+        offset: usize,
+    ) -> Result<()> {
         if let Some(hf) = &self.hartree_fock {
             // Set occupied orbitals to |1> state
             let num_electrons = if let Some(molecule) = &self.molecule {
@@ -1551,17 +1606,25 @@ impl QuantumChemistrySimulator {
                 2
             };
             let num_orbitals = hf.molecular_orbitals.num_orbitals;
-            
+
             // Fill lowest energy orbitals (simplified)
             for i in 0..num_electrons.min(num_orbitals) {
-                circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![offset + i]));
+                circuit.add_gate(InterfaceGate::new(
+                    InterfaceGateType::PauliX,
+                    vec![offset + i],
+                ));
             }
         }
         Ok(())
     }
 
     /// Apply controlled Hamiltonian evolution for QPE
-    fn apply_controlled_hamiltonian_evolution(&self, circuit: &mut InterfaceCircuit, control: usize, time: f64) -> Result<()> {
+    fn apply_controlled_hamiltonian_evolution(
+        &self,
+        circuit: &mut InterfaceCircuit,
+        control: usize,
+        time: f64,
+    ) -> Result<()> {
         // Simplified controlled evolution - would need Trotter decomposition in practice
         if let Some(hamiltonian) = &self.hamiltonian {
             // Apply simplified rotation based on Hamiltonian diagonal elements
@@ -1569,7 +1632,7 @@ impl QuantumChemistrySimulator {
                 let angle = time * hamiltonian.one_electron_integrals[[i, i]];
                 circuit.add_gate(InterfaceGate::new(
                     InterfaceGateType::CRZ(angle),
-                    vec![control, circuit.num_qubits - hamiltonian.num_orbitals + i]
+                    vec![control, circuit.num_qubits - hamiltonian.num_orbitals + i],
                 ));
             }
         }
@@ -1577,38 +1640,47 @@ impl QuantumChemistrySimulator {
     }
 
     /// Apply inverse quantum Fourier transform
-    fn apply_inverse_qft(&self, circuit: &mut InterfaceCircuit, start: usize, num_qubits: usize) -> Result<()> {
+    fn apply_inverse_qft(
+        &self,
+        circuit: &mut InterfaceCircuit,
+        start: usize,
+        num_qubits: usize,
+    ) -> Result<()> {
         // Simplified inverse QFT implementation
         for i in 0..num_qubits {
             let qubit = start + i;
-            
+
             // Controlled rotations
             for j in (0..i).rev() {
                 let control = start + j;
                 let angle = -PI / 2.0_f64.powi((i - j) as i32);
                 circuit.add_gate(InterfaceGate::new(
                     InterfaceGateType::CRZ(angle),
-                    vec![control, qubit]
+                    vec![control, qubit],
                 ));
             }
-            
+
             // Hadamard
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![qubit]));
         }
-        
+
         // Reverse the order of qubits (simplified - would need SWAP gates)
         Ok(())
     }
 
     /// Extract energy from quantum phase estimation measurement
-    fn extract_energy_from_qpe_state(&self, state: &Array1<Complex64>, ancilla_qubits: usize) -> Result<f64> {
+    fn extract_energy_from_qpe_state(
+        &self,
+        state: &Array1<Complex64>,
+        ancilla_qubits: usize,
+    ) -> Result<f64> {
         // Find the most probable measurement outcome in ancilla register
         let ancilla_states = 1 << ancilla_qubits;
         let system_size = state.len() / ancilla_states;
-        
+
         let mut max_prob = 0.0;
         let mut most_likely_phase = 0;
-        
+
         for phase_int in 0..ancilla_states {
             let mut prob = 0.0;
             for sys_state in 0..system_size {
@@ -1617,17 +1689,17 @@ impl QuantumChemistrySimulator {
                     prob += state[idx].norm_sqr();
                 }
             }
-            
+
             if prob > max_prob {
                 max_prob = prob;
                 most_likely_phase = phase_int;
             }
         }
-        
+
         // Convert phase to energy estimate
         let phase = most_likely_phase as f64 / ancilla_states as f64;
         let energy = phase * 2.0 * PI; // Simplified energy extraction
-        
+
         Ok(energy)
     }
 }
@@ -1644,7 +1716,7 @@ impl FermionMapper {
     fn map_fermionic_string(&self, fermionic_string: &FermionicString) -> Result<PauliString> {
         // Simplified Jordan-Wigner mapping
         let mut paulis = HashMap::new();
-        
+
         for (i, operator) in fermionic_string.operators.iter().enumerate() {
             match operator {
                 FermionicOperator::Creation(site) => {
@@ -1669,7 +1741,7 @@ impl FermionMapper {
                 operators_vec[qubit] = op;
             }
         }
-        
+
         let num_qubits = operators_vec.len();
         Ok(PauliString {
             operators: operators_vec,
@@ -1681,15 +1753,15 @@ impl FermionMapper {
     /// Calculate molecular dipole moment from density matrix
     fn calculate_dipole_moment(&self, density_matrix: &Array2<f64>) -> Result<Array1<f64>> {
         let mut dipole = Array1::zeros(3);
-        
+
         // Simplified dipole moment calculation
         // In practice, this would use proper dipole integrals
         let num_orbitals = density_matrix.nrows();
-        
+
         for i in 0..num_orbitals {
             for j in 0..num_orbitals {
                 let density_element = density_matrix[[i, j]];
-                
+
                 // Simplified position expectation value
                 if i == j {
                     // Diagonal elements contribute to electronic dipole
@@ -1700,7 +1772,7 @@ impl FermionMapper {
                 }
             }
         }
-        
+
         Ok(dipole)
     }
 }
@@ -1746,18 +1818,24 @@ pub fn benchmark_quantum_chemistry() -> Result<()> {
     simulator.set_molecule(h2_molecule)?;
 
     let start_time = std::time::Instant::now();
-    
+
     // Run electronic structure calculation
     let result = simulator.run_calculation()?;
-    
+
     let duration = start_time.elapsed();
 
     println!("✅ Quantum Chemistry Results:");
-    println!("   Ground State Energy: {:.6} Hartree", result.ground_state_energy);
+    println!(
+        "   Ground State Energy: {:.6} Hartree",
+        result.ground_state_energy
+    );
     println!("   Converged: {}", result.converged);
     println!("   Iterations: {}", result.iterations);
     println!("   Hamiltonian Terms: {}", result.stats.hamiltonian_terms);
-    println!("   Circuit Evaluations: {}", result.stats.circuit_evaluations);
+    println!(
+        "   Circuit Evaluations: {}",
+        result.stats.circuit_evaluations
+    );
     println!("   Total Time: {:.2}ms", duration.as_millis());
     println!("   VQE Time: {:.2}ms", result.stats.vqe_time_ms);
 
@@ -1784,7 +1862,7 @@ mod tests {
             multiplicity: 1,
             basis_set: "STO-3G".to_string(),
         };
-        
+
         assert_eq!(h2.atomic_numbers, vec![1, 1]);
         assert_eq!(h2.charge, 0);
         assert_eq!(h2.multiplicity, 1);
@@ -1794,7 +1872,7 @@ mod tests {
     fn test_molecular_hamiltonian_construction() {
         let config = ElectronicStructureConfig::default();
         let mut simulator = QuantumChemistrySimulator::new(config).unwrap();
-        
+
         let h2 = Molecule {
             atomic_numbers: vec![1, 1],
             positions: Array2::from_shape_vec((2, 3), vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.4]).unwrap(),
@@ -1802,7 +1880,7 @@ mod tests {
             multiplicity: 1,
             basis_set: "STO-3G".to_string(),
         };
-        
+
         simulator.set_molecule(h2).unwrap();
         let molecule_clone = simulator.molecule.clone().unwrap();
         let result = simulator.construct_molecular_hamiltonian(&molecule_clone);
@@ -1828,12 +1906,12 @@ mod tests {
     fn test_ansatz_parameter_counting() {
         let config = ElectronicStructureConfig::default();
         let simulator = QuantumChemistrySimulator::new(config).unwrap();
-        
+
         let mut circuit = InterfaceCircuit::new(4, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(0.0), vec![0]));
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(0.0), vec![1]));
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]));
-        
+
         let param_count = simulator.get_ansatz_parameter_count(&circuit);
         assert_eq!(param_count, 2);
     }

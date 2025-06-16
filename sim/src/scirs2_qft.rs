@@ -370,31 +370,42 @@ impl SciRS2QFT {
         if let Some(ref backend) = self.backend {
             if backend.is_available() {
                 // Use actual SciRS2 FFT implementation
-                use crate::scirs2_integration::{Vector, MemoryPool};
+                use crate::scirs2_integration::{MemoryPool, Vector};
                 use ndarray::Array1;
-                
+
                 let pool = MemoryPool::new();
                 let input_array = Array1::from_vec(data.to_vec());
-                let scirs2_vector = Vector::from_array1(&input_array.view(), &pool)
-                    .map_err(|e| SimulatorError::ComputationError(format!("Failed to create SciRS2 vector: {}", e)))?;
-                
+                let scirs2_vector =
+                    Vector::from_array1(&input_array.view(), &pool).map_err(|e| {
+                        SimulatorError::ComputationError(format!(
+                            "Failed to create SciRS2 vector: {}",
+                            e
+                        ))
+                    })?;
+
                 // Perform forward FFT using SciRS2 engine
                 #[cfg(feature = "advanced_math")]
                 {
-                    let result_vector = backend.fft_engine.forward(&scirs2_vector)
-                        .map_err(|e| SimulatorError::ComputationError(format!("SciRS2 FFT failed: {}", e)))?;
-                    
+                    let result_vector =
+                        backend.fft_engine.forward(&scirs2_vector).map_err(|e| {
+                            SimulatorError::ComputationError(format!("SciRS2 FFT failed: {}", e))
+                        })?;
+
                     // Copy result back to data
-                    let result_array = result_vector.to_array1()
-                        .map_err(|e| SimulatorError::ComputationError(format!("Failed to extract FFT result: {}", e)))?;
-                    data.copy_from_slice(&result_array);
+                    let result_array = result_vector.to_array1().map_err(|e| {
+                        SimulatorError::ComputationError(format!(
+                            "Failed to extract FFT result: {}",
+                            e
+                        ))
+                    })?;
+                    data.copy_from_slice(result_array.as_slice().unwrap());
                 }
                 #[cfg(not(feature = "advanced_math"))]
                 {
                     // Fallback when advanced_math feature is not available
                     self.radix2_fft(data, false)?;
                 }
-                
+
                 Ok(())
             } else {
                 // Fallback to radix-2 FFT
@@ -413,31 +424,45 @@ impl SciRS2QFT {
         if let Some(ref backend) = self.backend {
             if backend.is_available() {
                 // Use actual SciRS2 inverse FFT implementation
-                use crate::scirs2_integration::{Vector, MemoryPool};
+                use crate::scirs2_integration::{MemoryPool, Vector};
                 use ndarray::Array1;
-                
+
                 let pool = MemoryPool::new();
                 let input_array = Array1::from_vec(data.to_vec());
-                let scirs2_vector = Vector::from_array1(&input_array.view(), &pool)
-                    .map_err(|e| SimulatorError::ComputationError(format!("Failed to create SciRS2 vector: {}", e)))?;
-                
+                let scirs2_vector =
+                    Vector::from_array1(&input_array.view(), &pool).map_err(|e| {
+                        SimulatorError::ComputationError(format!(
+                            "Failed to create SciRS2 vector: {}",
+                            e
+                        ))
+                    })?;
+
                 // Perform inverse FFT using SciRS2 engine
                 #[cfg(feature = "advanced_math")]
                 {
-                    let result_vector = backend.fft_engine.inverse(&scirs2_vector)
-                        .map_err(|e| SimulatorError::ComputationError(format!("SciRS2 inverse FFT failed: {}", e)))?;
-                    
+                    let result_vector =
+                        backend.fft_engine.inverse(&scirs2_vector).map_err(|e| {
+                            SimulatorError::ComputationError(format!(
+                                "SciRS2 inverse FFT failed: {}",
+                                e
+                            ))
+                        })?;
+
                     // Copy result back to data
-                    let result_array = result_vector.to_array1()
-                        .map_err(|e| SimulatorError::ComputationError(format!("Failed to extract inverse FFT result: {}", e)))?;
-                    data.copy_from_slice(&result_array);
+                    let result_array = result_vector.to_array1().map_err(|e| {
+                        SimulatorError::ComputationError(format!(
+                            "Failed to extract inverse FFT result: {}",
+                            e
+                        ))
+                    })?;
+                    data.copy_from_slice(result_array.as_slice().unwrap());
                 }
                 #[cfg(not(feature = "advanced_math"))]
                 {
                     // Fallback when advanced_math feature is not available
                     self.radix2_fft(data, true)?;
                 }
-                
+
                 Ok(())
             } else {
                 // Fallback to radix-2 FFT

@@ -423,13 +423,13 @@ impl FaultTolerantSynthesizer {
         for gate in &logical_circuit.gates {
             let logical_gate_type = self.map_interface_gate_to_logical(gate)?;
             let synthesized_gate = self.synthesize_logical_gate(logical_gate_type, &gate.qubits)?;
-            
+
             // Add to fault-tolerant circuit
             self.append_synthesized_gate(&mut result.fault_tolerant_circuit, &synthesized_gate)?;
-            
+
             // Update resource requirements
             self.update_resources(&mut result.resources, &synthesized_gate.resources);
-            
+
             result.synthesis_stats.logical_gates_synthesized += 1;
         }
 
@@ -440,12 +440,14 @@ impl FaultTolerantSynthesizer {
         result.logical_error_rate = self.calculate_logical_error_rate(&result)?;
 
         // Calculate overhead factor
-        result.overhead_factor = result.resources.physical_qubits as f64 / logical_circuit.num_qubits as f64;
+        result.overhead_factor =
+            result.resources.physical_qubits as f64 / logical_circuit.num_qubits as f64;
 
         // Update synthesis statistics
         result.synthesis_stats.total_synthesis_time_ms = start_time.elapsed().as_millis() as f64;
-        result.synthesis_stats.avg_synthesis_time_ms = 
-            result.synthesis_stats.total_synthesis_time_ms / result.synthesis_stats.logical_gates_synthesized as f64;
+        result.synthesis_stats.avg_synthesis_time_ms =
+            result.synthesis_stats.total_synthesis_time_ms
+                / result.synthesis_stats.logical_gates_synthesized as f64;
 
         // Cache result
         self.synthesis_cache.insert(cache_key, result.clone());
@@ -471,42 +473,35 @@ impl FaultTolerantSynthesizer {
             LogicalGateType::LogicalX | LogicalGateType::LogicalY | LogicalGateType::LogicalZ => {
                 self.synthesize_logical_pauli(gate_type, logical_qubits)
             }
-            LogicalGateType::LogicalH => {
-                self.synthesize_logical_hadamard(logical_qubits)
-            }
-            LogicalGateType::LogicalS => {
-                self.synthesize_logical_s(logical_qubits)
-            }
+            LogicalGateType::LogicalH => self.synthesize_logical_hadamard(logical_qubits),
+            LogicalGateType::LogicalS => self.synthesize_logical_s(logical_qubits),
             LogicalGateType::LogicalT => {
                 self.synthesize_logical_t_with_magic_states(logical_qubits)
             }
-            LogicalGateType::LogicalCNOT => {
-                self.synthesize_logical_cnot(logical_qubits)
-            }
+            LogicalGateType::LogicalCNOT => self.synthesize_logical_cnot(logical_qubits),
             LogicalGateType::LogicalToffoli => {
                 self.synthesize_logical_toffoli_with_magic_states(logical_qubits)
             }
-            _ => {
-                Err(SimulatorError::InvalidConfiguration(
-                    format!("Unsupported logical gate type: {:?}", gate_type),
-                ))
-            }
+            _ => Err(SimulatorError::InvalidConfiguration(format!(
+                "Unsupported logical gate type: {:?}",
+                gate_type
+            ))),
         }
     }
 
     /// Create surface code synthesizer
     fn create_surface_code(&self) -> Result<SurfaceCodeSynthesizer> {
         let distance = self.config.code_distance;
-        
+
         // Create surface code layout
         let layout = self.create_surface_code_layout(distance)?;
-        
+
         // Generate stabilizer generators
         let stabilizers = self.generate_surface_code_stabilizers(distance)?;
-        
+
         // Create logical operators
         let logical_operators = self.create_logical_operators(distance)?;
-        
+
         // Create error correction schedule
         let error_correction_schedule = self.create_error_correction_schedule(distance)?;
 
@@ -522,12 +517,12 @@ impl FaultTolerantSynthesizer {
     /// Create surface code layout
     pub fn create_surface_code_layout(&self, distance: usize) -> Result<SurfaceCodeLayout> {
         let size = 2 * distance - 1;
-        
+
         // Initialize qubit arrays
         let mut data_qubits = Array2::zeros((size, size));
         let mut x_stabilizers = Array2::zeros((distance - 1, distance));
         let mut z_stabilizers = Array2::zeros((distance, distance - 1));
-        
+
         // Assign data qubit indices
         let mut qubit_index = 0;
         for i in 0..size {
@@ -538,7 +533,7 @@ impl FaultTolerantSynthesizer {
                 }
             }
         }
-        
+
         // Assign stabilizer indices
         for i in 0..distance - 1 {
             for j in 0..distance {
@@ -546,7 +541,7 @@ impl FaultTolerantSynthesizer {
                 qubit_index += 1;
             }
         }
-        
+
         for i in 0..distance {
             for j in 0..distance - 1 {
                 z_stabilizers[[i, j]] = qubit_index;
@@ -571,13 +566,13 @@ impl FaultTolerantSynthesizer {
         for i in 0..distance - 1 {
             for j in 0..distance {
                 let mut stabilizer = Array1::zeros(2 * total_qubits); // X and Z parts
-                
+
                 // Add X operations on neighboring data qubits
                 let neighbors = self.get_x_stabilizer_neighbors(i, j, distance);
                 for &qubit in &neighbors {
                     stabilizer[qubit] = 1; // X operation
                 }
-                
+
                 stabilizers.push(stabilizer);
             }
         }
@@ -586,13 +581,13 @@ impl FaultTolerantSynthesizer {
         for i in 0..distance {
             for j in 0..distance - 1 {
                 let mut stabilizer = Array1::zeros(2 * total_qubits);
-                
+
                 // Add Z operations on neighboring data qubits
                 let neighbors = self.get_z_stabilizer_neighbors(i, j, distance);
                 for &qubit in &neighbors {
                     stabilizer[total_qubits + qubit] = 1; // Z operation
                 }
-                
+
                 stabilizers.push(stabilizer);
             }
         }
@@ -603,7 +598,7 @@ impl FaultTolerantSynthesizer {
     /// Get neighboring qubits for X-stabilizer
     fn get_x_stabilizer_neighbors(&self, i: usize, j: usize, distance: usize) -> Vec<usize> {
         let mut neighbors = Vec::new();
-        
+
         // In a real implementation, this would calculate the actual neighboring data qubits
         // For simplicity, we'll use a placeholder calculation
         let base_index = i * distance + j;
@@ -611,26 +606,29 @@ impl FaultTolerantSynthesizer {
             let neighbor = (base_index + offset) % (distance * distance);
             neighbors.push(neighbor);
         }
-        
+
         neighbors
     }
 
     /// Get neighboring qubits for Z-stabilizer
     fn get_z_stabilizer_neighbors(&self, i: usize, j: usize, distance: usize) -> Vec<usize> {
         let mut neighbors = Vec::new();
-        
+
         // Similar placeholder calculation
         let base_index = i * distance + j;
         for offset in 0..4 {
             let neighbor = (base_index + offset) % (distance * distance);
             neighbors.push(neighbor);
         }
-        
+
         neighbors
     }
 
     /// Create logical operators
-    fn create_logical_operators(&self, distance: usize) -> Result<HashMap<LogicalGateType, Array2<i8>>> {
+    fn create_logical_operators(
+        &self,
+        distance: usize,
+    ) -> Result<HashMap<LogicalGateType, Array2<i8>>> {
         let mut logical_operators = HashMap::new();
         let total_qubits = distance * distance;
 
@@ -652,9 +650,12 @@ impl FaultTolerantSynthesizer {
     }
 
     /// Create error correction schedule
-    fn create_error_correction_schedule(&self, distance: usize) -> Result<Vec<ErrorCorrectionRound>> {
+    fn create_error_correction_schedule(
+        &self,
+        distance: usize,
+    ) -> Result<Vec<ErrorCorrectionRound>> {
         let mut schedule = Vec::new();
-        
+
         // Create syndrome extraction round
         let mut round = ErrorCorrectionRound {
             stabilizer_measurements: Vec::new(),
@@ -664,7 +665,14 @@ impl FaultTolerantSynthesizer {
         };
 
         // Add stabilizer measurements
-        for (i, stabilizer) in self.surface_code.as_ref().unwrap().stabilizers.iter().enumerate() {
+        for (i, stabilizer) in self
+            .surface_code
+            .as_ref()
+            .unwrap()
+            .stabilizers
+            .iter()
+            .enumerate()
+        {
             let measurement = StabilizerMeasurement {
                 stabilizer_index: i,
                 measurement_circuit: self.create_stabilizer_measurement_circuit(stabilizer)?,
@@ -679,29 +687,44 @@ impl FaultTolerantSynthesizer {
     }
 
     /// Create stabilizer measurement circuit
-    fn create_stabilizer_measurement_circuit(&self, stabilizer: &Array1<i8>) -> Result<InterfaceCircuit> {
+    fn create_stabilizer_measurement_circuit(
+        &self,
+        stabilizer: &Array1<i8>,
+    ) -> Result<InterfaceCircuit> {
         let mut circuit = InterfaceCircuit::new(stabilizer.len() + 1, 0); // +1 for ancilla
         let ancilla_qubit = stabilizer.len();
 
         // Initialize ancilla in |+⟩ state
-        circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![ancilla_qubit]));
+        circuit.add_gate(InterfaceGate::new(
+            InterfaceGateType::Hadamard,
+            vec![ancilla_qubit],
+        ));
 
         // Apply controlled operations
         for (i, &op) in stabilizer.iter().enumerate() {
             if op == 1 {
                 if i < stabilizer.len() / 2 {
                     // X operation
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![ancilla_qubit, i]));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::CNOT,
+                        vec![ancilla_qubit, i],
+                    ));
                 } else {
                     // Z operation
                     let data_qubit = i - stabilizer.len() / 2;
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::CZ, vec![ancilla_qubit, data_qubit]));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::CZ,
+                        vec![ancilla_qubit, data_qubit],
+                    ));
                 }
             }
         }
 
         // Measure ancilla
-        circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![ancilla_qubit]));
+        circuit.add_gate(InterfaceGate::new(
+            InterfaceGateType::Hadamard,
+            vec![ancilla_qubit],
+        ));
 
         Ok(circuit)
     }
@@ -710,13 +733,13 @@ impl FaultTolerantSynthesizer {
     fn get_stabilizer_data_qubits(&self, stabilizer: &Array1<i8>) -> Vec<usize> {
         let mut data_qubits = Vec::new();
         let half_len = stabilizer.len() / 2;
-        
+
         for i in 0..half_len {
             if stabilizer[i] == 1 || stabilizer[i + half_len] == 1 {
                 data_qubits.push(i);
             }
         }
-        
+
         data_qubits
     }
 
@@ -728,9 +751,10 @@ impl FaultTolerantSynthesizer {
             output_state: MagicStateType::TState,
             distillation_circuit: self.create_t_state_distillation_circuit()?,
             error_reduction: 0.1, // 10x error reduction
-            overhead: 15, // 15 T-states input for 1 T-state output
+            overhead: 15,         // 15 T-states input for 1 T-state output
         };
-        self.magic_state_protocols.insert(LogicalGateType::LogicalT, t_protocol);
+        self.magic_state_protocols
+            .insert(LogicalGateType::LogicalT, t_protocol);
 
         // CCZ-state protocol for Toffoli gates
         let ccz_protocol = MagicStateProtocol {
@@ -738,9 +762,10 @@ impl FaultTolerantSynthesizer {
             output_state: MagicStateType::CCZState,
             distillation_circuit: self.create_ccz_state_distillation_circuit()?,
             error_reduction: 0.05, // 20x error reduction
-            overhead: 25, // 25 CCZ-states input for 1 CCZ-state output
+            overhead: 25,          // 25 CCZ-states input for 1 CCZ-state output
         };
-        self.magic_state_protocols.insert(LogicalGateType::LogicalToffoli, ccz_protocol);
+        self.magic_state_protocols
+            .insert(LogicalGateType::LogicalToffoli, ccz_protocol);
 
         Ok(())
     }
@@ -748,46 +773,52 @@ impl FaultTolerantSynthesizer {
     /// Create T-state distillation circuit
     fn create_t_state_distillation_circuit(&self) -> Result<InterfaceCircuit> {
         let mut circuit = InterfaceCircuit::new(15, 0); // 15-to-1 distillation
-        
+
         // Simplified 15-to-1 T-state distillation
         // In practice, this would be a complex multi-level protocol
-        
+
         // First level: 7-to-1 distillation (using Steane code)
         for i in 0..7 {
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![i]));
         }
-        
+
         // Add stabilizer measurements for error detection
         for i in 0..3 {
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, i + 7]));
-            circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i + 3, i + 7]));
+            circuit.add_gate(InterfaceGate::new(
+                InterfaceGateType::CNOT,
+                vec![i + 3, i + 7],
+            ));
         }
-        
+
         // Second level: 15-to-1 using two 7-to-1 outputs
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![13, 14]));
-        
+
         Ok(circuit)
     }
 
     /// Create CCZ-state distillation circuit
     fn create_ccz_state_distillation_circuit(&self) -> Result<InterfaceCircuit> {
         let mut circuit = InterfaceCircuit::new(25, 0); // 25-to-1 distillation
-        
+
         // Simplified CCZ-state distillation
         // This would typically involve multiple rounds of error detection and correction
-        
+
         for i in 0..5 {
             for j in 0..5 {
                 let qubit = i * 5 + j;
                 circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![qubit]));
             }
         }
-        
+
         // Add CCZ gates for entanglement
         for i in 0..20 {
-            circuit.add_gate(InterfaceGate::new(InterfaceGateType::Toffoli, vec![i, i + 1, i + 2]));
+            circuit.add_gate(InterfaceGate::new(
+                InterfaceGateType::Toffoli,
+                vec![i, i + 1, i + 2],
+            ));
         }
-        
+
         Ok(circuit)
     }
 
@@ -808,10 +839,11 @@ impl FaultTolerantSynthesizer {
             },
             error_rate: self.calculate_logical_gate_error_rate(LogicalGateType::LogicalX)?,
         };
-        self.gate_library.insert(LogicalGateType::LogicalX, logical_x);
+        self.gate_library
+            .insert(LogicalGateType::LogicalX, logical_x);
 
         // Similar for other Clifford gates...
-        
+
         Ok(())
     }
 
@@ -819,12 +851,12 @@ impl FaultTolerantSynthesizer {
     fn create_logical_pauli_x_circuit(&self) -> Result<InterfaceCircuit> {
         let distance = self.config.code_distance;
         let mut circuit = InterfaceCircuit::new(distance * distance, 0);
-        
+
         // Apply X gates to logical X string
         for i in 0..distance {
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![i]));
         }
-        
+
         Ok(circuit)
     }
 
@@ -832,7 +864,7 @@ impl FaultTolerantSynthesizer {
     fn calculate_logical_gate_error_rate(&self, gate_type: LogicalGateType) -> Result<f64> {
         let p_phys = self.config.physical_error_rate;
         let d = self.config.code_distance;
-        
+
         // Simplified error rate calculation
         // Real calculation would depend on specific error correction protocol
         match gate_type {
@@ -860,19 +892,23 @@ impl FaultTolerantSynthesizer {
     ) -> Result<LogicalGate> {
         let distance = self.config.code_distance;
         let mut circuit = InterfaceCircuit::new(distance * distance, 0);
-        
+
         let physical_gate = match gate_type {
             LogicalGateType::LogicalX => InterfaceGateType::PauliX,
             LogicalGateType::LogicalY => InterfaceGateType::PauliY,
             LogicalGateType::LogicalZ => InterfaceGateType::PauliZ,
-            _ => return Err(SimulatorError::InvalidConfiguration("Invalid Pauli gate".to_string())),
+            _ => {
+                return Err(SimulatorError::InvalidConfiguration(
+                    "Invalid Pauli gate".to_string(),
+                ))
+            }
         };
-        
+
         // Apply gate to logical string
         for i in 0..distance {
             circuit.add_gate(InterfaceGate::new(physical_gate.clone(), vec![i]));
         }
-        
+
         Ok(LogicalGate {
             gate_type,
             logical_qubits: logical_qubits.to_vec(),
@@ -893,12 +929,12 @@ impl FaultTolerantSynthesizer {
     pub fn synthesize_logical_hadamard(&self, logical_qubits: &[usize]) -> Result<LogicalGate> {
         let distance = self.config.code_distance;
         let mut circuit = InterfaceCircuit::new(distance * distance, 0);
-        
+
         // Logical Hadamard: transversal for many codes
         for i in 0..distance * distance {
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![i]));
         }
-        
+
         Ok(LogicalGate {
             gate_type: LogicalGateType::LogicalH,
             logical_qubits: logical_qubits.to_vec(),
@@ -919,12 +955,12 @@ impl FaultTolerantSynthesizer {
     fn synthesize_logical_s(&self, logical_qubits: &[usize]) -> Result<LogicalGate> {
         let distance = self.config.code_distance;
         let mut circuit = InterfaceCircuit::new(distance * distance, 0);
-        
+
         // Logical S: transversal for CSS codes
         for i in 0..distance * distance {
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::S, vec![i]));
         }
-        
+
         Ok(LogicalGate {
             gate_type: LogicalGateType::LogicalS,
             logical_qubits: logical_qubits.to_vec(),
@@ -942,23 +978,38 @@ impl FaultTolerantSynthesizer {
     }
 
     /// Synthesize logical T gate using magic states
-    fn synthesize_logical_t_with_magic_states(&self, logical_qubits: &[usize]) -> Result<LogicalGate> {
+    fn synthesize_logical_t_with_magic_states(
+        &self,
+        logical_qubits: &[usize],
+    ) -> Result<LogicalGate> {
         let distance = self.config.code_distance;
         let mut circuit = InterfaceCircuit::new(distance * distance + 10, 0); // Extra qubits for magic state
-        
+
         // Magic state injection protocol
         // 1. Prepare magic state |T⟩ = T|+⟩
-        circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![distance * distance]));
-        circuit.add_gate(InterfaceGate::new(InterfaceGateType::T, vec![distance * distance]));
-        
+        circuit.add_gate(InterfaceGate::new(
+            InterfaceGateType::Hadamard,
+            vec![distance * distance],
+        ));
+        circuit.add_gate(InterfaceGate::new(
+            InterfaceGateType::T,
+            vec![distance * distance],
+        ));
+
         // 2. Teleport T gate using magic state
         for i in 0..distance {
-            circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, distance * distance + 1]));
+            circuit.add_gate(InterfaceGate::new(
+                InterfaceGateType::CNOT,
+                vec![i, distance * distance + 1],
+            ));
         }
-        
+
         // 3. Measure magic state and apply corrections
-        circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![distance * distance]));
-        
+        circuit.add_gate(InterfaceGate::new(
+            InterfaceGateType::Hadamard,
+            vec![distance * distance],
+        ));
+
         Ok(LogicalGate {
             gate_type: LogicalGateType::LogicalT,
             logical_qubits: logical_qubits.to_vec(),
@@ -978,12 +1029,14 @@ impl FaultTolerantSynthesizer {
     /// Synthesize logical CNOT gate
     pub fn synthesize_logical_cnot(&self, logical_qubits: &[usize]) -> Result<LogicalGate> {
         if logical_qubits.len() != 2 {
-            return Err(SimulatorError::InvalidConfiguration("CNOT requires exactly 2 qubits".to_string()));
+            return Err(SimulatorError::InvalidConfiguration(
+                "CNOT requires exactly 2 qubits".to_string(),
+            ));
         }
-        
+
         let distance = self.config.code_distance;
         let mut circuit = InterfaceCircuit::new(2 * distance * distance, 0);
-        
+
         // Transversal CNOT for CSS codes
         for i in 0..distance * distance {
             circuit.add_gate(InterfaceGate::new(
@@ -991,7 +1044,7 @@ impl FaultTolerantSynthesizer {
                 vec![i, i + distance * distance],
             ));
         }
-        
+
         Ok(LogicalGate {
             gate_type: LogicalGateType::LogicalCNOT,
             logical_qubits: logical_qubits.to_vec(),
@@ -1009,17 +1062,22 @@ impl FaultTolerantSynthesizer {
     }
 
     /// Synthesize logical Toffoli gate using magic states
-    fn synthesize_logical_toffoli_with_magic_states(&self, logical_qubits: &[usize]) -> Result<LogicalGate> {
+    fn synthesize_logical_toffoli_with_magic_states(
+        &self,
+        logical_qubits: &[usize],
+    ) -> Result<LogicalGate> {
         if logical_qubits.len() != 3 {
-            return Err(SimulatorError::InvalidConfiguration("Toffoli requires exactly 3 qubits".to_string()));
+            return Err(SimulatorError::InvalidConfiguration(
+                "Toffoli requires exactly 3 qubits".to_string(),
+            ));
         }
-        
+
         let distance = self.config.code_distance;
         let mut circuit = InterfaceCircuit::new(3 * distance * distance + 20, 0);
-        
+
         // CCZ magic state injection protocol
         // Complex protocol involving multiple magic states and measurements
-        
+
         // Prepare CCZ magic state
         for i in 0..3 {
             circuit.add_gate(InterfaceGate::new(
@@ -1027,7 +1085,7 @@ impl FaultTolerantSynthesizer {
                 vec![3 * distance * distance + i],
             ));
         }
-        
+
         // Apply CCZ to magic state
         circuit.add_gate(InterfaceGate::new(
             InterfaceGateType::Toffoli,
@@ -1037,7 +1095,7 @@ impl FaultTolerantSynthesizer {
                 3 * distance * distance + 2,
             ],
         ));
-        
+
         // Teleportation protocol (simplified)
         for i in 0..distance * distance {
             circuit.add_gate(InterfaceGate::new(
@@ -1053,7 +1111,7 @@ impl FaultTolerantSynthesizer {
                 vec![i + 2 * distance * distance, 3 * distance * distance + 5],
             ));
         }
-        
+
         Ok(LogicalGate {
             gate_type: LogicalGateType::LogicalToffoli,
             logical_qubits: logical_qubits.to_vec(),
@@ -1071,7 +1129,7 @@ impl FaultTolerantSynthesizer {
     }
 
     /// Helper methods and remaining implementation details...
-    
+
     fn map_interface_gate_to_logical(&self, gate: &InterfaceGate) -> Result<LogicalGateType> {
         match gate.gate_type {
             InterfaceGateType::PauliX => Ok(LogicalGateType::LogicalX),
@@ -1082,9 +1140,10 @@ impl FaultTolerantSynthesizer {
             InterfaceGateType::T => Ok(LogicalGateType::LogicalT),
             InterfaceGateType::CNOT => Ok(LogicalGateType::LogicalCNOT),
             InterfaceGateType::Toffoli => Ok(LogicalGateType::LogicalToffoli),
-            _ => Err(SimulatorError::InvalidConfiguration(
-                format!("Unsupported gate type for logical synthesis: {:?}", gate.gate_type),
-            )),
+            _ => Err(SimulatorError::InvalidConfiguration(format!(
+                "Unsupported gate type for logical synthesis: {:?}",
+                gate.gate_type
+            ))),
         }
     }
 
@@ -1116,7 +1175,7 @@ impl FaultTolerantSynthesizer {
     ) -> Result<()> {
         // Add periodic error correction rounds
         let rounds_needed = circuit.gates.len() / 10; // Every 10 gates
-        
+
         for _ in 0..rounds_needed {
             // Add syndrome extraction
             for i in 0..distance * distance {
@@ -1126,7 +1185,7 @@ impl FaultTolerantSynthesizer {
                 ));
             }
         }
-        
+
         Ok(())
     }
 
@@ -1134,11 +1193,11 @@ impl FaultTolerantSynthesizer {
         let p_phys = self.config.physical_error_rate;
         let d = result.code_distance;
         let gate_count = result.synthesis_stats.logical_gates_synthesized;
-        
+
         // Simplified calculation
         let base_error_rate = p_phys.powf((d + 1) as f64 / 2.0);
         let total_error_rate = gate_count as f64 * base_error_rate;
-        
+
         Ok(total_error_rate.min(1.0))
     }
 
@@ -1146,7 +1205,7 @@ impl FaultTolerantSynthesizer {
         let gate_count = circuit.gates.len();
         let target_error = self.config.target_logical_error_rate;
         let p_phys = self.config.physical_error_rate;
-        
+
         // Find minimum distance that achieves target error rate
         for d in (3..20).step_by(2) {
             let logical_error = gate_count as f64 * p_phys.powf((d + 1) as f64 / 2.0);
@@ -1154,17 +1213,19 @@ impl FaultTolerantSynthesizer {
                 return Ok(d);
             }
         }
-        
+
         Ok(19) // Maximum reasonable distance
     }
 
     fn generate_cache_key(&self, circuit: &InterfaceCircuit) -> String {
         // Simple cache key based on circuit structure
-        format!("{}_{}_{}_{}", 
-                circuit.num_qubits, 
-                circuit.gates.len(), 
-                self.config.code_distance,
-                format!("{:?}", self.config.error_correction_code))
+        format!(
+            "{}_{}_{}_{}",
+            circuit.num_qubits,
+            circuit.gates.len(),
+            self.config.code_distance,
+            format!("{:?}", self.config.error_correction_code)
+        )
     }
 
     fn initialize_resource_estimator(&mut self) -> Result<()> {
@@ -1173,7 +1234,7 @@ impl FaultTolerantSynthesizer {
         gate_errors.insert("CNOT".to_string(), 1e-3);
         gate_errors.insert("H".to_string(), 5e-4);
         gate_errors.insert("T".to_string(), 1e-3);
-        
+
         self.resource_estimator.error_model = PhysicalErrorModel {
             gate_errors,
             measurement_error: 1e-3,
@@ -1183,20 +1244,23 @@ impl FaultTolerantSynthesizer {
 
         // Initialize code parameters
         let mut code_params = HashMap::new();
-        code_params.insert(ErrorCorrectionCode::SurfaceCode, CodeParameters {
-            encoding_rate: 1.0 / (self.config.code_distance.pow(2) as f64),
-            threshold: 1e-2,
-            resource_scaling: 2.0,
-            error_suppression: (self.config.code_distance + 1) as f64 / 2.0,
-        });
-        
+        code_params.insert(
+            ErrorCorrectionCode::SurfaceCode,
+            CodeParameters {
+                encoding_rate: 1.0 / (self.config.code_distance.pow(2) as f64),
+                threshold: 1e-2,
+                resource_scaling: 2.0,
+                error_suppression: (self.config.code_distance + 1) as f64 / 2.0,
+            },
+        );
+
         self.resource_estimator.code_parameters = code_params;
 
         // Initialize magic state costs
         let mut magic_costs = HashMap::new();
         magic_costs.insert(MagicStateType::TState, 15);
         magic_costs.insert(MagicStateType::CCZState, 25);
-        
+
         self.resource_estimator.magic_state_costs = magic_costs;
 
         Ok(())
@@ -1217,17 +1281,29 @@ pub fn benchmark_fault_tolerant_synthesis() -> Result<()> {
     logical_circuit.add_gate(InterfaceGate::new(InterfaceGateType::T, vec![1]));
 
     let start_time = std::time::Instant::now();
-    
+
     // Synthesize fault-tolerant implementation
     let result = synthesizer.synthesize_logical_circuit(&logical_circuit)?;
-    
+
     let duration = start_time.elapsed();
 
     println!("✅ Fault-Tolerant Synthesis Results:");
-    println!("   Logical Gates Synthesized: {}", result.synthesis_stats.logical_gates_synthesized);
-    println!("   Physical Qubits Required: {}", result.resources.physical_qubits);
-    println!("   Physical Gates Required: {}", result.resources.physical_gates);
-    println!("   Magic States Consumed: {}", result.resources.magic_states);
+    println!(
+        "   Logical Gates Synthesized: {}",
+        result.synthesis_stats.logical_gates_synthesized
+    );
+    println!(
+        "   Physical Qubits Required: {}",
+        result.resources.physical_qubits
+    );
+    println!(
+        "   Physical Gates Required: {}",
+        result.resources.physical_gates
+    );
+    println!(
+        "   Magic States Consumed: {}",
+        result.resources.magic_states
+    );
     println!("   Code Distance: {}", result.code_distance);
     println!("   Logical Error Rate: {:.2e}", result.logical_error_rate);
     println!("   Overhead Factor: {:.1}x", result.overhead_factor);
@@ -1283,7 +1359,7 @@ mod tests {
     fn test_resource_requirements_update() {
         let config = FaultTolerantConfig::default();
         let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
-        
+
         let mut total = ResourceRequirements::default();
         let gate_resources = ResourceRequirements {
             physical_qubits: 10,
@@ -1293,9 +1369,9 @@ mod tests {
             time_steps: 3,
             ancilla_qubits: 4,
         };
-        
+
         synthesizer.update_resources(&mut total, &gate_resources);
-        
+
         assert_eq!(total.physical_qubits, 10);
         assert_eq!(total.physical_gates, 5);
         assert_eq!(total.magic_states, 2);
@@ -1309,7 +1385,7 @@ mod tests {
             ..FaultTolerantConfig::default()
         };
         let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
-        
+
         let circuit = InterfaceCircuit::new(2, 0);
         let distance = synthesizer.calculate_optimal_distance(&circuit);
         assert!(distance.is_ok());

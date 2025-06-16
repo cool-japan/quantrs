@@ -339,7 +339,10 @@ impl OptimizedShorAlgorithm {
         }
 
         // Initialize second register in |1⟩ state for modular exponentiation
-        circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![register_size]));
+        circuit.add_gate(InterfaceGate::new(
+            InterfaceGateType::PauliX,
+            vec![register_size],
+        ));
 
         // Apply controlled modular exponentiation with optimization
         self.add_optimized_controlled_modular_exponentiation(&mut circuit, a, n, register_size)?;
@@ -458,7 +461,13 @@ impl OptimizedShorAlgorithm {
         }
 
         // Apply modular reduction
-        self.add_controlled_modular_reduction(circuit, modulus, control_qubit, target_start, register_size)?;
+        self.add_controlled_modular_reduction(
+            circuit,
+            modulus,
+            control_qubit,
+            target_start,
+            register_size,
+        )?;
 
         Ok(())
     }
@@ -634,7 +643,8 @@ impl OptimizedShorAlgorithm {
             convergents.push((p_next, q_next));
 
             let remainder = a - a_int as f64;
-            if remainder.abs() < 1e-15 {  // Higher precision threshold
+            if remainder.abs() < 1e-15 {
+                // Higher precision threshold
                 break;
             }
 
@@ -662,7 +672,7 @@ impl OptimizedShorAlgorithm {
     fn apply_error_mitigation(&self, measured_value: usize, register_size: usize) -> Result<usize> {
         // Simple error mitigation using majority voting on nearby values
         let mut candidates = vec![measured_value];
-        
+
         // Add nearby values for majority voting
         if measured_value > 0 {
             candidates.push(measured_value - 1);
@@ -995,7 +1005,7 @@ impl OptimizedGroverAlgorithm {
     fn calculate_optimal_iterations_enhanced(&self, num_items: usize, num_targets: usize) -> usize {
         let theta = (num_targets as f64 / num_items as f64).sqrt().asin();
         let optimal = (PI / (4.0 * theta) - 0.5).round() as usize;
-        
+
         // Apply optimization level corrections
         match self.config.optimization_level {
             OptimizationLevel::Maximum => {
@@ -1007,7 +1017,7 @@ impl OptimizedGroverAlgorithm {
                 // Slightly reduce iterations for speed
                 (optimal * 9 / 10).max(1)
             }
-            _ => optimal.max(1)
+            _ => optimal.max(1),
         }
     }
 
@@ -1017,7 +1027,11 @@ impl OptimizedGroverAlgorithm {
     }
 
     /// Add enhanced superposition with amplitude amplification preparation
-    fn add_enhanced_superposition(&self, circuit: &mut InterfaceCircuit, num_qubits: usize) -> Result<()> {
+    fn add_enhanced_superposition(
+        &self,
+        circuit: &mut InterfaceCircuit,
+        num_qubits: usize,
+    ) -> Result<()> {
         // Standard Hadamard gates for uniform superposition
         for qubit in 0..num_qubits {
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![qubit]));
@@ -1102,7 +1116,7 @@ impl OptimizedGroverAlgorithm {
     {
         // Apply final amplitude amplification before measurement
         let final_angle = PI / (4.0 * num_qubits as f64);
-        
+
         for qubit in 0..num_qubits {
             circuit.add_gate(InterfaceGate::new(
                 InterfaceGateType::RY(final_angle),
@@ -1350,7 +1364,7 @@ impl EnhancedPhaseEstimation {
 
             // Update best results if this iteration improved precision
             let achieved_precision = 1.0 / (1 << phase_qubits) as f64;
-            
+
             if achieved_precision < best_precision {
                 best_precision = achieved_precision;
                 best_eigenvalues = iteration_result.eigenvalues;
@@ -1364,9 +1378,10 @@ impl EnhancedPhaseEstimation {
 
             // Adaptive precision enhancement for next iteration
             if iteration < max_iterations - 1 {
-                phase_qubits = self.adapt_phase_qubits(phase_qubits, achieved_precision, target_precision);
+                phase_qubits =
+                    self.adapt_phase_qubits(phase_qubits, achieved_precision, target_precision);
                 total_qubits = phase_qubits + system_qubits;
-                
+
                 // Update QFT engine for new size
                 let qft_config = crate::scirs2_qft::QFTConfig {
                     method: crate::scirs2_qft::QFTMethod::SciRS2Exact,
@@ -1380,7 +1395,8 @@ impl EnhancedPhaseEstimation {
         }
 
         // Enhanced resource estimation
-        let resource_stats = self.estimate_qpe_resources(phase_qubits, system_qubits, precision_iterations);
+        let resource_stats =
+            self.estimate_qpe_resources(phase_qubits, system_qubits, precision_iterations);
 
         Ok(PhaseEstimationResult {
             eigenvalues: best_eigenvalues,
@@ -1476,7 +1492,7 @@ impl EnhancedPhaseEstimation {
     /// Calculate required phase qubits for target precision with optimization
     fn calculate_required_phase_qubits(&self, target_precision: f64) -> usize {
         let base_qubits = (-target_precision.log2()).ceil() as usize + 2;
-        
+
         // Apply optimization level adjustments
         match self.config.optimization_level {
             OptimizationLevel::Maximum => {
@@ -1487,12 +1503,17 @@ impl EnhancedPhaseEstimation {
                 // Reduce qubits to save memory
                 (base_qubits * 3 / 4).max(3)
             }
-            _ => base_qubits
+            _ => base_qubits,
         }
     }
 
     /// Adapt phase qubits count based on current performance
-    fn adapt_phase_qubits(&self, current_qubits: usize, achieved_precision: f64, target_precision: f64) -> usize {
+    fn adapt_phase_qubits(
+        &self,
+        current_qubits: usize,
+        achieved_precision: f64,
+        target_precision: f64,
+    ) -> usize {
         if achieved_precision > target_precision * 2.0 {
             // Need more precision, increase qubits
             (current_qubits + 2).min(30) // Cap at reasonable limit
@@ -1503,7 +1524,6 @@ impl EnhancedPhaseEstimation {
             current_qubits
         }
     }
-
 }
 
 /// Enhanced phase estimation iteration result
@@ -1514,7 +1534,6 @@ struct QPEIterationResult {
 }
 
 impl EnhancedPhaseEstimation {
-
     /// Run enhanced phase estimation iteration with improved algorithms
     fn run_enhanced_phase_estimation_iteration<U>(
         &mut self,
@@ -1536,7 +1555,7 @@ impl EnhancedPhaseEstimation {
         // Apply Hadamard gates to phase register with adaptive angles
         for qubit in system_qubits..(system_qubits + phase_qubits) {
             simulator.apply_h(qubit)?;
-            
+
             // Add adaptive phase correction based on iteration
             if self.config.optimization_level == OptimizationLevel::Maximum && iteration > 0 {
                 let _correction_angle = PI / (4.0 * (iteration + 1) as f64);
@@ -1551,7 +1570,7 @@ impl EnhancedPhaseEstimation {
         // Apply enhanced controlled unitaries with error mitigation
         for (i, control_qubit) in (system_qubits..(system_qubits + phase_qubits)).enumerate() {
             let power = 1 << i;
-            
+
             // Apply controlled-U^(2^i) with enhanced precision
             for _ in 0..power {
                 for target_qubit in 0..system_qubits {
@@ -1572,7 +1591,8 @@ impl EnhancedPhaseEstimation {
 
         // Enhanced measurement analysis
         let amplitudes = simulator.get_state();
-        let eigenvalues = self.extract_enhanced_eigenvalues(&amplitudes, phase_qubits, system_qubits)?;
+        let eigenvalues =
+            self.extract_enhanced_eigenvalues(&amplitudes, phase_qubits, system_qubits)?;
         let measurement_probs = self.calculate_measurement_probabilities(&amplitudes, phase_qubits);
 
         // Extract eigenvectors if enabled
@@ -1600,11 +1620,11 @@ impl EnhancedPhaseEstimation {
         for i in 0..system_qubits.min(eigenstate.len()) {
             let amplitude = eigenstate[i];
             let probability = amplitude.norm_sqr();
-            
+
             // Apply enhanced state preparation
             if probability > 0.5 {
                 simulator.apply_x(i)?;
-                
+
                 // Add phase if needed (simplified - would need proper RZ gate)
                 if amplitude.arg().abs() > 1e-10 {
                     // simulator.apply_rz_public(i, amplitude.arg())?;
@@ -1613,13 +1633,13 @@ impl EnhancedPhaseEstimation {
                 // Use superposition for intermediate probabilities (simplified)
                 let _theta = 2.0 * probability.sqrt().acos();
                 // simulator.apply_ry_public(i, theta)?;
-                
+
                 if amplitude.arg().abs() > 1e-10 {
                     // simulator.apply_rz_public(i, amplitude.arg())?;
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -1638,13 +1658,13 @@ impl EnhancedPhaseEstimation {
         // Apply the controlled unitary
         // In a real implementation, this would be a proper controlled version
         unitary_operator(simulator, target_qubit)?;
-        
+
         // Add error mitigation if enabled (simplified)
         if self.config.enable_error_mitigation && iteration > 0 {
             let _mitigation_angle = PI / (16.0 * (iteration + 1) as f64);
             // simulator.apply_rz_public(control_qubit, mitigation_angle)?;
         }
-        
+
         Ok(())
     }
 
@@ -1657,25 +1677,25 @@ impl EnhancedPhaseEstimation {
     ) -> Result<()> {
         // Get current state and apply QFT
         let mut state = Array1::from_vec(simulator.get_state());
-        
+
         // Apply QFT to phase register portion
         let phase_start = system_qubits;
         let phase_end = system_qubits + phase_qubits;
-        
+
         // Extract phase register state
         let state_size = 1 << phase_qubits;
         let mut phase_state = Array1::zeros(state_size);
-        
+
         for i in 0..state_size {
             let full_index = i << system_qubits; // Shift to align with phase register
             if full_index < state.len() {
                 phase_state[i] = state[full_index];
             }
         }
-        
+
         // Apply inverse QFT
         self.qft_engine.apply_inverse_qft(&mut phase_state)?;
-        
+
         // Put the result back
         for i in 0..state_size {
             let full_index = i << system_qubits;
@@ -1683,10 +1703,10 @@ impl EnhancedPhaseEstimation {
                 state[full_index] = phase_state[i];
             }
         }
-        
+
         // Update simulator state
         simulator.set_state(state.to_vec())?;
-        
+
         Ok(())
     }
 
@@ -1699,14 +1719,14 @@ impl EnhancedPhaseEstimation {
     ) -> Result<Vec<f64>> {
         let mut eigenvalues = Vec::new();
         let phase_states = 1 << phase_qubits;
-        
+
         // Find peaks in measurement probability distribution
         let mut max_prob = 0.0;
         let mut best_measurement = 0;
-        
+
         for phase_val in 0..phase_states {
             let mut total_prob = 0.0;
-            
+
             // Sum probabilities for this phase value across all system states
             for sys_val in 0..(1 << system_qubits) {
                 let full_index = phase_val << system_qubits | sys_val;
@@ -1714,17 +1734,17 @@ impl EnhancedPhaseEstimation {
                     total_prob += amplitudes[full_index].norm_sqr();
                 }
             }
-            
+
             if total_prob > max_prob {
                 max_prob = total_prob;
                 best_measurement = phase_val;
             }
         }
-        
+
         // Convert to eigenvalue
         let eigenvalue = best_measurement as f64 / phase_states as f64 * 2.0 * PI;
         eigenvalues.push(eigenvalue);
-        
+
         // Find additional eigenvalues if optimization level allows
         if self.config.optimization_level == OptimizationLevel::Maximum {
             // Look for secondary peaks
@@ -1732,7 +1752,7 @@ impl EnhancedPhaseEstimation {
                 if phase_val == best_measurement {
                     continue;
                 }
-                
+
                 let mut total_prob = 0.0;
                 for sys_val in 0..(1 << system_qubits) {
                     let full_index = phase_val << system_qubits | sys_val;
@@ -1740,7 +1760,7 @@ impl EnhancedPhaseEstimation {
                         total_prob += amplitudes[full_index].norm_sqr();
                     }
                 }
-                
+
                 // Include if probability is significant
                 if total_prob > max_prob * 0.1 {
                     let secondary_eigenvalue = phase_val as f64 / phase_states as f64 * 2.0 * PI;
@@ -1748,47 +1768,60 @@ impl EnhancedPhaseEstimation {
                 }
             }
         }
-        
+
         Ok(eigenvalues)
     }
 
     /// Calculate measurement probabilities for analysis
-    fn calculate_measurement_probabilities(&self, amplitudes: &[Complex64], phase_qubits: usize) -> Vec<f64> {
+    fn calculate_measurement_probabilities(
+        &self,
+        amplitudes: &[Complex64],
+        phase_qubits: usize,
+    ) -> Vec<f64> {
         let phase_states = 1 << phase_qubits;
         let mut probabilities = vec![0.0; phase_states];
-        
+
         for (i, amplitude) in amplitudes.iter().enumerate() {
             let phase_val = i >> (amplitudes.len().trailing_zeros() - phase_qubits as u32);
             if phase_val < phase_states {
                 probabilities[phase_val] += amplitude.norm_sqr();
             }
         }
-        
+
         probabilities
     }
 
     /// Extract eigenvectors from quantum state
-    fn extract_eigenvectors(&self, amplitudes: &[Complex64], system_qubits: usize) -> Result<Array2<Complex64>> {
+    fn extract_eigenvectors(
+        &self,
+        amplitudes: &[Complex64],
+        system_qubits: usize,
+    ) -> Result<Array2<Complex64>> {
         let system_states = 1 << system_qubits;
         let mut eigenvectors = Array2::zeros((system_states, 1));
-        
+
         // Extract the system state amplitudes
         for i in 0..system_states.min(amplitudes.len()) {
             eigenvectors[[i, 0]] = amplitudes[i];
         }
-        
+
         Ok(eigenvectors)
     }
 
     /// Estimate QPE resource requirements
-    fn estimate_qpe_resources(&self, phase_qubits: usize, system_qubits: usize, iterations: usize) -> AlgorithmResourceStats {
+    fn estimate_qpe_resources(
+        &self,
+        phase_qubits: usize,
+        system_qubits: usize,
+        iterations: usize,
+    ) -> AlgorithmResourceStats {
         let total_qubits = phase_qubits + system_qubits;
-        
+
         // Enhanced resource estimation based on actual algorithm complexity
         let controlled_operations = phase_qubits * system_qubits * iterations;
         let qft_gates = phase_qubits * phase_qubits / 2; // Triangular pattern
         let base_gate_count = controlled_operations * 10 + qft_gates * 5;
-        
+
         AlgorithmResourceStats {
             qubits_used: total_qubits,
             circuit_depth: phase_qubits * 50 * iterations, // More accurate depth estimate

@@ -7,7 +7,7 @@
 use crate::compile::CompiledModel;
 use crate::sampler::{SampleResult, Sampler};
 use ndarray::Array2;
-use rand::thread_rng;
+use rand::rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -153,9 +153,9 @@ impl VQE {
     /// Initialize parameters
     fn initialize_parameters(&self, num_params: usize) -> Vec<f64> {
         use rand::prelude::*;
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
-        (0..num_params).map(|_| rng.gen_range(-PI..PI)).collect()
+        (0..num_params).map(|_| rng.random_range(-PI..PI)).collect()
     }
 
     /// Evaluate energy for given parameters
@@ -239,11 +239,11 @@ impl VQE {
         _gamma: f64,
     ) -> Result<Vec<f64>, String> {
         use rand::prelude::*;
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         // Generate random perturbation
         let delta: Vec<f64> = (0..params.len())
-            .map(|_| if rng.gen_bool(0.5) { 1.0 } else { -1.0 })
+            .map(|_| if rng.random_bool(0.5) { 1.0 } else { -1.0 })
             .collect();
 
         // Evaluate at perturbed points
@@ -504,11 +504,11 @@ impl QAOA {
         // This would sample from the prepared quantum state
         // Placeholder: return random samples
         use rand::prelude::*;
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let n_qubits = 10; // Would get from hamiltonian
 
         let samples = (0..num_samples)
-            .map(|_| (0..n_qubits).map(|_| rng.gen_bool(0.5)).collect())
+            .map(|_| (0..n_qubits).map(|_| rng.random_bool(0.5)).collect())
             .collect();
 
         Ok(samples)
@@ -794,8 +794,8 @@ impl IterativeRefinement {
                 // Flip random bits
                 let mut neighbor = state.clone();
                 use rand::prelude::*;
-                let mut rng = thread_rng();
-                let flip_idx = rng.gen_range(0..state.len());
+                let mut rng = rng();
+                let flip_idx = rng.random_range(0..state.len());
                 neighbor[flip_idx] = !neighbor[flip_idx];
 
                 // Evaluate energy

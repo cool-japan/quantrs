@@ -1,7 +1,7 @@
 //! Type system for the problem DSL.
 
 use super::ast::AST;
-use super::error::{ParseError, TypeError};
+use super::error::TypeError;
 use std::collections::HashMap;
 
 /// Variable types

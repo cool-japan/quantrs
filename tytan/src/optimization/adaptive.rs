@@ -424,11 +424,11 @@ impl AdaptiveOptimizer {
         for i in mid..pop_len {
             // Use random perturbation directly to avoid borrow issues
             use rand::Rng;
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
 
             for value in self.population[i].parameters.values_mut() {
                 if rng.gen::<f64>() < 0.3 {
-                    let perturbation = rng.gen_range(-0.3..0.3) * value.abs();
+                    let perturbation = rng.random_range(-0.3..0.3) * value.abs();
                     *value += perturbation;
                 }
             }
@@ -447,12 +447,12 @@ impl AdaptiveOptimizer {
         // This is a simplified version
 
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for (param_name, param_value) in params.iter_mut() {
             if rng.gen::<f64>() < self.config.exploration_rate {
                 // Explore: random perturbation
-                let perturbation = rng.gen_range(-0.1..0.1) * param_value.abs();
+                let perturbation = rng.random_range(-0.1..0.1) * param_value.abs();
                 *param_value += perturbation;
             } else {
                 // Exploit: move toward historical best
@@ -480,14 +480,14 @@ impl AdaptiveOptimizer {
         base_params: &HashMap<String, f64>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for i in 0..self.config.population_size {
             let mut params = base_params.clone();
 
             // Add random perturbations
             for value in params.values_mut() {
-                let perturbation = rng.gen_range(-0.2..0.2) * value.abs();
+                let perturbation = rng.random_range(-0.2..0.2) * value.abs();
                 *value += perturbation;
             }
 
@@ -610,11 +610,11 @@ impl AdaptiveOptimizer {
         individual: &mut Individual,
     ) -> Result<(), Box<dyn std::error::Error>> {
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for value in individual.parameters.values_mut() {
             if rng.gen::<f64>() < 0.3 {
-                let perturbation = rng.gen_range(-0.3..0.3) * value.abs();
+                let perturbation = rng.random_range(-0.3..0.3) * value.abs();
                 *value += perturbation;
             }
         }

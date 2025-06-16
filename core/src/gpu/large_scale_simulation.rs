@@ -6,10 +6,8 @@
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
-    tensor_network::{Tensor, TensorNetwork},
+    tensor_network::Tensor,
 };
-use super::GpuBuffer;
-use ndarray::{Array1, Array2, ArrayD};
 use num_complex::Complex64;
 use std::{
     collections::HashMap,
@@ -159,7 +157,7 @@ impl LargeScaleSimAccelerator {
     pub fn new(config: LargeScaleSimConfig, devices: Vec<GpuDevice>) -> QuantRS2Result<Self> {
         if devices.is_empty() {
             return Err(QuantRS2Error::NoHardwareAvailable(
-                "No GPU devices available for large-scale simulation".to_string()
+                "No GPU devices available for large-scale simulation".to_string(),
             ));
         }
 
@@ -176,7 +174,11 @@ impl LargeScaleSimAccelerator {
     }
 
     /// Select optimal device for a given simulation task
-    pub fn select_optimal_device(&mut self, task_type: SimulationTaskType, required_memory: usize) -> QuantRS2Result<usize> {
+    pub fn select_optimal_device(
+        &mut self,
+        task_type: SimulationTaskType,
+        required_memory: usize,
+    ) -> QuantRS2Result<usize> {
         let mut best_device_id = 0;
         let mut best_score = 0.0;
 
@@ -194,7 +196,7 @@ impl LargeScaleSimAccelerator {
 
         if best_score == 0.0 {
             return Err(QuantRS2Error::NoHardwareAvailable(
-                "No suitable device found for simulation task".to_string()
+                "No suitable device found for simulation task".to_string(),
             ));
         }
 
@@ -202,8 +204,14 @@ impl LargeScaleSimAccelerator {
         Ok(best_device_id)
     }
 
-    fn compute_device_score(&self, device: &GpuDevice, task_type: &SimulationTaskType, required_memory: usize) -> f64 {
-        let memory_score = (device.memory_size - required_memory) as f64 / device.memory_size as f64;
+    fn compute_device_score(
+        &self,
+        device: &GpuDevice,
+        task_type: &SimulationTaskType,
+        required_memory: usize,
+    ) -> f64 {
+        let memory_score =
+            (device.memory_size - required_memory) as f64 / device.memory_size as f64;
         let compute_score = device.compute_units as f64 / 100.0; // Normalize
 
         match task_type {
@@ -223,18 +231,25 @@ impl LargeScaleSimAccelerator {
     }
 
     /// Initialize large-scale state vector simulation
-    pub fn init_state_vector_simulation(&mut self, num_qubits: usize) -> QuantRS2Result<LargeScaleStateVectorSim> {
+    pub fn init_state_vector_simulation(
+        &mut self,
+        num_qubits: usize,
+    ) -> QuantRS2Result<LargeScaleStateVectorSim> {
         if num_qubits > self.config.max_state_vector_qubits {
             return Err(QuantRS2Error::UnsupportedQubits(
                 num_qubits,
-                format!("Maximum {} qubits supported", self.config.max_state_vector_qubits)
+                format!(
+                    "Maximum {} qubits supported",
+                    self.config.max_state_vector_qubits
+                ),
             ));
         }
 
         let state_size = 1_usize << num_qubits;
         let memory_required = state_size * std::mem::size_of::<Complex64>() * 2; // State + temp buffer
 
-        let device_id = self.select_optimal_device(SimulationTaskType::StateVector, memory_required)?;
+        let device_id =
+            self.select_optimal_device(SimulationTaskType::StateVector, memory_required)?;
 
         LargeScaleStateVectorSim::new(
             num_qubits,
@@ -247,7 +262,7 @@ impl LargeScaleSimAccelerator {
     /// Initialize tensor network contractor
     pub fn init_tensor_contractor(&mut self) -> QuantRS2Result<LargeScaleTensorContractor> {
         let device_id = self.active_device.unwrap_or(0);
-        
+
         LargeScaleTensorContractor::new(
             device_id,
             &self.config,
@@ -272,9 +287,17 @@ impl LargeScaleSimAccelerator {
 
     fn compute_device_utilization(&self) -> Vec<f64> {
         // Simplified device utilization calculation
-        self.devices.iter().enumerate().map(|(i, _)| {
-            if Some(i) == self.active_device { 85.0 } else { 0.0 }
-        }).collect()
+        self.devices
+            .iter()
+            .enumerate()
+            .map(|(i, _)| {
+                if Some(i) == self.active_device {
+                    85.0
+                } else {
+                    0.0
+                }
+            })
+            .collect()
     }
 }
 
@@ -308,8 +331,10 @@ impl LargeScaleStateVectorSim {
 
         let (state_allocation, temp_allocation) = {
             let mut mm = memory_manager.lock().unwrap();
-            let state_allocation = mm.allocate(device_id, buffer_size, AllocationType::StateVector)?;
-            let temp_allocation = mm.allocate(device_id, buffer_size, AllocationType::IntermediateBuffer)?;
+            let state_allocation =
+                mm.allocate(device_id, buffer_size, AllocationType::StateVector)?;
+            let temp_allocation =
+                mm.allocate(device_id, buffer_size, AllocationType::IntermediateBuffer)?;
             (state_allocation, temp_allocation)
         };
 
@@ -327,9 +352,11 @@ impl LargeScaleStateVectorSim {
     pub fn initialize_state(&mut self, initial_amplitudes: &[Complex64]) -> QuantRS2Result<()> {
         let expected_size = 1_usize << self.num_qubits;
         if initial_amplitudes.len() != expected_size {
-            return Err(QuantRS2Error::InvalidInput(
-                format!("Expected {} amplitudes, got {}", expected_size, initial_amplitudes.len())
-            ));
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Expected {} amplitudes, got {}",
+                expected_size,
+                initial_amplitudes.len()
+            )));
         }
 
         let start_time = std::time::Instant::now();
@@ -338,14 +365,21 @@ impl LargeScaleStateVectorSim {
         std::thread::sleep(std::time::Duration::from_micros(100));
 
         let duration = start_time.elapsed().as_millis() as f64;
-        self.performance_monitor.write().unwrap()
+        self.performance_monitor
+            .write()
+            .unwrap()
             .record_operation("state_initialization", duration);
 
         Ok(())
     }
 
     /// Apply gate with optimized GPU kernels
-    pub fn apply_gate_optimized(&mut self, gate_type: LargeScaleGateType, qubits: &[usize], parameters: &[f64]) -> QuantRS2Result<()> {
+    pub fn apply_gate_optimized(
+        &mut self,
+        gate_type: LargeScaleGateType,
+        qubits: &[usize],
+        _parameters: &[f64],
+    ) -> QuantRS2Result<()> {
         let start_time = std::time::Instant::now();
 
         // Simulate optimized gate application
@@ -360,7 +394,7 @@ impl LargeScaleStateVectorSim {
         std::thread::sleep(std::time::Duration::from_micros(simulation_time));
 
         let duration = start_time.elapsed().as_millis() as f64;
-        
+
         let mut monitor = self.performance_monitor.write().unwrap();
         monitor.record_operation(&format!("{:?}_gate", gate_type), duration);
         monitor.state_vector_stats.total_gate_applications += 1;
@@ -383,14 +417,19 @@ impl LargeScaleStateVectorSim {
         }
 
         let duration = start_time.elapsed().as_millis() as f64;
-        self.performance_monitor.write().unwrap()
+        self.performance_monitor
+            .write()
+            .unwrap()
             .record_operation("probability_calculation", duration);
 
         Ok(probabilities)
     }
 
     /// Compute expectation value with GPU acceleration
-    pub fn expectation_value_gpu(&self, observable: &LargeScaleObservable) -> QuantRS2Result<Complex64> {
+    pub fn expectation_value_gpu(
+        &self,
+        observable: &LargeScaleObservable,
+    ) -> QuantRS2Result<Complex64> {
         let start_time = std::time::Instant::now();
 
         // Simulate GPU expectation value calculation
@@ -404,7 +443,9 @@ impl LargeScaleStateVectorSim {
         std::thread::sleep(std::time::Duration::from_micros(simulation_time));
 
         let duration = start_time.elapsed().as_millis() as f64;
-        self.performance_monitor.write().unwrap()
+        self.performance_monitor
+            .write()
+            .unwrap()
             .record_operation("expectation_value", duration);
 
         // Mock expectation value
@@ -455,7 +496,7 @@ impl LargeScaleTensorContractor {
     /// Upload tensor to GPU with optimized layout
     pub fn upload_tensor_optimized(&mut self, tensor: &Tensor) -> QuantRS2Result<()> {
         let tensor_size = tensor.data.len() * std::mem::size_of::<Complex64>();
-        
+
         if tensor_size < self.config.gpu_tensor_threshold {
             // Keep small tensors on CPU
             return Ok(());
@@ -465,27 +506,33 @@ impl LargeScaleTensorContractor {
 
         let mut mm = self.memory_manager.lock().unwrap();
         let allocation_id = mm.allocate(self.device_id, tensor_size, AllocationType::TensorData)?;
-        
+
         self.tensor_cache.insert(tensor.id, allocation_id);
 
         // Simulate optimized tensor upload
         std::thread::sleep(std::time::Duration::from_micros(tensor_size as u64 / 1000));
 
         let duration = start_time.elapsed().as_millis() as f64;
-        self.performance_monitor.write().unwrap()
+        self.performance_monitor
+            .write()
+            .unwrap()
             .record_operation("tensor_upload", duration);
 
         Ok(())
     }
 
     /// Contract tensors with GPU acceleration and optimization
-    pub fn contract_optimized(&mut self, tensor1_id: usize, tensor2_id: usize, 
-                             contract_indices: &[(usize, usize)]) -> QuantRS2Result<Tensor> {
+    pub fn contract_optimized(
+        &mut self,
+        tensor1_id: usize,
+        tensor2_id: usize,
+        contract_indices: &[(usize, usize)],
+    ) -> QuantRS2Result<Tensor> {
         let start_time = std::time::Instant::now();
 
         // Check if tensors are on GPU
-        let tensor1_on_gpu = self.tensor_cache.contains_key(&tensor1_id);
-        let tensor2_on_gpu = self.tensor_cache.contains_key(&tensor2_id);
+        let _tensor1_on_gpu = self.tensor_cache.contains_key(&tensor1_id);
+        let _tensor2_on_gpu = self.tensor_cache.contains_key(&tensor2_id);
 
         // Simulate contraction complexity
         let contraction_complexity = contract_indices.len() as f64 * 100.0;
@@ -493,7 +540,7 @@ impl LargeScaleTensorContractor {
         std::thread::sleep(std::time::Duration::from_micros(simulation_time));
 
         let duration = start_time.elapsed().as_millis() as f64;
-        
+
         let mut monitor = self.performance_monitor.write().unwrap();
         monitor.record_operation("tensor_contraction", duration);
         monitor.contraction_stats.total_contractions += 1;
@@ -503,10 +550,13 @@ impl LargeScaleTensorContractor {
         let result_data = ndarray::Array::from_shape_vec(
             ndarray::IxDyn(&[2, 2]),
             vec![
-                Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0),
-            ]
-        ).map_err(|e| QuantRS2Error::InvalidInput(format!("Tensor creation failed: {}", e)))?;
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+            ],
+        )
+        .map_err(|e| QuantRS2Error::InvalidInput(format!("Tensor creation failed: {}", e)))?;
 
         Ok(Tensor::new(
             tensor1_id + tensor2_id, // Simple ID generation
@@ -516,7 +566,11 @@ impl LargeScaleTensorContractor {
     }
 
     /// Perform tensor decomposition with GPU acceleration
-    pub fn decompose_tensor_gpu(&mut self, tensor_id: usize, decomp_type: TensorDecompositionType) -> QuantRS2Result<TensorDecomposition> {
+    pub fn decompose_tensor_gpu(
+        &mut self,
+        tensor_id: usize,
+        decomp_type: TensorDecompositionType,
+    ) -> QuantRS2Result<TensorDecomposition> {
         let start_time = std::time::Instant::now();
 
         // Simulate decomposition complexity
@@ -529,7 +583,7 @@ impl LargeScaleTensorContractor {
         std::thread::sleep(std::time::Duration::from_micros(decomp_complexity as u64));
 
         let duration = start_time.elapsed().as_millis() as f64;
-        
+
         let mut monitor = self.performance_monitor.write().unwrap();
         monitor.record_operation(&format!("{:?}_decomposition", decomp_type), duration);
         monitor.contraction_stats.decompositions_performed += 1;
@@ -570,7 +624,7 @@ pub struct LargeScalePerformanceStats {
 impl LargeScaleMemoryManager {
     fn new(devices: &[GpuDevice], config: &LargeScaleSimConfig) -> QuantRS2Result<Self> {
         let mut memory_pools = HashMap::new();
-        
+
         for (i, device) in devices.iter().enumerate() {
             let pool = MemoryPool {
                 device_id: i,
@@ -593,9 +647,15 @@ impl LargeScaleMemoryManager {
         })
     }
 
-    fn allocate(&mut self, device_id: usize, size: usize, alloc_type: AllocationType) -> QuantRS2Result<u64> {
-        let pool = self.memory_pools.get_mut(&device_id).ok_or_else(|| 
-            QuantRS2Error::InvalidParameter(format!("Device {} not found", device_id)))?;
+    fn allocate(
+        &mut self,
+        device_id: usize,
+        size: usize,
+        alloc_type: AllocationType,
+    ) -> QuantRS2Result<u64> {
+        let pool = self.memory_pools.get_mut(&device_id).ok_or_else(|| {
+            QuantRS2Error::InvalidParameter(format!("Device {} not found", device_id))
+        })?;
 
         // Find suitable free block
         let mut best_block_idx = None;
@@ -608,8 +668,8 @@ impl LargeScaleMemoryManager {
             }
         }
 
-        let block_idx = best_block_idx.ok_or_else(|| 
-            QuantRS2Error::RuntimeError("Insufficient GPU memory".to_string()))?;
+        let block_idx = best_block_idx
+            .ok_or_else(|| QuantRS2Error::RuntimeError("Insufficient GPU memory".to_string()))?;
 
         let block = pool.free_blocks.remove(block_idx);
         let allocation_id = self.next_allocation_id;
@@ -634,12 +694,15 @@ impl LargeScaleMemoryManager {
             });
         }
 
-        self.allocations.insert(allocation_id, AllocationInfo {
-            device_id,
-            size,
-            allocation_type: alloc_type,
-            timestamp: std::time::Instant::now(),
-        });
+        self.allocations.insert(
+            allocation_id,
+            AllocationInfo {
+                device_id,
+                size,
+                allocation_type: alloc_type,
+                timestamp: std::time::Instant::now(),
+            },
+        );
 
         Ok(allocation_id)
     }
@@ -649,7 +712,11 @@ impl LargeScaleMemoryManager {
     }
 
     fn get_peak_usage(&self) -> usize {
-        self.memory_pools.values().map(|pool| pool.used_size).max().unwrap_or(0)
+        self.memory_pools
+            .values()
+            .map(|pool| pool.used_size)
+            .max()
+            .unwrap_or(0)
     }
 }
 
@@ -664,7 +731,8 @@ impl LargeScalePerformanceMonitor {
     }
 
     fn record_operation(&mut self, operation: &str, duration_ms: f64) {
-        self.operation_times.entry(operation.to_string())
+        self.operation_times
+            .entry(operation.to_string())
             .or_insert_with(Vec::new)
             .push(duration_ms);
     }
@@ -703,7 +771,7 @@ mod tests {
     fn test_large_scale_accelerator_creation() {
         let config = LargeScaleSimConfig::default();
         let devices = create_test_devices();
-        
+
         let accelerator = LargeScaleSimAccelerator::new(config, devices);
         assert!(accelerator.is_ok());
     }
@@ -712,15 +780,15 @@ mod tests {
     fn test_device_selection() {
         let config = LargeScaleSimConfig::default();
         let devices = create_test_devices();
-        
+
         let mut accelerator = LargeScaleSimAccelerator::new(config, devices).unwrap();
-        
+
         // Test state vector simulation device selection
         let device_id = accelerator.select_optimal_device(
-            SimulationTaskType::StateVector, 
-            1024 * 1024 * 1024 // 1GB
+            SimulationTaskType::StateVector,
+            1024 * 1024 * 1024, // 1GB
         );
-        
+
         assert!(device_id.is_ok());
         assert!(device_id.unwrap() < 2);
     }
@@ -729,52 +797,57 @@ mod tests {
     fn test_state_vector_simulation() {
         let config = LargeScaleSimConfig::default();
         let devices = create_test_devices();
-        
+
         let mut accelerator = LargeScaleSimAccelerator::new(config, devices).unwrap();
         let state_sim = accelerator.init_state_vector_simulation(5);
-        
+
         assert!(state_sim.is_ok());
-        
+
         let mut sim = state_sim.unwrap();
-        
+
         // Test state initialization
         let initial_state = vec![Complex64::new(1.0, 0.0); 32]; // 2^5 = 32
         assert!(sim.initialize_state(&initial_state).is_ok());
-        
+
         // Test gate application
-        assert!(sim.apply_gate_optimized(
-            LargeScaleGateType::SingleQubit, 
-            &[0], 
-            &[std::f64::consts::PI / 2.0]
-        ).is_ok());
+        assert!(sim
+            .apply_gate_optimized(
+                LargeScaleGateType::SingleQubit,
+                &[0],
+                &[std::f64::consts::PI / 2.0]
+            )
+            .is_ok());
     }
 
     #[test]
     fn test_tensor_contractor() {
         let config = LargeScaleSimConfig::default();
         let devices = create_test_devices();
-        
+
         let mut accelerator = LargeScaleSimAccelerator::new(config, devices).unwrap();
         let contractor = accelerator.init_tensor_contractor();
-        
+
         assert!(contractor.is_ok());
-        
+
         let mut contractor = contractor.unwrap();
-        
+
         // Create test tensor
         let data = ndarray::Array::from_shape_vec(
             ndarray::IxDyn(&[2, 2]),
             vec![
-                Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0),
-            ]
-        ).unwrap();
-        
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+            ],
+        )
+        .unwrap();
+
         let tensor = Tensor::new(0, data, vec!["i".to_string(), "j".to_string()]);
-        
+
         // Test tensor upload
         assert!(contractor.upload_tensor_optimized(&tensor).is_ok());
-        
+
         // Test tensor contraction
         let result = contractor.contract_optimized(0, 1, &[(0, 1)]);
         assert!(result.is_ok());
@@ -784,16 +857,16 @@ mod tests {
     fn test_memory_management() {
         let config = LargeScaleSimConfig::default();
         let devices = create_test_devices();
-        
+
         let memory_manager = LargeScaleMemoryManager::new(&devices, &config);
         assert!(memory_manager.is_ok());
-        
+
         let mut mm = memory_manager.unwrap();
-        
+
         // Test allocation
         let allocation = mm.allocate(0, 1024, AllocationType::StateVector);
         assert!(allocation.is_ok());
-        
+
         // Test memory tracking
         assert_eq!(mm.get_total_allocated(), 1024);
     }
@@ -802,16 +875,16 @@ mod tests {
     fn test_performance_monitoring() {
         let config = LargeScaleSimConfig::default();
         let devices = create_test_devices();
-        
+
         let accelerator = LargeScaleSimAccelerator::new(config, devices).unwrap();
-        
+
         // Record some operations
         {
             let mut monitor = accelerator.performance_monitor.write().unwrap();
             monitor.record_operation("test_operation", 10.5);
             monitor.record_operation("test_operation", 12.3);
         }
-        
+
         let stats = accelerator.get_performance_stats();
         assert_eq!(stats.total_memory_allocated, 0); // No allocations yet
     }
@@ -820,26 +893,29 @@ mod tests {
     fn test_large_qubit_simulation_limit() {
         let config = LargeScaleSimConfig::default();
         let devices = create_test_devices();
-        
+
         let mut accelerator = LargeScaleSimAccelerator::new(config, devices).unwrap();
-        
+
         // Test exceeding qubit limit
         let result = accelerator.init_state_vector_simulation(100);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), QuantRS2Error::UnsupportedQubits(_, _)));
+        assert!(matches!(
+            result.unwrap_err(),
+            QuantRS2Error::UnsupportedQubits(_, _)
+        ));
     }
 
     #[test]
     fn test_tensor_decomposition() {
         let config = LargeScaleSimConfig::default();
         let devices = create_test_devices();
-        
+
         let mut accelerator = LargeScaleSimAccelerator::new(config, devices).unwrap();
         let mut contractor = accelerator.init_tensor_contractor().unwrap();
-        
+
         let decomp_result = contractor.decompose_tensor_gpu(0, TensorDecompositionType::SVD);
         assert!(decomp_result.is_ok());
-        
+
         let decomp = decomp_result.unwrap();
         assert_eq!(decomp.factors.len(), 2);
         assert!(!decomp.singular_values.is_empty());

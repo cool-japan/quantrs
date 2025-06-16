@@ -7,19 +7,7 @@ use std::collections::HashMap;
 
 #[test]
 fn test_graph_partitioner_kernighan_lin() {
-    let config = GraphPartitionerConfig {
-        algorithm: PartitioningAlgorithm::KernighanLin {
-            max_iterations: 100,
-            improvement_threshold: 1e-6,
-            initial_partitioning: InitialPartitioning::Random,
-        },
-        max_subproblem_size: 50,
-        overlap_strategy: OverlapStrategy::MinimalOverlap { overlap_size: 2 },
-        load_balancing: LoadBalancingStrategy::Strict { tolerance: 0.1 },
-        quality_metric: QualityMetric::Modularity,
-    };
-
-    let partitioner = GraphPartitioner::new(config);
+    let partitioner = GraphPartitioner::with_config(PartitioningAlgorithm::KernighanLin, 2);
 
     // Create a test QUBO matrix with clear structure
     let mut qubo = Array2::zeros((8, 8));
@@ -57,7 +45,7 @@ fn test_graph_partitioner_kernighan_lin() {
     
     // Verify subproblems have reasonable sizes
     for subproblem in &subproblems {
-        assert!(subproblem.variables.len() <= config.max_subproblem_size);
+        assert!(subproblem.variables.len() <= 50); // reasonable max size
         assert!(!subproblem.variables.is_empty());
     }
     
@@ -73,22 +61,7 @@ fn test_graph_partitioner_kernighan_lin() {
 
 #[test]
 fn test_graph_partitioner_spectral() {
-    let config = GraphPartitionerConfig {
-        algorithm: PartitioningAlgorithm::Spectral {
-            num_eigenvectors: 2,
-            clustering_method: ClusteringMethod::KMeans,
-            normalization: SpectralNormalization::Symmetric,
-        },
-        max_subproblem_size: 25,
-        overlap_strategy: OverlapStrategy::AdaptiveOverlap { 
-            base_overlap: 1,
-            complexity_factor: 0.1,
-        },
-        load_balancing: LoadBalancingStrategy::Flexible { max_imbalance: 0.2 },
-        quality_metric: QualityMetric::CutSize,
-    };
-
-    let partitioner = GraphPartitioner::new(config);
+    let partitioner = GraphPartitioner::with_config(PartitioningAlgorithm::Spectral, 2);
 
     // Create a ring graph QUBO
     let size = 10;
@@ -115,20 +88,7 @@ fn test_graph_partitioner_spectral() {
 
 #[test]
 fn test_graph_partitioner_multilevel() {
-    let config = GraphPartitionerConfig {
-        algorithm: PartitioningAlgorithm::Multilevel {
-            coarsening_strategy: CoarseningStrategy::MatchingBased,
-            refinement_method: RefinementMethod::FiducciaMattheyses,
-            max_levels: 5,
-            coarsening_ratio: 0.5,
-        },
-        max_subproblem_size: 20,
-        overlap_strategy: OverlapStrategy::MinimalOverlap { overlap_size: 1 },
-        load_balancing: LoadBalancingStrategy::Strict { tolerance: 0.05 },
-        quality_metric: QualityMetric::EdgeCut,
-    };
-
-    let partitioner = GraphPartitioner::new(config);
+    let partitioner = GraphPartitioner::with_config(PartitioningAlgorithm::Multilevel, 2);
 
     // Create a grid-like QUBO
     let grid_size = 6; // 6x6 grid = 36 variables
@@ -334,17 +294,7 @@ fn test_hierarchical_solver_vcycle() {
 #[test]
 fn test_decomposition_integration() {
     // Test that graph partitioner and hierarchical solver work together
-    let partition_config = GraphPartitionerConfig {
-        algorithm: PartitioningAlgorithm::KernighanLin {
-            max_iterations: 50,
-            improvement_threshold: 1e-5,
-            initial_partitioning: InitialPartitioning::Random,
-        },
-        max_subproblem_size: 8,
-        overlap_strategy: OverlapStrategy::MinimalOverlap { overlap_size: 1 },
-        load_balancing: LoadBalancingStrategy::Flexible { max_imbalance: 0.15 },
-        quality_metric: QualityMetric::Modularity,
-    };
+    let partitioner = GraphPartitioner::with_config(PartitioningAlgorithm::KernighanLin, 2);
 
     let hierarchical_config = HierarchicalSolverConfig {
         coarsening_strategy: CoarseningStrategy::MatchingBased,

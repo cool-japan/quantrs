@@ -3,9 +3,9 @@
 //! This module provides a complete and optimized MPS simulator implementation
 //! with proper SVD decomposition, comprehensive gate support, and performance optimizations.
 
+use crate::scirs2_integration::{Matrix, MemoryPool, SciRS2Backend, LAPACK};
 use ndarray::{array, s, Array1, Array2, Array3, ArrayView2, Axis};
 use ndarray_linalg::{qr::QR, svd::SVD};
-use crate::scirs2_integration::{SciRS2Backend, Matrix, MemoryPool, LAPACK};
 use num_complex::Complex64;
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
@@ -1094,14 +1094,19 @@ impl EnhancedMPS {
         matrix: &Array2<Complex64>,
     ) -> Result<(Array2<Complex64>, Array1<f64>, Array2<Complex64>), QuantRS2Error> {
         use ndarray_linalg::SVD;
-        
+
         // Perform SVD using ndarray-linalg
-        let (u, s, vt) = matrix.svd(true, true)
+        let (u, s, vt) = matrix
+            .svd(true, true)
             .map_err(|_| QuantRS2Error::ComputationError("SVD decomposition failed".to_string()))?;
-        
-        let u = u.ok_or_else(|| QuantRS2Error::ComputationError("SVD failed to compute U matrix".to_string()))?;
-        let vt = vt.ok_or_else(|| QuantRS2Error::ComputationError("SVD failed to compute Vt matrix".to_string()))?;
-        
+
+        let u = u.ok_or_else(|| {
+            QuantRS2Error::ComputationError("SVD failed to compute U matrix".to_string())
+        })?;
+        let vt = vt.ok_or_else(|| {
+            QuantRS2Error::ComputationError("SVD failed to compute Vt matrix".to_string())
+        })?;
+
         Ok((u, s, vt))
     }
 }
@@ -1116,7 +1121,7 @@ pub struct EnhancedMPSSimulator {
 impl EnhancedMPSSimulator {
     /// Create a new MPS simulator with configuration
     pub fn new(config: MPSConfig) -> Self {
-        Self { 
+        Self {
             config,
             scirs2_backend: SciRS2Backend::new(),
         }

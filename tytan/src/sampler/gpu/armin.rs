@@ -1,11 +1,13 @@
 //! GPU-accelerated Armin Sampler Implementation
 
 use ndarray::{Array, Ix2};
-use rand::prelude::*;
-use rand::rngs::StdRng;
+#[cfg(all(feature = "gpu", feature = "dwave"))]
+use rand::{rngs::StdRng, thread_rng, Rng};
 use std::collections::HashMap;
 
-use super::super::{evaluate_qubo_energy, SampleResult, Sampler, SamplerError, SamplerResult};
+#[cfg(all(feature = "gpu", feature = "dwave"))]
+use super::super::evaluate_qubo_energy;
+use super::super::{SampleResult, Sampler, SamplerError, SamplerResult};
 
 #[cfg(all(feature = "gpu", feature = "dwave"))]
 use ocl;
@@ -274,7 +276,7 @@ impl ArminSampler {
         for _ in 0..num_shots {
             let mut solution = Vec::with_capacity(n_vars);
             for _ in 0..n_vars {
-                solution.push(rng.random_bool(0.5));
+                solution.push(rng.gen_bool(0.5));
             }
             solutions.push(solution);
         }

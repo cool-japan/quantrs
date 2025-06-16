@@ -4,9 +4,8 @@
 //! of optimization problems including 2D/3D projections and heatmaps.
 
 use crate::sampler::SampleResult;
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[cfg(feature = "scirs")]
 use crate::scirs_stub::{

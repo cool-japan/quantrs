@@ -728,7 +728,7 @@ impl HardwareEfficientMLLayer {
         }
         Ok(result)
     }
-    
+
     /// Create single-qubit gate for multi-qubit system
     fn create_single_qubit_gate(
         &self,
@@ -737,7 +737,7 @@ impl HardwareEfficientMLLayer {
     ) -> Result<Array2<Complex64>, QuantRS2Error> {
         let dim = 2_usize.pow(self.num_qubits as u32);
         let mut full_gate = Array2::eye(dim);
-        
+
         // Apply gate to target qubit in multi-qubit system
         for i in 0..dim {
             let target_bit = (i >> target_qubit) & 1;
@@ -755,7 +755,7 @@ impl HardwareEfficientMLLayer {
                 }
             }
         }
-        
+
         Ok(full_gate)
     }
 
@@ -1008,12 +1008,37 @@ mod tests {
         assert!(circuit.is_ok());
 
         let observable = array![
-            [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)],
-            [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)],
-            [Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0), Complex64::new(0.0, 0.0)],
-            [Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)]
+            [
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0)
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(-1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0)
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(-1.0, 0.0),
+                Complex64::new(0.0, 0.0)
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0)
+            ]
         ];
-        let state = array![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)];
+        let state = array![
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0)
+        ];
 
         let expectation = layer.expectation_value(&observable, &state);
         assert!(expectation.is_ok());

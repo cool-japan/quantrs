@@ -1,14 +1,10 @@
 //! Comprehensive tests for Tensor Network Sampler module
-//!
-//! NOTE: These tests are currently commented out because they reference types and
-//! functionality that haven't been fully implemented in the tensor_network_sampler module.
 
-/*
 #[cfg(test)]
 mod tests {
-    use quantrs2_tytan::tensor_network_sampler::*;
+    use ndarray::{Array1, Array2, ArrayD};
     use quantrs2_tytan::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-    use ndarray::{Array1, Array2, Array3, Array4};
+    use quantrs2_tytan::tensor_network_sampler::*;
     use std::collections::HashMap;
 
     /// Test tensor network configuration
@@ -20,18 +16,18 @@ mod tests {
             compression_tolerance: 1e-10,
             num_sweeps: 100,
             convergence_tolerance: 1e-8,
-            use_gpu: true,
+            use_gpu: false,
             parallel_config: ParallelConfig {
                 num_threads: 8,
-                enable_parallelization: true,
-                parallel_algorithm: ParallelAlgorithm::OpenMP,
-                thread_affinity: ThreadAffinity::Core,
+                distributed: false,
+                chunk_size: 1000,
+                load_balancing: LoadBalancingStrategy::Dynamic,
             },
             memory_config: MemoryConfig {
-                max_memory_usage: 8192,
-                enable_memory_mapping: true,
-                cache_size: 1024,
-                memory_pool_size: 2048,
+                max_memory_gb: 8.0,
+                memory_mapping: true,
+                gc_frequency: 100,
+                cache_optimization: CacheOptimization::Combined,
             },
         };
 
@@ -39,7 +35,7 @@ mod tests {
         assert_eq!(config.compression_tolerance, 1e-10);
         assert_eq!(config.num_sweeps, 100);
         assert_eq!(config.convergence_tolerance, 1e-8);
-        assert!(config.use_gpu);
+        assert!(!config.use_gpu);
     }
 
     /// Test tensor network types
@@ -48,11 +44,11 @@ mod tests {
         let mps = TensorNetworkType::MPS { bond_dimension: 32 };
         let peps = TensorNetworkType::PEPS {
             bond_dimension: 16,
-            lattice_shape: (8, 8)
+            lattice_shape: (8, 8),
         };
         let mera = TensorNetworkType::MERA {
             layers: 4,
-            branching_factor: 2
+            branching_factor: 2,
         };
         let ttn = TensorNetworkType::TTN {
             tree_structure: TreeStructure {
@@ -60,7 +56,7 @@ mod tests {
                 edges: vec![],
                 root: 0,
                 depth: 3,
-            }
+            },
         };
 
         match mps {
@@ -71,7 +67,10 @@ mod tests {
         }
 
         match peps {
-            TensorNetworkType::PEPS { bond_dimension, lattice_shape } => {
+            TensorNetworkType::PEPS {
+                bond_dimension,
+                lattice_shape,
+            } => {
                 assert_eq!(bond_dimension, 16);
                 assert_eq!(lattice_shape, (8, 8));
             }
@@ -79,7 +78,10 @@ mod tests {
         }
 
         match mera {
-            TensorNetworkType::MERA { layers, branching_factor } => {
+            TensorNetworkType::MERA {
+                layers,
+                branching_factor,
+            } => {
                 assert_eq!(layers, 4);
                 assert_eq!(branching_factor, 2);
             }
@@ -95,171 +97,143 @@ mod tests {
         }
     }
 
-    /// Test tree structure
+    /// Test sampler creation
     #[test]
-    fn test_tree_structure() {
-        let node1 = TreeNode {
-            id: 0,
-            physical_indices: vec![0, 1],
-            virtual_indices: vec![2, 3],
-            tensor_shape: vec![2, 2, 4, 4],
-        };
+    fn test_mps_sampler_creation() {
+        let sampler = create_mps_sampler(32);
+        assert_eq!(sampler.config.max_bond_dimension, 64);
 
-        let node2 = TreeNode {
-            id: 1,
-            physical_indices: vec![4, 5],
-            virtual_indices: vec![6],
-            tensor_shape: vec![2, 2, 8],
-        };
-
-        let tree = TreeStructure {
-            nodes: vec![node1, node2],
-            edges: vec![(0, 1)],
-            root: 0,
-            depth: 2,
-        };
-
-        assert_eq!(tree.nodes.len(), 2);
-        assert_eq!(tree.edges.len(), 1);
-        assert_eq!(tree.root, 0);
-        assert_eq!(tree.depth, 2);
-        assert_eq!(tree.nodes[0].id, 0);
-        assert_eq!(tree.nodes[0].physical_indices, vec![0, 1]);
-        assert_eq!(tree.nodes[0].virtual_indices, vec![2, 3]);
-        assert_eq!(tree.edges[0], (0, 1));
+        if let TensorNetworkType::MPS { bond_dimension } = sampler.config.network_type {
+            assert_eq!(bond_dimension, 32);
+        } else {
+            panic!("Expected MPS network type");
+        }
     }
 
-    /// Test branching tree
+    /// Test PEPS sampler creation
     #[test]
-    fn test_branching_tree() {
-        let branching_tree = BranchingTree {
-            branching_factors: vec![2, 3, 2],
-            isometry_placements: vec![
-                vec![0, 2, 4],
-                vec![1, 3, 5],
-                vec![2, 4],
-            ],
-            disentangler_placements: vec![
-                vec![0, 1],
-                vec![2, 3],
-                vec![4, 5],
-            ],
-        };
+    fn test_peps_sampler_creation() {
+        let sampler = create_peps_sampler(16, (4, 4));
 
-        assert_eq!(branching_tree.branching_factors, vec![2, 3, 2]);
-        assert_eq!(branching_tree.isometry_placements.len(), 3);
-        assert_eq!(branching_tree.disentangler_placements.len(), 3);
-        assert_eq!(branching_tree.isometry_placements[0], vec![0, 2, 4]);
-        assert_eq!(branching_tree.disentangler_placements[0], vec![0, 1]);
+        if let TensorNetworkType::PEPS {
+            bond_dimension,
+            lattice_shape,
+        } = sampler.config.network_type
+        {
+            assert_eq!(bond_dimension, 16);
+            assert_eq!(lattice_shape, (4, 4));
+        } else {
+            panic!("Expected PEPS network type");
+        }
     }
 
-    /// Test parallel configuration
+    /// Test MERA sampler creation
     #[test]
-    fn test_parallel_config() {
-        let config = ParallelConfig {
-            num_threads: 16,
-            enable_parallelization: true,
-            parallel_algorithm: ParallelAlgorithm::CUDA,
-            thread_affinity: ThreadAffinity::Socket,
-        };
+    fn test_mera_sampler_creation() {
+        let sampler = create_mera_sampler(3);
 
-        assert_eq!(config.num_threads, 16);
-        assert!(config.enable_parallelization);
-        assert_eq!(config.parallel_algorithm, ParallelAlgorithm::CUDA);
-        assert_eq!(config.thread_affinity, ThreadAffinity::Socket);
+        if let TensorNetworkType::MERA {
+            layers,
+            branching_factor,
+        } = sampler.config.network_type
+        {
+            assert_eq!(layers, 3);
+            assert_eq!(branching_factor, 2);
+        } else {
+            panic!("Expected MERA network type");
+        }
     }
 
-    /// Test parallel algorithms
+    /// Test compression methods
     #[test]
-    fn test_parallel_algorithms() {
+    fn test_compression_methods() {
+        let methods = vec![
+            CompressionMethod::SVD,
+            CompressionMethod::QR,
+            CompressionMethod::RandomizedSVD,
+            CompressionMethod::TensorTrain,
+            CompressionMethod::Tucker,
+            CompressionMethod::CP,
+        ];
+
+        for method in methods {
+            match method {
+                CompressionMethod::SVD => assert!(true),
+                CompressionMethod::QR => assert!(true),
+                CompressionMethod::RandomizedSVD => assert!(true),
+                CompressionMethod::TensorTrain => assert!(true),
+                CompressionMethod::Tucker => assert!(true),
+                CompressionMethod::CP => assert!(true),
+            }
+        }
+    }
+
+    /// Test optimization algorithms
+    #[test]
+    fn test_optimization_algorithms() {
         let algorithms = vec![
-            ParallelAlgorithm::OpenMP,
-            ParallelAlgorithm::MPI,
-            ParallelAlgorithm::CUDA,
-            ParallelAlgorithm::OpenCL,
-            ParallelAlgorithm::Rayon,
-            ParallelAlgorithm::TBB,
+            OptimizationAlgorithm::DMRG,
+            OptimizationAlgorithm::TEBD,
+            OptimizationAlgorithm::VMPS,
+            OptimizationAlgorithm::ALS,
+            OptimizationAlgorithm::GradientDescent,
+            OptimizationAlgorithm::ConjugateGradient,
+            OptimizationAlgorithm::LBFGS,
+            OptimizationAlgorithm::TrustRegion,
         ];
 
         for algorithm in algorithms {
             match algorithm {
-                ParallelAlgorithm::OpenMP => assert!(true),
-                ParallelAlgorithm::MPI => assert!(true),
-                ParallelAlgorithm::CUDA => assert!(true),
-                ParallelAlgorithm::OpenCL => assert!(true),
-                ParallelAlgorithm::Rayon => assert!(true),
-                ParallelAlgorithm::TBB => assert!(true),
+                OptimizationAlgorithm::DMRG => assert!(true),
+                OptimizationAlgorithm::TEBD => assert!(true),
+                OptimizationAlgorithm::VMPS => assert!(true),
+                OptimizationAlgorithm::ALS => assert!(true),
+                OptimizationAlgorithm::GradientDescent => assert!(true),
+                OptimizationAlgorithm::ConjugateGradient => assert!(true),
+                OptimizationAlgorithm::LBFGS => assert!(true),
+                OptimizationAlgorithm::TrustRegion => assert!(true),
             }
         }
     }
 
-    /// Test thread affinity
+    /// Test load balancing strategies
     #[test]
-    fn test_thread_affinity() {
-        let affinities = vec![
-            ThreadAffinity::None,
-            ThreadAffinity::Core,
-            ThreadAffinity::Socket,
-            ThreadAffinity::NUMA,
-            ThreadAffinity::Custom { mask: vec![0, 1, 4, 5] },
+    fn test_load_balancing_strategies() {
+        let strategies = vec![
+            LoadBalancingStrategy::Static,
+            LoadBalancingStrategy::Dynamic,
+            LoadBalancingStrategy::WorkStealing,
+            LoadBalancingStrategy::Adaptive,
         ];
 
-        for affinity in affinities {
-            match affinity {
-                ThreadAffinity::None => assert!(true),
-                ThreadAffinity::Core => assert!(true),
-                ThreadAffinity::Socket => assert!(true),
-                ThreadAffinity::NUMA => assert!(true),
-                ThreadAffinity::Custom { mask } => {
-                    assert_eq!(mask, vec![0, 1, 4, 5]);
-                }
+        for strategy in strategies {
+            match strategy {
+                LoadBalancingStrategy::Static => assert!(true),
+                LoadBalancingStrategy::Dynamic => assert!(true),
+                LoadBalancingStrategy::WorkStealing => assert!(true),
+                LoadBalancingStrategy::Adaptive => assert!(true),
             }
         }
     }
 
-    /// Test memory configuration
+    /// Test cache optimization
     #[test]
-    fn test_memory_config() {
-        let config = MemoryConfig {
-            max_memory_usage: 16384,
-            enable_memory_mapping: true,
-            cache_size: 2048,
-            memory_pool_size: 4096,
-        };
+    fn test_cache_optimization() {
+        let optimizations = vec![
+            CacheOptimization::None,
+            CacheOptimization::Spatial,
+            CacheOptimization::Temporal,
+            CacheOptimization::Combined,
+        ];
 
-        assert_eq!(config.max_memory_usage, 16384);
-        assert!(config.enable_memory_mapping);
-        assert_eq!(config.cache_size, 2048);
-        assert_eq!(config.memory_pool_size, 4096);
-    }
-
-    /// Test tensor structure
-    #[test]
-    fn test_tensor_structure() {
-        let tensor = TensorStructure {
-            dimensions: vec![2, 4, 8, 2],
-            indices: vec![
-                TensorIndex {
-                    index_type: IndexType::Physical,
-                    dimension: 2,
-                    label: "phys_0".to_string(),
-                },
-                TensorIndex {
-                    index_type: IndexType::Virtual,
-                    dimension: 4,
-                    label: "virt_0".to_string(),
-                },
-            ],
-            data: Array4::zeros((2, 4, 8, 2)),
-            tensor_id: "tensor_001".to_string(),
-        };
-
-        assert_eq!(tensor.dimensions, vec![2, 4, 8, 2]);
-        assert_eq!(tensor.indices.len(), 2);
-        assert_eq!(tensor.tensor_id, "tensor_001");
-        assert_eq!(tensor.indices[0].index_type, IndexType::Physical);
-        assert_eq!(tensor.indices[1].index_type, IndexType::Virtual);
-        assert_eq!(tensor.data.shape(), &[2, 4, 8, 2]);
+        for optimization in optimizations {
+            match optimization {
+                CacheOptimization::None => assert!(true),
+                CacheOptimization::Spatial => assert!(true),
+                CacheOptimization::Temporal => assert!(true),
+                CacheOptimization::Combined => assert!(true),
+            }
+        }
     }
 
     /// Test index types
@@ -269,7 +243,7 @@ mod tests {
             IndexType::Physical,
             IndexType::Virtual,
             IndexType::Auxiliary,
-            IndexType::Environmental,
+            IndexType::Time,
         ];
 
         for index_type in index_types {
@@ -277,355 +251,41 @@ mod tests {
                 IndexType::Physical => assert!(true),
                 IndexType::Virtual => assert!(true),
                 IndexType::Auxiliary => assert!(true),
-                IndexType::Environmental => assert!(true),
+                IndexType::Time => assert!(true),
             }
         }
     }
 
-    /// Test tensor index
+    /// Test quality metrics
     #[test]
-    fn test_tensor_index() {
-        let index = TensorIndex {
-            index_type: IndexType::Physical,
-            dimension: 2,
-            label: "physical_qubit_5".to_string(),
-        };
-
-        assert_eq!(index.index_type, IndexType::Physical);
-        assert_eq!(index.dimension, 2);
-        assert_eq!(index.label, "physical_qubit_5");
-    }
-
-    /// Test optimization algorithms
-    #[test]
-    fn test_optimization_algorithms() {
-        let algorithms = vec![
-            OptimizationAlgorithm::DMRG {
-                max_sweeps: 100,
-                convergence_threshold: 1e-8,
-            },
-            OptimizationAlgorithm::TEBD {
-                time_step: 0.01,
-                max_time: 10.0,
-            },
-            OptimizationAlgorithm::VMPS {
-                variational_tolerance: 1e-10,
-                max_iterations: 1000,
-            },
-            OptimizationAlgorithm::TRG {
-                max_iterations: 50,
-                truncation_threshold: 1e-12,
-            },
-            OptimizationAlgorithm::TNR {
-                coarse_graining_steps: 10,
-                refinement_iterations: 20,
-            },
+    fn test_quality_metrics() {
+        let metrics = vec![
+            QualityMetric::RelativeError,
+            QualityMetric::SpectralNormError,
+            QualityMetric::FrobeniusNormError,
+            QualityMetric::InformationLoss,
+            QualityMetric::EntanglementPreservation,
         ];
 
-        for algorithm in algorithms {
-            match algorithm {
-                OptimizationAlgorithm::DMRG { max_sweeps, convergence_threshold } => {
-                    assert_eq!(max_sweeps, 100);
-                    assert_eq!(convergence_threshold, 1e-8);
-                }
-                OptimizationAlgorithm::TEBD { time_step, max_time } => {
-                    assert_eq!(time_step, 0.01);
-                    assert_eq!(max_time, 10.0);
-                }
-                OptimizationAlgorithm::VMPS { variational_tolerance, max_iterations } => {
-                    assert_eq!(variational_tolerance, 1e-10);
-                    assert_eq!(max_iterations, 1000);
-                }
-                OptimizationAlgorithm::TRG { max_iterations, truncation_threshold } => {
-                    assert_eq!(max_iterations, 50);
-                    assert_eq!(truncation_threshold, 1e-12);
-                }
-                OptimizationAlgorithm::TNR { coarse_graining_steps, refinement_iterations } => {
-                    assert_eq!(coarse_graining_steps, 10);
-                    assert_eq!(refinement_iterations, 20);
-                }
+        for metric in metrics {
+            match metric {
+                QualityMetric::RelativeError => assert!(true),
+                QualityMetric::SpectralNormError => assert!(true),
+                QualityMetric::FrobeniusNormError => assert!(true),
+                QualityMetric::InformationLoss => assert!(true),
+                QualityMetric::EntanglementPreservation => assert!(true),
             }
         }
     }
 
-    /// Test compression methods
+    /// Test default configurations
     #[test]
-    fn test_compression_methods() {
-        let methods = vec![
-            CompressionMethod::SVD { tolerance: 1e-10 },
-            CompressionMethod::QR { pivoting: true },
-            CompressionMethod::Randomized {
-                oversampling: 10,
-                power_iterations: 2
-            },
-            CompressionMethod::TensorTrain {
-                tt_tolerance: 1e-8
-            },
-            CompressionMethod::TuckerDecomposition {
-                core_tolerance: 1e-9
-            },
-        ];
-
-        for method in methods {
-            match method {
-                CompressionMethod::SVD { tolerance } => {
-                    assert_eq!(tolerance, 1e-10);
-                }
-                CompressionMethod::QR { pivoting } => {
-                    assert!(pivoting);
-                }
-                CompressionMethod::Randomized { oversampling, power_iterations } => {
-                    assert_eq!(oversampling, 10);
-                    assert_eq!(power_iterations, 2);
-                }
-                CompressionMethod::TensorTrain { tt_tolerance } => {
-                    assert_eq!(tt_tolerance, 1e-8);
-                }
-                CompressionMethod::TuckerDecomposition { core_tolerance } => {
-                    assert_eq!(core_tolerance, 1e-9);
-                }
-            }
-        }
-    }
-
-    /// Test contraction strategy
-    #[test]
-    fn test_contraction_strategy() {
-        let strategy = ContractionStrategy {
-            strategy_type: ContractionStrategyType::Optimal,
-            contraction_order: vec![
-                ContractionStep {
-                    tensor_indices: (0, 1),
-                    contracted_indices: vec![2, 3],
-                    cost_estimate: 1024,
-                },
-                ContractionStep {
-                    tensor_indices: (2, 3),
-                    contracted_indices: vec![4, 5],
-                    cost_estimate: 2048,
-                },
-            ],
-            total_cost: 3072,
-            memory_requirement: 4096,
-        };
-
-        assert_eq!(strategy.strategy_type, ContractionStrategyType::Optimal);
-        assert_eq!(strategy.contraction_order.len(), 2);
-        assert_eq!(strategy.total_cost, 3072);
-        assert_eq!(strategy.memory_requirement, 4096);
-        assert_eq!(strategy.contraction_order[0].tensor_indices, (0, 1));
-        assert_eq!(strategy.contraction_order[0].cost_estimate, 1024);
-    }
-
-    /// Test contraction strategy types
-    #[test]
-    fn test_contraction_strategy_types() {
-        let strategies = vec![
-            ContractionStrategyType::Optimal,
-            ContractionStrategyType::Greedy,
-            ContractionStrategyType::RandomizedGreedy,
-            ContractionStrategyType::DynamicProgramming,
-            ContractionStrategyType::BranchAndBound,
-            ContractionStrategyType::MachineLearning,
-        ];
-
-        for strategy in strategies {
-            match strategy {
-                ContractionStrategyType::Optimal => assert!(true),
-                ContractionStrategyType::Greedy => assert!(true),
-                ContractionStrategyType::RandomizedGreedy => assert!(true),
-                ContractionStrategyType::DynamicProgramming => assert!(true),
-                ContractionStrategyType::BranchAndBound => assert!(true),
-                ContractionStrategyType::MachineLearning => assert!(true),
-            }
-        }
-    }
-
-    /// Test tensor network metrics
-    #[test]
-    fn test_tensor_network_metrics() {
-        let metrics = TensorNetworkMetrics {
-            bond_dimensions: vec![2, 4, 8, 16, 32],
-            entanglement_entropy: vec![0.5, 1.2, 1.8, 2.1, 2.3],
-            compression_ratio: 0.1,
-            optimization_convergence: 1e-9,
-            contraction_cost: 1048576,
-            memory_usage: 2048.0,
-            wall_time: 125.5,
-            cpu_time: 1000.2,
-        };
-
-        assert_eq!(metrics.bond_dimensions.len(), 5);
-        assert_eq!(metrics.entanglement_entropy.len(), 5);
-        assert_eq!(metrics.compression_ratio, 0.1);
-        assert_eq!(metrics.optimization_convergence, 1e-9);
-        assert_eq!(metrics.contraction_cost, 1048576);
-        assert_eq!(metrics.memory_usage, 2048.0);
-        assert_eq!(metrics.wall_time, 125.5);
-        assert_eq!(metrics.cpu_time, 1000.2);
-        assert_eq!(metrics.bond_dimensions[0], 2);
-        assert_eq!(metrics.entanglement_entropy[0], 0.5);
-    }
-
-    /// Test sweep data
-    #[test]
-    fn test_sweep_data() {
-        let sweep = SweepData {
-            sweep_number: 42,
-            energy: -15.73,
-            energy_variance: 0.001,
-            bond_dimensions: vec![8, 16, 32, 16, 8],
-            entanglement_entropies: vec![1.1, 2.3, 2.8, 2.2, 1.0],
-            truncation_errors: vec![1e-10, 5e-11, 2e-10, 3e-11, 1e-10],
-            wall_time: 12.5,
-            converged: false,
-        };
-
-        assert_eq!(sweep.sweep_number, 42);
-        assert_eq!(sweep.energy, -15.73);
-        assert_eq!(sweep.energy_variance, 0.001);
-        assert_eq!(sweep.bond_dimensions.len(), 5);
-        assert_eq!(sweep.entanglement_entropies.len(), 5);
-        assert_eq!(sweep.truncation_errors.len(), 5);
-        assert_eq!(sweep.wall_time, 12.5);
-        assert!(!sweep.converged);
-        assert_eq!(sweep.bond_dimensions[2], 32);
-        assert_eq!(sweep.entanglement_entropies[2], 2.8);
-    }
-
-    /// Test MPS state
-    #[test]
-    fn test_mps_state() {
-        let mps = MPSState {
-            num_sites: 10,
-            bond_dimensions: vec![1, 2, 4, 8, 16, 16, 8, 4, 2, 1],
-            tensors: vec![],
-            canonical_form: CanonicalForm::LeftCanonical { center: 5 },
-            total_norm: 1.0,
-            entanglement_spectrum: vec![
-                vec![0.7, 0.3],
-                vec![0.5, 0.3, 0.15, 0.05],
-            ],
-        };
-
-        assert_eq!(mps.num_sites, 10);
-        assert_eq!(mps.bond_dimensions.len(), 10);
-        assert_eq!(mps.total_norm, 1.0);
-        assert_eq!(mps.entanglement_spectrum.len(), 2);
-
-        match mps.canonical_form {
-            CanonicalForm::LeftCanonical { center } => {
-                assert_eq!(center, 5);
-            }
-            _ => panic!("Wrong canonical form"),
-        }
-    }
-
-    /// Test canonical forms
-    #[test]
-    fn test_canonical_forms() {
-        let forms = vec![
-            CanonicalForm::LeftCanonical { center: 3 },
-            CanonicalForm::RightCanonical { center: 7 },
-            CanonicalForm::MixedCanonical { left_center: 2, right_center: 8 },
-            CanonicalForm::NonCanonical,
-        ];
-
-        for form in forms {
-            match form {
-                CanonicalForm::LeftCanonical { center } => {
-                    assert_eq!(center, 3);
-                }
-                CanonicalForm::RightCanonical { center } => {
-                    assert_eq!(center, 7);
-                }
-                CanonicalForm::MixedCanonical { left_center, right_center } => {
-                    assert_eq!(left_center, 2);
-                    assert_eq!(right_center, 8);
-                }
-                CanonicalForm::NonCanonical => assert!(true),
-            }
-        }
-    }
-
-    /// Test PEPS state
-    #[test]
-    fn test_peps_state() {
-        let peps = PEPSState {
-            lattice_shape: (4, 4),
-            bond_dimensions: Array2::from_elem((4, 4), 8),
-            tensors: Array2::from_elem((4, 4), Array4::zeros((2, 8, 8, 8))),
-            boundary_conditions: BoundaryConditions::Open,
-            entanglement_structure: EntanglementStructure::AreaLaw {
-                area_coefficient: 1.5
-            },
-        };
-
-        assert_eq!(peps.lattice_shape, (4, 4));
-        assert_eq!(peps.bond_dimensions.shape(), &[4, 4]);
-        assert_eq!(peps.tensors.shape(), &[4, 4]);
-        assert_eq!(peps.boundary_conditions, BoundaryConditions::Open);
-
-        match peps.entanglement_structure {
-            EntanglementStructure::AreaLaw { area_coefficient } => {
-                assert_eq!(area_coefficient, 1.5);
-            }
-            _ => panic!("Wrong entanglement structure"),
-        }
-    }
-
-    /// Test boundary conditions
-    #[test]
-    fn test_boundary_conditions() {
-        let conditions = vec![
-            BoundaryConditions::Open,
-            BoundaryConditions::Periodic,
-            BoundaryConditions::AntiPeriodic,
-            BoundaryConditions::Mixed {
-                x_direction: Box::new(BoundaryConditions::Open),
-                y_direction: Box::new(BoundaryConditions::Periodic),
-            },
-        ];
-
-        for condition in conditions {
-            match condition {
-                BoundaryConditions::Open => assert!(true),
-                BoundaryConditions::Periodic => assert!(true),
-                BoundaryConditions::AntiPeriodic => assert!(true),
-                BoundaryConditions::Mixed { x_direction, y_direction } => {
-                    assert_eq!(*x_direction, BoundaryConditions::Open);
-                    assert_eq!(*y_direction, BoundaryConditions::Periodic);
-                }
-            }
-        }
-    }
-
-    /// Test entanglement structures
-    #[test]
-    fn test_entanglement_structures() {
-        let structures = vec![
-            EntanglementStructure::AreaLaw { area_coefficient: 2.0 },
-            EntanglementStructure::VolumeeLaw { volume_coefficient: 0.5 },
-            EntanglementStructure::LogarithmicViolation { prefactor: 1.0 },
-            EntanglementStructure::Saturated { max_entanglement: 10.0 },
-        ];
-
-        for structure in structures {
-            match structure {
-                EntanglementStructure::AreaLaw { area_coefficient } => {
-                    assert_eq!(area_coefficient, 2.0);
-                }
-                EntanglementStructure::VolumeeLaw { volume_coefficient } => {
-                    assert_eq!(volume_coefficient, 0.5);
-                }
-                EntanglementStructure::LogarithmicViolation { prefactor } => {
-                    assert_eq!(prefactor, 1.0);
-                }
-                EntanglementStructure::Saturated { max_entanglement } => {
-                    assert_eq!(max_entanglement, 10.0);
-                }
-            }
-        }
+    fn test_default_configs() {
+        let config = create_default_tensor_config();
+        assert_eq!(config.max_bond_dimension, 128);
+        assert_eq!(config.compression_tolerance, 1e-10);
+        assert_eq!(config.num_sweeps, 100);
+        assert_eq!(config.convergence_tolerance, 1e-8);
+        assert!(!config.use_gpu);
     }
 }
-*/

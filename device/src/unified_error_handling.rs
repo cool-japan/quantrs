@@ -41,6 +41,8 @@ pub enum ErrorCategory {
     DataFormat,
     /// Unsupported operation for this provider/backend
     Unsupported,
+    /// Circuit execution failed
+    Execution,
     /// Critical system error requiring manual intervention
     Critical,
 }
@@ -71,18 +73,14 @@ pub enum RecoveryStrategy {
         max_attempts: u32,
     },
     /// Switch to alternative provider/backend
-    Fallback {
-        alternatives: Vec<String>,
-    },
+    Fallback { alternatives: Vec<String> },
     /// Wait for a specific condition before retrying
     WaitAndRetry {
         wait_duration: Duration,
         condition: String,
     },
     /// Circuit modification may resolve the issue
-    CircuitModification {
-        suggestions: Vec<String>,
-    },
+    CircuitModification { suggestions: Vec<String> },
     /// Manual intervention required
     ManualIntervention {
         instructions: String,
@@ -220,7 +218,7 @@ impl UnifiedErrorHandler {
         let category = self.classify_error(provider, &error);
         let severity = self.determine_severity(&category, &error);
         let recovery_strategy = self.determine_recovery_strategy(&category, provider);
-        
+
         // Update statistics
         *self.error_stats.entry(category.clone()).or_insert(0) += 1;
 
@@ -278,16 +276,17 @@ impl UnifiedErrorHandler {
 
                     // Apply jitter to delay
                     let jitter = delay.as_millis() as f64 * jitter_factor;
-                    let jittered_delay = delay + Duration::from_millis(
-                        (0.5 * jitter) as u64  // Use fixed jitter instead of random for now
-                    );
+                    let jittered_delay = delay
+                        + Duration::from_millis(
+                            (0.5 * jitter) as u64, // Use fixed jitter instead of random for now
+                        );
 
                     sleep(jittered_delay).await;
 
                     // Exponential backoff
                     delay = std::cmp::min(
                         Duration::from_millis(
-                            (delay.as_millis() as f64 * backoff_multiplier) as u64
+                            (delay.as_millis() as f64 * backoff_multiplier) as u64,
                         ),
                         max_delay,
                     );
@@ -323,7 +322,8 @@ impl UnifiedErrorHandler {
 
     /// Set fallback provider chain
     pub fn set_fallback_chain(&mut self, primary_provider: &str, fallbacks: Vec<String>) {
-        self.fallback_chains.insert(primary_provider.to_string(), fallbacks);
+        self.fallback_chains
+            .insert(primary_provider.to_string(), fallbacks);
     }
 
     // Private helper methods
@@ -331,30 +331,52 @@ impl UnifiedErrorHandler {
     fn setup_default_mappings(&mut self) {
         // IBM Quantum error mappings
         let mut ibm_mappings = HashMap::new();
-        ibm_mappings.insert("AUTHENTICATION_ERROR".to_string(), ErrorCategory::Authentication);
+        ibm_mappings.insert(
+            "AUTHENTICATION_ERROR".to_string(),
+            ErrorCategory::Authentication,
+        );
         ibm_mappings.insert("RATE_LIMIT_EXCEEDED".to_string(), ErrorCategory::RateLimit);
-        ibm_mappings.insert("BACKEND_NOT_AVAILABLE".to_string(), ErrorCategory::ServiceUnavailable);
+        ibm_mappings.insert(
+            "BACKEND_NOT_AVAILABLE".to_string(),
+            ErrorCategory::ServiceUnavailable,
+        );
         ibm_mappings.insert("INVALID_CIRCUIT".to_string(), ErrorCategory::Validation);
-        ibm_mappings.insert("INSUFFICIENT_CREDITS".to_string(), ErrorCategory::Insufficient);
+        ibm_mappings.insert(
+            "INSUFFICIENT_CREDITS".to_string(),
+            ErrorCategory::Insufficient,
+        );
         self.error_mappings.insert("ibm".to_string(), ibm_mappings);
 
         // AWS Braket error mappings
         let mut aws_mappings = HashMap::new();
-        aws_mappings.insert("AccessDeniedException".to_string(), ErrorCategory::Authentication);
+        aws_mappings.insert(
+            "AccessDeniedException".to_string(),
+            ErrorCategory::Authentication,
+        );
         aws_mappings.insert("ThrottlingException".to_string(), ErrorCategory::RateLimit);
-        aws_mappings.insert("ServiceUnavailableException".to_string(), ErrorCategory::ServiceUnavailable);
+        aws_mappings.insert(
+            "ServiceUnavailableException".to_string(),
+            ErrorCategory::ServiceUnavailable,
+        );
         aws_mappings.insert("ValidationException".to_string(), ErrorCategory::Validation);
-        aws_mappings.insert("DeviceOfflineException".to_string(), ErrorCategory::Hardware);
+        aws_mappings.insert(
+            "DeviceOfflineException".to_string(),
+            ErrorCategory::Hardware,
+        );
         self.error_mappings.insert("aws".to_string(), aws_mappings);
 
         // Azure Quantum error mappings
         let mut azure_mappings = HashMap::new();
         azure_mappings.insert("Unauthorized".to_string(), ErrorCategory::Authentication);
         azure_mappings.insert("TooManyRequests".to_string(), ErrorCategory::RateLimit);
-        azure_mappings.insert("ServiceUnavailable".to_string(), ErrorCategory::ServiceUnavailable);
+        azure_mappings.insert(
+            "ServiceUnavailable".to_string(),
+            ErrorCategory::ServiceUnavailable,
+        );
         azure_mappings.insert("BadRequest".to_string(), ErrorCategory::Validation);
         azure_mappings.insert("InsufficientQuota".to_string(), ErrorCategory::Insufficient);
-        self.error_mappings.insert("azure".to_string(), azure_mappings);
+        self.error_mappings
+            .insert("azure".to_string(), azure_mappings);
     }
 
     fn setup_default_retry_configs(&mut self) {
@@ -461,6 +483,7 @@ impl UnifiedErrorHandler {
 
         // Fallback to general classification
         match error {
+            DeviceError::ExecutionFailed(_) => ErrorCategory::Execution,
             DeviceError::Connection(_) => ErrorCategory::Network,
             DeviceError::Authentication(_) => ErrorCategory::Authentication,
             DeviceError::APIError(msg) => {
@@ -499,32 +522,32 @@ impl UnifiedErrorHandler {
     fn determine_severity(&self, category: &ErrorCategory, _error: &DeviceError) -> ErrorSeverity {
         match category {
             ErrorCategory::Critical => ErrorSeverity::Critical,
-            ErrorCategory::Authentication 
-            | ErrorCategory::Hardware 
+            ErrorCategory::Authentication
+            | ErrorCategory::Hardware
             | ErrorCategory::ServiceUnavailable => ErrorSeverity::Error,
-            ErrorCategory::RateLimit 
-            | ErrorCategory::Timeout 
-            | ErrorCategory::Network => ErrorSeverity::Warning,
+            ErrorCategory::RateLimit | ErrorCategory::Timeout | ErrorCategory::Network => {
+                ErrorSeverity::Warning
+            }
             _ => ErrorSeverity::Info,
         }
     }
 
-    fn determine_recovery_strategy(&self, category: &ErrorCategory, provider: &str) -> RecoveryStrategy {
+    fn determine_recovery_strategy(
+        &self,
+        category: &ErrorCategory,
+        provider: &str,
+    ) -> RecoveryStrategy {
         match category {
-            ErrorCategory::Network | ErrorCategory::Timeout => {
-                RecoveryStrategy::RetryWithBackoff {
-                    initial_delay: Duration::from_millis(100),
-                    max_delay: Duration::from_secs(10),
-                    multiplier: 2.0,
-                    max_attempts: 5,
-                }
-            }
-            ErrorCategory::RateLimit => {
-                RecoveryStrategy::WaitAndRetry {
-                    wait_duration: Duration::from_secs(60),
-                    condition: "Rate limit reset".to_string(),
-                }
-            }
+            ErrorCategory::Network | ErrorCategory::Timeout => RecoveryStrategy::RetryWithBackoff {
+                initial_delay: Duration::from_millis(100),
+                max_delay: Duration::from_secs(10),
+                multiplier: 2.0,
+                max_attempts: 5,
+            },
+            ErrorCategory::RateLimit => RecoveryStrategy::WaitAndRetry {
+                wait_duration: Duration::from_secs(60),
+                condition: "Rate limit reset".to_string(),
+            },
             ErrorCategory::ServiceUnavailable => {
                 if let Some(fallbacks) = self.fallback_chains.get(provider) {
                     RecoveryStrategy::Fallback {
@@ -592,19 +615,46 @@ impl UnifiedErrorHandler {
 
     fn generate_user_message(&self, category: &ErrorCategory, _error: &DeviceError) -> String {
         match category {
-            ErrorCategory::Network => "Network connectivity issue. Please check your internet connection.".to_string(),
-            ErrorCategory::Authentication => "Authentication failed. Please verify your credentials.".to_string(),
-            ErrorCategory::RateLimit => "Rate limit exceeded. Please wait before making more requests.".to_string(),
-            ErrorCategory::Validation => "Invalid request. Please check your circuit and parameters.".to_string(),
-            ErrorCategory::Hardware => "Hardware issue detected. The quantum device may be calibrating.".to_string(),
-            ErrorCategory::ServiceUnavailable => "Quantum service temporarily unavailable. Please try again later.".to_string(),
-            ErrorCategory::ServerError => "Internal server error. The issue has been reported to our team.".to_string(),
-            ErrorCategory::NotFound => "Requested resource not found. Please check the identifier.".to_string(),
-            ErrorCategory::Timeout => "Operation timed out. Please try again or reduce complexity.".to_string(),
-            ErrorCategory::Insufficient => "Insufficient resources or credits. Please check your account.".to_string(),
-            ErrorCategory::DataFormat => "Data format error. Please check your input data.".to_string(),
+            ErrorCategory::Network => {
+                "Network connectivity issue. Please check your internet connection.".to_string()
+            }
+            ErrorCategory::Authentication => {
+                "Authentication failed. Please verify your credentials.".to_string()
+            }
+            ErrorCategory::RateLimit => {
+                "Rate limit exceeded. Please wait before making more requests.".to_string()
+            }
+            ErrorCategory::Validation => {
+                "Invalid request. Please check your circuit and parameters.".to_string()
+            }
+            ErrorCategory::Hardware => {
+                "Hardware issue detected. The quantum device may be calibrating.".to_string()
+            }
+            ErrorCategory::ServiceUnavailable => {
+                "Quantum service temporarily unavailable. Please try again later.".to_string()
+            }
+            ErrorCategory::ServerError => {
+                "Internal server error. The issue has been reported to our team.".to_string()
+            }
+            ErrorCategory::NotFound => {
+                "Requested resource not found. Please check the identifier.".to_string()
+            }
+            ErrorCategory::Timeout => {
+                "Operation timed out. Please try again or reduce complexity.".to_string()
+            }
+            ErrorCategory::Insufficient => {
+                "Insufficient resources or credits. Please check your account.".to_string()
+            }
+            ErrorCategory::DataFormat => {
+                "Data format error. Please check your input data.".to_string()
+            }
             ErrorCategory::Unsupported => "Operation not supported on this platform.".to_string(),
-            ErrorCategory::Critical => "Critical system error. Please contact support immediately.".to_string(),
+            ErrorCategory::Execution => {
+                "Circuit execution failed. Please check your circuit and try again.".to_string()
+            }
+            ErrorCategory::Critical => {
+                "Critical system error. Please contact support immediately.".to_string()
+            }
         }
     }
 
@@ -664,6 +714,7 @@ impl Display for ErrorCategory {
             ErrorCategory::Insufficient => "Insufficient",
             ErrorCategory::DataFormat => "DataFormat",
             ErrorCategory::Unsupported => "Unsupported",
+            ErrorCategory::Execution => "Execution",
             ErrorCategory::Critical => "Critical",
         };
         write!(f, "{}", display)
@@ -686,7 +737,7 @@ mod tests {
         let mut handler = UnifiedErrorHandler::new();
         let error = DeviceError::Connection("Network timeout".to_string());
         let unified_error = handler.unify_error("ibm", error, None);
-        
+
         assert_eq!(unified_error.context.category, ErrorCategory::Network);
         assert_eq!(unified_error.context.provider, "ibm");
         assert!(unified_error.context.retryable);
@@ -704,7 +755,7 @@ mod tests {
         let mut handler = UnifiedErrorHandler::new();
         let error = DeviceError::APIError("Test error".to_string());
         handler.unify_error("test", error, None);
-        
+
         let stats = handler.get_error_statistics();
         assert!(stats.len() > 0);
     }

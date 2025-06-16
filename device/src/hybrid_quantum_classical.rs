@@ -2581,7 +2581,7 @@ mod tests {
 
         // Check that we have different optimizer types
         assert_eq!(optimizers.len(), 4);
-        
+
         // Check each optimizer type individually
         assert!(optimizers.contains(&HybridOptimizer::Adam));
         assert!(optimizers.contains(&HybridOptimizer::GradientDescent));
@@ -2594,7 +2594,7 @@ mod tests {
         let config = HybridLoopConfig::default();
         let devices = HashMap::new();
         let cal_mgr = crate::calibration::CalibrationManager::new();
-        
+
         // Create managers with minimal setup to avoid runtime conflicts
         let device_manager = Arc::new(RwLock::new(
             crate::integrated_device_manager::IntegratedQuantumDeviceManager::new(

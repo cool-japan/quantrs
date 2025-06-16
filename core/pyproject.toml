@@ -3,7 +3,7 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "quantrs2-core"
+name = "quantrs2-core-extension"
 version = "0.1.0-alpha.5"
 description = "Python bindings for QuantRS2-Core quantum computing framework"
 authors = [
@@ -59,9 +59,10 @@ Issues = "https://github.com/quantrs2/quantrs2-core/issues"
 
 [tool.maturin]
 features = ["python"]
-module-name = "quantrs2_core"
-python-source = "python"
+module-name = "quantrs2._core"
+python-source = "../py/python"
 strip = true
+manifest-path = "Cargo.toml"
 
 [tool.black]
 line-length = 88

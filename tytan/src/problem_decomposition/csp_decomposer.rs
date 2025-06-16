@@ -1,7 +1,7 @@
 //! Constraint Satisfaction Problem decomposition methods
 
 use super::types::*;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 
 /// Constraint satisfaction problem decomposer
 pub struct ConstraintSatisfactionDecomposer {
@@ -629,10 +629,9 @@ impl ConstraintSatisfactionDecomposer {
 
         // DFS from each unvisited node
         for node in 0..num_nodes {
-            if !visited[node] {
-                if self.dfs_has_cycle(node, &adjacency, &mut visited, &mut rec_stack) {
-                    return true;
-                }
+            if !visited[node] && self.dfs_has_cycle(node, &adjacency, &mut visited, &mut rec_stack)
+            {
+                return true;
             }
         }
 

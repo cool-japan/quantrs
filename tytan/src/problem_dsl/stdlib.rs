@@ -133,9 +133,9 @@ impl StandardLibrary {
                 parameters: vec!["variables".to_string()],
                 expansion: super::ast::AST::Program {
                     declarations: vec![],
-                    objective: super::ast::Objective::Minimize(
-                        super::ast::Expression::Literal(super::ast::Value::Number(0.0))
-                    ),
+                    objective: super::ast::Objective::Minimize(super::ast::Expression::Literal(
+                        super::ast::Value::Number(0.0),
+                    )),
                     constraints: vec![], // Would be filled with actual constraints during expansion
                 },
             },
@@ -147,12 +147,16 @@ impl StandardLibrary {
             Pattern {
                 name: "cardinality".to_string(),
                 description: "Constrains the number of true variables in a set".to_string(),
-                parameters: vec!["variables".to_string(), "min_count".to_string(), "max_count".to_string()],
+                parameters: vec![
+                    "variables".to_string(),
+                    "min_count".to_string(),
+                    "max_count".to_string(),
+                ],
                 expansion: super::ast::AST::Program {
                     declarations: vec![],
-                    objective: super::ast::Objective::Minimize(
-                        super::ast::Expression::Literal(super::ast::Value::Number(0.0))
-                    ),
+                    objective: super::ast::Objective::Minimize(super::ast::Expression::Literal(
+                        super::ast::Value::Number(0.0),
+                    )),
                     constraints: vec![],
                 },
             },
@@ -167,9 +171,9 @@ impl StandardLibrary {
                 parameters: vec!["variables".to_string()],
                 expansion: super::ast::AST::Program {
                     declarations: vec![],
-                    objective: super::ast::Objective::Minimize(
-                        super::ast::Expression::Literal(super::ast::Value::Number(0.0))
-                    ),
+                    objective: super::ast::Objective::Minimize(super::ast::Expression::Literal(
+                        super::ast::Value::Number(0.0),
+                    )),
                     constraints: vec![],
                 },
             },
@@ -184,9 +188,9 @@ impl StandardLibrary {
                 parameters: vec!["variables".to_string()],
                 expansion: super::ast::AST::Program {
                     declarations: vec![],
-                    objective: super::ast::Objective::Minimize(
-                        super::ast::Expression::Literal(super::ast::Value::Number(0.0))
-                    ),
+                    objective: super::ast::Objective::Minimize(super::ast::Expression::Literal(
+                        super::ast::Value::Number(0.0),
+                    )),
                     constraints: vec![],
                 },
             },
@@ -224,7 +228,8 @@ impl StandardLibrary {
                     subject to
                         forall(i in 0..n): sum(j in 0..n: x[i,j]) == 1;
                         forall(j in 0..n): sum(i in 0..n: x[i,j]) == 1;
-                "#.to_string(),
+                "#
+                .to_string(),
             },
         );
 
@@ -263,7 +268,8 @@ impl StandardLibrary {
                     subject to
                         forall(v in 0..n_vertices): sum(c in 0..n_colors: color[v,c]) == 1;
                         forall((u,v) in edges, c in 0..n_colors): color[u,c] + color[v,c] <= 1;
-                "#.to_string(),
+                "#
+                .to_string(),
             },
         );
 
@@ -307,7 +313,8 @@ impl StandardLibrary {
                     
                     subject to
                         sum(i in 0..n: weights[i] * x[i]) <= capacity;
-                "#.to_string(),
+                "#
+                .to_string(),
             },
         );
 
@@ -342,7 +349,8 @@ impl StandardLibrary {
                     var x[n] binary;
                     
                     maximize sum((i,j,w) in zip(edges, weights): w * (x[i] + x[j] - 2*x[i]*x[j]));
-                "#.to_string(),
+                "#
+                .to_string(),
             },
         );
     }

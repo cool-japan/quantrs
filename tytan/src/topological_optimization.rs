@@ -4,12 +4,11 @@
 //! topological quantum computing concepts, anyonic computation, and
 //! topological data analysis for optimization.
 
-use crate::sampler::{SampleResult, Sampler};
 use ndarray::{Array2, Array3};
 use num_complex::Complex64;
 use rand::prelude::*;
 use rand::thread_rng;
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::collections::HashMap;
 use std::f64::consts::PI;
 
 /// Topological Quantum Optimizer using anyonic braiding

@@ -6,8 +6,7 @@
 
 #[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
-use crate::sampler::{SampleResult, Sampler, SamplerResult};
-use ndarray::{Array1, Array2};
+use crate::sampler::Sampler;
 use rand::thread_rng;
 use std::collections::HashMap;
 use std::error::Error;
@@ -1122,7 +1121,6 @@ pub mod visualization {
 }
 
 /// Utility functions
-
 fn variance(values: &[f64]) -> f64 {
     let n = values.len() as f64;
     let mean = values.iter().sum::<f64>() / n;

@@ -5,7 +5,6 @@
 
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::{Array, ArrayD, Ix2};
-use rand::prelude::*;
 use std::collections::HashMap;
 
 #[cfg(feature = "scirs")]
@@ -601,7 +600,12 @@ impl AsyncGpuPipeline {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    #[cfg(feature = "scirs")]
+    use super::EnhancedArminSampler;
+    #[cfg(feature = "scirs")]
+    use ndarray::Array;
+    #[cfg(feature = "scirs")]
+    use std::collections::HashMap;
 
     #[test]
     #[cfg(feature = "scirs")]

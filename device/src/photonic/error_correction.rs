@@ -3,12 +3,12 @@
 //! This module implements quantum error correction specifically designed for photonic systems,
 //! including loss-tolerant codes and measurement-based error correction.
 
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use thiserror::Error;
 
-use super::{PhotonicSystemType, PhotonicMode};
-use super::continuous_variable::{GaussianState, CVResult, CVError};
+use super::continuous_variable::{CVError, CVResult, GaussianState};
+use super::{PhotonicMode, PhotonicSystemType};
 use crate::DeviceResult;
 
 /// Errors for photonic quantum error correction
@@ -34,7 +34,10 @@ pub enum PhotonicErrorCorrectionCode {
     /// Continuous variable error correction
     ContinuousVariable { code_type: CVQECType },
     /// Hybrid photonic-matter error correction
-    Hybrid { photonic_modes: usize, matter_qubits: usize },
+    Hybrid {
+        photonic_modes: usize,
+        matter_qubits: usize,
+    },
 }
 
 /// CV quantum error correction types
@@ -89,7 +92,7 @@ impl PhotonicQECEngine {
     ) -> Result<(), PhotonicQECError> {
         if redundancy < 2 {
             return Err(PhotonicQECError::InsufficientRedundancy(
-                "Loss tolerance requires redundancy >= 2".to_string()
+                "Loss tolerance requires redundancy >= 2".to_string(),
             ));
         }
 
@@ -99,8 +102,8 @@ impl PhotonicQECEngine {
             if let Ok(loss_rate) = state.average_photon_number(mode) {
                 if loss_rate < 0.1 {
                     // Apply correction by adjusting covariance
-                    state.covariance[2*mode][2*mode] *= 1.1;
-                    state.covariance[2*mode+1][2*mode+1] *= 1.1;
+                    state.covariance[2 * mode][2 * mode] *= 1.1;
+                    state.covariance[2 * mode + 1][2 * mode + 1] *= 1.1;
                 }
             }
         }
@@ -119,16 +122,18 @@ impl PhotonicQECEngine {
                 // Apply squeezing-based error correction
                 for mode in 0..state.num_modes {
                     if state.squeeze(0.1, 0.0, mode).is_err() {
-                        return Err(PhotonicQECError::CorrectionFailed(
-                            format!("Failed to apply squeezing correction to mode {}", mode)
-                        ));
+                        return Err(PhotonicQECError::CorrectionFailed(format!(
+                            "Failed to apply squeezing correction to mode {}",
+                            mode
+                        )));
                     }
                 }
             }
             CVQECType::DisplacedSqueezed => {
                 // Apply displacement and squeezing correction
                 for mode in 0..state.num_modes {
-                    let _ = state.displace(super::continuous_variable::Complex::new(0.1, 0.0), mode);
+                    let _ =
+                        state.displace(super::continuous_variable::Complex::new(0.1, 0.0), mode);
                     let _ = state.squeeze(0.05, 0.0, mode);
                 }
             }
@@ -150,7 +155,7 @@ impl PhotonicQECEngine {
         match code {
             PhotonicErrorCorrectionCode::LossTolerant { redundancy } => {
                 let mut syndrome = Vec::new();
-                
+
                 // Simple loss detection based on photon number variance
                 for mode in 0..state.num_modes.min(*redundancy) {
                     if let Ok(avg_photons) = state.average_photon_number(mode) {
@@ -159,7 +164,7 @@ impl PhotonicQECEngine {
                         syndrome.push(false);
                     }
                 }
-                
+
                 Ok(syndrome)
             }
             _ => Ok(vec![false; 4]), // Placeholder syndrome
@@ -170,9 +175,18 @@ impl PhotonicQECEngine {
     pub fn get_statistics(&self) -> PhotonicQECStatistics {
         PhotonicQECStatistics {
             active_codes: self.active_codes.len(),
-            total_corrections_applied: self.error_stats.get("corrections").copied().unwrap_or(0.0) as usize,
-            loss_correction_rate: self.error_stats.get("loss_corrections").copied().unwrap_or(0.0),
-            phase_correction_rate: self.error_stats.get("phase_corrections").copied().unwrap_or(0.0),
+            total_corrections_applied: self.error_stats.get("corrections").copied().unwrap_or(0.0)
+                as usize,
+            loss_correction_rate: self
+                .error_stats
+                .get("loss_corrections")
+                .copied()
+                .unwrap_or(0.0),
+            phase_correction_rate: self
+                .error_stats
+                .get("phase_corrections")
+                .copied()
+                .unwrap_or(0.0),
             overall_fidelity: self.error_stats.get("fidelity").copied().unwrap_or(0.95),
         }
     }

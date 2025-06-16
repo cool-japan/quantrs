@@ -22,8 +22,8 @@ pub mod vulkan_backend;
 
 // Enhanced GPU optimization modules
 pub mod adaptive_simd;
-pub mod specialized_kernels;
 pub mod large_scale_simulation;
+pub mod specialized_kernels;
 
 // Re-export key optimization components
 pub use adaptive_simd::{
@@ -31,14 +31,14 @@ pub use adaptive_simd::{
     get_adaptive_performance_report, initialize_adaptive_simd, AdaptiveSimdDispatcher, CpuFeatures,
     SimdVariant,
 };
+pub use large_scale_simulation::{
+    LargeScaleGateType, LargeScaleObservable, LargeScalePerformanceStats, LargeScaleSimAccelerator,
+    LargeScaleSimConfig, LargeScaleStateVectorSim, LargeScaleTensorContractor, SimulationTaskType,
+    TensorDecompositionType,
+};
 pub use specialized_kernels::{
     FusionType, OptimizationConfig, PerformanceReport, PostQuantumCompressionType,
     SpecializedGpuKernels,
-};
-pub use large_scale_simulation::{
-    LargeScaleSimAccelerator, LargeScaleSimConfig, LargeScaleStateVectorSim,
-    LargeScaleTensorContractor, LargeScalePerformanceStats, SimulationTaskType,
-    LargeScaleGateType, LargeScaleObservable, TensorDecompositionType,
 };
 
 /// GPU memory buffer abstraction

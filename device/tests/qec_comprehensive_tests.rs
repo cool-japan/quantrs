@@ -6,26 +6,63 @@
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use quantrs2_core::prelude::*;
+use quantrs2_device::ml_optimization::{
+    CircuitFeatureConfig, DimensionalityReductionConfig, FeatureExtractionConfig,
+    FeatureSelectionConfig, GraphFeatureConfig, HardwareFeatureConfig, StatisticalFeatureConfig,
+    TemporalFeatureConfig,
+};
 use quantrs2_device::prelude::*;
+use quantrs2_device::qec::adaptive::{
+    AccessControl, ActivationFunction, ActuatorConfig, ActuatorType, AdaptationMethod,
+    AdaptationStrategy, AdaptiveLearningConfig, AlertAction, AlertChannel, AlertRule,
+    AlertSeverity, AlertSuppression, AlertingConfig, ArchitectureType, ArchivalStrategy,
+    AugmentationTechnique, CacheEvictionPolicy, CoherenceTimes, ConceptDriftConfig,
+    ConnectionPattern, ConnectivityConstraints, ConsistencyLevel, ControlAlgorithm,
+    DashboardComponent, DashboardConfig, DataAugmentationConfig, DataCollectionConfig,
+    DataPreprocessingConfig, DataRetention, DataSource, DeploymentStrategy,
+    DimensionalityReductionMethod, DomainAdaptationConfig, DriftDetection, DriftDetectionMethod,
+    DriftResponse, EnvironmentConfig, EnvironmentType, EscalationLevel, EscalationRules,
+    FeatureSelectionMethod, FeedbackControlConfig, HardwareAcceleration, HardwareConstraints,
+    InferenceCaching, LayerConfig, LayerType, LearningAlgorithm, LearningRateAdaptation,
+    LearningRates, LossFunction, MLInferenceConfig, MLModel, MLTrainingConfig,
+    MetaLearningAlgorithm, MetaLearningConfig, MetaOptimizationConfig, MetaOptimizer,
+    MetaRegularization, ModelDeployment, ModelManagementConfig, ModelMonitoring, ModelOptimization,
+    ModelUpdateConfig, ModelVersioning, MonitoringAlertingConfig, MonitoringMetric,
+    MonitoringTarget, NoiseCharacteristics, NormalizationMethod, NotificationChannel,
+    OnlineLearningConfig, OptimizationConfig, OptimizationObjective, OptimizationStrategy,
+    OptimizationTarget, OptimizerType, PerformanceMetric, PerformanceMonitoring, PredictionConfig,
+    RealtimeAlgorithm, RealtimeOptimizationConfig, RegularizationType, ResourceAllocation,
+    ResourceConstraints, RollbackStrategy, ScalingConfig, ScalingMetric, SensorConfig, SensorType,
+    SimilarityMetrics, SourceDomain, StorageBackend, StorageConfig, SuppressionRule,
+    TaskDistributionConfig, TaskGenerationStrategy, TransferLearningConfig, TransferStrategy,
+    UpdateFrequency, UpdateStrategy, UpdateTrigger, UserRole, ValidationConfig, ValidationMethod,
+    ValidationStrategy, VersionControlSystem,
+};
 use quantrs2_device::qec::codes::SurfaceCodeLayout;
+use quantrs2_device::qec::detection::{
+    PatternRecognitionAlgorithm, PatternRecognitionConfig, PatternTrainingConfig,
+    StatisticalMethod, SyndromeDetectionMethod, SyndromeStatisticsConfig,
+};
+use quantrs2_device::qec::mitigation::{
+    GateMitigationMethod, InversionMethod, SymmetryType, SymmetryVerificationConfig,
+    TwirlingConfig, TwirlingType, VirtualDistillationConfig,
+};
 use quantrs2_device::qec::{
-    AdaptiveQECConfig, AdaptiveQECSystem, CircuitFoldingMethod, ConstraintSatisfactionConfig,
-    CorrectionOperation, CorrectionType, DeviceState, ErrorCorrectionCycleResult, ErrorCorrector, ErrorModel,
-    ExecutionContext, ExtrapolationMethod, HardwareConstraint, LogicalOperatorType,
-    MitigationStrategy as QECMitigationStrategy, OptimizationObjective as QECOptimizationObjective,
+    AdaptiveQECConfig, AdaptiveQECSystem, BatchProcessingConfig, CachingConfig,
+    CircuitFoldingMethod, ConstraintSatisfactionConfig, CorrectionOperation, CorrectionType,
+    DeviceState, ErrorCorrectionCycleResult, ErrorCorrector, ErrorMitigationConfig, ErrorModel,
+    ExecutionContext, ExtrapolationMethod, HardwareConstraint, InferenceMode,
+    InferenceOptimizationConfig, LogicalOperatorType, MitigationStrategy as QECMitigationStrategy,
+    ModelArchitectureConfig, OptimizationObjective as QECOptimizationObjective,
     PerformanceConstraint, QECCodeType, QECConfig, QECMLConfig, QECMonitoringConfig,
     QECOptimizationConfig, QECPerformanceMetrics, QECPerformanceTracker, QECResult, QECStrategy,
     QuantumErrorCode, QuantumErrorCorrector, ResourceConstraint, ShorCode, StabilizerGroup,
     StabilizerType, SteaneCode, SurfaceCode, SyndromeDetectionConfig, SyndromeDetector,
-    SyndromePattern, SyndromeType, ToricCode, ZNEConfig as QECZNEConfig, ErrorMitigationConfig,
-    CachingConfig, TrainingDataConfig, ModelArchitectureConfig, TrainingParameters, InferenceMode, BatchProcessingConfig, InferenceOptimizationConfig,
+    SyndromePattern, SyndromeType, ToricCode, TrainingDataConfig, TrainingParameters,
+    ZNEConfig as QECZNEConfig,
 };
-use quantrs2_device::qec::detection::{SyndromeDetectionMethod, PatternRecognitionConfig, PatternRecognitionAlgorithm, PatternTrainingConfig, SyndromeStatisticsConfig, StatisticalMethod};
-use quantrs2_device::qec::adaptive::{AdaptationStrategy, AdaptiveLearningConfig, OnlineLearningConfig, LearningRateAdaptation, ConceptDriftConfig, DriftDetectionMethod, DriftResponse, ModelUpdateConfig, UpdateFrequency, UpdateTrigger, UpdateStrategy, TransferLearningConfig, SourceDomain, SimilarityMetrics, TransferStrategy, DomainAdaptationConfig, AdaptationMethod, ValidationStrategy, MetaLearningConfig, MetaLearningAlgorithm, TaskDistributionConfig, TaskGenerationStrategy, MetaOptimizationConfig, MetaOptimizer, LearningRates, MetaRegularization, RegularizationType, RealtimeOptimizationConfig, OptimizationObjective, RealtimeAlgorithm, ResourceConstraints, HardwareConstraints, ConnectivityConstraints, CoherenceTimes, FeedbackControlConfig, ControlAlgorithm, SensorConfig, SensorType, NoiseCharacteristics, ActuatorConfig, ActuatorType, OptimizationTarget, PerformanceMetric, OptimizationStrategy, MLModel, MLTrainingConfig, DataSource, DataPreprocessingConfig, NormalizationMethod, FeatureSelectionMethod, DimensionalityReductionMethod, DataAugmentationConfig, AugmentationTechnique, ArchitectureType, LayerConfig, LayerType, ActivationFunction, ConnectionPattern, OptimizerType, LossFunction, ValidationConfig, ValidationMethod, MLInferenceConfig, ModelOptimization, HardwareAcceleration, InferenceCaching, CacheEvictionPolicy, ModelManagementConfig, ModelVersioning, VersionControlSystem, RollbackStrategy, ModelDeployment, DeploymentStrategy, EnvironmentConfig, EnvironmentType, ResourceAllocation, ScalingConfig, ScalingMetric, ModelMonitoring, PerformanceMonitoring, MonitoringMetric, DriftDetection, AlertingConfig, AlertChannel, EscalationRules, EscalationLevel, MonitoringTarget, DashboardConfig, DashboardComponent, AccessControl, UserRole, DataCollectionConfig, DataRetention, ArchivalStrategy, StorageConfig, StorageBackend, ConsistencyLevel, MonitoringAlertingConfig, AlertRule, AlertSeverity, AlertAction, NotificationChannel, AlertSuppression, SuppressionRule, LearningAlgorithm, PredictionConfig, OptimizationConfig};
-use quantrs2_device::qec::mitigation::{InversionMethod, GateMitigationMethod, TwirlingConfig, TwirlingType, SymmetryVerificationConfig, SymmetryType, VirtualDistillationConfig};
-use quantrs2_device::ml_optimization::{FeatureExtractionConfig, CircuitFeatureConfig, HardwareFeatureConfig, TemporalFeatureConfig, StatisticalFeatureConfig, GraphFeatureConfig, FeatureSelectionConfig, DimensionalityReductionConfig};
-use rand::Rng;
 use quantrs2_device::unified_benchmarking::config::{MLModelType, OptimizationAlgorithm};
+use rand::Rng;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -1300,7 +1337,10 @@ mod syndrome_detection_tests {
         measurements.insert("stabilizer_1".to_string(), vec![1, 0, 1, 0, 1]);
 
         let stabilizers = vec![StabilizerGroup {
-            operators: vec![quantrs2_device::qec::PauliOperator::X, quantrs2_device::qec::PauliOperator::X],
+            operators: vec![
+                quantrs2_device::qec::PauliOperator::X,
+                quantrs2_device::qec::PauliOperator::X,
+            ],
             qubits: vec![QubitId(0), QubitId(1)],
             stabilizer_type: StabilizerType::XStabilizer,
             weight: 2,

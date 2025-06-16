@@ -12,7 +12,7 @@ use quantrs2_core::{
 
 use crate::diagnostics::SimulationDiagnostics;
 use crate::optimized_simd;
-use crate::scirs2_integration::{SciRS2Backend, Matrix, Vector, BLAS};
+use crate::scirs2_integration::{Matrix, SciRS2Backend, Vector, BLAS};
 use crate::utils::{flip_bit, gate_vec_to_array2};
 
 /// A state vector simulator for quantum circuits
@@ -266,33 +266,60 @@ impl StateVectorSimulator {
 
     /// Apply a dense matrix-vector multiplication using SciRS2 when available
     #[cfg(feature = "advanced_math")]
-    fn apply_dense_matrix_vector(&mut self, matrix: &[Complex64], vector: &[Complex64], result: &mut [Complex64]) -> QuantRS2Result<()> {
+    fn apply_dense_matrix_vector(
+        &mut self,
+        matrix: &[Complex64],
+        vector: &[Complex64],
+        result: &mut [Complex64],
+    ) -> QuantRS2Result<()> {
         if self.scirs2_backend.is_available() && matrix.len() >= 64 && vector.len() >= 8 {
             // Use SciRS2 for larger operations where the overhead is worthwhile
-            use ndarray::{Array2, Array1};
-            
+            use ndarray::{Array1, Array2};
+
             let rows = result.len();
             let cols = vector.len();
-            
+
             if matrix.len() != rows * cols {
-                return Err(QuantRS2Error::DimensionMismatch);
+                return Err(QuantRS2Error::InvalidInput(
+                    "Dimension mismatch in matrix application".to_string(),
+                ));
             }
-            
+
             // Convert to ndarray format
-            let matrix_2d = Array2::from_shape_vec((rows, cols), matrix.to_vec()).map_err(|_| QuantRS2Error::DimensionMismatch)?;
+            let matrix_2d =
+                Array2::from_shape_vec((rows, cols), matrix.to_vec()).map_err(|_| {
+                    QuantRS2Error::InvalidInput("Matrix shape conversion failed".to_string())
+                })?;
             let vector_1d = Array1::from_vec(vector.to_vec());
-            
+
             // Convert to SciRS2 format
-            let scirs2_matrix = Matrix::from_array2(&matrix_2d.view(), &crate::scirs2_integration::MemoryPool::new()).map_err(|_| QuantRS2Error::ComputationError("Matrix conversion failed".to_string()))?;
-            let scirs2_vector = Vector::from_array1(&vector_1d.view(), &crate::scirs2_integration::MemoryPool::new()).map_err(|_| QuantRS2Error::ComputationError("Vector conversion failed".to_string()))?;
-            
+            let scirs2_matrix = Matrix::from_array2(
+                &matrix_2d.view(),
+                &crate::scirs2_integration::MemoryPool::new(),
+            )
+            .map_err(|_| QuantRS2Error::ComputationError("Matrix conversion failed".to_string()))?;
+            let scirs2_vector = Vector::from_array1(
+                &vector_1d.view(),
+                &crate::scirs2_integration::MemoryPool::new(),
+            )
+            .map_err(|_| QuantRS2Error::ComputationError("Vector conversion failed".to_string()))?;
+
             // Perform optimized matrix-vector multiplication
-            let scirs2_result = self.scirs2_backend.matrix_vector_multiply(&scirs2_matrix, &scirs2_vector).map_err(|_| QuantRS2Error::ComputationError("Matrix-vector multiplication failed".to_string()))?;
-            
+            let scirs2_result = self
+                .scirs2_backend
+                .matrix_vector_multiply(&scirs2_matrix, &scirs2_vector)
+                .map_err(|_| {
+                    QuantRS2Error::ComputationError(
+                        "Matrix-vector multiplication failed".to_string(),
+                    )
+                })?;
+
             // Convert back to slice
-            let result_array = scirs2_result.to_array1().map_err(|_| QuantRS2Error::ComputationError("Result conversion to array failed".to_string()))?;
+            let result_array = scirs2_result.to_array1().map_err(|_| {
+                QuantRS2Error::ComputationError("Result conversion to array failed".to_string())
+            })?;
             result.copy_from_slice(result_array.as_slice().unwrap());
-            
+
             Ok(())
         } else {
             // Fallback to manual implementation for smaller operations
@@ -305,10 +332,15 @@ impl StateVectorSimulator {
             Ok(())
         }
     }
-    
+
     /// Fallback dense matrix-vector multiplication for when SciRS2 is not available
     #[cfg(not(feature = "advanced_math"))]
-    fn apply_dense_matrix_vector(&mut self, matrix: &[Complex64], vector: &[Complex64], result: &mut [Complex64]) -> QuantRS2Result<()> {
+    fn apply_dense_matrix_vector(
+        &mut self,
+        matrix: &[Complex64],
+        vector: &[Complex64],
+        result: &mut [Complex64],
+    ) -> QuantRS2Result<()> {
         // Manual implementation
         for i in 0..result.len() {
             result[i] = Complex64::new(0.0, 0.0);

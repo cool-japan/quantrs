@@ -812,6 +812,12 @@ try:
 except ImportError:
     pass
 
+# Try to import core module
+try:
+    from . import core
+except ImportError:
+    pass
+
 # Import quantum code analysis functions (if available)
 try:
     from .quantum_code_analysis import (
@@ -833,6 +839,37 @@ try:
         get_quantum_code_analysis_manager,
         analyze_quantum_code,
         analyze_quantum_project
+    )
+except ImportError:
+    pass
+
+# Import core module functions (if available)
+try:
+    from .core import (
+        # Core types
+        QubitId as CoreQubitId,
+        QuantumGate as CoreQuantumGate,
+        VariationalCircuit as CoreVariationalCircuit,
+        
+        # Gate creation functions
+        create_hadamard_gate as core_create_hadamard_gate,
+        create_pauli_x_gate as core_create_pauli_x_gate,
+        create_pauli_y_gate as core_create_pauli_y_gate,
+        create_pauli_z_gate as core_create_pauli_z_gate,
+        create_rotation_x_gate as core_create_rotation_x_gate,
+        create_rotation_y_gate as core_create_rotation_y_gate,
+        create_rotation_z_gate as core_create_rotation_z_gate,
+        create_cnot_gate as core_create_cnot_gate,
+        create_phase_gate as core_create_phase_gate,
+        create_s_gate as core_create_s_gate,
+        create_t_gate as core_create_t_gate,
+        create_identity_gate as core_create_identity_gate,
+        
+        # Decomposition functions
+        decompose_single_qubit as core_decompose_single_qubit,
+        decompose_two_qubit_cartan as core_decompose_two_qubit_cartan,
+        SingleQubitDecomposition as CoreSingleQubitDecomposition,
+        CartanDecomposition as CoreCartanDecomposition,
     )
 except ImportError:
     pass

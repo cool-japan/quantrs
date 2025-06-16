@@ -281,7 +281,7 @@ impl DynamicalDecouplingManager {
             .zip(scores.iter())
             .map(|(w, s)| w * s)
             .sum::<f64>();
-        
+
         // Clamp to [0, 1] range
         score.max(0.0).min(1.0)
     }

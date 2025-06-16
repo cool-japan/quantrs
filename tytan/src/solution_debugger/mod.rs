@@ -14,14 +14,6 @@ pub mod visualization;
 
 #[cfg(feature = "dwave")]
 use crate::compile::{Compile, CompiledModel};
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use colored::*;
-use ndarray::{Array, Array1, Array2, IxDyn};
-use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fmt;
-use std::fs::File;
-use std::io::{BufWriter, Write};
 
 // Re-export main types
 pub use analysis::*;

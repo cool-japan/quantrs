@@ -3,7 +3,7 @@
 //! This module provides optimized implementations of performance-critical
 //! operations using SIMD, parallelization, and algorithmic improvements.
 
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
+use ndarray::{Array1, Array2, ArrayView1};
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 #[cfg(target_arch = "x86_64")]

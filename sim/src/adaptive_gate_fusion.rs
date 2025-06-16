@@ -1155,9 +1155,12 @@ impl AdaptiveGateFusion {
     }
 
     /// Fuse a sequence of gates using adaptive fusion
-    pub fn fuse_gates(&mut self, gates: &[QuantumGate]) -> crate::error::Result<(Vec<FusedGateBlock>, Vec<QuantumGate>)> {
+    pub fn fuse_gates(
+        &mut self,
+        gates: &[QuantumGate],
+    ) -> crate::error::Result<(Vec<FusedGateBlock>, Vec<QuantumGate>)> {
         let mut fused_blocks = Vec::new();
-        
+
         if gates.is_empty() {
             return Ok((fused_blocks, Vec::new()));
         }
@@ -1167,22 +1170,23 @@ impl AdaptiveGateFusion {
             if i + 1 < gates.len() {
                 // Try to fuse adjacent gates
                 let should_fuse = self.should_fuse_basic(&gates[i], &gates[i + 1]);
-                
+
                 if should_fuse {
                     // Create a fused gate block from the two gates
                     let mut qubits = gates[i].qubits.clone();
                     qubits.extend_from_slice(&gates[i + 1].qubits);
                     qubits.sort_unstable();
                     qubits.dedup();
-                    
+
                     let fused_block = FusedGateBlock {
                         gates: vec![gates[i].clone(), gates[i + 1].clone()],
-                        combined_matrix: self.calculate_combined_matrix(&gates[i], &gates[i + 1])?,
+                        combined_matrix: self
+                            .calculate_combined_matrix(&gates[i], &gates[i + 1])?,
                         qubits,
                         cost: 0.5, // Assume fusion reduces cost
                         improvement_factor: 1.5,
                     };
-                    
+
                     fused_blocks.push(fused_block);
                     i += 2; // Skip both gates
                 } else {
@@ -1194,7 +1198,7 @@ impl AdaptiveGateFusion {
                         cost: 1.0,
                         improvement_factor: 1.0,
                     };
-                    
+
                     fused_blocks.push(fused_block);
                     i += 1;
                 }
@@ -1207,7 +1211,7 @@ impl AdaptiveGateFusion {
                     cost: 1.0,
                     improvement_factor: 1.0,
                 };
-                
+
                 fused_blocks.push(fused_block);
                 i += 1;
             }
@@ -1223,7 +1227,11 @@ impl AdaptiveGateFusion {
     }
 
     /// Calculate combined matrix for two gates
-    fn calculate_combined_matrix(&self, gate1: &QuantumGate, gate2: &QuantumGate) -> crate::error::Result<Array2<Complex64>> {
+    fn calculate_combined_matrix(
+        &self,
+        gate1: &QuantumGate,
+        gate2: &QuantumGate,
+    ) -> crate::error::Result<Array2<Complex64>> {
         // For simplicity, just return gate1's matrix
         // In a real implementation, this would compute the matrix product
         Ok(gate1.matrix.clone())
@@ -1456,7 +1464,7 @@ impl MLFusionPredictor {
         // For simplicity, use a basic heuristic
         let overlapping_qubits = gate1.qubits.iter().any(|&q| gate2.qubits.contains(&q));
         let should_fuse = overlapping_qubits && gate1.qubits.len() <= 2 && gate2.qubits.len() <= 2;
-        
+
         FusionResult {
             should_fuse,
             confidence: if should_fuse { 0.8 } else { 0.2 },
@@ -1464,7 +1472,6 @@ impl MLFusionPredictor {
             estimated_error: 0.01,
         }
     }
-
 }
 
 impl CircuitPatternAnalyzer {

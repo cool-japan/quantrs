@@ -477,7 +477,8 @@ impl HardwareAwareQMLOptimizer {
         let qubit_mapping = self.optimize_qubit_mapping(circuit, &circuit_analysis)?;
 
         // Apply connectivity optimization
-        let mut optimized_circuit = self.apply_connectivity_optimization(circuit, &qubit_mapping)?;
+        let mut optimized_circuit =
+            self.apply_connectivity_optimization(circuit, &qubit_mapping)?;
 
         // Apply hardware-specific optimizations
         self.apply_hardware_specific_optimizations(&mut optimized_circuit)?;
@@ -490,7 +491,7 @@ impl HardwareAwareQMLOptimizer {
         // Calculate optimization metrics
         let optimization_stats = self.calculate_optimization_stats(circuit, &optimized_circuit);
         let expected_error_rate = self.estimate_error_rate(&optimized_circuit)?;
-        
+
         // Calculate depths before moving optimized_circuit
         let original_depth = self.calculate_circuit_depth(circuit);
         let optimized_depth = self.calculate_circuit_depth(&optimized_circuit);
@@ -508,7 +509,9 @@ impl HardwareAwareQMLOptimizer {
         };
 
         // Cache result
-        self.circuit_compiler.compilation_cache.insert(cache_key, result.clone());
+        self.circuit_compiler
+            .compilation_cache
+            .insert(cache_key, result.clone());
 
         // Update compilation statistics
         self.update_compilation_stats(compilation_time_ms, &result);
@@ -532,11 +535,16 @@ impl HardwareAwareQMLOptimizer {
         let mut circuit = InterfaceCircuit::new(num_qubits, 0);
 
         // Get architecture-specific patterns
-        let patterns = self.ansatz_generator.architecture_patterns
+        let patterns = self
+            .ansatz_generator
+            .architecture_patterns
             .get(&self.config.target_architecture)
-            .ok_or_else(|| SimulatorError::InvalidConfiguration(
-                format!("No ansatz patterns for architecture: {:?}", self.config.target_architecture),
-            ))?;
+            .ok_or_else(|| {
+                SimulatorError::InvalidConfiguration(format!(
+                    "No ansatz patterns for architecture: {:?}",
+                    self.config.target_architecture
+                ))
+            })?;
 
         // Select optimal pattern based on expressivity and hardware efficiency
         let optimal_pattern = self.select_optimal_ansatz_pattern(patterns, target_expressivity)?;
@@ -587,7 +595,7 @@ impl HardwareAwareQMLOptimizer {
                 if Self::check_adaptation_trigger(trigger, current_performance)? {
                     // Determine appropriate action
                     let action = Self::determine_adaptation_action(trigger, current_performance)?;
-                    
+
                     // Record adaptation event
                     let event = AdaptationEvent {
                         timestamp: Instant::now(),
@@ -596,7 +604,7 @@ impl HardwareAwareQMLOptimizer {
                         performance_before: current_performance.clone(),
                         performance_after: None,
                     };
-                    
+
                     adaptation_system.history.push(event);
                     adaptation_system.current_state.adaptation_count += 1;
                     adaptation_system.current_state.last_adaptation_time = Some(Instant::now());
@@ -763,37 +771,33 @@ impl HardwareAwareQMLOptimizer {
         let mut architecture_patterns = HashMap::new();
 
         // IBM patterns (focusing on CNOT and single-qubit gates)
-        let ibm_patterns = vec![
-            AnsatzPattern {
-                name: "IBM_Efficient_RY_CNOT".to_string(),
-                gate_sequence: vec![
-                    InterfaceGateType::RY(0.0),
-                    InterfaceGateType::CNOT,
-                    InterfaceGateType::RY(0.0),
-                ],
-                connectivity_requirements: vec![(0, 1)],
-                parameter_count: 2,
-                expressivity: 0.8,
-                hardware_efficiency: 0.9,
-            },
-        ];
+        let ibm_patterns = vec![AnsatzPattern {
+            name: "IBM_Efficient_RY_CNOT".to_string(),
+            gate_sequence: vec![
+                InterfaceGateType::RY(0.0),
+                InterfaceGateType::CNOT,
+                InterfaceGateType::RY(0.0),
+            ],
+            connectivity_requirements: vec![(0, 1)],
+            parameter_count: 2,
+            expressivity: 0.8,
+            hardware_efficiency: 0.9,
+        }];
         architecture_patterns.insert(HardwareArchitecture::IBMQuantum, ibm_patterns);
 
         // Google patterns (focusing on CZ and sqrt(X) gates)
-        let google_patterns = vec![
-            AnsatzPattern {
-                name: "Google_CZ_Pattern".to_string(),
-                gate_sequence: vec![
-                    InterfaceGateType::RZ(0.0),
-                    InterfaceGateType::CZ,
-                    InterfaceGateType::RZ(0.0),
-                ],
-                connectivity_requirements: vec![(0, 1)],
-                parameter_count: 2,
-                expressivity: 0.85,
-                hardware_efficiency: 0.95,
-            },
-        ];
+        let google_patterns = vec![AnsatzPattern {
+            name: "Google_CZ_Pattern".to_string(),
+            gate_sequence: vec![
+                InterfaceGateType::RZ(0.0),
+                InterfaceGateType::CZ,
+                InterfaceGateType::RZ(0.0),
+            ],
+            connectivity_requirements: vec![(0, 1)],
+            parameter_count: 2,
+            expressivity: 0.85,
+            hardware_efficiency: 0.95,
+        }];
         architecture_patterns.insert(HardwareArchitecture::GoogleQuantumAI, google_patterns);
 
         self.ansatz_generator.architecture_patterns = architecture_patterns;
@@ -837,7 +841,9 @@ impl HardwareAwareQMLOptimizer {
         let mut qubit_depths = vec![0; circuit.num_qubits];
 
         for gate in &circuit.gates {
-            let max_depth = gate.qubits.iter()
+            let max_depth = gate
+                .qubits
+                .iter()
                 .map(|&q| qubit_depths[q])
                 .max()
                 .unwrap_or(0);
@@ -852,7 +858,9 @@ impl HardwareAwareQMLOptimizer {
 
     /// Calculate entanglement measure (simplified)
     fn calculate_entanglement_measure(&self, circuit: &InterfaceCircuit) -> f64 {
-        let two_qubit_gate_count = circuit.gates.iter()
+        let two_qubit_gate_count = circuit
+            .gates
+            .iter()
             .filter(|gate| gate.qubits.len() > 1)
             .count();
 
@@ -879,10 +887,13 @@ impl HardwareAwareQMLOptimizer {
         if !analysis.two_qubit_gates.is_empty() {
             // Use a greedy approach to map frequently interacting qubits to well-connected regions
             let mut qubit_interactions = HashMap::new();
-            
+
             for gate_qubits in &analysis.two_qubit_gates {
                 if gate_qubits.len() == 2 {
-                    let pair = (gate_qubits[0].min(gate_qubits[1]), gate_qubits[0].max(gate_qubits[1]));
+                    let pair = (
+                        gate_qubits[0].min(gate_qubits[1]),
+                        gate_qubits[0].max(gate_qubits[1]),
+                    );
                     *qubit_interactions.entry(pair).or_insert(0) += 1;
                 }
             }
@@ -893,7 +904,8 @@ impl HardwareAwareQMLOptimizer {
 
             // Map most frequently interacting qubits to best connected physical qubits
             for (i, ((logical_q1, logical_q2), _count)) in sorted_interactions.iter().enumerate() {
-                if i < 10 { // Limit optimization to top 10 interactions
+                if i < 10 {
+                    // Limit optimization to top 10 interactions
                     mapping.insert(*logical_q1, i * 2);
                     mapping.insert(*logical_q2, i * 2 + 1);
                 }
@@ -912,20 +924,20 @@ impl HardwareAwareQMLOptimizer {
         let mut optimized_circuit = InterfaceCircuit::new(circuit.num_qubits, 0);
 
         for gate in &circuit.gates {
-            let mapped_qubits: Vec<usize> = gate.qubits.iter()
+            let mapped_qubits: Vec<usize> = gate
+                .qubits
+                .iter()
                 .map(|&q| qubit_mapping.get(&q).copied().unwrap_or(q))
                 .collect();
 
             // Check if gate is directly executable on hardware
             if self.is_gate_directly_executable(&gate.gate_type, &mapped_qubits) {
-                let mapped_gate = InterfaceGate::new(
-                    gate.gate_type.clone(),
-                    mapped_qubits,
-                );
+                let mapped_gate = InterfaceGate::new(gate.gate_type.clone(), mapped_qubits);
                 optimized_circuit.add_gate(mapped_gate);
             } else {
                 // Decompose or route the gate
-                let decomposed_gates = self.decompose_or_route_gate(&gate.gate_type, &mapped_qubits)?;
+                let decomposed_gates =
+                    self.decompose_or_route_gate(&gate.gate_type, &mapped_qubits)?;
                 for decomposed_gate in decomposed_gates {
                     optimized_circuit.add_gate(decomposed_gate);
                 }
@@ -939,25 +951,27 @@ impl HardwareAwareQMLOptimizer {
     fn is_gate_directly_executable(&self, gate_type: &InterfaceGateType, qubits: &[usize]) -> bool {
         match self.config.target_architecture {
             HardwareArchitecture::IBMQuantum => {
-                matches!(gate_type, 
-                    InterfaceGateType::RZ(_) | 
-                    InterfaceGateType::RX(_) | 
-                    InterfaceGateType::RY(_) | 
-                    InterfaceGateType::CNOT |
-                    InterfaceGateType::PauliX |
-                    InterfaceGateType::PauliY |
-                    InterfaceGateType::PauliZ
+                matches!(
+                    gate_type,
+                    InterfaceGateType::RZ(_)
+                        | InterfaceGateType::RX(_)
+                        | InterfaceGateType::RY(_)
+                        | InterfaceGateType::CNOT
+                        | InterfaceGateType::PauliX
+                        | InterfaceGateType::PauliY
+                        | InterfaceGateType::PauliZ
                 )
             }
             HardwareArchitecture::GoogleQuantumAI => {
-                matches!(gate_type,
-                    InterfaceGateType::RZ(_) |
-                    InterfaceGateType::RX(_) |
-                    InterfaceGateType::RY(_) |
-                    InterfaceGateType::CZ |
-                    InterfaceGateType::PauliX |
-                    InterfaceGateType::PauliY |
-                    InterfaceGateType::PauliZ
+                matches!(
+                    gate_type,
+                    InterfaceGateType::RZ(_)
+                        | InterfaceGateType::RX(_)
+                        | InterfaceGateType::RY(_)
+                        | InterfaceGateType::CZ
+                        | InterfaceGateType::PauliX
+                        | InterfaceGateType::PauliY
+                        | InterfaceGateType::PauliZ
                 )
             }
             _ => true, // Assume simulator supports all gates
@@ -977,21 +991,66 @@ impl HardwareAwareQMLOptimizer {
                 // Decompose Toffoli into hardware-native gates
                 if qubits.len() == 3 {
                     // Simplified Toffoli decomposition
-                    decomposed_gates.push(InterfaceGate::new(InterfaceGateType::Hadamard, vec![qubits[2]]));
-                    decomposed_gates.push(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubits[1], qubits[2]]));
-                    decomposed_gates.push(InterfaceGate::new(InterfaceGateType::RZ(-PI/4.0), vec![qubits[2]]));
-                    decomposed_gates.push(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubits[0], qubits[2]]));
-                    decomposed_gates.push(InterfaceGate::new(InterfaceGateType::RZ(PI/4.0), vec![qubits[2]]));
-                    decomposed_gates.push(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubits[1], qubits[2]]));
-                    decomposed_gates.push(InterfaceGate::new(InterfaceGateType::RZ(-PI/4.0), vec![qubits[2]]));
-                    decomposed_gates.push(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubits[0], qubits[2]]));
-                    decomposed_gates.push(InterfaceGate::new(InterfaceGateType::RZ(PI/4.0), vec![qubits[1]]));
-                    decomposed_gates.push(InterfaceGate::new(InterfaceGateType::RZ(PI/4.0), vec![qubits[2]]));
-                    decomposed_gates.push(InterfaceGate::new(InterfaceGateType::Hadamard, vec![qubits[2]]));
-                    decomposed_gates.push(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubits[0], qubits[1]]));
-                    decomposed_gates.push(InterfaceGate::new(InterfaceGateType::RZ(PI/4.0), vec![qubits[0]]));
-                    decomposed_gates.push(InterfaceGate::new(InterfaceGateType::RZ(-PI/4.0), vec![qubits[1]]));
-                    decomposed_gates.push(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubits[0], qubits[1]]));
+                    decomposed_gates.push(InterfaceGate::new(
+                        InterfaceGateType::Hadamard,
+                        vec![qubits[2]],
+                    ));
+                    decomposed_gates.push(InterfaceGate::new(
+                        InterfaceGateType::CNOT,
+                        vec![qubits[1], qubits[2]],
+                    ));
+                    decomposed_gates.push(InterfaceGate::new(
+                        InterfaceGateType::RZ(-PI / 4.0),
+                        vec![qubits[2]],
+                    ));
+                    decomposed_gates.push(InterfaceGate::new(
+                        InterfaceGateType::CNOT,
+                        vec![qubits[0], qubits[2]],
+                    ));
+                    decomposed_gates.push(InterfaceGate::new(
+                        InterfaceGateType::RZ(PI / 4.0),
+                        vec![qubits[2]],
+                    ));
+                    decomposed_gates.push(InterfaceGate::new(
+                        InterfaceGateType::CNOT,
+                        vec![qubits[1], qubits[2]],
+                    ));
+                    decomposed_gates.push(InterfaceGate::new(
+                        InterfaceGateType::RZ(-PI / 4.0),
+                        vec![qubits[2]],
+                    ));
+                    decomposed_gates.push(InterfaceGate::new(
+                        InterfaceGateType::CNOT,
+                        vec![qubits[0], qubits[2]],
+                    ));
+                    decomposed_gates.push(InterfaceGate::new(
+                        InterfaceGateType::RZ(PI / 4.0),
+                        vec![qubits[1]],
+                    ));
+                    decomposed_gates.push(InterfaceGate::new(
+                        InterfaceGateType::RZ(PI / 4.0),
+                        vec![qubits[2]],
+                    ));
+                    decomposed_gates.push(InterfaceGate::new(
+                        InterfaceGateType::Hadamard,
+                        vec![qubits[2]],
+                    ));
+                    decomposed_gates.push(InterfaceGate::new(
+                        InterfaceGateType::CNOT,
+                        vec![qubits[0], qubits[1]],
+                    ));
+                    decomposed_gates.push(InterfaceGate::new(
+                        InterfaceGateType::RZ(PI / 4.0),
+                        vec![qubits[0]],
+                    ));
+                    decomposed_gates.push(InterfaceGate::new(
+                        InterfaceGateType::RZ(-PI / 4.0),
+                        vec![qubits[1]],
+                    ));
+                    decomposed_gates.push(InterfaceGate::new(
+                        InterfaceGateType::CNOT,
+                        vec![qubits[0], qubits[1]],
+                    ));
                 }
             }
             _ => {
@@ -1025,25 +1084,30 @@ impl HardwareAwareQMLOptimizer {
     fn apply_ibm_optimizations(&self, circuit: &mut InterfaceCircuit) -> Result<()> {
         // IBM-specific gate fusion and optimization patterns
         // For example, RZ gate optimization since RZ is virtual on IBM hardware
-        
+
         let mut optimized_gates = Vec::new();
         let mut i = 0;
-        
+
         while i < circuit.gates.len() {
             let gate = &circuit.gates[i];
-            
+
             // Look for consecutive RZ gates on the same qubit
             if matches!(gate.gate_type, InterfaceGateType::RZ(_)) && gate.qubits.len() == 1 {
                 let qubit = gate.qubits[0];
-                let mut total_angle = if let InterfaceGateType::RZ(angle) = gate.gate_type { angle } else { 0.0 };
+                let mut total_angle = if let InterfaceGateType::RZ(angle) = gate.gate_type {
+                    angle
+                } else {
+                    0.0
+                };
                 let mut j = i + 1;
-                
+
                 // Fuse consecutive RZ gates
                 while j < circuit.gates.len() {
                     let next_gate = &circuit.gates[j];
-                    if matches!(next_gate.gate_type, InterfaceGateType::RZ(_)) && 
-                       next_gate.qubits.len() == 1 && 
-                       next_gate.qubits[0] == qubit {
+                    if matches!(next_gate.gate_type, InterfaceGateType::RZ(_))
+                        && next_gate.qubits.len() == 1
+                        && next_gate.qubits[0] == qubit
+                    {
                         if let InterfaceGateType::RZ(angle) = next_gate.gate_type {
                             total_angle += angle;
                         }
@@ -1052,7 +1116,7 @@ impl HardwareAwareQMLOptimizer {
                         break;
                     }
                 }
-                
+
                 // Add fused RZ gate if non-zero
                 if total_angle.abs() > 1e-10 {
                     optimized_gates.push(InterfaceGate::new(
@@ -1060,14 +1124,14 @@ impl HardwareAwareQMLOptimizer {
                         vec![qubit],
                     ));
                 }
-                
+
                 i = j;
             } else {
                 optimized_gates.push(gate.clone());
                 i += 1;
             }
         }
-        
+
         circuit.gates = optimized_gates;
         Ok(())
     }
@@ -1076,9 +1140,9 @@ impl HardwareAwareQMLOptimizer {
     fn apply_google_optimizations(&self, circuit: &mut InterfaceCircuit) -> Result<()> {
         // Google-specific optimizations for their gate set
         // Focus on CZ gate optimizations and sqrt(X) decompositions
-        
+
         let mut optimized_gates = Vec::new();
-        
+
         for gate in &circuit.gates {
             match gate.gate_type {
                 InterfaceGateType::CNOT => {
@@ -1103,7 +1167,7 @@ impl HardwareAwareQMLOptimizer {
                 }
             }
         }
-        
+
         circuit.gates = optimized_gates;
         Ok(())
     }
@@ -1113,25 +1177,25 @@ impl HardwareAwareQMLOptimizer {
         // Generic gate cancellation and commutation optimizations
         let mut optimized_gates = Vec::new();
         let mut i = 0;
-        
+
         while i < circuit.gates.len() {
             let gate = &circuit.gates[i];
-            
+
             // Look for gate cancellations (e.g., X followed by X)
             if i + 1 < circuit.gates.len() {
                 let next_gate = &circuit.gates[i + 1];
-                
+
                 if self.gates_cancel(gate, next_gate) {
                     // Skip both gates
                     i += 2;
                     continue;
                 }
             }
-            
+
             optimized_gates.push(gate.clone());
             i += 1;
         }
-        
+
         circuit.gates = optimized_gates;
         Ok(())
     }
@@ -1142,7 +1206,7 @@ impl HardwareAwareQMLOptimizer {
         if gate1.qubits != gate2.qubits {
             return false;
         }
-        
+
         match (&gate1.gate_type, &gate2.gate_type) {
             (InterfaceGateType::PauliX, InterfaceGateType::PauliX) => true,
             (InterfaceGateType::PauliY, InterfaceGateType::PauliY) => true,
@@ -1157,27 +1221,32 @@ impl HardwareAwareQMLOptimizer {
     /// Apply noise-aware optimizations
     fn apply_noise_aware_optimizations(&self, circuit: &mut InterfaceCircuit) -> Result<()> {
         // Optimize circuit based on device noise characteristics
-        
+
         // Prioritize gates with lower error rates
         let mut gate_priorities = HashMap::new();
         for (gate_name, error_rate) in &self.device_metrics.gate_error_rates {
             gate_priorities.insert(gate_name.clone(), 1.0 / (1.0 + error_rate));
         }
-        
+
         // Minimize high-error operations where possible
         let mut optimized_gates = Vec::new();
-        
+
         for gate in &circuit.gates {
             let gate_name = format!("{:?}", gate.gate_type);
-            let error_rate = self.device_metrics.gate_error_rates.get(&gate_name).unwrap_or(&1e-2);
-            
+            let error_rate = self
+                .device_metrics
+                .gate_error_rates
+                .get(&gate_name)
+                .unwrap_or(&1e-2);
+
             // If error rate is too high, try to decompose into lower-error gates
             if *error_rate > 1e-2 {
                 // Attempt decomposition (simplified)
                 match gate.gate_type {
                     InterfaceGateType::Toffoli => {
                         // Decompose Toffoli as it typically has high error rates
-                        let decomposed = self.decompose_or_route_gate(&gate.gate_type, &gate.qubits)?;
+                        let decomposed =
+                            self.decompose_or_route_gate(&gate.gate_type, &gate.qubits)?;
                         optimized_gates.extend(decomposed);
                     }
                     _ => {
@@ -1188,20 +1257,28 @@ impl HardwareAwareQMLOptimizer {
                 optimized_gates.push(gate.clone());
             }
         }
-        
+
         circuit.gates = optimized_gates;
         Ok(())
     }
 
     /// Calculate optimization statistics
-    fn calculate_optimization_stats(&self, original: &InterfaceCircuit, optimized: &InterfaceCircuit) -> OptimizationStats {
+    fn calculate_optimization_stats(
+        &self,
+        original: &InterfaceCircuit,
+        optimized: &InterfaceCircuit,
+    ) -> OptimizationStats {
         OptimizationStats {
             gates_eliminated: original.gates.len().saturating_sub(optimized.gates.len()),
             gates_added_for_routing: optimized.gates.len().saturating_sub(original.gates.len()),
-            swap_gates_inserted: optimized.gates.iter()
+            swap_gates_inserted: optimized
+                .gates
+                .iter()
                 .filter(|gate| matches!(gate.gate_type, InterfaceGateType::SWAP))
                 .count(),
-            depth_reduction: (self.calculate_circuit_depth(original) as f64 - self.calculate_circuit_depth(optimized) as f64) / self.calculate_circuit_depth(original) as f64,
+            depth_reduction: (self.calculate_circuit_depth(original) as f64
+                - self.calculate_circuit_depth(optimized) as f64)
+                / self.calculate_circuit_depth(original) as f64,
             error_rate_improvement: {
                 let original_error = self.estimate_error_rate(original).unwrap_or(1e-2);
                 let optimized_error = self.estimate_error_rate(optimized).unwrap_or(1e-2);
@@ -1214,46 +1291,69 @@ impl HardwareAwareQMLOptimizer {
     /// Estimate error rate for optimized circuit
     fn estimate_error_rate(&self, circuit: &InterfaceCircuit) -> Result<f64> {
         let mut total_error = 0.0;
-        
+
         for gate in &circuit.gates {
             let gate_name = format!("{:?}", gate.gate_type);
-            let gate_error = self.device_metrics.gate_error_rates.get(&gate_name).unwrap_or(&1e-3);
+            let gate_error = self
+                .device_metrics
+                .gate_error_rates
+                .get(&gate_name)
+                .unwrap_or(&1e-3);
             total_error += gate_error;
         }
-        
+
         // Add measurement errors
-        let measurement_error = self.device_metrics.measurement_error_rates.mean().unwrap_or(1e-2);
+        let measurement_error = self
+            .device_metrics
+            .measurement_error_rates
+            .mean()
+            .unwrap_or(1e-2);
         total_error += measurement_error * circuit.num_qubits as f64;
-        
+
         Ok(total_error)
     }
 
     // Additional helper methods and implementations would go here...
     // Due to length constraints, I'm including the key methods above
-    
+
     /// Generate cache key for circuit
     fn generate_cache_key(&self, circuit: &InterfaceCircuit) -> String {
-        format!("{}_{}_{}_{:?}", 
-                circuit.num_qubits, 
-                circuit.gates.len(), 
-                self.calculate_circuit_depth(circuit),
-                self.config.target_architecture)
+        format!(
+            "{}_{}_{}_{:?}",
+            circuit.num_qubits,
+            circuit.gates.len(),
+            self.calculate_circuit_depth(circuit),
+            self.config.target_architecture
+        )
     }
 
     /// Update compilation statistics
-    fn update_compilation_stats(&mut self, compilation_time_ms: u64, result: &HardwareOptimizedCircuit) {
+    fn update_compilation_stats(
+        &mut self,
+        compilation_time_ms: u64,
+        result: &HardwareOptimizedCircuit,
+    ) {
         self.circuit_compiler.compilation_stats.total_compilations += 1;
-        
-        let total_time = self.circuit_compiler.compilation_stats.avg_compilation_time_ms * 
-                        (self.circuit_compiler.compilation_stats.total_compilations - 1) as f64 + 
-                        compilation_time_ms as f64;
-        
-        self.circuit_compiler.compilation_stats.avg_compilation_time_ms = 
+
+        let total_time = self
+            .circuit_compiler
+            .compilation_stats
+            .avg_compilation_time_ms
+            * (self.circuit_compiler.compilation_stats.total_compilations - 1) as f64
+            + compilation_time_ms as f64;
+
+        self.circuit_compiler
+            .compilation_stats
+            .avg_compilation_time_ms =
             total_time / self.circuit_compiler.compilation_stats.total_compilations as f64;
     }
 
     /// Select optimal ansatz pattern based on multiple criteria
-    fn select_optimal_ansatz_pattern<'a>(&self, patterns: &'a [AnsatzPattern], target_expressivity: f64) -> Result<&'a AnsatzPattern> {
+    fn select_optimal_ansatz_pattern<'a>(
+        &self,
+        patterns: &'a [AnsatzPattern],
+        target_expressivity: f64,
+    ) -> Result<&'a AnsatzPattern> {
         // Score patterns based on multiple criteria
         let scored_patterns: Vec<_> = patterns.iter()
             .filter(|p| p.expressivity >= target_expressivity * 0.95) // Allow 5% tolerance
@@ -1261,56 +1361,81 @@ impl HardwareAwareQMLOptimizer {
                 let connectivity_score = self.calculate_connectivity_compatibility(pattern);
                 let gate_fidelity_score = self.calculate_gate_fidelity_score(pattern);
                 let depth_efficiency_score = 1.0 / (pattern.gate_sequence.len() as f64 + 1.0);
-                
+
                 // Weighted combination of scores
-                let total_score = 
+                let total_score =
                     pattern.hardware_efficiency * 0.4 +
                     connectivity_score * 0.3 +
                     gate_fidelity_score * 0.2 +
                     depth_efficiency_score * 0.1;
-                    
+
                 (pattern, total_score)
             })
             .collect();
-            
-        scored_patterns.iter()
+
+        scored_patterns
+            .iter()
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
             .map(|(pattern, _)| *pattern)
-            .ok_or_else(|| SimulatorError::InvalidConfiguration("No suitable ansatz pattern found".to_string()))
+            .ok_or_else(|| {
+                SimulatorError::InvalidConfiguration("No suitable ansatz pattern found".to_string())
+            })
     }
 
-    fn add_ansatz_layer(&self, circuit: &mut InterfaceCircuit, pattern: &AnsatzPattern, layer: usize) -> Result<()> {
+    fn add_ansatz_layer(
+        &self,
+        circuit: &mut InterfaceCircuit,
+        pattern: &AnsatzPattern,
+        layer: usize,
+    ) -> Result<()> {
         // Add ansatz layer based on pattern with hardware-aware qubit mapping
         let mut qubit_pairs_used = HashSet::new();
-        
+
         for (i, gate_type) in pattern.gate_sequence.iter().enumerate() {
             match gate_type {
                 // Single-qubit gates
-                InterfaceGateType::Hadamard | InterfaceGateType::PauliX | InterfaceGateType::PauliY 
-                | InterfaceGateType::PauliZ | InterfaceGateType::RX(_) | InterfaceGateType::RY(_) 
+                InterfaceGateType::Hadamard
+                | InterfaceGateType::PauliX
+                | InterfaceGateType::PauliY
+                | InterfaceGateType::PauliZ
+                | InterfaceGateType::RX(_)
+                | InterfaceGateType::RY(_)
                 | InterfaceGateType::RZ(_) => {
                     let qubit = (layer + i) % circuit.num_qubits;
                     circuit.add_gate(InterfaceGate::new(gate_type.clone(), vec![qubit]));
-                },
+                }
                 // Two-qubit gates - use hardware-aware mapping
                 InterfaceGateType::CNOT | InterfaceGateType::CZ | InterfaceGateType::CPhase(_) => {
                     let control = (layer + i) % circuit.num_qubits;
                     let target = (control + 1) % circuit.num_qubits;
-                    
+
                     // Check if this qubit pair is available based on connectivity
-                    let pair = if control < target { (control, target) } else { (target, control) };
-                    
-                    if !qubit_pairs_used.contains(&pair) && self.is_qubit_pair_connected(control, target) {
-                        circuit.add_gate(InterfaceGate::new(gate_type.clone(), vec![control, target]));
+                    let pair = if control < target {
+                        (control, target)
+                    } else {
+                        (target, control)
+                    };
+
+                    if !qubit_pairs_used.contains(&pair)
+                        && self.is_qubit_pair_connected(control, target)
+                    {
+                        circuit
+                            .add_gate(InterfaceGate::new(gate_type.clone(), vec![control, target]));
                         qubit_pairs_used.insert(pair);
                     } else {
                         // Find alternative connected pair
-                        if let Some((alt_control, alt_target)) = self.find_available_connected_pair(circuit.num_qubits, &qubit_pairs_used) {
-                            circuit.add_gate(InterfaceGate::new(gate_type.clone(), vec![alt_control, alt_target]));
-                            qubit_pairs_used.insert((alt_control.min(alt_target), alt_control.max(alt_target)));
+                        if let Some((alt_control, alt_target)) = self
+                            .find_available_connected_pair(circuit.num_qubits, &qubit_pairs_used)
+                        {
+                            circuit.add_gate(InterfaceGate::new(
+                                gate_type.clone(),
+                                vec![alt_control, alt_target],
+                            ));
+                            qubit_pairs_used
+                                .insert((alt_control.min(alt_target), alt_control.max(alt_target)));
                         }
                     }
-                },
+                }
                 _ => {
                     // Default single-qubit mapping for other gates
                     let qubit = (layer + i) % circuit.num_qubits;
@@ -1335,11 +1460,16 @@ impl HardwareAwareQMLOptimizer {
 
     fn start_performance_monitoring(&mut self) -> Result<()> {
         // Initialize performance monitoring
-        self.performance_monitor.timestamps.push_back(Instant::now());
+        self.performance_monitor
+            .timestamps
+            .push_back(Instant::now());
         Ok(())
     }
 
-    fn check_adaptation_trigger(trigger: &AdaptationTrigger, performance: &PerformanceMetrics) -> Result<bool> {
+    fn check_adaptation_trigger(
+        trigger: &AdaptationTrigger,
+        performance: &PerformanceMetrics,
+    ) -> Result<bool> {
         match trigger {
             AdaptationTrigger::ErrorRateThreshold(threshold) => {
                 Ok(performance.error_rate > *threshold)
@@ -1351,15 +1481,20 @@ impl HardwareAwareQMLOptimizer {
         }
     }
 
-    fn determine_adaptation_action(trigger: &AdaptationTrigger, _performance: &PerformanceMetrics) -> Result<AdaptationAction> {
+    fn determine_adaptation_action(
+        trigger: &AdaptationTrigger,
+        _performance: &PerformanceMetrics,
+    ) -> Result<AdaptationAction> {
         match trigger {
-            AdaptationTrigger::ErrorRateThreshold(_) => {
-                Ok(AdaptationAction::RecompileCircuit(HardwareOptimizationLevel::Aggressive))
-            }
+            AdaptationTrigger::ErrorRateThreshold(_) => Ok(AdaptationAction::RecompileCircuit(
+                HardwareOptimizationLevel::Aggressive,
+            )),
             AdaptationTrigger::ExecutionTimeThreshold(_) => {
                 Ok(AdaptationAction::AdjustBatchSize(16))
             }
-            _ => Ok(AdaptationAction::RecompileCircuit(HardwareOptimizationLevel::Balanced)),
+            _ => Ok(AdaptationAction::RecompileCircuit(
+                HardwareOptimizationLevel::Balanced,
+            )),
         }
     }
 
@@ -1367,11 +1502,11 @@ impl HardwareAwareQMLOptimizer {
     fn calculate_connectivity_compatibility(&self, pattern: &AnsatzPattern) -> f64 {
         let mut compatibility_score = 0.0;
         let total_connections = pattern.gate_sequence.len();
-        
+
         if total_connections == 0 {
             return 1.0;
         }
-        
+
         // Check each gate in the pattern against device connectivity
         for gate_type in &pattern.gate_sequence {
             let gate_compatibility = match gate_type {
@@ -1382,12 +1517,12 @@ impl HardwareAwareQMLOptimizer {
                     } else {
                         0.3
                     }
-                },
+                }
                 _ => 1.0, // Single-qubit gates are always compatible
             };
             compatibility_score += gate_compatibility;
         }
-        
+
         compatibility_score / total_connections as f64
     }
 
@@ -1395,18 +1530,22 @@ impl HardwareAwareQMLOptimizer {
     fn calculate_gate_fidelity_score(&self, pattern: &AnsatzPattern) -> f64 {
         let mut total_fidelity = 0.0;
         let total_gates = pattern.gate_sequence.len();
-        
+
         if total_gates == 0 {
             return 1.0;
         }
-        
+
         for gate_type in &pattern.gate_sequence {
             let gate_name = format!("{:?}", gate_type);
-            let error_rate = self.device_metrics.gate_error_rates.get(&gate_name).unwrap_or(&1e-3);
+            let error_rate = self
+                .device_metrics
+                .gate_error_rates
+                .get(&gate_name)
+                .unwrap_or(&1e-3);
             let fidelity = 1.0 - error_rate;
             total_fidelity += fidelity;
         }
-        
+
         total_fidelity / total_gates as f64
     }
 
@@ -1422,7 +1561,11 @@ impl HardwareAwareQMLOptimizer {
     }
 
     /// Find an available connected qubit pair
-    fn find_available_connected_pair(&self, num_qubits: usize, used_pairs: &HashSet<(usize, usize)>) -> Option<(usize, usize)> {
+    fn find_available_connected_pair(
+        &self,
+        num_qubits: usize,
+        used_pairs: &HashSet<(usize, usize)>,
+    ) -> Option<(usize, usize)> {
         for i in 0..num_qubits {
             for j in (i + 1)..num_qubits {
                 let pair = (i, j);
@@ -1505,24 +1648,48 @@ pub fn benchmark_hardware_aware_qml() -> Result<()> {
     circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]));
     circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]));
     circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(0.5), vec![2]));
-    circuit.add_gate(InterfaceGate::new(InterfaceGateType::Toffoli, vec![0, 1, 2]));
+    circuit.add_gate(InterfaceGate::new(
+        InterfaceGateType::Toffoli,
+        vec![0, 1, 2],
+    ));
 
     let start_time = Instant::now();
-    
+
     // Optimize circuit for hardware
     let optimized_result = optimizer.optimize_qml_circuit(&circuit, None)?;
-    
+
     let duration = start_time.elapsed();
 
     println!("✅ Hardware-Aware QML Optimization Results:");
     println!("   Original Gates: {}", circuit.gates.len());
-    println!("   Optimized Gates: {}", optimized_result.circuit.gates.len());
-    println!("   Gate Count Optimization: {:?}", optimized_result.gate_count_optimization);
-    println!("   Depth Optimization: {:?}", optimized_result.depth_optimization);
-    println!("   Expected Error Rate: {:.6}", optimized_result.expected_error_rate);
-    println!("   Gates Eliminated: {}", optimized_result.optimization_stats.gates_eliminated);
-    println!("   SWAP Gates Added: {}", optimized_result.optimization_stats.swap_gates_inserted);
-    println!("   Compilation Time: {}ms", optimized_result.compilation_time_ms);
+    println!(
+        "   Optimized Gates: {}",
+        optimized_result.circuit.gates.len()
+    );
+    println!(
+        "   Gate Count Optimization: {:?}",
+        optimized_result.gate_count_optimization
+    );
+    println!(
+        "   Depth Optimization: {:?}",
+        optimized_result.depth_optimization
+    );
+    println!(
+        "   Expected Error Rate: {:.6}",
+        optimized_result.expected_error_rate
+    );
+    println!(
+        "   Gates Eliminated: {}",
+        optimized_result.optimization_stats.gates_eliminated
+    );
+    println!(
+        "   SWAP Gates Added: {}",
+        optimized_result.optimization_stats.swap_gates_inserted
+    );
+    println!(
+        "   Compilation Time: {}ms",
+        optimized_result.compilation_time_ms
+    );
     println!("   Total Optimization Time: {:.2}ms", duration.as_millis());
 
     // Test hardware-efficient ansatz generation
@@ -1547,14 +1714,14 @@ mod tests {
     fn test_circuit_analysis() {
         let config = HardwareAwareConfig::default();
         let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
-        
+
         let mut circuit = InterfaceCircuit::new(2, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]));
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]));
-        
+
         let analysis = optimizer.analyze_circuit(&circuit);
         assert!(analysis.is_ok());
-        
+
         let analysis = analysis.unwrap();
         assert_eq!(analysis.two_qubit_gates.len(), 1);
         assert!(analysis.gate_counts.contains_key("Hadamard"));
@@ -1564,11 +1731,11 @@ mod tests {
     fn test_qubit_mapping_optimization() {
         let config = HardwareAwareConfig::default();
         let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
-        
+
         let circuit = InterfaceCircuit::new(4, 0);
         let analysis = optimizer.analyze_circuit(&circuit).unwrap();
         let mapping = optimizer.optimize_qubit_mapping(&circuit, &analysis);
-        
+
         assert!(mapping.is_ok());
         let mapping = mapping.unwrap();
         assert_eq!(mapping.len(), 4);
@@ -1581,14 +1748,14 @@ mod tests {
             ..Default::default()
         };
         let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
-        
+
         let mut circuit = InterfaceCircuit::new(2, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(0.1), vec![0]));
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(0.2), vec![0]));
-        
+
         let original_gates = circuit.gates.len();
         optimizer.apply_ibm_optimizations(&mut circuit).unwrap();
-        
+
         // Should fuse consecutive RZ gates
         assert!(circuit.gates.len() <= original_gates);
     }
@@ -1597,12 +1764,12 @@ mod tests {
     fn test_gate_cancellation() {
         let config = HardwareAwareConfig::default();
         let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
-        
+
         let gate1 = InterfaceGate::new(InterfaceGateType::PauliX, vec![0]);
         let gate2 = InterfaceGate::new(InterfaceGateType::PauliX, vec![0]);
-        
+
         assert!(optimizer.gates_cancel(&gate1, &gate2));
-        
+
         let gate3 = InterfaceGate::new(InterfaceGateType::PauliY, vec![0]);
         assert!(!optimizer.gates_cancel(&gate1, &gate3));
     }
@@ -1611,10 +1778,10 @@ mod tests {
     fn test_error_rate_estimation() {
         let config = HardwareAwareConfig::default();
         let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
-        
+
         let mut circuit = InterfaceCircuit::new(2, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]));
-        
+
         let error_rate = optimizer.estimate_error_rate(&circuit);
         assert!(error_rate.is_ok());
         assert!(error_rate.unwrap() > 0.0);
@@ -1624,12 +1791,12 @@ mod tests {
     fn test_cross_device_compatibility() {
         let config = HardwareAwareConfig::default();
         let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
-        
+
         let compatibility = optimizer.get_cross_device_compatibility(
             HardwareArchitecture::IBMQuantum,
             HardwareArchitecture::GoogleQuantumAI,
         );
-        
+
         assert!(compatibility >= 0.0 && compatibility <= 1.0);
     }
 }

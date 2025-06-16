@@ -25,6 +25,7 @@ pub mod characterization;
 pub mod circuit_integration;
 pub mod circuit_migration;
 pub mod cloud;
+pub mod continuous_variable;
 // pub mod cost_optimization;
 pub mod compiler_passes;
 pub mod cross_platform_benchmarking;
@@ -38,6 +39,7 @@ pub mod ibm_device;
 pub mod integrated_device_manager;
 pub mod job_scheduling;
 // pub mod mapping_scirc2; // Temporarily disabled due to scirs2-graph API changes
+pub mod algorithm_marketplace;
 pub mod mid_circuit_measurements;
 pub mod ml_optimization;
 pub mod neutral_atom;
@@ -47,28 +49,33 @@ pub mod optimization;
 pub mod optimization_old;
 pub mod parametric;
 pub mod performance_analytics_dashboard;
-pub mod photonic;
 pub mod performance_dashboard;
+pub mod photonic;
 pub mod process_tomography;
 pub mod provider_capability_discovery;
 pub mod pulse;
 pub mod qec;
-pub mod quantum_algorithm_marketplace;
+pub mod quantum_ml;
 pub mod quantum_ml_integration;
 pub mod quantum_network;
-pub mod unified_error_handling;
 pub mod quantum_system_security;
 pub mod routing;
 pub mod routing_advanced;
 pub mod security;
 pub mod telemetry;
+pub mod topological;
 pub mod topology;
 pub mod topology_analysis;
 pub mod translation;
 pub mod transpiler;
 pub mod unified_benchmarking;
+pub mod unified_error_handling;
 pub mod vqa_support;
 pub mod zero_noise_extrapolation;
+
+// Test utilities
+#[cfg(test)]
+pub mod test_utils;
 
 // AWS authentication module
 #[cfg(feature = "aws")]
@@ -98,6 +105,9 @@ pub enum DeviceError {
 
     #[error("Job execution error: {0}")]
     JobExecution(String),
+
+    #[error("Execution failed: {0}")]
+    ExecutionFailed(String),
 
     #[error("Timeout error: {0}")]
     Timeout(String),
@@ -149,6 +159,9 @@ pub enum DeviceError {
 
     #[error("Unknown job status: {0}")]
     UnknownJobStatus(String),
+
+    #[error("Resource exhaustion: {0}")]
+    ResourceExhaustion(String),
 }
 
 /// Convert QuantRS2Error to DeviceError
@@ -482,6 +495,29 @@ pub mod prelude {
         HardwareConstraints, OptimizationObjective, OptimizationStats, PassInfo,
         PerformancePrediction,
     };
+    pub use crate::continuous_variable::{
+        cluster_states::{
+            ClusterStateConfig, ClusterStateGenerator, ClusterStateType, ClusterStateValidation,
+            MBQCMeasurement, MBQCResult,
+        },
+        create_cluster_state_cv_device, create_gaussian_cv_device,
+        cv_gates::{CVGateLibrary, CVGateParams, CVGateSequence, CVGateType},
+        error_correction::{
+            CVErrorCorrectionCode, CVErrorCorrectionConfig, CVErrorCorrector, CVLogicalState,
+            CorrectionResult,
+        },
+        gaussian_states::GaussianState,
+        heterodyne::{
+            HeterodyneDetector, HeterodyneDetectorConfig, HeterodyneResult, HeterodyneStatistics,
+        },
+        homodyne::{HomodyneDetector, HomodyneDetectorConfig, HomodyneResult, HomodyneStatistics},
+        measurements::{
+            CVMeasurementConfig, CVMeasurementEngine, CVMeasurementScheme, MeasurementStatistics,
+        },
+        CVDeviceConfig, CVDeviceDiagnostics, CVEntanglementMeasures, CVMeasurementOutcome,
+        CVMeasurementResult, CVMeasurementType, CVModeState, CVQuantumDevice, CVSystemType,
+        Complex,
+    };
     // pub use crate::cost_optimization::{
     //     CostOptimizationEngine, CostOptimizationConfig, CostOptimizationStrategy as CostStrategy, CostEstimate,
     //     CostBreakdown, CostEstimationMetadata, BudgetConfig, BudgetStatus, BudgetRolloverPolicy,
@@ -556,6 +592,15 @@ pub mod prelude {
     //     InitialMappingAlgorithm, OptimizationObjective as MappingObjective, SciRS2MappingConfig,
     //     SciRS2MappingResult, SciRS2QubitMapper, SciRS2RoutingAlgorithm,
     // };
+    pub use crate::algorithm_marketplace::{
+        APIConfig, ActiveDeployment, AlgorithmDeploymentManager, AlgorithmDiscoveryEngine,
+        AlgorithmInfo, AlgorithmOptimizationEngine, AlgorithmRegistration, AlgorithmRegistry,
+        AlgorithmValidationService, AlgorithmVersioningSystem, DeploymentRequest, DeploymentStatus,
+        DiscoveryCriteria, MarketplaceAPI, MarketplaceConfig, MonetizationSystem,
+        OptimizationConfig as MarketplaceOptimizationConfig, PaymentMethod, Permission,
+        PricingStrategy, QuantumAlgorithmMarketplace, SubscriptionModel, UserSession, UserType,
+        ValidationConfig as MarketplaceValidationConfig, VersioningConfig,
+    };
     pub use crate::mid_circuit_measurements::{
         ExecutionStats, HardwareOptimizations, MeasurementEvent, MidCircuitCapabilities,
         MidCircuitConfig, MidCircuitDeviceExecutor, MidCircuitExecutionResult, MidCircuitExecutor,
@@ -576,16 +621,19 @@ pub mod prelude {
         ParametricGate, ParametricTemplates,
     };
     pub use crate::photonic::{
-        create_photonic_device, validate_photonic_config, PhotonicClient, PhotonicConfig,
-        PhotonicDeviceConfig, PhotonicSystemType, PhotonicMode, PhotonicQuantumDevice,
-        PhotonicCircuitResult, PhotonicMeasurementData, PhotonicExecutionMetadata,
-        gates::{DisplacementGate, SqueezingGate, TwoModeSqueezingGate, BeamsplitterGate,
-               PhaseRotationGate, KerrGate, CrossKerrGate},
-        continuous_variable::{Complex, GaussianState, CVGateSet, CVMeasurements},
-        cv_gates::{CVGateType, CVGateParams, CVGateSequence},
-        gate_based::{PhotonicQubitEncoding, PhotonicQubitState, PhotonicGates, OpticalElement,
-                    PhotonicGateImpl, PhotonicResourceRequirements, PhotonicCircuitCompiler,
-                    PhotonicHardwareConstraints, PhotonicCircuitImplementation},
+        create_photonic_device,
+        gate_based::{
+            OpticalElement, PhotonicCircuitCompiler, PhotonicCircuitImplementation,
+            PhotonicGateImpl, PhotonicGates, PhotonicHardwareConstraints, PhotonicQubitEncoding,
+            PhotonicQubitState, PhotonicResourceRequirements,
+        },
+        gates::{
+            BeamsplitterGate, CrossKerrGate, DisplacementGate, KerrGate, PhaseRotationGate,
+            SqueezingGate, TwoModeSqueezingGate,
+        },
+        validate_photonic_config, PhotonicCircuitResult, PhotonicClient, PhotonicConfig,
+        PhotonicDeviceConfig, PhotonicExecutionMetadata, PhotonicMeasurementData, PhotonicMode,
+        PhotonicQuantumDevice, PhotonicSystemType,
     };
     pub use crate::provider_capability_discovery::{
         create_high_performance_discovery_config, create_provider_discovery_system,
@@ -603,19 +651,47 @@ pub mod prelude {
         AdaptiveQECConfig, ErrorMitigationConfig, QECCodeType, QECConfig, QECMLConfig,
         QECMonitoringConfig, QECOptimizationConfig, QECStrategy, SyndromeDetectionConfig,
     };
-    pub use crate::quantum_algorithm_marketplace::{
-        AlgorithmOptimizationStrategy, DiscoveryAlgorithm, IncentiveMechanism,
-        MLRecommendationModel, QuantumAlgorithmMarketplaceConfig,
+    pub use crate::quantum_ml::{
+        create_qaoa_accelerator, create_vqc_accelerator,
+        gradients::{
+            create_finite_difference_calculator, create_parameter_shift_calculator, GradientConfig,
+            GradientUtils, Observable as QMLObservable, ObservableTerm, QuantumGradientCalculator,
+        },
+        optimization::{
+            create_gradient_free_optimizer, create_gradient_optimizer, GradientBasedOptimizer,
+            GradientFreeOptimizer, ObjectiveFunction as QMLObjectiveFunction,
+            OptimizationResult as QMLOptResult, OptimizationStep, OptimizerConfig,
+            QuantumOptimizer, VQEObjectiveFunction,
+        },
+        quantum_neural_networks::{
+            create_pqc_classifier, create_qcnn_classifier, ClassificationResult,
+            EntanglingStrategy, InputEncoding, OutputDecoding, PQCNetwork, QConvLayer,
+            QNNArchitecture, QNNType, QPoolingLayer, QPoolingType, QuantumNeuralNetwork, QCNN, VQC,
+        },
+        training::{
+            create_supervised_trainer, create_training_data, BatchObjectiveFunction,
+            CrossEntropyLoss, LossFunction as QMLLossFunction, MSELoss, QuantumTrainer,
+            TrainingData as QMLTrainingData, TrainingMetrics, TrainingResult as QMLTrainingResult,
+        },
+        variational_algorithms::{
+            create_molecular_vqe, AdamOptimizer, EntanglingGateType, Hamiltonian,
+            HardwareEfficientAnsatz, MolecularHamiltonian, ParameterizedQuantumCircuit,
+            PauliOperator, PauliTerm, QAOAConfig, QAOAResult, QAOASolution, QuantumGate,
+            QuantumState, VQEConfig, VQEResult, VariationalAnsatz, VariationalOptimizer, QAOA, VQE,
+        },
+        CircuitStructure, GradientMethod as QMLGradientMethod, InferenceData, InferenceResult,
+        ModelExportFormat, ModelRegistry, NoiseResilienceLevel,
+        OptimizationResult as QMLOptimizationResult, OptimizerType, QMLAccelerator, QMLConfig,
+        QMLDiagnostics, QMLModel, QMLModelType, TrainingData, TrainingEpoch, TrainingResult,
+        TrainingStatistics,
     };
     pub use crate::quantum_ml_integration::{
         create_high_performance_qml_config, create_qml_integration_hub, AnomalyType,
-        FrameworkBridge, GradientMethod as QMLGradientMethod, HybridMLOptimizer, LossFunction,
-        MLFramework, MLPerformanceAnalytics, OptimizerType, QMLArchitecture, QMLDataBatch,
-        QMLDataPipeline, QMLDataset, QMLInferenceResult, QMLIntegrationConfig, QMLModel,
-        QMLModelType, QMLMonitoringConfig, QMLOptimizationConfig, QMLResourceConfig,
-        QMLResourceRequirements, QMLTrainingConfig, QMLTrainingOrchestrator, QMLTrainingResult,
-        QuantumEncodingType, QuantumMLIntegrationHub, QuantumNeuralNetworkExecutor,
-        TrainingPriority,
+        FrameworkBridge, HybridMLOptimizer, LossFunction, MLFramework, MLPerformanceAnalytics,
+        QMLArchitecture, QMLDataBatch, QMLDataPipeline, QMLDataset, QMLInferenceResult,
+        QMLIntegrationConfig, QMLMonitoringConfig, QMLOptimizationConfig, QMLResourceConfig,
+        QMLResourceRequirements, QMLTrainingConfig, QMLTrainingOrchestrator, QuantumEncodingType,
+        QuantumMLIntegrationHub, QuantumNeuralNetworkExecutor, TrainingPriority,
     };
     pub use crate::quantum_system_security::{
         AuthenticationMethod as SecurityAuthenticationMethod, AuthorizationModel,
@@ -639,6 +715,26 @@ pub mod prelude {
         SystemStatus, TelemetryAnalytics, TelemetryCommand, TelemetryConfig, TelemetryEvent,
         TelemetryReport, TelemetryStorage, TrendDirection,
     };
+    pub use crate::topological::{
+        anyons::{AnyonFactory, AnyonTracker, ChargeAlgebra},
+        braiding::{BraidGroupElement, BraidingMatrixCalculator, BraidingOperationManager},
+        device::{
+            create_fibonacci_device, create_ising_device, EnhancedTopologicalDevice,
+            TopologicalDeviceConfig, TopologicalDeviceDiagnostics,
+        },
+        error_correction::{
+            ErrorCorrectionConfig, RealTimeErrorMonitor, TopologicalErrorCorrector,
+        },
+        fusion::{FSymbolCalculator, FusionOperationExecutor, FusionTree},
+        topological_codes::{
+            ColorCode, ErrorCorrection, SurfaceCode, SyndromeMeasurement, TopologicalCodeType,
+            TopologicalDecoder,
+        },
+        Anyon, BraidingDirection, BraidingOperation, BraidingResult, FusionRuleSet,
+        NonAbelianAnyonType, TopologicalCapabilities, TopologicalCharge, TopologicalDevice,
+        TopologicalError, TopologicalOperation, TopologicalQubit, TopologicalQubitState,
+        TopologicalResult, TopologicalSystemStatus, TopologicalSystemType,
+    };
     pub use crate::topology_analysis::{
         create_standard_topology, AllocationStrategy, HardwareMetrics, TopologyAnalysis,
         TopologyAnalyzer,
@@ -652,6 +748,10 @@ pub mod prelude {
         BaselineMetric, BaselineMetricValue, BenchmarkEvent, PerformanceBaseline,
         QuantumPlatform as UnifiedQuantumPlatform, UnifiedBenchmarkConfig, UnifiedBenchmarkResult,
         UnifiedQuantumBenchmarkSystem,
+    };
+    pub use crate::unified_error_handling::{
+        ErrorCategory, ErrorSeverity, RecoveryStrategy, UnifiedDeviceError, UnifiedErrorContext,
+        UnifiedErrorHandler, UnifiedRetryConfig,
     };
     pub use crate::vqa_support::{
         analysis::ConvergenceAnalysis,
@@ -669,9 +769,5 @@ pub mod prelude {
     pub use crate::zero_noise_extrapolation::{
         CircuitFolder, ExtrapolationFitter, ExtrapolationMethod, NoiseScalingMethod, Observable,
         ZNECapable, ZNEConfig, ZNEExecutor, ZNEResult,
-    };
-    pub use crate::unified_error_handling::{
-        ErrorCategory, ErrorSeverity, RecoveryStrategy, UnifiedRetryConfig, UnifiedDeviceError,
-        UnifiedErrorContext, UnifiedErrorHandler,
     };
 }

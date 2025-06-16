@@ -166,7 +166,9 @@ impl CudaKernel {
                     Some(handle),
                 )?;
             } else {
-                return Err(SimulatorError::InvalidState("CUDA stream not initialized".to_string()));
+                return Err(SimulatorError::InvalidState(
+                    "CUDA stream not initialized".to_string(),
+                ));
             }
         } else {
             return Err(SimulatorError::UnsupportedOperation(format!(

@@ -260,7 +260,7 @@ pub async fn create_photonic_device(
     client: PhotonicClient,
     config: PhotonicDeviceConfig,
 ) -> DeviceResult<impl PhotonicQuantumDevice> {
-    PhotonicQuantumDeviceImpl::new(client, config).await
+    PhotonicQuantumDeviceImpl::new("default_photonic_device".to_string(), client, config).await
 }
 
 /// Validate photonic device configuration
@@ -313,57 +313,57 @@ pub mod gates {
     /// Displacement gate parameters
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct DisplacementGate {
-        pub alpha: f64,      // Displacement amplitude
-        pub phi: f64,        // Displacement phase
-        pub mode: usize,     // Target mode
+        pub alpha: f64,  // Displacement amplitude
+        pub phi: f64,    // Displacement phase
+        pub mode: usize, // Target mode
     }
 
     /// Squeezing gate parameters
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct SqueezingGate {
-        pub r: f64,          // Squeezing parameter
-        pub phi: f64,        // Squeezing angle
-        pub mode: usize,     // Target mode
+        pub r: f64,      // Squeezing parameter
+        pub phi: f64,    // Squeezing angle
+        pub mode: usize, // Target mode
     }
 
     /// Two-mode squeezing gate parameters
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct TwoModeSqueezingGate {
-        pub r: f64,          // Squeezing parameter
-        pub phi: f64,        // Squeezing phase
-        pub mode1: usize,    // First mode
-        pub mode2: usize,    // Second mode
+        pub r: f64,       // Squeezing parameter
+        pub phi: f64,     // Squeezing phase
+        pub mode1: usize, // First mode
+        pub mode2: usize, // Second mode
     }
 
     /// Beamsplitter gate parameters
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct BeamsplitterGate {
-        pub theta: f64,      // Transmission angle
-        pub phi: f64,        // Phase
-        pub mode1: usize,    // First mode
-        pub mode2: usize,    // Second mode
+        pub theta: f64,   // Transmission angle
+        pub phi: f64,     // Phase
+        pub mode1: usize, // First mode
+        pub mode2: usize, // Second mode
     }
 
     /// Phase rotation gate parameters
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct PhaseRotationGate {
-        pub phi: f64,        // Rotation angle
-        pub mode: usize,     // Target mode
+        pub phi: f64,    // Rotation angle
+        pub mode: usize, // Target mode
     }
 
     /// Kerr gate parameters (non-linear)
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct KerrGate {
-        pub kappa: f64,      // Kerr parameter
-        pub mode: usize,     // Target mode
+        pub kappa: f64,  // Kerr parameter
+        pub mode: usize, // Target mode
     }
 
     /// Cross-Kerr gate parameters
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct CrossKerrGate {
-        pub kappa: f64,      // Cross-Kerr parameter
-        pub mode1: usize,    // First mode
-        pub mode2: usize,    // Second mode
+        pub kappa: f64,   // Cross-Kerr parameter
+        pub mode1: usize, // First mode
+        pub mode2: usize, // Second mode
     }
 }
 

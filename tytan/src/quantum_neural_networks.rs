@@ -4,13 +4,11 @@
 //! quantum annealing problems, featuring hybrid quantum-classical architectures
 //! and adaptive learning algorithms.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use crate::QuboFormulation;
-use ndarray::{s, Array, Array1, Array2, Array3, ArrayD, Axis, Zip};
+use crate::sampler::SamplerError;
+use ndarray::{s, Array1, Array2};
 use rand::{prelude::*, thread_rng};
 use std::collections::HashMap;
 use std::f64::consts::PI;
-use std::sync::{Arc, Mutex};
 
 /// Quantum Neural Network for optimization problems
 pub struct QuantumNeuralNetwork {

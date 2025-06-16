@@ -1,7 +1,7 @@
 //! Energy analysis functionality for the solution debugger.
 
 use ndarray::Array2;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::collections::HashMap;
 
 /// Energy analyzer

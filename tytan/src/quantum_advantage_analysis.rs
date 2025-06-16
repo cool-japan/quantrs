@@ -3,7 +3,7 @@
 //! This module provides tools to analyze when quantum optimization approaches
 //! provide theoretical and practical advantages over classical methods.
 
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -66,7 +66,9 @@ impl Default for AnalysisConfig {
                 NoiseModel::None,
                 NoiseModel::Depolarizing { rate: 0.001 },
                 NoiseModel::AmplitudeDamping { rate: 0.01 },
-                NoiseModel::Realistic { decoherence_time: Duration::from_micros(100) },
+                NoiseModel::Realistic {
+                    decoherence_time: Duration::from_micros(100),
+                },
             ],
         }
     }
@@ -580,11 +582,8 @@ impl QuantumAdvantageAnalyzer {
         )?;
 
         // Perform threshold analysis
-        let threshold_analysis = self.analyze_thresholds(
-            &classical_performance,
-            &quantum_performance,
-            &problem_chars,
-        )?;
+        let threshold_analysis =
+            self.analyze_thresholds(&classical_performance, &quantum_performance, &problem_chars)?;
 
         // Generate recommendations
         let recommendations = self.generate_recommendations(
@@ -611,7 +610,7 @@ impl QuantumAdvantageAnalyzer {
         metadata: Option<ProblemMetadata>,
     ) -> Result<ProblemCharacteristics, String> {
         let num_variables = qubo.shape()[0];
-        
+
         // Calculate density
         let non_zero_count = qubo.iter().filter(|&&x| x.abs() > 1e-10).count();
         let density = non_zero_count as f64 / (num_variables * num_variables) as f64;
@@ -658,7 +657,7 @@ impl QuantumAdvantageAnalyzer {
         }
 
         let avg_degree = degree_sum as f64 / n as f64;
-        
+
         // Determine connectivity type based on density and structure
         if edge_count == n * (n - 1) / 2 {
             Ok(ConnectivityStructure::FullyConnected)
@@ -669,10 +668,7 @@ impl QuantumAdvantageAnalyzer {
             let expected_grid_degree = 4.0; // For 2D grid
             if (avg_degree - expected_grid_degree).abs() < 1.0 {
                 Ok(ConnectivityStructure::Grid {
-                    dimensions: vec![
-                        (n as f64).sqrt() as usize,
-                        (n as f64).sqrt() as usize,
-                    ],
+                    dimensions: vec![(n as f64).sqrt() as usize, (n as f64).sqrt() as usize],
                 })
             } else {
                 Ok(ConnectivityStructure::Sparse { avg_degree })
@@ -681,9 +677,12 @@ impl QuantumAdvantageAnalyzer {
     }
 
     /// Compute hardness indicators for the problem
-    fn compute_hardness_indicators(&self, qubo: &Array2<f64>) -> Result<HardnessIndicators, String> {
+    fn compute_hardness_indicators(
+        &self,
+        qubo: &Array2<f64>,
+    ) -> Result<HardnessIndicators, String> {
         let n = qubo.shape()[0];
-        
+
         // Estimate complexity class based on structure
         let complexity_class = if n < 100 {
             ComplexityClass::P
@@ -693,7 +692,7 @@ impl QuantumAdvantageAnalyzer {
 
         // Compute difficulty metrics
         let mut difficulty_metrics = HashMap::new();
-        
+
         // Compute coefficient variance as a measure of heterogeneity
         let coeffs: Vec<f64> = qubo.iter().cloned().collect();
         let mean = coeffs.iter().sum::<f64>() / coeffs.len() as f64;
@@ -702,7 +701,11 @@ impl QuantumAdvantageAnalyzer {
 
         // Compute spectral gap estimate (simplified)
         let max_coeff = coeffs.iter().map(|x| x.abs()).fold(0.0, f64::max);
-        let min_coeff = coeffs.iter().map(|x| x.abs()).filter(|&x| x > 1e-10).fold(f64::INFINITY, f64::min);
+        let min_coeff = coeffs
+            .iter()
+            .map(|x| x.abs())
+            .filter(|&x| x > 1e-10)
+            .fold(f64::INFINITY, f64::min);
         if min_coeff.is_finite() {
             difficulty_metrics.insert("dynamic_range".to_string(), max_coeff / min_coeff);
         }
@@ -710,7 +713,7 @@ impl QuantumAdvantageAnalyzer {
         // Frustration measure (simplified)
         let mut frustration = 0.0;
         for i in 0..n {
-            for j in i+1..n {
+            for j in i + 1..n {
                 if qubo[[i, j]] > 0.0 {
                     frustration += qubo[[i, j]];
                 }
@@ -765,36 +768,46 @@ impl QuantumAdvantageAnalyzer {
         let mut break_even_points = HashMap::new();
 
         // Find best classical performance
-        let best_classical = classical_perf
-            .values()
-            .min_by(|a, b| {
-                a.time_complexity.average_case.partial_cmp(&b.time_complexity.average_case)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            });
+        let best_classical = classical_perf.values().min_by(|a, b| {
+            a.time_complexity
+                .average_case
+                .partial_cmp(&b.time_complexity.average_case)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Find best quantum performance
-        let best_quantum = quantum_perf
-            .values()
-            .min_by(|a, b| {
-                a.base_metrics.time_complexity.average_case
-                    .partial_cmp(&b.base_metrics.time_complexity.average_case)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            });
+        let best_quantum = quantum_perf.values().min_by(|a, b| {
+            a.base_metrics
+                .time_complexity
+                .average_case
+                .partial_cmp(&b.base_metrics.time_complexity.average_case)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
-        let has_quantum_advantage = if let (Some(classical), Some(quantum)) = (best_classical, best_quantum) {
+        let has_quantum_advantage = if let (Some(classical), Some(quantum)) =
+            (best_classical, best_quantum)
+        {
             // Simplified advantage analysis based on success probability and scaling
             let classical_quality = classical.solution_quality.approximation_ratio;
             let quantum_quality = quantum.base_metrics.solution_quality.approximation_ratio;
-            
+
             advantage_factors.insert("quality".to_string(), quantum_quality / classical_quality);
-            
+
             let classical_success = classical.success_probability;
             let quantum_success = quantum.base_metrics.success_probability;
-            
-            advantage_factors.insert("success_rate".to_string(), quantum_success / classical_success);
+
+            advantage_factors.insert(
+                "success_rate".to_string(),
+                quantum_success / classical_success,
+            );
 
             // Consider noise effects
-            if quantum.noise_sensitivity.error_thresholds.values().any(|&x| x < 0.01) {
+            if quantum
+                .noise_sensitivity
+                .error_thresholds
+                .values()
+                .any(|&x| x < 0.01)
+            {
                 conditional_advantages.push(ConditionalAdvantage {
                     conditions: vec!["Low noise environment".to_string()],
                     advantage_magnitude: 2.0,
@@ -841,12 +854,17 @@ impl QuantumAdvantageAnalyzer {
         } else {
             100 // Quantum advantage may exist for larger problems
         };
-        
+
         size_thresholds.insert("general".to_string(), estimated_threshold);
 
         // Noise thresholds
         for (alg, perf) in quantum_perf {
-            if let Some(min_threshold) = perf.noise_sensitivity.error_thresholds.values().min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)) {
+            if let Some(min_threshold) = perf
+                .noise_sensitivity
+                .error_thresholds
+                .values()
+                .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            {
                 noise_thresholds.insert(format!("{:?}", alg), *min_threshold);
             }
         }
@@ -864,8 +882,14 @@ impl QuantumAdvantageAnalyzer {
         }
 
         // Time to advantage (simplified projection)
-        time_to_advantage.insert("conservative".to_string(), Duration::from_secs(365 * 24 * 3600 * 5)); // 5 years
-        time_to_advantage.insert("optimistic".to_string(), Duration::from_secs(365 * 24 * 3600 * 2)); // 2 years
+        time_to_advantage.insert(
+            "conservative".to_string(),
+            Duration::from_secs(365 * 24 * 3600 * 5),
+        ); // 5 years
+        time_to_advantage.insert(
+            "optimistic".to_string(),
+            Duration::from_secs(365 * 24 * 3600 * 2),
+        ); // 2 years
 
         Ok(ThresholdAnalysis {
             size_thresholds,
@@ -886,29 +910,35 @@ impl QuantumAdvantageAnalyzer {
         let mut recommendations = Vec::new();
 
         // Find best classical algorithm
-        if let Some((best_classical_alg, best_classical_perf)) = classical_perf
-            .iter()
-            .max_by(|a, b| a.1.solution_quality.approximation_ratio
-                .partial_cmp(&b.1.solution_quality.approximation_ratio)
-                .unwrap_or(std::cmp::Ordering::Equal))
+        if let Some((best_classical_alg, best_classical_perf)) =
+            classical_perf.iter().max_by(|a, b| {
+                a.1.solution_quality
+                    .approximation_ratio
+                    .partial_cmp(&b.1.solution_quality.approximation_ratio)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
         {
             recommendations.push(AlgorithmRecommendation {
                 algorithm: format!("{:?}", best_classical_alg),
                 algorithm_type: AlgorithmType::Classical,
                 confidence: 0.8,
                 expected_performance: best_classical_perf.clone(),
-                justification: "Best performing classical algorithm for this problem type".to_string(),
+                justification: "Best performing classical algorithm for this problem type"
+                    .to_string(),
                 alternatives: classical_perf.keys().map(|k| format!("{:?}", k)).collect(),
             });
         }
 
         // Find best quantum algorithm if quantum advantage exists
         if advantage_analysis.has_quantum_advantage {
-            if let Some((best_quantum_alg, best_quantum_perf)) = quantum_perf
-                .iter()
-                .max_by(|a, b| a.1.base_metrics.solution_quality.approximation_ratio
-                    .partial_cmp(&b.1.base_metrics.solution_quality.approximation_ratio)
-                    .unwrap_or(std::cmp::Ordering::Equal))
+            if let Some((best_quantum_alg, best_quantum_perf)) =
+                quantum_perf.iter().max_by(|a, b| {
+                    a.1.base_metrics
+                        .solution_quality
+                        .approximation_ratio
+                        .partial_cmp(&b.1.base_metrics.solution_quality.approximation_ratio)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
             {
                 recommendations.push(AlgorithmRecommendation {
                     algorithm: format!("{:?}", best_quantum_alg),
@@ -951,7 +981,8 @@ impl QuantumAdvantageAnalyzer {
                         fit_quality: 0.85,
                     },
                 },
-                justification: "Hybrid approaches often perform well for large-scale problems".to_string(),
+                justification: "Hybrid approaches often perform well for large-scale problems"
+                    .to_string(),
                 alternatives: vec!["Pure classical".to_string(), "Pure quantum".to_string()],
             });
         }
@@ -971,10 +1002,8 @@ impl QuantumAdvantageAnalyzer {
         format: ExportFormat,
     ) -> Result<String, String> {
         match format {
-            ExportFormat::JSON => {
-                serde_json::to_string_pretty(results)
-                    .map_err(|e| format!("JSON export failed: {}", e))
-            }
+            ExportFormat::JSON => serde_json::to_string_pretty(results)
+                .map_err(|e| format!("JSON export failed: {}", e)),
             ExportFormat::Python => {
                 // Generate Python code for visualization and further analysis
                 Ok(self.generate_python_analysis_code(results))
@@ -1065,7 +1094,7 @@ impl ClassicalComplexityEstimator {
 
     fn build_complexity_database() -> HashMap<String, ComplexityInfo> {
         let mut db = HashMap::new();
-        
+
         // Add known complexity results for common problems
         db.insert(
             "max_cut".to_string(),
@@ -1114,11 +1143,15 @@ impl ClassicalComplexityEstimator {
     ) -> Result<PerformanceMetrics, String> {
         // Simplified performance estimation based on algorithm type and problem characteristics
         let base_complexity = match algorithm {
-            ClassicalAlgorithm::SimulatedAnnealing => ComplexityFunction::Polynomial { degree: 2.0 },
+            ClassicalAlgorithm::SimulatedAnnealing => {
+                ComplexityFunction::Polynomial { degree: 2.0 }
+            }
             ClassicalAlgorithm::TabuSearch => ComplexityFunction::Polynomial { degree: 2.5 },
             ClassicalAlgorithm::GeneticAlgorithm => ComplexityFunction::Polynomial { degree: 3.0 },
             ClassicalAlgorithm::BranchAndBound => ComplexityFunction::Exponential { base: 2.0 },
-            ClassicalAlgorithm::ConstraintProgramming => ComplexityFunction::Exponential { base: 1.5 },
+            ClassicalAlgorithm::ConstraintProgramming => {
+                ComplexityFunction::Exponential { base: 1.5 }
+            }
             ClassicalAlgorithm::LinearProgramming => ComplexityFunction::Polynomial { degree: 3.5 },
             ClassicalAlgorithm::SDP => ComplexityFunction::Polynomial { degree: 4.0 },
         };
@@ -1140,7 +1173,7 @@ impl ClassicalComplexityEstimator {
             ClassicalAlgorithm::BranchAndBound => 1.0, // Exact for small instances
             ClassicalAlgorithm::ConstraintProgramming => 0.95,
             ClassicalAlgorithm::LinearProgramming => 0.99, // If problem is relaxable
-            ClassicalAlgorithm::SDP => 0.878, // For Max-Cut
+            ClassicalAlgorithm::SDP => 0.878,              // For Max-Cut
         };
 
         Ok(PerformanceMetrics {
@@ -1156,7 +1189,11 @@ impl ClassicalComplexityEstimator {
             solution_quality: QualityMetrics {
                 approximation_ratio,
                 solution_variance: 0.1,
-                optimal_probability: if matches!(algorithm, ClassicalAlgorithm::BranchAndBound) { 1.0 } else { 0.1 },
+                optimal_probability: if matches!(algorithm, ClassicalAlgorithm::BranchAndBound) {
+                    1.0
+                } else {
+                    0.1
+                },
                 energy_gap: 0.05,
             },
             success_probability: 0.9,
@@ -1180,7 +1217,7 @@ impl QuantumResourceEstimator {
 
     fn build_algorithm_database() -> HashMap<String, QuantumAlgorithmInfo> {
         let mut db = HashMap::new();
-        
+
         // Add quantum algorithm information
         db.insert(
             "QAOA".to_string(),
@@ -1193,8 +1230,12 @@ impl QuantumResourceEstimator {
                     temperature_requirements: Some(0.01), // Kelvin
                 },
                 performance_model: QuantumPerformanceModel {
-                    time_to_solution: Box::new(|n| Duration::from_millis((n as f64 * n as f64 * 0.1) as u64)),
-                    success_probability: Box::new(|n, error_rate| (1.0 - error_rate).powf(n as f64)),
+                    time_to_solution: Box::new(|n| {
+                        Duration::from_millis((n as f64 * n as f64 * 0.1) as u64)
+                    }),
+                    success_probability: Box::new(|n, error_rate| {
+                        (1.0 - error_rate).powf(n as f64)
+                    }),
                     resource_scaling: ScalingBehavior {
                         scaling_exponent: 1.0,
                         scaling_constant: 1.0,
@@ -1214,9 +1255,14 @@ impl QuantumResourceEstimator {
                 },
                 theoretical_advantage: Some(AdvantageEstimate {
                     speedup_factor: 1.5,
-                    advantage_type: AdvantageType::Polynomial { degree_reduction: 0.5 },
+                    advantage_type: AdvantageType::Polynomial {
+                        degree_reduction: 0.5,
+                    },
                     confidence_level: 0.7,
-                    conditions: vec!["Low noise".to_string(), "Sufficient circuit depth".to_string()],
+                    conditions: vec![
+                        "Low noise".to_string(),
+                        "Sufficient circuit depth".to_string(),
+                    ],
                 }),
             },
         );
@@ -1226,7 +1272,7 @@ impl QuantumResourceEstimator {
 
     fn build_hardware_database() -> HashMap<String, HardwareCharacteristics> {
         let mut db = HashMap::new();
-        
+
         // Add hardware characteristics
         db.insert(
             "ideal_quantum".to_string(),
@@ -1285,7 +1331,7 @@ impl QuantumResourceEstimator {
 
         let circuit_depth = match algorithm {
             QuantumAlgorithm::QuantumAnnealing => 1, // Continuous evolution
-            QuantumAlgorithm::QAOA => 10, // Typical QAOA depth
+            QuantumAlgorithm::QAOA => 10,            // Typical QAOA depth
             QuantumAlgorithm::VQE => 50,
             QuantumAlgorithm::QFAST => 100,
             QuantumAlgorithm::QuantumWalk => 20,
@@ -1375,7 +1421,7 @@ impl QuantumSupremacyBenchmarker {
         config: &AnalysisConfig,
     ) -> Result<SupremacyBenchmarkResult, String> {
         let mut results = Vec::new();
-        
+
         for size in (config.problem_size_range.0..=config.problem_size_range.1).step_by(50) {
             let benchmark_result = self.run_size_benchmark(size, config)?;
             results.push(benchmark_result);
@@ -1403,7 +1449,10 @@ impl QuantumSupremacyBenchmarker {
         })
     }
 
-    fn generate_summary(&self, results: &[SizeBenchmarkResult]) -> Result<BenchmarkSummary, String> {
+    fn generate_summary(
+        &self,
+        results: &[SizeBenchmarkResult],
+    ) -> Result<BenchmarkSummary, String> {
         let advantage_threshold = results
             .iter()
             .find(|r| r.advantage_detected)
@@ -1415,7 +1464,7 @@ impl QuantumSupremacyBenchmarker {
             advantage_threshold,
             confidence_level: 0.8,
             recommendations: vec![
-                "Quantum advantage likely for problems > 100 variables".to_string(),
+                "Quantum advantage likely for problems > 100 variables".to_string()
             ],
         })
     }

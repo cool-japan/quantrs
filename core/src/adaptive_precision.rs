@@ -7,7 +7,6 @@
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
-    qubit::QubitId,
 };
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
@@ -131,10 +130,10 @@ pub enum ErrorTrend {
 pub trait ErrorEstimator: Send + Sync + std::fmt::Debug {
     /// Estimate the numerical error in a computation
     fn estimate_error(&self, result: &AdaptiveResult, reference: Option<&AdaptiveResult>) -> f64;
-    
+
     /// Get the name of this error estimator
     fn name(&self) -> &str;
-    
+
     /// Check if this estimator is applicable to the given computation
     fn is_applicable(&self, computation_type: ComputationType) -> bool;
 }
@@ -183,23 +182,27 @@ impl AdaptivePrecisionSimulator {
     }
 
     /// Execute a computation with adaptive precision
-    pub fn execute_adaptive<F, R>(&mut self, computation: F, comp_type: ComputationType) -> QuantRS2Result<AdaptiveResult>
+    pub fn execute_adaptive<F, R>(
+        &mut self,
+        computation: F,
+        comp_type: ComputationType,
+    ) -> QuantRS2Result<AdaptiveResult>
     where
         F: FnOnce(PrecisionMode) -> QuantRS2Result<R>,
         R: Into<Complex64>,
     {
         let start_time = Instant::now();
-        
+
         // Execute computation with current precision
         let result = computation(self.current_precision)?;
         let computation_time = start_time.elapsed();
-        
+
         // Convert result
         let value = result.into();
-        
+
         // Estimate error
         let estimated_error = self.estimate_computation_error(&value, comp_type)?;
-        
+
         // Create adaptive result
         let adaptive_result = AdaptiveResult {
             value,
@@ -211,7 +214,7 @@ impl AdaptivePrecisionSimulator {
 
         // Update monitoring
         self.update_monitoring(&adaptive_result, comp_type)?;
-        
+
         // Check if adaptation is needed
         if self.should_adapt()? {
             self.adapt_precision(comp_type)?;
@@ -222,75 +225,89 @@ impl AdaptivePrecisionSimulator {
     }
 
     /// Apply a gate with adaptive precision
-    pub fn apply_gate_adaptive(&mut self, gate: &dyn GateOp, state: &mut Array1<Complex64>) -> QuantRS2Result<AdaptiveResult> {
-        let matrix = gate.matrix()?;
-        let current_precision = self.current_precision;
-        
-        self.execute_adaptive(move |precision| {
-            // Simulate gate application with different precisions
-            let result = match precision {
-                PrecisionMode::Single => {
-                    // Single precision simulation
-                    std::thread::sleep(Duration::from_micros(10));
-                    Ok::<f64, QuantRS2Error>(1.0)
-                }
-                PrecisionMode::Double => {
-                    // Double precision simulation
-                    std::thread::sleep(Duration::from_micros(20));
-                    Ok::<f64, QuantRS2Error>(1.0)
-                }
-                PrecisionMode::Extended => {
-                    // Extended precision simulation
-                    std::thread::sleep(Duration::from_micros(40));
-                    Ok::<f64, QuantRS2Error>(1.0)
-                }
-                PrecisionMode::Arbitrary(bits) => {
-                    // Arbitrary precision simulation
-                    let delay = (bits as u64 / 32) * 50;
-                    std::thread::sleep(Duration::from_micros(delay));
-                    Ok::<f64, QuantRS2Error>(1.0)
-                }
-                PrecisionMode::Adaptive => {
-                    // Use current best precision
-                    std::thread::sleep(Duration::from_micros(20));
-                    Ok::<f64, QuantRS2Error>(1.0)
-                }
-            };
-            let result = result?;
+    pub fn apply_gate_adaptive(
+        &mut self,
+        gate: &dyn GateOp,
+        _state: &mut Array1<Complex64>,
+    ) -> QuantRS2Result<AdaptiveResult> {
+        let _matrix = gate.matrix()?;
+        let _current_precision = self.current_precision;
 
-            Ok(result)
-        }, ComputationType::StateEvolution)
+        self.execute_adaptive(
+            move |precision| {
+                // Simulate gate application with different precisions
+                let result = match precision {
+                    PrecisionMode::Single => {
+                        // Single precision simulation
+                        std::thread::sleep(Duration::from_micros(10));
+                        Ok::<f64, QuantRS2Error>(1.0)
+                    }
+                    PrecisionMode::Double => {
+                        // Double precision simulation
+                        std::thread::sleep(Duration::from_micros(20));
+                        Ok::<f64, QuantRS2Error>(1.0)
+                    }
+                    PrecisionMode::Extended => {
+                        // Extended precision simulation
+                        std::thread::sleep(Duration::from_micros(40));
+                        Ok::<f64, QuantRS2Error>(1.0)
+                    }
+                    PrecisionMode::Arbitrary(bits) => {
+                        // Arbitrary precision simulation
+                        let delay = (bits as u64 / 32) * 50;
+                        std::thread::sleep(Duration::from_micros(delay));
+                        Ok::<f64, QuantRS2Error>(1.0)
+                    }
+                    PrecisionMode::Adaptive => {
+                        // Use current best precision
+                        std::thread::sleep(Duration::from_micros(20));
+                        Ok::<f64, QuantRS2Error>(1.0)
+                    }
+                };
+                let result = result?;
+
+                Ok(result)
+            },
+            ComputationType::StateEvolution,
+        )
     }
 
     /// Compute expectation value with adaptive precision
-    pub fn expectation_value_adaptive(&mut self, observable: &Array2<Complex64>, state: &Array1<Complex64>) -> QuantRS2Result<AdaptiveResult> {
-        self.execute_adaptive(|precision| {
-            let result = match precision {
-                PrecisionMode::Single => {
-                    std::thread::sleep(Duration::from_micros(15));
-                    Complex64::new(0.5, 0.0)
-                }
-                PrecisionMode::Double => {
-                    std::thread::sleep(Duration::from_micros(30));
-                    Complex64::new(0.5, 0.0)
-                }
-                PrecisionMode::Extended => {
-                    std::thread::sleep(Duration::from_micros(60));
-                    Complex64::new(0.5, 0.0)
-                }
-                PrecisionMode::Arbitrary(bits) => {
-                    let delay = (bits as u64 / 32) * 75;
-                    std::thread::sleep(Duration::from_micros(delay));
-                    Complex64::new(0.5, 0.0)
-                }
-                PrecisionMode::Adaptive => {
-                    std::thread::sleep(Duration::from_micros(30));
-                    Complex64::new(0.5, 0.0)
-                }
-            };
+    pub fn expectation_value_adaptive(
+        &mut self,
+        _observable: &Array2<Complex64>,
+        _state: &Array1<Complex64>,
+    ) -> QuantRS2Result<AdaptiveResult> {
+        self.execute_adaptive(
+            |precision| {
+                let result = match precision {
+                    PrecisionMode::Single => {
+                        std::thread::sleep(Duration::from_micros(15));
+                        Complex64::new(0.5, 0.0)
+                    }
+                    PrecisionMode::Double => {
+                        std::thread::sleep(Duration::from_micros(30));
+                        Complex64::new(0.5, 0.0)
+                    }
+                    PrecisionMode::Extended => {
+                        std::thread::sleep(Duration::from_micros(60));
+                        Complex64::new(0.5, 0.0)
+                    }
+                    PrecisionMode::Arbitrary(bits) => {
+                        let delay = (bits as u64 / 32) * 75;
+                        std::thread::sleep(Duration::from_micros(delay));
+                        Complex64::new(0.5, 0.0)
+                    }
+                    PrecisionMode::Adaptive => {
+                        std::thread::sleep(Duration::from_micros(30));
+                        Complex64::new(0.5, 0.0)
+                    }
+                };
 
-            Ok(result)
-        }, ComputationType::ExpectationValue)
+                Ok(result)
+            },
+            ComputationType::ExpectationValue,
+        )
     }
 
     /// Get current precision mode
@@ -321,9 +338,13 @@ impl AdaptivePrecisionSimulator {
 
     // Private helper methods
 
-    fn estimate_computation_error(&self, _result: &Complex64, _comp_type: ComputationType) -> QuantRS2Result<f64> {
+    fn estimate_computation_error(
+        &self,
+        _result: &Complex64,
+        _comp_type: ComputationType,
+    ) -> QuantRS2Result<f64> {
         let error_monitor = self.error_monitor.read().unwrap();
-        
+
         // Use the most recent error estimate, or a default
         Ok(error_monitor.error_history.last().copied().unwrap_or(1e-15))
     }
@@ -351,7 +372,11 @@ impl AdaptivePrecisionSimulator {
         (base_memory as f64 * precision_multiplier) as usize
     }
 
-    fn update_monitoring(&mut self, result: &AdaptiveResult, _comp_type: ComputationType) -> QuantRS2Result<()> {
+    fn update_monitoring(
+        &mut self,
+        result: &AdaptiveResult,
+        _comp_type: ComputationType,
+    ) -> QuantRS2Result<()> {
         // Update error monitoring
         {
             let mut error_monitor = self.error_monitor.write().unwrap();
@@ -362,7 +387,10 @@ impl AdaptivePrecisionSimulator {
         // Update performance monitoring
         {
             let mut perf_monitor = self.performance_monitor.write().unwrap();
-            perf_monitor.add_timing_sample(result.precision, result.computation_time.as_secs_f64() * 1000.0);
+            perf_monitor.add_timing_sample(
+                result.precision,
+                result.computation_time.as_secs_f64() * 1000.0,
+            );
             perf_monitor.add_memory_sample(result.precision, result.memory_used);
             perf_monitor.update_current_performance(result);
         }
@@ -410,8 +438,9 @@ impl AdaptivePrecisionSimulator {
         let new_precision = if current_error > self.config.max_error_threshold {
             // Error too high, increase precision
             self.increase_precision(self.current_precision)
-        } else if current_error < self.config.target_accuracy / 10.0 && 
-                  matches!(error_trend, ErrorTrend::Stable | ErrorTrend::Decreasing) {
+        } else if current_error < self.config.target_accuracy / 10.0
+            && matches!(error_trend, ErrorTrend::Stable | ErrorTrend::Decreasing)
+        {
             // Error low and stable, can decrease precision
             self.decrease_precision(self.current_precision)
         } else {
@@ -420,11 +449,14 @@ impl AdaptivePrecisionSimulator {
         };
 
         // Consider performance factors
-        let final_precision = self.consider_performance_factors(new_precision, &perf_monitor, comp_type);
+        let final_precision =
+            self.consider_performance_factors(new_precision, &perf_monitor, comp_type);
 
         if final_precision != self.current_precision {
-            println!("Adapting precision from {:?} to {:?} (error: {:.2e})", 
-                     self.current_precision, final_precision, current_error);
+            println!(
+                "Adapting precision from {:?} to {:?} (error: {:.2e})",
+                self.current_precision, final_precision, current_error
+            );
             self.current_precision = final_precision;
             self.last_adaptation = Instant::now();
         }
@@ -452,7 +484,12 @@ impl AdaptivePrecisionSimulator {
         }
     }
 
-    fn consider_performance_factors(&self, suggested: PrecisionMode, _perf_monitor: &PrecisionPerformanceMonitor, _comp_type: ComputationType) -> PrecisionMode {
+    fn consider_performance_factors(
+        &self,
+        suggested: PrecisionMode,
+        _perf_monitor: &PrecisionPerformanceMonitor,
+        _comp_type: ComputationType,
+    ) -> PrecisionMode {
         // Simple performance consideration - in a real implementation,
         // this would analyze timing data and make performance-aware decisions
         suggested
@@ -472,47 +509,81 @@ impl AdaptivePrecisionSimulator {
 
     // Precision-specific computation methods
 
-    fn apply_gate_single_precision(&self, matrix: &[Complex64], state: &mut Array1<Complex64>) -> QuantRS2Result<f64> {
+    fn apply_gate_single_precision(
+        &self,
+        _matrix: &[Complex64],
+        _state: &mut Array1<Complex64>,
+    ) -> QuantRS2Result<f64> {
         // Simulate single precision computation
         std::thread::sleep(Duration::from_micros(10)); // Faster
         Ok(1.0)
     }
 
-    fn apply_gate_double_precision(&self, matrix: &[Complex64], state: &mut Array1<Complex64>) -> QuantRS2Result<f64> {
+    fn apply_gate_double_precision(
+        &self,
+        _matrix: &[Complex64],
+        _state: &mut Array1<Complex64>,
+    ) -> QuantRS2Result<f64> {
         // Standard double precision computation
         std::thread::sleep(Duration::from_micros(20)); // Standard speed
         Ok(1.0)
     }
 
-    fn apply_gate_extended_precision(&self, matrix: &[Complex64], state: &mut Array1<Complex64>) -> QuantRS2Result<f64> {
+    fn apply_gate_extended_precision(
+        &self,
+        _matrix: &[Complex64],
+        _state: &mut Array1<Complex64>,
+    ) -> QuantRS2Result<f64> {
         // Extended precision computation
         std::thread::sleep(Duration::from_micros(40)); // Slower
         Ok(1.0)
     }
 
-    fn apply_gate_arbitrary_precision(&self, matrix: &[Complex64], state: &mut Array1<Complex64>, bits: u32) -> QuantRS2Result<f64> {
+    fn apply_gate_arbitrary_precision(
+        &self,
+        _matrix: &[Complex64],
+        _state: &mut Array1<Complex64>,
+        bits: u32,
+    ) -> QuantRS2Result<f64> {
         // Arbitrary precision computation
         let delay = (bits as u64 / 32) * 50; // Scales with precision
         std::thread::sleep(Duration::from_micros(delay));
         Ok(1.0)
     }
 
-    fn expectation_value_single_precision(&self, _observable: &Array2<Complex64>, _state: &Array1<Complex64>) -> QuantRS2Result<Complex64> {
+    fn expectation_value_single_precision(
+        &self,
+        _observable: &Array2<Complex64>,
+        _state: &Array1<Complex64>,
+    ) -> QuantRS2Result<Complex64> {
         std::thread::sleep(Duration::from_micros(15));
         Ok(Complex64::new(0.5, 0.0))
     }
 
-    fn expectation_value_double_precision(&self, _observable: &Array2<Complex64>, _state: &Array1<Complex64>) -> QuantRS2Result<Complex64> {
+    fn expectation_value_double_precision(
+        &self,
+        _observable: &Array2<Complex64>,
+        _state: &Array1<Complex64>,
+    ) -> QuantRS2Result<Complex64> {
         std::thread::sleep(Duration::from_micros(30));
         Ok(Complex64::new(0.5, 0.0))
     }
 
-    fn expectation_value_extended_precision(&self, _observable: &Array2<Complex64>, _state: &Array1<Complex64>) -> QuantRS2Result<Complex64> {
+    fn expectation_value_extended_precision(
+        &self,
+        _observable: &Array2<Complex64>,
+        _state: &Array1<Complex64>,
+    ) -> QuantRS2Result<Complex64> {
         std::thread::sleep(Duration::from_micros(60));
         Ok(Complex64::new(0.5, 0.0))
     }
 
-    fn expectation_value_arbitrary_precision(&self, _observable: &Array2<Complex64>, _state: &Array1<Complex64>, bits: u32) -> QuantRS2Result<Complex64> {
+    fn expectation_value_arbitrary_precision(
+        &self,
+        _observable: &Array2<Complex64>,
+        _state: &Array1<Complex64>,
+        bits: u32,
+    ) -> QuantRS2Result<Complex64> {
         let delay = (bits as u64 / 32) * 75;
         std::thread::sleep(Duration::from_micros(delay));
         Ok(Complex64::new(0.5, 0.0))
@@ -586,15 +657,22 @@ impl PrecisionPerformanceMonitor {
     }
 
     fn add_timing_sample(&mut self, precision: PrecisionMode, time_ms: f64) {
-        self.timing_by_precision.entry(precision).or_insert_with(Vec::new).push(time_ms);
+        self.timing_by_precision
+            .entry(precision)
+            .or_insert_with(Vec::new)
+            .push(time_ms);
     }
 
     fn add_memory_sample(&mut self, precision: PrecisionMode, memory: usize) {
-        self.memory_by_precision.entry(precision).or_insert_with(Vec::new).push(memory);
+        self.memory_by_precision
+            .entry(precision)
+            .or_insert_with(Vec::new)
+            .push(memory);
     }
 
     fn update_current_performance(&mut self, result: &AdaptiveResult) {
-        self.current_performance.operations_per_second = 1000.0 / result.computation_time.as_millis().max(1) as f64;
+        self.current_performance.operations_per_second =
+            1000.0 / result.computation_time.as_millis().max(1) as f64;
         self.current_performance.memory_usage_bytes = result.memory_used;
         self.current_performance.error_rate = result.estimated_error;
     }
@@ -630,7 +708,10 @@ impl ErrorEstimator for RichardsonExtrapolationEstimator {
     }
 
     fn is_applicable(&self, comp_type: ComputationType) -> bool {
-        matches!(comp_type, ComputationType::StateEvolution | ComputationType::ExpectationValue)
+        matches!(
+            comp_type,
+            ComputationType::StateEvolution | ComputationType::ExpectationValue
+        )
     }
 }
 
@@ -692,7 +773,10 @@ impl ErrorEstimator for ResidualBasedEstimator {
     }
 
     fn is_applicable(&self, comp_type: ComputationType) -> bool {
-        matches!(comp_type, ComputationType::MatrixMultiplication | ComputationType::EigenvalueDecomposition)
+        matches!(
+            comp_type,
+            ComputationType::MatrixMultiplication | ComputationType::EigenvalueDecomposition
+        )
     }
 }
 
@@ -722,7 +806,7 @@ impl AdaptivePrecisionFactory {
             max_error_threshold: 1e-4,
             min_precision: PrecisionMode::Single,
             max_precision: PrecisionMode::Double,
-            performance_weight: 0.8, // Prioritize performance
+            performance_weight: 0.8,  // Prioritize performance
             adaptation_interval: 100, // Adapt more frequently
             ..Default::default()
         };
@@ -789,13 +873,13 @@ impl AdaptivePrecisionFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::gate::single::Hadamard;
+    use crate::{gate::single::Hadamard, qubit::QubitId};
 
     #[test]
     fn test_adaptive_precision_simulator_creation() {
         let config = AdaptivePrecisionConfig::default();
         let simulator = AdaptivePrecisionSimulator::new(config);
-        
+
         assert_eq!(simulator.current_precision(), PrecisionMode::Double);
         assert_eq!(simulator.operation_count, 0);
     }
@@ -805,7 +889,7 @@ mod tests {
         let high_acc = AdaptivePrecisionFactory::create_high_accuracy();
         let perf_opt = AdaptivePrecisionFactory::create_performance_optimized();
         let balanced = AdaptivePrecisionFactory::create_balanced();
-        
+
         assert_eq!(high_acc.current_precision(), PrecisionMode::Double);
         assert_eq!(perf_opt.current_precision(), PrecisionMode::Single);
         assert_eq!(balanced.current_precision(), PrecisionMode::Double);
@@ -813,9 +897,11 @@ mod tests {
 
     #[test]
     fn test_computation_type_specific_creation() {
-        let state_sim = AdaptivePrecisionFactory::create_for_computation_type(ComputationType::StateEvolution);
-        let measurement_sim = AdaptivePrecisionFactory::create_for_computation_type(ComputationType::Measurement);
-        
+        let state_sim =
+            AdaptivePrecisionFactory::create_for_computation_type(ComputationType::StateEvolution);
+        let measurement_sim =
+            AdaptivePrecisionFactory::create_for_computation_type(ComputationType::Measurement);
+
         assert_eq!(state_sim.current_precision(), PrecisionMode::Double);
         assert_eq!(measurement_sim.current_precision(), PrecisionMode::Single);
     }
@@ -825,10 +911,10 @@ mod tests {
         let mut simulator = AdaptivePrecisionSimulator::new(AdaptivePrecisionConfig::default());
         let hadamard = Hadamard { target: QubitId(0) };
         let mut state = Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
-        
+
         let result = simulator.apply_gate_adaptive(&hadamard, &mut state);
         assert!(result.is_ok());
-        
+
         let adaptive_result = result.unwrap();
         assert_eq!(adaptive_result.precision, PrecisionMode::Double);
         assert!(adaptive_result.estimated_error > 0.0);
@@ -837,20 +923,23 @@ mod tests {
     #[test]
     fn test_expectation_value_adaptive() {
         let mut simulator = AdaptivePrecisionSimulator::new(AdaptivePrecisionConfig::default());
-        
+
         let observable = Array2::from_shape_vec(
             (2, 2),
             vec![
-                Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0),
-            ]
-        ).unwrap();
-        
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(-1.0, 0.0),
+            ],
+        )
+        .unwrap();
+
         let state = Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
-        
+
         let result = simulator.expectation_value_adaptive(&observable, &state);
         assert!(result.is_ok());
-        
+
         let adaptive_result = result.unwrap();
         assert_eq!(adaptive_result.value, Complex64::new(0.5, 0.0));
     }
@@ -860,9 +949,9 @@ mod tests {
         let mut config = AdaptivePrecisionConfig::default();
         config.adaptation_interval = 1; // Adapt after every operation
         config.max_error_threshold = 1e-20; // Very strict threshold
-        
+
         let mut simulator = AdaptivePrecisionSimulator::new(config);
-        
+
         // Force adaptation by setting very strict error threshold
         let result = simulator.force_adaptation(ComputationType::StateEvolution);
         assert!(result.is_ok());
@@ -873,7 +962,7 @@ mod tests {
         let richardson = RichardsonExtrapolationEstimator::new();
         let comparison = DoublePrecisionComparisonEstimator::new();
         let residual = ResidualBasedEstimator::new();
-        
+
         let result = AdaptiveResult {
             value: Complex64::new(1.0, 0.0),
             precision: PrecisionMode::Double,
@@ -881,15 +970,15 @@ mod tests {
             computation_time: Duration::from_millis(10),
             memory_used: 1024,
         };
-        
+
         assert!(richardson.is_applicable(ComputationType::StateEvolution));
         assert!(comparison.is_applicable(ComputationType::ExpectationValue));
         assert!(residual.is_applicable(ComputationType::MatrixMultiplication));
-        
+
         let error1 = richardson.estimate_error(&result, None);
         let error2 = comparison.estimate_error(&result, None);
         let error3 = residual.estimate_error(&result, None);
-        
+
         assert!(error1 > 0.0);
         assert!(error2 > 0.0);
         assert!(error3 > 0.0);
@@ -898,29 +987,47 @@ mod tests {
     #[test]
     fn test_precision_mode_transitions() {
         let simulator = AdaptivePrecisionSimulator::new(AdaptivePrecisionConfig::default());
-        
+
         // Test precision increasing
-        assert_eq!(simulator.increase_precision(PrecisionMode::Single), PrecisionMode::Double);
-        assert_eq!(simulator.increase_precision(PrecisionMode::Double), PrecisionMode::Extended);
-        assert_eq!(simulator.increase_precision(PrecisionMode::Extended), PrecisionMode::Arbitrary(128));
-        
+        assert_eq!(
+            simulator.increase_precision(PrecisionMode::Single),
+            PrecisionMode::Double
+        );
+        assert_eq!(
+            simulator.increase_precision(PrecisionMode::Double),
+            PrecisionMode::Extended
+        );
+        assert_eq!(
+            simulator.increase_precision(PrecisionMode::Extended),
+            PrecisionMode::Arbitrary(128)
+        );
+
         // Test precision decreasing
-        assert_eq!(simulator.decrease_precision(PrecisionMode::Extended), PrecisionMode::Double);
-        assert_eq!(simulator.decrease_precision(PrecisionMode::Double), PrecisionMode::Single);
-        assert_eq!(simulator.decrease_precision(PrecisionMode::Arbitrary(128)), PrecisionMode::Arbitrary(64));
+        assert_eq!(
+            simulator.decrease_precision(PrecisionMode::Extended),
+            PrecisionMode::Double
+        );
+        assert_eq!(
+            simulator.decrease_precision(PrecisionMode::Double),
+            PrecisionMode::Single
+        );
+        assert_eq!(
+            simulator.decrease_precision(PrecisionMode::Arbitrary(128)),
+            PrecisionMode::Arbitrary(64)
+        );
     }
 
     #[test]
     fn test_precision_statistics() {
         let mut simulator = AdaptivePrecisionSimulator::new(AdaptivePrecisionConfig::default());
-        
+
         // Execute some operations
         let hadamard = Hadamard { target: QubitId(0) };
         let mut state = Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
-        
+
         let _ = simulator.apply_gate_adaptive(&hadamard, &mut state);
         let _ = simulator.apply_gate_adaptive(&hadamard, &mut state);
-        
+
         let stats = simulator.get_precision_stats();
         assert_eq!(stats.current_precision, PrecisionMode::Double);
         assert_eq!(stats.operations_count, 2);
@@ -930,11 +1037,11 @@ mod tests {
     #[test]
     fn test_memory_estimation() {
         let simulator = AdaptivePrecisionSimulator::new(AdaptivePrecisionConfig::default());
-        
+
         let mem_state = simulator.estimate_memory_usage(ComputationType::StateEvolution);
         let mem_tensor = simulator.estimate_memory_usage(ComputationType::TensorContraction);
         let mem_measurement = simulator.estimate_memory_usage(ComputationType::Measurement);
-        
+
         // Tensor contraction should use more memory than state evolution
         assert!(mem_tensor > mem_state);
         // State evolution should use more memory than measurement
@@ -948,16 +1055,16 @@ mod tests {
             target_accuracy: 1e-15,
             ..Default::default()
         };
-        
+
         let perf_config = AdaptivePrecisionConfig {
             performance_weight: 0.9, // Prioritize performance
             target_accuracy: 1e-6,
             ..Default::default()
         };
-        
+
         let acc_sim = AdaptivePrecisionSimulator::new(high_acc_config);
         let perf_sim = AdaptivePrecisionSimulator::new(perf_config);
-        
+
         assert!(acc_sim.config.target_accuracy < perf_sim.config.target_accuracy);
         assert!(acc_sim.config.performance_weight < perf_sim.config.performance_weight);
     }

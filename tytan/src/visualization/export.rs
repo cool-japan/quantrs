@@ -3,8 +3,6 @@
 //! This module provides export capabilities for visualization data in various
 //! formats including JSON, CSV, and custom formats for external plotting tools.
 
-use crate::sampler::SampleResult;
-use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -421,8 +419,8 @@ impl VisualizationExporter {
     /// Similar implementations for distribution and convergence...
     fn export_plotly_distribution(
         &self,
-        data: &DistributionData,
-        path: &str,
+        _data: &DistributionData,
+        _path: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Implementation for distribution Plotly export
         Ok(())
@@ -430,8 +428,8 @@ impl VisualizationExporter {
 
     fn export_matplotlib_distribution(
         &self,
-        data: &DistributionData,
-        path: &str,
+        _data: &DistributionData,
+        _path: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Implementation for distribution Matplotlib export
         Ok(())
@@ -439,8 +437,8 @@ impl VisualizationExporter {
 
     fn export_html_distribution(
         &self,
-        data: &DistributionData,
-        path: &str,
+        _data: &DistributionData,
+        _path: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Implementation for distribution HTML export
         Ok(())
@@ -448,8 +446,8 @@ impl VisualizationExporter {
 
     fn export_plotly_convergence(
         &self,
-        data: &ConvergenceData,
-        path: &str,
+        _data: &ConvergenceData,
+        _path: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Implementation for convergence Plotly export
         Ok(())
@@ -457,8 +455,8 @@ impl VisualizationExporter {
 
     fn export_matplotlib_convergence(
         &self,
-        data: &ConvergenceData,
-        path: &str,
+        _data: &ConvergenceData,
+        _path: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Implementation for convergence Matplotlib export
         Ok(())
@@ -466,8 +464,8 @@ impl VisualizationExporter {
 
     fn export_html_convergence(
         &self,
-        data: &ConvergenceData,
-        path: &str,
+        _data: &ConvergenceData,
+        _path: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Implementation for convergence HTML export
         Ok(())

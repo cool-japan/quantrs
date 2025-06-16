@@ -676,7 +676,6 @@ pub struct ImplementationResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sampler::SASampler;
 
     #[test]
     fn test_benchmark_config() {

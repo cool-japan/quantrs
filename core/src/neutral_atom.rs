@@ -920,9 +920,11 @@ mod tests {
     fn test_atom_rearrangement() {
         let mut qc = NeutralAtomQC::new(3);
 
-        // Manually add some atoms to non-consecutive tweezers
-        let atom1 = NeutralAtom::new(AtomSpecies::Rb87, qc.tweezers[0].position);
-        let atom2 = NeutralAtom::new(AtomSpecies::Rb87, qc.tweezers[2].position);
+        // Manually add some atoms to non-consecutive tweezers with 100% loading probability
+        let mut atom1 = NeutralAtom::new(AtomSpecies::Rb87, qc.tweezers[0].position);
+        let mut atom2 = NeutralAtom::new(AtomSpecies::Rb87, qc.tweezers[2].position);
+        atom1.loading_probability = 1.0; // Ensure 100% loading success for test
+        atom2.loading_probability = 1.0; // Ensure 100% loading success for test
         qc.tweezers[0].atom = Some(atom1);
         qc.tweezers[2].atom = Some(atom2);
 
@@ -978,7 +980,7 @@ mod tests {
             assert!(qubit_id.0 < 2);
             assert!(position.x >= 0.0); // Should be at positive x coordinates
                                         // has_atom depends on loading success, so we just test the interface
-            // Test that has_atom returns a boolean value
+                                        // Test that has_atom returns a boolean value
             assert!(has_atom == true || has_atom == false);
         }
     }

@@ -4,12 +4,10 @@
 //! quantum annealing and optimization problems, featuring adaptive protocols,
 //! topological codes, and error mitigation techniques.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{s, Array, Array1, Array2, Array3, Array4, ArrayD, Axis, Zip};
-use rand::{prelude::*, thread_rng};
+use ndarray::{Array1, Array2, Array3};
+use rand::prelude::*;
+use rand::thread_rng;
 use std::collections::HashMap;
-use std::f64::consts::PI;
-use std::sync::{Arc, Mutex};
 
 /// Quantum error correction system for optimization
 pub struct QuantumErrorCorrection {

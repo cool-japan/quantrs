@@ -239,13 +239,13 @@ pub enum EnsembleStrategy {
 pub trait MitigationModel: Send + Sync {
     /// Apply mitigation to measurement results
     fn mitigate(&self, measurements: &Array1<f64>, circuit: &InterfaceCircuit) -> Result<f64>;
-    
+
     /// Update model with new data
     fn update(&mut self, training_data: &[(Array1<f64>, f64)]) -> Result<()>;
-    
+
     /// Get model confidence
     fn confidence(&self) -> f64;
-    
+
     /// Get model name
     fn name(&self) -> String;
 }
@@ -448,9 +448,8 @@ impl AdvancedMLErrorMitigator {
             let fan_out = layers[i + 1];
             let limit = (6.0 / (fan_in + fan_out) as f64).sqrt();
 
-            let w = Array2::from_shape_fn((fan_out, fan_in), |_| {
-                thread_rng().gen_range(-limit..limit)
-            });
+            let w =
+                Array2::from_shape_fn((fan_out, fan_in), |_| thread_rng().gen_range(-limit..limit));
             let b = Array1::zeros(fan_out);
 
             weights.push(w);
@@ -506,12 +505,16 @@ impl AdvancedMLErrorMitigator {
         // Gate type distribution
         let mut gate_counts = HashMap::new();
         for gate in &circuit.gates {
-            *gate_counts.entry(format!("{:?}", gate.gate_type)).or_insert(0) += 1;
+            *gate_counts
+                .entry(format!("{:?}", gate.gate_type))
+                .or_insert(0) += 1;
         }
-        
+
         // Add normalized gate counts (top 10 most common gates)
         let total_gates = circuit.gates.len() as f64;
-        for gate_type in ["PauliX", "PauliY", "PauliZ", "Hadamard", "CNOT", "CZ", "RX", "RY", "RZ", "Phase"] {
+        for gate_type in [
+            "PauliX", "PauliY", "PauliZ", "Hadamard", "CNOT", "CZ", "RX", "RY", "RZ", "Phase",
+        ] {
             let count = gate_counts.get(gate_type).unwrap_or(&0);
             features.push(*count as f64 / total_gates);
         }
@@ -530,10 +533,13 @@ impl AdvancedMLErrorMitigator {
     }
 
     /// Select optimal mitigation strategy using RL agent
-    pub fn select_mitigation_strategy(&mut self, features: &Array1<f64>) -> Result<MitigationAction> {
+    pub fn select_mitigation_strategy(
+        &mut self,
+        features: &Array1<f64>,
+    ) -> Result<MitigationAction> {
         if let Some(ref mut agent) = self.rl_agent {
             let state_key = Self::features_to_state_key(features);
-            
+
             // Epsilon-greedy action selection
             if rand::random::<f64>() < agent.exploration_rate {
                 // Random exploration
@@ -547,7 +553,7 @@ impl AdvancedMLErrorMitigator {
             } else {
                 // Greedy exploitation
                 let q_values = agent.q_table.get(&state_key).cloned().unwrap_or_default();
-                
+
                 let best_action = q_values
                     .iter()
                     .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
@@ -570,11 +576,11 @@ impl AdvancedMLErrorMitigator {
     ) -> Result<f64> {
         if let Some(ref model) = self.deep_model {
             let prediction = Self::forward_pass_static(model, features)?;
-            
+
             // Use prediction to correct measurements
             let correction_factor = prediction[0];
             let mitigated_value = measurements.mean().unwrap_or(0.0) * (1.0 + correction_factor);
-            
+
             Ok(mitigated_value)
         } else {
             Err(SimulatorError::InvalidConfiguration(
@@ -592,7 +598,7 @@ impl AdvancedMLErrorMitigator {
     ) -> Result<f64> {
         if let Some(ref ensemble) = self.ensemble {
             let mut predictions = Vec::new();
-            
+
             // Collect predictions from all models
             for model in &ensemble.models {
                 let prediction = model.mitigate(measurements, circuit)?;
@@ -644,7 +650,7 @@ impl AdvancedMLErrorMitigator {
                     .zip(measurements.iter())
                     .map(|(factor, &val)| val / factor)
                     .collect();
-                
+
                 // Linear extrapolation to zero noise
                 let extrapolated = 2.0 * values[0] - values[1];
                 Ok(extrapolated)
@@ -664,13 +670,16 @@ impl AdvancedMLErrorMitigator {
     }
 
     /// Forward pass through neural network (static)
-    fn forward_pass_static(model: &DeepMitigationNetwork, input: &Array1<f64>) -> Result<Array1<f64>> {
+    fn forward_pass_static(
+        model: &DeepMitigationNetwork,
+        input: &Array1<f64>,
+    ) -> Result<Array1<f64>> {
         let mut current = input.clone();
 
         for (weights, bias) in model.weights.iter().zip(model.biases.iter()) {
             // Linear transformation: Wx + b
             current = weights.dot(&current) + bias;
-            
+
             // Apply activation function
             current.mapv_inplace(|x| Self::apply_activation_static(x, model.activation));
         }
@@ -686,7 +695,9 @@ impl AdvancedMLErrorMitigator {
             ActivationFunction::Tanh => x.tanh(),
             ActivationFunction::Swish => x * (1.0 / (1.0 + (-x).exp())),
             ActivationFunction::GELU => {
-                0.5 * x * (1.0 + ((2.0 / std::f64::consts::PI).sqrt() * (x + 0.044715 * x.powi(3))).tanh())
+                0.5 * x
+                    * (1.0
+                        + ((2.0 / std::f64::consts::PI).sqrt() * (x + 0.044715 * x.powi(3))).tanh())
             }
         }
     }
@@ -697,7 +708,11 @@ impl AdvancedMLErrorMitigator {
     }
 
     /// Public wrapper for forward pass (for testing)
-    pub fn forward_pass(&self, model: &DeepMitigationNetwork, input: &Array1<f64>) -> Result<Array1<f64>> {
+    pub fn forward_pass(
+        &self,
+        model: &DeepMitigationNetwork,
+        input: &Array1<f64>,
+    ) -> Result<Array1<f64>> {
         Self::forward_pass_static(model, input)
     }
 
@@ -718,11 +733,15 @@ impl AdvancedMLErrorMitigator {
     /// Estimate entanglement in circuit
     fn calculate_entanglement_estimate(&self, circuit: &InterfaceCircuit) -> Result<f64> {
         let mut entangling_gates = 0;
-        
+
         for gate in &circuit.gates {
             match gate.gate_type {
-                InterfaceGateType::CNOT | InterfaceGateType::CZ | InterfaceGateType::CY |
-                InterfaceGateType::SWAP | InterfaceGateType::ISwap | InterfaceGateType::Toffoli => {
+                InterfaceGateType::CNOT
+                | InterfaceGateType::CZ
+                | InterfaceGateType::CY
+                | InterfaceGateType::SWAP
+                | InterfaceGateType::ISwap
+                | InterfaceGateType::Toffoli => {
                     entangling_gates += 1;
                 }
                 _ => {}
@@ -754,9 +773,10 @@ impl AdvancedMLErrorMitigator {
     fn estimate_error_reduction(&self, original: &Array1<f64>, mitigated: f64) -> Result<f64> {
         let original_mean = original.mean().unwrap_or(0.0);
         let original_variance = original.var(0.0);
-        
+
         // Estimate error reduction based on variance reduction
-        let estimated_improvement = (original_variance.sqrt() - (mitigated - original_mean).abs()) / original_variance.sqrt();
+        let estimated_improvement = (original_variance.sqrt() - (mitigated - original_mean).abs())
+            / original_variance.sqrt();
         Ok(estimated_improvement.max(0.0).min(1.0))
     }
 
@@ -784,16 +804,17 @@ impl AdvancedMLErrorMitigator {
         if let Some(ref mut model) = self.deep_model {
             // Simple gradient descent update (simplified for demonstration)
             // In practice, would implement proper backpropagation
-            
+
             let batch_size = self.config.batch_size.min(self.training_history.len());
-            let batch: Vec<_> = self.training_history
+            let batch: Vec<_> = self
+                .training_history
                 .iter()
                 .rev()
                 .take(batch_size)
                 .collect();
 
             let mut total_loss = 0.0;
-            
+
             for (features, target) in batch {
                 let prediction = Self::forward_pass_static(model, features)?;
                 let loss = (prediction[0] - target).powi(2);
@@ -811,12 +832,14 @@ impl AdvancedMLErrorMitigator {
     fn update_rl_agent(&mut self, features: &Array1<f64>, reward: f64) -> Result<()> {
         if let Some(ref mut agent) = self.rl_agent {
             let state_key = Self::features_to_state_key(features);
-            
+
             // Simple Q-learning update
             // In practice, would implement more sophisticated RL algorithms
-            
+
             agent.stats.episodes += 1;
-            agent.stats.avg_reward = (agent.stats.avg_reward * (agent.stats.episodes - 1) as f64 + reward) / agent.stats.episodes as f64;
+            agent.stats.avg_reward = (agent.stats.avg_reward * (agent.stats.episodes - 1) as f64
+                + reward)
+                / agent.stats.episodes as f64;
 
             // Decay exploration rate
             agent.exploration_rate *= 0.995;
@@ -844,10 +867,10 @@ pub fn benchmark_advanced_ml_error_mitigation() -> Result<()> {
     let noisy_measurements = Array1::from_vec(vec![0.48, 0.52, 0.47, 0.53, 0.49]);
 
     let start_time = std::time::Instant::now();
-    
+
     // Apply advanced ML mitigation
     let result = mitigator.mitigate_errors(&noisy_measurements, &circuit)?;
-    
+
     let duration = start_time.elapsed();
 
     println!("✅ Advanced ML Error Mitigation Results:");
@@ -875,14 +898,14 @@ mod tests {
     fn test_feature_extraction() {
         let config = AdvancedMLMitigationConfig::default();
         let mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
-        
+
         let mut circuit = InterfaceCircuit::new(2, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]));
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]));
-        
+
         let measurements = Array1::from_vec(vec![0.5, 0.5, 0.5]);
         let features = mitigator.extract_features(&circuit, &measurements);
-        
+
         assert!(features.is_ok());
         let features = features.unwrap();
         assert!(features.len() > 0);
@@ -892,11 +915,17 @@ mod tests {
     fn test_activation_functions() {
         let config = AdvancedMLMitigationConfig::default();
         let mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
-        
+
         // Test ReLU
-        assert_eq!(mitigator.apply_activation(-1.0, ActivationFunction::ReLU), 0.0);
-        assert_eq!(mitigator.apply_activation(1.0, ActivationFunction::ReLU), 1.0);
-        
+        assert_eq!(
+            mitigator.apply_activation(-1.0, ActivationFunction::ReLU),
+            0.0
+        );
+        assert_eq!(
+            mitigator.apply_activation(1.0, ActivationFunction::ReLU),
+            1.0
+        );
+
         // Test Sigmoid
         let sigmoid_result = mitigator.apply_activation(0.0, ActivationFunction::Sigmoid);
         assert!((sigmoid_result - 0.5).abs() < 1e-10);
@@ -906,10 +935,10 @@ mod tests {
     fn test_mitigation_strategy_selection() {
         let config = AdvancedMLMitigationConfig::default();
         let mut mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
-        
+
         let features = Array1::from_vec(vec![1.0, 2.0, 3.0]);
         let strategy = mitigator.select_mitigation_strategy(&features);
-        
+
         assert!(strategy.is_ok());
     }
 
@@ -917,16 +946,16 @@ mod tests {
     fn test_traditional_mitigation() {
         let config = AdvancedMLMitigationConfig::default();
         let mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
-        
+
         let measurements = Array1::from_vec(vec![0.48, 0.52, 0.49]);
         let circuit = InterfaceCircuit::new(2, 0);
-        
+
         let result = mitigator.apply_traditional_mitigation(
             MitigationAction::ZeroNoiseExtrapolation,
             &measurements,
             &circuit,
         );
-        
+
         assert!(result.is_ok());
     }
 }

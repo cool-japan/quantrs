@@ -435,8 +435,6 @@ impl SymbolicHamiltonian {
         &self,
         parameter_names: &[String],
     ) -> QuantRS2Result<HashMap<String, SymbolicHamiltonian>> {
-        use crate::symbolic::calculus;
-
         let mut gradients = HashMap::new();
 
         for param_name in parameter_names {

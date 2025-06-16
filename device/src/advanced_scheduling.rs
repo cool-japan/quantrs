@@ -796,7 +796,7 @@ impl AdvancedQuantumScheduler {
     ) -> DeviceResult<Vec<BackendScore>> {
         let backends = self.get_available_backends().await?;
         let mut backend_scores = Vec::new();
-        
+
         for backend in backends {
             // Score each backend based on job requirements
             let mut factors = HashMap::new();
@@ -805,7 +805,7 @@ impl AdvancedQuantumScheduler {
             factors.insert("energy".to_string(), 0.6);
             factors.insert("availability".to_string(), 0.9);
             factors.insert("fairness".to_string(), 0.8);
-            
+
             let score = BackendScore {
                 backend_name: format!("{:?}", backend),
                 score: 0.76, // weighted average
@@ -813,7 +813,7 @@ impl AdvancedQuantumScheduler {
             };
             backend_scores.push(score);
         }
-        
+
         Ok(backend_scores)
     }
 

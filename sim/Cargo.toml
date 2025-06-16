@@ -46,6 +46,8 @@ ndrustfft = { version = "0.5", optional = true }
 sprs = { version = "0.11", optional = true }
 nalgebra = { workspace = true, optional = true }
 md5 = "0.7"
+regex = "1.0"
+tempfile = "3.0"
 
 [dev-dependencies]
 approx = "0.5"

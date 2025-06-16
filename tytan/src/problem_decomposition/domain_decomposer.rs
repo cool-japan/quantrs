@@ -1,7 +1,7 @@
 //! Domain decomposition methods for parallel optimization
 
 use super::types::*;
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
+use crate::sampler::{SampleResult, Sampler};
 use ndarray::Array2;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;

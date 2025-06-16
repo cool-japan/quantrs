@@ -63,6 +63,8 @@ pub mod hardware_compilation;
 pub mod hhl;
 pub mod holonomic;
 pub mod hybrid_learning;
+#[cfg(feature = "python")]
+pub mod jupyter_visualization;
 pub mod kak_multiqubit;
 pub mod matrix_ops;
 pub mod mbqc;
@@ -72,14 +74,10 @@ pub mod operations;
 pub mod optimization;
 pub mod parametric;
 pub mod photonic;
-#[cfg(feature = "python")]
-pub mod python_bindings;
-#[cfg(feature = "python")]
-pub mod jupyter_visualization;
-#[cfg(feature = "python")]
-pub mod quantum_complexity_analysis;
 pub mod post_quantum_crypto;
 pub mod pulse;
+#[cfg(feature = "python")]
+pub mod python_bindings;
 pub mod qaoa;
 pub mod qml;
 pub mod qpca;
@@ -88,12 +86,15 @@ pub mod quantum_autodiff;
 pub mod quantum_aware_interpreter;
 pub mod quantum_cellular_automata;
 pub mod quantum_channels;
+#[cfg(feature = "python")]
+pub mod quantum_complexity_analysis;
 pub mod quantum_counting;
 pub mod quantum_debugging_profiling;
 pub mod quantum_game_theory;
 pub mod quantum_garbage_collection;
 pub mod quantum_hardware_abstraction;
 pub mod quantum_internet;
+// pub mod quantum_internet_enhancements;  // Temporarily disabled due to compilation issues
 pub mod quantum_memory_hierarchy;
 pub mod quantum_memory_integration;
 pub mod quantum_ml_accelerators;
@@ -447,27 +448,24 @@ pub mod prelude {
         CircuitToZX, Edge, EdgeType, Spider, SpiderType, ZXDiagram, ZXOptimizer,
     };
     pub use crate::zx_extraction::{ZXExtractor, ZXPipeline};
-    
+
     #[cfg(feature = "python")]
     pub use crate::python_bindings::{
-        PyQubitId, PyQuantumGate, PySingleQubitDecomposition, PyCartanDecomposition,
-        PyVariationalCircuit, PyQuantumSensorNetwork, PyQuantumInternet,
-        PyNumRS2Array,
+        PyCartanDecomposition, PyNumRS2Array, PyQuantumGate, PyQuantumInternet,
+        PyQuantumSensorNetwork, PyQubitId, PySingleQubitDecomposition, PyVariationalCircuit,
     };
-    
+
     #[cfg(feature = "python")]
     pub use crate::jupyter_visualization::{
-        PyQuantumCircuitVisualizer, PyQuantumStateVisualizer, PyQuantumPerformanceMonitor,
+        PyQuantumCircuitVisualizer, PyQuantumPerformanceMonitor, PyQuantumStateVisualizer,
     };
-    
+
     #[cfg(feature = "python")]
-    pub use crate::quantum_complexity_analysis::{
-        PyQuantumComplexityAnalyzer,
-    };
-    
+    pub use crate::quantum_complexity_analysis::PyQuantumComplexityAnalyzer;
+
     #[cfg(feature = "python")]
     pub use crate::python_bindings::{
-        PyRealtimeMonitor, PyMonitoringConfig, PyMetricMeasurement, PyAggregatedStats,
-        PyAlert, PyOptimizationRecommendation, PyMonitoringStatus,
+        PyAggregatedStats, PyAlert, PyMetricMeasurement, PyMonitoringConfig, PyMonitoringStatus,
+        PyOptimizationRecommendation, PyRealtimeMonitor,
     };
 }

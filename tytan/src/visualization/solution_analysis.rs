@@ -4,7 +4,7 @@
 //! including diversity metrics, clustering analysis, and quality distribution.
 
 use crate::sampler::SampleResult;
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

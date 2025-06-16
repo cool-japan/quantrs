@@ -8,7 +8,7 @@ use ndarray::{Array, Array1, Array2, IxDyn};
 use num_complex::Complex64;
 use rand::prelude::*;
 use rand::{Rng, SeedableRng};
-use rand_distr::{Distribution, Normal};
+use rand_distr::Normal;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 

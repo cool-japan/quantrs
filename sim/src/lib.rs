@@ -31,9 +31,11 @@ pub mod fermionic_simulation;
 pub mod fpga_acceleration;
 pub mod fusion;
 pub mod hardware_aware_qml;
+pub mod holographic_quantum_error_correction;
 pub mod jit_compilation;
 pub mod linalg_ops;
 pub mod memory_bandwidth_optimization;
+pub mod memory_optimization;
 pub mod memory_prefetching_optimization;
 pub mod mixed_precision;
 pub mod mixed_precision_impl;
@@ -44,23 +46,31 @@ pub mod mps_simulator;
 pub mod noise_extrapolation;
 pub mod open_quantum_systems;
 pub mod opencl_amd_backend;
+pub mod operation_cache;
+pub mod parallel_tensor_optimization;
 pub mod path_integral;
 pub mod pauli;
 pub mod photonic;
 pub mod precision;
+pub mod qaoa_optimization;
 pub mod qmc;
 pub mod qml;
 pub mod qml_integration;
-pub mod qaoa_optimization;
 pub mod quantum_advantage_demonstration;
 pub mod quantum_algorithms;
 pub mod quantum_annealing;
-pub mod quantum_chemistry;
 pub mod quantum_cellular_automata;
+pub mod quantum_chemistry;
+pub mod quantum_chemistry_dmrg;
 pub mod quantum_cloud_integration;
+pub mod quantum_field_theory;
+pub mod quantum_gravity_simulation;
+pub mod quantum_inspired_classical;
 pub mod quantum_ldpc_codes;
+pub mod quantum_machine_learning_layers;
 pub mod quantum_ml_algorithms;
 pub mod quantum_reservoir_computing;
+pub mod quantum_reservoir_computing_enhanced;
 pub mod quantum_supremacy;
 pub mod quantum_volume;
 pub mod scirs2_eigensolvers;
@@ -74,11 +84,12 @@ pub mod specialized_gates;
 pub mod specialized_simulator;
 pub mod stabilizer;
 pub mod statevector;
+pub mod telemetry;
 pub mod tensor;
+pub mod topological_quantum_simulation;
 pub mod tpu_acceleration;
 pub mod trotter;
 pub mod visualization_hooks;
-pub mod telemetry;
 
 #[cfg(feature = "advanced_math")]
 pub mod tensor_network;
@@ -88,6 +99,7 @@ pub mod utils;
 pub mod benchmark;
 pub mod circuit_optimization;
 pub mod clifford_sparse;
+pub mod compilation_optimization;
 pub mod diagnostics;
 pub mod memory_verification_simple;
 pub mod optimized_chunked;
@@ -101,6 +113,10 @@ pub mod performance_benchmark;
 pub mod tests;
 #[cfg(test)]
 pub mod tests_optimized;
+#[cfg(test)]
+pub mod tests_quantum_inspired_classical;
+#[cfg(test)]
+pub mod tests_quantum_ml_layers;
 #[cfg(test)]
 pub mod tests_simple;
 #[cfg(test)]
@@ -136,12 +152,13 @@ pub mod prelude {
         ScheduleType,
     };
     pub use crate::advanced_variational_algorithms::{
-        benchmark_advanced_vqa, AdvancedOptimizerType, AdvancedVQATrainer, AcquisitionFunction,
-        BayesianModel, CompressionMethod, CostFunction, FiniteDifferenceGradient, GradientCalculator,
-        GrowthCriterion, HamiltonianTerm as VQAHamiltonianTerm, IsingCostFunction, MixerHamiltonian, MixerType,
-        NetworkConnectivity, OptimizerState as VQAOptimizerState, OptimizationProblemType, ParameterShiftGradient,
-        ProblemHamiltonian, QuantumActivation, TensorTopology, VQAConfig, VQAResult, VQATrainerState,
-        VQATrainingStats, VariationalAnsatz, WarmRestartConfig,
+        benchmark_advanced_vqa, AcquisitionFunction, AdvancedOptimizerType, AdvancedVQATrainer,
+        BayesianModel, CompressionMethod, CostFunction, FiniteDifferenceGradient,
+        GradientCalculator, GrowthCriterion, HamiltonianTerm as VQAHamiltonianTerm,
+        IsingCostFunction, MixerHamiltonian, MixerType, NetworkConnectivity,
+        OptimizationProblemType, OptimizerState as VQAOptimizerState, ParameterShiftGradient,
+        ProblemHamiltonian, QuantumActivation, TensorTopology, VQAConfig, VQAResult,
+        VQATrainerState, VQATrainingStats, VariationalAnsatz, WarmRestartConfig,
     };
     pub use crate::autodiff_vqe::{
         ansatze, AutoDiffContext, ConvergenceCriteria, GradientMethod, ParametricCircuit,
@@ -164,6 +181,10 @@ pub mod prelude {
         OptimizationResult, OptimizationStatistics,
     };
     pub use crate::clifford_sparse::{CliffordGate, SparseCliffordSimulator};
+    pub use crate::compilation_optimization::{
+        CompilationAnalysis, CompilationOptimizer, CompilationOptimizerConfig,
+        OptimizationRecommendation, OptimizationType, RecommendationPriority,
+    };
     pub use crate::concatenated_error_correction::{
         benchmark_concatenated_error_correction, create_standard_concatenated_code, CodeParameters,
         ConcatenatedCodeConfig, ConcatenatedCorrectionResult, ConcatenatedErrorCorrection,
@@ -202,6 +223,11 @@ pub mod prelude {
         benchmark_fusion_strategies, FusedGate, FusionStats, FusionStrategy, GateFusion, GateGroup,
         OptimizedCircuit, OptimizedGate,
     };
+    pub use crate::holographic_quantum_error_correction::{
+        benchmark_holographic_qec, BulkReconstructionMethod, BulkReconstructionResult,
+        HolographicCodeType, HolographicQECBenchmarkResults, HolographicQECConfig,
+        HolographicQECResult, HolographicQECSimulator, HolographicQECStats, HolographicQECUtils,
+    };
     pub use crate::jit_compilation::{
         benchmark_jit_compilation, CompilationPriority, CompilationStatus, CompiledFunction,
         CompiledGateSequence, GateSequencePattern, JITBenchmarkResults, JITCompiler, JITConfig,
@@ -212,6 +238,9 @@ pub mod prelude {
     pub use crate::memory_bandwidth_optimization::{
         BandwidthMonitor, MemoryBandwidthOptimizer, MemoryLayout, MemoryOptimizationConfig,
         MemoryOptimizationReport, MemoryStats, OptimizedStateVector,
+    };
+    pub use crate::memory_optimization::{
+        AdvancedMemoryPool, MemoryStats as AdvancedMemoryStats, NumaAwareAllocator,
     };
     pub use crate::memory_prefetching_optimization::{
         AccessPatternPredictor, AccessPatternType, DataLocalityOptimizer,
@@ -240,6 +269,15 @@ pub mod prelude {
         OpenCLConfig, OpenCLDevice, OpenCLDeviceType, OpenCLKernel, OpenCLPlatform, OpenCLStats,
         OptimizationLevel as OpenCLOptimizationLevel,
     };
+    pub use crate::operation_cache::{
+        CacheConfig, CacheStats, CachedData, CachedOperation, EvictionPolicy, GateMatrixCache,
+        OperationKey, QuantumOperationCache,
+    };
+    pub use crate::parallel_tensor_optimization::{
+        ContractionPair, LoadBalancingStrategy, NumaTopology, ParallelTensorConfig,
+        ParallelTensorEngine, ParallelTensorStats, TensorWorkQueue, TensorWorkUnit,
+        ThreadAffinityConfig,
+    };
     pub use crate::path_integral::{
         benchmark_path_integral_methods, ConvergenceStats, PathIntegralConfig, PathIntegralMethod,
         PathIntegralResult, PathIntegralSimulator, PathIntegralStats, PathIntegralUtils,
@@ -259,6 +297,12 @@ pub mod prelude {
         benchmark_precisions, AdaptivePrecisionConfig, AdaptiveStateVector, ComplexAmplitude,
         ComplexF16, Precision, PrecisionStats, PrecisionTracker,
     };
+    pub use crate::qaoa_optimization::{
+        benchmark_qaoa, LevelTransitionCriteria, MultiLevelQAOAConfig, QAOAConfig, QAOAConstraint,
+        QAOAGraph, QAOAInitializationStrategy, QAOALevel, QAOAMixerType, QAOAOptimizationStrategy,
+        QAOAOptimizer, QAOAProblemType, QAOAResult, QAOAStats,
+        QuantumAdvantageMetrics as QAOAQuantumAdvantageMetrics, SolutionQuality,
+    };
     pub use crate::qmc::{DMCResult, PIMCResult, VMCResult, Walker, WaveFunction, DMC, PIMC, VMC};
     pub use crate::qml_integration::{
         AdamOptimizer, LossFunction, OptimizerType, QMLBenchmarkResults, QMLFramework,
@@ -266,14 +310,8 @@ pub mod prelude {
         QMLTrainingStats, QMLUtils, QuantumNeuralNetwork, SGDOptimizer, TrainingConfig,
         TrainingExample, TrainingResult,
     };
-    pub use crate::qaoa_optimization::{
-        benchmark_qaoa, LevelTransitionCriteria, MultiLevelQAOAConfig, QAOAConfig, QAOAConstraint,
-        QAOAGraph, QAOAInitializationStrategy, QAOALevel, QAOAMixerType, QAOAOptimizationStrategy,
-        QAOAOptimizer, QAOAProblemType, QAOAResult, QAOAStats, QuantumAdvantageMetrics as QAOAQuantumAdvantageMetrics,
-        SolutionQuality,
-    };
     pub use crate::quantum_advantage_demonstration::{
-        benchmark_quantum_advantage, ClassicalAlgorithm, ClassicalAlgorithmType, 
+        benchmark_quantum_advantage, ClassicalAlgorithm, ClassicalAlgorithmType,
         ClassicalHardwareSpecs, ClassicalResources, CostAnalysis, DetailedResult,
         FutureProjections, HardwareSpecs, MarketImpact, OperationalCosts, ProblemDomain,
         ProblemInstance, QuantumAdvantageConfig, QuantumAdvantageDemonstrator,
@@ -296,21 +334,102 @@ pub mod prelude {
         QCAEvolutionResult, QCARule, QCARuleType, QCASnapshot, QCAStats, QCAUtils,
         QuantumCellularAutomaton,
     };
+    pub use crate::quantum_chemistry_dmrg::{
+        benchmark_quantum_chemistry_dmrg, AccuracyLevel, AccuracyMetrics, ActiveSpaceAnalysis,
+        ActiveSpaceConfig, AtomicCenter, BasisFunction, BasisSetType, BenchmarkPerformanceMetrics,
+        ComputationalCostEstimate, ConvergenceInfo, DMRGResult, DMRGSimulationStats, DMRGState,
+        ElectronicStructureMethod, ExchangeCorrelationFunctional, MemoryStatistics,
+        MolecularHamiltonian, MoleculeBenchmarkResult, OrbitalSelectionStrategy,
+        PointGroupSymmetry, QuantumChemistryBenchmarkResults, QuantumChemistryDMRGConfig,
+        QuantumChemistryDMRGSimulator, QuantumChemistryDMRGUtils, QuantumNumberSector,
+        ScalingBehavior, SpectroscopicProperties, TestMolecule, TimingStatistics, ValidationResult,
+    };
+    pub use crate::quantum_field_theory::{
+        ActionEvaluator, ActionType, CorrelationFunction, FieldOperator, FieldOperatorType,
+        FieldTheoryType, FixedPoint, FixedPointType, GaugeFieldConfig, GaugeFixing, GaugeGroup,
+        LatticeParameters, MonteCarloAlgorithm, MonteCarloState, ParticleState,
+        PathIntegralConfig as QFTPathIntegralConfig, PathIntegralSampler, QFTBoundaryConditions,
+        QFTConfig as QuantumFieldTheoryConfig, QFTStats as QuantumFieldTheoryStats,
+        QuantumFieldTheorySimulator, RGFlow, RenormalizationScheme, ScatteringProcess,
+        TimeOrdering, WilsonLoop,
+    };
+    pub use crate::quantum_gravity_simulation::{
+        benchmark_quantum_gravity_simulation, AdSCFTConfig, AsymptoticSafetyConfig,
+        BackgroundMetric, BoundaryRegion, BoundaryTheory, BulkGeometry, CDTConfig,
+        ConvergenceInfo as GravityConvergenceInfo, EntanglementStructure,
+        FixedPoint as GravityFixedPoint, FixedPointStability, GeometryMeasurements,
+        GravityApproach, GravityBenchmarkResults, GravitySimulationResult, GravitySimulationStats,
+        HolographicDuality, Intertwiner, LQGConfig, QuantumGravityConfig, QuantumGravitySimulator,
+        QuantumGravityUtils, RGTrajectory, RTSurface, SU2Element, Simplex, SimplexType,
+        SimplicialComplex, SpacetimeState, SpacetimeVertex, SpinNetwork, SpinNetworkEdge,
+        SpinNetworkNode, TimeSlice, TopologyMeasurements,
+    };
+    pub use crate::quantum_inspired_classical::{
+        benchmark_quantum_inspired_algorithms, ActivationFunction, AlgorithmCategory,
+        AlgorithmConfig, BenchmarkingConfig, BenchmarkingResults, CommunityDetectionParams,
+        ComparisonStats, ConstraintMethod, ContractionMethod, ConvergenceAnalysis, ExecutionStats,
+        GraphAlgorithm, GraphConfig, GraphMetrics, GraphResult, LinalgAlgorithm, LinalgConfig,
+        LinalgResult, MLAlgorithm, MLConfig, MLTrainingResult, NetworkArchitecture,
+        ObjectiveFunction, OptimizationAlgorithm, OptimizationConfig as QIOptimizationConfig,
+        OptimizationResult as QIOptimizationResult, OptimizerType as QIOptimizerType,
+        PerformanceAnalysisConfig, ProposalDistribution,
+        QuantumAdvantageMetrics as QIQuantumAdvantageMetrics, QuantumInspiredConfig,
+        QuantumInspiredFramework, QuantumInspiredStats, QuantumInspiredUtils, QuantumParameters,
+        QuantumWalkParams, RuntimeStats, SampleStatistics, SamplingAlgorithm, SamplingConfig,
+        SamplingResult, StatisticalAnalysis as QIStatisticalAnalysis, TemperatureSchedule,
+        TensorNetworkConfig, TensorTopology as QITensorTopology,
+        TrainingConfig as QITrainingConfig, WalkStatistics, WaveFunctionConfig, WaveFunctionType,
+    };
     pub use crate::quantum_ldpc_codes::{
         benchmark_quantum_ldpc_codes, BPDecodingResult, BeliefPropagationAlgorithm, CheckNode,
         LDPCConfig, LDPCConstructionMethod, LDPCStats, QuantumLDPCCode, TannerGraph, VariableNode,
     };
+    pub use crate::quantum_machine_learning_layers::{
+        benchmark_quantum_ml_layers, AdversarialAttackMethod, AdversarialDefenseMethod,
+        AdversarialTrainingConfig, AlternatingSchedule, AnsatzType, AttentionHead,
+        BenchmarkingProtocols, CachingConfig, CalibrationFrequency, ClassicalArchitecture,
+        ClassicalPreprocessingConfig, ComputationOptimizationConfig, ConnectivityConstraints,
+        ConvolutionalFilter, DataEncodingMethod, DenseConnection,
+        DistillationProtocol as QMLDistillationProtocol, EarlyStoppingConfig, EnsembleMethod,
+        EnsembleMethodsConfig, EntanglementPattern, ErrorMitigationConfig, FeatureSelectionConfig,
+        FeatureSelectionMethod, GradientFlowConfig, GradientMethod as QMLGradientMethod,
+        HardwareOptimizationConfig, HardwareOptimizationLevel, HybridTrainingConfig, LSTMGate,
+        LSTMGateType, LearningRateSchedule,
+        MemoryOptimizationConfig as QMLMemoryOptimizationConfig, NoiseAwareTrainingConfig,
+        NoiseCharacterizationConfig, NoiseCharacterizationMethod, NoiseInjectionConfig,
+        NoiseParameters, NoiseType, OptimizerType as QMLOptimizerType, PQCGate, PQCGateType,
+        ParallelizationConfig, ParameterizedQuantumCircuitLayer, PerformanceOptimizationConfig,
+        QMLArchitectureType, QMLBenchmarkResults as QMLLayersQMLBenchmarkResults, QMLConfig,
+        QMLEpochMetrics, QMLLayer as QMLLayersQMLLayer, QMLLayerConfig,
+        QMLLayerType as QMLLayersQMLLayerType, QMLStats, QMLTrainingAlgorithm, QMLTrainingConfig,
+        QMLTrainingResult, QMLTrainingState, QMLUtils as QMLLayersQMLUtils,
+        QuantumAdvantageMetrics as QMLQuantumAdvantageMetrics, QuantumAttentionLayer,
+        QuantumClassicalInterface, QuantumConvolutionalLayer, QuantumDenseLayer,
+        QuantumHardwareTarget, QuantumLSTMLayer, QuantumMLFramework, RegularizationConfig,
+        RobustTrainingConfig, RotationGate, ScalingMethod, TwoQubitGate, VirtualDistillationConfig,
+        VotingStrategy,
+    };
     pub use crate::quantum_ml_algorithms::{
-        benchmark_quantum_ml_algorithms, GradientMethod as QMLGradientMethod, HardwareArchitecture,
-        HardwareAwareCompiler, HardwareMetrics, HardwareOptimizations, OptimizerState,
-        OptimizerType as QMLOptimizerType, ParameterizedQuantumCircuit, QMLAlgorithmType,
-        QMLConfig, QuantumMLTrainer, TrainingHistory, TrainingResult as QMLTrainingResult,
+        benchmark_quantum_ml_algorithms, GradientMethod as QMLAlgorithmsGradientMethod,
+        HardwareArchitecture, HardwareAwareCompiler, HardwareMetrics, HardwareOptimizations,
+        OptimizerState, OptimizerType as QMLAlgorithmsOptimizerType, ParameterizedQuantumCircuit,
+        QMLAlgorithmType, QMLConfig as QMLAlgorithmsConfig, QuantumMLTrainer, TrainingHistory,
+        TrainingResult as QMLAlgorithmsTrainingResult,
     };
     pub use crate::quantum_reservoir_computing::{
         benchmark_quantum_reservoir_computing, InputEncoding, OutputMeasurement,
         QuantumReservoirArchitecture, QuantumReservoirComputer, QuantumReservoirConfig,
         QuantumReservoirState, ReservoirDynamics, ReservoirMetrics, ReservoirTrainingData,
         TrainingResult as ReservoirTrainingResult,
+    };
+    pub use crate::quantum_reservoir_computing_enhanced::{
+        benchmark_enhanced_quantum_reservoir_computing, ARIMAParams,
+        ActivationFunction as ReservoirActivationFunction, AdvancedLearningConfig, IPCFunction,
+        LearningAlgorithm, MemoryAnalysisConfig, MemoryAnalyzer, MemoryKernel, MemoryMetrics,
+        MemoryTask, NARState, QuantumReservoirComputerEnhanced,
+        ReservoirTrainingData as EnhancedReservoirTrainingData, TimeSeriesConfig,
+        TimeSeriesPredictor, TrainingExample as ReservoirTrainingExample,
+        TrainingResult as EnhancedTrainingResult, TrendModel,
     };
     pub use crate::quantum_supremacy::{
         benchmark_quantum_supremacy, verify_supremacy_claim, CircuitLayer, CostComparison,
@@ -338,8 +457,8 @@ pub mod prelude {
     };
     pub use crate::shot_sampling::{
         analysis, BitString, ComparisonResult, ConvergenceResult, ExpectationResult,
-        MeasurementStatistics, NoiseModel as SamplingNoiseModel, QuantumSampler, SamplingConfig,
-        ShotResult, SimpleReadoutNoise,
+        MeasurementStatistics, NoiseModel as SamplingNoiseModel, QuantumSampler,
+        SamplingConfig as ShotSamplingConfig, ShotResult, SimpleReadoutNoise,
     };
     #[allow(unused_imports)]
     pub use crate::simulator::*;
@@ -357,6 +476,15 @@ pub mod prelude {
     };
     pub use crate::stabilizer::{is_clifford_circuit, StabilizerGate, StabilizerSimulator};
     pub use crate::statevector::StateVectorSimulator;
+    pub use crate::telemetry::{
+        benchmark_telemetry, Alert, AlertLevel, AlertThresholds, DiskIOStats, MetricsSummary,
+        NetworkIOStats, PerformanceSnapshot, QuantumMetrics, TelemetryCollector, TelemetryConfig,
+        TelemetryExportFormat, TelemetryMetric,
+    };
+    pub use crate::topological_quantum_simulation::{
+        AnyonModel, AnyonType, LatticeType, TopologicalBoundaryConditions, TopologicalConfig,
+        TopologicalErrorCode, TopologicalQuantumSimulator,
+    };
     pub use crate::tpu_acceleration::{
         benchmark_tpu_acceleration, CommunicationBackend, DistributedContext, MemoryOptimization,
         TPUConfig, TPUDataType, TPUDeviceInfo, TPUDeviceType, TPUMemoryManager,
@@ -366,14 +494,9 @@ pub mod prelude {
         Hamiltonian, HamiltonianLibrary, HamiltonianTerm, TrotterDecomposer, TrotterMethod,
     };
     pub use crate::visualization_hooks::{
-        benchmark_visualization, VisualizationConfig, VisualizationData, VisualizationFramework,
-        VisualizationHook, VisualizationManager, ASCIIVisualizationHook, JSONVisualizationHook,
-        ColorScheme, GateVisualizationData,
-    };
-    pub use crate::telemetry::{
-        benchmark_telemetry, TelemetryCollector, TelemetryConfig, TelemetryMetric,
-        TelemetryExportFormat, PerformanceSnapshot, QuantumMetrics, Alert, AlertLevel,
-        AlertThresholds, MetricsSummary, NetworkIOStats, DiskIOStats,
+        benchmark_visualization, ASCIIVisualizationHook, ColorScheme, GateVisualizationData,
+        JSONVisualizationHook, VisualizationConfig, VisualizationData, VisualizationFramework,
+        VisualizationHook, VisualizationManager,
     };
 
     #[cfg(feature = "gpu")]

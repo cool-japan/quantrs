@@ -3,7 +3,7 @@
 //! This module provides quantum-inspired ML algorithms that leverage
 //! quantum optimization principles for classical machine learning tasks.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError};
+use crate::sampler::Sampler;
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
 use rand::prelude::*;
 use rand::thread_rng;

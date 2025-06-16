@@ -5,7 +5,6 @@
 
 // Sampler types available for drug discovery applications
 use ndarray::Array2;
-use rand::prelude::*;
 use std::collections::{HashMap, HashSet};
 
 /// Molecular design optimizer

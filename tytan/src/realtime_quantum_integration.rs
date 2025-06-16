@@ -5,10 +5,10 @@
 
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque, BTreeMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::{Duration, Instant, SystemTime};
 use std::thread;
+use std::time::{Duration, Instant, SystemTime};
 
 /// Real-time quantum system manager
 pub struct RealtimeQuantumManager {
@@ -782,9 +782,20 @@ pub struct AlertRule {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AlertCondition {
-    Threshold { metric: String, operator: ComparisonOperator, value: f64 },
-    RateOfChange { metric: String, rate_threshold: f64, window: Duration },
-    Composite { conditions: Vec<AlertCondition>, operator: LogicalOperator },
+    Threshold {
+        metric: String,
+        operator: ComparisonOperator,
+        value: f64,
+    },
+    RateOfChange {
+        metric: String,
+        rate_threshold: f64,
+        window: Duration,
+    },
+    Composite {
+        conditions: Vec<AlertCondition>,
+        operator: LogicalOperator,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2207,7 +2218,8 @@ impl RealtimeQuantumManager {
     /// Register a new quantum device for monitoring
     pub fn register_device(&mut self, device_info: DeviceInfo) -> Result<(), String> {
         let monitor = Arc::new(Mutex::new(HardwareMonitor::new(device_info.clone())));
-        self.hardware_monitors.insert(device_info.device_id.clone(), monitor);
+        self.hardware_monitors
+            .insert(device_info.device_id.clone(), monitor);
         Ok(())
     }
 
@@ -2225,18 +2237,29 @@ impl RealtimeQuantumManager {
 
     /// Get real-time metrics
     pub fn get_realtime_metrics(&self) -> Result<RealtimeMetrics, String> {
-        let analytics = self.performance_analytics.read().map_err(|e| e.to_string())?;
+        let analytics = self
+            .performance_analytics
+            .read()
+            .map_err(|e| e.to_string())?;
         analytics.get_current_metrics()
     }
 
     /// Allocate resources for a job
-    pub fn allocate_resources(&self, job_id: &str, requirements: ResourceRequirements) -> Result<Vec<String>, String> {
+    pub fn allocate_resources(
+        &self,
+        job_id: &str,
+        requirements: ResourceRequirements,
+    ) -> Result<Vec<String>, String> {
         let mut allocator = self.resource_allocator.write().map_err(|e| e.to_string())?;
         allocator.allocate_resources(job_id, requirements)
     }
 
     /// Start device monitoring in a separate thread
-    fn start_device_monitoring(&self, device_id: String, monitor: Arc<Mutex<HardwareMonitor>>) -> Result<(), String> {
+    fn start_device_monitoring(
+        &self,
+        device_id: String,
+        monitor: Arc<Mutex<HardwareMonitor>>,
+    ) -> Result<(), String> {
         let interval = self.config.monitoring_interval;
         let system_state = self.system_state.clone();
 
@@ -2249,7 +2272,10 @@ impl RealtimeQuantumManager {
 
                     // Update system state
                     if let Ok(mut state) = system_state.write() {
-                        state.update_component_state(&device_id, &monitor_guard.get_current_status());
+                        state.update_component_state(
+                            &device_id,
+                            &monitor_guard.get_current_status(),
+                        );
                     }
                 }
 
@@ -2265,16 +2291,14 @@ impl RealtimeQuantumManager {
         let analytics = self.performance_analytics.clone();
         let interval = self.config.analytics_config.aggregation_interval;
 
-        thread::spawn(move || {
-            loop {
-                if let Ok(mut analytics_guard) = analytics.write() {
-                    if let Err(e) = analytics_guard.update_analytics() {
-                        eprintln!("Error updating analytics: {}", e);
-                    }
+        thread::spawn(move || loop {
+            if let Ok(mut analytics_guard) = analytics.write() {
+                if let Err(e) = analytics_guard.update_analytics() {
+                    eprintln!("Error updating analytics: {}", e);
                 }
-
-                thread::sleep(interval);
             }
+
+            thread::sleep(interval);
         });
 
         Ok(())
@@ -2458,7 +2482,11 @@ impl ResourceAllocator {
         }
     }
 
-    pub fn allocate_resources(&mut self, job_id: &str, requirements: ResourceRequirements) -> Result<Vec<String>, String> {
+    pub fn allocate_resources(
+        &mut self,
+        job_id: &str,
+        requirements: ResourceRequirements,
+    ) -> Result<Vec<String>, String> {
         // Simplified resource allocation
         let allocated_resources = vec!["resource_1".to_string(), "resource_2".to_string()];
 
@@ -2586,7 +2614,11 @@ impl FaultDetectionSystem {
         }
     }
 
-    pub fn check_for_faults(&mut self, system_state: &SystemState, config: &RealtimeConfig) -> Result<(), String> {
+    pub fn check_for_faults(
+        &mut self,
+        system_state: &SystemState,
+        config: &RealtimeConfig,
+    ) -> Result<(), String> {
         // Check for various fault conditions
         self.check_performance_degradation(system_state, config)?;
         self.check_resource_exhaustion(system_state, config)?;
@@ -2594,26 +2626,52 @@ impl FaultDetectionSystem {
         Ok(())
     }
 
-    fn check_performance_degradation(&mut self, system_state: &SystemState, config: &RealtimeConfig) -> Result<(), String> {
+    fn check_performance_degradation(
+        &mut self,
+        system_state: &SystemState,
+        config: &RealtimeConfig,
+    ) -> Result<(), String> {
         if system_state.performance_summary.performance_score < 0.5 {
-            self.detect_fault(FaultType::PerformanceDegradation, IssueSeverity::High, "Performance score below threshold".to_string())?;
+            self.detect_fault(
+                FaultType::PerformanceDegradation,
+                IssueSeverity::High,
+                "Performance score below threshold".to_string(),
+            )?;
         }
         Ok(())
     }
 
-    fn check_resource_exhaustion(&mut self, system_state: &SystemState, config: &RealtimeConfig) -> Result<(), String> {
-        if system_state.resource_utilization.cpu_utilization > config.alert_thresholds.cpu_threshold {
-            self.detect_fault(FaultType::PerformanceDegradation, IssueSeverity::Medium, "High CPU utilization".to_string())?;
+    fn check_resource_exhaustion(
+        &mut self,
+        system_state: &SystemState,
+        config: &RealtimeConfig,
+    ) -> Result<(), String> {
+        if system_state.resource_utilization.cpu_utilization > config.alert_thresholds.cpu_threshold
+        {
+            self.detect_fault(
+                FaultType::PerformanceDegradation,
+                IssueSeverity::Medium,
+                "High CPU utilization".to_string(),
+            )?;
         }
         Ok(())
     }
 
-    fn check_hardware_issues(&mut self, system_state: &SystemState, config: &RealtimeConfig) -> Result<(), String> {
+    fn check_hardware_issues(
+        &mut self,
+        system_state: &SystemState,
+        config: &RealtimeConfig,
+    ) -> Result<(), String> {
         // Check for hardware-related issues
         Ok(())
     }
 
-    fn detect_fault(&mut self, fault_type: FaultType, severity: IssueSeverity, description: String) -> Result<(), String> {
+    fn detect_fault(
+        &mut self,
+        fault_type: FaultType,
+        severity: IssueSeverity,
+        description: String,
+    ) -> Result<(), String> {
         let fault_event = FaultEvent {
             timestamp: SystemTime::now(),
             fault_type: fault_type.clone(),
@@ -2680,7 +2738,8 @@ impl SystemState {
             alerts: vec![],
         };
 
-        self.component_states.insert(component_id.to_string(), component_state);
+        self.component_states
+            .insert(component_id.to_string(), component_state);
         self.last_update = SystemTime::now();
     }
 }

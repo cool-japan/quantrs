@@ -4,12 +4,8 @@
 //! using variational approaches.
 
 use crate::hybrid_algorithms::{AnsatzType, ClassicalOptimizer, Hamiltonian, PauliTerm, VQE};
-use crate::sampler::{SampleResult, Sampler};
-use num_bigint::BigUint;
-use num_integer::Integer;
 use rand::prelude::*;
 use rand::thread_rng;
-use std::collections::HashMap;
 
 /// Variational Quantum Factoring solver
 pub struct VQF {

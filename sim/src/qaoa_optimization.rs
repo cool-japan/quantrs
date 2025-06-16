@@ -318,7 +318,7 @@ pub struct ParameterDatabase {
 pub struct ProblemCharacteristics {
     pub problem_type: QAOAProblemType,
     pub num_vertices: usize,
-    pub density: u32, // Edge density * 100
+    pub density: u32,    // Edge density * 100
     pub regularity: u32, // Graph regularity * 100
 }
 
@@ -379,7 +379,7 @@ impl QAOAOptimizer {
 
         // Adaptive layer optimization
         let mut current_layers = self.config.num_layers;
-        
+
         for iteration in 0..self.config.max_iterations {
             // Evaluate current parameters
             let cost = self.evaluate_qaoa_cost(&self.gammas, &self.betas)?;
@@ -422,7 +422,9 @@ impl QAOAOptimizer {
 
             // Adaptive layer growth
             if self.config.adaptive_layers && iteration % 20 == 19 {
-                if self.should_add_layer(&cost_history)? && current_layers < self.config.max_adaptive_layers {
+                if self.should_add_layer(&cost_history)?
+                    && current_layers < self.config.max_adaptive_layers
+                {
                     current_layers += 1;
                     self.add_qaoa_layer()?;
                 }
@@ -454,7 +456,7 @@ impl QAOAOptimizer {
         }
 
         let function_evaluations = cost_history.len();
-        
+
         Ok(QAOAResult {
             optimal_gammas: self.best_gammas.clone(),
             optimal_betas: self.best_betas.clone(),
@@ -542,13 +544,16 @@ impl QAOAOptimizer {
         // Apply exp(-i*gamma*H_C) where H_C = sum_{(i,j)} w_{ij} * (1 - Z_i Z_j) / 2
         for i in 0..self.graph.num_vertices {
             for j in i + 1..self.graph.num_vertices {
-                let weight = self.graph.edge_weights.get(&(i, j))
+                let weight = self
+                    .graph
+                    .edge_weights
+                    .get(&(i, j))
                     .or_else(|| self.graph.edge_weights.get(&(j, i)))
                     .unwrap_or(&self.graph.adjacency_matrix[[i, j]]);
 
                 if weight.abs() > 1e-10 {
                     let angle = gamma * weight;
-                    
+
                     // Apply ZZ interaction: exp(-i*angle*Z_i*Z_j)
                     circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, j]));
                     circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(angle), vec![j]));
@@ -562,7 +567,7 @@ impl QAOAOptimizer {
     /// Apply Maximum Weight Independent Set cost layer
     fn apply_mwis_cost_layer(&self, circuit: &mut InterfaceCircuit, gamma: f64) -> Result<()> {
         // H_C = sum_i w_i * Z_i + penalty * sum_{(i,j)} Z_i * Z_j
-        
+
         // Single-qubit terms (vertex weights)
         for i in 0..self.graph.num_vertices {
             let weight = self.graph.vertex_weights.get(i).unwrap_or(&1.0);
@@ -588,7 +593,7 @@ impl QAOAOptimizer {
     /// Apply TSP cost layer
     fn apply_tsp_cost_layer(&self, circuit: &mut InterfaceCircuit, gamma: f64) -> Result<()> {
         let num_cities = (self.graph.num_vertices as f64).sqrt() as usize;
-        
+
         // Distance cost terms
         for t in 0..num_cities {
             for i in 0..num_cities {
@@ -597,15 +602,24 @@ impl QAOAOptimizer {
                         let distance = self.graph.adjacency_matrix[[i, j]];
                         if distance > 0.0 {
                             let angle = gamma * distance;
-                            
+
                             // Encode: city i at time t and city j at time t+1
                             let qubit_i_t = i * num_cities + t;
                             let qubit_j_t1 = j * num_cities + ((t + 1) % num_cities);
-                            
+
                             if qubit_i_t < circuit.num_qubits && qubit_j_t1 < circuit.num_qubits {
-                                circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubit_i_t, qubit_j_t1]));
-                                circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(angle), vec![qubit_j_t1]));
-                                circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubit_i_t, qubit_j_t1]));
+                                circuit.add_gate(InterfaceGate::new(
+                                    InterfaceGateType::CNOT,
+                                    vec![qubit_i_t, qubit_j_t1],
+                                ));
+                                circuit.add_gate(InterfaceGate::new(
+                                    InterfaceGateType::RZ(angle),
+                                    vec![qubit_j_t1],
+                                ));
+                                circuit.add_gate(InterfaceGate::new(
+                                    InterfaceGateType::CNOT,
+                                    vec![qubit_i_t, qubit_j_t1],
+                                ));
                             }
                         }
                     }
@@ -615,7 +629,7 @@ impl QAOAOptimizer {
 
         // Constraint penalty terms (each city visited exactly once, each time slot used exactly once)
         let penalty = 10.0;
-        
+
         // Each city visited exactly once
         for i in 0..num_cities {
             for t1 in 0..num_cities {
@@ -624,9 +638,18 @@ impl QAOAOptimizer {
                     let qubit2 = i * num_cities + t2;
                     if qubit1 < circuit.num_qubits && qubit2 < circuit.num_qubits {
                         let angle = gamma * penalty;
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubit1, qubit2]));
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(angle), vec![qubit2]));
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubit1, qubit2]));
+                        circuit.add_gate(InterfaceGate::new(
+                            InterfaceGateType::CNOT,
+                            vec![qubit1, qubit2],
+                        ));
+                        circuit.add_gate(InterfaceGate::new(
+                            InterfaceGateType::RZ(angle),
+                            vec![qubit2],
+                        ));
+                        circuit.add_gate(InterfaceGate::new(
+                            InterfaceGateType::CNOT,
+                            vec![qubit1, qubit2],
+                        ));
                     }
                 }
             }
@@ -639,7 +662,7 @@ impl QAOAOptimizer {
     fn apply_portfolio_cost_layer(&self, circuit: &mut InterfaceCircuit, gamma: f64) -> Result<()> {
         // Portfolio optimization: maximize return - risk
         // H_C = -sum_i r_i * Z_i + lambda * sum_{i,j} sigma_{ij} * Z_i * Z_j
-        
+
         let lambda = 1.0; // Risk aversion parameter
 
         // Return terms (negative for maximization)
@@ -655,7 +678,7 @@ impl QAOAOptimizer {
                 let covariance = self.graph.adjacency_matrix[[i, j]];
                 if covariance.abs() > 1e-10 {
                     let angle = gamma * lambda * covariance;
-                    
+
                     if i == j {
                         // Diagonal terms (variance)
                         circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(angle), vec![i]));
@@ -675,17 +698,23 @@ impl QAOAOptimizer {
     fn apply_3sat_cost_layer(&self, circuit: &mut InterfaceCircuit, gamma: f64) -> Result<()> {
         // For 3-SAT, we need to encode clauses
         // Each clause contributes to the cost if not satisfied
-        
+
         // This is a simplified implementation - would need actual clause encoding
         for constraint in &self.graph.constraints {
             match constraint {
-                QAOAConstraint::LinearConstraint { coefficients, bound } => {
+                QAOAConstraint::LinearConstraint {
+                    coefficients,
+                    bound,
+                } => {
                     let angle = gamma * bound;
-                    
+
                     // Apply constraint penalty (simplified)
                     for (i, &coeff) in coefficients.iter().enumerate() {
                         if i < circuit.num_qubits && coeff.abs() > 1e-10 {
-                            circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(angle * coeff), vec![i]));
+                            circuit.add_gate(InterfaceGate::new(
+                                InterfaceGateType::RZ(angle * coeff),
+                                vec![i],
+                            ));
                         }
                     }
                 }
@@ -700,7 +729,7 @@ impl QAOAOptimizer {
     /// Apply QUBO cost layer
     fn apply_qubo_cost_layer(&self, circuit: &mut InterfaceCircuit, gamma: f64) -> Result<()> {
         // QUBO: minimize x^T Q x where Q is the QUBO matrix
-        
+
         // Linear terms (diagonal of Q)
         for i in 0..self.graph.num_vertices {
             let coeff = self.graph.adjacency_matrix[[i, i]];
@@ -791,13 +820,25 @@ impl QAOAOptimizer {
                     circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![j]));
 
                     // Apply YY interaction
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(std::f64::consts::PI / 2.0), vec![i]));
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(std::f64::consts::PI / 2.0), vec![j]));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::RY(std::f64::consts::PI / 2.0),
+                        vec![i],
+                    ));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::RY(std::f64::consts::PI / 2.0),
+                        vec![j],
+                    ));
                     circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, j]));
                     circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(beta), vec![j]));
                     circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, j]));
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(-std::f64::consts::PI / 2.0), vec![i]));
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(-std::f64::consts::PI / 2.0), vec![j]));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::RY(-std::f64::consts::PI / 2.0),
+                        vec![i],
+                    ));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::RY(-std::f64::consts::PI / 2.0),
+                        vec![j],
+                    ));
                 }
             }
         }
@@ -809,7 +850,7 @@ impl QAOAOptimizer {
         // Ring mixer with periodic boundary conditions
         for i in 0..circuit.num_qubits {
             let next = (i + 1) % circuit.num_qubits;
-            
+
             // Apply X_i X_{i+1} interaction
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![i]));
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![next]));
@@ -825,7 +866,7 @@ impl QAOAOptimizer {
     /// Apply Grover mixer
     fn apply_grover_mixer(&self, circuit: &mut InterfaceCircuit, beta: f64) -> Result<()> {
         // Grover diffusion operator: 2|s><s| - I where |s> is uniform superposition
-        
+
         // Apply H gates
         for qubit in 0..circuit.num_qubits {
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![qubit]));
@@ -840,11 +881,20 @@ impl QAOAOptimizer {
         if circuit.num_qubits > 1 {
             let controls: Vec<usize> = (0..circuit.num_qubits - 1).collect();
             let target = circuit.num_qubits - 1;
-            
+
             // Simplified multi-controlled Z using Toffoli decomposition
-            circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![controls[0], target]));
-            circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(beta), vec![target]));
-            circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![controls[0], target]));
+            circuit.add_gate(InterfaceGate::new(
+                InterfaceGateType::CNOT,
+                vec![controls[0], target],
+            ));
+            circuit.add_gate(InterfaceGate::new(
+                InterfaceGateType::RZ(beta),
+                vec![target],
+            ));
+            circuit.add_gate(InterfaceGate::new(
+                InterfaceGateType::CNOT,
+                vec![controls[0], target],
+            ));
         }
 
         // Apply Z gates again
@@ -864,13 +914,16 @@ impl QAOAOptimizer {
     fn apply_dicke_mixer(&self, circuit: &mut InterfaceCircuit, beta: f64) -> Result<()> {
         // Dicke state mixer preserves the number of excited qubits
         // This is a simplified implementation
-        
+
         for i in 0..circuit.num_qubits - 1 {
             // Apply partial SWAP operation
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, i + 1]));
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(beta), vec![i]));
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i + 1, i]));
-            circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(-beta), vec![i + 1]));
+            circuit.add_gate(InterfaceGate::new(
+                InterfaceGateType::RY(-beta),
+                vec![i + 1],
+            ));
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![i, i + 1]));
         }
         Ok(())
@@ -899,21 +952,36 @@ impl QAOAOptimizer {
     /// TSP-specific custom mixer
     fn apply_tsp_custom_mixer(&self, circuit: &mut InterfaceCircuit, beta: f64) -> Result<()> {
         let num_cities = (circuit.num_qubits as f64).sqrt() as usize;
-        
+
         // Swap operations that preserve TSP constraints
         for t in 0..num_cities {
             for i in 0..num_cities {
                 for j in i + 1..num_cities {
                     let qubit_i = i * num_cities + t;
                     let qubit_j = j * num_cities + t;
-                    
+
                     if qubit_i < circuit.num_qubits && qubit_j < circuit.num_qubits {
                         // Partial SWAP between cities at same time
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubit_i, qubit_j]));
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(beta), vec![qubit_i]));
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubit_j, qubit_i]));
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(-beta), vec![qubit_j]));
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![qubit_i, qubit_j]));
+                        circuit.add_gate(InterfaceGate::new(
+                            InterfaceGateType::CNOT,
+                            vec![qubit_i, qubit_j],
+                        ));
+                        circuit.add_gate(InterfaceGate::new(
+                            InterfaceGateType::RY(beta),
+                            vec![qubit_i],
+                        ));
+                        circuit.add_gate(InterfaceGate::new(
+                            InterfaceGateType::CNOT,
+                            vec![qubit_j, qubit_i],
+                        ));
+                        circuit.add_gate(InterfaceGate::new(
+                            InterfaceGateType::RY(-beta),
+                            vec![qubit_j],
+                        ));
+                        circuit.add_gate(InterfaceGate::new(
+                            InterfaceGateType::CNOT,
+                            vec![qubit_i, qubit_j],
+                        ));
                     }
                 }
             }
@@ -922,7 +990,11 @@ impl QAOAOptimizer {
     }
 
     /// Portfolio-specific custom mixer
-    fn apply_portfolio_custom_mixer(&self, circuit: &mut InterfaceCircuit, beta: f64) -> Result<()> {
+    fn apply_portfolio_custom_mixer(
+        &self,
+        circuit: &mut InterfaceCircuit,
+        beta: f64,
+    ) -> Result<()> {
         // Portfolio mixer that respects budget constraints
         for i in 0..circuit.num_qubits - 1 {
             for j in i + 1..circuit.num_qubits {
@@ -930,7 +1002,10 @@ impl QAOAOptimizer {
                 let correlation = self.graph.adjacency_matrix[[i, j]].abs();
                 if correlation > 0.1 {
                     let angle = beta * correlation;
-                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::CRY(angle), vec![i, j]));
+                    circuit.add_gate(InterfaceGate::new(
+                        InterfaceGateType::CRY(angle),
+                        vec![i, j],
+                    ));
                 }
             }
         }
@@ -940,7 +1015,7 @@ impl QAOAOptimizer {
     /// Initialize gamma parameters
     fn initialize_gammas(config: &QAOAConfig, _graph: &QAOAGraph) -> Result<Vec<f64>> {
         let mut gammas = Vec::with_capacity(config.num_layers);
-        
+
         for i in 0..config.num_layers {
             let gamma = match config.initialization {
                 QAOAInitializationStrategy::Random => {
@@ -964,7 +1039,7 @@ impl QAOAOptimizer {
     /// Initialize beta parameters
     fn initialize_betas(config: &QAOAConfig, _graph: &QAOAGraph) -> Result<Vec<f64>> {
         let mut betas = Vec::with_capacity(config.num_layers);
-        
+
         for i in 0..config.num_layers {
             let beta = match config.initialization {
                 QAOAInitializationStrategy::Random => {
@@ -976,7 +1051,8 @@ impl QAOAOptimizer {
                 }
                 _ => {
                     // Default linear schedule
-                    0.5 * std::f64::consts::PI * (config.num_layers - i) as f64 / config.num_layers as f64
+                    0.5 * std::f64::consts::PI * (config.num_layers - i) as f64
+                        / config.num_layers as f64
                 }
             };
             betas.push(beta);
@@ -989,7 +1065,7 @@ impl QAOAOptimizer {
     fn evaluate_qaoa_cost(&self, gammas: &[f64], betas: &[f64]) -> Result<f64> {
         let circuit = self.generate_qaoa_circuit(gammas, betas)?;
         let state = self.simulate_circuit(&circuit)?;
-        
+
         // Calculate expectation value of cost Hamiltonian
         let cost = self.calculate_cost_expectation(&state)?;
         Ok(cost)
@@ -998,7 +1074,7 @@ impl QAOAOptimizer {
     /// Calculate cost expectation value
     fn calculate_cost_expectation(&self, state: &Array1<Complex64>) -> Result<f64> {
         let mut expectation = 0.0;
-        
+
         // Iterate over all basis states
         for (idx, amplitude) in state.iter().enumerate() {
             let probability = amplitude.norm_sqr();
@@ -1015,36 +1091,27 @@ impl QAOAOptimizer {
     /// Evaluate classical cost for a bitstring
     fn evaluate_classical_cost(&self, bitstring: &str) -> Result<f64> {
         let bits: Vec<bool> = bitstring.chars().map(|c| c == '1').collect();
-        
+
         match self.problem_type {
-            QAOAProblemType::MaxCut => {
-                self.evaluate_maxcut_cost(&bits)
-            }
-            QAOAProblemType::MaxWeightIndependentSet => {
-                self.evaluate_mwis_cost(&bits)
-            }
-            QAOAProblemType::TSP => {
-                self.evaluate_tsp_cost(&bits)
-            }
-            QAOAProblemType::PortfolioOptimization => {
-                self.evaluate_portfolio_cost(&bits)
-            }
-            QAOAProblemType::QUBO => {
-                self.evaluate_qubo_cost(&bits)
-            }
-            _ => {
-                self.evaluate_generic_cost(&bits)
-            }
+            QAOAProblemType::MaxCut => self.evaluate_maxcut_cost(&bits),
+            QAOAProblemType::MaxWeightIndependentSet => self.evaluate_mwis_cost(&bits),
+            QAOAProblemType::TSP => self.evaluate_tsp_cost(&bits),
+            QAOAProblemType::PortfolioOptimization => self.evaluate_portfolio_cost(&bits),
+            QAOAProblemType::QUBO => self.evaluate_qubo_cost(&bits),
+            _ => self.evaluate_generic_cost(&bits),
         }
     }
 
     /// Evaluate MaxCut cost
     fn evaluate_maxcut_cost(&self, bits: &[bool]) -> Result<f64> {
         let mut cost = 0.0;
-        
+
         for i in 0..self.graph.num_vertices {
             for j in i + 1..self.graph.num_vertices {
-                let weight = self.graph.edge_weights.get(&(i, j))
+                let weight = self
+                    .graph
+                    .edge_weights
+                    .get(&(i, j))
                     .or_else(|| self.graph.edge_weights.get(&(j, i)))
                     .unwrap_or(&self.graph.adjacency_matrix[[i, j]]);
 
@@ -1184,12 +1251,8 @@ impl QAOAOptimizer {
     /// Solve problem classically for comparison
     fn solve_classically(&self) -> Result<f64> {
         match self.problem_type {
-            QAOAProblemType::MaxCut => {
-                self.solve_maxcut_classically()
-            }
-            QAOAProblemType::MaxWeightIndependentSet => {
-                self.solve_mwis_classically()
-            }
+            QAOAProblemType::MaxCut => self.solve_maxcut_classically(),
+            QAOAProblemType::MaxWeightIndependentSet => self.solve_mwis_classically(),
             _ => {
                 // Brute force for small problems
                 self.solve_brute_force()
@@ -1204,7 +1267,7 @@ impl QAOAOptimizer {
 
         // Simple greedy algorithm
         let mut assignment = vec![false; num_vertices];
-        
+
         for _ in 0..10 {
             // Random starting assignment
             for i in 0..num_vertices {
@@ -1217,7 +1280,12 @@ impl QAOAOptimizer {
                 improved = false;
                 for i in 0..num_vertices {
                     assignment[i] = !assignment[i];
-                    let cost = self.evaluate_classical_cost(&assignment.iter().map(|&b| if b { '1' } else { '0' }).collect::<String>())?;
+                    let cost = self.evaluate_classical_cost(
+                        &assignment
+                            .iter()
+                            .map(|&b| if b { '1' } else { '0' })
+                            .collect::<String>(),
+                    )?;
                     if cost > best_cost {
                         best_cost = cost;
                         improved = true;
@@ -1373,10 +1441,10 @@ impl QAOAOptimizer {
     fn ml_guided_optimization(&mut self) -> Result<()> {
         // Use ML model to predict good parameter updates
         // This is a simplified implementation
-        
+
         let problem_features = self.extract_problem_features()?;
         let predicted_update = self.predict_parameter_update(&problem_features)?;
-        
+
         // Apply predicted updates
         for i in 0..self.gammas.len() {
             self.gammas[i] += self.config.learning_rate * predicted_update.0[i];
@@ -1392,8 +1460,9 @@ impl QAOAOptimizer {
     fn adaptive_parameter_optimization(&mut self, cost_history: &[f64]) -> Result<()> {
         // Adapt learning rate based on cost history
         if cost_history.len() > 5 {
-            let recent_improvement = cost_history[cost_history.len() - 1] - cost_history[cost_history.len() - 5];
-            
+            let recent_improvement =
+                cost_history[cost_history.len() - 1] - cost_history[cost_history.len() - 5];
+
             if recent_improvement > 0.0 {
                 self.config.learning_rate *= 1.1; // Increase learning rate
             } else {
@@ -1411,7 +1480,7 @@ impl QAOAOptimizer {
         // Load similar problem parameters from database
         let characteristics = self.extract_problem_characteristics()?;
         let database = self.parameter_database.lock().unwrap();
-        
+
         if let Some(similar_params) = database.parameters.get(&characteristics) {
             if let Some((gammas, betas, _cost)) = similar_params.first() {
                 self.gammas = gammas.clone();
@@ -1424,22 +1493,32 @@ impl QAOAOptimizer {
     fn store_parameters_for_transfer(&mut self) -> Result<()> {
         let characteristics = self.extract_problem_characteristics()?;
         let mut database = self.parameter_database.lock().unwrap();
-        
-        let entry = database.parameters.entry(characteristics).or_insert_with(Vec::new);
-        entry.push((self.best_gammas.clone(), self.best_betas.clone(), self.best_cost));
-        
+
+        let entry = database
+            .parameters
+            .entry(characteristics)
+            .or_insert_with(Vec::new);
+        entry.push((
+            self.best_gammas.clone(),
+            self.best_betas.clone(),
+            self.best_cost,
+        ));
+
         // Keep only best parameters
         entry.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap());
         entry.truncate(5);
-        
+
         Ok(())
     }
 
     fn extract_problem_characteristics(&self) -> Result<ProblemCharacteristics> {
-        let num_edges = self.graph.adjacency_matrix.iter()
+        let num_edges = self
+            .graph
+            .adjacency_matrix
+            .iter()
             .map(|&x| if x.abs() > 1e-10 { 1 } else { 0 })
             .sum::<usize>();
-        
+
         let max_edges = self.graph.num_vertices * (self.graph.num_vertices - 1) / 2;
         let density = if max_edges > 0 {
             (100.0 * num_edges as f64 / max_edges as f64) as u32
@@ -1457,15 +1536,15 @@ impl QAOAOptimizer {
 
     fn extract_problem_features(&self) -> Result<Vec<f64>> {
         let mut features = Vec::new();
-        
+
         // Graph features
         features.push(self.graph.num_vertices as f64);
         features.push(self.graph.adjacency_matrix.sum());
         features.push(self.graph.vertex_weights.iter().sum::<f64>());
-        
+
         // Problem type encoding
         features.push(self.problem_type as u32 as f64);
-        
+
         Ok(features)
     }
 
@@ -1482,7 +1561,8 @@ impl QAOAOptimizer {
         }
 
         // Add layer if improvement has plateaued
-        let recent_improvement = cost_history[cost_history.len() - 1] - cost_history[cost_history.len() - 10];
+        let recent_improvement =
+            cost_history[cost_history.len() - 1] - cost_history[cost_history.len() - 10];
         Ok(recent_improvement.abs() < self.config.convergence_tolerance * 10.0)
     }
 
@@ -1505,7 +1585,7 @@ impl QAOAOptimizer {
 
     fn extract_probabilities(&self, state: &Array1<Complex64>) -> Result<HashMap<String, f64>> {
         let mut probabilities = HashMap::new();
-        
+
         for (idx, amplitude) in state.iter().enumerate() {
             let probability = amplitude.norm_sqr();
             if probability > 1e-10 {
@@ -1532,10 +1612,14 @@ impl QAOAOptimizer {
         Ok(best_solution)
     }
 
-    fn evaluate_solution_quality(&self, solution: &str, _probabilities: &HashMap<String, f64>) -> Result<SolutionQuality> {
+    fn evaluate_solution_quality(
+        &self,
+        solution: &str,
+        _probabilities: &HashMap<String, f64>,
+    ) -> Result<SolutionQuality> {
         let cost = self.evaluate_classical_cost(solution)?;
         let feasible = self.check_feasibility(solution)?;
-        
+
         let optimality_gap = if let Some(classical_opt) = self.classical_optimum {
             Some((classical_opt - cost) / classical_opt)
         } else {
@@ -1553,7 +1637,7 @@ impl QAOAOptimizer {
 
     fn check_feasibility(&self, solution: &str) -> Result<bool> {
         let bits: Vec<bool> = solution.chars().map(|c| c == '1').collect();
-        
+
         // Check problem-specific constraints
         match self.problem_type {
             QAOAProblemType::MaxWeightIndependentSet => {
@@ -1585,8 +1669,9 @@ impl QAOAOptimizer {
                 }
 
                 // Each city exactly once, each time exactly once
-                if !city_counts.iter().all(|&count| count == 1) ||
-                   !time_counts.iter().all(|&count| count == 1) {
+                if !city_counts.iter().all(|&count| count == 1)
+                    || !time_counts.iter().all(|&count| count == 1)
+                {
                     return Ok(false);
                 }
             }
@@ -1622,7 +1707,10 @@ impl QAOAOptimizer {
                         return Ok(false);
                     }
                 }
-                QAOAConstraint::LinearConstraint { coefficients, bound } => {
+                QAOAConstraint::LinearConstraint {
+                    coefficients,
+                    bound,
+                } => {
                     let mut sum = 0.0;
                     for (i, &coeff) in coefficients.iter().enumerate() {
                         if i < bits.len() && bits[i] {
@@ -1644,7 +1732,7 @@ impl QAOAOptimizer {
     fn prepare_warm_start_state(&self, circuit: &mut InterfaceCircuit) -> Result<()> {
         // Use classical solution as starting point
         let classical_solution = self.get_classical_solution()?;
-        
+
         for (i, bit) in classical_solution.chars().enumerate() {
             if bit == '1' && i < circuit.num_qubits {
                 circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![i]));
@@ -1674,7 +1762,10 @@ impl QAOAOptimizer {
     fn prepare_random_state(&self, circuit: &mut InterfaceCircuit) -> Result<()> {
         for qubit in 0..circuit.num_qubits {
             let angle = (rand::random::<f64>() - 0.5) * std::f64::consts::PI;
-            circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(angle), vec![qubit]));
+            circuit.add_gate(InterfaceGate::new(
+                InterfaceGateType::RY(angle),
+                vec![qubit],
+            ));
         }
         Ok(())
     }
@@ -1685,7 +1776,8 @@ impl QAOAOptimizer {
                 // Start with a balanced cut
                 for qubit in 0..circuit.num_qubits {
                     if qubit % 2 == 0 {
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![qubit]));
+                        circuit
+                            .add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![qubit]));
                     }
                 }
             }
@@ -1696,7 +1788,8 @@ impl QAOAOptimizer {
                     let city = time; // Simple tour: 0->1->2->...->0
                     let qubit = city * num_cities + time;
                     if qubit < circuit.num_qubits {
-                        circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![qubit]));
+                        circuit
+                            .add_gate(InterfaceGate::new(InterfaceGateType::PauliX, vec![qubit]));
                     }
                 }
             }
@@ -1713,7 +1806,7 @@ impl QAOAOptimizer {
     fn get_classical_solution(&self) -> Result<String> {
         // Get classical solution (simplified)
         let classical_cost = self.solve_classically()?;
-        
+
         // For now, return a random valid solution
         let mut solution = String::new();
         for _ in 0..self.graph.num_vertices {
@@ -1731,12 +1824,13 @@ pub fn benchmark_qaoa() -> Result<HashMap<String, f64>> {
     let start = Instant::now();
     let graph = QAOAGraph {
         num_vertices: 4,
-        adjacency_matrix: Array2::from_shape_vec((4, 4), vec![
-            0.0, 1.0, 1.0, 0.0,
-            1.0, 0.0, 1.0, 1.0,
-            1.0, 1.0, 0.0, 1.0,
-            0.0, 1.0, 1.0, 0.0,
-        ]).unwrap(),
+        adjacency_matrix: Array2::from_shape_vec(
+            (4, 4),
+            vec![
+                0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0,
+            ],
+        )
+        .unwrap(),
         vertex_weights: vec![1.0; 4],
         edge_weights: HashMap::new(),
         constraints: Vec::new(),
@@ -1786,12 +1880,15 @@ mod tests {
 
     #[test]
     fn test_parameter_initialization() {
-        let config = QAOAConfig { num_layers: 3, ..Default::default() };
+        let config = QAOAConfig {
+            num_layers: 3,
+            ..Default::default()
+        };
         let graph = create_test_graph();
-        
+
         let gammas = QAOAOptimizer::initialize_gammas(&config, &graph).unwrap();
         let betas = QAOAOptimizer::initialize_betas(&config, &graph).unwrap();
-        
+
         assert_eq!(gammas.len(), 3);
         assert_eq!(betas.len(), 3);
     }

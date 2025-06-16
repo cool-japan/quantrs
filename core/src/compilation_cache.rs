@@ -431,7 +431,10 @@ impl CompilationCache {
             };
 
             for compiled in gates_to_write {
-                let filename = format!("{}.cache", &compiled.gate_id[..16.min(compiled.gate_id.len())]);
+                let filename = format!(
+                    "{}.cache",
+                    &compiled.gate_id[..16.min(compiled.gate_id.len())]
+                );
                 let file_path = cache_dir.join(filename);
 
                 if let Err(e) = Self::write_gate_to_file(&file_path, &compiled, 3) {
@@ -777,9 +780,12 @@ mod tests {
     #[test]
     fn test_gate_compilation_and_caching() {
         let temp_dir = std::env::temp_dir().join(format!(
-            "quantrs_test_caching_{}_{}", 
+            "quantrs_test_caching_{}_{}",
             std::process::id(),
-            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
         ));
         let config = CacheConfig {
             cache_dir: temp_dir,
@@ -931,9 +937,12 @@ mod tests {
     #[test]
     fn test_statistics_export() {
         let temp_dir = std::env::temp_dir().join(format!(
-            "quantrs_test_stats_{}_{}", 
+            "quantrs_test_stats_{}_{}",
             std::process::id(),
-            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
         ));
         let config = CacheConfig {
             cache_dir: temp_dir.clone(),

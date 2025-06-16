@@ -7,22 +7,15 @@
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
-    qubit::QubitId,
-    hardware_compilation::{
-        HardwareCompiler, NativeGateType, HardwarePlatform, CompiledGate,
-        HardwareCompilationConfig,
-    },
-    synthesis::{decompose_single_qubit_zyz, decompose_two_qubit_kak, KAKDecomposition},
+    hardware_compilation::HardwarePlatform,
     matrix_ops::DenseMatrix,
-    optimization::{OptimizationPass, OptimizationChain},
+    qubit::QubitId,
 };
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::HashMap,
+    fmt,
     sync::{Arc, RwLock},
     time::{Duration, Instant},
-    fmt,
 };
 
 /// Universal gate set definitions
@@ -71,27 +64,41 @@ pub struct GateSetSpecification {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GateType {
     // Pauli gates
-    X, Y, Z,
+    X,
+    Y,
+    Z,
     // Hadamard
     H,
     // Phase gates
-    S, T, Phase(String), // Phase(parameter_name)
+    S,
+    T,
+    Phase(String), // Phase(parameter_name)
     // Rotation gates
-    Rx(String), Ry(String), Rz(String), // Parameterized rotations
+    Rx(String),
+    Ry(String),
+    Rz(String), // Parameterized rotations
     // Square root gates
-    SqrtX, SqrtY, SqrtZ,
+    SqrtX,
+    SqrtY,
+    SqrtZ,
     // Two-qubit gates
-    CNOT, CZ, CY, SWAP,
-    XX(String), YY(String), ZZ(String), // Parameterized two-qubit gates
+    CNOT,
+    CZ,
+    CY,
+    SWAP,
+    XX(String),
+    YY(String),
+    ZZ(String), // Parameterized two-qubit gates
     // Controlled gates
     Controlled(Box<GateType>),
     // Custom gates
     Custom(String),
     // Platform-specific gates
     MolmerSorensen, // Trapped ion MS gate
-    ISwap, SqrtISwap, // Superconducting gates
+    ISwap,
+    SqrtISwap,    // Superconducting gates
     BeamSplitter, // Photonic gates
-    RydbergGate, // Neutral atom gates
+    RydbergGate,  // Neutral atom gates
 }
 
 /// Parameter constraints for gates
@@ -456,11 +463,15 @@ pub struct TranslationVerificationEngine {
 /// Verification strategy trait
 pub trait VerificationStrategy: std::fmt::Debug + Send + Sync {
     /// Verify a translation
-    fn verify(&self, original: &[TranslatedGate], translated: &[TranslatedGate]) -> QuantRS2Result<VerificationResult>;
-    
+    fn verify(
+        &self,
+        original: &[TranslatedGate],
+        translated: &[TranslatedGate],
+    ) -> QuantRS2Result<VerificationResult>;
+
     /// Get strategy name
     fn name(&self) -> &str;
-    
+
     /// Get verification confidence level
     fn confidence_level(&self) -> f64;
 }
@@ -483,21 +494,21 @@ pub struct VerificationResult {
 impl GateTranslator {
     /// Create a new gate translator
     pub fn new() -> QuantRS2Result<Self> {
-        let mut translator = Self {
+        let translator = Self {
             gate_sets: Arc::new(RwLock::new(HashMap::new())),
             translation_rules: Arc::new(RwLock::new(TranslationRuleDatabase::new())),
             translation_cache: Arc::new(RwLock::new(TranslationCache::new(10000))),
             performance_monitor: Arc::new(RwLock::new(TranslationPerformanceMonitor::new())),
             verification_engine: Arc::new(RwLock::new(TranslationVerificationEngine::new())),
         };
-        
+
         // Initialize built-in gate sets and rules
         translator.initialize_builtin_gate_sets()?;
         translator.initialize_builtin_translation_rules()?;
-        
+
         Ok(translator)
     }
-    
+
     /// Translate circuit between gate sets
     pub fn translate_circuit(
         &self,
@@ -507,110 +518,109 @@ impl GateTranslator {
         strategy: TranslationStrategy,
     ) -> QuantRS2Result<TranslatedCircuit> {
         let start_time = Instant::now();
-        
+
         // Generate cache key
-        let cache_key = self.generate_cache_key(circuit, &source_gate_set, &target_gate_set, strategy);
-        
+        let cache_key =
+            self.generate_cache_key(circuit, &source_gate_set, &target_gate_set, strategy);
+
         // Check cache first
         if let Some(cached_result) = self.check_translation_cache(&cache_key)? {
             self.record_cache_hit();
             return Ok(cached_result);
         }
-        
+
         self.record_cache_miss();
-        
+
         // Validate gate sets
         self.validate_gate_sets(&source_gate_set, &target_gate_set)?;
-        
+
         // Perform translation
-        let translated_circuit = self.perform_translation(circuit, &source_gate_set, &target_gate_set, strategy)?;
-        
+        let translated_circuit =
+            self.perform_translation(circuit, &source_gate_set, &target_gate_set, strategy)?;
+
         // Verify translation
         self.verify_translation(circuit, &translated_circuit)?;
-        
+
         // Optimize translated circuit
         let optimized_circuit = self.optimize_translated_circuit(translated_circuit, strategy)?;
-        
+
         // Cache result
-        self.cache_translation(&cache_key, &optimized_circuit, &source_gate_set, &target_gate_set)?;
-        
+        self.cache_translation(
+            &cache_key,
+            &optimized_circuit,
+            &source_gate_set,
+            &target_gate_set,
+        )?;
+
         // Record performance metrics
         let translation_time = start_time.elapsed();
         self.record_translation_performance(&source_gate_set, &target_gate_set, translation_time);
-        
+
         Ok(optimized_circuit)
     }
-    
+
     /// Get available gate sets
     pub fn get_available_gate_sets(&self) -> Vec<UniversalGateSet> {
         let gate_sets = self.gate_sets.read().unwrap();
         gate_sets.keys().cloned().collect()
     }
-    
+
     /// Register custom gate set
-    pub fn register_gate_set(&self, gate_set: UniversalGateSet, spec: GateSetSpecification) -> QuantRS2Result<()> {
+    pub fn register_gate_set(
+        &self,
+        gate_set: UniversalGateSet,
+        spec: GateSetSpecification,
+    ) -> QuantRS2Result<()> {
         let mut gate_sets = self.gate_sets.write().unwrap();
         gate_sets.insert(gate_set, spec);
         Ok(())
     }
-    
+
     /// Add custom translation rule
-    pub fn add_translation_rule(&self, rule: TranslationRule) -> QuantRS2Result<()> {
-        let mut rules = self.translation_rules.write().unwrap();
+    pub fn add_translation_rule(&self, _rule: TranslationRule) -> QuantRS2Result<()> {
+        let _rules = self.translation_rules.write().unwrap();
         // Implementation would add rule to appropriate categories
         Ok(())
     }
-    
+
     /// Initialize built-in gate sets
     fn initialize_builtin_gate_sets(&self) -> QuantRS2Result<()> {
         let mut gate_sets = self.gate_sets.write().unwrap();
-        
+
         // Clifford+T gate set
-        gate_sets.insert(
-            UniversalGateSet::CliffordT,
-            create_clifford_t_gate_set()
-        );
-        
+        gate_sets.insert(UniversalGateSet::CliffordT, create_clifford_t_gate_set());
+
         // Continuous rotation gate set
         gate_sets.insert(
             UniversalGateSet::ContinuousRotation,
-            create_continuous_rotation_gate_set()
+            create_continuous_rotation_gate_set(),
         );
-        
+
         // IBM gate set
-        gate_sets.insert(
-            UniversalGateSet::IBM,
-            create_ibm_gate_set()
-        );
-        
+        gate_sets.insert(UniversalGateSet::IBM, create_ibm_gate_set());
+
         // Google gate set
-        gate_sets.insert(
-            UniversalGateSet::Google,
-            create_google_gate_set()
-        );
-        
+        gate_sets.insert(UniversalGateSet::Google, create_google_gate_set());
+
         // IonQ gate set
-        gate_sets.insert(
-            UniversalGateSet::IonQ,
-            create_ionq_gate_set()
-        );
-        
+        gate_sets.insert(UniversalGateSet::IonQ, create_ionq_gate_set());
+
         Ok(())
     }
-    
+
     /// Initialize built-in translation rules
     fn initialize_builtin_translation_rules(&self) -> QuantRS2Result<()> {
         let mut rules = self.translation_rules.write().unwrap();
-        
+
         // Add basic translation rules
         self.add_pauli_translation_rules(&mut rules);
         self.add_rotation_translation_rules(&mut rules);
         self.add_two_qubit_translation_rules(&mut rules);
         self.add_controlled_gate_translation_rules(&mut rules);
-        
+
         Ok(())
     }
-    
+
     fn add_pauli_translation_rules(&self, rules: &mut TranslationRuleDatabase) {
         // X gate translations
         let x_to_rx_rule = TranslationRule {
@@ -642,58 +652,69 @@ impl GateTranslator {
                 verified_platforms: vec![HardwarePlatform::Universal],
             },
         };
-        
+
         // Add rule to database (simplified)
-        rules.rules_by_source.entry(UniversalGateSet::CliffordT).or_insert_with(Vec::new).push(x_to_rx_rule);
+        rules
+            .rules_by_source
+            .entry(UniversalGateSet::CliffordT)
+            .or_insert_with(Vec::new)
+            .push(x_to_rx_rule);
     }
-    
-    fn add_rotation_translation_rules(&self, rules: &mut TranslationRuleDatabase) {
+
+    fn add_rotation_translation_rules(&self, _rules: &mut TranslationRuleDatabase) {
         // Rotation decomposition rules would be added here
     }
-    
-    fn add_two_qubit_translation_rules(&self, rules: &mut TranslationRuleDatabase) {
+
+    fn add_two_qubit_translation_rules(&self, _rules: &mut TranslationRuleDatabase) {
         // Two-qubit gate translation rules would be added here
     }
-    
-    fn add_controlled_gate_translation_rules(&self, rules: &mut TranslationRuleDatabase) {
+
+    fn add_controlled_gate_translation_rules(&self, _rules: &mut TranslationRuleDatabase) {
         // Controlled gate translation rules would be added here
     }
-    
-    fn validate_gate_sets(&self, source: &UniversalGateSet, target: &UniversalGateSet) -> QuantRS2Result<()> {
+
+    fn validate_gate_sets(
+        &self,
+        source: &UniversalGateSet,
+        target: &UniversalGateSet,
+    ) -> QuantRS2Result<()> {
         let gate_sets = self.gate_sets.read().unwrap();
-        
+
         if !gate_sets.contains_key(&source) {
-            return Err(QuantRS2Error::UnsupportedOperation(
-                format!("Source gate set {:?} not supported", source)
-            ));
+            return Err(QuantRS2Error::UnsupportedOperation(format!(
+                "Source gate set {:?} not supported",
+                source
+            )));
         }
-        
+
         if !gate_sets.contains_key(&target) {
-            return Err(QuantRS2Error::UnsupportedOperation(
-                format!("Target gate set {:?} not supported", target)
-            ));
+            return Err(QuantRS2Error::UnsupportedOperation(format!(
+                "Target gate set {:?} not supported",
+                target
+            )));
         }
-        
+
         Ok(())
     }
-    
+
     fn perform_translation(
         &self,
         circuit: &[Box<dyn GateOp>],
         source_gate_set: &UniversalGateSet,
         target_gate_set: &UniversalGateSet,
-        strategy: TranslationStrategy,
+        _strategy: TranslationStrategy,
     ) -> QuantRS2Result<TranslatedCircuit> {
         let mut translated_gates = Vec::new();
-        let mut qubit_mapping = HashMap::new();
-        let mut parameter_mapping = HashMap::new();
-        
+        let qubit_mapping = HashMap::new();
+        let parameter_mapping = HashMap::new();
+
         // Simple gate-by-gate translation (real implementation would be more sophisticated)
-        for (i, gate) in circuit.iter().enumerate() {
-            let translated_gate = self.translate_single_gate(gate, &source_gate_set, &target_gate_set)?;
+        for (_i, gate) in circuit.iter().enumerate() {
+            let translated_gate =
+                self.translate_single_gate(gate, &source_gate_set, &target_gate_set)?;
             translated_gates.push(translated_gate);
         }
-        
+
         // Create translation summary
         let translation_summary = TranslationSummary {
             source_gate_set: source_gate_set.clone(),
@@ -701,12 +722,12 @@ impl GateTranslator {
             original_gate_count: circuit.len(),
             translated_gate_count: translated_gates.len(),
             gate_count_overhead: (translated_gates.len() as f64 / circuit.len() as f64) - 1.0,
-            depth_overhead: 0.0, // Would be calculated properly
+            depth_overhead: 0.0,      // Would be calculated properly
             estimated_fidelity: 0.99, // Would be calculated from gate fidelities
             translation_time: Duration::from_millis(1),
             applied_optimizations: vec!["Basic translation".to_string()],
         };
-        
+
         Ok(TranslatedCircuit {
             gates: translated_gates,
             qubit_mapping,
@@ -714,17 +735,17 @@ impl GateTranslator {
             translation_summary,
         })
     }
-    
+
     fn translate_single_gate(
         &self,
         gate: &Box<dyn GateOp>,
-        source_gate_set: &UniversalGateSet,
-        target_gate_set: &UniversalGateSet,
+        _source_gate_set: &UniversalGateSet,
+        _target_gate_set: &UniversalGateSet,
     ) -> QuantRS2Result<TranslatedGate> {
         // Simplified translation - real implementation would use rule database
         let gate_name = gate.name();
-        
-        let target_gate_type = match gate_name.as_ref() {
+
+        let target_gate_type = match gate_name {
             "X" => GateType::X,
             "Y" => GateType::Y,
             "Z" => GateType::Z,
@@ -735,11 +756,11 @@ impl GateTranslator {
             "Rz" => GateType::Rz("theta".to_string()),
             _ => GateType::Custom(gate_name.to_string()),
         };
-        
+
         Ok(TranslatedGate {
             original_gate_index: Some(0),
             gate_type: target_gate_type,
-            qubits: vec![], // Would be populated from gate
+            qubits: vec![],     // Would be populated from gate
             parameters: vec![], // Would be populated from gate
             matrix: None,
             metadata: GateTranslationMetadata {
@@ -756,21 +777,29 @@ impl GateTranslator {
             },
         })
     }
-    
-    fn verify_translation(&self, original: &[Box<dyn GateOp>], translated: &TranslatedCircuit) -> QuantRS2Result<()> {
-        let verification_engine = self.verification_engine.read().unwrap();
-        
+
+    fn verify_translation(
+        &self,
+        original: &[Box<dyn GateOp>],
+        translated: &TranslatedCircuit,
+    ) -> QuantRS2Result<()> {
+        let _verification_engine = self.verification_engine.read().unwrap();
+
         // Simplified verification - real implementation would be more thorough
         if translated.gates.len() < original.len() {
             return Err(QuantRS2Error::RuntimeError(
-                "Translation resulted in fewer gates than original".to_string()
+                "Translation resulted in fewer gates than original".to_string(),
             ));
         }
-        
+
         Ok(())
     }
-    
-    fn optimize_translated_circuit(&self, circuit: TranslatedCircuit, strategy: TranslationStrategy) -> QuantRS2Result<TranslatedCircuit> {
+
+    fn optimize_translated_circuit(
+        &self,
+        circuit: TranslatedCircuit,
+        strategy: TranslationStrategy,
+    ) -> QuantRS2Result<TranslatedCircuit> {
         // Apply strategy-specific optimizations
         match strategy {
             TranslationStrategy::MinimizeGates => self.optimize_for_gate_count(circuit),
@@ -780,37 +809,46 @@ impl GateTranslator {
             _ => Ok(circuit),
         }
     }
-    
-    fn optimize_for_gate_count(&self, mut circuit: TranslatedCircuit) -> QuantRS2Result<TranslatedCircuit> {
+
+    fn optimize_for_gate_count(
+        &self,
+        mut circuit: TranslatedCircuit,
+    ) -> QuantRS2Result<TranslatedCircuit> {
         // Gate count optimization (cancellation, fusion, etc.)
-        let original_count = circuit.gates.len();
-        
+        let _original_count = circuit.gates.len();
+
         // Remove identity gates (simplified)
-        circuit.gates.retain(|gate| !matches!(gate.gate_type, GateType::Custom(ref name) if name == "I"));
-        
+        circuit
+            .gates
+            .retain(|gate| !matches!(gate.gate_type, GateType::Custom(ref name) if name == "I"));
+
         // Update summary
         circuit.translation_summary.translated_gate_count = circuit.gates.len();
-        circuit.translation_summary.gate_count_overhead = 
-            (circuit.gates.len() as f64 / circuit.translation_summary.original_gate_count as f64) - 1.0;
-        
+        circuit.translation_summary.gate_count_overhead = (circuit.gates.len() as f64
+            / circuit.translation_summary.original_gate_count as f64)
+            - 1.0;
+
         Ok(circuit)
     }
-    
+
     fn optimize_for_depth(&self, circuit: TranslatedCircuit) -> QuantRS2Result<TranslatedCircuit> {
         // Depth optimization (parallelization, commutation)
         Ok(circuit)
     }
-    
-    fn optimize_for_fidelity(&self, circuit: TranslatedCircuit) -> QuantRS2Result<TranslatedCircuit> {
+
+    fn optimize_for_fidelity(
+        &self,
+        circuit: TranslatedCircuit,
+    ) -> QuantRS2Result<TranslatedCircuit> {
         // Fidelity optimization (prefer higher fidelity gates)
         Ok(circuit)
     }
-    
+
     fn optimize_balanced(&self, circuit: TranslatedCircuit) -> QuantRS2Result<TranslatedCircuit> {
         // Balanced optimization considering all factors
         Ok(circuit)
     }
-    
+
     // Cache management methods
     fn generate_cache_key(
         &self,
@@ -822,21 +860,24 @@ impl GateTranslator {
         // Generate hash-based cache key
         format!("{:?}_{:?}_{:?}_{}", source, target, strategy, circuit.len())
     }
-    
+
     fn check_translation_cache(&self, key: &str) -> QuantRS2Result<Option<TranslatedCircuit>> {
         let cache = self.translation_cache.read().unwrap();
-        Ok(cache.cache_entries.get(key).map(|entry| entry.translated_circuit.clone()))
+        Ok(cache
+            .cache_entries
+            .get(key)
+            .map(|entry| entry.translated_circuit.clone()))
     }
-    
+
     fn cache_translation(
         &self,
         key: &str,
         circuit: &TranslatedCircuit,
-        source: &UniversalGateSet,
-        target: &UniversalGateSet,
+        _source: &UniversalGateSet,
+        _target: &UniversalGateSet,
     ) -> QuantRS2Result<()> {
         let mut cache = self.translation_cache.write().unwrap();
-        
+
         let entry = TranslationCacheEntry {
             source_fingerprint: key.to_string(),
             translated_circuit: circuit.clone(),
@@ -866,39 +907,57 @@ impl GateTranslator {
             last_access: Instant::now(),
             created: Instant::now(),
         };
-        
+
         cache.cache_entries.insert(key.to_string(), entry);
         Ok(())
     }
-    
+
     fn record_cache_hit(&self) {
         let mut cache = self.translation_cache.write().unwrap();
         cache.cache_stats.cache_hits += 1;
         cache.cache_stats.total_requests += 1;
-        cache.cache_stats.hit_rate = cache.cache_stats.cache_hits as f64 / cache.cache_stats.total_requests as f64;
+        cache.cache_stats.hit_rate =
+            cache.cache_stats.cache_hits as f64 / cache.cache_stats.total_requests as f64;
     }
-    
+
     fn record_cache_miss(&self) {
         let mut cache = self.translation_cache.write().unwrap();
         cache.cache_stats.cache_misses += 1;
         cache.cache_stats.total_requests += 1;
-        cache.cache_stats.hit_rate = cache.cache_stats.cache_hits as f64 / cache.cache_stats.total_requests as f64;
+        cache.cache_stats.hit_rate =
+            cache.cache_stats.cache_hits as f64 / cache.cache_stats.total_requests as f64;
     }
-    
-    fn record_translation_performance(&self, source: &UniversalGateSet, target: &UniversalGateSet, duration: Duration) {
+
+    fn record_translation_performance(
+        &self,
+        source: &UniversalGateSet,
+        target: &UniversalGateSet,
+        duration: Duration,
+    ) {
         let mut monitor = self.performance_monitor.write().unwrap();
-        monitor.translation_times.entry((source.clone(), target.clone())).or_insert_with(Vec::new).push(duration);
+        monitor
+            .translation_times
+            .entry((source.clone(), target.clone()))
+            .or_insert_with(Vec::new)
+            .push(duration);
     }
-    
+
     /// Get translation performance statistics
     pub fn get_performance_stats(&self) -> TranslationPerformanceStats {
         let monitor = self.performance_monitor.read().unwrap();
         let cache = self.translation_cache.read().unwrap();
-        
+
         TranslationPerformanceStats {
             cache_stats: cache.cache_stats.clone(),
-            average_translation_times: monitor.translation_times.iter()
-                .map(|(pair, times)| (pair.clone(), times.iter().sum::<Duration>() / times.len() as u32))
+            average_translation_times: monitor
+                .translation_times
+                .iter()
+                .map(|(pair, times)| {
+                    (
+                        pair.clone(),
+                        times.iter().sum::<Duration>() / times.len() as u32,
+                    )
+                })
                 .collect(),
             success_rates: monitor.success_rates.clone(),
             total_translations: monitor.translation_times.values().map(|v| v.len()).sum(),
@@ -926,7 +985,7 @@ fn create_clifford_t_gate_set() -> GateSetSpecification {
     gate_fidelities.insert(GateType::S, 0.9999);
     gate_fidelities.insert(GateType::T, 0.999);
     gate_fidelities.insert(GateType::CNOT, 0.995);
-    
+
     GateSetSpecification {
         gate_set: UniversalGateSet::CliffordT,
         single_qubit_gates: vec![GateType::H, GateType::S, GateType::T],
@@ -945,7 +1004,7 @@ fn create_continuous_rotation_gate_set() -> GateSetSpecification {
     gate_fidelities.insert(GateType::Ry("theta".to_string()), 0.9995);
     gate_fidelities.insert(GateType::Rz("theta".to_string()), 1.0); // Virtual Z
     gate_fidelities.insert(GateType::CNOT, 0.995);
-    
+
     GateSetSpecification {
         gate_set: UniversalGateSet::ContinuousRotation,
         single_qubit_gates: vec![
@@ -968,7 +1027,7 @@ fn create_ibm_gate_set() -> GateSetSpecification {
     gate_fidelities.insert(GateType::Rx("theta".to_string()), 0.9995);
     gate_fidelities.insert(GateType::Rz("phi".to_string()), 1.0);
     gate_fidelities.insert(GateType::CNOT, 0.995);
-    
+
     GateSetSpecification {
         gate_set: UniversalGateSet::IBM,
         single_qubit_gates: vec![
@@ -990,7 +1049,7 @@ fn create_google_gate_set() -> GateSetSpecification {
     gate_fidelities.insert(GateType::SqrtX, 0.9995);
     gate_fidelities.insert(GateType::SqrtY, 0.9995);
     gate_fidelities.insert(GateType::CZ, 0.995);
-    
+
     GateSetSpecification {
         gate_set: UniversalGateSet::Google,
         single_qubit_gates: vec![GateType::SqrtX, GateType::SqrtY],
@@ -1010,7 +1069,7 @@ fn create_ionq_gate_set() -> GateSetSpecification {
     gate_fidelities.insert(GateType::Ry("theta".to_string()), 0.9999);
     gate_fidelities.insert(GateType::Rz("phi".to_string()), 0.9999);
     gate_fidelities.insert(GateType::MolmerSorensen, 0.998);
-    
+
     GateSetSpecification {
         gate_set: UniversalGateSet::IonQ,
         single_qubit_gates: vec![
@@ -1077,7 +1136,11 @@ struct MatrixVerificationStrategy {
 }
 
 impl VerificationStrategy for MatrixVerificationStrategy {
-    fn verify(&self, original: &[TranslatedGate], translated: &[TranslatedGate]) -> QuantRS2Result<VerificationResult> {
+    fn verify(
+        &self,
+        _original: &[TranslatedGate],
+        _translated: &[TranslatedGate],
+    ) -> QuantRS2Result<VerificationResult> {
         // Matrix-based verification
         Ok(VerificationResult {
             passed: true,
@@ -1087,11 +1150,11 @@ impl VerificationStrategy for MatrixVerificationStrategy {
             details: HashMap::new(),
         })
     }
-    
+
     fn name(&self) -> &str {
         "Matrix Verification"
     }
-    
+
     fn confidence_level(&self) -> f64 {
         0.95
     }
@@ -1103,7 +1166,11 @@ struct StatisticalVerificationStrategy {
 }
 
 impl VerificationStrategy for StatisticalVerificationStrategy {
-    fn verify(&self, original: &[TranslatedGate], translated: &[TranslatedGate]) -> QuantRS2Result<VerificationResult> {
+    fn verify(
+        &self,
+        _original: &[TranslatedGate],
+        _translated: &[TranslatedGate],
+    ) -> QuantRS2Result<VerificationResult> {
         // Statistical verification using random sampling
         Ok(VerificationResult {
             passed: true,
@@ -1113,11 +1180,11 @@ impl VerificationStrategy for StatisticalVerificationStrategy {
             details: HashMap::new(),
         })
     }
-    
+
     fn name(&self) -> &str {
         "Statistical Verification"
     }
-    
+
     fn confidence_level(&self) -> f64 {
         0.99
     }
@@ -1168,14 +1235,14 @@ mod tests {
     fn test_gate_translator_creation() {
         let translator = GateTranslator::new();
         assert!(translator.is_ok());
-        
+
         let translator = translator.unwrap();
         let available_gate_sets = translator.get_available_gate_sets();
         assert!(available_gate_sets.contains(&UniversalGateSet::CliffordT));
         assert!(available_gate_sets.contains(&UniversalGateSet::IBM));
         assert!(available_gate_sets.contains(&UniversalGateSet::Google));
     }
-    
+
     #[test]
     fn test_gate_set_specifications() {
         let clifford_t = create_clifford_t_gate_set();
@@ -1183,17 +1250,21 @@ mod tests {
         assert!(clifford_t.single_qubit_gates.contains(&GateType::H));
         assert!(clifford_t.single_qubit_gates.contains(&GateType::T));
         assert!(clifford_t.two_qubit_gates.contains(&GateType::CNOT));
-        
+
         let ibm = create_ibm_gate_set();
         assert_eq!(ibm.gate_set, UniversalGateSet::IBM);
-        assert!(ibm.single_qubit_gates.contains(&GateType::Rx("theta".to_string())));
-        assert!(ibm.single_qubit_gates.contains(&GateType::Rz("phi".to_string())));
+        assert!(ibm
+            .single_qubit_gates
+            .contains(&GateType::Rx("theta".to_string())));
+        assert!(ibm
+            .single_qubit_gates
+            .contains(&GateType::Rz("phi".to_string())));
     }
-    
+
     #[test]
     fn test_custom_gate_set_registration() {
         let translator = GateTranslator::new().unwrap();
-        
+
         let custom_gate_set = GateSetSpecification {
             gate_set: UniversalGateSet::Custom("TestSet".to_string()),
             single_qubit_gates: vec![GateType::X, GateType::Z],
@@ -1204,29 +1275,40 @@ mod tests {
             parameter_constraints: HashMap::new(),
             hardware_metadata: HashMap::new(),
         };
-        
+
         let custom_set = UniversalGateSet::Custom("TestSet".to_string());
-        assert!(translator.register_gate_set(custom_set.clone(), custom_gate_set).is_ok());
-        
+        assert!(translator
+            .register_gate_set(custom_set.clone(), custom_gate_set)
+            .is_ok());
+
         let available_sets = translator.get_available_gate_sets();
         assert!(available_sets.contains(&custom_set));
     }
-    
+
     #[test]
     fn test_gate_type_display() {
         assert_eq!(format!("{}", GateType::X), "X");
-        assert_eq!(format!("{}", GateType::Rx("theta".to_string())), "Rx(theta)");
+        assert_eq!(
+            format!("{}", GateType::Rx("theta".to_string())),
+            "Rx(theta)"
+        );
         assert_eq!(format!("{}", GateType::CNOT), "CNOT");
-        assert_eq!(format!("{}", GateType::Custom("MyGate".to_string())), "Custom(MyGate)");
+        assert_eq!(
+            format!("{}", GateType::Custom("MyGate".to_string())),
+            "Custom(MyGate)"
+        );
     }
-    
+
     #[test]
     fn test_universal_gate_set_display() {
         assert_eq!(format!("{}", UniversalGateSet::CliffordT), "Clifford+T");
         assert_eq!(format!("{}", UniversalGateSet::IBM), "IBM");
-        assert_eq!(format!("{}", UniversalGateSet::Custom("Test".to_string())), "Custom(Test)");
+        assert_eq!(
+            format!("{}", UniversalGateSet::Custom("Test".to_string())),
+            "Custom(Test)"
+        );
     }
-    
+
     #[test]
     fn test_translation_cost_calculation() {
         let cost = TranslationCost {
@@ -1236,24 +1318,24 @@ mod tests {
             time_overhead: Duration::from_micros(100),
             resource_overhead: 0.1,
         };
-        
+
         // Test that cost structure is properly formed
         assert_eq!(cost.gate_count_multiplier, 2.0);
         assert_eq!(cost.depth_multiplier, 1.5);
         assert_eq!(cost.fidelity_impact, 0.001);
     }
-    
+
     #[test]
     fn test_verification_strategies() {
         let matrix_strategy = MatrixVerificationStrategy { tolerance: 1e-10 };
         assert_eq!(matrix_strategy.name(), "Matrix Verification");
         assert_eq!(matrix_strategy.confidence_level(), 0.95);
-        
+
         let statistical_strategy = StatisticalVerificationStrategy { sample_count: 1000 };
         assert_eq!(statistical_strategy.name(), "Statistical Verification");
         assert_eq!(statistical_strategy.confidence_level(), 0.99);
     }
-    
+
     #[test]
     fn test_parameter_constraints() {
         let constraints = ParameterConstraints {
@@ -1262,19 +1344,19 @@ mod tests {
             granularity: Some(0.01),
             default_value: 0.0,
         };
-        
+
         assert_eq!(constraints.ranges.len(), 1);
         assert!(constraints.discrete_values.is_some());
         assert_eq!(constraints.default_value, 0.0);
     }
-    
+
     #[test]
     fn test_translation_cache_functionality() {
         let cache = TranslationCache::new(1000);
         assert_eq!(cache.max_cache_size, 1000);
         assert_eq!(cache.cache_stats.total_requests, 0);
     }
-    
+
     #[test]
     fn test_gate_pattern_matching() {
         let pattern = GatePattern {
@@ -1282,11 +1364,11 @@ mod tests {
             qubit_pattern: Some(QubitPattern::Any),
             parameter_patterns: vec![],
         };
-        
+
         assert_eq!(pattern.gate_type, GateType::X);
         assert!(matches!(pattern.qubit_pattern, Some(QubitPattern::Any)));
     }
-    
+
     #[test]
     fn test_translation_rule_structure() {
         let rule = TranslationRule {
@@ -1298,7 +1380,9 @@ mod tests {
             target_sequence: vec![TargetGate {
                 gate_type: GateType::Ry("pi/2".to_string()),
                 qubit_mapping: vec![0],
-                parameter_expressions: vec![ParameterExpression::Constant(std::f64::consts::PI / 2.0)],
+                parameter_expressions: vec![ParameterExpression::Constant(
+                    std::f64::consts::PI / 2.0,
+                )],
                 metadata: HashMap::new(),
             }],
             cost: TranslationCost {
@@ -1318,12 +1402,12 @@ mod tests {
                 verified_platforms: vec![],
             },
         };
-        
+
         assert_eq!(rule.source_pattern.gate_type, GateType::H);
         assert_eq!(rule.target_sequence.len(), 1);
         assert_eq!(rule.metadata.name, "H to Ry");
     }
-    
+
     #[test]
     fn test_performance_monitoring() {
         let monitor = TranslationPerformanceMonitor::new();

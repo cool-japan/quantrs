@@ -4,17 +4,12 @@
 //! specifically designed for quantum computing, including parameter-shift
 //! rules, finite differences, and hybrid classical-quantum gradients.
 
-use crate::{
-    error::{QuantRS2Error, QuantRS2Result},
-    gate::GateOp,
-    qubit::QubitId,
-};
-use ndarray::{Array1, Array2};
+use crate::error::{QuantRS2Error, QuantRS2Result};
 use num_complex::Complex64;
 use std::{
     collections::HashMap,
-    sync::{Arc, RwLock},
     fmt,
+    sync::{Arc, RwLock},
 };
 
 /// Configuration for quantum automatic differentiation
@@ -187,16 +182,23 @@ impl QuantumAutoDiff {
     }
 
     /// Register a parameter for differentiation
-    pub fn register_parameter(&mut self, name: &str, initial_value: f64, bounds: Option<(f64, f64)>) -> QuantRS2Result<usize> {
+    pub fn register_parameter(
+        &mut self,
+        name: &str,
+        initial_value: f64,
+        bounds: Option<(f64, f64)>,
+    ) -> QuantRS2Result<usize> {
         let mut registry = self.parameter_registry.write().unwrap();
         Ok(registry.add_parameter(name, initial_value, bounds))
     }
 
     /// Compute gradients using the specified method
-    pub fn compute_gradients<F>(&mut self, 
-                               function: F, 
-                               parameter_ids: &[usize],
-                               method: Option<DifferentiationMethod>) -> QuantRS2Result<GradientResult>
+    pub fn compute_gradients<F>(
+        &mut self,
+        function: F,
+        parameter_ids: &[usize],
+        method: Option<DifferentiationMethod>,
+    ) -> QuantRS2Result<GradientResult>
     where
         F: Fn(&[f64]) -> QuantRS2Result<Complex64> + Copy,
     {
@@ -219,17 +221,21 @@ impl QuantumAutoDiff {
 
         // Get current parameter values
         let parameter_values = self.get_parameter_values(parameter_ids)?;
-        
+
         let gradients = match method {
             DifferentiationMethod::ParameterShift => {
                 self.compute_parameter_shift_gradients(function, &parameter_values, parameter_ids)?
             }
-            DifferentiationMethod::FiniteDifference => {
-                self.compute_finite_difference_gradients(function, &parameter_values, parameter_ids)?
-            }
-            DifferentiationMethod::CentralDifference => {
-                self.compute_central_difference_gradients(function, &parameter_values, parameter_ids)?
-            }
+            DifferentiationMethod::FiniteDifference => self.compute_finite_difference_gradients(
+                function,
+                &parameter_values,
+                parameter_ids,
+            )?,
+            DifferentiationMethod::CentralDifference => self.compute_central_difference_gradients(
+                function,
+                &parameter_values,
+                parameter_ids,
+            )?,
             DifferentiationMethod::ComplexStep => {
                 self.compute_complex_step_gradients(function, &parameter_values, parameter_ids)?
             }
@@ -255,23 +261,30 @@ impl QuantumAutoDiff {
         // Cache the result
         if self.config.enable_caching {
             let cache_key = self.generate_cache_key(parameter_ids, method);
-            self.cache_gradient(cache_key, &gradients, computation_time.as_secs_f64(), method);
+            self.cache_gradient(
+                cache_key,
+                &gradients,
+                computation_time.as_secs_f64(),
+                method,
+            );
         }
 
         Ok(result)
     }
 
     /// Compute higher-order derivatives
-    pub fn compute_higher_order_derivatives<F>(&mut self,
-                                             function: F,
-                                             parameter_ids: &[usize],
-                                             max_order: usize) -> QuantRS2Result<HigherOrderResult>
+    pub fn compute_higher_order_derivatives<F>(
+        &mut self,
+        function: F,
+        parameter_ids: &[usize],
+        max_order: usize,
+    ) -> QuantRS2Result<HigherOrderResult>
     where
         F: Fn(&[f64]) -> QuantRS2Result<Complex64> + Copy,
     {
         if !self.config.enable_higher_order {
             return Err(QuantRS2Error::UnsupportedOperation(
-                "Higher-order derivatives disabled".to_string()
+                "Higher-order derivatives disabled".to_string(),
             ));
         }
 
@@ -281,14 +294,15 @@ impl QuantumAutoDiff {
 
         // Compute derivatives of each order
         for order in 1..=max_order {
-            let order_derivatives = self.compute_nth_order_derivatives(function, parameter_ids, order)?;
+            let order_derivatives =
+                self.compute_nth_order_derivatives(function, parameter_ids, order)?;
             derivatives.push(order_derivatives);
         }
 
         // Compute mixed partial derivatives for second order
         if max_order >= 2 && parameter_ids.len() >= 2 {
             for i in 0..parameter_ids.len() {
-                for j in (i+1)..parameter_ids.len() {
+                for j in (i + 1)..parameter_ids.len() {
                     let mixed = self.compute_mixed_partial(function, parameter_ids, i, j)?;
                     mixed_derivatives.insert((i, j), mixed);
                 }
@@ -304,19 +318,21 @@ impl QuantumAutoDiff {
     }
 
     /// Compute gradients with respect to quantum circuit parameters
-    pub fn circuit_gradients<F>(&mut self,
-                               circuit_function: F,
-                               gate_parameters: &[(usize, String, Vec<usize>)], // (gate_id, gate_name, param_indices)
-                               observable: &str) -> QuantRS2Result<Vec<GradientResult>>
+    pub fn circuit_gradients<F>(
+        &mut self,
+        circuit_function: F,
+        gate_parameters: &[(usize, String, Vec<usize>)], // (gate_id, gate_name, param_indices)
+        observable: &str,
+    ) -> QuantRS2Result<Vec<GradientResult>>
     where
         F: Fn(&[f64], &str) -> QuantRS2Result<Complex64> + Copy,
     {
         let mut results = Vec::new();
 
-        for (gate_id, gate_name, param_indices) in gate_parameters {
+        for (_gate_id, gate_name, param_indices) in gate_parameters {
             // Determine best differentiation method for this gate
             let method = self.select_optimal_method(gate_name);
-            
+
             let gate_function = |params: &[f64]| -> QuantRS2Result<Complex64> {
                 circuit_function(params, observable)
             };
@@ -329,10 +345,12 @@ impl QuantumAutoDiff {
     }
 
     /// Optimize parameter update using gradient information
-    pub fn parameter_update(&mut self, 
-                          gradients: &GradientResult,
-                          learning_rate: f64,
-                          optimizer: OptimizerType) -> QuantRS2Result<()> {
+    pub fn parameter_update(
+        &mut self,
+        gradients: &GradientResult,
+        learning_rate: f64,
+        optimizer: OptimizerType,
+    ) -> QuantRS2Result<()> {
         match optimizer {
             OptimizerType::SGD => {
                 self.sgd_update(gradients, learning_rate)?;
@@ -352,10 +370,12 @@ impl QuantumAutoDiff {
 
     // Private methods for different differentiation approaches
 
-    fn compute_parameter_shift_gradients<F>(&self, 
-                                          function: F, 
-                                          parameters: &[f64],
-                                          _parameter_ids: &[usize]) -> QuantRS2Result<Vec<Complex64>>
+    fn compute_parameter_shift_gradients<F>(
+        &self,
+        function: F,
+        parameters: &[f64],
+        _parameter_ids: &[usize],
+    ) -> QuantRS2Result<Vec<Complex64>>
     where
         F: Fn(&[f64]) -> QuantRS2Result<Complex64> + Copy,
     {
@@ -365,7 +385,7 @@ impl QuantumAutoDiff {
         for i in 0..parameters.len() {
             let mut params_plus = parameters.to_vec();
             let mut params_minus = parameters.to_vec();
-            
+
             params_plus[i] += shift;
             params_minus[i] -= shift;
 
@@ -380,10 +400,12 @@ impl QuantumAutoDiff {
         Ok(gradients)
     }
 
-    fn compute_finite_difference_gradients<F>(&self,
-                                            function: F,
-                                            parameters: &[f64],
-                                            _parameter_ids: &[usize]) -> QuantRS2Result<Vec<Complex64>>
+    fn compute_finite_difference_gradients<F>(
+        &self,
+        function: F,
+        parameters: &[f64],
+        _parameter_ids: &[usize],
+    ) -> QuantRS2Result<Vec<Complex64>>
     where
         F: Fn(&[f64]) -> QuantRS2Result<Complex64> + Copy,
     {
@@ -403,10 +425,12 @@ impl QuantumAutoDiff {
         Ok(gradients)
     }
 
-    fn compute_central_difference_gradients<F>(&self,
-                                             function: F,
-                                             parameters: &[f64],
-                                             _parameter_ids: &[usize]) -> QuantRS2Result<Vec<Complex64>>
+    fn compute_central_difference_gradients<F>(
+        &self,
+        function: F,
+        parameters: &[f64],
+        _parameter_ids: &[usize],
+    ) -> QuantRS2Result<Vec<Complex64>>
     where
         F: Fn(&[f64]) -> QuantRS2Result<Complex64> + Copy,
     {
@@ -416,7 +440,7 @@ impl QuantumAutoDiff {
         for i in 0..parameters.len() {
             let mut params_plus = parameters.to_vec();
             let mut params_minus = parameters.to_vec();
-            
+
             params_plus[i] += h;
             params_minus[i] -= h;
 
@@ -431,10 +455,12 @@ impl QuantumAutoDiff {
         Ok(gradients)
     }
 
-    fn compute_complex_step_gradients<F>(&self,
-                                       function: F,
-                                       parameters: &[f64],
-                                       _parameter_ids: &[usize]) -> QuantRS2Result<Vec<Complex64>>
+    fn compute_complex_step_gradients<F>(
+        &self,
+        function: F,
+        parameters: &[f64],
+        _parameter_ids: &[usize],
+    ) -> QuantRS2Result<Vec<Complex64>>
     where
         F: Fn(&[f64]) -> QuantRS2Result<Complex64> + Copy,
     {
@@ -443,10 +469,12 @@ impl QuantumAutoDiff {
         self.compute_central_difference_gradients(function, parameters, _parameter_ids)
     }
 
-    fn compute_dual_number_gradients<F>(&self,
-                                      function: F,
-                                      parameters: &[f64],
-                                      _parameter_ids: &[usize]) -> QuantRS2Result<Vec<Complex64>>
+    fn compute_dual_number_gradients<F>(
+        &self,
+        function: F,
+        parameters: &[f64],
+        _parameter_ids: &[usize],
+    ) -> QuantRS2Result<Vec<Complex64>>
     where
         F: Fn(&[f64]) -> QuantRS2Result<Complex64> + Copy,
     {
@@ -454,10 +482,12 @@ impl QuantumAutoDiff {
         self.compute_central_difference_gradients(function, parameters, _parameter_ids)
     }
 
-    fn compute_hybrid_gradients<F>(&self,
-                                 function: F,
-                                 parameters: &[f64],
-                                 parameter_ids: &[usize]) -> QuantRS2Result<Vec<Complex64>>
+    fn compute_hybrid_gradients<F>(
+        &self,
+        function: F,
+        parameters: &[f64],
+        parameter_ids: &[usize],
+    ) -> QuantRS2Result<Vec<Complex64>>
     where
         F: Fn(&[f64]) -> QuantRS2Result<Complex64> + Copy,
     {
@@ -467,16 +497,15 @@ impl QuantumAutoDiff {
 
         for (i, &param_id) in parameter_ids.iter().enumerate() {
             let param = registry.parameters.get(&param_id);
-            let method = param.and_then(|p| p.gradient_method)
-                             .unwrap_or(DifferentiationMethod::ParameterShift);
+            let method = param
+                .and_then(|p| p.gradient_method)
+                .unwrap_or(DifferentiationMethod::ParameterShift);
 
             let single_param_gradient = match method {
                 DifferentiationMethod::ParameterShift => {
                     self.compute_single_parameter_shift_gradient(function, parameters, i)?
                 }
-                _ => {
-                    self.compute_single_finite_difference_gradient(function, parameters, i)?
-                }
+                _ => self.compute_single_finite_difference_gradient(function, parameters, i)?,
             };
 
             gradients.push(single_param_gradient);
@@ -485,17 +514,19 @@ impl QuantumAutoDiff {
         Ok(gradients)
     }
 
-    fn compute_single_parameter_shift_gradient<F>(&self,
-                                                function: F,
-                                                parameters: &[f64],
-                                                param_index: usize) -> QuantRS2Result<Complex64>
+    fn compute_single_parameter_shift_gradient<F>(
+        &self,
+        function: F,
+        parameters: &[f64],
+        param_index: usize,
+    ) -> QuantRS2Result<Complex64>
     where
         F: Fn(&[f64]) -> QuantRS2Result<Complex64> + Copy,
     {
         let shift = self.config.parameter_shift_step;
         let mut params_plus = parameters.to_vec();
         let mut params_minus = parameters.to_vec();
-        
+
         params_plus[param_index] += shift;
         params_minus[param_index] -= shift;
 
@@ -505,17 +536,19 @@ impl QuantumAutoDiff {
         Ok((f_plus - f_minus) / Complex64::new(2.0, 0.0))
     }
 
-    fn compute_single_finite_difference_gradient<F>(&self,
-                                                  function: F,
-                                                  parameters: &[f64],
-                                                  param_index: usize) -> QuantRS2Result<Complex64>
+    fn compute_single_finite_difference_gradient<F>(
+        &self,
+        function: F,
+        parameters: &[f64],
+        param_index: usize,
+    ) -> QuantRS2Result<Complex64>
     where
         F: Fn(&[f64]) -> QuantRS2Result<Complex64> + Copy,
     {
         let h = self.config.finite_diff_step;
         let mut params_plus = parameters.to_vec();
         let mut params_minus = parameters.to_vec();
-        
+
         params_plus[param_index] += h;
         params_minus[param_index] -= h;
 
@@ -525,10 +558,12 @@ impl QuantumAutoDiff {
         Ok((f_plus - f_minus) / Complex64::new(2.0 * h, 0.0))
     }
 
-    fn compute_nth_order_derivatives<F>(&self,
-                                      function: F,
-                                      parameter_ids: &[usize],
-                                      order: usize) -> QuantRS2Result<Vec<Complex64>>
+    fn compute_nth_order_derivatives<F>(
+        &self,
+        function: F,
+        parameter_ids: &[usize],
+        order: usize,
+    ) -> QuantRS2Result<Vec<Complex64>>
     where
         F: Fn(&[f64]) -> QuantRS2Result<Complex64> + Copy,
     {
@@ -544,23 +579,26 @@ impl QuantumAutoDiff {
 
         for (i, _) in parameter_ids.iter().enumerate() {
             // Simplified higher-order derivative using multiple function evaluations
-            derivatives[i] = self.compute_higher_order_single_param(function, parameter_ids, i, order, h)?;
+            derivatives[i] =
+                self.compute_higher_order_single_param(function, parameter_ids, i, order, h)?;
         }
 
         Ok(derivatives)
     }
 
-    fn compute_higher_order_single_param<F>(&self,
-                                          function: F,
-                                          parameter_ids: &[usize],
-                                          param_index: usize,
-                                          order: usize,
-                                          h: f64) -> QuantRS2Result<Complex64>
+    fn compute_higher_order_single_param<F>(
+        &self,
+        function: F,
+        parameter_ids: &[usize],
+        param_index: usize,
+        order: usize,
+        h: f64,
+    ) -> QuantRS2Result<Complex64>
     where
         F: Fn(&[f64]) -> QuantRS2Result<Complex64> + Copy,
     {
         let params = self.get_parameter_values(parameter_ids)?;
-        
+
         // Use finite difference approximation for higher-order derivatives
         match order {
             2 => {
@@ -593,7 +631,8 @@ impl QuantumAutoDiff {
                 let f_neg_h = function(&params_neg_h)?;
                 let f_neg_2h = function(&params_neg_2h)?;
 
-                Ok((f_2h - 2.0 * f_h + 2.0 * f_neg_h - f_neg_2h) / Complex64::new(2.0 * h * h * h, 0.0))
+                Ok((f_2h - 2.0 * f_h + 2.0 * f_neg_h - f_neg_2h)
+                    / Complex64::new(2.0 * h * h * h, 0.0))
             }
             _ => {
                 // For other orders, use a simplified approximation
@@ -602,11 +641,13 @@ impl QuantumAutoDiff {
         }
     }
 
-    fn compute_mixed_partial<F>(&self,
-                              function: F,
-                              parameter_ids: &[usize],
-                              i: usize,
-                              j: usize) -> QuantRS2Result<Complex64>
+    fn compute_mixed_partial<F>(
+        &self,
+        function: F,
+        parameter_ids: &[usize],
+        i: usize,
+        j: usize,
+    ) -> QuantRS2Result<Complex64>
     where
         F: Fn(&[f64]) -> QuantRS2Result<Complex64> + Copy,
     {
@@ -619,10 +660,14 @@ impl QuantumAutoDiff {
         let mut params_mp = params.clone();
         let mut params_mm = params.clone();
 
-        params_pp[i] += h; params_pp[j] += h;
-        params_pm[i] += h; params_pm[j] -= h;
-        params_mp[i] -= h; params_mp[j] += h;
-        params_mm[i] -= h; params_mm[j] -= h;
+        params_pp[i] += h;
+        params_pp[j] += h;
+        params_pm[i] += h;
+        params_pm[j] -= h;
+        params_mp[i] -= h;
+        params_mp[j] += h;
+        params_mm[i] -= h;
+        params_mm[j] -= h;
 
         let f_pp = function(&params_pp)?;
         let f_pm = function(&params_pm)?;
@@ -639,8 +684,9 @@ impl QuantumAutoDiff {
         let mut values = Vec::new();
 
         for &id in parameter_ids {
-            let param = registry.parameters.get(&id)
-                .ok_or_else(|| QuantRS2Error::InvalidParameter(format!("Parameter {} not found", id)))?;
+            let param = registry.parameters.get(&id).ok_or_else(|| {
+                QuantRS2Error::InvalidParameter(format!("Parameter {} not found", id))
+            })?;
             values.push(param.value);
         }
 
@@ -656,14 +702,20 @@ impl QuantumAutoDiff {
         }
     }
 
-    fn estimate_gradient_error(&self, gradients: &[Complex64], method: DifferentiationMethod) -> f64 {
+    fn estimate_gradient_error(
+        &self,
+        gradients: &[Complex64],
+        method: DifferentiationMethod,
+    ) -> f64 {
         // Estimate numerical error based on method and gradient magnitudes
         let max_gradient = gradients.iter().map(|g| g.norm()).fold(0.0, f64::max);
-        
+
         match method {
             DifferentiationMethod::ParameterShift => max_gradient * 1e-15, // Machine precision
             DifferentiationMethod::FiniteDifference => max_gradient * self.config.finite_diff_step,
-            DifferentiationMethod::CentralDifference => max_gradient * self.config.finite_diff_step * self.config.finite_diff_step,
+            DifferentiationMethod::CentralDifference => {
+                max_gradient * self.config.finite_diff_step * self.config.finite_diff_step
+            }
             DifferentiationMethod::ComplexStep => max_gradient * 1e-15,
             DifferentiationMethod::DualNumber => max_gradient * 1e-15,
             DifferentiationMethod::Hybrid => max_gradient * 1e-12,
@@ -679,7 +731,13 @@ impl QuantumAutoDiff {
         cache.entries.get(key).cloned()
     }
 
-    fn cache_gradient(&self, key: String, gradients: &[Complex64], cost: f64, method: DifferentiationMethod) {
+    fn cache_gradient(
+        &self,
+        key: String,
+        gradients: &[Complex64],
+        cost: f64,
+        method: DifferentiationMethod,
+    ) {
         let mut cache = self.gradient_cache.write().unwrap();
         cache.insert(key, gradients.to_vec(), cost, method);
     }
@@ -688,34 +746,46 @@ impl QuantumAutoDiff {
 
     fn sgd_update(&mut self, gradients: &GradientResult, learning_rate: f64) -> QuantRS2Result<()> {
         let mut registry = self.parameter_registry.write().unwrap();
-        
+
         for (i, &param_id) in gradients.parameter_ids.iter().enumerate() {
             if let Some(param) = registry.parameters.get_mut(&param_id) {
                 let gradient_real = gradients.gradients[i].re;
                 param.value -= learning_rate * gradient_real;
-                
+
                 // Apply bounds if specified
                 if let Some((min_val, max_val)) = param.bounds {
                     param.value = param.value.max(min_val).min(max_val);
                 }
             }
         }
-        
+
         Ok(())
     }
 
-    fn adam_update(&mut self, _gradients: &GradientResult, _learning_rate: f64) -> QuantRS2Result<()> {
+    fn adam_update(
+        &mut self,
+        _gradients: &GradientResult,
+        _learning_rate: f64,
+    ) -> QuantRS2Result<()> {
         // Simplified Adam optimizer implementation
         // In a full implementation, this would track momentum and second moments
         Ok(())
     }
 
-    fn lbfgs_update(&mut self, _gradients: &GradientResult, _learning_rate: f64) -> QuantRS2Result<()> {
+    fn lbfgs_update(
+        &mut self,
+        _gradients: &GradientResult,
+        _learning_rate: f64,
+    ) -> QuantRS2Result<()> {
         // Simplified L-BFGS implementation
         Ok(())
     }
 
-    fn adagrad_update(&mut self, _gradients: &GradientResult, _learning_rate: f64) -> QuantRS2Result<()> {
+    fn adagrad_update(
+        &mut self,
+        _gradients: &GradientResult,
+        _learning_rate: f64,
+    ) -> QuantRS2Result<()> {
         // Simplified AdaGrad implementation
         Ok(())
     }
@@ -738,7 +808,13 @@ impl GradientCache {
         }
     }
 
-    fn insert(&mut self, key: String, gradients: Vec<Complex64>, cost: f64, method: DifferentiationMethod) {
+    fn insert(
+        &mut self,
+        key: String,
+        gradients: Vec<Complex64>,
+        cost: f64,
+        method: DifferentiationMethod,
+    ) {
         let entry = CacheEntry {
             gradients,
             computation_cost: cost,
@@ -862,17 +938,21 @@ mod tests {
     fn test_quantum_autodiff_creation() {
         let config = QuantumAutoDiffConfig::default();
         let autodiff = QuantumAutoDiff::new(config);
-        
-        assert_eq!(autodiff.config.default_method, DifferentiationMethod::ParameterShift);
+
+        assert_eq!(
+            autodiff.config.default_method,
+            DifferentiationMethod::ParameterShift
+        );
     }
 
     #[test]
     fn test_parameter_registration() {
         let mut autodiff = QuantumAutoDiff::new(QuantumAutoDiffConfig::default());
-        
-        let param_id = autodiff.register_parameter("theta", 0.5, Some((0.0, 2.0 * std::f64::consts::PI)));
+
+        let param_id =
+            autodiff.register_parameter("theta", 0.5, Some((0.0, 2.0 * std::f64::consts::PI)));
         assert!(param_id.is_ok());
-        
+
         let id = param_id.unwrap();
         let values = autodiff.get_parameter_values(&[id]);
         assert!(values.is_ok());
@@ -882,50 +962,62 @@ mod tests {
     #[test]
     fn test_gradient_computation() {
         let mut autodiff = QuantumAutoDiff::new(QuantumAutoDiffConfig::default());
-        
+
         let param_id = autodiff.register_parameter("x", 1.0, None).unwrap();
-        
+
         // Simple quadratic function: f(x) = x²
         let function = |params: &[f64]| -> QuantRS2Result<Complex64> {
             Ok(Complex64::new(params[0] * params[0], 0.0))
         };
-        
-        let gradients = autodiff.compute_gradients(function, &[param_id], Some(DifferentiationMethod::CentralDifference));
+
+        let gradients = autodiff.compute_gradients(
+            function,
+            &[param_id],
+            Some(DifferentiationMethod::CentralDifference),
+        );
         assert!(gradients.is_ok());
-        
+
         let result = gradients.unwrap();
         // Gradient of x² at x=1 should be approximately 2
         // Use a more lenient tolerance since we're using parameter-shift rule
-        assert!((result.gradients[0].re - 2.0).abs() < 1.0, 
-                "Expected gradient close to 2.0, got {}", result.gradients[0].re);
+        assert!(
+            (result.gradients[0].re - 2.0).abs() < 1.0,
+            "Expected gradient close to 2.0, got {}",
+            result.gradients[0].re
+        );
     }
 
     #[test]
     fn test_different_differentiation_methods() {
         let mut autodiff = QuantumAutoDiff::new(QuantumAutoDiffConfig::default());
         let param_id = autodiff.register_parameter("x", 0.5, None).unwrap();
-        
+
         // f(x) = sin(x)
         let function = |params: &[f64]| -> QuantRS2Result<Complex64> {
             Ok(Complex64::new(params[0].sin(), 0.0))
         };
-        
+
         // Test different methods
         let methods = vec![
             DifferentiationMethod::ParameterShift,
             DifferentiationMethod::FiniteDifference,
             DifferentiationMethod::CentralDifference,
         ];
-        
+
         for method in methods {
             let result = autodiff.compute_gradients(function, &[param_id], Some(method));
             assert!(result.is_ok());
-            
+
             // Gradient of sin(x) at x=0.5 should be approximately cos(0.5)
             let expected = 0.5_f64.cos();
             let computed = result.unwrap().gradients[0].re;
-            assert!((computed - expected).abs() < 0.1, 
-                    "Method {:?}: expected {}, got {}", method, expected, computed);
+            assert!(
+                (computed - expected).abs() < 0.1,
+                "Method {:?}: expected {}, got {}",
+                method,
+                expected,
+                computed
+            );
         }
     }
 
@@ -933,15 +1025,15 @@ mod tests {
     fn test_higher_order_derivatives() {
         let mut autodiff = QuantumAutoDiff::new(QuantumAutoDiffConfig::default());
         let param_id = autodiff.register_parameter("x", 1.0, None).unwrap();
-        
+
         // f(x) = x³
         let function = |params: &[f64]| -> QuantRS2Result<Complex64> {
             Ok(Complex64::new(params[0].powi(3), 0.0))
         };
-        
+
         let result = autodiff.compute_higher_order_derivatives(function, &[param_id], 3);
         assert!(result.is_ok());
-        
+
         let derivatives = result.unwrap();
         assert_eq!(derivatives.derivatives.len(), 3);
     }
@@ -949,10 +1041,10 @@ mod tests {
     #[test]
     fn test_circuit_gradients() {
         let mut autodiff = QuantumAutoDiff::new(QuantumAutoDiffConfig::default());
-        
+
         let theta_id = autodiff.register_parameter("theta", 0.0, None).unwrap();
         let phi_id = autodiff.register_parameter("phi", 0.0, None).unwrap();
-        
+
         let circuit_function = |params: &[f64], _observable: &str| -> QuantRS2Result<Complex64> {
             // Simple parameterized circuit expectation value
             let theta = if params.len() > 0 { params[0] } else { 0.0 };
@@ -960,15 +1052,15 @@ mod tests {
             let result = (theta.cos() * phi.sin()).abs();
             Ok(Complex64::new(result, 0.0))
         };
-        
+
         let gate_parameters = vec![
             (0, "RY".to_string(), vec![theta_id]),
             (1, "RZ".to_string(), vec![phi_id]),
         ];
-        
+
         let results = autodiff.circuit_gradients(circuit_function, &gate_parameters, "Z");
         assert!(results.is_ok());
-        
+
         let gradients = results.unwrap();
         assert_eq!(gradients.len(), 2);
     }
@@ -977,7 +1069,7 @@ mod tests {
     fn test_parameter_update() {
         let mut autodiff = QuantumAutoDiff::new(QuantumAutoDiffConfig::default());
         let param_id = autodiff.register_parameter("x", 1.0, None).unwrap();
-        
+
         let gradient_result = GradientResult {
             gradients: vec![Complex64::new(2.0, 0.0)],
             parameter_ids: vec![param_id],
@@ -985,11 +1077,11 @@ mod tests {
             computation_time: std::time::Duration::from_millis(10),
             numerical_error_estimate: 1e-15,
         };
-        
+
         let learning_rate = 0.1;
         let result = autodiff.parameter_update(&gradient_result, learning_rate, OptimizerType::SGD);
         assert!(result.is_ok());
-        
+
         // Parameter should be updated: x_new = x_old - lr * gradient = 1.0 - 0.1 * 2.0 = 0.8
         let new_values = autodiff.get_parameter_values(&[param_id]).unwrap();
         assert!((new_values[0] - 0.8).abs() < 1e-10);
@@ -999,24 +1091,28 @@ mod tests {
     fn test_gradient_caching() {
         let mut autodiff = QuantumAutoDiff::new(QuantumAutoDiffConfig::default());
         let param_id = autodiff.register_parameter("x", 1.0, None).unwrap();
-        
+
         let function = |params: &[f64]| -> QuantRS2Result<Complex64> {
             Ok(Complex64::new(params[0] * params[0], 0.0))
         };
-        
+
         // First computation
         let start = std::time::Instant::now();
-        let result1 = autodiff.compute_gradients(function, &[param_id], None).unwrap();
+        let result1 = autodiff
+            .compute_gradients(function, &[param_id], None)
+            .unwrap();
         let time1 = start.elapsed();
-        
+
         // Second computation (should be cached)
         let start = std::time::Instant::now();
-        let result2 = autodiff.compute_gradients(function, &[param_id], None).unwrap();
+        let result2 = autodiff
+            .compute_gradients(function, &[param_id], None)
+            .unwrap();
         let time2 = start.elapsed();
-        
+
         // Results should be the same
         assert!((result1.gradients[0] - result2.gradients[0]).norm() < 1e-15);
-        
+
         // Second computation should be faster (cached)
         // Note: This test might be flaky due to timing variations
         println!("First: {:?}, Second: {:?}", time1, time2);
@@ -1028,23 +1124,32 @@ mod tests {
         let performance = QuantumAutoDiffFactory::create_performance_optimized();
         let vqe = QuantumAutoDiffFactory::create_for_vqe();
         let qaoa = QuantumAutoDiffFactory::create_for_qaoa();
-        
+
         assert_eq!(high_precision.config.finite_diff_step, 1e-10);
         assert_eq!(performance.config.max_derivative_order, 1);
-        assert_eq!(vqe.config.default_method, DifferentiationMethod::ParameterShift);
-        assert_eq!(qaoa.config.default_method, DifferentiationMethod::CentralDifference);
+        assert_eq!(
+            vqe.config.default_method,
+            DifferentiationMethod::ParameterShift
+        );
+        assert_eq!(
+            qaoa.config.default_method,
+            DifferentiationMethod::CentralDifference
+        );
     }
 
     #[test]
     fn test_error_estimation() {
         let autodiff = QuantumAutoDiff::new(QuantumAutoDiffConfig::default());
-        
+
         let gradients = vec![Complex64::new(1.0, 0.0), Complex64::new(0.5, 0.0)];
-        
-        let error_ps = autodiff.estimate_gradient_error(&gradients, DifferentiationMethod::ParameterShift);
-        let error_fd = autodiff.estimate_gradient_error(&gradients, DifferentiationMethod::FiniteDifference);
-        let error_cd = autodiff.estimate_gradient_error(&gradients, DifferentiationMethod::CentralDifference);
-        
+
+        let error_ps =
+            autodiff.estimate_gradient_error(&gradients, DifferentiationMethod::ParameterShift);
+        let error_fd =
+            autodiff.estimate_gradient_error(&gradients, DifferentiationMethod::FiniteDifference);
+        let error_cd =
+            autodiff.estimate_gradient_error(&gradients, DifferentiationMethod::CentralDifference);
+
         // Parameter-shift should have the smallest error
         assert!(error_ps < error_fd);
         assert!(error_cd < error_fd);

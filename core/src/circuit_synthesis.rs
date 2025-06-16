@@ -5,16 +5,10 @@
 //! specifications, and problem instances.
 
 use crate::{
-    error::{QuantRS2Error, QuantRS2Result},
-    gate::GateOp,
+    error::QuantRS2Result,
+    hardware_compilation::{HardwareCompilationConfig, HardwareCompiler},
+    prelude::QuantRS2Error,
     qubit::QubitId,
-    hardware_compilation::{HardwareCompiler, HardwareCompilationConfig},
-    qaoa::{QAOACircuit, QAOAParams},
-    hhl::HHLAlgorithm,
-    variational::{VariationalCircuit, VariationalOptimizer},
-    fermionic::{FermionHamiltonian, JordanWigner},
-    adiabatic::AdiabaticQuantumComputer,
-    quantum_walk::{DiscreteQuantumWalk, ContinuousQuantumWalk},
 };
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
@@ -310,13 +304,16 @@ pub struct AlgorithmTemplateLibrary {
 pub trait AlgorithmTemplate: std::fmt::Debug + Send + Sync {
     /// Generate circuit from specification
     fn synthesize(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<SynthesizedCircuit>;
-    
+
     /// Estimate resources without full synthesis
-    fn estimate_resources(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<ResourceEstimates>;
-    
+    fn estimate_resources(
+        &self,
+        spec: &AlgorithmSpecification,
+    ) -> QuantRS2Result<ResourceEstimates>;
+
     /// Get template information
     fn get_template_info(&self) -> TemplateInfo;
-    
+
     /// Validate algorithm specification
     fn validate_specification(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<()>;
 }
@@ -423,81 +420,97 @@ pub struct SynthesisPerformanceMonitor {
 impl CircuitSynthesizer {
     /// Create a new circuit synthesizer
     pub fn new() -> QuantRS2Result<Self> {
-        let mut synthesizer = Self {
+        let synthesizer = Self {
             algorithm_templates: Arc::new(RwLock::new(AlgorithmTemplateLibrary::new())),
             synthesis_cache: Arc::new(RwLock::new(SynthesisCache::new(10000))),
             hardware_compiler: None,
             performance_monitor: Arc::new(RwLock::new(SynthesisPerformanceMonitor::new())),
         };
-        
+
         // Initialize with built-in algorithm templates
         synthesizer.initialize_builtin_templates()?;
-        
+
         Ok(synthesizer)
     }
-    
+
     /// Create synthesizer with hardware compiler
-    pub fn with_hardware_compiler(hardware_compiler: Arc<HardwareCompiler>) -> QuantRS2Result<Self> {
+    pub fn with_hardware_compiler(
+        hardware_compiler: Arc<HardwareCompiler>,
+    ) -> QuantRS2Result<Self> {
         let mut synthesizer = Self::new()?;
         synthesizer.hardware_compiler = Some(hardware_compiler);
         Ok(synthesizer)
     }
-    
+
     /// Synthesize circuit from algorithm specification
-    pub fn synthesize_circuit(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<SynthesizedCircuit> {
+    pub fn synthesize_circuit(
+        &self,
+        spec: &AlgorithmSpecification,
+    ) -> QuantRS2Result<SynthesizedCircuit> {
         let start_time = Instant::now();
-        
+
         // Check cache first
         let cache_key = self.generate_cache_key(spec);
         if let Some(cached_circuit) = self.check_cache(&cache_key)? {
             self.record_cache_hit();
             return Ok(cached_circuit);
         }
-        
+
         self.record_cache_miss();
-        
+
         // Validate specification
         self.validate_with_template(spec)?;
-        
+
         // Synthesize circuit
         let mut circuit = self.synthesize_with_template(spec)?;
-        
+
         // Apply optimizations
         circuit = self.optimize_circuit(circuit, spec)?;
-        
+
         // Apply hardware compilation if available
         if let Some(hardware_compiler) = &self.hardware_compiler {
             circuit = self.compile_for_hardware(circuit, hardware_compiler)?;
         }
-        
+
         // Update metadata
         circuit.metadata.synthesis_duration = start_time.elapsed();
-        
+
         // Cache result
         self.cache_circuit(&cache_key, &circuit)?;
-        
+
         // Record performance metrics
-        self.record_synthesis_performance(&spec.algorithm_type, start_time.elapsed(), &circuit.resource_estimates);
-        
+        self.record_synthesis_performance(
+            &spec.algorithm_type,
+            start_time.elapsed(),
+            &circuit.resource_estimates,
+        );
+
         Ok(circuit)
     }
-    
+
     /// Estimate resources without full synthesis
-    pub fn estimate_resources(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<ResourceEstimates> {
+    pub fn estimate_resources(
+        &self,
+        spec: &AlgorithmSpecification,
+    ) -> QuantRS2Result<ResourceEstimates> {
         self.estimate_with_template(spec)
     }
-    
+
     /// Get available algorithm templates
     pub fn get_available_algorithms(&self) -> Vec<QuantumAlgorithmType> {
         let templates = self.algorithm_templates.read().unwrap();
         templates.templates.keys().cloned().collect()
     }
-    
+
     /// Register custom algorithm template
-    pub fn register_template(&self, algorithm_type: QuantumAlgorithmType, template: Box<dyn AlgorithmTemplate>) -> QuantRS2Result<()> {
+    pub fn register_template(
+        &self,
+        algorithm_type: QuantumAlgorithmType,
+        template: Box<dyn AlgorithmTemplate>,
+    ) -> QuantRS2Result<()> {
         let mut templates = self.algorithm_templates.write().unwrap();
         let template_info = template.get_template_info();
-        
+
         let metadata = TemplateMetadata {
             name: template_info.name.clone(),
             version: "1.0.0".to_string(),
@@ -511,122 +524,195 @@ impl CircuitSynthesizer {
                 depth_complexity: "O(?)".to_string(),
             },
         };
-        
+
         templates.templates.insert(algorithm_type.clone(), template);
         templates.template_metadata.insert(algorithm_type, metadata);
-        
+
         Ok(())
     }
-    
+
     /// Initialize built-in algorithm templates
     fn initialize_builtin_templates(&self) -> QuantRS2Result<()> {
         let mut templates = self.algorithm_templates.write().unwrap();
-        
+
         // VQE template
-        templates.templates.insert(
-            QuantumAlgorithmType::VQE,
-            Box::new(VQETemplate::new())
-        );
-        
+        templates
+            .templates
+            .insert(QuantumAlgorithmType::VQE, Box::new(VQETemplate::new()));
+
         // QAOA template
-        templates.templates.insert(
-            QuantumAlgorithmType::QAOA,
-            Box::new(QAOATemplate::new())
-        );
-        
+        templates
+            .templates
+            .insert(QuantumAlgorithmType::QAOA, Box::new(QAOATemplate::new()));
+
         // Grover template
         templates.templates.insert(
             QuantumAlgorithmType::Grover,
-            Box::new(GroverTemplate::new())
+            Box::new(GroverTemplate::new()),
         );
-        
+
         // QFT template
-        templates.templates.insert(
-            QuantumAlgorithmType::QFT,
-            Box::new(QFTTemplate::new())
-        );
-        
+        templates
+            .templates
+            .insert(QuantumAlgorithmType::QFT, Box::new(QFTTemplate::new()));
+
         // Shor template
-        templates.templates.insert(
-            QuantumAlgorithmType::Shor,
-            Box::new(ShorTemplate::new())
-        );
-        
+        templates
+            .templates
+            .insert(QuantumAlgorithmType::Shor, Box::new(ShorTemplate::new()));
+
         // HHL template
-        templates.templates.insert(
-            QuantumAlgorithmType::HHL,
-            Box::new(HHLTemplate::new())
-        );
-        
+        templates
+            .templates
+            .insert(QuantumAlgorithmType::HHL, Box::new(HHLTemplate::new()));
+
         // Add metadata for all templates
         self.initialize_template_metadata(&mut templates);
-        
+
         Ok(())
     }
-    
+
     fn initialize_template_metadata(&self, templates: &mut AlgorithmTemplateLibrary) {
         let metadata_entries = vec![
-            (QuantumAlgorithmType::VQE, ("VQE", "Variational Quantum Eigensolver for finding ground states", "O(n^3)", "O(n^2)", "O(n^2)", "O(n)")),
-            (QuantumAlgorithmType::QAOA, ("QAOA", "Quantum Approximate Optimization Algorithm", "O(p*m)", "O(n)", "O(p*m)", "O(p)")),
-            (QuantumAlgorithmType::Grover, ("Grover", "Grover's search algorithm", "O(√N)", "O(log N)", "O(√N)", "O(log N)")),
-            (QuantumAlgorithmType::QFT, ("QFT", "Quantum Fourier Transform", "O(n^2)", "O(n)", "O(n^2)", "O(n)")),
-            (QuantumAlgorithmType::Shor, ("Shor", "Shor's factoring algorithm", "O((log N)^3)", "O(log N)", "O((log N)^3)", "O(log N)")),
-            (QuantumAlgorithmType::HHL, ("HHL", "Harrow-Hassidim-Lloyd linear system solver", "O(log N)", "O(log N)", "O(κ^2 log N)", "O(log N)")),
+            (
+                QuantumAlgorithmType::VQE,
+                (
+                    "VQE",
+                    "Variational Quantum Eigensolver for finding ground states",
+                    "O(n^3)",
+                    "O(n^2)",
+                    "O(n^2)",
+                    "O(n)",
+                ),
+            ),
+            (
+                QuantumAlgorithmType::QAOA,
+                (
+                    "QAOA",
+                    "Quantum Approximate Optimization Algorithm",
+                    "O(p*m)",
+                    "O(n)",
+                    "O(p*m)",
+                    "O(p)",
+                ),
+            ),
+            (
+                QuantumAlgorithmType::Grover,
+                (
+                    "Grover",
+                    "Grover's search algorithm",
+                    "O(√N)",
+                    "O(log N)",
+                    "O(√N)",
+                    "O(log N)",
+                ),
+            ),
+            (
+                QuantumAlgorithmType::QFT,
+                (
+                    "QFT",
+                    "Quantum Fourier Transform",
+                    "O(n^2)",
+                    "O(n)",
+                    "O(n^2)",
+                    "O(n)",
+                ),
+            ),
+            (
+                QuantumAlgorithmType::Shor,
+                (
+                    "Shor",
+                    "Shor's factoring algorithm",
+                    "O((log N)^3)",
+                    "O(log N)",
+                    "O((log N)^3)",
+                    "O(log N)",
+                ),
+            ),
+            (
+                QuantumAlgorithmType::HHL,
+                (
+                    "HHL",
+                    "Harrow-Hassidim-Lloyd linear system solver",
+                    "O(log N)",
+                    "O(log N)",
+                    "O(κ^2 log N)",
+                    "O(log N)",
+                ),
+            ),
         ];
-        
-        for (algo_type, (name, desc, time_comp, space_comp, gate_comp, depth_comp)) in metadata_entries {
-            templates.template_metadata.insert(algo_type, TemplateMetadata {
-                name: name.to_string(),
-                version: "1.0.0".to_string(),
-                description: desc.to_string(),
-                author: "QuantRS2 Core".to_string(),
-                created: Instant::now(),
-                complexity: ComplexityCharacteristics {
-                    time_complexity: time_comp.to_string(),
-                    space_complexity: space_comp.to_string(),
-                    gate_complexity: gate_comp.to_string(),
-                    depth_complexity: depth_comp.to_string(),
+
+        for (algo_type, (name, desc, time_comp, space_comp, gate_comp, depth_comp)) in
+            metadata_entries
+        {
+            templates.template_metadata.insert(
+                algo_type,
+                TemplateMetadata {
+                    name: name.to_string(),
+                    version: "1.0.0".to_string(),
+                    description: desc.to_string(),
+                    author: "QuantRS2 Core".to_string(),
+                    created: Instant::now(),
+                    complexity: ComplexityCharacteristics {
+                        time_complexity: time_comp.to_string(),
+                        space_complexity: space_comp.to_string(),
+                        gate_complexity: gate_comp.to_string(),
+                        depth_complexity: depth_comp.to_string(),
+                    },
                 },
-            });
+            );
         }
     }
-    
-    fn synthesize_with_template(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<SynthesizedCircuit> {
+
+    fn synthesize_with_template(
+        &self,
+        spec: &AlgorithmSpecification,
+    ) -> QuantRS2Result<SynthesizedCircuit> {
         let templates = self.algorithm_templates.read().unwrap();
         if let Some(template) = templates.templates.get(&spec.algorithm_type) {
             template.synthesize(spec)
         } else {
-            Err(QuantRS2Error::UnsupportedOperation(
-                format!("No template available for algorithm: {:?}", spec.algorithm_type)
-            ))
+            Err(QuantRS2Error::UnsupportedOperation(format!(
+                "No template available for algorithm: {:?}",
+                spec.algorithm_type
+            )))
         }
     }
-    
-    fn estimate_with_template(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<ResourceEstimates> {
+
+    fn estimate_with_template(
+        &self,
+        spec: &AlgorithmSpecification,
+    ) -> QuantRS2Result<ResourceEstimates> {
         let templates = self.algorithm_templates.read().unwrap();
         if let Some(template) = templates.templates.get(&spec.algorithm_type) {
             template.estimate_resources(spec)
         } else {
-            Err(QuantRS2Error::UnsupportedOperation(
-                format!("No template available for algorithm: {:?}", spec.algorithm_type)
-            ))
+            Err(QuantRS2Error::UnsupportedOperation(format!(
+                "No template available for algorithm: {:?}",
+                spec.algorithm_type
+            )))
         }
     }
-    
+
     fn validate_with_template(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<()> {
         let templates = self.algorithm_templates.read().unwrap();
         if let Some(template) = templates.templates.get(&spec.algorithm_type) {
             template.validate_specification(spec)
         } else {
-            Err(QuantRS2Error::UnsupportedOperation(
-                format!("No template available for algorithm: {:?}", spec.algorithm_type)
-            ))
+            Err(QuantRS2Error::UnsupportedOperation(format!(
+                "No template available for algorithm: {:?}",
+                spec.algorithm_type
+            )))
         }
     }
-    
-    fn optimize_circuit(&self, mut circuit: SynthesizedCircuit, spec: &AlgorithmSpecification) -> QuantRS2Result<SynthesizedCircuit> {
+
+    fn optimize_circuit(
+        &self,
+        mut circuit: SynthesizedCircuit,
+        spec: &AlgorithmSpecification,
+    ) -> QuantRS2Result<SynthesizedCircuit> {
         let original_stats = circuit.resource_estimates.clone();
-        
+
         // Apply various optimization techniques based on objectives
         for objective in &spec.optimization_objectives {
             circuit = match objective {
@@ -639,90 +725,130 @@ impl CircuitSynthesizer {
                 _ => circuit,
             };
         }
-        
+
         // Update optimization report
         circuit.optimization_report = OptimizationReport {
             original_stats: original_stats.clone(),
             optimized_stats: circuit.resource_estimates.clone(),
-            optimizations_applied: vec!["Gate fusion".to_string(), "Dead code elimination".to_string()],
+            optimizations_applied: vec![
+                "Gate fusion".to_string(),
+                "Dead code elimination".to_string(),
+            ],
             improvements: self.calculate_improvements(&original_stats, &circuit.resource_estimates),
         };
-        
+
         Ok(circuit)
     }
-    
-    fn optimize_for_depth(&self, mut circuit: SynthesizedCircuit) -> QuantRS2Result<SynthesizedCircuit> {
+
+    fn optimize_for_depth(
+        &self,
+        mut circuit: SynthesizedCircuit,
+    ) -> QuantRS2Result<SynthesizedCircuit> {
         // Implement depth optimization (gate parallelization, commutation analysis)
         // For now, just update the resource estimates
-        circuit.resource_estimates.circuit_depth = (circuit.resource_estimates.circuit_depth as f64 * 0.9) as usize;
+        circuit.resource_estimates.circuit_depth =
+            (circuit.resource_estimates.circuit_depth as f64 * 0.9) as usize;
         Ok(circuit)
     }
-    
-    fn optimize_for_gate_count(&self, mut circuit: SynthesizedCircuit) -> QuantRS2Result<SynthesizedCircuit> {
+
+    fn optimize_for_gate_count(
+        &self,
+        mut circuit: SynthesizedCircuit,
+    ) -> QuantRS2Result<SynthesizedCircuit> {
         // Implement gate count optimization (gate cancellation, fusion)
-        let original_count = circuit.gates.len();
-        
+        let _original_count = circuit.gates.len();
+
         // Simple gate fusion simulation
-        circuit.gates.retain(|gate| !gate.name.starts_with("Identity"));
-        
+        circuit
+            .gates
+            .retain(|gate| !gate.name.starts_with("Identity"));
+
         circuit.resource_estimates.gate_count = circuit.gates.len();
         Ok(circuit)
     }
-    
-    fn optimize_for_qubit_count(&self, circuit: SynthesizedCircuit) -> QuantRS2Result<SynthesizedCircuit> {
+
+    fn optimize_for_qubit_count(
+        &self,
+        circuit: SynthesizedCircuit,
+    ) -> QuantRS2Result<SynthesizedCircuit> {
         // Implement qubit optimization (qubit reuse, ancilla reduction)
         Ok(circuit)
     }
-    
-    fn optimize_for_fidelity(&self, circuit: SynthesizedCircuit) -> QuantRS2Result<SynthesizedCircuit> {
+
+    fn optimize_for_fidelity(
+        &self,
+        circuit: SynthesizedCircuit,
+    ) -> QuantRS2Result<SynthesizedCircuit> {
         // Implement fidelity optimization (error-aware compilation)
         Ok(circuit)
     }
-    
-    fn optimize_for_hardware(&self, circuit: SynthesizedCircuit) -> QuantRS2Result<SynthesizedCircuit> {
+
+    fn optimize_for_hardware(
+        &self,
+        circuit: SynthesizedCircuit,
+    ) -> QuantRS2Result<SynthesizedCircuit> {
         // Hardware-specific optimizations would be handled by hardware compiler
         Ok(circuit)
     }
-    
+
     fn optimize_balanced(&self, circuit: SynthesizedCircuit) -> QuantRS2Result<SynthesizedCircuit> {
         // Apply balanced optimization considering all factors
         Ok(circuit)
     }
-    
-    fn compile_for_hardware(&self, circuit: SynthesizedCircuit, compiler: &HardwareCompiler) -> QuantRS2Result<SynthesizedCircuit> {
+
+    fn compile_for_hardware(
+        &self,
+        circuit: SynthesizedCircuit,
+        _compiler: &HardwareCompiler,
+    ) -> QuantRS2Result<SynthesizedCircuit> {
         // This would integrate with the hardware compiler
         // For now, just return the circuit unchanged
         Ok(circuit)
     }
-    
-    fn calculate_improvements(&self, original: &ResourceEstimates, optimized: &ResourceEstimates) -> HashMap<String, f64> {
+
+    fn calculate_improvements(
+        &self,
+        original: &ResourceEstimates,
+        optimized: &ResourceEstimates,
+    ) -> HashMap<String, f64> {
         let mut improvements = HashMap::new();
-        
+
         if original.gate_count > 0 {
-            let gate_reduction = (original.gate_count - optimized.gate_count) as f64 / original.gate_count as f64 * 100.0;
+            let gate_reduction = (original.gate_count - optimized.gate_count) as f64
+                / original.gate_count as f64
+                * 100.0;
             improvements.insert("gate_count_reduction".to_string(), gate_reduction);
         }
-        
+
         if original.circuit_depth > 0 {
-            let depth_reduction = (original.circuit_depth - optimized.circuit_depth) as f64 / original.circuit_depth as f64 * 100.0;
+            let depth_reduction = (original.circuit_depth - optimized.circuit_depth) as f64
+                / original.circuit_depth as f64
+                * 100.0;
             improvements.insert("depth_reduction".to_string(), depth_reduction);
         }
-        
+
         improvements
     }
-    
+
     // Cache management methods
     fn generate_cache_key(&self, spec: &AlgorithmSpecification) -> String {
         // Generate a hash-based cache key from the specification
-        format!("{:?}_{:?}_{}", spec.algorithm_type, spec.parameters.num_qubits, 
-               spec.parameters.variational_params.len())
+        format!(
+            "{:?}_{:?}_{}",
+            spec.algorithm_type,
+            spec.parameters.num_qubits,
+            spec.parameters.variational_params.len()
+        )
     }
-    
+
     fn check_cache(&self, key: &str) -> QuantRS2Result<Option<SynthesizedCircuit>> {
         let cache = self.synthesis_cache.read().unwrap();
-        Ok(cache.cache_entries.get(key).map(|entry| entry.circuit.clone()))
+        Ok(cache
+            .cache_entries
+            .get(key)
+            .map(|entry| entry.circuit.clone()))
     }
-    
+
     fn cache_circuit(&self, key: &str, circuit: &SynthesizedCircuit) -> QuantRS2Result<()> {
         let mut cache = self.synthesis_cache.write().unwrap();
         let entry = CacheEntry {
@@ -735,36 +861,54 @@ impl CircuitSynthesizer {
         cache.cache_entries.insert(key.to_string(), entry);
         Ok(())
     }
-    
+
     fn record_cache_hit(&self) {
         let mut cache = self.synthesis_cache.write().unwrap();
         cache.cache_stats.cache_hits += 1;
         cache.cache_stats.total_requests += 1;
-        cache.cache_stats.hit_rate = cache.cache_stats.cache_hits as f64 / cache.cache_stats.total_requests as f64;
+        cache.cache_stats.hit_rate =
+            cache.cache_stats.cache_hits as f64 / cache.cache_stats.total_requests as f64;
     }
-    
+
     fn record_cache_miss(&self) {
         let mut cache = self.synthesis_cache.write().unwrap();
         cache.cache_stats.cache_misses += 1;
         cache.cache_stats.total_requests += 1;
-        cache.cache_stats.hit_rate = cache.cache_stats.cache_hits as f64 / cache.cache_stats.total_requests as f64;
+        cache.cache_stats.hit_rate =
+            cache.cache_stats.cache_hits as f64 / cache.cache_stats.total_requests as f64;
     }
-    
-    fn record_synthesis_performance(&self, algorithm: &QuantumAlgorithmType, duration: Duration, resources: &ResourceEstimates) {
+
+    fn record_synthesis_performance(
+        &self,
+        algorithm: &QuantumAlgorithmType,
+        duration: Duration,
+        resources: &ResourceEstimates,
+    ) {
         let mut monitor = self.performance_monitor.write().unwrap();
-        monitor.synthesis_times.entry(algorithm.clone()).or_insert_with(Vec::new).push(duration);
+        monitor
+            .synthesis_times
+            .entry(algorithm.clone())
+            .or_insert_with(Vec::new)
+            .push(duration);
         monitor.resource_usage.push(resources.clone());
     }
-    
+
     /// Get synthesis performance statistics
     pub fn get_performance_stats(&self) -> SynthesisPerformanceStats {
         let monitor = self.performance_monitor.read().unwrap();
         let cache = self.synthesis_cache.read().unwrap();
-        
+
         SynthesisPerformanceStats {
             cache_stats: cache.cache_stats.clone(),
-            average_synthesis_times: monitor.synthesis_times.iter()
-                .map(|(algo, times)| (algo.clone(), times.iter().sum::<Duration>() / times.len() as u32))
+            average_synthesis_times: monitor
+                .synthesis_times
+                .iter()
+                .map(|(algo, times)| {
+                    (
+                        algo.clone(),
+                        times.iter().sum::<Duration>() / times.len() as u32,
+                    )
+                })
                 .collect(),
             total_syntheses: monitor.resource_usage.len(),
         }
@@ -796,13 +940,18 @@ impl AlgorithmTemplate for VQETemplate {
     fn synthesize(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<SynthesizedCircuit> {
         let num_qubits = spec.parameters.num_qubits;
         let mut gates = Vec::new();
-        
+
         // Create a simple VQE ansatz (hardware-efficient ansatz)
         for i in 0..num_qubits {
             gates.push(SynthesizedGate {
                 name: "Ry".to_string(),
                 qubits: vec![QubitId::new(i as u32)],
-                parameters: vec![spec.parameters.variational_params.get(i).copied().unwrap_or(0.0)],
+                parameters: vec![spec
+                    .parameters
+                    .variational_params
+                    .get(i)
+                    .copied()
+                    .unwrap_or(0.0)],
                 matrix: None,
                 metadata: GateMetadata {
                     layer: 0,
@@ -812,12 +961,12 @@ impl AlgorithmTemplate for VQETemplate {
                 },
             });
         }
-        
+
         // Add entangling gates
-        for i in 0..num_qubits-1 {
+        for i in 0..num_qubits - 1 {
             gates.push(SynthesizedGate {
                 name: "CNOT".to_string(),
-                qubits: vec![QubitId::new(i as u32), QubitId::new((i+1) as u32)],
+                qubits: vec![QubitId::new(i as u32), QubitId::new((i + 1) as u32)],
                 parameters: vec![],
                 matrix: None,
                 metadata: GateMetadata {
@@ -828,14 +977,19 @@ impl AlgorithmTemplate for VQETemplate {
                 },
             });
         }
-        
+
         // Second layer of rotations
         for i in 0..num_qubits {
             let param_idx = num_qubits + i;
             gates.push(SynthesizedGate {
                 name: "Rz".to_string(),
                 qubits: vec![QubitId::new(i as u32)],
-                parameters: vec![spec.parameters.variational_params.get(param_idx).copied().unwrap_or(0.0)],
+                parameters: vec![spec
+                    .parameters
+                    .variational_params
+                    .get(param_idx)
+                    .copied()
+                    .unwrap_or(0.0)],
                 matrix: None,
                 metadata: GateMetadata {
                     layer: 2,
@@ -845,11 +999,11 @@ impl AlgorithmTemplate for VQETemplate {
                 },
             });
         }
-        
+
         let qubit_mapping: HashMap<String, QubitId> = (0..num_qubits)
             .map(|i| (format!("q{}", i), QubitId::new(i as u32)))
             .collect();
-        
+
         let resource_estimates = ResourceEstimates {
             gate_count: gates.len(),
             circuit_depth: 3,
@@ -865,7 +1019,7 @@ impl AlgorithmTemplate for VQETemplate {
             memory_requirements: 1 << num_qubits,
             parallelization_factor: 0.5,
         };
-        
+
         Ok(SynthesizedCircuit {
             gates,
             qubit_mapping,
@@ -885,11 +1039,14 @@ impl AlgorithmTemplate for VQETemplate {
             },
         })
     }
-    
-    fn estimate_resources(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<ResourceEstimates> {
+
+    fn estimate_resources(
+        &self,
+        spec: &AlgorithmSpecification,
+    ) -> QuantRS2Result<ResourceEstimates> {
         let num_qubits = spec.parameters.num_qubits;
         let gate_count = num_qubits * 2 + (num_qubits - 1); // 2 rotation layers + CNOT layer
-        
+
         Ok(ResourceEstimates {
             gate_count,
             circuit_depth: 3,
@@ -900,7 +1057,7 @@ impl AlgorithmTemplate for VQETemplate {
             parallelization_factor: 0.5,
         })
     }
-    
+
     fn get_template_info(&self) -> TemplateInfo {
         TemplateInfo {
             name: "VQE".to_string(),
@@ -910,10 +1067,12 @@ impl AlgorithmTemplate for VQETemplate {
             hardware_compatibility: vec!["all".to_string()],
         }
     }
-    
+
     fn validate_specification(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<()> {
         if spec.parameters.num_qubits == 0 {
-            return Err(QuantRS2Error::InvalidParameter("num_qubits must be > 0".to_string()));
+            return Err(QuantRS2Error::InvalidParameter(
+                "num_qubits must be > 0".to_string(),
+            ));
         }
         Ok(())
     }
@@ -935,7 +1094,7 @@ impl AlgorithmTemplate for QAOATemplate {
         // For now, return a simplified version
         let num_qubits = spec.parameters.num_qubits;
         let mut gates = Vec::new();
-        
+
         // Initial superposition
         for i in 0..num_qubits {
             gates.push(SynthesizedGate {
@@ -951,19 +1110,30 @@ impl AlgorithmTemplate for QAOATemplate {
                 },
             });
         }
-        
+
         self.create_circuit_from_gates(gates, num_qubits, QuantumAlgorithmType::QAOA)
     }
-    
-    fn estimate_resources(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<ResourceEstimates> {
+
+    fn estimate_resources(
+        &self,
+        spec: &AlgorithmSpecification,
+    ) -> QuantRS2Result<ResourceEstimates> {
         let num_qubits = spec.parameters.num_qubits;
-        let p_layers = spec.parameters.algorithm_specific
+        let p_layers = spec
+            .parameters
+            .algorithm_specific
             .get("p_layers")
-            .and_then(|v| if let ParameterValue::Integer(i) = v { Some(*i as usize) } else { None })
+            .and_then(|v| {
+                if let ParameterValue::Integer(i) = v {
+                    Some(*i as usize)
+                } else {
+                    None
+                }
+            })
             .unwrap_or(1);
-        
+
         let gate_count = num_qubits + 2 * p_layers * num_qubits; // H gates + p layers of problem and mixer
-        
+
         Ok(ResourceEstimates {
             gate_count,
             circuit_depth: 1 + 2 * p_layers,
@@ -974,31 +1144,42 @@ impl AlgorithmTemplate for QAOATemplate {
             parallelization_factor: 0.7,
         })
     }
-    
+
     fn get_template_info(&self) -> TemplateInfo {
         TemplateInfo {
             name: "QAOA".to_string(),
-            supported_parameters: vec!["num_qubits".to_string(), "p_layers".to_string(), "graph".to_string()],
+            supported_parameters: vec![
+                "num_qubits".to_string(),
+                "p_layers".to_string(),
+                "graph".to_string(),
+            ],
             required_parameters: vec!["num_qubits".to_string()],
             complexity_scaling: "O(p*m)".to_string(),
             hardware_compatibility: vec!["all".to_string()],
         }
     }
-    
+
     fn validate_specification(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<()> {
         if spec.parameters.num_qubits == 0 {
-            return Err(QuantRS2Error::InvalidParameter("num_qubits must be > 0".to_string()));
+            return Err(QuantRS2Error::InvalidParameter(
+                "num_qubits must be > 0".to_string(),
+            ));
         }
         Ok(())
     }
 }
 
 impl QAOATemplate {
-    fn create_circuit_from_gates(&self, gates: Vec<SynthesizedGate>, num_qubits: usize, algorithm: QuantumAlgorithmType) -> QuantRS2Result<SynthesizedCircuit> {
+    fn create_circuit_from_gates(
+        &self,
+        gates: Vec<SynthesizedGate>,
+        num_qubits: usize,
+        algorithm: QuantumAlgorithmType,
+    ) -> QuantRS2Result<SynthesizedCircuit> {
         let qubit_mapping: HashMap<String, QubitId> = (0..num_qubits)
             .map(|i| (format!("q{}", i), QubitId::new(i as u32)))
             .collect();
-        
+
         let resource_estimates = ResourceEstimates {
             gate_count: gates.len(),
             circuit_depth: gates.iter().map(|g| g.metadata.layer).max().unwrap_or(0) + 1,
@@ -1014,7 +1195,7 @@ impl QAOATemplate {
             memory_requirements: 1 << num_qubits,
             parallelization_factor: 0.7,
         };
-        
+
         Ok(SynthesizedCircuit {
             gates,
             qubit_mapping,
@@ -1051,7 +1232,7 @@ impl AlgorithmTemplate for GroverTemplate {
         // Grover's algorithm implementation
         let num_qubits = spec.parameters.num_qubits;
         let mut gates = Vec::new();
-        
+
         // Initial superposition
         for i in 0..num_qubits {
             gates.push(SynthesizedGate {
@@ -1067,15 +1248,22 @@ impl AlgorithmTemplate for GroverTemplate {
                 },
             });
         }
-        
-        QAOATemplate::new().create_circuit_from_gates(gates, num_qubits, QuantumAlgorithmType::Grover)
+
+        QAOATemplate::new().create_circuit_from_gates(
+            gates,
+            num_qubits,
+            QuantumAlgorithmType::Grover,
+        )
     }
-    
-    fn estimate_resources(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<ResourceEstimates> {
+
+    fn estimate_resources(
+        &self,
+        spec: &AlgorithmSpecification,
+    ) -> QuantRS2Result<ResourceEstimates> {
         let num_qubits = spec.parameters.num_qubits;
         let num_items = 2_usize.pow(num_qubits as u32);
         let iterations = (std::f64::consts::PI / 4.0 * (num_items as f64).sqrt()) as usize;
-        
+
         Ok(ResourceEstimates {
             gate_count: num_qubits + iterations * (num_qubits + 1), // Simplified estimate
             circuit_depth: 1 + iterations * 2,
@@ -1086,7 +1274,7 @@ impl AlgorithmTemplate for GroverTemplate {
             parallelization_factor: 0.3,
         })
     }
-    
+
     fn get_template_info(&self) -> TemplateInfo {
         TemplateInfo {
             name: "Grover".to_string(),
@@ -1096,10 +1284,12 @@ impl AlgorithmTemplate for GroverTemplate {
             hardware_compatibility: vec!["all".to_string()],
         }
     }
-    
+
     fn validate_specification(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<()> {
         if spec.parameters.num_qubits == 0 {
-            return Err(QuantRS2Error::InvalidParameter("num_qubits must be > 0".to_string()));
+            return Err(QuantRS2Error::InvalidParameter(
+                "num_qubits must be > 0".to_string(),
+            ));
         }
         Ok(())
     }
@@ -1110,15 +1300,24 @@ impl AlgorithmTemplate for GroverTemplate {
 struct QFTTemplate;
 
 impl QFTTemplate {
-    fn new() -> Self { Self }
+    fn new() -> Self {
+        Self
+    }
 }
 
 impl AlgorithmTemplate for QFTTemplate {
     fn synthesize(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<SynthesizedCircuit> {
-        QAOATemplate::new().create_circuit_from_gates(vec![], spec.parameters.num_qubits, QuantumAlgorithmType::QFT)
+        QAOATemplate::new().create_circuit_from_gates(
+            vec![],
+            spec.parameters.num_qubits,
+            QuantumAlgorithmType::QFT,
+        )
     }
-    
-    fn estimate_resources(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<ResourceEstimates> {
+
+    fn estimate_resources(
+        &self,
+        spec: &AlgorithmSpecification,
+    ) -> QuantRS2Result<ResourceEstimates> {
         let n = spec.parameters.num_qubits;
         Ok(ResourceEstimates {
             gate_count: n * (n + 1) / 2, // O(n^2) gates
@@ -1130,7 +1329,7 @@ impl AlgorithmTemplate for QFTTemplate {
             parallelization_factor: 0.4,
         })
     }
-    
+
     fn get_template_info(&self) -> TemplateInfo {
         TemplateInfo {
             name: "QFT".to_string(),
@@ -1140,10 +1339,12 @@ impl AlgorithmTemplate for QFTTemplate {
             hardware_compatibility: vec!["all".to_string()],
         }
     }
-    
+
     fn validate_specification(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<()> {
         if spec.parameters.num_qubits == 0 {
-            return Err(QuantRS2Error::InvalidParameter("num_qubits must be > 0".to_string()));
+            return Err(QuantRS2Error::InvalidParameter(
+                "num_qubits must be > 0".to_string(),
+            ));
         }
         Ok(())
     }
@@ -1153,15 +1354,24 @@ impl AlgorithmTemplate for QFTTemplate {
 struct ShorTemplate;
 
 impl ShorTemplate {
-    fn new() -> Self { Self }
+    fn new() -> Self {
+        Self
+    }
 }
 
 impl AlgorithmTemplate for ShorTemplate {
     fn synthesize(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<SynthesizedCircuit> {
-        QAOATemplate::new().create_circuit_from_gates(vec![], spec.parameters.num_qubits, QuantumAlgorithmType::Shor)
+        QAOATemplate::new().create_circuit_from_gates(
+            vec![],
+            spec.parameters.num_qubits,
+            QuantumAlgorithmType::Shor,
+        )
     }
-    
-    fn estimate_resources(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<ResourceEstimates> {
+
+    fn estimate_resources(
+        &self,
+        spec: &AlgorithmSpecification,
+    ) -> QuantRS2Result<ResourceEstimates> {
         let n = spec.parameters.num_qubits;
         Ok(ResourceEstimates {
             gate_count: n.pow(3), // O(n^3) gates
@@ -1173,20 +1383,25 @@ impl AlgorithmTemplate for ShorTemplate {
             parallelization_factor: 0.6,
         })
     }
-    
+
     fn get_template_info(&self) -> TemplateInfo {
         TemplateInfo {
             name: "Shor".to_string(),
-            supported_parameters: vec!["num_qubits".to_string(), "factorization_target".to_string()],
+            supported_parameters: vec![
+                "num_qubits".to_string(),
+                "factorization_target".to_string(),
+            ],
             required_parameters: vec!["num_qubits".to_string()],
             complexity_scaling: "O((log N)^3)".to_string(),
             hardware_compatibility: vec!["all".to_string()],
         }
     }
-    
+
     fn validate_specification(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<()> {
         if spec.parameters.num_qubits == 0 {
-            return Err(QuantRS2Error::InvalidParameter("num_qubits must be > 0".to_string()));
+            return Err(QuantRS2Error::InvalidParameter(
+                "num_qubits must be > 0".to_string(),
+            ));
         }
         Ok(())
     }
@@ -1196,15 +1411,24 @@ impl AlgorithmTemplate for ShorTemplate {
 struct HHLTemplate;
 
 impl HHLTemplate {
-    fn new() -> Self { Self }
+    fn new() -> Self {
+        Self
+    }
 }
 
 impl AlgorithmTemplate for HHLTemplate {
     fn synthesize(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<SynthesizedCircuit> {
-        QAOATemplate::new().create_circuit_from_gates(vec![], spec.parameters.num_qubits, QuantumAlgorithmType::HHL)
+        QAOATemplate::new().create_circuit_from_gates(
+            vec![],
+            spec.parameters.num_qubits,
+            QuantumAlgorithmType::HHL,
+        )
     }
-    
-    fn estimate_resources(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<ResourceEstimates> {
+
+    fn estimate_resources(
+        &self,
+        spec: &AlgorithmSpecification,
+    ) -> QuantRS2Result<ResourceEstimates> {
         let n = spec.parameters.num_qubits;
         Ok(ResourceEstimates {
             gate_count: n * 10, // Simplified estimate
@@ -1216,7 +1440,7 @@ impl AlgorithmTemplate for HHLTemplate {
             parallelization_factor: 0.5,
         })
     }
-    
+
     fn get_template_info(&self) -> TemplateInfo {
         TemplateInfo {
             name: "HHL".to_string(),
@@ -1226,10 +1450,12 @@ impl AlgorithmTemplate for HHLTemplate {
             hardware_compatibility: vec!["all".to_string()],
         }
     }
-    
+
     fn validate_specification(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<()> {
         if spec.parameters.num_qubits == 0 {
-            return Err(QuantRS2Error::InvalidParameter("num_qubits must be > 0".to_string()));
+            return Err(QuantRS2Error::InvalidParameter(
+                "num_qubits must be > 0".to_string(),
+            ));
         }
         Ok(())
     }
@@ -1296,12 +1522,15 @@ impl AlgorithmSpecification {
             optimization_objectives: vec![SynthesisObjective::Balanced],
         }
     }
-    
+
     /// Create QAOA specification
     pub fn qaoa(num_qubits: usize, p_layers: usize, graph: GraphData) -> Self {
         let mut algorithm_specific = HashMap::new();
-        algorithm_specific.insert("p_layers".to_string(), ParameterValue::Integer(p_layers as i64));
-        
+        algorithm_specific.insert(
+            "p_layers".to_string(),
+            ParameterValue::Integer(p_layers as i64),
+        );
+
         Self {
             algorithm_type: QuantumAlgorithmType::QAOA,
             parameters: AlgorithmParameters {
@@ -1329,7 +1558,7 @@ impl AlgorithmSpecification {
             optimization_objectives: vec![SynthesisObjective::MinimizeDepth],
         }
     }
-    
+
     /// Create Grover specification
     pub fn grover(num_qubits: usize, search_space: SearchSpaceData) -> Self {
         Self {
@@ -1369,162 +1598,175 @@ mod tests {
     fn test_circuit_synthesizer_creation() {
         let synthesizer = CircuitSynthesizer::new();
         assert!(synthesizer.is_ok());
-        
+
         let synthesizer = synthesizer.unwrap();
         let available_algorithms = synthesizer.get_available_algorithms();
         assert!(available_algorithms.contains(&QuantumAlgorithmType::VQE));
         assert!(available_algorithms.contains(&QuantumAlgorithmType::QAOA));
         assert!(available_algorithms.contains(&QuantumAlgorithmType::Grover));
     }
-    
+
     #[test]
     fn test_vqe_synthesis() {
         let synthesizer = CircuitSynthesizer::new().unwrap();
         let spec = AlgorithmSpecification::vqe(4, vec![0.5, 0.3, 0.7, 0.1, 0.9, 0.2, 0.4, 0.8]);
-        
+
         let circuit = synthesizer.synthesize_circuit(&spec);
         assert!(circuit.is_ok());
-        
+
         let circuit = circuit.unwrap();
         assert_eq!(circuit.metadata.source_algorithm, QuantumAlgorithmType::VQE);
         assert_eq!(circuit.resource_estimates.qubit_count, 4);
         assert!(circuit.gates.len() > 0);
     }
-    
+
     #[test]
     fn test_qaoa_synthesis() {
         let synthesizer = CircuitSynthesizer::new().unwrap();
-        
+
         let graph = GraphData {
             num_vertices: 4,
             adjacency_matrix: Array2::zeros((4, 4)),
             edge_weights: HashMap::new(),
             vertex_weights: vec![1.0; 4],
         };
-        
+
         let spec = AlgorithmSpecification::qaoa(4, 2, graph);
-        
+
         let circuit = synthesizer.synthesize_circuit(&spec);
         assert!(circuit.is_ok());
-        
+
         let circuit = circuit.unwrap();
-        assert_eq!(circuit.metadata.source_algorithm, QuantumAlgorithmType::QAOA);
+        assert_eq!(
+            circuit.metadata.source_algorithm,
+            QuantumAlgorithmType::QAOA
+        );
         assert_eq!(circuit.resource_estimates.qubit_count, 4);
     }
-    
+
     #[test]
     fn test_grover_synthesis() {
         let synthesizer = CircuitSynthesizer::new().unwrap();
-        
+
         let search_space = SearchSpaceData {
             total_items: 16,
             marked_items: 1,
             oracle_specification: OracleSpecification::MarkedStates(vec![5]),
         };
-        
+
         let spec = AlgorithmSpecification::grover(4, search_space);
-        
+
         let circuit = synthesizer.synthesize_circuit(&spec);
         assert!(circuit.is_ok());
-        
+
         let circuit = circuit.unwrap();
-        assert_eq!(circuit.metadata.source_algorithm, QuantumAlgorithmType::Grover);
+        assert_eq!(
+            circuit.metadata.source_algorithm,
+            QuantumAlgorithmType::Grover
+        );
         assert_eq!(circuit.resource_estimates.qubit_count, 4);
     }
-    
+
     #[test]
     fn test_resource_estimation() {
         let synthesizer = CircuitSynthesizer::new().unwrap();
         let spec = AlgorithmSpecification::vqe(6, vec![0.0; 12]);
-        
+
         let estimates = synthesizer.estimate_resources(&spec);
         assert!(estimates.is_ok());
-        
+
         let estimates = estimates.unwrap();
         assert_eq!(estimates.qubit_count, 6);
         assert!(estimates.gate_count > 0);
         assert!(estimates.circuit_depth > 0);
     }
-    
+
     #[test]
     fn test_synthesis_caching() {
         let synthesizer = CircuitSynthesizer::new().unwrap();
         let spec = AlgorithmSpecification::vqe(3, vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6]);
-        
+
         // First synthesis should be a cache miss
         let circuit1 = synthesizer.synthesize_circuit(&spec).unwrap();
-        
+
         // Second synthesis with same spec should be a cache hit
         let circuit2 = synthesizer.synthesize_circuit(&spec).unwrap();
-        
+
         // Circuits should be identical
         assert_eq!(circuit1.gates.len(), circuit2.gates.len());
-        assert_eq!(circuit1.resource_estimates.gate_count, circuit2.resource_estimates.gate_count);
-        
+        assert_eq!(
+            circuit1.resource_estimates.gate_count,
+            circuit2.resource_estimates.gate_count
+        );
+
         let stats = synthesizer.get_performance_stats();
         assert!(stats.cache_stats.cache_hits > 0);
     }
-    
+
     #[test]
     fn test_custom_template_registration() {
         let synthesizer = CircuitSynthesizer::new().unwrap();
-        
+
         // Register a custom template
         let custom_template = Box::new(VQETemplate::new());
         let custom_algorithm = QuantumAlgorithmType::Custom("MyAlgorithm".to_string());
-        
-        assert!(synthesizer.register_template(custom_algorithm.clone(), custom_template).is_ok());
-        
+
+        assert!(synthesizer
+            .register_template(custom_algorithm.clone(), custom_template)
+            .is_ok());
+
         let available_algorithms = synthesizer.get_available_algorithms();
         assert!(available_algorithms.contains(&custom_algorithm));
     }
-    
+
     #[test]
     fn test_optimization_objectives() {
         let synthesizer = CircuitSynthesizer::new().unwrap();
-        
+
         let mut spec = AlgorithmSpecification::vqe(4, vec![0.0; 8]);
         spec.optimization_objectives = vec![
             SynthesisObjective::MinimizeGates,
             SynthesisObjective::MinimizeDepth,
         ];
-        
+
         let circuit = synthesizer.synthesize_circuit(&spec);
         assert!(circuit.is_ok());
-        
+
         let circuit = circuit.unwrap();
         assert!(!circuit.optimization_report.optimizations_applied.is_empty());
     }
-    
+
     #[test]
     fn test_specification_validation() {
         let synthesizer = CircuitSynthesizer::new().unwrap();
-        
+
         // Invalid specification (0 qubits)
         let invalid_spec = AlgorithmSpecification::vqe(0, vec![]);
         let result = synthesizer.synthesize_circuit(&invalid_spec);
         assert!(result.is_err());
     }
-    
+
     #[test]
     fn test_performance_monitoring() {
         let synthesizer = CircuitSynthesizer::new().unwrap();
-        
+
         // Synthesize a few circuits
         for i in 2..5 {
             let spec = AlgorithmSpecification::vqe(i, vec![0.0; i * 2]);
             let _ = synthesizer.synthesize_circuit(&spec);
         }
-        
+
         let stats = synthesizer.get_performance_stats();
         assert!(stats.total_syntheses >= 3);
-        assert!(stats.average_synthesis_times.contains_key(&QuantumAlgorithmType::VQE));
+        assert!(stats
+            .average_synthesis_times
+            .contains_key(&QuantumAlgorithmType::VQE));
     }
-    
+
     #[test]
     fn test_different_algorithm_types() {
         let synthesizer = CircuitSynthesizer::new().unwrap();
-        
+
         // Test QFT
         let qft_spec = AlgorithmSpecification {
             algorithm_type: QuantumAlgorithmType::QFT,
@@ -1552,25 +1794,28 @@ mod tests {
             },
             optimization_objectives: vec![SynthesisObjective::Balanced],
         };
-        
+
         let qft_circuit = synthesizer.synthesize_circuit(&qft_spec);
         assert!(qft_circuit.is_ok());
-        
+
         let qft_circuit = qft_circuit.unwrap();
-        assert_eq!(qft_circuit.metadata.source_algorithm, QuantumAlgorithmType::QFT);
+        assert_eq!(
+            qft_circuit.metadata.source_algorithm,
+            QuantumAlgorithmType::QFT
+        );
     }
-    
+
     #[test]
     fn test_resource_estimation_scaling() {
         let synthesizer = CircuitSynthesizer::new().unwrap();
-        
+
         // Test scaling of VQE resources
         let small_spec = AlgorithmSpecification::vqe(3, vec![0.0; 6]);
         let large_spec = AlgorithmSpecification::vqe(6, vec![0.0; 12]);
-        
+
         let small_estimates = synthesizer.estimate_resources(&small_spec).unwrap();
         let large_estimates = synthesizer.estimate_resources(&large_spec).unwrap();
-        
+
         // Larger circuit should have more resources
         assert!(large_estimates.gate_count > small_estimates.gate_count);
         assert!(large_estimates.qubit_count > small_estimates.qubit_count);

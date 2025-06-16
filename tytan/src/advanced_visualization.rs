@@ -4,13 +4,12 @@
 //! for quantum optimization systems, including interactive 3D energy landscapes,
 //! real-time convergence tracking, and comprehensive performance dashboards.
 
-use ndarray::{Array1, Array2, Array3, ArrayD, Axis, s};
+use ndarray::{Array1, Array2, Array3};
 use num;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque, BTreeMap};
-use std::sync::{Arc, Mutex, RwLock};
-use std::time::{Duration, Instant, SystemTime};
-use std::f64::consts::PI;
+use std::collections::{HashMap, VecDeque};
+use std::sync::{Arc, RwLock};
+use std::time::{Duration, SystemTime};
 
 /// Advanced visualization and analysis manager
 pub struct AdvancedVisualizationManager {
@@ -59,7 +58,10 @@ impl Default for VisualizationConfig {
         let mut color_schemes = HashMap::new();
         color_schemes.insert("default".to_string(), ColorScheme::default());
         color_schemes.insert("high_contrast".to_string(), ColorScheme::high_contrast());
-        color_schemes.insert("colorblind_friendly".to_string(), ColorScheme::colorblind_friendly());
+        color_schemes.insert(
+            "colorblind_friendly".to_string(),
+            ColorScheme::colorblind_friendly(),
+        );
 
         Self {
             interactive_mode: true,
@@ -506,7 +508,10 @@ pub enum WidgetType {
 
 pub trait PerformancePredictor: Send + Sync {
     fn name(&self) -> &str;
-    fn predict(&self, historical_data: &PerformanceHistory) -> Result<PerformancePrediction, PredictionError>;
+    fn predict(
+        &self,
+        historical_data: &PerformanceHistory,
+    ) -> Result<PerformancePrediction, PredictionError>;
     fn confidence(&self) -> f64;
     fn prediction_horizon(&self) -> Duration;
 }
@@ -583,7 +588,10 @@ pub enum SmoothingMethod {
     Gaussian,
     Bilateral,
     MedianFilter,
-    SavitzkyGolay { window_size: usize, polynomial_order: usize },
+    SavitzkyGolay {
+        window_size: usize,
+        polynomial_order: usize,
+    },
     None,
 }
 
@@ -900,7 +908,8 @@ pub enum ExportStatus {
 pub trait ConvergenceAnalyzer: Send + Sync {
     fn name(&self) -> &str;
     fn analyze(&self, data: &ConvergenceData) -> Result<ConvergenceAnalysis, AnalysisError>;
-    fn real_time_analysis(&self, data: &ConvergenceData) -> Result<RealTimeAnalysis, AnalysisError>;
+    fn real_time_analysis(&self, data: &ConvergenceData)
+        -> Result<RealTimeAnalysis, AnalysisError>;
 }
 
 #[derive(Debug, Clone)]
@@ -1175,37 +1184,41 @@ pub struct AlertRule {
 }
 
 pub enum AlertCondition {
-    ThresholdExceeded { metric: String, threshold: f64 },
-    TrendDetected { trend: TrendDirection, duration: Duration },
-    AnomalyDetected { anomaly_type: AnomalyType },
+    ThresholdExceeded {
+        metric: String,
+        threshold: f64,
+    },
+    TrendDetected {
+        trend: TrendDirection,
+        duration: Duration,
+    },
+    AnomalyDetected {
+        anomaly_type: AnomalyType,
+    },
     Custom(Box<dyn Fn(&ConvergenceData) -> bool + Send + Sync>),
 }
 
 impl std::fmt::Debug for AlertCondition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AlertCondition::ThresholdExceeded { metric, threshold } => {
-                f.debug_struct("ThresholdExceeded")
-                    .field("metric", metric)
-                    .field("threshold", threshold)
-                    .finish()
-            }
-            AlertCondition::TrendDetected { trend, duration } => {
-                f.debug_struct("TrendDetected")
-                    .field("trend", trend)
-                    .field("duration", duration)
-                    .finish()
-            }
-            AlertCondition::AnomalyDetected { anomaly_type } => {
-                f.debug_struct("AnomalyDetected")
-                    .field("anomaly_type", anomaly_type)
-                    .finish()
-            }
-            AlertCondition::Custom(_) => {
-                f.debug_struct("Custom")
-                    .field("function", &"<custom function>")
-                    .finish()
-            }
+            AlertCondition::ThresholdExceeded { metric, threshold } => f
+                .debug_struct("ThresholdExceeded")
+                .field("metric", metric)
+                .field("threshold", threshold)
+                .finish(),
+            AlertCondition::TrendDetected { trend, duration } => f
+                .debug_struct("TrendDetected")
+                .field("trend", trend)
+                .field("duration", duration)
+                .finish(),
+            AlertCondition::AnomalyDetected { anomaly_type } => f
+                .debug_struct("AnomalyDetected")
+                .field("anomaly_type", anomaly_type)
+                .finish(),
+            AlertCondition::Custom(_) => f
+                .debug_struct("Custom")
+                .field("function", &"<custom function>")
+                .finish(),
         }
     }
 }
@@ -1219,17 +1232,13 @@ impl Clone for AlertCondition {
                     threshold: *threshold,
                 }
             }
-            AlertCondition::TrendDetected { trend, duration } => {
-                AlertCondition::TrendDetected {
-                    trend: trend.clone(),
-                    duration: *duration,
-                }
-            }
-            AlertCondition::AnomalyDetected { anomaly_type } => {
-                AlertCondition::AnomalyDetected {
-                    anomaly_type: anomaly_type.clone(),
-                }
-            }
+            AlertCondition::TrendDetected { trend, duration } => AlertCondition::TrendDetected {
+                trend: trend.clone(),
+                duration: *duration,
+            },
+            AlertCondition::AnomalyDetected { anomaly_type } => AlertCondition::AnomalyDetected {
+                anomaly_type: anomaly_type.clone(),
+            },
             AlertCondition::Custom(_) => {
                 // For Custom variants, we can't clone the function, so create a no-op
                 AlertCondition::Custom(Box::new(|_| false))
@@ -1507,15 +1516,26 @@ impl AdvancedVisualizationManager {
     }
 
     /// Create interactive 3D energy landscape visualization
-    pub fn create_energy_landscape(&mut self, energy_data: &[EnergySample]) -> Result<String, VisualizationError> {
-        let viz_id = format!("energy_landscape_{}", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_nanos());
-        
+    pub fn create_energy_landscape(
+        &mut self,
+        energy_data: &[EnergySample],
+    ) -> Result<String, VisualizationError> {
+        let viz_id = format!(
+            "energy_landscape_{}",
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+
         // Process energy data
         let landscape_data = self.energy_landscape_viz.process_energy_data(energy_data)?;
-        
+
         // Create visualization
-        let visualization = self.energy_landscape_viz.create_visualization(&landscape_data)?;
-        
+        let visualization = self
+            .energy_landscape_viz
+            .create_visualization(&landscape_data)?;
+
         // Register active visualization
         let active_viz = ActiveVisualization {
             id: viz_id.clone(),
@@ -1541,63 +1561,125 @@ impl AdvancedVisualizationManager {
             update_frequency: self.config.update_frequency,
             last_update: SystemTime::now(),
         };
-        
-        self.active_visualizations.write().unwrap().insert(viz_id.clone(), active_viz);
-        
+
+        self.active_visualizations
+            .write()
+            .unwrap()
+            .insert(viz_id.clone(), active_viz);
+
         Ok(viz_id)
     }
 
     /// Start real-time convergence tracking
-    pub fn start_convergence_tracking(&mut self, algorithm: &str, problem_config: ProblemConfiguration) -> Result<String, VisualizationError> {
-        let session_id = format!("convergence_{}_{}", algorithm, SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_nanos());
-        
-        self.convergence_tracker.start_session(session_id.clone(), algorithm, problem_config)?;
-        
+    pub fn start_convergence_tracking(
+        &mut self,
+        algorithm: &str,
+        problem_config: ProblemConfiguration,
+    ) -> Result<String, VisualizationError> {
+        let session_id = format!(
+            "convergence_{}_{}",
+            algorithm,
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+
+        self.convergence_tracker
+            .start_session(session_id.clone(), algorithm, problem_config)?;
+
         Ok(session_id)
     }
 
     /// Update convergence data for real-time tracking
-    pub fn update_convergence(&mut self, session_id: &str, energy: f64, gradient_norm: f64, parameters: Array1<f64>) -> Result<(), VisualizationError> {
-        self.convergence_tracker.update_data(session_id, energy, gradient_norm, parameters)
+    pub fn update_convergence(
+        &mut self,
+        session_id: &str,
+        energy: f64,
+        gradient_norm: f64,
+        parameters: Array1<f64>,
+    ) -> Result<(), VisualizationError> {
+        self.convergence_tracker
+            .update_data(session_id, energy, gradient_norm, parameters)
     }
 
     /// Visualize quantum state
-    pub fn visualize_quantum_state(&mut self, state: &QuantumState, visualization_type: StateVisualizationType) -> Result<String, VisualizationError> {
-        let viz_id = format!("quantum_state_{}", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_nanos());
-        
-        let visualization = self.quantum_state_viz.create_state_visualization(state, visualization_type)?;
-        
+    pub fn visualize_quantum_state(
+        &mut self,
+        state: &QuantumState,
+        visualization_type: StateVisualizationType,
+    ) -> Result<String, VisualizationError> {
+        let viz_id = format!(
+            "quantum_state_{}",
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+
+        let visualization = self
+            .quantum_state_viz
+            .create_state_visualization(state, visualization_type)?;
+
         Ok(viz_id)
     }
 
     /// Create performance prediction dashboard
-    pub fn create_performance_dashboard(&mut self, data_sources: Vec<String>) -> Result<String, VisualizationError> {
-        let dashboard_id = format!("dashboard_{}", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_nanos());
-        
-        self.performance_dashboard.create_dashboard(dashboard_id.clone(), data_sources)?;
-        
+    pub fn create_performance_dashboard(
+        &mut self,
+        data_sources: Vec<String>,
+    ) -> Result<String, VisualizationError> {
+        let dashboard_id = format!(
+            "dashboard_{}",
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+
+        self.performance_dashboard
+            .create_dashboard(dashboard_id.clone(), data_sources)?;
+
         Ok(dashboard_id)
     }
 
     /// Perform comparative analysis
-    pub fn compare_algorithms(&self, datasets: Vec<Dataset>) -> Result<ComparisonResult, VisualizationError> {
-        self.comparative_analyzer.perform_comparison(&datasets)
-            .map_err(|e| VisualizationError::DataProcessingFailed(format!("Comparison failed: {:?}", e)))
+    pub fn compare_algorithms(
+        &self,
+        datasets: Vec<Dataset>,
+    ) -> Result<ComparisonResult, VisualizationError> {
+        self.comparative_analyzer
+            .perform_comparison(&datasets)
+            .map_err(|e| {
+                VisualizationError::DataProcessingFailed(format!("Comparison failed: {:?}", e))
+            })
     }
 
     /// Export visualization
-    pub fn export_visualization(&self, viz_id: &str, format: ExportFormat, options: ExportOptions) -> Result<String, VisualizationError> {
+    pub fn export_visualization(
+        &self,
+        viz_id: &str,
+        format: ExportFormat,
+        options: ExportOptions,
+    ) -> Result<String, VisualizationError> {
         // Implementation stub
         Ok(format!("exported_{}_{:?}", viz_id, format))
     }
 
     /// Get visualization status
     pub fn get_visualization_status(&self, viz_id: &str) -> Option<ActiveVisualization> {
-        self.active_visualizations.read().unwrap().get(viz_id).cloned()
+        self.active_visualizations
+            .read()
+            .unwrap()
+            .get(viz_id)
+            .cloned()
     }
 
     /// Update configuration
-    pub fn update_config(&mut self, new_config: VisualizationConfig) -> Result<(), VisualizationError> {
+    pub fn update_config(
+        &mut self,
+        new_config: VisualizationConfig,
+    ) -> Result<(), VisualizationError> {
         self.config = new_config;
         Ok(())
     }
@@ -1682,7 +1764,10 @@ impl EnergyLandscapeVisualizer {
         }
     }
 
-    pub fn process_energy_data(&self, _energy_data: &[EnergySample]) -> Result<LandscapeData, VisualizationError> {
+    pub fn process_energy_data(
+        &self,
+        _energy_data: &[EnergySample],
+    ) -> Result<LandscapeData, VisualizationError> {
         Ok(LandscapeData {
             energy_samples: Vec::new(),
             problem_size: 10,
@@ -1694,7 +1779,10 @@ impl EnergyLandscapeVisualizer {
         })
     }
 
-    pub fn create_visualization(&self, _landscape_data: &LandscapeData) -> Result<(), VisualizationError> {
+    pub fn create_visualization(
+        &self,
+        _landscape_data: &LandscapeData,
+    ) -> Result<(), VisualizationError> {
         Ok(())
     }
 }
@@ -1740,7 +1828,12 @@ impl ConvergenceTracker {
         }
     }
 
-    pub fn start_session(&mut self, session_id: String, algorithm: &str, problem_config: ProblemConfiguration) -> Result<(), VisualizationError> {
+    pub fn start_session(
+        &mut self,
+        session_id: String,
+        algorithm: &str,
+        problem_config: ProblemConfiguration,
+    ) -> Result<(), VisualizationError> {
         let session = ConvergenceSession {
             session_id: session_id.clone(),
             algorithm: algorithm.to_string(),
@@ -1775,27 +1868,42 @@ impl ConvergenceTracker {
                 },
             },
         };
-        
+
         self.active_sessions.insert(session_id, session);
         Ok(())
     }
 
-    pub fn update_data(&mut self, session_id: &str, energy: f64, gradient_norm: f64, _parameters: Array1<f64>) -> Result<(), VisualizationError> {
+    pub fn update_data(
+        &mut self,
+        session_id: &str,
+        energy: f64,
+        gradient_norm: f64,
+        _parameters: Array1<f64>,
+    ) -> Result<(), VisualizationError> {
         if let Some(session) = self.active_sessions.get_mut(session_id) {
             let timestamp = SystemTime::now();
-            session.convergence_data.energy_trajectory.push_back((timestamp, energy));
-            session.convergence_data.gradient_norms.push_back((timestamp, gradient_norm));
-            
+            session
+                .convergence_data
+                .energy_trajectory
+                .push_back((timestamp, energy));
+            session
+                .convergence_data
+                .gradient_norms
+                .push_back((timestamp, gradient_norm));
+
             // Update metrics
             session.metrics.current_energy = energy;
             session.metrics.gradient_norm = gradient_norm;
             if energy < session.metrics.best_energy {
                 session.metrics.best_energy = energy;
             }
-            
+
             Ok(())
         } else {
-            Err(VisualizationError::InvalidConfiguration(format!("Session {} not found", session_id)))
+            Err(VisualizationError::InvalidConfiguration(format!(
+                "Session {} not found",
+                session_id
+            )))
         }
     }
 }
@@ -1805,25 +1913,50 @@ impl QuantumStateVisualizer {
         Self {
             visualization_methods: Vec::new(),
             state_processors: StateProcessors {
-                entanglement_processor: EntanglementProcessor { algorithms: Vec::new() },
-                fidelity_processor: FidelityProcessor { metrics: Vec::new() },
-                tomography_processor: TomographyProcessor { methods: Vec::new() },
-                measurement_processor: MeasurementProcessor { simulators: Vec::new() },
+                entanglement_processor: EntanglementProcessor {
+                    algorithms: Vec::new(),
+                },
+                fidelity_processor: FidelityProcessor {
+                    metrics: Vec::new(),
+                },
+                tomography_processor: TomographyProcessor {
+                    methods: Vec::new(),
+                },
+                measurement_processor: MeasurementProcessor {
+                    simulators: Vec::new(),
+                },
             },
             quantum_simulator: InteractiveQuantumSimulator {
-                circuit_editor: CircuitEditor { gates: Vec::new(), circuits: HashMap::new() },
-                state_evolution: StateEvolution { evolution_methods: Vec::new() },
-                measurement_simulator: MeasurementSimulator { measurement_bases: Vec::new() },
+                circuit_editor: CircuitEditor {
+                    gates: Vec::new(),
+                    circuits: HashMap::new(),
+                },
+                state_evolution: StateEvolution {
+                    evolution_methods: Vec::new(),
+                },
+                measurement_simulator: MeasurementSimulator {
+                    measurement_bases: Vec::new(),
+                },
             },
             comparison_tools: StateComparisonTools {
-                fidelity_calculator: FidelityCalculator { methods: Vec::new() },
-                distance_metrics: DistanceMetrics { metrics: Vec::new() },
-                visualization_comparator: VisualizationComparator { comparison_methods: Vec::new() },
+                fidelity_calculator: FidelityCalculator {
+                    methods: Vec::new(),
+                },
+                distance_metrics: DistanceMetrics {
+                    metrics: Vec::new(),
+                },
+                visualization_comparator: VisualizationComparator {
+                    comparison_methods: Vec::new(),
+                },
             },
         }
     }
 
-    pub fn create_state_visualization(&self, _state: &QuantumState, _viz_type: StateVisualizationType) -> Result<StateVisualization, VisualizationError> {
+    pub fn create_state_visualization(
+        &self,
+        _state: &QuantumState,
+        _viz_type: StateVisualizationType,
+    ) -> Result<StateVisualization, VisualizationError> {
         Ok(StateVisualization {
             visualization_type: StateVisualizationType::BlochSphere,
             render_data: StateRenderData {
@@ -1853,7 +1986,11 @@ impl PerformanceDashboard {
         }
     }
 
-    pub fn create_dashboard(&mut self, _dashboard_id: String, _data_sources: Vec<String>) -> Result<(), VisualizationError> {
+    pub fn create_dashboard(
+        &mut self,
+        _dashboard_id: String,
+        _data_sources: Vec<String>,
+    ) -> Result<(), VisualizationError> {
         Ok(())
     }
 }
@@ -1865,7 +2002,9 @@ impl ComparativeAnalyzer {
             statistical_analyzers: StatisticalAnalyzers {
                 hypothesis_tests: Vec::new(),
                 effect_size_calculators: Vec::new(),
-                power_analysis: PowerAnalysis { methods: Vec::new() },
+                power_analysis: PowerAnalysis {
+                    methods: Vec::new(),
+                },
             },
             benchmarking_tools: BenchmarkingTools {
                 benchmark_suites: Vec::new(),
@@ -1878,7 +2017,10 @@ impl ComparativeAnalyzer {
         }
     }
 
-    pub fn perform_comparison(&self, _datasets: &[Dataset]) -> Result<ComparisonResult, AnalysisError> {
+    pub fn perform_comparison(
+        &self,
+        _datasets: &[Dataset],
+    ) -> Result<ComparisonResult, AnalysisError> {
         Ok(ComparisonResult {
             comparison_id: "test_comparison".to_string(),
             datasets_compared: Vec::new(),
@@ -2070,48 +2212,94 @@ pub struct DashboardLayoutManager {
 
 // Additional stub types
 #[derive(Debug, Clone)]
-pub struct HypothesisTest { pub test_name: String }
+pub struct HypothesisTest {
+    pub test_name: String,
+}
 #[derive(Debug, Clone)]
-pub struct EffectSizeCalculator { pub calculator_name: String }
+pub struct EffectSizeCalculator {
+    pub calculator_name: String,
+}
 #[derive(Debug, Clone)]
-pub struct PowerAnalysis { pub methods: Vec<String> }
+pub struct PowerAnalysis {
+    pub methods: Vec<String>,
+}
 #[derive(Debug, Clone)]
-pub struct BenchmarkSuite { pub suite_name: String }
+pub struct BenchmarkSuite {
+    pub suite_name: String,
+}
 #[derive(Debug, Clone)]
-pub struct PerformanceMetric { pub metric_name: String }
+pub struct PerformanceMetric {
+    pub metric_name: String,
+}
 #[derive(Debug, Clone)]
-pub struct ReportTemplate { pub template_name: String }
+pub struct ReportTemplate {
+    pub template_name: String,
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ReportFormat { PDF, HTML, CSV, JSON }
+pub enum ReportFormat {
+    PDF,
+    HTML,
+    CSV,
+    JSON,
+}
 #[derive(Debug, Clone)]
-pub struct DashboardAlertRule { pub rule_name: String }
+pub struct DashboardAlertRule {
+    pub rule_name: String,
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum NotificationChannel { Email, SMS, Webhook }
+pub enum NotificationChannel {
+    Email,
+    SMS,
+    Webhook,
+}
 #[derive(Debug, Clone)]
-pub struct DashboardLayout { pub layout_config: String }
+pub struct DashboardLayout {
+    pub layout_config: String,
+}
 
 #[derive(Debug, Clone)]
-pub struct EntanglementProcessor { pub algorithms: Vec<String> }
+pub struct EntanglementProcessor {
+    pub algorithms: Vec<String>,
+}
 #[derive(Debug, Clone)]
-pub struct FidelityProcessor { pub metrics: Vec<String> }
+pub struct FidelityProcessor {
+    pub metrics: Vec<String>,
+}
 #[derive(Debug, Clone)]
-pub struct TomographyProcessor { pub methods: Vec<String> }
+pub struct TomographyProcessor {
+    pub methods: Vec<String>,
+}
 #[derive(Debug, Clone)]
-pub struct MeasurementProcessor { pub simulators: Vec<String> }
+pub struct MeasurementProcessor {
+    pub simulators: Vec<String>,
+}
 
 #[derive(Debug, Clone)]
-pub struct CircuitEditor { pub gates: Vec<String>, pub circuits: HashMap<String, String> }
+pub struct CircuitEditor {
+    pub gates: Vec<String>,
+    pub circuits: HashMap<String, String>,
+}
 #[derive(Debug, Clone)]
-pub struct StateEvolution { pub evolution_methods: Vec<String> }
+pub struct StateEvolution {
+    pub evolution_methods: Vec<String>,
+}
 #[derive(Debug, Clone)]
-pub struct MeasurementSimulator { pub measurement_bases: Vec<String> }
+pub struct MeasurementSimulator {
+    pub measurement_bases: Vec<String>,
+}
 
 #[derive(Debug, Clone)]
-pub struct FidelityCalculator { pub methods: Vec<String> }
+pub struct FidelityCalculator {
+    pub methods: Vec<String>,
+}
 #[derive(Debug, Clone)]
-pub struct DistanceMetrics { pub metrics: Vec<String> }
+pub struct DistanceMetrics {
+    pub metrics: Vec<String>,
+}
 #[derive(Debug, Clone)]
-pub struct VisualizationComparator { pub comparison_methods: Vec<String> }
+pub struct VisualizationComparator {
+    pub comparison_methods: Vec<String>,
+}
 
 #[derive(Debug, Clone)]
 pub struct DataFeed {
@@ -2139,6 +2327,6 @@ pub fn create_lightweight_visualization_manager() -> AdvancedVisualizationManage
         rendering_quality: RenderingQuality::Low,
         color_schemes: HashMap::new(),
     };
-    
+
     AdvancedVisualizationManager::new(config)
 }

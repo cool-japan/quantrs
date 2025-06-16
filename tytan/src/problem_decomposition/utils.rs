@@ -1,7 +1,6 @@
 //! Utility functions for problem decomposition
 
 use super::types::*;
-use crate::sampler::SampleResult;
 use ndarray::Array2;
 use std::collections::HashMap;
 

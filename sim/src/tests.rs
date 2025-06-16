@@ -10,11 +10,11 @@ use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::register::Register;
 
 use crate::optimized_simulator::OptimizedSimulator;
-use crate::statevector::StateVectorSimulator;
 use crate::quantum_reservoir_computing::{
-    QuantumReservoirComputer, QuantumReservoirConfig, QuantumReservoirArchitecture,
-    ReservoirDynamics, InputEncoding, OutputMeasurement,
+    InputEncoding, OutputMeasurement, QuantumReservoirArchitecture, QuantumReservoirComputer,
+    QuantumReservoirConfig, ReservoirDynamics,
 };
+use crate::statevector::StateVectorSimulator;
 use ndarray::Array1;
 
 /// Create a bell state circuit
@@ -693,21 +693,9 @@ mod ultrathink_tests {
 
     #[test]
     fn test_quantum_reservoir_creation() {
-        let config = QuantumReservoirConfig {
-            num_qubits: 4,
-            architecture: QuantumReservoirArchitecture::RandomCircuit,
-            dynamics: ReservoirDynamics::Unitary,
-            input_encoding: InputEncoding::Amplitude,
-            output_measurement: OutputMeasurement::PauliExpectation,
-            time_step: 0.1,
-            evolution_steps: 10,
-            coupling_strength: 0.1,
-            noise_level: 0.0,
-            memory_capacity: 50,
-            adaptive_learning: false,
-            learning_rate: 0.01,
-            washout_period: 5,
-        };
+        let mut config = QuantumReservoirConfig::default();
+        config.num_qubits = 4;
+        config.architecture = QuantumReservoirArchitecture::RandomCircuit;
 
         let result = QuantumReservoirComputer::new(config);
         assert!(result.is_ok());
@@ -724,24 +712,16 @@ mod ultrathink_tests {
         ];
 
         for architecture in architectures {
-            let config = QuantumReservoirConfig {
-                num_qubits: 3,
-                architecture,
-                dynamics: ReservoirDynamics::Unitary,
-                input_encoding: InputEncoding::Amplitude,
-                output_measurement: OutputMeasurement::PauliExpectation,
-                time_step: 0.1,
-                evolution_steps: 5,
-                coupling_strength: 0.1,
-                noise_level: 0.0,
-                memory_capacity: 20,
-                adaptive_learning: false,
-                learning_rate: 0.01,
-                washout_period: 2,
-            };
+            let mut config = QuantumReservoirConfig::default();
+            config.num_qubits = 3;
+            config.architecture = architecture;
 
             let result = QuantumReservoirComputer::new(config);
-            assert!(result.is_ok(), "Failed to create reservoir with architecture {:?}", architecture);
+            assert!(
+                result.is_ok(),
+                "Failed to create reservoir with architecture {:?}",
+                architecture
+            );
         }
     }
 
@@ -756,24 +736,16 @@ mod ultrathink_tests {
         ];
 
         for encoding in encodings {
-            let config = QuantumReservoirConfig {
-                num_qubits: 3,
-                architecture: QuantumReservoirArchitecture::RandomCircuit,
-                dynamics: ReservoirDynamics::Unitary,
-                input_encoding: encoding,
-                output_measurement: OutputMeasurement::PauliExpectation,
-                time_step: 0.1,
-                evolution_steps: 5,
-                coupling_strength: 0.1,
-                noise_level: 0.0,
-                memory_capacity: 20,
-                adaptive_learning: false,
-                learning_rate: 0.01,
-                washout_period: 2,
-            };
+            let mut config = QuantumReservoirConfig::default();
+            config.num_qubits = 3;
+            config.input_encoding = encoding;
 
             let result = QuantumReservoirComputer::new(config);
-            assert!(result.is_ok(), "Failed to create reservoir with encoding {:?}", encoding);
+            assert!(
+                result.is_ok(),
+                "Failed to create reservoir with encoding {:?}",
+                encoding
+            );
         }
     }
 
@@ -788,44 +760,24 @@ mod ultrathink_tests {
         ];
 
         for measurement in measurements {
-            let config = QuantumReservoirConfig {
-                num_qubits: 3,
-                architecture: QuantumReservoirArchitecture::RandomCircuit,
-                dynamics: ReservoirDynamics::Unitary,
-                input_encoding: InputEncoding::Amplitude,
-                output_measurement: measurement,
-                time_step: 0.1,
-                evolution_steps: 5,
-                coupling_strength: 0.1,
-                noise_level: 0.0,
-                memory_capacity: 20,
-                adaptive_learning: false,
-                learning_rate: 0.01,
-                washout_period: 2,
-            };
+            let mut config = QuantumReservoirConfig::default();
+            config.num_qubits = 3;
+            config.output_measurement = measurement;
 
             let result = QuantumReservoirComputer::new(config);
-            assert!(result.is_ok(), "Failed to create reservoir with measurement {:?}", measurement);
+            assert!(
+                result.is_ok(),
+                "Failed to create reservoir with measurement {:?}",
+                measurement
+            );
         }
     }
 
     #[test]
     fn test_quantum_reservoir_input_processing() {
-        let config = QuantumReservoirConfig {
-            num_qubits: 3,
-            architecture: QuantumReservoirArchitecture::SpinChain,
-            dynamics: ReservoirDynamics::Unitary,
-            input_encoding: InputEncoding::Amplitude,
-            output_measurement: OutputMeasurement::PauliExpectation,
-            time_step: 0.1,
-            evolution_steps: 8,
-            coupling_strength: 0.2,
-            noise_level: 0.0,
-            memory_capacity: 30,
-            adaptive_learning: false,
-            learning_rate: 0.01,
-            washout_period: 5,
-        };
+        let mut config = QuantumReservoirConfig::default();
+        config.num_qubits = 3;
+        config.architecture = QuantumReservoirArchitecture::SpinChain;
 
         let mut reservoir = QuantumReservoirComputer::new(config).unwrap();
 
@@ -836,7 +788,7 @@ mod ultrathink_tests {
 
         let output = result.unwrap();
         assert!(output.len() > 0);
-        
+
         // Output should be finite
         for &val in output.iter() {
             assert!(val.is_finite());
@@ -845,25 +797,14 @@ mod ultrathink_tests {
 
     #[test]
     fn test_quantum_reservoir_metrics() {
-        let config = QuantumReservoirConfig {
-            num_qubits: 4,
-            architecture: QuantumReservoirArchitecture::RandomCircuit,
-            dynamics: ReservoirDynamics::Unitary,
-            input_encoding: InputEncoding::Phase,
-            output_measurement: OutputMeasurement::PauliExpectation,
-            time_step: 0.1,
-            evolution_steps: 10,
-            coupling_strength: 0.15,
-            noise_level: 0.0,
-            memory_capacity: 40,
-            adaptive_learning: true,
-            learning_rate: 0.01,
-            washout_period: 5,
-        };
+        let mut config = QuantumReservoirConfig::default();
+        config.num_qubits = 4;
+        config.input_encoding = InputEncoding::Phase;
+        config.adaptive_learning = true;
 
         let reservoir = QuantumReservoirComputer::new(config).unwrap();
         let metrics = reservoir.get_metrics();
-        
+
         // Check that metrics are properly initialized
         assert!(metrics.prediction_accuracy >= 0.0);
         assert!(metrics.memory_capacity >= 0.0);
@@ -876,21 +817,10 @@ mod ultrathink_tests {
 
     #[test]
     fn test_quantum_reservoir_reset() {
-        let config = QuantumReservoirConfig {
-            num_qubits: 3,
-            architecture: QuantumReservoirArchitecture::TransverseFieldIsing,
-            dynamics: ReservoirDynamics::NISQ,
-            input_encoding: InputEncoding::Squeezed,
-            output_measurement: OutputMeasurement::Entanglement,
-            time_step: 0.1,
-            evolution_steps: 6,
-            coupling_strength: 0.12,
-            noise_level: 0.05,
-            memory_capacity: 25,
-            adaptive_learning: false,
-            learning_rate: 0.01,
-            washout_period: 3,
-        };
+        let mut config = QuantumReservoirConfig::default();
+        config.num_qubits = 3;
+        config.architecture = QuantumReservoirArchitecture::TransverseFieldIsing;
+        config.dynamics = ReservoirDynamics::NISQ;
 
         let mut reservoir = QuantumReservoirComputer::new(config).unwrap();
 
@@ -911,11 +841,21 @@ mod ultrathink_tests {
 
         let benchmarks = result.unwrap();
         assert!(benchmarks.len() > 0);
-        
+
         // Check that benchmark results are reasonable
         for (name, value) in benchmarks.iter() {
-            assert!(value.is_finite(), "Benchmark {} returned non-finite value: {}", name, value);
-            assert!(*value >= 0.0, "Benchmark {} returned negative value: {}", name, value);
+            assert!(
+                value.is_finite(),
+                "Benchmark {} returned non-finite value: {}",
+                name,
+                value
+            );
+            assert!(
+                *value >= 0.0,
+                "Benchmark {} returned negative value: {}",
+                name,
+                value
+            );
         }
     }
 }

@@ -5,7 +5,6 @@
 //! the SciRS2 API stabilizes.
 
 use ndarray::{Array2, ArrayD};
-use std::collections::HashMap;
 
 /// Placeholder for enhanced QUBO operations
 pub fn enhance_qubo_matrix(matrix: &Array2<f64>) -> Array2<f64> {
@@ -31,11 +30,11 @@ pub fn parallel_sample_qubo(matrix: &Array2<f64>, num_samples: usize) -> Vec<(Ve
     let n = matrix.shape()[0];
     let mut results = Vec::with_capacity(num_samples);
 
-    use rand::{thread_rng, Rng};
-    let mut rng = thread_rng();
+    use rand::{rng, Rng};
+    let mut rng = rng();
 
     for _ in 0..num_samples {
-        let solution: Vec<bool> = (0..n).map(|_| rng.gen()).collect();
+        let solution: Vec<bool> = (0..n).map(|_| rng.random()).collect();
         let energy = evaluate_qubo(&solution, matrix);
         results.push((solution, energy));
     }
@@ -191,7 +190,6 @@ mod scirs2_core_stub {
 }
 
 mod scirs2_linalg_stub {
-    use ndarray::{Array1, Array2};
 
     pub mod sparse {
         use ndarray::Array2;
@@ -210,7 +208,7 @@ mod scirs2_linalg_stub {
     }
 
     pub mod pca {
-        use ndarray::{Array1, Array2};
+        use ndarray::Array2;
         use std::error::Error;
 
         pub struct PCA {
@@ -473,9 +471,7 @@ mod scirs2_plot_stub {
         pub fn axis(&self, _setting: &str) {}
         pub fn legend(&self) {}
         pub fn legend_unique(&self) {}
-        pub fn transAxes(&self) -> () {
-            ()
-        }
+        pub fn trans_axes(&self) {}
     }
 
     #[derive(Clone)]
@@ -490,9 +486,6 @@ mod scirs2_plot_stub {
 }
 
 mod scirs2_statistics_stub {
-    use ndarray::{Array1, Array2};
-    use std::collections::HashMap;
-    use std::error::Error;
 
     pub mod descriptive {
         pub fn mean(_data: &[f64]) -> f64 {
@@ -697,7 +690,7 @@ mod scirs2_optimization_stub {
 }
 
 mod scirs2_ml_stub {
-    use ndarray::{Array1, Array2};
+    use ndarray::Array2;
     use std::error::Error;
 
     pub struct RandomForest {
@@ -1003,7 +996,6 @@ pub mod scirs2_core {
 #[cfg(not(feature = "scirs"))]
 pub mod scirs2_linalg {
     use ndarray::Array2;
-    use num_complex::Complex64;
     use std::error::Error;
 
     pub mod sparse {

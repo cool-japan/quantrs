@@ -17,12 +17,8 @@ pub mod types;
 
 #[cfg(feature = "dwave")]
 use crate::compile::{Compile, CompiledModel};
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, IxDyn};
-use quantrs2_anneal::qubo::Variable;
-use std::collections::{HashMap, HashSet};
-use std::fmt;
-use std::str::FromStr;
+use ndarray::Array2;
+use std::collections::HashMap;
 
 // Re-export main types
 pub use ast::*;
