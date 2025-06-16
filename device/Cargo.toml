@@ -15,7 +15,7 @@ quantrs2-core = { path = "../core", version = "0.1.0-alpha.4" }
 quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.4" }
 num-complex.workspace = true
 thiserror.workspace = true
-petgraph = "0.6"
+petgraph = "0.8"
 fastrand = "2.0"
 rand.workspace = true
 serde = { workspace = true, features = ["derive"] }
