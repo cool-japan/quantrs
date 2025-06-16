@@ -818,7 +818,7 @@ mod tests {
 
     #[test]
     fn test_symbolic_expression_creation() {
-        let const_expr = SymbolicExpression::constant(3.14);
+        let const_expr = SymbolicExpression::constant(std::f64::consts::PI);
         assert!(const_expr.is_constant());
 
         let var_expr = SymbolicExpression::variable("x");

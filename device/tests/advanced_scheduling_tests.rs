@@ -31,8 +31,7 @@ use quantrs2_device::{
 
 #[tokio::test]
 async fn test_advanced_scheduler_initialization() {
-    let params = SchedulingParams::default();
-    let scheduler = AdvancedQuantumScheduler::new(params);
+    let scheduler = create_test_scheduler().await;
 
     // Verify that all components are initialized
     // TODO: Test using public API once available
@@ -45,27 +44,7 @@ async fn test_advanced_scheduler_initialization() {
 
 #[tokio::test]
 async fn test_ml_enhanced_job_configuration() {
-    let params = SchedulingParams {
-        strategy: SchedulingStrategy::MLOptimized,
-        allocation_strategy: AllocationStrategy::SciRS2Optimized,
-        scirs2_params: SciRS2SchedulingParams {
-            enabled: true,
-            objective_weights: HashMap::new(),
-            learning_window: Duration::from_secs(3600),
-            optimization_frequency: Duration::from_secs(180),
-            model_params: HashMap::new(),
-            ml_algorithm: MLAlgorithm::EnsembleMethod,
-            multi_objective_weights: MultiObjectiveWeights::default(),
-            rl_params: RLParameters::default(),
-            ga_params: GAParameters::default(),
-            enable_prediction: true,
-            retrain_frequency: Duration::from_secs(1800),
-            feature_params: FeatureParams::default(),
-        },
-        ..Default::default()
-    };
-
-    let scheduler = AdvancedQuantumScheduler::new(params);
+    let scheduler = create_test_scheduler().await;
 
     // Create a test circuit
     let mut circuit: Circuit<16> = Circuit::new();
@@ -80,18 +59,17 @@ async fn test_ml_enhanced_job_configuration() {
         .await;
 
     // Should succeed with optimized configuration
-    assert!(job_result.is_ok());
+    match job_result {
+        Ok(_) => {},
+        Err(e) => panic!("Job submission failed: {:?}", e),
+    }
 }
 
 #[tokio::test]
 async fn test_multi_objective_backend_selection() {
     let scheduler = create_test_scheduler().await;
 
-    // Add some test backends
-    // TODO: Use public API for backend registration
-    // scheduler.core_scheduler.register_backend(HardwareBackend::IBMQuantum).await.unwrap();
-    // scheduler.core_scheduler.register_backend(HardwareBackend::AmazonBraket).await.unwrap();
-    // scheduler.core_scheduler.register_backend(HardwareBackend::AzureQuantum).await.unwrap();
+    // Backends are already registered in create_test_scheduler()
 
     // Define job requirements
     let requirements = JobRequirements {
@@ -107,17 +85,17 @@ async fn test_multi_objective_backend_selection() {
     let selected_backend = scheduler
         .select_optimal_backend(&requirements, &preferences)
         .await;
-    assert!(selected_backend.is_ok());
+    match selected_backend {
+        Ok(_) => {},
+        Err(e) => panic!("Backend selection failed: {:?}", e),
+    }
 }
 
 #[tokio::test]
 async fn test_predictive_queue_time_estimation() {
     let scheduler = create_test_scheduler().await;
 
-    // Add backends with historical data simulation
-    // TODO: Use public API for backend registration
-    // scheduler.core_scheduler.register_backend(HardwareBackend::IBMQuantum).await.unwrap();
-    // scheduler.core_scheduler.register_backend(HardwareBackend::AmazonBraket).await.unwrap();
+    // Backends are already registered in create_test_scheduler()
 
     // Test predictive queue time estimation
     let queue_predictions = scheduler.predict_queue_times().await.unwrap();
@@ -400,14 +378,8 @@ async fn test_ml_algorithm_configurations() {
 async fn test_comprehensive_workflow() {
     let scheduler = create_test_scheduler().await;
 
-    // Register multiple backends
-    // TODO: Use public API for backend registration
-    // scheduler.core_scheduler.register_backend(HardwareBackend::IBMQuantum).await.unwrap();
-    // scheduler.core_scheduler.register_backend(HardwareBackend::AmazonBraket).await.unwrap();
-    // scheduler.core_scheduler.register_backend(HardwareBackend::AzureQuantum).await.unwrap();
-
-    // Start the scheduler
-    // scheduler.core_scheduler.start_scheduler().await.unwrap();
+    // Backends are already registered in create_test_scheduler()
+    // Scheduler is ready to use
 
     // Submit multiple jobs with different configurations
     let mut job_ids = Vec::new();
@@ -538,7 +510,14 @@ async fn create_test_scheduler() -> AdvancedQuantumScheduler {
         ..Default::default()
     };
 
-    AdvancedQuantumScheduler::new(params)
+    let scheduler = AdvancedQuantumScheduler::new(params);
+    
+    // Register test backends
+    scheduler.register_backend(HardwareBackend::IBMQuantum).await.unwrap();
+    scheduler.register_backend(HardwareBackend::AmazonBraket).await.unwrap();
+    scheduler.register_backend(HardwareBackend::AzureQuantum).await.unwrap();
+    
+    scheduler
 }
 
 #[derive(Debug, Clone)]

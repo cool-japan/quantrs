@@ -215,14 +215,14 @@ pub enum PropagationLevel {
 /// CSP Problem representation
 #[derive(Debug, Clone)]
 pub struct CSPProblem {
-    pub variables: HashMap<String, Domain_CSP>,
+    pub variables: HashMap<String, DomainCsp>,
     pub constraints: Vec<CSPConstraint>,
     pub constraint_graph: ConstraintGraph,
 }
 
 /// CSP variable domain
 #[derive(Debug, Clone)]
-pub struct Domain_CSP {
+pub struct DomainCsp {
     pub values: Vec<i32>,
 }
 
@@ -278,7 +278,7 @@ pub struct CSPCluster {
 /// CSP subproblem
 #[derive(Debug, Clone)]
 pub struct CSPSubproblem {
-    pub variables: HashMap<String, Domain_CSP>,
+    pub variables: HashMap<String, DomainCsp>,
     pub constraints: Vec<CSPConstraint>,
 }
 

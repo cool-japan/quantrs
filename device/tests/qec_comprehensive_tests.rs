@@ -6,20 +6,25 @@
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use quantrs2_core::prelude::*;
-use quantrs2_device::ml_optimization::FeatureExtractionConfig;
 use quantrs2_device::prelude::*;
 use quantrs2_device::qec::codes::SurfaceCodeLayout;
 use quantrs2_device::qec::{
     AdaptiveQECConfig, AdaptiveQECSystem, CircuitFoldingMethod, ConstraintSatisfactionConfig,
-    CorrectionOperation, CorrectionType, ErrorCorrectionCycleResult, ErrorCorrector, ErrorModel,
+    CorrectionOperation, CorrectionType, DeviceState, ErrorCorrectionCycleResult, ErrorCorrector, ErrorModel,
     ExecutionContext, ExtrapolationMethod, HardwareConstraint, LogicalOperatorType,
     MitigationStrategy as QECMitigationStrategy, OptimizationObjective as QECOptimizationObjective,
     PerformanceConstraint, QECCodeType, QECConfig, QECMLConfig, QECMonitoringConfig,
     QECOptimizationConfig, QECPerformanceMetrics, QECPerformanceTracker, QECResult, QECStrategy,
     QuantumErrorCode, QuantumErrorCorrector, ResourceConstraint, ShorCode, StabilizerGroup,
     StabilizerType, SteaneCode, SurfaceCode, SyndromeDetectionConfig, SyndromeDetector,
-    SyndromePattern, SyndromeType, ToricCode, ZNEConfig as QECZNEConfig,
+    SyndromePattern, SyndromeType, ToricCode, ZNEConfig as QECZNEConfig, ErrorMitigationConfig,
+    CachingConfig, TrainingDataConfig, ModelArchitectureConfig, TrainingParameters, InferenceMode, BatchProcessingConfig, InferenceOptimizationConfig,
 };
+use quantrs2_device::qec::detection::{SyndromeDetectionMethod, PatternRecognitionConfig, PatternRecognitionAlgorithm, PatternTrainingConfig, SyndromeStatisticsConfig, StatisticalMethod};
+use quantrs2_device::qec::adaptive::{AdaptationStrategy, AdaptiveLearningConfig, OnlineLearningConfig, LearningRateAdaptation, ConceptDriftConfig, DriftDetectionMethod, DriftResponse, ModelUpdateConfig, UpdateFrequency, UpdateTrigger, UpdateStrategy, TransferLearningConfig, SourceDomain, SimilarityMetrics, TransferStrategy, DomainAdaptationConfig, AdaptationMethod, ValidationStrategy, MetaLearningConfig, MetaLearningAlgorithm, TaskDistributionConfig, TaskGenerationStrategy, MetaOptimizationConfig, MetaOptimizer, LearningRates, MetaRegularization, RegularizationType, RealtimeOptimizationConfig, OptimizationObjective, RealtimeAlgorithm, ResourceConstraints, HardwareConstraints, ConnectivityConstraints, CoherenceTimes, FeedbackControlConfig, ControlAlgorithm, SensorConfig, SensorType, NoiseCharacteristics, ActuatorConfig, ActuatorType, OptimizationTarget, PerformanceMetric, OptimizationStrategy, MLModel, MLTrainingConfig, DataSource, DataPreprocessingConfig, NormalizationMethod, FeatureSelectionMethod, DimensionalityReductionMethod, DataAugmentationConfig, AugmentationTechnique, ArchitectureType, LayerConfig, LayerType, ActivationFunction, ConnectionPattern, OptimizerType, LossFunction, ValidationConfig, ValidationMethod, MLInferenceConfig, ModelOptimization, HardwareAcceleration, InferenceCaching, CacheEvictionPolicy, ModelManagementConfig, ModelVersioning, VersionControlSystem, RollbackStrategy, ModelDeployment, DeploymentStrategy, EnvironmentConfig, EnvironmentType, ResourceAllocation, ScalingConfig, ScalingMetric, ModelMonitoring, PerformanceMonitoring, MonitoringMetric, DriftDetection, AlertingConfig, AlertChannel, EscalationRules, EscalationLevel, MonitoringTarget, DashboardConfig, DashboardComponent, AccessControl, UserRole, DataCollectionConfig, DataRetention, ArchivalStrategy, StorageConfig, StorageBackend, ConsistencyLevel, MonitoringAlertingConfig, AlertRule, AlertSeverity, AlertAction, NotificationChannel, AlertSuppression, SuppressionRule, LearningAlgorithm, PredictionConfig, OptimizationConfig};
+use quantrs2_device::qec::mitigation::{InversionMethod, GateMitigationMethod, TwirlingConfig, TwirlingType, SymmetryVerificationConfig, SymmetryType, VirtualDistillationConfig};
+use quantrs2_device::ml_optimization::{FeatureExtractionConfig, CircuitFeatureConfig, HardwareFeatureConfig, TemporalFeatureConfig, StatisticalFeatureConfig, GraphFeatureConfig, FeatureSelectionConfig, DimensionalityReductionConfig};
+use rand::Rng;
 use quantrs2_device::unified_benchmarking::config::{MLModelType, OptimizationAlgorithm};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -40,6 +45,117 @@ mod test_helpers {
             enable_ml_optimization: true,
             enable_adaptive_thresholds: true,
             correction_timeout: Duration::from_millis(1000),
+            adaptive_qec: AdaptiveQECConfig {
+                enable_real_time_adaptation: false,
+                adaptation_window: Duration::from_secs(10),
+                performance_threshold: 0.95,
+                enable_threshold_adaptation: false,
+                enable_strategy_switching: false,
+                learning_rate: 0.001,
+                enable_adaptive: false,
+                strategies: vec![],
+                learning: AdaptiveLearningConfig {
+                    algorithms: vec![],
+                    online_learning: OnlineLearningConfig {
+                        enable_online: false,
+                        learning_rate_adaptation: LearningRateAdaptation::Fixed,
+                        concept_drift: ConceptDriftConfig {
+                            enable_detection: false,
+                            methods: vec![],
+                            responses: vec![],
+                        },
+                        model_updates: ModelUpdateConfig {
+                            frequency: UpdateFrequency::Continuous,
+                            triggers: vec![],
+                            strategies: vec![],
+                        },
+                    },
+                    transfer_learning: TransferLearningConfig {
+                        enable_transfer: false,
+                        source_domains: vec![],
+                        strategies: vec![],
+                        domain_adaptation: DomainAdaptationConfig {
+                            methods: vec![],
+                            validation: vec![],
+                        },
+                    },
+                    meta_learning: MetaLearningConfig {
+                        enable_meta: false,
+                        algorithms: vec![],
+                        task_distribution: TaskDistributionConfig {
+                            task_types: vec![],
+                            complexity_range: (0.0, 1.0),
+                            generation_strategy: TaskGenerationStrategy::Random,
+                        },
+                        meta_optimization: MetaOptimizationConfig {
+                            optimizer: MetaOptimizer::SGD,
+                            learning_rates: LearningRates {
+                                inner_lr: 0.01,
+                                outer_lr: 0.001,
+                                adaptive: false,
+                            },
+                            regularization: MetaRegularization {
+                                regularization_type: RegularizationType::None,
+                                strength: 0.0,
+                            },
+                        },
+                    },
+                },
+                realtime_optimization: RealtimeOptimizationConfig {
+                    enable_realtime: false,
+                    objectives: vec![],
+                    algorithms: vec![],
+                    constraints: ResourceConstraints {
+                        time_limit: Duration::from_secs(1),
+                        memory_limit: 1000,
+                        power_budget: 1.0,
+                        hardware_constraints: HardwareConstraints {
+                            connectivity: ConnectivityConstraints {
+                                coupling_map: vec![],
+                                max_distance: 1,
+                                routing_overhead: 0.0,
+                            },
+                            gate_fidelities: std::collections::HashMap::new(),
+                            coherence_times: CoherenceTimes {
+                                t1_times: std::collections::HashMap::new(),
+                                t2_times: std::collections::HashMap::new(),
+                                gate_times: std::collections::HashMap::new(),
+                            },
+                        },
+                    },
+                },
+                feedback_control: FeedbackControlConfig {
+                    enable_feedback: false,
+                    algorithms: vec![],
+                    sensors: SensorConfig {
+                        sensor_types: vec![],
+                        sampling_rates: std::collections::HashMap::new(),
+                        noise_characteristics: NoiseCharacteristics {
+                            gaussian_noise: 0.0,
+                            systematic_bias: 0.0,
+                            temporal_correlation: 0.0,
+                        },
+                    },
+                    actuators: ActuatorConfig {
+                        actuator_types: vec![],
+                        response_times: std::collections::HashMap::new(),
+                        control_ranges: std::collections::HashMap::new(),
+                    },
+                },
+                prediction: PredictionConfig {
+                    horizon: Duration::from_secs(60),
+                    confidence_threshold: 0.8,
+                },
+                optimization: OptimizationConfig {
+                    objectives: vec![],
+                    constraints: vec![],
+                },
+            },
+            correction_strategy: QECStrategy::ActiveCorrection,
+            error_codes: vec![QECCodeType::SurfaceCode {
+                distance: 3,
+                layout: SurfaceCodeLayout::Square,
+            }],
             syndrome_detection: SyndromeDetectionConfig {
                 enable_parallel_detection: true,
                 detection_rounds: 3,
@@ -47,6 +163,27 @@ mod test_helpers {
                 enable_syndrome_validation: true,
                 validation_threshold: 0.95,
                 enable_error_correlation: true,
+                enable_detection: true,
+                detection_frequency: 1000.0,
+                detection_methods: vec![SyndromeDetectionMethod::StandardStabilizer],
+                pattern_recognition: PatternRecognitionConfig {
+                    enable_recognition: true,
+                    algorithms: vec![PatternRecognitionAlgorithm::NeuralNetwork],
+                    training_config: PatternTrainingConfig {
+                        training_size: 10000,
+                        validation_split: 0.2,
+                        epochs: 100,
+                        learning_rate: 0.001,
+                        batch_size: 32,
+                    },
+                    real_time_adaptation: true,
+                },
+                statistical_analysis: SyndromeStatisticsConfig {
+                    enable_statistics: true,
+                    methods: vec![StatisticalMethod::HypothesisTesting],
+                    confidence_level: 0.95,
+                    data_retention_days: 30,
+                },
             },
             ml_config: QECMLConfig {
                 model_type: MLModelType::NeuralNetwork,
@@ -59,8 +196,392 @@ mod test_helpers {
                     enable_spatial_features: true,
                     enable_temporal_features: true,
                     enable_correlation_features: true,
+                    enable_auto_extraction: true,
+                    circuit_features: CircuitFeatureConfig {
+                        basic_properties: true,
+                        gate_distributions: true,
+                        depth_analysis: true,
+                        connectivity_patterns: true,
+                        entanglement_measures: true,
+                        symmetry_analysis: true,
+                        critical_path_analysis: true,
+                    },
+                    hardware_features: HardwareFeatureConfig {
+                        topology_features: true,
+                        calibration_features: true,
+                        error_rate_features: true,
+                        timing_features: true,
+                        resource_features: true,
+                        environmental_features: true,
+                    },
+                    temporal_features: TemporalFeatureConfig {
+                        time_series_analysis: true,
+                        trend_detection: true,
+                        seasonality_analysis: true,
+                        autocorrelation_features: true,
+                        fourier_features: true,
+                    },
+                    statistical_features: StatisticalFeatureConfig {
+                        moment_features: true,
+                        distribution_fitting: true,
+                        correlation_features: true,
+                        outlier_features: true,
+                        normality_tests: true,
+                    },
+                    graph_features: GraphFeatureConfig {
+                        centrality_measures: true,
+                        community_features: true,
+                        spectral_features: true,
+                        path_features: true,
+                        clustering_features: true,
+                    },
+                    feature_selection: FeatureSelectionConfig {
+                        enable_selection: true,
+                        selection_methods: vec![quantrs2_device::ml_optimization::FeatureSelectionMethod::VarianceThreshold],
+                        num_features: Some(100),
+                        selection_threshold: 0.1,
+                    },
+                    dimensionality_reduction: DimensionalityReductionConfig {
+                        enable_reduction: true,
+                        reduction_methods: vec![quantrs2_device::ml_optimization::DimensionalityReductionMethod::PCA],
+                        target_dimensions: Some(50),
+                        variance_threshold: 0.95,
+                    },
                 },
                 model_update_frequency: Duration::from_secs(300),
+                enable_ml: true,
+                models: vec!["NeuralNetwork".to_string()],
+                training: quantrs2_device::qec::MLTrainingConfig {
+                    batch_size: 32,
+                    learning_rate: 0.001,
+                    epochs: 100,
+                    optimization_algorithm: "adam".to_string(),
+                    data: TrainingDataConfig {
+                        sources: vec![DataSource::HistoricalData],
+                        preprocessing: DataPreprocessingConfig {
+                            normalization: NormalizationMethod::ZScore,
+                            feature_selection: FeatureSelectionMethod::Statistical,
+                            dimensionality_reduction: DimensionalityReductionMethod::PCA,
+                        },
+                        augmentation: DataAugmentationConfig {
+                            enable: true,
+                            techniques: vec![AugmentationTechnique::NoiseInjection],
+                            ratio: 0.5,
+                        },
+                    },
+                    architecture: ModelArchitectureConfig {
+                        architecture_type: ArchitectureType::Sequential,
+                        layers: vec![LayerConfig {
+                            layer_type: LayerType::Dense,
+                            parameters: std::collections::HashMap::new(),
+                            activation: ActivationFunction::ReLU,
+                        }],
+                        connections: ConnectionPattern::FullyConnected,
+                    },
+                    parameters: TrainingParameters {
+                        learning_rate: 0.001,
+                        batch_size: 32,
+                        epochs: 100,
+                        optimizer: OptimizerType::Adam,
+                        loss_function: LossFunction::MeanSquaredError,
+                        regularization_strength: 0.01,
+                    },
+                    validation: ValidationConfig {
+                        method: ValidationMethod::HoldOut,
+                        split: 0.2,
+                        cv_folds: 5,
+                    },
+                },
+                inference: quantrs2_device::qec::MLInferenceConfig {
+                    mode: InferenceMode::Synchronous,
+                    batch_processing: BatchProcessingConfig {
+                        enable: true,
+                        batch_size: 32,
+                        timeout: Duration::from_secs(30),
+                    },
+                    timeout: Duration::from_secs(30),
+                    caching: CachingConfig {
+                        enable: true,
+                        cache_size: 1000,
+                        ttl: Duration::from_secs(300),
+                        eviction_policy: CacheEvictionPolicy::LRU,
+                    },
+                    optimization: InferenceOptimizationConfig {
+                        enable_optimization: true,
+                        optimization_strategies: vec!["quantization".to_string(), "pruning".to_string()],
+                        performance_targets: vec!["latency".to_string(), "throughput".to_string()],
+                        model_optimization: ModelOptimization::None,
+                        hardware_acceleration: HardwareAcceleration::CPU,
+                        caching: InferenceCaching {
+                            enable: true,
+                            cache_size: 1000,
+                            eviction_policy: CacheEvictionPolicy::LRU,
+                        },
+                    },
+                },
+                model_management: ModelManagementConfig {
+                    versioning: ModelVersioning {
+                        enable: true,
+                        version_control: VersionControlSystem::Git,
+                        rollback: RollbackStrategy::Automatic,
+                    },
+                    deployment: ModelDeployment {
+                        strategy: DeploymentStrategy::BlueGreen,
+                        environment: EnvironmentConfig {
+                            environment_type: EnvironmentType::Production,
+                            resources: ResourceAllocation {
+                                cpu: 2.0,
+                                memory: 4096,
+                                gpu: None,
+                            },
+                            dependencies: vec!["numpy".to_string()],
+                        },
+                        scaling: ScalingConfig {
+                            auto_scaling: true,
+                            min_replicas: 1,
+                            max_replicas: 5,
+                            metrics: vec![ScalingMetric::CpuUtilization],
+                        },
+                    },
+                    monitoring: ModelMonitoring {
+                        performance: PerformanceMonitoring {
+                            metrics: vec![MonitoringMetric::Accuracy],
+                            frequency: Duration::from_secs(300),
+                            baseline_comparison: true,
+                        },
+                        drift_detection: DriftDetection {
+                            enable: true,
+                            methods: vec![DriftDetectionMethod::StatisticalTest],
+                            sensitivity: 0.05,
+                        },
+                        alerting: AlertingConfig {
+                            channels: vec![AlertChannel::Email],
+                            thresholds: std::collections::HashMap::new(),
+                            escalation: EscalationRules {
+                                levels: vec![EscalationLevel {
+                                    name: "warning".to_string(),
+                                    threshold: 0.1,
+                                    actions: vec!["notify".to_string()],
+                                }],
+                                timeouts: std::collections::HashMap::new(),
+                            },
+                        },
+                    },
+                },
+                optimization: quantrs2_device::ml_optimization::MLOptimizationConfig {
+                    enable_optimization: false,
+                    model_config: quantrs2_device::ml_optimization::config::MLModelConfig {
+                        primary_algorithms: vec![],
+                        fallback_algorithms: vec![],
+                        hyperparameters: std::collections::HashMap::new(),
+                        training_config: quantrs2_device::ml_optimization::training::TrainingConfig {
+                            max_iterations: 100,
+                            batch_size: 32,
+                            learning_rate: 0.001,
+                            early_stopping: quantrs2_device::ml_optimization::training::EarlyStoppingConfig {
+                                enable_early_stopping: true,
+                                patience: 10,
+                                min_improvement: 0.001,
+                                restore_best_weights: true,
+                            },
+                            cv_folds: 5,
+                            train_test_split: 0.8,
+                            optimizer: quantrs2_device::ml_optimization::training::TrainingOptimizer::Adam,
+                        },
+                        model_selection: quantrs2_device::ml_optimization::config::ModelSelectionStrategy::CrossValidation,
+                        regularization: quantrs2_device::ml_optimization::training::RegularizationConfig {
+                            l1_lambda: 0.0,
+                            l2_lambda: 0.01,
+                            dropout_rate: 0.1,
+                            batch_normalization: true,
+                            weight_decay: 0.0001,
+                        },
+                    },
+                    feature_extraction: FeatureExtractionConfig {
+                        enable_syndrome_history: true,
+                        history_length: 10,
+                        enable_spatial_features: true,
+                        enable_temporal_features: true,
+                        enable_correlation_features: true,
+                        enable_auto_extraction: true,
+                        circuit_features: CircuitFeatureConfig {
+                            basic_properties: true,
+                            gate_distributions: true,
+                            depth_analysis: true,
+                            connectivity_patterns: true,
+                            entanglement_measures: true,
+                            symmetry_analysis: true,
+                            critical_path_analysis: true,
+                        },
+                        hardware_features: HardwareFeatureConfig {
+                            topology_features: true,
+                            calibration_features: true,
+                            error_rate_features: true,
+                            timing_features: true,
+                            resource_features: true,
+                            environmental_features: true,
+                        },
+                        temporal_features: TemporalFeatureConfig {
+                            time_series_analysis: false,
+                            trend_detection: false,
+                            seasonality_analysis: false,
+                            autocorrelation_features: false,
+                            fourier_features: false,
+                        },
+                        statistical_features: StatisticalFeatureConfig {
+                            moment_features: true,
+                            distribution_fitting: false,
+                            correlation_features: true,
+                            outlier_features: false,
+                            normality_tests: false,
+                        },
+                        graph_features: GraphFeatureConfig {
+                            centrality_measures: true,
+                            community_features: true,
+                            spectral_features: false,
+                            path_features: false,
+                            clustering_features: true,
+                        },
+                        feature_selection: FeatureSelectionConfig {
+                            enable_selection: true,
+                            selection_methods: vec![quantrs2_device::ml_optimization::features::FeatureSelectionMethod::VarianceThreshold],
+                            num_features: Some(20),
+                            selection_threshold: 0.01,
+                        },
+                        dimensionality_reduction: DimensionalityReductionConfig {
+                            enable_reduction: false,
+                            reduction_methods: vec![quantrs2_device::ml_optimization::features::DimensionalityReductionMethod::PCA],
+                            target_dimensions: Some(50),
+                            variance_threshold: 0.01,
+                        },
+                    },
+                    hardware_prediction: quantrs2_device::ml_optimization::hardware::HardwarePredictionConfig {
+                        enable_prediction: false,
+                        prediction_targets: vec![],
+                        prediction_horizon: std::time::Duration::from_secs(3600),
+                        uncertainty_quantification: false,
+                        multi_step_prediction: false,
+                        hardware_adaptation: quantrs2_device::ml_optimization::hardware::HardwareAdaptationConfig {
+                            enable_adaptation: false,
+                            adaptation_frequency: Duration::from_secs(3600),
+                            adaptation_triggers: vec![],
+                            learning_rate_adaptation: false,
+                        },
+                    },
+                    online_learning: quantrs2_device::ml_optimization::online_learning::OnlineLearningConfig {
+                        enable_online_learning: false,
+                        learning_rate_schedule: quantrs2_device::ml_optimization::online_learning::LearningRateSchedule::Constant,
+                        memory_management: quantrs2_device::ml_optimization::online_learning::MemoryManagementConfig {
+                            max_buffer_size: 1000,
+                            eviction_strategy: quantrs2_device::ml_optimization::online_learning::MemoryEvictionStrategy::FIFO,
+                            replay_buffer: false,
+                            experience_prioritization: false,
+                        },
+                        forgetting_prevention: quantrs2_device::ml_optimization::online_learning::ForgettingPreventionConfig {
+                            elastic_weight_consolidation: false,
+                            progressive_networks: false,
+                            memory_replay: false,
+                            regularization_strength: 0.01,
+                        },
+                        incremental_learning: quantrs2_device::ml_optimization::online_learning::IncrementalLearningConfig {
+                            incremental_batch_size: 32,
+                            update_frequency: Duration::from_secs(60),
+                            stability_plasticity_balance: 0.5,
+                            knowledge_distillation: false,
+                        },
+                    },
+                    transfer_learning: quantrs2_device::ml_optimization::transfer_learning::TransferLearningConfig {
+                        enable_transfer_learning: false,
+                        source_domains: vec![],
+                        transfer_methods: vec![],
+                        domain_adaptation: quantrs2_device::ml_optimization::transfer_learning::DomainAdaptationConfig {
+                            enable_adaptation: false,
+                            adaptation_methods: vec![],
+                            similarity_threshold: 0.5,
+                            max_domain_gap: 0.5,
+                        },
+                        meta_learning: quantrs2_device::ml_optimization::transfer_learning::MetaLearningConfig {
+                            enable_meta_learning: false,
+                            meta_algorithms: vec![],
+                            inner_loop_iterations: 5,
+                            outer_loop_iterations: 10,
+                        },
+                    },
+                    ensemble_config: quantrs2_device::ml_optimization::ensemble::EnsembleConfig {
+                        enable_ensemble: false,
+                        ensemble_methods: vec![],
+                        num_models: 3,
+                        voting_strategy: quantrs2_device::ml_optimization::ensemble::VotingStrategy::Majority,
+                        diversity_measures: vec![],
+                        dynamic_selection: false,
+                    },
+                    optimization_strategy: quantrs2_device::ml_optimization::optimization::OptimizationStrategyConfig {
+                        multi_objective: quantrs2_device::ml_optimization::optimization::MultiObjectiveConfig {
+                            enable_multi_objective: false,
+                            objectives: std::collections::HashMap::new(),
+                            pareto_optimization: false,
+                            scalarization_methods: vec![],
+                        },
+                        constraint_handling: quantrs2_device::ml_optimization::optimization::ConstraintHandlingConfig {
+                            constraint_types: vec![],
+                            penalty_methods: vec![],
+                            constraint_tolerance: 1e-6,
+                            feasibility_preservation: false,
+                        },
+                        search_strategies: vec![],
+                        exploration_exploitation: quantrs2_device::ml_optimization::optimization::ExplorationExploitationConfig {
+                            initial_exploration_rate: 1.0,
+                            exploration_decay: 0.99,
+                            min_exploration_rate: 0.01,
+                            exploitation_threshold: 0.1,
+                            adaptive_balancing: false,
+                        },
+                        adaptive_strategies: quantrs2_device::ml_optimization::optimization::AdaptiveStrategyConfig {
+                            enable_adaptive: false,
+                            strategy_selection: vec![],
+                            performance_feedback: false,
+                            strategy_mutation: false,
+                        },
+                    },
+                    validation_config: quantrs2_device::ml_optimization::validation::MLValidationConfig {
+                        validation_methods: vec![quantrs2_device::ml_optimization::validation::ValidationMethod::CrossValidation],
+                        performance_metrics: vec![quantrs2_device::ml_optimization::validation::PerformanceMetric::Accuracy],
+                        statistical_testing: true,
+                        robustness_testing: quantrs2_device::ml_optimization::validation::RobustnessTestingConfig {
+                            enable_testing: false,
+                            adversarial_testing: false,
+                            distribution_shift_testing: false,
+                            noise_sensitivity_testing: false,
+                            fairness_testing: false,
+                        },
+                        fairness_evaluation: false,
+                    },
+                    monitoring_config: quantrs2_device::ml_optimization::monitoring::MLMonitoringConfig {
+                        enable_real_time_monitoring: false,
+                        performance_tracking: false,
+                        drift_detection: quantrs2_device::ml_optimization::monitoring::DriftDetectionConfig {
+                            enable_detection: false,
+                            detection_methods: vec![],
+                            window_size: 1000,
+                            significance_threshold: 0.05,
+                        },
+                        anomaly_detection: false,
+                        alert_thresholds: std::collections::HashMap::new(),
+                    },
+                },
+                validation: quantrs2_device::ml_optimization::ValidationConfig {
+                    validation_methods: vec![quantrs2_device::ml_optimization::validation::ValidationMethod::CrossValidation],
+                    performance_metrics: vec![quantrs2_device::ml_optimization::validation::PerformanceMetric::Accuracy],
+                    statistical_testing: true,
+                    robustness_testing: quantrs2_device::ml_optimization::validation::RobustnessTestingConfig {
+                        enable_testing: false,
+                        adversarial_testing: false,
+                        distribution_shift_testing: false,
+                        noise_sensitivity_testing: false,
+                        fairness_testing: false,
+                    },
+                    fairness_evaluation: false,
+                },
             },
             adaptive_config: AdaptiveQECConfig {
                 enable_real_time_adaptation: true,
@@ -69,6 +590,112 @@ mod test_helpers {
                 enable_threshold_adaptation: true,
                 enable_strategy_switching: true,
                 learning_rate: 0.01,
+                enable_adaptive: true,
+                strategies: vec![AdaptationStrategy::ErrorRateBased],
+                prediction: PredictionConfig {
+                    horizon: Duration::from_secs(60),
+                    confidence_threshold: 0.8,
+                },
+                optimization: OptimizationConfig {
+                    objectives: vec!["minimize_error_rate".to_string()],
+                    constraints: vec!["resource_limit".to_string()],
+                },
+                learning: AdaptiveLearningConfig {
+                    algorithms: vec![LearningAlgorithm::ReinforcementLearning],
+                    online_learning: OnlineLearningConfig {
+                        enable_online: true,
+                        learning_rate_adaptation: LearningRateAdaptation::Adaptive,
+                        concept_drift: ConceptDriftConfig {
+                            enable_detection: true,
+                            methods: vec![DriftDetectionMethod::StatisticalTest],
+                            responses: vec![DriftResponse::Adapt],
+                        },
+                        model_updates: ModelUpdateConfig {
+                            frequency: UpdateFrequency::Continuous,
+                            triggers: vec![UpdateTrigger::PerformanceDegradation],
+                            strategies: vec![UpdateStrategy::IncrementalUpdate],
+                        },
+                    },
+                    transfer_learning: TransferLearningConfig {
+                        enable_transfer: true,
+                        source_domains: vec![SourceDomain {
+                            id: "test_domain".to_string(),
+                            characteristics: std::collections::HashMap::new(),
+                            similarity: SimilarityMetrics {
+                                statistical: 0.8,
+                                structural: 0.7,
+                                performance: 0.9,
+                            },
+                        }],
+                        strategies: vec![TransferStrategy::FeatureTransfer],
+                        domain_adaptation: DomainAdaptationConfig {
+                            methods: vec![AdaptationMethod::FeatureAlignment],
+                            validation: vec![ValidationStrategy::CrossDomainValidation],
+                        },
+                    },
+                    meta_learning: MetaLearningConfig {
+                        enable_meta: true,
+                        algorithms: vec![MetaLearningAlgorithm::MAML],
+                        task_distribution: TaskDistributionConfig {
+                            task_types: vec!["qec_task".to_string()],
+                            complexity_range: (0.1, 1.0),
+                            generation_strategy: TaskGenerationStrategy::Adaptive,
+                        },
+                        meta_optimization: MetaOptimizationConfig {
+                            optimizer: MetaOptimizer::Adam,
+                            learning_rates: LearningRates {
+                                inner_lr: 0.01,
+                                outer_lr: 0.001,
+                                adaptive: true,
+                            },
+                            regularization: MetaRegularization {
+                                regularization_type: RegularizationType::L2,
+                                strength: 0.01,
+                            },
+                        },
+                    },
+                },
+                realtime_optimization: RealtimeOptimizationConfig {
+                    enable_realtime: true,
+                    objectives: vec![OptimizationObjective::MinimizeErrorRate],
+                    algorithms: vec![RealtimeAlgorithm::OnlineGradientDescent],
+                    constraints: ResourceConstraints {
+                        time_limit: Duration::from_secs(10),
+                        memory_limit: 1000000,
+                        power_budget: 100.0,
+                        hardware_constraints: HardwareConstraints {
+                            connectivity: ConnectivityConstraints {
+                                coupling_map: vec![(0, 1), (1, 2)],
+                                max_distance: 5,
+                                routing_overhead: 0.1,
+                            },
+                            gate_fidelities: std::collections::HashMap::new(),
+                            coherence_times: CoherenceTimes {
+                                t1_times: std::collections::HashMap::new(),
+                                t2_times: std::collections::HashMap::new(),
+                                gate_times: std::collections::HashMap::new(),
+                            },
+                        },
+                    },
+                },
+                feedback_control: FeedbackControlConfig {
+                    enable_feedback: true,
+                    algorithms: vec![ControlAlgorithm::PID],
+                    sensors: SensorConfig {
+                        sensor_types: vec![SensorType::PerformanceMonitor],
+                        sampling_rates: std::collections::HashMap::new(),
+                        noise_characteristics: NoiseCharacteristics {
+                            gaussian_noise: 0.01,
+                            systematic_bias: 0.001,
+                            temporal_correlation: 0.1,
+                        },
+                    },
+                    actuators: ActuatorConfig {
+                        actuator_types: vec![ActuatorType::PulseController],
+                        response_times: std::collections::HashMap::new(),
+                        control_ranges: std::collections::HashMap::new(),
+                    },
+                },
             },
             monitoring_config: QECMonitoringConfig {
                 enable_performance_tracking: true,
@@ -76,6 +703,49 @@ mod test_helpers {
                 enable_resource_monitoring: true,
                 reporting_interval: Duration::from_secs(30),
                 enable_predictive_analytics: true,
+                enable_monitoring: true,
+                targets: vec!["error_rates".to_string()],
+                dashboard: DashboardConfig {
+                    enable: true,
+                    components: vec![DashboardComponent::RealTimeMetrics],
+                    update_frequency: Duration::from_secs(5),
+                    access_control: AccessControl {
+                        authentication: true,
+                        roles: vec![UserRole::Admin],
+                        permissions: std::collections::HashMap::new(),
+                    },
+                },
+                data_collection: DataCollectionConfig {
+                    frequency: Duration::from_secs(60),
+                    retention: DataRetention {
+                        period: Duration::from_secs(86400),
+                        archival: ArchivalStrategy::LocalStorage,
+                        compression: true,
+                    },
+                    storage: StorageConfig {
+                        backend: StorageBackend::FileSystem,
+                        replication: 1,
+                        consistency: ConsistencyLevel::Strong,
+                    },
+                },
+                alerting: MonitoringAlertingConfig {
+                    rules: vec![AlertRule {
+                        name: "high_error_rate".to_string(),
+                        condition: "error_rate > 0.1".to_string(),
+                        severity: AlertSeverity::High,
+                        actions: vec![AlertAction::Notify],
+                    }],
+                    channels: vec![NotificationChannel::Email],
+                    suppression: AlertSuppression {
+                        enable: true,
+                        rules: vec![SuppressionRule {
+                            name: "test_suppression".to_string(),
+                            condition: "always".to_string(),
+                            duration: Duration::from_secs(300),
+                        }],
+                        default_time: Duration::from_secs(300),
+                    },
+                },
             },
             optimization_config: QECOptimizationConfig {
                 enable_code_optimization: true,
@@ -103,6 +773,10 @@ mod test_helpers {
                         PerformanceConstraint::ThroughputTarget,
                     ],
                 },
+                enable_optimization: true,
+                targets: vec!["error_correction".to_string()],
+                metrics: vec!["logical_error_rate".to_string()],
+                strategies: vec!["machine_learning_optimization".to_string()],
             },
             error_mitigation: ErrorMitigationConfig {
                 enable_zne: true,
@@ -118,7 +792,159 @@ mod test_helpers {
                     noise_factors: vec![1.0, 1.5, 2.0, 2.5, 3.0],
                     extrapolation_method: ExtrapolationMethod::Linear,
                     circuit_folding: CircuitFoldingMethod::GlobalFolding,
+                    enable_zne: true,
+                    noise_scaling_factors: vec![1.0, 1.5, 2.0, 2.5, 3.0],
+                    folding: quantrs2_device::qec::mitigation::FoldingConfig {
+                        folding_type: quantrs2_device::qec::mitigation::FoldingType::Global,
+                        global_folding: true,
+                        local_folding: quantrs2_device::qec::mitigation::LocalFoldingConfig {
+                            regions: vec![],
+                            selection_strategy: quantrs2_device::qec::mitigation::RegionSelectionStrategy::Uniform,
+                            overlap_handling: quantrs2_device::qec::mitigation::OverlapHandling::Ignore,
+                        },
+                        gate_specific: quantrs2_device::qec::mitigation::GateSpecificFoldingConfig {
+                            folding_rules: std::collections::HashMap::new(),
+                            priority_ordering: vec![],
+                            error_rate_weighting: true,
+                            folding_strategies: std::collections::HashMap::new(),
+                            default_strategy: quantrs2_device::qec::mitigation::DefaultFoldingStrategy::Identity,
+                            prioritized_gates: vec![],
+                        },
+                    },
+                    richardson: quantrs2_device::qec::mitigation::RichardsonConfig {
+                        enable_richardson: true,
+                        order: 2,
+                        stability_check: true,
+                        error_estimation: quantrs2_device::qec::mitigation::ErrorEstimationConfig {
+                            method: quantrs2_device::qec::mitigation::ErrorEstimationMethod::Bootstrap,
+                            bootstrap_samples: 1000,
+                            confidence_level: 0.95,
+                        },
+                    },
                 },
+                enable_mitigation: true,
+                strategies: vec![
+                    QECMitigationStrategy::ZeroNoiseExtrapolation,
+                    QECMitigationStrategy::SymmetryVerification,
+                    QECMitigationStrategy::ReadoutErrorMitigation,
+                ],
+                zne: QECZNEConfig {
+                    noise_factors: vec![1.0, 1.5, 2.0, 2.5, 3.0],
+                    extrapolation_method: ExtrapolationMethod::Linear,
+                    circuit_folding: CircuitFoldingMethod::GlobalFolding,
+                    enable_zne: true,
+                    noise_scaling_factors: vec![1.0, 1.5, 2.0, 2.5, 3.0],
+                    folding: quantrs2_device::qec::mitigation::FoldingConfig {
+                        folding_type: quantrs2_device::qec::mitigation::FoldingType::Global,
+                        global_folding: true,
+                        local_folding: quantrs2_device::qec::mitigation::LocalFoldingConfig {
+                            regions: vec![],
+                            selection_strategy: quantrs2_device::qec::mitigation::RegionSelectionStrategy::Uniform,
+                            overlap_handling: quantrs2_device::qec::mitigation::OverlapHandling::Ignore,
+                        },
+                        gate_specific: quantrs2_device::qec::mitigation::GateSpecificFoldingConfig {
+                            folding_rules: std::collections::HashMap::new(),
+                            priority_ordering: vec![],
+                            error_rate_weighting: true,
+                            folding_strategies: std::collections::HashMap::new(),
+                            default_strategy: quantrs2_device::qec::mitigation::DefaultFoldingStrategy::Identity,
+                            prioritized_gates: vec![],
+                        },
+                    },
+                    richardson: quantrs2_device::qec::mitigation::RichardsonConfig {
+                        enable_richardson: true,
+                        order: 2,
+                        stability_check: true,
+                        error_estimation: quantrs2_device::qec::mitigation::ErrorEstimationConfig {
+                            method: quantrs2_device::qec::mitigation::ErrorEstimationMethod::Bootstrap,
+                            bootstrap_samples: 1000,
+                            confidence_level: 0.95,
+                        },
+                    },
+                },
+                readout_mitigation: quantrs2_device::qec::mitigation::ReadoutMitigationConfig {
+                    enable_mitigation: true,
+                    methods: vec![quantrs2_device::qec::mitigation::ReadoutMitigationMethod::CompleteMitigation],
+                    calibration: quantrs2_device::qec::mitigation::ReadoutCalibrationConfig {
+                        frequency: quantrs2_device::qec::mitigation::CalibrationFrequency::BeforeEachExperiment,
+                        states: vec![],
+                        quality_metrics: vec![quantrs2_device::qec::mitigation::QualityMetric::Fidelity],
+                    },
+                    matrix_inversion: quantrs2_device::qec::mitigation::MatrixInversionConfig {
+                        method: InversionMethod::PseudoInverse,
+                        regularization: quantrs2_device::qec::mitigation::RegularizationConfig {
+                            regularization_type: quantrs2_device::qec::mitigation::RegularizationType::L2,
+                            parameter: 0.001,
+                            adaptive: false,
+                        },
+                        stability: quantrs2_device::qec::mitigation::NumericalStabilityConfig {
+                            condition_threshold: 1e-12,
+                            pivoting: quantrs2_device::qec::mitigation::PivotingStrategy::Partial,
+                            scaling: true,
+                        },
+                    },
+                    tensored_mitigation: quantrs2_device::qec::mitigation::TensoredMitigationConfig {
+                        groups: vec![],
+                        group_strategy: quantrs2_device::qec::mitigation::GroupFormationStrategy::Topology,
+                        crosstalk_handling: quantrs2_device::qec::mitigation::CrosstalkHandling::Ignore,
+                    },
+                },
+                gate_mitigation: quantrs2_device::qec::mitigation::GateMitigationConfig {
+                    enable_mitigation: true,
+                    gate_configs: std::collections::HashMap::new(),
+                    twirling: TwirlingConfig {
+                        enable_twirling: true,
+                        twirling_type: TwirlingType::Pauli,
+                        groups: vec![],
+                        randomization: quantrs2_device::qec::mitigation::RandomizationStrategy::FullRandomization,
+                    },
+                    randomized_compiling: quantrs2_device::qec::mitigation::RandomizedCompilingConfig {
+                        enable_rc: true,
+                        strategies: vec![],
+                        replacement_rules: std::collections::HashMap::new(),
+                        randomization_level: quantrs2_device::qec::mitigation::RandomizationLevel::Medium,
+                    },
+                },
+                symmetry_verification: quantrs2_device::qec::mitigation::SymmetryVerificationConfig {
+                    enable_verification: true,
+                    symmetry_types: vec![SymmetryType::UnitarySymmetry],
+                    protocols: vec![quantrs2_device::qec::mitigation::VerificationProtocol::DirectVerification],
+                    tolerance: quantrs2_device::qec::mitigation::ToleranceSettings {
+                        symmetry_tolerance: 1e-6,
+                        statistical_tolerance: 0.05,
+                        confidence_level: 0.95,
+                    },
+                },
+                virtual_distillation: VirtualDistillationConfig {
+                    enable_distillation: true,
+                    protocols: vec![quantrs2_device::qec::mitigation::DistillationProtocol::Standard],
+                    resources: quantrs2_device::qec::mitigation::ResourceRequirements {
+                        auxiliary_qubits: 4,
+                        measurement_rounds: 10,
+                        classical_processing: quantrs2_device::qec::mitigation::ProcessingRequirements {
+                            memory_mb: 1024,
+                            computation_time: Duration::from_secs(30),
+                            parallel_processing: true,
+                        },
+                    },
+                    quality_metrics: vec![quantrs2_device::qec::mitigation::DistillationQualityMetric::Fidelity],
+                },
+            },
+            performance_optimization: QECOptimizationConfig {
+                enable_code_optimization: true,
+                enable_layout_optimization: true,
+                enable_scheduling_optimization: true,
+                optimization_algorithm: OptimizationAlgorithm::GradientDescent,
+                optimization_objectives: vec![QECOptimizationObjective::MaximizeLogicalFidelity],
+                constraint_satisfaction: ConstraintSatisfactionConfig {
+                    hardware_constraints: vec![HardwareConstraint::ConnectivityGraph],
+                    performance_constraints: vec![PerformanceConstraint::LogicalErrorRate],
+                    resource_constraints: vec![ResourceConstraint::QubitCount],
+                },
+                enable_optimization: true,
+                targets: vec!["error_rate".to_string(), "fidelity".to_string()],
+                metrics: vec!["success_rate".to_string(), "execution_time".to_string()],
+                strategies: vec!["adaptive".to_string(), "ml_guided".to_string()],
             },
         }
     }
@@ -150,22 +976,60 @@ mod test_helpers {
             // Generate mock syndromes based on detection rate
             if rng.gen::<f64>() < self.detection_rate {
                 syndromes.push(SyndromePattern {
-                    stabilizer_violations: vec![0, 1, 0, 1],
-                    confidence: 0.9,
                     timestamp: std::time::SystemTime::now(),
-                    spatial_location: (1, 1),
+                    syndrome_bits: vec![true, false, true, false],
+                    error_locations: vec![0, 2],
+                    correction_applied: vec!["X".to_string(), "X".to_string()],
+                    success_probability: 0.9,
+                    execution_context: ExecutionContext {
+                        device_id: "test_device".to_string(),
+                        timestamp: std::time::SystemTime::now(),
+                        circuit_depth: 10,
+                        qubit_count: 4,
+                        gate_sequence: vec!["H".to_string(), "CNOT".to_string()],
+                        environmental_conditions: std::collections::HashMap::new(),
+                        device_state: DeviceState {
+                            temperature: 0.015,
+                            magnetic_field: 0.0,
+                            coherence_times: std::collections::HashMap::new(),
+                            gate_fidelities: std::collections::HashMap::new(),
+                            readout_fidelities: std::collections::HashMap::new(),
+                        },
+                    },
                     syndrome_type: SyndromeType::XError,
+                    confidence: 0.9,
+                    stabilizer_violations: vec![0, 1, 0, 1],
+                    spatial_location: (1, 1),
                 });
             }
 
             // Add false positives occasionally
             if rng.gen::<f64>() < self.false_positive_rate {
                 syndromes.push(SyndromePattern {
-                    stabilizer_violations: vec![1, 0, 1, 0],
-                    confidence: 0.6,
                     timestamp: std::time::SystemTime::now(),
-                    spatial_location: (2, 1),
+                    syndrome_bits: vec![false, true, false, true],
+                    error_locations: vec![1, 3],
+                    correction_applied: vec!["Z".to_string(), "Z".to_string()],
+                    success_probability: 0.6,
+                    execution_context: ExecutionContext {
+                        device_id: "test_device".to_string(),
+                        timestamp: std::time::SystemTime::now(),
+                        circuit_depth: 8,
+                        qubit_count: 4,
+                        gate_sequence: vec!["H".to_string(), "CZ".to_string()],
+                        environmental_conditions: std::collections::HashMap::new(),
+                        device_state: DeviceState {
+                            temperature: 0.020,
+                            magnetic_field: 0.0,
+                            coherence_times: std::collections::HashMap::new(),
+                            gate_fidelities: std::collections::HashMap::new(),
+                            readout_fidelities: std::collections::HashMap::new(),
+                        },
+                    },
                     syndrome_type: SyndromeType::ZError,
+                    confidence: 0.6,
+                    stabilizer_violations: vec![1, 0, 1, 0],
+                    spatial_location: (2, 1),
                 });
             }
 
@@ -322,7 +1186,7 @@ mod error_code_tests {
     #[test]
     fn test_surface_code_creation() {
         let distance = 3;
-        let code = SurfaceCode::new(distance, distance);
+        let code = SurfaceCode::new(distance);
 
         assert_eq!(code.distance(), distance);
         assert!(code.num_data_qubits() > 0);
@@ -333,7 +1197,7 @@ mod error_code_tests {
     #[test]
     fn test_surface_code_stabilizers() {
         let distance = 3;
-        let code = SurfaceCode::new(distance, distance);
+        let code = SurfaceCode::new(distance);
         let stabilizers = code.get_stabilizers();
 
         assert!(!stabilizers.is_empty());
@@ -350,7 +1214,7 @@ mod error_code_tests {
     #[test]
     fn test_surface_code_logical_operators() {
         let distance = 3;
-        let code = SurfaceCode::new(distance, distance);
+        let code = SurfaceCode::new(distance);
         let logical_ops = code.get_logical_operators();
 
         assert!(!logical_ops.is_empty());
@@ -398,7 +1262,7 @@ mod error_code_tests {
     #[test]
     fn test_code_properties() {
         let codes: Vec<Box<dyn QuantumErrorCode>> = vec![
-            Box::new(SurfaceCode::new(3, 3)),
+            Box::new(SurfaceCode::new(3)),
             Box::new(SteaneCode::new()),
             Box::new(ShorCode::new()),
             Box::new(ToricCode::new((3, 3))),
@@ -436,7 +1300,7 @@ mod syndrome_detection_tests {
         measurements.insert("stabilizer_1".to_string(), vec![1, 0, 1, 0, 1]);
 
         let stabilizers = vec![StabilizerGroup {
-            operators: vec![PauliOperator::X, PauliOperator::X],
+            operators: vec![quantrs2_device::qec::PauliOperator::X, quantrs2_device::qec::PauliOperator::X],
             qubits: vec![QubitId(0), QubitId(1)],
             stabilizer_type: StabilizerType::XStabilizer,
             weight: 2,
@@ -470,6 +1334,17 @@ mod syndrome_detection_tests {
             execution_context: ExecutionContext {
                 device_id: "test_device".to_string(),
                 timestamp: std::time::SystemTime::now(),
+                circuit_depth: 10,
+                qubit_count: 5,
+                gate_sequence: vec!["X".to_string(), "Y".to_string()],
+                environmental_conditions: HashMap::new(),
+                device_state: DeviceState {
+                    temperature: 0.01,
+                    magnetic_field: 0.0,
+                    coherence_times: HashMap::new(),
+                    gate_fidelities: HashMap::new(),
+                    readout_fidelities: HashMap::new(),
+                },
             },
             syndrome_type: SyndromeType::XError,
             confidence: 0.9,
@@ -515,6 +1390,17 @@ mod syndrome_detection_tests {
                 execution_context: ExecutionContext {
                     device_id: "test_device".to_string(),
                     timestamp: std::time::SystemTime::now(),
+                    circuit_depth: 5,
+                    qubit_count: 2,
+                    gate_sequence: vec!["H".to_string(), "CNOT".to_string()],
+                    environmental_conditions: std::collections::HashMap::new(),
+                    device_state: DeviceState {
+                        temperature: 0.012,
+                        magnetic_field: 0.0,
+                        coherence_times: std::collections::HashMap::new(),
+                        gate_fidelities: std::collections::HashMap::new(),
+                        readout_fidelities: std::collections::HashMap::new(),
+                    },
                 },
                 syndrome_type: syndrome_type.clone(),
                 confidence: 0.9,
@@ -542,22 +1428,60 @@ mod error_correction_tests {
     #[test]
     fn test_error_correction() {
         let corrector = MockErrorCorrector::new();
-        let code = SurfaceCode::new(3, 3);
+        let code = SurfaceCode::new(3);
 
         let syndromes = vec![
             SyndromePattern {
-                stabilizer_violations: vec![1, 0, 1, 0],
-                confidence: 0.9,
                 timestamp: std::time::SystemTime::now(),
-                spatial_location: (1, 1),
+                syndrome_bits: vec![true, false, true, false],
+                error_locations: vec![0, 2],
+                correction_applied: vec!["X".to_string(), "X".to_string()],
+                success_probability: 0.9,
+                execution_context: ExecutionContext {
+                    device_id: "test_device".to_string(),
+                    timestamp: std::time::SystemTime::now(),
+                    circuit_depth: 10,
+                    qubit_count: 4,
+                    gate_sequence: vec!["H".to_string(), "CNOT".to_string()],
+                    environmental_conditions: std::collections::HashMap::new(),
+                    device_state: DeviceState {
+                        temperature: 0.015,
+                        magnetic_field: 0.0,
+                        coherence_times: std::collections::HashMap::new(),
+                        gate_fidelities: std::collections::HashMap::new(),
+                        readout_fidelities: std::collections::HashMap::new(),
+                    },
+                },
                 syndrome_type: SyndromeType::XError,
+                confidence: 0.9,
+                stabilizer_violations: vec![1, 0, 1, 0],
+                spatial_location: (1, 1),
             },
             SyndromePattern {
-                stabilizer_violations: vec![0, 1, 0, 1],
-                confidence: 0.85,
                 timestamp: std::time::SystemTime::now(),
-                spatial_location: (2, 1),
+                syndrome_bits: vec![false, true, false, true],
+                error_locations: vec![1, 3],
+                correction_applied: vec!["Z".to_string(), "Z".to_string()],
+                success_probability: 0.85,
+                execution_context: ExecutionContext {
+                    device_id: "test_device".to_string(),
+                    timestamp: std::time::SystemTime::now(),
+                    circuit_depth: 8,
+                    qubit_count: 4,
+                    gate_sequence: vec!["H".to_string(), "CZ".to_string()],
+                    environmental_conditions: std::collections::HashMap::new(),
+                    device_state: DeviceState {
+                        temperature: 0.020,
+                        magnetic_field: 0.0,
+                        coherence_times: std::collections::HashMap::new(),
+                        gate_fidelities: std::collections::HashMap::new(),
+                        readout_fidelities: std::collections::HashMap::new(),
+                    },
+                },
                 syndrome_type: SyndromeType::ZError,
+                confidence: 0.85,
+                stabilizer_violations: vec![0, 1, 0, 1],
+                spatial_location: (2, 1),
             },
         ];
 
@@ -938,7 +1862,7 @@ mod integration_tests {
     #[test]
     fn test_multi_code_support() {
         let codes: Vec<Box<dyn QuantumErrorCode>> = vec![
-            Box::new(SurfaceCode::new(3, 3)),
+            Box::new(SurfaceCode::new(3)),
             Box::new(SteaneCode::new()),
             Box::new(ShorCode::new()),
         ];
@@ -1002,7 +1926,7 @@ mod error_handling_tests {
 
     #[test]
     fn test_insufficient_qubits() {
-        let surface_code = SurfaceCode::new(5, 5); // Requires many qubits
+        let surface_code = SurfaceCode::new(5); // Requires many qubits
         let insufficient_qubits = create_test_qubit_ids(2); // Not enough
 
         let encoding_result = surface_code.encode_logical_state(&Array1::from_vec(vec![
@@ -1023,7 +1947,7 @@ mod error_handling_tests {
     #[test]
     fn test_empty_syndrome_list() {
         let corrector = MockErrorCorrector::new();
-        let code = SurfaceCode::new(3, 3);
+        let code = SurfaceCode::new(3);
         let empty_syndromes = vec![];
 
         let result = corrector.correct_errors(&empty_syndromes, &code);
@@ -1050,6 +1974,17 @@ mod error_handling_tests {
             execution_context: ExecutionContext {
                 device_id: "test_device".to_string(),
                 timestamp: std::time::SystemTime::now(),
+                circuit_depth: 10,
+                qubit_count: 5,
+                gate_sequence: vec!["X".to_string(), "Y".to_string()],
+                environmental_conditions: HashMap::new(),
+                device_state: DeviceState {
+                    temperature: 0.01,
+                    magnetic_field: 0.0,
+                    coherence_times: HashMap::new(),
+                    gate_fidelities: HashMap::new(),
+                    readout_fidelities: HashMap::new(),
+                },
             },
             syndrome_type: SyndromeType::XError,
             confidence: -0.5, // Invalid confidence

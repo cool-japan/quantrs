@@ -7,6 +7,8 @@ use std::collections::HashMap;
 /// Configuration for ML-driven optimization with SciRS2
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MLOptimizationConfig {
+    /// Enable ML optimization
+    pub enable_optimization: bool,
     /// ML model configuration
     pub model_config: MLModelConfig,
     /// Circuit feature extraction settings

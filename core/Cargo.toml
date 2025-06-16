@@ -36,6 +36,9 @@ flate2 = "1.1"
 symengine = { git = "https://github.com/cool-japan/symengine-rs.git", branch = "fixed-macos", optional = true }
 symengine-sys = { git = "https://github.com/cool-japan/symengine-sys.git", branch = "fixed-macos", optional = true }
 num-traits = "0.2"
+pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"], optional = true }
+numpy = { workspace = true, optional = true }
+# numrs2 = { path = "../../numrs", optional = true }  # Temporarily disabled due to platform compilation issues
 
 [features]
 default = []
@@ -46,3 +49,4 @@ vulkan = []
 mps = []
 compression = []
 symbolic = ["dep:symengine", "dep:symengine-sys"]  # Enable symbolic computation with SymEngine
+python = ["dep:pyo3", "dep:numpy"]  # Enable Python bindings with PyO3 and NumPy (NumRS2 temporarily disabled)

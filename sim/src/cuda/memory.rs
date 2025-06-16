@@ -326,7 +326,7 @@ impl GpuMemoryPool {
         {
             let mut block = self.free_blocks.remove(index);
             block.in_use = true;
-            self.allocated_blocks.insert(block.ptr, block);
+            self.allocated_blocks.insert(block.ptr, block.clone());
             return Ok(block);
         }
 
@@ -339,7 +339,7 @@ impl GpuMemoryPool {
             in_use: true,
         };
 
-        self.allocated_blocks.insert(ptr, block);
+        self.allocated_blocks.insert(ptr, block.clone());
         self.total_allocated += size;
         if self.total_allocated > self.peak_usage {
             self.peak_usage = self.total_allocated;

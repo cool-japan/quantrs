@@ -194,7 +194,7 @@ impl std::hash::Hash for InterfaceGateType {
 impl Eq for InterfaceGateType {}
 
 /// Quantum gate representation for circuit interface
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InterfaceGate {
     /// Gate type and parameters
     pub gate_type: InterfaceGateType,
@@ -502,7 +502,7 @@ impl InterfaceGate {
 }
 
 /// Quantum circuit representation for interface
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InterfaceCircuit {
     /// Number of qubits
     pub num_qubits: usize,
@@ -515,13 +515,14 @@ pub struct InterfaceCircuit {
 }
 
 /// Circuit metadata
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CircuitMetadata {
     /// Circuit name
     pub name: Option<String>,
     /// Circuit description
     pub description: Option<String>,
     /// Creation timestamp
+    #[serde(skip)]
     pub created_at: Option<std::time::SystemTime>,
     /// Circuit depth
     pub depth: usize,

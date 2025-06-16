@@ -1521,9 +1521,9 @@ impl QuantumErrorCorrection {
         self.metrics.logical_error_rate = error_weight / total_qubits;
 
         // Update overall performance
-        self.metrics.overall_performance = (self.metrics.syndrome_fidelity * 0.3
+        self.metrics.overall_performance = self.metrics.syndrome_fidelity * 0.3
             + self.metrics.decoding_success_rate * 0.4
-            + (1.0 - self.metrics.logical_error_rate) * 0.3);
+            + (1.0 - self.metrics.logical_error_rate) * 0.3;
     }
 
     /// Helper function to check if qubits are connected

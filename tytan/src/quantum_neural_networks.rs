@@ -804,8 +804,10 @@ impl QuantumNeuralNetwork {
         let state_dim = state.len();
 
         for i in 0..state_dim {
-            if (i & (1 << qubit)) == 0 {
-                let j = i | (1 << qubit);
+            // Map qubit index to bit position (qubit 0 is the most significant bit)
+            let bit_pos = num_qubits - 1 - qubit;
+            if (i & (1 << bit_pos)) == 0 {
+                let j = i | (1 << bit_pos);
                 if j < state_dim {
                     let cos_half = (angle / 2.0).cos();
                     let sin_half = (angle / 2.0).sin();
@@ -813,8 +815,8 @@ impl QuantumNeuralNetwork {
                     let state_i = state[i];
                     let state_j = state[j];
 
-                    new_state[i] = cos_half * state_i - sin_half * state_j;
-                    new_state[j] = -sin_half * state_i + cos_half * state_j;
+                    new_state[i] = cos_half * state_i + sin_half * state_j;
+                    new_state[j] = sin_half * state_i + cos_half * state_j;
                 }
             }
         }
@@ -838,8 +840,10 @@ impl QuantumNeuralNetwork {
         let state_dim = state.len();
 
         for i in 0..state_dim {
-            if (i & (1 << qubit)) == 0 {
-                let j = i | (1 << qubit);
+            // Map qubit index to bit position (qubit 0 is the most significant bit)
+            let bit_pos = num_qubits - 1 - qubit;
+            if (i & (1 << bit_pos)) == 0 {
+                let j = i | (1 << bit_pos);
                 if j < state_dim {
                     let cos_half = (angle / 2.0).cos();
                     let sin_half = (angle / 2.0).sin();
@@ -873,7 +877,9 @@ impl QuantumNeuralNetwork {
         let exp_pos = (angle / 2.0).exp();
 
         for i in 0..state.len() {
-            if (i & (1 << qubit)) == 0 {
+            // Map qubit index to bit position (qubit 0 is the most significant bit)
+            let bit_pos = num_qubits - 1 - qubit;
+            if (i & (1 << bit_pos)) == 0 {
                 new_state[i] = state[i] * exp_neg;
             } else {
                 new_state[i] = state[i] * exp_pos;

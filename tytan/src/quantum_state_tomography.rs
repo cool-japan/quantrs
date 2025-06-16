@@ -1351,12 +1351,32 @@ impl QuantumStateTomography {
         &self,
         matrix: &Array2<f64>,
     ) -> Result<(Array1<f64>, Array2<f64>), TomographyError> {
-        // Simplified eigendecomposition for symmetric matrices
         let n = matrix.nrows();
-        let eigenvals = Array1::ones(n) / n as f64;
-        let eigenvecs = Array2::eye(n);
-
-        Ok((eigenvals, eigenvecs))
+        
+        if n == 2 {
+            // Analytical eigendecomposition for 2x2 matrices
+            let a = matrix[[0, 0]];
+            let b = matrix[[0, 1]];
+            let c = matrix[[1, 0]];
+            let d = matrix[[1, 1]];
+            
+            let trace = a + d;
+            let det = a * d - b * c;
+            let discriminant = (trace * trace - 4.0 * det).sqrt();
+            
+            let eigenval1 = (trace + discriminant) / 2.0;
+            let eigenval2 = (trace - discriminant) / 2.0;
+            
+            let eigenvals = Array1::from_vec(vec![eigenval1.max(0.0), eigenval2.max(0.0)]);
+            let eigenvecs = Array2::eye(n); // Simplified eigenvectors
+            
+            Ok((eigenvals, eigenvecs))
+        } else {
+            // Fallback for larger matrices - use uniform distribution
+            let eigenvals = Array1::ones(n) / n as f64;
+            let eigenvecs = Array2::eye(n);
+            Ok((eigenvals, eigenvecs))
+        }
     }
 
     /// Compute entanglement measures
@@ -1543,10 +1563,10 @@ impl QuantumStateTomography {
             .unwrap_or(0.0);
 
         // Overall quality score
-        self.metrics.overall_quality = (self.metrics.reconstruction_accuracy * 0.4
+        self.metrics.overall_quality = self.metrics.reconstruction_accuracy * 0.4
             + self.metrics.computational_efficiency * 0.2
             + self.metrics.statistical_power * 0.2
-            + self.metrics.robustness_score * 0.2);
+            + self.metrics.robustness_score * 0.2;
     }
 }
 

@@ -442,7 +442,7 @@ def create_qiskit_compatible_vqe(hamiltonian, ansatz_depth: int = 2):
 
 
 # Integration testing utilities
-def test_conversion_fidelity(circuit, tolerance: float = 1e-10) -> bool:
+def check_conversion_fidelity(circuit, tolerance: float = 1e-10) -> bool:
     """Test round-trip conversion fidelity."""
     if not (QISKIT_AVAILABLE and QUANTRS2_AVAILABLE):
         warnings.warn("Cannot test conversion fidelity without both frameworks")
@@ -500,6 +500,6 @@ __all__ = [
     'to_qiskit',
     'run_on_qiskit_backend',
     'create_qiskit_compatible_vqe',
-    'test_conversion_fidelity',
+    'check_conversion_fidelity',
     'benchmark_conversion_performance'
 ]

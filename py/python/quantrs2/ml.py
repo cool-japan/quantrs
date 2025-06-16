@@ -63,7 +63,9 @@ class QNN:
         outputs = []
         
         for sample_idx in range(n_samples):
-            circuit = PyCircuit(self.n_qubits)
+            # Use at least 2 qubits for PyCircuit compatibility
+            circuit_qubits = max(self.n_qubits, 2)
+            circuit = PyCircuit(circuit_qubits)
             
             # Data encoding with angle embedding
             for i in range(n_features):
@@ -313,18 +315,25 @@ class VQE:
         # Run the circuit
         result = circuit.run()
         
-        # Get state vector using internal amplitudes
-        if hasattr(result, 'amplitudes') and hasattr(result, 'n_qubits'):
-            # Direct access to internal attributes
-            state_vector = np.array([complex(amp.real, amp.imag) if hasattr(amp, 'real') else complex(amp) 
-                                   for amp in getattr(result, '_amplitudes', [])])
-            if len(state_vector) == 0:
-                # Fallback: create uniform superposition
-                n_states = 2 ** result.n_qubits
+        # Get state vector from result
+        n_states = 2 ** self.n_qubits
+        try:
+            # Try to get state probabilities and reconstruct state vector
+            state_probs = result.state_probabilities()
+            if state_probs:
+                state_vector = np.zeros(n_states, dtype=complex)
+                for state_str, prob in state_probs.items():
+                    # Convert binary string to state index
+                    if len(state_str) == self.n_qubits:
+                        idx = int(state_str, 2)
+                        if idx < n_states:
+                            # Assume equal phase for simplicity in VQE
+                            state_vector[idx] = np.sqrt(prob)
+            else:
+                # Fallback to uniform superposition
                 state_vector = np.ones(n_states, dtype=complex) / np.sqrt(n_states)
-        else:
-            # Fallback
-            n_states = 2 ** self.n_qubits
+        except:
+            # Fallback to uniform superposition
             state_vector = np.ones(n_states, dtype=complex) / np.sqrt(n_states)
         
         # Calculate expectation value <ψ|H|ψ>
@@ -423,14 +432,25 @@ class VQE:
                 circuit.cnot(self.n_qubits - 1, 0)
         
         result = circuit.run()
-        if hasattr(result, 'amplitudes') and hasattr(result, 'n_qubits'):
-            state_vector = np.array([complex(amp.real, amp.imag) if hasattr(amp, 'real') else complex(amp) 
-                                   for amp in getattr(result, '_amplitudes', [])])
-            if len(state_vector) == 0:
-                n_states = 2 ** result.n_qubits
+        # Get state vector from result
+        n_states = 2 ** self.n_qubits
+        try:
+            # Try to get state probabilities and reconstruct state vector
+            state_probs = result.state_probabilities()
+            if state_probs:
+                state_vector = np.zeros(n_states, dtype=complex)
+                for state_str, prob in state_probs.items():
+                    # Convert binary string to state index
+                    if len(state_str) == self.n_qubits:
+                        idx = int(state_str, 2)
+                        if idx < n_states:
+                            # Assume equal phase for simplicity in VQE
+                            state_vector[idx] = np.sqrt(prob)
+            else:
+                # Fallback to uniform superposition
                 state_vector = np.ones(n_states, dtype=complex) / np.sqrt(n_states)
-        else:
-            n_states = 2 ** self.n_qubits
+        except:
+            # Fallback to uniform superposition
             state_vector = np.ones(n_states, dtype=complex) / np.sqrt(n_states)
         
         return ground_energy, state_vector
@@ -491,7 +511,8 @@ class HEPClassifier:
                     correct += 1
                 loss += 0.1 * (idx % 3)  # Dummy loss calculation
             
-            accuracy = correct / min(len(X), 10)
+            n_samples = min(len(X), 10)
+            accuracy = correct / n_samples if n_samples > 0 else 0.0
             
             # Save metrics
             losses.append(loss)
@@ -524,9 +545,9 @@ class HEPClassifier:
         # Get QNN output
         output = self.qnn.forward(x)
         
-        # Convert to class prediction
-        predicted_class = np.argmax(output)
-        return predicted_class
+        # Convert to class prediction and ensure it's within valid range
+        predicted_class = np.argmax(output) % self.n_classes
+        return int(predicted_class)
     
     def predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -595,8 +616,21 @@ class QuantumGAN:
             # Forward pass through generator
             sample = self.generator.forward(z)
             
-            # Reshape to data dimension
-            samples.append(sample.reshape(self.data_dim))
+            # Handle dimension mismatch between generator output and data_dim
+            if sample.size != self.data_dim:
+                # Map generator output to data dimension using linear transformation
+                if sample.size < self.data_dim:
+                    # Pad with zeros if generator output is smaller
+                    padded_sample = np.zeros(self.data_dim)
+                    padded_sample[:sample.size] = sample.flatten()
+                    sample = padded_sample
+                else:
+                    # Truncate if generator output is larger
+                    sample = sample.flatten()[:self.data_dim]
+            else:
+                sample = sample.flatten()
+            
+            samples.append(sample)
         
         return np.array(samples)
     

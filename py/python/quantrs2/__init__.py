@@ -911,7 +911,7 @@ try:
         to_qiskit,
         run_on_qiskit_backend,
         create_qiskit_compatible_vqe,
-        test_conversion_fidelity,
+        check_conversion_fidelity,
         benchmark_conversion_performance
     )
 except ImportError:
@@ -1371,6 +1371,39 @@ try:
         create_bell_state_cirq,
         convert_qiskit_to_cirq,
         test_cirq_quantrs2_integration
+    )
+except ImportError:
+    pass
+
+# Import Qiskit compatibility functions (if available)
+try:
+    from .qiskit_compatibility import (
+        CircuitConverter,
+        QiskitBackendAdapter,
+        QiskitAlgorithmLibrary,
+        QiskitPulseAdapter,
+        QiskitCompatibilityError,
+        from_qiskit,
+        to_qiskit,
+        run_on_qiskit_backend,
+        create_qiskit_compatible_vqe,
+        check_conversion_fidelity,
+        benchmark_conversion_performance
+    )
+except ImportError:
+    pass
+
+# Import Enhanced Qiskit compatibility functions (if available)
+try:
+    from .enhanced_qiskit_compatibility import (
+        ConversionOptions,
+        EnhancedCircuitConverter,
+        AdvancedQiskitIntegration,
+        HybridAlgorithm,
+        NoiseModelAdapter,
+        create_enhanced_converter,
+        optimize_circuit_for_backend,
+        benchmark_conversion_performance as enhanced_benchmark_conversion
     )
 except ImportError:
     pass

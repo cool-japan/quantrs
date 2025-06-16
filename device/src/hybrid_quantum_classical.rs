@@ -2579,19 +2579,23 @@ mod tests {
             HybridOptimizer::SciRS2Optimized,
         ];
 
-        for optimizer in optimizers {
-            // All optimizer types should be valid
-            assert_ne!(optimizer, HybridOptimizer::Adam); // Just to check they're different
-            assert_ne!(optimizer, HybridOptimizer::GradientDescent);
-            // etc.
-        }
+        // Check that we have different optimizer types
+        assert_eq!(optimizers.len(), 4);
+        
+        // Check each optimizer type individually
+        assert!(optimizers.contains(&HybridOptimizer::Adam));
+        assert!(optimizers.contains(&HybridOptimizer::GradientDescent));
+        assert!(optimizers.contains(&HybridOptimizer::SPSA));
+        assert!(optimizers.contains(&HybridOptimizer::SciRS2Optimized));
     }
 
-    #[tokio::test]
-    async fn test_hybrid_executor_creation() {
+    #[test]
+    fn test_hybrid_executor_creation() {
         let config = HybridLoopConfig::default();
         let devices = HashMap::new();
         let cal_mgr = crate::calibration::CalibrationManager::new();
+        
+        // Create managers with minimal setup to avoid runtime conflicts
         let device_manager = Arc::new(RwLock::new(
             crate::integrated_device_manager::IntegratedQuantumDeviceManager::new(
                 Default::default(),
@@ -2619,15 +2623,17 @@ mod tests {
             Default::default(),
         ));
 
-        let _executor = HybridQuantumClassicalExecutor::new(
-            config,
-            device_manager,
-            calibration_manager,
-            parallelization_engine,
-            scheduler,
-        );
+        {
+            let _executor = HybridQuantumClassicalExecutor::new(
+                config,
+                device_manager,
+                calibration_manager,
+                parallelization_engine,
+                scheduler,
+            );
+            // Should create without error
+        } // Explicit scope to drop executor before test ends
 
-        // Should create without error
         assert!(true);
     }
 }

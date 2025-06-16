@@ -431,7 +431,8 @@ impl CompilationCache {
             };
 
             for compiled in gates_to_write {
-                let file_path = cache_dir.join(format!("{}.cache", &compiled.gate_id[..16]));
+                let filename = format!("{}.cache", &compiled.gate_id[..16.min(compiled.gate_id.len())]);
+                let file_path = cache_dir.join(filename);
 
                 if let Err(e) = Self::write_gate_to_file(&file_path, &compiled, 3) {
                     eprintln!("Failed to write gate to cache: {}", e);
@@ -775,15 +776,21 @@ mod tests {
 
     #[test]
     fn test_gate_compilation_and_caching() {
-        let temp_dir = std::env::temp_dir().join(format!("quantrs_test_{}", std::process::id()));
+        let temp_dir = std::env::temp_dir().join(format!(
+            "quantrs_test_caching_{}_{}", 
+            std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+        ));
         let config = CacheConfig {
             cache_dir: temp_dir,
-            enable_persistence: true,
+            enable_persistence: false, // Disable persistence to avoid interference
             async_writes: false,
             ..Default::default()
         };
 
         let cache = CompilationCache::new(config).unwrap();
+        // Clear any existing cache state
+        cache.clear().unwrap();
         let gate = Hadamard { target: QubitId(0) };
 
         // First access - should compile
@@ -906,10 +913,14 @@ mod tests {
         let temp_dir = std::env::temp_dir().join(format!("quantrs_test_{}", std::process::id()));
         let config = CacheConfig {
             cache_dir: temp_dir,
+            enable_persistence: false, // Disable persistence to avoid interference
+            async_writes: false,
             ..Default::default()
         };
 
         let cache = CompilationCache::new(config).unwrap();
+        // Clear any existing cache state
+        cache.clear().unwrap();
         cache.precompile_common_gates().unwrap();
 
         let stats = cache.statistics();
@@ -919,13 +930,20 @@ mod tests {
 
     #[test]
     fn test_statistics_export() {
-        let temp_dir = std::env::temp_dir().join(format!("quantrs_test_{}", std::process::id()));
+        let temp_dir = std::env::temp_dir().join(format!(
+            "quantrs_test_stats_{}_{}", 
+            std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+        ));
         let config = CacheConfig {
             cache_dir: temp_dir.clone(),
+            enable_persistence: false, // Disable persistence to avoid interference
             ..Default::default()
         };
 
         let cache = CompilationCache::new(config).unwrap();
+        // Clear any existing cache state
+        cache.clear().unwrap();
 
         // Generate some statistics
         let gate = Hadamard { target: QubitId(0) };
@@ -937,6 +955,7 @@ mod tests {
             .unwrap();
 
         // Export statistics
+        std::fs::create_dir_all(&temp_dir).unwrap();
         let stats_path = temp_dir.join("stats.json");
         cache.export_statistics(&stats_path).unwrap();
 

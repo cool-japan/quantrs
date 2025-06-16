@@ -47,6 +47,7 @@ pub mod optimization;
 pub mod optimization_old;
 pub mod parametric;
 pub mod performance_analytics_dashboard;
+pub mod photonic;
 pub mod performance_dashboard;
 pub mod process_tomography;
 pub mod provider_capability_discovery;
@@ -55,6 +56,7 @@ pub mod qec;
 pub mod quantum_algorithm_marketplace;
 pub mod quantum_ml_integration;
 pub mod quantum_network;
+pub mod unified_error_handling;
 pub mod quantum_system_security;
 pub mod routing;
 pub mod routing_advanced;
@@ -80,7 +82,7 @@ pub mod aws_conversion;
 pub type DeviceResult<T> = Result<T, DeviceError>;
 
 /// Errors that can occur during device operations
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum DeviceError {
     #[error("Authentication error: {0}")]
     Authentication(String),
@@ -573,6 +575,18 @@ pub mod prelude {
         ParameterOptimizer, ParametricCircuit, ParametricCircuitBuilder, ParametricExecutor,
         ParametricGate, ParametricTemplates,
     };
+    pub use crate::photonic::{
+        create_photonic_device, validate_photonic_config, PhotonicClient, PhotonicConfig,
+        PhotonicDeviceConfig, PhotonicSystemType, PhotonicMode, PhotonicQuantumDevice,
+        PhotonicCircuitResult, PhotonicMeasurementData, PhotonicExecutionMetadata,
+        gates::{DisplacementGate, SqueezingGate, TwoModeSqueezingGate, BeamsplitterGate,
+               PhaseRotationGate, KerrGate, CrossKerrGate},
+        continuous_variable::{Complex, GaussianState, CVGateSet, CVMeasurements},
+        cv_gates::{CVGateType, CVGateParams, CVGateSequence},
+        gate_based::{PhotonicQubitEncoding, PhotonicQubitState, PhotonicGates, OpticalElement,
+                    PhotonicGateImpl, PhotonicResourceRequirements, PhotonicCircuitCompiler,
+                    PhotonicHardwareConstraints, PhotonicCircuitImplementation},
+    };
     pub use crate::provider_capability_discovery::{
         create_high_performance_discovery_config, create_provider_discovery_system,
         CachedCapability, CapabilityRequirements, ComparisonResults, ConnectivityRequirement,
@@ -655,5 +669,9 @@ pub mod prelude {
     pub use crate::zero_noise_extrapolation::{
         CircuitFolder, ExtrapolationFitter, ExtrapolationMethod, NoiseScalingMethod, Observable,
         ZNECapable, ZNEConfig, ZNEExecutor, ZNEResult,
+    };
+    pub use crate::unified_error_handling::{
+        ErrorCategory, ErrorSeverity, RecoveryStrategy, UnifiedRetryConfig, UnifiedDeviceError,
+        UnifiedErrorContext, UnifiedErrorHandler,
     };
 }

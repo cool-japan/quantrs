@@ -1,0 +1,72 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "quantrs2-core"
+version = "0.1.0-alpha.5"
+description = "Python bindings for QuantRS2-Core quantum computing framework"
+authors = [
+    {name = "QuantRS2 Team", email = "team@quantrs2.com"},
+]
+readme = "README.md"
+license = {text = "MIT OR Apache-2.0"}
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = ["quantum", "computing", "quantum-gates", "quantum-circuits", "physics", "simulation"]
+dependencies = [
+    "numpy>=1.20.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=6.0",
+    "pytest-benchmark",
+]
+jupyter = [
+    "jupyter",
+    "matplotlib",
+    "seaborn",
+]
+dev = [
+    "maturin>=1.0",
+    "black",
+    "isort",
+    "pytest",
+]
+
+[project.urls]
+Homepage = "https://github.com/quantrs2/quantrs2-core"
+Repository = "https://github.com/quantrs2/quantrs2-core"
+Documentation = "https://docs.quantrs2.com"
+Issues = "https://github.com/quantrs2/quantrs2-core/issues"
+
+[tool.maturin]
+features = ["python"]
+module-name = "quantrs2_core"
+python-source = "python"
+strip = true
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3

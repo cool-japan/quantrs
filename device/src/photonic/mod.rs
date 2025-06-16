@@ -26,7 +26,7 @@ pub mod squeezed_states;
 
 pub use client::PhotonicClient;
 pub use config::{PhotonicConfig, PhotonicSystem};
-pub use device::PhotonicQuantumDevice;
+pub use device::PhotonicQuantumDeviceImpl;
 
 /// Types of photonic quantum computing systems
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -260,7 +260,7 @@ pub async fn create_photonic_device(
     client: PhotonicClient,
     config: PhotonicDeviceConfig,
 ) -> DeviceResult<impl PhotonicQuantumDevice> {
-    PhotonicQuantumDevice::new(client, config).await
+    PhotonicQuantumDeviceImpl::new(client, config).await
 }
 
 /// Validate photonic device configuration

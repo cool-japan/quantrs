@@ -34,13 +34,13 @@ where
     let mut current_f = objective(&current_x);
     let n_params = initial.len();
 
-    let step_size = 0.1;
-    let max_iterations = 100;
+    let mut step_size = 0.1;
+    let max_iterations = 1000;
     let tolerance = 1e-6;
 
     let mut nfev = 1;
 
-    for iteration in 0..max_iterations {
+    for _iteration in 0..max_iterations {
         let mut improved = false;
 
         // Try step in each parameter direction
@@ -71,13 +71,12 @@ where
             }
         }
 
-        if !improved && step_size < tolerance {
-            break;
-        }
-
         if !improved {
             // Reduce step size
-            current_x = current_x.mapv(|x| x * 0.9);
+            step_size *= 0.5;
+            if step_size < tolerance {
+                break;
+            }
         }
     }
 

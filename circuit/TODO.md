@@ -27,7 +27,7 @@ This document outlines the development plans and future tasks for the QuantRS2-C
 
 ## Planned Enhancements
 
-### Near-term (v0.1.x)
+### Near-term (v0.1.0)
 
 - [x] Implement circuit DAG representation using SciRS2 graphs ✅
 - [x] Add commutation analysis for gate reordering ✅
@@ -45,9 +45,6 @@ This document outlines the development plans and future tasks for the QuantRS2-C
 - [x] Create circuit compression using tensor networks ✅
 - [x] Implement cross-talk aware scheduling ✅
 - [x] Add support for pulse-level control ✅
-
-### Long-term (Future Versions)
-
 - [x] Implement ZX-calculus optimization using SciRS2 graph algorithms ✅
 - [x] Add support for photonic quantum circuits ✅
 - [x] Create ML-based circuit optimization with SciRS2 ML integration ✅

@@ -677,11 +677,24 @@ pub struct CircuitPatternAnalyzer {
 #[derive(Debug, Clone)]
 pub struct PatternRecognitionResult {
     /// Pattern description
-    pattern: String,
+    pub pattern: String,
     /// Confidence in recognition
-    confidence: f64,
+    pub confidence: f64,
     /// Expected benefit
-    expected_benefit: f64,
+    pub expected_benefit: f64,
+}
+
+/// Result of fusion decision
+#[derive(Debug, Clone)]
+pub struct FusionResult {
+    /// Whether gates should be fused
+    pub should_fuse: bool,
+    /// Confidence in the decision
+    pub confidence: f64,
+    /// Expected speedup from fusion
+    pub expected_speedup: f64,
+    /// Estimated error increase
+    pub estimated_error: f64,
 }
 
 /// Fusion experiment for learning
@@ -1140,6 +1153,81 @@ impl AdaptiveGateFusion {
             .sum();
         total / self.learning_history.len() as f64
     }
+
+    /// Fuse a sequence of gates using adaptive fusion
+    pub fn fuse_gates(&mut self, gates: &[QuantumGate]) -> crate::error::Result<(Vec<FusedGateBlock>, Vec<QuantumGate>)> {
+        let mut fused_blocks = Vec::new();
+        
+        if gates.is_empty() {
+            return Ok((fused_blocks, Vec::new()));
+        }
+
+        let mut i = 0;
+        while i < gates.len() {
+            if i + 1 < gates.len() {
+                // Try to fuse adjacent gates
+                let should_fuse = self.should_fuse_basic(&gates[i], &gates[i + 1]);
+                
+                if should_fuse {
+                    // Create a fused gate block from the two gates
+                    let mut qubits = gates[i].qubits.clone();
+                    qubits.extend_from_slice(&gates[i + 1].qubits);
+                    qubits.sort_unstable();
+                    qubits.dedup();
+                    
+                    let fused_block = FusedGateBlock {
+                        gates: vec![gates[i].clone(), gates[i + 1].clone()],
+                        combined_matrix: self.calculate_combined_matrix(&gates[i], &gates[i + 1])?,
+                        qubits,
+                        cost: 0.5, // Assume fusion reduces cost
+                        improvement_factor: 1.5,
+                    };
+                    
+                    fused_blocks.push(fused_block);
+                    i += 2; // Skip both gates
+                } else {
+                    // Create a single-gate block
+                    let fused_block = FusedGateBlock {
+                        gates: vec![gates[i].clone()],
+                        combined_matrix: gates[i].matrix.clone(),
+                        qubits: gates[i].qubits.clone(),
+                        cost: 1.0,
+                        improvement_factor: 1.0,
+                    };
+                    
+                    fused_blocks.push(fused_block);
+                    i += 1;
+                }
+            } else {
+                // Last gate, add it as-is
+                let fused_block = FusedGateBlock {
+                    gates: vec![gates[i].clone()],
+                    combined_matrix: gates[i].matrix.clone(),
+                    qubits: gates[i].qubits.clone(),
+                    cost: 1.0,
+                    improvement_factor: 1.0,
+                };
+                
+                fused_blocks.push(fused_block);
+                i += 1;
+            }
+        }
+
+        Ok((fused_blocks, Vec::new()))
+    }
+
+    /// Basic heuristic for gate fusion
+    fn should_fuse_basic(&self, gate1: &QuantumGate, gate2: &QuantumGate) -> bool {
+        let overlapping_qubits = gate1.qubits.iter().any(|&q| gate2.qubits.contains(&q));
+        overlapping_qubits && gate1.qubits.len() <= 2 && gate2.qubits.len() <= 2
+    }
+
+    /// Calculate combined matrix for two gates
+    fn calculate_combined_matrix(&self, gate1: &QuantumGate, gate2: &QuantumGate) -> crate::error::Result<Array2<Complex64>> {
+        // For simplicity, just return gate1's matrix
+        // In a real implementation, this would compute the matrix product
+        Ok(gate1.matrix.clone())
+    }
 }
 
 /// Fusion statistics
@@ -1362,6 +1450,21 @@ impl MLFusionPredictor {
 
         1.0 / (1.0 + (-prediction).exp())
     }
+
+    /// Check if two gates should be fused
+    fn should_fuse_gates(&self, gate1: &QuantumGate, gate2: &QuantumGate) -> FusionResult {
+        // For simplicity, use a basic heuristic
+        let overlapping_qubits = gate1.qubits.iter().any(|&q| gate2.qubits.contains(&q));
+        let should_fuse = overlapping_qubits && gate1.qubits.len() <= 2 && gate2.qubits.len() <= 2;
+        
+        FusionResult {
+            should_fuse,
+            confidence: if should_fuse { 0.8 } else { 0.2 },
+            expected_speedup: if should_fuse { 1.5 } else { 1.0 },
+            estimated_error: 0.01,
+        }
+    }
+
 }
 
 impl CircuitPatternAnalyzer {

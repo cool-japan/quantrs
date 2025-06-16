@@ -2,7 +2,7 @@
 
 This document outlines the development plans and future tasks for the QuantRS2-Anneal module.
 
-## Current Status (Updated December 2024)
+## Current Status (Updated June 2025)
 
 ### Completed Core Features ✅
 

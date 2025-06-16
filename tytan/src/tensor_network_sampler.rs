@@ -64,9 +64,9 @@ pub enum TensorNetworkType {
     /// Tree Tensor Network
     TTN { tree_structure: TreeStructure },
     /// Infinite Matrix Product State
-    iMPS { unit_cell_size: usize },
+    IMps { unit_cell_size: usize },
     /// Infinite Projected Entangled Pair State
-    iPEPS { unit_cell_shape: (usize, usize) },
+    IPeps { unit_cell_shape: (usize, usize) },
     /// Branching MERA
     BranchingMERA {
         layers: usize,
@@ -1438,11 +1438,11 @@ impl TensorNetworkSampler {
         self.metrics.entanglement_measures = self.calculate_entanglement_measures();
 
         // Overall performance
-        self.metrics.overall_performance = (self.metrics.compression_efficiency * 0.2
+        self.metrics.overall_performance = self.metrics.compression_efficiency * 0.2
             + self.metrics.convergence_rate * 0.2
             + self.metrics.memory_efficiency * 0.2
             + self.metrics.computational_speed * 0.2
-            + self.metrics.approximation_accuracy * 0.2);
+            + self.metrics.approximation_accuracy * 0.2;
     }
 
     /// Calculate compression efficiency

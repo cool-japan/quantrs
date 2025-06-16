@@ -11,6 +11,11 @@ use quantrs2_core::register::Register;
 
 use crate::optimized_simulator::OptimizedSimulator;
 use crate::statevector::StateVectorSimulator;
+use crate::quantum_reservoir_computing::{
+    QuantumReservoirComputer, QuantumReservoirConfig, QuantumReservoirArchitecture,
+    ReservoirDynamics, InputEncoding, OutputMeasurement,
+};
+use ndarray::Array1;
 
 /// Create a bell state circuit
 fn create_bell_circuit<const N: usize>() -> Circuit<N> {
@@ -335,7 +340,7 @@ mod ultrathink_tests {
         let config = DistributedGpuConfig::default();
 
         // Test different partition schemes
-        for &scheme in &[
+        for scheme in &[
             PartitionScheme::Block,
             PartitionScheme::Interleaved,
             PartitionScheme::Adaptive,
@@ -521,7 +526,7 @@ mod ultrathink_tests {
     fn test_mixed_precision_config() {
         let config = MixedPrecisionConfig::default();
         assert_eq!(config.state_vector_precision, QuantumPrecision::Single);
-        assert!(config.gate_precision.contains_key(&GateType::Hadamard));
+        assert_eq!(config.gate_precision, QuantumPrecision::Single);
         assert!(config.error_tolerance > 0.0);
     }
 
@@ -560,7 +565,7 @@ mod ultrathink_tests {
     #[test]
     fn test_precision_adaptation() {
         let mut config = MixedPrecisionConfig::default();
-        config.adaptive_strategy = crate::mixed_precision_impl::AdaptiveStrategy::ErrorBased(1e-6);
+        config.adaptive_precision = true;
 
         let mut simulator = MixedPrecisionSimulator::new(2, config).unwrap();
 
@@ -682,5 +687,235 @@ mod ultrathink_tests {
         let stats = precision_sim.get_stats();
         assert!(stats.total_gates > 0);
         assert!(stats.total_time_ms >= 0.0);
+    }
+
+    // Quantum Reservoir Computing Tests
+
+    #[test]
+    fn test_quantum_reservoir_creation() {
+        let config = QuantumReservoirConfig {
+            num_qubits: 4,
+            architecture: QuantumReservoirArchitecture::RandomCircuit,
+            dynamics: ReservoirDynamics::Unitary,
+            input_encoding: InputEncoding::Amplitude,
+            output_measurement: OutputMeasurement::PauliExpectation,
+            time_step: 0.1,
+            evolution_steps: 10,
+            coupling_strength: 0.1,
+            noise_level: 0.0,
+            memory_capacity: 50,
+            adaptive_learning: false,
+            learning_rate: 0.01,
+            washout_period: 5,
+        };
+
+        let result = QuantumReservoirComputer::new(config);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_quantum_reservoir_architectures() {
+        let architectures = vec![
+            QuantumReservoirArchitecture::RandomCircuit,
+            QuantumReservoirArchitecture::SpinChain,
+            QuantumReservoirArchitecture::TransverseFieldIsing,
+            QuantumReservoirArchitecture::SmallWorld,
+            QuantumReservoirArchitecture::FullyConnected,
+        ];
+
+        for architecture in architectures {
+            let config = QuantumReservoirConfig {
+                num_qubits: 3,
+                architecture,
+                dynamics: ReservoirDynamics::Unitary,
+                input_encoding: InputEncoding::Amplitude,
+                output_measurement: OutputMeasurement::PauliExpectation,
+                time_step: 0.1,
+                evolution_steps: 5,
+                coupling_strength: 0.1,
+                noise_level: 0.0,
+                memory_capacity: 20,
+                adaptive_learning: false,
+                learning_rate: 0.01,
+                washout_period: 2,
+            };
+
+            let result = QuantumReservoirComputer::new(config);
+            assert!(result.is_ok(), "Failed to create reservoir with architecture {:?}", architecture);
+        }
+    }
+
+    #[test]
+    fn test_quantum_reservoir_input_encodings() {
+        let encodings = vec![
+            InputEncoding::Amplitude,
+            InputEncoding::Phase,
+            InputEncoding::BasisState,
+            InputEncoding::Coherent,
+            InputEncoding::Squeezed,
+        ];
+
+        for encoding in encodings {
+            let config = QuantumReservoirConfig {
+                num_qubits: 3,
+                architecture: QuantumReservoirArchitecture::RandomCircuit,
+                dynamics: ReservoirDynamics::Unitary,
+                input_encoding: encoding,
+                output_measurement: OutputMeasurement::PauliExpectation,
+                time_step: 0.1,
+                evolution_steps: 5,
+                coupling_strength: 0.1,
+                noise_level: 0.0,
+                memory_capacity: 20,
+                adaptive_learning: false,
+                learning_rate: 0.01,
+                washout_period: 2,
+            };
+
+            let result = QuantumReservoirComputer::new(config);
+            assert!(result.is_ok(), "Failed to create reservoir with encoding {:?}", encoding);
+        }
+    }
+
+    #[test]
+    fn test_quantum_reservoir_output_measurements() {
+        let measurements = vec![
+            OutputMeasurement::PauliExpectation,
+            OutputMeasurement::Probability,
+            OutputMeasurement::Correlations,
+            OutputMeasurement::Entanglement,
+            OutputMeasurement::Fidelity,
+        ];
+
+        for measurement in measurements {
+            let config = QuantumReservoirConfig {
+                num_qubits: 3,
+                architecture: QuantumReservoirArchitecture::RandomCircuit,
+                dynamics: ReservoirDynamics::Unitary,
+                input_encoding: InputEncoding::Amplitude,
+                output_measurement: measurement,
+                time_step: 0.1,
+                evolution_steps: 5,
+                coupling_strength: 0.1,
+                noise_level: 0.0,
+                memory_capacity: 20,
+                adaptive_learning: false,
+                learning_rate: 0.01,
+                washout_period: 2,
+            };
+
+            let result = QuantumReservoirComputer::new(config);
+            assert!(result.is_ok(), "Failed to create reservoir with measurement {:?}", measurement);
+        }
+    }
+
+    #[test]
+    fn test_quantum_reservoir_input_processing() {
+        let config = QuantumReservoirConfig {
+            num_qubits: 3,
+            architecture: QuantumReservoirArchitecture::SpinChain,
+            dynamics: ReservoirDynamics::Unitary,
+            input_encoding: InputEncoding::Amplitude,
+            output_measurement: OutputMeasurement::PauliExpectation,
+            time_step: 0.1,
+            evolution_steps: 8,
+            coupling_strength: 0.2,
+            noise_level: 0.0,
+            memory_capacity: 30,
+            adaptive_learning: false,
+            learning_rate: 0.01,
+            washout_period: 5,
+        };
+
+        let mut reservoir = QuantumReservoirComputer::new(config).unwrap();
+
+        // Test single input processing
+        let input = Array1::from(vec![0.5, 0.3, 0.2]);
+        let result = reservoir.process_input(&input);
+        assert!(result.is_ok());
+
+        let output = result.unwrap();
+        assert!(output.len() > 0);
+        
+        // Output should be finite
+        for &val in output.iter() {
+            assert!(val.is_finite());
+        }
+    }
+
+    #[test]
+    fn test_quantum_reservoir_metrics() {
+        let config = QuantumReservoirConfig {
+            num_qubits: 4,
+            architecture: QuantumReservoirArchitecture::RandomCircuit,
+            dynamics: ReservoirDynamics::Unitary,
+            input_encoding: InputEncoding::Phase,
+            output_measurement: OutputMeasurement::PauliExpectation,
+            time_step: 0.1,
+            evolution_steps: 10,
+            coupling_strength: 0.15,
+            noise_level: 0.0,
+            memory_capacity: 40,
+            adaptive_learning: true,
+            learning_rate: 0.01,
+            washout_period: 5,
+        };
+
+        let reservoir = QuantumReservoirComputer::new(config).unwrap();
+        let metrics = reservoir.get_metrics();
+        
+        // Check that metrics are properly initialized
+        assert!(metrics.prediction_accuracy >= 0.0);
+        assert!(metrics.memory_capacity >= 0.0);
+        assert!(metrics.processing_capacity >= 0.0);
+        assert!(metrics.generalization_error >= 0.0);
+        assert!(metrics.echo_state_property >= 0.0);
+        assert!(metrics.avg_processing_time_ms >= 0.0);
+        assert!(metrics.quantum_resource_usage >= 0.0);
+    }
+
+    #[test]
+    fn test_quantum_reservoir_reset() {
+        let config = QuantumReservoirConfig {
+            num_qubits: 3,
+            architecture: QuantumReservoirArchitecture::TransverseFieldIsing,
+            dynamics: ReservoirDynamics::NISQ,
+            input_encoding: InputEncoding::Squeezed,
+            output_measurement: OutputMeasurement::Entanglement,
+            time_step: 0.1,
+            evolution_steps: 6,
+            coupling_strength: 0.12,
+            noise_level: 0.05,
+            memory_capacity: 25,
+            adaptive_learning: false,
+            learning_rate: 0.01,
+            washout_period: 3,
+        };
+
+        let mut reservoir = QuantumReservoirComputer::new(config).unwrap();
+
+        // Process some input to change the state
+        let input = Array1::from(vec![0.8, 0.2, 0.4]);
+        let _ = reservoir.process_input(&input);
+
+        // Reset should work without errors
+        let result = reservoir.reset();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_quantum_reservoir_benchmark() {
+        // Test the benchmark function
+        let result = crate::quantum_reservoir_computing::benchmark_quantum_reservoir_computing();
+        assert!(result.is_ok());
+
+        let benchmarks = result.unwrap();
+        assert!(benchmarks.len() > 0);
+        
+        // Check that benchmark results are reasonable
+        for (name, value) in benchmarks.iter() {
+            assert!(value.is_finite(), "Benchmark {} returned non-finite value: {}", name, value);
+            assert!(*value >= 0.0, "Benchmark {} returned negative value: {}", name, value);
+        }
     }
 }

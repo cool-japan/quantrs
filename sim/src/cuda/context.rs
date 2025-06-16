@@ -25,6 +25,7 @@ pub struct CudaContext {
 }
 
 #[cfg(feature = "advanced_math")]
+#[derive(Debug, Clone)]
 pub struct CudaDeviceProperties {
     pub name: String,
     pub compute_capability: (i32, i32),

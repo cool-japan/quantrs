@@ -19,7 +19,7 @@ try:
         to_qiskit,
         run_on_qiskit_backend,
         create_qiskit_compatible_vqe,
-        test_conversion_fidelity,
+        check_conversion_fidelity,
         benchmark_conversion_performance,
         QISKIT_AVAILABLE,
         QUANTRS2_AVAILABLE
@@ -78,7 +78,7 @@ except ImportError as e:
                 return {'optimal_parameters': [], 'optimal_energy': -1.0, 'converged': True}
             def _compute_expectation_from_counts(self, counts): return -1.0
         return MockVQE(molecule, ansatz_depth)
-    def test_conversion_fidelity(circuit): return True
+    def conversion_fidelity_test(circuit): return True
     def benchmark_conversion_performance(): return {2: {'conversion_time': 0.001, 'qubits': 2}}
     
     QISKIT_AVAILABLE = False
@@ -350,7 +350,7 @@ class TestUtilityFunctions(unittest.TestCase):
         circuit.cnot(0, 1)
         
         # Should handle case when frameworks not available
-        fidelity_result = test_conversion_fidelity(circuit)
+        fidelity_result = check_conversion_fidelity(circuit)
         self.assertIsInstance(fidelity_result, bool)
     
     def test_benchmark_conversion_performance(self):

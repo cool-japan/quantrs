@@ -276,11 +276,14 @@ impl DynamicalDecouplingManager {
         let weights = [0.4, 0.3, 0.3]; // Performance, noise, hardware
         let scores = [performance_score, noise_score, hardware_score];
 
-        weights
+        let score = weights
             .iter()
             .zip(scores.iter())
             .map(|(w, s)| w * s)
-            .sum::<f64>()
+            .sum::<f64>();
+        
+        // Clamp to [0, 1] range
+        score.max(0.0).min(1.0)
     }
 
     /// Get system status

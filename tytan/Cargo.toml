@@ -21,6 +21,7 @@ rand_distr.workspace = true
 ndarray.workspace = true
 num-bigint = "0.4"
 num-integer = "0.1"
+num = "0.4"
 chrono = "0.4"
 symengine = { git = "https://github.com/cool-japan/symengine-rs.git", branch = "fixed-macos", optional = true }
 symengine-sys = { git = "https://github.com/cool-japan/symengine-sys.git", branch = "fixed-macos", optional = true }

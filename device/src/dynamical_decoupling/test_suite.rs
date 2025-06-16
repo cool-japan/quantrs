@@ -115,7 +115,7 @@ mod tests {
 
         // Test CPMG
         let cpmg = DDSequenceGenerator::generate_base_sequence(
-            &DDSequenceType::CPMG { n_pulses: 1 },
+            &DDSequenceType::CPMG { n_pulses: 4 },
             &target_qubits,
             100e-6,
         )

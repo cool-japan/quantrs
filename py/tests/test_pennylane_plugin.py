@@ -18,7 +18,7 @@ try:
         register_quantrs2_device,
         create_quantrs2_device,
         quantrs2_qnode,
-        test_quantrs2_pennylane_integration,
+        check_quantrs2_pennylane_integration,
         PENNYLANE_AVAILABLE,
         QUANTRS2_AVAILABLE
     )
@@ -50,7 +50,7 @@ except ImportError as e:
     def quantrs2_qnode(*args, **kwargs):
         pass
     
-    def test_quantrs2_pennylane_integration():
+    def check_quantrs2_pennylane_integration():
         return False
     
     PENNYLANE_AVAILABLE = False
@@ -468,7 +468,7 @@ class TestIntegration(unittest.TestCase):
     def test_integration_test_function(self):
         """Test the integration test function."""
         # This should handle missing dependencies gracefully
-        result = test_quantrs2_pennylane_integration()
+        result = check_quantrs2_pennylane_integration()
         
         # Should return boolean
         self.assertIsInstance(result, bool)

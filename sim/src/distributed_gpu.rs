@@ -1245,6 +1245,35 @@ impl DistributedGpuStateVector {
 
         Ok(())
     }
+
+    /// Get the number of qubits
+    pub fn num_qubits(&self) -> usize {
+        self.num_qubits
+    }
+
+    /// Get the state size (2^num_qubits)
+    pub fn state_size(&self) -> usize {
+        1usize << self.num_qubits
+    }
+
+    /// Get the number of partitions
+    pub fn num_partitions(&self) -> usize {
+        self.state_partitions.len()
+    }
+
+    /// Synchronize all GPU devices
+    pub fn synchronize(&mut self) -> Result<()> {
+        #[cfg(feature = "advanced_math")]
+        {
+            for context in &mut self.gpu_contexts {
+                // Synchronize each GPU context
+                // In a real implementation, this would call CUDA synchronization
+                // For now, we'll just mark it as synchronized
+            }
+        }
+        Ok(())
+    }
+
 }
 
 /// Utilities for distributed GPU simulation

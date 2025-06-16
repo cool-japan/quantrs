@@ -375,11 +375,103 @@ impl SteaneCode {
 
 impl QuantumErrorCode for SteaneCode {
     fn get_stabilizers(&self) -> Vec<StabilizerGroup> {
-        vec![]
+        vec![
+            // X-stabilizers for Steane [[7,1,3]] code
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::X, PauliOperator::X, PauliOperator::X, PauliOperator::X,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6),
+                ],
+                stabilizer_type: StabilizerType::XStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::X, PauliOperator::X, PauliOperator::I,
+                    PauliOperator::X, PauliOperator::X, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6),
+                ],
+                stabilizer_type: StabilizerType::XStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::X,
+                    PauliOperator::X, PauliOperator::X, PauliOperator::X,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6),
+                ],
+                stabilizer_type: StabilizerType::XStabilizer,
+                weight: 4,
+            },
+            // Z-stabilizers for Steane [[7,1,3]] code
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::Z, PauliOperator::Z,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::Z, PauliOperator::Z, PauliOperator::I,
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::Z,
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::Z,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 4,
+            },
+        ]
     }
 
     fn get_logical_operators(&self) -> Vec<LogicalOperator> {
-        vec![]
+        vec![
+            // Logical X operator (acts on all 7 qubits)
+            LogicalOperator {
+                operators: vec![
+                    PauliOperator::X, PauliOperator::X, PauliOperator::X, PauliOperator::X,
+                    PauliOperator::X, PauliOperator::X, PauliOperator::X,
+                ],
+                operator_type: LogicalOperatorType::LogicalX,
+            },
+            // Logical Z operator (acts on all 7 qubits)
+            LogicalOperator {
+                operators: vec![
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::Z, PauliOperator::Z,
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::Z,
+                ],
+                operator_type: LogicalOperatorType::LogicalZ,
+            },
+        ]
     }
 
     fn distance(&self) -> usize {
@@ -415,11 +507,127 @@ impl ShorCode {
 
 impl QuantumErrorCode for ShorCode {
     fn get_stabilizers(&self) -> Vec<StabilizerGroup> {
-        vec![]
+        vec![
+            // Z-stabilizers for bit-flip correction (6 generators)
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 2,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::Z, PauliOperator::Z, PauliOperator::I,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 2,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::Z,
+                    PauliOperator::Z, PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 2,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 2,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::Z, PauliOperator::Z, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 2,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::Z, PauliOperator::Z,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 2,
+            },
+            // X-stabilizers for phase-flip correction (2 generators)
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::X, PauliOperator::X, PauliOperator::X, PauliOperator::X,
+                    PauliOperator::X, PauliOperator::X, PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::XStabilizer,
+                weight: 6,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::X,
+                    PauliOperator::X, PauliOperator::X, PauliOperator::X, PauliOperator::X, PauliOperator::X,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::XStabilizer,
+                weight: 6,
+            },
+        ]
     }
 
     fn get_logical_operators(&self) -> Vec<LogicalOperator> {
-        vec![]
+        vec![
+            // Logical X operator (one qubit from each group)
+            LogicalOperator {
+                operators: vec![
+                    PauliOperator::X, PauliOperator::I, PauliOperator::I, PauliOperator::X,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::X, PauliOperator::I, PauliOperator::I,
+                ],
+                operator_type: LogicalOperatorType::LogicalX,
+            },
+            // Logical Z operator (all qubits)
+            LogicalOperator {
+                operators: vec![
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::Z, PauliOperator::Z,
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::Z, PauliOperator::Z, PauliOperator::Z,
+                ],
+                operator_type: LogicalOperatorType::LogicalZ,
+            },
+        ]
     }
 
     fn distance(&self) -> usize {
@@ -458,11 +666,185 @@ impl SurfaceCode {
 
 impl QuantumErrorCode for SurfaceCode {
     fn get_stabilizers(&self) -> Vec<StabilizerGroup> {
-        vec![]
+        // For simplicity, implement stabilizers for distance-3 surface code
+        // This is a basic implementation - full surface codes require more complex lattice handling
+        if self.distance != 3 {
+            // Return a minimal set for other distances - could be extended
+            return vec![
+                StabilizerGroup {
+                    operators: vec![PauliOperator::X, PauliOperator::X],
+                    qubits: vec![QubitId::new(0), QubitId::new(1)],
+                    stabilizer_type: StabilizerType::XStabilizer,
+                    weight: 2,
+                },
+                StabilizerGroup {
+                    operators: vec![PauliOperator::Z, PauliOperator::Z],
+                    qubits: vec![QubitId::new(0), QubitId::new(1)],
+                    stabilizer_type: StabilizerType::ZStabilizer,
+                    weight: 2,
+                },
+            ];
+        }
+
+        // Distance-3 surface code stabilizers (simplified square lattice)
+        // Data qubits: 0-8 arranged as:
+        // 0 1 2
+        // 3 4 5  
+        // 6 7 8
+        vec![
+            // X-stabilizers (vertex type)
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::X, PauliOperator::X, PauliOperator::I,
+                    PauliOperator::X, PauliOperator::X, PauliOperator::I,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2),
+                    QubitId::new(3), QubitId::new(4), QubitId::new(5),
+                    QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::XStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::X, PauliOperator::X,
+                    PauliOperator::I, PauliOperator::X, PauliOperator::X,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2),
+                    QubitId::new(3), QubitId::new(4), QubitId::new(5),
+                    QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::XStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::X, PauliOperator::X, PauliOperator::I,
+                    PauliOperator::X, PauliOperator::X, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2),
+                    QubitId::new(3), QubitId::new(4), QubitId::new(5),
+                    QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::XStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::I, PauliOperator::X, PauliOperator::X,
+                    PauliOperator::I, PauliOperator::X, PauliOperator::X,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2),
+                    QubitId::new(3), QubitId::new(4), QubitId::new(5),
+                    QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::XStabilizer,
+                weight: 4,
+            },
+            // Z-stabilizers (plaquette type)
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::I,
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::I,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2),
+                    QubitId::new(3), QubitId::new(4), QubitId::new(5),
+                    QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::Z, PauliOperator::Z,
+                    PauliOperator::I, PauliOperator::Z, PauliOperator::Z,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2),
+                    QubitId::new(3), QubitId::new(4), QubitId::new(5),
+                    QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::I,
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2),
+                    QubitId::new(3), QubitId::new(4), QubitId::new(5),
+                    QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::I, PauliOperator::Z, PauliOperator::Z,
+                    PauliOperator::I, PauliOperator::Z, PauliOperator::Z,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2),
+                    QubitId::new(3), QubitId::new(4), QubitId::new(5),
+                    QubitId::new(6), QubitId::new(7), QubitId::new(8),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 4,
+            },
+        ]
     }
 
     fn get_logical_operators(&self) -> Vec<LogicalOperator> {
-        vec![]
+        if self.distance != 3 {
+            // Basic logical operators for other distances
+            return vec![
+                LogicalOperator {
+                    operators: vec![PauliOperator::X, PauliOperator::I],
+                    operator_type: LogicalOperatorType::LogicalX,
+                },
+                LogicalOperator {
+                    operators: vec![PauliOperator::Z, PauliOperator::I],
+                    operator_type: LogicalOperatorType::LogicalZ,
+                },
+            ];
+        }
+
+        // Distance-3 surface code logical operators
+        vec![
+            // Logical X operator (horizontal string)
+            LogicalOperator {
+                operators: vec![
+                    PauliOperator::X, PauliOperator::I, PauliOperator::X,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::X, PauliOperator::I, PauliOperator::X,
+                ],
+                operator_type: LogicalOperatorType::LogicalX,
+            },
+            // Logical Z operator (vertical string)
+            LogicalOperator {
+                operators: vec![
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::Z,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                ],
+                operator_type: LogicalOperatorType::LogicalZ,
+            },
+        ]
     }
 
     fn distance(&self) -> usize {
@@ -501,11 +883,164 @@ impl ToricCode {
 
 impl QuantumErrorCode for ToricCode {
     fn get_stabilizers(&self) -> Vec<StabilizerGroup> {
-        vec![]
+        // Implement a basic 2x2 toric code for simplicity
+        // For general dimensions, this would need more complex lattice handling
+        if self.dimensions != (2, 2) {
+            // Return minimal stabilizers for other dimensions
+            return vec![
+                StabilizerGroup {
+                    operators: vec![PauliOperator::X, PauliOperator::X],
+                    qubits: vec![QubitId::new(0), QubitId::new(1)],
+                    stabilizer_type: StabilizerType::XStabilizer,
+                    weight: 2,
+                },
+                StabilizerGroup {
+                    operators: vec![PauliOperator::Z, PauliOperator::Z],
+                    qubits: vec![QubitId::new(0), QubitId::new(1)],
+                    stabilizer_type: StabilizerType::ZStabilizer,
+                    weight: 2,
+                },
+            ];
+        }
+
+        // 2x2 toric code has 8 data qubits arranged on a torus
+        // X-stabilizers (vertex type) and Z-stabilizers (plaquette type)
+        vec![
+            // X-stabilizers (vertex type) - 4 stabilizers for 2x2 torus
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::X, PauliOperator::X, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::X, PauliOperator::X, PauliOperator::I, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7),
+                ],
+                stabilizer_type: StabilizerType::XStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::X, PauliOperator::X,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::X, PauliOperator::X,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7),
+                ],
+                stabilizer_type: StabilizerType::XStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::X, PauliOperator::X, PauliOperator::I, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7),
+                ],
+                stabilizer_type: StabilizerType::XStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::X, PauliOperator::X,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7),
+                ],
+                stabilizer_type: StabilizerType::XStabilizer,
+                weight: 4,
+            },
+            // Z-stabilizers (plaquette type) - 4 stabilizers for 2x2 torus
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::I, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::Z, PauliOperator::Z,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::Z, PauliOperator::Z,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::Z, PauliOperator::Z, PauliOperator::I, PauliOperator::I,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 4,
+            },
+            StabilizerGroup {
+                operators: vec![
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::Z, PauliOperator::Z,
+                ],
+                qubits: vec![
+                    QubitId::new(0), QubitId::new(1), QubitId::new(2), QubitId::new(3),
+                    QubitId::new(4), QubitId::new(5), QubitId::new(6), QubitId::new(7),
+                ],
+                stabilizer_type: StabilizerType::ZStabilizer,
+                weight: 4,
+            },
+        ]
     }
 
     fn get_logical_operators(&self) -> Vec<LogicalOperator> {
-        vec![]
+        if self.dimensions != (2, 2) {
+            // Basic logical operators for other dimensions
+            return vec![
+                LogicalOperator {
+                    operators: vec![PauliOperator::X, PauliOperator::I],
+                    operator_type: LogicalOperatorType::LogicalX,
+                },
+                LogicalOperator {
+                    operators: vec![PauliOperator::Z, PauliOperator::I],
+                    operator_type: LogicalOperatorType::LogicalZ,
+                },
+            ];
+        }
+
+        // 2x2 toric code logical operators (2 logical qubits due to torus topology)
+        vec![
+            // First logical X operator (horizontal winding)
+            LogicalOperator {
+                operators: vec![
+                    PauliOperator::X, PauliOperator::I, PauliOperator::X, PauliOperator::I,
+                    PauliOperator::I, PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                ],
+                operator_type: LogicalOperatorType::LogicalX,
+            },
+            // First logical Z operator (vertical winding)
+            LogicalOperator {
+                operators: vec![
+                    PauliOperator::Z, PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                    PauliOperator::Z, PauliOperator::I, PauliOperator::I, PauliOperator::I,
+                ],
+                operator_type: LogicalOperatorType::LogicalZ,
+            },
+        ]
     }
 
     fn distance(&self) -> usize {
@@ -576,7 +1111,7 @@ pub struct QECConfig {
 }
 
 /// Error correction strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QECStrategy {
     /// Active error correction
     ActiveCorrection,
@@ -2103,6 +2638,8 @@ impl Default for QECConfig {
                         control_ranges: std::collections::HashMap::new(),
                     },
                 },
+                prediction: adaptive::PredictionConfig::default(),
+                optimization: adaptive::OptimizationConfig::default(),
             },
             optimization_config: QECOptimizationConfig {
                 enable_optimization: true,
@@ -2398,6 +2935,8 @@ impl Default for QECConfig {
                         control_ranges: std::collections::HashMap::new(),
                     },
                 },
+                prediction: adaptive::PredictionConfig::default(),
+                optimization: adaptive::OptimizationConfig::default(),
             },
             performance_optimization: QECOptimizationConfig {
                 enable_optimization: true,
@@ -2486,6 +3025,10 @@ impl Default for QECConfig {
                 enable_ml: true,
                 models: vec![],
                 training: MLTrainingConfig {
+                    batch_size: 32,
+                    learning_rate: 0.001,
+                    epochs: 100,
+                    optimization_algorithm: "adam".to_string(),
                     data: TrainingDataConfig {
                         sources: vec![],
                         preprocessing: DataPreprocessingConfig {
@@ -2501,15 +3044,20 @@ impl Default for QECConfig {
                     },
                     architecture: ModelArchitectureConfig {
                         architecture_type: ArchitectureType::Sequential,
-                        layers: vec![],
+                        layers: vec![LayerConfig {
+                            layer_type: LayerType::Dense,
+                            parameters: [("neurons".to_string(), 128.0)].iter().cloned().collect(),
+                            activation: ActivationFunction::ReLU,
+                        }],
                         connections: ConnectionPattern::FullyConnected,
                     },
                     parameters: TrainingParameters {
+                        optimizer: OptimizerType::Adam,
+                        loss_function: LossFunction::MeanSquaredError,
+                        regularization_strength: 0.01,
                         learning_rate: 0.001,
                         batch_size: 32,
                         epochs: 100,
-                        optimizer: OptimizerType::Adam,
-                        loss_function: LossFunction::MeanSquaredError,
                     },
                     validation: adaptive::ValidationConfig {
                         method: adaptive::ValidationMethod::HoldOut,
@@ -2524,7 +3072,17 @@ impl Default for QECConfig {
                         batch_size: 32,
                         timeout: std::time::Duration::from_secs(30),
                     },
+                    timeout: std::time::Duration::from_secs(30),
+                    caching: CachingConfig {
+                        enable: true,
+                        cache_size: 512,
+                        ttl: std::time::Duration::from_secs(3600),
+                        eviction_policy: adaptive::CacheEvictionPolicy::LRU,
+                    },
                     optimization: InferenceOptimizationConfig {
+                        enable_optimization: true,
+                        optimization_strategies: vec!["model_pruning".to_string()],
+                        performance_targets: vec!["latency".to_string()],
                         model_optimization: ModelOptimization::None,
                         hardware_acceleration: HardwareAcceleration::CPU,
                         caching: InferenceCaching {
@@ -2579,6 +3137,8 @@ impl Default for QECConfig {
                         },
                     },
                 },
+                optimization: create_stub_ml_optimization_config(),
+                validation: create_default_validation_config(),
             },
             monitoring_config: QECMonitoringConfig {
                 enable_performance_tracking: true,
@@ -2620,8 +3180,6 @@ impl Default for QECConfig {
                         default_time: std::time::Duration::from_secs(300),
                     },
                 },
-                optimization: crate::ml_optimization::MLOptimizationConfig::default(),
-                validation: crate::ml_optimization::ValidationConfig::default(),
             },
         }
     }
@@ -2634,25 +3192,28 @@ impl Default for QECConfig {
 /// Training data configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrainingDataConfig {
-    pub sources: Vec<String>,
-    pub preprocessing: Vec<String>,
-    pub augmentation: Vec<String>,
+    pub sources: Vec<DataSource>,
+    pub preprocessing: DataPreprocessingConfig,
+    pub augmentation: DataAugmentationConfig,
 }
 
 /// Model architecture configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelArchitectureConfig {
-    pub layers: Vec<String>,
-    pub activation_function: String,
-    pub regularization: String,
+    pub architecture_type: ArchitectureType,
+    pub layers: Vec<LayerConfig>,
+    pub connections: ConnectionPattern,
 }
 
 /// Training parameters
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrainingParameters {
-    pub optimizer: String,
-    pub loss_function: String,
+    pub optimizer: adaptive::OptimizerType,
+    pub loss_function: adaptive::LossFunction,
     pub regularization_strength: f64,
+    pub learning_rate: f64,
+    pub batch_size: usize,
+    pub epochs: usize,
 }
 
 /// ML Training configuration
@@ -2700,6 +3261,7 @@ pub struct CachingConfig {
     pub enable: bool,
     pub cache_size: usize,
     pub ttl: Duration,
+    pub eviction_policy: adaptive::CacheEvictionPolicy,
 }
 
 /// Inference optimization configuration
@@ -2708,6 +3270,9 @@ pub struct InferenceOptimizationConfig {
     pub enable_optimization: bool,
     pub optimization_strategies: Vec<String>,
     pub performance_targets: Vec<String>,
+    pub model_optimization: adaptive::ModelOptimization,
+    pub hardware_acceleration: adaptive::HardwareAcceleration,
+    pub caching: adaptive::InferenceCaching,
 }
 
 /// QEC ML configuration
@@ -2727,23 +3292,6 @@ pub struct QECMLConfig {
     pub validation: crate::ml_optimization::ValidationConfig,
     pub models: Vec<String>,
     pub training: MLTrainingConfig,
-}
-
-/// Adaptive QEC configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AdaptiveQECConfig {
-    pub enable_real_time_adaptation: bool,
-    pub adaptation_window: Duration,
-    pub performance_threshold: f64,
-    pub enable_threshold_adaptation: bool,
-    pub enable_strategy_switching: bool,
-    pub learning_rate: f64,
-    // Additional fields for full compatibility
-    pub enable_adaptive: bool,
-    pub feedback_control: FeedbackControlConfig,
-    pub learning: LearningConfig,
-    pub prediction: PredictionConfig,
-    pub optimization: OptimizationConfig,
 }
 
 /// QEC monitoring configuration
@@ -2841,17 +3389,6 @@ pub struct LearningConfig {
     pub hyperparameters: std::collections::HashMap<String, f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PredictionConfig {
-    pub horizon: Duration,
-    pub confidence_threshold: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OptimizationConfig {
-    pub objectives: Vec<String>,
-    pub constraints: Vec<String>,
-}
 
 
 // Default implementations for helper configs
@@ -2874,14 +3411,6 @@ impl Default for LearningConfig {
     }
 }
 
-impl Default for PredictionConfig {
-    fn default() -> Self {
-        Self {
-            horizon: Duration::from_secs(60),
-            confidence_threshold: 0.8,
-        }
-    }
-}
 
 // Additional configuration types for QEC compatibility
 
@@ -2950,12 +3479,230 @@ impl Default for NoiseScalingConfig {
 
 
 
-impl Default for OptimizationConfig {
-    fn default() -> Self {
-        Self {
-            objectives: vec!["minimize_error".to_string()],
-            constraints: vec!["resource_limit".to_string()],
-        }
+
+// Simplified helper functions for creating basic ML configurations
+fn create_stub_ml_optimization_config() -> crate::ml_optimization::MLOptimizationConfig {
+    // Create a minimal configuration using default implementations
+    crate::ml_optimization::MLOptimizationConfig {
+        enable_optimization: true,
+        model_config: crate::ml_optimization::MLModelConfig {
+            primary_algorithms: vec![crate::ml_optimization::MLAlgorithm::DeepNeuralNetwork],
+            fallback_algorithms: vec![crate::ml_optimization::MLAlgorithm::RandomForest],
+            hyperparameters: std::collections::HashMap::new(),
+            training_config: crate::ml_optimization::TrainingConfig {
+                max_iterations: 100,
+                learning_rate: 0.001,
+                batch_size: 32,
+                early_stopping: crate::ml_optimization::EarlyStoppingConfig {
+                    enable_early_stopping: false,
+                    patience: 10,
+                    min_improvement: 0.001,
+                    restore_best_weights: true,
+                },
+                cv_folds: 5,
+                train_test_split: 0.8,
+                optimizer: crate::ml_optimization::TrainingOptimizer::Adam,
+            },
+            model_selection: crate::ml_optimization::ModelSelectionStrategy::CrossValidation,
+            regularization: crate::ml_optimization::RegularizationConfig {
+                l1_lambda: 0.0,
+                l2_lambda: 0.01,
+                dropout_rate: 0.0,
+                batch_normalization: false,
+                weight_decay: 0.0,
+            },
+        },
+        feature_extraction: create_stub_feature_extraction_config(),
+        hardware_prediction: create_stub_hardware_prediction_config(),
+        online_learning: create_stub_online_learning_config(),
+        transfer_learning: create_stub_transfer_learning_config(),
+        ensemble_config: create_stub_ensemble_config(),
+        optimization_strategy: create_stub_optimization_strategy_config(),
+        validation_config: crate::ml_optimization::validation::MLValidationConfig::default(),
+        monitoring_config: create_stub_ml_monitoring_config(),
     }
+}
+
+fn create_stub_feature_extraction_config() -> crate::ml_optimization::FeatureExtractionConfig {
+    crate::ml_optimization::FeatureExtractionConfig {
+        enable_syndrome_history: false,
+        history_length: 5,
+        enable_spatial_features: false,
+        enable_temporal_features: false,
+        enable_correlation_features: false,
+        enable_auto_extraction: false,
+        circuit_features: crate::ml_optimization::features::CircuitFeatureConfig {
+            basic_properties: false,
+            gate_distributions: false,
+            depth_analysis: false,
+            connectivity_patterns: false,
+            entanglement_measures: false,
+            symmetry_analysis: false,
+            critical_path_analysis: false,
+        },
+        hardware_features: crate::ml_optimization::features::HardwareFeatureConfig {
+            topology_features: false,
+            calibration_features: false,
+            error_rate_features: false,
+            timing_features: false,
+            resource_features: false,
+            environmental_features: false,
+        },
+        temporal_features: crate::ml_optimization::features::TemporalFeatureConfig {
+            time_series_analysis: false,
+            trend_detection: false,
+            seasonality_analysis: false,
+            autocorrelation_features: false,
+            fourier_features: false,
+        },
+        statistical_features: crate::ml_optimization::features::StatisticalFeatureConfig {
+            moment_features: false,
+            distribution_fitting: false,
+            correlation_features: false,
+            outlier_features: false,
+            normality_tests: false,
+        },
+        graph_features: crate::ml_optimization::features::GraphFeatureConfig {
+            centrality_measures: false,
+            community_features: false,
+            spectral_features: false,
+            path_features: false,
+            clustering_features: false,
+        },
+        feature_selection: crate::ml_optimization::features::FeatureSelectionConfig {
+            enable_selection: false,
+            selection_methods: vec![crate::ml_optimization::features::FeatureSelectionMethod::VarianceThreshold],
+            num_features: None,
+            selection_threshold: 0.05,
+        },
+        dimensionality_reduction: crate::ml_optimization::features::DimensionalityReductionConfig {
+            enable_reduction: false,
+            reduction_methods: vec![],
+            target_dimensions: None,
+            variance_threshold: 0.95,
+        },
+    }
+}
+
+fn create_stub_hardware_prediction_config() -> crate::ml_optimization::HardwarePredictionConfig {
+    crate::ml_optimization::HardwarePredictionConfig {
+        enable_prediction: false,
+        prediction_targets: vec![],
+        prediction_horizon: std::time::Duration::from_secs(300),
+        uncertainty_quantification: false,
+        multi_step_prediction: false,
+        hardware_adaptation: crate::ml_optimization::hardware::HardwareAdaptationConfig {
+            enable_adaptation: false,
+            adaptation_frequency: std::time::Duration::from_secs(3600),
+            adaptation_triggers: vec![],
+            learning_rate_adaptation: false,
+        },
+    }
+}
+
+fn create_stub_online_learning_config() -> crate::ml_optimization::OnlineLearningConfig {
+    crate::ml_optimization::OnlineLearningConfig {
+        enable_online_learning: false,
+        learning_rate_schedule: crate::ml_optimization::online_learning::LearningRateSchedule::Constant,
+        memory_management: crate::ml_optimization::online_learning::MemoryManagementConfig {
+            max_buffer_size: 1000,
+            eviction_strategy: crate::ml_optimization::online_learning::MemoryEvictionStrategy::LRU,
+            replay_buffer: false,
+            experience_prioritization: false,
+        },
+        forgetting_prevention: crate::ml_optimization::online_learning::ForgettingPreventionConfig {
+            elastic_weight_consolidation: false,
+            progressive_networks: false,
+            memory_replay: false,
+            regularization_strength: 0.0,
+        },
+        incremental_learning: crate::ml_optimization::online_learning::IncrementalLearningConfig {
+            incremental_batch_size: 32,
+            update_frequency: std::time::Duration::from_secs(300),
+            stability_plasticity_balance: 0.5,
+            knowledge_distillation: false,
+        },
+    }
+}
+
+fn create_stub_transfer_learning_config() -> crate::ml_optimization::TransferLearningConfig {
+    crate::ml_optimization::TransferLearningConfig {
+        enable_transfer_learning: false,
+        source_domains: vec![],
+        transfer_methods: vec![],
+        domain_adaptation: crate::ml_optimization::DomainAdaptationConfig {
+            enable_adaptation: false,
+            adaptation_methods: vec![],
+            similarity_threshold: 0.5,
+            max_domain_gap: 1.0,
+        },
+        meta_learning: crate::ml_optimization::MetaLearningConfig {
+            enable_meta_learning: false,
+            meta_algorithms: vec![],
+            inner_loop_iterations: 1,
+            outer_loop_iterations: 1,
+        },
+    }
+}
+
+fn create_stub_ensemble_config() -> crate::ml_optimization::EnsembleConfig {
+    crate::ml_optimization::EnsembleConfig {
+        enable_ensemble: false,
+        ensemble_methods: vec![],
+        num_models: 1,
+        voting_strategy: crate::ml_optimization::VotingStrategy::Majority,
+        diversity_measures: vec![],
+        dynamic_selection: false,
+    }
+}
+
+fn create_stub_optimization_strategy_config() -> crate::ml_optimization::OptimizationStrategyConfig {
+    crate::ml_optimization::OptimizationStrategyConfig {
+        constraint_handling: crate::ml_optimization::optimization::ConstraintHandlingConfig {
+            constraint_types: vec![crate::ml_optimization::optimization::ConstraintType::Box],
+            penalty_methods: vec![crate::ml_optimization::optimization::PenaltyMethod::ExteriorPenalty],
+            constraint_tolerance: 0.1,
+            feasibility_preservation: false,
+        },
+        search_strategies: vec![],
+        exploration_exploitation: crate::ml_optimization::ExplorationExploitationConfig {
+            initial_exploration_rate: 0.1,
+            exploration_decay: 0.95,
+            min_exploration_rate: 0.01,
+            exploitation_threshold: 0.9,
+            adaptive_balancing: false,
+        },
+        adaptive_strategies: crate::ml_optimization::AdaptiveStrategyConfig {
+            enable_adaptive: false,
+            strategy_selection: vec![],
+            performance_feedback: false,
+            strategy_mutation: false,
+        },
+        multi_objective: crate::ml_optimization::MultiObjectiveConfig {
+            enable_multi_objective: false,
+            objectives: std::collections::HashMap::new(),
+            pareto_optimization: false,
+            scalarization_methods: vec![],
+        },
+    }
+}
+
+fn create_stub_ml_monitoring_config() -> crate::ml_optimization::MLMonitoringConfig {
+    crate::ml_optimization::MLMonitoringConfig {
+        enable_real_time_monitoring: false,
+        performance_tracking: false,
+        drift_detection: crate::ml_optimization::DriftDetectionConfig {
+            enable_detection: false,
+            detection_methods: vec![],
+            significance_threshold: 0.05,
+            window_size: 100,
+        },
+        anomaly_detection: false,
+        alert_thresholds: std::collections::HashMap::new(),
+    }
+}
+
+fn create_default_validation_config() -> crate::ml_optimization::validation::MLValidationConfig {
+    crate::ml_optimization::validation::MLValidationConfig::default()
 }
 

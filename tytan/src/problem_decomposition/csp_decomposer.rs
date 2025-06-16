@@ -695,9 +695,9 @@ mod tests {
 
         // Create simple CSP
         let mut variables = HashMap::new();
-        variables.insert("x0".to_string(), Domain_CSP { values: vec![0, 1] });
-        variables.insert("x1".to_string(), Domain_CSP { values: vec![0, 1] });
-        variables.insert("x2".to_string(), Domain_CSP { values: vec![0, 1] });
+        variables.insert("x0".to_string(), DomainCsp { values: vec![0, 1] });
+        variables.insert("x1".to_string(), DomainCsp { values: vec![0, 1] });
+        variables.insert("x2".to_string(), DomainCsp { values: vec![0, 1] });
 
         let constraints = vec![
             CSPConstraint {
@@ -737,7 +737,7 @@ mod tests {
         // Create CSP with disconnected constraint groups
         let mut variables = HashMap::new();
         for i in 0..5 {
-            variables.insert(format!("x{}", i), Domain_CSP { values: vec![0, 1] });
+            variables.insert(format!("x{}", i), DomainCsp { values: vec![0, 1] });
         }
 
         let constraints = vec![

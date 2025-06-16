@@ -483,8 +483,10 @@ pub enum MLModelType {
     RandomForest,
     GradientBoosting,
     SupportVectorMachine,
+    SupportVector, // Alias for SupportVectorMachine
     NeuralNetwork,
     GaussianProcess,
+    EnsembleMethod,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -154,6 +154,11 @@ impl CudaStream {
     pub fn get_handle(&self) -> Arc<Mutex<Option<CudaStreamHandle>>> {
         Arc::clone(&self.handle)
     }
+
+    pub fn get_handle_value(&self) -> Option<CudaStreamHandle> {
+        let handle = self.handle.lock().unwrap();
+        *handle
+    }
 }
 
 #[cfg(feature = "advanced_math")]

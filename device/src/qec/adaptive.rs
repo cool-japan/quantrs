@@ -29,6 +29,10 @@ pub struct AdaptiveQECConfig {
     pub realtime_optimization: RealtimeOptimizationConfig,
     /// Feedback control
     pub feedback_control: FeedbackControlConfig,
+    /// Prediction configuration
+    pub prediction: PredictionConfig,
+    /// Optimization configuration
+    pub optimization: OptimizationConfig,
 }
 
 /// Adaptation strategies for QEC
@@ -1313,4 +1317,40 @@ pub struct SuppressionRule {
     pub condition: String,
     /// Suppression duration
     pub duration: Duration,
+}
+
+/// Prediction configuration for adaptive QEC
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PredictionConfig {
+    /// Prediction horizon
+    pub horizon: Duration,
+    /// Confidence threshold
+    pub confidence_threshold: f64,
+}
+
+/// Optimization configuration for adaptive QEC
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OptimizationConfig {
+    /// Optimization objectives
+    pub objectives: Vec<String>,
+    /// Optimization constraints
+    pub constraints: Vec<String>,
+}
+
+impl Default for PredictionConfig {
+    fn default() -> Self {
+        Self {
+            horizon: Duration::from_secs(60),
+            confidence_threshold: 0.8,
+        }
+    }
+}
+
+impl Default for OptimizationConfig {
+    fn default() -> Self {
+        Self {
+            objectives: vec!["minimize_error_rate".to_string()],
+            constraints: vec!["hardware_connectivity".to_string()],
+        }
+    }
 }

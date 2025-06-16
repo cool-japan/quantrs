@@ -483,9 +483,9 @@ class TestUtilsIntegration:
         # GHZ and W states
         ghz = ghz_state(3)
         w = w_state(3)
-        # These should have some overlap but not be identical
+        # These states are orthogonal (no overlap)
         overlap = fidelity(ghz, w, 3)
-        assert 0.0 < overlap < 1.0
+        assert abs(overlap - 0.0) < 1e-10
     
     def test_entropy_with_quantum_states(self):
         """Test entropy calculations with quantum states."""
@@ -541,7 +541,7 @@ class TestEdgeCases:
         assert states == ['']  # Empty string for 0 qubits
         
         ghz_0 = ghz_state(0)
-        assert ghz_0 == {'': 1/math.sqrt(2), '': 1/math.sqrt(2)}  # Degenerate case
+        assert ghz_0 == {'': 1.0}  # Single basis state for 0 qubits
     
     def test_large_qubit_numbers(self):
         """Test with larger qubit numbers."""

@@ -154,19 +154,20 @@ impl CudaKernel {
             self.validate_launch_parameters(grid_size, block_size)?;
 
             // Get stream handle
-            let stream_handle = {
-                let handle = stream.get_handle().lock().unwrap();
-                *handle
-            };
+            let stream_handle = stream.get_handle_value();
 
             // Launch kernel
-            Self::cuda_launch_kernel(
-                function_handle,
-                grid_size,
-                block_size,
-                params,
-                stream_handle,
-            )?;
+            if let Some(handle) = stream_handle {
+                Self::cuda_launch_kernel(
+                    function_handle,
+                    grid_size,
+                    block_size,
+                    params,
+                    Some(handle),
+                )?;
+            } else {
+                return Err(SimulatorError::InvalidState("CUDA stream not initialized".to_string()));
+            }
         } else {
             return Err(SimulatorError::UnsupportedOperation(format!(
                 "Kernel '{}' not compiled",

@@ -81,7 +81,10 @@
 
 // Export modules
 pub mod adaptive_optimization;
+pub mod advanced_error_mitigation;
 pub mod advanced_performance_analysis;
+pub mod advanced_visualization;
+pub mod ai_assisted_optimization;
 pub mod analysis;
 pub mod applications;
 pub mod auto_array;
@@ -106,6 +109,7 @@ pub mod performance_optimization;
 pub mod performance_profiler;
 pub mod problem_decomposition;
 pub mod problem_dsl;
+pub mod quantum_advantage_analysis;
 pub mod quantum_annealing;
 pub mod quantum_error_correction;
 pub mod quantum_inspired_ml;
@@ -113,6 +117,7 @@ pub mod quantum_ml_integration;
 pub mod quantum_neural_networks;
 pub mod quantum_optimization_extensions;
 pub mod quantum_state_tomography;
+pub mod realtime_quantum_integration;
 pub mod sampler;
 pub mod sampler_framework;
 pub mod scirs_stub;
@@ -130,9 +135,17 @@ pub mod visual_problem_builder;
 pub mod visualization;
 
 // Re-export key types for convenience
+pub use advanced_error_mitigation::{
+    create_advanced_error_mitigation_manager, create_lightweight_error_mitigation_manager,
+    AdvancedErrorMitigationManager, ErrorMitigationConfig,
+};
 pub use advanced_performance_analysis::{
     create_comprehensive_analyzer, create_lightweight_analyzer, AdvancedPerformanceAnalyzer,
     AnalysisConfig,
+};
+pub use advanced_visualization::{
+    create_advanced_visualization_manager, create_lightweight_visualization_manager,
+    AdvancedVisualizationManager, VisualizationConfig,
 };
 pub use analysis::{calculate_diversity, cluster_solutions, visualize_energy_distribution};
 #[cfg(feature = "dwave")]

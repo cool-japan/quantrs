@@ -142,6 +142,7 @@ pub fn compile_to_qubo(ast: &AST, options: &CompilerOptions) -> Result<Array2<f6
 }
 
 /// Internal compiler state
+#[derive(Clone)]
 struct Compiler {
     options: CompilerOptions,
     registry: VariableRegistry,
@@ -176,7 +177,17 @@ impl Compiler {
                 self.parameters.insert(name.clone(), value.clone());
                 Ok(())
             }
-            _ => Ok(()), // TODO: Handle other declaration types
+            Declaration::Set { name, elements } => {
+                // Register set as parameter for later use in aggregations
+                self.parameters.insert(name.clone(), Value::Array(elements.clone()));
+                Ok(())
+            }
+            Declaration::Function { name, params, body } => {
+                // Store function definition for later expansion
+                // For now, treat as a complex parameter
+                self.parameters.insert(format!("func_{}", name), Value::String(format!("function_{}", name)));
+                Ok(())
+            }
         }
     }
 
@@ -276,12 +287,69 @@ impl Compiler {
             } => {
                 match op {
                     AggregationOp::Sum => {
-                        // TODO: Expand sum over index sets
-                        // For now, just a placeholder
-                        return Err(CompileError {
-                            message: "Aggregation not yet fully implemented".to_string(),
-                            context: "add_expression_to_qubo".to_string(),
-                        });
+                        // Expand sum over index sets
+                        for (var_name, set_name) in variables {
+                            // Clone the elements to avoid borrowing conflicts
+                            let elements = if let Some(Value::Array(elements)) = self.parameters.get(set_name) {
+                                elements.clone()
+                            } else {
+                                return Err(CompileError {
+                                    message: format!("Unknown set for aggregation: {}", set_name),
+                                    context: "add_expression_to_qubo".to_string(),
+                                });
+                            };
+
+                            // For each element in the set, substitute and add expression
+                            for (i, element) in elements.iter().enumerate() {
+                                // Create substituted expression
+                                let substituted_expr = {
+                                    let mut compiler = self.clone();
+                                    compiler.substitute_variable_in_expression(
+                                        expression, 
+                                        var_name, 
+                                        element, 
+                                        i
+                                    )?
+                                };
+                                let mut qubo_mut = qubo.clone();
+                                let mut compiler = self.clone();
+                                compiler.add_expression_to_qubo(&mut qubo_mut, &substituted_expr, coefficient)?;
+                                *qubo = qubo_mut;
+                            }
+                        }
+                    }
+                    AggregationOp::Product => {
+                        // Product expansion (multiply all terms)
+                        let mut product_expr = Expression::Literal(Value::Number(1.0));
+                        for (var_name, set_name) in variables {
+                            // Clone the elements to avoid borrowing conflicts
+                            let elements = if let Some(Value::Array(elements)) = self.parameters.get(set_name) {
+                                elements.clone()
+                            } else {
+                                continue; // Skip if set doesn't exist
+                            };
+
+                            for (i, element) in elements.iter().enumerate() {
+                                let substituted_expr = {
+                                    let mut compiler = self.clone();
+                                    compiler.substitute_variable_in_expression(
+                                        expression, 
+                                        var_name, 
+                                        element, 
+                                        i
+                                    )?
+                                };
+                                product_expr = Expression::BinaryOp {
+                                    op: BinaryOperator::Multiply,
+                                    left: Box::new(product_expr),
+                                    right: Box::new(substituted_expr),
+                                };
+                            }
+                        }
+                        let mut qubo_mut = qubo.clone();
+                        let mut compiler = self.clone();
+                        compiler.add_expression_to_qubo(&mut qubo_mut, &product_expr, coefficient)?;
+                        *qubo = qubo_mut;
                     }
                     _ => {
                         return Err(CompileError {
@@ -299,6 +367,49 @@ impl Compiler {
             }
         }
         Ok(())
+    }
+
+    fn substitute_variable_in_expression(
+        &mut self,
+        expr: &Expression,
+        var_name: &str,
+        value: &Value,
+        index: usize,
+    ) -> Result<Expression, CompileError> {
+        match expr {
+            Expression::Variable(name) if name == var_name => {
+                // Replace with indexed variable or direct substitution
+                match value {
+                    Value::Number(n) => {
+                        let indexed_name = format!("{}_{}", var_name, index);
+                        self.registry.register_variable(&indexed_name, VariableDomain::Binary);
+                        Ok(Expression::Variable(indexed_name))
+                    }
+                    _ => Ok(Expression::Literal(value.clone())),
+                }
+            }
+            Expression::Variable(name) => Ok(Expression::Variable(name.clone())),
+            Expression::BinaryOp { op, left, right } => {
+                let new_left = self.substitute_variable_in_expression(left, var_name, value, index)?;
+                let new_right = self.substitute_variable_in_expression(right, var_name, value, index)?;
+                Ok(Expression::BinaryOp {
+                    op: op.clone(),
+                    left: Box::new(new_left),
+                    right: Box::new(new_right),
+                })
+            }
+            Expression::IndexedVar { name, indices } => {
+                let new_indices = indices
+                    .iter()
+                    .map(|idx| self.substitute_variable_in_expression(idx, var_name, value, index))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(Expression::IndexedVar {
+                    name: name.clone(),
+                    indices: new_indices,
+                })
+            }
+            _ => Ok(expr.clone()),
+        }
     }
 
     fn add_constraint_penalty(
@@ -327,13 +438,43 @@ impl Compiler {
                             }
                         }
                     }
-                    ComparisonOp::LessEqual | ComparisonOp::GreaterEqual => {
-                        // Inequality constraints require slack variables
-                        // TODO: Implement slack variable handling
-                        return Err(CompileError {
-                            message: "Inequality constraints not yet fully implemented".to_string(),
-                            context: "add_constraint_penalty".to_string(),
-                        });
+                    ComparisonOp::LessEqual => {
+                        // For a <= b, add slack variable: a + s = b, where s >= 0
+                        let slack_name = format!("slack_{}", self.registry.num_vars);
+                        let slack_idx = self.registry.register_variable(&slack_name, VariableDomain::Binary);
+                        
+                        // Convert to equality: (a + s - b)^2
+                        let penalty_expr = Expression::BinaryOp {
+                            op: BinaryOperator::Subtract,
+                            left: Box::new(Expression::BinaryOp {
+                                op: BinaryOperator::Add,
+                                left: Box::new(left.clone()),
+                                right: Box::new(Expression::Variable(slack_name)),
+                            }),
+                            right: Box::new(right.clone()),
+                        };
+                        
+                        // Add squared penalty
+                        self.add_squared_penalty_to_qubo(qubo, &penalty_expr)?;
+                    }
+                    ComparisonOp::GreaterEqual => {
+                        // For a >= b, equivalent to b <= a
+                        let slack_name = format!("slack_{}", self.registry.num_vars);
+                        let slack_idx = self.registry.register_variable(&slack_name, VariableDomain::Binary);
+                        
+                        // Convert to equality: (b + s - a)^2
+                        let penalty_expr = Expression::BinaryOp {
+                            op: BinaryOperator::Subtract,
+                            left: Box::new(Expression::BinaryOp {
+                                op: BinaryOperator::Add,
+                                left: Box::new(right.clone()),
+                                right: Box::new(Expression::Variable(slack_name)),
+                            }),
+                            right: Box::new(left.clone()),
+                        };
+                        
+                        // Add squared penalty
+                        self.add_squared_penalty_to_qubo(qubo, &penalty_expr)?;
                     }
                     _ => {
                         return Err(CompileError {
@@ -348,6 +489,71 @@ impl Compiler {
                     message: "Complex constraints not yet supported".to_string(),
                     context: "add_constraint_penalty".to_string(),
                 });
+            }
+        }
+        Ok(())
+    }
+
+    fn add_squared_penalty_to_qubo(
+        &mut self,
+        qubo: &mut Array2<f64>,
+        expr: &Expression,
+    ) -> Result<(), CompileError> {
+        // For a squared penalty (expr)^2, we expand it and add to QUBO
+        // This is a simplified implementation for basic expressions
+        match expr {
+            Expression::Variable(name) => {
+                if let Some(&idx) = self.registry.var_indices.get(name) {
+                    qubo[[idx, idx]] += self.penalty_weight;
+                }
+            }
+            Expression::BinaryOp { op, left, right } => {
+                match op {
+                    BinaryOperator::Add => {
+                        // (a + b)^2 = a^2 + 2ab + b^2
+                        self.add_squared_penalty_to_qubo(qubo, left)?;
+                        self.add_squared_penalty_to_qubo(qubo, right)?;
+                        self.add_cross_term_penalty(qubo, left, right, 2.0)?;
+                    }
+                    BinaryOperator::Subtract => {
+                        // (a - b)^2 = a^2 - 2ab + b^2
+                        self.add_squared_penalty_to_qubo(qubo, left)?;
+                        self.add_squared_penalty_to_qubo(qubo, right)?;
+                        self.add_cross_term_penalty(qubo, left, right, -2.0)?;
+                    }
+                    _ => {
+                        return Err(CompileError {
+                            message: "Complex penalty expressions not yet supported".to_string(),
+                            context: "add_squared_penalty_to_qubo".to_string(),
+                        });
+                    }
+                }
+            }
+            _ => {
+                return Err(CompileError {
+                    message: "Unsupported penalty expression type".to_string(),
+                    context: "add_squared_penalty_to_qubo".to_string(),
+                });
+            }
+        }
+        Ok(())
+    }
+
+    fn add_cross_term_penalty(
+        &mut self,
+        qubo: &mut Array2<f64>,
+        left: &Expression,
+        right: &Expression,
+        coefficient: f64,
+    ) -> Result<(), CompileError> {
+        if let (Expression::Variable(v1), Expression::Variable(v2)) = (left, right) {
+            if let (Some(&idx1), Some(&idx2)) = (
+                self.registry.var_indices.get(v1),
+                self.registry.var_indices.get(v2),
+            ) {
+                let penalty = self.penalty_weight * coefficient;
+                qubo[[idx1, idx2]] += penalty / 2.0;
+                qubo[[idx2, idx1]] += penalty / 2.0;
             }
         }
         Ok(())

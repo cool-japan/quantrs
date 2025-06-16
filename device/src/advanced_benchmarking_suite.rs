@@ -1218,6 +1218,10 @@ impl AdvancedHardwareBenchmarkSuite {
         }
 
         let n_samples = features.len();
+        if n_samples == 0 {
+            // Return empty feature matrix if no results
+            return Ok(Array2::zeros((0, 0)));
+        }
         let n_features = features[0].len();
         let flat_features: Vec<f64> = features.into_iter().flatten().collect();
 

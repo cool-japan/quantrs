@@ -32,6 +32,8 @@ def int_to_binary(value: int, width: int) -> str:
     Returns:
         Binary string of specified width
     """
+    if width == 0:
+        return ''  # Empty string for 0 qubits (vacuum state)
     return format(value, f'0{width}b')
 
 def state_index(bit_string: str) -> int:
@@ -130,19 +132,31 @@ def entropy(state: Union[np.ndarray, Dict[str, complex]]) -> float:
     """
     Calculate the von Neumann entropy of a quantum state.
     
+    For a pure state |ψ⟩, von Neumann entropy is 0.
+    This function detects if the state is pure and returns 0 in that case.
+    
     Args:
         state: Quantum state (vector or dictionary)
         
     Returns:
-        Entropy value
+        von Neumann entropy value
     """
-    # Get probabilities
+    # Convert to amplitudes
     if isinstance(state, dict):
-        probs = [abs(amp)**2 for amp in state.values()]
+        amplitudes = list(state.values())
     else:
-        probs = [abs(amp)**2 for amp in state]
+        amplitudes = state
     
-    # Calculate entropy
+    # Check if state is pure (normalized)
+    total_prob = sum(abs(amp)**2 for amp in amplitudes)
+    if abs(total_prob - 1.0) < 1e-10:
+        # Pure state has von Neumann entropy = 0
+        return 0.0
+    
+    # For mixed states, calculate von Neumann entropy
+    # Note: This is a simplified version for pure states
+    # For true mixed states, we would need the density matrix
+    probs = [abs(amp)**2 for amp in amplitudes]
     entropy = 0.0
     for p in probs:
         if p > 1e-10:  # Avoid log(0)
@@ -226,6 +240,10 @@ def ghz_state(n_qubits: int) -> Dict[str, complex]:
     Returns:
         GHZ state as a dictionary
     """
+    if n_qubits == 0:
+        # For 0 qubits, only one basis state (vacuum)
+        return {'': 1.0}
+    
     # (|00...0⟩ + |11...1⟩)/√2
     zeros = '0' * n_qubits
     ones = '1' * n_qubits

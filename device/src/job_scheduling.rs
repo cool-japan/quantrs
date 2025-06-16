@@ -698,6 +698,12 @@ impl QuantumJobScheduler {
         Ok(())
     }
 
+    /// Get list of available backends
+    pub fn get_available_backends(&self) -> Vec<HardwareBackend> {
+        let backends = self.backends.read().unwrap();
+        backends.iter().cloned().collect()
+    }
+
     /// Submit a quantum job for execution
     pub async fn submit_job<const N: usize>(
         &self,
