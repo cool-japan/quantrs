@@ -3,8 +3,9 @@
 //! This module provides efficient GPU memory allocation, pooling,
 //! and management for quantum state vectors and operations.
 
-use std::collections::HashMap;
 use num_complex::Complex64;
+#[cfg(feature = "advanced_math")]
+use std::collections::HashMap;
 
 use crate::error::{Result, SimulatorError};
 

@@ -2094,11 +2094,19 @@ impl LoadBalancer for CapabilityBasedBalancer {
         available_nodes
             .iter()
             .find(|node| {
-                node.capabilities.max_qubits >= requirements.qubits_needed &&
-                node.capabilities.gate_fidelities.values().all(|&fidelity| fidelity >= 0.999) // Default threshold (equivalent to error rate <= 0.001)
+                node.capabilities.max_qubits >= requirements.qubits_needed
+                    && node
+                        .capabilities
+                        .gate_fidelities
+                        .values()
+                        .all(|&fidelity| fidelity >= 0.999) // Default threshold (equivalent to error rate <= 0.001)
             })
             .map(|node| node.node_id.clone())
-            .ok_or_else(|| DistributedComputationError::NodeSelectionFailed("No suitable node found".to_string()))
+            .ok_or_else(|| {
+                DistributedComputationError::NodeSelectionFailed(
+                    "No suitable node found".to_string(),
+                )
+            })
     }
 
     async fn update_node_metrics(

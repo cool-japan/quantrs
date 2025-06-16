@@ -17,7 +17,6 @@
 
 use ndarray::{Array1, Array2, Array3};
 use rand::{thread_rng, Rng};
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 

@@ -93,7 +93,7 @@ impl EnergyLandscape {
 
         let bin_width = (max_energy - min_energy) / self.config.bins as f64;
         let mut bins = vec![0; self.config.bins];
-        let bin_centers = Vec::new();
+        let mut bin_centers = Vec::new();
 
         for i in 0..self.config.bins {
             bin_centers.push(min_energy + (i as f64 + 0.5) * bin_width);
@@ -167,7 +167,7 @@ impl EnergyLandscape {
         }
 
         // Get all variable names
-        let all_vars = std::collections::HashSet::new();
+        let mut all_vars = std::collections::HashSet::new();
         for sample in &self.samples {
             for var in sample.assignments.keys() {
                 all_vars.insert(var.clone());
@@ -179,7 +179,7 @@ impl EnergyLandscape {
         let n_samples = self.samples.len();
 
         // Create binary matrix
-        let matrix = Array2::zeros((n_samples, n_vars));
+        let mut matrix = Array2::zeros((n_samples, n_vars));
 
         for (i, sample) in self.samples.iter().enumerate() {
             for (j, var_name) in var_names.iter().enumerate() {
@@ -212,7 +212,7 @@ impl EnergyLandscape {
             // Simple centering and truncation
             let n_samples = data.nrows();
             let n_features = n_components.min(data.ncols());
-            let result = Array2::zeros((n_samples, n_components));
+            let mut result = Array2::zeros((n_samples, n_components));
 
             // Center the data
             let means = data.mean_axis(ndarray::Axis(0)).unwrap();
@@ -236,10 +236,10 @@ impl EnergyLandscape {
         use rand::{Rng, SeedableRng};
 
         let n_features = data.ncols();
-        let rng = StdRng::seed_from_u64(42);
+        let mut rng = StdRng::seed_from_u64(42);
 
         // Generate random projection matrix
-        let proj_matrix = Array2::<f64>::zeros((n_features, n_components));
+        let mut proj_matrix = Array2::<f64>::zeros((n_features, n_components));
         for i in 0..n_features {
             for j in 0..n_components {
                 proj_matrix[[i, j]] = rng.random_range(-1.0..1.0);
@@ -271,7 +271,7 @@ impl EnergyLandscape {
         let n_samples = data.nrows();
 
         // Find best solution
-        let best_idx = self
+        let mut best_idx = self
             .samples
             .iter()
             .enumerate()
@@ -279,10 +279,10 @@ impl EnergyLandscape {
             .map(|(i, _)| i)
             .unwrap_or(0);
 
-        let best_solution = data.row(best_idx);
+        let mut best_solution = data.row(best_idx);
 
         // Calculate Hamming distances
-        let result = Array2::zeros((n_samples, 2));
+        let mut result = Array2::zeros((n_samples, 2));
 
         for i in 0..n_samples {
             let hamming_dist: f64 = data
@@ -318,9 +318,9 @@ impl EnergyLandscape {
         let x_range = x_max - x_min;
         let y_range = y_max - y_min;
 
-        let grid_x = Vec::new();
-        let grid_y = Vec::new();
-        let grid_density = Vec::new();
+        let mut grid_x = Vec::new();
+        let mut grid_y = Vec::new();
+        let mut grid_density = Vec::new();
 
         for i in 0..self.config.resolution {
             for j in 0..self.config.resolution {
@@ -383,8 +383,8 @@ pub fn plot_energy_landscape(
     samples: Vec<SampleResult>,
     config: Option<EnergyLandscapeConfig>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let config = config.unwrap_or_default();
-    let landscape = EnergyLandscape::new(config);
+    let mut config = config.unwrap_or_default();
+    let mut landscape = EnergyLandscape::new(config);
     landscape.add_samples(samples);
 
     #[cfg(feature = "scirs")]
@@ -451,7 +451,7 @@ fn export_landscape_data(
         timestamp: std::time::SystemTime::now(),
     };
 
-    let json = serde_json::to_string_pretty(&export)?;
+    let mut json = serde_json::to_string_pretty(&export)?;
     std::fs::write(path, json)?;
 
     Ok(())

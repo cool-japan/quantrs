@@ -955,7 +955,7 @@ impl VisualProblemBuilder {
         expression: ObjectiveExpression,
         direction: OptimizationDirection,
     ) -> Result<(), String> {
-        let objective = VisualObjective {
+        let mut objective = VisualObjective {
             id: "objective_0".to_string(),
             name: name.to_string(),
             objective_type: match &expression {
@@ -1048,7 +1048,7 @@ impl VisualProblemBuilder {
     //     let ast = self.build_ast()?;
     //
     //     // Use existing compiler to generate QUBO
-    //     let compiler = Compiler::new(ast);
+    //     let mut compiler = Compiler::new(ast);
     //     compiler.generate_qubo()
     // }
     /// Undo last action
@@ -1105,8 +1105,8 @@ impl VisualProblemBuilder {
     // TODO: Fix AST building - requires proper access to compiler internals
     // /// Convert visual problem to DSL AST
     // fn build_ast(&self) -> Result<AST, String> {
-    //     let variables = Vec::new();
-    //     let constraints = Vec::new();
+    //     let mut variables = Vec::new();
+    //     let mut constraints = Vec::new();
     //
     //     // Convert variables
     //     for var in &self.problem.variables {
@@ -1141,7 +1141,7 @@ impl VisualProblemBuilder {
     //     }
     //
     //     // Build objective
-    //     let objective = if let Some(obj) = &self.problem.objective {
+    //     let mut objective = if let Some(obj) = &self.problem.objective {
     //         match &obj.expression {
     //             ObjectiveExpression::Linear { coefficients, constant } => {
     //                 // Build linear expression
@@ -1233,7 +1233,7 @@ impl VisualProblemBuilder {
                             let dy = positions[idx1].1 - positions[idx2].1;
                             let dist = (dx * dx + dy * dy).sqrt().max(1.0);
 
-                            let force = 0.1 * dist;
+                            let mut force = 0.1 * dist;
                             let fx = force * dx / dist;
                             let fy = force * dy / dist;
 
@@ -1403,7 +1403,7 @@ impl CodeGenerator {
 
     /// Get default templates
     fn default_templates() -> HashMap<ExportFormat, CodeTemplate> {
-        let templates = HashMap::new();
+        let mut templates = HashMap::new();
 
         templates.insert(
             ExportFormat::Python,
@@ -1505,7 +1505,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {{
             .get(&ExportFormat::Python)
             .ok_or("Python template not found")?;
 
-        let code = template.template.clone();
+        let mut code = template.template.clone();
 
         // Generate variables
         let variables_code = problem
@@ -1585,7 +1585,7 @@ for r in result:
             .get(&ExportFormat::Rust)
             .ok_or("Rust template not found")?;
 
-        let code = template.template.clone();
+        let mut code = template.template.clone();
 
         // Generate variables
         let variables_code = problem
@@ -1610,7 +1610,7 @@ for r in result:
     let solver = SASampler::new(None);
     
     // Solve
-    let result = solver.run_qubo(&qubo, 100)?;
+    let mut result = solver.run_qubo(&qubo, 100)?;
     
     // Display results
     for r in &result {
@@ -1693,8 +1693,8 @@ mod tests {
 
     #[test]
     fn test_visual_problem_builder() {
-        let config = BuilderConfig::default();
-        let builder = VisualProblemBuilder::new(config);
+        let mut config = BuilderConfig::default();
+        let mut builder = VisualProblemBuilder::new(config);
 
         // Create new problem
         builder.new_problem("Test Problem").unwrap();
@@ -1742,7 +1742,7 @@ mod tests {
         assert_eq!(builder.problem.constraints.len(), 1);
 
         // Set objective
-        let coefficients = HashMap::new();
+        let mut coefficients = HashMap::new();
         coefficients.insert(var1_id.clone(), 1.0);
         coefficients.insert(var2_id.clone(), 2.0);
 
@@ -1772,14 +1772,14 @@ mod tests {
         assert!(python_code.contains("SASampler"));
 
         // Test JSON export
-        let json = builder.save_problem().unwrap();
+        let mut json = builder.save_problem().unwrap();
         assert!(json.contains("Test Problem"));
     }
 
     #[test]
     fn test_validation() {
-        let validator = ProblemValidator::new();
-        let problem = VisualProblem::new();
+        let mut validator = ProblemValidator::new();
+        let mut problem = VisualProblem::new();
 
         // Empty problem should have errors
         let errors = validator.validate(&problem).unwrap();

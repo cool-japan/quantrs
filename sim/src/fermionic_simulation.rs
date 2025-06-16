@@ -4,16 +4,13 @@
 //! including Jordan-Wigner transformations, fermionic operators, and specialized
 //! algorithms for electronic structure and many-body fermionic systems.
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
+use ndarray::{Array1, Array2, Array3};
 use num_complex::Complex64;
-use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::error::{Result, SimulatorError};
 use crate::pauli::{PauliOperator, PauliOperatorSum, PauliString};
 use crate::scirs2_integration::SciRS2Backend;
-use crate::statevector::StateVectorSimulator;
 
 /// Fermionic creation and annihilation operators
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

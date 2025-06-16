@@ -9,7 +9,6 @@ use std::fmt;
 
 use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
 use num_complex::Complex64;
-use rayon::prelude::*;
 
 use crate::adaptive_gate_fusion::QuantumGate;
 use crate::error::{Result, SimulatorError};

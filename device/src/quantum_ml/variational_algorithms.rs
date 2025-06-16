@@ -304,7 +304,7 @@ impl VQE {
         let mut counts = std::collections::HashMap::new();
         counts.insert("0".repeat(circuit.num_qubits()), shots / 2);
         counts.insert("1".repeat(circuit.num_qubits()), shots / 2);
-        
+
         Ok(CircuitResult {
             counts,
             shots,
@@ -533,7 +533,9 @@ impl QAOA {
 
         // Measure cost Hamiltonian expectation
         let device = self.device.read().await;
-        let result = Self::execute_circuit_helper(&*device, &circuit, self.config.shots_per_evaluation).await?;
+        let result =
+            Self::execute_circuit_helper(&*device, &circuit, self.config.shots_per_evaluation)
+                .await?;
 
         self.compute_hamiltonian_expectation(&self.problem.cost_hamiltonian, &result)
     }
@@ -708,7 +710,7 @@ impl QAOA {
         let mut counts = std::collections::HashMap::new();
         counts.insert("0".repeat(circuit.num_qubits()), shots / 2);
         counts.insert("1".repeat(circuit.num_qubits()), shots / 2);
-        
+
         Ok(CircuitResult {
             counts,
             shots,
@@ -980,7 +982,13 @@ pub fn create_molecular_vqe(
     let optimizer = Box::new(AdamOptimizer::new(0.01));
     let config = VQEConfig::default();
 
-    Ok(VQE::new(device, hamiltonian, Box::new(ansatz), optimizer, config))
+    Ok(VQE::new(
+        device,
+        hamiltonian,
+        Box::new(ansatz),
+        optimizer,
+        config,
+    ))
 }
 
 /// Molecular Hamiltonian representation

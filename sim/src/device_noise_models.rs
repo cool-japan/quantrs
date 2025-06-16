@@ -6,15 +6,12 @@
 //! computing platforms. It integrates with SciRS2 for high-performance
 //! noise simulation and calibration data analysis.
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 
 use crate::error::{Result, SimulatorError};
-use crate::noise::NoiseChannel;
 use crate::scirs2_integration::SciRS2Backend;
 
 /// Device types supported for noise modeling

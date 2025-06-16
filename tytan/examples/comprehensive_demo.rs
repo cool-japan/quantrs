@@ -51,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Demonstrate problem DSL
 fn demo_problem_dsl() -> Result<(), Box<dyn std::error::Error>> {
-    let dsl = ProblemDSL::new();
+    let mut dsl = ProblemDSL::new();
 
     // Define a graph coloring problem
     let problem_code = r#"
@@ -98,14 +98,14 @@ fn demo_problem_dsl() -> Result<(), Box<dyn std::error::Error>> {
 fn demo_advanced_algorithms() -> Result<(), Box<dyn std::error::Error>> {
     // Create a simple optimization problem
     let qubo = array![[0.0, -1.0, 0.5], [-1.0, 0.0, -0.5], [0.5, -0.5, 0.0]];
-    let var_map = HashMap::new();
+    let mut var_map = HashMap::new();
     var_map.insert("x".to_string(), 0);
     var_map.insert("y".to_string(), 1);
     var_map.insert("z".to_string(), 2);
 
     // 1. Coherent Ising Machine
     println!("  a. Coherent Ising Machine");
-    let cim = CIMSimulator::new(3)
+    let mut cim = CIMSimulator::new(3)
         .with_pump_parameter(2.0)
         .with_evolution_time(10.0)
         .with_noise_strength(0.05)
@@ -131,7 +131,7 @@ fn demo_advanced_algorithms() -> Result<(), Box<dyn std::error::Error>> {
     println!("  c. Topological Optimization");
     use crate::topological_optimization::*;
 
-    let topo_solver = TopologicalOptimizer::new(3, AnyonType::Fibonacci);
+    let mut topo_solver = TopologicalOptimizer::new(3, AnyonType::Fibonacci);
 
     println!("    ✓ Initialized topological optimizer");
 
@@ -142,7 +142,7 @@ fn demo_advanced_algorithms() -> Result<(), Box<dyn std::error::Error>> {
 fn demo_problem_decomposition() -> Result<(), Box<dyn std::error::Error>> {
     // Create a larger problem for decomposition
     let size = 20;
-    let large_qubo = ndarray::Array2::zeros((size, size));
+    let mut large_qubo = ndarray::Array2::zeros((size, size));
 
     // Add some structure
     for i in 0..size {
@@ -155,15 +155,15 @@ fn demo_problem_decomposition() -> Result<(), Box<dyn std::error::Error>> {
 
     // Problem decomposition capabilities
     println!("  a. Graph Partitioning");
-    let partitioner = GraphPartitioner::new()
+    let mut partitioner = GraphPartitioner::new()
         .with_algorithm(PartitioningAlgorithm::Multilevel)
         .with_num_partitions(4);
     println!("    ✓ Configured graph partitioner");
 
     // Hierarchical solving
     println!("  b. Hierarchical Solving");
-    let sampler = SASampler::new(None);
-    let hierarchical = HierarchicalSolver::new(sampler);
+    let mut sampler = SASampler::new(None);
+    let mut hierarchical = HierarchicalSolver::new(sampler);
     println!("    ✓ Configured hierarchical solver");
 
     // Domain decomposition
@@ -187,7 +187,7 @@ fn demo_industry_applications() -> Result<(), Box<dyn std::error::Error>> {
         [0.002, 0.001, 0.002, 0.001, 0.015]
     ];
 
-    let optimizer = PortfolioOptimizer::new(returns, covariance, 2.0)?;
+    let mut optimizer = PortfolioOptimizer::new(returns, covariance, 2.0)?;
     println!("    ✓ Generated portfolio optimizer");
 
     // Logistics optimization
@@ -195,15 +195,15 @@ fn demo_industry_applications() -> Result<(), Box<dyn std::error::Error>> {
     use crate::applications::logistics::*;
 
     // Create a simple VRP optimizer example
-    let distance_matrix = Array2::from_shape_vec(
+    let mut distance_matrix = Array2::from_shape_vec(
         (4, 4),
         vec![
             0.0, 1.0, 1.4, 1.0, 1.0, 0.0, 1.0, 1.4, 1.4, 1.0, 0.0, 1.0, 1.0, 1.4, 1.0, 0.0,
         ],
     )?;
-    let demands = Array1::from_vec(vec![0.0, 10.0, 15.0, 20.0]); // depot has 0 demand
+    let mut demands = Array1::from_vec(vec![0.0, 10.0, 15.0, 20.0]); // depot has 0 demand
 
-    let vrp_optimizer = VehicleRoutingOptimizer::new(
+    let mut vrp_optimizer = VehicleRoutingOptimizer::new(
         distance_matrix,
         30.0, // vehicle capacity
         demands,
@@ -225,7 +225,7 @@ fn demo_industry_applications() -> Result<(), Box<dyn std::error::Error>> {
 fn demo_development_tools() -> Result<(), Box<dyn std::error::Error>> {
     // Create test problem
     let qubo = array![[0.0, -1.0], [-1.0, 0.0]];
-    let var_map = HashMap::new();
+    let mut var_map = HashMap::new();
     var_map.insert("a".to_string(), 0);
     var_map.insert("b".to_string(), 1);
 
@@ -242,7 +242,7 @@ fn demo_development_tools() -> Result<(), Box<dyn std::error::Error>> {
 
     // Simulate some work
     profile!(profiler, "solve_qubo");
-    let sampler = SASampler::new(Some(42));
+    let mut sampler = SASampler::new(Some(42));
     let results = sampler.run_qubo(&(qubo.clone(), var_map.clone()), 100)?;
 
     let profile = profiler.stop_profile()?;
@@ -266,7 +266,7 @@ fn demo_development_tools() -> Result<(), Box<dyn std::error::Error>> {
         num_variables: 2,
         var_map: var_map.clone(),
         reverse_var_map: {
-            let rev = HashMap::new();
+            let mut rev = HashMap::new();
             for (k, v) in &var_map {
                 rev.insert(*v, k.clone());
             }
@@ -357,7 +357,7 @@ fn demo_gpu_acceleration() -> Result<(), Box<dyn std::error::Error>> {
             println!("    ✓ GPU acceleration available");
 
             // Create GPU sampler
-            let gpu_sampler = GPUSampler::new()?.with_device(0).with_workgroup_size(256);
+            let mut gpu_sampler = GPUSampler::new()?.with_device(0).with_workgroup_size(256);
 
             println!("    ✓ Created GPU sampler");
 
@@ -393,7 +393,7 @@ fn demo_complete_workflow() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Complete workflow: Portfolio Optimization");
 
     // 1. Define problem with DSL
-    let dsl = ProblemDSL::new();
+    let mut dsl = ProblemDSL::new();
     let problem = dsl.parse(
         r#"
         param n_assets = 5;
@@ -419,12 +419,12 @@ fn demo_complete_workflow() -> Result<(), Box<dyn std::error::Error>> {
     println!("    ✓ Defined portfolio optimization problem");
 
     // 2. Apply problem decomposition
-    let base_sampler = SASampler::new(Some(42));
-    let decomposer = HierarchicalSolver::new(base_sampler);
+    let mut base_sampler = SASampler::new(Some(42));
+    let mut decomposer = HierarchicalSolver::new(base_sampler);
     println!("    ✓ Applied hierarchical decomposition");
 
     // 3. Profile the solving process
-    let profiler = PerformanceProfiler::new(ProfilerConfig::default());
+    let mut profiler = PerformanceProfiler::new(ProfilerConfig::default());
     profiler.start_profile("portfolio_optimization")?;
 
     // 4. Solve with multiple algorithms
@@ -434,7 +434,7 @@ fn demo_complete_workflow() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     let mut best_solution: Option<HashMap<String, bool>> = None;
-    let best_energy = f64::INFINITY;
+    let mut best_energy = f64::INFINITY;
 
     for (name, sampler) in algorithms {
         println!("    → Solving with {}", name);

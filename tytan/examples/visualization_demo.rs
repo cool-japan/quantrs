@@ -63,7 +63,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn create_max_cut_problem() -> MaxCutProblem {
     // Create a simple graph with 6 nodes
     let n_nodes = 6;
-    let adjacency = Array2::<f64>::zeros((n_nodes, n_nodes));
+    let mut adjacency = Array2::<f64>::zeros((n_nodes, n_nodes));
 
     // Add edges (symmetric)
     let edges = vec![
@@ -83,7 +83,7 @@ fn create_max_cut_problem() -> MaxCutProblem {
     }
 
     // Convert to QUBO
-    let qubo = Array2::<f64>::zeros((n_nodes, n_nodes));
+    let mut qubo = Array2::<f64>::zeros((n_nodes, n_nodes));
 
     // Max-Cut QUBO: minimize -sum_{(i,j) in E} w_ij * (x_i + x_j - 2*x_i*x_j)
     for i in 0..n_nodes {
@@ -101,7 +101,7 @@ fn create_max_cut_problem() -> MaxCutProblem {
     }
 
     // Create variable map
-    let var_map = HashMap::new();
+    let mut var_map = HashMap::new();
     for i in 0..n_nodes {
         var_map.insert(format!("x_{}", i), i);
     }
@@ -119,7 +119,7 @@ fn create_max_cut_problem() -> MaxCutProblem {
 
 /// Solve the problem
 fn solve_problem(problem: &MaxCutProblem) -> Result<Vec<SampleResult>, Box<dyn std::error::Error>> {
-    let solver = SASampler::new(None);
+    let mut solver = SASampler::new(None);
     let qubo_dyn = problem.qubo.clone().into_dyn();
     let samples = solver.run_hobo(&(qubo_dyn, problem.var_map.clone()), 500)?;
     Ok(samples)
@@ -136,7 +136,7 @@ fn visualize_energy_landscape(samples: &[SampleResult]) -> Result<(), Box<dyn st
         energy_limits: None,
     };
 
-    let landscape = EnergyLandscape::new(config);
+    let mut landscape = EnergyLandscape::new(config);
     landscape.add_samples(samples.to_vec());
 
     // Generate energy histogram
@@ -179,7 +179,7 @@ fn visualize_energy_landscape(samples: &[SampleResult]) -> Result<(), Box<dyn st
             metadata: HashMap::new(),
         };
 
-        let exporter = VisualizationExporter::new(ExportFormat::JSON);
+        let mut exporter = VisualizationExporter::new(ExportFormat::JSON);
         exporter.export_energy_landscape(&export_data, "energy_landscape.json")?;
         println!("Energy landscape exported to energy_landscape.json");
     }
@@ -200,7 +200,7 @@ fn analyze_solution_distribution(
         distance_metric: quantrs2_tytan::visualization::solution_analysis::DistanceMetric::Hamming,
     };
 
-    let analyzer = SolutionDistribution::new(config);
+    let mut analyzer = SolutionDistribution::new(config);
     analyzer.add_samples(samples.to_vec());
 
     let analysis = analyzer.analyze()?;
@@ -251,11 +251,11 @@ fn visualize_convergence(samples: &[SampleResult]) -> Result<(), Box<dyn std::er
         show_bounds: false,
     };
 
-    let plotter = ConvergencePlot::new(config);
+    let mut plotter = ConvergencePlot::new(config);
 
     // Simulate convergence by sorting samples by discovery order
-    let objectives = Vec::new();
-    let best_so_far = f64::INFINITY;
+    let mut objectives = Vec::new();
+    let mut best_so_far = f64::INFINITY;
 
     for (i, sample) in samples.iter().enumerate() {
         best_so_far = best_so_far.min(sample.energy);
@@ -320,7 +320,7 @@ fn visualize_max_cut_solution(
         node_names: Some(problem.node_names.clone()),
     };
 
-    let visualizer = ProblemVisualizer::new(problem_type, config);
+    let mut visualizer = ProblemVisualizer::new(problem_type, config);
     visualizer.add_samples(samples.to_vec());
 
     // Find best solution
@@ -330,7 +330,7 @@ fn visualize_max_cut_solution(
         .unwrap();
 
     // Extract partition
-    let partition = Vec::new();
+    let mut partition = Vec::new();
     for i in 0..problem.node_names.len() {
         let var_name = format!("x_{}", i);
         partition.push(
@@ -343,7 +343,7 @@ fn visualize_max_cut_solution(
     }
 
     // Calculate cut weight
-    let cut_weight = 0.0;
+    let mut cut_weight = 0.0;
     for i in 0..problem.node_names.len() {
         for j in i + 1..problem.node_names.len() {
             if problem.adjacency[[i, j]] > 0.0 && partition[i] != partition[j] {
@@ -397,7 +397,7 @@ fn visualize_max_cut_solution(
 fn export_visualization_data(samples: &[SampleResult]) -> Result<(), Box<dyn std::error::Error>> {
     // Export sample data as CSV
     use std::io::Write;
-    let csv_file = std::fs::File::create("samples.csv")?;
+    let mut csv_file = std::fs::File::create("samples.csv")?;
 
     // Write header
     writeln!(csv_file, "sample_id,energy,num_variables")?;

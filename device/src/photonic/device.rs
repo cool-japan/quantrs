@@ -660,16 +660,25 @@ mod tests {
 
     #[tokio::test]
     async fn test_photonic_device_creation() {
-        let client = PhotonicClient::new("http://localhost:8080".to_string(), "test_token".to_string()).unwrap();
+        let client = PhotonicClient::new(
+            "http://localhost:8080".to_string(),
+            "test_token".to_string(),
+        )
+        .unwrap();
         let config = PhotonicDeviceConfig::default();
 
-        let device = PhotonicQuantumDeviceImpl::new("test_device".to_string(), client, config).await;
+        let device =
+            PhotonicQuantumDeviceImpl::new("test_device".to_string(), client, config).await;
         assert!(device.is_ok());
     }
 
     #[tokio::test]
     async fn test_device_properties() {
-        let client = PhotonicClient::new("http://localhost:8080".to_string(), "test_token".to_string()).unwrap();
+        let client = PhotonicClient::new(
+            "http://localhost:8080".to_string(),
+            "test_token".to_string(),
+        )
+        .unwrap();
         let config = PhotonicDeviceConfig::default();
         let device = PhotonicQuantumDeviceImpl::new("test_device".to_string(), client, config)
             .await
@@ -682,7 +691,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_capabilities() {
-        let client = PhotonicClient::new("http://localhost:8080".to_string(), "test_token".to_string()).unwrap();
+        let client = PhotonicClient::new(
+            "http://localhost:8080".to_string(),
+            "test_token".to_string(),
+        )
+        .unwrap();
         let config = PhotonicDeviceConfig::default();
         let device = PhotonicQuantumDeviceImpl::new("test_device".to_string(), client, config)
             .await

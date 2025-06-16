@@ -4,7 +4,6 @@
 //! adaptive strategies, and performance optimization settings.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 use crate::error::{Result, SimulatorError};
 

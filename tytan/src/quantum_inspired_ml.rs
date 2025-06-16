@@ -93,13 +93,13 @@ impl QuantumSVM {
         let (qubo, var_map) = self.create_svm_qubo(&k_matrix, y)?;
 
         // Solve using quantum sampler
-        let results = sampler
+        let mut results = sampler
             .run_qubo(&(qubo, var_map.clone()), 100)
             .map_err(|e| format!("Sampling error: {:?}", e))?;
 
         if let Some(best) = results.first() {
             // Extract alphas from solution
-            let alphas = self.decode_alphas(&best.assignments, &var_map, n_samples);
+            let mut alphas = self.decode_alphas(&best.assignments, &var_map, n_samples);
 
             // Identify support vectors
             let sv_indices: Vec<usize> = alphas
@@ -114,9 +114,9 @@ impl QuantumSVM {
             }
 
             // Store support vectors and alphas
-            let support_vectors = Array2::zeros((sv_indices.len(), x.shape()[1]));
-            let sv_alphas = Array1::zeros(sv_indices.len());
-            let sv_labels = Array1::zeros(sv_indices.len());
+            let mut support_vectors = Array2::zeros((sv_indices.len(), x.shape()[1]));
+            let mut sv_alphas = Array1::zeros(sv_indices.len());
+            let mut sv_labels = Array1::zeros(sv_indices.len());
 
             for (i, &idx) in sv_indices.iter().enumerate() {
                 support_vectors.row_mut(i).assign(&x.row(idx));
@@ -138,15 +138,15 @@ impl QuantumSVM {
     /// Predict labels for new data
     pub fn predict(&self, x: &Array2<f64>) -> Result<Array1<f64>, String> {
         let support_vectors = self.support_vectors.as_ref().ok_or("Model not trained")?;
-        let alphas = self.alphas.as_ref().ok_or("Model not trained")?;
-        let sv_labels = self.sv_labels.as_ref().ok_or("Model not trained")?;
+        let mut alphas = self.alphas.as_ref().ok_or("Model not trained")?;
+        let mut sv_labels = self.sv_labels.as_ref().ok_or("Model not trained")?;
         let bias = self.bias.ok_or("Model not trained")?;
 
         let n_samples = x.shape()[0];
-        let predictions = Array1::zeros(n_samples);
+        let mut predictions = Array1::zeros(n_samples);
 
         for i in 0..n_samples {
-            let decision = bias;
+            let mut decision = bias;
 
             for j in 0..support_vectors.shape()[0] {
                 let kernel_val = self.kernel_function(&x.row(i), &support_vectors.row(j))?;
@@ -162,7 +162,7 @@ impl QuantumSVM {
     /// Compute kernel matrix
     fn compute_kernel_matrix(&self, x: &Array2<f64>) -> Result<Array2<f64>, String> {
         let n = x.shape()[0];
-        let k_matrix = Array2::zeros((n, n));
+        let mut k_matrix = Array2::zeros((n, n));
 
         for i in 0..n {
             for j in i..n {
@@ -202,7 +202,7 @@ impl QuantumSVM {
         match feature_map {
             FeatureMap::PauliZ { depth } => {
                 // Simulate Pauli-Z feature map
-                let kernel = 1.0;
+                let mut kernel = 1.0;
                 for _ in 0..*depth {
                     let phase_x: f64 = x.iter().sum();
                     let phase_y: f64 = y.iter().sum();
@@ -212,7 +212,7 @@ impl QuantumSVM {
             }
             FeatureMap::PauliZZ { depth, .. } => {
                 // Simulate Pauli-ZZ feature map with entanglement
-                let kernel = 1.0;
+                let mut kernel = 1.0;
                 for d in 0..*depth {
                     for i in 0..x.len() - 1 {
                         let phase = (x[i] - y[i]) * (x[i + 1] - y[i + 1]);
@@ -238,8 +238,8 @@ impl QuantumSVM {
         let n_bits = 5; // Bits per alpha variable
         let total_vars = n * n_bits;
 
-        let qubo = Array2::zeros((total_vars, total_vars));
-        let var_map = HashMap::new();
+        let mut qubo = Array2::zeros((total_vars, total_vars));
+        let mut var_map = HashMap::new();
 
         // Create variable mapping
         for i in 0..n {
@@ -255,7 +255,7 @@ impl QuantumSVM {
         // Linear terms (maximize sum becomes minimize negative sum)
         for i in 0..n {
             for b in 0..n_bits {
-                let idx = i * n_bits + b;
+                let mut idx = i * n_bits + b;
                 let weight = -(1 << b) as f64 / (1 << n_bits) as f64;
                 qubo[[idx, idx]] += weight;
             }
@@ -264,7 +264,7 @@ impl QuantumSVM {
         // Quadratic terms
         for i in 0..n {
             for j in 0..n {
-                let coef = 0.5 * y[i] * y[j] * k_matrix[[i, j]];
+                let mut coef = 0.5 * y[i] * y[j] * k_matrix[[i, j]];
 
                 for bi in 0..n_bits {
                     for bj in 0..n_bits {
@@ -321,10 +321,10 @@ impl QuantumSVM {
         n_samples: usize,
     ) -> Array1<f64> {
         let n_bits = 5;
-        let alphas = Array1::zeros(n_samples);
+        let mut alphas = Array1::zeros(n_samples);
 
         for i in 0..n_samples {
-            let alpha = 0.0;
+            let mut alpha = 0.0;
             for b in 0..n_bits {
                 let var_name = format!("alpha_{}_{}", i, b);
                 if let Some(&var_idx) = var_map.get(&var_name) {
@@ -349,7 +349,7 @@ impl QuantumSVM {
         // Use first support vector to calculate bias
         for i in 0..x.shape()[0] {
             if alphas[i] > 1e-5 && alphas[i] < self.c - 1e-5 {
-                let sum = 0.0;
+                let mut sum = 0.0;
                 for j in 0..x.shape()[0] {
                     if alphas[j] > 1e-5 {
                         let k_val = self.kernel_function(&x.row(i), &x.row(j))?;
@@ -385,13 +385,13 @@ pub struct QuantumBoltzmannMachine {
 impl QuantumBoltzmannMachine {
     /// Create new QBM
     pub fn new(n_visible: usize, n_hidden: usize) -> Self {
-        let rng = rng();
+        let mut rng = rng();
 
         Self {
             n_visible,
             n_hidden,
             weights: {
-                let weights = Array2::zeros((n_visible, n_hidden));
+                let mut weights = Array2::zeros((n_visible, n_hidden));
                 for element in weights.iter_mut() {
                     *element = rng.random_range(-0.01..0.01);
                 }
@@ -411,11 +411,11 @@ impl QuantumBoltzmannMachine {
         sampler: &dyn Sampler,
         epochs: usize,
     ) -> Result<Vec<f64>, String> {
-        let losses = Vec::new();
+        let mut losses = Vec::new();
         let batch_size = data.shape()[0];
 
         for epoch in 0..epochs {
-            let epoch_loss = 0.0;
+            let mut epoch_loss = 0.0;
 
             // Positive phase - from data
             let pos_hidden = self.sample_hidden_given_visible(&data.view(), sampler)?;
@@ -461,15 +461,15 @@ impl QuantumBoltzmannMachine {
         sampler: &dyn Sampler,
     ) -> Result<Array2<f64>, String> {
         let batch_size = visible.shape()[0];
-        let hidden = Array2::zeros((batch_size, self.n_hidden));
+        let mut hidden = Array2::zeros((batch_size, self.n_hidden));
 
         // Create QUBO for each sample
         for i in 0..batch_size {
             let v = visible.row(i);
 
             // Energy function: -sum(b_j * h_j) - sum(v_i * W_ij * h_j)
-            let qubo = Array2::zeros((self.n_hidden, self.n_hidden));
-            let var_map = HashMap::new();
+            let mut qubo = Array2::zeros((self.n_hidden, self.n_hidden));
+            let mut var_map = HashMap::new();
 
             for j in 0..self.n_hidden {
                 var_map.insert(format!("h_{}", j), j);
@@ -480,7 +480,7 @@ impl QuantumBoltzmannMachine {
             }
 
             // Sample using quantum sampler
-            let results = sampler
+            let mut results = sampler
                 .run_qubo(&(qubo, var_map), 1)
                 .map_err(|e| format!("Sampling error: {:?}", e))?;
 
@@ -507,14 +507,14 @@ impl QuantumBoltzmannMachine {
         sampler: &dyn Sampler,
     ) -> Result<Array2<f64>, String> {
         let batch_size = hidden.shape()[0];
-        let visible = Array2::zeros((batch_size, self.n_visible));
+        let mut visible = Array2::zeros((batch_size, self.n_visible));
 
         // Similar to sample_hidden_given_visible but reversed
         for i in 0..batch_size {
             let h = hidden.row(i);
 
-            let qubo = Array2::zeros((self.n_visible, self.n_visible));
-            let var_map = HashMap::new();
+            let mut qubo = Array2::zeros((self.n_visible, self.n_visible));
+            let mut var_map = HashMap::new();
 
             for j in 0..self.n_visible {
                 var_map.insert(format!("v_{}", j), j);
@@ -524,7 +524,7 @@ impl QuantumBoltzmannMachine {
                 qubo[[j, j]] = -linear / self.temperature;
             }
 
-            let results = sampler
+            let mut results = sampler
                 .run_qubo(&(qubo, var_map), 1)
                 .map_err(|e| format!("Sampling error: {:?}", e))?;
 
@@ -547,9 +547,9 @@ impl QuantumBoltzmannMachine {
     /// Generate new samples
     pub fn generate(&self, n_samples: usize, sampler: &dyn Sampler) -> Result<Array2<f64>, String> {
         // Start with random hidden state
-        let rng = rng();
+        let mut rng = rng();
         let mut hidden = {
-            let hidden = Array2::zeros((n_samples, self.n_hidden));
+            let mut hidden = Array2::zeros((n_samples, self.n_hidden));
             for element in hidden.iter_mut() {
                 *element = if rng.random::<bool>() { 1.0 } else { 0.0 };
             }
@@ -558,7 +558,7 @@ impl QuantumBoltzmannMachine {
 
         // Gibbs sampling
         for _ in 0..10 {
-            let visible = self.sample_visible_given_hidden(&hidden.view(), sampler)?;
+            let mut visible = self.sample_visible_given_hidden(&hidden.view(), sampler)?;
             hidden = self.sample_hidden_given_visible(&visible.view(), sampler)?;
         }
 
@@ -616,7 +616,7 @@ impl QuantumClustering {
         let (qubo, var_map) = self.create_clustering_qubo(&distances)?;
 
         // Solve using quantum sampler
-        let results = sampler
+        let mut results = sampler
             .run_qubo(&(qubo, var_map.clone()), 100)
             .map_err(|e| format!("Sampling error: {:?}", e))?;
 
@@ -632,7 +632,7 @@ impl QuantumClustering {
     /// Compute distance matrix
     fn compute_distance_matrix(&self, data: &Array2<f64>) -> Result<Array2<f64>, String> {
         let n = data.shape()[0];
-        let distances = Array2::zeros((n, n));
+        let mut distances = Array2::zeros((n, n));
 
         for i in 0..n {
             for j in i + 1..n {
@@ -683,8 +683,8 @@ impl QuantumClustering {
         let n_samples = distances.shape()[0];
         let n_vars = n_samples * self.n_clusters;
 
-        let qubo = Array2::zeros((n_vars, n_vars));
-        let var_map = HashMap::new();
+        let mut qubo = Array2::zeros((n_vars, n_vars));
+        let mut var_map = HashMap::new();
 
         // Variable mapping: x[i,k] = 1 if sample i is in cluster k
         for i in 0..n_samples {
@@ -755,7 +755,7 @@ impl QuantumClustering {
         var_map: &HashMap<String, usize>,
         n_samples: usize,
     ) -> Array1<usize> {
-        let clusters = Array1::zeros(n_samples);
+        let mut clusters = Array1::zeros(n_samples);
 
         for i in 0..n_samples {
             for k in 0..self.n_clusters {
@@ -780,15 +780,15 @@ mod tests {
     #[test]
     fn test_quantum_svm() {
         // Simple linearly separable data
-        let x = array![[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0],];
-        let y = array![-1.0, -1.0, 1.0, 1.0];
+        let mut x = array![[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0],];
+        let mut y = array![-1.0, -1.0, 1.0, 1.0];
 
-        let svm = QuantumSVM::new(KernelType::Linear, 1.0);
+        let mut svm = QuantumSVM::new(KernelType::Linear, 1.0);
         let sampler = SASampler::new(Some(42));
 
         svm.fit(&x, &y, &sampler).unwrap();
 
-        let predictions = svm.predict(&x).unwrap();
+        let mut predictions = svm.predict(&x).unwrap();
 
         // Check that it learned something reasonable
         assert!(svm.support_vectors.is_some());

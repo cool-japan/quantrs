@@ -63,7 +63,7 @@ impl OptimizedQUBOEvaluator {
     /// Scalar evaluation
     fn evaluate_scalar(&self, x: &ArrayView1<u8>) -> f64 {
         let n = x.len();
-        let energy = 0.0;
+        let mut energy = 0.0;
 
         // Linear terms (diagonal)
         for i in 0..n {
@@ -90,12 +90,12 @@ impl OptimizedQUBOEvaluator {
     #[cfg(target_arch = "x86_64")]
     unsafe fn evaluate_simd(&self, x: &ArrayView1<u8>) -> f64 {
         let n = x.len();
-        let energy = 0.0;
+        let mut energy = 0.0;
 
         // Process diagonal in chunks of 4
         let chunks = n / 4;
         for i in 0..chunks {
-            let idx = i * 4;
+            let mut idx = i * 4;
 
             // Load 4 x values
             let x_vals = _mm_set_epi32(
@@ -114,7 +114,7 @@ impl OptimizedQUBOEvaluator {
 
             // Sum the products
             let sum = _mm256_hadd_pd(prod, prod);
-            let result = _mm256_extractf128_pd(sum, 0);
+            let mut result = _mm256_extractf128_pd(sum, 0);
             energy += _mm_cvtsd_f64(result) + _mm_cvtsd_f64(_mm_unpackhi_pd(result, result));
         }
 
@@ -183,7 +183,7 @@ impl OptimizedQUBOEvaluator {
         }
         .map(|block_start| {
             let block_end = (block_start + block_size).min(n);
-            let local_sum = 0.0;
+            let mut local_sum = 0.0;
 
             for i in block_start..block_end {
                 if x[i] == 1 {
@@ -208,7 +208,7 @@ impl OptimizedQUBOEvaluator {
         let current_val = x[bit];
         let new_val = 1 - current_val;
 
-        let delta = 0.0;
+        let mut delta = 0.0;
 
         // Diagonal term
         delta += (new_val as f64 - current_val as f64) * self.cache[bit];
@@ -284,11 +284,11 @@ impl OptimizedSA {
         rng: &mut impl rand::Rng,
     ) -> (Array1<u8>, f64) {
         let n = initial.len();
-        let current = initial;
-        let current_energy = self.evaluator.evaluate(&current.view());
+        let mut current = initial;
+        let mut current_energy = self.evaluator.evaluate(&current.view());
 
-        let best = current.clone();
-        let best_energy = current_energy;
+        let mut best = current.clone();
+        let mut best_energy = current_energy;
 
         // Temperature schedule
         let temperatures = self.generate_schedule(iterations);
@@ -380,7 +380,7 @@ impl OptimizedSA {
         };
 
         // Select moves to accept
-        let accepted = Vec::new();
+        let mut accepted = Vec::new();
         for (bit, delta) in deltas {
             if delta < 0.0 || rng.random::<f64>() < (-delta / temp).exp() {
                 accepted.push((bit, delta));
@@ -388,7 +388,7 @@ impl OptimizedSA {
         }
 
         // Apply non-conflicting moves
-        let applied_energy = 0.0;
+        let mut applied_energy = 0.0;
         for (bit, delta) in accepted {
             // Simple conflict resolution - skip if would increase energy too much
             if applied_energy + delta < temp {
@@ -417,7 +417,7 @@ pub mod matrix_ops {
         threshold: f64,
     ) -> Array1<f64> {
         let n = x.len();
-        let result = Array1::zeros(n);
+        let mut result = Array1::zeros(n);
 
         // Identify non-zero entries
         let active: Vec<usize> = (0..n).filter(|&i| x[i] == 1).collect();
@@ -453,7 +453,7 @@ pub mod matrix_ops {
         let n = x.len();
         let num_blocks = (n + block_size - 1) / block_size;
 
-        let energy = 0.0;
+        let mut energy = 0.0;
 
         // Process blocks
         for bi in 0..num_blocks {
@@ -523,12 +523,12 @@ mod tests {
     #[test]
     #[ignore]
     fn test_optimized_evaluator() {
-        let qubo = array![[1.0, -2.0, 0.0], [-2.0, 3.0, -1.0], [0.0, -1.0, 2.0]];
+        let mut qubo = array![[1.0, -2.0, 0.0], [-2.0, 3.0, -1.0], [0.0, -1.0, 2.0]];
 
         let evaluator = OptimizedQUBOEvaluator::new(qubo);
 
-        let x = array![1, 0, 1];
-        let energy = evaluator.evaluate(&x.view());
+        let mut x = array![1, 0, 1];
+        let mut energy = evaluator.evaluate(&x.view());
 
         // Manual calculation: 1*1 + 2*1 + 2*(-1)*1*1 = 1 + 2 - 2 = 1
         assert!((energy - 1.0).abs() < 1e-6);
@@ -540,7 +540,7 @@ mod tests {
 
     #[test]
     fn test_optimized_sa() {
-        let qubo = array![[0.0, -1.0], [-1.0, 0.0]];
+        let mut qubo = array![[0.0, -1.0], [-1.0, 0.0]];
 
         let sa = OptimizedSA::new(qubo).with_schedule(AnnealingSchedule::Geometric {
             t0: 1.0,
@@ -548,7 +548,7 @@ mod tests {
         });
 
         let initial = array![0, 0];
-        let rng = rand::rng();
+        let mut rng = rand::rng();
 
         let (solution, energy) = sa.anneal(initial, 100, &mut rng);
 

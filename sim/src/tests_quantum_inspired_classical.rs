@@ -908,7 +908,7 @@ mod tests {
             optimization_config: OptimizationConfig {
                 algorithm_type: OptimizationAlgorithm::QuantumGeneticAlgorithm,
                 objective_function: ObjectiveFunction::Rastrigin,
-                bounds: [(-10.0, 10.0); 32],
+                bounds: vec![(-10.0, 10.0); 32],
                 constraint_method: ConstraintMethod::BarrierFunction,
                 multi_objective: true,
                 parallel_evaluation: true,

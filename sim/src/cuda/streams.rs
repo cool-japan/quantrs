@@ -4,6 +4,12 @@
 //! and management for parallel GPU kernel execution.
 
 #[cfg(feature = "advanced_math")]
+use std::sync::{Arc, Mutex};
+
+#[cfg(feature = "advanced_math")]
+use crate::error::Result;
+
+#[cfg(feature = "advanced_math")]
 use super::context::CudaEvent;
 
 // Placeholder types for actual CUDA handles

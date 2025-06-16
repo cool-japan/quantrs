@@ -259,11 +259,8 @@ impl QMLAccelerator {
         initial_parameters: Vec<f64>,
         objective_function: Box<dyn ObjectiveFunction + Send + Sync>,
     ) -> DeviceResult<OptimizationResult> {
-        let mut optimizer = create_gradient_optimizer(
-            self.device.clone(),
-            OptimizerType::Adam,
-            0.01,
-        );
+        let mut optimizer =
+            create_gradient_optimizer(self.device.clone(), OptimizerType::Adam, 0.01);
 
         optimizer.optimize(initial_parameters, objective_function)
     }

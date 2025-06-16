@@ -75,7 +75,7 @@ impl GraphPartitioner {
     pub fn partition(&self, qubo: &Array2<f64>) -> Result<Vec<Subproblem>, String> {
         // Create a simple variable map
         let n = qubo.shape()[0];
-        let var_map = HashMap::new();
+        let mut var_map = HashMap::new();
         for i in 0..n {
             var_map.insert(format!("x{}", i), i);
         }
@@ -108,7 +108,7 @@ impl GraphPartitioner {
         let subproblems = self.extract_subproblems(qubo, var_map, &partition_assignment)?;
 
         // Compute partition metrics
-        let metrics = self.compute_partition_metrics(&graph, &partition_assignment);
+        let mut metrics = self.compute_partition_metrics(&graph, &partition_assignment);
 
         let coupling_terms = self.extract_coupling_terms(qubo, &partition_assignment)?;
 
@@ -123,7 +123,7 @@ impl GraphPartitioner {
     /// Build graph from QUBO matrix
     fn build_graph_from_qubo(&self, qubo: &Array2<f64>) -> Result<Graph, String> {
         let n = qubo.shape()[0];
-        let edges = Vec::new();
+        let mut edges = Vec::new();
         let mut node_weights = vec![1.0; n];
 
         for i in 0..n {
@@ -154,7 +154,7 @@ impl GraphPartitioner {
         let mut partition = vec![0; n];
 
         // Initialize random bisection
-        let rng = rng();
+        let mut rng = rng();
         for i in 0..n / 2 {
             partition[i] = 1;
         }
@@ -166,8 +166,8 @@ impl GraphPartitioner {
 
         for _iteration in 0..max_iterations {
             // Compute gains for all swaps
-            let best_swap = None;
-            let best_gain = 0.0;
+            let mut best_swap = None;
+            let mut best_gain = 0.0;
 
             for i in 0..n {
                 for j in i + 1..n {
@@ -203,7 +203,7 @@ impl GraphPartitioner {
 
     /// Compute gain from swapping two nodes
     fn compute_swap_gain(&self, graph: &Graph, partition: &[usize], i: usize, j: usize) -> f64 {
-        let gain = 0.0;
+        let mut gain = 0.0;
 
         // Compute change in edge cut
         for edge in &graph.edges {
@@ -217,7 +217,7 @@ impl GraphPartitioner {
                 };
 
                 // Simulate swap
-                let new_partition = partition.to_vec();
+                let mut new_partition = partition.to_vec();
                 new_partition[i] = partition[j];
                 new_partition[j] = partition[i];
 
@@ -260,7 +260,7 @@ impl GraphPartitioner {
     /// Build graph Laplacian matrix
     fn build_laplacian(&self, graph: &Graph) -> Result<Array2<f64>, String> {
         let n = graph.num_nodes;
-        let laplacian = Array2::zeros((n, n));
+        let mut laplacian = Array2::zeros((n, n));
 
         // Add edge weights
         for edge in &graph.edges {
@@ -289,11 +289,11 @@ impl GraphPartitioner {
 
         // Simple power iteration for demonstration
         // In practice, would use proper eigenvalue solver
-        let vector = Array1::from_vec((0..n).map(|i| (i as f64).sin()).collect());
+        let mut vector = Array1::from_vec((0..n).map(|i| (i as f64).sin()).collect());
 
         for _iter in 0..100 {
             // Multiply by Laplacian
-            let new_vector = Array1::zeros(n);
+            let mut new_vector = Array1::zeros(n);
             for i in 0..n {
                 for j in 0..n {
                     new_vector[i] += laplacian[[i, j]] * vector[j];
@@ -336,16 +336,16 @@ impl GraphPartitioner {
     /// Coarsen graph by merging strongly connected nodes
     fn coarsen_graph(&self, graph: &Graph) -> Result<(Graph, Vec<usize>), String> {
         let mut mapping = vec![0; graph.num_nodes];
-        let coarse_weights = Vec::new();
-        let coarse_edges = HashMap::new();
-        let num_coarse_nodes = 0;
+        let mut coarse_weights = Vec::new();
+        let mut coarse_edges = HashMap::new();
+        let mut num_coarse_nodes = 0;
 
         // Simple coarsening: merge nodes with strong connections
         let mut visited = vec![false; graph.num_nodes];
 
         for i in 0..graph.num_nodes {
             if !visited[i] {
-                let cluster_weight = graph.node_weights[i];
+                let mut cluster_weight = graph.node_weights[i];
                 mapping[i] = num_coarse_nodes;
                 visited[i] = true;
 
@@ -419,12 +419,12 @@ impl GraphPartitioner {
         let max_refinement_iterations = 10;
 
         for _iter in 0..max_refinement_iterations {
-            let improved = false;
+            let mut improved = false;
 
             for i in 0..graph.num_nodes {
                 let current_part = partition[i];
-                let best_part = current_part;
-                let best_gain = 0.0;
+                let mut best_part = current_part;
+                let mut best_gain = 0.0;
 
                 // Try moving to different partitions
                 for new_part in 0..self.num_partitions {
@@ -465,7 +465,7 @@ impl GraphPartitioner {
         old_part: usize,
         new_part: usize,
     ) -> f64 {
-        let gain = 0.0;
+        let mut gain = 0.0;
 
         for edge in &graph.edges {
             if edge.from == node {
@@ -500,7 +500,7 @@ impl GraphPartitioner {
 
         // Recursive bisection
         for part in 0..self.num_partitions.ilog2() {
-            let new_partition = partition.clone();
+            let mut new_partition = partition.clone();
 
             // Bisect each existing partition
             for p in 0..(1 << part) {
@@ -569,7 +569,7 @@ impl GraphPartitioner {
         var_map: &HashMap<String, usize>,
         partition: &[usize],
     ) -> Result<Vec<Subproblem>, String> {
-        let subproblems = Vec::new();
+        let mut subproblems = Vec::new();
         let reverse_var_map: HashMap<usize, String> =
             var_map.iter().map(|(k, v)| (*v, k.clone())).collect();
 
@@ -593,7 +593,7 @@ impl GraphPartitioner {
 
             // Extract subproblem QUBO
             let sub_size = var_indices.len();
-            let sub_qubo = Array2::zeros((sub_size, sub_size));
+            let mut sub_qubo = Array2::zeros((sub_size, sub_size));
 
             for (i, &idx_i) in var_indices.iter().enumerate() {
                 for (j, &idx_j) in var_indices.iter().enumerate() {
@@ -602,7 +602,7 @@ impl GraphPartitioner {
             }
 
             // Build variable map for subproblem
-            let sub_var_map = HashMap::new();
+            let mut sub_var_map = HashMap::new();
             for (i, var) in variables.iter().enumerate() {
                 sub_var_map.insert(var.clone(), i);
             }
@@ -624,7 +624,7 @@ impl GraphPartitioner {
         qubo: &Array2<f64>,
         partition: &[usize],
     ) -> Result<Vec<CouplingTerm>, String> {
-        let coupling_terms = Vec::new();
+        let mut coupling_terms = Vec::new();
         let n = qubo.shape()[0];
 
         for i in 0..n {
@@ -693,7 +693,7 @@ impl GraphPartitioner {
             return 0.0;
         }
 
-        let modularity = 0.0;
+        let mut modularity = 0.0;
 
         for i in 0..graph.num_nodes {
             for j in 0..graph.num_nodes {

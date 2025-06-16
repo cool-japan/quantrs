@@ -175,8 +175,8 @@ mod tests {
     /// Test classical layer
     #[test]
     fn test_classical_layer() {
-        let weights = Array2::ones((4, 2));
-        let biases = Array1::zeros(2);
+        let mut weights = Array2::ones((4, 2));
+        let mut biases = Array1::zeros(2);
 
         let layer = ClassicalLayer {
             layer_type: ClassicalLayerType::Dense,
@@ -325,7 +325,7 @@ mod tests {
     /// Test QNN parameters structure
     #[test]
     fn test_qnn_parameters() {
-        let quantum_params = Array1::zeros(10);
+        let mut quantum_params = Array1::zeros(10);
         let classical_params = vec![Array2::ones((4, 2)), Array2::ones((2, 1))];
         let bias_params = vec![Array1::zeros(2), Array1::zeros(1)];
         let parameter_bounds = vec![(-1.0, 1.0); 10];
@@ -382,7 +382,7 @@ mod tests {
     /// Test quantum noise configuration
     #[test]
     fn test_quantum_noise_config() {
-        let gate_errors = HashMap::new();
+        let mut gate_errors = HashMap::new();
         gate_errors.insert("RX".to_string(), 0.001);
         gate_errors.insert("CNOT".to_string(), 0.005);
 

@@ -8,7 +8,6 @@ use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

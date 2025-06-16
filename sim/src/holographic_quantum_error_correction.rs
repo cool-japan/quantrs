@@ -8,7 +8,6 @@
 use ndarray::{Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};
 use num_complex::Complex64;
 use rand::{thread_rng, Rng};
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::f64::consts::PI;

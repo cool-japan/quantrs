@@ -7,7 +7,6 @@
 
 use ndarray::{Array1, Array2, Array3, Array4, Axis};
 use num_complex::Complex64;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::f64::consts::PI;

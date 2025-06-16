@@ -321,12 +321,16 @@ impl TopologicalErrorCorrector {
 
             for start in 0..=(self.syndrome_history.len() - window_size * 2) {
                 if start + window_size * 2 <= self.syndrome_history.len() {
-                    let pattern1: Vec<_> = self.syndrome_history.iter()
+                    let pattern1: Vec<_> = self
+                        .syndrome_history
+                        .iter()
                         .skip(start)
                         .take(window_size)
                         .cloned()
                         .collect();
-                    let pattern2: Vec<_> = self.syndrome_history.iter()
+                    let pattern2: Vec<_> = self
+                        .syndrome_history
+                        .iter()
                         .skip(start + window_size)
                         .take(window_size)
                         .cloned()
@@ -535,7 +539,10 @@ impl RealTimeErrorMonitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::topological::{TopologicalSystemType, NonAbelianAnyonType, FusionRuleSet, TopologicalCapabilities, TopologicalCharge, TopologicalDevice};
+    use crate::topological::{
+        FusionRuleSet, NonAbelianAnyonType, TopologicalCapabilities, TopologicalCharge,
+        TopologicalDevice, TopologicalSystemType,
+    };
 
     #[test]
     fn test_error_corrector_creation() {
@@ -568,11 +575,7 @@ mod tests {
             topological_gap: 1.0,
             coherence_length: 100.0,
         };
-        let device = TopologicalDevice::new(
-            system_type,
-            FusionRuleSet::fibonacci(),
-            capabilities,
-        );
+        let device = TopologicalDevice::new(system_type, FusionRuleSet::fibonacci(), capabilities);
 
         let syndrome_round = corrector
             .perform_syndrome_measurement(&device, 0)

@@ -37,13 +37,13 @@ fn create_graph_coloring_model(
     n_colors: usize,
     edge_probability: f64,
 ) -> Result<(Model, Vec<(usize, usize)>), Box<dyn std::error::Error>> {
-    let model = Model::new();
+    let mut model = Model::new();
 
     // Generate random graph using SciRS2
     let edges = generate_graph(n_nodes, edge_probability)?;
 
     // Create color variables for each node
-    let color_vars = HashMap::new();
+    let mut color_vars = HashMap::new();
     for node in 0..n_nodes {
         for color in 0..n_colors {
             let var_name = format!("x_{node}_{color}");
@@ -75,13 +75,13 @@ fn create_graph_coloring_model(
     }
 
     // Minimize the number of colors used (optional objective)
-    let color_usage_vars = Vec::new();
+    let mut color_usage_vars = Vec::new();
     for color in 0..n_colors {
         let usage_var = model.add_variable(&format!("color_used_{color}"))?;
         color_usage_vars.push(usage_var.clone());
 
         // If any node uses this color, the usage variable should be 1
-        let or_terms = Vec::new();
+        let mut or_terms = Vec::new();
         for node in 0..n_nodes {
             or_terms.push(color_vars[&(node, color)].clone());
         }
@@ -124,7 +124,7 @@ fn run_graph_coloring_experiment(
         penalty_type: PenaltyType::Quadratic,
     };
 
-    let penalty_optimizer = PenaltyOptimizer::new(penalty_config);
+    let mut penalty_optimizer = PenaltyOptimizer::new(penalty_config);
 
     // Compile to QUBO directly
     let compiled = model.compile()?;
@@ -165,7 +165,7 @@ fn run_graph_coloring_experiment(
         ..Default::default()
     };
 
-    let tuner = ParameterTuner::new(tuning_config);
+    let mut tuner = ParameterTuner::new(tuning_config);
     tuner.add_parameters(parameter_bounds);
 
     // Parameter tuning temporarily disabled due to type compatibility
@@ -173,8 +173,8 @@ fn run_graph_coloring_experiment(
 
     // Convert QUBO to matrix format
     let n_vars = qubo.num_variables;
-    let matrix = ndarray::Array2::zeros((n_vars, n_vars));
-    let var_map = HashMap::new();
+    let mut matrix = ndarray::Array2::zeros((n_vars, n_vars));
+    let mut var_map = HashMap::new();
 
     for i in 0..n_vars {
         var_map.insert(format!("x_{}", i), i);
@@ -192,16 +192,16 @@ fn run_graph_coloring_experiment(
 
     // Run optimized sampler
     println!("\nRunning optimized sampler...");
-    let sa_sampler = SASampler::new(None);
+    let mut sa_sampler = SASampler::new(None);
 
-    let start = Instant::now();
+    let mut start = Instant::now();
     let sa_samples = sa_sampler.run_qubo(&(matrix.clone(), var_map.clone()), 1000)?;
     let sa_time = start.elapsed();
 
     // Also run GA sampler for comparison
-    let ga_sampler = GASampler::with_params(None, 200, 100); // seed, max_generations, population_size
+    let mut ga_sampler = GASampler::with_params(None, 200, 100); // seed, max_generations, population_size
 
-    let start = Instant::now();
+    let mut start = Instant::now();
     let ga_samples = ga_sampler.run_qubo(&(matrix, var_map), 1000)?;
     let ga_time = start.elapsed();
 
@@ -246,7 +246,7 @@ fn run_graph_coloring_experiment(
         max_colors: n_colors,
     };
     let config = quantrs2_tytan::visualization::problem_specific::VisualizationConfig::default();
-    let visualizer = ProblemVisualizer::new(problem_type, config);
+    let mut visualizer = ProblemVisualizer::new(problem_type, config);
     visualizer.add_samples(vec![best_sample.clone()]);
     visualizer.visualize()?;
 
@@ -335,7 +335,7 @@ fn verify_coloring(
     edges: &[(usize, usize)],
     max_colors: usize,
 ) -> (bool, usize) {
-    let valid = true;
+    let mut valid = true;
 
     // Check edge constraints
     for (i, j) in edges {
@@ -362,7 +362,7 @@ fn verify_coloring(
 /// Convert edge list to adjacency matrix
 fn edges_to_adjacency(edges: &[(usize, usize)], n_nodes: usize) -> ndarray::Array2<bool> {
     use ndarray::Array2;
-    let adjacency = Array2::from_elem((n_nodes, n_nodes), false);
+    let mut adjacency = Array2::from_elem((n_nodes, n_nodes), false);
 
     for (i, j) in edges {
         adjacency[[*i, *j]] = true;

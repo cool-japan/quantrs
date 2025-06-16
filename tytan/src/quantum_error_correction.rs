@@ -982,10 +982,10 @@ impl QuantumErrorCorrection {
         let syndrome = self.extract_syndrome(quantum_state)?;
 
         // Step 2: Decode error from syndrome
-        let error_estimate = self.decode_syndrome(&syndrome)?;
+        let mut error_estimate = self.decode_syndrome(&syndrome)?;
 
         // Step 3: Apply error correction
-        let corrected_state = self.apply_correction(quantum_state, &error_estimate)?;
+        let mut corrected_state = self.apply_correction(quantum_state, &error_estimate)?;
 
         // Step 4: Verify correction success
         let correction_successful = self.verify_correction(&corrected_state, quantum_state)?;
@@ -1061,7 +1061,7 @@ impl QuantumErrorCorrection {
     /// Minimum weight perfect matching decoder
     fn decode_mwpm(&self, syndrome: &Array1<u8>) -> Result<Array1<u8>, QECError> {
         // Simplified MWPM decoder
-        let error_estimate = Array1::zeros(self.num_physical_qubits);
+        let mut error_estimate = Array1::zeros(self.num_physical_qubits);
 
         // Find syndrome positions
         let syndrome_positions: Vec<usize> = syndrome
@@ -1074,7 +1074,7 @@ impl QuantumErrorCorrection {
         for chunk in syndrome_positions.chunks(2) {
             if chunk.len() == 2 {
                 let start = chunk[0];
-                let end = chunk[1];
+                let mut end = chunk[1];
 
                 // Apply correction along shortest path (simplified)
                 for i in start..=end {
@@ -1091,7 +1091,7 @@ impl QuantumErrorCorrection {
     /// Belief propagation decoder
     fn decode_belief_propagation(&self, syndrome: &Array1<u8>) -> Result<Array1<u8>, QECError> {
         // Simplified belief propagation
-        let beliefs = Array1::from_elem(self.num_physical_qubits, 0.5);
+        let mut beliefs = Array1::from_elem(self.num_physical_qubits, 0.5);
         let max_iterations = 100;
         let tolerance = 1e-6;
 
@@ -1118,7 +1118,7 @@ impl QuantumErrorCorrection {
         }
 
         // Threshold beliefs to get binary error estimate
-        let error_estimate = beliefs.mapv(|x| if x > 0.5 { 1 } else { 0 });
+        let mut error_estimate = beliefs.mapv(|x| if x > 0.5 { 1 } else { 0 });
         Ok(error_estimate)
     }
 
@@ -1130,7 +1130,7 @@ impl QuantumErrorCorrection {
         let output_size = self.num_physical_qubits;
 
         // Random weights for demonstration
-        let rng = rng();
+        let mut rng = rng();
         let w1 = Array2::from_shape_fn((hidden_size, input_size), |_| rng.random_range(-1.0..1.0));
         let w2 = Array2::from_shape_fn((output_size, hidden_size), |_| rng.random_range(-1.0..1.0));
 
@@ -1138,20 +1138,20 @@ impl QuantumErrorCorrection {
         let syndrome_float = syndrome.mapv(|x| x as f64);
 
         // Forward pass
-        let hidden = w1
+        let mut hidden = w1
             .dot(&syndrome_float)
             .mapv(|x| if x > 0.0 { x } else { 0.0 }); // ReLU
-        let output = w2.dot(&hidden).mapv(|x| 1.0 / (1.0 + (-x).exp())); // Sigmoid
+        let mut output = w2.dot(&hidden).mapv(|x| 1.0 / (1.0 + (-x).exp())); // Sigmoid
 
         // Threshold to binary
-        let error_estimate = output.mapv(|x| if x > 0.5 { 1 } else { 0 });
+        let mut error_estimate = output.mapv(|x| if x > 0.5 { 1 } else { 0 });
         Ok(error_estimate)
     }
 
     /// Union-find decoder
     fn decode_union_find(&self, syndrome: &Array1<u8>) -> Result<Array1<u8>, QECError> {
         // Simplified union-find decoder
-        let error_estimate = Array1::zeros(self.num_physical_qubits);
+        let mut error_estimate = Array1::zeros(self.num_physical_qubits);
 
         // Find connected components of syndrome
         let mut parent: Vec<usize> = (0..syndrome.len()).collect();
@@ -1206,8 +1206,8 @@ impl QuantumErrorCorrection {
     fn decode_rnn(&self, syndrome: &Array1<u8>) -> Result<Array1<u8>, QECError> {
         // Simplified RNN implementation
         let hidden_size = syndrome.len();
-        let hidden_state = Array1::<f64>::zeros(hidden_size);
-        let output = Array1::zeros(self.num_physical_qubits);
+        let mut hidden_state = Array1::<f64>::zeros(hidden_size);
+        let mut output = Array1::zeros(self.num_physical_qubits);
 
         // Process syndrome sequentially
         for &syndrome_bit in syndrome.iter() {
@@ -1231,13 +1231,13 @@ impl QuantumErrorCorrection {
     fn decode_cnn(&self, syndrome: &Array1<u8>) -> Result<Array1<u8>, QECError> {
         // Simplified CNN implementation
         let kernel_size = 3;
-        let convolved = Array1::zeros(syndrome.len());
+        let mut convolved = Array1::zeros(syndrome.len());
 
         // Apply convolution
         for i in 0..syndrome.len() {
-            let sum = 0.0;
+            let mut sum = 0.0;
             for j in 0..kernel_size {
-                let idx = (i + j).saturating_sub(kernel_size / 2);
+                let mut idx = (i + j).saturating_sub(kernel_size / 2);
                 if idx < syndrome.len() {
                     sum += syndrome[idx] as f64;
                 }
@@ -1246,7 +1246,7 @@ impl QuantumErrorCorrection {
         }
 
         // Map to error estimate
-        let error_estimate = Array1::from_vec(
+        let mut error_estimate = Array1::from_vec(
             (0..self.num_physical_qubits)
                 .map(|i| {
                     if convolved[i % convolved.len()] > 0.5 {
@@ -1268,10 +1268,10 @@ impl QuantumErrorCorrection {
         let d_model = seq_len;
 
         // Self-attention (simplified)
-        let attention_output = Array1::zeros(seq_len);
+        let mut attention_output = Array1::zeros(seq_len);
         for i in 0..seq_len {
-            let weighted_sum = 0.0;
-            let weight_sum = 0.0;
+            let mut weighted_sum = 0.0;
+            let mut weight_sum = 0.0;
 
             for j in 0..seq_len {
                 let attention_weight = (-((i as f64 - j as f64).powi(2)) / 2.0).exp();
@@ -1287,7 +1287,7 @@ impl QuantumErrorCorrection {
         }
 
         // Map to error estimate
-        let error_estimate = Array1::from_vec(
+        let mut error_estimate = Array1::from_vec(
             (0..self.num_physical_qubits)
                 .map(|i| {
                     if attention_output[i % attention_output.len()] > 0.5 {
@@ -1306,15 +1306,15 @@ impl QuantumErrorCorrection {
     fn decode_gnn(&self, syndrome: &Array1<u8>) -> Result<Array1<u8>, QECError> {
         // Simplified GNN implementation
         let num_nodes = syndrome.len();
-        let node_features = syndrome.mapv(|x| x as f64);
+        let mut node_features = syndrome.mapv(|x| x as f64);
 
         // Message passing iterations
         for _ in 0..3 {
-            let new_features = node_features.clone();
+            let mut new_features = node_features.clone();
 
             for i in 0..num_nodes {
-                let neighbor_sum = 0.0;
-                let neighbor_count = 0;
+                let mut neighbor_sum = 0.0;
+                let mut neighbor_count = 0;
 
                 // Aggregate from neighbors
                 for j in 0..num_nodes {
@@ -1334,7 +1334,7 @@ impl QuantumErrorCorrection {
         }
 
         // Map to error estimate
-        let error_estimate = Array1::from_vec(
+        let mut error_estimate = Array1::from_vec(
             (0..self.num_physical_qubits)
                 .map(|i| {
                     if node_features[i % node_features.len()] > 0.5 {
@@ -1356,12 +1356,12 @@ impl QuantumErrorCorrection {
         let syndrome_float = syndrome.mapv(|x| x as f64);
 
         // Encoder (syndrome -> latent space)
-        let latent = Array1::zeros(latent_dim);
+        let mut latent = Array1::zeros(latent_dim);
         for i in 0..latent_dim {
             let start_idx = i * 2;
             let end_idx = ((i + 1) * 2).min(syndrome.len());
 
-            let sum = 0.0;
+            let mut sum = 0.0;
             for j in start_idx..end_idx {
                 sum += syndrome_float[j];
             }
@@ -1369,7 +1369,7 @@ impl QuantumErrorCorrection {
         }
 
         // Decoder (latent space -> error estimate)
-        let error_estimate = Array1::zeros(self.num_physical_qubits);
+        let mut error_estimate = Array1::zeros(self.num_physical_qubits);
         for i in 0..self.num_physical_qubits {
             let latent_idx = i % latent_dim;
             error_estimate[i] = if latent[latent_idx] > 0.5 { 1 } else { 0 };
@@ -1381,7 +1381,7 @@ impl QuantumErrorCorrection {
     /// Lookup table decoder (fallback)
     fn decode_lookup_table(&self, syndrome: &Array1<u8>) -> Result<Array1<u8>, QECError> {
         // Simple lookup table based on syndrome patterns
-        let error_estimate = Array1::zeros(self.num_physical_qubits);
+        let mut error_estimate = Array1::zeros(self.num_physical_qubits);
 
         // Convert syndrome to pattern
         let pattern: String = syndrome
@@ -1413,7 +1413,7 @@ impl QuantumErrorCorrection {
         quantum_state: &Array1<f64>,
         error_estimate: &Array1<u8>,
     ) -> Result<Array1<f64>, QECError> {
-        let corrected_state = quantum_state.clone();
+        let mut corrected_state = quantum_state.clone();
 
         // Apply Pauli corrections based on error estimate
         for (i, &error_bit) in error_estimate.iter().enumerate() {
@@ -1476,10 +1476,10 @@ impl QuantumErrorCorrection {
     /// Apply error mitigation as fallback
     fn apply_error_mitigation(&self, state: &Array1<f64>) -> Result<Array1<f64>, QECError> {
         // Simple error mitigation: noise reduction
-        let mitigated_state = state.clone();
+        let mut mitigated_state = state.clone();
 
         // Apply simple denoising
-        let noise_threshold = 0.01;
+        let mut noise_threshold = 0.01;
         for value in mitigated_state.iter_mut() {
             if value.abs() < noise_threshold {
                 *value = 0.0;
@@ -1508,7 +1508,7 @@ impl QuantumErrorCorrection {
         self.metrics.syndrome_fidelity = 1.0 - syndrome_weight / total_syndromes;
 
         // Update decoding success rate (exponential moving average)
-        let alpha = 0.1;
+        let mut alpha = 0.1;
         let success_value = if success { 1.0 } else { 0.0 };
         self.metrics.decoding_success_rate =
             alpha * success_value + (1.0 - alpha) * self.metrics.decoding_success_rate;
@@ -1549,12 +1549,12 @@ impl QuantumErrorCorrection {
         match &config.code_type {
             QuantumCodeType::SurfaceCode { .. } => {
                 // Surface code: roughly d^2 physical qubits per logical qubit
-                let d = config.code_distance;
+                let mut d = config.code_distance;
                 num_logical * d * d
             }
             QuantumCodeType::ColorCode { .. } => {
                 // Color code: similar to surface code
-                let d = config.code_distance;
+                let mut d = config.code_distance;
                 num_logical * d * d
             }
             _ => {
@@ -1677,13 +1677,13 @@ pub fn create_default_qec_config() -> QECConfig {
 
 /// Create QEC system for optimization problems
 pub fn create_optimization_qec(num_logical_qubits: usize) -> QuantumErrorCorrection {
-    let config = create_default_qec_config();
+    let mut config = create_default_qec_config();
     QuantumErrorCorrection::new(num_logical_qubits, config)
 }
 
 /// Create adaptive QEC configuration
 pub fn create_adaptive_qec_config() -> QECConfig {
-    let config = create_default_qec_config();
+    let mut config = create_default_qec_config();
     config.adaptive_correction.adaptive_thresholding = true;
     config.adaptive_correction.dynamic_distance = true;
     config.adaptive_correction.real_time_code_switching = true;
@@ -1701,43 +1701,43 @@ mod tests {
 
     #[test]
     fn test_qec_creation() {
-        let qec = create_optimization_qec(2);
+        let mut qec = create_optimization_qec(2);
         assert_eq!(qec.num_logical_qubits, 2);
         assert_eq!(qec.config.code_distance, 3);
     }
 
     #[test]
     fn test_syndrome_extraction() {
-        let qec = create_optimization_qec(1);
-        let quantum_state = Array1::from_vec(vec![1.0, 0.0, 0.0, 0.0]); // |00⟩
+        let mut qec = create_optimization_qec(1);
+        let mut quantum_state = Array1::from_vec(vec![1.0, 0.0, 0.0, 0.0]); // |00⟩
 
         // This should fail since no codes are loaded yet
-        let result = qec.extract_syndrome(&quantum_state);
+        let mut result = qec.extract_syndrome(&quantum_state);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_mwpm_decoding() {
-        let qec = create_optimization_qec(2);
+        let mut qec = create_optimization_qec(2);
         let syndrome = Array1::from_vec(vec![1, 0, 1, 0]);
 
-        let error_estimate = qec.decode_mwpm(&syndrome).unwrap();
+        let mut error_estimate = qec.decode_mwpm(&syndrome).unwrap();
         assert_eq!(error_estimate.len(), qec.num_physical_qubits);
     }
 
     #[test]
     fn test_belief_propagation_decoding() {
-        let qec = create_optimization_qec(2);
+        let mut qec = create_optimization_qec(2);
         let syndrome = Array1::from_vec(vec![1, 1, 0, 0]);
 
-        let error_estimate = qec.decode_belief_propagation(&syndrome).unwrap();
+        let mut error_estimate = qec.decode_belief_propagation(&syndrome).unwrap();
         assert_eq!(error_estimate.len(), qec.num_physical_qubits);
     }
 
     #[test]
     fn test_pauli_x_application() {
-        let qec = create_optimization_qec(1);
-        let state = Array1::from_vec(vec![1.0, 0.0]);
+        let mut qec = create_optimization_qec(1);
+        let mut state = Array1::from_vec(vec![1.0, 0.0]);
 
         qec.apply_pauli_x(&mut state, 0);
 
@@ -1748,7 +1748,7 @@ mod tests {
 
     #[test]
     fn test_physical_qubit_estimation() {
-        let config = create_default_qec_config();
+        let mut config = create_default_qec_config();
         let num_physical = QuantumErrorCorrection::estimate_physical_qubits(2, &config);
 
         // For distance 3 surface code: 2 * 3^2 = 18 physical qubits

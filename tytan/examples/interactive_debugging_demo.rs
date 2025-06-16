@@ -13,8 +13,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let problem_info = create_test_problem();
 
     // Create interactive debugger
-    let config = DebuggerConfig::default();
-    let debugger = SolutionDebugger::new(problem_info, config);
+    let mut config = DebuggerConfig::default();
+    let mut debugger = SolutionDebugger::new(problem_info, config);
 
     println!("Problem: Graph 3-Coloring");
     println!("Variables: 4 nodes × 3 colors = 12 binary variables");
@@ -101,7 +101,7 @@ fn create_test_problem() -> ProblemInfo {
     let n_vars = n_nodes * n_colors;
 
     // Create QUBO matrix
-    let qubo = Array2::zeros((n_vars, n_vars));
+    let mut qubo = Array2::zeros((n_vars, n_vars));
 
     // Penalty for not choosing exactly one color per node
     let penalty = 10.0;
@@ -132,8 +132,8 @@ fn create_test_problem() -> ProblemInfo {
     }
 
     // Create variable mapping
-    let var_map = HashMap::new();
-    let reverse_var_map = HashMap::new();
+    let mut var_map = HashMap::new();
+    let mut reverse_var_map = HashMap::new();
     for node in 0..n_nodes {
         for color in 0..n_colors {
             let var_name = format!("x_{}_{}", node, color);
@@ -144,7 +144,7 @@ fn create_test_problem() -> ProblemInfo {
     }
 
     // Create constraints
-    let constraints = Vec::new();
+    let mut constraints = Vec::new();
 
     // One color per node constraints
     for node in 0..n_nodes {
@@ -184,7 +184,7 @@ fn create_test_problem() -> ProblemInfo {
         constraints,
         optimal_solution: None,
         metadata: {
-            let meta = HashMap::new();
+            let mut meta = HashMap::new();
             meta.insert("nodes".to_string(), n_nodes.to_string());
             meta.insert("colors".to_string(), n_colors.to_string());
             meta.insert("edges".to_string(), edges.len().to_string());
@@ -195,7 +195,7 @@ fn create_test_problem() -> ProblemInfo {
 
 fn solve_problem() -> Result<Solution, Box<dyn std::error::Error>> {
     // Create a simple example solution for the graph coloring problem
-    let assignments = HashMap::new();
+    let mut assignments = HashMap::new();
 
     // Simple valid coloring: node 0=color0, node 1=color1, node 2=color2, node 3=color0
     for node in 0..4 {

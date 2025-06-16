@@ -474,7 +474,7 @@ impl PerformanceProfiler {
 
     /// Generate optimization recommendations
     pub fn generate_recommendations(&self, profile: &Profile) -> Vec<OptimizationRecommendation> {
-        let recommendations = Vec::new();
+        let mut recommendations = Vec::new();
 
         // Analyze hot functions
         let analysis = self.analyze_profile(profile);
@@ -564,7 +564,7 @@ impl PerformanceProfiler {
 
     /// Export in perf script format
     fn export_perf_script(&self, profile: &Profile) -> Result<String, String> {
-        let output = String::new();
+        let mut output = String::new();
 
         for event in &profile.events {
             if let EventType::FunctionCall = event.event_type {
@@ -584,7 +584,7 @@ impl PerformanceProfiler {
 
     /// Export in valgrind callgrind format
     fn export_valgrind_format(&self, profile: &Profile) -> Result<String, String> {
-        let output = String::new();
+        let mut output = String::new();
 
         output.push_str("events: Instructions\n");
         output.push_str("summary: 1000000\n\n");
@@ -604,7 +604,7 @@ impl PerformanceProfiler {
     /// Export in FlameScope format
     fn export_flamescope_format(&self, profile: &Profile) -> Result<String, String> {
         // Simplified FlameScope JSON format
-        let stacks = Vec::new();
+        let mut stacks = Vec::new();
 
         for event in &profile.events {
             if let EventType::FunctionCall = event.event_type {
@@ -1026,7 +1026,7 @@ impl PerformanceProfiler {
                 name: "allocation".to_string(),
                 duration: None,
                 data: {
-                    let data = HashMap::new();
+                    let mut data = HashMap::new();
                     data.insert("size".to_string(), size.to_string());
                     data
                 },
@@ -1052,7 +1052,7 @@ impl PerformanceProfiler {
                 name: "deallocation".to_string(),
                 duration: None,
                 data: {
-                    let data = HashMap::new();
+                    let mut data = HashMap::new();
                     data.insert("size".to_string(), size.to_string());
                     data
                 },
@@ -1139,7 +1139,7 @@ impl PerformanceProfiler {
     /// Build call graph
     fn build_call_graph(&self, profile: &mut Profile) -> Result<(), String> {
         let mut node_map: HashMap<String, usize> = HashMap::new();
-        let nodes = Vec::new();
+        let mut nodes = Vec::new();
         let mut edges: HashMap<(usize, usize), CallEdge> = HashMap::new();
 
         // Create nodes
@@ -1316,7 +1316,7 @@ impl PerformanceProfiler {
     fn generate_json_report(&self, profile: &Profile) -> Result<String, String> {
         use std::fmt::Write;
 
-        let json = String::new();
+        let mut json = String::new();
 
         // Build comprehensive JSON report
         json.push_str("{\n");
@@ -1632,7 +1632,7 @@ impl PerformanceProfiler {
         .unwrap();
 
         // Count events by type
-        let event_counts = std::collections::BTreeMap::new();
+        let mut event_counts = std::collections::BTreeMap::new();
         for event in &profile.events {
             let type_name = match &event.event_type {
                 EventType::FunctionCall => "function_call",
@@ -1665,7 +1665,7 @@ impl PerformanceProfiler {
 
     /// Generate CSV report
     fn generate_csv_report(&self, profile: &Profile) -> Result<String, String> {
-        let csv = String::new();
+        let mut csv = String::new();
 
         csv.push_str("function,total_time_ms,call_count,avg_time_ms\n");
 
@@ -1685,11 +1685,11 @@ impl PerformanceProfiler {
     /// Generate flame graph
     fn generate_flame_graph(&self, profile: &Profile) -> Result<String, String> {
         // Simplified flame graph generation
-        let stacks = Vec::new();
+        let mut stacks = Vec::new();
 
         for node in &profile.call_graph.nodes {
-            let stack = vec![node.name.clone()];
-            let value = node.self_time.as_micros() as usize;
+            let mut stack = vec![node.name.clone()];
+            let mut value = node.self_time.as_micros() as usize;
             stacks.push((stack, value));
         }
 
@@ -1710,7 +1710,7 @@ impl PerformanceProfiler {
             tid: String,
         }
 
-        let events = Vec::new();
+        let mut events = Vec::new();
 
         for event in &profile.events {
             let trace_event = TraceEvent {
@@ -1891,7 +1891,7 @@ impl PerformanceAnalyzer {
 
     /// Detect bottlenecks
     fn detect_bottlenecks(&self, profile: &Profile) -> Vec<Bottleneck> {
-        let bottlenecks = Vec::new();
+        let mut bottlenecks = Vec::new();
 
         // CPU bottlenecks
         for node in &profile.call_graph.nodes {
@@ -1943,7 +1943,7 @@ impl PerformanceAnalyzer {
 
     /// Suggest optimizations
     fn suggest_optimizations(&self, profile: &Profile) -> Vec<OptimizationSuggestion> {
-        let suggestions = Vec::new();
+        let mut suggestions = Vec::new();
 
         for rule in &self.optimization_suggester.rules {
             if self.check_rule_condition(&rule.condition, profile) {
@@ -1993,7 +1993,7 @@ impl PerformanceAnalyzer {
 
     /// Detect anomalies
     fn detect_anomalies(&self, profile: &Profile) -> Vec<Anomaly> {
-        let anomalies = Vec::new();
+        let mut anomalies = Vec::new();
 
         // Check for unusual time distributions
         for node in &profile.call_graph.nodes {
@@ -2036,10 +2036,10 @@ impl PerformanceAnalyzer {
     /// Find critical path
     fn find_critical_path(&self, profile: &Profile) -> Vec<String> {
         // Simplified critical path - longest execution path
-        let path = Vec::new();
+        let mut path = Vec::new();
 
         if let Some(&root) = profile.call_graph.roots.first() {
-            let current = root;
+            let mut current = root;
             path.push(profile.call_graph.nodes[current].name.clone());
 
             // Follow the most expensive child at each level
@@ -2450,7 +2450,7 @@ struct MemoryCollector;
 impl MetricsCollector for MemoryCollector {
     fn collect(&self) -> Result<MetricsSample, String> {
         // Would use system APIs to get actual memory usage
-        let values = HashMap::new();
+        let mut values = HashMap::new();
         values.insert(MetricType::Memory, 0.0);
 
         Ok(MetricsSample {
@@ -2473,7 +2473,7 @@ struct CPUCollector;
 impl MetricsCollector for CPUCollector {
     fn collect(&self) -> Result<MetricsSample, String> {
         // Would use system APIs to get actual CPU usage
-        let values = HashMap::new();
+        let mut values = HashMap::new();
         values.insert(MetricType::CPU, 0.0);
 
         Ok(MetricsSample {
@@ -2503,7 +2503,7 @@ macro_rules! profile {
 macro_rules! time_it {
     ($profiler:expr, $name:expr, $code:block) => {{
         $profiler.start_timer($name);
-        let result = $code;
+        let mut result = $code;
         $profiler.stop_timer($name);
         result
     }};
@@ -2515,7 +2515,7 @@ mod tests {
 
     #[test]
     fn test_performance_profiler() {
-        let config = ProfilerConfig {
+        let mut config = ProfilerConfig {
             enabled: true,
             sampling_interval: Duration::from_millis(10),
             metrics: vec![MetricType::Time, MetricType::Memory],
@@ -2527,10 +2527,10 @@ mod tests {
             auto_save_interval: None,
         };
 
-        let profiler = PerformanceProfiler::new(config);
+        let mut profiler = PerformanceProfiler::new(config);
 
         // Start profiling
-        let result = profiler.start_profile("test_profile");
+        let mut result = profiler.start_profile("test_profile");
         assert!(result.is_ok());
 
         // Simulate some work
@@ -2554,7 +2554,7 @@ mod tests {
         assert!(profile.metrics.time_metrics.total_time > Duration::from_secs(0));
 
         // Analyze profile
-        let report = profiler.analyze_profile(&profile);
+        let mut report = profiler.analyze_profile(&profile);
         assert!(report.summary.total_time > Duration::from_secs(0));
 
         // Generate report

@@ -737,7 +737,7 @@ impl QuantumTrainer {
         let mut counts = std::collections::HashMap::new();
         counts.insert("0".repeat(circuit.num_qubits()), shots / 2);
         counts.insert("1".repeat(circuit.num_qubits()), shots / 2);
-        
+
         Ok(CircuitResult {
             counts,
             shots,
@@ -860,7 +860,8 @@ mod tests {
         let targets = vec![1.0, 0.0, 1.0];
 
         let loss = loss_fn.compute_loss(&predictions, &targets).unwrap();
-        let expected_loss = ((0.8_f64 - 1.0).powi(2) + (0.2_f64 - 0.0).powi(2) + (0.9_f64 - 1.0).powi(2)) / 3.0;
+        let expected_loss =
+            ((0.8_f64 - 1.0).powi(2) + (0.2_f64 - 0.0).powi(2) + (0.9_f64 - 1.0).powi(2)) / 3.0;
         assert!((loss - expected_loss).abs() < 1e-10);
 
         let gradients = loss_fn.compute_gradients(&predictions, &targets).unwrap();

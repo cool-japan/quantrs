@@ -207,7 +207,7 @@ mod tests {
     /// Test benchmark result
     #[test]
     fn test_benchmark_result() {
-        let descriptive_stats = HashMap::new();
+        let mut descriptive_stats = HashMap::new();
         descriptive_stats.insert(
             "execution_time".to_string(),
             DescriptiveStats {
@@ -222,7 +222,7 @@ mod tests {
             },
         );
 
-        let confidence_intervals = HashMap::new();
+        let mut confidence_intervals = HashMap::new();
         confidence_intervals.insert("execution_time".to_string(), (47.8, 53.2));
 
         let result = BenchmarkResult {
@@ -262,7 +262,7 @@ mod tests {
                     optimal_threads: 4,
                 },
                 scaling_predictions: {
-                    let predictions = HashMap::new();
+                    let mut predictions = HashMap::new();
                     predictions.insert(1000, 250.0);
                     predictions
                 },
@@ -306,7 +306,7 @@ mod tests {
     /// Test statistical summary
     #[test]
     fn test_statistical_summary() {
-        let descriptive_stats = HashMap::new();
+        let mut descriptive_stats = HashMap::new();
         descriptive_stats.insert(
             "execution_time".to_string(),
             DescriptiveStats {
@@ -321,11 +321,11 @@ mod tests {
             },
         );
 
-        let confidence_intervals = HashMap::new();
+        let mut confidence_intervals = HashMap::new();
         confidence_intervals.insert("execution_time".to_string(), (92.0, 108.0));
         confidence_intervals.insert("memory_usage".to_string(), (87.0, 113.0));
 
-        let effect_sizes = HashMap::new();
+        let mut effect_sizes = HashMap::new();
         effect_sizes.insert("algorithm_comparison".to_string(), 0.8);
 
         let summary = StatisticalSummary {
@@ -387,7 +387,7 @@ mod tests {
                             operation: "memory_allocation".to_string(),
                             execution_time: Duration::from_millis(100),
                             resource_requirements: {
-                                let req = HashMap::new();
+                                let mut req = HashMap::new();
                                 req.insert("memory_mb".to_string(), 256.0);
                                 req.insert("cpu_cores".to_string(), 1.0);
                                 req
@@ -398,7 +398,7 @@ mod tests {
                             operation: "tensor_contraction".to_string(),
                             execution_time: Duration::from_millis(200),
                             resource_requirements: {
-                                let req = HashMap::new();
+                                let mut req = HashMap::new();
                                 req.insert("memory_mb".to_string(), 512.0);
                                 req.insert("cpu_cores".to_string(), 2.0);
                                 req.insert("gpu_memory_mb".to_string(), 1024.0);

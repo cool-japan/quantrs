@@ -96,7 +96,7 @@ impl PluginManager {
             .get_mut(name)
             .ok_or_else(|| format!("Plugin {} not found", name))?;
 
-        let config = self.configs.get(name).cloned().unwrap_or_default();
+        let mut config = self.configs.get(name).cloned().unwrap_or_default();
         plugin.initialize(&config)?;
 
         Ok(plugin.create_sampler())
@@ -228,18 +228,18 @@ impl HyperparameterOptimizer {
     where
         F: Fn(&HashMap<String, f64>) -> Box<dyn Sampler>,
     {
-        let rng = rng();
-        let best_params = HashMap::new();
+        let mut rng = rng();
+        let mut best_params = HashMap::new();
         let best_score = f64::INFINITY;
-        let history = Vec::new();
+        let mut history = Vec::new();
 
         for trial in 0..self.num_trials {
             // Sample random parameters
-            let params = self.sample_parameters(&mut rng)?;
+            let mut params = self.sample_parameters(&mut rng)?;
 
             // Evaluate
             let sampler = objective(&params);
-            let score = self.evaluate_sampler(sampler, validation_problems)?;
+            let mut score = self.evaluate_sampler(sampler, validation_problems)?;
 
             history.push(TrialResult {
                 parameters: params.clone(),
@@ -276,13 +276,13 @@ impl HyperparameterOptimizer {
         // Generate grid points
         let grid_points = self.generate_grid(resolution)?;
 
-        let best_params = HashMap::new();
+        let mut best_params = HashMap::new();
         let best_score = f64::INFINITY;
-        let history = Vec::new();
+        let mut history = Vec::new();
 
         for (i, params) in grid_points.iter().enumerate() {
             let sampler = objective(params);
-            let score = self.evaluate_sampler(sampler, validation_problems)?;
+            let mut score = self.evaluate_sampler(sampler, validation_problems)?;
 
             history.push(TrialResult {
                 parameters: params.clone(),
@@ -323,18 +323,18 @@ impl HyperparameterOptimizer {
         let dim = self.search_space.len();
         let optimizer = BayesianOptimizer::new(dim, kernel, acquisition, exploration)?;
 
-        let history = Vec::new();
-        let x_data = Vec::new();
-        let y_data = Vec::new();
+        let mut history = Vec::new();
+        let mut x_data = Vec::new();
+        let mut y_data = Vec::new();
 
         // Initial random samples
-        let rng = rng();
+        let mut rng = rng();
         for _ in 0..std::cmp::min(10, self.num_trials / 4) {
-            let params = self.sample_parameters(&mut rng)?;
+            let mut params = self.sample_parameters(&mut rng)?;
             let sampler = objective(&params);
-            let score = self.evaluate_sampler(sampler, validation_problems)?;
+            let mut score = self.evaluate_sampler(sampler, validation_problems)?;
 
-            let x = self.params_to_array(&params)?;
+            let mut x = self.params_to_array(&params)?;
             x_data.push(x);
             y_data.push(score);
 
@@ -352,11 +352,11 @@ impl HyperparameterOptimizer {
         for _ in history.len()..self.num_trials {
             // Suggest next point
             let x_next = optimizer.suggest_next()?;
-            let params = self.array_to_params(&x_next)?;
+            let mut params = self.array_to_params(&x_next)?;
 
             // Evaluate
             let sampler = objective(&params);
-            let score = self.evaluate_sampler(sampler, validation_problems)?;
+            let mut score = self.evaluate_sampler(sampler, validation_problems)?;
 
             // Update model
             x_data.push(x_next);
@@ -406,10 +406,10 @@ impl HyperparameterOptimizer {
 
     /// Sample parameters from search space
     fn sample_parameters(&self, rng: &mut impl Rng) -> Result<HashMap<String, f64>, String> {
-        let params = HashMap::new();
+        let mut params = HashMap::new();
 
         for (name, space) in &self.search_space {
-            let value = match space {
+            let mut value = match space {
                 ParameterSpace::Continuous {
                     min,
                     max,
@@ -440,12 +440,12 @@ impl HyperparameterOptimizer {
     /// Generate grid points
     fn generate_grid(&self, resolution: usize) -> Result<Vec<HashMap<String, f64>>, String> {
         // Simplified: generate regular grid
-        let grid_points = Vec::new();
+        let mut grid_points = Vec::new();
 
         // This would need proper multi-dimensional grid generation
         // For now, just sample uniformly
         let total_points = resolution.pow(self.search_space.len() as u32);
-        let rng = rng();
+        let mut rng = rng();
 
         for _ in 0..total_points.min(self.num_trials) {
             grid_points.push(self.sample_parameters(&mut rng)?);
@@ -460,7 +460,7 @@ impl HyperparameterOptimizer {
         &self,
         params: &HashMap<String, f64>,
     ) -> Result<ndarray::Array1<f64>, String> {
-        let values = Vec::new();
+        let mut values = Vec::new();
 
         // Ensure consistent ordering
         let mut names: Vec<_> = self.search_space.keys().collect();
@@ -479,7 +479,7 @@ impl HyperparameterOptimizer {
         &self,
         array: &ndarray::Array1<f64>,
     ) -> Result<HashMap<String, f64>, String> {
-        let params = HashMap::new();
+        let mut params = HashMap::new();
 
         let mut names: Vec<_> = self.search_space.keys().collect();
         names.sort();
@@ -498,24 +498,24 @@ impl HyperparameterOptimizer {
         mut sampler: Box<dyn Sampler>,
         problems: &[CompiledModel],
     ) -> Result<f64, String> {
-        let scores = Vec::new();
+        let mut scores = Vec::new();
 
         for problem in problems {
-            let qubo = problem.to_qubo();
+            let mut qubo = problem.to_qubo();
             let start = Instant::now();
 
             let qubo_tuple = (qubo.to_dense_matrix(), qubo.variable_map());
-            let results = sampler
+            let mut results = sampler
                 .run_qubo(&qubo_tuple, 100)
                 .map_err(|e| format!("Sampler error: {:?}", e))?;
 
             let elapsed = start.elapsed();
 
             // Score based on solution quality and time
-            let best_energy = results.first().map(|r| r.energy).unwrap_or(f64::INFINITY);
+            let mut best_energy = results.first().map(|r| r.energy).unwrap_or(f64::INFINITY);
 
             let time_penalty = elapsed.as_secs_f64();
-            let score = best_energy + 0.1 * time_penalty;
+            let mut score = best_energy + 0.1 * time_penalty;
 
             scores.push(score);
         }
@@ -526,8 +526,8 @@ impl HyperparameterOptimizer {
 
     /// Compute convergence curve
     fn compute_convergence_curve(&self, history: &[TrialResult]) -> Vec<f64> {
-        let curve = Vec::new();
-        let best_so_far = f64::INFINITY;
+        let mut curve = Vec::new();
+        let mut best_so_far = f64::INFINITY;
 
         for trial in history {
             best_so_far = best_so_far.min(trial.score);
@@ -632,11 +632,11 @@ impl EnsembleSampler {
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         let shots_per_sampler = shots / self.samplers.len();
-        let all_results = Vec::new();
+        let mut all_results = Vec::new();
 
         // Run each sampler
         for sampler in &self.samplers {
-            let results = sampler.run_qubo(qubo, shots_per_sampler)?;
+            let mut results = sampler.run_qubo(qubo, shots_per_sampler)?;
             all_results.extend(results);
         }
 
@@ -684,7 +684,7 @@ impl EnsembleSampler {
         qubo: &(Array2<f64>, HashMap<String, usize>),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
-        let weights = self.weights.as_ref().ok_or_else(|| {
+        let mut weights = self.weights.as_ref().ok_or_else(|| {
             SamplerError::InvalidParameter("Weights not set for weighted voting".to_string())
         })?;
 
@@ -698,13 +698,13 @@ impl EnsembleSampler {
         let total_weight: f64 = weights.iter().sum();
         let normalized: Vec<f64> = weights.iter().map(|&w| w / total_weight).collect();
 
-        let all_results = Vec::new();
+        let mut all_results = Vec::new();
 
         // Run each sampler with weighted shots
         for (sampler, &weight) in self.samplers.iter().zip(normalized.iter()) {
             let sampler_shots = (shots as f64 * weight).round() as usize;
             if sampler_shots > 0 {
-                let results = sampler.run_qubo(qubo, sampler_shots)?;
+                let mut results = sampler.run_qubo(qubo, sampler_shots)?;
                 all_results.extend(results);
             }
         }
@@ -720,12 +720,12 @@ impl EnsembleSampler {
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         let shots_per_sampler = shots / self.samplers.len();
-        let best_results = Vec::new();
-        let best_energy = f64::INFINITY;
+        let mut best_results = Vec::new();
+        let mut best_energy = f64::INFINITY;
 
         // Run each sampler and keep best
         for sampler in &self.samplers {
-            let results = sampler.run_qubo(qubo, shots_per_sampler)?;
+            let mut results = sampler.run_qubo(qubo, shots_per_sampler)?;
 
             if let Some(best) = results.first() {
                 if best.energy < best_energy {
@@ -749,7 +749,7 @@ impl EnsembleSampler {
         }
 
         // Start with first sampler
-        let current_best = self.samplers[0].run_qubo(qubo, shots)?;
+        let mut current_best = self.samplers[0].run_qubo(qubo, shots)?;
 
         // Refine with subsequent samplers
         for sampler in self.samplers.iter().skip(1) {
@@ -777,10 +777,10 @@ impl EnsembleSampler {
 
         // Would need to make samplers thread-safe for real parallel execution
         // For now, sequential execution
-        let all_results = Vec::new();
+        let mut all_results = Vec::new();
 
         for sampler in &self.samplers {
-            let results = sampler.run_qubo(qubo, shots_per_sampler)?;
+            let mut results = sampler.run_qubo(qubo, shots_per_sampler)?;
             all_results.extend(results);
         }
 
@@ -838,10 +838,10 @@ impl EnsembleSampler {
     ) -> SamplerResult<Vec<SampleResult>> {
         // Similar to QUBO voting but for HOBO
         let shots_per_sampler = shots / self.samplers.len();
-        let all_results = Vec::new();
+        let mut all_results = Vec::new();
 
         for sampler in &self.samplers {
-            let results = sampler.run_hobo(hobo, shots_per_sampler)?;
+            let mut results = sampler.run_hobo(hobo, shots_per_sampler)?;
             all_results.extend(results);
         }
 
@@ -904,14 +904,14 @@ impl<S: Sampler> AdaptiveSampler<S> {
 
     /// Adapt parameters based on performance
     fn adapt_parameters(&self) -> HashMap<String, f64> {
-        let history = self.history.lock().unwrap();
+        let mut history = self.history.lock().unwrap();
 
         match &self.strategy {
             AdaptationStrategy::TemperatureAdaptive {
                 initial_range,
                 adaptation_rate,
             } => {
-                let params = HashMap::new();
+                let mut params = HashMap::new();
 
                 // Adapt temperature based on acceptance rate
                 let (min_temp, max_temp) = initial_range;
@@ -945,16 +945,16 @@ impl<S: Sampler> Sampler for AdaptiveSampler<S> {
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         // Adapt parameters
-        let params = self.adapt_parameters();
+        let mut params = self.adapt_parameters();
 
         // Run base sampler (would need to apply params)
         let start = Instant::now();
-        let results = self.base_sampler.run_qubo(qubo, shots)?;
+        let mut results = self.base_sampler.run_qubo(qubo, shots)?;
         let elapsed = start.elapsed();
 
         // Update history
         if let Some(best) = results.first() {
-            let history = self.history.lock().unwrap();
+            let mut history = self.history.lock().unwrap();
 
             let improvement = if let Some(&last) = history.energies.last() {
                 (last - best.energy) / last.abs().max(1.0)
@@ -1018,7 +1018,7 @@ impl SamplerCrossValidation {
         let n_problems = problems.len();
         let fold_size = n_problems / self.n_folds;
 
-        let fold_scores = Vec::new();
+        let mut fold_scores = Vec::new();
 
         for fold in 0..self.n_folds {
             let test_start = fold * fold_size;
@@ -1031,9 +1031,9 @@ impl SamplerCrossValidation {
             let test_problems = &problems[test_start..test_end];
 
             // Evaluate on test fold
-            let scores = Vec::new();
+            let mut scores = Vec::new();
             for problem in test_problems {
-                let score = self.evaluate_single(sampler, problem, shots_per_problem)?;
+                let mut score = self.evaluate_single(sampler, problem, shots_per_problem)?;
                 scores.push(score);
             }
 
@@ -1063,10 +1063,10 @@ impl SamplerCrossValidation {
         problem: &CompiledModel,
         shots: usize,
     ) -> Result<f64, String> {
-        let qubo = problem.to_qubo();
+        let mut qubo = problem.to_qubo();
         let qubo_tuple = (qubo.to_dense_matrix(), qubo.variable_map());
         let start = Instant::now();
-        let results = sampler
+        let mut results = sampler
             .run_qubo(&qubo_tuple, shots)
             .map_err(|e| format!("Sampler error: {:?}", e))?;
         let elapsed = start.elapsed();
@@ -1121,7 +1121,7 @@ mod tests {
 
     #[test]
     fn test_hyperparameter_space() {
-        let optimizer = HyperparameterOptimizer::new(OptimizationMethod::RandomSearch, 10);
+        let mut optimizer = HyperparameterOptimizer::new(OptimizationMethod::RandomSearch, 10);
 
         optimizer.add_parameter(
             "temperature",

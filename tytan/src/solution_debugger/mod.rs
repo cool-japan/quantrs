@@ -174,7 +174,7 @@ impl SolutionDebugger {
         &self,
         solution: &types::Solution,
     ) -> Vec<visualization::Visualization> {
-        let visualizations = Vec::new();
+        let mut visualizations = Vec::new();
 
         // Solution matrix visualization
         visualizations.push(
@@ -199,7 +199,7 @@ impl SolutionDebugger {
 
     /// Identify issues
     fn identify_issues(&self, report: &reporting::DebugReport) -> Vec<reporting::Issue> {
-        let issues = Vec::new();
+        let mut issues = Vec::new();
 
         // Check constraint violations
         if let Some(ref constraint_analysis) = report.constraint_analysis {
@@ -237,7 +237,7 @@ impl SolutionDebugger {
 
     /// Generate suggestions
     fn generate_suggestions(&self, report: &reporting::DebugReport) -> Vec<reporting::Suggestion> {
-        let suggestions = Vec::new();
+        let mut suggestions = Vec::new();
 
         // Suggestions based on constraint violations
         if let Some(ref constraint_analysis) = report.constraint_analysis {
@@ -270,7 +270,7 @@ impl SolutionDebugger {
 
     /// Generate summary
     fn generate_summary(&self, report: &reporting::DebugReport) -> reporting::DebugSummary {
-        let summary = reporting::DebugSummary::default();
+        let mut summary = reporting::DebugSummary::default();
 
         summary.total_issues = report.issues.len();
         summary.critical_issues = report
@@ -297,7 +297,7 @@ impl SolutionDebugger {
 
     /// Calculate overall solution score
     fn calculate_overall_score(&self, summary: &reporting::DebugSummary) -> f64 {
-        let score = 1.0;
+        let mut score = 1.0;
 
         // Penalty for constraint violations
         score *= summary.constraint_satisfaction_rate;
@@ -316,7 +316,7 @@ impl SolutionDebugger {
     /// Estimate improvement potential
     fn estimate_improvement_potential(&self, breakdown: &energy_analyzer::EnergyBreakdown) -> f64 {
         // Simple heuristic: if energy landscape shows nearby local minima with lower energy
-        let current_energy = breakdown.total_energy;
+        let mut current_energy = breakdown.total_energy;
         let best_nearby = breakdown
             .energy_landscape
             .local_minima
@@ -348,7 +348,7 @@ pub struct InteractiveDebugger {
 impl InteractiveDebugger {
     /// Create new interactive debugger
     pub fn new(problem_info: types::ProblemInfo) -> Self {
-        let config = config::DebuggerConfig {
+        let mut config = config::DebuggerConfig {
             detailed_analysis: true,
             check_constraints: true,
             analyze_energy: true,
@@ -391,7 +391,7 @@ impl InteractiveDebugger {
             }
             "constraints" => {
                 if let Some(ref solution) = self.current_solution {
-                    let report = self.debugger.debug_solution(solution);
+                    let mut report = self.debugger.debug_solution(solution);
                     if let Some(constraint_analysis) = report.constraint_analysis {
                         format!(
                             "Constraint satisfaction rate: {:.2}%",

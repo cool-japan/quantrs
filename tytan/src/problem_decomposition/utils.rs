@@ -91,8 +91,8 @@ impl SolutionIntegrator {
         component_solutions: &[ComponentSolution],
         global_var_map: &HashMap<String, usize>,
     ) -> Result<IntegratedSolution, String> {
-        let weights = self.compute_weights(component_solutions)?;
-        let integrated_assignment = HashMap::new();
+        let mut weights = self.compute_weights(component_solutions)?;
+        let mut integrated_assignment = HashMap::new();
         let mut variable_votes: HashMap<String, f64> = HashMap::new();
 
         // Collect weighted votes for each variable
@@ -111,7 +111,7 @@ impl SolutionIntegrator {
         }
 
         // Calculate integrated energy
-        let energy = self.calculate_integrated_energy(component_solutions, &weights);
+        let mut energy = self.calculate_integrated_energy(component_solutions, &weights);
         let confidence = self.calculate_integration_confidence(component_solutions, &weights);
 
         Ok(IntegratedSolution {
@@ -128,8 +128,8 @@ impl SolutionIntegrator {
         component_solutions: &[ComponentSolution],
         global_var_map: &HashMap<String, usize>,
     ) -> Result<IntegratedSolution, String> {
-        let consensus_assignment = HashMap::new();
-        let conflicts = Vec::new();
+        let mut consensus_assignment = HashMap::new();
+        let mut conflicts = Vec::new();
 
         // Find variables that appear in multiple solutions
         let mut variable_values: HashMap<String, Vec<bool>> = HashMap::new();
@@ -162,7 +162,7 @@ impl SolutionIntegrator {
             }
         }
 
-        let energy = component_solutions
+        let mut energy = component_solutions
             .iter()
             .map(|s| s.energy)
             .fold(0.0, |acc, e| acc + e);
@@ -183,7 +183,7 @@ impl SolutionIntegrator {
         global_var_map: &HashMap<String, usize>,
     ) -> Result<IntegratedSolution, String> {
         // Find best solution by energy
-        let best_solution = component_solutions
+        let mut best_solution = component_solutions
             .iter()
             .min_by(|a, b| {
                 a.energy
@@ -206,7 +206,7 @@ impl SolutionIntegrator {
         component_solutions: &[ComponentSolution],
         global_var_map: &HashMap<String, usize>,
     ) -> Result<IntegratedSolution, String> {
-        let integrated_assignment = HashMap::new();
+        let mut integrated_assignment = HashMap::new();
         let mut variable_votes: HashMap<String, (usize, usize)> = HashMap::new(); // (true_votes, false_votes)
 
         // Collect votes
@@ -227,11 +227,11 @@ impl SolutionIntegrator {
             integrated_assignment.insert(var_name, true_votes > false_votes);
         }
 
-        let energy = component_solutions
+        let mut energy = component_solutions
             .iter()
             .map(|s| s.energy)
             .fold(0.0, |acc, e| acc + e);
-        let confidence = 0.8; // Default confidence for majority voting
+        let mut confidence = 0.8; // Default confidence for majority voting
 
         Ok(IntegratedSolution {
             assignment: integrated_assignment,
@@ -295,7 +295,7 @@ impl SolutionIntegrator {
             }
             ConflictResolution::Random => {
                 use rand::Rng;
-                let rng = rand::rng();
+                let mut rng = rand::rng();
                 let index = rng.random_range(0..values.len());
                 Ok(values[index])
             }
@@ -370,7 +370,7 @@ impl DecompositionAnalyzer {
         let balance_factor = self.calculate_balance_factor(decomposition);
         let separator_size = self.calculate_average_separator_size(decomposition);
 
-        let metrics = DecompositionMetrics {
+        let mut metrics = DecompositionMetrics {
             width,
             num_clusters,
             balance_factor,
@@ -426,7 +426,7 @@ impl DecompositionAnalyzer {
         }
 
         // Count unique variables involved in coupling terms
-        let coupling_vars = std::collections::HashSet::new();
+        let mut coupling_vars = std::collections::HashSet::new();
         for coupling in &decomposition.coupling_terms {
             coupling_vars.insert(&coupling.var1);
             coupling_vars.insert(&coupling.var2);
@@ -487,7 +487,7 @@ impl DecompositionValidator {
         original_qubo: &Array2<f64>,
         original_var_map: &HashMap<String, usize>,
     ) -> Result<ValidationReport, String> {
-        let issues = Vec::new();
+        let mut issues = Vec::new();
 
         // Check variable coverage
         let coverage_issue = Self::check_variable_coverage(partitioning, original_var_map);
@@ -522,7 +522,7 @@ impl DecompositionValidator {
         partitioning: &Partitioning,
         original_var_map: &HashMap<String, usize>,
     ) -> Option<ValidationIssue> {
-        let covered_vars = std::collections::HashSet::new();
+        let mut covered_vars = std::collections::HashSet::new();
 
         for subproblem in &partitioning.subproblems {
             for var in &subproblem.variables {
@@ -596,7 +596,7 @@ impl DecompositionValidator {
         original_qubo: &Array2<f64>,
     ) -> Option<ValidationIssue> {
         // Check that coupling terms match original off-diagonal elements
-        let inconsistencies = 0;
+        let mut inconsistencies = 0;
 
         for coupling in &partitioning.coupling_terms {
             // This would require mapping back to original indices
@@ -622,7 +622,7 @@ impl DecompositionValidator {
         partitioning: &Partitioning,
         original_var_map: &HashMap<String, usize>,
     ) -> f64 {
-        let covered_vars = std::collections::HashSet::new();
+        let mut covered_vars = std::collections::HashSet::new();
 
         for subproblem in &partitioning.subproblems {
             for var in &subproblem.variables {
@@ -667,7 +667,7 @@ mod tests {
     fn test_solution_integrator() {
         let integrator = SolutionIntegrator::new(IntegrationStrategy::WeightedVoting);
 
-        let solutions = vec![
+        let mut solutions = vec![
             ComponentSolution {
                 subproblem_id: 0,
                 assignment: [("x0".to_string(), true), ("x1".to_string(), false)]
@@ -693,7 +693,7 @@ mod tests {
             .cloned()
             .collect();
 
-        let result = integrator.integrate_solutions(&solutions, &global_var_map);
+        let mut result = integrator.integrate_solutions(&solutions, &global_var_map);
         assert!(result.is_ok());
 
         let integrated = result.unwrap();
@@ -704,7 +704,7 @@ mod tests {
 
     #[test]
     fn test_decomposition_analyzer() {
-        let analyzer = DecompositionAnalyzer::new();
+        let mut analyzer = DecompositionAnalyzer::new();
 
         // Create mock partitioning
         let partitioning = Partitioning {
@@ -732,8 +732,8 @@ mod tests {
             },
         };
 
-        let original_qubo = Array2::zeros((4, 4));
-        let metrics = analyzer.analyze_decomposition(&partitioning, &original_qubo);
+        let mut original_qubo = Array2::zeros((4, 4));
+        let mut metrics = analyzer.analyze_decomposition(&partitioning, &original_qubo);
 
         assert_eq!(metrics.width, 2);
         assert_eq!(metrics.num_clusters, 2);
@@ -767,7 +767,7 @@ mod tests {
             },
         };
 
-        let original_qubo = Array2::zeros((4, 4));
+        let mut original_qubo = Array2::zeros((4, 4));
         let original_var_map = [
             ("x0".to_string(), 0),
             ("x1".to_string(), 1),
@@ -778,7 +778,7 @@ mod tests {
         .cloned()
         .collect();
 
-        let report = DecompositionValidator::validate_decomposition(
+        let mut report = DecompositionValidator::validate_decomposition(
             &partitioning,
             &original_qubo,
             &original_var_map,

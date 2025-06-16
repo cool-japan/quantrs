@@ -8,8 +8,8 @@ use std::time::{Duration, SystemTime};
 
 #[test]
 fn test_visualization_manager_creation() {
-    let config = VisualizationConfig::default();
-    let manager = AdvancedVisualizationManager::new(config);
+    let mut config = VisualizationConfig::default();
+    let mut manager = AdvancedVisualizationManager::new(config);
 
     // Test that manager is created successfully
     assert!(true);
@@ -17,7 +17,7 @@ fn test_visualization_manager_creation() {
 
 #[test]
 fn test_default_visualization_config() {
-    let config = VisualizationConfig::default();
+    let mut config = VisualizationConfig::default();
 
     // Verify default configuration values
     assert!(config.interactive_mode);
@@ -34,9 +34,9 @@ fn test_default_visualization_config() {
 
 #[test]
 fn test_color_schemes() {
-    let default_scheme = ColorScheme::default();
-    let high_contrast_scheme = ColorScheme::high_contrast();
-    let colorblind_friendly_scheme = ColorScheme::colorblind_friendly();
+    let mut default_scheme = ColorScheme::default();
+    let mut high_contrast_scheme = ColorScheme::high_contrast();
+    let mut colorblind_friendly_scheme = ColorScheme::colorblind_friendly();
 
     // Test default color scheme
     assert_eq!(default_scheme.primary, "#1f77b4");
@@ -452,7 +452,7 @@ fn test_quantum_state_data_types() {
     use num::Complex;
 
     // Test pure state
-    let pure_state = QuantumStateData::PureState(Array1::from(vec![
+    let mut pure_state = QuantumStateData::PureState(Array1::from(vec![
         Complex::new(1.0, 0.0),
         Complex::new(0.0, 0.0),
     ]));
@@ -466,7 +466,7 @@ fn test_quantum_state_data_types() {
     }
 
     // Test mixed state
-    let mixed_state = QuantumStateData::MixedState(Array2::eye(2));
+    let mut mixed_state = QuantumStateData::MixedState(Array2::eye(2));
 
     match mixed_state {
         QuantumStateData::MixedState(density_matrix) => {
@@ -476,7 +476,7 @@ fn test_quantum_state_data_types() {
     }
 
     // Test stabilizer state
-    let stabilizer_state = QuantumStateData::StabilizerState(StabilizerRepresentation {
+    let mut stabilizer_state = QuantumStateData::StabilizerState(StabilizerRepresentation {
         generators: vec![],
         phases: vec![],
     });
@@ -550,12 +550,12 @@ fn test_widget_types() {
 
 #[test]
 fn test_dashboard_data() {
-    let metrics = HashMap::new();
+    let mut metrics = HashMap::new();
     metrics.insert("cpu_usage".to_string(), 0.75);
     metrics.insert("memory_usage".to_string(), 0.60);
     metrics.insert("convergence_rate".to_string(), 0.85);
 
-    let metadata = HashMap::new();
+    let mut metadata = HashMap::new();
     metadata.insert("algorithm".to_string(), "SimulatedAnnealing".to_string());
     metadata.insert("problem_size".to_string(), "100".to_string());
 
@@ -595,13 +595,13 @@ fn test_comparison_result() {
         datasets_compared: vec!["SA".to_string(), "GA".to_string(), "TS".to_string()],
         statistical_results: StatisticalResults {
             p_values: {
-                let p_vals = HashMap::new();
+                let mut p_vals = HashMap::new();
                 p_vals.insert("SA_vs_GA".to_string(), 0.01);
                 p_vals.insert("GA_vs_TS".to_string(), 0.05);
                 p_vals
             },
             effect_sizes: {
-                let effects = HashMap::new();
+                let mut effects = HashMap::new();
                 effects.insert("SA_vs_GA".to_string(), 0.8);
                 effects.insert("GA_vs_TS".to_string(), 0.3);
                 effects
@@ -610,7 +610,7 @@ fn test_comparison_result() {
         },
         performance_metrics: PerformanceMetrics {
             execution_times: {
-                let times = HashMap::new();
+                let mut times = HashMap::new();
                 times.insert("SA".to_string(), Duration::from_secs(60));
                 times.insert("GA".to_string(), Duration::from_secs(120));
                 times.insert("TS".to_string(), Duration::from_secs(90));
@@ -721,8 +721,8 @@ fn test_interaction_types() {
 
 #[test]
 fn test_energy_landscape_visualization() {
-    let config = VisualizationConfig::default();
-    let manager = AdvancedVisualizationManager::new(config);
+    let mut config = VisualizationConfig::default();
+    let mut manager = AdvancedVisualizationManager::new(config);
 
     // Create test energy samples
     let energy_samples = vec![
@@ -785,8 +785,8 @@ fn test_energy_landscape_visualization() {
 
 #[test]
 fn test_convergence_tracking() {
-    let config = VisualizationConfig::default();
-    let manager = AdvancedVisualizationManager::new(config);
+    let mut config = VisualizationConfig::default();
+    let mut manager = AdvancedVisualizationManager::new(config);
 
     // Create problem configuration
     let problem_config = ProblemConfiguration {
@@ -835,8 +835,8 @@ fn test_convergence_tracking() {
 fn test_quantum_state_visualization() {
     use num::Complex;
 
-    let config = VisualizationConfig::default();
-    let manager = AdvancedVisualizationManager::new(config);
+    let mut config = VisualizationConfig::default();
+    let mut manager = AdvancedVisualizationManager::new(config);
 
     // Create a test quantum state (Bell state |00⟩ + |11⟩)
     let quantum_state = QuantumState {
@@ -886,8 +886,8 @@ fn test_quantum_state_visualization() {
 
 #[test]
 fn test_performance_dashboard() {
-    let config = VisualizationConfig::default();
-    let manager = AdvancedVisualizationManager::new(config);
+    let mut config = VisualizationConfig::default();
+    let mut manager = AdvancedVisualizationManager::new(config);
 
     // Create performance dashboard
     let data_sources = vec![
@@ -911,8 +911,8 @@ fn test_performance_dashboard() {
 
 #[test]
 fn test_comparative_analysis() {
-    let config = VisualizationConfig::default();
-    let manager = AdvancedVisualizationManager::new(config);
+    let mut config = VisualizationConfig::default();
+    let mut manager = AdvancedVisualizationManager::new(config);
 
     // Create test datasets
     let datasets = vec![
@@ -921,7 +921,7 @@ fn test_comparative_analysis() {
             data_points: vec![
                 DataPoint {
                     values: {
-                        let vals = HashMap::new();
+                        let mut vals = HashMap::new();
                         vals.insert("energy".to_string(), -2.5);
                         vals.insert("time".to_string(), 60.0);
                         vals
@@ -930,7 +930,7 @@ fn test_comparative_analysis() {
                 },
                 DataPoint {
                     values: {
-                        let vals = HashMap::new();
+                        let mut vals = HashMap::new();
                         vals.insert("energy".to_string(), -3.2);
                         vals.insert("time".to_string(), 120.0);
                         vals
@@ -950,7 +950,7 @@ fn test_comparative_analysis() {
             data_points: vec![
                 DataPoint {
                     values: {
-                        let vals = HashMap::new();
+                        let mut vals = HashMap::new();
                         vals.insert("energy".to_string(), -2.0);
                         vals.insert("time".to_string(), 90.0);
                         vals
@@ -959,7 +959,7 @@ fn test_comparative_analysis() {
                 },
                 DataPoint {
                     values: {
-                        let vals = HashMap::new();
+                        let mut vals = HashMap::new();
                         vals.insert("energy".to_string(), -2.8);
                         vals.insert("time".to_string(), 180.0);
                         vals
@@ -992,8 +992,8 @@ fn test_comparative_analysis() {
 
 #[test]
 fn test_export_functionality() {
-    let config = VisualizationConfig::default();
-    let manager = AdvancedVisualizationManager::new(config);
+    let mut config = VisualizationConfig::default();
+    let mut manager = AdvancedVisualizationManager::new(config);
 
     // Test different export formats
     let export_formats = vec![
@@ -1008,7 +1008,7 @@ fn test_export_functionality() {
         quality: 0.9,
         compression: true,
         metadata: {
-            let meta = HashMap::new();
+            let mut meta = HashMap::new();
             meta.insert("title".to_string(), "Test Visualization".to_string());
             meta.insert("created_by".to_string(), "QuantRS2-Tytan".to_string());
             meta
@@ -1050,8 +1050,8 @@ fn test_advanced_visualization_manager() {
 
 #[test]
 fn test_configuration_update() {
-    let config = VisualizationConfig::default();
-    let manager = AdvancedVisualizationManager::new(config);
+    let mut config = VisualizationConfig::default();
+    let mut manager = AdvancedVisualizationManager::new(config);
 
     // Create new configuration with different settings
     let new_config = VisualizationConfig {
@@ -1076,8 +1076,8 @@ fn test_configuration_update() {
 
 #[test]
 fn test_error_handling() {
-    let config = VisualizationConfig::default();
-    let manager = AdvancedVisualizationManager::new(config);
+    let mut config = VisualizationConfig::default();
+    let mut manager = AdvancedVisualizationManager::new(config);
 
     // Test getting status for non-existent visualization
     let status = manager.get_visualization_status("non_existent_viz");
@@ -1088,8 +1088,8 @@ fn test_error_handling() {
 
 #[test]
 fn test_comprehensive_visualization_workflow() {
-    let config = VisualizationConfig::default();
-    let manager = AdvancedVisualizationManager::new(config);
+    let mut config = VisualizationConfig::default();
+    let mut manager = AdvancedVisualizationManager::new(config);
 
     // Step 1: Create energy landscape visualization
     let energy_samples = vec![
@@ -1141,7 +1141,7 @@ fn test_comprehensive_visualization_workflow() {
     for i in 0..10 {
         let energy = -1.0 - 0.2 * i as f64;
         let gradient_norm = 0.1 * (0.8_f64).powi(i);
-        let parameters = Array1::from(vec![0.1 * i as f64, 0.9 - 0.1 * i as f64]);
+        let mut parameters = Array1::from(vec![0.1 * i as f64, 0.9 - 0.1 * i as f64]);
 
         let update_result =
             manager.update_convergence(&convergence_id, energy, gradient_norm, parameters);
@@ -1243,7 +1243,7 @@ fn test_animation_system() {
             scale: (1.0, 1.0, 1.0),
         },
         properties: {
-            let props = HashMap::new();
+            let mut props = HashMap::new();
             props.insert("opacity".to_string(), 0.8);
             props.insert("energy".to_string(), -2.5);
             props

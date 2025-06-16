@@ -15,17 +15,13 @@
 //! - Adaptive code distance selection
 //! - Logical measurement and state preparation protocols
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
-use num_complex::Complex64;
-use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use ndarray::{Array1, Array2};
+use std::collections::HashMap;
 
 use crate::circuit_interfaces::{
     CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
 };
 use crate::error::{Result, SimulatorError};
-use crate::statevector::StateVectorSimulator;
 
 /// Fault-tolerant synthesis configuration
 #[derive(Debug, Clone)]

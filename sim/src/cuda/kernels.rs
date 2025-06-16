@@ -7,13 +7,18 @@ use ndarray::Array1;
 use num_complex::Complex64;
 
 #[cfg(feature = "advanced_math")]
+use std::collections::HashMap;
+#[cfg(feature = "advanced_math")]
+use std::sync::{Arc, Mutex};
+
+#[cfg(feature = "advanced_math")]
 use super::context::CudaContext;
 #[cfg(feature = "advanced_math")]
 use super::memory::GpuMemory;
 pub use super::memory::GpuMemoryType;
 #[cfg(feature = "advanced_math")]
 use super::streams::CudaStream;
-use crate::error::Result;
+use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
 
 // Placeholder types for actual CUDA handles

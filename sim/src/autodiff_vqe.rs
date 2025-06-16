@@ -6,7 +6,6 @@
 
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rayon::prelude::*;
 use std::f64::consts::PI;
 
 use crate::error::{Result, SimulatorError};

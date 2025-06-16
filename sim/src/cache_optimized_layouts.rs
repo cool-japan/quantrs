@@ -6,7 +6,6 @@
 
 use ndarray::Array2;
 use num_complex::Complex64;
-use rayon::prelude::*;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
 use std::collections::{HashMap, VecDeque};

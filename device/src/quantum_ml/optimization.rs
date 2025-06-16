@@ -722,7 +722,7 @@ impl VQEObjectiveFunction {
         let mut counts = std::collections::HashMap::new();
         counts.insert("0".repeat(circuit.num_qubits()), shots / 2);
         counts.insert("1".repeat(circuit.num_qubits()), shots / 2);
-        
+
         Ok(CircuitResult {
             counts,
             shots,

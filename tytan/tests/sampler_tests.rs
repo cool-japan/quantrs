@@ -14,14 +14,14 @@ use quantrs2_tytan::symbol::symbols;
 fn test_sa_sampler_simple() {
     // Test SASampler on a simple QUBO problem
     // Create a simple QUBO matrix for testing
-    let matrix = ndarray::Array::<f64, _>::zeros((2, 2));
+    let mut matrix = ndarray::Array::<f64, _>::zeros((2, 2));
     matrix[[0, 0]] = -1.0; // Minimize x
     matrix[[1, 1]] = -1.0; // Minimize y
     matrix[[0, 1]] = 2.0; // Penalty for x and y both being 1
     matrix[[1, 0]] = 2.0; // (symmetric)
 
     // Create variable map
-    let var_map = HashMap::new();
+    let mut var_map = HashMap::new();
     var_map.insert("x".to_string(), 0);
     var_map.insert("y".to_string(), 1);
 
@@ -30,7 +30,7 @@ fn test_sa_sampler_simple() {
     let hobo = (matrix_dyn, var_map);
 
     // Create sampler with fixed seed for reproducibility
-    let sampler = SASampler::new(Some(42));
+    let mut sampler = SASampler::new(Some(42));
 
     // Run sampler with a few shots
     let results = sampler.run_hobo(&hobo, 10).unwrap();
@@ -67,7 +67,7 @@ fn test_sa_sampler_simple() {
 fn test_ga_sampler_simple() {
     // Test GASampler using a different approach to avoid empty range error
     // Create a simple problem with 3 variables
-    let matrix = ndarray::Array::<f64, _>::zeros((3, 3));
+    let mut matrix = ndarray::Array::<f64, _>::zeros((3, 3));
     matrix[[0, 0]] = -1.0; // Minimize x
     matrix[[1, 1]] = -1.0; // Minimize y
     matrix[[2, 2]] = -1.0; // Minimize z
@@ -77,13 +77,13 @@ fn test_ga_sampler_simple() {
     matrix[[2, 0]] = 2.0; // (symmetric)
 
     // Create variable map
-    let var_map = HashMap::new();
+    let mut var_map = HashMap::new();
     var_map.insert("x".to_string(), 0);
     var_map.insert("y".to_string(), 1);
     var_map.insert("z".to_string(), 2);
 
     // Create the GASampler with custom parameters to avoid edge cases
-    let sampler = GASampler::with_params(Some(42), 10, 10);
+    let mut sampler = GASampler::with_params(Some(42), 10, 10);
 
     // Use the direct QUBO interface
     let results = sampler.run_qubo(&(matrix, var_map), 5).unwrap();
@@ -112,14 +112,14 @@ fn test_ga_sampler_simple() {
 fn test_optimize_qubo() {
     // Test optimize_qubo function
     // Create a simple QUBO matrix for testing
-    let matrix = ndarray::Array::<f64, _>::zeros((2, 2));
+    let mut matrix = ndarray::Array::<f64, _>::zeros((2, 2));
     matrix[[0, 0]] = -1.0; // Minimize x
     matrix[[1, 1]] = -1.0; // Minimize y
     matrix[[0, 1]] = 2.0; // Penalty for x and y both being 1
     matrix[[1, 0]] = 2.0; // (symmetric)
 
     // Create variable map
-    let var_map = HashMap::new();
+    let mut var_map = HashMap::new();
     var_map.insert("x".to_string(), 0);
     var_map.insert("y".to_string(), 1);
 
@@ -172,7 +172,7 @@ fn test_sampler_one_hot_constraint() {
     let (qubo, _) = Compile::new(&expr).get_qubo().unwrap();
 
     // Create sampler with fixed seed for reproducibility
-    let sampler = SASampler::new(Some(42));
+    let mut sampler = SASampler::new(Some(42));
 
     // Run sampler with a reasonable number of shots
     let results = sampler.run_qubo(&qubo, 100).unwrap();

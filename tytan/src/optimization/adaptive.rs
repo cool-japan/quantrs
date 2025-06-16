@@ -140,10 +140,10 @@ impl AdaptiveOptimizer {
         max_iterations: usize,
     ) -> Result<AdaptiveResult, Box<dyn std::error::Error>> {
         // Initialize
-        let current_params = initial_params;
-        let penalty_weights = initial_penalties;
-        let best_solution = None;
-        let best_energy = f64::INFINITY;
+        let mut current_params = initial_params;
+        let mut penalty_weights = initial_penalties;
+        let mut best_solution = None;
+        let mut best_energy = f64::INFINITY;
 
         // Initialize strategy-specific components
         match self.config.strategy {
@@ -157,7 +157,7 @@ impl AdaptiveOptimizer {
         }
 
         // Main optimization loop
-        let no_improvement_count = 0;
+        let mut no_improvement_count = 0;
 
         for iter in 0..max_iterations {
             self.iteration = iter;
@@ -167,7 +167,7 @@ impl AdaptiveOptimizer {
                 self.run_sampling(&mut sampler, model, &current_params, &penalty_weights)?;
 
             // Evaluate performance
-            let metrics = self.evaluate_performance(model, &samples)?;
+            let mut metrics = self.evaluate_performance(model, &samples)?;
             self.performance_history.push(metrics.clone());
 
             // Update best solution
@@ -256,7 +256,7 @@ impl AdaptiveOptimizer {
         samples: &[SampleResult],
     ) -> Result<PerformanceMetrics, Box<dyn std::error::Error>> {
         let energies: Vec<f64> = samples.iter().map(|s| s.energy).collect();
-        let best_energy = energies.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+        let mut best_energy = energies.iter().fold(f64::INFINITY, |a, &b| a.min(b));
         let avg_energy = energies.iter().sum::<f64>() / energies.len() as f64;
 
         // Evaluate constraint violations
@@ -316,7 +316,7 @@ impl AdaptiveOptimizer {
         params: &mut HashMap<String, f64>,
         penalty_weights: &mut HashMap<String, f64>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let decay_rate = 0.95;
+        let mut decay_rate = 0.95;
 
         // Decay temperature parameter
         if let Some(temp) = params.get_mut("temperature") {
@@ -424,7 +424,7 @@ impl AdaptiveOptimizer {
         for i in mid..pop_len {
             // Use random perturbation directly to avoid borrow issues
             use rand::Rng;
-            let rng = rand::rng();
+            let mut rng = rand::rng();
 
             for value in self.population[i].parameters.values_mut() {
                 if rng.random::<f64>() < 0.3 {
@@ -447,7 +447,7 @@ impl AdaptiveOptimizer {
         // This is a simplified version
 
         use rand::Rng;
-        let rng = rand::rng();
+        let mut rng = rand::rng();
 
         for (param_name, param_value) in params.iter_mut() {
             if rng.random::<f64>() < self.config.exploration_rate {
@@ -480,10 +480,10 @@ impl AdaptiveOptimizer {
         base_params: &HashMap<String, f64>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         use rand::Rng;
-        let rng = rand::rng();
+        let mut rng = rand::rng();
 
         for i in 0..self.config.population_size {
-            let params = base_params.clone();
+            let mut params = base_params.clone();
 
             // Add random perturbations
             for value in params.values_mut() {
@@ -528,7 +528,7 @@ impl AdaptiveOptimizer {
         _samples: &[SampleResult],
     ) -> Result<HashMap<String, f64>, Box<dyn std::error::Error>> {
         // Placeholder implementation
-        let violations = HashMap::new();
+        let mut violations = HashMap::new();
 
         for constraint_name in model.get_constraints().keys() {
             violations.insert(constraint_name.clone(), 0.0);
@@ -556,8 +556,8 @@ impl AdaptiveOptimizer {
             return 0.0;
         }
 
-        let total_distance = 0.0;
-        let count = 0;
+        let mut total_distance = 0.0;
+        let mut count = 0;
 
         for i in 0..samples.len() {
             for j in i + 1..samples.len() {
@@ -586,7 +586,7 @@ impl AdaptiveOptimizer {
     fn calculate_temperature(&self, iteration: usize, max_iterations: usize) -> f64 {
         let progress = iteration as f64 / max_iterations as f64;
         let initial_temp = 10.0f64;
-        let final_temp = 0.01f64;
+        let mut final_temp = 0.01f64;
 
         initial_temp * (final_temp / initial_temp).powf(progress)
     }
@@ -610,7 +610,7 @@ impl AdaptiveOptimizer {
         individual: &mut Individual,
     ) -> Result<(), Box<dyn std::error::Error>> {
         use rand::Rng;
-        let rng = rand::rng();
+        let mut rng = rand::rng();
 
         for value in individual.parameters.values_mut() {
             if rng.random::<f64>() < 0.3 {
@@ -631,7 +631,7 @@ impl AdaptiveOptimizer {
             timestamp: std::time::SystemTime::now(),
         };
 
-        let json = serde_json::to_string_pretty(&export)?;
+        let mut json = serde_json::to_string_pretty(&export)?;
         std::fs::write(path, json)?;
 
         Ok(())

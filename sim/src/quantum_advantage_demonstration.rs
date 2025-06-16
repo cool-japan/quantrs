@@ -1589,7 +1589,7 @@ mod tests {
         QuantumAdvantageConfig {
             advantage_type: QuantumAdvantageType::ComputationalAdvantage,
             domain: ProblemDomain::RandomCircuitSampling,
-            classical_algorithms: [ClassicalAlgorithmType::MonteCarlo],
+            classical_algorithms: vec![ClassicalAlgorithmType::MonteCarlo],
             problem_sizes: vec![3, 5],
             num_trials: 2,
             confidence_level: 0.95,

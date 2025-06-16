@@ -5,7 +5,7 @@
 
 use super::{CVDeviceConfig, CVEntanglementMeasures, CVModeState, Complex};
 use crate::{DeviceError, DeviceResult};
-use rand::{rngs::StdRng, SeedableRng, random};
+use rand::{random, rngs::StdRng, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;

@@ -16,7 +16,6 @@
 
 use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
 use num_complex::Complex64;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::f64::consts::PI;

@@ -163,7 +163,7 @@ fn test_compile_cubic_expression() {
 fn test_compile_matrix_input() {
     // Test compiling from a matrix input
     // Create a 3x3 QUBO matrix directly
-    let matrix = Array::zeros((3, 3));
+    let mut matrix = Array::zeros((3, 3));
 
     // Set some values
     matrix[[0, 0]] = -3.0; // Linear term for variable 0

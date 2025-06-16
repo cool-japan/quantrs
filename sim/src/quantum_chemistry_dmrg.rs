@@ -1730,7 +1730,7 @@ mod tests {
             ground_state_energy: -1.170,
             excited_state_energies: Vec::new(),
             ground_state: DMRGState {
-                bond_dimensions: [10],
+                bond_dimensions: vec![10],
                 site_tensors: Vec::new(),
                 bond_matrices: Vec::new(),
                 left_canonical: Vec::new(),

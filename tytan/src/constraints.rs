@@ -220,10 +220,10 @@ impl AllDifferentPropagator {
 
 impl ConstraintPropagator for AllDifferentPropagator {
     fn propagate(&mut self, domains: &mut HashMap<String, Domain>) -> Result<bool, String> {
-        let changed = false;
+        let mut changed = false;
 
         // Find singleton domains
-        let assigned_values = HashSet::new();
+        let mut assigned_values = HashSet::new();
         for var in &self.variables {
             if let Some(domain) = domains.get(var) {
                 if domain.size() == 1 {
@@ -258,7 +258,7 @@ impl ConstraintPropagator for AllDifferentPropagator {
     }
 
     fn is_satisfied(&self, assignment: &HashMap<String, i32>) -> bool {
-        let seen = HashSet::new();
+        let mut seen = HashSet::new();
         for var in &self.variables {
             if let Some(&value) = assignment.get(var) {
                 if !seen.insert(value) {
@@ -278,11 +278,11 @@ impl AllDifferentPropagator {
     /// Hall's theorem propagation
     fn hall_propagation(&self, domains: &mut HashMap<String, Domain>) -> Result<bool, String> {
         let n = self.variables.len();
-        let changed = false;
+        let mut changed = false;
 
         // Check all subsets (exponential, so limited to small constraints)
         for subset_bits in 1..(1 << n) {
-            let subset_vars = Vec::new();
+            let mut subset_vars = Vec::new();
             let mut union_values: HashSet<i32> = HashSet::new();
 
             for (i, var) in self.variables.iter().enumerate() {
@@ -339,8 +339,8 @@ impl CumulativePropagator {
     /// Time-tabling propagation
     fn time_tabling(&self, domains: &HashMap<String, Domain>) -> Result<(), String> {
         // Find time bounds
-        let min_time = i32::MAX;
-        let max_time = i32::MIN;
+        let mut min_time = i32::MAX;
+        let mut max_time = i32::MIN;
 
         for task in &self.tasks {
             if let Some(domain) = domains.get(&task.start_var) {
@@ -351,7 +351,7 @@ impl CumulativePropagator {
 
         // Check resource usage at each time point
         for t in min_time..max_time {
-            let min_usage = 0;
+            let mut min_usage = 0;
 
             for task in &self.tasks {
                 if let Some(domain) = domains.get(&task.start_var) {
@@ -383,7 +383,7 @@ impl ConstraintPropagator for CumulativePropagator {
 
     fn is_satisfied(&self, assignment: &HashMap<String, i32>) -> bool {
         // Build resource profile
-        let events = Vec::new();
+        let mut events = Vec::new();
 
         for task in &self.tasks {
             if let Some(&start) = assignment.get(&task.start_var) {
@@ -397,7 +397,7 @@ impl ConstraintPropagator for CumulativePropagator {
         events.sort_by_key(|&(time, _)| time);
 
         // Check capacity constraint
-        let current_usage = 0;
+        let mut current_usage = 0;
         for (_, delta) in events {
             current_usage += delta;
             if current_usage > self.capacity {
@@ -448,7 +448,7 @@ impl ConstraintLibrary {
     pub fn n_queens(n: usize) -> Vec<GlobalConstraint> {
         let vars: Vec<String> = (0..n).map(|i| format!("queen_{}", i)).collect();
 
-        let constraints = vec![
+        let mut constraints = vec![
             // All queens in different columns
             GlobalConstraint::AllDifferent {
                 variables: vars.clone(),
@@ -463,7 +463,7 @@ impl ConstraintLibrary {
 
     /// Graph coloring constraint
     pub fn graph_coloring(edges: &[(usize, usize)], num_colors: usize) -> Vec<GlobalConstraint> {
-        let constraints = Vec::new();
+        let mut constraints = Vec::new();
 
         for &(i, j) in edges {
             // Adjacent vertices must have different colors
@@ -477,7 +477,7 @@ impl ConstraintLibrary {
 
     /// Sudoku constraints
     pub fn sudoku() -> Vec<GlobalConstraint> {
-        let constraints = Vec::new();
+        let mut constraints = Vec::new();
 
         // Row constraints
         for row in 0..9 {
@@ -494,7 +494,7 @@ impl ConstraintLibrary {
         // Box constraints
         for box_row in 0..3 {
             for box_col in 0..3 {
-                let vars = Vec::new();
+                let mut vars = Vec::new();
                 for r in 0..3 {
                     for c in 0..3 {
                         vars.push(format!("cell_{}_{}", box_row * 3 + r, box_col * 3 + c));
@@ -514,7 +514,7 @@ pub fn constraints_to_penalties(
     variables: &HashMap<String, usize>,
 ) -> Array2<f64> {
     let n = variables.len();
-    let penalty_matrix = Array2::zeros((n, n));
+    let mut penalty_matrix = Array2::zeros((n, n));
 
     for constraint in constraints {
         match &constraint.constraint {
@@ -558,14 +558,14 @@ mod tests {
 
     #[test]
     fn test_domain_operations() {
-        let domain = Domain::new(1, 5);
+        let mut domain = Domain::new(1, 5);
         assert_eq!(domain.size(), 5);
 
         domain.remove(3);
         assert_eq!(domain.size(), 4);
         assert!(!domain.values.contains(&3));
 
-        let keep = vec![1, 2, 5].into_iter().collect();
+        let mut keep = vec![1, 2, 5].into_iter().collect();
         domain.intersect(&keep);
         assert_eq!(domain.size(), 3);
         assert_eq!(domain.min, 1);
@@ -577,12 +577,12 @@ mod tests {
         let mut propagator =
             AllDifferentPropagator::new(vec!["x".to_string(), "y".to_string(), "z".to_string()]);
 
-        let domains = HashMap::new();
+        let mut domains = HashMap::new();
         domains.insert("x".to_string(), Domain::from_values(vec![1]));
         domains.insert("y".to_string(), Domain::from_values(vec![1, 2, 3]));
         domains.insert("z".to_string(), Domain::from_values(vec![1, 2, 3]));
 
-        let changed = propagator.propagate(&mut domains).unwrap();
+        let mut changed = propagator.propagate(&mut domains).unwrap();
         assert!(changed);
 
         // Value 1 should be removed from y and z
@@ -595,7 +595,7 @@ mod tests {
         let queens = ConstraintLibrary::n_queens(8);
         assert!(!queens.is_empty());
 
-        let edges = vec![(0, 1), (1, 2), (2, 0)];
+        let mut edges = vec![(0, 1), (1, 2), (2, 0)];
         let coloring = ConstraintLibrary::graph_coloring(&edges, 3);
         assert_eq!(coloring.len(), 3);
     }

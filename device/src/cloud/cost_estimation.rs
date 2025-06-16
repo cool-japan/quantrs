@@ -1632,7 +1632,8 @@ impl CostEstimationEngine {
     ) -> DeviceResult<CostPrediction> {
         let predictor_name = format!(
             "{:?}_{}",
-            config.provider, self.config.estimation_accuracy_level.clone() as u8
+            config.provider,
+            self.config.estimation_accuracy_level.clone() as u8
         );
 
         if let Some(predictor) = self.cost_predictors.get(&predictor_name) {

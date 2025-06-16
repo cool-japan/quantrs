@@ -25,7 +25,7 @@ mod tests {
     
     #[test]
     fn test_tokenizer() {
-        let dsl = ProblemDSL::new();
+        let mut dsl = ProblemDSL::new();
         let source = "var x binary;";
         let tokens = dsl.tokenize(source);
         
@@ -36,7 +36,7 @@ mod tests {
     
     #[test]
     fn test_parser() {
-        let dsl = ProblemDSL::new();
+        let mut dsl = ProblemDSL::new();
         let source = examples::get_example("simple_binary").unwrap();
         let ast = dsl.parse(source);
         

@@ -347,7 +347,8 @@ pub struct CoherenceMetrics {
 /// Enhanced ML load balancer with quantum awareness
 #[derive(Debug)]
 pub struct MLEnhancedLoadBalancer {
-    pub base_balancer: Arc<dyn crate::quantum_network::distributed_protocols::LoadBalancer + Send + Sync>,
+    pub base_balancer:
+        Arc<dyn crate::quantum_network::distributed_protocols::LoadBalancer + Send + Sync>,
     pub ml_predictor: Arc<LoadPredictionModel>,
     pub quantum_scheduler: Arc<QuantumAwareScheduler>,
     pub performance_learner: Arc<PerformanceLearner>,
@@ -2429,7 +2430,9 @@ impl LoadBalancer for RoundRobinBalancer {
             ));
         }
 
-        let index = self.current_index.fetch_add(1, std::sync::atomic::Ordering::Relaxed) 
+        let index = self
+            .current_index
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
             % available_nodes.len();
         Ok(available_nodes[index].node_id.clone())
     }
@@ -2460,10 +2463,13 @@ impl crate::quantum_network::distributed_protocols::LoadBalancer for RoundRobinB
         partitions: &[crate::quantum_network::distributed_protocols::CircuitPartition],
         available_nodes: &HashMap<NodeId, crate::quantum_network::distributed_protocols::NodeInfo>,
         _requirements: &crate::quantum_network::distributed_protocols::ExecutionRequirements,
-    ) -> std::result::Result<HashMap<Uuid, NodeId>, crate::quantum_network::distributed_protocols::DistributedComputationError> {
+    ) -> std::result::Result<
+        HashMap<Uuid, NodeId>,
+        crate::quantum_network::distributed_protocols::DistributedComputationError,
+    > {
         let mut allocation = HashMap::new();
         let nodes: Vec<_> = available_nodes.keys().cloned().collect();
-        
+
         if nodes.is_empty() {
             return Err(crate::quantum_network::distributed_protocols::DistributedComputationError::ResourceAllocation(
                 "No available nodes".to_string(),
@@ -2471,7 +2477,10 @@ impl crate::quantum_network::distributed_protocols::LoadBalancer for RoundRobinB
         }
 
         for partition in partitions {
-            let index = self.current_index.fetch_add(1, std::sync::atomic::Ordering::Relaxed) % nodes.len();
+            let index = self
+                .current_index
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+                % nodes.len();
             allocation.insert(partition.partition_id, nodes[index].clone());
         }
 
@@ -2498,14 +2507,20 @@ impl crate::quantum_network::distributed_protocols::LoadBalancer for RoundRobinB
         &self,
         available_nodes: &[crate::quantum_network::distributed_protocols::NodeInfo],
         _requirements: &crate::quantum_network::distributed_protocols::ResourceRequirements,
-    ) -> std::result::Result<NodeId, crate::quantum_network::distributed_protocols::DistributedComputationError> {
+    ) -> std::result::Result<
+        NodeId,
+        crate::quantum_network::distributed_protocols::DistributedComputationError,
+    > {
         if available_nodes.is_empty() {
             return Err(crate::quantum_network::distributed_protocols::DistributedComputationError::ResourceAllocation(
                 "No available nodes".to_string(),
             ));
         }
 
-        let index = self.current_index.fetch_add(1, std::sync::atomic::Ordering::Relaxed) % available_nodes.len();
+        let index = self
+            .current_index
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            % available_nodes.len();
         Ok(available_nodes[index].node_id.clone())
     }
 
@@ -2513,11 +2528,16 @@ impl crate::quantum_network::distributed_protocols::LoadBalancer for RoundRobinB
         &self,
         _node_id: &NodeId,
         _metrics: &crate::quantum_network::distributed_protocols::PerformanceMetrics,
-    ) -> std::result::Result<(), crate::quantum_network::distributed_protocols::DistributedComputationError> {
+    ) -> std::result::Result<
+        (),
+        crate::quantum_network::distributed_protocols::DistributedComputationError,
+    > {
         Ok(()) // Round robin doesn't use metrics
     }
 
-    fn get_balancer_metrics(&self) -> crate::quantum_network::distributed_protocols::LoadBalancerMetrics {
+    fn get_balancer_metrics(
+        &self,
+    ) -> crate::quantum_network::distributed_protocols::LoadBalancerMetrics {
         crate::quantum_network::distributed_protocols::LoadBalancerMetrics {
             total_decisions: 0,
             average_decision_time: Duration::from_millis(1),

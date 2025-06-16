@@ -157,8 +157,12 @@ impl QuantumGradientCalculator {
                 let circuit_minus = Self::evaluate_circuit_with_params(&circuit, &params_minus)?;
 
                 let device = self.device.read().await;
-                let result_plus = Self::execute_circuit_helper(&*device, &circuit_plus, self.config.shots).await?;
-                let result_minus = Self::execute_circuit_helper(&*device, &circuit_minus, self.config.shots).await?;
+                let result_plus =
+                    Self::execute_circuit_helper(&*device, &circuit_plus, self.config.shots)
+                        .await?;
+                let result_minus =
+                    Self::execute_circuit_helper(&*device, &circuit_minus, self.config.shots)
+                        .await?;
 
                 let expectation_plus = self.compute_expectation_value(&result_plus)?;
                 let expectation_minus = self.compute_expectation_value(&result_minus)?;
@@ -196,8 +200,10 @@ impl QuantumGradientCalculator {
             let circuit_minus = Self::evaluate_circuit_with_params(&circuit, &params_minus)?;
 
             let device = self.device.read().await;
-            let result_plus = Self::execute_circuit_helper(&*device, &circuit_plus, self.config.shots).await?;
-            let result_minus = Self::execute_circuit_helper(&*device, &circuit_minus, self.config.shots).await?;
+            let result_plus =
+                Self::execute_circuit_helper(&*device, &circuit_plus, self.config.shots).await?;
+            let result_minus =
+                Self::execute_circuit_helper(&*device, &circuit_minus, self.config.shots).await?;
 
             let expectation_plus = self.compute_expectation_value(&result_plus)?;
             let expectation_minus = self.compute_expectation_value(&result_minus)?;
@@ -228,8 +234,11 @@ impl QuantumGradientCalculator {
             let circuit_plus = Self::evaluate_circuit_with_params(&circuit, &params_plus)?;
 
             let device = self.device.read().await;
-            let result_original = Self::execute_circuit_helper(&*device, &circuit_original, self.config.shots).await?;
-            let result_plus = Self::execute_circuit_helper(&*device, &circuit_plus, self.config.shots).await?;
+            let result_original =
+                Self::execute_circuit_helper(&*device, &circuit_original, self.config.shots)
+                    .await?;
+            let result_plus =
+                Self::execute_circuit_helper(&*device, &circuit_plus, self.config.shots).await?;
 
             let expectation_original = self.compute_expectation_value(&result_original)?;
             let expectation_plus = self.compute_expectation_value(&result_plus)?;
@@ -297,8 +306,12 @@ impl QuantumGradientCalculator {
                     let circuit_minus = Self::evaluate_circuit_with_params(circuit, &params_minus)?;
 
                     let device = self.device.read().await;
-                    let result_plus = Self::execute_circuit_helper(&*device, &circuit_plus, self.config.shots).await?;
-                    let result_minus = Self::execute_circuit_helper(&*device, &circuit_minus, self.config.shots).await?;
+                    let result_plus =
+                        Self::execute_circuit_helper(&*device, &circuit_plus, self.config.shots)
+                            .await?;
+                    let result_minus =
+                        Self::execute_circuit_helper(&*device, &circuit_minus, self.config.shots)
+                            .await?;
 
                     let overlap = self.compute_state_overlap(&result_plus, &result_minus)?;
                     fisher_matrix[i][j] = (1.0 - overlap.real) / 2.0;
@@ -414,7 +427,7 @@ impl QuantumGradientCalculator {
         let mut counts = std::collections::HashMap::new();
         counts.insert("0".repeat(circuit.num_qubits()), shots / 2);
         counts.insert("1".repeat(circuit.num_qubits()), shots / 2);
-        
+
         Ok(CircuitResult {
             counts,
             shots,
@@ -486,8 +499,10 @@ impl QuantumGradientCalculator {
             let circuit_minus = Self::evaluate_circuit_with_params(&circuit, &params_minus)?;
 
             let device = self.device.read().await;
-            let result_plus = Self::execute_circuit_helper(&*device, &circuit_plus, self.config.shots).await?;
-            let result_minus = Self::execute_circuit_helper(&*device, &circuit_minus, self.config.shots).await?;
+            let result_plus =
+                Self::execute_circuit_helper(&*device, &circuit_plus, self.config.shots).await?;
+            let result_minus =
+                Self::execute_circuit_helper(&*device, &circuit_minus, self.config.shots).await?;
 
             let expectation_plus =
                 self.compute_observable_expectation(&result_plus, &observable)?;

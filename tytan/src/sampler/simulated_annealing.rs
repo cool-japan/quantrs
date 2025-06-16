@@ -37,7 +37,7 @@ impl SASampler {
     #[must_use]
     pub fn new(seed: Option<u64>) -> Self {
         // Create default annealing parameters
-        let params = AnnealingParams::default();
+        let mut params = AnnealingParams::default();
 
         // Customize based on seed
         if let Some(seed) = seed {
@@ -55,7 +55,7 @@ impl SASampler {
     /// * `params` - Custom annealing parameters
     #[must_use]
     pub fn with_params(seed: Option<u64>, params: AnnealingParams) -> Self {
-        let params = params;
+        let mut params = params;
 
         // Override seed if provided
         if let Some(seed) = seed {
@@ -119,14 +119,14 @@ impl SASampler {
         // For QUBO problems, convert to quantrs-anneal format
         if matrix_or_tensor.ndim() == 2 {
             // Convert ndarray to a QuboModel
-            let qubo = QuboModel::new(n_vars);
+            let mut qubo = QuboModel::new(n_vars);
 
             // Set linear and quadratic terms
             for i in 0..n_vars {
                 let diag_val = match matrix_or_tensor.ndim() {
                     2 => {
                         // For 2D matrices (QUBO)
-                        let matrix = matrix_or_tensor
+                        let mut matrix = matrix_or_tensor
                             .to_owned()
                             .into_dimensionality::<Ix2>()
                             .ok();
@@ -143,7 +143,7 @@ impl SASampler {
                     let quad_val = match matrix_or_tensor.ndim() {
                         2 => {
                             // For 2D matrices (QUBO)
-                            let matrix = matrix_or_tensor
+                            let mut matrix = matrix_or_tensor
                                 .to_owned()
                                 .into_dimensionality::<Ix2>()
                                 .ok();
@@ -159,7 +159,7 @@ impl SASampler {
             }
 
             // Configure annealing parameters
-            let params = self.params.clone();
+            let mut params = self.params.clone();
             params.num_repetitions = shots;
 
             // Create annealing simulator
@@ -172,7 +172,7 @@ impl SASampler {
             let annealing_result = simulator.solve(&ising_model)?;
 
             // Convert to our result format
-            let results = Vec::new();
+            let mut results = Vec::new();
 
             // Convert spins to binary variables
             let binary_vars: Vec<bool> = annealing_result
@@ -192,7 +192,7 @@ impl SASampler {
                 .collect();
 
             // Create a result
-            let result = SampleResult {
+            let mut result = SampleResult {
                 assignments,
                 energy: annealing_result.best_energy,
                 occurrences: 1,
@@ -250,12 +250,12 @@ impl SASampler {
 
         // Set up annealing parameters
         let initial_temp = 10.0;
-        let final_temp = 0.1;
+        let mut final_temp = 0.1;
         let sweeps = 1000;
 
         // Function to evaluate HOBO energy
         let evaluate_energy = |state: &[bool]| -> f64 {
-            let energy = 0.0;
+            let mut energy = 0.0;
 
             // We'll match based on tensor dimension to handle differently
             // Handle the tensor processing based on its dimensions
@@ -315,7 +315,7 @@ impl SASampler {
 
         // Vector to store thread-local solutions
         #[allow(unused_assignments)]
-        let all_solutions = Vec::with_capacity(total_runs);
+        let mut all_solutions = Vec::with_capacity(total_runs);
 
         // Run annealing process
         #[cfg(feature = "parallel")]
@@ -332,7 +332,7 @@ impl SASampler {
             all_solutions = seeds
                 .into_par_iter()
                 .map(|seed| {
-                    let thread_rng = StdRng::seed_from_u64(seed);
+                    let mut thread_rng = StdRng::seed_from_u64(seed);
 
                     // Initialize random state
                     let mut state = vec![false; n_vars];
@@ -341,9 +341,9 @@ impl SASampler {
                     }
 
                     // Evaluate initial energy
-                    let energy = evaluate_energy(&state);
-                    let best_state = state.clone();
-                    let best_energy = energy;
+                    let mut energy = evaluate_energy(&state);
+                    let mut best_state = state.clone();
+                    let mut best_energy = energy;
 
                     // Simulated annealing
                     for sweep in 0..sweeps {
@@ -354,7 +354,7 @@ impl SASampler {
                         // Perform n_vars updates per sweep
                         for _ in 0..n_vars {
                             // Select random bit to flip
-                            let idx = thread_rng.random_range(0..n_vars);
+                            let mut idx = thread_rng.random_range(0..n_vars);
 
                             // Flip the bit
                             state[idx] = !state[idx];
@@ -395,9 +395,9 @@ impl SASampler {
                 }
 
                 // Evaluate initial energy
-                let energy = evaluate_energy(&state);
-                let best_state = state.clone();
-                let best_energy = energy;
+                let mut energy = evaluate_energy(&state);
+                let mut best_state = state.clone();
+                let mut best_energy = energy;
 
                 // Simulated annealing
                 for sweep in 0..sweeps {
@@ -408,7 +408,7 @@ impl SASampler {
                     // Perform n_vars updates per sweep
                     for _ in 0..n_vars {
                         // Select random bit to flip
-                        let idx = rng.random_range(0..n_vars);
+                        let mut idx = rng.random_range(0..n_vars);
 
                         // Flip the bit
                         state[idx] = !state[idx];

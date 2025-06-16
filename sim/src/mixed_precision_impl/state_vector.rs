@@ -4,9 +4,8 @@
 //! switch between different numerical precisions based on accuracy requirements
 //! and performance constraints.
 
-use ndarray::{Array1, ArrayView1};
+use ndarray::Array1;
 use num_complex::{Complex32, Complex64};
-use std::sync::Arc;
 
 use super::config::QuantumPrecision;
 use crate::error::{Result, SimulatorError};

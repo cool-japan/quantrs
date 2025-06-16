@@ -44,7 +44,7 @@ fn quadratic_penalty_demo() -> Result<(), Box<dyn Error>> {
     //                                  = 2xy - x - y + 1
 
     let initial_penalty = 10.0;
-    let qubo = Array2::zeros((2, 2));
+    let mut qubo = Array2::zeros((2, 2));
 
     // Linear terms: x^2 + y^2 - penalty*(2x + 2y)
     qubo[[0, 0]] = 1.0 - 2.0 * initial_penalty; // x coefficient
@@ -55,7 +55,7 @@ fn quadratic_penalty_demo() -> Result<(), Box<dyn Error>> {
     qubo[[1, 0]] = 2.0 * initial_penalty;
 
     // Create variable mapping
-    let var_map = HashMap::new();
+    let mut var_map = HashMap::new();
     var_map.insert("x".to_string(), 0);
     var_map.insert("y".to_string(), 1);
 
@@ -71,10 +71,10 @@ fn quadratic_penalty_demo() -> Result<(), Box<dyn Error>> {
         penalty_type: PenaltyType::Quadratic,
     };
 
-    let penalty_optimizer = PenaltyOptimizer::new(config);
+    let mut penalty_optimizer = PenaltyOptimizer::new(config);
 
     // Run sampling with the QUBO matrix
-    let sampler = SASampler::new(None);
+    let mut sampler = SASampler::new(None);
     let samples = sampler.run_qubo(&(qubo.clone(), var_map.clone()), 100)?;
 
     println!("   Optimization Results:");
@@ -122,7 +122,7 @@ fn adaptive_penalty_demo() -> Result<(), Box<dyn Error>> {
     let penalty1 = 5.0; // penalty for one-hot constraint
     let penalty2 = 3.0; // penalty for inequality constraint
 
-    let qubo = Array2::zeros((3, 3));
+    let mut qubo = Array2::zeros((3, 3));
 
     // Linear terms: objective + constraint penalties
     // For constraint 1: (x + y + z - 1)^2 = x + y + z + 2xy + 2xz + 2yz - 2x - 2y - 2z + 1
@@ -142,7 +142,7 @@ fn adaptive_penalty_demo() -> Result<(), Box<dyn Error>> {
     qubo[[2, 1]] = 2.0 * penalty1;
 
     // Create variable mapping
-    let var_map = HashMap::new();
+    let mut var_map = HashMap::new();
     var_map.insert("x".to_string(), 0);
     var_map.insert("y".to_string(), 1);
     var_map.insert("z".to_string(), 2);
@@ -167,10 +167,10 @@ fn adaptive_penalty_demo() -> Result<(), Box<dyn Error>> {
             ..Default::default()
         };
 
-        let adaptive_optimizer = AdaptiveOptimizer::new(config);
+        let mut adaptive_optimizer = AdaptiveOptimizer::new(config);
 
         // Create sampler
-        let sampler = SASampler::new(None);
+        let mut sampler = SASampler::new(None);
 
         // Run sampling
         let samples = sampler.run_qubo(&(qubo.clone(), var_map.clone()), 100)?;
@@ -228,13 +228,13 @@ fn parameter_tuning_demo() -> Result<(), Box<dyn Error>> {
     println!("   Manually testing different sampler parameter combinations");
 
     // Create a simple QUBO problem for testing
-    let qubo = Array2::zeros((2, 2));
+    let mut qubo = Array2::zeros((2, 2));
     qubo[[0, 0]] = -1.0; // x
     qubo[[1, 1]] = -1.0; // y
     qubo[[0, 1]] = 2.0; // xy interaction
     qubo[[1, 0]] = 2.0;
 
-    let var_map = HashMap::new();
+    let mut var_map = HashMap::new();
     var_map.insert("x".to_string(), 0);
     var_map.insert("y".to_string(), 1);
 
@@ -250,7 +250,7 @@ fn parameter_tuning_demo() -> Result<(), Box<dyn Error>> {
     for (config_name, num_samples) in parameter_configs {
         println!("\n   Configuration: {}", config_name);
 
-        let sampler = SASampler::new(None);
+        let mut sampler = SASampler::new(None);
         let samples = sampler.run_qubo(&(qubo.clone(), var_map.clone()), num_samples)?;
 
         if let Some(best) = samples.first() {

@@ -651,8 +651,8 @@ impl TestingFramework {
         self.run_suite(sampler)?;
 
         // Compare with baseline
-        let regressions = Vec::new();
-        let improvements = Vec::new();
+        let mut regressions = Vec::new();
+        let mut improvements = Vec::new();
 
         for current_result in &self.results.test_results {
             if let Some(baseline_result) = baseline
@@ -742,13 +742,13 @@ impl TestingFramework {
         use std::thread;
 
         let test_cases = Arc::new(self.suite.test_cases.clone());
-        let results = Arc::new(Mutex::new(Vec::new()));
+        let mut results = Arc::new(Mutex::new(Vec::new()));
         let failures = Arc::new(Mutex::new(Vec::new()));
 
         let total_start = Instant::now();
         let chunk_size = (test_cases.len() + num_threads - 1) / num_threads;
 
-        let handles = Vec::new();
+        let mut handles = Vec::new();
 
         for thread_id in 0..num_threads {
             let start_idx = thread_id * chunk_size;
@@ -911,7 +911,7 @@ impl TestingFramework {
 
     /// Add stress test cases
     pub fn add_stress_tests(&mut self) {
-        let stress_categories = vec![
+        let mut stress_categories = vec![
             TestCategory {
                 name: "Large Scale Tests".to_string(),
                 description: "Tests with large problem sizes".to_string(),
@@ -964,7 +964,7 @@ impl TestingFramework {
 
     /// Export results as CSV
     fn export_csv(&self) -> Result<String, String> {
-        let csv = String::new();
+        let mut csv = String::new();
         csv.push_str("test_id,problem_type,size,sampler,objective_value,runtime_ms,constraints_satisfied,valid\n");
 
         for result in &self.results.test_results {
@@ -994,7 +994,7 @@ impl TestingFramework {
 
     /// Export results as XML
     fn export_xml(&self) -> Result<String, String> {
-        let xml = String::new();
+        let mut xml = String::new();
         xml.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         xml.push_str("<test_results>\n");
         xml.push_str(&format!(
@@ -1052,7 +1052,7 @@ impl TestingFramework {
         let results2 = self.results.test_results.clone();
 
         // Compare results
-        let comparisons = Vec::new();
+        let mut comparisons = Vec::new();
 
         for r1 in &results1 {
             if let Some(r2) = results2.iter().find(|r| r.test_id == r1.test_id) {
@@ -1189,7 +1189,7 @@ impl TestingFramework {
             for problem_type in &category.problem_types {
                 for difficulty in &category.difficulties {
                     for size in &self.config.problem_sizes {
-                        let config = GeneratorConfig {
+                        let mut config = GeneratorConfig {
                             problem_type: problem_type.clone(),
                             size: *size,
                             difficulty: difficulty.clone(),
@@ -1293,7 +1293,7 @@ impl TestingFramework {
         };
 
         for validator in &self.validators {
-            let result = validator.validate(
+            let mut result = validator.validate(
                 test_case,
                 &TestResult {
                     test_id: test_case.id.clone(),
@@ -1334,7 +1334,7 @@ impl TestingFramework {
         var_map: &HashMap<String, usize>,
         sample: &[i8],
     ) -> HashMap<String, bool> {
-        let solution = HashMap::new();
+        let mut solution = HashMap::new();
 
         for (var_name, &idx) in var_map {
             if idx < sample.len() {
@@ -1413,7 +1413,7 @@ impl TestingFramework {
 
     /// Generate text report
     fn generate_text_report(&self) -> Result<String, String> {
-        let report = String::new();
+        let mut report = String::new();
 
         report.push_str("=== Quantum Optimization Test Report ===\n\n");
 
@@ -1477,7 +1477,7 @@ impl TestingFramework {
     fn generate_json_report(&self) -> Result<String, String> {
         use std::fmt::Write;
 
-        let json = String::new();
+        let mut json = String::new();
 
         // Build JSON manually (avoiding serde dependency issues)
         json.push_str("{\n");
@@ -1663,7 +1663,7 @@ impl TestingFramework {
 
     /// Generate HTML report
     fn generate_html_report(&self) -> Result<String, String> {
-        let html = String::new();
+        let mut html = String::new();
 
         html.push_str("<!DOCTYPE html>\n<html>\n<head>\n");
         html.push_str("<title>Quantum Optimization Test Report</title>\n");
@@ -1709,7 +1709,7 @@ impl TestingFramework {
 
     /// Generate Markdown report
     fn generate_markdown_report(&self) -> Result<String, String> {
-        let md = String::new();
+        let mut md = String::new();
 
         md.push_str("# Quantum Optimization Test Report\n\n");
 
@@ -1762,7 +1762,7 @@ impl TestingFramework {
 
     /// Generate CSV report
     fn generate_csv_report(&self) -> Result<String, String> {
-        let csv = String::new();
+        let mut csv = String::new();
 
         csv.push_str("test_id,sampler,objective_value,constraints_satisfied,runtime_ms,valid\n");
 
@@ -1783,7 +1783,7 @@ impl TestingFramework {
 
     /// Save report to file
     pub fn save_report(&self, filename: &str) -> Result<(), String> {
-        let report = self.generate_report()?;
+        let mut report = self.generate_report()?;
         let mut file =
             File::create(filename).map_err(|e| format!("Failed to create file: {}", e))?;
         file.write_all(report.as_bytes())
@@ -1797,8 +1797,8 @@ struct ConstraintValidator;
 
 impl Validator for ConstraintValidator {
     fn validate(&self, test_case: &TestCase, result: &TestResult) -> ValidationResult {
-        let checks = Vec::new();
-        let is_valid = true;
+        let mut checks = Vec::new();
+        let mut is_valid = true;
 
         for constraint in &test_case.constraints {
             let satisfied = self.check_constraint(constraint, &result.solution);
@@ -1874,7 +1874,7 @@ struct ObjectiveValidator;
 
 impl Validator for ObjectiveValidator {
     fn validate(&self, test_case: &TestCase, result: &TestResult) -> ValidationResult {
-        let checks = Vec::new();
+        let mut checks = Vec::new();
 
         // Check if objective is better than random
         let random_value = self.estimate_random_objective(&test_case.qubo);
@@ -1893,7 +1893,7 @@ impl Validator for ObjectiveValidator {
         // Check against optimal if known
         if let Some(optimal_value) = test_case.optimal_value {
             let gap = (result.objective_value - optimal_value).abs() / optimal_value.abs();
-            let acceptable_gap = 0.05; // 5% gap
+            let mut acceptable_gap = 0.05; // 5% gap
 
             checks.push(ValidationCheck {
                 name: "Optimality gap".to_string(),
@@ -1921,8 +1921,8 @@ impl Validator for ObjectiveValidator {
 impl ObjectiveValidator {
     fn estimate_random_objective(&self, qubo: &Array2<f64>) -> f64 {
         let n = qubo.shape()[0];
-        let rng = rng();
-        let total = 0.0;
+        let mut rng = rng();
+        let mut total = 0.0;
         let samples = 100;
 
         for _ in 0..samples {
@@ -1931,7 +1931,7 @@ impl ObjectiveValidator {
                 x[i] = if rng.random::<bool>() { 1.0 } else { 0.0 };
             }
 
-            let value = 0.0;
+            let mut value = 0.0;
             for i in 0..n {
                 for j in 0..n {
                     value += qubo[[i, j]] * x[i] * x[j];
@@ -1950,7 +1950,7 @@ struct BoundsValidator;
 
 impl Validator for BoundsValidator {
     fn validate(&self, test_case: &TestCase, result: &TestResult) -> ValidationResult {
-        let checks = Vec::new();
+        let mut checks = Vec::new();
 
         // Check all variables are binary
         let all_binary = result.solution.values().all(|&v| v == true || v == false);
@@ -1997,7 +1997,7 @@ struct SymmetryValidator;
 
 impl Validator for SymmetryValidator {
     fn validate(&self, test_case: &TestCase, _result: &TestResult) -> ValidationResult {
-        let warnings = Vec::new();
+        let mut warnings = Vec::new();
 
         // Check for symmetries in QUBO
         if self.is_symmetric(&test_case.qubo) {
@@ -2040,11 +2040,11 @@ impl TestGenerator for MaxCutGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let thread_rng = rng();
+            let mut thread_rng = rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
-        let test_cases = Vec::new();
+        let mut test_cases = Vec::new();
 
         // Generate random graph
         let n = config.size;
@@ -2056,8 +2056,8 @@ impl TestGenerator for MaxCutGenerator {
             Difficulty::Extreme => 0.95,
         };
 
-        let qubo = Array2::zeros((n, n));
-        let var_map = HashMap::new();
+        let mut qubo = Array2::zeros((n, n));
+        let mut var_map = HashMap::new();
 
         for i in 0..n {
             var_map.insert(format!("x_{}", i), i);
@@ -2115,21 +2115,21 @@ impl TestGenerator for TSPGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let thread_rng = rng();
+            let mut thread_rng = rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
         let n_cities = config.size;
-        let test_cases = Vec::new();
+        let mut test_cases = Vec::new();
 
         // Generate random city locations
-        let cities = Vec::new();
+        let mut cities = Vec::new();
         for _ in 0..n_cities {
             cities.push((rng.random_range(0.0..100.0), rng.random_range(0.0..100.0)));
         }
 
         // Calculate distances
-        let distances = Array2::zeros((n_cities, n_cities));
+        let mut distances = Array2::zeros((n_cities, n_cities));
         for i in 0..n_cities {
             for j in 0..n_cities {
                 if i != j {
@@ -2142,13 +2142,13 @@ impl TestGenerator for TSPGenerator {
 
         // Create QUBO
         let n_vars = n_cities * n_cities;
-        let qubo = Array2::zeros((n_vars, n_vars));
-        let var_map = HashMap::new();
+        let mut qubo = Array2::zeros((n_vars, n_vars));
+        let mut var_map = HashMap::new();
 
         // Variable mapping: x[i,j] = city i at position j
         for i in 0..n_cities {
             for j in 0..n_cities {
-                let idx = i * n_cities + j;
+                let mut idx = i * n_cities + j;
                 var_map.insert(format!("x_{}_{}", i, j), idx);
             }
         }
@@ -2166,7 +2166,7 @@ impl TestGenerator for TSPGenerator {
         }
 
         // Constraints
-        let constraints = Vec::new();
+        let mut constraints = Vec::new();
         let penalty = 1000.0;
 
         // Each city visited exactly once
@@ -2269,7 +2269,7 @@ impl TestGenerator for GraphColoringGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let thread_rng = rng();
+            let mut thread_rng = rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
@@ -2280,11 +2280,11 @@ impl TestGenerator for GraphColoringGenerator {
             _ => 3,
         };
 
-        let test_cases = Vec::new();
+        let mut test_cases = Vec::new();
 
         // Generate random graph
-        let edge_prob = 0.3;
-        let edges = Vec::new();
+        let mut edge_prob = 0.3;
+        let mut edges = Vec::new();
 
         for i in 0..n_vertices {
             for j in i + 1..n_vertices {
@@ -2296,13 +2296,13 @@ impl TestGenerator for GraphColoringGenerator {
 
         // Create QUBO
         let n_vars = n_vertices * n_colors;
-        let qubo = Array2::zeros((n_vars, n_vars));
-        let var_map = HashMap::new();
+        let mut qubo = Array2::zeros((n_vars, n_vars));
+        let mut var_map = HashMap::new();
 
         // Variable mapping: x[v,c] = vertex v has color c
         for v in 0..n_vertices {
             for c in 0..n_colors {
-                let idx = v * n_colors + c;
+                let mut idx = v * n_colors + c;
                 var_map.insert(format!("x_{}_{}", v, c), idx);
             }
         }
@@ -2310,13 +2310,13 @@ impl TestGenerator for GraphColoringGenerator {
         // Objective: minimize number of colors used (simplified)
         for v in 0..n_vertices {
             for c in 0..n_colors {
-                let idx = v * n_colors + c;
+                let mut idx = v * n_colors + c;
                 qubo[[idx, idx]] -= c as f64; // Prefer lower colors
             }
         }
 
         // Constraints
-        let constraints = Vec::new();
+        let mut constraints = Vec::new();
         let penalty = 100.0;
 
         // Each vertex has exactly one color
@@ -2390,16 +2390,16 @@ impl TestGenerator for KnapsackGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let thread_rng = rng();
+            let mut thread_rng = rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
         let n_items = config.size;
-        let test_cases = Vec::new();
+        let mut test_cases = Vec::new();
 
         // Generate items
-        let values = Vec::new();
-        let weights = Vec::new();
+        let mut values = Vec::new();
+        let mut weights = Vec::new();
 
         for _ in 0..n_items {
             values.push(rng.random_range(1.0..100.0));
@@ -2409,8 +2409,8 @@ impl TestGenerator for KnapsackGenerator {
         let capacity = weights.iter().sum::<f64>() * 0.5; // 50% of total weight
 
         // Create QUBO
-        let qubo = Array2::zeros((n_items, n_items));
-        let var_map = HashMap::new();
+        let mut qubo = Array2::zeros((n_items, n_items));
+        let mut var_map = HashMap::new();
 
         for i in 0..n_items {
             var_map.insert(format!("x_{}", i), i);
@@ -2463,15 +2463,15 @@ impl TestGenerator for RandomQuboGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let thread_rng = rng();
+            let mut thread_rng = rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
         let n = config.size;
-        let test_cases = Vec::new();
+        let mut test_cases = Vec::new();
 
         // Generate random QUBO
-        let qubo = Array2::zeros((n, n));
+        let mut qubo = Array2::zeros((n, n));
         let density = match config.difficulty {
             Difficulty::Easy => 0.3,
             Difficulty::Medium => 0.5,
@@ -2483,7 +2483,7 @@ impl TestGenerator for RandomQuboGenerator {
         for i in 0..n {
             for j in i..n {
                 if rng.random::<f64>() < density {
-                    let value = rng.random_range(-10.0..10.0);
+                    let mut value = rng.random_range(-10.0..10.0);
                     qubo[[i, j]] = value;
                     if i != j {
                         qubo[[j, i]] = value;
@@ -2492,7 +2492,7 @@ impl TestGenerator for RandomQuboGenerator {
             }
         }
 
-        let var_map = HashMap::new();
+        let mut var_map = HashMap::new();
         for i in 0..n {
             var_map.insert(format!("x_{}", i), i);
         }
@@ -2542,16 +2542,16 @@ impl TestGenerator for FinanceTestGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let thread_rng = rng();
+            let mut thread_rng = rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
         let n_assets = config.size;
-        let test_cases = Vec::new();
+        let mut test_cases = Vec::new();
 
         // Generate portfolio optimization test case
-        let qubo = Array2::zeros((n_assets, n_assets));
-        let var_map = HashMap::new();
+        let mut qubo = Array2::zeros((n_assets, n_assets));
+        let mut var_map = HashMap::new();
 
         for i in 0..n_assets {
             var_map.insert(format!("asset_{}", i), i);
@@ -2616,24 +2616,24 @@ impl TestGenerator for LogisticsTestGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let thread_rng = rng();
+            let mut thread_rng = rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
         let n_vehicles = 2;
         let n_locations = config.size;
-        let test_cases = Vec::new();
+        let mut test_cases = Vec::new();
 
         // Generate vehicle routing problem
         let n_vars = n_vehicles * n_locations * n_locations;
-        let qubo = Array2::zeros((n_vars, n_vars));
-        let var_map = HashMap::new();
+        let mut qubo = Array2::zeros((n_vars, n_vars));
+        let mut var_map = HashMap::new();
 
         // Variable mapping: x[v][i][j] = vehicle v goes from i to j
         for v in 0..n_vehicles {
             for i in 0..n_locations {
                 for j in 0..n_locations {
-                    let idx = v * n_locations * n_locations + i * n_locations + j;
+                    let mut idx = v * n_locations * n_locations + i * n_locations + j;
                     var_map.insert(format!("x_{}_{}_{}", v, i, j), idx);
                 }
             }
@@ -2644,7 +2644,7 @@ impl TestGenerator for LogisticsTestGenerator {
             for i in 0..n_locations {
                 for j in 0..n_locations {
                     if i != j {
-                        let idx = v * n_locations * n_locations + i * n_locations + j;
+                        let mut idx = v * n_locations * n_locations + i * n_locations + j;
                         let distance = rng.random_range(1.0..20.0);
                         qubo[[idx, idx]] += distance;
                     }
@@ -2690,23 +2690,23 @@ impl TestGenerator for ManufacturingTestGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let thread_rng = rng();
+            let mut thread_rng = rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
         let n_jobs = config.size;
         let n_machines = 3;
-        let test_cases = Vec::new();
+        let mut test_cases = Vec::new();
 
         // Generate job scheduling problem
         let n_vars = n_jobs * n_machines;
-        let qubo = Array2::zeros((n_vars, n_vars));
-        let var_map = HashMap::new();
+        let mut qubo = Array2::zeros((n_vars, n_vars));
+        let mut var_map = HashMap::new();
 
         // Variable mapping: x[j][m] = job j on machine m
         for j in 0..n_jobs {
             for m in 0..n_machines {
-                let idx = j * n_machines + m;
+                let mut idx = j * n_machines + m;
                 var_map.insert(format!("job_{}_machine_{}", j, m), idx);
             }
         }
@@ -2714,14 +2714,14 @@ impl TestGenerator for ManufacturingTestGenerator {
         // Add processing time objective
         for j in 0..n_jobs {
             for m in 0..n_machines {
-                let idx = j * n_machines + m;
+                let mut idx = j * n_machines + m;
                 let processing_time = rng.random_range(1.0..10.0);
                 qubo[[idx, idx]] += processing_time;
             }
         }
 
         // Add constraints: each job assigned to exactly one machine
-        let constraints = Vec::new();
+        let mut constraints = Vec::new();
         for j in 0..n_jobs {
             let vars: Vec<_> = (0..n_machines)
                 .map(|m| format!("job_{}_machine_{}", j, m))
@@ -2774,7 +2774,7 @@ mod tests {
 
     #[test]
     fn test_testing_framework() {
-        let config = TestConfig {
+        let mut config = TestConfig {
             seed: Some(42),
             cases_per_category: 5,
             problem_sizes: vec![5, 10],
@@ -2799,7 +2799,7 @@ mod tests {
             },
         };
 
-        let framework = TestingFramework::new(config);
+        let mut framework = TestingFramework::new(config);
 
         // Add test categories
         framework.add_category(TestCategory {
@@ -2811,13 +2811,13 @@ mod tests {
         });
 
         // Generate test suite
-        let result = framework.generate_suite();
+        let mut result = framework.generate_suite();
         assert!(result.is_ok());
         assert!(!framework.suite.test_cases.is_empty());
 
         // Run tests
         let sampler = SASampler::new(Some(42));
-        let result = framework.run_suite(&sampler);
+        let mut result = framework.run_suite(&sampler);
         assert!(result.is_ok());
 
         // Check results
@@ -2825,7 +2825,7 @@ mod tests {
         assert!(framework.results.summary.success_rate >= 0.0);
 
         // Generate report
-        let report = framework.generate_report();
+        let mut report = framework.generate_report();
         assert!(report.is_ok());
     }
 }

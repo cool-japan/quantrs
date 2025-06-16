@@ -15,18 +15,15 @@
 //! - Integration with Intel/Xilinx FPGA platforms
 //! - OpenCL and Verilog/SystemVerilog code generation
 
-use ndarray::{Array1, Array2, ArrayView1};
+use ndarray::Array1;
 use num_complex::Complex64;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 
 use crate::circuit_interfaces::{
     CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
 };
 use crate::error::{Result, SimulatorError};
-use crate::statevector::StateVectorSimulator;
 
 /// FPGA platform types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

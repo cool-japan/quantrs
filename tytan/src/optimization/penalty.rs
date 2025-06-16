@@ -126,8 +126,8 @@ impl PenaltyOptimizer {
         model: &CompiledModel,
         sample_results: &[(Vec<bool>, f64)],
     ) -> Result<PenaltyOptimizationResult, Box<dyn std::error::Error>> {
-        let iteration = 0;
-        let converged = false;
+        let mut iteration = 0;
+        let mut converged = false;
 
         while iteration < self.config.max_iterations && !converged {
             // Evaluate constraint violations
@@ -178,12 +178,12 @@ impl PenaltyOptimizer {
         model: &CompiledModel,
         sample_results: &[(Vec<bool>, f64)],
     ) -> Result<HashMap<String, f64>, Box<dyn std::error::Error>> {
-        let violations = HashMap::new();
+        let mut violations = HashMap::new();
 
         // For each constraint in the model
         for (constraint_name, constraint_expr) in model.get_constraints() {
-            let total_violation = 0.0;
-            let count = 0;
+            let mut total_violation = 0.0;
+            let mut count = 0;
 
             // Evaluate constraint for each sample
             for (assignment, _energy) in sample_results {
@@ -294,7 +294,7 @@ impl PenaltyOptimizer {
             .map(|name| violations[name].abs())
             .collect();
 
-        let objective = WeightOptimizationObjective {
+        let mut objective = WeightOptimizationObjective {
             violations: violations_vec,
             penalty_type: self.config.penalty_type,
             regularization: 0.01, // L2 regularization on weights
@@ -307,7 +307,7 @@ impl PenaltyOptimizer {
 
         // Optimize
         if let Some(ref mut optimizer) = self.optimizer {
-            let result = optimizer.minimize(&objective, &current_weights, &bounds, iteration)?;
+            let mut result = optimizer.minimize(&objective, &current_weights, &bounds, iteration)?;
 
             // Update weights
             for (i, name) in constraint_names.iter().enumerate() {
@@ -324,11 +324,11 @@ impl PenaltyOptimizer {
         model: &CompiledModel,
         sample_results: &[(Vec<bool>, f64)],
     ) -> Result<f64, Box<dyn std::error::Error>> {
-        let total_objective = 0.0;
+        let mut total_objective = 0.0;
 
         for (assignment, energy) in sample_results {
             // Original objective
-            let penalized_objective = *energy;
+            let mut penalized_objective = *energy;
 
             // Add penalty terms
             for (constraint_name, constraint_expr) in model.get_constraints() {
@@ -481,8 +481,8 @@ trait TermEvaluator {
 
 /// Analyze penalty function behavior
 pub fn analyze_penalty_landscape(config: &PenaltyConfig, violations: &[f64]) -> PenaltyAnalysis {
-    let weights = Array1::linspace(config.min_weight, config.max_weight, 100);
-    let penalties = Vec::new();
+    let mut weights = Array1::linspace(config.min_weight, config.max_weight, 100);
+    let mut penalties = Vec::new();
 
     for &weight in weights.iter() {
         let penalty_values: Vec<f64> = violations
@@ -529,8 +529,8 @@ fn find_optimal_weight(weights: &Array1<f64>, violations: &[f64], config: &Penal
     // with objective minimization
     let target_penalty = violations.len() as f64 * config.violation_tolerance;
 
-    let best_weight = config.initial_weight;
-    let best_diff = f64::INFINITY;
+    let mut best_weight = config.initial_weight;
+    let mut best_diff = f64::INFINITY;
 
     for &weight in weights.iter() {
         let total_penalty: f64 = violations
@@ -561,7 +561,7 @@ fn calculate_sensitivity(violations: &[f64], config: &PenaltyConfig) -> f64 {
         .map(|&v| calculate_penalty(v, weight, config.penalty_type))
         .collect();
 
-    let delta = 0.01 * weight;
+    let mut delta = 0.01 * weight;
     let penalties_delta: Vec<f64> = violations
         .iter()
         .map(|&v| calculate_penalty(v, weight + delta, config.penalty_type))

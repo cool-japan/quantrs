@@ -7,7 +7,6 @@
 
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
@@ -19,6 +18,7 @@ use crate::scirs2_integration::SciRS2Backend;
 use crate::sparse::CSRMatrix;
 use crate::statevector::StateVectorSimulator;
 #[cfg(feature = "advanced_math")]
+#[allow(unused_imports)]
 use crate::tensor_network::TensorNetwork;
 
 /// Circuit interface configuration

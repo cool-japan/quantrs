@@ -78,10 +78,10 @@ impl Default for PortfolioConstraints {
 
 /// Generate synthetic asset data
 fn generate_assets(n_assets: usize, seed: u64) -> (Vec<Asset>, Array2<f64>) {
-    let rng = StdRng::seed_from_u64(seed);
+    let mut rng = StdRng::seed_from_u64(seed);
 
     let sectors = vec!["Technology", "Finance", "Healthcare", "Energy", "Consumer"];
-    let assets = Vec::new();
+    let mut assets = Vec::new();
 
     // Generate assets with realistic characteristics
     for i in 0..n_assets {
@@ -109,7 +109,7 @@ fn generate_assets(n_assets: usize, seed: u64) -> (Vec<Asset>, Array2<f64>) {
     }
 
     // Generate correlation matrix
-    let correlation = Array2::eye(n_assets);
+    let mut correlation = Array2::eye(n_assets);
 
     for i in 0..n_assets {
         for j in i + 1..n_assets {
@@ -124,7 +124,7 @@ fn generate_assets(n_assets: usize, seed: u64) -> (Vec<Asset>, Array2<f64>) {
     }
 
     // Convert correlation to covariance
-    let covariance = Array2::zeros((n_assets, n_assets));
+    let mut covariance = Array2::zeros((n_assets, n_assets));
     for i in 0..n_assets {
         for j in 0..n_assets {
             covariance[[i, j]] = correlation[[i, j]] * assets[i].volatility * assets[j].volatility;
@@ -143,17 +143,17 @@ fn create_portfolio_model(
     n_bins: usize, // Number of discretization bins for weights
 ) -> Result<Model, Box<dyn std::error::Error>> {
     let n_assets = assets.len();
-    let model = Model::new();
+    let mut model = Model::new();
 
     // Binary variables for asset selection (x_i = 1 if asset i is included)
-    let selection_vars = Vec::new();
+    let mut selection_vars = Vec::new();
     for i in 0..n_assets {
         selection_vars.push(model.add_variable(&format!("select_{}", i))?);
     }
 
     // Binary variables for weight discretization
     // w_i = sum_j (j/n_bins) * w_i_j, where w_i_j are binary
-    let weight_vars = HashMap::new();
+    let mut weight_vars = HashMap::new();
     for i in 0..n_assets {
         for j in 1..=n_bins {
             let var = model.add_variable(&format!("w_{}_{}", i, j))?;
@@ -163,7 +163,7 @@ fn create_portfolio_model(
 
     // Constraint: if asset is selected, it must have exactly one weight level
     for i in 0..n_assets {
-        let weight_sum = SimpleExpr::constant(0.0);
+        let mut weight_sum = SimpleExpr::constant(0.0);
         for j in 1..=n_bins {
             weight_sum = weight_sum + weight_vars[&(i, j)].clone();
         }
@@ -173,7 +173,7 @@ fn create_portfolio_model(
     }
 
     // Constraint: total weight must equal 1
-    let total_weight = SimpleExpr::constant(0.0);
+    let mut total_weight = SimpleExpr::constant(0.0);
     for i in 0..n_assets {
         for j in 1..=n_bins {
             let weight_value = j as f64 / n_bins as f64;
@@ -191,13 +191,13 @@ fn create_portfolio_model(
     // Sector constraints handled as penalty in objective
 
     // Objective: maximize return - risk_aversion * variance - transaction_costs
-    let objective = SimpleExpr::constant(0.0);
+    let mut objective = SimpleExpr::constant(0.0);
     let penalty_weight = 1000.0;
 
     // Add constraint penalties
 
     // 1. Total weight constraint: sum of all weights should equal 1
-    let total_weight_penalty = total_weight.clone();
+    let mut total_weight_penalty = total_weight.clone();
     total_weight_penalty = total_weight_penalty + SimpleExpr::constant(-1.0);
     // Penalty for (total_weight - 1)^2
     objective = objective
@@ -206,7 +206,7 @@ fn create_portfolio_model(
             * total_weight_penalty;
 
     // 2. Asset count constraints
-    let asset_count_objective = objective;
+    let mut asset_count_objective = objective;
     if let Some(min_assets) = constraints.min_assets {
         let asset_count: SimpleExpr = selection_vars.iter().map(|v| v.clone()).sum();
         let violation = asset_count.clone() + SimpleExpr::constant(-(min_assets as f64));
@@ -221,7 +221,7 @@ fn create_portfolio_model(
         asset_count_objective = asset_count_objective
             + SimpleExpr::constant(penalty_weight) * violation.clone() * violation;
     }
-    let objective = asset_count_objective;
+    let mut objective = asset_count_objective;
 
     // Expected return term
     for i in 0..n_assets {
@@ -310,7 +310,7 @@ fn calculate_portfolio_metrics(
         .sum();
 
     // Portfolio variance
-    let variance = 0.0;
+    let mut variance = 0.0;
     for i in 0..n {
         for j in 0..n {
             variance += weights[i] * weights[j] * covariance[[i, j]];
@@ -325,7 +325,7 @@ fn calculate_portfolio_metrics(
     let concentration = weights.iter().map(|w| w * w).sum::<f64>(); // HHI
 
     // Sector allocation
-    let sector_weights = HashMap::new();
+    let mut sector_weights = HashMap::new();
     for (i, weight) in weights.iter().enumerate() {
         if *weight > 0.001 {
             let sector = &assets[i].sector;
@@ -374,7 +374,7 @@ fn run_portfolio_optimization(
     println!("  Min weight: {:?}", constraints.min_weight);
     println!("  Max weight: {:?}", constraints.max_weight);
 
-    let results = Vec::new();
+    let mut results = Vec::new();
     let n_bins = 20; // Discretization levels
 
     for &risk_aversion in risk_aversions {
@@ -395,7 +395,7 @@ fn run_portfolio_optimization(
             penalty_type: PenaltyType::Quadratic,
         };
 
-        let penalty_optimizer = PenaltyOptimizer::new(penalty_config);
+        let mut penalty_optimizer = PenaltyOptimizer::new(penalty_config);
         let compiled = model.compile()?;
         let qubo = compiled.to_qubo();
 
@@ -406,8 +406,8 @@ fn run_portfolio_optimization(
 
         // Convert QUBO to matrix format
         let n_vars = qubo.num_variables;
-        let matrix = Array2::zeros((n_vars, n_vars));
-        let var_map = HashMap::new();
+        let mut matrix = Array2::zeros((n_vars, n_vars));
+        let mut var_map = HashMap::new();
 
         for i in 0..n_vars {
             var_map.insert(format!("x_{}", i), i);
@@ -424,13 +424,13 @@ fn run_portfolio_optimization(
         }
 
         // Run with optimized parameters
-        let sampler = SASampler::new(None);
+        let mut sampler = SASampler::new(None);
 
         let samples = sampler.run_qubo(&(matrix, var_map), 1000)?;
 
         // Find best portfolio
-        let best_portfolio = None;
-        let best_sharpe = -f64::INFINITY;
+        let mut best_portfolio = None;
+        let mut best_sharpe = -f64::INFINITY;
 
         for sample in &samples {
             let weights = extract_portfolio(sample, assets.len(), n_bins);
@@ -461,7 +461,7 @@ fn plot_efficient_frontier(
 ) -> Result<(), Box<dyn std::error::Error>> {
     use std::io::Write;
 
-    let csv_data = String::new();
+    let mut csv_data = String::new();
     writeln!(
         &mut csv_data,
         "risk_aversion,return,volatility,sharpe_ratio,n_holdings"
@@ -483,7 +483,7 @@ fn plot_efficient_frontier(
     println!("\nEfficient frontier data saved to efficient_frontier.csv");
 
     // Also save detailed portfolio compositions
-    let compositions = String::new();
+    let mut compositions = String::new();
     writeln!(&mut compositions, "risk_aversion,asset,weight,sector")?;
 
     for (ra, portfolio) in portfolios {
@@ -608,7 +608,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some((_, new_portfolio)) = rebalanced.first() {
         println!("\nRebalanced portfolio:");
-        let total_turnover = 0.0;
+        let mut total_turnover = 0.0;
 
         for (i, &new_weight) in new_portfolio.weights.iter().enumerate() {
             let old_weight = current_weights[i];

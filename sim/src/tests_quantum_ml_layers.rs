@@ -612,7 +612,7 @@ mod tests {
         assert!((norm_sq - 1.0).abs() < 1e-10); // Check normalization
 
         // Test backward pass
-        let gradient_input = Array1::from_vec([0.1; 4]);
+        let gradient_input = Array1::from_vec(vec![0.1; 4]);
         let gradient_output = layer.backward(&gradient_input);
         assert!(gradient_output.is_ok());
     }

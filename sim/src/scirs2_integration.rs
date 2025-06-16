@@ -1552,10 +1552,16 @@ pub fn benchmark_scirs2_integration() -> Result<HashMap<String, f64>> {
             }
         }
 
-        let csr = CsrMatrix::try_from_csr_data(100, 100, row_indices, col_indices, values)
-            .map_err(|_| {
-                SimulatorError::ComputationError("Failed to create test matrix".to_string())
-            })?;
+        let csr = CsrMatrix::try_from_csr_data(
+            100,
+            100,
+            row_indices.to_vec(),
+            col_indices.to_vec(),
+            values.to_vec(),
+        )
+        .map_err(|_| {
+            SimulatorError::ComputationError("Failed to create test matrix".to_string())
+        })?;
 
         let sparse_matrix = SparseMatrix { csr_matrix: csr };
         let b = Vector::from_array1(&Array1::ones(100).view(), &MemoryPool::new())?;

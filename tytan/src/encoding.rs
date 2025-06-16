@@ -102,7 +102,7 @@ impl EncodedVariable {
                 None // Invalid: no bit set
             }
             EncodingScheme::Binary { .. } => {
-                let value = 0;
+                let mut value = 0;
                 for (i, var) in self.binary_vars.iter().enumerate() {
                     if binary_values.get(var).copied().unwrap_or(false) {
                         value |= 1 << i;
@@ -111,14 +111,14 @@ impl EncodedVariable {
                 Some(value)
             }
             EncodingScheme::GrayCode { .. } => {
-                let gray = 0;
+                let mut gray = 0;
                 for (i, var) in self.binary_vars.iter().enumerate() {
                     if binary_values.get(var).copied().unwrap_or(false) {
                         gray |= 1 << i;
                     }
                 }
                 // Convert Gray code to binary
-                let binary = gray;
+                let mut binary = gray;
                 binary ^= binary >> 16;
                 binary ^= binary >> 8;
                 binary ^= binary >> 4;
@@ -127,7 +127,7 @@ impl EncodedVariable {
                 Some(binary)
             }
             EncodingScheme::DomainWall { num_values } => {
-                let value = *num_values as i32 - 1;
+                let mut value = *num_values as i32 - 1;
                 for (i, var) in self.binary_vars.iter().enumerate() {
                     if !binary_values.get(var).copied().unwrap_or(false) {
                         value = i as i32;
@@ -137,7 +137,7 @@ impl EncodedVariable {
                 Some(value)
             }
             EncodingScheme::Unary { .. } => {
-                let value = 0;
+                let mut value = 0;
                 for var in &self.binary_vars {
                     if binary_values.get(var).copied().unwrap_or(false) {
                         value += 1;
@@ -148,7 +148,7 @@ impl EncodedVariable {
                 Some(value)
             }
             EncodingScheme::OrderEncoding { min_value, .. } => {
-                let value = *min_value;
+                let mut value = *min_value;
                 for var in &self.binary_vars {
                     if binary_values.get(var).copied().unwrap_or(false) {
                         value += 1;
@@ -164,7 +164,7 @@ impl EncodedVariable {
 
     /// Encode value to binary representation
     pub fn encode(&self, value: i32) -> HashMap<String, bool> {
-        let binary_values = HashMap::new();
+        let mut binary_values = HashMap::new();
 
         match &self.scheme {
             EncodingScheme::OneHot { num_values: _ } => {
@@ -211,7 +211,7 @@ impl EncodedVariable {
     /// Get penalty matrix for encoding constraints
     pub fn get_penalty_matrix(&self, var_indices: &HashMap<String, usize>) -> Array2<f64> {
         let n = var_indices.len();
-        let penalty = Array2::zeros((n, n));
+        let mut penalty = Array2::zeros((n, n));
 
         match &self.scheme {
             EncodingScheme::OneHot { .. } => {
@@ -323,7 +323,7 @@ impl EncodingOptimizer {
 
     /// Select optimal encoding for each variable
     pub fn optimize_encodings(&self) -> HashMap<String, EncodingScheme> {
-        let encodings = HashMap::new();
+        let mut encodings = HashMap::new();
 
         for (var, &(min_val, max_val)) in &self.domains {
             let domain_size = (max_val - min_val + 1) as usize;
@@ -413,7 +413,7 @@ impl AuxiliaryVariableGenerator {
         enc1: &EncodedVariable,
         enc2: &EncodedVariable,
     ) -> Vec<(String, Vec<String>)> {
-        let auxiliaries = Vec::new();
+        let mut auxiliaries = Vec::new();
 
         // Generate auxiliary for each pair of binary variables
         for bin1 in &enc1.binary_vars {
@@ -451,7 +451,7 @@ impl EncodingConverter {
 
     /// Get all binary variables
     pub fn get_binary_variables(&self) -> Vec<String> {
-        let vars = Vec::new();
+        let mut vars = Vec::new();
         for encoded in self.encodings.values() {
             vars.extend(encoded.binary_vars.clone());
         }
@@ -468,7 +468,7 @@ impl EncodingConverter {
             .collect();
 
         let n = binary_vars.len();
-        let qubo = Array2::zeros((n, n));
+        let mut qubo = Array2::zeros((n, n));
 
         // Add encoding penalties
         for encoded in self.encodings.values() {
@@ -488,7 +488,7 @@ pub fn compare_encodings(
     domain_size: usize,
     constraint_density: f64,
 ) -> HashMap<String, EncodingMetrics> {
-    let results = HashMap::new();
+    let mut results = HashMap::new();
 
     // One-hot encoding
     let onehot_bits = domain_size;
@@ -549,14 +549,14 @@ mod tests {
         assert_eq!(encoded.binary_vars.len(), 4);
 
         // Encode value 2
-        let binary = encoded.encode(2);
+        let mut binary = encoded.encode(2);
         assert_eq!(binary[&"x_0".to_string()], false);
         assert_eq!(binary[&"x_1".to_string()], false);
         assert_eq!(binary[&"x_2".to_string()], true);
         assert_eq!(binary[&"x_3".to_string()], false);
 
         // Decode back
-        let value = encoded.decode(&binary).unwrap();
+        let mut value = encoded.decode(&binary).unwrap();
         assert_eq!(value, 2);
     }
 
@@ -566,12 +566,12 @@ mod tests {
         assert_eq!(encoded.binary_vars.len(), 3); // log2(8) = 3
 
         // Encode value 5 (binary: 101)
-        let binary = encoded.encode(5);
+        let mut binary = encoded.encode(5);
         assert_eq!(binary[&"y_bit0".to_string()], true);
         assert_eq!(binary[&"y_bit1".to_string()], false);
         assert_eq!(binary[&"y_bit2".to_string()], true);
 
-        let value = encoded.decode(&binary).unwrap();
+        let mut value = encoded.decode(&binary).unwrap();
         assert_eq!(value, 5);
     }
 
@@ -581,19 +581,19 @@ mod tests {
         assert_eq!(encoded.binary_vars.len(), 4);
 
         // Encode value 2 (domain wall: 1100)
-        let binary = encoded.encode(2);
+        let mut binary = encoded.encode(2);
         assert_eq!(binary[&"z_dw0".to_string()], true);
         assert_eq!(binary[&"z_dw1".to_string()], true);
         assert_eq!(binary[&"z_dw2".to_string()], false);
         assert_eq!(binary[&"z_dw3".to_string()], false);
 
-        let value = encoded.decode(&binary).unwrap();
+        let mut value = encoded.decode(&binary).unwrap();
         assert_eq!(value, 2);
     }
 
     #[test]
     fn test_encoding_optimizer() {
-        let optimizer = EncodingOptimizer::new();
+        let mut optimizer = EncodingOptimizer::new();
         optimizer.add_variable("small", 0, 3);
         optimizer.add_variable("large", 0, 100);
         optimizer.add_variable("binary", 0, 1);

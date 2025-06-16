@@ -138,7 +138,7 @@ impl VQF {
 
     /// Build Hamiltonian for factorization
     fn build_hamiltonian(&self) -> Result<Hamiltonian, String> {
-        let terms = Vec::new();
+        let mut terms = Vec::new();
 
         // Binary representation constraints
         // N = p * q where p and q are represented in binary
@@ -149,8 +149,8 @@ impl VQF {
                 let bit_product = (1u64 << i) * (1u64 << j);
 
                 // Check which bits of N this contributes to
-                let k = 0;
-                let carry = bit_product;
+                let mut k = 0;
+                let mut carry = bit_product;
 
                 while carry > 0 && k < 64 {
                     let n_bit = (self.n >> k) & 1;
@@ -209,15 +209,15 @@ impl VQF {
     /// Extract factors from VQE solution
     fn extract_factors(&self, params: &[f64]) -> Result<FactorizationResult, String> {
         // Simulate measurement (simplified)
-        let rng = rng();
-        let best_p = 0u64;
-        let best_q = 0u64;
-        let best_error = self.n as f64;
+        let mut rng = rng();
+        let mut best_p = 0u64;
+        let mut best_q = 0u64;
+        let mut best_error = self.n as f64;
 
         // Sample multiple times
         for _ in 0..100 {
-            let p = 0u64;
-            let q = 0u64;
+            let mut p = 0u64;
+            let mut q = 0u64;
 
             // Extract p
             for i in 0..self.n_qubits_p {
@@ -382,9 +382,9 @@ impl EnhancedVQF {
 
     /// Pollard's rho algorithm
     fn pollard_rho(&self, n: u64, max_iter: usize) -> Option<u64> {
-        let x = 2u64;
-        let y = 2u64;
-        let d = 1u64;
+        let mut x = 2u64;
+        let mut y = 2u64;
+        let mut d = 1u64;
 
         for _ in 0..max_iter {
             x = (x * x + 1) % n;
@@ -405,8 +405,8 @@ impl EnhancedVQF {
     fn wheel_factorization(&self, n: u64) -> Option<u64> {
         // Use 2-3-5 wheel
         let wheel = [4, 2, 4, 2, 4, 6, 2, 6];
-        let k = 7u64;
-        let i = 0;
+        let mut k = 7u64;
+        let mut i = 0;
 
         while k * k <= n {
             if n % k == 0 {
@@ -421,8 +421,8 @@ impl EnhancedVQF {
 
     /// Fermat's factorization method
     fn fermat_factorization(&self, n: u64) -> Option<u64> {
-        let a = ((n as f64).sqrt().ceil()) as u64;
-        let b2 = a * a - n;
+        let mut a = ((n as f64).sqrt().ceil()) as u64;
+        let mut b2 = a * a - n;
 
         for _ in 0..1000 {
             let b = (b2 as f64).sqrt() as u64;
@@ -438,7 +438,7 @@ impl EnhancedVQF {
 
     /// Single-level quantum factorization
     fn single_level_factorization(&mut self) -> Result<EnhancedFactorizationResult, String> {
-        let result = self.base_vqf.factor()?;
+        let mut result = self.base_vqf.factor()?;
 
         Ok(EnhancedFactorizationResult {
             factors: vec![result.p, result.q],
@@ -519,12 +519,12 @@ impl ShorsAlgorithm {
             });
         }
 
-        let rng = rng();
+        let mut rng = rng();
 
         // Try random bases
         for attempt in 0..10 {
             // Choose random a coprime to n
-            let a = rng.random_range(2..self.n);
+            let mut a = rng.random_range(2..self.n);
             if gcd(a, self.n) != 1 {
                 let factor = gcd(a, self.n);
                 return Ok(ShorsResult {
@@ -569,7 +569,7 @@ impl ShorsAlgorithm {
     /// Check if n is a perfect power
     fn is_perfect_power(&self) -> Option<(u64, usize)> {
         for exp in 2..64 {
-            let base = (self.n as f64).powf(1.0 / exp as f64) as u64;
+            let mut base = (self.n as f64).powf(1.0 / exp as f64) as u64;
 
             if base.pow(exp) == self.n {
                 return Some((base, exp as usize));
@@ -594,13 +594,13 @@ impl ShorsAlgorithm {
         // Prepare superposition and apply modular exponentiation
         let amplitudes_len = amplitudes.len();
         for x in 0..max_period {
-            let state = mod_exp(a, x, self.n);
+            let mut state = mod_exp(a, x, self.n);
             amplitudes[state as usize % amplitudes_len] += 1.0;
         }
 
         // Find period from amplitude pattern
         for period in 1..max_period {
-            let is_period = true;
+            let mut is_period = true;
 
             for i in 0..amplitudes.len() {
                 if amplitudes[i] > 0.0
@@ -621,7 +621,7 @@ impl ShorsAlgorithm {
 
     /// Classical period finding
     fn classical_period_finding(&self, a: u64) -> u64 {
-        let x = 1u64;
+        let mut x = 1u64;
 
         for period in 1..self.n.min(10000) {
             x = (x * a) % self.n;
@@ -653,9 +653,9 @@ fn gcd(mut a: u64, mut b: u64) -> u64 {
 }
 
 fn mod_exp(base: u64, exp: u64, modulus: u64) -> u64 {
-    let result = 1u64;
-    let base = base % modulus;
-    let exp = exp;
+    let mut result = 1u64;
+    let mut base = base % modulus;
+    let mut exp = exp;
 
     while exp > 0 {
         if exp % 2 == 1 {
@@ -683,7 +683,7 @@ mod tests {
         assert_eq!(vqf.n, 15);
 
         // Test preprocessing
-        let result = vqf.preprocess();
+        let mut result = vqf.preprocess();
         assert!(result.is_some());
         if let Some(factors) = result {
             assert_eq!(factors.p * factors.q, 15);
@@ -706,7 +706,7 @@ mod tests {
     #[test]
     fn test_shors_algorithm() {
         let shors = ShorsAlgorithm::new(15);
-        let result = shors.factor();
+        let mut result = shors.factor();
 
         assert!(result.is_ok());
         let factors = result.unwrap().factors;

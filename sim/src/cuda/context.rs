@@ -3,13 +3,16 @@
 //! This module provides CUDA device initialization, context management,
 //! and device property queries for GPU-accelerated quantum simulations.
 
+#[cfg(feature = "advanced_math")]
 use std::collections::HashMap;
+#[cfg(feature = "advanced_math")]
 use std::sync::{Arc, Mutex};
 
+#[cfg(feature = "advanced_math")]
 use crate::error::Result;
 
 #[cfg(feature = "advanced_math")]
-use super::memory::{GpuMemoryBlock, GpuMemoryPool};
+use super::memory::GpuMemoryPool;
 
 // Placeholder types for actual CUDA handles
 #[cfg(feature = "advanced_math")]

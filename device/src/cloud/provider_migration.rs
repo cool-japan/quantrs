@@ -3,11 +3,11 @@
 //! This module provides tools for migrating quantum workloads between different
 //! cloud providers with minimal disruption and optimized cost/performance.
 
+use super::{CloudProvider, ExecutionConfig, WorkloadSpec};
+use crate::{DeviceError, DeviceResult};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
-use serde::{Deserialize, Serialize};
-use crate::{DeviceError, DeviceResult};
-use super::{CloudProvider, WorkloadSpec, ExecutionConfig};
 
 /// Migration engine for cross-provider workload migration
 pub struct ProviderMigrationEngine {
@@ -31,10 +31,10 @@ pub struct MigrationConfig {
 /// Migration types
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MigrationType {
-    Hot,        // Live migration with no downtime
-    Warm,       // Brief downtime during cutover
-    Cold,       // Full stop and restart
-    Gradual,    // Phased migration
+    Hot,     // Live migration with no downtime
+    Warm,    // Brief downtime during cutover
+    Cold,    // Full stop and restart
+    Gradual, // Phased migration
 }
 
 /// Migration strategy trait
@@ -158,17 +158,20 @@ impl ProviderMigrationEngine {
         workloads: Vec<WorkloadSpec>,
     ) -> DeviceResult<MigrationPlan> {
         // Check compatibility
-        let compatibility = self.compatibility_checker.check_compatibility(source.clone(), target.clone())?;
-        
+        let compatibility = self
+            .compatibility_checker
+            .check_compatibility(source.clone(), target.clone())?;
+
         if compatibility.overall_score < 0.7 {
-            return Err(DeviceError::InvalidInput(
-                format!("Insufficient compatibility between {:?} and {:?}", source, target)
-            ));
+            return Err(DeviceError::InvalidInput(format!(
+                "Insufficient compatibility between {:?} and {:?}",
+                source, target
+            )));
         }
 
         // Generate migration phases
         let phases = self.generate_migration_phases(&workloads)?;
-        
+
         Ok(MigrationPlan {
             migration_id: uuid::Uuid::new_v4().to_string(),
             source_provider: source,
@@ -191,22 +194,33 @@ impl ProviderMigrationEngine {
                 return Ok(result);
             }
         }
-        
-        Err(DeviceError::ExecutionFailed("No suitable migration strategy found".to_string()))
+
+        Err(DeviceError::ExecutionFailed(
+            "No suitable migration strategy found".to_string(),
+        ))
     }
 
     /// Generate migration phases based on workload dependencies
-    fn generate_migration_phases(&self, workloads: &[WorkloadSpec]) -> DeviceResult<Vec<MigrationPhase>> {
+    fn generate_migration_phases(
+        &self,
+        workloads: &[WorkloadSpec],
+    ) -> DeviceResult<Vec<MigrationPhase>> {
         // Simple implementation - migrate in order
-        let phases = workloads.chunks(5).enumerate().map(|(i, chunk)| {
-            MigrationPhase {
+        let phases = workloads
+            .chunks(5)
+            .enumerate()
+            .map(|(i, chunk)| MigrationPhase {
                 phase_id: format!("phase_{}", i),
                 phase_name: format!("Migration Phase {}", i + 1),
                 workloads: chunk.iter().map(|w| w.workload_id.clone()).collect(),
                 estimated_duration: Duration::from_secs(600),
-                dependencies: if i > 0 { vec![format!("phase_{}", i - 1)] } else { vec![] },
-            }
-        }).collect();
+                dependencies: if i > 0 {
+                    vec![format!("phase_{}", i - 1)]
+                } else {
+                    vec![]
+                },
+            })
+            .collect();
 
         Ok(phases)
     }
@@ -216,11 +230,17 @@ impl CompatibilityChecker {
     fn new() -> DeviceResult<Self> {
         Ok(Self {
             provider_capabilities: HashMap::new(),
-            compatibility_matrix: CompatibilityMatrix { matrix: HashMap::new() },
+            compatibility_matrix: CompatibilityMatrix {
+                matrix: HashMap::new(),
+            },
         })
     }
 
-    fn check_compatibility(&self, source: CloudProvider, target: CloudProvider) -> DeviceResult<CompatibilityScore> {
+    fn check_compatibility(
+        &self,
+        source: CloudProvider,
+        target: CloudProvider,
+    ) -> DeviceResult<CompatibilityScore> {
         // Simplified compatibility check
         let score = match (source, target) {
             (CloudProvider::IBM, CloudProvider::AWS) => 0.8,

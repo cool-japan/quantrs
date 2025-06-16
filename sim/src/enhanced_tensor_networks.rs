@@ -4,13 +4,11 @@
 //! quantum circuit simulation, including advanced contraction optimization,
 //! bond dimension management, and SciRS2-accelerated tensor operations.
 
-use ndarray::{Array, Array2, ArrayD, Axis, Dimension, IxDyn};
+use ndarray::{Array, Array2, ArrayD, IxDyn};
 use num_complex::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::cmp::{Ordering, Reverse};
-use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
-use std::sync::Arc;
+use std::collections::{HashMap, HashSet};
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
