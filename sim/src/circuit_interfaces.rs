@@ -10,15 +10,13 @@ use num_complex::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex};
 
 use crate::error::{Result, SimulatorError};
-use crate::mps_simulator::MPSSimulator;
 use crate::scirs2_integration::SciRS2Backend;
 use crate::sparse::CSRMatrix;
-use crate::stabilizer::StabilizerSimulator;
 use crate::statevector::StateVectorSimulator;
 #[cfg(feature = "advanced_math")]
 use crate::tensor_network::TensorNetwork;
@@ -1576,7 +1574,7 @@ mod tests {
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::RX(0.5), vec![0]));
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::RX(0.3), vec![0]));
 
-        circuit.optimize();
+        let _ = circuit.optimize();
         assert_eq!(circuit.gates.len(), 1);
 
         if let InterfaceGateType::RX(angle) = &circuit.gates[0].gate_type {

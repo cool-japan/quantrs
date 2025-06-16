@@ -36,7 +36,7 @@ mod tests {
     
     #[test]
     fn test_parser() {
-        let mut dsl = ProblemDSL::new();
+        let dsl = ProblemDSL::new();
         let source = examples::get_example("simple_binary").unwrap();
         let ast = dsl.parse(source);
         

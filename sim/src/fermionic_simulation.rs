@@ -627,7 +627,7 @@ impl JordanWignerTransform {
             // Identity term
             let mut identity_string = PauliString::new(self.num_modes);
             identity_string.coefficient = fermionic_string.coefficient;
-            pauli_sum.add_term(identity_string);
+            let _ = pauli_sum.add_term(identity_string);
             return Ok(pauli_sum);
         }
 
@@ -636,13 +636,13 @@ impl JordanWignerTransform {
             let pauli_string = self.transform_operator(&fermionic_string.operators[0])?;
             let mut scaled_string = pauli_string.clone();
             scaled_string.coefficient = pauli_string.coefficient * fermionic_string.coefficient;
-            pauli_sum.add_term(scaled_string);
+            let _ = pauli_sum.add_term(scaled_string);
         } else {
             // Multi-operator case would require more complex implementation
             // For now, return identity with coefficient
             let mut identity_string = PauliString::new(self.num_modes);
             identity_string.coefficient = fermionic_string.coefficient;
-            pauli_sum.add_term(identity_string);
+            let _ = pauli_sum.add_term(identity_string);
         }
 
         Ok(pauli_sum)
@@ -658,7 +658,7 @@ impl JordanWignerTransform {
         for term in &hamiltonian.terms {
             let pauli_terms = self.transform_string(term)?;
             for pauli_term in pauli_terms.terms {
-                pauli_hamiltonian.add_term(pauli_term);
+                let _ = pauli_hamiltonian.add_term(pauli_term);
             }
         }
 

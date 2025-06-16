@@ -12,7 +12,7 @@
 //! - Resource-efficient syndrome processing
 //! - Support for heterogeneous inner and outer codes
 
-use ndarray::{Array1, Array2, Array3};
+use ndarray::Array1;
 use num_complex::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -21,8 +21,7 @@ use std::collections::{HashMap, VecDeque};
 use crate::circuit_interfaces::{
     CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
 };
-use crate::error::{Result, SimulatorError};
-use crate::statevector::StateVectorSimulator;
+use crate::error::Result;
 // Remove the invalid imports - we'll define our own implementations
 
 /// Concatenation level configuration
@@ -533,7 +532,6 @@ impl ConcatenatedErrorCorrection {
 }
 
 /// Implementation of error correction codes for concatenation
-
 /// Simple bit flip code implementation
 #[derive(Debug, Clone)]
 pub struct BitFlipCode;

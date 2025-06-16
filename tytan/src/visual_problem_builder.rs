@@ -1048,7 +1048,7 @@ impl VisualProblemBuilder {
     //     let ast = self.build_ast()?;
     //
     //     // Use existing compiler to generate QUBO
-    //     let mut compiler = Compiler::new(ast);
+    //     let compiler = Compiler::new(ast);
     //     compiler.generate_qubo()
     // }
     /// Undo last action
@@ -1105,8 +1105,8 @@ impl VisualProblemBuilder {
     // TODO: Fix AST building - requires proper access to compiler internals
     // /// Convert visual problem to DSL AST
     // fn build_ast(&self) -> Result<AST, String> {
-    //     let mut variables = Vec::new();
-    //     let mut constraints = Vec::new();
+    //     let variables = Vec::new();
+    //     let constraints = Vec::new();
     //
     //     // Convert variables
     //     for var in &self.problem.variables {
@@ -1403,7 +1403,7 @@ impl CodeGenerator {
 
     /// Get default templates
     fn default_templates() -> HashMap<ExportFormat, CodeTemplate> {
-        let mut templates = HashMap::new();
+        let templates = HashMap::new();
 
         templates.insert(
             ExportFormat::Python,
@@ -1505,7 +1505,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {{
             .get(&ExportFormat::Python)
             .ok_or("Python template not found")?;
 
-        let mut code = template.template.clone();
+        let code = template.template.clone();
 
         // Generate variables
         let variables_code = problem
@@ -1585,7 +1585,7 @@ for r in result:
             .get(&ExportFormat::Rust)
             .ok_or("Rust template not found")?;
 
-        let mut code = template.template.clone();
+        let code = template.template.clone();
 
         // Generate variables
         let variables_code = problem
@@ -1694,7 +1694,7 @@ mod tests {
     #[test]
     fn test_visual_problem_builder() {
         let config = BuilderConfig::default();
-        let mut builder = VisualProblemBuilder::new(config);
+        let builder = VisualProblemBuilder::new(config);
 
         // Create new problem
         builder.new_problem("Test Problem").unwrap();
@@ -1742,7 +1742,7 @@ mod tests {
         assert_eq!(builder.problem.constraints.len(), 1);
 
         // Set objective
-        let mut coefficients = HashMap::new();
+        let coefficients = HashMap::new();
         coefficients.insert(var1_id.clone(), 1.0);
         coefficients.insert(var2_id.clone(), 2.0);
 
@@ -1778,8 +1778,8 @@ mod tests {
 
     #[test]
     fn test_validation() {
-        let mut validator = ProblemValidator::new();
-        let mut problem = VisualProblem::new();
+        let validator = ProblemValidator::new();
+        let problem = VisualProblem::new();
 
         // Empty problem should have errors
         let errors = validator.validate(&problem).unwrap();

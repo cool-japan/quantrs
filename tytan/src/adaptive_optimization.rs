@@ -5,7 +5,7 @@
 
 use crate::sampler::{SampleResult, Sampler};
 use ndarray::Array2;
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
@@ -240,8 +240,8 @@ impl AdaptiveOptimizer {
 
         // Run optimization with monitoring
         let mut best_result: Option<SampleResult> = None;
-        let mut iterations = 0;
-        let mut improvement_history = Vec::new();
+        let iterations = 0;
+        let improvement_history = Vec::new();
 
         while start_time.elapsed() < time_limit {
             iterations += 1;
@@ -330,7 +330,7 @@ impl AdaptiveOptimizer {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
-        let mut hasher = DefaultHasher::new();
+        let hasher = DefaultHasher::new();
         qubo.shape().hash(&mut hasher);
 
         // Sample some elements for hashing
@@ -399,7 +399,7 @@ impl AdaptiveOptimizer {
 
     /// Get default parameters
     fn get_default_params(&self, algorithm: &str) -> HashMap<String, f64> {
-        let mut params = HashMap::new();
+        let params = HashMap::new();
 
         match algorithm {
             "SA" => {
@@ -426,7 +426,7 @@ impl AdaptiveOptimizer {
     ) -> Result<Box<dyn Sampler>, String> {
         match algorithm {
             "SA" => {
-                let mut sampler = crate::sampler::SASampler::new(None);
+                let sampler = crate::sampler::SASampler::new(None);
 
                 if let Some(&beta_min) = parameters.get("beta_min") {
                     if let Some(&beta_max) = parameters.get("beta_max") {
@@ -441,7 +441,7 @@ impl AdaptiveOptimizer {
                 Ok(Box::new(sampler))
             }
             "GA" => {
-                let mut sampler = crate::sampler::GASampler::new(None);
+                let sampler = crate::sampler::GASampler::new(None);
 
                 if let Some(&pop_size) = parameters.get("population_size") {
                     sampler = sampler.with_population_size(pop_size as usize);
@@ -592,16 +592,16 @@ impl AdaptiveOptimizer {
 
     // Strategy implementations
 
-    fn get_best_algorithm_for_features(&self, features: &ProblemFeatures) -> String {
+    fn get_best_algorithm_for_features(&self, _features: &ProblemFeatures) -> String {
         // Simple implementation - would be more sophisticated in practice
         "SA".to_string()
     }
 
     fn explore_new_algorithm(
         &self,
-        features: &ProblemFeatures,
+        _features: &ProblemFeatures,
     ) -> Result<(String, HashMap<String, f64>), String> {
-        let idx = thread_rng().gen_range(0..self.samplers.len());
+        let idx = rng().random_range(0..self.samplers.len());
         let algorithm = self.samplers[idx].0.clone();
         let params = self.get_default_params(&algorithm);
         Ok((algorithm, params))
@@ -609,7 +609,7 @@ impl AdaptiveOptimizer {
 
     fn thompson_sampling_select(
         &self,
-        features: &ProblemFeatures,
+        _features: &ProblemFeatures,
     ) -> Result<(String, HashMap<String, f64>), String> {
         // Simplified Thompson sampling
         self.random_select()
@@ -618,14 +618,14 @@ impl AdaptiveOptimizer {
     fn ucb_select(
         &self,
         features: &ProblemFeatures,
-        c: f64,
+        _c: f64,
     ) -> Result<(String, HashMap<String, f64>), String> {
         // Simplified UCB
         self.select_by_heuristics(features)
     }
 
     fn random_select(&self) -> Result<(String, HashMap<String, f64>), String> {
-        let idx = thread_rng().gen_range(0..self.samplers.len());
+        let idx = rng().random_range(0..self.samplers.len());
         let algorithm = self.samplers[idx].0.clone();
         let params = self.get_default_params(&algorithm);
         Ok((algorithm, params))
@@ -674,7 +674,7 @@ impl ProblemAnalyzer {
         let n = qubo.shape()[0];
 
         // Extract all features
-        let mut all_features = HashMap::new();
+        let all_features = HashMap::new();
         for extractor in &self.extractors {
             all_features.extend(extractor.extract(qubo));
         }
@@ -718,7 +718,7 @@ struct BasicFeatureExtractor;
 impl FeatureExtractor for BasicFeatureExtractor {
     fn extract(&self, qubo: &Array2<f64>) -> HashMap<String, f64> {
         let n = qubo.shape()[0];
-        let mut features = HashMap::new();
+        let features = HashMap::new();
 
         // Size
         features.insert("size".to_string(), n as f64);
@@ -750,12 +750,12 @@ struct StructureFeatureExtractor;
 
 impl FeatureExtractor for StructureFeatureExtractor {
     fn extract(&self, qubo: &Array2<f64>) -> HashMap<String, f64> {
-        let mut features = HashMap::new();
+        let features = HashMap::new();
         let n = qubo.shape()[0];
 
         // Diagonal dominance
-        let mut diag_sum = 0.0;
-        let mut total_sum = 0.0;
+        let diag_sum = 0.0;
+        let total_sum = 0.0;
         for i in 0..n {
             diag_sum += qubo[[i, i]].abs();
             for j in 0..n {
@@ -773,7 +773,7 @@ impl FeatureExtractor for StructureFeatureExtractor {
         );
 
         // Symmetry
-        let mut symmetry_score = 0.0;
+        let symmetry_score = 0.0;
         for i in 0..n {
             for j in i + 1..n {
                 let diff = (qubo[[i, j]] - qubo[[j, i]]).abs();
@@ -842,11 +842,11 @@ mod tests {
 
     #[test]
     fn test_adaptive_optimizer() {
-        let mut optimizer = AdaptiveOptimizer::new();
+        let optimizer = AdaptiveOptimizer::new();
 
         let qubo = array![[0.0, -1.0, 0.5], [-1.0, 0.0, -0.5], [0.5, -0.5, 0.0]];
 
-        let mut var_map = HashMap::new();
+        let var_map = HashMap::new();
         var_map.insert("x".to_string(), 0);
         var_map.insert("y".to_string(), 1);
         var_map.insert("z".to_string(), 2);

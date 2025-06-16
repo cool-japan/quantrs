@@ -1129,7 +1129,6 @@ impl FaultTolerantSynthesizer {
     }
 
     /// Helper methods and remaining implementation details...
-
     fn map_interface_gate_to_logical(&self, gate: &InterfaceGate) -> Result<LogicalGateType> {
         match gate.gate_type {
             InterfaceGateType::PauliX => Ok(LogicalGateType::LogicalX),
@@ -1264,6 +1263,46 @@ impl FaultTolerantSynthesizer {
         self.resource_estimator.magic_state_costs = magic_costs;
 
         Ok(())
+    }
+
+    /// Synthesize logical T with magic states (public version)
+    pub fn synthesize_logical_t_with_magic_states_public(
+        &self,
+        logical_qubits: &[usize],
+    ) -> Result<LogicalGate> {
+        self.synthesize_logical_t_with_magic_states(logical_qubits)
+    }
+
+    /// Create T state distillation circuit (public version)
+    pub fn create_t_state_distillation_circuit_public(&self) -> Result<InterfaceCircuit> {
+        self.create_t_state_distillation_circuit()
+    }
+
+    /// Create CCZ state distillation circuit (public version)
+    pub fn create_ccz_state_distillation_circuit_public(&self) -> Result<InterfaceCircuit> {
+        self.create_ccz_state_distillation_circuit()
+    }
+
+    /// Update resources (public version)
+    pub fn update_resources_public(
+        &self,
+        total: &mut ResourceRequirements,
+        gate: &ResourceRequirements,
+    ) {
+        self.update_resources(total, gate)
+    }
+
+    /// Calculate optimal distance (public version)
+    pub fn calculate_optimal_distance_public(&self, circuit: &InterfaceCircuit) -> Result<usize> {
+        self.calculate_optimal_distance(circuit)
+    }
+
+    /// Calculate logical gate error rate (public version)
+    pub fn calculate_logical_gate_error_rate_public(
+        &self,
+        gate_type: LogicalGateType,
+    ) -> Result<f64> {
+        self.calculate_logical_gate_error_rate(gate_type)
     }
 }
 

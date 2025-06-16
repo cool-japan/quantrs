@@ -320,16 +320,26 @@ impl TopologicalErrorCorrector {
             }
 
             for start in 0..=(self.syndrome_history.len() - window_size * 2) {
-                let pattern1 = &self.syndrome_history[start..start + window_size];
-                let pattern2 = &self.syndrome_history[start + window_size..start + window_size * 2];
+                if start + window_size * 2 <= self.syndrome_history.len() {
+                    let pattern1: Vec<_> = self.syndrome_history.iter()
+                        .skip(start)
+                        .take(window_size)
+                        .cloned()
+                        .collect();
+                    let pattern2: Vec<_> = self.syndrome_history.iter()
+                        .skip(start + window_size)
+                        .take(window_size)
+                        .cloned()
+                        .collect();
 
-                if self.patterns_match(pattern1, pattern2) {
-                    patterns.push(SyndromePattern {
-                        pattern_id: patterns.len(),
-                        rounds: pattern1.iter().map(|r| r.round_id).collect(),
-                        confidence: 0.8, // Would be calculated properly
-                        prediction: "Repeating error pattern detected".to_string(),
-                    });
+                    if self.patterns_match(&pattern1, &pattern2) {
+                        patterns.push(SyndromePattern {
+                            pattern_id: patterns.len(),
+                            rounds: pattern1.iter().map(|r| r.round_id).collect(),
+                            confidence: 0.8, // Would be calculated properly
+                            prediction: "Repeating error pattern detected".to_string(),
+                        });
+                    }
                 }
             }
         }
@@ -525,6 +535,7 @@ impl RealTimeErrorMonitor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::topological::{TopologicalSystemType, NonAbelianAnyonType, FusionRuleSet, TopologicalCapabilities, TopologicalCharge, TopologicalDevice};
 
     #[test]
     fn test_error_corrector_creation() {
@@ -543,23 +554,23 @@ mod tests {
             TopologicalErrorCorrector::new(TopologicalCodeType::SurfaceCode, 3, config).unwrap();
 
         // Create a mock device
-        let system_type = super::TopologicalSystemType::NonAbelian {
-            anyon_type: super::NonAbelianAnyonType::Fibonacci,
-            fusion_rules: super::FusionRuleSet::fibonacci(),
+        let system_type = TopologicalSystemType::NonAbelian {
+            anyon_type: NonAbelianAnyonType::Fibonacci,
+            fusion_rules: FusionRuleSet::fibonacci(),
         };
-        let capabilities = super::TopologicalCapabilities {
+        let capabilities = TopologicalCapabilities {
             max_anyons: 50,
             max_qubits: 5,
-            supported_anyons: vec![super::TopologicalCharge::fibonacci_tau()],
+            supported_anyons: vec![TopologicalCharge::fibonacci_tau()],
             available_operations: vec![],
             braiding_fidelity: 0.999,
             fusion_fidelity: 0.999,
             topological_gap: 1.0,
             coherence_length: 100.0,
         };
-        let device = super::TopologicalDevice::new(
+        let device = TopologicalDevice::new(
             system_type,
-            super::FusionRuleSet::fibonacci(),
+            FusionRuleSet::fibonacci(),
             capabilities,
         );
 

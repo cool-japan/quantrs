@@ -159,9 +159,9 @@ impl NECVectorAnnealingSampler {
 
     /// Preprocess QUBO problem
     fn preprocess_qubo(&self, qubo: &Array2<f64>) -> Result<PreprocessedProblem, SamplerError> {
-        let mut processed = qubo.clone();
-        let mut fixed_vars = HashMap::new();
-        let mut transformations = Vec::new();
+        let processed = qubo.clone();
+        let fixed_vars = HashMap::new();
+        let transformations = Vec::new();
 
         if self.preprocessor.variable_fixing {
             // Identify and fix obvious variables
@@ -220,10 +220,10 @@ impl NECVectorAnnealingSampler {
         preprocessed: &PreprocessedProblem,
         var_map: &HashMap<String, usize>,
     ) -> Vec<SampleResult> {
-        let mut results = Vec::new();
+        let results = Vec::new();
 
         for solution in solutions {
-            let mut assignments = HashMap::new();
+            let assignments = HashMap::new();
 
             // Map solution back through preprocessing transformations
             for (var_name, &var_idx) in var_map {
@@ -273,7 +273,7 @@ impl NECVectorAnnealingSampler {
             return solutions;
         }
 
-        let mut filtered = vec![solutions[0].clone()];
+        let filtered = vec![solutions[0].clone()];
 
         for solution in solutions.into_iter().skip(1) {
             // Check if solution is sufficiently different from existing ones
@@ -340,7 +340,7 @@ impl Sampler for NECVectorAnnealingSampler {
         let vector_solutions = self.get_service_results(&job_id)?;
 
         // Postprocess solutions
-        let mut results = self.postprocess_solutions(vector_solutions, &preprocessed, var_map);
+        let results = self.postprocess_solutions(vector_solutions, &preprocessed, var_map);
 
         // Sort by energy
         results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
@@ -391,7 +391,7 @@ mod tests {
     fn test_preprocessing() {
         let sampler = NECVectorAnnealingSampler::new(NECVectorConfig::default());
 
-        let mut qubo = Array2::zeros((3, 3));
+        let qubo = Array2::zeros((3, 3));
         qubo[[0, 0]] = -100.0; // Should be fixed to 1
         qubo[[1, 1]] = 100.0; // Should be fixed to 0
         qubo[[0, 1]] = 1.0;
@@ -408,11 +408,11 @@ mod tests {
     fn test_diversity_filtering() {
         let sampler = NECVectorAnnealingSampler::new(NECVectorConfig::default());
 
-        let mut solutions = Vec::new();
+        let solutions = Vec::new();
 
         // Create similar solutions
         for i in 0..5 {
-            let mut assignments = HashMap::new();
+            let assignments = HashMap::new();
             assignments.insert("x0".to_string(), true);
             assignments.insert("x1".to_string(), true);
             assignments.insert("x2".to_string(), i % 2 == 0);

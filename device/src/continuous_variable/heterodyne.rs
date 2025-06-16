@@ -677,12 +677,13 @@ mod tests {
     #[test]
     fn test_noise_calculations() {
         let config = HeterodyneDetectorConfig::default();
+        let efficiency = config.efficiency;
         let detector = HeterodyneDetector::new(config);
 
         let shot_noise = detector.calculate_shot_noise_level();
         assert!(shot_noise > 0.0);
         // Heterodyne should have higher shot noise than homodyne
-        assert!(shot_noise >= 2.0 / config.efficiency);
+        assert!(shot_noise >= 2.0 / efficiency);
 
         let electronic_noise = detector.calculate_electronic_noise_level();
         assert!(electronic_noise > 0.0);

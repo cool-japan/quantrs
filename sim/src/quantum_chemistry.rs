@@ -1702,10 +1702,77 @@ impl QuantumChemistrySimulator {
 
         Ok(energy)
     }
+
+    /// Construct molecular Hamiltonian (public version)
+    pub fn construct_molecular_hamiltonian_public(&mut self, molecule: &Molecule) -> Result<()> {
+        self.construct_molecular_hamiltonian(molecule)
+    }
+
+    /// Get molecule reference
+    pub fn get_molecule(&self) -> Option<&Molecule> {
+        self.molecule.as_ref()
+    }
+
+    /// Compute one electron integrals (public version)
+    pub fn compute_one_electron_integrals_public(
+        &self,
+        molecule: &Molecule,
+        num_orbitals: usize,
+    ) -> Result<Array2<f64>> {
+        self.compute_one_electron_integrals(molecule, num_orbitals)
+    }
+
+    /// Compute two electron integrals (public version)
+    pub fn compute_two_electron_integrals_public(
+        &self,
+        molecule: &Molecule,
+        num_orbitals: usize,
+    ) -> Result<Array4<f64>> {
+        self.compute_two_electron_integrals(molecule, num_orbitals)
+    }
+
+    /// Compute nuclear repulsion (public version)
+    pub fn compute_nuclear_repulsion_public(&self, molecule: &Molecule) -> Result<f64> {
+        self.compute_nuclear_repulsion(molecule)
+    }
+
+    /// Create fermionic Hamiltonian (public version)
+    pub fn create_fermionic_hamiltonian_public(
+        &self,
+        one_electron: &Array2<f64>,
+        two_electron: &Array4<f64>,
+        num_orbitals: usize,
+    ) -> Result<FermionicHamiltonian> {
+        self.create_fermionic_hamiltonian(one_electron, two_electron, num_orbitals)
+    }
+
+    /// Get ansatz parameter count (public version)
+    pub fn get_ansatz_parameter_count_public(&self, circuit: &InterfaceCircuit) -> usize {
+        self.get_ansatz_parameter_count(circuit)
+    }
+
+    /// Build density matrix (public version)
+    pub fn build_density_matrix_public(
+        &self,
+        orbitals: &Array2<f64>,
+        num_electrons: usize,
+    ) -> Result<Array2<f64>> {
+        self.build_density_matrix(orbitals, num_electrons)
+    }
+
+    /// Apply Pauli X (public version)
+    pub fn apply_pauli_x_public(&self, state: &mut Array1<Complex64>, qubit: usize) -> Result<()> {
+        self.apply_pauli_x(state, qubit)
+    }
+
+    /// Apply Pauli Z (public version)
+    pub fn apply_pauli_z_public(&self, state: &mut Array1<Complex64>, qubit: usize) -> Result<()> {
+        self.apply_pauli_z(state, qubit)
+    }
 }
 
 impl FermionMapper {
-    fn new(method: FermionMapping, num_spin_orbitals: usize) -> Self {
+    pub fn new(method: FermionMapping, num_spin_orbitals: usize) -> Self {
         Self {
             method,
             num_spin_orbitals,
@@ -1775,10 +1842,20 @@ impl FermionMapper {
 
         Ok(dipole)
     }
+
+    /// Get method reference
+    pub fn get_method(&self) -> &FermionMapping {
+        &self.method
+    }
+
+    /// Get number of spin orbitals
+    pub fn get_num_spin_orbitals(&self) -> usize {
+        self.num_spin_orbitals
+    }
 }
 
 impl VQEOptimizer {
-    fn new(method: ChemistryOptimizer) -> Self {
+    pub fn new(method: ChemistryOptimizer) -> Self {
         Self {
             method,
             parameters: Array1::zeros(0),
@@ -1797,6 +1874,26 @@ impl VQEOptimizer {
         );
         self.bounds = vec![(-PI, PI); num_parameters];
         self.gradients = Array1::zeros(num_parameters);
+    }
+
+    /// Initialize parameters (public version)
+    pub fn initialize_parameters_public(&mut self, num_parameters: usize) {
+        self.initialize_parameters(num_parameters)
+    }
+
+    /// Get parameters reference
+    pub fn get_parameters(&self) -> &Array1<f64> {
+        &self.parameters
+    }
+
+    /// Get bounds reference
+    pub fn get_bounds(&self) -> &[(f64, f64)] {
+        &self.bounds
+    }
+
+    /// Get method reference
+    pub fn get_method(&self) -> &ChemistryOptimizer {
+        &self.method
     }
 }
 

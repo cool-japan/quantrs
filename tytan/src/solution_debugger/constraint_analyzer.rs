@@ -61,7 +61,7 @@ impl ConstraintAnalyzer {
         constraints: &[ConstraintInfo],
         assignments: &HashMap<String, bool>,
     ) -> Vec<ConstraintViolation> {
-        let mut violations = Vec::new();
+        let violations = Vec::new();
 
         for constraint in constraints {
             if let Some(violation) = self.check_constraint(constraint, assignments) {
@@ -280,7 +280,7 @@ impl ConstraintAnalyzer {
         target: f64,
         current_sum: f64,
     ) -> Vec<SuggestedFix> {
-        let mut fixes = Vec::new();
+        let fixes = Vec::new();
 
         let difference = target - current_sum;
         if difference > 0.0 {
@@ -292,7 +292,7 @@ impl ConstraintAnalyzer {
                 .collect();
 
             if false_vars.len() >= difference as usize {
-                let mut changes = HashMap::new();
+                let changes = HashMap::new();
                 for var in false_vars.iter().take(difference as usize) {
                     changes.insert((*var).clone(), true);
                 }
@@ -317,7 +317,7 @@ impl ConstraintAnalyzer {
                 .collect();
 
             if true_vars.len() >= (-difference) as usize {
-                let mut changes = HashMap::new();
+                let changes = HashMap::new();
                 for var in true_vars.iter().take((-difference) as usize) {
                     changes.insert((*var).clone(), false);
                 }
@@ -347,7 +347,7 @@ impl ConstraintAnalyzer {
         direction: &super::types::InequalityDirection,
         current_sum: f64,
     ) -> Vec<SuggestedFix> {
-        let mut fixes = Vec::new();
+        let fixes = Vec::new();
 
         match direction {
             super::types::InequalityDirection::LessEqual => {
@@ -360,7 +360,7 @@ impl ConstraintAnalyzer {
                         .collect();
 
                     if true_vars.len() >= excess as usize {
-                        let mut changes = HashMap::new();
+                        let changes = HashMap::new();
                         for var in true_vars.iter().take(excess as usize) {
                             changes.insert((*var).clone(), false);
                         }
@@ -391,7 +391,7 @@ impl ConstraintAnalyzer {
                         .collect();
 
                     if false_vars.len() >= deficit as usize {
-                        let mut changes = HashMap::new();
+                        let changes = HashMap::new();
                         for var in false_vars.iter().take(deficit as usize) {
                             changes.insert((*var).clone(), true);
                         }
@@ -423,7 +423,7 @@ impl ConstraintAnalyzer {
         constraint: &ConstraintInfo,
         assignments: &HashMap<String, bool>,
     ) -> Vec<SuggestedFix> {
-        let mut fixes = Vec::new();
+        let fixes = Vec::new();
 
         let true_vars: Vec<_> = constraint
             .variables
@@ -434,7 +434,7 @@ impl ConstraintAnalyzer {
         if true_vars.len() > 1 {
             // Set all but one to false
             for keep_var in &true_vars {
-                let mut changes = HashMap::new();
+                let changes = HashMap::new();
                 for var in &true_vars {
                     if *var != *keep_var {
                         changes.insert((*var).clone(), false);
@@ -463,7 +463,7 @@ impl ConstraintAnalyzer {
         constraint: &ConstraintInfo,
         assignments: &HashMap<String, bool>,
     ) -> Vec<SuggestedFix> {
-        let mut fixes = Vec::new();
+        let fixes = Vec::new();
 
         let true_count = constraint
             .variables
@@ -474,7 +474,7 @@ impl ConstraintAnalyzer {
         if true_count == 0 {
             // Set one variable to true
             for var in &constraint.variables {
-                let mut changes = HashMap::new();
+                let changes = HashMap::new();
                 changes.insert(var.clone(), true);
 
                 fixes.push(SuggestedFix {
@@ -493,7 +493,7 @@ impl ConstraintAnalyzer {
                 .collect();
 
             for keep_var in &true_vars {
-                let mut changes = HashMap::new();
+                let changes = HashMap::new();
                 for var in &true_vars {
                     if *var != *keep_var {
                         changes.insert((*var).clone(), false);

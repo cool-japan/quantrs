@@ -15,20 +15,14 @@
 //! - Graph neural networks for circuit structure-aware mitigation
 //! - Attention mechanisms for long-range error correlations
 
-use ndarray::{Array1, Array2, Array3, Array4, ArrayView1, Axis};
-use num_complex::Complex64;
+use ndarray::{Array1, Array2, Array3};
 use rand::{thread_rng, Rng};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, Mutex};
 
-use crate::circuit_interfaces::{
-    CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
-};
+use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};
 use crate::error::{Result, SimulatorError};
-use crate::noise_extrapolation::{ExtrapolationMethod, ZNEResult};
-use crate::statevector::StateVectorSimulator;
 
 /// Advanced ML error mitigation configuration
 #[derive(Debug, Clone)]

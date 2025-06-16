@@ -175,7 +175,7 @@ impl GASampler {
             }
             CrossoverStrategy::Adaptive => {
                 // Calculate Hamming distance between parents
-                let mut hamming_distance = 0;
+                let hamming_distance = 0;
                 for i in 0..n_vars {
                     if parent1[i] != parent2[i] {
                         hamming_distance += 1;
@@ -292,12 +292,12 @@ impl GASampler {
 
         let n_individuals = population.len();
         let n_vars = population[0].len();
-        let mut sum_distances = 0;
-        let mut pair_count = 0;
+        let sum_distances = 0;
+        let pair_count = 0;
 
         for i in 0..n_individuals {
             for j in (i + 1)..n_individuals {
-                let mut distance = 0;
+                let distance = 0;
                 for k in 0..n_vars {
                     if population[i][k] != population[j][k] {
                         distance += 1;
@@ -342,7 +342,7 @@ impl Sampler for GASampler {
         let mut rng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => {
-                let seed: u64 = rand::thread_rng().random();
+                let seed: u64 = rand::rng().random();
                 StdRng::seed_from_u64(seed)
             }
         };
@@ -350,7 +350,7 @@ impl Sampler for GASampler {
         // Handle small population size cases to avoid empty range errors
         if self.population_size <= 2 || n_vars == 0 {
             // Return a simple result for trivial cases
-            let mut assignments = HashMap::new();
+            let assignments = HashMap::new();
             for var in var_map.keys() {
                 assignments.insert(var.clone(), false);
             }
@@ -377,7 +377,7 @@ impl Sampler for GASampler {
         // Otherwise, implement the full HOBO genetic algorithm here
         // Define a function to evaluate the energy of a solution
         let evaluate_energy = |state: &[bool]| -> f64 {
-            let mut energy = 0.0;
+            let energy = 0.0;
 
             // Evaluate according to tensor dimension
             if tensor.ndim() == 2 {
@@ -432,8 +432,8 @@ impl Sampler for GASampler {
             .collect();
 
         // Find best solution
-        let mut best_solution = population[0].clone();
-        let mut best_fitness = fitness[0];
+        let best_solution = population[0].clone();
+        let best_fitness = fitness[0];
 
         for (idx, fit) in fitness.iter().enumerate() {
             if *fit < best_fitness {
@@ -446,7 +446,7 @@ impl Sampler for GASampler {
         for _ in 0..30 {
             // Reduced number of generations for faster results
             // Create next generation
-            let mut next_population = Vec::with_capacity(pop_size);
+            let next_population = Vec::with_capacity(pop_size);
 
             // Elitism - keep best solution
             next_population.push(best_solution.clone());
@@ -553,14 +553,14 @@ impl Sampler for GASampler {
         let mut rng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => {
-                let seed: u64 = rand::thread_rng().random();
+                let seed: u64 = rand::rng().random();
                 StdRng::seed_from_u64(seed)
             }
         };
 
         // Handle edge cases
         if self.population_size <= 2 || n_vars == 0 {
-            let mut assignments = HashMap::new();
+            let assignments = HashMap::new();
             for var in var_map.keys() {
                 assignments.insert(var.clone(), false);
             }
@@ -590,16 +590,16 @@ impl Sampler for GASampler {
             .collect();
 
         // Keep track of best solution in current population
-        let mut best_idx = 0;
-        let mut best_fitness = fitness[0];
+        let best_idx = 0;
+        let best_fitness = fitness[0];
         for (idx, &fit) in fitness.iter().enumerate() {
             if fit < best_fitness {
                 best_idx = idx;
                 best_fitness = fit;
             }
         }
-        let mut best_individual = population[best_idx].clone();
-        let mut best_individual_fitness = best_fitness;
+        let best_individual = population[best_idx].clone();
+        let best_individual_fitness = best_fitness;
 
         // Track solutions and their frequencies
         let mut solution_counts: HashMap<Vec<bool>, usize> = HashMap::new();
@@ -610,8 +610,8 @@ impl Sampler for GASampler {
             let diversity = self.calculate_diversity(&population);
 
             // Create next generation
-            let mut next_population = Vec::with_capacity(self.population_size);
-            let mut next_fitness = Vec::with_capacity(self.population_size);
+            let next_population = Vec::with_capacity(self.population_size);
+            let next_fitness = Vec::with_capacity(self.population_size);
 
             // Elitism - copy best individual
             if use_elitism {
@@ -692,7 +692,7 @@ impl Sampler for GASampler {
         }
 
         // Collect results
-        let mut results = Vec::new();
+        let results = Vec::new();
 
         // Convert the solutions to SampleResult format
         for (solution, count) in &solution_counts {
@@ -737,7 +737,7 @@ impl Sampler for GASampler {
 // Helper function to calculate energy for a solution
 fn calculate_energy(solution: &[bool], matrix: &Array<f64, Ix2>) -> f64 {
     let n = solution.len();
-    let mut energy = 0.0;
+    let energy = 0.0;
 
     // Calculate from diagonal terms (linear)
     for i in 0..n {
@@ -814,8 +814,8 @@ fn tournament_selection(fitness: &[f64], tournament_size: usize, rng: &mut impl 
     // Ensure tournament_size is not larger than the population
     let effective_tournament_size = std::cmp::min(tournament_size, fitness.len());
 
-    let mut best_idx = rng.random_range(0..fitness.len());
-    let mut best_fitness = fitness[best_idx];
+    let best_idx = rng.random_range(0..fitness.len());
+    let best_fitness = fitness[best_idx];
 
     for _ in 1..(effective_tournament_size) {
         let candidate_idx = rng.random_range(0..fitness.len());

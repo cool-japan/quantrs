@@ -161,7 +161,7 @@ impl BenchmarkRunner {
             * self.config.sampler_configs.len()
             * self.backends.len();
 
-        let mut completed = 0;
+        let completed = 0;
 
         for &problem_size in &self.config.problem_sizes {
             for &density in &self.config.problem_densities {
@@ -239,14 +239,14 @@ impl BenchmarkRunner {
         num_reads: usize,
         num_repetitions: usize,
     ) -> Result<BenchmarkResult, Box<dyn std::error::Error>> {
-        let mut metrics = BenchmarkMetrics::new(problem_size, density);
+        let metrics = BenchmarkMetrics::new(problem_size, density);
 
         // Warm-up run
         let _ = backend.run_qubo(matrix, 1, sampler_config.params.clone())?;
 
         // Timing runs
-        let mut timings = Vec::new();
-        let mut all_results = Vec::new();
+        let timings = Vec::new();
+        let all_results = Vec::new();
 
         for _ in 0..num_repetitions {
             // Measure memory before
@@ -325,14 +325,14 @@ impl BenchmarkRunner {
 
     /// Generate random QUBO problem
     fn generate_qubo_problem(&self, size: usize, density: f64) -> Array2<f64> {
-        let mut rng = rand::thread_rng();
-        let mut matrix = Array2::zeros((size, size));
+        let rng = rand::rng();
+        let matrix = Array2::zeros((size, size));
 
         // Generate symmetric matrix with given density
         for i in 0..size {
             for j in i..size {
-                if rng.gen::<f64>() < density {
-                    let value = rng.gen_range(-10.0..10.0);
+                if rng.random::<f64>() < density {
+                    let value = rng.random_range(-10.0..10.0);
                     matrix[[i, j]] = value;
                     if i != j {
                         matrix[[j, i]] = value;
@@ -415,7 +415,7 @@ pub fn quick_benchmark(
         ..Default::default()
     };
 
-    let mut runner = BenchmarkRunner::new(config);
+    let runner = BenchmarkRunner::new(config);
     let report = runner.run_complete_suite()?;
 
     Ok(report.summary.overall_metrics)

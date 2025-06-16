@@ -174,7 +174,7 @@ impl SolutionDebugger {
         &self,
         solution: &types::Solution,
     ) -> Vec<visualization::Visualization> {
-        let mut visualizations = Vec::new();
+        let visualizations = Vec::new();
 
         // Solution matrix visualization
         visualizations.push(
@@ -199,7 +199,7 @@ impl SolutionDebugger {
 
     /// Identify issues
     fn identify_issues(&self, report: &reporting::DebugReport) -> Vec<reporting::Issue> {
-        let mut issues = Vec::new();
+        let issues = Vec::new();
 
         // Check constraint violations
         if let Some(ref constraint_analysis) = report.constraint_analysis {
@@ -237,7 +237,7 @@ impl SolutionDebugger {
 
     /// Generate suggestions
     fn generate_suggestions(&self, report: &reporting::DebugReport) -> Vec<reporting::Suggestion> {
-        let mut suggestions = Vec::new();
+        let suggestions = Vec::new();
 
         // Suggestions based on constraint violations
         if let Some(ref constraint_analysis) = report.constraint_analysis {
@@ -270,7 +270,7 @@ impl SolutionDebugger {
 
     /// Generate summary
     fn generate_summary(&self, report: &reporting::DebugReport) -> reporting::DebugSummary {
-        let mut summary = reporting::DebugSummary::default();
+        let summary = reporting::DebugSummary::default();
 
         summary.total_issues = report.issues.len();
         summary.critical_issues = report
@@ -297,7 +297,7 @@ impl SolutionDebugger {
 
     /// Calculate overall solution score
     fn calculate_overall_score(&self, summary: &reporting::DebugSummary) -> f64 {
-        let mut score = 1.0;
+        let score = 1.0;
 
         // Penalty for constraint violations
         score *= summary.constraint_satisfaction_rate;

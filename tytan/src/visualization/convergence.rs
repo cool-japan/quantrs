@@ -228,7 +228,7 @@ impl ConvergencePlot {
         let satisfaction_rate = satisfied_count as f64 / total_constraints as f64;
 
         // Find when each constraint converged
-        let mut convergence_iterations = HashMap::new();
+        let convergence_iterations = HashMap::new();
         let tolerance = 1e-6;
 
         for (name, _) in &final_violations {
@@ -270,9 +270,9 @@ impl ConvergencePlot {
 
         let final_values = self.parameter_history.last().cloned().unwrap_or_default();
 
-        let mut variation_coefficients = HashMap::new();
-        let mut convergence_windows = HashMap::new();
-        let mut stable_parameters = Vec::new();
+        let variation_coefficients = HashMap::new();
+        let convergence_windows = HashMap::new();
+        let stable_parameters = Vec::new();
 
         for (param_name, _) in &final_values {
             // Extract parameter values over time
@@ -338,7 +338,7 @@ impl ConvergencePlot {
 
             if max_dev < tolerance * mean.abs() {
                 // Found stable window, now find where it ends
-                let mut end = start + window;
+                let end = start + window;
                 while end < values.len() {
                     if (values[end] - mean).abs() > tolerance * mean.abs() {
                         break;
@@ -396,11 +396,11 @@ impl ConvergencePlot {
         let best_so_far = self.best_so_far(objectives);
         let final_value = best_so_far.last().copied().unwrap_or(0.0);
 
-        let mut x_sum = 0.0;
-        let mut y_sum = 0.0;
-        let mut xy_sum = 0.0;
-        let mut xx_sum = 0.0;
-        let mut count = 0;
+        let x_sum = 0.0;
+        let y_sum = 0.0;
+        let xy_sum = 0.0;
+        let xx_sum = 0.0;
+        let count = 0;
 
         for (i, &value) in best_so_far.iter().enumerate() {
             let diff = (value - final_value).abs();
@@ -435,8 +435,8 @@ impl ConvergencePlot {
             return Ok(0.0);
         }
 
-        let mut direction_changes = 0;
-        let mut total_variation = 0.0;
+        let direction_changes = 0;
+        let total_variation = 0.0;
 
         for i in 1..objectives.len() - 1 {
             let diff1 = objectives[i] - objectives[i - 1];
@@ -464,14 +464,14 @@ impl ConvergencePlot {
         &self,
         objectives: &[f64],
     ) -> Result<Vec<(usize, usize)>, Box<dyn std::error::Error>> {
-        let mut plateaus = Vec::new();
+        let plateaus = Vec::new();
         let tolerance = 1e-6;
         let min_length = 5;
 
-        let mut start = 0;
+        let start = 0;
         while start < objectives.len() {
             let base_value = objectives[start];
-            let mut end = start + 1;
+            let end = start + 1;
 
             while end < objectives.len()
                 && (objectives[end] - base_value).abs() < tolerance * base_value.abs()
@@ -494,7 +494,7 @@ impl ConvergencePlot {
         &self,
         objectives: &[f64],
     ) -> Result<Vec<ImprovementEvent>, Box<dyn std::error::Error>> {
-        let mut events = Vec::new();
+        let events = Vec::new();
         let threshold = 0.01; // 1% improvement
 
         let best_so_far = self.best_so_far(objectives);
@@ -546,8 +546,8 @@ impl ConvergencePlot {
 
     /// Calculate best-so-far trajectory
     fn best_so_far(&self, objectives: &[f64]) -> Vec<f64> {
-        let mut best = Vec::with_capacity(objectives.len());
-        let mut current_best = f64::INFINITY;
+        let best = Vec::with_capacity(objectives.len());
+        let current_best = f64::INFINITY;
 
         for &obj in objectives {
             current_best = current_best.min(obj);
@@ -563,7 +563,7 @@ impl ConvergencePlot {
             return data.to_vec();
         }
 
-        let mut result = Vec::with_capacity(data.len());
+        let result = Vec::with_capacity(data.len());
 
         // Fill initial values
         for i in 0..window / 2 {
@@ -590,7 +590,7 @@ impl ConvergencePlot {
         {
             use crate::scirs_stub::scirs2_plot::{Figure, Subplot};
 
-            let mut fig = Figure::new();
+            let fig = Figure::new();
             let iterations: Vec<f64> = (0..self.objective_history.len())
                 .map(|i| i as f64)
                 .collect();
@@ -784,7 +784,7 @@ pub fn plot_convergence(
     config: Option<ConvergenceConfig>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let config = config.unwrap_or_default();
-    let mut plotter = ConvergencePlot::new(config);
+    let plotter = ConvergencePlot::new(config);
 
     // Add data
     let constraints = constraints.unwrap_or_else(|| vec![HashMap::new(); objectives.len()]);
@@ -803,7 +803,7 @@ pub fn track_tuning_convergence(
     config: Option<ConvergenceConfig>,
 ) -> ConvergencePlot {
     let config = config.unwrap_or_default();
-    let mut plotter = ConvergencePlot::new(config);
+    let plotter = ConvergencePlot::new(config);
 
     for eval in evaluations {
         plotter.add_iteration(
@@ -824,7 +824,7 @@ pub fn track_adaptive_convergence(
     config: Option<ConvergenceConfig>,
 ) -> ConvergencePlot {
     let config = config.unwrap_or_default();
-    let mut plotter = ConvergencePlot::new(config);
+    let plotter = ConvergencePlot::new(config);
 
     let elapsed = std::time::Duration::from_secs(1);
 

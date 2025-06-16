@@ -14,7 +14,7 @@ impl MockQNN {
 
     fn apply_rx_gate(&self, state: &Array1<f64>, qubit: usize, angle: f64) -> Array1<f64> {
         let num_qubits = self.num_qubits;
-        let mut new_state = state.clone();
+        let new_state = state.clone();
         let state_dim = state.len();
 
         for i in 0..state_dim {

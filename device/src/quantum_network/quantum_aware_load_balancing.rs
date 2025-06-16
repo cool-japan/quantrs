@@ -4,7 +4,7 @@
 //! constraints such as entanglement quality, coherence times, and fidelity preservation.
 
 use async_trait::async_trait;
-use chrono::{DateTime, Datelike, Duration as ChronoDuration, Utc};
+use chrono::{DateTime, Datelike, Duration as ChronoDuration, Timelike, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
@@ -14,7 +14,7 @@ use tokio::sync::{mpsc, Semaphore};
 use uuid::Uuid;
 
 use crate::quantum_network::distributed_protocols::{
-    CircuitPartition, LoadBalancer, LoadBalancerMetrics, NodeId, NodeInfo, PerformanceHistory,
+    CircuitPartition, DistributedComputationError, ExecutionRequirements, LoadBalancer, LoadBalancerMetrics, NodeId, NodeInfo, PerformanceHistory,
     PerformanceMetrics, ResourceRequirements, TrainingDataPoint,
 };
 use crate::quantum_network::network_optimization::{
@@ -492,6 +492,15 @@ pub struct QuantumReinforcementLearning {
     pub reward_functions: HashMap<String, String>,
     pub exploration_strategies: Vec<String>,
     pub learning_rate: f64,
+}
+
+impl QuantumReinforcementLearning {
+    /// Add training data to the learning system
+    pub async fn add_training_data(&self, _learning_data: TrainingDataPoint) -> Result<()> {
+        // Placeholder implementation for quantum reinforcement learning
+        // In a real implementation, this would update the learning model
+        Ok(())
+    }
 }
 
 /// Quantum adaptation strategy
@@ -1503,10 +1512,23 @@ impl MLOptimizedQuantumLoadBalancer {
             context_features: HashMap::new(), // To be filled with context
         };
 
+        // Convert to TrainingDataPoint for compatibility
+        let training_data = TrainingDataPoint {
+            features: learning_data.context_features.clone(),
+            target_node: learning_data.selected_node.clone(),
+            actual_performance: PerformanceMetrics {
+                execution_time: Duration::from_millis(100), // Placeholder
+                fidelity: 0.95,                            // Placeholder
+                success: true,                             // Placeholder
+                resource_utilization: 0.75,               // Placeholder
+            },
+            timestamp: learning_data.timestamp,
+        };
+        
         // Add to learning system (placeholder implementation)
         self.performance_learner
             .learning_algorithm
-            .add_training_data(learning_data)
+            .add_training_data(training_data)
             .await?;
 
         Ok(())
@@ -1730,7 +1752,41 @@ impl LoadBalancer for CapabilityBasedQuantumBalancer {
             average_decision_time: Duration::from_millis(10),
             prediction_accuracy: 0.85,
             load_distribution_variance: 0.15,
+            total_requests: 0,
+            successful_allocations: 0,
+            failed_allocations: 0,
+            average_response_time: Duration::from_millis(5),
+            node_utilization: HashMap::new(),
         }
+    }
+
+    fn select_nodes(
+        &self,
+        partitions: &[CircuitPartition],
+        available_nodes: &HashMap<NodeId, NodeInfo>,
+        requirements: &ExecutionRequirements,
+    ) -> std::result::Result<HashMap<Uuid, NodeId>, DistributedComputationError> {
+        let mut allocation = HashMap::new();
+
+        for partition in partitions {
+            if let Some((node_id, _)) = available_nodes.iter().next() {
+                allocation.insert(partition.partition_id, node_id.clone());
+            }
+        }
+
+        Ok(allocation)
+    }
+
+    fn rebalance_load(
+        &self,
+        current_allocation: &HashMap<Uuid, NodeId>,
+        nodes: &HashMap<NodeId, NodeInfo>,
+    ) -> Option<HashMap<Uuid, NodeId>> {
+        None // No rebalancing needed in simplified implementation
+    }
+
+    fn predict_execution_time(&self, partition: &CircuitPartition, node: &NodeInfo) -> Duration {
+        Duration::from_millis(partition.gates.len() as u64 * 15) // Slightly higher than basic implementation
     }
 }
 

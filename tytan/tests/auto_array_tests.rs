@@ -11,7 +11,7 @@ use quantrs2_tytan::auto_array::Auto_array;
 #[cfg(feature = "dwave")]
 fn test_auto_array_1d() {
     // Test 1D array conversion
-    let mut assignments = HashMap::new();
+    let assignments = HashMap::new();
     assignments.insert("x0".to_string(), true);
     assignments.insert("x1".to_string(), false);
     assignments.insert("x2".to_string(), true);
@@ -45,7 +45,7 @@ fn test_auto_array_1d() {
 #[cfg(feature = "dwave")]
 fn test_auto_array_2d() {
     // Test 2D array conversion
-    let mut assignments = HashMap::new();
+    let assignments = HashMap::new();
     assignments.insert("q0_0".to_string(), true);
     assignments.insert("q0_1".to_string(), false);
     assignments.insert("q1_0".to_string(), false);
@@ -80,7 +80,7 @@ fn test_auto_array_2d() {
 #[cfg(feature = "dwave")]
 fn test_auto_array_dframe() {
     // Test DataFrame conversion (2D)
-    let mut assignments = HashMap::new();
+    let assignments = HashMap::new();
     assignments.insert("q0_0".to_string(), true);
     assignments.insert("q0_1".to_string(), false);
     assignments.insert("q1_0".to_string(), false);
@@ -114,7 +114,7 @@ fn test_auto_array_dframe() {
 #[cfg(feature = "dwave")]
 fn test_auto_array_image() {
     // Test image conversion (2D)
-    let mut assignments = HashMap::new();
+    let assignments = HashMap::new();
     assignments.insert("q0_0".to_string(), true);
     assignments.insert("q0_1".to_string(), false);
     assignments.insert("q1_0".to_string(), false);
@@ -148,7 +148,7 @@ fn test_auto_array_image() {
 #[cfg(feature = "dwave")]
 fn test_auto_array_missing_values() {
     // Test handling of missing values
-    let mut assignments = HashMap::new();
+    let assignments = HashMap::new();
     assignments.insert("q0_0".to_string(), true);
     // Missing q0_1
     assignments.insert("q1_0".to_string(), false);
@@ -177,7 +177,7 @@ fn test_auto_array_missing_values() {
 #[cfg(feature = "dwave")]
 fn test_auto_array_natural_sort() {
     // Test natural sorting of indices
-    let mut assignments = HashMap::new();
+    let assignments = HashMap::new();
     assignments.insert("q1_1".to_string(), true);
     assignments.insert("q1_2".to_string(), false);
     assignments.insert("q1_10".to_string(), true);

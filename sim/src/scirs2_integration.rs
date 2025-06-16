@@ -1539,9 +1539,9 @@ pub fn benchmark_scirs2_integration() -> Result<HashMap<String, f64>> {
         let start = std::time::Instant::now();
 
         // Create test sparse matrix
-        let mut row_indices = vec![0; 1000];
-        let mut col_indices = vec![0; 1000];
-        let mut values = vec![Complex64::new(0.0, 0.0); 1000];
+        let mut row_indices = [0; 1000];
+        let mut col_indices = [0; 1000];
+        let mut values = [Complex64::new(0.0, 0.0); 1000];
 
         for i in 0..100 {
             for j in 0..10 {

@@ -29,10 +29,10 @@ fn test_ai_optimization_small_problem() {
         replay_buffer_size: 1000,
     };
 
-    let mut optimizer = AIAssistedOptimizer::new(config);
+    let optimizer = AIAssistedOptimizer::new(config);
 
     // Create a small test QUBO problem
-    let mut qubo = Array2::zeros((6, 6));
+    let qubo = Array2::zeros((6, 6));
 
     // Create a structured problem with two blocks
     for i in 0..3 {
@@ -118,7 +118,7 @@ fn test_problem_feature_extraction() {
     assert!(dense_features[4] > 0.9); // High density
 
     // 2. Sparse problem
-    let mut sparse_qubo = Array2::zeros((8, 8));
+    let sparse_qubo = Array2::zeros((8, 8));
     sparse_qubo[[0, 1]] = 1.0;
     sparse_qubo[[1, 0]] = 1.0;
     sparse_qubo[[2, 3]] = 1.0;
@@ -129,7 +129,7 @@ fn test_problem_feature_extraction() {
     assert!(sparse_features[4] < 0.5); // Low density
 
     // 3. Symmetric problem
-    let mut symmetric_qubo = Array2::zeros((4, 4));
+    let symmetric_qubo = Array2::zeros((4, 4));
     symmetric_qubo[[0, 1]] = 2.0;
     symmetric_qubo[[1, 0]] = 2.0;
     symmetric_qubo[[2, 3]] = -1.0;
@@ -176,7 +176,7 @@ fn test_structure_recognition() {
     assert!(has_grid);
 
     // Test block structure recognition
-    let mut block_qubo = Array2::zeros((6, 6));
+    let block_qubo = Array2::zeros((6, 6));
 
     // Two blocks of size 3
     for block in 0..2 {
@@ -199,7 +199,7 @@ fn test_structure_recognition() {
     assert!(has_block);
 
     // Test chain structure recognition
-    let mut chain_qubo = Array2::zeros((5, 5));
+    let chain_qubo = Array2::zeros((5, 5));
     for i in 0..4 {
         chain_qubo[[i, i + 1]] = -1.0;
         chain_qubo[[i + 1, i]] = -1.0;
@@ -262,7 +262,7 @@ fn test_algorithm_selection() {
 #[test]
 fn test_parameter_optimization() {
     let config = AIOptimizerConfig::default();
-    let mut optimizer_net = ParameterOptimizationNetwork::new(&config);
+    let optimizer_net = ParameterOptimizationNetwork::new(&config);
 
     // Test parameter optimization for different algorithms
     let features = Array1::from(vec![100.0, 0.0, 1.0, 1.0, 0.5, 5.0, 1.0, 4.0, 1.0, 1.5]);
@@ -348,7 +348,7 @@ fn test_difficulty_assessment() {
     // Test different difficulty levels
 
     // Easy problem (small, sparse)
-    let mut easy_qubo = Array2::zeros((10, 10));
+    let easy_qubo = Array2::zeros((10, 10));
     easy_qubo[[0, 1]] = 1.0;
     easy_qubo[[1, 0]] = 1.0;
 
@@ -368,7 +368,7 @@ fn test_difficulty_assessment() {
 
     // Hard problem (large, dense, high frustration)
     let size = 100;
-    let mut hard_qubo = Array2::ones((size, size));
+    let hard_qubo = Array2::ones((size, size));
     for i in 0..size {
         hard_qubo[[i, i]] = 0.0; // Remove self-loops
     }
@@ -401,10 +401,10 @@ fn test_training_components() {
         batch_size: 8,
         ..Default::default()
     };
-    let mut optimizer = AIAssistedOptimizer::new(config);
+    let optimizer = AIAssistedOptimizer::new(config);
 
     // Create mock training data
-    let mut training_data = Vec::new();
+    let training_data = Vec::new();
 
     for i in 0..20 {
         let size = 10 + i * 5;
@@ -421,7 +421,7 @@ fn test_training_components() {
             1.0,
         ]);
 
-        let mut algorithm_scores = HashMap::new();
+        let algorithm_scores = HashMap::new();
         algorithm_scores.insert("SimulatedAnnealing".to_string(), 0.8);
         algorithm_scores.insert("GeneticAlgorithm".to_string(), 0.75);
         algorithm_scores.insert("TabuSearch".to_string(), 0.85);
@@ -482,7 +482,7 @@ fn test_comprehensive_optimization_workflow() {
         replay_buffer_size: 1000,
     };
 
-    let mut optimizer = AIAssistedOptimizer::new(config);
+    let optimizer = AIAssistedOptimizer::new(config);
 
     // Test workflow on different problem types
     let test_cases = vec![
@@ -533,7 +533,7 @@ fn test_comprehensive_optimization_workflow() {
 #[test]
 fn test_reinforcement_learning_components() {
     let config = AIOptimizerConfig::default();
-    let mut rl_agent = SamplingStrategyAgent::new(&config);
+    let rl_agent = SamplingStrategyAgent::new(&config);
 
     // Test basic RL agent structure
     assert_eq!(rl_agent.q_network().state_encoder.embedding_dim, 64);
@@ -601,7 +601,7 @@ fn test_ensemble_methods() {
 // Helper functions to create test problems
 
 fn create_small_dense_qubo() -> Array2<f64> {
-    let mut qubo = Array2::ones((8, 8));
+    let qubo = Array2::ones((8, 8));
     for i in 0..8 {
         qubo[[i, i]] = -2.0; // Encourage variables to be 1
     }
@@ -609,7 +609,7 @@ fn create_small_dense_qubo() -> Array2<f64> {
 }
 
 fn create_medium_sparse_qubo() -> Array2<f64> {
-    let mut qubo = Array2::zeros((20, 20));
+    let qubo = Array2::zeros((20, 20));
 
     // Add sparse connections
     for i in 0..19 {
@@ -628,7 +628,7 @@ fn create_medium_sparse_qubo() -> Array2<f64> {
 
 fn create_large_structured_qubo() -> Array2<f64> {
     let size = 50;
-    let mut qubo = Array2::zeros((size, size));
+    let qubo = Array2::zeros((size, size));
 
     // Create block structure with 5 blocks of 10 variables each
     for block in 0..5 {

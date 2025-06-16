@@ -606,7 +606,6 @@ impl EnhancedTensorNetworkSimulator {
     }
 
     /// Internal helper methods
-
     fn create_gate_tensor(
         &self,
         gate_matrix: &Array2<Complex64>,
@@ -1449,7 +1448,6 @@ impl EnhancedTensorNetworkSimulator {
     }
 
     /// Helper methods for advanced optimization algorithms
-
     fn dp_optimal_contraction(
         &self,
         tensor_ids: &[usize],

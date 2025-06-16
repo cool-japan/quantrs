@@ -1592,8 +1592,8 @@ impl EnhancedQuantumNetworkMonitor {
             historical_data_manager: Arc::new(QuantumHistoricalDataManager::new(
                 &config.storage_config,
             )),
-            optimization_recommender: Arc::new(QuantumOptimizationRecommender::new(&())),
-            dashboard_system: Arc::new(QuantumNetworkDashboard::new(&())),
+            optimization_recommender: Arc::new(QuantumOptimizationRecommender::new()),
+            dashboard_system: Arc::new(QuantumNetworkDashboard::new()),
             config_manager: Arc::new(config),
         }
     }
@@ -2108,7 +2108,7 @@ impl Default for EnhancedMonitoringConfig {
                 },
                 network_settings: NetworkMetricsSettings {
                     packet_level_monitoring: false,
-                    topology_monitoring_frequency: Duration::from_secs(5 * 60),
+                    topology_monitoring_frequency: Duration::from_minutes(5),
                     flow_analysis: true,
                     bandwidth_thresholds: BandwidthThresholds {
                         warning_threshold: 0.7,
@@ -2121,7 +2121,7 @@ impl Default for EnhancedMonitoringConfig {
                     power_monitoring: true,
                     vibration_monitoring: true,
                     emi_monitoring: false,
-                    health_check_frequency: Duration::from_secs(10 * 60),
+                    health_check_frequency: Duration::from_minutes(10),
                 },
             },
             analytics_config: AnalyticsEngineConfig {
@@ -2130,7 +2130,7 @@ impl Default for EnhancedMonitoringConfig {
                     enabled: true,
                     pattern_types: vec![PatternType::Anomalous, PatternType::Trending],
                     sensitivity: 0.8,
-                    min_pattern_duration: Duration::from_secs(5 * 60),
+                    min_pattern_duration: Duration::from_minutes(5),
                 },
                 correlation_analysis: CorrelationAnalysisConfig {
                     enabled: true,
@@ -2145,7 +2145,7 @@ impl Default for EnhancedMonitoringConfig {
                     enabled: true,
                     trend_methods: vec![TrendMethod::LinearRegression, TrendMethod::MannKendall],
                     sensitivity: 0.8,
-                    min_trend_duration: Duration::from_secs(10 * 60),
+                    min_trend_duration: Duration::from_minutes(10),
                 },
                 performance_modeling: PerformanceModelingConfig {
                     enabled: true,
@@ -2172,8 +2172,8 @@ impl Default for EnhancedMonitoringConfig {
                 sensitivity: 0.8,
                 training_requirements: TrainingRequirements {
                     min_training_points: 1000,
-                    training_window: Duration::from_secs(7 * 86400),
-                    retraining_frequency: Duration::from_secs(1 * 86400),
+                    training_window: Duration::from_days(7),
+                    retraining_frequency: Duration::from_days(1),
                     quality_requirements: DataQualityRequirements {
                         min_completeness: 0.95,
                         max_missing_percentage: 0.05,
@@ -2185,7 +2185,7 @@ impl Default for EnhancedMonitoringConfig {
             predictive_config: PredictiveAnalyticsConfig {
                 enabled: true,
                 prediction_horizons: vec![
-                    Duration::from_secs(15 * 60),
+                    Duration::from_minutes(15),
                     Duration::from_secs(60 * 60),
                     Duration::from_secs(6 * 60 * 60),
                     Duration::from_secs(24 * 60 * 60),
@@ -2250,8 +2250,8 @@ impl Default for EnhancedMonitoringConfig {
                         severity_limits: HashMap::new(),
                         global_limits: FrequencyLimits {
                             max_notifications_per_window: 100,
-                            time_window: Duration::from_secs(1 * 3600),
-                            cooldown_period: Duration::from_secs(15 * 60),
+                            time_window: Duration::from_hours(1),
+                            cooldown_period: Duration::from_minutes(15),
                             burst_allowance: 10,
                         },
                     },
@@ -2277,12 +2277,12 @@ impl Default for EnhancedMonitoringConfig {
                     enabled: true,
                     algorithm: CompressionAlgorithm::Zstd,
                     compression_level: 3,
-                    compress_after: Duration::from_secs(24 * 3600),
+                    compress_after: Duration::from_hours(24),
                 },
                 backup: BackupConfig {
                     enabled: true,
-                    backup_frequency: Duration::from_secs(6 * 3600),
-                    backup_retention: Duration::from_secs(30 * 86400),
+                    backup_frequency: Duration::from_hours(6),
+                    backup_retention: Duration::from_days(30),
                     backup_destination: BackupDestination::LocalFileSystem {
                         path: "./backups".to_string(),
                     },
@@ -2662,15 +2662,15 @@ mod tests {
                 metric_type: MetricType::GateErrorRate,
                 operator: ComparisonOperator::GreaterThan,
                 threshold_value: 0.05,
-                duration: Duration::from_secs(5 * 60),
+                duration: Duration::from_minutes(5),
             },
             severity: AlertSeverity::Critical,
             notification_settings: NotificationSettings {
                 channels: vec![],
                 frequency_limits: FrequencyLimits {
                     max_notifications_per_window: 5,
-                    time_window: Duration::from_secs(1 * 3600),
-                    cooldown_period: Duration::from_secs(10 * 60),
+                    time_window: Duration::from_hours(1),
+                    cooldown_period: Duration::from_minutes(10),
                     burst_allowance: 2,
                 },
                 escalation_settings: EscalationSettings {

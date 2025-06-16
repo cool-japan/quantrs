@@ -78,7 +78,7 @@ impl ConstraintSatisfactionDecomposer {
 
     /// Build primal graph from CSP
     fn build_primal_graph(&self, csp: &CSPProblem) -> (Graph, Vec<String>) {
-        let mut edges = Vec::new();
+        let edges = Vec::new();
         let var_names: Vec<String> = csp.variables.keys().cloned().collect();
         let var_to_idx: HashMap<&str, usize> = var_names
             .iter()
@@ -126,12 +126,12 @@ impl ConstraintSatisfactionDecomposer {
         let ordering = self.get_elimination_ordering(graph)?;
 
         // Build tree decomposition from elimination ordering
-        let mut bags = Vec::new();
-        let mut tree_edges = Vec::new();
-        let mut max_bag_size = 0;
+        let bags = Vec::new();
+        let tree_edges = Vec::new();
+        let max_bag_size = 0;
 
         let mut remaining_vars: HashSet<usize> = (0..graph.num_nodes).collect();
-        let mut adjacency = self.build_adjacency_list(graph);
+        let adjacency = self.build_adjacency_list(graph);
 
         for &var in &ordering {
             if !remaining_vars.contains(&var) {
@@ -139,7 +139,7 @@ impl ConstraintSatisfactionDecomposer {
             }
 
             // Create bag with variable and its remaining neighbors
-            let mut bag_indices = HashSet::new();
+            let bag_indices = HashSet::new();
             bag_indices.insert(var);
 
             // Add neighbors
@@ -213,14 +213,14 @@ impl ConstraintSatisfactionDecomposer {
 
     /// Minimum width ordering heuristic
     fn min_width_ordering(&self, graph: &Graph) -> Result<Vec<usize>, String> {
-        let mut ordering = Vec::new();
+        let ordering = Vec::new();
         let mut remaining: HashSet<usize> = (0..graph.num_nodes).collect();
-        let mut adjacency = self.build_adjacency_list(graph);
+        let adjacency = self.build_adjacency_list(graph);
 
         while !remaining.is_empty() {
             // Find variable with minimum degree
-            let mut min_degree = usize::MAX;
-            let mut best_var = 0;
+            let min_degree = usize::MAX;
+            let best_var = 0;
 
             for &var in &remaining {
                 let degree = adjacency
@@ -267,15 +267,15 @@ impl ConstraintSatisfactionDecomposer {
 
     /// Maximum cardinality ordering heuristic
     fn max_cardinality_ordering(&self, graph: &Graph) -> Result<Vec<usize>, String> {
-        let mut ordering = Vec::new();
-        let mut numbered = HashSet::new();
+        let ordering = Vec::new();
+        let numbered = HashSet::new();
         let mut cardinality = vec![0; graph.num_nodes];
         let adjacency = self.build_adjacency_list(graph);
 
         for _ in 0..graph.num_nodes {
             // Find unnumbered vertex with maximum cardinality
-            let mut max_cardinality = 0;
-            let mut best_var = 0;
+            let max_cardinality = 0;
+            let best_var = 0;
 
             for var in 0..graph.num_nodes {
                 if !numbered.contains(&var) && cardinality[var] >= max_cardinality {
@@ -303,13 +303,13 @@ impl ConstraintSatisfactionDecomposer {
 
     /// Minimum fill-in ordering heuristic
     fn min_fill_in_ordering(&self, graph: &Graph) -> Result<Vec<usize>, String> {
-        let mut ordering = Vec::new();
+        let ordering = Vec::new();
         let mut remaining: HashSet<usize> = (0..graph.num_nodes).collect();
-        let mut adjacency = self.build_adjacency_list(graph);
+        let adjacency = self.build_adjacency_list(graph);
 
         while !remaining.is_empty() {
-            let mut min_fill_in = usize::MAX;
-            let mut best_var = 0;
+            let min_fill_in = usize::MAX;
+            let best_var = 0;
 
             for &var in &remaining {
                 let fill_in = self.compute_fill_in(&adjacency, var, &remaining);
@@ -367,7 +367,7 @@ impl ConstraintSatisfactionDecomposer {
             })
             .unwrap_or_default();
 
-        let mut fill_in_count = 0;
+        let fill_in_count = 0;
         for i in 0..neighbors.len() {
             for j in i + 1..neighbors.len() {
                 let var_i = neighbors[i];
@@ -389,7 +389,7 @@ impl ConstraintSatisfactionDecomposer {
 
     /// Build adjacency list from graph
     fn build_adjacency_list(&self, graph: &Graph) -> HashMap<usize, HashSet<usize>> {
-        let mut adjacency = HashMap::new();
+        let adjacency = HashMap::new();
 
         for edge in &graph.edges {
             adjacency
@@ -411,14 +411,14 @@ impl ConstraintSatisfactionDecomposer {
         tree_dec: &TreeDecomposition,
         csp: &CSPProblem,
     ) -> Result<Vec<CSPCluster>, String> {
-        let mut clusters = Vec::new();
+        let clusters = Vec::new();
         let var_names: Vec<_> = csp.variables.keys().collect();
 
         for (i, bag) in tree_dec.bags.iter().enumerate() {
             let variables: HashSet<String> = bag.clone();
 
             // Find constraints that involve only variables in this bag
-            let mut cluster_constraints = Vec::new();
+            let cluster_constraints = Vec::new();
             for (constraint_id, constraint) in csp.constraints.iter().enumerate() {
                 let constraint_vars: HashSet<_> = constraint.scope.iter().collect();
                 let bag_vars: HashSet<_> = variables.iter().collect();
@@ -445,7 +445,7 @@ impl ConstraintSatisfactionDecomposer {
         clusters: &[CSPCluster],
         tree_dec: &TreeDecomposition,
     ) -> Result<ClusterTree, String> {
-        let mut nodes = Vec::new();
+        let nodes = Vec::new();
 
         for (i, cluster) in clusters.iter().enumerate() {
             let separator = if i > 0 {
@@ -494,16 +494,16 @@ impl ConstraintSatisfactionDecomposer {
         csp: &CSPProblem,
     ) -> Result<CSPDecomposition, String> {
         // Group constraints by shared variables
-        let mut constraint_clusters = Vec::new();
-        let mut assigned_constraints = HashSet::new();
+        let constraint_clusters = Vec::new();
+        let assigned_constraints = HashSet::new();
 
         for (i, constraint) in csp.constraints.iter().enumerate() {
             if assigned_constraints.contains(&i) {
                 continue;
             }
 
-            let mut cluster_vars = HashSet::new();
-            let mut cluster_constraints = vec![i];
+            let cluster_vars = HashSet::new();
+            let cluster_constraints = vec![i];
             assigned_constraints.insert(i);
 
             // Add variables from this constraint
@@ -540,8 +540,8 @@ impl ConstraintSatisfactionDecomposer {
         }
 
         // Build simple cluster tree
-        let mut tree_nodes = Vec::new();
-        let mut tree_edges = Vec::new();
+        let tree_nodes = Vec::new();
+        let tree_edges = Vec::new();
 
         for (i, cluster) in constraint_clusters.iter().enumerate() {
             tree_nodes.push(TreeNode {
@@ -590,8 +590,8 @@ impl ConstraintSatisfactionDecomposer {
     /// Find cycle cutset using greedy heuristic
     fn find_cycle_cutset(&self, csp: &CSPProblem) -> Result<Vec<String>, String> {
         let (primal_graph, var_names) = self.build_primal_graph(csp);
-        let mut cutset = Vec::new();
-        let mut remaining_edges = primal_graph.edges.clone();
+        let cutset = Vec::new();
+        let remaining_edges = primal_graph.edges.clone();
 
         // Greedy removal of high-degree vertices
         while self.has_cycles(&remaining_edges, primal_graph.num_nodes) {
@@ -617,7 +617,7 @@ impl ConstraintSatisfactionDecomposer {
     fn has_cycles(&self, edges: &[Edge], num_nodes: usize) -> bool {
         let mut visited = vec![false; num_nodes];
         let mut rec_stack = vec![false; num_nodes];
-        let mut adjacency = HashMap::new();
+        let adjacency = HashMap::new();
 
         // Build adjacency list
         for edge in edges {
@@ -693,7 +693,7 @@ mod tests {
         let decomposer = ConstraintSatisfactionDecomposer::new();
 
         // Create simple CSP
-        let mut variables = HashMap::new();
+        let variables = HashMap::new();
         variables.insert("x0".to_string(), DomainCsp { values: vec![0, 1] });
         variables.insert("x1".to_string(), DomainCsp { values: vec![0, 1] });
         variables.insert("x2".to_string(), DomainCsp { values: vec![0, 1] });
@@ -734,7 +734,7 @@ mod tests {
             .with_strategy(CSPDecompositionStrategy::ConstraintClustering);
 
         // Create CSP with disconnected constraint groups
-        let mut variables = HashMap::new();
+        let variables = HashMap::new();
         for i in 0..5 {
             variables.insert(format!("x{}", i), DomainCsp { values: vec![0, 1] });
         }

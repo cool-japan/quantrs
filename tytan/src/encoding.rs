@@ -102,7 +102,7 @@ impl EncodedVariable {
                 None // Invalid: no bit set
             }
             EncodingScheme::Binary { .. } => {
-                let mut value = 0;
+                let value = 0;
                 for (i, var) in self.binary_vars.iter().enumerate() {
                     if binary_values.get(var).copied().unwrap_or(false) {
                         value |= 1 << i;
@@ -111,14 +111,14 @@ impl EncodedVariable {
                 Some(value)
             }
             EncodingScheme::GrayCode { .. } => {
-                let mut gray = 0;
+                let gray = 0;
                 for (i, var) in self.binary_vars.iter().enumerate() {
                     if binary_values.get(var).copied().unwrap_or(false) {
                         gray |= 1 << i;
                     }
                 }
                 // Convert Gray code to binary
-                let mut binary = gray;
+                let binary = gray;
                 binary ^= binary >> 16;
                 binary ^= binary >> 8;
                 binary ^= binary >> 4;
@@ -127,7 +127,7 @@ impl EncodedVariable {
                 Some(binary)
             }
             EncodingScheme::DomainWall { num_values } => {
-                let mut value = *num_values as i32 - 1;
+                let value = *num_values as i32 - 1;
                 for (i, var) in self.binary_vars.iter().enumerate() {
                     if !binary_values.get(var).copied().unwrap_or(false) {
                         value = i as i32;
@@ -137,7 +137,7 @@ impl EncodedVariable {
                 Some(value)
             }
             EncodingScheme::Unary { .. } => {
-                let mut value = 0;
+                let value = 0;
                 for var in &self.binary_vars {
                     if binary_values.get(var).copied().unwrap_or(false) {
                         value += 1;
@@ -148,7 +148,7 @@ impl EncodedVariable {
                 Some(value)
             }
             EncodingScheme::OrderEncoding { min_value, .. } => {
-                let mut value = *min_value;
+                let value = *min_value;
                 for var in &self.binary_vars {
                     if binary_values.get(var).copied().unwrap_or(false) {
                         value += 1;
@@ -164,10 +164,10 @@ impl EncodedVariable {
 
     /// Encode value to binary representation
     pub fn encode(&self, value: i32) -> HashMap<String, bool> {
-        let mut binary_values = HashMap::new();
+        let binary_values = HashMap::new();
 
         match &self.scheme {
-            EncodingScheme::OneHot { num_values } => {
+            EncodingScheme::OneHot { num_values: _ } => {
                 for (i, var) in self.binary_vars.iter().enumerate() {
                     binary_values.insert(var.clone(), i == value as usize);
                 }
@@ -184,7 +184,7 @@ impl EncodedVariable {
                     binary_values.insert(var.clone(), (gray & (1 << i)) != 0);
                 }
             }
-            EncodingScheme::DomainWall { num_values } => {
+            EncodingScheme::DomainWall { num_values: _ } => {
                 for (i, var) in self.binary_vars.iter().enumerate() {
                     binary_values.insert(var.clone(), i < value as usize);
                 }
@@ -211,7 +211,7 @@ impl EncodedVariable {
     /// Get penalty matrix for encoding constraints
     pub fn get_penalty_matrix(&self, var_indices: &HashMap<String, usize>) -> Array2<f64> {
         let n = var_indices.len();
-        let mut penalty = Array2::zeros((n, n));
+        let penalty = Array2::zeros((n, n));
 
         match &self.scheme {
             EncodingScheme::OneHot { .. } => {
@@ -323,7 +323,7 @@ impl EncodingOptimizer {
 
     /// Select optimal encoding for each variable
     pub fn optimize_encodings(&self) -> HashMap<String, EncodingScheme> {
-        let mut encodings = HashMap::new();
+        let encodings = HashMap::new();
 
         for (var, &(min_val, max_val)) in &self.domains {
             let domain_size = (max_val - min_val + 1) as usize;
@@ -408,12 +408,12 @@ impl AuxiliaryVariableGenerator {
     /// Generate auxiliary variables for product encoding
     pub fn product_encoding(
         &mut self,
-        var1: &str,
-        var2: &str,
+        _var1: &str,
+        _var2: &str,
         enc1: &EncodedVariable,
         enc2: &EncodedVariable,
     ) -> Vec<(String, Vec<String>)> {
-        let mut auxiliaries = Vec::new();
+        let auxiliaries = Vec::new();
 
         // Generate auxiliary for each pair of binary variables
         for bin1 in &enc1.binary_vars {
@@ -451,7 +451,7 @@ impl EncodingConverter {
 
     /// Get all binary variables
     pub fn get_binary_variables(&self) -> Vec<String> {
-        let mut vars = Vec::new();
+        let vars = Vec::new();
         for encoded in self.encodings.values() {
             vars.extend(encoded.binary_vars.clone());
         }
@@ -459,7 +459,7 @@ impl EncodingConverter {
     }
 
     /// Build QUBO matrix with encoding penalties
-    pub fn build_qubo_matrix(&self, base_matrix: Array2<f64>) -> Array2<f64> {
+    pub fn build_qubo_matrix(&self, _base_matrix: Array2<f64>) -> Array2<f64> {
         let binary_vars = self.get_binary_variables();
         let var_indices: HashMap<String, usize> = binary_vars
             .iter()
@@ -468,7 +468,7 @@ impl EncodingConverter {
             .collect();
 
         let n = binary_vars.len();
-        let mut qubo = Array2::zeros((n, n));
+        let qubo = Array2::zeros((n, n));
 
         // Add encoding penalties
         for encoded in self.encodings.values() {
@@ -488,7 +488,7 @@ pub fn compare_encodings(
     domain_size: usize,
     constraint_density: f64,
 ) -> HashMap<String, EncodingMetrics> {
-    let mut results = HashMap::new();
+    let results = HashMap::new();
 
     // One-hot encoding
     let onehot_bits = domain_size;
@@ -593,7 +593,7 @@ mod tests {
 
     #[test]
     fn test_encoding_optimizer() {
-        let mut optimizer = EncodingOptimizer::new();
+        let optimizer = EncodingOptimizer::new();
         optimizer.add_variable("small", 0, 3);
         optimizer.add_variable("large", 0, 100);
         optimizer.add_variable("binary", 0, 1);

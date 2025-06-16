@@ -50,9 +50,9 @@ mod tests {
         assert!(framework.is_ok());
 
         let framework = framework.unwrap();
-        assert_eq!(framework.state.variables.len(), 16);
-        assert_eq!(framework.state.iteration, 0);
-        assert_eq!(framework.state.best_objective, f64::INFINITY);
+        assert_eq!(framework.get_state().variables.len(), 16);
+        assert_eq!(framework.get_state().iteration, 0);
+        assert_eq!(framework.get_state().best_objective, f64::INFINITY);
     }
 
     #[test]
@@ -292,7 +292,7 @@ mod tests {
 
         let mut framework = QuantumInspiredFramework::new(config).unwrap();
         let solution = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0]);
-        let result = framework.evaluate_objective(&solution).unwrap();
+        let result = framework.evaluate_objective_public(&solution).unwrap();
 
         // x^2 + 2^2 + 3^2 + 4^2 = 1 + 4 + 9 + 16 = 30
         assert!((result - 30.0).abs() < 1e-10);
@@ -310,7 +310,7 @@ mod tests {
 
         let mut framework = QuantumInspiredFramework::new(config).unwrap();
         let solution = Array1::from_vec(vec![1.0, 1.0, 1.0, 1.0]);
-        let result = framework.evaluate_objective(&solution).unwrap();
+        let result = framework.evaluate_objective_public(&solution).unwrap();
 
         assert!((result - 4.0).abs() < 1e-10);
     }
@@ -327,7 +327,7 @@ mod tests {
 
         let mut framework = QuantumInspiredFramework::new(config).unwrap();
         let solution = Array1::from_vec(vec![1.0, 1.0]); // Global minimum
-        let result = framework.evaluate_objective(&solution).unwrap();
+        let result = framework.evaluate_objective_public(&solution).unwrap();
 
         assert!(result < 1e-10); // Should be close to 0 at the global minimum
     }
@@ -344,7 +344,7 @@ mod tests {
 
         let mut framework = QuantumInspiredFramework::new(config).unwrap();
         let solution = Array1::from_vec(vec![0.0, 0.0, 0.0, 0.0]); // Global minimum
-        let result = framework.evaluate_objective(&solution).unwrap();
+        let result = framework.evaluate_objective_public(&solution).unwrap();
 
         assert!(result < 1e-10); // Should be close to 0 at the global minimum
     }
@@ -361,7 +361,7 @@ mod tests {
 
         let mut framework = QuantumInspiredFramework::new(config).unwrap();
         let solution = Array1::from_vec(vec![0.0, 0.0, 0.0, 0.0]); // Global minimum
-        let result = framework.evaluate_objective(&solution).unwrap();
+        let result = framework.evaluate_objective_public(&solution).unwrap();
 
         assert!(result < 1e-10); // Should be close to 0 at the global minimum
     }
@@ -498,8 +498,9 @@ mod tests {
         let mut framework = QuantumInspiredFramework::new(config).unwrap();
 
         // Manually set convergence history to test convergence detection
-        framework.state.convergence_history = vec![10.0, 9.0, 8.0, 7.0, 6.999999, 6.999999];
-        let converged = framework.check_convergence().unwrap();
+        framework.get_state_mut().convergence_history =
+            vec![10.0, 9.0, 8.0, 7.0, 6.999999, 6.999999];
+        let converged = framework.check_convergence_public().unwrap();
         assert!(converged);
     }
 
@@ -509,19 +510,19 @@ mod tests {
         let mut framework = QuantumInspiredFramework::new(config).unwrap();
 
         // Modify state
-        framework.state.iteration = 10;
-        framework.state.best_objective = 5.0;
-        framework.state.convergence_history.push(1.0);
-        framework.state.runtime_stats.function_evaluations = 100;
+        framework.get_state_mut().iteration = 10;
+        framework.get_state_mut().best_objective = 5.0;
+        framework.get_state_mut().convergence_history.push(1.0);
+        framework.get_state_mut().runtime_stats.function_evaluations = 100;
 
         // Reset
         framework.reset();
 
         // Check reset state
-        assert_eq!(framework.state.iteration, 0);
-        assert_eq!(framework.state.best_objective, f64::INFINITY);
-        assert_eq!(framework.state.convergence_history.len(), 0);
-        assert_eq!(framework.state.runtime_stats.function_evaluations, 0);
+        assert_eq!(framework.get_state().iteration, 0);
+        assert_eq!(framework.get_state().best_objective, f64::INFINITY);
+        assert_eq!(framework.get_state().convergence_history.len(), 0);
+        assert_eq!(framework.get_state().runtime_stats.function_evaluations, 0);
     }
 
     #[test]
@@ -907,7 +908,7 @@ mod tests {
             optimization_config: OptimizationConfig {
                 algorithm_type: OptimizationAlgorithm::QuantumGeneticAlgorithm,
                 objective_function: ObjectiveFunction::Rastrigin,
-                bounds: vec![(-10.0, 10.0); 32],
+                bounds: [(-10.0, 10.0); 32],
                 constraint_method: ConstraintMethod::BarrierFunction,
                 multi_objective: true,
                 parallel_evaluation: true,
@@ -992,6 +993,6 @@ mod tests {
         assert!(framework.is_ok());
 
         let framework = framework.unwrap();
-        assert_eq!(framework.state.variables.len(), 32);
+        assert_eq!(framework.get_state().variables.len(), 32);
     }
 }

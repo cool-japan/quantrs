@@ -108,7 +108,7 @@ where
 
     // Create the array
     let shape_dim = ndarray::IxDyn(&shape);
-    let mut array = Array::from_elem(shape_dim, SymEngineExpression::from_i64(0));
+    let array = Array::from_elem(shape_dim, SymEngineExpression::from_i64(0));
 
     // Fill the array with symbols
     let mut indices = vec![0; dim];
@@ -131,7 +131,7 @@ fn fill_symbol_array(
         let format_args: Vec<String> = indices.iter().map(ToString::to_string).collect();
 
         // Format the symbol name
-        let mut symbol_name = format_txt.to_string();
+        let symbol_name = format_txt.to_string();
         for arg in &format_args {
             symbol_name = symbol_name.replacen("{}", arg, 1);
         }
@@ -198,7 +198,7 @@ where
     }
 
     // Generate the commands
-    let mut commands = String::new();
+    let commands = String::new();
     let mut indices = vec![0; dim];
     generate_symbol_commands(&mut commands, &mut indices, 0, &shape, format_txt)?;
 
@@ -219,7 +219,7 @@ fn generate_symbol_commands(
         let format_args: Vec<String> = indices.iter().map(ToString::to_string).collect();
 
         // Format the symbol name
-        let mut symbol_name = format_txt.to_string();
+        let symbol_name = format_txt.to_string();
         for arg in &format_args {
             symbol_name = symbol_name.replacen("{}", arg, 1);
         }
@@ -271,7 +271,7 @@ pub fn symbols_nbit(
     }
 
     // Create bit variables
-    let mut result = SymEngineExpression::from_i64(0);
+    let result = SymEngineExpression::from_i64(0);
     let range = (stop - start) as f64;
 
     for n in 0..num {

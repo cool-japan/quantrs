@@ -125,7 +125,7 @@ impl FujitsuDigitalAnnealerSampler {
         solution: &DASolution,
         var_map: &HashMap<String, usize>,
     ) -> SampleResult {
-        let mut assignments = HashMap::new();
+        let assignments = HashMap::new();
 
         for (var_name, &index) in var_map {
             if index < solution.configuration.len() {

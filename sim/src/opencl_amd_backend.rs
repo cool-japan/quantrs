@@ -990,7 +990,7 @@ impl AMDOpenCLSimulator {
         num_qubits: usize,
     ) -> Result<f64> {
         // Convert gate matrix to real array for OpenCL
-        let mut gate_real = vec![0.0; 8];
+        let mut gate_real = [0.0; 8];
         for (i, &complex_val) in gate_matrix.iter().enumerate() {
             gate_real[i * 2] = complex_val.re;
             gate_real[i * 2 + 1] = complex_val.im;
@@ -1018,7 +1018,7 @@ impl AMDOpenCLSimulator {
         num_qubits: usize,
     ) -> Result<f64> {
         // Convert gate matrix to real array for OpenCL
-        let mut gate_real = vec![0.0; 32];
+        let mut gate_real = [0.0; 32];
         for (i, &complex_val) in gate_matrix.iter().enumerate() {
             gate_real[i * 2] = complex_val.re;
             gate_real[i * 2 + 1] = complex_val.im;

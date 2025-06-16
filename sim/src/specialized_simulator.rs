@@ -425,10 +425,10 @@ pub fn benchmark_specialization(
 
         match gate_type {
             0 => {
-                circuit.h(qubit);
+                let _ = circuit.h(qubit);
             }
             1 => {
-                circuit.x(qubit);
+                let _ = circuit.x(qubit);
             }
             2 => {
                 circuit.ry(qubit, rng.gen_range(0.0..std::f64::consts::TAU));
@@ -437,12 +437,12 @@ pub fn benchmark_specialization(
                 if n_qubits > 1 {
                     let qubit2 = QubitId(rng.gen_range(0..n_qubits as u32));
                     if qubit != qubit2 {
-                        circuit.cnot(qubit, qubit2);
+                        let _ = circuit.cnot(qubit, qubit2);
                     }
                 }
             }
             _ => {
-                circuit.z(qubit);
+                let _ = circuit.z(qubit);
             }
         }
     }

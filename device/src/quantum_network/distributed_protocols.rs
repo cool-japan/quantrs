@@ -4,6 +4,7 @@
 //! enabling multi-node quantum computation with sophisticated state management,
 //! error correction, and optimization strategies.
 
+use crate::{DeviceError, DeviceResult};
 use async_trait::async_trait;
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use serde::{Deserialize, Serialize};
@@ -29,6 +30,8 @@ pub enum DistributedComputationError {
     StateTransfer(String),
     #[error("Consensus protocol failed: {0}")]
     ConsensusFailure(String),
+    #[error("Node selection failed: {0}")]
+    NodeSelectionFailed(String),
 }
 
 type Result<T> = std::result::Result<T, DistributedComputationError>;
@@ -687,6 +690,11 @@ impl LoadBalancer for RoundRobinBalancer {
             average_decision_time: Duration::from_millis(1),
             prediction_accuracy: 1.0,
             load_distribution_variance: 0.0,
+            total_requests: 0,
+            successful_allocations: 0,
+            failed_allocations: 0,
+            average_response_time: Duration::from_millis(0),
+            node_utilization: HashMap::new(),
         }
     }
 }
@@ -2046,6 +2054,7 @@ impl CapabilityBasedBalancer {
     }
 }
 
+#[async_trait]
 impl LoadBalancer for CapabilityBasedBalancer {
     fn select_nodes(
         &self,
@@ -2074,6 +2083,46 @@ impl LoadBalancer for CapabilityBasedBalancer {
 
     fn predict_execution_time(&self, partition: &CircuitPartition, node: &NodeInfo) -> Duration {
         Duration::from_millis(partition.gates.len() as u64 * 10)
+    }
+
+    async fn select_node(
+        &self,
+        available_nodes: &[NodeInfo],
+        requirements: &ResourceRequirements,
+    ) -> Result<NodeId> {
+        // Select the first available node that meets requirements
+        available_nodes
+            .iter()
+            .find(|node| {
+                node.capabilities.max_qubits >= requirements.qubits_needed &&
+                node.capabilities.gate_fidelities.values().all(|&fidelity| fidelity >= 0.999) // Default threshold (equivalent to error rate <= 0.001)
+            })
+            .map(|node| node.node_id.clone())
+            .ok_or_else(|| DistributedComputationError::NodeSelectionFailed("No suitable node found".to_string()))
+    }
+
+    async fn update_node_metrics(
+        &self,
+        node_id: &NodeId,
+        metrics: &PerformanceMetrics,
+    ) -> Result<()> {
+        // Update metrics for the specified node
+        // In a real implementation, this would update internal state
+        Ok(())
+    }
+
+    fn get_balancer_metrics(&self) -> LoadBalancerMetrics {
+        LoadBalancerMetrics {
+            total_decisions: 0,
+            average_decision_time: Duration::from_millis(1),
+            prediction_accuracy: 1.0,
+            load_distribution_variance: 0.0,
+            total_requests: 0,
+            successful_allocations: 0,
+            failed_allocations: 0,
+            average_response_time: Duration::from_millis(0),
+            node_utilization: HashMap::new(),
+        }
     }
 }
 
@@ -2404,6 +2453,11 @@ pub struct LoadBalancerMetrics {
     pub average_decision_time: Duration,
     pub prediction_accuracy: f64,
     pub load_distribution_variance: f64,
+    pub total_requests: u64,
+    pub successful_allocations: u64,
+    pub failed_allocations: u64,
+    pub average_response_time: Duration,
+    pub node_utilization: HashMap<NodeId, f64>,
 }
 
 #[cfg(test)]

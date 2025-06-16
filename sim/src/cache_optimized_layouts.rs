@@ -4,10 +4,9 @@
 //! state vector operations, including cache-aware data structures, memory
 //! access patterns, and cache-conscious algorithms for quantum gates.
 
-use ndarray::{Array1, Array2, ArrayView1, ArrayViewMut1};
+use ndarray::Array2;
 use num_complex::Complex64;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
 use std::collections::{HashMap, VecDeque};
@@ -15,7 +14,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use crate::error::{Result, SimulatorError};
-use crate::memory_bandwidth_optimization::{MemoryOptimizationConfig, OptimizedStateVector};
+use crate::memory_bandwidth_optimization::MemoryOptimizationConfig;
 
 /// Cache hierarchy configuration
 #[derive(Debug, Clone)]

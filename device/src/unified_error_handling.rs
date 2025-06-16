@@ -516,6 +516,7 @@ impl UnifiedErrorHandler {
             DeviceError::JobExecutionFailed(_) => ErrorCategory::Hardware,
             DeviceError::InvalidResponse(_) => ErrorCategory::DataFormat,
             DeviceError::UnknownJobStatus(_) => ErrorCategory::ServerError,
+            DeviceError::ResourceExhaustion(_) => ErrorCategory::Hardware,
         }
     }
 

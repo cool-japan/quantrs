@@ -1881,6 +1881,26 @@ impl QuantumInspiredFramework {
         &self.stats
     }
 
+    /// Get current state
+    pub fn get_state(&self) -> &QuantumInspiredState {
+        &self.state
+    }
+
+    /// Get mutable state access
+    pub fn get_state_mut(&mut self) -> &mut QuantumInspiredState {
+        &mut self.state
+    }
+
+    /// Evaluate objective function (public version)
+    pub fn evaluate_objective_public(&mut self, solution: &Array1<f64>) -> Result<f64> {
+        self.evaluate_objective(solution)
+    }
+
+    /// Check convergence (public version)
+    pub fn check_convergence_public(&self) -> Result<bool> {
+        self.check_convergence()
+    }
+
     /// Reset framework state
     pub fn reset(&mut self) {
         self.state = QuantumInspiredState {

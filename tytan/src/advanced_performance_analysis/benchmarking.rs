@@ -377,9 +377,9 @@ impl QuboEvaluationBenchmark {
 
 impl Benchmark for QuboEvaluationBenchmark {
     fn run_benchmark(&self, config: &BenchmarkConfig) -> Result<BenchmarkResult, AnalysisError> {
-        let mut execution_times = Vec::new();
-        let mut memory_usage = Vec::new();
-        let mut solution_quality = Vec::new();
+        let execution_times = Vec::new();
+        let memory_usage = Vec::new();
+        let solution_quality = Vec::new();
 
         for _ in 0..config.iterations {
             let start = Instant::now();

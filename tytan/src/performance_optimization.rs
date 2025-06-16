@@ -63,7 +63,7 @@ impl OptimizedQUBOEvaluator {
     /// Scalar evaluation
     fn evaluate_scalar(&self, x: &ArrayView1<u8>) -> f64 {
         let n = x.len();
-        let mut energy = 0.0;
+        let energy = 0.0;
 
         // Linear terms (diagonal)
         for i in 0..n {
@@ -90,7 +90,7 @@ impl OptimizedQUBOEvaluator {
     #[cfg(target_arch = "x86_64")]
     unsafe fn evaluate_simd(&self, x: &ArrayView1<u8>) -> f64 {
         let n = x.len();
-        let mut energy = 0.0;
+        let energy = 0.0;
 
         // Process diagonal in chunks of 4
         let chunks = n / 4;
@@ -183,7 +183,7 @@ impl OptimizedQUBOEvaluator {
         }
         .map(|block_start| {
             let block_end = (block_start + block_size).min(n);
-            let mut local_sum = 0.0;
+            let local_sum = 0.0;
 
             for i in block_start..block_end {
                 if x[i] == 1 {
@@ -208,7 +208,7 @@ impl OptimizedQUBOEvaluator {
         let current_val = x[bit];
         let new_val = 1 - current_val;
 
-        let mut delta = 0.0;
+        let delta = 0.0;
 
         // Diagonal term
         delta += (new_val as f64 - current_val as f64) * self.cache[bit];
@@ -284,11 +284,11 @@ impl OptimizedSA {
         rng: &mut impl rand::Rng,
     ) -> (Array1<u8>, f64) {
         let n = initial.len();
-        let mut current = initial;
-        let mut current_energy = self.evaluator.evaluate(&current.view());
+        let current = initial;
+        let current_energy = self.evaluator.evaluate(&current.view());
 
-        let mut best = current.clone();
-        let mut best_energy = current_energy;
+        let best = current.clone();
+        let best_energy = current_energy;
 
         // Temperature schedule
         let temperatures = self.generate_schedule(iterations);
@@ -307,10 +307,10 @@ impl OptimizedSA {
             } else {
                 // Sequential moves
                 for _ in 0..n {
-                    let bit = rng.gen_range(0..n);
+                    let bit = rng.random_range(0..n);
                     let delta = self.evaluator.delta_energy(&current.view(), bit);
 
-                    if delta < 0.0 || rng.gen::<f64>() < (-delta / temp).exp() {
+                    if delta < 0.0 || rng.random::<f64>() < (-delta / temp).exp() {
                         current[bit] = 1 - current[bit];
                         current_energy += delta;
 
@@ -380,15 +380,15 @@ impl OptimizedSA {
         };
 
         // Select moves to accept
-        let mut accepted = Vec::new();
+        let accepted = Vec::new();
         for (bit, delta) in deltas {
-            if delta < 0.0 || rng.gen::<f64>() < (-delta / temp).exp() {
+            if delta < 0.0 || rng.random::<f64>() < (-delta / temp).exp() {
                 accepted.push((bit, delta));
             }
         }
 
         // Apply non-conflicting moves
-        let mut applied_energy = 0.0;
+        let applied_energy = 0.0;
         for (bit, delta) in accepted {
             // Simple conflict resolution - skip if would increase energy too much
             if applied_energy + delta < temp {
@@ -417,7 +417,7 @@ pub mod matrix_ops {
         threshold: f64,
     ) -> Array1<f64> {
         let n = x.len();
-        let mut result = Array1::zeros(n);
+        let result = Array1::zeros(n);
 
         // Identify non-zero entries
         let active: Vec<usize> = (0..n).filter(|&i| x[i] == 1).collect();
@@ -453,7 +453,7 @@ pub mod matrix_ops {
         let n = x.len();
         let num_blocks = (n + block_size - 1) / block_size;
 
-        let mut energy = 0.0;
+        let energy = 0.0;
 
         // Process blocks
         for bi in 0..num_blocks {
@@ -548,7 +548,7 @@ mod tests {
         });
 
         let initial = array![0, 0];
-        let mut rng = rand::thread_rng();
+        let rng = rand::rng();
 
         let (solution, energy) = sa.anneal(initial, 100, &mut rng);
 

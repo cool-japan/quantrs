@@ -1094,7 +1094,6 @@ impl QuantumCellularAutomaton {
     }
 
     /// Helper methods
-
     fn create_cell_mapping(config: &QCAConfig) -> Result<CellMapping> {
         let total_cells = config.dimensions.iter().product();
         let mut coord_to_index = HashMap::new();

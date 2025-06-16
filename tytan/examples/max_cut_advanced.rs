@@ -43,8 +43,8 @@ fn qubo_to_matrix_format(
     qubo: &quantrs2_tytan::QuboModel,
 ) -> Result<(Array2<f64>, HashMap<String, usize>), Box<dyn std::error::Error>> {
     let n = qubo.num_variables;
-    let mut matrix = Array2::zeros((n, n));
-    let mut var_map = HashMap::new();
+    let matrix = Array2::zeros((n, n));
+    let var_map = HashMap::new();
 
     // Create variable mapping
     for i in 0..n {
@@ -81,10 +81,10 @@ fn create_max_cut_model(
     weights: Option<&[f64]>,
     n_nodes: usize,
 ) -> Result<Model, Box<dyn std::error::Error>> {
-    let mut model = Model::new();
+    let model = Model::new();
 
     // Create binary variables for each node (0 = set A, 1 = set B)
-    let mut node_vars = Vec::new();
+    let node_vars = Vec::new();
     for i in 0..n_nodes {
         let var = model.add_variable(&format!("x_{}", i))?;
         node_vars.push(var);
@@ -92,7 +92,7 @@ fn create_max_cut_model(
 
     // Objective: maximize sum of w_ij * (x_i XOR x_j) for each edge
     // Using the identity: x_i XOR x_j = x_i + x_j - 2*x_i*x_j
-    let mut objective = SimpleExpr::constant(0.0);
+    let objective = SimpleExpr::constant(0.0);
 
     for (idx, &(i, j)) in edges.iter().enumerate() {
         let weight = weights.map(|w| w[idx]).unwrap_or(1.0);
@@ -116,7 +116,7 @@ fn calculate_cut_value(
     edges: &[(usize, usize)],
     weights: Option<&[f64]>,
 ) -> f64 {
-    let mut cut_value = 0.0;
+    let cut_value = 0.0;
 
     for (idx, &(i, j)) in edges.iter().enumerate() {
         if partition[i] != partition[j] {
@@ -143,8 +143,8 @@ fn analyze_cut_quality(
     let balance_ratio = set_a_size.min(set_b_size) as f64 / set_a_size.max(set_b_size) as f64;
 
     // Count internal edges
-    let mut internal_edges_a = 0;
-    let mut internal_edges_b = 0;
+    let internal_edges_a = 0;
+    let internal_edges_b = 0;
 
     for &(i, j) in edges {
         if !partition[i] && !partition[j] {
@@ -190,7 +190,7 @@ fn run_max_cut_experiments() -> Result<(), Box<dyn std::error::Error>> {
         ("Grid Graph", generate_grid_graph(4, 4), None),
     ];
 
-    let mut all_results = Vec::new();
+    let all_results = Vec::new();
 
     for (graph_name, edges, weights) in experiments {
         println!("\n=== {} ===", graph_name);
@@ -227,7 +227,7 @@ fn run_max_cut_experiments() -> Result<(), Box<dyn std::error::Error>> {
             ..Default::default()
         };
 
-        let mut adaptive_optimizer = AdaptiveOptimizer::new(adaptive_config);
+        let adaptive_optimizer = AdaptiveOptimizer::new(adaptive_config);
 
         // Benchmark different samplers
         let benchmark_config = BenchmarkConfig {
@@ -238,7 +238,7 @@ fn run_max_cut_experiments() -> Result<(), Box<dyn std::error::Error>> {
             ..Default::default()
         };
 
-        let mut runner = BenchmarkRunner::new(benchmark_config);
+        let runner = BenchmarkRunner::new(benchmark_config);
 
         // Convert QUBO to matrix format
         let (matrix, var_map) = qubo_to_matrix_format(&qubo)?;
@@ -373,7 +373,7 @@ fn run_max_cut_experiments() -> Result<(), Box<dyn std::error::Error>> {
             node_names: None,
         };
         let config = VisualizationConfig::default();
-        let mut visualizer = ProblemVisualizer::new(problem_type, config);
+        let visualizer = ProblemVisualizer::new(problem_type, config);
         visualizer.add_samples(vec![best_sa.clone()]);
         visualizer.visualize()?;
 
@@ -408,7 +408,7 @@ fn extract_partition(sample: &quantrs2_tytan::sampler::SampleResult, n_nodes: us
 
 /// Convert edges to adjacency matrix
 fn edges_to_adjacency(edges: &[(usize, usize)], n_nodes: usize) -> Array2<f64> {
-    let mut adjacency = Array2::zeros((n_nodes, n_nodes));
+    let adjacency = Array2::zeros((n_nodes, n_nodes));
 
     for &(i, j) in edges {
         adjacency[[i, j]] = 1.0;
@@ -433,7 +433,7 @@ fn generate_comparison_report(
 ) -> Result<(), Box<dyn std::error::Error>> {
     use std::io::Write;
 
-    let mut report = String::new();
+    let report = String::new();
 
     writeln!(&mut report, "# Maximum Cut Experiment Results\n")?;
     writeln!(&mut report, "## Summary\n")?;

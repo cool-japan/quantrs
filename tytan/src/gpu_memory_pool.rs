@@ -161,8 +161,8 @@ impl GpuMemoryPool {
     /// Evict least recently used blocks to make space
     #[cfg(feature = "scirs")]
     fn evict_lru_blocks(&mut self, required_size: usize) -> Result<(), String> {
-        let mut freed_size = 0;
-        let mut blocks_to_evict = Vec::new();
+        let freed_size = 0;
+        let blocks_to_evict = Vec::new();
 
         // Sort blocks by last access time
         let mut free_blocks: Vec<_> = self.all_blocks.iter().filter(|b| !b.in_use).collect();
@@ -329,7 +329,7 @@ impl MultiDeviceMemoryPool {
 
     /// Get combined statistics
     pub fn combined_stats(&self) -> AllocationStats {
-        let mut combined = AllocationStats::default();
+        let combined = AllocationStats::default();
 
         for pool in self.device_pools.values() {
             let stats = pool.lock().unwrap().stats();

@@ -33,13 +33,13 @@ pub mod test_utils {
     pub fn create_mock_training_data() -> Vec<TrainingExample> {
         vec![TrainingExample {
             features: {
-                let mut features = HashMap::new();
+                let features = HashMap::new();
                 features.insert("problem_size".to_string(), 100.0);
                 features.insert("density".to_string(), 0.5);
                 features
             },
             targets: {
-                let mut targets = HashMap::new();
+                let targets = HashMap::new();
                 targets.insert("execution_time".to_string(), 1.2);
                 targets.insert("memory_usage".to_string(), 0.8);
                 targets
@@ -105,7 +105,7 @@ mod tests {
 
     #[test]
     fn test_monitor_functionality() {
-        let mut monitor = CpuMonitor::new();
+        let monitor = CpuMonitor::new();
         assert_eq!(monitor.is_active(), false);
 
         monitor.start_monitoring().unwrap();
@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn test_prediction_model() {
-        let mut model = LinearRegressionModel::new();
+        let model = LinearRegressionModel::new();
 
         let characteristics = create_test_problem_characteristics();
 

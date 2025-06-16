@@ -100,11 +100,11 @@ impl EnergyAnalyzer {
         assignments: &HashMap<String, bool>,
         var_map: &HashMap<String, usize>,
     ) -> EnergyBreakdown {
-        let mut total_energy = 0.0;
-        let mut linear_terms = 0.0;
-        let mut quadratic_terms = 0.0;
-        let mut variable_contributions = HashMap::new();
-        let mut interaction_contributions = HashMap::new();
+        let total_energy = 0.0;
+        let linear_terms = 0.0;
+        let quadratic_terms = 0.0;
+        let variable_contributions = HashMap::new();
+        let interaction_contributions = HashMap::new();
 
         // Calculate energy contributions
         for (var1, &idx1) in var_map {
@@ -172,12 +172,12 @@ impl EnergyAnalyzer {
         assignments: &HashMap<String, bool>,
         var_map: &HashMap<String, usize>,
     ) -> EnergyLandscape {
-        let mut local_minima = Vec::new();
+        let local_minima = Vec::new();
         let current_energy = self.calculate_energy(qubo, assignments, var_map);
 
         // Explore 1-flip neighborhood
         for var in assignments.keys() {
-            let mut neighbor = assignments.clone();
+            let neighbor = assignments.clone();
             neighbor.insert(var.clone(), !assignments[var]);
 
             let neighbor_energy = self.calculate_energy(qubo, &neighbor, var_map);
@@ -196,7 +196,7 @@ impl EnergyAnalyzer {
             let vars: Vec<_> = assignments.keys().collect();
             for i in 0..vars.len() {
                 for j in i + 1..vars.len() {
-                    let mut neighbor = assignments.clone();
+                    let neighbor = assignments.clone();
                     neighbor.insert(vars[i].clone(), !assignments[vars[i]]);
                     neighbor.insert(vars[j].clone(), !assignments[vars[j]]);
 
@@ -241,7 +241,7 @@ impl EnergyAnalyzer {
         assignments: &HashMap<String, bool>,
         var_map: &HashMap<String, usize>,
     ) -> f64 {
-        let mut energy = 0.0;
+        let energy = 0.0;
 
         for (var1, &idx1) in var_map {
             let val1 = if assignments.get(var1).copied().unwrap_or(false) {

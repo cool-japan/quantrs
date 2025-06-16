@@ -181,7 +181,7 @@ impl QuantumAnnealingSampler {
 
     /// Build the transverse field Hamiltonian
     fn build_transverse_hamiltonian(&self, n: usize) -> Array2<f64> {
-        let mut h_transverse = Array2::zeros((1 << n, 1 << n));
+        let h_transverse = Array2::zeros((1 << n, 1 << n));
 
         // Apply Pauli-X to each qubit
         for i in 0..n {
@@ -199,7 +199,7 @@ impl QuantumAnnealingSampler {
     fn build_problem_hamiltonian(&self, qubo: &QuboModel) -> Array2<f64> {
         // Convert QuboModel to matrix format and delegate
         let n = qubo.num_variables;
-        let mut matrix = Array2::<f64>::zeros((n, n));
+        let matrix = Array2::<f64>::zeros((n, n));
 
         // Copy linear terms to diagonal
         for (i, val) in qubo.linear_terms() {
@@ -223,11 +223,11 @@ impl QuantumAnnealingSampler {
         matrix: &Array<f64, ndarray::Ix2>,
     ) -> Array2<f64> {
         let n = matrix.nrows();
-        let mut h_problem = Array2::zeros((1 << n, 1 << n));
+        let h_problem = Array2::zeros((1 << n, 1 << n));
 
         // Diagonal elements (classical energies)
         for state in 0..(1 << n) {
-            let mut energy = 0.0;
+            let energy = 0.0;
 
             // Calculate energy for this binary state
             for i in 0..n {
@@ -263,10 +263,10 @@ impl QuantumAnnealingSampler {
         // Time evolution: |ψ(t+dt)⟩ = exp(-i H dt) |ψ(t)⟩
         // For small dt, use first-order approximation
         let n = state.amplitudes.len();
-        let mut new_amplitudes = Array1::from_elem(n, Complex64::new(0.0, 0.0));
+        let new_amplitudes = Array1::from_elem(n, Complex64::new(0.0, 0.0));
 
         for i in 0..n {
-            let mut amp = state.amplitudes[i];
+            let amp = state.amplitudes[i];
 
             // Diagonal term
             let energy = h_total[[i, i]];
@@ -317,7 +317,7 @@ impl QuantumAnnealingSampler {
             // Dephasing noise
             if noise.dephasing_rate > 0.0 {
                 for amp in state.amplitudes.iter_mut() {
-                    let phase_noise = rng.gen_range(-1.0..1.0) * (noise.dephasing_rate * dt).sqrt();
+                    let phase_noise = rng.random_range(-1.0..1.0) * (noise.dephasing_rate * dt).sqrt();
                     let phase = Complex64::new(phase_noise.cos(), phase_noise.sin());
                     let new_amp = Complex64::new(
                         amp.re * phase.re - amp.im * phase.im,
@@ -331,12 +331,12 @@ impl QuantumAnnealingSampler {
             if noise.temperature > 0.0 {
                 // Simplified thermal noise model
                 let thermal_prob = (noise.temperature * dt).min(0.1);
-                if rng.gen::<f64>() < thermal_prob {
-                    let i = rng.gen_range(0..n);
-                    let j = rng.gen_range(0..n);
+                if rng.random::<f64>() < thermal_prob {
+                    let i = rng.random_range(0..n);
+                    let j = rng.random_range(0..n);
                     if i != j {
                         // Mix states i and j
-                        let mix_angle: f64 = rng.gen_range(0.0..0.1);
+                        let mix_angle: f64 = rng.random_range(0.0..0.1);
                         let cos_a = mix_angle.cos();
                         let sin_a = mix_angle.sin();
 
@@ -364,7 +364,7 @@ impl QuantumAnnealingSampler {
         h_problem: &Array2<f64>,
     ) -> f64 {
         let n = amplitudes.len();
-        let mut energy = 0.0;
+        let energy = 0.0;
 
         for i in 0..n {
             for j in 0..n {
@@ -383,8 +383,8 @@ impl QuantumAnnealingSampler {
     /// Perform measurement on quantum state
     fn measure_state(&self, state: &QuantumState) -> Vec<bool> {
         let n = (state.amplitudes.len() as f64).log2() as usize;
-        let mut probabilities = Vec::new();
-        let mut cumulative = 0.0;
+        let probabilities = Vec::new();
+        let cumulative = 0.0;
 
         // Compute probabilities
         for amp in state.amplitudes.iter() {
@@ -394,8 +394,8 @@ impl QuantumAnnealingSampler {
 
         // Sample according to probability distribution
         let mut rng = StdRng::from_seed([42; 32]); // Create local RNG
-        let r = rng.gen::<f64>();
-        let mut measured_state = 0;
+        let r = rng.random::<f64>();
+        let measured_state = 0;
 
         for (i, &prob) in probabilities.iter().enumerate() {
             if r <= prob {
@@ -427,7 +427,7 @@ impl Sampler for QuantumAnnealingSampler {
         let h_transverse = self.build_transverse_hamiltonian(n);
         let h_problem = self.build_problem_hamiltonian_from_matrix(matrix);
 
-        let mut results = Vec::new();
+        let results = Vec::new();
 
         for read in 0..num_reads {
             // Initialize in ground state of transverse field (uniform superposition)
@@ -455,13 +455,13 @@ impl Sampler for QuantumAnnealingSampler {
             let measured = self.measure_state(&state);
 
             // Convert to assignments using variable map
-            let mut assignments = HashMap::new();
+            let assignments = HashMap::new();
             for (var_name, &idx) in var_map {
                 assignments.insert(var_name.clone(), measured[idx]);
             }
 
             // Calculate classical energy from matrix
-            let mut energy = 0.0;
+            let energy = 0.0;
             for i in 0..n {
                 for j in 0..n {
                     if measured[i] && measured[j] {
@@ -588,13 +588,13 @@ mod tests {
     #[test]
     fn test_small_quantum_annealing() {
         // Create small QUBO problem as matrix
-        let mut matrix = Array::zeros((2, 2));
+        let matrix = Array::zeros((2, 2));
         matrix[[0, 0]] = -1.0; // Linear term for x0
         matrix[[1, 1]] = -1.0; // Linear term for x1
         matrix[[0, 1]] = 2.0; // Quadratic term for x0*x1
         matrix[[1, 0]] = 2.0; // Symmetric
 
-        let mut var_map = HashMap::new();
+        let var_map = HashMap::new();
         var_map.insert("x0".to_string(), 0);
         var_map.insert("x1".to_string(), 1);
 

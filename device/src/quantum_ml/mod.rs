@@ -4,7 +4,7 @@
 //! integrating variational quantum algorithms, quantum neural networks,
 //! and hybrid quantum-classical optimization routines.
 
-use crate::{CircuitResult, DeviceError, DeviceResult, QuantumDevice};
+use crate::{CircuitExecutor, CircuitResult, DeviceError, DeviceResult, QuantumDevice};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -213,9 +213,9 @@ impl QMLAccelerator {
     pub async fn train_model(
         &mut self,
         model_type: QMLModelType,
-        training_data: TrainingData,
-        validation_data: Option<TrainingData>,
-    ) -> DeviceResult<TrainingResult> {
+        training_data: training::TrainingData,
+        validation_data: Option<training::TrainingData>,
+    ) -> DeviceResult<training::TrainingResult> {
         if !self.is_connected {
             return Err(DeviceError::DeviceNotInitialized(
                 "QML accelerator not connected".to_string(),
@@ -256,12 +256,16 @@ impl QMLAccelerator {
     /// Optimize quantum circuit parameters
     pub async fn optimize_parameters(
         &mut self,
-        circuit: ParameterizedQuantumCircuit,
+        initial_parameters: Vec<f64>,
         objective_function: Box<dyn ObjectiveFunction + Send + Sync>,
     ) -> DeviceResult<OptimizationResult> {
-        let optimizer = QuantumOptimizer::new(self.device.clone(), &self.config)?;
+        let mut optimizer = create_gradient_optimizer(
+            self.device.clone(),
+            OptimizerType::Adam,
+            0.01,
+        );
 
-        optimizer.optimize(circuit, objective_function).await
+        optimizer.optimize(initial_parameters, objective_function)
     }
 
     /// Compute gradients using quantum methods
@@ -271,7 +275,7 @@ impl QMLAccelerator {
         parameters: Vec<f64>,
     ) -> DeviceResult<Vec<f64>> {
         let gradient_calculator =
-            QuantumGradientCalculator::new(self.device.clone(), &self.config)?;
+            QuantumGradientCalculator::new(self.device.clone(), GradientConfig::default())?;
 
         gradient_calculator
             .compute_gradients(circuit, parameters)
@@ -326,7 +330,7 @@ impl QMLAccelerator {
     /// Get QML accelerator diagnostics
     pub async fn get_diagnostics(&self) -> QMLDiagnostics {
         let device = self.device.read().await;
-        let device_props = device.properties().unwrap_or_default();
+        let device_props = device.properties().await.unwrap_or_default();
 
         QMLDiagnostics {
             is_connected: self.is_connected,
@@ -360,18 +364,6 @@ impl QMLAccelerator {
 pub struct InferenceData {
     pub features: Vec<f64>,
     pub metadata: HashMap<String, String>,
-}
-
-/// Training result
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrainingResult {
-    pub model_id: String,
-    pub model: QMLModel,
-    pub final_loss: f64,
-    pub final_accuracy: Option<f64>,
-    pub training_time: Duration,
-    pub convergence_achieved: bool,
-    pub optimal_parameters: Vec<f64>,
 }
 
 /// Inference result

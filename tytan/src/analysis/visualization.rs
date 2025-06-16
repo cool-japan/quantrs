@@ -100,7 +100,7 @@ pub fn prepare_energy_landscape(
     let max_energy = energies[energies.len() - 1];
     let bin_width = (max_energy - min_energy) / config.num_bins as f64;
 
-    let mut histogram_bins = Vec::new();
+    let histogram_bins = Vec::new();
     let mut histogram_counts = vec![0; config.num_bins];
 
     for i in 0..=config.num_bins {
@@ -189,7 +189,7 @@ pub fn analyze_solution_distribution(
     let n_samples = results.len();
 
     // Build solution matrix
-    let mut solution_matrix = Array2::<f64>::zeros((n_samples, n_vars));
+    let solution_matrix = Array2::<f64>::zeros((n_samples, n_vars));
 
     for (i, result) in results.iter().enumerate() {
         for (j, var_name) in variable_names.iter().enumerate() {
@@ -200,7 +200,7 @@ pub fn analyze_solution_distribution(
     }
 
     // Calculate variable frequencies
-    let mut variable_frequencies = HashMap::new();
+    let variable_frequencies = HashMap::new();
     for (j, var_name) in variable_names.iter().enumerate() {
         let freq = solution_matrix.column(j).sum() / n_samples as f64;
         variable_frequencies.insert(var_name.clone(), freq);
@@ -208,7 +208,7 @@ pub fn analyze_solution_distribution(
 
     // Compute correlations if requested
     let correlations = if config.compute_correlations {
-        let mut corr_map = HashMap::new();
+        let corr_map = HashMap::new();
         let corr_matrix = calculate_correlation_matrix(&solution_matrix)?;
 
         for i in 0..n_vars {
@@ -282,15 +282,15 @@ pub enum ProblemVisualizationData {
 
 /// Extract TSP tour from solution
 pub fn extract_tsp_tour(result: &SampleResult, n_cities: usize) -> VisualizationResult<Vec<usize>> {
-    let mut tour = Vec::new();
+    let tour = Vec::new();
     let mut visited = vec![false; n_cities];
-    let mut current = 0;
+    let current = 0;
 
     tour.push(current);
     visited[current] = true;
 
     while tour.len() < n_cities {
-        let mut next = None;
+        let next = None;
 
         // Look for edge from current city
         for j in 0..n_cities {
@@ -327,7 +327,7 @@ pub fn extract_tsp_tour(result: &SampleResult, n_cities: usize) -> Visualization
 
 /// Calculate tour length
 pub fn calculate_tour_length(tour: &[usize], cities: &[(f64, f64)]) -> f64 {
-    let mut length = 0.0;
+    let length = 0.0;
 
     for i in 0..tour.len() {
         let j = (i + 1) % tour.len();
@@ -363,7 +363,7 @@ pub fn extract_graph_coloring(
     }
 
     // Find conflicts
-    let mut conflicts = Vec::new();
+    let conflicts = Vec::new();
     for &(u, v) in edges {
         if node_colors[u] == node_colors[v] {
             conflicts.push((u, v));
@@ -400,10 +400,10 @@ pub fn analyze_convergence(
         ));
     }
 
-    let mut iterations = Vec::new();
-    let mut best_energies = Vec::new();
-    let mut avg_energies = Vec::new();
-    let mut std_devs = Vec::new();
+    let iterations = Vec::new();
+    let best_energies = Vec::new();
+    let avg_energies = Vec::new();
+    let std_devs = Vec::new();
 
     for (i, iter_results) in iteration_results.iter().enumerate() {
         if iter_results.is_empty() {
@@ -446,7 +446,7 @@ pub fn analyze_convergence(
 
 /// Export visualization data to CSV
 pub fn export_to_csv(data: &EnergyLandscapeData, output_path: &str) -> VisualizationResult<()> {
-    let mut file = File::create(output_path)?;
+    let file = File::create(output_path)?;
 
     // Write header
     writeln!(file, "index,original_index,energy")?;
@@ -464,7 +464,7 @@ pub fn export_solution_matrix(
     data: &SolutionDistributionData,
     output_path: &str,
 ) -> VisualizationResult<()> {
-    let mut file = File::create(output_path)?;
+    let file = File::create(output_path)?;
 
     // Write header
     write!(file, "sample")?;
@@ -497,12 +497,12 @@ fn compute_kde(
     let bandwidth = estimate_bandwidth(values);
     let range = max_val - min_val;
 
-    let mut x_points = Vec::new();
-    let mut y_points = Vec::new();
+    let x_points = Vec::new();
+    let y_points = Vec::new();
 
     for i in 0..n_points {
         let x = min_val + (i as f64 / (n_points - 1) as f64) * range;
-        let mut density = 0.0;
+        let density = 0.0;
 
         for &val in values {
             let u = (x - val) / bandwidth;
@@ -541,7 +541,7 @@ fn calculate_mean_std(values: &[f64]) -> (f64, f64) {
 /// Calculate correlation matrix
 fn calculate_correlation_matrix(data: &Array2<f64>) -> VisualizationResult<Array2<f64>> {
     let n_vars = data.ncols();
-    let mut corr_matrix = Array2::<f64>::zeros((n_vars, n_vars));
+    let corr_matrix = Array2::<f64>::zeros((n_vars, n_vars));
 
     for i in 0..n_vars {
         for j in 0..n_vars {
@@ -594,7 +594,7 @@ fn simple_pca(
     let centered = data - &mean;
 
     // Compute covariance matrix
-    let cov = centered.t().dot(&centered) / (n_samples - 1) as f64;
+    let _cov = centered.t().dot(&centered) / (n_samples - 1) as f64;
 
     // For simplicity, we'll just return a placeholder
     // In practice, you'd compute eigenvalues/eigenvectors
@@ -610,7 +610,7 @@ fn moving_average(values: &[f64], window: usize) -> Vec<f64> {
         return vec![];
     }
 
-    let mut result = Vec::new();
+    let result = Vec::new();
 
     for i in (window - 1)..values.len() {
         let sum: f64 = values[(i + 1 - window)..(i + 1)].iter().sum();
@@ -622,14 +622,14 @@ fn moving_average(values: &[f64], window: usize) -> Vec<f64> {
 
 /// Simple spring layout for graph visualization
 pub fn spring_layout(n_nodes: usize, edges: &[(usize, usize)]) -> Vec<(f64, f64)> {
-    use rand::thread_rng;
+    use rand::rng;
     use rand::Rng;
 
-    let mut rng = thread_rng();
+    let rng = rng();
 
     // Initialize random positions
     let mut positions: Vec<(f64, f64)> = (0..n_nodes)
-        .map(|_| (rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0)))
+        .map(|_| (rng.random_range(-1.0..1.0), rng.random_range(-1.0..1.0)))
         .collect();
 
     // Simple force-directed layout
@@ -675,10 +675,10 @@ pub fn spring_layout(n_nodes: usize, edges: &[(usize, usize)]) -> Vec<(f64, f64)
     }
 
     // Normalize to [0, 1]
-    let mut min_x = f64::INFINITY;
-    let mut max_x = f64::NEG_INFINITY;
-    let mut min_y = f64::INFINITY;
-    let mut max_y = f64::NEG_INFINITY;
+    let min_x = f64::INFINITY;
+    let max_x = f64::NEG_INFINITY;
+    let min_y = f64::INFINITY;
+    let max_y = f64::NEG_INFINITY;
 
     for &(x, y) in &positions {
         min_x = min_x.min(x);

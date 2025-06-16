@@ -55,14 +55,14 @@
 //! use ndarray::Array;
 //!
 //! // Create a simple QUBO matrix manually
-//! let mut matrix = Array::<f64, _>::zeros((2, 2));
+//! let matrix = Array::<f64, _>::zeros((2, 2));
 //! matrix[[0, 0]] = -1.0;  // Linear term for x
 //! matrix[[1, 1]] = -1.0;  // Linear term for y
 //! matrix[[0, 1]] = 2.0;   // Quadratic term for x*y
 //! matrix[[1, 0]] = 2.0;   // Symmetric
 //!
 //! // Create variable map
-//! let mut var_map = HashMap::new();
+//! let var_map = HashMap::new();
 //! var_map.insert("x".to_string(), 0);
 //! var_map.insert("y".to_string(), 1);
 //!

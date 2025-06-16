@@ -110,7 +110,7 @@ impl Default for DebugSummary {
 impl DebugReport {
     /// Generate text summary of the debug report
     pub fn generate_text_summary(&self) -> String {
-        let mut summary = String::new();
+        let summary = String::new();
 
         summary.push_str(&format!("=== Solution Debug Report ===\n"));
         summary.push_str(&format!(
@@ -229,14 +229,14 @@ impl DebugReport {
             super::config::DebugOutputFormat::Markdown => self.generate_markdown_report(),
         };
 
-        let mut file = std::fs::File::create(filename)?;
+        let file = std::fs::File::create(filename)?;
         file.write_all(content.as_bytes())?;
         Ok(())
     }
 
     /// Generate HTML report
     fn generate_html_report(&self) -> String {
-        let mut html = String::new();
+        let html = String::new();
 
         html.push_str("<!DOCTYPE html>\n<html>\n<head>\n");
         html.push_str("<title>Solution Debug Report</title>\n");
@@ -310,7 +310,7 @@ impl DebugReport {
 
     /// Generate Markdown report
     fn generate_markdown_report(&self) -> String {
-        let mut md = String::new();
+        let md = String::new();
 
         md.push_str("# Solution Debug Report\n\n");
 

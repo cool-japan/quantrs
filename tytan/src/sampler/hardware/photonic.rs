@@ -334,7 +334,7 @@ impl PhotonicIsingMachineSampler {
         shots: usize,
     ) -> Result<Vec<OpticalMeasurement>, SamplerError> {
         // Simulate or interface with actual hardware
-        let mut measurements = Vec::new();
+        let measurements = Vec::new();
 
         for _ in 0..shots {
             measurements.push(self.perform_measurement()?);
@@ -366,7 +366,7 @@ impl PhotonicIsingMachineSampler {
         measurement: &OpticalMeasurement,
         var_map: &HashMap<String, usize>,
     ) -> SampleResult {
-        let mut assignments = HashMap::new();
+        let assignments = HashMap::new();
 
         // Threshold detection
         for (var_name, &idx) in var_map {
@@ -511,7 +511,7 @@ mod tests {
 
     #[test]
     fn test_calibration_timing() {
-        let mut sampler = PhotonicIsingMachineSampler::new(PhotonicConfig::default());
+        let sampler = PhotonicIsingMachineSampler::new(PhotonicConfig::default());
 
         // Force calibration by setting last calibration to past
         sampler.calibration.borrow_mut().last_calibration =

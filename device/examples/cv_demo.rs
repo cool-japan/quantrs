@@ -18,7 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Apply some basic operations
     println!("\nApplying displacement operation...");
-    device.displacement(0, Complex::new(1.0, 0.5)).await?;
+    device.displacement(0, 1.0, 0.5).await?;
 
     println!("Applying squeezing operation...");
     device.squeezing(1, 1.0, 0.0).await?;

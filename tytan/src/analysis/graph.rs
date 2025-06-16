@@ -16,13 +16,13 @@ pub fn generate_graph(
         return Err("Edge probability must be between 0 and 1".into());
     }
 
-    let mut rng = StdRng::seed_from_u64(42);
-    let mut edges = Vec::new();
+    let rng = StdRng::seed_from_u64(42);
+    let edges = Vec::new();
 
     // Generate edges with given probability
     for i in 0..n_nodes {
         for j in (i + 1)..n_nodes {
-            if rng.gen::<f64>() < edge_probability {
+            if rng.random::<f64>() < edge_probability {
                 edges.push((i, j));
             }
         }
@@ -33,7 +33,7 @@ pub fn generate_graph(
 
 /// Generate a complete graph
 pub fn generate_complete_graph(n_nodes: usize) -> Vec<(usize, usize)> {
-    let mut edges = Vec::new();
+    let edges = Vec::new();
 
     for i in 0..n_nodes {
         for j in (i + 1)..n_nodes {
@@ -46,7 +46,7 @@ pub fn generate_complete_graph(n_nodes: usize) -> Vec<(usize, usize)> {
 
 /// Generate a cycle graph
 pub fn generate_cycle_graph(n_nodes: usize) -> Vec<(usize, usize)> {
-    let mut edges = Vec::new();
+    let edges = Vec::new();
 
     if n_nodes < 3 {
         return edges;
@@ -62,7 +62,7 @@ pub fn generate_cycle_graph(n_nodes: usize) -> Vec<(usize, usize)> {
 
 /// Generate a planar graph using grid structure
 pub fn generate_grid_graph(rows: usize, cols: usize) -> Vec<(usize, usize)> {
-    let mut edges = Vec::new();
+    let edges = Vec::new();
 
     // Helper to convert 2D coordinates to node index
     let node_index = |r, c| r * cols + c;
@@ -94,13 +94,13 @@ pub fn generate_bipartite_graph(
         return Err("Edge probability must be between 0 and 1".into());
     }
 
-    let mut rng = StdRng::seed_from_u64(42);
-    let mut edges = Vec::new();
+    let rng = StdRng::seed_from_u64(42);
+    let edges = Vec::new();
 
     // Connect left nodes to right nodes with given probability
     for i in 0..left_nodes {
         for j in 0..right_nodes {
-            if rng.gen::<f64>() < edge_probability {
+            if rng.random::<f64>() < edge_probability {
                 edges.push((i, left_nodes + j));
             }
         }
@@ -122,13 +122,13 @@ pub fn generate_regular_graph(
         return Err("n_nodes * degree must be even for regular graph".into());
     }
 
-    let mut rng = StdRng::seed_from_u64(42);
-    let mut edges = HashSet::new();
+    let rng = StdRng::seed_from_u64(42);
+    let edges = HashSet::new();
     let mut node_degrees = vec![0; n_nodes];
 
     // Simple algorithm: randomly connect nodes until each has the desired degree
     let max_attempts = n_nodes * degree * 10;
-    let mut attempts = 0;
+    let attempts = 0;
 
     while node_degrees.iter().any(|&d| d < degree) && attempts < max_attempts {
         attempts += 1;
@@ -141,8 +141,8 @@ pub fn generate_regular_graph(
         }
 
         // Pick two random nodes that need connections
-        let i = available[rng.gen_range(0..available.len())];
-        let j = available[rng.gen_range(0..available.len())];
+        let i = available[rng.random_range(0..available.len())];
+        let j = available[rng.random_range(0..available.len())];
 
         if i != j && !edges.contains(&(i.min(j), i.max(j))) {
             edges.insert((i.min(j), i.max(j)));
@@ -160,8 +160,8 @@ pub fn generate_regular_graph(
 
 /// Generate a tree graph (connected acyclic graph)
 pub fn generate_tree_graph(n_nodes: usize) -> Vec<(usize, usize)> {
-    let mut rng = StdRng::seed_from_u64(42);
-    let mut edges = Vec::new();
+    let rng = StdRng::seed_from_u64(42);
+    let edges = Vec::new();
 
     if n_nodes == 0 {
         return edges;
@@ -170,7 +170,7 @@ pub fn generate_tree_graph(n_nodes: usize) -> Vec<(usize, usize)> {
     // Use Prüfer sequence to generate random tree
     // For now, simple approach: connect each new node to a random existing node
     for i in 1..n_nodes {
-        let parent = rng.gen_range(0..i);
+        let parent = rng.random_range(0..i);
         edges.push((parent, i));
     }
 
@@ -204,7 +204,7 @@ pub fn analyze_graph(n_nodes: usize, edges: &[(usize, usize)]) -> GraphPropertie
     // Simple connectivity check (BFS from node 0)
     let is_connected = if n_nodes > 0 {
         let mut visited = vec![false; n_nodes];
-        let mut queue = vec![0];
+        let queue = vec![0];
         visited[0] = true;
 
         while let Some(node) = queue.pop() {

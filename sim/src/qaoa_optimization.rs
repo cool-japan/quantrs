@@ -1475,7 +1475,6 @@ impl QAOAOptimizer {
     }
 
     /// Helper methods
-
     fn apply_parameter_transfer(&mut self) -> Result<()> {
         // Load similar problem parameters from database
         let characteristics = self.extract_problem_characteristics()?;
@@ -1728,7 +1727,6 @@ impl QAOAOptimizer {
     }
 
     /// State preparation methods
-
     fn prepare_warm_start_state(&self, circuit: &mut InterfaceCircuit) -> Result<()> {
         // Use classical solution as starting point
         let classical_solution = self.get_classical_solution()?;
@@ -1860,7 +1858,7 @@ mod tests {
         let graph = QAOAGraph {
             num_vertices: 3,
             adjacency_matrix: Array2::zeros((3, 3)),
-            vertex_weights: vec![1.0; 3],
+            vertex_weights: [1.0; 3],
             edge_weights: HashMap::new(),
             constraints: Vec::new(),
         };
@@ -1911,7 +1909,7 @@ mod tests {
         QAOAGraph {
             num_vertices: 4,
             adjacency_matrix: Array2::eye(4),
-            vertex_weights: vec![1.0; 4],
+            vertex_weights: [1.0; 4],
             edge_weights: HashMap::new(),
             constraints: Vec::new(),
         }

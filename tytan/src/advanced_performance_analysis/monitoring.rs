@@ -50,7 +50,7 @@ impl PerformanceMonitor for CpuMonitor {
             ));
         }
 
-        let mut metrics = HashMap::new();
+        let metrics = HashMap::new();
         metrics.insert("cpu_utilization".to_string(), 45.5); // Mock value
         Ok(metrics)
     }
@@ -94,7 +94,7 @@ impl PerformanceMonitor for MemoryMonitor {
             ));
         }
 
-        let mut metrics = HashMap::new();
+        let metrics = HashMap::new();
         metrics.insert("memory_utilization".to_string(), 65.2); // Mock value
         Ok(metrics)
     }
@@ -138,7 +138,7 @@ impl PerformanceMonitor for IoMonitor {
             ));
         }
 
-        let mut metrics = HashMap::new();
+        let metrics = HashMap::new();
         metrics.insert("io_utilization".to_string(), 25.8); // Mock value
         Ok(metrics)
     }
@@ -182,7 +182,7 @@ impl PerformanceMonitor for NetworkMonitor {
             ));
         }
 
-        let mut metrics = HashMap::new();
+        let metrics = HashMap::new();
         metrics.insert("network_utilization".to_string(), 15.3); // Mock value
         Ok(metrics)
     }

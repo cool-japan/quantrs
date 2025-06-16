@@ -88,10 +88,10 @@ fn create_tsp_model(
     metric: DistanceMetric,
 ) -> Result<(Model, Array2<f64>), Box<dyn std::error::Error>> {
     let n = cities.len();
-    let mut model = Model::new();
+    let model = Model::new();
 
     // Calculate distance matrix
-    let mut distances = Array2::zeros((n, n));
+    let distances = Array2::zeros((n, n));
     for i in 0..n {
         for j in 0..n {
             if i != j {
@@ -101,7 +101,7 @@ fn create_tsp_model(
     }
 
     // Create binary variables x_ij (1 if we go from city i to city j)
-    let mut x_vars = HashMap::new();
+    let x_vars = HashMap::new();
     for i in 0..n {
         for j in 0..n {
             if i != j {
@@ -113,7 +113,7 @@ fn create_tsp_model(
 
     // Constraint 1: Each city must be visited exactly once (incoming)
     for j in 0..n {
-        let mut incoming = Vec::new();
+        let incoming = Vec::new();
         for i in 0..n {
             if i != j {
                 incoming.push(x_vars[&(i, j)].clone());
@@ -124,7 +124,7 @@ fn create_tsp_model(
 
     // Constraint 2: Each city must be left exactly once (outgoing)
     for i in 0..n {
-        let mut outgoing = Vec::new();
+        let outgoing = Vec::new();
         for j in 0..n {
             if i != j {
                 outgoing.push(x_vars[&(i, j)].clone());
@@ -135,10 +135,10 @@ fn create_tsp_model(
 
     // Constraint 3: Subtour elimination using position variables
     // Add auxiliary variables u_i representing the position of city i in the tour
-    let mut u_vars = Vec::new();
+    let u_vars = Vec::new();
     for i in 0..n {
         // u_i is encoded as sum of binary variables
-        let mut u_bits = Vec::new();
+        let u_bits = Vec::new();
         for bit in 0..((n as f64).log2().ceil() as usize) {
             let var = model.add_variable(&format!("u_{}_{}", i, bit))?;
             u_bits.push(var);
@@ -147,7 +147,7 @@ fn create_tsp_model(
     }
 
     // Objective: minimize total distance
-    let mut objective = SimpleExpr::constant(0.0);
+    let objective = SimpleExpr::constant(0.0);
     for i in 0..n {
         for j in 0..n {
             if i != j {
@@ -168,12 +168,12 @@ fn extract_tour(
     n_cities: usize,
 ) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
     let mut tour = vec![0]; // Start from city 0
-    let mut current = 0;
+    let current = 0;
     let mut visited = vec![false; n_cities];
     visited[0] = true;
 
     for _ in 1..n_cities {
-        let mut next_city = None;
+        let next_city = None;
 
         for j in 0..n_cities {
             if current != j && !visited[j] {
@@ -207,7 +207,7 @@ fn extract_tour(
 
 /// Calculate tour length
 fn calculate_tour_length(tour: &[usize], distances: &Array2<f64>) -> f64 {
-    let mut length = 0.0;
+    let length = 0.0;
 
     for i in 0..tour.len() {
         let from = tour[i];
@@ -293,7 +293,7 @@ fn solve_tsp(
         penalty_type: PenaltyType::Quadratic,
     };
 
-    let mut penalty_optimizer = PenaltyOptimizer::new(penalty_config);
+    let penalty_optimizer = PenaltyOptimizer::new(penalty_config);
 
     // Compile the model directly
     let compiled = model.compile()?;
@@ -308,7 +308,7 @@ fn solve_tsp(
         ..Default::default()
     };
 
-    let mut tuner = ParameterTuner::new(tuning_config);
+    let tuner = ParameterTuner::new(tuning_config);
     tuner.add_parameters(vec![
         ParameterBounds {
             name: "initial_temp".to_string(),
@@ -333,12 +333,12 @@ fn solve_tsp(
     let sampler = SASampler::new(None);
 
     // Track convergence
-    let mut convergence = ConvergencePlot::new(Default::default());
+    let convergence = ConvergencePlot::new(Default::default());
 
     // Convert QUBO to matrix format
     let n_vars = qubo.num_variables;
-    let mut matrix = ndarray::Array2::zeros((n_vars, n_vars));
-    let mut var_map = HashMap::new();
+    let matrix = ndarray::Array2::zeros((n_vars, n_vars));
+    let var_map = HashMap::new();
 
     for i in 0..n_vars {
         var_map.insert(format!("x_{}", i), i);
@@ -360,9 +360,9 @@ fn solve_tsp(
     let elapsed = start.elapsed();
 
     // Find best valid tour
-    let mut best_tour = None;
-    let mut best_length = f64::INFINITY;
-    let mut valid_count = 0;
+    let best_tour = None;
+    let best_length = f64::INFINITY;
+    let valid_count = 0;
 
     for (i, sample) in samples.iter().enumerate() {
         // Track convergence
@@ -418,7 +418,7 @@ fn solve_tsp(
             city_names: Some(cities.iter().map(|c| c.name.clone()).collect()),
         };
         let config = VisualizationConfig::default();
-        let mut visualizer = ProblemVisualizer::new(problem_type, config);
+        let visualizer = ProblemVisualizer::new(problem_type, config);
         visualizer.add_samples(samples[..1].to_vec());
         visualizer.visualize()?;
 
@@ -465,7 +465,7 @@ impl serde::Serialize for City {
         S: serde::Serializer,
     {
         use serde::ser::SerializeStruct;
-        let mut state = serializer.serialize_struct("City", 3)?;
+        let state = serializer.serialize_struct("City", 3)?;
         state.serialize_field("name", &self.name)?;
         state.serialize_field("latitude", &self.latitude)?;
         state.serialize_field("longitude", &self.longitude)?;

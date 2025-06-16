@@ -130,7 +130,7 @@ impl EnhancedArminSampler {
         };
 
         // Run annealing in batches
-        let mut all_results = Vec::new();
+        let all_results = Vec::new();
         let num_batches = (shots + self.batch_size - 1) / self.batch_size;
 
         for batch in 0..num_batches {
@@ -184,7 +184,7 @@ impl EnhancedArminSampler {
             .map_err(|e| SamplerError::GpuError(format!("Energy allocation failed: {}", e)))?;
 
         // Initialize random states on GPU
-        ctx.init_random_states(&d_states, self.seed.unwrap_or_else(|| thread_rng().gen()))
+        ctx.init_random_states(&d_states, self.seed.unwrap_or_else(|| rng().random()))
             .map_err(|e| SamplerError::GpuError(format!("Random init failed: {}", e)))?;
 
         // Launch parallel tempering kernel
@@ -224,7 +224,7 @@ impl EnhancedArminSampler {
             .map_err(|e| SamplerError::GpuError(format!("Result transfer failed: {}", e)))?;
 
         // Convert to boolean vectors
-        let mut results = Vec::new();
+        let results = Vec::new();
         for i in 0..batch_size {
             let start = i * n_vars;
             let end = start + n_vars;
@@ -246,7 +246,7 @@ impl EnhancedArminSampler {
             .map(|(var, &idx)| (idx, var.clone()))
             .collect();
 
-        let mut results = Vec::new();
+        let results = Vec::new();
 
         for state in states {
             // Create variable assignments
@@ -303,8 +303,8 @@ impl Sampler for EnhancedArminSampler {
 
     fn run_hobo(
         &self,
-        hobo: &(ArrayD<f64>, HashMap<String, usize>),
-        shots: usize,
+        _hobo: &(ArrayD<f64>, HashMap<String, usize>),
+        _shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         // For HOBO, we need to use tensor decomposition
         // This is handled by MIKASAmpler
@@ -338,7 +338,7 @@ impl EnhancedArminSampler {
         let remainder = shots % num_gpus;
 
         let results = Arc::new(Mutex::new(Vec::new()));
-        let mut handles = Vec::new();
+        let handles = Vec::new();
 
         // Launch sampling on each GPU in parallel
         for gpu_id in 0..num_gpus {
@@ -356,7 +356,7 @@ impl EnhancedArminSampler {
             let handle = std::thread::spawn(move || {
                 match sampler.run_gpu_optimized(&qubo_clone, &var_map_clone, gpu_shots) {
                     Ok(gpu_results) => {
-                        let mut all_results = results_clone.lock().unwrap();
+                        let all_results = results_clone.lock().unwrap();
                         all_results.extend(gpu_results);
                     }
                     Err(e) => {
@@ -373,7 +373,7 @@ impl EnhancedArminSampler {
             handle.join().expect("GPU thread panicked");
         }
 
-        let mut final_results = results.lock().unwrap().clone();
+        let final_results = results.lock().unwrap().clone();
         final_results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
 
         Ok(final_results)
@@ -468,7 +468,7 @@ impl Sampler for MIKASAmpler {
         hobo: &(ArrayD<f64>, HashMap<String, usize>),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
-        let (tensor, var_map) = hobo;
+        let (_tensor, _var_map) = hobo;
 
         // Apply tensor decomposition for efficient GPU computation
         #[cfg(feature = "scirs")]
@@ -615,14 +615,14 @@ mod tests {
             .with_sweeps(100);
 
         // Create small QUBO problem
-        let mut qubo = Array::zeros((3, 3));
+        let qubo = Array::zeros((3, 3));
         qubo[[0, 0]] = -1.0;
         qubo[[1, 1]] = -1.0;
         qubo[[2, 2]] = -1.0;
         qubo[[0, 1]] = 2.0;
         qubo[[1, 0]] = 2.0;
 
-        let mut var_map = HashMap::new();
+        let var_map = HashMap::new();
         var_map.insert("x0".to_string(), 0);
         var_map.insert("x1".to_string(), 1);
         var_map.insert("x2".to_string(), 2);

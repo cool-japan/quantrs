@@ -115,7 +115,7 @@ pub fn gpu_solve_qubo(
             .map_err(|e| GpuError::MemoryTransfer(e.to_string()))?;
 
         // Convert to SampleResults
-        let mut results = Vec::new();
+        let results = Vec::new();
 
         for i in 0..shots {
             let state = binary_states.slice(ndarray::s![i, ..]);
@@ -145,7 +145,7 @@ pub fn gpu_solve_qubo(
         results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
 
         // Combine identical solutions
-        let mut consolidated = HashMap::new();
+        let consolidated = HashMap::new();
         for result in results {
             let entry = consolidated
                 .entry(result.assignments.clone())
@@ -217,9 +217,9 @@ pub fn gpu_solve_qubo(
         let flat_matrix: Vec<f64> = matrix.iter().cloned().collect();
 
         // Create random binary states
-        let mut rng = rand::thread_rng();
+        let rng = rand::rng();
         let binary_states: Vec<u8> = (0..shots * n_vars)
-            .map(|_| if thread_rng().gen::<bool>() { 1u8 } else { 0u8 })
+            .map(|_| if rng().random::<bool>() { 1u8 } else { 0u8 })
             .collect();
 
         // Create OCL buffers
@@ -270,7 +270,7 @@ pub fn gpu_solve_qubo(
             .map_err(|e| GpuError::MemoryTransfer(e.to_string()))?;
 
         // Convert to SampleResults
-        let mut results = Vec::new();
+        let results = Vec::new();
 
         for i in 0..shots {
             // Extract binary state
@@ -347,13 +347,13 @@ pub fn gpu_solve_hobo(
 
     // Initialize placeholder results
     // (In a real implementation, would perform tensor operations)
-    let mut results = Vec::new();
+    let results = Vec::new();
 
     for _ in 0..shots {
         // Generate random solution for placeholder
         let assignments: HashMap<String, bool> = var_map
             .iter()
-            .map(|(name, _)| (name.clone(), thread_rng().gen::<bool>()))
+            .map(|(name, _)| (name.clone(), rng().random::<bool>()))
             .collect();
 
         // Create sample result

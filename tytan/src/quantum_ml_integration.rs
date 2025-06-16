@@ -38,7 +38,7 @@ impl QuantumBoltzmannMachine {
     pub fn new(n_visible: usize, n_hidden: usize) -> Self {
         use rand::rngs::StdRng;
         use rand::{Rng, SeedableRng};
-        let mut rng = StdRng::seed_from_u64(42);
+        let rng = StdRng::seed_from_u64(42);
 
         // Initialize weights and biases with simple random values
         let weights = Array2::from_shape_fn((n_visible, n_hidden), |_| rng.random_range(-0.1..0.1));
@@ -78,11 +78,11 @@ impl QuantumBoltzmannMachine {
 
     /// Train the QBM on data
     pub fn train(&mut self, data: &Array2<bool>, epochs: usize) -> Result<TrainingResult, String> {
-        let mut loss_history = Vec::new();
+        let loss_history = Vec::new();
         let batch_size = data.shape()[0];
 
         for epoch in 0..epochs {
-            let mut epoch_loss = 0.0;
+            let epoch_loss = 0.0;
 
             // Mini-batch training
             for batch_idx in 0..batch_size {
@@ -142,7 +142,7 @@ impl QuantumBoltzmannMachine {
 
     /// Sample units from probabilities
     fn sample_units(&self, probs: &Array1<f64>) -> Array1<bool> {
-        let mut rng = rng();
+        let rng = rng();
         probs.mapv(|p| rng.random_bool(p))
     }
 
@@ -152,8 +152,8 @@ impl QuantumBoltzmannMachine {
         initial_visible: &Array1<bool>,
         steps: usize,
     ) -> (Array1<bool>, Array1<bool>) {
-        let mut visible = initial_visible.clone();
-        let mut hidden = Array1::from_elem(self.n_hidden, false);
+        let visible = initial_visible.clone();
+        let hidden = Array1::from_elem(self.n_hidden, false);
 
         for _ in 0..steps {
             let hidden_probs = self.hidden_given_visible(&visible);
@@ -172,11 +172,11 @@ impl QuantumBoltzmannMachine {
         initial_visible: &Array1<bool>,
     ) -> Result<(Array1<bool>, Array1<bool>), String> {
         // Simulate quantum tunneling effects
-        let mut rng = rng();
+        let rng = rng();
         let tunneling_prob = (-2.0 / self.transverse_field).exp();
 
-        let mut visible = initial_visible.clone();
-        let mut hidden = Array1::from_elem(self.n_hidden, false);
+        let visible = initial_visible.clone();
+        let hidden = Array1::from_elem(self.n_hidden, false);
 
         // Quantum evolution
         for _ in 0..10 {
@@ -247,8 +247,8 @@ impl QuantumBoltzmannMachine {
 
     /// Generate samples for optimization
     pub fn generate_samples(&self, num_samples: usize) -> Vec<Array1<bool>> {
-        let mut samples = Vec::new();
-        let mut rng = rng();
+        let samples = Vec::new();
+        let rng = rng();
 
         for _ in 0..num_samples {
             // Start from random visible state
@@ -321,7 +321,7 @@ impl QuantumVAE {
     /// Quantum encoding
     fn quantum_encode(&self, input: &Array1<bool>) -> (Array1<f64>, Array1<f64>) {
         let input_float: Array1<f64> = input.mapv(|x| if x { 1.0 } else { 0.0 });
-        let mut state = input_float.clone();
+        let state = input_float.clone();
 
         // Apply quantum layers
         for layer in 0..self.n_layers {
@@ -372,11 +372,11 @@ impl QuantumVAE {
 
     /// Decode from latent space
     pub fn decode(&self, latent: &Array1<f64>) -> Array1<f64> {
-        let mut output = latent.clone();
+        let output = latent.clone();
 
         // Apply decoder layers
         for layer in 0..self.n_layers {
-            let mut new_output = Array1::zeros(self.input_dim);
+            let new_output = Array1::zeros(self.input_dim);
 
             for i in 0..self.latent_dim.min(output.len()) {
                 for j in 0..self.input_dim {
@@ -400,7 +400,7 @@ impl QuantumVAE {
 
     /// Generate new samples
     pub fn generate(&self, num_samples: usize) -> Vec<Array1<bool>> {
-        let mut samples = Vec::new();
+        let samples = Vec::new();
 
         for _ in 0..num_samples {
             // Sample from prior
@@ -491,13 +491,13 @@ impl QuantumGAN {
         real_data: &[Array1<bool>],
         epochs: usize,
     ) -> Result<QGANTrainingResult, String> {
-        let mut gen_losses = Vec::new();
-        let mut disc_losses = Vec::new();
-        let mut rng = rng();
+        let gen_losses = Vec::new();
+        let disc_losses = Vec::new();
+        let rng = rng();
 
         for epoch in 0..epochs {
-            let mut epoch_gen_loss = 0.0;
-            let mut epoch_disc_loss = 0.0;
+            let epoch_gen_loss = 0.0;
+            let epoch_disc_loss = 0.0;
 
             // Train discriminator
             for _ in 0..self.config.disc_steps {
@@ -561,8 +561,8 @@ impl QuantumGAN {
 
     /// Generate optimized samples
     pub fn generate_optimized(&self, num_samples: usize) -> Vec<Array1<bool>> {
-        let mut rng = rng();
-        let mut samples = Vec::new();
+        let rng = rng();
+        let samples = Vec::new();
 
         for _ in 0..num_samples {
             let sample = self.generator.generate(&mut rng);
@@ -575,11 +575,11 @@ impl QuantumGAN {
 
 impl QuantumGenerator {
     fn new(latent_dim: usize, output_dim: usize, depth: usize) -> Self {
-        let mut rng = rng();
+        let rng = rng();
 
         let params = Array2::from_shape_fn(
             (depth, latent_dim + output_dim),
-            |_| rng.gen::<f64>() * PI / 2.0 - PI / 4.0, // Sample from [-PI/4, PI/4]
+            |_| rng.random::<f64>() * PI / 2.0 - PI / 4.0, // Sample from [-PI/4, PI/4]
         );
 
         Self {
@@ -594,11 +594,11 @@ impl QuantumGenerator {
         // Sample latent vector using simple approach
         let latent = Array1::from_shape_fn(
             self.latent_dim,
-            |_| rng.gen::<f64>() * 2.0 - 1.0, // Sample from [-1, 1]
+            |_| rng.random::<f64>() * 2.0 - 1.0, // Sample from [-1, 1]
         );
 
         // Initialize quantum state
-        let mut state = Array1::zeros(self.output_dim);
+        let state = Array1::zeros(self.output_dim);
 
         // Apply quantum circuit
         for layer in 0..self.depth {
@@ -630,7 +630,7 @@ impl QuantumGenerator {
 
 impl QuantumDiscriminator {
     fn new(input_dim: usize, depth: usize) -> Self {
-        let mut rng = rng();
+        let rng = rng();
         let normal = Normal::new(0.0, PI / 4.0).unwrap();
 
         let params = Array2::from_shape_fn((depth, input_dim), |_| normal.sample(&mut rng));
@@ -644,7 +644,7 @@ impl QuantumDiscriminator {
 
     fn forward(&self, input: &Array1<bool>) -> Result<f64, String> {
         let input_float: Array1<f64> = input.mapv(|x| if x { 1.0 } else { -1.0 });
-        let mut state = input_float.clone();
+        let state = input_float.clone();
 
         // Apply quantum circuit
         for layer in 0..self.depth {
@@ -784,8 +784,8 @@ impl QuantumRL {
             return Ok(0.0);
         }
 
-        let mut rng = rng();
-        let mut total_loss = 0.0;
+        let rng = rng();
+        let total_loss = 0.0;
 
         // Sample batch
         for _ in 0..batch_size {
@@ -826,7 +826,7 @@ impl QuantumRL {
 
 impl QuantumQNetwork {
     fn new(input_dim: usize, output_dim: usize, n_layers: usize) -> Self {
-        let mut rng = rng();
+        let rng = rng();
         let normal = Normal::new(0.0, 0.1).unwrap();
 
         let params = Array3::from_shape_fn(
@@ -844,14 +844,14 @@ impl QuantumQNetwork {
 
     fn forward(&self, state: &Array1<f64>) -> Array1<f64> {
         // Encode state into quantum circuit
-        let mut quantum_state = Array1::zeros(self.input_dim + self.output_dim);
+        let quantum_state = Array1::zeros(self.input_dim + self.output_dim);
         quantum_state
             .slice_mut(ndarray::s![..self.input_dim])
             .assign(state);
 
         // Apply quantum layers
         for layer in 0..self.n_layers {
-            let mut new_state = Array1::zeros(quantum_state.len());
+            let new_state = Array1::zeros(quantum_state.len());
 
             // Matrix multiplication (simplified)
             for i in 0..quantum_state.len() {
@@ -903,7 +903,7 @@ mod tests {
 
     #[test]
     fn test_quantum_boltzmann_machine() {
-        let mut qbm = QuantumBoltzmannMachine::new(4, 2);
+        let qbm = QuantumBoltzmannMachine::new(4, 2);
 
         // Create training data
         let data = Array2::from_shape_fn((10, 4), |(i, j)| (i + j) % 2 == 0);
@@ -931,7 +931,7 @@ mod tests {
 
     #[test]
     fn test_quantum_gan() {
-        let mut qgan = QuantumGAN::new(2, 4, 2);
+        let qgan = QuantumGAN::new(2, 4, 2);
 
         // Create fake training data
         let real_data = vec![
@@ -948,8 +948,8 @@ mod tests {
 
     #[test]
     fn test_quantum_rl() {
-        let mut qrl = QuantumRL::new(4, 2);
-        let mut rng = StdRng::seed_from_u64(42);
+        let qrl = QuantumRL::new(4, 2);
+        let rng = StdRng::seed_from_u64(42);
 
         let state = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
         let action = qrl.select_action(&state, &mut rng);

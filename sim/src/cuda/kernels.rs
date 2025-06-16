@@ -3,11 +3,8 @@
 //! This module provides CUDA kernel management, compilation,
 //! and execution for GPU-accelerated quantum simulations.
 
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+use ndarray::Array1;
 use num_complex::Complex64;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "advanced_math")]
 use super::context::CudaContext;
@@ -16,7 +13,7 @@ use super::memory::GpuMemory;
 pub use super::memory::GpuMemoryType;
 #[cfg(feature = "advanced_math")]
 use super::streams::CudaStream;
-use crate::error::{Result, SimulatorError};
+use crate::error::Result;
 use crate::scirs2_integration::SciRS2Backend;
 
 // Placeholder types for actual CUDA handles

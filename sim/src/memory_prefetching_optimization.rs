@@ -296,7 +296,7 @@ impl AccessPatternPredictor {
 
     /// Extract features for ML prediction
     fn extract_features(&self) -> Vec<f64> {
-        let mut features = vec![0.0; 16];
+        let mut features = [0.0; 16];
 
         if self.access_history.len() >= 4 {
             let recent: Vec<_> = self.access_history.iter().rev().take(4).collect();
@@ -323,7 +323,7 @@ impl AccessPatternPredictor {
             features[5] = dominant_stride as f64 / 1000.0;
         }
 
-        features
+        features.to_vec()
     }
 
     /// Simple ML prediction

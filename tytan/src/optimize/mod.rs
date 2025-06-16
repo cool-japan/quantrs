@@ -83,24 +83,24 @@ pub fn optimize_qubo(
         Some(guess) => guess,
         None => {
             use rand::Rng;
-            let mut rng = rand::thread_rng();
-            (0..n_vars).map(|_| rng.gen_bool(0.5)).collect()
+            let rng = rand::rng();
+            (0..n_vars).map(|_| rng.random_bool(0.5)).collect()
         }
     };
 
     // Calculate initial energy
-    let mut energy = calculate_energy(&solution, matrix);
+    let energy = calculate_energy(&solution, matrix);
 
     // Basic simulated annealing parameters
-    let mut temperature = 10.0;
+    let temperature = 10.0;
     let cooling_rate = 0.99;
 
     // Simulated annealing loop
-    let mut rng = rand::thread_rng();
+    let rng = rand::rng();
 
     for _ in 0..max_iterations {
         // Generate a neighbor by flipping a random bit
-        let flip_idx = rng.gen_range(0..n_vars);
+        let flip_idx = rng.random_range(0..n_vars);
         solution[flip_idx] = !solution[flip_idx];
 
         // Calculate new energy
@@ -111,7 +111,7 @@ pub fn optimize_qubo(
             true
         } else {
             let p = ((energy - new_energy) / temperature).exp();
-            rng.gen::<f64>() < p
+            rng.random::<f64>() < p
         };
 
         if !accept {
@@ -153,7 +153,7 @@ pub fn calculate_energy(solution: &[bool], matrix: &Array<f64, Ix2>) -> f64 {
 /// Standard energy calculation without SciRS2
 fn calculate_energy_standard(solution: &[bool], matrix: &Array<f64, Ix2>) -> f64 {
     let n = solution.len();
-    let mut energy = 0.0;
+    let energy = 0.0;
 
     // Calculate from diagonal terms (linear)
     for i in 0..n {

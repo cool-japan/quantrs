@@ -2225,7 +2225,7 @@ impl RealtimeQuantumManager {
 
     /// Submit a job to the queue
     pub fn submit_job(&self, job: QueuedJob) -> Result<String, String> {
-        let mut queue_manager = self.queue_manager.lock().map_err(|e| e.to_string())?;
+        let queue_manager = self.queue_manager.lock().map_err(|e| e.to_string())?;
         queue_manager.submit_job(job)
     }
 
@@ -2250,7 +2250,7 @@ impl RealtimeQuantumManager {
         job_id: &str,
         requirements: ResourceRequirements,
     ) -> Result<Vec<String>, String> {
-        let mut allocator = self.resource_allocator.write().map_err(|e| e.to_string())?;
+        let allocator = self.resource_allocator.write().map_err(|e| e.to_string())?;
         allocator.allocate_resources(job_id, requirements)
     }
 
@@ -2434,7 +2434,7 @@ impl HardwareMonitor {
             network_utilization: 0.3,
             hardware_metrics: HardwareMetrics {
                 temperatures: {
-                    let mut temps = HashMap::new();
+                    let temps = HashMap::new();
                     temps.insert("cpu".to_string(), 45.0);
                     temps.insert("quantum_chip".to_string(), 0.01);
                     temps
@@ -2485,7 +2485,7 @@ impl ResourceAllocator {
     pub fn allocate_resources(
         &mut self,
         job_id: &str,
-        requirements: ResourceRequirements,
+        _requirements: ResourceRequirements,
     ) -> Result<Vec<String>, String> {
         // Simplified resource allocation
         let allocated_resources = vec!["resource_1".to_string(), "resource_2".to_string()];
@@ -2511,8 +2511,8 @@ impl ResourceAllocator {
 }
 
 impl QueueManager {
-    pub fn new(config: &RealtimeConfig) -> Self {
-        let mut job_queues = HashMap::new();
+    pub fn new(_config: &RealtimeConfig) -> Self {
+        let job_queues = HashMap::new();
         job_queues.insert(JobPriority::Critical, VecDeque::new());
         job_queues.insert(JobPriority::High, VecDeque::new());
         job_queues.insert(JobPriority::Normal, VecDeque::new());
@@ -2543,7 +2543,7 @@ impl QueueManager {
 }
 
 impl PerformanceAnalytics {
-    pub fn new(config: &RealtimeConfig) -> Self {
+    pub fn new(_config: &RealtimeConfig) -> Self {
         Self {
             metrics_collector: MetricsCollector::new(),
             analytics_models: HashMap::new(),
@@ -2572,7 +2572,7 @@ impl PerformanceAnalytics {
             queue_metrics: QueueMetrics {
                 total_queued_jobs: 25,
                 jobs_by_priority: {
-                    let mut map = HashMap::new();
+                    let map = HashMap::new();
                     map.insert(JobPriority::High, 5);
                     map.insert(JobPriority::Normal, 15);
                     map.insert(JobPriority::Low, 5);
@@ -2659,8 +2659,8 @@ impl FaultDetectionSystem {
 
     fn check_hardware_issues(
         &mut self,
-        system_state: &SystemState,
-        config: &RealtimeConfig,
+        _system_state: &SystemState,
+        _config: &RealtimeConfig,
     ) -> Result<(), String> {
         // Check for hardware-related issues
         Ok(())
@@ -2695,7 +2695,7 @@ impl FaultDetectionSystem {
     }
 
     fn attempt_recovery(&mut self, fault_type: &FaultType) -> Result<(), String> {
-        if let Some(procedure) = self.recovery_procedures.get(fault_type) {
+        if let Some(_procedure) = self.recovery_procedures.get(fault_type) {
             // Execute recovery procedure
             println!("Executing recovery procedure for fault: {:?}", fault_type);
             // Implementation would execute actual recovery steps
@@ -2729,7 +2729,7 @@ impl SystemState {
         }
     }
 
-    pub fn update_component_state(&mut self, component_id: &str, status: &DeviceStatus) {
+    pub fn update_component_state(&mut self, component_id: &str, _status: &DeviceStatus) {
         let component_state = ComponentState {
             component_name: component_id.to_string(),
             status: ComponentStatus::Healthy, // Simplified

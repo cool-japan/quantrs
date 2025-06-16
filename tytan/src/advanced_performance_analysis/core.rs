@@ -289,7 +289,7 @@ impl AdvancedPerformanceAnalyzer {
 
     /// Collect metrics from all monitors
     fn collect_metrics(&mut self) -> Result<(), AnalysisError> {
-        let mut all_metrics = Vec::new();
+        let all_metrics = Vec::new();
         for monitor in &self.monitors {
             let metrics = monitor.get_current_metrics()?;
             all_metrics.extend(metrics);

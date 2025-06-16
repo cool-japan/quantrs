@@ -75,8 +75,8 @@ impl AdaptQAOA {
 
     /// Adaptively construct circuit
     pub fn adapt_circuit(&mut self, hamiltonian: &Hamiltonian) -> Result<AdaptCircuit, String> {
-        let mut circuit = AdaptCircuit::new();
-        let mut converged = false;
+        let circuit = AdaptCircuit::new();
+        let converged = false;
 
         while circuit.depth() < self.max_depth && !converged {
             // Compute gradients for all operators in pool
@@ -119,7 +119,7 @@ impl AdaptQAOA {
         circuit: &AdaptCircuit,
         hamiltonian: &Hamiltonian,
     ) -> Result<Vec<f64>, String> {
-        let mut gradients = Vec::new();
+        let gradients = Vec::new();
 
         for op in self.operator_pool.iter() {
             // Use commutator screening if enabled
@@ -146,7 +146,7 @@ impl AdaptQAOA {
         hamiltonian: &Hamiltonian,
     ) -> Result<f64, String> {
         // Simplified: check if operator commutes with Hamiltonian terms
-        let mut norm = 0.0;
+        let norm = 0.0;
 
         for h_term in &hamiltonian.terms {
             let commutes = self.pauli_strings_commute(&operator.pauli_string, &h_term.pauli_string);
@@ -165,7 +165,7 @@ impl AdaptQAOA {
             return false;
         }
 
-        let mut anticommuting_count = 0;
+        let anticommuting_count = 0;
 
         for (a, b) in p1.iter().zip(p2.iter()) {
             if *a != 'I' && *b != 'I' && *a != *b {
@@ -179,9 +179,9 @@ impl AdaptQAOA {
     /// Compute gradient for single operator
     fn compute_single_gradient(
         &self,
-        circuit: &AdaptCircuit,
+        _circuit: &AdaptCircuit,
         operator: &PauliOperator,
-        hamiltonian: &Hamiltonian,
+        _hamiltonian: &Hamiltonian,
     ) -> Result<f64, String> {
         // Simplified gradient computation
         // In practice, would evaluate expectation values
@@ -193,13 +193,13 @@ impl AdaptQAOA {
     fn optimize_circuit_parameters(
         &self,
         circuit: &mut AdaptCircuit,
-        hamiltonian: &Hamiltonian,
+        _hamiltonian: &Hamiltonian,
     ) -> Result<(), String> {
         // Simplified: random parameter updates
-        let mut rng = rng();
+        let rng = rng();
 
         for param in circuit.parameters_mut() {
-            *param += rng.gen_range(-0.1..0.1);
+            *param += rng.random_range(-0.1..0.1);
         }
 
         Ok(())
@@ -240,8 +240,8 @@ impl AdaptCircuit {
 impl OperatorPool {
     /// Create default operator pool
     fn default_pool() -> Self {
-        let mut single_qubit_ops = Vec::new();
-        let mut two_qubit_ops = Vec::new();
+        let single_qubit_ops = Vec::new();
+        let two_qubit_ops = Vec::new();
 
         // Standard single-qubit rotations
         for pauli in ['X', 'Y', 'Z'] {
@@ -285,7 +285,7 @@ impl OperatorPool {
         }
     }
 
-    fn remove_operator(&mut self, idx: usize) {
+    fn remove_operator(&mut self, _idx: usize) {
         // Mark operator as used (simplified)
     }
 
@@ -378,21 +378,21 @@ impl QAOAPlus {
     }
 
     /// Apply mixer operator
-    fn apply_mixer(&self, layer: usize, beta: f64) -> Result<(), String> {
+    fn apply_mixer(&self, layer: usize, _beta: f64) -> Result<(), String> {
         match &self.mixers[layer % self.mixers.len()] {
             MixerOperator::StandardX => {
                 // Apply X-rotation to all qubits
                 Ok(())
             }
-            MixerOperator::XYMixer { coupling_strength } => {
+            MixerOperator::XYMixer { coupling_strength: _ } => {
                 // Apply XY interactions
                 Ok(())
             }
-            MixerOperator::GroverMixer { marked_states } => {
+            MixerOperator::GroverMixer { marked_states: _ } => {
                 // Apply Grover diffusion operator
                 Ok(())
             }
-            MixerOperator::Custom { operator } => {
+            MixerOperator::Custom { operator: _ } => {
                 // Apply custom operator
                 Ok(())
             }
@@ -472,7 +472,7 @@ impl RecursiveQAOA {
         let subproblems = self.decompose_problem(problem)?;
 
         // Solve subproblems recursively
-        let mut subsolutions = Vec::new();
+        let subsolutions = Vec::new();
         for subproblem in subproblems {
             let solution = self.solve_recursive(&subproblem, level + 1)?;
             subsolutions.push(solution);
@@ -489,7 +489,7 @@ impl RecursiveQAOA {
                 // Partition interaction graph
                 Ok(vec![problem.clone(); *num_partitions]) // Simplified
             }
-            DecompositionStrategy::VariableClustering { cluster_size } => {
+            DecompositionStrategy::VariableClustering { cluster_size: _ } => {
                 // Cluster variables
                 Ok(vec![problem.clone(); 2]) // Simplified
             }
@@ -498,7 +498,7 @@ impl RecursiveQAOA {
     }
 
     /// Solve base case
-    fn solve_base_case(&self, problem: &Hamiltonian) -> Result<RecursiveSolution, String> {
+    fn solve_base_case(&self, _problem: &Hamiltonian) -> Result<RecursiveSolution, String> {
         // Use standard QAOA
         Ok(RecursiveSolution {
             energy: 0.0,
@@ -511,12 +511,12 @@ impl RecursiveQAOA {
     fn aggregate_solutions(
         &self,
         subsolutions: Vec<RecursiveSolution>,
-        original_problem: &Hamiltonian,
+        _original_problem: &Hamiltonian,
     ) -> Result<RecursiveSolution, String> {
         match &self.aggregation {
             AggregationMethod::SimpleMerge => {
                 // Concatenate solutions
-                let mut merged_state = Vec::new();
+                let merged_state = Vec::new();
                 for sol in &subsolutions {
                     merged_state.extend(&sol.state);
                 }

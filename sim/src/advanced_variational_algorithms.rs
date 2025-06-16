@@ -4,18 +4,15 @@
 //! quantum algorithms including VQE, QAOA, VQA with advanced optimizers, and novel
 //! variational approaches for quantum machine learning and optimization.
 
-use ndarray::{Array1, Array2, ArrayView1};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rand::Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};
 use crate::error::{Result, SimulatorError};
-use crate::quantum_algorithms::QuantumAlgorithmConfig;
 
 /// Advanced VQA optimizer types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1482,7 +1479,6 @@ impl AdvancedVQATrainer {
     }
 
     /// Helper methods
-
     fn count_parameters(ansatz: &VariationalAnsatz) -> Result<usize> {
         match ansatz {
             VariationalAnsatz::HardwareEfficient {
@@ -1629,7 +1625,6 @@ impl AdvancedVQATrainer {
 }
 
 /// Example implementations of cost functions
-
 /// Ising model cost function for QAOA
 pub struct IsingCostFunction {
     pub problem_hamiltonian: ProblemHamiltonian,
@@ -1671,7 +1666,6 @@ impl CostFunction for IsingCostFunction {
 }
 
 /// Example gradient calculators
-
 /// Finite difference gradient calculator
 pub struct FiniteDifferenceGradient {
     pub epsilon: f64,

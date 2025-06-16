@@ -54,14 +54,14 @@ impl ParallelTemperingSampler {
         num_reads: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         let n = matrix.nrows();
-        let mut best_solutions = Vec::new();
+        let best_solutions = Vec::new();
 
         for _ in 0..num_reads {
             // Initialize chains with random states
             let mut chains: Vec<Vec<i32>> = (0..self.num_chains)
                 .map(|_| {
                     (0..n)
-                        .map(|_| if self.rng.gen::<f64>() < 0.5 { 0 } else { 1 })
+                        .map(|_| if self.rng.random::<f64>() < 0.5 { 0 } else { 1 })
                         .collect()
                 })
                 .collect();
@@ -76,7 +76,7 @@ impl ParallelTemperingSampler {
 
                 // Attempt replica exchanges
                 for i in 0..(self.num_chains - 1) {
-                    if self.rng.gen::<f64>() < 0.1 {
+                    if self.rng.random::<f64>() < 0.1 {
                         // 10% exchange probability
                         let energy_i = self.calculate_energy(&chains[i], matrix);
                         let energy_j = self.calculate_energy(&chains[i + 1], matrix);
@@ -84,7 +84,7 @@ impl ParallelTemperingSampler {
                         let delta = (energy_j - energy_i)
                             * (1.0 / self.temperatures[i] - 1.0 / self.temperatures[i + 1]);
 
-                        if delta <= 0.0 || self.rng.gen::<f64>() < (-delta).exp() {
+                        if delta <= 0.0 || self.rng.random::<f64>() < (-delta).exp() {
                             chains.swap(i, i + 1);
                         }
                     }
@@ -95,7 +95,7 @@ impl ParallelTemperingSampler {
             let best_chain = &chains[0];
             let energy = self.calculate_energy(best_chain, matrix);
 
-            let mut assignments = HashMap::new();
+            let assignments = HashMap::new();
             for (var_name, &idx) in var_map {
                 assignments.insert(var_name.clone(), best_chain[idx] == 1);
             }
@@ -120,7 +120,7 @@ impl ParallelTemperingSampler {
         let n = chain.len();
 
         for _ in 0..n {
-            let idx = self.rng.gen_range(0..n);
+            let idx = self.rng.random_range(0..n);
             let old_value = chain[idx];
             let new_value = 1 - old_value;
 
@@ -131,7 +131,7 @@ impl ParallelTemperingSampler {
 
             let delta_energy = new_energy - old_energy;
 
-            if delta_energy <= 0.0 || self.rng.gen::<f64>() < (-delta_energy / temperature).exp() {
+            if delta_energy <= 0.0 || self.rng.random::<f64>() < (-delta_energy / temperature).exp() {
                 chain[idx] = new_value;
             }
         }
@@ -139,7 +139,7 @@ impl ParallelTemperingSampler {
 
     /// Calculate energy of a configuration
     fn calculate_energy(&self, config: &[i32], matrix: &Array<f64, Ix2>) -> f64 {
-        let mut energy = 0.0;
+        let energy = 0.0;
         let n = config.len();
 
         for i in 0..n {
@@ -204,13 +204,13 @@ mod tests {
 
     #[test]
     fn test_parallel_tempering_basic() {
-        let mut matrix = Array2::<f64>::zeros((2, 2));
+        let matrix = Array2::<f64>::zeros((2, 2));
         matrix[[0, 0]] = -1.0;
         matrix[[1, 1]] = -1.0;
         matrix[[0, 1]] = 2.0;
         matrix[[1, 0]] = 2.0;
 
-        let mut var_map = HashMap::new();
+        let var_map = HashMap::new();
         var_map.insert("x".to_string(), 0);
         var_map.insert("y".to_string(), 1);
 

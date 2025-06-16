@@ -71,7 +71,7 @@ impl GpuProfiler {
             return;
         }
 
-        let mut metrics = self.metrics.lock().unwrap();
+        let metrics = self.metrics.lock().unwrap();
         metrics
             .kernel_times
             .entry(kernel_name.to_string())
@@ -85,7 +85,7 @@ impl GpuProfiler {
             return;
         }
 
-        let mut metrics = self.metrics.lock().unwrap();
+        let metrics = self.metrics.lock().unwrap();
         metrics
             .transfer_times
             .entry(operation.to_string())
@@ -99,7 +99,7 @@ impl GpuProfiler {
             return;
         }
 
-        let mut metrics = self.metrics.lock().unwrap();
+        let metrics = self.metrics.lock().unwrap();
         metrics.device_utilization = utilization;
     }
 
@@ -109,7 +109,7 @@ impl GpuProfiler {
             return;
         }
 
-        let mut metrics = self.metrics.lock().unwrap();
+        let metrics = self.metrics.lock().unwrap();
         let seconds = duration.as_secs_f64();
         metrics.compute_throughput = (operations as f64) / seconds / 1e9; // GFLOPS
     }
@@ -119,14 +119,14 @@ impl GpuProfiler {
         let metrics = self.metrics.lock().unwrap();
 
         // Calculate kernel statistics
-        let mut kernel_stats = HashMap::new();
+        let kernel_stats = HashMap::new();
         for (name, times) in &metrics.kernel_times {
             let stats = calculate_stats(times);
             kernel_stats.insert(name.clone(), stats);
         }
 
         // Calculate transfer statistics
-        let mut transfer_stats = HashMap::new();
+        let transfer_stats = HashMap::new();
         for (name, times) in &metrics.transfer_times {
             let stats = calculate_stats(times);
             transfer_stats.insert(name.clone(), stats);
@@ -145,7 +145,7 @@ impl GpuProfiler {
 
     /// Generate optimization recommendations
     fn generate_recommendations(&self, metrics: &GpuPerformanceMetrics) -> Vec<String> {
-        let mut recommendations = Vec::new();
+        let recommendations = Vec::new();
 
         // Check device utilization
         if metrics.device_utilization < 0.7 {
@@ -254,13 +254,13 @@ impl MemoryAccessAnalyzer {
         }
 
         // Calculate stride pattern
-        let mut strides = Vec::new();
+        let strides = Vec::new();
         for i in 1..addresses.len() {
             strides.push(addresses[i].saturating_sub(addresses[i - 1]));
         }
 
         // Find most common stride
-        let mut stride_counts = HashMap::new();
+        let stride_counts = HashMap::new();
         for &stride in &strides {
             *stride_counts.entry(stride).or_insert(0) += 1;
         }
@@ -284,8 +284,8 @@ impl MemoryAccessAnalyzer {
 
     /// Update coalescing efficiency based on patterns
     fn update_coalescing_efficiency(&mut self) {
-        let mut total_accesses = 0;
-        let mut coalesced_accesses = 0;
+        let total_accesses = 0;
+        let coalesced_accesses = 0;
 
         for pattern in &self.patterns {
             total_accesses += pattern.size;
@@ -310,7 +310,7 @@ impl MemoryAccessAnalyzer {
 
     /// Get optimization suggestions
     pub fn get_suggestions(&self) -> Vec<String> {
-        let mut suggestions = Vec::new();
+        let suggestions = Vec::new();
 
         if self.coalescing_efficiency < 0.8 {
             suggestions.push(
@@ -386,7 +386,7 @@ impl KernelFusionOptimizer {
 
     /// Find fusion opportunities
     pub fn find_fusion_opportunities(&self) -> Vec<FusionOpportunity> {
-        let mut opportunities = Vec::new();
+        let opportunities = Vec::new();
 
         // Check pairs of kernels
         for (kernel1, deps1) in &self.dependencies {
@@ -478,7 +478,7 @@ fn calculate_stats(times: &[Duration]) -> PerformanceStats {
         };
     }
 
-    let mut sorted_times = times.to_vec();
+    let sorted_times = times.to_vec();
     sorted_times.sort();
 
     let sum: Duration = times.iter().sum();
@@ -517,7 +517,7 @@ mod tests {
 
     #[test]
     fn test_memory_access_analyzer() {
-        let mut analyzer = MemoryAccessAnalyzer::new();
+        let analyzer = MemoryAccessAnalyzer::new();
 
         // Test coalesced access pattern
         let addresses: Vec<usize> = (0..32).map(|i| i * 4).collect();
@@ -536,7 +536,7 @@ mod tests {
 
     #[test]
     fn test_kernel_fusion_optimizer() {
-        let mut optimizer = KernelFusionOptimizer::new();
+        let optimizer = KernelFusionOptimizer::new();
 
         // Add kernels with dependencies
         optimizer.add_kernel("kernel_a", 10.0, 1024, vec![]);

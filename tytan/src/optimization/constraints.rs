@@ -143,7 +143,7 @@ impl ConstraintHandler {
         variables: Vec<String>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Create expression: (sum_i x_i - 1)^2
-        let mut expr = Expression::zero();
+        let expr = Expression::zero();
         for var in &variables {
             expr = expr + Variable::new(var.clone()).into();
         }
@@ -169,7 +169,7 @@ impl ConstraintHandler {
         k: usize,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Create expression: (sum_i x_i - k)^2
-        let mut expr = Expression::zero();
+        let expr = Expression::zero();
         for var in &variables {
             expr = expr + Variable::new(var.clone()).into();
         }
@@ -197,7 +197,7 @@ impl ConstraintHandler {
         encoding_type: EncodingType,
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let num_bits = ((max - min + 1) as f64).log2().ceil() as usize;
-        let mut bit_variables = Vec::new();
+        let bit_variables = Vec::new();
 
         // Create bit variables
         for i in 0..num_bits {
@@ -262,7 +262,7 @@ impl ConstraintHandler {
         &self,
         penalty_weights: &HashMap<String, f64>,
     ) -> Result<Expression, Box<dyn std::error::Error>> {
-        let mut total_penalty = Expression::zero();
+        let total_penalty = Expression::zero();
 
         for constraint in &self.constraints {
             let weight = penalty_weights
@@ -314,7 +314,7 @@ impl ConstraintHandler {
                     let expr = constraint.expression.clone();
                     expr.clone() * expr
                 }
-                ConstraintType::Cardinality { k } => {
+                ConstraintType::Cardinality { k: _ } => {
                     // (sum_i x_i - k)^2
                     let expr = constraint.expression.clone();
                     expr.clone() * expr
@@ -334,8 +334,8 @@ impl ConstraintHandler {
     /// Generate inequality penalty using auxiliary binary expansion
     fn generate_inequality_penalty(
         &self,
-        expression: &Expression,
-        bound: f64,
+        _expression: &Expression,
+        _bound: f64,
         less_than: bool,
     ) -> Result<Expression, Box<dyn std::error::Error>> {
         // For now, return a quadratic penalty
@@ -360,7 +360,7 @@ impl ConstraintHandler {
 
     /// Get all variables including slack
     pub fn get_all_variables(&self) -> Vec<String> {
-        let mut variables = Vec::new();
+        let variables = Vec::new();
 
         for constraint in &self.constraints {
             variables.extend(constraint.variables.clone());
@@ -389,7 +389,7 @@ impl ConstraintHandler {
 
         match encoding.encoding_type {
             EncodingType::Binary => {
-                let mut value = 0;
+                let value = 0;
                 for (i, bit_var) in encoding.bit_variables.iter().enumerate() {
                     if *assignment.get(bit_var).unwrap_or(&false) {
                         value += 1 << i;
@@ -398,7 +398,7 @@ impl ConstraintHandler {
                 Some(encoding.min_value + value)
             }
             EncodingType::Unary => {
-                let mut count = 0;
+                let count = 0;
                 for bit_var in &encoding.bit_variables {
                     if *assignment.get(bit_var).unwrap_or(&false) {
                         count += 1;
@@ -418,7 +418,7 @@ impl ConstraintHandler {
             }
             EncodingType::Gray => {
                 // Convert Gray code to binary
-                let mut gray_value = 0;
+                let gray_value = 0;
                 for (i, bit_var) in encoding.bit_variables.iter().enumerate() {
                     if *assignment.get(bit_var).unwrap_or(&false) {
                         gray_value |= 1 << i;
@@ -426,7 +426,7 @@ impl ConstraintHandler {
                 }
 
                 // Gray to binary conversion
-                let mut binary_value = gray_value;
+                let binary_value = gray_value;
                 binary_value ^= binary_value >> 16;
                 binary_value ^= binary_value >> 8;
                 binary_value ^= binary_value >> 4;
@@ -443,9 +443,9 @@ impl ConstraintHandler {
         let total_constraints = self.constraints.len();
         let total_variables = self.get_all_variables().len();
 
-        let mut type_counts = HashMap::new();
-        let mut avg_variables_per_constraint = 0.0;
-        let mut max_variables_in_constraint = 0;
+        let type_counts = HashMap::new();
+        let avg_variables_per_constraint = 0.0;
+        let max_variables_in_constraint = 0;
 
         for constraint in &self.constraints {
             let type_name = match constraint.constraint_type {

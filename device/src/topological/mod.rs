@@ -33,6 +33,8 @@ pub enum TopologicalError {
     InsufficientAnyons { needed: usize, available: usize },
     #[error("Invalid worldline configuration: {0}")]
     InvalidWorldline(String),
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
 }
 
 pub type TopologicalResult<T> = Result<T, TopologicalError>;
@@ -78,7 +80,7 @@ pub enum NonAbelianAnyonType {
 }
 
 /// Topological charge (quantum number) of an anyon
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TopologicalCharge {
     /// Charge label (e.g., "I", "σ", "τ" for Fibonacci)
     pub label: String,
@@ -86,6 +88,17 @@ pub struct TopologicalCharge {
     pub quantum_dimension: String, // String to handle irrational values like φ
     /// Scaling dimension
     pub scaling_dimension: f64,
+}
+
+impl Eq for TopologicalCharge {}
+
+impl std::hash::Hash for TopologicalCharge {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.label.hash(state);
+        self.quantum_dimension.hash(state);
+        // For f64, we use the bit representation for hashing
+        self.scaling_dimension.to_bits().hash(state);
+    }
 }
 
 impl TopologicalCharge {
@@ -251,7 +264,7 @@ pub enum BraidingResult {
 }
 
 /// Fusion rules for anyon systems
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FusionRuleSet {
     /// Anyon type this rule set applies to
     pub anyon_type: NonAbelianAnyonType,
@@ -523,8 +536,8 @@ impl TopologicalDevice {
             if qubit1_id == qubit2_id {
                 // Braiding within the same qubit
                 if let Some(qubit) = self.qubits.get_mut(&qubit1_id) {
-                    qubit.braiding_history.push(operation);
-                    self.apply_braiding_to_qubit_state(qubit, &result)?;
+                    qubit.braiding_history.push(operation.clone());
+                    TopologicalDevice::apply_braiding_to_qubit_state_static(qubit, &result)?;
                 }
             }
         }
@@ -597,6 +610,29 @@ impl TopologicalDevice {
         Ok(())
     }
 
+    /// Static version of apply_braiding_to_qubit_state
+    fn apply_braiding_to_qubit_state_static(
+        qubit: &mut TopologicalQubit,
+        result: &BraidingResult,
+    ) -> TopologicalResult<()> {
+        match result {
+            BraidingResult::Phase(phase) => {
+                qubit.state.phase += phase;
+                // Apply small decoherence (topological protection is very strong)
+                qubit.state.protection_factor *= 0.9999;
+            }
+            BraidingResult::FusionChannel(channel) => {
+                qubit.fusion_channel = Some(channel.clone());
+            }
+            BraidingResult::UnitaryMatrix(matrix) => {
+                // Apply unitary transformation to qubit state
+                // This would involve matrix multiplication in practice
+                qubit.state.protection_factor *= 0.9999;
+            }
+        }
+        Ok(())
+    }
+
     /// Fuse two anyons
     pub fn fuse_anyons(
         &mut self,
@@ -609,14 +645,16 @@ impl TopologicalDevice {
             .ok_or(TopologicalError::FusionFailed(format!(
                 "Anyon {} not found",
                 anyon1_id
-            )))?;
+            )))?
+            .clone();
         let anyon2 = self
             .anyons
             .get(&anyon2_id)
             .ok_or(TopologicalError::FusionFailed(format!(
                 "Anyon {} not found",
                 anyon2_id
-            )))?;
+            )))?
+            .clone();
 
         // Look up fusion rules
         let fusion_key = (anyon1.charge.label.clone(), anyon2.charge.label.clone());

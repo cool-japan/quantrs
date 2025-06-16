@@ -44,13 +44,13 @@ impl Sampler for DWaveSampler {
         let n_vars = var_map.len();
 
         // Map from indices back to variable names
-        let idx_to_var: HashMap<usize, String> = var_map
+        let _idx_to_var: HashMap<usize, String> = var_map
             .iter()
             .map(|(var, &idx)| (idx, var.clone()))
             .collect();
 
         // Convert ndarray to a QuboModel
-        let mut qubo_model = QuboModel::new(n_vars);
+        let qubo_model = QuboModel::new(n_vars);
 
         // Set linear and quadratic terms
         for i in 0..n_vars {
@@ -78,20 +78,20 @@ impl Sampler for DWaveSampler {
             let _dwave_result = "placeholder";
 
             // Convert to our result format - placeholder implementation
-            let mut results = Vec::new();
+            let results = Vec::new();
 
             // Create a simple random solution as placeholder
             use rand::Rng;
-            let mut rng = rand::thread_rng();
+            let rng = rand::rng();
 
             for _ in 0..shots.min(10) {
                 let assignments: HashMap<String, bool> = idx_to_var
                     .values()
-                    .map(|name| (name.clone(), rng.gen::<bool>()))
+                    .map(|name| (name.clone(), rng.random::<bool>()))
                     .collect();
 
                 // Calculate placeholder energy (random for now)
-                let energy = rng.gen_range(-10.0..10.0);
+                let energy = rng.random_range(-10.0..10.0);
 
                 // Create a result
                 let result = SampleResult {

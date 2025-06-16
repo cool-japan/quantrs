@@ -84,7 +84,7 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
         let num_domains = (n as f64 / 10.0).ceil() as usize; // Target ~10 variables per domain
         let domain_size = n / num_domains + self.overlap_size;
 
-        let mut domains = Vec::new();
+        let domains = Vec::new();
         let reverse_var_map: HashMap<usize, String> =
             var_map.iter().map(|(k, v)| (*v, k.clone())).collect();
 
@@ -106,7 +106,7 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
 
             // Extract domain QUBO
             let domain_size_actual = domain_indices.len();
-            let mut domain_qubo = Array2::zeros((domain_size_actual, domain_size_actual));
+            let domain_qubo = Array2::zeros((domain_size_actual, domain_size_actual));
 
             for (i, &idx_i) in domain_indices.iter().enumerate() {
                 for (j, &idx_j) in domain_indices.iter().enumerate() {
@@ -115,14 +115,14 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
             }
 
             // Build domain variable map
-            let mut domain_var_map = HashMap::new();
+            let domain_var_map = HashMap::new();
             for (i, var) in variables.iter().enumerate() {
                 domain_var_map.insert(var.clone(), i);
             }
 
             // Identify boundary and internal variables
-            let mut boundary_vars = Vec::new();
-            let mut internal_vars = Vec::new();
+            let boundary_vars = Vec::new();
+            let internal_vars = Vec::new();
 
             for (i, &global_idx) in domain_indices.iter().enumerate() {
                 let is_boundary = self.is_boundary_variable(qubo, global_idx, &domain_indices);
@@ -287,8 +287,8 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
     ) -> Result<(), String> {
         match &self.coordination {
             CoordinationStrategy::ADMM { .. } => {
-                let mut lagrange_multipliers = HashMap::new();
-                let mut consensus_variables = HashMap::new();
+                let lagrange_multipliers = HashMap::new();
+                let consensus_variables = HashMap::new();
 
                 // Initialize Lagrange multipliers and consensus variables
                 for domain in domains {
@@ -370,7 +370,7 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
         domain: &Domain,
         coordination: &CoordinationState,
     ) -> Result<Array2<f64>, String> {
-        let mut modified_qubo = domain.qubo.clone();
+        let modified_qubo = domain.qubo.clone();
 
         match &self.coordination {
             CoordinationStrategy::ADMM { rho } => {
@@ -430,13 +430,13 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
             &mut state.lagrange_multipliers,
             &mut state.consensus_variables,
         ) {
-            let mut max_residual = 0.0_f64;
+            let max_residual = 0.0_f64;
 
             // Update consensus variables (z-update)
             for domain in domains {
                 for &boundary_var in &domain.boundary_vars {
-                    let mut total_value = 0.0;
-                    let mut count = 0;
+                    let total_value = 0.0;
+                    let count = 0;
 
                     // Collect values from all domains containing this variable
                     for solution in solutions {
@@ -550,7 +550,7 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
     ) -> Result<SampleResult, String> {
         // Use consensus variables as final solution
         if let Some(consensus) = &coordination_state.consensus_variables {
-            let mut final_sample = HashMap::new();
+            let final_sample = HashMap::new();
 
             // Collect all variables from all domains
             for domain in domains {
@@ -599,7 +599,7 @@ mod tests {
         let qubo =
             Array2::from_shape_vec((6, 6), (0..36).map(|x| x as f64 * 0.1).collect()).unwrap();
 
-        let mut var_map = HashMap::new();
+        let var_map = HashMap::new();
         for i in 0..6 {
             var_map.insert(format!("x{}", i), i);
         }
@@ -611,7 +611,7 @@ mod tests {
         assert!(!domains.is_empty());
 
         // Check that domains cover all variables
-        let mut all_vars = std::collections::HashSet::new();
+        let all_vars = std::collections::HashSet::new();
         for domain in &domains {
             for var in &domain.variables {
                 all_vars.insert(var.clone());
@@ -626,7 +626,7 @@ mod tests {
         let decomposer = DomainDecomposer::new(base_sampler);
 
         // Create QUBO with clear structure
-        let mut qubo = Array2::zeros((4, 4));
+        let qubo = Array2::zeros((4, 4));
         qubo[[0, 1]] = 1.0; // Connection within domain
         qubo[[2, 3]] = 1.0; // Connection within domain
         qubo[[1, 2]] = 1.0; // Cross-domain connection

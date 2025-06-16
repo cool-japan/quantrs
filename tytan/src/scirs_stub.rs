@@ -28,10 +28,10 @@ pub fn optimize_hobo_tensor(tensor: &ArrayD<f64>) -> ArrayD<f64> {
 pub fn parallel_sample_qubo(matrix: &Array2<f64>, num_samples: usize) -> Vec<(Vec<bool>, f64)> {
     // In a real implementation, this would use parallel processing
     let n = matrix.shape()[0];
-    let mut results = Vec::with_capacity(num_samples);
+    let results = Vec::with_capacity(num_samples);
 
     use rand::{rng, Rng};
-    let mut rng = rng();
+    let rng = rng();
 
     for _ in 0..num_samples {
         let solution: Vec<bool> = (0..n).map(|_| rng.random()).collect();
@@ -43,7 +43,7 @@ pub fn parallel_sample_qubo(matrix: &Array2<f64>, num_samples: usize) -> Vec<(Ve
 }
 
 fn evaluate_qubo(solution: &[bool], matrix: &Array2<f64>) -> f64 {
-    let mut energy = 0.0;
+    let energy = 0.0;
     let n = solution.len();
 
     for i in 0..n {
@@ -224,7 +224,7 @@ mod scirs2_linalg_stub {
                 // Simple placeholder: just return first n_components columns
                 let n_samples = data.nrows();
                 let n_features = self.n_components.min(data.ncols());
-                let mut result = Array2::zeros((n_samples, self.n_components));
+                let result = Array2::zeros((n_samples, self.n_components));
 
                 for i in 0..n_samples {
                     for j in 0..n_features {
@@ -790,7 +790,7 @@ mod scirs2_ml_stub {
             // Simple placeholder: just return first n_components columns
             let n_samples = data.nrows();
             let n_features = self.n_components.min(data.ncols());
-            let mut result = Array2::zeros((n_samples, self.n_components));
+            let result = Array2::zeros((n_samples, self.n_components));
 
             for i in 0..n_samples {
                 for j in 0..n_features {
@@ -856,7 +856,7 @@ mod scirs2_graphs_stub {
         n_nodes: usize,
     ) -> Result<Vec<(f64, f64)>, Box<dyn std::error::Error>> {
         // Simple circular layout
-        let mut positions = Vec::new();
+        let positions = Vec::new();
         for i in 0..n_nodes {
             let angle = 2.0 * std::f64::consts::PI * i as f64 / n_nodes as f64;
             positions.push((angle.cos(), angle.sin()));

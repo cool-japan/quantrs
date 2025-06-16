@@ -313,7 +313,7 @@ pub mod statistics {
         let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (n - 1.0).max(1.0);
         let std_dev = variance.sqrt();
 
-        let mut sorted = values.to_vec();
+        let sorted = values.to_vec();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         let median = if sorted.len() % 2 == 0 {

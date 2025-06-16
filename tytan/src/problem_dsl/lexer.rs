@@ -156,10 +156,10 @@ impl fmt::Display for Token {
 
 /// Tokenize source code
 pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
-    let mut tokens = Vec::new();
-    let mut chars = source.chars().peekable();
-    let mut line = 1;
-    let mut column = 1;
+    let tokens = Vec::new();
+    let chars = source.chars().peekable();
+    let line = 1;
+    let column = 1;
 
     while let Some(&ch) = chars.peek() {
         match ch {
@@ -177,7 +177,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
 
             // Numbers
             '0'..='9' => {
-                let mut number = String::new();
+                let number = String::new();
                 while let Some(&ch) = chars.peek() {
                     if ch.is_ascii_digit() || ch == '.' {
                         number.push(chars.next().unwrap());
@@ -198,7 +198,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
             '"' => {
                 chars.next(); // consume opening quote
                 column += 1;
-                let mut string = String::new();
+                let string = String::new();
                 while let Some(ch) = chars.next() {
                     column += 1;
                     if ch == '"' {
@@ -227,7 +227,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
 
             // Identifiers and keywords
             'a'..='z' | 'A'..='Z' | '_' => {
-                let mut identifier = String::new();
+                let identifier = String::new();
                 while let Some(&ch) = chars.peek() {
                     if ch.is_alphanumeric() || ch == '_' {
                         identifier.push(chars.next().unwrap());
@@ -281,7 +281,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
                 if chars.peek() == Some(&'/') {
                     chars.next();
                     column += 1;
-                    let mut comment = String::new();
+                    let comment = String::new();
                     while let Some(&ch) = chars.peek() {
                         if ch == '\n' {
                             break;

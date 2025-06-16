@@ -95,11 +95,11 @@ impl VQE {
     pub fn solve(&mut self, hamiltonian: &Hamiltonian) -> Result<VQEResult, String> {
         // Initialize parameters
         let num_params = self.get_num_parameters();
-        let mut params = self.initialize_parameters(num_params);
+        let params = self.initialize_parameters(num_params);
 
-        let mut energy_history = Vec::new();
-        let mut param_history = Vec::new();
-        let mut converged = false;
+        let energy_history = Vec::new();
+        let param_history = Vec::new();
+        let converged = false;
 
         // Optimization loop
         for iteration in 0..self.max_iterations {
@@ -153,7 +153,7 @@ impl VQE {
     /// Initialize parameters
     fn initialize_parameters(&self, num_params: usize) -> Vec<f64> {
         use rand::prelude::*;
-        let mut rng = rng();
+        let rng = rng();
 
         (0..num_params).map(|_| rng.random_range(-PI..PI)).collect()
     }
@@ -185,7 +185,7 @@ impl VQE {
                 let gradient = self.compute_gradient(&current_params, hamiltonian)?;
 
                 // Update with momentum
-                let mut new_params = current_params.clone();
+                let new_params = current_params.clone();
                 for i in 0..new_params.len() {
                     new_params[i] -= learning_rate * gradient[i];
                 }
@@ -213,8 +213,8 @@ impl VQE {
         let shift = PI / 2.0;
 
         for i in 0..params.len() {
-            let mut params_plus = params.to_vec();
-            let mut params_minus = params.to_vec();
+            let params_plus = params.to_vec();
+            let params_minus = params.to_vec();
 
             params_plus[i] += shift;
             params_minus[i] -= shift;
@@ -239,7 +239,7 @@ impl VQE {
         _gamma: f64,
     ) -> Result<Vec<f64>, String> {
         use rand::prelude::*;
-        let mut rng = rng();
+        let rng = rng();
 
         // Generate random perturbation
         let delta: Vec<f64> = (0..params.len())
@@ -247,8 +247,8 @@ impl VQE {
             .collect();
 
         // Evaluate at perturbed points
-        let mut params_plus = params.clone();
-        let mut params_minus = params.clone();
+        let params_plus = params.clone();
+        let params_minus = params.clone();
 
         for i in 0..params.len() {
             params_plus[i] += c * delta[i];
@@ -259,7 +259,7 @@ impl VQE {
         let energy_minus = self.evaluate_energy(&params_minus, hamiltonian)?;
 
         // Update parameters
-        let mut new_params = params.clone();
+        let new_params = params.clone();
         for i in 0..params.len() {
             new_params[i] -= a * (energy_plus - energy_minus) / (2.0 * c * delta[i]);
         }
@@ -298,7 +298,7 @@ impl Hamiltonian {
     /// Create from QUBO
     pub fn from_qubo(qubo: &Array2<f64>) -> Self {
         let n = qubo.shape()[0];
-        let mut terms = Vec::new();
+        let terms = Vec::new();
 
         // Convert QUBO to Ising model
         // H = sum_i h_i Z_i + sum_{i<j} J_{ij} Z_i Z_j
@@ -386,7 +386,7 @@ impl QAOA {
         let mut gammas = vec![0.0; self.p];
 
         // Optimization loop
-        let mut energy_history = Vec::new();
+        let energy_history = Vec::new();
         let max_iterations = 100;
 
         for iteration in 0..max_iterations {
@@ -449,7 +449,7 @@ impl QAOA {
         hamiltonian: &Hamiltonian,
     ) -> Result<(Vec<f64>, Vec<f64>), String> {
         // Combine into single parameter vector
-        let mut params = Vec::new();
+        let params = Vec::new();
         params.extend_from_slice(betas);
         params.extend_from_slice(gammas);
 
@@ -504,7 +504,7 @@ impl QAOA {
         // This would sample from the prepared quantum state
         // Placeholder: return random samples
         use rand::prelude::*;
-        let mut rng = rng();
+        let rng = rng();
         let n_qubits = 10; // Would get from hamiltonian
 
         let samples = (0..num_samples)
@@ -609,7 +609,7 @@ impl WarmStartStrategy {
         let mut state = vec![0.0; dim];
 
         // Convert assignments to binary index
-        let mut index = 0;
+        let index = 0;
         let mut vars: Vec<_> = assignments.keys().collect();
         vars.sort();
 
@@ -695,9 +695,9 @@ impl IterativeRefinement {
         initial_shots: usize,
     ) -> Result<RefinementResult, String> {
         let qubo = problem.to_qubo();
-        let mut history = Vec::new();
-        let mut best_solution = None;
-        let mut best_energy = f64::INFINITY;
+        let history = Vec::new();
+        let best_solution = None;
+        let best_energy = f64::INFINITY;
 
         for iteration in 0..self.max_refinements {
             // Run quantum solver
@@ -777,7 +777,7 @@ impl IterativeRefinement {
         var_map: &HashMap<String, usize>,
         neighborhood_size: usize,
     ) -> Result<Vec<SampleResult>, String> {
-        let mut refined_results = Vec::new();
+        let refined_results = Vec::new();
 
         for result in results.iter().take(10) {
             // Convert to binary vector
@@ -786,15 +786,15 @@ impl IterativeRefinement {
                 .map(|(var, _)| result.assignments[var])
                 .collect();
 
-            let mut best_state = state.clone();
-            let mut best_energy = result.energy;
+            let best_state = state.clone();
+            let best_energy = result.energy;
 
             // Search neighborhood
             for _ in 0..neighborhood_size {
                 // Flip random bits
-                let mut neighbor = state.clone();
+                let neighbor = state.clone();
                 use rand::prelude::*;
-                let mut rng = rng();
+                let rng = rng();
                 let flip_idx = rng.random_range(0..state.len());
                 neighbor[flip_idx] = !neighbor[flip_idx];
 
@@ -830,7 +830,7 @@ impl IterativeRefinement {
     /// Evaluate QUBO energy
     fn evaluate_qubo_energy(&self, state: &[bool], matrix: &Array2<f64>) -> f64 {
         let n = state.len();
-        let mut energy = 0.0;
+        let energy = 0.0;
 
         for i in 0..n {
             if state[i] {
@@ -885,7 +885,7 @@ mod tests {
 
     #[test]
     fn test_hamiltonian_from_qubo() {
-        let mut qubo = Array2::zeros((3, 3));
+        let qubo = Array2::zeros((3, 3));
         qubo[[0, 0]] = 1.0;
         qubo[[0, 1]] = -2.0;
         qubo[[1, 0]] = -2.0;

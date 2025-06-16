@@ -6,7 +6,7 @@
 // Sampler types available for logistics applications
 use ndarray::{Array1, Array2};
 use rand::prelude::*;
-use rand::thread_rng;
+use rand::rng;
 use std::collections::{HashMap, HashSet};
 
 /// Vehicle Routing Problem (VRP) optimizer
@@ -113,16 +113,16 @@ impl VehicleRoutingOptimizer {
     /// Build QUBO formulation
     pub fn build_qubo(&self) -> Result<(Array2<f64>, HashMap<String, usize>), String> {
         let n_locations = self.distance_matrix.shape()[0];
-        let n_customers = n_locations - 1; // Excluding depot
+        let _n_customers = n_locations - 1; // Excluding depot
 
         // Variables: x_{v,i,j} = 1 if vehicle v travels from i to j
         let n_vars = self.num_vehicles * n_locations * n_locations;
 
-        let mut qubo = Array2::zeros((n_vars, n_vars));
-        let mut var_map = HashMap::new();
+        let qubo = Array2::zeros((n_vars, n_vars));
+        let var_map = HashMap::new();
 
         // Create variable mapping
-        let mut var_idx = 0;
+        let var_idx = 0;
         for v in 0..self.num_vehicles {
             for i in 0..n_locations {
                 for j in 0..n_locations {
@@ -267,7 +267,7 @@ impl VehicleRoutingOptimizer {
 
         for v in 0..self.num_vehicles {
             // Approximate capacity usage
-            let mut route_demand = 0.0;
+            let route_demand = 0.0;
 
             for i in 0..n_locations {
                 for j in 1..n_locations {
@@ -359,7 +359,7 @@ impl VehicleRoutingOptimizer {
 
     /// Decode solution to routes
     pub fn decode_solution(&self, solution: &HashMap<String, bool>) -> Vec<Route> {
-        let mut routes = Vec::new();
+        let routes = Vec::new();
         let n_locations = self.distance_matrix.shape()[0];
 
         for v in 0..self.num_vehicles {
@@ -371,13 +371,13 @@ impl VehicleRoutingOptimizer {
                 arrival_times: vec![0.0],
             };
 
-            let mut current = self.depot;
-            let mut visited = HashSet::new();
+            let current = self.depot;
+            let visited = HashSet::new();
             visited.insert(self.depot);
 
             // Build route by following edges
             loop {
-                let mut next_location = None;
+                let next_location = None;
 
                 for j in 0..n_locations {
                     if !visited.contains(&j) {
@@ -422,8 +422,8 @@ impl VehicleRoutingOptimizer {
 
     /// Validate solution
     pub fn validate_solution(&self, routes: &[Route]) -> ValidationResult {
-        let mut violations = Vec::new();
-        let mut visited_customers = HashSet::new();
+        let violations = Vec::new();
+        let visited_customers = HashSet::new();
 
         // Check each route
         for route in routes {
@@ -539,11 +539,11 @@ impl VehicleRoutingProblem {
             return f64::INFINITY; // Invalid solution
         }
 
-        let mut energy = 0.0;
+        let energy = 0.0;
 
         // Calculate distance objective
-        let mut var_idx = 0;
-        for v in 0..self.optimizer.num_vehicles {
+        let var_idx = 0;
+        for _v in 0..self.optimizer.num_vehicles {
             for i in 0..n_locations {
                 for j in 0..n_locations {
                     if i != j {
@@ -563,17 +563,17 @@ impl VehicleRoutingProblem {
 
     fn calculate_constraint_penalties(&self, x: &Array1<f64>) -> f64 {
         let penalty = 1000.0;
-        let mut total_penalty = 0.0;
+        let total_penalty = 0.0;
 
         let n_locations = self.optimizer.distance_matrix.shape()[0];
 
         // Customer visit constraint: each customer visited exactly once
         for j in 1..n_locations {
             // Skip depot
-            let mut visits = 0.0;
-            let mut var_idx = 0;
+            let visits = 0.0;
+            let var_idx = 0;
 
-            for v in 0..self.optimizer.num_vehicles {
+            for _v in 0..self.optimizer.num_vehicles {
                 for i in 0..n_locations {
                     if i != j {
                         let decision = if x[var_idx + i * n_locations + j] > 0.5 {
@@ -621,19 +621,19 @@ impl BinaryVehicleRoutingProblem {
 
     /// Create random binary solution
     pub fn random_solution(&self) -> Vec<i8> {
-        let mut rng = thread_rng();
+        let rng = rng();
         let n_vars = self.num_variables();
         (0..n_vars)
-            .map(|_| if rng.gen::<f64>() > 0.8 { 1 } else { 0 })
+            .map(|_| if rng.random::<f64>() > 0.8 { 1 } else { 0 })
             .collect()
     }
 
     /// Convert binary solution to routes
     pub fn decode_binary_solution(&self, solution: &[i8]) -> Vec<Route> {
-        let mut bool_solution = HashMap::new();
+        let bool_solution = HashMap::new();
         let n_locations = self.inner.optimizer.distance_matrix.shape()[0];
 
-        let mut var_idx = 0;
+        let var_idx = 0;
         for v in 0..self.inner.optimizer.num_vehicles {
             for i in 0..n_locations {
                 for j in 0..n_locations {
@@ -658,7 +658,7 @@ impl OptimizationProblem for BinaryVehicleRoutingProblem {
 
 /// Create benchmark problems for testing
 pub fn create_benchmark_problems() -> Vec<BinaryVehicleRoutingProblem> {
-    let mut problems = Vec::new();
+    let problems = Vec::new();
 
     // Small VRP problem
     let small_distances = Array2::from_shape_vec(
@@ -806,8 +806,8 @@ impl TSPOptimizer {
     ) -> Result<(Array2<f64>, HashMap<String, usize>), String> {
         // Variables: x_{i,t} = 1 if city i is visited at time t
         let n_vars = n * n;
-        let mut qubo = Array2::zeros((n_vars, n_vars));
-        let mut var_map = HashMap::new();
+        let qubo = Array2::zeros((n_vars, n_vars));
+        let var_map = HashMap::new();
 
         // Create variable mapping
         for i in 0..n {
@@ -871,8 +871,8 @@ impl TSPOptimizer {
     ) -> Result<(Array2<f64>, HashMap<String, usize>), String> {
         // Variables: x_{s,i,t} = 1 if salesman s visits city i at time t
         let n_vars = num_salesmen * n * n;
-        let mut qubo = Array2::zeros((n_vars, n_vars));
-        let mut var_map = HashMap::new();
+        let qubo = Array2::zeros((n_vars, n_vars));
+        let var_map = HashMap::new();
 
         // Create variable mapping
         for s in 0..num_salesmen {
@@ -1052,8 +1052,8 @@ impl SupplyChainOptimizer {
         // - z_{d,c,t}: flow from DC d to customer c at time t
         // - I_{w,t}: inventory at warehouse w at time t
 
-        let mut var_map = HashMap::new();
-        let mut var_idx = 0;
+        let var_map = HashMap::new();
+        let var_idx = 0;
 
         // Create variables for flows
         for t in 0..self.time_horizon {
@@ -1093,7 +1093,7 @@ impl SupplyChainOptimizer {
         }
 
         let n_vars = var_idx;
-        let mut qubo = Array2::zeros((n_vars, n_vars));
+        let qubo = Array2::zeros((n_vars, n_vars));
 
         // Add objectives
         for objective in &self.objectives {
@@ -1178,14 +1178,14 @@ impl SupplyChainOptimizer {
     /// Add flow conservation constraints
     fn add_flow_conservation_constraints(
         &self,
-        qubo: &mut Array2<f64>,
-        var_map: &HashMap<String, usize>,
+        _qubo: &mut Array2<f64>,
+        _var_map: &HashMap<String, usize>,
     ) -> Result<(), String> {
-        let penalty = 1000.0;
+        let _penalty = 1000.0;
 
         // Warehouse flow conservation
-        for w in &self.network.warehouses {
-            for t in 1..self.time_horizon {
+        for _w in &self.network.warehouses {
+            for _t in 1..self.time_horizon {
                 // I_{w,t} = I_{w,t-1} + sum_s x_{s,w,t} - sum_d y_{w,d,t}
 
                 // This is a complex constraint, simplified here
@@ -1393,8 +1393,8 @@ impl WarehouseOptimizer {
 
     /// Optimize batch picking
     fn optimize_batch_picking(&self, batch_size: usize) -> Result<PickingPlan, String> {
-        let mut batches = Vec::new();
-        let mut remaining_orders = self.orders.clone();
+        let batches = Vec::new();
+        let remaining_orders = self.orders.clone();
 
         while !remaining_orders.is_empty() {
             let batch_orders: Vec<_> = remaining_orders
@@ -1423,7 +1423,7 @@ impl WarehouseOptimizer {
 
     /// Optimize single order picking
     fn optimize_single_picking(&self) -> Result<PickingPlan, String> {
-        let mut batches = Vec::new();
+        let batches = Vec::new();
 
         for order in &self.orders {
             let route = self.optimize_picking_route(&[order.clone()])?;
@@ -1449,7 +1449,7 @@ impl WarehouseOptimizer {
     /// Optimize picking route for orders
     fn optimize_picking_route(&self, orders: &[Order]) -> Result<PickingRoute, String> {
         // Collect all pick locations
-        let mut pick_locations = Vec::new();
+        let pick_locations = Vec::new();
 
         for order in orders {
             for item in &order.items {
@@ -1465,7 +1465,7 @@ impl WarehouseOptimizer {
 
         // Build distance matrix including picking station
         let n = pick_locations.len() + 1; // +1 for picking station
-        let mut distances = Array2::zeros((n, n));
+        let distances = Array2::zeros((n, n));
 
         // Distance from picking station to locations
         let station = self.layout.picking_stations[0]; // Use first station
@@ -1488,7 +1488,7 @@ impl WarehouseOptimizer {
 
         // Solve TSP
         let tsp = TSPOptimizer::new(distances)?;
-        let (qubo, var_map) = tsp.build_qubo()?;
+        let (_qubo, _var_map) = tsp.build_qubo()?;
 
         // Simplified: return S-shaped route
         let sequence = (0..pick_locations.len()).collect();
@@ -1565,7 +1565,7 @@ mod tests {
 
         let optimizer = VehicleRoutingOptimizer::new(distances, 50.0, demands, 2).unwrap();
 
-        let (qubo, var_map) = optimizer.build_qubo().unwrap();
+        let (_qubo, var_map) = optimizer.build_qubo().unwrap();
         assert!(!var_map.is_empty());
     }
 
@@ -1581,7 +1581,7 @@ mod tests {
         .unwrap();
 
         let optimizer = TSPOptimizer::new(distances).unwrap();
-        let (qubo, var_map) = optimizer.build_qubo().unwrap();
+        let (_qubo, var_map) = optimizer.build_qubo().unwrap();
 
         assert_eq!(var_map.len(), 16); // 4 cities * 4 time slots
     }
@@ -1619,7 +1619,7 @@ mod tests {
         };
 
         let optimizer = SupplyChainOptimizer::new(network, 3);
-        let (qubo, var_map) = optimizer.build_qubo().unwrap();
+        let (_qubo, var_map) = optimizer.build_qubo().unwrap();
 
         assert!(!var_map.is_empty());
     }

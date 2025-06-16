@@ -417,8 +417,8 @@ impl CrystalStructurePredictor {
         let n_position_vars = n_atoms * 3 * position_resolution;
         let n_vars = n_lattice_vars + n_position_vars;
 
-        let mut qubo = Array2::zeros((n_vars, n_vars));
-        let mut var_map = HashMap::new();
+        let qubo = Array2::zeros((n_vars, n_vars));
+        let var_map = HashMap::new();
 
         // Create variable mapping
         self.create_lattice_variables(&mut var_map, lattice_resolution)?;
@@ -442,7 +442,7 @@ impl CrystalStructurePredictor {
         resolution: usize,
     ) -> Result<(), String> {
         let params = ["a", "b", "c", "alpha", "beta", "gamma"];
-        let mut var_idx = 0;
+        let var_idx = 0;
 
         for param in &params {
             for i in 0..resolution {
@@ -463,7 +463,7 @@ impl CrystalStructurePredictor {
         resolution: usize,
         offset: usize,
     ) -> Result<(), String> {
-        let mut var_idx = offset;
+        let var_idx = offset;
 
         for atom in 0..n_atoms {
             for coord in ["x", "y", "z"] {
@@ -534,7 +534,7 @@ impl CrystalStructurePredictor {
         atom1: usize,
         atom2: usize,
         epsilon: f64,
-        sigma: f64,
+        _sigma: f64,
     ) -> Result<(), String> {
         // Discretized distance calculation
         // This is a simplification - actual implementation would be more complex
@@ -588,7 +588,7 @@ impl CrystalStructurePredictor {
             .coordination_numbers
             .is_empty()
         {
-            let coord_numbers = &self.constraints.coordination.coordination_numbers;
+            let _coord_numbers = &self.constraints.coordination.coordination_numbers;
             // Simplified: just favor certain distance ranges
             let penalty = 10.0;
 
@@ -617,11 +617,11 @@ impl CrystalStructurePredictor {
         qubo: &mut Array2<f64>,
         var_map: &HashMap<String, usize>,
     ) -> Result<(), String> {
-        if let Some(oxidation_states) = &self.composition.oxidation_states {
+        if let Some(_oxidation_states) = &self.composition.oxidation_states {
             // Add Coulomb repulsion/attraction
             // Simplified: just use oxidation states
 
-            let elements: Vec<_> = self.composition.elements.keys().collect();
+            let _elements: Vec<_> = self.composition.elements.keys().collect();
 
             for i in 0..self.composition.total_atoms {
                 for j in i + 1..self.composition.total_atoms {
@@ -746,7 +746,7 @@ impl CrystalStructurePredictor {
             let penalty = 50.0;
 
             // Penalize configurations where atoms are too close
-            for ((elem1, elem2), &min_dist) in min_distances {
+            for ((_elem1, _elem2), &_min_dist) in min_distances {
                 // This would need proper element-to-atom mapping
                 // Simplified: penalize same positions
                 for i in 0..self.composition.total_atoms {
@@ -780,7 +780,7 @@ impl CrystalStructurePredictor {
         qubo: &mut Array2<f64>,
         var_map: &HashMap<String, usize>,
     ) -> Result<(), String> {
-        if let Some(space_groups) = &self.constraints.symmetry.space_groups {
+        if let Some(_space_groups) = &self.constraints.symmetry.space_groups {
             // Simplified: encourage symmetric positions
             let symmetry_bonus = -10.0;
 
@@ -807,8 +807,8 @@ impl CrystalStructurePredictor {
     fn build_evolutionary_qubo(&self) -> Result<(Array2<f64>, HashMap<String, usize>), String> {
         // Encode genetic representation
         let genome_length = 100; // Simplified genome
-        let mut qubo = Array2::zeros((genome_length, genome_length));
-        let mut var_map = HashMap::new();
+        let qubo = Array2::zeros((genome_length, genome_length));
+        let var_map = HashMap::new();
 
         for i in 0..genome_length {
             var_map.insert(format!("gene_{}", i), i);
@@ -865,7 +865,7 @@ impl CrystalStructurePredictor {
 
     /// Decode lattice parameters
     fn decode_lattice(&self, solution: &HashMap<String, bool>) -> Result<Lattice, String> {
-        let mut params = HashMap::new();
+        let params = HashMap::new();
 
         for param in ["a", "b", "c", "alpha", "beta", "gamma"] {
             for i in 0..10 {
@@ -899,13 +899,13 @@ impl CrystalStructurePredictor {
         &self,
         solution: &HashMap<String, bool>,
     ) -> Result<Vec<AtomicPosition>, String> {
-        let mut positions = Vec::new();
+        let positions = Vec::new();
 
         // Simplified: assign elements round-robin
         let elements: Vec<_> = self.composition.elements.keys().cloned().collect();
 
         for atom in 0..self.composition.total_atoms {
-            let mut coords = [0.0, 0.0, 0.0];
+            let coords = [0.0, 0.0, 0.0];
 
             for (i, coord) in ["x", "y", "z"].iter().enumerate() {
                 for pos in 0..20 {
@@ -1050,7 +1050,7 @@ impl Lattice {
         let beta_rad = self.beta * PI / 180.0;
         let gamma_rad = self.gamma * PI / 180.0;
 
-        let mut matrix = Array2::zeros((3, 3));
+        let matrix = Array2::zeros((3, 3));
 
         matrix[[0, 0]] = self.a;
         matrix[[0, 1]] = self.b * gamma_rad.cos();
@@ -1137,7 +1137,7 @@ impl CrystalStructure {
 
     /// Generate supercell
     pub fn supercell(&self, nx: usize, ny: usize, nz: usize) -> CrystalStructure {
-        let mut new_positions = Vec::new();
+        let new_positions = Vec::new();
 
         for i in 0..nx {
             for j in 0..ny {
@@ -1155,7 +1155,7 @@ impl CrystalStructure {
             }
         }
 
-        let mut new_composition = self.composition.clone();
+        let new_composition = self.composition.clone();
         for count in new_composition.elements.values_mut() {
             *count *= nx * ny * nz;
         }
@@ -1281,7 +1281,7 @@ mod tests {
     fn test_crystal_structure_predictor() {
         let composition = ChemicalComposition {
             elements: {
-                let mut elements = HashMap::new();
+                let elements = HashMap::new();
                 elements.insert("Na".to_string(), 1);
                 elements.insert("Cl".to_string(), 1);
                 elements
@@ -1289,7 +1289,7 @@ mod tests {
             total_atoms: 2,
             stoichiometry: Some(vec![1.0, 1.0]),
             oxidation_states: Some({
-                let mut states = HashMap::new();
+                let states = HashMap::new();
                 states.insert("Na".to_string(), 1);
                 states.insert("Cl".to_string(), -1);
                 states
@@ -1299,7 +1299,7 @@ mod tests {
         let energy_model = EnergyModel::Empirical {
             potential: EmpiricalPotential::LennardJones,
             parameters: {
-                let mut params = HashMap::new();
+                let params = HashMap::new();
                 params.insert("epsilon".to_string(), 1.0);
                 params.insert("sigma".to_string(), 3.4);
                 params
@@ -1331,7 +1331,7 @@ mod tests {
         let structure = CrystalStructure {
             composition: ChemicalComposition {
                 elements: {
-                    let mut elements = HashMap::new();
+                    let elements = HashMap::new();
                     elements.insert("Si".to_string(), 1);
                     elements
                 },

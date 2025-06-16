@@ -640,11 +640,11 @@ impl QuantumAdvantageAnalyzer {
     /// Analyze connectivity structure of QUBO
     fn analyze_connectivity(&self, qubo: &Array2<f64>) -> Result<ConnectivityStructure, String> {
         let n = qubo.shape()[0];
-        let mut edge_count = 0;
-        let mut degree_sum = 0;
+        let edge_count = 0;
+        let degree_sum = 0;
 
         for i in 0..n {
-            let mut degree = 0;
+            let degree = 0;
             for j in 0..n {
                 if i != j && qubo[[i, j]].abs() > 1e-10 {
                     if i < j {
@@ -691,7 +691,7 @@ impl QuantumAdvantageAnalyzer {
         };
 
         // Compute difficulty metrics
-        let mut difficulty_metrics = HashMap::new();
+        let difficulty_metrics = HashMap::new();
 
         // Compute coefficient variance as a measure of heterogeneity
         let coeffs: Vec<f64> = qubo.iter().cloned().collect();
@@ -711,7 +711,7 @@ impl QuantumAdvantageAnalyzer {
         }
 
         // Frustration measure (simplified)
-        let mut frustration = 0.0;
+        let frustration = 0.0;
         for i in 0..n {
             for j in i + 1..n {
                 if qubo[[i, j]] > 0.0 {
@@ -730,11 +730,11 @@ impl QuantumAdvantageAnalyzer {
 
     /// Detect symmetries in the QUBO
     fn detect_symmetries(&self, qubo: &Array2<f64>) -> Result<Vec<SymmetryType>, String> {
-        let mut symmetries = Vec::new();
+        let symmetries = Vec::new();
         let n = qubo.shape()[0];
 
         // Check for permutation symmetries (simplified check)
-        let mut is_symmetric = true;
+        let is_symmetric = true;
         for i in 0..n {
             for j in 0..n {
                 if (qubo[[i, j]] - qubo[[j, i]]).abs() > 1e-10 {
@@ -763,9 +763,9 @@ impl QuantumAdvantageAnalyzer {
         quantum_perf: &HashMap<QuantumAlgorithm, QuantumPerformanceMetrics>,
         problem_chars: &ProblemCharacteristics,
     ) -> Result<AdvantageAnalysis, String> {
-        let mut advantage_factors = HashMap::new();
-        let mut conditional_advantages = Vec::new();
-        let mut break_even_points = HashMap::new();
+        let advantage_factors = HashMap::new();
+        let conditional_advantages = Vec::new();
+        let break_even_points = HashMap::new();
 
         // Find best classical performance
         let best_classical = classical_perf.values().min_by(|a, b| {
@@ -843,10 +843,10 @@ impl QuantumAdvantageAnalyzer {
         quantum_perf: &HashMap<QuantumAlgorithm, QuantumPerformanceMetrics>,
         problem_chars: &ProblemCharacteristics,
     ) -> Result<ThresholdAnalysis, String> {
-        let mut size_thresholds = HashMap::new();
-        let mut noise_thresholds = HashMap::new();
-        let mut hardware_thresholds = HashMap::new();
-        let mut time_to_advantage = HashMap::new();
+        let size_thresholds = HashMap::new();
+        let noise_thresholds = HashMap::new();
+        let hardware_thresholds = HashMap::new();
+        let time_to_advantage = HashMap::new();
 
         // Estimate problem size threshold
         let estimated_threshold = if problem_chars.num_variables < 100 {
@@ -907,7 +907,7 @@ impl QuantumAdvantageAnalyzer {
         advantage_analysis: &AdvantageAnalysis,
         problem_chars: &ProblemCharacteristics,
     ) -> Result<Vec<AlgorithmRecommendation>, String> {
-        let mut recommendations = Vec::new();
+        let recommendations = Vec::new();
 
         // Find best classical algorithm
         if let Some((best_classical_alg, best_classical_perf)) =
@@ -1093,7 +1093,7 @@ impl ClassicalComplexityEstimator {
     }
 
     fn build_complexity_database() -> HashMap<String, ComplexityInfo> {
-        let mut db = HashMap::new();
+        let db = HashMap::new();
 
         // Add known complexity results for common problems
         db.insert(
@@ -1126,7 +1126,7 @@ impl ClassicalComplexityEstimator {
         problem: &ProblemCharacteristics,
         algorithms: &[ClassicalAlgorithm],
     ) -> Result<HashMap<ClassicalAlgorithm, PerformanceMetrics>, String> {
-        let mut results = HashMap::new();
+        let results = HashMap::new();
 
         for algorithm in algorithms {
             let performance = self.estimate_algorithm_performance(algorithm, problem)?;
@@ -1216,7 +1216,7 @@ impl QuantumResourceEstimator {
     }
 
     fn build_algorithm_database() -> HashMap<String, QuantumAlgorithmInfo> {
-        let mut db = HashMap::new();
+        let db = HashMap::new();
 
         // Add quantum algorithm information
         db.insert(
@@ -1245,7 +1245,7 @@ impl QuantumResourceEstimator {
                 },
                 noise_sensitivity: NoiseSensitivity {
                     error_thresholds: {
-                        let mut map = HashMap::new();
+                        let map = HashMap::new();
                         map.insert("gate_error".to_string(), 0.001);
                         map.insert("measurement_error".to_string(), 0.01);
                         map
@@ -1271,7 +1271,7 @@ impl QuantumResourceEstimator {
     }
 
     fn build_hardware_database() -> HashMap<String, HardwareCharacteristics> {
-        let mut db = HashMap::new();
+        let db = HashMap::new();
 
         // Add hardware characteristics
         db.insert(
@@ -1280,14 +1280,14 @@ impl QuantumResourceEstimator {
                 qubit_count: 10000,
                 connectivity: ConnectivityStructure::FullyConnected,
                 gate_fidelities: {
-                    let mut map = HashMap::new();
+                    let map = HashMap::new();
                     map.insert("single_qubit".to_string(), 1.0);
                     map.insert("two_qubit".to_string(), 1.0);
                     map
                 },
                 measurement_fidelity: 1.0,
                 coherence_times: {
-                    let mut map = HashMap::new();
+                    let map = HashMap::new();
                     map.insert("T1".to_string(), Duration::from_secs(1000));
                     map.insert("T2".to_string(), Duration::from_secs(1000));
                     map
@@ -1304,7 +1304,7 @@ impl QuantumResourceEstimator {
         problem: &ProblemCharacteristics,
         algorithms: &[QuantumAlgorithm],
     ) -> Result<HashMap<QuantumAlgorithm, QuantumPerformanceMetrics>, String> {
-        let mut results = HashMap::new();
+        let results = HashMap::new();
 
         for algorithm in algorithms {
             let performance = self.estimate_quantum_algorithm_performance(algorithm, problem)?;
@@ -1390,7 +1390,7 @@ impl QuantumResourceEstimator {
         // Noise sensitivity
         let noise_sensitivity = NoiseSensitivity {
             error_thresholds: {
-                let mut map = HashMap::new();
+                let map = HashMap::new();
                 map.insert("gate_error".to_string(), 1.0 / circuit_depth as f64);
                 map.insert("measurement_error".to_string(), 0.01);
                 map
@@ -1420,7 +1420,7 @@ impl QuantumSupremacyBenchmarker {
         &mut self,
         config: &AnalysisConfig,
     ) -> Result<SupremacyBenchmarkResult, String> {
-        let mut results = Vec::new();
+        let results = Vec::new();
 
         for size in (config.problem_size_range.0..=config.problem_size_range.1).step_by(50) {
             let benchmark_result = self.run_size_benchmark(size, config)?;

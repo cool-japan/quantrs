@@ -24,11 +24,11 @@ mod tests {
     use ndarray::Array2;
 
     fn create_test_problem_info() -> types::ProblemInfo {
-        let mut var_map = HashMap::new();
+        let var_map = HashMap::new();
         var_map.insert("x0".to_string(), 0);
         var_map.insert("x1".to_string(), 1);
         
-        let mut reverse_var_map = HashMap::new();
+        let reverse_var_map = HashMap::new();
         reverse_var_map.insert(0, "x0".to_string());
         reverse_var_map.insert(1, "x1".to_string());
         
@@ -48,7 +48,7 @@ mod tests {
     }
 
     fn create_test_solution() -> types::Solution {
-        let mut assignments = HashMap::new();
+        let assignments = HashMap::new();
         assignments.insert("x0".to_string(), true);
         assignments.insert("x1".to_string(), false);
         
@@ -75,7 +75,7 @@ mod tests {
     fn test_solution_debugging() {
         let problem_info = create_test_problem_info();
         let config = config::DebuggerConfig::default();
-        let mut debugger = SolutionDebugger::new(problem_info, config);
+        let debugger = SolutionDebugger::new(problem_info, config);
         
         let solution = create_test_solution();
         let report = debugger.debug_solution(&solution);

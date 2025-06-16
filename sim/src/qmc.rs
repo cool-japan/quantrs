@@ -205,7 +205,7 @@ impl VMC {
 
             // Sampling
             let mut local_energies = Vec::new();
-            let mut gradients = vec![0.0; 2]; // For Jastrow parameters
+            let mut gradients = [0.0; 2]; // For Jastrow parameters
 
             for _ in 0..num_samples {
                 self.metropolis_step(&mut walker)?;

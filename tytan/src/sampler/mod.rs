@@ -83,7 +83,7 @@ pub(crate) fn evaluate_qubo_energy(
     j_matrix: &[f64],
     n_vars: usize,
 ) -> f64 {
-    let mut energy = 0.0;
+    let energy = 0.0;
 
     // Linear terms
     for i in 0..n_vars {

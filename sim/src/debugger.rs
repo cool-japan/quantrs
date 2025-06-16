@@ -13,11 +13,9 @@ use std::time::{Duration, Instant};
 use crate::error::{Result, SimulatorError};
 #[cfg(feature = "mps")]
 use crate::mps_enhanced::{EnhancedMPS, MPSConfig};
-use crate::pauli::{PauliOperatorSum, PauliString};
 use crate::statevector::StateVectorSimulator;
 use quantrs2_circuit::builder::Circuit;
 use quantrs2_core::gate::GateOp;
-use quantrs2_core::qubit::QubitId;
 
 // Placeholder for MPSConfig when MPS feature is disabled
 #[cfg(not(feature = "mps"))]

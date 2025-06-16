@@ -424,7 +424,7 @@ impl QuantumCloudService {
     /// Initialize available backends
     fn initialize_backends(&mut self) -> Result<()> {
         // IBM Quantum backends
-        let ibm_backends = vec![
+        let ibm_backends = [
             QuantumBackend {
                 name: "ibmq_qasm_simulator".to_string(),
                 provider: CloudProvider::IBMQuantum,
@@ -470,7 +470,7 @@ impl QuantumCloudService {
         ];
 
         // Google Quantum AI backends
-        let google_backends = vec![
+        let google_backends = [
             QuantumBackend {
                 name: "cirq_simulator".to_string(),
                 provider: CloudProvider::GoogleQuantumAI,
@@ -520,7 +520,7 @@ impl QuantumCloudService {
         ];
 
         // Amazon Braket backends
-        let braket_backends = vec![
+        let braket_backends = [
             QuantumBackend {
                 name: "sv1".to_string(),
                 provider: CloudProvider::AmazonBraket,
@@ -566,7 +566,7 @@ impl QuantumCloudService {
         ];
 
         // Local simulation backend
-        let local_backends = vec![QuantumBackend {
+        let local_backends = [QuantumBackend {
             name: "local_simulator".to_string(),
             provider: CloudProvider::LocalSimulation,
             backend_type: BackendType::Simulator,
@@ -585,13 +585,13 @@ impl QuantumCloudService {
         }];
 
         self.backends
-            .insert(CloudProvider::IBMQuantum, ibm_backends);
+            .insert(CloudProvider::IBMQuantum, ibm_backends.to_vec());
         self.backends
-            .insert(CloudProvider::GoogleQuantumAI, google_backends);
+            .insert(CloudProvider::GoogleQuantumAI, google_backends.to_vec());
         self.backends
-            .insert(CloudProvider::AmazonBraket, braket_backends);
+            .insert(CloudProvider::AmazonBraket, braket_backends.to_vec());
         self.backends
-            .insert(CloudProvider::LocalSimulation, local_backends);
+            .insert(CloudProvider::LocalSimulation, local_backends.to_vec());
 
         Ok(())
     }

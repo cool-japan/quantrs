@@ -167,7 +167,7 @@ fn test_ghz_state_tensor_network() {
     let tensor_result = tensor_sim.run(&circuit).unwrap();
 
     // Expected amplitudes for the GHZ state
-    let mut expected_amplitudes = vec![Complex64::new(0.0, 0.0); 8];
+    let mut expected_amplitudes = [Complex64::new(0.0, 0.0); 8];
     expected_amplitudes[0] = Complex64::new(FRAC_1_SQRT_2, 0.0);
     expected_amplitudes[7] = Complex64::new(FRAC_1_SQRT_2, 0.0);
 

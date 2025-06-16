@@ -7,7 +7,7 @@
 #[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
 use crate::sampler::Sampler;
-use rand::thread_rng;
+use rand::rng;
 use std::collections::HashMap;
 use std::error::Error;
 
@@ -203,9 +203,9 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         num_points: usize,
         include_interactions: bool,
     ) -> Result<SensitivityResults, Box<dyn Error>> {
-        let mut sensitivities = HashMap::new();
-        let mut main_effects = HashMap::new();
-        let mut response_data = HashMap::new();
+        let sensitivities = HashMap::new();
+        let main_effects = HashMap::new();
+        let response_data = HashMap::new();
 
         // Baseline evaluation
         let baseline_params = self.get_default_parameters();
@@ -217,8 +217,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             let param_name = self.get_parameter_name(&param);
             let (min_val, max_val) = self.get_parameter_range(&param);
 
-            let mut response_curve = Vec::new();
-            let mut objectives = Vec::new();
+            let response_curve = Vec::new();
+            let objectives = Vec::new();
 
             // Sample parameter values
             for i in 0..num_points {
@@ -226,7 +226,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
                 let value = min_val + t * (max_val - min_val);
 
                 // Create parameter configuration
-                let mut params = baseline_params.clone();
+                let params = baseline_params.clone();
                 params.insert(param_name.clone(), value);
 
                 // Evaluate
@@ -289,7 +289,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         num_trajectories: usize,
         num_levels: usize,
     ) -> Result<SensitivityResults, Box<dyn Error>> {
-        let mut elementary_effects = HashMap::new();
+        let elementary_effects = HashMap::new();
 
         for _ in 0..num_trajectories {
             // Generate Morris trajectory
@@ -321,8 +321,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         }
 
         // Compute Morris statistics
-        let mut sensitivities = HashMap::new();
-        let mut main_effects = HashMap::new();
+        let sensitivities = HashMap::new();
+        let main_effects = HashMap::new();
 
         for (param_name, effects) in elementary_effects {
             let mean_effect = effects.iter().sum::<f64>() / effects.len() as f64;
@@ -384,8 +384,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         let (sample_a, sample_b) = self.generate_sobol_samples(num_samples)?;
 
         // Evaluate base samples
-        let mut y_a = Vec::new();
-        let mut y_b = Vec::new();
+        let y_a = Vec::new();
+        let y_b = Vec::new();
 
         for i in 0..num_samples {
             let result_a = self.evaluate_configuration(problem, &sample_a[i])?;
@@ -395,8 +395,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         }
 
         // Compute first-order indices
-        let mut first_order = HashMap::new();
-        let mut total_indices = HashMap::new();
+        let first_order = HashMap::new();
+        let total_indices = HashMap::new();
 
         let var_total = variance(&y_a);
 
@@ -404,9 +404,9 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             let param_name = self.get_parameter_name(&param);
 
             // Create sample where only this parameter varies
-            let mut y_ab_i = Vec::new();
+            let y_ab_i = Vec::new();
             for i in 0..num_samples {
-                let mut params_ab_i = sample_a[i].clone();
+                let params_ab_i = sample_a[i].clone();
                 params_ab_i.insert(param_name.clone(), sample_b[i][&param_name]);
 
                 let result = self.evaluate_configuration(problem, &params_ab_i)?;
@@ -431,7 +431,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         };
 
         // Convert to sensitivity results
-        let mut sensitivities = HashMap::new();
+        let sensitivities = HashMap::new();
         for param in self.parameters.clone() {
             let param_name = self.get_parameter_name(&param);
             sensitivities.insert(
@@ -473,7 +473,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         let samples = self.generate_latin_hypercube_samples(num_samples)?;
 
         // Evaluate samples
-        let mut results = Vec::new();
+        let results = Vec::new();
         for sample in &samples {
             let result = self.evaluate_configuration(problem, sample)?;
             results.push((sample.clone(), result.best_objective));
@@ -513,7 +513,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         let design = self.generate_factorial_design(levels_per_factor)?;
 
         // Evaluate all combinations
-        let mut results = Vec::new();
+        let results = Vec::new();
         for config in &design {
             let result = self.evaluate_configuration(problem, config)?;
             results.push((config.clone(), result.best_objective));
@@ -524,7 +524,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             self.analyze_factorial_results(&results, levels_per_factor)?;
 
         // Convert to sensitivity results
-        let mut sensitivities = HashMap::new();
+        let sensitivities = HashMap::new();
         for (param_name, effect) in &main_effects {
             sensitivities.insert(
                 param_name.clone(),
@@ -626,7 +626,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
 
     /// Get default parameters
     fn get_default_parameters(&self) -> HashMap<String, f64> {
-        let mut params = HashMap::new();
+        let params = HashMap::new();
 
         for param in self.parameters.clone() {
             let name = self.get_parameter_name(&param);
@@ -643,7 +643,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     }
 
     /// Apply parameters to sampler
-    fn apply_parameters(&mut self, params: &HashMap<String, f64>) -> Result<(), Box<dyn Error>> {
+    fn apply_parameters(&mut self, _params: &HashMap<String, f64>) -> Result<(), Box<dyn Error>> {
         // This would need to be implemented based on the specific sampler
         // For now, we assume parameters are applied externally
         Ok(())
@@ -737,7 +737,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         &self,
         response_data: &HashMap<String, Vec<(f64, f64)>>,
     ) -> HashMap<String, f64> {
-        let mut optimal = HashMap::new();
+        let optimal = HashMap::new();
 
         for (param_name, curve) in response_data {
             if let Some((opt_val, _)) = curve.iter().min_by(|a, b| a.1.partial_cmp(&b.1).unwrap()) {
@@ -762,21 +762,21 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     ) -> Result<(Vec<HashMap<String, f64>>, Vec<HashMap<String, f64>>), Box<dyn Error>> {
         // Simplified implementation using random sampling
         use rand::prelude::*;
-        let mut rng = thread_rng();
+        let rng = rng();
 
-        let mut sample_a = Vec::new();
-        let mut sample_b = Vec::new();
+        let sample_a = Vec::new();
+        let sample_b = Vec::new();
 
         for _ in 0..num_samples {
-            let mut params_a = HashMap::new();
-            let mut params_b = HashMap::new();
+            let params_a = HashMap::new();
+            let params_b = HashMap::new();
 
             for param in self.parameters.clone() {
                 let name = self.get_parameter_name(&param);
                 let (min_val, max_val) = self.get_parameter_range(&param);
 
-                params_a.insert(name.clone(), rng.gen_range(min_val..max_val));
-                params_b.insert(name, rng.gen_range(min_val..max_val));
+                params_a.insert(name.clone(), rng.random_range(min_val..max_val));
+                params_b.insert(name, rng.random_range(min_val..max_val));
             }
 
             sample_a.push(params_a);
@@ -857,9 +857,9 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     ) -> Result<Vec<HashMap<String, f64>>, Box<dyn Error>> {
         // Simplified LHS implementation
         use rand::prelude::*;
-        let mut rng = thread_rng();
+        let rng = rng();
 
-        let mut samples = Vec::new();
+        let samples = Vec::new();
         let n_params = self.parameters.len();
 
         // Create permutations for each parameter
@@ -872,7 +872,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
 
         // Generate samples
         for i in 0..num_samples {
-            let mut sample = HashMap::new();
+            let sample = HashMap::new();
 
             for (j, param) in self.parameters.iter().enumerate() {
                 let name = self.get_parameter_name(&param);
@@ -880,7 +880,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
 
                 let level = permutations[j][i];
                 let value = min_val
-                    + (level as f64 + rng.gen::<f64>()) / num_samples as f64 * (max_val - min_val);
+                    + (level as f64 + rng.random::<f64>()) / num_samples as f64 * (max_val - min_val);
 
                 sample.insert(name, value);
             }
@@ -896,7 +896,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         results: &[(HashMap<String, f64>, f64)],
     ) -> Result<HashMap<String, ParameterSensitivity>, Box<dyn Error>> {
         // Simplified linear regression
-        let mut sensitivities = HashMap::new();
+        let sensitivities = HashMap::new();
 
         for param in self.parameters.clone() {
             let param_name = self.get_parameter_name(&param);
@@ -961,11 +961,11 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         let n_params = self.parameters.len();
         let total_combinations = levels_per_factor.pow(n_params as u32);
 
-        let mut design = Vec::new();
+        let design = Vec::new();
 
         for i in 0..total_combinations {
-            let mut config = HashMap::new();
-            let mut idx = i;
+            let config = HashMap::new();
+            let idx = i;
 
             for param in self.parameters.clone() {
                 let name = self.get_parameter_name(&param);
@@ -995,8 +995,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         levels_per_factor: usize,
     ) -> Result<(HashMap<String, f64>, HashMap<(String, String), f64>), Box<dyn Error>> {
         // Simplified factorial analysis
-        let mut main_effects = HashMap::new();
-        let mut interaction_effects = HashMap::new();
+        let main_effects = HashMap::new();
+        let interaction_effects = HashMap::new();
 
         // Compute main effects
         for param in self.parameters.clone() {
@@ -1065,12 +1065,12 @@ pub mod visualization {
 
     /// Plot sensitivity tornado chart
     pub fn plot_tornado_chart(
-        results: &SensitivityResults,
-        output_path: &str,
+        _results: &SensitivityResults,
+        _output_path: &str,
     ) -> Result<(), Box<dyn Error>> {
         #[cfg(feature = "scirs")]
         {
-            let mut plot = Plot::new();
+            let plot = Plot::new();
 
             // Sort parameters by sensitivity
             let mut params: Vec<_> = results.main_effects.iter().collect();
@@ -1092,12 +1092,12 @@ pub mod visualization {
 
     /// Plot response curves
     pub fn plot_response_curves(
-        results: &SensitivityResults,
-        output_path: &str,
+        _results: &SensitivityResults,
+        _output_path: &str,
     ) -> Result<(), Box<dyn Error>> {
         #[cfg(feature = "scirs")]
         {
-            let mut plot = Plot::new();
+            let plot = Plot::new();
 
             for (param_name, sensitivity) in &results.sensitivities {
                 if !sensitivity.response_curve.is_empty() {

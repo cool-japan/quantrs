@@ -335,7 +335,7 @@ pub struct FusionOperation {
 impl FusionOperationExecutor {
     /// Create a new fusion operation executor
     pub fn new(anyon_type: NonAbelianAnyonType, fusion_rules: FusionRuleSet) -> Self {
-        let f_calculator = FSymbolCalculator::new(anyon_type, fusion_rules.clone());
+        let f_calculator = FSymbolCalculator::new(anyon_type.clone(), fusion_rules.clone());
 
         Self {
             anyon_type,

@@ -117,7 +117,7 @@ pub fn compile_to_qubo(ast: &AST, options: &CompilerOptions) -> Result<Array2<f6
             objective,
             constraints,
         } => {
-            let mut compiler = Compiler::new(options.clone());
+            let compiler = Compiler::new(options.clone());
 
             // Process declarations
             for decl in declarations {
@@ -125,7 +125,7 @@ pub fn compile_to_qubo(ast: &AST, options: &CompilerOptions) -> Result<Array2<f6
             }
 
             // Build QUBO from objective
-            let mut qubo = compiler.build_objective_qubo(objective)?;
+            let qubo = compiler.build_objective_qubo(objective)?;
 
             // Add constraint penalties
             for constraint in constraints {
@@ -164,9 +164,9 @@ impl Compiler {
         match decl {
             Declaration::Variable {
                 name,
-                var_type,
-                domain,
-                attributes,
+                var_type: _,
+                domain: _,
+                attributes: _,
             } => {
                 // For now, assume all variables are binary
                 self.registry
@@ -183,7 +183,7 @@ impl Compiler {
                     .insert(name.clone(), Value::Array(elements.clone()));
                 Ok(())
             }
-            Declaration::Function { name, params, body } => {
+            Declaration::Function { name, params: _, body: _ } => {
                 // Store function definition for later expansion
                 // For now, treat as a complex parameter
                 self.parameters.insert(
@@ -197,7 +197,7 @@ impl Compiler {
 
     fn build_objective_qubo(&mut self, objective: &Objective) -> Result<Array2<f64>, CompileError> {
         let num_vars = self.registry.num_vars;
-        let mut qubo = Array2::zeros((num_vars, num_vars));
+        let qubo = Array2::zeros((num_vars, num_vars));
 
         match objective {
             Objective::Minimize(expr) => {
@@ -280,7 +280,7 @@ impl Compiler {
                     }
                 }
             }
-            Expression::Literal(Value::Number(n)) => {
+            Expression::Literal(Value::Number(_)) => {
                 // Constants don't affect the optimization, but we could track them
                 // for the objective value offset
             }
@@ -309,13 +309,13 @@ impl Compiler {
                             for (i, element) in elements.iter().enumerate() {
                                 // Create substituted expression
                                 let substituted_expr = {
-                                    let mut compiler = self.clone();
+                                    let compiler = self.clone();
                                     compiler.substitute_variable_in_expression(
                                         expression, var_name, element, i,
                                     )?
                                 };
-                                let mut qubo_mut = qubo.clone();
-                                let mut compiler = self.clone();
+                                let qubo_mut = qubo.clone();
+                                let compiler = self.clone();
                                 compiler.add_expression_to_qubo(
                                     &mut qubo_mut,
                                     &substituted_expr,
@@ -327,7 +327,7 @@ impl Compiler {
                     }
                     AggregationOp::Product => {
                         // Product expansion (multiply all terms)
-                        let mut product_expr = Expression::Literal(Value::Number(1.0));
+                        let product_expr = Expression::Literal(Value::Number(1.0));
                         for (var_name, set_name) in variables {
                             // Clone the elements to avoid borrowing conflicts
                             let elements = if let Some(Value::Array(elements)) =
@@ -340,7 +340,7 @@ impl Compiler {
 
                             for (i, element) in elements.iter().enumerate() {
                                 let substituted_expr = {
-                                    let mut compiler = self.clone();
+                                    let compiler = self.clone();
                                     compiler.substitute_variable_in_expression(
                                         expression, var_name, element, i,
                                     )?
@@ -352,8 +352,8 @@ impl Compiler {
                                 };
                             }
                         }
-                        let mut qubo_mut = qubo.clone();
-                        let mut compiler = self.clone();
+                        let qubo_mut = qubo.clone();
+                        let compiler = self.clone();
                         compiler.add_expression_to_qubo(
                             &mut qubo_mut,
                             &product_expr,
@@ -454,7 +454,7 @@ impl Compiler {
                     ComparisonOp::LessEqual => {
                         // For a <= b, add slack variable: a + s = b, where s >= 0
                         let slack_name = format!("slack_{}", self.registry.num_vars);
-                        let slack_idx = self
+                        let _slack_idx = self
                             .registry
                             .register_variable(&slack_name, VariableDomain::Binary);
 
@@ -475,7 +475,7 @@ impl Compiler {
                     ComparisonOp::GreaterEqual => {
                         // For a >= b, equivalent to b <= a
                         let slack_name = format!("slack_{}", self.registry.num_vars);
-                        let slack_idx = self
+                        let _slack_idx = self
                             .registry
                             .register_variable(&slack_name, VariableDomain::Binary);
 

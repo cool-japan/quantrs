@@ -130,15 +130,15 @@ fn create_folding_model(
     lattice_size: usize,
 ) -> Result<Model, Box<dyn std::error::Error>> {
     let n = protein.len();
-    let mut model = Model::new();
+    let model = Model::new();
 
     // Binary variables: x_{i,pos} = 1 if residue i is at position pos
-    let mut position_vars = HashMap::new();
+    let position_vars = HashMap::new();
 
     // Generate all valid lattice positions
     let positions: Vec<(i32, i32, i32)> = match lattice {
         LatticeType::Square2D | LatticeType::Triangular2D => {
-            let mut pos = Vec::new();
+            let pos = Vec::new();
             for x in 0..lattice_size as i32 {
                 for y in 0..lattice_size as i32 {
                     pos.push((x, y, 0));
@@ -147,7 +147,7 @@ fn create_folding_model(
             pos
         }
         LatticeType::Cubic3D => {
-            let mut pos = Vec::new();
+            let pos = Vec::new();
             for x in 0..lattice_size as i32 {
                 for y in 0..lattice_size as i32 {
                     for z in 0..lattice_size as i32 {
@@ -169,7 +169,7 @@ fn create_folding_model(
 
     // Constraint 1: Each residue must be at exactly one position
     for i in 0..n {
-        let mut pos_sum = Vec::new();
+        let pos_sum = Vec::new();
         for idx in 0..positions.len() {
             pos_sum.push(position_vars[&(i, idx)].clone());
         }
@@ -178,7 +178,7 @@ fn create_folding_model(
 
     // Constraint 2: Each position can have at most one residue
     for idx in 0..positions.len() {
-        let mut residue_sum = Vec::new();
+        let residue_sum = Vec::new();
         for i in 0..n {
             residue_sum.push(position_vars[&(i, idx)].clone());
         }
@@ -190,7 +190,7 @@ fn create_folding_model(
 
     for i in 0..n - 1 {
         // Create auxiliary variables for valid sequential placements
-        let mut valid_pairs = Vec::new();
+        let valid_pairs = Vec::new();
 
         for (idx1, &pos1) in positions.iter().enumerate() {
             for &(dx, dy, dz) in &neighbors {
@@ -214,7 +214,7 @@ fn create_folding_model(
     }
 
     // Objective: Minimize energy (maximize H-H contacts)
-    let mut energy_expr = SimpleExpr::constant(0.0);
+    let energy_expr = SimpleExpr::constant(0.0);
 
     // For each pair of non-sequential hydrophobic residues
     for i in 0..n {
@@ -260,7 +260,7 @@ fn extract_conformation(
     // Generate positions again (same as in model creation)
     let positions: Vec<(i32, i32, i32)> = match lattice {
         LatticeType::Square2D | LatticeType::Triangular2D => {
-            let mut pos = Vec::new();
+            let pos = Vec::new();
             for x in 0..lattice_size as i32 {
                 for y in 0..lattice_size as i32 {
                     pos.push((x, y, 0));
@@ -269,7 +269,7 @@ fn extract_conformation(
             pos
         }
         LatticeType::Cubic3D => {
-            let mut pos = Vec::new();
+            let pos = Vec::new();
             for x in 0..lattice_size as i32 {
                 for y in 0..lattice_size as i32 {
                     for z in 0..lattice_size as i32 {
@@ -282,7 +282,7 @@ fn extract_conformation(
     };
 
     for i in 0..n {
-        let mut found = false;
+        let found = false;
         for (idx, &pos) in positions.iter().enumerate() {
             let var_name = format!("x_{}_{}_{}_{}", i, pos.0, pos.1, pos.2);
             if solution
@@ -340,7 +340,7 @@ fn calculate_energy(
 ) -> f64 {
     let n = protein.len();
     let neighbors = lattice.neighbors();
-    let mut energy = 0.0;
+    let energy = 0.0;
 
     // Calculate H-H contacts
     for i in 0..n {
@@ -367,7 +367,7 @@ fn calculate_radius_of_gyration(conformation: &[(i32, i32, i32)]) -> f64 {
     let n = conformation.len() as f64;
 
     // Calculate center of mass
-    let mut center = (0.0, 0.0, 0.0);
+    let center = (0.0, 0.0, 0.0);
     for &(x, y, z) in conformation {
         center.0 += x as f64 / n;
         center.1 += y as f64 / n;
@@ -375,7 +375,7 @@ fn calculate_radius_of_gyration(conformation: &[(i32, i32, i32)]) -> f64 {
     }
 
     // Calculate radius of gyration
-    let mut rg2 = 0.0;
+    let rg2 = 0.0;
     for &(x, y, z) in conformation {
         let dx = x as f64 - center.0;
         let dy = y as f64 - center.1;
@@ -430,7 +430,7 @@ fn run_folding_experiment(
         penalty_type: PenaltyType::Quadratic,
     };
 
-    let mut penalty_optimizer = PenaltyOptimizer::new(penalty_config);
+    let penalty_optimizer = PenaltyOptimizer::new(penalty_config);
     let compiled = model.compile()?;
     let qubo = compiled.to_qubo();
 
@@ -446,12 +446,12 @@ fn run_folding_experiment(
         ..Default::default()
     };
 
-    let mut adaptive_optimizer = AdaptiveOptimizer::new(adaptive_config);
+    let adaptive_optimizer = AdaptiveOptimizer::new(adaptive_config);
 
     // Convert QUBO to matrix format
     let n_vars = qubo.num_variables;
-    let mut matrix = Array2::zeros((n_vars, n_vars));
-    let mut var_map = HashMap::new();
+    let matrix = Array2::zeros((n_vars, n_vars));
+    let var_map = HashMap::new();
 
     for i in 0..n_vars {
         var_map.insert(format!("x_{}", i), i);
@@ -478,9 +478,9 @@ fn run_folding_experiment(
     println!("Optimization time: {:.2}s", elapsed.as_secs_f64());
 
     // Analyze solutions
-    let mut valid_conformations = Vec::new();
-    let mut best_energy = f64::INFINITY;
-    let mut best_conformation = None;
+    let valid_conformations = Vec::new();
+    let best_energy = f64::INFINITY;
+    let best_conformation = None;
 
     for sample in &samples {
         if let Some(conformation) = extract_conformation(sample, protein, lattice_size, lattice) {
@@ -509,7 +509,7 @@ fn run_folding_experiment(
         println!("  Radius of gyration: {:.2}", rg);
 
         // Count H-H contacts
-        let mut hh_contacts = 0;
+        let hh_contacts = 0;
         for (i, &pos1) in conformation.iter().enumerate() {
             for (j, &pos2) in conformation.iter().enumerate().skip(i + 2) {
                 if protein.sequence[i] == AminoAcid::Hydrophobic
@@ -548,7 +548,7 @@ fn run_folding_experiment(
 
         // Generate contact map
         let n = protein.len();
-        let mut contact_map = Array2::zeros((n, n));
+        let contact_map = Array2::zeros((n, n));
 
         for (i, &pos1) in conformation.iter().enumerate() {
             for (j, &pos2) in conformation.iter().enumerate() {
@@ -601,7 +601,7 @@ fn save_contact_map(
 ) -> Result<(), Box<dyn std::error::Error>> {
     use std::io::Write;
 
-    let mut csv = String::new();
+    let csv = String::new();
     let n = contact_map.nrows();
 
     // Header
@@ -694,7 +694,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("\nAnalyzing folding pathways...");
 
         // Run multiple independent folding simulations
-        let mut pathways = Vec::new();
+        let pathways = Vec::new();
 
         for run in 0..5 {
             println!("\n  Run {}", run + 1);
@@ -706,8 +706,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // Convert QUBO to matrix format
             let n_vars = qubo.num_variables;
-            let mut matrix = Array2::zeros((n_vars, n_vars));
-            let mut var_map = HashMap::new();
+            let matrix = Array2::zeros((n_vars, n_vars));
+            let var_map = HashMap::new();
 
             for i in 0..n_vars {
                 var_map.insert(format!("x_{}", i), i);
@@ -729,7 +729,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let samples = sampler.run_qubo(&(matrix, var_map), 100)?;
 
             // Extract pathway (sequence of conformations)
-            let mut pathway = Vec::new();
+            let pathway = Vec::new();
             for sample in samples.iter().step_by(10) {
                 if let Some(conf) = extract_conformation(sample, &protein, 6, LatticeType::Square2D)
                 {

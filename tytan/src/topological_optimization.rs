@@ -7,7 +7,7 @@
 use ndarray::{Array2, Array3};
 use num_complex::Complex64;
 use rand::prelude::*;
-use rand::thread_rng;
+use rand::rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -88,11 +88,11 @@ impl TopologicalOptimizer {
         cost_function: &dyn Fn(&[bool]) -> f64,
     ) -> Result<TopologicalResult, String> {
         let mut best_state = vec![false; self.n_anyons];
-        let mut best_cost = f64::INFINITY;
-        let mut braid_history = Vec::new();
+        let best_cost = f64::INFINITY;
+        let braid_history = Vec::new();
 
         // Initialize anyonic state
-        let mut anyon_state = self.initialize_anyons()?;
+        let anyon_state = self.initialize_anyons()?;
 
         // Perform braiding optimization
         for iteration in 0..self.braid_depth {
@@ -142,8 +142,8 @@ impl TopologicalOptimizer {
 
     /// Generate braiding sequence
     fn generate_braid_sequence(&self, iteration: usize) -> Vec<BraidOperation> {
-        let mut rng = thread_rng();
-        let mut sequence = Vec::new();
+        let rng = rng();
+        let sequence = Vec::new();
 
         // Deterministic part based on iteration
         for i in 0..self.n_anyons - 1 {
@@ -154,13 +154,13 @@ impl TopologicalOptimizer {
 
         // Random exploration
         for _ in 0..3 {
-            let i = rng.gen_range(0..self.n_anyons - 1);
+            let i = rng.random_range(0..self.n_anyons - 1);
             sequence.push(BraidOperation::Exchange(i, i + 1));
         }
 
         // Fusion operations
-        if self.n_anyons > 2 && rng.gen_bool(0.3) {
-            let i = rng.gen_range(0..self.n_anyons - 1);
+        if self.n_anyons > 2 && rng.random_bool(0.3) {
+            let i = rng.random_range(0..self.n_anyons - 1);
             sequence.push(BraidOperation::Fusion(i, i + 1));
         }
 
@@ -173,7 +173,7 @@ impl TopologicalOptimizer {
         state: &AnyonState,
         sequence: &[BraidOperation],
     ) -> Result<AnyonState, String> {
-        let mut current_state = state.clone();
+        let current_state = state.clone();
 
         for operation in sequence {
             current_state = match operation {
@@ -200,13 +200,13 @@ impl TopologicalOptimizer {
     }
 
     /// Apply fusion operation
-    fn apply_fusion(&self, state: &AnyonState, i: usize, j: usize) -> Result<AnyonState, String> {
+    fn apply_fusion(&self, state: &AnyonState, _i: usize, _j: usize) -> Result<AnyonState, String> {
         // Simplified fusion
         Ok(state.clone())
     }
 
     /// Apply creation operation
-    fn apply_creation(&self, state: &AnyonState, i: usize) -> Result<AnyonState, String> {
+    fn apply_creation(&self, state: &AnyonState, _i: usize) -> Result<AnyonState, String> {
         // Simplified creation
         Ok(state.clone())
     }
@@ -278,7 +278,7 @@ impl FibonacciState {
 
     fn generate_fusion_basis(n: usize) -> Vec<Vec<usize>> {
         // Generate valid fusion sequences
-        let mut basis = Vec::new();
+        let basis = Vec::new();
 
         // Simplified: just enumerate some valid configurations
         for i in 0..(1 << n) {
@@ -292,7 +292,7 @@ impl FibonacciState {
     }
 
     fn braid(&self, i: usize, j: usize) -> Result<Self, String> {
-        let mut new_state = self.clone();
+        let new_state = self.clone();
 
         // Apply R-matrix for Fibonacci anyons
         let theta = 2.0 * PI / 5.0; // Pentagon equation solution
@@ -308,7 +308,7 @@ impl FibonacciState {
     }
 
     fn measure(&self) -> Result<Vec<bool>, String> {
-        let mut rng = thread_rng();
+        let rng = rng();
 
         // Sample from amplitude distribution
         let probabilities: Vec<f64> = self.amplitudes.iter().map(|a| a.norm_sqr()).collect();
@@ -317,8 +317,8 @@ impl FibonacciState {
         let normalized: Vec<f64> = probabilities.iter().map(|p| p / total_prob).collect();
 
         // Sample basis state
-        let mut cumsum = 0.0;
-        let r = rng.gen::<f64>();
+        let cumsum = 0.0;
+        let r = rng.random::<f64>();
 
         for (idx, &prob) in normalized.iter().enumerate() {
             cumsum += prob;
@@ -344,13 +344,13 @@ pub struct IsingAnyonState {
 
 impl IsingAnyonState {
     fn new(n: usize) -> Self {
-        let mut majorana_matrix = Array2::zeros((n, n));
+        let majorana_matrix = Array2::zeros((n, n));
 
         // Initialize with random couplings
-        let mut rng = thread_rng();
+        let rng = rng();
         for i in 0..n {
             for j in i + 1..n {
-                let coupling = rng.gen_range(-1.0..1.0);
+                let coupling = rng.random_range(-1.0..1.0);
                 majorana_matrix[[i, j]] = coupling;
                 majorana_matrix[[j, i]] = -coupling;
             }
@@ -364,7 +364,7 @@ impl IsingAnyonState {
     }
 
     fn braid(&self, i: usize, j: usize) -> Result<Self, String> {
-        let mut new_state = self.clone();
+        let new_state = self.clone();
 
         // Braiding Majoranas: γ_i → γ_j, γ_j → -γ_i
         let phase = Complex64::new(0.0, PI / 4.0).exp();
@@ -386,7 +386,7 @@ impl IsingAnyonState {
 
     fn measure(&self) -> Result<Vec<bool>, String> {
         // Measure fermion parity
-        let mut result = Vec::new();
+        let result = Vec::new();
 
         for i in 0..self.n / 2 {
             result.push(self.parity_sectors[i]);
@@ -401,15 +401,15 @@ impl IsingAnyonState {
     }
 
     fn parity_correct(&self) -> Result<Self, String> {
-        let mut corrected = self.clone();
+        let corrected = self.clone();
 
         // Check parity conservation
         let total_parity = self.parity_sectors.iter().filter(|&&p| p).count() % 2;
 
         if total_parity != 0 {
             // Flip a random parity sector to restore conservation
-            let mut rng = thread_rng();
-            let idx = rng.gen_range(0..self.parity_sectors.len());
+            let rng = rng();
+            let idx = rng.random_range(0..self.parity_sectors.len());
             corrected.parity_sectors[idx] = !corrected.parity_sectors[idx];
         }
 
@@ -433,7 +433,7 @@ impl GenericAnyonState {
     }
 
     fn braid(&self, i: usize, j: usize, rules: &FusionRules) -> Result<Self, String> {
-        let mut new_state = self.clone();
+        let new_state = self.clone();
 
         // Apply R-matrix from fusion rules
         let r_element = rules.r_matrix[[i.min(j), i.max(j)]];
@@ -446,7 +446,7 @@ impl GenericAnyonState {
     }
 
     fn measure(&self) -> Result<Vec<bool>, String> {
-        let mut rng = StdRng::seed_from_u64(42);
+        let rng = StdRng::seed_from_u64(42);
         let probabilities: Vec<f64> = self.state_vector.iter().map(|a| a.norm_sqr()).collect();
 
         let idx = weighted_sample(&probabilities, &mut rng);
@@ -458,7 +458,7 @@ impl GenericAnyonState {
 impl FusionRules {
     fn fibonacci_rules() -> Self {
         // Fibonacci anyon fusion rules: 1 × 1 = 0 + 1
-        let mut fusion_tensor = Array3::zeros((2, 2, 2));
+        let fusion_tensor = Array3::zeros((2, 2, 2));
         fusion_tensor[[0, 0, 0]] = 1.0; // 0 × 0 = 0
         fusion_tensor[[0, 1, 1]] = 1.0; // 0 × 1 = 1
         fusion_tensor[[1, 0, 1]] = 1.0; // 1 × 0 = 1
@@ -485,7 +485,7 @@ impl FusionRules {
 
     fn ising_rules() -> Self {
         // Ising anyon fusion rules
-        let mut fusion_tensor = Array3::zeros((3, 3, 3));
+        let fusion_tensor = Array3::zeros((3, 3, 3));
         fusion_tensor[[0, 0, 0]] = 1.0; // 1 × 1 = 1
         fusion_tensor[[0, 1, 1]] = 1.0; // 1 × σ = σ
         fusion_tensor[[0, 2, 2]] = 1.0; // 1 × ψ = ψ
@@ -513,7 +513,7 @@ impl FusionRules {
 
     fn default_rules() -> Self {
         // Create a 2x2x2 identity-like fusion tensor
-        let mut fusion_tensor = Array3::zeros((2, 2, 2));
+        let fusion_tensor = Array3::zeros((2, 2, 2));
         fusion_tensor[[0, 0, 0]] = 1.0; // 1 × 1 = 1
         fusion_tensor[[1, 1, 0]] = 1.0; // σ × σ = 1
 
@@ -626,10 +626,10 @@ impl PersistentHomology {
         &self,
         samples: &[(Vec<bool>, f64)],
     ) -> Result<Filtration, String> {
-        let mut simplices = Vec::new();
+        let simplices = Vec::new();
 
         // Sort samples by cost
-        let mut sorted_samples = samples.to_vec();
+        let sorted_samples = samples.to_vec();
         sorted_samples.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
 
         // Add vertices
@@ -660,11 +660,11 @@ impl PersistentHomology {
 
     /// Build Vietoris-Rips complex
     fn build_vietoris_rips(&self, samples: &[(Vec<bool>, f64)]) -> Result<Filtration, String> {
-        let mut simplices = Vec::new();
+        let simplices = Vec::new();
         let n = samples.len();
 
         // Compute pairwise distances
-        let mut distances = Array2::zeros((n, n));
+        let distances = Array2::zeros((n, n));
         for i in 0..n {
             for j in i + 1..n {
                 let dist = hamming_distance(&samples[i].0, &samples[j].0) as f64;
@@ -718,7 +718,7 @@ impl PersistentHomology {
     /// Compute persistent homology
     fn compute_persistence(&self, filtration: &Filtration) -> Result<Vec<PersistencePair>, String> {
         // Simplified persistence computation
-        let mut pairs = Vec::new();
+        let pairs = Vec::new();
 
         // Group simplices by dimension
         let mut by_dimension: HashMap<usize, Vec<&Simplex>> = HashMap::new();
@@ -826,7 +826,7 @@ impl PersistentHomology {
         pairs: &[PersistencePair],
         samples: &[(Vec<bool>, f64)],
     ) -> Vec<OptimalRegion> {
-        let mut regions = Vec::new();
+        let regions = Vec::new();
 
         // Find persistent 0-dimensional features (connected components)
         let persistent_components: Vec<_> = pairs
@@ -919,8 +919,8 @@ fn hamming_distance(a: &[bool], b: &[bool]) -> usize {
 
 fn weighted_sample(weights: &[f64], rng: &mut StdRng) -> usize {
     let total: f64 = weights.iter().sum();
-    let mut cumsum = 0.0;
-    let r = rng.gen::<f64>() * total;
+    let cumsum = 0.0;
+    let r = rng.random::<f64>() * total;
 
     for (idx, &weight) in weights.iter().enumerate() {
         cumsum += weight;

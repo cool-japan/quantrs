@@ -231,7 +231,7 @@ impl Model {
     /// Compile the model to a CompiledModel
     pub fn compile(&self) -> CompileResult<CompiledModel> {
         // Build the final expression with penalty terms
-        let mut final_expr = self.objective.clone().unwrap_or_else(|| Expr::from(0));
+        let final_expr = self.objective.clone().unwrap_or_else(|| Expr::from(0));
 
         // Default penalty weight
         let penalty_weight = 10.0;
@@ -311,7 +311,7 @@ impl CompiledModel {
     pub fn to_qubo(&self) -> quantrs2_anneal::ising::QuboModel {
         use quantrs2_anneal::ising::QuboModel;
 
-        let mut qubo = QuboModel::new(self.var_map.len());
+        let qubo = QuboModel::new(self.var_map.len());
 
         // Set the offset
         qubo.offset = self.offset;
@@ -440,7 +440,7 @@ impl Model {
     pub fn compile(&self) -> CompileResult<CompiledModel> {
         // Build QUBO directly from constraints
         let mut qubo_terms: HashMap<(String, String), f64> = HashMap::new();
-        let mut offset = 0.0;
+        let offset = 0.0;
         let penalty_weight = 10.0;
 
         // Process objective if present
@@ -523,7 +523,7 @@ impl Model {
             .collect();
 
         let n = var_map.len();
-        let mut matrix = Array::zeros((n, n));
+        let matrix = Array::zeros((n, n));
 
         for ((v1, v2), coeff) in qubo_terms {
             let i = var_map[&v1];
@@ -643,7 +643,7 @@ impl CompiledModel {
     pub fn to_qubo(&self) -> quantrs2_anneal::ising::QuboModel {
         use quantrs2_anneal::ising::QuboModel;
 
-        let mut qubo = QuboModel::new(self.var_map.len());
+        let qubo = QuboModel::new(self.var_map.len());
 
         // Set the offset
         qubo.offset = self.offset;
@@ -841,7 +841,7 @@ fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
 
     // If it's a product (like x*y or x*x)
     if expr.is_mul() {
-        let mut total_degree = 0;
+        let total_degree = 0;
         for factor in expr.as_mul().unwrap() {
             total_degree += calc_highest_degree(&factor)?;
         }
@@ -850,7 +850,7 @@ fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
 
     // If it's a sum (like x + y)
     if expr.is_add() {
-        let mut max_degree = 0;
+        let max_degree = 0;
         for term in expr.as_add().unwrap() {
             let term_degree = calc_highest_degree(&term)?;
             max_degree = std::cmp::max(max_degree, term_degree);
@@ -904,13 +904,13 @@ fn replace_squared_terms(expr: &Expr) -> CompileResult<Expr> {
 
     // If it's a product (like x*y or x*x)
     if expr.is_mul() {
-        let mut new_terms = Vec::new();
+        let new_terms = Vec::new();
         for factor in expr.as_mul().unwrap() {
             new_terms.push(replace_squared_terms(&factor)?);
         }
 
         // Combine the terms back into a product
-        let mut result = Expr::from(1);
+        let result = Expr::from(1);
         for term in new_terms {
             result = result * term;
         }
@@ -919,13 +919,13 @@ fn replace_squared_terms(expr: &Expr) -> CompileResult<Expr> {
 
     // If it's a sum (like x + y)
     if expr.is_add() {
-        let mut new_terms = Vec::new();
+        let new_terms = Vec::new();
         for term in expr.as_add().unwrap() {
             new_terms.push(replace_squared_terms(&term)?);
         }
 
         // Combine the terms back into a sum
-        let mut result = Expr::from(0);
+        let result = Expr::from(0);
         for term in new_terms {
             result = result + term;
         }
@@ -939,8 +939,8 @@ fn replace_squared_terms(expr: &Expr) -> CompileResult<Expr> {
 // Helper function to extract coefficients and variables from the expression
 #[cfg(feature = "dwave")]
 fn extract_coefficients(expr: &Expr) -> CompileResult<(HashMap<Vec<String>, f64>, f64)> {
-    let mut coeffs = HashMap::new();
-    let mut offset = 0.0;
+    let coeffs = HashMap::new();
+    let offset = 0.0;
 
     // Process expression as a sum of terms
     if expr.is_add() {
@@ -974,7 +974,7 @@ fn extract_coefficients(expr: &Expr) -> CompileResult<(HashMap<Vec<String>, f64>
 // Helper function to extract coefficient and variables from a single term
 #[cfg(feature = "dwave")]
 fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>, f64>, f64)> {
-    let mut coeffs = HashMap::new();
+    let coeffs = HashMap::new();
 
     // If it's a number constant, it's an offset
     if term.is_number() {
@@ -999,8 +999,8 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
 
     // If it's a product of terms
     if term.is_mul() {
-        let mut coeff = 1.0;
-        let mut vars = Vec::new();
+        let coeff = 1.0;
+        let vars = Vec::new();
 
         for factor in term.as_mul().unwrap() {
             if factor.is_number() {
@@ -1061,7 +1061,7 @@ fn build_qubo_matrix(
     coeffs: &HashMap<Vec<String>, f64>,
 ) -> CompileResult<(Array<f64, ndarray::Ix2>, HashMap<String, usize>)> {
     // Collect all unique variable names
-    let mut all_vars = HashSet::new();
+    let all_vars = HashSet::new();
     for vars in coeffs.keys() {
         for var in vars {
             all_vars.insert(var.clone());
@@ -1083,7 +1083,7 @@ fn build_qubo_matrix(
     let n = var_map.len();
 
     // Create an empty matrix
-    let mut matrix = Array::zeros((n, n));
+    let matrix = Array::zeros((n, n));
 
     // Fill the matrix with coefficients
     for (vars, &coeff) in coeffs {
@@ -1128,7 +1128,7 @@ fn build_hobo_tensor(
     max_degree: usize,
 ) -> CompileResult<(Array<f64, ndarray::IxDyn>, HashMap<String, usize>)> {
     // Collect all unique variable names
-    let mut all_vars = HashSet::new();
+    let all_vars = HashSet::new();
     for vars in coeffs.keys() {
         for var in vars {
             all_vars.insert(var.clone());
@@ -1153,7 +1153,7 @@ fn build_hobo_tensor(
     let shape: Vec<usize> = vec![n; max_degree];
 
     // Create an empty tensor
-    let mut tensor = Array::zeros(ndarray::IxDyn(&shape));
+    let tensor = Array::zeros(ndarray::IxDyn(&shape));
 
     // Fill the tensor with coefficients
     for (vars, &coeff) in coeffs {

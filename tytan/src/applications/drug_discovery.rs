@@ -297,7 +297,7 @@ impl MolecularDesignOptimizer {
 
     /// Default scoring weights
     fn default_weights() -> HashMap<String, f64> {
-        let mut weights = HashMap::new();
+        let weights = HashMap::new();
         weights.insert("mw_penalty".to_string(), -0.1);
         weights.insert("logp_penalty".to_string(), -0.2);
         weights.insert("hbd_penalty".to_string(), -0.1);
@@ -347,8 +347,8 @@ impl MolecularDesignOptimizer {
         let fragments = self.fragment_library.fragments.len();
         let n_vars = positions * fragments;
 
-        let mut qubo = Array2::zeros((n_vars, n_vars));
-        let mut var_map = HashMap::new();
+        let qubo = Array2::zeros((n_vars, n_vars));
+        let var_map = HashMap::new();
 
         // Create variable mapping
         for p in 0..positions {
@@ -386,8 +386,8 @@ impl MolecularDesignOptimizer {
         let connection_vars = max_positions * (max_positions - 1) / 2;
         let n_vars = position_vars + connection_vars;
 
-        let mut qubo = Array2::zeros((n_vars, n_vars));
-        let mut var_map = HashMap::new();
+        let qubo = Array2::zeros((n_vars, n_vars));
+        let var_map = HashMap::new();
 
         // Position variables
         for i in 0..max_positions {
@@ -398,7 +398,7 @@ impl MolecularDesignOptimizer {
         }
 
         // Connection variables
-        let mut var_idx = position_vars;
+        let var_idx = position_vars;
         for i in 0..max_positions {
             for j in i + 1..max_positions {
                 let var_name = format!("y_{}_{}", i, j);
@@ -703,7 +703,7 @@ impl MolecularDesignOptimizer {
                 let frag_var = format!("x_{}_{}", f, i);
                 if let Some(&frag_idx) = var_map.get(&frag_var) {
                     // Must have at least one connection if fragment present
-                    let mut has_connection = false;
+                    let _has_connection = false;
                     for j in 0..max_positions {
                         if i != j {
                             let conn_var = if i < j {
@@ -716,7 +716,7 @@ impl MolecularDesignOptimizer {
                                 // Fragment at i but no connections is penalized
                                 qubo[[frag_idx, frag_idx]] += penalty;
                                 qubo[[frag_idx, conn_idx]] -= penalty;
-                                has_connection = true;
+                                _has_connection = true;
                             }
                         }
                     }
@@ -784,7 +784,7 @@ impl MolecularDesignOptimizer {
         let penalty = 10.0;
 
         // Approximate molecular weight constraint
-        if let Some((min_mw, max_mw)) = self.target_properties.molecular_weight {
+        if let Some((_min_mw, max_mw)) = self.target_properties.molecular_weight {
             for i in 0..max_positions {
                 for f in 0..self.fragment_library.fragments.len() {
                     let var_name = format!("x_{}_{}", f, i);
@@ -834,8 +834,8 @@ impl MolecularDesignOptimizer {
         solution: &HashMap<String, bool>,
         core: &MolecularFragment,
     ) -> Result<DesignedMolecule, String> {
-        let mut fragments = vec![core.clone()];
-        let mut connections = Vec::new();
+        let fragments = vec![core.clone()];
+        let connections = Vec::new();
 
         // Find attached fragments
         for (var_name, &value) in solution {
@@ -874,7 +874,7 @@ impl MolecularDesignOptimizer {
     /// Decode de novo solution
     fn decode_de_novo(&self, solution: &HashMap<String, bool>) -> Result<DesignedMolecule, String> {
         let mut fragment_positions: HashMap<usize, usize> = HashMap::new();
-        let mut connections = Vec::new();
+        let connections = Vec::new();
 
         // Find fragment positions
         for (var_name, &value) in solution {
@@ -928,7 +928,7 @@ impl MolecularDesignOptimizer {
 
     /// Calculate molecular properties
     fn calculate_properties(&self, fragments: &[MolecularFragment]) -> MolecularProperties {
-        let mut props = MolecularProperties::default();
+        let props = MolecularProperties::default();
 
         for fragment in fragments {
             props.molecular_weight += fragment.properties.mw_contribution;
@@ -943,10 +943,10 @@ impl MolecularDesignOptimizer {
     }
 
     /// Calculate molecule score
-    fn calculate_score(&self, fragments: &[MolecularFragment], connections: &[Connection]) -> f64 {
+    fn calculate_score(&self, fragments: &[MolecularFragment], _connections: &[Connection]) -> f64 {
         match &self.scoring_function {
             ScoringFunction::Additive { weights } => {
-                let mut score = 0.0;
+                let score = 0.0;
                 let props = self.calculate_properties(fragments);
 
                 // Property penalties
@@ -1305,7 +1305,7 @@ mod tests {
             custom_descriptors: HashMap::new(),
         };
 
-        let mut fragments = Vec::new();
+        let fragments = Vec::new();
         for i in 0..5 {
             fragments.push(MolecularFragment {
                 id: i,
@@ -1431,7 +1431,7 @@ mod tests {
                 reaction_templates: vec![],
             },
             fragment_scores: {
-                let mut scores = HashMap::new();
+                let scores = HashMap::new();
                 scores.insert(0, 1.0);
                 scores
             },
@@ -1444,7 +1444,7 @@ mod tests {
         let result = optimizer.build_qubo();
         assert!(result.is_ok());
 
-        let (qubo, var_map) = result.unwrap();
+        let (_qubo, var_map) = result.unwrap();
         assert!(var_map.len() > 0);
     }
 }

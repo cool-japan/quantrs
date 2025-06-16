@@ -1851,6 +1851,71 @@ impl QuantumMLFramework {
     pub fn get_training_history(&self) -> &[QMLTrainingResult] {
         &self.training_history
     }
+
+    /// Get layers reference
+    pub fn get_layers(&self) -> &[Box<dyn QMLLayer>] {
+        &self.layers
+    }
+
+    /// Get config reference
+    pub fn get_config(&self) -> &QMLConfig {
+        &self.config
+    }
+
+    /// Encode amplitude (public version)
+    pub fn encode_amplitude_public(&self, input: &Array1<f64>) -> Result<Array1<Complex64>> {
+        self.encode_amplitude(input)
+    }
+
+    /// Encode angle (public version)
+    pub fn encode_angle_public(&self, input: &Array1<f64>) -> Result<Array1<Complex64>> {
+        self.encode_angle(input)
+    }
+
+    /// Encode basis (public version)
+    pub fn encode_basis_public(&self, input: &Array1<f64>) -> Result<Array1<Complex64>> {
+        self.encode_basis(input)
+    }
+
+    /// Encode quantum feature map (public version)
+    pub fn encode_quantum_feature_map_public(
+        &self,
+        input: &Array1<f64>,
+    ) -> Result<Array1<Complex64>> {
+        self.encode_quantum_feature_map(input)
+    }
+
+    /// Measure Pauli Z expectation (public version)
+    pub fn measure_pauli_z_expectation_public(
+        &self,
+        state: &Array1<Complex64>,
+        qubit: usize,
+    ) -> Result<f64> {
+        self.measure_pauli_z_expectation(state, qubit)
+    }
+
+    /// Get current learning rate (public version)
+    pub fn get_current_learning_rate_public(&self, epoch: usize) -> f64 {
+        self.get_current_learning_rate(epoch)
+    }
+
+    /// Compute loss (public version)
+    pub fn compute_loss_public(
+        &self,
+        prediction: &Array1<f64>,
+        target: &Array1<f64>,
+    ) -> Result<f64> {
+        self.compute_loss(prediction, target)
+    }
+
+    /// Compute loss gradient (public version)
+    pub fn compute_loss_gradient_public(
+        &self,
+        prediction: &Array1<f64>,
+        target: &Array1<f64>,
+    ) -> Result<Array1<f64>> {
+        self.compute_loss_gradient(prediction, target)
+    }
 }
 
 /// Trait for QML layers
@@ -2694,6 +2759,11 @@ impl QuantumLSTMLayer {
 
         Ok(new_state)
     }
+
+    /// Get LSTM gates reference
+    pub fn get_lstm_gates(&self) -> &[LSTMGate] {
+        &self.lstm_gates
+    }
 }
 
 /// Quantum Attention Layer
@@ -2847,6 +2917,11 @@ impl QuantumAttentionLayer {
         }
 
         Ok(new_state)
+    }
+
+    /// Get attention structure reference
+    pub fn get_attention_structure(&self) -> &[AttentionHead] {
+        &self.attention_structure
     }
 }
 

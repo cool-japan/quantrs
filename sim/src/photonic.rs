@@ -740,7 +740,6 @@ impl PhotonicSimulator {
     }
 
     /// Helper functions
-
     fn calculate_fock_dimension(&self) -> Result<usize> {
         // Calculate dimension of truncated Fock space
         let n = self.config.max_photon_number;

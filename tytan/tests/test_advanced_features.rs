@@ -27,11 +27,11 @@ mod cim_tests {
             .with_evolution_time(5.0)
             .with_seed(42);
 
-        let mut qubo = Array2::zeros((3, 3));
+        let qubo = Array2::zeros((3, 3));
         qubo[[0, 1]] = -1.0;
         qubo[[1, 0]] = -1.0;
 
-        let mut var_map = HashMap::new();
+        let var_map = HashMap::new();
         for i in 0..3 {
             var_map.insert(format!("x{}", i), i);
         }
@@ -56,7 +56,7 @@ mod cim_tests {
     #[test]
     fn test_cim_error_correction() {
         let n = 4;
-        let mut check_matrix = Array2::from_elem((2, n), false);
+        let check_matrix = Array2::from_elem((2, n), false);
         check_matrix[[0, 0]] = true;
         check_matrix[[0, 1]] = true;
         check_matrix[[1, 2]] = true;
@@ -101,7 +101,7 @@ mod decomposition_tests {
     #[test]
     fn test_graph_partitioner() {
         let size = 8;
-        let mut qubo = Array2::zeros((size, size));
+        let qubo = Array2::zeros((size, size));
 
         // Create chain structure
         for i in 0..size - 1 {
@@ -124,7 +124,7 @@ mod decomposition_tests {
     #[test]
     fn test_hierarchical_solver() {
         let size = 16;
-        let mut qubo = Array2::zeros((size, size));
+        let qubo = Array2::zeros((size, size));
 
         // Add structure
         for i in 0..size {
@@ -188,11 +188,11 @@ mod debugger_tests {
             verbosity: quantrs2_tytan::solution_debugger::VerbosityLevel::Normal,
         };
 
-        let mut debugger = SolutionDebugger::new(problem_info, config);
+        let debugger = SolutionDebugger::new(problem_info, config);
 
         let solution = Solution {
             assignments: {
-                let mut map = HashMap::new();
+                let map = HashMap::new();
                 map.insert("x".to_string(), true);
                 map.insert("y".to_string(), false);
                 map.insert("z".to_string(), true);
@@ -201,7 +201,7 @@ mod debugger_tests {
             energy: -2.0,
             quality_metrics: HashMap::new(),
             metadata: {
-                let mut map = HashMap::new();
+                let map = HashMap::new();
                 map.insert("solver".to_string(), "Test".to_string());
                 map
             },
@@ -218,12 +218,12 @@ mod debugger_tests {
     #[test]
     fn test_interactive_debugger() {
         let problem_info = create_test_problem_info();
-        let mut debugger = InteractiveDebugger::new(problem_info);
+        let debugger = InteractiveDebugger::new(problem_info);
 
         // Test loading solution
         let solution = Solution {
             assignments: {
-                let mut map = HashMap::new();
+                let map = HashMap::new();
                 map.insert("x".to_string(), true);
                 map.insert("y".to_string(), true);
                 map.insert("z".to_string(), false);
@@ -232,7 +232,7 @@ mod debugger_tests {
             energy: -1.0,
             quality_metrics: HashMap::new(),
             metadata: {
-                let mut map = HashMap::new();
+                let map = HashMap::new();
                 map.insert("solver".to_string(), "Test".to_string());
                 map
             },
@@ -257,7 +257,7 @@ mod debugger_tests {
 
     #[test]
     fn test_constraint_analyzer() {
-        let mut analyzer = ConstraintAnalyzer::new(1e-6);
+        let analyzer = ConstraintAnalyzer::new(1e-6);
 
         let constraint = ConstraintInfo {
             name: Some("test_one_hot".to_string()),
@@ -268,7 +268,7 @@ mod debugger_tests {
             description: Some("One hot constraint".to_string()),
         };
 
-        let mut solution = HashMap::new();
+        let solution = HashMap::new();
         solution.insert("a".to_string(), true);
         solution.insert("b".to_string(), false);
         solution.insert("c".to_string(), false);
@@ -284,13 +284,13 @@ mod debugger_tests {
     }
 
     fn create_test_problem_info() -> ProblemInfo {
-        let mut qubo = Array2::zeros((3, 3));
+        let qubo = Array2::zeros((3, 3));
         qubo[[0, 0]] = -1.0;
         qubo[[1, 1]] = -1.0;
         qubo[[0, 1]] = 2.0;
         qubo[[1, 0]] = 2.0;
 
-        let mut var_map = HashMap::new();
+        let var_map = HashMap::new();
         var_map.insert("x".to_string(), 0);
         var_map.insert("y".to_string(), 1);
         var_map.insert("z".to_string(), 2);
@@ -301,7 +301,7 @@ mod debugger_tests {
             num_variables: 3,
             var_map: var_map.clone(),
             reverse_var_map: {
-                let mut rev = HashMap::new();
+                let rev = HashMap::new();
                 for (k, v) in &var_map {
                     rev.insert(*v, k.clone());
                 }
@@ -340,7 +340,7 @@ mod profiler_tests {
             auto_save_interval: None,
         };
 
-        let mut profiler = PerformanceProfiler::new(config);
+        let profiler = PerformanceProfiler::new(config);
 
         profiler.start_profile("test_profile").unwrap();
 
@@ -365,7 +365,7 @@ mod profiler_tests {
 
     #[test]
     fn test_profiler_macros() {
-        let mut profiler = PerformanceProfiler::new(ProfilerConfig::default());
+        let profiler = PerformanceProfiler::new(ProfilerConfig::default());
 
         profiler.start_profile("macro_test").unwrap();
 
@@ -517,7 +517,7 @@ mod testing_framework_tests {
             },
         };
 
-        let mut framework = TestingFramework::new(config);
+        let framework = TestingFramework::new(config);
 
         framework.add_category(TestCategory {
             name: "Test Category".to_string(),
@@ -534,7 +534,7 @@ mod testing_framework_tests {
     fn test_solution_validator() {
         let validator = ConstraintAnalyzer::new(1e-6);
 
-        let mut solution = HashMap::new();
+        let solution = HashMap::new();
         solution.insert("x".to_string(), true);
         solution.insert("y".to_string(), false);
 

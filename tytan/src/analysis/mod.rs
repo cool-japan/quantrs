@@ -57,7 +57,7 @@ pub fn cluster_solutions(
     let n_vars = variable_names.len();
     let n_samples = results.len();
 
-    let mut data = Array2::<f64>::zeros((n_samples, n_vars));
+    let data = Array2::<f64>::zeros((n_samples, n_vars));
 
     for (i, result) in results.iter().enumerate() {
         for (j, var_name) in variable_names.iter().enumerate() {
@@ -72,7 +72,7 @@ pub fn cluster_solutions(
     let actual_max_clusters = std::cmp::max(actual_max_clusters, 2); // At least 2 clusters
 
     // Setup K-means parameters
-    let mut params = KMeansParams::default();
+    let params = KMeansParams::default();
     params.n_clusters = actual_max_clusters;
     params.max_iter = 100;
     params.tol = 1e-4;
@@ -99,7 +99,7 @@ pub fn cluster_solutions(
     }
 
     // Calculate average energy for each cluster
-    let mut cluster_results = Vec::new();
+    let cluster_results = Vec::new();
     for (label, indices) in clusters {
         let avg_energy: f64 = cluster_energies[&label].iter().sum::<f64>() / indices.len() as f64;
         cluster_results.push((indices, avg_energy));
@@ -147,7 +147,7 @@ pub fn cluster_solutions(
     }
 
     // Calculate average energy for each group
-    let mut group_results = Vec::new();
+    let group_results = Vec::new();
     for (binary, indices) in groups {
         let avg_energy: f64 = group_energies[&binary].iter().sum::<f64>() / indices.len() as f64;
         group_results.push((indices, avg_energy));
@@ -173,14 +173,14 @@ pub fn calculate_diversity(results: &[SampleResult]) -> AnalysisResult<HashMap<S
     let n_vars = variable_names.len();
 
     // Calculate diversity metrics
-    let mut metrics = HashMap::new();
+    let metrics = HashMap::new();
 
     // 1. Hamming distance statistics
-    let mut distances = Vec::new();
+    let distances = Vec::new();
 
     for i in 0..results.len() {
         for j in (i + 1)..results.len() {
-            let mut distance = 0;
+            let distance = 0;
 
             for var_name in &variable_names {
                 let val_i = results[i].assignments.get(var_name).unwrap_or(&false);
@@ -305,7 +305,7 @@ pub fn visualize_energy_distribution(
         .map_err(|e| AnalysisError::VisualizationError(e.to_string()))?;
 
     // Sort energies for this plot
-    let mut sorted_energies = energies.clone();
+    let sorted_energies = energies.clone();
     sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
     chart

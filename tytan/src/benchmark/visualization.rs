@@ -35,7 +35,7 @@ impl BenchmarkVisualizer {
         {
             use crate::scirs_stub::scirs2_plot::{Line, Plot, Scatter};
 
-            let mut plot = Plot::new();
+            let plot = Plot::new();
 
             // Extract scaling data
             for (backend_name, analysis) in &self.report.backend_analysis {
@@ -72,7 +72,7 @@ impl BenchmarkVisualizer {
     fn generate_scaling_csv(&self, output_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
         use std::io::Write;
 
-        let mut csv_content = String::from("backend,problem_size,time_per_sample,efficiency\n");
+        let csv_content = String::from("backend,problem_size,time_per_sample,efficiency\n");
 
         for (backend_name, analysis) in &self.report.backend_analysis {
             for (size, efficiency) in &analysis.efficiency_by_size {
@@ -86,7 +86,7 @@ impl BenchmarkVisualizer {
             }
         }
 
-        let mut file = std::fs::File::create(&format!("{}/scaling_data.csv", output_dir))?;
+        let file = std::fs::File::create(&format!("{}/scaling_data.csv", output_dir))?;
         file.write_all(csv_content.as_bytes())?;
 
         Ok(())
@@ -131,7 +131,7 @@ impl BenchmarkVisualizer {
                 .y_labels(backends)
                 .colorscale("Viridis");
 
-            let mut plot = Plot::new();
+            let plot = Plot::new();
             plot.add_trace(heatmap);
             plot.set_title("Backend-Sampler Efficiency Heatmap");
             plot.save(&format!("{}/efficiency_heatmap.html", output_dir))?;
@@ -147,7 +147,7 @@ impl BenchmarkVisualizer {
     fn generate_efficiency_csv(&self, output_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
         use std::io::Write;
 
-        let mut csv_content = String::from("configuration,efficiency,rank\n");
+        let csv_content = String::from("configuration,efficiency,rank\n");
 
         for (i, (config, efficiency)) in
             self.report.comparison.efficiency_ranking.iter().enumerate()
@@ -155,7 +155,7 @@ impl BenchmarkVisualizer {
             csv_content.push_str(&format!("{},{},{}\n", config, efficiency, i + 1));
         }
 
-        let mut file = std::fs::File::create(&format!("{}/efficiency_ranking.csv", output_dir))?;
+        let file = std::fs::File::create(&format!("{}/efficiency_ranking.csv", output_dir))?;
         file.write_all(csv_content.as_bytes())?;
 
         Ok(())
@@ -167,7 +167,7 @@ impl BenchmarkVisualizer {
         {
             use crate::scirs_stub::scirs2_plot::{Plot, Scatter};
 
-            let mut plot = Plot::new();
+            let plot = Plot::new();
 
             // All points
             let all_configs: Vec<String> = self
@@ -177,8 +177,8 @@ impl BenchmarkVisualizer {
                 .keys()
                 .cloned()
                 .collect();
-            let mut all_quality = Vec::new();
-            let mut all_performance = Vec::new();
+            let all_quality = Vec::new();
+            let all_performance = Vec::new();
 
             for config in &all_configs {
                 if let Some(&quality) = self.report.comparison.quality_comparison.get(config) {
@@ -281,7 +281,7 @@ impl BenchmarkVisualizer {
             ));
         }
 
-        let mut file = std::fs::File::create(&format!("{}/pareto_data.csv", output_dir))?;
+        let file = std::fs::File::create(&format!("{}/pareto_data.csv", output_dir))?;
         file.write_all(csv_content.as_bytes())?;
 
         Ok(())
@@ -296,7 +296,7 @@ impl BenchmarkVisualizer {
         {
             use crate::scirs_stub::scirs2_plot::{Bar, Plot};
 
-            let mut plot = Plot::new();
+            let plot = Plot::new();
 
             // Backend comparison
             let backend_names: Vec<String> = self.report.backend_analysis.keys().cloned().collect();
@@ -411,7 +411,7 @@ impl BenchmarkVisualizer {
 
     /// Generate backend table rows for HTML
     fn generate_backend_table_rows(&self) -> String {
-        let mut rows = String::new();
+        let rows = String::new();
 
         for (name, analysis) in &self.report.backend_analysis {
             rows.push_str(&format!(
@@ -429,7 +429,7 @@ impl BenchmarkVisualizer {
 
     /// Generate recommendations HTML
     fn generate_recommendations_html(&self) -> String {
-        let mut html = String::new();
+        let html = String::new();
 
         for rec in &self.report.recommendations {
             let impact_class = match rec.impact {

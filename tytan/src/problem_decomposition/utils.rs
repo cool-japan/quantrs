@@ -92,7 +92,7 @@ impl SolutionIntegrator {
         global_var_map: &HashMap<String, usize>,
     ) -> Result<IntegratedSolution, String> {
         let weights = self.compute_weights(component_solutions)?;
-        let mut integrated_assignment = HashMap::new();
+        let integrated_assignment = HashMap::new();
         let mut variable_votes: HashMap<String, f64> = HashMap::new();
 
         // Collect weighted votes for each variable
@@ -128,8 +128,8 @@ impl SolutionIntegrator {
         component_solutions: &[ComponentSolution],
         global_var_map: &HashMap<String, usize>,
     ) -> Result<IntegratedSolution, String> {
-        let mut consensus_assignment = HashMap::new();
-        let mut conflicts = Vec::new();
+        let consensus_assignment = HashMap::new();
+        let conflicts = Vec::new();
 
         // Find variables that appear in multiple solutions
         let mut variable_values: HashMap<String, Vec<bool>> = HashMap::new();
@@ -206,7 +206,7 @@ impl SolutionIntegrator {
         component_solutions: &[ComponentSolution],
         global_var_map: &HashMap<String, usize>,
     ) -> Result<IntegratedSolution, String> {
-        let mut integrated_assignment = HashMap::new();
+        let integrated_assignment = HashMap::new();
         let mut variable_votes: HashMap<String, (usize, usize)> = HashMap::new(); // (true_votes, false_votes)
 
         // Collect votes
@@ -287,7 +287,7 @@ impl SolutionIntegrator {
     }
 
     /// Resolve conflicts between different variable assignments
-    fn resolve_conflict(&self, var_name: &str, values: &[bool]) -> Result<bool, String> {
+    fn resolve_conflict(&self, _var_name: &str, values: &[bool]) -> Result<bool, String> {
         match self.conflict_resolution {
             ConflictResolution::MajorityVote => {
                 let true_count = values.iter().filter(|&&v| v).count();
@@ -295,8 +295,8 @@ impl SolutionIntegrator {
             }
             ConflictResolution::Random => {
                 use rand::Rng;
-                let mut rng = rand::thread_rng();
-                let index = rng.gen_range(0..values.len());
+                let rng = rand::rng();
+                let index = rng.random_range(0..values.len());
                 Ok(values[index])
             }
             ConflictResolution::HighestQuality => {
@@ -426,7 +426,7 @@ impl DecompositionAnalyzer {
         }
 
         // Count unique variables involved in coupling terms
-        let mut coupling_vars = std::collections::HashSet::new();
+        let coupling_vars = std::collections::HashSet::new();
         for coupling in &decomposition.coupling_terms {
             coupling_vars.insert(&coupling.var1);
             coupling_vars.insert(&coupling.var2);
@@ -487,7 +487,7 @@ impl DecompositionValidator {
         original_qubo: &Array2<f64>,
         original_var_map: &HashMap<String, usize>,
     ) -> Result<ValidationReport, String> {
-        let mut issues = Vec::new();
+        let issues = Vec::new();
 
         // Check variable coverage
         let coverage_issue = Self::check_variable_coverage(partitioning, original_var_map);
@@ -522,7 +522,7 @@ impl DecompositionValidator {
         partitioning: &Partitioning,
         original_var_map: &HashMap<String, usize>,
     ) -> Option<ValidationIssue> {
-        let mut covered_vars = std::collections::HashSet::new();
+        let covered_vars = std::collections::HashSet::new();
 
         for subproblem in &partitioning.subproblems {
             for var in &subproblem.variables {
@@ -596,7 +596,7 @@ impl DecompositionValidator {
         original_qubo: &Array2<f64>,
     ) -> Option<ValidationIssue> {
         // Check that coupling terms match original off-diagonal elements
-        let mut inconsistencies = 0;
+        let inconsistencies = 0;
 
         for coupling in &partitioning.coupling_terms {
             // This would require mapping back to original indices
@@ -622,7 +622,7 @@ impl DecompositionValidator {
         partitioning: &Partitioning,
         original_var_map: &HashMap<String, usize>,
     ) -> f64 {
-        let mut covered_vars = std::collections::HashSet::new();
+        let covered_vars = std::collections::HashSet::new();
 
         for subproblem in &partitioning.subproblems {
             for var in &subproblem.variables {
@@ -704,7 +704,7 @@ mod tests {
 
     #[test]
     fn test_decomposition_analyzer() {
-        let mut analyzer = DecompositionAnalyzer::new();
+        let analyzer = DecompositionAnalyzer::new();
 
         // Create mock partitioning
         let partitioning = Partitioning {

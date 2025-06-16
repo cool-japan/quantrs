@@ -283,7 +283,7 @@ impl FPGASampler {
     }
 
     /// Transfer problem to device memory
-    fn transfer_problem_to_device(&self, qubo: &Array2<f64>) -> Result<(), SamplerError> {
+    fn transfer_problem_to_device(&self, _qubo: &Array2<f64>) -> Result<(), SamplerError> {
         // In real implementation:
         // 1. Convert QUBO to fixed-point representation
         // 2. Transfer to HBM/DDR
@@ -295,10 +295,10 @@ impl FPGASampler {
     fn run_sbm_kernel(
         &self,
         qubo: &Array2<f64>,
-        shots: usize,
-        time_step: f64,
-        damping: f64,
-        pressure: f64,
+        _shots: usize,
+        _time_step: f64,
+        _damping: f64,
+        _pressure: f64,
     ) -> Result<Vec<FPGAResult>, SamplerError> {
         // Placeholder implementation
         let n = qubo.shape()[0];
@@ -334,7 +334,7 @@ impl FPGASampler {
         fpga_result: &FPGAResult,
         var_map: &HashMap<String, usize>,
     ) -> SampleResult {
-        let mut assignments = HashMap::new();
+        let assignments = HashMap::new();
 
         for (var_name, &idx) in var_map {
             if idx < fpga_result.spins.len() {

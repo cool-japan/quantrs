@@ -79,8 +79,8 @@ impl SolutionComparator {
         sol2: &Solution,
         problem_info: &ProblemInfo,
     ) -> ComparisonResult {
-        let mut metrics = HashMap::new();
-        let mut differences = Vec::new();
+        let metrics = HashMap::new();
+        let differences = Vec::new();
 
         // Calculate metrics
         for metric in &self.metrics {
@@ -138,7 +138,7 @@ impl SolutionComparator {
 
     /// Calculate Hamming distance between solutions
     fn hamming_distance(&self, sol1: &Solution, sol2: &Solution) -> f64 {
-        let mut distance = 0;
+        let distance = 0;
 
         for var in sol1.assignments.keys() {
             let val1 = sol1.assignments.get(var).copied().unwrap_or(false);
@@ -153,7 +153,7 @@ impl SolutionComparator {
     }
 
     /// Calculate constraint satisfaction difference
-    fn constraint_satisfaction_diff(&self, sol1: &Solution, sol2: &Solution) -> f64 {
+    fn constraint_satisfaction_diff(&self, _sol1: &Solution, _sol2: &Solution) -> f64 {
         // Placeholder - would need actual constraint satisfaction scores
         0.0
     }
@@ -192,10 +192,10 @@ impl SolutionComparator {
     /// Calculate objective impact of variable difference
     fn calculate_objective_impact(
         &self,
-        var: &str,
-        val1: bool,
-        val2: bool,
-        problem_info: &ProblemInfo,
+        _var: &str,
+        _val1: bool,
+        _val2: bool,
+        _problem_info: &ProblemInfo,
     ) -> f64 {
         // Would calculate actual impact based on QUBO matrix
         // Placeholder implementation
@@ -205,10 +205,10 @@ impl SolutionComparator {
     /// Calculate constraint impact of variable difference
     fn calculate_constraint_impact(
         &self,
-        var: &str,
-        val1: bool,
-        val2: bool,
-        problem_info: &ProblemInfo,
+        _var: &str,
+        _val1: bool,
+        _val2: bool,
+        _problem_info: &ProblemInfo,
     ) -> Vec<String> {
         // Would find which constraints are affected by this variable change
         // Placeholder implementation

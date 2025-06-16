@@ -2,7 +2,7 @@
 
 use ndarray::{Array, Ix2};
 #[cfg(all(feature = "gpu", feature = "dwave"))]
-use rand::{rngs::StdRng, thread_rng, Rng};
+use rand::{rngs::StdRng, rng, Rng};
 use std::collections::HashMap;
 
 #[cfg(all(feature = "gpu", feature = "dwave"))]
@@ -190,7 +190,7 @@ impl ArminSampler {
         }
 
         // Create a seed based on input seed or random value
-        let seed_val = self.seed.unwrap_or_else(thread_rng().gen());
+        let seed_val = self.seed.unwrap_or_else(rng().random());
 
         // Set up and run standard simulated annealing kernel
         let kernel = Kernel::builder()
@@ -218,9 +218,9 @@ impl ArminSampler {
         solutions_buffer.read(&mut solutions_data).enq()?;
 
         // Convert to Vec<Vec<bool>>
-        let mut results = Vec::with_capacity(num_shots);
+        let results = Vec::with_capacity(num_shots);
         for i in 0..num_shots {
-            let mut solution = Vec::with_capacity(n_vars);
+            let solution = Vec::with_capacity(n_vars);
             for j in 0..n_vars {
                 solution.push(solutions_data[i * n_vars + j] != 0);
             }
@@ -266,7 +266,7 @@ impl ArminSampler {
         let mut rng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => {
-                let seed: u64 = rand::thread_rng().random();
+                let seed: u64 = rand::rng().random();
                 StdRng::seed_from_u64(seed)
             }
         };
@@ -274,9 +274,9 @@ impl ArminSampler {
         // Initialize random solutions for all shots
         let mut solutions: Vec<Vec<bool>> = Vec::with_capacity(num_shots);
         for _ in 0..num_shots {
-            let mut solution = Vec::with_capacity(n_vars);
+            let solution = Vec::with_capacity(n_vars);
             for _ in 0..n_vars {
-                solution.push(rng.gen_bool(0.5));
+                solution.push(rng.random_bool(0.5));
             }
             solutions.push(solution);
         }
@@ -307,8 +307,8 @@ impl ArminSampler {
             }
 
             // Extract subproblem
-            let mut chunk_h = Vec::with_capacity(chunk_size);
-            let mut chunk_j = Vec::with_capacity(chunk_size * chunk_size);
+            let chunk_h = Vec::with_capacity(chunk_size);
+            let chunk_j = Vec::with_capacity(chunk_size * chunk_size);
 
             // Extract linear terms for this chunk
             for i in start_var..end_var {
@@ -324,7 +324,7 @@ impl ArminSampler {
 
             // Adjust linear terms based on fixed variables outside this chunk
             for (sol_idx, solution) in solutions.iter().enumerate() {
-                let mut adjusted_h = chunk_h.clone();
+                let adjusted_h = chunk_h.clone();
 
                 // Add contributions from fixed variables
                 for i in start_var..end_var {
@@ -338,7 +338,7 @@ impl ArminSampler {
                 }
 
                 // Process this specific solution's subproblem
-                let mut chunk_solution = Vec::with_capacity(chunk_size);
+                let chunk_solution = Vec::with_capacity(chunk_size);
                 for i in start_var..end_var {
                     chunk_solution.push(solution[i]);
                 }
@@ -457,7 +457,7 @@ impl ArminSampler {
             .arg(5000i32) // More sweeps for thorough optimization of a chunk
             .arg(5.0f32)  // Higher initial temperature
             .arg(0.01f32) // Lower final temperature
-            .arg(seed.unwrap_or_else(thread_rng().gen()))
+            .arg(seed.unwrap_or_else(rng().random()))
             .build()?;
 
         // Execute kernel
@@ -543,8 +543,8 @@ impl Sampler for ArminSampler {
         }
 
         // Convert QUBO matrix to appropriate format for OpenCL
-        let mut h_vector = Vec::with_capacity(n_vars);
-        let mut j_matrix = Vec::with_capacity(n_vars * n_vars);
+        let h_vector = Vec::with_capacity(n_vars);
+        let j_matrix = Vec::with_capacity(n_vars * n_vars);
 
         // Extract diagonal (linear) terms
         for i in 0..n_vars {

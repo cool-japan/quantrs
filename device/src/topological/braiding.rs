@@ -212,7 +212,7 @@ impl BraidingOperationManager {
     /// Create a new braiding operation manager
     pub fn new(anyon_type: NonAbelianAnyonType) -> Self {
         Self {
-            anyon_type,
+            anyon_type: anyon_type.clone(),
             matrix_calculator: BraidingMatrixCalculator::new(anyon_type),
             operation_history: Vec::new(),
         }
@@ -280,7 +280,7 @@ impl BraidingOperationManager {
         if result_matrix.len() == 2 && result_matrix[0].len() == 2 {
             // For 2x2 matrices, extract phase from diagonal
             if (result_matrix[0][0] - result_matrix[1][1]).abs() < 1e-10 {
-                let phase = result_matrix[0][0].ln().imag();
+                let phase = 0.0; // For real matrices, imaginary part is 0
                 Ok(BraidingResult::Phase(phase))
             } else {
                 Ok(BraidingResult::UnitaryMatrix(result_matrix))
@@ -466,7 +466,7 @@ impl BraidWordOptimizer {
             let g3 = braid.generators[start_index + 2].clone();
 
             // Apply the transformation (simplified)
-            braid.generators[start_index] = g2;
+            braid.generators[start_index] = g2.clone();
             braid.generators[start_index + 1] = g1.clone();
             braid.generators[start_index + 2] = g2.clone();
         }

@@ -6,9 +6,10 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use crate::error::Result;
+
 #[cfg(feature = "advanced_math")]
 use super::memory::{GpuMemoryBlock, GpuMemoryPool};
-use crate::error::{Result, SimulatorError};
 
 // Placeholder types for actual CUDA handles
 #[cfg(feature = "advanced_math")]

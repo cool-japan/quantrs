@@ -115,8 +115,8 @@ impl CIMSimulator {
         // Initialize oscillator amplitudes (complex)
         let mut amplitudes: Vec<Complex64> = (0..n)
             .map(|_| {
-                let r = rng.gen_range(0.0..0.1);
-                let theta = rng.gen_range(0.0..2.0 * PI);
+                let r = rng.random_range(0.0..0.1);
+                let theta = rng.random_range(0.0..2.0 * PI);
                 Complex64::new(r * theta.cos(), r * theta.sin())
             })
             .collect();
@@ -126,11 +126,11 @@ impl CIMSimulator {
 
         // Evolution loop
         for step in 0..steps {
-            let mut new_amplitudes = amplitudes.clone();
+            let new_amplitudes = amplitudes.clone();
 
             for i in 0..n {
                 // Compute coupling term
-                let mut coupling_term = Complex64::new(0.0, 0.0);
+                let coupling_term = Complex64::new(0.0, 0.0);
                 for j in 0..n {
                     if i != j {
                         let coupling = coupling_matrix[[i, j]] * self.coupling_scale;
@@ -201,9 +201,9 @@ impl CIMSimulator {
     /// Convert QUBO to Ising model
     fn qubo_to_ising(&self, qubo_matrix: &Array2<f64>) -> (Array2<f64>, Array1<f64>, f64) {
         let n = qubo_matrix.shape()[0];
-        let mut j_matrix = Array2::zeros((n, n));
-        let mut h_vector = Array1::zeros(n);
-        let mut offset = 0.0;
+        let j_matrix = Array2::zeros((n, n));
+        let h_vector = Array1::zeros(n);
+        let offset = 0.0;
 
         // Convert QUBO to Ising: s_i = 2*x_i - 1
         for i in 0..n {
@@ -237,7 +237,7 @@ impl CIMSimulator {
         h_vector: &Array1<f64>,
     ) -> f64 {
         let n = spins.len();
-        let mut energy = 0.0;
+        let energy = 0.0;
 
         // Quadratic terms
         for i in 0..n {
@@ -280,7 +280,7 @@ impl Sampler for CIMSimulator {
             None => StdRng::seed_from_u64(42), // Simple fallback for thread RNG
         };
 
-        let mut results = Vec::new();
+        let results = Vec::new();
         let mut solution_counts: HashMap<Vec<bool>, (f64, usize)> = HashMap::new();
 
         // Run multiple shots
@@ -455,7 +455,7 @@ impl AdvancedCIM {
             ErrorCorrectionScheme::MajorityVoting { window_size } => {
                 if history.len() >= *window_size {
                     for i in 0..spins.len() {
-                        let mut sum = 0.0;
+                        let sum = 0.0;
                         for h in history.iter().rev().take(*window_size) {
                             sum += h[i];
                         }
@@ -469,7 +469,7 @@ impl AdvancedCIM {
                 let m = check_matrix.shape()[0];
 
                 for i in 0..m {
-                    let mut parity = 0;
+                    let parity = 0;
                     for j in 0..n {
                         if check_matrix[[i, j]] && spins[j] > 0.0 {
                             parity ^= 1;
@@ -524,7 +524,7 @@ impl Sampler for AdvancedCIM {
         qubo: &(Array2<f64>, HashMap<String, usize>),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
-        let mut all_results = Vec::new();
+        let all_results = Vec::new();
         let shots_per_round = shots / self.num_rounds.max(1);
 
         for round in 0..self.num_rounds {
@@ -532,7 +532,7 @@ impl Sampler for AdvancedCIM {
             let t = round as f64 * self.base_cim.evolution_time / self.num_rounds as f64;
             let pump = self.compute_bifurcation_param(t);
 
-            let mut round_cim = self.base_cim.clone();
+            let round_cim = self.base_cim.clone();
             round_cim.pump_parameter = pump * self.apply_pulse_shaping(t);
 
             // Run CIM for this round
@@ -664,7 +664,7 @@ impl NetworkedCIM {
             NetworkTopology::Grid2D { rows, cols } => {
                 let row = module_idx / cols;
                 let col = module_idx % cols;
-                let mut neighbors = Vec::new();
+                let neighbors = Vec::new();
 
                 if row > 0 {
                     neighbors.push((row - 1) * cols + col);
@@ -698,11 +698,11 @@ mod tests {
             .with_seed(42);
 
         // Create simple QUBO
-        let mut qubo_matrix = Array2::zeros((4, 4));
+        let qubo_matrix = Array2::zeros((4, 4));
         qubo_matrix[[0, 1]] = -1.0;
         qubo_matrix[[1, 0]] = -1.0;
 
-        let mut var_map = HashMap::new();
+        let var_map = HashMap::new();
         for i in 0..4 {
             var_map.insert(format!("x{}", i), i);
         }

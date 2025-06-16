@@ -140,6 +140,23 @@ pub enum WorkloadType {
     Custom(String),
 }
 
+impl WorkloadType {
+    /// Convert WorkloadType to u8 for hashing/identification purposes
+    pub fn as_u8(&self) -> u8 {
+        match self {
+            WorkloadType::Simulation => 0,
+            WorkloadType::Optimization => 1,
+            WorkloadType::MachineLearning => 2,
+            WorkloadType::Cryptography => 3,
+            WorkloadType::Chemistry => 4,
+            WorkloadType::FinancialModeling => 5,
+            WorkloadType::Research => 6,
+            WorkloadType::Production => 7,
+            WorkloadType::Custom(_) => 8,
+        }
+    }
+}
+
 /// Circuit characteristics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CircuitCharacteristics {
@@ -632,6 +649,7 @@ pub enum OptimizationStrategy {
     ErrorMitigation,
     ResourceProvisioning,
     CacheOptimization,
+    PerformanceOptimization,
 }
 
 /// Alternative recommendation
@@ -3182,7 +3200,7 @@ impl ProviderOptimizationEngine {
         // Generate a unique signature for the workload based on its characteristics
         format!(
             "{}_{}_{}_{}",
-            workload.workload_type as u8,
+            workload.workload_type.as_u8(),
             workload.circuit_characteristics.qubit_count,
             workload.circuit_characteristics.gate_count,
             workload.execution_requirements.shots

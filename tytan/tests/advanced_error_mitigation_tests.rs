@@ -153,7 +153,7 @@ fn test_temporal_correlation_model() {
 
 #[test]
 fn test_environmental_noise_model() {
-    let mut control_line_noise = HashMap::new();
+    let control_line_noise = HashMap::new();
     control_line_noise.insert("control_1".to_string(), 0.001);
     control_line_noise.insert("control_2".to_string(), 0.0005);
 
@@ -273,7 +273,7 @@ fn test_calibration_config() {
         calibration_frequency: Duration::from_secs(3600),
         drift_threshold: 0.01,
         precision_targets: {
-            let mut targets = HashMap::new();
+            let targets = HashMap::new();
             targets.insert("gate_fidelity".to_string(), 0.999);
             targets.insert("readout_fidelity".to_string(), 0.95);
             targets
@@ -292,11 +292,11 @@ fn test_calibration_config() {
 
 #[test]
 fn test_calibration_result() {
-    let mut updated_params = HashMap::new();
+    let updated_params = HashMap::new();
     updated_params.insert("frequency".to_string(), 5.0e9);
     updated_params.insert("amplitude".to_string(), 0.5);
 
-    let mut achieved_precision = HashMap::new();
+    let achieved_precision = HashMap::new();
     achieved_precision.insert("gate_fidelity".to_string(), 0.998);
     achieved_precision.insert("readout_fidelity".to_string(), 0.94);
 
@@ -385,7 +385,7 @@ fn test_randomized_benchmarking_result() {
         confidence_interval: (0.0008, 0.0012),
         fitting_quality: 0.95,
         sequence_fidelities: {
-            let mut fidelities = HashMap::new();
+            let fidelities = HashMap::new();
             fidelities.insert(1, 0.999);
             fidelities.insert(10, 0.990);
             fidelities.insert(100, 0.900);
@@ -443,11 +443,11 @@ fn test_spectroscopy_data() {
 
 #[test]
 fn test_confidence_intervals() {
-    let mut gate_fidelities = HashMap::new();
+    let gate_fidelities = HashMap::new();
     gate_fidelities.insert("X".to_string(), (0.998, 0.9995));
     gate_fidelities.insert("CNOT".to_string(), (0.985, 0.995));
 
-    let mut error_rates = HashMap::new();
+    let error_rates = HashMap::new();
     error_rates.insert("X".to_string(), (0.0005, 0.002));
     error_rates.insert("CNOT".to_string(), (0.005, 0.015));
 
@@ -542,7 +542,7 @@ fn test_device_parameters() {
         )
         .unwrap(),
         gate_times: {
-            let mut times = HashMap::new();
+            let times = HashMap::new();
             times.insert("X".to_string(), 20e-9);
             times.insert("CNOT".to_string(), 40e-9);
             times
@@ -563,7 +563,7 @@ fn test_device_parameters() {
 #[test]
 fn test_error_mitigation_manager_start_monitoring() {
     let config = ErrorMitigationConfig::default();
-    let mut manager = AdvancedErrorMitigationManager::new(config);
+    let manager = AdvancedErrorMitigationManager::new(config);
 
     // Test starting monitoring
     let result = manager.start_monitoring();
@@ -581,7 +581,7 @@ fn test_error_mitigation_manager_with_disabled_features() {
         ..Default::default()
     };
 
-    let mut manager = AdvancedErrorMitigationManager::new(config);
+    let manager = AdvancedErrorMitigationManager::new(config);
 
     // Starting monitoring should fail when disabled
     let result = manager.start_monitoring();
@@ -832,10 +832,10 @@ fn test_parameter_status_types() {
 #[test]
 fn test_comprehensive_noise_characterization_workflow() {
     let config = ErrorMitigationConfig::default();
-    let mut manager = AdvancedErrorMitigationManager::new(config);
+    let manager = AdvancedErrorMitigationManager::new(config);
 
     // Create a test quantum device
-    let mut device = HashMap::new();
+    let device = HashMap::new();
     device.insert("qubit_count".to_string(), 4.0);
     device.insert("frequency_0".to_string(), 5.0e9);
     device.insert("frequency_1".to_string(), 5.1e9);
@@ -894,7 +894,7 @@ fn test_comprehensive_noise_characterization_workflow() {
 #[test]
 fn test_integrated_error_mitigation_workflow() {
     let config = ErrorMitigationConfig::default();
-    let mut manager = AdvancedErrorMitigationManager::new(config);
+    let manager = AdvancedErrorMitigationManager::new(config);
 
     // Create test circuit
     let circuit = vec![

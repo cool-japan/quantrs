@@ -5,17 +5,14 @@
 //! The system starts in the ground state of a simple Hamiltonian and slowly
 //! evolves to a final Hamiltonian whose ground state encodes the solution.
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
-use crate::statevector::StateVectorSimulator;
-use crate::trotter::{Hamiltonian, HamiltonianTerm, TrotterDecomposer, TrotterMethod};
+use crate::trotter::{Hamiltonian, HamiltonianTerm};
 
 /// Adiabatic quantum computing configuration
 #[derive(Debug, Clone)]

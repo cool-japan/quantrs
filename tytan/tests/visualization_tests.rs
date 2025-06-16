@@ -7,10 +7,10 @@ use std::collections::HashMap;
 
 /// Create dummy sample results for testing
 fn create_test_results(n: usize) -> Vec<SampleResult> {
-    let mut results = Vec::new();
+    let results = Vec::new();
 
     for i in 0..n {
-        let mut assignments = HashMap::new();
+        let assignments = HashMap::new();
 
         // Create some binary variables
         assignments.insert("x0".to_string(), i % 2 == 0);
@@ -79,7 +79,7 @@ fn test_solution_distribution_analysis() {
 #[test]
 fn test_tsp_tour_extraction() {
     // Create a TSP solution for 4 cities
-    let mut assignments = HashMap::new();
+    let assignments = HashMap::new();
     // Tour: 0 -> 1 -> 3 -> 2 -> 0
     assignments.insert("x_0_1".to_string(), true);
     assignments.insert("x_1_3".to_string(), true);
@@ -113,7 +113,7 @@ fn test_tsp_tour_extraction() {
 #[test]
 fn test_graph_coloring_extraction() {
     // Create a graph coloring solution
-    let mut assignments = HashMap::new();
+    let assignments = HashMap::new();
 
     // 4 nodes, 3 colors
     assignments.insert("x_0_0".to_string(), true); // Node 0 -> Color 0
@@ -156,10 +156,10 @@ fn test_graph_coloring_extraction() {
 #[test]
 fn test_convergence_analysis() {
     // Create iteration results with improving energy
-    let mut iteration_results = Vec::new();
+    let iteration_results = Vec::new();
 
     for i in 0..10 {
-        let mut iter_samples = Vec::new();
+        let iter_samples = Vec::new();
 
         for j in 0..20 {
             let energy = -1.0 * (i as f64) - 0.1 * (j as f64) + rand::random::<f64>();
@@ -291,7 +291,7 @@ fn example_complete_visualization_workflow() {
     println!("\n4. TSP visualization example...");
     let cities = vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
 
-    let mut tsp_assignments = HashMap::new();
+    let tsp_assignments = HashMap::new();
     tsp_assignments.insert("x_0_1".to_string(), true);
     tsp_assignments.insert("x_1_2".to_string(), true);
     tsp_assignments.insert("x_2_3".to_string(), true);
@@ -311,10 +311,10 @@ fn example_complete_visualization_workflow() {
 
     // Step 5: Convergence analysis
     println!("\n5. Simulating convergence analysis...");
-    let mut iteration_results = Vec::new();
+    let iteration_results = Vec::new();
 
     for i in 0..20 {
-        let mut iter_samples = create_test_results(50);
+        let iter_samples = create_test_results(50);
         // Simulate improvement over iterations
         for sample in &mut iter_samples {
             sample.energy -= i as f64 * 0.5;

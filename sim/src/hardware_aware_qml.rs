@@ -1466,7 +1466,7 @@ impl HardwareAwareQMLOptimizer {
         Ok(())
     }
 
-    fn check_adaptation_trigger(
+    pub fn check_adaptation_trigger(
         trigger: &AdaptationTrigger,
         performance: &PerformanceMetrics,
     ) -> Result<bool> {
@@ -1575,6 +1575,63 @@ impl HardwareAwareQMLOptimizer {
             }
         }
         None
+    }
+
+    /// Analyze circuit (public version)
+    pub fn analyze_circuit_public(&self, circuit: &InterfaceCircuit) -> Result<CircuitAnalysis> {
+        self.analyze_circuit(circuit)
+    }
+
+    /// Optimize qubit mapping (public version)
+    pub fn optimize_qubit_mapping_public(
+        &self,
+        circuit: &InterfaceCircuit,
+        analysis: &CircuitAnalysis,
+    ) -> Result<HashMap<usize, usize>> {
+        self.optimize_qubit_mapping(circuit, analysis)
+    }
+
+    /// Check if gate is directly executable (public version)
+    pub fn is_gate_directly_executable_public(
+        &self,
+        gate_type: &InterfaceGateType,
+        qubits: &[usize],
+    ) -> bool {
+        self.is_gate_directly_executable(gate_type, qubits)
+    }
+
+    /// Decompose or route gate (public version)
+    pub fn decompose_or_route_gate_public(
+        &self,
+        gate_type: &InterfaceGateType,
+        qubits: &[usize],
+    ) -> Result<Vec<InterfaceGate>> {
+        self.decompose_or_route_gate(gate_type, qubits)
+    }
+
+    /// Apply IBM optimizations (public version)
+    pub fn apply_ibm_optimizations_public(&self, circuit: &mut InterfaceCircuit) -> Result<()> {
+        self.apply_ibm_optimizations(circuit)
+    }
+
+    /// Check if gates cancel (public version)
+    pub fn gates_cancel_public(&self, gate1: &InterfaceGate, gate2: &InterfaceGate) -> bool {
+        self.gates_cancel(gate1, gate2)
+    }
+
+    /// Estimate error rate (public version)
+    pub fn estimate_error_rate_public(&self, circuit: &InterfaceCircuit) -> Result<f64> {
+        self.estimate_error_rate(circuit)
+    }
+
+    /// Start performance monitoring (public version)
+    pub fn start_performance_monitoring_public(&mut self) -> Result<()> {
+        self.start_performance_monitoring()
+    }
+
+    /// Get performance monitor reference
+    pub fn get_performance_monitor(&self) -> &PerformanceMonitoringData {
+        &self.performance_monitor
     }
 }
 

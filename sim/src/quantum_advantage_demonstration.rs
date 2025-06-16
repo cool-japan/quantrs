@@ -1233,7 +1233,6 @@ impl QuantumAdvantageDemonstrator {
     }
 
     /// Helper methods
-
     fn register_default_algorithms(&mut self) {
         // Register quantum algorithms
         self.quantum_algorithms.insert(
@@ -1590,7 +1589,7 @@ mod tests {
         QuantumAdvantageConfig {
             advantage_type: QuantumAdvantageType::ComputationalAdvantage,
             domain: ProblemDomain::RandomCircuitSampling,
-            classical_algorithms: vec![ClassicalAlgorithmType::MonteCarlo],
+            classical_algorithms: [ClassicalAlgorithmType::MonteCarlo],
             problem_sizes: vec![3, 5],
             num_trials: 2,
             confidence_level: 0.95,

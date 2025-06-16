@@ -146,7 +146,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
         let hierarchy = self.build_hierarchy(qubo, var_map)?;
 
         // Restrict solution to coarse levels
-        let mut current_solution = initial_solution.clone();
+        let current_solution = initial_solution.clone();
 
         // Down cycle: restrict to coarser levels
         for level in 1..hierarchy.levels.len() {
@@ -185,13 +185,13 @@ impl<S: Sampler> HierarchicalSolver<S> {
         qubo: &Array2<f64>,
         var_map: &HashMap<String, usize>,
     ) -> Result<Hierarchy, String> {
-        let mut levels = Vec::new();
-        let mut projections = Vec::new();
+        let levels = Vec::new();
+        let projections = Vec::new();
 
-        let mut current_qubo = qubo.clone();
-        let mut current_var_map = var_map.clone();
-        let mut current_size = current_qubo.shape()[0];
-        let mut level = 0;
+        let current_qubo = qubo.clone();
+        let current_var_map = var_map.clone();
+        let current_size = current_qubo.shape()[0];
+        let level = 0;
 
         // Add finest level
         levels.push(HierarchyLevel {
@@ -253,12 +253,12 @@ impl<S: Sampler> HierarchicalSolver<S> {
         let n = qubo.shape()[0];
 
         // Cluster strongly connected variables
-        let mut clusters = Vec::new();
+        let clusters = Vec::new();
         let mut assigned = vec![false; n];
 
         for i in 0..n {
             if !assigned[i] {
-                let mut cluster = vec![i];
+                let cluster = vec![i];
                 assigned[i] = true;
 
                 // Find strongly connected variables
@@ -275,11 +275,11 @@ impl<S: Sampler> HierarchicalSolver<S> {
 
         // Build coarse problem
         let num_clusters = clusters.len();
-        let mut coarse_qubo = Array2::zeros((num_clusters, num_clusters));
+        let coarse_qubo = Array2::zeros((num_clusters, num_clusters));
 
         for (ci, cluster_i) in clusters.iter().enumerate() {
             for (cj, cluster_j) in clusters.iter().enumerate() {
-                let mut weight = 0.0;
+                let weight = 0.0;
 
                 for &i in cluster_i {
                     for &j in cluster_j {
@@ -292,7 +292,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
         }
 
         // Build variable mapping
-        let mut coarse_var_map = HashMap::new();
+        let coarse_var_map = HashMap::new();
         for (ci, _cluster) in clusters.iter().enumerate() {
             let var_name = format!("cluster_{}", ci);
             coarse_var_map.insert(var_name, ci);
@@ -315,7 +315,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
         hierarchy: &Hierarchy,
         coarse_solution: SampleResult,
     ) -> Result<SampleResult, String> {
-        let mut current_solution = coarse_solution;
+        let current_solution = coarse_solution;
 
         // Interpolate solution from coarse to fine levels
         for level in (0..hierarchy.levels.len() - 1).rev() {
@@ -350,14 +350,14 @@ impl<S: Sampler> HierarchicalSolver<S> {
         let coarse_level = &hierarchy.levels[level + 1];
 
         // Create restricted solution
-        let mut restricted_solution = SampleResult::default();
+        let restricted_solution = SampleResult::default();
 
         for (var_name, &coarse_idx) in &coarse_level.var_map {
             // Find corresponding fine variables
             let fine_vars = &projection.coarse_to_fine[coarse_idx];
 
             // Simple majority vote for binary variables
-            let mut votes = 0i32;
+            let votes = 0i32;
             for &fine_idx in fine_vars {
                 if let Some(fine_var_name) = hierarchy.levels[level]
                     .var_map
@@ -377,7 +377,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
             if let Some(mut best_sample) = restricted_solution.best_sample().cloned() {
                 best_sample.insert(var_name.clone(), votes > 0);
             } else {
-                let mut new_sample = HashMap::new();
+                let new_sample = HashMap::new();
                 new_sample.insert(var_name.clone(), votes > 0);
                 // Create new SampleResult with this sample
                 // This is simplified - in practice would need proper SampleResult construction
@@ -402,7 +402,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
         let fine_level = &hierarchy.levels[level];
         let coarse_level = &hierarchy.levels[level + 1];
 
-        let mut interpolated_solution = SampleResult::default();
+        let interpolated_solution = SampleResult::default();
 
         // Interpolate from coarse to fine
         for (fine_var_name, &fine_idx) in &fine_level.var_map {
@@ -421,7 +421,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
                         {
                             fine_sample.insert(fine_var_name.clone(), coarse_value);
                         } else {
-                            let mut new_sample = HashMap::new();
+                            let new_sample = HashMap::new();
                             new_sample.insert(fine_var_name.clone(), coarse_value);
                             // Create new SampleResult - simplified
                         }
@@ -442,7 +442,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
         shots: usize,
     ) -> Result<SampleResult, String> {
         // First interpolate
-        let mut interpolated = self.interpolate_solution(hierarchy, level, coarse_solution)?;
+        let interpolated = self.interpolate_solution(hierarchy, level, coarse_solution)?;
 
         // Then refine
         for _iter in 0..self.refinement_iterations {
@@ -530,7 +530,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut var_map = HashMap::new();
+        let var_map = HashMap::new();
         for i in 0..4 {
             var_map.insert(format!("x{}", i), i);
         }

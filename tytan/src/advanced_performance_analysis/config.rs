@@ -147,7 +147,7 @@ pub fn create_default_analysis_config() -> AnalysisConfig {
                 update_interval: 2.0, // 2 seconds
                 enable_alerts: true,
                 alert_thresholds: {
-                    let mut thresholds = HashMap::new();
+                    let thresholds = HashMap::new();
                     thresholds.insert("cpu_utilization".to_string(), 80.0);
                     thresholds.insert("memory_utilization".to_string(), 85.0);
                     thresholds.insert("io_utilization".to_string(), 90.0);
@@ -160,7 +160,7 @@ pub fn create_default_analysis_config() -> AnalysisConfig {
 
 /// Create lightweight configuration for basic monitoring
 pub fn create_lightweight_config() -> AnalysisConfig {
-    let mut config = create_default_analysis_config();
+    let config = create_default_analysis_config();
     config.collection_level = MetricsLevel::Basic;
     config.analysis_depth = AnalysisDepth::Surface;
     config.comparative_analysis = false;

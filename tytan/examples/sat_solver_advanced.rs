@@ -107,18 +107,18 @@ impl SatFormula {
 
 /// Generate a random k-SAT formula
 fn generate_random_ksat(num_vars: usize, num_clauses: usize, k: usize, seed: u64) -> SatFormula {
-    let mut rng = StdRng::seed_from_u64(seed);
-    let mut formula = SatFormula::new(num_vars);
+    let rng = StdRng::seed_from_u64(seed);
+    let formula = SatFormula::new(num_vars);
 
     for _ in 0..num_clauses {
-        let mut literals = Vec::new();
-        let mut used_vars = HashSet::new();
+        let literals = Vec::new();
+        let used_vars = HashSet::new();
 
         while literals.len() < k {
             let var = rng.gen_range(0..num_vars);
             if !used_vars.contains(&var) {
                 used_vars.insert(var);
-                let negated = rng.gen_bool(0.5);
+                let negated = rng.random_bool(0.5);
                 literals.push(Literal::new(var, negated));
             }
         }
@@ -131,17 +131,17 @@ fn generate_random_ksat(num_vars: usize, num_clauses: usize, k: usize, seed: u64
 
 /// Convert SAT formula to QUBO model
 fn sat_to_qubo(formula: &SatFormula) -> Result<Model, Box<dyn std::error::Error>> {
-    let mut model = Model::new();
+    let model = Model::new();
 
     // Create binary variables for each SAT variable
-    let mut vars = Vec::new();
+    let vars = Vec::new();
     for i in 0..formula.num_vars {
         let var = model.add_variable(&format!("x_{}", i))?;
         vars.push(var);
     }
 
     // Track the objective expression separately
-    let mut objective = SimpleExpr::constant(0.0);
+    let objective = SimpleExpr::constant(0.0);
 
     // For each clause, add a penalty if it's not satisfied
     // We use auxiliary variables for clauses with more than 2 literals
@@ -151,7 +151,7 @@ fn sat_to_qubo(formula: &SatFormula) -> Result<Model, Box<dyn std::error::Error>
         }
 
         // Build the clause expression
-        let mut clause_expr = SimpleExpr::constant(0.0);
+        let clause_expr = SimpleExpr::constant(0.0);
 
         for lit in &clause.literals {
             let var_expr = vars[lit.var].clone();
@@ -191,7 +191,7 @@ fn sat_to_qubo(formula: &SatFormula) -> Result<Model, Box<dyn std::error::Error>
 
 /// Clause learning: identify conflicting clauses
 fn learn_clauses(formula: &SatFormula, failed_assignments: &[Vec<bool>]) -> Vec<Clause> {
-    let mut learned_clauses = Vec::new();
+    let learned_clauses = Vec::new();
 
     for assignment in failed_assignments {
         // Find unsatisfied clauses
@@ -207,7 +207,7 @@ fn learn_clauses(formula: &SatFormula, failed_assignments: &[Vec<bool>]) -> Vec<
             let (_, clause) = unsat_clauses[0];
 
             // Create a new clause that prevents this specific assignment
-            let mut new_literals = Vec::new();
+            let new_literals = Vec::new();
             for lit in &clause.literals {
                 let value = assignment[lit.var];
                 if lit.negated {
@@ -259,7 +259,7 @@ fn run_sat_experiment(
         penalty_type: PenaltyType::Quadratic,
     };
 
-    let mut penalty_optimizer = PenaltyOptimizer::new(penalty_config);
+    let penalty_optimizer = PenaltyOptimizer::new(penalty_config);
 
     // Compile the model to QUBO
     let compiled = model.compile()?;
@@ -269,8 +269,8 @@ fn run_sat_experiment(
 
     // Convert QUBO to matrix format for sampler
     let n_vars = qubo.num_variables;
-    let mut matrix = ndarray::Array2::zeros((n_vars, n_vars));
-    let mut var_map = HashMap::new();
+    let matrix = ndarray::Array2::zeros((n_vars, n_vars));
+    let var_map = HashMap::new();
 
     // Create variable mapping and fill matrix
     for i in 0..n_vars {
@@ -301,9 +301,9 @@ fn run_sat_experiment(
     let first_run_time = start.elapsed();
 
     // Extract assignments and check satisfaction
-    let mut satisfying_assignments = Vec::new();
-    let mut failed_assignments = Vec::new();
-    let mut best_unsat_count = formula.clauses.len();
+    let satisfying_assignments = Vec::new();
+    let failed_assignments = Vec::new();
+    let best_unsat_count = formula.clauses.len();
 
     for sample in &samples {
         let assignment = extract_assignment(sample, formula.num_vars);
@@ -326,9 +326,9 @@ fn run_sat_experiment(
     );
 
     // If we didn't find a satisfying assignment, try clause learning
-    let mut total_time = first_run_time;
-    let mut iterations = 1;
-    let mut with_learning_sat_rate = first_run_sat_rate;
+    let total_time = first_run_time;
+    let iterations = 1;
+    let with_learning_sat_rate = first_run_sat_rate;
 
     if satisfying_assignments.is_empty() && !failed_assignments.is_empty() {
         println!("\nApplying clause learning...");
@@ -342,7 +342,7 @@ fn run_sat_experiment(
 
         if !learned.is_empty() {
             // Create augmented formula
-            let mut augmented_formula = formula.clone();
+            let augmented_formula = formula.clone();
             for clause in learned {
                 augmented_formula.add_clause(clause);
             }
@@ -354,8 +354,8 @@ fn run_sat_experiment(
 
             // Convert to matrix format
             let aug_n_vars = augmented_qubo.num_variables;
-            let mut aug_matrix = Array2::zeros((aug_n_vars, aug_n_vars));
-            let mut aug_var_map = HashMap::new();
+            let aug_matrix = Array2::zeros((aug_n_vars, aug_n_vars));
+            let aug_var_map = HashMap::new();
 
             for i in 0..aug_n_vars {
                 aug_var_map.insert(format!("x_{}", i), i);
@@ -381,7 +381,7 @@ fn run_sat_experiment(
             iterations += 1;
 
             // Check new results against original formula
-            let mut new_satisfying = 0;
+            let new_satisfying = 0;
             for sample in &new_samples {
                 let assignment = extract_assignment(sample, formula.num_vars);
                 if formula.is_satisfied(&assignment) {
@@ -449,10 +449,10 @@ struct SatSolverResults {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Advanced SAT Solver Examples ===");
 
-    let mut all_results = Vec::new();
+    let all_results = Vec::new();
 
     // Example 1: Small satisfiable 3-SAT
-    let mut sat_formula = SatFormula::new(5);
+    let sat_formula = SatFormula::new(5);
     sat_formula.add_clause(Clause::new(vec![
         Literal::positive(0),
         Literal::negative(1),
@@ -527,7 +527,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Testing 3-SAT with 20 variables at different clause/variable ratios:");
 
     let ratios = vec![2.0, 3.0, 4.0, 4.27, 5.0, 6.0, 7.0];
-    let mut phase_results = Vec::new();
+    let phase_results = Vec::new();
 
     for &ratio in &ratios {
         let num_clauses = (20.0 * ratio) as usize;

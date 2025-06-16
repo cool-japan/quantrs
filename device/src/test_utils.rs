@@ -2,6 +2,7 @@
 
 use crate::{CircuitExecutor, CircuitResult, DeviceResult, QuantumDevice};
 use async_trait::async_trait;
+use quantrs2_circuit::prelude::Circuit;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -49,7 +50,7 @@ impl QuantumDevice for MockQuantumDevice {
 impl CircuitExecutor for MockQuantumDevice {
     async fn execute_circuit<const N: usize>(
         &self,
-        _circuit: &quantrs2_circuit::Circuit<N>,
+        _circuit: &Circuit<N>,
         shots: usize,
     ) -> DeviceResult<CircuitResult> {
         let mut counts = HashMap::new();
@@ -68,7 +69,7 @@ impl CircuitExecutor for MockQuantumDevice {
 
     async fn execute_circuits<const N: usize>(
         &self,
-        circuits: Vec<&quantrs2_circuit::Circuit<N>>,
+        circuits: Vec<&Circuit<N>>,
         shots: usize,
     ) -> DeviceResult<Vec<CircuitResult>> {
         let mut results = Vec::new();
@@ -81,14 +82,14 @@ impl CircuitExecutor for MockQuantumDevice {
 
     async fn can_execute_circuit<const N: usize>(
         &self,
-        _circuit: &quantrs2_circuit::Circuit<N>,
+        _circuit: &Circuit<N>,
     ) -> DeviceResult<bool> {
         Ok(N <= self.qubit_count)
     }
 
     async fn estimated_queue_time<const N: usize>(
         &self,
-        _circuit: &quantrs2_circuit::Circuit<N>,
+        _circuit: &Circuit<N>,
     ) -> DeviceResult<std::time::Duration> {
         Ok(std::time::Duration::from_secs(1))
     }

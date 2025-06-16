@@ -474,7 +474,7 @@ impl PerformanceProfiler {
 
     /// Generate optimization recommendations
     pub fn generate_recommendations(&self, profile: &Profile) -> Vec<OptimizationRecommendation> {
-        let mut recommendations = Vec::new();
+        let recommendations = Vec::new();
 
         // Analyze hot functions
         let analysis = self.analyze_profile(profile);
@@ -564,7 +564,7 @@ impl PerformanceProfiler {
 
     /// Export in perf script format
     fn export_perf_script(&self, profile: &Profile) -> Result<String, String> {
-        let mut output = String::new();
+        let output = String::new();
 
         for event in &profile.events {
             if let EventType::FunctionCall = event.event_type {
@@ -584,7 +584,7 @@ impl PerformanceProfiler {
 
     /// Export in valgrind callgrind format
     fn export_valgrind_format(&self, profile: &Profile) -> Result<String, String> {
-        let mut output = String::new();
+        let output = String::new();
 
         output.push_str("events: Instructions\n");
         output.push_str("summary: 1000000\n\n");
@@ -604,7 +604,7 @@ impl PerformanceProfiler {
     /// Export in FlameScope format
     fn export_flamescope_format(&self, profile: &Profile) -> Result<String, String> {
         // Simplified FlameScope JSON format
-        let mut stacks = Vec::new();
+        let stacks = Vec::new();
 
         for event in &profile.events {
             if let EventType::FunctionCall = event.event_type {
@@ -1026,7 +1026,7 @@ impl PerformanceProfiler {
                 name: "allocation".to_string(),
                 duration: None,
                 data: {
-                    let mut data = HashMap::new();
+                    let data = HashMap::new();
                     data.insert("size".to_string(), size.to_string());
                     data
                 },
@@ -1052,7 +1052,7 @@ impl PerformanceProfiler {
                 name: "deallocation".to_string(),
                 duration: None,
                 data: {
-                    let mut data = HashMap::new();
+                    let data = HashMap::new();
                     data.insert("size".to_string(), size.to_string());
                     data
                 },
@@ -1139,7 +1139,7 @@ impl PerformanceProfiler {
     /// Build call graph
     fn build_call_graph(&self, profile: &mut Profile) -> Result<(), String> {
         let mut node_map: HashMap<String, usize> = HashMap::new();
-        let mut nodes = Vec::new();
+        let nodes = Vec::new();
         let mut edges: HashMap<(usize, usize), CallEdge> = HashMap::new();
 
         // Create nodes
@@ -1316,7 +1316,7 @@ impl PerformanceProfiler {
     fn generate_json_report(&self, profile: &Profile) -> Result<String, String> {
         use std::fmt::Write;
 
-        let mut json = String::new();
+        let json = String::new();
 
         // Build comprehensive JSON report
         json.push_str("{\n");
@@ -1632,7 +1632,7 @@ impl PerformanceProfiler {
         .unwrap();
 
         // Count events by type
-        let mut event_counts = std::collections::BTreeMap::new();
+        let event_counts = std::collections::BTreeMap::new();
         for event in &profile.events {
             let type_name = match &event.event_type {
                 EventType::FunctionCall => "function_call",
@@ -1665,7 +1665,7 @@ impl PerformanceProfiler {
 
     /// Generate CSV report
     fn generate_csv_report(&self, profile: &Profile) -> Result<String, String> {
-        let mut csv = String::new();
+        let csv = String::new();
 
         csv.push_str("function,total_time_ms,call_count,avg_time_ms\n");
 
@@ -1685,7 +1685,7 @@ impl PerformanceProfiler {
     /// Generate flame graph
     fn generate_flame_graph(&self, profile: &Profile) -> Result<String, String> {
         // Simplified flame graph generation
-        let mut stacks = Vec::new();
+        let stacks = Vec::new();
 
         for node in &profile.call_graph.nodes {
             let stack = vec![node.name.clone()];
@@ -1710,7 +1710,7 @@ impl PerformanceProfiler {
             tid: String,
         }
 
-        let mut events = Vec::new();
+        let events = Vec::new();
 
         for event in &profile.events {
             let trace_event = TraceEvent {
@@ -1891,7 +1891,7 @@ impl PerformanceAnalyzer {
 
     /// Detect bottlenecks
     fn detect_bottlenecks(&self, profile: &Profile) -> Vec<Bottleneck> {
-        let mut bottlenecks = Vec::new();
+        let bottlenecks = Vec::new();
 
         // CPU bottlenecks
         for node in &profile.call_graph.nodes {
@@ -1943,7 +1943,7 @@ impl PerformanceAnalyzer {
 
     /// Suggest optimizations
     fn suggest_optimizations(&self, profile: &Profile) -> Vec<OptimizationSuggestion> {
-        let mut suggestions = Vec::new();
+        let suggestions = Vec::new();
 
         for rule in &self.optimization_suggester.rules {
             if self.check_rule_condition(&rule.condition, profile) {
@@ -1993,7 +1993,7 @@ impl PerformanceAnalyzer {
 
     /// Detect anomalies
     fn detect_anomalies(&self, profile: &Profile) -> Vec<Anomaly> {
-        let mut anomalies = Vec::new();
+        let anomalies = Vec::new();
 
         // Check for unusual time distributions
         for node in &profile.call_graph.nodes {
@@ -2036,10 +2036,10 @@ impl PerformanceAnalyzer {
     /// Find critical path
     fn find_critical_path(&self, profile: &Profile) -> Vec<String> {
         // Simplified critical path - longest execution path
-        let mut path = Vec::new();
+        let path = Vec::new();
 
         if let Some(&root) = profile.call_graph.roots.first() {
-            let mut current = root;
+            let current = root;
             path.push(profile.call_graph.nodes[current].name.clone());
 
             // Follow the most expensive child at each level
@@ -2450,7 +2450,7 @@ struct MemoryCollector;
 impl MetricsCollector for MemoryCollector {
     fn collect(&self) -> Result<MetricsSample, String> {
         // Would use system APIs to get actual memory usage
-        let mut values = HashMap::new();
+        let values = HashMap::new();
         values.insert(MetricType::Memory, 0.0);
 
         Ok(MetricsSample {
@@ -2473,7 +2473,7 @@ struct CPUCollector;
 impl MetricsCollector for CPUCollector {
     fn collect(&self) -> Result<MetricsSample, String> {
         // Would use system APIs to get actual CPU usage
-        let mut values = HashMap::new();
+        let values = HashMap::new();
         values.insert(MetricType::CPU, 0.0);
 
         Ok(MetricsSample {
@@ -2527,7 +2527,7 @@ mod tests {
             auto_save_interval: None,
         };
 
-        let mut profiler = PerformanceProfiler::new(config);
+        let profiler = PerformanceProfiler::new(config);
 
         // Start profiling
         let result = profiler.start_profile("test_profile");

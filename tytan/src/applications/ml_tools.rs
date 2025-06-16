@@ -6,7 +6,7 @@
 // Sampler types available for ML applications
 use ndarray::{Array1, Array2};
 use rand::prelude::*;
-use rand::thread_rng;
+use rand::rng;
 use std::collections::HashMap;
 
 /// Feature selector using quantum optimization
@@ -305,11 +305,11 @@ impl QuantumFeatureSelector {
     /// Build QUBO for feature selection
     pub fn build_qubo(&self) -> Result<(Array2<f64>, HashMap<String, usize>), String> {
         let n_features = self.features.feature_names.len();
-        let mut qubo = Array2::zeros((n_features, n_features));
-        let mut var_map = HashMap::new();
+        let qubo = Array2::zeros((n_features, n_features));
+        let var_map = HashMap::new();
 
         // Create variable mapping
-        for (i, name) in self.features.feature_names.iter().enumerate() {
+        for (i, _name) in self.features.feature_names.iter().enumerate() {
             var_map.insert(format!("feature_{}", i), i);
         }
 
@@ -409,8 +409,8 @@ impl QuantumFeatureSelector {
         let target_discrete = self.discretize_array(&target.to_owned(), n_bins);
 
         // Compute joint and marginal probabilities
-        let mut joint_counts = Array2::<f64>::zeros((n_bins, n_bins));
-        for (i, (f, t)) in feature_discrete
+        let joint_counts = Array2::<f64>::zeros((n_bins, n_bins));
+        for (_i, (f, t)) in feature_discrete
             .iter()
             .zip(target_discrete.iter())
             .enumerate()
@@ -423,7 +423,7 @@ impl QuantumFeatureSelector {
         let target_probs = joint_probs.sum_axis(ndarray::Axis(0));
 
         // Compute MI
-        let mut mi = 0.0;
+        let mi = 0.0;
         for i in 0..n_bins {
             for j in 0..n_bins {
                 if joint_probs[[i, j]] > 0.0 {
@@ -494,21 +494,21 @@ impl QuantumFeatureSelector {
     }
 
     /// Compute feature importances
-    fn compute_feature_importances(&self, model: &MLModel) -> Result<Array1<f64>, String> {
+    fn compute_feature_importances(&self, _model: &MLModel) -> Result<Array1<f64>, String> {
         // Simplified: return random importances
         // In practice, would train model and extract importances
 
         let n_features = self.features.feature_names.len();
-        let mut rng = thread_rng();
+        let rng = rng();
 
-        Ok(Array1::from_shape_fn(n_features, |_| rng.gen::<f64>()))
+        Ok(Array1::from_shape_fn(n_features, |_| rng.random::<f64>()))
     }
 
     /// Add feature interaction terms
     fn add_feature_interactions(
         &self,
         qubo: &mut Array2<f64>,
-        model: &MLModel,
+        _model: &MLModel,
     ) -> Result<(), String> {
         // Add synergy bonus for features that work well together
         // Simplified: use correlation structure
@@ -598,11 +598,11 @@ impl QuantumFeatureSelector {
 
         // Filter component
         let shape = qubo.shape();
-        let mut filter_qubo = Array2::zeros((shape[0], shape[1]));
+        let filter_qubo = Array2::zeros((shape[0], shape[1]));
         self.add_filter_objective(&mut filter_qubo, filter_metric, 0.0)?;
 
         // Wrapper component
-        let mut wrapper_qubo = Array2::zeros((shape[0], shape[1]));
+        let wrapper_qubo = Array2::zeros((shape[0], shape[1]));
         self.add_wrapper_objective(&mut wrapper_qubo, wrapper_model)?;
 
         // Combine with balance
@@ -733,8 +733,8 @@ impl QuantumFeatureSelector {
 
     /// Decode solution to selected features
     pub fn decode_solution(&self, solution: &HashMap<String, bool>) -> SelectedFeatures {
-        let mut selected_indices = Vec::new();
-        let mut selected_names = Vec::new();
+        let selected_indices = Vec::new();
+        let selected_names = Vec::new();
 
         for (i, name) in self.features.feature_names.iter().enumerate() {
             let var_name = format!("feature_{}", i);
@@ -755,8 +755,8 @@ impl QuantumFeatureSelector {
     /// Estimate performance of selected features
     fn estimate_performance(&self, solution: &HashMap<String, bool>) -> f64 {
         // Simplified: use correlation with target
-        let mut total_score = 0.0;
-        let mut count = 0;
+        let total_score = 0.0;
+        let count = 0;
 
         for (i, _) in self.features.feature_names.iter().enumerate() {
             let var_name = format!("feature_{}", i);
@@ -778,7 +778,7 @@ impl QuantumFeatureSelector {
         &self,
         solution: &HashMap<String, bool>,
     ) -> HashMap<String, f64> {
-        let mut scores = HashMap::new();
+        let scores = HashMap::new();
 
         for (i, name) in self.features.feature_names.iter().enumerate() {
             let var_name = format!("feature_{}", i);
@@ -932,8 +932,8 @@ impl HyperparameterOptimizer {
         let discretized = self.discretize_parameters()?;
 
         let n_vars = discretized.total_combinations();
-        let mut qubo = Array2::zeros((n_vars, n_vars));
-        let mut var_map = HashMap::new();
+        let qubo = Array2::zeros((n_vars, n_vars));
+        let var_map = HashMap::new();
 
         // Create variable mapping
         self.create_parameter_variables(&mut var_map, &discretized)?;
@@ -970,7 +970,7 @@ impl HyperparameterOptimizer {
         // Discretize continuous parameters
         for (name, param) in &self.param_space.continuous {
             let n_points = 10; // Resolution
-            let mut points = Vec::new();
+            let points = Vec::new();
 
             for i in 0..n_points {
                 let t = i as f64 / (n_points - 1) as f64;
@@ -1007,7 +1007,7 @@ impl HyperparameterOptimizer {
         var_map: &mut HashMap<String, usize>,
         discretized: &DiscretizedSpace,
     ) -> Result<(), String> {
-        let mut var_idx = 0;
+        let var_idx = 0;
 
         // Create variables for each parameter value combination
         for (param_idx, param_name) in discretized.parameters.iter().enumerate() {
@@ -1051,15 +1051,15 @@ impl HyperparameterOptimizer {
     /// Estimate parameter performance
     fn estimate_parameter_performance(
         &self,
-        var_name: &str,
-        discretized: &DiscretizedSpace,
+        _var_name: &str,
+        _discretized: &DiscretizedSpace,
     ) -> Result<f64, String> {
         // Simplified: use surrogate model or prior knowledge
         // In practice, would use Gaussian process or similar
 
         // Random performance for demonstration
-        let mut rng = thread_rng();
-        Ok(rng.gen::<f64>())
+        let rng = rng();
+        Ok(rng.random::<f64>())
     }
 
     /// Add tunneling terms
@@ -1107,7 +1107,7 @@ impl HyperparameterOptimizer {
         &self,
         qubo: &mut Array2<f64>,
         var_map: &HashMap<String, usize>,
-        superposition_size: usize,
+        _superposition_size: usize,
     ) -> Result<(), String> {
         // Bonus for maintaining superposition of multiple good configurations
         // This encourages exploration
@@ -1245,9 +1245,9 @@ mod tests {
         let n_samples = 100;
         let n_features = 10;
 
-        let mut rng = thread_rng();
-        let data = Array2::from_shape_fn((n_samples, n_features), |_| rng.gen::<f64>());
-        let target = Array1::from_shape_fn(n_samples, |_| rng.gen::<f64>());
+        let rng = rng();
+        let data = Array2::from_shape_fn((n_samples, n_features), |_| rng.random::<f64>());
+        let target = Array1::from_shape_fn(n_samples, |_| rng.random::<f64>());
 
         let feature_names: Vec<_> = (0..n_features).map(|i| format!("feature_{}", i)).collect();
 
@@ -1256,12 +1256,12 @@ mod tests {
         let statistics = FeatureStatistics {
             means: data.mean_axis(ndarray::Axis(0)).unwrap(),
             stds: data.std_axis(ndarray::Axis(0), 0.0),
-            target_correlations: Array1::from_shape_fn(n_features, |_| rng.gen::<f64>()),
+            target_correlations: Array1::from_shape_fn(n_features, |_| rng.random::<f64>()),
             feature_correlations: Array2::from_shape_fn((n_features, n_features), |(i, j)| {
                 if i == j {
                     1.0
                 } else {
-                    rng.gen::<f64>() * 0.5
+                    rng.random::<f64>() * 0.5
                 }
             }),
             missing_counts: Array1::zeros(n_features),
@@ -1304,7 +1304,7 @@ mod tests {
 
         let param_space = ParameterSpace {
             continuous: {
-                let mut params = HashMap::new();
+                let params = HashMap::new();
                 params.insert(
                     "learning_rate".to_string(),
                     ContinuousParam {
@@ -1317,7 +1317,7 @@ mod tests {
                 params
             },
             discrete: {
-                let mut params = HashMap::new();
+                let params = HashMap::new();
                 params.insert(
                     "n_trees".to_string(),
                     DiscreteParam {

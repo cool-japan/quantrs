@@ -133,7 +133,7 @@ impl VisualizationExporter {
     ) -> Result<(), Box<dyn std::error::Error>> {
         use std::io::Write;
 
-        let mut file = std::fs::File::create(path)?;
+        let file = std::fs::File::create(path)?;
 
         // Write header
         writeln!(file, "x,y,energy,density")?;
@@ -171,7 +171,7 @@ impl VisualizationExporter {
 
         // Export statistics
         let stats_path = parent.join(format!("{}_stats.csv", stem.to_string_lossy()));
-        let mut stats_file = std::fs::File::create(stats_path)?;
+        let stats_file = std::fs::File::create(stats_path)?;
 
         writeln!(stats_file, "metric,value")?;
         writeln!(stats_file, "n_samples,{}", data.n_samples)?;
@@ -184,7 +184,7 @@ impl VisualizationExporter {
         // Export cluster information if available
         if let Some(clusters) = &data.clusters {
             let cluster_path = parent.join(format!("{}_clusters.csv", stem.to_string_lossy()));
-            let mut cluster_file = std::fs::File::create(cluster_path)?;
+            let cluster_file = std::fs::File::create(cluster_path)?;
 
             writeln!(cluster_file, "sample_id,cluster_id")?;
             for (i, &cluster) in clusters.iter().enumerate() {
@@ -203,7 +203,7 @@ impl VisualizationExporter {
     ) -> Result<(), Box<dyn std::error::Error>> {
         use std::io::Write;
 
-        let mut file = std::fs::File::create(path)?;
+        let file = std::fs::File::create(path)?;
 
         // Write header
         write!(file, "iteration,objective,best_so_far")?;
@@ -216,7 +216,7 @@ impl VisualizationExporter {
 
         // Calculate best so far
         let mut best_so_far = vec![f64::INFINITY; data.objectives.len()];
-        let mut current_best = f64::INFINITY;
+        let current_best = f64::INFINITY;
         for (i, &obj) in data.objectives.iter().enumerate() {
             current_best = current_best.min(obj);
             best_so_far[i] = current_best;
@@ -287,7 +287,7 @@ impl VisualizationExporter {
     ) -> Result<(), Box<dyn std::error::Error>> {
         use std::io::Write;
 
-        let mut file = std::fs::File::create(path)?;
+        let file = std::fs::File::create(path)?;
 
         writeln!(file, "#!/usr/bin/env python3")?;
         writeln!(file, "import matplotlib.pyplot as plt")?;
@@ -310,7 +310,7 @@ impl VisualizationExporter {
         writeln!(file, "plt.title('Energy Landscape Projection')")?;
         writeln!(file)?;
 
-        if let Some(density) = &data.density {
+        if let Some(_density) = &data.density {
             writeln!(file, "# Add density contours")?;
             writeln!(file, "if len(x) > 100:")?;
             writeln!(file, "    from scipy.stats import gaussian_kde")?;
@@ -335,7 +335,7 @@ impl VisualizationExporter {
     ) -> Result<(), Box<dyn std::error::Error>> {
         use std::io::Write;
 
-        let mut file = std::fs::File::create(path)?;
+        let file = std::fs::File::create(path)?;
 
         // Write HTML header
         writeln!(file, "<!DOCTYPE html>")?;
@@ -566,7 +566,7 @@ pub fn export_visualization<T: Serialize>(
     path: &str,
     format: ExportFormat,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let exporter = VisualizationExporter::new(format);
+    let _exporter = VisualizationExporter::new(format);
 
     match format {
         ExportFormat::JSON => {

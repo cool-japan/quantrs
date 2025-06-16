@@ -6,7 +6,7 @@
 use crate::gpu_performance::GpuProfiler;
 use crate::sampler::Sampler;
 use ndarray::Array2;
-use rand::thread_rng;
+use rand::rng;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
@@ -188,8 +188,8 @@ impl<S: Sampler> GpuBenchmark<S> {
             // Generate random QUBO problem
             let (qubo, var_map) = generate_random_qubo(size);
 
-            let mut times = Vec::new();
-            let mut best_energy = f64::INFINITY;
+            let times = Vec::new();
+            let best_energy = f64::INFINITY;
 
             for rep in 0..self.config.repetitions {
                 let start = Instant::now();
@@ -442,14 +442,14 @@ impl<S: Sampler> GpuBenchmark<S> {
     }
 
     /// Plot scaling results
-    fn plot_scaling_results(&self, results: &BenchmarkResults) -> Result<(), String> {
+    fn plot_scaling_results(&self, _results: &BenchmarkResults) -> Result<(), String> {
         #[cfg(feature = "scirs")]
         {
-            let mut plot = Plot::new();
+            let plot = Plot::new();
 
-            let mut sizes = Vec::new();
-            let mut times = Vec::new();
-            let mut throughputs = Vec::new();
+            let sizes = Vec::new();
+            let times = Vec::new();
+            let throughputs = Vec::new();
 
             for (size, res) in &results.size_results {
                 sizes.push(*size as f64);
@@ -482,14 +482,14 @@ impl<S: Sampler> GpuBenchmark<S> {
     }
 
     /// Plot batch size optimization
-    fn plot_batch_optimization(&self, results: &BenchmarkResults) -> Result<(), String> {
+    fn plot_batch_optimization(&self, _results: &BenchmarkResults) -> Result<(), String> {
         #[cfg(feature = "scirs")]
         {
-            let mut plot = Plot::new();
+            let plot = Plot::new();
 
-            let mut batch_sizes = Vec::new();
-            let mut exec_times = Vec::new();
-            let mut gpu_utils = Vec::new();
+            let batch_sizes = Vec::new();
+            let exec_times = Vec::new();
+            let gpu_utils = Vec::new();
 
             for (batch, res) in &results.batch_results {
                 batch_sizes.push(*batch as f64);
@@ -522,10 +522,10 @@ impl<S: Sampler> GpuBenchmark<S> {
     }
 
     /// Plot temperature schedule comparison
-    fn plot_temperature_comparison(&self, results: &BenchmarkResults) -> Result<(), String> {
+    fn plot_temperature_comparison(&self, _results: &BenchmarkResults) -> Result<(), String> {
         #[cfg(feature = "scirs")]
         {
-            let mut plot = Plot::new();
+            let plot = Plot::new();
 
             let schedules: Vec<String> = results.temp_results.keys().cloned().collect();
             let qualities: Vec<f64> = schedules
@@ -551,25 +551,25 @@ impl<S: Sampler> GpuBenchmark<S> {
 /// Generate random QUBO problem for benchmarking
 fn generate_random_qubo(size: usize) -> (Array2<f64>, HashMap<String, usize>) {
     use rand::prelude::*;
-    let mut rng = thread_rng();
+    let rng = rng();
 
-    let mut qubo = Array2::zeros((size, size));
+    let qubo = Array2::zeros((size, size));
 
     // Generate random coefficients
     for i in 0..size {
         // Linear terms
-        qubo[[i, i]] = rng.gen_range(-1.0..1.0);
+        qubo[[i, i]] = rng.random_range(-1.0..1.0);
 
         // Quadratic terms
         for j in i + 1..size {
-            let value = rng.gen_range(-2.0..2.0);
+            let value = rng.random_range(-2.0..2.0);
             qubo[[i, j]] = value;
             qubo[[j, i]] = value;
         }
     }
 
     // Create variable map
-    let mut var_map = HashMap::new();
+    let var_map = HashMap::new();
     for i in 0..size {
         var_map.insert(format!("x{}", i), i);
     }

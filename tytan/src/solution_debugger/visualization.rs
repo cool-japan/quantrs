@@ -123,7 +123,7 @@ pub struct Edge {
 impl SolutionVisualizer {
     /// Create new solution visualizer
     pub fn new() -> Self {
-        let mut color_schemes = HashMap::new();
+        let color_schemes = HashMap::new();
 
         // Default color scheme
         let mut default_scheme = ColorScheme {
@@ -155,8 +155,8 @@ impl SolutionVisualizer {
         solution: &Solution,
         problem_info: &ProblemInfo,
     ) -> Visualization {
-        let mut nodes = Vec::new();
-        let mut edges = Vec::new();
+        let nodes = Vec::new();
+        let edges = Vec::new();
 
         // Create nodes for each variable
         for (var, &value) in &solution.assignments {
@@ -220,8 +220,8 @@ impl SolutionVisualizer {
         solution: &Solution,
         problem_info: &ProblemInfo,
     ) -> Visualization {
-        let mut nodes = Vec::new();
-        let mut edges = Vec::new();
+        let nodes = Vec::new();
+        let edges = Vec::new();
 
         // Create node for current solution
         nodes.push(Node {
@@ -255,8 +255,8 @@ impl SolutionVisualizer {
         solution: &Solution,
         problem_info: &ProblemInfo,
     ) -> Visualization {
-        let mut nodes = Vec::new();
-        let mut edges = Vec::new();
+        let nodes = Vec::new();
+        let edges = Vec::new();
 
         // Create nodes for variables
         for (var, &value) in &solution.assignments {

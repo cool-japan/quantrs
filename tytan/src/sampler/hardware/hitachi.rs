@@ -146,7 +146,7 @@ impl HitachiCMOSSampler {
         }
 
         // Simple direct embedding for now
-        let mut logical_to_physical = HashMap::new();
+        let logical_to_physical = HashMap::new();
         for i in 0..n {
             logical_to_physical.insert(i, vec![i]);
         }
@@ -182,7 +182,7 @@ impl HitachiCMOSSampler {
         embedding: &KingGraphEmbedding,
         var_map: &HashMap<String, usize>,
     ) -> SampleResult {
-        let mut assignments = HashMap::new();
+        let assignments = HashMap::new();
 
         // Map physical spins back to logical variables
         for (var_name, &logical_idx) in var_map {
@@ -237,7 +237,7 @@ impl Sampler for HitachiCMOSSampler {
             } => *king_graph_size,
         };
 
-        let mut embedded_qubo = Array2::zeros((king_size, king_size));
+        let embedded_qubo = Array2::zeros((king_size, king_size));
 
         // Copy original QUBO values
         for i in 0..qubo.shape()[0] {
@@ -262,7 +262,7 @@ impl Sampler for HitachiCMOSSampler {
         }
 
         // Submit multiple jobs for shots
-        let mut all_results = Vec::new();
+        let all_results = Vec::new();
         let jobs_needed = (shots + 99) / 100; // Max 100 solutions per job
 
         for _ in 0..jobs_needed {
@@ -312,7 +312,7 @@ mod tests {
 
     #[test]
     fn test_embedding_cache() {
-        let mut sampler = HitachiCMOSSampler::new(HitachiConfig::default());
+        let sampler = HitachiCMOSSampler::new(HitachiConfig::default());
         let qubo = Array2::eye(4);
 
         let embedding1 = sampler.find_embedding(&qubo).unwrap();

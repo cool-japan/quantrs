@@ -215,10 +215,10 @@ impl SolutionDistribution {
         let max_energy = energies.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
         // Compute quantiles
-        let mut sorted_energies = energies.clone();
+        let sorted_energies = energies.clone();
         sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
-        let mut energy_quantiles = HashMap::new();
+        let energy_quantiles = HashMap::new();
         for &q in &[25, 50, 75] {
             let idx = (q as f64 / 100.0 * sorted_energies.len() as f64) as usize;
             let idx = idx.min(sorted_energies.len() - 1);
@@ -226,13 +226,13 @@ impl SolutionDistribution {
         }
 
         // Find most frequent solution
-        let mut solution_counts = HashMap::new();
+        let solution_counts = HashMap::new();
         for sample in &self.samples {
             let key = format!("{:?}", sample.assignments);
             *solution_counts.entry(key).or_insert(0) += 1;
         }
 
-        let (most_frequent, frequency) = solution_counts
+        let (_most_frequent, frequency) = solution_counts
             .iter()
             .max_by_key(|&(_, count)| count)
             .map(|(sol, &count)| (sol.clone(), count))
@@ -268,7 +268,7 @@ impl SolutionDistribution {
             .ok_or("Distance matrix not computed")?;
 
         let n = dist_matrix.nrows();
-        let mut all_distances = Vec::new();
+        let all_distances = Vec::new();
 
         for i in 0..n {
             for j in i + 1..n {
@@ -318,7 +318,7 @@ impl SolutionDistribution {
     /// Compute distance matrix
     fn compute_distance_matrix(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let n = self.samples.len();
-        let mut matrix = Array2::zeros((n, n));
+        let matrix = Array2::zeros((n, n));
 
         for i in 0..n {
             for j in i + 1..n {
@@ -336,7 +336,7 @@ impl SolutionDistribution {
     fn calculate_distance(&self, a: &SampleResult, b: &SampleResult) -> f64 {
         match self.config.distance_metric {
             DistanceMetric::Hamming => {
-                let mut distance = 0.0;
+                let distance = 0.0;
                 let all_vars: std::collections::HashSet<_> =
                     a.assignments.keys().chain(b.assignments.keys()).collect();
 
@@ -392,14 +392,14 @@ impl SolutionDistribution {
 
     /// Calculate solution entropy
     fn calculate_entropy(&self) -> f64 {
-        let mut solution_counts = HashMap::new();
+        let solution_counts = HashMap::new();
         for sample in &self.samples {
             let key = format!("{:?}", sample.assignments);
             *solution_counts.entry(key).or_insert(0) += 1;
         }
 
         let total = self.samples.len() as f64;
-        let mut entropy = 0.0;
+        let entropy = 0.0;
 
         for &count in solution_counts.values() {
             let p = count as f64 / total;
@@ -413,7 +413,7 @@ impl SolutionDistribution {
 
     /// Calculate effective sample size
     fn calculate_effective_sample_size(&self) -> f64 {
-        let mut solution_counts = HashMap::new();
+        let solution_counts = HashMap::new();
         for sample in &self.samples {
             let key = format!("{:?}", sample.assignments);
             *solution_counts.entry(key).or_insert(0) += 1;
@@ -475,9 +475,9 @@ impl SolutionDistribution {
             // Simple random assignment as fallback
             use rand::rngs::StdRng;
             use rand::{Rng, SeedableRng};
-            let mut rng = StdRng::seed_from_u64(42);
+            let rng = StdRng::seed_from_u64(42);
 
-            Ok((0..data.nrows()).map(|_| rng.gen_range(0..k)).collect())
+            Ok((0..data.nrows()).map(|_| rng.random_range(0..k)).collect())
         }
     }
 
@@ -485,8 +485,8 @@ impl SolutionDistribution {
     fn cluster_dbscan(
         &self,
         data: &Array2<f64>,
-        eps: f64,
-        min_samples: usize,
+        _eps: f64,
+        _min_samples: usize,
     ) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
         #[cfg(feature = "scirs")]
         {
@@ -540,7 +540,7 @@ impl SolutionDistribution {
         }
 
         // Get all variable names
-        let mut all_vars = std::collections::HashSet::new();
+        let all_vars = std::collections::HashSet::new();
         for sample in &self.samples {
             for var in sample.assignments.keys() {
                 all_vars.insert(var.clone());
@@ -552,7 +552,7 @@ impl SolutionDistribution {
         let n_samples = self.samples.len();
 
         // Create feature matrix
-        let mut matrix = Array2::zeros((n_samples, n_vars));
+        let matrix = Array2::zeros((n_samples, n_vars));
 
         for (i, sample) in self.samples.iter().enumerate() {
             for (j, var_name) in var_names.iter().enumerate() {
@@ -581,11 +581,11 @@ impl SolutionDistribution {
         }
 
         // Calculate cluster centers
-        let mut cluster_centers = Vec::new();
+        let cluster_centers = Vec::new();
         let (_, var_names) = self.samples_to_matrix()?;
 
         for cluster_id in 0..n_clusters {
-            let mut center = HashMap::new();
+            let center = HashMap::new();
             let cluster_samples: Vec<usize> = clusters
                 .iter()
                 .enumerate()
@@ -608,7 +608,7 @@ impl SolutionDistribution {
         }
 
         // Calculate cluster energy statistics
-        let mut cluster_energies = Vec::new();
+        let cluster_energies = Vec::new();
 
         for cluster_id in 0..n_clusters {
             let cluster_energy_values: Vec<f64> = clusters
@@ -677,7 +677,7 @@ impl SolutionDistribution {
         centers: &[HashMap<String, f64>],
         n_clusters: usize,
     ) -> Result<Array2<f64>, Box<dyn std::error::Error>> {
-        let mut distances = Array2::zeros((n_clusters, n_clusters));
+        let distances = Array2::zeros((n_clusters, n_clusters));
 
         for i in 0..n_clusters {
             for j in i + 1..n_clusters {
@@ -694,7 +694,7 @@ impl SolutionDistribution {
     fn calculate_center_distance(&self, a: &HashMap<String, f64>, b: &HashMap<String, f64>) -> f64 {
         let all_vars: std::collections::HashSet<_> = a.keys().chain(b.keys()).collect();
 
-        let mut distance = 0.0;
+        let distance = 0.0;
         for var in all_vars {
             let val_a = a.get(var).copied().unwrap_or(0.0);
             let val_b = b.get(var).copied().unwrap_or(0.0);
@@ -716,7 +716,7 @@ impl SolutionDistribution {
         let n_bins = 20;
         let bin_width = (max_energy - min_energy) / n_bins as f64;
 
-        let mut energy_bins = Vec::new();
+        let energy_bins = Vec::new();
         let mut bin_counts = vec![0; n_bins];
 
         for i in 0..n_bins {
@@ -731,8 +731,8 @@ impl SolutionDistribution {
 
         // Calculate cumulative distribution
         let total = energies.len() as f64;
-        let mut cumulative_distribution = Vec::new();
-        let mut cumsum = 0;
+        let cumulative_distribution = Vec::new();
+        let cumsum = 0;
 
         for &count in &bin_counts {
             cumsum += count;
@@ -740,10 +740,10 @@ impl SolutionDistribution {
         }
 
         // Calculate percentiles
-        let mut sorted_energies = energies.clone();
+        let sorted_energies = energies.clone();
         sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
-        let mut percentile_values = HashMap::new();
+        let percentile_values = HashMap::new();
         for p in [1, 5, 10, 25, 50, 75, 90, 95, 99].iter() {
             let idx = ((*p as f64 / 100.0) * sorted_energies.len() as f64) as usize;
             let idx = idx.min(sorted_energies.len() - 1);
@@ -763,9 +763,9 @@ impl SolutionDistribution {
         let (feature_matrix, var_names) = self.samples_to_matrix()?;
         let energies: Vec<f64> = self.samples.iter().map(|s| s.energy).collect();
 
-        let mut variable_correlations = HashMap::new();
-        let mut energy_correlations = HashMap::new();
-        let mut significant_pairs = Vec::new();
+        let variable_correlations = HashMap::new();
+        let energy_correlations = HashMap::new();
+        let significant_pairs = Vec::new();
 
         // Variable-variable correlations
         for i in 0..var_names.len() {
@@ -837,7 +837,7 @@ pub fn analyze_solution_distribution(
     config: Option<DistributionConfig>,
 ) -> Result<DistributionAnalysis, Box<dyn std::error::Error>> {
     let config = config.unwrap_or_default();
-    let mut analyzer = SolutionDistribution::new(config);
+    let analyzer = SolutionDistribution::new(config);
     analyzer.add_samples(samples);
     analyzer.analyze()
 }
@@ -850,7 +850,7 @@ pub fn plot_distribution_analysis(
     {
         use crate::scirs_stub::scirs2_plot::{Figure, Subplot};
 
-        let mut fig = Figure::new();
+        let fig = Figure::new();
 
         // Energy distribution
         let bin_counts_f64: Vec<f64> = analysis

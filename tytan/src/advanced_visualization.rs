@@ -55,7 +55,7 @@ pub struct VisualizationConfig {
 
 impl Default for VisualizationConfig {
     fn default() -> Self {
-        let mut color_schemes = HashMap::new();
+        let color_schemes = HashMap::new();
         color_schemes.insert("default".to_string(), ColorScheme::default());
         color_schemes.insert("high_contrast".to_string(), ColorScheme::high_contrast());
         color_schemes.insert(
@@ -1532,7 +1532,7 @@ impl AdvancedVisualizationManager {
         let landscape_data = self.energy_landscape_viz.process_energy_data(energy_data)?;
 
         // Create visualization
-        let visualization = self
+        let _visualization = self
             .energy_landscape_viz
             .create_visualization(&landscape_data)?;
 
@@ -1617,7 +1617,7 @@ impl AdvancedVisualizationManager {
                 .as_nanos()
         );
 
-        let visualization = self
+        let _visualization = self
             .quantum_state_viz
             .create_state_visualization(state, visualization_type)?;
 
@@ -1660,7 +1660,7 @@ impl AdvancedVisualizationManager {
         &self,
         viz_id: &str,
         format: ExportFormat,
-        options: ExportOptions,
+        _options: ExportOptions,
     ) -> Result<String, VisualizationError> {
         // Implementation stub
         Ok(format!("exported_{}_{:?}", viz_id, format))

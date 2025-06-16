@@ -51,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Demonstrate problem DSL
 fn demo_problem_dsl() -> Result<(), Box<dyn std::error::Error>> {
-    let mut dsl = ProblemDSL::new();
+    let dsl = ProblemDSL::new();
 
     // Define a graph coloring problem
     let problem_code = r#"
@@ -97,8 +97,8 @@ fn demo_problem_dsl() -> Result<(), Box<dyn std::error::Error>> {
 /// Demonstrate advanced algorithms
 fn demo_advanced_algorithms() -> Result<(), Box<dyn std::error::Error>> {
     // Create a simple optimization problem
-    let mut qubo = array![[0.0, -1.0, 0.5], [-1.0, 0.0, -0.5], [0.5, -0.5, 0.0]];
-    let mut var_map = HashMap::new();
+    let qubo = array![[0.0, -1.0, 0.5], [-1.0, 0.0, -0.5], [0.5, -0.5, 0.0]];
+    let var_map = HashMap::new();
     var_map.insert("x".to_string(), 0);
     var_map.insert("y".to_string(), 1);
     var_map.insert("z".to_string(), 2);
@@ -142,7 +142,7 @@ fn demo_advanced_algorithms() -> Result<(), Box<dyn std::error::Error>> {
 fn demo_problem_decomposition() -> Result<(), Box<dyn std::error::Error>> {
     // Create a larger problem for decomposition
     let size = 20;
-    let mut large_qubo = ndarray::Array2::zeros((size, size));
+    let large_qubo = ndarray::Array2::zeros((size, size));
 
     // Add some structure
     for i in 0..size {
@@ -224,8 +224,8 @@ fn demo_industry_applications() -> Result<(), Box<dyn std::error::Error>> {
 /// Demonstrate development tools
 fn demo_development_tools() -> Result<(), Box<dyn std::error::Error>> {
     // Create test problem
-    let mut qubo = array![[0.0, -1.0], [-1.0, 0.0]];
-    let mut var_map = HashMap::new();
+    let qubo = array![[0.0, -1.0], [-1.0, 0.0]];
+    let var_map = HashMap::new();
     var_map.insert("a".to_string(), 0);
     var_map.insert("b".to_string(), 1);
 
@@ -266,7 +266,7 @@ fn demo_development_tools() -> Result<(), Box<dyn std::error::Error>> {
         num_variables: 2,
         var_map: var_map.clone(),
         reverse_var_map: {
-            let mut rev = HashMap::new();
+            let rev = HashMap::new();
             for (k, v) in &var_map {
                 rev.insert(*v, k.clone());
             }
@@ -393,7 +393,7 @@ fn demo_complete_workflow() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Complete workflow: Portfolio Optimization");
 
     // 1. Define problem with DSL
-    let mut dsl = ProblemDSL::new();
+    let dsl = ProblemDSL::new();
     let problem = dsl.parse(
         r#"
         param n_assets = 5;
@@ -424,7 +424,7 @@ fn demo_complete_workflow() -> Result<(), Box<dyn std::error::Error>> {
     println!("    ✓ Applied hierarchical decomposition");
 
     // 3. Profile the solving process
-    let mut profiler = PerformanceProfiler::new(ProfilerConfig::default());
+    let profiler = PerformanceProfiler::new(ProfilerConfig::default());
     profiler.start_profile("portfolio_optimization")?;
 
     // 4. Solve with multiple algorithms
@@ -434,7 +434,7 @@ fn demo_complete_workflow() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     let mut best_solution: Option<HashMap<String, bool>> = None;
-    let mut best_energy = f64::INFINITY;
+    let best_energy = f64::INFINITY;
 
     for (name, sampler) in algorithms {
         println!("    → Solving with {}", name);

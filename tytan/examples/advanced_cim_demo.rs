@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a frustrated Ising problem
     let n = 6;
-    let mut coupling = Array2::zeros((n, n));
+    let coupling = Array2::zeros((n, n));
 
     // Create frustration: triangular lattice with antiferromagnetic coupling
     let edges = vec![
@@ -117,7 +117,7 @@ fn run_error_corrected_cim(
     let n = coupling.shape()[0];
 
     // Create parity check matrix for simple repetition code
-    let mut check_matrix = Array2::from_elem((n / 2, n), false);
+    let check_matrix = Array2::from_elem((n / 2, n), false);
     for i in 0..n / 2 {
         check_matrix[[i, 2 * i]] = true;
         check_matrix[[i, 2 * i + 1]] = true;
@@ -200,15 +200,15 @@ fn ising_to_qubo(
     h_vector: &Array1<f64>,
 ) -> (Array2<f64>, HashMap<String, usize>) {
     let n = j_matrix.shape()[0];
-    let mut qubo = Array2::zeros((n, n));
-    let mut var_map = HashMap::new();
+    let qubo = Array2::zeros((n, n));
+    let var_map = HashMap::new();
 
     // Convert Ising to QUBO: x_i = (s_i + 1) / 2
     for i in 0..n {
         var_map.insert(format!("s{}", i), i);
 
         // Linear terms
-        let mut linear = h_vector[i];
+        let linear = h_vector[i];
         for j in 0..n {
             if i != j {
                 linear += j_matrix[[i, j]];

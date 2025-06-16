@@ -44,7 +44,7 @@ enum PartitioningType {
 
 /// Generate problem instance
 fn generate_instance(n: usize, distribution: &str, seed: u64) -> Vec<i32> {
-    let mut rng = StdRng::seed_from_u64(seed);
+    let rng = StdRng::seed_from_u64(seed);
 
     match distribution {
         "uniform" => (0..n).map(|_| rng.gen_range(1..100)).collect(),
@@ -81,16 +81,16 @@ fn create_two_way_partition_model(numbers: &[i32]) -> Result<Model, Box<dyn std:
     let total_sum: i32 = numbers.iter().sum();
     let target_sum = total_sum as f64 / 2.0;
 
-    let mut model = Model::new();
+    let model = Model::new();
 
     // Binary variables: x_i = 1 if number i is in partition 0
-    let mut vars = Vec::new();
+    let vars = Vec::new();
     for i in 0..n {
         vars.push(model.add_variable(&format!("x_{}", i))?);
     }
 
     // Objective: minimize (sum_partition_0 - target)^2
-    let mut partition_sum = SimpleExpr::constant(0.0);
+    let partition_sum = SimpleExpr::constant(0.0);
     for i in 0..n {
         partition_sum = partition_sum + SimpleExpr::constant(numbers[i] as f64) * vars[i].clone();
     }
@@ -98,7 +98,7 @@ fn create_two_way_partition_model(numbers: &[i32]) -> Result<Model, Box<dyn std:
     // (partition_sum - target)^2
     let diff = partition_sum + SimpleExpr::constant(-target_sum);
     // Expand: diff^2 = partition_sum^2 - 2*partition_sum*target + target^2
-    let mut objective = SimpleExpr::constant(target_sum * target_sum);
+    let objective = SimpleExpr::constant(target_sum * target_sum);
 
     // Add partition_sum^2 term
     for i in 0..n {
@@ -134,10 +134,10 @@ fn create_k_way_partition_model(
     let total_sum: i32 = numbers.iter().sum();
     let target_sum = total_sum as f64 / k as f64;
 
-    let mut model = Model::new();
+    let model = Model::new();
 
     // Binary variables: x_i_p = 1 if number i is in partition p
-    let mut vars = HashMap::new();
+    let vars = HashMap::new();
     for i in 0..n {
         for p in 0..k {
             let var = model.add_variable(&format!("x_{}_{}", i, p))?;
@@ -147,7 +147,7 @@ fn create_k_way_partition_model(
 
     // Constraint: each number must be in exactly one partition
     for i in 0..n {
-        let mut partition_vars = Vec::new();
+        let partition_vars = Vec::new();
         for p in 0..k {
             partition_vars.push(vars[&(i, p)].clone());
         }
@@ -155,11 +155,11 @@ fn create_k_way_partition_model(
     }
 
     // Objective: minimize sum of squared deviations from target
-    let mut objective = SimpleExpr::constant(0.0);
+    let objective = SimpleExpr::constant(0.0);
 
     for p in 0..k {
         // Calculate partition sum
-        let mut partition_sum = SimpleExpr::constant(0.0);
+        let partition_sum = SimpleExpr::constant(0.0);
         for i in 0..n {
             partition_sum =
                 partition_sum + SimpleExpr::constant(numbers[i] as f64) * vars[&(i, p)].clone();
@@ -225,7 +225,7 @@ fn solve_partition_dp(numbers: &[i32]) -> Option<(Vec<bool>, i32)> {
 
     // Reconstruct solution
     let mut partition = vec![false; n];
-    let mut current_sum = target;
+    let current_sum = target;
 
     for i in (1..=n).rev() {
         if current_sum >= numbers[i - 1] && dp[i - 1][(current_sum - numbers[i - 1]) as usize] {
@@ -363,7 +363,7 @@ fn run_partition_experiment(
         penalty_type: PenaltyType::Quadratic,
     };
 
-    let mut penalty_optimizer = PenaltyOptimizer::new(penalty_config);
+    let penalty_optimizer = PenaltyOptimizer::new(penalty_config);
     let compiled = model.compile()?;
     let qubo = compiled.to_qubo();
 
@@ -371,8 +371,8 @@ fn run_partition_experiment(
 
     // Convert QUBO to matrix format
     let n_vars = qubo.num_variables;
-    let mut matrix = ndarray::Array2::zeros((n_vars, n_vars));
-    let mut var_map = HashMap::new();
+    let matrix = ndarray::Array2::zeros((n_vars, n_vars));
+    let var_map = HashMap::new();
 
     // Create variable mapping and fill matrix
     for i in 0..n_vars {
@@ -558,7 +558,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Testing 2-way partition with increasing problem size:");
 
     let sizes = vec![10, 15, 20, 25, 30];
-    let mut results = Vec::new();
+    let results = Vec::new();
 
     for &n in &sizes {
         let numbers = generate_instance(n, "uniform", n as u64 * 100);
@@ -570,8 +570,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Convert QUBO to matrix format
         let n_vars = qubo.num_variables;
-        let mut matrix = ndarray::Array2::zeros((n_vars, n_vars));
-        let mut var_map = HashMap::new();
+        let matrix = ndarray::Array2::zeros((n_vars, n_vars));
+        let var_map = HashMap::new();
 
         for i in 0..n_vars {
             var_map.insert(format!("x_{}", i), i);

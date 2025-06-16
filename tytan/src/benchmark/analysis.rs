@@ -255,7 +255,7 @@ impl PerformanceReport {
 
     /// Analyze performance by backend
     fn analyze_backends(results: &[BenchmarkResult]) -> HashMap<String, BackendAnalysis> {
-        let mut analysis = HashMap::new();
+        let analysis = HashMap::new();
 
         // Group results by backend
         let mut by_backend: HashMap<String, Vec<&BenchmarkResult>> = HashMap::new();
@@ -350,7 +350,7 @@ impl PerformanceReport {
 
     /// Analyze performance by sampler
     fn analyze_samplers(results: &[BenchmarkResult]) -> HashMap<String, SamplerAnalysis> {
-        let mut analysis = HashMap::new();
+        let analysis = HashMap::new();
 
         // Group results by sampler
         let mut by_sampler: HashMap<String, Vec<&BenchmarkResult>> = HashMap::new();
@@ -522,8 +522,8 @@ impl PerformanceReport {
 
     /// Comparative analysis
     fn comparative_analysis(results: &[BenchmarkResult]) -> ComparativeAnalysis {
-        let mut speedup_matrix = HashMap::new();
-        let mut quality_comparison = HashMap::new();
+        let speedup_matrix = HashMap::new();
+        let quality_comparison = HashMap::new();
         let mut efficiency_scores: HashMap<String, f64> = HashMap::new();
 
         // Calculate average performance for each configuration
@@ -613,7 +613,7 @@ impl PerformanceReport {
         summary: &SummaryStatistics,
         scaling: &ScalingAnalysis,
     ) -> Vec<Recommendation> {
-        let mut recommendations = Vec::new();
+        let recommendations = Vec::new();
 
         // Configuration recommendations
         if !scaling.optimal_problem_sizes.is_empty() {
@@ -682,7 +682,7 @@ impl PerformanceReport {
 /// Generate human-readable summary
 impl PerformanceReport {
     pub fn generate_summary(&self) -> String {
-        let mut summary = String::new();
+        let summary = String::new();
 
         summary.push_str(&format!("# Performance Benchmark Report\n\n"));
         summary.push_str(&format!("Generated: {:?}\n", self.metadata.generated_at));

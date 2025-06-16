@@ -3,11 +3,8 @@
 //! This module provides CUDA stream creation, synchronization,
 //! and management for parallel GPU kernel execution.
 
-use std::sync::{Arc, Mutex};
-
 #[cfg(feature = "advanced_math")]
 use super::context::CudaEvent;
-use crate::error::{Result, SimulatorError};
 
 // Placeholder types for actual CUDA handles
 #[cfg(feature = "advanced_math")]

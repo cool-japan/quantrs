@@ -382,7 +382,7 @@ mod tests {
     /// Test quantum noise configuration
     #[test]
     fn test_quantum_noise_config() {
-        let mut gate_errors = HashMap::new();
+        let gate_errors = HashMap::new();
         gate_errors.insert("RX".to_string(), 0.001);
         gate_errors.insert("CNOT".to_string(), 0.005);
 

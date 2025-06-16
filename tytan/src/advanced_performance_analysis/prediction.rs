@@ -52,7 +52,7 @@ impl PerformancePredictionModel for LinearRegressionModel {
         &self,
         _characteristics: &ProblemCharacteristics,
     ) -> Result<HashMap<String, f64>, AnalysisError> {
-        let mut predictions = HashMap::new();
+        let predictions = HashMap::new();
         predictions.insert("execution_time".to_string(), 1.2);
         predictions.insert("memory_usage".to_string(), 0.8);
         predictions.insert("solution_quality".to_string(), 0.9);
@@ -91,7 +91,7 @@ impl PerformancePredictionModel for RandomForestModel {
         &self,
         _characteristics: &ProblemCharacteristics,
     ) -> Result<HashMap<String, f64>, AnalysisError> {
-        let mut predictions = HashMap::new();
+        let predictions = HashMap::new();
         predictions.insert("execution_time".to_string(), 1.1);
         predictions.insert("memory_usage".to_string(), 0.75);
         predictions.insert("solution_quality".to_string(), 0.93);

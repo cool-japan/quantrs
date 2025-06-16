@@ -151,7 +151,7 @@ fn test_compile_cubic_expression() {
 
     // This assumes the tensor is stored in a canonical form where indices are ordered
     let indices = [x_idx, y_idx, z_idx];
-    let mut sorted_indices = indices.clone();
+    let sorted_indices = indices.clone();
     sorted_indices.sort();
 
     // Check that the tensor has a 1.0 at the expected position
@@ -163,7 +163,7 @@ fn test_compile_cubic_expression() {
 fn test_compile_matrix_input() {
     // Test compiling from a matrix input
     // Create a 3x3 QUBO matrix directly
-    let mut matrix = Array::zeros((3, 3));
+    let matrix = Array::zeros((3, 3));
 
     // Set some values
     matrix[[0, 0]] = -3.0; // Linear term for variable 0

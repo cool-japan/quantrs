@@ -6,8 +6,9 @@
 
 use quantrs2_circuit::prelude::*;
 use quantrs2_device::{
-    cloud::{allocation::*, cost_management::*, monitoring::*, orchestration::*, providers::*},
+    cloud::{allocation::*, cost_management::*, monitoring::*, orchestration::*, providers::*, QuantumCloudConfig},
     job_scheduling::{JobConfig, JobPriority, QuantumJob},
+    unified_benchmarking::config::{PerformanceTargets, SuccessCriteria, BenchmarkConfiguration},
     DeviceResult,
 };
 use std::collections::HashMap;
@@ -348,43 +349,21 @@ fn create_performance_config() -> CloudPerformanceConfig {
             target_error_rate: 0.005,
             target_queue_time: Duration::from_secs(30),
         },
-        sla_configuration: SLAConfiguration {
-            sla_targets: {
-                let mut targets = HashMap::new();
-                targets.insert("availability".to_string(), 99.5);
-                targets.insert("latency_p95".to_string(), 500.0);
-                targets
-            },
-            violation_thresholds: HashMap::new(),
-            penalty_calculation: PenaltyCalculationConfig::default(),
-            reporting_config: SLAReportingConfig::default(),
+        sla_targets: {
+            let mut targets = HashMap::new();
+            targets.insert("availability".to_string(), 99.5);
+            targets.insert("latency_p95".to_string(), 500.0);
+            targets
         },
         benchmark_config: BenchmarkConfiguration {
-            benchmark_suite: vec![BenchmarkTest {
-                name: "Latency Test".to_string(),
-                test_type: BenchmarkType::Latency,
-                parameters: HashMap::new(),
-                success_criteria: SuccessCriteria {
-                    metrics: HashMap::new(),
-                    overall_success_threshold: 0.95,
-                    failure_tolerance: 2,
-                },
-            }],
-            execution_schedule: BenchmarkSchedule::default(),
+            benchmark_suite: vec![],
+            execution_schedule: "daily".to_string(),
             performance_baselines: HashMap::new(),
-            regression_detection: RegressionDetectionConfig::default(),
+            enable_regression_detection: true,
         },
-        anomaly_detection: AnomalyDetectionConfig {
-            enable_detection: true,
-            detection_methods: vec![
-                AnomalyDetectionMethod::StatisticalOutlier,
-                AnomalyDetectionMethod::IsolationForest,
-            ],
-            sensitivity: 0.05,
-            training_window: Duration::from_secs(3600 * 24 * 7),
-            detection_window: Duration::from_secs(300),
-            alert_configuration: AnomalyAlertConfig::default(),
-        },
+        anomaly_detection_enabled: true,
+        anomaly_sensitivity: 0.05,
+        anomaly_detection_window: Duration::from_secs(300),
     }
 }
 

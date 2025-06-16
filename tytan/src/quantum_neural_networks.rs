@@ -6,7 +6,7 @@
 
 use crate::sampler::SamplerError;
 use ndarray::{s, Array1, Array2};
-use rand::{prelude::*, thread_rng};
+use rand::{prelude::*, rng};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -527,7 +527,7 @@ impl QuantumNeuralNetwork {
         training_config: QNNTrainingConfig,
     ) -> Result<Self, SamplerError> {
         let num_quantum_params = Self::calculate_quantum_params(&architecture);
-        let num_classical_params = Self::calculate_classical_params(&architecture);
+        let _num_classical_params = Self::calculate_classical_params(&architecture);
 
         let parameters = QNNParameters {
             quantum_params: Array1::zeros(num_quantum_params),
@@ -564,18 +564,18 @@ impl QuantumNeuralNetwork {
         // Initialize parameters
         self.initialize_parameters()?;
 
-        let mut best_loss = f64::INFINITY;
-        let mut patience_counter = 0;
+        let best_loss = f64::INFINITY;
+        let patience_counter = 0;
 
         for epoch in 0..self.training_config.num_epochs {
             let epoch_start = std::time::Instant::now();
 
             // Shuffle training data
-            let mut shuffled_data = training_data.to_vec();
-            shuffled_data.shuffle(&mut thread_rng());
+            let shuffled_data = training_data.to_vec();
+            shuffled_data.shuffle(&mut rng());
 
-            let mut epoch_loss = 0.0;
-            let mut epoch_accuracy = 0.0;
+            let epoch_loss = 0.0;
+            let epoch_accuracy = 0.0;
             let batch_count = (shuffled_data.len() + self.training_config.batch_size - 1)
                 / self.training_config.batch_size;
 
@@ -668,7 +668,7 @@ impl QuantumNeuralNetwork {
     /// Forward pass through the network
     pub fn forward(&self, input: &Array1<f64>) -> Result<Array1<f64>, SamplerError> {
         // Classical preprocessing
-        let mut current_state = input.clone();
+        let current_state = input.clone();
         for layer in &self.classical_layers {
             current_state = self.apply_classical_layer(&current_state, layer)?;
         }
@@ -683,7 +683,7 @@ impl QuantumNeuralNetwork {
     /// Apply quantum layers to input state
     fn apply_quantum_layers(&self, input: &Array1<f64>) -> Result<Array1<f64>, SamplerError> {
         // Initialize quantum state
-        let mut quantum_state = self.initialize_quantum_state(input)?;
+        let quantum_state = self.initialize_quantum_state(input)?;
 
         // Apply each quantum layer
         for layer in &self.layers {
@@ -699,7 +699,7 @@ impl QuantumNeuralNetwork {
         // Encode classical data into quantum state
         let num_qubits = self.architecture.num_qubits;
         let state_dim = 1 << num_qubits;
-        let mut quantum_state = Array1::zeros(state_dim);
+        let quantum_state = Array1::zeros(state_dim);
 
         // Simple amplitude encoding
         if input.len() <= state_dim {
@@ -734,7 +734,7 @@ impl QuantumNeuralNetwork {
         state: &Array1<f64>,
         layer: &QuantumLayer,
     ) -> Result<Array1<f64>, SamplerError> {
-        let mut current_state = state.clone();
+        let current_state = state.clone();
 
         // Apply parametrized gates
         for gate in &layer.parametrized_gates {
@@ -798,7 +798,7 @@ impl QuantumNeuralNetwork {
             return Ok(state.clone());
         }
 
-        let mut new_state = state.clone();
+        let new_state = state.clone();
         let state_dim = state.len();
 
         for i in 0..state_dim {
@@ -834,7 +834,7 @@ impl QuantumNeuralNetwork {
             return Ok(state.clone());
         }
 
-        let mut new_state = state.clone();
+        let new_state = state.clone();
         let state_dim = state.len();
 
         for i in 0..state_dim {
@@ -870,7 +870,7 @@ impl QuantumNeuralNetwork {
             return Ok(state.clone());
         }
 
-        let mut new_state = state.clone();
+        let new_state = state.clone();
         let exp_neg = (-angle / 2.0).exp();
         let exp_pos = (angle / 2.0).exp();
 
@@ -902,11 +902,11 @@ impl QuantumNeuralNetwork {
         if norm < 1e-10 {
             return Ok(state.clone());
         }
-        let (nx, ny, nz) = (nx / norm, ny / norm, nz / norm);
+        let (_nx, _ny, nz) = (nx / norm, ny / norm, nz / norm);
 
         // Apply rotation using Rodrigues' formula approach
-        let cos_half = (angle / 2.0).cos();
-        let sin_half = (angle / 2.0).sin();
+        let _cos_half = (angle / 2.0).cos();
+        let _sin_half = (angle / 2.0).sin();
 
         // For simplicity, approximate with Z rotation
         self.apply_rz_gate(state, qubit, angle * nz)
@@ -942,7 +942,7 @@ impl QuantumNeuralNetwork {
             return Ok(state.clone());
         }
 
-        let mut new_state = state.clone();
+        let new_state = state.clone();
 
         for i in 0..state.len() {
             if (i & (1 << control)) != 0 {
@@ -966,7 +966,7 @@ impl QuantumNeuralNetwork {
             return Ok(state.clone());
         }
 
-        let mut new_state = state.clone();
+        let new_state = state.clone();
 
         for i in 0..state.len() {
             if (i & (1 << control)) != 0 && (i & (1 << target)) != 0 {
@@ -1003,7 +1003,7 @@ impl QuantumNeuralNetwork {
             }
             MeasurementScheme::Pauli { bases } => {
                 // Expectation values of Pauli measurements
-                let mut expectations = Array1::zeros(bases.len());
+                let expectations = Array1::zeros(bases.len());
                 for (i, basis) in bases.iter().enumerate() {
                     expectations[i] = self.compute_pauli_expectation(state, basis)?;
                 }
@@ -1025,7 +1025,7 @@ impl QuantumNeuralNetwork {
     ) -> Result<f64, SamplerError> {
         match basis {
             PauliBasis::Z => {
-                let mut expectation = 0.0;
+                let expectation = 0.0;
                 for i in 0..state.len() {
                     let parity = (i.count_ones() % 2) as f64;
                     expectation += state[i] * state[i] * (1.0 - 2.0 * parity);
@@ -1034,7 +1034,7 @@ impl QuantumNeuralNetwork {
             }
             PauliBasis::X => {
                 // Simplified X measurement
-                let mut expectation = 0.0;
+                let expectation = 0.0;
                 for i in 0..state.len() {
                     let j = i ^ 1; // Flip first qubit
                     if j < state.len() {
@@ -1095,7 +1095,7 @@ impl QuantumNeuralNetwork {
         &self,
         batch: &[(Array1<f64>, Array1<f64>)],
     ) -> Result<Vec<Array1<f64>>, SamplerError> {
-        let mut predictions = Vec::new();
+        let predictions = Vec::new();
         for (input, _) in batch {
             predictions.push(self.forward(input)?);
         }
@@ -1108,10 +1108,10 @@ impl QuantumNeuralNetwork {
         batch: &[(Array1<f64>, Array1<f64>)],
         predictions: &[Array1<f64>],
     ) -> Result<(f64, Array1<f64>), SamplerError> {
-        let mut total_loss = 0.0;
-        let mut gradients = Array1::zeros(self.parameters.quantum_params.len());
+        let total_loss = 0.0;
+        let gradients = Array1::zeros(self.parameters.quantum_params.len());
 
-        for (i, ((_, target), prediction)) in batch.iter().zip(predictions.iter()).enumerate() {
+        for (_, ((_, target), prediction)) in batch.iter().zip(predictions.iter()).enumerate() {
             let loss = self.compute_loss(prediction, target)?;
             total_loss += loss;
 
@@ -1138,7 +1138,7 @@ impl QuantumNeuralNetwork {
                 Ok(diff.dot(&diff) / (2.0 * prediction.len() as f64))
             }
             LossFunction::CrossEntropy => {
-                let mut loss = 0.0;
+                let loss = 0.0;
                 for (pred, targ) in prediction.iter().zip(target.iter()) {
                     loss -= targ * pred.ln();
                 }
@@ -1158,18 +1158,18 @@ impl QuantumNeuralNetwork {
         prediction: &Array1<f64>,
         target: &Array1<f64>,
     ) -> Result<Array1<f64>, SamplerError> {
-        let mut gradients = Array1::zeros(self.parameters.quantum_params.len());
+        let gradients = Array1::zeros(self.parameters.quantum_params.len());
         let shift = PI / 2.0;
 
         for i in 0..self.parameters.quantum_params.len() {
             // Forward pass with positive shift
-            let mut params_plus = self.parameters.quantum_params.clone();
+            let params_plus = self.parameters.quantum_params.clone();
             params_plus[i] += shift;
             let prediction_plus = self.forward_with_params(&prediction, &params_plus)?;
             let loss_plus = self.compute_loss(&prediction_plus, target)?;
 
             // Forward pass with negative shift
-            let mut params_minus = self.parameters.quantum_params.clone();
+            let params_minus = self.parameters.quantum_params.clone();
             params_minus[i] -= shift;
             let prediction_minus = self.forward_with_params(&prediction, &params_plus)?;
             let loss_minus = self.compute_loss(&prediction_minus, target)?;
@@ -1185,7 +1185,7 @@ impl QuantumNeuralNetwork {
     fn forward_with_params(
         &self,
         input: &Array1<f64>,
-        params: &Array1<f64>,
+        _params: &Array1<f64>,
     ) -> Result<Array1<f64>, SamplerError> {
         // This is a simplified version - would need to temporarily update parameters
         self.forward(input)
@@ -1201,9 +1201,9 @@ impl QuantumNeuralNetwork {
                     &self.parameters.quantum_params - &(gradients * lr);
             }
             OptimizerType::Adam {
-                beta1,
-                beta2,
-                epsilon,
+                beta1: _,
+                beta2: _,
+                epsilon: _,
             } => {
                 // Simplified Adam optimizer
                 let lr = self.training_config.learning_rate;
@@ -1247,7 +1247,7 @@ impl QuantumNeuralNetwork {
         batch: &[(Array1<f64>, Array1<f64>)],
         predictions: &[Array1<f64>],
     ) -> f64 {
-        let mut correct = 0;
+        let correct = 0;
         for ((_, target), prediction) in batch.iter().zip(predictions.iter()) {
             if self.is_prediction_correct(prediction, target) {
                 correct += 1;
@@ -1284,7 +1284,7 @@ impl QuantumNeuralNetwork {
         &self,
         data: &[(Array1<f64>, Array1<f64>)],
     ) -> Result<f64, SamplerError> {
-        let mut total_loss = 0.0;
+        let total_loss = 0.0;
         for (input, target) in data.iter().take(10) {
             // Use subset for validation
             let prediction = self.forward(input)?;
@@ -1297,22 +1297,22 @@ impl QuantumNeuralNetwork {
     fn initialize_parameters(&mut self) -> Result<(), SamplerError> {
         match &self.parameters.initialization_scheme {
             ParameterInitializationScheme::RandomUniform { min, max } => {
-                let mut rng = thread_rng();
+                let rng = rng();
                 for param in self.parameters.quantum_params.iter_mut() {
-                    *param = rng.gen_range(*min..*max);
+                    *param = rng.random_range(*min..*max);
                 }
             }
             ParameterInitializationScheme::RandomNormal { mean, std } => {
-                let mut rng = thread_rng();
+                let rng = rng();
                 for param in self.parameters.quantum_params.iter_mut() {
-                    *param = rng.gen::<f64>() * std + mean;
+                    *param = rng.random::<f64>() * std + mean;
                 }
             }
             _ => {
                 // Default to random uniform [-π, π]
-                let mut rng = thread_rng();
+                let rng = rng();
                 for param in self.parameters.quantum_params.iter_mut() {
-                    *param = rng.gen_range(-PI..PI);
+                    *param = rng.random_range(-PI..PI);
                 }
             }
         }
@@ -1412,11 +1412,11 @@ impl QuantumNeuralNetwork {
     fn build_quantum_layers(
         architecture: &QNNArchitecture,
     ) -> Result<Vec<QuantumLayer>, SamplerError> {
-        let mut layers = Vec::new();
+        let layers = Vec::new();
 
         for layer_id in 0..architecture.circuit_depth {
-            let mut gates = Vec::new();
-            let mut parametrized_gates = Vec::new();
+            let gates = Vec::new();
+            let parametrized_gates = Vec::new();
 
             // Add parametrized rotation gates
             for qubit in 0..architecture.num_qubits {
@@ -1477,7 +1477,7 @@ impl QuantumNeuralNetwork {
     fn build_classical_layers(
         architecture: &QNNArchitecture,
     ) -> Result<Vec<ClassicalLayer>, SamplerError> {
-        let mut layers = Vec::new();
+        let layers = Vec::new();
 
         // Add a preprocessing layer if needed
         if architecture.input_dim != architecture.num_qubits {
@@ -1662,7 +1662,7 @@ mod tests {
 
     #[test]
     fn test_parameter_initialization() {
-        let mut qnn = create_binary_classification_qnn(3).unwrap();
+        let qnn = create_binary_classification_qnn(3).unwrap();
         qnn.initialize_parameters().unwrap();
 
         // Check that parameters are initialized within bounds

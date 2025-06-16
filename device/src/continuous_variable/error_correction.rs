@@ -40,7 +40,7 @@ pub enum CVErrorCorrectionCode {
 }
 
 /// CV stabilizer for squeeze-stabilizer codes
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CVStabilizer {
     /// Quadrature operators (coefficient, mode, quadrature_type)
     pub operators: Vec<(f64, usize, QuadratureType)>,

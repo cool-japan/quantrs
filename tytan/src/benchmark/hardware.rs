@@ -156,7 +156,7 @@ impl HardwareBackend for CpuBackend {
         // Standard implementation
         // Convert parameters to QUBO format
         let num_vars = matrix.shape()[0];
-        let mut var_map = HashMap::new();
+        let var_map = HashMap::new();
         for i in 0..num_vars {
             var_map.insert(format!("x_{}", i), i);
         }
@@ -178,7 +178,7 @@ impl HardwareBackend for CpuBackend {
     }
 
     fn get_metrics(&self) -> HashMap<String, f64> {
-        let mut metrics = HashMap::new();
+        let metrics = HashMap::new();
 
         // CPU metrics
         metrics.insert("cpu_threads".to_string(), num_cpus::get() as f64);
@@ -218,7 +218,7 @@ impl CpuBackend {
         } else {
             // Use dense SIMD operations
             let num_vars = matrix.shape()[0];
-            let mut var_map = HashMap::new();
+            let var_map = HashMap::new();
             for i in 0..num_vars {
                 var_map.insert(format!("x_{}", i), i);
             }
@@ -325,7 +325,7 @@ impl HardwareBackend for GpuBackend {
     }
 
     fn get_metrics(&self) -> HashMap<String, f64> {
-        let mut metrics = HashMap::new();
+        let metrics = HashMap::new();
 
         #[cfg(feature = "scirs")]
         {

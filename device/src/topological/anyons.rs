@@ -256,12 +256,12 @@ impl ChargeAlgebra {
 
     /// Calculate quantum dimension of a charge
     pub fn quantum_dimension(&self, charge: &TopologicalCharge) -> f64 {
-        match (self.anyon_type, charge.label.as_str()) {
-            (NonAbelianAnyonType::Fibonacci, "I") => 1.0,
-            (NonAbelianAnyonType::Fibonacci, "τ") => (1.0 + 5.0_f64.sqrt()) / 2.0, // Golden ratio
-            (NonAbelianAnyonType::Ising, "I") => 1.0,
-            (NonAbelianAnyonType::Ising, "σ") => 2.0_f64.sqrt(),
-            (NonAbelianAnyonType::Ising, "ψ") => 1.0,
+        match (&self.anyon_type, charge.label.as_str()) {
+            (&NonAbelianAnyonType::Fibonacci, "I") => 1.0,
+            (&NonAbelianAnyonType::Fibonacci, "τ") => (1.0 + 5.0_f64.sqrt()) / 2.0, // Golden ratio
+            (&NonAbelianAnyonType::Ising, "I") => 1.0,
+            (&NonAbelianAnyonType::Ising, "σ") => 2.0_f64.sqrt(),
+            (&NonAbelianAnyonType::Ising, "ψ") => 1.0,
             _ => 1.0, // Default for unknown charges
         }
     }

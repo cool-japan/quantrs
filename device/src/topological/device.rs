@@ -88,8 +88,8 @@ impl EnhancedTopologicalDevice {
             _ => NonAbelianAnyonType::Fibonacci, // Default
         };
 
-        let anyon_factory = AnyonFactory::new(anyon_type, fusion_rules.clone());
-        let braiding_manager = BraidingOperationManager::new(anyon_type);
+        let anyon_factory = AnyonFactory::new(anyon_type.clone(), fusion_rules.clone());
+        let braiding_manager = BraidingOperationManager::new(anyon_type.clone());
         let fusion_executor = FusionOperationExecutor::new(anyon_type, fusion_rules);
 
         Ok(Self {

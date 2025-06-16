@@ -5,13 +5,12 @@
 //! gates for optimal performance. It leverages SciRS2's optimization
 //! capabilities for efficient matrix operations and circuit transformations.
 
-use ndarray::{Array2, Array3, ArrayView2};
+use ndarray::Array2;
 use num_complex::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
-use std::sync::Arc;
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
@@ -1294,10 +1293,10 @@ impl MLFusionPredictor {
 
     /// Extract features from gate sequence
     fn extract_features(&self, gates: &[QuantumGate]) -> Vec<f64> {
-        let mut features = vec![0.0; 4];
+        let mut features = [0.0; 4];
 
         if gates.len() < 2 {
-            return features;
+            return features.to_vec();
         }
 
         // Feature 0: Rotation similarity
@@ -1312,7 +1311,7 @@ impl MLFusionPredictor {
         // Feature 3: Matrix sparsity
         features[3] = self.calculate_matrix_sparsity(gates);
 
-        features
+        features.to_vec()
     }
 
     fn calculate_rotation_similarity(&self, gates: &[QuantumGate]) -> f64 {

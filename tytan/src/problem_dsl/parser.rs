@@ -39,9 +39,9 @@ impl Parser {
 
     /// Parse program
     fn parse_program(&mut self) -> Result<AST, ParseError> {
-        let mut declarations = Vec::new();
-        let mut objective = None;
-        let mut constraints = Vec::new();
+        let declarations = Vec::new();
+        let objective = None;
+        let constraints = Vec::new();
 
         while !self.is_at_end() {
             match self.current_token() {
@@ -184,7 +184,7 @@ impl Parser {
             }
             Token::LeftBracket => {
                 self.advance(); // consume '['
-                let mut elements = Vec::new();
+                let elements = Vec::new();
 
                 while !matches!(self.current_token(), Token::RightBracket) {
                     elements.push(self.parse_value()?);
@@ -275,7 +275,7 @@ impl Parser {
 
     /// Parse additive expression
     fn parse_additive(&mut self) -> Result<Expression, ParseError> {
-        let mut expr = self.parse_multiplicative()?;
+        let expr = self.parse_multiplicative()?;
 
         while matches!(self.current_token(), Token::Plus | Token::Minus) {
             let op = match self.current_token() {
@@ -297,7 +297,7 @@ impl Parser {
 
     /// Parse multiplicative expression
     fn parse_multiplicative(&mut self) -> Result<Expression, ParseError> {
-        let mut expr = self.parse_primary()?;
+        let expr = self.parse_primary()?;
 
         while matches!(self.current_token(), Token::Times | Token::Divide) {
             let op = match self.current_token() {
@@ -342,7 +342,7 @@ impl Parser {
                 // Check for indexing
                 if matches!(self.current_token(), Token::LeftBracket) {
                     self.advance(); // consume '['
-                    let mut indices = Vec::new();
+                    let indices = Vec::new();
 
                     loop {
                         indices.push(self.parse_expression()?);

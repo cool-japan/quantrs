@@ -160,7 +160,7 @@ impl ParameterTuner {
             .map(|e| e.objective_value)
             .fold(f64::INFINITY, f64::min);
 
-        let mut no_improvement_count = 0;
+        let no_improvement_count = 0;
 
         for i in self.config.initial_samples..self.config.max_evaluations {
             // Get next parameters to evaluate
@@ -259,20 +259,20 @@ impl ParameterTuner {
         use rand::rngs::StdRng;
         use rand::{Rng, SeedableRng};
 
-        let mut rng = StdRng::seed_from_u64(seed + self.config.seed.unwrap_or(42));
+        let rng = StdRng::seed_from_u64(seed + self.config.seed.unwrap_or(42));
 
         self.parameter_bounds
             .iter()
             .map(|b| {
                 let value = match b.scale {
-                    ParameterScale::Linear => rng.gen_range(b.min..b.max),
+                    ParameterScale::Linear => rng.random_range(b.min..b.max),
                     ParameterScale::Logarithmic => {
                         let log_min = b.min.ln();
                         let log_max = b.max.ln();
-                        rng.gen_range(log_min..log_max).exp()
+                        rng.random_range(log_min..log_max).exp()
                     }
                     ParameterScale::Sigmoid => {
-                        let u: f64 = rng.gen();
+                        let u: f64 = rng.random();
                         b.min + (b.max - b.min) / (1.0 + (-4.0 * (u - 0.5)).exp())
                     }
                 };
@@ -376,7 +376,7 @@ impl ParameterTuner {
         let start_time = std::time::Instant::now();
 
         // Create sampler with parameters
-        let mut sampler = sampler_factory(parameters.clone());
+        let sampler = sampler_factory(parameters.clone());
 
         // Run sampling
         let num_reads = 100; // Could be a tunable parameter
@@ -437,7 +437,7 @@ impl ParameterTuner {
     fn calculate_importance_correlation(
         &self,
     ) -> Result<HashMap<String, f64>, Box<dyn std::error::Error>> {
-        let mut importance = HashMap::new();
+        let importance = HashMap::new();
 
         for bounds in &self.parameter_bounds {
             // Calculate correlation between parameter and objective
@@ -546,7 +546,7 @@ pub fn quick_tune<S: Sampler>(
         ..Default::default()
     };
 
-    let mut tuner = ParameterTuner::new(config);
+    let tuner = ParameterTuner::new(config);
     tuner.add_parameters(parameter_bounds);
 
     let result = tuner.tune_sampler(sampler_factory, model, |samples| {

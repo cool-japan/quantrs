@@ -31,7 +31,7 @@ mod tests {
         assert!(framework.is_ok());
 
         let framework = framework.unwrap();
-        assert_eq!(framework.layers.len(), 1);
+        assert_eq!(framework.get_layers().len(), 1);
     }
 
     #[test]
@@ -112,7 +112,7 @@ mod tests {
 
         let layer = layer.unwrap();
         assert_eq!(layer.get_num_parameters(), 16);
-        assert_eq!(layer.lstm_gates.len(), 4); // Forget, Input, Output, Candidate
+        assert_eq!(layer.get_lstm_gates().len(), 4); // Forget, Input, Output, Candidate
     }
 
     #[test]
@@ -132,7 +132,7 @@ mod tests {
 
         let layer = layer.unwrap();
         assert_eq!(layer.get_num_parameters(), 8);
-        assert_eq!(layer.attention_structure.len(), 2); // 2 attention heads
+        assert_eq!(layer.get_attention_structure().len(), 2); // 2 attention heads
     }
 
     #[test]
@@ -145,7 +145,7 @@ mod tests {
 
         assert!(output.is_ok());
         let output = output.unwrap();
-        assert_eq!(output.len(), framework.config.num_qubits);
+        assert_eq!(output.len(), framework.get_config().num_qubits);
     }
 
     #[test]
@@ -171,7 +171,7 @@ mod tests {
 
         let framework = QuantumMLFramework::new(config).unwrap();
         let input = Array1::from_vec(vec![0.6, 0.8]); // Should normalize to unit vector
-        let encoded = framework.encode_amplitude(&input);
+        let encoded = framework.encode_amplitude_public(&input);
 
         assert!(encoded.is_ok());
         let encoded_state = encoded.unwrap();
@@ -193,7 +193,7 @@ mod tests {
 
         let framework = QuantumMLFramework::new(config).unwrap();
         let input = Array1::from_vec(vec![PI / 4.0, PI / 2.0, 0.0, PI]);
-        let encoded = framework.encode_angle(&input);
+        let encoded = framework.encode_angle_public(&input);
 
         assert!(encoded.is_ok());
         let encoded_state = encoded.unwrap();
@@ -215,7 +215,7 @@ mod tests {
 
         let framework = QuantumMLFramework::new(config).unwrap();
         let input = Array1::from_vec(vec![1.0, 0.0, 1.0, 0.0]); // Should encode to |1010⟩ = |10⟩
-        let encoded = framework.encode_basis(&input);
+        let encoded = framework.encode_basis_public(&input);
 
         assert!(encoded.is_ok());
         let encoded_state = encoded.unwrap();
@@ -240,7 +240,7 @@ mod tests {
 
         let framework = QuantumMLFramework::new(config).unwrap();
         let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
-        let encoded = framework.encode_quantum_feature_map(&input);
+        let encoded = framework.encode_quantum_feature_map_public(&input);
 
         assert!(encoded.is_ok());
         let encoded_state = encoded.unwrap();
@@ -256,12 +256,12 @@ mod tests {
         let framework = QuantumMLFramework::new(config).unwrap();
 
         // Create |0⟩ state
-        let state_size = 1 << framework.config.num_qubits;
+        let state_size = 1 << framework.get_config().num_qubits;
         let mut state = Array1::zeros(state_size);
         state[0] = Complex64::new(1.0, 0.0);
 
         // Measure first qubit (should be +1 for |0⟩)
-        let expectation = framework.measure_pauli_z_expectation(&state, 0);
+        let expectation = framework.measure_pauli_z_expectation_public(&state, 0);
         assert!(expectation.is_ok());
         assert!((expectation.unwrap() - 1.0).abs() < 1e-10);
 
@@ -269,7 +269,7 @@ mod tests {
         state[0] = Complex64::new(0.0, 0.0);
         state[1] = Complex64::new(1.0, 0.0);
 
-        let expectation = framework.measure_pauli_z_expectation(&state, 0);
+        let expectation = framework.measure_pauli_z_expectation_public(&state, 0);
         assert!(expectation.is_ok());
         assert!((expectation.unwrap() + 1.0).abs() < 1e-10);
     }
@@ -350,8 +350,8 @@ mod tests {
             let framework = QuantumMLFramework::new(config).unwrap();
 
             // Test learning rate at different epochs
-            let lr_epoch_0 = framework.get_current_learning_rate(0);
-            let lr_epoch_10 = framework.get_current_learning_rate(10);
+            let lr_epoch_0 = framework.get_current_learning_rate_public(0);
+            let lr_epoch_10 = framework.get_current_learning_rate_public(10);
 
             match schedule {
                 LearningRateSchedule::Constant => {
@@ -542,7 +542,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Check that parameters are within bounds
-        for layer in &framework.layers {
+        for layer in framework.get_layers() {
             let params = layer.get_parameters();
             for &param in params.iter() {
                 assert!(param >= -PI && param <= PI);
@@ -612,7 +612,7 @@ mod tests {
         assert!((norm_sq - 1.0).abs() < 1e-10); // Check normalization
 
         // Test backward pass
-        let gradient_input = Array1::from_vec(vec![0.1; 4]);
+        let gradient_input = Array1::from_vec([0.1; 4]);
         let gradient_output = layer.backward(&gradient_input);
         assert!(gradient_output.is_ok());
     }
@@ -702,14 +702,14 @@ mod tests {
         let prediction = Array1::from_vec(vec![1.0, 0.5, 0.0]);
         let target = Array1::from_vec(vec![1.0, 0.5, 0.0]);
 
-        let loss = framework.compute_loss(&prediction, &target);
+        let loss = framework.compute_loss_public(&prediction, &target);
         assert!(loss.is_ok());
         assert!((loss.unwrap() - 0.0).abs() < 1e-10); // Perfect prediction should have zero loss
 
         let prediction2 = Array1::from_vec(vec![1.0, 0.0, 1.0]);
         let target2 = Array1::from_vec(vec![0.0, 1.0, 0.0]);
 
-        let loss2 = framework.compute_loss(&prediction2, &target2);
+        let loss2 = framework.compute_loss_public(&prediction2, &target2);
         assert!(loss2.is_ok());
         assert!(loss2.unwrap() > 0.0); // Imperfect prediction should have positive loss
     }
@@ -722,7 +722,7 @@ mod tests {
         let prediction = Array1::from_vec(vec![1.0, 0.5]);
         let target = Array1::from_vec(vec![0.8, 0.3]);
 
-        let gradient = framework.compute_loss_gradient(&prediction, &target);
+        let gradient = framework.compute_loss_gradient_public(&prediction, &target);
         assert!(gradient.is_ok());
 
         let grad = gradient.unwrap();
@@ -768,11 +768,11 @@ mod tests {
         assert!(framework.is_ok());
 
         let framework = framework.unwrap();
-        assert_eq!(framework.layers.len(), 2);
+        assert_eq!(framework.get_layers().len(), 2);
 
         // Check that total parameters is sum of layer parameters
         let total_params: usize = framework
-            .layers
+            .get_layers()
             .iter()
             .map(|l| l.get_num_parameters())
             .sum();

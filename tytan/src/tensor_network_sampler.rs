@@ -6,7 +6,7 @@
 
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::{Array1, Array2, ArrayD};
-use rand::{prelude::*, thread_rng};
+use rand::{prelude::*, rng};
 use std::collections::HashMap;
 
 /// Tensor network sampler for quantum annealing
@@ -823,7 +823,7 @@ impl TensorNetworkSampler {
         bond_dimension: usize,
     ) -> Result<(), TensorNetworkError> {
         let num_sites = hamiltonian.shape()[0];
-        let mut tensors = Vec::new();
+        let tensors = Vec::new();
 
         // Create MPS tensors
         for i in 0..num_sites {
@@ -840,8 +840,8 @@ impl TensorNetworkSampler {
             let physical_dim = 2; // Assuming spin-1/2
 
             let shape = vec![left_dim, physical_dim, right_dim];
-            let mut rng = thread_rng();
-            let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.gen_range(-0.1..0.1));
+            let rng = rng();
+            let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
 
             let tensor = Tensor {
                 id: i,
@@ -893,7 +893,7 @@ impl TensorNetworkSampler {
         lattice_shape: (usize, usize),
     ) -> Result<(), TensorNetworkError> {
         let (rows, cols) = lattice_shape;
-        let mut tensors = Vec::new();
+        let tensors = Vec::new();
 
         // Create PEPS tensors
         for i in 0..rows {
@@ -908,8 +908,8 @@ impl TensorNetworkSampler {
                 let right_dim = if j == cols - 1 { 1 } else { bond_dimension };
 
                 let shape = vec![up_dim, down_dim, left_dim, right_dim, physical_dim];
-                let mut rng = thread_rng();
-                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.gen_range(-0.1..0.1));
+                let rng = rng();
+                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
 
                 let tensor = Tensor {
                     id: tensor_id,
@@ -974,18 +974,18 @@ impl TensorNetworkSampler {
         branching_factor: usize,
     ) -> Result<(), TensorNetworkError> {
         let num_sites = hamiltonian.shape()[0];
-        let mut tensors = Vec::new();
+        let tensors = Vec::new();
 
         // Create MERA tensors layer by layer
-        let mut current_sites = num_sites;
+        let current_sites = num_sites;
 
         for layer in 0..layers {
             // Disentanglers
             for i in (0..current_sites).step_by(2) {
                 let tensor_id = tensors.len();
                 let shape = vec![2, 2, 2, 2]; // 2 inputs, 2 outputs
-                let mut rng = thread_rng();
-                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.gen_range(-0.1..0.1));
+                let rng = rng();
+                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
 
                 let tensor = Tensor {
                     id: tensor_id,
@@ -1034,8 +1034,8 @@ impl TensorNetworkSampler {
             for i in 0..current_sites {
                 let tensor_id = tensors.len();
                 let shape = vec![2, 2, 2]; // 2 inputs, 1 output (coarse-grained)
-                let mut rng = thread_rng();
-                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.gen_range(-0.1..0.1));
+                let rng = rng();
+                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
 
                 let tensor = Tensor {
                     id: tensor_id,
@@ -1084,8 +1084,8 @@ impl TensorNetworkSampler {
     fn optimize_network(&mut self) -> Result<OptimizationResult, TensorNetworkError> {
         println!("Optimizing tensor network...");
 
-        let mut energy = f64::INFINITY;
-        let mut converged = false;
+        let energy = f64::INFINITY;
+        let converged = false;
         let start_time = std::time::Instant::now();
 
         for iteration in 0..self.config.num_sweeps {
@@ -1131,7 +1131,7 @@ impl TensorNetworkSampler {
     /// Sweep optimization for MPS
     fn sweep_mps(&mut self) -> Result<f64, TensorNetworkError> {
         let num_sites = self.tensor_network.tensors.len();
-        let mut total_energy = 0.0;
+        let total_energy = 0.0;
 
         // Right-to-left sweep
         for i in (0..num_sites).rev() {
@@ -1156,21 +1156,21 @@ impl TensorNetworkSampler {
         }
 
         // Add small random perturbation
-        let mut rng = thread_rng();
+        let rng = rng();
         let perturbation_strength = 0.01;
 
         for value in self.tensor_network.tensors[site].data.iter_mut() {
-            *value += rng.gen_range(-perturbation_strength..perturbation_strength);
+            *value += rng.random_range(-perturbation_strength..perturbation_strength);
         }
 
         // Return mock energy
-        Ok(rng.gen_range(-1.0..0.0))
+        Ok(rng.random_range(-1.0..0.0))
     }
 
     /// Sweep optimization for PEPS
     fn sweep_peps(&mut self) -> Result<f64, TensorNetworkError> {
         let num_tensors = self.tensor_network.tensors.len();
-        let mut total_energy = 0.0;
+        let total_energy = 0.0;
 
         // Optimize each tensor
         for i in 0..num_tensors {
@@ -1189,14 +1189,14 @@ impl TensorNetworkSampler {
         }
 
         // Mock optimization
-        let mut rng = thread_rng();
-        Ok(rng.gen_range(-1.0..0.0))
+        let rng = rng();
+        Ok(rng.random_range(-1.0..0.0))
     }
 
     /// Sweep optimization for MERA
     fn sweep_mera(&mut self) -> Result<f64, TensorNetworkError> {
         let num_tensors = self.tensor_network.tensors.len();
-        let mut total_energy = 0.0;
+        let total_energy = 0.0;
 
         // Optimize each tensor
         for i in 0..num_tensors {
@@ -1215,8 +1215,8 @@ impl TensorNetworkSampler {
         }
 
         // Mock optimization
-        let mut rng = thread_rng();
-        Ok(rng.gen_range(-1.0..0.0))
+        let rng = rng();
+        Ok(rng.random_range(-1.0..0.0))
     }
 
     /// Compress tensor network
@@ -1241,7 +1241,7 @@ impl TensorNetworkSampler {
         for index in indices_to_compress {
             // Clone the tensor for compression
             if let Some(tensor) = self.tensor_network.tensors.get(index) {
-                let mut tensor_copy = tensor.clone();
+                let tensor_copy = tensor.clone();
                 self.compress_tensor(&mut tensor_copy)?;
                 // Update the tensor in the network
                 if let Some(network_tensor) = self.tensor_network.tensors.get_mut(index) {
@@ -1285,8 +1285,8 @@ impl TensorNetworkSampler {
         &self,
         num_samples: usize,
     ) -> Result<Vec<SampleResult>, TensorNetworkError> {
-        let mut samples = Vec::new();
-        let mut rng = thread_rng();
+        let samples = Vec::new();
+        let rng = rng();
 
         for _ in 0..num_samples {
             let sample = self.generate_single_sample(&mut rng)?;
@@ -1312,11 +1312,11 @@ impl TensorNetworkSampler {
     /// Sample from MPS
     fn sample_from_mps(&self, rng: &mut ThreadRng) -> Result<SampleResult, TensorNetworkError> {
         let num_sites = self.tensor_network.tensors.len();
-        let mut sample = Vec::new();
+        let sample = Vec::new();
 
         // Sequential sampling for MPS
         for i in 0..num_sites {
-            let local_sample = if rng.gen::<f64>() < 0.5 { 0 } else { 1 };
+            let local_sample = if rng.random::<f64>() < 0.5 { 0 } else { 1 };
             sample.push(local_sample);
         }
 
@@ -1336,11 +1336,11 @@ impl TensorNetworkSampler {
     /// Sample from PEPS
     fn sample_from_peps(&self, rng: &mut ThreadRng) -> Result<SampleResult, TensorNetworkError> {
         let num_tensors = self.tensor_network.tensors.len();
-        let mut sample = Vec::new();
+        let sample = Vec::new();
 
         // Parallel sampling for PEPS (simplified)
         for _ in 0..num_tensors {
-            let local_sample = if rng.gen::<f64>() < 0.5 { 0 } else { 1 };
+            let local_sample = if rng.random::<f64>() < 0.5 { 0 } else { 1 };
             sample.push(local_sample);
         }
 
@@ -1361,10 +1361,10 @@ impl TensorNetworkSampler {
     fn sample_from_mera(&self, rng: &mut ThreadRng) -> Result<SampleResult, TensorNetworkError> {
         // Hierarchical sampling for MERA (simplified)
         let num_sites = 16; // Mock number of sites
-        let mut sample = Vec::new();
+        let sample = Vec::new();
 
         for _ in 0..num_sites {
-            let local_sample = if rng.gen::<f64>() < 0.5 { 0 } else { 1 };
+            let local_sample = if rng.random::<f64>() < 0.5 { 0 } else { 1 };
             sample.push(local_sample);
         }
 
@@ -1384,10 +1384,10 @@ impl TensorNetworkSampler {
     /// Default sampling method
     fn sample_default(&self, rng: &mut ThreadRng) -> Result<SampleResult, TensorNetworkError> {
         let num_sites = 10; // Default
-        let mut sample = Vec::new();
+        let sample = Vec::new();
 
         for _ in 0..num_sites {
-            let local_sample = if rng.gen::<f64>() < 0.5 { 0 } else { 1 };
+            let local_sample = if rng.random::<f64>() < 0.5 { 0 } else { 1 };
             sample.push(local_sample);
         }
 
@@ -1407,7 +1407,7 @@ impl TensorNetworkSampler {
     /// Calculate energy of a sample
     fn calculate_sample_energy(&self, sample: &[i32]) -> Result<f64, TensorNetworkError> {
         // Simplified energy calculation
-        let mut energy = 0.0;
+        let energy = 0.0;
 
         for i in 0..sample.len() {
             energy += sample[i] as f64;
@@ -1445,8 +1445,8 @@ impl TensorNetworkSampler {
 
     /// Calculate compression efficiency
     fn calculate_compression_efficiency(&self) -> f64 {
-        let mut total_compression = 0.0;
-        let mut count = 0;
+        let total_compression = 0.0;
+        let count = 0;
 
         for tensor in &self.tensor_network.tensors {
             total_compression += tensor.compression_info.compression_ratio;
@@ -1474,7 +1474,7 @@ impl TensorNetworkSampler {
 
     /// Estimate memory usage
     fn estimate_memory_usage(&self) -> f64 {
-        let mut total_memory = 0.0;
+        let total_memory = 0.0;
 
         for tensor in &self.tensor_network.tensors {
             total_memory += tensor.data.len() as f64 * 8.0; // 8 bytes per f64
@@ -1513,7 +1513,7 @@ impl NetworkTopology {
     fn create_chain_topology() -> Self {
         Self {
             adjacency: {
-                let mut adj = Array2::from_elem((10, 10), false);
+                let adj = Array2::from_elem((10, 10), false);
                 for i in 0..10 {
                     adj[(i, i)] = true;
                 }
@@ -1537,7 +1537,7 @@ impl NetworkTopology {
 
         Self {
             adjacency: {
-                let mut adj = Array2::from_elem((num_sites, num_sites), false);
+                let adj = Array2::from_elem((num_sites, num_sites), false);
                 for i in 0..num_sites {
                     adj[(i, i)] = true;
                 }
@@ -1558,7 +1558,7 @@ impl NetworkTopology {
     fn create_default_topology() -> Self {
         Self {
             adjacency: {
-                let mut adj = Array2::from_elem((1, 1), false);
+                let adj = Array2::from_elem((1, 1), false);
                 adj[(0, 0)] = true;
                 adj
             },
@@ -1685,7 +1685,7 @@ pub fn create_default_tensor_config() -> TensorNetworkConfig {
 
 /// Create MPS-based tensor network sampler
 pub fn create_mps_sampler(bond_dimension: usize) -> TensorNetworkSampler {
-    let mut config = create_default_tensor_config();
+    let config = create_default_tensor_config();
     config.network_type = TensorNetworkType::MPS { bond_dimension };
     config.max_bond_dimension = bond_dimension * 2;
     TensorNetworkSampler::new(config)
@@ -1696,7 +1696,7 @@ pub fn create_peps_sampler(
     bond_dimension: usize,
     lattice_shape: (usize, usize),
 ) -> TensorNetworkSampler {
-    let mut config = create_default_tensor_config();
+    let config = create_default_tensor_config();
     config.network_type = TensorNetworkType::PEPS {
         bond_dimension,
         lattice_shape,
@@ -1707,7 +1707,7 @@ pub fn create_peps_sampler(
 
 /// Create MERA-based tensor network sampler
 pub fn create_mera_sampler(layers: usize) -> TensorNetworkSampler {
-    let mut config = create_default_tensor_config();
+    let config = create_default_tensor_config();
     config.network_type = TensorNetworkType::MERA {
         layers,
         branching_factor: 2,
@@ -1741,7 +1741,7 @@ impl Sampler for TensorNetworkSampler {
         let (hamiltonian, _var_map) = problem;
 
         // Create a mutable copy for sampling
-        let mut sampler_copy = TensorNetworkSampler::new(self.config.clone());
+        let sampler_copy = TensorNetworkSampler::new(self.config.clone());
 
         match sampler_copy.sample(hamiltonian, num_reads) {
             Ok(results) => Ok(results),

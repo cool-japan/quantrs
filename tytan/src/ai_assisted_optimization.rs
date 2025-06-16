@@ -1226,7 +1226,7 @@ impl AIAssistedOptimizer {
     /// Extract comprehensive features from QUBO problem
     pub fn extract_problem_features(&self, qubo: &Array2<f64>) -> Result<Array1<f64>, String> {
         let n = qubo.shape()[0];
-        let mut features = Vec::new();
+        let features = Vec::new();
 
         // Basic statistics
         features.push(n as f64); // Problem size
@@ -1259,9 +1259,9 @@ impl AIAssistedOptimizer {
         }); // Dynamic range
 
         // Connectivity features
-        let mut degree_sum = 0;
+        let degree_sum = 0;
         for i in 0..n {
-            let mut degree = 0;
+            let degree = 0;
             for j in 0..n {
                 if i != j && qubo[[i, j]].abs() > 1e-10 {
                     degree += 1;
@@ -1273,7 +1273,7 @@ impl AIAssistedOptimizer {
         features.push(avg_degree);
 
         // Symmetry check
-        let mut is_symmetric = true;
+        let is_symmetric = true;
         for i in 0..n {
             for j in 0..n {
                 if (qubo[[i, j]] - qubo[[j, i]]).abs() > 1e-10 {
@@ -1288,7 +1288,7 @@ impl AIAssistedOptimizer {
         features.push(if is_symmetric { 1.0 } else { 0.0 });
 
         // Diagonal dominance
-        let mut diag_dominance = 0.0;
+        let diag_dominance = 0.0;
         for i in 0..n {
             let diag_val = qubo[[i, i]].abs();
             let off_diag_sum: f64 = (0..n).filter(|&j| i != j).map(|j| qubo[[i, j]].abs()).sum();
@@ -1299,7 +1299,7 @@ impl AIAssistedOptimizer {
         features.push(diag_dominance / n as f64);
 
         // Frustration measure
-        let mut frustration = 0.0;
+        let frustration = 0.0;
         for i in 0..n {
             for j in i + 1..n {
                 if qubo[[i, j]] > 0.0 {
@@ -1358,7 +1358,7 @@ impl AIAssistedOptimizer {
         let difficulty_score =
             (0.4 * size_factor + 0.4 * complexity_factor + 0.2 * frustration_factor).min(1.0);
 
-        let mut difficulty_factors = HashMap::new();
+        let difficulty_factors = HashMap::new();
         difficulty_factors.insert("size".to_string(), size_factor);
         difficulty_factors.insert("complexity".to_string(), complexity_factor);
         difficulty_factors.insert("frustration".to_string(), frustration_factor);
@@ -1393,7 +1393,7 @@ impl AIAssistedOptimizer {
         let size = features[0] as usize;
         let _density = features[4];
 
-        let mut alternatives = Vec::new();
+        let alternatives = Vec::new();
 
         // Generate alternatives based on problem characteristics
         if recommended != "SimulatedAnnealing" {
@@ -1401,7 +1401,7 @@ impl AIAssistedOptimizer {
                 algorithm: "SimulatedAnnealing".to_string(),
                 expected_performance: 0.75,
                 trade_offs: {
-                    let mut map = HashMap::new();
+                    let map = HashMap::new();
                     map.insert("speed".to_string(), 0.8);
                     map.insert("quality".to_string(), 0.7);
                     map
@@ -1415,7 +1415,7 @@ impl AIAssistedOptimizer {
                 algorithm: "GeneticAlgorithm".to_string(),
                 expected_performance: 0.8,
                 trade_offs: {
-                    let mut map = HashMap::new();
+                    let map = HashMap::new();
                     map.insert("speed".to_string(), 0.6);
                     map.insert("quality".to_string(), 0.85);
                     map
@@ -1432,7 +1432,7 @@ impl AIAssistedOptimizer {
                 algorithm: "TabuSearch".to_string(),
                 expected_performance: 0.85,
                 trade_offs: {
-                    let mut map = HashMap::new();
+                    let map = HashMap::new();
                     map.insert("speed".to_string(), 0.7);
                     map.insert("quality".to_string(), 0.9);
                     map
@@ -1555,7 +1555,7 @@ impl ParameterOptimizationNetwork {
         _target_quality: Option<f64>,
     ) -> Result<HashMap<String, f64>, String> {
         // Simplified parameter optimization
-        let mut params = HashMap::new();
+        let params = HashMap::new();
 
         match algorithm {
             "SimulatedAnnealing" => {
@@ -1775,7 +1775,7 @@ impl ProblemStructureRecognizer {
 
     pub fn recognize_structure(&self, qubo: &Array2<f64>) -> Result<Vec<StructurePattern>, String> {
         let n = qubo.shape()[0];
-        let mut patterns = Vec::new();
+        let patterns = Vec::new();
 
         // Detect grid pattern
         if self.is_grid_like(qubo) {
@@ -1812,8 +1812,8 @@ impl ProblemStructureRecognizer {
     fn check_grid_connectivity(&self, qubo: &Array2<f64>, grid_dim: usize) -> bool {
         // Simplified grid connectivity check
         let n = qubo.shape()[0];
-        let mut grid_edges = 0;
-        let mut total_edges = 0;
+        let grid_edges = 0;
+        let total_edges = 0;
 
         for i in 0..n {
             for j in 0..n {
@@ -1864,8 +1864,8 @@ impl ProblemStructureRecognizer {
         block_size: usize,
         _num_blocks: usize,
     ) -> bool {
-        let mut intra_block_edges = 0;
-        let mut inter_block_edges = 0;
+        let intra_block_edges = 0;
+        let inter_block_edges = 0;
 
         for i in 0..qubo.shape()[0] {
             for j in 0..qubo.shape()[0] {
@@ -1892,8 +1892,8 @@ impl ProblemStructureRecognizer {
 
     fn is_chain_like(&self, qubo: &Array2<f64>) -> bool {
         let n = qubo.shape()[0];
-        let mut chain_edges = 0;
-        let mut total_edges = 0;
+        let chain_edges = 0;
+        let total_edges = 0;
 
         for i in 0..n {
             for j in 0..n {

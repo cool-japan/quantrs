@@ -5,7 +5,7 @@
 //! techniques including shadow tomography and compressed sensing.
 
 use ndarray::{Array1, Array2, Array4};
-use rand::{prelude::*, thread_rng};
+use rand::{prelude::*, rng};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -843,13 +843,13 @@ impl QuantumStateTomography {
 
     /// Generate Pauli measurement settings
     fn generate_pauli_measurements(&self) -> Result<Vec<MeasurementBasis>, TomographyError> {
-        let mut measurements = Vec::new();
+        let measurements = Vec::new();
         let pauli_ops = [PauliOperator::X, PauliOperator::Y, PauliOperator::Z];
 
         // Generate all possible Pauli measurements
         for measurement_index in 0..(3_usize.pow(self.num_qubits as u32)) {
-            let mut operators = Vec::new();
-            let mut temp_index = measurement_index;
+            let operators = Vec::new();
+            let temp_index = measurement_index;
 
             for _ in 0..self.num_qubits {
                 operators.push(pauli_ops[temp_index % 3].clone());
@@ -872,16 +872,16 @@ impl QuantumStateTomography {
         &self,
         num_shadows: usize,
     ) -> Result<Vec<MeasurementBasis>, TomographyError> {
-        let mut measurements = Vec::new();
-        let mut rng = thread_rng();
+        let measurements = Vec::new();
+        let rng = rng();
 
         for shadow_idx in 0..num_shadows {
-            let mut operators = Vec::new();
-            let mut angles = Vec::new();
+            let operators = Vec::new();
+            let angles = Vec::new();
 
             for _ in 0..self.num_qubits {
                 // Random Pauli measurement
-                let pauli_choice: usize = rng.gen_range(0..3);
+                let pauli_choice: usize = rng.random_range(0..3);
                 operators.push(match pauli_choice {
                     0 => PauliOperator::X,
                     1 => PauliOperator::Y,
@@ -889,7 +889,7 @@ impl QuantumStateTomography {
                 });
 
                 // Random angle for measurement
-                angles.push(rng.gen_range(0.0..2.0 * PI));
+                angles.push(rng.random_range(0.0..2.0 * PI));
             }
 
             measurements.push(MeasurementBasis {
@@ -909,14 +909,14 @@ impl QuantumStateTomography {
     ) -> Result<Vec<MeasurementBasis>, TomographyError> {
         // Use random Pauli measurements optimized for sparse reconstruction
         let num_measurements = self.num_qubits * self.num_qubits * 2; // Reduced measurement count
-        let mut measurements = Vec::new();
-        let mut rng = thread_rng();
+        let measurements = Vec::new();
+        let rng = rng();
 
         for measurement_idx in 0..num_measurements {
-            let mut operators = Vec::new();
+            let operators = Vec::new();
 
             for _ in 0..self.num_qubits {
-                let pauli_choice: usize = rng.gen_range(0..4);
+                let pauli_choice: usize = rng.random_range(0..4);
                 operators.push(match pauli_choice {
                     0 => PauliOperator::I,
                     1 => PauliOperator::X,
@@ -939,7 +939,7 @@ impl QuantumStateTomography {
     /// Generate adaptive measurements
     fn generate_adaptive_measurements(&self) -> Result<Vec<MeasurementBasis>, TomographyError> {
         // Start with standard Pauli measurements
-        let mut measurements = self.generate_pauli_measurements()?;
+        let measurements = self.generate_pauli_measurements()?;
 
         // Add informationally optimal measurements
         // This would be determined by the Fisher information matrix
@@ -963,18 +963,18 @@ impl QuantumStateTomography {
         &mut self,
         measurement_settings: &[MeasurementBasis],
     ) -> Result<(), TomographyError> {
-        let mut rng = thread_rng();
+        let rng = rng();
 
         for setting in measurement_settings {
-            let mut outcomes = Vec::new();
+            let outcomes = Vec::new();
 
             for _ in 0..self.config.shots_per_setting {
-                let mut outcome = Vec::new();
+                let outcome = Vec::new();
 
                 // Simulate measurement outcomes
                 for qubit in 0..self.num_qubits {
                     // Random outcome for simulation
-                    outcome.push(if rng.gen::<f64>() < 0.5 { 0 } else { 1 });
+                    outcome.push(if rng.random::<f64>() < 0.5 { 0 } else { 1 });
                 }
 
                 outcomes.push(outcome);
@@ -1026,8 +1026,8 @@ impl QuantumStateTomography {
     fn process_measurement_statistics(&mut self) -> Result<(), TomographyError> {
         for (setting_name, outcomes) in &self.measurement_data.raw_outcomes {
             let num_outcomes = 1 << self.num_qubits;
-            let mut probabilities = Array1::zeros(num_outcomes);
-            let mut expectation_values = Array1::zeros(self.num_qubits);
+            let probabilities = Array1::zeros(num_outcomes);
+            let expectation_values = Array1::zeros(self.num_qubits);
 
             // Compute outcome probabilities
             for outcome in outcomes {
@@ -1038,7 +1038,7 @@ impl QuantumStateTomography {
 
             // Compute expectation values for each qubit
             for qubit in 0..self.num_qubits {
-                let mut expectation = 0.0;
+                let expectation = 0.0;
                 for outcome in outcomes {
                     expectation += if outcome[qubit] == 0 { 1.0 } else { -1.0 };
                 }
@@ -1066,7 +1066,7 @@ impl QuantumStateTomography {
 
     /// Convert outcome vector to index
     fn outcome_to_index(&self, outcome: &[u8]) -> usize {
-        let mut index = 0;
+        let index = 0;
         for (i, &bit) in outcome.iter().enumerate() {
             index += (bit as usize) << i;
         }
@@ -1078,16 +1078,16 @@ impl QuantumStateTomography {
         let state_dim = 1 << self.num_qubits;
 
         // Initialize density matrix as maximally mixed state
-        let mut density_matrix = Array2::eye(state_dim) / state_dim as f64;
+        let density_matrix = Array2::eye(state_dim) / state_dim as f64;
 
         // Perform maximum likelihood reconstruction
         let max_iterations = self.config.optimization.max_iterations;
         let tolerance = self.config.optimization.tolerance;
 
-        let mut log_likelihood = self.compute_log_likelihood(&density_matrix)?;
-        let mut converged = false;
-        let mut iteration = 0;
-        let mut history = Vec::new();
+        let log_likelihood = self.compute_log_likelihood(&density_matrix)?;
+        let converged = false;
+        let iteration = 0;
+        let history = Vec::new();
 
         while iteration < max_iterations && !converged {
             let gradient = self.compute_likelihood_gradient(&density_matrix)?;
@@ -1158,7 +1158,7 @@ impl QuantumStateTomography {
 
     /// Compute log-likelihood of measurement data given density matrix
     fn compute_log_likelihood(&self, density_matrix: &Array2<f64>) -> Result<f64, TomographyError> {
-        let mut log_likelihood = 0.0;
+        let log_likelihood = 0.0;
 
         for (setting_name, statistics) in &self.measurement_data.statistics {
             if let Some(metadata) = self.measurement_data.metadata.get(setting_name) {
@@ -1186,7 +1186,7 @@ impl QuantumStateTomography {
         density_matrix: &Array2<f64>,
     ) -> Result<Array2<f64>, TomographyError> {
         let state_dim = density_matrix.nrows();
-        let mut gradient = Array2::zeros((state_dim, state_dim));
+        let gradient = Array2::zeros((state_dim, state_dim));
 
         // Simplified gradient computation
         for i in 0..state_dim {
@@ -1221,7 +1221,7 @@ impl QuantumStateTomography {
         }
 
         // Reconstruct matrix
-        let mut reconstructed = Array2::zeros(matrix.raw_dim());
+        let reconstructed = Array2::zeros(matrix.raw_dim());
         for i in 0..eigenvals.len() {
             let eigenvec = eigenvecs.column(i);
             for k in 0..reconstructed.nrows() {
@@ -1247,7 +1247,7 @@ impl QuantumStateTomography {
         basis: &MeasurementBasis,
     ) -> Result<Array1<f64>, TomographyError> {
         let num_outcomes = 1 << self.num_qubits;
-        let mut probabilities = Array1::zeros(num_outcomes);
+        let probabilities = Array1::zeros(num_outcomes);
 
         // For each possible outcome, compute Born rule probability
         for outcome_idx in 0..num_outcomes {
@@ -1274,11 +1274,11 @@ impl QuantumStateTomography {
         basis: &MeasurementBasis,
     ) -> Result<Array2<f64>, TomographyError> {
         let state_dim = 1 << self.num_qubits;
-        let mut operator = Array2::eye(state_dim);
+        let operator = Array2::eye(state_dim);
 
         // Convert outcome index to bit string
-        let mut temp_outcome = outcome_idx;
-        let mut outcome_bits = Vec::new();
+        let temp_outcome = outcome_idx;
+        let outcome_bits = Vec::new();
         for _ in 0..self.num_qubits {
             outcome_bits.push(temp_outcome % 2);
             temp_outcome /= 2;
@@ -1416,7 +1416,7 @@ impl QuantumStateTomography {
                 )
             });
 
-        let mut entropy = 0.0;
+        let entropy = 0.0;
         for &eigenval in eigenvals.iter() {
             if eigenval > 1e-15 {
                 entropy -= eigenval * eigenval.ln();
@@ -1431,8 +1431,8 @@ impl QuantumStateTomography {
         &self,
         state: &ReconstructedState,
     ) -> Result<ValidationResult, TomographyError> {
-        let mut test_results = HashMap::new();
-        let mut passed = true;
+        let test_results = HashMap::new();
+        let passed = true;
 
         // Test 1: Positive semidefiniteness
         let eigenvals_positive = state.eigenvalues.iter().all(|&eigenval| eigenval >= -1e-10);
@@ -1628,7 +1628,7 @@ pub fn create_tomography_system(num_qubits: usize) -> QuantumStateTomography {
 
 /// Create shadow tomography configuration
 pub fn create_shadow_tomography_config(num_shadows: usize) -> TomographyConfig {
-    let mut config = create_default_tomography_config();
+    let config = create_default_tomography_config();
     config.tomography_type = TomographyType::ShadowTomography { num_shadows };
     config.shots_per_setting = 100; // Reduced shots for shadow tomography
     config

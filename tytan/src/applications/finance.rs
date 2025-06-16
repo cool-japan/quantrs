@@ -118,8 +118,8 @@ impl PortfolioOptimizer {
         let n_assets = self.returns.len();
         let total_vars = n_assets * num_bits_per_asset;
 
-        let mut qubo = Array2::zeros((total_vars, total_vars));
-        let mut var_map = HashMap::new();
+        let qubo = Array2::zeros((total_vars, total_vars));
+        let var_map = HashMap::new();
 
         // Create variable mapping
         for i in 0..n_assets {
@@ -322,7 +322,7 @@ impl PortfolioOptimizer {
         &self,
         qubo: &mut Array2<f64>,
         bits_per_asset: usize,
-        max_assets: usize,
+        _max_assets: usize,
         penalty: f64,
     ) -> Result<(), String> {
         // Add binary variables for asset selection
@@ -435,10 +435,10 @@ impl PortfolioOptimizer {
         bits_per_asset: usize,
     ) -> Array1<f64> {
         let n_assets = self.returns.len();
-        let mut weights = Array1::zeros(n_assets);
+        let weights = Array1::zeros(n_assets);
 
         for i in 0..n_assets {
-            let mut weight = 0.0;
+            let weight = 0.0;
             for j in 0..bits_per_asset {
                 let var_name = format!("asset_{}_bit_{}", i, j);
                 if *solution.get(&var_name).unwrap_or(&false) {
@@ -504,7 +504,7 @@ impl PortfolioOptimizer {
     }
 
     /// Calculate Value at Risk
-    fn calculate_var(&self, weights: &Array1<f64>, confidence: f64) -> f64 {
+    fn calculate_var(&self, weights: &Array1<f64>, _confidence: f64) -> f64 {
         let expected_return = weights.dot(&self.returns);
         let variance = weights.dot(&self.covariance.dot(weights));
         let volatility = variance.sqrt();
@@ -590,8 +590,8 @@ impl RiskParityOptimizer {
         let n_assets = self.covariance.shape()[0];
         let total_vars = n_assets * num_bits_per_asset;
 
-        let mut qubo = Array2::zeros((total_vars, total_vars));
-        let mut var_map = HashMap::new();
+        let qubo = Array2::zeros((total_vars, total_vars));
+        let var_map = HashMap::new();
 
         // Create variable mapping
         for i in 0..n_assets {
@@ -606,9 +606,9 @@ impl RiskParityOptimizer {
 
         // This is a complex non-linear objective, we use iterative approximation
         let initial_weights = Array1::from_elem(n_assets, 1.0 / n_assets as f64);
-        let risk_contribs = self.calculate_risk_contributions(&initial_weights);
+        let _risk_contribs = self.calculate_risk_contributions(&initial_weights);
 
-        let targets = self
+        let _targets = self
             .target_contributions
             .as_ref()
             .unwrap_or(&Array1::from_elem(n_assets, 1.0 / n_assets as f64));
@@ -644,7 +644,7 @@ impl RiskParityOptimizer {
     fn risk_contribution_gradient(&self, weights: &Array1<f64>, asset: usize) -> f64 {
         // Numerical gradient (simplified)
         let eps = 1e-6;
-        let mut weights_plus = weights.clone();
+        let weights_plus = weights.clone();
         weights_plus[asset] += eps;
 
         let rc_plus = self.calculate_risk_contributions(&weights_plus)[asset];
@@ -723,7 +723,7 @@ impl BlackLittermanOptimizer {
 
     /// Calculate posterior returns
     pub fn posterior_returns(&self) -> Array1<f64> {
-        let tau_sigma = self.tau * &self.covariance;
+        let _tau_sigma = self.tau * &self.covariance;
 
         if self.views.view_matrix.shape()[0] == 0 {
             // No views, return equilibrium
@@ -739,7 +739,7 @@ impl BlackLittermanOptimizer {
         // μ_BL = [(τΣ)^(-1) + P'Ω^(-1)P]^(-1) [(τΣ)^(-1)μ_eq + P'Ω^(-1)q]
 
         // Simplified implementation
-        let mut posterior = self.equilibrium_returns.clone();
+        let posterior = self.equilibrium_returns.clone();
 
         // Adjust based on views
         for i in 0..p.shape()[0] {
