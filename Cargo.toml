@@ -132,8 +132,8 @@ sha2 = "0.10.9"
 hex = "0.4.3"
 
 # Symbolic computation (local workspace versions)
-symengine = { path = "simengine-rs", version = "0.3.0" }
-symengine-sys = { path = "simengine-sys", version = "0.2.0" }
+quantrs2-symengine = { path = "simengine-rs", version = "0.1.0-alpha.5" }
+quantrs2-symengine-sys = { path = "simengine-sys", version = "0.1.0-alpha.5" }
 
 # Advanced math libraries
 ndrustfft = "0.5"

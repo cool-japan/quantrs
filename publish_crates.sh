@@ -39,25 +39,31 @@ publish_crate() {
     done
 }
 
-# 1. core (no dependencies)
+# 1. symengine-sys (no dependencies)
+publish_crate "simengine-sys" "quantrs2-symengine-sys"
+
+# 2. symengine (depends on symengine-sys)
+publish_crate "simengine-rs" "quantrs2-symengine"
+
+# 3. core (depends on symengine)
 publish_crate "core" "quantrs2-core"
 
-# 2. circuit (depends on core)
+# 4. circuit (depends on core)
 publish_crate "circuit" "quantrs2-circuit"
 
-# 3. anneal (depends on core)
+# 5. anneal (depends on core)
 publish_crate "anneal" "quantrs2-anneal"
 
-# 4. sim (depends on core, circuit)
+# 6. sim (depends on core, circuit)
 publish_crate "sim" "quantrs2-sim"
 
-# 5. device (depends on core, circuit)
+# 7. device (depends on core, circuit)
 publish_crate "device" "quantrs2-device"
 
-# 6. ml (depends on core, circuit, sim)
+# 8. ml (depends on core, circuit, sim)
 publish_crate "ml" "quantrs2-ml"
 
-# 7. tytan (depends on core, anneal)
+# 9. tytan (depends on core, anneal)
 publish_crate "tytan" "quantrs2-tytan"
 
 echo ""

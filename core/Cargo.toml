@@ -33,8 +33,8 @@ serde_json.workspace = true
 num_cpus.workspace = true
 flate2.workspace = true
 # Symbolic computation with SymEngine
-symengine = { workspace = true, optional = true }
-symengine-sys = { workspace = true, optional = true }
+quantrs2-symengine = { workspace = true, optional = true }
+quantrs2-symengine-sys = { workspace = true, optional = true }
 num-traits.workspace = true
 pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"], optional = true }
 numpy = { workspace = true, optional = true }
@@ -49,5 +49,5 @@ metal = []
 vulkan = []
 mps = []
 compression = []
-symbolic = ["dep:symengine", "dep:symengine-sys"]  # Enable symbolic computation with SymEngine
+symbolic = ["dep:quantrs2-symengine", "dep:quantrs2-symengine-sys"]  # Enable symbolic computation with SymEngine
 python = ["dep:pyo3", "dep:numpy"]  # Enable Python bindings with PyO3 and NumPy (NumRS2 integration ready but disabled due to ARM64 compilation issues)
