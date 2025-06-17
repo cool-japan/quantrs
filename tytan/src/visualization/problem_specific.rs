@@ -618,7 +618,7 @@ impl ProblemVisualizer {
         numbers: &[f64],
     ) -> Result<(), Box<dyn std::error::Error>> {
         let best_sample = self.get_best_sample()?;
-        let _partition = self.extract_partition(best_sample, numbers.len())?;
+        let partition = self.extract_partition(best_sample, numbers.len())?;
 
         #[cfg(feature = "scirs")]
         {
@@ -647,7 +647,9 @@ impl ProblemVisualizer {
             let mut heights = vec![sum1, sum2];
             let mut labels = vec!["Set 1", "Set 2"];
 
-            ax.bar(&x_pos, &heights).set_color(&["blue", "orange"]);
+            // Draw each bar with its own color
+            ax.bar(&[x_pos[0]], &[heights[0]]).set_color("blue");
+            ax.bar(&[x_pos[1]], &[heights[1]]).set_color("orange");
 
             // Add value labels on bars
             for (x, h, nums) in [(1.0, sum1, &set1), (2.0, sum2, &set2)].iter() {
@@ -665,7 +667,8 @@ impl ProblemVisualizer {
             }
 
             ax.set_xticks(&x_pos);
-            ax.set_xticklabels(&labels);
+            let string_labels: Vec<String> = labels.iter().map(|s| s.to_string()).collect();
+            ax.set_xticklabels(&string_labels);
             ax.set_ylabel("Sum");
             ax.set_title(&format!(
                 "Number Partition: |{:.2} - {:.2}| = {:.2}",
@@ -685,15 +688,15 @@ impl ProblemVisualizer {
         &self,
         weights: &[f64],
         values: &[f64],
-        _capacity: f64,
+        capacity: f64,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let best_sample = self.get_best_sample()?;
         let n_items = weights.len();
 
         // Extract selected items
         let mut selected = vec![false; n_items];
-        let mut _total_weight = 0.0;
-        let mut _total_value = 0.0;
+        let mut total_weight = 0.0;
+        let mut total_value = 0.0;
 
         for i in 0..n_items {
             let var_name = format!("x_{}", i);
@@ -704,8 +707,8 @@ impl ProblemVisualizer {
                 .unwrap_or(false)
             {
                 selected[i] = true;
-                _total_weight += weights[i];
-                _total_value += values[i];
+                total_weight += weights[i];
+                total_value += values[i];
             }
         }
 
@@ -719,12 +722,13 @@ impl ProblemVisualizer {
             let ax1 = fig.add_subplot(2, 1, 1)?;
 
             let x_pos: Vec<f64> = (0..n_items).map(|i| i as f64).collect();
-            let colors: Vec<&str> = selected
-                .iter()
-                .map(|&s| if s { "green" } else { "red" })
-                .collect();
-
-            ax1.bar(&x_pos, values).set_color(&colors).set_alpha(0.7);
+            // Draw bars with individual colors
+            for (i, (&value, &is_selected)) in values.iter().zip(selected.iter()).enumerate() {
+                let color = if is_selected { "green" } else { "red" };
+                ax1.bar(&[i as f64], &[value])
+                    .set_color(color)
+                    .set_alpha(0.7);
+            }
 
             // Add weight labels
             for (i, (&w, &v)) in weights.iter().zip(values.iter()).enumerate() {
@@ -782,7 +786,7 @@ impl ProblemVisualizer {
         let weights = self.extract_portfolio_weights(best_sample, n_assets)?;
 
         // Calculate portfolio metrics
-        let _portfolio_return: f64 = weights
+        let portfolio_return: f64 = weights
             .iter()
             .zip(expected_returns.iter())
             .map(|(w, r)| w * r)
@@ -800,7 +804,7 @@ impl ProblemVisualizer {
             })
             .sum();
 
-        let _portfolio_risk = portfolio_variance.sqrt();
+        let portfolio_risk = portfolio_variance.sqrt();
 
         #[cfg(feature = "scirs")]
         {
@@ -892,7 +896,7 @@ impl ProblemVisualizer {
             ax4.text(0.1, 0.9, &summary_text)
                 .set_fontsize(12)
                 .set_verticalalignment("top")
-                .set_transform(ax4.transAxes());
+                .set_transform(ax4.trans_axes());
             ax4.axis("off");
 
             fig.suptitle("Portfolio Optimization Results");

@@ -747,7 +747,7 @@ mod scirs2_optimization_stub {
     pub mod bayesian {
         use super::*;
 
-        #[derive(Clone, Copy)]
+        #[derive(Debug, Clone, Copy)]
         pub enum AcquisitionFunction {
             ExpectedImprovement,
             UCB,
@@ -755,7 +755,7 @@ mod scirs2_optimization_stub {
             Thompson,
         }
 
-        #[derive(Clone, Copy)]
+        #[derive(Debug, Clone, Copy)]
         pub enum KernelType {
             RBF,
             Matern52,

@@ -110,7 +110,7 @@ where
 
     // Create the array
     let shape_dim = ndarray::IxDyn(&shape);
-    let array = Array::from_elem(shape_dim, SymEngineExpression::from_i64(0));
+    let mut array = Array::from_elem(shape_dim, SymEngineExpression::from_i64(0));
 
     // Fill the array with symbols
     let mut indices = vec![0; dim];
@@ -200,7 +200,7 @@ where
     }
 
     // Generate the commands
-    let commands = String::new();
+    let mut commands = String::new();
     let mut indices = vec![0; dim];
     generate_symbol_commands(&mut commands, &mut indices, 0, &shape, format_txt)?;
 

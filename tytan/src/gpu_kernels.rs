@@ -527,13 +527,16 @@ impl KernelManager {
         context: &GpuContext,
     ) -> Result<(), String> {
         // Compile kernel with SciRS2
-        let compiled = context
-            .compile_kernel(source)
-            .map_err(|e| format!("Kernel compilation failed: {}", e))?;
+        // TODO: Implement compile_kernel in GPU stub
+        // let compiled = context
+        //     .compile_kernel(source)
+        //     .map_err(|e| format!("Kernel compilation failed: {}", e))?;
 
         // Determine optimal launch parameters
-        let optimal_block_size = self.determine_optimal_block_size(&compiled)?;
-        let shared_mem_size = self.calculate_shared_memory(&compiled)?;
+        // let optimal_block_size = self.determine_optimal_block_size(&compiled)?;
+        // let shared_mem_size = self.calculate_shared_memory(&compiled)?;
+        let optimal_block_size = 256; // Placeholder value
+        let shared_mem_size = 0; // Placeholder value
 
         // Create kernel wrapper
         let mut kernel = CompiledKernel {
@@ -556,7 +559,7 @@ impl KernelManager {
         kernel_name: &str,
         problem_size: usize,
     ) -> Result<(usize, usize), String> {
-        let mut kernel = self
+        let kernel = self
             .kernels
             .get(kernel_name)
             .ok_or_else(|| format!("Kernel {} not found", kernel_name))?;

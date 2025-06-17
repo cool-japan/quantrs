@@ -408,7 +408,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             // Create sample where only this parameter varies
             let mut y_ab_i = Vec::new();
             for i in 0..num_samples {
-                let params_ab_i = sample_a[i].clone();
+                let mut params_ab_i = sample_a[i].clone();
                 params_ab_i.insert(param_name.clone(), sample_b[i][&param_name]);
 
                 let mut result = self.evaluate_configuration(problem, &params_ab_i)?;
@@ -1073,7 +1073,7 @@ pub mod visualization {
     ) -> Result<(), Box<dyn Error>> {
         #[cfg(feature = "scirs")]
         {
-            let plot = Plot::new();
+            let mut plot = Plot::new();
 
             // Sort parameters by sensitivity
             let mut params: Vec<_> = results.main_effects.iter().collect();
@@ -1100,7 +1100,7 @@ pub mod visualization {
     ) -> Result<(), Box<dyn Error>> {
         #[cfg(feature = "scirs")]
         {
-            let plot = Plot::new();
+            let mut plot = Plot::new();
 
             for (param_name, sensitivity) in &results.sensitivities {
                 if !sensitivity.response_curve.is_empty() {

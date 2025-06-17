@@ -10,7 +10,7 @@ use super::super::evaluate_qubo_energy;
 use super::super::{SampleResult, Sampler, SamplerError, SamplerResult};
 
 #[cfg(all(feature = "gpu", feature = "dwave"))]
-use ocl;
+use ocl::{self, Context, Program, enums::{DeviceInfo, DeviceInfoResult, DeviceType}};
 
 /// GPU-accelerated Sampler (Armin)
 ///
@@ -116,14 +116,18 @@ impl ArminSampler {
             Device::list_all(platform)
                 .unwrap_or_default()
                 .into_iter()
-                .find(|d| d.is_cpu().unwrap_or(false))
+                .find(|d| {
+                    matches!(d.info(DeviceInfo::Type).ok(), Some(DeviceInfoResult::Type(dt)) if dt.is_cpu())
+                })
                 .unwrap_or_else(|| Device::first(platform).unwrap())
         } else {
             // GPU device
             Device::list_all(platform)
                 .unwrap_or_default()
                 .into_iter()
-                .find(|d| d.is_gpu().unwrap_or(false))
+                .find(|d| {
+                    matches!(d.info(DeviceInfo::Type).ok(), Some(DeviceInfoResult::Type(dt)) if dt.is_gpu())
+                })
                 .unwrap_or_else(|| Device::first(platform).unwrap())
         };
 
@@ -142,7 +146,11 @@ impl ArminSampler {
         let src = super::kernels::SIMULATED_ANNEALING_KERNEL;
 
         // Compile the program
-        let program = Program::builder().devices(device).src(src).build()?;
+        let context = Context::builder().devices(device).build()?;
+        let program = Program::builder()
+            .devices(device)
+            .src(src)
+            .build(&context)?;
 
         // Set up buffers
         let h_buffer = Buffer::<f32>::builder()
@@ -274,7 +282,7 @@ impl ArminSampler {
         // Initialize random solutions for all shots
         let mut solutions: Vec<Vec<bool>> = Vec::with_capacity(num_shots);
         for _ in 0..num_shots {
-            let solution = Vec::with_capacity(n_vars);
+            let mut solution = Vec::with_capacity(n_vars);
             for _ in 0..n_vars {
                 solution.push(rng.random_bool(0.5));
             }
@@ -307,8 +315,8 @@ impl ArminSampler {
             }
 
             // Extract subproblem
-            let chunk_h = Vec::with_capacity(chunk_size);
-            let chunk_j = Vec::with_capacity(chunk_size * chunk_size);
+            let mut chunk_h = Vec::with_capacity(chunk_size);
+            let mut chunk_j = Vec::with_capacity(chunk_size * chunk_size);
 
             // Extract linear terms for this chunk
             for i in start_var..end_var {
@@ -323,14 +331,14 @@ impl ArminSampler {
             }
 
             // Adjust linear terms based on fixed variables outside this chunk
-            for (sol_idx, solution) in solutions.iter().enumerate() {
-                let adjusted_h = chunk_h.clone();
+            for sol_idx in 0..solutions.len() {
+                let mut adjusted_h = chunk_h.clone();
 
                 // Add contributions from fixed variables
                 for i in start_var..end_var {
                     for j in 0..n_vars {
                         if j < start_var || j >= end_var {
-                            if solution[j] {
+                            if solutions[sol_idx][j] {
                                 adjusted_h[i - start_var] += j_matrix[i * n_vars + j];
                             }
                         }
@@ -338,9 +346,9 @@ impl ArminSampler {
                 }
 
                 // Process this specific solution's subproblem
-                let chunk_solution = Vec::with_capacity(chunk_size);
+                let mut chunk_solution = Vec::with_capacity(chunk_size);
                 for i in start_var..end_var {
-                    chunk_solution.push(solution[i]);
+                    chunk_solution.push(solutions[sol_idx][i]);
                 }
 
                 // Optimize just this chunk using GPU
@@ -544,7 +552,7 @@ impl Sampler for ArminSampler {
 
         // Convert QUBO matrix to appropriate format for OpenCL
         let mut h_vector = Vec::with_capacity(n_vars);
-        let j_matrix = Vec::with_capacity(n_vars * n_vars);
+        let mut j_matrix = Vec::with_capacity(n_vars * n_vars);
 
         // Extract diagonal (linear) terms
         for i in 0..n_vars {

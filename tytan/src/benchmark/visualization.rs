@@ -35,7 +35,7 @@ impl BenchmarkVisualizer {
         {
             use crate::scirs_stub::scirs2_plot::{Line, Plot, Scatter};
 
-            let plot = Plot::new();
+            let mut plot = Plot::new();
 
             // Extract scaling data
             for (backend_name, analysis) in &self.report.backend_analysis {
@@ -167,7 +167,7 @@ impl BenchmarkVisualizer {
         {
             use crate::scirs_stub::scirs2_plot::{Plot, Scatter};
 
-            let plot = Plot::new();
+            let mut plot = Plot::new();
 
             // All points
             let all_configs: Vec<String> = self
@@ -296,7 +296,7 @@ impl BenchmarkVisualizer {
         {
             use crate::scirs_stub::scirs2_plot::{Bar, Plot};
 
-            let plot = Plot::new();
+            let mut plot = Plot::new();
 
             // Backend comparison
             let backend_names: Vec<String> = self.report.backend_analysis.keys().cloned().collect();

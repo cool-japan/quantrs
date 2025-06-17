@@ -391,7 +391,7 @@ pub fn plot_energy_landscape(
     {
         use crate::scirs_stub::scirs2_plot::{Figure, Subplot};
 
-        let fig = Figure::new();
+        let mut fig = Figure::new();
 
         // Add energy histogram
         let hist_data = landscape.energy_histogram()?;

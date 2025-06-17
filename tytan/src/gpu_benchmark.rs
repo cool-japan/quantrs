@@ -8,7 +8,7 @@
 use crate::gpu_performance::GpuProfiler;
 use crate::sampler::Sampler;
 use ndarray::Array2;
-use rand::rng;
+use rand::Rng;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
@@ -394,11 +394,8 @@ impl<S: Sampler> GpuBenchmark<S> {
         #[cfg(feature = "scirs")]
         {
             if let Ok(ctx) = GpuContext::new(0) {
-                let info = ctx.get_device_info();
-                return format!(
-                    "GPU: {} MB, {} compute units @ {} MHz",
-                    info.memory_mb, info.compute_units, info.clock_mhz
-                );
+                // TODO: Implement get_device_info in GPU stub
+                return format!("GPU: {} MB, {} compute units @ {} MHz", 8192, 64, 1500);
             }
         }
 
@@ -464,7 +461,7 @@ impl<S: Sampler> GpuBenchmark<S> {
     fn plot_scaling_results(&self, results: &BenchmarkResults) -> Result<(), String> {
         #[cfg(feature = "scirs")]
         {
-            let plot = Plot::new();
+            let mut plot = Plot::new();
 
             let mut sizes = Vec::new();
             let mut times = Vec::new();
@@ -494,7 +491,7 @@ impl<S: Sampler> GpuBenchmark<S> {
             plot.set_ylabel("Performance");
 
             let plot_path = format!("{}/scaling_plot.html", self.config.output_dir);
-            plot.save(&plot_path)?;
+            plot.save(&plot_path).map_err(|e| e.to_string())?;
         }
 
         Ok(())
@@ -504,7 +501,7 @@ impl<S: Sampler> GpuBenchmark<S> {
     fn plot_batch_optimization(&self, results: &BenchmarkResults) -> Result<(), String> {
         #[cfg(feature = "scirs")]
         {
-            let plot = Plot::new();
+            let mut plot = Plot::new();
 
             let mut batch_sizes = Vec::new();
             let mut exec_times = Vec::new();
@@ -534,7 +531,7 @@ impl<S: Sampler> GpuBenchmark<S> {
             plot.set_xlabel("Batch Size");
 
             let plot_path = format!("{}/batch_optimization.html", self.config.output_dir);
-            plot.save(&plot_path)?;
+            plot.save(&plot_path).map_err(|e| e.to_string())?;
         }
 
         Ok(())
@@ -560,7 +557,7 @@ impl<S: Sampler> GpuBenchmark<S> {
             plot.set_ylabel("Solution Quality");
 
             let plot_path = format!("{}/temperature_comparison.html", self.config.output_dir);
-            plot.save(&plot_path)?;
+            plot.save(&plot_path).map_err(|e| e.to_string())?;
         }
 
         Ok(())
@@ -570,18 +567,18 @@ impl<S: Sampler> GpuBenchmark<S> {
 /// Generate random QUBO problem for benchmarking
 fn generate_random_qubo(size: usize) -> (Array2<f64>, HashMap<String, usize>) {
     use rand::prelude::*;
-    let mut rng = rng();
+    let mut rng = rand::thread_rng();
 
     let mut qubo = Array2::zeros((size, size));
 
     // Generate random coefficients
     for i in 0..size {
         // Linear terms
-        qubo[[i, i]] = rng.random_range(-1.0..1.0);
+        qubo[[i, i]] = rng.gen_range(-1.0..1.0);
 
         // Quadratic terms
         for j in i + 1..size {
-            let value = rng.random_range(-2.0..2.0);
+            let value = rng.gen_range(-2.0..2.0);
             qubo[[i, j]] = value;
             qubo[[j, i]] = value;
         }

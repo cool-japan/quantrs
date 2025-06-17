@@ -57,7 +57,7 @@ pub fn cluster_solutions(
     let n_vars = variable_names.len();
     let n_samples = results.len();
 
-    let data = Array2::<f64>::zeros((n_samples, n_vars));
+    let mut data = Array2::<f64>::zeros((n_samples, n_vars));
 
     for (i, result) in results.iter().enumerate() {
         for (j, var_name) in variable_names.iter().enumerate() {

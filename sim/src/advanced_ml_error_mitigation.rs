@@ -714,7 +714,7 @@ impl AdvancedMLErrorMitigator {
         if circuit.num_qubits == 0 {
             return Ok(0.0);
         }
-        
+
         let mut connectivity_sum = 0.0;
         let total_possible_connections = (circuit.num_qubits * (circuit.num_qubits - 1)) / 2;
 

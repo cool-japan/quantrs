@@ -1575,7 +1575,7 @@ pub fn benchmark_fpga_acceleration() -> Result<HashMap<String, f64>> {
 
     // Add benchmark-specific metrics that are expected by tests
     results.insert("kernel_compilation_time".to_string(), 1500.0); // milliseconds
-    results.insert("memory_transfer_bandwidth".to_string(), 250.0); // MB/s  
+    results.insert("memory_transfer_bandwidth".to_string(), 250.0); // MB/s
     results.insert("gate_execution_throughput".to_string(), 1000000.0); // gates/second
 
     Ok(results)

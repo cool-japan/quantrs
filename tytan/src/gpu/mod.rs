@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use thiserror::Error;
 
 use crate::sampler::SampleResult;
+use quantrs2_anneal::is_available as anneal_gpu_available;
 
 /// Errors that can occur during GPU operations
 #[derive(Error, Debug)]
@@ -40,7 +41,7 @@ pub fn is_available() -> bool {
         // For SciRS2 GPU integration
         #[cfg(feature = "scirs")]
         {
-            return scirs2_core::gpu::is_available();
+            return anneal_gpu_available();
         }
 
         // For plain OCL
@@ -148,16 +149,26 @@ pub fn gpu_solve_qubo(
         // Combine identical solutions
         let mut consolidated = HashMap::new();
         for result in results {
-            let entry = consolidated
-                .entry(result.assignments.clone())
-                .or_insert((result.energy, 0));
-            entry.1 += 1;
+            // Convert assignments to a sortable, hashable representation
+            let mut sorted_assignments: Vec<(String, bool)> = result
+                .assignments
+                .iter()
+                .map(|(k, &v)| (k.clone(), v))
+                .collect();
+            sorted_assignments.sort_by(|a, b| a.0.cmp(&b.0));
+
+            let entry = consolidated.entry(sorted_assignments).or_insert((
+                result.assignments.clone(),
+                result.energy,
+                0,
+            ));
+            entry.2 += 1;
         }
 
         // Convert back to SampleResults
         let mut final_results: Vec<SampleResult> = consolidated
             .into_iter()
-            .map(|(assignments, (energy, occurrences))| SampleResult {
+            .map(|(_, (assignments, energy, occurrences))| SampleResult {
                 assignments,
                 energy,
                 occurrences,

@@ -6,7 +6,7 @@
 #![allow(dead_code)]
 
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, ArrayD, Ix2};
+use ndarray::{Array, ArrayD, Ix2, IxDyn};
 use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -22,20 +22,110 @@ fn get_device_count() -> usize {
 }
 
 #[cfg(feature = "scirs")]
-struct DeviceInfo;
+struct GpuContext;
 
 #[cfg(feature = "scirs")]
-struct GpuContext;
+struct DeviceInfo {
+    memory_mb: usize,
+    compute_units: usize,
+}
 
 #[cfg(feature = "scirs")]
 impl GpuContext {
     fn new(_device_id: u32) -> Result<Self, Box<dyn std::error::Error>> {
         Ok(GpuContext)
     }
+
+    fn get_device_info(&self) -> DeviceInfo {
+        DeviceInfo {
+            memory_mb: 8192,
+            compute_units: 64,
+        }
+    }
+
+    fn allocate_memory_pool(&self, _size: usize) -> Result<(), Box<dyn std::error::Error>> {
+        Ok(())
+    }
+
+    fn allocate<T>(&self, _count: usize) -> Result<GpuBuffer<T>, Box<dyn std::error::Error>> {
+        Ok(GpuBuffer::new())
+    }
+
+    fn init_random_states(
+        &self,
+        _buffer: &GpuBuffer<u8>,
+        _seed: u64,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        Ok(())
+    }
+
+    fn launch_kernel(
+        &self,
+        _name: &str,
+        _grid: usize,
+        _block: usize,
+        _args: &[KernelArg],
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        Ok(())
+    }
+
+    fn synchronize(&self) -> Result<(), Box<dyn std::error::Error>> {
+        Ok(())
+    }
 }
 
 #[cfg(feature = "scirs")]
 struct GpuMatrix;
+
+#[cfg(feature = "scirs")]
+struct GpuBuffer<T> {
+    _phantom: std::marker::PhantomData<T>,
+}
+
+#[cfg(feature = "scirs")]
+impl<T> GpuBuffer<T> {
+    fn new() -> Self {
+        Self {
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    fn copy_to_host(&self, _host_data: &mut [T]) -> Result<(), Box<dyn std::error::Error>> {
+        Ok(())
+    }
+
+    fn as_kernel_arg(&self) -> KernelArg {
+        KernelArg::Buffer
+    }
+}
+
+#[cfg(feature = "scirs")]
+enum KernelArg {
+    Buffer,
+    Scalar(f32),
+    Integer(i32),
+}
+
+#[cfg(feature = "scirs")]
+impl GpuMatrix {
+    fn from_host_mixed(
+        _ctx: &GpuContext,
+        _matrix: &Array<f64, Ix2>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(GpuMatrix)
+    }
+
+    fn from_host(
+        _ctx: &GpuContext,
+        _matrix: &Array<f64, Ix2>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(GpuMatrix)
+    }
+
+    fn as_kernel_arg(&self) -> KernelArg {
+        KernelArg::Buffer
+    }
+}
 
 /// GPU-accelerated sampler with CUDA kernels via SciRS2
 pub struct EnhancedArminSampler {
@@ -128,7 +218,7 @@ impl EnhancedArminSampler {
         let n_vars = var_map.len();
 
         // Initialize GPU context
-        let ctx = GpuContext::new(self.device_id)
+        let ctx = GpuContext::new(self.device_id.try_into().unwrap())
             .map_err(|e| SamplerError::GpuError(format!("Failed to initialize GPU: {}", e)))?;
 
         if self.verbose {
@@ -226,11 +316,11 @@ impl EnhancedArminSampler {
                 gpu_qubo.as_kernel_arg(),
                 d_states.as_kernel_arg(),
                 d_energies.as_kernel_arg(),
-                n_vars as i32,
-                batch_size as i32,
-                self.initial_temp as f32,
-                self.final_temp as f32,
-                self.sweeps as i32,
+                KernelArg::Integer(n_vars as i32),
+                KernelArg::Integer(batch_size as i32),
+                KernelArg::Scalar(self.initial_temp as f32),
+                KernelArg::Scalar(self.final_temp as f32),
+                KernelArg::Integer(self.sweeps as i32),
             ],
         )
         .map_err(|e| SamplerError::GpuError(format!("Kernel launch failed: {}", e)))?;
@@ -251,7 +341,7 @@ impl EnhancedArminSampler {
         let mut results = Vec::new();
         for i in 0..batch_size {
             let start = i * n_vars;
-            let mut end = start + n_vars;
+            let end = start + n_vars;
             let state: Vec<bool> = host_states[start..end].iter().map(|&x| x != 0).collect();
             results.push(state);
         }
@@ -380,7 +470,7 @@ impl EnhancedArminSampler {
             let handle = std::thread::spawn(move || {
                 match sampler.run_gpu_optimized(&qubo_clone, &var_map_clone, gpu_shots) {
                     Ok(gpu_results) => {
-                        let all_results = results_clone.lock().unwrap();
+                        let mut all_results = results_clone.lock().unwrap();
                         all_results.extend(gpu_results);
                     }
                     Err(e) => {
@@ -397,7 +487,7 @@ impl EnhancedArminSampler {
             handle.join().expect("GPU thread panicked");
         }
 
-        let final_results = results.lock().unwrap().clone();
+        let mut final_results = results.lock().unwrap().clone();
         final_results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
 
         Ok(final_results)
@@ -519,8 +609,9 @@ impl MIKASAmpler {
     ) -> SamplerResult<Vec<SampleResult>> {
         // Stub tensor contraction functionality
         use ndarray::{Array, IxDyn};
-        let cp_decomposition =
-            |_: &ArrayD<f64>| Ok((vec![], vec![Array::zeros(IxDyn(&[1]))], 0.0f64));
+        let cp_decomposition = |_: &ArrayD<f64>| -> Result<(Vec<usize>, Vec<Array<f64, IxDyn>>, f64), Box<dyn std::error::Error>> {
+            Ok((vec![], vec![Array::zeros(IxDyn(&[1]))], 0.0f64))
+        };
         let optimize_contraction_order = |_: &[usize]| vec![];
 
         let n_vars = var_map.len();
@@ -536,8 +627,14 @@ impl MIKASAmpler {
         // Apply tensor decomposition if beneficial
         if self.use_cp_decomposition && order > 2 {
             // Perform CP decomposition
-            let decomposed = cp_decomposition(tensor, self.decomposition_rank)
+            let (factors, core_tensors, reconstruction_error) = cp_decomposition(tensor)
                 .map_err(|e| SamplerError::GpuError(format!("CP decomposition failed: {}", e)))?;
+
+            let decomposed = DecomposedTensor {
+                factors,
+                core_tensors,
+                reconstruction_error,
+            };
 
             if self.base_config.verbose {
                 println!("Decomposed tensor to rank {}", self.decomposition_rank);
@@ -582,6 +679,9 @@ impl MIKASAmpler {
 #[cfg(feature = "scirs")]
 struct DecomposedTensor {
     // CP decomposition components
+    factors: Vec<usize>,
+    core_tensors: Vec<Array<f64, IxDyn>>,
+    reconstruction_error: f64,
 }
 
 /// Asynchronous GPU sampling pipeline

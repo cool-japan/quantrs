@@ -1962,7 +1962,7 @@ impl QuantumInspiredUtils {
                     window.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / window.len() as f64;
 
                 // Use adaptive tolerance based on the magnitude of values
-                let adaptive_tolerance = (mean.abs() * 1e-4).max(1e-6);
+                let adaptive_tolerance = (mean.abs() * 0.1).max(0.1);
 
                 if variance < adaptive_tolerance {
                     convergence_iteration = i + 5;

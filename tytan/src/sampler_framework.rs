@@ -232,7 +232,7 @@ impl HyperparameterOptimizer {
     {
         let mut rng = rng();
         let mut best_params = HashMap::new();
-        let best_score = f64::INFINITY;
+        let mut best_score = f64::INFINITY;
         let mut history = Vec::new();
 
         for trial in 0..self.num_trials {
@@ -279,7 +279,7 @@ impl HyperparameterOptimizer {
         let grid_points = self.generate_grid(resolution)?;
 
         let mut best_params = HashMap::new();
-        let best_score = f64::INFINITY;
+        let mut best_score = f64::INFINITY;
         let mut history = Vec::new();
 
         for (i, params) in grid_points.iter().enumerate() {
@@ -323,7 +323,8 @@ impl HyperparameterOptimizer {
         use ndarray::Array1;
 
         let dim = self.search_space.len();
-        let optimizer = BayesianOptimizer::new(dim, kernel, acquisition, exploration)?;
+        let optimizer = BayesianOptimizer::new(dim, kernel, acquisition, exploration)
+            .map_err(|e| e.to_string())?;
 
         let mut history = Vec::new();
         let mut x_data = Vec::new();
@@ -349,11 +350,11 @@ impl HyperparameterOptimizer {
 
         // Bayesian optimization loop
         let y_array = Array1::from_vec(y_data.clone());
-        optimizer.update(&x_data, &y_array)?;
+        optimizer.update(&x_data, &y_array).map_err(|e| e.to_string())?;
 
         for _ in history.len()..self.num_trials {
             // Suggest next point
-            let x_next = optimizer.suggest_next()?;
+            let x_next = optimizer.suggest_next().map_err(|e| e.to_string())?;
             let mut params = self.array_to_params(&x_next)?;
 
             // Evaluate
@@ -364,7 +365,9 @@ impl HyperparameterOptimizer {
             x_data.push(x_next);
             y_data.push(score);
             let y_array = Array1::from_vec(y_data.clone());
-            optimizer.update(&x_data, &y_array)?;
+            optimizer
+                .update(&x_data, &y_array)
+                .map_err(|e| e.to_string())?;
 
             history.push(TrialResult {
                 parameters: params,

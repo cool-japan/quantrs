@@ -187,7 +187,7 @@ impl<'a> AutoArray<'a> {
         } else {
             // If 2D, convert to Array2
             let shape = nd_array.shape();
-            let array = Array::zeros((shape[0], shape[1]));
+            let mut array = Array::zeros((shape[0], shape[1]));
             for i in 0..shape[0] {
                 for j in 0..shape[1] {
                     array[[i, j]] = nd_array[IxDyn(&[i, j])];

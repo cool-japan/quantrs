@@ -284,6 +284,7 @@ mod tests {
 
         for algorithm in algorithms {
             let config = QMLConfig {
+                num_qubits: 4, // Match the synthetic data dimensions
                 training_config: QMLTrainingConfig {
                     algorithm,
                     epochs: 5, // Short training for testing
@@ -311,6 +312,7 @@ mod tests {
 
         for optimizer in optimizers {
             let config = QMLConfig {
+                num_qubits: 4, // Match the synthetic data dimensions
                 training_config: QMLTrainingConfig {
                     optimizer,
                     epochs: 3,
@@ -490,6 +492,7 @@ mod tests {
     #[test]
     fn test_early_stopping() {
         let config = QMLConfig {
+            num_qubits: 4, // Match the synthetic data dimensions
             training_config: QMLTrainingConfig {
                 early_stopping: EarlyStoppingConfig {
                     enabled: true,
@@ -519,6 +522,7 @@ mod tests {
     #[test]
     fn test_regularization() {
         let config = QMLConfig {
+            num_qubits: 4, // Match the synthetic data dimensions
             training_config: QMLTrainingConfig {
                 regularization: RegularizationConfig {
                     l1_strength: 0.01,
@@ -801,6 +805,7 @@ mod tests {
     #[test]
     fn test_evaluation() {
         let config = QMLConfig {
+            num_qubits: 4, // Match the synthetic data dimensions
             training_config: QMLTrainingConfig {
                 epochs: 1,
                 ..Default::default()

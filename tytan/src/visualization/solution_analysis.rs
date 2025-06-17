@@ -485,8 +485,8 @@ impl SolutionDistribution {
     fn cluster_dbscan(
         &self,
         data: &Array2<f64>,
-        _eps: f64,
-        _min_samples: usize,
+        eps: f64,
+        min_samples: usize,
     ) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
         #[cfg(feature = "scirs")]
         {
@@ -505,7 +505,7 @@ impl SolutionDistribution {
     /// Hierarchical clustering
     fn cluster_hierarchical(
         &self,
-        _data: &Array2<f64>,
+        data: &Array2<f64>,
     ) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
         #[cfg(feature = "scirs")]
         {
@@ -850,7 +850,7 @@ pub fn plot_distribution_analysis(
     {
         use crate::scirs_stub::scirs2_plot::{Figure, Subplot};
 
-        let fig = Figure::new();
+        let mut fig = Figure::new();
 
         // Energy distribution
         let bin_counts_f64: Vec<f64> = analysis

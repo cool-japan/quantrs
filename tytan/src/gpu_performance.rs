@@ -69,7 +69,8 @@ impl GpuProfiler {
     /// Initialize with device context
     #[cfg(feature = "scirs")]
     pub fn with_context(mut self, ctx: &GpuContext) -> Self {
-        self.device_info = Some(ctx.get_device_info());
+        // TODO: Implement get_device_info in GPU stub
+        // self.device_info = Some(ctx.get_device_info());
         self
     }
 

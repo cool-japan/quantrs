@@ -45,7 +45,7 @@ impl Sampler for DWaveSampler {
         let n_vars = var_map.len();
 
         // Map from indices back to variable names
-        let _idx_to_var: HashMap<usize, String> = var_map
+        let idx_to_var: HashMap<usize, String> = var_map
             .iter()
             .map(|(var, &idx)| (idx, var.clone()))
             .collect();
