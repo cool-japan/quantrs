@@ -1258,7 +1258,7 @@ fn numrs2_from_vec(data: Vec<(f64, f64)>, shape: Vec<usize>) -> PyResult<PyNumRS
 
 /// Python module for QuantRS2-Core
 #[pymodule]
-fn _core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Classes
     m.add_class::<PyQubitId>()?;
     m.add_class::<PyQuantumGate>()?;

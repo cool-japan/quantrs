@@ -4,10 +4,10 @@ build-backend = "maturin"
 
 [project]
 name = "quantrs2-core-extension"
-version = "0.1.0-alpha.5"
+version = "0.1.0a5"
 description = "Python bindings for QuantRS2-Core quantum computing framework"
 authors = [
-    {name = "QuantRS2 Team", email = "team@quantrs2.com"},
+    {name = "QuantRS2 Contributors (Team KitaSan)", email = "info@kitasan.io"},
 ]
 readme = "README.md"
 license = {text = "MIT OR Apache-2.0"}
@@ -52,15 +52,15 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/quantrs2/quantrs2-core"
-Repository = "https://github.com/quantrs2/quantrs2-core"
-Documentation = "https://docs.quantrs2.com"
-Issues = "https://github.com/quantrs2/quantrs2-core/issues"
+Homepage = "https://github.com/cool-japan/quantrs"
+Repository = "https://github.com/cool-japan/quantrs"
+Documentation = "https://pypi.org/project/quantrs2-core/"
+Issues = "https://github.com/cool-japan/quantrs/issues"
 
 [tool.maturin]
 features = ["python"]
-module-name = "quantrs2._core"
-python-source = "../py/python"
+module-name = "quantrs2.core"
+python-source = "python"
 strip = true
 manifest-path = "Cargo.toml"
 

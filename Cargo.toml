@@ -10,6 +10,8 @@ members = [
     "tytan",  # Re-enabled after resolving dependency conflicts
     "py",
     "examples",
+    "simengine-sys",
+    "simengine-rs",
 ]
 exclude = [
     "symengine-fork",
@@ -19,9 +21,6 @@ exclude = [
 [workspace.metadata.cargo-released]
 exclude-members = ["py", "examples"]
 
-[patch.crates-io]
-symengine-sys = { git = "https://github.com/cool-japan/symengine-sys.git", branch = "fixed-macos" }
-symengine = { git = "https://github.com/cool-japan/symengine-rs.git", branch = "fixed-macos" }
 
 [workspace.lints.rust]
 nonstandard_style = "warn"
@@ -132,9 +131,9 @@ hmac = "0.12.1"
 sha2 = "0.10.9"
 hex = "0.4.3"
 
-# Symbolic computation (patched versions)
-symengine = { git = "https://github.com/cool-japan/symengine-rs.git", branch = "fixed-macos" }
-symengine-sys = { git = "https://github.com/cool-japan/symengine-sys.git", branch = "fixed-macos" }
+# Symbolic computation (local workspace versions)
+symengine = { path = "simengine-rs", version = "0.3.0" }
+symengine-sys = { path = "simengine-sys", version = "0.2.0" }
 
 # Advanced math libraries
 ndrustfft = "0.5"
