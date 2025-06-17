@@ -21,7 +21,7 @@ publish_crate() {
     local wait_time=30
     
     for i in $(seq 1 $retries); do
-        if cargo publish; then
+        if cargo publish --allow-dirty; then
             echo "✅ Successfully published $crate_name"
             cd ..
             sleep 5  # Wait a bit for crates.io to process
