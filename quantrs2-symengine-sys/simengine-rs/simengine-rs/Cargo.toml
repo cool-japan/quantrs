@@ -1,0 +1,30 @@
+[package]
+name = "symengine"
+version = "0.3.0"
+authors = ["Sushant Hiray <hiraysushant@gmail.com>", "KitaSan <info@kitasan.io>"]
+description = "Symbolic Computation in Rust via SymEngine"
+readme = "README.md"
+keywords = ["symbolic", "computation", "mathematics", "symengine"]
+repository = "https://github.com/cool-japan/symengine-rs"
+license = "MIT"
+edition = "2021"
+rust-version = "1.70"
+categories = ["mathematics", "science"]
+
+[dependencies]
+serde = { version = "1.0", optional = true, features = ["derive"] }
+symengine-sys = { git = "https://github.com/cool-japan/symengine-sys.git", branch = "fixed-macos" }
+thiserror = "1.0"
+num-traits = "0.2"
+num-complex = "0.4"
+
+[dev-dependencies]
+serde_test = "1.0"
+serde_json = "1.0"
+approx = "0.5"
+
+[features]
+default = []
+serde-serialize = ["serde", "symengine-sys/serde"]
+static = ["symengine-sys/static"]
+system-deps = ["symengine-sys/system-deps"]
