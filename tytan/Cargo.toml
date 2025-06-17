@@ -23,8 +23,8 @@ num-bigint.workspace = true
 num-integer.workspace = true
 num.workspace = true
 chrono.workspace = true
-symengine = { workspace = true, optional = true }
-symengine-sys = { workspace = true, optional = true }
+quantrs2-symengine = { workspace = true, optional = true }
+quantrs2-symengine-sys = { workspace = true, optional = true }
 num-traits.workspace = true
 regex = { workspace = true, optional = true }
 serde.workspace = true
@@ -50,7 +50,7 @@ default = ["parallel"]
 parallel = ["dep:rayon"]
 gpu = ["dep:ocl"]
 # The dwave feature is optional and requires symengine to be installed
-dwave = ["dep:symengine", "dep:symengine-sys", "dep:regex"]
+dwave = ["dep:quantrs2-symengine", "dep:quantrs2-symengine-sys", "dep:regex"]
 scirs = ["dep:scirs2-core", "dep:scirs2-linalg", "dep:scirs2-optimize", "dep:scirs2-cluster", "dep:scirs2"]
 advanced_optimization = ["scirs", "dep:scirs2-optimize"]
 clustering = ["dep:scirs2-cluster"]
