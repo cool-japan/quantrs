@@ -337,7 +337,10 @@ impl DynamicCircuit {
     }
 
     /// Apply a gate to the circuit
-    pub fn apply_gate<G: GateOp + 'static>(&mut self, gate: G) -> QuantRS2Result<()> {
+    pub fn apply_gate<G: GateOp + Clone + Send + Sync + 'static>(
+        &mut self,
+        gate: G,
+    ) -> QuantRS2Result<()> {
         match self {
             DynamicCircuit::Q2(c) => c.add_gate(gate).map(|_| ()),
             DynamicCircuit::Q3(c) => c.add_gate(gate).map(|_| ()),
@@ -470,7 +473,7 @@ impl DynamicCircuit {
     #[cfg(feature = "gpu")]
     pub fn run_gpu(&self) -> QuantRS2Result<DynamicResult> {
         // Try to create the GPU simulator
-        let gpu_simulator = match GpuStateVectorSimulator::new_blocking() {
+        let mut gpu_simulator = match GpuStateVectorSimulator::new_blocking() {
             Ok(sim) => sim,
             Err(e) => {
                 return Err(QuantRS2Error::BackendExecutionFailed(format!(
@@ -483,98 +486,126 @@ impl DynamicCircuit {
         // Run the circuit on the GPU
         match self {
             DynamicCircuit::Q2(c) => {
-                let result = gpu_simulator.run(c);
+                let result = gpu_simulator.run(c).map_err(|e| {
+                    QuantRS2Error::BackendExecutionFailed(format!("GPU simulation failed: {}", e))
+                })?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes.clone(),
                     num_qubits: 2,
                 })
             }
             DynamicCircuit::Q3(c) => {
-                let result = gpu_simulator.run(c);
+                let result = gpu_simulator.run(c).map_err(|e| {
+                    QuantRS2Error::BackendExecutionFailed(format!("GPU simulation failed: {}", e))
+                })?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes.clone(),
                     num_qubits: 3,
                 })
             }
             DynamicCircuit::Q4(c) => {
-                let result = gpu_simulator.run(c);
+                let result = gpu_simulator.run(c).map_err(|e| {
+                    QuantRS2Error::BackendExecutionFailed(format!("GPU simulation failed: {}", e))
+                })?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes.clone(),
                     num_qubits: 4,
                 })
             }
             DynamicCircuit::Q5(c) => {
-                let result = gpu_simulator.run(c);
+                let result = gpu_simulator.run(c).map_err(|e| {
+                    QuantRS2Error::BackendExecutionFailed(format!("GPU simulation failed: {}", e))
+                })?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes.clone(),
                     num_qubits: 5,
                 })
             }
             DynamicCircuit::Q6(c) => {
-                let result = gpu_simulator.run(c);
+                let result = gpu_simulator.run(c).map_err(|e| {
+                    QuantRS2Error::BackendExecutionFailed(format!("GPU simulation failed: {}", e))
+                })?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes.clone(),
                     num_qubits: 6,
                 })
             }
             DynamicCircuit::Q7(c) => {
-                let result = gpu_simulator.run(c);
+                let result = gpu_simulator.run(c).map_err(|e| {
+                    QuantRS2Error::BackendExecutionFailed(format!("GPU simulation failed: {}", e))
+                })?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes.clone(),
                     num_qubits: 7,
                 })
             }
             DynamicCircuit::Q8(c) => {
-                let result = gpu_simulator.run(c);
+                let result = gpu_simulator.run(c).map_err(|e| {
+                    QuantRS2Error::BackendExecutionFailed(format!("GPU simulation failed: {}", e))
+                })?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes.clone(),
                     num_qubits: 8,
                 })
             }
             DynamicCircuit::Q9(c) => {
-                let result = gpu_simulator.run(c);
+                let result = gpu_simulator.run(c).map_err(|e| {
+                    QuantRS2Error::BackendExecutionFailed(format!("GPU simulation failed: {}", e))
+                })?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes.clone(),
                     num_qubits: 9,
                 })
             }
             DynamicCircuit::Q10(c) => {
-                let result = gpu_simulator.run(c);
+                let result = gpu_simulator.run(c).map_err(|e| {
+                    QuantRS2Error::BackendExecutionFailed(format!("GPU simulation failed: {}", e))
+                })?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes.clone(),
                     num_qubits: 10,
                 })
             }
             DynamicCircuit::Q12(c) => {
-                let result = gpu_simulator.run(c);
+                let result = gpu_simulator.run(c).map_err(|e| {
+                    QuantRS2Error::BackendExecutionFailed(format!("GPU simulation failed: {}", e))
+                })?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes.clone(),
                     num_qubits: 12,
                 })
             }
             DynamicCircuit::Q16(c) => {
-                let result = gpu_simulator.run(c);
+                let result = gpu_simulator.run(c).map_err(|e| {
+                    QuantRS2Error::BackendExecutionFailed(format!("GPU simulation failed: {}", e))
+                })?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes.clone(),
                     num_qubits: 16,
                 })
             }
             DynamicCircuit::Q20(c) => {
-                let result = gpu_simulator.run(c);
+                let result = gpu_simulator.run(c).map_err(|e| {
+                    QuantRS2Error::BackendExecutionFailed(format!("GPU simulation failed: {}", e))
+                })?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes.clone(),
                     num_qubits: 20,
                 })
             }
             DynamicCircuit::Q24(c) => {
-                let result = gpu_simulator.run(c);
+                let result = gpu_simulator.run(c).map_err(|e| {
+                    QuantRS2Error::BackendExecutionFailed(format!("GPU simulation failed: {}", e))
+                })?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes.clone(),
                     num_qubits: 24,
                 })
             }
             DynamicCircuit::Q32(c) => {
-                let result = gpu_simulator.run(c);
+                let result = gpu_simulator.run(c).map_err(|e| {
+                    QuantRS2Error::BackendExecutionFailed(format!("GPU simulation failed: {}", e))
+                })?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes.clone(),
                     num_qubits: 32,

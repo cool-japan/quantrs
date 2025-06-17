@@ -89,7 +89,7 @@ impl<T: Clone + Default + PartialEq> CooMatrix<T> {
 }
 
 /// Errors that can occur when working with Ising models
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum IsingError {
     /// Error when a specified qubit is invalid or doesn't exist
     #[error("Invalid qubit index: {0}")]
@@ -442,6 +442,24 @@ impl QuboModel {
         Ok(())
     }
 
+    /// Add to the linear coefficient (Q_ii) for a specific variable
+    pub fn add_linear(&mut self, var: usize, value: f64) -> IsingResult<()> {
+        if var >= self.num_variables {
+            return Err(IsingError::InvalidQubit(var));
+        }
+
+        if !value.is_finite() {
+            return Err(IsingError::InvalidValue(format!(
+                "Linear term must be finite, got {}",
+                value
+            )));
+        }
+
+        let current = *self.linear_terms.get(var).unwrap_or(&0.0);
+        self.linear_terms.set(var, current + value);
+        Ok(())
+    }
+
     /// Get the linear coefficient (Q_ii) for a specific variable
     pub fn get_linear(&self, var: usize) -> IsingResult<f64> {
         if var >= self.num_variables {
@@ -510,6 +528,31 @@ impl QuboModel {
         self.quadratic_terms
             .iter()
             .map(|(var1, var2, value)| (var1, var2, *value))
+            .collect()
+    }
+
+    /// Convert to dense QUBO matrix for sampler compatibility
+    pub fn to_dense_matrix(&self) -> ndarray::Array2<f64> {
+        let mut matrix = ndarray::Array2::zeros((self.num_variables, self.num_variables));
+
+        // Set linear terms on diagonal
+        for (var, value) in self.linear_terms.iter() {
+            matrix[[var, var]] = *value;
+        }
+
+        // Set quadratic terms
+        for (var1, var2, value) in self.quadratic_terms.iter() {
+            matrix[[var1, var2]] = *value;
+            matrix[[var2, var1]] = *value; // Symmetric
+        }
+
+        matrix
+    }
+
+    /// Create variable name mapping for sampler compatibility
+    pub fn variable_map(&self) -> std::collections::HashMap<String, usize> {
+        (0..self.num_variables)
+            .map(|i| (format!("x{}", i), i))
             .collect()
     }
 

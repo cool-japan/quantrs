@@ -3,12 +3,13 @@
 //! This module provides quantum optimization tools for machine learning
 //! including feature selection, hyperparameter optimization, and model selection.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, Array3, IxDyn};
+// Sampler types available for ML applications
+#![allow(dead_code)]
+
+use ndarray::{Array1, Array2};
 use rand::prelude::*;
-use rand::thread_rng;
-use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use rand::rng;
+use std::collections::HashMap;
 
 /// Feature selector using quantum optimization
 pub struct QuantumFeatureSelector {
@@ -310,7 +311,7 @@ impl QuantumFeatureSelector {
         let mut var_map = HashMap::new();
 
         // Create variable mapping
-        for (i, name) in self.features.feature_names.iter().enumerate() {
+        for (i, _name) in self.features.feature_names.iter().enumerate() {
             var_map.insert(format!("feature_{}", i), i);
         }
 
@@ -411,7 +412,7 @@ impl QuantumFeatureSelector {
 
         // Compute joint and marginal probabilities
         let mut joint_counts = Array2::<f64>::zeros((n_bins, n_bins));
-        for (i, (f, t)) in feature_discrete
+        for (_i, (f, t)) in feature_discrete
             .iter()
             .zip(target_discrete.iter())
             .enumerate()
@@ -495,21 +496,21 @@ impl QuantumFeatureSelector {
     }
 
     /// Compute feature importances
-    fn compute_feature_importances(&self, model: &MLModel) -> Result<Array1<f64>, String> {
+    fn compute_feature_importances(&self, _model: &MLModel) -> Result<Array1<f64>, String> {
         // Simplified: return random importances
         // In practice, would train model and extract importances
 
         let n_features = self.features.feature_names.len();
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
-        Ok(Array1::from_shape_fn(n_features, |_| rng.gen::<f64>()))
+        Ok(Array1::from_shape_fn(n_features, |_| rng.random::<f64>()))
     }
 
     /// Add feature interaction terms
     fn add_feature_interactions(
         &self,
         qubo: &mut Array2<f64>,
-        model: &MLModel,
+        _model: &MLModel,
     ) -> Result<(), String> {
         // Add synergy bonus for features that work well together
         // Simplified: use correlation structure
@@ -667,10 +668,7 @@ impl QuantumFeatureSelector {
                 _ => "other",
             };
 
-            type_groups
-                .entry(type_key.to_string())
-                .or_insert_with(Vec::new)
-                .push(i);
+            type_groups.entry(type_key.to_string()).or_default().push(i);
         }
 
         // Bonus for selecting from different groups
@@ -1052,15 +1050,15 @@ impl HyperparameterOptimizer {
     /// Estimate parameter performance
     fn estimate_parameter_performance(
         &self,
-        var_name: &str,
-        discretized: &DiscretizedSpace,
+        _var_name: &str,
+        _discretized: &DiscretizedSpace,
     ) -> Result<f64, String> {
         // Simplified: use surrogate model or prior knowledge
         // In practice, would use Gaussian process or similar
 
         // Random performance for demonstration
-        let mut rng = thread_rng();
-        Ok(rng.gen::<f64>())
+        let mut rng = rng();
+        Ok(rng.random::<f64>())
     }
 
     /// Add tunneling terms
@@ -1108,7 +1106,7 @@ impl HyperparameterOptimizer {
         &self,
         qubo: &mut Array2<f64>,
         var_map: &HashMap<String, usize>,
-        superposition_size: usize,
+        _superposition_size: usize,
     ) -> Result<(), String> {
         // Bonus for maintaining superposition of multiple good configurations
         // This encourages exploration
@@ -1246,23 +1244,23 @@ mod tests {
         let n_samples = 100;
         let n_features = 10;
 
-        let mut rng = thread_rng();
-        let data = Array2::from_shape_fn((n_samples, n_features), |_| rng.gen::<f64>());
-        let target = Array1::from_shape_fn(n_samples, |_| rng.gen::<f64>());
+        let mut rng = rng();
+        let data = Array2::from_shape_fn((n_samples, n_features), |_| rng.random::<f64>());
+        let target = Array1::from_shape_fn(n_samples, |_| rng.random::<f64>());
 
         let feature_names: Vec<_> = (0..n_features).map(|i| format!("feature_{}", i)).collect();
 
-        let feature_types = vec![FeatureType::Continuous; n_features];
+        let mut feature_types = vec![FeatureType::Continuous; n_features];
 
         let statistics = FeatureStatistics {
             means: data.mean_axis(ndarray::Axis(0)).unwrap(),
             stds: data.std_axis(ndarray::Axis(0), 0.0),
-            target_correlations: Array1::from_shape_fn(n_features, |_| rng.gen::<f64>()),
+            target_correlations: Array1::from_shape_fn(n_features, |_| rng.random::<f64>()),
             feature_correlations: Array2::from_shape_fn((n_features, n_features), |(i, j)| {
                 if i == j {
                     1.0
                 } else {
-                    rng.gen::<f64>() * 0.5
+                    rng.random::<f64>() * 0.5
                 }
             }),
             missing_counts: Array1::zeros(n_features),
@@ -1285,7 +1283,7 @@ mod tests {
             },
         );
 
-        let result = selector.build_qubo();
+        let mut result = selector.build_qubo();
         assert!(result.is_ok());
     }
 
@@ -1356,7 +1354,7 @@ mod tests {
             evaluation,
         };
 
-        let result = optimizer.build_qubo();
+        let mut result = optimizer.build_qubo();
         assert!(result.is_ok());
     }
 }

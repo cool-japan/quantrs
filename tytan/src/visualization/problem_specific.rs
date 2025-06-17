@@ -4,9 +4,12 @@
 //! optimization problem types including TSP, graph coloring, scheduling, etc.
 
 use crate::sampler::SampleResult;
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+/// Type alias for job shop schedule representation (job, machine, start_time, duration)
+type JobShopSchedule = Vec<(usize, usize, usize, usize)>;
 
 #[cfg(feature = "scirs")]
 use crate::scirs_stub::{
@@ -281,8 +284,8 @@ impl ProblemVisualizer {
         for _ in 1..n_cities {
             let mut next_city = None;
 
-            for j in 0..n_cities {
-                if !visited[j] {
+            for (j, &is_visited) in visited.iter().enumerate().take(n_cities) {
+                if !is_visited {
                     let edge_var = format!("x_{}_{}", current, j);
                     if sample.assignments.get(&edge_var).copied().unwrap_or(false) {
                         next_city = Some(j);
@@ -297,10 +300,10 @@ impl ProblemVisualizer {
                 current = next;
             } else {
                 // Find first unvisited city as fallback
-                for j in 0..n_cities {
-                    if !visited[j] {
+                for (j, is_visited) in visited.iter_mut().enumerate().take(n_cities) {
+                    if !*is_visited {
                         tour.push(j);
-                        visited[j] = true;
+                        *is_visited = true;
                         current = j;
                         break;
                     }
@@ -418,11 +421,11 @@ impl ProblemVisualizer {
     ) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
         let mut colors = vec![0; n_nodes];
 
-        for i in 0..n_nodes {
+        for (i, color) in colors.iter_mut().enumerate().take(n_nodes) {
             for c in 0..max_colors {
                 let var_name = format!("node_{}_color_{}", i, c);
                 if sample.assignments.get(&var_name).copied().unwrap_or(false) {
-                    colors[i] = c;
+                    *color = c;
                     break;
                 }
             }
@@ -517,9 +520,9 @@ impl ProblemVisualizer {
     ) -> Result<Vec<bool>, Box<dyn std::error::Error>> {
         let mut partition = vec![false; n_nodes];
 
-        for i in 0..n_nodes {
+        for (i, part) in partition.iter_mut().enumerate().take(n_nodes) {
             let var_name = format!("x_{}", i);
-            partition[i] = sample.assignments.get(&var_name).copied().unwrap_or(false);
+            *part = sample.assignments.get(&var_name).copied().unwrap_or(false);
         }
 
         Ok(partition)
@@ -548,7 +551,7 @@ impl ProblemVisualizer {
             let colors = ["red", "blue", "green", "yellow", "purple", "orange"];
 
             for (job, machine, start, duration) in &schedule {
-                let y = *machine as f64;
+                let mut y = *machine as f64;
                 let color = colors[*job % colors.len()];
 
                 ax.barh(&[y], &[*duration as f64], &[*start as f64], 0.8)
@@ -587,7 +590,7 @@ impl ProblemVisualizer {
         n_jobs: usize,
         n_machines: usize,
         time_horizon: usize,
-    ) -> Result<Vec<(usize, usize, usize, usize)>, Box<dyn std::error::Error>> {
+    ) -> Result<JobShopSchedule, Box<dyn std::error::Error>> {
         let mut schedule = Vec::new();
 
         // This is problem-specific and would need the actual encoding scheme
@@ -640,11 +643,13 @@ impl ProblemVisualizer {
             let sum2: f64 = set2.iter().sum();
 
             // Create bar chart
-            let x_pos = vec![1.0, 2.0];
-            let heights = vec![sum1, sum2];
-            let labels = vec!["Set 1", "Set 2"];
+            let mut x_pos = vec![1.0, 2.0];
+            let mut heights = vec![sum1, sum2];
+            let mut labels = vec!["Set 1", "Set 2"];
 
-            ax.bar(&x_pos, &heights).set_color(&["blue", "orange"]);
+            // Draw each bar with its own color
+            ax.bar(&[x_pos[0]], &[heights[0]]).set_color("blue");
+            ax.bar(&[x_pos[1]], &[heights[1]]).set_color("orange");
 
             // Add value labels on bars
             for (x, h, nums) in [(1.0, sum1, &set1), (2.0, sum2, &set2)].iter() {
@@ -662,7 +667,8 @@ impl ProblemVisualizer {
             }
 
             ax.set_xticks(&x_pos);
-            ax.set_xticklabels(&labels);
+            let string_labels: Vec<String> = labels.iter().map(|s| s.to_string()).collect();
+            ax.set_xticklabels(&string_labels);
             ax.set_ylabel("Sum");
             ax.set_title(&format!(
                 "Number Partition: |{:.2} - {:.2}| = {:.2}",
@@ -716,12 +722,13 @@ impl ProblemVisualizer {
             let ax1 = fig.add_subplot(2, 1, 1)?;
 
             let x_pos: Vec<f64> = (0..n_items).map(|i| i as f64).collect();
-            let colors: Vec<&str> = selected
-                .iter()
-                .map(|&s| if s { "green" } else { "red" })
-                .collect();
-
-            ax1.bar(&x_pos, values).set_color(&colors).set_alpha(0.7);
+            // Draw bars with individual colors
+            for (i, (&value, &is_selected)) in values.iter().zip(selected.iter()).enumerate() {
+                let color = if is_selected { "green" } else { "red" };
+                ax1.bar(&[i as f64], &[value])
+                    .set_color(color)
+                    .set_alpha(0.7);
+            }
 
             // Add weight labels
             for (i, (&w, &v)) in weights.iter().zip(values.iter()).enumerate() {
@@ -889,7 +896,7 @@ impl ProblemVisualizer {
             ax4.text(0.1, 0.9, &summary_text)
                 .set_fontsize(12)
                 .set_verticalalignment("top")
-                .set_transform(ax4.transAxes());
+                .set_transform(ax4.trans_axes());
             ax4.axis("off");
 
             fig.suptitle("Portfolio Optimization Results");
@@ -921,10 +928,10 @@ impl ProblemVisualizer {
             .count();
 
         if total_selected > 0 {
-            for i in 0..n_assets {
+            for (i, weight) in weights.iter_mut().enumerate().take(n_assets) {
                 let var_name = format!("x_{}", i);
                 if sample.assignments.get(&var_name).copied().unwrap_or(false) {
-                    weights[i] = 1.0 / total_selected as f64;
+                    *weight = 1.0 / total_selected as f64;
                 }
             }
         }

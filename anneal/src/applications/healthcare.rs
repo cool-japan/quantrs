@@ -380,7 +380,7 @@ impl OptimizationProblem for MedicalResourceAllocation {
 /// Solution for Medical Resource Allocation
 #[derive(Debug, Clone)]
 pub struct MedicalResourceSolution {
-    /// Resource allocations [facility][department][resource]
+    /// Resource allocations \[facility\]\[department\]\[resource\]
     pub allocations: Vec<Vec<Vec<f64>>>,
     /// Total allocation cost
     pub total_cost: f64,
@@ -618,7 +618,7 @@ pub struct TreatmentPlanningOptimization {
     pub num_patients: usize,
     /// Number of available treatments
     pub num_treatments: usize,
-    /// Treatment efficacy matrix [patient][treatment]
+    /// Treatment efficacy matrix \[patient\]\[treatment\]
     pub treatment_efficacy: Vec<Vec<f64>>,
     /// Treatment costs
     pub treatment_costs: Vec<f64>,
@@ -682,7 +682,7 @@ impl TreatmentPlanningOptimization {
 /// Treatment Plan Solution
 #[derive(Debug, Clone)]
 pub struct TreatmentPlan {
-    /// Treatment assignments [patient][treatment] = assigned
+    /// Treatment assignments \[patient\]\[treatment\] = assigned
     pub patient_treatments: Vec<Vec<bool>>,
     /// Total cost
     pub total_cost: f64,

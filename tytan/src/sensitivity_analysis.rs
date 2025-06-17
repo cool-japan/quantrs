@@ -4,11 +4,12 @@
 //! are to changes in various parameters, including penalty weights, sampler
 //! parameters, and problem formulation choices.
 
+#![allow(dead_code)]
+
 #[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
-use crate::sampler::{SampleResult, Sampler, SamplerResult};
-use ndarray::{Array1, Array2};
-use rand::thread_rng;
+use crate::sampler::Sampler;
+use rand::rng;
 use std::collections::HashMap;
 use std::error::Error;
 
@@ -214,9 +215,9 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         let baseline_objective = baseline_result.best_objective;
 
         // Vary each parameter
-        for param in &self.parameters {
-            let param_name = self.get_parameter_name(param);
-            let (min_val, max_val) = self.get_parameter_range(param);
+        for param in self.parameters.clone() {
+            let param_name = self.get_parameter_name(&param);
+            let (min_val, max_val) = self.get_parameter_range(&param);
 
             let mut response_curve = Vec::new();
             let mut objectives = Vec::new();
@@ -224,14 +225,14 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             // Sample parameter values
             for i in 0..num_points {
                 let t = i as f64 / (num_points - 1) as f64;
-                let value = min_val + t * (max_val - min_val);
+                let mut value = min_val + t * (max_val - min_val);
 
                 // Create parameter configuration
                 let mut params = baseline_params.clone();
                 params.insert(param_name.clone(), value);
 
                 // Evaluate
-                let result = self.evaluate_configuration(problem, &params)?;
+                let mut result = self.evaluate_configuration(problem, &params)?;
                 response_curve.push((value, result.best_objective));
                 objectives.push(result.best_objective);
             }
@@ -401,8 +402,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
 
         let var_total = variance(&y_a);
 
-        for param in &self.parameters {
-            let param_name = self.get_parameter_name(param);
+        for param in self.parameters.clone() {
+            let param_name = self.get_parameter_name(&param);
 
             // Create sample where only this parameter varies
             let mut y_ab_i = Vec::new();
@@ -410,7 +411,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
                 let mut params_ab_i = sample_a[i].clone();
                 params_ab_i.insert(param_name.clone(), sample_b[i][&param_name]);
 
-                let result = self.evaluate_configuration(problem, &params_ab_i)?;
+                let mut result = self.evaluate_configuration(problem, &params_ab_i)?;
                 y_ab_i.push(result.best_objective);
             }
 
@@ -433,8 +434,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
 
         // Convert to sensitivity results
         let mut sensitivities = HashMap::new();
-        for param in &self.parameters {
-            let param_name = self.get_parameter_name(param);
+        for param in self.parameters.clone() {
+            let param_name = self.get_parameter_name(&param);
             sensitivities.insert(
                 param_name.clone(),
                 ParameterSensitivity {
@@ -476,7 +477,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         // Evaluate samples
         let mut results = Vec::new();
         for sample in &samples {
-            let result = self.evaluate_configuration(problem, sample)?;
+            let mut result = self.evaluate_configuration(problem, sample)?;
             results.push((sample.clone(), result.best_objective));
         }
 
@@ -516,7 +517,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         // Evaluate all combinations
         let mut results = Vec::new();
         for config in &design {
-            let result = self.evaluate_configuration(problem, config)?;
+            let mut result = self.evaluate_configuration(problem, config)?;
             results.push((config.clone(), result.best_objective));
         }
 
@@ -569,8 +570,11 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         self.apply_parameters(params)?;
 
         // Run sampler
-        let qubo = problem.to_qubo();
-        let solutions = self.sampler.run_qubo(&qubo, self.num_reads_per_eval)?;
+        let mut qubo = problem.to_qubo();
+        let qubo_tuple = (qubo.to_dense_matrix(), qubo.variable_map());
+        let solutions = self
+            .sampler
+            .run_qubo(&qubo_tuple, self.num_reads_per_eval)?;
 
         // Extract best objective
         let best_objective = solutions
@@ -580,7 +584,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             .unwrap_or(f64::INFINITY);
 
         // Compute constraint violations
-        let constraint_violations = 0.0; // TODO: Implement constraint checking
+        let mut constraint_violations = 0.0; // TODO: Implement constraint checking
 
         Ok(EvaluationResult {
             best_objective,
@@ -626,13 +630,13 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     fn get_default_parameters(&self) -> HashMap<String, f64> {
         let mut params = HashMap::new();
 
-        for param in &self.parameters {
-            let name = self.get_parameter_name(param);
+        for param in self.parameters.clone() {
+            let name = self.get_parameter_name(&param);
             let value = match param {
-                ParameterType::SamplerParameter { default_value, .. } => *default_value,
-                ParameterType::PenaltyWeight { default_weight, .. } => *default_weight,
-                ParameterType::FormulationParameter { default_value, .. } => *default_value,
-                ParameterType::DiscreteChoice { default_index, .. } => *default_index as f64,
+                ParameterType::SamplerParameter { default_value, .. } => default_value,
+                ParameterType::PenaltyWeight { default_weight, .. } => default_weight,
+                ParameterType::FormulationParameter { default_value, .. } => default_value,
+                ParameterType::DiscreteChoice { default_index, .. } => default_index as f64,
             };
             params.insert(name, value);
         }
@@ -641,7 +645,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     }
 
     /// Apply parameters to sampler
-    fn apply_parameters(&mut self, params: &HashMap<String, f64>) -> Result<(), Box<dyn Error>> {
+    fn apply_parameters(&mut self, _params: &HashMap<String, f64>) -> Result<(), Box<dyn Error>> {
         // This would need to be implemented based on the specific sampler
         // For now, we assume parameters are applied externally
         Ok(())
@@ -760,7 +764,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     ) -> Result<(Vec<HashMap<String, f64>>, Vec<HashMap<String, f64>>), Box<dyn Error>> {
         // Simplified implementation using random sampling
         use rand::prelude::*;
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         let mut sample_a = Vec::new();
         let mut sample_b = Vec::new();
@@ -769,12 +773,12 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             let mut params_a = HashMap::new();
             let mut params_b = HashMap::new();
 
-            for param in &self.parameters {
-                let name = self.get_parameter_name(param);
-                let (min_val, max_val) = self.get_parameter_range(param);
+            for param in self.parameters.clone() {
+                let name = self.get_parameter_name(&param);
+                let (min_val, max_val) = self.get_parameter_range(&param);
 
-                params_a.insert(name.clone(), rng.gen_range(min_val..max_val));
-                params_b.insert(name, rng.gen_range(min_val..max_val));
+                params_a.insert(name.clone(), rng.random_range(min_val..max_val));
+                params_b.insert(name, rng.random_range(min_val..max_val));
             }
 
             sample_a.push(params_a);
@@ -855,7 +859,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     ) -> Result<Vec<HashMap<String, f64>>, Box<dyn Error>> {
         // Simplified LHS implementation
         use rand::prelude::*;
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         let mut samples = Vec::new();
         let n_params = self.parameters.len();
@@ -873,12 +877,13 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             let mut sample = HashMap::new();
 
             for (j, param) in self.parameters.iter().enumerate() {
-                let name = self.get_parameter_name(param);
-                let (min_val, max_val) = self.get_parameter_range(param);
+                let name = self.get_parameter_name(&param);
+                let (min_val, max_val) = self.get_parameter_range(&param);
 
                 let level = permutations[j][i];
                 let value = min_val
-                    + (level as f64 + rng.gen::<f64>()) / num_samples as f64 * (max_val - min_val);
+                    + (level as f64 + rng.random::<f64>()) / num_samples as f64
+                        * (max_val - min_val);
 
                 sample.insert(name, value);
             }
@@ -896,8 +901,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         // Simplified linear regression
         let mut sensitivities = HashMap::new();
 
-        for param in &self.parameters {
-            let param_name = self.get_parameter_name(param);
+        for param in self.parameters.clone() {
+            let param_name = self.get_parameter_name(&param);
 
             // Extract x and y values
             let x: Vec<f64> = results
@@ -965,9 +970,9 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             let mut config = HashMap::new();
             let mut idx = i;
 
-            for param in &self.parameters {
-                let name = self.get_parameter_name(param);
-                let (min_val, max_val) = self.get_parameter_range(param);
+            for param in self.parameters.clone() {
+                let name = self.get_parameter_name(&param);
+                let (min_val, max_val) = self.get_parameter_range(&param);
 
                 let level = idx % levels_per_factor;
                 idx /= levels_per_factor;
@@ -997,15 +1002,15 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         let mut interaction_effects = HashMap::new();
 
         // Compute main effects
-        for param in &self.parameters {
-            let param_name = self.get_parameter_name(param);
+        for param in self.parameters.clone() {
+            let param_name = self.get_parameter_name(&param);
 
             let mut level_sums = vec![0.0; levels_per_factor];
             let mut level_counts = vec![0; levels_per_factor];
 
             for (config, obj) in results {
                 let value = config[&param_name];
-                let (min_val, max_val) = self.get_parameter_range(param);
+                let (min_val, max_val) = self.get_parameter_range(&param);
 
                 let level = if levels_per_factor == 1 {
                     0
@@ -1102,7 +1107,7 @@ pub mod visualization {
                     let x: Vec<f64> = sensitivity.response_curve.iter().map(|(x, _)| *x).collect();
                     let y: Vec<f64> = sensitivity.response_curve.iter().map(|(_, y)| *y).collect();
 
-                    let line = Line::new(x, y).name(param_name);
+                    let mut line = Line::new(x, y).name(param_name);
 
                     plot.add_trace(line);
                 }
@@ -1119,7 +1124,6 @@ pub mod visualization {
 }
 
 /// Utility functions
-
 fn variance(values: &[f64]) -> f64 {
     let n = values.len() as f64;
     let mean = values.iter().sum::<f64>() / n;
@@ -1145,7 +1149,7 @@ mod tests {
     #[test]
     fn test_one_at_a_time_analysis() {
         let sampler = SASampler::new(None);
-        let parameters = vec![ParameterType::SamplerParameter {
+        let mut parameters = vec![ParameterType::SamplerParameter {
             name: "temperature".to_string(),
             default_value: 1.0,
             min_value: 0.1,
@@ -1162,6 +1166,6 @@ mod tests {
         );
 
         // Would need a real compiled model to test
-        // let results = analyzer.analyze(&compiled_model).unwrap();
+        // let mut results = analyzer.analyze(&compiled_model).unwrap();
     }
 }

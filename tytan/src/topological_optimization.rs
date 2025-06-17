@@ -4,12 +4,13 @@
 //! topological quantum computing concepts, anyonic computation, and
 //! topological data analysis for optimization.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, Array3, IxDyn};
+#![allow(dead_code)]
+
+use ndarray::{Array2, Array3};
 use num_complex::Complex64;
 use rand::prelude::*;
-use rand::thread_rng;
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use rand::rng;
+use std::collections::HashMap;
 use std::f64::consts::PI;
 
 /// Topological Quantum Optimizer using anyonic braiding
@@ -143,7 +144,7 @@ impl TopologicalOptimizer {
 
     /// Generate braiding sequence
     fn generate_braid_sequence(&self, iteration: usize) -> Vec<BraidOperation> {
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let mut sequence = Vec::new();
 
         // Deterministic part based on iteration
@@ -155,13 +156,13 @@ impl TopologicalOptimizer {
 
         // Random exploration
         for _ in 0..3 {
-            let i = rng.gen_range(0..self.n_anyons - 1);
+            let i = rng.random_range(0..self.n_anyons - 1);
             sequence.push(BraidOperation::Exchange(i, i + 1));
         }
 
         // Fusion operations
-        if self.n_anyons > 2 && rng.gen_bool(0.3) {
-            let i = rng.gen_range(0..self.n_anyons - 1);
+        if self.n_anyons > 2 && rng.random_bool(0.3) {
+            let i = rng.random_range(0..self.n_anyons - 1);
             sequence.push(BraidOperation::Fusion(i, i + 1));
         }
 
@@ -201,13 +202,13 @@ impl TopologicalOptimizer {
     }
 
     /// Apply fusion operation
-    fn apply_fusion(&self, state: &AnyonState, i: usize, j: usize) -> Result<AnyonState, String> {
+    fn apply_fusion(&self, state: &AnyonState, _i: usize, _j: usize) -> Result<AnyonState, String> {
         // Simplified fusion
         Ok(state.clone())
     }
 
     /// Apply creation operation
-    fn apply_creation(&self, state: &AnyonState, i: usize) -> Result<AnyonState, String> {
+    fn apply_creation(&self, state: &AnyonState, _i: usize) -> Result<AnyonState, String> {
         // Simplified creation
         Ok(state.clone())
     }
@@ -309,7 +310,7 @@ impl FibonacciState {
     }
 
     fn measure(&self) -> Result<Vec<bool>, String> {
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         // Sample from amplitude distribution
         let probabilities: Vec<f64> = self.amplitudes.iter().map(|a| a.norm_sqr()).collect();
@@ -319,7 +320,7 @@ impl FibonacciState {
 
         // Sample basis state
         let mut cumsum = 0.0;
-        let r = rng.gen::<f64>();
+        let r = rng.random::<f64>();
 
         for (idx, &prob) in normalized.iter().enumerate() {
             cumsum += prob;
@@ -348,10 +349,10 @@ impl IsingAnyonState {
         let mut majorana_matrix = Array2::zeros((n, n));
 
         // Initialize with random couplings
-        let mut rng = thread_rng();
+        let mut rng = rng();
         for i in 0..n {
             for j in i + 1..n {
-                let coupling = rng.gen_range(-1.0..1.0);
+                let coupling = rng.random_range(-1.0..1.0);
                 majorana_matrix[[i, j]] = coupling;
                 majorana_matrix[[j, i]] = -coupling;
             }
@@ -368,7 +369,7 @@ impl IsingAnyonState {
         let mut new_state = self.clone();
 
         // Braiding Majoranas: γ_i → γ_j, γ_j → -γ_i
-        let phase = Complex64::new(0.0, PI / 4.0).exp();
+        let _phase = Complex64::new(0.0, PI / 4.0).exp();
 
         // Update Majorana couplings
         for k in 0..self.n {
@@ -409,8 +410,8 @@ impl IsingAnyonState {
 
         if total_parity != 0 {
             // Flip a random parity sector to restore conservation
-            let mut rng = thread_rng();
-            let idx = rng.gen_range(0..self.parity_sectors.len());
+            let mut rng = rng();
+            let idx = rng.random_range(0..self.parity_sectors.len());
             corrected.parity_sectors[idx] = !corrected.parity_sectors[idx];
         }
 
@@ -726,7 +727,7 @@ impl PersistentHomology {
         for simplex in &filtration.simplices {
             by_dimension
                 .entry(simplex.dimension)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(simplex);
         }
 
@@ -800,8 +801,10 @@ impl PersistentHomology {
             let end = (pair.death * resolution as f64) as usize;
 
             for i in start..end.min(resolution) {
-                landscape[pair.dimension][i] = (landscape[pair.dimension][i] as f64)
-                    .max(1.0 - (i as f64 / resolution as f64 - pair.birth).abs());
+                landscape[pair.dimension][i] = f64::max(
+                    landscape[pair.dimension][i],
+                    1.0 - (i as f64 / resolution as f64 - pair.birth).abs(),
+                );
             }
         }
 
@@ -921,7 +924,7 @@ fn hamming_distance(a: &[bool], b: &[bool]) -> usize {
 fn weighted_sample(weights: &[f64], rng: &mut StdRng) -> usize {
     let total: f64 = weights.iter().sum();
     let mut cumsum = 0.0;
-    let r = rng.gen::<f64>() * total;
+    let r = rng.random::<f64>() * total;
 
     for (idx, &weight) in weights.iter().enumerate() {
         cumsum += weight;
@@ -943,13 +946,13 @@ mod tests {
 
         let cost_fn = |state: &[bool]| state.iter().filter(|&&x| x).count() as f64;
 
-        let result = optimizer.optimize(&cost_fn);
+        let mut result = optimizer.optimize(&cost_fn);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_fibonacci_state() {
-        let state = FibonacciState::new(3);
+        let mut state = FibonacciState::new(3);
         assert_eq!(state.n, 3);
 
         let braided = state.braid(0, 1);
@@ -960,14 +963,14 @@ mod tests {
     fn test_persistent_homology() {
         let ph = PersistentHomology::new(2);
 
-        let samples = vec![
+        let mut samples = vec![
             (vec![false, false], 0.0),
             (vec![true, false], 1.0),
             (vec![false, true], 1.0),
             (vec![true, true], 2.0),
         ];
 
-        let result = ph.analyze_landscape(&samples);
+        let mut result = ph.analyze_landscape(&samples);
         assert!(result.is_ok());
 
         let homology = result.unwrap();

@@ -99,7 +99,7 @@ mod fallback_scirs2 {
 #[cfg(not(feature = "scirs2"))]
 use fallback_scirs2::*;
 
-use ndarray::{s, Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};
+use ndarray::{s, Array1, Array2, ArrayView1, ArrayView2};
 use num_complex::Complex64;
 use rand::prelude::*;
 use tokio::sync::{broadcast, mpsc};
@@ -112,7 +112,7 @@ use crate::{
     crosstalk::{CrosstalkAnalyzer, CrosstalkCharacterization, CrosstalkConfig},
     dynamical_decoupling::{DynamicalDecouplingConfig, DynamicalDecouplingResult},
     job_scheduling::{JobConfig, JobPriority, QuantumJob, QuantumJobScheduler},
-    mapping_scirc2::{SciRS2MappingConfig, SciRS2MappingResult, SciRS2QubitMapper},
+    // mapping_scirc2::{SciRS2MappingConfig, SciRS2MappingResult, SciRS2QubitMapper}, // Temporarily disabled
     noise_model::CalibrationNoiseModel,
     noise_modeling_scirs2::SciRS2NoiseModeler,
     process_tomography::{
@@ -121,7 +121,11 @@ use crate::{
     qec::QECConfig,
     translation::HardwareBackend,
     vqa_support::{VQAConfig, VQAExecutor, VQAResult},
-    CircuitExecutor, CircuitResult, DeviceError, DeviceResult, QuantumDevice,
+    CircuitExecutor,
+    CircuitResult,
+    DeviceError,
+    DeviceResult,
+    QuantumDevice,
 };
 
 /// Configuration for the Integrated Quantum Device Manager
@@ -866,7 +870,7 @@ pub struct IntegratedQuantumDeviceManager {
     process_tomographer: Arc<Mutex<SciRS2ProcessTomographer>>,
     vqa_executor: Arc<Mutex<VQAExecutor>>,
     dd_config: Arc<Mutex<DynamicalDecouplingConfig>>,
-    qubit_mapper: Arc<Mutex<SciRS2QubitMapper>>,
+    // qubit_mapper: Arc<Mutex<SciRS2QubitMapper>>, // Temporarily disabled
     benchmark_suite: Arc<Mutex<HardwareBenchmarkSuite>>,
     crosstalk_analyzer: Arc<Mutex<CrosstalkAnalyzer>>,
     job_scheduler: Arc<Mutex<QuantumJobScheduler>>,
@@ -1108,11 +1112,11 @@ impl IntegratedQuantumDeviceManager {
                 None,
             ))),
             dd_config: Arc::new(Mutex::new(DynamicalDecouplingConfig::default())),
-            qubit_mapper: Arc::new(Mutex::new(SciRS2QubitMapper::new(
-                SciRS2MappingConfig::default(),
-                HardwareTopology::default(),
-                None,
-            ))),
+            // qubit_mapper: Arc::new(Mutex::new(SciRS2QubitMapper::new(
+            //     SciRS2MappingConfig::default(),
+            //     HardwareTopology::default(),
+            //     None,
+            // ))), // Temporarily disabled
             benchmark_suite: Arc::new(Mutex::new(HardwareBenchmarkSuite::new(
                 CalibrationManager::new(),
                 BenchmarkConfig::default(),
@@ -1130,7 +1134,7 @@ impl IntegratedQuantumDeviceManager {
                 DeviceCalibration::default(),
                 None,
                 BackendCapabilities::default(),
-            ))),
+            )?)),
             noise_modeler: Arc::new(Mutex::new(SciRS2NoiseModeler::new(
                 "default_device".to_string(),
             ))),

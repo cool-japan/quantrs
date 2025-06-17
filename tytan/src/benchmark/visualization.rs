@@ -1,7 +1,6 @@
 //! Benchmark visualization utilities
 
-use crate::benchmark::{analysis::PerformanceReport, metrics::BenchmarkMetrics};
-use std::collections::HashMap;
+use crate::benchmark::analysis::PerformanceReport;
 
 /// Benchmark visualizer for generating plots and charts
 pub struct BenchmarkVisualizer {
@@ -111,7 +110,7 @@ impl BenchmarkVisualizer {
             // Fill matrix from speedup data
             for (i, backend) in backends.iter().enumerate() {
                 for (j, sampler) in samplers.iter().enumerate() {
-                    let config = format!("{}-{}", backend, sampler);
+                    let mut config = format!("{}-{}", backend, sampler);
 
                     // Find efficiency for this configuration
                     if let Some(efficiency) = self

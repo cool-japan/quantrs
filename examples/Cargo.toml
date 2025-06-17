@@ -12,19 +12,19 @@ description = "Examples for the QuantRS2 quantum computing framework"
 publish = false
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.4" }
-quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.4" }
-quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.4" }
-quantrs2-ml = { path = "../ml", version = "0.1.0-alpha.4", optional = true }
-quantrs2-device = { path = "../device", version = "0.1.0-alpha.4", features = [] }
-# Tytan is intentionally not included directly
-# quantrs2-tytan = { path = "../tytan", optional = true }
+quantrs2-core.workspace = true
+quantrs2-circuit.workspace = true
+quantrs2-anneal.workspace = true
+quantrs2-ml = { workspace = true, optional = true }
+quantrs2-device.workspace = true
+# Tytan dependency  
+quantrs2-tytan = { workspace = true, optional = true }
 num-complex.workspace = true
 ndarray.workspace = true
 rand.workspace = true
-fastrand = "2.0"
+fastrand.workspace = true
 petgraph = "0.6"
-thiserror = "2.0"
+thiserror.workspace = true
 
 # Feature for simulation examples which require quantrs2-sim
 #
@@ -46,22 +46,19 @@ simulation = ["quantrs2-sim"]
 gpu = ["quantrs2-sim/gpu"]
 advanced_math = ["quantrs2-sim/advanced_math"]
 ml = ["quantrs2-ml"]
-# Tytan feature is maintained but doesn't activate any dependencies
-tytan = []
+# Tytan feature enables tytan dependency with dwave support
+tytan = ["quantrs2-tytan", "quantrs2-tytan/dwave"]
 ibm = ["quantrs2-device/ibm", "tokio"]
 aws = ["quantrs2-device/aws", "tokio"]
 default = []
 
 # Optional dependencies with features
 [dependencies.quantrs2-sim]
-path = "../sim"
-version = "0.1.0-alpha.4"
+workspace = true
 optional = true
-
 
 [dependencies.tokio]
 workspace = true
-features = ["full"]
 optional = true
 
 # Quantum annealing examples
@@ -187,10 +184,6 @@ name = "aws_example"
 path = "src/bin/aws_example.rs"
 required-features = ["aws"]
 
-[[bin]]
-name = "gpu_simulation"
-path = "src/bin/gpu_simulation.rs"
-required-features = ["simulation", "gpu"]
 
 [[bin]]
 name = "realistic_noise"
@@ -295,4 +288,10 @@ required-features = ["ml"]
 [[bin]]
 name = "qubit_routing_demo"
 path = "src/bin/qubit_routing_demo.rs"
+required-features = []
+
+# UltraThink demonstrations
+[[bin]]
+name = "ultrathink_simple_demo"
+path = "src/bin/ultrathink_simple_demo.rs"
 required-features = []

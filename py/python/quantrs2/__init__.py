@@ -5,7 +5,7 @@ This module provides Python access to the QuantRS2 quantum computing framework.
 """
 
 # Version information
-__version__ = "0.1.0a4"
+__version__ = "0.1.0a5"
 
 # Try to import the actual native module first
 try:
@@ -133,8 +133,6 @@ try:
         
 except ImportError:
     # Stub implementations for when the native module is not available
-    import warnings
-    warnings.warn("Native QuantRS2 module not found. Using stub implementations.")
     
     # Import stub implementations
     from ._stub import PyCircuit, PySimulationResult
@@ -812,6 +810,12 @@ try:
 except ImportError:
     pass
 
+# Try to import core module
+try:
+    from . import core
+except ImportError:
+    pass
+
 # Import quantum code analysis functions (if available)
 try:
     from .quantum_code_analysis import (
@@ -837,6 +841,93 @@ try:
 except ImportError:
     pass
 
+# Import core module functions (if available)
+try:
+    from .core import (
+        # Core types
+        QubitId as CoreQubitId,
+        QuantumGate as CoreQuantumGate,
+        VariationalCircuit as CoreVariationalCircuit,
+        
+        # Gate creation functions
+        create_hadamard_gate as core_create_hadamard_gate,
+        create_pauli_x_gate as core_create_pauli_x_gate,
+        create_pauli_y_gate as core_create_pauli_y_gate,
+        create_pauli_z_gate as core_create_pauli_z_gate,
+        create_rotation_x_gate as core_create_rotation_x_gate,
+        create_rotation_y_gate as core_create_rotation_y_gate,
+        create_rotation_z_gate as core_create_rotation_z_gate,
+        create_cnot_gate as core_create_cnot_gate,
+        create_phase_gate as core_create_phase_gate,
+        create_s_gate as core_create_s_gate,
+        create_t_gate as core_create_t_gate,
+        create_identity_gate as core_create_identity_gate,
+        
+        # Decomposition functions
+        decompose_single_qubit as core_decompose_single_qubit,
+        decompose_two_qubit_cartan as core_decompose_two_qubit_cartan,
+        SingleQubitDecomposition as CoreSingleQubitDecomposition,
+        CartanDecomposition as CoreCartanDecomposition,
+    )
+except ImportError:
+    pass
+
+# Try to import dynamic allocation module
+try:
+    from . import dynamic_allocation
+except ImportError:
+    pass
+
+# Import dynamic allocation functions (if available)
+try:
+    from .dynamic_allocation import (
+        AllocationStrategy,
+        QubitState,
+        QubitInfo,
+        QubitAllocator,
+        DynamicCircuit,
+        create_dynamic_circuit,
+        configure_allocation_strategy,
+        allocate_qubits,
+        deallocate_qubits,
+        garbage_collect,
+        get_global_allocation_stats,
+        set_global_allocator
+    )
+except ImportError:
+    pass
+
+# Try to import hardware backends module
+try:
+    from . import hardware_backends
+except ImportError:
+    pass
+
+# Import hardware backends functions (if available)
+try:
+    from .hardware_backends import (
+        BackendType,
+        JobStatus,
+        DeviceStatus,
+        DeviceCapabilities,
+        DeviceInfo,
+        JobRequest,
+        JobResult,
+        QuantumBackend,
+        IBMQuantumBackend,
+        GoogleQuantumAIBackend,
+        AWSBraketBackend,
+        HardwareBackendManager,
+        get_hardware_manager,
+        register_ibm_backend,
+        register_google_backend,
+        register_aws_backend,
+        submit_to_hardware,
+        get_hardware_devices
+    )
+except ImportError:
+    pass
+
 # Try to import Qiskit compatibility module
 try:
     from . import qiskit_compatibility
@@ -855,7 +946,7 @@ try:
         to_qiskit,
         run_on_qiskit_backend,
         create_qiskit_compatible_vqe,
-        test_conversion_fidelity,
+        check_conversion_fidelity,
         benchmark_conversion_performance
     )
 except ImportError:
@@ -902,6 +993,452 @@ try:
         create_quantrs2_device,
         quantrs2_qnode,
         test_quantrs2_pennylane_integration
+    )
+except ImportError:
+    pass
+
+# Try to import advanced algorithms module
+try:
+    from . import advanced_algorithms
+except ImportError:
+    pass
+
+# Import advanced algorithms functions (if available)
+try:
+    from .advanced_algorithms import (
+        AnsatzType,
+        OptimizerType,
+        AdvancedVQE,
+        AdvancedQAOA,
+        QuantumWalk,
+        QuantumErrorCorrection,
+        QuantumFourierTransform,
+        AdvancedAlgorithmLibrary,
+        create_advanced_vqe,
+        create_advanced_qaoa,
+        run_quantum_walk,
+        apply_error_correction,
+        quantum_fourier_transform,
+        get_algorithm_library
+    )
+except ImportError:
+    pass
+
+# Try to import enhanced Qiskit compatibility module
+try:
+    from . import enhanced_qiskit_compatibility
+except ImportError:
+    pass
+
+# Import enhanced Qiskit compatibility functions (if available)
+try:
+    from .enhanced_qiskit_compatibility import (
+        ConversionMode,
+        CompatibilityLevel,
+        ConversionOptions,
+        EnhancedCircuitConverter,
+        AdvancedQiskitIntegration,
+        HybridAlgorithm,
+        NoiseModelAdapter,
+        create_enhanced_converter,
+        optimize_circuit_for_backend,
+        benchmark_conversion_performance
+    )
+except ImportError:
+    pass
+
+# Try to import enhanced PennyLane plugin module
+try:
+    from . import enhanced_pennylane_plugin
+except ImportError:
+    pass
+
+# Import enhanced PennyLane plugin functions (if available)
+try:
+    from .enhanced_pennylane_plugin import (
+        DeviceMode,
+        GradientMethod,
+        DeviceConfig,
+        EnhancedQuantRS2Device,
+        QuantRS2QMLModel,
+        QuantRS2VQC,
+        EnhancedPennyLaneIntegration,
+        create_enhanced_pennylane_device,
+        create_qml_model,
+        register_enhanced_device,
+        benchmark_pennylane_performance
+    )
+except ImportError:
+    pass
+
+# Try to import security modules
+try:
+    from . import security
+except ImportError:
+    pass
+
+# Import security functions (if available)
+try:
+    from .security import (
+        SecretsManager,
+        CredentialStore,
+        InputValidator,
+        ValidationError,
+        AuthenticationManager,
+        AuthorizationManager,
+        SecurityConfig,
+        encrypt_data,
+        decrypt_data,
+        QuantumInputValidator,
+        QuantumValidationConfig,
+        get_quantum_validator,
+        validate_quantum_input
+    )
+except ImportError:
+    pass
+
+# Try to import validated gates module
+try:
+    from . import validated_gates
+except ImportError:
+    pass
+
+# Import validated gates functions (if available)
+try:
+    from .validated_gates import (
+        ValidatedGateFactory,
+        CircuitValidator,
+        validate_circuit,
+        validate_gate_sequence,
+        set_validation_config
+    )
+except ImportError:
+    pass
+
+# Try to import secure QASM module
+try:
+    from . import secure_qasm
+except ImportError:
+    pass
+
+# Import secure QASM functions (if available)
+try:
+    from .secure_qasm import (
+        SecureQasmParser,
+        SecureQasmExporter,
+        SecureQasmConfig,
+        QasmSecurityError,
+        secure_parse_qasm,
+        secure_parse_qasm_file,
+        secure_export_qasm,
+        secure_export_qasm_file
+    )
+except ImportError:
+    pass
+
+# Try to import secure circuit builder module
+try:
+    from . import secure_circuit_builder
+except ImportError:
+    pass
+
+# Import secure circuit builder functions (if available)
+try:
+    from .secure_circuit_builder import (
+        SecureCircuitBuilder,
+        SecureWebCircuitBuilder,
+        SecureBuilderConfig,
+        SecureGateInfo,
+        CircuitBuilderSecurityError,
+        create_secure_builder,
+        create_secure_web_builder
+    )
+except ImportError:
+    pass
+
+# Try to import error handling module
+try:
+    from . import error_handling
+except ImportError:
+    pass
+
+# Import error handling functions (if available)
+try:
+    from .error_handling import (
+        ErrorSeverity,
+        ErrorCategory,
+        RecoveryStrategy,
+        ErrorContext,
+        ErrorDetails,
+        RecoveryConfig,
+        QuantumError,
+        QuantumHardwareError,
+        CircuitCompilationError,
+        SimulationError,
+        ValidationError,
+        SecurityError,
+        ResourceError,
+        ErrorRecoveryManager,
+        quantum_error_handler,
+        quantum_error_context,
+        get_error_manager,
+        configure_error_handling,
+        create_error_context,
+        create_hardware_error,
+        create_compilation_error,
+        create_simulation_error,
+        create_validation_error,
+        create_security_error,
+        create_resource_error
+    )
+except ImportError:
+    pass
+
+# Try to import resilient execution module
+try:
+    from . import resilient_execution
+except ImportError:
+    pass
+
+# Import resilient execution functions (if available)
+try:
+    from .resilient_execution import (
+        ExecutionMode,
+        ExecutionStatus,
+        ExecutionConfig,
+        ExecutionResult,
+        CircuitExecutionEngine,
+        get_execution_engine,
+        execute_circuit_resilient,
+        execute_circuits_batch,
+        execute_circuit_async,
+        configure_resilient_execution,
+        ResourceType,
+        ResourceStatus,
+        ResourceConfig,
+        ResourceException,
+        analyze_circuit_resources
+    )
+except ImportError:
+    pass
+
+# Try to import resource management module
+try:
+    from . import resource_management
+except ImportError:
+    pass
+
+# Import resource management functions (if available)
+try:
+    from .resource_management import (
+        ResourceType,
+        ResourceStatus,
+        ResourceLimit,
+        ResourceUsage,
+        ResourceConfig,
+        ResourceException,
+        ResourceMonitor,
+        ResourcePool,
+        resource_context,
+        analyze_circuit_resources
+    )
+except ImportError:
+    pass
+
+# Try to import configuration management module
+try:
+    from . import config_management
+except ImportError:
+    pass
+
+# Import configuration management functions (if available)
+try:
+    from .config_management import (
+        Environment,
+        ConfigFormat,
+        DatabaseConfig,
+        QuantumBackendConfig,
+        SecurityConfig,
+        PerformanceConfig,
+        LoggingConfig,
+        MonitoringConfig,
+        QuantRS2Config,
+        ConfigurationManager,
+        ConfigurationError,
+        get_config_manager,
+        load_config,
+        get_current_config,
+        create_default_configs
+    )
+except ImportError:
+    pass
+
+# Try to import connection pooling module
+try:
+    from . import connection_pooling
+except ImportError:
+    pass
+
+# Import connection pooling functions (if available)
+try:
+    from .connection_pooling import (
+        CacheBackend,
+        CacheStrategy,
+        CacheConfig,
+        ConnectionPoolConfig,
+        DatabaseConnectionPool,
+        QuantumResultCache
+    )
+except ImportError:
+    pass
+
+# Try to import circuit optimization cache module
+try:
+    from . import circuit_optimization_cache
+except ImportError:
+    pass
+
+# Import circuit optimization cache functions (if available)
+try:
+    from .circuit_optimization_cache import (
+        OptimizationLevel,
+        CircuitPattern,
+        CircuitSignature,
+        OptimizationResult,
+        ExecutionProfile,
+        CircuitPatternDetector,
+        CircuitOptimizationCache
+    )
+except ImportError:
+    pass
+
+# Try to import performance manager module
+try:
+    from . import performance_manager
+except ImportError:
+    pass
+
+# Import performance manager functions (if available)
+try:
+    from .performance_manager import (
+        PerformanceProfile,
+        PerformanceConfig,
+        ConnectionManager,
+        CacheManager,
+        PerformanceMonitor,
+        PerformanceManager,
+        get_performance_manager,
+        close_performance_manager
+    )
+except ImportError:
+    pass
+
+# Try to import monitoring and alerting module
+try:
+    from . import monitoring_alerting
+except ImportError:
+    pass
+
+# Import monitoring and alerting functions (if available)
+try:
+    from .monitoring_alerting import (
+        AlertSeverity,
+        AlertStatus,
+        NotificationChannel,
+        MetricType,
+        AlertRule,
+        Alert,
+        NotificationConfig,
+        MetricDataPoint,
+        MetricsCollector,
+        NotificationManager,
+        AlertManager,
+        MonitoringSystem
+    )
+except ImportError:
+    pass
+
+# Try to import monitoring dashboard module
+try:
+    from . import monitoring_dashboard
+except ImportError:
+    pass
+
+# Import monitoring dashboard functions (if available)
+try:
+    from .monitoring_dashboard import (
+        DashboardServer
+    )
+except ImportError:
+    pass
+
+# Try to import external monitoring integrations module
+try:
+    from . import external_monitoring_integrations
+except ImportError:
+    pass
+
+# Import external monitoring integrations functions (if available)
+try:
+    from .external_monitoring_integrations import (
+        IntegrationType,
+        IntegrationConfig,
+        PrometheusIntegration,
+        DatadogIntegration,
+        GrafanaIntegration,
+        ExternalMonitoringManager
+    )
+except ImportError:
+    pass
+
+# Try to import Cirq integration module
+try:
+    from . import cirq_integration
+except ImportError:
+    pass
+
+# Import Cirq integration functions (if available)
+try:
+    from .cirq_integration import (
+        CirqQuantRS2Converter,
+        CirqBackend, 
+        QuantRS2CirqError,
+        create_bell_state_cirq,
+        convert_qiskit_to_cirq,
+        test_cirq_quantrs2_integration
+    )
+except ImportError:
+    pass
+
+# Import Qiskit compatibility functions (if available)
+try:
+    from .qiskit_compatibility import (
+        CircuitConverter,
+        QiskitBackendAdapter,
+        QiskitAlgorithmLibrary,
+        QiskitPulseAdapter,
+        QiskitCompatibilityError,
+        from_qiskit,
+        to_qiskit,
+        run_on_qiskit_backend,
+        create_qiskit_compatible_vqe,
+        check_conversion_fidelity,
+        benchmark_conversion_performance
+    )
+except ImportError:
+    pass
+
+# Import Enhanced Qiskit compatibility functions (if available)
+try:
+    from .enhanced_qiskit_compatibility import (
+        ConversionOptions,
+        EnhancedCircuitConverter,
+        AdvancedQiskitIntegration,
+        HybridAlgorithm,
+        NoiseModelAdapter,
+        create_enhanced_converter,
+        optimize_circuit_for_backend,
+        benchmark_conversion_performance as enhanced_benchmark_conversion
     )
 except ImportError:
     pass

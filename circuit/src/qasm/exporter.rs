@@ -6,6 +6,7 @@ use num_complex::Complex64;
 use quantrs2_core::{gate::GateOp, qubit::QubitId};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
+use std::sync::Arc;
 use thiserror::Error;
 
 /// Export error types
@@ -290,7 +291,10 @@ impl QasmExporter {
     }
 
     /// Convert gate to QASM statement
-    fn convert_gate(&self, gate: &Box<dyn GateOp>) -> Result<QasmStatement, ExportError> {
+    fn convert_gate(
+        &self,
+        gate: &Arc<dyn GateOp + Send + Sync>,
+    ) -> Result<QasmStatement, ExportError> {
         let gate_name = gate.name();
 
         match gate_name.as_ref() {

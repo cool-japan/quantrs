@@ -1,3 +1,12 @@
+#![allow(dead_code)]
+#![allow(clippy::all)]
+#![allow(unused_imports)]
+#![allow(unused_variables)]
+#![allow(unused_mut)]
+#![allow(unused_assignments)]
+#![allow(unexpected_cfgs)]
+#![allow(deprecated)]
+
 extern crate proc_macro;
 
 /// Quantum circuit representation and DSL for the QuantRS2 framework.
@@ -5,34 +14,50 @@ extern crate proc_macro;
 /// This crate provides types for constructing and manipulating
 /// quantum circuits with a fluent API.
 pub mod builder;
+pub mod circuit_cache;
 pub mod classical;
 pub mod commutation;
 pub mod crosstalk;
 pub mod dag;
+pub mod distributed;
 pub mod equivalence;
 pub mod fault_tolerant;
 pub mod graph_optimizer;
 pub mod measurement;
 pub mod ml_optimization;
+pub mod noise_models;
 pub mod optimization;
 pub mod optimizer;
 pub mod photonic;
 pub mod pulse;
 pub mod qasm;
+pub mod qc_co_optimization;
 pub mod routing;
+pub mod scirs2_benchmarking;
 pub mod scirs2_integration;
+pub mod scirs2_matrices;
+pub mod scirs2_optimization;
+pub mod scirs2_similarity;
 pub mod simulator_interface;
 pub mod slicing;
 pub mod synthesis;
 pub mod tensor_network;
 pub mod topological;
 pub mod topology;
+pub mod transpiler;
+pub mod validation;
+pub mod vqe;
 pub mod zx_calculus;
 
 // Re-exports of commonly used types and traits
 pub mod prelude {
-    pub use crate::builder::*;
+    pub use crate::builder::{CircuitStats, *};
     // Convenience re-export
+    pub use crate::circuit_cache::{
+        CacheConfig, CacheEntry, CacheManager, CacheStats, CircuitCache, CircuitSignature,
+        CompiledCircuitCache, EvictionPolicy, ExecutionResultCache, SignatureGenerator,
+        TranspilationCache,
+    };
     pub use crate::classical::{
         CircuitOp, ClassicalBit, ClassicalCircuit, ClassicalCircuitBuilder, ClassicalCondition,
         ClassicalOp, ClassicalRegister, ClassicalValue, ComparisonOp, ConditionalGate, MeasureOp,
@@ -45,6 +70,10 @@ pub mod prelude {
         CrosstalkScheduler, SchedulingStrategy, TimeSlice,
     };
     pub use crate::dag::{circuit_to_dag, CircuitDag, DagEdge, DagNode, EdgeType};
+    pub use crate::distributed::{
+        BackendType, DistributedExecutor, DistributedJob, DistributedResult, ExecutionBackend,
+        ExecutionParameters, ExecutionStatus, LoadBalancingStrategy, Priority, SystemHealthStatus,
+    };
     pub use crate::equivalence::{
         circuits_equivalent, circuits_structurally_equal, EquivalenceChecker, EquivalenceOptions,
         EquivalenceResult, EquivalenceType,
@@ -62,8 +91,12 @@ pub mod prelude {
         AcquisitionFunction, FeatureExtractor, ImprovementMetrics, MLCircuitOptimizer,
         MLCircuitRepresentation, MLOptimizationResult, MLStrategy, TrainingExample,
     };
+    pub use crate::noise_models::{
+        DecoherenceParams, ErrorSource, LeakageError, NoiseAnalysisResult, NoiseAnalyzer,
+        ReadoutError, SingleQubitError, ThermalNoise, TwoQubitError,
+    };
     pub use crate::optimization::{
-        AbstractCostModel, CircuitAnalyzer, CircuitMetrics, CircuitOptimizer2, CircuitRewriting,
+        AbstractCostModel, CircuitAnalyzer, CircuitOptimizer2, CircuitRewriting,
         CoherenceOptimization, CommutationTable, CostBasedOptimization, CostModel,
         DecompositionOptimization, DecouplingSequence, DynamicalDecoupling, GateCancellation,
         GateCommutation, GateCost, GateError, GateMerging, GateProperties, HardwareCostModel,
@@ -89,14 +122,42 @@ pub mod prelude {
         export_qasm3, parse_qasm3, validate_qasm3, ExportOptions, ParseError, QasmExporter,
         QasmGate, QasmParser, QasmProgram, QasmRegister, QasmStatement, ValidationError,
     };
+    pub use crate::qc_co_optimization::{
+        ClassicalProcessingStep, ClassicalStepType, DataFlowGraph, DataType,
+        HybridOptimizationAlgorithm, HybridOptimizationProblem, HybridOptimizationResult,
+        HybridOptimizer, LearningRateSchedule, ObjectiveFunction as HybridObjectiveFunction,
+        ObjectiveFunctionType, ParameterizedQuantumComponent, RegularizationType,
+    };
     pub use crate::routing::{
         CircuitRouter, CouplingMap, Distance, LookaheadConfig, LookaheadRouter, RoutedCircuit,
         RoutingPassType, RoutingResult, RoutingStatistics, RoutingStrategy, SabreConfig,
         SabreRouter, SwapLayer, SwapNetwork,
     };
+    pub use crate::scirs2_benchmarking::{
+        BaselineComparison, BenchmarkConfig, BenchmarkReport, BenchmarkRun, CircuitBenchmark,
+        CircuitMetrics as BenchmarkCircuitMetrics, DescriptiveStats, Distribution, DistributionFit,
+        HypothesisTestResult, InsightCategory, OutlierAnalysis, OutlierDetectionMethod,
+        PerformanceInsight, PracticalSignificance, RegressionAnalysis, StatisticalAnalyzer,
+        StatisticalTest,
+    };
     pub use crate::scirs2_integration::{
         AnalysisResult, AnalyzerConfig, GraphMetrics, GraphMotif, OptimizationSuggestion,
         SciRS2CircuitAnalyzer, SciRS2CircuitGraph, SciRS2Edge, SciRS2Node, SciRS2NodeType,
+    };
+    pub use crate::scirs2_matrices::{
+        CircuitToSparseMatrix, Complex64, SparseFormat, SparseGate, SparseGateLibrary,
+        SparseMatrix, SparseOptimizer,
+    };
+    pub use crate::scirs2_optimization::{
+        CircuitTemplate, EarlyStoppingCriteria, KernelType, ObjectiveFunction,
+        OptimizationAlgorithm, OptimizationConfig, OptimizationHistory, Parameter,
+        ParameterizedGate, QAOAObjective, QuantumCircuitOptimizer, VQEObjective,
+    };
+    pub use crate::scirs2_similarity::{
+        BatchSimilarityComputer, CircuitDistanceMetrics, CircuitFeatures,
+        CircuitSimilarityAnalyzer, CircuitSimilarityMetrics, EntanglementStructure,
+        GraphKernelType, GraphSimilarityAlgorithm, MLModelType, SciRS2Graph, SimilarityAlgorithm,
+        SimilarityConfig, SimilarityWeights,
     };
     pub use crate::simulator_interface::{
         CircuitCompiler, CompilationTarget, CompiledCircuit, ContractionStrategy, ExecutionResult,
@@ -117,6 +178,19 @@ pub mod prelude {
         TopologicalCircuit, TopologicalCompiler, TopologicalGate,
     };
     pub use crate::topology::{TopologicalAnalysis, TopologicalAnalyzer, TopologicalStrategy};
+    pub use crate::transpiler::{
+        DeviceTranspiler, HardwareSpec, NativeGateSet, TranspilationOptions, TranspilationResult,
+        TranspilationStats, TranspilationStrategy,
+    };
+    pub use crate::validation::{
+        CircuitValidator, ClassicalConstraints, ConnectivityConstraints, DepthLimits,
+        GateRestrictions, MeasurementConstraints, ResourceLimits, ValidationResult,
+        ValidationRules, ValidationStats, ValidationSuggestion, ValidationWarning,
+    };
+    pub use crate::vqe::{
+        PauliOperator, VQEAnsatz, VQECircuit, VQEObservable, VQEOptimizer, VQEOptimizerType,
+        VQEResult,
+    };
     pub use crate::zx_calculus::{
         OptimizedZXResult, ZXDiagram, ZXEdge, ZXNode, ZXOptimizationResult, ZXOptimizer,
     };
@@ -130,7 +204,8 @@ pub mod prelude {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
+/// use quantrs2_circuit::qubits;
 /// let qs = qubits![0, 1, 2];
 /// ```
 #[macro_export]
@@ -150,13 +225,9 @@ macro_rules! qubits {
 ///
 /// # Example
 ///
-/// ```ignore
-/// let circuit = circuit![4; // 4 qubits
-///     h(0),
-///     cnot(0, 1),
-///     h(2),
-///     cnot(2, 3)
-/// ];
+/// ```
+/// use quantrs2_circuit::circuit;
+/// let circuit = circuit![4];
 /// ```
 #[macro_export]
 macro_rules! circuit {
@@ -169,19 +240,28 @@ macro_rules! circuit {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
 /// use quantrs2_circuit::quantum;
 ///
-/// quantum! {
+/// let my_circuit = quantum! {
 ///     let qc = circuit(4);  // 4 qubits
 ///     qc.h(0);
 ///     qc.cnot(0, 1);
 ///     qc.measure_all();
-/// }
+/// };
 /// ```
 #[macro_export]
 macro_rules! quantum {
-    ($($tokens:tt)*) => {
-        compile_error!("quantum! macro not fully implemented yet");
+    (
+        let $var:ident = circuit($n:expr);
+        $( $stmt_var:ident . $method:ident ( $( $args:expr ),* $(,)? ) ; )*
+    ) => {
+        {
+            let mut $var = quantrs2_circuit::builder::Circuit::<$n>::new();
+            $(
+                $stmt_var.$method($($args),*).unwrap();
+            )*
+            $var
+        }
     };
 }

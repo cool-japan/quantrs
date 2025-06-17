@@ -24,7 +24,7 @@ fn test_basic_symbols() {
 #[cfg(feature = "dwave")]
 fn test_symbols_list_1d() {
     // Test creating a 1D array of symbols
-    let x = symbols_list(5, "x{}").unwrap();
+    let x = symbols_list(vec![5], "x{}").unwrap();
 
     assert_eq!(x.ndim(), 1);
     assert_eq!(x.shape(), &[5]);

@@ -3,12 +3,12 @@
 // This example demonstrates the use of various gates and noise models
 // for more complex quantum circuits.
 
-use quantrs_circuit::builder::Circuit;
-use quantrs_core::qubit::QubitId;
-use quantrs_sim::noise::{
+use quantrs2_circuit::builder::Circuit;
+use quantrs2_core::qubit::QubitId;
+use quantrs2_sim::noise::{
     AmplitudeDampingChannel, DepolarizingChannel, NoiseModel, PhaseDampingChannel, PhaseFlipChannel,
 };
-use quantrs_sim::statevector::StateVectorSimulator;
+use quantrs2_sim::statevector::StateVectorSimulator;
 use std::f64::consts::PI;
 
 fn main() {

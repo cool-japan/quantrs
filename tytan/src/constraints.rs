@@ -4,11 +4,10 @@
 //! to enhance the expressiveness and efficiency of optimization problems.
 
 use ndarray::Array2;
-use std::cmp::{max, min};
 use std::collections::{HashMap, HashSet};
 
 #[cfg(feature = "dwave")]
-use crate::symbol::{Expression, Symbol};
+use crate::symbol::Expression;
 
 /// Global constraint types
 #[derive(Debug, Clone)]
@@ -449,7 +448,7 @@ impl ConstraintLibrary {
     pub fn n_queens(n: usize) -> Vec<GlobalConstraint> {
         let vars: Vec<String> = (0..n).map(|i| format!("queen_{}", i)).collect();
 
-        let mut constraints = vec![
+        let constraints = vec![
             // All queens in different columns
             GlobalConstraint::AllDifferent {
                 variables: vars.clone(),
@@ -463,7 +462,7 @@ impl ConstraintLibrary {
     }
 
     /// Graph coloring constraint
-    pub fn graph_coloring(edges: &[(usize, usize)], num_colors: usize) -> Vec<GlobalConstraint> {
+    pub fn graph_coloring(edges: &[(usize, usize)], _num_colors: usize) -> Vec<GlobalConstraint> {
         let mut constraints = Vec::new();
 
         for &(i, j) in edges {
@@ -521,7 +520,7 @@ pub fn constraints_to_penalties(
         match &constraint.constraint {
             ConstraintExpression::LinearInequality {
                 coefficients,
-                bound,
+                bound: _,
             } => {
                 // Convert to quadratic penalty
                 // (sum(ai * xi) - b)^2 if violated
@@ -566,7 +565,7 @@ mod tests {
         assert_eq!(domain.size(), 4);
         assert!(!domain.values.contains(&3));
 
-        let keep = vec![1, 2, 5].into_iter().collect();
+        let mut keep = vec![1, 2, 5].into_iter().collect();
         domain.intersect(&keep);
         assert_eq!(domain.size(), 3);
         assert_eq!(domain.min, 1);
@@ -583,7 +582,7 @@ mod tests {
         domains.insert("y".to_string(), Domain::from_values(vec![1, 2, 3]));
         domains.insert("z".to_string(), Domain::from_values(vec![1, 2, 3]));
 
-        let changed = propagator.propagate(&mut domains).unwrap();
+        let mut changed = propagator.propagate(&mut domains).unwrap();
         assert!(changed);
 
         // Value 1 should be removed from y and z
@@ -596,7 +595,7 @@ mod tests {
         let queens = ConstraintLibrary::n_queens(8);
         assert!(!queens.is_empty());
 
-        let edges = vec![(0, 1), (1, 2), (2, 0)];
+        let mut edges = vec![(0, 1), (1, 2), (2, 0)];
         let coloring = ConstraintLibrary::graph_coloring(&edges, 3);
         assert_eq!(coloring.len(), 3);
     }

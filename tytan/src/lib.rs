@@ -3,6 +3,8 @@
 //! This crate provides a high-level interface for formulating and solving
 //! quantum annealing problems, with support for multiple backend solvers.
 //! It is inspired by the Python [Tytan](https://github.com/tytansdk/tytan) library.
+
+#![allow(warnings)]
 //!
 //! # Features
 //!
@@ -24,8 +26,8 @@
 //! use quantrs2_tytan::auto_array::Auto_array;
 //!
 //! // Define variables
-//! let x = symbols("x");
-//! let y = symbols("y");
+//! let mut x = symbols("x");
+//! let mut y = symbols("y");
 //! let z = symbols("z");
 //!
 //! // Define expression (3 variables, want exactly 2 to be 1)
@@ -38,7 +40,7 @@
 //! let solver = SASampler::new(None);
 //!
 //! // Sample
-//! let result = solver.run_qubo(&qubo, 100).unwrap();
+//! let mut result = solver.run_qubo(&qubo, 100).unwrap();
 //!
 //! // Display results
 //! for r in &result {
@@ -71,7 +73,7 @@
 //!
 //! // Sample by converting to the dynamic format for hobo
 //! let matrix_dyn = matrix.into_dyn();
-//! let result = solver.run_hobo(&(matrix_dyn, var_map), 100).unwrap();
+//! let mut result = solver.run_hobo(&(matrix_dyn, var_map), 100).unwrap();
 //!
 //! // Display results
 //! for r in &result {
@@ -81,6 +83,10 @@
 
 // Export modules
 pub mod adaptive_optimization;
+pub mod advanced_error_mitigation;
+pub mod advanced_performance_analysis;
+pub mod advanced_visualization;
+pub mod ai_assisted_optimization;
 pub mod analysis;
 pub mod applications;
 pub mod auto_array;
@@ -105,10 +111,15 @@ pub mod performance_optimization;
 pub mod performance_profiler;
 pub mod problem_decomposition;
 pub mod problem_dsl;
+pub mod quantum_advantage_analysis;
 pub mod quantum_annealing;
+pub mod quantum_error_correction;
 pub mod quantum_inspired_ml;
 pub mod quantum_ml_integration;
+pub mod quantum_neural_networks;
 pub mod quantum_optimization_extensions;
+pub mod quantum_state_tomography;
+pub mod realtime_quantum_integration;
 pub mod sampler;
 pub mod sampler_framework;
 pub mod scirs_stub;
@@ -117,16 +128,30 @@ pub mod solution_clustering;
 pub mod solution_debugger;
 pub mod solution_statistics;
 pub mod symbol;
+pub mod tensor_network_sampler;
 pub mod testing_framework;
 pub mod topological_optimization;
 pub mod variable_correlation;
 pub mod variational_quantum_factoring;
+pub mod visual_problem_builder;
 pub mod visualization;
 
 // Re-export key types for convenience
+pub use advanced_error_mitigation::{
+    create_advanced_error_mitigation_manager, create_lightweight_error_mitigation_manager,
+    AdvancedErrorMitigationManager, ErrorMitigationConfig,
+};
+pub use advanced_performance_analysis::{
+    create_comprehensive_analyzer, create_lightweight_analyzer, AdvancedPerformanceAnalyzer,
+    AnalysisConfig,
+};
+pub use advanced_visualization::{
+    create_advanced_visualization_manager, create_lightweight_visualization_manager,
+    AdvancedVisualizationManager, VisualizationConfig,
+};
 pub use analysis::{calculate_diversity, cluster_solutions, visualize_energy_distribution};
 #[cfg(feature = "dwave")]
-pub use auto_array::Auto_array;
+pub use auto_array::AutoArray;
 #[cfg(feature = "dwave")]
 pub use compile::{Compile, PieckCompile};
 #[cfg(feature = "gpu")]
@@ -136,6 +161,13 @@ pub use sampler::{ArminSampler, DWaveSampler, GASampler, MIKASAmpler, SASampler}
 pub use scirs_stub::SCIRS2_AVAILABLE;
 #[cfg(feature = "dwave")]
 pub use symbol::{symbols, symbols_define, symbols_list, symbols_nbit};
+pub use tensor_network_sampler::{
+    create_mera_sampler, create_mps_sampler, create_peps_sampler, TensorNetworkSampler,
+};
+pub use visual_problem_builder::{
+    BuilderConfig, ConstraintType, ExportFormat, ObjectiveExpression, VariableType, VisualProblem,
+    VisualProblemBuilder,
+};
 
 // Expose QuantRS2-anneal types as well for advanced usage
 pub use quantrs2_anneal::{IsingError, IsingModel, IsingResult, QuboModel};

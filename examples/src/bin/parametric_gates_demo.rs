@@ -5,6 +5,7 @@ use quantrs2_core::prelude::*;
 use quantrs2_sim::prelude::*;
 
 use std::f64::consts::PI;
+use std::sync::Arc;
 
 fn main() -> QuantRS2Result<()> {
     println!("Parametric Gates Demonstration");
@@ -59,7 +60,10 @@ fn main() -> QuantRS2Result<()> {
         let mut param_circuit = circuit.clone();
 
         // Apply the bound gate directly
-        param_circuit.add_gate(bound_gate.clone())?;
+        // Convert Box<dyn ParametricGate> to Arc<dyn GateOp + Send + Sync>
+        // Since ParametricGate extends GateOp, we need to convert the trait object
+        let gate_arc: Arc<dyn GateOp + Send + Sync> = Arc::from(bound_gate as Box<dyn GateOp + Send + Sync>);
+        param_circuit.add_gate_arc(gate_arc)?;
 
         // Simulate the circuit
         let simulator = StateVectorSimulator::new();

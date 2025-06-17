@@ -1,7 +1,9 @@
 //! ML Training Configuration Types
 
+use serde::{Deserialize, Serialize};
+
 /// Training configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrainingConfig {
     /// Maximum training iterations
     pub max_iterations: usize,
@@ -20,7 +22,7 @@ pub struct TrainingConfig {
 }
 
 /// Early stopping configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EarlyStoppingConfig {
     /// Enable early stopping
     pub enable_early_stopping: bool,
@@ -33,7 +35,7 @@ pub struct EarlyStoppingConfig {
 }
 
 /// Training optimizers
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TrainingOptimizer {
     SGD,
     Adam,
@@ -44,7 +46,7 @@ pub enum TrainingOptimizer {
 }
 
 /// Regularization configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegularizationConfig {
     /// L1 regularization strength
     pub l1_lambda: f64,

@@ -35,6 +35,13 @@ QuantRS2-Tytan is a comprehensive, high-performance quantum annealing library fo
 - **Visualization Tools**: Energy landscapes, convergence plots, solution analysis
 - **ML Integration**: Neural networks, reinforcement learning, quantum ML
 
+### 🆕 Cutting-Edge Quantum Computing Features
+- **Quantum Neural Networks**: Hybrid quantum-classical architectures with advanced training
+- **Quantum State Tomography**: State reconstruction with shadow tomography and ML methods
+- **Quantum Error Correction**: Advanced QEC codes with ML-based decoding algorithms
+- **Tensor Network Algorithms**: MPS, PEPS, MERA algorithms for quantum optimization
+- **Advanced Performance Analysis**: Real-time monitoring with ML-based predictions
+
 ### Enterprise Features
 - **Cloud Integration**: AWS, Azure, and Google Cloud support
 - **Benchmarking Framework**: Comprehensive performance analysis
@@ -50,10 +57,10 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs2-tytan = "0.1.0-alpha.3"
+quantrs2-tytan = "0.1.0-alpha.5"
 
 # Optional features
-# quantrs2-tytan = { version = "0.1.0-alpha.3", features = ["gpu", "dwave", "scirs"] }
+# quantrs2-tytan = { version = "0.1.0-alpha.5", features = ["gpu", "dwave", "scirs"] }
 ```
 
 ### Basic Example
@@ -129,6 +136,73 @@ QuantRS2-Tytan delivers exceptional performance across all problem types:
 See [BENCHMARKS.md](docs/BENCHMARKS.md) for detailed performance analysis.
 
 ## Advanced Examples
+
+### 🆕 Quantum Neural Networks
+
+```rust
+use quantrs2_tytan::quantum_neural_networks::{QuantumNeuralNetwork, QNNConfig, create_qnn_for_optimization};
+
+fn qnn_example() -> Result<(), Box<dyn std::error::Error>> {
+    // Create QNN for optimization
+    let mut qnn = create_qnn_for_optimization(4)?; // 4 qubits
+    
+    // Train on quantum data
+    qnn.train_quantum_model()?;
+    
+    // Use for quantum-enhanced optimization
+    let optimized_params = qnn.optimize_parameters()?;
+    
+    Ok(())
+}
+```
+
+### 🆕 Tensor Network Sampler
+
+```rust
+use quantrs2_tytan::tensor_network_sampler::{create_mps_sampler, create_peps_sampler};
+use quantrs2_tytan::sampler::Sampler;
+
+fn tensor_network_example() -> Result<(), Box<dyn std::error::Error>> {
+    // Create MPS sampler for 1D problems
+    let mps_sampler = create_mps_sampler(64); // bond dimension
+    
+    // Create PEPS sampler for 2D problems
+    let peps_sampler = create_peps_sampler(16, (5, 5)); // 5x5 lattice
+    
+    // Use with existing QUBO/HOBO interface
+    let results = mps_sampler.run_qubo(&qubo, 100)?;
+    
+    Ok(())
+}
+```
+
+### 🆕 Advanced Performance Analysis
+
+```rust
+use quantrs2_tytan::advanced_performance_analysis::{create_comprehensive_analyzer, AnalysisConfig};
+
+fn performance_analysis_example() -> Result<(), Box<dyn std::error::Error>> {
+    // Create performance analyzer
+    let mut analyzer = create_comprehensive_analyzer();
+    
+    // Start analysis
+    analyzer.start_analysis()?;
+    
+    // Run your quantum optimization
+    // ... optimization code ...
+    
+    // Perform comprehensive analysis
+    analyzer.perform_comprehensive_analysis()?;
+    
+    // Get bottleneck recommendations
+    for recommendation in &analyzer.analysis_results.optimization_recommendations {
+        println!("Optimization: {}", recommendation.title);
+        println!("Expected benefit: {:.2}%", recommendation.expected_benefit * 100.0);
+    }
+    
+    Ok(())
+}
+```
 
 ### GPU-Accelerated Solving
 

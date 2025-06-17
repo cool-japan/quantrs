@@ -5,14 +5,14 @@
 //! Monte Carlo path sampling techniques. It provides both exact and
 //! stochastic approaches to quantum dynamics simulation.
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
+use crate::prelude::SimulatorError;
+use ndarray::{Array1, Array2, ArrayView1};
 use num_complex::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::dynamic::DynamicCircuit;
-use crate::error::{Result, SimulatorError};
+use crate::error::Result;
 use crate::scirs2_integration::SciRS2Backend;
 
 /// Path integral simulation method

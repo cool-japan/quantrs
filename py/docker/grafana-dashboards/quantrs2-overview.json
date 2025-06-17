@@ -1,0 +1,72 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "QuantRS2 Overview Dashboard",
+    "tags": ["quantrs2", "quantum", "monitoring"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "System Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=~'quantrs2.*'}",
+            "legendFormat": "{{job}} Status"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Circuit Execution Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(quantrs2_circuits_executed_total[5m])",
+            "legendFormat": "Circuits/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Average Execution Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "avg(quantrs2_circuit_execution_duration_seconds)",
+            "legendFormat": "Avg Execution Time"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "quantrs2_memory_usage_bytes",
+            "legendFormat": "Memory Usage"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "refresh": "5s",
+    "schemaVersion": 27,
+    "version": 1
+  }
+}

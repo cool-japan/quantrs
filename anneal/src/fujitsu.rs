@@ -567,7 +567,7 @@ mod tests {
         assert_eq!(client.scale_coefficient(-2.7).unwrap(), -2700);
 
         // Test coefficient out of range
-        assert!(client.scale_coefficient(100.0).is_ok());
+        assert!(client.scale_coefficient(100.0).is_err());
         assert!(client.scale_coefficient(1000000.0).is_err());
     }
 }

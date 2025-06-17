@@ -5,13 +5,10 @@
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
-    matrix_ops::{partial_trace, tensor_product_many, DenseMatrix, QuantumMatrix},
-    qubit::QubitId,
+    matrix_ops::{DenseMatrix, QuantumMatrix},
 };
-use ndarray::{s, Array2, Array4, Axis};
+use ndarray::{s, Array2};
 use num_complex::Complex;
-use rustc_hash::FxHashMap;
-use std::f64::consts::PI;
 
 /// A quantum channel represented in various forms
 #[derive(Debug, Clone)]
@@ -79,7 +76,7 @@ impl QuantumChannel {
 
         let kraus = KrausRepresentation { operators };
 
-        let mut channel = Self {
+        let channel = Self {
             input_dim,
             output_dim,
             kraus: Some(kraus),
@@ -115,7 +112,7 @@ impl QuantumChannel {
 
         let choi = ChoiRepresentation { matrix };
 
-        let mut channel = Self {
+        let channel = Self {
             input_dim: dim,
             output_dim: dim,
             kraus: None,
@@ -328,7 +325,7 @@ impl QuantumChannel {
         for i in 0..d_in {
             omega[[i * d_in + i, 0]] = Complex::new(1.0, 0.0);
         }
-        omega = omega / Complex::new((d_in as f64).sqrt(), 0.0);
+        let _omega = omega / Complex::new((d_in as f64).sqrt(), 0.0);
 
         // Apply channel ⊗ I to |Ω⟩⟨Ω|
         for k in operators {
@@ -344,7 +341,7 @@ impl QuantumChannel {
     }
 
     /// Convert Choi matrix to Kraus operators
-    fn choi_to_kraus(&self, choi: &Array2<Complex<f64>>) -> QuantRS2Result<KrausRepresentation> {
+    fn choi_to_kraus(&self, _choi: &Array2<Complex<f64>>) -> QuantRS2Result<KrausRepresentation> {
         // Eigendecompose the Choi matrix
         // J = ∑ᵢ λᵢ |vᵢ⟩⟨vᵢ|
 

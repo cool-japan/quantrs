@@ -167,7 +167,7 @@ fn test_ghz_state_tensor_network() {
     let tensor_result = tensor_sim.run(&circuit).unwrap();
 
     // Expected amplitudes for the GHZ state
-    let mut expected_amplitudes = vec![Complex64::new(0.0, 0.0); 8];
+    let mut expected_amplitudes = [Complex64::new(0.0, 0.0); 8];
     expected_amplitudes[0] = Complex64::new(FRAC_1_SQRT_2, 0.0);
     expected_amplitudes[7] = Complex64::new(FRAC_1_SQRT_2, 0.0);
 
@@ -244,9 +244,9 @@ fn test_auto_detect_circuit_type() {
 
     // Run with standard simulator for reference
     let standard_sim = StateVectorSimulator::new();
-    let standard_qft = standard_sim.run(&qft_circuit).unwrap();
-    let standard_qaoa = standard_sim.run(&qaoa_circuit).unwrap();
-    let standard_generic = standard_sim.run(&generic_circuit).unwrap();
+    let _standard_qft = standard_sim.run(&qft_circuit).unwrap();
+    let _standard_qaoa = standard_sim.run(&qaoa_circuit).unwrap();
+    let _standard_generic = standard_sim.run(&generic_circuit).unwrap();
 
     // Run with auto-detecting tensor network simulator
     let auto_tensor_sim = TensorNetworkSimulator::new();
@@ -397,7 +397,7 @@ fn create_qft_circuit<const N: usize>() -> Circuit<N> {
     // Apply controlled phase rotations (characteristic of QFT)
     for i in 0..N {
         for j in (i + 1)..N {
-            let angle = std::f64::consts::PI / 2.0_f64.powi((j - i) as i32);
+            let _angle = std::f64::consts::PI / 2.0_f64.powi((j - i) as i32);
             circuit
                 .cz(QubitId::new(i as u32), QubitId::new(j as u32))
                 .unwrap();

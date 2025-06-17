@@ -5,16 +5,13 @@
 //! unitary rules, enabling exploration of novel quantum algorithms, cryptographic
 //! applications, and quantum computation models with inherent locality properties.
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
-use crate::statevector::StateVectorSimulator;
 
 /// Quantum cellular automaton configuration
 #[derive(Debug, Clone)]
@@ -531,7 +528,7 @@ impl QuantumCellularAutomaton {
             .iter()
             .find(|r| r.unitary.dim() == (16, 16))
             .map(|r| r.unitary.clone())
-            .unwrap_or_else(|| Self::create_margolus_rotation_unitary());
+            .unwrap_or_else(Self::create_margolus_rotation_unitary);
 
         // Apply four-qubit unitary
         self.apply_four_qubit_unitary(cells, &rule_unitary)?;
@@ -680,9 +677,9 @@ impl QuantumCellularAutomaton {
     fn get_neighbors_2d(&self, x: usize, y: usize, width: usize, height: usize) -> Vec<usize> {
         let mut neighbors = Vec::new();
 
-        let deltas = match self.config.neighborhood {
-            NeighborhoodType::VonNeumann => vec![(-1, 0), (1, 0), (0, -1), (0, 1)],
-            NeighborhoodType::Moore => vec![
+        let deltas: &[(i32, i32)] = match self.config.neighborhood {
+            NeighborhoodType::VonNeumann => &[(-1, 0), (1, 0), (0, -1), (0, 1)],
+            NeighborhoodType::Moore => &[
                 (-1, -1),
                 (-1, 0),
                 (-1, 1),
@@ -692,7 +689,7 @@ impl QuantumCellularAutomaton {
                 (1, 0),
                 (1, 1),
             ],
-            _ => vec![(-1, 0), (1, 0), (0, -1), (0, 1)], // Default to Von Neumann
+            _ => &[(-1, 0), (1, 0), (0, -1), (0, 1)], // Default to Von Neumann
         };
 
         for (dx, dy) in deltas {
@@ -750,7 +747,7 @@ impl QuantumCellularAutomaton {
         let mut neighbors = Vec::new();
 
         // Von Neumann neighborhood in 3D (6 neighbors)
-        let deltas = vec![
+        let deltas = [
             (-1, 0, 0),
             (1, 0, 0),
             (0, -1, 0),
@@ -1094,7 +1091,6 @@ impl QuantumCellularAutomaton {
     }
 
     /// Helper methods
-
     fn create_cell_mapping(config: &QCAConfig) -> Result<CellMapping> {
         let total_cells = config.dimensions.iter().product();
         let mut coord_to_index = HashMap::new();
@@ -1429,11 +1425,11 @@ impl QCAUtils {
 
                 if width >= 3 && height >= 3 {
                     // Glider pattern: positions (1,0), (2,1), (0,2), (1,2), (2,2)
-                    let glider_positions = vec![
-                        1 * width + 0,
+                    let glider_positions = [
+                        width,
                         2 * width + 1,
                         2, // 0 * width + 2, simplified to avoid clippy warning
-                        1 * width + 2,
+                        width + 2,
                         2 * width + 2,
                     ];
 

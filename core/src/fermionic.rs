@@ -266,7 +266,7 @@ impl FermionHamiltonian {
     }
 
     /// Check if the Hamiltonian is Hermitian
-    pub fn is_hermitian(&self, tolerance: f64) -> bool {
+    pub fn is_hermitian(&self, _tolerance: f64) -> bool {
         let conj = self.dagger();
 
         // Compare terms (this is simplified - proper implementation would canonicalize first)
@@ -676,6 +676,7 @@ pub fn qubit_operator_to_gates(op: &QubitOperator) -> QuantRS2Result<Vec<Box<dyn
 
 /// Bravyi-Kitaev transformation (alternative to Jordan-Wigner)
 pub struct BravyiKitaev {
+    #[allow(dead_code)]
     n_modes: usize,
 }
 
@@ -686,7 +687,7 @@ impl BravyiKitaev {
     }
 
     /// Transform a fermionic operator (placeholder)
-    pub fn transform_operator(&self, op: &FermionOperator) -> QuantRS2Result<Vec<QubitOperator>> {
+    pub fn transform_operator(&self, _op: &FermionOperator) -> QuantRS2Result<Vec<QubitOperator>> {
         // Bravyi-Kitaev transformation is more complex than Jordan-Wigner
         // This is a placeholder for future implementation
         Err(QuantRS2Error::UnsupportedOperation(

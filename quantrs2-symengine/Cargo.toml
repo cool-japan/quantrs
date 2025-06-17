@@ -1,0 +1,30 @@
+[package]
+name = "quantrs2-symengine"
+version = "0.1.0-alpha.5"
+authors = ["Sushant Hiray <hiraysushant@gmail.com>", "KitaSan <info@kitasan.io>"]
+description = "Symbolic Computation in Rust via SymEngine"
+readme = "README.md"
+keywords = ["symbolic", "computation", "mathematics", "symengine"]
+repository = "https://github.com/cool-japan/symengine-rs"
+license = "MIT"
+edition = "2021"
+rust-version = "1.70"
+categories = ["mathematics", "science"]
+
+[dependencies]
+serde = { version = "1.0", optional = true, features = ["derive"] }
+quantrs2-symengine-sys = { path = "../simengine-sys", version = "0.1.0-alpha.5" }
+thiserror = "1.0"
+num-traits = "0.2"
+num-complex = "0.4"
+
+[dev-dependencies]
+serde_test = "1.0"
+serde_json = "1.0"
+approx = "0.5"
+
+[features]
+default = []
+serde-serialize = ["serde", "quantrs2-symengine-sys/serde"]
+static = ["quantrs2-symengine-sys/static"]
+system-deps = ["quantrs2-symengine-sys/system-deps"]

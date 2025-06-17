@@ -3,14 +3,11 @@
 //! This module provides quantum algorithms for integer factorization
 //! using variational approaches.
 
+#![allow(dead_code)]
+
 use crate::hybrid_algorithms::{AnsatzType, ClassicalOptimizer, Hamiltonian, PauliTerm, VQE};
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, IxDyn};
-use num_bigint::BigUint;
-use num_integer::Integer;
 use rand::prelude::*;
-use rand::thread_rng;
-use std::collections::HashMap;
+use rand::rng;
 
 /// Variational Quantum Factoring solver
 pub struct VQF {
@@ -38,7 +35,7 @@ impl VQF {
 
         // Estimate number of qubits needed
         let n_bits = 64 - n.leading_zeros() as usize;
-        let n_qubits_p = (n_bits + 1) / 2;
+        let n_qubits_p = n_bits.div_ceil(2);
         let n_qubits_q = n_bits - n_qubits_p;
 
         Ok(Self {
@@ -214,7 +211,7 @@ impl VQF {
     /// Extract factors from VQE solution
     fn extract_factors(&self, params: &[f64]) -> Result<FactorizationResult, String> {
         // Simulate measurement (simplified)
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let mut best_p = 0u64;
         let mut best_q = 0u64;
         let mut best_error = self.n as f64;
@@ -225,15 +222,15 @@ impl VQF {
             let mut q = 0u64;
 
             // Extract p
-            for i in 0..self.n_qubits_p {
-                if rng.gen_bool(0.5 + 0.4 * params[i].sin()) {
+            for (i, &param) in params.iter().enumerate().take(self.n_qubits_p) {
+                if rng.random_bool(0.5 + 0.4 * param.sin()) {
                     p |= 1u64 << i;
                 }
             }
 
             // Extract q
             for j in 0..self.n_qubits_q {
-                if rng.gen_bool(0.5 + 0.4 * params[self.n_qubits_p + j].sin()) {
+                if rng.random_bool(0.5 + 0.4 * params[self.n_qubits_p + j].sin()) {
                     q |= 1u64 << j;
                 }
             }
@@ -389,6 +386,7 @@ impl EnhancedVQF {
     fn pollard_rho(&self, n: u64, max_iter: usize) -> Option<u64> {
         let mut x = 2u64;
         let mut y = 2u64;
+        #[allow(unused_assignments)]
         let mut d = 1u64;
 
         for _ in 0..max_iter {
@@ -524,12 +522,12 @@ impl ShorsAlgorithm {
             });
         }
 
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         // Try random bases
         for attempt in 0..10 {
             // Choose random a coprime to n
-            let a = rng.gen_range(2..self.n);
+            let a = rng.random_range(2..self.n);
             if gcd(a, self.n) != 1 {
                 let factor = gcd(a, self.n);
                 return Ok(ShorsResult {
@@ -684,11 +682,11 @@ mod tests {
             momentum: 0.0,
         };
 
-        let mut vqf = VQF::new(15, optimizer).unwrap();
+        let vqf = VQF::new(15, optimizer).unwrap();
         assert_eq!(vqf.n, 15);
 
         // Test preprocessing
-        let result = vqf.preprocess();
+        let mut result = vqf.preprocess();
         assert!(result.is_some());
         if let Some(factors) = result {
             assert_eq!(factors.p * factors.q, 15);
@@ -711,7 +709,7 @@ mod tests {
     #[test]
     fn test_shors_algorithm() {
         let shors = ShorsAlgorithm::new(15);
-        let result = shors.factor();
+        let mut result = shors.factor();
 
         assert!(result.is_ok());
         let factors = result.unwrap().factors;

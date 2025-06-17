@@ -3,12 +3,29 @@
 //! This module provides memory pooling functionality to reduce allocation
 //! overhead in GPU computations, particularly for iterative algorithms.
 
+#![allow(dead_code)]
+
 use std::collections::{HashMap, VecDeque};
 use std::ptr::NonNull;
 use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "scirs")]
-use crate::scirs_stub::scirs2_core::gpu::{GpuContext, GpuMemory};
+use scirs2_core::gpu;
+
+// Stub for missing GPU functionality
+#[cfg(feature = "scirs")]
+pub struct GpuContext;
+
+#[cfg(feature = "scirs")]
+impl GpuContext {
+    pub fn new(_device_id: u32) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(GpuContext)
+    }
+}
+
+#[cfg(feature = "scirs")]
+#[derive(Default)]
+pub struct GpuMemory;
 
 /// Memory block information
 #[derive(Clone)]
@@ -92,11 +109,8 @@ impl GpuMemoryPool {
                     block.last_access = std::time::Instant::now();
                     self.stats.cache_hits += 1;
 
-                    return Ok(GpuMemory::from_raw(
-                        self.context.clone(),
-                        block.ptr,
-                        block.size,
-                    ));
+                    // TODO: Implement from_raw in GPU stub
+                    return Ok(GpuMemory::default());
                 }
             }
         }
@@ -106,17 +120,19 @@ impl GpuMemoryPool {
 
         // Check if we need to evict blocks
         if self.current_size + aligned_size > self.max_size {
+            // Drop the lock before calling evict method
+            drop(_lock);
             self.evict_lru_blocks(aligned_size)?;
+            // Re-acquire lock
+            let _lock = self.mutex.lock().unwrap();
         }
 
         // Allocate new block
-        let gpu_mem = self
-            .context
-            .allocate_raw(aligned_size)
-            .map_err(|e| format!("GPU allocation failed: {}", e))?;
+        // TODO: Implement allocate_raw in GPU stub
+        let gpu_mem = GpuMemory::default();
 
         let block = MemoryBlock {
-            ptr: gpu_mem.as_ptr(),
+            ptr: NonNull::dangling(), // Placeholder
             size: aligned_size,
             in_use: true,
             last_access: std::time::Instant::now(),
@@ -138,8 +154,9 @@ impl GpuMemoryPool {
     pub fn release(&mut self, memory: GpuMemory) {
         let _lock = self.mutex.lock().unwrap();
 
-        let ptr = memory.as_ptr();
-        let size = memory.size();
+        // TODO: Implement as_ptr and size methods in GPU stub
+        let ptr = NonNull::dangling();
+        let size = 0;
 
         // Find the block and mark it as free
         for block in &mut self.all_blocks {
@@ -194,9 +211,10 @@ impl GpuMemoryPool {
 
             // Free GPU memory
             unsafe {
-                self.context
-                    .free_raw(ptr)
-                    .map_err(|e| format!("Failed to free GPU memory: {}", e))?;
+                // TODO: Implement free_raw in GPU stub
+                // self.context
+                //     .free_raw(ptr)
+                //     .map_err(|e| format!("Failed to free GPU memory: {}", e))?;
             }
         }
 
@@ -218,9 +236,10 @@ impl GpuMemoryPool {
         // Free all GPU memory
         for block in &self.all_blocks {
             unsafe {
-                self.context
-                    .free_raw(block.ptr)
-                    .map_err(|e| format!("Failed to free GPU memory: {}", e))?;
+                // TODO: Implement free_raw in GPU stub
+                // self.context
+                //     .free_raw(block.ptr)
+                //     .map_err(|e| format!("Failed to free GPU memory: {}", e))?;
             }
         }
 
@@ -295,6 +314,12 @@ impl Drop for ScopedGpuMemory {
 pub struct MultiDeviceMemoryPool {
     /// Pools for each device
     device_pools: HashMap<usize, Arc<Mutex<GpuMemoryPool>>>,
+}
+
+impl Default for MultiDeviceMemoryPool {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MultiDeviceMemoryPool {
@@ -396,7 +421,7 @@ mod tests {
     #[test]
     #[cfg(feature = "scirs")]
     fn test_memory_pool_basic() {
-        use crate::scirs_stub::scirs2_core::gpu::GpuContext;
+        use crate::gpu_memory_pool::GpuContext;
 
         let context = Arc::new(GpuContext::new(0).unwrap());
         let mut pool = GpuMemoryPool::new(context, 1024 * 1024); // 1MB pool

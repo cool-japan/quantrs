@@ -6,7 +6,7 @@
 use quantrs2_sim::prelude::*;
 use std::time::Instant;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("=== Sparse Clifford Simulator Demo ===\n");
 
     // Compare standard vs sparse simulator for different circuit sizes

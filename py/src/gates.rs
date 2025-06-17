@@ -523,10 +523,12 @@ impl GateParameter {
     fn __repr__(&self) -> String {
         match &self.param {
             Parameter::Constant(v) => format!("GateParameter(constant={})", v),
+            Parameter::ComplexConstant(v) => format!("GateParameter(complex_constant={})", v),
             Parameter::Symbol(s) => match s.value {
                 Some(v) => format!("GateParameter(symbol='{}', value={})", s.name, v),
                 None => format!("GateParameter(symbol='{}')", s.name),
             },
+            Parameter::Symbolic(expr) => format!("GateParameter(symbolic='{}')", expr),
         }
     }
 }

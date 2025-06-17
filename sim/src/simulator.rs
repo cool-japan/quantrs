@@ -42,5 +42,5 @@ pub trait Simulator {
     fn run<const N: usize>(
         &mut self,
         circuit: &quantrs2_circuit::prelude::Circuit<N>,
-    ) -> SimulatorResult<N>;
+    ) -> crate::error::Result<SimulatorResult<N>>;
 }

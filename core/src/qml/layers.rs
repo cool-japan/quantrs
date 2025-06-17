@@ -7,13 +7,10 @@ use super::{create_entangling_gates, EntanglementPattern, QMLLayer};
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
-    parametric::{
-        ParametricGate, ParametricRotationX, ParametricRotationY, ParametricRotationZ,
-        SymbolicParameter,
-    },
+    parametric::{ParametricRotationX, ParametricRotationY, ParametricRotationZ},
     qubit::QubitId,
 };
-use ndarray::{Array1, Array2};
+use ndarray::Array1;
 use num_complex::Complex64;
 use std::f64::consts::PI;
 
@@ -214,7 +211,7 @@ impl EntanglingLayer {
         let parameters = pairs
             .iter()
             .enumerate()
-            .map(|(i, (ctrl, tgt))| Parameter {
+            .map(|(_i, (ctrl, tgt))| Parameter {
                 name: format!("entangle_{}_{}", ctrl.0, tgt.0),
                 value: 0.0,
                 bounds: Some((-PI, PI)),
@@ -254,7 +251,7 @@ impl QMLLayer for EntanglingLayer {
             pairs
                 .iter()
                 .zip(self.parameters.iter())
-                .map(|((ctrl, tgt), param)| {
+                .map(|((ctrl, tgt), _param)| {
                     // For now, use CNOT - would implement CRZ
                     Box::new(CNOT {
                         control: *ctrl,

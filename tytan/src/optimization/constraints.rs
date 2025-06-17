@@ -3,8 +3,7 @@
 //! This module provides comprehensive constraint management including
 //! automatic penalty term generation and constraint analysis.
 
-use crate::optimization::penalty::{CompiledModel, ConstraintExpr};
-use ndarray::{Array1, Array2};
+// Optimization penalty types
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -62,6 +61,12 @@ pub enum EncodingType {
     Unary,
     OneHot,
     Gray,
+}
+
+impl Default for ConstraintHandler {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ConstraintHandler {
@@ -315,7 +320,7 @@ impl ConstraintHandler {
                     let expr = constraint.expression.clone();
                     expr.clone() * expr
                 }
-                ConstraintType::Cardinality { k } => {
+                ConstraintType::Cardinality { k: _ } => {
                     // (sum_i x_i - k)^2
                     let expr = constraint.expression.clone();
                     expr.clone() * expr
@@ -335,8 +340,8 @@ impl ConstraintHandler {
     /// Generate inequality penalty using auxiliary binary expansion
     fn generate_inequality_penalty(
         &self,
-        expression: &Expression,
-        bound: f64,
+        _expression: &Expression,
+        _bound: f64,
         less_than: bool,
     ) -> Result<Expression, Box<dyn std::error::Error>> {
         // For now, return a quadratic penalty

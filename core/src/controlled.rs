@@ -207,9 +207,9 @@ impl GateOp for MultiControlledGate {
         }
 
         // Determine the control pattern
-        let mut control_pattern = 0usize;
+        let mut _control_pattern = 0usize;
         for (i, _) in self.positive_controls.iter().enumerate() {
-            control_pattern |= 1 << i;
+            _control_pattern |= 1 << i;
         }
         // Negative controls start after positive controls
         let neg_offset = self.positive_controls.len();

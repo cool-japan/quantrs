@@ -4,10 +4,9 @@
 //! during optimization based on performance feedback.
 
 use crate::{
-    optimization::penalty::{CompiledModel, PenaltyConfig},
+    optimization::penalty::CompiledModel,
     sampler::{SampleResult, Sampler},
 };
-use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -71,11 +70,11 @@ pub struct AdaptiveOptimizer {
 
 /// Parameter state at a given iteration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct ParameterState {
-    iteration: usize,
-    parameters: HashMap<String, f64>,
-    penalty_weights: HashMap<String, f64>,
-    temperature: f64,
+pub struct ParameterState {
+    pub iteration: usize,
+    pub parameters: HashMap<String, f64>,
+    pub penalty_weights: HashMap<String, f64>,
+    pub temperature: f64,
 }
 
 /// Performance metrics
@@ -392,7 +391,7 @@ impl AdaptiveOptimizer {
     fn update_population_based(
         &mut self,
         params: &mut HashMap<String, f64>,
-        penalty_weights: &mut HashMap<String, f64>,
+        _penalty_weights: &mut HashMap<String, f64>,
         metrics: &PerformanceMetrics,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Evaluate population fitness
@@ -425,11 +424,11 @@ impl AdaptiveOptimizer {
         for i in mid..pop_len {
             // Use random perturbation directly to avoid borrow issues
             use rand::Rng;
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
 
             for value in self.population[i].parameters.values_mut() {
-                if rng.gen::<f64>() < 0.3 {
-                    let perturbation = rng.gen_range(-0.3..0.3) * value.abs();
+                if rng.random::<f64>() < 0.3 {
+                    let perturbation = rng.random_range(-0.3..0.3) * value.abs();
                     *value += perturbation;
                 }
             }
@@ -442,18 +441,18 @@ impl AdaptiveOptimizer {
     fn update_multi_armed_bandit(
         &mut self,
         params: &mut HashMap<String, f64>,
-        metrics: &PerformanceMetrics,
+        _metrics: &PerformanceMetrics,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Implement UCB or Thompson sampling for parameter selection
         // This is a simplified version
 
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for (param_name, param_value) in params.iter_mut() {
-            if rng.gen::<f64>() < self.config.exploration_rate {
+            if rng.random::<f64>() < self.config.exploration_rate {
                 // Explore: random perturbation
-                let perturbation = rng.gen_range(-0.1..0.1) * param_value.abs();
+                let perturbation = rng.random_range(-0.1..0.1) * param_value.abs();
                 *param_value += perturbation;
             } else {
                 // Exploit: move toward historical best
@@ -481,14 +480,14 @@ impl AdaptiveOptimizer {
         base_params: &HashMap<String, f64>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for i in 0..self.config.population_size {
             let mut params = base_params.clone();
 
             // Add random perturbations
             for value in params.values_mut() {
-                let perturbation = rng.gen_range(-0.2..0.2) * value.abs();
+                let perturbation = rng.random_range(-0.2..0.2) * value.abs();
                 *value += perturbation;
             }
 
@@ -515,7 +514,7 @@ impl AdaptiveOptimizer {
     fn apply_penalties(
         &self,
         model: &CompiledModel,
-        penalty_weights: &HashMap<String, f64>,
+        _penalty_weights: &HashMap<String, f64>,
     ) -> Result<CompiledModel, Box<dyn std::error::Error>> {
         // This would modify the model's QUBO matrix with penalty terms
         // For now, return the original model
@@ -526,7 +525,7 @@ impl AdaptiveOptimizer {
     fn evaluate_constraint_violations(
         &self,
         model: &CompiledModel,
-        samples: &[SampleResult],
+        _samples: &[SampleResult],
     ) -> Result<HashMap<String, f64>, Box<dyn std::error::Error>> {
         // Placeholder implementation
         let mut violations = HashMap::new();
@@ -541,7 +540,7 @@ impl AdaptiveOptimizer {
     /// Check if solution is feasible
     fn is_feasible(
         &self,
-        sample: &SampleResult,
+        _sample: &SampleResult,
         constraint_violations: &HashMap<String, f64>,
     ) -> Result<bool, Box<dyn std::error::Error>> {
         let max_violation = constraint_violations
@@ -595,7 +594,7 @@ impl AdaptiveOptimizer {
     /// Evaluate individual fitness in population
     fn evaluate_individual_fitness(
         &self,
-        individual: &Individual,
+        _individual: &Individual,
         metrics: &PerformanceMetrics,
     ) -> Result<f64, Box<dyn std::error::Error>> {
         // Combine objective value and constraint satisfaction
@@ -611,11 +610,11 @@ impl AdaptiveOptimizer {
         individual: &mut Individual,
     ) -> Result<(), Box<dyn std::error::Error>> {
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for value in individual.parameters.values_mut() {
-            if rng.gen::<f64>() < 0.3 {
-                let perturbation = rng.gen_range(-0.3..0.3) * value.abs();
+            if rng.random::<f64>() < 0.3 {
+                let perturbation = rng.random_range(-0.3..0.3) * value.abs();
                 *value += perturbation;
             }
         }
@@ -654,7 +653,7 @@ trait SamplerExt {
 }
 
 impl<S: Sampler> SamplerExt for S {
-    fn set_parameters(&mut self, params: HashMap<String, f64>) {
+    fn set_parameters(&mut self, _params: HashMap<String, f64>) {
         // This would be implemented by specific samplers
         // For now, it's a no-op
     }

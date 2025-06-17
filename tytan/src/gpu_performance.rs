@@ -5,10 +5,17 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 #[cfg(feature = "scirs")]
-use crate::scirs_stub::scirs2_core::gpu::{DeviceInfo, GpuContext};
+use scirs2_core::gpu;
+
+// Stubs for missing GPU functionality
+#[cfg(feature = "scirs")]
+struct DeviceInfo;
+
+#[cfg(feature = "scirs")]
+struct GpuContext;
 
 /// Performance metrics for GPU operations
 #[derive(Default, Clone, Debug)]
@@ -42,6 +49,12 @@ pub struct GpuProfiler {
     device_info: Option<DeviceInfo>,
 }
 
+impl Default for GpuProfiler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GpuProfiler {
     /// Create new profiler
     pub fn new() -> Self {
@@ -56,7 +69,8 @@ impl GpuProfiler {
     /// Initialize with device context
     #[cfg(feature = "scirs")]
     pub fn with_context(mut self, ctx: &GpuContext) -> Self {
-        self.device_info = Some(ctx.get_device_info());
+        // TODO: Implement get_device_info in GPU stub
+        // self.device_info = Some(ctx.get_device_info());
         self
     }
 
@@ -75,7 +89,7 @@ impl GpuProfiler {
         metrics
             .kernel_times
             .entry(kernel_name.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(duration);
     }
 
@@ -89,7 +103,7 @@ impl GpuProfiler {
         metrics
             .transfer_times
             .entry(operation.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(duration);
     }
 
@@ -231,10 +245,16 @@ struct AccessPattern {
 }
 
 #[derive(Clone, Copy)]
-enum AccessType {
+pub enum AccessType {
     Read,
     Write,
     ReadWrite,
+}
+
+impl Default for MemoryAccessAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MemoryAccessAnalyzer {
@@ -354,6 +374,12 @@ struct KernelInfo {
     memory_required: usize,
     /// Can be fused
     fusable: bool,
+}
+
+impl Default for KernelFusionOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl KernelFusionOptimizer {

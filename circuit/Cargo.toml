@@ -11,14 +11,14 @@ categories.workspace = true
 description = "Quantum circuit representation and DSL for the QuantRS2 framework"
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.4" }
+quantrs2-core.workspace = true
 num-complex.workspace = true
 ndarray.workspace = true
-nalgebra = "0.33"
+nalgebra.workspace = true
 thiserror.workspace = true
 pyo3.workspace = true
 rand.workspace = true
-serde = { workspace = true, features = ["derive"] }
+serde.workspace = true
 
 [dev-dependencies]
 num-complex.workspace = true

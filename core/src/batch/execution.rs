@@ -4,7 +4,7 @@ use super::{BatchConfig, BatchExecutionResult, BatchStateVector};
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
-    gpu::{GpuBackendFactory, GpuStateVector},
+    gpu::GpuBackendFactory,
     qubit::QubitId,
 };
 use ndarray::{Array1, Array2};
@@ -13,9 +13,8 @@ use rayon::prelude::*;
 use std::sync::Arc;
 use std::time::Instant;
 
-// Import SciRS2 parallel scheduler
-extern crate scirs2_core;
-use scirs2_core::parallel::{SchedulerConfig, WorkStealingScheduler};
+// Use Rayon for parallel execution instead of non-existent scirs2 parallel module
+use rayon::ThreadPool;
 
 /// Simple circuit representation for batch execution
 pub struct BatchCircuit {
@@ -63,8 +62,8 @@ pub struct BatchCircuitExecutor {
     pub config: BatchConfig,
     /// Optional GPU backend
     pub gpu_backend: Option<Arc<dyn crate::gpu::GpuBackend>>,
-    /// Work-stealing scheduler for parallel execution
-    pub scheduler: Option<WorkStealingScheduler>,
+    /// Thread pool for parallel execution
+    pub thread_pool: Option<ThreadPool>,
 }
 
 impl BatchCircuitExecutor {
@@ -77,13 +76,27 @@ impl BatchCircuitExecutor {
             None
         };
 
-        // Create work-stealing scheduler if parallel execution is enabled
-        let scheduler = None; // Simplified - WorkStealingScheduler API needs review
+        // Create thread pool if parallel execution is enabled
+        let thread_pool = if let Some(num_workers) = config.num_workers {
+            Some(
+                rayon::ThreadPoolBuilder::new()
+                    .num_threads(num_workers)
+                    .build()
+                    .map_err(|e| {
+                        QuantRS2Error::ExecutionError(format!(
+                            "Failed to create thread pool: {}",
+                            e
+                        ))
+                    })?,
+            )
+        } else {
+            None
+        };
 
         Ok(Self {
             config,
             gpu_backend,
-            scheduler,
+            thread_pool,
         })
     }
 
@@ -131,10 +144,49 @@ impl BatchCircuitExecutor {
         circuit: &BatchCircuit,
         batch: &mut BatchStateVector,
     ) -> QuantRS2Result<()> {
-        // GPU execution is a placeholder for now
-        // In practice, would need proper GPU state management
-        // For now, fall back to CPU execution
-        self.execute_parallel(circuit, batch)
+        if let Some(gpu_backend) = &self.gpu_backend {
+            // Convert batch to GPU state vectors
+            let mut gpu_states = Vec::new();
+
+            for i in 0..batch.batch_size() {
+                let state_data = batch.get_state(i)?;
+                // Upload state to GPU
+                let mut gpu_buffer = gpu_backend.allocate_state_vector(batch.n_qubits)?;
+                gpu_buffer.upload(state_data.as_slice().unwrap())?;
+
+                gpu_states.push(gpu_buffer);
+            }
+
+            // Apply gates to all GPU states
+            for gate in circuit.gate_sequence() {
+                let gate_qubits = gate.qubits();
+
+                // Apply gate to each GPU state
+                for gpu_state in &mut gpu_states {
+                    gpu_backend.apply_gate(
+                        gpu_state.as_mut(),
+                        gate.as_ref(),
+                        &gate_qubits,
+                        batch.n_qubits,
+                    )?;
+                }
+            }
+
+            // Download results back to batch
+            for (i, gpu_state) in gpu_states.iter().enumerate() {
+                let state_size = 1 << batch.n_qubits;
+                let mut result_data = vec![Complex64::new(0.0, 0.0); state_size];
+                gpu_state.download(&mut result_data)?;
+
+                let result_array = Array1::from_vec(result_data);
+                batch.set_state(i, &result_array)?;
+            }
+
+            Ok(())
+        } else {
+            // Fallback to CPU execution if no GPU backend available
+            self.execute_parallel(circuit, batch)
+        }
     }
 
     /// Execute in chunks for large batches
@@ -168,12 +220,13 @@ impl BatchCircuitExecutor {
         circuit: &BatchCircuit,
         batch: &mut BatchStateVector,
     ) -> QuantRS2Result<()> {
-        let batch_size = batch.batch_size();
+        let _batch_size = batch.batch_size();
         let gate_sequence: Vec<_> = circuit.gate_sequence().collect();
+        let gate_refs: Vec<&dyn GateOp> = gate_sequence.iter().map(|g| g.as_ref()).collect();
 
-        if let Some(scheduler) = &self.scheduler {
-            // Use work-stealing scheduler for better load balancing
-            self.execute_with_scheduler(batch, &gate_sequence, scheduler)?;
+        if let Some(thread_pool) = &self.thread_pool {
+            // Use thread pool for better load balancing
+            self.execute_with_thread_pool(batch, &gate_refs, thread_pool)?;
         } else {
             // Use Rayon for simple parallel execution
             batch
@@ -182,7 +235,7 @@ impl BatchCircuitExecutor {
                 .into_par_iter()
                 .try_for_each(|mut state_row| -> QuantRS2Result<()> {
                     let mut state = state_row.to_owned();
-                    apply_gates_to_state(&mut state, &gate_sequence, batch.n_qubits)?;
+                    apply_gates_to_state(&mut state, &gate_refs, batch.n_qubits)?;
                     state_row.assign(&state);
                     Ok(())
                 })?;
@@ -191,12 +244,12 @@ impl BatchCircuitExecutor {
         Ok(())
     }
 
-    /// Execute using work-stealing scheduler
-    fn execute_with_scheduler(
+    /// Execute using thread pool
+    fn execute_with_thread_pool(
         &self,
         batch: &mut BatchStateVector,
-        gates: &[&Box<dyn GateOp>],
-        scheduler: &WorkStealingScheduler,
+        gates: &[&dyn GateOp],
+        _thread_pool: &ThreadPool,
     ) -> QuantRS2Result<()> {
         // Create tasks for each state
         let batch_size = batch.batch_size();
@@ -259,7 +312,7 @@ impl BatchCircuitExecutor {
             states.row_mut(i).assign(initial_state);
         }
 
-        let mut batch = BatchStateVector::from_states(states, self.config.clone())?;
+        let batch = BatchStateVector::from_states(states, self.config.clone())?;
 
         // Execute with different parameters in parallel
         let results: Vec<_> = parameter_sets
@@ -268,11 +321,10 @@ impl BatchCircuitExecutor {
             .map(|(i, params)| {
                 let circuit = circuit_fn(params)?;
                 let mut state = batch.get_state(i)?;
-                apply_gates_to_state(
-                    &mut state,
-                    &circuit.gate_sequence().collect::<Vec<_>>(),
-                    circuit.n_qubits,
-                )?;
+                let gate_sequence: Vec<_> = circuit.gate_sequence().collect();
+                let gate_refs: Vec<&dyn GateOp> =
+                    gate_sequence.iter().map(|g| g.as_ref()).collect();
+                apply_gates_to_state(&mut state, &gate_refs, circuit.n_qubits)?;
                 Ok(state)
             })
             .collect::<QuantRS2Result<Vec<_>>>()?;
@@ -284,7 +336,7 @@ impl BatchCircuitExecutor {
 /// Apply gates to a single state
 fn apply_gates_to_state(
     state: &mut Array1<Complex64>,
-    gates: &[&Box<dyn GateOp>],
+    gates: &[&dyn GateOp],
     n_qubits: usize,
 ) -> QuantRS2Result<()> {
     for gate in gates {

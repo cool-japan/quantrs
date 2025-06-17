@@ -37,6 +37,8 @@ pub struct BenchmarkConfig {
     pub analyze_convergence: bool,
     /// Statistical confidence level
     pub confidence_level: f64,
+    /// Output directory for benchmark results
+    pub output_directory: String,
 }
 
 impl Default for BenchmarkConfig {
@@ -48,6 +50,7 @@ impl Default for BenchmarkConfig {
             profile_memory: true,
             analyze_convergence: true,
             confidence_level: 0.95,
+            output_directory: "/tmp/quantum_ml_benchmarks".to_string(),
         }
     }
 }
@@ -366,6 +369,23 @@ impl BenchmarkFramework {
     /// Generate benchmark report
     pub fn generate_report(&self) -> BenchmarkReport {
         BenchmarkReport::new(&self.results)
+    }
+}
+
+impl BenchmarkResults {
+    /// Get summaries
+    pub fn summaries(&self) -> &HashMap<String, BenchmarkSummary> {
+        &self.summaries
+    }
+
+    /// Get results
+    pub fn results(&self) -> &HashMap<String, Vec<BenchmarkRunResult>> {
+        &self.results
+    }
+
+    /// Get metadata
+    pub fn metadata(&self) -> &BenchmarkMetadata {
+        &self.metadata
     }
 }
 

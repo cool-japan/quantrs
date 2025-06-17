@@ -7,6 +7,18 @@ use std::time::Duration;
 /// Syndrome detection configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyndromeDetectionConfig {
+    /// Enable parallel detection
+    pub enable_parallel_detection: bool,
+    /// Number of detection rounds
+    pub detection_rounds: usize,
+    /// Stabilizer measurement shots
+    pub stabilizer_measurement_shots: usize,
+    /// Enable syndrome validation
+    pub enable_syndrome_validation: bool,
+    /// Validation threshold
+    pub validation_threshold: f64,
+    /// Enable error correlation analysis
+    pub enable_error_correlation: bool,
     /// Enable syndrome detection
     pub enable_detection: bool,
     /// Detection frequency

@@ -3,15 +3,15 @@
 // This example compares the effectiveness of different quantum error correction codes
 // against various types of noise, showing their strengths and limitations.
 
-use quantrs_circuit::builder::Circuit;
-use quantrs_core::qubit::QubitId;
-use quantrs_sim::error_correction::{
+use quantrs2_circuit::builder::Circuit;
+use quantrs2_core::qubit::QubitId;
+use quantrs2_sim::error_correction::{
     utils, BitFlipCode, ErrorCorrection, FiveQubitCode, PhaseFlipCode, ShorCode,
 };
-use quantrs_sim::noise::{
+use quantrs2_sim::noise::{
     AmplitudeDampingChannel, BitFlipChannel, DepolarizingChannel, NoiseModel, PhaseFlipChannel,
 };
-use quantrs_sim::statevector::StateVectorSimulator;
+use quantrs2_sim::statevector::StateVectorSimulator;
 use std::time::Instant;
 
 fn main() {
@@ -240,8 +240,8 @@ fn compare_efficiency() {
 
     println!(
         "- 3-qubit bit flip code: {} encoding gates, {} correction gates",
-        encoder.num_gates(),
-        decoder.num_gates()
+        encoder.map(|c| c.num_gates()).unwrap_or(0),
+        decoder.map(|c| c.num_gates()).unwrap_or(0)
     );
 
     // Phase flip code
@@ -254,8 +254,8 @@ fn compare_efficiency() {
 
     println!(
         "- 3-qubit phase flip code: {} encoding gates, {} correction gates",
-        encoder.num_gates(),
-        decoder.num_gates()
+        encoder.map(|c| c.num_gates()).unwrap_or(0),
+        decoder.map(|c| c.num_gates()).unwrap_or(0)
     );
 
     // Shor code
@@ -267,8 +267,8 @@ fn compare_efficiency() {
 
     println!(
         "- 9-qubit Shor code: {} encoding gates, {} correction gates",
-        encoder.num_gates(),
-        decoder.num_gates()
+        encoder.map(|c| c.num_gates()).unwrap_or(0),
+        decoder.map(|c| c.num_gates()).unwrap_or(0)
     );
 
     // 5-qubit code
@@ -281,8 +281,8 @@ fn compare_efficiency() {
 
     println!(
         "- 5-qubit perfect code: {} encoding gates, {} correction gates",
-        encoder.num_gates(),
-        decoder.num_gates()
+        encoder.unwrap().num_gates(),
+        decoder.unwrap().num_gates()
     );
 }
 
@@ -307,12 +307,12 @@ fn test_code_with_noise<T: ErrorCorrection>(
 
     // Create a vector of ancilla qubits for encoding
     let ancilla_qubits = (1..code.physical_qubits())
-        .map(QubitId::new)
+        .map(|i| QubitId::new(i as u32))
         .collect::<Vec<_>>();
 
     // Create a vector of syndrome qubits for error detection/correction
     let syndrome_qubits = (code.physical_qubits()..2 * code.physical_qubits())
-        .map(QubitId::new)
+        .map(|i| QubitId::new(i as u32))
         .collect::<Vec<_>>();
 
     // Create encoded circuit
@@ -322,14 +322,15 @@ fn test_code_with_noise<T: ErrorCorrection>(
     encoded_circuit.h(base_qubit).unwrap();
 
     // Add encoding operations
-    let encoder = code.encode_circuit(&[base_qubit], &ancilla_qubits);
+    let encoder = code.encode_circuit(&[base_qubit], &ancilla_qubits).unwrap();
     for gate in encoder.gates() {
-        encoded_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        // Convert gate reference to concrete gate type for circuit
+        encoded_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Step 4: Run the encoded circuit with noise
     let encoded_qubits = (0..code.physical_qubits())
-        .map(QubitId::new)
+        .map(|i| QubitId::new(i as u32))
         .collect::<Vec<_>>();
     let noisy_encoded_sim = StateVectorSimulator::with_noise(noise_model.clone());
     let noisy_encoded_state = encoded_circuit.run(noisy_encoded_sim).unwrap();
@@ -339,13 +340,13 @@ fn test_code_with_noise<T: ErrorCorrection>(
 
     // Add the encoded circuit with noise
     for gate in encoded_circuit.gates() {
-        correction_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        correction_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Add error correction operations
-    let correction = code.decode_circuit(&encoded_qubits, &syndrome_qubits);
+    let correction = code.decode_circuit(&encoded_qubits, &syndrome_qubits).unwrap();
     for gate in correction.gates() {
-        correction_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        correction_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Run with error correction
@@ -355,12 +356,12 @@ fn test_code_with_noise<T: ErrorCorrection>(
     // Step 6: Analyze and compare results
     // Calculate fidelity before and after correction
     let fidelity_before =
-        utils::calculate_fidelity(ideal_state.amplitudes(), noisy_state.amplitudes());
+        utils::calculate_fidelity(ideal_state.amplitudes(), noisy_state.amplitudes()).unwrap();
 
     // For corrected state, we need to extract the logical qubit state,
     // but this is a simplified approach for demonstration
     let logical_state = extract_logical_state(&corrected_state);
-    let fidelity_after = utils::calculate_fidelity(ideal_state.amplitudes(), &logical_state);
+    let fidelity_after = utils::calculate_fidelity(ideal_state.amplitudes(), &logical_state).unwrap();
 
     // Print results
     println!("Fidelity before correction: {:.6}", fidelity_before);
@@ -382,7 +383,7 @@ fn test_code_with_noise<T: ErrorCorrection>(
 
 // Simplified function to extract logical state from encoded state
 fn extract_logical_state(
-    state: &quantrs_core::register::Register<16>,
+    state: &quantrs2_core::register::Register<16>,
 ) -> Vec<num_complex::Complex64> {
     use num_complex::Complex64;
 

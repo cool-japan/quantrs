@@ -3,10 +3,12 @@
 //! This example shows how to use quantrs-tytan with SciRS2 integration
 //! to solve the max-cut problem on a graph.
 
-use quantrs_tytan::{
-    calculate_diversity, cluster_solutions, optimize_qubo, symbols_list, Auto_array, Compile,
-    GASampler, SASampler,
+use quantrs2_tytan::{
+    calculate_diversity, cluster_solutions, optimize_qubo, symbols_list, 
+    auto_array::AutoArray, Compile, GASampler, SASampler,
 };
+use quantrs2_tytan::symbol::Expression;
+use quantrs2_tytan::sampler::Sampler;
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -41,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a binary variable for each node
     // x_i = 0 means node i is in partition 0
     // x_i = 1 means node i is in partition 1
-    let x = symbols_list(n_nodes, "x{}").expect("Failed to create symbols");
+    let x = symbols_list(vec![n_nodes], "x{}").expect("Failed to create symbols");
 
     // The objective is to maximize the number of edges between partitions
     // For QUBO, we need to minimize, so we use the negative of the objective
@@ -50,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // = weight * (x_i - 2*x_i*x_j + x_j)
 
     // Start with empty expression
-    let mut h = 0.into();
+    let mut h: Expression = 0.into();
 
     // Add terms for each edge
     for i in 0..n_nodes {
@@ -59,7 +61,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Edge weight is 1 for this example
                 // For each edge (i,j), add -1 * (x_i + x_j - 2*x_i*x_j)
                 // The negative sign is because we want to maximize cuts
-                h = h - (x[[i]].clone() + x[[j]].clone() - 2 * x[[i]].clone() * x[[j]].clone());
+                let two: Expression = 2.into();
+                h = h - (x[[i]].clone() + x[[j]].clone() - two * x[[i]].clone() * x[[j]].clone());
             }
         }
     }
@@ -67,7 +70,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nCreated QUBO expression for max-cut");
 
     // Compile to QUBO
-    let (qubo, offset) = Compile::new(&h).get_qubo()?;
+    let (qubo, offset) = Compile::new(h).get_qubo()?;
     println!("Compiled to QUBO with offset: {}", offset);
 
     // Solve using different methods and compare
@@ -120,14 +123,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Energy: {}", best_result.energy);
 
     // Convert to more readable format
-    let (arr, _) = Auto_array::new(best_result).get_ndarray("x{}")?;
+    let arr = AutoArray::new(&best_result);
+    let arr_data = arr.get_ndarray("x{}")?.0;
 
     // Display partition
     let mut partition0 = Vec::new();
     let mut partition1 = Vec::new();
 
     for i in 0..n_nodes {
-        if arr[[i]] == 1 {
+        if arr_data[[i]] == 1 {
             partition1.push(i);
         } else {
             partition0.push(i);
@@ -142,8 +146,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for i in 0..n_nodes {
         for j in (i + 1)..n_nodes {
             if graph[i][j] == 1 {
-                let val_i = arr[[i]];
-                let val_j = arr[[j]];
+                let val_i = arr_data[[i]];
+                let val_j = arr_data[[j]];
                 if val_i != val_j {
                     cut_edges += 1;
                 }
@@ -171,13 +175,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Show first solution in each cluster
         if !indices.is_empty() {
             let example = &sa_results[indices[0]];
-            let (arr, _) = Auto_array::new(example).get_ndarray("x{}")?;
+            let arr = AutoArray::new(example);
+            let arr_data = arr.get_ndarray("x{}")?.0;
 
             let mut partition0 = Vec::new();
             let mut partition1 = Vec::new();
 
             for i in 0..n_nodes {
-                if arr[[i]] == 1 {
+                if arr_data[[i]] == 1 {
                     partition1.push(i);
                 } else {
                     partition0.push(i);

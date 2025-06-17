@@ -5,13 +5,14 @@
 //! operations. It supports both exact diagonalization and approximate methods
 //! for large photon number cutoffs.
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
+use crate::prelude::SimulatorError;
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::error::{Result, SimulatorError};
+use crate::error::Result;
 use crate::scirs2_integration::SciRS2Backend;
 
 /// Photonic simulation method
@@ -740,7 +741,6 @@ impl PhotonicSimulator {
     }
 
     /// Helper functions
-
     fn calculate_fock_dimension(&self) -> Result<usize> {
         // Calculate dimension of truncated Fock space
         let n = self.config.max_photon_number;

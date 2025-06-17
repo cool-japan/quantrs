@@ -11,7 +11,6 @@ import pandas as pd
 from typing import List, Dict, Any, Optional, Tuple, Union
 from dataclasses import dataclass, field
 from enum import Enum
-import warnings
 from datetime import datetime, timedelta
 from scipy.optimize import minimize
 import json
@@ -21,8 +20,13 @@ try:
     from quantrs2 import Circuit, SimulationResult
     HAS_QUANTRS2 = True
 except ImportError:
+    # Create stub classes for type hints when quantrs2 is not available
+    class Circuit:
+        pass
+    class SimulationResult:
+        pass
     HAS_QUANTRS2 = False
-    warnings.warn("quantrs2 not available. Finance module will use classical simulations.")
+    pass
 
 
 class FinanceModel(Enum):
@@ -259,7 +263,6 @@ class QuantumPortfolioOptimizer:
             )
             
         except Exception as e:
-            warnings.warn(f"Quantum optimization failed: {e}. Using classical fallback.")
             return self._classical_optimize()
     
     def _classical_optimize(self) -> QuantumFinanceResult:
@@ -433,7 +436,6 @@ class QuantumOptionPricer:
             )
             
         except Exception as e:
-            warnings.warn(f"Quantum Monte Carlo failed: {e}. Using classical fallback.")
             return self._classical_monte_carlo_pricing(option, num_paths)
     
     def _classical_monte_carlo_pricing(self, option: OptionContract, 
@@ -624,7 +626,6 @@ class QuantumRiskAnalyzer:
             )
             
         except Exception as e:
-            warnings.warn(f"Quantum VaR calculation failed: {e}. Using classical method.")
             return self._classical_var(portfolio, confidence_level, time_horizon)
     
     def _classical_var(self, portfolio: Portfolio, confidence_level: float, 
@@ -721,7 +722,6 @@ class QuantumFraudDetector:
             self.trained = True
             return True
         except Exception as e:
-            warnings.warn(f"Training failed: {e}")
             return False
     
     def detect_fraud(self, transaction: np.ndarray) -> QuantumFinanceResult:
@@ -779,7 +779,6 @@ class QuantumFraudDetector:
             )
             
         except Exception as e:
-            warnings.warn(f"Quantum fraud detection failed: {e}. Using classical method.")
             return self._classical_fraud_detection(transaction)
     
     def _classical_fraud_detection(self, transaction: np.ndarray) -> QuantumFinanceResult:

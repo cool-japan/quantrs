@@ -192,7 +192,7 @@ The following features are planned for future releases:
 19. **Quantum Cryptography** - Secure optimization protocols
 20. **Community Ecosystem** - Plugin system and marketplace
 
-## [0.1.0-alpha.4] - 2024-06-11
+## [0.1.0-alpha.5] - 2024-06-11
 
 ### Major Improvements
 

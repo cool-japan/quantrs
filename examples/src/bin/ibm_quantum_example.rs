@@ -1,10 +1,10 @@
 use std::env;
 use std::error::Error;
 
-use quantrs_circuit::Circuit;
-use quantrs_core::{QubitId, Register};
-use quantrs_device::{
-    create_ibm_client, create_ibm_device, ibm_device::IBMDeviceConfig, CircuitExecutor,
+use quantrs2_circuit::prelude::Circuit;
+use quantrs2_core::prelude::{QubitId, Register};
+use quantrs2_device::{
+    create_ibm_client, create_ibm_device, ibm_device::IBMDeviceConfig, CircuitExecutor, QuantumDevice,
 };
 
 #[tokio::main]
@@ -66,9 +66,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Create a simple circuit: Bell state
     println!("\nCreating Bell state circuit...");
     let mut circuit = Circuit::<2>::new();
-    circuit
-        .h(QubitId::new(0))
-        .cnot(QubitId::new(0), QubitId::new(1));
+    circuit.h(QubitId::new(0))?;
+    circuit.cnot(QubitId::new(0), QubitId::new(1))?;
 
     // Check if we can execute this circuit on the selected backend
     let can_execute = device.can_execute_circuit(&circuit).await?;
@@ -113,7 +112,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     circuit2.x(QubitId::new(0)); // |1⟩ state
 
     let mut circuit3 = Circuit::<1>::new();
-    circuit3.h(QubitId::new(0)).x(QubitId::new(0)); // |−⟩ state
+    circuit3.h(QubitId::new(0))?;
+    circuit3.x(QubitId::new(0))?; // |−⟩ state
 
     // Execute circuits in parallel
     let circuits = vec![&circuit1, &circuit2, &circuit3];

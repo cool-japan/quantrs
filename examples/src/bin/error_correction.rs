@@ -3,10 +3,10 @@
 // This example demonstrates the use of quantum error correction codes,
 // specifically the 3-qubit bit flip code to detect and correct errors.
 
-use quantrs_circuit::builder::Circuit;
-use quantrs_core::qubit::QubitId;
-use quantrs_sim::noise::{BitFlipChannel, NoiseModel};
-use quantrs_sim::statevector::StateVectorSimulator;
+use quantrs2_circuit::builder::Circuit;
+use quantrs2_core::qubit::QubitId;
+use quantrs2_sim::noise::{BitFlipChannel, NoiseModel};
+use quantrs2_sim::statevector::StateVectorSimulator;
 
 fn main() {
     println!("Quantum Error Correction Example");
@@ -141,7 +141,7 @@ fn run_with_noise(encode_circuit: &Circuit<5>, correction_circuit: &Circuit<5>) 
 
     // Add all gates from encode circuit
     for gate in encode_circuit.gates() {
-        full_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        full_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Create noise model with moderate bit flip probability
@@ -192,14 +192,14 @@ fn run_with_noise(encode_circuit: &Circuit<5>, correction_circuit: &Circuit<5>) 
     // Add encoded state preparation with noise
     for gate in full_circuit.gates() {
         correction_with_encoded
-            .add_gate(gate.as_ref().clone())
+            .add_gate_arc(gate.clone())
             .unwrap();
     }
 
     // Add correction gates
     for gate in correction_circuit.gates() {
         correction_with_encoded
-            .add_gate(gate.as_ref().clone())
+            .add_gate_arc(gate.clone())
             .unwrap();
     }
 
@@ -238,7 +238,7 @@ fn run_with_high_noise(encode_circuit: &Circuit<5>, correction_circuit: &Circuit
 
     // Add all gates from encode circuit
     for gate in encode_circuit.gates() {
-        full_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        full_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Create noise model with higher bit flip probability
@@ -278,14 +278,14 @@ fn run_with_high_noise(encode_circuit: &Circuit<5>, correction_circuit: &Circuit
     // Add encoded state preparation with noise
     for gate in full_circuit.gates() {
         correction_with_encoded
-            .add_gate(gate.as_ref().clone())
+            .add_gate_arc(gate.clone())
             .unwrap();
     }
 
     // Add correction gates
     for gate in correction_circuit.gates() {
         correction_with_encoded
-            .add_gate(gate.as_ref().clone())
+            .add_gate_arc(gate.clone())
             .unwrap();
     }
 
@@ -309,7 +309,7 @@ fn run_with_high_noise(encode_circuit: &Circuit<5>, correction_circuit: &Circuit
 }
 
 // Helper function to compute the probability of a qubit being in state |1⟩
-fn get_qubit_prob_one(register: &quantrs_core::register::Register<5>, qubit_idx: usize) -> f64 {
+fn get_qubit_prob_one(register: &quantrs2_core::register::Register<5>, qubit_idx: usize) -> f64 {
     let mut prob_one = 0.0;
     for (i, amplitude) in register.amplitudes().iter().enumerate() {
         if (i >> qubit_idx) & 1 == 1 {

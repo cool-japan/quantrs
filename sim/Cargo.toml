@@ -11,8 +11,8 @@ categories.workspace = true
 description = "Quantum circuit simulators for the QuantRS2 framework"
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.4" }
-quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.4" }
+quantrs2-core.workspace = true
+quantrs2-circuit.workspace = true
 num-complex.workspace = true
 ndarray.workspace = true
 rayon.workspace = true
@@ -21,30 +21,36 @@ thiserror.workspace = true
 scirs2-core = { workspace = true, features = ["simd", "memory_management", "parallel", "linalg", "gpu"], optional = true }
 scirs2-linalg = { workspace = true, default-features = false, optional = true }
 scirs2-optimize = { workspace = true, default-features = false, optional = true }
-pandrs = { workspace = true, optional = true }
 pyo3.workspace = true
 
 # For GPU support (optional)
 wgpu = { workspace = true, optional = true }
 bytemuck = { workspace = true, features = ["derive"], optional = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"], optional = true }
-futures = { version = "0.3", optional = true }
+futures = { workspace = true, optional = true }
 rand.workspace = true
+rand_distr.workspace = true
 rand_chacha.workspace = true
-rand_xoshiro = "0.6"
+rand_xoshiro.workspace = true
 wide.workspace = true
-fastrand = "2.0.1"
-nalgebra-sparse = "0.9"
-dashmap = "5.5"
-half = { version = "2.4", features = ["num-traits"] }
-ndarray-linalg = { version = "0.17", optional = true }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-chrono = { version = "0.4", features = ["serde"] }
-num_cpus = "1.16"
+fastrand.workspace = true
+nalgebra-sparse.workspace = true
+dashmap.workspace = true
+half.workspace = true
+ndarray-linalg.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+num_cpus.workspace = true
+ndrustfft = { workspace = true, optional = true }
+sprs = { workspace = true, optional = true }
+nalgebra = { workspace = true, optional = true }
+md5.workspace = true
+regex.workspace = true
+tempfile.workspace = true
 
 [dev-dependencies]
-approx = "0.5"
+approx.workspace = true
 
 [features]
 default = ["optimize"]
@@ -52,9 +58,13 @@ gpu = ["dep:wgpu", "dep:bytemuck", "dep:tokio", "dep:futures"]
 simd = []
 optimize = ["simd"] # Enable optimized implementations
 memory_efficient = [] # Enable memory-efficient algorithms for large state vectors
-advanced_math = ["dep:scirs2-core", "dep:scirs2-linalg", "dep:scirs2-optimize", "dep:pandrs"] # Enable advanced math using external libs
-mps = ["dep:ndarray-linalg"] # Enable MPS simulator with linear algebra support
+advanced_math = ["dep:scirs2-core", "dep:scirs2-linalg", "dep:scirs2-optimize", "dep:ndrustfft", "dep:sprs", "dep:nalgebra"] # Enable advanced math using external libs
+mps = [] # Enable MPS simulator
 
 [[bin]]
 name = "test_stabilizer"
 path = "src/bin/test_stabilizer.rs"
+
+[[bin]]
+name = "debug_holographic_matrix"
+path = "debug_holographic_matrix.rs"

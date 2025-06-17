@@ -9,20 +9,16 @@
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
-    gate::GateOp,
-    qubit::QubitId,
-    register::Register,
-    variational::{DiffMode, VariationalCircuit, VariationalGate},
+    variational::VariationalCircuit,
 };
 use ndarray::{Array1, Array2};
-use num_complex::Complex64;
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 use std::sync::{Arc, Mutex};
 
 // Import SciRS2 optimization
 extern crate scirs2_optimize;
-use scirs2_optimize::unconstrained::{minimize, Method, OptimizeResult, Options};
+use scirs2_optimize::unconstrained::{minimize, Method, Options};
 
 // Import SciRS2 linear algebra for natural gradient
 extern crate scirs2_linalg;
@@ -502,11 +498,15 @@ impl VariationalQuantumOptimizer {
         let mut rng = if let Some(seed) = self.config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            StdRng::from_seed(rand::thread_rng().gen())
+            StdRng::from_seed(rand::rng().random())
         };
 
         let current_params = circuit.get_parameters();
-        let perturbation = if rng.gen::<bool>() { epsilon } else { -epsilon };
+        let perturbation = if rng.random::<bool>() {
+            epsilon
+        } else {
+            -epsilon
+        };
 
         // Positive perturbation
         let mut circuit_plus = circuit.clone();
@@ -635,9 +635,7 @@ impl VariationalQuantumOptimizer {
                     }
                 }
             }
-            OptimizationMethod::SPSA {
-                a, alpha, gamma, ..
-            } => {
+            OptimizationMethod::SPSA { a, alpha, .. } => {
                 // SPSA parameter update
                 let ak = a / (state.iteration as f64 + 1.0).powf(*alpha);
 
@@ -1003,16 +1001,16 @@ impl HyperparameterOptimizer {
     ) -> QuantRS2Result<HyperparameterResult> {
         use rand::{rngs::StdRng, Rng, SeedableRng};
 
-        let mut rng = StdRng::from_seed(rand::thread_rng().gen());
+        let mut rng = StdRng::from_seed(rand::rng().random());
         let mut best_hyperparams = FxHashMap::default();
         let mut best_loss = f64::INFINITY;
         let mut all_trials = Vec::new();
 
-        for trial in 0..self.n_trials {
+        for _trial in 0..self.n_trials {
             // Sample hyperparameters
             let mut hyperparams = FxHashMap::default();
             for (name, &(min_val, max_val)) in &self.search_space {
-                let value = rng.gen_range(min_val..max_val);
+                let value = rng.random_range(min_val..max_val);
                 hyperparams.insert(name.clone(), value);
             }
 
@@ -1086,7 +1084,7 @@ impl Clone for VariationalCircuit {
 mod tests {
     use super::*;
     use crate::qubit::QubitId;
-    use crate::variational::{DiffMode, VariationalGate};
+    use crate::variational::VariationalGate;
 
     #[test]
     fn test_gradient_descent_optimizer() {

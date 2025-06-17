@@ -4,16 +4,14 @@
 //! including master equation evolution, Kraus operators, noise channels, and
 //! process tomography for realistic quantum device modeling.
 
-use ndarray::{Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};
+use crate::prelude::SimulatorError;
+use ndarray::{Array1, Array2, ArrayView1};
 use num_complex::Complex64;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::time::Duration;
 
-use crate::error::{Result, SimulatorError};
+use crate::error::Result;
 use crate::scirs2_integration::SciRS2Backend;
-use crate::statevector::StateVectorSimulator;
 
 /// Lindblad master equation simulator for open quantum systems
 pub struct LindladSimulator {

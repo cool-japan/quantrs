@@ -4,7 +4,10 @@
 //! algorithms including simulated annealing, parallel tempering, and
 //! specialized operations for QUBO/HOBO problems.
 
+#![allow(dead_code)]
+
 /// CUDA kernel source code for optimized operations
+
 pub mod cuda {
     /// Coalesced memory access kernel for spin updates
     pub const COALESCED_SPIN_UPDATE: &str = r#"
@@ -500,6 +503,12 @@ enum KernelArg {
     Integer(i32),
 }
 
+impl Default for KernelManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KernelManager {
     /// Create new kernel manager
     pub fn new() -> Self {
@@ -518,16 +527,19 @@ impl KernelManager {
         context: &GpuContext,
     ) -> Result<(), String> {
         // Compile kernel with SciRS2
-        let compiled = context
-            .compile_kernel(source)
-            .map_err(|e| format!("Kernel compilation failed: {}", e))?;
+        // TODO: Implement compile_kernel in GPU stub
+        // let compiled = context
+        //     .compile_kernel(source)
+        //     .map_err(|e| format!("Kernel compilation failed: {}", e))?;
 
         // Determine optimal launch parameters
-        let optimal_block_size = self.determine_optimal_block_size(&compiled)?;
-        let shared_mem_size = self.calculate_shared_memory(&compiled)?;
+        // let optimal_block_size = self.determine_optimal_block_size(&compiled)?;
+        // let shared_mem_size = self.calculate_shared_memory(&compiled)?;
+        let optimal_block_size = 256; // Placeholder value
+        let shared_mem_size = 0; // Placeholder value
 
         // Create kernel wrapper
-        let kernel = CompiledKernel {
+        let mut kernel = CompiledKernel {
             function: Box::new(move |args| {
                 // Launch kernel with args
                 Ok(())
@@ -571,8 +583,8 @@ impl KernelManager {
     }
 }
 
-#[cfg(feature = "gpu")]
-use crate::scirs_stub::scirs2_core::gpu::GpuMemory;
+#[cfg(feature = "scirs")]
+use crate::gpu_memory_pool::{GpuContext, GpuMemory};
 
 #[cfg(test)]
 mod tests {

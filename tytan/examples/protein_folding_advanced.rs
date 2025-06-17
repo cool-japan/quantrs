@@ -8,7 +8,7 @@
 
 use ndarray::{Array2, Array3};
 use quantrs2_tytan::{
-    compile::{Model, SimpleExpr},
+    compile::Model,
     constraints::PenaltyFunction,
     optimization::{
         adaptive::{AdaptiveConfig, AdaptiveOptimizer, AdaptiveStrategy},
@@ -21,6 +21,9 @@ use quantrs2_tytan::{
         solution_analysis::analyze_solution_distribution,
     },
 };
+
+use quantrs2_tytan::compile::expr::{Expr, constant};
+
 use std::collections::{HashMap, HashSet};
 use std::f64::consts::PI;
 use std::fmt::Write;
@@ -210,7 +213,7 @@ fn create_folding_model(
     }
 
     // Objective: Minimize energy (maximize H-H contacts)
-    let mut energy_expr = SimpleExpr::constant(0.0);
+    let mut energy_expr = constant(0.0);
 
     // For each pair of non-sequential hydrophobic residues
     for i in 0..n {
@@ -228,7 +231,7 @@ fn create_folding_model(
                             // Add energy contribution if both residues are at these positions
                             // Energy = -1 * x_{i,idx1} * x_{j,idx2}
                             energy_expr = energy_expr
-                                + SimpleExpr::constant(1.0) * // Negative because we minimize
+                                + constant(1.0) * // Negative because we minimize
                                 position_vars[&(i, idx1)].clone() *
                                 position_vars[&(j, idx2)].clone();
                         }
@@ -464,7 +467,7 @@ fn run_folding_experiment(
     }
 
     // Run sampling with tracking
-    let sampler = SASampler::new(None);
+    let mut sampler = SASampler::new(None);
 
     println!("\nRunning optimization...");
     let start = std::time::Instant::now();
@@ -720,7 +723,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             // Run with different initial conditions
-            let sampler = SASampler::new(Some(run as u64));
+            let mut sampler = SASampler::new(Some(run as u64));
 
             let samples = sampler.run_qubo(&(matrix, var_map), 100)?;
 

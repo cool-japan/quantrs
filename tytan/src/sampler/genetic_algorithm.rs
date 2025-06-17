@@ -342,7 +342,7 @@ impl Sampler for GASampler {
         let mut rng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => {
-                let seed: u64 = rand::thread_rng().random();
+                let seed: u64 = rand::rng().random();
                 StdRng::seed_from_u64(seed)
             }
         };
@@ -553,7 +553,7 @@ impl Sampler for GASampler {
         let mut rng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => {
-                let seed: u64 = rand::thread_rng().random();
+                let seed: u64 = rand::rng().random();
                 StdRng::seed_from_u64(seed)
             }
         };

@@ -183,6 +183,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             (10.0, 1.0),  // Increase beta linearly
             (20.0, 10.0), // End with high beta (low temperature)
         ]),
+        s_schedule: None,
         auto_scale: Some(true),
         flux_biases: None,
         extra: {

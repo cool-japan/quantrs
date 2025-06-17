@@ -5,15 +5,15 @@
 //! and CNOT gates with asymptotically optimal gate count.
 
 use crate::{
-    cartan::{CartanDecomposer, OptimizedCartanDecomposer},
-    controlled::{make_controlled, ControlledGate},
+    cartan::OptimizedCartanDecomposer,
+    controlled::make_controlled,
     error::{QuantRS2Error, QuantRS2Result},
-    gate::{multi::*, single::*, GateOp},
+    gate::{single::*, GateOp},
     matrix_ops::{DenseMatrix, QuantumMatrix},
     qubit::QubitId,
     synthesis::{decompose_single_qubit_zyz, SingleQubitDecomposition},
 };
-use ndarray::{s, Array1, Array2, Axis};
+use ndarray::{s, Array2};
 use num_complex::Complex;
 use rustc_hash::FxHashMap;
 use std::f64::consts::PI;
@@ -500,7 +500,7 @@ impl OptimizedShannonDecomposer {
     /// Apply commutation-based optimization
     fn apply_commutation_optimization(
         &self,
-        mut decomp: ShannonDecomposition,
+        decomp: ShannonDecomposition,
     ) -> QuantRS2Result<ShannonDecomposition> {
         // Move commuting gates to reduce circuit depth
         // This is a simplified version - full implementation would use

@@ -3,10 +3,7 @@
 //! This module provides tools for tracking and visualizing the convergence
 //! of quantum annealing and optimization algorithms.
 
-use crate::optimization::{
-    adaptive::PerformanceMetrics, penalty::ConstraintViolation, tuning::TuningEvaluation,
-};
-use ndarray::{Array1, Array2};
+use crate::optimization::{adaptive::PerformanceMetrics, tuning::TuningEvaluation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -234,7 +231,7 @@ impl ConvergencePlot {
         let mut convergence_iterations = HashMap::new();
         let tolerance = 1e-6;
 
-        for (name, _) in &final_violations {
+        for name in final_violations.keys() {
             for (i, constraints) in self.constraint_history.iter().enumerate() {
                 if let Some(&violation) = constraints.get(name) {
                     if violation.abs() < tolerance {
@@ -277,7 +274,7 @@ impl ConvergencePlot {
         let mut convergence_windows = HashMap::new();
         let mut stable_parameters = Vec::new();
 
-        for (param_name, _) in &final_values {
+        for param_name in final_values.keys() {
             // Extract parameter values over time
             let values: Vec<f64> = self
                 .parameter_history
@@ -438,6 +435,7 @@ impl ConvergencePlot {
             return Ok(0.0);
         }
 
+        #[allow(unused_variables)]
         let mut direction_changes = 0;
         let mut total_variation = 0.0;
 
@@ -569,8 +567,8 @@ impl ConvergencePlot {
         let mut result = Vec::with_capacity(data.len());
 
         // Fill initial values
-        for i in 0..window / 2 {
-            result.push(data[i]);
+        for item in data.iter().take(window / 2) {
+            result.push(*item);
         }
 
         // Calculate moving average
@@ -580,8 +578,8 @@ impl ConvergencePlot {
         }
 
         // Fill final values
-        for i in data.len() - window / 2..data.len() {
-            result.push(data[i]);
+        for item in data.iter().skip(data.len() - window / 2) {
+            result.push(*item);
         }
 
         result
@@ -609,7 +607,7 @@ impl ConvergencePlot {
 
             // Best so far
             if self.config.show_best {
-                let best_so_far = self.best_so_far(&self.objective_history);
+                let mut best_so_far = self.best_so_far(&self.objective_history);
                 subplot
                     .plot(&iterations, &best_so_far)
                     .set_label("Best so far")

@@ -646,7 +646,7 @@ impl Expression {
     }
 }
 
-/// Implement Into<Expression> for numeric types
+/// Implement `Into<Expression>` for numeric types
 impl From<f64> for Expression {
     fn from(value: f64) -> Self {
         Expression::Constant(value)

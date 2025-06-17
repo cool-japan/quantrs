@@ -511,6 +511,13 @@ impl SciRS2DistributedTrainer {
         // Placeholder - would use SciRS2 distributed operations
         Ok(vec![tensor.clone(); self.world_size])
     }
+
+    /// Wrap a model for distributed training
+    pub fn wrap_model<T>(&self, model: T) -> Result<T> {
+        // Placeholder - would wrap the model with distributed training capabilities
+        // For now, just return the model unchanged
+        Ok(model)
+    }
 }
 
 /// SciRS2 model serialization interface

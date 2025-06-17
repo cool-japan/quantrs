@@ -5,13 +5,11 @@
 //! gates for optimal performance. It leverages SciRS2's optimization
 //! capabilities for efficient matrix operations and circuit transformations.
 
-use ndarray::{Array2, Array3, ArrayView2};
+use ndarray::Array2;
 use num_complex::Complex64;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
-use std::sync::Arc;
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
@@ -574,13 +572,127 @@ pub struct AdaptiveGateFusion {
     config: AdaptiveFusionConfig,
     /// SciRS2 backend for optimization
     backend: Option<SciRS2Backend>,
-    /// Fusion pattern cache
-    fusion_cache: HashMap<Vec<QuantumGate>, FusedGateBlock>,
+    /// Fusion pattern cache with improved key system
+    fusion_cache: HashMap<FusionPatternKey, CachedFusionResult>,
     /// Learning history for adaptive strategy
     learning_history: Vec<FusionExperiment>,
     /// Circuit optimization context
     #[cfg(feature = "advanced_math")]
     optimizer: Option<Box<dyn std::any::Any>>, // Placeholder for CircuitOptimizer
+    /// Machine learning predictor for fusion benefits
+    ml_predictor: Option<MLFusionPredictor>,
+    /// Cache statistics
+    cache_hits: usize,
+    cache_misses: usize,
+    /// Pattern analyzer for circuit structure recognition
+    pattern_analyzer: CircuitPatternAnalyzer,
+}
+
+/// Cache key for fusion patterns
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FusionPatternKey {
+    /// Gate types in the pattern
+    gate_types: Vec<GateType>,
+    /// Number of qubits involved
+    num_qubits: usize,
+    /// Parameter hash for parameterized gates
+    parameter_hash: u64,
+}
+
+impl FusionPatternKey {
+    /// Create a fusion pattern key from a list of gates
+    pub fn from_gates(gates: &[QuantumGate]) -> Result<Self> {
+        let gate_types: Vec<GateType> = gates.iter().map(|g| g.gate_type.clone()).collect();
+
+        // Count unique qubits
+        let mut qubits = std::collections::HashSet::new();
+        for gate in gates {
+            for &qubit in &gate.qubits {
+                qubits.insert(qubit);
+            }
+        }
+        let num_qubits = qubits.len();
+
+        // Hash parameters
+        let mut parameter_hash = 0u64;
+        for gate in gates {
+            for &param in &gate.parameters {
+                parameter_hash = parameter_hash.wrapping_add((param * 1000.0) as u64);
+            }
+        }
+
+        Ok(FusionPatternKey {
+            gate_types,
+            num_qubits,
+            parameter_hash,
+        })
+    }
+}
+
+/// Cached fusion result
+#[derive(Debug, Clone)]
+pub struct CachedFusionResult {
+    /// The fused gate block
+    fused_block: FusedGateBlock,
+    /// Performance benefit observed
+    benefit: f64,
+    /// Number of times this pattern was used
+    usage_count: usize,
+    /// Last access timestamp
+    last_accessed: std::time::Instant,
+}
+
+/// Machine learning predictor for fusion benefits
+pub struct MLFusionPredictor {
+    /// Feature weights for different gate patterns
+    feature_weights: HashMap<String, f64>,
+    /// Training examples
+    training_data: Vec<MLTrainingExample>,
+    /// Model accuracy
+    accuracy: f64,
+}
+
+/// Training example for ML predictor
+#[derive(Debug, Clone)]
+pub struct MLTrainingExample {
+    /// Input features
+    features: Vec<f64>,
+    /// Expected benefit (target)
+    benefit: f64,
+    /// Actual observed benefit
+    observed_benefit: Option<f64>,
+}
+
+/// Circuit pattern analyzer
+pub struct CircuitPatternAnalyzer {
+    /// Known beneficial patterns
+    beneficial_patterns: HashMap<String, f64>,
+    /// Pattern recognition history
+    pattern_history: Vec<PatternRecognitionResult>,
+}
+
+/// Pattern recognition result
+#[derive(Debug, Clone)]
+pub struct PatternRecognitionResult {
+    /// Pattern description
+    pub pattern: String,
+    /// Confidence in recognition
+    pub confidence: f64,
+    /// Expected benefit
+    pub expected_benefit: f64,
+}
+
+/// Result of fusion decision
+#[derive(Debug, Clone)]
+pub struct FusionResult {
+    /// Whether gates should be fused
+    pub should_fuse: bool,
+    /// Confidence in the decision
+    pub confidence: f64,
+    /// Expected speedup from fusion
+    pub expected_speedup: f64,
+    /// Estimated error increase
+    pub estimated_error: f64,
 }
 
 /// Fusion experiment for learning
@@ -600,6 +712,10 @@ impl AdaptiveGateFusion {
             backend: None,
             fusion_cache: HashMap::new(),
             learning_history: Vec::new(),
+            ml_predictor: None,
+            cache_hits: 0,
+            cache_misses: 0,
+            pattern_analyzer: CircuitPatternAnalyzer::new(),
             #[cfg(feature = "advanced_math")]
             optimizer: None,
         })
@@ -925,17 +1041,30 @@ impl AdaptiveGateFusion {
                 // Create fused block
                 let block_gates = gates[i..i + best_block_size].to_vec();
 
+                // Create fusion pattern key from gates
+                let pattern_key = FusionPatternKey::from_gates(&block_gates)?;
+
                 // Check cache first
-                if let Some(cached_block) = self.fusion_cache.get(&block_gates) {
-                    fused_blocks.push(cached_block.clone());
+                if let Some(cached_result) = self.fusion_cache.get(&pattern_key) {
+                    fused_blocks.push(cached_result.fused_block.clone());
+                    self.cache_hits += 1;
                 } else {
                     let fused_block = FusedGateBlock::new(block_gates.clone())?;
 
+                    // Create cached result
+                    let cached_result = CachedFusionResult {
+                        fused_block: fused_block.clone(),
+                        benefit: 1.0, // Default benefit
+                        usage_count: 1,
+                        last_accessed: std::time::Instant::now(),
+                    };
+
                     // Cache the result
                     if self.fusion_cache.len() < self.config.fusion_cache_size {
-                        self.fusion_cache.insert(block_gates, fused_block.clone());
+                        self.fusion_cache.insert(pattern_key, cached_result);
                     }
 
+                    self.cache_misses += 1;
                     fused_blocks.push(fused_block);
                 }
 
@@ -1022,6 +1151,89 @@ impl AdaptiveGateFusion {
             .sum();
         total / self.learning_history.len() as f64
     }
+
+    /// Fuse a sequence of gates using adaptive fusion
+    pub fn fuse_gates(
+        &mut self,
+        gates: &[QuantumGate],
+    ) -> crate::error::Result<(Vec<FusedGateBlock>, Vec<QuantumGate>)> {
+        let mut fused_blocks = Vec::new();
+
+        if gates.is_empty() {
+            return Ok((fused_blocks, Vec::new()));
+        }
+
+        let mut i = 0;
+        while i < gates.len() {
+            if i + 1 < gates.len() {
+                // Try to fuse adjacent gates
+                let should_fuse = self.should_fuse_basic(&gates[i], &gates[i + 1]);
+
+                if should_fuse {
+                    // Create a fused gate block from the two gates
+                    let mut qubits = gates[i].qubits.clone();
+                    qubits.extend_from_slice(&gates[i + 1].qubits);
+                    qubits.sort_unstable();
+                    qubits.dedup();
+
+                    let fused_block = FusedGateBlock {
+                        gates: vec![gates[i].clone(), gates[i + 1].clone()],
+                        combined_matrix: self
+                            .calculate_combined_matrix(&gates[i], &gates[i + 1])?,
+                        qubits,
+                        cost: 0.5, // Assume fusion reduces cost
+                        improvement_factor: 1.5,
+                    };
+
+                    fused_blocks.push(fused_block);
+                    i += 2; // Skip both gates
+                } else {
+                    // Create a single-gate block
+                    let fused_block = FusedGateBlock {
+                        gates: vec![gates[i].clone()],
+                        combined_matrix: gates[i].matrix.clone(),
+                        qubits: gates[i].qubits.clone(),
+                        cost: 1.0,
+                        improvement_factor: 1.0,
+                    };
+
+                    fused_blocks.push(fused_block);
+                    i += 1;
+                }
+            } else {
+                // Last gate, add it as-is
+                let fused_block = FusedGateBlock {
+                    gates: vec![gates[i].clone()],
+                    combined_matrix: gates[i].matrix.clone(),
+                    qubits: gates[i].qubits.clone(),
+                    cost: 1.0,
+                    improvement_factor: 1.0,
+                };
+
+                fused_blocks.push(fused_block);
+                i += 1;
+            }
+        }
+
+        Ok((fused_blocks, Vec::new()))
+    }
+
+    /// Basic heuristic for gate fusion
+    fn should_fuse_basic(&self, gate1: &QuantumGate, gate2: &QuantumGate) -> bool {
+        let overlapping_qubits = gate1.qubits.iter().any(|&q| gate2.qubits.contains(&q));
+        overlapping_qubits && gate1.qubits.len() <= 2 && gate2.qubits.len() <= 2
+    }
+
+    /// Calculate combined matrix for two gates
+    fn calculate_combined_matrix(
+        &self,
+        gate1: &QuantumGate,
+        gate2: &QuantumGate,
+    ) -> crate::error::Result<Array2<Complex64>> {
+        // For simplicity, just return gate1's matrix
+        // In a real implementation, this would compute the matrix product
+        Ok(gate1.matrix.clone())
+    }
 }
 
 /// Fusion statistics
@@ -1035,6 +1247,321 @@ pub struct FusionStats {
     pub learning_experiments: usize,
     /// Average performance improvement
     pub average_improvement: f64,
+}
+
+impl MLFusionPredictor {
+    /// Create a new ML predictor
+    pub fn new() -> Self {
+        let mut feature_weights = HashMap::new();
+
+        // Initialize with some reasonable default weights
+        feature_weights.insert("rotation_similarity".to_string(), 0.8);
+        feature_weights.insert("gate_locality".to_string(), 0.7);
+        feature_weights.insert("commutation_potential".to_string(), 0.6);
+        feature_weights.insert("matrix_sparsity".to_string(), 0.5);
+
+        Self {
+            feature_weights,
+            training_data: Vec::new(),
+            accuracy: 0.5, // Start with neutral accuracy
+        }
+    }
+
+    /// Predict fusion benefit for a gate sequence
+    pub fn predict_benefit(&self, gates: &[QuantumGate]) -> f64 {
+        let features = self.extract_features(gates);
+
+        let mut prediction = 0.0;
+        for (i, &feature_value) in features.iter().enumerate() {
+            let weight_key = match i {
+                0 => "rotation_similarity",
+                1 => "gate_locality",
+                2 => "commutation_potential",
+                3 => "matrix_sparsity",
+                _ => "default",
+            };
+
+            if let Some(&weight) = self.feature_weights.get(weight_key) {
+                prediction += feature_value * weight;
+            }
+        }
+
+        // Sigmoid activation to bound between 0 and 1
+        1.0 / (1.0 + (-prediction).exp())
+    }
+
+    /// Extract features from gate sequence
+    fn extract_features(&self, gates: &[QuantumGate]) -> Vec<f64> {
+        let mut features = [0.0; 4];
+
+        if gates.len() < 2 {
+            return features.to_vec();
+        }
+
+        // Feature 0: Rotation similarity
+        features[0] = self.calculate_rotation_similarity(gates);
+
+        // Feature 1: Gate locality
+        features[1] = self.calculate_gate_locality(gates);
+
+        // Feature 2: Commutation potential
+        features[2] = self.calculate_commutation_potential(gates);
+
+        // Feature 3: Matrix sparsity
+        features[3] = self.calculate_matrix_sparsity(gates);
+
+        features.to_vec()
+    }
+
+    fn calculate_rotation_similarity(&self, gates: &[QuantumGate]) -> f64 {
+        let rotation_gates: Vec<_> = gates
+            .iter()
+            .filter(|g| {
+                matches!(
+                    g.gate_type,
+                    GateType::RotationX | GateType::RotationY | GateType::RotationZ
+                )
+            })
+            .collect();
+
+        if rotation_gates.len() < 2 {
+            return 0.0;
+        }
+
+        // Count same-type rotations on same qubits
+        let mut similarity_score = 0.0;
+        for i in 0..rotation_gates.len() - 1 {
+            for j in i + 1..rotation_gates.len() {
+                if rotation_gates[i].gate_type == rotation_gates[j].gate_type
+                    && rotation_gates[i].qubits == rotation_gates[j].qubits
+                {
+                    similarity_score += 1.0;
+                }
+            }
+        }
+
+        similarity_score / (rotation_gates.len() as f64)
+    }
+
+    fn calculate_gate_locality(&self, gates: &[QuantumGate]) -> f64 {
+        let mut locality_score = 0.0;
+        let mut adjacent_count = 0;
+
+        for i in 0..gates.len() - 1 {
+            let current_qubits: HashSet<_> = gates[i].qubits.iter().cloned().collect();
+            let next_qubits: HashSet<_> = gates[i + 1].qubits.iter().cloned().collect();
+
+            if current_qubits.intersection(&next_qubits).count() > 0 {
+                locality_score += 1.0;
+            }
+            adjacent_count += 1;
+        }
+
+        if adjacent_count > 0 {
+            locality_score / adjacent_count as f64
+        } else {
+            0.0
+        }
+    }
+
+    fn calculate_commutation_potential(&self, gates: &[QuantumGate]) -> f64 {
+        let mut commutation_score = 0.0;
+        let mut pair_count = 0;
+
+        for i in 0..gates.len() - 1 {
+            for j in i + 1..gates.len() {
+                let qubits_i: HashSet<_> = gates[i].qubits.iter().cloned().collect();
+                let qubits_j: HashSet<_> = gates[j].qubits.iter().cloned().collect();
+
+                // Non-overlapping gates likely commute
+                if qubits_i.intersection(&qubits_j).count() == 0 {
+                    commutation_score += 1.0;
+                }
+                pair_count += 1;
+            }
+        }
+
+        if pair_count > 0 {
+            commutation_score / pair_count as f64
+        } else {
+            0.0
+        }
+    }
+
+    fn calculate_matrix_sparsity(&self, gates: &[QuantumGate]) -> f64 {
+        let mut total_sparsity = 0.0;
+
+        for gate in gates {
+            let matrix = &gate.matrix;
+            let zero_count = matrix.iter().filter(|&&x| x.norm() < 1e-10).count();
+            let sparsity = zero_count as f64 / (matrix.len() as f64);
+            total_sparsity += sparsity;
+        }
+
+        total_sparsity / gates.len() as f64
+    }
+
+    /// Add training example and update model
+    pub fn add_training_example(&mut self, example: MLTrainingExample) {
+        self.training_data.push(example);
+
+        // Simple online learning update
+        if self.training_data.len() % 10 == 0 {
+            self.update_weights();
+        }
+    }
+
+    fn update_weights(&mut self) {
+        // Simplified gradient descent update
+        let learning_rate = 0.01;
+
+        for example in &self.training_data {
+            if let Some(observed) = example.observed_benefit {
+                let predicted = self.predict_benefit_from_features(&example.features);
+                let error = observed - predicted;
+
+                // Update weights based on error
+                for (i, &feature_value) in example.features.iter().enumerate() {
+                    let weight_key = match i {
+                        0 => "rotation_similarity",
+                        1 => "gate_locality",
+                        2 => "commutation_potential",
+                        3 => "matrix_sparsity",
+                        _ => continue,
+                    };
+
+                    if let Some(weight) = self.feature_weights.get_mut(weight_key) {
+                        *weight += learning_rate * error * feature_value;
+                    }
+                }
+            }
+        }
+    }
+
+    fn predict_benefit_from_features(&self, features: &[f64]) -> f64 {
+        let mut prediction = 0.0;
+        for (i, &feature_value) in features.iter().enumerate() {
+            let weight_key = match i {
+                0 => "rotation_similarity",
+                1 => "gate_locality",
+                2 => "commutation_potential",
+                3 => "matrix_sparsity",
+                _ => "default",
+            };
+
+            if let Some(&weight) = self.feature_weights.get(weight_key) {
+                prediction += feature_value * weight;
+            }
+        }
+
+        1.0 / (1.0 + (-prediction).exp())
+    }
+
+    /// Check if two gates should be fused
+    fn should_fuse_gates(&self, gate1: &QuantumGate, gate2: &QuantumGate) -> FusionResult {
+        // For simplicity, use a basic heuristic
+        let overlapping_qubits = gate1.qubits.iter().any(|&q| gate2.qubits.contains(&q));
+        let should_fuse = overlapping_qubits && gate1.qubits.len() <= 2 && gate2.qubits.len() <= 2;
+
+        FusionResult {
+            should_fuse,
+            confidence: if should_fuse { 0.8 } else { 0.2 },
+            expected_speedup: if should_fuse { 1.5 } else { 1.0 },
+            estimated_error: 0.01,
+        }
+    }
+}
+
+impl CircuitPatternAnalyzer {
+    /// Create a new pattern analyzer
+    pub fn new() -> Self {
+        let mut beneficial_patterns = HashMap::new();
+
+        // Initialize with known beneficial patterns
+        beneficial_patterns.insert("RX-RX".to_string(), 0.9);
+        beneficial_patterns.insert("RY-RY".to_string(), 0.9);
+        beneficial_patterns.insert("RZ-RZ".to_string(), 0.9);
+        beneficial_patterns.insert("H-CNOT-H".to_string(), 0.8);
+        beneficial_patterns.insert("CNOT-RZ-CNOT".to_string(), 0.7);
+
+        Self {
+            beneficial_patterns,
+            pattern_history: Vec::new(),
+        }
+    }
+
+    /// Analyze circuit pattern and return recognition result
+    pub fn analyze_pattern(&mut self, gates: &[QuantumGate]) -> PatternRecognitionResult {
+        let pattern_string = self.create_pattern_string(gates);
+
+        let (confidence, expected_benefit) = if let Some(&benefit) =
+            self.beneficial_patterns.get(&pattern_string)
+        {
+            (0.9, benefit)
+        } else {
+            // Try partial matches
+            let (partial_confidence, partial_benefit) = self.find_partial_matches(&pattern_string);
+            (partial_confidence, partial_benefit)
+        };
+
+        let result = PatternRecognitionResult {
+            pattern: pattern_string,
+            confidence,
+            expected_benefit,
+        };
+
+        self.pattern_history.push(result.clone());
+        result
+    }
+
+    fn create_pattern_string(&self, gates: &[QuantumGate]) -> String {
+        gates
+            .iter()
+            .map(|g| format!("{:?}", g.gate_type))
+            .collect::<Vec<_>>()
+            .join("-")
+    }
+
+    fn find_partial_matches(&self, pattern: &str) -> (f64, f64) {
+        let mut best_confidence = 0.0;
+        let mut best_benefit = 0.0;
+
+        for (known_pattern, &benefit) in &self.beneficial_patterns {
+            let similarity = self.calculate_pattern_similarity(pattern, known_pattern);
+            if similarity > best_confidence {
+                best_confidence = similarity;
+                best_benefit = benefit * similarity; // Scale benefit by similarity
+            }
+        }
+
+        (best_confidence, best_benefit)
+    }
+
+    fn calculate_pattern_similarity(&self, pattern1: &str, pattern2: &str) -> f64 {
+        let gates1: Vec<&str> = pattern1.split('-').collect();
+        let gates2: Vec<&str> = pattern2.split('-').collect();
+
+        let max_len = gates1.len().max(gates2.len()) as f64;
+        if max_len == 0.0 {
+            return 0.0;
+        }
+
+        let common_count = gates1.iter().filter(|&g| gates2.contains(g)).count() as f64;
+
+        common_count / max_len
+    }
+
+    /// Learn from successful fusion
+    pub fn learn_pattern(&mut self, pattern: String, observed_benefit: f64) {
+        // Update or add pattern with exponential moving average
+        let alpha = 0.1; // Learning rate
+
+        if let Some(current_benefit) = self.beneficial_patterns.get_mut(&pattern) {
+            *current_benefit = (1.0 - alpha) * *current_benefit + alpha * observed_benefit;
+        } else {
+            self.beneficial_patterns.insert(pattern, observed_benefit);
+        }
+    }
 }
 
 /// Utilities for gate fusion

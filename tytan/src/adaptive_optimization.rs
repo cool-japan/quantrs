@@ -3,11 +3,9 @@
 //! This module provides intelligent optimization that learns from problem structure
 //! and solution history to improve performance over time.
 
-use crate::performance_profiler::*;
-use crate::sampler::{SampleResult, Sampler, SamplerError};
-use crate::solution_debugger::*;
-use ndarray::{Array1, Array2};
-use rand::{thread_rng, Rng};
+use crate::sampler::{SampleResult, Sampler};
+use ndarray::Array2;
+use rand::{rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
@@ -23,10 +21,12 @@ pub struct AdaptiveOptimizer {
     /// Strategy selector
     strategy_selector: StrategySelector,
     /// Parameter tuner
+    #[allow(dead_code)]
     parameter_tuner: ParameterTuner,
     /// Learning rate
     learning_rate: f64,
     /// Exploration vs exploitation
+    #[allow(dead_code)]
     exploration_rate: f64,
 }
 
@@ -146,6 +146,7 @@ pub struct StrategySelector {
     /// Selection strategy
     strategy: SelectionStrategy,
     /// Performance threshold
+    #[allow(dead_code)]
     performance_threshold: f64,
 }
 
@@ -164,10 +165,13 @@ pub enum SelectionStrategy {
 /// Parameter tuner
 pub struct ParameterTuner {
     /// Parameter ranges
+    #[allow(dead_code)]
     param_ranges: HashMap<String, (f64, f64)>,
     /// Tuning method
+    #[allow(dead_code)]
     tuning_method: TuningMethod,
     /// History
+    #[allow(dead_code)]
     tuning_history: HashMap<String, Vec<(HashMap<String, f64>, f64)>>,
 }
 
@@ -181,6 +185,12 @@ pub enum TuningMethod {
     Bayesian,
     /// Evolutionary
     Evolutionary { population_size: usize },
+}
+
+impl Default for AdaptiveOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AdaptiveOptimizer {
@@ -594,16 +604,16 @@ impl AdaptiveOptimizer {
 
     // Strategy implementations
 
-    fn get_best_algorithm_for_features(&self, features: &ProblemFeatures) -> String {
+    fn get_best_algorithm_for_features(&self, _features: &ProblemFeatures) -> String {
         // Simple implementation - would be more sophisticated in practice
         "SA".to_string()
     }
 
     fn explore_new_algorithm(
         &self,
-        features: &ProblemFeatures,
+        _features: &ProblemFeatures,
     ) -> Result<(String, HashMap<String, f64>), String> {
-        let idx = thread_rng().gen_range(0..self.samplers.len());
+        let idx = rng().random_range(0..self.samplers.len());
         let algorithm = self.samplers[idx].0.clone();
         let params = self.get_default_params(&algorithm);
         Ok((algorithm, params))
@@ -611,7 +621,7 @@ impl AdaptiveOptimizer {
 
     fn thompson_sampling_select(
         &self,
-        features: &ProblemFeatures,
+        _features: &ProblemFeatures,
     ) -> Result<(String, HashMap<String, f64>), String> {
         // Simplified Thompson sampling
         self.random_select()
@@ -620,14 +630,14 @@ impl AdaptiveOptimizer {
     fn ucb_select(
         &self,
         features: &ProblemFeatures,
-        c: f64,
+        _c: f64,
     ) -> Result<(String, HashMap<String, f64>), String> {
         // Simplified UCB
         self.select_by_heuristics(features)
     }
 
     fn random_select(&self) -> Result<(String, HashMap<String, f64>), String> {
-        let idx = thread_rng().gen_range(0..self.samplers.len());
+        let idx = rng().random_range(0..self.samplers.len());
         let algorithm = self.samplers[idx].0.clone();
         let params = self.get_default_params(&algorithm);
         Ok((algorithm, params))
@@ -846,14 +856,14 @@ mod tests {
     fn test_adaptive_optimizer() {
         let mut optimizer = AdaptiveOptimizer::new();
 
-        let qubo = array![[0.0, -1.0, 0.5], [-1.0, 0.0, -0.5], [0.5, -0.5, 0.0]];
+        let mut qubo = array![[0.0, -1.0, 0.5], [-1.0, 0.0, -0.5], [0.5, -0.5, 0.0]];
 
         let mut var_map = HashMap::new();
         var_map.insert("x".to_string(), 0);
         var_map.insert("y".to_string(), 1);
         var_map.insert("z".to_string(), 2);
 
-        let result = optimizer
+        let mut result = optimizer
             .optimize(&qubo, &var_map, Duration::from_secs(1))
             .unwrap();
 

@@ -13,19 +13,15 @@
 //! - Temporal pattern analysis for correlated noise
 //! - Hardware-aware correction optimization
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
+use ndarray::{Array1, Array2, Axis};
 use num_complex::Complex64;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
-use crate::circuit_interfaces::{
-    CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
-};
-use crate::concatenated_error_correction::{DecodingResult, ErrorType};
-use crate::error::{Result, SimulatorError};
-use crate::statevector::StateVectorSimulator;
+use crate::circuit_interfaces::CircuitInterface;
+use crate::concatenated_error_correction::ErrorType;
+use crate::error::Result;
 
 /// Machine learning model type for error correction
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

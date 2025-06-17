@@ -3,14 +3,14 @@
 //! This module provides quantum-inspired and quantum-enhanced machine learning
 //! algorithms for optimization problems.
 
+#![allow(dead_code)]
+
 #[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, Array3, Axis, IxDyn};
+use ndarray::{Array1, Array2, Array3};
 use rand::prelude::*;
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 use rand_distr::{Distribution, Normal};
-use std::collections::HashMap;
 use std::f64::consts::PI;
 
 /// Quantum Boltzmann Machine for optimization
@@ -43,9 +43,9 @@ impl QuantumBoltzmannMachine {
         let mut rng = StdRng::seed_from_u64(42);
 
         // Initialize weights and biases with simple random values
-        let weights = Array2::from_shape_fn((n_visible, n_hidden), |_| rng.gen_range(-0.1..0.1));
-        let visible_bias = Array1::from_shape_fn(n_visible, |_| rng.gen_range(-0.1..0.1));
-        let hidden_bias = Array1::from_shape_fn(n_hidden, |_| rng.gen_range(-0.1..0.1));
+        let weights = Array2::from_shape_fn((n_visible, n_hidden), |_| rng.random_range(-0.1..0.1));
+        let visible_bias = Array1::from_shape_fn(n_visible, |_| rng.random_range(-0.1..0.1));
+        let hidden_bias = Array1::from_shape_fn(n_hidden, |_| rng.random_range(-0.1..0.1));
 
         Self {
             n_visible,
@@ -144,8 +144,8 @@ impl QuantumBoltzmannMachine {
 
     /// Sample units from probabilities
     fn sample_units(&self, probs: &Array1<f64>) -> Array1<bool> {
-        let mut rng = thread_rng();
-        probs.mapv(|p| rng.gen_bool(p))
+        let mut rng = rng();
+        probs.mapv(|p| rng.random_bool(p))
     }
 
     /// Classical Gibbs sampling
@@ -174,7 +174,7 @@ impl QuantumBoltzmannMachine {
         initial_visible: &Array1<bool>,
     ) -> Result<(Array1<bool>, Array1<bool>), String> {
         // Simulate quantum tunneling effects
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let tunneling_prob = (-2.0 / self.transverse_field).exp();
 
         let mut visible = initial_visible.clone();
@@ -187,9 +187,9 @@ impl QuantumBoltzmannMachine {
             hidden = self.sample_units(&hidden_probs);
 
             // Quantum tunneling
-            if rng.gen_bool(tunneling_prob) {
+            if rng.random_bool(tunneling_prob) {
                 // Flip random spins
-                let flip_idx = rng.gen_range(0..self.n_visible);
+                let flip_idx = rng.random_range(0..self.n_visible);
                 visible[flip_idx] = !visible[flip_idx];
             }
 
@@ -197,8 +197,8 @@ impl QuantumBoltzmannMachine {
             visible = self.sample_units(&visible_probs);
 
             // Hidden unit tunneling
-            if rng.gen_bool(tunneling_prob) {
-                let flip_idx = rng.gen_range(0..self.n_hidden);
+            if rng.random_bool(tunneling_prob) {
+                let flip_idx = rng.random_range(0..self.n_hidden);
                 hidden[flip_idx] = !hidden[flip_idx];
             }
         }
@@ -250,11 +250,11 @@ impl QuantumBoltzmannMachine {
     /// Generate samples for optimization
     pub fn generate_samples(&self, num_samples: usize) -> Vec<Array1<bool>> {
         let mut samples = Vec::new();
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         for _ in 0..num_samples {
             // Start from random visible state
-            let initial_visible = Array1::from_shape_fn(self.n_visible, |_| rng.gen_bool(0.5));
+            let initial_visible = Array1::from_shape_fn(self.n_visible, |_| rng.random_bool(0.5));
 
             let (sample, _) = self.classical_gibbs_sampling(&initial_visible, 100);
             samples.push(sample);
@@ -295,11 +295,10 @@ impl QuantumVAE {
         use rand::Rng;
 
         let encoder_params =
-            Array2::from_shape_fn((n_layers, input_dim), |_| thread_rng().gen_range(-0.1..0.1));
+            Array2::from_shape_fn((n_layers, input_dim), |_| rng().random_range(-0.1..0.1));
 
-        let decoder_params = Array2::from_shape_fn((n_layers, latent_dim), |_| {
-            thread_rng().gen_range(-0.1..0.1)
-        });
+        let decoder_params =
+            Array2::from_shape_fn((n_layers, latent_dim), |_| rng().random_range(-0.1..0.1));
 
         Self {
             input_dim,
@@ -396,7 +395,7 @@ impl QuantumVAE {
     /// Reparameterization trick
     fn reparameterize(&self, mean: &Array1<f64>, log_var: &Array1<f64>) -> Array1<f64> {
         let std = log_var.mapv(|x| (x / 2.0).exp());
-        let eps = Array1::from_shape_fn(mean.len(), |_| thread_rng().gen_range(-1.0..1.0));
+        let eps = Array1::from_shape_fn(mean.len(), |_| rng().random_range(-1.0..1.0));
 
         mean + eps * std
     }
@@ -407,7 +406,7 @@ impl QuantumVAE {
 
         for _ in 0..num_samples {
             // Sample from prior
-            let z = Array1::from_shape_fn(self.latent_dim, |_| thread_rng().gen_range(-1.0..1.0));
+            let z = Array1::from_shape_fn(self.latent_dim, |_| rng().random_range(-1.0..1.0));
 
             // Decode
             let decoded = self.decode(&z);
@@ -496,16 +495,16 @@ impl QuantumGAN {
     ) -> Result<QGANTrainingResult, String> {
         let mut gen_losses = Vec::new();
         let mut disc_losses = Vec::new();
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
-        for epoch in 0..epochs {
+        for _epoch in 0..epochs {
             let mut epoch_gen_loss = 0.0;
             let mut epoch_disc_loss = 0.0;
 
             // Train discriminator
             for _ in 0..self.config.disc_steps {
                 // Sample real data
-                let real_idx = rng.gen_range(0..real_data.len());
+                let real_idx = rng.random_range(0..real_data.len());
                 let real_sample = &real_data[real_idx];
 
                 // Generate fake data
@@ -564,7 +563,7 @@ impl QuantumGAN {
 
     /// Generate optimized samples
     pub fn generate_optimized(&self, num_samples: usize) -> Vec<Array1<bool>> {
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let mut samples = Vec::new();
 
         for _ in 0..num_samples {
@@ -578,11 +577,11 @@ impl QuantumGAN {
 
 impl QuantumGenerator {
     fn new(latent_dim: usize, output_dim: usize, depth: usize) -> Self {
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         let params = Array2::from_shape_fn(
             (depth, latent_dim + output_dim),
-            |_| rng.gen::<f64>() * PI / 2.0 - PI / 4.0, // Sample from [-PI/4, PI/4]
+            |_| rng.random::<f64>() * PI / 2.0 - PI / 4.0, // Sample from [-PI/4, PI/4]
         );
 
         Self {
@@ -597,7 +596,7 @@ impl QuantumGenerator {
         // Sample latent vector using simple approach
         let latent = Array1::from_shape_fn(
             self.latent_dim,
-            |_| rng.gen::<f64>() * 2.0 - 1.0, // Sample from [-1, 1]
+            |_| rng.random::<f64>() * 2.0 - 1.0, // Sample from [-1, 1]
         );
 
         // Initialize quantum state
@@ -633,7 +632,7 @@ impl QuantumGenerator {
 
 impl QuantumDiscriminator {
     fn new(input_dim: usize, depth: usize) -> Self {
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let normal = Normal::new(0.0, PI / 4.0).unwrap();
 
         let params = Array2::from_shape_fn((depth, input_dim), |_| normal.sample(&mut rng));
@@ -730,12 +729,12 @@ struct QuantumQNetwork {
 }
 
 #[derive(Debug, Clone)]
-struct Experience {
-    state: Array1<f64>,
-    action: usize,
-    reward: f64,
-    next_state: Array1<f64>,
-    done: bool,
+pub struct Experience {
+    pub state: Array1<f64>,
+    pub action: usize,
+    pub reward: f64,
+    pub next_state: Array1<f64>,
+    pub done: bool,
 }
 
 impl QuantumRL {
@@ -756,9 +755,9 @@ impl QuantumRL {
 
     /// Select action using epsilon-greedy policy
     pub fn select_action(&self, state: &Array1<f64>, rng: &mut StdRng) -> usize {
-        if rng.gen_bool(self.epsilon) {
+        if rng.random_bool(self.epsilon) {
             // Explore
-            rng.gen_range(0..self.action_dim)
+            rng.random_range(0..self.action_dim)
         } else {
             // Exploit
             let q_values = self.q_network.forward(state);
@@ -787,12 +786,12 @@ impl QuantumRL {
             return Ok(0.0);
         }
 
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let mut total_loss = 0.0;
 
         // Sample batch
         for _ in 0..batch_size {
-            let idx = rng.gen_range(0..self.replay_buffer.len());
+            let idx = rng.random_range(0..self.replay_buffer.len());
             let experience = &self.replay_buffer[idx];
 
             // Compute target
@@ -829,7 +828,7 @@ impl QuantumRL {
 
 impl QuantumQNetwork {
     fn new(input_dim: usize, output_dim: usize, n_layers: usize) -> Self {
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let normal = Normal::new(0.0, 0.1).unwrap();
 
         let params = Array3::from_shape_fn(
@@ -911,7 +910,7 @@ mod tests {
         // Create training data
         let data = Array2::from_shape_fn((10, 4), |(i, j)| (i + j) % 2 == 0);
 
-        let result = qbm.train(&data, 10);
+        let mut result = qbm.train(&data, 10);
         assert!(result.is_ok());
 
         let samples = qbm.generate_samples(5);
@@ -937,12 +936,12 @@ mod tests {
         let mut qgan = QuantumGAN::new(2, 4, 2);
 
         // Create fake training data
-        let real_data = vec![
+        let mut real_data = vec![
             Array1::from_vec(vec![true, false, true, false]),
             Array1::from_vec(vec![false, true, false, true]),
         ];
 
-        let result = qgan.train(&real_data, 5);
+        let mut result = qgan.train(&real_data, 5);
         assert!(result.is_ok());
 
         let samples = qgan.generate_optimized(3);
@@ -954,7 +953,7 @@ mod tests {
         let mut qrl = QuantumRL::new(4, 2);
         let mut rng = StdRng::seed_from_u64(42);
 
-        let state = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
+        let mut state = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
         let action = qrl.select_action(&state, &mut rng);
         assert!(action < 2);
 

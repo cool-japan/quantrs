@@ -3,11 +3,11 @@
 //! This module provides quantum optimization tools for drug discovery
 //! including molecular design, lead optimization, and virtual screening.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, Array3, IxDyn};
-use rand::prelude::*;
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::f64::consts::PI;
+// Sampler types available for drug discovery applications
+#![allow(dead_code)]
+
+use ndarray::Array2;
+use std::collections::{HashMap, HashSet};
 
 /// Molecular design optimizer
 pub struct MolecularDesignOptimizer {
@@ -705,7 +705,7 @@ impl MolecularDesignOptimizer {
                 let frag_var = format!("x_{}_{}", f, i);
                 if let Some(&frag_idx) = var_map.get(&frag_var) {
                     // Must have at least one connection if fragment present
-                    let mut has_connection = false;
+                    let mut _has_connection = false;
                     for j in 0..max_positions {
                         if i != j {
                             let conn_var = if i < j {
@@ -718,7 +718,7 @@ impl MolecularDesignOptimizer {
                                 // Fragment at i but no connections is penalized
                                 qubo[[frag_idx, frag_idx]] += penalty;
                                 qubo[[frag_idx, conn_idx]] -= penalty;
-                                has_connection = true;
+                                _has_connection = true;
                             }
                         }
                     }
@@ -786,7 +786,7 @@ impl MolecularDesignOptimizer {
         let penalty = 10.0;
 
         // Approximate molecular weight constraint
-        if let Some((min_mw, max_mw)) = self.target_properties.molecular_weight {
+        if let Some((_min_mw, max_mw)) = self.target_properties.molecular_weight {
             for i in 0..max_positions {
                 for f in 0..self.fragment_library.fragments.len() {
                     let var_name = format!("x_{}_{}", f, i);
@@ -945,7 +945,7 @@ impl MolecularDesignOptimizer {
     }
 
     /// Calculate molecule score
-    fn calculate_score(&self, fragments: &[MolecularFragment], connections: &[Connection]) -> f64 {
+    fn calculate_score(&self, fragments: &[MolecularFragment], _connections: &[Connection]) -> f64 {
         match &self.scoring_function {
             ScoringFunction::Additive { weights } => {
                 let mut score = 0.0;
@@ -1345,7 +1345,7 @@ mod tests {
         };
 
         let optimizer = MolecularDesignOptimizer::new(target, library);
-        let result = optimizer.build_qubo();
+        let mut result = optimizer.build_qubo();
         assert!(result.is_ok());
     }
 
@@ -1443,10 +1443,10 @@ mod tests {
         let optimizer = MolecularDesignOptimizer::new(target, library)
             .with_strategy(OptimizationStrategy::FragmentGrowing { core });
 
-        let result = optimizer.build_qubo();
+        let mut result = optimizer.build_qubo();
         assert!(result.is_ok());
 
-        let (qubo, var_map) = result.unwrap();
+        let (_qubo, var_map) = result.unwrap();
         assert!(var_map.len() > 0);
     }
 }

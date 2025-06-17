@@ -6,12 +6,11 @@
 use super::{natural_gradient, quantum_fisher_information, QMLCircuit};
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
-    gpu::{GpuBackendFactory, GpuStateVector},
+    gpu::GpuBackendFactory,
 };
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
-// Note: scirs2_optimize functions would be used here if available
+use ndarray::Array1;
 use std::collections::HashMap;
+// Note: scirs2_optimize functions would be used here if available
 
 /// Loss functions for QML
 #[derive(Debug, Clone, Copy)]
@@ -295,7 +294,7 @@ impl QMLTrainer {
     fn forward(
         &self,
         input: &[f64],
-        gpu_backend: &Option<std::sync::Arc<dyn crate::gpu::GpuBackend>>,
+        _gpu_backend: &Option<std::sync::Arc<dyn crate::gpu::GpuBackend>>,
     ) -> QuantRS2Result<Vec<f64>> {
         // This is a placeholder implementation
         // In practice, would:
@@ -384,7 +383,7 @@ impl QMLTrainer {
             }
 
             Optimizer::QuantumNatural {
-                learning_rate,
+                learning_rate: _,
                 regularization,
             } => {
                 // Compute quantum Fisher information
@@ -473,7 +472,7 @@ impl HyperparameterOptimizer {
     }
 
     /// Run hyperparameter optimization
-    pub fn optimize<F>(&self, objective: F) -> QuantRS2Result<HashMap<String, f64>>
+    pub fn optimize<F>(&self, _objective: F) -> QuantRS2Result<HashMap<String, f64>>
     where
         F: Fn(&HashMap<String, f64>) -> QuantRS2Result<f64>,
     {

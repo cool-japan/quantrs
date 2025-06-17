@@ -5,7 +5,7 @@ use quantrs2_tytan::*;
 use std::collections::HashMap;
 
 #[cfg(feature = "dwave")]
-use quantrs2_tytan::auto_array::Auto_array;
+use quantrs2_tytan::auto_array::AutoArray;
 
 #[test]
 #[cfg(feature = "dwave")]

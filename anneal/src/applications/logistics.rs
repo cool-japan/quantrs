@@ -388,7 +388,7 @@ impl OptimizationProblem for VehicleRoutingProblem {
     }
 }
 
-/// Binary wrapper for vehicle routing optimization that works with Vec<i8> solutions
+/// Binary wrapper for vehicle routing optimization that works with `Vec<i8>` solutions
 #[derive(Debug, Clone)]
 pub struct BinaryVehicleRoutingProblem {
     inner: VehicleRoutingProblem,

@@ -4,16 +4,52 @@
 //! into QUBO (Quadratic Unconstrained Binary Optimization) and
 //! HOBO (Higher-Order Binary Optimization) models.
 
+#![allow(dead_code)]
+
 use ndarray::Array;
 use std::collections::{HashMap, HashSet};
 
 #[cfg(feature = "scirs")]
 use crate::scirs_stub;
 #[cfg(feature = "dwave")]
-use symengine::{self, Expr, Symbol as SymengineSymbol};
+use symengine::Expression as SymEngineExpression;
+
+#[cfg(feature = "dwave")]
+type Expr = SymEngineExpression;
 use thiserror::Error;
 
 use quantrs2_anneal::QuboError;
+
+/// Unified expression interface for examples
+#[cfg(feature = "dwave")]
+pub mod expr {
+    use symengine::Expression as SymEngineExpression;
+
+    pub type Expr = SymEngineExpression;
+
+    pub fn constant(value: f64) -> Expr {
+        SymEngineExpression::from_f64(value)
+    }
+
+    pub fn var(name: &str) -> Expr {
+        SymEngineExpression::symbol(name)
+    }
+}
+
+#[cfg(not(feature = "dwave"))]
+pub mod expr {
+    use super::SimpleExpr;
+
+    pub type Expr = SimpleExpr;
+
+    pub fn constant(value: f64) -> Expr {
+        SimpleExpr::constant(value)
+    }
+
+    pub fn var(name: &str) -> Expr {
+        SimpleExpr::var(name)
+    }
+}
 
 /// Errors that can occur during compilation
 #[derive(Error, Debug)]
@@ -144,7 +180,7 @@ impl Model {
     /// Add a variable to the model
     pub fn add_variable(&mut self, name: &str) -> CompileResult<Expr> {
         self.variables.insert(name.to_string());
-        Ok(SymengineSymbol::new(name).into())
+        Ok(SymEngineExpression::symbol(name))
     }
 
     /// Set the objective function
@@ -245,7 +281,7 @@ impl Model {
         }
 
         // Use the standard compiler
-        let compiler = Compile::new(final_expr);
+        let mut compiler = Compile::new(final_expr);
         let ((qubo_matrix, var_map), offset) = compiler.get_qubo()?;
 
         Ok(CompiledModel {
@@ -285,7 +321,7 @@ impl CompiledModel {
         // Set all the QUBO coefficients
         for i in 0..self.qubo_matrix.nrows() {
             for j in i..self.qubo_matrix.ncols() {
-                let value = self.qubo_matrix[[i, j]];
+                let mut value = self.qubo_matrix[[i, j]];
                 if value.abs() > 1e-10 {
                     if i == j {
                         // Diagonal term (linear)
@@ -335,6 +371,13 @@ enum Constraint {
         conditions: Vec<SimpleExpr>,
         result: SimpleExpr,
     },
+}
+
+#[cfg(not(feature = "dwave"))]
+impl Default for Model {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(not(feature = "dwave"))]
@@ -679,7 +722,7 @@ impl Compile {
         &self,
     ) -> CompileResult<((Array<f64, ndarray::Ix2>, HashMap<String, usize>), f64)> {
         // Expand the expression to simplify
-        let expr = symengine::expand(&self.expr);
+        let mut expr = self.expr.expand();
 
         // Check the degree of each term
         let max_degree = calc_highest_degree(&expr)?;
@@ -688,10 +731,10 @@ impl Compile {
         }
 
         // Replace all second-degree terms (x^2) with x, since x^2 = x for binary variables
-        let expr = replace_squared_terms(&expr)?;
+        let mut expr = replace_squared_terms(&expr)?;
 
         // Expand again to collect like terms
-        let expr = symengine::expand(&expr);
+        let mut expr = expr.expand();
 
         // Extract the coefficients and variables
         let (coeffs, offset) = extract_coefficients(&expr)?;
@@ -730,16 +773,16 @@ impl Compile {
         &self,
     ) -> CompileResult<((Array<f64, ndarray::IxDyn>, HashMap<String, usize>), f64)> {
         // Expand the expression to simplify
-        let expr = symengine::expand(&self.expr);
+        let mut expr = self.expr.expand();
 
         // Calculate highest degree (dimension of the tensor)
         let max_degree = calc_highest_degree(&expr)?;
 
         // Replace all squared terms (x^2) with x, since x^2 = x for binary variables
-        let expr = replace_squared_terms(&expr)?;
+        let mut expr = replace_squared_terms(&expr)?;
 
         // Expand again to collect like terms
-        let expr = symengine::expand(&expr);
+        let mut expr = expr.expand();
 
         // Extract the coefficients and variables
         let (coeffs, offset) = extract_coefficients(&expr)?;
@@ -944,7 +987,7 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
 
     // If it's a number constant, it's an offset
     if term.is_number() {
-        let value = match term.to_f64() {
+        let mut value = match term.to_f64() {
             Some(n) => n,
             None => {
                 return Err(CompileError::InvalidExpression(
@@ -957,8 +1000,8 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
 
     // If it's a symbol, it's a linear term with coefficient 1
     if term.is_symbol() {
-        let var_name = term.as_symbol().unwrap().to_string();
-        let vars = vec![var_name];
+        let var_name = term.as_symbol().unwrap();
+        let mut vars = vec![var_name];
         coeffs.insert(vars, 1.0);
         return Ok((coeffs, 0.0));
     }
@@ -971,7 +1014,7 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
         for factor in term.as_mul().unwrap() {
             if factor.is_number() {
                 // Numerical factor is a coefficient
-                let value = match factor.to_f64() {
+                let mut value = match factor.to_f64() {
                     Some(n) => n,
                     None => {
                         return Err(CompileError::InvalidExpression(
@@ -982,7 +1025,7 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
                 coeff *= value;
             } else if factor.is_symbol() {
                 // Symbol is a variable
-                let var_name = factor.as_symbol().unwrap().to_string();
+                let var_name = factor.as_symbol().unwrap();
                 vars.push(var_name);
             } else {
                 // More complex factors not supported in this example
@@ -1181,6 +1224,6 @@ impl PieckCompile {
     ) -> CompileResult<((Array<f64, ndarray::Ix2>, HashMap<String, usize>), f64)> {
         // Implementation will compile the expression using specialized techniques
         // For now, call the regular compiler
-        Compile::new(&self.expr).get_qubo()
+        Compile::new(self.expr.clone()).get_qubo()
     }
 }

@@ -13,9 +13,8 @@ use crate::{
     gate::GateOp,
     qubit::QubitId,
 };
-use ndarray::{Array1, Array2, Array3};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use std::sync::Arc;
 
 /// Configuration for batch operations
 #[derive(Debug, Clone)]
@@ -86,7 +85,7 @@ impl BatchStateVector {
 
     /// Create from existing state vectors
     pub fn from_states(states: Array2<Complex64>, config: BatchConfig) -> QuantRS2Result<Self> {
-        let (batch_size, state_size) = states.dim();
+        let (_batch_size, state_size) = states.dim();
 
         // Determine number of qubits
         let n_qubits = (state_size as f64).log2().round() as usize;

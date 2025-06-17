@@ -64,9 +64,6 @@ pub mod optimization;
 pub mod registry;
 pub mod security;
 
-#[cfg(not(feature = "scirs2"))]
-pub mod fallback_scirs2;
-
 // Re-exports for public API
 pub use analytics::*;
 pub use benchmarking::*;

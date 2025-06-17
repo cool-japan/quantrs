@@ -488,7 +488,10 @@ impl GpuStateVectorSimulator {
 }
 
 impl Simulator for GpuStateVectorSimulator {
-    fn run<const N: usize>(&self, circuit: &Circuit<N>) -> crate::simulator::SimulatorResult<N> {
+    fn run<const N: usize>(
+        &mut self,
+        circuit: &Circuit<N>,
+    ) -> crate::error::Result<crate::simulator::SimulatorResult<N>> {
         // We'll extract gate information manually since we're using our own GateType enum
 
         // Skip GPU simulation for small circuits (less than 4 qubits)
@@ -498,10 +501,10 @@ impl Simulator for GpuStateVectorSimulator {
             // Use the CPU simulator's implementation through quantrs2_circuit::builder::Simulator trait
             let result = quantrs2_circuit::builder::Simulator::<N>::run(&cpu_sim, circuit)
                 .expect("CPU simulation failed");
-            return SimulatorResult {
+            return Ok(SimulatorResult {
                 amplitudes: result.amplitudes().to_vec(),
                 num_qubits: N,
-            };
+            });
         }
 
         // Calculate state vector size
@@ -584,10 +587,10 @@ impl Simulator for GpuStateVectorSimulator {
                     let cpu_sim = crate::statevector::StateVectorSimulator::new();
                     let result = quantrs2_circuit::builder::Simulator::<N>::run(&cpu_sim, circuit)
                         .expect("CPU simulation failed");
-                    return SimulatorResult {
+                    return Ok(SimulatorResult {
                         amplitudes: result.amplitudes().to_vec(),
                         num_qubits: N,
-                    };
+                    });
                 }
             };
 
@@ -735,7 +738,7 @@ impl Simulator for GpuStateVectorSimulator {
         });
 
         // Wait for the buffer to be mapped
-        self.device.poll(wgpu::MaintainBase::Wait);
+        let _ = self.device.poll(wgpu::MaintainBase::Wait);
         if rx.recv().unwrap().is_err() {
             panic!("Failed to map buffer for reading");
         }
@@ -749,10 +752,10 @@ impl Simulator for GpuStateVectorSimulator {
         let amplitudes: Vec<Complex64> = result_data.into_iter().map(|c| c.into()).collect();
 
         // Return simulation result
-        SimulatorResult {
+        Ok(SimulatorResult {
             amplitudes,
             num_qubits: N,
-        }
+        })
     }
 }
 

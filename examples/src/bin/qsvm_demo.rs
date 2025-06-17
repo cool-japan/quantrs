@@ -42,6 +42,10 @@ fn basic_classification_demo() -> std::result::Result<(), Box<dyn std::error::Er
         reps: 2,
         c: 1.0,
         tolerance: 1e-3,
+        num_qubits: 2,
+        depth: 2,
+        gamma: Some(1.0),
+        regularization: 1e-4,
         max_iterations: 100,
         seed: Some(42),
     };
@@ -109,6 +113,10 @@ fn feature_map_comparison_demo() -> std::result::Result<(), Box<dyn std::error::
             reps: 2,
             c: 1.0,
             tolerance: 1e-3,
+            num_qubits: 2,
+            depth: 2,
+            gamma: Some(1.0),
+            regularization: 1e-4,
             max_iterations: 100,
             seed: Some(42),
         };
@@ -277,7 +285,7 @@ fn quantum_kernel_ridge_demo() -> std::result::Result<(), Box<dyn std::error::Er
             println!("✓ Quantum kernel ridge regression trained");
 
             // Test on a few points
-            let x_test = array![[0.0], [1.57], [3.14], [4.71], [6.28]];
+            let x_test = array![[0.0], [1.57], [std::f64::consts::PI], [4.71], [std::f64::consts::TAU]];
             match qkr.predict(&x_test) {
                 Ok(predictions) => {
                     println!("\nPredictions:");

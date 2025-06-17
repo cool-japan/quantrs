@@ -339,6 +339,7 @@ impl GateCharacterizer {
     }
 
     /// Compare two matrices for equality
+    #[allow(dead_code)]
     fn matrix_equals(&self, a: &Array2<Complex>, b: &Array2<Complex>, tolerance: f64) -> bool {
         a.shape() == b.shape()
             && a.iter()
@@ -518,7 +519,7 @@ pub enum GateType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::gate::{multi::*, single::*};
+    use crate::gate::GateOp;
     use std::f64::consts::PI;
 
     #[test]

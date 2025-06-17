@@ -4,9 +4,8 @@
 //! of optimization problems including 2D/3D projections and heatmaps.
 
 use crate::sampler::SampleResult;
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[cfg(feature = "scirs")]
 use crate::scirs_stub::{
@@ -119,7 +118,7 @@ impl EnergyLandscape {
     /// Generate 2D projected energy landscape
     pub fn project_2d(&mut self) -> Result<ProjectedLandscape, Box<dyn std::error::Error>> {
         // Convert samples to binary matrix
-        let (binary_matrix, var_names) = self.samples_to_matrix()?;
+        let (binary_matrix, _var_names) = self.samples_to_matrix()?;
 
         // Project to 2D
         let projected = match self.config.projection {
@@ -243,7 +242,7 @@ impl EnergyLandscape {
         let mut proj_matrix = Array2::<f64>::zeros((n_features, n_components));
         for i in 0..n_features {
             for j in 0..n_components {
-                proj_matrix[[i, j]] = rng.gen_range(-1.0..1.0);
+                proj_matrix[[i, j]] = rng.random_range(-1.0..1.0);
             }
         }
 

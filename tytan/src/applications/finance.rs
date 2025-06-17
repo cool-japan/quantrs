@@ -3,9 +3,10 @@
 //! This module provides quantum optimization tools for financial applications
 //! including portfolio optimization, risk management, and asset allocation.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, IxDyn};
-use rand::prelude::*;
+// Sampler types available for finance applications
+#![allow(dead_code)]
+
+use ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -323,7 +324,7 @@ impl PortfolioOptimizer {
         &self,
         qubo: &mut Array2<f64>,
         bits_per_asset: usize,
-        max_assets: usize,
+        _max_assets: usize,
         penalty: f64,
     ) -> Result<(), String> {
         // Add binary variables for asset selection
@@ -505,7 +506,7 @@ impl PortfolioOptimizer {
     }
 
     /// Calculate Value at Risk
-    fn calculate_var(&self, weights: &Array1<f64>, confidence: f64) -> f64 {
+    fn calculate_var(&self, weights: &Array1<f64>, _confidence: f64) -> f64 {
         let expected_return = weights.dot(&self.returns);
         let variance = weights.dot(&self.covariance.dot(weights));
         let volatility = variance.sqrt();
@@ -607,9 +608,9 @@ impl RiskParityOptimizer {
 
         // This is a complex non-linear objective, we use iterative approximation
         let initial_weights = Array1::from_elem(n_assets, 1.0 / n_assets as f64);
-        let risk_contribs = self.calculate_risk_contributions(&initial_weights);
+        let _risk_contribs = self.calculate_risk_contributions(&initial_weights);
 
-        let targets = self
+        let _targets = self
             .target_contributions
             .as_ref()
             .unwrap_or(&Array1::from_elem(n_assets, 1.0 / n_assets as f64));
@@ -724,7 +725,7 @@ impl BlackLittermanOptimizer {
 
     /// Calculate posterior returns
     pub fn posterior_returns(&self) -> Array1<f64> {
-        let tau_sigma = self.tau * &self.covariance;
+        let _tau_sigma = self.tau * &self.covariance;
 
         if self.views.view_matrix.shape()[0] == 0 {
             // No views, return equilibrium
@@ -988,9 +989,9 @@ mod tests {
         let covariance = Array2::eye(3) * 0.01;
 
         let optimizer = PortfolioOptimizer::new(returns, covariance, 2.0).unwrap();
-        let weights = Array1::from_vec(vec![0.3, 0.5, 0.2]);
+        let mut weights = Array1::from_vec(vec![0.3, 0.5, 0.2]);
 
-        let metrics = optimizer.calculate_metrics(&weights);
+        let mut metrics = optimizer.calculate_metrics(&weights);
 
         assert!((metrics.expected_return - 0.106).abs() < 0.001);
         assert!(metrics.volatility > 0.0);

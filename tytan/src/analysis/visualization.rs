@@ -7,7 +7,7 @@
 //! The module prepares data that can be used with external plotting libraries
 //! or exported for visualization in other tools.
 
-use ndarray::{Array1, Array2, Axis};
+use ndarray::{Array2, Axis};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
@@ -293,8 +293,8 @@ pub fn extract_tsp_tour(result: &SampleResult, n_cities: usize) -> Visualization
         let mut next = None;
 
         // Look for edge from current city
-        for j in 0..n_cities {
-            if !visited[j] {
+        for (j, &is_visited) in visited.iter().enumerate().take(n_cities) {
+            if !is_visited {
                 let var_name = format!("x_{}_{}", current, j);
                 if let Some(&value) = result.assignments.get(&var_name) {
                     if value {
@@ -311,10 +311,10 @@ pub fn extract_tsp_tour(result: &SampleResult, n_cities: usize) -> Visualization
             current = next_city;
         } else {
             // Find first unvisited city
-            for j in 0..n_cities {
-                if !visited[j] {
+            for (j, is_visited) in visited.iter_mut().enumerate().take(n_cities) {
+                if !*is_visited {
                     tour.push(j);
-                    visited[j] = true;
+                    *is_visited = true;
                     current = j;
                     break;
                 }
@@ -350,12 +350,12 @@ pub fn extract_graph_coloring(
     let mut node_colors = vec![0; n_nodes];
 
     // Extract color assignments
-    for node in 0..n_nodes {
+    for (node, node_color) in node_colors.iter_mut().enumerate().take(n_nodes) {
         for color in 0..n_colors {
             let var_name = format!("x_{}_{}", node, color);
             if let Some(&value) = result.assignments.get(&var_name) {
                 if value {
-                    node_colors[node] = color;
+                    *node_color = color;
                     break;
                 }
             }
@@ -594,7 +594,7 @@ fn simple_pca(
     let centered = data - &mean;
 
     // Compute covariance matrix
-    let cov = centered.t().dot(&centered) / (n_samples - 1) as f64;
+    let _cov = centered.t().dot(&centered) / (n_samples - 1) as f64;
 
     // For simplicity, we'll just return a placeholder
     // In practice, you'd compute eigenvalues/eigenvectors
@@ -622,14 +622,14 @@ fn moving_average(values: &[f64], window: usize) -> Vec<f64> {
 
 /// Simple spring layout for graph visualization
 pub fn spring_layout(n_nodes: usize, edges: &[(usize, usize)]) -> Vec<(f64, f64)> {
-    use rand::thread_rng;
+    use rand::rng;
     use rand::Rng;
 
-    let mut rng = thread_rng();
+    let mut rng = rng();
 
     // Initialize random positions
     let mut positions: Vec<(f64, f64)> = (0..n_nodes)
-        .map(|_| (rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0)))
+        .map(|_| (rng.random_range(-1.0..1.0), rng.random_range(-1.0..1.0)))
         .collect();
 
     // Simple force-directed layout

@@ -4,7 +4,7 @@
 [![Documentation](https://docs.rs/quantrs2-sim/badge.svg)](https://docs.rs/quantrs2-sim)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
 
-QuantRS2-Sim is the comprehensive simulation engine of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing state-of-the-art quantum simulation algorithms, error correction implementations, and performance optimization techniques for simulating quantum systems up to 30+ qubits on standard hardware.
+QuantRS2-Sim is the comprehensive simulation engine of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing state-of-the-art quantum simulation algorithms, error correction codes, and performance optimization techniques for simulating quantum systems up to 30+ qubits on standard hardware.
 
 ## Core Features
 
@@ -25,11 +25,11 @@ QuantRS2-Sim is the comprehensive simulation engine of the [QuantRS2](https://gi
 - **Open Quantum Systems**: Lindblad master equation integration for realistic quantum dynamics
 
 ### Error Correction & Fault Tolerance
-- **Quantum Error Correction**: Implementation of surface, color, and concatenated codes
+- **Quantum Error Correction**: Surface, color, and concatenated codes
 - **Noise Models**: Comprehensive realistic noise modeling including correlated errors
 - **Error Mitigation**: Zero-noise extrapolation, virtual distillation, and symmetry verification
 - **Process Tomography**: Quantum channel characterization and benchmarking
-- **Quantum Volume**: IBM's quantum volume protocol implementation
+- **Quantum Volume**: IBM's quantum volume protocol
 
 ### Performance & Verification
 - **Quantum Supremacy**: Cross-entropy benchmarking and Porter-Thomas verification
@@ -251,7 +251,7 @@ fn photonic_simulation() -> Result<()> {
 ### Core Simulation Engines
 - **statevector.rs**: Dense state vector simulation with SIMD optimizations
 - **enhanced_statevector.rs**: Enhanced state vector with lazy evaluation and memory optimization
-- **mps_simulator.rs**: Basic matrix product state implementation
+- **mps_simulator.rs**: Basic matrix product state simulator
 - **mps_basic.rs**: Lightweight MPS simulator for low-entanglement circuits
 - **mps_enhanced.rs**: Advanced MPS with optimized contraction algorithms
 - **stabilizer.rs**: Stabilizer formalism for exponentially fast Clifford simulation
@@ -267,8 +267,8 @@ fn photonic_simulation() -> Result<()> {
 - **open_quantum_systems.rs**: Lindblad master equation integration
 
 ### Error Correction & Noise
-- **error_correction/**: Comprehensive quantum error correction implementations
-  - **codes.rs**: Surface, color, and concatenated code implementations
+- **error_correction/**: Comprehensive quantum error correction codes
+  - **codes.rs**: Surface, color, and concatenated codes
   - **mod.rs**: Error correction framework and utilities
 - **noise.rs**: Basic noise models (bit-flip, phase-flip, depolarizing)
 - **noise_advanced.rs**: Realistic device noise models with correlations
@@ -277,8 +277,8 @@ fn photonic_simulation() -> Result<()> {
 ### Optimization & Performance
 - **optimized_simd.rs**: SIMD-accelerated quantum operations
 - **optimized_chunked.rs**: Memory-efficient chunked processing
-- **optimized_simple.rs**: Simplified optimized implementations
-- **specialized_gates.rs**: Hardware-optimized gate implementations
+- **optimized_simple.rs**: Simplified optimized simulators
+- **specialized_gates.rs**: Hardware-optimized gates
 - **specialized_simulator.rs**: Simulator with specialized gate optimizations
 - **fusion.rs**: Gate fusion optimization for reduced circuit depth
 - **precision.rs**: Adaptive precision control for state vectors
@@ -297,7 +297,7 @@ fn photonic_simulation() -> Result<()> {
 
 ### Verification & Benchmarking
 - **quantum_supremacy.rs**: Cross-entropy benchmarking and Porter-Thomas verification
-- **quantum_volume.rs**: IBM quantum volume protocol implementation
+- **quantum_volume.rs**: IBM quantum volume protocol
 - **benchmark.rs**: Performance benchmarking across different simulation methods
 - **debugger.rs**: Interactive quantum debugging with breakpoints and state inspection
 
@@ -309,13 +309,13 @@ fn photonic_simulation() -> Result<()> {
 - **tensor.rs**: Tensor manipulation utilities
 - **tensor_network/**: Advanced tensor network contraction algorithms
   - **contraction.rs**: Optimal contraction order algorithms
-  - **opt_contraction.rs**: Optimized contraction implementations
+  - **opt_contraction.rs**: Optimized contraction algorithms
   - **tensor.rs**: Tensor data structures and operations
 - **dynamic.rs**: Dynamic qubit allocation and circuit optimization
 
 ## Feature Flags
 
-- **default**: Optimized implementations with SIMD acceleration
+- **default**: Optimized simulators with SIMD acceleration
 - **gpu**: GPU acceleration using WGPU compute shaders (CUDA/OpenCL/Vulkan)
 - **simd**: Platform-specific SIMD instructions for vectorized operations
 - **optimize**: Advanced optimization algorithms and memory management
@@ -336,7 +336,7 @@ fn photonic_simulation() -> Result<()> {
 - **SIMD Vectorization**: AVX2/AVX-512 support for parallel complex arithmetic
 - **Multi-threading**: Rayon-based parallelization across CPU cores
 - **Memory Efficiency**: Chunked processing and lazy evaluation for large circuits
-- **Gate Specialization**: Hardware-optimized implementations for common gates
+- **Gate Specialization**: Hardware-optimized processing for common gates
 - **SciRS2 Integration**: Professional-grade linear algebra with Intel MKL/OpenBLAS
 
 ### Benchmarking Results
@@ -401,7 +401,7 @@ fn photonic_simulation() -> Result<()> {
 
 ### Quantum Machine Learning
 - Quantum neural network training with automatic differentiation
-- Quantum kernel methods for classical machine learning enhancement
+- Quantum kernel methods for classical machine learning
 - Variational quantum algorithm optimization and benchmarking
 
 ## License

@@ -172,8 +172,9 @@ class CircuitVisualizer:
         for spine in ax.spines.values():
             spine.set_visible(False)
         
-        # Set limits with some padding
-        ax.set_ylim(-0.5, self.n_qubits - 0.5)
+        # Set limits with some padding (ensure non-identical values to avoid warnings)
+        y_max = max(self.n_qubits - 0.5, 0.5)  # Ensure at least 1 unit height
+        ax.set_ylim(-0.5, y_max)
         ax.set_xlim(-0.5, 10.5)
         
         # Add title

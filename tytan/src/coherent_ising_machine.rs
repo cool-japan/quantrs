@@ -3,12 +3,14 @@
 //! This module provides a simulation of Coherent Ising Machines, which use
 //! optical parametric oscillators to solve optimization problems.
 
+#![allow(dead_code)]
+
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::{Array, Array1, Array2, IxDyn};
 use num_complex::Complex64;
 use rand::prelude::*;
 use rand::{Rng, SeedableRng};
-use rand_distr::{Distribution, Normal};
+use rand_distr::Normal;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -115,14 +117,14 @@ impl CIMSimulator {
         // Initialize oscillator amplitudes (complex)
         let mut amplitudes: Vec<Complex64> = (0..n)
             .map(|_| {
-                let r = rng.gen_range(0.0..0.1);
-                let theta = rng.gen_range(0.0..2.0 * PI);
+                let r = rng.random_range(0.0..0.1);
+                let theta = rng.random_range(0.0..2.0 * PI);
                 Complex64::new(r * theta.cos(), r * theta.sin())
             })
             .collect();
 
         // Normal distribution for noise
-        let noise_dist = Normal::new(0.0, self.noise_strength).unwrap();
+        let _noise_dist = Normal::new(0.0, self.noise_strength).unwrap();
 
         // Evolution loop
         for step in 0..steps {
@@ -324,7 +326,7 @@ impl Sampler for CIMSimulator {
 
     fn run_hobo(
         &self,
-        hobo: &(Array<f64, IxDyn>, HashMap<String, usize>),
+        _hobo: &(Array<f64, IxDyn>, HashMap<String, usize>),
         _shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         Err(SamplerError::NotImplemented(
@@ -707,7 +709,7 @@ mod tests {
             var_map.insert(format!("x{}", i), i);
         }
 
-        let results = cim.run_qubo(&(qubo_matrix, var_map), 10).unwrap();
+        let mut results = cim.run_qubo(&(qubo_matrix, var_map), 10).unwrap();
         assert!(!results.is_empty());
     }
 

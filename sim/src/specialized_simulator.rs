@@ -142,7 +142,7 @@ impl SpecializedStateVectorSimulator {
     fn apply_gate(
         &mut self,
         state: &mut [Complex64],
-        gate: &Box<dyn GateOp>,
+        gate: &Arc<dyn GateOp + Send + Sync>,
         n_qubits: usize,
     ) -> QuantRS2Result<()> {
         self.stats.total_gates += 1;
@@ -187,7 +187,7 @@ impl SpecializedStateVectorSimulator {
     fn apply_gates_with_fusion(
         &mut self,
         state: &mut [Complex64],
-        gates: &[Box<dyn GateOp>],
+        gates: &[Arc<dyn GateOp + Send + Sync>],
         n_qubits: usize,
     ) -> QuantRS2Result<()> {
         let mut i = 0;
@@ -224,7 +224,10 @@ impl SpecializedStateVectorSimulator {
     }
 
     /// Reorder gates for better performance
-    fn reorder_gates(&self, gates: &[Box<dyn GateOp>]) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
+    fn reorder_gates(
+        &self,
+        gates: &[Arc<dyn GateOp + Send + Sync>],
+    ) -> QuantRS2Result<Vec<Arc<dyn GateOp + Send + Sync>>> {
         // Simple reordering: group gates by qubit locality
         // This is a placeholder for more sophisticated reordering
         let mut reordered = gates.to_vec();
@@ -422,24 +425,24 @@ pub fn benchmark_specialization(
 
         match gate_type {
             0 => {
-                circuit.h(qubit);
+                let _ = circuit.h(qubit);
             }
             1 => {
-                circuit.x(qubit);
+                let _ = circuit.x(qubit);
             }
             2 => {
-                circuit.ry(qubit, rng.gen_range(0.0..std::f64::consts::TAU));
+                let _ = circuit.ry(qubit, rng.gen_range(0.0..std::f64::consts::TAU));
             }
             3 => {
                 if n_qubits > 1 {
                     let qubit2 = QubitId(rng.gen_range(0..n_qubits as u32));
                     if qubit != qubit2 {
-                        circuit.cnot(qubit, qubit2);
+                        let _ = circuit.cnot(qubit, qubit2);
                     }
                 }
             }
             _ => {
-                circuit.z(qubit);
+                let _ = circuit.z(qubit);
             }
         }
     }

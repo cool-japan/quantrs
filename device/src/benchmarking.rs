@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 
 use rand::prelude::*;
 use rand::thread_rng;
+use serde::{Deserialize, Serialize};
 
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::{
@@ -39,7 +40,7 @@ use crate::{
 };
 
 /// Comprehensive benchmarking suite configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BenchmarkConfig {
     /// Number of benchmark iterations
     pub iterations: usize,
@@ -78,7 +79,7 @@ impl Default for BenchmarkConfig {
 }
 
 /// Comprehensive benchmark results with SciRS2 analysis
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BenchmarkSuite {
     /// Device identifier
     pub device_id: String,
@@ -101,7 +102,7 @@ pub struct BenchmarkSuite {
 }
 
 /// Individual benchmark result
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BenchmarkResult {
     /// Benchmark name
     pub name: String,
@@ -126,7 +127,7 @@ pub struct BenchmarkResult {
 }
 
 /// Statistical analysis using SciRS2
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatisticalAnalysis {
     /// Execution time statistics
     pub execution_time_stats: DescriptiveStats,
@@ -143,7 +144,7 @@ pub struct StatisticalAnalysis {
 }
 
 /// Graph-theoretic analysis of connectivity and performance
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphAnalysis {
     /// Connectivity graph metrics
     pub connectivity_metrics: ConnectivityMetrics,
@@ -156,7 +157,7 @@ pub struct GraphAnalysis {
 }
 
 /// Noise correlation analysis
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NoiseAnalysis {
     /// Cross-talk correlations
     pub crosstalk_correlations: Array2<f64>,
@@ -169,7 +170,7 @@ pub struct NoiseAnalysis {
 }
 
 /// Performance metrics summary
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformanceMetrics {
     /// Overall device score (0-100)
     pub overall_score: f64,
@@ -186,7 +187,7 @@ pub struct PerformanceMetrics {
 }
 
 /// Descriptive statistics
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DescriptiveStats {
     pub mean: f64,
     pub median: f64,
@@ -200,7 +201,7 @@ pub struct DescriptiveStats {
 }
 
 /// Statistical test result
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestResult {
     pub test_name: String,
     pub statistic: f64,
@@ -210,7 +211,7 @@ pub struct TestResult {
 }
 
 /// Distribution fitting result
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DistributionFit {
     pub distribution_name: String,
     pub parameters: Vec<f64>,
@@ -219,7 +220,7 @@ pub struct DistributionFit {
 }
 
 /// Connectivity metrics
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectivityMetrics {
     pub average_path_length: f64,
     pub clustering_coefficient: f64,
@@ -230,7 +231,7 @@ pub struct ConnectivityMetrics {
 }
 
 /// Centrality measures for qubits
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CentralityMeasures {
     pub betweenness: f64,
     pub closeness: f64,
@@ -239,7 +240,7 @@ pub struct CentralityMeasures {
 }
 
 /// Critical path information
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CriticalPath {
     pub path: Vec<usize>,
     pub length: usize,
@@ -248,7 +249,7 @@ pub struct CriticalPath {
 }
 
 /// Spectral properties of the connectivity graph
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpectralProperties {
     pub eigenvalues: Array1<f64>,
     pub spectral_radius: f64,
@@ -257,7 +258,7 @@ pub struct SpectralProperties {
 }
 
 /// Noise model validation results
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NoiseModelValidation {
     pub model_accuracy: f64,
     pub prediction_errors: Array1<f64>,
@@ -265,7 +266,7 @@ pub struct NoiseModelValidation {
 }
 
 /// Residual analysis for noise model
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResidualAnalysis {
     pub normality_test: TestResult,
     pub autocorrelation: Array1<f64>,
@@ -273,7 +274,7 @@ pub struct ResidualAnalysis {
 }
 
 /// Scalability metrics
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScalabilityMetrics {
     pub depth_scaling_coefficient: f64,
     pub width_scaling_coefficient: f64,

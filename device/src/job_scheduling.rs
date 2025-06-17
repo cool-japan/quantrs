@@ -13,8 +13,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex, RwLock};
-use std::thread;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime};
 
 use quantrs2_circuit::{optimization::analysis::CircuitAnalyzer, prelude::Circuit};
 use quantrs2_core::{
@@ -118,40 +117,76 @@ pub enum JobStatus {
     Paused,
 }
 
-/// Scheduling strategies
+/// Advanced scheduling strategies
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SchedulingStrategy {
     /// First-In-First-Out with priority levels
     PriorityFIFO,
     /// Shortest Job First
     ShortestJobFirst,
+    /// Shortest Remaining Time First
+    ShortestRemainingTimeFirst,
     /// Fair Share scheduling
     FairShare,
     /// Round Robin with priority
     PriorityRoundRobin,
     /// Backfill scheduling
     Backfill,
-    /// Machine learning optimized scheduling
+    /// Earliest Deadline First
+    EarliestDeadlineFirst,
+    /// Rate Monotonic scheduling
+    RateMonotonic,
+    /// Machine learning optimized scheduling using SciRS2
     MLOptimized,
+    /// Multi-objective optimization using SciRS2
+    MultiObjectiveOptimized,
+    /// Reinforcement Learning based scheduling
+    ReinforcementLearning,
+    /// Genetic Algorithm scheduling
+    GeneticAlgorithm,
+    /// Game-theoretic fair scheduling
+    GameTheoreticFair,
+    /// Energy-aware scheduling
+    EnergyAware,
+    /// Deadline-aware scheduling with SLA guarantees
+    DeadlineAwareSLA,
     /// Custom scheduling function
     Custom(String),
 }
 
-/// Resource allocation strategy
+/// Advanced resource allocation strategies
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AllocationStrategy {
     /// First available backend
     FirstFit,
     /// Best performance for job requirements
     BestFit,
+    /// Worst fit for load balancing
+    WorstFit,
     /// Least loaded backend
     LeastLoaded,
+    /// Most loaded backend (for consolidation)
+    MostLoaded,
     /// Round robin across backends
     RoundRobin,
+    /// Weighted round robin
+    WeightedRoundRobin,
     /// Cost-optimized allocation
     CostOptimized,
-    /// SciRS2-optimized allocation
+    /// Performance-optimized allocation
+    PerformanceOptimized,
+    /// Energy-efficient allocation
+    EnergyEfficient,
+    /// SciRS2-optimized allocation using ML
     SciRS2Optimized,
+    /// Multi-objective allocation (cost, performance, energy)
+    MultiObjectiveOptimized,
+    /// Locality-aware allocation
+    LocalityAware,
+    /// Fault-tolerant allocation
+    FaultTolerant,
+    /// Predictive allocation based on historical patterns
+    PredictiveAllocation,
 }
 
 /// Job submission configuration
@@ -403,7 +438,7 @@ pub struct SchedulingParams {
     pub scirs2_params: SciRS2SchedulingParams,
 }
 
-/// SciRS2-specific scheduling optimization parameters
+/// Advanced SciRS2-specific scheduling optimization parameters
 #[derive(Debug, Clone)]
 pub struct SciRS2SchedulingParams {
     /// Enable SciRS2 optimization
@@ -416,31 +451,61 @@ pub struct SciRS2SchedulingParams {
     pub optimization_frequency: Duration,
     /// Prediction model parameters
     pub model_params: HashMap<String, f64>,
+    /// Machine learning algorithm selection
+    pub ml_algorithm: MLAlgorithm,
+    /// Multi-objective optimization weights
+    pub multi_objective_weights: MultiObjectiveWeights,
+    /// Reinforcement learning parameters
+    pub rl_params: RLParameters,
+    /// Genetic algorithm parameters
+    pub ga_params: GAParameters,
+    /// Enable predictive modeling
+    pub enable_prediction: bool,
+    /// Model retraining frequency
+    pub retrain_frequency: Duration,
+    /// Feature engineering parameters
+    pub feature_params: FeatureParams,
+}
+
+impl Default for SciRS2SchedulingParams {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            objective_weights: [
+                ("throughput".to_string(), 0.25),
+                ("fairness".to_string(), 0.25),
+                ("utilization".to_string(), 0.2),
+                ("cost".to_string(), 0.15),
+                ("energy".to_string(), 0.1),
+                ("sla_compliance".to_string(), 0.05),
+            ]
+            .into_iter()
+            .collect(),
+            learning_window: Duration::from_secs(86400), // 24 hours
+            optimization_frequency: Duration::from_secs(180), // 3 minutes
+            model_params: HashMap::new(),
+            ml_algorithm: MLAlgorithm::EnsembleMethod,
+            multi_objective_weights: MultiObjectiveWeights::default(),
+            rl_params: RLParameters::default(),
+            ga_params: GAParameters::default(),
+            enable_prediction: true,
+            retrain_frequency: Duration::from_secs(3600), // 1 hour
+            feature_params: FeatureParams::default(),
+        }
+    }
 }
 
 impl Default for SchedulingParams {
     fn default() -> Self {
         Self {
-            strategy: SchedulingStrategy::PriorityFIFO,
-            allocation_strategy: AllocationStrategy::BestFit,
+            strategy: SchedulingStrategy::MLOptimized,
+            allocation_strategy: AllocationStrategy::SciRS2Optimized,
             time_slice: Duration::from_secs(60),
             max_jobs_per_user: Some(100),
             fair_share_weights: HashMap::new(),
             backfill_threshold: Duration::from_secs(300),
             load_balance_factor: 0.8,
-            scirs2_params: SciRS2SchedulingParams {
-                enabled: true,
-                objective_weights: [
-                    ("throughput".to_string(), 0.4),
-                    ("fairness".to_string(), 0.3),
-                    ("utilization".to_string(), 0.3),
-                ]
-                .into_iter()
-                .collect(),
-                learning_window: Duration::from_secs(86400), // 24 hours
-                optimization_frequency: Duration::from_secs(300), // 5 minutes
-                model_params: HashMap::new(),
-            },
+            scirs2_params: SciRS2SchedulingParams::default(),
         }
     }
 }
@@ -631,6 +696,12 @@ impl QuantumJobScheduler {
         );
 
         Ok(())
+    }
+
+    /// Get list of available backends
+    pub fn get_available_backends(&self) -> Vec<HardwareBackend> {
+        let backends = self.backends.read().unwrap();
+        backends.iter().cloned().collect()
     }
 
     /// Submit a quantum job for execution
@@ -1401,6 +1472,184 @@ impl ResourceManager {
     }
 }
 
+/// Advanced machine learning algorithms for scheduling
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MLAlgorithm {
+    /// Linear regression for simple predictions
+    LinearRegression,
+    /// Support Vector Machine for classification
+    SVM,
+    /// Random Forest for ensemble learning
+    RandomForest,
+    /// Gradient Boosting for performance optimization
+    GradientBoosting,
+    /// Neural Network for complex patterns
+    NeuralNetwork,
+    /// Ensemble method combining multiple algorithms
+    EnsembleMethod,
+    /// Deep Reinforcement Learning
+    DeepRL,
+    /// Graph Neural Network for topology-aware scheduling
+    GraphNN,
+}
+
+/// Multi-objective optimization weights
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MultiObjectiveWeights {
+    /// Throughput optimization weight
+    pub throughput: f64,
+    /// Cost minimization weight
+    pub cost: f64,
+    /// Energy efficiency weight
+    pub energy: f64,
+    /// Fairness weight
+    pub fairness: f64,
+    /// SLA compliance weight
+    pub sla_compliance: f64,
+    /// Quality of service weight
+    pub qos: f64,
+}
+
+/// Reinforcement Learning parameters
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RLParameters {
+    /// Learning rate
+    pub learning_rate: f64,
+    /// Discount factor
+    pub discount_factor: f64,
+    /// Exploration rate
+    pub exploration_rate: f64,
+    /// Episode length
+    pub episode_length: usize,
+    /// Reward function weights
+    pub reward_weights: HashMap<String, f64>,
+    /// State representation dimension
+    pub state_dimension: usize,
+    /// Action space size
+    pub action_space_size: usize,
+}
+
+/// Genetic Algorithm parameters
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GAParameters {
+    /// Population size
+    pub population_size: usize,
+    /// Number of generations
+    pub generations: usize,
+    /// Crossover probability
+    pub crossover_prob: f64,
+    /// Mutation probability
+    pub mutation_prob: f64,
+    /// Selection strategy
+    pub selection_strategy: String,
+    /// Elite size
+    pub elite_size: usize,
+}
+
+/// Feature engineering parameters
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeatureParams {
+    /// Enable time-based features
+    pub enable_temporal_features: bool,
+    /// Enable circuit complexity features
+    pub enable_complexity_features: bool,
+    /// Enable user behavior features
+    pub enable_user_features: bool,
+    /// Enable platform performance features
+    pub enable_platform_features: bool,
+    /// Enable historical pattern features
+    pub enable_historical_features: bool,
+    /// Feature normalization method
+    pub normalization_method: String,
+    /// Feature selection threshold
+    pub selection_threshold: f64,
+}
+
+/// Service Level Agreement configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SLAConfig {
+    /// Maximum allowed queue time
+    pub max_queue_time: Duration,
+    /// Maximum allowed execution time
+    pub max_execution_time: Duration,
+    /// Minimum required availability
+    pub min_availability: f64,
+    /// Penalty for SLA violations
+    pub violation_penalty: f64,
+    /// SLA tier (Gold, Silver, Bronze)
+    pub tier: SLATier,
+}
+
+/// SLA tier levels
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SLATier {
+    Gold,
+    Silver,
+    Bronze,
+    Basic,
+}
+
+/// Default implementations for new types
+impl Default for MultiObjectiveWeights {
+    fn default() -> Self {
+        Self {
+            throughput: 0.3,
+            cost: 0.2,
+            energy: 0.15,
+            fairness: 0.15,
+            sla_compliance: 0.1,
+            qos: 0.1,
+        }
+    }
+}
+
+impl Default for RLParameters {
+    fn default() -> Self {
+        Self {
+            learning_rate: 0.001,
+            discount_factor: 0.95,
+            exploration_rate: 0.1,
+            episode_length: 1000,
+            reward_weights: [
+                ("throughput".to_string(), 1.0),
+                ("fairness".to_string(), 0.5),
+                ("cost".to_string(), -0.3),
+            ]
+            .into_iter()
+            .collect(),
+            state_dimension: 64,
+            action_space_size: 16,
+        }
+    }
+}
+
+impl Default for GAParameters {
+    fn default() -> Self {
+        Self {
+            population_size: 50,
+            generations: 100,
+            crossover_prob: 0.8,
+            mutation_prob: 0.1,
+            selection_strategy: "tournament".to_string(),
+            elite_size: 5,
+        }
+    }
+}
+
+impl Default for FeatureParams {
+    fn default() -> Self {
+        Self {
+            enable_temporal_features: true,
+            enable_complexity_features: true,
+            enable_user_features: true,
+            enable_platform_features: true,
+            enable_historical_features: true,
+            normalization_method: "z_score".to_string(),
+            selection_threshold: 0.1,
+        }
+    }
+}
+
 // Convenience functions for creating common job configurations
 
 /// Create a high-priority quantum job configuration
@@ -1431,6 +1680,190 @@ pub fn create_realtime_config() -> JobConfig {
         max_execution_time: Duration::from_secs(60), // 1 minute
         max_queue_time: Some(Duration::from_secs(30)), // 30 seconds max wait
         retry_attempts: 0,                           // No retries for real-time
+        ..Default::default()
+    }
+}
+
+/// Create SLA-aware job configuration for enterprise workloads
+pub fn create_sla_aware_config(tier: SLATier) -> JobConfig {
+    let (priority, max_execution_time, max_queue_time, retry_attempts) = match tier {
+        SLATier::Gold => (
+            JobPriority::Critical,
+            Duration::from_secs(300),
+            Some(Duration::from_secs(60)),
+            5,
+        ),
+        SLATier::Silver => (
+            JobPriority::High,
+            Duration::from_secs(600),
+            Some(Duration::from_secs(300)),
+            3,
+        ),
+        SLATier::Bronze => (
+            JobPriority::Normal,
+            Duration::from_secs(1800),
+            Some(Duration::from_secs(900)),
+            2,
+        ),
+        SLATier::Basic => (
+            JobPriority::Low,
+            Duration::from_secs(3600),
+            Some(Duration::from_secs(1800)),
+            1,
+        ),
+    };
+
+    JobConfig {
+        priority,
+        max_execution_time,
+        max_queue_time,
+        retry_attempts,
+        ..Default::default()
+    }
+}
+
+/// Create cost-optimized job configuration for budget-conscious workloads
+pub fn create_cost_optimized_config(budget_limit: f64) -> JobConfig {
+    JobConfig {
+        priority: JobPriority::BestEffort,
+        max_execution_time: Duration::from_secs(7200), // 2 hours
+        max_queue_time: None,                          // No queue limit for cost optimization
+        retry_attempts: 1,
+        cost_limit: Some(budget_limit),
+        preferred_backends: vec![], // Let cost optimizer choose
+        ..Default::default()
+    }
+}
+
+/// Create energy-efficient job configuration for green computing
+pub fn create_energy_efficient_config() -> JobConfig {
+    JobConfig {
+        priority: JobPriority::Low,
+        max_execution_time: Duration::from_secs(3600), // 1 hour
+        max_queue_time: None,                          // Wait for renewable energy availability
+        retry_attempts: 2,
+        tags: [("energy_profile".to_string(), "green".to_string())]
+            .into_iter()
+            .collect(),
+        ..Default::default()
+    }
+}
+
+/// Create research-focused job configuration with fault tolerance
+pub fn create_research_config() -> JobConfig {
+    JobConfig {
+        priority: JobPriority::Normal,
+        max_execution_time: Duration::from_secs(14400), // 4 hours
+        max_queue_time: Some(Duration::from_secs(7200)), // 2 hours max wait
+        retry_attempts: 3,
+        tags: [
+            ("workload_type".to_string(), "research".to_string()),
+            ("fault_tolerance".to_string(), "high".to_string()),
+        ]
+        .into_iter()
+        .collect(),
+        ..Default::default()
+    }
+}
+
+/// Create deadline-sensitive job configuration
+pub fn create_deadline_config(deadline: SystemTime) -> JobConfig {
+    JobConfig {
+        priority: JobPriority::High,
+        max_execution_time: Duration::from_secs(1800), // 30 minutes
+        max_queue_time: Some(Duration::from_secs(300)), // 5 minutes max wait
+        retry_attempts: 2,
+        deadline: Some(deadline),
+        tags: [(
+            "scheduling_type".to_string(),
+            "deadline_sensitive".to_string(),
+        )]
+        .into_iter()
+        .collect(),
+        ..Default::default()
+    }
+}
+
+/// Create machine learning training job configuration
+pub fn create_ml_training_config() -> JobConfig {
+    JobConfig {
+        priority: JobPriority::Normal,
+        max_execution_time: Duration::from_secs(21600), // 6 hours
+        max_queue_time: Some(Duration::from_secs(3600)), // 1 hour max wait
+        retry_attempts: 2,
+        resource_requirements: ResourceRequirements {
+            min_qubits: 20, // Typically need more qubits for ML
+            max_depth: Some(1000),
+            min_fidelity: Some(0.95),
+            memory_mb: Some(16384), // 16GB for ML workloads
+            cpu_cores: Some(8),
+            required_features: vec![
+                "variational_circuits".to_string(),
+                "parametric_gates".to_string(),
+            ],
+            ..Default::default()
+        },
+        tags: [
+            ("workload_type".to_string(), "machine_learning".to_string()),
+            ("resource_intensive".to_string(), "true".to_string()),
+        ]
+        .into_iter()
+        .collect(),
+        ..Default::default()
+    }
+}
+
+/// Create optimization problem job configuration
+pub fn create_optimization_config() -> JobConfig {
+    JobConfig {
+        priority: JobPriority::Normal,
+        max_execution_time: Duration::from_secs(10800), // 3 hours
+        max_queue_time: Some(Duration::from_secs(1800)), // 30 minutes max wait
+        retry_attempts: 3,
+        resource_requirements: ResourceRequirements {
+            min_qubits: 10,
+            max_depth: Some(500),
+            min_fidelity: Some(0.90),
+            required_features: vec!["qaoa".to_string(), "variational_algorithms".to_string()],
+            ..Default::default()
+        },
+        tags: [
+            ("workload_type".to_string(), "optimization".to_string()),
+            ("algorithm_type".to_string(), "variational".to_string()),
+        ]
+        .into_iter()
+        .collect(),
+        ..Default::default()
+    }
+}
+
+/// Create simulation job configuration for large-scale quantum simulation
+pub fn create_simulation_config(qubit_count: usize) -> JobConfig {
+    let (max_execution_time, memory_requirement) = match qubit_count {
+        1..=20 => (Duration::from_secs(3600), 4096), // 1 hour, 4GB
+        21..=30 => (Duration::from_secs(7200), 8192), // 2 hours, 8GB
+        31..=40 => (Duration::from_secs(14400), 16384), // 4 hours, 16GB
+        _ => (Duration::from_secs(28800), 32768),    // 8 hours, 32GB
+    };
+
+    JobConfig {
+        priority: JobPriority::Low, // Simulations can be background tasks
+        max_execution_time,
+        max_queue_time: None, // Flexible queue time for simulations
+        retry_attempts: 1,
+        resource_requirements: ResourceRequirements {
+            min_qubits: qubit_count,
+            memory_mb: Some(memory_requirement),
+            cpu_cores: Some(16), // High CPU for simulation
+            required_features: vec!["high_precision".to_string(), "large_circuits".to_string()],
+            ..Default::default()
+        },
+        tags: [
+            ("workload_type".to_string(), "simulation".to_string()),
+            ("qubit_count".to_string(), qubit_count.to_string()),
+        ]
+        .into_iter()
+        .collect(),
         ..Default::default()
     }
 }

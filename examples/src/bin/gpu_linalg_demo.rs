@@ -7,7 +7,7 @@ use quantrs2_sim::prelude::*;
 use std::time::Instant;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("=== GPU Linear Algebra Demo ===\n");
 
     // Check if GPU is available
@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn demo_matrix_multiplication(
     gpu: &GpuLinearAlgebra,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> std::result::Result<(), Box<dyn std::error::Error>> {
     // Create Pauli matrices
     let pauli_x = Array2::from_shape_vec(
         (2, 2),
@@ -94,7 +94,7 @@ async fn demo_matrix_multiplication(
     Ok(())
 }
 
-async fn demo_quantum_gates(gpu: &GpuLinearAlgebra) -> Result<(), Box<dyn std::error::Error>> {
+async fn demo_quantum_gates(gpu: &GpuLinearAlgebra) -> std::result::Result<(), Box<dyn std::error::Error>> {
     // Create Hadamard gate
     let sqrt2_inv = 1.0 / 2.0_f64.sqrt();
     let hadamard = Array2::from_shape_vec(
@@ -159,7 +159,7 @@ async fn demo_quantum_gates(gpu: &GpuLinearAlgebra) -> Result<(), Box<dyn std::e
 }
 
 // Performance comparison for different matrix sizes
-async fn compare_performance() -> Result<(), Box<dyn std::error::Error>> {
+async fn compare_performance() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("\n=== Performance Comparison ===\n");
 
     let gpu_linalg = GpuLinearAlgebra::new().await?;

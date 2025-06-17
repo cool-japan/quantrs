@@ -3,9 +3,8 @@
 //! This module implements peephole optimization, which looks for small patterns
 //! of gates that can be simplified or eliminated.
 
-use crate::error::{QuantRS2Error, QuantRS2Result};
+use crate::error::QuantRS2Result;
 use crate::gate::{multi::*, single::*, GateOp};
-use crate::qubit::QubitId;
 use std::f64::consts::PI;
 
 use super::{gates_can_commute, OptimizationPass};
@@ -47,6 +46,7 @@ impl PeepholeOptimizer {
     }
 
     /// Try to simplify a window of gates
+    #[allow(dead_code)]
     fn simplify_window(
         &self,
         window: &[Box<dyn GateOp>],
@@ -190,32 +190,41 @@ impl PeepholeOptimizer {
         }
 
         // H-X-H = Z pattern
-        if gate1.name() == "H" && gate2.name() == "X" && gate3.name() == "H" {
-            if gate1.qubits() == gate2.qubits() && gate2.qubits() == gate3.qubits() {
-                return Ok(Some(vec![Box::new(PauliZ {
-                    target: gate1.qubits()[0],
-                })]));
-            }
+        if gate1.name() == "H"
+            && gate2.name() == "X"
+            && gate3.name() == "H"
+            && gate1.qubits() == gate2.qubits()
+            && gate2.qubits() == gate3.qubits()
+        {
+            return Ok(Some(vec![Box::new(PauliZ {
+                target: gate1.qubits()[0],
+            })]));
         }
 
         // H-Z-H = X pattern
-        if gate1.name() == "H" && gate2.name() == "Z" && gate3.name() == "H" {
-            if gate1.qubits() == gate2.qubits() && gate2.qubits() == gate3.qubits() {
-                return Ok(Some(vec![Box::new(PauliX {
-                    target: gate1.qubits()[0],
-                })]));
-            }
+        if gate1.name() == "H"
+            && gate2.name() == "Z"
+            && gate3.name() == "H"
+            && gate1.qubits() == gate2.qubits()
+            && gate2.qubits() == gate3.qubits()
+        {
+            return Ok(Some(vec![Box::new(PauliX {
+                target: gate1.qubits()[0],
+            })]));
         }
 
         // X-Y-X = -Y pattern
-        if gate1.name() == "X" && gate2.name() == "Y" && gate3.name() == "X" {
-            if gate1.qubits() == gate2.qubits() && gate2.qubits() == gate3.qubits() {
-                let qubit = gate1.qubits()[0];
-                return Ok(Some(vec![
-                    Box::new(PauliY { target: qubit }),
-                    Box::new(PauliZ { target: qubit }), // Global phase -1
-                ]));
-            }
+        if gate1.name() == "X"
+            && gate2.name() == "Y"
+            && gate3.name() == "X"
+            && gate1.qubits() == gate2.qubits()
+            && gate2.qubits() == gate3.qubits()
+        {
+            let qubit = gate1.qubits()[0];
+            return Ok(Some(vec![
+                Box::new(PauliY { target: qubit }),
+                Box::new(PauliZ { target: qubit }), // Global phase -1
+            ]));
         }
 
         Ok(None)
@@ -316,6 +325,12 @@ pub struct TCountOptimizer {
     pub max_depth: usize,
 }
 
+impl Default for TCountOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TCountOptimizer {
     pub fn new() -> Self {
         Self { max_depth: 4 }
@@ -340,30 +355,28 @@ impl TCountOptimizer {
                 if gates[i].name() == "T"
                     && gates[i + 1].name() == "S"
                     && gates[i + 2].name() == "T"
+                    && gates[i].qubits() == gates[i + 1].qubits()
+                    && gates[i + 1].qubits() == gates[i + 2].qubits()
                 {
-                    if gates[i].qubits() == gates[i + 1].qubits()
-                        && gates[i + 1].qubits() == gates[i + 2].qubits()
-                    {
-                        let qubit = gates[i].qubits()[0];
-                        let mut result = Vec::new();
+                    let qubit = gates[i].qubits()[0];
+                    let mut result = Vec::new();
 
-                        // Copy gates before pattern
-                        for j in 0..i {
-                            result.push(gates[j].clone_gate());
-                        }
-
-                        // Replace pattern
-                        result.push(Box::new(Phase { target: qubit }) as Box<dyn GateOp>);
-                        result.push(Box::new(T { target: qubit }) as Box<dyn GateOp>);
-                        result.push(Box::new(Phase { target: qubit }) as Box<dyn GateOp>);
-
-                        // Copy gates after pattern
-                        for j in i + 3..gates.len() {
-                            result.push(gates[j].clone_gate());
-                        }
-
-                        return Ok(Some(result));
+                    // Copy gates before pattern
+                    for j in 0..i {
+                        result.push(gates[j].clone_gate());
                     }
+
+                    // Replace pattern
+                    result.push(Box::new(Phase { target: qubit }) as Box<dyn GateOp>);
+                    result.push(Box::new(T { target: qubit }) as Box<dyn GateOp>);
+                    result.push(Box::new(Phase { target: qubit }) as Box<dyn GateOp>);
+
+                    // Copy gates after pattern
+                    for j in i + 3..gates.len() {
+                        result.push(gates[j].clone_gate());
+                    }
+
+                    return Ok(Some(result));
                 }
             }
         }
@@ -394,6 +407,7 @@ impl OptimizationPass for TCountOptimizer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prelude::QubitId;
 
     #[test]
     fn test_rotation_merging() {

@@ -13,6 +13,7 @@ use quantrs2_core::gate::{multi::*, single::*, GateOp};
 use quantrs2_core::prelude::*;
 use rand::prelude::*;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Stabilizer tableau representation
 ///
@@ -416,7 +417,7 @@ pub fn is_clifford_circuit<const N: usize>(circuit: &Circuit<N>) -> bool {
 }
 
 /// Convert a gate operation to a stabilizer gate
-fn gate_to_stabilizer(gate: &Box<dyn GateOp>) -> Option<StabilizerGate> {
+fn gate_to_stabilizer(gate: &Arc<dyn GateOp + Send + Sync>) -> Option<StabilizerGate> {
     let gate_name = gate.name();
     let qubits = gate.qubits();
 
@@ -482,7 +483,10 @@ fn gate_to_stabilizer(gate: &Box<dyn GateOp>) -> Option<StabilizerGate> {
 
 /// Implement the Simulator trait for StabilizerSimulator
 impl Simulator for StabilizerSimulator {
-    fn run<const N: usize>(&mut self, circuit: &Circuit<N>) -> SimulatorResult<N> {
+    fn run<const N: usize>(
+        &mut self,
+        circuit: &Circuit<N>,
+    ) -> crate::error::Result<SimulatorResult<N>> {
         // Create a new simulator instance
         let mut sim = StabilizerSimulator::new(N);
 
@@ -497,7 +501,7 @@ impl Simulator for StabilizerSimulator {
         // Get the state vector (expensive operation)
         let amplitudes = sim.get_statevector();
 
-        SimulatorResult::new(amplitudes)
+        Ok(SimulatorResult::new(amplitudes))
     }
 }
 

@@ -3,11 +3,11 @@
 //! This module provides various encoding schemes to represent different types
 //! of variables and constraints as binary optimization problems.
 
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 use std::collections::HashMap;
 
 #[cfg(feature = "dwave")]
-use crate::symbol::{Expression, Symbol};
+use crate::symbol::Expression;
 
 /// Variable encoding scheme
 #[derive(Debug, Clone)]
@@ -167,7 +167,7 @@ impl EncodedVariable {
         let mut binary_values = HashMap::new();
 
         match &self.scheme {
-            EncodingScheme::OneHot { num_values } => {
+            EncodingScheme::OneHot { num_values: _ } => {
                 for (i, var) in self.binary_vars.iter().enumerate() {
                     binary_values.insert(var.clone(), i == value as usize);
                 }
@@ -184,7 +184,7 @@ impl EncodedVariable {
                     binary_values.insert(var.clone(), (gray & (1 << i)) != 0);
                 }
             }
-            EncodingScheme::DomainWall { num_values } => {
+            EncodingScheme::DomainWall { num_values: _ } => {
                 for (i, var) in self.binary_vars.iter().enumerate() {
                     binary_values.insert(var.clone(), i < value as usize);
                 }
@@ -294,6 +294,12 @@ pub struct EncodingOptimizer {
     constraint_graph: HashMap<String, Vec<String>>,
 }
 
+impl Default for EncodingOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EncodingOptimizer {
     /// Create new encoding optimizer
     pub fn new() -> Self {
@@ -313,11 +319,11 @@ impl EncodingOptimizer {
     pub fn add_constraint(&mut self, var1: &str, var2: &str) {
         self.constraint_graph
             .entry(var1.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(var2.to_string());
         self.constraint_graph
             .entry(var2.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(var1.to_string());
     }
 
@@ -408,8 +414,8 @@ impl AuxiliaryVariableGenerator {
     /// Generate auxiliary variables for product encoding
     pub fn product_encoding(
         &mut self,
-        var1: &str,
-        var2: &str,
+        _var1: &str,
+        _var2: &str,
         enc1: &EncodedVariable,
         enc2: &EncodedVariable,
     ) -> Vec<(String, Vec<String>)> {
@@ -433,6 +439,12 @@ pub struct EncodingConverter {
     encodings: HashMap<String, EncodedVariable>,
     /// Auxiliary variable generator
     aux_gen: AuxiliaryVariableGenerator,
+}
+
+impl Default for EncodingConverter {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl EncodingConverter {
@@ -459,7 +471,7 @@ impl EncodingConverter {
     }
 
     /// Build QUBO matrix with encoding penalties
-    pub fn build_qubo_matrix(&self, base_matrix: Array2<f64>) -> Array2<f64> {
+    pub fn build_qubo_matrix(&self, _base_matrix: Array2<f64>) -> Array2<f64> {
         let binary_vars = self.get_binary_variables();
         let var_indices: HashMap<String, usize> = binary_vars
             .iter()
@@ -549,14 +561,14 @@ mod tests {
         assert_eq!(encoded.binary_vars.len(), 4);
 
         // Encode value 2
-        let binary = encoded.encode(2);
+        let mut binary = encoded.encode(2);
         assert_eq!(binary[&"x_0".to_string()], false);
         assert_eq!(binary[&"x_1".to_string()], false);
         assert_eq!(binary[&"x_2".to_string()], true);
         assert_eq!(binary[&"x_3".to_string()], false);
 
         // Decode back
-        let value = encoded.decode(&binary).unwrap();
+        let mut value = encoded.decode(&binary).unwrap();
         assert_eq!(value, 2);
     }
 
@@ -566,12 +578,12 @@ mod tests {
         assert_eq!(encoded.binary_vars.len(), 3); // log2(8) = 3
 
         // Encode value 5 (binary: 101)
-        let binary = encoded.encode(5);
+        let mut binary = encoded.encode(5);
         assert_eq!(binary[&"y_bit0".to_string()], true);
         assert_eq!(binary[&"y_bit1".to_string()], false);
         assert_eq!(binary[&"y_bit2".to_string()], true);
 
-        let value = encoded.decode(&binary).unwrap();
+        let mut value = encoded.decode(&binary).unwrap();
         assert_eq!(value, 5);
     }
 
@@ -581,13 +593,13 @@ mod tests {
         assert_eq!(encoded.binary_vars.len(), 4);
 
         // Encode value 2 (domain wall: 1100)
-        let binary = encoded.encode(2);
+        let mut binary = encoded.encode(2);
         assert_eq!(binary[&"z_dw0".to_string()], true);
         assert_eq!(binary[&"z_dw1".to_string()], true);
         assert_eq!(binary[&"z_dw2".to_string()], false);
         assert_eq!(binary[&"z_dw3".to_string()], false);
 
-        let value = encoded.decode(&binary).unwrap();
+        let mut value = encoded.decode(&binary).unwrap();
         assert_eq!(value, 2);
     }
 

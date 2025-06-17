@@ -7,6 +7,18 @@ use std::time::Duration;
 /// Adaptive QEC configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AdaptiveQECConfig {
+    /// Enable real-time adaptation
+    pub enable_real_time_adaptation: bool,
+    /// Adaptation window
+    pub adaptation_window: std::time::Duration,
+    /// Performance threshold
+    pub performance_threshold: f64,
+    /// Enable threshold adaptation
+    pub enable_threshold_adaptation: bool,
+    /// Enable strategy switching
+    pub enable_strategy_switching: bool,
+    /// Learning rate
+    pub learning_rate: f64,
     /// Enable adaptive QEC
     pub enable_adaptive: bool,
     /// Adaptation strategies
@@ -17,6 +29,10 @@ pub struct AdaptiveQECConfig {
     pub realtime_optimization: RealtimeOptimizationConfig,
     /// Feedback control
     pub feedback_control: FeedbackControlConfig,
+    /// Prediction configuration
+    pub prediction: PredictionConfig,
+    /// Optimization configuration
+    pub optimization: OptimizationConfig,
 }
 
 /// Adaptation strategies for QEC
@@ -470,12 +486,58 @@ pub enum ActuatorType {
 pub struct QECOptimizationConfig {
     /// Enable optimization
     pub enable_optimization: bool,
+    /// Enable code optimization
+    pub enable_code_optimization: bool,
+    /// Enable layout optimization
+    pub enable_layout_optimization: bool,
+    /// Enable scheduling optimization
+    pub enable_scheduling_optimization: bool,
+    /// Optimization algorithm
+    pub optimization_algorithm: crate::unified_benchmarking::config::OptimizationAlgorithm,
+    /// Optimization objectives
+    pub optimization_objectives: Vec<crate::unified_benchmarking::config::OptimizationObjective>,
+    /// Constraint satisfaction configuration
+    pub constraint_satisfaction: ConstraintSatisfactionConfig,
     /// Optimization targets
     pub targets: Vec<OptimizationTarget>,
     /// Performance metrics
     pub metrics: Vec<PerformanceMetric>,
     /// Optimization strategies
     pub strategies: Vec<OptimizationStrategy>,
+}
+
+/// Constraint satisfaction configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConstraintSatisfactionConfig {
+    /// Hardware constraints
+    pub hardware_constraints: Vec<HardwareConstraint>,
+    /// Resource constraints
+    pub resource_constraints: Vec<ResourceConstraint>,
+    /// Performance constraints
+    pub performance_constraints: Vec<PerformanceConstraint>,
+}
+
+/// Hardware constraint types
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum HardwareConstraint {
+    ConnectivityGraph,
+    GateTimes,
+    ErrorRates,
+}
+
+/// Resource constraint types
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ResourceConstraint {
+    QubitCount,
+    CircuitDepth,
+    ExecutionTime,
+}
+
+/// Performance constraint types
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum PerformanceConstraint {
+    LogicalErrorRate,
+    ThroughputTarget,
 }
 
 /// Optimization targets
@@ -513,6 +575,18 @@ pub enum OptimizationStrategy {
 /// QEC machine learning configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QECMLConfig {
+    /// Model type
+    pub model_type: crate::unified_benchmarking::config::MLModelType,
+    /// Training data size
+    pub training_data_size: usize,
+    /// Validation split ratio
+    pub validation_split: f64,
+    /// Enable online learning
+    pub enable_online_learning: bool,
+    /// Feature extraction configuration
+    pub feature_extraction: crate::ml_optimization::FeatureExtractionConfig,
+    /// Model update frequency
+    pub model_update_frequency: std::time::Duration,
     /// Enable ML for QEC
     pub enable_ml: bool,
     /// ML models
@@ -1035,6 +1109,16 @@ pub struct EscalationLevel {
 /// QEC monitoring configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QECMonitoringConfig {
+    /// Enable performance tracking
+    pub enable_performance_tracking: bool,
+    /// Enable error analysis
+    pub enable_error_analysis: bool,
+    /// Enable resource monitoring
+    pub enable_resource_monitoring: bool,
+    /// Reporting interval
+    pub reporting_interval: std::time::Duration,
+    /// Enable predictive analytics
+    pub enable_predictive_analytics: bool,
     /// Enable monitoring
     pub enable_monitoring: bool,
     /// Monitoring targets
@@ -1233,4 +1317,40 @@ pub struct SuppressionRule {
     pub condition: String,
     /// Suppression duration
     pub duration: Duration,
+}
+
+/// Prediction configuration for adaptive QEC
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PredictionConfig {
+    /// Prediction horizon
+    pub horizon: Duration,
+    /// Confidence threshold
+    pub confidence_threshold: f64,
+}
+
+/// Optimization configuration for adaptive QEC
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OptimizationConfig {
+    /// Optimization objectives
+    pub objectives: Vec<String>,
+    /// Optimization constraints
+    pub constraints: Vec<String>,
+}
+
+impl Default for PredictionConfig {
+    fn default() -> Self {
+        Self {
+            horizon: Duration::from_secs(60),
+            confidence_threshold: 0.8,
+        }
+    }
+}
+
+impl Default for OptimizationConfig {
+    fn default() -> Self {
+        Self {
+            objectives: vec!["minimize_error_rate".to_string()],
+            constraints: vec!["hardware_connectivity".to_string()],
+        }
+    }
 }

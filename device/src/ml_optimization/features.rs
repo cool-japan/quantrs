@@ -1,8 +1,20 @@
 //! Feature Extraction Configuration Types
 
+use serde::{Deserialize, Serialize};
+
 /// Feature extraction configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FeatureExtractionConfig {
+    /// Enable syndrome history features
+    pub enable_syndrome_history: bool,
+    /// History length for features
+    pub history_length: usize,
+    /// Enable spatial features
+    pub enable_spatial_features: bool,
+    /// Enable temporal features
+    pub enable_temporal_features: bool,
+    /// Enable correlation features
+    pub enable_correlation_features: bool,
     /// Enable automatic feature extraction
     pub enable_auto_extraction: bool,
     /// Circuit structure features
@@ -22,7 +34,7 @@ pub struct FeatureExtractionConfig {
 }
 
 /// Circuit feature configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CircuitFeatureConfig {
     /// Basic circuit properties
     pub basic_properties: bool,
@@ -41,7 +53,7 @@ pub struct CircuitFeatureConfig {
 }
 
 /// Hardware feature configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HardwareFeatureConfig {
     /// Topology features
     pub topology_features: bool,
@@ -58,7 +70,7 @@ pub struct HardwareFeatureConfig {
 }
 
 /// Temporal feature configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TemporalFeatureConfig {
     /// Time series analysis
     pub time_series_analysis: bool,
@@ -73,7 +85,7 @@ pub struct TemporalFeatureConfig {
 }
 
 /// Statistical feature configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatisticalFeatureConfig {
     /// Moment features
     pub moment_features: bool,
@@ -88,7 +100,7 @@ pub struct StatisticalFeatureConfig {
 }
 
 /// Graph feature configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphFeatureConfig {
     /// Centrality measures
     pub centrality_measures: bool,
@@ -103,7 +115,7 @@ pub struct GraphFeatureConfig {
 }
 
 /// Feature selection configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FeatureSelectionConfig {
     /// Enable feature selection
     pub enable_selection: bool,
@@ -116,7 +128,7 @@ pub struct FeatureSelectionConfig {
 }
 
 /// Feature selection methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum FeatureSelectionMethod {
     VarianceThreshold,
     UnivariateSelection,
@@ -128,7 +140,7 @@ pub enum FeatureSelectionMethod {
 }
 
 /// Dimensionality reduction configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DimensionalityReductionConfig {
     /// Enable dimensionality reduction
     pub enable_reduction: bool,
@@ -141,7 +153,7 @@ pub struct DimensionalityReductionConfig {
 }
 
 /// Dimensionality reduction methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DimensionalityReductionMethod {
     PCA,
     ICA,

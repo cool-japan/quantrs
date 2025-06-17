@@ -4,8 +4,7 @@ use super::analysis::{ConstraintAnalysis, EnergyAnalysis};
 use super::comparison::ComparisonResult;
 use super::types::Solution;
 use super::visualization::Visualization;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use serde::Serialize;
 
 /// Debug report
 #[derive(Debug, Clone, Serialize)]
@@ -188,7 +187,7 @@ impl DebugReport {
                     issue.description
                 ));
             }
-            summary.push_str("\n");
+            summary.push('\n');
         }
 
         // Add suggestions
@@ -204,7 +203,7 @@ impl DebugReport {
                     suggestion.feasibility
                 ));
             }
-            summary.push_str("\n");
+            summary.push('\n');
         }
 
         summary

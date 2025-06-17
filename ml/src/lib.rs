@@ -1,12 +1,13 @@
 #![recursion_limit = "8192"]
+#![allow(warnings)]
 
 //! # Quantum Machine Learning
 //!
 //! This crate provides quantum machine learning capabilities for the QuantRS2 framework.
 //! It includes quantum neural networks, variational algorithms, and specialized tools for
-//! high-energy physics data analysis.
+//! high-energy physics data analysis, plus cutting-edge quantum ML algorithms.
 //!
-//! ## Features
+//! ## Core Features
 //!
 //! - Quantum Neural Networks
 //! - Variational Quantum Algorithms
@@ -18,6 +19,13 @@
 //! - Quantum Blockchain and Distributed Ledger Technology
 //! - Quantum-Enhanced Natural Language Processing
 //! - Quantum Anomaly Detection and Outlier Analysis
+//!
+//! ## Cutting-Edge Quantum ML Algorithms
+//!
+//! - **Quantum Neural ODEs**: Continuous-depth quantum neural networks using quantum circuits to parameterize derivative functions
+//! - **Quantum Physics-Informed Neural Networks (QPINNs)**: Quantum neural networks that enforce physical laws and solve PDEs
+//! - **Quantum Reservoir Computing**: Leverages quantum dynamics for temporal data processing with quantum advantages
+//! - **Quantum Graph Attention Networks**: Combines graph neural networks with quantum attention mechanisms for complex graph analysis
 
 use fastrand;
 use std::error::Error;
@@ -71,8 +79,20 @@ pub mod meta_learning;
 pub mod model_zoo;
 pub mod onnx_export;
 pub mod pytorch_api;
+pub mod quantum_advanced_diffusion;
+pub mod quantum_continuous_flows;
+pub mod quantum_graph_attention;
+pub mod quantum_implicit_neural_representations;
+pub mod quantum_in_context_learning;
 pub mod quantum_llm;
+pub mod quantum_memory_networks;
+pub mod quantum_mixture_of_experts;
 pub mod quantum_nas;
+pub mod quantum_neural_odes;
+pub mod quantum_neural_radiance_fields;
+pub mod quantum_pinns;
+pub mod quantum_reservoir_computing;
+pub mod quantum_self_supervised_learning;
 pub mod quantum_transformer;
 pub mod recommender;
 pub mod scirs2_integration;
@@ -297,4 +317,80 @@ pub mod prelude {
         UserBackground,
     };
     pub use crate::variational::{VariationalAlgorithm, VariationalCircuit};
+
+    // New cutting-edge quantum ML algorithms
+    pub use crate::quantum_graph_attention::{
+        AttentionAnalysis, AttentionConfig as QGATAttentionConfig,
+        BenchmarkResults as QGATBenchmarkResults, Graph, PoolingConfig, QGATConfig,
+        QuantumAttentionType as QGATQuantumAttentionType, QuantumGraphAttentionNetwork,
+        TrainingMetrics as QGATTrainingMetrics,
+    };
+    pub use crate::quantum_in_context_learning::{
+        AdaptationResult, AdaptationStrategy, AdaptationTarget, ContextExample, ContextMetadata,
+        ContextModality, ContextRetrievalMethod, EntanglementPattern, InContextLearningMetrics,
+        InContextLearningOutput, InContextLearningStatistics, InterpolationMethod,
+        MetaUpdateStrategy, QuantumAttentionMechanism, QuantumContextAttention,
+        QuantumContextEncoder, QuantumContextEncoding, QuantumContextState, QuantumDistanceMetric,
+        QuantumEpisodicMemory, QuantumInContextLearner, QuantumInContextLearningConfig,
+        QuantumTaskAdapter, TransferLearningResults,
+    };
+    pub use crate::quantum_memory_networks::{
+        AddressingConfig, AddressingType, BenchmarkResults as QMANBenchmarkResults,
+        ControllerArchitecture, ControllerConfig as QMANControllerConfig, EpisodicMemory,
+        HeadConfig, HeadType as QMANHeadType, MemoryInitialization, QMANConfig, QMANTrainingConfig,
+        QuantumMemoryAugmentedNetwork, ReadParams, TrainingMetrics as QMANTrainingMetrics,
+        WriteParams,
+    };
+    pub use crate::quantum_neural_odes::{
+        AnsatzType as QNODEAnsatzType, BenchmarkResults as QNODEBenchmarkResults,
+        IntegrationMethod, OptimizationStrategy as QNODEOptimizationStrategy, QNODEConfig,
+        QuantumNeuralODE, TrainingMetrics as QNODETrainingMetrics,
+    };
+    pub use crate::quantum_pinns::{
+        BoundaryCondition, DerivativeResults, InitialCondition, LossWeights, PhysicsEquationType,
+        QPINNConfig, QuantumPINN, TrainingMetrics as QPINNTrainingMetrics,
+    };
+    pub use crate::quantum_reservoir_computing::{
+        BenchmarkResults as QRCBenchmarkResults, DynamicsAnalysis, InputEncoding, QRCConfig,
+        QuantumReservoirComputer, ReadoutConfig, ReservoirDynamics,
+        TrainingMetrics as QRCTrainingMetrics,
+    };
+
+    pub use crate::quantum_advanced_diffusion::{
+        DenoisingArchitecture, ErrorMitigationStrategy, GenerationMetrics,
+        QuantumAdvancedDiffusionConfig, QuantumAdvancedDiffusionModel, QuantumGenerationOutput,
+        QuantumNoiseSchedule, QuantumTrainingConfig,
+    };
+
+    pub use crate::quantum_continuous_flows::{
+        FlowArchitecture, FlowSamplingOutput, FlowTrainingConfig, QuantumContinuousFlow,
+        QuantumContinuousFlowConfig, QuantumODEFunction,
+    };
+
+    pub use crate::quantum_neural_radiance_fields::{
+        QuantumNeRF, QuantumNeRFConfig, QuantumRenderOutput, QuantumRenderingMetrics,
+    };
+
+    pub use crate::quantum_mixture_of_experts::{
+        InterferencePattern, MoEOutput, MoEStatistics, MoETrainingConfig,
+        QuantumCombinationMetrics, QuantumGatingMechanism, QuantumMixtureOfExperts,
+        QuantumMixtureOfExpertsConfig, QuantumRoutingStrategy,
+    };
+
+    pub use crate::quantum_self_supervised_learning::{
+        ContrastiveLossFunction, QuantumAugmentationStrategy, QuantumAugmenter, QuantumDecoder,
+        QuantumEncoder, QuantumMaskingStrategy, QuantumProjector, QuantumSSLMethod,
+        QuantumSSLMetrics, QuantumSelfSupervisedConfig, QuantumSelfSupervisedLearner,
+        QuantumSimilarityMetric, RepresentationEvaluationResults, SSLLearningOutput,
+        SSLTrainingConfig,
+    };
+
+    pub use crate::quantum_implicit_neural_representations::{
+        AdaptationOutput, CompressedRepresentation, CompressionConfig, CompressionManager,
+        EntanglementManager, INRQueryOutput, INRTrainingConfig, INRTrainingOutput,
+        MetaLearningConfig, OptimizationConfig, QuantumActivationConfig, QuantumGradientEstimator,
+        QuantumINRConfig, QuantumINRMetrics, QuantumImplicitNeuralRepresentation,
+        QuantumLayerConfig, QuantumOptimizer, QuantumPositionalEncoding, QuantumStateManager,
+        RepresentationMethod, SignalType,
+    };
 }

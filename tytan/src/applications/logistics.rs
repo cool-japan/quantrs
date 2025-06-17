@@ -3,12 +3,13 @@
 //! This module provides quantum optimization tools for logistics applications
 //! including vehicle routing, supply chain optimization, and warehouse management.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, Array3, IxDyn};
+// Sampler types available for logistics applications
+#![allow(dead_code)]
+
+use ndarray::{Array1, Array2};
 use rand::prelude::*;
-use rand::thread_rng;
-use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use rand::rng;
+use std::collections::{HashMap, HashSet};
 
 /// Vehicle Routing Problem (VRP) optimizer
 pub struct VehicleRoutingOptimizer {
@@ -114,7 +115,7 @@ impl VehicleRoutingOptimizer {
     /// Build QUBO formulation
     pub fn build_qubo(&self) -> Result<(Array2<f64>, HashMap<String, usize>), String> {
         let n_locations = self.distance_matrix.shape()[0];
-        let n_customers = n_locations - 1; // Excluding depot
+        let _n_customers = n_locations - 1; // Excluding depot
 
         // Variables: x_{v,i,j} = 1 if vehicle v travels from i to j
         let n_vars = self.num_vehicles * n_locations * n_locations;
@@ -268,7 +269,7 @@ impl VehicleRoutingOptimizer {
 
         for v in 0..self.num_vehicles {
             // Approximate capacity usage
-            let mut route_demand = 0.0;
+            let route_demand = 0.0;
 
             for i in 0..n_locations {
                 for j in 1..n_locations {
@@ -440,14 +441,15 @@ impl VehicleRoutingOptimizer {
             // Time window checks
             if let Some(time_windows) = &self.time_windows {
                 for (i, &loc) in route.path.iter().enumerate() {
-                    if loc < time_windows.len() && i < route.arrival_times.len() {
-                        if route.arrival_times[i] > time_windows[loc].end {
-                            violations.push(ConstraintViolation::TimeWindowViolation {
-                                location: loc,
-                                arrival: route.arrival_times[i],
-                                window_end: time_windows[loc].end,
-                            });
-                        }
+                    if loc < time_windows.len()
+                        && i < route.arrival_times.len()
+                        && route.arrival_times[i] > time_windows[loc].end
+                    {
+                        violations.push(ConstraintViolation::TimeWindowViolation {
+                            location: loc,
+                            arrival: route.arrival_times[i],
+                            window_end: time_windows[loc].end,
+                        });
                     }
                 }
             }
@@ -543,7 +545,7 @@ impl VehicleRoutingProblem {
 
         // Calculate distance objective
         let mut var_idx = 0;
-        for v in 0..self.optimizer.num_vehicles {
+        for _v in 0..self.optimizer.num_vehicles {
             for i in 0..n_locations {
                 for j in 0..n_locations {
                     if i != j {
@@ -573,7 +575,7 @@ impl VehicleRoutingProblem {
             let mut visits = 0.0;
             let mut var_idx = 0;
 
-            for v in 0..self.optimizer.num_vehicles {
+            for _v in 0..self.optimizer.num_vehicles {
                 for i in 0..n_locations {
                     if i != j {
                         let decision = if x[var_idx + i * n_locations + j] > 0.5 {
@@ -621,10 +623,10 @@ impl BinaryVehicleRoutingProblem {
 
     /// Create random binary solution
     pub fn random_solution(&self) -> Vec<i8> {
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let n_vars = self.num_variables();
         (0..n_vars)
-            .map(|_| if rng.gen::<f64>() > 0.8 { 1 } else { 0 })
+            .map(|_| if rng.random::<f64>() > 0.8 { 1 } else { 0 })
             .collect()
     }
 
@@ -871,7 +873,7 @@ impl TSPOptimizer {
     ) -> Result<(Array2<f64>, HashMap<String, usize>), String> {
         // Variables: x_{s,i,t} = 1 if salesman s visits city i at time t
         let n_vars = num_salesmen * n * n;
-        let mut qubo = Array2::zeros((n_vars, n_vars));
+        let qubo = Array2::zeros((n_vars, n_vars));
         let mut var_map = HashMap::new();
 
         // Create variable mapping
@@ -1178,14 +1180,14 @@ impl SupplyChainOptimizer {
     /// Add flow conservation constraints
     fn add_flow_conservation_constraints(
         &self,
-        qubo: &mut Array2<f64>,
-        var_map: &HashMap<String, usize>,
+        _qubo: &mut Array2<f64>,
+        _var_map: &HashMap<String, usize>,
     ) -> Result<(), String> {
-        let penalty = 1000.0;
+        let _penalty = 1000.0;
 
         // Warehouse flow conservation
-        for w in &self.network.warehouses {
-            for t in 1..self.time_horizon {
+        for _w in &self.network.warehouses {
+            for _t in 1..self.time_horizon {
                 // I_{w,t} = I_{w,t-1} + sum_s x_{s,w,t} - sum_d y_{w,d,t}
 
                 // This is a complex constraint, simplified here
@@ -1488,7 +1490,7 @@ impl WarehouseOptimizer {
 
         // Solve TSP
         let tsp = TSPOptimizer::new(distances)?;
-        let (qubo, var_map) = tsp.build_qubo()?;
+        let (_qubo, _var_map) = tsp.build_qubo()?;
 
         // Simplified: return S-shaped route
         let sequence = (0..pick_locations.len()).collect();
@@ -1565,7 +1567,7 @@ mod tests {
 
         let optimizer = VehicleRoutingOptimizer::new(distances, 50.0, demands, 2).unwrap();
 
-        let (qubo, var_map) = optimizer.build_qubo().unwrap();
+        let (_qubo, var_map) = optimizer.build_qubo().unwrap();
         assert!(!var_map.is_empty());
     }
 
@@ -1581,7 +1583,7 @@ mod tests {
         .unwrap();
 
         let optimizer = TSPOptimizer::new(distances).unwrap();
-        let (qubo, var_map) = optimizer.build_qubo().unwrap();
+        let (_qubo, var_map) = optimizer.build_qubo().unwrap();
 
         assert_eq!(var_map.len(), 16); // 4 cities * 4 time slots
     }
@@ -1619,7 +1621,7 @@ mod tests {
         };
 
         let optimizer = SupplyChainOptimizer::new(network, 3);
-        let (qubo, var_map) = optimizer.build_qubo().unwrap();
+        let (_qubo, var_map) = optimizer.build_qubo().unwrap();
 
         assert!(!var_map.is_empty());
     }
@@ -1649,7 +1651,7 @@ mod tests {
         assert_eq!(solution.len(), 32);
 
         // Test solution evaluation
-        let energy = binary_vrp.evaluate_binary(&solution);
+        let mut energy = binary_vrp.evaluate_binary(&solution);
         assert!(energy.is_finite());
 
         // Test solution decoding
@@ -1665,7 +1667,7 @@ mod tests {
         // Test each problem
         for (i, problem) in problems.iter().enumerate() {
             let solution = problem.random_solution();
-            let energy = problem.evaluate_binary(&solution);
+            let mut energy = problem.evaluate_binary(&solution);
             assert!(
                 energy.is_finite(),
                 "Problem {} should have finite energy",

@@ -94,7 +94,7 @@ fn custom_benchmark_demo() -> Result<(), Box<dyn Error>> {
     };
 
     // Run benchmarks
-    let runner = BenchmarkRunner::new(config);
+    let mut runner = BenchmarkRunner::new(config);
     let report = runner.run_complete_suite()?;
 
     // Display summary
@@ -164,7 +164,7 @@ fn comparative_benchmark_demo() -> Result<(), Box<dyn Error>> {
     };
 
     // Run analysis
-    let runner = BenchmarkRunner::new(config);
+    let mut runner = BenchmarkRunner::new(config);
     let report = runner.run_complete_suite()?;
 
     // Analyze scaling
@@ -197,7 +197,7 @@ fn comparative_benchmark_demo() -> Result<(), Box<dyn Error>> {
 
     // Generate visualizations
     println!("\n   Generating visualizations...");
-    let visualizer = BenchmarkVisualizer::new(report);
+    let mut visualizer = BenchmarkVisualizer::new(report);
     visualizer.generate_all("comparative_results")?;
     println!("   Visualizations saved to comparative_results/");
 

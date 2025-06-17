@@ -5,10 +5,10 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
-use ndarray::{Array1, Array2, Axis};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use rand::prelude::*;
-use rand::{thread_rng, SeedableRng};
+use rand::{rng, SeedableRng};
 use rayon::prelude::*;
 use std::collections::HashMap;
 
@@ -114,7 +114,7 @@ fn measure_single_state(
     let mut rng = if let Some(seed) = config.seed {
         StdRng::seed_from_u64(seed)
     } else {
-        StdRng::from_seed(thread_rng().gen())
+        StdRng::from_seed(rng().random())
     };
 
     let mut outcomes = Vec::with_capacity(qubits_to_measure.len());
@@ -133,7 +133,7 @@ fn measure_single_state(
 fn measure_qubit(state: &Array1<Complex64>, qubit: QubitId, rng: &mut StdRng) -> (u8, f64) {
     let qubit_idx = qubit.0 as usize;
     let state_size = state.len();
-    let n_qubits = (state_size as f64).log2() as usize;
+    let _n_qubits = (state_size as f64).log2() as usize;
 
     // Calculate probability of measuring |0>
     let mut prob_zero = 0.0;
@@ -146,7 +146,11 @@ fn measure_qubit(state: &Array1<Complex64>, qubit: QubitId, rng: &mut StdRng) ->
     }
 
     // Perform measurement
-    let outcome = if rng.gen::<f64>() < prob_zero { 0 } else { 1 };
+    let outcome = if rng.random::<f64>() < prob_zero {
+        0
+    } else {
+        1
+    };
     let probability = if outcome == 0 {
         prob_zero
     } else {
@@ -214,7 +218,7 @@ fn compute_measurement_statistics(
     qubits_to_measure: &[QubitId],
     shots: usize,
 ) -> MeasurementStatistics {
-    let mut rng = StdRng::from_seed(thread_rng().gen());
+    let mut rng = StdRng::from_seed(rng().random());
     let mut counts: HashMap<String, usize> = HashMap::new();
 
     // Perform measurements
@@ -307,7 +311,7 @@ fn compute_single_qubit_expectation(
     observable: &Array2<Complex64>,
     n_qubits: usize,
 ) -> QuantRS2Result<f64> {
-    if observable.shape() != &[2, 2] {
+    if observable.shape() != [2, 2] {
         return Err(QuantRS2Error::InvalidInput(
             "Observable must be a 2x2 matrix".to_string(),
         ));
@@ -363,6 +367,9 @@ pub fn measure_tomography_batch(
     })
 }
 
+/// Type alias for custom measurement basis
+pub type CustomMeasurementBasis = Vec<(String, Vec<(QubitId, Array2<Complex64>)>)>;
+
 /// Tomography basis
 #[derive(Debug, Clone)]
 pub enum TomographyBasis {
@@ -371,7 +378,7 @@ pub enum TomographyBasis {
     /// Computational basis (|0>, |1>)
     Computational,
     /// Custom measurement basis
-    Custom(Vec<(String, Vec<(QubitId, Array2<Complex64>)>)>),
+    Custom(CustomMeasurementBasis),
 }
 
 /// Batch tomography result

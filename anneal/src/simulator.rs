@@ -11,7 +11,7 @@ use thiserror::Error;
 use crate::ising::{IsingError, IsingModel};
 
 /// Errors that can occur during simulated annealing
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum AnnealingError {
     /// Error in the underlying Ising model
     #[error("Ising error: {0}")]

@@ -16,10 +16,10 @@ fn test_compile_simple_expression() {
     let y = symbols("y");
 
     // Simple linear expression: x + 2*y
-    let expr = x.clone() + 2 * y.clone();
+    let expr = x.clone() + y.clone() * 2;
 
     // Compile to QUBO
-    let (qubo, offset) = Compile::new(&expr).get_qubo().unwrap();
+    let (qubo, offset) = Compile::new(expr).get_qubo().unwrap();
     let (matrix, var_map) = qubo;
 
     // Check offset
@@ -49,10 +49,10 @@ fn test_compile_quadratic_expression() {
     let y = symbols("y");
 
     // Quadratic expression: x*y + x^2 (which is just x for binary variables)
-    let expr = x.clone() * y.clone() + x.clone().pow(2);
+    let expr = x.clone() * y.clone() + x.clone().pow(symengine::expr::Expression::from(2));
 
     // Compile to QUBO
-    let (qubo, offset) = Compile::new(&expr).get_qubo().unwrap();
+    let (qubo, offset) = Compile::new(expr).get_qubo().unwrap();
     let (matrix, var_map) = qubo;
 
     // Check offset
@@ -84,10 +84,10 @@ fn test_compile_constraint_expression() {
     let z = symbols("z");
 
     // Constraint: (x + y + z - 1)^2
-    let expr = (x.clone() + y.clone() + z.clone() - 1).pow(2);
+    let expr = (x.clone() + y.clone() + z.clone() - 1).pow(symengine::expr::Expression::from(2));
 
     // Compile to QUBO
-    let (qubo, offset) = Compile::new(&expr).get_qubo().unwrap();
+    let (qubo, offset) = Compile::new(expr).get_qubo().unwrap();
     let (matrix, var_map) = qubo;
 
     // Check offset
@@ -131,7 +131,7 @@ fn test_compile_cubic_expression() {
     let expr = x.clone() * y.clone() * z.clone();
 
     // Compile to HOBO
-    let (hobo, offset) = Compile::new(&expr).get_hobo().unwrap();
+    let (hobo, offset) = Compile::new(expr).get_hobo().unwrap();
     let (tensor, var_map) = hobo;
 
     // Check offset
@@ -151,7 +151,7 @@ fn test_compile_cubic_expression() {
 
     // This assumes the tensor is stored in a canonical form where indices are ordered
     let indices = [x_idx, y_idx, z_idx];
-    let mut sorted_indices = indices.clone();
+    let sorted_indices = indices.clone();
     sorted_indices.sort();
 
     // Check that the tensor has a 1.0 at the expected position
@@ -179,7 +179,7 @@ fn test_compile_matrix_input() {
     matrix[[2, 1]] = matrix[[1, 2]];
 
     // Compile
-    let (qubo, offset) = Compile::new(&matrix).get_qubo().unwrap();
+    let (qubo, offset) = Compile::new(matrix).get_qubo().unwrap();
     let (result_matrix, var_map) = qubo;
 
     // Check offset

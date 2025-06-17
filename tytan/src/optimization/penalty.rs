@@ -3,7 +3,6 @@
 //! This module provides advanced penalty weight optimization using SciRS2
 //! for automatic tuning and constraint satisfaction analysis.
 
-use crate::sampler::SampleResult;
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -215,9 +214,9 @@ impl PenaltyOptimizer {
     /// Evaluate single constraint violation
     fn evaluate_constraint_violation(
         &self,
-        constraint: &ConstraintExpr,
-        assignment: &[bool],
-        var_map: &HashMap<String, usize>,
+        _constraint: &ConstraintExpr,
+        _assignment: &[bool],
+        _var_map: &HashMap<String, usize>,
     ) -> Result<f64, Box<dyn std::error::Error>> {
         // Placeholder evaluation - in real implementation would parse and evaluate expression
         let value: f64 = 0.0; // Placeholder
@@ -295,7 +294,7 @@ impl PenaltyOptimizer {
             .map(|name| violations[name].abs())
             .collect();
 
-        let objective = WeightOptimizationObjective {
+        let mut objective = WeightOptimizationObjective {
             violations: violations_vec,
             penalty_type: self.config.penalty_type,
             regularization: 0.01, // L2 regularization on weights
@@ -308,7 +307,8 @@ impl PenaltyOptimizer {
 
         // Optimize
         if let Some(ref mut optimizer) = self.optimizer {
-            let result = optimizer.minimize(&objective, &current_weights, &bounds, iteration)?;
+            let mut result =
+                optimizer.minimize(&objective, &current_weights, &bounds, iteration)?;
 
             // Update weights
             for (i, name) in constraint_names.iter().enumerate() {
@@ -441,6 +441,12 @@ impl crate::scirs_stub::scirs2_optimization::ObjectiveFunction for WeightOptimiz
 pub struct CompiledModel {
     constraints: HashMap<String, ConstraintExpr>,
     variable_map: HashMap<String, usize>,
+}
+
+impl Default for CompiledModel {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CompiledModel {

@@ -42,7 +42,7 @@ pub fn cluster_solutions(
     results: &[SampleResult],
     max_clusters: usize,
 ) -> AnalysisResult<Vec<(Vec<usize>, f64)>> {
-    use scirs2_cluster::vq::kmeans::{KMeans, KMeansParams};
+    use crate::scirs_stub::scirs2_ml::KMeans;
 
     if results.is_empty() {
         return Err(AnalysisError::DataProcessingError(
@@ -71,20 +71,11 @@ pub fn cluster_solutions(
     let actual_max_clusters = std::cmp::min(max_clusters, n_samples / 2);
     let actual_max_clusters = std::cmp::max(actual_max_clusters, 2); // At least 2 clusters
 
-    // Setup K-means parameters
-    let mut params = KMeansParams::default();
-    params.n_clusters = actual_max_clusters;
-    params.max_iter = 100;
-    params.tol = 1e-4;
-
     // Run K-means clustering
-    let kmeans = KMeans::new(params);
-    let result = kmeans
-        .fit(&data)
+    let kmeans = KMeans::new(actual_max_clusters);
+    let labels = kmeans
+        .fit_predict(&data)
         .map_err(|e| AnalysisError::ClusteringError(e.to_string()))?;
-
-    // Get cluster labels
-    let labels = result.labels();
 
     // Group results by cluster
     let mut clusters: HashMap<usize, Vec<usize>> = HashMap::new();

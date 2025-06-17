@@ -81,7 +81,33 @@ pub enum SimulatorError {
     /// Operation not supported
     #[error("Operation not supported: {0}")]
     OperationNotSupported(String),
+
+    /// Invalid parameter
+    #[error("Invalid parameter: {0}")]
+    InvalidParameter(String),
+
+    /// Not implemented
+    #[error("Not implemented: {0}")]
+    NotImplemented(String),
+
+    /// Memory allocation failed
+    #[error("Memory allocation failed: {0}")]
+    MemoryAllocationFailed(String),
+
+    /// Resource exhausted
+    #[error("Resource exhausted: {0}")]
+    ResourceExhausted(String),
+
+    /// Invalid state
+    #[error("Invalid state: {0}")]
+    InvalidState(String),
 }
 
 /// Result type for simulator operations
 pub type Result<T> = std::result::Result<T, SimulatorError>;
+
+impl From<ndarray::ShapeError> for SimulatorError {
+    fn from(err: ndarray::ShapeError) -> Self {
+        SimulatorError::DimensionMismatch(err.to_string())
+    }
+}

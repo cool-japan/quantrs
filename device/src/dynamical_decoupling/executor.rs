@@ -4,36 +4,45 @@ use std::time::Instant;
 
 use quantrs2_core::qubit::QubitId;
 
-use crate::{
-    DeviceResult,
-    calibration::CalibrationManager,
-    topology::HardwareTopology,
-};
+use crate::{calibration::CalibrationManager, topology::HardwareTopology, DeviceResult};
 
 use super::{
-    config::DynamicalDecouplingConfig,
-    sequences::{DDSequenceGenerator, SequenceCache},
-    optimization::DDSequenceOptimizer,
-    performance::DDPerformanceAnalyzer,
     analysis::DDStatisticalAnalyzer,
+    config::DynamicalDecouplingConfig,
     hardware::DDHardwareAnalyzer,
     noise::DDNoiseAnalyzer,
+    optimization::DDSequenceOptimizer,
+    performance::DDPerformanceAnalyzer,
+    sequences::{DDSequenceGenerator, SequenceCache},
     validation::DDValidator,
-    DynamicalDecouplingResult,
-    DDCircuitExecutor,
+    DDCircuitExecutor, DynamicalDecouplingResult,
 };
 
 // SciRS2 fallback
 #[cfg(not(feature = "scirs2"))]
 mod fallback_scirs2 {
     use ndarray::{Array1, Array2};
-    
-    pub fn mean(_data: &ndarray::ArrayView1<f64>) -> Result<f64, String> { Ok(0.0) }
-    pub fn std(_data: &ndarray::ArrayView1<f64>, _ddof: i32) -> Result<f64, String> { Ok(1.0) }
-    pub fn pearsonr(_x: &ndarray::ArrayView1<f64>, _y: &ndarray::ArrayView1<f64>, _alt: &str) -> Result<(f64, f64), String> { Ok((0.0, 0.5)) }
-    pub fn trace(_matrix: &ndarray::ArrayView2<f64>) -> Result<f64, String> { Ok(1.0) }
-    pub fn inv(_matrix: &ndarray::ArrayView2<f64>) -> Result<Array2<f64>, String> { Ok(Array2::eye(2)) }
-    
+
+    pub fn mean(_data: &ndarray::ArrayView1<f64>) -> Result<f64, String> {
+        Ok(0.0)
+    }
+    pub fn std(_data: &ndarray::ArrayView1<f64>, _ddof: i32) -> Result<f64, String> {
+        Ok(1.0)
+    }
+    pub fn pearsonr(
+        _x: &ndarray::ArrayView1<f64>,
+        _y: &ndarray::ArrayView1<f64>,
+        _alt: &str,
+    ) -> Result<(f64, f64), String> {
+        Ok((0.0, 0.5))
+    }
+    pub fn trace(_matrix: &ndarray::ArrayView2<f64>) -> Result<f64, String> {
+        Ok(1.0)
+    }
+    pub fn inv(_matrix: &ndarray::ArrayView2<f64>) -> Result<Array2<f64>, String> {
+        Ok(Array2::eye(2))
+    }
+
     pub struct OptimizeResult {
         pub x: Array1<f64>,
         pub fun: f64,
@@ -42,8 +51,12 @@ mod fallback_scirs2 {
         pub nfev: usize,
         pub message: String,
     }
-    
-    pub fn minimize(_func: fn(&Array1<f64>) -> f64, _x0: &Array1<f64>, _method: &str) -> Result<OptimizeResult, String> {
+
+    pub fn minimize(
+        _func: fn(&Array1<f64>) -> f64,
+        _x0: &Array1<f64>,
+        _method: &str,
+    ) -> Result<OptimizeResult, String> {
         Ok(OptimizeResult {
             x: Array1::zeros(2),
             fun: 0.0,
@@ -94,10 +107,7 @@ impl DynamicalDecouplingExecutor {
         let start_time = Instant::now();
 
         // Step 1: Generate base DD sequence
-        let base_sequence = self.generate_base_sequence(
-            target_qubits,
-            sequence_duration,
-        )?;
+        let base_sequence = self.generate_base_sequence(target_qubits, sequence_duration)?;
 
         // Step 2: Optimize sequence if enabled
         let optimized_sequence = if self.config.optimization_config.enable_optimization {
@@ -107,35 +117,26 @@ impl DynamicalDecouplingExecutor {
         };
 
         // Step 3: Analyze performance
-        let performance_analysis = self.analyze_performance(
-            &optimized_sequence,
-            executor,
-        ).await?;
+        let performance_analysis = self
+            .analyze_performance(&optimized_sequence, executor)
+            .await?;
 
         // Step 4: Statistical analysis
-        let statistical_analysis = self.perform_statistical_analysis(
-            &optimized_sequence,
-            &performance_analysis,
-        )?;
+        let statistical_analysis =
+            self.perform_statistical_analysis(&optimized_sequence, &performance_analysis)?;
 
         // Step 5: Hardware analysis
-        let hardware_analysis = self.analyze_hardware_implementation(
-            device_id,
-            &optimized_sequence,
-        )?;
+        let hardware_analysis =
+            self.analyze_hardware_implementation(device_id, &optimized_sequence)?;
 
         // Step 6: Noise analysis
-        let noise_analysis = self.analyze_noise_characteristics(
-            &optimized_sequence,
-            &performance_analysis,
-        )?;
+        let noise_analysis =
+            self.analyze_noise_characteristics(&optimized_sequence, &performance_analysis)?;
 
         // Step 7: Validation
         let validation_results = if self.config.validation_config.enable_validation {
-            self.perform_validation(
-                &optimized_sequence,
-                executor,
-            ).await?
+            self.perform_validation(&optimized_sequence, executor)
+                .await?
         } else {
             super::validation::DDValidationResults {
                 cross_validation: None,
@@ -194,7 +195,7 @@ impl DynamicalDecouplingExecutor {
         };
 
         let execution_time = start_time.elapsed();
-        
+
         // Calculate quality score based on all analyses
         let quality_score = self.calculate_quality_score(
             &performance_analysis,
@@ -210,6 +211,10 @@ impl DynamicalDecouplingExecutor {
             execution_time,
             success: true,
             quality_score,
+            performance_analysis: None,
+            noise_analysis: None,
+            hardware_analysis: None,
+            adaptation_stats: None,
         })
     }
 
@@ -220,7 +225,8 @@ impl DynamicalDecouplingExecutor {
         sequence_duration: f64,
     ) -> DeviceResult<super::sequences::DDSequence> {
         // Check cache first
-        let cache_key = format!("{:?}_{}_{}",
+        let cache_key = format!(
+            "{:?}_{}_{}",
             self.config.sequence_type,
             target_qubits.len(),
             sequence_duration
@@ -238,7 +244,8 @@ impl DynamicalDecouplingExecutor {
         )?;
 
         // Store in cache
-        self.sequence_cache.store_sequence(cache_key, sequence.clone());
+        self.sequence_cache
+            .store_sequence(cache_key, sequence.clone());
 
         Ok(sequence)
     }
@@ -250,7 +257,7 @@ impl DynamicalDecouplingExecutor {
         executor: &dyn DDCircuitExecutor,
     ) -> DeviceResult<super::sequences::DDSequence> {
         let mut optimizer = DDSequenceOptimizer::new(self.config.optimization_config.clone());
-        
+
         let optimization_result = optimizer.optimize_sequence(base_sequence, executor).await?;
         Ok(optimization_result.optimized_sequence)
     }
@@ -285,7 +292,7 @@ impl DynamicalDecouplingExecutor {
             Some(self.calibration_manager.clone()),
             self.device_topology.clone(),
         );
-        
+
         analyzer.analyze_hardware_implementation(device_id, sequence)
     }
 
@@ -322,8 +329,8 @@ impl DynamicalDecouplingExecutor {
         let mut total_weight = 0.0;
 
         // Performance score (weight: 0.3)
-        let performance_score = performance_analysis.metrics.values().sum::<f64>() 
-                               / performance_analysis.metrics.len() as f64;
+        let performance_score = performance_analysis.metrics.values().sum::<f64>()
+            / performance_analysis.metrics.len() as f64;
         total_score += 0.3 * performance_score;
         total_weight += 0.3;
 
@@ -341,7 +348,9 @@ impl DynamicalDecouplingExecutor {
         let validation_score = if let Some(cv_results) = &validation_results.cross_validation {
             cv_results.mean_score
         } else {
-            validation_results.generalization_analysis.generalization_score
+            validation_results
+                .generalization_analysis
+                .generalization_score
         };
         total_score += 0.3 * validation_score;
         total_weight += 0.3;
@@ -375,9 +384,5 @@ pub fn create_custom_dd_executor(
     calibration_manager: CalibrationManager,
     device_topology: Option<HardwareTopology>,
 ) -> DynamicalDecouplingExecutor {
-    DynamicalDecouplingExecutor::new(
-        config,
-        calibration_manager,
-        device_topology,
-    )
+    DynamicalDecouplingExecutor::new(config, calibration_manager, device_topology)
 }

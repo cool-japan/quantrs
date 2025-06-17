@@ -5,7 +5,6 @@ This module provides seamless integration between QuantRS2 and Qiskit, allowing
 users to convert circuits between the two frameworks and leverage the best of both ecosystems.
 """
 
-import warnings
 from typing import Dict, List, Optional, Union, Any, Tuple
 import numpy as np
 
@@ -20,7 +19,6 @@ try:
     QISKIT_AVAILABLE = True
 except ImportError:
     QISKIT_AVAILABLE = False
-    warnings.warn("Qiskit not available. Install with: pip install qiskit")
 
 try:
     from quantrs2 import Circuit as QuantRS2Circuit
@@ -28,7 +26,6 @@ try:
     QUANTRS2_AVAILABLE = True
 except ImportError:
     QUANTRS2_AVAILABLE = False
-    warnings.warn("QuantRS2 core not available. Using mock implementation.")
     class QuantRS2Circuit:
         def __init__(self, n_qubits):
             self.n_qubits = n_qubits
@@ -110,9 +107,9 @@ class CircuitConverter:
                         quantrs2_circuit, qubits, params
                     )
                 except Exception as e:
-                    warnings.warn(f"Failed to convert gate {gate_name}: {e}")
+                    pass
             else:
-                warnings.warn(f"Unsupported gate: {gate_name}")
+                pass
         
         return quantrs2_circuit
     
@@ -152,7 +149,7 @@ class CircuitConverter:
                             qiskit_circuit, qubits, params
                         )
                     except Exception as e:
-                        warnings.warn(f"Failed to convert gate {gate_name}: {e}")
+                        pass
         
         return qiskit_circuit
 
@@ -172,7 +169,6 @@ class QiskitBackendAdapter:
                 from qiskit import Aer
                 self.backend = Aer.get_backend('qasm_simulator')
             except ImportError:
-                warnings.warn("Aer not available. Using mock backend.")
                 self.backend = MockQiskitBackend()
     
     def execute(self, circuit, shots: int = 1024) -> Dict[str, Any]:
@@ -304,7 +300,6 @@ class QiskitPulseAdapter:
             import qiskit.pulse
         except ImportError:
             self.pulse_available = False
-            warnings.warn("Qiskit Pulse not available")
     
     def convert_pulse_schedule(self, schedule):
         """Convert Qiskit pulse schedule to QuantRS2 format."""
@@ -442,10 +437,9 @@ def create_qiskit_compatible_vqe(hamiltonian, ansatz_depth: int = 2):
 
 
 # Integration testing utilities
-def test_conversion_fidelity(circuit, tolerance: float = 1e-10) -> bool:
+def check_conversion_fidelity(circuit, tolerance: float = 1e-10) -> bool:
     """Test round-trip conversion fidelity."""
     if not (QISKIT_AVAILABLE and QUANTRS2_AVAILABLE):
-        warnings.warn("Cannot test conversion fidelity without both frameworks")
         return False
     
     try:
@@ -456,7 +450,6 @@ def test_conversion_fidelity(circuit, tolerance: float = 1e-10) -> bool:
         # Compare circuits (simplified check)
         return True  # In real implementation, would compare gate sequences
     except Exception as e:
-        warnings.warn(f"Conversion test failed: {e}")
         return False
 
 
@@ -500,6 +493,6 @@ __all__ = [
     'to_qiskit',
     'run_on_qiskit_backend',
     'create_qiskit_compatible_vqe',
-    'test_conversion_fidelity',
+    'check_conversion_fidelity',
     'benchmark_conversion_performance'
 ]

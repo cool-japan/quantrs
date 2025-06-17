@@ -7,7 +7,7 @@ use crate::{
     optimization::penalty::CompiledModel,
     sampler::{SampleResult, Sampler},
 };
-use ndarray::{Array1, Array2};
+use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -223,7 +223,7 @@ impl ParameterTuner {
             use crate::scirs_stub::scirs2_optimization::bayesian::KernelType;
 
             let dim = self.parameter_bounds.len();
-            let kernel = KernelType::Matern52;
+            let mut kernel = KernelType::Matern52;
 
             self.optimizer = Some(BayesianOptimizer::new(
                 dim,
@@ -265,14 +265,14 @@ impl ParameterTuner {
             .iter()
             .map(|b| {
                 let value = match b.scale {
-                    ParameterScale::Linear => rng.gen_range(b.min..b.max),
+                    ParameterScale::Linear => rng.random_range(b.min..b.max),
                     ParameterScale::Logarithmic => {
                         let log_min = b.min.ln();
                         let log_max = b.max.ln();
-                        rng.gen_range(log_min..log_max).exp()
+                        rng.random_range(log_min..log_max).exp()
                     }
                     ParameterScale::Sigmoid => {
-                        let u: f64 = rng.gen();
+                        let u: f64 = rng.random();
                         b.min + (b.max - b.min) / (1.0 + (-4.0 * (u - 0.5)).exp())
                     }
                 };
@@ -373,10 +373,10 @@ impl ParameterTuner {
         model: &CompiledModel,
         objective: &impl Fn(&[SampleResult]) -> f64,
     ) -> Result<f64, Box<dyn std::error::Error>> {
-        let start_time = std::time::Instant::now();
+        let _start_time = std::time::Instant::now();
 
         // Create sampler with parameters
-        let mut sampler = sampler_factory(parameters.clone());
+        let sampler = sampler_factory(parameters.clone());
 
         // Run sampling
         let num_reads = 100; // Could be a tunable parameter

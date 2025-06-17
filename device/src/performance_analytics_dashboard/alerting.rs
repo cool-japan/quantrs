@@ -113,6 +113,7 @@ pub enum TrendDirection {
 }
 
 /// Notification dispatcher for sending alerts
+#[derive(Debug)]
 pub struct NotificationDispatcher {
     channels: Vec<NotificationChannel>,
     notification_queue: VecDeque<NotificationTask>,
@@ -193,6 +194,7 @@ pub enum DeliveryStatus {
 }
 
 /// Rate limiter for notifications
+#[derive(Debug)]
 pub struct RateLimiter {
     limits: HashMap<ChannelType, RateLimit>,
     usage_tracking: HashMap<ChannelType, VecDeque<SystemTime>>,

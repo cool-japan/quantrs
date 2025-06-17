@@ -40,7 +40,7 @@ pub enum HardwareBackend {
 }
 
 /// Native gate set for a hardware backend
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NativeGateSet {
     /// Backend type
     pub backend: HardwareBackend,
@@ -88,7 +88,7 @@ pub enum RotationAxis {
 }
 
 /// Backend-specific constraints
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BackendConstraints {
     /// Maximum circuit depth
     pub max_depth: Option<usize>,
@@ -115,7 +115,7 @@ impl Default for BackendConstraints {
 }
 
 /// Timing constraints for hardware
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TimingConstraints {
     /// Minimum time between gates on same qubit (ns)
     pub min_gate_spacing: f64,

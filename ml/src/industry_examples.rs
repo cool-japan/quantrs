@@ -29,6 +29,8 @@ pub struct IndustryExampleManager {
 pub enum Industry {
     /// Banking and financial services
     Banking,
+    /// Finance and financial services (alias for Banking)
+    Finance,
     /// Pharmaceutical and biotech
     Pharmaceutical,
     /// Manufacturing and automotive
@@ -536,6 +538,19 @@ impl IndustryExampleManager {
     /// Get all available industries
     pub fn get_available_industries(&self) -> Vec<Industry> {
         self.use_cases.keys().cloned().collect()
+    }
+
+    /// Get a specific use case by industry and name
+    pub fn get_use_case(&self, industry: Industry, use_case_name: &str) -> Result<&UseCase> {
+        self.use_cases
+            .get(&industry)
+            .and_then(|use_cases| use_cases.iter().find(|uc| uc.name == use_case_name))
+            .ok_or_else(|| {
+                MLError::InvalidConfiguration(format!(
+                    "Use case '{}' not found for industry {:?}",
+                    use_case_name, industry
+                ))
+            })
     }
 
     /// Search use cases by ROI threshold

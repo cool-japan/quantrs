@@ -10,7 +10,7 @@ use ndarray::Array2;
 use quantrs2_tytan::{
     analysis::graph::generate_graph,
     auto_array,
-    compile::{Model, SimpleExpr},
+    compile::Model,
     constraints::PenaltyFunction,
     optimization::{
         penalty::{PenaltyConfig, PenaltyOptimizer, PenaltyType},
@@ -24,6 +24,9 @@ use quantrs2_tytan::{
         solution_analysis::{analyze_solution_distribution, DistributionConfig},
     },
 };
+
+use quantrs2_tytan::compile::expr::{Expr, constant};
+
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -87,7 +90,8 @@ fn create_graph_coloring_model(
     }
 
     // Minimize total colors used
-    model.set_objective(color_usage_vars.into_iter().sum());
+    let objective = color_usage_vars.into_iter().reduce(|acc, x| acc + x).unwrap();
+    model.set_objective(objective);
 
     Ok((model, edges))
 }
@@ -188,16 +192,16 @@ fn run_graph_coloring_experiment(
 
     // Run optimized sampler
     println!("\nRunning optimized sampler...");
-    let sa_sampler = SASampler::new(None);
+    let mut sa_sampler = SASampler::new(None);
 
-    let start = Instant::now();
+    let mut start = Instant::now();
     let sa_samples = sa_sampler.run_qubo(&(matrix.clone(), var_map.clone()), 1000)?;
     let sa_time = start.elapsed();
 
     // Also run GA sampler for comparison
-    let ga_sampler = GASampler::with_params(None, 200, 100); // seed, max_generations, population_size
+    let mut ga_sampler = GASampler::with_params(None, 200, 100); // seed, max_generations, population_size
 
-    let start = Instant::now();
+    let mut start = Instant::now();
     let ga_samples = ga_sampler.run_qubo(&(matrix, var_map), 1000)?;
     let ga_time = start.elapsed();
 

@@ -260,7 +260,7 @@ fn full_optimization_demo(optimizer: &GraphOptimizer) -> Result<(), Box<dyn std:
         },
     ];
 
-    let stats = OptimizationStats {
+    let stats = quantrs2_circuit::prelude::OptimizationStats {
         original_gate_count: original_gates.len(),
         optimized_gate_count: 4, // After removing redundant H gates
         original_depth: 6,

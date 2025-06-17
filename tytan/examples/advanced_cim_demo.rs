@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         coupling[[*j, *i]] = -1.0;
     }
 
-    let biases = Array1::zeros(n);
+    let mut biases = Array1::zeros(n);
 
     println!("Problem: Frustrated triangular lattice");
     println!("  Nodes: {}", n);
@@ -85,7 +85,7 @@ fn run_pulse_shaped_cim(
     coupling: &Array2<f64>,
     biases: &Array1<f64>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let cim = AdvancedCIM::new(coupling.shape()[0])
+    let mut cim = AdvancedCIM::new(coupling.shape()[0])
         .with_pulse_shape(PulseShape::Gaussian {
             width: 2.0,
             amplitude: 2.0,
@@ -123,7 +123,7 @@ fn run_error_corrected_cim(
         check_matrix[[i, 2 * i + 1]] = true;
     }
 
-    let cim = AdvancedCIM::new(n)
+    let mut cim = AdvancedCIM::new(n)
         .with_error_correction(ErrorCorrectionScheme::ParityCheck { check_matrix })
         .with_pulse_shape(PulseShape::Sech {
             width: 1.5,
@@ -154,7 +154,7 @@ fn run_networked_cim() -> Result<(), Box<dyn std::error::Error>> {
     let modules = 4;
     let spins_per_module = total_spins / modules;
 
-    let net_cim = NetworkedCIM::new(modules, spins_per_module, NetworkTopology::Ring)
+    let mut net_cim = NetworkedCIM::new(modules, spins_per_module, NetworkTopology::Ring)
         .with_sync_scheme(SynchronizationScheme::BlockSynchronous { block_size: 2 })
         .with_comm_delay(0.1);
 
@@ -173,7 +173,7 @@ fn run_bifurcation_controlled_cim(
     coupling: &Array2<f64>,
     biases: &Array1<f64>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let cim = AdvancedCIM::new(coupling.shape()[0])
+    let mut cim = AdvancedCIM::new(coupling.shape()[0])
         .with_error_correction(ErrorCorrectionScheme::MajorityVoting { window_size: 3 });
 
     let qubo = ising_to_qubo(coupling, biases);

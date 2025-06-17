@@ -3,12 +3,14 @@
 //! This module provides plugin architecture, hyperparameter optimization,
 //! ensemble methods, and adaptive sampling strategies.
 
+#![allow(dead_code)]
+
 #[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use ndarray::{Array, Array2, IxDyn};
 use rand::prelude::*;
-use rand::thread_rng;
+use rand::rng;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -228,18 +230,18 @@ impl HyperparameterOptimizer {
     where
         F: Fn(&HashMap<String, f64>) -> Box<dyn Sampler>,
     {
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let mut best_params = HashMap::new();
         let mut best_score = f64::INFINITY;
         let mut history = Vec::new();
 
         for trial in 0..self.num_trials {
             // Sample random parameters
-            let params = self.sample_parameters(&mut rng)?;
+            let mut params = self.sample_parameters(&mut rng)?;
 
             // Evaluate
             let sampler = objective(&params);
-            let score = self.evaluate_sampler(sampler, validation_problems)?;
+            let mut score = self.evaluate_sampler(sampler, validation_problems)?;
 
             history.push(TrialResult {
                 parameters: params.clone(),
@@ -253,11 +255,12 @@ impl HyperparameterOptimizer {
             }
         }
 
+        let convergence_curve = self.compute_convergence_curve(&history);
         Ok(OptimizationResult {
             best_parameters: best_params,
             best_score,
             history,
-            convergence_curve: self.compute_convergence_curve(&history),
+            convergence_curve,
         })
     }
 
@@ -281,7 +284,7 @@ impl HyperparameterOptimizer {
 
         for (i, params) in grid_points.iter().enumerate() {
             let sampler = objective(params);
-            let score = self.evaluate_sampler(sampler, validation_problems)?;
+            let mut score = self.evaluate_sampler(sampler, validation_problems)?;
 
             history.push(TrialResult {
                 parameters: params.clone(),
@@ -295,11 +298,12 @@ impl HyperparameterOptimizer {
             }
         }
 
+        let convergence_curve = self.compute_convergence_curve(&history);
         Ok(OptimizationResult {
             best_parameters: best_params,
             best_score,
             history,
-            convergence_curve: self.compute_convergence_curve(&history),
+            convergence_curve,
         })
     }
 
@@ -319,20 +323,21 @@ impl HyperparameterOptimizer {
         use ndarray::Array1;
 
         let dim = self.search_space.len();
-        let mut optimizer = BayesianOptimizer::new(dim, kernel, acquisition, exploration)?;
+        let mut optimizer = BayesianOptimizer::new(dim, kernel, acquisition, exploration)
+            .map_err(|e| e.to_string())?;
 
         let mut history = Vec::new();
         let mut x_data = Vec::new();
         let mut y_data = Vec::new();
 
         // Initial random samples
-        let mut rng = thread_rng();
+        let mut rng = rng();
         for _ in 0..std::cmp::min(10, self.num_trials / 4) {
-            let params = self.sample_parameters(&mut rng)?;
+            let mut params = self.sample_parameters(&mut rng)?;
             let sampler = objective(&params);
-            let score = self.evaluate_sampler(sampler, validation_problems)?;
+            let mut score = self.evaluate_sampler(sampler, validation_problems)?;
 
-            let x = self.params_to_array(&params)?;
+            let mut x = self.params_to_array(&params)?;
             x_data.push(x);
             y_data.push(score);
 
@@ -345,22 +350,24 @@ impl HyperparameterOptimizer {
 
         // Bayesian optimization loop
         let y_array = Array1::from_vec(y_data.clone());
-        optimizer.update(&x_data, &y_array)?;
+        optimizer.update(&x_data, &y_array).map_err(|e| e.to_string())?;
 
         for _ in history.len()..self.num_trials {
             // Suggest next point
-            let x_next = optimizer.suggest_next()?;
-            let params = self.array_to_params(&x_next)?;
+            let x_next = optimizer.suggest_next().map_err(|e| e.to_string())?;
+            let mut params = self.array_to_params(&x_next)?;
 
             // Evaluate
             let sampler = objective(&params);
-            let score = self.evaluate_sampler(sampler, validation_problems)?;
+            let mut score = self.evaluate_sampler(sampler, validation_problems)?;
 
             // Update model
             x_data.push(x_next);
             y_data.push(score);
             let y_array = Array1::from_vec(y_data.clone());
-            optimizer.update(&x_data, &y_array)?;
+            optimizer
+                .update(&x_data, &y_array)
+                .map_err(|e| e.to_string())?;
 
             history.push(TrialResult {
                 parameters: params,
@@ -378,11 +385,12 @@ impl HyperparameterOptimizer {
 
         let best_params = self.array_to_params(&x_data[best_idx])?;
 
+        let convergence_curve = self.compute_convergence_curve(&history);
         Ok(OptimizationResult {
             best_parameters: best_params,
             best_score,
             history,
-            convergence_curve: self.compute_convergence_curve(&history),
+            convergence_curve,
         })
     }
 
@@ -415,16 +423,16 @@ impl HyperparameterOptimizer {
                     if *log_scale {
                         let log_min = min.ln();
                         let log_max = max.ln();
-                        let log_val = rng.gen_range(log_min..log_max);
+                        let log_val = rng.random_range(log_min..log_max);
                         log_val.exp()
                     } else {
-                        rng.gen_range(*min..*max)
+                        rng.random_range(*min..*max)
                     }
                 }
-                ParameterSpace::Discrete { values } => values[rng.gen_range(0..values.len())],
+                ParameterSpace::Discrete { values } => values[rng.random_range(0..values.len())],
                 ParameterSpace::Categorical { options } => {
                     // Return index for categorical
-                    rng.gen_range(0..options.len()) as f64
+                    rng.random_range(0..options.len()) as f64
                 }
             };
 
@@ -442,7 +450,7 @@ impl HyperparameterOptimizer {
         // This would need proper multi-dimensional grid generation
         // For now, just sample uniformly
         let total_points = resolution.pow(self.search_space.len() as u32);
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         for _ in 0..total_points.min(self.num_trials) {
             grid_points.push(self.sample_parameters(&mut rng)?);
@@ -498,18 +506,21 @@ impl HyperparameterOptimizer {
         let mut scores = Vec::new();
 
         for problem in problems {
-            let qubo = problem.to_qubo();
+            let mut qubo = problem.to_qubo();
             let start = Instant::now();
 
-            let results = sampler.run_qubo(&qubo, 100)?;
+            let qubo_tuple = (qubo.to_dense_matrix(), qubo.variable_map());
+            let mut results = sampler
+                .run_qubo(&qubo_tuple, 100)
+                .map_err(|e| format!("Sampler error: {:?}", e))?;
 
             let elapsed = start.elapsed();
 
             // Score based on solution quality and time
-            let best_energy = results.first().map(|r| r.energy).unwrap_or(f64::INFINITY);
+            let mut best_energy = results.first().map(|r| r.energy).unwrap_or(f64::INFINITY);
 
             let time_penalty = elapsed.as_secs_f64();
-            let score = best_energy + 0.1 * time_penalty;
+            let mut score = best_energy + 0.1 * time_penalty;
 
             scores.push(score);
         }
@@ -766,10 +777,8 @@ impl EnsembleSampler {
         qubo: &(Array2<f64>, HashMap<String, usize>),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
-        use std::thread;
-
         let shots_per_sampler = shots / self.samplers.len();
-        let mut handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
+        let _handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
 
         // Would need to make samplers thread-safe for real parallel execution
         // For now, sequential execution
@@ -1029,7 +1038,7 @@ impl SamplerCrossValidation {
             // Evaluate on test fold
             let mut scores = Vec::new();
             for problem in test_problems {
-                let score = self.evaluate_single(sampler, problem, shots_per_problem)?;
+                let mut score = self.evaluate_single(sampler, problem, shots_per_problem)?;
                 scores.push(score);
             }
 
@@ -1059,9 +1068,12 @@ impl SamplerCrossValidation {
         problem: &CompiledModel,
         shots: usize,
     ) -> Result<f64, String> {
-        let qubo = problem.to_qubo();
+        let mut qubo = problem.to_qubo();
+        let qubo_tuple = (qubo.to_dense_matrix(), qubo.variable_map());
         let start = Instant::now();
-        let results = sampler.run_qubo(&qubo, shots)?;
+        let mut results = sampler
+            .run_qubo(&qubo_tuple, shots)
+            .map_err(|e| format!("Sampler error: {:?}", e))?;
         let elapsed = start.elapsed();
 
         match &self.metric {
@@ -1106,7 +1118,7 @@ mod tests {
 
     #[test]
     fn test_plugin_manager() {
-        let mut manager = PluginManager::new();
+        let manager = PluginManager::new();
 
         // Would need actual plugin implementation to test
         assert_eq!(manager.list_plugins().len(), 0);

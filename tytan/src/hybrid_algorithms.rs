@@ -3,11 +3,13 @@
 //! This module provides implementations of hybrid algorithms that combine
 //! quantum and classical computing approaches for solving optimization problems.
 
+#![allow(dead_code)]
+
 #[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, IxDyn};
-use rand::thread_rng;
+use crate::sampler::{SampleResult, Sampler};
+use ndarray::Array2;
+use rand::rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -153,9 +155,9 @@ impl VQE {
     /// Initialize parameters
     fn initialize_parameters(&self, num_params: usize) -> Vec<f64> {
         use rand::prelude::*;
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
-        (0..num_params).map(|_| rng.gen_range(-PI..PI)).collect()
+        (0..num_params).map(|_| rng.random_range(-PI..PI)).collect()
     }
 
     /// Evaluate energy for given parameters
@@ -179,7 +181,7 @@ impl VQE {
         match &self.optimizer {
             ClassicalOptimizer::GradientDescent {
                 learning_rate,
-                momentum,
+                momentum: _,
             } => {
                 // Compute gradient
                 let gradient = self.compute_gradient(&current_params, hamiltonian)?;
@@ -239,11 +241,11 @@ impl VQE {
         _gamma: f64,
     ) -> Result<Vec<f64>, String> {
         use rand::prelude::*;
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         // Generate random perturbation
         let delta: Vec<f64> = (0..params.len())
-            .map(|_| if rng.gen_bool(0.5) { 1.0 } else { -1.0 })
+            .map(|_| if rng.random_bool(0.5) { 1.0 } else { -1.0 })
             .collect();
 
         // Evaluate at perturbed points
@@ -429,7 +431,7 @@ impl QAOA {
         &self,
         betas: &[f64],
         gammas: &[f64],
-        hamiltonian: &Hamiltonian,
+        _hamiltonian: &Hamiltonian,
     ) -> Result<f64, String> {
         // This would:
         // 1. Prepare initial state
@@ -504,11 +506,11 @@ impl QAOA {
         // This would sample from the prepared quantum state
         // Placeholder: return random samples
         use rand::prelude::*;
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let n_qubits = 10; // Would get from hamiltonian
 
         let samples = (0..num_samples)
-            .map(|_| (0..n_qubits).map(|_| rng.gen_bool(0.5)).collect())
+            .map(|_| (0..n_qubits).map(|_| rng.random_bool(0.5)).collect())
             .collect();
 
         Ok(samples)
@@ -568,11 +570,15 @@ impl WarmStartStrategy {
         problem: &CompiledModel,
     ) -> Result<WarmStartResult, String> {
         // Run classical pre-solver
-        let qubo = problem.to_qubo();
-        let classical_results = self.pre_solver.run_qubo(&qubo, self.classical_iterations)?;
+        let mut qubo = problem.to_qubo();
+        let qubo_tuple = (qubo.to_dense_matrix(), qubo.variable_map());
+        let classical_results = self
+            .pre_solver
+            .run_qubo(&qubo_tuple, self.classical_iterations)
+            .map_err(|e| format!("Classical solver error: {:?}", e))?;
 
         // Extract best solution
-        let best_solution = classical_results
+        let mut best_solution = classical_results
             .first()
             .ok_or("No classical solution found")?;
 
@@ -585,7 +591,7 @@ impl WarmStartStrategy {
             }
             WarmStartUsage::ParameterInitialization => {
                 // Use solution to initialize variational parameters
-                let params = self.solution_to_parameters(&best_solution.assignments)?;
+                let mut params = self.solution_to_parameters(&best_solution.assignments)?;
                 Ok(WarmStartResult::Parameters(params))
             }
             _ => {
@@ -690,18 +696,22 @@ impl IterativeRefinement {
         problem: &CompiledModel,
         initial_shots: usize,
     ) -> Result<RefinementResult, String> {
-        let qubo = problem.to_qubo();
+        let mut qubo = problem.to_qubo();
         let mut history = Vec::new();
         let mut best_solution = None;
         let mut best_energy = f64::INFINITY;
 
         for iteration in 0..self.max_refinements {
             // Run quantum solver
-            let quantum_results = self.quantum_solver.run_qubo(&qubo.clone(), initial_shots)?;
+            let qubo_tuple = (qubo.to_dense_matrix(), qubo.variable_map());
+            let quantum_results = self
+                .quantum_solver
+                .run_qubo(&qubo_tuple, initial_shots)
+                .map_err(|e| format!("Quantum solver error: {:?}", e))?;
 
             // Apply classical refinement
             let refined_results =
-                self.apply_classical_refinement(&quantum_results, &qubo.0, &qubo.1)?;
+                self.apply_classical_refinement(&quantum_results, &qubo_tuple.0, &qubo_tuple.1)?;
 
             // Track best solution
             for result in &refined_results {
@@ -735,8 +745,8 @@ impl IterativeRefinement {
 
         Ok(RefinementResult {
             best_solution: best_solution.ok_or("No solution found")?,
-            refinement_history: history,
             total_iterations: history.len(),
+            refinement_history: history,
         })
     }
 
@@ -786,8 +796,8 @@ impl IterativeRefinement {
                 // Flip random bits
                 let mut neighbor = state.clone();
                 use rand::prelude::*;
-                let mut rng = thread_rng();
-                let flip_idx = rng.gen_range(0..state.len());
+                let mut rng = rng();
+                let flip_idx = rng.random_range(0..state.len());
                 neighbor[flip_idx] = !neighbor[flip_idx];
 
                 // Evaluate energy

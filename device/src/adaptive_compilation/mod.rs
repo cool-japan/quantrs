@@ -103,22 +103,25 @@ mod fallback_scirs2 {
 #[cfg(not(feature = "scirs2"))]
 use fallback_scirs2::*;
 
-use ndarray::{s, Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};
+use ndarray::{s, Array1, Array2, ArrayView1, ArrayView2};
 use num_complex::Complex64;
 use rand::prelude::*;
-use tokio::sync::{broadcast, mpsc};
 
 use crate::{
     backend_traits::{query_backend_capabilities, BackendCapabilities},
     calibration::{CalibrationManager, DeviceCalibration},
     dynamical_decoupling::DynamicalDecouplingConfig,
     integrated_device_manager::{IntegratedQuantumDeviceManager, WorkflowDefinition, WorkflowType},
-    mapping_scirc2::{SciRS2MappingConfig, SciRS2MappingResult, SciRS2QubitMapper},
+    // mapping_scirc2::{SciRS2MappingConfig, SciRS2MappingResult, SciRS2QubitMapper}, // Temporarily disabled
     noise_model::CalibrationNoiseModel,
     process_tomography::{SciRS2ProcessTomographer, SciRS2ProcessTomographyConfig},
     topology::HardwareTopology,
     vqa_support::{VQAConfig, VQAExecutor, VQAResult},
-    CircuitExecutor, CircuitResult, DeviceError, DeviceResult, QuantumDevice,
+    CircuitExecutor,
+    CircuitResult,
+    DeviceError,
+    DeviceResult,
+    QuantumDevice,
 };
 
 // Module declarations

@@ -44,6 +44,12 @@ impl AnomalyDetectorTrait for QuantumAutoencoder {
         let n_samples = data.nrows();
         let n_features = data.ncols();
 
+        // Extract latent_dim from config if it's an autoencoder method
+        let latent_dim = match &self.config.primary_method {
+            AnomalyDetectionMethod::QuantumAutoencoder { latent_dim, .. } => *latent_dim,
+            _ => 2, // fallback
+        };
+
         // Placeholder: generate random scores
         let anomaly_scores = Array1::from_shape_fn(n_samples, |_| rand::random::<f64>());
         let anomaly_labels =
@@ -57,7 +63,7 @@ impl AnomalyDetectorTrait for QuantumAutoencoder {
             "autoencoder".to_string(),
             MethodSpecificResult::Autoencoder {
                 reconstruction_errors: anomaly_scores.clone(),
-                latent_representations: Array2::zeros((n_samples, 2)),
+                latent_representations: Array2::zeros((n_samples, latent_dim)),
             },
         );
 

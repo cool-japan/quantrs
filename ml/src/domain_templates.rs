@@ -740,6 +740,17 @@ impl DomainTemplateManager {
         self.templates.keys().cloned().collect()
     }
 
+    /// Get a specific template by name
+    pub fn get_template(&self, template_name: &str) -> Result<&TemplateMetadata> {
+        self.templates
+            .values()
+            .flatten()
+            .find(|t| t.name == template_name)
+            .ok_or_else(|| {
+                MLError::InvalidConfiguration(format!("Template not found: {}", template_name))
+            })
+    }
+
     /// Search templates by problem type
     pub fn search_by_problem_type(&self, problem_type: &ProblemType) -> Vec<&TemplateMetadata> {
         self.templates

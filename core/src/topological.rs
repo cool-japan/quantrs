@@ -3,12 +3,8 @@
 //! This module provides implementations of topological quantum computing concepts
 //! including anyons, braiding operations, fusion rules, and topological gates.
 
-use crate::{
-    error::{QuantRS2Error, QuantRS2Result},
-    gate::GateOp,
-    qubit::QubitId,
-};
-use ndarray::{Array1, Array2, Array3, Array4};
+use crate::error::{QuantRS2Error, QuantRS2Result};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -645,7 +641,7 @@ impl TopologicalGate {
     }
 
     /// Get the unitary matrix representation
-    pub fn to_matrix(&self, model: &dyn AnyonModel) -> QuantRS2Result<Array2<Complex64>> {
+    pub fn to_matrix(&self, _model: &dyn AnyonModel) -> QuantRS2Result<Array2<Complex64>> {
         // This would compute the full braiding matrix
         // For now, return identity
         Ok(Array2::eye(self.comp_dim))

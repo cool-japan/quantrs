@@ -4,16 +4,15 @@
 //! representation, which is particularly effective for simulating quantum systems with
 //! limited entanglement.
 
-use ndarray::{s, Array1, Array2, Array3, ArrayView2, Axis};
+use ndarray::{s, Array1, Array2, Array3, ArrayView2};
 use num_complex::Complex64;
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
-    gate::{multi, single, GateOp},
-    qubit::QubitId,
+    gate::GateOp,
+    prelude::QubitId,
     register::Register,
 };
-use std::collections::HashMap;
 
 /// MPS tensor for a single qubit
 #[derive(Debug, Clone)]

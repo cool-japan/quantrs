@@ -30,7 +30,7 @@ fn test_sa_sampler_simple() {
     let hobo = (matrix_dyn, var_map);
 
     // Create sampler with fixed seed for reproducibility
-    let sampler = SASampler::new(Some(42));
+    let mut sampler = SASampler::new(Some(42));
 
     // Run sampler with a few shots
     let results = sampler.run_hobo(&hobo, 10).unwrap();
@@ -83,7 +83,7 @@ fn test_ga_sampler_simple() {
     var_map.insert("z".to_string(), 2);
 
     // Create the GASampler with custom parameters to avoid edge cases
-    let sampler = GASampler::with_params(Some(42), 10, 10);
+    let mut sampler = GASampler::with_params(Some(42), 10, 10);
 
     // Use the direct QUBO interface
     let results = sampler.run_qubo(&(matrix, var_map), 5).unwrap();
@@ -166,13 +166,13 @@ fn test_sampler_one_hot_constraint() {
     let z = symbols("z");
 
     // Constraint: (x + y + z - 1)^2
-    let expr = (x.clone() + y.clone() + z.clone() - 1).pow(2);
+    let expr = (x.clone() + y.clone() + z.clone() - 1).pow(symengine::expr::Expression::from(2));
 
     // Compile to QUBO
-    let (qubo, _) = Compile::new(&expr).get_qubo().unwrap();
+    let (qubo, _) = Compile::new(expr).get_qubo().unwrap();
 
     // Create sampler with fixed seed for reproducibility
-    let sampler = SASampler::new(Some(42));
+    let mut sampler = SASampler::new(Some(42));
 
     // Run sampler with a reasonable number of shots
     let results = sampler.run_qubo(&qubo, 100).unwrap();

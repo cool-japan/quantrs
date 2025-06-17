@@ -3,7 +3,10 @@
 //! This module provides optimized implementations of performance-critical
 //! operations using SIMD, parallelization, and algorithmic improvements.
 
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
+#![allow(dead_code)]
+
+use ndarray::{Array1, Array2, ArrayView1};
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
@@ -94,7 +97,7 @@ impl OptimizedQUBOEvaluator {
         // Process diagonal in chunks of 4
         let chunks = n / 4;
         for i in 0..chunks {
-            let idx = i * 4;
+            let mut idx = i * 4;
 
             // Load 4 x values
             let x_vals = _mm_set_epi32(
@@ -113,7 +116,7 @@ impl OptimizedQUBOEvaluator {
 
             // Sum the products
             let sum = _mm256_hadd_pd(prod, prod);
-            let result = _mm256_extractf128_pd(sum, 0);
+            let mut result = _mm256_extractf128_pd(sum, 0);
             energy += _mm_cvtsd_f64(result) + _mm_cvtsd_f64(_mm_unpackhi_pd(result, result));
         }
 
@@ -149,34 +152,54 @@ impl OptimizedQUBOEvaluator {
         let n = x.len();
 
         // Linear terms in parallel
-        let linear_energy: f64 = (0..n)
-            .into_par_iter()
-            .filter(|&i| x[i] == 1)
-            .map(|i| self.cache[i])
-            .sum();
+        let linear_energy: f64 = {
+            #[cfg(feature = "parallel")]
+            {
+                (0..n)
+                    .into_par_iter()
+                    .filter(|&i| x[i] == 1)
+                    .map(|i| self.cache[i])
+                    .sum()
+            }
+            #[cfg(not(feature = "parallel"))]
+            {
+                (0..n)
+                    .into_iter()
+                    .filter(|&i| x[i] == 1)
+                    .map(|i| self.cache[i])
+                    .sum()
+            }
+        };
 
         // Quadratic terms in parallel (block-wise)
         let block_size = (n as f64).sqrt() as usize + 1;
-        let quadratic_energy: f64 = (0..n)
-            .into_par_iter()
-            .step_by(block_size)
-            .map(|block_start| {
-                let block_end = (block_start + block_size).min(n);
-                let mut local_sum = 0.0;
+        let quadratic_energy: f64 = {
+            #[cfg(feature = "parallel")]
+            {
+                (0..n).into_par_iter().step_by(block_size)
+            }
+            #[cfg(not(feature = "parallel"))]
+            {
+                (0..n).into_iter().step_by(block_size)
+            }
+        }
+        .map(|block_start| {
+            let block_end = (block_start + block_size).min(n);
+            let mut local_sum = 0.0;
 
-                for i in block_start..block_end {
-                    if x[i] == 1 {
-                        for j in i + 1..n {
-                            if x[j] == 1 {
-                                local_sum += self.qubo[[i, j]];
-                            }
+            for i in block_start..block_end {
+                if x[i] == 1 {
+                    for j in i + 1..n {
+                        if x[j] == 1 {
+                            local_sum += self.qubo[[i, j]];
                         }
                     }
                 }
+            }
 
-                local_sum
-            })
-            .sum();
+            local_sum
+        })
+        .sum();
 
         linear_energy + 2.0 * quadratic_energy
     }
@@ -272,7 +295,7 @@ impl OptimizedSA {
         // Temperature schedule
         let temperatures = self.generate_schedule(iterations);
 
-        for (iter, &temp) in temperatures.iter().enumerate() {
+        for (_iter, &temp) in temperatures.iter().enumerate() {
             if self.parallel_moves && n > 100 {
                 // Parallel neighborhood evaluation
                 self.parallel_step(
@@ -286,10 +309,10 @@ impl OptimizedSA {
             } else {
                 // Sequential moves
                 for _ in 0..n {
-                    let bit = rng.gen_range(0..n);
+                    let bit = rng.random_range(0..n);
                     let delta = self.evaluator.delta_energy(&current.view(), bit);
 
-                    if delta < 0.0 || rng.gen::<f64>() < (-delta / temp).exp() {
+                    if delta < 0.0 || rng.random::<f64>() < (-delta / temp).exp() {
                         current[bit] = 1 - current[bit];
                         current_energy += delta;
 
@@ -335,18 +358,33 @@ impl OptimizedSA {
         let n = current.len();
 
         // Evaluate all possible moves in parallel
-        let deltas: Vec<_> = (0..n)
-            .into_par_iter()
-            .map(|bit| {
-                let delta = self.evaluator.delta_energy(&current.view(), bit);
-                (bit, delta)
-            })
-            .collect();
+        let deltas: Vec<_> = {
+            #[cfg(feature = "parallel")]
+            {
+                (0..n)
+                    .into_par_iter()
+                    .map(|bit| {
+                        let delta = self.evaluator.delta_energy(&current.view(), bit);
+                        (bit, delta)
+                    })
+                    .collect()
+            }
+            #[cfg(not(feature = "parallel"))]
+            {
+                (0..n)
+                    .into_iter()
+                    .map(|bit| {
+                        let delta = self.evaluator.delta_energy(&current.view(), bit);
+                        (bit, delta)
+                    })
+                    .collect()
+            }
+        };
 
         // Select moves to accept
         let mut accepted = Vec::new();
         for (bit, delta) in deltas {
-            if delta < 0.0 || rng.gen::<f64>() < (-delta / temp).exp() {
+            if delta < 0.0 || rng.random::<f64>() < (-delta / temp).exp() {
                 accepted.push((bit, delta));
             }
         }
@@ -378,7 +416,7 @@ pub mod matrix_ops {
     pub fn sparse_qubo_multiply(
         qubo: &Array2<f64>,
         x: &ArrayView1<u8>,
-        threshold: f64,
+        _threshold: f64,
     ) -> Array1<f64> {
         let n = x.len();
         let mut result = Array1::zeros(n);
@@ -487,12 +525,12 @@ mod tests {
     #[test]
     #[ignore]
     fn test_optimized_evaluator() {
-        let qubo = array![[1.0, -2.0, 0.0], [-2.0, 3.0, -1.0], [0.0, -1.0, 2.0]];
+        let mut qubo = array![[1.0, -2.0, 0.0], [-2.0, 3.0, -1.0], [0.0, -1.0, 2.0]];
 
         let evaluator = OptimizedQUBOEvaluator::new(qubo);
 
-        let x = array![1, 0, 1];
-        let energy = evaluator.evaluate(&x.view());
+        let mut x = array![1, 0, 1];
+        let mut energy = evaluator.evaluate(&x.view());
 
         // Manual calculation: 1*1 + 2*1 + 2*(-1)*1*1 = 1 + 2 - 2 = 1
         assert!((energy - 1.0).abs() < 1e-6);
@@ -504,7 +542,7 @@ mod tests {
 
     #[test]
     fn test_optimized_sa() {
-        let qubo = array![[0.0, -1.0], [-1.0, 0.0]];
+        let mut qubo = array![[0.0, -1.0], [-1.0, 0.0]];
 
         let sa = OptimizedSA::new(qubo).with_schedule(AnnealingSchedule::Geometric {
             t0: 1.0,
@@ -512,7 +550,7 @@ mod tests {
         });
 
         let initial = array![0, 0];
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let (solution, energy) = sa.anneal(initial, 100, &mut rng);
 

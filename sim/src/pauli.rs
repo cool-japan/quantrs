@@ -6,16 +6,15 @@
 //! - Commutation relations and algebra
 //! - Measurement expectation values
 
-use ndarray::{Array1, Array2};
+use crate::prelude::SimulatorError;
+use ndarray::Array2;
 use num_complex::Complex64;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::fmt;
 
-use crate::error::{Result, SimulatorError};
-use crate::trotter::{
-    DynamicCircuit, Hamiltonian, HamiltonianTerm, TrotterDecomposer, TrotterMethod,
-};
+use crate::error::Result;
+use crate::trotter::{DynamicCircuit, Hamiltonian, TrotterDecomposer, TrotterMethod};
 use quantrs2_core::gate::{multi::*, single::*, GateOp};
 use quantrs2_core::qubit::QubitId;
 

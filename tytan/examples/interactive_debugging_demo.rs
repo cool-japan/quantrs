@@ -13,7 +13,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let problem_info = create_test_problem();
 
     // Create interactive debugger
-    let config = DebuggerConfig::default();
+    let mut config = DebuggerConfig::default();
     let mut debugger = SolutionDebugger::new(problem_info, config);
 
     println!("Problem: Graph 3-Coloring");

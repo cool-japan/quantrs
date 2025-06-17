@@ -119,7 +119,7 @@ fn create_max_cut_problem() -> MaxCutProblem {
 
 /// Solve the problem
 fn solve_problem(problem: &MaxCutProblem) -> Result<Vec<SampleResult>, Box<dyn std::error::Error>> {
-    let solver = SASampler::new(None);
+    let mut solver = SASampler::new(None);
     let qubo_dyn = problem.qubo.clone().into_dyn();
     let samples = solver.run_hobo(&(qubo_dyn, problem.var_map.clone()), 500)?;
     Ok(samples)
@@ -179,7 +179,7 @@ fn visualize_energy_landscape(samples: &[SampleResult]) -> Result<(), Box<dyn st
             metadata: HashMap::new(),
         };
 
-        let exporter = VisualizationExporter::new(ExportFormat::JSON);
+        let mut exporter = VisualizationExporter::new(ExportFormat::JSON);
         exporter.export_energy_landscape(&export_data, "energy_landscape.json")?;
         println!("Energy landscape exported to energy_landscape.json");
     }

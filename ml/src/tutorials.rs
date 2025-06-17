@@ -1271,6 +1271,20 @@ impl TutorialSession {
     pub fn is_complete(&self, total_sections: usize) -> bool {
         self.completed_sections.len() >= total_sections
     }
+
+    /// Get total number of sections for this tutorial
+    pub fn total_sections(&self) -> usize {
+        // This would typically be retrieved from the tutorial manager
+        // For now, return a default value
+        10
+    }
+
+    /// Get estimated duration for this tutorial in minutes
+    pub fn estimated_duration(&self) -> usize {
+        // This would typically be calculated based on tutorial content
+        // For now, return a default value
+        30
+    }
 }
 
 /// Utility functions for tutorials

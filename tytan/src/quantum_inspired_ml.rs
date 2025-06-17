@@ -3,10 +3,12 @@
 //! This module provides quantum-inspired ML algorithms that leverage
 //! quantum optimization principles for classical machine learning tasks.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError};
+#![allow(dead_code)]
+
+use crate::sampler::Sampler;
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
 use rand::prelude::*;
-use rand::thread_rng;
+use rand::rng;
 use std::collections::HashMap;
 
 /// Quantum-Inspired Support Vector Machine
@@ -327,7 +329,7 @@ impl QuantumSVM {
             let mut alpha = 0.0;
             for b in 0..n_bits {
                 let var_name = format!("alpha_{}_{}", i, b);
-                if let Some(&var_idx) = var_map.get(&var_name) {
+                if let Some(&_var_idx) = var_map.get(&var_name) {
                     if assignments.get(&var_name).copied().unwrap_or(false) {
                         alpha += (1 << b) as f64 / (1 << n_bits) as f64 * self.c;
                     }
@@ -385,7 +387,7 @@ pub struct QuantumBoltzmannMachine {
 impl QuantumBoltzmannMachine {
     /// Create new QBM
     pub fn new(n_visible: usize, n_hidden: usize) -> Self {
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         Self {
             n_visible,
@@ -393,7 +395,7 @@ impl QuantumBoltzmannMachine {
             weights: {
                 let mut weights = Array2::zeros((n_visible, n_hidden));
                 for element in weights.iter_mut() {
-                    *element = rng.gen_range(-0.01..0.01);
+                    *element = rng.random_range(-0.01..0.01);
                 }
                 weights
             },
@@ -415,6 +417,7 @@ impl QuantumBoltzmannMachine {
         let batch_size = data.shape()[0];
 
         for epoch in 0..epochs {
+            #[allow(unused_assignments)]
             let mut epoch_loss = 0.0;
 
             // Positive phase - from data
@@ -547,11 +550,11 @@ impl QuantumBoltzmannMachine {
     /// Generate new samples
     pub fn generate(&self, n_samples: usize, sampler: &dyn Sampler) -> Result<Array2<f64>, String> {
         // Start with random hidden state
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let mut hidden = {
             let mut hidden = Array2::zeros((n_samples, self.n_hidden));
             for element in hidden.iter_mut() {
-                *element = if rng.gen::<bool>() { 1.0 } else { 0.0 };
+                *element = if rng.random::<bool>() { 1.0 } else { 0.0 };
             }
             hidden
         };
@@ -752,7 +755,7 @@ impl QuantumClustering {
     fn decode_clusters(
         &self,
         assignments: &HashMap<String, bool>,
-        var_map: &HashMap<String, usize>,
+        _var_map: &HashMap<String, usize>,
         n_samples: usize,
     ) -> Array1<usize> {
         let mut clusters = Array1::zeros(n_samples);
@@ -780,15 +783,15 @@ mod tests {
     #[test]
     fn test_quantum_svm() {
         // Simple linearly separable data
-        let x = array![[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0],];
-        let y = array![-1.0, -1.0, 1.0, 1.0];
+        let mut x = array![[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0],];
+        let mut y = array![-1.0, -1.0, 1.0, 1.0];
 
         let mut svm = QuantumSVM::new(KernelType::Linear, 1.0);
         let sampler = SASampler::new(Some(42));
 
         svm.fit(&x, &y, &sampler).unwrap();
 
-        let predictions = svm.predict(&x).unwrap();
+        let mut predictions = svm.predict(&x).unwrap();
 
         // Check that it learned something reasonable
         assert!(svm.support_vectors.is_some());

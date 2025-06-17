@@ -31,7 +31,7 @@ println!("Solution: {:?}", result.best_spins);
 ## 🌟 Key Features
 
 ### Core Problem Formulations
-- **🔗 Ising Models**: Complete sparse matrix implementation with biases and couplings
+- **🔗 Ising Models**: Complete sparse matrix support with biases and couplings
 - **🎯 QUBO Formulations**: Quadratic Unconstrained Binary Optimization with constraint handling
 - **🏗️ Problem Builder**: Intuitive DSL for complex optimization problem construction
 - **🔄 Format Conversion**: Seamless conversion between Ising and QUBO representations
@@ -53,7 +53,7 @@ println!("Solution: {:?}", result.best_spins);
 - **🗺️ Graph Embedding**: Minor graph embedding with optimization and layout algorithms
 - **⚖️ Penalty Optimization**: Automatic constraint penalty weight optimization
 - **🔄 Reverse Annealing**: Advanced annealing schedules starting from known solutions
-- **🌈 Flux Bias Optimization**: Per-qubit flux bias tuning for improved performance
+- **🌈 Flux Bias Optimization**: Per-qubit flux bias tuning for enhanced performance
 - **🌟 QAOA Integration**: Bridge to variational quantum algorithms via circuit module
 
 ### Specialized Applications
@@ -115,7 +115,7 @@ quantrs2-anneal = { version = "0.1", features = ["dwave", "braket", "fujitsu"] }
 |--------|-------------|--------------|
 | `embedding` | Minor graph embedding | Hardware topology mapping |
 | `layout_embedding` | Layout-aware embedding | Optimized hardware utilization |
-| `penalty_optimization` | Constraint penalty tuning | Improved solution quality |
+| `penalty_optimization` | Constraint penalty tuning | Enhanced solution quality |
 | `compression` | Problem compression techniques | Large problem reduction |
 
 ### Cloud Integration

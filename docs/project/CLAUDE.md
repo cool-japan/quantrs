@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 QuantRS2 is a Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction. The framework supports both gate-based quantum computing and quantum annealing paradigms.
 
-**Current Version**: 0.1.0-alpha.4 (Released June 11, 2024)
+**Current Version**: 0.1.0-alpha.5 (Released June 11, 2024)
 - Zero compiler warnings across all 541 tests
 - Enhanced ML capabilities with continual learning and AutoML
 - Advanced device orchestration and cloud management

@@ -3,13 +3,10 @@
 //! This module provides comprehensive statistical characterization of quantum noise,
 //! including distributional analysis, moment analysis, correlation analysis, and outlier detection.
 
+use super::config::DistributionType;
 use crate::{DeviceError, DeviceResult};
 use ndarray::{Array1, Array2, ArrayView2};
-use scirs2_stats::{
-    corrcoef,
-    distributions::{expon, gamma, norm},
-    kurtosis, mean, median, skew, spearmanr, std, var,
-};
+use scirs2_stats::{corrcoef, kurtosis, mean, median, skew, spearmanr, std, var};
 use std::collections::HashMap;
 
 /// Statistical noise characterization
@@ -35,21 +32,6 @@ pub struct NoiseDistribution {
     pub goodness_of_fit: f64,
     pub confidence_intervals: Vec<(f64, f64)>,
     pub p_value: f64,
-}
-
-/// Supported distribution types
-#[derive(Debug, Clone, PartialEq)]
-pub enum DistributionType {
-    Normal,
-    Gamma,
-    Exponential,
-    Poisson,
-    Laplace,
-    StudentT,
-    Weibull,
-    LogNormal,
-    Beta,
-    Custom,
 }
 
 /// Statistical moment analysis
@@ -164,61 +146,58 @@ impl StatisticalAnalyzer {
         let data_std = std(&data_array.view(), 1)
             .map_err(|e| DeviceError::APIError(format!("Std calculation error: {:?}", e)))?;
 
-        if let Ok(normal_dist) = norm(data_mean, data_std) {
-            let (ks_stat, p_value) = self.kolmogorov_smirnov_test(&data_array, &normal_dist)?;
+        let (ks_stat, p_value) =
+            self.kolmogorov_smirnov_test(&data_array, &DistributionType::Normal)?;
+        let score = -ks_stat;
+
+        if score > best_score {
+            best_score = score;
+            best_distribution = NoiseDistribution {
+                distribution_type: DistributionType::Normal,
+                parameters: vec![data_mean, data_std],
+                goodness_of_fit: 1.0 - ks_stat,
+                confidence_intervals: vec![(
+                    data_mean - 1.96 * data_std,
+                    data_mean + 1.96 * data_std,
+                )],
+                p_value,
+            };
+        }
+
+        // Test gamma distribution for positive data
+        if data_array.iter().all(|&x| x > 0.0) {
+            let (ks_stat, p_value) =
+                self.kolmogorov_smirnov_test(&data_array, &DistributionType::Gamma)?;
             let score = -ks_stat;
 
             if score > best_score {
+                let (shape, scale) = self.estimate_gamma_parameters(&data_array)?;
                 best_score = score;
                 best_distribution = NoiseDistribution {
-                    distribution_type: DistributionType::Normal,
-                    parameters: vec![data_mean, data_std],
+                    distribution_type: DistributionType::Gamma,
+                    parameters: vec![shape, scale],
                     goodness_of_fit: 1.0 - ks_stat,
-                    confidence_intervals: vec![(
-                        data_mean - 1.96 * data_std,
-                        data_mean + 1.96 * data_std,
-                    )],
+                    confidence_intervals: vec![(0.0, shape * scale * 3.0)],
                     p_value,
                 };
             }
         }
 
-        // Test gamma distribution for positive data
-        if data_array.iter().all(|&x| x > 0.0) {
-            let (shape, scale) = self.estimate_gamma_parameters(&data_array)?;
-            if let Ok(gamma_dist) = gamma(shape, scale, 0.0) {
-                let (ks_stat, p_value) = self.kolmogorov_smirnov_test(&data_array, &gamma_dist)?;
-                let score = -ks_stat;
-
-                if score > best_score {
-                    best_score = score;
-                    best_distribution = NoiseDistribution {
-                        distribution_type: DistributionType::Gamma,
-                        parameters: vec![shape, scale],
-                        goodness_of_fit: 1.0 - ks_stat,
-                        confidence_intervals: vec![(0.0, shape * scale * 3.0)],
-                        p_value,
-                    };
-                }
-            }
-        }
-
         // Test exponential distribution for non-negative data
         if data_array.iter().all(|&x| x >= 0.0) {
-            let rate = 1.0 / data_mean;
-            if let Ok(exp_dist) = expon(rate, 0.0) {
-                let (ks_stat, p_value) = self.kolmogorov_smirnov_test(&data_array, &exp_dist)?;
-                let score = -ks_stat;
+            let (ks_stat, p_value) =
+                self.kolmogorov_smirnov_test(&data_array, &DistributionType::Exponential)?;
+            let score = -ks_stat;
 
-                if score > best_score {
-                    best_distribution = NoiseDistribution {
-                        distribution_type: DistributionType::Exponential,
-                        parameters: vec![rate],
-                        goodness_of_fit: 1.0 - ks_stat,
-                        confidence_intervals: vec![(0.0, -data_mean * (0.05_f64).ln())],
-                        p_value,
-                    };
-                }
+            if score > best_score {
+                let rate = 1.0 / data_mean;
+                best_distribution = NoiseDistribution {
+                    distribution_type: DistributionType::Exponential,
+                    parameters: vec![rate],
+                    goodness_of_fit: 1.0 - ks_stat,
+                    confidence_intervals: vec![(0.0, -data_mean * (0.05_f64).ln())],
+                    p_value,
+                };
             }
         }
 
@@ -423,17 +402,47 @@ impl StatisticalAnalyzer {
     fn kolmogorov_smirnov_test(
         &self,
         data: &Array1<f64>,
-        distribution: &dyn scirs2_stats::traits::Distribution<f64>,
+        distribution_type: &DistributionType,
     ) -> DeviceResult<(f64, f64)> {
         let n = data.len() as f64;
         let mut sorted_data = data.to_vec();
         sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
+        let data_mean = mean(&data.view())
+            .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {:?}", e)))?;
+        let data_std = std(&data.view(), 1)
+            .map_err(|e| DeviceError::APIError(format!("Std calculation error: {:?}", e)))?;
+
         let mut max_diff: f64 = 0.0;
         for (i, &value) in sorted_data.iter().enumerate() {
             let empirical_cdf = (i + 1) as f64 / n;
-            // Simplified theoretical CDF calculation
-            let theoretical_cdf = 0.5; // Placeholder
+
+            // Calculate theoretical CDF based on distribution type
+            let theoretical_cdf = match distribution_type {
+                DistributionType::Normal => {
+                    let z = (value - data_mean) / data_std;
+                    0.5 * (1.0 + self.erf(z / 2.0_f64.sqrt()))
+                }
+                DistributionType::Exponential => {
+                    if value >= 0.0 {
+                        let rate = 1.0 / data_mean;
+                        1.0 - (-rate * value).exp()
+                    } else {
+                        0.0
+                    }
+                }
+                DistributionType::Gamma => {
+                    // Simplified gamma CDF approximation
+                    let (shape, scale) = self.estimate_gamma_parameters(data)?;
+                    if value >= 0.0 {
+                        self.gamma_cdf_approx(value, shape, scale)
+                    } else {
+                        0.0
+                    }
+                }
+                _ => 0.5, // Default fallback
+            };
+
             let diff = (empirical_cdf - theoretical_cdf).abs();
             max_diff = max_diff.max(diff);
         }
@@ -445,6 +454,47 @@ impl StatisticalAnalyzer {
         };
 
         Ok((max_diff, p_value))
+    }
+
+    /// Error function approximation
+    fn erf(&self, x: f64) -> f64 {
+        // Abramowitz and Stegun approximation
+        let a1 = 0.254829592;
+        let a2 = -0.284496736;
+        let a3 = 1.421413741;
+        let a4 = -1.453152027;
+        let a5 = 1.061405429;
+        let p = 0.3275911;
+
+        let sign = x.signum();
+        let x = x.abs();
+
+        let t = 1.0 / (1.0 + p * x);
+        let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-x * x).exp();
+
+        sign * y
+    }
+
+    /// Gamma CDF approximation
+    fn gamma_cdf_approx(&self, x: f64, shape: f64, scale: f64) -> f64 {
+        if x <= 0.0 {
+            return 0.0;
+        }
+
+        // Simple approximation using incomplete gamma function
+        let normalized_x = x / scale;
+
+        // For simplicity, use normal approximation for large shape parameters
+        if shape > 10.0 {
+            let mean = shape * scale;
+            let variance = shape * scale * scale;
+            let std_dev = variance.sqrt();
+            let z = (x - mean) / std_dev;
+            0.5 * (1.0 + self.erf(z / 2.0_f64.sqrt()))
+        } else {
+            // Simple approximation
+            (normalized_x / (normalized_x + 1.0)).powf(shape)
+        }
     }
 
     fn estimate_gamma_parameters(&self, data: &Array1<f64>) -> DeviceResult<(f64, f64)> {

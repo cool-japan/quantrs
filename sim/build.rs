@@ -8,7 +8,14 @@ fn main() {
         println!("cargo:rustc-env=OPENBLAS_SYSTEM=1");
         println!("cargo:rustc-env=OPENBLAS64_SYSTEM=1");
 
-        // Print debug info
-        println!("cargo:warning=Building on macOS with Accelerate framework");
+        // Fix C++ standard library linking on macOS
+        // Use libc++ instead of libstdc++
+        println!("cargo:rustc-link-lib=c++");
+
+        // Set environment variables to influence symengine compilation
+        println!("cargo:rustc-env=CXXFLAGS=-stdlib=libc++");
+        println!("cargo:rustc-env=LDFLAGS=-lc++");
+
+        // Accelerate framework and C++ linking fix applied for macOS
     }
 }

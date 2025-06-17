@@ -18,7 +18,7 @@ use quantrs2_tytan::{
         },
         runner::{BenchmarkConfig, BenchmarkRunner},
     },
-    compile::{Model, SimpleExpr},
+    compile::Model,
     optimization::{
         adaptive::{AdaptiveConfig, AdaptiveOptimizer},
         penalty::{PenaltyConfig, PenaltyOptimizer},
@@ -30,6 +30,9 @@ use quantrs2_tytan::{
         problem_specific::{ProblemVisualizer, VisualizationConfig, VisualizationType},
     },
 };
+
+use quantrs2_tytan::compile::expr::{Expr, constant};
+
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::time::Instant;
@@ -88,20 +91,20 @@ fn create_max_cut_model(
 
     // Objective: maximize sum of w_ij * (x_i XOR x_j) for each edge
     // Using the identity: x_i XOR x_j = x_i + x_j - 2*x_i*x_j
-    let mut objective = SimpleExpr::constant(0.0);
+    let mut objective = constant(0.0);
 
     for (idx, &(i, j)) in edges.iter().enumerate() {
         let weight = weights.map(|w| w[idx]).unwrap_or(1.0);
 
         // Add weight * (x_i + x_j - 2*x_i*x_j)
         objective = objective
-            + SimpleExpr::constant(weight) * node_vars[i].clone()
-            + SimpleExpr::constant(weight) * node_vars[j].clone()
-            + SimpleExpr::constant(-2.0 * weight) * node_vars[i].clone() * node_vars[j].clone();
+            + constant(weight) * node_vars[i].clone()
+            + constant(weight) * node_vars[j].clone()
+            + constant(-2.0 * weight) * node_vars[i].clone() * node_vars[j].clone();
     }
 
     // Since we want to maximize, negate the objective for minimization
-    model.set_objective(SimpleExpr::constant(-1.0) * objective);
+    model.set_objective(constant(-1.0) * objective);
 
     Ok(model)
 }
@@ -129,7 +132,7 @@ fn analyze_cut_quality(
     edges: &[(usize, usize)],
     weights: Option<&[f64]>,
 ) -> CutAnalysis {
-    let cut_value = calculate_cut_value(partition, edges, weights);
+    let mut cut_value = calculate_cut_value(partition, edges, weights);
     let total_weight: f64 = weights
         .map(|w| w.iter().sum())
         .unwrap_or(edges.len() as f64);
@@ -240,12 +243,12 @@ fn run_max_cut_experiments() -> Result<(), Box<dyn std::error::Error>> {
         let (matrix, var_map) = qubo_to_matrix_format(&qubo)?;
 
         // SA sampler
-        let sa_sampler = SASampler::new(None);
+        let mut sa_sampler = SASampler::new(None);
         let sa_samples = sa_sampler.run_qubo(&(matrix.clone(), var_map.clone()), 1000)?;
         let best_sa = &sa_samples[0];
 
         // GA sampler
-        let ga_sampler = GASampler::with_params(None, 100, 50); // seed, max_generations, population_size
+        let mut ga_sampler = GASampler::with_params(None, 100, 50); // seed, max_generations, population_size
         let ga_samples = ga_sampler.run_qubo(&(matrix.clone(), var_map.clone()), 1000)?;
         let best_ga = &ga_samples[0];
 
@@ -368,7 +371,7 @@ fn run_max_cut_experiments() -> Result<(), Box<dyn std::error::Error>> {
             adjacency_matrix: adjacency,
             node_names: None,
         };
-        let config = VisualizationConfig::default();
+        let mut config = VisualizationConfig::default();
         let mut visualizer = ProblemVisualizer::new(problem_type, config);
         visualizer.add_samples(vec![best_sa.clone()]);
         visualizer.visualize()?;
@@ -575,7 +578,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let compiled = model.compile()?;
     let qubo = compiled.to_qubo();
 
-    let sampler = SASampler::new(None);
+    let mut sampler = SASampler::new(None);
 
     let (matrix, var_map) = qubo_to_matrix_format(&qubo)?;
     let samples = sampler.run_qubo(&(matrix, var_map), 1000)?;

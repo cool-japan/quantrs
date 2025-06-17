@@ -6,16 +6,12 @@
 
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rayon::prelude::*;
-use std::collections::HashMap;
 use std::f64::consts::PI;
 
 use crate::error::{Result, SimulatorError};
 use crate::pauli::{PauliOperatorSum, PauliString};
 use crate::statevector::StateVectorSimulator;
-use crate::trotter::{Hamiltonian, HamiltonianTerm};
-use quantrs2_core::gate::{multi::*, single::*, GateOp};
-use quantrs2_core::qubit::QubitId;
+use quantrs2_core::gate::GateOp;
 
 /// Gradient computation method
 #[derive(Debug, Clone, Copy)]
@@ -740,9 +736,9 @@ pub mod ansatze {
         for layer in 0..num_layers {
             // Single-qubit rotations
             for qubit in 0..num_qubits {
-                circuit.ry(qubit, param_idx);
+                let _ = circuit.ry(qubit, param_idx);
                 param_idx += 1;
-                circuit.rz(qubit, param_idx);
+                let _ = circuit.rz(qubit, param_idx);
                 param_idx += 1;
             }
 
@@ -764,7 +760,7 @@ pub mod ansatze {
 
         // Initial superposition
         for qubit in 0..num_qubits {
-            circuit.ry(qubit, param_idx); // RY(π/2) for H gate equivalent
+            let _ = circuit.ry(qubit, param_idx); // RY(π/2) for H gate equivalent
         }
 
         for _layer in 0..num_layers {
@@ -772,14 +768,14 @@ pub mod ansatze {
             for &(i, j) in edges {
                 // Would implement ZZ rotation here
                 // For now, approximate with RZ gates
-                circuit.rz(i, param_idx);
-                circuit.rz(j, param_idx);
+                let _ = circuit.rz(i, param_idx);
+                let _ = circuit.rz(j, param_idx);
                 param_idx += 1;
             }
 
             // Mixer Hamiltonian evolution (X terms)
             for qubit in 0..num_qubits {
-                circuit.rx(qubit, param_idx);
+                let _ = circuit.rx(qubit, param_idx);
                 param_idx += 1;
             }
         }
@@ -823,8 +819,8 @@ mod tests {
     #[test]
     fn test_parametric_circuit_creation() {
         let mut circuit = ParametricCircuit::new(2);
-        circuit.rx(0, 0);
-        circuit.ry(1, 1);
+        let _ = circuit.rx(0, 0);
+        let _ = circuit.ry(1, 1);
 
         assert_eq!(circuit.gates.len(), 2);
         assert_eq!(circuit.num_parameters, 2);

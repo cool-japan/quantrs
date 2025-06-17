@@ -7,12 +7,11 @@
 //! - Reset operations
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use crate::matrix_ops::DenseMatrix;
 use crate::qubit::QubitId;
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use num_complex::Complex64;
 use rand::prelude::*;
-use rand::thread_rng;
+use rand::rng;
 use std::fmt::Debug;
 
 /// Trait for quantum operations (both unitary and non-unitary)
@@ -423,8 +422,8 @@ impl QuantumOperation for Reset {
 
 /// Sample from measurement outcomes according to their probabilities
 pub fn sample_outcome(probabilities: &[f64]) -> QuantRS2Result<usize> {
-    let mut rng = thread_rng();
-    let r: f64 = rng.gen();
+    let mut rng = rng();
+    let r: f64 = rng.random();
 
     let mut cumsum = 0.0;
     for (i, &prob) in probabilities.iter().enumerate() {

@@ -8,7 +8,7 @@
 
 use ndarray::Array2;
 use quantrs2_tytan::{
-    compile::{Model, SimpleExpr},
+    compile::Model,
     constraints::PenaltyFunction,
     optimization::{
         adaptive::{AdaptiveConfig, AdaptiveOptimizer},
@@ -16,6 +16,9 @@ use quantrs2_tytan::{
     },
     sampler::{SASampler, Sampler},
 };
+
+use quantrs2_tytan::compile::expr::{Expr, constant};
+
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::collections::{HashMap, HashSet};
@@ -114,7 +117,7 @@ fn generate_random_ksat(num_vars: usize, num_clauses: usize, k: usize, seed: u64
             let var = rng.gen_range(0..num_vars);
             if !used_vars.contains(&var) {
                 used_vars.insert(var);
-                let negated = rng.gen_bool(0.5);
+                let negated = rng.random_bool(0.5);
                 literals.push(Literal::new(var, negated));
             }
         }
@@ -137,7 +140,7 @@ fn sat_to_qubo(formula: &SatFormula) -> Result<Model, Box<dyn std::error::Error>
     }
 
     // Track the objective expression separately
-    let mut objective = SimpleExpr::constant(0.0);
+    let mut objective = constant(0.0);
 
     // For each clause, add a penalty if it's not satisfied
     // We use auxiliary variables for clauses with more than 2 literals
@@ -147,14 +150,14 @@ fn sat_to_qubo(formula: &SatFormula) -> Result<Model, Box<dyn std::error::Error>
         }
 
         // Build the clause expression
-        let mut clause_expr = SimpleExpr::constant(0.0);
+        let mut clause_expr = constant(0.0);
 
         for lit in &clause.literals {
             let var_expr = vars[lit.var].clone();
             if lit.negated {
                 // Negated variable: (1 - x)
                 clause_expr =
-                    clause_expr + SimpleExpr::constant(1.0) + SimpleExpr::constant(-1.0) * var_expr;
+                    clause_expr + constant(1.0) + constant(-1.0) * var_expr;
             } else {
                 // Positive variable: x
                 clause_expr = clause_expr + var_expr;
@@ -167,13 +170,13 @@ fn sat_to_qubo(formula: &SatFormula) -> Result<Model, Box<dyn std::error::Error>
         // Constraint: aux_var = 1 if clause is satisfied (at least one literal is true)
         // This is implemented as: if clause_expr > 0, then aux_var = 1
         // We add penalty: (1 - aux_var) * clause_expr
-        let penalty_expr = (SimpleExpr::constant(1.0)
-            + SimpleExpr::constant(-1.0) * aux_var.clone())
+        let penalty_expr = (constant(1.0)
+            + constant(-1.0) * aux_var.clone())
             * clause_expr;
 
         // Also ensure aux_var = 0 when clause is not satisfied
         // Add small penalty for aux_var to prefer aux_var = 0 when possible
-        let aux_penalty = SimpleExpr::constant(0.1) * aux_var;
+        let mut aux_penalty = constant(0.1) * aux_var;
 
         // Add to objective (we're minimizing penalties)
         objective = objective + penalty_expr + aux_penalty;
@@ -288,11 +291,11 @@ fn run_sat_experiment(
     }
 
     // Configure sampler
-    let sampler = SASampler::new(None);
+    let mut sampler = SASampler::new(None);
 
     // First run
     println!("\nFirst optimization run...");
-    let start = Instant::now();
+    let mut start = Instant::now();
     let samples = sampler.run_qubo(&(matrix.clone(), var_map.clone()), 1000)?;
     let first_run_time = start.elapsed();
 
@@ -371,7 +374,7 @@ fn run_sat_experiment(
                 "Re-solving with {} clauses...",
                 augmented_formula.clauses.len()
             );
-            let start = Instant::now();
+            let mut start = Instant::now();
             let new_samples = sampler.run_qubo(&(aug_matrix, aug_var_map), 1000)?;
             total_time += start.elapsed();
             iterations += 1;

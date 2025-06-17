@@ -6,20 +6,18 @@
 //! (QNN), and other QML applications with automatic differentiation and
 //! hardware-aware optimization.
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
+use crate::prelude::{InterfaceGate, InterfaceGateType, SimulatorError};
+use ndarray::Array1;
 use num_complex::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use crate::autodiff_vqe::{AutoDiffContext, ParametricCircuit, VQEWithAutodiff};
-use crate::circuit_interfaces::{
-    CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
-};
-use crate::error::{Result, SimulatorError};
+use crate::autodiff_vqe::AutoDiffContext;
+use crate::circuit_interfaces::{CircuitInterface, InterfaceCircuit};
+use crate::error::Result;
 use crate::scirs2_integration::SciRS2Backend;
-use crate::statevector::StateVectorSimulator;
 
 /// QML framework types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

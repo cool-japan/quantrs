@@ -692,7 +692,7 @@ mod tests {
 
     #[test]
     fn test_statistics_calculations() {
-        let mut stats = OptimizationStatistics {
+        let stats = OptimizationStatistics {
             original_gate_count: 100,
             optimized_gate_count: 80,
             original_depth: 50,

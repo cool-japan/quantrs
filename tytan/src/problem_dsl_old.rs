@@ -25,7 +25,7 @@ mod tests {
     
     #[test]
     fn test_tokenizer() {
-        let dsl = ProblemDSL::new();
+        let mut dsl = ProblemDSL::new();
         let source = "var x binary;";
         let tokens = dsl.tokenize(source);
         

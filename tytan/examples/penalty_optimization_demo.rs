@@ -74,7 +74,7 @@ fn quadratic_penalty_demo() -> Result<(), Box<dyn Error>> {
     let mut penalty_optimizer = PenaltyOptimizer::new(config);
 
     // Run sampling with the QUBO matrix
-    let sampler = SASampler::new(None);
+    let mut sampler = SASampler::new(None);
     let samples = sampler.run_qubo(&(qubo.clone(), var_map.clone()), 100)?;
 
     println!("   Optimization Results:");
@@ -170,7 +170,7 @@ fn adaptive_penalty_demo() -> Result<(), Box<dyn Error>> {
         let mut adaptive_optimizer = AdaptiveOptimizer::new(config);
 
         // Create sampler
-        let sampler = SASampler::new(None);
+        let mut sampler = SASampler::new(None);
 
         // Run sampling
         let samples = sampler.run_qubo(&(qubo.clone(), var_map.clone()), 100)?;
@@ -250,7 +250,7 @@ fn parameter_tuning_demo() -> Result<(), Box<dyn Error>> {
     for (config_name, num_samples) in parameter_configs {
         println!("\n   Configuration: {}", config_name);
 
-        let sampler = SASampler::new(None);
+        let mut sampler = SASampler::new(None);
         let samples = sampler.run_qubo(&(qubo.clone(), var_map.clone()), num_samples)?;
 
         if let Some(best) = samples.first() {

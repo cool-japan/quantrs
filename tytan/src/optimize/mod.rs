@@ -83,8 +83,8 @@ pub fn optimize_qubo(
         Some(guess) => guess,
         None => {
             use rand::Rng;
-            let mut rng = rand::thread_rng();
-            (0..n_vars).map(|_| rng.gen_bool(0.5)).collect()
+            let mut rng = rand::rng();
+            (0..n_vars).map(|_| rng.random_bool(0.5)).collect()
         }
     };
 
@@ -96,11 +96,11 @@ pub fn optimize_qubo(
     let cooling_rate = 0.99;
 
     // Simulated annealing loop
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     for _ in 0..max_iterations {
         // Generate a neighbor by flipping a random bit
-        let flip_idx = rng.gen_range(0..n_vars);
+        let flip_idx = rng.random_range(0..n_vars);
         solution[flip_idx] = !solution[flip_idx];
 
         // Calculate new energy
@@ -111,7 +111,7 @@ pub fn optimize_qubo(
             true
         } else {
             let p = ((energy - new_energy) / temperature).exp();
-            rng.gen::<f64>() < p
+            rng.random::<f64>() < p
         };
 
         if !accept {

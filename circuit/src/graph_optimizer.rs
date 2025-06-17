@@ -496,12 +496,71 @@ impl GraphOptimizer {
     /// Convert circuit to DAG representation
     pub fn circuit_to_dag<const N: usize>(
         &self,
-        _circuit: &Circuit<N>,
+        circuit: &Circuit<N>,
     ) -> Result<CircuitDAG, QuantRS2Error> {
-        let dag = CircuitDAG::new();
+        let mut dag = CircuitDAG::new();
 
-        // TODO: Implement actual circuit introspection once available
-        // For now, this is a placeholder
+        // Extract gates from circuit and convert to GraphGates
+        for (gate_id, gate) in circuit.gates().iter().enumerate() {
+            let graph_gate = GraphGate {
+                id: gate_id,
+                gate_type: gate.name().to_string(),
+                qubits: gate.qubits(),
+                params: if gate.is_parameterized() {
+                    // Extract parameters from specific gate types
+                    match gate.name() {
+                        "RX" | "RY" | "RZ" => {
+                            // Try to extract rotation parameters using downcast
+                            if let Some(rx_gate) =
+                                gate.as_any()
+                                    .downcast_ref::<quantrs2_core::gate::single::RotationX>()
+                            {
+                                vec![rx_gate.theta]
+                            } else if let Some(ry_gate) =
+                                gate.as_any()
+                                    .downcast_ref::<quantrs2_core::gate::single::RotationY>()
+                            {
+                                vec![ry_gate.theta]
+                            } else if let Some(rz_gate) =
+                                gate.as_any()
+                                    .downcast_ref::<quantrs2_core::gate::single::RotationZ>()
+                            {
+                                vec![rz_gate.theta]
+                            } else {
+                                vec![] // Default for unknown parameterized gates
+                            }
+                        }
+                        "CRX" | "CRY" | "CRZ" => {
+                            // Try to extract controlled rotation parameters
+                            if let Some(crx_gate) = gate
+                                .as_any()
+                                .downcast_ref::<quantrs2_core::gate::multi::CRX>()
+                            {
+                                vec![crx_gate.theta]
+                            } else if let Some(cry_gate) =
+                                gate.as_any()
+                                    .downcast_ref::<quantrs2_core::gate::multi::CRY>()
+                            {
+                                vec![cry_gate.theta]
+                            } else if let Some(crz_gate) =
+                                gate.as_any()
+                                    .downcast_ref::<quantrs2_core::gate::multi::CRZ>()
+                            {
+                                vec![crz_gate.theta]
+                            } else {
+                                vec![]
+                            }
+                        }
+                        _ => vec![], // Other parameterized gates
+                    }
+                } else {
+                    vec![] // Non-parameterized gates have no parameters
+                },
+                matrix: None, // Compute on demand if needed
+            };
+
+            dag.add_gate(graph_gate);
+        }
 
         Ok(dag)
     }

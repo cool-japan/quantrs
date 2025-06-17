@@ -1,7 +1,7 @@
 //! Benchmark analysis and reporting
 
 use crate::benchmark::{
-    metrics::{aggregation, statistics, BenchmarkMetrics},
+    metrics::{aggregation, BenchmarkMetrics},
     runner::BenchmarkResult,
 };
 use serde::{Deserialize, Serialize};
@@ -262,7 +262,7 @@ impl PerformanceReport {
         for result in results {
             by_backend
                 .entry(result.backend_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
 
@@ -288,7 +288,7 @@ impl PerformanceReport {
                 let efficiency = result.metrics.calculate_efficiency();
                 size_performance
                     .entry(result.problem_size)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(efficiency.samples_per_second);
             }
 
@@ -318,7 +318,7 @@ impl PerformanceReport {
                 let efficiency = result.metrics.calculate_efficiency();
                 density_performance
                     .entry(density_str)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(efficiency.samples_per_second);
             }
 
@@ -357,7 +357,7 @@ impl PerformanceReport {
         for result in results {
             by_sampler
                 .entry(result.sampler_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
 
@@ -394,7 +394,7 @@ impl PerformanceReport {
 
                 problem_type_performance
                     .entry(problem_type.to_string())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(result.metrics.quality.best_energy);
             }
 

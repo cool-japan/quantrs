@@ -4,8 +4,9 @@
 //! including the bit-flip code, phase-flip code, Shor code, and 5-qubit perfect code.
 
 use super::ErrorCorrection;
-use quantrs_circuit::builder::Circuit;
-use quantrs_core::qubit::QubitId;
+use quantrs2_circuit::builder::Circuit;
+use quantrs2_core::qubit::QubitId;
+use crate::error::{Result, SimulatorError};
 
 /// The 3-qubit bit flip code
 ///
@@ -31,13 +32,20 @@ impl ErrorCorrection for BitFlipCode {
         &self,
         logical_qubits: &[QubitId],
         ancilla_qubits: &[QubitId],
-    ) -> Circuit<16> {
+    ) -> Result<Circuit<16>> {
         // We limit the circuit to 16 qubits maximum
         let mut circuit = Circuit::<16>::new();
 
         // Check if we have enough qubits
-        if logical_qubits.len() < 1 || ancilla_qubits.len() < 2 {
-            panic!("BitFlipCode requires 1 logical qubit and 2 ancilla qubits");
+        if logical_qubits.len() < 1 {
+            return Err(SimulatorError::InvalidInput(
+                "BitFlipCode requires at least 1 logical qubit".to_string()
+            ));
+        }
+        if ancilla_qubits.len() < 2 {
+            return Err(SimulatorError::InvalidInput(
+                "BitFlipCode requires at least 2 ancilla qubits".to_string()
+            ));
         }
 
         // Extract qubit IDs
@@ -50,19 +58,26 @@ impl ErrorCorrection for BitFlipCode {
         circuit.cnot(q0, q1).unwrap();
         circuit.cnot(q0, q2).unwrap();
 
-        circuit
+        Ok(circuit)
     }
 
     fn decode_circuit(
         &self,
         encoded_qubits: &[QubitId],
         syndrome_qubits: &[QubitId],
-    ) -> Circuit<16> {
+    ) -> Result<Circuit<16>> {
         let mut circuit = Circuit::<16>::new();
 
         // Check if we have enough qubits
-        if encoded_qubits.len() < 3 || syndrome_qubits.len() < 2 {
-            panic!("BitFlipCode requires 3 encoded qubits and 2 syndrome qubits");
+        if encoded_qubits.len() < 3 {
+            return Err(SimulatorError::InvalidInput(
+                "BitFlipCode requires at least 3 encoded qubits".to_string()
+            ));
+        }
+        if syndrome_qubits.len() < 2 {
+            return Err(SimulatorError::InvalidInput(
+                "BitFlipCode requires at least 2 syndrome qubits".to_string()
+            ));
         }
 
         // Extract qubit IDs
@@ -93,7 +108,7 @@ impl ErrorCorrection for BitFlipCode {
         circuit.cx(s0, q2).unwrap();
         circuit.cx(s1, q2).unwrap();
 
-        circuit
+        Ok(circuit)
     }
 }
 
@@ -121,13 +136,20 @@ impl ErrorCorrection for PhaseFlipCode {
         &self,
         logical_qubits: &[QubitId],
         ancilla_qubits: &[QubitId],
-    ) -> Circuit<16> {
+    ) -> Result<Circuit<16>> {
         // We limit the circuit to 16 qubits maximum
         let mut circuit = Circuit::<16>::new();
 
         // Check if we have enough qubits
-        if logical_qubits.len() < 1 || ancilla_qubits.len() < 2 {
-            panic!("PhaseFlipCode requires 1 logical qubit and 2 ancilla qubits");
+        if logical_qubits.len() < 1 {
+            return Err(SimulatorError::InvalidInput(
+                "PhaseFlipCode requires at least 1 logical qubit".to_string()
+            ));
+        }
+        if ancilla_qubits.len() < 2 {
+            return Err(SimulatorError::InvalidInput(
+                "PhaseFlipCode requires at least 2 ancilla qubits".to_string()
+            ));
         }
 
         // Extract qubit IDs
@@ -149,19 +171,26 @@ impl ErrorCorrection for PhaseFlipCode {
         circuit.h(q1).unwrap();
         circuit.h(q2).unwrap();
 
-        circuit
+        Ok(circuit)
     }
 
     fn decode_circuit(
         &self,
         encoded_qubits: &[QubitId],
         syndrome_qubits: &[QubitId],
-    ) -> Circuit<16> {
+    ) -> Result<Circuit<16>> {
         let mut circuit = Circuit::<16>::new();
 
         // Check if we have enough qubits
-        if encoded_qubits.len() < 3 || syndrome_qubits.len() < 2 {
-            panic!("PhaseFlipCode requires 3 encoded qubits and 2 syndrome qubits");
+        if encoded_qubits.len() < 3 {
+            return Err(SimulatorError::InvalidInput(
+                "PhaseFlipCode requires at least 3 encoded qubits".to_string()
+            ));
+        }
+        if syndrome_qubits.len() < 2 {
+            return Err(SimulatorError::InvalidInput(
+                "PhaseFlipCode requires at least 2 syndrome qubits".to_string()
+            ));
         }
 
         // Extract qubit IDs
@@ -202,7 +231,7 @@ impl ErrorCorrection for PhaseFlipCode {
         circuit.h(q1).unwrap();
         circuit.h(q2).unwrap();
 
-        circuit
+        Ok(circuit)
     }
 }
 
@@ -231,12 +260,19 @@ impl ErrorCorrection for ShorCode {
         &self,
         logical_qubits: &[QubitId],
         ancilla_qubits: &[QubitId],
-    ) -> Circuit<16> {
+    ) -> Result<Circuit<16>> {
         let mut circuit = Circuit::<16>::new();
 
         // Check if we have enough qubits
-        if logical_qubits.len() < 1 || ancilla_qubits.len() < 8 {
-            panic!("ShorCode requires 1 logical qubit and 8 ancilla qubits");
+        if logical_qubits.len() < 1 {
+            return Err(SimulatorError::InvalidInput(
+                "ShorCode requires at least 1 logical qubit".to_string()
+            ));
+        }
+        if ancilla_qubits.len() < 8 {
+            return Err(SimulatorError::InvalidInput(
+                "ShorCode requires at least 8 ancilla qubits".to_string()
+            ));
         }
 
         // Extract qubit IDs for easier reading
@@ -275,19 +311,26 @@ impl ErrorCorrection for ShorCode {
         // For the standard Shor code representation, we would apply Hadamards again
         // to all qubits. For this implementation we'll leave it in the current basis.
 
-        circuit
+        Ok(circuit)
     }
 
     fn decode_circuit(
         &self,
         encoded_qubits: &[QubitId],
         syndrome_qubits: &[QubitId],
-    ) -> Circuit<16> {
+    ) -> Result<Circuit<16>> {
         let mut circuit = Circuit::<16>::new();
 
         // Check if we have enough qubits
-        if encoded_qubits.len() < 9 || syndrome_qubits.len() < 8 {
-            panic!("ShorCode requires 9 encoded qubits and 8 syndrome qubits");
+        if encoded_qubits.len() < 9 {
+            return Err(SimulatorError::InvalidInput(
+                "ShorCode requires at least 9 encoded qubits".to_string()
+            ));
+        }
+        if syndrome_qubits.len() < 8 {
+            return Err(SimulatorError::InvalidInput(
+                "ShorCode requires at least 8 syndrome qubits".to_string()
+            ));
         }
 
         // Extract qubit IDs for more readable code
@@ -401,7 +444,7 @@ impl ErrorCorrection for ShorCode {
             circuit.h(q).unwrap();
         }
 
-        circuit
+        Ok(circuit)
     }
 }
 
@@ -429,12 +472,19 @@ impl ErrorCorrection for FiveQubitCode {
         &self,
         logical_qubits: &[QubitId],
         ancilla_qubits: &[QubitId],
-    ) -> Circuit<16> {
+    ) -> Result<Circuit<16>> {
         let mut circuit = Circuit::<16>::new();
 
         // Check if we have enough qubits
-        if logical_qubits.len() < 1 || ancilla_qubits.len() < 4 {
-            panic!("FiveQubitCode requires 1 logical qubit and 4 ancilla qubits");
+        if logical_qubits.len() < 1 {
+            return Err(SimulatorError::InvalidInput(
+                "FiveQubitCode requires at least 1 logical qubit".to_string()
+            ));
+        }
+        if ancilla_qubits.len() < 4 {
+            return Err(SimulatorError::InvalidInput(
+                "FiveQubitCode requires at least 4 ancilla qubits".to_string()
+            ));
         }
 
         // Extract qubit IDs
@@ -483,19 +533,26 @@ impl ErrorCorrection for FiveQubitCode {
         // This encodes the logical qubit into a 5-qubit entangled state that can
         // detect and correct any single-qubit error
 
-        circuit
+        Ok(circuit)
     }
 
     fn decode_circuit(
         &self,
         encoded_qubits: &[QubitId],
         syndrome_qubits: &[QubitId],
-    ) -> Circuit<16> {
+    ) -> Result<Circuit<16>> {
         let mut circuit = Circuit::<16>::new();
 
         // Check if we have enough qubits
-        if encoded_qubits.len() < 5 || syndrome_qubits.len() < 4 {
-            panic!("FiveQubitCode requires 5 encoded qubits and 4 syndrome qubits");
+        if encoded_qubits.len() < 5 {
+            return Err(SimulatorError::InvalidInput(
+                "FiveQubitCode requires at least 5 encoded qubits".to_string()
+            ));
+        }
+        if syndrome_qubits.len() < 4 {
+            return Err(SimulatorError::InvalidInput(
+                "FiveQubitCode requires at least 4 syndrome qubits".to_string()
+            ));
         }
 
         // Extract qubit IDs
@@ -544,55 +601,55 @@ impl ErrorCorrection for FiveQubitCode {
         // First, we'll correct bit flips (X errors)
         // Syndrome 0001: X error on qubit 0
         let syndrome_0001 = [false, false, false, true];
-        self.add_conditional_correction(&mut circuit, synd, syndrome_0001, data[0], 'X');
+        self.add_conditional_correction(&mut circuit, synd, syndrome_0001, data[0], 'X')?;
 
         // Syndrome 0010: X error on qubit 1
         let syndrome_0010 = [false, false, true, false];
-        self.add_conditional_correction(&mut circuit, synd, syndrome_0010, data[1], 'X');
+        self.add_conditional_correction(&mut circuit, synd, syndrome_0010, data[1], 'X')?;
 
         // Syndrome 0100: X error on qubit 2
         let syndrome_0100 = [false, true, false, false];
-        self.add_conditional_correction(&mut circuit, synd, syndrome_0100, data[2], 'X');
+        self.add_conditional_correction(&mut circuit, synd, syndrome_0100, data[2], 'X')?;
 
         // Syndrome 1000: X error on qubit 3
         let syndrome_1000 = [true, false, false, false];
-        self.add_conditional_correction(&mut circuit, synd, syndrome_1000, data[3], 'X');
+        self.add_conditional_correction(&mut circuit, synd, syndrome_1000, data[3], 'X')?;
 
         // Now, we'll correct phase flips (Z errors)
         // Syndrome 0011: Z error on qubit 0
         let syndrome_0011 = [false, false, true, true];
-        self.add_conditional_correction(&mut circuit, synd, syndrome_0011, data[0], 'Z');
+        self.add_conditional_correction(&mut circuit, synd, syndrome_0011, data[0], 'Z')?;
 
         // Syndrome 0101: Z error on qubit 1
         let syndrome_0101 = [false, true, false, true];
-        self.add_conditional_correction(&mut circuit, synd, syndrome_0101, data[1], 'Z');
+        self.add_conditional_correction(&mut circuit, synd, syndrome_0101, data[1], 'Z')?;
 
         // Syndrome 1001: Z error on qubit 2
         let syndrome_1001 = [true, false, false, true];
-        self.add_conditional_correction(&mut circuit, synd, syndrome_1001, data[2], 'Z');
+        self.add_conditional_correction(&mut circuit, synd, syndrome_1001, data[2], 'Z')?;
 
         // Syndrome 1100: Z error on qubit 3
         let syndrome_1100 = [true, true, false, false];
-        self.add_conditional_correction(&mut circuit, synd, syndrome_1100, data[3], 'Z');
+        self.add_conditional_correction(&mut circuit, synd, syndrome_1100, data[3], 'Z')?;
 
         // And finally, Y errors (both bit and phase flips)
         // Syndrome 0111: Y error on qubit 0
         let syndrome_0111 = [false, true, true, true];
-        self.add_conditional_correction(&mut circuit, synd, syndrome_0111, data[0], 'Y');
+        self.add_conditional_correction(&mut circuit, synd, syndrome_0111, data[0], 'Y')?;
 
         // Syndrome 1011: Y error on qubit 1
         let syndrome_1011 = [true, false, true, true];
-        self.add_conditional_correction(&mut circuit, synd, syndrome_1011, data[1], 'Y');
+        self.add_conditional_correction(&mut circuit, synd, syndrome_1011, data[1], 'Y')?;
 
         // Syndrome 1101: Y error on qubit 2
         let syndrome_1101 = [true, true, false, true];
-        self.add_conditional_correction(&mut circuit, synd, syndrome_1101, data[2], 'Y');
+        self.add_conditional_correction(&mut circuit, synd, syndrome_1101, data[2], 'Y')?;
 
         // Syndrome 1110: Y error on qubit 3
         let syndrome_1110 = [true, true, true, false];
-        self.add_conditional_correction(&mut circuit, synd, syndrome_1110, data[3], 'Y');
+        self.add_conditional_correction(&mut circuit, synd, syndrome_1110, data[3], 'Y')?;
 
-        circuit
+        Ok(circuit)
     }
 }
 
@@ -605,7 +662,7 @@ impl FiveQubitCode {
         syndrome: [bool; 4],
         target: QubitId,
         error_type: char,
-    ) {
+    ) -> Result<()> {
         // In a real quantum circuit, this would involve classical control
         // For our simulator, we simulate classical control using quantum gates
 
@@ -643,7 +700,9 @@ impl FiveQubitCode {
                 circuit.cz(syndrome_qubits[0], target).unwrap();
                 circuit.cx(syndrome_qubits[0], target).unwrap();
             }
-            _ => panic!("Unsupported error type"),
+            _ => return Err(SimulatorError::UnsupportedOperation(
+                format!("Unsupported error type: {}", error_type)
+            )),
         }
 
         // Undo the combination of syndrome bits
@@ -657,5 +716,7 @@ impl FiveQubitCode {
                 circuit.x(syndrome_qubits[i]).unwrap();
             }
         }
+        
+        Ok(())
     }
 }

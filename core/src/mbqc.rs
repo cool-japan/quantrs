@@ -3,17 +3,11 @@
 //! This module provides implementations for one-way quantum computing using
 //! cluster states, graph states, and measurement patterns.
 
-use crate::{
-    error::{QuantRS2Error, QuantRS2Result},
-    gate::GateOp,
-    operations::{MeasurementOutcome, ProjectiveMeasurement},
-    qubit::QubitId,
-};
-use ndarray::{Array1, Array2, ArrayView1};
+use crate::error::{QuantRS2Error, QuantRS2Result};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::f64::consts::PI;
-use std::fmt;
 
 /// Measurement basis for MBQC
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -522,7 +516,7 @@ impl ClusterState {
         x_corrections: &HashMap<usize, Vec<(usize, bool)>>,
         z_corrections: &HashMap<usize, Vec<(usize, bool)>>,
     ) -> QuantRS2Result<()> {
-        let n = self.graph.num_vertices;
+        let _n = self.graph.num_vertices;
 
         // Apply X corrections
         for (target, sources) in x_corrections {
@@ -693,8 +687,10 @@ impl MBQCComputation {
 /// Convert a quantum circuit to MBQC pattern
 pub struct CircuitToMBQC {
     /// Qubit mapping from circuit to cluster
+    #[allow(dead_code)]
     qubit_map: HashMap<usize, usize>,
     /// Current cluster size
+    #[allow(dead_code)]
     cluster_size: usize,
 }
 
@@ -710,7 +706,7 @@ impl CircuitToMBQC {
     /// Convert a single-qubit gate to measurement pattern
     pub fn convert_single_qubit_gate(
         &mut self,
-        qubit: usize,
+        _qubit: usize,
         angle: f64,
     ) -> (Graph, MeasurementPattern) {
         let mut graph = Graph::new(3);
@@ -723,7 +719,7 @@ impl CircuitToMBQC {
     }
 
     /// Convert CNOT gate to measurement pattern
-    pub fn convert_cnot(&mut self, control: usize, target: usize) -> (Graph, MeasurementPattern) {
+    pub fn convert_cnot(&mut self, _control: usize, _target: usize) -> (Graph, MeasurementPattern) {
         // Standard 15-qubit CNOT pattern
         let mut graph = Graph::new(15);
 
@@ -853,7 +849,7 @@ mod tests {
         assert_eq!(pattern.measurements.len(), 2);
 
         // Convert CNOT
-        let (graph, pattern) = converter.convert_cnot(0, 1);
+        let (graph, _pattern) = converter.convert_cnot(0, 1);
         assert_eq!(graph.num_vertices, 15);
     }
 }

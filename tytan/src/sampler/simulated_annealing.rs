@@ -1,6 +1,6 @@
 //! Simulated Annealing Sampler Implementation
 
-use ndarray::{Array, Dimension, Ix2};
+use ndarray::{Array, Ix2};
 use rand::prelude::*;
 use rand::rngs::StdRng;
 use std::collections::HashMap;
@@ -10,7 +10,7 @@ use quantrs2_anneal::{
     QuboModel,
 };
 
-use super::{evaluate_qubo_energy, SampleResult, Sampler, SamplerError, SamplerResult};
+use super::{SampleResult, Sampler, SamplerResult};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -20,6 +20,7 @@ use rayon::prelude::*;
 /// This sampler uses simulated annealing to find solutions to
 /// QUBO/HOBO problems. It is a local search method that uses
 /// temperature to control the acceptance of worse solutions.
+#[derive(Clone)]
 pub struct SASampler {
     /// Random number generator seed
     seed: Option<u64>,
@@ -229,7 +230,7 @@ impl SASampler {
         let mut rng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => {
-                let seed: u64 = rand::thread_rng().random();
+                let seed: u64 = rand::rng().random();
                 StdRng::seed_from_u64(seed)
             }
         };
@@ -323,7 +324,7 @@ impl SASampler {
             let seeds: Vec<u64> = (0..total_runs)
                 .map(|i| match self.seed {
                     Some(seed) => seed.wrapping_add(i as u64),
-                    None => rand::thread_rng().random(),
+                    None => rand::rng().random(),
                 })
                 .collect();
 
@@ -407,7 +408,7 @@ impl SASampler {
                     // Perform n_vars updates per sweep
                     for _ in 0..n_vars {
                         // Select random bit to flip
-                        let idx = rng.random_range(0..n_vars);
+                        let mut idx = rng.random_range(0..n_vars);
 
                         // Flip the bit
                         state[idx] = !state[idx];

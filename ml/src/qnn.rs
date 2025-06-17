@@ -123,13 +123,13 @@ impl QuantumNeuralNetwork {
     }
 
     /// Creates a quantum circuit representation of the network for a given input
-    fn create_circuit(&self, input: &Array1<f64>) -> Result<Circuit<16>> {
+    fn create_circuit(&self, input: &Array1<f64>) -> Result<Circuit<4>> {
         // In a real implementation, this would create a proper circuit based on the layers
-        // For now, we'll create a dummy circuit
-        let mut circuit = Circuit::<16>::new();
+        // For now, we'll create a dummy circuit with maximum 4 qubits to avoid memory issues
+        let mut circuit = Circuit::<4>::new();
 
         // Apply dummy gates to demonstrate the concept
-        for i in 0..self.num_qubits.min(16) {
+        for i in 0..self.num_qubits.min(4) {
             circuit.h(i)?;
         }
 

@@ -7,7 +7,6 @@ computing frameworks.
 """
 
 from typing import Dict, Any, Optional, Union
-import warnings
 
 try:
     # Import from native module if available
@@ -15,7 +14,6 @@ try:
     NATIVE_QASM_AVAILABLE = True
 except ImportError:
     NATIVE_QASM_AVAILABLE = False
-    warnings.warn("Native QASM module not available. Using stub implementations.")
 
 from .utils import validate_circuit
 

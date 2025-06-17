@@ -1,7 +1,7 @@
 //! Solution comparison functionality for the solution debugger.
 
 use super::types::{ProblemInfo, Solution};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::collections::HashMap;
 
 /// Solution comparator
@@ -153,7 +153,7 @@ impl SolutionComparator {
     }
 
     /// Calculate constraint satisfaction difference
-    fn constraint_satisfaction_diff(&self, sol1: &Solution, sol2: &Solution) -> f64 {
+    fn constraint_satisfaction_diff(&self, _sol1: &Solution, _sol2: &Solution) -> f64 {
         // Placeholder - would need actual constraint satisfaction scores
         0.0
     }
@@ -192,10 +192,10 @@ impl SolutionComparator {
     /// Calculate objective impact of variable difference
     fn calculate_objective_impact(
         &self,
-        var: &str,
-        val1: bool,
-        val2: bool,
-        problem_info: &ProblemInfo,
+        _var: &str,
+        _val1: bool,
+        _val2: bool,
+        _problem_info: &ProblemInfo,
     ) -> f64 {
         // Would calculate actual impact based on QUBO matrix
         // Placeholder implementation
@@ -205,10 +205,10 @@ impl SolutionComparator {
     /// Calculate constraint impact of variable difference
     fn calculate_constraint_impact(
         &self,
-        var: &str,
-        val1: bool,
-        val2: bool,
-        problem_info: &ProblemInfo,
+        _var: &str,
+        _val1: bool,
+        _val2: bool,
+        _problem_info: &ProblemInfo,
     ) -> Vec<String> {
         // Would find which constraints are affected by this variable change
         // Placeholder implementation

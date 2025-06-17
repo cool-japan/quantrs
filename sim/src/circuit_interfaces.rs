@@ -7,20 +7,18 @@
 
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex};
 
 use crate::error::{Result, SimulatorError};
-use crate::mps_simulator::MPSSimulator;
 use crate::scirs2_integration::SciRS2Backend;
 use crate::sparse::CSRMatrix;
-use crate::stabilizer::StabilizerSimulator;
 use crate::statevector::StateVectorSimulator;
 #[cfg(feature = "advanced_math")]
+#[allow(unused_imports)]
 use crate::tensor_network::TensorNetwork;
 
 /// Circuit interface configuration
@@ -102,8 +100,99 @@ pub enum InterfaceGateType {
     Reset,
 }
 
+// Custom Hash implementation since f64 doesn't implement Hash
+impl std::hash::Hash for InterfaceGateType {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        use std::mem;
+        match self {
+            InterfaceGateType::Identity => 0u8.hash(state),
+            InterfaceGateType::PauliX => 1u8.hash(state),
+            InterfaceGateType::X => 2u8.hash(state),
+            InterfaceGateType::PauliY => 3u8.hash(state),
+            InterfaceGateType::PauliZ => 4u8.hash(state),
+            InterfaceGateType::Hadamard => 5u8.hash(state),
+            InterfaceGateType::H => 6u8.hash(state),
+            InterfaceGateType::S => 7u8.hash(state),
+            InterfaceGateType::T => 8u8.hash(state),
+            InterfaceGateType::Phase(angle) => {
+                9u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::RX(angle) => {
+                10u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::RY(angle) => {
+                11u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::RZ(angle) => {
+                12u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::U1(angle) => {
+                13u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::U2(theta, phi) => {
+                14u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*theta) }.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*phi) }.hash(state);
+            }
+            InterfaceGateType::U3(theta, phi, lambda) => {
+                15u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*theta) }.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*phi) }.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*lambda) }.hash(state);
+            }
+            InterfaceGateType::CNOT => 16u8.hash(state),
+            InterfaceGateType::CZ => 17u8.hash(state),
+            InterfaceGateType::CY => 18u8.hash(state),
+            InterfaceGateType::SWAP => 19u8.hash(state),
+            InterfaceGateType::ISwap => 20u8.hash(state),
+            InterfaceGateType::CRX(angle) => {
+                21u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::CRY(angle) => {
+                22u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::CRZ(angle) => {
+                23u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::CPhase(angle) => {
+                24u8.hash(state);
+                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+            }
+            InterfaceGateType::Toffoli => 25u8.hash(state),
+            InterfaceGateType::Fredkin => 26u8.hash(state),
+            InterfaceGateType::MultiControlledX(n) => {
+                27u8.hash(state);
+                n.hash(state);
+            }
+            InterfaceGateType::MultiControlledZ(n) => {
+                28u8.hash(state);
+                n.hash(state);
+            }
+            InterfaceGateType::Custom(name, matrix) => {
+                29u8.hash(state);
+                name.hash(state);
+                // Hash matrix shape instead of all elements
+                matrix.shape().hash(state);
+            }
+            InterfaceGateType::Measure => 30u8.hash(state),
+            InterfaceGateType::Reset => 31u8.hash(state),
+        }
+    }
+}
+
+// Custom Eq implementation since f64 doesn't implement Eq
+impl Eq for InterfaceGateType {}
+
 /// Quantum gate representation for circuit interface
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InterfaceGate {
     /// Gate type and parameters
     pub gate_type: InterfaceGateType,
@@ -347,6 +436,62 @@ impl InterfaceGate {
                 ],
             )
             .unwrap()),
+            InterfaceGateType::MultiControlledZ(num_controls) => {
+                let total_qubits = num_controls + 1;
+                let dim = 1 << total_qubits;
+                let mut matrix = Array2::eye(dim);
+
+                // Apply Z to the target when all control qubits are |1⟩
+                let target_state = (1 << total_qubits) - 1; // All qubits in |1⟩ state
+                matrix[(target_state, target_state)] = Complex64::new(-1.0, 0.0);
+
+                Ok(matrix)
+            }
+            InterfaceGateType::MultiControlledX(num_controls) => {
+                let total_qubits = num_controls + 1;
+                let dim = 1 << total_qubits;
+                let mut matrix = Array2::eye(dim);
+
+                // Apply X to the target when all control qubits are |1⟩
+                let control_pattern = (1 << *num_controls) - 1; // All control qubits in |1⟩
+                let target_bit = 1 << num_controls;
+
+                // Swap the two states where only the target bit differs
+                let state0 = control_pattern; // Target qubit is |0⟩
+                let state1 = control_pattern | target_bit; // Target qubit is |1⟩
+
+                matrix[(state0, state0)] = Complex64::new(0.0, 0.0);
+                matrix[(state1, state1)] = Complex64::new(0.0, 0.0);
+                matrix[(state0, state1)] = Complex64::new(1.0, 0.0);
+                matrix[(state1, state0)] = Complex64::new(1.0, 0.0);
+
+                Ok(matrix)
+            }
+            InterfaceGateType::CPhase(phase) => {
+                let phase_factor = Complex64::new(0.0, *phase).exp();
+                Ok(Array2::from_shape_vec(
+                    (4, 4),
+                    vec![
+                        Complex64::new(1.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(1.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(1.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        phase_factor,
+                    ],
+                )
+                .unwrap())
+            }
             InterfaceGateType::Custom(_, matrix) => Ok(matrix.clone()),
             _ => Err(SimulatorError::UnsupportedOperation(format!(
                 "Unitary matrix not available for gate type: {:?}",
@@ -380,7 +525,7 @@ impl InterfaceGate {
 }
 
 /// Quantum circuit representation for interface
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InterfaceCircuit {
     /// Number of qubits
     pub num_qubits: usize,
@@ -393,13 +538,14 @@ pub struct InterfaceCircuit {
 }
 
 /// Circuit metadata
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CircuitMetadata {
     /// Circuit name
     pub name: Option<String>,
     /// Circuit description
     pub description: Option<String>,
     /// Creation timestamp
+    #[serde(skip)]
     pub created_at: Option<std::time::SystemTime>,
     /// Circuit depth
     pub depth: usize,
@@ -457,14 +603,25 @@ impl InterfaceCircuit {
         let mut qubit_depths = vec![0; self.num_qubits];
 
         for gate in &self.gates {
-            let max_depth = gate
+            // Skip gates with invalid qubit indices
+            let valid_qubits: Vec<usize> = gate
                 .qubits
+                .iter()
+                .filter(|&&q| q < self.num_qubits)
+                .copied()
+                .collect();
+
+            if valid_qubits.is_empty() {
+                continue;
+            }
+
+            let max_depth = valid_qubits
                 .iter()
                 .map(|&q| qubit_depths[q])
                 .max()
                 .unwrap_or(0);
 
-            for &qubit in &gate.qubits {
+            for &qubit in &valid_qubits {
                 qubit_depths[qubit] = max_depth + 1;
             }
         }
@@ -522,8 +679,8 @@ impl InterfaceCircuit {
             optimized_gates: self.gates.len(),
             original_depth,
             optimized_depth: self.metadata.depth,
-            gates_eliminated: original_gates - self.gates.len(),
-            depth_reduction: original_depth - self.metadata.depth,
+            gates_eliminated: original_gates.saturating_sub(self.gates.len()),
+            depth_reduction: original_depth.saturating_sub(self.metadata.depth),
         }
     }
 
@@ -1453,7 +1610,7 @@ mod tests {
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::RX(0.5), vec![0]));
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::RX(0.3), vec![0]));
 
-        circuit.optimize();
+        let _ = circuit.optimize();
         assert_eq!(circuit.gates.len(), 1);
 
         if let InterfaceGateType::RX(angle) = &circuit.gates[0].gate_type {

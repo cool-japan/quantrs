@@ -169,7 +169,7 @@ pub fn normalize_simd(amplitudes: &mut [Complex64]) -> QuantRS2Result<()> {
 /// Compute expectation value of a Pauli Z operator
 ///
 /// This computes ⟨ψ|Z|ψ⟩ where Z is the Pauli Z operator on the given qubit.
-pub fn expectation_z_simd(amplitudes: &[Complex64], qubit: usize, num_qubits: usize) -> f64 {
+pub fn expectation_z_simd(amplitudes: &[Complex64], qubit: usize, _num_qubits: usize) -> f64 {
     let qubit_mask = 1 << qubit;
     let mut expectation = 0.0;
 
@@ -196,7 +196,7 @@ pub fn expectation_z_simd(amplitudes: &[Complex64], qubit: usize, num_qubits: us
 /// Apply a Hadamard gate using SIMD operations
 ///
 /// This applies H = (1/√2) * [[1, 1], [1, -1]] to the specified qubit.
-pub fn hadamard_simd(amplitudes: &mut [Complex64], qubit: usize, num_qubits: usize) {
+pub fn hadamard_simd(amplitudes: &mut [Complex64], qubit: usize, _num_qubits: usize) {
     let qubit_mask = 1 << qubit;
     let sqrt2_inv = 1.0 / 2.0_f64.sqrt();
 

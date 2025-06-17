@@ -1,12 +1,12 @@
-use quantrs_circuit::Circuit;
-use quantrs_core::{QubitId, Register};
-use quantrs_sim::StateVectorSimulator;
+use quantrs2_circuit::prelude::{Circuit, Simulator};
+use quantrs2_core::prelude::{QubitId, Register};
+use quantrs2_sim::prelude::StateVectorSimulator;
 use std::f64::consts::PI;
 
 /// Implements a simplified version of Shor's algorithm
 /// This implementation demonstrates the quantum part of Shor's algorithm
 /// for factoring N=15 with a=7 (coprime to 15)
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Simplified Shor's Algorithm Example");
     println!("Finding the period of f(x) = 7^x mod 15\n");
 
@@ -30,7 +30,7 @@ fn main() {
 
     // Apply Hadamard to the counting qubits to create superposition
     for i in 0..3 {
-        circuit.h(QubitId::new(i));
+        circuit.h(QubitId::new(i as u32));
     }
 
     println!("Step 2: Implementing the period-finding circuit for f(x) = 7^x mod 15");
@@ -60,20 +60,12 @@ fn main() {
 
     // To achieve this pattern, apply the following phase rotations:
 
-    // Controlled rotation by π/2 for the first qubit
-    circuit.controlled_u(QubitId::new(0), QubitId::new(3), |b| {
-        b.rz(QubitId::new(3), PI / 2);
-    });
-
-    // Controlled rotation by π for the second qubit
-    circuit.controlled_u(QubitId::new(1), QubitId::new(3), |b| {
-        b.rz(QubitId::new(3), PI);
-    });
-
-    // Controlled rotation by 3π/2 for the third qubit
-    circuit.controlled_u(QubitId::new(2), QubitId::new(3), |b| {
-        b.rz(QubitId::new(3), 3.0 * PI / 2.0);
-    });
+    // For this simplified version, we'll apply controlled rotations manually using available gates
+    // This is a workaround since controlled_u isn't available
+    // Apply phase rotations to simulate the quantum period-finding
+    circuit.cp(QubitId::new(0), QubitId::new(3), PI / 2.0);
+    circuit.cp(QubitId::new(1), QubitId::new(3), PI);
+    circuit.cp(QubitId::new(2), QubitId::new(3), 3.0 * PI / 2.0);
 
     println!("Step 3: Applying inverse QFT to extract the period");
 
@@ -86,16 +78,15 @@ fn main() {
 
     // Run the circuit
     println!("\nExecuting circuit...");
-    let result = simulator.run(&circuit, &register);
+    let result = simulator.run(&circuit)?;
 
-    // Measure the counting qubits
-    let counting_qubits: Vec<_> = (0..3).map(|i| QubitId::new(i)).collect();
-    let measured = simulator.measure(counting_qubits, &result);
-
+    // For this simplified demonstration, we'll analyze the final state
+    let amplitudes = result.amplitudes();
+    
     // Print measurement results
-    println!("\nMeasurement results (counting qubits):");
+    println!("\nState amplitudes:");
     for i in 0..8 {
-        let prob = simulator.probability(i, &measured);
+        let prob = amplitudes[i].norm_sqr();
         if prob > 0.01 {
             // Only show states with significant probability
             println!("State |{:03b}⟩: probability = {:.6}", i, prob);
@@ -129,27 +120,27 @@ fn main() {
     println!("2. Compute gcd(7^(r/2) - 1, 15) = gcd(48, 15) = 3");
     println!("3. Compute gcd(7^(r/2) + 1, 15) = gcd(50, 15) = 5");
     println!("4. Conclude that the factors of 15 are 3 and 5");
+    
+    Ok(())
 }
 
 /// Applies the inverse Quantum Fourier Transform to the first n qubits
 fn apply_inverse_qft(circuit: &mut Circuit<4>, n: usize) {
     // First, swap qubits
     for i in 0..n / 2 {
-        circuit.swap(QubitId::new(i), QubitId::new(n - i - 1));
+        circuit.swap(QubitId::new(i as u32), QubitId::new((n - i - 1) as u32));
     }
 
     // Apply inverse QFT operations in reverse order
     for i in (0..n).rev() {
-        // Apply inverse controlled rotations
+        // Apply inverse controlled rotations using available gates
         for j in (i + 1..n).rev() {
-            let angle = -PI / (1 << (j - i)); // -PI/2^(j-i)
-            circuit.controlled_u(QubitId::new(j), QubitId::new(i), |b| {
-                b.rz(QubitId::new(i), angle);
-            });
+            let angle = -PI / (1 << (j - i)) as f64; // -PI/2^(j-i)
+            circuit.cp(QubitId::new(j as u32), QubitId::new(i as u32), angle);
         }
 
         // Apply Hadamard to the current qubit
-        circuit.h(QubitId::new(i));
+        circuit.h(QubitId::new(i as u32));
     }
 }
 

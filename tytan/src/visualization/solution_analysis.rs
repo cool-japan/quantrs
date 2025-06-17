@@ -4,7 +4,7 @@
 //! including diversity metrics, clustering analysis, and quality distribution.
 
 use crate::sampler::SampleResult;
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -232,7 +232,7 @@ impl SolutionDistribution {
             *solution_counts.entry(key).or_insert(0) += 1;
         }
 
-        let (most_frequent, frequency) = solution_counts
+        let (_most_frequent, frequency) = solution_counts
             .iter()
             .max_by_key(|&(_, count)| count)
             .map(|(sol, &count)| (sol.clone(), count))
@@ -466,7 +466,7 @@ impl SolutionDistribution {
         #[cfg(feature = "scirs")]
         {
             let kmeans = KMeans::new(k);
-            let clusters = kmeans.fit_predict(data)?;
+            let mut clusters = kmeans.fit_predict(data)?;
             Ok(clusters)
         }
 
@@ -477,7 +477,7 @@ impl SolutionDistribution {
             use rand::{Rng, SeedableRng};
             let mut rng = StdRng::seed_from_u64(42);
 
-            Ok((0..data.nrows()).map(|_| rng.gen_range(0..k)).collect())
+            Ok((0..data.nrows()).map(|_| rng.random_range(0..k)).collect())
         }
     }
 
@@ -491,7 +491,7 @@ impl SolutionDistribution {
         #[cfg(feature = "scirs")]
         {
             let dbscan = DBSCAN::new(eps, min_samples);
-            let clusters = dbscan.fit_predict(data)?;
+            let mut clusters = dbscan.fit_predict(data)?;
             Ok(clusters)
         }
 
@@ -510,7 +510,7 @@ impl SolutionDistribution {
         #[cfg(feature = "scirs")]
         {
             let n_clusters = self.config.n_clusters.unwrap_or(5);
-            let clusters = hierarchical_clustering(data, n_clusters, "average")?;
+            let mut clusters = hierarchical_clustering(data, n_clusters, "average")?;
             Ok(clusters)
         }
 
@@ -664,7 +664,7 @@ impl SolutionDistribution {
     /// Calculate silhouette score
     fn calculate_silhouette_score(
         &self,
-        clusters: &[usize],
+        _clusters: &[usize],
     ) -> Result<f64, Box<dyn std::error::Error>> {
         // Simplified silhouette calculation
         // In full implementation would use proper silhouette coefficient

@@ -68,6 +68,7 @@ pub struct SolovayKitaev {
     /// Cache of gate sequences by recursion level
     sequence_cache: Vec<Vec<GateSequenceWithMatrix>>,
     /// Lookup table for finding closest sequences
+    #[allow(dead_code)]
     lookup_table: FxHashMap<u64, Vec<usize>>,
 }
 
@@ -359,7 +360,7 @@ impl SolovayKitaev {
     fn find_commutator_sequences(
         &mut self,
         angle: f64,
-        depth: usize,
+        _depth: usize,
     ) -> QuantRS2Result<(GateSequence, GateSequence)> {
         // This is a simplified implementation
         // In practice, this would involve finding specific sequences that produce the desired rotation

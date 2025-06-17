@@ -4,12 +4,13 @@
 //! based on the requirements of the simulation, enabling efficient memory usage
 //! and computation for large quantum systems.
 
+use crate::prelude::SimulatorError;
 use half::f16;
-use ndarray::{Array1, Array2, ArrayView1};
+use ndarray::Array1;
 use num_complex::{Complex32, Complex64};
 use std::fmt;
 
-use crate::error::{Result, SimulatorError};
+use crate::error::Result;
 
 /// Precision level for state vector representation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

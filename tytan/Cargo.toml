@@ -11,31 +11,35 @@ categories.workspace = true
 description = "High-level quantum annealing interface inspired by Tytan for the QuantRS2 framework"
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.4" }
-quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.4" }
+quantrs2-core.workspace = true
+quantrs2-anneal.workspace = true
 num-complex.workspace = true
 thiserror.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
 rand_distr.workspace = true
 ndarray.workspace = true
-num-bigint = "0.4"
-num-integer = "0.1"
-chrono = "0.4"
-symengine = { workspace = true, optional = true }
+num-bigint.workspace = true
+num-integer.workspace = true
+num.workspace = true
+chrono.workspace = true
+quantrs2-symengine = { workspace = true, optional = true }
+quantrs2-symengine-sys = { workspace = true, optional = true }
+num-traits.workspace = true
 regex = { workspace = true, optional = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-num_cpus = "1.16"
-plotters = { version = "0.3", optional = true }
-colored = "2.0"
+serde.workspace = true
+serde_json.workspace = true
+num_cpus.workspace = true
+plotters = { workspace = true, optional = true }
+colored.workspace = true
 
 # SciRS2 dependencies for performance optimization
-scirs2-core = { workspace = true, optional = true }
-scirs2-linalg = { workspace = true, optional = true }
-scirs2-optimize = { workspace = true, optional = true }
-# Excluded due to dependency conflicts with symengine
-# scirs2-cluster = { version = "0.1.0-alpha.4", optional = true }
+scirs2-core = { version = "0.1.0-alpha.4", default-features = false, features = ["gpu"], optional = true }
+scirs2-linalg = { version = "0.1.0-alpha.4", default-features = false, optional = true }
+scirs2-optimize = { version = "0.1.0-alpha.4", default-features = false, optional = true }
+scirs2-cluster = { version = "0.1.0-alpha.4", path = "../../scirs/scirs2-cluster", optional = true }
+# Add scirs2 metacrate for backward compatibility
+scirs2 = { version = "0.1.0-alpha.4", path = "../../scirs/scirs2", optional = true }
 
 # Optional dependencies
 rayon = { workspace = true, optional = true }
@@ -46,20 +50,19 @@ default = ["parallel"]
 parallel = ["dep:rayon"]
 gpu = ["dep:ocl"]
 # The dwave feature is optional and requires symengine to be installed
-dwave = ["dep:symengine", "dep:regex"]
-scirs = ["dep:scirs2-core", "dep:scirs2-linalg", "dep:scirs2-optimize"]
+dwave = ["dep:quantrs2-symengine", "dep:quantrs2-symengine-sys", "dep:regex"]
+scirs = ["dep:scirs2-core", "dep:scirs2-linalg", "dep:scirs2-optimize", "dep:scirs2-cluster", "dep:scirs2"]
 advanced_optimization = ["scirs", "dep:scirs2-optimize"]
+clustering = ["dep:scirs2-cluster"]
 # Combined accelerated features
 gpu_accelerated = ["gpu", "scirs", "parallel"]
-# These features are placeholder stubs for conditional compilation
-clustering = []
 plotters = ["dep:plotters"]
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion.workspace = true
 ndarray-rand.workspace = true
 rand_chacha.workspace = true
-colored = "2.0"
+colored.workspace = true
 
 # [[bench]]
 # name = "performance_benchmark"

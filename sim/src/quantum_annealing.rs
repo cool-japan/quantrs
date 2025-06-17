@@ -6,18 +6,15 @@
 //! optimization problems (QUBO, Ising, etc.) and provides realistic simulation
 //! of quantum annealing devices like D-Wave systems.
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
+use crate::prelude::SimulatorError;
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 
-use crate::adiabatic_quantum_computing::{AdiabaticQuantumComputer, ScheduleType};
-use crate::device_noise_models::{
-    DeviceNoiseModel, DeviceNoiseSimulator, DeviceTopology, DeviceType,
-};
-use crate::error::{Result, SimulatorError};
+use crate::device_noise_models::{DeviceNoiseSimulator, DeviceTopology};
+use crate::error::Result;
 use crate::scirs2_integration::SciRS2Backend;
 
 /// Quantum annealing configuration

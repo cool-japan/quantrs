@@ -8,7 +8,7 @@
 
 use ndarray::Array2;
 use quantrs2_tytan::{
-    compile::{Model, SimpleExpr},
+    compile::Model,
     constraints::PenaltyFunction,
     optimization::{
         constraints::{ConstraintHandler, ConstraintType},
@@ -20,6 +20,9 @@ use quantrs2_tytan::{
         solution_analysis::{analyze_solution_distribution, ClusteringMethod, DistributionConfig},
     },
 };
+
+use quantrs2_tytan::compile::expr::{Expr, constant};
+
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::collections::HashMap;
@@ -86,15 +89,15 @@ fn create_two_way_partition_model(numbers: &[i32]) -> Result<Model, Box<dyn std:
     }
 
     // Objective: minimize (sum_partition_0 - target)^2
-    let mut partition_sum = SimpleExpr::constant(0.0);
+    let mut partition_sum = constant(0.0);
     for i in 0..n {
-        partition_sum = partition_sum + SimpleExpr::constant(numbers[i] as f64) * vars[i].clone();
+        partition_sum = partition_sum + constant(numbers[i] as f64) * vars[i].clone();
     }
 
     // (partition_sum - target)^2
-    let diff = partition_sum + SimpleExpr::constant(-target_sum);
+    let diff = partition_sum + constant(-target_sum);
     // Expand: diff^2 = partition_sum^2 - 2*partition_sum*target + target^2
-    let mut objective = SimpleExpr::constant(target_sum * target_sum);
+    let mut objective = constant(target_sum * target_sum);
 
     // Add partition_sum^2 term
     for i in 0..n {
@@ -102,10 +105,10 @@ fn create_two_way_partition_model(numbers: &[i32]) -> Result<Model, Box<dyn std:
             let coeff = numbers[i] as f64 * numbers[j] as f64;
             if i == j {
                 // x_i^2 = x_i for binary
-                objective = objective + SimpleExpr::constant(coeff) * vars[i].clone();
+                objective = objective + constant(coeff) * vars[i].clone();
             } else {
                 objective =
-                    objective + SimpleExpr::constant(coeff) * vars[i].clone() * vars[j].clone();
+                    objective + constant(coeff) * vars[i].clone() * vars[j].clone();
             }
         }
     }
@@ -113,7 +116,7 @@ fn create_two_way_partition_model(numbers: &[i32]) -> Result<Model, Box<dyn std:
     // Add -2*partition_sum*target term
     for i in 0..n {
         objective = objective
-            + SimpleExpr::constant(-2.0 * numbers[i] as f64 * target_sum) * vars[i].clone();
+            + constant(-2.0 * numbers[i] as f64 * target_sum) * vars[i].clone();
     }
 
     model.set_objective(objective);
@@ -151,28 +154,28 @@ fn create_k_way_partition_model(
     }
 
     // Objective: minimize sum of squared deviations from target
-    let mut objective = SimpleExpr::constant(0.0);
+    let mut objective = constant(0.0);
 
     for p in 0..k {
         // Calculate partition sum
-        let mut partition_sum = SimpleExpr::constant(0.0);
+        let mut partition_sum = constant(0.0);
         for i in 0..n {
             partition_sum =
-                partition_sum + SimpleExpr::constant(numbers[i] as f64) * vars[&(i, p)].clone();
+                partition_sum + constant(numbers[i] as f64) * vars[&(i, p)].clone();
         }
 
         // Add (partition_sum - target)^2 to objective
         // Expand as before
-        objective = objective + SimpleExpr::constant(target_sum * target_sum);
+        objective = objective + constant(target_sum * target_sum);
 
         for i in 0..n {
             for j in 0..n {
                 let coeff = numbers[i] as f64 * numbers[j] as f64;
                 if i == j {
-                    objective = objective + SimpleExpr::constant(coeff) * vars[&(i, p)].clone();
+                    objective = objective + constant(coeff) * vars[&(i, p)].clone();
                 } else {
                     objective = objective
-                        + SimpleExpr::constant(coeff)
+                        + constant(coeff)
                             * vars[&(i, p)].clone()
                             * vars[&(j, p)].clone();
                 }
@@ -181,7 +184,7 @@ fn create_k_way_partition_model(
 
         for i in 0..n {
             objective = objective
-                + SimpleExpr::constant(-2.0 * numbers[i] as f64 * target_sum)
+                + constant(-2.0 * numbers[i] as f64 * target_sum)
                     * vars[&(i, p)].clone();
         }
     }
@@ -390,16 +393,16 @@ fn run_partition_experiment(
     }
 
     // Compare SA and GA
-    let sa_sampler = SASampler::new(None);
-    let ga_sampler = GASampler::with_params(None, 200, 100); // seed, max_generations, population_size
+    let mut sa_sampler = SASampler::new(None);
+    let mut ga_sampler = GASampler::with_params(None, 200, 100); // seed, max_generations, population_size
 
     // Run samplers
     println!("\nRunning samplers...");
-    let sa_start = Instant::now();
+    let mut sa_start = Instant::now();
     let sa_samples = sa_sampler.run_qubo(&(matrix.clone(), var_map.clone()), 1000)?;
     let sa_time = sa_start.elapsed();
 
-    let ga_start = Instant::now();
+    let mut ga_start = Instant::now();
     let ga_samples = ga_sampler.run_qubo(&(matrix, var_map), 1000)?;
     let ga_time = ga_start.elapsed();
 
@@ -438,7 +441,7 @@ fn run_partition_experiment(
     // For 2-way partition, compare with DP solution
     if let PartitioningType::TwoWayEqual = partition_type {
         println!("\nDynamic Programming comparison:");
-        let dp_start = Instant::now();
+        let mut dp_start = Instant::now();
         match solve_partition_dp(numbers) {
             Some((dp_partition, target)) => {
                 let dp_time = dp_start.elapsed();
@@ -583,8 +586,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        let sampler = SASampler::new(None);
-        let start = Instant::now();
+        let mut sampler = SASampler::new(None);
+        let mut start = Instant::now();
         let samples = sampler.run_qubo(&(matrix, var_map), 100)?;
         let time = start.elapsed();
 

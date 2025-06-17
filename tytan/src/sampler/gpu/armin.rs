@@ -1,14 +1,16 @@
 //! GPU-accelerated Armin Sampler Implementation
 
 use ndarray::{Array, Ix2};
-use rand::prelude::*;
-use rand::rngs::StdRng;
+#[cfg(all(feature = "gpu", feature = "dwave"))]
+use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 use std::collections::HashMap;
 
-use super::super::{evaluate_qubo_energy, SampleResult, Sampler, SamplerError, SamplerResult};
+#[cfg(all(feature = "gpu", feature = "dwave"))]
+use super::super::evaluate_qubo_energy;
+use super::super::{SampleResult, Sampler, SamplerError, SamplerResult};
 
 #[cfg(all(feature = "gpu", feature = "dwave"))]
-use ocl;
+use ocl::{self, Context, Program, DeviceType, enums::{DeviceInfo, DeviceInfoResult}};
 
 /// GPU-accelerated Sampler (Armin)
 ///
@@ -114,14 +116,18 @@ impl ArminSampler {
             Device::list_all(platform)
                 .unwrap_or_default()
                 .into_iter()
-                .find(|d| d.is_cpu().unwrap_or(false))
+                .find(|d| {
+                    matches!(d.info(DeviceInfo::Type).ok(), Some(DeviceInfoResult::Type(dt)) if dt == DeviceType::default().cpu())
+                })
                 .unwrap_or_else(|| Device::first(platform).unwrap())
         } else {
             // GPU device
             Device::list_all(platform)
                 .unwrap_or_default()
                 .into_iter()
-                .find(|d| d.is_gpu().unwrap_or(false))
+                .find(|d| {
+                    matches!(d.info(DeviceInfo::Type).ok(), Some(DeviceInfoResult::Type(dt)) if dt == DeviceType::default().gpu())
+                })
                 .unwrap_or_else(|| Device::first(platform).unwrap())
         };
 
@@ -140,7 +146,11 @@ impl ArminSampler {
         let src = super::kernels::SIMULATED_ANNEALING_KERNEL;
 
         // Compile the program
-        let program = Program::builder().devices(device).src(src).build()?;
+        let context = Context::builder().devices(device).build()?;
+        let program = Program::builder()
+            .devices(device)
+            .src(src)
+            .build(&context)?;
 
         // Set up buffers
         let h_buffer = Buffer::<f32>::builder()
@@ -171,7 +181,7 @@ impl ArminSampler {
 
         // Set up kernel parameters
         let init_temp = 10.0f32;
-        let final_temp = 0.1f32;
+        let mut final_temp = 0.1f32;
         let sweeps = if n_vars < 100 {
             1000
         } else if n_vars < 500 {
@@ -188,10 +198,10 @@ impl ArminSampler {
         }
 
         // Create a seed based on input seed or random value
-        let seed_val = self.seed.unwrap_or_else(thread_rng().gen());
+        let seed_val = self.seed.unwrap_or_else(|| thread_rng().gen());
 
         // Set up and run standard simulated annealing kernel
-        let kernel = Kernel::builder()
+        let mut kernel = Kernel::builder()
             .program(&program)
             .name("simulated_annealing")
             .global_work_size(num_shots)
@@ -264,7 +274,7 @@ impl ArminSampler {
         let mut rng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => {
-                let seed: u64 = rand::thread_rng().random();
+                let seed: u64 = thread_rng().gen();
                 StdRng::seed_from_u64(seed)
             }
         };
@@ -321,14 +331,14 @@ impl ArminSampler {
             }
 
             // Adjust linear terms based on fixed variables outside this chunk
-            for (sol_idx, solution) in solutions.iter().enumerate() {
+            for sol_idx in 0..solutions.len() {
                 let mut adjusted_h = chunk_h.clone();
 
                 // Add contributions from fixed variables
                 for i in start_var..end_var {
                     for j in 0..n_vars {
                         if j < start_var || j >= end_var {
-                            if solution[j] {
+                            if solutions[sol_idx][j] {
                                 adjusted_h[i - start_var] += j_matrix[i * n_vars + j];
                             }
                         }
@@ -338,7 +348,7 @@ impl ArminSampler {
                 // Process this specific solution's subproblem
                 let mut chunk_solution = Vec::with_capacity(chunk_size);
                 for i in start_var..end_var {
-                    chunk_solution.push(solution[i]);
+                    chunk_solution.push(solutions[sol_idx][i]);
                 }
 
                 // Optimize just this chunk using GPU
@@ -443,7 +453,7 @@ impl ArminSampler {
         initial_buffer.write(&initial_u8).enq()?;
 
         // Set kernel parameters
-        let kernel = Kernel::builder()
+        let mut kernel = Kernel::builder()
             .program(&program)
             .name("optimize_chunk")
             .global_work_size(1) // Only one optimization task
@@ -455,7 +465,7 @@ impl ArminSampler {
             .arg(5000i32) // More sweeps for thorough optimization of a chunk
             .arg(5.0f32)  // Higher initial temperature
             .arg(0.01f32) // Lower final temperature
-            .arg(seed.unwrap_or_else(thread_rng().gen()))
+            .arg(seed.unwrap_or_else(|| thread_rng().gen()))
             .build()?;
 
         // Execute kernel
@@ -468,7 +478,7 @@ impl ArminSampler {
         result_buffer.read(&mut result_u8).enq()?;
 
         // Convert back to bool
-        let result = result_u8.iter().map(|&b| b != 0).collect();
+        let mut result = result_u8.iter().map(|&b| b != 0).collect();
 
         Ok(result)
     }
@@ -565,7 +575,7 @@ impl Sampler for ArminSampler {
         let ocl_result = self.run_gpu_annealing(n_vars, &h_vector, &j_matrix, shots);
 
         #[cfg(not(all(feature = "gpu", feature = "dwave")))]
-        let ocl_result = Err(SamplerError::GpuError(
+        let ocl_result: Result<Vec<Vec<i32>>, SamplerError> = Err(SamplerError::GpuError(
             "GPU support not enabled".to_string(),
         ));
 
@@ -577,7 +587,7 @@ impl Sampler for ArminSampler {
 
                 for solution in binary_solutions {
                     // Calculate energy using our helper function
-                    let energy = evaluate_qubo_energy(&solution, &h_vector, &j_matrix, n_vars);
+                    let mut energy = evaluate_qubo_energy(&solution, &h_vector, &j_matrix, n_vars);
 
                     // Update solution counts
                     let entry = solution_counts.entry(solution).or_insert((energy, 0));
@@ -633,7 +643,7 @@ impl Sampler for ArminSampler {
     ) -> SamplerResult<Vec<SampleResult>> {
         // Handle QUBO case directly
         if hobo.0.ndim() == 2 {
-            let qubo = (
+            let mut qubo = (
                 hobo.0
                     .clone()
                     .into_dimensionality::<ndarray::Ix2>()

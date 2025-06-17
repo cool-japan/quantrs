@@ -857,8 +857,8 @@ mod tests {
         // Test data
         let in_amps0 = vec![Complex64::new(1.0, 0.0), Complex64::new(0.5, 0.0)];
         let in_amps1 = vec![Complex64::new(0.0, 0.0), Complex64::new(0.5, 0.0)];
-        let mut out_amps0 = vec![Complex64::new(0.0, 0.0); 2];
-        let mut out_amps1 = vec![Complex64::new(0.0, 0.0); 2];
+        let mut out_amps0 = [Complex64::new(0.0, 0.0); 2];
+        let mut out_amps1 = [Complex64::new(0.0, 0.0); 2];
 
         // Apply gate
         apply_single_qubit_gate_scalar(
@@ -889,8 +889,8 @@ mod tests {
         // Test data
         let in_amps0 = vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
         let in_amps1 = vec![Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)];
-        let mut out_amps0 = vec![Complex64::new(0.0, 0.0); 2];
-        let mut out_amps1 = vec![Complex64::new(0.0, 0.0); 2];
+        let mut out_amps0 = [Complex64::new(0.0, 0.0); 2];
+        let mut out_amps1 = [Complex64::new(0.0, 0.0); 2];
 
         // Apply gate
         apply_single_qubit_gate_scalar(
@@ -923,8 +923,8 @@ mod tests {
         // Test data
         let in_amps0 = vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
         let in_amps1 = vec![Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)];
-        let mut out_amps0 = vec![Complex64::new(0.0, 0.0); 2];
-        let mut out_amps1 = vec![Complex64::new(0.0, 0.0); 2];
+        let mut out_amps0 = [Complex64::new(0.0, 0.0); 2];
+        let mut out_amps1 = [Complex64::new(0.0, 0.0); 2];
 
         // Apply gate using the optimized wrapper
         apply_single_qubit_gate_optimized(

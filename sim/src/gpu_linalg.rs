@@ -212,7 +212,7 @@ impl GpuLinearAlgebra {
             tx.send(result).unwrap();
         });
 
-        self.device.poll(wgpu::MaintainBase::Wait);
+        let _ = self.device.poll(wgpu::MaintainBase::Wait);
         rx.await
             .unwrap()
             .map_err(|e| QuantRS2Error::BackendExecutionFailed(e.to_string()))?;
@@ -326,8 +326,8 @@ impl GpuLinearAlgebra {
 
             // Dispatch with appropriate workgroup size
             let workgroup_size = 16;
-            let workgroups_x = (result_shape.1 + workgroup_size - 1) / workgroup_size;
-            let workgroups_y = (result_shape.0 + workgroup_size - 1) / workgroup_size;
+            let workgroups_x = result_shape.1.div_ceil(workgroup_size);
+            let workgroups_y = result_shape.0.div_ceil(workgroup_size);
             compute_pass.dispatch_workgroups(workgroups_x as u32, workgroups_y as u32, 1);
         }
 
@@ -349,7 +349,7 @@ impl GpuLinearAlgebra {
             tx.send(result).unwrap();
         });
 
-        self.device.poll(wgpu::MaintainBase::Wait);
+        let _ = self.device.poll(wgpu::MaintainBase::Wait);
         rx.await
             .unwrap()
             .map_err(|e| QuantRS2Error::BackendExecutionFailed(e.to_string()))?;
@@ -374,7 +374,7 @@ impl GpuLinearAlgebra {
     /// Apply unitary matrix to state vector on GPU
     pub async fn apply_unitary(
         &self,
-        state: &mut Vec<Complex64>,
+        state: &mut [Complex64],
         unitary: &Array2<Complex64>,
         target_qubits: &[usize],
     ) -> Result<(), QuantRS2Error> {
@@ -474,7 +474,7 @@ impl GpuLinearAlgebra {
 
             // Dispatch with appropriate workgroup size
             let workgroup_size = 64;
-            let workgroups = (state.len() + workgroup_size - 1) / workgroup_size;
+            let workgroups = state.len().div_ceil(workgroup_size);
             compute_pass.dispatch_workgroups(workgroups as u32, 1, 1);
         }
 
@@ -497,7 +497,7 @@ impl GpuLinearAlgebra {
             tx.send(result).unwrap();
         });
 
-        self.device.poll(wgpu::MaintainBase::Wait);
+        let _ = self.device.poll(wgpu::MaintainBase::Wait);
         rx.await
             .unwrap()
             .map_err(|e| QuantRS2Error::BackendExecutionFailed(e.to_string()))?;

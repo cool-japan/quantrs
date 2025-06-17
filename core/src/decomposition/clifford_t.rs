@@ -211,6 +211,12 @@ impl CliffordTSequence {
     }
 }
 
+impl Default for CliffordTSequence {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Clifford+T decomposer with various algorithms
 pub struct CliffordTDecomposer {
     /// Precision for approximations
@@ -229,6 +235,7 @@ struct GridPoint {
     /// The Clifford+T sequence to reach this point
     sequence: CliffordTSequence,
     /// Distance metric for searching
+    #[allow(dead_code)]
     distance_key: u64,
 }
 

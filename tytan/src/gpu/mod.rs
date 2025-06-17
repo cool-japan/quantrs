@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use thiserror::Error;
 
 use crate::sampler::SampleResult;
+use quantrs2_anneal::is_available as anneal_gpu_available;
 
 /// Errors that can occur during GPU operations
 #[derive(Error, Debug)]
@@ -40,7 +41,7 @@ pub fn is_available() -> bool {
         // For SciRS2 GPU integration
         #[cfg(feature = "scirs")]
         {
-            return scirs2_core::gpu::is_available();
+            return anneal_gpu_available();
         }
 
         // For plain OCL
@@ -78,7 +79,7 @@ pub fn gpu_solve_qubo(
     // With SciRS2 integration
     #[cfg(feature = "scirs")]
     {
-        use scirs2_core::gpu::{GpuArray, GpuDevice};
+        use crate::scirs_stub::scirs2_core::gpu::{GpuArray, GpuDevice};
 
         // Initialize GPU device
         let device = GpuDevice::new(0).map_err(|e| GpuError::NotAvailable(e.to_string()))?;
@@ -119,8 +120,8 @@ pub fn gpu_solve_qubo(
         let mut results = Vec::new();
 
         for i in 0..shots {
-            let state = binary_states.slice(ndarray::s![i, ..]);
-            let energy = energies[[i, 0]];
+            let mut state = binary_states.slice(ndarray::s![i, ..]);
+            let mut energy = energies[[i, 0]];
 
             // Create variable assignment dictionary
             let assignments: HashMap<String, bool> = state
@@ -133,7 +134,7 @@ pub fn gpu_solve_qubo(
                 .collect();
 
             // Create sample result
-            let result = SampleResult {
+            let mut result = SampleResult {
                 assignments,
                 energy,
                 occurrences: 1, // For now, each result has one occurrence
@@ -148,16 +149,26 @@ pub fn gpu_solve_qubo(
         // Combine identical solutions
         let mut consolidated = HashMap::new();
         for result in results {
-            let entry = consolidated
-                .entry(result.assignments.clone())
-                .or_insert((result.energy, 0));
-            entry.1 += 1;
+            // Convert assignments to a sortable, hashable representation
+            let mut sorted_assignments: Vec<(String, bool)> = result
+                .assignments
+                .iter()
+                .map(|(k, &v)| (k.clone(), v))
+                .collect();
+            sorted_assignments.sort_by(|a, b| a.0.cmp(&b.0));
+
+            let entry = consolidated.entry(sorted_assignments).or_insert((
+                result.assignments.clone(),
+                result.energy,
+                0,
+            ));
+            entry.2 += 1;
         }
 
         // Convert back to SampleResults
         let mut final_results: Vec<SampleResult> = consolidated
             .into_iter()
-            .map(|(assignments, (energy, occurrences))| SampleResult {
+            .map(|(_, (assignments, energy, occurrences))| SampleResult {
                 assignments,
                 energy,
                 occurrences,
@@ -218,9 +229,9 @@ pub fn gpu_solve_qubo(
         let flat_matrix: Vec<f64> = matrix.iter().cloned().collect();
 
         // Create random binary states
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let binary_states: Vec<u8> = (0..shots * n_vars)
-            .map(|_| if thread_rng().gen::<bool>() { 1u8 } else { 0u8 })
+            .map(|_| if rng.gen::<bool>() { 1u8 } else { 0u8 })
             .collect();
 
         // Create OCL buffers
@@ -248,7 +259,7 @@ pub fn gpu_solve_qubo(
             .map_err(|e| GpuError::MemoryTransfer(e.to_string()))?;
 
         // Execute kernel
-        let kernel = ocl_pq
+        let mut kernel = ocl_pq
             .kernel_builder("qubo_energy")
             .arg(&binary_buffer)
             .arg(&matrix_buffer)
@@ -291,7 +302,7 @@ pub fn gpu_solve_qubo(
                 .collect();
 
             // Create sample result
-            let result = SampleResult {
+            let mut result = SampleResult {
                 assignments,
                 energy: energies[i],
                 occurrences: 1, // For now, each result has one occurrence
@@ -328,8 +339,7 @@ pub fn gpu_solve_hobo(
     shots: usize,
     temperature_steps: usize,
 ) -> GpuResult<Vec<SampleResult>> {
-    use scirs2_core::gpu::{GpuArray, GpuDevice};
-    use scirs2_linalg::tensor_contraction::cp;
+    use crate::scirs_stub::scirs2_core::gpu::{GpuArray, GpuDevice};
 
     let n_vars = var_map.len();
     let dim = tensor.ndim();
@@ -352,13 +362,14 @@ pub fn gpu_solve_hobo(
 
     for _ in 0..shots {
         // Generate random solution for placeholder
+        let mut rng = thread_rng();
         let assignments: HashMap<String, bool> = var_map
             .iter()
-            .map(|(name, _)| (name.clone(), thread_rng().gen::<bool>()))
+            .map(|(name, _)| (name.clone(), rng.gen::<bool>()))
             .collect();
 
         // Create sample result
-        let result = SampleResult {
+        let mut result = SampleResult {
             assignments,
             energy: 0.0, // This would be an actual energy in real implementation
             occurrences: 1,

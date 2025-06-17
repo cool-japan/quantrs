@@ -4,13 +4,11 @@ use crate::{
     benchmark::{
         analysis::PerformanceReport,
         hardware::{CpuBackend, HardwareBackend},
-        metrics::{
-            BenchmarkMetrics, MemoryMetrics, QualityMetrics, TimingMetrics, UtilizationMetrics,
-        },
+        metrics::{BenchmarkMetrics, QualityMetrics, TimingMetrics, UtilizationMetrics},
     },
-    sampler::{GASampler, SASampler},
+    sampler::SASampler,
 };
-use ndarray::{Array, Array2};
+use ndarray::Array2;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -255,7 +253,7 @@ impl BenchmarkRunner {
             let mem_before = Self::get_memory_usage_static();
 
             let start = Instant::now();
-            let setup_start = start;
+            let _setup_start = start;
 
             // Run benchmark
             let results = backend.run_qubo(matrix, num_reads, sampler_config.params.clone())?;
@@ -327,14 +325,14 @@ impl BenchmarkRunner {
 
     /// Generate random QUBO problem
     fn generate_qubo_problem(&self, size: usize, density: f64) -> Array2<f64> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut matrix = Array2::zeros((size, size));
 
         // Generate symmetric matrix with given density
         for i in 0..size {
             for j in i..size {
-                if rng.gen::<f64>() < density {
-                    let value = rng.gen_range(-10.0..10.0);
+                if rng.random::<f64>() < density {
+                    let value = rng.random_range(-10.0..10.0);
                     matrix[[i, j]] = value;
                     if i != j {
                         matrix[[j, i]] = value;
@@ -417,7 +415,7 @@ pub fn quick_benchmark(
         ..Default::default()
     };
 
-    let mut runner = BenchmarkRunner::new(config);
+    let runner = BenchmarkRunner::new(config);
     let report = runner.run_complete_suite()?;
 
     Ok(report.summary.overall_metrics)

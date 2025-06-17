@@ -3,10 +3,11 @@
 //! This module provides quantum optimization tools for materials science
 //! including crystal structure prediction, phase transitions, and property optimization.
 
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, Array3, IxDyn};
-use rand::prelude::*;
-use std::collections::{HashMap, HashSet};
+// Sampler types available for materials applications
+#![allow(dead_code)]
+
+use ndarray::Array2;
+use std::collections::HashMap;
 use std::f64::consts::PI;
 
 /// Crystal structure predictor
@@ -535,7 +536,7 @@ impl CrystalStructurePredictor {
         atom1: usize,
         atom2: usize,
         epsilon: f64,
-        sigma: f64,
+        _sigma: f64,
     ) -> Result<(), String> {
         // Discretized distance calculation
         // This is a simplification - actual implementation would be more complex
@@ -589,7 +590,7 @@ impl CrystalStructurePredictor {
             .coordination_numbers
             .is_empty()
         {
-            let coord_numbers = &self.constraints.coordination.coordination_numbers;
+            let _coord_numbers = &self.constraints.coordination.coordination_numbers;
             // Simplified: just favor certain distance ranges
             let penalty = 10.0;
 
@@ -618,11 +619,11 @@ impl CrystalStructurePredictor {
         qubo: &mut Array2<f64>,
         var_map: &HashMap<String, usize>,
     ) -> Result<(), String> {
-        if let Some(oxidation_states) = &self.composition.oxidation_states {
+        if let Some(_oxidation_states) = &self.composition.oxidation_states {
             // Add Coulomb repulsion/attraction
             // Simplified: just use oxidation states
 
-            let elements: Vec<_> = self.composition.elements.keys().collect();
+            let _elements: Vec<_> = self.composition.elements.keys().collect();
 
             for i in 0..self.composition.total_atoms {
                 for j in i + 1..self.composition.total_atoms {
@@ -747,7 +748,7 @@ impl CrystalStructurePredictor {
             let penalty = 50.0;
 
             // Penalize configurations where atoms are too close
-            for ((elem1, elem2), &min_dist) in min_distances {
+            for ((_elem1, _elem2), &_min_dist) in min_distances {
                 // This would need proper element-to-atom mapping
                 // Simplified: penalize same positions
                 for i in 0..self.composition.total_atoms {
@@ -781,7 +782,7 @@ impl CrystalStructurePredictor {
         qubo: &mut Array2<f64>,
         var_map: &HashMap<String, usize>,
     ) -> Result<(), String> {
-        if let Some(space_groups) = &self.constraints.symmetry.space_groups {
+        if let Some(_space_groups) = &self.constraints.symmetry.space_groups {
             // Simplified: encourage symmetric positions
             let symmetry_bonus = -10.0;
 
@@ -825,7 +826,7 @@ impl CrystalStructurePredictor {
     fn add_fitness_function(
         &self,
         qubo: &mut Array2<f64>,
-        var_map: &HashMap<String, usize>,
+        _var_map: &HashMap<String, usize>,
     ) -> Result<(), String> {
         // Simplified fitness based on:
         // - Energy (lower is better)
@@ -934,7 +935,7 @@ impl CrystalStructurePredictor {
     fn determine_space_group(
         &self,
         lattice: &Lattice,
-        positions: &[AtomicPosition],
+        _positions: &[AtomicPosition],
     ) -> Result<SpaceGroup, String> {
         // Simplified: determine based on lattice type
         let lattice_type = lattice.determine_type();
@@ -1308,7 +1309,7 @@ mod tests {
         };
 
         let predictor = CrystalStructurePredictor::new(composition, energy_model);
-        let result = predictor.build_qubo();
+        let mut result = predictor.build_qubo();
         assert!(result.is_ok());
     }
 

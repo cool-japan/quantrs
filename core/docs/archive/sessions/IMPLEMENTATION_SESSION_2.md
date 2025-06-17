@@ -62,7 +62,7 @@ This session focused on completing high-priority quantum computing features in t
 ### 3. Dependencies
 - Added `rand` crate for measurement sampling
 - Configured `smallvec` for efficient gate sequences
-- Maintained compatibility with SciRS2 v0.1.0-alpha.4
+- Maintained compatibility with SciRS2 v0.1.0-alpha.5
 
 ## API Additions
 

@@ -3,11 +3,11 @@
 //! This module provides advanced implementations of quantum optimization algorithms
 //! including QAOA extensions, ADAPT-QAOA, and other variants.
 
-use crate::hybrid_algorithms::{ClassicalOptimizer, Hamiltonian, PauliTerm};
-use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, IxDyn};
+#![allow(dead_code)]
+
+use crate::hybrid_algorithms::{ClassicalOptimizer, Hamiltonian};
 use rand::prelude::*;
-use rand::thread_rng;
+use rand::rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -92,7 +92,10 @@ impl AdaptQAOA {
                 .ok_or("No operators in pool")?;
 
             if max_gradient.abs() < self.gradient_threshold {
-                converged = true;
+                #[allow(unused_assignments)]
+                {
+                    converged = true;
+                }
                 break;
             }
 
@@ -181,13 +184,13 @@ impl AdaptQAOA {
     /// Compute gradient for single operator
     fn compute_single_gradient(
         &self,
-        circuit: &AdaptCircuit,
+        _circuit: &AdaptCircuit,
         operator: &PauliOperator,
-        hamiltonian: &Hamiltonian,
+        _hamiltonian: &Hamiltonian,
     ) -> Result<f64, String> {
         // Simplified gradient computation
         // In practice, would evaluate expectation values
-        let random_gradient = rand::thread_rng().gen_range(-1.0..1.0);
+        let random_gradient = rand::rng().random_range(-1.0..1.0);
         Ok(random_gradient * operator.coefficient)
     }
 
@@ -195,13 +198,13 @@ impl AdaptQAOA {
     fn optimize_circuit_parameters(
         &self,
         circuit: &mut AdaptCircuit,
-        hamiltonian: &Hamiltonian,
+        _hamiltonian: &Hamiltonian,
     ) -> Result<(), String> {
         // Simplified: random parameter updates
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         for param in circuit.parameters_mut() {
-            *param += rng.gen_range(-0.1..0.1);
+            *param += rng.random_range(-0.1..0.1);
         }
 
         Ok(())
@@ -287,7 +290,7 @@ impl OperatorPool {
         }
     }
 
-    fn remove_operator(&mut self, idx: usize) {
+    fn remove_operator(&mut self, _idx: usize) {
         // Mark operator as used (simplified)
     }
 
@@ -380,21 +383,23 @@ impl QAOAPlus {
     }
 
     /// Apply mixer operator
-    fn apply_mixer(&self, layer: usize, beta: f64) -> Result<(), String> {
+    fn apply_mixer(&self, layer: usize, _beta: f64) -> Result<(), String> {
         match &self.mixers[layer % self.mixers.len()] {
             MixerOperator::StandardX => {
                 // Apply X-rotation to all qubits
                 Ok(())
             }
-            MixerOperator::XYMixer { coupling_strength } => {
+            MixerOperator::XYMixer {
+                coupling_strength: _,
+            } => {
                 // Apply XY interactions
                 Ok(())
             }
-            MixerOperator::GroverMixer { marked_states } => {
+            MixerOperator::GroverMixer { marked_states: _ } => {
                 // Apply Grover diffusion operator
                 Ok(())
             }
-            MixerOperator::Custom { operator } => {
+            MixerOperator::Custom { operator: _ } => {
                 // Apply custom operator
                 Ok(())
             }
@@ -491,7 +496,7 @@ impl RecursiveQAOA {
                 // Partition interaction graph
                 Ok(vec![problem.clone(); *num_partitions]) // Simplified
             }
-            DecompositionStrategy::VariableClustering { cluster_size } => {
+            DecompositionStrategy::VariableClustering { cluster_size: _ } => {
                 // Cluster variables
                 Ok(vec![problem.clone(); 2]) // Simplified
             }
@@ -500,7 +505,7 @@ impl RecursiveQAOA {
     }
 
     /// Solve base case
-    fn solve_base_case(&self, problem: &Hamiltonian) -> Result<RecursiveSolution, String> {
+    fn solve_base_case(&self, _problem: &Hamiltonian) -> Result<RecursiveSolution, String> {
         // Use standard QAOA
         Ok(RecursiveSolution {
             energy: 0.0,
@@ -513,7 +518,7 @@ impl RecursiveQAOA {
     fn aggregate_solutions(
         &self,
         subsolutions: Vec<RecursiveSolution>,
-        original_problem: &Hamiltonian,
+        _original_problem: &Hamiltonian,
     ) -> Result<RecursiveSolution, String> {
         match &self.aggregation {
             AggregationMethod::SimpleMerge => {
@@ -746,7 +751,7 @@ mod tests {
         let multi = MultiAngleQAOA::new(5)
             .with_parameterization(AngleParameterization::FourierSeries { num_frequencies: 3 });
 
-        let coeffs = vec![1.0, 0.5, 0.25];
+        let mut coeffs = vec![1.0, 0.5, 0.25];
         let angles = multi.fourier_series(&coeffs, 10);
 
         assert_eq!(angles.len(), 5); // p layers

@@ -8,7 +8,7 @@
 
 use ndarray::Array2;
 use quantrs2_tytan::{
-    compile::{Model, SimpleExpr},
+    compile::Model,
     constraints::PenaltyFunction,
     optimization::{
         penalty::{PenaltyConfig, PenaltyOptimizer, PenaltyType},
@@ -20,6 +20,9 @@ use quantrs2_tytan::{
         problem_specific::{ProblemVisualizer, VisualizationConfig, VisualizationType},
     },
 };
+
+use quantrs2_tytan::compile::expr::{Expr, constant};
+
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -143,12 +146,12 @@ fn create_tsp_model(
     }
 
     // Objective: minimize total distance
-    let mut objective = SimpleExpr::constant(0.0);
+    let mut objective = constant(0.0);
     for i in 0..n {
         for j in 0..n {
             if i != j {
                 let dist = distances[[i, j]];
-                objective = objective + SimpleExpr::constant(dist) * x_vars[&(i, j)].clone();
+                objective = objective + constant(dist) * x_vars[&(i, j)].clone();
             }
         }
     }
@@ -326,7 +329,7 @@ fn solve_tsp(
     println!("Using default parameters for demonstration");
 
     // Run with optimized parameters
-    let sampler = SASampler::new(None);
+    let mut sampler = SASampler::new(None);
 
     // Track convergence
     let mut convergence = ConvergencePlot::new(Default::default());
@@ -371,7 +374,7 @@ fn solve_tsp(
 
         if let Ok(tour) = extract_tour(sample, n) {
             valid_count += 1;
-            let length = calculate_tour_length(&tour, &distances);
+            let mut length = calculate_tour_length(&tour, &distances);
             if length < best_length {
                 best_length = length;
                 best_tour = Some(tour);
@@ -413,7 +416,7 @@ fn solve_tsp(
             coordinates: cities.iter().map(|c| (c.longitude, c.latitude)).collect(),
             city_names: Some(cities.iter().map(|c| c.name.clone()).collect()),
         };
-        let config = VisualizationConfig::default();
+        let mut config = VisualizationConfig::default();
         let mut visualizer = ProblemVisualizer::new(problem_type, config);
         visualizer.add_samples(samples[..1].to_vec());
         visualizer.visualize()?;
@@ -510,7 +513,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for perm in perms {
-        let length = calculate_tour_length(&perm, &distances);
+        let mut length = calculate_tour_length(&perm, &distances);
         println!("  Tour {:?}: length = {:.3}", perm, length);
     }
 

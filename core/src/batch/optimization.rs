@@ -91,7 +91,7 @@ impl BatchParameterOptimizer {
         cost_fn: impl Fn(&BatchStateVector) -> f64 + Sync + Send + Clone + 'static,
         initial_states: &BatchStateVector,
     ) -> QuantRS2Result<OptimizeResult<f64>> {
-        let num_params = initial_params.len();
+        let _num_params = initial_params.len();
 
         // Define objective function
         let executor = Arc::new(self.executor.clone());
@@ -275,7 +275,7 @@ impl Clone for BatchCircuitExecutor {
         Self {
             config: self.config.clone(),
             gpu_backend: self.gpu_backend.clone(),
-            scheduler: None, // Don't clone scheduler
+            thread_pool: None, // Don't clone thread pool
         }
     }
 }
@@ -447,11 +447,11 @@ impl BatchQAOA {
         }
 
         // Create QAOA circuit constructor
-        let p = self.p;
-        let cost_ham = self.cost_hamiltonian.clone();
-        let mixer_ham = self.mixer_hamiltonian.clone();
+        let _p = self.p;
+        let _cost_ham = self.cost_hamiltonian.clone();
+        let _mixer_ham = self.mixer_hamiltonian.clone();
 
-        let qaoa_circuit = move |params: &[f64]| -> QuantRS2Result<BatchCircuit> {
+        let qaoa_circuit = move |_params: &[f64]| -> QuantRS2Result<BatchCircuit> {
             // This is a placeholder - actual QAOA circuit construction would go here
             let circuit = BatchCircuit::new(n_qubits);
             // Add QAOA layers based on params, cost_ham, mixer_ham
@@ -459,7 +459,7 @@ impl BatchQAOA {
         };
 
         // Create batch of superposition initial states
-        let mut batch = BatchStateVector::new(num_samples, n_qubits, Default::default())?;
+        let batch = BatchStateVector::new(num_samples, n_qubits, Default::default())?;
         // Initialize to uniform superposition (would apply Hadamards)
 
         // Define cost function
@@ -518,7 +518,7 @@ mod tests {
         let mut optimizer = BatchParameterOptimizer::new(executor, Default::default());
 
         // Simple circuit function
-        let circuit_fn = |params: &[f64]| -> QuantRS2Result<BatchCircuit> {
+        let circuit_fn = |_params: &[f64]| -> QuantRS2Result<BatchCircuit> {
             let mut circuit = BatchCircuit::new(1);
             // Add parameterized rotation based on params[0]
             circuit.add_gate(Box::new(Hadamard { target: QubitId(0) }))?;

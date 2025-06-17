@@ -470,7 +470,7 @@ impl QuantumLLMConfig {
                 ff_dim: 6144,
                 num_layers: 48,
                 max_seq_len: 8192,
-                num_qubits: 24,
+                num_qubits: 12,
                 dropout_rate: 0.1,
                 attention_type: QuantumAttentionType::FullQuantum,
                 position_encoding: PositionEncodingType::QuantumPhase,

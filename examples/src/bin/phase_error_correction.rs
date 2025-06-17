@@ -5,7 +5,7 @@
 
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::qubit::QubitId;
-use quantrs2_sim::error_correction::PhaseFlipCode;
+use quantrs2_sim::error_correction::{ErrorCorrection, PhaseFlipCode};
 use quantrs2_sim::noise::{NoiseModel, PhaseFlipChannel};
 use quantrs2_sim::statevector::StateVectorSimulator;
 
@@ -53,11 +53,11 @@ fn main() {
     // Then add the encoding operations
     let logical_qubits = vec![QubitId::new(0)];
     let ancilla_qubits = vec![QubitId::new(1), QubitId::new(2)];
-    let encoder = phase_code.encode_circuit(&logical_qubits, &ancilla_qubits);
+    let encoder = phase_code.encode_circuit(&logical_qubits, &ancilla_qubits).unwrap();
 
     // Transfer gates from the encoder to our main circuit
     for gate in encoder.gates() {
-        encoding_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        encoding_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Run the encoding circuit
@@ -119,7 +119,7 @@ fn main() {
     // First transfer all gates from encoding circuit
     let mut correction_circuit = Circuit::<5>::new();
     for gate in encoding_circuit.gates() {
-        correction_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        correction_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Add syndrome measurement and correction
@@ -127,11 +127,11 @@ fn main() {
     let syndrome_qubits = vec![QubitId::new(3), QubitId::new(4)];
 
     // Get error correction circuit
-    let correction = phase_code.decode_circuit(&encoded_qubits, &syndrome_qubits);
+    let correction = phase_code.decode_circuit(&encoded_qubits, &syndrome_qubits).unwrap();
 
     // Add correction operations
     for gate in correction.gates() {
-        correction_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        correction_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Run the error detection and correction

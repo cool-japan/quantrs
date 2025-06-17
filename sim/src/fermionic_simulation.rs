@@ -4,16 +4,13 @@
 //! including Jordan-Wigner transformations, fermionic operators, and specialized
 //! algorithms for electronic structure and many-body fermionic systems.
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
+use ndarray::{Array1, Array2, Array3};
 use num_complex::Complex64;
-use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::error::{Result, SimulatorError};
 use crate::pauli::{PauliOperator, PauliOperatorSum, PauliString};
 use crate::scirs2_integration::SciRS2Backend;
-use crate::statevector::StateVectorSimulator;
 
 /// Fermionic creation and annihilation operators
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -627,7 +624,7 @@ impl JordanWignerTransform {
             // Identity term
             let mut identity_string = PauliString::new(self.num_modes);
             identity_string.coefficient = fermionic_string.coefficient;
-            pauli_sum.add_term(identity_string);
+            let _ = pauli_sum.add_term(identity_string);
             return Ok(pauli_sum);
         }
 
@@ -636,13 +633,13 @@ impl JordanWignerTransform {
             let pauli_string = self.transform_operator(&fermionic_string.operators[0])?;
             let mut scaled_string = pauli_string.clone();
             scaled_string.coefficient = pauli_string.coefficient * fermionic_string.coefficient;
-            pauli_sum.add_term(scaled_string);
+            let _ = pauli_sum.add_term(scaled_string);
         } else {
             // Multi-operator case would require more complex implementation
             // For now, return identity with coefficient
             let mut identity_string = PauliString::new(self.num_modes);
             identity_string.coefficient = fermionic_string.coefficient;
-            pauli_sum.add_term(identity_string);
+            let _ = pauli_sum.add_term(identity_string);
         }
 
         Ok(pauli_sum)
@@ -658,7 +655,7 @@ impl JordanWignerTransform {
         for term in &hamiltonian.terms {
             let pauli_terms = self.transform_string(term)?;
             for pauli_term in pauli_terms.terms {
-                pauli_hamiltonian.add_term(pauli_term);
+                let _ = pauli_hamiltonian.add_term(pauli_term);
             }
         }
 

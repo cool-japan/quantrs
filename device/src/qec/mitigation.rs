@@ -7,9 +7,21 @@ use std::time::Duration;
 /// Error mitigation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ErrorMitigationConfig {
+    /// Enable zero noise extrapolation
+    pub enable_zne: bool,
+    /// Enable symmetry verification
+    pub enable_symmetry_verification: bool,
+    /// Enable readout correction
+    pub enable_readout_correction: bool,
+    /// Enable dynamical decoupling
+    pub enable_dynamical_decoupling: bool,
+    /// Mitigation strategies
+    pub mitigation_strategies: Vec<MitigationStrategy>,
+    /// ZNE configuration
+    pub zne_config: ZNEConfig,
     /// Enable error mitigation
     pub enable_mitigation: bool,
-    /// Mitigation strategies
+    /// Mitigation strategies (legacy)
     pub strategies: Vec<MitigationStrategy>,
     /// Zero noise extrapolation
     pub zne: ZNEConfig,
@@ -27,9 +39,10 @@ pub struct ErrorMitigationConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MitigationStrategy {
     ZeroNoiseExtrapolation,
+    SymmetryVerification,
+    ReadoutErrorMitigation,
     ReadoutMitigation,
     GateMitigation,
-    SymmetryVerification,
     VirtualDistillation,
     ProbabilisticErrorCancellation,
     CliffordDeRandomization,
@@ -38,16 +51,29 @@ pub enum MitigationStrategy {
 /// Zero noise extrapolation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZNEConfig {
+    /// Noise factors for scaling
+    pub noise_factors: Vec<f64>,
+    /// Extrapolation method
+    pub extrapolation_method: ExtrapolationMethod,
+    /// Circuit folding method
+    pub circuit_folding: CircuitFoldingMethod,
     /// Enable ZNE
     pub enable_zne: bool,
     /// Noise scaling factors
     pub noise_scaling_factors: Vec<f64>,
-    /// Extrapolation method
-    pub extrapolation_method: ExtrapolationMethod,
     /// Folding configuration
     pub folding: FoldingConfig,
     /// Richardson extrapolation
     pub richardson: RichardsonConfig,
+}
+
+/// Circuit folding methods for ZNE
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum CircuitFoldingMethod {
+    GlobalFolding,
+    LocalFolding,
+    UniformFolding,
+    RandomFolding,
 }
 
 /// Extrapolation methods
@@ -115,6 +141,7 @@ pub enum RegionSelectionStrategy {
     CriticalPath,
     Uniform,
     Adaptive,
+    Automatic,
 }
 
 /// Overlap handling strategies
@@ -135,6 +162,22 @@ pub struct GateSpecificFoldingConfig {
     pub priority_ordering: Vec<String>,
     /// Error rate weighting
     pub error_rate_weighting: bool,
+    /// Folding strategies (alias for folding_rules)
+    pub folding_strategies: HashMap<String, GateFoldingRule>,
+    /// Default folding strategy
+    pub default_strategy: DefaultFoldingStrategy,
+    /// Prioritized gates (alias for priority_ordering)
+    pub prioritized_gates: Vec<String>,
+}
+
+/// Default folding strategies
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum DefaultFoldingStrategy {
+    Identity,
+    Inverse,
+    Decomposition,
+    Random,
+    None,
 }
 
 /// Gate folding rule
@@ -681,4 +724,40 @@ pub enum OptimizationAlgorithm {
     QuasiNewton,
     EvolutionaryAlgorithm,
     BayesianOptimization,
+}
+
+// Default implementations
+
+impl Default for FoldingConfig {
+    fn default() -> Self {
+        Self {
+            folding_type: FoldingType::Global,
+            global_folding: true,
+            local_folding: LocalFoldingConfig::default(),
+            gate_specific: GateSpecificFoldingConfig::default(),
+        }
+    }
+}
+
+impl Default for LocalFoldingConfig {
+    fn default() -> Self {
+        Self {
+            regions: vec![],
+            selection_strategy: RegionSelectionStrategy::Automatic,
+            overlap_handling: OverlapHandling::Merge,
+        }
+    }
+}
+
+impl Default for GateSpecificFoldingConfig {
+    fn default() -> Self {
+        Self {
+            folding_rules: HashMap::new(),
+            priority_ordering: vec![],
+            error_rate_weighting: false,
+            folding_strategies: HashMap::new(),
+            default_strategy: DefaultFoldingStrategy::Identity,
+            prioritized_gates: vec![],
+        }
+    }
 }

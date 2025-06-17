@@ -373,6 +373,39 @@ impl QuboBuilder {
         Ok(())
     }
 
+    /// Add a constraint that the sum of variables equals a target value
+    ///
+    /// This adds a penalty term: weight * (sum(x_i) - target)^2
+    pub fn constrain_sum_equal(&mut self, vars: &[Variable], target: f64) -> QuboResult<()> {
+        if vars.is_empty() {
+            return Err(QuboError::ConstraintError(
+                "Empty sum constraint".to_string(),
+            ));
+        }
+
+        // Penalty term: weight * (sum(x_i) - target)^2
+        let weight = self.constraint_weight;
+
+        // Add linear terms: weight * (2*target - 2*sum(x_i))
+        for var in vars {
+            let current = self.model.get_linear(var.index)?;
+            self.set_linear_term(var, current + weight * (1.0 - 2.0 * target))?;
+        }
+
+        // Add quadratic terms between all pairs: weight * 2*x_i*x_j
+        for i in 0..vars.len() {
+            for j in (i + 1)..vars.len() {
+                let current = self.model.get_quadratic(vars[i].index, vars[j].index)?;
+                self.set_quadratic_term(&vars[i], &vars[j], current + 2.0 * weight)?;
+            }
+        }
+
+        // Add offset: weight * target^2
+        self.model.offset += weight * target * target;
+
+        Ok(())
+    }
+
     /// Build the final QUBO model
     pub fn build(&self) -> QuboModel {
         self.model.clone()
@@ -411,6 +444,34 @@ pub trait QuboFormulation {
 
     /// Interpret the solution to the QUBO in the context of the original problem
     fn interpret_solution(&self, binary_vars: &[bool]) -> QuboResult<Vec<(String, bool)>>;
+}
+
+/// Implementation of QuboFormulation for QuboModel
+impl QuboFormulation for QuboModel {
+    fn to_qubo(&self) -> QuboResult<(QuboModel, HashMap<String, usize>)> {
+        // QuboModel is already a QUBO, so we just return a clone
+        let mut var_map = HashMap::new();
+        for i in 0..self.num_variables {
+            var_map.insert(format!("x_{}", i), i);
+        }
+        Ok((self.clone(), var_map))
+    }
+
+    fn interpret_solution(&self, binary_vars: &[bool]) -> QuboResult<Vec<(String, bool)>> {
+        if binary_vars.len() != self.num_variables {
+            return Err(QuboError::ConstraintError(format!(
+                "Solution length {} does not match number of variables {}",
+                binary_vars.len(),
+                self.num_variables
+            )));
+        }
+
+        let mut result = Vec::new();
+        for (i, &value) in binary_vars.iter().enumerate() {
+            result.push((format!("x_{}", i), value));
+        }
+        Ok(result)
+    }
 }
 
 #[cfg(test)]

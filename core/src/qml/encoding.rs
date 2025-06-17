@@ -10,12 +10,13 @@ use crate::{
     parametric::{ParametricRotationY, ParametricRotationZ},
     qubit::QubitId,
 };
-use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use std::f64::consts::PI;
 
 // Type aliases for convenience
+#[allow(dead_code)]
 type RYGate = ParametricRotationY;
+#[allow(dead_code)]
 type RZGate = ParametricRotationZ;
 
 // Simple CNOT gate for encoding usage
@@ -124,7 +125,7 @@ impl DataEncoder {
             ));
         }
 
-        let normalized: Vec<f64> = data.iter().map(|x| x / norm).collect();
+        let _normalized: Vec<f64> = data.iter().map(|x| x / norm).collect();
 
         // For amplitude encoding, we need to prepare a state with given amplitudes
         // This is complex and typically requires decomposition into gates
