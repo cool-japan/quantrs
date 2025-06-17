@@ -3,6 +3,7 @@
 //! This module provides advanced parallel processing strategies for tensor network
 //! contractions, optimizing for modern multi-core and distributed architectures.
 
+use crate::prelude::SimulatorError;
 use ndarray::{ArrayD, Dimension, IxDyn};
 use num_complex::Complex64;
 use rayon::prelude::*;
@@ -10,7 +11,6 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::time::{Duration, Instant};
-use crate::prelude::SimulatorError;
 
 use crate::error::Result;
 

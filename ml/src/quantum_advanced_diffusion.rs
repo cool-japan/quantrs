@@ -7,7 +7,7 @@
 //! - Quantum-Enhanced Stochastic Differential Equations
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
+use ndarray::{s, Array1, Array2, Array3, ArrayView1, Axis};
 use num_complex::Complex64;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -1624,7 +1624,20 @@ impl QuantumDenoisingNetwork {
     fn extract_prediction(&self, quantum_state: &QuantumState) -> Result<Array1<f64>> {
         // Extract noise prediction from quantum state
         // This would involve quantum measurements in practice
-        Ok(quantum_state.classical_data.clone())
+        // Return only the first portion corresponding to original data dimension
+        let data_dim = match &self.architecture {
+            DenoisingArchitecture::QuantumUNet { .. } => 2, // Default for this architecture
+            _ => 2,                                         // Default fallback
+        };
+
+        if quantum_state.classical_data.len() >= data_dim {
+            Ok(quantum_state
+                .classical_data
+                .slice(s![..data_dim])
+                .to_owned())
+        } else {
+            Ok(quantum_state.classical_data.clone())
+        }
     }
 }
 

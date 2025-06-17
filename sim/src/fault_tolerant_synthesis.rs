@@ -476,6 +476,9 @@ impl FaultTolerantSynthesizer {
             LogicalGateType::LogicalToffoli => {
                 self.synthesize_logical_toffoli_with_magic_states(logical_qubits)
             }
+            LogicalGateType::LogicalRotation(angle) => {
+                self.synthesize_logical_rotation(logical_qubits, angle)
+            }
             _ => Err(SimulatorError::InvalidConfiguration(format!(
                 "Unsupported logical gate type: {:?}",
                 gate_type
@@ -1173,6 +1176,9 @@ impl FaultTolerantSynthesizer {
             InterfaceGateType::T => Ok(LogicalGateType::LogicalT),
             InterfaceGateType::CNOT => Ok(LogicalGateType::LogicalCNOT),
             InterfaceGateType::Toffoli => Ok(LogicalGateType::LogicalToffoli),
+            InterfaceGateType::RY(angle) => Ok(LogicalGateType::LogicalRotation(angle)),
+            InterfaceGateType::RX(angle) => Ok(LogicalGateType::LogicalRotation(angle)),
+            InterfaceGateType::RZ(angle) => Ok(LogicalGateType::LogicalRotation(angle)),
             _ => Err(SimulatorError::InvalidConfiguration(format!(
                 "Unsupported gate type for logical synthesis: {:?}",
                 gate.gate_type
@@ -1315,6 +1321,59 @@ impl FaultTolerantSynthesizer {
     /// Create CCZ state distillation circuit (public version)
     pub fn create_ccz_state_distillation_circuit_public(&self) -> Result<InterfaceCircuit> {
         self.create_ccz_state_distillation_circuit()
+    }
+
+    /// Synthesize logical rotation gate
+    fn synthesize_logical_rotation(
+        &self,
+        logical_qubits: &[usize],
+        angle: f64,
+    ) -> Result<LogicalGate> {
+        let distance = self.config.code_distance;
+        let mut circuit = InterfaceCircuit::new(distance * distance + 10, 0);
+
+        // Decompose rotation into Clifford + T gates (Solovay-Kitaev decomposition)
+        // For simplicity, we'll use a basic decomposition into a few T gates
+        // In practice, this would be a more sophisticated decomposition
+
+        // Apply logical Z rotations using T gates
+        // R_z(θ) ≈ sequence of T gates and Clifford operations
+        let num_t_gates = ((angle.abs() / (std::f64::consts::PI / 4.0)).ceil() as usize).max(1);
+
+        for i in 0..distance * distance {
+            // Apply the rotation as a sequence of elementary operations
+            if angle.abs() > 1e-10 {
+                // Apply Hadamard to convert between X and Z rotations if needed
+                if angle.abs() > std::f64::consts::PI / 8.0 {
+                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![i]));
+                }
+
+                // Apply T gates to approximate the rotation
+                for _ in 0..num_t_gates {
+                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::T, vec![i]));
+                }
+
+                // Apply inverse Hadamard if needed
+                if angle.abs() > std::f64::consts::PI / 8.0 {
+                    circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![i]));
+                }
+            }
+        }
+
+        Ok(LogicalGate {
+            gate_type: LogicalGateType::LogicalRotation(angle),
+            logical_qubits: logical_qubits.to_vec(),
+            physical_implementation: circuit,
+            resources: ResourceRequirements {
+                physical_qubits: distance * distance,
+                physical_gates: distance * distance * num_t_gates * 2,
+                measurement_rounds: distance,
+                magic_states: num_t_gates * distance * distance,
+                time_steps: num_t_gates * 2,
+                ancilla_qubits: 10,
+            },
+            error_rate: 0.001 * (1.0 + num_t_gates as f64 * 0.001),
+        })
     }
 
     /// Update resources (public version)

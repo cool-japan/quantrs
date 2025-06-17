@@ -4,11 +4,11 @@
 //! including master equation evolution, Kraus operators, noise channels, and
 //! process tomography for realistic quantum device modeling.
 
+use crate::prelude::SimulatorError;
 use ndarray::{Array1, Array2, ArrayView1};
 use num_complex::Complex64;
 use rayon::prelude::*;
 use std::collections::HashMap;
-use crate::prelude::SimulatorError;
 
 use crate::error::Result;
 use crate::scirs2_integration::SciRS2Backend;

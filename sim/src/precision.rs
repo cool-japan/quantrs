@@ -4,11 +4,11 @@
 //! based on the requirements of the simulation, enabling efficient memory usage
 //! and computation for large quantum systems.
 
+use crate::prelude::SimulatorError;
 use half::f16;
 use ndarray::Array1;
 use num_complex::{Complex32, Complex64};
 use std::fmt;
-use crate::prelude::SimulatorError;
 
 use crate::error::Result;
 

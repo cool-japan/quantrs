@@ -1363,9 +1363,8 @@ impl QuantumMLFramework {
     /// Train a single batch
     fn train_batch(&mut self, batch: &[(Array1<f64>, Array1<f64>)]) -> Result<f64> {
         let mut total_loss = 0.0;
-        let mut total_gradients: Vec<Array1<f64>> = (0..self.layers.len())
-            .map(|_| Array1::zeros(0))
-            .collect();
+        let mut total_gradients: Vec<Array1<f64>> =
+            (0..self.layers.len()).map(|_| Array1::zeros(0)).collect();
 
         for (input, target) in batch {
             // Forward pass

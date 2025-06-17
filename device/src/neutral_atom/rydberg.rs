@@ -352,7 +352,7 @@ impl RydbergSimulator {
         }
 
         // Simplified distance calculation assuming regular spacing
-        let distance = ((atom1 as f64 - atom2 as f64).abs() * self.config.atom_spacing);
+        let distance = (atom1 as f64 - atom2 as f64).abs() * self.config.atom_spacing;
         Ok(distance)
     }
 

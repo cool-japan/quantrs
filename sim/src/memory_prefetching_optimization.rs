@@ -14,6 +14,7 @@ use std::time::{Duration, Instant};
 
 use crate::error::Result;
 use crate::memory_bandwidth_optimization::OptimizedStateVector;
+use crate::prelude::MemoryOptimizationConfig;
 
 /// Prefetching strategies for memory access optimization
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

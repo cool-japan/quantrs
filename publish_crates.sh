@@ -39,25 +39,25 @@ publish_crate() {
     done
 }
 
-# 1. core（依存なし）
+# 1. core (no dependencies)
 publish_crate "core" "quantrs2-core"
 
-# 2. circuit（coreに依存）
+# 2. circuit (depends on core)
 publish_crate "circuit" "quantrs2-circuit"
 
-# 3. anneal（coreに依存）
+# 3. anneal (depends on core)
 publish_crate "anneal" "quantrs2-anneal"
 
-# 4. sim（core, circuitに依存）
+# 4. sim (depends on core, circuit)
 publish_crate "sim" "quantrs2-sim"
 
-# 5. device（core, circuitに依存）
+# 5. device (depends on core, circuit)
 publish_crate "device" "quantrs2-device"
 
-# 6. ml（core, circuit, simに依存）
+# 6. ml (depends on core, circuit, sim)
 publish_crate "ml" "quantrs2-ml"
 
-# 7. tytan（core, annealに依存）
+# 7. tytan (depends on core, anneal)
 publish_crate "tytan" "quantrs2-tytan"
 
 echo ""

@@ -6,9 +6,9 @@
 //! optimization problems (QUBO, Ising, etc.) and provides realistic simulation
 //! of quantum annealing devices like D-Wave systems.
 
+use crate::prelude::SimulatorError;
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use crate::prelude::SimulatorError;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

@@ -3,12 +3,13 @@
 //! This module provides the main simulator class that automatically
 //! manages precision levels for optimal performance and accuracy.
 
+use crate::adaptive_gate_fusion::{FusedGateBlock, GateType, QuantumGate};
+use crate::error::{Result, SimulatorError};
+use crate::prelude::SciRS2Backend;
 use ndarray::Array1;
 use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::adaptive_gate_fusion::{FusedGateBlock, GateType, QuantumGate};
-use crate::error::{Result, SimulatorError};
 
 use super::analysis::{PrecisionAnalysis, PrecisionAnalyzer};
 use super::config::{MixedPrecisionConfig, QuantumPrecision};

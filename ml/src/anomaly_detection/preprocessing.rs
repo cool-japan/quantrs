@@ -66,14 +66,25 @@ impl DataPreprocessor {
         // Compute normalization parameters
         self.normalization_params = Some(self.compute_normalization_params(data));
 
-        // Fit feature selector if configured
-        if self.config.feature_selection.is_some() {
-            self.feature_selector = Some(self.fit_feature_selector(data)?);
+        let mut current_data = data.clone();
+
+        // Apply normalization first
+        if let Some(ref params) = self.normalization_params {
+            current_data = self.apply_normalization(&current_data, params)?;
         }
 
-        // Fit dimensionality reducer if configured
+        // Fit feature selector if configured
+        if self.config.feature_selection.is_some() {
+            self.feature_selector = Some(self.fit_feature_selector(&current_data)?);
+            // Apply feature selection to get the reduced data
+            if let Some(ref selector) = self.feature_selector {
+                current_data = self.apply_feature_selection(&current_data, selector)?;
+            }
+        }
+
+        // Fit dimensionality reducer if configured (on feature-selected data)
         if self.config.dimensionality_reduction.is_some() {
-            self.dimensionality_reducer = Some(self.fit_dimensionality_reducer(data)?);
+            self.dimensionality_reducer = Some(self.fit_dimensionality_reducer(&current_data)?);
         }
 
         self.fitted = true;

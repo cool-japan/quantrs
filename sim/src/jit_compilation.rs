@@ -371,6 +371,12 @@ impl JITCompiler {
             return Ok(None);
         }
 
+        // Update patterns_analyzed counter
+        {
+            let mut stats = self.stats.write().unwrap();
+            stats.patterns_analyzed += 1;
+        }
+
         let pattern = self.extract_pattern(gates)?;
         let pattern_hash = pattern.hash;
 
@@ -385,11 +391,11 @@ impl JITCompiler {
             }
         }
 
-        // Check if compilation threshold is met
+        // Check if compilation threshold is met (compile after threshold is exceeded)
         let should_compile = {
             let patterns = self.patterns.read().unwrap();
             if let Some(pattern) = patterns.get(&pattern_hash) {
-                pattern.frequency >= self.config.compilation_threshold
+                pattern.frequency > self.config.compilation_threshold
                     && pattern.compilation_status == CompilationStatus::NotCompiled
             } else {
                 false
@@ -2379,8 +2385,8 @@ impl JITQuantumSimulator {
                 let amp0 = self.state[i];
                 let amp1 = self.state[j];
 
-                self.state[i] = cos_half * amp0 + Complex64::new(0.0, -sin_half) * amp1;
-                self.state[j] = Complex64::new(0.0, -sin_half) * amp0 + cos_half * amp1;
+                self.state[i] = cos_half * amp0 - Complex64::new(0.0, sin_half) * amp1;
+                self.state[j] = -Complex64::new(0.0, sin_half) * amp0 + cos_half * amp1;
             }
         }
 
@@ -2833,9 +2839,10 @@ mod tests {
 
         simulator.apply_gate_interpreted(&gate_rx).unwrap();
 
-        // RX(π) should be equivalent to Pauli-X
-        assert!((simulator.state[0].re - 0.0).abs() < 1e-10);
-        assert!((simulator.state[1].re - 1.0).abs() < 1e-10);
+        // RX(π) should be equivalent to Pauli-X up to global phase
+        // RX(π)|0⟩ = -i|1⟩, so we check the magnitude
+        assert!((simulator.state[0].norm() - 0.0).abs() < 1e-10);
+        assert!((simulator.state[1].norm() - 1.0).abs() < 1e-10);
     }
 
     #[test]

@@ -474,7 +474,7 @@ impl HardwareTopology {
                             GateProperties {
                                 error_rate: 0.006 * (1.0 + 0.15 * fastrand::f64()),
                                 duration: 12.0,
-                                gate_type: "sqrt_iSWAP".to_string(),
+                                gate_type: "sqrt_ISwap".to_string(),
                             },
                         );
                     }
@@ -495,7 +495,7 @@ impl HardwareTopology {
                                 GateProperties {
                                     error_rate: 0.006 * (1.0 + 0.15 * fastrand::f64()),
                                     duration: 12.0,
-                                    gate_type: "sqrt_iSWAP".to_string(),
+                                    gate_type: "sqrt_ISwap".to_string(),
                                 },
                             );
                         }
@@ -548,7 +548,7 @@ impl HardwareTopology {
                 GateProperties {
                     error_rate: 0.006 * (1.0 + 0.3 * fastrand::f64()),
                     duration: 12.0,
-                    gate_type: "sqrt_iSWAP".to_string(),
+                    gate_type: "sqrt_ISwap".to_string(),
                 },
             );
         }
@@ -563,7 +563,7 @@ impl HardwareTopology {
                 GateProperties {
                     error_rate: 0.008 * (1.0 + 0.3 * fastrand::f64()),
                     duration: 12.0,
-                    gate_type: "sqrt_iSWAP".to_string(),
+                    gate_type: "sqrt_ISwap".to_string(),
                 },
             );
         }

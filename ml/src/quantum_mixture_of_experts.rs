@@ -607,6 +607,7 @@ pub struct QuantumRouter {
     routing_parameters: Array1<f64>,
     routing_history: Vec<RoutingDecision>,
     quantum_routing_state: QuantumRoutingState,
+    num_experts: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -1128,7 +1129,7 @@ impl QuantumMixtureOfExperts {
             }
 
             // Process through expert
-            let output = expert.process(input, weight)?;
+            let output = expert.process(input, weight, &self.config)?;
             expert_outputs.push(output);
         }
 
@@ -1253,13 +1254,17 @@ impl QuantumMixtureOfExperts {
     ) -> Result<()> {
         // Update utilization statistics
         for (expert_id, &weight) in weights.iter().enumerate() {
-            self.expert_statistics.expert_utilizations[expert_id] =
-                0.9 * self.expert_statistics.expert_utilizations[expert_id] + 0.1 * weight;
+            if expert_id < self.expert_statistics.expert_utilizations.len() {
+                self.expert_statistics.expert_utilizations[expert_id] =
+                    0.9 * self.expert_statistics.expert_utilizations[expert_id] + 0.1 * weight;
+            }
 
             if let Some(output) = outputs.get(expert_id) {
-                self.expert_statistics.expert_performances[expert_id] = 0.9
-                    * self.expert_statistics.expert_performances[expert_id]
-                    + 0.1 * output.quality_score;
+                if expert_id < self.expert_statistics.expert_performances.len() {
+                    self.expert_statistics.expert_performances[expert_id] = 0.9
+                        * self.expert_statistics.expert_performances[expert_id]
+                        + 0.1 * output.quality_score;
+                }
             }
         }
 
@@ -1717,9 +1722,25 @@ impl QuantumExpert {
         })
     }
 
-    pub fn process(&mut self, input: &Array1<f64>, weight: f64) -> Result<ExpertOutput> {
-        // Simplified expert processing
-        let prediction = input.clone(); // Placeholder
+    pub fn process(
+        &mut self,
+        input: &Array1<f64>,
+        weight: f64,
+        config: &QuantumMixtureOfExpertsConfig,
+    ) -> Result<ExpertOutput> {
+        // Transform input to output dimension using quantum transformation
+        let prediction = if config.output_dim != input.len() {
+            // Simple linear transformation for dimension matching
+            let mut output = Array1::zeros(config.output_dim);
+            for i in 0..config.output_dim {
+                let input_idx = i % input.len();
+                output[i] = input[input_idx] * (1.0 + self.expert_id as f64 * 0.1);
+                // Expert-specific transformation
+            }
+            output
+        } else {
+            input.clone()
+        };
         let quality_score = 0.8; // Placeholder
 
         self.current_load += 1;
@@ -1760,12 +1781,13 @@ impl QuantumRouter {
                 routing_coherence: 1.0,
                 routing_fidelity: 1.0,
             },
+            num_experts: config.num_experts,
         })
     }
 
     pub fn route(&mut self, input: &Array1<f64>) -> Result<RoutingResult> {
         // Simplified routing implementation
-        let num_experts = input.len().min(16); // Simplified
+        let num_experts = self.num_experts;
         let mut expert_weights = Array1::zeros(num_experts);
 
         // Simple softmax routing
@@ -2337,7 +2359,7 @@ mod tests {
         assert!(result.is_ok());
 
         let routing_result = result.unwrap();
-        assert_eq!(routing_result.expert_weights.len(), 4);
+        assert_eq!(routing_result.expert_weights.len(), 8);
         assert!(routing_result.routing_confidence >= 0.0);
         assert!(routing_result.routing_confidence <= 1.0);
     }

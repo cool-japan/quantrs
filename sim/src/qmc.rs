@@ -3,10 +3,10 @@
 //! This module implements various QMC algorithms for simulating quantum systems,
 //! including Variational Monte Carlo (VMC) and Diffusion Monte Carlo (DMC).
 
+use crate::prelude::SimulatorError;
 use fastrand;
 use ndarray::{Array1, Array2, Array3};
 use num_complex::Complex64;
-use crate::prelude::SimulatorError;
 
 use crate::error::Result;
 use crate::trotter::{Hamiltonian, HamiltonianTerm};

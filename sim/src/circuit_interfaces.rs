@@ -467,6 +467,31 @@ impl InterfaceGate {
 
                 Ok(matrix)
             }
+            InterfaceGateType::CPhase(phase) => {
+                let phase_factor = Complex64::new(0.0, *phase).exp();
+                Ok(Array2::from_shape_vec(
+                    (4, 4),
+                    vec![
+                        Complex64::new(1.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(1.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(1.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        Complex64::new(0.0, 0.0),
+                        phase_factor,
+                    ],
+                )
+                .unwrap())
+            }
             InterfaceGateType::Custom(_, matrix) => Ok(matrix.clone()),
             _ => Err(SimulatorError::UnsupportedOperation(format!(
                 "Unitary matrix not available for gate type: {:?}",

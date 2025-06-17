@@ -48,7 +48,7 @@ pub enum EstimationAccuracyLevel {
     Standard,
     Detailed,
     Comprehensive,
-    Real_Time,
+    RealTime,
 }
 
 /// Discount thresholds

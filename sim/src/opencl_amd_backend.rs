@@ -15,11 +15,11 @@
 //! - Performance profiling and optimization
 //! - Fallback to CPU when GPU is unavailable
 
+use crate::prelude::{SimulatorError, StateVectorSimulator};
 use num_complex::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::prelude::{StateVectorSimulator, SimulatorError};
 
 use crate::error::Result;
 

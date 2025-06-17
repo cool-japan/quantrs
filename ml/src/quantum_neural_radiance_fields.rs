@@ -2386,7 +2386,7 @@ impl Default for QuantumNeRFConfig {
             scene_bounds: SceneBounds {
                 min_bound: Array1::from_vec(vec![-1.0, -1.0, -1.0]),
                 max_bound: Array1::from_vec(vec![1.0, 1.0, 1.0]),
-                voxel_resolution: Array1::from_vec(vec![128, 128, 128]),
+                voxel_resolution: Array1::from_vec(vec![4, 4, 4]),
             },
             num_qubits: 8,
             quantum_encoding_levels: 10,

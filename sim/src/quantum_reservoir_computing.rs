@@ -778,7 +778,7 @@ pub enum NativeGate {
     /// CZ gate
     CZ,
     /// iSWAP gate
-    iSWAP,
+    ISwap,
     /// Molmer-Sorensen gate
     MS,
     /// Arbitrary rotation

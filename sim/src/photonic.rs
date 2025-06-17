@@ -5,10 +5,10 @@
 //! operations. It supports both exact diagonalization and approximate methods
 //! for large photon number cutoffs.
 
+use crate::prelude::SimulatorError;
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use rayon::prelude::*;
-use crate::prelude::SimulatorError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

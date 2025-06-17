@@ -10,6 +10,7 @@ use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
+    prelude::QubitId,
     register::Register,
 };
 

@@ -1827,9 +1827,11 @@ impl QuantumInspiredFramework {
             return Ok(false);
         }
 
-        let improvement =
-            recent_improvements.first().unwrap() - recent_improvements.last().unwrap();
-        Ok(improvement.abs() < tolerance)
+        // Check for convergence by comparing consecutive recent values
+        let last_value = recent_improvements.last().unwrap();
+        let second_last_value = recent_improvements[recent_improvements.len() - 2];
+        let change = (last_value - second_last_value).abs();
+        Ok(change < tolerance)
     }
 
     /// Train machine learning model
@@ -1949,23 +1951,23 @@ impl QuantumInspiredUtils {
             0.0
         };
 
-        // Find convergence point
-        let tolerance = 1e-6;
+        // Find convergence point by checking for stable windows
         let mut convergence_iteration = convergence_history.len();
 
-        for (i, window) in convergence_history.windows(5).enumerate() {
-            let variance = window
-                .iter()
-                .map(|&x| {
-                    let mean = window.iter().sum::<f64>() / window.len() as f64;
-                    (x - mean).powi(2)
-                })
-                .sum::<f64>()
-                / window.len() as f64;
+        // Check if we have enough data for window analysis
+        if convergence_history.len() >= 5 {
+            for (i, window) in convergence_history.windows(5).enumerate() {
+                let mean = window.iter().sum::<f64>() / window.len() as f64;
+                let variance =
+                    window.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / window.len() as f64;
 
-            if variance < tolerance {
-                convergence_iteration = i + 5;
-                break;
+                // Use adaptive tolerance based on the magnitude of values
+                let adaptive_tolerance = (mean.abs() * 1e-4).max(1e-6);
+
+                if variance < adaptive_tolerance {
+                    convergence_iteration = i + 5;
+                    break;
+                }
             }
         }
 
@@ -1973,7 +1975,7 @@ impl QuantumInspiredUtils {
             convergence_rate,
             iterations_to_convergence: convergence_iteration,
             final_gradient_norm: 0.0, // Placeholder
-            converged: improvement > tolerance,
+            converged: convergence_iteration < convergence_history.len(),
             convergence_criterion: "variance".to_string(),
         }
     }

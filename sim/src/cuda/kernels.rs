@@ -6,6 +6,8 @@
 use ndarray::Array1;
 use num_complex::Complex64;
 
+use crate::error::SimulatorError;
+
 #[cfg(feature = "advanced_math")]
 use std::collections::HashMap;
 #[cfg(feature = "advanced_math")]

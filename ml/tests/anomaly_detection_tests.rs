@@ -362,7 +362,7 @@ fn test_performance_monitor() {
     monitor.record_memory_usage(120.0);
 
     // Test calculations
-    assert_eq!(monitor.get_average_latency(), 0.15);
+    assert!((monitor.get_average_latency() - 0.15).abs() < 1e-10);
     assert_eq!(monitor.get_peak_memory_usage(), 150.0);
 }
 

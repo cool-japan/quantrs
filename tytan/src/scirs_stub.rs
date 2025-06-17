@@ -228,15 +228,26 @@ mod scirs2_core_stub {
                 Err("GPU not available".into())
             }
 
-            pub fn random_array<T>(&self, _shape: (usize, usize)) -> Result<GpuArray<T>, Box<dyn Error>> {
+            pub fn random_array<T>(
+                &self,
+                _shape: (usize, usize),
+            ) -> Result<GpuArray<T>, Box<dyn Error>> {
                 Err("GPU not available".into())
             }
 
-            pub fn binarize<T>(&self, _array: &GpuArray<T>, _threshold: f64) -> Result<GpuArray<bool>, Box<dyn Error>> {
+            pub fn binarize<T>(
+                &self,
+                _array: &GpuArray<T>,
+                _threshold: f64,
+            ) -> Result<GpuArray<bool>, Box<dyn Error>> {
                 Err("GPU not available".into())
             }
 
-            pub fn qubo_energy<T>(&self, _states: &GpuArray<bool>, _matrix: &GpuArray<T>) -> Result<GpuArray<f64>, Box<dyn Error>> {
+            pub fn qubo_energy<T>(
+                &self,
+                _states: &GpuArray<bool>,
+                _matrix: &GpuArray<T>,
+            ) -> Result<GpuArray<f64>, Box<dyn Error>> {
                 Err("GPU not available".into())
             }
         }
@@ -252,12 +263,15 @@ mod scirs2_core_stub {
         }
 
         impl<T> GpuArray<T> {
-            pub fn from_ndarray(_device: GpuDevice, _array: &ndarray::Array2<T>) -> Result<Self, Box<dyn Error>> {
+            pub fn from_ndarray(
+                _device: GpuDevice,
+                _array: &ndarray::Array2<T>,
+            ) -> Result<Self, Box<dyn Error>> {
                 Err("GPU not available".into())
             }
 
-            pub fn to_ndarray(&self) -> Result<ndarray::Array2<T>, Box<dyn Error>> 
-            where 
+            pub fn to_ndarray(&self) -> Result<ndarray::Array2<T>, Box<dyn Error>>
+            where
                 T: Clone + Default,
             {
                 Err("GPU not available".into())

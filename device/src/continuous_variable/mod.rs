@@ -115,7 +115,7 @@ pub enum CVSystemType {
     /// Measurement-based quantum computing
     MeasurementBased,
     /// Hybrid discrete-continuous
-    HybridDV_CV,
+    HybridDvCv,
 }
 
 /// Continuous variable quantum device

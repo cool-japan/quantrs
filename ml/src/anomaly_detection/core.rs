@@ -290,11 +290,16 @@ impl QuantumAnomalyDetector {
 
     fn combine_results(
         &self,
-        primary: AnomalyResult,
+        mut primary: AnomalyResult,
         ensemble: Vec<AnomalyResult>,
     ) -> Result<AnomalyResult> {
-        // For now, just return primary result
-        // In a full implementation, this would combine results based on voting strategy
+        // Combine method results from all detectors
+        for ensemble_result in ensemble {
+            for (method_name, method_result) in ensemble_result.method_results {
+                primary.method_results.insert(method_name, method_result);
+            }
+        }
+
         Ok(primary)
     }
 }

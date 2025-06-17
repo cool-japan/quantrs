@@ -551,7 +551,7 @@ pub struct IntegrationInterface {
 pub enum APIType {
     REST,
     GraphQL,
-    gRPC,
+    GRpc,
     WebSocket,
     Native,
     Library,

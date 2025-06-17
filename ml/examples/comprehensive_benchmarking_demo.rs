@@ -3,10 +3,10 @@
 //! This example demonstrates the benchmarking framework for comparing quantum ML models
 //! across different algorithms, hardware backends, and problem sizes.
 
-use quantrs2_ml::prelude::*;
-use quantrs2_ml::benchmarking::*;
 use quantrs2_ml::benchmarking::algorithm_benchmarks::*;
 use quantrs2_ml::benchmarking::benchmark_utils::*;
+use quantrs2_ml::benchmarking::*;
+use quantrs2_ml::prelude::*;
 use quantrs2_ml::simulator_backends::Backend;
 use std::time::Duration;
 
@@ -50,38 +50,17 @@ fn main() -> Result<()> {
     println!("\n2. Registering benchmarks...");
 
     // VQE benchmarks for different qubit counts
-    framework.register_benchmark(
-        "vqe_4q",
-        Box::new(VQEBenchmark::new(4, 8)),
-    );
-    framework.register_benchmark(
-        "vqe_6q",
-        Box::new(VQEBenchmark::new(6, 12)),
-    );
-    framework.register_benchmark(
-        "vqe_8q",
-        Box::new(VQEBenchmark::new(8, 16)),
-    );
+    framework.register_benchmark("vqe_4q", Box::new(VQEBenchmark::new(4, 8)));
+    framework.register_benchmark("vqe_6q", Box::new(VQEBenchmark::new(6, 12)));
+    framework.register_benchmark("vqe_8q", Box::new(VQEBenchmark::new(8, 16)));
 
     // QAOA benchmarks
-    framework.register_benchmark(
-        "qaoa_4q",
-        Box::new(QAOABenchmark::new(4, 2, 8)),
-    );
-    framework.register_benchmark(
-        "qaoa_6q",
-        Box::new(QAOABenchmark::new(6, 3, 12)),
-    );
+    framework.register_benchmark("qaoa_4q", Box::new(QAOABenchmark::new(4, 2, 8)));
+    framework.register_benchmark("qaoa_6q", Box::new(QAOABenchmark::new(6, 3, 12)));
 
     // QNN benchmarks
-    framework.register_benchmark(
-        "qnn_4q",
-        Box::new(QNNBenchmark::new(4, 2, 100)),
-    );
-    framework.register_benchmark(
-        "qnn_6q",
-        Box::new(QNNBenchmark::new(6, 3, 100)),
-    );
+    framework.register_benchmark("qnn_4q", Box::new(QNNBenchmark::new(4, 2, 100)));
+    framework.register_benchmark("qnn_6q", Box::new(QNNBenchmark::new(6, 3, 100)));
 
     println!("   - Registered 7 benchmarks total");
 
@@ -99,7 +78,7 @@ fn main() -> Result<()> {
     // Step 4: Run all benchmarks
     println!("\n4. Running all benchmarks...");
 
-    let results = framework.run_all_benchmarks(&backend_refs)?;
+    framework.run_all_benchmarks(&backend_refs)?;
 
     println!("   - All benchmarks completed");
 
@@ -112,6 +91,8 @@ fn main() -> Result<()> {
     // Step 6: Print detailed results
     println!("\n6. Detailed Results Analysis:");
 
+    // Get results again for analysis since we can't hold onto the reference
+    let results = framework.run_all_benchmarks(&backend_refs)?;
     print_performance_summary(results);
     print_scaling_analysis(results);
     print_memory_analysis(results);
@@ -133,7 +114,10 @@ fn print_performance_summary(results: &BenchmarkResults) {
         println!("     - Max time:  {:.3}s", summary.max_time.as_secs_f64());
         println!("     - Success rate: {:.1}%", summary.success_rate * 100.0);
         if let Some(memory) = summary.mean_memory {
-            println!("     - Memory usage: {:.1} MB", memory as f64 / 1024.0 / 1024.0);
+            println!(
+                "     - Memory usage: {:.1} MB",
+                memory as f64 / 1024.0 / 1024.0
+            );
         }
         println!();
     }
@@ -164,7 +148,11 @@ fn print_scaling_analysis(results: &BenchmarkResults) {
         vqe_results.sort_by_key(|(name, _)| name.clone());
         for (name, summary) in vqe_results {
             let qubits = extract_qubit_count(name);
-            println!("     - {} qubits: {:.3}s", qubits, summary.mean_time.as_secs_f64());
+            println!(
+                "     - {} qubits: {:.3}s",
+                qubits,
+                summary.mean_time.as_secs_f64()
+            );
         }
         println!("     - Scaling trend: Exponential (as expected for VQE)");
         println!();
@@ -176,7 +164,11 @@ fn print_scaling_analysis(results: &BenchmarkResults) {
         qaoa_results.sort_by_key(|(name, _)| name.clone());
         for (name, summary) in qaoa_results {
             let qubits = extract_qubit_count(name);
-            println!("     - {} qubits: {:.3}s", qubits, summary.mean_time.as_secs_f64());
+            println!(
+                "     - {} qubits: {:.3}s",
+                qubits,
+                summary.mean_time.as_secs_f64()
+            );
         }
         println!("     - Scaling trend: Polynomial (as expected for QAOA)");
         println!();
@@ -188,7 +180,11 @@ fn print_scaling_analysis(results: &BenchmarkResults) {
         qnn_results.sort_by_key(|(name, _)| name.clone());
         for (name, summary) in qnn_results {
             let qubits = extract_qubit_count(name);
-            println!("     - {} qubits: {:.3}s", qubits, summary.mean_time.as_secs_f64());
+            println!(
+                "     - {} qubits: {:.3}s",
+                qubits,
+                summary.mean_time.as_secs_f64()
+            );
         }
         println!("     - Scaling trend: Polynomial (training overhead)");
         println!();
@@ -209,11 +205,15 @@ fn print_memory_analysis(results: &BenchmarkResults) {
 
     if !memory_data.is_empty() {
         memory_data.sort_by_key(|(qubits, _, _)| *qubits);
-        
+
         println!("   Memory scaling by qubit count:");
         for (qubits, memory, name) in memory_data {
-            println!("     - {} qubits ({}): {:.1} MB", 
-                qubits, name, memory as f64 / 1024.0 / 1024.0);
+            println!(
+                "     - {} qubits ({}): {:.1} MB",
+                qubits,
+                name,
+                memory as f64 / 1024.0 / 1024.0
+            );
         }
         println!("     - Expected scaling: O(2^n) for statevector simulation");
         println!();
@@ -245,7 +245,7 @@ fn analyze_backend_performance(results: &BenchmarkResults) {
 
     // Group results by backend type
     let mut backend_performance = std::collections::HashMap::new();
-    
+
     for (name, summary) in results.summaries() {
         let backend_type = extract_backend_type(name);
         backend_performance

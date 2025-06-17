@@ -1304,7 +1304,19 @@ impl QuantumImplicitNeuralRepresentation {
         &self,
         input: &NetworkOutput,
     ) -> Result<QuantumProcessingOutput> {
-        Ok(QuantumProcessingOutput::default())
+        let num_points = input.values.nrows();
+        let output_dim = self.config.output_dim;
+
+        // Create output with proper dimensions
+        let values = Array2::zeros((num_points, output_dim));
+        let confidence = Array1::ones(num_points);
+
+        Ok(QuantumProcessingOutput {
+            values,
+            gradients: None,
+            confidence,
+            quantum_metrics: QuantumMetrics::default(),
+        })
     }
 
     fn compute_query_quantum_metrics(

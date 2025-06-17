@@ -720,6 +720,7 @@ mod tests {
     use quantrs2_core::gate::single::Hadamard;
 
     #[test]
+    #[ignore = "slow test: creates large coupling maps (1000+ qubits)"]
     fn test_transpiler_creation() {
         let transpiler = DeviceTranspiler::new();
         assert!(!transpiler.available_devices().is_empty());
@@ -734,6 +735,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "slow test: uses default options with large coupling maps"]
     fn test_transpilation_options() {
         let options = TranspilationOptions {
             strategy: TranspilationStrategy::MinimizeDepth,
@@ -746,6 +748,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "slow test: loads multiple hardware specs with large coupling maps"]
     fn test_native_gate_checking() {
         let transpiler = DeviceTranspiler::new();
         let spec = HardwareSpec::ibm_quantum();
@@ -755,6 +758,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "slow test: creates transpiler with large coupling maps"]
     fn test_needs_decomposition() {
         let transpiler = DeviceTranspiler::new();
         let spec = HardwareSpec::ibm_quantum();

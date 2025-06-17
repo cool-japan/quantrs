@@ -5,10 +5,10 @@
 //! boundaries of quantum advantage in machine learning.
 
 use ndarray::{Array1, Array2, Array3, Axis};
-use quantrs2_ml::keras_api::LossFunction;
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::prelude::{DataEncodingType, FeatureMapType};
 use quantrs2_ml::quantum_graph_attention::benchmark_qgat_vs_classical;
+use quantrs2_ml::quantum_graph_attention::LossFunction;
 use quantrs2_ml::quantum_graph_attention::{
     AttentionNormalization, PoolingType, QGATTrainingConfig,
 };

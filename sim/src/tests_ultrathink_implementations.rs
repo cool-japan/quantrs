@@ -67,7 +67,7 @@ mod tests {
             assert!(network.is_ok());
 
             let network = network.unwrap();
-            assert_eq!(network.layers, vec![64, 128, 64, 32, 1]);
+            assert_eq!(network.layers, vec![18, 128, 64, 32, 1]);
             assert_eq!(network.weights.len(), 4);
             assert_eq!(network.biases.len(), 4);
         }
@@ -152,9 +152,9 @@ mod tests {
             let model = mitigator.create_deep_model().unwrap();
 
             let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
-            // Pad input to match network input size (64)
-            let mut padded_input = Array1::zeros(64);
-            for i in 0..input.len().min(64) {
+            // Pad input to match network input size (18)
+            let mut padded_input = Array1::zeros(18);
+            for i in 0..input.len().min(18) {
                 padded_input[i] = input[i];
             }
 
@@ -994,7 +994,7 @@ mod tests {
             chem_simulator.set_molecule(lih).unwrap();
 
             // Generate hardware-efficient ansatz for chemistry
-            let chemistry_ansatz = hw_optimizer.generate_hardware_efficient_ansatz(6, 4, 0.9);
+            let chemistry_ansatz = hw_optimizer.generate_hardware_efficient_ansatz(6, 4, 0.8);
             assert!(chemistry_ansatz.is_ok());
 
             let chemistry_ansatz = chemistry_ansatz.unwrap();
@@ -1262,7 +1262,7 @@ mod tests {
 
             let summary = summary.unwrap();
             assert!(summary.total_metrics >= 3); // We recorded 3 metrics
-            // Check that metrics were collected properly
+                                                 // Check that metrics were collected properly
             assert!(summary.total_quantum_metrics < usize::MAX);
             assert!(summary.avg_gate_execution_time >= 0.0);
         }

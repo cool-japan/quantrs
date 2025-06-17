@@ -1728,11 +1728,11 @@ impl EnhancedQuantumNetworkMonitor {
         let alert_health = self.alert_system.get_health_score().await?;
 
         // Weighted average of component health scores
-        let overall_health = (metrics_health * 0.3
+        let overall_health = metrics_health * 0.3
             + analytics_health * 0.25
             + anomaly_health * 0.2
             + prediction_health * 0.15
-            + alert_health * 0.1);
+            + alert_health * 0.1;
 
         Ok(overall_health)
     }

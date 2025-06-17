@@ -21,13 +21,9 @@ use num_complex::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
-use crate::circuit_interfaces::{
-    InterfaceCircuit, InterfaceGate, InterfaceGateType,
-};
+use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};
 use crate::error::{Result, SimulatorError};
-use crate::fermionic_simulation::{
-    FermionicHamiltonian, FermionicOperator, FermionicString,
-};
+use crate::fermionic_simulation::{FermionicHamiltonian, FermionicOperator, FermionicString};
 use crate::pauli::{PauliOperator, PauliOperatorSum, PauliString};
 use crate::scirs2_integration::SciRS2Backend;
 use crate::statevector::StateVectorSimulator;
@@ -427,9 +423,12 @@ impl QuantumChemistrySimulator {
             num_orbitals,
         )?;
 
+        // Update fermion mapper with correct number of spin orbitals
+        self.fermion_mapper = FermionMapper::new(self.fermion_mapper.method, num_orbitals * 2);
+
         // Map to Pauli operators
         let pauli_hamiltonian = if self.config.enable_second_quantization_optimization {
-            Some(self.map_to_pauli_operators(&fermionic_hamiltonian)?)
+            Some(self.map_to_pauli_operators(&fermionic_hamiltonian, num_orbitals)?)
         } else {
             None
         };
@@ -536,8 +535,14 @@ impl QuantumChemistrySimulator {
                     + (molecule.positions[[i, 2]] - molecule.positions[[j, 2]]).powi(2))
                 .sqrt();
 
-                nuclear_repulsion +=
-                    (molecule.atomic_numbers[i] * molecule.atomic_numbers[j]) as f64 / distance;
+                if distance > 1e-10 {
+                    nuclear_repulsion +=
+                        (molecule.atomic_numbers[i] * molecule.atomic_numbers[j]) as f64 / distance;
+                } else {
+                    return Err(SimulatorError::NumericalError(
+                        "Atoms are too close together (distance < 1e-10)".to_string(),
+                    ));
+                }
             }
         }
 
@@ -662,6 +667,7 @@ impl QuantumChemistrySimulator {
     fn map_to_pauli_operators(
         &self,
         fermionic_ham: &FermionicHamiltonian,
+        num_orbitals: usize,
     ) -> Result<PauliOperatorSum> {
         let mut pauli_terms = Vec::new();
 
@@ -670,11 +676,7 @@ impl QuantumChemistrySimulator {
             pauli_terms.push(pauli_string);
         }
 
-        let num_qubits = self
-            .hamiltonian
-            .as_ref()
-            .map(|h| h.num_orbitals * 2)
-            .unwrap_or(8);
+        let num_qubits = num_orbitals * 2;
         let mut pauli_sum = PauliOperatorSum::new(num_qubits);
         for term in pauli_terms {
             pauli_sum.add_term(term)?;

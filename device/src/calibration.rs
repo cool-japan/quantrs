@@ -166,7 +166,7 @@ pub struct SingleQubitGateData {
 /// Two-qubit gate calibration data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TwoQubitGateCalibration {
-    /// Gate name (e.g., "CNOT", "CZ", "iSWAP")
+    /// Gate name (e.g., "CNOT", "CZ", "ISwap")
     pub gate_name: String,
     /// Control qubit
     pub control: QubitId,

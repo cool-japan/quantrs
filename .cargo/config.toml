@@ -1,13 +1,6 @@
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-arg=-Wl,-undefined,dynamic_lookup"]
+
 [env]
-# For Apple Silicon Macs, use the system BLAS (Accelerate framework)
-OPENBLAS_SYSTEM = "1"
-OPENBLAS64_SYSTEM = "1"
-
-# For symengine-sys
-SYMENGINE_DIR = "/opt/homebrew/Cellar/symengine/0.14.0_2"
-LIBRARY_PATH = "/opt/homebrew/Cellar/symengine/0.14.0_2/lib:/opt/homebrew/lib"
-CPATH = "/opt/homebrew/Cellar/symengine/0.14.0_2/include:/opt/homebrew/include"
-
-[build]
-# Use thin LTO for better performance during development
-rustflags = ["-C", "target-cpu=native"]
+CXXFLAGS = "-stdlib=libc++"
+LDFLAGS = "-lc++"

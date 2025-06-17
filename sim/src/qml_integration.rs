@@ -6,13 +6,13 @@
 //! (QNN), and other QML applications with automatic differentiation and
 //! hardware-aware optimization.
 
+use crate::prelude::{InterfaceGate, InterfaceGateType, SimulatorError};
 use ndarray::Array1;
 use num_complex::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use crate::prelude::{InterfaceGateType, SimulatorError, InterfaceGate};
 
 use crate::autodiff_vqe::AutoDiffContext;
 use crate::circuit_interfaces::{CircuitInterface, InterfaceCircuit};

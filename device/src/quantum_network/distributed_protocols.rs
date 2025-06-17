@@ -160,7 +160,7 @@ pub enum LoadBalancingStrategy {
     CapabilityBased,
     LatencyOptimized,
     ThroughputOptimized,
-    ML_Optimized {
+    MlOptimized {
         model_path: String,
         features: Vec<String>,
     },

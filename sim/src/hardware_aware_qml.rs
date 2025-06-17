@@ -730,13 +730,13 @@ impl HardwareAwareQMLOptimizer {
     /// Initialize simulator metrics
     fn initialize_simulator_metrics(&mut self) -> Result<()> {
         let mut gate_error_rates = HashMap::new();
-        gate_error_rates.insert("CNOT".to_string(), 0.0);
-        gate_error_rates.insert("RZ".to_string(), 0.0);
-        gate_error_rates.insert("RX".to_string(), 0.0);
-        gate_error_rates.insert("RY".to_string(), 0.0);
+        gate_error_rates.insert("CNOT".to_string(), 1e-6);
+        gate_error_rates.insert("RZ".to_string(), 1e-7);
+        gate_error_rates.insert("RX".to_string(), 1e-7);
+        gate_error_rates.insert("RY".to_string(), 1e-7);
 
         self.device_metrics.gate_error_rates = gate_error_rates;
-        self.device_metrics.measurement_error_rates = Array1::zeros(100);
+        self.device_metrics.measurement_error_rates = Array1::from_elem(100, 1e-6);
         self.device_metrics.coherence_times = Array2::from_elem((100, 2), std::f64::INFINITY);
 
         Ok(())
@@ -838,12 +838,15 @@ impl HardwareAwareQMLOptimizer {
             let max_depth = gate
                 .qubits
                 .iter()
+                .filter(|&&q| q < qubit_depths.len())
                 .map(|&q| qubit_depths[q])
                 .max()
                 .unwrap_or(0);
 
             for &qubit in &gate.qubits {
-                qubit_depths[qubit] = max_depth + 1;
+                if qubit < qubit_depths.len() {
+                    qubit_depths[qubit] = max_depth + 1;
+                }
             }
         }
 

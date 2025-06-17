@@ -187,7 +187,7 @@ pub enum TopologyType {
     Ladder,
     Star,
     Complete,
-    Heavy_Hex,
+    HeavyHex,
     Falcon,
     Custom(String),
 }
@@ -401,21 +401,21 @@ pub struct HardwareOptimizationSettings {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum QubitMappingStrategy {
     Trivial,
-    Noise_Adaptive,
-    Topology_Aware,
-    Connectivity_Optimized,
-    Fidelity_Optimized,
-    ML_Optimized,
+    NoiseAdaptive,
+    TopologyAware,
+    ConnectivityOptimized,
+    FidelityOptimized,
+    MlOptimized,
 }
 
 /// Routing optimization strategies
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum RoutingOptimizationStrategy {
-    Shortest_Path,
-    Minimum_Swaps,
-    Fidelity_Aware,
-    Noise_Aware,
-    Congestion_Aware,
+    ShortestPath,
+    MinimumSwaps,
+    FidelityAware,
+    NoiseAware,
+    CongestionAware,
     Adaptive,
 }
 
@@ -425,8 +425,8 @@ pub enum CalibrationOptimizationStrategy {
     Static,
     Dynamic,
     Predictive,
-    Real_Time,
-    ML_Driven,
+    RealTime,
+    MlDriven,
 }
 
 /// Noise adaptation strategies
@@ -434,8 +434,8 @@ pub enum CalibrationOptimizationStrategy {
 pub enum NoiseAdaptationStrategy {
     None,
     Statistical,
-    Model_Based,
-    ML_Based,
+    ModelBased,
+    MlBased,
     Hybrid,
 }
 
@@ -610,7 +610,7 @@ pub enum SchedulingPriority {
     Normal,
     High,
     Critical,
-    Real_Time,
+    RealTime,
 }
 
 /// Preemption policies
@@ -619,8 +619,8 @@ pub enum PreemptionPolicy {
     None,
     Cooperative,
     Preemptive,
-    Priority_Based,
-    Cost_Based,
+    PriorityBased,
+    CostBased,
 }
 
 /// Optimization recommendation
@@ -1601,10 +1601,10 @@ pub enum LandscapeType {
 #[derive(Debug, Clone, PartialEq)]
 pub enum GlobalStructure {
     FunnelLike,
-    Golf_Course,
+    GolfCourse,
     Archipelago,
-    Massif_Central,
-    Needle_In_Haystack,
+    MassifCentral,
+    NeedleInHaystack,
 }
 
 /// Convergence properties
@@ -2947,7 +2947,7 @@ pub enum EvictionPolicy {
     FIFO,
     TTL,
     Adaptive,
-    Confidence_Based,
+    ConfidenceBased,
 }
 
 impl ProviderOptimizationEngine {
@@ -3767,8 +3767,8 @@ impl Default for ErrorMitigationSettings {
 impl Default for HardwareOptimizationSettings {
     fn default() -> Self {
         Self {
-            qubit_mapping: QubitMappingStrategy::Noise_Adaptive,
-            routing_optimization: RoutingOptimizationStrategy::Fidelity_Aware,
+            qubit_mapping: QubitMappingStrategy::NoiseAdaptive,
+            routing_optimization: RoutingOptimizationStrategy::FidelityAware,
             calibration_optimization: CalibrationOptimizationStrategy::Dynamic,
             noise_adaptation: NoiseAdaptationStrategy::Statistical,
         }

@@ -64,3 +64,7 @@ mps = [] # Enable MPS simulator
 [[bin]]
 name = "test_stabilizer"
 path = "src/bin/test_stabilizer.rs"
+
+[[bin]]
+name = "debug_holographic_matrix"
+path = "debug_holographic_matrix.rs"

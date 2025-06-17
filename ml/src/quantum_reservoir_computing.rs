@@ -5,7 +5,7 @@
 //! resources. QRC uses quantum reservoirs to process temporal and sequential data
 //! with quantum advantages in memory capacity and computational complexity.
 
-use crate::error::Result;
+use crate::error::{MLError, Result};
 use ndarray::{s, Array1, Array2, Array3, ArrayD, Axis};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -282,7 +282,7 @@ impl Default for QRCTrainingConfig {
             batch_size: 32,
             validation_split: 0.2,
             early_stopping_patience: 10,
-            washout_period: 50,
+            washout_period: 5,
         }
     }
 }
@@ -465,11 +465,19 @@ impl QuantumReservoirComputer {
         for (input_sequence, target_sequence) in training_data {
             let reservoir_output = self.process_sequence(input_sequence)?;
 
-            // Skip washout period
-            for t in washout..reservoir_output.nrows() {
+            // Skip washout period, but ensure we have at least some data
+            let effective_washout = washout.min(reservoir_output.nrows().saturating_sub(1));
+            for t in effective_washout..reservoir_output.nrows() {
                 all_states.push(reservoir_output.row(t).to_owned());
                 all_targets.push(target_sequence.row(t).to_owned());
             }
+        }
+
+        // Check if we have any data to train on
+        if all_states.is_empty() {
+            return Err(MLError::MLOperationError(
+                "No training data available after washout period".to_string(),
+            ));
         }
 
         // Convert to arrays

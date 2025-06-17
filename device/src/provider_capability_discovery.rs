@@ -465,7 +465,7 @@ pub enum EndpointType {
     REST,
     GraphQL,
     WebSocket,
-    gRPC,
+    GRpc,
     Custom(String),
 }
 

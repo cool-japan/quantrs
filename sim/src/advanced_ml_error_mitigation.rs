@@ -431,7 +431,7 @@ impl AdvancedMLErrorMitigator {
 
     /// Create deep learning model
     pub fn create_deep_model(&self) -> Result<DeepMitigationNetwork> {
-        let layers = vec![64, 128, 64, 32, 1]; // Architecture for error prediction
+        let layers = vec![18, 128, 64, 32, 1]; // Architecture for error prediction
         let mut weights = Vec::new();
         let mut biases = Vec::new();
 
@@ -711,6 +711,10 @@ impl AdvancedMLErrorMitigator {
 
     /// Calculate circuit connectivity measure
     fn calculate_circuit_connectivity(&self, circuit: &InterfaceCircuit) -> Result<f64> {
+        if circuit.num_qubits == 0 {
+            return Ok(0.0);
+        }
+        
         let mut connectivity_sum = 0.0;
         let total_possible_connections = (circuit.num_qubits * (circuit.num_qubits - 1)) / 2;
 

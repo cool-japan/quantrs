@@ -8,8 +8,8 @@ use ndarray::{Array1, Array2, Axis};
 use quantrs2_ml::error_mitigation::{
     CDRModel, CliffordCircuit, CorrectionNetwork, CorrelationFunction, EntanglementProtocol,
     FidelityModel, NoisePredictorModel, NoiseSpectrum, QuantumCircuit, QuantumGate,
-    StrategySelectionPolicy, SymmetryGroup, TemporalCorrelationModel,
-    TemporalFluctuation, TrainingDataSet, VerificationCircuit,
+    StrategySelectionPolicy, SymmetryGroup, TemporalCorrelationModel, TemporalFluctuation,
+    TrainingDataSet, VerificationCircuit,
 };
 use quantrs2_ml::prelude::*;
 use std::collections::HashMap;

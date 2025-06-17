@@ -3,11 +3,11 @@
 //! This module provides the main trainer class for quantum machine learning
 //! algorithms with hardware-aware optimization and adaptive training strategies.
 
+use crate::prelude::HardwareOptimizations;
 use ndarray::Array1;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::prelude::HardwareOptimizations;
 
 use crate::circuit_interfaces::{CircuitInterface, InterfaceCircuit};
 use crate::device_noise_models::DeviceNoiseModel;

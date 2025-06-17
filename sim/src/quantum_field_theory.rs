@@ -615,24 +615,24 @@ impl QuantumFieldTheorySimulator {
         let start_x = 0;
         let start_t = 0;
 
-        // Go right (spatial direction)
-        for x in start_x..start_x + spatial_size {
-            path.push((x, start_t));
+        // Go right (spatial direction) - spatial_size links
+        for i in 0..spatial_size {
+            path.push((start_x + i, start_t));
         }
 
-        // Go up (temporal direction)
-        for t in start_t..start_t + temporal_size {
-            path.push((start_x + spatial_size - 1, t));
+        // Go up (temporal direction) - temporal_size links
+        for i in 0..temporal_size {
+            path.push((start_x + spatial_size - 1, start_t + i));
         }
 
-        // Go left
-        for x in (start_x..start_x + spatial_size - 1).rev() {
-            path.push((x, start_t + temporal_size - 1));
+        // Go left - spatial_size links
+        for i in 0..spatial_size {
+            path.push((start_x + spatial_size - 1 - i, start_t + temporal_size - 1));
         }
 
-        // Go down
-        for t in (start_t..start_t + temporal_size - 1).rev() {
-            path.push((start_x, t));
+        // Go down - temporal_size links to close the loop
+        for i in 0..temporal_size {
+            path.push((start_x, start_t + temporal_size - 1 - i));
         }
 
         Ok(path)

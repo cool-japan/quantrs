@@ -745,10 +745,7 @@ impl QuantumGravitySimulator {
                 let output_spin = input_spins.iter().sum::<f64>() / input_spins.len() as f64;
                 let dim = input_spins.len();
                 let clebsch_gordan = Array2::<Complex64>::from_shape_fn((dim, dim), |(_i, _j)| {
-                    Complex64::new(
-                        rand::random::<f64>() - 0.5,
-                        rand::random::<f64>() - 0.5,
-                    )
+                    Complex64::new(rand::random::<f64>() - 0.5, rand::random::<f64>() - 0.5)
                 });
 
                 intertwiners.insert(
@@ -2378,7 +2375,9 @@ mod tests {
         let violations = QuantumGravityUtils::validate_physical_constraints(&result);
 
         assert_eq!(violations.len(), 3);
-        assert!(violations.iter().any(|v| v.contains("negative energy")));
+        assert!(violations
+            .iter()
+            .any(|v| v.contains("Negative ground state energy")));
         assert!(violations.iter().any(|v| v.contains("volume")));
         assert!(violations.iter().any(|v| v.contains("curvature")));
     }

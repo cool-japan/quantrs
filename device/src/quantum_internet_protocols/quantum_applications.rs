@@ -367,7 +367,7 @@ pub struct APISpecification {
 pub enum SpecificationType {
     OpenAPI,
     GraphQL,
-    gRPC,
+    GRpc,
     Custom,
 }
 

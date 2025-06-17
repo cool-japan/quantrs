@@ -317,6 +317,11 @@ mod ultrathink_tests {
 
     #[test]
     fn test_distributed_gpu_state_vector_creation() {
+        if !DistributedGpuStateVector::is_gpu_available() {
+            eprintln!("Skipping GPU test: GPU backend not available");
+            return;
+        }
+
         let config = DistributedGpuConfig {
             num_gpus: 2,
             min_qubits_for_gpu: 2,
@@ -337,6 +342,11 @@ mod ultrathink_tests {
 
     #[test]
     fn test_distributed_gpu_partition_schemes() {
+        if !DistributedGpuStateVector::is_gpu_available() {
+            eprintln!("Skipping GPU test: GPU backend not available");
+            return;
+        }
+
         let config = DistributedGpuConfig::default();
 
         // Test different partition schemes
@@ -359,6 +369,11 @@ mod ultrathink_tests {
 
     #[test]
     fn test_distributed_gpu_hilbert_partitioning() {
+        if !DistributedGpuStateVector::is_gpu_available() {
+            eprintln!("Skipping GPU test: GPU backend not available");
+            return;
+        }
+
         let config = DistributedGpuConfig {
             num_gpus: 2,
             min_qubits_for_gpu: 2,
@@ -376,6 +391,11 @@ mod ultrathink_tests {
 
     #[test]
     fn test_distributed_gpu_synchronization_strategies() {
+        if !DistributedGpuStateVector::is_gpu_available() {
+            eprintln!("Skipping GPU test: GPU backend not available");
+            return;
+        }
+
         let sync_strategies = [
             SyncStrategy::AllReduce,
             SyncStrategy::RingReduce,
@@ -624,6 +644,11 @@ mod ultrathink_tests {
 
     #[test]
     fn test_integration_distributed_gpu_with_fusion() {
+        if !DistributedGpuStateVector::is_gpu_available() {
+            eprintln!("Skipping GPU test: GPU backend not available");
+            return;
+        }
+
         let gpu_config = DistributedGpuConfig {
             num_gpus: 2,
             min_qubits_for_gpu: 2,

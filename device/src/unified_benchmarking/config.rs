@@ -286,7 +286,7 @@ pub enum TwoQubitGate {
     CNOT,
     CZ,
     SWAP,
-    iSWAP,
+    ISwap,
     CRX(f64),
     CRY(f64),
     CRZ(f64),
@@ -299,7 +299,7 @@ impl PartialEq for TwoQubitGate {
             (TwoQubitGate::CNOT, TwoQubitGate::CNOT) => true,
             (TwoQubitGate::CZ, TwoQubitGate::CZ) => true,
             (TwoQubitGate::SWAP, TwoQubitGate::SWAP) => true,
-            (TwoQubitGate::iSWAP, TwoQubitGate::iSWAP) => true,
+            (TwoQubitGate::ISwap, TwoQubitGate::ISwap) => true,
             (TwoQubitGate::CRX(a), TwoQubitGate::CRX(b)) => (a - b).abs() < 1e-10,
             (TwoQubitGate::CRY(a), TwoQubitGate::CRY(b)) => (a - b).abs() < 1e-10,
             (TwoQubitGate::CRZ(a), TwoQubitGate::CRZ(b)) => (a - b).abs() < 1e-10,
@@ -316,7 +316,7 @@ impl std::hash::Hash for TwoQubitGate {
             TwoQubitGate::CNOT => 0u8.hash(state),
             TwoQubitGate::CZ => 1u8.hash(state),
             TwoQubitGate::SWAP => 2u8.hash(state),
-            TwoQubitGate::iSWAP => 3u8.hash(state),
+            TwoQubitGate::ISwap => 3u8.hash(state),
             TwoQubitGate::CRX(f) => {
                 4u8.hash(state);
                 (*f as u64).hash(state); // Approximate hash for f64

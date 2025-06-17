@@ -49,6 +49,23 @@ pub enum IndexType {
     Auxiliary,
 }
 
+/// Circuit type for optimization
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CircuitType {
+    /// Linear circuit (e.g., CNOT chain)
+    Linear,
+    /// Star-shaped circuit (e.g., GHZ state preparation)
+    Star,
+    /// Layered circuit (e.g., Quantum Fourier Transform)
+    Layered,
+    /// Quantum Fourier Transform circuit with specialized optimization
+    QFT,
+    /// QAOA circuit with specialized optimization
+    QAOA,
+    /// General circuit with no specific structure
+    General,
+}
+
 /// Tensor network representation of a quantum circuit
 #[derive(Debug, Clone)]
 pub struct TensorNetwork {
@@ -62,6 +79,18 @@ pub struct TensorNetwork {
     next_tensor_id: usize,
     /// Next available index ID
     next_index_id: usize,
+    /// Maximum bond dimension for approximations
+    pub max_bond_dimension: usize,
+    /// Detected circuit type for optimization
+    pub detected_circuit_type: CircuitType,
+    /// Whether QFT optimization is enabled
+    pub using_qft_optimization: bool,
+    /// Whether QAOA optimization is enabled
+    pub using_qaoa_optimization: bool,
+    /// Whether linear optimization is enabled
+    pub using_linear_optimization: bool,
+    /// Whether star optimization is enabled
+    pub using_star_optimization: bool,
 }
 
 /// Tensor network simulator
@@ -429,6 +458,12 @@ impl TensorNetwork {
             num_qubits,
             next_tensor_id: 0,
             next_index_id: 0,
+            max_bond_dimension: 16,
+            detected_circuit_type: CircuitType::General,
+            using_qft_optimization: false,
+            using_qaoa_optimization: false,
+            using_linear_optimization: false,
+            using_star_optimization: false,
         }
     }
 
@@ -780,6 +815,79 @@ impl TensorNetwork {
         }
 
         tensor.data = new_data;
+
+        Ok(())
+    }
+
+    /// Apply a single-qubit gate to the tensor network
+    pub fn apply_gate(&mut self, gate_tensor: Tensor, target_qubit: usize) -> Result<()> {
+        if target_qubit >= self.num_qubits {
+            return Err(SimulatorError::InvalidInput(format!(
+                "Target qubit {} is out of range for {} qubits",
+                target_qubit, self.num_qubits
+            )));
+        }
+
+        // Add the gate tensor to the network
+        let gate_id = self.add_tensor(gate_tensor);
+
+        // Initialize the qubit with |0⟩ state if not already present
+        let mut qubit_tensor_id = None;
+        for (id, tensor) in &self.tensors {
+            if tensor.label == format!("qubit_{}", target_qubit) {
+                qubit_tensor_id = Some(*id);
+                break;
+            }
+        }
+
+        if qubit_tensor_id.is_none() {
+            // Create initial |0⟩ state for this qubit
+            let qubit_state = Tensor::identity(target_qubit, &mut self.next_index_id);
+            let state_id = self.add_tensor(qubit_state);
+            qubit_tensor_id = Some(state_id);
+        }
+
+        Ok(())
+    }
+
+    /// Apply a two-qubit gate to the tensor network  
+    pub fn apply_two_qubit_gate(
+        &mut self,
+        gate_tensor: Tensor,
+        control_qubit: usize,
+        target_qubit: usize,
+    ) -> Result<()> {
+        if control_qubit >= self.num_qubits || target_qubit >= self.num_qubits {
+            return Err(SimulatorError::InvalidInput(format!(
+                "Qubit indices {}, {} are out of range for {} qubits",
+                control_qubit, target_qubit, self.num_qubits
+            )));
+        }
+
+        if control_qubit == target_qubit {
+            return Err(SimulatorError::InvalidInput(
+                "Control and target qubits must be different".to_string(),
+            ));
+        }
+
+        // Add the gate tensor to the network
+        let gate_id = self.add_tensor(gate_tensor);
+
+        // Initialize qubits with |0⟩ state if not already present
+        for &qubit in &[control_qubit, target_qubit] {
+            let mut qubit_exists = false;
+            for tensor in self.tensors.values() {
+                if tensor.label == format!("qubit_{}", qubit) {
+                    qubit_exists = true;
+                    break;
+                }
+            }
+
+            if !qubit_exists {
+                let qubit_state = Tensor::identity(qubit, &mut self.next_index_id);
+                self.add_tensor(qubit_state);
+            }
+        }
 
         Ok(())
     }
@@ -1402,7 +1510,7 @@ mod tests {
 
     #[test]
     fn test_contraction_strategies() {
-        let sim = TensorNetworkSimulator::new(2);
+        let _sim = TensorNetworkSimulator::new(2);
 
         // Test different strategies don't crash
         let strat1 = ContractionStrategy::Sequential;
