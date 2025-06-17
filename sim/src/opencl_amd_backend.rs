@@ -15,19 +15,13 @@
 //! - Performance profiling and optimization
 //! - Fallback to CPU when GPU is unavailable
 
-use ndarray::{Array1, Array2, ArrayView1};
 use num_complex::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
-use std::ffi::{CStr, CString};
-use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
+use crate::prelude::{StateVectorSimulator, SimulatorError};
 
-use crate::circuit_interfaces::{
-    CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
-};
-use crate::error::{Result, SimulatorError};
-use crate::statevector::StateVectorSimulator;
+use crate::error::Result;
 
 /// OpenCL platform information
 #[derive(Debug, Clone)]

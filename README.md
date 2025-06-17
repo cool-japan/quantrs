@@ -15,17 +15,7 @@
 
 QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction.
 
-**Latest Release**: v0.1.0-alpha.5 features revolutionary quantum computing enhancements including:
-- Advanced ZX-calculus optimization with graph-based quantum circuit optimization
-- GPU kernel optimization with CUDA tensor cores and WebGPU shaders for specialized gates
-- Quantum approximate optimization algorithms (QAOA) for MaxCut and TSP problems
-- Quantum machine learning for NLP with attention mechanisms and embeddings
-- Gate compilation caching with persistent storage and compression
-- Adaptive SIMD dispatch with runtime CPU feature detection
-- Meta-learning optimization for quantum circuit training
-- Dynamic topology reconfiguration for adaptive quantum computing
-- Advanced testing framework with property-based verification
-- Complete module integration across simulation, device, and ML components
+**Current Version**: v0.1.0-alpha.5
 
 ## Features
 

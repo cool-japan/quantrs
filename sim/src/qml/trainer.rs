@@ -3,21 +3,17 @@
 //! This module provides the main trainer class for quantum machine learning
 //! algorithms with hardware-aware optimization and adaptive training strategies.
 
-use ndarray::{Array1, Array2, Array3, Array4, ArrayView1, Axis};
-use num_complex::Complex64;
+use ndarray::Array1;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
+use crate::prelude::HardwareOptimizations;
 
-use crate::circuit_interfaces::{
-    CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
-};
+use crate::circuit_interfaces::{CircuitInterface, InterfaceCircuit};
 use crate::device_noise_models::DeviceNoiseModel;
-use crate::error::{Result, SimulatorError};
-use crate::statevector::StateVectorSimulator;
+use crate::error::Result;
 
-use super::circuit::{HardwareOptimizations, ParameterizedQuantumCircuit};
+use super::circuit::ParameterizedQuantumCircuit;
 use super::config::{GradientMethod, HardwareArchitecture, OptimizerType, QMLConfig};
 
 /// Quantum machine learning trainer

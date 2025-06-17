@@ -7,15 +7,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Result, SimulatorError};
 
-#[cfg(all(feature = "advanced_math", feature = "mixed_precision"))]
-use scirs2_linalg::mixed_precision::{AdaptiveStrategy, MixedPrecisionContext, PrecisionLevel};
+// Note: scirs2_linalg mixed_precision module temporarily unavailable
+// #[cfg(feature = "advanced_math")]
+// use scirs2_linalg::mixed_precision::{AdaptiveStrategy, MixedPrecisionContext, PrecisionLevel};
 
 // Placeholder types when the feature is not available
-#[cfg(not(all(feature = "advanced_math", feature = "mixed_precision")))]
 #[derive(Debug)]
 pub struct MixedPrecisionContext;
 
-#[cfg(not(all(feature = "advanced_math", feature = "mixed_precision")))]
 #[derive(Debug)]
 pub enum PrecisionLevel {
     F16,
@@ -24,14 +23,12 @@ pub enum PrecisionLevel {
     Adaptive,
 }
 
-#[cfg(not(all(feature = "advanced_math", feature = "mixed_precision")))]
 #[derive(Debug)]
 pub enum AdaptiveStrategy {
     ErrorBased(f64),
     Fixed(PrecisionLevel),
 }
 
-#[cfg(not(all(feature = "advanced_math", feature = "mixed_precision")))]
 impl MixedPrecisionContext {
     pub fn new(_strategy: AdaptiveStrategy) -> Result<Self> {
         Err(SimulatorError::UnsupportedOperation(

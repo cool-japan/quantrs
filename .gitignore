@@ -77,3 +77,5 @@ py/dist/
 # Generated files
 py/python/_quantrs2/
 py/python/**/*.so
+sim/clippy_output.txt
+sim/clippy_output.txt

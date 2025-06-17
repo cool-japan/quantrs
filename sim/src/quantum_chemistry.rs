@@ -15,20 +15,18 @@
 //! - Basis set optimization for quantum hardware
 //! - Active space selection and orbital optimization
 
-use ndarray::{Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};
+use ndarray::{Array1, Array2, Array4};
 use ndarray_linalg::Norm;
 use num_complex::Complex64;
-use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::f64::consts::PI;
 
 use crate::circuit_interfaces::{
-    CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
+    InterfaceCircuit, InterfaceGate, InterfaceGateType,
 };
 use crate::error::{Result, SimulatorError};
 use crate::fermionic_simulation::{
-    FermionicHamiltonian, FermionicOperator, FermionicString, JordanWignerTransform,
+    FermionicHamiltonian, FermionicOperator, FermionicString,
 };
 use crate::pauli::{PauliOperator, PauliOperatorSum, PauliString};
 use crate::scirs2_integration::SciRS2Backend;
@@ -504,7 +502,7 @@ impl QuantumChemistrySimulator {
     /// Compute two-electron integrals
     fn compute_two_electron_integrals(
         &self,
-        molecule: &Molecule,
+        _molecule: &Molecule,
         num_orbitals: usize,
     ) -> Result<Array4<f64>> {
         let mut integrals = Array4::zeros((num_orbitals, num_orbitals, num_orbitals, num_orbitals));
@@ -706,7 +704,7 @@ impl QuantumChemistrySimulator {
             self.build_fock_matrix(&mut fock_matrix, &density_matrix, hamiltonian)?;
 
             // Diagonalize Fock matrix
-            let (energies, orbitals) = self.diagonalize_fock_matrix(&fock_matrix)?;
+            let (_energies, orbitals) = self.diagonalize_fock_matrix(&fock_matrix)?;
 
             // Build new density matrix
             let new_density = self.build_density_matrix(&orbitals, num_electrons)?;
@@ -796,7 +794,7 @@ impl QuantumChemistrySimulator {
 
     /// Diagonalize Fock matrix to get molecular orbitals
     fn diagonalize_fock_matrix(&self, fock: &Array2<f64>) -> Result<(Array1<f64>, Array2<f64>)> {
-        if let Some(ref backend) = self.backend {
+        if let Some(ref _backend) = self.backend {
             // Use SciRS2 for optimized eigenvalue decomposition
             use crate::scirs2_integration::{Matrix, MemoryPool, LAPACK};
             use num_complex::Complex64;
@@ -1041,16 +1039,13 @@ impl QuantumChemistrySimulator {
 
         // Create Hartree-Fock determinant
         let mut configuration = 0usize;
-        let mut electron_count = 0;
 
         for i in 0..hf_result.molecular_orbitals.num_orbitals {
             if hf_result.molecular_orbitals.occupations[i] >= 1.0 {
                 configuration |= 1 << (2 * i); // Alpha electron
-                electron_count += 1;
             }
             if hf_result.molecular_orbitals.occupations[i] >= 2.0 {
                 configuration |= 1 << (2 * i + 1); // Beta electron
-                electron_count += 1;
             }
         }
 

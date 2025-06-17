@@ -6,18 +6,15 @@
 //! duality. This framework enables exploration of quantum spacetime dynamics and
 //! gravitational quantum effects at the Planck scale.
 
-use ndarray::{s, Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};
+use ndarray::{s, Array1, Array2, Array3, Array4};
 use num_complex::Complex64;
 use rand::{thread_rng, Rng};
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 use std::f64::consts::PI;
-use std::sync::{Arc, Mutex, RwLock};
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
-use crate::statevector::StateVectorSimulator;
 
 /// Quantum gravity simulation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -708,12 +705,12 @@ impl QuantumGravitySimulator {
 
             // Create nodes
             for i in 0..lqg_config.num_nodes {
-                let valence = (thread_rng().gen::<f64>() * 6.0) as usize + 3; // 3-8 valence
+                let valence = (rand::random::<f64>() * 6.0) as usize + 3; // 3-8 valence
                 let position = (0..self.config.spatial_dimensions)
-                    .map(|_| thread_rng().gen::<f64>() * 10.0)
+                    .map(|_| rand::random::<f64>() * 10.0)
                     .collect();
                 let quantum_numbers = (0..valence)
-                    .map(|_| thread_rng().gen::<f64>() * lqg_config.max_spin)
+                    .map(|_| rand::random::<f64>() * lqg_config.max_spin)
                     .collect();
 
                 nodes.push(SpinNetworkNode {
@@ -729,7 +726,7 @@ impl QuantumGravitySimulator {
                 let source = thread_rng().gen_range(0..lqg_config.num_nodes);
                 let target = thread_rng().gen_range(0..lqg_config.num_nodes);
                 if source != target {
-                    let spin = thread_rng().gen::<f64>() * lqg_config.max_spin;
+                    let spin = rand::random::<f64>() * lqg_config.max_spin;
                     let length = (spin * (spin + 1.0)).sqrt() * self.config.planck_length;
 
                     edges.push(SpinNetworkEdge {
@@ -747,10 +744,10 @@ impl QuantumGravitySimulator {
                 let input_spins = node.quantum_numbers.clone();
                 let output_spin = input_spins.iter().sum::<f64>() / input_spins.len() as f64;
                 let dim = input_spins.len();
-                let clebsch_gordan = Array2::<Complex64>::from_shape_fn((dim, dim), |(i, j)| {
+                let clebsch_gordan = Array2::<Complex64>::from_shape_fn((dim, dim), |(_i, _j)| {
                     Complex64::new(
-                        thread_rng().gen::<f64>() - 0.5,
-                        thread_rng().gen::<f64>() - 0.5,
+                        rand::random::<f64>() - 0.5,
+                        rand::random::<f64>() - 0.5,
                     )
                 });
 
@@ -792,9 +789,8 @@ impl QuantumGravitySimulator {
 
     /// Generate random SU(2) element
     fn generate_su2_element(&self) -> Result<Array2<Complex64>> {
-        let mut rng = thread_rng();
-        let a = Complex64::new(rng.gen::<f64>() - 0.5, rng.gen::<f64>() - 0.5);
-        let b = Complex64::new(rng.gen::<f64>() - 0.5, rng.gen::<f64>() - 0.5);
+        let a = Complex64::new(rand::random::<f64>() - 0.5, rand::random::<f64>() - 0.5);
+        let b = Complex64::new(rand::random::<f64>() - 0.5, rand::random::<f64>() - 0.5);
 
         // Normalize to ensure det = 1
         let norm = (a.norm_sqr() + b.norm_sqr()).sqrt();
@@ -841,10 +837,10 @@ impl QuantumGravitySimulator {
                     (vertices.len()..vertices.len() + vertices_per_slice).collect();
 
                 // Create vertices for this time slice
-                for i in 0..vertices_per_slice {
+                for _i in 0..vertices_per_slice {
                     let id = vertices.len();
                     let spatial_coords: Vec<f64> = (0..self.config.spatial_dimensions)
-                        .map(|_| thread_rng().gen::<f64>() * 10.0)
+                        .map(|_| rand::random::<f64>() * 10.0)
                         .collect();
                     let mut coordinates = vec![time]; // Time coordinate first
                     coordinates.extend(spatial_coords);
@@ -858,7 +854,7 @@ impl QuantumGravitySimulator {
                 }
 
                 let spatial_volume = vertices_per_slice as f64 * self.config.planck_length.powi(3);
-                let curvature = thread_rng().gen::<f64>() * 0.1 - 0.05; // Small curvature
+                let curvature = rand::random::<f64>() * 0.1 - 0.05; // Small curvature
 
                 time_slices.push(TimeSlice {
                     time,
@@ -875,13 +871,13 @@ impl QuantumGravitySimulator {
                     .map(|_| thread_rng().gen_range(0..vertices.len()))
                     .collect();
 
-                let simplex_type = if thread_rng().gen::<f64>() > 0.5 {
+                let simplex_type = if rand::random::<f64>() > 0.5 {
                     SimplexType::Spacelike
                 } else {
                     SimplexType::Timelike
                 };
 
-                let volume = thread_rng().gen::<f64>() * self.config.planck_length.powi(4);
+                let volume = rand::random::<f64>() * self.config.planck_length.powi(4);
                 let action =
                     self.calculate_simplex_action(&vertices, &simplex_vertices, simplex_type)?;
 
@@ -923,7 +919,7 @@ impl QuantumGravitySimulator {
         &self,
         vertices: &[SpacetimeVertex],
         simplex_vertices: &[usize],
-        simplex_type: SimplexType,
+        _simplex_type: SimplexType,
     ) -> Result<f64> {
         // Simplified action calculation for discrete spacetime
         let volume = self.calculate_simplex_volume(vertices, simplex_vertices)?;
@@ -1198,11 +1194,11 @@ impl QuantumGravitySimulator {
             operator_dimensions.insert("scalar_primary".to_string(), 2.0);
             operator_dimensions.insert(
                 "stress_tensor".to_string(),
-                (ads_cft_config.cft_dimension as f64),
+                ads_cft_config.cft_dimension as f64,
             );
             operator_dimensions.insert(
                 "current".to_string(),
-                (ads_cft_config.cft_dimension as f64) - 1.0,
+                ads_cft_config.cft_dimension as f64 - 1.0,
             );
 
             let correlation_functions = HashMap::new(); // Will be computed later
@@ -1421,7 +1417,7 @@ impl QuantumGravitySimulator {
         let mut energy = 0.0;
 
         // Kinetic energy from holonomies
-        for (_, holonomy) in &spin_network.holonomies {
+        for holonomy in spin_network.holonomies.values() {
             let trace = holonomy.matrix[[0, 0]] + holonomy.matrix[[1, 1]];
             energy += -trace.re; // Real part of trace
         }
@@ -1688,7 +1684,7 @@ impl QuantumGravitySimulator {
 
             if final_g > 0.0 && initial_g > 0.0 {
                 let dimension = 4.0 + 2.0 * (final_g / initial_g).ln();
-                Ok(dimension.max(2.0).min(6.0)) // Reasonable bounds
+                Ok(dimension.clamp(2.0, 6.0)) // Reasonable bounds
             } else {
                 Ok(4.0)
             }
@@ -1810,7 +1806,7 @@ impl QuantumGravitySimulator {
         let dimension = 5; // AdS_5 volume
 
         // Simple approximation for gamma function
-        let half_dim = dimension as f64 / 2.0;
+        let _half_dim = dimension as f64 / 2.0;
         let gamma_approx = if dimension % 2 == 0 {
             // For integer values: gamma(n) = (n-1)!
             (1..=(dimension / 2)).map(|i| i as f64).product::<f64>()
@@ -1818,7 +1814,7 @@ impl QuantumGravitySimulator {
             // For half-integer values: gamma(n+1/2) = sqrt(π) * (2n)! / (4^n * n!)
             let n = dimension / 2;
             PI.sqrt() * (1..=(2 * n)).map(|i| i as f64).product::<f64>()
-                / (4.0_f64.powi(n as i32) * (1..=n).map(|i| i as f64).product::<f64>())
+                / (4.0_f64.powi(n) * (1..=n).map(|i| i as f64).product::<f64>())
         };
 
         Ok(PI.powi(dimension / 2) * ads_radius.powi(dimension) / gamma_approx)
@@ -1936,8 +1932,10 @@ pub fn benchmark_quantum_gravity_simulation() -> Result<GravityBenchmarkResults>
     let mut timings = HashMap::new();
 
     for approach in approaches {
-        let mut config = QuantumGravityConfig::default();
-        config.gravity_approach = approach;
+        let config = QuantumGravityConfig {
+            gravity_approach: approach,
+            ..Default::default()
+        };
 
         let start_time = std::time::Instant::now();
         let mut simulator = QuantumGravitySimulator::new(config);

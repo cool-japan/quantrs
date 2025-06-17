@@ -5,14 +5,13 @@
 //! techniques while running on classical computers. These algorithms often provide advantages
 //! over traditional classical algorithms by incorporating quantum-inspired heuristics.
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
+use ndarray::{Array1, Array2, Axis};
 use num_complex::Complex64;
 use rand::{thread_rng, Rng};
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 use std::f64::consts::PI;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
@@ -1071,7 +1070,7 @@ impl QuantumInspiredFramework {
 
         // Note: For seeded RNG we would need to restructure to store the RNG
         // For now, just use thread_rng() and ignore the seed
-        let mut rng = thread_rng();
+        let rng = thread_rng();
 
         Ok(Self {
             config,
@@ -2111,7 +2110,7 @@ mod tests {
         let config = QuantumInspiredConfig::default();
         let mut framework = QuantumInspiredFramework::new(config).unwrap();
 
-        let solution = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0]);
+        let solution = Array1::from(vec![1.0, 2.0, 3.0, 4.0]);
         let result = framework.evaluate_objective(&solution);
         assert!(result.is_ok());
         assert!(result.unwrap() > 0.0);

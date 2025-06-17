@@ -7,13 +7,10 @@ use ndarray::Array1;
 use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
-
 use crate::adaptive_gate_fusion::{FusedGateBlock, GateType, QuantumGate};
 use crate::error::{Result, SimulatorError};
-use crate::scirs2_integration::SciRS2Backend;
 
-use super::analysis::{PerformanceMetrics, PrecisionAnalysis, PrecisionAnalyzer};
+use super::analysis::{PrecisionAnalysis, PrecisionAnalyzer};
 use super::config::{MixedPrecisionConfig, QuantumPrecision};
 use super::state_vector::MixedPrecisionStateVector;
 

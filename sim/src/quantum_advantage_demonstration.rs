@@ -5,18 +5,17 @@
 //! quantum supremacy tests, quantum advantage benchmarks, and comparative
 //! analysis with classical algorithms.
 
-use ndarray::{Array1, Array2, ArrayView1};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rand::Rng;
 use rayon::prelude::*;
+use crate::prelude::SimulatorError;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};
-use crate::error::{Result, SimulatorError};
-use crate::quantum_supremacy::{QuantumSupremacyVerifier, RandomCircuit};
+use crate::error::Result;
 
 /// Types of quantum advantage demonstrations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

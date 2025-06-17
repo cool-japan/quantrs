@@ -212,7 +212,7 @@ fn quantum_reservoir_computing_demonstration() -> Result<()> {
         input_encoding: InputEncoding {
             encoding_type: EncodingType::Amplitude,
             normalization: NormalizationType::L2,
-            feature_mapping: FeatureMapping::Identity,
+            feature_mapping: FeatureMapping::Linear,
             temporal_encoding: true,
         },
         training_config: QRCTrainingConfig {
@@ -292,7 +292,7 @@ fn quantum_graph_attention_demonstration() -> Result<()> {
             epochs: 150,
             learning_rate: 0.0005,
             batch_size: 8,
-            loss_function: LossFunction::CategoricalCrossentropy,
+            loss_function: LossFunction::CrossEntropy,
             ..Default::default()
         },
         ..Default::default()

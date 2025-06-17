@@ -741,8 +741,8 @@ pub enum CircuitFoldingMethod {
 
 #[derive(Debug, Clone)]
 pub struct QuantumCircuit {
-    gates: Vec<QuantumGate>,
-    qubits: usize,
+    pub gates: Vec<QuantumGate>,
+    pub qubits: usize,
 }
 
 impl QuantumCircuit {
@@ -765,9 +765,9 @@ impl QuantumCircuit {
 
 #[derive(Debug, Clone)]
 pub struct QuantumGate {
-    name: String,
-    qubits: Vec<usize>,
-    parameters: Array1<f64>,
+    pub name: String,
+    pub qubits: Vec<usize>,
+    pub parameters: Array1<f64>,
 }
 
 // Default implementations
@@ -791,6 +791,15 @@ impl Default for AdaptiveConfig {
             strategy_switching_policy: SwitchingPolicy::PerformanceBased,
             online_calibration: true,
             feedback_mechanism: FeedbackMechanism::default(),
+        }
+    }
+}
+
+impl Default for PerformanceTracker {
+    fn default() -> Self {
+        Self {
+            metrics_history: Vec::new(),
+            current_performance: PerformanceMetrics::new(),
         }
     }
 }

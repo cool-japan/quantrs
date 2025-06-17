@@ -4,7 +4,6 @@
 //! hardware-aware optimizations for different quantum computing architectures.
 
 use ndarray::{Array1, Array2};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use super::config::HardwareArchitecture;

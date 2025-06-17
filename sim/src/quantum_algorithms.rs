@@ -6,7 +6,7 @@
 //! control. All algorithms are optimized for large-scale simulation using advanced
 //! techniques like circuit synthesis, error mitigation, and resource estimation.
 
-use ndarray::{Array1, Array2, ArrayView1};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};

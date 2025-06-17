@@ -24,17 +24,15 @@
 //! - **Advanced Quantum Dynamics**: Unitary evolution, open system dynamics, NISQ simulation,
 //!   adiabatic processes, and quantum error correction integration
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, Mutex};
 
 use crate::circuit_interfaces::{
     CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
 };
-use crate::error::{Result, SimulatorError};
+use crate::error::Result;
 use crate::hardware_aware_qml::AdaptationState;
 use crate::quantum_reservoir_computing_enhanced::MemoryMetrics;
 use crate::statevector::StateVectorSimulator;
@@ -2084,7 +2082,7 @@ pub fn benchmark_quantum_reservoir_computing() -> Result<HashMap<String, f64>> {
     let mut results = HashMap::new();
 
     // Test different reservoir configurations
-    let configs = vec![
+    let configs = [
         QuantumReservoirConfig {
             num_qubits: 6,
             architecture: QuantumReservoirArchitecture::RandomCircuit,
@@ -2102,10 +2100,10 @@ pub fn benchmark_quantum_reservoir_computing() -> Result<HashMap<String, f64>> {
         },
     ];
 
-    for (i, config) in configs.into_iter().enumerate() {
+    for (i, config) in configs.iter().enumerate() {
         let start = std::time::Instant::now();
 
-        let mut qrc = QuantumReservoirComputer::new(config)?;
+        let mut qrc = QuantumReservoirComputer::new(config.clone())?;
 
         // Generate test data
         let training_data = ReservoirTrainingData {
@@ -2139,7 +2137,6 @@ pub fn benchmark_quantum_reservoir_computing() -> Result<HashMap<String, f64>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use approx::assert_abs_diff_eq;
 
     #[test]
     fn test_quantum_reservoir_creation() {
@@ -2175,7 +2172,7 @@ mod tests {
 
     #[test]
     fn test_different_architectures() {
-        let architectures = vec![
+        let architectures = [
             QuantumReservoirArchitecture::RandomCircuit,
             QuantumReservoirArchitecture::SpinChain,
             QuantumReservoirArchitecture::TransverseFieldIsing,
@@ -2239,7 +2236,7 @@ mod tests {
 
     #[test]
     fn test_measurement_strategies() {
-        let measurements = vec![
+        let measurements = [
             OutputMeasurement::PauliExpectation,
             OutputMeasurement::Probability,
             OutputMeasurement::Correlations,
@@ -2254,14 +2251,14 @@ mod tests {
                 ..Default::default()
             };
 
-            let mut qrc = QuantumReservoirComputer::new(config);
+            let qrc = QuantumReservoirComputer::new(config);
             assert!(qrc.is_ok(), "Failed for measurement: {:?}", measurement);
         }
     }
 
     #[test]
     fn test_reservoir_dynamics() {
-        let dynamics = vec![
+        let dynamics = [
             ReservoirDynamics::Unitary,
             ReservoirDynamics::Open,
             ReservoirDynamics::NISQ,

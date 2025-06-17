@@ -4,10 +4,7 @@
 //! optimizations, and NUMA-aware memory management for high-performance quantum
 //! circuit simulation with large state vectors.
 
-use ndarray::{Array1, Array2, ArrayView1, ArrayViewMut1};
-use num_complex::Complex64;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
 use std::collections::{BTreeMap, HashMap, VecDeque};
@@ -15,9 +12,8 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::cache_optimized_layouts::{CacheHierarchyConfig, CacheOptimizedStateVector};
-use crate::error::{Result, SimulatorError};
-use crate::memory_bandwidth_optimization::{MemoryOptimizationConfig, OptimizedStateVector};
+use crate::error::Result;
+use crate::memory_bandwidth_optimization::OptimizedStateVector;
 
 /// Prefetching strategies for memory access optimization
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -4,17 +4,16 @@
 //! optimization problems, including advanced problem encodings, multi-level QAOA,
 //! and hardware-aware optimizations.
 
-use ndarray::{Array1, Array2, ArrayView1};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rand::Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};
-use crate::error::{Result, SimulatorError};
+use crate::error::Result;
 
 /// QAOA problem types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

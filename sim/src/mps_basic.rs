@@ -2,13 +2,12 @@
 //!
 //! This provides a simplified MPS implementation that doesn't require ndarray-linalg
 
-use ndarray::{array, s, Array1, Array2, Array3};
+use ndarray::{array, s, Array2, Array3};
 use num_complex::Complex64;
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
-    qubit::QubitId,
     register::Register,
 };
 use rand::{thread_rng, Rng};

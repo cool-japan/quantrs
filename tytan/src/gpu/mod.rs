@@ -78,7 +78,7 @@ pub fn gpu_solve_qubo(
     // With SciRS2 integration
     #[cfg(feature = "scirs")]
     {
-        use scirs2_core::gpu::{GpuArray, GpuDevice};
+        use crate::scirs_stub::scirs2_core::gpu::{GpuArray, GpuDevice};
 
         // Initialize GPU device
         let device = GpuDevice::new(0).map_err(|e| GpuError::NotAvailable(e.to_string()))?;
@@ -328,8 +328,7 @@ pub fn gpu_solve_hobo(
     shots: usize,
     temperature_steps: usize,
 ) -> GpuResult<Vec<SampleResult>> {
-    use scirs2_core::gpu::{GpuArray, GpuDevice};
-    use scirs2_linalg::tensor_contraction::cp;
+    use crate::scirs_stub::scirs2_core::gpu::{GpuArray, GpuDevice};
 
     let n_vars = var_map.len();
     let dim = tensor.ndim();

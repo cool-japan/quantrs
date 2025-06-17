@@ -15,14 +15,14 @@ QuantRS2-ML is the comprehensive quantum machine learning library of the [QuantR
 - **Quantum Autoencoders (QVAE)**: Dimensionality reduction and representation learning
 
 ### Advanced Deep Learning Architectures
-- **Quantum Transformers**: Attention mechanisms with quantum enhancement
+- **Quantum Transformers**: Attention mechanisms with quantum features
 - **Quantum LSTM Networks**: Recurrent architectures for sequence modeling
 - **Quantum Graph Neural Networks**: Node and edge processing with quantum features
 - **Quantum Diffusion Models**: Generative modeling with quantum denoising
 - **Quantum Boltzmann Machines**: Energy-based models with quantum sampling
 
 ### Generative AI & Large Models
-- **Quantum GANs**: Enhanced generative adversarial networks with Wasserstein loss
+- **Quantum GANs**: Generative adversarial networks with Wasserstein loss
 - **Quantum Large Language Models**: Transformer-based text generation with quantum layers
 - **Quantum Computer Vision**: Image processing and recognition with quantum features
 - **Quantum Recommender Systems**: Collaborative filtering with quantum kernels
@@ -38,7 +38,7 @@ QuantRS2-ML is the comprehensive quantum machine learning library of the [QuantR
 ### Advanced Training & Optimization
 - **Meta-Learning**: Few-shot and transfer learning with quantum adaptation
 - **Neural Architecture Search**: Automated quantum circuit design
-- **Adversarial Training**: Robustness enhancement against quantum attacks
+- **Adversarial Training**: Robustness against quantum attacks
 - **Continual Learning**: Lifelong learning without catastrophic forgetting
 - **AutoML**: Automated hyperparameter optimization and model selection
 
@@ -48,7 +48,7 @@ The `quantrs2-ml` crate is included in the main QuantRS2 workspace. To use it in
 
 ```toml
 [dependencies]
-quantrs2-ml = "0.1.0-alpha.3"
+quantrs2-ml = "0.1.0-alpha.5"
 ```
 
 ## Usage Examples

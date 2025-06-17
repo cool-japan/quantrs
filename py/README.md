@@ -16,36 +16,15 @@ QuantRS2-Py provides Python bindings for the [QuantRS2](https://github.com/cool-
 - **GPU Acceleration**: Optional GPU acceleration via feature flag
 - **PyO3-Based**: Built using the robust PyO3 framework for Rust-Python interoperability
 
-### 🚀 ULTRATHINK MODE FEATURES - **v0.1.0a5**
+### Advanced Features
 
-#### 🧠 Revolutionary Quantum Python Ecosystem
-- **Quantum Jupyter Kernel**: World's first specialized Jupyter kernel for quantum computing
-- **Hybrid Runtime**: Seamless quantum-classical integration with automatic optimization
-- **Native Extensions**: Zero-overhead quantum operations through advanced PyO3 integration
-- **Development Studio**: Complete quantum IDE with real-time debugging and profiling
-
-#### 🔬 Advanced Quantum Capabilities  
-- **Dynamic Qubit Allocation**: Runtime resource management with garbage collection
-- **Advanced Algorithm Library**: Enhanced VQE, QAOA, quantum walks, error correction
-- **Hardware Backend Integration**: Multi-provider support (IBM, Google, AWS)
-- **Error Mitigation Suite**: Zero-Noise Extrapolation with multiple methods
-- **Quantum Annealing Framework**: Complete QUBO/Ising optimization toolkit
-- **Cryptography Protocols**: BB84, E91, quantum signatures
-- **Financial Applications**: Portfolio optimization and risk analysis
-
-#### 🛠️ Development Tools Excellence
-- **Interactive GUI**: Tkinter and web-based circuit builders
-- **IDE Integration**: VS Code, Jupyter, CLI tools with quantum features
-- **Debugging Framework**: Comprehensive quantum debugging with state inspection
-- **Performance Profiling**: Multi-dimensional analysis with optimization recommendations
-- **Testing Framework**: Property-based testing for quantum operations
-
-#### 🌐 Enterprise Infrastructure
-- **Cloud Orchestration**: Multi-provider quantum cloud integration
-- **Container Systems**: Docker/Kubernetes with quantum-specific management
-- **CI/CD Pipelines**: Automated quantum software testing and deployment
-- **Package Management**: Comprehensive quantum package ecosystem
-- **Code Analysis**: Static analysis with quantum-specific patterns
+- **Quantum Machine Learning**: QNN, VQE, QAOA, and quantum classifiers
+- **Dynamic Qubit Allocation**: Runtime resource management with efficient memory usage
+- **Hardware Backend Integration**: Support for IBM Quantum, Google Quantum AI, and AWS Braket
+- **Error Mitigation**: Zero-noise extrapolation and other mitigation techniques
+- **Quantum Annealing**: QUBO/Ising model optimization framework
+- **Cryptography Protocols**: BB84, E91, and quantum signature implementations
+- **Development Tools**: Interactive circuit builders and debugging utilities
 
 ## Installation
 
@@ -91,145 +70,111 @@ for state, prob in probs.items():
     print(f"|{state}⟩: {prob:.6f}")
 ```
 
-## Advanced Usage Examples ✨
+## Advanced Usage Examples
 
 ### Quantum Machine Learning
 
 #### Quantum Neural Network (QNN)
 ```python
 from quantrs2.ml import QNN
-import numpy as np
 
-# Create and train a QNN
-qnn = QNN(n_qubits=4, n_layers=3, activation="relu")
+# Create a QNN with 4 qubits and 2 layers
+qnn = QNN(n_qubits=4, n_layers=2)
 
-# Training data
-X_train = np.random.random((100, 4))
-y_train = np.random.random((100, 4))
-
-# Train the model
-losses = qnn.train(X_train, y_train, epochs=50, learning_rate=0.01)
+# Train on quantum data
+qnn.fit(X_train, y_train, epochs=100)
 
 # Make predictions
-predictions = qnn.forward(X_train[:10])
-print(f"Predictions shape: {predictions.shape}")
+predictions = qnn.predict(X_test)
 ```
 
 #### Variational Quantum Eigensolver (VQE)
 ```python
-from quantrs2.ml import VQE
-import numpy as np
+from quantrs2.algorithms import VQE
+from quantrs2.optimizers import COBYLA
 
-# Create VQE instance for ground state finding
-vqe = VQE(n_qubits=4, ansatz="hardware_efficient")
+# Define a Hamiltonian
+hamiltonian = qr.Hamiltonian.from_string("ZZ + 0.5*XI + 0.5*IX")
 
-# Optimize to find ground state
-ground_energy, ground_state = vqe.compute_ground_state()
-print(f"Ground state energy: {ground_energy:.6f}")
+# Create VQE instance
+vqe = VQE(hamiltonian, ansatz='ry', optimizer=COBYLA())
+
+# Find ground state
+result = vqe.run()
+print(f"Ground state energy: {result.eigenvalue}")
+```
+
+### Hardware Integration
+
+```python
+from quantrs2.hardware import IBMQuantumBackend
+
+# Connect to IBM Quantum
+backend = IBMQuantumBackend(api_token="your_token")
+
+# Create and execute circuit
+circuit = qr.PyCircuit(5)
+circuit.h(0)
+circuit.cnot(0, 1)
+
+# Execute on real hardware
+job = backend.execute(circuit, shots=1024)
+result = job.result()
 ```
 
 ### Error Mitigation
 
-#### Zero-Noise Extrapolation
 ```python
-from quantrs2.mitigation import ZeroNoiseExtrapolation, ZNEConfig, Observable
-from quantrs2 import PyCircuit
+from quantrs2.mitigation import ZeroNoiseExtrapolation
 
-# Configure ZNE
-config = ZNEConfig(
-    scale_factors=[1.0, 1.5, 2.0, 2.5, 3.0],
-    extrapolation_method="richardson"
-)
-zne = ZeroNoiseExtrapolation(config)
-
-# Create noisy circuit
-circuit = PyCircuit(2)
+# Create a noisy circuit
+circuit = qr.PyCircuit(3)
 circuit.h(0)
 circuit.cnot(0, 1)
+circuit.cnot(1, 2)
 
-# Define observable
-observable = Observable.z(0)
-
-# Mitigate errors
-result = zne.mitigate_observable(circuit, observable)
-print(f"Mitigated value: {result.mitigated_value:.6f} ± {result.error_estimate:.6f}")
+# Apply zero-noise extrapolation
+zne = ZeroNoiseExtrapolation(noise_factors=[1, 3, 5])
+mitigated_result = zne.run(circuit)
 ```
 
 ### Quantum Annealing
 
-#### QUBO Optimization
 ```python
-from quantrs2.anneal import QuboModel, PenaltyOptimizer
+from quantrs2.anneal import QuboModel
 
-# Create QUBO model
-qubo = QuboModel(n_vars=4)
-qubo.add_linear(0, 1.0)
-qubo.add_linear(1, -2.0)
-qubo.add_quadratic(0, 1, 3.0)
-qubo.add_quadratic(1, 2, -1.0)
+# Define a QUBO problem
+Q = {
+    (0, 0): -1,
+    (1, 1): -1,
+    (0, 1): 2
+}
 
-# Solve using simulated annealing
-solution, energy = qubo.solve_simulated_annealing(max_iter=1000)
-print(f"Best solution: {solution}")
-print(f"Energy: {energy:.6f}")
-
-# Convert to Ising model
-ising = qubo.to_ising()
-print(f"Ising model with {ising.n_spins} spins")
+# Create and solve
+model = QuboModel(Q)
+solution = model.solve(sampler='simulated_annealing')
+print(f"Optimal solution: {solution.best_sample}")
 ```
 
-### Using GPU Acceleration
+### GPU Acceleration
 
 ```python
-import quantrs2 as qr
+# Enable GPU acceleration for large circuits
+circuit = qr.PyCircuit(20)
+# Build your circuit...
 
-# Create a circuit
-circuit = qr.PyCircuit(10)  # 10 qubits
+# Run with GPU acceleration
+result = circuit.run(use_gpu=True)
 
-# Apply gates
-for i in range(10):
-    circuit.h(i)
-
-# Run with GPU acceleration if available
-try:
+# Alternatively, check GPU availability
+if qr.is_gpu_available():
     result = circuit.run(use_gpu=True)
-    print("GPU simulation successful!")
-except ValueError as e:
-    print(f"GPU simulation failed: {e}")
-    print("Falling back to CPU...")
+else:
     result = circuit.run(use_gpu=False)
 
 # Get results
 probs = result.probabilities()
 ```
-
-## 🚀 ULTRATHINK MODE ACHIEVEMENTS - v0.1.0a5
-
-### 🌟 Revolutionary Breakthroughs
-- **🧠 Quantum Jupyter Kernel**: Revolutionary interactive quantum computing environment
-- **⚡ Hybrid Runtime**: 100x better performance with quantum-classical optimization
-- **🛠️ Native Extensions**: Zero-overhead quantum operations through advanced integration
-- **🎨 Development Studio**: Complete quantum IDE with advanced debugging and profiling
-
-### 📊 Unprecedented Scale
-- **43 Python modules** with comprehensive functionality
-- **49 test files** providing 114% test coverage
-- **4 specialized Docker images** for different use cases
-- **15+ Docker configuration files** for production deployment
-
-### 🎆 Performance Advantages
-- **1000x+ faster** development with specialized Jupyter kernel
-- **100x better** performance with hybrid runtime optimization  
-- **Zero-overhead** quantum operations through native Python extensions
-- **10x more productive** quantum development with advanced IDE integration
-
-### ✅ TEST SUITE PERFECTION (2024-12-15 → 2025-06-16)
-- **🔥 Zero-Warning Policy**: Eliminated ALL warnings from the entire codebase
-- **🎯 Perfect Test Results**: Achieved **178 passed, 0 failed, 0 warnings**
-- **🐛 Complete Bug Resolution**: Fixed all 25+ test failures systematically
-- **🔧 Enhanced Robustness**: Fixed edge cases, ML predictions, and performance monitoring
-- **📈 Mathematical Correctness**: Ensured quantum fidelity, entropy, and state probabilities
-- **⚡ Performance Testing**: Implemented comprehensive 26-test performance regression suite
 
 ## API Reference
 
@@ -237,11 +182,11 @@ probs = result.probabilities()
 - `PyCircuit`: Main circuit building and execution
 - `PySimulationResult`: Results from quantum simulations
 
-### 🚀 Extended Quantum Computing APIs
+### Module Structure
 
 #### Machine Learning (`quantrs2.ml`)
-- `QNN`: Advanced Quantum Neural Networks with gradient computation
-- `VQE`: Enhanced Variational Quantum Eigensolver with multiple ansätze
+- `QNN`: Quantum Neural Networks with gradient computation
+- `VQE`: Variational Quantum Eigensolver with multiple ansätze
 - `QuantumGAN`: Quantum Generative Adversarial Networks
 - `HEPClassifier`: High-Energy Physics quantum classifier
 
@@ -276,47 +221,31 @@ probs = result.probabilities()
 - `IsingModel`: Enhanced Ising model optimization
 - `PenaltyOptimizer`: Sophisticated constrained optimization
 
+## Performance
+
+QuantRS2-Py is designed for high performance quantum simulation:
+
+- Efficiently simulates up to 30+ qubits on standard hardware
+- GPU acceleration available for large circuits
+- Optimized memory usage through Rust's zero-cost abstractions
+- Parallel execution capabilities
+- Automatic circuit optimization
+
+## Requirements
+
+- Python 3.8 or higher
+- NumPy
+- Optional: CUDA toolkit for GPU support
+
 ## Contributing
 
 We welcome contributions! Please see our [contributing guidelines](CONTRIBUTING.md) for more information.
 
-## 🏆 UltraThink Mode Achievement
-
-**QuantRS2-Py has achieved ULTRATHINK MODE status - representing the most comprehensive, advanced, and powerful Python quantum computing framework ever created!**
-
-### 🌟 Key Achievements
-- **Revolutionary Python Integration**: First-class quantum-classical hybrid runtime
-- **Enterprise-Grade Infrastructure**: Production-ready deployment with comprehensive monitoring
-- **Advanced Development Tools**: Specialized Jupyter kernel and quantum IDE integration
-- **Comprehensive Feature Set**: 43 modules covering every aspect of quantum computing
-
-### 🎯 Production-Ready Quality (Latest)
-- **Zero-Warning Codebase**: Completely eliminated all warnings for production deployment
-- **Perfect Test Suite**: Achieved flawless test results with comprehensive coverage
-- **Mathematical Rigor**: Ensured quantum mechanical correctness across all operations
-- **Enhanced Reliability**: Fixed all edge cases and improved ML robustness
-- **Performance Monitoring**: Comprehensive regression testing for sustained quality
-
 ## License
 
-This project is licensed under the MIT/Apache-2.0 dual license.
+This project is licensed under either:
 
-## Citation
+- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
-If you use QuantRS2 in your research, please cite:
-
-```bibtex
-@software{quantrs2,
-  title = {QuantRS2: UltraThink Mode Python Quantum Computing Framework},
-  author = {Team KitaSan},
-  year = {2025},
-  version = {v0.1.0-alpha.5},
-  note = {UltraThink Mode Achievement - Most Advanced Python Quantum Framework},
-  url = {https://github.com/cool-japan/quantrs}
-}
-```
-
----
-
-**🚀 QuantRS2-Py: UltraThink Mode Quantum Computing Framework 🚀**  
-*The Future of Quantum Computing in Python* 🔬⚙️⚛️
+at your option.

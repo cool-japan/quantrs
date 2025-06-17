@@ -5,11 +5,12 @@
 //! and computation for large quantum systems.
 
 use half::f16;
-use ndarray::{Array1, Array2, ArrayView1};
+use ndarray::Array1;
 use num_complex::{Complex32, Complex64};
 use std::fmt;
+use crate::prelude::SimulatorError;
 
-use crate::error::{Result, SimulatorError};
+use crate::error::Result;
 
 /// Precision level for state vector representation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

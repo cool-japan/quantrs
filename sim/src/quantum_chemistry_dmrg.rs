@@ -5,14 +5,12 @@
 //! electronic structure calculations, correlation energy analysis, and support for both ground
 //! state and excited state calculations in strongly correlated molecular systems.
 
-use ndarray::{Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};
+use ndarray::{Array1, Array2, Array3, Array4};
 use num_complex::Complex64;
 use rand::{thread_rng, Rng};
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 use std::f64::consts::PI;
-use std::sync::{Arc, Mutex, RwLock};
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
@@ -1217,7 +1215,7 @@ impl QuantumChemistryDMRGSimulator {
             .collect();
 
         // Sort by contribution (descending)
-        indexed_contributions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        indexed_contributions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Select top orbitals for active space
         let num_active = self

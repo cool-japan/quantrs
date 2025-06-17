@@ -67,37 +67,30 @@ pub const SCIRS2_AVAILABLE: bool = cfg!(feature = "scirs");
 
 // When SciRS2 feature is enabled, we still use stubs for now
 // until SciRS2 is fully available
-#[cfg(feature = "scirs")]
 pub mod scirs2_core {
     pub use super::scirs2_core_stub::*;
 }
 
-#[cfg(feature = "scirs")]
 pub mod scirs2_linalg {
     pub use super::scirs2_linalg_stub::*;
 }
 
-#[cfg(feature = "scirs")]
 pub mod scirs2_plot {
     pub use super::scirs2_plot_stub::*;
 }
 
-#[cfg(feature = "scirs")]
 pub mod scirs2_statistics {
     pub use super::scirs2_statistics_stub::*;
 }
 
-#[cfg(feature = "scirs")]
 pub mod scirs2_optimization {
     pub use super::scirs2_optimization_stub::*;
 }
 
-#[cfg(feature = "scirs")]
 pub mod scirs2_graphs {
     pub use super::scirs2_graphs_stub::*;
 }
 
-#[cfg(feature = "scirs")]
 pub mod scirs2_ml {
     pub use super::scirs2_ml_stub::*;
 }
@@ -189,6 +182,88 @@ mod scirs2_core_stub {
             }
         }
     }
+
+    pub mod gpu {
+        use std::error::Error;
+        use std::time::Duration;
+
+        pub fn get_device_count() -> usize {
+            0
+        }
+
+        pub struct GpuContext {
+            pub device_id: usize,
+        }
+
+        impl GpuContext {
+            pub fn new(_device_id: usize) -> Result<Self, Box<dyn Error>> {
+                Err("GPU not available".into())
+            }
+
+            pub fn measure_kernel_latency(&self) -> Result<Duration, Box<dyn Error>> {
+                Err("GPU not available".into())
+            }
+
+            pub fn get_device_info(&self) -> DeviceInfo {
+                DeviceInfo {
+                    memory_mb: 0,
+                    compute_units: 0,
+                    clock_mhz: 0,
+                }
+            }
+        }
+
+        pub struct DeviceInfo {
+            pub memory_mb: usize,
+            pub compute_units: usize,
+            pub clock_mhz: usize,
+        }
+
+        pub struct GpuDevice {
+            pub id: u32,
+        }
+
+        impl GpuDevice {
+            pub fn new(_id: u32) -> Result<Self, Box<dyn Error>> {
+                Err("GPU not available".into())
+            }
+
+            pub fn random_array<T>(&self, _shape: (usize, usize)) -> Result<GpuArray<T>, Box<dyn Error>> {
+                Err("GPU not available".into())
+            }
+
+            pub fn binarize<T>(&self, _array: &GpuArray<T>, _threshold: f64) -> Result<GpuArray<bool>, Box<dyn Error>> {
+                Err("GPU not available".into())
+            }
+
+            pub fn qubo_energy<T>(&self, _states: &GpuArray<bool>, _matrix: &GpuArray<T>) -> Result<GpuArray<f64>, Box<dyn Error>> {
+                Err("GPU not available".into())
+            }
+        }
+
+        impl Clone for GpuDevice {
+            fn clone(&self) -> Self {
+                Self { id: self.id }
+            }
+        }
+
+        pub struct GpuArray<T> {
+            _phantom: std::marker::PhantomData<T>,
+        }
+
+        impl<T> GpuArray<T> {
+            pub fn from_ndarray(_device: GpuDevice, _array: &ndarray::Array2<T>) -> Result<Self, Box<dyn Error>> {
+                Err("GPU not available".into())
+            }
+
+            pub fn to_ndarray(&self) -> Result<ndarray::Array2<T>, Box<dyn Error>> 
+            where 
+                T: Clone + Default,
+            {
+                Err("GPU not available".into())
+            }
+        }
+    }
 }
 
 mod scirs2_linalg_stub {
@@ -249,6 +324,27 @@ mod scirs2_linalg_stub {
         impl Norm for Array1<f64> {
             fn norm(&self) -> f64 {
                 self.iter().map(|x| x * x).sum::<f64>().sqrt()
+            }
+        }
+    }
+
+    pub mod gpu {
+        use super::*;
+        use ndarray::Array2;
+        use std::error::Error;
+
+        pub struct GpuMatrix;
+
+        impl GpuMatrix {
+            pub fn from_host(
+                _matrix: &Array2<f64>,
+                _ctx: &crate::scirs_stub::scirs2_core::gpu::GpuContext,
+            ) -> Result<Self, Box<dyn Error>> {
+                Err("GPU not available".into())
+            }
+
+            pub fn to_host(&self) -> Result<Array2<f64>, Box<dyn Error>> {
+                Err("GPU not available".into())
             }
         }
     }
@@ -864,398 +960,5 @@ mod scirs2_graphs_stub {
             positions.push((angle.cos(), angle.sin()));
         }
         Ok(positions)
-    }
-}
-
-// Stub modules for benchmark integration
-#[cfg(not(feature = "scirs"))]
-pub mod scirs2_core {
-    use std::error::Error;
-
-    pub fn init_simd() -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
-
-    pub mod simd {
-        pub trait SimdOps {}
-    }
-
-    pub mod memory {
-        pub fn get_current_usage() -> Result<usize, std::io::Error> {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "Not implemented",
-            ))
-        }
-    }
-
-    pub mod statistics {
-        pub struct OnlineStats {
-            count: usize,
-            mean: f64,
-            m2: f64,
-        }
-
-        impl OnlineStats {
-            pub fn new() -> Self {
-                Self {
-                    count: 0,
-                    mean: 0.0,
-                    m2: 0.0,
-                }
-            }
-
-            pub fn update(&mut self, value: f64) {
-                self.count += 1;
-                let delta = value - self.mean;
-                self.mean += delta / self.count as f64;
-                let delta2 = value - self.mean;
-                self.m2 += delta * delta2;
-            }
-
-            pub fn mean(&self) -> f64 {
-                self.mean
-            }
-
-            pub fn variance(&self) -> f64 {
-                if self.count < 2 {
-                    0.0
-                } else {
-                    self.m2 / (self.count - 1) as f64
-                }
-            }
-        }
-
-        pub struct MovingAverage {
-            window_size: usize,
-            values: Vec<f64>,
-        }
-
-        impl MovingAverage {
-            pub fn new(window_size: usize) -> Self {
-                Self {
-                    window_size,
-                    values: Vec::new(),
-                }
-            }
-
-            pub fn update(&mut self, value: f64) {
-                self.values.push(value);
-                if self.values.len() > self.window_size {
-                    self.values.remove(0);
-                }
-            }
-
-            pub fn average(&self) -> f64 {
-                if self.values.is_empty() {
-                    0.0
-                } else {
-                    self.values.iter().sum::<f64>() / self.values.len() as f64
-                }
-            }
-        }
-    }
-
-    #[cfg(feature = "gpu")]
-    pub mod gpu {
-        use std::error::Error;
-        use std::time::Duration;
-
-        pub fn get_device_count() -> usize {
-            0
-        }
-
-        pub struct GpuContext {
-            pub device_id: usize,
-        }
-
-        impl GpuContext {
-            pub fn new(_device_id: usize) -> Result<Self, Box<dyn Error>> {
-                Err("GPU not available".into())
-            }
-
-            pub fn measure_kernel_latency(&self) -> Result<Duration, Box<dyn Error>> {
-                Err("GPU not available".into())
-            }
-
-            pub fn get_device_info(&self) -> DeviceInfo {
-                DeviceInfo {
-                    memory_mb: 0,
-                    compute_units: 0,
-                    clock_mhz: 0,
-                }
-            }
-        }
-
-        pub struct DeviceInfo {
-            pub memory_mb: usize,
-            pub compute_units: usize,
-            pub clock_mhz: usize,
-        }
-    }
-}
-
-#[cfg(not(feature = "scirs"))]
-pub mod scirs2_linalg {
-    use ndarray::Array2;
-    use std::error::Error;
-
-    pub mod sparse {
-        use super::*;
-
-        pub struct SparseMatrix;
-
-        impl SparseMatrix {
-            pub fn from_dense(_matrix: &Array2<f64>) -> Result<Self, Box<dyn Error>> {
-                Ok(SparseMatrix)
-            }
-        }
-    }
-
-    #[cfg(feature = "gpu")]
-    pub mod gpu {
-        use super::*;
-
-        pub struct GpuMatrix;
-
-        impl GpuMatrix {
-            pub fn from_host(
-                _matrix: &Array2<f64>,
-                _ctx: &crate::scirs_stub::scirs2_core::gpu::GpuContext,
-            ) -> Result<Self, Box<dyn Error>> {
-                Err("GPU not available".into())
-            }
-        }
-    }
-
-    pub mod norm {
-        use ndarray::Array1;
-
-        pub trait Norm {
-            fn norm(&self) -> f64;
-        }
-
-        impl Norm for Array1<f64> {
-            fn norm(&self) -> f64 {
-                self.iter().map(|x| x * x).sum::<f64>().sqrt()
-            }
-        }
-    }
-}
-
-#[cfg(not(feature = "scirs"))]
-pub mod scirs2_plot {
-    use std::error::Error;
-
-    pub struct Plot;
-    pub struct Line;
-    pub struct Scatter;
-    pub struct Heatmap;
-    pub struct Bar;
-
-    impl Plot {
-        pub fn new() -> Self {
-            Plot
-        }
-        pub fn add_trace(&mut self, _trace: impl Trace) {}
-        pub fn set_title(&mut self, _title: &str) {}
-        pub fn set_xlabel(&mut self, _label: &str) {}
-        pub fn set_ylabel(&mut self, _label: &str) {}
-        pub fn save(&self, _path: &str) -> Result<(), Box<dyn Error>> {
-            Err("Plotting not available".into())
-        }
-    }
-
-    pub trait Trace {}
-    impl Trace for Line {}
-    impl Trace for Scatter {}
-    impl Trace for Heatmap {}
-    impl Trace for Bar {}
-
-    impl Line {
-        pub fn new(_x: Vec<f64>, _y: Vec<f64>) -> Self {
-            Line
-        }
-        pub fn name(self, _name: &str) -> Self {
-            self
-        }
-    }
-
-    impl Scatter {
-        pub fn new(_x: Vec<f64>, _y: Vec<f64>) -> Self {
-            Scatter
-        }
-        pub fn mode(self, _mode: &str) -> Self {
-            self
-        }
-        pub fn name(self, _name: &str) -> Self {
-            self
-        }
-        pub fn text(self, _text: Vec<String>) -> Self {
-            self
-        }
-        pub fn marker_size(self, _size: u32) -> Self {
-            self
-        }
-    }
-
-    impl Heatmap {
-        pub fn new(_z: Vec<Vec<f64>>) -> Self {
-            Heatmap
-        }
-        pub fn x_labels(self, _labels: Vec<String>) -> Self {
-            self
-        }
-        pub fn y_labels(self, _labels: Vec<String>) -> Self {
-            self
-        }
-        pub fn colorscale(self, _scale: &str) -> Self {
-            self
-        }
-    }
-
-    impl Bar {
-        pub fn new(_x: Vec<String>, _y: Vec<f64>) -> Self {
-            Bar
-        }
-        pub fn name(self, _name: &str) -> Self {
-            self
-        }
-    }
-}
-
-#[cfg(not(feature = "scirs"))]
-pub mod scirs2_ml {
-    pub use super::scirs2_ml_stub::*;
-}
-
-#[cfg(not(feature = "scirs"))]
-pub mod scirs2_optimization {
-    use ndarray::Array1;
-    use std::error::Error;
-
-    pub trait Optimizer {
-        fn minimize(
-            &mut self,
-            objective: &dyn ObjectiveFunction,
-            x0: &Array1<f64>,
-            bounds: &Bounds,
-            iteration: usize,
-        ) -> Result<OptimizationResult, Box<dyn Error>>;
-    }
-
-    pub trait ObjectiveFunction {
-        fn evaluate(&self, x: &Array1<f64>) -> f64;
-        fn gradient(&self, x: &Array1<f64>) -> Array1<f64>;
-    }
-
-    pub trait OptimizationProblem {
-        fn objective(&self, x: &Array1<f64>) -> f64;
-        fn constraints(&self, x: &Array1<f64>) -> Vec<f64>;
-    }
-
-    pub struct Bounds {
-        pub lower: Array1<f64>,
-        pub upper: Array1<f64>,
-    }
-
-    impl Bounds {
-        pub fn new(lower: Array1<f64>, upper: Array1<f64>) -> Self {
-            Self { lower, upper }
-        }
-    }
-
-    pub struct OptimizationResult {
-        pub x: Array1<f64>,
-        pub f: f64,
-        pub iterations: usize,
-        pub converged: bool,
-    }
-
-    pub mod gradient {
-        use super::*;
-
-        pub struct LBFGS {
-            dim: usize,
-        }
-
-        impl LBFGS {
-            pub fn new(dim: usize) -> Self {
-                Self { dim }
-            }
-        }
-
-        impl Optimizer for LBFGS {
-            fn minimize(
-                &mut self,
-                objective: &dyn ObjectiveFunction,
-                x0: &Array1<f64>,
-                _bounds: &Bounds,
-                _iteration: usize,
-            ) -> Result<OptimizationResult, Box<dyn Error>> {
-                Ok(OptimizationResult {
-                    x: x0.clone(),
-                    f: objective.evaluate(x0),
-                    iterations: 1,
-                    converged: false,
-                })
-            }
-        }
-    }
-
-    pub mod bayesian {
-        use super::*;
-
-        #[derive(Clone, Copy)]
-        pub enum AcquisitionFunction {
-            ExpectedImprovement,
-            UCB,
-            PI,
-            Thompson,
-        }
-
-        #[derive(Clone, Copy)]
-        pub enum KernelType {
-            RBF,
-            Matern52,
-            Matern32,
-        }
-
-        pub struct BayesianOptimizer {
-            dim: usize,
-            kernel: KernelType,
-            acquisition: AcquisitionFunction,
-            exploration: f64,
-        }
-
-        impl BayesianOptimizer {
-            pub fn new(
-                dim: usize,
-                kernel: KernelType,
-                acquisition: AcquisitionFunction,
-                exploration: f64,
-            ) -> Result<Self, Box<dyn Error>> {
-                Ok(Self {
-                    dim,
-                    kernel,
-                    acquisition,
-                    exploration,
-                })
-            }
-
-            pub fn update(
-                &mut self,
-                _x_data: &[Array1<f64>],
-                _y_data: &Array1<f64>,
-            ) -> Result<(), Box<dyn Error>> {
-                Ok(())
-            }
-
-            pub fn suggest_next(&self) -> Result<Array1<f64>, Box<dyn Error>> {
-                Ok(Array1::zeros(self.dim))
-            }
-        }
-
-        pub struct GaussianProcess;
     }
 }

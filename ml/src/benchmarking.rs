@@ -372,6 +372,23 @@ impl BenchmarkFramework {
     }
 }
 
+impl BenchmarkResults {
+    /// Get summaries
+    pub fn summaries(&self) -> &HashMap<String, BenchmarkSummary> {
+        &self.summaries
+    }
+
+    /// Get results
+    pub fn results(&self) -> &HashMap<String, Vec<BenchmarkRunResult>> {
+        &self.results
+    }
+
+    /// Get metadata
+    pub fn metadata(&self) -> &BenchmarkMetadata {
+        &self.metadata
+    }
+}
+
 /// System information collector
 impl SystemInfo {
     fn collect() -> Self {

@@ -165,9 +165,9 @@ async fn run_on_aws() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Module Structure
 
-- **ibm.rs / ibm_device.rs**: IBM Quantum client and device implementations
-- **azure.rs / azure_device.rs**: Azure Quantum client and device implementations
-- **aws.rs / aws_device.rs**: AWS Braket client and device implementations
+- **ibm.rs / ibm_device.rs**: IBM Quantum client and device support
+- **azure.rs / azure_device.rs**: Azure Quantum client and device support
+- **aws.rs / aws_device.rs**: AWS Braket client and device support
 - **transpiler.rs**: Circuit transformation for hardware constraints
 
 ## Core Types
@@ -184,7 +184,7 @@ async fn run_on_aws() -> Result<(), Box<dyn std::error::Error>> {
 
 Each feature flag can be enabled independently to minimize dependencies.
 
-## Implementation Notes
+## Technical Details
 
 - Async/await is used for non-blocking network operations
 - Each provider has specific authentication and configuration requirements
@@ -193,7 +193,7 @@ Each feature flag can be enabled independently to minimize dependencies.
 
 ## Future Plans
 
-See [TODO.md](TODO.md) for planned improvements and features.
+See [TODO.md](TODO.md) for planned features.
 
 ## Integration with Other QuantRS2 Modules
 

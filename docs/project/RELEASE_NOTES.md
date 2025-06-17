@@ -1,6 +1,8 @@
-# Release Notes for QuantRS2 v0.1.0-alpha.3
+# Release Notes for QuantRS2 v0.1.0-alpha.5
 
-We are excited to announce the release of QuantRS2 v0.1.0-alpha.3, featuring deep integration with SciRS2 (Scientific Rust) for enhanced performance and functionality. This release brings significant improvements in performance, memory efficiency, and adds several new quantum algorithms and machine learning capabilities.
+## Overview
+
+QuantRS2 v0.1.0-alpha.5 is the final alpha release before the production release. This version includes comprehensive quantum computing capabilities with enhanced performance, stability, and feature completeness.
 
 ## Major Highlights
 

@@ -276,7 +276,7 @@ impl HardwareBackend for GpuBackend {
         // Check if GPU is available
         #[cfg(feature = "scirs")]
         {
-            scirs2_core::gpu::get_device_count() > self.device_id
+            crate::scirs_stub::scirs2_core::gpu::get_device_count() > self.device_id
         }
         #[cfg(not(feature = "scirs"))]
         {

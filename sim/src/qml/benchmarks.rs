@@ -6,7 +6,7 @@
 use ndarray::Array1;
 use std::collections::HashMap;
 
-use super::circuit::{HardwareOptimizations, ParameterizedQuantumCircuit};
+use super::circuit::ParameterizedQuantumCircuit;
 use super::config::{HardwareArchitecture, QMLAlgorithmType, QMLConfig};
 use super::trainer::QuantumMLTrainer;
 use crate::circuit_interfaces::InterfaceCircuit;

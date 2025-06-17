@@ -6,9 +6,9 @@
 use fastrand;
 use ndarray::{Array1, Array2, Array3};
 use num_complex::Complex64;
-use std::f64::consts::PI;
+use crate::prelude::SimulatorError;
 
-use crate::error::{Result, SimulatorError};
+use crate::error::Result;
 use crate::trotter::{Hamiltonian, HamiltonianTerm};
 
 /// Walker in QMC simulation

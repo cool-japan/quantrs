@@ -1,2 +1,0 @@
-   Compiling quantrs2-sim v0.1.0-alpha.5 (/Users/kitasan/work/quantrs/sim)
-warning: quantrs2-sim@0.1.0-alpha.5: Building on macOS with Accelerate framework

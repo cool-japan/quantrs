@@ -14,19 +14,14 @@
 //! - Performance analysis and threshold estimation
 //! - Hardware-aware optimization for different architectures
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
-use num_complex::Complex64;
-use rayon::prelude::*;
+use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::{Arc, Mutex};
 
 use crate::circuit_interfaces::{
     CircuitInterface, InterfaceCircuit, InterfaceGate, InterfaceGateType,
 };
-use crate::concatenated_error_correction::{DecodingResult, ErrorType};
-use crate::error::{Result, SimulatorError};
-use crate::statevector::StateVectorSimulator;
+use crate::error::Result;
 
 /// LDPC code construction method
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -235,14 +230,19 @@ pub struct QuantumLDPCCode {
     /// Tanner graph representation
     tanner_graph: TannerGraph,
     /// X stabilizer generators
+    #[allow(dead_code)]
     x_stabilizers: Array2<u8>,
     /// Z stabilizer generators
+    #[allow(dead_code)]
     z_stabilizers: Array2<u8>,
     /// Logical X operators
+    #[allow(dead_code)]
     logical_x_ops: Array2<u8>,
     /// Logical Z operators
+    #[allow(dead_code)]
     logical_z_ops: Array2<u8>,
     /// Circuit interface
+    #[allow(dead_code)]
     circuit_interface: CircuitInterface,
     /// Performance statistics
     stats: LDPCStats,
@@ -472,8 +472,8 @@ impl QuantumLDPCCode {
     fn find_best_check_for_peg(
         var_id: usize,
         connected_checks: &HashSet<usize>,
-        variable_nodes: &[VariableNode],
-        check_nodes: &[CheckNode],
+        _variable_nodes: &[VariableNode],
+        _check_nodes: &[CheckNode],
         adjacency_matrix: &Array2<bool>,
         num_checks: usize,
     ) -> Option<usize> {
@@ -669,7 +669,7 @@ impl QuantumLDPCCode {
 
     /// Generate stabilizer matrices for quantum LDPC code
     fn generate_stabilizer_matrices(
-        config: &LDPCConfig,
+        _config: &LDPCConfig,
         tanner_graph: &TannerGraph,
     ) -> Result<(Array2<u8>, Array2<u8>)> {
         // For CSS codes, X and Z stabilizers are independent
@@ -682,8 +682,8 @@ impl QuantumLDPCCode {
     /// Generate logical operators
     fn generate_logical_operators(
         config: &LDPCConfig,
-        x_stabilizers: &Array2<u8>,
-        z_stabilizers: &Array2<u8>,
+        _x_stabilizers: &Array2<u8>,
+        _z_stabilizers: &Array2<u8>,
     ) -> Result<(Array2<u8>, Array2<u8>)> {
         let k = config.k;
         let n = config.n;

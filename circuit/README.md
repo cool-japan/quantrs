@@ -226,7 +226,7 @@ fn fault_tolerant_example() -> Result<(), Box<dyn std::error::Error>> {
                    .s(0)?
                    .h(0)?;
     
-    // Compile to fault-tolerant implementation
+    // Compile to fault-tolerant version
     let ft_compiler = FaultTolerantCompiler::new(qec_code);
     let ft_circuit = ft_compiler.compile(&logical_circuit)?;
     
@@ -308,8 +308,8 @@ fn qasm_interoperability_example() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Hardware Integration & Compilation
 - **routing/**: Quantum circuit routing and layout algorithms
-  - **sabre.rs**: SABRE routing algorithm implementation
-  - **lookahead.rs**: Lookahead routing for improved performance
+  - **sabre.rs**: SABRE routing algorithm
+  - **lookahead.rs**: Lookahead routing for enhanced performance
   - **coupling_map.rs**: Device topology representation and analysis
   - **swap_network.rs**: SWAP gate insertion and optimization
 - **pulse.rs**: Pulse-level control and waveform generation
@@ -352,16 +352,16 @@ fn qasm_interoperability_example() -> Result<(), Box<dyn std::error::Error>> {
 - `qubits!`: Creates a set of qubits for operations
 - `quantum!`: DSL for quantum circuit construction (in development)
 
-## Implementation Notes
+## Technical Details
 
 - The circuit builder uses a fluent API for method chaining
 - Gate operations are type-checked at compile time where possible
-- The implementation supports custom gates through the `GateOp` trait
+- The framework supports custom gates through the `GateOp` trait
 - Circuit operations return `QuantRS2Result` for error handling
 
 ## Future Plans
 
-See [TODO.md](TODO.md) for planned improvements and features.
+See [TODO.md](TODO.md) for planned features.
 
 ## Integration with Other QuantRS2 Modules
 

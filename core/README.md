@@ -6,14 +6,6 @@
 
 QuantRS2-Core is the foundational library of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing a comprehensive suite of quantum computing primitives, algorithms, and optimizations that power the entire ecosystem.
 
-## Latest Updates (v0.1.0-alpha.5)
-
-- **Advanced ZX-Calculus Optimization**: Graph-based circuit optimization achieving up to 84% gate count reduction
-- **GPU Kernel Optimization**: CUDA tensor cores and WebGPU shaders for specialized quantum gates
-- **Quantum Approximate Optimization Algorithm (QAOA)**: Complete implementation for MaxCut and TSP
-- **Quantum Machine Learning for NLP**: Attention mechanisms and quantum embeddings
-- **Gate Compilation Caching**: Persistent storage with compression and LRU eviction
-- **Adaptive SIMD Dispatch**: Runtime CPU feature detection with AVX-512/AVX2/SSE4 optimization
 
 ## Core Features
 
@@ -185,7 +177,7 @@ fn batch_and_gpu_example() -> QuantRS2Result<()> {
 
 ### Core Foundations
 - **error.rs**: Comprehensive error types and result wrappers
-- **gate.rs**: Gate trait definitions and standard quantum gate implementations
+- **gate.rs**: Gate trait definitions and standard quantum gates
 - **qubit.rs**: Type-safe qubit identifier with zero-cost abstractions
 - **register.rs**: Quantum register types with const generics
 - **complex_ext.rs**: Extended complex number operations for quantum states
@@ -232,7 +224,7 @@ fn batch_and_gpu_example() -> QuantRS2Result<()> {
   - **encoding.rs**: Data encoding strategies and feature maps
   - **training.rs**: Training algorithms and hyperparameter optimization
 - **parametric.rs**: Parametric gates with symbolic computation
-- **qaoa.rs**: Quantum Approximate Optimization Algorithm implementation
+- **qaoa.rs**: Quantum Approximate Optimization Algorithm
 - **qpca.rs**: Quantum Principal Component Analysis
 
 ### Specialized Algorithms
@@ -244,7 +236,7 @@ fn batch_and_gpu_example() -> QuantRS2Result<()> {
 ### Hardware & Acceleration
 - **gpu/**: GPU acceleration support
   - **mod.rs**: GPU backend abstractions
-  - **cpu_backend.rs**: CPU fallback implementation
+  - **cpu_backend.rs**: CPU fallback support
 - **controlled.rs**: Efficient controlled gate operations
 - **batch/**: Batch processing for parallel quantum computations
   - **operations.rs**: Batch gate operations
@@ -284,7 +276,7 @@ fn batch_and_gpu_example() -> QuantRS2Result<()> {
 
 ### Error Correction
 - `StabilizerCode`: Base trait for quantum error correction codes
-- `SurfaceCode`, `ColorCode`: Specific error correction implementations
+- `SurfaceCode`, `ColorCode`: Specific error correction codes
 - `QuantumChannel`: Noise models with Kraus, Choi, and Stinespring representations
 - `SyndromeDecoder`: Syndrome decoding algorithms (lookup, MWPM)
 
@@ -315,19 +307,19 @@ fn batch_and_gpu_example() -> QuantRS2Result<()> {
 ### GPU Computing
 - CUDA and OpenCL backend support for large-scale simulations
 - Optimized kernels for common quantum operations
-- Automatic fallback to CPU implementations
+- Automatic fallback to CPU processing
 
 ### SciRS2 Integration
 - Advanced linear algebra operations using SciRS2's optimized BLAS/LAPACK bindings
 - Sparse matrix solvers for large quantum systems
 - Parallel algorithms for batch quantum computations
 
-## Implementation Notes
+## Technical Details
 
 - Zero-cost abstractions: `QubitId` uses `#[repr(transparent)]` for no runtime overhead
 - Column-major storage: Gate matrices stored for optimal BLAS compatibility
 - Const generics: Compile-time validation of quantum register sizes
-- Trait specialization: Optimized implementations for common gate patterns
+- Trait specialization: Optimized handling for common gate patterns
 - Error propagation: Comprehensive error handling with detailed context
 
 ## Integration with QuantRS2 Ecosystem

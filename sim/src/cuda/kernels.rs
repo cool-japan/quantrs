@@ -18,7 +18,7 @@ use super::memory::GpuMemory;
 pub use super::memory::GpuMemoryType;
 #[cfg(feature = "advanced_math")]
 use super::streams::CudaStream;
-use crate::error::{Result, SimulatorError};
+use crate::error::Result;
 use crate::scirs2_integration::SciRS2Backend;
 
 // Placeholder types for actual CUDA handles

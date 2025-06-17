@@ -5,10 +5,10 @@
 //! and their adaptive application.
 
 use ndarray::{Array1, Array2, Axis};
-use quantrs2_core::prelude::QuantumCircuit;
 use quantrs2_ml::error_mitigation::{
     CDRModel, CliffordCircuit, CorrectionNetwork, CorrelationFunction, EntanglementProtocol,
-    FidelityModel, NoisePredictorModel, NoiseSpectrum, SymmetryGroup, TemporalCorrelationModel,
+    FidelityModel, NoisePredictorModel, NoiseSpectrum, QuantumCircuit, QuantumGate,
+    StrategySelectionPolicy, SymmetryGroup, TemporalCorrelationModel,
     TemporalFluctuation, TrainingDataSet, VerificationCircuit,
 };
 use quantrs2_ml::prelude::*;

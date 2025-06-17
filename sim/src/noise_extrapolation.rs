@@ -4,16 +4,12 @@
 //! Zero-Noise Extrapolation (ZNE), Virtual Distillation, Symmetry Verification,
 //! and other methods to extrapolate quantum results to the zero-noise limit.
 
-use ndarray::{Array1, Array2, ArrayView1};
+use ndarray::Array2;
 use num_complex::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 use crate::error::{Result, SimulatorError};
-use crate::open_quantum_systems::{NoiseModelBuilder, QuantumChannel};
-use crate::shot_sampling::{QuantumSampler, SamplingConfig};
-use crate::statevector::StateVectorSimulator;
 
 /// Zero-Noise Extrapolation result
 #[derive(Debug, Clone, Serialize, Deserialize)]

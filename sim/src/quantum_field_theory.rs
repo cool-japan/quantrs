@@ -5,14 +5,12 @@
 //! group flows, and scattering process calculations. This framework enables simulation
 //! of relativistic quantum field dynamics and many-body quantum systems.
 
-use ndarray::{Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};
+use ndarray::{Array1, Array4};
 use num_complex::Complex64;
 use rand::{thread_rng, Rng};
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::f64::consts::PI;
-use std::sync::{Arc, Mutex, RwLock};
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
@@ -774,7 +772,7 @@ impl QuantumFieldTheorySimulator {
     /// Calculate correlation functions
     pub fn calculate_correlation_function(
         &mut self,
-        operators: Vec<FieldOperator>,
+        operators: &[FieldOperator],
         max_separation: usize,
     ) -> Result<CorrelationFunction> {
         let separations: Vec<Vec<f64>> = (0..=max_separation)
@@ -813,7 +811,7 @@ impl QuantumFieldTheorySimulator {
         }
 
         let correlation_fn = CorrelationFunction {
-            operators,
+            operators: operators.to_vec(),
             separations,
             values,
             errors,
@@ -910,7 +908,7 @@ impl QuantumFieldTheorySimulator {
     }
 
     /// Run renormalization group flow analysis
-    pub fn analyze_rg_flow(&mut self, energy_scales: Vec<f64>) -> Result<RGFlow> {
+    pub fn analyze_rg_flow(&mut self, energy_scales: &[f64]) -> Result<RGFlow> {
         let mut beta_functions = HashMap::new();
         let mut anomalous_dimensions = HashMap::new();
         let mut running_couplings = HashMap::new();
@@ -929,7 +927,7 @@ impl QuantumFieldTheorySimulator {
         };
 
         // Calculate beta functions for each scale
-        for &scale in &energy_scales {
+        for &scale in energy_scales {
             let beta_g = self.calculate_beta_function("g", scale, &running_couplings)?;
             let beta_lambda = self.calculate_beta_function("lambda", scale, &running_couplings)?;
 
@@ -1484,8 +1482,8 @@ mod tests {
         let config = QFTConfig::default();
         let mut simulator = QuantumFieldTheorySimulator::new(config).unwrap();
 
-        let energy_scales = vec![0.1, 1.0, 10.0, 100.0];
-        let rg_flow = simulator.analyze_rg_flow(energy_scales);
+        let energy_scales = [0.1, 1.0, 10.0, 100.0];
+        let rg_flow = simulator.analyze_rg_flow(&energy_scales);
         assert!(rg_flow.is_ok());
 
         let flow = rg_flow.unwrap();
@@ -1624,7 +1622,7 @@ mod tests {
             },
         ];
 
-        let correlation = simulator.calculate_correlation_function(operators, 4);
+        let correlation = simulator.calculate_correlation_function(&operators, 4);
         assert!(correlation.is_ok());
 
         let corr_fn = correlation.unwrap();

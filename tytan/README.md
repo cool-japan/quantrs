@@ -39,7 +39,7 @@ QuantRS2-Tytan is a comprehensive, high-performance quantum annealing library fo
 - **Quantum Neural Networks**: Hybrid quantum-classical architectures with advanced training
 - **Quantum State Tomography**: State reconstruction with shadow tomography and ML methods
 - **Quantum Error Correction**: Advanced QEC codes with ML-based decoding algorithms
-- **Tensor Network Algorithms**: MPS, PEPS, MERA implementations for quantum optimization
+- **Tensor Network Algorithms**: MPS, PEPS, MERA algorithms for quantum optimization
 - **Advanced Performance Analysis**: Real-time monitoring with ML-based predictions
 
 ### Enterprise Features
@@ -57,10 +57,10 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs2-tytan = "0.1.0-alpha.3"
+quantrs2-tytan = "0.1.0-alpha.5"
 
 # Optional features
-# quantrs2-tytan = { version = "0.1.0-alpha.3", features = ["gpu", "dwave", "scirs"] }
+# quantrs2-tytan = { version = "0.1.0-alpha.5", features = ["gpu", "dwave", "scirs"] }
 ```
 
 ### Basic Example

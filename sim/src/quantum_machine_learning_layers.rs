@@ -5,17 +5,15 @@
 //! networks, and hybrid classical-quantum training algorithms. This framework enables
 //! quantum advantage in machine learning applications with hardware-aware optimization.
 
-use ndarray::{Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use rand::{thread_rng, Rng};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 use std::f64::consts::PI;
-use std::sync::{Arc, Mutex, RwLock};
 
 use crate::error::{Result, SimulatorError};
-use crate::quantum_algorithms::QuantumAlgorithmConfig;
 use crate::scirs2_integration::SciRS2Backend;
 use crate::statevector::StateVectorSimulator;
 
@@ -1365,7 +1363,9 @@ impl QuantumMLFramework {
     /// Train a single batch
     fn train_batch(&mut self, batch: &[(Array1<f64>, Array1<f64>)]) -> Result<f64> {
         let mut total_loss = 0.0;
-        let mut total_gradients: Vec<Array1<f64>> = vec![Array1::zeros(0); self.layers.len()];
+        let mut total_gradients: Vec<Array1<f64>> = (0..self.layers.len())
+            .map(|_| Array1::zeros(0))
+            .collect();
 
         for (input, target) in batch {
             // Forward pass
