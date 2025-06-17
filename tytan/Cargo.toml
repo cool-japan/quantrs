@@ -37,7 +37,7 @@ colored.workspace = true
 scirs2-core = { version = "0.1.0-alpha.4", default-features = false, features = ["gpu"], optional = true }
 scirs2-linalg = { version = "0.1.0-alpha.4", default-features = false, optional = true }
 scirs2-optimize = { version = "0.1.0-alpha.4", default-features = false, optional = true }
-scirs2-cluster = { path = "../../scirs/scirs2-cluster", optional = true }
+scirs2-cluster = { version = "0.1.0-alpha.4", path = "../../scirs/scirs2-cluster", optional = true }
 # Add scirs2 metacrate for backward compatibility
 scirs2 = { version = "0.1.0-alpha.4", path = "../../scirs/scirs2", optional = true }
 
