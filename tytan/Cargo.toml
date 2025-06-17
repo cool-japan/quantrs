@@ -11,27 +11,27 @@ categories.workspace = true
 description = "High-level quantum annealing interface inspired by Tytan for the QuantRS2 framework"
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.5" }
-quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.5" }
+quantrs2-core.workspace = true
+quantrs2-anneal.workspace = true
 num-complex.workspace = true
 thiserror.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
 rand_distr.workspace = true
 ndarray.workspace = true
-num-bigint = "0.4"
-num-integer = "0.1"
-num = "0.4"
-chrono = "0.4"
-symengine = { git = "https://github.com/cool-japan/symengine-rs.git", branch = "fixed-macos", optional = true }
-symengine-sys = { git = "https://github.com/cool-japan/symengine-sys.git", branch = "fixed-macos", optional = true }
-num-traits = "0.2"
+num-bigint.workspace = true
+num-integer.workspace = true
+num.workspace = true
+chrono.workspace = true
+symengine = { workspace = true, optional = true }
+symengine-sys = { workspace = true, optional = true }
+num-traits.workspace = true
 regex = { workspace = true, optional = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-num_cpus = "1.17"
-plotters = { version = "0.3", optional = true }
-colored = "2.2"
+serde.workspace = true
+serde_json.workspace = true
+num_cpus.workspace = true
+plotters = { workspace = true, optional = true }
+colored.workspace = true
 
 # SciRS2 dependencies for performance optimization
 scirs2-core = { version = "0.1.0-alpha.4", default-features = false, features = ["gpu"], optional = true }
@@ -59,10 +59,10 @@ gpu_accelerated = ["gpu", "scirs", "parallel"]
 plotters = ["dep:plotters"]
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion.workspace = true
 ndarray-rand.workspace = true
 rand_chacha.workspace = true
-colored = "2.2"
+colored.workspace = true
 
 # [[bench]]
 # name = "performance_benchmark"

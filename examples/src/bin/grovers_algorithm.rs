@@ -41,20 +41,20 @@ fn main() {
 
     // Print the results
     println!("\nFinal state probabilities:");
-    let probabilities = result.probabilities();
+    let register = result.unwrap();
+    let probabilities = register.probabilities();
     for i in 0..8 {
         println!("State |{:03b}⟩: {:.6}", i, probabilities[i]);
     }
 
-    // Perform a measurement
-    println!("\nPerforming measurement...");
-    let measured = result.measure();
+    // Find the most probable measurement outcome
+    println!("\nAnalyzing measurement probabilities...");
 
     // Calculate the most probable state
     let mut max_prob = 0.0;
     let mut max_state = 0;
     for i in 0..8 {
-        let prob = simulator.probability(i, &measured);
+        let prob = probabilities[i];
         if prob > max_prob {
             max_prob = prob;
             max_state = i;

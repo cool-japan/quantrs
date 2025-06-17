@@ -25,10 +25,10 @@
 //! 3. Incorporate these circuits into your quantum program
 //!
 //! ```rust,no_run
-//! use quantrs_circuit::builder::Circuit;
-//! use quantrs_core::qubit::QubitId;
-//! use quantrs_sim::error_correction::{BitFlipCode, ErrorCorrection};
-//! use quantrs_sim::statevector::StateVectorSimulator;
+//! use quantrs2_circuit::builder::Circuit;
+//! use quantrs2_core::qubit::QubitId;
+//! use quantrs2_sim::error_correction::{BitFlipCode, ErrorCorrection};
+//! use quantrs2_sim::statevector::StateVectorSimulator;
 //!
 //! // Create a bit flip code object
 //! let code = BitFlipCode;
@@ -52,8 +52,8 @@
 //! // ... add your operations here ...
 //! ```
 
-use quantrs_circuit::builder::Circuit;
-use quantrs_core::qubit::QubitId;
+use quantrs2_circuit::builder::Circuit;
+use quantrs2_core::qubit::QubitId;
 use crate::error::{Result, SimulatorError};
 
 mod codes;
@@ -104,7 +104,7 @@ pub trait ErrorCorrection {
 /// Utility functions for error correction
 pub mod utils {
     use super::*;
-    use quantrs_circuit::builder::Circuit;
+    use quantrs2_circuit::builder::Circuit;
 
     /// Creates a complete error-corrected circuit including encoding, noise, and correction
     ///

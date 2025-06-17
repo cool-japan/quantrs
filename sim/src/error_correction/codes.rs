@@ -4,8 +4,8 @@
 //! including the bit-flip code, phase-flip code, Shor code, and 5-qubit perfect code.
 
 use super::ErrorCorrection;
-use quantrs_circuit::builder::Circuit;
-use quantrs_core::qubit::QubitId;
+use quantrs2_circuit::builder::Circuit;
+use quantrs2_core::qubit::QubitId;
 use crate::error::{Result, SimulatorError};
 
 /// The 3-qubit bit flip code

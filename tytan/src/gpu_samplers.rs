@@ -612,7 +612,7 @@ impl MIKASAmpler {
         let cp_decomposition = |_: &ArrayD<f64>| -> Result<(Vec<usize>, Vec<Array<f64, IxDyn>>, f64), Box<dyn std::error::Error>> {
             Ok((vec![], vec![Array::zeros(IxDyn(&[1]))], 0.0f64))
         };
-        let optimize_contraction_order = |_: &[usize]| vec![];
+        let optimize_contraction_order = |_: &[usize]| -> Vec<usize> { vec![] };
 
         let n_vars = var_map.len();
         let order = tensor.ndim();
@@ -728,6 +728,7 @@ impl AsyncGpuPipeline {
 mod tests {
     #[cfg(feature = "scirs")]
     use super::EnhancedArminSampler;
+    use crate::sampler::Sampler;
     #[cfg(feature = "scirs")]
     use ndarray::Array;
     #[cfg(feature = "scirs")]

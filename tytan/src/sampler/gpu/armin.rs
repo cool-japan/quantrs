@@ -10,7 +10,7 @@ use super::super::evaluate_qubo_energy;
 use super::super::{SampleResult, Sampler, SamplerError, SamplerResult};
 
 #[cfg(all(feature = "gpu", feature = "dwave"))]
-use ocl::{self, Context, Program, enums::{DeviceInfo, DeviceInfoResult, DeviceType}};
+use ocl::{self, Context, Program, DeviceType, enums::{DeviceInfo, DeviceInfoResult}};
 
 /// GPU-accelerated Sampler (Armin)
 ///
@@ -117,7 +117,7 @@ impl ArminSampler {
                 .unwrap_or_default()
                 .into_iter()
                 .find(|d| {
-                    matches!(d.info(DeviceInfo::Type).ok(), Some(DeviceInfoResult::Type(dt)) if dt.is_cpu())
+                    matches!(d.info(DeviceInfo::Type).ok(), Some(DeviceInfoResult::Type(dt)) if dt == DeviceType::default().cpu())
                 })
                 .unwrap_or_else(|| Device::first(platform).unwrap())
         } else {
@@ -126,7 +126,7 @@ impl ArminSampler {
                 .unwrap_or_default()
                 .into_iter()
                 .find(|d| {
-                    matches!(d.info(DeviceInfo::Type).ok(), Some(DeviceInfoResult::Type(dt)) if dt.is_gpu())
+                    matches!(d.info(DeviceInfo::Type).ok(), Some(DeviceInfoResult::Type(dt)) if dt == DeviceType::default().gpu())
                 })
                 .unwrap_or_else(|| Device::first(platform).unwrap())
         };
@@ -228,7 +228,7 @@ impl ArminSampler {
         // Convert to Vec<Vec<bool>>
         let mut results = Vec::with_capacity(num_shots);
         for i in 0..num_shots {
-            let solution = Vec::with_capacity(n_vars);
+            let mut solution = Vec::with_capacity(n_vars);
             for j in 0..n_vars {
                 solution.push(solutions_data[i * n_vars + j] != 0);
             }
@@ -575,7 +575,7 @@ impl Sampler for ArminSampler {
         let ocl_result = self.run_gpu_annealing(n_vars, &h_vector, &j_matrix, shots);
 
         #[cfg(not(all(feature = "gpu", feature = "dwave")))]
-        let ocl_result = Err(SamplerError::GpuError(
+        let ocl_result: Result<Vec<Vec<i32>>, SamplerError> = Err(SamplerError::GpuError(
             "GPU support not enabled".to_string(),
         ));
 

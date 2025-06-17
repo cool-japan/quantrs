@@ -22,8 +22,7 @@ use quantrs2_tytan::{
     },
 };
 
-#[cfg(not(feature = "dwave"))]
-use quantrs2_tytan::compile::SimpleExpr;
+use quantrs2_tytan::compile::expr::{Expr, constant};
 
 use std::collections::{HashMap, HashSet};
 use std::f64::consts::PI;
@@ -214,7 +213,7 @@ fn create_folding_model(
     }
 
     // Objective: Minimize energy (maximize H-H contacts)
-    let mut energy_expr = SimpleExpr::constant(0.0);
+    let mut energy_expr = constant(0.0);
 
     // For each pair of non-sequential hydrophobic residues
     for i in 0..n {
@@ -232,7 +231,7 @@ fn create_folding_model(
                             // Add energy contribution if both residues are at these positions
                             // Energy = -1 * x_{i,idx1} * x_{j,idx2}
                             energy_expr = energy_expr
-                                + SimpleExpr::constant(1.0) * // Negative because we minimize
+                                + constant(1.0) * // Negative because we minimize
                                 position_vars[&(i, idx1)].clone() *
                                 position_vars[&(j, idx2)].clone();
                         }

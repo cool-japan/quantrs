@@ -50,53 +50,102 @@ keywords = ["quantum", "computing", "simulator", "annealing", "gate"]
 categories = ["science", "simulation"]
 
 [workspace.dependencies]
-# Common dependencies
+# Core quantum computing dependencies
+quantrs2-core = { path = "core", version = "0.1.0-alpha.5" }
+quantrs2-circuit = { path = "circuit", version = "0.1.0-alpha.5" }
+quantrs2-sim = { path = "sim", version = "0.1.0-alpha.5" }
+quantrs2-anneal = { path = "anneal", version = "0.1.0-alpha.5" }
+quantrs2-device = { path = "device", version = "0.1.0-alpha.5" }
+quantrs2-ml = { path = "ml", version = "0.1.0-alpha.5" }
+quantrs2-tytan = { path = "tytan", version = "0.1.0-alpha.5" }
+
+# Common math and linear algebra dependencies
 num-complex = "0.4.6"
 ndarray = { version = "0.16.1", features = ["rayon"] }
-rayon = "1.10.0"
-thiserror = "2.0.12"
+nalgebra = "0.33.2"
+ndarray-linalg = { version = "0.17", default-features = false, features = ["openblas-system"] }
+ndarray-rand = "0.15"
+ndarray-stats = "0.6"
+num-traits = "0.2"
+num-bigint = "0.4"
+num-integer = "0.1"
+num = "0.4"
+approx = "0.5"
+wide = "0.7.32"
+
+# SciRS2 ecosystem dependencies
 scirs2-core = { version = "0.1.0-alpha.4", default-features = false }
 scirs2-optimize = { version = "0.1.0-alpha.4", default-features = false }
 scirs2-linalg = { version = "0.1.0-alpha.4", default-features = false }
+scirs2-sparse = { version = "0.1.0-alpha.4" }
 
-# For randomization
+# Performance and parallel computing
+rayon = "1.10.0"
+smallvec = { version = "1.15", features = ["const_generics"] }
+rustc-hash = "2.1"
+fastrand = "2.3.0"
+num_cpus = "1.17.0"
+dashmap = "5.5"
+half = { version = "2.6", features = ["num-traits"] }
+
+# Error handling
+thiserror = "2.0.12"
+
+# Random number generation
 rand = "0.9.1"
-rand_chacha = "0.9.0"
+rand_chacha = "0.9.0"  
+rand_distr = "0.5"
+rand_xoshiro = "0.6"
 
-# For serialization
+# Serialization and data formats
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+bincode = "1.3"
+zstd = "0.13"
+flate2 = "1.1"
+md5 = "0.7"
 
-# For GPU support
+# GPU computing support
 wgpu = { version = "25.0.2" }
 bytemuck = { version = "1.23.1", features = ["derive"] }
+ocl = "0.19.7"
 
-# For D-Wave annealing and networking
+# Async and networking
 reqwest = { version = "0.12.20", features = ["json"] }
 tokio = { version = "1.45.1", features = ["full"] }
+futures = "0.3"
+async-trait = "0.1"
 
-# For FFI and Python bindings
+# Python bindings and FFI
 pyo3 = { version = "0.25.1", features = ["extension-module"] }
 numpy = "0.25"
 
-# For UUIDs
+# Utility libraries
 uuid = { version = "1.17.0", features = ["v4", "serde"] }
-
-# For optional functionality
-symengine = { version = "0.3.0" }
+chrono = { version = "0.4", features = ["serde"] }
 regex = "1.11.1"
-wide = "0.7.32"
-chrono = "0.4"
-async-trait = "0.1"
+colored = "2.2"
+tempfile = "3.0"
+
+# Cryptographic functions
 hmac = "0.12.1"
 sha2 = "0.10.9"
 hex = "0.4.3"
-ndarray-rand = "0.15"
-ndarray-stats = "0.6"
-rand_distr = "0.5"
-ocl = "0.19.7"
-nalgebra = "0.33.2"
-fastrand = "2.3.0"
+
+# Symbolic computation (patched versions)
+symengine = { git = "https://github.com/cool-japan/symengine-rs.git", branch = "fixed-macos" }
+symengine-sys = { git = "https://github.com/cool-japan/symengine-sys.git", branch = "fixed-macos" }
+
+# Advanced math libraries
+ndrustfft = "0.5"
+sprs = "0.11"  
+nalgebra-sparse = "0.9"
+
+# Visualization and plotting
+plotters = "0.3"
+
+# Development and testing
+criterion = { version = "0.5", features = ["html_reports"] }
 
 [profile.release]
 lto = "thin"

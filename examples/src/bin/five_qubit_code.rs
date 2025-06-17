@@ -3,11 +3,11 @@
 // This example demonstrates the use of the 5-qubit perfect code,
 // which is the smallest code that can correct arbitrary single-qubit errors.
 
-use quantrs_circuit::builder::Circuit;
-use quantrs_core::qubit::QubitId;
-use quantrs_sim::error_correction::FiveQubitCode;
-use quantrs_sim::noise::{BitFlipChannel, DepolarizingChannel, NoiseModel, PhaseFlipChannel};
-use quantrs_sim::statevector::StateVectorSimulator;
+use quantrs2_circuit::builder::Circuit;
+use quantrs2_core::qubit::QubitId;
+use quantrs2_sim::error_correction::{ErrorCorrection, FiveQubitCode};
+use quantrs2_sim::noise::{BitFlipChannel, DepolarizingChannel, NoiseModel, PhaseFlipChannel};
+use quantrs2_sim::statevector::StateVectorSimulator;
 
 fn main() {
     println!("Five-Qubit Perfect Code Example");
@@ -46,8 +46,9 @@ fn main() {
     let encoder = code.encode_circuit(&logical_qubits, &ancilla_qubits);
 
     // Transfer the encoding gates to our main circuit
+    let encoder = encoder.unwrap();
     for gate in encoder.gates() {
-        circuit.add_gate(gate.as_ref().clone()).unwrap();
+        circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Run with ideal simulator to verify the encoded state
@@ -93,7 +94,7 @@ fn run_with_bit_flip(encoding_circuit: &Circuit<9>, code: &FiveQubitCode) {
 
     // First transfer the encoding circuit + noise
     for gate in encoding_circuit.gates() {
-        correction_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        correction_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Add the syndrome measurement and correction
@@ -114,8 +115,9 @@ fn run_with_bit_flip(encoding_circuit: &Circuit<9>, code: &FiveQubitCode) {
     let correction = code.decode_circuit(&encoded_qubits, &syndrome_qubits);
 
     // Add correction operations
+    let correction = correction.unwrap();
     for gate in correction.gates() {
-        correction_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        correction_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Run the full circuit on a clean simulator
@@ -163,7 +165,7 @@ fn run_with_phase_flip(encoding_circuit: &Circuit<9>, code: &FiveQubitCode) {
 
     // First transfer the encoding circuit + noise
     for gate in encoding_circuit.gates() {
-        correction_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        correction_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Add the syndrome measurement and correction
@@ -184,8 +186,9 @@ fn run_with_phase_flip(encoding_circuit: &Circuit<9>, code: &FiveQubitCode) {
     let correction = code.decode_circuit(&encoded_qubits, &syndrome_qubits);
 
     // Add correction operations
+    let correction = correction.unwrap();
     for gate in correction.gates() {
-        correction_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        correction_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Run the full circuit on a clean simulator
@@ -233,7 +236,7 @@ fn run_with_depolarizing_noise(encoding_circuit: &Circuit<9>, code: &FiveQubitCo
 
     // First transfer the encoding circuit + noise
     for gate in encoding_circuit.gates() {
-        correction_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        correction_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Add the syndrome measurement and correction
@@ -254,8 +257,9 @@ fn run_with_depolarizing_noise(encoding_circuit: &Circuit<9>, code: &FiveQubitCo
     let correction = code.decode_circuit(&encoded_qubits, &syndrome_qubits);
 
     // Add correction operations
+    let correction = correction.unwrap();
     for gate in correction.gates() {
-        correction_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        correction_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Run the full circuit on a clean simulator
@@ -307,7 +311,7 @@ fn run_with_multiple_errors(encoding_circuit: &Circuit<9>, code: &FiveQubitCode)
 
     // First transfer the encoding circuit + noise
     for gate in encoding_circuit.gates() {
-        correction_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        correction_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Add the syndrome measurement and correction
@@ -328,8 +332,9 @@ fn run_with_multiple_errors(encoding_circuit: &Circuit<9>, code: &FiveQubitCode)
     let correction = code.decode_circuit(&encoded_qubits, &syndrome_qubits);
 
     // Add correction operations
+    let correction = correction.unwrap();
     for gate in correction.gates() {
-        correction_circuit.add_gate(gate.as_ref().clone()).unwrap();
+        correction_circuit.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Run the full circuit on a clean simulator
@@ -357,7 +362,7 @@ fn run_with_multiple_errors(encoding_circuit: &Circuit<9>, code: &FiveQubitCode)
 
 // Helper function to analyze the logical state
 // Returns (probability of |0⟩, probability of |1⟩, phase relationship)
-fn analyze_logical_state(state: &quantrs_core::register::Register<9>) -> (f64, f64, f64) {
+fn analyze_logical_state(state: &quantrs2_core::register::Register<9>) -> (f64, f64, f64) {
     use num_complex::Complex64;
 
     // This is a simplified analysis - in a real implementation, we would

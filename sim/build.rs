@@ -16,7 +16,6 @@ fn main() {
         println!("cargo:rustc-env=CXXFLAGS=-stdlib=libc++");
         println!("cargo:rustc-env=LDFLAGS=-lc++");
 
-        // Print debug info
-        println!("cargo:warning=Building on macOS with Accelerate framework");
+        // Accelerate framework and C++ linking fix applied for macOS
     }
 }

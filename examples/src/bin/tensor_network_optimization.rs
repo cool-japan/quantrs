@@ -1,64 +1,65 @@
 use std::time::Instant;
 
-use quantrs_circuit::{Circuit, GateBuilder};
-use quantrs_core::QubitId;
-use quantrs_sim::{
-    ContractionStrategy, SimulationResult, StateVectorSimulator, TensorNetworkSimulator,
+use quantrs2_circuit::prelude::{Circuit, Simulator};
+use quantrs2_core::prelude::QubitId;
+use quantrs2_sim::{
+    ContractionStrategy, TensorNetworkSimulator,
 };
+use quantrs2_sim::prelude::StateVectorSimulator;
 
 // Create a QFT circuit
-fn create_qft_circuit(num_qubits: usize) -> Circuit {
-    let mut circuit = Circuit::new(num_qubits);
+fn create_qft_circuit(num_qubits: usize, _params: usize) -> Result<Circuit<4>, Box<dyn std::error::Error>> {
+    let mut circuit = Circuit::<4>::new();
 
     // Standard QFT implementation
-    for i in 0..num_qubits {
-        circuit = circuit.h(QubitId::new(i));
+    for i in 0..num_qubits.min(4) {
+        circuit.h(QubitId::new(i as u32))?;
 
-        for j in i + 1..num_qubits {
+        for j in i + 1..num_qubits.min(4) {
             let angle = std::f64::consts::PI / 2_f64.powi((j - i) as i32);
-            circuit = circuit.cp(angle, QubitId::new(i), QubitId::new(j));
+            circuit.cp(QubitId::new(i as u32), QubitId::new(j as u32), angle)?;
         }
     }
 
     // Reverse the order of qubits (standard in QFT)
-    for i in 0..num_qubits / 2 {
-        circuit = circuit.swap(QubitId::new(i), QubitId::new(num_qubits - i - 1));
+    for i in 0..num_qubits.min(4) / 2 {
+        circuit.swap(QubitId::new(i as u32), QubitId::new((num_qubits.min(4) - i - 1) as u32))?;
     }
 
-    circuit
+    Ok(circuit)
 }
 
 // Create a QAOA circuit
-fn create_qaoa_circuit(num_qubits: usize, p: usize) -> Circuit {
-    let mut circuit = Circuit::new(num_qubits);
+fn create_qaoa_circuit(num_qubits: usize, p: usize) -> Result<Circuit<4>, Box<dyn std::error::Error>> {
+    let mut circuit = Circuit::<4>::new();
 
     // Initial state: superposition
-    for i in 0..num_qubits {
-        circuit = circuit.h(QubitId::new(i));
+    for i in 0..num_qubits.min(4) {
+        circuit.h(QubitId::new(i as u32))?;
     }
 
-    // QAOA layers
-    for _ in 0..p {
-        // Problem Hamiltonian - ZZ interactions (for example, using nearest-neighbor coupling)
-        for i in 0..num_qubits - 1 {
-            circuit = circuit.cnot(QubitId::new(i), QubitId::new(i + 1));
-            circuit = circuit.rz(0.1, QubitId::new(i + 1)); // gamma parameter
-            circuit = circuit.cnot(QubitId::new(i), QubitId::new(i + 1));
+    // Apply QAOA layers
+    for _layer in 0..p {
+        // Problem layer (example: MaxCut on linear chain)
+        for i in 0..num_qubits.min(4) - 1 {
+            circuit.cnot(QubitId::new(i as u32), QubitId::new((i + 1) as u32))?;
+            circuit.rz(QubitId::new((i + 1) as u32), 0.1)?; // gamma parameter
+            circuit.cnot(QubitId::new(i as u32), QubitId::new((i + 1) as u32))?;
         }
 
-        // Mixer Hamiltonian - X rotations
-        for i in 0..num_qubits {
-            circuit = circuit.rx(0.2, QubitId::new(i)); // beta parameter
+        // Mixer layer
+        for i in 0..num_qubits.min(4) {
+            circuit.rx(QubitId::new(i as u32), 0.2)?; // beta parameter
         }
     }
 
-    circuit
+    Ok(circuit)
 }
 
 // Run a benchmark comparing different simulators and strategies
 fn benchmark<F>(name: &str, circuit_fn: F, num_qubits: usize, params: usize)
 where
-    F: Fn(usize, usize) -> Circuit,
+    F: Fn(usize, usize) -> Result<Circuit<4>, Box<dyn std::error::Error>>,
 {
     println!("===============================================");
     println!(
@@ -67,7 +68,13 @@ where
     );
     println!("===============================================");
 
-    let circuit = circuit_fn(num_qubits, params);
+    let circuit = match circuit_fn(num_qubits, params) {
+        Ok(c) => c,
+        Err(e) => {
+            println!("Error creating circuit: {}", e);
+            return;
+        }
+    };
 
     // Standard state vector simulator
     let start = Instant::now();
@@ -85,7 +92,7 @@ where
 
     // Tensor network with greedy strategy
     let start = Instant::now();
-    let tensor_sim = TensorNetworkSimulator::with_strategy(ContractionStrategy::Greedy);
+    let tensor_sim = TensorNetworkSimulator::new().with_contraction_strategy(ContractionStrategy::Greedy);
     let _tensor_result = tensor_sim.run(&circuit).unwrap();
     let greedy_duration = start.elapsed();
     println!("TensorNetwork (greedy): {:?}", greedy_duration);
@@ -95,52 +102,70 @@ where
     let tensor_sim = match name {
         "QFT" => TensorNetworkSimulator::qft(),
         "QAOA" => TensorNetworkSimulator::qaoa(),
-        _ => TensorNetworkSimulator::with_strategy(ContractionStrategy::Optimal),
+        _ => TensorNetworkSimulator::new().with_contraction_strategy(ContractionStrategy::Greedy),
     };
     let _tensor_result = tensor_sim.run(&circuit).unwrap();
-    let optimal_duration = start.elapsed();
-    println!("TensorNetwork (optimal): {:?}", optimal_duration);
+    let optimized_duration = start.elapsed();
+    println!("TensorNetwork (optimized): {:?}", optimized_duration);
 
-    // Print performance comparison
-    println!("Performance comparison (relative to state vector):");
-    println!(
-        "Default strategy: {:.2}x",
-        standard_duration.as_secs_f64() / tensor_duration.as_secs_f64()
-    );
-    println!(
-        "Greedy strategy: {:.2}x",
-        standard_duration.as_secs_f64() / greedy_duration.as_secs_f64()
-    );
-    println!(
-        "Optimal strategy: {:.2}x",
-        standard_duration.as_secs_f64() / optimal_duration.as_secs_f64()
-    );
+    // Compare performance
+    let standard_baseline = standard_duration.as_nanos() as f64;
+    let tensor_speedup = standard_baseline / tensor_duration.as_nanos() as f64;
+    let greedy_speedup = standard_baseline / greedy_duration.as_nanos() as f64;
+    let optimized_speedup = standard_baseline / optimized_duration.as_nanos() as f64;
+
+    println!("\nPerformance Analysis:");
+    println!("  Tensor Network (default):  {:.2}x", tensor_speedup);
+    println!("  Tensor Network (greedy):   {:.2}x", greedy_speedup);
+    println!("  Tensor Network (optimized): {:.2}x", optimized_speedup);
+
+    if tensor_speedup > 1.0 {
+        println!("  ✓ Tensor network provides speedup!");
+    } else {
+        println!("  ⚠ State vector simulator is faster for this problem size");
+    }
+
     println!();
 }
 
-fn main() {
-    // Benchmark QFT with increasing qubit counts
-    for n in 4..=10 {
-        benchmark("QFT", |num_qubits, _| create_qft_circuit(num_qubits), n, 0);
-    }
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Tensor Network Optimization Comparison");
+    println!("=====================================");
+    println!("This example demonstrates the performance characteristics");
+    println!("of tensor network simulators vs state vector simulators");
+    println!("for different quantum circuit types.\n");
 
-    // Benchmark QAOA with increasing qubit counts
-    for n in 4..=10 {
-        benchmark(
-            "QAOA",
-            |num_qubits, p| create_qaoa_circuit(num_qubits, p),
-            n,
-            2,
-        );
-    }
+    // Small circuit sizes where we can see the difference
+    let small_qubits = 4;
+    let medium_qubits = 4; // Limited by Circuit<4> constraint
 
-    // Benchmark QAOA with increasing p parameter
-    for p in 1..=5 {
-        benchmark(
-            "QAOA",
-            |num_qubits, p| create_qaoa_circuit(num_qubits, p),
-            6,
-            p,
-        );
-    }
+    // QFT Benchmarks
+    println!("QUANTUM FOURIER TRANSFORM (QFT) BENCHMARKS");
+    println!("------------------------------------------");
+    benchmark("QFT", create_qft_circuit, small_qubits, 1);
+
+    // QAOA Benchmarks
+    println!("QUANTUM APPROXIMATE OPTIMIZATION ALGORITHM (QAOA) BENCHMARKS");
+    println!("------------------------------------------------------------");
+    benchmark("QAOA", |n, p| create_qaoa_circuit(n, p), medium_qubits, 2);
+    benchmark("QAOA", |n, p| create_qaoa_circuit(n, p), medium_qubits, 4);
+
+    println!("SUMMARY AND INSIGHTS");
+    println!("===================");
+    println!("Tensor network simulators can provide significant speedups for:");
+    println!("• Circuits with limited entanglement");
+    println!("• Structured circuits (QFT, QAOA)");
+    println!("• Large circuits where state vector simulation is infeasible");
+    println!();
+    println!("Key optimization strategies:");
+    println!("• Greedy contraction: Good general-purpose strategy");
+    println!("• Specialized strategies: QFT and QAOA optimized versions");
+    println!("• Adaptive strategies: Automatically choose based on circuit structure");
+    println!();
+    println!("For production use, consider:");
+    println!("• Enhanced tensor network simulator for more sophisticated optimization");
+    println!("• GPU acceleration for larger circuits");
+    println!("• Memory-efficient strategies for very large tensor networks");
+
+    Ok(())
 }

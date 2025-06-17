@@ -6,7 +6,9 @@
 
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
+use quantrs2_core::gate::{single::*, multi::*};
 use quantrs2_sim::prelude::*;
+use quantrs2_sim::stabilizer::{StabilizerGate, StabilizerSimulator, CliffordCircuitBuilder, is_clifford_circuit};
 
 fn main() {
     println!("=== Stabilizer Simulator Demo ===\n");
@@ -95,28 +97,14 @@ fn main() {
 
     // Create a simple 2-qubit circuit
     let mut circuit = Circuit::<2>::new();
-    circuit
-        .add_gate(Hadamard {
-            target: QubitId::new(0),
-        })
-        .unwrap();
-    circuit
-        .add_gate(CNOT {
-            control: QubitId::new(0),
-            target: QubitId::new(1),
-        })
-        .unwrap();
+    circuit.h(0).unwrap();
+    circuit.cnot(0, 1).unwrap();
 
     let is_clifford = is_clifford_circuit(&circuit);
     println!("Is Bell state circuit Clifford? {}", is_clifford);
 
     // Add a non-Clifford gate
-    circuit
-        .add_gate(RotationX {
-            target: QubitId::new(0),
-            theta: std::f64::consts::PI / 4.0,
-        })
-        .unwrap();
+    circuit.rx(0, std::f64::consts::PI / 4.0).unwrap();
 
     let is_clifford = is_clifford_circuit(&circuit);
     println!("Is circuit with Rx(π/4) Clifford? {}", is_clifford);

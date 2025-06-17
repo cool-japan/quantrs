@@ -53,7 +53,7 @@ fn main() -> QuantRS2Result<()> {
     let decomposed_probs = decomposed_result.probabilities();
 
     println!("\nComparing results:");
-    let mut max_diff: f32 = 0.0;
+    let mut max_diff: f64 = 0.0;
     for i in 0..original_probs.len() {
         let diff = (original_probs[i] - decomposed_probs[i]).abs();
         max_diff = max_diff.max(diff);
@@ -112,7 +112,7 @@ fn main() -> QuantRS2Result<()> {
     let optimized_probs = optimized_result.probabilities();
 
     println!("\nComparing results:");
-    let mut max_diff: f32 = 0.0;
+    let mut max_diff: f64 = 0.0;
     for i in 0..redundant_probs.len() {
         let diff = (redundant_probs[i] - optimized_probs[i]).abs();
         max_diff = max_diff.max(diff);

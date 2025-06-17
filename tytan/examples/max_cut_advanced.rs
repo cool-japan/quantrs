@@ -31,8 +31,7 @@ use quantrs2_tytan::{
     },
 };
 
-#[cfg(not(feature = "dwave"))]
-use quantrs2_tytan::compile::SimpleExpr;
+use quantrs2_tytan::compile::expr::{Expr, constant};
 
 use std::collections::HashMap;
 use std::fmt::Write;
@@ -92,20 +91,20 @@ fn create_max_cut_model(
 
     // Objective: maximize sum of w_ij * (x_i XOR x_j) for each edge
     // Using the identity: x_i XOR x_j = x_i + x_j - 2*x_i*x_j
-    let mut objective = SimpleExpr::constant(0.0);
+    let mut objective = constant(0.0);
 
     for (idx, &(i, j)) in edges.iter().enumerate() {
         let weight = weights.map(|w| w[idx]).unwrap_or(1.0);
 
         // Add weight * (x_i + x_j - 2*x_i*x_j)
         objective = objective
-            + SimpleExpr::constant(weight) * node_vars[i].clone()
-            + SimpleExpr::constant(weight) * node_vars[j].clone()
-            + SimpleExpr::constant(-2.0 * weight) * node_vars[i].clone() * node_vars[j].clone();
+            + constant(weight) * node_vars[i].clone()
+            + constant(weight) * node_vars[j].clone()
+            + constant(-2.0 * weight) * node_vars[i].clone() * node_vars[j].clone();
     }
 
     // Since we want to maximize, negate the objective for minimization
-    model.set_objective(SimpleExpr::constant(-1.0) * objective);
+    model.set_objective(constant(-1.0) * objective);
 
     Ok(model)
 }

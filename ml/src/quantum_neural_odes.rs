@@ -892,21 +892,24 @@ mod tests {
 
     #[test]
     fn test_training() {
-        let config = QNODEConfig::default();
+        // Use lightweight config for faster testing
+        let config = QNODEConfig {
+            num_qubits: 2,  // Reduced from 4
+            num_layers: 1,  // Reduced from 3
+            max_evals: 100, // Reduced from 10000
+            ..Default::default()
+        };
         let mut qnode = QuantumNeuralODE::new(config).unwrap();
 
         let training_data = vec![
             (
-                Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]),
-                Array1::from_vec(vec![0.5, 0.6, 0.7, 0.8]),
-            ),
-            (
-                Array1::from_vec(vec![0.2, 0.3, 0.4, 0.5]),
-                Array1::from_vec(vec![0.6, 0.7, 0.8, 0.9]),
+                Array1::from_vec(vec![0.1, 0.2]),  // Match num_qubits
+                Array1::from_vec(vec![0.5, 0.6]),
             ),
         ];
 
-        let result = qnode.train(&training_data, 5);
+        // Only 1 epoch for faster testing
+        let result = qnode.train(&training_data, 1);
         assert!(result.is_ok());
         assert!(!qnode.get_training_history().is_empty());
     }

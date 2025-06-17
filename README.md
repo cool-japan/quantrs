@@ -363,6 +363,42 @@ quantrs2-tytan = { version = "0.1.0-alpha.5", features = ["dwave"] }
 
 This requires the SymEngine library and its dependencies. See [TODO.md](docs/development/TODO.md) for detailed setup instructions.
 
+## Testing
+
+### Recommended Test Commands
+
+For most development and CI purposes, use:
+
+```bash
+# Basic functionality testing
+cargo test --features "parallel"
+
+# Standard development testing with visualization
+cargo test --features "parallel,scirs,plotters"
+```
+
+### Platform-Specific Notes
+
+#### macOS
+
+On macOS, avoid using `--all-features` due to C++ linking issues with SymEngine:
+
+```bash
+# ❌ Avoid this on macOS
+cargo test --all-features
+
+# ✅ Use this instead
+cargo test --features "parallel,scirs,plotters"
+```
+
+See the [macOS Build Guide](docs/MACOS_BUILD_GUIDE.md) for detailed platform-specific instructions and troubleshooting.
+
+#### Feature-Specific Testing
+
+- **GPU features**: Require compatible hardware
+- **`dwave` feature**: Requires SymEngine (may have C++ linking issues on some platforms)
+- **IBM Quantum**: Requires valid API credentials for integration tests
+
 ## License
 
 This project is licensed under either:

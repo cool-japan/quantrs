@@ -351,13 +351,15 @@ fn demo_gpu_acceleration() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "gpu")]
     {
         use crate::gpu_samplers::*;
+        use crate::sampler::genetic_algorithm::GASampler;
+        use ndarray_rand::RandomExt;
 
         println!("  a. GPU Availability");
         if is_gpu_available() {
             println!("    ✓ GPU acceleration available");
 
             // Create GPU sampler
-            let mut gpu_sampler = GPUSampler::new()?.with_device(0).with_workgroup_size(256);
+            let mut gpu_sampler = GASampler::new(None).with_population_size(256);
 
             println!("    ✓ Created GPU sampler");
 

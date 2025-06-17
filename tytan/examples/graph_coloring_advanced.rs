@@ -25,8 +25,7 @@ use quantrs2_tytan::{
     },
 };
 
-#[cfg(not(feature = "dwave"))]
-use quantrs2_tytan::compile::SimpleExpr;
+use quantrs2_tytan::compile::expr::{Expr, constant};
 
 use std::collections::HashMap;
 use std::time::Instant;
@@ -91,7 +90,8 @@ fn create_graph_coloring_model(
     }
 
     // Minimize total colors used
-    model.set_objective(color_usage_vars.into_iter().sum());
+    let objective = color_usage_vars.into_iter().reduce(|acc, x| acc + x).unwrap();
+    model.set_objective(objective);
 
     Ok((model, edges))
 }

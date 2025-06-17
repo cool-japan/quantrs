@@ -110,8 +110,8 @@ fn simulate_with_ibm_noise() -> Result<(), Box<dyn std::error::Error>> {
         let result = simulator.run(&circuit)?;
 
         // Count states with significant probability
-        let significant_states = result
-            .probabilities()
+        let probabilities = result.probabilities();
+        let significant_states = probabilities
             .iter()
             .enumerate()
             .filter(|(_, &p)| p > 0.01)
@@ -130,8 +130,8 @@ fn simulate_with_ibm_noise() -> Result<(), Box<dyn std::error::Error>> {
 
         // Print the top 5 most probable states
         println!("Top 5 most probable states:");
-        let mut probs = result
-            .probabilities()
+        let probabilities = result.probabilities();
+        let mut probs = probabilities
             .iter()
             .enumerate()
             .collect::<Vec<_>>();

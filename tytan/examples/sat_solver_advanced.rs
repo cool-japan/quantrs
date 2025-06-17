@@ -17,8 +17,7 @@ use quantrs2_tytan::{
     sampler::{SASampler, Sampler},
 };
 
-#[cfg(not(feature = "dwave"))]
-use quantrs2_tytan::compile::SimpleExpr;
+use quantrs2_tytan::compile::expr::{Expr, constant};
 
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -141,7 +140,7 @@ fn sat_to_qubo(formula: &SatFormula) -> Result<Model, Box<dyn std::error::Error>
     }
 
     // Track the objective expression separately
-    let mut objective = SimpleExpr::constant(0.0);
+    let mut objective = constant(0.0);
 
     // For each clause, add a penalty if it's not satisfied
     // We use auxiliary variables for clauses with more than 2 literals
@@ -151,14 +150,14 @@ fn sat_to_qubo(formula: &SatFormula) -> Result<Model, Box<dyn std::error::Error>
         }
 
         // Build the clause expression
-        let mut clause_expr = SimpleExpr::constant(0.0);
+        let mut clause_expr = constant(0.0);
 
         for lit in &clause.literals {
             let var_expr = vars[lit.var].clone();
             if lit.negated {
                 // Negated variable: (1 - x)
                 clause_expr =
-                    clause_expr + SimpleExpr::constant(1.0) + SimpleExpr::constant(-1.0) * var_expr;
+                    clause_expr + constant(1.0) + constant(-1.0) * var_expr;
             } else {
                 // Positive variable: x
                 clause_expr = clause_expr + var_expr;
@@ -171,13 +170,13 @@ fn sat_to_qubo(formula: &SatFormula) -> Result<Model, Box<dyn std::error::Error>
         // Constraint: aux_var = 1 if clause is satisfied (at least one literal is true)
         // This is implemented as: if clause_expr > 0, then aux_var = 1
         // We add penalty: (1 - aux_var) * clause_expr
-        let penalty_expr = (SimpleExpr::constant(1.0)
-            + SimpleExpr::constant(-1.0) * aux_var.clone())
+        let penalty_expr = (constant(1.0)
+            + constant(-1.0) * aux_var.clone())
             * clause_expr;
 
         // Also ensure aux_var = 0 when clause is not satisfied
         // Add small penalty for aux_var to prefer aux_var = 0 when possible
-        let mut aux_penalty = SimpleExpr::constant(0.1) * aux_var;
+        let mut aux_penalty = constant(0.1) * aux_var;
 
         // Add to objective (we're minimizing penalties)
         objective = objective + penalty_expr + aux_penalty;

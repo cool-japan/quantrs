@@ -3,11 +3,11 @@
 //! This example shows how to use the optimized simulator implementations
 //! for efficient simulation of quantum circuits, especially with large qubit counts.
 
-use quantrs_circuit::builder::Circuit;
-use quantrs_circuit::builder::Simulator;
-use quantrs_core::qubit::QubitId;
-use quantrs_sim::optimized_simulator::OptimizedSimulator;
-use quantrs_sim::statevector::StateVectorSimulator;
+use quantrs2_circuit::builder::Circuit;
+use quantrs2_circuit::builder::Simulator;
+use quantrs2_core::qubit::QubitId;
+use quantrs2_sim::optimized_simulator::OptimizedSimulator;
+use quantrs2_sim::statevector::StateVectorSimulator;
 use std::time::Instant;
 
 fn main() {

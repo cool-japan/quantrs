@@ -11,8 +11,8 @@ categories.workspace = true
 description = "Quantum annealing support for the QuantRS2 framework"
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.5" }
-quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.5" }
+quantrs2-core.workspace = true
+quantrs2-circuit.workspace = true
 num-complex.workspace = true
 thiserror.workspace = true
 rand.workspace = true
@@ -20,16 +20,16 @@ rand_chacha.workspace = true
 ndarray.workspace = true
 
 # For serialization and networking (required for unified interface)
-serde = { workspace = true }
-serde_json = { workspace = true }
-num_cpus = "1.17.0"
+serde.workspace = true
+serde_json.workspace = true
+num_cpus.workspace = true
 
 # For D-Wave integration
 reqwest = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["full"] }
+tokio.workspace = true
 
 [features]
 default = []

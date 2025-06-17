@@ -323,7 +323,7 @@ impl HyperparameterOptimizer {
         use ndarray::Array1;
 
         let dim = self.search_space.len();
-        let optimizer = BayesianOptimizer::new(dim, kernel, acquisition, exploration)
+        let mut optimizer = BayesianOptimizer::new(dim, kernel, acquisition, exploration)
             .map_err(|e| e.to_string())?;
 
         let mut history = Vec::new();

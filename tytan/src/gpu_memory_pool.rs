@@ -17,6 +17,13 @@ use scirs2_core::gpu;
 pub struct GpuContext;
 
 #[cfg(feature = "scirs")]
+impl GpuContext {
+    pub fn new(_device_id: u32) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(GpuContext)
+    }
+}
+
+#[cfg(feature = "scirs")]
 #[derive(Default)]
 pub struct GpuMemory;
 
@@ -414,7 +421,7 @@ mod tests {
     #[test]
     #[cfg(feature = "scirs")]
     fn test_memory_pool_basic() {
-        use crate::scirs_stub::GpuContext;
+        use crate::gpu_memory_pool::GpuContext;
 
         let context = Arc::new(GpuContext::new(0).unwrap());
         let mut pool = GpuMemoryPool::new(context, 1024 * 1024); // 1MB pool

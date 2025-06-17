@@ -99,7 +99,7 @@ fn demonstrate_simd_operations() -> Result<(), Box<dyn std::error::Error>> {
     println!("  After normalization: {:?}", state);
 
     // Compute expectation value
-    let expectation = expectation_z_simd(&state, 0)?;
+    let expectation = expectation_z_simd(&state, 0, 1);
     println!("  Expectation value <Z>: {}", expectation);
 
     Ok(())

@@ -22,8 +22,7 @@ use quantrs2_tytan::{
     },
 };
 
-#[cfg(not(feature = "dwave"))]
-use quantrs2_tytan::compile::SimpleExpr;
+use quantrs2_tytan::compile::expr::{Expr, constant};
 
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -163,7 +162,7 @@ fn create_portfolio_model(
 
     // Constraint: if asset is selected, it must have exactly one weight level
     for i in 0..n_assets {
-        let mut weight_sum = SimpleExpr::constant(0.0);
+        let mut weight_sum = constant(0.0);
         for j in 1..=n_bins {
             weight_sum = weight_sum + weight_vars[&(i, j)].clone();
         }
@@ -173,12 +172,12 @@ fn create_portfolio_model(
     }
 
     // Constraint: total weight must equal 1
-    let mut total_weight = SimpleExpr::constant(0.0);
+    let mut total_weight = constant(0.0);
     for i in 0..n_assets {
         for j in 1..=n_bins {
             let weight_value = j as f64 / n_bins as f64;
             total_weight =
-                total_weight + SimpleExpr::constant(weight_value) * weight_vars[&(i, j)].clone();
+                total_weight + constant(weight_value) * weight_vars[&(i, j)].clone();
         }
     }
 
@@ -191,35 +190,35 @@ fn create_portfolio_model(
     // Sector constraints handled as penalty in objective
 
     // Objective: maximize return - risk_aversion * variance - transaction_costs
-    let mut objective = SimpleExpr::constant(0.0);
+    let mut objective = constant(0.0);
     let penalty_weight = 1000.0;
 
     // Add constraint penalties
 
     // 1. Total weight constraint: sum of all weights should equal 1
     let mut total_weight_penalty = total_weight.clone();
-    total_weight_penalty = total_weight_penalty + SimpleExpr::constant(-1.0);
+    total_weight_penalty = total_weight_penalty + constant(-1.0);
     // Penalty for (total_weight - 1)^2
     objective = objective
-        + SimpleExpr::constant(penalty_weight)
+        + constant(penalty_weight)
             * total_weight_penalty.clone()
             * total_weight_penalty;
 
     // 2. Asset count constraints
     let mut asset_count_objective = objective;
     if let Some(min_assets) = constraints.min_assets {
-        let asset_count: SimpleExpr = selection_vars.iter().map(|v| v.clone()).sum();
-        let violation = asset_count.clone() + SimpleExpr::constant(-(min_assets as f64));
+        let asset_count: Expr = selection_vars.iter().map(|v| v.clone()).sum();
+        let violation = asset_count.clone() + constant(-(min_assets as f64));
         // Penalty for max(0, min_assets - count) which we approximate as (min_assets - count)^2 when count < min_assets
         asset_count_objective = asset_count_objective
-            + SimpleExpr::constant(penalty_weight) * violation.clone() * violation;
+            + constant(penalty_weight) * violation.clone() * violation;
     }
     if let Some(max_assets) = constraints.max_assets {
-        let asset_count: SimpleExpr = selection_vars.iter().map(|v| v.clone()).sum();
-        let violation = asset_count + SimpleExpr::constant(-(max_assets as f64));
+        let asset_count: Expr = selection_vars.iter().map(|v| v.clone()).sum();
+        let violation = asset_count + constant(-(max_assets as f64));
         // Penalty for max(0, count - max_assets)
         asset_count_objective = asset_count_objective
-            + SimpleExpr::constant(penalty_weight) * violation.clone() * violation;
+            + constant(penalty_weight) * violation.clone() * violation;
     }
     let mut objective = asset_count_objective;
 
@@ -228,7 +227,7 @@ fn create_portfolio_model(
         for j in 1..=n_bins {
             let weight_value = j as f64 / n_bins as f64;
             objective = objective
-                + SimpleExpr::constant(-assets[i].expected_return * weight_value)
+                + constant(-assets[i].expected_return * weight_value)
                     * weight_vars[&(i, j)].clone();
         }
     }
@@ -243,7 +242,7 @@ fn create_portfolio_model(
                     let cov = covariance[[i, j]];
 
                     objective = objective
-                        + SimpleExpr::constant(risk_aversion * wi * wj * cov)
+                        + constant(risk_aversion * wi * wj * cov)
                             * weight_vars[&(i, bi)].clone()
                             * weight_vars[&(j, bj)].clone();
                 }

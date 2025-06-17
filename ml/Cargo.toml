@@ -12,10 +12,10 @@ description = "Quantum Machine Learning module for QuantRS2"
 readme = "README.md"
 
 [dependencies]
-quantrs2-core = { path = "../core", version = "0.1.0-alpha.5" }
-quantrs2-circuit = { path = "../circuit", version = "0.1.0-alpha.5" }
-quantrs2-sim = { path = "../sim", version = "0.1.0-alpha.5" }
-quantrs2-anneal = { path = "../anneal", version = "0.1.0-alpha.5" }
+quantrs2-core.workspace = true
+quantrs2-circuit.workspace = true
+quantrs2-sim.workspace = true
+quantrs2-anneal.workspace = true
 thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -24,11 +24,11 @@ ndarray-rand.workspace = true
 ndarray-stats.workspace = true
 rand.workspace = true
 rand_distr.workspace = true
-rand_chacha = "0.3"
+rand_chacha.workspace = true
 rayon.workspace = true
 num-complex.workspace = true
 fastrand.workspace = true
-num_cpus = "1.17"
+num_cpus.workspace = true
 
 [features]
 default = []

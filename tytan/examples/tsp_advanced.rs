@@ -21,8 +21,7 @@ use quantrs2_tytan::{
     },
 };
 
-#[cfg(not(feature = "dwave"))]
-use quantrs2_tytan::compile::SimpleExpr;
+use quantrs2_tytan::compile::expr::{Expr, constant};
 
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -147,12 +146,12 @@ fn create_tsp_model(
     }
 
     // Objective: minimize total distance
-    let mut objective = SimpleExpr::constant(0.0);
+    let mut objective = constant(0.0);
     for i in 0..n {
         for j in 0..n {
             if i != j {
                 let dist = distances[[i, j]];
-                objective = objective + SimpleExpr::constant(dist) * x_vars[&(i, j)].clone();
+                objective = objective + constant(dist) * x_vars[&(i, j)].clone();
             }
         }
     }

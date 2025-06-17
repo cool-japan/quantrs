@@ -4,7 +4,9 @@
 //! which involves placing 3 rooks on a 3x3 chess board such that none can
 //! attack each other (i.e., no two rooks share a row or column).
 
-use quantrs_tytan::{symbols_list, Auto_array, Compile, SASampler};
+use quantrs2_tytan::{symbols_list, AutoArray, Compile, SASampler};
+use quantrs2_tytan::sampler::Sampler;
+use quantrs2_tytan::symbol::Expression;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("3-Rooks Problem Solver");
@@ -15,22 +17,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Created symbols:\n{:?}", q);
 
     // Constraint 1: Each row must have exactly one rook
-    let mut h = 0.into();
+    let mut h: Expression = 0.into();
     for i in 0..3 {
         let row_sum = q[[i, 0]].clone() + q[[i, 1]].clone() + q[[i, 2]].clone() - 1;
-        h = h + row_sum.pow(2);
+        h = h + row_sum.pow(2.into());
     }
 
     // Constraint 2: Each column must have exactly one rook
     for j in 0..3 {
         let col_sum = q[[0, j]].clone() + q[[1, j]].clone() + q[[2, j]].clone() - 1;
-        h = h + col_sum.pow(2);
+        h = h + col_sum.pow(2.into());
     }
 
     println!("Created QUBO expression");
 
     // Compile to QUBO
-    let (qubo, offset) = Compile::new(&h).get_qubo()?;
+    let (qubo, offset) = Compile::new(h).get_qubo()?;
     println!("Compiled to QUBO with offset: {}", offset);
 
     // Choose a sampler
@@ -59,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("\nBest solution visualization:");
         println!("{:=<40}", "");
 
-        let (arr, subs) = Auto_array::new(best)
+        let (arr, subs) = AutoArray::new(best)
             .get_ndarray("q{}_{}")
             .expect("Failed to convert to array");
 

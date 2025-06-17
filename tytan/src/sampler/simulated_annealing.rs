@@ -227,7 +227,7 @@ impl SASampler {
             .collect();
 
         // Create RNG with seed if provided
-        let _rng = match self.seed {
+        let mut rng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => {
                 let seed: u64 = rand::rng().random();

@@ -225,6 +225,28 @@ impl<const N: usize> Circuit<N> {
         Ok(self)
     }
 
+    /// Add a gate from an Arc (for copying gates between circuits)
+    pub fn add_gate_arc(
+        &mut self,
+        gate: Arc<dyn GateOp + Send + Sync>,
+    ) -> QuantRS2Result<&mut Self> {
+        // Validate that all qubits are within range
+        for qubit in gate.qubits() {
+            if qubit.id() as usize >= N {
+                return Err(quantrs2_core::error::QuantRS2Error::InvalidInput(format!(
+                    "Gate '{}' targets qubit {} which is out of range for {}-qubit circuit (valid range: 0-{})",
+                    gate.name(),
+                    qubit.id(),
+                    N,
+                    N - 1
+                )));
+            }
+        }
+
+        self.gates.push(gate);
+        Ok(self)
+    }
+
     /// Get all gates in the circuit
     pub fn gates(&self) -> &[Arc<dyn GateOp + Send + Sync>] {
         &self.gates

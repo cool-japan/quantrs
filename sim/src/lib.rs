@@ -130,13 +130,8 @@ pub mod noise;
 /// Advanced noise models for realistic device simulation
 pub mod noise_advanced;
 
-#[allow(clippy::module_inception)]
-pub mod error_correction {
-    //! Quantum error correction codes and utilities
-    //!
-    //! This module will provide error correction codes like the Steane code,
-    //! Surface code, and related utilities. For now, it's a placeholder.
-}
+/// Quantum error correction codes and utilities
+pub mod error_correction;
 
 /// Prelude module that re-exports common types and traits
 pub mod prelude {

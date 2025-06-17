@@ -3,13 +3,13 @@
 // This example demonstrates the use of noise models in quantum circuit simulation,
 // including bit flip, phase flip, depolarizing, amplitude damping, and phase damping channels.
 
-use quantrs_circuit::builder::Circuit;
-use quantrs_core::qubit::QubitId;
-use quantrs_sim::noise::{
+use quantrs2_circuit::builder::Circuit;
+use quantrs2_core::qubit::QubitId;
+use quantrs2_sim::noise::{
     AmplitudeDampingChannel, BitFlipChannel, DepolarizingChannel, NoiseModel, NoiseModelBuilder,
     PhaseDampingChannel, PhaseFlipChannel,
 };
-use quantrs_sim::statevector::StateVectorSimulator;
+use quantrs2_sim::statevector::StateVectorSimulator;
 
 fn main() {
     println!("Quantum Noise Models Example");
