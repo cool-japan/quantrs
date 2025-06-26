@@ -5,7 +5,8 @@
 
 use crate::error::QuantRS2Result;
 use num_complex::Complex64;
-use scirs2_core::simd_ops::SimdUnifiedOps;
+// use scirs2_core::simd_ops::SimdUnifiedOps;
+use crate::simd_ops_stubs::{SimdF64, SimdComplex64};
 use ndarray::{ArrayView1, ArrayViewMut1};
 
 // All SIMD operations now use SciRS2's unified trait
@@ -39,14 +40,14 @@ pub fn apply_phase_simd(amplitudes: &mut [Complex64], theta: f64) {
     let mut new_imag_view = ArrayViewMut1::from(&mut new_imag);
     
     // Use SciRS2 SIMD operations
-    let real_cos = f64::simd_scalar_mul(&real_view, cos_theta);
-    let imag_sin = f64::simd_scalar_mul(&imag_view, sin_theta);
-    let new_real_arr = f64::simd_sub(&real_cos.view(), &imag_sin.view());
+    let real_cos = <f64 as SimdF64>::simd_scalar_mul(&real_view, cos_theta);
+    let imag_sin = <f64 as SimdF64>::simd_scalar_mul(&imag_view, sin_theta);
+    let new_real_arr = <f64 as SimdF64>::simd_sub_arrays(&real_cos.view(), &imag_sin.view());
     
     // Compute imaginary part: a*sin + b*cos
-    let real_sin = f64::simd_scalar_mul(&real_view, sin_theta);
-    let imag_cos = f64::simd_scalar_mul(&imag_view, cos_theta);
-    let new_imag_arr = f64::simd_add(&real_sin.view(), &imag_cos.view());
+    let real_sin = <f64 as SimdF64>::simd_scalar_mul(&real_view, sin_theta);
+    let imag_cos = <f64 as SimdF64>::simd_scalar_mul(&imag_view, cos_theta);
+    let new_imag_arr = <f64 as SimdF64>::simd_add_arrays(&real_sin.view(), &imag_cos.view());
     
     // Copy results
     new_real_view.assign(&new_real_arr);
@@ -93,16 +94,16 @@ pub fn inner_product(state1: &[Complex64], state2: &[Complex64]) -> QuantRS2Resu
     let state2_imag_view = ArrayView1::from(&state2_imag);
     
     // Compute real part: a_r*b_r + a_i*b_i
-    let rr_product = f64::simd_mul(&state1_real_view, &state2_real_view);
-    let ii_product = f64::simd_mul(&state1_imag_view, &state2_imag_view);
-    let real_sum = f64::simd_add(&rr_product.view(), &ii_product.view());
-    let real_part = f64::simd_sum(&real_sum.view());
+    let rr_product = <f64 as SimdF64>::simd_mul_arrays(&state1_real_view, &state2_real_view);
+    let ii_product = <f64 as SimdF64>::simd_mul_arrays(&state1_imag_view, &state2_imag_view);
+    let real_sum = <f64 as SimdF64>::simd_add_arrays(&rr_product.view(), &ii_product.view());
+    let real_part = <f64 as SimdF64>::simd_sum_array(&real_sum.view());
     
     // Compute imaginary part: a_r*b_i - a_i*b_r
-    let ri_product = f64::simd_mul(&state1_real_view, &state2_imag_view);
-    let ir_product = f64::simd_mul(&state1_imag_view, &state2_real_view);
-    let imag_diff = f64::simd_sub(&ri_product.view(), &ir_product.view());
-    let imag_part = f64::simd_sum(&imag_diff.view());
+    let ri_product = <f64 as SimdF64>::simd_mul_arrays(&state1_real_view, &state2_imag_view);
+    let ir_product = <f64 as SimdF64>::simd_mul_arrays(&state1_imag_view, &state2_real_view);
+    let imag_diff = <f64 as SimdF64>::simd_sub_arrays(&ri_product.view(), &ir_product.view());
+    let imag_part = <f64 as SimdF64>::simd_sum_array(&imag_diff.view());
     
     Ok(Complex64::new(real_part, -imag_part)) // Negative because of conjugate
 }
@@ -126,11 +127,11 @@ pub fn normalize_simd(amplitudes: &mut [Complex64]) -> QuantRS2Result<()> {
     let real_view = ArrayView1::from(&real_parts);
     let imag_view = ArrayView1::from(&imag_parts);
     
-    let real_squared = f64::simd_mul(&real_view, &real_view);
-    let imag_squared = f64::simd_mul(&imag_view, &imag_view);
-    let sum_squared = f64::simd_add(&real_squared.view(), &imag_squared.view());
+    let real_squared = <f64 as SimdF64>::simd_mul_arrays(&real_view, &real_view);
+    let imag_squared = <f64 as SimdF64>::simd_mul_arrays(&imag_view, &imag_view);
+    let sum_squared = <f64 as SimdF64>::simd_add_arrays(&real_squared.view(), &imag_squared.view());
     
-    let norm_sqr = f64::simd_sum(&sum_squared.view());
+    let norm_sqr = <f64 as SimdF64>::simd_sum_array(&sum_squared.view());
     
     if norm_sqr == 0.0 {
         return Err(crate::error::QuantRS2Error::InvalidInput(
@@ -147,8 +148,8 @@ pub fn normalize_simd(amplitudes: &mut [Complex64]) -> QuantRS2Result<()> {
     let mut normalized_real_view = ArrayViewMut1::from(&mut normalized_real);
     let mut normalized_imag_view = ArrayViewMut1::from(&mut normalized_imag);
     
-    let normalized_real_arr = f64::simd_scalar_mul(&real_view, norm_inv);
-    let normalized_imag_arr = f64::simd_scalar_mul(&imag_view, norm_inv);
+    let normalized_real_arr = <f64 as SimdF64>::simd_scalar_mul(&real_view, norm_inv);
+    let normalized_imag_arr = <f64 as SimdF64>::simd_scalar_mul(&imag_view, norm_inv);
     normalized_real_view.assign(&normalized_real_arr);
     normalized_imag_view.assign(&normalized_imag_arr);
     
@@ -180,8 +181,8 @@ pub fn expectation_z_simd(amplitudes: &[Complex64], qubit: usize, _num_qubits: u
     let norm_view = ArrayView1::from(&norm_sqrs);
     let sign_view = ArrayView1::from(&signs);
     
-    let weighted_arr = f64::simd_mul(&norm_view, &sign_view);
-    f64::simd_sum(&weighted_arr.view())
+    let weighted_arr = <f64 as SimdF64>::simd_mul_arrays(&norm_view, &sign_view);
+    <f64 as SimdF64>::simd_sum_array(&weighted_arr.view())
 }
 
 /// Apply a Hadamard gate using SIMD operations
@@ -242,16 +243,16 @@ pub fn hadamard_simd(amplitudes: &mut [Complex64], qubit: usize, _num_qubits: us
     let mut new_a1_imag_view = ArrayViewMut1::from(&mut new_a1_imag);
     
     // Compute (a0 + a1) * sqrt2_inv
-    let real_sum = f64::simd_add(&a0_real_view, &a1_real_view);
-    let new_a0_real_arr = f64::simd_scalar_mul(&real_sum.view(), sqrt2_inv);
-    let imag_sum = f64::simd_add(&a0_imag_view, &a1_imag_view);
-    let new_a0_imag_arr = f64::simd_scalar_mul(&imag_sum.view(), sqrt2_inv);
+    let real_sum = <f64 as SimdF64>::simd_add_arrays(&a0_real_view, &a1_real_view);
+    let new_a0_real_arr = <f64 as SimdF64>::simd_scalar_mul(&real_sum.view(), sqrt2_inv);
+    let imag_sum = <f64 as SimdF64>::simd_add_arrays(&a0_imag_view, &a1_imag_view);
+    let new_a0_imag_arr = <f64 as SimdF64>::simd_scalar_mul(&imag_sum.view(), sqrt2_inv);
     
     // Compute (a0 - a1) * sqrt2_inv
-    let real_diff = f64::simd_sub(&a0_real_view, &a1_real_view);
-    let new_a1_real_arr = f64::simd_scalar_mul(&real_diff.view(), sqrt2_inv);
-    let imag_diff = f64::simd_sub(&a0_imag_view, &a1_imag_view);
-    let new_a1_imag_arr = f64::simd_scalar_mul(&imag_diff.view(), sqrt2_inv);
+    let real_diff = <f64 as SimdF64>::simd_sub_arrays(&a0_real_view, &a1_real_view);
+    let new_a1_real_arr = <f64 as SimdF64>::simd_scalar_mul(&real_diff.view(), sqrt2_inv);
+    let imag_diff = <f64 as SimdF64>::simd_sub_arrays(&a0_imag_view, &a1_imag_view);
+    let new_a1_imag_arr = <f64 as SimdF64>::simd_scalar_mul(&imag_diff.view(), sqrt2_inv);
     
     new_a0_real_view.assign(&new_a0_real_arr);
     new_a0_imag_view.assign(&new_a0_imag_arr);
@@ -320,14 +321,14 @@ pub fn controlled_phase_simd(
     let mut new_imag_view = ArrayViewMut1::from(&mut new_imag);
     
     // Compute real part: a*cos - b*sin
-    let real_cos = f64::simd_scalar_mul(&real_view, cos_theta);
-    let imag_sin = f64::simd_scalar_mul(&imag_view, sin_theta);
-    let new_real_arr = f64::simd_sub(&real_cos.view(), &imag_sin.view());
+    let real_cos = <f64 as SimdF64>::simd_scalar_mul(&real_view, cos_theta);
+    let imag_sin = <f64 as SimdF64>::simd_scalar_mul(&imag_view, sin_theta);
+    let new_real_arr = <f64 as SimdF64>::simd_sub_arrays(&real_cos.view(), &imag_sin.view());
     
     // Compute imaginary part: a*sin + b*cos
-    let real_sin = f64::simd_scalar_mul(&real_view, sin_theta);
-    let imag_cos = f64::simd_scalar_mul(&imag_view, cos_theta);
-    let new_imag_arr = f64::simd_add(&real_sin.view(), &imag_cos.view());
+    let real_sin = <f64 as SimdF64>::simd_scalar_mul(&real_view, sin_theta);
+    let imag_cos = <f64 as SimdF64>::simd_scalar_mul(&imag_view, cos_theta);
+    let new_imag_arr = <f64 as SimdF64>::simd_add_arrays(&real_sin.view(), &imag_cos.view());
     
     new_real_view.assign(&new_real_arr);
     new_imag_view.assign(&new_imag_arr);

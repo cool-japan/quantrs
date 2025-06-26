@@ -6,17 +6,20 @@
 
 use crate::builder::Circuit;
 use crate::optimization::{CostModel, OptimizationPass};
-use crate::routing::{CouplingMap, RoutedCircuit, RoutingResult, SabreRouter};
+use crate::routing::{CouplingMap, RoutedCircuit, RoutingResult, SabreRouter, SabreConfig};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
 };
-use scirs2_core::parallel_ops::*;
-use scirs2_core::memory::BufferPool;
-use scirs2_core::platform::PlatformCapabilities;
-use scirs2_optimize::graph::{GraphOptimizer, PathFinder};
-use scirs2_linalg::sparse::CSRMatrix;
+// TODO: Fix scirs2-core regex dependency issue
+// use scirs2_core::parallel_ops::*;
+use quantrs2_core::buffer_pool::BufferPool;
+use quantrs2_core::platform::PlatformCapabilities;
+// TODO: Fix import - graph module doesn't exist in scirs2_optimize
+// use scirs2_optimize::graph::{GraphOptimizer, PathFinder};
+// TODO: Fix import - sparse module doesn't exist in scirs2_linalg
+// use scirs2_linalg::sparse::CSRMatrix;
 use ndarray::{Array2, Array1};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque, BTreeMap};
@@ -430,6 +433,9 @@ pub enum MitigationStrategy {
     DynamicalDecoupling,
 }
 
+// Placeholder for missing GraphOptimizer from scirs2_optimize
+struct GraphOptimizer;
+
 /// Enhanced quantum circuit transpiler
 pub struct EnhancedTranspiler {
     config: EnhancedTranspilerConfig,
@@ -608,7 +614,10 @@ impl EnhancedTranspiler {
     
     /// Apply basic routing (fallback when ML routing is disabled)
     fn apply_basic_routing(&self, circuit: &mut Circuit) -> QuantRS2Result<RoutingResult> {
-        let router = SabreRouter::new(self.config.hardware_spec.coupling_map.clone());
+        let router = SabreRouter::new(
+            self.config.hardware_spec.coupling_map.clone(),
+            SabreConfig::default()
+        );
         router.route(circuit)
     }
     
@@ -944,9 +953,9 @@ impl MLRouter {
     fn route(&self, circuit: &Circuit, hardware: &HardwareSpec) -> QuantRS2Result<RoutingResult> {
         // ML-based routing implementation
         Ok(RoutingResult {
-            swaps_added: 0,
-            depth_overhead: 0,
-            routing_time: std::time::Duration::from_secs(0),
+            total_swaps: 0,
+            circuit_depth: 0,
+            routing_overhead: 0.0,
         })
     }
 }
@@ -1026,7 +1035,8 @@ impl TranspilationCache {
 /// Complete transpilation result
 #[derive(Debug, Clone)]
 pub struct TranspilationResult {
-    pub transpiled_circuit: Circuit,
+    // TODO: Circuit requires const generic N, need dynamic solution
+    // pub transpiled_circuit: Circuit<N>,
     pub original_analysis: CircuitAnalysis,
     pub pass_results: Vec<PassResult>,
     pub performance_prediction: Option<PerformancePrediction>,

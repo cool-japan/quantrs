@@ -8,9 +8,11 @@ use crate::gate_translation::GateType;
 use crate::error::QuantRS2Error;
 use crate::scirs2_circuit_verifier::{QuantumGate, VerificationConfig, VerificationVerdict};
 use num_complex::Complex64;
-use scirs2_core::parallel_ops::*;
-use scirs2_core::memory::BufferPool;
-use scirs2_core::platform::PlatformCapabilities;
+// use scirs2_core::parallel_ops::*;
+use crate::parallel_ops_stubs::*;
+// use scirs2_core::memory::BufferPool;
+use crate::buffer_pool::BufferPool;
+use crate::platform::PlatformCapabilities;
 use ndarray::{Array2, Array1, ArrayView2};
 use ndarray_linalg::{Eigh, SVD, Norm};
 use std::collections::{HashMap, HashSet, BTreeMap};
@@ -104,7 +106,7 @@ pub enum CertificateFormat {
 }
 
 /// Quantum circuit property types
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum CircuitProperty {
     /// Circuit implements unitary operation
     Unitary,
@@ -225,7 +227,7 @@ pub struct Counterexample {
     pub violating_gates: Vec<usize>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum VerificationTechnique {
     SMTSolver,
     TheoremProver,
@@ -320,8 +322,8 @@ struct QuantumState {
 /// Abstract interpreter for quantum circuits
 struct QuantumAbstractInterpreter {
     abstract_domain: AbstractDomain,
-    transfer_functions: HashMap<GateType, Box<dyn Fn(&AbstractValue) -> AbstractValue>>,
-    widening_operator: Box<dyn Fn(&AbstractValue, &AbstractValue) -> AbstractValue>,
+    transfer_functions: HashMap<GateType, Box<dyn Fn(&AbstractValue) -> AbstractValue + Send + Sync>>,
+    widening_operator: Box<dyn Fn(&AbstractValue, &AbstractValue) -> AbstractValue + Send + Sync>,
 }
 
 enum AbstractDomain {
@@ -444,7 +446,7 @@ impl EnhancedCircuitVerifier {
             None
         };
         
-        let counterexample = if verdict == VerificationVerdict::Failed && self.config.generate_counterexamples {
+        let counterexample = if matches!(verdict, VerificationVerdict::Failed(_)) && self.config.generate_counterexamples {
             Some(self.generate_counterexample(circuit, &property, num_qubits)?)
         } else {
             None
@@ -557,7 +559,7 @@ impl EnhancedCircuitVerifier {
                 let expected = if i == j { Complex64::new(1.0, 0.0) } else { Complex64::new(0.0, 0.0) };
                 let diff = (product[[i, j]] - expected).norm();
                 if diff > self.config.base_config.numerical_tolerance {
-                    return Ok(VerificationVerdict::Failed);
+                    return Ok(VerificationVerdict::Failed(vec!["Verification failed".to_string()]));
                 }
             }
         }
@@ -590,7 +592,7 @@ impl EnhancedCircuitVerifier {
             // Check norm preservation
             let output_norm: f64 = output.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
             if (output_norm - 1.0).abs() > self.config.base_config.numerical_tolerance {
-                return Ok(VerificationVerdict::Failed);
+                return Ok(VerificationVerdict::Failed(vec!["Verification failed".to_string()]));
             }
         }
         
@@ -614,7 +616,7 @@ impl EnhancedCircuitVerifier {
             let eigenvalues = self.compute_eigenvalues(&unitary)?;
             for eigenvalue in eigenvalues {
                 if (eigenvalue.norm() - 1.0).abs() > self.config.base_config.numerical_tolerance {
-                    return Ok(VerificationVerdict::Failed);
+                    return Ok(VerificationVerdict::Failed(vec!["Verification failed".to_string()]));
                 }
             }
         }
@@ -648,7 +650,7 @@ impl EnhancedCircuitVerifier {
                     let expected = if i == j { Complex64::new(1.0, 0.0) } else { Complex64::new(0.0, 0.0) };
                     let diff = (unitary[[i, j]] - expected).norm();
                     if diff > self.config.base_config.numerical_tolerance {
-                        return Ok(VerificationVerdict::Failed);
+                        return Ok(VerificationVerdict::Failed(vec!["Verification failed".to_string()]));
                     }
                 }
             }
@@ -675,7 +677,7 @@ impl EnhancedCircuitVerifier {
             cumulative_error += gate_error;
             
             if cumulative_error > error_bound {
-                return Ok(VerificationVerdict::Failed);
+                return Ok(VerificationVerdict::Failed(vec!["Verification failed".to_string()]));
             }
         }
         
@@ -703,7 +705,7 @@ impl EnhancedCircuitVerifier {
         if has_syndrome_extraction && has_error_correction && satisfies_threshold {
             Ok(VerificationVerdict::Verified)
         } else {
-            Ok(VerificationVerdict::Failed)
+            Ok(VerificationVerdict::Failed(vec!["Verification failed".to_string()]))
         }
     }
 
@@ -725,7 +727,7 @@ impl EnhancedCircuitVerifier {
         let is_sat = self.check_smt_satisfiability(&constraints, &negated_property)?;
         
         if is_sat {
-            Ok(VerificationVerdict::Failed)
+            Ok(VerificationVerdict::Failed(vec!["Verification failed".to_string()]))
         } else {
             Ok(VerificationVerdict::Verified)
         }
@@ -772,7 +774,7 @@ impl EnhancedCircuitVerifier {
                 if implies {
                     Ok(VerificationVerdict::Verified)
                 } else {
-                    Ok(VerificationVerdict::Failed)
+                    Ok(VerificationVerdict::Failed(vec!["Verification failed".to_string()]))
                 }
             }
             _ => self.basic_verification(circuit, &CircuitProperty::Custom("QHL".to_string()), num_qubits),
@@ -789,7 +791,7 @@ impl EnhancedCircuitVerifier {
         // Simplified verification using basic techniques
         match property {
             CircuitProperty::Unitary => self.verify_unitarity(circuit, num_qubits),
-            _ => Ok(VerificationVerdict::Unknown),
+            _ => Ok(VerificationVerdict::Inconclusive),
         }
     }
 
@@ -833,7 +835,7 @@ impl EnhancedCircuitVerifier {
         
         Ok(FormalProof {
             proof_type: ProofType::Direct,
-            proof_steps,
+            proof_steps: proof_steps.clone(),
             axioms_used: vec!["Quantum mechanics postulates".to_string()],
             lemmas_used: Vec::new(),
             proof_certificate: self.generate_certificate(&proof_steps)?,
@@ -859,8 +861,8 @@ impl EnhancedCircuitVerifier {
             
             if !self.check_property_on_output(&output, property, num_qubits)? {
                 return Ok(Counterexample {
-                    input_state,
-                    expected_output: input_state.clone(), // Simplified
+                    input_state: input_state.clone(),
+                    expected_output: input_state, // Simplified
                     actual_output: output,
                     error_magnitude: 1.0, // Simplified
                     violating_gates: Vec::new(), // Would need detailed analysis
@@ -868,7 +870,7 @@ impl EnhancedCircuitVerifier {
             }
         }
         
-        Err(QuantRS2Error::VerificationError("No counterexample found".to_string()))
+        Err(QuantRS2Error::ComputationError("No counterexample found".to_string()))
     }
 
     /// Helper methods
@@ -1118,7 +1120,7 @@ impl EnhancedCircuitVerifier {
         if self.config.generate_certificates {
             // Generate cryptographic certificate
             let serialized = serde_json::to_vec(steps)
-                .map_err(|e| QuantRS2Error::SerializationError(e.to_string()))?;
+                .map_err(|e| QuantRS2Error::ComputationError(format!("LaTeX generation failed: {}", e)))?;
             Ok(Some(serialized))
         } else {
             Ok(None)
@@ -1168,8 +1170,8 @@ impl EnhancedCircuitVerifier {
     ) -> Result<VerificationReport, QuantRS2Error> {
         let total_properties = results.len();
         let verified = results.iter().filter(|r| r.verdict == VerificationVerdict::Verified).count();
-        let failed = results.iter().filter(|r| r.verdict == VerificationVerdict::Failed).count();
-        let unknown = results.iter().filter(|r| r.verdict == VerificationVerdict::Unknown).count();
+        let failed = results.iter().filter(|r| matches!(r.verdict, VerificationVerdict::Failed(_))).count();
+        let inconclusive = results.iter().filter(|r| r.verdict == VerificationVerdict::Inconclusive).count();
         
         let total_time: std::time::Duration = results.iter()
             .map(|r| r.verification_time)
@@ -1183,7 +1185,7 @@ impl EnhancedCircuitVerifier {
                 total_properties,
                 verified,
                 failed,
-                unknown,
+                inconclusive,
                 total_verification_time: total_time,
                 average_verification_time: total_time / total_properties as u32,
             },
@@ -1223,7 +1225,7 @@ impl EnhancedCircuitVerifier {
     fn generate_recommendations(&self, results: &[FormalVerificationResult]) -> Vec<String> {
         let mut recommendations = Vec::new();
         
-        let failed_count = results.iter().filter(|r| r.verdict == VerificationVerdict::Failed).count();
+        let failed_count = results.iter().filter(|r| matches!(r.verdict, VerificationVerdict::Failed(_))).count();
         if failed_count > 0 {
             recommendations.push(format!("{} properties failed verification. Review counterexamples.", failed_count));
         }
@@ -1252,7 +1254,7 @@ pub struct VerificationSummary {
     pub total_properties: usize,
     pub verified: usize,
     pub failed: usize,
-    pub unknown: usize,
+    pub inconclusive: usize,
     pub total_verification_time: std::time::Duration,
     pub average_verification_time: std::time::Duration,
 }

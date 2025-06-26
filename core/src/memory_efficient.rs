@@ -6,8 +6,10 @@
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use num_complex::Complex64;
-use scirs2_core::memory::BufferPool;
-use scirs2_core::parallel_ops::*;
+// use scirs2_core::memory::BufferPool;
+use crate::buffer_pool::BufferPool;
+// use scirs2_core::parallel_ops::*;
+use crate::parallel_ops_stubs::*;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::time::Instant;

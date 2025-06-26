@@ -8,9 +8,11 @@ use crate::gate_translation::GateType;
 use crate::error::QuantRS2Error;
 use crate::resource_estimator::{QuantumGate, ResourceEstimationConfig, ErrorCorrectionCode, EstimationMode, HardwarePlatform};
 use num_complex::Complex64;
-use scirs2_core::parallel_ops::*;
-use scirs2_core::memory::BufferPool;
-use scirs2_core::platform::PlatformCapabilities;
+// use scirs2_core::parallel_ops::*;
+use crate::parallel_ops_stubs::*;
+// use scirs2_core::memory::BufferPool;
+use crate::buffer_pool::BufferPool;
+use crate::platform::PlatformCapabilities;
 use ndarray::{Array2, Array1};
 use std::collections::{HashMap, HashSet, VecDeque, BTreeMap};
 use std::sync::{Arc, Mutex};
@@ -334,8 +336,9 @@ impl EnhancedResourceEstimator {
         let mut gate_patterns = Vec::new();
         
         // Parallel gate counting for large circuits
-        if circuit.len() > 1000 && self.platform_capabilities.cpu_count > 1 {
-            let chunk_size = circuit.len() / self.platform_capabilities.cpu_count;
+        let cpu_count = num_cpus::get();
+        if circuit.len() > 1000 && cpu_count > 1 {
+            let chunk_size = circuit.len() / cpu_count;
             let counts: Vec<HashMap<String, usize>> = circuit
                 .par_chunks(chunk_size)
                 .map(|chunk| {
@@ -385,16 +388,16 @@ impl EnhancedResourceEstimator {
         let mut patterns = Vec::new();
         
         // Common patterns to detect
-        let pattern_detectors = vec![
-            ("QFT", self.detect_qft_pattern),
-            ("Grover", self.detect_grover_pattern),
-            ("QAOA", self.detect_qaoa_pattern),
-            ("VQE", self.detect_vqe_pattern),
-            ("Entanglement", self.detect_entanglement_pattern),
+        let pattern_checks = vec![
+            ("QFT", self.detect_qft_pattern(circuit)?),
+            ("Grover", self.detect_grover_pattern(circuit)?),
+            ("QAOA", self.detect_qaoa_pattern(circuit)?),
+            ("VQE", self.detect_vqe_pattern(circuit)?),
+            ("Entanglement", self.detect_entanglement_pattern(circuit)?),
         ];
         
-        for (name, detector) in pattern_detectors {
-            if let Some(instances) = detector(self, circuit)? {
+        for (name, instances_opt) in pattern_checks {
+            if let Some(instances) = instances_opt {
                 patterns.push(GatePattern {
                     pattern_type: name.to_string(),
                     instances,
@@ -593,7 +596,7 @@ impl EnhancedResourceEstimator {
         
         Ok(CircuitTopology {
             num_qubits,
-            connectivity_matrix: connectivity,
+            connectivity_matrix: connectivity.clone(),
             connectivity_density,
             max_connections,
             critical_qubits,
@@ -1026,7 +1029,7 @@ impl EnhancedResourceEstimator {
     fn identify_platform_optimizations(&self) -> Vec<PlatformOptimization> {
         let mut optimizations = Vec::new();
         
-        if self.platform_capabilities.has_simd {
+        if self.platform_capabilities.simd_available() {
             optimizations.push(PlatformOptimization {
                 platform_feature: "SIMD".to_string(),
                 optimization_type: "Vectorized state operations".to_string(),
@@ -1035,11 +1038,12 @@ impl EnhancedResourceEstimator {
             });
         }
         
-        if self.platform_capabilities.cpu_count > 4 {
+        let cpu_count = num_cpus::get();
+        if cpu_count > 4 {
             optimizations.push(PlatformOptimization {
                 platform_feature: "Multi-core".to_string(),
                 optimization_type: "Parallel gate execution".to_string(),
-                expected_speedup: self.platform_capabilities.cpu_count as f64 * 0.7,
+                expected_speedup: cpu_count as f64 * 0.7,
                 applicable: true,
             });
         }
@@ -1076,7 +1080,7 @@ impl EnhancedResourceEstimator {
     /// Export JSON report
     fn export_json_report(&self, estimate: &EnhancedResourceEstimate) -> Result<String, QuantRS2Error> {
         serde_json::to_string_pretty(estimate)
-            .map_err(|e| QuantRS2Error::SerializationError(e.to_string()))
+            .map_err(|e| QuantRS2Error::ComputationError(format!("JSON serialization failed: {}", e)))
     }
 
     /// Export HTML report

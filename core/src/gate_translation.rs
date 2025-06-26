@@ -61,7 +61,7 @@ pub struct GateSetSpecification {
 }
 
 /// Generic gate type for translation
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum GateType {
     // Pauli gates
     X,

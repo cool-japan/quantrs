@@ -9,12 +9,17 @@ use quantrs2_core::{
     gate::GateOp,
     qubit::QubitId,
 };
-use scirs2_core::parallel_ops::*;
-use scirs2_core::memory::BufferPool;
-use scirs2_core::platform::PlatformCapabilities;
-use scirs2_core::simd_ops::{SimdOps, SimdReal};
-use scirs2_optimize::signal::{SignalProcessor, FFT, Convolution};
-use scirs2_linalg::{Matrix, Vector};
+// TODO: Fix scirs2-core regex dependency issue
+// use scirs2_core::parallel_ops::*;
+use quantrs2_core::buffer_pool::BufferPool;
+use quantrs2_core::platform::PlatformCapabilities;
+// TODO: Fix import - SimdOps is directly in scirs2_core
+// use scirs2_core::simd_ops::{SimdOps, SimdReal};
+// use scirs2_core::SimdOps;
+// TODO: Fix import - signal module doesn't exist in scirs2_optimize
+// use scirs2_optimize::signal::{SignalProcessor, FFT, Convolution};
+// TODO: Fix import - Matrix/Vector not directly in scirs2_linalg
+// use scirs2_linalg::{Matrix, Vector};
 use ndarray::{Array1, Array2, ArrayView1};
 use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
@@ -430,6 +435,12 @@ pub enum PulseExportFormat {
     CSV,
 }
 
+// Placeholder for missing SignalProcessor from scirs2_optimize
+struct SignalProcessor;
+impl SignalProcessor {
+    fn new() -> Self { Self }
+}
+
 /// Enhanced pulse controller
 pub struct EnhancedPulseController {
     config: EnhancedPulseConfig,
@@ -470,7 +481,7 @@ impl EnhancedPulseController {
     }
     
     /// Generate optimized pulse for a quantum gate
-    pub fn generate_pulse(&self, gate: &GateOp, target_qubits: &[QubitId]) -> QuantRS2Result<PulseSequence> {
+    pub fn generate_pulse(&self, gate: &dyn GateOp, target_qubits: &[QubitId]) -> QuantRS2Result<PulseSequence> {
         // Check cache first
         if let Some(cached_pulse) = self.check_cache(gate, target_qubits)? {
             return Ok(cached_pulse);
@@ -522,16 +533,20 @@ impl EnhancedPulseController {
         // Clear cache to force regeneration with new parameters
         self.clear_cache()?;
         
+        // Clone quality_metrics before moving analysis
+        let quality_metrics = analysis.quality_metrics.clone();
+        let recommendations = self.generate_calibration_recommendations(&analysis)?;
+        
         Ok(CalibrationResult {
             timestamp: std::time::SystemTime::now(),
             parameters_updated: updates.len(),
-            quality_metrics: analysis.quality_metrics,
-            recommendations: self.generate_calibration_recommendations(&analysis)?,
+            quality_metrics,
+            recommendations,
         })
     }
     
     /// Analyze gate requirements
-    fn analyze_gate(&self, gate: &GateOp) -> QuantRS2Result<GateAnalysis> {
+    fn analyze_gate(&self, gate: &dyn GateOp) -> QuantRS2Result<GateAnalysis> {
         let gate_type = self.classify_gate(gate)?;
         let rotation_angle = self.extract_rotation_angle(gate)?;
         let target_unitary = self.calculate_target_unitary(gate)?;
@@ -771,17 +786,17 @@ impl EnhancedPulseController {
     
     // Helper methods
     
-    fn classify_gate(&self, gate: &GateOp) -> QuantRS2Result<GateType> {
+    fn classify_gate(&self, gate: &dyn GateOp) -> QuantRS2Result<GateType> {
         // Implementation
         Ok(GateType::SingleQubit)
     }
     
-    fn extract_rotation_angle(&self, gate: &GateOp) -> QuantRS2Result<Option<f64>> {
+    fn extract_rotation_angle(&self, gate: &dyn GateOp) -> QuantRS2Result<Option<f64>> {
         // Implementation
         Ok(None)
     }
     
-    fn calculate_target_unitary(&self, gate: &GateOp) -> QuantRS2Result<Array2<Complex64>> {
+    fn calculate_target_unitary(&self, gate: &dyn GateOp) -> QuantRS2Result<Array2<Complex64>> {
         // Implementation
         Ok(Array2::eye(2))
     }
@@ -833,12 +848,12 @@ impl EnhancedPulseController {
         Ok(recommendations)
     }
     
-    fn check_cache(&self, gate: &GateOp, qubits: &[QubitId]) -> QuantRS2Result<Option<PulseSequence>> {
+    fn check_cache(&self, gate: &dyn GateOp, qubits: &[QubitId]) -> QuantRS2Result<Option<PulseSequence>> {
         let cache = self.cache.lock().unwrap();
         Ok(cache.get(gate, qubits))
     }
     
-    fn cache_pulse(&self, gate: &GateOp, qubits: &[QubitId], pulse: &PulseSequence) -> QuantRS2Result<()> {
+    fn cache_pulse(&self, gate: &dyn GateOp, qubits: &[QubitId], pulse: &PulseSequence) -> QuantRS2Result<()> {
         let mut cache = self.cache.lock().unwrap();
         cache.insert(gate.clone(), qubits.to_vec(), pulse.clone());
         Ok(())

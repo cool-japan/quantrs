@@ -8,7 +8,7 @@ use crate::error::QuantRS2Error;
 use std::collections::{HashMap, HashSet};
 
 /// SciRS2-enhanced quantum gate representation for linting
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct QuantumGate {
     gate_type: GateType,
     target_qubits: Vec<usize>,
@@ -38,7 +38,7 @@ impl QuantumGate {
 }
 
 /// Configuration for SciRS2-enhanced quantum linting
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct LintingConfig {
     /// Enable performance optimization detection
     pub detect_performance_issues: bool,
@@ -86,7 +86,7 @@ impl Default for LintingConfig {
 }
 
 /// Severity levels for lint findings
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
 pub enum LintSeverity {
     Info,
     Warning,

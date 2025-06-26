@@ -4,8 +4,10 @@
 //! using SciRS2's advanced complexity analysis and numerical methods.
 
 use crate::gate_translation::GateType;
-use scirs2_core::memory::BufferPool;
-use scirs2_core::parallel_ops::*;
+// use scirs2_core::memory::BufferPool;
+use crate::buffer_pool::BufferPool;
+// use scirs2_core::parallel_ops::*;
+use crate::parallel_ops_stubs::*;
 
 /// Simplified quantum gate representation for resource estimation
 #[derive(Debug, Clone)]
@@ -40,7 +42,7 @@ use crate::error::QuantRS2Error;
 use std::collections::HashMap;
 
 /// Configuration for resource estimation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ResourceEstimationConfig {
     /// Target quantum error correction code
     pub error_correction_code: ErrorCorrectionCode,
@@ -73,7 +75,7 @@ impl Default for ResourceEstimationConfig {
 }
 
 /// Supported error correction codes
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum ErrorCorrectionCode {
     SurfaceCode,
     ColorCode,
@@ -83,7 +85,7 @@ pub enum ErrorCorrectionCode {
 }
 
 /// Estimation modes affecting conservativeness of estimates
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum EstimationMode {
     Conservative, // Worst-case estimates
     Optimistic,   // Best-case estimates
@@ -91,7 +93,7 @@ pub enum EstimationMode {
 }
 
 /// Hardware platforms with different characteristics
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum HardwarePlatform {
     Superconducting,
     TrappedIon,

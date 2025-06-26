@@ -11,11 +11,13 @@ use crate::{
 };
 use ndarray::{Array2, ArrayView2};
 use num_complex::Complex64;
-use scirs2_linalg::lowrank::{randomized_svd, truncated_svd};
-use scirs2_optimize::prelude::DifferentialEvolutionOptions;
+// use scirs2_linalg::lowrank::{randomized_svd, truncated_svd};
+// use scirs2_optimize::prelude::DifferentialEvolutionOptions;
 // Tucker decomposition temporarily disabled due to scirs2-linalg compilation issues
 // use scirs2_linalg::tensor_contraction::tucker::{tucker_decomposition, Tucker};
-use scirs2_optimize::differential_evolution;
+// use scirs2_optimize::differential_evolution;
+use crate::linalg_stubs::{randomized_svd, truncated_svd};
+use crate::optimization_stubs::{differential_evolution, DifferentialEvolutionOptions};
 use std::any::Any;
 use std::collections::HashMap;
 
@@ -347,7 +349,7 @@ impl GateSequenceCompressor {
             .collect();
 
         let result =
-            differential_evolution(objective, de_bounds, Some(options), None).map_err(|e| {
+            differential_evolution(objective, &de_bounds, Some(options), None).map_err(|e| {
                 QuantRS2Error::InvalidInput(format!("Parameter optimization failed: {:?}", e))
             })?;
 

@@ -4,7 +4,8 @@
 //! using SciRS2's advanced visualization and analysis tools.
 
 use crate::gate_translation::GateType;
-use scirs2_core::memory::BufferPool;
+// use scirs2_core::memory::BufferPool;
+use crate::buffer_pool::BufferPool;
 use std::time::{Duration, Instant};
 
 /// Simplified quantum gate representation for debugging

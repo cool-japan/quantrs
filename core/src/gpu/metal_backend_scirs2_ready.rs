@@ -51,7 +51,7 @@ pub mod scirs2_metal_placeholder {
 }
 
 #[cfg(feature = "metal")]
-use scirs2_metal_placeholder::*;
+use self::scirs2_metal_placeholder::*;
 
 /// Metal shader library for quantum operations
 pub const METAL_QUANTUM_SHADERS: &str = r#"

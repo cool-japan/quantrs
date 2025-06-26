@@ -9,7 +9,8 @@ use crate::{
 };
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use scirs2_core::parallel_ops::*;
+// use scirs2_core::parallel_ops::*;
+use crate::parallel_ops_stubs::*;
 use std::sync::Arc;
 use std::time::Instant;
 

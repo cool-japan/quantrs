@@ -5,12 +5,13 @@
 
 use crate::gate_translation::GateType;
 use crate::error::QuantRS2Error;
-use scirs2_core::memory::BufferPool;
+// use scirs2_core::memory::BufferPool;
+use crate::buffer_pool::BufferPool;
 use std::collections::HashSet;
 use num_complex::Complex64;
 
 /// SciRS2-enhanced quantum gate representation for verification
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct QuantumGate {
     gate_type: GateType,
     target_qubits: Vec<usize>,
@@ -40,7 +41,7 @@ impl QuantumGate {
 }
 
 /// Configuration for SciRS2-enhanced circuit verification
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct VerificationConfig {
     /// Enable formal mathematical verification
     pub enable_formal_verification: bool,
@@ -608,7 +609,7 @@ pub struct CircuitVerificationResult {
     pub verification_confidence: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum VerificationVerdict {
     Verified,
     PartiallyVerified,

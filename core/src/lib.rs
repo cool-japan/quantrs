@@ -57,6 +57,7 @@
 pub mod adaptive_precision;
 pub mod adiabatic;
 pub mod batch;
+pub mod buffer_pool;
 pub mod bosonic;
 pub mod cartan;
 pub mod characterization;
@@ -75,6 +76,7 @@ pub mod fermionic;
 pub mod gate;
 pub mod gate_translation;
 pub mod gpu;
+mod gpu_stubs;
 pub mod hardware_compilation;
 pub mod hhl;
 pub mod holonomic;
@@ -82,12 +84,15 @@ pub mod hybrid_learning;
 #[cfg(feature = "python")]
 pub mod jupyter_visualization;
 pub mod kak_multiqubit;
+pub mod linalg_stubs;
 pub mod matrix_ops;
 pub mod mbqc;
 pub mod memory_efficient;
 pub mod neutral_atom;
 pub mod operations;
 pub mod optimization;
+pub mod optimization_stubs;
+pub mod parallel_ops_stubs;
 pub mod parametric;
 pub mod photonic;
 pub mod platform;
@@ -140,6 +145,7 @@ pub mod scirs2_quantum_profiler_enhanced;
 pub mod shannon;
 pub mod silicon_quantum_dots;
 pub mod simd_ops;
+pub mod simd_ops_stubs;
 pub mod symbolic;
 pub mod symbolic_hamiltonian;
 pub mod symbolic_optimization;
@@ -439,7 +445,7 @@ pub mod prelude {
     pub use crate::scirs2_quantum_profiler_enhanced::{
         EnhancedQuantumProfiler, EnhancedProfilingConfig, ExportFormat, MetricType,
         PerformanceMetrics, MetricStatistics, AnomalyEvent, AnomalySeverity,
-        BottleneckAnalysis, Bottleneck, BottleneckType, CircuitLocation,
+        BottleneckAnalysis, Bottleneck, BottleneckType,
         OptimizationOpportunity, OpportunityType, Difficulty, HardwarePerformanceModel,
         HardwareCharacteristics, ScalingModel, ScalingType, HardwareOptimizationStrategy,
         EnhancedGateProfilingResult, EnhancedOptimizationRecommendation,
@@ -453,22 +459,22 @@ pub mod prelude {
     };
     pub use crate::scirs2_quantum_formatter_enhanced::{
         EnhancedQuantumFormatter, EnhancedFormattingConfig, VisualFormat, QuantumBackend,
-        ExportFormat, CustomFormattingRule, FormattingOptions, OptimizationLevel,
+        CustomFormattingRule, FormattingOptions,
         EnhancedFormattedCode, SemanticInfo, AlgorithmPhase, QuantumPattern,
         BeautificationSuggestions, HardwareFormattingInfo, FormattingSuggestion,
-        SuggestionType, SuggestionLocation, Priority, TemplatedCode, SyntaxMetadata,
-        SyntaxToken, TokenType, SyntaxScope, ColorScheme, QualityMetrics,
+        SuggestionType, SuggestionLocation, TemplatedCode, SyntaxMetadata,
+        SyntaxToken, TokenType, SyntaxScope, ColorScheme,
         PlatformOptimization, CircuitChange, ChangeType, IncrementalUpdate,
         UpdatedSection, InteractiveSuggestion,
     };
     pub use crate::scirs2_resource_estimator_enhanced::{
         EnhancedResourceEstimator, EnhancedResourceConfig, CloudPlatform, OptimizationObjective,
-        AnalysisDepth, ResourceConstraint, ConstraintType, ConstraintPriority, ReportFormat,
+        AnalysisDepth, ResourceConstraint, ConstraintType, ConstraintPriority,
         EstimationOptions, OptimizationLevel as ResourceOptimizationLevel, EnhancedResourceEstimate, BasicResourceAnalysis,
         GateStatistics, GatePattern, CircuitTopology, TopologyType, ResourceRequirements,
         MemoryRequirements, ErrorBudget, ComplexityMetrics, MLPredictions, ResourceAnomaly,
-        AnomalySeverity, CostAnalysisResult, PlatformCost, CostBreakdown, CostOptimization,
-        OptimizationStrategy, ResourceImprovement, RiskAssessment, RiskLevel, ComparativeAnalysis,
+        CostAnalysisResult, PlatformCost, CostBreakdown, CostOptimization,
+        OptimizationStrategy, ResourceImprovement, RiskAssessment, ComparativeAnalysis,
         HardwareRecommendation, ScalingPredictions, ResourceScores, ReadinessLevel,
         Recommendation, RecommendationCategory, Priority as ResourcePriority, Impact, Effort, MonitoringReport,
     };

@@ -13,9 +13,6 @@ use std::collections::HashMap;
 
 #[cfg(feature = "gpu")]
 // use scirs2_core::gpu::GpuDevice;
-// Placeholder for GpuDevice until scirs2 is available
-#[cfg(feature = "gpu")]
-type GpuDevice = ();
 // 
 // /// Enhanced GPU configuration for SciRS2 integration
 // #[derive(Debug, Clone)]
@@ -36,19 +33,19 @@ type GpuDevice = ();
 //     pub compilation_flags: Vec<String>,
 // }
 
-// impl Default for SciRS2GpuConfig {
-//     fn default() -> Self {
-//         Self {
-//             backend: None, // Auto-detect
-//             device_index: 0,
-//             max_memory_mb: 2048, // 2GB default
-//             enable_kernel_cache: true,
-//             simd_level: 2, // Moderate SIMD optimization
-//             enable_load_balancing: true,
-//             compilation_flags: vec!["-O3".to_string(), "-fast-math".to_string()],
-//         }
-//     }
-// }
+impl Default for SciRS2GpuConfig {
+    fn default() -> Self {
+        Self {
+            backend: None, // Auto-detect
+            device_index: 0,
+            max_memory_mb: 2048, // 2GB default
+            enable_kernel_cache: true,
+            simd_level: 2, // Moderate SIMD optimization
+            enable_load_balancing: true,
+            compilation_flags: vec!["-O3".to_string(), "-fast-math".to_string()],
+        }
+    }
+}
 
 /// Performance metrics for SciRS2 GPU operations
 #[derive(Debug, Clone)]
@@ -976,12 +973,10 @@ mod tests {
     #[test]
     fn test_config_validation() {
         let config = SciRS2GpuConfig {
-            device_id: 0,
-            memory_pool_size: 1024 * 1024 * 1024,
-            enable_profiling: false,
-            enable_async: true,
-            enable_kernel_cache: true,
+            backend: None,
+            device_index: 0,
             max_memory_mb: 1024,
+            enable_kernel_cache: true,
             simd_level: 2,
             enable_load_balancing: true,
             compilation_flags: vec!["-O3".to_string()],

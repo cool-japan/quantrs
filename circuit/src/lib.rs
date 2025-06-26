@@ -141,27 +141,27 @@ pub mod prelude {
     };
     pub use crate::scirs2_qasm_compiler_enhanced::{
         EnhancedQASMCompiler, EnhancedQASMConfig, QASMCompilerConfig, QASMVersion,
-        CompilationTarget, OptimizationLevel, AnalysisOptions, TypeCheckingLevel,
-        ExportFormat, GateDefinition, HardwareConstraints, CompilationResult,
+        CompilationTarget, AnalysisOptions, TypeCheckingLevel,
+        ExportFormat, GateDefinition, CompilationResult,
         GeneratedCode, CompilationVisualizations, CompilationStatistics,
-        CompilationWarning, WarningType, ParsedQASM, ValidationResult, ValidationError,
-        ErrorType, ValidationWarning, OptimizedQASM, ASTStatistics, ImprovementMetrics,
+        CompilationWarning, WarningType, ParsedQASM, ValidationResult,
+        ErrorType, ValidationWarning, OptimizedQASM, ASTStatistics,
         Token, TokenType, AST, ASTNode, Expression, BinaryOp, UnaryOp, Location,
     };
     pub use crate::scirs2_cross_compilation_enhanced::{
         EnhancedCrossCompiler, EnhancedCrossCompilationConfig, CrossCompilationConfig,
-        QuantumFramework, TargetPlatform, CompilationStrategy, OptimizationPass,
+        QuantumFramework, TargetPlatform, CompilationStrategy,
         SourceCircuit, CrossCompilationResult, CompilationStage, ParsedCircuit,
         QuantumOperation, OperationType, ClassicalOperation, ClassicalOpType,
         QuantumIR, IROperation, IROperationType, IRGate, IRClassicalOp,
         IRClassicalOpType, TargetCode, CodeFormat, ValidationResult as CrossValidationResult,
         ValidationError as CrossValidationError, ValidationErrorType, ValidationWarning as CrossValidationWarning,
         ValidationWarningType, CompilationReport, CompilationSummary, CircuitSize,
-        StageAnalysis, StagePerformance, StageImpact, OptimizationReport,
+        StageAnalysis, StagePerformance, StageImpact,
         AppliedOptimization, OptimizationImpact, OptimizationImprovement,
         ResourceUsage, CompilationComplexity, CompilationRecommendation,
         RecommendationCategory as CompilationRecommendationCategory,
-        VisualCompilationFlow, FlowNode, NodeType, FlowEdge, EdgeType,
+        VisualCompilationFlow, FlowNode, NodeType, FlowEdge,
         DataFlow, IRVisualization, IRGraph, IRNode, IREdge, GraphLayout,
         OptimizationVisualization, ComparisonVisualization, CircuitVisualization,
         CircuitMetrics, Difference, DifferenceType, OptimizationTimeline,
@@ -206,7 +206,7 @@ pub mod prelude {
         SimilarityConfig, SimilarityWeights,
     };
     pub use crate::simulator_interface::{
-        CircuitCompiler, CompilationTarget, CompiledCircuit, ContractionStrategy, ExecutionResult,
+        CircuitCompiler, CompiledCircuit, ContractionStrategy, ExecutionResult,
         InstructionSet, MemoryOptimization, OptimizationLevel as SimulatorOptimizationLevel,
         ResourceRequirements, SimulatorBackend, SimulatorExecutor,
     };
@@ -229,22 +229,22 @@ pub mod prelude {
         TranspilationStats, TranspilationStrategy,
     };
     pub use crate::scirs2_transpiler_enhanced::{
-        EnhancedTranspiler, EnhancedTranspilerConfig, HardwareBackend, OptimizationLevel,
-        PerformanceConstraints, ExportFormat, TranspilationPass, DecompositionStrategy,
-        RoutingStrategy, OptimizationStrategy, MitigationStrategy, AdvancedHardwareFeatures,
-        ErrorMitigationSupport, NativeGateSet as EnhancedNativeGateSet, GateProperties,
+        EnhancedTranspiler, EnhancedTranspilerConfig, HardwareBackend,
+        PerformanceConstraints, TranspilationPass, DecompositionStrategy,
+        AdvancedHardwareFeatures,
+        ErrorMitigationSupport, NativeGateSet as EnhancedNativeGateSet,
         GateDecomposition, DecomposedGate, TranspilationResult as EnhancedTranspilationResult,
         CircuitAnalysis, ParallelismAnalysis, GateStatistics, TopologyAnalysis, TopologyType,
-        ResourceRequirements, PassResult, DecompositionResult, OptimizationResult,
-        MitigationResult, PerformancePrediction, ResourceUsage, Bottleneck, BottleneckType,
-        VisualRepresentation, QualityMetrics, CompatibilityReport, OptimizationSuggestion,
+        PassResult, DecompositionResult,
+        MitigationResult, PerformancePrediction, Bottleneck, BottleneckType,
+        VisualRepresentation, CompatibilityReport,
         SuggestionType, ImpactLevel, RoutingModel, PredictionModel, SwapGate, RoutingFeedback,
         CircuitFeatures as EnhancedCircuitFeatures, PerformanceMetrics,
     };
     pub use crate::validation::{
         CircuitValidator, ClassicalConstraints, ConnectivityConstraints, DepthLimits,
-        GateRestrictions, MeasurementConstraints, ResourceLimits, ValidationResult,
-        ValidationRules, ValidationStats, ValidationSuggestion, ValidationWarning,
+        GateRestrictions, MeasurementConstraints, ResourceLimits,
+        ValidationRules, ValidationStats, ValidationSuggestion,
     };
     pub use crate::vqe::{
         PauliOperator, VQEAnsatz, VQECircuit, VQEObservable, VQEOptimizer, VQEOptimizerType,

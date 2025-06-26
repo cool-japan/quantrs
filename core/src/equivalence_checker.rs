@@ -6,8 +6,10 @@
 use crate::gate_translation::GateType;
 use crate::error::QuantRS2Error;
 use num_complex::Complex64;
-use scirs2_core::parallel_ops::*;
-use scirs2_core::memory::BufferPool;
+// use scirs2_core::parallel_ops::*;
+use crate::parallel_ops_stubs::*;
+// use scirs2_core::memory::BufferPool;
+use crate::buffer_pool::BufferPool;
 
 /// Simplified quantum gate representation for equivalence checking
 #[derive(Debug, Clone)]
@@ -40,7 +42,7 @@ impl QuantumGate {
 }
 
 /// Configuration for equivalence checking with SciRS2 numerical tolerance
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct EquivalenceConfig {
     /// Absolute tolerance for complex number comparisons
     pub absolute_tolerance: f64,
@@ -82,7 +84,7 @@ impl Default for EquivalenceConfig {
 }
 
 /// Matrix comparison methods available through SciRS2
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum MatrixComparisonMethod {
     /// Frobenius norm-based comparison
     FrobeniusNorm,

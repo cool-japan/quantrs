@@ -7,10 +7,11 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     register::Register,
+    linalg_stubs::svd,
 };
 use ndarray::{Array, Array2, ArrayD, IxDyn};
 use num_complex::Complex;
-use scirs2_linalg::svd;
+// use scirs2_linalg::svd;
 use std::collections::{HashMap, HashSet};
 
 /// Type alias for complex numbers

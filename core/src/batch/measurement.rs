@@ -9,7 +9,8 @@ use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use rand::prelude::*;
 use rand::{rng, SeedableRng};
-use scirs2_core::parallel_ops::*;
+// use scirs2_core::parallel_ops::*;
+use crate::parallel_ops_stubs::*;
 use std::collections::HashMap;
 
 /// Batch measurement configuration

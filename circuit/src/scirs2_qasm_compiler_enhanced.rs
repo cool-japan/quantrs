@@ -10,11 +10,13 @@ use quantrs2_core::{
     qubit::QubitId,
     register::Register,
 };
-use scirs2_core::parallel_ops::*;
-use scirs2_core::memory::BufferPool;
-use scirs2_core::platform::PlatformCapabilities;
-use scirs2_optimize::parsing::{Parser, ParserConfig, Grammar, AST};
-use scirs2_optimize::compilation::{Compiler, CompilerPass, IRBuilder};
+// TODO: Fix scirs2-core regex dependency issue
+// use scirs2_core::parallel_ops::*;
+use quantrs2_core::buffer_pool::BufferPool;
+use quantrs2_core::platform::PlatformCapabilities;
+// TODO: Fix scirs2_optimize imports - module not found
+// use scirs2_optimize::parsing::{Parser, ParserConfig, Grammar, AST};
+// use scirs2_optimize::compilation::{Compiler, CompilerPass, IRBuilder};
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
@@ -417,8 +419,8 @@ impl EnhancedQASMCompiler {
         Ok(OptimizedQASM {
             original_code: source.to_string(),
             optimized_code,
-            original_stats,
-            optimized_stats,
+            original_stats: original_stats.clone(),
+            optimized_stats: optimized_stats.clone(),
             optimizations_applied: self.optimizer.get_applied_optimizations(),
             improvement_metrics: self.calculate_improvements(&original_stats, &optimized_stats)?,
         })
@@ -801,18 +803,19 @@ impl EnhancedQASMCompiler {
         Ok(QASMVersion::QASM3) // Placeholder
     }
     
-    fn ast_to_circuit(&self, ast: &AST) -> QuantRS2Result<quantrs2_circuit::builder::Circuit> {
+    fn ast_to_circuit(&self, ast: &AST) -> QuantRS2Result<crate::builder::Circuit> {
         // Convert AST to QuantRS2 circuit
-        Ok(quantrs2_circuit::builder::Circuit::new())
+        Ok(crate::builder::Circuit::new())
     }
 }
 
 // Supporting structures
 
 /// QASM parser using Pest
-#[derive(Parser)]
-#[grammar = "qasm.pest"]
-struct QASMPestParser;
+// TODO: Create qasm.pest grammar file for pest parser
+// #[derive(Parser)]
+// #[grammar = "qasm.pest"]
+// struct QASMPestParser;
 
 /// QASM parser wrapper
 struct QASMParser {

@@ -17,9 +17,9 @@ use std::sync::Arc;
 
 // Import SciRS2 GPU abstractions
 // Note: These will be used when full migration to SciRS2 GPU is implemented
-#[cfg(feature = "gpu")]
-#[allow(unused_imports)]
-use scirs2_core::gpu::{GpuDevice, GpuKernel as SciRS2GpuKernel};
+// #[cfg(feature = "gpu")]
+// #[allow(unused_imports)]
+// use scirs2_core::gpu::{GpuDevice, GpuKernel as SciRS2GpuKernel};
 
 // TODO: GPU Migration to SciRS2
 // =============================
@@ -37,6 +37,7 @@ use scirs2_core::gpu::{GpuDevice, GpuKernel as SciRS2GpuKernel};
 // - Phase 4: Update all dependent code
 
 pub mod cpu_backend;
+pub use cpu_backend::CpuBackend;
 #[cfg(feature = "cuda")]
 pub mod cuda_backend;
 #[cfg(feature = "metal")]
@@ -46,8 +47,9 @@ pub mod metal_backend_scirs2_ready;
 #[cfg(feature = "vulkan")]
 pub mod vulkan_backend;
 
-// SciRS2 GPU migration adapter
+// SciRS2 GPU migration adapter  
 pub mod scirs2_adapter;
+pub use crate::gpu_stubs::SciRS2GpuConfig;
 
 // Enhanced GPU optimization modules
 pub mod adaptive_simd;

@@ -8,9 +8,11 @@ use crate::gate_translation::GateType;
 use crate::error::QuantRS2Error;
 use crate::scirs2_quantum_linter::{QuantumGate, LintingConfig, LintSeverity};
 use num_complex::Complex64;
-use scirs2_core::parallel_ops::*;
-use scirs2_core::memory::BufferPool;
-use scirs2_core::platform::PlatformCapabilities;
+// use scirs2_core::parallel_ops::*;
+use crate::parallel_ops_stubs::*;
+// use scirs2_core::memory::BufferPool;
+use crate::buffer_pool::BufferPool;
+use crate::platform::PlatformCapabilities;
 use ndarray::{Array2, Array1};
 use std::collections::{HashMap, HashSet, VecDeque, BTreeMap};
 use std::sync::{Arc, Mutex};
@@ -253,7 +255,7 @@ pub enum RiskLevel {
 }
 
 /// Lint finding types
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LintFindingType {
     // Performance issues
     RedundantGates,
@@ -365,11 +367,10 @@ struct AntiPattern {
     fix_strategy: String,
 }
 
-#[derive(Debug, Clone)]
 struct OptimizationRule {
     name: String,
-    condition: Box<dyn Fn(&[QuantumGate]) -> bool + Send + Sync + Clone>,
-    optimization: Box<dyn Fn(&[QuantumGate]) -> Vec<QuantumGate> + Send + Sync + Clone>,
+    condition: Box<dyn Fn(&[QuantumGate]) -> bool + Send + Sync>,
+    optimization: Box<dyn Fn(&[QuantumGate]) -> Vec<QuantumGate> + Send + Sync>,
     improvement_estimate: f64,
 }
 
@@ -413,7 +414,7 @@ struct LintCache {
     analyzed_patterns: HashSet<String>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct LintStatistics {
     total_circuits_analyzed: usize,
     total_findings: usize,
@@ -479,7 +480,7 @@ impl EnhancedQuantumLinter {
         // Add algorithm signatures
         algorithm_signatures.insert("qft".to_string(), AlgorithmSignature {
             name: "Quantum Fourier Transform".to_string(),
-            gate_sequence: vec![GateType::H, GateType::Rz(0.0), GateType::CNOT],
+            gate_sequence: vec![GateType::H, GateType::Rz("0.0".to_string()), GateType::CNOT],
             variations: vec![],
             required_qubits: 2,
         });
@@ -624,7 +625,11 @@ impl EnhancedQuantumLinter {
         // Sort findings by severity and location
         all_findings.sort_by(|a, b| {
             b.severity.cmp(&a.severity)
-                .then_with(|| a.location.gate_indices[0].cmp(&b.location.gate_indices[0]))
+                .then_with(|| {
+                    let a_idx = a.location.gate_indices.first().copied().unwrap_or(0);
+                    let b_idx = b.location.gate_indices.first().copied().unwrap_or(0);
+                    a_idx.cmp(&b_idx)
+                })
         });
         
         // Filter by severity threshold
@@ -892,7 +897,7 @@ impl EnhancedQuantumLinter {
         
         // T-count (important for fault-tolerant computing)
         let t_count = circuit.iter()
-            .filter(|g| matches!(g.gate_type(), GateType::T | GateType::Tdg))
+            .filter(|g| matches!(g.gate_type(), GateType::T))
             .count();
         
         // Check complexity thresholds
@@ -952,7 +957,8 @@ impl EnhancedQuantumLinter {
             consecutive_gates += 1;
             
             // Simple heuristic: look for measurement or reset as error mitigation
-            if matches!(gate.gate_type(), GateType::Measure | GateType::Reset) {
+            // Skip measurement and reset operations (not in GateType enum)
+            if false {
                 consecutive_gates = 0;
                 last_check_index = i;
             }
@@ -1261,7 +1267,7 @@ impl EnhancedQuantumLinter {
         
         matches!(
             (gate1.gate_type(), gate2.gate_type()),
-            (X, X) | (Y, Y) | (Z, Z) | (H, H) | (T, Tdg) | (Tdg, T) | (S, Sdg) | (Sdg, S)
+            (X, X) | (Y, Y) | (Z, Z) | (H, H) | (S, S) | (T, T)
         )
     }
 
@@ -1273,6 +1279,7 @@ impl EnhancedQuantumLinter {
         let max_qubit = circuit.iter()
             .flat_map(|g| g.target_qubits())
             .max()
+            .copied()
             .unwrap_or(0);
         
         let mut qubit_depths = vec![0; max_qubit + 1];
@@ -1344,7 +1351,11 @@ impl EnhancedQuantumLinter {
     ) -> Option<Vec<usize>> {
         let sig_len = signature.gate_sequence.len();
         
-        for i in 0..=circuit.len().saturating_sub(sig_len) {
+        if sig_len > circuit.len() {
+            return None;
+        }
+        
+        for i in 0..=circuit.len() - sig_len {
             let matches = circuit[i..i + sig_len].iter()
                 .zip(&signature.gate_sequence)
                 .all(|(gate, expected)| gate.gate_type() == expected);
@@ -1366,14 +1377,14 @@ impl EnhancedQuantumLinter {
         
         match architecture {
             HardwareArchitecture::IBMQ => {
-                vec![X, Y, Z, H, S, Sdg, T, Tdg, Rx(0.0), Ry(0.0), Rz(0.0), CNOT, CZ].into_iter().collect()
+                vec![X, Y, Z, H, S, T, Rx("0.0".to_string()), Ry("0.0".to_string()), Rz("0.0".to_string()), CNOT, CZ].into_iter().collect()
             }
             HardwareArchitecture::IonQ => {
-                vec![X, Y, Z, H, Rx(0.0), Ry(0.0), Rz(0.0), CNOT].into_iter().collect()
+                vec![X, Y, Z, H, Rx("0.0".to_string()), Ry("0.0".to_string()), Rz("0.0".to_string()), CNOT].into_iter().collect()
             }
             _ => {
                 // Full gate set for simulators
-                vec![X, Y, Z, H, S, Sdg, T, Tdg, Rx(0.0), Ry(0.0), Rz(0.0), CNOT, CZ, CCX].into_iter().collect()
+                vec![X, Y, Z, H, S, T, Rx("0.0".to_string()), Ry("0.0".to_string()), Rz("0.0".to_string()), CNOT, CZ].into_iter().collect()
             }
         }
     }
@@ -1382,9 +1393,9 @@ impl EnhancedQuantumLinter {
         use GateType::*;
         
         match gate_type {
-            Rx(_) => supported.contains(&Rx(0.0)),
-            Ry(_) => supported.contains(&Ry(0.0)),
-            Rz(_) => supported.contains(&Rz(0.0)),
+            Rx(_) => supported.contains(&Rx("0.0".to_string())),
+            Ry(_) => supported.contains(&Ry("0.0".to_string())),
+            Rz(_) => supported.contains(&Rz("0.0".to_string())),
             other => supported.contains(other),
         }
     }
@@ -1447,7 +1458,7 @@ impl EnhancedQuantumLinter {
         stats.total_findings += findings.len();
         
         for finding in findings {
-            *stats.findings_by_type.entry(finding.finding_type).or_insert(0) += 1;
+            *stats.findings_by_type.entry(finding.finding_type.clone()).or_insert(0) += 1;
             *stats.findings_by_severity.entry(finding.severity.clone()).or_insert(0) += 1;
         }
     }
@@ -1476,7 +1487,7 @@ impl EnhancedQuantumLinter {
         
         EnhancedLintingReport {
             summary,
-            findings,
+            findings: findings.clone(),
             metrics,
             recommendations: self.generate_recommendations(&findings),
             statistics: stats.clone(),
@@ -1494,7 +1505,7 @@ impl EnhancedQuantumLinter {
     fn count_by_type(findings: &[EnhancedLintFinding]) -> HashMap<LintFindingType, usize> {
         let mut counts = HashMap::new();
         for finding in findings {
-            *counts.entry(finding.finding_type).or_insert(0) += 1;
+            *counts.entry(finding.finding_type.clone()).or_insert(0) += 1;
         }
         counts
     }
@@ -1678,7 +1689,12 @@ mod tests {
         let linter = EnhancedQuantumLinter::with_config(config);
         
         let gates = vec![
-            QuantumGate::new(GateType::CCX, vec![0, 1, 2], None), // Toffoli not native on IBMQ
+            // Create a Toffoli gate using Controlled(Controlled(X))
+            QuantumGate::new(
+                GateType::Controlled(Box::new(GateType::Controlled(Box::new(GateType::X)))),
+                vec![2], // target qubit
+                Some(vec![0, 1]) // control qubits
+            ),
         ];
         
         let report = linter.lint_circuit(&gates, None).unwrap();

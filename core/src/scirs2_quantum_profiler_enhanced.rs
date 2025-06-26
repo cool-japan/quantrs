@@ -11,9 +11,11 @@ use crate::scirs2_quantum_profiler::{
     MemoryAnalysis, SimdAnalysis, OptimizationRecommendation, QuantumGate,
 };
 use num_complex::Complex64;
-use scirs2_core::parallel_ops::*;
-use scirs2_core::memory::BufferPool;
-use scirs2_core::platform::PlatformCapabilities;
+// use scirs2_core::parallel_ops::*;
+use crate::parallel_ops_stubs::*;
+// use scirs2_core::memory::BufferPool;
+use crate::buffer_pool::BufferPool;
+use crate::platform::PlatformCapabilities;
 use ndarray::{Array2, Array1, ArrayView1};
 use std::collections::{HashMap, BTreeMap, VecDeque};
 use std::time::{Duration, Instant};
@@ -97,7 +99,7 @@ impl Default for EnhancedProfilingConfig {
 }
 
 /// Export formats for profiling reports
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ExportFormat {
     JSON,
     HTML,
@@ -243,9 +245,10 @@ pub enum Difficulty {
 }
 
 /// Hardware performance model
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct HardwarePerformanceModel {
     /// Platform capabilities
+    #[serde(skip, default = "PlatformCapabilities::detect")]
     pub platform: PlatformCapabilities,
     
     /// Performance characteristics
@@ -500,12 +503,11 @@ impl EnhancedQuantumProfiler {
             cpu_frequency: 3.0e9, // 3 GHz estimate
             cache_sizes: vec![32 * 1024, 256 * 1024, 8 * 1024 * 1024], // L1, L2, L3
             memory_bandwidth: 50.0e9, // 50 GB/s
-            simd_width: if platform_caps.has_avx512 { 512 } 
-                       else if platform_caps.has_avx2 { 256 }
+            simd_width: if platform_caps.simd_available() { 256 } 
                        else { 128 },
             num_cores: num_cpus::get(),
-            gpu_available: platform_caps.has_gpu,
-            gpu_memory: if platform_caps.has_gpu { Some(8 * 1024 * 1024 * 1024) } else { None },
+            gpu_available: platform_caps.gpu_available(),
+            gpu_memory: if platform_caps.gpu_available() { Some(8 * 1024 * 1024 * 1024) } else { None },
             quantum_accelerator: None,
         };
         
@@ -546,7 +548,7 @@ impl EnhancedQuantumProfiler {
         ];
         
         HardwarePerformanceModel {
-            platform: platform_caps.clone(),
+            platform: PlatformCapabilities::detect(),
             characteristics,
             scaling_models,
             optimization_strategies,
@@ -598,12 +600,15 @@ impl EnhancedQuantumProfiler {
         // Create comprehensive report
         let total_time = start_time.elapsed();
         
+        // Prepare export data before moving gate_results
+        let export_data = self.prepare_export_data(&gate_results)?;
+        
         Ok(EnhancedProfilingReport {
             summary: ProfilingSummary {
                 total_execution_time: total_time,
                 num_gates: circuit.len(),
                 num_qubits,
-                platform_info: self.platform_caps.clone(),
+                platform_info: PlatformCapabilities::detect(),
                 profiling_config: self.config.clone(),
             },
             gate_results,
@@ -611,7 +616,7 @@ impl EnhancedQuantumProfiler {
             bottleneck_analysis,
             optimizations,
             performance_predictions,
-            export_data: self.prepare_export_data(&gate_results)?,
+            export_data,
         })
     }
 
@@ -718,7 +723,7 @@ impl EnhancedQuantumProfiler {
         match gate.gate_type() {
             GateType::H | GateType::X | GateType::Y | GateType::Z => {
                 // Single-qubit gates
-                if self.platform_caps.has_avx2 {
+                if self.platform_caps.simd_available() {
                     self.metrics_collector.record_simd_op();
                 }
                 self.metrics_collector.record_bandwidth(16 * (1 << num_qubits)); // Complex64 operations
@@ -936,7 +941,7 @@ impl EnhancedQuantumProfiler {
         }
         
         // Identify optimization opportunities
-        if self.platform_caps.has_avx2 {
+        if self.platform_caps.simd_available() {
             let simd_utilization = gate_results.iter()
                 .filter(|r| r.simd_operations > 0)
                 .count() as f64 / gate_results.len() as f64;
@@ -1075,7 +1080,7 @@ impl EnhancedQuantumProfiler {
         });
         
         // GPU prediction
-        if self.platform_caps.has_gpu {
+        if self.platform_caps.gpu_available() {
             let gpu_speedup = (num_qubits as f64).ln() * 2.0; // Logarithmic speedup model
             predictions.insert("gpu".to_string(), PredictedPerformance {
                 hardware_description: "GPU Acceleration".to_string(),
@@ -1108,10 +1113,13 @@ impl EnhancedQuantumProfiler {
             ],
         });
         
+        // Generate hardware recommendations before moving predictions
+        let hardware_recommendations = self.generate_hardware_recommendations(num_qubits, &predictions);
+        
         Ok(PerformancePredictions {
             predictions,
             scaling_analysis: self.analyze_scaling(num_qubits)?,
-            hardware_recommendations: self.generate_hardware_recommendations(num_qubits, &predictions),
+            hardware_recommendations,
         })
     }
 
@@ -1180,7 +1188,7 @@ impl EnhancedQuantumProfiler {
         gate_results: &[EnhancedGateProfilingResult],
     ) -> Result<Vec<u8>, QuantRS2Error> {
         let json = serde_json::to_vec_pretty(gate_results)
-            .map_err(|e| QuantRS2Error::SerializationError(e.to_string()))?;
+            .map_err(|e| QuantRS2Error::ComputationError(format!("CSV generation failed: {}", e)))?;
         Ok(json)
     }
 
@@ -1191,7 +1199,7 @@ impl EnhancedQuantumProfiler {
     ) -> Result<Vec<u8>, QuantRS2Error> {
         let mut csv = Vec::new();
         writeln!(csv, "gate_index,gate_type,execution_time_us,memory_delta,simd_ops,parallel_ops,cache_efficiency")
-            .map_err(|e| QuantRS2Error::IOError(e.to_string()))?;
+            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
         
         for result in gate_results {
             writeln!(csv, "{},{:?},{},{},{},{},{:.2}",
@@ -1202,7 +1210,7 @@ impl EnhancedQuantumProfiler {
                 result.simd_operations,
                 result.parallel_operations,
                 result.cache_efficiency
-            ).map_err(|e| QuantRS2Error::IOError(e.to_string()))?;
+            ).map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
         }
         
         Ok(csv)
@@ -1215,13 +1223,13 @@ impl EnhancedQuantumProfiler {
     ) -> Result<Vec<u8>, QuantRS2Error> {
         let mut html = Vec::new();
         writeln!(html, "<html><head><title>Quantum Circuit Profiling Report</title>")
-            .map_err(|e| QuantRS2Error::IOError(e.to_string()))?;
+            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
         writeln!(html, "<style>table {{ border-collapse: collapse; }} th, td {{ border: 1px solid black; padding: 8px; }}</style>")
-            .map_err(|e| QuantRS2Error::IOError(e.to_string()))?;
+            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
         writeln!(html, "</head><body><h1>Profiling Results</h1><table>")
-            .map_err(|e| QuantRS2Error::IOError(e.to_string()))?;
+            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
         writeln!(html, "<tr><th>Gate</th><th>Type</th><th>Time (μs)</th><th>Memory</th><th>SIMD</th><th>Parallel</th><th>Cache</th></tr>")
-            .map_err(|e| QuantRS2Error::IOError(e.to_string()))?;
+            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
         
         for result in gate_results {
             writeln!(html, "<tr><td>{}</td><td>{:?}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{:.1}%</td></tr>",
@@ -1232,11 +1240,11 @@ impl EnhancedQuantumProfiler {
                 result.simd_operations,
                 result.parallel_operations,
                 result.cache_efficiency * 100.0
-            ).map_err(|e| QuantRS2Error::IOError(e.to_string()))?;
+            ).map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
         }
         
         writeln!(html, "</table></body></html>")
-            .map_err(|e| QuantRS2Error::IOError(e.to_string()))?;
+            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
         
         Ok(html)
     }
@@ -1314,7 +1322,7 @@ pub struct ScalingAnalysis {
 }
 
 /// Enhanced profiling report
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct EnhancedProfilingReport {
     pub summary: ProfilingSummary,
     pub gate_results: Vec<EnhancedGateProfilingResult>,
@@ -1325,11 +1333,12 @@ pub struct EnhancedProfilingReport {
     pub export_data: HashMap<ExportFormat, Vec<u8>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct ProfilingSummary {
     pub total_execution_time: Duration,
     pub num_gates: usize,
     pub num_qubits: usize,
+    #[serde(skip, default = "PlatformCapabilities::detect")]
     pub platform_info: PlatformCapabilities,
     pub profiling_config: EnhancedProfilingConfig,
 }
@@ -1341,16 +1350,16 @@ mod tests {
     #[test]
     fn test_enhanced_profiler_creation() {
         let profiler = EnhancedQuantumProfiler::new();
-        assert!(profiler.platform_caps.has_simd);
+        assert!(profiler.platform_caps.simd_available());
     }
 
     #[test]
     fn test_basic_profiling() {
         let profiler = EnhancedQuantumProfiler::new();
         let gates = vec![
-            QuantumGate::new(GateType::H, vec![0], None, None),
-            QuantumGate::new(GateType::CNOT, vec![0, 1], None, None),
-            QuantumGate::new(GateType::H, vec![1], None, None),
+            QuantumGate::new(GateType::H, vec![0], None),
+            QuantumGate::new(GateType::CNOT, vec![0, 1], None),
+            QuantumGate::new(GateType::H, vec![1], None),
         ];
         
         let result = profiler.profile_circuit(&gates, 2).unwrap();
@@ -1367,9 +1376,9 @@ mod tests {
         let profiler = EnhancedQuantumProfiler::with_config(config);
         
         let gates = vec![
-            QuantumGate::new(GateType::H, vec![0], None, None),
-            QuantumGate::new(GateType::T, vec![0], None, None),
-            QuantumGate::new(GateType::H, vec![0], None, None),
+            QuantumGate::new(GateType::H, vec![0], None),
+            QuantumGate::new(GateType::T, vec![0], None),
+            QuantumGate::new(GateType::H, vec![0], None),
         ];
         
         let result = profiler.profile_circuit(&gates, 1).unwrap();
@@ -1385,8 +1394,8 @@ mod tests {
         let profiler = EnhancedQuantumProfiler::with_config(config);
         
         let gates = vec![
-            QuantumGate::new(GateType::H, vec![0], None, None),
-            QuantumGate::new(GateType::H, vec![0], None, None), // H^2 = I
+            QuantumGate::new(GateType::H, vec![0], None),
+            QuantumGate::new(GateType::H, vec![0], None), // H^2 = I
         ];
         
         let result = profiler.profile_circuit(&gates, 1).unwrap();
@@ -1404,9 +1413,9 @@ mod tests {
         let profiler = EnhancedQuantumProfiler::with_config(config);
         
         let gates = vec![
-            QuantumGate::new(GateType::X, vec![0], None, None),
-            QuantumGate::new(GateType::Y, vec![1], None, None),
-            QuantumGate::new(GateType::Z, vec![2], None, None),
+            QuantumGate::new(GateType::X, vec![0], None),
+            QuantumGate::new(GateType::Y, vec![1], None),
+            QuantumGate::new(GateType::Z, vec![2], None),
         ];
         
         let result = profiler.profile_circuit(&gates, 3).unwrap();
@@ -1426,7 +1435,7 @@ mod tests {
         let profiler = EnhancedQuantumProfiler::with_config(config);
         
         let gates = vec![
-            QuantumGate::new(GateType::H, vec![0], None, None),
+            QuantumGate::new(GateType::H, vec![0], None),
         ];
         
         let result = profiler.profile_circuit(&gates, 1).unwrap();

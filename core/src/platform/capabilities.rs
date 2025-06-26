@@ -188,6 +188,16 @@ impl PlatformCapabilities {
             || self.cpu.simd.sve
     }
 
+    /// Check if SIMD is available (compatibility method)
+    pub fn simd_available(&self) -> bool {
+        self.has_simd()
+    }
+
+    /// Check if GPU is available (compatibility method)
+    pub fn gpu_available(&self) -> bool {
+        self.gpu.available
+    }
+
     /// Get the optimal SIMD width for f64 operations
     pub fn optimal_simd_width_f64(&self) -> usize {
         if self.cpu.simd.avx512 {

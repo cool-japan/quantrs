@@ -6,8 +6,10 @@
 
 use crate::error::QuantRS2Error;
 use crate::gate_translation::GateType;
-use scirs2_core::memory::BufferPool;
-use scirs2_core::parallel_ops::*;
+// use scirs2_core::memory::BufferPool;
+use crate::buffer_pool::BufferPool;
+// use scirs2_core::parallel_ops::*;
+use crate::parallel_ops_stubs::*;
 use std::collections::HashMap;
 use std::time::{Duration, Instant, SystemTime};
 use num_complex::Complex64;
@@ -82,7 +84,7 @@ impl Default for SciRS2ProfilingConfig {
 }
 
 /// Profiling precision levels
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum ProfilingPrecision {
     Low,     // Basic timing and memory tracking
     Medium,  // Detailed operation tracking

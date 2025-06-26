@@ -10,17 +10,21 @@ use quantrs2_core::{
     qubit::QubitId,
     register::Register,
 };
-use scirs2_core::parallel_ops::*;
-use scirs2_core::memory::BufferPool;
-use scirs2_core::platform::PlatformCapabilities;
-use scirs2_optimize::ir::{
-    IntermediateRepresentation, IRBuilder, IROptimizer,
-    IRTransform, IRValidator
-};
-use scirs2_optimize::compilation::{
-    CompilationPass, PassManager, TargetGenerator,
-    CodeEmitter, OptimizationLevel
-};
+use crate::optimization::pass_manager::{OptimizationLevel, PassManager};
+// TODO: Fix scirs2-core regex dependency issue
+// use scirs2_core::parallel_ops::*;
+use quantrs2_core::buffer_pool::BufferPool;
+use quantrs2_core::platform::PlatformCapabilities;
+// TODO: Fix import - ir module doesn't exist in scirs2_optimize
+// use scirs2_optimize::ir::{
+//     IntermediateRepresentation, IRBuilder, IROptimizer,
+//     IRTransform, IRValidator
+// };
+// TODO: Fix import - compilation module doesn't exist in scirs2_optimize
+// use scirs2_optimize::compilation::{
+//     CompilationPass, PassManager, TargetGenerator,
+//     CodeEmitter, OptimizationLevel
+// };
 use ndarray::{Array1, Array2, ArrayView2};
 use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
@@ -121,7 +125,7 @@ pub struct CrossCompilationConfig {
 impl Default for CrossCompilationConfig {
     fn default() -> Self {
         Self {
-            optimization_level: OptimizationLevel::O2,
+            optimization_level: OptimizationLevel::Medium,
             preserve_semantics: true,
             enable_error_correction: true,
             validation_threshold: 0.999,
@@ -178,6 +182,10 @@ pub enum OptimizationPass {
     NativeGateDecomposition,
     LayoutOptimization,
 }
+
+// Placeholder structs for missing dependencies from scirs2_optimize
+struct IRBuilder;
+struct IROptimizer;
 
 /// Enhanced cross-compiler
 pub struct EnhancedCrossCompiler {
@@ -2437,37 +2445,6 @@ impl RigettiGenerator {
 }
 
 // Error types
-#[derive(Debug, Clone)]
-pub enum QuantRS2Error {
-    CompilationError(String),
-    UnsupportedFramework(String),
-    UnsupportedTarget(String),
-    UnsupportedOperation(String),
-    UnsupportedGate(String),
-    InvalidOperation(String),
-}
-
-impl std::fmt::Display for QuantRS2Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::CompilationError(msg) => write!(f, "Compilation error: {}", msg),
-            Self::UnsupportedFramework(msg) => write!(f, "Unsupported framework: {}", msg),
-            Self::UnsupportedTarget(msg) => write!(f, "Unsupported target: {}", msg),
-            Self::UnsupportedOperation(msg) => write!(f, "Unsupported operation: {}", msg),
-            Self::UnsupportedGate(msg) => write!(f, "Unsupported gate: {}", msg),
-            Self::InvalidOperation(msg) => write!(f, "Invalid operation: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for QuantRS2Error {}
-
-// JSON serialization helper
-impl From<serde_json::Error> for QuantRS2Error {
-    fn from(err: serde_json::Error) -> Self {
-        Self::CompilationError(format!("JSON error: {}", err))
-    }
-}
 
 #[cfg(test)]
 mod tests {

@@ -60,7 +60,7 @@ quantrs2-tytan = { path = "tytan", version = "0.1.0-beta.1" }
 
 # Common math and linear algebra dependencies
 num-complex = "0.4.6"
-ndarray = { version = "0.16.1", features = ["rayon"] }
+ndarray = { version = "0.16.1", features = ["rayon", "serde"] }
 nalgebra = "0.33.2"
 ndarray-linalg = { version = "0.17", default-features = false, features = ["openblas-system"] }
 ndarray-rand = "0.15"
@@ -73,7 +73,7 @@ approx = "0.5"
 wide = "0.7.32"
 
 # SciRS2 ecosystem dependencies
-scirs2-core = { version = "0.1.0-alpha.6", default-features = true, features = ["parallel", "simd"] }
+scirs2-core = { version = "0.1.0-alpha.6", default-features = false, features = ["parallel", "simd"] }
 scirs2-optimize = { version = "0.1.0-alpha.6", default-features = false }
 scirs2-linalg = { version = "0.1.0-alpha.6", default-features = false }
 scirs2-sparse = { version = "0.1.0-alpha.6" }
@@ -125,6 +125,9 @@ chrono = { version = "0.4", features = ["serde"] }
 regex = "1.11.1"
 colored = "2.2"
 tempfile = "3.0"
+petgraph = "0.6"
+pest = "2.7"
+pest_derive = "2.7"
 
 # Cryptographic functions
 hmac = "0.12.1"

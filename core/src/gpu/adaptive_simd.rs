@@ -7,7 +7,8 @@ use crate::error::{QuantRS2Error, QuantRS2Result};
 use crate::platform::PlatformCapabilities;
 use num_complex::Complex64;
 use std::sync::{Mutex, OnceLock};
-use scirs2_core::simd_ops::SimdUnifiedOps;
+// use scirs2_core::simd_ops::SimdUnifiedOps;
+use crate::simd_ops_stubs::SimdF64;
 use ndarray::ArrayView1;
 
 /// CPU feature detection results
@@ -400,40 +401,40 @@ impl AdaptiveSimdDispatcher {
         // new_a1 = m10 * a0 + m11 * a1
         
         // For new_a0_real: m00_re * a0_re - m00_im * a0_im + m01_re * a1_re - m01_im * a1_im
-        let term1 = f64::simd_scalar_mul(&a0_real_view, m00_re);
-        let term2 = f64::simd_scalar_mul(&a0_imag_view, m00_im);
-        let term3 = f64::simd_scalar_mul(&a1_real_view, m01_re);
-        let term4 = f64::simd_scalar_mul(&a1_imag_view, m01_im);
-        let sub1 = f64::simd_sub(&term1.view(), &term2.view());
-        let sub2 = f64::simd_sub(&term3.view(), &term4.view());
-        let new_a0_real_arr = f64::simd_add(&sub1.view(), &sub2.view());
+        let term1 = <f64 as SimdF64>::simd_scalar_mul(&a0_real_view, m00_re);
+        let term2 = <f64 as SimdF64>::simd_scalar_mul(&a0_imag_view, m00_im);
+        let term3 = <f64 as SimdF64>::simd_scalar_mul(&a1_real_view, m01_re);
+        let term4 = <f64 as SimdF64>::simd_scalar_mul(&a1_imag_view, m01_im);
+        let sub1 = <f64 as SimdF64>::simd_sub_arrays(&term1.view(), &term2.view());
+        let sub2 = <f64 as SimdF64>::simd_sub_arrays(&term3.view(), &term4.view());
+        let new_a0_real_arr = <f64 as SimdF64>::simd_add_arrays(&sub1.view(), &sub2.view());
         
         // For new_a0_imag: m00_re * a0_im + m00_im * a0_re + m01_re * a1_im + m01_im * a1_re
-        let term5 = f64::simd_scalar_mul(&a0_imag_view, m00_re);
-        let term6 = f64::simd_scalar_mul(&a0_real_view, m00_im);
-        let term7 = f64::simd_scalar_mul(&a1_imag_view, m01_re);
-        let term8 = f64::simd_scalar_mul(&a1_real_view, m01_im);
-        let add1 = f64::simd_add(&term5.view(), &term6.view());
-        let add2 = f64::simd_add(&term7.view(), &term8.view());
-        let new_a0_imag_arr = f64::simd_add(&add1.view(), &add2.view());
+        let term5 = <f64 as SimdF64>::simd_scalar_mul(&a0_imag_view, m00_re);
+        let term6 = <f64 as SimdF64>::simd_scalar_mul(&a0_real_view, m00_im);
+        let term7 = <f64 as SimdF64>::simd_scalar_mul(&a1_imag_view, m01_re);
+        let term8 = <f64 as SimdF64>::simd_scalar_mul(&a1_real_view, m01_im);
+        let add1 = <f64 as SimdF64>::simd_add_arrays(&term5.view(), &term6.view());
+        let add2 = <f64 as SimdF64>::simd_add_arrays(&term7.view(), &term8.view());
+        let new_a0_imag_arr = <f64 as SimdF64>::simd_add_arrays(&add1.view(), &add2.view());
         
         // For new_a1_real: m10_re * a0_re - m10_im * a0_im + m11_re * a1_re - m11_im * a1_im
-        let term9 = f64::simd_scalar_mul(&a0_real_view, m10_re);
-        let term10 = f64::simd_scalar_mul(&a0_imag_view, m10_im);
-        let term11 = f64::simd_scalar_mul(&a1_real_view, m11_re);
-        let term12 = f64::simd_scalar_mul(&a1_imag_view, m11_im);
-        let sub3 = f64::simd_sub(&term9.view(), &term10.view());
-        let sub4 = f64::simd_sub(&term11.view(), &term12.view());
-        let new_a1_real_arr = f64::simd_add(&sub3.view(), &sub4.view());
+        let term9 = <f64 as SimdF64>::simd_scalar_mul(&a0_real_view, m10_re);
+        let term10 = <f64 as SimdF64>::simd_scalar_mul(&a0_imag_view, m10_im);
+        let term11 = <f64 as SimdF64>::simd_scalar_mul(&a1_real_view, m11_re);
+        let term12 = <f64 as SimdF64>::simd_scalar_mul(&a1_imag_view, m11_im);
+        let sub3 = <f64 as SimdF64>::simd_sub_arrays(&term9.view(), &term10.view());
+        let sub4 = <f64 as SimdF64>::simd_sub_arrays(&term11.view(), &term12.view());
+        let new_a1_real_arr = <f64 as SimdF64>::simd_add_arrays(&sub3.view(), &sub4.view());
         
         // For new_a1_imag: m10_re * a0_im + m10_im * a0_re + m11_re * a1_im + m11_im * a1_re
-        let term13 = f64::simd_scalar_mul(&a0_imag_view, m10_re);
-        let term14 = f64::simd_scalar_mul(&a0_real_view, m10_im);
-        let term15 = f64::simd_scalar_mul(&a1_imag_view, m11_re);
-        let term16 = f64::simd_scalar_mul(&a1_real_view, m11_im);
-        let add3 = f64::simd_add(&term13.view(), &term14.view());
-        let add4 = f64::simd_add(&term15.view(), &term16.view());
-        let new_a1_imag_arr = f64::simd_add(&add3.view(), &add4.view());
+        let term13 = <f64 as SimdF64>::simd_scalar_mul(&a0_imag_view, m10_re);
+        let term14 = <f64 as SimdF64>::simd_scalar_mul(&a0_real_view, m10_im);
+        let term15 = <f64 as SimdF64>::simd_scalar_mul(&a1_imag_view, m11_re);
+        let term16 = <f64 as SimdF64>::simd_scalar_mul(&a1_real_view, m11_im);
+        let add3 = <f64 as SimdF64>::simd_add_arrays(&term13.view(), &term14.view());
+        let add4 = <f64 as SimdF64>::simd_add_arrays(&term15.view(), &term16.view());
+        let new_a1_imag_arr = <f64 as SimdF64>::simd_add_arrays(&add3.view(), &add4.view());
         
         // Write back results
         for i in 0..pair_count {

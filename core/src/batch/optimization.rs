@@ -5,12 +5,14 @@ use super::BatchStateVector;
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use scirs2_core::parallel_ops::*;
+// use scirs2_core::parallel_ops::*;
+use crate::parallel_ops_stubs::*;
+use crate::optimization_stubs::{Method, Options, OptimizeResult, minimize};
 use std::sync::Arc;
 
 // Import SciRS2 optimization
-extern crate scirs2_optimize;
-use scirs2_optimize::unconstrained::{minimize, Method, OptimizeResult, Options};
+// extern crate scirs2_optimize;
+// use scirs2_optimize::unconstrained::{minimize, Method, OptimizeResult, Options};
 
 /// Batch optimizer for parameterized quantum circuits
 pub struct BatchParameterOptimizer {
@@ -129,7 +131,8 @@ impl BatchParameterOptimizer {
         };
 
         // Run optimization using SciRS2
-        let result = minimize(objective, initial_params, self.config.method, Some(options));
+        let initial_array = Array1::from_vec(initial_params.to_vec());
+        let result = minimize(objective, &initial_array, self.config.method, Some(options));
 
         match result {
             Ok(opt_result) => Ok(opt_result),

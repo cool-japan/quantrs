@@ -38,7 +38,7 @@ impl QuantumGate {
 }
 
 /// Configuration for SciRS2-enhanced quantum code formatting
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct FormattingConfig {
     /// Enable optimization-aware formatting
     pub optimization_aware_formatting: bool,
@@ -86,7 +86,7 @@ impl Default for FormattingConfig {
 }
 
 /// Indentation styles for formatted code
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum IndentationStyle {
     Spaces(usize),
     Tabs,
@@ -94,7 +94,7 @@ pub enum IndentationStyle {
 }
 
 /// Comment styles for annotations
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum CommentStyle {
     LineComment,    // //
     BlockComment,   // /* */
@@ -102,7 +102,7 @@ pub enum CommentStyle {
 }
 
 /// Output format options
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum OutputFormat {
     Rust,
     Python,
