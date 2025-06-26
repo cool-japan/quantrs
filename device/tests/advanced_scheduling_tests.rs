@@ -126,9 +126,7 @@ async fn test_sla_compliance_monitoring() {
 
     // Verify report structure
     assert!(report.current_compliance >= 0.0 && report.current_compliance <= 1.0);
-    assert!(report.predicted_violations.len() >= 0);
-    assert!(report.mitigation_strategies.len() >= 0);
-    assert!(report.recommendations.len() >= 0);
+    // Vector lengths are always non-negative, no need to check
 
     println!("SLA Compliance: {:.2}%", report.current_compliance * 100.0);
     println!(
@@ -153,8 +151,7 @@ async fn test_cost_optimization() {
 
     // Verify cost optimization report
     assert!(report.savings_potential >= 0.0);
-    assert!(report.optimizations.len() >= 0);
-    assert!(report.recommendations.len() >= 0);
+    // Vector lengths are always non-negative, no need to check
 
     println!("Potential savings: ${:.2}", report.savings_potential);
     println!("Optimization opportunities: {}", report.optimizations.len());
@@ -173,7 +170,7 @@ async fn test_energy_optimization() {
     // Verify energy optimization report
     assert!(report.sustainability_score >= 0.0 && report.sustainability_score <= 1.0);
     assert!(report.carbon_reduction_potential >= 0.0);
-    assert!(report.efficiency_recommendations.len() >= 0);
+    // Vector length is always non-negative
 
     println!("Sustainability score: {:.2}", report.sustainability_score);
     println!(
@@ -197,9 +194,7 @@ async fn test_fairness_and_game_theory() {
     let report = fairness_report.unwrap();
 
     // Verify fairness report
-    assert!(report.user_satisfaction_scores.len() >= 0);
-    assert!(report.incentive_mechanisms.len() >= 0);
-    assert!(report.recommendations.len() >= 0);
+    // Vector lengths are always non-negative, no need to check
 
     println!(
         "User satisfaction scores: {:?}",

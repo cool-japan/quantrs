@@ -1,5 +1,5 @@
 use num_complex::Complex64;
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use std::sync::Mutex;
 
 use quantrs2_circuit::builder::{Circuit, Simulator};

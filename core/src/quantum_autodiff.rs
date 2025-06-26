@@ -1047,7 +1047,7 @@ mod tests {
 
         let circuit_function = |params: &[f64], _observable: &str| -> QuantRS2Result<Complex64> {
             // Simple parameterized circuit expectation value
-            let theta = if params.len() > 0 { params[0] } else { 0.0 };
+            let theta = if !params.is_empty() { params[0] } else { 0.0 };
             let phi = if params.len() > 1 { params[1] } else { 0.0 };
             let result = (theta.cos() * phi.sin()).abs();
             Ok(Complex64::new(result, 0.0))

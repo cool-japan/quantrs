@@ -3,19 +3,18 @@
 //! This module provides a complete and optimized MPS simulator implementation
 //! with proper SVD decomposition, comprehensive gate support, and performance optimizations.
 
-use crate::scirs2_integration::{Matrix, MemoryPool, SciRS2Backend, LAPACK};
-use ndarray::{array, s, Array1, Array2, Array3, ArrayView2, Axis};
+use crate::scirs2_integration::SciRS2Backend;
+use ndarray::{array, s, Array1, Array2, Array3};
 use ndarray_linalg::{qr::QR, svd::SVD};
 use num_complex::Complex64;
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
-    gate::{multi::*, single::*, GateOp},
-    qubit::QubitId,
+    gate::GateOp,
     register::Register,
 };
-use rand::{thread_rng, Rng};
-use rayon::prelude::*;
+use rand::thread_rng;
+use scirs2_core::parallel_ops::*;
 use std::f64::consts::{PI, SQRT_2};
 
 /// Configuration for MPS simulator

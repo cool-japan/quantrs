@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 #[cfg(feature = "scirs")]
 use crate::scirs_stub;
 #[cfg(feature = "dwave")]
-use symengine::Expression as SymEngineExpression;
+use quantrs2_symengine::Expression as SymEngineExpression;
 
 #[cfg(feature = "dwave")]
 type Expr = SymEngineExpression;
@@ -23,7 +23,7 @@ use quantrs2_anneal::QuboError;
 /// Unified expression interface for examples
 #[cfg(feature = "dwave")]
 pub mod expr {
-    use symengine::Expression as SymEngineExpression;
+    use quantrs2_symengine::Expression as SymEngineExpression;
 
     pub type Expr = SymEngineExpression;
 

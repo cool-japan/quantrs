@@ -1229,7 +1229,6 @@ impl fmt::Display for GateType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::gate::GateOp;
 
     #[test]
     fn test_gate_translator_creation() {

@@ -2,6 +2,14 @@
 
 This document outlines the development plans and future tasks for the QuantRS2-Py module.
 
+## Version 0.1.0-beta.1 Status
+
+This beta release benefits from the deep SciRS2 v0.1.0-alpha.5 integration in the underlying Rust modules:
+- ✅ Enhanced performance through SciRS2's parallel operations
+- ✅ SIMD-accelerated quantum computations under the hood
+- ✅ Memory-efficient handling of large quantum circuits
+- ✅ Automatic optimization selection for best performance
+
 ## Current Status
 
 ### Recently Completed

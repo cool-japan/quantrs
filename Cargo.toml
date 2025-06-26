@@ -10,8 +10,8 @@ members = [
     "tytan",  # Re-enabled after resolving dependency conflicts
     "py",
     "examples",
-    "simengine-sys",
-    "simengine-rs",
+    "quantrs2-symengine-sys",
+    "quantrs2-symengine",
 ]
 exclude = [
     "symengine-fork",
@@ -39,7 +39,7 @@ cast_possible_wrap = "warn"
 dbg_macro = "warn"
 
 [workspace.package]
-version = "0.1.0-alpha.5"
+version = "0.1.0-beta.1"
 authors = ["QuantRS2 Contributors"]
 edition = "2021"
 rust-version = "1.86.0"
@@ -50,13 +50,13 @@ categories = ["science", "simulation"]
 
 [workspace.dependencies]
 # Core quantum computing dependencies
-quantrs2-core = { path = "core", version = "0.1.0-alpha.5" }
-quantrs2-circuit = { path = "circuit", version = "0.1.0-alpha.5" }
-quantrs2-sim = { path = "sim", version = "0.1.0-alpha.5" }
-quantrs2-anneal = { path = "anneal", version = "0.1.0-alpha.5" }
-quantrs2-device = { path = "device", version = "0.1.0-alpha.5" }
-quantrs2-ml = { path = "ml", version = "0.1.0-alpha.5" }
-quantrs2-tytan = { path = "tytan", version = "0.1.0-alpha.5" }
+quantrs2-core = { path = "core", version = "0.1.0-beta.1" }
+quantrs2-circuit = { path = "circuit", version = "0.1.0-beta.1" }
+quantrs2-sim = { path = "sim", version = "0.1.0-beta.1" }
+quantrs2-anneal = { path = "anneal", version = "0.1.0-beta.1" }
+quantrs2-device = { path = "device", version = "0.1.0-beta.1" }
+quantrs2-ml = { path = "ml", version = "0.1.0-beta.1" }
+quantrs2-tytan = { path = "tytan", version = "0.1.0-beta.1" }
 
 # Common math and linear algebra dependencies
 num-complex = "0.4.6"
@@ -73,10 +73,10 @@ approx = "0.5"
 wide = "0.7.32"
 
 # SciRS2 ecosystem dependencies
-scirs2-core = { version = "0.1.0-alpha.4", default-features = false }
-scirs2-optimize = { version = "0.1.0-alpha.4", default-features = false }
-scirs2-linalg = { version = "0.1.0-alpha.4", default-features = false }
-scirs2-sparse = { version = "0.1.0-alpha.4" }
+scirs2-core = { version = "0.1.0-alpha.6", default-features = true, features = ["parallel", "simd"] }
+scirs2-optimize = { version = "0.1.0-alpha.6", default-features = false }
+scirs2-linalg = { version = "0.1.0-alpha.6", default-features = false }
+scirs2-sparse = { version = "0.1.0-alpha.6" }
 
 # Performance and parallel computing
 rayon = "1.10.0"
@@ -132,8 +132,8 @@ sha2 = "0.10.9"
 hex = "0.4.3"
 
 # Symbolic computation (local workspace versions)
-quantrs2-symengine = { path = "simengine-rs", version = "0.1.0-alpha.5" }
-quantrs2-symengine-sys = { path = "simengine-sys", version = "0.1.0-alpha.5" }
+quantrs2-symengine = { path = "quantrs2-symengine", version = "0.1.0-beta.1" }
+quantrs2-symengine-sys = { path = "quantrs2-symengine-sys", version = "0.1.0-beta.1" }
 
 # Advanced math libraries
 ndrustfft = "0.5"
@@ -142,6 +142,9 @@ nalgebra-sparse = "0.9"
 
 # Visualization and plotting
 plotters = "0.3"
+
+# System information
+sysinfo = "0.33"
 
 # Development and testing
 criterion = { version = "0.5", features = ["html_reports"] }

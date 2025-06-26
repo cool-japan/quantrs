@@ -8,7 +8,7 @@
 
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -1436,10 +1436,8 @@ impl EnhancedPhaseEstimation {
 
         // Initialize system qubits in eigenstate
         for i in 0..system_qubits {
-            if i < eigenstate.len() {
-                if eigenstate[i].norm_sqr() > 0.5 {
-                    simulator.apply_x(i)?;
-                }
+            if i < eigenstate.len() && eigenstate[i].norm_sqr() > 0.5 {
+                simulator.apply_x(i)?;
             }
         }
 

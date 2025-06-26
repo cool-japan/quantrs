@@ -4,11 +4,8 @@
 mod tests {
     use quantrs2_tytan::quantum_neural_networks::*;
     use quantrs2_tytan::sampler::{SampleResult, SamplerError, SamplerResult};
-    use quantrs2_tytan::QuboFormulation;
     // Note: Symbol type doesn't exist, use symbols function instead
-    use ndarray::{Array1, Array2, Array3};
-    #[cfg(feature = "dwave")]
-    use quantrs2_tytan::symbol::symbols;
+    use ndarray::{Array1, Array2};
     use std::collections::HashMap;
 
     /// Test basic QNN architecture creation

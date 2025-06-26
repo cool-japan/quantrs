@@ -15,7 +15,23 @@
 
 QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction.
 
-**Current Version**: v0.1.0-alpha.5
+**Current Version**: v0.1.0-beta.1
+
+## What's New in Beta.1
+
+### SciRS2 Integration (v0.1.0-alpha.5)
+- **Enhanced Performance**: Full integration with SciRS2 v0.1.0-alpha.5 for optimized linear algebra, SIMD operations, and GPU acceleration
+- **Unified Operations**: All SIMD operations now use `scirs2_core::simd_ops` for consistent performance across platforms
+- **Parallel Computing**: Leveraging `scirs2_core::parallel_ops` for automatic parallelization with fallback support
+- **Platform Detection**: Automatic capability detection using `scirs2_core::simd_ops::PlatformCapabilities`
+- **Memory Management**: Advanced memory-efficient algorithms from SciRS2 for large-scale quantum simulations
+
+> **Important**: QuantRS2 follows the [SciRS2 Integration Policy](docs/SCIRS2_INTEGRATION_POLICY.md) to ensure consistent and optimized performance across all modules.
+
+### API Improvements
+- Updated to use SciRS2 v0.1.0-alpha.5 APIs with enhanced function signatures
+- Better error handling and type safety
+- Improved documentation and examples
 
 ## Features
 

@@ -12,6 +12,9 @@ use crate::DeviceResult;
 #[cfg(feature = "scirs2")]
 use scirs2_stats::{mean, std, var};
 
+#[cfg(feature = "scirs2")]
+use scirs2_linalg::eigvals;
+
 #[cfg(not(feature = "scirs2"))]
 use super::super::fallback::{mean, std, var};
 
@@ -182,7 +185,7 @@ impl SciRS2ProcessTomographer {
             let real_matrix = choi_matrix.mapv(|x| x.re);
 
             // Compute eigenvalues using SciRS2
-            if let Ok((eigenvalues, _eigenvectors)) = eig(&real_matrix.view()) {
+            if let Ok(eigenvalues) = eigvals(&real_matrix.view(), None) {
                 let real_eigenvalues: Vec<f64> = eigenvalues.iter().map(|x| x.re).collect();
 
                 return self.fit_distribution(&real_eigenvalues, "eigenvalues");

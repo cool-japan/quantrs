@@ -6,7 +6,7 @@
 //! manipulate state vector amplitudes.
 
 use num_complex::Complex64;
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
 use quantrs2_core::{

@@ -4,9 +4,7 @@
 //! optimizations, and NUMA-aware memory management for high-performance quantum
 //! circuit simulation with large state vectors.
 
-use rayon::prelude::*;
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::*;
+use scirs2_core::parallel_ops::*;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
@@ -14,7 +12,6 @@ use std::time::{Duration, Instant};
 
 use crate::error::Result;
 use crate::memory_bandwidth_optimization::OptimizedStateVector;
-use crate::prelude::MemoryOptimizationConfig;
 
 /// Prefetching strategies for memory access optimization
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -512,34 +509,16 @@ impl MemoryPrefetcher {
 
     /// Execute a prefetch request
     fn execute_prefetch(request: &PrefetchRequest) {
-        #[cfg(target_arch = "x86_64")]
+        // TODO: Use scirs2_core's platform-agnostic prefetch operations when API is stabilized
+        // For now, use a volatile read as a simple prefetch hint
         unsafe {
             match request.hint_type {
-                PrefetchHint::Temporal | PrefetchHint::L1 => {
-                    _mm_prefetch(request.address as *const i8, _MM_HINT_T0);
+                PrefetchHint::Temporal | PrefetchHint::L1 | 
+                PrefetchHint::L2 | PrefetchHint::L3 | 
+                PrefetchHint::NonTemporal | PrefetchHint::Write => {
+                    // Simple prefetch using volatile read
+                    let _ = std::ptr::read_volatile(request.address as *const u8);
                 }
-                PrefetchHint::L2 => {
-                    _mm_prefetch(request.address as *const i8, _MM_HINT_T1);
-                }
-                PrefetchHint::L3 => {
-                    _mm_prefetch(request.address as *const i8, _MM_HINT_T2);
-                }
-                PrefetchHint::NonTemporal => {
-                    _mm_prefetch(request.address as *const i8, _MM_HINT_NTA);
-                }
-                PrefetchHint::Write => {
-                    // Write prefetch (x86 doesn't have specific write prefetch)
-                    _mm_prefetch(request.address as *const i8, _MM_HINT_T0);
-                }
-            }
-        }
-
-        #[cfg(target_arch = "aarch64")]
-        {
-            // ARM prefetch implementation (simplified - actual implementation would use intrinsics)
-            // For now, just perform a read to bring data into cache
-            unsafe {
-                let _ = std::ptr::read_volatile(request.address as *const u8);
             }
         }
     }
@@ -1085,6 +1064,7 @@ pub struct LocalityOptimizationResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::memory_bandwidth_optimization::{MemoryOptimizationConfig, OptimizedStateVector};
 
     #[test]
     fn test_access_pattern_predictor() {

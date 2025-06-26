@@ -1048,7 +1048,7 @@ mod tests {
 
         let input = Array1::from_vec(vec![-1.0, 1.0]);
 
-        let output_relu = layer_relu.forward(&input).unwrap();
+        let _output_relu = layer_relu.forward(&input).unwrap();
         let output_sigmoid = layer_sigmoid.forward(&input).unwrap();
         let output_tanh = layer_tanh.forward(&input).unwrap();
 

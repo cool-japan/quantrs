@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf, process::Command};
+use std::{env, path::PathBuf};
 
 fn main() {
     // Rerun build script if wrapper.h changes
@@ -45,6 +45,11 @@ fn setup_manual_linking() {
     // Also link required dependencies
     println!("cargo:rustc-link-lib=gmp");
     println!("cargo:rustc-link-lib=mpfr");
+    
+    // Use appropriate C++ standard library
+    #[cfg(target_os = "macos")]
+    println!("cargo:rustc-link-lib=c++");
+    #[cfg(not(target_os = "macos"))]
     println!("cargo:rustc-link-lib=stdc++");
 
     // Platform-specific setup

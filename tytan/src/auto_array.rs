@@ -12,7 +12,7 @@ use regex::Regex;
 #[cfg(feature = "dwave")]
 use std::collections::HashMap;
 #[cfg(feature = "dwave")]
-use symengine::Expression as SymEngineExpression;
+use quantrs2_symengine::Expression as SymEngineExpression;
 use thiserror::Error;
 
 #[cfg(feature = "dwave")]

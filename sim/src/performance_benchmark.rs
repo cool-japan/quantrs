@@ -5,7 +5,7 @@
 //! memory efficiency, and scalability analysis.
 
 use num_complex::Complex64;
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -13,7 +13,6 @@ use std::time::{Duration, Instant};
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
     error::QuantRS2Result,
-    gate::{multi::*, single::*},
     qubit::QubitId,
 };
 

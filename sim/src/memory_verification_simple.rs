@@ -164,7 +164,7 @@ impl MemoryVerifier {
 
     /// Test parallel processing functionality
     fn test_parallel_functionality(&self) -> bool {
-        use rayon::prelude::*;
+        use scirs2_core::parallel_ops::*;
 
         let test_size = 1000;
 

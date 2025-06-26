@@ -5,7 +5,7 @@ use super::BatchStateVector;
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use std::sync::Arc;
 
 // Import SciRS2 optimization
@@ -275,7 +275,7 @@ impl Clone for BatchCircuitExecutor {
         Self {
             config: self.config.clone(),
             gpu_backend: self.gpu_backend.clone(),
-            thread_pool: None, // Don't clone thread pool
+            // thread_pool: None, // Don't clone thread pool - removed per CORE_USAGE_POLICY
         }
     }
 }

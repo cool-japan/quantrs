@@ -407,32 +407,20 @@ impl HardwareBackend for QuantumBackend {
 
 /// Detect available SIMD level
 fn detect_simd_level() -> SimdLevel {
-    #[cfg(target_arch = "x86_64")]
-    {
-        if is_x86_feature_detected!("avx512f") {
-            SimdLevel::Avx512
-        } else if is_x86_feature_detected!("avx2") {
-            SimdLevel::Avx2
-        } else if is_x86_feature_detected!("avx") {
-            SimdLevel::Avx
-        } else if is_x86_feature_detected!("sse2") {
-            SimdLevel::Sse2
-        } else {
-            SimdLevel::None
-        }
-    }
-
-    #[cfg(target_arch = "aarch64")]
-    {
-        if std::arch::is_aarch64_feature_detected!("neon") {
-            SimdLevel::Neon
-        } else {
-            SimdLevel::None
-        }
-    }
-
-    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-    {
+    use quantrs2_core::platform::PlatformCapabilities;
+    let platform = PlatformCapabilities::detect();
+    
+    if platform.cpu.simd.avx512 {
+        SimdLevel::Avx512
+    } else if platform.cpu.simd.avx2 {
+        SimdLevel::Avx2
+    } else if platform.cpu.simd.avx {
+        SimdLevel::Avx
+    } else if platform.cpu.simd.sse2 {
+        SimdLevel::Sse2
+    } else if platform.cpu.simd.neon {
+        SimdLevel::Neon
+    } else {
         SimdLevel::None
     }
 }

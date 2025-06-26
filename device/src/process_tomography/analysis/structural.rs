@@ -28,7 +28,7 @@ impl SciRS2ProcessTomographer {
             // Convert to real matrix for SVD
             let real_choi = choi_matrix.mapv(|x| x.re);
 
-            if let Ok((u, s, vt)) = svd(&real_choi.view(), true) {
+            if let Ok((u, s, vt)) = svd(&real_choi.view(), true, None) {
                 let mut kraus_operators = Vec::new();
                 let tolerance = 1e-12;
                 let mut rank = 0;

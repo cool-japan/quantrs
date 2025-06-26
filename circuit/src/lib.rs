@@ -30,7 +30,10 @@ pub mod optimization;
 pub mod optimizer;
 pub mod photonic;
 pub mod pulse;
+pub mod scirs2_pulse_control_enhanced;
 pub mod qasm;
+pub mod scirs2_qasm_compiler_enhanced;
+pub mod scirs2_cross_compilation_enhanced;
 pub mod qc_co_optimization;
 pub mod routing;
 pub mod scirs2_benchmarking;
@@ -45,6 +48,7 @@ pub mod tensor_network;
 pub mod topological;
 pub mod topology;
 pub mod transpiler;
+pub mod scirs2_transpiler_enhanced;
 pub mod validation;
 pub mod vqe;
 pub mod zx_calculus;
@@ -117,10 +121,52 @@ pub mod prelude {
         Channel, DeviceConfig, PulseCalibration, PulseCompiler, PulseInstruction, PulseOptimizer,
         PulseSchedule, Waveform,
     };
+    pub use crate::scirs2_pulse_control_enhanced::{
+        EnhancedPulseController, EnhancedPulseConfig, PulseControlConfig, HardwareConstraints,
+        AWGSpecifications, IQMixerSpecifications, PhaseNoiseSpec, AmplitudeNoiseSpec,
+        PulseLibrary, GaussianPulse, DRAGPulse, CosinePulse, ErfPulse, SechPulse,
+        CustomPulseShape, PulseOptimizationObjective, PulseConstraints, SignalProcessingConfig,
+        FilterType, WindowType, PulseExportFormat, PulseSequence, PulseChannel,
+        Waveform as EnhancedWaveform, PulseMetadata, GateAnalysis, GateType as PulseGateType,
+        ControlRequirements, ControlType, PerformanceTargets, PulseShape, CalibrationData,
+        CalibrationMeasurement, ErrorMetrics, EnvironmentalData, CalibrationResult,
+        CalibrationAnalysis, QualityMetrics, DriftAnalysis, CalibrationParameters,
+        ParameterUpdate, PulseVisualization, ChannelPlot, FrequencyPlot, PhasePlot,
+        MitigationStrategy, PulseOptimizationModel, OptimizationFeedback,
+    };
     pub use crate::qasm::exporter::ExportError;
     pub use crate::qasm::{
         export_qasm3, parse_qasm3, validate_qasm3, ExportOptions, ParseError, QasmExporter,
         QasmGate, QasmParser, QasmProgram, QasmRegister, QasmStatement, ValidationError,
+    };
+    pub use crate::scirs2_qasm_compiler_enhanced::{
+        EnhancedQASMCompiler, EnhancedQASMConfig, QASMCompilerConfig, QASMVersion,
+        CompilationTarget, OptimizationLevel, AnalysisOptions, TypeCheckingLevel,
+        ExportFormat, GateDefinition, HardwareConstraints, CompilationResult,
+        GeneratedCode, CompilationVisualizations, CompilationStatistics,
+        CompilationWarning, WarningType, ParsedQASM, ValidationResult, ValidationError,
+        ErrorType, ValidationWarning, OptimizedQASM, ASTStatistics, ImprovementMetrics,
+        Token, TokenType, AST, ASTNode, Expression, BinaryOp, UnaryOp, Location,
+    };
+    pub use crate::scirs2_cross_compilation_enhanced::{
+        EnhancedCrossCompiler, EnhancedCrossCompilationConfig, CrossCompilationConfig,
+        QuantumFramework, TargetPlatform, CompilationStrategy, OptimizationPass,
+        SourceCircuit, CrossCompilationResult, CompilationStage, ParsedCircuit,
+        QuantumOperation, OperationType, ClassicalOperation, ClassicalOpType,
+        QuantumIR, IROperation, IROperationType, IRGate, IRClassicalOp,
+        IRClassicalOpType, TargetCode, CodeFormat, ValidationResult as CrossValidationResult,
+        ValidationError as CrossValidationError, ValidationErrorType, ValidationWarning as CrossValidationWarning,
+        ValidationWarningType, CompilationReport, CompilationSummary, CircuitSize,
+        StageAnalysis, StagePerformance, StageImpact, OptimizationReport,
+        AppliedOptimization, OptimizationImpact, OptimizationImprovement,
+        ResourceUsage, CompilationComplexity, CompilationRecommendation,
+        RecommendationCategory as CompilationRecommendationCategory,
+        VisualCompilationFlow, FlowNode, NodeType, FlowEdge, EdgeType,
+        DataFlow, IRVisualization, IRGraph, IRNode, IREdge, GraphLayout,
+        OptimizationVisualization, ComparisonVisualization, CircuitVisualization,
+        CircuitMetrics, Difference, DifferenceType, OptimizationTimeline,
+        TimelineEvent, BatchCompilationResult, FailedCompilation,
+        BatchCompilationReport, BatchPerformanceStats,
     };
     pub use crate::qc_co_optimization::{
         ClassicalProcessingStep, ClassicalStepType, DataFlowGraph, DataType,
@@ -181,6 +227,19 @@ pub mod prelude {
     pub use crate::transpiler::{
         DeviceTranspiler, HardwareSpec, NativeGateSet, TranspilationOptions, TranspilationResult,
         TranspilationStats, TranspilationStrategy,
+    };
+    pub use crate::scirs2_transpiler_enhanced::{
+        EnhancedTranspiler, EnhancedTranspilerConfig, HardwareBackend, OptimizationLevel,
+        PerformanceConstraints, ExportFormat, TranspilationPass, DecompositionStrategy,
+        RoutingStrategy, OptimizationStrategy, MitigationStrategy, AdvancedHardwareFeatures,
+        ErrorMitigationSupport, NativeGateSet as EnhancedNativeGateSet, GateProperties,
+        GateDecomposition, DecomposedGate, TranspilationResult as EnhancedTranspilationResult,
+        CircuitAnalysis, ParallelismAnalysis, GateStatistics, TopologyAnalysis, TopologyType,
+        ResourceRequirements, PassResult, DecompositionResult, OptimizationResult,
+        MitigationResult, PerformancePrediction, ResourceUsage, Bottleneck, BottleneckType,
+        VisualRepresentation, QualityMetrics, CompatibilityReport, OptimizationSuggestion,
+        SuggestionType, ImpactLevel, RoutingModel, PredictionModel, SwapGate, RoutingFeedback,
+        CircuitFeatures as EnhancedCircuitFeatures, PerformanceMetrics,
     };
     pub use crate::validation::{
         CircuitValidator, ClassicalConstraints, ConnectivityConstraints, DepthLimits,

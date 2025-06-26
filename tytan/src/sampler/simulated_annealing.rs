@@ -13,7 +13,7 @@ use quantrs2_anneal::{
 use super::{SampleResult, Sampler, SamplerResult};
 
 #[cfg(feature = "parallel")]
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 
 /// Simulated Annealing Sampler
 ///

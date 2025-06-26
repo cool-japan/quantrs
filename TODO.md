@@ -15,11 +15,22 @@ For more detailed development plans for each module, see the individual TODO fil
 - [quantrs2-tytan](tytan/TODO.md): High-level quantum annealing
 - [quantrs2-py](py/TODO.md): Python bindings
 
-## Current Development Status (v0.1.0-alpha.5)
+## Current Development Status (v0.1.0-beta.1)
 
-The QuantRS2 framework continues to evolve with deep integration of scientific computing capabilities through SciRS2, making it a cutting-edge quantum computing framework with unparalleled performance and features.
+The QuantRS2 framework has reached beta status with comprehensive integration of SciRS2 v0.1.0-alpha.5, providing a production-ready quantum computing framework with industry-leading performance and features.
 
-### Recent Enhancements (SciRS2 Integration)
+### Beta.1 Highlights
+
+- **Full SciRS2 v0.1.0-alpha.5 Integration**
+  - ✅ All modules now use `scirs2_core::parallel_ops` for parallelization
+  - ✅ SIMD operations migrated to `scirs2_core::simd_ops` (completed)
+  - ✅ Platform capabilities detection via `PlatformCapabilities` (completed)
+  - ❌ Enhanced memory management with SciRS2 features (planned)
+  - ❌ GPU acceleration support through `scirs2_core::gpu` (planned)
+  
+> **Note**: See [SciRS2 Integration Checklist](docs/integration/SCIRS2_INTEGRATION_CHECKLIST.md) for detailed status
+
+### Previous Enhancements (SciRS2 Integration)
 
 - **SciRS2 Core Integration**
   - ✅ Integrated complex number extensions for quantum-specific operations
@@ -313,6 +324,27 @@ The QuantRS2 framework continues to evolve with deep integration of scientific c
 - [ ] Implement noise characterization with SciRS2 statistics
 - [ ] Create hardware benchmarks using SciRS2 analysis
 - [ ] Add cross-compilation with SciRS2 IR tools
+
+## Beta.1 Development Goals
+
+### SciRS2 Integration Completion
+- [ ] Complete migration of all SIMD operations to `scirs2_core::simd_ops`
+- [ ] Implement complex number SIMD support in collaboration with SciRS2 team
+- [ ] Migrate all GPU operations to use `scirs2_core::gpu` abstractions
+- [ ] Update all platform detection to use `PlatformCapabilities`
+- [ ] Implement `AutoOptimizer` for automatic backend selection
+
+### Performance Optimizations
+- [ ] Leverage SciRS2's memory-efficient algorithms for 40+ qubit simulations
+- [ ] Implement SciRS2's distributed computing features for cluster simulation
+- [ ] Use SciRS2's cache management for improved performance
+- [ ] Optimize tensor network contractions with SciRS2 linear algebra
+
+### API Stabilization
+- [ ] Finalize public API for 1.0 release
+- [ ] Complete documentation for all public interfaces
+- [ ] Add comprehensive examples for all major features
+- [ ] Create migration guide from alpha to beta
 
 ## Future Roadmap
 

@@ -270,7 +270,7 @@ impl MemoryVerifier {
 
     /// Test parallel memory scaling
     fn test_parallel_memory_scaling(&self) -> f64 {
-        use rayon::prelude::*;
+        use scirs2_core::parallel_ops::*;
         
         let test_size = 1024;
         

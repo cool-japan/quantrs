@@ -6,6 +6,14 @@
 
 QuantRS2-Py provides Python bindings for the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, allowing Python users to access the high-performance Rust implementation with a user-friendly Python API.
 
+## Version 0.1.0-beta.1
+
+This beta release benefits from the deep [SciRS2](https://github.com/cool-japan/scirs2) v0.1.0-alpha.5 integration:
+- Enhanced performance through SciRS2's parallel operations
+- SIMD-accelerated quantum computations under the hood
+- Memory-efficient handling of large quantum circuits
+- Automatic optimization selection for best performance
+
 ## Features
 
 ### Core Quantum Computing

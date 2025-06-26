@@ -22,7 +22,7 @@ use scirs2_graph::{
     shortest_path, spectral_radius, Graph,
 };
 use scirs2_linalg::{
-    correlation_matrix, det, eig, inv, matrix_norm, svd, LinalgError, LinalgResult,
+    correlation_matrix, det, eigvals, inv, matrix_norm, svd, LinalgError, LinalgResult,
 };
 use scirs2_stats::{
     distributions, mean, median, pearsonr, spearmanr, std, ttest_1samp, var, Alternative,
@@ -1105,9 +1105,9 @@ impl HardwareBenchmarkSuite {
         }
 
         // Calculate eigenvalues
-        let eigenvalues = match eig(&adj_matrix.view()) {
-            Ok((vals, _)) => vals.mapv(|c| c.re), // Take real parts
-            Err(_) => Array1::zeros(n),           // Fallback
+        let eigenvalues = match eigvals(&adj_matrix.view(), None) {
+            Ok(vals) => vals.mapv(|c| c.re), // Take real parts
+            Err(_) => Array1::zeros(n),       // Fallback
         };
 
         let spectral_radius = eigenvalues

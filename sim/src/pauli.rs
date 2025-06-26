@@ -9,7 +9,7 @@
 use crate::prelude::SimulatorError;
 use ndarray::Array2;
 use num_complex::Complex64;
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use std::collections::HashMap;
 use std::fmt;
 

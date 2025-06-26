@@ -344,7 +344,7 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
         shots: usize,
     ) -> Result<SubdomainSolution, String> {
         // Modify QUBO with coordination terms
-        let mut modified_qubo = self.add_coordination_terms(domain, coordination)?;
+        let modified_qubo = self.add_coordination_terms(domain, coordination)?;
 
         // Solve
         let results_vec = self
@@ -353,7 +353,7 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
             .map_err(|e| format!("Sampler error: {:?}", e))?;
 
         // Take the best result (first one, since they're sorted by energy)
-        let mut results = results_vec
+        let results = results_vec
             .into_iter()
             .next()
             .ok_or_else(|| "No solutions found for subdomain".to_string())?;

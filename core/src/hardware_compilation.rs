@@ -1799,7 +1799,7 @@ mod tests {
         identity[(1, 1)] = Complex64::new(1.0, 0.0);
 
         let dense_identity = DenseMatrix::new(identity).unwrap();
-        let (theta, phi, lambda) = compiler.extract_euler_angles(&dense_identity).unwrap();
+        let (theta, _phi, _lambda) = compiler.extract_euler_angles(&dense_identity).unwrap();
 
         // For identity matrix, theta should be close to 0
         assert!(theta.abs() < 1e-10);

@@ -210,18 +210,18 @@ impl GateSequenceCompressor {
 
         // Apply SVD to real and imaginary parts separately
         let (u_real, s_real, vt_real) = if self.config.use_randomized {
-            randomized_svd(&real_part.view(), target_rank, Some(10), Some(2))
+            randomized_svd(&real_part.view(), target_rank, Some(10), Some(2), None)
                 .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {}", e)))?
         } else {
-            truncated_svd(&real_part.view(), target_rank)
+            truncated_svd(&real_part.view(), target_rank, None)
                 .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {}", e)))?
         };
 
         let (u_imag, s_imag, vt_imag) = if self.config.use_randomized {
-            randomized_svd(&imag_part.view(), target_rank, Some(10), Some(2))
+            randomized_svd(&imag_part.view(), target_rank, Some(10), Some(2), None)
                 .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {}", e)))?
         } else {
-            truncated_svd(&imag_part.view(), target_rank)
+            truncated_svd(&imag_part.view(), target_rank, None)
                 .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {}", e)))?
         };
 

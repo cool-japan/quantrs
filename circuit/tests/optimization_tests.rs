@@ -90,12 +90,12 @@ fn test_cost_models() {
 
 #[test]
 fn test_optimization_levels() {
-    let circuit = Circuit::<2>::new();
+    let _circuit = Circuit::<2>::new();
 
     // Test different optimization levels
-    let light = CircuitOptimizer2::<2>::with_level(OptimizationLevel::Light);
-    let medium = CircuitOptimizer2::<2>::with_level(OptimizationLevel::Medium);
-    let heavy = CircuitOptimizer2::<2>::with_level(OptimizationLevel::Heavy);
+    let _light = CircuitOptimizer2::<2>::with_level(OptimizationLevel::Light);
+    let _medium = CircuitOptimizer2::<2>::with_level(OptimizationLevel::Medium);
+    let _heavy = CircuitOptimizer2::<2>::with_level(OptimizationLevel::Heavy);
 
     // Verify they create different configurations
     // (Would need access to internal state to properly test)
@@ -170,7 +170,7 @@ fn test_optimization_utils() {
     assert!(!utils::gates_cancel(&h1, &h3));
 
     // Test identity gate detection
-    let rz_zero = single::RotationZ {
+    let _rz_zero = single::RotationZ {
         target: QubitId::new(0),
         theta: 0.0,
     };
@@ -400,15 +400,15 @@ mod integration_tests {
         let mut circuit = Circuit::<3>::new();
 
         // Add redundant gates
-        circuit.h(0);
-        circuit.h(0); // Should cancel
+        circuit.h(0).unwrap();
+        circuit.h(0).unwrap(); // Should cancel
 
         // Add mergeable rotations
-        circuit.rz(1, std::f64::consts::PI / 4.0);
-        circuit.rz(1, std::f64::consts::PI / 4.0); // Should merge to PI/2
+        circuit.rz(1, std::f64::consts::PI / 4.0).unwrap();
+        circuit.rz(1, std::f64::consts::PI / 4.0).unwrap(); // Should merge to PI/2
 
         // Add a complex gate
-        circuit.toffoli(0, 1, 2);
+        circuit.toffoli(0, 1, 2).unwrap();
 
         // Run optimization
         let mut optimizer = CircuitOptimizer2::<3>::with_level(OptimizationLevel::Medium);

@@ -12,7 +12,7 @@ use crate::{
     variational::VariationalCircuit,
 };
 use ndarray::{Array1, Array2};
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use rustc_hash::FxHashMap;
 use std::sync::{Arc, Mutex};
 

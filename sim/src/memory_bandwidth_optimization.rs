@@ -6,7 +6,7 @@
 
 use ndarray::Array2;
 use num_complex::Complex64;
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::collections::{HashMap, VecDeque};
 use std::ptr::NonNull;
@@ -482,20 +482,10 @@ impl OptimizedStateVector {
     /// Prefetch memory to cache
     #[inline(always)]
     fn prefetch_memory(addr: &Complex64) {
-        #[cfg(target_arch = "x86_64")]
+        // TODO: Use scirs2_core's platform-agnostic prefetch operations when API is stabilized
+        // For now, use a volatile read as a simple prefetch hint
         unsafe {
-            std::arch::x86_64::_mm_prefetch(
-                addr as *const _ as *const i8,
-                std::arch::x86_64::_MM_HINT_T0,
-            );
-        }
-
-        #[cfg(target_arch = "aarch64")]
-        {
-            // ARM prefetch implementation (simplified)
-            unsafe {
-                let _ = std::ptr::read_volatile(addr as *const _ as *const u8);
-            }
+            let _ = std::ptr::read_volatile(addr as *const _ as *const u8);
         }
     }
 

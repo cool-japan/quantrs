@@ -7,10 +7,10 @@
 
 use ndarray::{Array1, Array2, ArrayView1};
 #[cfg(feature = "parallel")]
-use rayon::prelude::*;
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::*;
+use scirs2_core::parallel_ops::*;
+use scirs2_core::simd_ops;
 use std::sync::Arc;
+use quantrs2_core::platform::PlatformCapabilities;
 
 /// Optimized QUBO evaluation
 pub struct OptimizedQUBOEvaluator {
@@ -36,14 +36,8 @@ impl OptimizedQUBOEvaluator {
             qubo: Arc::new(qubo),
             cache,
             use_simd: {
-                #[cfg(target_arch = "x86_64")]
-                {
-                    is_x86_feature_detected!("avx2")
-                }
-                #[cfg(not(target_arch = "x86_64"))]
-                {
-                    false
-                }
+                let platform = PlatformCapabilities::detect();
+                platform.cpu.simd.avx2 || platform.cpu.simd.avx512
             },
             parallel_threshold: 1000,
         }
@@ -88,52 +82,41 @@ impl OptimizedQUBOEvaluator {
         energy
     }
 
-    /// SIMD evaluation using AVX2
-    #[cfg(target_arch = "x86_64")]
+    /// SIMD evaluation using scirs2_core
     unsafe fn evaluate_simd(&self, x: &ArrayView1<u8>) -> f64 {
         let n = x.len();
         let mut energy = 0.0;
 
-        // Process diagonal in chunks of 4
-        let chunks = n / 4;
-        for i in 0..chunks {
-            let mut idx = i * 4;
+        // Convert binary values to float for SIMD operations
+        let x_float: Vec<f64> = x.iter().map(|&v| v as f64).collect();
+        let x_view = ArrayView1::from(&x_float);
+        let cache_view = ArrayView1::from(&self.cache[..n]);
+        
+        // Use SciRS2 SIMD operations for element-wise multiplication
+        let products = simd_ops::SimdUnifiedOps::simd_mul(&x_view, &cache_view);
+        
+        // Sum the products using SIMD operations
+        energy = products.sum();
 
-            // Load 4 x values
-            let x_vals = _mm_set_epi32(
-                x[idx + 3] as i32,
-                x[idx + 2] as i32,
-                x[idx + 1] as i32,
-                x[idx] as i32,
-            );
-
-            // Load 4 diagonal values
-            let diag_vals = _mm256_loadu_pd(&self.cache[idx]);
-
-            // Convert x to float and multiply
-            let x_float = _mm256_cvtepi32_pd(x_vals);
-            let prod = _mm256_mul_pd(x_float, diag_vals);
-
-            // Sum the products
-            let sum = _mm256_hadd_pd(prod, prod);
-            let mut result = _mm256_extractf128_pd(sum, 0);
-            energy += _mm_cvtsd_f64(result) + _mm_cvtsd_f64(_mm_unpackhi_pd(result, result));
-        }
-
-        // Handle remaining elements
-        for i in chunks * 4..n {
-            if x[i] == 1 {
-                energy += self.cache[i];
-            }
-        }
-
-        // Quadratic terms (still scalar for now)
+        // Quadratic terms - also optimize with SIMD where possible
         for i in 0..n {
             if x[i] == 1 {
-                for j in i + 1..n {
-                    if x[j] == 1 {
-                        energy += 2.0 * self.qubo[[i, j]];
+                // Extract the row of quadratic coefficients
+                let row_start = i + 1;
+                if row_start < n {
+                    let row_len = n - row_start;
+                    let x_subset = ArrayView1::from(&x_float[row_start..n]);
+                    
+                    // Create a view of the quadratic coefficients for this row
+                    let mut qubo_row = vec![0.0; row_len];
+                    for (j, coeff) in qubo_row.iter_mut().enumerate() {
+                        *coeff = self.qubo[[i, row_start + j]];
                     }
+                    let qubo_row_view = ArrayView1::from(&qubo_row);
+                    
+                    // Multiply and sum using SIMD
+                    let row_products = simd_ops::SimdUnifiedOps::simd_mul(&x_subset, &qubo_row_view);
+                    energy += 2.0 * row_products.sum();
                 }
             }
         }
@@ -142,8 +125,8 @@ impl OptimizedQUBOEvaluator {
     }
 
     /// SIMD evaluation stub for non-x86_64
-    #[cfg(not(target_arch = "x86_64"))]
-    unsafe fn evaluate_simd(&self, x: &ArrayView1<u8>) -> f64 {
+    #[cfg(not(feature = "simd"))]
+    unsafe fn evaluate_simd_fallback(&self, x: &ArrayView1<u8>) -> f64 {
         self.evaluate_scalar(x)
     }
 

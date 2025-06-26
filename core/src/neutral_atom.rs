@@ -785,7 +785,7 @@ mod tests {
         let loaded = tweezer.load_atom(atom);
         // Loading is probabilistic, so we can't guarantee success
         // Test that loading returns a boolean value
-        assert!(loaded == true || loaded == false);
+        assert!(loaded || !loaded);
     }
 
     #[test]
@@ -981,7 +981,9 @@ mod tests {
             assert!(position.x >= 0.0); // Should be at positive x coordinates
                                         // has_atom depends on loading success, so we just test the interface
                                         // Test that has_atom returns a boolean value
-            assert!(has_atom == true || has_atom == false);
+            // has_atom is a boolean, so this assertion is always true
+            // We're just exercising the has_atom method
+            let _ = has_atom;
         }
     }
 }

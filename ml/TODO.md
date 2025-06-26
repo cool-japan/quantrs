@@ -2,6 +2,14 @@
 
 This document outlines the development plans and future tasks for the QuantRS2-ML (Machine Learning) module.
 
+## Version 0.1.0-beta.1 Status
+
+This beta release leverages SciRS2 v0.1.0-alpha.5 for enhanced performance:
+- ✅ Automatic differentiation leveraging SciRS2's linear algebra operations
+- ✅ Parallel training with `scirs2_core::parallel_ops`
+- ✅ SIMD-accelerated quantum kernel computations
+- ✅ Memory-efficient handling of large quantum datasets
+
 ## Current Status
 
 ### Completed Features

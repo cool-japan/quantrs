@@ -2,6 +2,14 @@
 
 This document outlines the development plans and future tasks for the QuantRS2-Anneal module.
 
+## Version 0.1.0-beta.1 Status
+
+This beta release includes comprehensive enhancements:
+- ✅ Full SciRS2 integration for sparse matrix operations and graph algorithms
+- ✅ Parallel optimization using `scirs2_core::parallel_ops`
+- ✅ Memory-efficient algorithms for large-scale problems
+- ✅ Stable APIs for D-Wave, AWS Braket, and Fujitsu integrations
+
 ## Current Status (Updated June 2025)
 
 ### Completed Core Features ✅

@@ -2,6 +2,13 @@
 
 This document outlines the development plans and future tasks for the QuantRS2-Circuit module.
 
+## Version 0.1.0-beta.1 Status
+
+This beta release leverages SciRS2 v0.1.0-alpha.5 for enhanced performance:
+- ✅ Graph algorithms fully integrated via `scirs2_core::graph_algorithms`
+- ✅ Parallel circuit transformations using `scirs2_core::parallel_ops`
+- 🚧 Platform-aware optimization pending (awaiting `PlatformCapabilities`)
+
 ## Current Status
 
 ### Completed Features

@@ -14,7 +14,7 @@ use quantrs2_core::{
 
 use ndarray::{Array, ArrayD, IxDyn};
 use num_complex::Complex64;
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use scirs2_core::ndarray_ext::manipulation;
 use std::collections::HashMap;
 

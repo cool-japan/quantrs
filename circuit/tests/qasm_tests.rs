@@ -1,15 +1,14 @@
 //! Tests for OpenQASM 3.0 import/export functionality
 
-use quantrs2_circuit::builder::{Circuit, CircuitBuilder};
+use quantrs2_circuit::builder::CircuitBuilder;
 use quantrs2_circuit::prelude::*;
-use quantrs2_core::qubit::QubitId;
 
 #[test]
 fn test_qasm3_export_simple() {
     // Create a simple Bell state circuit
     let mut builder = CircuitBuilder::<2>::new();
-    builder.h(Qubit::new(0));
-    builder.cx(Qubit::new(0), Qubit::new(1));
+    builder.h(Qubit::new(0)).unwrap();
+    builder.cx(Qubit::new(0), Qubit::new(1)).unwrap();
 
     let circuit = builder.build();
 
@@ -30,14 +29,14 @@ fn test_qasm3_export_with_measurements() {
     let mut builder = CircuitBuilder::<3>::new();
 
     // Create GHZ state
-    builder.h(Qubit::new(0));
-    builder.cx(Qubit::new(0), Qubit::new(1));
-    builder.cx(Qubit::new(1), Qubit::new(2));
+    builder.h(Qubit::new(0)).unwrap();
+    builder.cx(Qubit::new(0), Qubit::new(1)).unwrap();
+    builder.cx(Qubit::new(1), Qubit::new(2)).unwrap();
 
     // Add measurements
-    builder.measure(Qubit::new(0));
-    builder.measure(Qubit::new(1));
-    builder.measure(Qubit::new(2));
+    builder.measure(Qubit::new(0)).unwrap();
+    builder.measure(Qubit::new(1)).unwrap();
+    builder.measure(Qubit::new(2)).unwrap();
 
     let circuit = builder.build();
 
@@ -219,12 +218,12 @@ rx q;  // rx requires 1 parameter
 fn test_qasm3_round_trip() {
     // Create a circuit
     let mut builder = CircuitBuilder::<3>::new();
-    builder.h(Qubit::new(0));
-    builder.rx(Qubit::new(1), std::f64::consts::PI / 4.0);
-    builder.cx(Qubit::new(0), Qubit::new(2));
-    builder.measure(Qubit::new(0));
-    builder.measure(Qubit::new(1));
-    builder.measure(Qubit::new(2));
+    builder.h(Qubit::new(0)).unwrap();
+    builder.rx(Qubit::new(1), std::f64::consts::PI / 4.0).unwrap();
+    builder.cx(Qubit::new(0), Qubit::new(2)).unwrap();
+    builder.measure(Qubit::new(0)).unwrap();
+    builder.measure(Qubit::new(1)).unwrap();
+    builder.measure(Qubit::new(2)).unwrap();
 
     let original_circuit = builder.build();
 
@@ -293,16 +292,16 @@ mod integration_tests {
         // Build a quantum Fourier transform circuit
         let n = 4;
         for j in 0..n {
-            builder.h(Qubit::new(j));
+            builder.h(Qubit::new(j)).unwrap();
             for k in (j + 1)..n {
                 let angle = std::f64::consts::PI / (1 << (k - j)) as f64;
-                builder.cp(Qubit::new(j), Qubit::new(k), angle);
+                builder.cp(Qubit::new(j), Qubit::new(k), angle).unwrap();
             }
         }
 
         // Add SWAP gates to reverse qubit order
         for i in 0..n / 2 {
-            builder.swap(Qubit::new(i), Qubit::new(n - 1 - i));
+            builder.swap(Qubit::new(i), Qubit::new(n - 1 - i)).unwrap();
         }
 
         let circuit = builder.build();

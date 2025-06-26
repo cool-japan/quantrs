@@ -263,10 +263,10 @@ impl SciRS2ProcessTomographer {
 
         #[cfg(feature = "scirs2")]
         {
-            use scirs2_linalg::eig;
+            use scirs2_linalg::eigvals;
 
             let real_choi = choi_matrix.mapv(|x| x.re);
-            if let Ok((eigenvalues, _)) = eig(&real_choi.view()) {
+            if let Ok(eigenvalues) = eigvals(&real_choi.view(), None) {
                 let spectrum = eigenvalues.mapv(|x| x.re);
                 return Ok(spectrum);
             }

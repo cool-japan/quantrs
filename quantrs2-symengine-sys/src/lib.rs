@@ -22,7 +22,7 @@
 //! - `static`: Link SymEngine statically
 //! - `system-deps`: Use pkg-config to find system dependencies
 
-use std::os::raw::{c_char, c_int, c_ulong};
+use std::os::raw::{c_char, c_int};
 
 // Include generated bindings
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -132,10 +132,8 @@ extern "C" {
 /// Check if SymEngine is available at runtime
 pub fn is_symengine_available() -> bool {
     // Try to call a basic SymEngine function to verify it's available
-    unsafe {
-        // This should be safe as long as SymEngine is properly linked
-        std::ptr::null_mut::<basic_struct>() != std::ptr::null_mut()
-    }
+    // This should be safe as long as SymEngine is properly linked
+    std::ptr::null_mut::<basic_struct>() != std::ptr::null_mut()
 }
 
 #[cfg(test)]

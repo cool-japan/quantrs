@@ -690,7 +690,7 @@ mod tests {
         let mut seq = result.unwrap();
 
         // If we got a sequence, check it's valid
-        if seq.gates.len() > 0 {
+        if !seq.gates.is_empty() {
             let approx = seq.compute_matrix();
             assert_eq!(approx.shape(), &[2, 2]);
         }

@@ -21,6 +21,7 @@ pub mod azure_device;
 pub mod backend_traits;
 pub mod benchmarking;
 pub mod calibration;
+pub mod scirs2_calibration_enhanced;
 pub mod characterization;
 pub mod circuit_integration;
 pub mod circuit_migration;
@@ -61,6 +62,8 @@ pub mod quantum_network;
 pub mod quantum_system_security;
 pub mod routing;
 pub mod routing_advanced;
+pub mod scirs2_hardware_benchmarks_enhanced;
+pub mod scirs2_noise_characterization_enhanced;
 pub mod security;
 pub mod telemetry;
 pub mod topological;
@@ -472,6 +475,25 @@ pub mod prelude {
         DeviceCalibration, DeviceTopology, QubitCalibration, ReadoutCalibration,
         SingleQubitGateCalibration, TwoQubitGateCalibration,
     };
+    pub use crate::scirs2_calibration_enhanced::{
+        EnhancedCalibrationSystem, EnhancedCalibrationConfig, CalibrationConfig,
+        HardwareSpec, CoherenceTimes, CalibrationProtocols, SingleQubitProtocols,
+        TwoQubitProtocols, ReadoutProtocols, CrosstalkProtocols, IdentificationMethod,
+        CalibrationObjective, PerformanceThresholds, AnalysisOptions, SystemCalibrationResult,
+        CalibrationState, QubitParameters, TwoQubitParameters, ReadoutParameters,
+        CrosstalkParameters, SingleQubitCalibration, TwoQubitCalibration,
+        ReadoutCalibration, CrosstalkCharacterization as EnhancedCrosstalkCharacterization,
+        SystemModel, ErrorModel, CalibrationReport, CalibrationSummary, DetailedResults,
+        SystemAnalysis, ErrorAnalysis, CalibrationVisualizations, PerformanceMetrics,
+        QualityMetrics, CalibrationRecommendation, RecommendationCategory, Priority,
+        RabiData, RamseyData, DragData, ChevronData, CNOTData, ZZData, DiscriminationData,
+        DiscriminationParameters, IQData, IQParameters, ProcessTomographyData, GSTData,
+        RBData, GateSet, MLSystemParameters, CoherentError, IncoherentError,
+        IncoherentErrorType, CorrelatedError, DriftMeasurement, DriftAnalysis,
+        DriftDirection, CalibrationModel, ErrorModelTrait, CalibrationInput,
+        CalibrationPrediction, CalibrationFeedback, ErrorData, ErrorCharacterization,
+        QuantumOperation,
+    };
     pub use crate::characterization::{
         CrosstalkCharacterization as CharacterizationCrosstalk, DriftTracker, ProcessTomography,
         RandomizedBenchmarking, StateTomography,
@@ -611,6 +633,36 @@ pub mod prelude {
         ReadoutNoiseParams,
     };
     pub use crate::noise_modeling_scirs2::{SciRS2NoiseConfig, SciRS2NoiseModeler};
+    pub use crate::scirs2_noise_characterization_enhanced::{
+        EnhancedNoiseCharacterizer, EnhancedNoiseConfig, NoiseCharacterizationConfig,
+        NoiseModel, StatisticalMethod, AnalysisParameters, ReportingOptions,
+        ExportFormat, NoiseCharacterizationResult, MLNoiseInsights,
+        NoiseClassification, PredictedNoisePoint, NoisePredictions,
+        NoiseTrend, NoiseAlert, AlertType, Severity, NoiseReport,
+        NoiseSummary, ModelAnalysis, TemporalAnalysis, SpectralAnalysis,
+        CorrelationAnalysis, Recommendation, RecommendationType, Priority,
+        NoiseVisualizations, PlotData, HeatmapData, Landscape3D,
+        PlotMetadata, PlotType, Visualization3DParams, SurfaceType,
+    };
+    pub use crate::scirs2_hardware_benchmarks_enhanced::{
+        EnhancedHardwareBenchmark, EnhancedBenchmarkConfig, BenchmarkConfig,
+        BenchmarkSuite, PerformanceMetric, AnalysisMethod, ReportingOptions as BenchmarkReportingOptions,
+        ExportFormat as BenchmarkExportFormat, ComprehensiveBenchmarkResult,
+        DeviceInfo, BenchmarkSuiteResult, StatisticalAnalysis,
+        SuiteStatistics, CorrelationMatrix, SignificanceTest, ConfidenceInterval,
+        PerformancePredictions, PredictedPerformance, DegradationTimeline,
+        DegradationThreshold, DegradationEvent, DegradationType, ImpactLevel,
+        MaintenanceRecommendation, MaintenanceType, ComparativeAnalysis,
+        HistoricalComparison, PerformanceTrend, HistoricalAnomaly, AnomalyType,
+        Severity as BenchmarkSeverity, DeviceComparison, IndustryPosition,
+        IndustryTier, BenchmarkRecommendation, RecommendationCategory,
+        Priority as BenchmarkPriority, EffortLevel, BenchmarkReport,
+        ExecutiveSummary, SuiteReport, MetricReport, MetricTrend,
+        StatisticalSummary, PredictionSummary, ComparativeSummary,
+        BenchmarkVisualizations, HeatmapVisualization, TrendPlot, DataSeries,
+        PlotType as BenchmarkPlotType, ComparisonChart, ComparisonDataSet,
+        ChartType, RadarChart, RadarDataSet,
+    };
     pub use crate::optimization::{
         CalibrationOptimizer, FidelityEstimator, OptimizationConfig, OptimizationResult,
         PulseOptimizer,

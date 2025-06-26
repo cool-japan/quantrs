@@ -697,7 +697,7 @@ mod tests {
 
         let outcome = game.play_game().unwrap();
         assert_eq!(outcome.classical_outcomes.len(), 2);
-        assert!(outcome.probabilities.len() > 0);
+        assert!(!outcome.probabilities.is_empty());
     }
 
     #[test]

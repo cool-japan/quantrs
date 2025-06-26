@@ -5,7 +5,7 @@
 //! techniques while running on classical computers. These algorithms often provide advantages
 //! over traditional classical algorithms by incorporating quantum-inspired heuristics.
 
-use ndarray::{Array1, Array2, Axis};
+use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};

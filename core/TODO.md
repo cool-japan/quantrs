@@ -2,6 +2,16 @@
 
 This document outlines the development plans and future tasks for the QuantRS2-Core module.
 
+## Version 0.1.0-beta.1 Status
+
+This beta release includes comprehensive SciRS2 v0.1.0-alpha.5 integration:
+- ✅ All parallel operations now use `scirs2_core::parallel_ops`
+- ✅ SIMD operations migration to `scirs2_core::simd_ops` (completed)
+- ✅ Platform capabilities detection via `PlatformCapabilities` (implemented)
+- ✅ GPU acceleration through `scirs2_core::gpu` (Metal backend ready for v0.1.0-alpha.6)
+
+See [SciRS2 Integration Checklist](../docs/integration/SCIRS2_INTEGRATION_CHECKLIST.md) for detailed status.
+
 ## Current Status
 
 ### Completed Features
@@ -248,12 +258,15 @@ The QuantRS2-Core module has achieved **Ultimate UltraThink Mode** - the most ad
 
 ## Integration Tasks
 
-### SciRS2 Integration
+### SciRS2 Integration (Beta.1 Focus)
 - [x] Replace ndarray with SciRS2 arrays for gate matrices
 - [x] Use SciRS2 linear algebra routines for decompositions
 - [x] Integrate SciRS2 sparse solvers for large systems
-- [x] Leverage SciRS2 parallel algorithms for batch operations
+- [x] Leverage SciRS2 parallel algorithms for batch operations (`scirs2_core::parallel_ops` fully integrated)
 - [x] Use SciRS2 optimization for variational parameters
+- [x] Complete SIMD migration to `scirs2_core::simd_ops`
+- [x] Implement `PlatformCapabilities::detect()` for adaptive optimization
+- [x] Migrate GPU operations to `scirs2_core::gpu` abstractions (Metal backend ready for v0.1.0-alpha.6)
 
 ## Medium-term Goals (v0.1.0)
 

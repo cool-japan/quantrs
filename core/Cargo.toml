@@ -14,7 +14,7 @@ description = "Core types and traits for the QuantRS2 quantum computing framewor
 num-complex.workspace = true
 thiserror.workspace = true
 ndarray.workspace = true
-scirs2-core = { workspace = true, features = ["types", "memory_management", "simd", "serialization"] }
+scirs2-core = { workspace = true, features = ["types", "memory_management", "simd", "serialization", "parallel", "gpu", "linalg"] }
 scirs2-linalg.workspace = true
 scirs2-optimize.workspace = true
 scirs2-sparse.workspace = true
@@ -32,6 +32,8 @@ bincode.workspace = true
 serde_json.workspace = true
 num_cpus.workspace = true
 flate2.workspace = true
+sysinfo.workspace = true
+regex.workspace = true
 # Symbolic computation with SymEngine
 quantrs2-symengine = { workspace = true, optional = true }
 quantrs2-symengine-sys = { workspace = true, optional = true }
@@ -43,6 +45,7 @@ chrono.workspace = true
 
 [features]
 default = []
+gpu = []  # GPU feature for conditional compilation
 simd = ["scirs2-core/simd"]
 cuda = []
 metal = []

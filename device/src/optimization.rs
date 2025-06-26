@@ -1065,7 +1065,6 @@ impl FidelityEstimator {
     }
 
     /// Helper methods for optimization strategies
-
     /// Try to decompose a gate into simpler components
     fn try_decompose_gate(&self, gate: &dyn GateOp) -> Option<Vec<Box<dyn GateOp>>> {
         // This would implement gate decomposition logic

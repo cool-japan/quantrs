@@ -6,7 +6,7 @@
 
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -420,13 +420,9 @@ impl QAOAOptimizer {
             }
 
             // Adaptive layer growth
-            if self.config.adaptive_layers && iteration % 20 == 19 {
-                if self.should_add_layer(&cost_history)?
-                    && current_layers < self.config.max_adaptive_layers
-                {
-                    current_layers += 1;
-                    self.add_qaoa_layer()?;
-                }
+            if self.config.adaptive_layers && iteration % 20 == 19 && self.should_add_layer(&cost_history)? && current_layers < self.config.max_adaptive_layers {
+                current_layers += 1;
+                self.add_qaoa_layer()?;
             }
         }
 
@@ -1348,7 +1344,6 @@ impl QAOAOptimizer {
     }
 
     /// Parameter optimization methods
-
     /// Classical parameter optimization
     fn classical_parameter_optimization(&mut self) -> Result<()> {
         // Gradient descent optimization

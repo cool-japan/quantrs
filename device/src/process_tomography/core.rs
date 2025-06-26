@@ -36,7 +36,7 @@ use scirs2_graph::{
 };
 #[cfg(feature = "scirs2")]
 use scirs2_linalg::{
-    cholesky, det, eig, inv, matrix_norm, prelude::*, qr, svd, trace, LinalgError, LinalgResult,
+    cholesky, det, eigvals, inv, matrix_norm, prelude::*, qr, svd, trace, LinalgError, LinalgResult,
 };
 #[cfg(feature = "scirs2")]
 use scirs2_optimize::{minimize, OptimizeResult};
@@ -354,7 +354,7 @@ impl SciRS2ProcessTomographer {
             // Compute eigenvalues of the partial transpose
             let partial_transpose = self.partial_transpose(&choi_matrix)?;
 
-            if let Ok((eigenvalues, _)) = eig(&partial_transpose.view()) {
+            if let Ok(eigenvalues) = eigvals(&partial_transpose.view(), None) {
                 let negative_eigenvalues: Vec<f64> = eigenvalues
                     .iter()
                     .map(|x| x.re)

@@ -6,6 +6,15 @@
 
 QuantRS2-Core is the foundational library of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing a comprehensive suite of quantum computing primitives, algorithms, and optimizations that power the entire ecosystem.
 
+## Version 0.1.0-beta.1
+
+This beta release features full integration with [SciRS2](https://github.com/cool-japan/scirs2) v0.1.0-alpha.5, providing enhanced performance through:
+- Unified parallel operations via `scirs2_core::parallel_ops`
+- SIMD-accelerated quantum operations (migration to `scirs2_core::simd_ops` completed)
+- Advanced memory management and optimization
+- Platform-aware optimization capabilities with automatic CPU feature detection
+- GPU acceleration support with Metal backend ready for SciRS2 v0.1.0-alpha.6
+
 
 ## Core Features
 
@@ -41,11 +50,13 @@ QuantRS2-Core is the foundational library of the [QuantRS2](https://github.com/c
 - **Bosonic Systems**: Continuous variable quantum computing
 
 ### Performance & Optimization
-- **GPU Acceleration**: CUDA and OpenCL backend support
-- **SIMD Operations**: Vectorized quantum state operations
-- **Batch Processing**: Parallel execution of quantum circuits
+- **SciRS2 Integration**: Leveraging SciRS2's high-performance computing capabilities
+- **GPU Acceleration**: CUDA, OpenCL, and Metal (macOS) backend support
+- **SIMD Operations**: Vectorized quantum state operations via `scirs2_core::simd_ops`
+- **Batch Processing**: Parallel execution using `scirs2_core::parallel_ops`
+- **Platform Detection**: Automatic CPU/GPU capability detection for optimal performance
 - **ZX-Calculus**: Graph-based circuit optimization
-- **Memory Efficiency**: Optimized state vector representations
+- **Memory Efficiency**: Optimized state vector representations with SciRS2
 
 ## Usage
 
@@ -237,6 +248,10 @@ fn batch_and_gpu_example() -> QuantRS2Result<()> {
 - **gpu/**: GPU acceleration support
   - **mod.rs**: GPU backend abstractions
   - **cpu_backend.rs**: CPU fallback support
+  - **metal_backend_scirs2_ready.rs**: Metal GPU support for macOS (placeholder for SciRS2 integration)
+  - **scirs2_adapter.rs**: Adapter layer for SciRS2 GPU migration
+- **platform/**: Platform-specific optimizations
+  - **mod.rs**: PlatformCapabilities detection and adaptive optimization
 - **controlled.rs**: Efficient controlled gate operations
 - **batch/**: Batch processing for parallel quantum computations
   - **operations.rs**: Batch gate operations
@@ -305,14 +320,19 @@ fn batch_and_gpu_example() -> QuantRS2Result<()> {
 - Memory-mapped storage for large gate databases
 
 ### GPU Computing
-- CUDA and OpenCL backend support for large-scale simulations
+- CUDA, OpenCL, and Metal backend support for large-scale simulations
 - Optimized kernels for common quantum operations
 - Automatic fallback to CPU processing
+- Metal GPU support for Apple Silicon (M1/M2/M3) with unified memory architecture
+- Forward-compatible implementation ready for SciRS2 v0.1.0-alpha.6 Metal integration
 
 ### SciRS2 Integration
 - Advanced linear algebra operations using SciRS2's optimized BLAS/LAPACK bindings
-- Sparse matrix solvers for large quantum systems
-- Parallel algorithms for batch quantum computations
+- Sparse matrix solvers for large quantum systems  
+- Parallel algorithms for batch quantum computations via `scirs2_core::parallel_ops`
+- SIMD operations for vectorized quantum state manipulations
+- Memory-efficient algorithms for large-scale quantum simulations
+- Platform-aware optimization with automatic backend selection
 
 ## Technical Details
 

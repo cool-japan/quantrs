@@ -1354,7 +1354,6 @@ impl AdvancedNoiseCharacterizer {
 
     /// Additional helper methods for the characterization system...
     /// (Implementation details for circuit creation, data analysis, etc.)
-
     fn create_process_tomography_circuit(
         &self,
         gate_name: &str,

@@ -48,7 +48,7 @@ fn solve_linear_system(
     #[cfg(feature = "scirs2")]
     {
         // Use SVD for robust pseudoinverse calculation
-        if let Ok((u, s, vt)) = svd(&measurement_matrix.view(), true) {
+        if let Ok((u, s, vt)) = svd(&measurement_matrix.view(), true, None) {
             // Calculate pseudoinverse using SVD: A+ = V * S+ * U^T
             let mut s_pinv = Array1::zeros(s.len());
             let tolerance = 1e-12;
@@ -123,7 +123,7 @@ fn simple_least_squares(
     // Solve (A^T * A) * x = A^T * b using simple inversion
     #[cfg(feature = "scirs2")]
     {
-        if let Ok(ata_inv) = inv(&ata.view()) {
+        if let Ok(ata_inv) = inv(&ata.view(), None) {
             let solution = ata_inv.dot(&atb);
             Ok(solution.mapv(|x| Complex64::new(x, 0.0)))
         } else {
@@ -131,7 +131,7 @@ fn simple_least_squares(
             for i in 0..n {
                 ata[[i, i]] += 1e-8;
             }
-            if let Ok(ata_inv) = inv(&ata.view()) {
+            if let Ok(ata_inv) = inv(&ata.view(), None) {
                 let solution = ata_inv.dot(&atb);
                 Ok(solution.mapv(|x| Complex64::new(x, 0.0)))
             } else {

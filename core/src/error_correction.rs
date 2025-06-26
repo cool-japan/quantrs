@@ -3332,7 +3332,7 @@ mod tests {
         assert_eq!(hpc.k, 1); // k = n1*k2 + k1*n2 - k1*k2 = 3*1 + 1*3 - 1*1 = 5 for this example, but simplified
 
         let stab_code = hpc.to_stabilizer_code();
-        assert!(stab_code.stabilizers.len() > 0);
+        assert!(!stab_code.stabilizers.is_empty());
     }
 
     #[test]
@@ -3342,7 +3342,7 @@ mod tests {
         assert_eq!(qldpc.k, 2);
 
         let stab_code = qldpc.to_stabilizer_code();
-        assert!(stab_code.stabilizers.len() > 0);
+        assert!(!stab_code.stabilizers.is_empty());
 
         // Test that stabilizers have bounded weight
         for stabilizer in &stab_code.stabilizers {
@@ -3531,7 +3531,7 @@ mod tests {
         let x_gate = logical_x.unwrap();
         assert_eq!(x_gate.logical_qubits, vec![0]);
         assert_eq!(x_gate.physical_operations.len(), 1);
-        assert!(x_gate.error_propagation.single_qubit_propagation.len() > 0);
+        assert!(!x_gate.error_propagation.single_qubit_propagation.is_empty());
 
         // Test logical Z gate synthesis
         let logical_z = synthesizer.synthesize_logical_z(&code, 0);
@@ -3618,8 +3618,8 @@ mod tests {
 
         // Check error propagation analysis
         let analysis = &logical_x.error_propagation;
-        assert!(analysis.single_qubit_propagation.len() > 0);
-        assert!(analysis.max_error_weight >= 0);
+        assert!(!analysis.single_qubit_propagation.is_empty());
+        // max_error_weight is usize, so it's always >= 0
         assert_eq!(analysis.fault_tolerance_threshold, 0.01);
 
         // Check that some errors are marked as correctable
@@ -3633,8 +3633,6 @@ mod tests {
 
     #[test]
     fn test_pauli_string_weight() {
-        use crate::error_correction::logical_gates::*;
-
         let identity_string = PauliString::new(vec![Pauli::I, Pauli::I, Pauli::I]);
         assert_eq!(identity_string.weight(), 0);
 
@@ -3680,7 +3678,6 @@ mod tests {
     #[test]
     fn test_adaptive_threshold_estimator() {
         use crate::error_correction::adaptive_threshold::*;
-        use std::time::Duration;
 
         let noise_model = NoiseModel::default();
         let algorithm = ThresholdEstimationAlgorithm::Bayesian {
@@ -3825,7 +3822,7 @@ mod tests {
     fn test_noise_model_updates() {
         use crate::error_correction::adaptive_threshold::*;
 
-        let mut noise_model = NoiseModel::default();
+        let noise_model = NoiseModel::default();
         let algorithm = ThresholdEstimationAlgorithm::Bayesian {
             prior_strength: 1.0,
             update_rate: 0.1,

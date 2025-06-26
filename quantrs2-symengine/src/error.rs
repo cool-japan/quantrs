@@ -1,6 +1,5 @@
 //! Error handling for SymEngine operations.
 
-use std::fmt;
 use thiserror::Error;
 
 /// Result type for SymEngine operations

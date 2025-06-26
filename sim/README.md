@@ -6,6 +6,14 @@
 
 QuantRS2-Sim is the comprehensive simulation engine of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing state-of-the-art quantum simulation algorithms, error correction codes, and performance optimization techniques for simulating quantum systems up to 30+ qubits on standard hardware.
 
+## Version 0.1.0-beta.1
+
+This beta release features deep integration with [SciRS2](https://github.com/cool-japan/scirs2) v0.1.0-alpha.5 for unprecedented performance:
+- **Parallel Operations**: All simulators use `scirs2_core::parallel_ops` for automatic parallelization
+- **SIMD Acceleration**: Vectorized quantum operations via SciRS2 SIMD abstractions
+- **Advanced Linear Algebra**: Leveraging SciRS2's optimized BLAS/LAPACK bindings
+- **Memory Efficiency**: SciRS2's memory management for large-scale quantum simulations
+
 ## Core Features
 
 ### Multi-Backend Simulation Architecture
@@ -35,6 +43,10 @@ QuantRS2-Sim is the comprehensive simulation engine of the [QuantRS2](https://gi
 - **Quantum Supremacy**: Cross-entropy benchmarking and Porter-Thomas verification
 - **Hardware Optimization**: SIMD acceleration, memory-efficient algorithms, and GPU computing
 - **SciRS2 Integration**: Advanced linear algebra operations using optimized BLAS/LAPACK
+  - `scirs2_core::parallel_ops` for all parallel simulations
+  - SciRS2 sparse matrix operations for efficient quantum state representation
+  - SciRS2 eigensolvers for spectral analysis and VQE optimization
+  - SciRS2-accelerated quantum Fourier transform implementation
 - **Quantum Debugging**: Interactive debugging tools with breakpoints and state inspection
 - **Performance Profiling**: Comprehensive benchmarking and optimization analysis
 
@@ -290,7 +302,11 @@ fn photonic_simulation() -> Result<()> {
 ### Hardware Integration
 - **gpu.rs**: GPU-accelerated simulation using WGPU compute shaders
 - **gpu_linalg.rs**: GPU linear algebra operations for quantum simulation
-- **scirs2_integration.rs**: SciRS2 backend integration for high-performance computing
+- **scirs2_integration.rs**: Comprehensive SciRS2 backend integration
+  - Unified parallel operations via `scirs2_core::parallel_ops`
+  - SIMD vectorization through SciRS2 abstractions
+  - Memory-efficient algorithms from `scirs2_core::memory_efficient`
+  - Platform-aware optimization using `PlatformCapabilities`
 - **scirs2_qft.rs**: SciRS2-accelerated quantum Fourier transform
 - **scirs2_sparse.rs**: Sparse matrix operations using SciRS2
 - **scirs2_eigensolvers.rs**: Spectral analysis and eigenvalue computations
@@ -320,7 +336,7 @@ fn photonic_simulation() -> Result<()> {
 - **simd**: Platform-specific SIMD instructions for vectorized operations
 - **optimize**: Advanced optimization algorithms and memory management
 - **memory_efficient**: Large state vector optimizations for 25+ qubit simulation
-- **advanced_math**: SciRS2 integration with optimized BLAS/LAPACK operations
+- **advanced_math**: Full SciRS2 integration with optimized BLAS/LAPACK operations, parallel algorithms, and SIMD acceleration
 - **mps**: Matrix Product State simulation with linear algebra support
 
 ## Performance Characteristics

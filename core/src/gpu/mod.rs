@@ -1,7 +1,10 @@
 //! GPU acceleration backend for quantum operations
 //!
 //! This module provides an abstraction layer for GPU-accelerated quantum
-//! computations, supporting multiple backends (CUDA, Metal, Vulkan, etc.)
+//! computations, supporting multiple backends through SciRS2 GPU abstractions.
+//!
+//! NOTE: This module is being migrated to use scirs2_core::gpu as per SciRS2 policy.
+//! New code should use the SciRS2 GPU abstractions directly.
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
@@ -12,18 +15,48 @@ use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use std::sync::Arc;
 
+// Import SciRS2 GPU abstractions
+// Note: These will be used when full migration to SciRS2 GPU is implemented
+#[cfg(feature = "gpu")]
+#[allow(unused_imports)]
+use scirs2_core::gpu::{GpuDevice, GpuKernel as SciRS2GpuKernel};
+
+// TODO: GPU Migration to SciRS2
+// =============================
+// This module needs to be migrated to use scirs2_core::gpu abstractions as per SciRS2 policy:
+// 1. Replace GpuBuffer trait with scirs2_core::gpu buffer abstractions
+// 2. Replace GpuKernel trait with scirs2_core::gpu::GpuKernel
+// 3. Register all kernels in the core GPU kernel registry
+// 4. Remove direct CUDA/Metal/Vulkan backend implementations
+// 5. Use GpuDevice::default() for device selection
+//
+// Migration strategy:
+// - Phase 1: Create adapter layer (current)
+// - Phase 2: Migrate kernels to SciRS2 format
+// - Phase 3: Remove legacy implementations
+// - Phase 4: Update all dependent code
+
 pub mod cpu_backend;
 #[cfg(feature = "cuda")]
 pub mod cuda_backend;
 #[cfg(feature = "metal")]
 pub mod metal_backend;
+#[cfg(feature = "metal")]
+pub mod metal_backend_scirs2_ready;
 #[cfg(feature = "vulkan")]
 pub mod vulkan_backend;
+
+// SciRS2 GPU migration adapter
+pub mod scirs2_adapter;
 
 // Enhanced GPU optimization modules
 pub mod adaptive_simd;
 pub mod large_scale_simulation;
 pub mod specialized_kernels;
+
+// Tests
+#[cfg(test)]
+mod metal_backend_tests;
 
 // Re-export key optimization components
 pub use adaptive_simd::{

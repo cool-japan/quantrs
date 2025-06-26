@@ -1,6 +1,6 @@
 //! Additional mathematical operations for SymEngine expressions.
 
-use crate::{Expression, SymEngineResult};
+use crate::Expression;
 use num_traits::{Zero, One};
 
 /// Mathematical constants
@@ -96,7 +96,6 @@ pub mod trig {
 /// Exponential and logarithmic functions
 pub mod exp_log {
     use crate::{Expression, SymEngineResult};
-    use super::constants;
     
     /// Exponential function (e^x)
     pub fn exp(expr: &Expression) -> SymEngineResult<Expression> {
@@ -441,7 +440,7 @@ mod tests {
     #[test]
     fn test_calculus_operations() {
         let x = Expression::symbol("x");
-        let x_squared = &x * &x;
+        let x_squared = &x * x.clone();
         let derivative = calculus::diff(&x_squared, &x).unwrap();
         assert!(derivative.to_string().contains("diff"));
     }

@@ -298,7 +298,7 @@ impl Tensor {
 
         // Perform SVD using SciRS2
         let real_matrix = matrix.mapv(|c| c.re);
-        let (u, s, vt) = svd(&real_matrix.view(), false)
+        let (u, s, vt) = svd(&real_matrix.view(), false, None)
             .map_err(|e| QuantRS2Error::ComputationError(format!("SVD failed: {:?}", e)))?;
 
         // Determine rank to keep

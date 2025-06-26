@@ -1308,7 +1308,7 @@ mod error_code_tests {
         for code in codes {
             assert!(code.distance() > 0);
             assert!(code.num_data_qubits() > 0);
-            assert!(code.num_ancilla_qubits() >= 0);
+            // Ancilla qubits count is always non-negative
             assert!(code.logical_qubit_count() > 0);
             assert!(!code.get_stabilizers().is_empty());
             assert!(!code.get_logical_operators().is_empty());

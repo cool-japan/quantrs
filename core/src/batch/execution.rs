@@ -9,12 +9,9 @@ use crate::{
 };
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use std::sync::Arc;
 use std::time::Instant;
-
-// Use Rayon for parallel execution instead of non-existent scirs2 parallel module
-use rayon::ThreadPool;
 
 /// Simple circuit representation for batch execution
 pub struct BatchCircuit {
@@ -62,8 +59,9 @@ pub struct BatchCircuitExecutor {
     pub config: BatchConfig,
     /// Optional GPU backend
     pub gpu_backend: Option<Arc<dyn crate::gpu::GpuBackend>>,
-    /// Thread pool for parallel execution
-    pub thread_pool: Option<ThreadPool>,
+    // TODO: Replace with scirs2-core thread pool abstraction when available
+    // /// Thread pool for parallel execution
+    // pub thread_pool: Option<ThreadPool>,
 }
 
 impl BatchCircuitExecutor {
@@ -76,27 +74,27 @@ impl BatchCircuitExecutor {
             None
         };
 
-        // Create thread pool if parallel execution is enabled
-        let thread_pool = if let Some(num_workers) = config.num_workers {
-            Some(
-                rayon::ThreadPoolBuilder::new()
-                    .num_threads(num_workers)
-                    .build()
-                    .map_err(|e| {
-                        QuantRS2Error::ExecutionError(format!(
-                            "Failed to create thread pool: {}",
-                            e
-                        ))
-                    })?,
-            )
-        } else {
-            None
-        };
+        // TODO: Create thread pool using scirs2-core abstraction when available
+        // let thread_pool = if let Some(num_workers) = config.num_workers {
+        //     Some(
+        //         rayon::ThreadPoolBuilder::new()
+        //             .num_threads(num_workers)
+        //             .build()
+        //             .map_err(|e| {
+        //                 QuantRS2Error::ExecutionError(format!(
+        //                     "Failed to create thread pool: {}",
+        //                     e
+        //                 ))
+        //             })?,
+        //     )
+        // } else {
+        //     None
+        // };
 
         Ok(Self {
             config,
             gpu_backend,
-            thread_pool,
+            // thread_pool,
         })
     }
 
@@ -224,22 +222,9 @@ impl BatchCircuitExecutor {
         let gate_sequence: Vec<_> = circuit.gate_sequence().collect();
         let gate_refs: Vec<&dyn GateOp> = gate_sequence.iter().map(|g| g.as_ref()).collect();
 
-        if let Some(thread_pool) = &self.thread_pool {
-            // Use thread pool for better load balancing
-            self.execute_with_thread_pool(batch, &gate_refs, thread_pool)?;
-        } else {
-            // Use Rayon for simple parallel execution
-            batch
-                .states
-                .axis_iter_mut(ndarray::Axis(0))
-                .into_par_iter()
-                .try_for_each(|mut state_row| -> QuantRS2Result<()> {
-                    let mut state = state_row.to_owned();
-                    apply_gates_to_state(&mut state, &gate_refs, batch.n_qubits)?;
-                    state_row.assign(&state);
-                    Ok(())
-                })?;
-        }
+        // Always use parallel execution via scirs2_core::parallel_ops
+        // This will automatically fall back to sequential if parallel feature is disabled
+        self.execute_with_thread_pool(batch, &gate_refs)?;
 
         Ok(())
     }
@@ -249,7 +234,6 @@ impl BatchCircuitExecutor {
         &self,
         batch: &mut BatchStateVector,
         gates: &[&dyn GateOp],
-        _thread_pool: &ThreadPool,
     ) -> QuantRS2Result<()> {
         // Create tasks for each state
         let batch_size = batch.batch_size();

@@ -3,6 +3,20 @@
 //! This crate provides the foundational types and traits used throughout
 //! the QuantRS2 ecosystem, including qubit identifiers, quantum gates,
 //! and register representations.
+//!
+//! ## Key Features
+//!
+//! - **Platform-Aware Optimization**: Automatic detection of CPU/GPU capabilities for optimal performance
+//! - **SIMD Acceleration**: Fully migrated to `scirs2_core::simd_ops` for vectorized quantum operations
+//! - **GPU Support**: CUDA, OpenCL, and Metal (macOS) backends with forward-compatible SciRS2 integration
+//! - **Adaptive Algorithms**: Runtime selection of optimal implementations based on hardware capabilities
+//!
+//! ## Recent Updates (v0.1.0-beta.1)
+//!
+//! - Complete SIMD migration to SciRS2 abstractions
+//! - Platform capabilities detection with `PlatformCapabilities::detect()`
+//! - Metal GPU backend ready for SciRS2 v0.1.0-alpha.6 integration
+//! - Zero-warning compilation across all modules
 
 #![allow(dead_code)]
 #![allow(clippy::type_complexity)]
@@ -53,6 +67,8 @@ pub mod controlled;
 pub mod decomposition;
 pub mod distributed_quantum_networks;
 pub mod eigensolve;
+pub mod equivalence_checker;
+pub mod scirs2_equivalence_checker;
 pub mod error;
 pub mod error_correction;
 pub mod fermionic;
@@ -74,6 +90,7 @@ pub mod operations;
 pub mod optimization;
 pub mod parametric;
 pub mod photonic;
+pub mod platform;
 pub mod post_quantum_crypto;
 pub mod pulse;
 #[cfg(feature = "python")]
@@ -89,6 +106,7 @@ pub mod quantum_channels;
 #[cfg(feature = "python")]
 pub mod quantum_complexity_analysis;
 pub mod quantum_counting;
+pub mod quantum_debugger;
 pub mod quantum_debugging_profiling;
 pub mod quantum_game_theory;
 pub mod quantum_garbage_collection;
@@ -109,6 +127,16 @@ pub mod qubit;
 pub mod real_time_compilation;
 pub mod realtime_monitoring;
 pub mod register;
+pub mod resource_estimator;
+pub mod scirs2_resource_estimator_enhanced;
+pub mod scirs2_circuit_verifier;
+pub mod scirs2_circuit_verifier_enhanced;
+pub mod scirs2_quantum_formatter;
+pub mod scirs2_quantum_formatter_enhanced;
+pub mod scirs2_quantum_linter;
+pub mod scirs2_quantum_linter_enhanced;
+pub mod scirs2_quantum_profiler;
+pub mod scirs2_quantum_profiler_enhanced;
 pub mod shannon;
 pub mod silicon_quantum_dots;
 pub mod simd_ops;
@@ -380,6 +408,70 @@ pub mod prelude {
         RealTimeQuantumCompiler,
     };
     pub use crate::register::*;
+    pub use crate::scirs2_circuit_verifier::{
+        SciRS2CircuitVerifier, VerificationConfig, CircuitVerificationResult, VerificationVerdict,
+        AlgorithmSpecification, AlgorithmVerificationResult, EquivalenceVerificationResult,
+        SciRS2VerificationEnhancements, NumericalStabilityAnalysis, EquivalenceType,
+    };
+    pub use crate::scirs2_circuit_verifier_enhanced::{
+        EnhancedCircuitVerifier, EnhancedVerificationConfig, CertificateFormat,
+        CircuitProperty, SpecificationLanguage, QHLSpecification, QLTLSpecification,
+        QCTLSpecification, ZXSpecification, FormalVerificationResult, FormalProof,
+        ProofType, ProofStep, ProofStepType, Counterexample, VerificationTechnique,
+        VerificationReport, VerificationSummary, ConfidenceStatistics,
+    };
+    pub use crate::scirs2_quantum_linter::{
+        SciRS2QuantumLinter, LintingConfig, LintingReport, LintFinding, LintSeverity,
+        LintFindingType, AutomaticFix, OptimizationSuggestion, SciRS2Enhancement,
+    };
+    pub use crate::scirs2_quantum_linter_enhanced::{
+        EnhancedQuantumLinter, EnhancedLintingConfig, HardwareArchitecture, ReportFormat,
+        CustomLintRule, LintPattern, GatePatternMatcher, StructuralMatcher, ResourceMatcher,
+        EnhancedLintFinding, CircuitLocation, ImpactAnalysis, PerformanceImpact,
+        ResourceImpact, Compatibility, FixSuggestion, CodeChange, ChangeOperation,
+        RiskLevel, CircuitMetadata, EnhancedLintingReport, LintingSummary, QualityMetrics,
+    };
+    pub use crate::scirs2_quantum_profiler::{
+        SciRS2QuantumProfiler, SciRS2ProfilingConfig, ProfilingPrecision, GateProfilingResult,
+        CircuitProfilingResult, OptimizationRecommendation, MemoryAnalysis, SimdAnalysis,
+        SciRS2EnhancementSummary, ProfilingSessionReport,
+    };
+    pub use crate::scirs2_quantum_profiler_enhanced::{
+        EnhancedQuantumProfiler, EnhancedProfilingConfig, ExportFormat, MetricType,
+        PerformanceMetrics, MetricStatistics, AnomalyEvent, AnomalySeverity,
+        BottleneckAnalysis, Bottleneck, BottleneckType, CircuitLocation,
+        OptimizationOpportunity, OpportunityType, Difficulty, HardwarePerformanceModel,
+        HardwareCharacteristics, ScalingModel, ScalingType, HardwareOptimizationStrategy,
+        EnhancedGateProfilingResult, EnhancedOptimizationRecommendation,
+        RecommendationType, Priority, PerformancePredictions, PredictedPerformance,
+        ScalingAnalysis, EnhancedProfilingReport, ProfilingSummary,
+    };
+    pub use crate::scirs2_quantum_formatter::{
+        SciRS2QuantumFormatter, FormattingConfig, FormattedCode, FormattingStatistics,
+        FormattingStyle, ProgrammingLanguage, OutputFormat, IndentationStyle, CommentStyle,
+        CodeAnnotation, AnnotationType, AnnotationLocation,
+    };
+    pub use crate::scirs2_quantum_formatter_enhanced::{
+        EnhancedQuantumFormatter, EnhancedFormattingConfig, VisualFormat, QuantumBackend,
+        ExportFormat, CustomFormattingRule, FormattingOptions, OptimizationLevel,
+        EnhancedFormattedCode, SemanticInfo, AlgorithmPhase, QuantumPattern,
+        BeautificationSuggestions, HardwareFormattingInfo, FormattingSuggestion,
+        SuggestionType, SuggestionLocation, Priority, TemplatedCode, SyntaxMetadata,
+        SyntaxToken, TokenType, SyntaxScope, ColorScheme, QualityMetrics,
+        PlatformOptimization, CircuitChange, ChangeType, IncrementalUpdate,
+        UpdatedSection, InteractiveSuggestion,
+    };
+    pub use crate::scirs2_resource_estimator_enhanced::{
+        EnhancedResourceEstimator, EnhancedResourceConfig, CloudPlatform, OptimizationObjective,
+        AnalysisDepth, ResourceConstraint, ConstraintType, ConstraintPriority, ReportFormat,
+        EstimationOptions, OptimizationLevel as ResourceOptimizationLevel, EnhancedResourceEstimate, BasicResourceAnalysis,
+        GateStatistics, GatePattern, CircuitTopology, TopologyType, ResourceRequirements,
+        MemoryRequirements, ErrorBudget, ComplexityMetrics, MLPredictions, ResourceAnomaly,
+        AnomalySeverity, CostAnalysisResult, PlatformCost, CostBreakdown, CostOptimization,
+        OptimizationStrategy, ResourceImprovement, RiskAssessment, RiskLevel, ComparativeAnalysis,
+        HardwareRecommendation, ScalingPredictions, ResourceScores, ReadinessLevel,
+        Recommendation, RecommendationCategory, Priority as ResourcePriority, Impact, Effort, MonitoringReport,
+    };
     pub use crate::shannon::{shannon_decompose, OptimizedShannonDecomposer, ShannonDecomposer};
     pub use crate::silicon_quantum_dots::{
         DeviceParams, QuantumDotParams, QuantumDotType, SiliconQuantumDot, SiliconQuantumDotGates,

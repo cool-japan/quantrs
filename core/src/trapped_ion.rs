@@ -950,8 +950,9 @@ mod tests {
 
         let result = system.measure_ion(0).unwrap();
 
-        // Result should be either true or false
-        assert!(result == true || result == false);
+        // Result is a boolean, so this test just exercises the measurement
+        // The actual value depends on the quantum state
+        let _ = result;
 
         // State should now be collapsed
         let state = system.ions[0].get_state();
