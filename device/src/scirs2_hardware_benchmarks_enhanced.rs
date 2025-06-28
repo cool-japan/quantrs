@@ -8,17 +8,18 @@ use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
+    buffer_pool::BufferPool,
 };
 use quantrs2_circuit::builder::Circuit;
-use scirs2_core::parallel_ops::*;
-use scirs2_core::memory::BufferPool;
-use scirs2_core::platform::PlatformCapabilities;
-use scirs2_optimize::analysis::{
-    StatisticalAnalyzer, RegressionAnalyzer, HypothesisTest,
-    PerformanceAnalyzer, MLPredictor
-};
-use scirs2_linalg::{Matrix, Vector, SVD, Eigendecomposition};
-use scirs2_sparse::CSRMatrix;
+// use scirs2_core::parallel_ops::*;
+// use scirs2_core::memory::BufferPool;
+// use scirs2_core::platform::PlatformCapabilities;
+// use scirs2_optimize::analysis::{
+//     StatisticalAnalyzer, RegressionAnalyzer, HypothesisTest,
+//     PerformanceAnalyzer, MLPredictor
+// };
+// use scirs2_linalg::{Matrix, Vector, SVD, Eigendecomposition};
+// use scirs2_sparse::CSRMatrix;
 use ndarray::{Array1, Array2, Array3, ArrayView2};
 use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
@@ -26,8 +27,8 @@ use std::collections::{HashMap, VecDeque, BTreeMap};
 use std::sync::{Arc, Mutex};
 use std::fmt;
 use std::time::{Duration, Instant};
-use statrs::statistics::{Statistics, OrderStatistics};
-use statrs::distribution::{Normal, StudentsT, ChiSquared};
+// use statrs::statistics::{Statistics, OrderStatistics};
+// use statrs::distribution::{Normal, StudentsT, ChiSquared};
 
 /// Enhanced hardware benchmark configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -208,7 +209,7 @@ pub enum ExportFormat {
 /// Enhanced hardware benchmarking system
 pub struct EnhancedHardwareBenchmark {
     config: EnhancedBenchmarkConfig,
-    statistical_analyzer: Arc<StatisticalAnalyzer>,
+    statistical_analyzer: Arc<StatisticalAnalysis>,
     ml_predictor: Option<Arc<MLPerformancePredictor>>,
     comparative_analyzer: Arc<ComparativeAnalyzer>,
     realtime_monitor: Arc<RealtimeMonitor>,
@@ -225,7 +226,7 @@ impl EnhancedHardwareBenchmark {
         
         Self {
             config: config.clone(),
-            statistical_analyzer: Arc::new(StatisticalAnalyzer::new()),
+            statistical_analyzer: Arc::new(StatisticalAnalysis::default()),
             ml_predictor: if config.enable_ml_prediction {
                 Some(Arc::new(MLPerformancePredictor::new(config.clone())))
             } else {

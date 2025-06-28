@@ -9,6 +9,7 @@
 
 pub mod adaptive_gate_fusion;
 pub mod adaptive_ml_error_correction;
+pub mod automatic_parallelization;
 pub mod adiabatic_quantum_computing;
 pub mod advanced_ml_error_mitigation;
 pub mod advanced_variational_algorithms;
@@ -36,6 +37,8 @@ pub mod jit_compilation;
 pub mod linalg_ops;
 pub mod memory_bandwidth_optimization;
 pub mod memory_optimization;
+pub mod large_scale_simulator;
+pub mod distributed_simulator;
 pub mod memory_prefetching_optimization;
 pub mod mixed_precision;
 pub mod mixed_precision_impl;
@@ -73,6 +76,7 @@ pub mod quantum_reservoir_computing;
 pub mod quantum_reservoir_computing_enhanced;
 pub mod quantum_supremacy;
 pub mod quantum_volume;
+pub mod scirs2_complex_simd;
 pub mod scirs2_eigensolvers;
 pub mod scirs2_integration;
 pub mod scirs2_qft;
@@ -98,7 +102,15 @@ pub mod utils;
 // pub mod optimized_simulator;  // Temporarily disabled due to implementation issues
 pub mod benchmark;
 pub mod circuit_optimization;
+pub mod auto_optimizer;
+pub mod performance_prediction;
 pub mod clifford_sparse;
+
+/// New organized API for QuantRS2 Simulation 1.0
+/// 
+/// This module provides a hierarchical organization of the simulation API
+/// with clear naming conventions and logical grouping.
+pub mod api;
 pub mod compilation_optimization;
 pub mod diagnostics;
 pub mod memory_verification_simple;
@@ -175,6 +187,18 @@ pub mod prelude {
         optimize_circuit, optimize_circuit_with_config, CircuitOptimizer, OptimizationConfig,
         OptimizationResult, OptimizationStatistics,
     };
+    pub use crate::auto_optimizer::{
+        execute_with_auto_optimization, recommend_backend_for_circuit,
+        AutoOptimizer, AutoOptimizerConfig, BackendType, OptimizationLevel as AutoOptimizationLevel,
+        FallbackStrategy, AnalysisDepth, CircuitCharacteristics, ConnectivityProperties,
+        BackendRecommendation, PerformanceMetrics as AutoOptimizerPerformanceMetrics, PerformanceHistory,
+    };
+    pub use crate::performance_prediction::{
+        create_performance_predictor, predict_circuit_execution_time,
+        PerformancePredictionEngine, PerformancePredictionConfig, ModelType, PredictionStrategy,
+        ComplexityMetrics, ResourceMetrics, ExecutionDataPoint, PerformanceHardwareSpecs, PredictionResult,
+        PredictionMetadata, TrainedModel, TrainingStatistics, PredictionStatistics, PerformanceTimingStatistics,
+    };
     pub use crate::clifford_sparse::{CliffordGate, SparseCliffordSimulator};
     pub use crate::compilation_optimization::{
         CompilationAnalysis, CompilationOptimizer, CompilationOptimizerConfig,
@@ -236,6 +260,39 @@ pub mod prelude {
     };
     pub use crate::memory_optimization::{
         AdvancedMemoryPool, MemoryStats as AdvancedMemoryStats, NumaAwareAllocator,
+    };
+    pub use crate::large_scale_simulator::{
+        LargeScaleQuantumSimulator, LargeScaleSimulatorConfig, QuantumStateRepresentation,
+        SparseQuantumState, CompressedQuantumState, MemoryMappedQuantumState,
+        CompressionAlgorithm, CompressionMetadata, MemoryStatistics as LargeScaleMemoryStatistics,
+    };
+    pub use crate::distributed_simulator::{
+        DistributedQuantumSimulator, DistributedSimulatorConfig, NetworkConfig, LoadBalancingConfig,
+        FaultToleranceConfig, CommunicationConfig, NodeInfo, NodeCapabilities, NodeStatus,
+        StateChunk, ChunkMetadata, DistributedGateOperation, CommunicationRequirements,
+        OperationPriority, SynchronizationLevel, DistributedPerformanceStats, NetworkStats,
+        NodePerformanceStats, FaultToleranceStats, CommunicationManager, LoadBalancer,
+        WorkDistribution, RebalancingStats, NetworkMessage, LoadBalancingCommand,
+        FaultToleranceMessage, SimulationState, DistributionStrategy, LoadBalancingStrategy as DistributedLoadBalancingStrategy,
+        CommunicationPattern, benchmark_distributed_simulation,
+    };
+    pub use crate::automatic_parallelization::{
+        AutoParallelEngine, AutoParallelConfig, ParallelizationStrategy, ResourceConstraints,
+        LoadBalancingConfig as AutoLoadBalancingConfig, WorkStealingStrategy, OptimizationLevel,
+        ParallelTask, TaskPriority, DependencyGraph, GateNode, ParallelizationAnalysis,
+        ResourceUtilization, OptimizationRecommendation as ParallelOptimizationRecommendation, 
+        RecommendationType, RecommendationComplexity,
+        ParallelPerformanceStats, TaskCompletionStats, ResourceSnapshot, AutoParallelBenchmarkResults,
+        CircuitParallelResult, benchmark_automatic_parallelization,
+    };
+    pub use crate::scirs2_complex_simd::{
+        ComplexSimdVector, ComplexSimdOps, apply_single_qubit_gate_complex_simd,
+        apply_hadamard_gate_complex_simd, apply_cnot_complex_simd, benchmark_complex_simd_operations,
+    };
+    pub use crate::scirs2_integration::{
+        SciRS2Backend, SciRS2SimdContext, SciRS2SimdConfig, SciRS2MemoryAllocator,
+        SciRS2VectorizedFFT, SciRS2ParallelContext, SciRS2Matrix, SciRS2Vector,
+        BackendStats as SciRS2BackendStats,
     };
     pub use crate::memory_prefetching_optimization::{
         AccessPatternPredictor, AccessPatternType, DataLocalityOptimizer,
@@ -440,7 +497,7 @@ pub mod prelude {
         PhaseTransitionResult, QuantumHamiltonianLibrary, SciRS2SpectralAnalyzer,
         SpectralAnalysisResult, SpectralConfig, SpectralDensityResult, SpectralStatistics,
     };
-    pub use crate::scirs2_integration::{BackendStats, SciRS2Backend};
+    // SciRS2Backend already exported above with scirs2_integration module
     pub use crate::scirs2_qft::{
         benchmark_qft_methods, compare_qft_accuracy, QFTConfig, QFTMethod, QFTStats, QFTUtils,
         SciRS2QFT,
@@ -506,6 +563,28 @@ pub mod prelude {
 /// A placeholder for future error correction code implementations
 #[derive(Debug, Clone)]
 pub struct ErrorCorrection;
+
+// For backward compatibility, also re-export the prelude at the top level
+#[deprecated(since = "1.0.0", note = "Use api::prelude modules for new code")]
+pub use prelude::*;
+
+/// Convenient access to the new organized simulation API
+/// 
+/// # Examples
+/// 
+/// ```rust
+/// // For basic simulation
+/// use quantrs2_sim::v1::essentials::*;
+/// 
+/// // For GPU simulation
+/// use quantrs2_sim::v1::gpu::*;
+/// 
+/// // For distributed simulation
+/// use quantrs2_sim::v1::distributed::*;
+/// ```
+pub mod v1 {
+    pub use crate::api::prelude::*;
+}
 
 #[cfg(feature = "gpu")]
 pub mod gpu;

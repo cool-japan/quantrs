@@ -161,7 +161,16 @@ pub mod variational_optimization;
 pub mod zx_calculus;
 pub mod zx_extraction;
 
+/// New organized API for QuantRS2 1.0
+/// 
+/// This module provides a hierarchical organization of the core API
+/// with clear naming conventions and logical grouping.
+pub mod api;
+
 /// Re-exports of commonly used types and traits
+/// 
+/// For new code, consider using the organized API modules in `api::prelude` instead.
+/// This module is maintained for backward compatibility.
 pub mod prelude {
     // Import specific items from each module to avoid ambiguous glob re-exports
     pub use crate::adiabatic::{
@@ -566,4 +575,26 @@ pub mod prelude {
         PyAggregatedStats, PyAlert, PyMetricMeasurement, PyMonitoringConfig, PyMonitoringStatus,
         PyOptimizationRecommendation, PyRealtimeMonitor,
     };
+}
+
+// For backward compatibility, also re-export the prelude at the top level
+#[deprecated(since = "1.0.0", note = "Use api::prelude modules for new code")]
+pub use prelude::*;
+
+/// Convenient access to the new organized API
+/// 
+/// # Examples
+/// 
+/// ```rust
+/// // For basic quantum programming
+/// use quantrs2_core::v1::essentials::*;
+/// 
+/// // For algorithm development  
+/// use quantrs2_core::v1::algorithms::*;
+/// 
+/// // For hardware programming
+/// use quantrs2_core::v1::hardware::*;
+/// ```
+pub mod v1 {
+    pub use crate::api::prelude::*;
 }

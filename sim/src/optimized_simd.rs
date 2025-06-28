@@ -7,6 +7,10 @@ use num_complex::Complex64;
 use scirs2_core::parallel_ops::*;
 use scirs2_core::simd_ops::SimdUnifiedOps;
 use ndarray::{Array1, ArrayView1, ArrayViewMut1};
+use crate::scirs2_complex_simd::{
+    ComplexSimdVector, ComplexSimdOps, apply_single_qubit_gate_complex_simd,
+    apply_hadamard_gate_complex_simd, apply_cnot_complex_simd,
+};
 
 /// Simplified SIMD-like structure for complex operations
 /// NOTE: This is being deprecated in favor of SciRS2 SIMD operations.
@@ -568,7 +572,7 @@ pub fn apply_rx_gate_simd(
 
 /// SIMD-optimized wrapper function for applying gates
 ///
-/// This function uses SciRS2 SIMD implementations for all gate operations.
+/// This function uses enhanced SciRS2 complex SIMD implementations for optimal performance.
 pub fn apply_single_qubit_gate_optimized(
     matrix: &[Complex64; 4],
     in_amps0: &[Complex64],
@@ -578,19 +582,40 @@ pub fn apply_single_qubit_gate_optimized(
 ) {
     use std::f64::consts::FRAC_1_SQRT_2;
     
-    // Special-case optimizations for common gates
-    if *matrix == [
+    // Determine optimal implementation based on vector size and hardware capabilities
+    let vector_size = in_amps0.len();
+    let simd_threshold = 64; // Minimum size to benefit from complex SIMD
+    
+    if vector_size >= simd_threshold && ComplexSimdVector::detect_simd_width() > 1 {
+        // Use enhanced complex SIMD implementation for large vectors
+        if is_hadamard_gate(matrix) {
+            apply_hadamard_gate_complex_simd(in_amps0, in_amps1, out_amps0, out_amps1);
+        } else {
+            apply_single_qubit_gate_complex_simd(matrix, in_amps0, in_amps1, out_amps0, out_amps1);
+        }
+    } else {
+        // Fall back to component-wise SIMD for smaller vectors or limited hardware
+        if is_hadamard_gate(matrix) {
+            apply_h_gate_simd_v2(in_amps0, in_amps1, out_amps0, out_amps1);
+        } else {
+            apply_single_qubit_gate_simd_v2(matrix, in_amps0, in_amps1, out_amps0, out_amps1);
+        }
+    }
+}
+
+/// Check if matrix represents a Hadamard gate
+fn is_hadamard_gate(matrix: &[Complex64; 4]) -> bool {
+    use std::f64::consts::FRAC_1_SQRT_2;
+    
+    let h_matrix = [
         Complex64::new(FRAC_1_SQRT_2, 0.0),
         Complex64::new(FRAC_1_SQRT_2, 0.0),
         Complex64::new(FRAC_1_SQRT_2, 0.0),
         Complex64::new(-FRAC_1_SQRT_2, 0.0),
-    ] {
-        // Hadamard gate - use specialized implementation
-        apply_h_gate_simd_v2(in_amps0, in_amps1, out_amps0, out_amps1);
-    } else {
-        // All other gates use the general SciRS2 SIMD implementation
-        apply_single_qubit_gate_simd_v2(matrix, in_amps0, in_amps1, out_amps0, out_amps1);
-    }
+    ];
+    
+    matrix.iter().zip(h_matrix.iter())
+        .all(|(a, b)| (a - b).norm() < 1e-10)
 }
 
 /// Apply rotation-Y gate using SIMD-like operations

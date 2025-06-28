@@ -6,10 +6,11 @@ use crate::builder::Circuit;
 use crate::optimization::cost_model::{CircuitCostExt, CostModel};
 use crate::optimization::passes::{OptimizationPassExt, *};
 use quantrs2_core::error::QuantRS2Result;
+use serde::{Serialize, Deserialize};
 use std::collections::HashSet;
 
 /// Optimization level presets
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationLevel {
     /// No optimization
     None,

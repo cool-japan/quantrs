@@ -8,25 +8,28 @@ use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
+    buffer_pool::BufferPool,
 };
-use scirs2_core::parallel_ops::*;
-use scirs2_core::memory::BufferPool;
-use scirs2_core::platform::PlatformCapabilities;
-use scirs2_optimize::statistics::{
-    StatisticalAnalyzer, DistributionFitter, CorrelationAnalyzer,
-    TimeSeriesAnalyzer, SpectralAnalyzer
-};
-use scirs2_linalg::{Matrix, Vector, SVD, Eigendecomposition};
-use scirs2_sparse::CSRMatrix;
+use quantrs2_circuit::builder::Circuit;
+use crate::scirs2_hardware_benchmarks_enhanced::StatisticalAnalysis;
+// use scirs2_core::parallel_ops::*;
+// use scirs2_core::memory::BufferPool;
+// use scirs2_core::platform::PlatformCapabilities;
+// use scirs2_optimize::statistics::{
+//     StatisticalAnalyzer, DistributionFitter, CorrelationAnalyzer,
+//     TimeSeriesAnalyzer, SpectralAnalyzer
+// };
+// use scirs2_linalg::{Matrix, Vector, SVD, Eigendecomposition};
+// use scirs2_sparse::CSRMatrix;
 use ndarray::{Array1, Array2, Array3, Array4, ArrayView2};
 use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque, BTreeMap};
 use std::sync::{Arc, Mutex};
 use std::fmt;
-use rand::distributions::{Distribution, Normal, Exponential};
-use statrs::statistics::{Statistics, OrderStatistics};
-use statrs::distribution::{Beta, Gamma, Weibull};
+use rand_distr::{Distribution, Normal, Exp as Exponential};
+// use statrs::statistics::{Statistics, OrderStatistics};
+// use statrs::distribution::{Beta, Gamma, Weibull};
 
 /// Enhanced noise characterization configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -218,11 +221,11 @@ pub enum ExportFormat {
 /// Enhanced noise characterization system
 pub struct EnhancedNoiseCharacterizer {
     config: EnhancedNoiseConfig,
-    statistical_analyzer: Arc<StatisticalAnalyzer>,
+    statistical_analyzer: Arc<StatisticalAnalysis>,
     ml_analyzer: Option<Arc<MLNoiseAnalyzer>>,
     temporal_tracker: Arc<TemporalNoiseTracker>,
     spectral_analyzer: Arc<SpectralNoiseAnalyzer>,
-    correlation_analyzer: Arc<CorrelationAnalyzer>,
+    correlation_analyzer: Arc<CorrelationAnalysis>,
     predictive_modeler: Arc<PredictiveNoiseModeler>,
     buffer_pool: BufferPool<f64>,
     cache: Arc<Mutex<NoiseCache>>,
@@ -235,7 +238,7 @@ impl EnhancedNoiseCharacterizer {
         
         Self {
             config: config.clone(),
-            statistical_analyzer: Arc::new(StatisticalAnalyzer::new()),
+            statistical_analyzer: Arc::new(StatisticalAnalysis::default()),
             ml_analyzer: if config.enable_ml_analysis {
                 Some(Arc::new(MLNoiseAnalyzer::new(config.clone())))
             } else {
@@ -243,7 +246,7 @@ impl EnhancedNoiseCharacterizer {
             },
             temporal_tracker: Arc::new(TemporalNoiseTracker::new(config.clone())),
             spectral_analyzer: Arc::new(SpectralNoiseAnalyzer::new(config.clone())),
-            correlation_analyzer: Arc::new(CorrelationAnalyzer::new()),
+            correlation_analyzer: Arc::new(CorrelationAnalysis::default()),
             predictive_modeler: Arc::new(PredictiveNoiseModeler::new(config.clone())),
             buffer_pool,
             cache: Arc::new(Mutex::new(NoiseCache::new())),
@@ -609,7 +612,7 @@ impl SpectralNoiseAnalyzer {
         let power = self.spectral_analyzer.compute_power_spectral_density(&spectrum)?;
         
         Ok(PowerSpectrum {
-            frequencies: self.generate_frequency_bins(time_series.len()),
+            frequencies: self.generate_frequency_bins(time_series.timestamps.len()),
             power_density: power,
             resolution: self.config.analysis_parameters.frequency_resolution,
         })
@@ -875,7 +878,7 @@ struct ErrorCluster {
 /// Cluster type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 enum ClusterType {
-    Nearest    Neighbor,
+    NearestNeighbor,
     LongRange,
     AllToAll,
 }
@@ -1324,18 +1327,21 @@ struct RBResult {
 }
 
 /// Quantum state for tomography
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct QuantumState {
     state_vector: Array1<Complex64>,
     preparation_circuit: Circuit,
 }
 
 /// Measurement basis
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct MeasurementBasis {
     basis_name: String,
     measurement_circuit: Circuit,
 }
 
 /// Time series data
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct TimeSeries {
     timestamps: Vec<f64>,
     values: Vec<f64>,
@@ -1637,6 +1643,135 @@ struct CorrelationNetwork {
     nodes: Vec<QubitId>,
     edges: Vec<(usize, usize, f64)>, // (node1, node2, weight)
 }
+
+impl EnhancedNoiseCharacterizer {
+    /// Analyze temporal characteristics
+    fn analyze_temporal_characteristics(&self, _result: &NoiseCharacterizationResult) -> QuantRS2Result<TemporalAnalysis> {
+        // Stub implementation
+        Ok(TemporalAnalysis {
+            time_series: TimeSeries {
+                timestamps: vec![],
+                values: vec![],
+            },
+            trend: TrendAnalysis::default(),
+            periodicity: None,
+        })
+    }
+
+    /// Analyze spectral characteristics
+    fn analyze_spectral_characteristics(&self, _result: &NoiseCharacterizationResult) -> QuantRS2Result<SpectralAnalysis> {
+        // Stub implementation
+        Ok(SpectralAnalysis {
+            dominant_frequencies: vec![],
+            spectral_features: SpectralFeatures::default(),
+            noise_color: NoiseColor::White,
+        })
+    }
+
+    /// Analyze correlations
+    fn analyze_correlations(&self, _result: &NoiseCharacterizationResult) -> QuantRS2Result<CorrelationAnalysis> {
+        // Stub implementation
+        Ok(CorrelationAnalysis {
+            correlation_summary: CorrelationSummary {
+                max_correlation: 0.0,
+                mean_correlation: 0.0,
+                correlation_radius: 0.0,
+            },
+            significant_correlations: vec![],
+            correlation_network: CorrelationNetwork {
+                nodes: vec![],
+                edges: vec![],
+            },
+        })
+    }
+
+    /// Generate recommendations
+    fn generate_recommendations(&self, _result: &NoiseCharacterizationResult) -> QuantRS2Result<Vec<Recommendation>> {
+        // Stub implementation
+        Ok(vec![])
+    }
+
+    /// Generate visualizations
+    fn generate_visualizations(&self, _result: &NoiseCharacterizationResult) -> QuantRS2Result<NoiseVisualizations> {
+        // Stub implementation
+        Ok(NoiseVisualizations {
+            rb_decay_plot: PlotData {
+                x_data: vec![],
+                y_data: vec![],
+                error_bars: None,
+                metadata: PlotMetadata {
+                    title: "RB Decay".to_string(),
+                    x_label: "Sequence Length".to_string(),
+                    y_label: "Survival Probability".to_string(),
+                    plot_type: PlotType::Line,
+                },
+            },
+            spectrum_plot: PlotData {
+                x_data: vec![],
+                y_data: vec![],
+                error_bars: None,
+                metadata: PlotMetadata {
+                    title: "Noise Spectrum".to_string(),
+                    x_label: "Frequency".to_string(),
+                    y_label: "Power Density".to_string(),
+                    plot_type: PlotType::Line,
+                },
+            },
+            correlation_heatmap: HeatmapData {
+                data: Array2::zeros((0, 0)),
+                row_labels: vec![],
+                col_labels: vec![],
+                colormap: "viridis".to_string(),
+            },
+            temporal_plot: PlotData {
+                x_data: vec![],
+                y_data: vec![],
+                error_bars: None,
+                metadata: PlotMetadata {
+                    title: "Temporal Evolution".to_string(),
+                    x_label: "Time".to_string(),
+                    y_label: "Noise Level".to_string(),
+                    plot_type: PlotType::Line,
+                },
+            },
+            noise_landscape: Landscape3D {
+                x: vec![],
+                y: vec![],
+                z: Array2::zeros((0, 0)),
+                viz_params: Visualization3DParams {
+                    title: "Noise Landscape".to_string(),
+                    colormap: "plasma".to_string(),
+                    view_angle: (30.0, 45.0),
+                },
+            },
+        })
+    }
+
+    /// Generate random Clifford gate
+    fn random_clifford_gate(&self, _num_qubits: usize) -> Circuit {
+        // Stub implementation
+        Circuit::new()
+    }
+
+    /// Compute recovery gate
+    fn compute_recovery_gate(&self, _sequence: &[Circuit]) -> Circuit {
+        // Stub implementation
+        Circuit::new()
+    }
+
+    /// Calculate error bars
+    fn calculate_error_bars(&self, _survival_prob: f64, _shots: usize) -> f64 {
+        // Stub implementation using standard error
+        0.01 // placeholder
+    }
+
+    /// Calculate fit confidence interval
+    fn calculate_fit_confidence_interval(&self, _x: &[f64], _y: &[f64], _a: f64, _p: f64, _b: f64) -> QuantRS2Result<(f64, f64)> {
+        // Stub implementation
+        Ok((0.0, 1.0)) // placeholder
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

@@ -13,12 +13,14 @@ extern crate proc_macro;
 ///
 /// This crate provides types for constructing and manipulating
 /// quantum circuits with a fluent API.
+pub mod buffer_manager;
 pub mod builder;
 pub mod circuit_cache;
 pub mod classical;
 pub mod commutation;
 pub mod crosstalk;
 pub mod dag;
+pub mod debugger;
 pub mod distributed;
 pub mod equivalence;
 pub mod fault_tolerant;
@@ -29,7 +31,9 @@ pub mod noise_models;
 pub mod optimization;
 pub mod optimizer;
 pub mod photonic;
+pub mod profiler;
 pub mod pulse;
+pub mod resource_estimator;
 pub mod scirs2_pulse_control_enhanced;
 pub mod qasm;
 pub mod scirs2_qasm_compiler_enhanced;
@@ -49,7 +53,10 @@ pub mod topological;
 pub mod topology;
 pub mod transpiler;
 pub mod scirs2_transpiler_enhanced;
+pub mod formatter;
+pub mod linter;
 pub mod validation;
+pub mod verifier;
 pub mod vqe;
 pub mod zx_calculus;
 
@@ -74,6 +81,25 @@ pub mod prelude {
         CrosstalkScheduler, SchedulingStrategy, TimeSlice,
     };
     pub use crate::dag::{circuit_to_dag, CircuitDag, DagEdge, DagNode, EdgeType};
+    pub use crate::debugger::{
+        QuantumDebugger, DebuggerConfig, ExecutionState, ExecutionStatus as DebuggerExecutionStatus, BreakpointManager,
+        BreakpointCondition, StateBreakpoint, ConditionalBreakpoint, StatePattern, BreakpointAction,
+        WatchManager, WatchedState, WatchedGate, WatchedMetric, WatchExpression, ExpressionType,
+        ExpressionResult, ExpressionValue, WatchConfig, ExecutionHistory, HistoryEntry,
+        HistoryStatistics, MemoryUsage, MemoryStatistics, TimingInfo, TimingStatistics,
+        PerformanceProfiler, ProfilerConfig, AnalysisDepth, PerformanceSample, PerformanceAnalysis,
+        TrendAnalysis, TrendDirection, PerformanceBottleneck, BottleneckType as DebuggerBottleneckType, ImpactAssessment,
+        OptimizationSuggestion as DebuggerOptimizationSuggestion, SuggestionType as DebuggerSuggestionType,
+        Priority as DebuggerPriority, Difficulty, PredictionResult, ProfilingStatistics, VisualizationEngine,
+        VisualizationConfig, VisualizationType, RenderingQuality, ExportOptions as DebuggerExportOptions, 
+        ExportFormat as DebuggerExportFormat, Visualization, VisualizationData, GateVisualization, 
+        ConnectionVisualization, GateType as DebuggerGateType, GateAttributes, ConnectionType, BlochVector, 
+        VisualizationMetadata, VisualizationSnapshot, RenderingStatistics, ErrorDetector, ErrorDetectionConfig, 
+        ErrorType as DebuggerErrorType, DebugError, ErrorSeverity, ErrorStatistics, ErrorAnalysisResults, 
+        ErrorPattern, PatternType, RootCause, Solution, ErrorCorrelation, CorrelationType, StepResult, 
+        GateExecutionResult, ExecutionSummary, GateProperties as DebuggerGateProperties, GateExecutionMetrics, 
+        MetricSnapshot, StateSnapshot, GateSnapshot, MemorySnapshot,
+    };
     pub use crate::distributed::{
         BackendType, DistributedExecutor, DistributedJob, DistributedResult, ExecutionBackend,
         ExecutionParameters, ExecutionStatus, LoadBalancingStrategy, Priority, SystemHealthStatus,
@@ -85,6 +111,23 @@ pub mod prelude {
     pub use crate::fault_tolerant::{
         FaultTolerantCircuit, FaultTolerantCompiler, LogicalQubit, MagicState, QECCode,
         ResourceOverhead, SyndromeMeasurement, SyndromeType,
+    };
+    pub use crate::formatter::{
+        QuantumFormatter, FormatterConfig, IndentationConfig, IndentationStyle, SpacingConfig,
+        SpacingStyle, AlignmentConfig, CommentConfig, CommentAlignment, OrganizationConfig,
+        GroupingStrategy, OptimizationConfig as FormatterOptimizationConfig, OptimizationLevel as FormatterOptimizationLevel, StyleEnforcementConfig,
+        StyleStrictness as FormatterStyleStrictness, CustomStyleRule, RulePriority, 
+        SciRS2AnalysisConfig, AutoCorrectionConfig, FormattingResult, FormattedCircuit,
+        CodeStructure, CodeSection, SectionType, ImportStatement, ImportType, VariableDeclaration,
+        FunctionDefinition, Parameter as FormatterParameter, CircuitDefinition, GateOperation, MeasurementOperation,
+        LayoutInformation, AlignmentColumn, ColumnType, AlignedElement, WrappingPoint, WrappingType,
+        StyleInformation, AppliedStyleRule, StyleViolationFix, ConsistencyMetrics, FormattingStatistics,
+        FormattingChange, ChangeType, StyleCompliance, ComplianceLevel as FormatterComplianceLevel,
+        OptimizationResults, LayoutOptimization, ReadabilityImprovement, PerformanceOptimization,
+        FormattingWarning, WarningType as FormatterWarningType, WarningSeverity, FormattingMetadata, SciRS2FormattingAnalysis,
+        GraphAnalysisResults, PatternAnalysisResults, DetectedPattern, PatternFormattingSuggestion,
+        DependencyAnalysisResults, GateDependency, DependencyType, DataFlowEdge, OrderingConstraint,
+        ParallelizationOpportunity, SciRS2OptimizationSuggestion, LayoutSuggestion, InputStatistics,
     };
     pub use crate::graph_optimizer::{CircuitDAG, GraphGate, GraphOptimizer, OptimizationStats};
     pub use crate::measurement::{
@@ -117,9 +160,52 @@ pub mod prelude {
         PhotonicConverter, PhotonicGate, PhotonicMeasurement, PhotonicMode, Polarization,
         PolarizationBasis,
     };
+    pub use crate::profiler::{
+        QuantumProfiler, ProfilerConfig as ProfilerConfiguration, PrecisionLevel, MetricsCollector, PerformanceMetric,
+        MetricCategory, AggregationRule, AggregationFunction, MetricStream, StreamStatistics,
+        GateProfiler, GateProfile, MemoryPattern, ErrorCharacteristics, ErrorDistribution,
+        TimingStatistics as ProfilerTimingStatistics, ErrorAnalysis, ErrorSeverity as ProfilerErrorSeverity, 
+        ErrorPattern as ProfilerErrorPattern, RecoveryStatistics, MemoryProfiler, 
+        MemorySnapshot as ProfilerMemorySnapshot, LeakDetector, MemoryLeak,
+        LeakAnalysisResults, LeakSeverity, MemoryOptimization as ProfilerMemoryOptimization, MemoryOptimizationType,
+        AllocationTracker, AllocationInfo, AllocationType, AllocationEvent, AllocationEventType,
+        AllocationStatistics, ResourceProfiler, CpuProfilingData, CacheMissRates, CpuOptimization,
+        CpuOptimizationType, GpuProfilingData, MemoryTransferTimes, GpuOptimization, GpuOptimizationType,
+        IoProfilingData, LatencyDistribution, IoOptimization, IoOptimizationType, NetworkProfilingData,
+        ConnectionStatistics, ThroughputStatistics, NetworkOptimization, NetworkOptimizationType,
+        BottleneckAnalysis as ProfilerBottleneckAnalysis, ResourceBottleneck, ResourceBottleneckType,
+        BottleneckSeverity, SeverityLevel, BottleneckImpactAnalysis, CascadingEffect, CostBenefitAnalysis,
+        MitigationStrategy as ProfilerMitigationStrategy, MitigationStrategyType, ResourceRequirements as ProfilerResourceRequirements, PerformanceAnalyzer,
+        AnalysisConfig, AnalysisDepth as ProfilerAnalysisDepth, StatisticalMethod, MlModel,
+        HistoricalPerformanceData, PerformanceSnapshot, SystemState, CpuState, MemoryState,
+        IoState, NetworkState, EnvironmentInfo, HardwareConfig, GpuInfo, StorageInfo, StorageType,
+        DataRetentionPolicy, ArchivalPolicy, CompressionSettings, CompressionAlgorithm,
+        IntegrityChecks, ChecksumAlgorithm, AnomalyDetector, AnomalyDetectionAlgorithm,
+        AnomalyAlgorithmType, PerformanceAnomaly, AnomalyType, AnomySeverity, AnomalyDetectionConfig,
+        AlertSystem, AlertChannel, AlertChannelType, Alert, AlertLevel, AlertRule, AlertCondition,
+        ComparisonOperator, LogicalOperator, SuppressionRule, SuppressionCondition, PredictionEngine,
+        PredictionModel as ProfilerPredictionModel, PredictionModelType, PredictionResult as ProfilerPredictionResult,
+        TrainingStatus, PredictionConfig, AccuracyTracking, AccuracyMeasurement, BenchmarkEngine,
+        BenchmarkSuite, BenchmarkTest, BenchmarkTestType, BenchmarkSuiteConfig, BenchmarkResult,
+        TestResult, ComparisonResults, ComparisonSummary, RegressionAnalysisResults,
+        PerformanceRegression, RegressionSeverity, TrendAnalysisResults, BenchmarkConfig as ProfilerBenchmarkConfig,
+        RegressionDetector, RegressionDetectionAlgorithm, RegressionAlgorithmType,
+        RegressionDetectionConfig, BaselineManager, PerformanceBaseline, BaselineUpdatePolicy,
+        BaselineValidationResults, ValidationStatus, SessionManager, ProfilingSession,
+        SessionStatus, SessionData, SessionConfig, SessionStorage, StorageBackend, StorageConfig,
+        BackupConfig, SerializationConfig, SerializationFormat, SessionAnalytics, AnalyticsConfig,
+        SessionStatistics, PerformanceInsight as ProfilerPerformanceInsight, InsightType, SessionTrendAnalysis, ExportFormat as ProfilerExportFormat,
+        RealtimeMetrics, ResourceUtilization, ProfilingReport, PerformanceSummary, DetailedAnalysis,
+    };
     pub use crate::pulse::{
         Channel, DeviceConfig, PulseCalibration, PulseCompiler, PulseInstruction, PulseOptimizer,
         PulseSchedule, Waveform,
+    };
+    pub use crate::resource_estimator::{
+        ResourceEstimate, CircuitMetrics as ResourceCircuitMetrics, ComplexityAnalysis, ComplexityClass, MemoryRequirements,
+        ExecutionTimeEstimate, HardwareRequirements, ScalabilityAnalysis, OptimizationSuggestion as ResourceOptimizationSuggestion,
+        AlgorithmClass, ScalingBehavior, PlatformRecommendation,
+        ScalingFunction,
     };
     pub use crate::scirs2_pulse_control_enhanced::{
         EnhancedPulseController, EnhancedPulseConfig, PulseControlConfig, HardwareConstraints,
@@ -191,8 +277,27 @@ pub mod prelude {
         SciRS2CircuitAnalyzer, SciRS2CircuitGraph, SciRS2Edge, SciRS2Node, SciRS2NodeType,
     };
     pub use crate::scirs2_matrices::{
-        CircuitToSparseMatrix, Complex64, SparseFormat, SparseGate, SparseGateLibrary,
-        SparseMatrix, SparseOptimizer,
+        CircuitToSparseMatrix, SparseFormat, SparseGate, SparseGateLibrary,
+        SparseMatrix, SparseOptimizer, Complex64,
+    };
+    pub use crate::linter::{
+        QuantumLinter, LinterConfig, StyleStrictness, LintingResult, LintIssue,
+        IssueType, Severity, CircuitLocation, PerformanceImpact, PatternDetector,
+        QuantumPattern, PatternMatcher, ConnectivityPattern, ParameterConstraint,
+        ConstraintType as LinterConstraintType, PatternFlexibility, PatternDetectionResult, PatternStatistics,
+        PatternPerformanceProfile, PatternAnalysisResult, PatternInteraction, InteractionType,
+        AntiPatternDetector, QuantumAntiPattern, AntiPatternDetectionResult, StyleChecker,
+        StyleRule, NamingConvention, QubitOrderingStyle, IndentationStyle as LinterIndentationStyle, GateGroupingStyle,
+        MeasurementPlacementStyle, BarrierUsageStyle, StyleConfig, StyleCheckResult,
+        StyleViolation, StyleAnalysisResult, OptimizationAnalyzer, OptimizationRule,
+        OptimizationSuggestion as LinterOptimizationSuggestion, OptimizationType, OptimizationImprovement as LinterOptimizationImprovement, Difficulty as LinterDifficulty,
+        OptimizationAnalysisResult, PerformanceProjection, PerformanceMetrics as LinterPerformanceMetrics,
+        ComplexityAnalyzer, ComplexityMetric, ComplexityMetrics as LinterComplexityMetrics,
+        ComplexityClassification, ScalingBehavior as LinterScalingBehavior, ComplexityAnalysisResult, ComplexityTrend,
+        TrendDirection as LinterTrendDirection, SimplificationSuggestion, SimplificationType, Risk, BestPracticesChecker,
+        BestPracticeRule, PracticeGuidelines, CustomGuideline, Importance, BestPracticeResult,
+        BestPracticeViolation, BestPracticesCompliance, ComplianceLevel, AutoFix, AutoFixType,
+        SafetyLevel, LintingStatistics, LintingMetadata, AnalysisScope,
     };
     pub use crate::scirs2_optimization::{
         CircuitTemplate, EarlyStoppingCriteria, KernelType, ObjectiveFunction,
@@ -245,6 +350,23 @@ pub mod prelude {
         CircuitValidator, ClassicalConstraints, ConnectivityConstraints, DepthLimits,
         GateRestrictions, MeasurementConstraints, ResourceLimits,
         ValidationRules, ValidationStats, ValidationSuggestion,
+    };
+    pub use crate::verifier::{
+        QuantumVerifier, VerifierConfig, VerificationResult, VerificationStatus,
+        PropertyChecker, QuantumProperty, EntanglementType, SuperpositionType, CustomPredicate,
+        PropertyVerificationResult, VerificationOutcome, NumericalEvidence, EvidenceType, ErrorBounds,
+        InvariantChecker, CircuitInvariant, CustomInvariantChecker, InvariantCheckResult, ViolationSeverity,
+        TheoremProver, QuantumTheorem, ErrorModel, ExpectedOutput, ProofObligation, ProofStep,
+        TheoremResult, ProofStatus, FormalProof, ProofTree, ProofNode, Counterexample,
+        ProofComplexityMetrics, ProofStrategy, ModelChecker, TemporalProperty, ModelCheckResult,
+        ExecutionTrace, QuantumState, StateTransition, StateSpace, StateSpaceStatistics,
+        CorrectnessChecker, CorrectnessCriterion, TestCase, ComplexityClass as VerifierComplexityClass,
+        CorrectnessResult, VerifierTestResult, TestOutcome, SymbolicExecutor, SymbolicExecutionConfig,
+        SymbolicState, SymbolicVariable, SymbolicType, SymbolicExpression, BinaryOperator,
+        UnaryOperator, SymbolicConstraint, ConstraintType, SymbolicExecutionResult,
+        SymbolicExecutionStatus, ConstraintSatisfactionResult, VerificationStatistics,
+        ConfidenceStatistics, VerificationIssue, IssueType as VerifierIssueType, IssueSeverity, CircuitLocation as VerifierCircuitLocation,
+        VerificationMetadata,
     };
     pub use crate::vqe::{
         PauliOperator, VQEAnsatz, VQECircuit, VQEObservable, VQEOptimizer, VQEOptimizerType,

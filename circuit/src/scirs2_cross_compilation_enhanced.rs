@@ -11,8 +11,7 @@ use quantrs2_core::{
     register::Register,
 };
 use crate::optimization::pass_manager::{OptimizationLevel, PassManager};
-// TODO: Fix scirs2-core regex dependency issue
-// use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::*;
 use quantrs2_core::buffer_pool::BufferPool;
 use quantrs2_core::platform::PlatformCapabilities;
 // TODO: Fix import - ir module doesn't exist in scirs2_optimize
@@ -32,6 +31,7 @@ use std::collections::{HashMap, HashSet, VecDeque, BTreeMap};
 use std::sync::{Arc, Mutex};
 use std::fmt;
 use std::path::PathBuf;
+use rayon::prelude::*;
 
 /// Enhanced cross-compilation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -184,8 +184,20 @@ pub enum OptimizationPass {
 }
 
 // Placeholder structs for missing dependencies from scirs2_optimize
+type IntermediateRepresentation = QuantumIR;
+
 struct IRBuilder;
+impl IRBuilder {
+    fn new() -> Self { Self }
+}
+
 struct IROptimizer;
+impl IROptimizer {
+    fn new() -> Self { Self }
+    fn optimize(&self, ir: &IntermediateRepresentation) -> QuantRS2Result<IntermediateRepresentation> {
+        Ok(ir.clone())
+    }
+}
 
 /// Enhanced cross-compiler
 pub struct EnhancedCrossCompiler {
@@ -204,7 +216,7 @@ pub struct EnhancedCrossCompiler {
 impl EnhancedCrossCompiler {
     /// Create new enhanced cross-compiler
     pub fn new(config: EnhancedCrossCompilationConfig) -> Self {
-        let buffer_pool = BufferPool::new(1000, 1024 * 1024);
+        let buffer_pool = BufferPool::new();
         
         let mut target_generators = HashMap::new();
         for &platform in &config.target_platforms {
@@ -218,7 +230,7 @@ impl EnhancedCrossCompiler {
             config: config.clone(),
             ir_builder: Arc::new(IRBuilder::new()),
             ir_optimizer: Arc::new(IROptimizer::new()),
-            pass_manager: Arc::new(PassManager::new(config.optimization_passes.clone())),
+            pass_manager: Arc::new(PassManager::new()),
             ml_optimizer: if config.enable_ml_optimization {
                 Some(Arc::new(MLCompilationOptimizer::new(config.clone())))
             } else {
@@ -327,7 +339,7 @@ impl EnhancedCrossCompiler {
             });
             
             if !validation_result.is_valid {
-                return Err(QuantRS2Error::CompilationError(
+                return Err(QuantRS2Error::InvalidOperation(
                     format!("Validation failed: {:?}", validation_result.errors)
                 ));
             }
@@ -387,7 +399,7 @@ impl EnhancedCrossCompiler {
             QuantumFramework::Cirq => self.parse_cirq_circuit(&source.code),
             QuantumFramework::PennyLane => self.parse_pennylane_circuit(&source.code),
             QuantumFramework::OpenQASM => self.parse_openqasm_circuit(&source.code),
-            _ => Err(QuantRS2Error::UnsupportedFramework(
+            _ => Err(QuantRS2Error::UnsupportedOperation(
                 format!("Framework {:?} not yet supported", source.framework)
             )),
         }
@@ -524,7 +536,7 @@ impl EnhancedCrossCompiler {
         target: TargetPlatform,
     ) -> QuantRS2Result<TargetCode> {
         let generator = self.target_generators.get(&target)
-            .ok_or_else(|| QuantRS2Error::UnsupportedTarget(
+            .ok_or_else(|| QuantRS2Error::UnsupportedOperation(
                 format!("No code generator for {:?}", target)
             ))?;
         
@@ -673,9 +685,10 @@ impl MLCompilationOptimizer {
         let mut optimized = ir.clone();
         
         // Apply predicted transformations
-        for transform in &strategy.transformations {
-            optimized = self.apply_transform(&optimized, transform)?;
-        }
+        // TODO: Implement apply_transform method
+        // for transform in &strategy.transformations {
+        //     optimized = self.apply_transform(&optimized, transform)?;
+        // }
         
         Ok(optimized)
     }
@@ -843,7 +856,7 @@ impl IBMQuantumGenerator {
             IRGate::RX(angle) => Ok(format!("rx({}) q[{}];", angle, qubits[0])),
             IRGate::RY(angle) => Ok(format!("ry({}) q[{}];", angle, qubits[0])),
             IRGate::RZ(angle) => Ok(format!("rz({}) q[{}];", angle, qubits[0])),
-            _ => Err(QuantRS2Error::UnsupportedGate(
+            _ => Err(QuantRS2Error::UnsupportedOperation(
                 format!("Gate {:?} not supported in QASM", gate)
             )),
         }
@@ -918,7 +931,7 @@ impl GoogleSycamoreGenerator {
             IRGate::RY(angle) => Ok(format!("cirq.ry({}).on(qubits[{}])", angle, qubits[0])),
             IRGate::RZ(angle) => Ok(format!("cirq.rz({}).on(qubits[{}])", angle, qubits[0])),
             IRGate::SqrtISWAP => Ok(format!("cirq.SQRT_ISWAP(qubits[{}], qubits[{}])", qubits[0], qubits[1])),
-            _ => Err(QuantRS2Error::UnsupportedGate(
+            _ => Err(QuantRS2Error::UnsupportedOperation(
                 format!("Gate {:?} not supported in Cirq", gate)
             )),
         }
@@ -2400,7 +2413,7 @@ impl IonQGenerator {
                 "control": qubits[0],
                 "target": qubits[1]
             })),
-            _ => Err(QuantRS2Error::UnsupportedGate(
+            _ => Err(QuantRS2Error::UnsupportedOperation(
                 format!("Gate {:?} not supported on IonQ", gate)
             )),
         }
@@ -2437,7 +2450,7 @@ impl RigettiGenerator {
             IRGate::RX(angle) => Ok(format!("RX({}) {}", angle, qubits[0])),
             IRGate::RY(angle) => Ok(format!("RY({}) {}", angle, qubits[0])),
             IRGate::RZ(angle) => Ok(format!("RZ({}) {}", angle, qubits[0])),
-            _ => Err(QuantRS2Error::UnsupportedGate(
+            _ => Err(QuantRS2Error::UnsupportedOperation(
                 format!("Gate {:?} not supported in Quil", gate)
             )),
         }

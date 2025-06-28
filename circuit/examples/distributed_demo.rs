@@ -4,7 +4,7 @@
 //! for running quantum circuits across multiple backends with load balancing,
 //! fault tolerance, and resource management.
 
-use quantrs2_circuit::distributed::*;
+use quantrs2_circuit::distributed::{self, *};
 use quantrs2_circuit::prelude::*;
 use std::collections::HashMap;
 use std::time::Instant;
@@ -370,12 +370,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("---------------------------");
 
     let topologies = vec![
-        ("Linear", TopologyType::Linear),
-        ("2D Grid (3x3)", TopologyType::Grid2D { rows: 3, cols: 3 }),
-        ("All-to-all", TopologyType::AllToAll),
+        ("Linear", distributed::TopologyType::Linear),
+        ("2D Grid (3x3)", distributed::TopologyType::Grid2D { rows: 3, cols: 3 }),
+        ("All-to-all", distributed::TopologyType::AllToAll),
         (
             "Random (70% density)",
-            TopologyType::Random { density: 0.7 },
+            distributed::TopologyType::Random { density: 0.7 },
         ),
     ];
 
@@ -442,7 +442,7 @@ fn create_hardware_backend() -> ExecutionBackend {
             connectivity: ConnectivityGraph {
                 num_qubits: 7,
                 edges: vec![(0, 1), (1, 2), (1, 3), (3, 4), (3, 5), (4, 6)],
-                topology: TopologyType::Custom,
+                topology: distributed::TopologyType::Custom,
             },
             noise_model: Some(NoiseCharacteristics {
                 single_qubit_errors: {
@@ -476,7 +476,7 @@ fn create_hardware_backend() -> ExecutionBackend {
                 max_retries: 5,
                 base_delay: 2.0,
                 backoff_strategy: BackoffStrategy::Exponential { multiplier: 2.0 },
-                retryable_errors: vec![ErrorType::NetworkError, ErrorType::ServiceUnavailable],
+                retryable_errors: vec![distributed::ErrorType::NetworkError, distributed::ErrorType::ServiceUnavailable],
             },
         },
     }
@@ -532,7 +532,7 @@ fn create_simulator_backend() -> ExecutionBackend {
                 edges: (0..32)
                     .flat_map(|i| (0..32).filter(move |&j| i != j).map(move |j| (i, j)))
                     .collect(),
-                topology: TopologyType::AllToAll,
+                topology: distributed::TopologyType::AllToAll,
             },
             noise_model: None, // Ideal simulator
         },
@@ -553,7 +553,7 @@ fn create_simulator_backend() -> ExecutionBackend {
                 max_retries: 3,
                 base_delay: 1.0,
                 backoff_strategy: BackoffStrategy::Fixed,
-                retryable_errors: vec![ErrorType::NetworkError],
+                retryable_errors: vec![distributed::ErrorType::NetworkError],
             },
         },
     }
@@ -605,7 +605,7 @@ fn create_cloud_backend() -> ExecutionBackend {
                 edges: (0..34)
                     .flat_map(|i| (0..34).filter(move |&j| i != j).map(move |j| (i, j)))
                     .collect(),
-                topology: TopologyType::AllToAll,
+                topology: distributed::TopologyType::AllToAll,
             },
             noise_model: None,
         },
@@ -627,9 +627,9 @@ fn create_cloud_backend() -> ExecutionBackend {
                 base_delay: 1.0,
                 backoff_strategy: BackoffStrategy::Exponential { multiplier: 1.5 },
                 retryable_errors: vec![
-                    ErrorType::NetworkError,
-                    ErrorType::RateLimited,
-                    ErrorType::ServiceUnavailable,
+                    distributed::ErrorType::NetworkError,
+                    distributed::ErrorType::RateLimited,
+                    distributed::ErrorType::ServiceUnavailable,
                 ],
             },
         },
@@ -705,7 +705,7 @@ fn create_hybrid_backend() -> ExecutionBackend {
                 edges: (0..25)
                     .flat_map(|i| ((i + 1)..25).map(move |j| (i, j)))
                     .collect(),
-                topology: TopologyType::AllToAll,
+                topology: distributed::TopologyType::AllToAll,
             },
             noise_model: Some(NoiseCharacteristics {
                 single_qubit_errors: {
@@ -740,7 +740,7 @@ fn create_hybrid_backend() -> ExecutionBackend {
                 max_retries: 3,
                 base_delay: 5.0,
                 backoff_strategy: BackoffStrategy::Exponential { multiplier: 2.0 },
-                retryable_errors: vec![ErrorType::NetworkError, ErrorType::ServiceUnavailable],
+                retryable_errors: vec![distributed::ErrorType::NetworkError, distributed::ErrorType::ServiceUnavailable],
             },
         },
     }

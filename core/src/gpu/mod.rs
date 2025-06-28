@@ -51,6 +51,12 @@ pub mod vulkan_backend;
 pub mod scirs2_adapter;
 pub use crate::gpu_stubs::SciRS2GpuConfig;
 
+// Re-export SciRS2 adapter types for external use
+pub use scirs2_adapter::{
+    SciRS2GpuBackend, SciRS2BufferAdapter, SciRS2KernelAdapter, 
+    SciRS2GpuFactory, SciRS2GpuMetrics, get_gpu_system_info, is_gpu_available
+};
+
 // Enhanced GPU optimization modules
 pub mod adaptive_simd;
 pub mod large_scale_simulation;
