@@ -32,7 +32,7 @@ impl HierarchicalMemoryManager {
             memory_stats: MemoryStatistics::default(),
             config,
         };
-        
+
         // Initialize memory pools based on configuration
         manager.initialize_memory_pools();
         manager
@@ -52,14 +52,14 @@ impl HierarchicalMemoryManager {
     pub fn allocate(&mut self, size: usize) -> Option<*mut u8> {
         // Find the appropriate pool
         let pool_size = self.find_suitable_pool_size(size);
-        
+
         if let Some(pool) = self.memory_pools.get_mut(&pool_size) {
             let ptr = pool.allocate();
             if ptr.is_some() {
                 self.memory_stats.allocation_count += 1;
                 self.memory_stats.current_usage += size;
                 self.memory_stats.total_allocated += size;
-                
+
                 if self.memory_stats.current_usage > self.memory_stats.peak_usage {
                     self.memory_stats.peak_usage = self.memory_stats.current_usage;
                 }
@@ -72,7 +72,7 @@ impl HierarchicalMemoryManager {
 
     pub fn deallocate(&mut self, ptr: *mut u8, size: usize) {
         let pool_size = self.find_suitable_pool_size(size);
-        
+
         if let Some(pool) = self.memory_pools.get_mut(&pool_size) {
             pool.deallocate(ptr);
             self.memory_stats.deallocation_count += 1;
@@ -161,7 +161,7 @@ impl MemoryPool {
             free_blocks: VecDeque::new(),
             allocation_stats: AllocationStatistics::default(),
         };
-        
+
         // Pre-allocate blocks if configured
         pool.preallocate_blocks();
         pool
@@ -195,11 +195,11 @@ impl MemoryPool {
     }
 
     fn update_utilization(&mut self) {
-        self.allocation_stats.utilization = 
+        self.allocation_stats.utilization =
             self.used_capacity as f64 / self.total_capacity as f64;
-        
+
         if self.allocation_stats.total_allocations > 0 {
-            self.allocation_stats.avg_allocation_size = 
+            self.allocation_stats.avg_allocation_size =
                 self.used_capacity as f64 / self.allocation_stats.total_allocations as f64;
         }
     }
@@ -234,14 +234,14 @@ impl CacheHierarchy {
 
     pub fn get(&mut self, key: &str) -> Option<&Vec<u8>> {
         let start_time = Instant::now();
-        
+
         // Try L1 first
         if let Some(value) = self.l1_cache.get(key) {
             self.cache_stats.hits += 1;
             self.update_access_time(start_time);
             return Some(value);
         }
-        
+
         // Try L2
         if let Some(value) = self.l2_cache.get(key) {
             // Promote to L1
@@ -251,7 +251,7 @@ impl CacheHierarchy {
             self.update_access_time(start_time);
             return self.l1_cache.get(key);
         }
-        
+
         // Try L3
         if let Some(value) = self.l3_cache.get(key) {
             // Promote to L2 and L1
@@ -262,7 +262,7 @@ impl CacheHierarchy {
             self.update_access_time(start_time);
             return self.l1_cache.get(key);
         }
-        
+
         self.cache_stats.misses += 1;
         self.update_access_time(start_time);
         None
@@ -276,14 +276,14 @@ impl CacheHierarchy {
     fn update_access_time(&mut self, start_time: Instant) {
         let access_time = start_time.elapsed();
         let total_accesses = self.cache_stats.hits + self.cache_stats.misses;
-        
+
         if total_accesses > 0 {
             let total_time = self.cache_stats.avg_access_time * (total_accesses - 1) as u32 + access_time;
             self.cache_stats.avg_access_time = total_time / total_accesses as u32;
         } else {
             self.cache_stats.avg_access_time = access_time;
         }
-        
+
         self.cache_stats.hit_rate = self.cache_stats.hits as f64 / total_accesses as f64;
     }
 
@@ -362,7 +362,7 @@ impl<K: Clone + std::hash::Hash + Eq, V> LRUCache<K, V> {
                     self.current_size -= 1;
                 }
             }
-            
+
             self.data.insert(key.clone(), value);
             self.access_order.push_front(key);
             self.current_size += 1;
@@ -371,7 +371,7 @@ impl<K: Clone + std::hash::Hash + Eq, V> LRUCache<K, V> {
 
     pub fn cleanup(&mut self, fraction: f64) {
         let entries_to_remove = (self.current_size as f64 * fraction) as usize;
-        
+
         for _ in 0..entries_to_remove {
             if let Some(lru_key) = self.access_order.pop_back() {
                 self.data.remove(&lru_key);
@@ -523,7 +523,7 @@ mod tests {
     fn test_hierarchical_memory_manager() {
         let config = MemoryOptimizationConfig::default();
         let manager = HierarchicalMemoryManager::new(config);
-        
+
         assert!(!manager.memory_pools.is_empty());
         assert_eq!(manager.memory_stats.allocation_count, 0);
     }
@@ -539,12 +539,12 @@ mod tests {
     #[test]
     fn test_lru_cache() {
         let mut cache = LRUCache::new(2);
-        
+
         cache.put("key1", "value1");
         cache.put("key2", "value2");
-        
+
         assert_eq!(cache.get(&"key1"), Some(&"value1"));
-        
+
         // This should evict key2
         cache.put("key3", "value3");
         assert_eq!(cache.get(&"key2"), None);
@@ -555,13 +555,13 @@ mod tests {
     #[test]
     fn test_cache_hierarchy() {
         let mut hierarchy = CacheHierarchy::new();
-        
+
         hierarchy.put("test_key".to_string(), vec![1, 2, 3, 4]);
-        
+
         let result = hierarchy.get("test_key");
         assert!(result.is_some());
         assert_eq!(result.unwrap(), &vec![1, 2, 3, 4]);
-        
+
         // Test cache miss
         let missing = hierarchy.get("missing_key");
         assert!(missing.is_none());
@@ -570,11 +570,11 @@ mod tests {
     #[test]
     fn test_memory_statistics() {
         let mut stats = MemoryStatistics::default();
-        
+
         stats.allocation_count = 10;
         stats.deallocation_count = 8;
         stats.update_efficiency();
-        
+
         assert_eq!(stats.memory_efficiency, 0.8);
     }
 }

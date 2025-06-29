@@ -2,7 +2,7 @@
 //!
 //! This module provides advanced transpilation functionality to convert generic quantum circuits
 //! into device-specific optimized circuits using SciRS2's graph optimization algorithms.
-//! Features include intelligent gate decomposition, connectivity-aware routing, and 
+//! Features include intelligent gate decomposition, connectivity-aware routing, and
 //! performance optimization with advanced graph analysis.
 
 use crate::builder::Circuit;
@@ -19,54 +19,61 @@ use std::sync::Arc;
 // Placeholder SciRS2 structures until the actual crate is available
 mod scirs2_placeholders {
     use std::collections::HashMap;
-    
+
     #[derive(Debug, Clone)]
     pub struct GraphOptimizer {
         pub config: HashMap<String, f64>,
     }
-    
+
     impl GraphOptimizer {
         pub fn new() -> Self {
-            Self { config: HashMap::new() }
+            Self {
+                config: HashMap::new(),
+            }
         }
     }
-    
+
     #[derive(Debug, Clone)]
     pub struct BufferPool<T> {
         pub size: usize,
         _phantom: std::marker::PhantomData<T>,
     }
-    
+
     impl<T> BufferPool<T> {
         pub fn new(size: usize) -> Self {
-            Self { size, _phantom: std::marker::PhantomData }
+            Self {
+                size,
+                _phantom: std::marker::PhantomData,
+            }
         }
     }
-    
+
     #[derive(Debug, Clone)]
     pub struct ConnectivityAnalyzer {
         pub analysis_depth: usize,
     }
-    
+
     impl ConnectivityAnalyzer {
         pub fn new() -> Self {
             Self { analysis_depth: 5 }
         }
     }
-    
+
     #[derive(Debug, Clone)]
     pub struct PathOptimizer {
         pub algorithm: String,
     }
-    
+
     impl PathOptimizer {
         pub fn new() -> Self {
-            Self { algorithm: "dijkstra".to_string() }
+            Self {
+                algorithm: "dijkstra".to_string(),
+            }
         }
     }
 }
 
-use scirs2_placeholders::{GraphOptimizer, BufferPool, ConnectivityAnalyzer, PathOptimizer};
+use scirs2_placeholders::{BufferPool, ConnectivityAnalyzer, GraphOptimizer, PathOptimizer};
 
 /// Device-specific hardware constraints and capabilities
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -210,7 +217,7 @@ impl Default for SciRS2TranspilerConfig {
         cost_weights.insert("depth".to_string(), 0.4);
         cost_weights.insert("gates".to_string(), 0.3);
         cost_weights.insert("error".to_string(), 0.3);
-        
+
         Self {
             enable_parallel_graph_optimization: true,
             buffer_pool_size: 64 * 1024 * 1024, // 64MB
@@ -332,38 +339,40 @@ impl CostFunctionEvaluator {
             advanced_modeling: true,
         }
     }
-    
+
     /// Evaluate the total cost of a circuit configuration
-    pub fn evaluate_cost(&self, 
-                        depth: usize, 
-                        gates: usize, 
-                        error_rate: f64,
-                        swap_count: usize) -> f64 {
+    pub fn evaluate_cost(
+        &self,
+        depth: usize,
+        gates: usize,
+        error_rate: f64,
+        swap_count: usize,
+    ) -> f64 {
         let depth_cost = *self.weights.get("depth").unwrap_or(&0.4) * depth as f64;
         let gate_cost = *self.weights.get("gates").unwrap_or(&0.3) * gates as f64;
         let error_cost = *self.weights.get("error").unwrap_or(&0.3) * error_rate * 1000.0;
         let swap_cost = *self.weights.get("swap").unwrap_or(&0.1) * swap_count as f64;
-        
+
         depth_cost + gate_cost + error_cost + swap_cost
     }
-    
+
     /// Evaluate connectivity quality
     pub fn evaluate_connectivity(&self, connectivity_matrix: &[Vec<f64>]) -> f64 {
         if connectivity_matrix.is_empty() {
             return 0.0;
         }
-        
+
         let n = connectivity_matrix.len();
         let mut total_connectivity = 0.0;
         let mut count = 0;
-        
+
         for i in 0..n {
-            for j in (i+1)..n {
+            for j in (i + 1)..n {
                 total_connectivity += connectivity_matrix[i][j];
                 count += 1;
             }
         }
-        
+
         if count > 0 {
             total_connectivity / count as f64
         } else {
@@ -397,7 +406,7 @@ impl DeviceTranspiler {
         cost_weights.insert("depth".to_string(), 0.4);
         cost_weights.insert("gates".to_string(), 0.3);
         cost_weights.insert("error".to_string(), 0.3);
-        
+
         let mut transpiler = Self {
             hardware_specs: HashMap::new(),
             decomposition_cache: HashMap::new(),
@@ -416,14 +425,23 @@ impl DeviceTranspiler {
     /// Create a new device transpiler with SciRS2 optimization enabled
     pub fn new_with_scirs2_optimization() -> Self {
         let mut transpiler = Self::new();
-        
+
         // Enable advanced graph optimization features
         if let Some(ref mut optimizer) = transpiler.graph_optimizer {
-            Arc::get_mut(optimizer).unwrap().config.insert("advanced_connectivity".to_string(), 1.0);
-            Arc::get_mut(optimizer).unwrap().config.insert("spectral_analysis".to_string(), 1.0);
-            Arc::get_mut(optimizer).unwrap().config.insert("parallel_processing".to_string(), 1.0);
+            Arc::get_mut(optimizer)
+                .unwrap()
+                .config
+                .insert("advanced_connectivity".to_string(), 1.0);
+            Arc::get_mut(optimizer)
+                .unwrap()
+                .config
+                .insert("spectral_analysis".to_string(), 1.0);
+            Arc::get_mut(optimizer)
+                .unwrap()
+                .config
+                .insert("parallel_processing".to_string(), 1.0);
         }
-        
+
         transpiler
     }
 
@@ -461,11 +479,11 @@ impl DeviceTranspiler {
         hardware_spec: &HardwareSpec,
     ) -> QuantRS2Result<HashMap<QubitId, usize>> {
         let mut layout = HashMap::new();
-        
+
         // Build connectivity graph from circuit
         let gates = circuit.gates();
         let mut connectivity_matrix = vec![vec![0.0; N]; N];
-        
+
         // Analyze gate connectivity
         for gate in gates {
             let qubits = gate.qubits();
@@ -478,14 +496,14 @@ impl DeviceTranspiler {
                 }
             }
         }
-        
+
         // Apply minimum spanning tree algorithm
         let mut visited = vec![false; N];
         let mut min_cost = vec![f64::INFINITY; N];
         let mut parent = vec![None; N];
-        
+
         min_cost[0] = 0.0;
-        
+
         for _ in 0..N {
             let mut u = None;
             for v in 0..N {
@@ -493,10 +511,10 @@ impl DeviceTranspiler {
                     u = Some(v);
                 }
             }
-            
+
             if let Some(u) = u {
                 visited[u] = true;
-                
+
                 for v in 0..N {
                     if !visited[v] && connectivity_matrix[u][v] > 0.0 {
                         let cost = 1.0 / connectivity_matrix[u][v]; // Higher connectivity = lower cost
@@ -508,12 +526,12 @@ impl DeviceTranspiler {
                 }
             }
         }
-        
+
         // Create layout based on MST
         for (logical, physical) in (0..N).enumerate() {
             layout.insert(QubitId(logical as u32), physical);
         }
-        
+
         Ok(layout)
     }
 
@@ -524,13 +542,13 @@ impl DeviceTranspiler {
         hardware_spec: &HardwareSpec,
     ) -> QuantRS2Result<HashMap<QubitId, usize>> {
         let mut layout = HashMap::new();
-        
+
         // Use connectivity analyzer if available
         if let Some(ref analyzer) = self.connectivity_analyzer {
             // Analyze circuit connectivity patterns
             let gates = circuit.gates();
             let mut interaction_count = HashMap::new();
-            
+
             for gate in gates {
                 let qubits = gate.qubits();
                 if qubits.len() == 2 {
@@ -542,11 +560,11 @@ impl DeviceTranspiler {
                     *interaction_count.entry(pair).or_insert(0) += 1;
                 }
             }
-            
+
             // Create layout optimizing for shortest paths
             let mut remaining_logical: HashSet<_> = (0..N).map(|i| QubitId(i as u32)).collect();
             let mut remaining_physical: HashSet<_> = (0..N).collect();
-            
+
             // Start with the most connected qubit pair
             if let Some(((q1, q2), _)) = interaction_count.iter().max_by_key(|(_, &count)| count) {
                 layout.insert(*q1, 0);
@@ -556,22 +574,28 @@ impl DeviceTranspiler {
                 remaining_physical.remove(&0);
                 remaining_physical.remove(&1);
             }
-            
+
             // Place remaining qubits to minimize path lengths
             while !remaining_logical.is_empty() {
                 let mut best_assignment = None;
                 let mut best_cost = f64::INFINITY;
-                
+
                 for &logical in &remaining_logical {
                     for &physical in &remaining_physical {
-                        let cost = self.calculate_placement_cost(logical, physical, &layout, &interaction_count, hardware_spec);
+                        let cost = self.calculate_placement_cost(
+                            logical,
+                            physical,
+                            &layout,
+                            &interaction_count,
+                            hardware_spec,
+                        );
                         if cost < best_cost {
                             best_cost = cost;
                             best_assignment = Some((logical, physical));
                         }
                     }
                 }
-                
+
                 if let Some((logical, physical)) = best_assignment {
                     layout.insert(logical, physical);
                     remaining_logical.remove(&logical);
@@ -584,7 +608,7 @@ impl DeviceTranspiler {
                 layout.insert(QubitId(logical as u32), physical);
             }
         }
-        
+
         Ok(layout)
     }
 
@@ -598,21 +622,23 @@ impl DeviceTranspiler {
         hardware_spec: &HardwareSpec,
     ) -> f64 {
         let mut total_cost = 0.0;
-        
+
         for (&other_logical, &other_physical) in current_layout {
             let pair = if logical.id() < other_logical.id() {
                 (logical, other_logical)
             } else {
                 (other_logical, logical)
             };
-            
+
             if let Some(&count) = interaction_count.get(&pair) {
                 // Calculate distance on hardware topology
-                let distance = hardware_spec.coupling_map.distance(physical, other_physical);
+                let distance = hardware_spec
+                    .coupling_map
+                    .distance(physical, other_physical);
                 total_cost += count as f64 * distance as f64;
             }
         }
-        
+
         total_cost
     }
 
@@ -624,10 +650,10 @@ impl DeviceTranspiler {
     ) -> QuantRS2Result<HashMap<QubitId, usize>> {
         // For now, use a simplified spectral analysis approach
         // In a full implementation, this would compute eigenvalues and eigenvectors
-        
+
         let mut layout = HashMap::new();
         let gates = circuit.gates();
-        
+
         // Build adjacency matrix
         let mut adjacency = vec![vec![0.0; N]; N];
         for gate in gates {
@@ -641,7 +667,7 @@ impl DeviceTranspiler {
                 }
             }
         }
-        
+
         // Compute degree matrix
         let mut degree = vec![0.0; N];
         for i in 0..N {
@@ -649,15 +675,15 @@ impl DeviceTranspiler {
                 degree[i] += adjacency[i][j];
             }
         }
-        
+
         // Create layout based on spectral properties (simplified)
         let mut sorted_indices: Vec<_> = (0..N).collect();
         sorted_indices.sort_by(|&a, &b| degree[b].partial_cmp(&degree[a]).unwrap());
-        
+
         for (physical, &logical) in sorted_indices.iter().enumerate() {
             layout.insert(QubitId(logical as u32), physical);
         }
-        
+
         Ok(layout)
     }
 
@@ -671,12 +697,12 @@ impl DeviceTranspiler {
         let mst_layout = self.optimize_with_mst(circuit, hardware_spec)?;
         let shortest_path_layout = self.optimize_with_shortest_path(circuit, hardware_spec)?;
         let spectral_layout = self.optimize_with_spectral_analysis(circuit, hardware_spec)?;
-        
+
         // Evaluate each layout and pick the best
         let mst_cost = self.evaluate_layout_cost(&mst_layout, circuit, hardware_spec);
         let sp_cost = self.evaluate_layout_cost(&shortest_path_layout, circuit, hardware_spec);
         let spectral_cost = self.evaluate_layout_cost(&spectral_layout, circuit, hardware_spec);
-        
+
         if mst_cost <= sp_cost && mst_cost <= spectral_cost {
             Ok(mst_layout)
         } else if sp_cost <= spectral_cost {
@@ -695,7 +721,7 @@ impl DeviceTranspiler {
     ) -> f64 {
         let mut total_swaps = 0;
         let mut total_distance = 0.0;
-        
+
         for gate in circuit.gates() {
             let qubits = gate.qubits();
             if qubits.len() == 2 {
@@ -708,10 +734,10 @@ impl DeviceTranspiler {
                 }
             }
         }
-        
+
         // Calculate circuit depth manually since the method isn't available
         let circuit_depth = self.calculate_circuit_depth(circuit);
-        
+
         self.cost_evaluator.evaluate_cost(
             circuit_depth,
             circuit.gates().len(),
@@ -724,18 +750,18 @@ impl DeviceTranspiler {
     fn calculate_circuit_depth<const N: usize>(&self, circuit: &Circuit<N>) -> usize {
         let gates = circuit.gates();
         let mut qubit_depths = vec![0; N];
-        
+
         for gate in gates {
             let qubits = gate.qubits();
             let mut max_depth = 0;
-            
+
             // Find the maximum depth among all qubits involved in this gate
             for qubit in &qubits {
                 if (qubit.id() as usize) < N {
                     max_depth = max_depth.max(qubit_depths[qubit.id() as usize]);
                 }
             }
-            
+
             // Update depths for all qubits involved in this gate
             for qubit in &qubits {
                 if (qubit.id() as usize) < N {
@@ -743,7 +769,7 @@ impl DeviceTranspiler {
                 }
             }
         }
-        
+
         qubit_depths.into_iter().max().unwrap_or(0)
     }
 
@@ -755,19 +781,21 @@ impl DeviceTranspiler {
         transpilation_stats: &TranspilationStats,
     ) -> String {
         let improvement_ratio = if transpilation_stats.original_gates > 0 {
-            (transpilation_stats.original_gates as f64 - transpilation_stats.final_gates as f64) 
-                / transpilation_stats.original_gates as f64 * 100.0
+            (transpilation_stats.original_gates as f64 - transpilation_stats.final_gates as f64)
+                / transpilation_stats.original_gates as f64
+                * 100.0
         } else {
             0.0
         };
-        
+
         let depth_improvement = if transpilation_stats.original_depth > 0 {
-            (transpilation_stats.original_depth as f64 - transpilation_stats.final_depth as f64) 
-                / transpilation_stats.original_depth as f64 * 100.0
+            (transpilation_stats.original_depth as f64 - transpilation_stats.final_depth as f64)
+                / transpilation_stats.original_depth as f64
+                * 100.0
         } else {
             0.0
         };
-        
+
         format!(
             "SciRS2 Enhanced Transpilation Report\n\
              ===================================\n\
@@ -799,12 +827,27 @@ impl DeviceTranspiler {
             depth_improvement,
             transpilation_stats.added_swaps,
             transpilation_stats.estimated_error,
-            transpilation_stats.graph_optimization_stats.graph_construction_time.as_millis(),
-            transpilation_stats.graph_optimization_stats.optimization_iterations,
-            transpilation_stats.graph_optimization_stats.final_convergence,
-            transpilation_stats.graph_optimization_stats.connectivity_improvements,
-            transpilation_stats.graph_optimization_stats.parallel_effectiveness * 100.0,
-            transpilation_stats.graph_optimization_stats.peak_memory_usage as f64 / (1024.0 * 1024.0),
+            transpilation_stats
+                .graph_optimization_stats
+                .graph_construction_time
+                .as_millis(),
+            transpilation_stats
+                .graph_optimization_stats
+                .optimization_iterations,
+            transpilation_stats
+                .graph_optimization_stats
+                .final_convergence,
+            transpilation_stats
+                .graph_optimization_stats
+                .connectivity_improvements,
+            transpilation_stats
+                .graph_optimization_stats
+                .parallel_effectiveness
+                * 100.0,
+            transpilation_stats
+                .graph_optimization_stats
+                .peak_memory_usage as f64
+                / (1024.0 * 1024.0),
             transpilation_stats.transpilation_time.as_millis()
         )
     }

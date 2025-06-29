@@ -30,7 +30,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 /// SymEngine error codes
 pub mod error_codes {
     use super::c_int;
-    
+
     pub const SYMENGINE_NO_EXCEPTION: c_int = 0;
     pub const SYMENGINE_RUNTIME_ERROR: c_int = 1;
     pub const SYMENGINE_DIV_BY_ZERO: c_int = 2;
@@ -42,7 +42,7 @@ pub mod error_codes {
 /// SymEngine type codes
 pub mod type_codes {
     use super::c_int;
-    
+
     pub const SYMENGINE_SYMBOL: c_int = 1;
     pub const SYMENGINE_ADD: c_int = 2;
     pub const SYMENGINE_MUL: c_int = 3;
@@ -91,7 +91,9 @@ impl From<c_int> for SymEngineError {
     fn from(code: c_int) -> Self {
         match code {
             error_codes::SYMENGINE_NO_EXCEPTION => SymEngineError::NoException,
-            error_codes::SYMENGINE_RUNTIME_ERROR => SymEngineError::RuntimeError("Runtime error".to_string()),
+            error_codes::SYMENGINE_RUNTIME_ERROR => {
+                SymEngineError::RuntimeError("Runtime error".to_string())
+            }
             error_codes::SYMENGINE_DIV_BY_ZERO => SymEngineError::DivisionByZero,
             error_codes::SYMENGINE_NOT_IMPLEMENTED => SymEngineError::NotImplemented,
             error_codes::SYMENGINE_DOMAIN_ERROR => SymEngineError::DomainError,
@@ -119,12 +121,13 @@ pub fn version() -> &'static str {
 extern "C" {
     // Argument access functions
     pub fn basic_get_args_size(basic: *const basic_struct) -> usize;
-    pub fn basic_get_arg(out: *mut basic_struct, basic: *const basic_struct, index: usize) -> c_int;
-    
+    pub fn basic_get_arg(out: *mut basic_struct, basic: *const basic_struct, index: usize)
+        -> c_int;
+
     // Power operations
     pub fn basic_pow_get_base(out: *mut basic_struct, basic: *const basic_struct) -> c_int;
     pub fn basic_pow_get_exp(out: *mut basic_struct, basic: *const basic_struct) -> c_int;
-    
+
     // Symbol operations
     pub fn basic_symbol_get_name(basic: *const basic_struct) -> *const c_char;
 }
@@ -143,7 +146,10 @@ mod tests {
     #[test]
     fn test_error_conversion() {
         assert_eq!(SymEngineError::from(0), SymEngineError::NoException);
-        assert_eq!(SymEngineError::from(1), SymEngineError::RuntimeError("Runtime error".to_string()));
+        assert_eq!(
+            SymEngineError::from(1),
+            SymEngineError::RuntimeError("Runtime error".to_string())
+        );
         assert_eq!(SymEngineError::from(2), SymEngineError::DivisionByZero);
     }
 

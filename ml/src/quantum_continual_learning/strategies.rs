@@ -15,7 +15,7 @@ pub trait ContinualLearningStrategy: std::fmt::Debug {
         labels: &Array1<i32>,
         model_parameters: &mut HashMap<String, Array1<f64>>,
     ) -> Result<()>;
-    
+
     fn consolidate_knowledge(&mut self, model_parameters: &mut HashMap<String, Array1<f64>>) -> Result<()>;
 }
 
@@ -52,7 +52,7 @@ impl ContinualLearningStrategy for EWCStrategy {
         self.optimal_parameters.insert(param_key, new_params);
         Ok(())
     }
-    
+
     fn consolidate_knowledge(&mut self, _model_parameters: &mut HashMap<String, Array1<f64>>) -> Result<()> {
         // Placeholder consolidation
         Ok(())

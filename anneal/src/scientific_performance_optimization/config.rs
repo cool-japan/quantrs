@@ -1,5 +1,5 @@
 //! Configuration types for scientific performance optimization
-//! 
+//!
 //! This module contains all configuration structures and enums used throughout
 //! the scientific performance optimization system.
 

@@ -16,7 +16,7 @@ pub struct PenaltyConfig {
     pub initial_chain_strength: f64,
     /// Minimum chain strength
     pub min_chain_strength: f64,
-    /// Maximum chain strength  
+    /// Maximum chain strength
     pub max_chain_strength: f64,
     /// Chain strength scaling factor
     pub chain_strength_scale: f64,

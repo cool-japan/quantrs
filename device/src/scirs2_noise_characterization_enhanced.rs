@@ -36,34 +36,34 @@ use rand_distr::{Distribution, Normal, Exp as Exponential};
 pub struct EnhancedNoiseConfig {
     /// Base noise configuration
     pub base_config: NoiseCharacterizationConfig,
-    
+
     /// Enable ML-based noise analysis
     pub enable_ml_analysis: bool,
-    
+
     /// Enable temporal correlation tracking
     pub enable_temporal_tracking: bool,
-    
+
     /// Enable spectral noise analysis
     pub enable_spectral_analysis: bool,
-    
+
     /// Enable multi-qubit correlation analysis
     pub enable_correlation_analysis: bool,
-    
+
     /// Enable predictive noise modeling
     pub enable_predictive_modeling: bool,
-    
+
     /// Enable real-time monitoring
     pub enable_realtime_monitoring: bool,
-    
+
     /// Noise models to characterize
     pub noise_models: Vec<NoiseModel>,
-    
+
     /// Statistical methods
     pub statistical_methods: Vec<StatisticalMethod>,
-    
+
     /// Analysis parameters
     pub analysis_parameters: AnalysisParameters,
-    
+
     /// Reporting options
     pub reporting_options: ReportingOptions,
 }
@@ -101,13 +101,13 @@ impl Default for EnhancedNoiseConfig {
 pub struct NoiseCharacterizationConfig {
     /// Number of characterization sequences
     pub num_sequences: usize,
-    
+
     /// Sequence lengths for RB
     pub sequence_lengths: Vec<usize>,
-    
+
     /// Number of shots per sequence
     pub shots_per_sequence: usize,
-    
+
     /// Confidence level for error bars
     pub confidence_level: f64,
 }
@@ -156,16 +156,16 @@ pub enum StatisticalMethod {
 pub struct AnalysisParameters {
     /// Time window for temporal analysis (microseconds)
     pub temporal_window: f64,
-    
+
     /// Frequency resolution for spectral analysis (Hz)
     pub frequency_resolution: f64,
-    
+
     /// Correlation distance threshold
     pub correlation_threshold: f64,
-    
+
     /// ML model update frequency
     pub ml_update_frequency: usize,
-    
+
     /// Prediction horizon (microseconds)
     pub prediction_horizon: f64,
 }
@@ -187,13 +187,13 @@ impl Default for AnalysisParameters {
 pub struct ReportingOptions {
     /// Generate visual plots
     pub generate_plots: bool,
-    
+
     /// Include raw data
     pub include_raw_data: bool,
-    
+
     /// Include confidence intervals
     pub include_confidence_intervals: bool,
-    
+
     /// Export format
     pub export_format: ExportFormat,
 }
@@ -235,7 +235,7 @@ impl EnhancedNoiseCharacterizer {
     /// Create new enhanced noise characterizer
     pub fn new(config: EnhancedNoiseConfig) -> Self {
         let buffer_pool = BufferPool::new(1000, 1024 * 1024);
-        
+
         Self {
             config: config.clone(),
             statistical_analyzer: Arc::new(StatisticalAnalysis::default()),
@@ -252,7 +252,7 @@ impl EnhancedNoiseCharacterizer {
             cache: Arc::new(Mutex::new(NoiseCache::new())),
         }
     }
-    
+
     /// Characterize noise for a quantum device
     pub fn characterize_noise(
         &self,
@@ -260,7 +260,7 @@ impl EnhancedNoiseCharacterizer {
         qubits: &[QubitId],
     ) -> QuantRS2Result<NoiseCharacterizationResult> {
         let mut result = NoiseCharacterizationResult::new();
-        
+
         // Run different characterization protocols in parallel
         let tasks: Vec<_> = vec![
             self.run_randomized_benchmarking(device, qubits),
@@ -268,11 +268,11 @@ impl EnhancedNoiseCharacterizer {
             self.run_spectral_analysis(device, qubits),
             self.run_correlation_analysis(device, qubits),
         ];
-        
+
         let characterizations: Vec<_> = tasks.into_par_iter()
             .map(|task| task)
             .collect();
-        
+
         // Combine results
         for char_result in characterizations {
             match char_result {
@@ -280,26 +280,26 @@ impl EnhancedNoiseCharacterizer {
                 Err(e) => return Err(e),
             }
         }
-        
+
         // ML analysis if enabled
         if let Some(ml_analyzer) = &self.ml_analyzer {
             let ml_insights = ml_analyzer.analyze_noise_patterns(&result)?;
             result.ml_insights = Some(ml_insights);
         }
-        
+
         // Predictive modeling
         if self.config.enable_predictive_modeling {
             let predictions = self.predictive_modeler.predict_noise_evolution(&result)?;
             result.noise_predictions = Some(predictions);
         }
-        
+
         // Generate comprehensive report
         let report = self.generate_report(&result)?;
         result.report = Some(report);
-        
+
         Ok(result)
     }
-    
+
     /// Run randomized benchmarking
     fn run_randomized_benchmarking(
         &self,
@@ -307,25 +307,25 @@ impl EnhancedNoiseCharacterizer {
         qubits: &[QubitId],
     ) -> QuantRS2Result<CharacterizationData> {
         let mut rb_data = RBData::new();
-        
+
         for &seq_length in &self.config.base_config.sequence_lengths {
             let sequences = self.generate_rb_sequences(qubits.len(), seq_length);
-            
+
             let results: Vec<_> = sequences.par_iter()
                 .map(|seq| self.execute_rb_sequence(device, qubits, seq))
                 .collect();
-            
+
             // Analyze results
             let survival_prob = self.calculate_survival_probability(&results)?;
             rb_data.add_point(seq_length, survival_prob);
         }
-        
+
         // Fit exponential decay
         let fit_params = self.fit_rb_decay(&rb_data)?;
-        
+
         Ok(CharacterizationData::RandomizedBenchmarking(rb_data, fit_params))
     }
-    
+
     /// Run process tomography
     fn run_process_tomography(
         &self,
@@ -333,11 +333,11 @@ impl EnhancedNoiseCharacterizer {
         qubits: &[QubitId],
     ) -> QuantRS2Result<CharacterizationData> {
         let mut tomography_data = TomographyData::new();
-        
+
         // Generate preparation and measurement bases
         let prep_states = self.generate_preparation_states(qubits.len());
         let meas_bases = self.generate_measurement_bases(qubits.len());
-        
+
         // Run tomography experiments
         let experiments: Vec<_> = prep_states.par_iter()
             .flat_map(|prep| {
@@ -345,23 +345,23 @@ impl EnhancedNoiseCharacterizer {
                     .map(move |meas| (prep, meas))
             })
             .collect();
-        
+
         let results: Vec<_> = experiments.par_iter()
             .map(|(prep, meas)| {
                 self.execute_tomography_experiment(device, qubits, prep, meas)
             })
             .collect();
-        
+
         // Reconstruct process matrix
         let process_matrix = self.reconstruct_process_matrix(&results)?;
         tomography_data.process_matrix = process_matrix;
-        
+
         // Extract noise parameters
         let noise_params = self.extract_noise_parameters(&process_matrix)?;
-        
+
         Ok(CharacterizationData::ProcessTomography(tomography_data, noise_params))
     }
-    
+
     /// Run spectral noise analysis
     fn run_spectral_analysis(
         &self,
@@ -369,25 +369,25 @@ impl EnhancedNoiseCharacterizer {
         qubits: &[QubitId],
     ) -> QuantRS2Result<CharacterizationData> {
         let mut spectral_data = SpectralData::new();
-        
+
         // Collect time series data
         let time_series = self.collect_noise_time_series(device, qubits)?;
-        
+
         // Perform FFT analysis
         let spectrum = self.spectral_analyzer.compute_power_spectrum(&time_series)?;
         spectral_data.power_spectrum = spectrum;
-        
+
         // Identify noise peaks
         let noise_peaks = self.identify_noise_peaks(&spectrum)?;
         spectral_data.noise_peaks = noise_peaks;
-        
+
         // Analyze 1/f noise
         let one_over_f_params = self.analyze_one_over_f_noise(&spectrum)?;
         spectral_data.one_over_f_params = Some(one_over_f_params);
-        
+
         Ok(CharacterizationData::SpectralAnalysis(spectral_data))
     }
-    
+
     /// Run correlation analysis
     fn run_correlation_analysis(
         &self,
@@ -395,88 +395,88 @@ impl EnhancedNoiseCharacterizer {
         qubits: &[QubitId],
     ) -> QuantRS2Result<CharacterizationData> {
         let mut correlation_data = CorrelationData::new();
-        
+
         // Measure simultaneous errors
         let error_data = self.measure_correlated_errors(device, qubits)?;
-        
+
         // Compute correlation matrix
         let correlation_matrix = self.correlation_analyzer
             .compute_correlation_matrix(&error_data)?;
         correlation_data.correlation_matrix = correlation_matrix;
-        
+
         // Identify correlated error clusters
         let clusters = self.identify_error_clusters(&correlation_matrix)?;
         correlation_data.error_clusters = clusters;
-        
+
         // Analyze spatial correlations
         let spatial_corr = self.analyze_spatial_correlations(device, qubits)?;
         correlation_data.spatial_correlations = Some(spatial_corr);
-        
+
         Ok(CharacterizationData::CorrelationAnalysis(correlation_data))
     }
-    
+
     /// Generate comprehensive noise report
     fn generate_report(&self, result: &NoiseCharacterizationResult) -> QuantRS2Result<NoiseReport> {
         let mut report = NoiseReport::new();
-        
+
         // Summary statistics
         report.summary = self.generate_summary_statistics(result)?;
-        
+
         // Detailed analysis for each noise model
         for noise_model in &self.config.noise_models {
             let analysis = self.analyze_noise_model(result, *noise_model)?;
             report.model_analyses.insert(*noise_model, analysis);
         }
-        
+
         // Temporal evolution
         if self.config.enable_temporal_tracking {
             report.temporal_analysis = Some(self.analyze_temporal_evolution(result)?);
         }
-        
+
         // Spectral characteristics
         if self.config.enable_spectral_analysis {
             report.spectral_analysis = Some(self.analyze_spectral_characteristics(result)?);
         }
-        
+
         // Correlation analysis
         if self.config.enable_correlation_analysis {
             report.correlation_analysis = Some(self.analyze_correlations(result)?);
         }
-        
+
         // Recommendations
         report.recommendations = self.generate_recommendations(result)?;
-        
+
         // Visualizations
         if self.config.reporting_options.generate_plots {
             report.visualizations = Some(self.generate_visualizations(result)?);
         }
-        
+
         Ok(report)
     }
-    
+
     /// Generate RB sequences
     fn generate_rb_sequences(&self, num_qubits: usize, length: usize) -> Vec<RBSequence> {
         let mut sequences = Vec::new();
-        
+
         for _ in 0..self.config.base_config.num_sequences {
             let mut sequence = RBSequence::new();
-            
+
             // Random Clifford gates
             for _ in 0..length {
                 let clifford = self.random_clifford_gate(num_qubits);
                 sequence.add_gate(clifford);
             }
-            
+
             // Recovery gate
             let recovery = self.compute_recovery_gate(&sequence);
             sequence.add_gate(recovery);
-            
+
             sequences.push(sequence);
         }
-        
+
         sequences
     }
-    
+
     /// Execute RB sequence
     fn execute_rb_sequence(
         &self,
@@ -487,34 +487,34 @@ impl EnhancedNoiseCharacterizer {
         let circuit = sequence.to_circuit(qubits)?;
         let job = device.execute(circuit, self.config.base_config.shots_per_sequence)?;
         let counts = job.get_counts()?;
-        
+
         // Calculate survival probability
         let total_shots = counts.values().sum::<usize>() as f64;
         let success_state = vec![false; qubits.len()]; // All zeros
         let success_count = counts.get(&success_state).unwrap_or(&0);
         let survival_prob = *success_count as f64 / total_shots;
-        
+
         Ok(RBResult {
             sequence_length: sequence.length(),
             survival_probability: survival_prob,
             error_bars: self.calculate_error_bars(survival_prob, total_shots as usize),
         })
     }
-    
+
     /// Fit RB decay curve
     fn fit_rb_decay(&self, rb_data: &RBData) -> QuantRS2Result<RBFitParameters> {
         let x: Vec<f64> = rb_data.sequence_lengths.iter()
             .map(|&l| l as f64)
             .collect();
         let y: Vec<f64> = rb_data.survival_probabilities.clone();
-        
+
         // Fit: f(x) = A * p^x + B
         // where p is the decay parameter
         let (a, p, b) = self.statistical_analyzer.fit_exponential_decay(&x, &y)?;
-        
+
         // Calculate average error rate
         let r = (1.0 - p) * (1.0 - 1.0 / 2.0_f64.powi(rb_data.num_qubits as i32));
-        
+
         Ok(RBFitParameters {
             amplitude: a,
             decay_parameter: p,
@@ -540,16 +540,16 @@ impl MLNoiseAnalyzer {
             feature_extractor: Arc::new(NoiseFeatureExtractor::new()),
         }
     }
-    
+
     fn analyze_noise_patterns(
         &self,
         result: &NoiseCharacterizationResult,
     ) -> QuantRS2Result<MLNoiseInsights> {
         let features = self.feature_extractor.extract_features(result)?;
-        
+
         let mut model = self.model.lock().unwrap();
         let predictions = model.predict(&features)?;
-        
+
         Ok(MLNoiseInsights {
             noise_classification: predictions.classification,
             anomaly_score: predictions.anomaly_score,
@@ -574,7 +574,7 @@ impl TemporalNoiseTracker {
             history: Arc::new(Mutex::new(NoiseHistory::new())),
         }
     }
-    
+
     fn track_noise_evolution(
         &self,
         timestamp: f64,
@@ -582,13 +582,13 @@ impl TemporalNoiseTracker {
     ) -> QuantRS2Result<()> {
         let mut history = self.history.lock().unwrap();
         history.add_measurement(timestamp, noise_data.clone());
-        
+
         // Analyze trends
         if history.len() > 10 {
             let trend = self.time_series_analyzer.analyze_trend(&history.to_time_series())?;
             history.update_trend(trend);
         }
-        
+
         Ok(())
     }
 }
@@ -606,18 +606,18 @@ impl SpectralNoiseAnalyzer {
             spectral_analyzer: Arc::new(SpectralAnalyzer::new()),
         }
     }
-    
+
     fn compute_power_spectrum(&self, time_series: &TimeSeries) -> QuantRS2Result<PowerSpectrum> {
         let spectrum = self.spectral_analyzer.compute_fft(time_series)?;
         let power = self.spectral_analyzer.compute_power_spectral_density(&spectrum)?;
-        
+
         Ok(PowerSpectrum {
             frequencies: self.generate_frequency_bins(time_series.timestamps.len()),
             power_density: power,
             resolution: self.config.analysis_parameters.frequency_resolution,
         })
     }
-    
+
     fn generate_frequency_bins(&self, n: usize) -> Vec<f64> {
         let nyquist = 1.0 / (2.0 * self.config.analysis_parameters.frequency_resolution);
         (0..n/2).map(|i| i as f64 * nyquist / (n/2) as f64).collect()
@@ -637,20 +637,20 @@ impl PredictiveNoiseModeler {
             predictor: Arc::new(Mutex::new(NoisePredictor::new())),
         }
     }
-    
+
     fn predict_noise_evolution(
         &self,
         result: &NoiseCharacterizationResult,
     ) -> QuantRS2Result<NoisePredictions> {
         let mut predictor = self.predictor.lock().unwrap();
-        
+
         // Update model with latest data
         predictor.update(result)?;
-        
+
         // Generate predictions
         let horizon = self.config.analysis_parameters.prediction_horizon;
         let predictions = predictor.predict(horizon)?;
-        
+
         Ok(predictions)
     }
 }
@@ -660,31 +660,31 @@ impl PredictiveNoiseModeler {
 pub struct NoiseCharacterizationResult {
     /// Timestamp
     pub timestamp: f64,
-    
+
     /// Device identifier
     pub device_id: String,
-    
+
     /// Characterized qubits
     pub qubits: Vec<QubitId>,
-    
+
     /// RB results
     pub rb_results: Option<RBResults>,
-    
+
     /// Process tomography results
     pub tomography_results: Option<TomographyResults>,
-    
+
     /// Spectral analysis results
     pub spectral_results: Option<SpectralResults>,
-    
+
     /// Correlation analysis results
     pub correlation_results: Option<CorrelationResults>,
-    
+
     /// ML insights
     pub ml_insights: Option<MLNoiseInsights>,
-    
+
     /// Noise predictions
     pub noise_predictions: Option<NoisePredictions>,
-    
+
     /// Comprehensive report
     pub report: Option<NoiseReport>,
 }
@@ -704,7 +704,7 @@ impl NoiseCharacterizationResult {
             report: None,
         }
     }
-    
+
     fn merge(&mut self, data: CharacterizationData) {
         match data {
             CharacterizationData::RandomizedBenchmarking(rb_data, fit_params) => {
@@ -749,7 +749,7 @@ impl RBData {
             num_qubits: 0,
         }
     }
-    
+
     fn add_point(&mut self, length: usize, probability: f64) {
         self.sequence_lengths.push(length);
         self.survival_probabilities.push(probability);
@@ -904,13 +904,13 @@ enum SpatialCorrelationType {
 pub struct MLNoiseInsights {
     /// Noise classification
     pub noise_classification: NoiseClassification,
-    
+
     /// Anomaly score
     pub anomaly_score: f64,
-    
+
     /// Predicted evolution
     pub predicted_evolution: Vec<PredictedNoisePoint>,
-    
+
     /// Confidence level
     pub confidence: f64,
 }
@@ -920,10 +920,10 @@ pub struct MLNoiseInsights {
 pub struct NoiseClassification {
     /// Primary noise type
     pub primary_type: NoiseModel,
-    
+
     /// Secondary contributions
     pub secondary_types: Vec<(NoiseModel, f64)>,
-    
+
     /// Classification confidence
     pub confidence: f64,
 }
@@ -933,10 +933,10 @@ pub struct NoiseClassification {
 pub struct PredictedNoisePoint {
     /// Time offset from now
     pub time_offset: f64,
-    
+
     /// Predicted noise rates
     pub noise_rates: HashMap<NoiseModel, f64>,
-    
+
     /// Prediction uncertainty
     pub uncertainty: f64,
 }
@@ -946,13 +946,13 @@ pub struct PredictedNoisePoint {
 pub struct NoisePredictions {
     /// Prediction horizon
     pub horizon: f64,
-    
+
     /// Predicted noise evolution
     pub evolution: Vec<PredictedNoisePoint>,
-    
+
     /// Trend analysis
     pub trend: NoiseTrend,
-    
+
     /// Alert thresholds
     pub alerts: Vec<NoiseAlert>,
 }
@@ -972,13 +972,13 @@ pub enum NoiseTrend {
 pub struct NoiseAlert {
     /// Alert type
     pub alert_type: AlertType,
-    
+
     /// Affected qubits
     pub qubits: Vec<QubitId>,
-    
+
     /// Severity level
     pub severity: Severity,
-    
+
     /// Recommended action
     pub recommendation: String,
 }
@@ -1006,22 +1006,22 @@ pub enum Severity {
 pub struct NoiseReport {
     /// Summary statistics
     pub summary: NoiseSummary,
-    
+
     /// Model-specific analyses
     pub model_analyses: HashMap<NoiseModel, ModelAnalysis>,
-    
+
     /// Temporal analysis
     pub temporal_analysis: Option<TemporalAnalysis>,
-    
+
     /// Spectral analysis
     pub spectral_analysis: Option<SpectralAnalysis>,
-    
+
     /// Correlation analysis
     pub correlation_analysis: Option<CorrelationAnalysis>,
-    
+
     /// Recommendations
     pub recommendations: Vec<Recommendation>,
-    
+
     /// Visualizations
     pub visualizations: Option<NoiseVisualizations>,
 }
@@ -1045,13 +1045,13 @@ impl NoiseReport {
 pub struct NoiseSummary {
     /// Overall noise level
     pub overall_noise_rate: f64,
-    
+
     /// Dominant noise type
     pub dominant_noise: NoiseModel,
-    
+
     /// Quality factor
     pub quality_factor: f64,
-    
+
     /// Comparison to baseline
     pub baseline_comparison: Option<f64>,
 }
@@ -1072,13 +1072,13 @@ impl NoiseSummary {
 pub struct ModelAnalysis {
     /// Model parameters
     pub parameters: HashMap<String, f64>,
-    
+
     /// Goodness of fit
     pub goodness_of_fit: f64,
-    
+
     /// Confidence intervals
     pub confidence_intervals: HashMap<String, (f64, f64)>,
-    
+
     /// Model-specific insights
     pub insights: Vec<String>,
 }
@@ -1088,13 +1088,13 @@ pub struct ModelAnalysis {
 pub struct TemporalAnalysis {
     /// Time series data
     pub time_series: TimeSeries,
-    
+
     /// Trend analysis
     pub trend: TrendAnalysis,
-    
+
     /// Periodicity analysis
     pub periodicity: Option<PeriodicityAnalysis>,
-    
+
     /// Drift characterization
     pub drift: DriftCharacterization,
 }
@@ -1104,10 +1104,10 @@ pub struct TemporalAnalysis {
 pub struct SpectralAnalysis {
     /// Dominant frequencies
     pub dominant_frequencies: Vec<(f64, f64)>, // (frequency, amplitude)
-    
+
     /// Spectral features
     pub spectral_features: SpectralFeatures,
-    
+
     /// Noise color classification
     pub noise_color: NoiseColor,
 }
@@ -1117,10 +1117,10 @@ pub struct SpectralAnalysis {
 pub struct CorrelationAnalysis {
     /// Correlation summary
     pub correlation_summary: CorrelationSummary,
-    
+
     /// Significant correlations
     pub significant_correlations: Vec<SignificantCorrelation>,
-    
+
     /// Correlation network
     pub correlation_network: CorrelationNetwork,
 }
@@ -1130,13 +1130,13 @@ pub struct CorrelationAnalysis {
 pub struct Recommendation {
     /// Recommendation type
     pub rec_type: RecommendationType,
-    
+
     /// Priority level
     pub priority: Priority,
-    
+
     /// Description
     pub description: String,
-    
+
     /// Expected improvement
     pub expected_improvement: f64,
 }
@@ -1165,16 +1165,16 @@ pub enum Priority {
 pub struct NoiseVisualizations {
     /// RB decay plot
     pub rb_decay_plot: PlotData,
-    
+
     /// Noise spectrum plot
     pub spectrum_plot: PlotData,
-    
+
     /// Correlation heatmap
     pub correlation_heatmap: HeatmapData,
-    
+
     /// Temporal evolution plot
     pub temporal_plot: PlotData,
-    
+
     /// 3D noise landscape
     pub noise_landscape: Landscape3D,
 }
@@ -1184,13 +1184,13 @@ pub struct NoiseVisualizations {
 pub struct PlotData {
     /// X-axis data
     pub x_data: Vec<f64>,
-    
+
     /// Y-axis data
     pub y_data: Vec<f64>,
-    
+
     /// Error bars
     pub error_bars: Option<Vec<f64>>,
-    
+
     /// Plot metadata
     pub metadata: PlotMetadata,
 }
@@ -1200,13 +1200,13 @@ pub struct PlotData {
 pub struct HeatmapData {
     /// 2D data matrix
     pub data: Array2<f64>,
-    
+
     /// Row labels
     pub row_labels: Vec<String>,
-    
+
     /// Column labels
     pub col_labels: Vec<String>,
-    
+
     /// Colormap
     pub colormap: String,
 }
@@ -1216,13 +1216,13 @@ pub struct HeatmapData {
 pub struct Landscape3D {
     /// X coordinates
     pub x: Vec<f64>,
-    
+
     /// Y coordinates
     pub y: Vec<f64>,
-    
+
     /// Z values (noise rates)
     pub z: Array2<f64>,
-    
+
     /// Visualization parameters
     pub viz_params: Visualization3DParams,
 }
@@ -1232,13 +1232,13 @@ pub struct Landscape3D {
 pub struct PlotMetadata {
     /// Title
     pub title: String,
-    
+
     /// X-axis label
     pub x_label: String,
-    
+
     /// Y-axis label
     pub y_label: String,
-    
+
     /// Plot type
     pub plot_type: PlotType,
 }
@@ -1257,10 +1257,10 @@ pub enum PlotType {
 pub struct Visualization3DParams {
     /// View angle
     pub view_angle: (f64, f64),
-    
+
     /// Color scheme
     pub color_scheme: String,
-    
+
     /// Surface type
     pub surface_type: SurfaceType,
 }
@@ -1284,15 +1284,15 @@ impl RBSequence {
     fn new() -> Self {
         Self { gates: Vec::new() }
     }
-    
+
     fn add_gate(&mut self, gate: CliffordGate) {
         self.gates.push(gate);
     }
-    
+
     fn length(&self) -> usize {
         self.gates.len() - 1 // Exclude recovery gate
     }
-    
+
     fn to_circuit(&self, qubits: &[QubitId]) -> QuantRS2Result<Circuit> {
         // Convert to quantum circuit
         unimplemented!()
@@ -1370,27 +1370,27 @@ impl NoiseHistory {
             current_trend: None,
         }
     }
-    
+
     fn add_measurement(&mut self, timestamp: f64, data: NoiseData) {
         if self.measurements.len() >= self.max_size {
             self.measurements.pop_front();
         }
         self.measurements.push_back((timestamp, data));
     }
-    
+
     fn len(&self) -> usize {
         self.measurements.len()
     }
-    
+
     fn to_time_series(&self) -> TimeSeries {
         let timestamps: Vec<f64> = self.measurements.iter().map(|(t, _)| *t).collect();
         let values: Vec<f64> = self.measurements.iter()
             .map(|(_, d)| d.noise_rates.values().sum::<f64>() / d.noise_rates.len() as f64)
             .collect();
-        
+
         TimeSeries { timestamps, values }
     }
-    
+
     fn update_trend(&mut self, trend: NoiseTrend) {
         self.current_trend = Some(trend);
     }
@@ -1405,7 +1405,7 @@ impl NoiseMLModel {
     fn new() -> Self {
         Self {}
     }
-    
+
     fn predict(&self, features: &NoiseFeatures) -> QuantRS2Result<NoisePrediction> {
         // Placeholder implementation
         Ok(NoisePrediction {
@@ -1430,7 +1430,7 @@ impl NoiseFeatureExtractor {
     fn new() -> Self {
         Self {}
     }
-    
+
     fn extract_features(&self, result: &NoiseCharacterizationResult) -> QuantRS2Result<NoiseFeatures> {
         // Extract relevant features for ML analysis
         Ok(NoiseFeatures {
@@ -1467,12 +1467,12 @@ impl NoisePredictor {
     fn new() -> Self {
         Self {}
     }
-    
+
     fn update(&mut self, result: &NoiseCharacterizationResult) -> QuantRS2Result<()> {
         // Update prediction model with new data
         Ok(())
     }
-    
+
     fn predict(&self, horizon: f64) -> QuantRS2Result<NoisePredictions> {
         // Generate predictions
         Ok(NoisePredictions {
@@ -1776,24 +1776,24 @@ impl EnhancedNoiseCharacterizer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_noise_characterizer_creation() {
         let config = EnhancedNoiseConfig::default();
         let characterizer = EnhancedNoiseCharacterizer::new(config);
-        
+
         // Basic test to ensure creation works
         assert!(characterizer.config.enable_ml_analysis);
     }
-    
+
     #[test]
     fn test_rb_sequence_generation() {
         let config = EnhancedNoiseConfig::default();
         let characterizer = EnhancedNoiseCharacterizer::new(config);
-        
+
         let sequences = characterizer.generate_rb_sequences(2, 10);
         assert_eq!(sequences.len(), characterizer.config.base_config.num_sequences);
-        
+
         for seq in sequences {
             assert_eq!(seq.gates.len(), 11); // 10 + recovery gate
         }

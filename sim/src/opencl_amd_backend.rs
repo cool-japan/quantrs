@@ -473,17 +473,17 @@ impl AMDOpenCLSimulator {
     fn create_single_qubit_kernel(&self) -> OpenCLKernel {
         let source = r#"
             #pragma OPENCL EXTENSION cl_khr_fp64 : enable
-            
+
             typedef double2 complex_t;
-            
+
             complex_t complex_mul(complex_t a, complex_t b) {
                 return (complex_t)(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
             }
-            
+
             complex_t complex_add(complex_t a, complex_t b) {
                 return (complex_t)(a.x + b.x, a.y + b.y);
             }
-            
+
             __kernel void single_qubit_gate(
                 __global complex_t* state,
                 __global const double* gate_matrix,
@@ -492,23 +492,23 @@ impl AMDOpenCLSimulator {
             ) {
                 const int global_id = get_global_id(0);
                 const int total_states = 1 << num_qubits;
-                
+
                 if (global_id >= total_states / 2) return;
-                
+
                 const int target_mask = 1 << target_qubit;
                 const int i = global_id;
                 const int j = i | target_mask;
-                
+
                 if ((i & target_mask) == 0) {
                     // Extract gate matrix elements
                     complex_t gate_00 = (complex_t)(gate_matrix[0], gate_matrix[1]);
                     complex_t gate_01 = (complex_t)(gate_matrix[2], gate_matrix[3]);
                     complex_t gate_10 = (complex_t)(gate_matrix[4], gate_matrix[5]);
                     complex_t gate_11 = (complex_t)(gate_matrix[6], gate_matrix[7]);
-                    
+
                     complex_t state_i = state[i];
                     complex_t state_j = state[j];
-                    
+
                     state[i] = complex_add(complex_mul(gate_00, state_i), complex_mul(gate_01, state_j));
                     state[j] = complex_add(complex_mul(gate_10, state_i), complex_mul(gate_11, state_j));
                 }
@@ -528,17 +528,17 @@ impl AMDOpenCLSimulator {
     fn create_two_qubit_kernel(&self) -> OpenCLKernel {
         let source = r#"
             #pragma OPENCL EXTENSION cl_khr_fp64 : enable
-            
+
             typedef double2 complex_t;
-            
+
             complex_t complex_mul(complex_t a, complex_t b) {
                 return (complex_t)(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
             }
-            
+
             complex_t complex_add(complex_t a, complex_t b) {
                 return (complex_t)(a.x + b.x, a.y + b.y);
             }
-            
+
             __kernel void two_qubit_gate(
                 __global complex_t* state,
                 __global const double* gate_matrix,
@@ -548,23 +548,23 @@ impl AMDOpenCLSimulator {
             ) {
                 const int global_id = get_global_id(0);
                 const int total_states = 1 << num_qubits;
-                
+
                 if (global_id >= total_states / 4) return;
-                
+
                 const int control_mask = 1 << control_qubit;
                 const int target_mask = 1 << target_qubit;
                 const int both_mask = control_mask | target_mask;
-                
+
                 int base = global_id;
                 // Remove bits at control and target positions
                 if (global_id & (target_mask - 1)) base = (base & ~(target_mask - 1)) << 1 | (base & (target_mask - 1));
                 if (base & (control_mask - 1)) base = (base & ~(control_mask - 1)) << 1 | (base & (control_mask - 1));
-                
+
                 int state_00 = base;
                 int state_01 = base | target_mask;
                 int state_10 = base | control_mask;
                 int state_11 = base | both_mask;
-                
+
                 // Load gate matrix (16 elements for 4x4 matrix)
                 complex_t gate[4][4];
                 for (int i = 0; i < 4; i++) {
@@ -572,13 +572,13 @@ impl AMDOpenCLSimulator {
                         gate[i][j] = (complex_t)(gate_matrix[(i*4+j)*2], gate_matrix[(i*4+j)*2+1]);
                     }
                 }
-                
+
                 complex_t old_states[4];
                 old_states[0] = state[state_00];
                 old_states[1] = state[state_01];
                 old_states[2] = state[state_10];
                 old_states[3] = state[state_11];
-                
+
                 // Apply gate matrix
                 complex_t new_states[4] = {0};
                 for (int i = 0; i < 4; i++) {
@@ -586,7 +586,7 @@ impl AMDOpenCLSimulator {
                         new_states[i] = complex_add(new_states[i], complex_mul(gate[i][j], old_states[j]));
                     }
                 }
-                
+
                 state[state_00] = new_states[0];
                 state[state_01] = new_states[1];
                 state[state_10] = new_states[2];
@@ -607,35 +607,35 @@ impl AMDOpenCLSimulator {
     fn create_state_vector_kernel(&self) -> OpenCLKernel {
         let source = r#"
             #pragma OPENCL EXTENSION cl_khr_fp64 : enable
-            
+
             typedef double2 complex_t;
-            
+
             __kernel void normalize_state(
                 __global complex_t* state,
                 const int num_states,
                 const double norm_factor
             ) {
                 const int global_id = get_global_id(0);
-                
+
                 if (global_id >= num_states) return;
-                
+
                 state[global_id].x *= norm_factor;
                 state[global_id].y *= norm_factor;
             }
-            
+
             __kernel void compute_probabilities(
                 __global const complex_t* state,
                 __global double* probabilities,
                 const int num_states
             ) {
                 const int global_id = get_global_id(0);
-                
+
                 if (global_id >= num_states) return;
-                
+
                 complex_t amplitude = state[global_id];
                 probabilities[global_id] = amplitude.x * amplitude.x + amplitude.y * amplitude.y;
             }
-            
+
             __kernel void inner_product(
                 __global const complex_t* state1,
                 __global const complex_t* state2,
@@ -647,7 +647,7 @@ impl AMDOpenCLSimulator {
                 const int local_id = get_local_id(0);
                 const int local_size = get_local_size(0);
                 const int group_id = get_group_id(0);
-                
+
                 // Initialize local memory
                 if (global_id < num_states) {
                     complex_t a = state1[global_id];
@@ -657,9 +657,9 @@ impl AMDOpenCLSimulator {
                 } else {
                     local_data[local_id] = (complex_t)(0.0, 0.0);
                 }
-                
+
                 barrier(CLK_LOCAL_MEM_FENCE);
-                
+
                 // Reduction
                 for (int stride = local_size / 2; stride > 0; stride /= 2) {
                     if (local_id < stride) {
@@ -668,7 +668,7 @@ impl AMDOpenCLSimulator {
                     }
                     barrier(CLK_LOCAL_MEM_FENCE);
                 }
-                
+
                 if (local_id == 0) {
                     partial_results[group_id] = local_data[0];
                 }
@@ -688,9 +688,9 @@ impl AMDOpenCLSimulator {
     fn create_measurement_kernel(&self) -> OpenCLKernel {
         let source = r#"
             #pragma OPENCL EXTENSION cl_khr_fp64 : enable
-            
+
             typedef double2 complex_t;
-            
+
             __kernel void measure_qubit(
                 __global complex_t* state,
                 __global double* probabilities,
@@ -700,18 +700,18 @@ impl AMDOpenCLSimulator {
             ) {
                 const int global_id = get_global_id(0);
                 const int total_states = 1 << num_qubits;
-                
+
                 if (global_id >= total_states) return;
-                
+
                 const int target_mask = 1 << target_qubit;
                 const int qubit_value = (global_id & target_mask) ? 1 : 0;
-                
+
                 if (qubit_value != measurement_result) {
                     // Set amplitude to zero for inconsistent measurement
                     state[global_id] = (complex_t)(0.0, 0.0);
                 }
             }
-            
+
             __kernel void compute_measurement_probabilities(
                 __global const complex_t* state,
                 __global double* prob_0,
@@ -725,27 +725,27 @@ impl AMDOpenCLSimulator {
                 const int local_size = get_local_size(0);
                 const int group_id = get_group_id(0);
                 const int total_states = 1 << num_qubits;
-                
+
                 double local_prob_0 = 0.0;
                 double local_prob_1 = 0.0;
-                
+
                 if (global_id < total_states) {
                     const int target_mask = 1 << target_qubit;
                     complex_t amplitude = state[global_id];
                     double prob = amplitude.x * amplitude.x + amplitude.y * amplitude.y;
-                    
+
                     if (global_id & target_mask) {
                         local_prob_1 = prob;
                     } else {
                         local_prob_0 = prob;
                     }
                 }
-                
+
                 local_data[local_id * 2] = local_prob_0;
                 local_data[local_id * 2 + 1] = local_prob_1;
-                
+
                 barrier(CLK_LOCAL_MEM_FENCE);
-                
+
                 // Reduction
                 for (int stride = local_size / 2; stride > 0; stride /= 2) {
                     if (local_id < stride) {
@@ -754,7 +754,7 @@ impl AMDOpenCLSimulator {
                     }
                     barrier(CLK_LOCAL_MEM_FENCE);
                 }
-                
+
                 if (local_id == 0) {
                     prob_0[group_id] = local_data[0];
                     prob_1[group_id] = local_data[1];
@@ -775,13 +775,13 @@ impl AMDOpenCLSimulator {
     fn create_expectation_kernel(&self) -> OpenCLKernel {
         let source = r#"
             #pragma OPENCL EXTENSION cl_khr_fp64 : enable
-            
+
             typedef double2 complex_t;
-            
+
             complex_t complex_mul(complex_t a, complex_t b) {
                 return (complex_t)(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
             }
-            
+
             __kernel void expectation_value_pauli(
                 __global const complex_t* state,
                 __global double* partial_results,
@@ -794,22 +794,22 @@ impl AMDOpenCLSimulator {
                 const int local_size = get_local_size(0);
                 const int group_id = get_group_id(0);
                 const int total_states = 1 << num_qubits;
-                
+
                 double local_expectation = 0.0;
-                
+
                 if (global_id < total_states) {
                     complex_t amplitude = state[global_id];
-                    
+
                     // Apply Pauli operators
                     int target_state = global_id;
                     complex_t result_amplitude = amplitude;
                     double sign = 1.0;
-                    
+
                     // Process each Pauli operator in the string
                     for (int qubit = 0; qubit < num_qubits; qubit++) {
                         int pauli_op = (pauli_string >> (2 * qubit)) & 3;
                         int qubit_mask = 1 << qubit;
-                        
+
                         switch (pauli_op) {
                             case 0: // I (identity)
                                 break;
@@ -826,16 +826,16 @@ impl AMDOpenCLSimulator {
                                 break;
                         }
                     }
-                    
+
                     if (target_state == global_id) {
                         // Diagonal element
                         local_expectation = sign * (amplitude.x * amplitude.x + amplitude.y * amplitude.y);
                     }
                 }
-                
+
                 local_data[local_id] = local_expectation;
                 barrier(CLK_LOCAL_MEM_FENCE);
-                
+
                 // Reduction
                 for (int stride = local_size / 2; stride > 0; stride /= 2) {
                     if (local_id < stride) {
@@ -843,7 +843,7 @@ impl AMDOpenCLSimulator {
                     }
                     barrier(CLK_LOCAL_MEM_FENCE);
                 }
-                
+
                 if (local_id == 0) {
                     partial_results[group_id] = local_data[0];
                 }

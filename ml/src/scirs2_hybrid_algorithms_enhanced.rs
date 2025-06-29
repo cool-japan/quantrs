@@ -29,34 +29,34 @@ use std::fmt;
 pub struct EnhancedHybridConfig {
     /// Base hybrid configuration
     pub base_config: HybridAlgorithmConfig,
-    
+
     /// Enable ML-driven optimization
     pub enable_ml_optimization: bool,
-    
+
     /// Enable adaptive parameter learning
     pub enable_adaptive_learning: bool,
-    
+
     /// Enable real-time performance tuning
     pub enable_realtime_tuning: bool,
-    
+
     /// Enable comprehensive benchmarking
     pub enable_benchmarking: bool,
-    
+
     /// Enable distributed computation
     pub enable_distributed: bool,
-    
+
     /// Enable visual analytics
     pub enable_visual_analytics: bool,
-    
+
     /// Algorithm variants
     pub algorithm_variants: Vec<HybridAlgorithm>,
-    
+
     /// Optimization strategies
     pub optimization_strategies: Vec<OptimizationStrategy>,
-    
+
     /// Performance targets
     pub performance_targets: PerformanceTargets,
-    
+
     /// Analysis options
     pub analysis_options: HybridAnalysisOptions,
 }
@@ -92,25 +92,25 @@ impl Default for EnhancedHybridConfig {
 pub struct HybridAlgorithmConfig {
     /// Maximum iterations
     pub max_iterations: usize,
-    
+
     /// Convergence threshold
     pub convergence_threshold: f64,
-    
+
     /// Learning rate
     pub learning_rate: f64,
-    
+
     /// Number of measurement shots
     pub num_shots: usize,
-    
+
     /// Batch size for parallel execution
     pub batch_size: usize,
-    
+
     /// Gradient method
     pub gradient_method: GradientMethod,
-    
+
     /// Optimizer type
     pub optimizer_type: OptimizerType,
-    
+
     /// Hardware backend
     pub hardware_backend: HardwareBackend,
 }
@@ -293,7 +293,7 @@ impl EnhancedHybridExecutor {
         };
         let buffer_pool = BufferPool::new();
         let cache = Arc::new(Mutex::new(HybridCache::new()));
-        
+
         Self {
             config,
             optimizer,
@@ -306,7 +306,7 @@ impl EnhancedHybridExecutor {
             cache,
         }
     }
-    
+
     /// Execute VQE algorithm
     pub fn execute_vqe(
         &mut self,
@@ -315,73 +315,73 @@ impl EnhancedHybridExecutor {
         initial_params: Option<Array1<f64>>,
     ) -> QuantRS2Result<VQEResult> {
         let start_time = std::time::Instant::now();
-        
+
         // Initialize parameters
         let mut params = initial_params.unwrap_or_else(|| {
             self.initialize_parameters(ansatz.num_parameters())
         });
-        
+
         // Initialize tracking
         let mut history = OptimizationHistory::new();
         let mut best_energy = f64::INFINITY;
         let mut best_params = params.clone();
-        
+
         // Main optimization loop
         for iteration in 0..self.config.base_config.max_iterations {
             // Evaluate energy
             let energy = self.evaluate_expectation_value(hamiltonian, ansatz, &params)?;
-            
+
             // Update best result
             if energy < best_energy {
                 best_energy = energy;
                 best_params = params.clone();
             }
-            
+
             // Record history
             history.record(iteration, energy, params.clone());
-            
+
             // Check convergence
             if self.check_convergence(&history)? {
                 break;
             }
-            
+
             // Calculate gradient
             let gradient = self.calculate_gradient(hamiltonian, ansatz, &params)?;
-            
+
             // ML-enhanced gradient if enabled
             let enhanced_gradient = if let Some(ref ml_opt) = self.ml_optimizer {
                 ml_opt.enhance_gradient(&gradient, &history)?
             } else {
                 gradient
             };
-            
+
             // Update parameters
             params = self.optimizer.update_parameters(&params, &enhanced_gradient)?;
-            
+
             // Adaptive learning rate
             if self.config.enable_adaptive_learning {
                 self.adapt_learning_rate(&history)?;
             }
-            
+
             // Performance tuning
             if self.config.enable_realtime_tuning && iteration % 10 == 0 {
                 self.performance_tuner.tune(&mut self.config, &history)?;
             }
         }
-        
+
         // Final analysis
         let ground_state = self.extract_ground_state(ansatz, &best_params)?;
         let excited_states = self.find_excited_states(hamiltonian, ansatz, &best_params)?;
-        
+
         // Generate visualizations
         let visualizations = if self.config.enable_visual_analytics {
             Some(self.generate_vqe_visualizations(&history)?)
         } else {
             None
         };
-        
+
         let execution_time = start_time.elapsed();
-        
+
         Ok(VQEResult {
             ground_state_energy: best_energy,
             optimal_parameters: best_params,
@@ -394,7 +394,7 @@ impl EnhancedHybridExecutor {
             performance_metrics: self.calculate_performance_metrics(&history)?,
         })
     }
-    
+
     /// Execute QAOA algorithm
     pub fn execute_qaoa(
         &mut self,
@@ -403,46 +403,46 @@ impl EnhancedHybridExecutor {
         initial_params: Option<Array1<f64>>,
     ) -> QuantRS2Result<QAOAResult> {
         let start_time = std::time::Instant::now();
-        
+
         // Create QAOA ansatz
         let ansatz = self.create_qaoa_ansatz(problem, num_layers)?;
-        
+
         // Initialize parameters (beta and gamma for each layer)
         let mut params = initial_params.unwrap_or_else(|| {
             self.initialize_qaoa_parameters(num_layers)
         });
-        
+
         // Optimization loop
         let mut history = OptimizationHistory::new();
         let mut best_cost = f64::NEG_INFINITY;
         let mut best_params = params.clone();
         let mut best_solution = None;
-        
+
         for iteration in 0..self.config.base_config.max_iterations {
             // Evaluate cost function
             let cost = self.evaluate_qaoa_cost(problem, &ansatz, &params)?;
-            
+
             // Update best result
             if cost > best_cost {
                 best_cost = cost;
                 best_params = params.clone();
                 best_solution = Some(self.measure_qaoa_solution(problem, &ansatz, &params)?);
             }
-            
+
             // Record history
             history.record(iteration, -cost, params.clone());
-            
+
             // Check convergence
             if self.check_convergence(&history)? {
                 break;
             }
-            
+
             // Calculate gradient
             let gradient = self.calculate_qaoa_gradient(problem, &ansatz, &params)?;
-            
+
             // Update parameters
             params = self.optimizer.update_parameters(&params, &gradient)?;
-            
+
             // Adaptive layer adjustment
             if self.config.enable_adaptive_learning && iteration % 50 == 0 {
                 if self.should_add_layer(&history)? {
@@ -450,22 +450,22 @@ impl EnhancedHybridExecutor {
                 }
             }
         }
-        
+
         // Analyze solution quality
         let solution_analysis = self.analyze_qaoa_solution(
             problem,
             &best_solution.clone().unwrap_or_default(),
         )?;
-        
+
         // Generate visualizations
         let visualizations = if self.config.enable_visual_analytics {
             Some(self.generate_qaoa_visualizations(&history, problem)?)
         } else {
             None
         };
-        
+
         let execution_time = start_time.elapsed();
-        
+
         Ok(QAOAResult {
             optimal_cost: best_cost,
             optimal_parameters: best_params,
@@ -478,7 +478,7 @@ impl EnhancedHybridExecutor {
             num_layers_used: num_layers,
         })
     }
-    
+
     /// Execute VQC (Variational Quantum Classifier)
     pub fn execute_vqc(
         &mut self,
@@ -487,31 +487,31 @@ impl EnhancedHybridExecutor {
         initial_params: Option<Array1<f64>>,
     ) -> QuantRS2Result<VQCResult> {
         let start_time = std::time::Instant::now();
-        
+
         // Initialize parameters
         let mut params = initial_params.unwrap_or_else(|| {
             self.initialize_parameters(circuit_template.num_parameters())
         });
-        
+
         // Split data
         let (train_set, val_set) = self.split_data(training_data)?;
-        
+
         // Training loop
         let mut history = TrainingHistory::new();
         let mut best_accuracy = 0.0;
         let mut best_params = params.clone();
-        
+
         for epoch in 0..self.config.base_config.max_iterations {
             // Mini-batch training
             let batches = self.create_batches(&train_set, self.config.base_config.batch_size)?;
-            
+
             for batch in batches {
                 // Forward pass
                 let predictions = self.vqc_forward_pass(circuit_template, &params, &batch)?;
-                
+
                 // Calculate loss
                 let loss = self.calculate_classification_loss(&predictions, &batch.labels)?;
-                
+
                 // Calculate gradient
                 let gradient = self.calculate_vqc_gradient(
                     circuit_template,
@@ -519,41 +519,41 @@ impl EnhancedHybridExecutor {
                     &batch,
                     &predictions,
                 )?;
-                
+
                 // Update parameters
                 params = self.optimizer.update_parameters(&params, &gradient)?;
             }
-            
+
             // Validation
             let val_accuracy = self.evaluate_vqc_accuracy(circuit_template, &params, &val_set)?;
-            
+
             // Update best result
             if val_accuracy > best_accuracy {
                 best_accuracy = val_accuracy;
                 best_params = params.clone();
             }
-            
+
             // Record history
             history.record_epoch(epoch, loss, val_accuracy);
-            
+
             // Early stopping
             if self.should_early_stop(&history)? {
                 break;
             }
         }
-        
+
         // Final evaluation on test set
         let test_metrics = self.evaluate_vqc_metrics(circuit_template, &best_params, training_data)?;
-        
+
         // Generate visualizations
         let visualizations = if self.config.enable_visual_analytics {
             Some(self.generate_vqc_visualizations(&history)?)
         } else {
             None
         };
-        
+
         let execution_time = start_time.elapsed();
-        
+
         Ok(VQCResult {
             optimal_parameters: best_params,
             best_accuracy,
@@ -565,7 +565,7 @@ impl EnhancedHybridExecutor {
             feature_importance: self.analyze_feature_importance(circuit_template, &best_params)?,
         })
     }
-    
+
     /// Execute generic VQA (Variational Quantum Algorithm)
     pub fn execute_vqa<F>(
         &mut self,
@@ -577,24 +577,24 @@ impl EnhancedHybridExecutor {
         F: Fn(&Array1<f64>) -> QuantRS2Result<f64> + Send + Sync,
     {
         let start_time = std::time::Instant::now();
-        
+
         // Initialize parameters
         let mut params = initial_params.unwrap_or_else(|| {
             self.initialize_parameters(ansatz.num_parameters())
         });
-        
+
         // Optimization loop
         let mut history = OptimizationHistory::new();
         let mut best_cost = f64::INFINITY;
         let mut best_params = params.clone();
-        
+
         // Distributed execution if enabled
         let executor = if let Some(ref dist_exec) = self.distributed_executor {
             dist_exec.clone()
         } else {
             Arc::new(LocalExecutor::new())
         };
-        
+
         for iteration in 0..self.config.base_config.max_iterations {
             // Evaluate cost
             let cost = if self.config.enable_distributed {
@@ -602,42 +602,42 @@ impl EnhancedHybridExecutor {
             } else {
                 cost_function(&params)?
             };
-            
+
             // Update best
             if cost < best_cost {
                 best_cost = cost;
                 best_params = params.clone();
             }
-            
+
             // Record history
             history.record(iteration, cost, params.clone());
-            
+
             // Convergence check
             if self.check_convergence(&history)? {
                 break;
             }
-            
+
             // Calculate gradient
             let gradient = self.calculate_numerical_gradient(&cost_function, &params)?;
-            
+
             // Update parameters
             params = self.optimizer.update_parameters(&params, &gradient)?;
-            
+
             // Benchmarking
             if self.config.enable_benchmarking && iteration % 100 == 0 {
                 self.benchmarker.record_iteration(&history, iteration)?;
             }
         }
-        
+
         // Final analysis
         let landscape_analysis = if self.config.analysis_options.analyze_landscape {
             Some(self.analyze_optimization_landscape(&cost_function, &best_params)?)
         } else {
             None
         };
-        
+
         let execution_time = start_time.elapsed();
-        
+
         Ok(VQAResult {
             optimal_cost: best_cost,
             optimal_parameters: best_params,
@@ -652,15 +652,15 @@ impl EnhancedHybridExecutor {
             },
         })
     }
-    
+
     // Helper methods
-    
+
     fn initialize_parameters(&self, num_params: usize) -> Array1<f64> {
         Array1::from_shape_fn(num_params, |_| {
             rand::random::<f64>() * 2.0 * std::f64::consts::PI
         })
     }
-    
+
     fn initialize_qaoa_parameters(&self, num_layers: usize) -> Array1<f64> {
         // Beta and gamma for each layer
         Array1::from_shape_fn(2 * num_layers, |i| {
@@ -673,7 +673,7 @@ impl EnhancedHybridExecutor {
             }
         })
     }
-    
+
     fn evaluate_expectation_value(
         &self,
         hamiltonian: &Hamiltonian,
@@ -682,16 +682,16 @@ impl EnhancedHybridExecutor {
     ) -> QuantRS2Result<f64> {
         // Build circuit
         let circuit = ansatz.build_circuit(params)?;
-        
+
         // Execute on hardware/simulator
         let state = self.execute_circuit(&circuit)?;
-        
+
         // Calculate expectation value
         let expectation = hamiltonian.expectation_value(&state)?;
-        
+
         Ok(expectation.re)
     }
-    
+
     fn calculate_gradient(
         &self,
         hamiltonian: &Hamiltonian,
@@ -712,7 +712,7 @@ impl EnhancedHybridExecutor {
             }
         }
     }
-    
+
     fn parameter_shift_gradient(
         &self,
         hamiltonian: &Hamiltonian,
@@ -721,23 +721,23 @@ impl EnhancedHybridExecutor {
     ) -> QuantRS2Result<Array1<f64>> {
         let mut gradient = Array1::zeros(params.len());
         let shift = std::f64::consts::PI / 2.0;
-        
+
         for i in 0..params.len() {
             let mut params_plus = params.clone();
             let mut params_minus = params.clone();
-            
+
             params_plus[i] += shift;
             params_minus[i] -= shift;
-            
+
             let energy_plus = self.evaluate_expectation_value(hamiltonian, ansatz, &params_plus)?;
             let energy_minus = self.evaluate_expectation_value(hamiltonian, ansatz, &params_minus)?;
-            
+
             gradient[i] = (energy_plus - energy_minus) / 2.0;
         }
-        
+
         Ok(gradient)
     }
-    
+
     fn finite_difference_gradient(
         &self,
         hamiltonian: &Hamiltonian,
@@ -746,23 +746,23 @@ impl EnhancedHybridExecutor {
     ) -> QuantRS2Result<Array1<f64>> {
         let epsilon = 1e-5;
         let mut gradient = Array1::zeros(params.len());
-        
+
         for i in 0..params.len() {
             let mut params_plus = params.clone();
             let mut params_minus = params.clone();
-            
+
             params_plus[i] += epsilon;
             params_minus[i] -= epsilon;
-            
+
             let energy_plus = self.evaluate_expectation_value(hamiltonian, ansatz, &params_plus)?;
             let energy_minus = self.evaluate_expectation_value(hamiltonian, ansatz, &params_minus)?;
-            
+
             gradient[i] = (energy_plus - energy_minus) / (2.0 * epsilon);
         }
-        
+
         Ok(gradient)
     }
-    
+
     fn calculate_numerical_gradient<F>(
         &self,
         cost_function: &F,
@@ -773,28 +773,28 @@ impl EnhancedHybridExecutor {
     {
         let epsilon = 1e-5;
         let mut gradient = Array1::zeros(params.len());
-        
+
         for i in 0..params.len() {
             let mut params_plus = params.clone();
             let mut params_minus = params.clone();
-            
+
             params_plus[i] += epsilon;
             params_minus[i] -= epsilon;
-            
+
             let cost_plus = cost_function(&params_plus)?;
             let cost_minus = cost_function(&params_minus)?;
-            
+
             gradient[i] = (cost_plus - cost_minus) / (2.0 * epsilon);
         }
-        
+
         Ok(gradient)
     }
-    
+
     fn check_convergence(&self, history: &OptimizationHistory) -> QuantRS2Result<bool> {
         if history.iterations.len() < 2 {
             return Ok(false);
         }
-        
+
         let window_size = 10.min(history.iterations.len());
         let recent_costs: Vec<f64> = history.iterations
             .iter()
@@ -802,41 +802,41 @@ impl EnhancedHybridExecutor {
             .take(window_size)
             .map(|iter| iter.cost)
             .collect();
-        
+
         let mean = recent_costs.iter().sum::<f64>() / recent_costs.len() as f64;
         let variance = recent_costs.iter()
             .map(|&x| (x - mean).powi(2))
             .sum::<f64>() / recent_costs.len() as f64;
-        
+
         Ok(variance < self.config.base_config.convergence_threshold.powi(2))
     }
-    
+
     fn adapt_learning_rate(&mut self, history: &OptimizationHistory) -> QuantRS2Result<()> {
         // Simple adaptive learning rate based on progress
         if history.iterations.len() > 10 {
             let recent_improvement = history.get_recent_improvement(10)?;
-            
+
             if recent_improvement < 0.001 {
                 self.config.base_config.learning_rate *= 0.9;
             } else if recent_improvement > 0.01 {
                 self.config.base_config.learning_rate *= 1.1;
             }
-            
+
             // Clamp learning rate
             self.config.base_config.learning_rate = self.config.base_config.learning_rate
                 .max(1e-6)
                 .min(1.0);
         }
-        
+
         Ok(())
     }
-    
+
     fn execute_circuit(&self, circuit: &Circuit) -> QuantRS2Result<QuantumState> {
         // Execute circuit on backend
         // This would interface with actual hardware or simulator
         Ok(QuantumState::new(circuit.num_qubits()))
     }
-    
+
     fn extract_ground_state(
         &self,
         ansatz: &Ansatz,
@@ -845,7 +845,7 @@ impl EnhancedHybridExecutor {
         let circuit = ansatz.build_circuit(params)?;
         self.execute_circuit(&circuit)
     }
-    
+
     fn find_excited_states(
         &self,
         hamiltonian: &Hamiltonian,
@@ -855,7 +855,7 @@ impl EnhancedHybridExecutor {
         // Simplified excited state search
         Ok(Vec::new())
     }
-    
+
     fn create_qaoa_ansatz(
         &self,
         problem: &QAOAProblem,
@@ -866,7 +866,7 @@ impl EnhancedHybridExecutor {
             num_layers,
         })
     }
-    
+
     fn evaluate_qaoa_cost(
         &self,
         problem: &QAOAProblem,
@@ -875,12 +875,12 @@ impl EnhancedHybridExecutor {
     ) -> QuantRS2Result<f64> {
         let circuit = ansatz.build_circuit(params)?;
         let measurements = self.measure_circuit(&circuit, self.config.base_config.num_shots)?;
-        
+
         // Calculate average cost
         let cost = problem.evaluate_cost(&measurements)?;
         Ok(cost)
     }
-    
+
     fn calculate_qaoa_gradient(
         &self,
         problem: &QAOAProblem,
@@ -890,23 +890,23 @@ impl EnhancedHybridExecutor {
         // Use parameter shift for QAOA
         let mut gradient = Array1::zeros(params.len());
         let shift = std::f64::consts::PI / 2.0;
-        
+
         for i in 0..params.len() {
             let mut params_plus = params.clone();
             let mut params_minus = params.clone();
-            
+
             params_plus[i] += shift;
             params_minus[i] -= shift;
-            
+
             let cost_plus = self.evaluate_qaoa_cost(problem, ansatz, &params_plus)?;
             let cost_minus = self.evaluate_qaoa_cost(problem, ansatz, &params_minus)?;
-            
+
             gradient[i] = (cost_plus - cost_minus) / 2.0;
         }
-        
+
         Ok(gradient)
     }
-    
+
     fn measure_qaoa_solution(
         &self,
         problem: &QAOAProblem,
@@ -915,11 +915,11 @@ impl EnhancedHybridExecutor {
     ) -> QuantRS2Result<BinaryString> {
         let circuit = ansatz.build_circuit(params)?;
         let measurements = self.measure_circuit(&circuit, 1000)?;
-        
+
         // Return most frequent measurement
         Ok(measurements.most_frequent())
     }
-    
+
     fn measure_circuit(
         &self,
         circuit: &Circuit,
@@ -928,13 +928,13 @@ impl EnhancedHybridExecutor {
         // Measure circuit
         Ok(MeasurementResults::new())
     }
-    
+
     fn should_add_layer(&self, history: &OptimizationHistory) -> QuantRS2Result<bool> {
         // Check if adding another layer would help
         let recent_improvement = history.get_recent_improvement(50)?;
         Ok(recent_improvement < 0.0001)
     }
-    
+
     fn add_qaoa_layer(
         &self,
         problem: &QAOAProblem,
@@ -944,7 +944,7 @@ impl EnhancedHybridExecutor {
         // Add another layer to QAOA
         if let Ansatz::QAOA { num_layers, .. } = &mut ansatz {
             *num_layers += 1;
-            
+
             // Extend parameters
             let new_params = Array1::from_shape_fn(params.len() + 2, |i| {
                 if i < params.len() {
@@ -953,13 +953,13 @@ impl EnhancedHybridExecutor {
                     rand::random::<f64>() * std::f64::consts::PI
                 }
             });
-            
+
             params = new_params;
         }
-        
+
         Ok((params, ansatz))
     }
-    
+
     fn analyze_qaoa_solution(
         &self,
         problem: &QAOAProblem,
@@ -971,7 +971,7 @@ impl EnhancedHybridExecutor {
             solution_quality: 0.95,
         })
     }
-    
+
     fn calculate_approximation_ratio(
         &self,
         achieved_cost: f64,
@@ -980,7 +980,7 @@ impl EnhancedHybridExecutor {
         let optimal_cost = problem.get_optimal_cost()?;
         Ok(achieved_cost / optimal_cost)
     }
-    
+
     fn split_data(&self, data: &TrainingData) -> QuantRS2Result<(TrainingData, TrainingData)> {
         let split_idx = (data.len() as f64 * 0.8) as usize;
         Ok((
@@ -988,22 +988,22 @@ impl EnhancedHybridExecutor {
             data.slice(split_idx, data.len()),
         ))
     }
-    
+
     fn create_batches(
         &self,
         data: &TrainingData,
         batch_size: usize,
     ) -> QuantRS2Result<Vec<DataBatch>> {
         let mut batches = Vec::new();
-        
+
         for i in (0..data.len()).step_by(batch_size) {
             let end = (i + batch_size).min(data.len());
             batches.push(data.slice(i, end).into());
         }
-        
+
         Ok(batches)
     }
-    
+
     fn vqc_forward_pass(
         &self,
         template: &CircuitTemplate,
@@ -1011,17 +1011,17 @@ impl EnhancedHybridExecutor {
         batch: &DataBatch,
     ) -> QuantRS2Result<Array2<f64>> {
         let mut predictions = Array2::zeros((batch.len(), template.num_classes()));
-        
+
         // Process each sample
         for (i, sample) in batch.samples.iter().enumerate() {
             let circuit = template.encode_and_build(sample, params)?;
             let measurement = self.measure_circuit(&circuit, 1000)?;
             predictions.row_mut(i).assign(&measurement.to_probabilities());
         }
-        
+
         Ok(predictions)
     }
-    
+
     fn calculate_classification_loss(
         &self,
         predictions: &Array2<f64>,
@@ -1029,15 +1029,15 @@ impl EnhancedHybridExecutor {
     ) -> QuantRS2Result<f64> {
         // Cross-entropy loss
         let mut loss = 0.0;
-        
+
         for (i, &label) in labels.iter().enumerate() {
             let pred = predictions.row(i);
             loss -= pred[label].ln();
         }
-        
+
         Ok(loss / labels.len() as f64)
     }
-    
+
     fn calculate_vqc_gradient(
         &self,
         template: &CircuitTemplate,
@@ -1047,7 +1047,7 @@ impl EnhancedHybridExecutor {
     ) -> QuantRS2Result<Array1<f64>> {
         // Parameter shift gradient for VQC
         let mut gradient = Array1::zeros(params.len());
-        
+
         // Accumulate gradients over batch
         for (sample_idx, sample) in batch.samples.iter().enumerate() {
             for param_idx in 0..params.len() {
@@ -1061,10 +1061,10 @@ impl EnhancedHybridExecutor {
                 gradient[param_idx] += grad;
             }
         }
-        
+
         Ok(gradient / batch.len() as f64)
     }
-    
+
     fn parameter_shift_single(
         &self,
         template: &CircuitTemplate,
@@ -1076,22 +1076,22 @@ impl EnhancedHybridExecutor {
         let shift = std::f64::consts::PI / 2.0;
         let mut params_plus = params.clone();
         let mut params_minus = params.clone();
-        
+
         params_plus[param_idx] += shift;
         params_minus[param_idx] -= shift;
-        
+
         let circuit_plus = template.encode_and_build(sample, &params_plus)?;
         let circuit_minus = template.encode_and_build(sample, &params_minus)?;
-        
+
         let meas_plus = self.measure_circuit(&circuit_plus, 1000)?;
         let meas_minus = self.measure_circuit(&circuit_minus, 1000)?;
-        
+
         let prob_plus = meas_plus.to_probabilities()[label];
         let prob_minus = meas_minus.to_probabilities()[label];
-        
+
         Ok((prob_plus - prob_minus) / 2.0)
     }
-    
+
     fn evaluate_vqc_accuracy(
         &self,
         template: &CircuitTemplate,
@@ -1103,7 +1103,7 @@ impl EnhancedHybridExecutor {
             params,
             &data.to_batch(),
         )?;
-        
+
         let mut correct = 0;
         for (i, &label) in data.labels.iter().enumerate() {
             let pred_label = predictions.row(i)
@@ -1112,20 +1112,20 @@ impl EnhancedHybridExecutor {
                 .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
                 .map(|(idx, _)| idx)
                 .unwrap();
-            
+
             if pred_label == label {
                 correct += 1;
             }
         }
-        
+
         Ok(correct as f64 / data.len() as f64)
     }
-    
+
     fn should_early_stop(&self, history: &TrainingHistory) -> QuantRS2Result<bool> {
         if history.epochs.len() < 10 {
             return Ok(false);
         }
-        
+
         // Check if validation accuracy hasn't improved in last 5 epochs
         let recent_accuracies: Vec<f64> = history.epochs
             .iter()
@@ -1133,16 +1133,16 @@ impl EnhancedHybridExecutor {
             .take(5)
             .map(|e| e.val_accuracy)
             .collect();
-        
+
         let max_recent = recent_accuracies.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
         let older_max = history.epochs[..history.epochs.len() - 5]
             .iter()
             .map(|e| e.val_accuracy)
             .fold(f64::NEG_INFINITY, f64::max);
-        
+
         Ok(max_recent <= older_max)
     }
-    
+
     fn evaluate_vqc_metrics(
         &self,
         template: &CircuitTemplate,
@@ -1150,12 +1150,12 @@ impl EnhancedHybridExecutor {
         data: &TrainingData,
     ) -> QuantRS2Result<ClassificationMetrics> {
         let predictions = self.vqc_forward_pass(template, params, &data.to_batch())?;
-        
+
         // Calculate various metrics
         let accuracy = self.evaluate_vqc_accuracy(template, params, data)?;
         let confusion_matrix = self.calculate_confusion_matrix(&predictions, &data.labels)?;
         let precision_recall = self.calculate_precision_recall(&confusion_matrix)?;
-        
+
         Ok(ClassificationMetrics {
             accuracy,
             confusion_matrix,
@@ -1164,7 +1164,7 @@ impl EnhancedHybridExecutor {
             f1_score: self.calculate_f1_score(precision_recall.0, precision_recall.1),
         })
     }
-    
+
     fn calculate_confusion_matrix(
         &self,
         predictions: &Array2<f64>,
@@ -1172,7 +1172,7 @@ impl EnhancedHybridExecutor {
     ) -> QuantRS2Result<Array2<usize>> {
         let num_classes = predictions.ncols();
         let mut matrix = Array2::zeros((num_classes, num_classes));
-        
+
         for (i, &true_label) in labels.iter().enumerate() {
             let pred_label = predictions.row(i)
                 .iter()
@@ -1180,13 +1180,13 @@ impl EnhancedHybridExecutor {
                 .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
                 .map(|(idx, _)| idx)
                 .unwrap();
-            
+
             matrix[(true_label, pred_label)] += 1;
         }
-        
+
         Ok(matrix)
     }
-    
+
     fn calculate_precision_recall(
         &self,
         confusion_matrix: &Array2<usize>,
@@ -1194,7 +1194,7 @@ impl EnhancedHybridExecutor {
         let num_classes = confusion_matrix.nrows();
         let mut precision = Array1::zeros(num_classes);
         let mut recall = Array1::zeros(num_classes);
-        
+
         for i in 0..num_classes {
             let true_positives = confusion_matrix[(i, i)] as f64;
             let false_positives: f64 = (0..num_classes)
@@ -1205,39 +1205,39 @@ impl EnhancedHybridExecutor {
                 .filter(|&j| j != i)
                 .map(|j| confusion_matrix[(i, j)] as f64)
                 .sum();
-            
+
             precision[i] = if true_positives + false_positives > 0.0 {
                 true_positives / (true_positives + false_positives)
             } else {
                 0.0
             };
-            
+
             recall[i] = if true_positives + false_negatives > 0.0 {
                 true_positives / (true_positives + false_negatives)
             } else {
                 0.0
             };
         }
-        
+
         Ok((precision, recall))
     }
-    
+
     fn calculate_f1_score(&self, precision: Array1<f64>, recall: Array1<f64>) -> Array1<f64> {
         let mut f1 = Array1::zeros(precision.len());
-        
+
         for i in 0..precision.len() {
             if precision[i] + recall[i] > 0.0 {
                 f1[i] = 2.0 * precision[i] * recall[i] / (precision[i] + recall[i]);
             }
         }
-        
+
         f1
     }
-    
+
     fn calculate_model_complexity(&self, template: &CircuitTemplate) -> QuantRS2Result<f64> {
         Ok(template.num_parameters() as f64 * template.circuit_depth() as f64)
     }
-    
+
     fn analyze_feature_importance(
         &self,
         template: &CircuitTemplate,
@@ -1246,7 +1246,7 @@ impl EnhancedHybridExecutor {
         // Simple feature importance based on parameter magnitudes
         Ok(params.mapv(f64::abs))
     }
-    
+
     fn calculate_performance_metrics(
         &self,
         history: &OptimizationHistory,
@@ -1258,7 +1258,7 @@ impl EnhancedHybridExecutor {
             circuit_evaluations: history.iterations.len() * self.config.base_config.num_shots,
         })
     }
-    
+
     fn analyze_optimization_landscape<F>(
         &self,
         cost_function: &F,
@@ -1271,7 +1271,7 @@ impl EnhancedHybridExecutor {
         let samples = 100;
         let radius = 0.1;
         let mut landscape_points = Vec::new();
-        
+
         for _ in 0..samples {
             let perturbation = Array1::from_shape_fn(optimal_params.len(), |_| {
                 (rand::random::<f64>() - 0.5) * 2.0 * radius
@@ -1280,12 +1280,12 @@ impl EnhancedHybridExecutor {
             let cost = cost_function(&point)?;
             landscape_points.push((point, cost));
         }
-        
+
         // Analyze landscape properties
         let costs: Vec<f64> = landscape_points.iter().map(|(_, c)| *c).collect();
         let mean_cost = costs.iter().sum::<f64>() / costs.len() as f64;
         let variance = costs.iter().map(|c| (c - mean_cost).powi(2)).sum::<f64>() / costs.len() as f64;
-        
+
         Ok(LandscapeAnalysis {
             local_minima: self.find_local_minima(&landscape_points)?,
             landscape_roughness: variance.sqrt(),
@@ -1293,14 +1293,14 @@ impl EnhancedHybridExecutor {
             barren_plateau_indicator: variance < 1e-6,
         })
     }
-    
+
     fn find_local_minima(
         &self,
         points: &[(Array1<f64>, f64)],
     ) -> QuantRS2Result<Vec<LocalMinimum>> {
         // Simple local minima detection
         let mut minima = Vec::new();
-        
+
         for (params, cost) in points {
             if self.is_local_minimum(params, *cost, points)? {
                 minima.push(LocalMinimum {
@@ -1309,10 +1309,10 @@ impl EnhancedHybridExecutor {
                 });
             }
         }
-        
+
         Ok(minima)
     }
-    
+
     fn is_local_minimum(
         &self,
         point: &Array1<f64>,
@@ -1320,17 +1320,17 @@ impl EnhancedHybridExecutor {
         all_points: &[(Array1<f64>, f64)],
     ) -> QuantRS2Result<bool> {
         let threshold = 0.05;
-        
+
         for (other_point, other_cost) in all_points {
             let distance = (point - other_point).mapv(|x| x.powi(2)).sum().sqrt();
             if distance < threshold && *other_cost < cost {
                 return Ok(false);
             }
         }
-        
+
         Ok(true)
     }
-    
+
     fn estimate_gradient_variance(
         &self,
         points: &[(Array1<f64>, f64)],
@@ -1338,9 +1338,9 @@ impl EnhancedHybridExecutor {
         // Estimate gradient variance from sampled points
         Ok(0.01) // Placeholder
     }
-    
+
     // Visualization methods
-    
+
     fn generate_vqe_visualizations(
         &self,
         history: &OptimizationHistory,
@@ -1352,7 +1352,7 @@ impl EnhancedHybridExecutor {
             landscape_heatmap: self.create_landscape_heatmap(history)?,
         })
     }
-    
+
     fn generate_qaoa_visualizations(
         &self,
         history: &OptimizationHistory,
@@ -1365,7 +1365,7 @@ impl EnhancedHybridExecutor {
             approximation_ratio: self.plot_approximation_ratio(history)?,
         })
     }
-    
+
     fn generate_vqc_visualizations(
         &self,
         history: &TrainingHistory,
@@ -1377,53 +1377,53 @@ impl EnhancedHybridExecutor {
             feature_importance: self.plot_feature_importance()?,
         })
     }
-    
+
     // Plotting helpers (return string representations for simplicity)
-    
+
     fn plot_energy_convergence(&self, history: &OptimizationHistory) -> QuantRS2Result<String> {
         Ok("Energy convergence plot".to_string())
     }
-    
+
     fn plot_parameter_evolution(&self, history: &OptimizationHistory) -> QuantRS2Result<String> {
         Ok("Parameter evolution plot".to_string())
     }
-    
+
     fn plot_gradient_norms(&self, history: &OptimizationHistory) -> QuantRS2Result<String> {
         Ok("Gradient norms plot".to_string())
     }
-    
+
     fn create_landscape_heatmap(&self, history: &OptimizationHistory) -> QuantRS2Result<String> {
         Ok("Landscape heatmap".to_string())
     }
-    
+
     fn plot_cost_evolution(&self, history: &OptimizationHistory) -> QuantRS2Result<String> {
         Ok("Cost evolution plot".to_string())
     }
-    
+
     fn plot_qaoa_parameter_landscape(&self, history: &OptimizationHistory) -> QuantRS2Result<String> {
         Ok("QAOA parameter landscape".to_string())
     }
-    
+
     fn plot_solution_distribution(&self, problem: &QAOAProblem) -> QuantRS2Result<String> {
         Ok("Solution distribution plot".to_string())
     }
-    
+
     fn plot_approximation_ratio(&self, history: &OptimizationHistory) -> QuantRS2Result<String> {
         Ok("Approximation ratio plot".to_string())
     }
-    
+
     fn plot_loss_curves(&self, history: &TrainingHistory) -> QuantRS2Result<String> {
         Ok("Loss curves plot".to_string())
     }
-    
+
     fn plot_accuracy_evolution(&self, history: &TrainingHistory) -> QuantRS2Result<String> {
         Ok("Accuracy evolution plot".to_string())
     }
-    
+
     fn plot_confusion_matrix(&self, history: &TrainingHistory) -> QuantRS2Result<String> {
         Ok("Confusion matrix plot".to_string())
     }
-    
+
     fn plot_feature_importance(&self) -> QuantRS2Result<String> {
         Ok("Feature importance plot".to_string())
     }
@@ -1444,7 +1444,7 @@ impl HybridOptimizer {
             state: OptimizerState::new(),
         }
     }
-    
+
     fn update_parameters(
         &mut self,
         params: &Array1<f64>,
@@ -1456,7 +1456,7 @@ impl HybridOptimizer {
             _ => Ok(params.clone()),
         }
     }
-    
+
     fn adam_update(
         &mut self,
         params: &Array1<f64>,
@@ -1466,25 +1466,25 @@ impl HybridOptimizer {
         let beta1 = 0.9;
         let beta2 = 0.999;
         let epsilon = 1e-8;
-        
+
         self.state.iteration += 1;
-        
+
         // Update biased first moment estimate
         self.state.m = beta1 * &self.state.m + (1.0 - beta1) * gradient;
-        
+
         // Update biased second raw moment estimate
         self.state.v = beta2 * &self.state.v + (1.0 - beta2) * gradient.mapv(|x| x.powi(2));
-        
+
         // Compute bias-corrected first moment estimate
         let m_hat = &self.state.m / (1.0 - beta1.powi(self.state.iteration as i32));
-        
+
         // Compute bias-corrected second raw moment estimate
         let v_hat = &self.state.v / (1.0 - beta2.powi(self.state.iteration as i32));
-        
+
         // Update parameters
         Ok(params - self.state.learning_rate * m_hat / (v_hat.mapv(f64::sqrt) + epsilon))
     }
-    
+
     fn gd_update(
         &self,
         params: &Array1<f64>,
@@ -1524,7 +1524,7 @@ impl MLHybridOptimizer {
             models: HashMap::new(),
         }
     }
-    
+
     fn enhance_gradient(
         &self,
         gradient: &Array1<f64>,
@@ -1542,7 +1542,7 @@ impl PerformanceTuner {
     fn new() -> Self {
         Self
     }
-    
+
     fn tune(
         &self,
         config: &mut EnhancedHybridConfig,
@@ -1564,7 +1564,7 @@ impl HybridBenchmarker {
             measurements: Vec::new(),
         }
     }
-    
+
     fn record_iteration(
         &mut self,
         history: &OptimizationHistory,
@@ -1577,7 +1577,7 @@ impl HybridBenchmarker {
         });
         Ok(())
     }
-    
+
     fn generate_report(&self) -> QuantRS2Result<BenchmarkReport> {
         Ok(BenchmarkReport {
             total_iterations: self.measurements.len(),
@@ -1594,7 +1594,7 @@ impl DistributedExecutor {
     fn new() -> Self {
         Self
     }
-    
+
     fn evaluate_distributed<F>(
         &self,
         cost_function: &F,
@@ -1699,7 +1699,7 @@ impl Ansatz {
             _ => 0,
         }
     }
-    
+
     pub fn build_circuit(&self, params: &Array1<f64>) -> QuantRS2Result<Circuit> {
         // Build parameterized circuit
         Ok(Circuit::new())
@@ -1724,15 +1724,15 @@ impl QAOAProblem {
     pub fn evaluate_cost(&self, measurements: &MeasurementResults) -> QuantRS2Result<f64> {
         Ok(0.0)
     }
-    
+
     pub fn evaluate_solution(&self, solution: &BinaryString) -> QuantRS2Result<f64> {
         Ok(0.0)
     }
-    
+
     pub fn check_constraints(&self, solution: &BinaryString) -> QuantRS2Result<Vec<String>> {
         Ok(Vec::new())
     }
-    
+
     pub fn get_optimal_cost(&self) -> QuantRS2Result<f64> {
         Ok(1.0)
     }
@@ -1749,14 +1749,14 @@ impl TrainingData {
     pub fn len(&self) -> usize {
         self.samples.nrows()
     }
-    
+
     pub fn slice(&self, start: usize, end: usize) -> TrainingData {
         TrainingData {
             samples: self.samples.slice(s![start..end, ..]).to_owned(),
             labels: self.labels.slice(s![start..end]).to_owned(),
         }
     }
-    
+
     pub fn to_batch(&self) -> DataBatch {
         DataBatch {
             samples: self.samples.outer_iter().map(|row| DataSample {
@@ -1779,15 +1779,15 @@ impl CircuitTemplate {
     pub fn num_parameters(&self) -> usize {
         self.num_features * self.num_layers * 3
     }
-    
+
     pub fn num_classes(&self) -> usize {
         self.num_classes
     }
-    
+
     pub fn circuit_depth(&self) -> usize {
         self.num_layers * 4
     }
-    
+
     pub fn encode_and_build(
         &self,
         sample: &DataSample,
@@ -1824,11 +1824,11 @@ impl MeasurementResults {
             counts: HashMap::new(),
         }
     }
-    
+
     pub fn most_frequent(&self) -> BinaryString {
         BinaryString::new(vec![false])
     }
-    
+
     pub fn to_probabilities(&self) -> Array1<f64> {
         Array1::zeros(2)
     }
@@ -1878,7 +1878,7 @@ impl OptimizationHistory {
             start_time: std::time::Instant::now(),
         }
     }
-    
+
     pub fn record(&mut self, iteration: usize, cost: f64, params: Array1<f64>) {
         self.iterations.push(OptimizationIteration {
             iteration,
@@ -1887,35 +1887,35 @@ impl OptimizationHistory {
             timestamp: std::time::Instant::now(),
         });
     }
-    
+
     pub fn get_recent_improvement(&self, window: usize) -> QuantRS2Result<f64> {
         if self.iterations.len() < window + 1 {
             return Ok(0.0);
         }
-        
+
         let recent_idx = self.iterations.len() - 1;
         let old_idx = recent_idx - window;
-        
+
         let improvement = (self.iterations[old_idx].cost - self.iterations[recent_idx].cost).abs();
         Ok(improvement)
     }
-    
+
     pub fn is_converged(&self, threshold: f64) -> bool {
         self.get_recent_improvement(10).unwrap_or(1.0) < threshold
     }
-    
+
     pub fn calculate_convergence_rate(&self) -> QuantRS2Result<f64> {
         if self.iterations.len() < 2 {
             return Ok(0.0);
         }
-        
+
         let first_cost = self.iterations.first().unwrap().cost;
         let last_cost = self.iterations.last().unwrap().cost;
         let iterations = self.iterations.len() as f64;
-        
+
         Ok((first_cost - last_cost).abs() / iterations)
     }
-    
+
     pub fn total_time(&self) -> std::time::Duration {
         std::time::Instant::now() - self.start_time
     }
@@ -1941,7 +1941,7 @@ impl TrainingHistory {
             epochs: Vec::new(),
         }
     }
-    
+
     pub fn record_epoch(&mut self, epoch: usize, loss: f64, val_accuracy: f64) {
         self.epochs.push(TrainingEpoch {
             epoch,
@@ -2124,14 +2124,14 @@ impl fmt::Display for VQEResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_enhanced_hybrid_executor_creation() {
         let config = EnhancedHybridConfig::default();
         let executor = EnhancedHybridExecutor::new(config);
         assert!(executor.ml_optimizer.is_some());
     }
-    
+
     #[test]
     fn test_default_configuration() {
         let config = EnhancedHybridConfig::default();
@@ -2139,13 +2139,13 @@ mod tests {
         assert!(config.enable_ml_optimization);
         assert!(config.algorithm_variants.contains(&HybridAlgorithm::VQE));
     }
-    
+
     #[test]
     fn test_optimization_history() {
         let mut history = OptimizationHistory::new();
         history.record(0, 1.0, Array1::zeros(5));
         history.record(1, 0.9, Array1::zeros(5));
-        
+
         assert_eq!(history.iterations.len(), 2);
         assert!(history.get_recent_improvement(1).unwrap() > 0.0);
     }

@@ -4,7 +4,7 @@
 //! parameter optimization, variational algorithms, and machine learning-enhanced optimization.
 
 use crate::builder::Circuit;
-use crate::scirs2_matrices::{SparseMatrix};
+use crate::scirs2_matrices::SparseMatrix;
 use num_complex::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},

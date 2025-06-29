@@ -136,7 +136,7 @@ impl GateOp for ControlledGate {
 pub struct MultiControlledGate {
     /// Positive controls (triggered on |1⟩)
     positive_controls: Vec<QubitId>,
-    /// Negative controls (triggered on |0⟩)  
+    /// Negative controls (triggered on |0⟩)
     negative_controls: Vec<QubitId>,
     /// The base gate
     base_gate: Box<dyn GateOp>,

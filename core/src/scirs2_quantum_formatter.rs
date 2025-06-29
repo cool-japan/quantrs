@@ -3,8 +3,8 @@
 //! This module provides intelligent code formatting and restructuring for quantum circuits
 //! using SciRS2's advanced code analysis, optimization-aware formatting, and style guidelines.
 
-use crate::gate_translation::GateType;
 use crate::error::QuantRS2Error;
+use crate::gate_translation::GateType;
 use std::collections::HashSet;
 
 /// SciRS2-enhanced quantum gate representation for formatting
@@ -16,22 +16,26 @@ pub struct QuantumGate {
 }
 
 impl QuantumGate {
-    pub fn new(gate_type: GateType, target_qubits: Vec<usize>, control_qubits: Option<Vec<usize>>) -> Self {
+    pub fn new(
+        gate_type: GateType,
+        target_qubits: Vec<usize>,
+        control_qubits: Option<Vec<usize>>,
+    ) -> Self {
         Self {
             gate_type,
             target_qubits,
             control_qubits,
         }
     }
-    
+
     pub fn gate_type(&self) -> &GateType {
         &self.gate_type
     }
-    
+
     pub fn target_qubits(&self) -> &[usize] {
         &self.target_qubits
     }
-    
+
     pub fn control_qubits(&self) -> Option<&[usize]> {
         self.control_qubits.as_deref()
     }
@@ -96,9 +100,9 @@ pub enum IndentationStyle {
 /// Comment styles for annotations
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum CommentStyle {
-    LineComment,    // //
-    BlockComment,   // /* */
-    DocComment,     // ///
+    LineComment,  // //
+    BlockComment, // /* */
+    DocComment,   // ///
 }
 
 /// Output format options
@@ -153,10 +157,11 @@ impl SciRS2QuantumFormatter {
     ) -> Result<FormattedCode, QuantRS2Error> {
         // Analyze the circuit structure
         let analysis = self.circuit_analyzer.analyze_circuit(circuit, num_qubits)?;
-        
+
         // Detect optimization opportunities
         let optimizations = if self.config.optimization_aware_formatting {
-            self.optimization_detector.detect_optimizations(circuit, &analysis)?
+            self.optimization_detector
+                .detect_optimizations(circuit, &analysis)?
         } else {
             Vec::new()
         };
@@ -169,22 +174,22 @@ impl SciRS2QuantumFormatter {
         };
 
         // Optimize layout for readability and performance understanding
-        let layout = self.layout_optimizer.optimize_layout(circuit, &analysis, &patterns)?;
+        let layout = self
+            .layout_optimizer
+            .optimize_layout(circuit, &analysis, &patterns)?;
 
         // Generate annotations
         let annotations = if self.config.add_scirs2_annotations {
-            self.annotation_generator.generate_annotations(circuit, &analysis, &optimizations)?
+            self.annotation_generator
+                .generate_annotations(circuit, &analysis, &optimizations)?
         } else {
             Vec::new()
         };
 
         // Apply styling based on output format
-        let formatted_code = self.style_engine.apply_styling(
-            &layout,
-            &annotations,
-            &output_format,
-            &self.config,
-        )?;
+        let formatted_code =
+            self.style_engine
+                .apply_styling(&layout, &annotations, &output_format, &self.config)?;
 
         Ok(FormattedCode {
             code: formatted_code.clone(),
@@ -214,12 +219,14 @@ impl SciRS2QuantumFormatter {
     /// Format in compact style
     fn format_compact_sequence(&self, gates: &[QuantumGate]) -> Result<String, QuantRS2Error> {
         let mut formatted = String::new();
-        
+
         for (i, gate) in gates.iter().enumerate() {
-            if i > 0 { formatted.push_str("; "); }
+            if i > 0 {
+                formatted.push_str("; ");
+            }
             formatted.push_str(&self.format_single_gate_compact(gate));
         }
-        
+
         Ok(formatted)
     }
 
@@ -230,7 +237,11 @@ impl SciRS2QuantumFormatter {
             GateType::Y => format!("Y({})", gate.target_qubits()[0]),
             GateType::Z => format!("Z({})", gate.target_qubits()[0]),
             GateType::H => format!("H({})", gate.target_qubits()[0]),
-            GateType::CNOT => format!("CNOT({}, {})", gate.target_qubits()[0], gate.target_qubits()[1]),
+            GateType::CNOT => format!(
+                "CNOT({}, {})",
+                gate.target_qubits()[0],
+                gate.target_qubits()[1]
+            ),
             GateType::T => format!("T({})", gate.target_qubits()[0]),
             GateType::S => format!("S({})", gate.target_qubits()[0]),
             GateType::Rx(angle) => format!("Rx({}, {})", angle, gate.target_qubits()[0]),
@@ -244,11 +255,15 @@ impl SciRS2QuantumFormatter {
     /// Format in verbose style
     fn format_verbose_sequence(&self, gates: &[QuantumGate]) -> Result<String, QuantRS2Error> {
         let mut formatted = String::new();
-        
+
         for (i, gate) in gates.iter().enumerate() {
-            formatted.push_str(&format!("Step {}: {}\n", i + 1, self.format_single_gate_verbose(gate)));
+            formatted.push_str(&format!(
+                "Step {}: {}\n",
+                i + 1,
+                self.format_single_gate_verbose(gate)
+            ));
         }
-        
+
         Ok(formatted)
     }
 
@@ -269,13 +284,16 @@ impl SciRS2QuantumFormatter {
             _ => "Quantum gate",
         };
 
-        let targets = gate.target_qubits().iter()
+        let targets = gate
+            .target_qubits()
+            .iter()
             .map(|q| format!("q{}", q))
             .collect::<Vec<_>>()
             .join(", ");
 
         let controls = if let Some(ctrl_qubits) = gate.control_qubits() {
-            let ctrl_str = ctrl_qubits.iter()
+            let ctrl_str = ctrl_qubits
+                .iter()
                 .map(|q| format!("q{}", q))
                 .collect::<Vec<_>>()
                 .join(", ");
@@ -288,10 +306,15 @@ impl SciRS2QuantumFormatter {
     }
 
     /// Format in optimization-aware style
-    fn format_optimization_aware_sequence(&self, gates: &[QuantumGate]) -> Result<String, QuantRS2Error> {
+    fn format_optimization_aware_sequence(
+        &self,
+        gates: &[QuantumGate],
+    ) -> Result<String, QuantRS2Error> {
         let mut formatted = String::new();
-        let optimizations = self.optimization_detector.detect_optimizations(gates, &CircuitAnalysis::default())?;
-        
+        let optimizations = self
+            .optimization_detector
+            .detect_optimizations(gates, &CircuitAnalysis::default())?;
+
         formatted.push_str("// Optimization-aware formatting\n");
         if !optimizations.is_empty() {
             formatted.push_str("// Detected optimizations:\n");
@@ -302,14 +325,19 @@ impl SciRS2QuantumFormatter {
         }
 
         // Group gates by optimization potential
-        let (optimizable, regular): (Vec<_>, Vec<_>) = gates.iter()
+        let (optimizable, regular): (Vec<_>, Vec<_>) = gates
+            .iter()
             .enumerate()
             .partition(|(_, gate)| self.is_gate_optimizable(gate));
 
         if !optimizable.is_empty() {
             formatted.push_str("// Gates with optimization potential:\n");
             for (i, gate) in optimizable {
-                formatted.push_str(&format!("/* Opt {} */ {}\n", i, self.format_single_gate_compact(gate)));
+                formatted.push_str(&format!(
+                    "/* Opt {} */ {}\n",
+                    i,
+                    self.format_single_gate_compact(gate)
+                ));
             }
             formatted.push('\n');
         }
@@ -317,7 +345,11 @@ impl SciRS2QuantumFormatter {
         if !regular.is_empty() {
             formatted.push_str("// Regular gates:\n");
             for (i, gate) in regular {
-                formatted.push_str(&format!("/* {} */ {}\n", i, self.format_single_gate_compact(gate)));
+                formatted.push_str(&format!(
+                    "/* {} */ {}\n",
+                    i,
+                    self.format_single_gate_compact(gate)
+                ));
             }
         }
 
@@ -325,14 +357,18 @@ impl SciRS2QuantumFormatter {
     }
 
     /// Format in SciRS2-enhanced style
-    fn format_scirs2_enhanced_sequence(&self, gates: &[QuantumGate]) -> Result<String, QuantRS2Error> {
+    fn format_scirs2_enhanced_sequence(
+        &self,
+        gates: &[QuantumGate],
+    ) -> Result<String, QuantRS2Error> {
         let mut formatted = String::new();
-        
+
         formatted.push_str("// SciRS2-Enhanced Quantum Circuit\n");
         formatted.push_str("// Optimized for performance and readability\n\n");
 
         // Analyze SIMD potential
-        let simd_gates: Vec<_> = gates.iter()
+        let simd_gates: Vec<_> = gates
+            .iter()
             .enumerate()
             .filter(|(_, gate)| self.is_simd_optimizable(gate))
             .collect();
@@ -344,8 +380,9 @@ impl SciRS2QuantumFormatter {
         if !simd_gates.is_empty() {
             formatted.push_str("// SIMD-optimizable gates (SciRS2 enhancement available):\n");
             for (_i, gate) in simd_gates {
-                formatted.push_str(&format!("simd_gate!({}); // {}\n", 
-                    self.format_single_gate_compact(gate), 
+                formatted.push_str(&format!(
+                    "simd_gate!({}); // {}\n",
+                    self.format_single_gate_compact(gate),
                     self.get_simd_hint(gate)
                 ));
             }
@@ -357,7 +394,10 @@ impl SciRS2QuantumFormatter {
             for (group_id, group) in parallel_groups.iter().enumerate() {
                 formatted.push_str(&format!("parallel_group!({}) {{\n", group_id));
                 for &gate_idx in group {
-                    formatted.push_str(&format!("    {};\n", self.format_single_gate_compact(&gates[gate_idx])));
+                    formatted.push_str(&format!(
+                        "    {};\n",
+                        self.format_single_gate_compact(&gates[gate_idx])
+                    ));
                 }
                 formatted.push_str("}\n\n");
             }
@@ -366,7 +406,10 @@ impl SciRS2QuantumFormatter {
         // Memory usage annotation
         if self.config.annotate_memory_usage {
             let memory_estimate = self.estimate_memory_usage(gates);
-            formatted.push_str(&format!("// Estimated memory usage: {} KB\n", memory_estimate / 1024));
+            formatted.push_str(&format!(
+                "// Estimated memory usage: {} KB\n",
+                memory_estimate / 1024
+            ));
         }
 
         Ok(formatted)
@@ -374,27 +417,37 @@ impl SciRS2QuantumFormatter {
 
     /// Check if gate is optimizable
     fn is_gate_optimizable(&self, gate: &QuantumGate) -> bool {
-        matches!(gate.gate_type(), 
-            GateType::CNOT | GateType::T | 
-            GateType::Rx(_) | GateType::Ry(_) | GateType::Rz(_)
+        matches!(
+            gate.gate_type(),
+            GateType::CNOT | GateType::T | GateType::Rx(_) | GateType::Ry(_) | GateType::Rz(_)
         )
     }
 
     /// Check if gate is SIMD optimizable
     fn is_simd_optimizable(&self, gate: &QuantumGate) -> bool {
-        matches!(gate.gate_type(), 
-            GateType::X | GateType::Y | GateType::Z | GateType::H |
-            GateType::Rx(_) | GateType::Ry(_) | GateType::Rz(_) |
-            GateType::Phase(_)
+        matches!(
+            gate.gate_type(),
+            GateType::X
+                | GateType::Y
+                | GateType::Z
+                | GateType::H
+                | GateType::Rx(_)
+                | GateType::Ry(_)
+                | GateType::Rz(_)
+                | GateType::Phase(_)
         )
     }
 
     /// Get SIMD optimization hint for a gate
     fn get_simd_hint(&self, gate: &QuantumGate) -> &'static str {
         match gate.gate_type() {
-            GateType::X | GateType::Y | GateType::Z => "Pauli gates benefit from SIMD vectorization",
+            GateType::X | GateType::Y | GateType::Z => {
+                "Pauli gates benefit from SIMD vectorization"
+            }
             GateType::H => "Hadamard gate can use optimized matrix-vector operations",
-            GateType::Rx(_) | GateType::Ry(_) | GateType::Rz(_) => "Rotation gates can use vectorized trigonometric functions",
+            GateType::Rx(_) | GateType::Ry(_) | GateType::Rz(_) => {
+                "Rotation gates can use vectorized trigonometric functions"
+            }
             GateType::Phase(_) => "Phase gates benefit from complex number SIMD operations",
             _ => "Consider SciRS2 optimization",
         }
@@ -407,7 +460,9 @@ impl SciRS2QuantumFormatter {
         let mut current_group = Vec::new();
 
         for (i, gate) in gates.iter().enumerate() {
-            let gate_qubits: HashSet<_> = gate.target_qubits().iter()
+            let gate_qubits: HashSet<_> = gate
+                .target_qubits()
+                .iter()
                 .chain(gate.control_qubits().unwrap_or(&[]).iter())
                 .collect();
 
@@ -440,7 +495,11 @@ impl SciRS2QuantumFormatter {
     }
 
     /// Calculate formatting statistics
-    fn calculate_formatting_statistics(&self, original_circuit: &[QuantumGate], formatted_code: &str) -> FormattingStatistics {
+    fn calculate_formatting_statistics(
+        &self,
+        original_circuit: &[QuantumGate],
+        formatted_code: &str,
+    ) -> FormattingStatistics {
         FormattingStatistics {
             original_gate_count: original_circuit.len(),
             formatted_line_count: formatted_code.lines().count(),
@@ -457,14 +516,14 @@ impl SciRS2QuantumFormatter {
         let lines = code.lines().count();
         let comments = code.matches("//").count();
         let annotations = code.matches("/*").count();
-        
+
         if lines == 0 {
             return 0.0;
         }
 
         let comment_ratio = (comments + annotations) as f64 / lines as f64;
         let line_length_variance = self.calculate_line_length_variance(code);
-        
+
         // Higher comment ratio and lower line length variance = better readability
         (comment_ratio * 0.7 + (1.0 - line_length_variance) * 0.3).min(1.0)
     }
@@ -478,8 +537,9 @@ impl SciRS2QuantumFormatter {
 
         let lengths: Vec<f64> = lines.iter().map(|line| line.len() as f64).collect();
         let mean = lengths.iter().sum::<f64>() / lengths.len() as f64;
-        let variance = lengths.iter().map(|len| (len - mean).powi(2)).sum::<f64>() / lengths.len() as f64;
-        
+        let variance =
+            lengths.iter().map(|len| (len - mean).powi(2)).sum::<f64>() / lengths.len() as f64;
+
         // Normalize variance by mean to get relative measure
         if mean > 0.0 {
             (variance.sqrt() / mean).min(1.0)
@@ -504,18 +564,18 @@ impl SciRS2QuantumFormatter {
     /// Format for Rust
     fn format_for_rust(&self, circuit: &[QuantumGate]) -> Result<String, QuantRS2Error> {
         let mut formatted = String::new();
-        
+
         formatted.push_str("// Rust quantum circuit (SciRS2 optimized)\n");
         formatted.push_str("use quantrs2_core::prelude::*;\n\n");
         formatted.push_str("fn quantum_circuit(qubits: &mut [Qubit]) -> QuantRS2Result<()> {\n");
-        
+
         for gate in circuit {
             formatted.push_str(&format!("    {};\n", self.format_gate_for_rust(gate)));
         }
-        
+
         formatted.push_str("    Ok(())\n");
         formatted.push_str("}\n");
-        
+
         Ok(formatted)
     }
 
@@ -526,7 +586,11 @@ impl SciRS2QuantumFormatter {
             GateType::Y => format!("qubits[{}].y()", gate.target_qubits()[0]),
             GateType::Z => format!("qubits[{}].z()", gate.target_qubits()[0]),
             GateType::H => format!("qubits[{}].h()", gate.target_qubits()[0]),
-            GateType::CNOT => format!("qubits[{}].cnot(&mut qubits[{}])", gate.target_qubits()[0], gate.target_qubits()[1]),
+            GateType::CNOT => format!(
+                "qubits[{}].cnot(&mut qubits[{}])",
+                gate.target_qubits()[0],
+                gate.target_qubits()[1]
+            ),
             GateType::T => format!("qubits[{}].t()", gate.target_qubits()[0]),
             GateType::S => format!("qubits[{}].s()", gate.target_qubits()[0]),
             GateType::Rx(angle) => format!("qubits[{}].rx({})", gate.target_qubits()[0], angle),
@@ -539,18 +603,18 @@ impl SciRS2QuantumFormatter {
     /// Format for Python
     fn format_for_python(&self, circuit: &[QuantumGate]) -> Result<String, QuantRS2Error> {
         let mut formatted = String::new();
-        
+
         formatted.push_str("# Python quantum circuit (SciRS2 optimized)\n");
         formatted.push_str("from quantrs2 import QuantumCircuit\n\n");
         formatted.push_str("def quantum_circuit(num_qubits):\n");
         formatted.push_str("    qc = QuantumCircuit(num_qubits)\n");
-        
+
         for gate in circuit {
             formatted.push_str(&format!("    {}\n", self.format_gate_for_python(gate)));
         }
-        
+
         formatted.push_str("    return qc\n");
-        
+
         Ok(formatted)
     }
 
@@ -561,7 +625,11 @@ impl SciRS2QuantumFormatter {
             GateType::Y => format!("qc.y({})", gate.target_qubits()[0]),
             GateType::Z => format!("qc.z({})", gate.target_qubits()[0]),
             GateType::H => format!("qc.h({})", gate.target_qubits()[0]),
-            GateType::CNOT => format!("qc.cnot({}, {})", gate.target_qubits()[0], gate.target_qubits()[1]),
+            GateType::CNOT => format!(
+                "qc.cnot({}, {})",
+                gate.target_qubits()[0],
+                gate.target_qubits()[1]
+            ),
             GateType::T => format!("qc.t({})", gate.target_qubits()[0]),
             GateType::S => format!("qc.s({})", gate.target_qubits()[0]),
             GateType::Rx(angle) => format!("qc.rx({}, {})", angle, gate.target_qubits()[0]),
@@ -574,23 +642,24 @@ impl SciRS2QuantumFormatter {
     /// Format for QASM
     fn format_for_qasm(&self, circuit: &[QuantumGate]) -> Result<String, QuantRS2Error> {
         let mut formatted = String::new();
-        
+
         formatted.push_str("OPENQASM 2.0;\n");
         formatted.push_str("include \"qelib1.inc\";\n\n");
-        
+
         // Find max qubit index
-        let max_qubit = circuit.iter()
+        let max_qubit = circuit
+            .iter()
             .flat_map(|gate| gate.target_qubits().iter())
             .max()
             .unwrap_or(&0);
-        
+
         formatted.push_str(&format!("qreg q[{}];\n", max_qubit + 1));
         formatted.push_str(&format!("creg c[{}];\n\n", max_qubit + 1));
-        
+
         for gate in circuit {
             formatted.push_str(&format!("{};\n", self.format_gate_for_qasm(gate)));
         }
-        
+
         Ok(formatted)
     }
 
@@ -601,7 +670,11 @@ impl SciRS2QuantumFormatter {
             GateType::Y => format!("y q[{}]", gate.target_qubits()[0]),
             GateType::Z => format!("z q[{}]", gate.target_qubits()[0]),
             GateType::H => format!("h q[{}]", gate.target_qubits()[0]),
-            GateType::CNOT => format!("cx q[{}],q[{}]", gate.target_qubits()[0], gate.target_qubits()[1]),
+            GateType::CNOT => format!(
+                "cx q[{}],q[{}]",
+                gate.target_qubits()[0],
+                gate.target_qubits()[1]
+            ),
             GateType::T => format!("t q[{}]", gate.target_qubits()[0]),
             GateType::S => format!("s q[{}]", gate.target_qubits()[0]),
             GateType::Rx(angle) => format!("rx({}) q[{}]", angle, gate.target_qubits()[0]),
@@ -685,8 +758,12 @@ impl CircuitAnalyzer {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn analyze_circuit(&self, _circuit: &[QuantumGate], _num_qubits: usize) -> Result<CircuitAnalysis, QuantRS2Error> {
+
+    pub fn analyze_circuit(
+        &self,
+        _circuit: &[QuantumGate],
+        _num_qubits: usize,
+    ) -> Result<CircuitAnalysis, QuantRS2Error> {
         Ok(CircuitAnalysis::default())
     }
 }
@@ -717,8 +794,12 @@ impl OptimizationDetector {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn detect_optimizations(&self, _circuit: &[QuantumGate], _analysis: &CircuitAnalysis) -> Result<Vec<OptimizationOpportunity>, QuantRS2Error> {
+
+    pub fn detect_optimizations(
+        &self,
+        _circuit: &[QuantumGate],
+        _analysis: &CircuitAnalysis,
+    ) -> Result<Vec<OptimizationOpportunity>, QuantRS2Error> {
         Ok(vec![])
     }
 }
@@ -737,8 +818,11 @@ impl PatternRecognizer {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn recognize_patterns(&self, _circuit: &[QuantumGate]) -> Result<Vec<RecognizedPattern>, QuantRS2Error> {
+
+    pub fn recognize_patterns(
+        &self,
+        _circuit: &[QuantumGate],
+    ) -> Result<Vec<RecognizedPattern>, QuantRS2Error> {
         Ok(vec![])
     }
 }
@@ -757,8 +841,13 @@ impl LayoutOptimizer {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn optimize_layout(&self, circuit: &[QuantumGate], _analysis: &CircuitAnalysis, _patterns: &[RecognizedPattern]) -> Result<LayoutStructure, QuantRS2Error> {
+
+    pub fn optimize_layout(
+        &self,
+        circuit: &[QuantumGate],
+        _analysis: &CircuitAnalysis,
+        _patterns: &[RecognizedPattern],
+    ) -> Result<LayoutStructure, QuantRS2Error> {
         Ok(LayoutStructure {
             sections: vec![LayoutSection {
                 section_type: "main".to_string(),
@@ -788,8 +877,13 @@ impl AnnotationGenerator {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn generate_annotations(&self, _circuit: &[QuantumGate], _analysis: &CircuitAnalysis, _optimizations: &[OptimizationOpportunity]) -> Result<Vec<CodeAnnotation>, QuantRS2Error> {
+
+    pub fn generate_annotations(
+        &self,
+        _circuit: &[QuantumGate],
+        _analysis: &CircuitAnalysis,
+        _optimizations: &[OptimizationOpportunity],
+    ) -> Result<Vec<CodeAnnotation>, QuantRS2Error> {
         Ok(vec![])
     }
 }
@@ -801,10 +895,19 @@ impl StyleEngine {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn apply_styling(&self, layout: &LayoutStructure, _annotations: &[CodeAnnotation], _format: &OutputFormat, _config: &FormattingConfig) -> Result<String, QuantRS2Error> {
+
+    pub fn apply_styling(
+        &self,
+        layout: &LayoutStructure,
+        _annotations: &[CodeAnnotation],
+        _format: &OutputFormat,
+        _config: &FormattingConfig,
+    ) -> Result<String, QuantRS2Error> {
         // Simple placeholder implementation
-        Ok(format!("// Formatted circuit with {} sections", layout.sections.len()))
+        Ok(format!(
+            "// Formatted circuit with {} sections",
+            layout.sections.len()
+        ))
     }
 }
 
@@ -825,8 +928,10 @@ mod tests {
             QuantumGate::new(GateType::H, vec![0], None),
             QuantumGate::new(GateType::CNOT, vec![0, 1], None),
         ];
-        
-        let formatted = formatter.format_gate_sequence(&gates, FormattingStyle::Compact).unwrap();
+
+        let formatted = formatter
+            .format_gate_sequence(&gates, FormattingStyle::Compact)
+            .unwrap();
         assert!(formatted.contains("H(0)"));
         assert!(formatted.contains("CNOT(0, 1)"));
     }
@@ -834,11 +939,11 @@ mod tests {
     #[test]
     fn test_verbose_formatting() {
         let formatter = SciRS2QuantumFormatter::new();
-        let gates = vec![
-            QuantumGate::new(GateType::X, vec![0], None),
-        ];
-        
-        let formatted = formatter.format_gate_sequence(&gates, FormattingStyle::Verbose).unwrap();
+        let gates = vec![QuantumGate::new(GateType::X, vec![0], None)];
+
+        let formatted = formatter
+            .format_gate_sequence(&gates, FormattingStyle::Verbose)
+            .unwrap();
         assert!(formatted.contains("Pauli-X"));
         assert!(formatted.contains("Step 1"));
     }
@@ -850,8 +955,10 @@ mod tests {
             QuantumGate::new(GateType::H, vec![0], None),
             QuantumGate::new(GateType::X, vec![1], None),
         ];
-        
-        let formatted = formatter.format_for_language(&gates, ProgrammingLanguage::Rust).unwrap();
+
+        let formatted = formatter
+            .format_for_language(&gates, ProgrammingLanguage::Rust)
+            .unwrap();
         assert!(formatted.contains("use quantrs2_core::prelude::*"));
         assert!(formatted.contains("qubits[0].h()"));
         assert!(formatted.contains("qubits[1].x()"));
@@ -860,11 +967,11 @@ mod tests {
     #[test]
     fn test_python_language_formatting() {
         let formatter = SciRS2QuantumFormatter::new();
-        let gates = vec![
-            QuantumGate::new(GateType::H, vec![0], None),
-        ];
-        
-        let formatted = formatter.format_for_language(&gates, ProgrammingLanguage::Python).unwrap();
+        let gates = vec![QuantumGate::new(GateType::H, vec![0], None)];
+
+        let formatted = formatter
+            .format_for_language(&gates, ProgrammingLanguage::Python)
+            .unwrap();
         assert!(formatted.contains("from quantrs2 import QuantumCircuit"));
         assert!(formatted.contains("qc.h(0)"));
     }
@@ -876,8 +983,10 @@ mod tests {
             QuantumGate::new(GateType::H, vec![0], None),
             QuantumGate::new(GateType::CNOT, vec![0, 1], None),
         ];
-        
-        let formatted = formatter.format_for_language(&gates, ProgrammingLanguage::QASM).unwrap();
+
+        let formatted = formatter
+            .format_for_language(&gates, ProgrammingLanguage::QASM)
+            .unwrap();
         assert!(formatted.contains("OPENQASM 2.0"));
         assert!(formatted.contains("h q[0]"));
         assert!(formatted.contains("cx q[0],q[1]"));
@@ -888,7 +997,7 @@ mod tests {
         let formatter = SciRS2QuantumFormatter::new();
         let h_gate = QuantumGate::new(GateType::H, vec![0], None);
         let cnot_gate = QuantumGate::new(GateType::CNOT, vec![0, 1], None);
-        
+
         assert!(formatter.is_simd_optimizable(&h_gate));
         assert!(!formatter.is_simd_optimizable(&cnot_gate));
     }
@@ -901,7 +1010,7 @@ mod tests {
             QuantumGate::new(GateType::Y, vec![1], None), // Can run in parallel with X(0)
             QuantumGate::new(GateType::CNOT, vec![0, 1], None), // Depends on both qubits
         ];
-        
+
         let groups = formatter.find_parallel_groups(&gates);
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0], vec![0, 1]); // First two gates can run in parallel
@@ -914,7 +1023,7 @@ mod tests {
             QuantumGate::new(GateType::H, vec![0], None),
             QuantumGate::new(GateType::X, vec![1], None),
         ];
-        
+
         let memory = formatter.estimate_memory_usage(&gates);
         assert_eq!(memory, 2048); // 2 gates * 1024 bytes each
     }
@@ -924,10 +1033,10 @@ mod tests {
         let formatter = SciRS2QuantumFormatter::new();
         let code_with_comments = "// This is a comment\nx(0);\n// Another comment\ny(1);";
         let code_without_comments = "x(0);\ny(1);";
-        
+
         let score_with = formatter.calculate_readability_score(code_with_comments);
         let score_without = formatter.calculate_readability_score(code_without_comments);
-        
+
         assert!(score_with > score_without);
     }
 }

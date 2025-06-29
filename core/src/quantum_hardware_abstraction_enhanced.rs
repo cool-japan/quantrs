@@ -854,23 +854,23 @@ impl EnhancedQHAL {
     /// Register a new hardware platform
     pub async fn register_platform(&mut self, platform: HardwarePlatform) -> Result<()> {
         let platform_id = platform.platform_id.clone();
-        
+
         // Validate platform configuration
         self.validate_platform(&platform).await?;
-        
+
         // Initialize platform drivers
         self.driver_manager.initialize_platform_driver(&platform).await?;
-        
+
         // Perform initial capability detection
         let detected_capabilities = self.capability_detector
             .detect_capabilities(&platform).await?;
-        
+
         // Register platform
         self.supported_platforms.insert(platform_id.clone(), platform);
-        
+
         // Update universal compiler with new platform
         self.universal_compiler.register_platform(platform_id).await?;
-        
+
         Ok(())
     }
 
@@ -883,19 +883,19 @@ impl EnhancedQHAL {
     ) -> Result<CompiledCircuit> {
         let platform = self.supported_platforms.get(target_platform)
             .ok_or_else(|| QHALError::UnsupportedPlatform(target_platform.clone()))?;
-        
+
         // Cross-platform translation
         let translated_circuit = self.cross_platform_translator
             .translate_circuit(circuit, platform).await?;
-        
+
         // Universal compilation
         let compiled_circuit = self.universal_compiler
             .compile_circuit(&translated_circuit, platform, optimization_level).await?;
-        
+
         // Performance optimization
         let optimized_circuit = self.performance_optimizer
             .optimize_for_platform(&compiled_circuit, platform).await?;
-        
+
         Ok(optimized_circuit)
     }
 
@@ -908,11 +908,11 @@ impl EnhancedQHAL {
         let platform_id = &compiled_circuit.target_platform;
         let platform = self.supported_platforms.get(platform_id)
             .ok_or_else(|| QHALError::UnsupportedPlatform(platform_id.clone()))?;
-        
+
         // Resource allocation
         let allocated_resources = self.resource_manager
             .allocate_resources(compiled_circuit, execution_config).await?;
-        
+
         // Platform-specific execution
         let execution_result = self.execute_on_platform(
             compiled_circuit,
@@ -920,11 +920,11 @@ impl EnhancedQHAL {
             &allocated_resources,
             execution_config
         ).await?;
-        
+
         // Post-execution cleanup
         self.resource_manager
             .deallocate_resources(&allocated_resources).await?;
-        
+
         Ok(execution_result)
     }
 
@@ -932,15 +932,15 @@ impl EnhancedQHAL {
     pub async fn get_platform_capabilities(&self, platform_id: &PlatformId) -> Result<PlatformCapabilityReport> {
         let platform = self.supported_platforms.get(platform_id)
             .ok_or_else(|| QHALError::UnsupportedPlatform(platform_id.clone()))?;
-        
+
         // Real-time capability detection
         let current_capabilities = self.capability_detector
             .detect_current_capabilities(platform).await?;
-        
+
         // Performance assessment
         let performance_assessment = self.performance_optimizer
             .assess_platform_performance(platform).await?;
-        
+
         // Generate comprehensive report
         Ok(PlatformCapabilityReport {
             platform_id: platform_id.clone(),
@@ -957,15 +957,15 @@ impl EnhancedQHAL {
     pub async fn optimize_global_performance(&self) -> Result<GlobalOptimizationResult> {
         let mut platform_optimizations = HashMap::new();
         let mut total_improvement = 0.0;
-        
+
         for (platform_id, platform) in &self.supported_platforms {
             let optimization = self.performance_optimizer
                 .optimize_platform_performance(platform).await?;
-            
+
             total_improvement += optimization.improvement_factor;
             platform_optimizations.insert(platform_id.clone(), optimization);
         }
-        
+
         Ok(GlobalOptimizationResult {
             platform_optimizations,
             total_improvement_factor: total_improvement,
@@ -977,15 +977,15 @@ impl EnhancedQHAL {
     /// Monitor hardware health across all platforms
     pub async fn monitor_hardware_health(&self) -> Result<GlobalHardwareHealth> {
         let mut platform_health = HashMap::new();
-        
+
         for (platform_id, platform) in &self.supported_platforms {
             let health_report = self.hardware_monitor
                 .get_platform_health(platform).await?;
             platform_health.insert(platform_id.clone(), health_report);
         }
-        
+
         let overall_health = self.calculate_overall_health(&platform_health).await?;
-        
+
         Ok(GlobalHardwareHealth {
             platform_health,
             overall_health_score: overall_health,
@@ -999,7 +999,7 @@ impl EnhancedQHAL {
     pub async fn perform_calibration(&self, platform_id: &PlatformId) -> Result<CalibrationResult> {
         let platform = self.supported_platforms.get(platform_id)
             .ok_or_else(|| QHALError::UnsupportedPlatform(platform_id.clone()))?;
-        
+
         self.calibration_engine
             .perform_comprehensive_calibration(platform).await
     }
@@ -1007,12 +1007,12 @@ impl EnhancedQHAL {
     /// Get universal platform comparison
     pub async fn compare_platforms(&self, criteria: &ComparisonCriteria) -> Result<PlatformComparison> {
         let mut platform_scores = HashMap::new();
-        
+
         for (platform_id, platform) in &self.supported_platforms {
             let score = self.calculate_platform_score(platform, criteria).await?;
             platform_scores.insert(platform_id.clone(), score);
         }
-        
+
         Ok(PlatformComparison {
             criteria: criteria.clone(),
             platform_scores,
@@ -1560,7 +1560,7 @@ mod tests {
     #[tokio::test]
     async fn test_platform_registration() {
         let mut qhal = EnhancedQHAL::new();
-        
+
         let platform = HardwarePlatform {
             platform_id: "test_platform".to_string(),
             platform_name: "Test Platform".to_string(),
@@ -1679,7 +1679,7 @@ mod tests {
                 },
             },
         };
-        
+
         let result = qhal.register_platform(platform).await;
         assert!(result.is_ok());
         assert_eq!(qhal.supported_platforms.len(), 1);
@@ -1688,22 +1688,22 @@ mod tests {
     #[tokio::test]
     async fn test_circuit_compilation() {
         let mut qhal = EnhancedQHAL::new();
-        
+
         // Register a test platform first
         let platform_id = "test_platform".to_string();
         let platform = create_test_platform(platform_id.clone());
         qhal.register_platform(platform).await.unwrap();
-        
+
         let circuit = QuantumCircuit {
             circuit_id: Uuid::new_v4(),
             gates: vec!["H".to_string(), "CNOT".to_string()],
             qubit_count: 2,
             depth: 2,
         };
-        
+
         let result = qhal.compile_for_platform(&circuit, &platform_id, OptimizationLevel::Standard).await;
         assert!(result.is_ok());
-        
+
         let compiled = result.unwrap();
         assert_eq!(compiled.target_platform, platform_id);
     }
@@ -1711,17 +1711,17 @@ mod tests {
     #[tokio::test]
     async fn test_hardware_health_monitoring() {
         let mut qhal = EnhancedQHAL::new();
-        
+
         // Register multiple test platforms
         for i in 0..3 {
             let platform_id = format!("test_platform_{}", i);
             let platform = create_test_platform(platform_id);
             qhal.register_platform(platform).await.unwrap();
         }
-        
+
         let health_report = qhal.monitor_hardware_health().await;
         assert!(health_report.is_ok());
-        
+
         let health = health_report.unwrap();
         assert_eq!(health.platform_health.len(), 3);
         assert!(health.overall_health_score > 0.0);

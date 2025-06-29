@@ -4,21 +4,21 @@
 //! by analyzing circuit characteristics and automatically choosing the optimal
 //! execution backend using SciRS2 optimization and analysis tools.
 
+use crate::{
+    automatic_parallelization::{AutoParallelConfig, AutoParallelEngine},
+    circuit_optimization::{CircuitOptimizer, OptimizationConfig},
+    distributed_simulator::{DistributedQuantumSimulator, DistributedSimulatorConfig},
+    error::{Result, SimulatorError},
+    large_scale_simulator::{LargeScaleQuantumSimulator, LargeScaleSimulatorConfig},
+    simulator::SimulatorResult,
+    statevector::StateVectorSimulator,
+};
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
     register::Register,
-};
-use crate::{
-    error::{Result, SimulatorError},
-    simulator::SimulatorResult,
-    statevector::StateVectorSimulator,
-    distributed_simulator::{DistributedQuantumSimulator, DistributedSimulatorConfig},
-    large_scale_simulator::{LargeScaleQuantumSimulator, LargeScaleSimulatorConfig},
-    circuit_optimization::{CircuitOptimizer, OptimizationConfig},
-    automatic_parallelization::{AutoParallelEngine, AutoParallelConfig},
 };
 
 #[cfg(feature = "gpu")]
@@ -279,7 +279,10 @@ impl AutoOptimizer {
     }
 
     /// Analyze circuit characteristics using SciRS2 tools
-    pub fn analyze_circuit<const N: usize>(&self, circuit: &Circuit<N>) -> QuantRS2Result<CircuitCharacteristics> {
+    pub fn analyze_circuit<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+    ) -> QuantRS2Result<CircuitCharacteristics> {
         let start_time = Instant::now();
 
         // Basic circuit metrics
@@ -359,13 +362,16 @@ impl AutoOptimizer {
         circuit: &Circuit<N>,
     ) -> Result<SimulatorResult<N>> {
         // Get backend recommendation
-        let recommendation = self.recommend_backend(circuit)
+        let recommendation = self
+            .recommend_backend(circuit)
             .map_err(|e| SimulatorError::ComputationError(e.to_string()))?;
 
         if self.config.enable_profiling {
-            println!("Using {} backend (confidence: {:.2})", 
-                     self.backend_type_name(recommendation.backend_type),
-                     recommendation.confidence);
+            println!(
+                "Using {} backend (confidence: {:.2})",
+                self.backend_type_name(recommendation.backend_type),
+                recommendation.confidence
+            );
             println!("Reasoning: {}", recommendation.reasoning);
         }
 
@@ -415,7 +421,10 @@ impl AutoOptimizer {
     }
 
     /// Analyze gate distribution in the circuit
-    fn analyze_gate_distribution<const N: usize>(&self, circuit: &Circuit<N>) -> HashMap<String, usize> {
+    fn analyze_gate_distribution<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+    ) -> HashMap<String, usize> {
         let mut distribution = HashMap::new();
 
         for gate in circuit.gates() {
@@ -427,7 +436,10 @@ impl AutoOptimizer {
     }
 
     /// Analyze parallelism potential using SciRS2 parallel ops
-    fn analyze_parallelism_potential<const N: usize>(&self, circuit: &Circuit<N>) -> QuantRS2Result<f64> {
+    fn analyze_parallelism_potential<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+    ) -> QuantRS2Result<f64> {
         // Use SciRS2-powered parallelization analysis
         let analysis = self.parallel_engine.analyze_circuit(circuit)?;
         Ok(analysis.efficiency)
@@ -437,15 +449,18 @@ impl AutoOptimizer {
     fn estimate_memory_requirement(&self, num_qubits: usize, num_gates: usize) -> usize {
         // State vector memory: 2^n complex numbers
         let state_vector_size = (1 << num_qubits) * std::mem::size_of::<Complex64>();
-        
+
         // Additional overhead for gate operations and intermediate results
         let overhead = num_gates * 64; // Rough estimate
-        
+
         state_vector_size + overhead
     }
 
     /// Calculate circuit complexity score using SciRS2 complexity analysis
-    fn calculate_complexity_score<const N: usize>(&self, circuit: &Circuit<N>) -> QuantRS2Result<f64> {
+    fn calculate_complexity_score<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+    ) -> QuantRS2Result<f64> {
         let num_qubits = circuit.num_qubits() as f64;
         let num_gates = circuit.num_gates() as f64;
         let depth = self.calculate_circuit_depth(circuit) as f64;
@@ -459,7 +474,10 @@ impl AutoOptimizer {
     }
 
     /// Estimate entanglement complexity
-    fn estimate_entanglement_complexity<const N: usize>(&self, circuit: &Circuit<N>) -> QuantRS2Result<f64> {
+    fn estimate_entanglement_complexity<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+    ) -> QuantRS2Result<f64> {
         let mut entanglement_score = 0.0;
 
         for gate in circuit.gates() {
@@ -480,7 +498,8 @@ impl AutoOptimizer {
             return 0.0;
         }
 
-        let two_qubit_gates = circuit.gates()
+        let two_qubit_gates = circuit
+            .gates()
             .iter()
             .filter(|gate| gate.qubits().len() >= 2)
             .count();
@@ -489,7 +508,10 @@ impl AutoOptimizer {
     }
 
     /// Analyze circuit connectivity using SciRS2 graph analysis
-    fn analyze_connectivity<const N: usize>(&self, circuit: &Circuit<N>) -> QuantRS2Result<ConnectivityProperties> {
+    fn analyze_connectivity<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+    ) -> QuantRS2Result<ConnectivityProperties> {
         let mut qubit_connections: HashMap<QubitId, Vec<QubitId>> = HashMap::new();
 
         // Build connectivity graph
@@ -524,7 +546,8 @@ impl AutoOptimizer {
             qubit_connections
                 .values()
                 .map(|connections| connections.len())
-                .sum::<usize>() as f64 / qubit_connections.len() as f64
+                .sum::<usize>() as f64
+                / qubit_connections.len() as f64
         };
 
         // Simplified connected components analysis
@@ -546,9 +569,13 @@ impl AutoOptimizer {
     }
 
     /// Estimate entanglement depth using SciRS2 analysis
-    fn estimate_entanglement_depth<const N: usize>(&self, circuit: &Circuit<N>) -> QuantRS2Result<usize> {
+    fn estimate_entanglement_depth<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+    ) -> QuantRS2Result<usize> {
         // Simplified entanglement depth estimation
-        let two_qubit_gates = circuit.gates()
+        let two_qubit_gates = circuit
+            .gates()
             .iter()
             .filter(|gate| gate.qubits().len() >= 2)
             .count();
@@ -562,7 +589,7 @@ impl AutoOptimizer {
     fn analyze_noise_susceptibility<const N: usize>(&self, circuit: &Circuit<N>) -> f64 {
         let depth = self.calculate_circuit_depth(circuit) as f64;
         let two_qubit_density = self.calculate_two_qubit_density(circuit);
-        
+
         // Circuits with higher depth and more two-qubit gates are more susceptible to noise
         (depth / 100.0 + two_qubit_density).min(1.0)
     }
@@ -574,21 +601,28 @@ impl AutoOptimizer {
         let gpu_available = SciRS2GpuStateVectorSimulator::is_available();
         #[cfg(not(feature = "gpu"))]
         let gpu_available = false;
-        
-        self.backend_availability.insert(BackendType::SciRS2Gpu, gpu_available);
+
+        self.backend_availability
+            .insert(BackendType::SciRS2Gpu, gpu_available);
 
         // CPU backends are always available
-        self.backend_availability.insert(BackendType::StateVector, true);
-        self.backend_availability.insert(BackendType::LargeScale, true);
+        self.backend_availability
+            .insert(BackendType::StateVector, true);
+        self.backend_availability
+            .insert(BackendType::LargeScale, true);
 
         // Distributed availability would require cluster check
-        self.backend_availability.insert(BackendType::Distributed, false);
+        self.backend_availability
+            .insert(BackendType::Distributed, false);
 
         Ok(())
     }
 
     /// Check performance cache for similar circuits
-    fn check_performance_cache(&self, characteristics: &CircuitCharacteristics) -> Option<&PerformanceHistory> {
+    fn check_performance_cache(
+        &self,
+        characteristics: &CircuitCharacteristics,
+    ) -> Option<&PerformanceHistory> {
         // Simple cache lookup based on circuit characteristics
         // In practice, would use more sophisticated similarity matching
         for entry in &self.performance_cache {
@@ -601,13 +635,20 @@ impl AutoOptimizer {
     }
 
     /// Check if circuit characteristics are similar to cached entry
-    fn are_characteristics_similar(&self, characteristics: &CircuitCharacteristics, entry: &PerformanceHistory) -> bool {
+    fn are_characteristics_similar(
+        &self,
+        characteristics: &CircuitCharacteristics,
+        entry: &PerformanceHistory,
+    ) -> bool {
         // Simplified similarity check - in practice would be more sophisticated
         false // Always return false for now to avoid cache hits during development
     }
 
     /// Build recommendation from cached performance data
-    fn build_recommendation_from_cache(&self, cache_entry: &PerformanceHistory) -> BackendRecommendation {
+    fn build_recommendation_from_cache(
+        &self,
+        cache_entry: &PerformanceHistory,
+    ) -> BackendRecommendation {
         BackendRecommendation {
             backend_type: cache_entry.backend_type,
             confidence: 0.9, // High confidence for cached results
@@ -621,13 +662,20 @@ impl AutoOptimizer {
     }
 
     /// Generate backend recommendation based on circuit characteristics
-    fn generate_backend_recommendation(&self, characteristics: &CircuitCharacteristics) -> QuantRS2Result<BackendRecommendation> {
+    fn generate_backend_recommendation(
+        &self,
+        characteristics: &CircuitCharacteristics,
+    ) -> QuantRS2Result<BackendRecommendation> {
         let mut scores: HashMap<BackendType, f64> = HashMap::new();
         let mut reasoning = String::new();
 
         // Score different backends based on circuit characteristics
         for &backend_type in &self.config.backend_preferences {
-            if !self.backend_availability.get(&backend_type).unwrap_or(&false) {
+            if !self
+                .backend_availability
+                .get(&backend_type)
+                .unwrap_or(&false)
+            {
                 continue;
             }
 
@@ -661,7 +709,11 @@ impl AutoOptimizer {
     }
 
     /// Score a backend for given circuit characteristics
-    fn score_backend_for_characteristics(&self, backend_type: BackendType, characteristics: &CircuitCharacteristics) -> f64 {
+    fn score_backend_for_characteristics(
+        &self,
+        backend_type: BackendType,
+        characteristics: &CircuitCharacteristics,
+    ) -> f64 {
         let mut score: f64 = 0.5; // Base score
 
         match backend_type {
@@ -714,7 +766,11 @@ impl AutoOptimizer {
     }
 
     /// Generate recommendation reasoning text
-    fn generate_recommendation_reasoning(&self, backend_type: BackendType, characteristics: &CircuitCharacteristics) -> String {
+    fn generate_recommendation_reasoning(
+        &self,
+        backend_type: BackendType,
+        characteristics: &CircuitCharacteristics,
+    ) -> String {
         match backend_type {
             BackendType::StateVector => {
                 format!("CPU state vector simulator recommended for {} qubits, {} gates. Suitable for small circuits with straightforward execution.",
@@ -737,7 +793,11 @@ impl AutoOptimizer {
     }
 
     /// Estimate execution time for backend and characteristics
-    fn estimate_execution_time(&self, backend_type: BackendType, characteristics: &CircuitCharacteristics) -> Duration {
+    fn estimate_execution_time(
+        &self,
+        backend_type: BackendType,
+        characteristics: &CircuitCharacteristics,
+    ) -> Duration {
         let base_time_ms = match backend_type {
             BackendType::StateVector => characteristics.num_gates as u64 * 10,
             BackendType::SciRS2Gpu => characteristics.num_gates as u64 * 2,
@@ -760,7 +820,8 @@ impl AutoOptimizer {
         match backend_type {
             BackendType::StateVector => {
                 let simulator = StateVectorSimulator::new();
-                simulator.run(circuit)
+                simulator
+                    .run(circuit)
                     .map_err(|e| SimulatorError::ComputationError(e.to_string()))
             }
             BackendType::SciRS2Gpu => {
@@ -768,14 +829,16 @@ impl AutoOptimizer {
                 {
                     let simulator = SciRS2GpuStateVectorSimulator::new()
                         .map_err(|e| SimulatorError::ComputationError(e.to_string()))?;
-                    simulator.run(circuit)
+                    simulator
+                        .run(circuit)
                         .map_err(|e| SimulatorError::ComputationError(e.to_string()))
                 }
                 #[cfg(not(feature = "gpu"))]
                 {
                     // Fallback to state vector if GPU not available
                     let simulator = StateVectorSimulator::new();
-                    simulator.run(circuit)
+                    simulator
+                        .run(circuit)
                         .map_err(|e| SimulatorError::ComputationError(e.to_string()))
                 }
             }
@@ -784,7 +847,8 @@ impl AutoOptimizer {
                 let config = LargeScaleSimulatorConfig::default();
                 let simulator = LargeScaleQuantumSimulator::new(config)
                     .map_err(|e| SimulatorError::ComputationError(e.to_string()))?;
-                simulator.run(circuit)
+                simulator
+                    .run(circuit)
                     .map_err(|e| SimulatorError::ComputationError(e.to_string()))
             }
             BackendType::Distributed => {
@@ -792,23 +856,28 @@ impl AutoOptimizer {
                 let config = LargeScaleSimulatorConfig::default();
                 let simulator = LargeScaleQuantumSimulator::new(config)
                     .map_err(|e| SimulatorError::ComputationError(e.to_string()))?;
-                simulator.run(circuit)
+                simulator
+                    .run(circuit)
                     .map_err(|e| SimulatorError::ComputationError(e.to_string()))
             }
             BackendType::Auto => {
                 // This should not happen, but fallback to state vector
                 let simulator = StateVectorSimulator::new();
-                simulator.run(circuit)
+                simulator
+                    .run(circuit)
                     .map_err(|e| SimulatorError::ComputationError(e.to_string()))
             }
         }
     }
 
     /// Convert Register to SimulatorResult
-    fn register_to_simulator_result<const N: usize>(&self, register: Register<N>) -> SimulatorResult<N> {
+    fn register_to_simulator_result<const N: usize>(
+        &self,
+        register: Register<N>,
+    ) -> SimulatorResult<N> {
         // Extract amplitudes from register
         let amplitudes = register.amplitudes().to_vec();
-        
+
         SimulatorResult {
             amplitudes,
             num_qubits: N,
@@ -824,7 +893,7 @@ impl AutoOptimizer {
     ) {
         let metrics = PerformanceMetrics {
             execution_time,
-            memory_usage: 0, // Would be measured in practice
+            memory_usage: 0,      // Would be measured in practice
             cpu_utilization: 0.0, // Would be measured in practice
             gpu_utilization: None,
             throughput: circuit.num_gates() as f64 / execution_time.as_secs_f64(),
@@ -850,16 +919,16 @@ impl AutoOptimizer {
     fn compute_circuit_hash<const N: usize>(&self, circuit: &Circuit<N>) -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         circuit.num_gates().hash(&mut hasher);
         circuit.num_qubits().hash(&mut hasher);
-        
+
         for gate in circuit.gates() {
             gate.name().hash(&mut hasher);
             gate.qubits().len().hash(&mut hasher);
         }
-        
+
         hasher.finish()
     }
 
@@ -881,27 +950,37 @@ impl AutoOptimizer {
             return "No performance data available".to_string();
         }
 
-        let avg_execution_time = self.performance_cache
+        let avg_execution_time = self
+            .performance_cache
             .iter()
             .map(|entry| entry.metrics.execution_time.as_millis())
-            .sum::<u128>() / total_circuits as u128;
+            .sum::<u128>()
+            / total_circuits as u128;
 
-        let backend_usage: HashMap<BackendType, usize> = self.performance_cache
-            .iter()
-            .fold(HashMap::new(), |mut acc, entry| {
-                *acc.entry(entry.backend_type).or_insert(0) += 1;
-                acc
-            });
+        let backend_usage: HashMap<BackendType, usize> =
+            self.performance_cache
+                .iter()
+                .fold(HashMap::new(), |mut acc, entry| {
+                    *acc.entry(entry.backend_type).or_insert(0) += 1;
+                    acc
+                });
 
         let mut summary = format!("AutoOptimizer Performance Summary\n");
         summary.push_str(&format!("Total circuits processed: {}\n", total_circuits));
-        summary.push_str(&format!("Average execution time: {}ms\n", avg_execution_time));
+        summary.push_str(&format!(
+            "Average execution time: {}ms\n",
+            avg_execution_time
+        ));
         summary.push_str("Backend usage:\n");
-        
+
         for (backend, count) in backend_usage {
             let percentage = (count as f64 / total_circuits as f64) * 100.0;
-            summary.push_str(&format!("  {}: {} ({:.1}%)\n", 
-                             self.backend_type_name(backend), count, percentage));
+            summary.push_str(&format!(
+                "  {}: {} ({:.1}%)\n",
+                self.backend_type_name(backend),
+                count,
+                percentage
+            ));
         }
 
         summary
@@ -916,7 +995,10 @@ impl Default for AutoOptimizer {
 
 impl SciRS2CircuitAnalyzer {
     /// Analyze circuit using SciRS2 tools (placeholder for future SciRS2 integration)
-    fn analyze_circuit_with_scirs2<const N: usize>(&self, _circuit: &Circuit<N>) -> QuantRS2Result<f64> {
+    fn analyze_circuit_with_scirs2<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+    ) -> QuantRS2Result<f64> {
         // Placeholder for SciRS2-specific circuit analysis
         // Would use scirs2_core analysis tools when available
         Ok(0.7) // Mock analysis result
@@ -953,7 +1035,7 @@ mod tests {
     #[test]
     fn test_circuit_characteristics_analysis() {
         let optimizer = AutoOptimizer::new();
-        
+
         // Create a simple test circuit
         let mut builder = CircuitBuilder::<4>::new();
         builder.h(0);
@@ -963,7 +1045,7 @@ mod tests {
         let circuit = builder.build();
 
         let characteristics = optimizer.analyze_circuit(&circuit).unwrap();
-        
+
         assert_eq!(characteristics.num_qubits, 4);
         assert_eq!(characteristics.num_gates, 4);
         assert!(characteristics.circuit_depth > 0);
@@ -973,7 +1055,7 @@ mod tests {
     #[test]
     fn test_backend_recommendation() {
         let mut optimizer = AutoOptimizer::new();
-        
+
         // Create a small circuit
         let mut builder = CircuitBuilder::<2>::new();
         builder.h(0);
@@ -981,7 +1063,7 @@ mod tests {
         let circuit = builder.build();
 
         let recommendation = optimizer.recommend_backend(&circuit).unwrap();
-        
+
         assert!(recommendation.confidence > 0.0);
         assert!(!recommendation.reasoning.is_empty());
     }
@@ -989,7 +1071,7 @@ mod tests {
     #[test]
     fn test_execute_with_optimization() {
         let mut optimizer = AutoOptimizer::new();
-        
+
         // Create a simple circuit
         let mut builder = CircuitBuilder::<2>::new();
         builder.h(0);
@@ -998,7 +1080,7 @@ mod tests {
 
         let result = optimizer.execute_optimized(&circuit);
         assert!(result.is_ok());
-        
+
         if let Ok(sim_result) = result {
             assert_eq!(sim_result.num_qubits, 2);
             assert_eq!(sim_result.amplitudes.len(), 4);

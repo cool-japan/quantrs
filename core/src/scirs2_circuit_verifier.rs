@@ -3,12 +3,12 @@
 //! This module provides formal verification of quantum circuits using SciRS2's
 //! advanced numerical methods, symbolic computation, and formal verification techniques.
 
-use crate::gate_translation::GateType;
 use crate::error::QuantRS2Error;
+use crate::gate_translation::GateType;
 // use scirs2_core::memory::BufferPool;
 use crate::buffer_pool::BufferPool;
-use std::collections::HashSet;
 use num_complex::Complex64;
+use std::collections::HashSet;
 
 /// SciRS2-enhanced quantum gate representation for verification
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -19,22 +19,26 @@ pub struct QuantumGate {
 }
 
 impl QuantumGate {
-    pub fn new(gate_type: GateType, target_qubits: Vec<usize>, control_qubits: Option<Vec<usize>>) -> Self {
+    pub fn new(
+        gate_type: GateType,
+        target_qubits: Vec<usize>,
+        control_qubits: Option<Vec<usize>>,
+    ) -> Self {
         Self {
             gate_type,
             target_qubits,
             control_qubits,
         }
     }
-    
+
     pub fn gate_type(&self) -> &GateType {
         &self.gate_type
     }
-    
+
     pub fn target_qubits(&self) -> &[usize] {
         &self.target_qubits
     }
-    
+
     pub fn control_qubits(&self) -> Option<&[usize]> {
         self.control_qubits.as_deref()
     }
@@ -142,7 +146,10 @@ impl SciRS2CircuitVerifier {
         };
 
         let unitarity_result = if self.config.check_unitarity {
-            Some(self.unitarity_checker.check_circuit_unitarity(circuit, num_qubits)?)
+            Some(
+                self.unitarity_checker
+                    .check_circuit_unitarity(circuit, num_qubits)?,
+            )
         } else {
             None
         };
@@ -154,19 +161,28 @@ impl SciRS2CircuitVerifier {
         };
 
         let symbolic_result = if self.config.enable_symbolic_verification {
-            Some(self.symbolic_verifier.verify_symbolically(circuit, num_qubits)?)
+            Some(
+                self.symbolic_verifier
+                    .verify_symbolically(circuit, num_qubits)?,
+            )
         } else {
             None
         };
 
         let error_bounds = if self.config.enable_error_bound_analysis {
-            Some(self.error_bound_analyzer.analyze_error_bounds(circuit, num_qubits)?)
+            Some(
+                self.error_bound_analyzer
+                    .analyze_error_bounds(circuit, num_qubits)?,
+            )
         } else {
             None
         };
 
         let certification = if self.config.enable_correctness_certification {
-            Some(self.correctness_certifier.certify_correctness(circuit, num_qubits)?)
+            Some(
+                self.correctness_certifier
+                    .certify_correctness(circuit, num_qubits)?,
+            )
         } else {
             None
         };
@@ -181,7 +197,8 @@ impl SciRS2CircuitVerifier {
             &certification,
         );
 
-        let scirs2_enhancements = self.generate_scirs2_verification_enhancements(circuit, num_qubits)?;
+        let scirs2_enhancements =
+            self.generate_scirs2_verification_enhancements(circuit, num_qubits)?;
 
         Ok(CircuitVerificationResult {
             overall_verdict: overall_verdict.clone(),
@@ -206,11 +223,12 @@ impl SciRS2CircuitVerifier {
     ) -> Result<EquivalenceVerificationResult, QuantRS2Error> {
         if !self.config.verify_equivalence {
             return Err(QuantRS2Error::UnsupportedOperation(
-                "Circuit equivalence verification is disabled".into()
+                "Circuit equivalence verification is disabled".into(),
             ));
         }
 
-        self.equivalence_verifier.verify_equivalence(circuit1, circuit2, num_qubits)
+        self.equivalence_verifier
+            .verify_equivalence(circuit1, circuit2, num_qubits)
     }
 
     /// Verify specific quantum algorithm implementation
@@ -220,16 +238,15 @@ impl SciRS2CircuitVerifier {
         algorithm_spec: &AlgorithmSpecification,
     ) -> Result<AlgorithmVerificationResult, QuantRS2Error> {
         let circuit_result = self.verify_circuit(circuit, algorithm_spec.num_qubits)?;
-        
-        let algorithm_specific_checks = self.perform_algorithm_specific_verification(
-            circuit, 
-            algorithm_spec
-        )?;
+
+        let algorithm_specific_checks =
+            self.perform_algorithm_specific_verification(circuit, algorithm_spec)?;
 
         Ok(AlgorithmVerificationResult {
             circuit_verification: circuit_result,
             algorithm_specific_verification: algorithm_specific_checks,
-            specification_compliance: self.check_specification_compliance(circuit, algorithm_spec)?,
+            specification_compliance: self
+                .check_specification_compliance(circuit, algorithm_spec)?,
             correctness_proof: self.generate_correctness_proof(circuit, algorithm_spec)?,
         })
     }
@@ -323,7 +340,8 @@ impl SciRS2CircuitVerifier {
 
         Ok(NumericalStabilityAnalysis {
             worst_case_condition_number: condition_numbers.iter().fold(1.0, |acc, &x| acc.max(x)),
-            average_condition_number: condition_numbers.iter().sum::<f64>() / condition_numbers.len() as f64,
+            average_condition_number: condition_numbers.iter().sum::<f64>()
+                / condition_numbers.len() as f64,
             error_propagation_factor: error_propagation,
             required_precision_bits: precision_requirements,
             stability_score: self.calculate_stability_score(&condition_numbers, error_propagation),
@@ -337,7 +355,7 @@ impl SciRS2CircuitVerifier {
         _num_qubits: usize,
     ) -> Result<Vec<f64>, QuantRS2Error> {
         let mut condition_numbers = Vec::new();
-        
+
         for gate in circuit {
             let condition_number = match gate.gate_type() {
                 GateType::X | GateType::Y | GateType::Z | GateType::H => 1.0, // Perfect condition
@@ -350,36 +368,39 @@ impl SciRS2CircuitVerifier {
             };
             condition_numbers.push(condition_number);
         }
-        
+
         Ok(condition_numbers)
     }
 
     /// Analyze error propagation through the circuit
     fn analyze_error_propagation(&self, circuit: &[QuantumGate]) -> Result<f64, QuantRS2Error> {
         let mut propagation_factor = 1.0;
-        
+
         for gate in circuit {
             let gate_error_factor = match gate.gate_type() {
                 GateType::CNOT => 1.01, // Two-qubit gates have slightly higher error propagation
                 GateType::X | GateType::Y | GateType::Z => 1.001, // Single-qubit Pauli gates
-                GateType::H => 1.002, // Hadamard gate
-                GateType::T => 1.003, // T gate (requires magic state)
-                _ => 1.001, // Default error factor
+                GateType::H => 1.002,   // Hadamard gate
+                GateType::T => 1.003,   // T gate (requires magic state)
+                _ => 1.001,             // Default error factor
             };
             propagation_factor *= gate_error_factor;
         }
-        
+
         Ok(propagation_factor)
     }
 
     /// Estimate precision requirements
-    fn estimate_precision_requirements(&self, circuit: &[QuantumGate]) -> Result<u32, QuantRS2Error> {
+    fn estimate_precision_requirements(
+        &self,
+        circuit: &[QuantumGate],
+    ) -> Result<u32, QuantRS2Error> {
         let base_precision = 64; // 64-bit precision
         let circuit_complexity = circuit.len() as u32;
-        
+
         // More complex circuits may need higher precision
         let additional_precision = (circuit_complexity / 100).min(64);
-        
+
         Ok(base_precision + additional_precision)
     }
 
@@ -391,43 +412,59 @@ impl SciRS2CircuitVerifier {
     }
 
     /// Analyze parallel verification potential
-    fn analyze_parallel_verification_potential(&self, circuit: &[QuantumGate]) -> Result<f64, QuantRS2Error> {
-        let parallelizable_gates = circuit.iter()
+    fn analyze_parallel_verification_potential(
+        &self,
+        circuit: &[QuantumGate],
+    ) -> Result<f64, QuantRS2Error> {
+        let parallelizable_gates = circuit
+            .iter()
             .filter(|gate| self.is_gate_parallelizable(gate))
             .count();
-        
+
         let speedup_factor = if parallelizable_gates > 0 {
             let parallel_fraction = parallelizable_gates as f64 / circuit.len() as f64;
             1.0 + parallel_fraction * 3.0 // Up to 4x speedup for fully parallelizable circuits
         } else {
             1.0
         };
-        
+
         Ok(speedup_factor)
     }
 
     /// Check if a gate can be verified in parallel
     fn is_gate_parallelizable(&self, gate: &QuantumGate) -> bool {
-        matches!(gate.gate_type(), 
-            GateType::X | GateType::Y | GateType::Z | GateType::H | 
-            GateType::T | GateType::S | GateType::Phase(_) |
-            GateType::Rx(_) | GateType::Ry(_) | GateType::Rz(_)
+        matches!(
+            gate.gate_type(),
+            GateType::X
+                | GateType::Y
+                | GateType::Z
+                | GateType::H
+                | GateType::T
+                | GateType::S
+                | GateType::Phase(_)
+                | GateType::Rx(_)
+                | GateType::Ry(_)
+                | GateType::Rz(_)
         )
     }
 
     /// Analyze SIMD verification optimizations
-    fn analyze_simd_verification_optimizations(&self, circuit: &[QuantumGate]) -> Result<f64, QuantRS2Error> {
-        let simd_optimizable_ops = circuit.iter()
+    fn analyze_simd_verification_optimizations(
+        &self,
+        circuit: &[QuantumGate],
+    ) -> Result<f64, QuantRS2Error> {
+        let simd_optimizable_ops = circuit
+            .iter()
             .map(|gate| self.count_simd_optimizable_operations(gate))
             .sum::<usize>();
-        
+
         let total_ops = circuit.len();
         let simd_factor = if total_ops > 0 {
             1.0 + (simd_optimizable_ops as f64 / total_ops as f64) * 1.5 // Up to 2.5x improvement
         } else {
             1.0
         };
-        
+
         Ok(simd_factor)
     }
 
@@ -435,8 +472,8 @@ impl SciRS2CircuitVerifier {
     fn count_simd_optimizable_operations(&self, gate: &QuantumGate) -> usize {
         match gate.gate_type() {
             GateType::X | GateType::Y | GateType::Z => 2, // Vector operations
-            GateType::H => 4, // Matrix-vector operations
-            GateType::CNOT => 2, // Controlled operations
+            GateType::H => 4,                             // Matrix-vector operations
+            GateType::CNOT => 2,                          // Controlled operations
             GateType::Rx(_) | GateType::Ry(_) | GateType::Rz(_) => 3, // Trigonometric operations
             _ => 1,
         }
@@ -451,13 +488,13 @@ impl SciRS2CircuitVerifier {
         let state_size = 1 << num_qubits;
         let memory_per_gate = 16 * state_size; // Complex64 = 16 bytes
         let total_memory_naive = memory_per_gate * circuit.len();
-        
+
         // SciRS2 can optimize memory usage through:
         // 1. In-place operations
         // 2. Memory pooling
         // 3. Sparse representations
         let optimized_memory = memory_per_gate + (memory_per_gate / 4); // Buffer pool overhead
-        
+
         let efficiency_improvement = total_memory_naive as f64 / optimized_memory as f64;
         Ok(efficiency_improvement)
     }
@@ -533,10 +570,11 @@ impl SciRS2CircuitVerifier {
         circuit: &[QuantumGate],
         spec: &AlgorithmSpecification,
     ) -> Result<bool, QuantRS2Error> {
-        let used_qubits: HashSet<usize> = circuit.iter()
+        let used_qubits: HashSet<usize> = circuit
+            .iter()
             .flat_map(|gate| gate.target_qubits().iter().cloned())
             .collect();
-        
+
         Ok(used_qubits.len() <= spec.num_qubits)
     }
 
@@ -705,7 +743,7 @@ impl FormalVerifier {
     pub fn new() -> Self {
         Self {}
     }
-    
+
     pub fn verify_circuit(
         &self,
         _circuit: &[QuantumGate],
@@ -735,7 +773,7 @@ impl UnitarityChecker {
     pub fn new() -> Self {
         Self {}
     }
-    
+
     pub fn check_circuit_unitarity(
         &self,
         _circuit: &[QuantumGate],
@@ -763,7 +801,7 @@ impl CommutativityAnalyzer {
     pub fn new() -> Self {
         Self {}
     }
-    
+
     pub fn analyze_circuit(
         &self,
         _circuit: &[QuantumGate],
@@ -790,7 +828,7 @@ impl EquivalenceVerifier {
     pub fn new() -> Self {
         Self {}
     }
-    
+
     pub fn verify_equivalence(
         &self,
         _circuit1: &[QuantumGate],
@@ -813,7 +851,7 @@ impl SymbolicVerifier {
     pub fn new() -> Self {
         Self {}
     }
-    
+
     pub fn verify_symbolically(
         &self,
         _circuit: &[QuantumGate],
@@ -841,7 +879,7 @@ impl ErrorBoundAnalyzer {
     pub fn new() -> Self {
         Self {}
     }
-    
+
     pub fn analyze_error_bounds(
         &self,
         _circuit: &[QuantumGate],
@@ -869,7 +907,7 @@ impl CorrectnesseCertifier {
     pub fn new() -> Self {
         Self {}
     }
-    
+
     pub fn certify_correctness(
         &self,
         _circuit: &[QuantumGate],
@@ -908,9 +946,12 @@ mod tests {
             QuantumGate::new(GateType::H, vec![0], None),
             QuantumGate::new(GateType::CNOT, vec![0, 1], None),
         ];
-        
+
         let result = verifier.verify_circuit(&circuit, 2).unwrap();
-        assert!(matches!(result.overall_verdict, VerificationVerdict::Verified));
+        assert!(matches!(
+            result.overall_verdict,
+            VerificationVerdict::Verified
+        ));
         assert!(result.verification_confidence > 0.9);
     }
 
@@ -921,7 +962,7 @@ mod tests {
             QuantumGate::new(GateType::X, vec![0], None),
             QuantumGate::new(GateType::Y, vec![1], None),
         ];
-        
+
         let stability = verifier.analyze_numerical_stability(&circuit, 2).unwrap();
         assert!(stability.stability_score > 0.0);
         assert!(stability.worst_case_condition_number >= 1.0);
@@ -930,10 +971,8 @@ mod tests {
     #[test]
     fn test_algorithm_verification() {
         let verifier = SciRS2CircuitVerifier::new();
-        let circuit = vec![
-            QuantumGate::new(GateType::H, vec![0], None),
-        ];
-        
+        let circuit = vec![QuantumGate::new(GateType::H, vec![0], None)];
+
         let spec = AlgorithmSpecification {
             algorithm_name: "Simple H gate".to_string(),
             num_qubits: 1,
@@ -944,8 +983,10 @@ mod tests {
             forbidden_gates: vec![],
             correctness_criteria: vec!["Creates superposition".to_string()],
         };
-        
-        let result = verifier.verify_algorithm_implementation(&circuit, &spec).unwrap();
+
+        let result = verifier
+            .verify_algorithm_implementation(&circuit, &spec)
+            .unwrap();
         assert!(result.algorithm_specific_verification.gate_count_compliance);
         assert!(result.specification_compliance.compliant);
     }
@@ -955,8 +996,10 @@ mod tests {
         let verifier = SciRS2CircuitVerifier::new();
         let circuit1 = vec![QuantumGate::new(GateType::X, vec![0], None)];
         let circuit2 = vec![QuantumGate::new(GateType::X, vec![0], None)];
-        
-        let result = verifier.verify_circuit_equivalence(&circuit1, &circuit2, 1).unwrap();
+
+        let result = verifier
+            .verify_circuit_equivalence(&circuit1, &circuit2, 1)
+            .unwrap();
         assert!(result.are_equivalent);
         assert!(matches!(result.equivalence_type, EquivalenceType::Exact));
     }
@@ -968,8 +1011,10 @@ mod tests {
             QuantumGate::new(GateType::H, vec![0], None),
             QuantumGate::new(GateType::CNOT, vec![0, 1], None),
         ];
-        
-        let enhancements = verifier.generate_scirs2_verification_enhancements(&circuit, 2).unwrap();
+
+        let enhancements = verifier
+            .generate_scirs2_verification_enhancements(&circuit, 2)
+            .unwrap();
         assert!(enhancements.parallel_verification_speedup >= 1.0);
         assert!(enhancements.simd_optimization_factor >= 1.0);
         assert!(enhancements.enhanced_precision_available);
@@ -982,7 +1027,7 @@ mod tests {
             QuantumGate::new(GateType::CNOT, vec![0, 1], None),
             QuantumGate::new(GateType::T, vec![0], None),
         ];
-        
+
         let propagation = verifier.analyze_error_propagation(&circuit).unwrap();
         assert!(propagation > 1.0); // Error should propagate
     }

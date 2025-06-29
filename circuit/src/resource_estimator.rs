@@ -5,7 +5,7 @@
 //! estimation using SciRS2's advanced complexity analysis capabilities.
 
 use crate::builder::Circuit;
-use crate::scirs2_integration::{SciRS2CircuitAnalyzer, AnalyzerConfig, GraphMetrics};
+use crate::scirs2_integration::{AnalyzerConfig, GraphMetrics, SciRS2CircuitAnalyzer};
 use ndarray::Array2;
 use num_complex::Complex64;
 use quantrs2_core::{
@@ -155,7 +155,10 @@ pub enum ScalingFunction {
     /// Logarithmic scaling
     Logarithmic { coefficient: f64 },
     /// Custom function
-    Custom { description: String, complexity: f64 },
+    Custom {
+        description: String,
+        complexity: f64,
+    },
 }
 
 /// Memory requirements estimation
@@ -517,9 +520,12 @@ impl ResourceEstimator {
     }
 
     /// Create resource estimator with custom SciRS2 configuration
-    pub fn with_scirs2_config(config: ResourceEstimatorConfig, scirs2_config: AnalyzerConfig) -> Self {
+    pub fn with_scirs2_config(
+        config: ResourceEstimatorConfig,
+        scirs2_config: AnalyzerConfig,
+    ) -> Self {
         let scirs2_analyzer = Some(SciRS2CircuitAnalyzer::with_config(scirs2_config));
-        
+
         let mut estimator = Self {
             config,
             scirs2_analyzer,
@@ -596,47 +602,67 @@ impl ResourceEstimator {
     /// Initialize gate cost and platform databases
     fn initialize_databases(&mut self) {
         // Initialize gate cost database
-        self.gate_cost_database.insert("H".to_string(), GateCost {
-            execution_time: Duration::from_nanos(20),
-            error_rate: 0.001,
-            energy_cost: 1.0,
-            resource_overhead: 1.0,
-        });
+        self.gate_cost_database.insert(
+            "H".to_string(),
+            GateCost {
+                execution_time: Duration::from_nanos(20),
+                error_rate: 0.001,
+                energy_cost: 1.0,
+                resource_overhead: 1.0,
+            },
+        );
 
-        self.gate_cost_database.insert("X".to_string(), GateCost {
-            execution_time: Duration::from_nanos(20),
-            error_rate: 0.001,
-            energy_cost: 1.0,
-            resource_overhead: 1.0,
-        });
+        self.gate_cost_database.insert(
+            "X".to_string(),
+            GateCost {
+                execution_time: Duration::from_nanos(20),
+                error_rate: 0.001,
+                energy_cost: 1.0,
+                resource_overhead: 1.0,
+            },
+        );
 
-        self.gate_cost_database.insert("CNOT".to_string(), GateCost {
-            execution_time: Duration::from_nanos(200),
-            error_rate: 0.01,
-            energy_cost: 5.0,
-            resource_overhead: 2.0,
-        });
+        self.gate_cost_database.insert(
+            "CNOT".to_string(),
+            GateCost {
+                execution_time: Duration::from_nanos(200),
+                error_rate: 0.01,
+                energy_cost: 5.0,
+                resource_overhead: 2.0,
+            },
+        );
 
         // Initialize platform database
-        self.platform_database.insert("IBM Quantum".to_string(), PlatformCharacteristics {
-            name: "IBM Quantum".to_string(),
-            qubit_count: 127,
-            connectivity: ConnectivityRequirement::Custom { 
-                adjacency_matrix: Vec::new() // Would contain actual IBM topology
+        self.platform_database.insert(
+            "IBM Quantum".to_string(),
+            PlatformCharacteristics {
+                name: "IBM Quantum".to_string(),
+                qubit_count: 127,
+                connectivity: ConnectivityRequirement::Custom {
+                    adjacency_matrix: Vec::new(), // Would contain actual IBM topology
+                },
+                gate_fidelities: [
+                    ("H".to_string(), 0.999),
+                    ("X".to_string(), 0.999),
+                    ("CNOT".to_string(), 0.99),
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+                coherence_times: CoherenceRequirement {
+                    min_t1: Duration::from_micros(100),
+                    min_t2: Duration::from_micros(50),
+                    gate_to_coherence_ratio: 0.01,
+                },
+                native_gates: vec![
+                    "RZ".to_string(),
+                    "SX".to_string(),
+                    "X".to_string(),
+                    "CNOT".to_string(),
+                ],
+                measurement_fidelity: 0.98,
             },
-            gate_fidelities: [
-                ("H".to_string(), 0.999),
-                ("X".to_string(), 0.999),
-                ("CNOT".to_string(), 0.99),
-            ].iter().cloned().collect(),
-            coherence_times: CoherenceRequirement {
-                min_t1: Duration::from_micros(100),
-                min_t2: Duration::from_micros(50),
-                gate_to_coherence_ratio: 0.01,
-            },
-            native_gates: vec!["RZ".to_string(), "SX".to_string(), "X".to_string(), "CNOT".to_string()],
-            measurement_fidelity: 0.98,
-        });
+        );
 
         // Add more platforms...
     }
@@ -648,16 +674,16 @@ impl ResourceEstimator {
     ) -> QuantRS2Result<CircuitMetrics> {
         let gates = circuit.gates();
         let total_gates = gates.len();
-        
+
         let mut gate_counts = HashMap::new();
         let mut single_qubit_gates = 0;
         let mut two_qubit_gates = 0;
         let mut multi_qubit_gates = 0;
-        
+
         for gate in gates {
             let gate_name = gate.name();
             *gate_counts.entry(gate_name.to_string()).or_insert(0) += 1;
-            
+
             match gate.qubits().len() {
                 1 => single_qubit_gates += 1,
                 2 => two_qubit_gates += 1,
@@ -668,10 +694,10 @@ impl ResourceEstimator {
 
         // Calculate circuit depth (simplified)
         let circuit_depth = self.calculate_circuit_depth(circuit)?;
-        
+
         // Estimate quantum volume
         let quantum_volume = (N as f64).min(circuit_depth as f64).powf(2.0);
-        
+
         // Estimate fidelity
         let fidelity_estimate = self.estimate_circuit_fidelity(circuit, &gate_counts)?;
 
@@ -689,7 +715,10 @@ impl ResourceEstimator {
     }
 
     /// Calculate circuit depth using topological analysis
-    fn calculate_circuit_depth<const N: usize>(&self, circuit: &Circuit<N>) -> QuantRS2Result<usize> {
+    fn calculate_circuit_depth<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+    ) -> QuantRS2Result<usize> {
         // Simplified depth calculation - would use proper DAG analysis in practice
         let gates = circuit.gates();
         if gates.is_empty() {
@@ -699,14 +728,15 @@ impl ResourceEstimator {
         // For now, return a rough estimate based on gate dependencies
         // In a full implementation, this would use proper topological sorting
         let mut depth_per_qubit = vec![0; N];
-        
+
         for gate in gates {
             let qubits = gate.qubits();
-            let max_current_depth = qubits.iter()
+            let max_current_depth = qubits
+                .iter()
                 .map(|q| depth_per_qubit[q.id() as usize])
                 .max()
                 .unwrap_or(0);
-            
+
             for qubit in qubits {
                 depth_per_qubit[qubit.id() as usize] = max_current_depth + 1;
             }
@@ -722,7 +752,7 @@ impl ResourceEstimator {
         gate_counts: &HashMap<String, usize>,
     ) -> QuantRS2Result<f64> {
         let mut total_error_rate = 0.0;
-        
+
         for (gate_name, count) in gate_counts {
             if let Some(gate_cost) = self.gate_cost_database.get(gate_name) {
                 total_error_rate += gate_cost.error_rate * (*count as f64);
@@ -758,7 +788,8 @@ impl ResourceEstimator {
         let gate_complexity = (metrics.total_gates as f64) * (N as f64);
 
         // Estimate entanglement complexity (simplified)
-        let entanglement_complexity = (metrics.two_qubit_gates as f64) / (metrics.total_gates as f64).max(1.0);
+        let entanglement_complexity =
+            (metrics.two_qubit_gates as f64) / (metrics.total_gates as f64).max(1.0);
 
         // Classical simulation complexity
         let classical_simulation_complexity = 2.0_f64.powf(N as f64);
@@ -796,7 +827,7 @@ impl ResourceEstimator {
     ) -> QuantRS2Result<AlgorithmClass> {
         // Simplified algorithm classification based on gate patterns
         let gates = circuit.gates();
-        
+
         // Check for QFT patterns (many H gates)
         if let Some(&h_count) = metrics.gate_counts.get("H") {
             if h_count > N / 2 {
@@ -819,12 +850,22 @@ impl ResourceEstimator {
     }
 
     /// Analyze scaling behavior
-    fn analyze_scaling_behavior(&self, metrics: &CircuitMetrics) -> QuantRS2Result<ScalingBehavior> {
+    fn analyze_scaling_behavior(
+        &self,
+        metrics: &CircuitMetrics,
+    ) -> QuantRS2Result<ScalingBehavior> {
         Ok(ScalingBehavior {
-            gate_scaling: ScalingFunction::Linear { coefficient: metrics.total_gates as f64 / metrics.qubit_count as f64 },
-            depth_scaling: ScalingFunction::Linear { coefficient: metrics.circuit_depth as f64 / metrics.qubit_count as f64 },
+            gate_scaling: ScalingFunction::Linear {
+                coefficient: metrics.total_gates as f64 / metrics.qubit_count as f64,
+            },
+            depth_scaling: ScalingFunction::Linear {
+                coefficient: metrics.circuit_depth as f64 / metrics.qubit_count as f64,
+            },
             qubit_scaling: ScalingFunction::Linear { coefficient: 1.0 },
-            time_scaling: ScalingFunction::Polynomial { coefficient: 1.0, exponent: 2.0 },
+            time_scaling: ScalingFunction::Polynomial {
+                coefficient: 1.0,
+                exponent: 2.0,
+            },
         })
     }
 
@@ -845,7 +886,10 @@ impl ResourceEstimator {
 
         let total_classical_memory = state_vector_memory + gate_matrix_memory + auxiliary_memory;
 
-        let memory_scaling = ScalingFunction::Exponential { base: 2.0, coefficient: 16.0 };
+        let memory_scaling = ScalingFunction::Exponential {
+            base: 2.0,
+            coefficient: 16.0,
+        };
 
         let memory_optimizations = vec![
             "Use sparse state representations for low-entanglement circuits".to_string(),
@@ -901,13 +945,18 @@ impl ResourceEstimator {
             ("decoherence_overhead".to_string(), 1.1),
             ("measurement_overhead".to_string(), 1.05),
             ("classical_processing".to_string(), 1.2),
-        ].iter().cloned().collect();
+        ]
+        .iter()
+        .cloned()
+        .collect();
 
         // Confidence interval (±20%)
         let lower_bound = total_time * 80 / 100;
         let upper_bound = total_time * 120 / 100;
 
-        let timing_model = TimingModel::GateCounting { gates_per_second: 1e6 };
+        let timing_model = TimingModel::GateCounting {
+            gates_per_second: 1e6,
+        };
 
         Ok(ExecutionTimeEstimate {
             estimated_time: total_time,
@@ -941,7 +990,10 @@ impl ResourceEstimator {
             ("single_qubit".to_string(), 0.999),
             ("two_qubit".to_string(), 0.99),
             ("measurement".to_string(), 0.98),
-        ].iter().cloned().collect();
+        ]
+        .iter()
+        .cloned()
+        .collect();
 
         // Coherence requirements
         let coherence_requirements = CoherenceRequirement {
@@ -973,24 +1025,35 @@ impl ResourceEstimator {
     }
 
     /// Recommend suitable hardware platforms
-    fn recommend_platforms(&self, metrics: &CircuitMetrics) -> QuantRS2Result<Vec<PlatformRecommendation>> {
+    fn recommend_platforms(
+        &self,
+        metrics: &CircuitMetrics,
+    ) -> QuantRS2Result<Vec<PlatformRecommendation>> {
         let mut recommendations = Vec::new();
 
         for platform_name in &self.config.target_platforms {
             if let Some(platform) = self.platform_database.get(platform_name) {
                 let suitability_score = self.calculate_platform_suitability(platform, metrics);
-                
+
                 recommendations.push(PlatformRecommendation {
                     platform: platform_name.clone(),
                     suitability_score,
-                    reasoning: self.generate_platform_reasoning(platform, metrics, suitability_score),
+                    reasoning: self.generate_platform_reasoning(
+                        platform,
+                        metrics,
+                        suitability_score,
+                    ),
                     success_probability: suitability_score * 0.8,
                     required_modifications: self.suggest_platform_modifications(platform, metrics),
                 });
             }
         }
 
-        recommendations.sort_by(|a, b| b.suitability_score.partial_cmp(&a.suitability_score).unwrap_or(std::cmp::Ordering::Equal));
+        recommendations.sort_by(|a, b| {
+            b.suitability_score
+                .partial_cmp(&a.suitability_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         Ok(recommendations)
     }
 
@@ -1008,7 +1071,8 @@ impl ResourceEstimator {
         }
 
         // Gate fidelity factor
-        let avg_fidelity: f64 = platform.gate_fidelities.values().sum::<f64>() / platform.gate_fidelities.len() as f64;
+        let avg_fidelity: f64 =
+            platform.gate_fidelities.values().sum::<f64>() / platform.gate_fidelities.len() as f64;
         score *= avg_fidelity;
 
         // Two-qubit gate factor
@@ -1027,14 +1091,25 @@ impl ResourceEstimator {
         score: f64,
     ) -> String {
         if score > 0.8 {
-            format!("Excellent match: {} has sufficient qubits ({}) and high fidelity gates", 
-                platform.name, platform.qubit_count)
+            format!(
+                "Excellent match: {} has sufficient qubits ({}) and high fidelity gates",
+                platform.name, platform.qubit_count
+            )
         } else if score > 0.6 {
-            format!("Good match: {} meets most requirements but may need optimization", platform.name)
+            format!(
+                "Good match: {} meets most requirements but may need optimization",
+                platform.name
+            )
         } else if score > 0.4 {
-            format!("Marginal match: {} has limitations for this circuit", platform.name)
+            format!(
+                "Marginal match: {} has limitations for this circuit",
+                platform.name
+            )
         } else {
-            format!("Poor match: {} is not well-suited for this circuit", platform.name)
+            format!(
+                "Poor match: {} is not well-suited for this circuit",
+                platform.name
+            )
         }
     }
 
@@ -1091,7 +1166,11 @@ impl ResourceEstimator {
     }
 
     /// Calculate overall scalability score
-    fn calculate_scalability_score(&self, metrics: &CircuitMetrics, complexity: &ComplexityAnalysis) -> f64 {
+    fn calculate_scalability_score(
+        &self,
+        metrics: &CircuitMetrics,
+        complexity: &ComplexityAnalysis,
+    ) -> f64 {
         let mut score: f64 = 1.0;
 
         // Penalize exponential classical simulation complexity
@@ -1113,7 +1192,11 @@ impl ResourceEstimator {
     }
 
     /// Identify scalability bottlenecks
-    fn identify_bottlenecks(&self, metrics: &CircuitMetrics, complexity: &ComplexityAnalysis) -> Vec<ScalabilityBottleneck> {
+    fn identify_bottlenecks(
+        &self,
+        metrics: &CircuitMetrics,
+        complexity: &ComplexityAnalysis,
+    ) -> Vec<ScalabilityBottleneck> {
         let mut bottlenecks = Vec::new();
 
         // Memory bottleneck
@@ -1146,24 +1229,34 @@ impl ResourceEstimator {
     }
 
     /// Predict scaling for different problem sizes
-    fn predict_scaling(&self, metrics: &CircuitMetrics) -> QuantRS2Result<HashMap<String, ScalingPrediction>> {
+    fn predict_scaling(
+        &self,
+        metrics: &CircuitMetrics,
+    ) -> QuantRS2Result<HashMap<String, ScalingPrediction>> {
         let mut predictions = HashMap::new();
 
         // Gate count scaling
         let problem_sizes = vec![10, 20, 30, 40, 50];
-        let gate_predictions: Vec<f64> = problem_sizes.iter()
-            .map(|&size| (size as f64) * (metrics.total_gates as f64) / (metrics.qubit_count as f64))
+        let gate_predictions: Vec<f64> = problem_sizes
+            .iter()
+            .map(|&size| {
+                (size as f64) * (metrics.total_gates as f64) / (metrics.qubit_count as f64)
+            })
             .collect();
-        let gate_confidence: Vec<(f64, f64)> = gate_predictions.iter()
+        let gate_confidence: Vec<(f64, f64)> = gate_predictions
+            .iter()
             .map(|&pred| (pred * 0.8, pred * 1.2))
             .collect();
 
-        predictions.insert("gates".to_string(), ScalingPrediction {
-            problem_sizes: problem_sizes.clone(),
-            predicted_values: gate_predictions,
-            confidence_intervals: gate_confidence,
-            model: "Linear scaling".to_string(),
-        });
+        predictions.insert(
+            "gates".to_string(),
+            ScalingPrediction {
+                problem_sizes: problem_sizes.clone(),
+                predicted_values: gate_predictions,
+                confidence_intervals: gate_confidence,
+                model: "Linear scaling".to_string(),
+            },
+        );
 
         Ok(predictions)
     }
@@ -1210,7 +1303,10 @@ impl ResourceEstimator {
                 expected_improvement: 0.5,
                 implementation_complexity: ComplexityLevel::High,
                 description: "Use tensor network or sparse representations".to_string(),
-                impact_areas: vec!["memory_usage".to_string(), "simulation_feasibility".to_string()],
+                impact_areas: vec![
+                    "memory_usage".to_string(),
+                    "simulation_feasibility".to_string(),
+                ],
             });
         }
 
@@ -1293,11 +1389,16 @@ mod tests {
     fn test_basic_resource_estimation() {
         let mut circuit = Circuit::<3>::new();
         circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(CNOT { control: QubitId(0), target: QubitId(1) }).unwrap();
+        circuit
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .unwrap();
         circuit.add_gate(Hadamard { target: QubitId(2) }).unwrap();
 
         let estimate = estimate_circuit_resources(&circuit).unwrap();
-        
+
         assert_eq!(estimate.circuit_metrics.total_gates, 3);
         assert_eq!(estimate.circuit_metrics.qubit_count, 3);
         assert!(estimate.circuit_metrics.single_qubit_gates > 0);
@@ -1308,19 +1409,24 @@ mod tests {
     fn test_complexity_analysis() {
         let mut circuit = Circuit::<2>::new();
         circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(CNOT { control: QubitId(0), target: QubitId(1) }).unwrap();
+        circuit
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .unwrap();
 
         let estimate = estimate_circuit_resources(&circuit).unwrap();
-        
+
         // Should classify as constant time complexity for small circuits
         match estimate.complexity_analysis.time_complexity {
-            ComplexityClass::Constant | ComplexityClass::Linear => {},
+            ComplexityClass::Constant | ComplexityClass::Linear => {}
             _ => panic!("Unexpected time complexity for small circuit"),
         }
 
         // Space complexity should be exponential for classical simulation
         match estimate.complexity_analysis.space_complexity {
-            ComplexityClass::Exponential => {},
+            ComplexityClass::Exponential => {}
             _ => panic!("Expected exponential space complexity"),
         }
     }
@@ -1333,7 +1439,7 @@ mod tests {
         }
 
         let estimate = estimate_circuit_resources(&circuit).unwrap();
-        
+
         // 4 qubits should require 2^4 * 16 = 256 bytes for state vector
         assert_eq!(estimate.memory_requirements.state_vector_memory, 256);
         assert!(estimate.memory_requirements.total_classical_memory > 256);
@@ -1343,10 +1449,15 @@ mod tests {
     fn test_execution_time_estimation() {
         let mut circuit = Circuit::<2>::new();
         circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(CNOT { control: QubitId(0), target: QubitId(1) }).unwrap();
+        circuit
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .unwrap();
 
         let estimate = estimate_circuit_resources(&circuit).unwrap();
-        
+
         assert!(estimate.execution_time.estimated_time > Duration::from_nanos(0));
         assert!(!estimate.execution_time.gate_time_breakdown.is_empty());
         assert!(estimate.execution_time.parallelization_factor > 0.0);
@@ -1356,13 +1467,21 @@ mod tests {
     fn test_hardware_requirements() {
         let mut circuit = Circuit::<10>::new();
         for i in 0..9 {
-            circuit.add_gate(CNOT { control: QubitId(i), target: QubitId(i + 1) }).unwrap();
+            circuit
+                .add_gate(CNOT {
+                    control: QubitId(i),
+                    target: QubitId(i + 1),
+                })
+                .unwrap();
         }
 
         let estimate = estimate_circuit_resources(&circuit).unwrap();
-        
+
         assert!(estimate.hardware_requirements.min_physical_qubits >= 10);
-        assert!(!estimate.hardware_requirements.platform_recommendations.is_empty());
+        assert!(!estimate
+            .hardware_requirements
+            .platform_recommendations
+            .is_empty());
     }
 
     #[test]
@@ -1374,10 +1493,12 @@ mod tests {
         }
 
         let estimate = estimate_circuit_resources(&circuit).unwrap();
-        
+
         assert!(!estimate.optimization_suggestions.is_empty());
-        
-        let has_gate_reduction = estimate.optimization_suggestions.iter()
+
+        let has_gate_reduction = estimate
+            .optimization_suggestions
+            .iter()
             .any(|s| matches!(s.suggestion_type, OptimizationType::GateCountReduction));
         assert!(has_gate_reduction);
     }
@@ -1392,7 +1513,7 @@ mod tests {
         circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
 
         let estimate = estimate_circuit_resources_with_config(&circuit, config).unwrap();
-        
+
         assert!(estimate.scalability_analysis.scalability_score >= 0.0);
         assert!(estimate.scalability_analysis.scalability_score <= 1.0);
     }
@@ -1402,12 +1523,14 @@ mod tests {
         // Test QFT-like circuit (many H gates)
         let mut qft_circuit = Circuit::<4>::new();
         for i in 0..4 {
-            qft_circuit.add_gate(Hadamard { target: QubitId(i) }).unwrap();
+            qft_circuit
+                .add_gate(Hadamard { target: QubitId(i) })
+                .unwrap();
         }
 
         let estimate = estimate_circuit_resources(&qft_circuit).unwrap();
         match estimate.complexity_analysis.algorithm_classification {
-            AlgorithmClass::QftBased | AlgorithmClass::General => {},
+            AlgorithmClass::QftBased | AlgorithmClass::General => {}
             _ => panic!("Unexpected algorithm classification"),
         }
     }

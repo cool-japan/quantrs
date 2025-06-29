@@ -86,7 +86,7 @@ pub struct ParametricGate {
 pub enum GateType {
     /// Rotation X gate
     RX,
-    /// Rotation Y gate  
+    /// Rotation Y gate
     RY,
     /// Rotation Z gate
     RZ,

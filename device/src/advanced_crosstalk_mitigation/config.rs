@@ -889,9 +889,9 @@ impl Default for AdvancedCrosstalkConfig {
                 model_types: vec![
                     CrosstalkMLModel::RandomForest { n_estimators: 100, max_depth: Some(10) },
                     CrosstalkMLModel::GradientBoosting { n_estimators: 50, learning_rate: 0.1 },
-                    CrosstalkMLModel::NeuralNetwork { 
-                        hidden_layers: vec![64, 32, 16], 
-                        activation: "relu".to_string() 
+                    CrosstalkMLModel::NeuralNetwork {
+                        hidden_layers: vec![64, 32, 16],
+                        activation: "relu".to_string()
                     },
                 ],
                 feature_config: CrosstalkFeatureConfig {
@@ -1097,9 +1097,9 @@ impl Default for AdvancedCrosstalkConfig {
                 enable_adaptive: true,
                 compensation_algorithms: vec![
                     CompensationAlgorithm::LinearCompensation { gain_matrix: vec![1.0; 16] },
-                    CompensationAlgorithm::AdaptiveFilterCompensation { 
-                        filter_type: "LMS".to_string(), 
-                        order: 10 
+                    CompensationAlgorithm::AdaptiveFilterCompensation {
+                        filter_type: "LMS".to_string(),
+                        order: 10
                     },
                 ],
                 learning_config: CompensationLearningConfig {
@@ -1160,11 +1160,11 @@ impl Default for AdvancedCrosstalkConfig {
                         },
                     },
                 ],
-                level_selection: LevelSelectionStrategy::Adaptive { 
-                    selection_criteria: vec!["latency".to_string(), "accuracy".to_string()] 
+                level_selection: LevelSelectionStrategy::Adaptive {
+                    selection_criteria: vec!["latency".to_string(), "accuracy".to_string()]
                 },
-                coordination_strategy: CoordinationStrategy::Hierarchical { 
-                    control_hierarchy: vec!["Level1_Fast".to_string(), "Level2_Accurate".to_string()] 
+                coordination_strategy: CoordinationStrategy::Hierarchical {
+                    control_hierarchy: vec!["Level1_Fast".to_string(), "Level2_Accurate".to_string()]
                 },
             },
         }

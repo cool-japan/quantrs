@@ -51,18 +51,18 @@ impl CsrMatrix<Complex64> {
     pub fn to_dense(&self) -> Array2<Complex64> {
         let (rows, cols) = self.shape;
         let mut dense = Array2::zeros((rows, cols));
-        
+
         for row in 0..rows {
             let start = self.indptr[row];
             let end = self.indptr[row + 1];
-            
+
             for idx in start..end {
                 let col = self.indices[idx];
                 let val = self.data[idx];
                 dense[(row, col)] = val;
             }
         }
-        
+
         dense
     }
 }
@@ -75,13 +75,19 @@ pub struct SvdResult {
 }
 
 /// Compute SVD
-pub fn svd(matrix: &ArrayView2<f64>, full_matrices: bool, compute_uv: Option<bool>) -> QuantRS2Result<(Array2<f64>, Array1<f64>, Array2<f64>)> {
+pub fn svd(
+    matrix: &ArrayView2<f64>,
+    full_matrices: bool,
+    compute_uv: Option<bool>,
+) -> QuantRS2Result<(Array2<f64>, Array1<f64>, Array2<f64>)> {
     use ndarray_linalg::SVD;
-    
+
     let compute = compute_uv.unwrap_or(true);
-    let (u, s, vt) = matrix.to_owned().svd(compute, compute)
+    let (u, s, vt) = matrix
+        .to_owned()
+        .svd(compute, compute)
         .map_err(|e| crate::error::QuantRS2Error::ComputationError(format!("SVD failed: {}", e)))?;
-    
+
     Ok((
         u.unwrap_or_else(|| Array2::zeros((matrix.nrows(), matrix.nrows()))),
         s,
@@ -106,7 +112,7 @@ pub fn randomized_svd(
     // Stub implementation - just call regular SVD and truncate
     let (u, s, vt) = svd(matrix, false, Some(true))?;
     let k = rank.min(s.len());
-    
+
     Ok((
         u.slice(ndarray::s![.., ..k]).to_owned(),
         s.slice(ndarray::s![..k]).to_owned(),

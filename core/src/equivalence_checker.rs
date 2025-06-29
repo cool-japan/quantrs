@@ -3,8 +3,8 @@
 //! This module provides sophisticated quantum circuit equivalence checking
 //! using SciRS2's advanced numerical analysis capabilities.
 
-use crate::gate_translation::GateType;
 use crate::error::QuantRS2Error;
+use crate::gate_translation::GateType;
 use num_complex::Complex64;
 // use scirs2_core::parallel_ops::*;
 use crate::parallel_ops_stubs::*;
@@ -20,22 +20,26 @@ pub struct QuantumGate {
 }
 
 impl QuantumGate {
-    pub fn new(gate_type: GateType, target_qubits: Vec<usize>, control_qubits: Option<Vec<usize>>) -> Self {
+    pub fn new(
+        gate_type: GateType,
+        target_qubits: Vec<usize>,
+        control_qubits: Option<Vec<usize>>,
+    ) -> Self {
         Self {
             gate_type,
             target_qubits,
             control_qubits,
         }
     }
-    
+
     pub fn gate_type(&self) -> &GateType {
         &self.gate_type
     }
-    
+
     pub fn target_qubits(&self) -> &[usize] {
         &self.target_qubits
     }
-    
+
     pub fn control_qubits(&self) -> Option<&[usize]> {
         self.control_qubits.as_deref()
     }
@@ -136,7 +140,8 @@ impl EquivalenceChecker {
             self.probabilistic_equivalence_check(circuit1, circuit2, num_qubits)
         } else {
             Err(QuantRS2Error::UnsupportedOperation(
-                "Circuit too large for exact verification and probabilistic checking disabled".into()
+                "Circuit too large for exact verification and probabilistic checking disabled"
+                    .into(),
             ))
         }
     }
@@ -150,7 +155,7 @@ impl EquivalenceChecker {
     ) -> Result<bool, QuantRS2Error> {
         let matrix1 = self.compute_circuit_matrix(circuit1, num_qubits)?;
         let matrix2 = self.compute_circuit_matrix(circuit2, num_qubits)?;
-        
+
         Ok(self.matrices_equivalent(&matrix1, &matrix2))
     }
 
@@ -163,25 +168,25 @@ impl EquivalenceChecker {
     ) -> Result<bool, QuantRS2Error> {
         use rand::Rng;
         let mut rng = rand::rng();
-        
+
         for _ in 0..self.config.num_test_vectors {
             // Generate random state vector
             let mut state: Vec<Complex64> = (0..(1 << num_qubits))
                 .map(|_| Complex64::new(rng.random::<f64>() - 0.5, rng.random::<f64>() - 0.5))
                 .collect();
-            
+
             // Normalize the state
             let norm: f64 = state.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
             state.iter_mut().for_each(|c| *c /= norm);
-            
+
             let result1 = self.apply_circuit_to_state(circuit1, &state, num_qubits)?;
             let result2 = self.apply_circuit_to_state(circuit2, &state, num_qubits)?;
-            
+
             if !self.states_equivalent(&result1, &result2) {
                 return Ok(false);
             }
         }
-        
+
         Ok(true)
     }
 
@@ -193,18 +198,18 @@ impl EquivalenceChecker {
     ) -> Result<Vec<Vec<Complex64>>, QuantRS2Error> {
         let dim = 1 << num_qubits;
         let mut matrix = vec![vec![Complex64::new(0.0, 0.0); dim]; dim];
-        
+
         // Initialize as identity matrix
         for i in 0..dim {
             matrix[i][i] = Complex64::new(1.0, 0.0);
         }
-        
+
         // Apply each gate in sequence
         for gate in circuit {
             let gate_matrix = self.gate_to_matrix(gate, num_qubits)?;
             matrix = self.multiply_matrices(&gate_matrix, &matrix);
         }
-        
+
         Ok(matrix)
     }
 
@@ -215,52 +220,83 @@ impl EquivalenceChecker {
         num_qubits: usize,
     ) -> Result<Vec<Vec<Complex64>>, QuantRS2Error> {
         use crate::gate_translation::GateType;
-        
+
         let dim = 1 << num_qubits;
         let mut matrix = vec![vec![Complex64::new(0.0, 0.0); dim]; dim];
-        
+
         // Initialize as identity
         for i in 0..dim {
             matrix[i][i] = Complex64::new(1.0, 0.0);
         }
-        
+
         match gate.gate_type() {
             GateType::X => {
-                self.apply_single_qubit_gate(&mut matrix, gate.target_qubits()[0], &[
-                    [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
-                    [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
-                ], num_qubits);
-            },
+                self.apply_single_qubit_gate(
+                    &mut matrix,
+                    gate.target_qubits()[0],
+                    &[
+                        [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
+                        [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
+                    ],
+                    num_qubits,
+                );
+            }
             GateType::Y => {
-                self.apply_single_qubit_gate(&mut matrix, gate.target_qubits()[0], &[
-                    [Complex64::new(0.0, 0.0), Complex64::new(0.0, -1.0)],
-                    [Complex64::new(0.0, 1.0), Complex64::new(0.0, 0.0)],
-                ], num_qubits);
-            },
+                self.apply_single_qubit_gate(
+                    &mut matrix,
+                    gate.target_qubits()[0],
+                    &[
+                        [Complex64::new(0.0, 0.0), Complex64::new(0.0, -1.0)],
+                        [Complex64::new(0.0, 1.0), Complex64::new(0.0, 0.0)],
+                    ],
+                    num_qubits,
+                );
+            }
             GateType::Z => {
-                self.apply_single_qubit_gate(&mut matrix, gate.target_qubits()[0], &[
-                    [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
-                    [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)],
-                ], num_qubits);
-            },
+                self.apply_single_qubit_gate(
+                    &mut matrix,
+                    gate.target_qubits()[0],
+                    &[
+                        [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
+                        [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)],
+                    ],
+                    num_qubits,
+                );
+            }
             GateType::H => {
                 let inv_sqrt2 = 1.0 / std::f64::consts::SQRT_2;
-                self.apply_single_qubit_gate(&mut matrix, gate.target_qubits()[0], &[
-                    [Complex64::new(inv_sqrt2, 0.0), Complex64::new(inv_sqrt2, 0.0)],
-                    [Complex64::new(inv_sqrt2, 0.0), Complex64::new(-inv_sqrt2, 0.0)],
-                ], num_qubits);
-            },
+                self.apply_single_qubit_gate(
+                    &mut matrix,
+                    gate.target_qubits()[0],
+                    &[
+                        [
+                            Complex64::new(inv_sqrt2, 0.0),
+                            Complex64::new(inv_sqrt2, 0.0),
+                        ],
+                        [
+                            Complex64::new(inv_sqrt2, 0.0),
+                            Complex64::new(-inv_sqrt2, 0.0),
+                        ],
+                    ],
+                    num_qubits,
+                );
+            }
             GateType::CNOT => {
                 if gate.target_qubits().len() >= 2 {
-                    self.apply_cnot_gate(&mut matrix, gate.target_qubits()[0], gate.target_qubits()[1], num_qubits);
+                    self.apply_cnot_gate(
+                        &mut matrix,
+                        gate.target_qubits()[0],
+                        gate.target_qubits()[1],
+                        num_qubits,
+                    );
                 }
-            },
+            }
             _ => {
                 // For other gates, use identity (placeholder)
                 // In a full implementation, all gate types would be handled
             }
         }
-        
+
         Ok(matrix)
     }
 
@@ -274,7 +310,7 @@ impl EquivalenceChecker {
     ) {
         let dim = 1 << num_qubits;
         let target_bit = 1 << target_qubit;
-        
+
         for i in 0..dim {
             if i & target_bit == 0 {
                 let j = i | target_bit;
@@ -299,7 +335,7 @@ impl EquivalenceChecker {
         let dim = 1 << num_qubits;
         let control_bit = 1 << control_qubit;
         let target_bit = 1 << target_qubit;
-        
+
         for i in 0..dim {
             if i & control_bit != 0 {
                 let j = i ^ target_bit;
@@ -336,7 +372,7 @@ impl EquivalenceChecker {
     ) -> Vec<Vec<Complex64>> {
         let n = a.len();
         let mut result = vec![vec![Complex64::new(0.0, 0.0); n]; n];
-        
+
         for i in 0..n {
             for j in 0..n {
                 for k in 0..n {
@@ -344,7 +380,7 @@ impl EquivalenceChecker {
                 }
             }
         }
-        
+
         result
     }
 
@@ -356,7 +392,7 @@ impl EquivalenceChecker {
     ) -> Vec<Vec<Complex64>> {
         let n = a.len();
         let mut result = vec![vec![Complex64::new(0.0, 0.0); n]; n];
-        
+
         // Use parallel computation if enabled and matrix is large enough
         if self.config.enable_parallel && n > 64 {
             result.par_iter_mut().enumerate().for_each(|(i, row)| {
@@ -378,7 +414,7 @@ impl EquivalenceChecker {
                 }
             }
         }
-        
+
         result
     }
 
@@ -401,15 +437,16 @@ impl EquivalenceChecker {
         if matrix1.len() != matrix2.len() {
             return false;
         }
-        
+
         if self.config.enable_parallel && matrix1.len() > 32 {
             // Use parallel comparison for large matrices
-            matrix1.par_iter()
+            matrix1
+                .par_iter()
                 .zip(matrix2.par_iter())
                 .all(|(row1, row2)| {
-                    row1.iter()
-                        .zip(row2.iter())
-                        .all(|(elem1, elem2)| self.complex_numbers_equivalent_scirs2(*elem1, *elem2))
+                    row1.iter().zip(row2.iter()).all(|(elem1, elem2)| {
+                        self.complex_numbers_equivalent_scirs2(*elem1, *elem2)
+                    })
                 })
         } else {
             // Sequential comparison
@@ -432,11 +469,11 @@ impl EquivalenceChecker {
         num_qubits: usize,
     ) -> Result<Vec<Complex64>, QuantRS2Error> {
         let mut state = initial_state.to_vec();
-        
+
         for gate in circuit {
             self.apply_gate_to_state(gate, &mut state, num_qubits)?;
         }
-        
+
         Ok(state)
     }
 
@@ -448,7 +485,7 @@ impl EquivalenceChecker {
         num_qubits: usize,
     ) -> Result<(), QuantRS2Error> {
         use crate::gate_translation::GateType;
-        
+
         match gate.gate_type() {
             GateType::X => {
                 let target = gate.target_qubits()[0];
@@ -459,7 +496,7 @@ impl EquivalenceChecker {
                         state.swap(i, j);
                     }
                 }
-            },
+            }
             GateType::Y => {
                 let target = gate.target_qubits()[0];
                 let target_bit = 1 << target;
@@ -471,7 +508,7 @@ impl EquivalenceChecker {
                         state[j] = Complex64::new(0.0, -1.0) * temp;
                     }
                 }
-            },
+            }
             GateType::Z => {
                 let target = gate.target_qubits()[0];
                 let target_bit = 1 << target;
@@ -480,7 +517,7 @@ impl EquivalenceChecker {
                         state[i] *= -1.0;
                     }
                 }
-            },
+            }
             GateType::H => {
                 let target = gate.target_qubits()[0];
                 let target_bit = 1 << target;
@@ -493,14 +530,14 @@ impl EquivalenceChecker {
                         state[j] = inv_sqrt2 * (temp - state[j]);
                     }
                 }
-            },
+            }
             GateType::CNOT => {
                 if gate.target_qubits().len() >= 2 {
                     let control = gate.target_qubits()[0];
                     let target = gate.target_qubits()[1];
                     let control_bit = 1 << control;
                     let target_bit = 1 << target;
-                    
+
                     for i in 0..(1 << num_qubits) {
                         if i & control_bit != 0 {
                             let j = i ^ target_bit;
@@ -510,18 +547,19 @@ impl EquivalenceChecker {
                         }
                     }
                 }
-            },
+            }
             _ => {
                 // For other gates, no operation (placeholder)
             }
         }
-        
+
         Ok(())
     }
 
     /// Check if two state vectors are equivalent within tolerance
     fn states_equivalent(&self, state1: &[Complex64], state2: &[Complex64]) -> bool {
-        state1.iter()
+        state1
+            .iter()
             .zip(state2.iter())
             .all(|(s1, s2)| self.complex_numbers_equivalent(*s1, *s2))
     }
@@ -531,12 +569,12 @@ impl EquivalenceChecker {
         // Enhanced numerical comparison inspired by SciRS2's tolerance methods
         let diff = z1 - z2;
         let abs_error = diff.norm();
-        
+
         // Absolute tolerance check
         if abs_error <= self.config.absolute_tolerance {
             return true;
         }
-        
+
         // Relative tolerance check with enhanced numerical stability
         let max_magnitude = z1.norm().max(z2.norm());
         if max_magnitude > 0.0 {
@@ -545,7 +583,7 @@ impl EquivalenceChecker {
                 return true;
             }
         }
-        
+
         // Additional check for very small numbers (machine epsilon consideration)
         let machine_epsilon = f64::EPSILON;
         abs_error <= 10.0 * machine_epsilon
@@ -564,19 +602,20 @@ impl EquivalenceChecker {
         num_qubits: usize,
     ) -> Result<EquivalenceResult, QuantRS2Error> {
         let basic_equivalent = self.are_circuits_equivalent(circuit1, circuit2, num_qubits)?;
-        
+
         let mut result = EquivalenceResult {
             equivalent: basic_equivalent,
             phase_equivalent: false,
             global_phase_difference: None,
             symmetry_analysis: None,
         };
-        
+
         if !basic_equivalent && self.config.enable_symmetry_detection {
             // Check for equivalence up to global phase
-            result.phase_equivalent = self.check_phase_equivalence(circuit1, circuit2, num_qubits)?;
+            result.phase_equivalent =
+                self.check_phase_equivalence(circuit1, circuit2, num_qubits)?;
         }
-        
+
         Ok(result)
     }
 
@@ -590,17 +629,18 @@ impl EquivalenceChecker {
         if num_qubits > self.config.max_exact_qubits {
             return Ok(false); // Too complex for phase analysis
         }
-        
+
         let matrix1 = self.compute_circuit_matrix(circuit1, num_qubits)?;
         let matrix2 = self.compute_circuit_matrix(circuit2, num_qubits)?;
-        
+
         // Find the global phase by looking at the first non-zero element
         let mut global_phase = None;
-        
+
         for i in 0..matrix1.len() {
             for j in 0..matrix1[i].len() {
-                if matrix1[i][j].norm() > self.config.absolute_tolerance &&
-                   matrix2[i][j].norm() > self.config.absolute_tolerance {
+                if matrix1[i][j].norm() > self.config.absolute_tolerance
+                    && matrix2[i][j].norm() > self.config.absolute_tolerance
+                {
                     let phase = matrix2[i][j] / matrix1[i][j];
                     if let Some(existing_phase) = global_phase {
                         if !self.complex_numbers_equivalent(phase, existing_phase) {
@@ -612,7 +652,7 @@ impl EquivalenceChecker {
                 }
             }
         }
-        
+
         // Check if all elements are consistent with the global phase
         if let Some(phase) = global_phase {
             for i in 0..matrix1.len() {
@@ -655,15 +695,17 @@ pub struct SymmetryAnalysis {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::{QuantumGate, GateType};
+    use super::{GateType, QuantumGate};
 
     #[test]
     fn test_identity_equivalence() {
         let checker = EquivalenceChecker::new();
         let circuit1 = vec![];
         let circuit2 = vec![];
-        
-        assert!(checker.are_circuits_equivalent(&circuit1, &circuit2, 2).unwrap());
+
+        assert!(checker
+            .are_circuits_equivalent(&circuit1, &circuit2, 2)
+            .unwrap());
     }
 
     #[test]
@@ -671,11 +713,13 @@ mod tests {
         let checker = EquivalenceChecker::new();
         let gate1 = QuantumGate::new(GateType::X, vec![0], None);
         let gate2 = QuantumGate::new(GateType::X, vec![0], None);
-        
+
         let circuit1 = vec![gate1];
         let circuit2 = vec![gate2];
-        
-        assert!(checker.are_circuits_equivalent(&circuit1, &circuit2, 2).unwrap());
+
+        assert!(checker
+            .are_circuits_equivalent(&circuit1, &circuit2, 2)
+            .unwrap());
     }
 
     #[test]
@@ -683,25 +727,27 @@ mod tests {
         let checker = EquivalenceChecker::new();
         let gate1 = QuantumGate::new(GateType::X, vec![0], None);
         let gate2 = QuantumGate::new(GateType::Y, vec![0], None);
-        
+
         let circuit1 = vec![gate1];
         let circuit2 = vec![gate2];
-        
-        assert!(!checker.are_circuits_equivalent(&circuit1, &circuit2, 2).unwrap());
+
+        assert!(!checker
+            .are_circuits_equivalent(&circuit1, &circuit2, 2)
+            .unwrap());
     }
 
     #[test]
     fn test_complex_number_equivalence() {
         let checker = EquivalenceChecker::new();
-        
+
         let z1 = Complex64::new(1.0, 0.0);
         let z2 = Complex64::new(1.0 + 1e-11, 0.0); // Smaller difference within tolerance
-        
+
         assert!(checker.complex_numbers_equivalent(z1, z2));
-        
+
         let z3 = Complex64::new(1.0, 0.0);
         let z4 = Complex64::new(2.0, 0.0);
-        
+
         assert!(!checker.complex_numbers_equivalent(z3, z4));
     }
 
@@ -709,11 +755,13 @@ mod tests {
     fn test_hadamard_equivalence() {
         let checker = EquivalenceChecker::new();
         let h_gate = QuantumGate::new(GateType::H, vec![0], None);
-        
+
         let circuit1 = vec![h_gate.clone(), h_gate.clone()];
         let circuit2 = vec![];
-        
+
         // H*H = I
-        assert!(checker.are_circuits_equivalent(&circuit1, &circuit2, 1).unwrap());
+        assert!(checker
+            .are_circuits_equivalent(&circuit1, &circuit2, 1)
+            .unwrap());
     }
 }

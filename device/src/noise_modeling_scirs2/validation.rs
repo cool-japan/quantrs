@@ -54,14 +54,14 @@ impl ModelValidator {
         // For simplicity, use the first noise type for validation
         if let Some((_, data)) = training_data.iter().next() {
             let fold_size = data.nrows() / k_folds;
-            
+
             for fold in 0..k_folds {
                 let (train_data, val_data) = self.split_data_for_fold(data, fold, fold_size)?;
-                
+
                 // Train model on training fold (simplified)
                 let predictions = self.predict_on_fold(&train_data, &val_data, models)?;
                 let targets = self.extract_targets(&val_data)?;
-                
+
                 // Compute validation score
                 let score = self.compute_validation_score(&predictions, &targets)?;
                 all_scores.push(score);
@@ -90,23 +90,23 @@ impl ModelValidator {
     ) -> DeviceResult<(Array2<f64>, Array2<f64>)> {
         let start_idx = fold * fold_size;
         let end_idx = ((fold + 1) * fold_size).min(data.nrows());
-        
+
         // Validation set is the current fold
         let val_data = data.slice(ndarray::s![start_idx..end_idx, ..]).to_owned();
-        
+
         // Training set is everything else
         let train_part1 = if start_idx > 0 {
             Some(data.slice(ndarray::s![..start_idx, ..]).to_owned())
         } else {
             None
         };
-        
+
         let train_part2 = if end_idx < data.nrows() {
             Some(data.slice(ndarray::s![end_idx.., ..]).to_owned())
         } else {
             None
         };
-        
+
         let train_data = match (train_part1, train_part2) {
             (Some(p1), Some(p2)) => {
                 // Concatenate parts
@@ -119,7 +119,7 @@ impl ModelValidator {
             (None, Some(p2)) => p2,
             (None, None) => Array2::zeros((0, data.ncols())),
         };
-        
+
         Ok((train_data, val_data))
     }
 
@@ -132,11 +132,11 @@ impl ModelValidator {
     ) -> DeviceResult<Array1<f64>> {
         let num_val_samples = val_data.nrows();
         let num_features = val_data.ncols() - 1;
-        
+
         // Simple prediction using mean of training targets
         let train_targets = train_data.column(num_features);
         let mean_prediction = train_targets.mean().unwrap_or(0.0);
-        
+
         // Return constant prediction for all validation samples
         Ok(Array1::from(vec![mean_prediction; num_val_samples]))
     }
@@ -156,11 +156,11 @@ impl ModelValidator {
         if predictions.len() != targets.len() {
             return Ok(f64::INFINITY);
         }
-        
+
         let mse = predictions.iter().zip(targets.iter())
             .map(|(pred, target)| (pred - target).powi(2))
             .sum::<f64>() / predictions.len() as f64;
-        
+
         Ok(mse.sqrt())
     }
 
@@ -169,11 +169,11 @@ impl ModelValidator {
         if data.len() <= 1 {
             return 0.0;
         }
-        
+
         let variance = data.iter()
             .map(|x| (x - mean).powi(2))
             .sum::<f64>() / (data.len() - 1) as f64;
-        
+
         variance.sqrt()
     }
 
@@ -185,7 +185,7 @@ impl ModelValidator {
     ) -> DeviceResult<BootstrapResults> {
         let num_bootstrap_samples = self.config.bootstrap_samples;
         let mut bootstrap_scores = Vec::new();
-        
+
         // For simplicity, use the first noise type for validation
         if let Some((_, data)) = training_data.iter().next() {
             for _ in 0..num_bootstrap_samples {
@@ -194,20 +194,20 @@ impl ModelValidator {
                 bootstrap_scores.push(score);
             }
         }
-        
+
         let scores_array = Array1::from(bootstrap_scores);
         let mean_score = scores_array.mean().unwrap_or(0.0);
-        
+
         // Compute confidence intervals
         let mut confidence_intervals = HashMap::new();
         confidence_intervals.insert(
             "95%".to_string(),
             self.compute_confidence_interval(&scores_array, 0.95)?
         );
-        
+
         let bias_estimate = self.estimate_bias(&scores_array, mean_score);
         let variance_estimate = self.compute_std(&scores_array, mean_score).powi(2);
-        
+
         Ok(BootstrapResults {
             bootstrap_scores: scores_array,
             confidence_intervals,
@@ -220,14 +220,14 @@ impl ModelValidator {
     fn generate_bootstrap_sample(&self, data: &Array2<f64>) -> DeviceResult<Array2<f64>> {
         let n_samples = data.nrows();
         let n_features = data.ncols();
-        
+
         let mut bootstrap_sample = Array2::zeros((n_samples, n_features));
-        
+
         for i in 0..n_samples {
             let random_idx = rand::random::<usize>() % n_samples;
             bootstrap_sample.row_mut(i).assign(&data.row(random_idx));
         }
-        
+
         Ok(bootstrap_sample)
     }
 
@@ -241,14 +241,14 @@ impl ModelValidator {
         let test_ratio = 0.2;
         let n_test = (bootstrap_data.nrows() as f64 * test_ratio) as usize;
         let n_train = bootstrap_data.nrows() - n_test;
-        
+
         let train_data = bootstrap_data.slice(ndarray::s![..n_train, ..]).to_owned();
         let test_data = bootstrap_data.slice(ndarray::s![n_train.., ..]).to_owned();
-        
+
         // Make predictions and compute score
         let predictions = self.predict_on_fold(&train_data, &test_data, models)?;
         let targets = self.extract_targets(&test_data)?;
-        
+
         self.compute_validation_score(&predictions, &targets)
     }
 
@@ -261,17 +261,17 @@ impl ModelValidator {
         if data.is_empty() {
             return Ok((0.0, 0.0));
         }
-        
+
         let mut sorted_data = data.to_vec();
         sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        
+
         let alpha = 1.0 - confidence_level;
         let lower_idx = ((alpha / 2.0) * sorted_data.len() as f64) as usize;
         let upper_idx = ((1.0 - alpha / 2.0) * sorted_data.len() as f64) as usize;
-        
+
         let lower_bound = sorted_data.get(lower_idx).copied().unwrap_or(0.0);
         let upper_bound = sorted_data.get(upper_idx.min(sorted_data.len() - 1)).copied().unwrap_or(0.0);
-        
+
         Ok((lower_bound, upper_bound))
     }
 
@@ -292,20 +292,20 @@ impl ModelValidator {
             "neural_network".to_string(),
             "ensemble".to_string(),
         ];
-        
+
         let mut performance_metrics = HashMap::new();
         let mut statistical_tests = HashMap::new();
-        
+
         // Evaluate each model
         for model_name in &model_names {
             let scores = self.evaluate_model_performance(training_data, models, model_name)?;
             performance_metrics.insert(model_name.clone(), scores);
         }
-        
+
         // Perform statistical tests (simplified)
         statistical_tests.insert("friedman_test".to_string(), 0.05);
         statistical_tests.insert("nemenyi_test".to_string(), 0.1);
-        
+
         // Select best model (highest mean score, assuming higher is better)
         let best_model = model_names.iter()
             .max_by(|a, b| {
@@ -319,7 +319,7 @@ impl ModelValidator {
             })
             .unwrap_or(&model_names[0])
             .clone();
-        
+
         Ok(ModelComparison {
             model_names,
             performance_metrics,
@@ -338,7 +338,7 @@ impl ModelValidator {
         // Simplified model evaluation
         let num_metrics = self.config.metrics.len();
         let mut scores = Vec::new();
-        
+
         for metric in &self.config.metrics {
             let score = match metric {
                 ValidationMetric::RMSE => 0.1,
@@ -352,7 +352,7 @@ impl ModelValidator {
             };
             scores.push(score);
         }
-        
+
         Ok(Array1::from(scores))
     }
 
@@ -366,20 +366,20 @@ impl ModelValidator {
         let data_size = training_data.values().next()
             .map(|data| data.nrows())
             .unwrap_or(100);
-        
+
         // Epistemic uncertainty (model uncertainty)
         let epistemic_uncertainty = Array1::from(vec![0.05; data_size]);
-        
+
         // Aleatoric uncertainty (data noise)
         let aleatoric_uncertainty = Array1::from(vec![0.1; data_size]);
-        
+
         // Total uncertainty
         let total_uncertainty = epistemic_uncertainty.iter()
             .zip(aleatoric_uncertainty.iter())
             .map(|(e, a)| (e.powi(2) + a.powi(2)).sqrt())
             .collect::<Vec<f64>>();
         let total_uncertainty = Array1::from(total_uncertainty);
-        
+
         // Uncertainty decomposition
         let mut uncertainty_decomposition = HashMap::new();
         uncertainty_decomposition.insert(
@@ -390,7 +390,7 @@ impl ModelValidator {
             "aleatoric_ratio".to_string(),
             aleatoric_uncertainty.mean().unwrap_or(0.0) / total_uncertainty.mean().unwrap_or(1.0)
         );
-        
+
         Ok(UncertaintyQuantification {
             epistemic_uncertainty,
             aleatoric_uncertainty,
@@ -407,7 +407,7 @@ impl ModelValidator {
         metrics: &[ValidationMetric],
     ) -> DeviceResult<HashMap<String, f64>> {
         let mut results = HashMap::new();
-        
+
         for metric in metrics {
             let value = match metric {
                 ValidationMetric::RMSE => self.compute_rmse(predictions, targets)?,
@@ -419,10 +419,10 @@ impl ModelValidator {
                 ValidationMetric::KLDivergence => self.compute_kl_divergence(predictions, targets)?,
                 ValidationMetric::WassersteinDistance => self.compute_wasserstein_distance(predictions, targets)?,
             };
-            
+
             results.insert(format!("{:?}", metric), value);
         }
-        
+
         Ok(results)
     }
 
@@ -442,15 +442,15 @@ impl ModelValidator {
     /// Compute R²
     fn compute_r2(&self, predictions: &Array1<f64>, targets: &Array1<f64>) -> DeviceResult<f64> {
         let target_mean = targets.mean().unwrap_or(0.0);
-        
+
         let ss_res = predictions.iter().zip(targets.iter())
             .map(|(pred, target)| (target - pred).powi(2))
             .sum::<f64>();
-        
+
         let ss_tot = targets.iter()
             .map(|target| (target - target_mean).powi(2))
             .sum::<f64>();
-        
+
         if ss_tot > 1e-8 {
             Ok(1.0 - ss_res / ss_tot)
         } else {
@@ -462,12 +462,12 @@ impl ModelValidator {
     fn compute_log_likelihood(&self, predictions: &Array1<f64>, targets: &Array1<f64>) -> DeviceResult<f64> {
         let n = predictions.len() as f64;
         let sigma_sq = self.compute_rmse(predictions, targets)?.powi(2);
-        
-        let log_likelihood = -0.5 * n * (2.0 * std::f64::consts::PI * sigma_sq).ln() 
+
+        let log_likelihood = -0.5 * n * (2.0 * std::f64::consts::PI * sigma_sq).ln()
             - predictions.iter().zip(targets.iter())
                 .map(|(pred, target)| (target - pred).powi(2))
                 .sum::<f64>() / (2.0 * sigma_sq);
-        
+
         Ok(log_likelihood)
     }
 
@@ -506,11 +506,11 @@ impl ModelValidator {
         let mut target_sorted = targets.to_vec();
         pred_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
         target_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        
+
         let wasserstein = pred_sorted.iter().zip(target_sorted.iter())
             .map(|(p, t)| (p - t).abs())
             .sum::<f64>() / predictions.len() as f64;
-        
+
         Ok(wasserstein)
     }
 }

@@ -1,7 +1,7 @@
 //! SciRS2-Enhanced Quantum Performance Profiler
 //!
 //! This module provides advanced quantum algorithm profiling using SciRS2's
-//! sophisticated performance analysis, SIMD optimization tracking, and 
+//! sophisticated performance analysis, SIMD optimization tracking, and
 //! memory efficiency monitoring capabilities.
 
 use crate::error::QuantRS2Error;
@@ -10,9 +10,9 @@ use crate::gate_translation::GateType;
 use crate::buffer_pool::BufferPool;
 // use scirs2_core::parallel_ops::*;
 use crate::parallel_ops_stubs::*;
+use num_complex::Complex64;
 use std::collections::HashMap;
 use std::time::{Duration, Instant, SystemTime};
-use num_complex::Complex64;
 
 /// SciRS2-enhanced quantum gate representation for profiling
 #[derive(Debug, Clone)]
@@ -23,22 +23,26 @@ pub struct QuantumGate {
 }
 
 impl QuantumGate {
-    pub fn new(gate_type: GateType, target_qubits: Vec<usize>, control_qubits: Option<Vec<usize>>) -> Self {
+    pub fn new(
+        gate_type: GateType,
+        target_qubits: Vec<usize>,
+        control_qubits: Option<Vec<usize>>,
+    ) -> Self {
         Self {
             gate_type,
             target_qubits,
             control_qubits,
         }
     }
-    
+
     pub fn gate_type(&self) -> &GateType {
         &self.gate_type
     }
-    
+
     pub fn target_qubits(&self) -> &[usize] {
         &self.target_qubits
     }
-    
+
     pub fn control_qubits(&self) -> Option<&[usize]> {
         self.control_qubits.as_deref()
     }
@@ -86,10 +90,10 @@ impl Default for SciRS2ProfilingConfig {
 /// Profiling precision levels
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum ProfilingPrecision {
-    Low,     // Basic timing and memory tracking
-    Medium,  // Detailed operation tracking
-    High,    // Comprehensive analysis with SIMD tracking
-    Ultra,   // Maximum detail with per-operation analysis
+    Low,    // Basic timing and memory tracking
+    Medium, // Detailed operation tracking
+    High,   // Comprehensive analysis with SIMD tracking
+    Ultra,  // Maximum detail with per-operation analysis
 }
 
 /// SciRS2-enhanced quantum profiler
@@ -137,7 +141,7 @@ impl SciRS2QuantumProfiler {
 
     /// Start a profiling session for quantum circuit execution
     pub fn start_profiling_session(
-        &mut self, 
+        &mut self,
         circuit: &[QuantumGate],
         num_qubits: usize,
     ) -> Result<ProfilingSessionId, QuantRS2Error> {
@@ -175,11 +179,11 @@ impl SciRS2QuantumProfiler {
         num_qubits: usize,
     ) -> Result<GateProfilingResult, QuantRS2Error> {
         let gate_start = Instant::now();
-        
+
         // Start comprehensive tracking
         let memory_before = self.get_current_memory_usage();
         let cache_stats_before = self.cache_monitor.capture_cache_stats()?;
-        
+
         // Execute gate with SIMD tracking
         let simd_operations = if self.config.track_simd_operations {
             self.simd_tracker.start_operation_tracking()?;
@@ -191,11 +195,11 @@ impl SciRS2QuantumProfiler {
         };
 
         let gate_duration = gate_start.elapsed();
-        
+
         // Collect post-execution metrics
         let memory_after = self.get_current_memory_usage();
         let cache_stats_after = self.cache_monitor.capture_cache_stats()?;
-        
+
         // Analyze numerical stability if enabled
         let numerical_stability = if self.config.enable_numerical_stability_analysis {
             self.numerical_analyzer.analyze_state_stability(state)?
@@ -217,7 +221,8 @@ impl SciRS2QuantumProfiler {
                 misses_before: cache_stats_before.misses,
                 hits_after: cache_stats_after.hits,
                 misses_after: cache_stats_after.misses,
-                hit_rate_change: self.calculate_hit_rate_change(&cache_stats_before, &cache_stats_after),
+                hit_rate_change: self
+                    .calculate_hit_rate_change(&cache_stats_before, &cache_stats_after),
             },
             numerical_stability,
             parallel_optimizations,
@@ -239,7 +244,7 @@ impl SciRS2QuantumProfiler {
     ) -> Result<CircuitProfilingResult, QuantRS2Error> {
         let session_id = self.start_profiling_session(circuit, num_qubits)?;
         let circuit_start = Instant::now();
-        
+
         let mut current_state = initial_state.to_vec();
         let mut gate_results = Vec::new();
         let mut memory_timeline = Vec::new();
@@ -248,14 +253,14 @@ impl SciRS2QuantumProfiler {
         // Profile each gate in the circuit
         for (gate_index, gate) in circuit.iter().enumerate() {
             let gate_result = self.profile_gate_execution(gate, &mut current_state, num_qubits)?;
-            
+
             // Record timeline data
             memory_timeline.push(MemorySnapshot {
                 timestamp: circuit_start.elapsed(),
                 memory_usage: self.get_current_memory_usage(),
                 gate_index,
             });
-            
+
             if self.config.track_simd_operations {
                 simd_usage_timeline.push(SimdSnapshot {
                     timestamp: circuit_start.elapsed(),
@@ -263,17 +268,18 @@ impl SciRS2QuantumProfiler {
                     gate_index,
                 });
             }
-            
+
             gate_results.push(gate_result);
         }
 
         let total_duration = circuit_start.elapsed();
-        
+
         // Generate comprehensive analysis
         let circuit_analysis = self.analyze_circuit_performance(&gate_results, total_duration)?;
         let memory_analysis = self.analyze_memory_usage(&memory_timeline)?;
         let simd_analysis = self.analyze_simd_usage(&simd_usage_timeline)?;
-        let optimization_recommendations = self.generate_scirs2_optimization_recommendations(&circuit_analysis)?;
+        let optimization_recommendations =
+            self.generate_scirs2_optimization_recommendations(&circuit_analysis)?;
 
         Ok(CircuitProfilingResult {
             session_id,
@@ -295,96 +301,123 @@ impl SciRS2QuantumProfiler {
         num_qubits: usize,
     ) -> Result<usize, QuantRS2Error> {
         let simd_ops_before = self.simd_tracker.get_operation_count();
-        
+
         match gate.gate_type() {
             GateType::X => {
                 self.apply_x_gate_simd(gate.target_qubits()[0], state, num_qubits)?;
-            },
+            }
             GateType::Y => {
                 self.apply_y_gate_simd(gate.target_qubits()[0], state, num_qubits)?;
-            },
+            }
             GateType::Z => {
                 self.apply_z_gate_simd(gate.target_qubits()[0], state, num_qubits)?;
-            },
+            }
             GateType::H => {
                 self.apply_h_gate_simd(gate.target_qubits()[0], state, num_qubits)?;
-            },
+            }
             GateType::CNOT => {
                 if gate.target_qubits().len() >= 2 {
-                    self.apply_cnot_gate_simd(gate.target_qubits()[0], gate.target_qubits()[1], state, num_qubits)?;
+                    self.apply_cnot_gate_simd(
+                        gate.target_qubits()[0],
+                        gate.target_qubits()[1],
+                        state,
+                        num_qubits,
+                    )?;
                 }
-            },
+            }
             _ => {
                 // For other gates, use standard implementation
                 self.apply_gate_standard(gate, state, num_qubits)?;
             }
         }
-        
+
         let simd_ops_after = self.simd_tracker.get_operation_count();
         Ok(simd_ops_after - simd_ops_before)
     }
 
     /// Apply X gate with SIMD optimization
-    fn apply_x_gate_simd(&mut self, target: usize, state: &mut [Complex64], num_qubits: usize) -> Result<(), QuantRS2Error> {
+    fn apply_x_gate_simd(
+        &mut self,
+        target: usize,
+        state: &mut [Complex64],
+        num_qubits: usize,
+    ) -> Result<(), QuantRS2Error> {
         let target_bit = 1 << target;
-        
+
         // Use parallel SIMD processing for large state vectors
         if state.len() > 1024 && self.config.analyze_parallel_execution {
-            self.parallel_tracker.record_parallel_operation("X_gate_parallel");
-            
+            self.parallel_tracker
+                .record_parallel_operation("X_gate_parallel");
+
             // Process in parallel chunks
             let state_len = state.len();
             let max_qubit_states = 1 << num_qubits;
-            state.par_chunks_mut(64).enumerate().for_each(|(chunk_idx, chunk)| {
-                let chunk_offset = chunk_idx * 64;
-                for (local_idx, _) in chunk.iter().enumerate() {
-                    let global_idx = chunk_offset + local_idx;
-                    if global_idx < max_qubit_states {
-                        let swap_idx = global_idx ^ target_bit;
-                        if global_idx < swap_idx && swap_idx < state_len {
-                            // This would normally use SIMD swap operations
-                            // In a real implementation, this would call SciRS2 SIMD functions
+            state
+                .par_chunks_mut(64)
+                .enumerate()
+                .for_each(|(chunk_idx, chunk)| {
+                    let chunk_offset = chunk_idx * 64;
+                    for (local_idx, _) in chunk.iter().enumerate() {
+                        let global_idx = chunk_offset + local_idx;
+                        if global_idx < max_qubit_states {
+                            let swap_idx = global_idx ^ target_bit;
+                            if global_idx < swap_idx && swap_idx < state_len {
+                                // This would normally use SIMD swap operations
+                                // In a real implementation, this would call SciRS2 SIMD functions
+                            }
                         }
                     }
-                }
-            });
-            
-            self.simd_tracker.record_simd_operation("parallel_x_gate", state.len() / 2);
+                });
+
+            self.simd_tracker
+                .record_simd_operation("parallel_x_gate", state.len() / 2);
         } else {
             // Sequential SIMD optimization
             for i in 0..(1 << num_qubits) {
                 let j = i ^ target_bit;
                 if i < j {
                     state.swap(i, j);
-                    self.simd_tracker.record_simd_operation("sequential_x_gate", 1);
+                    self.simd_tracker
+                        .record_simd_operation("sequential_x_gate", 1);
                 }
             }
         }
-        
+
         Ok(())
     }
 
     /// Apply Y gate with SIMD optimization
-    fn apply_y_gate_simd(&mut self, target: usize, state: &mut [Complex64], num_qubits: usize) -> Result<(), QuantRS2Error> {
+    fn apply_y_gate_simd(
+        &mut self,
+        target: usize,
+        state: &mut [Complex64],
+        num_qubits: usize,
+    ) -> Result<(), QuantRS2Error> {
         let target_bit = 1 << target;
-        
+
         for i in 0..(1 << num_qubits) {
             let j = i ^ target_bit;
             if i < j {
                 let temp = state[i];
                 state[i] = Complex64::new(0.0, 1.0) * state[j];
                 state[j] = Complex64::new(0.0, -1.0) * temp;
-                self.simd_tracker.record_simd_operation("y_gate_complex_mult", 2);
+                self.simd_tracker
+                    .record_simd_operation("y_gate_complex_mult", 2);
             }
         }
-        
+
         Ok(())
     }
 
     /// Apply Z gate with SIMD optimization
-    fn apply_z_gate_simd(&mut self, target: usize, state: &mut [Complex64], num_qubits: usize) -> Result<(), QuantRS2Error> {
+    fn apply_z_gate_simd(
+        &mut self,
+        target: usize,
+        state: &mut [Complex64],
+        num_qubits: usize,
+    ) -> Result<(), QuantRS2Error> {
         let target_bit = 1 << target;
-        
+
         // Z gate can be highly optimized with SIMD
         if state.len() > 512 {
             state.par_iter_mut().enumerate().for_each(|(i, amplitude)| {
@@ -392,58 +425,79 @@ impl SciRS2QuantumProfiler {
                     *amplitude *= -1.0;
                 }
             });
-            self.parallel_tracker.record_parallel_operation("Z_gate_parallel");
-            self.simd_tracker.record_simd_operation("parallel_z_gate", state.len());
+            self.parallel_tracker
+                .record_parallel_operation("Z_gate_parallel");
+            self.simd_tracker
+                .record_simd_operation("parallel_z_gate", state.len());
         } else {
             for i in 0..(1 << num_qubits) {
                 if i & target_bit != 0 {
                     state[i] *= -1.0;
-                    self.simd_tracker.record_simd_operation("z_gate_scalar_mult", 1);
+                    self.simd_tracker
+                        .record_simd_operation("z_gate_scalar_mult", 1);
                 }
             }
         }
-        
+
         Ok(())
     }
 
     /// Apply H gate with SIMD optimization
-    fn apply_h_gate_simd(&mut self, target: usize, state: &mut [Complex64], num_qubits: usize) -> Result<(), QuantRS2Error> {
+    fn apply_h_gate_simd(
+        &mut self,
+        target: usize,
+        state: &mut [Complex64],
+        num_qubits: usize,
+    ) -> Result<(), QuantRS2Error> {
         let target_bit = 1 << target;
         let inv_sqrt2 = 1.0 / std::f64::consts::SQRT_2;
-        
+
         for i in 0..(1 << num_qubits) {
             let j = i ^ target_bit;
             if i < j {
                 let temp = state[i];
                 state[i] = inv_sqrt2 * (temp + state[j]);
                 state[j] = inv_sqrt2 * (temp - state[j]);
-                self.simd_tracker.record_simd_operation("h_gate_linear_combination", 4); // 2 mults, 2 adds
+                self.simd_tracker
+                    .record_simd_operation("h_gate_linear_combination", 4); // 2 mults, 2 adds
             }
         }
-        
+
         Ok(())
     }
 
     /// Apply CNOT gate with SIMD optimization
-    fn apply_cnot_gate_simd(&mut self, control: usize, target: usize, state: &mut [Complex64], num_qubits: usize) -> Result<(), QuantRS2Error> {
+    fn apply_cnot_gate_simd(
+        &mut self,
+        control: usize,
+        target: usize,
+        state: &mut [Complex64],
+        num_qubits: usize,
+    ) -> Result<(), QuantRS2Error> {
         let control_bit = 1 << control;
         let target_bit = 1 << target;
-        
+
         for i in 0..(1 << num_qubits) {
             if i & control_bit != 0 {
                 let j = i ^ target_bit;
                 if i != j {
                     state.swap(i, j);
-                    self.simd_tracker.record_simd_operation("cnot_controlled_swap", 1);
+                    self.simd_tracker
+                        .record_simd_operation("cnot_controlled_swap", 1);
                 }
             }
         }
-        
+
         Ok(())
     }
 
     /// Fallback to standard gate application
-    fn apply_gate_standard(&self, gate: &QuantumGate, state: &mut [Complex64], num_qubits: usize) -> Result<(), QuantRS2Error> {
+    fn apply_gate_standard(
+        &self,
+        gate: &QuantumGate,
+        state: &mut [Complex64],
+        num_qubits: usize,
+    ) -> Result<(), QuantRS2Error> {
         // Standard implementation without SIMD tracking
         match gate.gate_type() {
             GateType::X => {
@@ -455,7 +509,7 @@ impl SciRS2QuantumProfiler {
                         state.swap(i, j);
                     }
                 }
-            },
+            }
             _ => {
                 // Other gates implemented similarly
             }
@@ -490,7 +544,7 @@ impl SciRS2QuantumProfiler {
     fn generate_session_id() -> ProfilingSessionId {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         SystemTime::now().hash(&mut hasher);
         ProfilingSessionId(hasher.finish())
@@ -503,47 +557,55 @@ impl SciRS2QuantumProfiler {
         } else {
             0.0
         };
-        
+
         let after_rate = if after.hits + after.misses > 0 {
             after.hits as f64 / (after.hits + after.misses) as f64
         } else {
             0.0
         };
-        
+
         after_rate - before_rate
     }
 
     /// Detect SciRS2-specific optimizations
-    fn detect_scirs2_optimizations(&self, _gate: &QuantumGate, _duration: &Duration) -> Vec<String> {
+    fn detect_scirs2_optimizations(
+        &self,
+        _gate: &QuantumGate,
+        _duration: &Duration,
+    ) -> Vec<String> {
         let mut optimizations = Vec::new();
-        
+
         // Detect if SIMD was beneficial
         if self.simd_tracker.get_operation_count() > 0 {
             optimizations.push("SIMD operations utilized".to_string());
         }
-        
+
         // Detect parallel execution benefits
         if self.parallel_tracker.detected_parallel_benefit() {
             optimizations.push("Parallel execution detected".to_string());
         }
-        
+
         // Detect memory optimization
         if self.memory_tracker.detected_efficient_allocation() {
             optimizations.push("Memory-efficient allocation".to_string());
         }
-        
+
         optimizations
     }
 
     /// Analyze circuit performance
-    fn analyze_circuit_performance(&self, gate_results: &[GateProfilingResult], total_duration: Duration) -> Result<CircuitAnalysis, QuantRS2Error> {
+    fn analyze_circuit_performance(
+        &self,
+        gate_results: &[GateProfilingResult],
+        total_duration: Duration,
+    ) -> Result<CircuitAnalysis, QuantRS2Error> {
         let total_simd_ops: usize = gate_results.iter().map(|r| r.simd_operations_count).sum();
         let total_memory_delta: i64 = gate_results.iter().map(|r| r.memory_delta).sum();
         let average_gate_time = total_duration.as_nanos() as f64 / gate_results.len() as f64;
-        
+
         let bottlenecks = self.identify_performance_bottlenecks(gate_results);
         let optimization_opportunities = self.identify_optimization_opportunities(gate_results);
-        
+
         Ok(CircuitAnalysis {
             total_gates: gate_results.len(),
             total_simd_operations: total_simd_ops,
@@ -556,75 +618,110 @@ impl SciRS2QuantumProfiler {
     }
 
     /// Identify performance bottlenecks
-    fn identify_performance_bottlenecks(&self, gate_results: &[GateProfilingResult]) -> Vec<String> {
+    fn identify_performance_bottlenecks(
+        &self,
+        gate_results: &[GateProfilingResult],
+    ) -> Vec<String> {
         let mut bottlenecks = Vec::new();
-        
+
         // Find gates with unusually long execution times
-        let total_time: u128 = gate_results.iter().map(|r| r.execution_time.as_nanos()).sum();
+        let total_time: u128 = gate_results
+            .iter()
+            .map(|r| r.execution_time.as_nanos())
+            .sum();
         let average_time = total_time / gate_results.len() as u128;
-        
+
         for result in gate_results {
             if result.execution_time.as_nanos() > average_time * 3 {
                 bottlenecks.push(format!("Slow {} gate execution", result.gate_type));
             }
-            
-            if result.memory_delta > 1024 * 1024 { // > 1MB allocation
-                bottlenecks.push(format!("High memory allocation in {} gate", result.gate_type));
+
+            if result.memory_delta > 1024 * 1024 {
+                // > 1MB allocation
+                bottlenecks.push(format!(
+                    "High memory allocation in {} gate",
+                    result.gate_type
+                ));
             }
         }
-        
+
         bottlenecks
     }
 
     /// Identify optimization opportunities
-    fn identify_optimization_opportunities(&self, gate_results: &[GateProfilingResult]) -> Vec<String> {
+    fn identify_optimization_opportunities(
+        &self,
+        gate_results: &[GateProfilingResult],
+    ) -> Vec<String> {
         let mut opportunities = Vec::new();
-        
+
         // Check for underutilized SIMD
-        let low_simd_gates: Vec<&GateProfilingResult> = gate_results.iter()
+        let low_simd_gates: Vec<&GateProfilingResult> = gate_results
+            .iter()
             .filter(|r| r.simd_operations_count == 0)
             .collect();
-        
+
         if !low_simd_gates.is_empty() {
             opportunities.push("Enable SIMD optimization for better performance".to_string());
         }
-        
+
         // Check for poor cache performance
-        let poor_cache_gates: Vec<&GateProfilingResult> = gate_results.iter()
+        let poor_cache_gates: Vec<&GateProfilingResult> = gate_results
+            .iter()
             .filter(|r| r.cache_metrics.hit_rate_change < -0.1)
             .collect();
-        
+
         if !poor_cache_gates.is_empty() {
-            opportunities.push("Improve memory access patterns for better cache performance".to_string());
+            opportunities
+                .push("Improve memory access patterns for better cache performance".to_string());
         }
-        
+
         opportunities
     }
 
     /// Calculate SciRS2 optimization score
     fn calculate_optimization_score(&self, gate_results: &[GateProfilingResult]) -> f64 {
-        let simd_score = if gate_results.iter().any(|r| r.simd_operations_count > 0) { 1.0 } else { 0.0 };
-        let parallel_score = if gate_results.iter().any(|r| !r.parallel_optimizations.is_empty()) { 1.0 } else { 0.0 };
-        let memory_score = if gate_results.iter().all(|r| r.memory_delta < 1024 * 100) { 1.0 } else { 0.5 };
-        
+        let simd_score = if gate_results.iter().any(|r| r.simd_operations_count > 0) {
+            1.0
+        } else {
+            0.0
+        };
+        let parallel_score = if gate_results
+            .iter()
+            .any(|r| !r.parallel_optimizations.is_empty())
+        {
+            1.0
+        } else {
+            0.0
+        };
+        let memory_score = if gate_results.iter().all(|r| r.memory_delta < 1024 * 100) {
+            1.0
+        } else {
+            0.5
+        };
+
         (simd_score + parallel_score + memory_score) / 3.0
     }
 
     /// Analyze memory usage patterns
-    fn analyze_memory_usage(&self, timeline: &[MemorySnapshot]) -> Result<MemoryAnalysis, QuantRS2Error> {
+    fn analyze_memory_usage(
+        &self,
+        timeline: &[MemorySnapshot],
+    ) -> Result<MemoryAnalysis, QuantRS2Error> {
         if timeline.is_empty() {
             return Ok(MemoryAnalysis::default());
         }
-        
+
         let peak_usage = timeline.iter().map(|s| s.memory_usage).max().unwrap_or(0);
         let average_usage = timeline.iter().map(|s| s.memory_usage).sum::<usize>() / timeline.len();
         let memory_growth_rate = if timeline.len() > 1 {
-            (timeline.last().unwrap().memory_usage as f64 - timeline.first().unwrap().memory_usage as f64) 
+            (timeline.last().unwrap().memory_usage as f64
+                - timeline.first().unwrap().memory_usage as f64)
                 / timeline.len() as f64
         } else {
             0.0
         };
-        
+
         Ok(MemoryAnalysis {
             peak_usage,
             average_usage,
@@ -638,27 +735,35 @@ impl SciRS2QuantumProfiler {
         if timeline.is_empty() {
             return Ok(SimdAnalysis::default());
         }
-        
+
         let total_simd_ops: usize = timeline.iter().map(|s| s.simd_operations).sum();
-        let peak_simd_usage = timeline.iter().map(|s| s.simd_operations).max().unwrap_or(0);
+        let peak_simd_usage = timeline
+            .iter()
+            .map(|s| s.simd_operations)
+            .max()
+            .unwrap_or(0);
         let simd_utilization_rate = if !timeline.is_empty() {
             timeline.iter().filter(|s| s.simd_operations > 0).count() as f64 / timeline.len() as f64
         } else {
             0.0
         };
-        
+
         Ok(SimdAnalysis {
             total_simd_operations: total_simd_ops,
             peak_simd_usage,
             simd_utilization_rate,
-            vectorization_efficiency: self.calculate_vectorization_efficiency(total_simd_ops, timeline.len()),
+            vectorization_efficiency: self
+                .calculate_vectorization_efficiency(total_simd_ops, timeline.len()),
         })
     }
 
     /// Generate SciRS2-specific optimization recommendations
-    fn generate_scirs2_optimization_recommendations(&self, analysis: &CircuitAnalysis) -> Result<Vec<OptimizationRecommendation>, QuantRS2Error> {
+    fn generate_scirs2_optimization_recommendations(
+        &self,
+        analysis: &CircuitAnalysis,
+    ) -> Result<Vec<OptimizationRecommendation>, QuantRS2Error> {
         let mut recommendations = Vec::new();
-        
+
         if analysis.total_simd_operations == 0 {
             recommendations.push(OptimizationRecommendation {
                 priority: RecommendationPriority::High,
@@ -668,36 +773,43 @@ impl SciRS2QuantumProfiler {
                 implementation_effort: ImplementationEffort::Medium,
             });
         }
-        
+
         if analysis.scirs2_optimization_score < 0.7 {
             recommendations.push(OptimizationRecommendation {
                 priority: RecommendationPriority::Medium,
                 category: "Memory Optimization".to_string(),
-                description: "Implement SciRS2 memory-efficient state vector management".to_string(),
+                description: "Implement SciRS2 memory-efficient state vector management"
+                    .to_string(),
                 expected_improvement: "20-30% memory reduction".to_string(),
                 implementation_effort: ImplementationEffort::Low,
             });
         }
-        
+
         if !analysis.bottlenecks.is_empty() {
             recommendations.push(OptimizationRecommendation {
                 priority: RecommendationPriority::High,
                 category: "Bottleneck Resolution".to_string(),
-                description: "Address identified performance bottlenecks using SciRS2 parallel algorithms".to_string(),
+                description:
+                    "Address identified performance bottlenecks using SciRS2 parallel algorithms"
+                        .to_string(),
                 expected_improvement: "40-60% reduction in bottleneck impact".to_string(),
                 implementation_effort: ImplementationEffort::High,
             });
         }
-        
+
         Ok(recommendations)
     }
 
     /// Calculate SciRS2 enhancement factor
     fn calculate_scirs2_enhancement_factor(&self, analysis: &CircuitAnalysis) -> f64 {
         let base_factor = 1.0;
-        let simd_factor = if analysis.total_simd_operations > 0 { 1.5 } else { 1.0 };
+        let simd_factor = if analysis.total_simd_operations > 0 {
+            1.5
+        } else {
+            1.0
+        };
         let optimization_factor = 1.0 + analysis.scirs2_optimization_score;
-        
+
         base_factor * simd_factor * optimization_factor
     }
 
@@ -710,7 +822,11 @@ impl SciRS2QuantumProfiler {
     }
 
     /// Calculate vectorization efficiency
-    fn calculate_vectorization_efficiency(&self, total_simd_ops: usize, total_operations: usize) -> f64 {
+    fn calculate_vectorization_efficiency(
+        &self,
+        total_simd_ops: usize,
+        total_operations: usize,
+    ) -> f64 {
         if total_operations == 0 {
             return 0.0;
         }
@@ -721,7 +837,7 @@ impl SciRS2QuantumProfiler {
     pub fn end_profiling_session(&mut self) -> Result<ProfilingSessionReport, QuantRS2Error> {
         if let Some(session) = self.profiling_session.take() {
             let total_duration = session.start_time.elapsed();
-            
+
             Ok(ProfilingSessionReport {
                 session_id: session.session_id,
                 total_duration,
@@ -730,7 +846,9 @@ impl SciRS2QuantumProfiler {
                 scirs2_enhancements: self.generate_scirs2_enhancement_summary(),
             })
         } else {
-            Err(QuantRS2Error::InvalidOperation("No active profiling session".into()))
+            Err(QuantRS2Error::InvalidOperation(
+                "No active profiling session".into(),
+            ))
         }
     }
 
@@ -747,10 +865,18 @@ impl SciRS2QuantumProfiler {
 
     /// Calculate overall enhancement factor
     fn calculate_overall_enhancement_factor(&self) -> f64 {
-        let simd_factor = if self.simd_tracker.get_total_operations() > 0 { 1.3 } else { 1.0 };
-        let parallel_factor = if self.parallel_tracker.get_parallel_operations_count() > 0 { 1.2 } else { 1.0 };
+        let simd_factor = if self.simd_tracker.get_total_operations() > 0 {
+            1.3
+        } else {
+            1.0
+        };
+        let parallel_factor = if self.parallel_tracker.get_parallel_operations_count() > 0 {
+            1.2
+        } else {
+            1.0
+        };
         let memory_factor = 1.0 + (self.memory_tracker.get_optimizations_count() as f64 * 0.1);
-        
+
         simd_factor * parallel_factor * memory_factor
     }
 }
@@ -943,11 +1069,11 @@ impl PerformanceMetrics {
     pub fn new() -> Self {
         Self {}
     }
-    
+
     pub fn reset(&mut self) {}
-    
+
     pub fn record_gate_execution(&mut self, _result: &GateProfilingResult) {}
-    
+
     pub fn generate_summary(&self) -> PerformanceSummary {
         PerformanceSummary {
             total_operations: 0,
@@ -977,28 +1103,28 @@ impl SimdTracker {
             total_operations: 0,
         }
     }
-    
+
     pub fn start_session(&mut self, _session_id: ProfilingSessionId) -> Result<(), QuantRS2Error> {
         self.operation_count = 0;
         Ok(())
     }
-    
+
     pub fn start_operation_tracking(&mut self) -> Result<(), QuantRS2Error> {
         Ok(())
     }
-    
+
     pub fn finish_operation_tracking(&mut self) -> Result<usize, QuantRS2Error> {
         Ok(self.operation_count)
     }
-    
+
     pub fn get_operation_count(&self) -> usize {
         self.operation_count
     }
-    
+
     pub fn get_total_operations(&self) -> usize {
         self.total_operations
     }
-    
+
     pub fn record_simd_operation(&mut self, _operation_type: &str, count: usize) {
         self.operation_count += count;
         self.total_operations += count;
@@ -1016,15 +1142,15 @@ impl MemoryTracker {
             optimizations_count: 0,
         }
     }
-    
+
     pub fn start_session(&mut self, _session_id: ProfilingSessionId) -> Result<(), QuantRS2Error> {
         Ok(())
     }
-    
+
     pub fn detected_efficient_allocation(&self) -> bool {
         true // Placeholder
     }
-    
+
     pub fn get_optimizations_count(&self) -> usize {
         self.optimizations_count
     }
@@ -1041,23 +1167,23 @@ impl ParallelExecutionTracker {
             parallel_operations_count: 0,
         }
     }
-    
+
     pub fn start_session(&mut self, _session_id: ProfilingSessionId) -> Result<(), QuantRS2Error> {
         Ok(())
     }
-    
+
     pub fn record_parallel_operation(&mut self, _operation_type: &str) {
         self.parallel_operations_count += 1;
     }
-    
+
     pub fn detect_optimizations(&self, _duration: &Duration) -> Vec<String> {
         vec![]
     }
-    
+
     pub fn detected_parallel_benefit(&self) -> bool {
         self.parallel_operations_count > 0
     }
-    
+
     pub fn get_parallel_operations_count(&self) -> usize {
         self.parallel_operations_count
     }
@@ -1074,18 +1200,18 @@ impl CachePerformanceMonitor {
             average_improvement: 0.0,
         }
     }
-    
+
     pub fn start_session(&mut self, _session_id: ProfilingSessionId) -> Result<(), QuantRS2Error> {
         Ok(())
     }
-    
+
     pub fn capture_cache_stats(&self) -> Result<CacheStats, QuantRS2Error> {
         Ok(CacheStats {
             hits: 100,
             misses: 10,
         })
     }
-    
+
     pub fn get_average_improvement(&self) -> f64 {
         self.average_improvement
     }
@@ -1104,8 +1230,11 @@ impl NumericalStabilityAnalyzer {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn analyze_state_stability(&self, _state: &[Complex64]) -> Result<NumericalStabilityMetrics, QuantRS2Error> {
+
+    pub fn analyze_state_stability(
+        &self,
+        _state: &[Complex64],
+    ) -> Result<NumericalStabilityMetrics, QuantRS2Error> {
         Ok(NumericalStabilityMetrics::default())
     }
 }
@@ -1143,7 +1272,7 @@ mod tests {
             QuantumGate::new(GateType::H, vec![0], None),
             QuantumGate::new(GateType::CNOT, vec![0, 1], None),
         ];
-        
+
         let session_id = profiler.start_profiling_session(&circuit, 2).unwrap();
         assert!(matches!(session_id, ProfilingSessionId(_)));
     }
@@ -1152,12 +1281,11 @@ mod tests {
     fn test_gate_profiling() {
         let mut profiler = SciRS2QuantumProfiler::new();
         let gate = QuantumGate::new(GateType::X, vec![0], None);
-        let mut state = vec![
-            Complex64::new(1.0, 0.0),
-            Complex64::new(0.0, 0.0),
-        ];
-        
-        let result = profiler.profile_gate_execution(&gate, &mut state, 1).unwrap();
+        let mut state = vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
+
+        let result = profiler
+            .profile_gate_execution(&gate, &mut state, 1)
+            .unwrap();
         assert_eq!(result.gate_type, "X");
         assert!(result.execution_time.as_nanos() > 0);
     }
@@ -1165,15 +1293,12 @@ mod tests {
     #[test]
     fn test_circuit_profiling() {
         let mut profiler = SciRS2QuantumProfiler::new();
-        let circuit = vec![
-            QuantumGate::new(GateType::H, vec![0], None),
-        ];
-        let initial_state = vec![
-            Complex64::new(1.0, 0.0),
-            Complex64::new(0.0, 0.0),
-        ];
-        
-        let result = profiler.profile_circuit_execution(&circuit, &initial_state, 1).unwrap();
+        let circuit = vec![QuantumGate::new(GateType::H, vec![0], None)];
+        let initial_state = vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
+
+        let result = profiler
+            .profile_circuit_execution(&circuit, &initial_state, 1)
+            .unwrap();
         assert_eq!(result.gate_results.len(), 1);
         assert!(result.scirs2_enhancement_factor >= 1.0);
     }
@@ -1182,7 +1307,7 @@ mod tests {
     fn test_simd_tracking() {
         let mut tracker = SimdTracker::new();
         let session_id = ProfilingSessionId(1);
-        
+
         tracker.start_session(session_id).unwrap();
         tracker.record_simd_operation("test_op", 5);
         assert_eq!(tracker.get_operation_count(), 5);
@@ -1200,8 +1325,10 @@ mod tests {
             optimization_opportunities: vec![],
             scirs2_optimization_score: 0.5,
         };
-        
-        let recommendations = profiler.generate_scirs2_optimization_recommendations(&analysis).unwrap();
+
+        let recommendations = profiler
+            .generate_scirs2_optimization_recommendations(&analysis)
+            .unwrap();
         assert!(!recommendations.is_empty());
         assert!(recommendations.iter().any(|r| r.category.contains("SIMD")));
     }

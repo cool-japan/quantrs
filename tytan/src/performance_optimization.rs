@@ -6,11 +6,11 @@
 #![allow(dead_code)]
 
 use ndarray::{Array1, Array2, ArrayView1};
+use quantrs2_core::platform::PlatformCapabilities;
 #[cfg(feature = "parallel")]
 use scirs2_core::parallel_ops::*;
 use scirs2_core::simd_ops;
 use std::sync::Arc;
-use quantrs2_core::platform::PlatformCapabilities;
 
 /// Optimized QUBO evaluation
 pub struct OptimizedQUBOEvaluator {
@@ -91,10 +91,10 @@ impl OptimizedQUBOEvaluator {
         let x_float: Vec<f64> = x.iter().map(|&v| v as f64).collect();
         let x_view = ArrayView1::from(&x_float);
         let cache_view = ArrayView1::from(&self.cache[..n]);
-        
+
         // Use SciRS2 SIMD operations for element-wise multiplication
         let products = simd_ops::SimdUnifiedOps::simd_mul(&x_view, &cache_view);
-        
+
         // Sum the products using SIMD operations
         energy = products.sum();
 
@@ -106,16 +106,17 @@ impl OptimizedQUBOEvaluator {
                 if row_start < n {
                     let row_len = n - row_start;
                     let x_subset = ArrayView1::from(&x_float[row_start..n]);
-                    
+
                     // Create a view of the quadratic coefficients for this row
                     let mut qubo_row = vec![0.0; row_len];
                     for (j, coeff) in qubo_row.iter_mut().enumerate() {
                         *coeff = self.qubo[[i, row_start + j]];
                     }
                     let qubo_row_view = ArrayView1::from(&qubo_row);
-                    
+
                     // Multiply and sum using SIMD
-                    let row_products = simd_ops::SimdUnifiedOps::simd_mul(&x_subset, &qubo_row_view);
+                    let row_products =
+                        simd_ops::SimdUnifiedOps::simd_mul(&x_subset, &qubo_row_view);
                     energy += 2.0 * row_products.sum();
                 }
             }

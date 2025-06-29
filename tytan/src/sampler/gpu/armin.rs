@@ -10,7 +10,11 @@ use super::super::evaluate_qubo_energy;
 use super::super::{SampleResult, Sampler, SamplerError, SamplerResult};
 
 #[cfg(all(feature = "gpu", feature = "dwave"))]
-use ocl::{self, Context, Program, DeviceType, enums::{DeviceInfo, DeviceInfoResult}};
+use ocl::{
+    self,
+    enums::{DeviceInfo, DeviceInfoResult},
+    Context, DeviceType, Program,
+};
 
 /// GPU-accelerated Sampler (Armin)
 ///

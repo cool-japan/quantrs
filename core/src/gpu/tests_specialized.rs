@@ -22,14 +22,14 @@ mod tests {
     fn test_adaptive_simd_feature_detection() {
         let result = initialize_adaptive_simd();
         assert!(result.is_ok(), "Failed to initialize adaptive SIMD: {:?}", result);
-        
+
         let report = get_adaptive_performance_report();
         assert!(report.is_ok(), "Failed to get performance report: {:?}", report);
-        
+
         let perf_report = report.unwrap();
         println!("CPU Features: {:?}", perf_report.cpu_features);
         println!("Selected SIMD Variant: {:?}", perf_report.selected_variant);
-        
+
         // Basic sanity checks
         assert!(perf_report.cpu_features.num_cores >= 1);
         assert!(perf_report.cpu_features.l1_cache_size > 0);
@@ -39,12 +39,12 @@ mod tests {
     #[test]
     fn test_adaptive_single_qubit_gate() {
         let _ = initialize_adaptive_simd();
-        
+
         let mut state = vec![
             Complex64::new(1.0, 0.0),
             Complex64::new(0.0, 0.0),
         ];
-        
+
         // Hadamard gate matrix
         let hadamard_matrix = [
             Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
@@ -52,15 +52,15 @@ mod tests {
             Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
             Complex64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
         ];
-        
+
         let result = apply_single_qubit_adaptive(&mut state, 0, &hadamard_matrix);
         assert!(result.is_ok(), "Failed to apply adaptive single-qubit gate: {:?}", result);
-        
+
         // Verify the state is in superposition
         let expected_amplitude = 1.0 / 2.0_f64.sqrt();
         assert!((state[0].re - expected_amplitude).abs() < 1e-10);
         assert!((state[1].re - expected_amplitude).abs() < 1e-10);
-        
+
         println!("Adaptive single-qubit gate test passed");
     }
 
@@ -75,10 +75,10 @@ mod tests {
             coalescing_threshold: 32,
             use_mixed_precision: true,
         };
-        
+
         let kernels = SpecializedGpuKernels::new(config);
         assert!(kernels.is_ok(), "Failed to create specialized GPU kernels: {:?}", kernels);
-        
+
         println!("Specialized GPU kernels created successfully");
     }
 
@@ -87,14 +87,14 @@ mod tests {
     fn test_holonomic_gate_application() {
         let config = OptimizationConfig::default();
         let kernels = SpecializedGpuKernels::new(config).unwrap();
-        
+
         let mut state = vec![
             Complex64::new(1.0, 0.0),
             Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0),
         ];
-        
+
         // Mock holonomy matrix (2x2 for single qubit)
         let holonomy_matrix = vec![
             Complex64::new(1.0, 0.0),
@@ -102,12 +102,12 @@ mod tests {
             Complex64::new(0.0, 0.0),
             Complex64::new(1.0, 0.0),
         ];
-        
+
         let target_qubits = vec![QubitId(0)];
-        
+
         let result = kernels.apply_holonomic_gate(&mut state, &holonomy_matrix, &target_qubits);
         assert!(result.is_ok(), "Failed to apply holonomic gate: {:?}", result);
-        
+
         println!("Holonomic gate application test passed");
     }
 
@@ -116,18 +116,18 @@ mod tests {
     fn test_post_quantum_hash_gate() {
         let config = OptimizationConfig::default();
         let kernels = SpecializedGpuKernels::new(config).unwrap();
-        
+
         let mut state = vec![Complex64::new(1.0, 0.0); 8];
         let hash_circuit = vec![Complex64::new(0.5, 0.5); 16];
-        
+
         let compression_type = PostQuantumCompressionType::QuantumSponge {
             rate: 4,
             capacity: 4,
         };
-        
+
         let result = kernels.apply_post_quantum_hash_gate(&mut state, &hash_circuit, compression_type);
         assert!(result.is_ok(), "Failed to apply post-quantum hash gate: {:?}", result);
-        
+
         println!("Post-quantum hash gate test passed");
     }
 
@@ -136,13 +136,13 @@ mod tests {
     fn test_quantum_ml_attention() {
         let config = OptimizationConfig::default();
         let kernels = SpecializedGpuKernels::new(config).unwrap();
-        
+
         let mut state = vec![Complex64::new(0.5, 0.5); 16];
         let query_params = vec![Complex64::new(1.0, 0.0); 8];
         let key_params = vec![Complex64::new(0.0, 1.0); 8];
         let value_params = vec![Complex64::new(0.5, 0.5); 8];
         let num_heads = 2;
-        
+
         let result = kernels.apply_quantum_ml_attention(
             &mut state,
             &query_params,
@@ -150,9 +150,9 @@ mod tests {
             &value_params,
             num_heads,
         );
-        
+
         assert!(result.is_ok(), "Failed to apply quantum ML attention: {:?}", result);
-        
+
         println!("Quantum ML attention test passed");
     }
 
@@ -165,19 +165,19 @@ mod tests {
             ..Default::default()
         };
         let kernels = SpecializedGpuKernels::new(config).unwrap();
-        
+
         let mut state = vec![Complex64::new(1.0, 0.0); 4];
-        
+
         // Create a sequence of gates for fusion
         let gates: Vec<Box<dyn GateOp>> = vec![
             Box::new(Hadamard { target: QubitId(0) }),
             Box::new(PauliX { target: QubitId(1) }),
             Box::new(Hadamard { target: QubitId(0) }),
         ];
-        
+
         let result = kernels.apply_fused_gate_sequence(&mut state, &gates);
         assert!(result.is_ok(), "Failed to apply fused gate sequence: {:?}", result);
-        
+
         println!("Gate fusion test passed");
     }
 
@@ -186,14 +186,14 @@ mod tests {
     fn test_performance_reporting() {
         let config = OptimizationConfig::default();
         let kernels = SpecializedGpuKernels::new(config).unwrap();
-        
+
         let report = kernels.get_performance_report();
-        
+
         // Verify report structure
         assert!(report.cache_hit_rate >= 0.0 && report.cache_hit_rate <= 1.0);
         assert!(report.tensor_core_utilization >= 0.0 && report.tensor_core_utilization <= 1.0);
         assert!(report.memory_bandwidth_utilization >= 0.0);
-        
+
         println!("Performance report: {:?}", report);
         println!("Performance reporting test passed");
     }
@@ -255,13 +255,13 @@ mod tests {
                 SimdVariant::Sse4,
             ),
         ];
-        
+
         for (features, expected_variant) in test_cases {
             let selected_variant = crate::gpu::adaptive_simd::AdaptiveSimdDispatcher::select_optimal_variant(&features);
-            assert_eq!(selected_variant, expected_variant, 
+            assert_eq!(selected_variant, expected_variant,
                       "Unexpected SIMD variant for features: {:?}", features);
         }
-        
+
         println!("SIMD variant selection test passed");
     }
 
@@ -269,10 +269,10 @@ mod tests {
     #[test]
     fn benchmark_adaptive_simd_performance() {
         let _ = initialize_adaptive_simd();
-        
+
         let sizes = vec![64, 256, 1024, 4096];
         let num_trials = 10;
-        
+
         for size in sizes {
             let mut state = vec![Complex64::new(1.0, 0.0); size];
             let matrix = [
@@ -281,17 +281,17 @@ mod tests {
                 Complex64::new(0.7071, 0.0),
                 Complex64::new(-0.7071, 0.0),
             ];
-            
+
             let start_time = std::time::Instant::now();
-            
+
             for _ in 0..num_trials {
                 let _ = apply_single_qubit_adaptive(&mut state, 0, &matrix);
             }
-            
+
             let avg_time = start_time.elapsed().as_nanos() as f64 / num_trials as f64;
             println!("Size {}: Average time = {:.2} ns", size, avg_time);
         }
-        
+
         println!("Adaptive SIMD performance benchmark completed");
     }
 
@@ -300,23 +300,23 @@ mod tests {
     fn test_error_handling() {
         let config = OptimizationConfig::default();
         let kernels = SpecializedGpuKernels::new(config).unwrap();
-        
+
         // Test with empty state
         let mut empty_state = vec![];
         let matrix = [Complex64::new(1.0, 0.0); 4];
         let target_qubits = vec![QubitId(0)];
-        
+
         let result = kernels.apply_holonomic_gate(&mut empty_state, &matrix, &target_qubits);
         // Should handle gracefully without panicking
-        
+
         // Test with mismatched dimensions
         let mut small_state = vec![Complex64::new(1.0, 0.0); 2];
         let large_matrix = vec![Complex64::new(1.0, 0.0); 16];
         let multi_qubits = vec![QubitId(0), QubitId(1)];
-        
+
         let result = kernels.apply_holonomic_gate(&mut small_state, &large_matrix, &multi_qubits);
         // Should handle gracefully
-        
+
         println!("Error handling test completed");
     }
 
@@ -326,11 +326,11 @@ mod tests {
         let _ = initialize_adaptive_simd();
         let config = OptimizationConfig::default();
         let kernels = SpecializedGpuKernels::new(config).unwrap();
-        
+
         // Create a 3-qubit quantum circuit state
         let mut state = vec![Complex64::new(0.0, 0.0); 8];
         state[0] = Complex64::new(1.0, 0.0); // |000⟩
-        
+
         // Apply a sequence of gates
         let h_matrix = [
             Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
@@ -338,25 +338,25 @@ mod tests {
             Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
             Complex64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
         ];
-        
+
         // Apply Hadamard to each qubit
         for qubit in 0..3 {
             let result = apply_single_qubit_adaptive(&mut state, qubit, &h_matrix);
             assert!(result.is_ok(), "Failed to apply Hadamard to qubit {}: {:?}", qubit, result);
         }
-        
+
         // Verify uniform superposition
         let expected_amplitude = 1.0 / (8.0_f64.sqrt());
         for (i, amplitude) in state.iter().enumerate() {
             assert!((amplitude.re - expected_amplitude).abs() < 1e-10,
-                   "Incorrect amplitude at position {}: expected {}, got {}", 
+                   "Incorrect amplitude at position {}: expected {}, got {}",
                    i, expected_amplitude, amplitude.re);
         }
-        
+
         // Calculate total probability
         let total_prob: f64 = state.iter().map(|c| c.norm_sqr()).sum();
         assert!((total_prob - 1.0).abs() < 1e-10, "Total probability not normalized: {}", total_prob);
-        
+
         println!("Integration test with quantum circuit passed");
     }
 }

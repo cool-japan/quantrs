@@ -436,7 +436,7 @@ fn chain_of_thought_demo() -> Result<()> {
     let mut model = QuantumLLM::new(config)?;
 
     let reasoning_problems = vec![
-        ("Mathematical Problem", 
+        ("Mathematical Problem",
          "If a quantum computer can factor a 2048-bit number in polynomial time, how does this compare to classical computers?"),
         ("Physics Problem",
          "Explain how quantum entanglement enables quantum teleportation step by step."),

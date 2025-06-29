@@ -45,13 +45,13 @@ impl NeuralArchitectureSearch {
     fn differentiable_search(&mut self, problem_features: &ProblemFeatures) -> Result<ArchitectureCandidate, String> {
         // Simplified differentiable NAS implementation
         let candidate = self.generate_random_architecture(problem_features)?;
-        
+
         // Evaluate and update
         let performance = self.performance_predictor.predict(&candidate.architecture)?;
         let mut improved_candidate = candidate;
         improved_candidate.estimated_performance = performance;
         improved_candidate.generation_method = GenerationMethod::GradientBased;
-        
+
         self.current_architectures.push(improved_candidate.clone());
         Ok(improved_candidate)
     }
@@ -64,16 +64,16 @@ impl NeuralArchitectureSearch {
 
         // Select parent architectures
         let parents = self.select_parents(2)?;
-        
+
         // Crossover and mutation
         let mut offspring = self.crossover(&parents[0], &parents[1])?;
         offspring = self.mutate(offspring)?;
-        
+
         // Evaluate
         let performance = self.performance_predictor.predict(&offspring.architecture)?;
         offspring.estimated_performance = performance;
         offspring.generation_method = GenerationMethod::Mutation;
-        
+
         self.current_architectures.push(offspring.clone());
         Ok(offspring)
     }
@@ -81,13 +81,13 @@ impl NeuralArchitectureSearch {
     fn rl_search(&mut self, problem_features: &ProblemFeatures) -> Result<ArchitectureCandidate, String> {
         // Simplified RL-based search
         let candidate = self.generate_random_architecture(problem_features)?;
-        
+
         // Apply RL policy (simplified)
         let performance = self.performance_predictor.predict(&candidate.architecture)?;
         let mut improved_candidate = candidate;
         improved_candidate.estimated_performance = performance;
         improved_candidate.generation_method = GenerationMethod::ReinforcementLearning;
-        
+
         self.current_architectures.push(improved_candidate.clone());
         Ok(improved_candidate)
     }
@@ -95,12 +95,12 @@ impl NeuralArchitectureSearch {
     fn bayesian_search(&mut self, problem_features: &ProblemFeatures) -> Result<ArchitectureCandidate, String> {
         // Simplified Bayesian optimization
         let candidate = self.generate_random_architecture(problem_features)?;
-        
+
         let performance = self.performance_predictor.predict(&candidate.architecture)?;
         let mut improved_candidate = candidate;
         improved_candidate.estimated_performance = performance;
         improved_candidate.generation_method = GenerationMethod::GradientBased;
-        
+
         self.current_architectures.push(improved_candidate.clone());
         Ok(improved_candidate)
     }
@@ -114,11 +114,11 @@ impl NeuralArchitectureSearch {
     fn progressive_search(&mut self, problem_features: &ProblemFeatures) -> Result<ArchitectureCandidate, String> {
         // Simplified progressive search
         let candidate = self.generate_random_architecture(problem_features)?;
-        
+
         let performance = self.performance_predictor.predict(&candidate.architecture)?;
         let mut improved_candidate = candidate;
         improved_candidate.estimated_performance = performance;
-        
+
         self.current_architectures.push(improved_candidate.clone());
         Ok(improved_candidate)
     }
@@ -130,7 +130,7 @@ impl NeuralArchitectureSearch {
         // Determine architecture size based on problem features
         let num_layers = rng.gen_range(self.search_space.num_layers_range.0..=self.search_space.num_layers_range.1);
         let input_dim = problem_features.size.min(512);
-        
+
         let mut layers = Vec::new();
         let mut current_dim = input_dim;
 
@@ -271,13 +271,13 @@ impl NeuralArchitectureSearch {
 
         candidate.generation_method = GenerationMethod::Mutation;
         candidate.id = format!("mutated_{}", Instant::now().elapsed().as_nanos());
-        
+
         Ok(candidate)
     }
 
     pub fn record_iteration(&mut self, iteration: SearchIteration) {
         self.search_history.push_back(iteration);
-        
+
         // Limit history size
         while self.search_history.len() > 1000 {
             self.search_history.pop_front();
@@ -368,21 +368,21 @@ impl PerformancePredictor {
         let total_params: f64 = architecture.layers.iter()
             .map(|l| (l.input_dim * l.output_dim) as f64)
             .sum();
-        
+
         // Simple heuristic: balance complexity and size
         let performance = (0.8 - complexity * 0.05).max(0.1) * (1.0 - (total_params / 1000000.0).min(0.5));
-        
+
         Ok(performance.max(0.1).min(1.0))
     }
 
     pub fn update(&mut self, architecture: ArchitectureSpec, performance: f64) {
         self.training_data.push((architecture, performance));
-        
+
         // Limit training data size
         while self.training_data.len() > 1000 {
             self.training_data.remove(0);
         }
-        
+
         // Update accuracy (simplified)
         if self.training_data.len() > 10 {
             self.accuracy = 0.85;
@@ -440,7 +440,7 @@ mod tests {
     fn test_architecture_generation() {
         let config = NeuralArchitectureSearchConfig::default();
         let nas = NeuralArchitectureSearch::new(config);
-        
+
         let features = ProblemFeatures {
             size: 100,
             density: 0.5,
@@ -449,10 +449,10 @@ mod tests {
             spectral_features: SpectralFeatures::default(),
             domain_features: HashMap::new(),
         };
-        
+
         let result = nas.generate_random_architecture(&features);
         assert!(result.is_ok());
-        
+
         let arch = result.unwrap();
         assert!(!arch.architecture.layers.is_empty());
         assert_eq!(arch.generation_method, GenerationMethod::Random);

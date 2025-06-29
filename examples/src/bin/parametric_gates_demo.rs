@@ -62,7 +62,8 @@ fn main() -> QuantRS2Result<()> {
         // Apply the bound gate directly
         // Convert Box<dyn ParametricGate> to Arc<dyn GateOp + Send + Sync>
         // Since ParametricGate extends GateOp, we need to convert the trait object
-        let gate_arc: Arc<dyn GateOp + Send + Sync> = Arc::from(bound_gate as Box<dyn GateOp + Send + Sync>);
+        let gate_arc: Arc<dyn GateOp + Send + Sync> =
+            Arc::from(bound_gate as Box<dyn GateOp + Send + Sync>);
         param_circuit.add_gate_arc(gate_arc)?;
 
         // Simulate the circuit

@@ -439,9 +439,9 @@ use quantrs2_ml::prelude::*;
 let mut qnn_builder = QNNBuilder::new(4) // 4 qubits
     .add_layer(QNNLayer::Embedding { rotation_gates: vec!["RY", "RZ"] })
     .add_layer(QNNLayer::Entangling { entangling_gate: "CNOT" })
-    .add_layer(QNNLayer::Parameterized { 
-        gates: vec!["RY", "RZ"], 
-        num_parameters: 8 
+    .add_layer(QNNLayer::Parameterized {
+        gates: vec!["RY", "RZ"],
+        num_parameters: 8
     });
 
 // Build the QNN
@@ -826,7 +826,7 @@ let config = TemplateConfig {
 
 // Create portfolio optimization model
 let mut portfolio_model = template_manager.create_model_from_template(
-    "Portfolio Optimization", 
+    "Portfolio Optimization",
     config
 )?;
 
@@ -961,9 +961,9 @@ use quantrs2_circuit::prelude::*;
 
 fn create_bell_state() -> Result<QuantumCircuit> {
     let mut circuit = QuantumCircuit::new(2);
-    
+
     // TODO: Add gates here
-    
+
     Ok(circuit)
 }
 "#
@@ -974,11 +974,11 @@ use quantrs2_circuit::prelude::*;
 
 fn create_bell_state() -> Result<QuantumCircuit> {
     let mut circuit = QuantumCircuit::new(2);
-    
+
     circuit.h(0);
     circuit.cnot(0, 1);
     circuit.measure_all();
-    
+
     Ok(circuit)
 }
 "#
@@ -1037,14 +1037,14 @@ fn train_qnn_classifier(X: &ArrayD<f64>, y: &ArrayD<f64>) -> Result<Box<dyn Quan
     let mut qnn_builder = QNNBuilder::new(4)
         .add_layer(QNNLayer::Embedding { rotation_gates: vec!["RY", "RZ"] })
         .add_layer(QNNLayer::Entangling { entangling_gate: "CNOT" })
-        .add_layer(QNNLayer::Parameterized { 
-            gates: vec!["RY", "RZ"], 
-            num_parameters: 8 
+        .add_layer(QNNLayer::Parameterized {
+            gates: vec!["RY", "RZ"],
+            num_parameters: 8
         });
-    
+
     let mut qnn = qnn_builder.build()?;
     qnn.train(X, y)?;
-    
+
     Ok(Box::new(qnn))
 }
 "#
@@ -1479,7 +1479,7 @@ mod tests {
 
         let good_solution = r#"
         use quantrs2_circuit::prelude::*;
-        
+
         fn create_bell_state() -> Result<QuantumCircuit> {
             let mut circuit = QuantumCircuit::new(2);
             circuit.h(0);

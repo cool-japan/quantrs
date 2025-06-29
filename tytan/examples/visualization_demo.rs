@@ -428,25 +428,25 @@ fn export_visualization_data(samples: &[SampleResult]) -> Result<(), Box<dyn std
 </head>
 <body>
     <h1>QuantRS2-Tytan Visualization Results</h1>
-    
+
     <h2>Energy Landscape</h2>
     <div class="info">
         <p>Energy landscape data has been exported to <code>energy_landscape.json</code></p>
         <p>Use your preferred plotting library to visualize the 2D projection.</p>
     </div>
-    
+
     <h2>Solution Distribution</h2>
     <div class="info">
         <p>Solution clustering and diversity analysis completed.</p>
         <p>Check the console output for detailed statistics.</p>
     </div>
-    
+
     <h2>Convergence Analysis</h2>
     <div class="info">
         <p>Convergence data exported to <code>convergence_data.json</code></p>
         <p>The optimization showed good convergence behavior.</p>
     </div>
-    
+
     <h2>Problem-Specific Visualization</h2>
     <div class="info">
         <p>Max-Cut solution exported to <code>max_cut_solution.json</code></p>

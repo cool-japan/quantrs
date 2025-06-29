@@ -5,7 +5,7 @@
 //! and advanced visualization using SciRS2's analysis capabilities.
 
 use crate::builder::Circuit;
-use crate::scirs2_integration::{SciRS2CircuitAnalyzer, AnalyzerConfig, GraphMetrics};
+use crate::scirs2_integration::{AnalyzerConfig, GraphMetrics, SciRS2CircuitAnalyzer};
 // StateVector is represented as Array1<Complex64>
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
@@ -1172,7 +1172,7 @@ impl<const N: usize> QuantumDebugger<N> {
     pub fn new(circuit: Circuit<N>) -> Self {
         let config = DebuggerConfig::default();
         let analyzer = SciRS2CircuitAnalyzer::with_config(AnalyzerConfig::default());
-        
+
         Self {
             circuit,
             execution_state: Arc::new(RwLock::new(ExecutionState {
@@ -1358,7 +1358,7 @@ impl<const N: usize> QuantumDebugger<N> {
     /// Execute next gate with debugging
     pub fn step_next(&mut self) -> QuantRS2Result<StepResult> {
         let start_time = Instant::now();
-        
+
         // Check if we're at a breakpoint
         if self.should_break()? {
             let mut state = self.execution_state.write().unwrap();
@@ -1473,14 +1473,23 @@ impl<const N: usize> QuantumDebugger<N> {
     }
 
     /// Add qubit breakpoint
-    pub fn add_qubit_breakpoint(&mut self, qubit: QubitId, condition: BreakpointCondition) -> QuantRS2Result<()> {
+    pub fn add_qubit_breakpoint(
+        &mut self,
+        qubit: QubitId,
+        condition: BreakpointCondition,
+    ) -> QuantRS2Result<()> {
         let mut breakpoints = self.breakpoints.write().unwrap();
         breakpoints.qubit_breakpoints.insert(qubit, condition);
         Ok(())
     }
 
     /// Add state breakpoint
-    pub fn add_state_breakpoint(&mut self, id: String, pattern: StatePattern, tolerance: f64) -> QuantRS2Result<()> {
+    pub fn add_state_breakpoint(
+        &mut self,
+        id: String,
+        pattern: StatePattern,
+        tolerance: f64,
+    ) -> QuantRS2Result<()> {
         let mut breakpoints = self.breakpoints.write().unwrap();
         breakpoints.state_breakpoints.push(StateBreakpoint {
             id,
@@ -1521,7 +1530,9 @@ impl<const N: usize> QuantumDebugger<N> {
             ExportFormat::JSON => self.export_json(path),
             ExportFormat::HTML => self.export_html(path),
             ExportFormat::CSV => self.export_csv(path),
-            _ => Err(QuantRS2Error::InvalidOperation("Unsupported export format".to_string())),
+            _ => Err(QuantRS2Error::InvalidOperation(
+                "Unsupported export format".to_string(),
+            )),
         }
     }
 
@@ -1546,9 +1557,12 @@ impl<const N: usize> QuantumDebugger<N> {
     fn should_break(&self) -> QuantRS2Result<bool> {
         let breakpoints = self.breakpoints.read().unwrap();
         let state = self.execution_state.read().unwrap();
-        
+
         // Check gate breakpoints
-        if breakpoints.gate_breakpoints.contains(&state.current_gate_index) {
+        if breakpoints
+            .gate_breakpoints
+            .contains(&state.current_gate_index)
+        {
             return Ok(true);
         }
 
@@ -1561,7 +1575,10 @@ impl<const N: usize> QuantumDebugger<N> {
         Ok(())
     }
 
-    fn execute_gate_with_monitoring(&mut self, _gate_index: usize) -> QuantRS2Result<GateExecutionResult> {
+    fn execute_gate_with_monitoring(
+        &mut self,
+        _gate_index: usize,
+    ) -> QuantRS2Result<GateExecutionResult> {
         // Execute gate with comprehensive monitoring
         Ok(GateExecutionResult {
             success: true,
@@ -1571,7 +1588,11 @@ impl<const N: usize> QuantumDebugger<N> {
         })
     }
 
-    fn post_execution_analysis(&mut self, _gate_index: usize, _result: &GateExecutionResult) -> QuantRS2Result<()> {
+    fn post_execution_analysis(
+        &mut self,
+        _gate_index: usize,
+        _result: &GateExecutionResult,
+    ) -> QuantRS2Result<()> {
         // Perform post-execution analysis
         Ok(())
     }
@@ -1664,14 +1685,14 @@ pub struct ExecutionSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use quantrs2_core::gate::single::Hadamard;
     use quantrs2_core::gate::multi::CNOT;
+    use quantrs2_core::gate::single::Hadamard;
 
     #[test]
     fn test_debugger_creation() {
         let circuit = Circuit::<2>::new();
         let debugger = QuantumDebugger::new(circuit);
-        
+
         assert_eq!(debugger.get_execution_status(), ExecutionStatus::Ready);
     }
 
@@ -1679,9 +1700,9 @@ mod tests {
     fn test_breakpoint_management() {
         let circuit = Circuit::<2>::new();
         let mut debugger = QuantumDebugger::new(circuit);
-        
+
         debugger.add_gate_breakpoint(0).unwrap();
-        
+
         let breakpoints = debugger.breakpoints.read().unwrap();
         assert!(breakpoints.gate_breakpoints.contains(&0));
     }
@@ -1690,10 +1711,10 @@ mod tests {
     fn test_step_execution() {
         let mut circuit = Circuit::<1>::new();
         circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        
+
         let mut debugger = QuantumDebugger::new(circuit);
         debugger.start_session().unwrap();
-        
+
         let result = debugger.step_next().unwrap();
         match result {
             StepResult::Success => (),
@@ -1706,9 +1727,9 @@ mod tests {
         let circuit = Circuit::<2>::new();
         let mut config = DebuggerConfig::default();
         config.enable_auto_visualization = true;
-        
+
         let debugger = QuantumDebugger::with_config(circuit, config);
-        
+
         let visualizer = debugger.visualizer.read().unwrap();
         assert!(visualizer.config.enable_realtime);
     }
@@ -1717,19 +1738,22 @@ mod tests {
     fn test_performance_profiling() {
         let mut circuit = Circuit::<2>::new();
         circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(CNOT { 
-            control: QubitId(0), 
-            target: QubitId(1) 
-        }).unwrap();
-        
+        circuit
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .unwrap();
+
         let mut config = DebuggerConfig::default();
         config.enable_profiling = true;
-        
+
         let mut debugger = QuantumDebugger::with_config(circuit, config);
         let _summary = debugger.run().unwrap();
-        
+
         let analysis = debugger.get_performance_analysis().unwrap();
-        assert!(!analysis.suggestions.is_empty() || analysis.suggestions.is_empty()); // Flexible assertion
+        assert!(!analysis.suggestions.is_empty() || analysis.suggestions.is_empty());
+        // Flexible assertion
     }
 
     #[test]
@@ -1737,9 +1761,9 @@ mod tests {
         let circuit = Circuit::<1>::new();
         let mut config = DebuggerConfig::default();
         config.enable_error_detection = true;
-        
+
         let debugger = QuantumDebugger::with_config(circuit, config);
-        
+
         let detector = debugger.error_detector.read().unwrap();
         assert!(detector.config.enable_auto_detection);
     }

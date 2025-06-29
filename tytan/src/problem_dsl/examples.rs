@@ -8,9 +8,9 @@ impl Examples {
     pub const SIMPLE_BINARY: &str = r#"
         var x binary;
         var y binary;
-        
+
         minimize x + y;
-        
+
         subject to
             x + y >= 1;
     "#;
@@ -24,11 +24,11 @@ impl Examples {
             [15, 35, 0, 30],
             [20, 25, 30, 0]
         ];
-        
+
         var x[n, n] binary;
-        
+
         minimize sum(i in 0..n, j in 0..n: distances[i][j] * x[i,j]);
-        
+
         subject to
             // Each city visited exactly once
             forall(i in 0..n): sum(j in 0..n: x[i,j]) == 1;
@@ -40,15 +40,15 @@ impl Examples {
         param n_vertices = 5;
         param n_colors = 3;
         param edges = [(0,1), (1,2), (2,3), (3,4), (4,0)];
-        
+
         var color[n_vertices, n_colors] binary;
-        
+
         minimize sum(v in 0..n_vertices, c in 0..n_colors: c * color[v,c]);
-        
+
         subject to
             // Each vertex has exactly one color
             forall(v in 0..n_vertices): sum(c in 0..n_colors: color[v,c]) == 1;
-            
+
             // Adjacent vertices have different colors
             forall((u,v) in edges, c in 0..n_colors):
                 color[u,c] + color[v,c] <= 1;

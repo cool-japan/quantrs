@@ -1107,7 +1107,7 @@ impl HardwareBenchmarkSuite {
         // Calculate eigenvalues
         let eigenvalues = match eigvals(&adj_matrix.view(), None) {
             Ok(vals) => vals.mapv(|c| c.re), // Take real parts
-            Err(_) => Array1::zeros(n),       // Fallback
+            Err(_) => Array1::zeros(n),      // Fallback
         };
 
         let spectral_radius = eigenvalues

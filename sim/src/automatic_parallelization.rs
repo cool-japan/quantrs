@@ -4,25 +4,25 @@
 //! analyzing circuit structure to identify independent gate operations that can be
 //! executed in parallel using SciRS2 parallel operations for optimal performance.
 
+use crate::distributed_simulator::{DistributedQuantumSimulator, DistributedSimulatorConfig};
+use crate::large_scale_simulator::{LargeScaleQuantumSimulator, LargeScaleSimulatorConfig};
+use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
 };
-use quantrs2_circuit::builder::{Circuit, Simulator};
-use crate::large_scale_simulator::{LargeScaleQuantumSimulator, LargeScaleSimulatorConfig};
-use crate::distributed_simulator::{DistributedQuantumSimulator, DistributedSimulatorConfig};
 // use scirs2_core::parallel_ops::*;
 // use scirs2_core::scheduling::{Scheduler, TaskGraph, ParallelExecutor};
 // use scirs2_core::optimization::{CostModel, ResourceOptimizer};
 use ndarray::{Array1, Array2, ArrayView1};
 use num_complex::Complex64;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque, BTreeMap, BTreeSet};
-use std::sync::{Arc, Mutex, RwLock, Barrier};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
+use std::sync::{Arc, Barrier, Mutex, RwLock};
 use std::thread;
 use std::time::{Duration, Instant};
-use rayon::prelude::*;
 use uuid::Uuid;
 
 /// Configuration for automatic parallelization
@@ -30,31 +30,31 @@ use uuid::Uuid;
 pub struct AutoParallelConfig {
     /// Maximum number of parallel execution threads
     pub max_threads: usize,
-    
+
     /// Minimum gate count to enable parallelization
     pub min_gates_for_parallel: usize,
-    
+
     /// Parallelization strategy
     pub strategy: ParallelizationStrategy,
-    
+
     /// Resource constraints
     pub resource_constraints: ResourceConstraints,
-    
+
     /// Enable inter-layer parallelization
     pub enable_inter_layer_parallel: bool,
-    
+
     /// Enable gate fusion optimization
     pub enable_gate_fusion: bool,
-    
+
     /// SciRS2 optimization level
     pub scirs2_optimization_level: OptimizationLevel,
-    
+
     /// Load balancing configuration
     pub load_balancing: LoadBalancingConfig,
-    
+
     /// Enable circuit analysis caching
     pub enable_analysis_caching: bool,
-    
+
     /// Memory budget for parallel execution
     pub memory_budget: usize,
 }
@@ -384,7 +384,7 @@ impl AutoParallelEngine {
     /// Create a new automatic parallelization engine
     pub fn new(config: AutoParallelConfig) -> Self {
         let num_threads = config.max_threads;
-        
+
         Self {
             config,
             analysis_cache: Arc::new(RwLock::new(HashMap::new())),
@@ -392,11 +392,14 @@ impl AutoParallelEngine {
             load_balancer: Arc::new(Mutex::new(LoadBalancer::new(num_threads))),
         }
     }
-    
+
     /// Analyze a circuit for parallelization opportunities
-    pub fn analyze_circuit<const N: usize>(&self, circuit: &Circuit<N>) -> QuantRS2Result<ParallelizationAnalysis> {
+    pub fn analyze_circuit<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+    ) -> QuantRS2Result<ParallelizationAnalysis> {
         let start_time = Instant::now();
-        
+
         // Check cache first if enabled
         if self.config.enable_analysis_caching {
             let circuit_hash = self.compute_circuit_hash(circuit);
@@ -404,10 +407,10 @@ impl AutoParallelEngine {
                 return Ok(cached_analysis.clone());
             }
         }
-        
+
         // Build dependency graph
         let dependency_graph = self.build_dependency_graph(circuit)?;
-        
+
         // Generate parallel tasks based on strategy
         let tasks = match self.config.strategy {
             ParallelizationStrategy::DependencyAnalysis => {
@@ -429,22 +432,25 @@ impl AutoParallelEngine {
                 self.hardware_aware_parallelization(circuit, &dependency_graph)?
             }
         };
-        
+
         // Calculate parallelization metrics
         let analysis = self.calculate_parallelization_metrics(circuit, &dependency_graph, tasks)?;
-        
+
         // Cache the analysis if enabled
         if self.config.enable_analysis_caching {
             let circuit_hash = self.compute_circuit_hash(circuit);
-            self.analysis_cache.write().unwrap().insert(circuit_hash, analysis.clone());
+            self.analysis_cache
+                .write()
+                .unwrap()
+                .insert(circuit_hash, analysis.clone());
         }
-        
+
         // Update performance statistics
         self.update_performance_stats(start_time.elapsed(), &analysis);
-        
+
         Ok(analysis)
     }
-    
+
     /// Execute a circuit using automatic parallelization
     pub fn execute_parallel<const N: usize>(
         &self,
@@ -452,25 +458,25 @@ impl AutoParallelEngine {
         simulator: &mut LargeScaleQuantumSimulator,
     ) -> QuantRS2Result<Vec<Complex64>> {
         let analysis = self.analyze_circuit(circuit)?;
-        
+
         if analysis.tasks.len() < self.config.min_gates_for_parallel {
             // Fall back to sequential execution for small circuits
             return self.execute_sequential(circuit, simulator);
         }
-        
+
         // Set up parallel execution environment
         let barrier = Arc::new(Barrier::new(self.config.max_threads));
         let shared_state = Arc::new(RwLock::new(simulator.get_dense_state()?.clone()));
         let task_results = Arc::new(Mutex::new(Vec::new()));
-        
+
         // Execute tasks in parallel with dependency respect
         self.execute_parallel_tasks(&analysis.tasks, shared_state.clone(), task_results, barrier)?;
-        
+
         // Collect and return final state
         let final_state = shared_state.read().unwrap().clone();
         Ok(final_state)
     }
-    
+
     /// Execute circuit with distributed parallelization
     pub fn execute_distributed<const N: usize>(
         &self,
@@ -478,27 +484,31 @@ impl AutoParallelEngine {
         distributed_sim: &mut DistributedQuantumSimulator,
     ) -> QuantRS2Result<Vec<Complex64>> {
         let analysis = self.analyze_circuit(circuit)?;
-        
+
         // Distribute tasks across cluster nodes
-        let distributed_tasks = self.distribute_tasks_across_nodes(&analysis.tasks, distributed_sim)?;
-        
+        let distributed_tasks =
+            self.distribute_tasks_across_nodes(&analysis.tasks, distributed_sim)?;
+
         // Execute with inter-node coordination
         // TODO: Implement distributed parallel task execution
         Ok(Vec::new())
     }
-    
+
     /// Build dependency graph for the circuit
-    fn build_dependency_graph<const N: usize>(&self, circuit: &Circuit<N>) -> QuantRS2Result<DependencyGraph> {
+    fn build_dependency_graph<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+    ) -> QuantRS2Result<DependencyGraph> {
         let gates = circuit.gates();
         let mut nodes = Vec::with_capacity(gates.len());
         let mut edges: HashMap<usize, Vec<usize>> = HashMap::new();
         let mut reverse_edges: HashMap<usize, Vec<usize>> = HashMap::new();
-        
+
         // Create gate nodes
         for (i, gate) in gates.iter().enumerate() {
             let qubits: HashSet<QubitId> = gate.qubits().into_iter().collect();
             let cost = self.estimate_gate_cost(gate.as_ref());
-            
+
             nodes.push(GateNode {
                 gate_index: i,
                 gate: gate.clone(),
@@ -506,11 +516,11 @@ impl AutoParallelEngine {
                 layer: 0, // Will be computed later
                 cost,
             });
-            
+
             edges.insert(i, Vec::new());
             reverse_edges.insert(i, Vec::new());
         }
-        
+
         // Build dependency edges based on qubit conflicts
         for i in 0..nodes.len() {
             for j in (i + 1)..nodes.len() {
@@ -521,10 +531,10 @@ impl AutoParallelEngine {
                 }
             }
         }
-        
+
         // Compute topological layers
         let layers = self.compute_topological_layers(&nodes, &edges)?;
-        
+
         // Update layer information in nodes
         for (layer_idx, layer) in layers.iter().enumerate() {
             for &node_idx in layer {
@@ -533,7 +543,7 @@ impl AutoParallelEngine {
                 }
             }
         }
-        
+
         Ok(DependencyGraph {
             nodes,
             edges,
@@ -541,7 +551,7 @@ impl AutoParallelEngine {
             layers,
         })
     }
-    
+
     /// Compute topological layers for parallel execution
     fn compute_topological_layers(
         &self,
@@ -551,39 +561,39 @@ impl AutoParallelEngine {
         let mut in_degree: HashMap<usize, usize> = HashMap::new();
         let mut layers = Vec::new();
         let mut queue = VecDeque::new();
-        
+
         // Initialize in-degrees
         for i in 0..nodes.len() {
             in_degree.insert(i, 0);
         }
-        
+
         for (_from, to_list) in edges {
             for &to in to_list {
                 *in_degree.get_mut(&to).unwrap() += 1;
             }
         }
-        
+
         // Start with nodes that have no dependencies
         for i in 0..nodes.len() {
             if in_degree[&i] == 0 {
                 queue.push_back(i);
             }
         }
-        
+
         while !queue.is_empty() {
             let mut current_layer = Vec::new();
             let layer_size = queue.len();
-            
+
             for _ in 0..layer_size {
                 if let Some(node) = queue.pop_front() {
                     current_layer.push(node);
-                    
+
                     // Update dependencies
                     if let Some(neighbors) = edges.get(&node) {
                         for &neighbor in neighbors {
                             let new_degree = in_degree[&neighbor] - 1;
                             in_degree.insert(neighbor, new_degree);
-                            
+
                             if new_degree == 0 {
                                 queue.push_back(neighbor);
                             }
@@ -591,24 +601,27 @@ impl AutoParallelEngine {
                     }
                 }
             }
-            
+
             if !current_layer.is_empty() {
                 layers.push(current_layer);
             }
         }
-        
+
         Ok(layers)
     }
-    
+
     /// Dependency-based parallelization strategy
-    fn dependency_based_parallelization(&self, graph: &DependencyGraph) -> QuantRS2Result<Vec<ParallelTask>> {
+    fn dependency_based_parallelization(
+        &self,
+        graph: &DependencyGraph,
+    ) -> QuantRS2Result<Vec<ParallelTask>> {
         let mut tasks = Vec::new();
-        
+
         for layer in &graph.layers {
             if layer.len() > 1 {
                 // Create parallel tasks for independent gates in this layer
                 let chunks = self.partition_layer_into_tasks(layer, graph)?;
-                
+
                 for chunk in chunks {
                     let task = self.create_parallel_task(chunk, graph)?;
                     tasks.push(task);
@@ -621,27 +634,30 @@ impl AutoParallelEngine {
                 }
             }
         }
-        
+
         Ok(tasks)
     }
-    
+
     /// Layer-based parallelization strategy
-    fn layer_based_parallelization(&self, graph: &DependencyGraph) -> QuantRS2Result<Vec<ParallelTask>> {
+    fn layer_based_parallelization(
+        &self,
+        graph: &DependencyGraph,
+    ) -> QuantRS2Result<Vec<ParallelTask>> {
         let mut tasks = Vec::new();
-        
+
         for layer in &graph.layers {
             // Each layer becomes one or more parallel tasks
             let max_gates_per_task = self.config.resource_constraints.max_gates_per_thread;
-            
+
             for chunk in layer.chunks(max_gates_per_task) {
                 let task = self.create_parallel_task(chunk.to_vec(), graph)?;
                 tasks.push(task);
             }
         }
-        
+
         Ok(tasks)
     }
-    
+
     /// Qubit partitioning parallelization strategy
     fn qubit_partitioning_parallelization<const N: usize>(
         &self,
@@ -651,26 +667,26 @@ impl AutoParallelEngine {
         // Partition qubits into independent subsystems
         let qubit_partitions = self.partition_qubits(circuit)?;
         let mut tasks = Vec::new();
-        
+
         for partition in qubit_partitions {
             // Find gates that operate only on qubits in this partition
             let mut partition_gates = Vec::new();
-            
+
             for (i, node) in graph.nodes.iter().enumerate() {
                 if node.qubits.iter().all(|q| partition.contains(q)) {
                     partition_gates.push(i);
                 }
             }
-            
+
             if !partition_gates.is_empty() {
                 let task = self.create_parallel_task(partition_gates, graph)?;
                 tasks.push(task);
             }
         }
-        
+
         Ok(tasks)
     }
-    
+
     /// Hybrid parallelization strategy
     fn hybrid_parallelization<const N: usize>(
         &self,
@@ -681,28 +697,28 @@ impl AutoParallelEngine {
         let dependency_tasks = self.dependency_based_parallelization(graph)?;
         let layer_tasks = self.layer_based_parallelization(graph)?;
         let partition_tasks = self.qubit_partitioning_parallelization(circuit, graph)?;
-        
+
         // Select the best strategy based on efficiency metrics
         let strategies = vec![
             ("dependency", dependency_tasks),
             ("layer", layer_tasks),
             ("partition", partition_tasks),
         ];
-        
-        let best_strategy = strategies
-            .into_iter()
-            .max_by(|(_, tasks_a), (_, tasks_b)| {
-                let efficiency_a = self.calculate_strategy_efficiency(tasks_a);
-                let efficiency_b = self.calculate_strategy_efficiency(tasks_b);
-                efficiency_a.partial_cmp(&efficiency_b).unwrap_or(std::cmp::Ordering::Equal)
-            });
-        
+
+        let best_strategy = strategies.into_iter().max_by(|(_, tasks_a), (_, tasks_b)| {
+            let efficiency_a = self.calculate_strategy_efficiency(tasks_a);
+            let efficiency_b = self.calculate_strategy_efficiency(tasks_b);
+            efficiency_a
+                .partial_cmp(&efficiency_b)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
         match best_strategy {
             Some((_, tasks)) => Ok(tasks),
             None => Ok(Vec::new()),
         }
     }
-    
+
     /// ML-guided parallelization strategy
     fn ml_guided_parallelization<const N: usize>(
         &self,
@@ -713,7 +729,7 @@ impl AutoParallelEngine {
         // For now, fall back to hybrid strategy
         self.hybrid_parallelization(circuit, graph)
     }
-    
+
     /// Hardware-aware parallelization strategy
     fn hardware_aware_parallelization<const N: usize>(
         &self,
@@ -724,14 +740,18 @@ impl AutoParallelEngine {
         // For now, fall back to dependency-based strategy
         self.dependency_based_parallelization(graph)
     }
-    
+
     /// Create a parallel task from a group of gate indices
-    fn create_parallel_task(&self, gate_indices: Vec<usize>, graph: &DependencyGraph) -> QuantRS2Result<ParallelTask> {
+    fn create_parallel_task(
+        &self,
+        gate_indices: Vec<usize>,
+        graph: &DependencyGraph,
+    ) -> QuantRS2Result<ParallelTask> {
         let mut gates = Vec::new();
         let mut qubits = HashSet::new();
         let mut total_cost = 0.0;
         let mut memory_requirement = 0;
-        
+
         for &idx in &gate_indices {
             if let Some(node) = graph.nodes.get(idx) {
                 gates.push(node.gate.clone());
@@ -740,10 +760,10 @@ impl AutoParallelEngine {
                 memory_requirement += self.estimate_gate_memory(node.gate.as_ref());
             }
         }
-        
+
         // Calculate dependencies
         let dependencies = self.calculate_task_dependencies(&gate_indices, graph)?;
-        
+
         Ok(ParallelTask {
             id: Uuid::new_v4(),
             gates,
@@ -754,7 +774,7 @@ impl AutoParallelEngine {
             priority: TaskPriority::Normal,
         })
     }
-    
+
     /// Calculate task dependencies
     fn calculate_task_dependencies(
         &self,
@@ -765,7 +785,7 @@ impl AutoParallelEngine {
         // TODO: Implement proper dependency tracking across tasks
         Ok(HashSet::new())
     }
-    
+
     /// Estimate execution cost for a gate
     fn estimate_gate_cost(&self, gate: &dyn GateOp) -> f64 {
         match gate.num_qubits() {
@@ -775,32 +795,39 @@ impl AutoParallelEngine {
             n => (2.0_f64).powi(n as i32),
         }
     }
-    
+
     /// Estimate memory requirement for a gate
     fn estimate_gate_memory(&self, gate: &dyn GateOp) -> usize {
         let num_qubits = gate.num_qubits();
         let state_size = 1 << num_qubits;
         state_size * std::mem::size_of::<Complex64>()
     }
-    
+
     /// Partition layer into parallel tasks
-    fn partition_layer_into_tasks(&self, layer: &[usize], graph: &DependencyGraph) -> QuantRS2Result<Vec<Vec<usize>>> {
+    fn partition_layer_into_tasks(
+        &self,
+        layer: &[usize],
+        graph: &DependencyGraph,
+    ) -> QuantRS2Result<Vec<Vec<usize>>> {
         let max_gates_per_task = self.config.resource_constraints.max_gates_per_thread;
         let mut chunks = Vec::new();
-        
+
         for chunk in layer.chunks(max_gates_per_task) {
             chunks.push(chunk.to_vec());
         }
-        
+
         Ok(chunks)
     }
-    
+
     /// Partition qubits into independent subsystems
-    fn partition_qubits<const N: usize>(&self, circuit: &Circuit<N>) -> QuantRS2Result<Vec<HashSet<QubitId>>> {
+    fn partition_qubits<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+    ) -> QuantRS2Result<Vec<HashSet<QubitId>>> {
         // Simple partitioning based on gate connectivity
         let mut partitions = Vec::new();
         let mut used_qubits = HashSet::new();
-        
+
         for i in 0..N {
             let qubit = QubitId::new(i as u32);
             if !used_qubits.contains(&qubit) {
@@ -810,26 +837,26 @@ impl AutoParallelEngine {
                 partitions.push(partition);
             }
         }
-        
+
         Ok(partitions)
     }
-    
+
     /// Calculate strategy efficiency
     fn calculate_strategy_efficiency(&self, tasks: &[ParallelTask]) -> f64 {
         if tasks.is_empty() {
             return 0.0;
         }
-        
+
         let total_cost: f64 = tasks.iter().map(|t| t.cost).sum();
         let max_cost = tasks.iter().map(|t| t.cost).fold(0.0, f64::max);
-        
+
         if max_cost > 0.0 {
             total_cost / (max_cost * tasks.len() as f64)
         } else {
             0.0
         }
     }
-    
+
     /// Calculate parallelization metrics
     fn calculate_parallelization_metrics<const N: usize>(
         &self,
@@ -838,24 +865,32 @@ impl AutoParallelEngine {
         tasks: Vec<ParallelTask>,
     ) -> QuantRS2Result<ParallelizationAnalysis> {
         let num_layers = graph.layers.len();
-        let max_parallelism = graph.layers.iter().map(|layer| layer.len()).max().unwrap_or(1);
+        let max_parallelism = graph
+            .layers
+            .iter()
+            .map(|layer| layer.len())
+            .max()
+            .unwrap_or(1);
         let critical_path_length = graph.layers.len();
-        
+
         let efficiency = if circuit.num_gates() > 0 {
             max_parallelism as f64 / circuit.num_gates() as f64
         } else {
             0.0
         };
-        
+
         let resource_utilization = ResourceUtilization {
             cpu_utilization: vec![0.8; self.config.max_threads],
-            memory_usage: vec![self.config.memory_budget / self.config.max_threads; self.config.max_threads],
+            memory_usage: vec![
+                self.config.memory_budget / self.config.max_threads;
+                self.config.max_threads
+            ],
             load_balance_score: 0.85,
             communication_overhead: 0.1,
         };
-        
+
         let recommendations = self.generate_optimization_recommendations(circuit, graph, &tasks);
-        
+
         Ok(ParallelizationAnalysis {
             tasks,
             num_layers,
@@ -866,7 +901,7 @@ impl AutoParallelEngine {
             recommendations,
         })
     }
-    
+
     /// Generate optimization recommendations
     fn generate_optimization_recommendations<const N: usize>(
         &self,
@@ -875,43 +910,46 @@ impl AutoParallelEngine {
         tasks: &[ParallelTask],
     ) -> Vec<OptimizationRecommendation> {
         let mut recommendations = Vec::new();
-        
+
         // Check if gate reordering could improve parallelism
         if graph.layers.iter().any(|layer| layer.len() == 1) {
             recommendations.push(OptimizationRecommendation {
                 recommendation_type: RecommendationType::GateReordering,
-                description: "Consider reordering gates to create larger parallel layers".to_string(),
+                description: "Consider reordering gates to create larger parallel layers"
+                    .to_string(),
                 expected_improvement: 0.2,
                 complexity: RecommendationComplexity::Medium,
             });
         }
-        
+
         // Check resource utilization balance
         let task_costs: Vec<f64> = tasks.iter().map(|t| t.cost).collect();
         let cost_variance = self.calculate_variance(&task_costs);
         if cost_variance > 0.5 {
             recommendations.push(OptimizationRecommendation {
                 recommendation_type: RecommendationType::ResourceAllocation,
-                description: "Task costs are unbalanced, consider load balancing optimization".to_string(),
+                description: "Task costs are unbalanced, consider load balancing optimization"
+                    .to_string(),
                 expected_improvement: 0.15,
                 complexity: RecommendationComplexity::Low,
             });
         }
-        
+
         recommendations
     }
-    
+
     /// Calculate variance of a vector of values
     fn calculate_variance(&self, values: &[f64]) -> f64 {
         if values.is_empty() {
             return 0.0;
         }
-        
+
         let mean: f64 = values.iter().sum::<f64>() / values.len() as f64;
-        let variance: f64 = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
+        let variance: f64 =
+            values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
         variance
     }
-    
+
     /// Execute circuit sequentially (fallback)
     fn execute_sequential<const N: usize>(
         &self,
@@ -924,7 +962,7 @@ impl AutoParallelEngine {
         // TODO: Add method to extract state vector from Register
         Ok(Vec::new())
     }
-    
+
     /// Execute parallel tasks with proper synchronization
     fn execute_parallel_tasks(
         &self,
@@ -940,10 +978,10 @@ impl AutoParallelEngine {
                 // TODO: Implement actual parallel gate execution
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Distribute tasks across cluster nodes
     fn distribute_tasks_across_nodes(
         &self,
@@ -955,41 +993,48 @@ impl AutoParallelEngine {
         let cluster_status = distributed_sim.get_cluster_status();
         let num_nodes = cluster_status.len();
         let mut distributed_tasks = vec![Vec::new(); num_nodes];
-        
+
         for (i, task) in tasks.iter().enumerate() {
             let node_index = i % num_nodes;
             distributed_tasks[node_index].push(task.clone());
         }
-        
+
         Ok(distributed_tasks)
     }
-    
+
     /// Compute hash for circuit caching
     fn compute_circuit_hash<const N: usize>(&self, circuit: &Circuit<N>) -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
-        
+
         // Hash circuit structure
         circuit.num_gates().hash(&mut hasher);
         circuit.num_qubits().hash(&mut hasher);
-        
+
         // Hash gate names (simplified)
         for gate in circuit.gates() {
             gate.name().hash(&mut hasher);
             gate.qubits().len().hash(&mut hasher);
         }
-        
+
         hasher.finish()
     }
-    
+
     /// Update performance statistics
-    fn update_performance_stats(&self, execution_time: Duration, analysis: &ParallelizationAnalysis) {
+    fn update_performance_stats(
+        &self,
+        execution_time: Duration,
+        analysis: &ParallelizationAnalysis,
+    ) {
         let mut stats = self.performance_stats.lock().unwrap();
         stats.circuits_processed += 1;
         stats.total_execution_time += execution_time;
-        stats.average_efficiency = (stats.average_efficiency * (stats.circuits_processed - 1) as f64 + analysis.efficiency) / stats.circuits_processed as f64;
+        stats.average_efficiency = (stats.average_efficiency
+            * (stats.circuits_processed - 1) as f64
+            + analysis.efficiency)
+            / stats.circuits_processed as f64;
     }
 }
 
@@ -1002,17 +1047,17 @@ impl LoadBalancer {
             work_stealing_stats: WorkStealingStats::default(),
         }
     }
-    
+
     /// Balance load across threads
     pub fn balance_load(&mut self, tasks: Vec<ParallelTask>) -> Vec<Vec<ParallelTask>> {
         let mut balanced_tasks = vec![Vec::new(); self.thread_loads.len()];
-        
+
         // Simple round-robin distribution for now
         for (i, task) in tasks.into_iter().enumerate() {
             let thread_index = i % self.thread_loads.len();
             balanced_tasks[thread_index].push(task);
         }
-        
+
         balanced_tasks
     }
 }
@@ -1025,12 +1070,12 @@ pub fn benchmark_automatic_parallelization<const N: usize>(
     let engine = AutoParallelEngine::new(config);
     let mut results = Vec::new();
     let start_time = Instant::now();
-    
+
     for circuit in circuits {
         let analysis_start = Instant::now();
         let analysis = engine.analyze_circuit(&circuit)?;
         let analysis_time = analysis_start.elapsed();
-        
+
         results.push(CircuitParallelResult {
             circuit_size: circuit.num_gates(),
             num_qubits: circuit.num_qubits(),
@@ -1040,13 +1085,15 @@ pub fn benchmark_automatic_parallelization<const N: usize>(
             num_tasks: analysis.tasks.len(),
         });
     }
-    
+
     let total_time = start_time.elapsed();
-    
+
     Ok(AutoParallelBenchmarkResults {
         total_time,
-        average_efficiency: results.iter().map(|r| r.efficiency).sum::<f64>() / results.len() as f64,
-        average_parallelism: results.iter().map(|r| r.max_parallelism).sum::<usize>() / results.len(),
+        average_efficiency: results.iter().map(|r| r.efficiency).sum::<f64>()
+            / results.len() as f64,
+        average_parallelism: results.iter().map(|r| r.max_parallelism).sum::<usize>()
+            / results.len(),
         circuit_results: results,
     })
 }

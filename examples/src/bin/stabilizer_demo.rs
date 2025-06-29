@@ -5,10 +5,12 @@
 //! compared to full state vector simulation.
 
 use quantrs2_circuit::prelude::*;
+use quantrs2_core::gate::{multi::*, single::*};
 use quantrs2_core::prelude::*;
-use quantrs2_core::gate::{single::*, multi::*};
 use quantrs2_sim::prelude::*;
-use quantrs2_sim::stabilizer::{StabilizerGate, StabilizerSimulator, CliffordCircuitBuilder, is_clifford_circuit};
+use quantrs2_sim::stabilizer::{
+    is_clifford_circuit, CliffordCircuitBuilder, StabilizerGate, StabilizerSimulator,
+};
 
 fn main() {
     println!("=== Stabilizer Simulator Demo ===\n");

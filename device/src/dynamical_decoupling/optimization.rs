@@ -328,7 +328,7 @@ impl DDSequenceOptimizer {
         1.0
     }
 
-    /// Optimize using gradient-free methods  
+    /// Optimize using gradient-free methods
     fn optimize_gradient_free_impl(
         &mut self,
         base_sequence: &DDSequence,

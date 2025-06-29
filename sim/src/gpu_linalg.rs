@@ -7,21 +7,27 @@
 use crate::linalg_ops;
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use num_complex::Complex64;
-use quantrs2_core::prelude::*;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
-use quantrs2_core::gpu::{
-    GpuBackend as CoreGpuBackend, GpuBuffer as CoreGpuBuffer,
-    SciRS2GpuBackend, SciRS2BufferAdapter, SciRS2GpuFactory
+use scirs2_core::gpu::{
+    GpuBackend, GpuBackendFactory, GpuBuffer, GpuConfig, GpuDevice, GpuMemoryPool,
+    GpuKernel, GpuKernelManager, GpuPlatform, GpuProfiler,
 };
+use quantrs2_core::prelude::*;
 use std::sync::Arc;
 
 /// SciRS2-powered GPU linear algebra operations
-/// 
+///
 /// This structure provides high-performance linear algebra operations using
 /// SciRS2's unified GPU abstraction layer for quantum simulations.
 pub struct GpuLinearAlgebra {
     /// SciRS2 GPU backend
-    backend: Arc<SciRS2GpuBackend>,
+    backend: Arc<GpuBackend>,
+    /// GPU device handle
+    device: Arc<GpuDevice>,
+    /// Memory pool for efficient GPU allocations
+    memory_pool: Arc<GpuMemoryPool>,
+    /// Kernel manager for optimized operations
+    kernel_manager: Arc<GpuKernelManager>,
     /// Enable performance profiling
     enable_profiling: bool,
 }
@@ -29,19 +35,35 @@ pub struct GpuLinearAlgebra {
 impl GpuLinearAlgebra {
     /// Create a new GPU linear algebra instance using SciRS2
     pub async fn new() -> Result<Self, QuantRS2Error> {
-        let backend = Arc::new(SciRS2GpuFactory::create_best()?);
+        let platform = GpuPlatform::detect_best_platform()?;
+        let device = Arc::new(platform.create_device(0)?);
+        let backend = Arc::new(GpuBackendFactory::create_backend(platform)?);
+        let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), 1024 * 1024 * 1024)?); // 1GB pool
+        let kernel_manager = Arc::new(GpuKernelManager::new(device.clone())?);
+        
         Ok(Self {
             backend,
+            device,
+            memory_pool,
+            kernel_manager,
             enable_profiling: false,
         })
     }
 
     /// Create a new instance with custom SciRS2 configuration
-    pub fn with_config(config: quantrs2_core::gpu_stubs::SciRS2GpuConfig) -> Result<Self, QuantRS2Error> {
-        let backend = Arc::new(SciRS2GpuFactory::create_with_config(config)?);
+    pub fn with_config(config: GpuConfig) -> Result<Self, QuantRS2Error> {
+        let platform = GpuPlatform::from_config(&config)?;
+        let device = Arc::new(platform.create_device(config.device_id)?);
+        let backend = Arc::new(GpuBackendFactory::create_backend_with_config(platform, &config)?);
+        let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), config.memory_pool_size)?);
+        let kernel_manager = Arc::new(GpuKernelManager::new(device.clone())?);
+        
         Ok(Self {
             backend,
-            enable_profiling: false,
+            device,
+            memory_pool,
+            kernel_manager,
+            enable_profiling: config.enable_profiling,
         })
     }
 
@@ -87,27 +109,27 @@ impl GpuLinearAlgebra {
         // Use SciRS2 SIMD-optimized matrix multiplication
         // This leverages the same SIMD primitives used in the main simulator
         use quantrs2_core::simd_ops::SimdUnifiedOps;
-        
+
         // Convert to ndarray views for SIMD operations
         let a_view = a.view();
         let b_view = b.view();
-        
+
         // Perform optimized matrix multiplication using SciRS2 SIMD operations
         let mut result = Array2::zeros((m, n));
-        
+
         for i in 0..m {
             for j in 0..n {
                 let mut sum = Complex64::new(0.0, 0.0);
-                
+
                 // Use SIMD-optimized inner product when possible
                 let a_row = a_view.row(i);
                 let b_col = b_view.column(j);
-                
+
                 // This would use SciRS2's SIMD inner product in the full implementation
                 for k in 0..k1 {
                     sum += a_row[k] * b_col[k];
                 }
-                
+
                 result[[i, j]] = sum;
             }
         }
@@ -127,7 +149,7 @@ impl GpuLinearAlgebra {
 
         // Use SciRS2 tensor operations for optimal performance
         let mut result = Array2::zeros(result_shape);
-        
+
         // Compute tensor product using SciRS2-optimized operations
         for i1 in 0..m1 {
             for j1 in 0..n1 {
@@ -162,22 +184,17 @@ impl GpuLinearAlgebra {
 
         // Use SciRS2 GPU backend for unitary application
         let kernel = self.backend.kernel();
-        
+
         // Create a temporary buffer for the state
         let mut state_buffer = self.backend.allocate_state_vector(num_qubits)?;
         state_buffer.upload(state)?;
-        
+
         // Convert target_qubits to QubitIds
         let qubits: Vec<_> = target_qubits.iter().map(|&q| QubitId(q)).collect();
-        
+
         // Apply the unitary using SciRS2's optimized multi-qubit gate kernel
-        kernel.apply_multi_qubit_gate(
-            state_buffer.as_mut(),
-            unitary,
-            &qubits,
-            num_qubits,
-        )?;
-        
+        kernel.apply_multi_qubit_gate(state_buffer.as_mut(), unitary, &qubits, num_qubits)?;
+
         // Download the result back to the state array
         state_buffer.download(state)?;
 
@@ -192,21 +209,17 @@ impl GpuLinearAlgebra {
         target_qubits: &[usize],
     ) -> Result<f64, QuantRS2Error> {
         let num_qubits = (state.len() as f64).log2() as usize;
-        
+
         // Create GPU buffer for the state
         let state_buffer = self.backend.allocate_state_vector(num_qubits)?;
-        
+
         // Convert target_qubits to QubitIds
         let qubits: Vec<_> = target_qubits.iter().map(|&q| QubitId(q)).collect();
-        
+
         // Use SciRS2 kernel for expectation value calculation
         let kernel = self.backend.kernel();
-        let expectation = kernel.expectation_value(
-            state_buffer.as_ref(),
-            observable,
-            &qubits,
-            num_qubits,
-        )?;
+        let expectation =
+            kernel.expectation_value(state_buffer.as_ref(), observable, &qubits, num_qubits)?;
 
         Ok(expectation)
     }
@@ -217,13 +230,13 @@ impl GpuLinearAlgebra {
         matrix: &Array2<Complex64>,
     ) -> Result<(Array2<Complex64>, Array2<Complex64>), QuantRS2Error> {
         let (m, n) = matrix.dim();
-        
+
         // Use SciRS2 linear algebra operations for QR decomposition
         // This is a simplified implementation - SciRS2 would provide optimized routines
-        
+
         let mut q = Array2::eye(m);
         let mut r = matrix.clone();
-        
+
         // Simplified Gram-Schmidt process using SciRS2 SIMD operations
         for k in 0..n.min(m) {
             // Normalize column k
@@ -234,20 +247,22 @@ impl GpuLinearAlgebra {
                     q[[i, k]] = r[[i, k]];
                 }
             }
-            
+
             // Orthogonalize remaining columns
             for j in (k + 1)..n {
-                let dot_product: Complex64 = r.column(k).iter()
+                let dot_product: Complex64 = r
+                    .column(k)
+                    .iter()
                     .zip(r.column(j).iter())
                     .map(|(a, b)| a.conj() * b)
                     .sum();
-                
+
                 for i in 0..m {
                     r[[i, j]] -= dot_product * r[[i, k]];
                 }
             }
         }
-        
+
         Ok((q, r))
     }
 
@@ -258,15 +273,15 @@ impl GpuLinearAlgebra {
     ) -> Result<(Array2<Complex64>, Array1<f64>, Array2<Complex64>), QuantRS2Error> {
         // Use SciRS2 optimized SVD implementation
         // This is a placeholder - SciRS2 would provide optimized SVD routines
-        
+
         let (m, n) = matrix.dim();
         let min_dim = m.min(n);
-        
+
         // Simplified SVD implementation using SciRS2 operations
         let u = Array2::eye(m);
         let s = Array1::ones(min_dim);
         let vt = Array2::eye(n);
-        
+
         Ok((u, s, vt))
     }
 }
@@ -401,7 +416,7 @@ mod tests {
 
         let result = gpu_linalg.tensor_product(&a, &b).await.unwrap();
         assert_eq!(result.shape(), &[4, 4]);
-        
+
         // Check some expected values for tensor product
         assert!((result[[0, 1]] - Complex64::new(1.0, 0.0)).norm() < 1e-10);
         assert!((result[[1, 0]] - Complex64::new(1.0, 0.0)).norm() < 1e-10);
@@ -438,7 +453,10 @@ mod tests {
         .unwrap();
 
         // Apply X gate to qubit 0
-        gpu_linalg.apply_unitary(&mut state, &x_gate, &[0]).await.unwrap();
+        gpu_linalg
+            .apply_unitary(&mut state, &x_gate, &[0])
+            .await
+            .unwrap();
 
         // Should now be in |01⟩ state
         assert!((state[0] - Complex64::new(0.0, 0.0)).norm() < 1e-10); // |00⟩

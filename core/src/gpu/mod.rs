@@ -47,14 +47,14 @@ pub mod metal_backend_scirs2_ready;
 #[cfg(feature = "vulkan")]
 pub mod vulkan_backend;
 
-// SciRS2 GPU migration adapter  
+// SciRS2 GPU migration adapter
 pub mod scirs2_adapter;
 pub use crate::gpu_stubs::SciRS2GpuConfig;
 
 // Re-export SciRS2 adapter types for external use
 pub use scirs2_adapter::{
-    SciRS2GpuBackend, SciRS2BufferAdapter, SciRS2KernelAdapter, 
-    SciRS2GpuFactory, SciRS2GpuMetrics, get_gpu_system_info, is_gpu_available
+    get_gpu_system_info, is_gpu_available, SciRS2BufferAdapter, SciRS2GpuBackend, SciRS2GpuFactory,
+    SciRS2GpuMetrics, SciRS2KernelAdapter,
 };
 
 // Enhanced GPU optimization modules

@@ -132,7 +132,7 @@ impl PauliOperator {
 /// A Pauli string is a tensor product of Pauli operators
 #[derive(Debug, Clone)]
 pub struct PauliString {
-    /// Pauli operators at each qubit position  
+    /// Pauli operators at each qubit position
     pub operators: Vec<PauliOperator>,
     /// Overall coefficient
     pub coefficient: Complex64,

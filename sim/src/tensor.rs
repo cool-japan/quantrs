@@ -850,7 +850,7 @@ impl TensorNetwork {
         Ok(())
     }
 
-    /// Apply a two-qubit gate to the tensor network  
+    /// Apply a two-qubit gate to the tensor network
     pub fn apply_two_qubit_gate(
         &mut self,
         gate_tensor: Tensor,

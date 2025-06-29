@@ -1738,7 +1738,7 @@ impl CostOptimizationEngine {
         // Analyze current usage patterns
         let budget_status = self.get_budget_status().await?;
         let cost_trends = self.analyze_cost_trends().await?;
-        
+
         // Generate recommendations based on analysis
         let recommendations = self.generate_recommendations(
             &budget_status,
@@ -1753,7 +1753,7 @@ impl CostOptimizationEngine {
     pub async fn start_cost_monitoring(&self) -> DeviceResult<()> {
         let monitor = self.cost_monitor.clone();
         let alert_manager = self.alert_manager.clone();
-        
+
         tokio::spawn(async move {
             loop {
                 // Update monitoring metrics
@@ -1765,7 +1765,7 @@ impl CostOptimizationEngine {
                         monitor_guard.update_metrics_sync();
                     }
                 }
-                
+
                 // Check for alerts
                 {
                     if let Ok(mut alert_guard) = alert_manager.write() {
@@ -1775,7 +1775,7 @@ impl CostOptimizationEngine {
                         alert_guard.check_and_trigger_alerts_sync();
                     }
                 }
-                
+
                 tokio::time::sleep(Duration::from_secs(60)).await;
             }
         });
@@ -2154,7 +2154,7 @@ impl ProviderComparator {
         // Placeholder implementation
         let mut provider_scores = HashMap::new();
         let mut detailed_metrics = HashMap::new();
-        
+
         for provider in &providers {
             provider_scores.insert(provider.clone(), 0.8);
             detailed_metrics.insert(provider.clone(), ProviderMetrics {
@@ -2338,7 +2338,7 @@ mod tests {
     async fn test_cost_optimization_engine_creation() {
         let config = CostOptimizationConfig::default();
         let _engine = CostOptimizationEngine::new(config);
-        
+
         // Should create without error
         assert!(true);
     }

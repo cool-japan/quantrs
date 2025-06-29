@@ -27,13 +27,13 @@ mod tests {
         let mut var_map = HashMap::new();
         var_map.insert("x0".to_string(), 0);
         var_map.insert("x1".to_string(), 1);
-        
+
         let mut reverse_var_map = HashMap::new();
         reverse_var_map.insert(0, "x0".to_string());
         reverse_var_map.insert(1, "x1".to_string());
-        
+
         let mut qubo = Array2::from_shape_vec((2, 2), vec![1.0, -2.0, -2.0, 1.0]).unwrap();
-        
+
         types::ProblemInfo {
             name: "Test Problem".to_string(),
             problem_type: "QUBO".to_string(),
@@ -51,7 +51,7 @@ mod tests {
         let mut assignments = HashMap::new();
         assignments.insert("x0".to_string(), true);
         assignments.insert("x1".to_string(), false);
-        
+
         types::Solution {
             assignments,
             energy: -1.0,
@@ -66,7 +66,7 @@ mod tests {
         let problem_info = create_test_problem_info();
         let mut config = config::DebuggerConfig::default();
         let debugger = SolutionDebugger::new(problem_info, config);
-        
+
         // Just test that creation succeeds
         assert!(true);
     }
@@ -76,10 +76,10 @@ mod tests {
         let problem_info = create_test_problem_info();
         let mut config = config::DebuggerConfig::default();
         let debugger = SolutionDebugger::new(problem_info, config);
-        
+
         let solution = create_test_solution();
         let mut report = debugger.debug_solution(&solution);
-        
+
         assert_eq!(report.solution.energy, solution.energy);
         assert!(report.constraint_analysis.is_some());
         assert!(report.energy_analysis.is_some());
@@ -88,7 +88,7 @@ mod tests {
     #[test]
     fn test_constraint_analyzer() {
         let analyzer = constraint_analyzer::ConstraintAnalyzer::new(1e-6);
-        
+
         // Test constraint analyzer creation
         assert!(true);
     }
@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn test_energy_analyzer() {
         let analyzer = energy_analyzer::EnergyAnalyzer::new(2);
-        
+
         // Test energy analyzer creation
         assert!(true);
     }
@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn test_solution_comparator() {
         let comparator = comparison::SolutionComparator::new();
-        
+
         // Test comparator creation
         assert!(true);
     }
@@ -112,7 +112,7 @@ mod tests {
     #[test]
     fn test_visualizer() {
         let visualizer = visualization::SolutionVisualizer::new();
-        
+
         // Test visualizer creation
         assert!(true);
     }
@@ -121,7 +121,7 @@ mod tests {
     fn test_report_generation() {
         let solution = create_test_solution();
         let mut summary = reporting::DebugSummary::default();
-        
+
         let mut report = reporting::DebugReport {
             solution,
             constraint_analysis: None,
@@ -135,7 +135,7 @@ mod tests {
 
         let text_summary = report.generate_text_summary();
         assert!(text_summary.contains("Solution Debug Report"));
-        
+
         let json_result = report.to_json();
         assert!(json_result.is_ok());
     }

@@ -10,8 +10,8 @@ use num_complex::Complex64;
 use crate::buffer_pool::BufferPool;
 // use scirs2_core::parallel_ops::*;
 use crate::parallel_ops_stubs::*;
-use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 /// Simplified memory tracker for operations
@@ -28,7 +28,8 @@ impl MemoryTracker {
     }
 
     pub fn start_operation(&mut self, name: &str) {
-        self.operations.insert(name.to_string(), (0, Instant::now()));
+        self.operations
+            .insert(name.to_string(), (0, Instant::now()));
     }
 
     pub fn end_operation(&mut self, name: &str) {
@@ -38,7 +39,8 @@ impl MemoryTracker {
     }
 
     pub fn record_operation(&mut self, name: &str, bytes: usize) {
-        self.operations.insert(name.to_string(), (bytes, Instant::now()));
+        self.operations
+            .insert(name.to_string(), (bytes, Instant::now()));
     }
 }
 
@@ -63,7 +65,7 @@ impl Default for MemoryConfig {
     fn default() -> Self {
         Self {
             use_buffer_pool: true,
-            chunk_size: 65536, // 64KB chunks
+            chunk_size: 65536,     // 64KB chunks
             memory_limit_mb: 1024, // 1GB default limit
             enable_simd: true,
             enable_parallel: true,
@@ -101,7 +103,7 @@ impl EfficientStateVector {
     /// Create a new efficient state vector with custom memory configuration
     pub fn with_config(num_qubits: usize, config: MemoryConfig) -> QuantRS2Result<Self> {
         let size = 1 << num_qubits;
-        
+
         // Check memory limits
         let required_memory_mb = (size * std::mem::size_of::<Complex64>()) / (1024 * 1024);
         if required_memory_mb > config.memory_limit_mb {
@@ -132,7 +134,7 @@ impl EfficientStateVector {
         } else {
             vec![Complex64::new(0.0, 0.0); size]
         };
-        
+
         data[0] = Complex64::new(1.0, 0.0); // Initialize to |00...0⟩
 
         let memory_metrics = MemoryTracker::new();
@@ -255,10 +257,11 @@ impl EfficientStateVector {
         if self.chunk_processor.is_some() {
             // Enhanced chunk processing with memory tracking
             // self.memory_metrics.start_operation("chunk_processing");
-            
+
             if self.config.enable_parallel && self.data.len() > 32768 {
                 // Parallel chunk processing
-                self.data.par_chunks_mut(effective_chunk_size)
+                self.data
+                    .par_chunks_mut(effective_chunk_size)
                     .enumerate()
                     .for_each(|(chunk_idx, chunk)| {
                         f(chunk, chunk_idx * effective_chunk_size);
@@ -269,7 +272,7 @@ impl EfficientStateVector {
                     f(chunk, chunk_idx * effective_chunk_size);
                 }
             }
-            
+
             // self.memory_metrics.end_operation("chunk_processing");
         } else {
             // Fallback to standard processing
@@ -285,13 +288,13 @@ impl EfficientStateVector {
         // Use SciRS2 memory optimizer if available
         if self.config.use_buffer_pool {
             // self.memory_metrics.start_operation("memory_optimization");
-            
+
             // Trigger garbage collection if memory usage is high
             let memory_usage = self.get_memory_usage_ratio();
             if memory_usage > self.config.gc_threshold {
                 self.perform_garbage_collection()?;
             }
-            
+
             // self.memory_metrics.end_operation("memory_optimization");
         }
         Ok(())
@@ -301,7 +304,7 @@ impl EfficientStateVector {
     fn perform_garbage_collection(&mut self) -> QuantRS2Result<()> {
         // Compress sparse state vectors
         self.compress_sparse_amplitudes()?;
-        
+
         // Release unused buffer pool memory
         if let Some(ref pool) = self.buffer_pool {
             if let Ok(_pool_lock) = pool.lock() {
@@ -309,15 +312,19 @@ impl EfficientStateVector {
                 // In practice, this would call pool_lock.cleanup() or similar
             }
         }
-        
+
         Ok(())
     }
 
     /// Compress sparse amplitudes to save memory
     fn compress_sparse_amplitudes(&mut self) -> QuantRS2Result<()> {
         let threshold = 1e-15;
-        let non_zero_count = self.data.iter().filter(|&&c| c.norm_sqr() > threshold).count();
-        
+        let non_zero_count = self
+            .data
+            .iter()
+            .filter(|&&c| c.norm_sqr() > threshold)
+            .count();
+
         // Only compress if state is sufficiently sparse (< 10% non-zero)
         if non_zero_count < self.data.len() / 10 {
             // For now, just zero out very small amplitudes
@@ -327,7 +334,7 @@ impl EfficientStateVector {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -341,16 +348,18 @@ impl EfficientStateVector {
     /// Clone state vector with memory optimization
     pub fn clone_optimized(&self) -> QuantRS2Result<Self> {
         let mut cloned = Self::with_config(self.num_qubits, self.config.clone())?;
-        
+
         if self.config.enable_parallel && self.data.len() > 8192 {
             // Parallel copy for large states
-            cloned.data.par_iter_mut()
+            cloned
+                .data
+                .par_iter_mut()
                 .zip(self.data.par_iter())
                 .for_each(|(dst, src)| *dst = *src);
         } else {
             cloned.data.copy_from_slice(&self.data);
         }
-        
+
         Ok(cloned)
     }
 
@@ -362,14 +371,15 @@ impl EfficientStateVector {
     /// Update memory configuration
     pub fn update_config(&mut self, config: MemoryConfig) -> QuantRS2Result<()> {
         // Validate new configuration
-        let required_memory_mb = (self.data.len() * std::mem::size_of::<Complex64>()) / (1024 * 1024);
+        let required_memory_mb =
+            (self.data.len() * std::mem::size_of::<Complex64>()) / (1024 * 1024);
         if required_memory_mb > config.memory_limit_mb {
             return Err(QuantRS2Error::InvalidInput(format!(
                 "Current memory usage ({} MB) exceeds new limit ({} MB)",
                 required_memory_mb, config.memory_limit_mb
             )));
         }
-        
+
         self.config = config;
         Ok(())
     }
@@ -438,11 +448,11 @@ impl QuantumMemoryManager {
         let memory_usage = self.calculate_total_memory_usage();
         let state_memory = state.memory_stats().memory_bytes;
         let total_limit = (self.global_config.memory_limit_mb * 1024 * 1024) as f64;
-        
+
         if (memory_usage + state_memory as f64) / total_limit > self.pressure_threshold {
             self.perform_global_optimization()?;
         }
-        
+
         self.states.insert(name, state);
         Ok(())
     }
@@ -464,7 +474,8 @@ impl QuantumMemoryManager {
 
     /// Calculate total memory usage across all states
     fn calculate_total_memory_usage(&self) -> f64 {
-        self.states.values()
+        self.states
+            .values()
             .map(|state| state.memory_stats().memory_bytes as f64)
             .sum()
     }
@@ -483,7 +494,7 @@ impl QuantumMemoryManager {
         let total_memory = self.calculate_total_memory_usage();
         let total_limit = (self.global_config.memory_limit_mb * 1024 * 1024) as f64;
         let usage_ratio = total_memory / total_limit;
-        
+
         let pressure_level = if usage_ratio > 0.95 {
             MemoryPressureLevel::Critical
         } else if usage_ratio > 0.8 {
@@ -535,7 +546,7 @@ impl EfficientStateVector {
         let memory_bytes = num_amplitudes * std::mem::size_of::<Complex64>();
         let limit_bytes = self.config.memory_limit_mb * 1024 * 1024;
         let usage_ratio = memory_bytes as f64 / limit_bytes as f64;
-        
+
         let pressure_level = if usage_ratio > 0.95 {
             MemoryPressureLevel::Critical
         } else if usage_ratio > 0.8 {
@@ -547,9 +558,7 @@ impl EfficientStateVector {
         };
 
         // Calculate sparsity-based efficiency
-        let non_zero_count = self.data.iter()
-            .filter(|&&c| c.norm_sqr() > 1e-15)
-            .count();
+        let non_zero_count = self.data.iter().filter(|&&c| c.norm_sqr() > 1e-15).count();
         let efficiency_ratio = non_zero_count as f64 / num_amplitudes as f64;
 
         StateMemoryStats {
@@ -557,9 +566,13 @@ impl EfficientStateVector {
             memory_bytes,
             efficiency_ratio,
             buffer_pool_utilization: if self.buffer_pool.is_some() { 0.8 } else { 0.0 },
-            chunk_overhead_bytes: if self.chunk_processor.is_some() { 1024 } else { 0 },
+            chunk_overhead_bytes: if self.chunk_processor.is_some() {
+                1024
+            } else {
+                0
+            },
             fragmentation_ratio: 0.1, // Simplified calculation
-            gc_count: 0, // Would be tracked in practice
+            gc_count: 0,              // Would be tracked in practice
             pressure_level,
         }
     }

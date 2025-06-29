@@ -1637,7 +1637,7 @@ pub mod real_time {
 
                             // Check latency constraint
                             if cycle_time > config.max_latency {
-                                eprintln!("Warning: Error correction cycle exceeded max latency: {:?} > {:?}", 
+                                eprintln!("Warning: Error correction cycle exceeded max latency: {:?} > {:?}",
                                          cycle_time, config.max_latency);
                             }
 

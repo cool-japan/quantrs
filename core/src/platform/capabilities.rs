@@ -172,7 +172,7 @@ pub enum Architecture {
 
 impl PlatformCapabilities {
     /// Detect platform capabilities
-    /// 
+    ///
     /// This is the main entry point for platform detection as required by SciRS2 policy.
     /// All modules should use this instead of direct platform detection.
     pub fn detect() -> Self {

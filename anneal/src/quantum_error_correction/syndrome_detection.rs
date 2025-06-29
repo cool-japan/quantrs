@@ -380,7 +380,7 @@ impl SyndromeDetector {
         Ok(stabilizers)
     }
 
-    /// Generate Steane code stabilizers  
+    /// Generate Steane code stabilizers
     fn generate_steane_code_stabilizers(parameters: &CodeParameters) -> QECResult<Array2<u8>> {
         let n = 7; // Steane code is always 7 qubits
         let mut stabilizers = Array2::zeros((6, 14)); // 6 stabilizers for [[7,1,3]] code

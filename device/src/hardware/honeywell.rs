@@ -70,7 +70,7 @@ impl HoneywellClient {
     /// Get available quantum machines
     pub async fn get_available_machines(&self) -> DeviceResult<Vec<HoneywellMachine>> {
         let url = format!("{}/v1/machines", self.config.api_url);
-        
+
         let response = self.client
             .get(&url)
             .header("Authorization", format!("Bearer {}", self.config.api_key))
@@ -95,7 +95,7 @@ impl HoneywellClient {
     /// Submit a quantum job for execution
     pub async fn submit_job(&self, job: &HoneywellJob) -> DeviceResult<String> {
         let url = format!("{}/v1/jobs", self.config.api_url);
-        
+
         let response = self.client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.config.api_key))
@@ -122,7 +122,7 @@ impl HoneywellClient {
     /// Get job results
     pub async fn get_job_results(&self, job_id: &str) -> DeviceResult<HoneywellJobResults> {
         let url = format!("{}/v1/jobs/{}/results", self.config.api_url, job_id);
-        
+
         let response = self.client
             .get(&url)
             .header("Authorization", format!("Bearer {}", self.config.api_key))
@@ -147,26 +147,26 @@ impl HoneywellClient {
     /// Convert QuantRS circuit to OpenQASM 2.0 format (Honeywell's supported format)
     pub fn circuit_to_qasm<const N: usize>(&self, circuit: &Circuit<N>) -> DeviceResult<String> {
         let mut qasm_lines = Vec::new();
-        
+
         // Add QASM header
         qasm_lines.push("OPENQASM 2.0;".to_string());
         qasm_lines.push("include \"qelib1.inc\";".to_string());
-        
+
         // Declare quantum and classical registers
         qasm_lines.push(format!("qreg q[{}];", N));
         qasm_lines.push(format!("creg c[{}];", N));
-        
+
         // Convert gates to QASM instructions
         for gate_info in circuit.iter_gates() {
             let qasm_instruction = self.gate_to_qasm(&gate_info.gate, &gate_info.qubits)?;
             qasm_lines.push(qasm_instruction);
         }
-        
+
         // Add measurements
         for i in 0..N {
             qasm_lines.push(format!("measure q[{}] -> c[{}];", i, i));
         }
-        
+
         Ok(qasm_lines.join("\n"))
     }
 
@@ -206,7 +206,7 @@ impl HoneywellClient {
             "CZ" => Ok(format!("cz q[{}],q[{}];", qubits[0], qubits[1])),
             "SWAP" => {
                 // SWAP decomposition using 3 CNOT gates
-                Ok(format!("cx q[{}],q[{}];\ncx q[{}],q[{}];\ncx q[{}],q[{}];", 
+                Ok(format!("cx q[{}],q[{}];\ncx q[{}],q[{}];\ncx q[{}],q[{}];",
                           qubits[0], qubits[1], qubits[1], qubits[0], qubits[0], qubits[1]))
             },
             "CCX" | "CCNOT" => Ok(format!("ccx q[{}],q[{}],q[{}];", qubits[0], qubits[1], qubits[2])),
@@ -300,16 +300,16 @@ impl HoneywellDevice {
     /// Create a new Honeywell device
     pub async fn new(config: HoneywellConfig) -> DeviceResult<Self> {
         let client = HoneywellClient::new(config.clone())?;
-        
+
         // Get default machine info
         let machine_name = config.default_machine.as_ref()
             .ok_or_else(|| DeviceError::Configuration("No default machine specified".to_string()))?;
-        
+
         let machines = client.get_available_machines().await?;
         let machine_info = machines.into_iter()
             .find(|machine| &machine.name == machine_name)
             .ok_or_else(|| DeviceError::Configuration(format!("Machine '{}' not found", machine_name)))?;
-        
+
         Ok(Self { client, machine_info })
     }
 }
@@ -361,7 +361,7 @@ impl QuantumDevice for HoneywellDevice {
         for gate_info in circuit.iter_gates() {
             let gate_name = gate_info.gate.name();
             match gate_name.as_str() {
-                "I" | "X" | "Y" | "Z" | "H" | "S" | "T" | 
+                "I" | "X" | "Y" | "Z" | "H" | "S" | "T" |
                 "RX" | "RY" | "RZ" | "CNOT" | "CX" | "CZ" | "SWAP" | "CCX" | "CCNOT" => {},
                 "RZZ" | "RXX" | "MS" if self.client.config.use_native_gates => {},
                 _ => return Ok(false),
@@ -381,7 +381,7 @@ impl CircuitExecutor for HoneywellDevice {
     ) -> DeviceResult<CircuitResult> {
         // Convert circuit to QASM
         let qasm_program = self.client.circuit_to_qasm(circuit)?;
-        
+
         // Create Honeywell job
         let job = HoneywellJob {
             qasm: qasm_program,
@@ -391,21 +391,21 @@ impl CircuitExecutor for HoneywellDevice {
             priority: None,
             tags: Some(vec!["quantrs".to_string()]),
         };
-        
+
         // Submit and wait for results
         let job_id = self.client.submit_job(&job).await?;
-        
+
         // Poll for completion (simplified - real implementation would be more sophisticated)
         tokio::time::sleep(Duration::from_secs(10)).await;
-        
+
         let results = self.client.get_job_results(&job_id).await?;
-        
+
         // Convert count data to the expected format
         let mut counts = HashMap::new();
         for (state, count) in &results.counts {
             counts.insert(state.clone(), *count as usize);
         }
-        
+
         Ok(CircuitResult { counts, shots })
     }
 
@@ -415,13 +415,13 @@ impl CircuitExecutor for HoneywellDevice {
         shots: usize,
     ) -> DeviceResult<Vec<CircuitResult>> {
         let mut results = Vec::new();
-        
+
         // Execute circuits sequentially (could be parallelized)
         for circuit in circuits {
             let result = self.execute_circuit(circuit, shots).await?;
             results.push(result);
         }
-        
+
         Ok(results)
     }
 }
@@ -456,12 +456,12 @@ mod tests {
     fn test_circuit_to_qasm_conversion() {
         let config = HoneywellConfig::default();
         let client = HoneywellClient::new(config).unwrap();
-        
+
         let circuit = Circuit::<2>::new();
         // Note: This is a simplified test - actual circuit building would use proper QuantRS gates
-        
+
         let qasm = client.circuit_to_qasm(&circuit).unwrap();
-        
+
         assert!(qasm.contains("OPENQASM 2.0"));
         assert!(qasm.contains("qreg q[2]"));
         assert!(qasm.contains("creg c[2]"));

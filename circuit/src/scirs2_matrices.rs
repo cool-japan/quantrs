@@ -13,10 +13,10 @@
 
 use crate::builder::Circuit;
 use quantrs2_core::{
+    buffer_pool::BufferPool,
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
-    buffer_pool::BufferPool,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -24,10 +24,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 // Enhanced SciRS2 imports using available features
-use scirs2_core::{
-    parallel_ops::*,
-    simd_ops::*,
-};
+use scirs2_core::{parallel_ops::*, simd_ops::*};
 // Re-export Complex64 for public use
 pub use num_complex::Complex64;
 
@@ -45,10 +42,10 @@ impl<T: Clone> SciRSSparseMatrix<T> {
             shape: (rows, cols),
         }
     }
-    
-    pub fn identity(size: usize) -> Self 
-    where 
-        T: From<f64> + Default
+
+    pub fn identity(size: usize) -> Self
+    where
+        T: From<f64> + Default,
     {
         let mut matrix = Self::new(size, size);
         for i in 0..size {
@@ -56,11 +53,11 @@ impl<T: Clone> SciRSSparseMatrix<T> {
         }
         matrix
     }
-    
+
     pub fn insert(&mut self, row: usize, col: usize, value: T) {
         self.data.push((row, col, value));
     }
-    
+
     pub fn nnz(&self) -> usize {
         self.data.len()
     }
@@ -70,62 +67,123 @@ impl<T: Clone> SciRSSparseMatrix<T> {
 #[derive(Debug, Clone)]
 pub struct SimdOperations;
 impl SimdOperations {
-    pub fn new() -> Self { Self }
-    pub fn sparse_matmul(&self, _a: &SciRSSparseMatrix<Complex64>, _b: &SciRSSparseMatrix<Complex64>) -> QuantRS2Result<SciRSSparseMatrix<Complex64>> {
+    pub fn new() -> Self {
+        Self
+    }
+    pub fn sparse_matmul(
+        &self,
+        _a: &SciRSSparseMatrix<Complex64>,
+        _b: &SciRSSparseMatrix<Complex64>,
+    ) -> QuantRS2Result<SciRSSparseMatrix<Complex64>> {
         Ok(SciRSSparseMatrix::new(1, 1))
     }
-    pub fn transpose_simd(&self, matrix: &SciRSSparseMatrix<Complex64>) -> SciRSSparseMatrix<Complex64> {
+    pub fn transpose_simd(
+        &self,
+        matrix: &SciRSSparseMatrix<Complex64>,
+    ) -> SciRSSparseMatrix<Complex64> {
         matrix.clone()
     }
-    pub fn hermitian_conjugate_simd(&self, matrix: &SciRSSparseMatrix<Complex64>) -> SciRSSparseMatrix<Complex64> {
+    pub fn hermitian_conjugate_simd(
+        &self,
+        matrix: &SciRSSparseMatrix<Complex64>,
+    ) -> SciRSSparseMatrix<Complex64> {
         matrix.clone()
     }
-    pub fn matrices_approx_equal(&self, _a: &SciRSSparseMatrix<Complex64>, _b: &SciRSSparseMatrix<Complex64>, _tol: f64) -> bool {
+    pub fn matrices_approx_equal(
+        &self,
+        _a: &SciRSSparseMatrix<Complex64>,
+        _b: &SciRSSparseMatrix<Complex64>,
+        _tol: f64,
+    ) -> bool {
         true
     }
-    pub fn threshold_filter(&self, matrix: &SciRSSparseMatrix<Complex64>, _threshold: f64) -> SciRSSparseMatrix<Complex64> {
+    pub fn threshold_filter(
+        &self,
+        matrix: &SciRSSparseMatrix<Complex64>,
+        _threshold: f64,
+    ) -> SciRSSparseMatrix<Complex64> {
         matrix.clone()
     }
     pub fn is_unitary(&self, _matrix: &SciRSSparseMatrix<Complex64>, _tol: f64) -> bool {
         true
     }
-    pub fn gate_fidelity_simd(&self, _a: &SciRSSparseMatrix<Complex64>, _b: &SciRSSparseMatrix<Complex64>) -> f64 {
+    pub fn gate_fidelity_simd(
+        &self,
+        _a: &SciRSSparseMatrix<Complex64>,
+        _b: &SciRSSparseMatrix<Complex64>,
+    ) -> f64 {
         0.99
     }
-    pub fn sparse_matvec_simd(&self, _matrix: &SciRSSparseMatrix<Complex64>, _vector: &VectorizedOps) -> QuantRS2Result<VectorizedOps> {
+    pub fn sparse_matvec_simd(
+        &self,
+        _matrix: &SciRSSparseMatrix<Complex64>,
+        _vector: &VectorizedOps,
+    ) -> QuantRS2Result<VectorizedOps> {
         Ok(VectorizedOps)
     }
-    pub fn batch_sparse_matvec(&self, _matrix: &SciRSSparseMatrix<Complex64>, _vectors: &[VectorizedOps]) -> QuantRS2Result<Vec<VectorizedOps>> {
+    pub fn batch_sparse_matvec(
+        &self,
+        _matrix: &SciRSSparseMatrix<Complex64>,
+        _vectors: &[VectorizedOps],
+    ) -> QuantRS2Result<Vec<VectorizedOps>> {
         Ok(vec![])
     }
-    pub fn matrix_exp_simd(&self, matrix: &SciRSSparseMatrix<Complex64>, _scale: f64) -> QuantRS2Result<SciRSSparseMatrix<Complex64>> {
+    pub fn matrix_exp_simd(
+        &self,
+        matrix: &SciRSSparseMatrix<Complex64>,
+        _scale: f64,
+    ) -> QuantRS2Result<SciRSSparseMatrix<Complex64>> {
         Ok(matrix.clone())
     }
-    pub fn has_advanced_simd(&self) -> bool { true }
-    pub fn has_gpu_support(&self) -> bool { false }
-    pub fn predict_format_performance(&self, _pattern: &SparsityPattern) -> FormatPerformancePrediction {
-        FormatPerformancePrediction { best_format: SparseFormat::CSR }
+    pub fn has_advanced_simd(&self) -> bool {
+        true
+    }
+    pub fn has_gpu_support(&self) -> bool {
+        false
+    }
+    pub fn predict_format_performance(
+        &self,
+        _pattern: &SparsityPattern,
+    ) -> FormatPerformancePrediction {
+        FormatPerformancePrediction {
+            best_format: SparseFormat::CSR,
+        }
     }
 }
 
 pub struct VectorizedOps;
 impl VectorizedOps {
-    pub fn from_slice(_slice: &[Complex64]) -> Self { Self }
+    pub fn from_slice(_slice: &[Complex64]) -> Self {
+        Self
+    }
     pub fn copy_to_slice(&self, _slice: &mut [Complex64]) {}
 }
 
 pub struct BLAS;
 impl BLAS {
-    pub fn matrix_approx_equal(_a: &SciRSSparseMatrix<Complex64>, _b: &SciRSSparseMatrix<Complex64>, _tol: f64) -> bool { true }
-    pub fn condition_number(_matrix: &SciRSSparseMatrix<Complex64>) -> f64 { 1.0 }
-    pub fn is_symmetric(matrix: &SciRSSparseMatrix<Complex64>, tol: f64) -> bool { 
+    pub fn matrix_approx_equal(
+        _a: &SciRSSparseMatrix<Complex64>,
+        _b: &SciRSSparseMatrix<Complex64>,
+        _tol: f64,
+    ) -> bool {
+        true
+    }
+    pub fn condition_number(_matrix: &SciRSSparseMatrix<Complex64>) -> f64 {
+        1.0
+    }
+    pub fn is_symmetric(matrix: &SciRSSparseMatrix<Complex64>, tol: f64) -> bool {
         // Check if matrix is symmetric (A = A^T)
-        if matrix.shape.0 != matrix.shape.1 { return false; }
-        
+        if matrix.shape.0 != matrix.shape.1 {
+            return false;
+        }
+
         // For sparse matrices, check if data entries are symmetric
         for (row, col, value) in &matrix.data {
             // Find the transpose entry
-            let transpose_entry = matrix.data.iter().find(|(r, c, _)| *r == *col && *c == *row);
+            let transpose_entry = matrix
+                .data
+                .iter()
+                .find(|(r, c, _)| *r == *col && *c == *row);
             match transpose_entry {
                 Some((_, _, transpose_value)) => {
                     if (value - transpose_value).norm() > tol {
@@ -144,12 +202,17 @@ impl BLAS {
     }
     pub fn is_hermitian(matrix: &SciRSSparseMatrix<Complex64>, tol: f64) -> bool {
         // Check if matrix is Hermitian (A = A†, conjugate transpose)
-        if matrix.shape.0 != matrix.shape.1 { return false; }
-        
+        if matrix.shape.0 != matrix.shape.1 {
+            return false;
+        }
+
         // For sparse matrices, check if data entries satisfy Hermitian property
         for (row, col, value) in &matrix.data {
             // Find the conjugate transpose entry
-            let conj_transpose_entry = matrix.data.iter().find(|(r, c, _)| *r == *col && *c == *row);
+            let conj_transpose_entry = matrix
+                .data
+                .iter()
+                .find(|(r, c, _)| *r == *col && *c == *row);
             match conj_transpose_entry {
                 Some((_, _, conj_transpose_value)) => {
                     // Check if A[i,j] = conj(A[j,i])
@@ -167,39 +230,100 @@ impl BLAS {
         }
         true
     }
-    pub fn is_positive_definite(_matrix: &SciRSSparseMatrix<Complex64>) -> bool { false }
-    pub fn matrix_norm(_matrix: &SciRSSparseMatrix<Complex64>, _norm_type: &str) -> f64 { 1.0 }
-    pub fn numerical_rank(_matrix: &SciRSSparseMatrix<Complex64>, _tol: f64) -> usize { 1 }
+    pub fn is_positive_definite(_matrix: &SciRSSparseMatrix<Complex64>) -> bool {
+        false
+    }
+    pub fn matrix_norm(_matrix: &SciRSSparseMatrix<Complex64>, _norm_type: &str) -> f64 {
+        1.0
+    }
+    pub fn numerical_rank(_matrix: &SciRSSparseMatrix<Complex64>, _tol: f64) -> usize {
+        1
+    }
     pub fn spectral_analysis(_matrix: &SciRSSparseMatrix<Complex64>) -> SpectralAnalysis {
-        SpectralAnalysis { spectral_radius: 1.0, eigenvalue_spread: 0.0 }
+        SpectralAnalysis {
+            spectral_radius: 1.0,
+            eigenvalue_spread: 0.0,
+        }
     }
-    pub fn gate_fidelity(_a: &SciRSSparseMatrix<Complex64>, _b: &SciRSSparseMatrix<Complex64>) -> f64 { 0.99 }
-    pub fn trace_distance(_a: &SciRSSparseMatrix<Complex64>, _b: &SciRSSparseMatrix<Complex64>) -> f64 { 0.001 }
-    pub fn diamond_distance(_a: &SciRSSparseMatrix<Complex64>, _b: &SciRSSparseMatrix<Complex64>) -> f64 { 0.001 }
-    pub fn process_fidelity(_a: &SciRSSparseMatrix<Complex64>, _b: &SciRSSparseMatrix<Complex64>) -> f64 { 0.99 }
-    pub fn error_decomposition(_a: &SciRSSparseMatrix<Complex64>, _b: &SciRSSparseMatrix<Complex64>) -> ErrorDecomposition {
-        ErrorDecomposition { coherent_component: 0.001, incoherent_component: 0.001 }
+    pub fn gate_fidelity(
+        _a: &SciRSSparseMatrix<Complex64>,
+        _b: &SciRSSparseMatrix<Complex64>,
+    ) -> f64 {
+        0.99
     }
-    pub fn sparse_matvec(_matrix: &SciRSSparseMatrix<Complex64>, _vector: &VectorizedOps) -> QuantRS2Result<VectorizedOps> {
+    pub fn trace_distance(
+        _a: &SciRSSparseMatrix<Complex64>,
+        _b: &SciRSSparseMatrix<Complex64>,
+    ) -> f64 {
+        0.001
+    }
+    pub fn diamond_distance(
+        _a: &SciRSSparseMatrix<Complex64>,
+        _b: &SciRSSparseMatrix<Complex64>,
+    ) -> f64 {
+        0.001
+    }
+    pub fn process_fidelity(
+        _a: &SciRSSparseMatrix<Complex64>,
+        _b: &SciRSSparseMatrix<Complex64>,
+    ) -> f64 {
+        0.99
+    }
+    pub fn error_decomposition(
+        _a: &SciRSSparseMatrix<Complex64>,
+        _b: &SciRSSparseMatrix<Complex64>,
+    ) -> ErrorDecomposition {
+        ErrorDecomposition {
+            coherent_component: 0.001,
+            incoherent_component: 0.001,
+        }
+    }
+    pub fn sparse_matvec(
+        _matrix: &SciRSSparseMatrix<Complex64>,
+        _vector: &VectorizedOps,
+    ) -> QuantRS2Result<VectorizedOps> {
         Ok(VectorizedOps)
     }
-    pub fn matrix_exp(matrix: &SciRSSparseMatrix<Complex64>, _scale: f64) -> QuantRS2Result<SciRSSparseMatrix<Complex64>> {
+    pub fn matrix_exp(
+        matrix: &SciRSSparseMatrix<Complex64>,
+        _scale: f64,
+    ) -> QuantRS2Result<SciRSSparseMatrix<Complex64>> {
         Ok(matrix.clone())
     }
 }
 
 pub struct SparsityPattern;
 impl SparsityPattern {
-    pub fn analyze(_matrix: &SciRSSparseMatrix<Complex64>) -> Self { Self }
-    pub fn estimate_compression_ratio(&self) -> f64 { 0.5 }
-    pub fn bandwidth(&self) -> usize { 10 }
-    pub fn is_diagonal(&self) -> bool { false }
-    pub fn has_block_structure(&self) -> bool { false }
-    pub fn is_gpu_suitable(&self) -> bool { false }
-    pub fn is_simd_aligned(&self) -> bool { true }
-    pub fn sparsity(&self) -> f64 { 0.1 }
-    pub fn has_row_major_access(&self) -> bool { true }
-    pub fn analyze_access_patterns(&self) -> AccessPatterns { AccessPatterns }
+    pub fn analyze(_matrix: &SciRSSparseMatrix<Complex64>) -> Self {
+        Self
+    }
+    pub fn estimate_compression_ratio(&self) -> f64 {
+        0.5
+    }
+    pub fn bandwidth(&self) -> usize {
+        10
+    }
+    pub fn is_diagonal(&self) -> bool {
+        false
+    }
+    pub fn has_block_structure(&self) -> bool {
+        false
+    }
+    pub fn is_gpu_suitable(&self) -> bool {
+        false
+    }
+    pub fn is_simd_aligned(&self) -> bool {
+        true
+    }
+    pub fn sparsity(&self) -> f64 {
+        0.1
+    }
+    pub fn has_row_major_access(&self) -> bool {
+        true
+    }
+    pub fn analyze_access_patterns(&self) -> AccessPatterns {
+        AccessPatterns
+    }
 }
 
 pub struct AccessPatterns;
@@ -233,18 +357,31 @@ pub enum SciRSSparseFormat {
 }
 
 impl SciRSSparseFormat {
-    pub fn adaptive_optimal(_matrix: &SciRSSparseMatrix<Complex64>) -> Self { Self::CSR }
-    pub fn gpu_optimized() -> Self { Self::CSR }
-    pub fn simd_aligned() -> Self { Self::CSR }
+    pub fn adaptive_optimal(_matrix: &SciRSSparseMatrix<Complex64>) -> Self {
+        Self::CSR
+    }
+    pub fn gpu_optimized() -> Self {
+        Self::CSR
+    }
+    pub fn simd_aligned() -> Self {
+        Self::CSR
+    }
 }
 
 pub struct ParallelMatrixOps;
 impl ParallelMatrixOps {
-    pub fn kronecker_product(a: &SciRSSparseMatrix<Complex64>, b: &SciRSSparseMatrix<Complex64>) -> SciRSSparseMatrix<Complex64> {
+    pub fn kronecker_product(
+        a: &SciRSSparseMatrix<Complex64>,
+        b: &SciRSSparseMatrix<Complex64>,
+    ) -> SciRSSparseMatrix<Complex64> {
         let mut result = SciRSSparseMatrix::new(a.shape.0 * b.shape.0, a.shape.1 * b.shape.1);
         result
     }
-    pub fn batch_optimize(matrices: &[SparseMatrix], _simd_ops: &Arc<SimdOperations>, _buffer_pool: &Arc<quantrs2_core::buffer_pool::BufferPool<Complex64>>) -> Vec<SparseMatrix> {
+    pub fn batch_optimize(
+        matrices: &[SparseMatrix],
+        _simd_ops: &Arc<SimdOperations>,
+        _buffer_pool: &Arc<quantrs2_core::buffer_pool::BufferPool<Complex64>>,
+    ) -> Vec<SparseMatrix> {
         matrices.to_vec()
     }
 }
@@ -329,7 +466,7 @@ impl SparseMatrix {
         } else {
             None
         };
-        
+
         Self {
             shape: (rows, cols),
             inner,
@@ -350,12 +487,12 @@ impl SparseMatrix {
     pub fn identity(size: usize) -> Self {
         let start_time = Instant::now();
         let mut matrix = Self::new(size, size, SparseFormat::DIA);
-        
+
         // Use SciRS2's optimized identity matrix construction
         matrix.inner = SciRSSparseMatrix::identity(size);
         matrix.metrics.operation_time = start_time.elapsed();
         matrix.metrics.compression_ratio = size as f64 / (size * size) as f64;
-        
+
         matrix
     }
 
@@ -381,7 +518,7 @@ impl SparseMatrix {
     pub fn to_format(&self, new_format: SparseFormat) -> Self {
         let start_time = Instant::now();
         let mut new_matrix = self.clone();
-        
+
         // Use SciRS2's intelligent format conversion with performance analysis
         let scirs_format = match new_format {
             SparseFormat::COO => SciRSSparseFormat::COO,
@@ -392,20 +529,20 @@ impl SparseMatrix {
             SparseFormat::SciRSHybrid => {
                 // SciRS2 automatically selects optimal format based on sparsity pattern
                 SciRSSparseFormat::adaptive_optimal(&self.inner)
-            },
+            }
             SparseFormat::GPUOptimized => SciRSSparseFormat::gpu_optimized(),
             SparseFormat::SIMDAligned => SciRSSparseFormat::simd_aligned(),
         };
-        
+
         new_matrix.inner = self.inner.convert_to_format(scirs_format);
         new_matrix.format = new_format.clone();
         new_matrix.metrics.operation_time = start_time.elapsed();
-        
+
         // Update SIMD operations if format changed to SIMD-aligned
         if new_format == SparseFormat::SIMDAligned && self.simd_ops.is_none() {
             new_matrix.simd_ops = Some(Arc::new(SimdOperations::new()));
         }
-        
+
         new_matrix
     }
 
@@ -419,7 +556,7 @@ impl SparseMatrix {
 
         let start_time = Instant::now();
         let mut result = SparseMatrix::new(self.shape.0, other.shape.1, SparseFormat::CSR);
-        
+
         // Use SciRS2's optimized sparse matrix multiplication
         if let Some(ref simd_ops) = self.simd_ops {
             // SIMD-accelerated multiplication for large matrices
@@ -429,10 +566,10 @@ impl SparseMatrix {
             // Standard optimized multiplication
             result.inner = self.inner.matmul(&other.inner)?;
         }
-        
+
         result.metrics.operation_time = start_time.elapsed();
         result.metrics.memory_usage = result.nnz() * std::mem::size_of::<Complex64>();
-        
+
         Ok(result)
     }
 
@@ -445,11 +582,11 @@ impl SparseMatrix {
 
         // Use SciRS2's optimized Kronecker product with parallel processing
         result.inner = ParallelMatrixOps::kronecker_product(&self.inner, &other.inner);
-        
+
         result.metrics.operation_time = start_time.elapsed();
         result.metrics.memory_usage = result.nnz() * std::mem::size_of::<Complex64>();
         result.metrics.compression_ratio = result.nnz() as f64 / (new_rows * new_cols) as f64;
-        
+
         result
     }
 
@@ -457,18 +594,18 @@ impl SparseMatrix {
     pub fn transpose(&self) -> SparseMatrix {
         let start_time = Instant::now();
         let mut result = SparseMatrix::new(self.shape.1, self.shape.0, self.format.clone());
-        
+
         // Use SciRS2's cache-optimized transpose algorithm
         result.inner = if let Some(ref simd_ops) = self.simd_ops {
             simd_ops.transpose_simd(&self.inner)
         } else {
             self.inner.transpose_optimized()
         };
-        
+
         result.metrics.operation_time = start_time.elapsed();
         result.metrics.memory_usage = result.nnz() * std::mem::size_of::<Complex64>();
         result.simd_ops = self.simd_ops.clone();
-        
+
         result
     }
 
@@ -476,18 +613,18 @@ impl SparseMatrix {
     pub fn dagger(&self) -> SparseMatrix {
         let start_time = Instant::now();
         let mut result = SparseMatrix::new(self.shape.1, self.shape.0, self.format.clone());
-        
+
         // Use SciRS2's vectorized conjugate transpose
         result.inner = if let Some(ref simd_ops) = self.simd_ops {
             simd_ops.hermitian_conjugate_simd(&self.inner)
         } else {
             self.inner.hermitian_conjugate()
         };
-        
+
         result.metrics.operation_time = start_time.elapsed();
         result.metrics.memory_usage = result.nnz() * std::mem::size_of::<Complex64>();
         result.simd_ops = self.simd_ops.clone();
-        
+
         result
     }
 
@@ -498,7 +635,7 @@ impl SparseMatrix {
         }
 
         let start_time = Instant::now();
-        
+
         // Use SciRS2's specialized unitary checker with numerical stability
         let result = if let Some(ref simd_ops) = self.simd_ops {
             simd_ops.is_unitary(&self.inner, tolerance)
@@ -512,11 +649,11 @@ impl SparseMatrix {
                 false
             }
         };
-        
+
         // Update metrics
         let mut metrics = self.metrics.clone();
         metrics.operation_time += start_time.elapsed();
-        
+
         result
     }
 
@@ -533,22 +670,22 @@ impl SparseMatrix {
             BLAS::matrix_approx_equal(&self.inner, &other.inner, tolerance)
         }
     }
-    
+
     /// Advanced matrix analysis using SciRS2 numerical routines
     pub fn analyze_structure(&self) -> MatrixStructureAnalysis {
         let start_time = Instant::now();
-        
+
         let sparsity = self.nnz() as f64 / (self.shape.0 * self.shape.1) as f64;
         let condition_number = if self.shape.0 == self.shape.1 {
             BLAS::condition_number(&self.inner)
         } else {
             f64::INFINITY
         };
-        
+
         // Use SciRS2's pattern analysis
         let pattern = SparsityPattern::analyze(&self.inner);
         let compression_potential = pattern.estimate_compression_ratio();
-        
+
         MatrixStructureAnalysis {
             sparsity,
             condition_number,
@@ -560,7 +697,7 @@ impl SparseMatrix {
             analysis_time: start_time.elapsed(),
         }
     }
-    
+
     /// Recommend optimal sparse format based on matrix properties
     fn recommend_optimal_format(&self, pattern: &SparsityPattern) -> SparseFormat {
         if pattern.is_diagonal() {
@@ -579,24 +716,24 @@ impl SparseMatrix {
             SparseFormat::CSC
         }
     }
-    
+
     /// Apply advanced compression using SciRS2
     pub fn compress(&mut self, level: CompressionLevel) -> QuantRS2Result<f64> {
         let start_time = Instant::now();
         let original_size = self.metrics.memory_usage;
-        
+
         // Use SciRS2's adaptive compression algorithms
         let compressed = self.inner.compress(level)?;
         let compression_ratio = compressed.memory_footprint() as f64 / original_size as f64;
-        
+
         self.inner = compressed;
         self.metrics.operation_time += start_time.elapsed();
         self.metrics.compression_ratio = compression_ratio;
         self.metrics.memory_usage = self.inner.memory_footprint();
-        
+
         Ok(compression_ratio)
     }
-    
+
     /// Matrix exponentiation using SciRS2's advanced algorithms
     pub fn matrix_exp(&self, scale_factor: f64) -> QuantRS2Result<SparseMatrix> {
         if self.shape.0 != self.shape.1 {
@@ -604,10 +741,10 @@ impl SparseMatrix {
                 "Matrix exponentiation requires square matrix".to_string(),
             ));
         }
-        
+
         let start_time = Instant::now();
         let mut result = SparseMatrix::new(self.shape.0, self.shape.1, SparseFormat::CSR);
-        
+
         // Use SciRS2's numerically stable matrix exponentiation
         if let Some(ref simd_ops) = self.simd_ops {
             result.inner = simd_ops.matrix_exp_simd(&self.inner, scale_factor)?;
@@ -615,37 +752,37 @@ impl SparseMatrix {
         } else {
             result.inner = BLAS::matrix_exp(&self.inner, scale_factor)?;
         }
-        
+
         result.metrics.operation_time = start_time.elapsed();
         result.metrics.memory_usage = result.nnz() * std::mem::size_of::<Complex64>();
         result.simd_ops = self.simd_ops.clone();
         result.buffer_pool = self.buffer_pool.clone();
-        
+
         Ok(result)
     }
-    
+
     /// Optimize matrix for GPU computation
     pub fn optimize_for_gpu(&mut self) {
         // Apply GPU-specific optimizations
         self.format = SparseFormat::GPUOptimized;
-        
+
         // Update metrics to reflect GPU optimization
         self.metrics.compression_ratio = 0.95; // GPU format is slightly less compressed
         self.metrics.simd_utilization = 1.0; // Maximum GPU utilization
-        
+
         // In real implementation, this would reorganize data for GPU memory coalescing
         // and apply other GPU-specific optimizations
     }
-    
+
     /// Optimize matrix for SIMD operations
     pub fn optimize_for_simd(&mut self, simd_width: usize) {
         // Apply SIMD-specific optimizations
         self.format = SparseFormat::SIMDAligned;
-        
+
         // Update metrics based on SIMD capabilities
         self.metrics.simd_utilization = if simd_width >= 256 { 1.0 } else { 0.8 };
         self.metrics.compression_ratio = 0.90; // SIMD alignment may reduce compression
-        
+
         // In real implementation, this would align data structures for optimal SIMD usage
     }
 }
@@ -776,11 +913,11 @@ impl SparseGateLibrary {
         library.initialize_standard_gates();
         library
     }
-    
+
     /// Create library optimized for specific hardware
     pub fn new_for_hardware(hardware_spec: HardwareSpecification) -> Self {
         let mut library = Self::new();
-        
+
         // Optimize gates based on hardware specifications
         if hardware_spec.has_gpu {
             // Convert all gates to GPU-optimized format
@@ -797,7 +934,7 @@ impl SparseGateLibrary {
                 gate_matrix.optimize_for_simd(hardware_spec.simd_width);
             }
         }
-        
+
         library
     }
 
@@ -913,10 +1050,14 @@ impl SparseGateLibrary {
     }
 
     /// Get parameterized gate with metrics tracking
-    pub fn get_parameterized_gate(&mut self, name: &str, parameters: &[f64]) -> Option<SparseMatrix> {
+    pub fn get_parameterized_gate(
+        &mut self,
+        name: &str,
+        parameters: &[f64],
+    ) -> Option<SparseMatrix> {
         if let Some(generator) = self.parameterized_gates.get(name) {
             let matrix = generator(parameters);
-            
+
             // Simple caching simulation for test purposes
             // In a real implementation, this would use a proper cache with parameter keys
             if parameters == &[std::f64::consts::PI] {
@@ -933,7 +1074,7 @@ impl SparseGateLibrary {
                     }
                 }
             }
-            
+
             Some(matrix)
         } else {
             None
@@ -1103,7 +1244,7 @@ impl SparseOptimizer {
             optimization_cache: HashMap::new(),
         }
     }
-    
+
     /// Advanced sparse matrix optimization with SciRS2
     pub fn optimize_sparsity(&self, matrix: &SparseMatrix, threshold: f64) -> SparseMatrix {
         let start_time = Instant::now();
@@ -1111,18 +1252,18 @@ impl SparseOptimizer {
 
         // Use SciRS2's advanced sparsity optimization
         optimized.inner = self.simd_ops.threshold_filter(&matrix.inner, threshold);
-        
+
         // Apply additional optimizations
         let analysis = optimized.analyze_structure();
         if analysis.compression_potential > 0.5 {
             let _ = optimized.compress(CompressionLevel::High);
         }
-        
+
         // Convert to optimal format if beneficial
         if analysis.recommended_format != optimized.format {
             optimized = optimized.to_format(analysis.recommended_format);
         }
-        
+
         optimized.metrics.operation_time += start_time.elapsed();
         optimized
     }
@@ -1130,22 +1271,22 @@ impl SparseOptimizer {
     /// Advanced format optimization using SciRS2 analysis
     pub fn find_optimal_format(&self, matrix: &SparseMatrix) -> SparseFormat {
         let analysis = matrix.analyze_structure();
-        
+
         // Use SciRS2's machine learning-enhanced format selection
         let pattern = SparsityPattern::analyze(&matrix.inner);
         let access_patterns = pattern.analyze_access_patterns();
         let performance_prediction = self.simd_ops.predict_format_performance(&pattern);
-        
+
         // Consider hardware capabilities
         if self.simd_ops.has_advanced_simd() && analysis.sparsity < 0.5 {
             return SparseFormat::SIMDAligned;
         }
-        
+
         // GPU optimization for large matrices
         if matrix.shape.0 > 1000 && matrix.shape.1 > 1000 && self.simd_ops.has_gpu_support() {
             return SparseFormat::GPUOptimized;
         }
-        
+
         // Use performance prediction to select optimal format
         performance_prediction.best_format
     }
@@ -1154,12 +1295,12 @@ impl SparseOptimizer {
     pub fn analyze_gate_properties(&self, matrix: &SparseMatrix) -> GateProperties {
         let start_time = Instant::now();
         let structure_analysis = matrix.analyze_structure();
-        
+
         // Use SciRS2's comprehensive numerical analysis
         let spectral_analysis = BLAS::spectral_analysis(&matrix.inner);
         let matrix_norm = BLAS::matrix_norm(&matrix.inner, "frobenius");
         let numerical_rank = BLAS::numerical_rank(&matrix.inner, 1e-12);
-        
+
         GateProperties {
             is_unitary: matrix.is_unitary(1e-12),
             is_hermitian: BLAS::is_hermitian(&matrix.inner, 1e-12),
@@ -1172,37 +1313,34 @@ impl SparseOptimizer {
             structure_analysis,
         }
     }
-    
+
     /// Batch optimization for multiple matrices
     pub fn batch_optimize(&mut self, matrices: &[SparseMatrix]) -> Vec<SparseMatrix> {
         let start_time = Instant::now();
-        
+
         // Use SciRS2's parallel batch processing
-        let optimized = ParallelMatrixOps::batch_optimize(
-            matrices,
-            &self.simd_ops,
-            &self.buffer_pool
-        );
-        
+        let optimized =
+            ParallelMatrixOps::batch_optimize(matrices, &self.simd_ops, &self.buffer_pool);
+
         println!(
             "Batch optimized {} matrices in {:?}",
             matrices.len(),
             start_time.elapsed()
         );
-        
+
         optimized
     }
-    
+
     /// Cache frequently used matrices for performance
     pub fn cache_matrix(&mut self, key: String, matrix: SparseMatrix) {
         self.optimization_cache.insert(key, matrix);
     }
-    
+
     /// Retrieve cached matrix
     pub fn get_cached_matrix(&self, key: &str) -> Option<&SparseMatrix> {
         self.optimization_cache.get(key)
     }
-    
+
     /// Clear optimization cache
     pub fn clear_cache(&mut self) {
         self.optimization_cache.clear();
@@ -1342,7 +1480,7 @@ mod tests {
         assert!(properties.spectral_radius > 0.0);
         assert!(properties.matrix_norm > 0.0);
     }
-    
+
     #[test]
     fn test_hardware_optimization() {
         let hardware_spec = HardwareSpecification {
@@ -1351,37 +1489,37 @@ mod tests {
             has_tensor_cores: true,
             ..Default::default()
         };
-        
+
         let library = SparseGateLibrary::new_for_hardware(hardware_spec);
         let x_gate = library.get_gate("X").unwrap();
-        
+
         // Should be optimized for GPU
         assert_eq!(x_gate.format, SparseFormat::GPUOptimized);
     }
-    
+
     #[test]
     fn test_parameterized_gate_caching() {
         let mut library = SparseGateLibrary::new();
-        
+
         // First call should be a cache miss
         let rz1 = library.get_parameterized_gate("RZ", &[std::f64::consts::PI]);
         assert!(rz1.is_some());
         assert_eq!(library.metrics.cache_misses, 1);
-        
+
         // Second call with same parameters should be a cache hit
         let rz2 = library.get_parameterized_gate("RZ", &[std::f64::consts::PI]);
         assert!(rz2.is_some());
         assert_eq!(library.metrics.cache_hits, 1);
     }
-    
+
     #[test]
     fn test_simd_matrix_operations() {
         let matrix1 = SparseMatrix::new(2, 2, SparseFormat::SIMDAligned);
         let matrix2 = SparseMatrix::new(2, 2, SparseFormat::SIMDAligned);
-        
+
         let result = matrix1.matmul(&matrix2);
         assert!(result.is_ok());
-        
+
         let result_matrix = result.unwrap();
         assert!(result_matrix.metrics.simd_utilization > 0.0);
     }

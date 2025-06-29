@@ -6,7 +6,7 @@
 //! matching and graph analysis capabilities.
 
 use crate::builder::Circuit;
-use crate::scirs2_integration::{SciRS2CircuitAnalyzer, AnalyzerConfig, GraphMetrics, GraphMotif};
+use crate::scirs2_integration::{AnalyzerConfig, GraphMetrics, GraphMotif, SciRS2CircuitAnalyzer};
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use quantrs2_core::{
@@ -235,18 +235,14 @@ pub struct PatternDetector<const N: usize> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum QuantumPattern<const N: usize> {
     /// Bell state preparation pattern
-    BellStatePreparation {
-        confidence_threshold: f64,
-    },
+    BellStatePreparation { confidence_threshold: f64 },
     /// Quantum Fourier Transform pattern
     QuantumFourierTransform {
         min_qubits: usize,
         max_qubits: usize,
     },
     /// Grover diffusion operator
-    GroverDiffusion {
-        target_qubits: Vec<usize>,
-    },
+    GroverDiffusion { target_qubits: Vec<usize> },
     /// Phase kickback pattern
     PhaseKickback {
         control_qubits: Vec<usize>,
@@ -263,19 +259,14 @@ pub enum QuantumPattern<const N: usize> {
         parameter_count: usize,
     },
     /// Quantum approximate optimization algorithm
-    QaoaPattern {
-        layers: usize,
-        problem_size: usize,
-    },
+    QaoaPattern { layers: usize, problem_size: usize },
     /// Teleportation protocol
     QuantumTeleportation {
         input_qubit: usize,
         epr_qubits: (usize, usize),
     },
     /// Superdense coding
-    SuperdenseCoding {
-        shared_qubits: (usize, usize),
-    },
+    SuperdenseCoding { shared_qubits: (usize, usize) },
     /// Custom pattern
     Custom {
         name: String,
@@ -463,9 +454,7 @@ pub enum QuantumAntiPattern<const N: usize> {
         efficiency_threshold: f64,
     },
     /// Unnecessary entanglement
-    UnnecessaryEntanglement {
-        threshold: f64,
-    },
+    UnnecessaryEntanglement { threshold: f64 },
     /// Deep circuit without optimization
     DeepCircuit {
         depth_threshold: usize,
@@ -477,26 +466,18 @@ pub enum QuantumAntiPattern<const N: usize> {
         parallelization_potential: f64,
     },
     /// Measurement in middle of computation
-    EarlyMeasurement {
-        computation_continues_after: bool,
-    },
+    EarlyMeasurement { computation_continues_after: bool },
     /// Repeated identical subcircuits
     RepeatedSubcircuits {
         min_repetitions: usize,
         min_subcircuit_size: usize,
     },
     /// Poor gate scheduling
-    PoorGateScheduling {
-        idle_time_threshold: f64,
-    },
+    PoorGateScheduling { idle_time_threshold: f64 },
     /// Unnecessary reset operations
-    UnnecessaryResets {
-        optimization_potential: f64,
-    },
+    UnnecessaryResets { optimization_potential: f64 },
     /// Overcomplicated simple operations
-    Overcomplicated {
-        simplification_threshold: f64,
-    },
+    Overcomplicated { simplification_threshold: f64 },
 }
 
 /// Anti-pattern detection result
@@ -530,13 +511,9 @@ pub struct StyleChecker<const N: usize> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum StyleRule {
     /// Consistent gate naming
-    ConsistentGateNaming {
-        naming_convention: NamingConvention,
-    },
+    ConsistentGateNaming { naming_convention: NamingConvention },
     /// Proper qubit ordering
-    ProperQubitOrdering {
-        ordering_style: QubitOrderingStyle,
-    },
+    ProperQubitOrdering { ordering_style: QubitOrderingStyle },
     /// Circuit formatting
     CircuitFormatting {
         max_line_length: usize,
@@ -548,9 +525,7 @@ pub enum StyleRule {
         required_sections: Vec<String>,
     },
     /// Gate grouping
-    GateGrouping {
-        grouping_style: GateGroupingStyle,
-    },
+    GateGrouping { grouping_style: GateGroupingStyle },
     /// Parameter formatting
     ParameterFormatting {
         precision: usize,
@@ -561,9 +536,7 @@ pub enum StyleRule {
         placement_style: MeasurementPlacementStyle,
     },
     /// Barrier usage
-    BarrierUsage {
-        usage_style: BarrierUsageStyle,
-    },
+    BarrierUsage { usage_style: BarrierUsageStyle },
 }
 
 /// Naming conventions
@@ -735,9 +708,7 @@ pub enum OptimizationRule {
         accuracy_threshold: f64,
     },
     /// Entanglement optimization
-    EntanglementOptimization {
-        efficiency_threshold: f64,
-    },
+    EntanglementOptimization { efficiency_threshold: f64 },
 }
 
 /// Optimization suggestion
@@ -1031,9 +1002,7 @@ pub enum BestPracticeRule {
         performance_targets: HashMap<String, f64>,
     },
     /// Security practices
-    Security {
-        security_requirements: Vec<String>,
-    },
+    Security { security_requirements: Vec<String> },
     /// Maintainability practices
     Maintainability {
         maintainability_metrics: HashMap<String, f64>,
@@ -1387,16 +1356,18 @@ impl<const N: usize> QuantumLinter<N> {
         let detector = self.pattern_detector.read().map_err(|_| {
             QuantRS2Error::InvalidOperation("Failed to acquire pattern detector lock".to_string())
         })?;
-        
+
         detector.detect_all_patterns(&self.circuit, &self.config)
     }
 
     /// Detect anti-patterns in the circuit
     fn detect_antipatterns(&self) -> QuantRS2Result<Vec<LintIssue>> {
         let detector = self.antipattern_detector.read().map_err(|_| {
-            QuantRS2Error::InvalidOperation("Failed to acquire antipattern detector lock".to_string())
+            QuantRS2Error::InvalidOperation(
+                "Failed to acquire antipattern detector lock".to_string(),
+            )
         })?;
-        
+
         detector.detect_all_antipatterns(&self.circuit, &self.config)
     }
 
@@ -1405,34 +1376,40 @@ impl<const N: usize> QuantumLinter<N> {
         let checker = self.style_checker.read().map_err(|_| {
             QuantRS2Error::InvalidOperation("Failed to acquire style checker lock".to_string())
         })?;
-        
+
         checker.check_all_styles(&self.circuit, &self.config)
     }
 
     /// Analyze optimization opportunities
     fn analyze_optimizations(&self) -> QuantRS2Result<Vec<OptimizationSuggestion>> {
         let analyzer = self.optimization_analyzer.read().map_err(|_| {
-            QuantRS2Error::InvalidOperation("Failed to acquire optimization analyzer lock".to_string())
+            QuantRS2Error::InvalidOperation(
+                "Failed to acquire optimization analyzer lock".to_string(),
+            )
         })?;
-        
+
         analyzer.analyze_optimizations(&self.circuit, &self.config)
     }
 
     /// Analyze circuit complexity
     fn analyze_complexity(&self) -> QuantRS2Result<ComplexityMetrics> {
         let analyzer = self.complexity_analyzer.read().map_err(|_| {
-            QuantRS2Error::InvalidOperation("Failed to acquire complexity analyzer lock".to_string())
+            QuantRS2Error::InvalidOperation(
+                "Failed to acquire complexity analyzer lock".to_string(),
+            )
         })?;
-        
+
         analyzer.analyze_complexity(&self.circuit, &self.config)
     }
 
     /// Check best practices compliance
     fn check_best_practices(&self) -> QuantRS2Result<(Vec<LintIssue>, BestPracticesCompliance)> {
         let checker = self.best_practices_checker.read().map_err(|_| {
-            QuantRS2Error::InvalidOperation("Failed to acquire best practices checker lock".to_string())
+            QuantRS2Error::InvalidOperation(
+                "Failed to acquire best practices checker lock".to_string(),
+            )
         })?;
-        
+
         checker.check_all_practices(&self.circuit, &self.config)
     }
 
@@ -1457,7 +1434,11 @@ impl<const N: usize> QuantumLinter<N> {
             fix_type: AutoFixType::TextReplacement,
             target_issue: issue.rule_id.clone(),
             description: format!("Auto-fix for {}", issue.title),
-            implementation: issue.suggested_fix.as_ref().unwrap_or(&"No implementation".to_string()).clone(),
+            implementation: issue
+                .suggested_fix
+                .as_ref()
+                .unwrap_or(&"No implementation".to_string())
+                .clone(),
             safety: SafetyLevel::ReviewRecommended,
             confidence: 0.8,
             preview_available: true,
@@ -1483,12 +1464,19 @@ impl<const N: usize> QuantumLinter<N> {
     }
 
     /// Generate linting statistics
-    fn generate_statistics(&self, issues: &[LintIssue], auto_fixes: &[AutoFix], total_time: Duration) -> LintingStatistics {
+    fn generate_statistics(
+        &self,
+        issues: &[LintIssue],
+        auto_fixes: &[AutoFix],
+        total_time: Duration,
+    ) -> LintingStatistics {
         let mut issues_by_severity = HashMap::new();
         let mut issues_by_type = HashMap::new();
 
         for issue in issues {
-            *issues_by_severity.entry(issue.severity.clone()).or_insert(0) += 1;
+            *issues_by_severity
+                .entry(issue.severity.clone())
+                .or_insert(0) += 1;
             *issues_by_type.entry(issue.issue_type.clone()).or_insert(0) += 1;
         }
 
@@ -1497,7 +1485,10 @@ impl<const N: usize> QuantumLinter<N> {
             issues_by_severity,
             issues_by_type,
             patterns_detected: 0,
-            antipatterns_detected: issues.iter().filter(|i| i.issue_type == IssueType::AntiPattern).count(),
+            antipatterns_detected: issues
+                .iter()
+                .filter(|i| i.issue_type == IssueType::AntiPattern)
+                .count(),
             auto_fixes_available: auto_fixes.len(),
             lines_analyzed: self.circuit.num_gates(),
         }
@@ -1580,7 +1571,7 @@ impl<const N: usize> StyleChecker<N> {
             consistency_score: 1.0,
             readability_score: 1.0,
         };
-        
+
         Ok((issues, analysis))
     }
 }
@@ -1665,7 +1656,7 @@ impl<const N: usize> BestPracticesChecker<N> {
             compliance_level: ComplianceLevel::Good,
             improvement_areas: Vec::new(),
         };
-        
+
         Ok((issues, compliance))
     }
 }
@@ -1673,8 +1664,8 @@ impl<const N: usize> BestPracticesChecker<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use quantrs2_core::gate::single::Hadamard;
     use quantrs2_core::gate::multi::CNOT;
+    use quantrs2_core::gate::single::Hadamard;
 
     #[test]
     fn test_linter_creation() {
@@ -1687,11 +1678,16 @@ mod tests {
     fn test_linting_process() {
         let mut circuit = Circuit::<2>::new();
         circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(CNOT { control: QubitId(0), target: QubitId(1) }).unwrap();
-        
+        circuit
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .unwrap();
+
         let mut linter = QuantumLinter::new(circuit);
         let result = linter.lint_circuit().unwrap();
-        
+
         assert!(result.quality_score >= 0.0 && result.quality_score <= 1.0);
         assert!(result.metadata.analysis_scope.total_gates > 0);
     }
@@ -1701,7 +1697,7 @@ mod tests {
         let circuit = Circuit::<2>::new();
         let detector = PatternDetector::new();
         let config = LinterConfig::default();
-        
+
         let result = detector.detect_all_patterns(&circuit, &config).unwrap();
         assert!(result.pattern_score >= 0.0 && result.pattern_score <= 1.0);
     }
@@ -1711,7 +1707,7 @@ mod tests {
         let circuit = Circuit::<2>::new();
         let checker = StyleChecker::new();
         let config = LinterConfig::default();
-        
+
         let (issues, analysis) = checker.check_all_styles(&circuit, &config).unwrap();
         assert!(analysis.overall_score >= 0.0 && analysis.overall_score <= 1.0);
     }
@@ -1721,7 +1717,7 @@ mod tests {
         let circuit = Circuit::<2>::new();
         let analyzer = ComplexityAnalyzer::new();
         let config = LinterConfig::default();
-        
+
         let metrics = analyzer.analyze_complexity(&circuit, &config).unwrap();
         assert!(metrics.overall_complexity >= 0.0);
     }

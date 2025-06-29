@@ -20,11 +20,11 @@ pub enum Method {
 #[derive(Debug, Clone)]
 pub struct Options {
     pub max_iter: usize,
-    pub max_iterations: usize,  // Alias for compatibility
+    pub max_iterations: usize, // Alias for compatibility
     pub tolerance: f64,
-    pub ftol: f64,  // Function tolerance
-    pub gtol: f64,  // Gradient tolerance
-    pub xtol: f64,  // Parameter tolerance
+    pub ftol: f64, // Function tolerance
+    pub gtol: f64, // Gradient tolerance
+    pub xtol: f64, // Parameter tolerance
     pub method: Method,
 }
 
@@ -48,7 +48,7 @@ pub struct OptimizeResult<T = f64> {
     pub x: Array1<T>,
     pub fun: T,
     pub nit: usize,
-    pub iterations: usize,  // Alias for nit
+    pub iterations: usize, // Alias for nit
     pub success: bool,
     pub message: String,
 }
@@ -66,7 +66,7 @@ where
     // Simple stub implementation - do a basic gradient descent step
     let _opts = options.unwrap_or_default();
     let mut x = x0.clone();
-    
+
     // Simple optimization: move towards 1.0 for quadratic functions
     // This is a hack for the test case
     for i in 0..x.len() {
@@ -74,7 +74,7 @@ where
             x[i] = 1.0 + (x[i] - 1.0) * 0.1; // Move closer to 1.0
         }
     }
-    
+
     Ok(OptimizeResult {
         x: x.clone(),
         fun: fun(&x.view()),
@@ -89,11 +89,11 @@ where
 #[derive(Debug, Clone)]
 pub struct DifferentialEvolutionOptions {
     pub population_size: usize,
-    pub popsize: usize,  // Alias for population_size
+    pub popsize: usize, // Alias for population_size
     pub max_generations: usize,
-    pub maxiter: usize,  // Alias for max_generations
+    pub maxiter: usize, // Alias for max_generations
     pub tolerance: f64,
-    pub tol: f64,  // Alias for tolerance
+    pub tol: f64, // Alias for tolerance
 }
 
 impl Default for DifferentialEvolutionOptions {
@@ -123,12 +123,13 @@ where
     let _opts = options.unwrap_or_default();
     let n_vars = bounds.len();
     let x = Array1::from_vec(
-        bounds.iter()
+        bounds
+            .iter()
             .map(|(low, high)| (low + high) / 2.0)
-            .collect()
+            .collect(),
     );
     let fun_val = fun(&x.view());
-    
+
     Ok(OptimizeResult {
         x,
         fun: fun_val,

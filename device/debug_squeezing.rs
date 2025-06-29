@@ -12,9 +12,9 @@ fn main() {
         }
         println\!();
     }
-    
+
     sequence.execute_on_state(&mut state).unwrap();
-    
+
     println\!("After squeezing:");
     for i in 0..4 {
         for j in 0..4 {
@@ -22,7 +22,7 @@ fn main() {
         }
         println\!();
     }
-    
+
     println\!("state.covariance_matrix[2][2] = {}", state.covariance_matrix[2][2]);
     println\!("Is [2][2] < 0.5? {}", state.covariance_matrix[2][2] < 0.5);
 }

@@ -347,10 +347,10 @@ impl QuantumRoutingLayer {
         let topology = Arc::new(RwLock::new(QuantumNetworkTopology::new()));
         let path_cache = Arc::new(RwLock::new(HashMap::new()));
         let entanglement_graph = Arc::new(RwLock::new(EntanglementGraph::new()));
-        
+
         // Initialize routing protocols
         let mut routing_protocols: Vec<Box<dyn QuantumRoutingProtocol + Send + Sync>> = vec![];
-        
+
         match config.default_protocol {
             QuantumRoutingProtocolType::QuantumOSPF => {
                 routing_protocols.push(Box::new(QuantumOSPFProtocol::new()));
@@ -365,7 +365,7 @@ impl QuantumRoutingLayer {
                 routing_protocols.push(Box::new(QuantumOSPFProtocol::new()));
             }
         }
-        
+
         Ok(Self {
             config: config.clone(),
             routing_table,
@@ -375,7 +375,7 @@ impl QuantumRoutingLayer {
             routing_protocols,
         })
     }
-    
+
     /// Initialize the routing layer
     pub async fn initialize(&mut self) -> DeviceResult<()> {
         // Initialize routing protocols
@@ -383,13 +383,13 @@ impl QuantumRoutingLayer {
             let topology = self.topology.read().await;
             protocol.update_topology(&topology).await?;
         }
-        
+
         // Start topology monitoring
         self.start_topology_monitoring().await;
-        
+
         Ok(())
     }
-    
+
     /// Find optimal path between source and destination
     pub async fn find_path(&self, source: &str, destination: &str, requirements: PathRequirements) -> DeviceResult<QuantumPath> {
         // Check cache first
@@ -402,23 +402,23 @@ impl QuantumRoutingLayer {
                 }
             }
         }
-        
+
         // Use appropriate routing protocol
         let protocol = &self.routing_protocols[0]; // Use first protocol for now
         let path = protocol.compute_path(source, destination, &requirements).await?;
-        
+
         // Cache the path
         {
             let mut cache = self.path_cache.write().await;
             cache.insert(cache_key, path.clone());
         }
-        
+
         // Update routing table
         self.update_routing_table_entry(destination, &path).await?;
-        
+
         Ok(path)
     }
-    
+
     /// Establish route for a connection
     pub async fn establish_route(&self, connection_id: &str, destination: &str) -> DeviceResult<()> {
         let requirements = PathRequirements {
@@ -431,39 +431,39 @@ impl QuantumRoutingLayer {
             preferred_nodes: vec![],
             avoided_nodes: vec![],
         };
-        
+
         let _path = self.find_path("local", destination, requirements).await?;
-        
+
         // Store route for connection
         // Implementation would store connection-specific routing info
-        
+
         Ok(())
     }
-    
+
     /// Route quantum data
     pub async fn route_data(&self, destination: &str, data: QuantumData) -> DeviceResult<()> {
         // Get routing entry
         let routing_table = self.routing_table.read().await;
         let entry = routing_table.entries.get(destination)
             .ok_or_else(|| DeviceError::InvalidInput(format!("No route to {}", destination)))?;
-        
+
         // Check if entanglement is required
         if entry.entanglement_required {
             self.verify_entanglement_availability(&entry.next_hop).await?;
         }
-        
+
         // Forward data to next hop
         self.forward_to_next_hop(&entry.next_hop, data).await?;
-        
+
         Ok(())
     }
-    
+
     /// Receive data from routing layer
     pub async fn receive_data(&self) -> DeviceResult<QuantumData> {
         // Simulate receiving data
         Ok(QuantumData::default())
     }
-    
+
     /// Handle link failure and reroute
     pub async fn handle_link_failure(&self, link_id: &str) -> DeviceResult<()> {
         // Update topology
@@ -473,32 +473,32 @@ impl QuantumRoutingLayer {
                 link.status = LinkStatus::Down;
             }
         }
-        
+
         // Notify routing protocols
         for protocol in &self.routing_protocols {
             // Note: This requires the protocol to be mutable, which conflicts with the trait design
             // In a real implementation, this would be handled differently
         }
-        
+
         // Clear affected cached paths
         self.clear_affected_paths(link_id).await;
-        
+
         // Recompute routing table
         self.recompute_routing_table().await?;
-        
+
         Ok(())
     }
-    
+
     /// Cleanup route
     pub async fn cleanup_route(&self, _connection_id: &str) -> DeviceResult<()> {
         // Cleanup connection-specific routing information
         Ok(())
     }
-    
+
     /// Update network topology
     pub async fn update_topology(&self, topology_update: TopologyUpdate) -> DeviceResult<()> {
         let mut topology = self.topology.write().await;
-        
+
         match topology_update.update_type {
             TopologyUpdateType::NodeAdded => {
                 if let Some(node) = topology_update.node {
@@ -522,22 +522,22 @@ impl QuantumRoutingLayer {
                 }
             }
         }
-        
+
         topology.version += 1;
         topology.last_update = SystemTime::now();
-        
+
         Ok(())
     }
-    
+
     // Helper methods
     async fn is_path_valid(&self, _path: &QuantumPath) -> bool {
         // Check if path is still valid (links up, fidelity acceptable, etc.)
         true // Simplified for now
     }
-    
+
     async fn update_routing_table_entry(&self, destination: &str, path: &QuantumPath) -> DeviceResult<()> {
         let mut routing_table = self.routing_table.write().await;
-        
+
         if !path.hops.is_empty() {
             let next_hop = path.hops[0].to_node.clone();
             let entry = QuantumRoutingEntry {
@@ -558,29 +558,29 @@ impl QuantumRoutingLayer {
                 backup_paths: vec![],
                 last_verified: SystemTime::now(),
             };
-            
+
             routing_table.entries.insert(destination.to_string(), entry);
         }
-        
+
         Ok(())
     }
-    
+
     async fn verify_entanglement_availability(&self, _next_hop: &str) -> DeviceResult<()> {
         // Verify that entanglement resources are available for the next hop
         Ok(())
     }
-    
+
     async fn forward_to_next_hop(&self, _next_hop: &str, _data: QuantumData) -> DeviceResult<()> {
         // Forward data to the next hop
         Ok(())
     }
-    
+
     async fn clear_affected_paths(&self, _link_id: &str) {
         // Clear cached paths that use the failed link
         let mut cache = self.path_cache.write().await;
         cache.clear(); // Simplified - should only clear affected paths
     }
-    
+
     async fn recompute_routing_table(&self) -> DeviceResult<()> {
         // Recompute entire routing table
         let mut routing_table = self.routing_table.write().await;
@@ -588,7 +588,7 @@ impl QuantumRoutingLayer {
         routing_table.last_update = SystemTime::now();
         Ok(())
     }
-    
+
     async fn start_topology_monitoring(&self) {
         // Start background task for topology monitoring
         // This would periodically update topology and routing tables
@@ -657,19 +657,19 @@ impl QuantumRoutingProtocol for QuantumOSPFProtocol {
             validity_period: Duration::from_secs(300),
         })
     }
-    
+
     async fn update_topology(&mut self, _topology: &QuantumNetworkTopology) -> DeviceResult<()> {
         Ok(())
     }
-    
+
     async fn handle_link_failure(&mut self, _link_id: &str) -> DeviceResult<()> {
         Ok(())
     }
-    
+
     async fn optimize_existing_paths(&mut self) -> DeviceResult<Vec<QuantumPath>> {
         Ok(vec![])
     }
-    
+
     fn get_protocol_type(&self) -> QuantumRoutingProtocolType {
         QuantumRoutingProtocolType::QuantumOSPF
     }
@@ -693,19 +693,19 @@ impl QuantumRoutingProtocol for EntanglementAwareProtocol {
             validity_period: Duration::from_secs(200),
         })
     }
-    
+
     async fn update_topology(&mut self, _topology: &QuantumNetworkTopology) -> DeviceResult<()> {
         Ok(())
     }
-    
+
     async fn handle_link_failure(&mut self, _link_id: &str) -> DeviceResult<()> {
         Ok(())
     }
-    
+
     async fn optimize_existing_paths(&mut self) -> DeviceResult<Vec<QuantumPath>> {
         Ok(vec![])
     }
-    
+
     fn get_protocol_type(&self) -> QuantumRoutingProtocolType {
         QuantumRoutingProtocolType::EntanglementAware
     }
@@ -729,19 +729,19 @@ impl QuantumRoutingProtocol for FidelityOptimizedProtocol {
             validity_period: Duration::from_secs(400),
         })
     }
-    
+
     async fn update_topology(&mut self, _topology: &QuantumNetworkTopology) -> DeviceResult<()> {
         Ok(())
     }
-    
+
     async fn handle_link_failure(&mut self, _link_id: &str) -> DeviceResult<()> {
         Ok(())
     }
-    
+
     async fn optimize_existing_paths(&mut self) -> DeviceResult<Vec<QuantumPath>> {
         Ok(vec![])
     }
-    
+
     fn get_protocol_type(&self) -> QuantumRoutingProtocolType {
         QuantumRoutingProtocolType::FidelityOptimized
     }

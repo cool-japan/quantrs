@@ -3,7 +3,7 @@
 //! This module implements cutting-edge quantum self-supervised learning methods that leverage
 //! quantum mechanical principles for enhanced representation learning without labeled data:
 //! - Quantum Contrastive Learning with entanglement-based similarity
-//! - Quantum Masked Learning with superposition encoding  
+//! - Quantum Masked Learning with superposition encoding
 //! - Quantum SimCLR/SimSiam with quantum augmentations
 //! - Quantum BYOL with quantum momentum updates
 //! - Quantum SwAV with quantum cluster assignments

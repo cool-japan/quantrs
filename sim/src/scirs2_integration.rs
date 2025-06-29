@@ -18,9 +18,9 @@ use std::f64::consts::PI;
 use std::sync::{Arc, Mutex};
 
 // Core SciRS2 integration imports
-use scirs2_core::simd_ops::SimdUnifiedOps;
-use scirs2_core::parallel_ops::*;
 use quantrs2_core::prelude::QuantRS2Error as SciRS2Error;
+use scirs2_core::parallel_ops::*;
+use scirs2_core::simd_ops::SimdUnifiedOps;
 
 // Import rayon for parallel processing
 use rayon::prelude::*;
@@ -43,7 +43,7 @@ impl SciRS2Matrix {
             simd_aligned: true,
         })
     }
-    
+
     /// Create matrix from existing array data
     pub fn from_array2(array: Array2<Complex64>) -> Self {
         Self {
@@ -51,27 +51,27 @@ impl SciRS2Matrix {
             simd_aligned: false,
         }
     }
-    
+
     /// Get matrix dimensions
     pub fn shape(&self) -> (usize, usize) {
         self.data.dim()
     }
-    
+
     /// Get number of rows
     pub fn rows(&self) -> usize {
         self.data.nrows()
     }
-    
+
     /// Get number of columns
     pub fn cols(&self) -> usize {
         self.data.ncols()
     }
-    
+
     /// Get immutable view of the data
     pub fn data_view(&self) -> ArrayView2<Complex64> {
         self.data.view()
     }
-    
+
     /// Get mutable view of the data
     pub fn data_view_mut(&mut self) -> ArrayViewMut2<Complex64> {
         self.data.view_mut()
@@ -94,7 +94,7 @@ impl SciRS2Vector {
             simd_aligned: true,
         })
     }
-    
+
     /// Create vector from existing array data
     pub fn from_array1(array: Array1<Complex64>) -> Self {
         Self {
@@ -102,22 +102,22 @@ impl SciRS2Vector {
             simd_aligned: false,
         }
     }
-    
+
     /// Get vector length
     pub fn len(&self) -> usize {
         self.data.len()
     }
-    
+
     /// Check if vector is empty
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
-    
+
     /// Get immutable view of the data
     pub fn data_view(&self) -> ArrayView1<Complex64> {
         self.data.view()
     }
-    
+
     /// Get mutable view of the data
     pub fn data_view_mut(&mut self) -> ArrayViewMut1<Complex64> {
         self.data.view_mut()
@@ -205,22 +205,22 @@ impl SciRS2SimdContext {
             Self::fallback()
         }
     }
-    
+
     /// Create context from configuration
     pub fn from_config(config: &SciRS2SimdConfig) -> Result<Self> {
         let mut context = Self::detect_capabilities();
-        
+
         if let Some(ref instruction_set) = config.force_instruction_set {
             context.instruction_set = instruction_set.clone();
         }
-        
+
         if let Some(simd_lanes) = config.override_simd_lanes {
             context.simd_lanes = simd_lanes;
         }
-        
+
         Ok(context)
     }
-    
+
     fn fallback() -> Self {
         Self {
             simd_lanes: 1,
@@ -328,7 +328,7 @@ impl Default for SciRS2ParallelContext {
             .num_threads(num_threads)
             .build()
             .unwrap_or_else(|_| rayon::ThreadPoolBuilder::new().build().unwrap());
-        
+
         Self {
             num_threads,
             thread_pool,
@@ -369,19 +369,19 @@ pub struct BackendStats {
 pub struct SciRS2Backend {
     /// Whether SciRS2 SIMD operations are available
     pub available: bool,
-    
+
     /// Performance statistics tracking
     pub stats: Arc<Mutex<BackendStats>>,
-    
+
     /// SciRS2 SIMD context for vectorized operations
     pub simd_context: SciRS2SimdContext,
-    
+
     /// Memory allocator optimized for SIMD operations
     pub memory_allocator: SciRS2MemoryAllocator,
-    
+
     /// Vectorized FFT engine using SciRS2 primitives
     pub fft_engine: SciRS2VectorizedFFT,
-    
+
     /// Parallel execution context
     pub parallel_context: SciRS2ParallelContext,
 }
@@ -393,7 +393,7 @@ impl SciRS2Backend {
         let memory_allocator = SciRS2MemoryAllocator::default();
         let fft_engine = SciRS2VectorizedFFT::default();
         let parallel_context = SciRS2ParallelContext::default();
-        
+
         Self {
             available: simd_context.supports_complex_simd,
             stats: Arc::new(Mutex::new(BackendStats::default())),
@@ -403,7 +403,7 @@ impl SciRS2Backend {
             parallel_context,
         }
     }
-    
+
     /// Create a backend with custom SIMD configuration
     pub fn with_config(simd_config: SciRS2SimdConfig) -> Result<Self> {
         let mut backend = Self::new();
@@ -415,7 +415,7 @@ impl SciRS2Backend {
     pub fn is_available(&self) -> bool {
         self.available && self.simd_context.supports_complex_simd
     }
-    
+
     /// Get SIMD capabilities information
     pub fn get_simd_info(&self) -> &SciRS2SimdContext {
         &self.simd_context
@@ -434,66 +434,67 @@ impl SciRS2Backend {
     /// Matrix multiplication using SciRS2 SIMD operations
     pub fn matrix_multiply(&self, a: &SciRS2Matrix, b: &SciRS2Matrix) -> Result<SciRS2Matrix> {
         let start_time = std::time::Instant::now();
-        
+
         // Validate dimensions
         if a.cols() != b.rows() {
             return Err(SimulatorError::DimensionMismatch(format!(
                 "Cannot multiply {}x{} matrix with {}x{} matrix",
-                a.rows(), a.cols(), b.rows(), b.cols()
+                a.rows(),
+                a.cols(),
+                b.rows(),
+                b.cols()
             )));
         }
-        
+
         let result_shape = (a.rows(), b.cols());
         let mut result = SciRS2Matrix::zeros(result_shape, &self.memory_allocator)?;
-        
+
         // Use SciRS2 SIMD matrix multiplication
-        self.simd_gemm_complex(
-            &a.data_view(),
-            &b.data_view(),
-            &mut result.data_view_mut(),
-        )?;
-        
+        self.simd_gemm_complex(&a.data_view(), &b.data_view(), &mut result.data_view_mut())?;
+
         // Update statistics
         {
             let mut stats = self.stats.lock().unwrap();
             stats.simd_matrix_ops += 1;
             stats.simd_time_ns += start_time.elapsed().as_nanos() as u64;
         }
-        
+
         Ok(result)
     }
 
     /// Matrix-vector multiplication using SciRS2 SIMD operations
-    pub fn matrix_vector_multiply(&self, a: &SciRS2Matrix, x: &SciRS2Vector) -> Result<SciRS2Vector> {
+    pub fn matrix_vector_multiply(
+        &self,
+        a: &SciRS2Matrix,
+        x: &SciRS2Vector,
+    ) -> Result<SciRS2Vector> {
         let start_time = std::time::Instant::now();
-        
+
         // Validate dimensions
         if a.cols() != x.len() {
             return Err(SimulatorError::DimensionMismatch(format!(
                 "Cannot multiply {}x{} matrix with vector of length {}",
-                a.rows(), a.cols(), x.len()
+                a.rows(),
+                a.cols(),
+                x.len()
             )));
         }
-        
+
         let mut result = SciRS2Vector::zeros(a.rows(), &self.memory_allocator)?;
-        
+
         // Use SciRS2 SIMD matrix-vector multiplication
-        self.simd_gemv_complex(
-            &a.data_view(),
-            &x.data_view(),
-            &mut result.data_view_mut(),
-        )?;
-        
+        self.simd_gemv_complex(&a.data_view(), &x.data_view(), &mut result.data_view_mut())?;
+
         // Update statistics
         {
             let mut stats = self.stats.lock().unwrap();
             stats.simd_vector_ops += 1;
             stats.simd_time_ns += start_time.elapsed().as_nanos() as u64;
         }
-        
+
         Ok(result)
     }
-    
+
     /// Core SIMD matrix multiplication for complex numbers
     fn simd_gemm_complex(
         &self,
@@ -503,28 +504,28 @@ impl SciRS2Backend {
     ) -> Result<()> {
         let (m, k) = a.dim();
         let (k2, n) = b.dim();
-        
+
         assert_eq!(k, k2, "Inner dimensions must match");
         assert_eq!(c.dim(), (m, n), "Output dimensions must match");
-        
+
         // Extract real and imaginary parts for SIMD processing
         let a_real: Vec<f64> = a.iter().map(|z| z.re).collect();
         let a_imag: Vec<f64> = a.iter().map(|z| z.im).collect();
         let b_real: Vec<f64> = b.iter().map(|z| z.re).collect();
         let b_imag: Vec<f64> = b.iter().map(|z| z.im).collect();
-        
+
         // Perform SIMD matrix multiplication using SciRS2 operations
         // C = A * B where A, B, C are complex matrices
         // For complex multiplication: (a + bi)(c + di) = (ac - bd) + (ad + bc)i
-        
+
         for i in 0..m {
             for j in 0..n {
                 let mut real_sum = 0.0;
                 let mut imag_sum = 0.0;
-                
+
                 // Vectorized inner product using SciRS2 SIMD
                 let a_row_start = i * k;
-                
+
                 if k >= self.simd_context.simd_lanes {
                     // Use SIMD for large inner products
                     for l in 0..k {
@@ -533,7 +534,7 @@ impl SciRS2Backend {
                         let ai = a_imag[a_row_start + l];
                         let br = b_real[b_idx];
                         let bi = b_imag[b_idx];
-                        
+
                         real_sum += ar * br - ai * bi;
                         imag_sum += ar * bi + ai * br;
                     }
@@ -545,19 +546,19 @@ impl SciRS2Backend {
                         let ai = a_imag[a_row_start + l];
                         let br = b_real[b_idx];
                         let bi = b_imag[b_idx];
-                        
+
                         real_sum += ar * br - ai * bi;
                         imag_sum += ar * bi + ai * br;
                     }
                 }
-                
+
                 c[[i, j]] = Complex64::new(real_sum, imag_sum);
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Core SIMD matrix-vector multiplication for complex numbers
     fn simd_gemv_complex(
         &self,
@@ -568,40 +569,40 @@ impl SciRS2Backend {
         let (m, n) = a.dim();
         assert_eq!(x.len(), n, "Vector length must match matrix columns");
         assert_eq!(y.len(), m, "Output vector length must match matrix rows");
-        
+
         // Extract real and imaginary parts for SIMD processing
         let a_real: Vec<f64> = a.iter().map(|z| z.re).collect();
         let a_imag: Vec<f64> = a.iter().map(|z| z.im).collect();
         let x_real: Vec<f64> = x.iter().map(|z| z.re).collect();
         let x_imag: Vec<f64> = x.iter().map(|z| z.im).collect();
-        
+
         // Perform SIMD matrix-vector multiplication
         for i in 0..m {
             let mut real_sum = 0.0;
             let mut imag_sum = 0.0;
-            
+
             let row_start = i * n;
-            
+
             if n >= self.simd_context.simd_lanes {
                 // Use SIMD for vectorized dot product
                 let chunks = n / self.simd_context.simd_lanes;
-                
+
                 for chunk in 0..chunks {
                     let start_idx = chunk * self.simd_context.simd_lanes;
                     let end_idx = start_idx + self.simd_context.simd_lanes;
-                    
+
                     for j in start_idx..end_idx {
                         let a_idx = row_start + j;
                         let ar = a_real[a_idx];
                         let ai = a_imag[a_idx];
                         let xr = x_real[j];
                         let xi = x_imag[j];
-                        
+
                         real_sum += ar * xr - ai * xi;
                         imag_sum += ar * xi + ai * xr;
                     }
                 }
-                
+
                 // Handle remaining elements
                 for j in (chunks * self.simd_context.simd_lanes)..n {
                     let a_idx = row_start + j;
@@ -609,7 +610,7 @@ impl SciRS2Backend {
                     let ai = a_imag[a_idx];
                     let xr = x_real[j];
                     let xi = x_imag[j];
-                    
+
                     real_sum += ar * xr - ai * xi;
                     imag_sum += ar * xi + ai * xr;
                 }
@@ -621,15 +622,15 @@ impl SciRS2Backend {
                     let ai = a_imag[a_idx];
                     let xr = x_real[j];
                     let xi = x_imag[j];
-                    
+
                     real_sum += ar * xr - ai * xi;
                     imag_sum += ar * xi + ai * xr;
                 }
             }
-            
+
             y[i] = Complex64::new(real_sum, imag_sum);
         }
-        
+
         Ok(())
     }
 

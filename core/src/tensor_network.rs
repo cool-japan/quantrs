@@ -6,8 +6,8 @@
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
-    register::Register,
     linalg_stubs::svd,
+    register::Register,
 };
 use ndarray::{Array, Array2, ArrayD, IxDyn};
 use num_complex::Complex;

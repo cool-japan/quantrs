@@ -143,7 +143,7 @@ pub struct IntegratedDeviceConfig {
     pub orchestration_strategy: OrchestrationStrategy,
     /// Performance optimization configuration
     pub optimization_config: PerformanceOptimizationConfig,
-    /// Resource allocation configuration  
+    /// Resource allocation configuration
     pub resource_config: ResourceAllocationConfig,
     /// Analytics and monitoring configuration
     pub analytics_config: AnalyticsConfig,

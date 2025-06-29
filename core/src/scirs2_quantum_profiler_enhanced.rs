@@ -4,11 +4,11 @@
 //! with comprehensive performance analysis, resource tracking, and optimization
 //! recommendations using SciRS2's advanced performance metrics.
 
-use crate::gate_translation::GateType;
 use crate::error::QuantRS2Error;
+use crate::gate_translation::GateType;
 use crate::scirs2_quantum_profiler::{
-    GateProfilingResult, CircuitProfilingResult, ProfilingPrecision,
-    MemoryAnalysis, SimdAnalysis, OptimizationRecommendation, QuantumGate,
+    CircuitProfilingResult, GateProfilingResult, MemoryAnalysis, OptimizationRecommendation,
+    ProfilingPrecision, QuantumGate, SimdAnalysis,
 };
 use num_complex::Complex64;
 // use scirs2_core::parallel_ops::*;
@@ -16,58 +16,61 @@ use crate::parallel_ops_stubs::*;
 // use scirs2_core::memory::BufferPool;
 use crate::buffer_pool::BufferPool;
 use crate::platform::PlatformCapabilities;
-use ndarray::{Array2, Array1, ArrayView1};
-use std::collections::{HashMap, BTreeMap, VecDeque};
-use std::time::{Duration, Instant};
-use std::sync::{Arc, Mutex, atomic::{AtomicU64, AtomicUsize, Ordering}};
-use serde::{Serialize, Deserialize};
+use ndarray::{Array1, Array2, ArrayView1};
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::io::Write;
+use std::sync::{
+    atomic::{AtomicU64, AtomicUsize, Ordering},
+    Arc, Mutex,
+};
+use std::time::{Duration, Instant};
 
 /// Enhanced profiling configuration with SciRS2 metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnhancedProfilingConfig {
     /// Base profiling precision
     pub precision: ProfilingPrecision,
-    
+
     /// Enable deep performance analysis
     pub enable_deep_analysis: bool,
-    
+
     /// Track memory allocation patterns
     pub track_memory_patterns: bool,
-    
+
     /// Profile SIMD operations in detail
     pub profile_simd_operations: bool,
-    
+
     /// Track parallel execution patterns
     pub track_parallel_patterns: bool,
-    
+
     /// Enable cache analysis
     pub enable_cache_analysis: bool,
-    
+
     /// Memory bandwidth tracking
     pub track_memory_bandwidth: bool,
-    
+
     /// Instruction-level profiling
     pub enable_instruction_profiling: bool,
-    
+
     /// Quantum resource estimation
     pub enable_resource_estimation: bool,
-    
+
     /// Noise impact analysis
     pub analyze_noise_impact: bool,
-    
+
     /// Circuit optimization suggestions
     pub generate_optimizations: bool,
-    
+
     /// Bottleneck detection depth
     pub bottleneck_detection_depth: usize,
-    
+
     /// Performance prediction model
     pub enable_performance_prediction: bool,
-    
+
     /// Hardware-specific optimizations
     pub hardware_aware_profiling: bool,
-    
+
     /// Export formats for reports
     pub export_formats: Vec<ExportFormat>,
 }
@@ -89,11 +92,7 @@ impl Default for EnhancedProfilingConfig {
             bottleneck_detection_depth: 5,
             enable_performance_prediction: true,
             hardware_aware_profiling: true,
-            export_formats: vec![
-                ExportFormat::JSON,
-                ExportFormat::HTML,
-                ExportFormat::CSV,
-            ],
+            export_formats: vec![ExportFormat::JSON, ExportFormat::HTML, ExportFormat::CSV],
         }
     }
 }
@@ -129,16 +128,16 @@ pub enum MetricType {
 pub struct PerformanceMetrics {
     /// Raw metric values
     pub values: HashMap<MetricType, f64>,
-    
+
     /// Time-series data for metrics
     pub time_series: HashMap<MetricType, Vec<(f64, f64)>>,
-    
+
     /// Statistical analysis
     pub statistics: MetricStatistics,
-    
+
     /// Correlations between metrics
     pub correlations: HashMap<(MetricType, MetricType), f64>,
-    
+
     /// Anomaly detection results
     pub anomalies: Vec<AnomalyEvent>,
 }
@@ -176,13 +175,13 @@ pub enum AnomalySeverity {
 pub struct BottleneckAnalysis {
     /// Identified bottlenecks
     pub bottlenecks: Vec<Bottleneck>,
-    
+
     /// Performance impact analysis
     pub impact_analysis: HashMap<String, f64>,
-    
+
     /// Optimization opportunities
     pub opportunities: Vec<OptimizationOpportunity>,
-    
+
     /// Resource utilization heatmap
     pub resource_heatmap: Array2<f64>,
 }
@@ -250,13 +249,13 @@ pub struct HardwarePerformanceModel {
     /// Platform capabilities
     #[serde(skip, default = "PlatformCapabilities::detect")]
     pub platform: PlatformCapabilities,
-    
+
     /// Performance characteristics
     pub characteristics: HardwareCharacteristics,
-    
+
     /// Scaling models
     pub scaling_models: HashMap<String, ScalingModel>,
-    
+
     /// Optimization strategies
     pub optimization_strategies: Vec<HardwareOptimizationStrategy>,
 }
@@ -335,7 +334,8 @@ impl MetricsCollector {
 
     fn record_execution(&self, operation: &str, duration: Duration) {
         let mut times = self.execution_times.lock().unwrap();
-        times.entry(operation.to_string())
+        times
+            .entry(operation.to_string())
             .or_insert_with(Vec::new)
             .push(duration);
     }
@@ -361,7 +361,8 @@ impl MetricsCollector {
     }
 
     fn record_bandwidth(&self, bytes: usize) {
-        self.bandwidth_bytes.fetch_add(bytes as u64, Ordering::Relaxed);
+        self.bandwidth_bytes
+            .fetch_add(bytes as u64, Ordering::Relaxed);
     }
 
     fn get_elapsed(&self) -> Duration {
@@ -417,27 +418,29 @@ impl AnomalyDetector {
     }
 
     fn update_metric(&mut self, metric: MetricType, value: f64) -> Option<AnomalyEvent> {
-        let history = self.metric_history.entry(metric).or_insert_with(VecDeque::new);
+        let history = self
+            .metric_history
+            .entry(metric)
+            .or_insert_with(VecDeque::new);
         history.push_back(value);
-        
+
         if history.len() > self.history_window {
             history.pop_front();
         }
-        
+
         // Calculate statistics
         if history.len() >= 10 {
             let mean: f64 = history.iter().sum::<f64>() / history.len() as f64;
-            let variance: f64 = history.iter()
-                .map(|x| (x - mean).powi(2))
-                .sum::<f64>() / history.len() as f64;
+            let variance: f64 =
+                history.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / history.len() as f64;
             let std_dev = variance.sqrt();
-            
+
             self.baseline_metrics.insert(metric, (mean, std_dev));
-            
+
             // Check for anomaly
             if let Some(&(baseline_mean, baseline_std)) = self.baseline_metrics.get(&metric) {
                 let z_score = (value - baseline_mean).abs() / baseline_std;
-                
+
                 if z_score > self.detection_threshold {
                     let severity = match z_score {
                         z if z < 3.0 => AnomalySeverity::Low,
@@ -445,7 +448,7 @@ impl AnomalyDetector {
                         z if z < 5.0 => AnomalySeverity::High,
                         _ => AnomalySeverity::Critical,
                     };
-                    
+
                     return Some(AnomalyEvent {
                         timestamp: history.len() as f64,
                         metric,
@@ -456,7 +459,7 @@ impl AnomalyDetector {
                 }
             }
         }
-        
+
         None
     }
 }
@@ -472,13 +475,13 @@ impl EnhancedQuantumProfiler {
         let platform_caps = PlatformCapabilities::detect();
         let buffer_pool = Arc::new(BufferPool::new());
         let metrics_collector = Arc::new(MetricsCollector::new());
-        
+
         let hardware_model = if config.hardware_aware_profiling {
             Some(Self::build_hardware_model(&platform_caps))
         } else {
             None
         };
-        
+
         let profiling_state = Arc::new(Mutex::new(ProfilingState {
             current_depth: 0,
             call_stack: Vec::new(),
@@ -486,7 +489,7 @@ impl EnhancedQuantumProfiler {
             memory_snapshots: VecDeque::new(),
             anomaly_detector: AnomalyDetector::new(3.0, 100),
         }));
-        
+
         Self {
             config,
             platform_caps,
@@ -500,32 +503,47 @@ impl EnhancedQuantumProfiler {
     /// Build hardware performance model
     fn build_hardware_model(platform_caps: &PlatformCapabilities) -> HardwarePerformanceModel {
         let characteristics = HardwareCharacteristics {
-            cpu_frequency: 3.0e9, // 3 GHz estimate
+            cpu_frequency: 3.0e9,                                      // 3 GHz estimate
             cache_sizes: vec![32 * 1024, 256 * 1024, 8 * 1024 * 1024], // L1, L2, L3
-            memory_bandwidth: 50.0e9, // 50 GB/s
-            simd_width: if platform_caps.simd_available() { 256 } 
-                       else { 128 },
-            num_cores: num_cpus::get(),
+            memory_bandwidth: 50.0e9,                                  // 50 GB/s
+            simd_width: if platform_caps.simd_available() {
+                256
+            } else {
+                128
+            },
+            num_cores: platform_caps.cpu.logical_cores,
             gpu_available: platform_caps.gpu_available(),
-            gpu_memory: if platform_caps.gpu_available() { Some(8 * 1024 * 1024 * 1024) } else { None },
+            gpu_memory: if platform_caps.gpu_available() {
+                Some(8 * 1024 * 1024 * 1024)
+            } else {
+                None
+            },
             quantum_accelerator: None,
         };
-        
+
         let mut scaling_models = HashMap::new();
-        scaling_models.insert("gate_execution".to_string(), ScalingModel {
-            model_type: ScalingType::Linear,
-            parameters: vec![("slope".to_string(), 1e-6), ("intercept".to_string(), 1e-7)]
-                .into_iter().collect(),
-            confidence: 0.95,
-        });
-        
-        scaling_models.insert("memory_access".to_string(), ScalingModel {
-            model_type: ScalingType::Logarithmic,
-            parameters: vec![("base".to_string(), 2.0), ("coefficient".to_string(), 1e-8)]
-                .into_iter().collect(),
-            confidence: 0.90,
-        });
-        
+        scaling_models.insert(
+            "gate_execution".to_string(),
+            ScalingModel {
+                model_type: ScalingType::Linear,
+                parameters: vec![("slope".to_string(), 1e-6), ("intercept".to_string(), 1e-7)]
+                    .into_iter()
+                    .collect(),
+                confidence: 0.95,
+            },
+        );
+
+        scaling_models.insert(
+            "memory_access".to_string(),
+            ScalingModel {
+                model_type: ScalingType::Logarithmic,
+                parameters: vec![("base".to_string(), 2.0), ("coefficient".to_string(), 1e-8)]
+                    .into_iter()
+                    .collect(),
+                confidence: 0.90,
+            },
+        );
+
         let optimization_strategies = vec![
             HardwareOptimizationStrategy {
                 strategy_name: "SIMD Vectorization".to_string(),
@@ -546,7 +564,7 @@ impl EnhancedQuantumProfiler {
                 implementation_cost: 0.1,
             },
         ];
-        
+
         HardwarePerformanceModel {
             platform: PlatformCapabilities::detect(),
             characteristics,
@@ -562,47 +580,47 @@ impl EnhancedQuantumProfiler {
         num_qubits: usize,
     ) -> Result<EnhancedProfilingReport, QuantRS2Error> {
         let start_time = Instant::now();
-        
+
         // Initialize profiling
         self.initialize_profiling(num_qubits)?;
-        
+
         // Profile each gate
         let mut gate_results = Vec::new();
         for (idx, gate) in circuit.iter().enumerate() {
             let gate_result = self.profile_gate(gate, idx, num_qubits)?;
             gate_results.push(gate_result);
         }
-        
+
         // Collect overall metrics
         let performance_metrics = self.collect_performance_metrics()?;
-        
+
         // Perform bottleneck analysis
         let bottleneck_analysis = if self.config.enable_deep_analysis {
             Some(self.analyze_bottlenecks(&gate_results, num_qubits)?)
         } else {
             None
         };
-        
+
         // Generate optimization recommendations
         let optimizations = if self.config.generate_optimizations {
             self.generate_optimization_recommendations(&gate_results, &bottleneck_analysis)?
         } else {
             Vec::new()
         };
-        
+
         // Predict performance on different hardware
         let performance_predictions = if self.config.enable_performance_prediction {
             Some(self.predict_performance(&gate_results, num_qubits)?)
         } else {
             None
         };
-        
+
         // Create comprehensive report
         let total_time = start_time.elapsed();
-        
+
         // Prepare export data before moving gate_results
         let export_data = self.prepare_export_data(&gate_results)?;
-        
+
         Ok(EnhancedProfilingReport {
             summary: ProfilingSummary {
                 total_execution_time: total_time,
@@ -627,7 +645,7 @@ impl EnhancedQuantumProfiler {
         state.call_stack.clear();
         state.gate_timings.clear();
         state.memory_snapshots.clear();
-        
+
         // Take initial memory snapshot
         let initial_snapshot = MemorySnapshot {
             timestamp: Instant::now(),
@@ -637,7 +655,7 @@ impl EnhancedQuantumProfiler {
             buffer_pool_memory: 0,
         };
         state.memory_snapshots.push_back(initial_snapshot);
-        
+
         Ok(())
     }
 
@@ -650,62 +668,79 @@ impl EnhancedQuantumProfiler {
     ) -> Result<EnhancedGateProfilingResult, QuantRS2Error> {
         let start_time = Instant::now();
         let memory_before = self.estimate_memory_usage(num_qubits);
-        
+
         // Record gate start
         {
             let mut state = self.profiling_state.lock().unwrap();
-            state.gate_timings.insert(gate_index, GateTimingInfo {
-                gate_type: gate.gate_type().clone(),
-                start_time,
-                end_time: None,
-                memory_before,
-                memory_after: None,
-                simd_ops: 0,
-                parallel_ops: 0,
-            });
+            state.gate_timings.insert(
+                gate_index,
+                GateTimingInfo {
+                    gate_type: gate.gate_type().clone(),
+                    start_time,
+                    end_time: None,
+                    memory_before,
+                    memory_after: None,
+                    simd_ops: 0,
+                    parallel_ops: 0,
+                },
+            );
         }
-        
+
         // Simulate gate execution with metrics collection
         self.simulate_gate_execution(gate, num_qubits)?;
-        
+
         let end_time = Instant::now();
         let memory_after = self.estimate_memory_usage(num_qubits);
         let execution_time = end_time - start_time;
-        
+
         // Update gate timing info
         {
             let mut state = self.profiling_state.lock().unwrap();
             if let Some(timing_info) = state.gate_timings.get_mut(&gate_index) {
                 timing_info.end_time = Some(end_time);
                 timing_info.memory_after = Some(memory_after);
-                timing_info.simd_ops = self.metrics_collector.simd_ops_count.load(Ordering::Relaxed);
-                timing_info.parallel_ops = self.metrics_collector.parallel_ops_count.load(Ordering::Relaxed);
+                timing_info.simd_ops = self
+                    .metrics_collector
+                    .simd_ops_count
+                    .load(Ordering::Relaxed);
+                timing_info.parallel_ops = self
+                    .metrics_collector
+                    .parallel_ops_count
+                    .load(Ordering::Relaxed);
             }
         }
-        
+
         // Record metrics
-        self.metrics_collector.record_execution(&format!("{:?}", gate.gate_type()), execution_time);
-        self.metrics_collector.record_memory(memory_after.saturating_sub(memory_before));
-        
+        self.metrics_collector
+            .record_execution(&format!("{:?}", gate.gate_type()), execution_time);
+        self.metrics_collector
+            .record_memory(memory_after.saturating_sub(memory_before));
+
         // Check for anomalies
         let mut anomalies = Vec::new();
         {
             let mut state = self.profiling_state.lock().unwrap();
-            if let Some(anomaly) = state.anomaly_detector.update_metric(
-                MetricType::ExecutionTime,
-                execution_time.as_secs_f64()
-            ) {
+            if let Some(anomaly) = state
+                .anomaly_detector
+                .update_metric(MetricType::ExecutionTime, execution_time.as_secs_f64())
+            {
                 anomalies.push(anomaly);
             }
         }
-        
+
         Ok(EnhancedGateProfilingResult {
             gate_index,
             gate_type: gate.gate_type().clone(),
             execution_time,
             memory_delta: memory_after as i64 - memory_before as i64,
-            simd_operations: self.metrics_collector.simd_ops_count.load(Ordering::Relaxed),
-            parallel_operations: self.metrics_collector.parallel_ops_count.load(Ordering::Relaxed),
+            simd_operations: self
+                .metrics_collector
+                .simd_ops_count
+                .load(Ordering::Relaxed),
+            parallel_operations: self
+                .metrics_collector
+                .parallel_ops_count
+                .load(Ordering::Relaxed),
             cache_efficiency: self.calculate_cache_efficiency(),
             bandwidth_usage: self.calculate_bandwidth_usage(execution_time),
             anomalies,
@@ -726,26 +761,29 @@ impl EnhancedQuantumProfiler {
                 if self.platform_caps.simd_available() {
                     self.metrics_collector.record_simd_op();
                 }
-                self.metrics_collector.record_bandwidth(16 * (1 << num_qubits)); // Complex64 operations
+                self.metrics_collector
+                    .record_bandwidth(16 * (1 << num_qubits)); // Complex64 operations
             }
             GateType::CNOT | GateType::CZ => {
                 // Two-qubit gates
                 if num_qubits > 10 {
                     self.metrics_collector.record_parallel_op();
                 }
-                self.metrics_collector.record_bandwidth(32 * (1 << num_qubits));
+                self.metrics_collector
+                    .record_bandwidth(32 * (1 << num_qubits));
             }
             _ => {
                 // Multi-qubit gates
                 self.metrics_collector.record_parallel_op();
-                self.metrics_collector.record_bandwidth(64 * (1 << num_qubits));
+                self.metrics_collector
+                    .record_bandwidth(64 * (1 << num_qubits));
             }
         }
-        
+
         // Simulate cache behavior
         let cache_hit = rand::random::<f64>() > 0.2; // 80% hit rate simulation
         self.metrics_collector.record_cache_access(cache_hit);
-        
+
         Ok(())
     }
 
@@ -761,7 +799,7 @@ impl EnhancedQuantumProfiler {
         let hits = self.metrics_collector.cache_hits.load(Ordering::Relaxed) as f64;
         let misses = self.metrics_collector.cache_misses.load(Ordering::Relaxed) as f64;
         let total = hits + misses;
-        
+
         if total > 0.0 {
             hits / total
         } else {
@@ -771,9 +809,12 @@ impl EnhancedQuantumProfiler {
 
     /// Calculate bandwidth usage
     fn calculate_bandwidth_usage(&self, duration: Duration) -> f64 {
-        let bytes = self.metrics_collector.bandwidth_bytes.load(Ordering::Relaxed) as f64;
+        let bytes = self
+            .metrics_collector
+            .bandwidth_bytes
+            .load(Ordering::Relaxed) as f64;
         let seconds = duration.as_secs_f64();
-        
+
         if seconds > 0.0 {
             bytes / seconds
         } else {
@@ -788,29 +829,39 @@ impl EnhancedQuantumProfiler {
         execution_time: Duration,
     ) -> Result<HashMap<String, f64>, QuantRS2Error> {
         let mut metrics = HashMap::new();
-        
-        metrics.insert("execution_time_us".to_string(), execution_time.as_micros() as f64);
-        metrics.insert("cache_efficiency".to_string(), self.calculate_cache_efficiency());
-        metrics.insert("bandwidth_mbps".to_string(), 
-            self.calculate_bandwidth_usage(execution_time) / 1e6);
-        
+
+        metrics.insert(
+            "execution_time_us".to_string(),
+            execution_time.as_micros() as f64,
+        );
+        metrics.insert(
+            "cache_efficiency".to_string(),
+            self.calculate_cache_efficiency(),
+        );
+        metrics.insert(
+            "bandwidth_mbps".to_string(),
+            self.calculate_bandwidth_usage(execution_time) / 1e6,
+        );
+
         if let Some(ref hw_model) = self.hardware_model {
-            metrics.insert("theoretical_flops".to_string(), 
-                self.estimate_flops(gate, &hw_model.characteristics));
+            metrics.insert(
+                "theoretical_flops".to_string(),
+                self.estimate_flops(gate, &hw_model.characteristics),
+            );
         }
-        
+
         Ok(metrics)
     }
 
     /// Estimate FLOPS for a gate
     fn estimate_flops(&self, gate: &QuantumGate, hw_chars: &HardwareCharacteristics) -> f64 {
         let base_flops = match gate.gate_type() {
-            GateType::H => 8.0,  // 4 complex multiplications
+            GateType::H => 8.0, // 4 complex multiplications
             GateType::X | GateType::Y | GateType::Z => 4.0,
             GateType::CNOT | GateType::CZ => 16.0,
             _ => 32.0, // Conservative estimate for complex gates
         };
-        
+
         base_flops * hw_chars.cpu_frequency
     }
 
@@ -818,33 +869,45 @@ impl EnhancedQuantumProfiler {
     fn collect_performance_metrics(&self) -> Result<PerformanceMetrics, QuantRS2Error> {
         let mut values = HashMap::new();
         let elapsed = self.metrics_collector.get_elapsed();
-        
+
         values.insert(MetricType::ExecutionTime, elapsed.as_secs_f64());
-        values.insert(MetricType::MemoryUsage, 
-            self.metrics_collector.memory_usage.load(Ordering::Relaxed) as f64);
-        values.insert(MetricType::SimdUtilization,
-            self.metrics_collector.simd_ops_count.load(Ordering::Relaxed) as f64);
-        values.insert(MetricType::ParallelEfficiency,
-            self.metrics_collector.parallel_ops_count.load(Ordering::Relaxed) as f64);
+        values.insert(
+            MetricType::MemoryUsage,
+            self.metrics_collector.memory_usage.load(Ordering::Relaxed) as f64,
+        );
+        values.insert(
+            MetricType::SimdUtilization,
+            self.metrics_collector
+                .simd_ops_count
+                .load(Ordering::Relaxed) as f64,
+        );
+        values.insert(
+            MetricType::ParallelEfficiency,
+            self.metrics_collector
+                .parallel_ops_count
+                .load(Ordering::Relaxed) as f64,
+        );
         values.insert(MetricType::CacheHitRate, self.calculate_cache_efficiency());
-        values.insert(MetricType::MemoryBandwidth, 
-            self.calculate_bandwidth_usage(elapsed));
-        
+        values.insert(
+            MetricType::MemoryBandwidth,
+            self.calculate_bandwidth_usage(elapsed),
+        );
+
         // Calculate statistics
         let statistics = self.calculate_metric_statistics(&values)?;
-        
+
         // Time series data (simplified for this implementation)
         let mut time_series = HashMap::new();
         for (metric, value) in &values {
             time_series.insert(*metric, vec![(0.0, 0.0), (elapsed.as_secs_f64(), *value)]);
         }
-        
+
         Ok(PerformanceMetrics {
             values,
             time_series,
             statistics,
             correlations: HashMap::new(), // Simplified
-            anomalies: Vec::new(), // Collected separately
+            anomalies: Vec::new(),        // Collected separately
         })
     }
 
@@ -858,20 +921,20 @@ impl EnhancedQuantumProfiler {
         let mut min = HashMap::new();
         let mut max = HashMap::new();
         let mut percentiles = HashMap::new();
-        
+
         for (metric, value) in values {
             mean.insert(*metric, *value);
             std_dev.insert(*metric, 0.0); // Simplified
             min.insert(*metric, *value);
             max.insert(*metric, *value);
-            
+
             let mut percs = BTreeMap::new();
             percs.insert(50, *value); // Median
             percs.insert(95, *value * 1.1); // 95th percentile estimate
             percs.insert(99, *value * 1.2); // 99th percentile estimate
             percentiles.insert(*metric, percs);
         }
-        
+
         Ok(MetricStatistics {
             mean,
             std_dev,
@@ -890,17 +953,15 @@ impl EnhancedQuantumProfiler {
         let mut bottlenecks = Vec::new();
         let mut impact_analysis = HashMap::new();
         let mut opportunities = Vec::new();
-        
+
         // Find execution time bottlenecks
-        let total_time: Duration = gate_results.iter()
-            .map(|r| r.execution_time)
-            .sum();
+        let total_time: Duration = gate_results.iter().map(|r| r.execution_time).sum();
         let avg_time = total_time / gate_results.len() as u32;
-        
+
         for (idx, result) in gate_results.iter().enumerate() {
             if result.execution_time > avg_time * 2 {
                 let impact = result.execution_time.as_secs_f64() / total_time.as_secs_f64();
-                
+
                 bottlenecks.push(Bottleneck {
                     location: CircuitLocation {
                         gate_index: idx,
@@ -916,10 +977,10 @@ impl EnhancedQuantumProfiler {
                         "Explore parallel execution".to_string(),
                     ],
                 });
-                
+
                 impact_analysis.insert(format!("gate_{}", idx), impact);
             }
-            
+
             // Check for low cache efficiency
             if result.cache_efficiency < 0.5 {
                 bottlenecks.push(Bottleneck {
@@ -939,13 +1000,15 @@ impl EnhancedQuantumProfiler {
                 });
             }
         }
-        
+
         // Identify optimization opportunities
         if self.platform_caps.simd_available() {
-            let simd_utilization = gate_results.iter()
+            let simd_utilization = gate_results
+                .iter()
                 .filter(|r| r.simd_operations > 0)
-                .count() as f64 / gate_results.len() as f64;
-            
+                .count() as f64
+                / gate_results.len() as f64;
+
             if simd_utilization < 0.5 {
                 opportunities.push(OptimizationOpportunity {
                     opportunity_type: OpportunityType::SimdOptimization,
@@ -956,10 +1019,10 @@ impl EnhancedQuantumProfiler {
                 });
             }
         }
-        
+
         // Create resource heatmap
         let resource_heatmap = Array2::zeros((gate_results.len(), 4)); // gates x resource types
-        
+
         Ok(BottleneckAnalysis {
             bottlenecks,
             impact_analysis,
@@ -975,7 +1038,7 @@ impl EnhancedQuantumProfiler {
         bottleneck_analysis: &Option<BottleneckAnalysis>,
     ) -> Result<Vec<EnhancedOptimizationRecommendation>, QuantRS2Error> {
         let mut recommendations = Vec::new();
-        
+
         // Gate fusion opportunities
         for window in gate_results.windows(2) {
             if Self::can_fuse_gates(&window[0].gate_type, &window[1].gate_type) {
@@ -984,15 +1047,19 @@ impl EnhancedQuantumProfiler {
                     priority: Priority::High,
                     estimated_speedup: 1.5,
                     implementation_difficulty: Difficulty::Easy,
-                    description: format!("Fuse {:?} and {:?} gates", 
-                        window[0].gate_type, window[1].gate_type),
-                    code_example: Some(self.generate_fusion_code(&window[0].gate_type, &window[1].gate_type)),
+                    description: format!(
+                        "Fuse {:?} and {:?} gates",
+                        window[0].gate_type, window[1].gate_type
+                    ),
+                    code_example: Some(
+                        self.generate_fusion_code(&window[0].gate_type, &window[1].gate_type),
+                    ),
                     prerequisites: vec!["Adjacent gates must commute".to_string()],
                     risks: vec!["May increase numerical error".to_string()],
                 });
             }
         }
-        
+
         // Hardware-specific optimizations
         if let Some(ref hw_model) = self.hardware_model {
             for strategy in &hw_model.optimization_strategies {
@@ -1010,7 +1077,7 @@ impl EnhancedQuantumProfiler {
                 }
             }
         }
-        
+
         // Bottleneck-based recommendations
         if let Some(bottleneck_analysis) = bottleneck_analysis {
             for opportunity in &bottleneck_analysis.opportunities {
@@ -1021,7 +1088,9 @@ impl EnhancedQuantumProfiler {
                         OpportunityType::SimdOptimization => RecommendationType::SimdVectorization,
                         OpportunityType::MemoryReordering => RecommendationType::MemoryOptimization,
                         OpportunityType::CacheOptimization => RecommendationType::CacheOptimization,
-                        OpportunityType::AlgorithmicImprovement => RecommendationType::AlgorithmicChange,
+                        OpportunityType::AlgorithmicImprovement => {
+                            RecommendationType::AlgorithmicChange
+                        }
                         OpportunityType::HardwareSpecific => RecommendationType::HardwareSpecific,
                     },
                     priority: match opportunity.difficulty {
@@ -1038,14 +1107,15 @@ impl EnhancedQuantumProfiler {
                 });
             }
         }
-        
+
         Ok(recommendations)
     }
 
     /// Check if two gates can be fused
     fn can_fuse_gates(gate1: &GateType, gate2: &GateType) -> bool {
         use GateType::*;
-        matches!((gate1, gate2), 
+        matches!(
+            (gate1, gate2),
             (H, H) | (X, X) | (Y, Y) | (Z, Z) | // Self-inverse gates
             (Rz(_), Rz(_)) | (Rx(_), Rx(_)) | (Ry(_), Ry(_)) // Rotation gates
         )
@@ -1066,56 +1136,65 @@ impl EnhancedQuantumProfiler {
         num_qubits: usize,
     ) -> Result<PerformancePredictions, QuantRS2Error> {
         let mut predictions = HashMap::new();
-        
+
         // Current hardware baseline
-        let current_time: Duration = gate_results.iter()
-            .map(|r| r.execution_time)
-            .sum();
-        
-        predictions.insert("current".to_string(), PredictedPerformance {
-            hardware_description: "Current Platform".to_string(),
-            estimated_time: current_time,
-            confidence: 1.0,
-            limiting_factors: vec!["Actual measurement".to_string()],
-        });
-        
+        let current_time: Duration = gate_results.iter().map(|r| r.execution_time).sum();
+
+        predictions.insert(
+            "current".to_string(),
+            PredictedPerformance {
+                hardware_description: "Current Platform".to_string(),
+                estimated_time: current_time,
+                confidence: 1.0,
+                limiting_factors: vec!["Actual measurement".to_string()],
+            },
+        );
+
         // GPU prediction
         if self.platform_caps.gpu_available() {
             let gpu_speedup = (num_qubits as f64).ln() * 2.0; // Logarithmic speedup model
-            predictions.insert("gpu".to_string(), PredictedPerformance {
-                hardware_description: "GPU Acceleration".to_string(),
-                estimated_time: current_time / gpu_speedup as u32,
-                confidence: 0.8,
-                limiting_factors: vec!["Memory transfer overhead".to_string()],
-            });
+            predictions.insert(
+                "gpu".to_string(),
+                PredictedPerformance {
+                    hardware_description: "GPU Acceleration".to_string(),
+                    estimated_time: current_time / gpu_speedup as u32,
+                    confidence: 0.8,
+                    limiting_factors: vec!["Memory transfer overhead".to_string()],
+                },
+            );
         }
-        
+
         // Quantum hardware prediction
-        predictions.insert("quantum_hw".to_string(), PredictedPerformance {
-            hardware_description: "Quantum Hardware (NISQ)".to_string(),
-            estimated_time: Duration::from_millis(gate_results.len() as u64 * 10), // 10ms per gate
-            confidence: 0.5,
-            limiting_factors: vec![
-                "Gate fidelity".to_string(),
-                "Connectivity constraints".to_string(),
-                "Decoherence".to_string(),
-            ],
-        });
-        
+        predictions.insert(
+            "quantum_hw".to_string(),
+            PredictedPerformance {
+                hardware_description: "Quantum Hardware (NISQ)".to_string(),
+                estimated_time: Duration::from_millis(gate_results.len() as u64 * 10), // 10ms per gate
+                confidence: 0.5,
+                limiting_factors: vec![
+                    "Gate fidelity".to_string(),
+                    "Connectivity constraints".to_string(),
+                    "Decoherence".to_string(),
+                ],
+            },
+        );
+
         // Cloud QPU prediction
-        predictions.insert("cloud_qpu".to_string(), PredictedPerformance {
-            hardware_description: "Cloud Quantum Processor".to_string(),
-            estimated_time: Duration::from_secs(1) + Duration::from_millis(gate_results.len() as u64),
-            confidence: 0.6,
-            limiting_factors: vec![
-                "Network latency".to_string(),
-                "Queue time".to_string(),
-            ],
-        });
-        
+        predictions.insert(
+            "cloud_qpu".to_string(),
+            PredictedPerformance {
+                hardware_description: "Cloud Quantum Processor".to_string(),
+                estimated_time: Duration::from_secs(1)
+                    + Duration::from_millis(gate_results.len() as u64),
+                confidence: 0.6,
+                limiting_factors: vec!["Network latency".to_string(), "Queue time".to_string()],
+            },
+        );
+
         // Generate hardware recommendations before moving predictions
-        let hardware_recommendations = self.generate_hardware_recommendations(num_qubits, &predictions);
-        
+        let hardware_recommendations =
+            self.generate_hardware_recommendations(num_qubits, &predictions);
+
         Ok(PerformancePredictions {
             predictions,
             scaling_analysis: self.analyze_scaling(num_qubits)?,
@@ -1144,21 +1223,21 @@ impl EnhancedQuantumProfiler {
         predictions: &HashMap<String, PredictedPerformance>,
     ) -> Vec<String> {
         let mut recommendations = Vec::new();
-        
+
         if num_qubits > 20 {
             recommendations.push("Consider GPU acceleration for large circuits".to_string());
         }
-        
+
         if num_qubits > 30 {
             recommendations.push("Tensor network methods recommended".to_string());
         }
-        
+
         if let Some(gpu_pred) = predictions.get("gpu") {
             if gpu_pred.confidence > 0.7 {
                 recommendations.push("GPU acceleration shows promising speedup".to_string());
             }
         }
-        
+
         recommendations
     }
 
@@ -1168,7 +1247,7 @@ impl EnhancedQuantumProfiler {
         gate_results: &[EnhancedGateProfilingResult],
     ) -> Result<HashMap<ExportFormat, Vec<u8>>, QuantRS2Error> {
         let mut export_data = HashMap::new();
-        
+
         for format in &self.config.export_formats {
             let data = match format {
                 ExportFormat::JSON => self.export_to_json(gate_results)?,
@@ -1178,7 +1257,7 @@ impl EnhancedQuantumProfiler {
             };
             export_data.insert(*format, data);
         }
-        
+
         Ok(export_data)
     }
 
@@ -1187,8 +1266,9 @@ impl EnhancedQuantumProfiler {
         &self,
         gate_results: &[EnhancedGateProfilingResult],
     ) -> Result<Vec<u8>, QuantRS2Error> {
-        let json = serde_json::to_vec_pretty(gate_results)
-            .map_err(|e| QuantRS2Error::ComputationError(format!("CSV generation failed: {}", e)))?;
+        let json = serde_json::to_vec_pretty(gate_results).map_err(|e| {
+            QuantRS2Error::ComputationError(format!("CSV generation failed: {}", e))
+        })?;
         Ok(json)
     }
 
@@ -1200,9 +1280,11 @@ impl EnhancedQuantumProfiler {
         let mut csv = Vec::new();
         writeln!(csv, "gate_index,gate_type,execution_time_us,memory_delta,simd_ops,parallel_ops,cache_efficiency")
             .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
-        
+
         for result in gate_results {
-            writeln!(csv, "{},{:?},{},{},{},{},{:.2}",
+            writeln!(
+                csv,
+                "{},{:?},{},{},{},{},{:.2}",
                 result.gate_index,
                 result.gate_type,
                 result.execution_time.as_micros(),
@@ -1210,9 +1292,10 @@ impl EnhancedQuantumProfiler {
                 result.simd_operations,
                 result.parallel_operations,
                 result.cache_efficiency
-            ).map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
+            )
+            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
         }
-        
+
         Ok(csv)
     }
 
@@ -1222,15 +1305,18 @@ impl EnhancedQuantumProfiler {
         gate_results: &[EnhancedGateProfilingResult],
     ) -> Result<Vec<u8>, QuantRS2Error> {
         let mut html = Vec::new();
-        writeln!(html, "<html><head><title>Quantum Circuit Profiling Report</title>")
-            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
+        writeln!(
+            html,
+            "<html><head><title>Quantum Circuit Profiling Report</title>"
+        )
+        .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
         writeln!(html, "<style>table {{ border-collapse: collapse; }} th, td {{ border: 1px solid black; padding: 8px; }}</style>")
             .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
         writeln!(html, "</head><body><h1>Profiling Results</h1><table>")
             .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
         writeln!(html, "<tr><th>Gate</th><th>Type</th><th>Time (μs)</th><th>Memory</th><th>SIMD</th><th>Parallel</th><th>Cache</th></tr>")
             .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
-        
+
         for result in gate_results {
             writeln!(html, "<tr><td>{}</td><td>{:?}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{:.1}%</td></tr>",
                 result.gate_index,
@@ -1242,10 +1328,10 @@ impl EnhancedQuantumProfiler {
                 result.cache_efficiency * 100.0
             ).map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
         }
-        
+
         writeln!(html, "</table></body></html>")
             .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
-        
+
         Ok(html)
     }
 }
@@ -1361,7 +1447,7 @@ mod tests {
             QuantumGate::new(GateType::CNOT, vec![0, 1], None),
             QuantumGate::new(GateType::H, vec![1], None),
         ];
-        
+
         let result = profiler.profile_circuit(&gates, 2).unwrap();
         assert_eq!(result.gate_results.len(), 3);
         assert!(result.summary.total_execution_time.as_nanos() > 0);
@@ -1374,13 +1460,13 @@ mod tests {
             ..Default::default()
         };
         let profiler = EnhancedQuantumProfiler::with_config(config);
-        
+
         let gates = vec![
             QuantumGate::new(GateType::H, vec![0], None),
             QuantumGate::new(GateType::T, vec![0], None),
             QuantumGate::new(GateType::H, vec![0], None),
         ];
-        
+
         let result = profiler.profile_circuit(&gates, 1).unwrap();
         assert!(result.bottleneck_analysis.is_some());
     }
@@ -1392,15 +1478,17 @@ mod tests {
             ..Default::default()
         };
         let profiler = EnhancedQuantumProfiler::with_config(config);
-        
+
         let gates = vec![
             QuantumGate::new(GateType::H, vec![0], None),
             QuantumGate::new(GateType::H, vec![0], None), // H^2 = I
         ];
-        
+
         let result = profiler.profile_circuit(&gates, 1).unwrap();
         assert!(!result.optimizations.is_empty());
-        assert!(result.optimizations.iter()
+        assert!(result
+            .optimizations
+            .iter()
             .any(|opt| opt.recommendation_type == RecommendationType::GateFusion));
     }
 
@@ -1411,16 +1499,16 @@ mod tests {
             ..Default::default()
         };
         let profiler = EnhancedQuantumProfiler::with_config(config);
-        
+
         let gates = vec![
             QuantumGate::new(GateType::X, vec![0], None),
             QuantumGate::new(GateType::Y, vec![1], None),
             QuantumGate::new(GateType::Z, vec![2], None),
         ];
-        
+
         let result = profiler.profile_circuit(&gates, 3).unwrap();
         assert!(result.performance_predictions.is_some());
-        
+
         let predictions = result.performance_predictions.unwrap();
         assert!(predictions.predictions.contains_key("current"));
         assert!(predictions.predictions.contains_key("quantum_hw"));
@@ -1433,11 +1521,9 @@ mod tests {
             ..Default::default()
         };
         let profiler = EnhancedQuantumProfiler::with_config(config);
-        
-        let gates = vec![
-            QuantumGate::new(GateType::H, vec![0], None),
-        ];
-        
+
+        let gates = vec![QuantumGate::new(GateType::H, vec![0], None)];
+
         let result = profiler.profile_circuit(&gates, 1).unwrap();
         assert_eq!(result.export_data.len(), 3);
         assert!(result.export_data.contains_key(&ExportFormat::JSON));

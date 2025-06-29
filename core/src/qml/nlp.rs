@@ -189,7 +189,7 @@ pub struct QuantumAttention {
     num_heads: usize,
     /// Query parameters
     query_params: Vec<Parameter>,
-    /// Key parameters  
+    /// Key parameters
     key_params: Vec<Parameter>,
     /// Value parameters
     value_params: Vec<Parameter>,

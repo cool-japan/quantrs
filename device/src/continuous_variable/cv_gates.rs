@@ -550,7 +550,7 @@ impl CVGateLibrary {
         )
     }
 
-    /// Create a squeezing gate  
+    /// Create a squeezing gate
     pub fn squeezing(parameter: f64, phase: f64) -> (CVGateType, CVGateParams) {
         (
             CVGateType::Squeezing { parameter, phase },

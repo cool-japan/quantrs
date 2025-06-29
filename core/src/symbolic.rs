@@ -19,7 +19,7 @@ pub enum SymbolicExpression {
     /// Constant floating-point value
     Constant(f64),
 
-    /// Complex constant value  
+    /// Complex constant value
     ComplexConstant(Complex64),
 
     /// Variable with a name

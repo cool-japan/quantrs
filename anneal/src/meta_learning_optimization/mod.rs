@@ -131,7 +131,7 @@ mod tests {
             expected_performance: 0.95,
             alternatives: vec![],
         };
-        
+
         assert_eq!(strategy.algorithm, "SimulatedAnnealing");
         assert_eq!(strategy.confidence, 0.8);
     }

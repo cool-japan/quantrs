@@ -513,9 +513,12 @@ impl MemoryPrefetcher {
         // For now, use a volatile read as a simple prefetch hint
         unsafe {
             match request.hint_type {
-                PrefetchHint::Temporal | PrefetchHint::L1 | 
-                PrefetchHint::L2 | PrefetchHint::L3 | 
-                PrefetchHint::NonTemporal | PrefetchHint::Write => {
+                PrefetchHint::Temporal
+                | PrefetchHint::L1
+                | PrefetchHint::L2
+                | PrefetchHint::L3
+                | PrefetchHint::NonTemporal
+                | PrefetchHint::Write => {
                     // Simple prefetch using volatile read
                     let _ = std::ptr::read_volatile(request.address as *const u8);
                 }

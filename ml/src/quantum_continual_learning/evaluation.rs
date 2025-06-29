@@ -31,7 +31,7 @@ impl ContinualLearningEvaluator {
             baseline_performances: HashMap::new(),
         }
     }
-    
+
     pub fn evaluate_task(
         &mut self,
         task: &ContinualTask,
@@ -45,9 +45,9 @@ impl ContinualLearningEvaluator {
         let forgetting_measure = rand::random::<f64>() * 0.1;
         let learning_time = rand::random::<f64>() * 10.0;
         let memory_usage = rand::random::<f64>() * 100.0;
-        
+
         self.baseline_performances.insert(task.task_id, accuracy);
-        
+
         Ok(TaskPerformance {
             task_id: task.task_id,
             accuracy,
@@ -57,20 +57,20 @@ impl ContinualLearningEvaluator {
             memory_usage,
         })
     }
-    
+
     pub fn compute_average_accuracy(&self, performances: &[TaskPerformance]) -> f64 {
         if performances.is_empty() {
             return 0.0;
         }
-        
+
         performances.iter().map(|p| p.accuracy).sum::<f64>() / performances.len() as f64
     }
-    
+
     pub fn compute_backward_transfer(&self, performances: &[TaskPerformance]) -> f64 {
         // Placeholder backward transfer calculation
         rand::random::<f64>() * 0.1 - 0.05 // -5% to +5%
     }
-    
+
     pub fn compute_forward_transfer(&self, performances: &[TaskPerformance]) -> f64 {
         // Placeholder forward transfer calculation
         rand::random::<f64>() * 0.1 // 0% to +10%

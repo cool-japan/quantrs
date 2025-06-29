@@ -30,7 +30,18 @@ pub use fallback::*;
 
 use ndarray::{Array1, Array2, Array4};
 use num_complex::Complex64;
-use quantrs2_circuit::prelude::*;
+// Import specific types to avoid naming conflicts
+use quantrs2_circuit::prelude::{
+    Circuit,
+    PerformanceAnalyzer,
+    PerformanceSnapshot,
+    PerformanceSummary,
+    ProfilerConfig as ProfilerConfiguration,
+    // Avoid importing AnomalyDetectionAlgorithm to prevent conflicts with local enum
+    ProfilingReport,
+    ProfilingSession,
+    QuantumProfiler,
+};
 use std::collections::HashMap;
 
 use crate::{calibration::CalibrationManager, DeviceResult};

@@ -473,7 +473,7 @@ impl QuantumDNSResolver {
         let cache = Arc::new(RwLock::new(QuantumDNSCache::new(config.cache_size)));
         let quantum_registry = Arc::new(RwLock::new(QuantumResourceRegistry::new()));
         let security_manager = Arc::new(RwLock::new(DNSSecurityManager::new()));
-        
+
         let servers = config.servers.iter().map(|addr| {
             QuantumDNSServer {
                 address: addr.clone(),
@@ -484,7 +484,7 @@ impl QuantumDNSResolver {
                 capabilities: vec!["standard".to_string()],
             }
         }).collect();
-        
+
         Self {
             config,
             cache,
@@ -493,14 +493,14 @@ impl QuantumDNSResolver {
             security_manager,
         }
     }
-    
+
     /// Resolve a domain name
     pub async fn resolve(&self, name: &str, record_type: QuantumDNSRecordType) -> DeviceResult<Vec<QuantumDNSRecord>> {
         // Check cache first
         if let Some(record) = self.check_cache(name, &record_type).await {
             return Ok(vec![record]);
         }
-        
+
         // Query DNS servers
         for server in &self.servers {
             match self.query_server(server, name, &record_type).await {
@@ -514,14 +514,14 @@ impl QuantumDNSResolver {
                 Err(_) => continue,
             }
         }
-        
+
         Err(DeviceError::InvalidInput(format!("Failed to resolve {}", name)))
     }
-    
+
     /// Resolve quantum resource
     pub async fn resolve_quantum_resource(&self, resource_type: QuantumResourceType, location: Option<&str>) -> DeviceResult<Vec<QuantumResourceInfo>> {
         let registry = self.quantum_registry.read().await;
-        
+
         let mut matching_resources = Vec::new();
         for record in registry.resources.values() {
             if record.resource_info.resource_type == resource_type {
@@ -534,14 +534,14 @@ impl QuantumDNSResolver {
                 }
             }
         }
-        
+
         Ok(matching_resources)
     }
-    
+
     /// Discover quantum services
     pub async fn discover_quantum_services(&self, service_type: QuantumServiceType, requirements: Option<QuantumRequirements>) -> DeviceResult<Vec<QuantumServiceInfo>> {
         let registry = self.quantum_registry.read().await;
-        
+
         let mut matching_services = Vec::new();
         for record in registry.services.values() {
             if record.service_info.service_type == service_type {
@@ -554,14 +554,14 @@ impl QuantumDNSResolver {
                 }
             }
         }
-        
+
         Ok(matching_services)
     }
-    
+
     /// Find entanglement sources
     pub async fn find_entanglement_sources(&self, min_fidelity: f64, max_distance: Option<f64>) -> DeviceResult<Vec<EntanglementEndpointInfo>> {
         let registry = self.quantum_registry.read().await;
-        
+
         let mut matching_sources = Vec::new();
         for record in registry.entanglement_sources.values() {
             if record.endpoint_info.fidelity_range.0 >= min_fidelity {
@@ -574,14 +574,14 @@ impl QuantumDNSResolver {
                 }
             }
         }
-        
+
         Ok(matching_sources)
     }
-    
+
     /// Register quantum resource
     pub async fn register_quantum_resource(&self, resource_info: QuantumResourceInfo, ttl: Duration) -> DeviceResult<()> {
         let mut registry = self.quantum_registry.write().await;
-        
+
         let record = QuantumResourceRecord {
             resource_id: resource_info.resource_id.clone(),
             resource_info,
@@ -589,17 +589,17 @@ impl QuantumDNSResolver {
             last_heartbeat: SystemTime::now(),
             expiry_time: SystemTime::now() + ttl,
         };
-        
+
         registry.resources.insert(record.resource_id.clone(), record);
         registry.last_update = SystemTime::now();
-        
+
         Ok(())
     }
-    
+
     /// Register quantum service
     pub async fn register_quantum_service(&self, service_info: QuantumServiceInfo, ttl: Duration) -> DeviceResult<()> {
         let mut registry = self.quantum_registry.write().await;
-        
+
         let record = QuantumServiceRecord {
             service_id: service_info.service_id.clone(),
             service_info,
@@ -607,28 +607,28 @@ impl QuantumDNSResolver {
             last_update: SystemTime::now(),
             health_status: ServiceHealthStatus::Healthy,
         };
-        
+
         registry.services.insert(record.service_id.clone(), record);
         registry.last_update = SystemTime::now();
-        
+
         Ok(())
     }
-    
+
     /// Update resource heartbeat
     pub async fn update_resource_heartbeat(&self, resource_id: &str) -> DeviceResult<()> {
         let mut registry = self.quantum_registry.write().await;
-        
+
         if let Some(record) = registry.resources.get_mut(resource_id) {
             record.last_heartbeat = SystemTime::now();
         }
-        
+
         Ok(())
     }
-    
+
     /// Clean up expired entries
     pub async fn cleanup_expired_entries(&self) -> DeviceResult<()> {
         let now = SystemTime::now();
-        
+
         // Clean up cache
         {
             let mut cache = self.cache.write().await;
@@ -637,7 +637,7 @@ impl QuantumDNSResolver {
             });
             cache.last_cleanup = now;
         }
-        
+
         // Clean up registry
         {
             let mut registry = self.quantum_registry.write().await;
@@ -647,29 +647,29 @@ impl QuantumDNSResolver {
                 record.health_status != ServiceHealthStatus::Unhealthy
             });
         }
-        
+
         Ok(())
     }
-    
+
     // Helper methods
     async fn check_cache(&self, name: &str, record_type: &QuantumDNSRecordType) -> Option<QuantumDNSRecord> {
         let cache = self.cache.read().await;
         let key = format!("{}:{:?}", name, record_type);
         cache.records.get(&key).cloned()
     }
-    
+
     async fn cache_record(&self, record: QuantumDNSRecord) {
         let mut cache = self.cache.write().await;
         let key = format!("{}:{:?}", record.name, record.record_type);
         cache.records.insert(key, record);
         cache.cache_size += 1;
-        
+
         // Evict old entries if cache is full
         if cache.cache_size > cache.max_size {
             cache.evict_oldest();
         }
     }
-    
+
     async fn query_server(&self, _server: &QuantumDNSServer, name: &str, record_type: &QuantumDNSRecordType) -> DeviceResult<Vec<QuantumDNSRecord>> {
         // Simulate DNS query
         let record = QuantumDNSRecord {
@@ -691,10 +691,10 @@ impl QuantumDNSResolver {
             created_at: SystemTime::now(),
             security_info: None,
         };
-        
+
         Ok(vec![record])
     }
-    
+
     fn meets_requirements(&self, service_req: &QuantumRequirements, user_req: &QuantumRequirements) -> bool {
         service_req.min_fidelity >= user_req.min_fidelity &&
         service_req.min_coherence_time >= user_req.min_coherence_time &&
@@ -713,7 +713,7 @@ impl QuantumDNSCache {
             max_size,
         }
     }
-    
+
     fn evict_oldest(&mut self) {
         // Simple LRU eviction - remove oldest entry
         if let Some((oldest_key, _)) = self.records.iter()

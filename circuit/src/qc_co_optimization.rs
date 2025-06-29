@@ -244,7 +244,7 @@ pub struct HybridOptimizationResult {
 pub struct OptimizationHistory {
     /// Objective values over iterations
     pub objective_values: Vec<f64>,
-    /// Parameter values over iterations  
+    /// Parameter values over iterations
     pub parameter_history: Vec<Vec<f64>>,
     /// Gradient norms
     pub gradient_norms: Vec<f64>,

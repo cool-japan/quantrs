@@ -13,8 +13,9 @@ use crate::{
 };
 use ndarray::{Array1, Array2};
 // use scirs2_core::parallel_ops::*;
+use crate::optimization_stubs::{minimize, Method, OptimizeResult, Options};
 use crate::parallel_ops_stubs::*;
-use crate::optimization_stubs::{Method, Options, OptimizeResult, minimize};
+// use scirs2_core::optimization::{minimize, Method, OptimizeResult, Options};
 use rustc_hash::FxHashMap;
 use std::sync::{Arc, Mutex};
 

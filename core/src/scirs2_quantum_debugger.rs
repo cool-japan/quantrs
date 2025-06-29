@@ -328,7 +328,7 @@ impl AdvancedQuantumDebugger {
     ) -> Result<StateVectorVisualization, QuantRS2Error> {
         let amplitudes: Vec<f64> = state.iter().map(|c| c.norm()).collect();
         let phases: Vec<f64> = state.iter().map(|c| c.arg()).collect();
-        
+
         // Create 3D coordinates for visualization
         let mut coordinates = Vec::new();
         for (i, (amp, phase)) in amplitudes.iter().zip(phases.iter()).enumerate() {
@@ -359,7 +359,7 @@ impl AdvancedQuantumDebugger {
         for qubit in 0..num_qubits {
             let reduced_state = self.get_reduced_density_matrix(state, qubit, num_qubits)?;
             let bloch_vector = self.density_matrix_to_bloch_vector(&reduced_state)?;
-            
+
             bloch_spheres.push(BlochSphere {
                 qubit_index: qubit,
                 x: bloch_vector[0],
@@ -378,12 +378,12 @@ impl AdvancedQuantumDebugger {
         state: &[Complex64],
     ) -> Result<DensityMatrixVisualization, QuantRS2Error> {
         let density_matrix = self.state_to_density_matrix(state)?;
-        
+
         // Extract magnitude and phase matrices
         let dim = state.len();
         let mut magnitude_matrix = Array2::<f64>::zeros((dim, dim));
         let mut phase_matrix = Array2::<f64>::zeros((dim, dim));
-        
+
         for i in 0..dim {
             for j in 0..dim {
                 magnitude_matrix[[i, j]] = density_matrix[[i, j]].norm();
@@ -443,7 +443,7 @@ impl AdvancedQuantumDebugger {
     /// Create amplitude histogram
     fn create_amplitude_histogram(&self, state: &[Complex64]) -> Result<AmplitudeHistogram, QuantRS2Error> {
         let mut bins = Vec::new();
-        
+
         for (i, amplitude) in state.iter().enumerate() {
             let magnitude = amplitude.norm();
             if magnitude > 1e-6 {  // Threshold for visualization
@@ -469,7 +469,7 @@ impl AdvancedQuantumDebugger {
     /// Create phase diagram
     fn create_phase_diagram(&self, state: &[Complex64]) -> Result<PhaseDiagram, QuantRS2Error> {
         let mut phase_points = Vec::new();
-        
+
         for (i, amplitude) in state.iter().enumerate() {
             let magnitude = amplitude.norm();
             if magnitude > 1e-6 {
@@ -503,7 +503,7 @@ impl AdvancedQuantumDebugger {
 
         // Group gates into layers
         let mut used_qubits = vec![false; num_qubits];
-        
+
         for gate in circuit {
             let gate_qubits: Vec<_> = gate.target_qubits().iter()
                 .chain(gate.control_qubits().unwrap_or(&[]).iter())
@@ -512,7 +512,7 @@ impl AdvancedQuantumDebugger {
 
             // Check if gate can be added to current layer
             let can_add = gate_qubits.iter().all(|&q| !used_qubits[q]);
-            
+
             if !can_add {
                 // Start new layer
                 if !current_layer.gates.is_empty() {
@@ -591,12 +591,12 @@ impl AdvancedQuantumDebugger {
     /// Export as SVG
     fn export_as_svg(&self, viz: &VisualizationData) -> Result<String, QuantRS2Error> {
         let mut svg = String::from(r#"<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">"#);
-        
+
         // Add visualization elements
         if let Some(amp_hist) = &viz.amplitude_histogram {
             svg.push_str(&self.amplitude_histogram_to_svg(amp_hist)?);
         }
-        
+
         svg.push_str("</svg>");
         Ok(svg)
     }
@@ -627,7 +627,7 @@ impl AdvancedQuantumDebugger {
     </script>
 </body>
 </html>"#, viz.step);
-        
+
         Ok(html)
     }
 
@@ -643,12 +643,12 @@ impl AdvancedQuantumDebugger {
         latex.push_str(r"\usepackage{qcircuit}\n");
         latex.push_str(r"\usepackage{amsmath}\n");
         latex.push_str(r"\begin{document}\n");
-        
+
         // Add circuit diagram if available
         if let Some(circuit) = &viz.circuit_diagram {
             latex.push_str(&self.circuit_to_latex(circuit)?);
         }
-        
+
         latex.push_str(r"\end{document}");
         Ok(latex)
     }
@@ -656,18 +656,18 @@ impl AdvancedQuantumDebugger {
     /// Export as ASCII art
     fn export_as_ascii(&self, viz: &VisualizationData) -> Result<String, QuantRS2Error> {
         let mut ascii = String::new();
-        
+
         // ASCII circuit diagram
         if let Some(circuit) = &viz.circuit_diagram {
             ascii.push_str(&self.circuit_to_ascii(circuit)?);
         }
-        
+
         // ASCII amplitude bar chart
         if let Some(amp_hist) = &viz.amplitude_histogram {
             ascii.push_str("\n\nAmplitude Distribution:\n");
             ascii.push_str(&self.amplitude_histogram_to_ascii(amp_hist)?);
         }
-        
+
         Ok(ascii)
     }
 
@@ -692,7 +692,7 @@ impl AdvancedQuantumDebugger {
     ) -> Result<Array2<Complex64>, QuantRS2Error> {
         // Simplified reduced density matrix calculation
         let mut reduced = Array2::zeros((2, 2));
-        
+
         for i in 0..(1 << num_qubits) {
             let bit = (i >> qubit) & 1;
             for j in 0..(1 << num_qubits) {
@@ -702,7 +702,7 @@ impl AdvancedQuantumDebugger {
                 }
             }
         }
-        
+
         Ok(reduced)
     }
 
@@ -716,13 +716,13 @@ impl AdvancedQuantumDebugger {
     fn state_to_density_matrix(&self, state: &[Complex64]) -> Result<Array2<Complex64>, QuantRS2Error> {
         let dim = state.len();
         let mut density = Array2::zeros((dim, dim));
-        
+
         for i in 0..dim {
             for j in 0..dim {
                 density[[i, j]] = state[i] * state[j].conj();
             }
         }
-        
+
         Ok(density)
     }
 
@@ -734,7 +734,7 @@ impl AdvancedQuantumDebugger {
     fn extract_coherences(&self, density: &Array2<Complex64>) -> Result<Vec<Coherence>, QuantRS2Error> {
         let mut coherences = Vec::new();
         let dim = density.nrows();
-        
+
         for i in 0..dim {
             for j in (i + 1)..dim {
                 let coherence = density[[i, j]].norm();
@@ -748,7 +748,7 @@ impl AdvancedQuantumDebugger {
                 }
             }
         }
-        
+
         Ok(coherences)
     }
 
@@ -761,18 +761,18 @@ impl AdvancedQuantumDebugger {
     ) -> Result<f64, QuantRS2Error> {
         // Simplified bipartite entanglement measure
         let mut correlation = 0.0;
-        
+
         for i in 0..(1 << num_qubits) {
             let bit1 = (i >> qubit1) & 1;
             let bit2 = (i >> qubit2) & 1;
-            
+
             if bit1 == bit2 {
                 correlation += state[i].norm_sqr();
             } else {
                 correlation -= state[i].norm_sqr();
             }
         }
-        
+
         Ok((1.0 - correlation.abs()) / 2.0)
     }
 
@@ -838,7 +838,7 @@ impl AdvancedQuantumDebugger {
 
     fn inspect_current_state(&mut self, session: &InteractiveSession) -> Result<CommandResult, QuantRS2Error> {
         let viz = self.generate_visualization(&session.current_state, session.num_qubits, self.current_step)?;
-        
+
         Ok(CommandResult {
             success: true,
             message: "Current state inspection".to_string(),
@@ -851,10 +851,10 @@ impl AdvancedQuantumDebugger {
         if qubit >= session.num_qubits {
             return Err(QuantRS2Error::InvalidInput(format!("Qubit {} out of range", qubit)));
         }
-        
+
         let reduced_state = self.get_reduced_density_matrix(&session.current_state, qubit, session.num_qubits)?;
         let bloch_vector = self.density_matrix_to_bloch_vector(&reduced_state)?;
-        
+
         Ok(CommandResult {
             success: true,
             message: format!("Qubit {} inspection", qubit),
@@ -865,7 +865,7 @@ impl AdvancedQuantumDebugger {
 
     fn show_entanglement_map(&mut self, session: &InteractiveSession) -> Result<CommandResult, QuantRS2Error> {
         let entanglement_graph = self.create_entanglement_graph(&session.current_state, session.num_qubits)?;
-        
+
         Ok(CommandResult {
             success: true,
             message: "Entanglement map".to_string(),
@@ -876,7 +876,7 @@ impl AdvancedQuantumDebugger {
 
     fn show_amplitude_distribution(&mut self, session: &InteractiveSession) -> Result<CommandResult, QuantRS2Error> {
         let amp_hist = self.create_amplitude_histogram(&session.current_state)?;
-        
+
         Ok(CommandResult {
             success: true,
             message: "Amplitude distribution".to_string(),
@@ -888,7 +888,7 @@ impl AdvancedQuantumDebugger {
     fn set_watchpoint(&mut self, watchpoint: WatchpointType) -> Result<CommandResult, QuantRS2Error> {
         let id = self.watchpoints.len();
         self.watchpoints.push((id, watchpoint, true));
-        
+
         Ok(CommandResult {
             success: true,
             message: format!("Watchpoint {} set", id),
@@ -913,7 +913,7 @@ impl AdvancedQuantumDebugger {
 
     fn show_circuit_progress(&mut self, session: &InteractiveSession) -> Result<CommandResult, QuantRS2Error> {
         let progress = self.current_step as f64 / session.circuit.len() as f64 * 100.0;
-        
+
         Ok(CommandResult {
             success: true,
             message: format!("Circuit progress: {:.1}%", progress),
@@ -924,7 +924,7 @@ impl AdvancedQuantumDebugger {
 
     fn quit_session(&mut self) -> Result<CommandResult, QuantRS2Error> {
         self.interactive_session = None;
-        
+
         Ok(CommandResult {
             success: true,
             message: "Debug session ended".to_string(),
@@ -937,12 +937,12 @@ impl AdvancedQuantumDebugger {
         let mut svg = String::new();
         let bar_width = 30.0;
         let max_height = 200.0;
-        
+
         for (i, bin) in hist.bins.iter().enumerate() {
             let x = i as f64 * (bar_width + 5.0) + 50.0;
             let height = bin.probability * max_height;
             let y = 250.0 - height;
-            
+
             svg.push_str(&format!(
                 r#"<rect x="{}" y="{}" width="{}" height="{}" fill="{}" />
                    <text x="{}" y="270" font-size="10" text-anchor="middle">{}</text>"#,
@@ -952,27 +952,27 @@ impl AdvancedQuantumDebugger {
                 bin.state_label
             ));
         }
-        
+
         Ok(svg)
     }
 
     fn circuit_to_latex(&self, circuit: &CircuitDiagram) -> Result<String, QuantRS2Error> {
         let mut latex = String::from(r"\begin{figure}[h]\n\centering\n\begin{qcircuit}\n");
-        
+
         // Add qubit lines
         for i in 0..circuit.num_qubits {
             if i > 0 {
                 latex.push_str(r" \\ ");
             }
             latex.push_str(&format!(r"\lstick{{|{}⟩}}", circuit.qubit_labels[i]));
-            
+
             // Add gates for this qubit
             for layer in &circuit.layers {
                 latex.push_str(" & ");
-                
+
                 let gate_on_qubit = layer.gates.iter()
                     .find(|g| g.target_qubits.contains(&i));
-                
+
                 if let Some(gate) = gate_on_qubit {
                     latex.push_str(&format!(r"\gate{{{}}}", gate.symbol));
                 } else {
@@ -980,42 +980,42 @@ impl AdvancedQuantumDebugger {
                 }
             }
         }
-        
+
         latex.push_str(r"\end{qcircuit}\n\end{figure}");
         Ok(latex)
     }
 
     fn circuit_to_ascii(&self, circuit: &CircuitDiagram) -> Result<String, QuantRS2Error> {
         let mut ascii = String::new();
-        
+
         for i in 0..circuit.num_qubits {
             ascii.push_str(&format!("q{}: ", i));
-            
+
             for layer in &circuit.layers {
                 let gate_on_qubit = layer.gates.iter()
                     .find(|g| g.target_qubits.contains(&i));
-                
+
                 if let Some(gate) = gate_on_qubit {
                     ascii.push_str(&format!("-[{}]-", gate.symbol));
                 } else {
                     ascii.push_str("-----");
                 }
             }
-            
+
             ascii.push('\n');
         }
-        
+
         Ok(ascii)
     }
 
     fn amplitude_histogram_to_ascii(&self, hist: &AmplitudeHistogram) -> Result<String, QuantRS2Error> {
         let mut ascii = String::new();
         let max_bar_length = 40;
-        
+
         for bin in &hist.bins {
             let bar_length = (bin.probability * max_bar_length as f64) as usize;
             let bar = "█".repeat(bar_length);
-            
+
             ascii.push_str(&format!(
                 "{:>10} |{:<40} {:.3}\n",
                 bin.state_label,
@@ -1023,7 +1023,7 @@ impl AdvancedQuantumDebugger {
                 bin.probability
             ));
         }
-        
+
         Ok(ascii)
     }
 }
@@ -1222,7 +1222,7 @@ mod tests {
             Complex64::new(1.0 / std::f64::consts::SQRT_2, 0.0),
             Complex64::new(1.0 / std::f64::consts::SQRT_2, 0.0),
         ];
-        
+
         let viz = debugger.generate_visualization(&state, 1, 0).unwrap();
         assert!(viz.state_vector_viz.is_some());
         assert!(viz.amplitude_histogram.is_some());
@@ -1238,7 +1238,7 @@ mod tests {
             Complex64::new(1.0, 0.0),
             Complex64::new(0.0, 0.0),
         ];
-        
+
         let result = debugger.start_interactive_session(&circuit, &initial_state, 1).unwrap();
         assert!(!result.session_id.is_empty());
     }
@@ -1269,10 +1269,10 @@ mod tests {
             phase_diagram: None,
             measurement_probabilities: None,
         };
-        
+
         let svg = debugger.export_as_svg(&viz).unwrap();
         assert!(svg.contains("<svg"));
-        
+
         let json = debugger.export_as_json(&viz).unwrap();
         assert!(json.contains("amplitude_histogram"));
     }
@@ -1280,12 +1280,12 @@ mod tests {
     #[test]
     fn test_watchpoint_management() {
         let mut debugger = AdvancedQuantumDebugger::new();
-        
+
         let wp = WatchpointType::AmplitudeWatch { qubit: 0, threshold: 0.5 };
         let result = debugger.set_watchpoint(wp).unwrap();
         assert!(result.success);
         assert_eq!(debugger.watchpoints.len(), 1);
-        
+
         let clear_result = debugger.clear_watchpoint(0).unwrap();
         assert!(clear_result.success);
         assert!(!debugger.watchpoints[0].2);  // Should be disabled

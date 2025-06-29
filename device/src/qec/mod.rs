@@ -9,7 +9,18 @@ use std::hash::Hasher;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use quantrs2_circuit::prelude::*;
+// Import specific types to avoid naming conflicts
+use quantrs2_circuit::prelude::{
+    Circuit,
+    PerformanceAnalyzer,
+    PerformanceSnapshot,
+    PerformanceSummary,
+    ProfilerConfig as ProfilerConfiguration,
+    // Avoid importing StorageConfig, StorageBackend to prevent conflicts with local types
+    ProfilingReport,
+    ProfilingSession,
+    QuantumProfiler,
+};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
@@ -3722,7 +3733,7 @@ pub struct QECMonitoringConfig {
     pub alerting: MonitoringAlertingConfig,
 }
 
-/// QEC optimization configuration  
+/// QEC optimization configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QECOptimizationConfig {
     pub enable_code_optimization: bool,

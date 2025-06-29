@@ -1625,14 +1625,14 @@ impl SimulatorComparisonFramework {
             executor: Arc::new(RwLock::new(BenchmarkExecutor::new())),
         }
     }
-    
+
     /// Register a simulator for comparison
     pub fn register_simulator(&self, profile: SimulatorProfile) -> DeviceResult<()> {
         let mut simulators = self.simulators.write().unwrap();
         simulators.insert(profile.simulator_id.clone(), profile);
         Ok(())
     }
-    
+
     /// Run comprehensive comparison
     pub async fn run_comparison(&self, simulator_ids: Vec<String>) -> DeviceResult<ComparisonResult> {
         // Implementation would include:
@@ -1641,7 +1641,7 @@ impl SimulatorComparisonFramework {
         // 3. Collect and analyze results
         // 4. Generate recommendations
         // 5. Perform statistical analysis
-        
+
         // Simplified implementation for now
         Ok(ComparisonResult {
             timestamp: SystemTime::now(),
@@ -1671,19 +1671,19 @@ impl SimulatorComparisonFramework {
             },
         })
     }
-    
+
     /// Get recommendations for specific use case
     pub async fn get_recommendations(&self, context: RecommendationContext) -> DeviceResult<Vec<Recommendation>> {
         let engine = self.recommendation_engine.read().unwrap();
         engine.get_recommendations(&context)
     }
-    
+
     /// Get simulator rankings
     pub fn get_rankings(&self, criteria: Option<ComparisonCriteria>) -> Vec<SimulatorRanking> {
         // Implementation would rank simulators based on criteria
         vec![]
     }
-    
+
     /// Export comparison results
     pub fn export_results(&self, result: &ComparisonResult, format: OutputFormat, path: &str) -> DeviceResult<()> {
         // Implementation would export results in specified format
@@ -1727,7 +1727,7 @@ impl RecommendationEngine {
             model_metrics: HashMap::new(),
         }
     }
-    
+
     pub fn get_recommendations(&self, context: &RecommendationContext) -> DeviceResult<Vec<Recommendation>> {
         // Simplified implementation
         Ok(vec![
@@ -1804,13 +1804,13 @@ impl AnomalyDetector for SimpleAnomalyDetector {
         if data.len() < 3 {
             return vec![];
         }
-        
+
         let mean = data.iter().sum::<f64>() / data.len() as f64;
         let variance = data.iter()
             .map(|x| (x - mean).powi(2))
             .sum::<f64>() / (data.len() - 1) as f64;
         let std_dev = variance.sqrt();
-        
+
         data.iter()
             .enumerate()
             .filter_map(|(i, &value)| {
@@ -1822,11 +1822,11 @@ impl AnomalyDetector for SimpleAnomalyDetector {
             })
             .collect()
     }
-    
+
     fn update(&mut self, _data: &[f64]) {
         // Simple implementation - could be enhanced with adaptive thresholding
     }
-    
+
     fn threshold(&self) -> f64 {
         self.threshold
     }
@@ -1903,7 +1903,7 @@ mod tests {
     #[test]
     fn test_simulator_registration() {
         let framework = create_simulator_comparison_framework();
-        
+
         let simulator = SimulatorProfile {
             simulator_id: "test_simulator".to_string(),
             name: "Test Simulator".to_string(),
@@ -2044,7 +2044,7 @@ mod tests {
                 },
             },
         };
-        
+
         let result = framework.register_simulator(simulator);
         assert!(result.is_ok());
         assert_eq!(framework.simulators.read().unwrap().len(), 1);

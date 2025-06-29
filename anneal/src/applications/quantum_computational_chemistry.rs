@@ -383,7 +383,7 @@ pub struct QuantumChemistryOptimizer {
     pub adaptive_qec: RealTimeAdaptiveQec,
     /// Meta-learning optimizer
     pub meta_learning: MetaLearningOptimizer,
-    /// Neural annealing scheduler  
+    /// Neural annealing scheduler
     // TODO: Add back when type is available
     // pub neural_scheduler: NeuralAnnealingScheduler,
     /// Enterprise monitoring

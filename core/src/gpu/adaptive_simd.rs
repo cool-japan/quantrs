@@ -106,7 +106,7 @@ impl AdaptiveSimdDispatcher {
     /// Detect CPU features at runtime
     fn detect_cpu_features() -> CpuFeatures {
         let platform = PlatformCapabilities::detect();
-        
+
         CpuFeatures {
             has_avx2: platform.cpu.simd.avx2,
             has_avx512: platform.cpu.simd.avx512,
@@ -345,32 +345,32 @@ impl AdaptiveSimdDispatcher {
     ) -> QuantRS2Result<()> {
         let qubit_mask = 1 << target;
         let half_size = state.len() / 2;
-        
+
         // Collect pairs of indices that need to be processed
         let mut idx0_list = Vec::new();
         let mut idx1_list = Vec::new();
-        
+
         for i in 0..half_size {
             let idx0 = (i & !(qubit_mask >> 1)) | ((i & (qubit_mask >> 1)) << 1);
             let idx1 = idx0 | qubit_mask;
-            
+
             if idx1 < state.len() {
                 idx0_list.push(idx0);
                 idx1_list.push(idx1);
             }
         }
-        
+
         let pair_count = idx0_list.len();
         if pair_count == 0 {
             return Ok(());
         }
-        
+
         // Extract amplitude pairs for SIMD processing
         let mut a0_real = Vec::with_capacity(pair_count);
         let mut a0_imag = Vec::with_capacity(pair_count);
         let mut a1_real = Vec::with_capacity(pair_count);
         let mut a1_imag = Vec::with_capacity(pair_count);
-        
+
         for i in 0..pair_count {
             let a0 = state[idx0_list[i]];
             let a1 = state[idx1_list[i]];
@@ -379,13 +379,13 @@ impl AdaptiveSimdDispatcher {
             a1_real.push(a1.re);
             a1_imag.push(a1.im);
         }
-        
+
         // Convert to array views for SciRS2 SIMD operations
         let a0_real_view = ArrayView1::from(&a0_real);
         let a0_imag_view = ArrayView1::from(&a0_imag);
         let a1_real_view = ArrayView1::from(&a1_real);
         let a1_imag_view = ArrayView1::from(&a1_imag);
-        
+
         // Extract matrix elements
         let m00_re = matrix[0].re;
         let m00_im = matrix[0].im;
@@ -395,11 +395,11 @@ impl AdaptiveSimdDispatcher {
         let m10_im = matrix[2].im;
         let m11_re = matrix[3].re;
         let m11_im = matrix[3].im;
-        
+
         // Compute new amplitudes using SciRS2 SIMD operations
         // new_a0 = m00 * a0 + m01 * a1
         // new_a1 = m10 * a0 + m11 * a1
-        
+
         // For new_a0_real: m00_re * a0_re - m00_im * a0_im + m01_re * a1_re - m01_im * a1_im
         let term1 = <f64 as SimdF64>::simd_scalar_mul(&a0_real_view, m00_re);
         let term2 = <f64 as SimdF64>::simd_scalar_mul(&a0_imag_view, m00_im);
@@ -408,7 +408,7 @@ impl AdaptiveSimdDispatcher {
         let sub1 = <f64 as SimdF64>::simd_sub_arrays(&term1.view(), &term2.view());
         let sub2 = <f64 as SimdF64>::simd_sub_arrays(&term3.view(), &term4.view());
         let new_a0_real_arr = <f64 as SimdF64>::simd_add_arrays(&sub1.view(), &sub2.view());
-        
+
         // For new_a0_imag: m00_re * a0_im + m00_im * a0_re + m01_re * a1_im + m01_im * a1_re
         let term5 = <f64 as SimdF64>::simd_scalar_mul(&a0_imag_view, m00_re);
         let term6 = <f64 as SimdF64>::simd_scalar_mul(&a0_real_view, m00_im);
@@ -417,7 +417,7 @@ impl AdaptiveSimdDispatcher {
         let add1 = <f64 as SimdF64>::simd_add_arrays(&term5.view(), &term6.view());
         let add2 = <f64 as SimdF64>::simd_add_arrays(&term7.view(), &term8.view());
         let new_a0_imag_arr = <f64 as SimdF64>::simd_add_arrays(&add1.view(), &add2.view());
-        
+
         // For new_a1_real: m10_re * a0_re - m10_im * a0_im + m11_re * a1_re - m11_im * a1_im
         let term9 = <f64 as SimdF64>::simd_scalar_mul(&a0_real_view, m10_re);
         let term10 = <f64 as SimdF64>::simd_scalar_mul(&a0_imag_view, m10_im);
@@ -426,7 +426,7 @@ impl AdaptiveSimdDispatcher {
         let sub3 = <f64 as SimdF64>::simd_sub_arrays(&term9.view(), &term10.view());
         let sub4 = <f64 as SimdF64>::simd_sub_arrays(&term11.view(), &term12.view());
         let new_a1_real_arr = <f64 as SimdF64>::simd_add_arrays(&sub3.view(), &sub4.view());
-        
+
         // For new_a1_imag: m10_re * a0_im + m10_im * a0_re + m11_re * a1_im + m11_im * a1_re
         let term13 = <f64 as SimdF64>::simd_scalar_mul(&a0_imag_view, m10_re);
         let term14 = <f64 as SimdF64>::simd_scalar_mul(&a0_real_view, m10_im);
@@ -435,13 +435,13 @@ impl AdaptiveSimdDispatcher {
         let add3 = <f64 as SimdF64>::simd_add_arrays(&term13.view(), &term14.view());
         let add4 = <f64 as SimdF64>::simd_add_arrays(&term15.view(), &term16.view());
         let new_a1_imag_arr = <f64 as SimdF64>::simd_add_arrays(&add3.view(), &add4.view());
-        
+
         // Write back results
         for i in 0..pair_count {
             state[idx0_list[i]] = Complex64::new(new_a0_real_arr[i], new_a0_imag_arr[i]);
             state[idx1_list[i]] = Complex64::new(new_a1_real_arr[i], new_a1_imag_arr[i]);
         }
-        
+
         Ok(())
     }
 

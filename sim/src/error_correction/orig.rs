@@ -10,16 +10,16 @@ use quantrs_core::qubit::QubitId;
 pub trait ErrorCorrection {
     /// Get the number of physical qubits required
     fn physical_qubits(&self) -> usize;
-    
+
     /// Get the number of logical qubits encoded
     fn logical_qubits(&self) -> usize;
-    
+
     /// Get the distance of the code (minimum number of errors it can detect)
     fn distance(&self) -> usize;
-    
+
     /// Create a circuit to encode logical qubits into the error correction code
     fn encode_circuit(&self, logical_qubits: &[QubitId], ancilla_qubits: &[QubitId]) -> Circuit<16>;
-    
+
     /// Create a circuit to decode and correct errors
     fn decode_circuit(&self, encoded_qubits: &[QubitId], syndrome_qubits: &[QubitId]) -> Circuit<16>;
 }
@@ -34,73 +34,73 @@ impl ErrorCorrection for BitFlipCode {
     fn physical_qubits(&self) -> usize {
         3
     }
-    
+
     fn logical_qubits(&self) -> usize {
         1
     }
-    
+
     fn distance(&self) -> usize {
         3
     }
-    
+
     fn encode_circuit(&self, logical_qubits: &[QubitId], ancilla_qubits: &[QubitId]) -> Circuit<16> {
         // We limit the circuit to 16 qubits maximum
         let mut circuit = Circuit::<16>::new();
-        
+
         // Check if we have enough qubits
         if logical_qubits.len() < 1 || ancilla_qubits.len() < 2 {
             panic!("BitFlipCode requires 1 logical qubit and 2 ancilla qubits");
         }
-        
+
         // Extract qubit IDs
         let q0 = logical_qubits[0];
         let q1 = ancilla_qubits[0];
         let q2 = ancilla_qubits[1];
-        
+
         // Encode |ψ⟩ -> |ψψψ⟩
         // CNOT from logical qubit to each ancilla qubit
         circuit.cnot(q0, q1).unwrap();
         circuit.cnot(q0, q2).unwrap();
-        
+
         circuit
     }
-    
+
     fn decode_circuit(&self, encoded_qubits: &[QubitId], syndrome_qubits: &[QubitId]) -> Circuit<16> {
         let mut circuit = Circuit::<16>::new();
-        
+
         // Check if we have enough qubits
         if encoded_qubits.len() < 3 || syndrome_qubits.len() < 2 {
             panic!("BitFlipCode requires 3 encoded qubits and 2 syndrome qubits");
         }
-        
+
         // Extract qubit IDs
         let q0 = encoded_qubits[0];
         let q1 = encoded_qubits[1];
         let q2 = encoded_qubits[2];
         let s0 = syndrome_qubits[0];
         let s1 = syndrome_qubits[1];
-        
+
         // Syndrome extraction: CNOT from data qubits to syndrome qubits
         circuit.cnot(q0, s0).unwrap();
         circuit.cnot(q1, s0).unwrap();
         circuit.cnot(q1, s1).unwrap();
         circuit.cnot(q2, s1).unwrap();
-        
+
         // Apply corrections based on syndrome
         // Syndrome 01 (s1=0, s0=1): bit flip on q0
         circuit.x(s1).unwrap();
         circuit.cx(s0, q0).unwrap();
         circuit.x(s1).unwrap();
-        
+
         // Syndrome 10 (s1=1, s0=0): bit flip on q1
         circuit.x(s0).unwrap();
         circuit.cx(s1, q1).unwrap();
         circuit.x(s0).unwrap();
-        
+
         // Syndrome 11 (s1=1, s0=1): bit flip on q2
         circuit.cx(s0, q2).unwrap();
         circuit.cx(s1, q2).unwrap();
-        
+
         circuit
     }
 }
@@ -115,92 +115,92 @@ impl ErrorCorrection for PhaseFlipCode {
     fn physical_qubits(&self) -> usize {
         3
     }
-    
+
     fn logical_qubits(&self) -> usize {
         1
     }
-    
+
     fn distance(&self) -> usize {
         3
     }
-    
+
     fn encode_circuit(&self, logical_qubits: &[QubitId], ancilla_qubits: &[QubitId]) -> Circuit<16> {
         // We limit the circuit to 16 qubits maximum
         let mut circuit = Circuit::<16>::new();
-        
+
         // Check if we have enough qubits
         if logical_qubits.len() < 1 || ancilla_qubits.len() < 2 {
             panic!("PhaseFlipCode requires 1 logical qubit and 2 ancilla qubits");
         }
-        
+
         // Extract qubit IDs
         let q0 = logical_qubits[0];
         let q1 = ancilla_qubits[0];
         let q2 = ancilla_qubits[1];
-        
+
         // Apply Hadamard to all qubits
         circuit.h(q0).unwrap();
         circuit.h(q1).unwrap();
         circuit.h(q2).unwrap();
-        
+
         // Encode using bit flip code
         circuit.cnot(q0, q1).unwrap();
         circuit.cnot(q0, q2).unwrap();
-        
+
         // Apply Hadamard to all qubits again
         circuit.h(q0).unwrap();
         circuit.h(q1).unwrap();
         circuit.h(q2).unwrap();
-        
+
         circuit
     }
-    
+
     fn decode_circuit(&self, encoded_qubits: &[QubitId], syndrome_qubits: &[QubitId]) -> Circuit<16> {
         let mut circuit = Circuit::<16>::new();
-        
+
         // Check if we have enough qubits
         if encoded_qubits.len() < 3 || syndrome_qubits.len() < 2 {
             panic!("PhaseFlipCode requires 3 encoded qubits and 2 syndrome qubits");
         }
-        
+
         // Extract qubit IDs
         let q0 = encoded_qubits[0];
         let q1 = encoded_qubits[1];
         let q2 = encoded_qubits[2];
         let s0 = syndrome_qubits[0];
         let s1 = syndrome_qubits[1];
-        
+
         // Apply Hadamard to all encoded qubits
         circuit.h(q0).unwrap();
         circuit.h(q1).unwrap();
         circuit.h(q2).unwrap();
-        
+
         // Syndrome extraction: CNOT from data qubits to syndrome qubits
         circuit.cnot(q0, s0).unwrap();
         circuit.cnot(q1, s0).unwrap();
         circuit.cnot(q1, s1).unwrap();
         circuit.cnot(q2, s1).unwrap();
-        
+
         // Apply corrections based on syndrome in X basis
         // Syndrome 01 (s1=0, s0=1): bit flip on q0
         circuit.x(s1).unwrap();
         circuit.cx(s0, q0).unwrap();
         circuit.x(s1).unwrap();
-        
+
         // Syndrome 10 (s1=1, s0=0): bit flip on q1
         circuit.x(s0).unwrap();
         circuit.cx(s1, q1).unwrap();
         circuit.x(s0).unwrap();
-        
+
         // Syndrome 11 (s1=1, s0=1): bit flip on q2
         circuit.cx(s0, q2).unwrap();
         circuit.cx(s1, q2).unwrap();
-        
+
         // Apply Hadamard to all encoded qubits to go back to computational basis
         circuit.h(q0).unwrap();
         circuit.h(q1).unwrap();
         circuit.h(q2).unwrap();
-        
+
         circuit
     }
 }
@@ -216,15 +216,15 @@ impl ErrorCorrection for ShorCode {
     fn physical_qubits(&self) -> usize {
         9
     }
-    
+
     fn logical_qubits(&self) -> usize {
         1
     }
-    
+
     fn distance(&self) -> usize {
         3
     }
-    
+
     fn encode_circuit(&self, logical_qubits: &[QubitId], ancilla_qubits: &[QubitId]) -> Circuit<16> {
         let mut circuit = Circuit::<16>::new();
 
@@ -271,7 +271,7 @@ impl ErrorCorrection for ShorCode {
 
         circuit
     }
-    
+
     fn decode_circuit(&self, encoded_qubits: &[QubitId], syndrome_qubits: &[QubitId]) -> Circuit<16> {
         let mut circuit = Circuit::<16>::new();
 
@@ -405,15 +405,15 @@ impl ErrorCorrection for FiveQubitCode {
     fn physical_qubits(&self) -> usize {
         5
     }
-    
+
     fn logical_qubits(&self) -> usize {
         1
     }
-    
+
     fn distance(&self) -> usize {
         3
     }
-    
+
     fn encode_circuit(&self, logical_qubits: &[QubitId], ancilla_qubits: &[QubitId]) -> Circuit<16> {
         let mut circuit = Circuit::<16>::new();
 
@@ -651,46 +651,46 @@ impl ErrorCorrection for SteaneCode {
     fn physical_qubits(&self) -> usize {
         7
     }
-    
+
     fn logical_qubits(&self) -> usize {
         1
     }
-    
+
     fn distance(&self) -> usize {
         3
     }
-    
+
     fn encode_circuit(&self, logical_qubits: &[QubitId], ancilla_qubits: &[QubitId]) -> Circuit<16> {
         let mut circuit = Circuit::<16>::new();
-        
+
         // Check if we have enough qubits
         if logical_qubits.len() < 1 || ancilla_qubits.len() < 6 {
             panic!("SteaneCode requires 1 logical qubit and 6 ancilla qubits");
         }
-        
+
         // Steane code encoding circuit
         // The Steane code is a [7,1,3] CSS code derived from the classical Hamming code
-        
+
         let data = encoded_qubits[0];
         let parity_x = &encoded_qubits[1..4];
         let parity_z = &encoded_qubits[4..7];
-        
+
         // X-basis encoding (for bit-flip protection)
         for &p in parity_x {
             circuit.cnot(data, p).unwrap();
         }
-        
+
         // Additional X parity checks
         circuit.cnot(encoded_qubits[1], encoded_qubits[3]).unwrap();
         circuit.cnot(encoded_qubits[2], encoded_qubits[3]).unwrap();
-        
+
         // Z-basis encoding (for phase-flip protection)
         for &p in parity_z {
             circuit.h(p).unwrap();
             circuit.cnot(data, p).unwrap();
             circuit.h(p).unwrap();
         }
-        
+
         // Additional Z parity checks
         circuit.h(encoded_qubits[4]).unwrap();
         circuit.h(encoded_qubits[5]).unwrap();
@@ -698,21 +698,21 @@ impl ErrorCorrection for SteaneCode {
         circuit.cnot(encoded_qubits[5], encoded_qubits[6]).unwrap();
         circuit.h(encoded_qubits[4]).unwrap();
         circuit.h(encoded_qubits[5]).unwrap();
-        
+
         circuit
     }
-    
+
     fn decode_circuit(&self, encoded_qubits: &[QubitId], syndrome_qubits: &[QubitId]) -> Circuit<16> {
         let mut circuit = Circuit::<16>::new();
-        
+
         // Check if we have enough qubits
         if encoded_qubits.len() < 7 || syndrome_qubits.len() < 6 {
             panic!("SteaneCode requires 7 encoded qubits and 6 syndrome qubits");
         }
-        
+
         // Steane code decoding circuit
         // Measure syndrome qubits to detect and correct errors
-        
+
         // X-syndrome measurement (detects Z errors)
         for i in 0..3 {
             circuit.h(syndrome_qubits[i]).unwrap();
@@ -723,7 +723,7 @@ impl ErrorCorrection for SteaneCode {
             }
             circuit.h(syndrome_qubits[i]).unwrap();
         }
-        
+
         // Z-syndrome measurement (detects X errors)
         for i in 3..6 {
             for j in 0..7 {
@@ -732,11 +732,11 @@ impl ErrorCorrection for SteaneCode {
                 }
             }
         }
-        
+
         // Error correction based on syndrome
         // In a real implementation, this would involve classical processing
         // For simulation, we apply corrections based on syndrome patterns
-        
+
         // X error corrections (based on Z syndrome)
         for error_pos in 1..8 {
             let mut control_qubits = Vec::new();
@@ -745,7 +745,7 @@ impl ErrorCorrection for SteaneCode {
                     control_qubits.push(syndrome_qubits[i]);
                 }
             }
-            
+
             // Multi-controlled X gate (simplified)
             if !control_qubits.is_empty() {
                 let target = encoded_qubits[error_pos - 1];
@@ -754,7 +754,7 @@ impl ErrorCorrection for SteaneCode {
                 }
             }
         }
-        
+
         // Z error corrections (based on X syndrome)
         for error_pos in 1..8 {
             let mut control_qubits = Vec::new();
@@ -763,7 +763,7 @@ impl ErrorCorrection for SteaneCode {
                     control_qubits.push(syndrome_qubits[i]);
                 }
             }
-            
+
             // Multi-controlled Z gate (simplified)
             if !control_qubits.is_empty() {
                 let target = encoded_qubits[error_pos - 1];
@@ -774,7 +774,7 @@ impl ErrorCorrection for SteaneCode {
                 }
             }
         }
-        
+
         circuit
     }
 }

@@ -18,11 +18,11 @@ use rayon::prelude::*;
 // use scirs2_sparse::CSRMatrix;
 use ndarray::{Array1, Array2, Array3, ArrayView2};
 use num_complex::Complex64;
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque, BTreeMap};
-use std::sync::{Arc, Mutex};
-use std::fmt;
 use rand_distr::{Distribution, Normal};
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::fmt;
+use std::sync::{Arc, Mutex};
 // use statrs::statistics::Statistics;
 
 /// Enhanced calibration configuration
@@ -30,34 +30,34 @@ use rand_distr::{Distribution, Normal};
 pub struct EnhancedCalibrationConfig {
     /// Base calibration configuration
     pub base_config: CalibrationConfig,
-    
+
     /// Enable ML-based system identification
     pub enable_ml_identification: bool,
-    
+
     /// Enable adaptive calibration protocols
     pub enable_adaptive_protocols: bool,
-    
+
     /// Enable real-time drift tracking
     pub enable_drift_tracking: bool,
-    
+
     /// Enable comprehensive error characterization
     pub enable_error_characterization: bool,
-    
+
     /// Enable automated recalibration
     pub enable_auto_recalibration: bool,
-    
+
     /// Enable visual calibration reports
     pub enable_visual_reports: bool,
-    
+
     /// System identification methods
     pub identification_methods: Vec<IdentificationMethod>,
-    
+
     /// Calibration objectives
     pub calibration_objectives: Vec<CalibrationObjective>,
-    
+
     /// Performance thresholds
     pub performance_thresholds: PerformanceThresholds,
-    
+
     /// Analysis options
     pub analysis_options: AnalysisOptions,
 }
@@ -93,19 +93,19 @@ impl Default for EnhancedCalibrationConfig {
 pub struct CalibrationConfig {
     /// Number of calibration shots
     pub num_shots: usize,
-    
+
     /// Calibration sequence length
     pub sequence_length: usize,
-    
+
     /// Convergence threshold
     pub convergence_threshold: f64,
-    
+
     /// Maximum iterations
     pub max_iterations: usize,
-    
+
     /// Hardware specifications
     pub hardware_spec: HardwareSpec,
-    
+
     /// Calibration protocols
     pub protocols: CalibrationProtocols,
 }
@@ -155,16 +155,16 @@ impl Default for HardwareSpec {
 /// Coherence times
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct CoherenceTimes {
-    pub t1: f64, // Relaxation time
-    pub t2: f64, // Dephasing time
+    pub t1: f64,      // Relaxation time
+    pub t2: f64,      // Dephasing time
     pub t2_echo: f64, // Echo coherence time
 }
 
 impl Default for CoherenceTimes {
     fn default() -> Self {
         Self {
-            t1: 50e-6, // 50 μs
-            t2: 30e-6, // 30 μs
+            t1: 50e-6,      // 50 μs
+            t2: 30e-6,      // 30 μs
             t2_echo: 60e-6, // 60 μs
         }
     }
@@ -368,7 +368,7 @@ impl EnhancedCalibrationSystem {
         let protocol_manager = Arc::new(ProtocolManager::new(config.base_config.protocols.clone()));
         // let buffer_pool = BufferPool::new();
         let cache = Arc::new(Mutex::new(CalibrationCache::new()));
-        
+
         Self {
             config,
             // system_identifier,
@@ -380,60 +380,78 @@ impl EnhancedCalibrationSystem {
             cache,
         }
     }
-    
+
     /// Perform full system calibration
     pub fn calibrate_system(&mut self) -> QuantRS2Result<SystemCalibrationResult> {
         let start_time = std::time::Instant::now();
-        
+
         // Initialize calibration state
         let mut state = CalibrationState::new(self.config.base_config.hardware_spec.num_qubits);
-        
+
         // Single-qubit calibration
-        if self.config.base_config.protocols.single_qubit.rabi_oscillations {
+        if self
+            .config
+            .base_config
+            .protocols
+            .single_qubit
+            .rabi_oscillations
+        {
             let single_qubit_results = self.calibrate_single_qubits(&mut state)?;
             state.update_single_qubit_params(&single_qubit_results)?;
         }
-        
+
         // Two-qubit calibration
         if self.config.base_config.protocols.two_qubit.cnot_calibration {
             let two_qubit_results = self.calibrate_two_qubits(&mut state)?;
             state.update_two_qubit_params(&two_qubit_results)?;
         }
-        
+
         // Readout calibration
-        if self.config.base_config.protocols.readout.state_discrimination {
+        if self
+            .config
+            .base_config
+            .protocols
+            .readout
+            .state_discrimination
+        {
             let readout_results = self.calibrate_readout(&mut state)?;
             state.update_readout_params(&readout_results)?;
         }
-        
+
         // Crosstalk characterization
-        if self.config.base_config.protocols.crosstalk.simultaneous_gates {
+        if self
+            .config
+            .base_config
+            .protocols
+            .crosstalk
+            .simultaneous_gates
+        {
             let crosstalk_results = self.characterize_crosstalk(&state)?;
             state.update_crosstalk_params(&crosstalk_results)?;
         }
-        
+
         // System identification
         let system_model = if self.config.enable_ml_identification {
             Some(self.identify_system(&state)?)
         } else {
             None
         };
-        
+
         // Error characterization
         let error_model = if self.config.enable_error_characterization {
             Some(self.error_characterizer.characterize(&state)?)
         } else {
             None
         };
-        
+
         // Generate calibration report
         let report = self.generate_report(&state, system_model.as_ref(), error_model.as_ref())?;
-        
+
         // Cache results
         self.cache_results(&state)?;
-        
+
         let calibration_time = start_time.elapsed();
-        
+
         Ok(SystemCalibrationResult {
             calibration_state: state.clone(),
             system_model,
@@ -444,74 +462,98 @@ impl EnhancedCalibrationSystem {
             recommendations: self.generate_recommendations(&state)?,
         })
     }
-    
+
     /// Calibrate single-qubit gates
-    fn calibrate_single_qubits(&self, state: &mut CalibrationState) -> QuantRS2Result<SingleQubitCalibration> {
+    fn calibrate_single_qubits(
+        &self,
+        state: &mut CalibrationState,
+    ) -> QuantRS2Result<SingleQubitCalibration> {
         let mut results = SingleQubitCalibration::new(state.num_qubits);
-        
+
         // Parallel calibration for all qubits
         let qubit_results: Vec<_> = (0..state.num_qubits)
             .into_par_iter()
             .map(|qubit| self.calibrate_single_qubit(qubit))
             .collect::<Result<Vec<_>, _>>()?;
-        
+
         for (qubit, params) in qubit_results.into_iter().enumerate() {
             results.qubit_params.insert(qubit, params);
         }
-        
+
         // Cross-validation
         if self.config.enable_adaptive_protocols {
             self.cross_validate_single_qubits(&mut results)?;
         }
-        
+
         Ok(results)
     }
-    
+
     /// Calibrate individual qubit
     fn calibrate_single_qubit(&self, qubit: usize) -> QuantRS2Result<QubitParameters> {
         let mut params = QubitParameters::default();
-        
+
         // Rabi oscillations
-        if self.config.base_config.protocols.single_qubit.rabi_oscillations {
+        if self
+            .config
+            .base_config
+            .protocols
+            .single_qubit
+            .rabi_oscillations
+        {
             let rabi_data = self.protocol_manager.run_rabi_oscillations(qubit)?;
             params.pi_pulse_amplitude = self.fit_rabi_data(&rabi_data)?;
         }
-        
+
         // Ramsey fringes
-        if self.config.base_config.protocols.single_qubit.ramsey_fringes {
+        if self
+            .config
+            .base_config
+            .protocols
+            .single_qubit
+            .ramsey_fringes
+        {
             let ramsey_data = self.protocol_manager.run_ramsey_fringes(qubit)?;
             let (frequency, t2) = self.fit_ramsey_data(&ramsey_data)?;
             params.frequency = frequency;
             params.t2_star = t2;
         }
-        
+
         // DRAG calibration
-        if self.config.base_config.protocols.single_qubit.drag_calibration {
+        if self
+            .config
+            .base_config
+            .protocols
+            .single_qubit
+            .drag_calibration
+        {
             let drag_data = self.protocol_manager.run_drag_calibration(qubit)?;
             params.drag_coefficient = self.fit_drag_data(&drag_data)?;
         }
-        
+
         Ok(params)
     }
-    
+
     /// Calibrate two-qubit gates
-    fn calibrate_two_qubits(&self, state: &mut CalibrationState) -> QuantRS2Result<TwoQubitCalibration> {
+    fn calibrate_two_qubits(
+        &self,
+        state: &mut CalibrationState,
+    ) -> QuantRS2Result<TwoQubitCalibration> {
         let mut results = TwoQubitCalibration::new();
-        
+
         // Calibrate each connected pair
         for &(q1, q2) in &self.config.base_config.hardware_spec.connectivity {
             let params = self.calibrate_two_qubit_gate(q1, q2, state)?;
             results.gate_params.insert((q1, q2), params);
         }
-        
+
         // Optimize for simultaneous gates
         if self.config.enable_adaptive_protocols {
             self.optimize_simultaneous_gates(&mut results, state)?;
         }
-        
+
         Ok(results)
     }
-    
+
     /// Calibrate specific two-qubit gate
     fn calibrate_two_qubit_gate(
         &self,
@@ -520,7 +562,7 @@ impl EnhancedCalibrationSystem {
         state: &CalibrationState,
     ) -> QuantRS2Result<TwoQubitParameters> {
         let mut params = TwoQubitParameters::default();
-        
+
         // Chevron pattern
         if self.config.base_config.protocols.two_qubit.chevron_pattern {
             let chevron_data = self.protocol_manager.run_chevron_pattern(qubit1, qubit2)?;
@@ -528,125 +570,169 @@ impl EnhancedCalibrationSystem {
             params.coupling_strength = coupling;
             params.detuning = detuning;
         }
-        
+
         // CNOT calibration
         if self.config.base_config.protocols.two_qubit.cnot_calibration {
             let cnot_data = self.protocol_manager.run_cnot_calibration(qubit1, qubit2)?;
             params.cnot_angle = self.fit_cnot_data(&cnot_data)?;
         }
-        
+
         // ZZ interaction
         if self.config.base_config.protocols.two_qubit.zz_interaction {
             let zz_data = self.protocol_manager.run_zz_calibration(qubit1, qubit2)?;
             params.zz_strength = self.fit_zz_data(&zz_data)?;
         }
-        
+
         Ok(params)
     }
-    
+
     /// Calibrate readout
-    fn calibrate_readout(&self, state: &mut CalibrationState) -> QuantRS2Result<ReadoutCalibration> {
+    fn calibrate_readout(
+        &self,
+        state: &mut CalibrationState,
+    ) -> QuantRS2Result<ReadoutCalibration> {
         let mut results = ReadoutCalibration::new(state.num_qubits);
-        
+
         // State discrimination
-        if self.config.base_config.protocols.readout.state_discrimination {
+        if self
+            .config
+            .base_config
+            .protocols
+            .readout
+            .state_discrimination
+        {
             for qubit in 0..state.num_qubits {
                 let discrimination_data = self.protocol_manager.run_state_discrimination(qubit)?;
                 let params = self.fit_discrimination_data(&discrimination_data)?;
                 results.discrimination_params.insert(qubit, params);
             }
         }
-        
+
         // IQ calibration
         if self.config.base_config.protocols.readout.iq_calibration {
             let iq_data = self.protocol_manager.run_iq_calibration()?;
             results.iq_parameters = self.fit_iq_data(&iq_data)?;
         }
-        
+
         // Threshold optimization
-        if self.config.base_config.protocols.readout.threshold_optimization {
+        if self
+            .config
+            .base_config
+            .protocols
+            .readout
+            .threshold_optimization
+        {
             self.optimize_readout_thresholds(&mut results)?;
         }
-        
+
         Ok(results)
     }
-    
+
     /// Characterize crosstalk
-    fn characterize_crosstalk(&self, state: &CalibrationState) -> QuantRS2Result<CrosstalkCharacterization> {
+    fn characterize_crosstalk(
+        &self,
+        state: &CalibrationState,
+    ) -> QuantRS2Result<CrosstalkCharacterization> {
         let mut results = CrosstalkCharacterization::new(state.num_qubits);
-        
+
         // Drive crosstalk
         if self.config.base_config.protocols.crosstalk.drive_crosstalk {
             let drive_matrix = self.measure_drive_crosstalk(state)?;
             results.drive_crosstalk = drive_matrix;
         }
-        
+
         // Measurement crosstalk
-        if self.config.base_config.protocols.crosstalk.measurement_crosstalk {
+        if self
+            .config
+            .base_config
+            .protocols
+            .crosstalk
+            .measurement_crosstalk
+        {
             let meas_matrix = self.measure_measurement_crosstalk(state)?;
             results.measurement_crosstalk = meas_matrix;
         }
-        
+
         // Simultaneous gate effects
-        if self.config.base_config.protocols.crosstalk.simultaneous_gates {
+        if self
+            .config
+            .base_config
+            .protocols
+            .crosstalk
+            .simultaneous_gates
+        {
             let effects = self.measure_simultaneous_effects(state)?;
             results.simultaneous_effects = effects;
         }
-        
+
         Ok(results)
     }
-    
+
     /// Identify system using SciRS2
     fn identify_system(&self, state: &CalibrationState) -> QuantRS2Result<SystemModel> {
         let mut model = SystemModel::new(state.num_qubits);
-        
+
         // Process tomography
-        if self.config.identification_methods.contains(&IdentificationMethod::ProcessTomography) {
+        if self
+            .config
+            .identification_methods
+            .contains(&IdentificationMethod::ProcessTomography)
+        {
             let process_data = self.collect_process_tomography_data(state)?;
             // let process_matrix = self.system_identifier.process_tomography(&process_data)?;
             let process_matrix = Array2::zeros((4, 4)); // placeholder
-            model.process_matrices.insert("process_tomography".to_string(), process_matrix);
+            model
+                .process_matrices
+                .insert("process_tomography".to_string(), process_matrix);
         }
-        
+
         // Gate set tomography
-        if self.config.identification_methods.contains(&IdentificationMethod::GateSetTomography) {
+        if self
+            .config
+            .identification_methods
+            .contains(&IdentificationMethod::GateSetTomography)
+        {
             let gst_data = self.collect_gst_data(state)?;
             // let gate_set = self.system_identifier.gate_set_tomography(&gst_data)?;
             let gate_set = GateSet; // placeholder
             model.gate_set = Some(gate_set);
         }
-        
+
         // Randomized benchmarking
-        if self.config.identification_methods.contains(&IdentificationMethod::RandomizedBenchmarking) {
+        if self
+            .config
+            .identification_methods
+            .contains(&IdentificationMethod::RandomizedBenchmarking)
+        {
             let rb_data = self.collect_rb_data(state)?;
             // let error_rates = self.system_identifier.randomized_benchmarking(&rb_data)?;
             let error_rates = HashMap::new(); // placeholder
             model.error_rates = error_rates;
         }
-        
+
         // ML-based identification
         if let Some(ref ml_calibrator) = self.ml_calibrator {
             let ml_model = ml_calibrator.identify_system(state, &model)?;
             model.ml_parameters = Some(ml_model);
         }
-        
+
         Ok(model)
     }
-    
+
     /// Track drift over time
     pub fn track_drift(&mut self, measurement: DriftMeasurement) -> QuantRS2Result<DriftAnalysis> {
         self.drift_tracker.add_measurement(measurement)?;
-        
+
         let analysis = self.drift_tracker.analyze()?;
-        
+
         // Auto-recalibration if drift exceeds threshold
         if self.config.enable_auto_recalibration && analysis.requires_recalibration {
             self.trigger_recalibration(&analysis)?;
         }
-        
+
         Ok(analysis)
     }
-    
+
     /// Generate calibration report
     fn generate_report(
         &self,
@@ -659,8 +745,12 @@ impl EnhancedCalibrationSystem {
             device_name: self.config.base_config.hardware_spec.device_name.clone(),
             summary: self.generate_summary(state)?,
             detailed_results: self.generate_detailed_results(state)?,
-            system_analysis: system_model.map(|m| self.analyze_system_model(m)).transpose()?,
-            error_analysis: error_model.map(|m| self.analyze_error_model(m)).transpose()?,
+            system_analysis: system_model
+                .map(|m| self.analyze_system_model(m))
+                .transpose()?,
+            error_analysis: error_model
+                .map(|m| self.analyze_error_model(m))
+                .transpose()?,
             visualizations: if self.config.enable_visual_reports {
                 Some(self.generate_visualizations(state)?)
             } else {
@@ -673,20 +763,20 @@ impl EnhancedCalibrationSystem {
                 readout_speed: 0.0,
             },
         };
-        
+
         // Add performance metrics
         report.performance_metrics = self.calculate_performance_metrics(state)?;
-        
+
         Ok(report)
     }
-    
+
     // Data fitting methods
-    
+
     fn fit_rabi_data(&self, data: &RabiData) -> QuantRS2Result<f64> {
         // Use SciRS2 curve fitting
         let amplitudes = &data.amplitudes;
         let populations = &data.populations;
-        
+
         // Fit sinusoidal model: P = A * sin(B * amp + C) + D
         let initial_guess = vec![0.5, 1.0, 0.0, 0.5];
         // let fitted = self.system_identifier.nonlinear_fit(
@@ -699,18 +789,18 @@ impl EnhancedCalibrationSystem {
         //     &initial_guess,
         // )?;
         let fitted = initial_guess.clone(); // placeholder
-        
+
         // Pi pulse amplitude is where sin(B * amp) = 1
         let pi_amplitude = (std::f64::consts::PI / 2.0 - fitted[2]) / fitted[1];
-        
+
         Ok(pi_amplitude)
     }
-    
+
     fn fit_ramsey_data(&self, data: &RamseyData) -> QuantRS2Result<(f64, f64)> {
         // Fit exponentially decaying sinusoid
         let times = &data.wait_times;
         let populations = &data.populations;
-        
+
         // Model: P = A * exp(-t/T2) * cos(2π * f * t + φ) + B
         let initial_guess = vec![0.5, 30e-6, 1e6, 0.0, 0.5];
         // let fitted = self.system_identifier.nonlinear_fit(
@@ -723,42 +813,46 @@ impl EnhancedCalibrationSystem {
         //     &initial_guess,
         // )?;
         let fitted = initial_guess.clone(); // placeholder
-        
+
         Ok((fitted[2], fitted[1]))
     }
-    
+
     fn fit_drag_data(&self, data: &DragData) -> QuantRS2Result<f64> {
         // Fit DRAG coefficient
         let betas = &data.drag_coefficients;
         let errors = &data.error_rates;
-        
+
         // Find minimum error rate
-        let min_idx = errors.iter()
+        let min_idx = errors
+            .iter()
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .map(|(idx, _)| idx)
             .unwrap_or(0);
-        
+
         Ok(betas[min_idx])
     }
-    
+
     fn fit_chevron_data(&self, data: &ChevronData) -> QuantRS2Result<(f64, f64)> {
         // Extract coupling strength and detuning from chevron pattern
         // Simplified implementation
         Ok((100e6, 0.0)) // 100 MHz coupling, 0 detuning
     }
-    
+
     fn fit_cnot_data(&self, data: &CNOTData) -> QuantRS2Result<f64> {
         // Fit CNOT angle
         Ok(std::f64::consts::PI)
     }
-    
+
     fn fit_zz_data(&self, data: &ZZData) -> QuantRS2Result<f64> {
         // Fit ZZ interaction strength
         Ok(1e6) // 1 MHz
     }
-    
-    fn fit_discrimination_data(&self, data: &DiscriminationData) -> QuantRS2Result<DiscriminationParameters> {
+
+    fn fit_discrimination_data(
+        &self,
+        data: &DiscriminationData,
+    ) -> QuantRS2Result<DiscriminationParameters> {
         Ok(DiscriminationParameters {
             threshold_real: 0.0,
             threshold_imag: 0.0,
@@ -766,7 +860,7 @@ impl EnhancedCalibrationSystem {
             fidelity: 0.99,
         })
     }
-    
+
     fn fit_iq_data(&self, data: &IQData) -> QuantRS2Result<IQParameters> {
         Ok(IQParameters {
             i_offset: 0.0,
@@ -775,55 +869,71 @@ impl EnhancedCalibrationSystem {
             phase_skew: 0.0,
         })
     }
-    
+
     // Helper methods
-    
-    fn cross_validate_single_qubits(&self, results: &mut SingleQubitCalibration) -> QuantRS2Result<()> {
+
+    fn cross_validate_single_qubits(
+        &self,
+        results: &mut SingleQubitCalibration,
+    ) -> QuantRS2Result<()> {
         // Cross-validation implementation
         Ok(())
     }
-    
-    fn optimize_simultaneous_gates(&self, results: &mut TwoQubitCalibration, state: &CalibrationState) -> QuantRS2Result<()> {
+
+    fn optimize_simultaneous_gates(
+        &self,
+        results: &mut TwoQubitCalibration,
+        state: &CalibrationState,
+    ) -> QuantRS2Result<()> {
         // Optimization for parallel gates
         Ok(())
     }
-    
+
     fn optimize_readout_thresholds(&self, results: &mut ReadoutCalibration) -> QuantRS2Result<()> {
         // Threshold optimization
         Ok(())
     }
-    
+
     fn measure_drive_crosstalk(&self, state: &CalibrationState) -> QuantRS2Result<Array2<f64>> {
         let n = state.num_qubits;
         Ok(Array2::zeros((n, n)))
     }
-    
-    fn measure_measurement_crosstalk(&self, state: &CalibrationState) -> QuantRS2Result<Array2<f64>> {
+
+    fn measure_measurement_crosstalk(
+        &self,
+        state: &CalibrationState,
+    ) -> QuantRS2Result<Array2<f64>> {
         let n = state.num_qubits;
         Ok(Array2::eye(n))
     }
-    
-    fn measure_simultaneous_effects(&self, state: &CalibrationState) -> QuantRS2Result<HashMap<(usize, usize), f64>> {
+
+    fn measure_simultaneous_effects(
+        &self,
+        state: &CalibrationState,
+    ) -> QuantRS2Result<HashMap<(usize, usize), f64>> {
         Ok(HashMap::new())
     }
-    
-    fn collect_process_tomography_data(&self, state: &CalibrationState) -> QuantRS2Result<ProcessTomographyData> {
+
+    fn collect_process_tomography_data(
+        &self,
+        state: &CalibrationState,
+    ) -> QuantRS2Result<ProcessTomographyData> {
         Ok(ProcessTomographyData::default())
     }
-    
+
     fn collect_gst_data(&self, state: &CalibrationState) -> QuantRS2Result<GSTData> {
         Ok(GSTData::default())
     }
-    
+
     fn collect_rb_data(&self, state: &CalibrationState) -> QuantRS2Result<RBData> {
         Ok(RBData::default())
     }
-    
+
     fn trigger_recalibration(&mut self, analysis: &DriftAnalysis) -> QuantRS2Result<()> {
         // Trigger automatic recalibration
         Ok(())
     }
-    
+
     fn generate_summary(&self, state: &CalibrationState) -> QuantRS2Result<CalibrationSummary> {
         Ok(CalibrationSummary {
             total_qubits: state.num_qubits,
@@ -832,20 +942,26 @@ impl EnhancedCalibrationSystem {
             worst_case_fidelity: state.calculate_worst_case_fidelity()?,
         })
     }
-    
-    fn generate_detailed_results(&self, state: &CalibrationState) -> QuantRS2Result<DetailedResults> {
+
+    fn generate_detailed_results(
+        &self,
+        state: &CalibrationState,
+    ) -> QuantRS2Result<DetailedResults> {
         Ok(DetailedResults::default())
     }
-    
+
     fn analyze_system_model(&self, model: &SystemModel) -> QuantRS2Result<SystemAnalysis> {
         Ok(SystemAnalysis::default())
     }
-    
+
     fn analyze_error_model(&self, model: &ErrorModel) -> QuantRS2Result<ErrorAnalysis> {
         Ok(ErrorAnalysis::default())
     }
-    
-    fn generate_visualizations(&self, state: &CalibrationState) -> QuantRS2Result<CalibrationVisualizations> {
+
+    fn generate_visualizations(
+        &self,
+        state: &CalibrationState,
+    ) -> QuantRS2Result<CalibrationVisualizations> {
         Ok(CalibrationVisualizations {
             gate_fidelity_heatmap: self.create_fidelity_heatmap(state)?,
             drift_timeline: self.create_drift_timeline()?,
@@ -853,8 +969,11 @@ impl EnhancedCalibrationSystem {
             crosstalk_matrix: self.create_crosstalk_visualization(state)?,
         })
     }
-    
-    fn calculate_performance_metrics(&self, state: &CalibrationState) -> QuantRS2Result<PerformanceMetrics> {
+
+    fn calculate_performance_metrics(
+        &self,
+        state: &CalibrationState,
+    ) -> QuantRS2Result<PerformanceMetrics> {
         Ok(PerformanceMetrics {
             quantum_volume: self.estimate_quantum_volume(state)?,
             clops: self.estimate_clops(state)?,
@@ -862,8 +981,11 @@ impl EnhancedCalibrationSystem {
             readout_speed: state.calculate_readout_speed()?,
         })
     }
-    
-    fn calculate_quality_metrics(&self, state: &CalibrationState) -> QuantRS2Result<QualityMetrics> {
+
+    fn calculate_quality_metrics(
+        &self,
+        state: &CalibrationState,
+    ) -> QuantRS2Result<QualityMetrics> {
         Ok(QualityMetrics {
             overall_quality: 0.95,
             stability_score: 0.92,
@@ -871,52 +993,59 @@ impl EnhancedCalibrationSystem {
             readiness_level: 0.90,
         })
     }
-    
-    fn generate_recommendations(&self, state: &CalibrationState) -> QuantRS2Result<Vec<CalibrationRecommendation>> {
+
+    fn generate_recommendations(
+        &self,
+        state: &CalibrationState,
+    ) -> QuantRS2Result<Vec<CalibrationRecommendation>> {
         let mut recommendations = Vec::new();
-        
+
         // Check fidelities
-        if state.calculate_average_fidelity()? < self.config.performance_thresholds.min_gate_fidelity {
+        if state.calculate_average_fidelity()?
+            < self.config.performance_thresholds.min_gate_fidelity
+        {
             recommendations.push(CalibrationRecommendation {
                 category: RecommendationCategory::GateFidelity,
                 priority: Priority::High,
-                description: "Gate fidelities below threshold. Consider recalibrating pulse parameters.".to_string(),
+                description:
+                    "Gate fidelities below threshold. Consider recalibrating pulse parameters."
+                        .to_string(),
                 action_items: vec![
                     "Run extended Rabi calibration".to_string(),
                     "Optimize DRAG coefficients".to_string(),
                 ],
             });
         }
-        
+
         Ok(recommendations)
     }
-    
+
     fn cache_results(&self, state: &CalibrationState) -> QuantRS2Result<()> {
         let mut cache = self.cache.lock().unwrap();
         cache.store(state.clone());
         Ok(())
     }
-    
+
     fn create_fidelity_heatmap(&self, state: &CalibrationState) -> QuantRS2Result<String> {
         Ok("Fidelity heatmap visualization".to_string())
     }
-    
+
     fn create_drift_timeline(&self) -> QuantRS2Result<String> {
         Ok("Drift timeline visualization".to_string())
     }
-    
+
     fn create_error_distribution(&self, state: &CalibrationState) -> QuantRS2Result<String> {
         Ok("Error distribution visualization".to_string())
     }
-    
+
     fn create_crosstalk_visualization(&self, state: &CalibrationState) -> QuantRS2Result<String> {
         Ok("Crosstalk matrix visualization".to_string())
     }
-    
+
     fn estimate_quantum_volume(&self, state: &CalibrationState) -> QuantRS2Result<u64> {
         Ok(32) // Example quantum volume
     }
-    
+
     fn estimate_clops(&self, state: &CalibrationState) -> QuantRS2Result<f64> {
         Ok(1000.0) // 1000 CLOPS
     }
@@ -935,8 +1064,12 @@ impl MLCalibrator {
             models: HashMap::new(),
         }
     }
-    
-    fn identify_system(&self, state: &CalibrationState, model: &SystemModel) -> QuantRS2Result<MLSystemParameters> {
+
+    fn identify_system(
+        &self,
+        state: &CalibrationState,
+        model: &SystemModel,
+    ) -> QuantRS2Result<MLSystemParameters> {
         Ok(MLSystemParameters::default())
     }
 }
@@ -954,21 +1087,21 @@ impl DriftTracker {
             max_history: 10000,
         }
     }
-    
+
     fn add_measurement(&self, measurement: DriftMeasurement) -> QuantRS2Result<()> {
         let mut history = self.history.lock().unwrap();
         history.push_back(measurement);
-        
+
         if history.len() > self.max_history {
             history.pop_front();
         }
-        
+
         Ok(())
     }
-    
+
     fn analyze(&self) -> QuantRS2Result<DriftAnalysis> {
         let history = self.history.lock().unwrap();
-        
+
         // Simple drift analysis
         Ok(DriftAnalysis {
             drift_rate: 0.001,
@@ -990,7 +1123,7 @@ impl ErrorCharacterizer {
             error_models: HashMap::new(),
         }
     }
-    
+
     fn characterize(&self, state: &CalibrationState) -> QuantRS2Result<ErrorModel> {
         Ok(ErrorModel::default())
     }
@@ -1005,35 +1138,35 @@ impl ProtocolManager {
     fn new(protocols: CalibrationProtocols) -> Self {
         Self { protocols }
     }
-    
+
     fn run_rabi_oscillations(&self, qubit: usize) -> QuantRS2Result<RabiData> {
         Ok(RabiData::default())
     }
-    
+
     fn run_ramsey_fringes(&self, qubit: usize) -> QuantRS2Result<RamseyData> {
         Ok(RamseyData::default())
     }
-    
+
     fn run_drag_calibration(&self, qubit: usize) -> QuantRS2Result<DragData> {
         Ok(DragData::default())
     }
-    
+
     fn run_chevron_pattern(&self, q1: usize, q2: usize) -> QuantRS2Result<ChevronData> {
         Ok(ChevronData::default())
     }
-    
+
     fn run_cnot_calibration(&self, q1: usize, q2: usize) -> QuantRS2Result<CNOTData> {
         Ok(CNOTData::default())
     }
-    
+
     fn run_zz_calibration(&self, q1: usize, q2: usize) -> QuantRS2Result<ZZData> {
         Ok(ZZData::default())
     }
-    
+
     fn run_state_discrimination(&self, qubit: usize) -> QuantRS2Result<DiscriminationData> {
         Ok(DiscriminationData::default())
     }
-    
+
     fn run_iq_calibration(&self) -> QuantRS2Result<IQData> {
         Ok(IQData::default())
     }
@@ -1052,11 +1185,11 @@ impl CalibrationCache {
             max_entries: 100,
         }
     }
-    
+
     fn store(&mut self, state: CalibrationState) {
         let key = format!("{:?}", std::time::SystemTime::now());
         self.cache.insert(key, state);
-        
+
         if self.cache.len() > self.max_entries {
             // Remove oldest entry
             if let Some(oldest_key) = self.cache.keys().next().cloned() {
@@ -1090,28 +1223,37 @@ impl CalibrationState {
             timestamp: std::time::SystemTime::now(),
         }
     }
-    
-    fn update_single_qubit_params(&mut self, calibration: &SingleQubitCalibration) -> QuantRS2Result<()> {
+
+    fn update_single_qubit_params(
+        &mut self,
+        calibration: &SingleQubitCalibration,
+    ) -> QuantRS2Result<()> {
         self.single_qubit_params = calibration.qubit_params.clone();
         Ok(())
     }
-    
+
     fn update_two_qubit_params(&mut self, calibration: &TwoQubitCalibration) -> QuantRS2Result<()> {
         self.two_qubit_params = calibration.gate_params.clone();
         Ok(())
     }
-    
+
     fn update_readout_params(&mut self, calibration: &ReadoutCalibration) -> QuantRS2Result<()> {
         for (qubit, disc_params) in &calibration.discrimination_params {
-            self.readout_params.insert(*qubit, ReadoutParameters {
-                discrimination: disc_params.clone(),
-                iq: calibration.iq_parameters.clone(),
-            });
+            self.readout_params.insert(
+                *qubit,
+                ReadoutParameters {
+                    discrimination: disc_params.clone(),
+                    iq: calibration.iq_parameters.clone(),
+                },
+            );
         }
         Ok(())
     }
-    
-    fn update_crosstalk_params(&mut self, characterization: &CrosstalkCharacterization) -> QuantRS2Result<()> {
+
+    fn update_crosstalk_params(
+        &mut self,
+        characterization: &CrosstalkCharacterization,
+    ) -> QuantRS2Result<()> {
         self.crosstalk_params = CrosstalkParameters {
             drive_matrix: characterization.drive_crosstalk.clone(),
             measurement_matrix: characterization.measurement_crosstalk.clone(),
@@ -1119,60 +1261,64 @@ impl CalibrationState {
         };
         Ok(())
     }
-    
+
     fn get_calibrated_gates(&self) -> Vec<String> {
         let mut gates = Vec::new();
-        
+
         // Single-qubit gates
         for qubit in self.single_qubit_params.keys() {
             gates.push(format!("X{}", qubit));
             gates.push(format!("Y{}", qubit));
             gates.push(format!("Z{}", qubit));
         }
-        
+
         // Two-qubit gates
         for (q1, q2) in self.two_qubit_params.keys() {
             gates.push(format!("CNOT{},{}", q1, q2));
         }
-        
+
         gates
     }
-    
+
     fn calculate_average_fidelity(&self) -> QuantRS2Result<f64> {
         let mut total_fidelity = 0.0;
         let mut count = 0;
-        
+
         for params in self.single_qubit_params.values() {
             total_fidelity += params.gate_fidelity;
             count += 1;
         }
-        
+
         for params in self.two_qubit_params.values() {
             total_fidelity += params.gate_fidelity;
             count += 1;
         }
-        
-        Ok(if count > 0 { total_fidelity / count as f64 } else { 0.0 })
+
+        Ok(if count > 0 {
+            total_fidelity / count as f64
+        } else {
+            0.0
+        })
     }
-    
+
     fn calculate_worst_case_fidelity(&self) -> QuantRS2Result<f64> {
         let mut min_fidelity: f64 = 1.0;
-        
+
         for params in self.single_qubit_params.values() {
             min_fidelity = min_fidelity.min(params.gate_fidelity);
         }
-        
+
         for params in self.two_qubit_params.values() {
             min_fidelity = min_fidelity.min(params.gate_fidelity);
         }
-        
+
         Ok(min_fidelity)
     }
-    
+
     fn calculate_average_gate_time(&self) -> QuantRS2Result<f64> {
         Ok(50e-9) // 50 ns average
     }
-    
+
     fn calculate_readout_speed(&self) -> QuantRS2Result<f64> {
         Ok(1e-6) // 1 μs
     }
@@ -1609,10 +1755,22 @@ impl fmt::Display for SystemCalibrationResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "System Calibration Result:\n")?;
         write!(f, "  Device: {}\n", self.report.device_name)?;
-        write!(f, "  Average fidelity: {:.4}\n", self.report.summary.average_fidelity)?;
-        write!(f, "  Worst-case fidelity: {:.4}\n", self.report.summary.worst_case_fidelity)?;
+        write!(
+            f,
+            "  Average fidelity: {:.4}\n",
+            self.report.summary.average_fidelity
+        )?;
+        write!(
+            f,
+            "  Worst-case fidelity: {:.4}\n",
+            self.report.summary.worst_case_fidelity
+        )?;
         write!(f, "  Calibration time: {:?}\n", self.calibration_time)?;
-        write!(f, "  Quality score: {:.2}%\n", self.quality_metrics.overall_quality * 100.0)?;
+        write!(
+            f,
+            "  Quality score: {:.2}%\n",
+            self.quality_metrics.overall_quality * 100.0
+        )?;
         write!(f, "  Recommendations: {}\n", self.recommendations.len())?;
         Ok(())
     }
@@ -1621,28 +1779,30 @@ impl fmt::Display for SystemCalibrationResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_enhanced_calibration_system_creation() {
         let config = EnhancedCalibrationConfig::default();
         let system = EnhancedCalibrationSystem::new(config);
         assert!(system.ml_calibrator.is_some());
     }
-    
+
     #[test]
     fn test_hardware_spec_default() {
         let spec = HardwareSpec::default();
         assert_eq!(spec.num_qubits, 5);
         assert_eq!(spec.connectivity.len(), 4);
     }
-    
+
     #[test]
     fn test_calibration_state() {
         let mut state = CalibrationState::new(5);
         assert_eq!(state.num_qubits, 5);
-        
+
         // Add single qubit params
-        state.single_qubit_params.insert(0, QubitParameters::default());
+        state
+            .single_qubit_params
+            .insert(0, QubitParameters::default());
         assert_eq!(state.single_qubit_params.len(), 1);
     }
 }

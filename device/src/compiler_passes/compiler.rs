@@ -72,7 +72,7 @@ impl HardwareCompiler {
         })
     }
 
-    /// Create platform-specific optimizers  
+    /// Create platform-specific optimizers
     fn create_platform_optimizers(
         target: &CompilationTarget,
     ) -> DeviceResult<HashMap<String, String>> {

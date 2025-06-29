@@ -5,7 +5,7 @@
 //! SciRS2's advanced numerical analysis capabilities.
 
 use crate::builder::Circuit;
-use crate::scirs2_integration::{SciRS2CircuitAnalyzer, AnalyzerConfig};
+use crate::scirs2_integration::{AnalyzerConfig, SciRS2CircuitAnalyzer};
 use ndarray::{array, Array2, ArrayView2};
 use num_complex::Complex64;
 use quantrs2_core::{
@@ -158,15 +158,16 @@ pub struct EquivalenceChecker {
 impl EquivalenceChecker {
     /// Create a new equivalence checker with options
     pub fn new(options: EquivalenceOptions) -> Self {
-        let scirs2_analyzer = if options.enable_graph_comparison 
-            || options.enable_statistical_analysis 
-            || options.enable_stability_analysis {
+        let scirs2_analyzer = if options.enable_graph_comparison
+            || options.enable_statistical_analysis
+            || options.enable_stability_analysis
+        {
             Some(SciRS2CircuitAnalyzer::new())
         } else {
             None
         };
 
-        EquivalenceChecker { 
+        EquivalenceChecker {
             options,
             scirs2_analyzer,
             numerical_cache: HashMap::new(),
@@ -183,9 +184,9 @@ impl EquivalenceChecker {
         let mut options = EquivalenceOptions::default();
         options.scirs2_config = Some(config.clone());
         options.enable_graph_comparison = true;
-        
+
         let scirs2_analyzer = Some(SciRS2CircuitAnalyzer::with_config(config));
-        
+
         EquivalenceChecker {
             options,
             scirs2_analyzer,
@@ -250,12 +251,12 @@ impl EquivalenceChecker {
 
         // Perform SciRS2 numerical analysis
         let numerical_analysis = self.perform_scirs2_numerical_analysis(&unitary1, &unitary2)?;
-        
+
         // Calculate adaptive tolerance based on circuit complexity
         let adaptive_tolerance = self.calculate_adaptive_tolerance::<N>(N, &numerical_analysis);
-        
+
         // Compare unitaries with enhanced numerical analysis
-        let (equivalent, max_diff, confidence_score, error_bounds) = 
+        let (equivalent, max_diff, confidence_score, error_bounds) =
             self.scirs2_unitaries_equal(&unitary1, &unitary2, adaptive_tolerance)?;
 
         // Calculate statistical significance if enabled
@@ -271,7 +272,7 @@ impl EquivalenceChecker {
             max_difference: Some(max_diff),
             details: format!(
                 "SciRS2 numerical analysis: tolerance={:.2e}, confidence={:.3}, condition_number={:.2e}",
-                adaptive_tolerance, 
+                adaptive_tolerance,
                 confidence_score,
                 numerical_analysis.condition_number.unwrap_or(0.0)
             ),
@@ -297,7 +298,7 @@ impl EquivalenceChecker {
         let graph2 = analyzer.circuit_to_scirs2_graph(circuit2)?;
 
         // Perform graph-based equivalence checking
-        let (equivalent, similarity_score, graph_details) = 
+        let (equivalent, similarity_score, graph_details) =
             self.compare_scirs2_graphs(&graph1, &graph2)?;
 
         Ok(EquivalenceResult {
@@ -433,7 +434,11 @@ impl EquivalenceChecker {
                 format!("Maximum unitary difference: {:.2e}", max_diff)
             },
             numerical_analysis: None,
-            confidence_score: if equivalent { 1.0 - (max_diff / self.options.tolerance) } else { 0.0 },
+            confidence_score: if equivalent {
+                1.0 - (max_diff / self.options.tolerance)
+            } else {
+                0.0
+            },
             statistical_significance: None,
             error_bounds: None,
         })
@@ -990,12 +995,9 @@ impl EquivalenceChecker {
     ) -> QuantRS2Result<NumericalAnalysis> {
         // Calculate difference matrix
         let diff_matrix = unitary1 - unitary2;
-        
+
         // Calculate Frobenius norm
-        let frobenius_norm = diff_matrix.iter()
-            .map(|x| x.norm_sqr())
-            .sum::<f64>()
-            .sqrt();
+        let frobenius_norm = diff_matrix.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
 
         // Calculate condition number using SVD approximation
         let condition_number = if self.options.enable_stability_analysis {
@@ -1023,9 +1025,9 @@ impl EquivalenceChecker {
 
         // Calculate adaptive tolerance
         let adaptive_tolerance = self.calculate_adaptive_tolerance_internal(
-            unitary1.nrows(), 
-            frobenius_norm, 
-            condition_number.unwrap_or(1.0)
+            unitary1.nrows(),
+            frobenius_norm,
+            condition_number.unwrap_or(1.0),
         );
 
         Ok(NumericalAnalysis {
@@ -1040,9 +1042,9 @@ impl EquivalenceChecker {
 
     /// Calculate adaptive tolerance based on circuit complexity and numerical properties
     fn calculate_adaptive_tolerance<const N: usize>(
-        &self, 
-        num_qubits: usize, 
-        analysis: &NumericalAnalysis
+        &self,
+        num_qubits: usize,
+        analysis: &NumericalAnalysis,
     ) -> f64 {
         let base_tolerance = if self.options.enable_adaptive_tolerance {
             SCIRS2_DEFAULT_TOLERANCE
@@ -1052,7 +1054,7 @@ impl EquivalenceChecker {
 
         // Scale tolerance based on circuit size (more qubits = less precision)
         let size_factor = 1.0 + (num_qubits as f64).powf(1.5) * 1e-15;
-        
+
         // Scale based on condition number
         let condition_factor = if let Some(cond_num) = analysis.condition_number {
             1.0 + (cond_num / 1e12).log10().max(0.0) * 1e-2
@@ -1077,7 +1079,7 @@ impl EquivalenceChecker {
         let size_factor = 1.0 + (matrix_size as f64).sqrt() * 1e-15;
         let condition_factor = 1.0 + (condition_number / 1e12).log10().max(0.0) * 1e-2;
         let norm_factor = 1.0 + frobenius_norm * 1e-3;
-        
+
         base_tolerance * size_factor * condition_factor * norm_factor
     }
 
@@ -1089,17 +1091,22 @@ impl EquivalenceChecker {
         adaptive_tolerance: f64,
     ) -> QuantRS2Result<(bool, f64, f64, ErrorBounds)> {
         if u1.shape() != u2.shape() {
-            return Ok((false, f64::INFINITY, 0.0, ErrorBounds {
-                lower_bound: f64::INFINITY,
-                upper_bound: f64::INFINITY,
-                confidence_level: 0.0,
-                standard_deviation: None,
-            }));
+            return Ok((
+                false,
+                f64::INFINITY,
+                0.0,
+                ErrorBounds {
+                    lower_bound: f64::INFINITY,
+                    upper_bound: f64::INFINITY,
+                    confidence_level: 0.0,
+                    standard_deviation: None,
+                },
+            ));
         }
 
         let mut max_diff = 0.0;
         let mut differences = Vec::new();
-        
+
         // Calculate element-wise differences
         for (a, b) in u1.iter().zip(u2.iter()) {
             let diff = if self.options.ignore_global_phase {
@@ -1113,7 +1120,7 @@ impl EquivalenceChecker {
             } else {
                 (a - b).norm()
             };
-            
+
             differences.push(diff);
             if diff > max_diff {
                 max_diff = diff;
@@ -1122,9 +1129,11 @@ impl EquivalenceChecker {
 
         // Calculate statistical measures
         let mean_diff = differences.iter().sum::<f64>() / differences.len() as f64;
-        let variance = differences.iter()
+        let variance = differences
+            .iter()
             .map(|d| (d - mean_diff).powf(2.0))
-            .sum::<f64>() / differences.len() as f64;
+            .sum::<f64>()
+            / differences.len() as f64;
         let std_dev = variance.sqrt();
 
         // Calculate confidence score based on how well differences fit expected distribution
@@ -1143,7 +1152,7 @@ impl EquivalenceChecker {
         };
 
         let equivalent = max_diff <= adaptive_tolerance;
-        
+
         Ok((equivalent, max_diff, confidence_score, error_bounds))
     }
 
@@ -1155,19 +1164,27 @@ impl EquivalenceChecker {
     ) -> QuantRS2Result<(bool, f64, String)> {
         // Basic structural comparison
         if graph1.nodes.len() != graph2.nodes.len() {
-            return Ok((false, 0.0, format!(
-                "Different number of nodes: {} vs {}", 
-                graph1.nodes.len(), 
-                graph2.nodes.len()
-            )));
+            return Ok((
+                false,
+                0.0,
+                format!(
+                    "Different number of nodes: {} vs {}",
+                    graph1.nodes.len(),
+                    graph2.nodes.len()
+                ),
+            ));
         }
 
         if graph1.edges.len() != graph2.edges.len() {
-            return Ok((false, 0.0, format!(
-                "Different number of edges: {} vs {}", 
-                graph1.edges.len(), 
-                graph2.edges.len()
-            )));
+            return Ok((
+                false,
+                0.0,
+                format!(
+                    "Different number of edges: {} vs {}",
+                    graph1.edges.len(),
+                    graph2.edges.len()
+                ),
+            ));
         }
 
         // Calculate graph similarity metrics
@@ -1177,9 +1194,9 @@ impl EquivalenceChecker {
 
         // Combined similarity score
         let overall_similarity = (node_similarity + edge_similarity + topology_similarity) / 3.0;
-        
+
         let equivalent = overall_similarity > 0.95; // 95% similarity threshold
-        
+
         let details = format!(
             "Graph similarity analysis: nodes={:.3}, edges={:.3}, topology={:.3}, overall={:.3}",
             node_similarity, edge_similarity, topology_similarity, overall_similarity
@@ -1253,11 +1270,15 @@ impl EquivalenceChecker {
         let mut total_elements = 0;
         let mut matching_elements = 0;
 
-        for (row1, row2) in graph1.adjacency_matrix.iter().zip(graph2.adjacency_matrix.iter()) {
+        for (row1, row2) in graph1
+            .adjacency_matrix
+            .iter()
+            .zip(graph2.adjacency_matrix.iter())
+        {
             if row1.len() != row2.len() {
                 return 0.0;
             }
-            
+
             for (elem1, elem2) in row1.iter().zip(row2.iter()) {
                 total_elements += 1;
                 if elem1 == elem2 {
@@ -1294,7 +1315,7 @@ impl EquivalenceChecker {
                     }
                 }
             }
-            
+
             // Normalize
             let norm = new_v.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
             if norm > 0.0 {
@@ -1308,7 +1329,7 @@ impl EquivalenceChecker {
         // Estimate condition number (simplified)
         let estimated_largest_sv = v.iter().map(|x| x.norm()).sum::<f64>() / n as f64;
         let estimated_smallest_sv = 1.0 / estimated_largest_sv; // Very simplified
-        
+
         Ok((estimated_largest_sv / estimated_smallest_sv.max(1e-16)).min(1e16))
     }
 
@@ -1316,23 +1337,21 @@ impl EquivalenceChecker {
     fn calculate_spectral_norm(&self, matrix: &Array2<Complex64>) -> QuantRS2Result<f64> {
         // Simplified spectral norm calculation
         // In practice, this would use proper SVD decomposition
-        Ok(matrix.iter()
-            .map(|x| x.norm())
-            .fold(0.0, f64::max))
+        Ok(matrix.iter().map(|x| x.norm()).fold(0.0, f64::max))
     }
 
     /// Estimate numerical rank of a matrix
     fn estimate_numerical_rank(&self, matrix: &Array2<Complex64>) -> usize {
         let tolerance = self.options.tolerance;
         let mut rank = 0;
-        
+
         for row in matrix.rows() {
             let row_norm = row.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
             if row_norm > tolerance {
                 rank += 1;
             }
         }
-        
+
         rank
     }
 
@@ -1347,27 +1366,31 @@ impl EquivalenceChecker {
         // In practice, this would use more sophisticated statistical methods
         let n = u1.len();
         let degrees_of_freedom = n - 1;
-        
+
         // Calculate t-statistic approximation
-        let differences: Vec<f64> = u1.iter().zip(u2.iter())
+        let differences: Vec<f64> = u1
+            .iter()
+            .zip(u2.iter())
             .map(|(a, b)| (a - b).norm())
             .collect();
-            
+
         let mean_diff = differences.iter().sum::<f64>() / n as f64;
-        let variance = differences.iter()
+        let variance = differences
+            .iter()
             .map(|d| (d - mean_diff).powf(2.0))
-            .sum::<f64>() / degrees_of_freedom as f64;
+            .sum::<f64>()
+            / degrees_of_freedom as f64;
         let std_error = (variance / n as f64).sqrt();
-        
+
         let t_stat = if std_error > 0.0 {
             mean_diff / std_error
         } else {
             0.0
         };
-        
+
         // Approximate p-value (very simplified)
         let p_value = 2.0 * (1.0 - (t_stat.abs() / (1.0 + t_stat.abs())));
-        
+
         Ok(p_value.max(0.0).min(1.0))
     }
 }
@@ -1412,7 +1435,7 @@ pub fn circuits_scirs2_numerical_equivalent<const N: usize>(
     options.enable_adaptive_tolerance = true;
     options.enable_statistical_analysis = true;
     options.enable_stability_analysis = true;
-    
+
     let mut checker = EquivalenceChecker::new(options);
     checker.check_scirs2_numerical_equivalence(circuit1, circuit2)
 }

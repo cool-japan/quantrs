@@ -70,23 +70,23 @@ impl CacheBenchmarks {
     /// Run all benchmarks
     pub fn run_all_benchmarks(&self) -> QuantRS2Result<BenchmarkResults> {
         println!("Running cache benchmarks...");
-        
+
         // Benchmark cache hit performance
         let hit_times = self.benchmark_cache_hits()?;
-        
+
         // Benchmark compilation time savings
         let compile_savings = self.benchmark_compilation_savings()?;
-        
+
         // Benchmark memory efficiency
         let memory_stats = self.benchmark_memory_usage()?;
-        
+
         // Benchmark persistence performance
         let persistence_stats = if self.config.test_persistence {
             Some(self.benchmark_persistence()?)
         } else {
             None
         };
-        
+
         // Compile results
         let results = BenchmarkResults {
             avg_compile_time_us: compile_savings.0,
@@ -97,7 +97,7 @@ impl CacheBenchmarks {
             disk_usage_bytes: persistence_stats.map(|s| s.0).unwrap_or(0),
             cache_efficiency: compile_savings.2 / (memory_stats.0 as f64),
         };
-        
+
         self.print_results(&results);
         Ok(results)
     }
@@ -110,25 +110,25 @@ impl CacheBenchmarks {
             async_writes: false,
             ..Default::default()
         };
-        
+
         let cache = CompilationCache::new(cache_config)?;
         let gate = Hadamard { target: QubitId(0) };
-        
+
         // Warm up cache
         for _ in 0..self.config.warmup_trials {
             let _ = cache.get_or_compile(&gate, compile_single_qubit_gate)?;
         }
-        
+
         // Measure cache hit times
         let mut hit_times = Vec::new();
-        
+
         for _ in 0..self.config.num_trials {
             let start = Instant::now();
             let _ = cache.get_or_compile(&gate, compile_single_qubit_gate)?;
             let hit_time = start.elapsed().as_micros() as f64;
             hit_times.push(hit_time);
         }
-        
+
         Ok(hit_times.iter().sum::<f64>() / hit_times.len() as f64)
     }
 
@@ -140,12 +140,12 @@ impl CacheBenchmarks {
             async_writes: false,
             ..Default::default()
         };
-        
+
         let cache = CompilationCache::new(cache_config)?;
-        
+
         // Generate test gates
         let gates = self.generate_test_gates();
-        
+
         // Measure compilation times without cache
         let mut compile_times = Vec::new();
         for gate in &gates {
@@ -154,37 +154,37 @@ impl CacheBenchmarks {
             let compile_time = start.elapsed().as_micros() as f64;
             compile_times.push(compile_time);
         }
-        
+
         let avg_compile_time = compile_times.iter().sum::<f64>() / compile_times.len() as f64;
-        
+
         // Warm up cache with all gates
         for gate in &gates {
             let _ = cache.get_or_compile(gate.as_ref(), compile_single_qubit_gate)?;
         }
-        
+
         // Measure cache access times
         let mut cache_times = Vec::new();
         let mut hits = 0;
         let total_accesses = self.config.num_trials;
-        
+
         for _ in 0..total_accesses {
             let gate_idx = fastrand::usize(..gates.len());
             let gate = &gates[gate_idx];
-            
+
             let start = Instant::now();
             let _ = cache.get_or_compile(gate.as_ref(), compile_single_qubit_gate)?;
             let access_time = start.elapsed().as_micros() as f64;
             cache_times.push(access_time);
-            
+
             // Check if it was a hit (access time should be much lower)
             if access_time < avg_compile_time * 0.1 {
                 hits += 1;
             }
         }
-        
+
         let hit_rate = hits as f64 / total_accesses as f64;
         let time_saved = hits as f64 * (avg_compile_time - cache_times.iter().sum::<f64>() / cache_times.len() as f64);
-        
+
         Ok((avg_compile_time, hit_rate, time_saved))
     }
 
@@ -196,20 +196,20 @@ impl CacheBenchmarks {
             enable_persistence: false,
             ..Default::default()
         };
-        
+
         let cache = CompilationCache::new(cache_config)?;
         let gates = self.generate_test_gates();
-        
+
         let initial_stats = cache.statistics();
-        
+
         // Fill cache with gates
         for gate in &gates {
             let _ = cache.get_or_compile(gate.as_ref(), compile_single_qubit_gate)?;
         }
-        
+
         let final_stats = cache.statistics();
         let memory_used = final_stats.total_size_bytes - initial_stats.total_size_bytes;
-        
+
         Ok((memory_used, final_stats.num_entries))
     }
 
@@ -222,22 +222,22 @@ impl CacheBenchmarks {
             compression_level: 3,
             ..Default::default()
         };
-        
+
         let cache = CompilationCache::new(cache_config)?;
         let gates = self.generate_test_gates();
-        
+
         // Measure write times
         let mut write_times = Vec::new();
-        
+
         for gate in &gates {
             let start = Instant::now();
             let _ = cache.get_or_compile(gate.as_ref(), compile_single_qubit_gate)?;
             let write_time = start.elapsed().as_micros() as f64;
             write_times.push(write_time);
         }
-        
+
         let avg_write_time = write_times.iter().sum::<f64>() / write_times.len() as f64;
-        
+
         // Calculate disk usage
         let mut disk_usage = 0;
         for entry in std::fs::read_dir(&cache_config.cache_dir)? {
@@ -246,27 +246,27 @@ impl CacheBenchmarks {
                 disk_usage += entry.metadata()?.len() as usize;
             }
         }
-        
+
         // Create new cache instance and measure read times
         let new_cache = CompilationCache::new(cache_config)?;
         let mut read_times = Vec::new();
-        
+
         for gate in &gates {
             let start = Instant::now();
             let _ = new_cache.get_or_compile(gate.as_ref(), compile_single_qubit_gate)?;
             let read_time = start.elapsed().as_micros() as f64;
             read_times.push(read_time);
         }
-        
+
         let avg_read_time = read_times.iter().sum::<f64>() / read_times.len() as f64;
-        
+
         Ok((disk_usage, avg_write_time, avg_read_time))
     }
 
     /// Generate test gates for benchmarking
     fn generate_test_gates(&self) -> Vec<Box<dyn GateOp>> {
         let mut gates: Vec<Box<dyn GateOp>> = Vec::new();
-        
+
         // Single-qubit gates
         for i in 0..self.config.num_gates / 6 {
             let qubit = QubitId(i as u32 % 4);
@@ -277,7 +277,7 @@ impl CacheBenchmarks {
             gates.push(Box::new(Phase { target: qubit }));
             gates.push(Box::new(TGate { target: qubit }));
         }
-        
+
         gates
     }
 
@@ -291,10 +291,10 @@ impl CacheBenchmarks {
         println!("Memory usage: {} bytes", results.memory_usage_bytes);
         println!("Disk usage: {} bytes", results.disk_usage_bytes);
         println!("Cache efficiency: {:.2} μs/byte", results.cache_efficiency);
-        
+
         let speedup = results.avg_compile_time_us / results.avg_cache_hit_time_us;
         println!("Cache speedup: {:.1}x", speedup);
-        
+
         let compression_ratio = if results.disk_usage_bytes > 0 {
             results.memory_usage_bytes as f64 / results.disk_usage_bytes as f64
         } else {
@@ -311,32 +311,32 @@ impl CacheBenchmarks {
             enable_persistence: false,
             ..Default::default()
         };
-        
+
         let cache = CompilationCache::new(cache_config)?;
         let gates = self.generate_test_gates();
-        
+
         // Fill cache beyond capacity
         let mut access_times = Vec::new();
-        
+
         for (i, gate) in gates.iter().enumerate() {
             let start = Instant::now();
             let _ = cache.get_or_compile(gate.as_ref(), compile_single_qubit_gate)?;
             let access_time = start.elapsed().as_micros() as f64;
             access_times.push(access_time);
-            
+
             if i % 10 == 0 {
-                println!("Processed {} gates, cache size: {} entries", 
+                println!("Processed {} gates, cache size: {} entries",
                         i + 1, cache.statistics().num_entries);
             }
         }
-        
+
         // Calculate eviction overhead
         let early_times: Vec<_> = access_times.iter().take(10).cloned().collect();
         let late_times: Vec<_> = access_times.iter().rev().take(10).cloned().collect();
-        
+
         let avg_early = early_times.iter().sum::<f64>() / early_times.len() as f64;
         let avg_late = late_times.iter().sum::<f64>() / late_times.len() as f64;
-        
+
         Ok((avg_early, avg_late))
     }
 
@@ -347,19 +347,19 @@ impl CacheBenchmarks {
             enable_persistence: false,
             ..Default::default()
         };
-        
+
         let cache = Arc::new(CompilationCache::new(cache_config)?);
         let gates = Arc::new(self.generate_test_gates());
         let num_threads = 4;
         let accesses_per_thread = self.config.num_trials / num_threads;
-        
+
         let start = Instant::now();
         let mut handles = Vec::new();
-        
+
         for _ in 0..num_threads {
             let cache_clone = Arc::clone(&cache);
             let gates_clone = Arc::clone(&gates);
-            
+
             let handle = std::thread::spawn(move || {
                 for _ in 0..accesses_per_thread {
                     let gate_idx = fastrand::usize(..gates_clone.len());
@@ -367,17 +367,17 @@ impl CacheBenchmarks {
                     let _ = cache_clone.get_or_compile(gate.as_ref(), compile_single_qubit_gate);
                 }
             });
-            
+
             handles.push(handle);
         }
-        
+
         for handle in handles {
             handle.join().unwrap();
         }
-        
+
         let total_time = start.elapsed().as_micros() as f64;
         let avg_time_per_access = total_time / self.config.num_trials as f64;
-        
+
         Ok(avg_time_per_access)
     }
 }
@@ -390,7 +390,7 @@ pub fn run_cache_benchmarks() -> QuantRS2Result<BenchmarkResults> {
         test_persistence: true,
         warmup_trials: 50,
     };
-    
+
     let benchmarks = CacheBenchmarks::new(config)?;
     benchmarks.run_all_benchmarks()
 }
@@ -403,7 +403,7 @@ pub fn run_quick_cache_benchmarks() -> QuantRS2Result<BenchmarkResults> {
         test_persistence: false,
         warmup_trials: 5,
     };
-    
+
     let benchmarks = CacheBenchmarks::new(config)?;
     benchmarks.run_all_benchmarks()
 }
@@ -420,10 +420,10 @@ mod tests {
             test_persistence: false,
             warmup_trials: 2,
         };
-        
+
         let benchmarks = CacheBenchmarks::new(config).unwrap();
         let hit_time = benchmarks.benchmark_cache_hits().unwrap();
-        
+
         assert!(hit_time > 0.0);
         assert!(hit_time < 1000.0); // Should be under 1ms
     }
@@ -436,15 +436,15 @@ mod tests {
             test_persistence: false,
             warmup_trials: 2,
         };
-        
+
         let benchmarks = CacheBenchmarks::new(config).unwrap();
         let (compile_time, hit_rate, time_saved) = benchmarks.benchmark_compilation_savings().unwrap();
-        
+
         assert!(compile_time > 0.0);
         assert!(hit_rate >= 0.0 && hit_rate <= 1.0);
         assert!(time_saved >= 0.0);
-        
-        println!("Compile time: {:.2}μs, Hit rate: {:.1}%, Time saved: {:.2}μs", 
+
+        println!("Compile time: {:.2}μs, Hit rate: {:.1}%, Time saved: {:.2}μs",
                 compile_time, hit_rate * 100.0, time_saved);
     }
 
@@ -456,14 +456,14 @@ mod tests {
             test_persistence: false,
             warmup_trials: 1,
         };
-        
+
         let benchmarks = CacheBenchmarks::new(config).unwrap();
         let (memory_used, num_entries) = benchmarks.benchmark_memory_usage().unwrap();
-        
+
         assert!(memory_used > 0);
         assert!(num_entries > 0);
         assert!(num_entries <= config.num_gates);
-        
+
         println!("Memory used: {} bytes, Entries: {}", memory_used, num_entries);
     }
 
@@ -475,13 +475,13 @@ mod tests {
             test_persistence: false,
             warmup_trials: 1,
         };
-        
+
         let benchmarks = CacheBenchmarks::new(config).unwrap();
         let (early_time, late_time) = benchmarks.benchmark_cache_eviction().unwrap();
-        
+
         assert!(early_time > 0.0);
         assert!(late_time > 0.0);
-        
+
         println!("Early access time: {:.2}μs, Late access time: {:.2}μs", early_time, late_time);
     }
 
@@ -493,19 +493,19 @@ mod tests {
             test_persistence: false,
             warmup_trials: 1,
         };
-        
+
         let benchmarks = CacheBenchmarks::new(config).unwrap();
         let avg_time = benchmarks.benchmark_concurrent_access().unwrap();
-        
+
         assert!(avg_time > 0.0);
-        
+
         println!("Average concurrent access time: {:.2}μs", avg_time);
     }
 
     #[test]
     fn test_quick_benchmarks() {
         let results = run_quick_cache_benchmarks().unwrap();
-        
+
         assert!(results.avg_compile_time_us > results.avg_cache_hit_time_us);
         assert!(results.cache_hit_rate >= 0.0 && results.cache_hit_rate <= 1.0);
         assert!(results.memory_usage_bytes > 0);

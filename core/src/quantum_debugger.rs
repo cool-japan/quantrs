@@ -17,22 +17,26 @@ pub struct QuantumGate {
 }
 
 impl QuantumGate {
-    pub fn new(gate_type: GateType, target_qubits: Vec<usize>, control_qubits: Option<Vec<usize>>) -> Self {
+    pub fn new(
+        gate_type: GateType,
+        target_qubits: Vec<usize>,
+        control_qubits: Option<Vec<usize>>,
+    ) -> Self {
         Self {
             gate_type,
             target_qubits,
             control_qubits,
         }
     }
-    
+
     pub fn gate_type(&self) -> &GateType {
         &self.gate_type
     }
-    
+
     pub fn target_qubits(&self) -> &[usize] {
         &self.target_qubits
     }
-    
+
     pub fn control_qubits(&self) -> Option<&[usize]> {
         self.control_qubits.as_deref()
     }
@@ -70,7 +74,10 @@ impl PerformanceTracker {
     }
 
     pub fn record_gate_timing(&mut self, gate_type: &str, duration: Duration) {
-        *self.gate_timing.entry(gate_type.to_string()).or_insert(Duration::new(0, 0)) += duration;
+        *self
+            .gate_timing
+            .entry(gate_type.to_string())
+            .or_insert(Duration::new(0, 0)) += duration;
     }
 
     pub fn record_memory_usage(&mut self, usage: usize) {
@@ -189,21 +196,21 @@ impl QuantumDebugger {
         num_qubits: usize,
     ) -> Result<DebugResult, QuantRS2Error> {
         self.reset_debug_session();
-        
+
         // Start performance tracking
         self.performance_metrics.start_timing();
-        
+
         let mut current_state = initial_state.to_vec();
         let mut step = 0;
-        
+
         // Record initial state
         if self.config.track_state_vectors {
             self.record_state_snapshot(step, &current_state, None, num_qubits)?;
         }
-        
+
         for (gate_index, gate) in circuit.iter().enumerate() {
             step += 1;
-            
+
             // Check breakpoints
             if self.should_break_at_step(step, &current_state, gate) {
                 return Ok(DebugResult {
@@ -213,22 +220,20 @@ impl QuantumDebugger {
                     analysis: self.generate_analysis(num_qubits)?,
                 });
             }
-            
+
             // Apply gate and record debug information with performance tracking
             let gate_start = Instant::now();
-            let gate_effect = self.apply_gate_with_debugging(
-                gate, 
-                &mut current_state, 
-                step, 
-                num_qubits
-            )?;
+            let gate_effect =
+                self.apply_gate_with_debugging(gate, &mut current_state, step, num_qubits)?;
             let gate_duration = gate_start.elapsed();
-            
+
             // Record performance metrics
             let gate_type_str = format!("{:?}", gate.gate_type());
-            self.performance_metrics.record_gate_timing(&gate_type_str, gate_duration);
-            self.performance_metrics.record_memory_usage(current_state.len() * std::mem::size_of::<Complex64>());
-            
+            self.performance_metrics
+                .record_gate_timing(&gate_type_str, gate_duration);
+            self.performance_metrics
+                .record_memory_usage(current_state.len() * std::mem::size_of::<Complex64>());
+
             self.execution_trace.push(DebugStep {
                 step,
                 gate: gate.clone(),
@@ -254,21 +259,21 @@ impl QuantumDebugger {
                     None
                 },
             });
-            
+
             // Record state snapshot
             if self.config.track_state_vectors {
                 self.record_state_snapshot(step, &current_state, Some(gate_index), num_qubits)?;
             }
-            
+
             // Update statistics
             self.gate_statistics.record_gate(gate);
         }
-        
+
         self.current_step = step;
-        
+
         // Finish performance tracking
         self.performance_metrics.finish_timing();
-        
+
         Ok(DebugResult {
             status: DebugStatus::Completed,
             final_state: current_state,
@@ -287,16 +292,11 @@ impl QuantumDebugger {
     }
 
     /// Check if execution should break at current step
-    fn should_break_at_step(
-        &self,
-        step: usize,
-        state: &[Complex64],
-        gate: &QuantumGate,
-    ) -> bool {
+    fn should_break_at_step(&self, step: usize, state: &[Complex64], gate: &QuantumGate) -> bool {
         if !self.config.enable_breakpoints {
             return false;
         }
-        
+
         for breakpoint in &self.breakpoints {
             if breakpoint.enabled && breakpoint.step == step {
                 match &breakpoint.condition {
@@ -305,21 +305,23 @@ impl QuantumDebugger {
                         if self.evaluate_state_condition(state, condition) {
                             return true;
                         }
-                    },
+                    }
                     BreakpointCondition::GateType(gate_type) => {
-                        if std::mem::discriminant(gate.gate_type()) == std::mem::discriminant(gate_type) {
+                        if std::mem::discriminant(gate.gate_type())
+                            == std::mem::discriminant(gate_type)
+                        {
                             return true;
                         }
-                    },
+                    }
                     BreakpointCondition::QubitIndex(qubit) => {
                         if gate.target_qubits().contains(qubit) {
                             return true;
                         }
-                    },
+                    }
                 }
             }
         }
-        
+
         false
     }
 
@@ -332,25 +334,29 @@ impl QuantumDebugger {
                 } else {
                     false
                 }
-            },
+            }
             StateCondition::EntanglementThreshold { threshold } => {
                 if let Ok(entanglement) = self.calculate_total_entanglement(state) {
                     entanglement > *threshold
                 } else {
                     false
                 }
-            },
-            StateCondition::PhaseDifference { qubit1, qubit2, threshold } => {
+            }
+            StateCondition::PhaseDifference {
+                qubit1,
+                qubit2,
+                threshold,
+            } => {
                 if let (Some(amp1), Some(amp2)) = (
                     self.get_qubit_amplitude(state, *qubit1),
-                    self.get_qubit_amplitude(state, *qubit2)
+                    self.get_qubit_amplitude(state, *qubit2),
                 ) {
                     let phase_diff = (amp1.arg() - amp2.arg()).abs();
                     phase_diff > *threshold
                 } else {
                     false
                 }
-            },
+            }
         }
     }
 
@@ -363,13 +369,13 @@ impl QuantumDebugger {
         num_qubits: usize,
     ) -> Result<GateEffect, QuantRS2Error> {
         let state_before = state.clone();
-        
+
         // Apply the gate (simplified implementation)
         self.apply_gate_to_state(gate, state, num_qubits)?;
-        
+
         // Calculate gate effect
         let effect = self.calculate_gate_effect(&state_before, state, gate)?;
-        
+
         Ok(effect)
     }
 
@@ -381,7 +387,7 @@ impl QuantumDebugger {
         num_qubits: usize,
     ) -> Result<(), QuantRS2Error> {
         use crate::gate_translation::GateType;
-        
+
         match gate.gate_type() {
             GateType::X => {
                 if let Some(&target) = gate.target_qubits().first() {
@@ -393,7 +399,7 @@ impl QuantumDebugger {
                         }
                     }
                 }
-            },
+            }
             GateType::Y => {
                 if let Some(&target) = gate.target_qubits().first() {
                     let target_bit = 1 << target;
@@ -406,7 +412,7 @@ impl QuantumDebugger {
                         }
                     }
                 }
-            },
+            }
             GateType::Z => {
                 if let Some(&target) = gate.target_qubits().first() {
                     let target_bit = 1 << target;
@@ -416,7 +422,7 @@ impl QuantumDebugger {
                         }
                     }
                 }
-            },
+            }
             GateType::H => {
                 if let Some(&target) = gate.target_qubits().first() {
                     let target_bit = 1 << target;
@@ -430,14 +436,14 @@ impl QuantumDebugger {
                         }
                     }
                 }
-            },
+            }
             GateType::CNOT => {
                 if gate.target_qubits().len() >= 2 {
                     let control = gate.target_qubits()[0];
                     let target = gate.target_qubits()[1];
                     let control_bit = 1 << control;
                     let target_bit = 1 << target;
-                    
+
                     for i in 0..(1 << num_qubits) {
                         if i & control_bit != 0 {
                             let j = i ^ target_bit;
@@ -447,12 +453,12 @@ impl QuantumDebugger {
                         }
                     }
                 }
-            },
+            }
             _ => {
                 // For other gates, no operation (placeholder)
             }
         }
-        
+
         Ok(())
     }
 
@@ -466,7 +472,7 @@ impl QuantumDebugger {
         let amplitude_changes = self.calculate_amplitude_changes(state_before, state_after);
         let phase_changes = self.calculate_phase_changes(state_before, state_after);
         let entanglement_change = self.calculate_entanglement_change(state_before, state_after)?;
-        
+
         Ok(GateEffect {
             gate_type: format!("{:?}", gate.gate_type()),
             target_qubits: gate.target_qubits().to_vec(),
@@ -479,7 +485,8 @@ impl QuantumDebugger {
 
     /// Calculate amplitude changes between states
     fn calculate_amplitude_changes(&self, before: &[Complex64], after: &[Complex64]) -> Vec<f64> {
-        before.iter()
+        before
+            .iter()
             .zip(after.iter())
             .map(|(b, a)| (a.norm() - b.norm()).abs())
             .collect()
@@ -487,7 +494,8 @@ impl QuantumDebugger {
 
     /// Calculate phase changes between states
     fn calculate_phase_changes(&self, before: &[Complex64], after: &[Complex64]) -> Vec<f64> {
-        before.iter()
+        before
+            .iter()
             .zip(after.iter())
             .map(|(b, a)| {
                 if b.norm() > 1e-10 && a.norm() > 1e-10 {
@@ -512,7 +520,8 @@ impl QuantumDebugger {
 
     /// Calculate state fidelity
     fn calculate_state_fidelity(&self, state1: &[Complex64], state2: &[Complex64]) -> f64 {
-        let overlap: Complex64 = state1.iter()
+        let overlap: Complex64 = state1
+            .iter()
             .zip(state2.iter())
             .map(|(s1, s2)| s1.conj() * s2)
             .sum();
@@ -530,14 +539,14 @@ impl QuantumDebugger {
         // Check memory limit
         let estimated_size = state.len() * 16; // 16 bytes per Complex64
         let total_size = self.state_history.len() * estimated_size;
-        
+
         if total_size > self.config.memory_limit_mb * 1024 * 1024 {
             // Remove oldest snapshots
             while self.state_history.len() > 100 {
                 self.state_history.pop_front();
             }
         }
-        
+
         let snapshot = StateSnapshot {
             step,
             gate_index,
@@ -553,7 +562,7 @@ impl QuantumDebugger {
                 norm: state.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt(),
             },
         };
-        
+
         self.state_history.push_back(snapshot);
         Ok(())
     }
@@ -562,13 +571,14 @@ impl QuantumDebugger {
     fn sample_state(&self, state: &[Complex64]) -> Result<Vec<Complex64>, QuantRS2Error> {
         let sample_size = (state.len() as f64 * self.config.sampling_rate).ceil() as usize;
         let step = state.len() / sample_size;
-        
+
         Ok(state.iter().step_by(step.max(1)).cloned().collect())
     }
 
     /// Get previous state from history
     fn get_previous_state(&self) -> Vec<Complex64> {
-        self.state_history.back()
+        self.state_history
+            .back()
             .map(|snapshot| snapshot.state.clone())
             .unwrap_or_default()
     }
@@ -583,7 +593,7 @@ impl QuantumDebugger {
         let pairwise_entanglement = self.calculate_pairwise_entanglement(state, num_qubits)?;
         let entanglement_spectrum = self.calculate_entanglement_spectrum(state, num_qubits)?;
         let max_entangled_pair = self.find_max_entangled_pair(&pairwise_entanglement);
-        
+
         Ok(EntanglementAnalysis {
             total_entanglement,
             pairwise_entanglement,
@@ -596,7 +606,8 @@ impl QuantumDebugger {
     fn calculate_total_entanglement(&self, state: &[Complex64]) -> Result<f64, QuantRS2Error> {
         // Simplified calculation - in practice, this would use reduced density matrices
         let probabilities: Vec<f64> = state.iter().map(|c| c.norm_sqr()).collect();
-        let entropy = -probabilities.iter()
+        let entropy = -probabilities
+            .iter()
             .filter(|&&p| p > 1e-15)
             .map(|&p| p * p.log2())
             .sum::<f64>();
@@ -610,15 +621,16 @@ impl QuantumDebugger {
         num_qubits: usize,
     ) -> Result<HashMap<(usize, usize), f64>, QuantRS2Error> {
         let mut pairwise = HashMap::new();
-        
+
         // Simplified pairwise entanglement calculation
         for i in 0..num_qubits {
             for j in (i + 1)..num_qubits {
-                let entanglement = self.calculate_bipartite_entanglement(state, i, j, num_qubits)?;
+                let entanglement =
+                    self.calculate_bipartite_entanglement(state, i, j, num_qubits)?;
                 pairwise.insert((i, j), entanglement);
             }
         }
-        
+
         Ok(pairwise)
     }
 
@@ -632,18 +644,18 @@ impl QuantumDebugger {
     ) -> Result<f64, QuantRS2Error> {
         // Simplified calculation - would use partial trace in practice
         let mut correlation = 0.0;
-        
+
         for i in 0..(1 << num_qubits) {
             let bit1 = (i >> qubit1) & 1;
             let bit2 = (i >> qubit2) & 1;
-            
+
             if bit1 == bit2 {
                 correlation += state[i].norm_sqr();
             } else {
                 correlation -= state[i].norm_sqr();
             }
         }
-        
+
         Ok(correlation.abs())
     }
 
@@ -660,8 +672,12 @@ impl QuantumDebugger {
     }
 
     /// Find the pair of qubits with maximum entanglement
-    fn find_max_entangled_pair(&self, pairwise: &HashMap<(usize, usize), f64>) -> Option<(usize, usize)> {
-        pairwise.iter()
+    fn find_max_entangled_pair(
+        &self,
+        pairwise: &HashMap<(usize, usize), f64>,
+    ) -> Option<(usize, usize)> {
+        pairwise
+            .iter()
             .max_by(|(_, v1), (_, v2)| v1.partial_cmp(v2).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(pair, _)| *pair)
     }
@@ -670,20 +686,23 @@ impl QuantumDebugger {
     fn analyze_amplitudes(&self, state: &[Complex64]) -> Result<AmplitudeAnalysis, QuantRS2Error> {
         let amplitudes: Vec<f64> = state.iter().map(|c| c.norm()).collect();
         let phases: Vec<f64> = state.iter().map(|c| c.arg()).collect();
-        
-        let max_amplitude_index = amplitudes.iter()
+
+        let max_amplitude_index = amplitudes
+            .iter()
             .enumerate()
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(i, _)| i)
             .unwrap_or(0);
-        
+
         let mean_amplitude = amplitudes.iter().sum::<f64>() / amplitudes.len() as f64;
-        let amplitude_variance = amplitudes.iter()
+        let amplitude_variance = amplitudes
+            .iter()
             .map(|a| (a - mean_amplitude).powi(2))
-            .sum::<f64>() / amplitudes.len() as f64;
-        
+            .sum::<f64>()
+            / amplitudes.len() as f64;
+
         let significant_states = self.find_significant_states(&amplitudes);
-        
+
         Ok(AmplitudeAnalysis {
             amplitudes,
             phases,
@@ -697,7 +716,8 @@ impl QuantumDebugger {
     /// Find states with significant amplitudes
     fn find_significant_states(&self, amplitudes: &[f64]) -> Vec<usize> {
         let threshold = 0.1; // 10% threshold
-        amplitudes.iter()
+        amplitudes
+            .iter()
             .enumerate()
             .filter(|(_, &amp)| amp > threshold)
             .map(|(i, _)| i)
@@ -717,7 +737,8 @@ impl QuantumDebugger {
     /// Calculate von Neumann entropy
     fn calculate_von_neumann_entropy(&self, state: &[Complex64]) -> Result<f64, QuantRS2Error> {
         let probabilities: Vec<f64> = state.iter().map(|c| c.norm_sqr()).collect();
-        let entropy = -probabilities.iter()
+        let entropy = -probabilities
+            .iter()
             .filter(|&&p| p > 1e-15)
             .map(|&p| p * p.log2())
             .sum::<f64>();
@@ -776,11 +797,13 @@ impl QuantumDebugger {
         if self.execution_trace.is_empty() {
             return 1.0;
         }
-        
-        let total_fidelity: f64 = self.execution_trace.iter()
+
+        let total_fidelity: f64 = self
+            .execution_trace
+            .iter()
             .map(|step| step.gate_effect.fidelity)
             .sum();
-        
+
         total_fidelity / self.execution_trace.len() as f64
     }
 
@@ -799,44 +822,52 @@ impl QuantumDebugger {
     /// Generate enhanced optimization recommendations using SciRS2 analysis
     fn generate_enhanced_recommendations(&self) -> Result<Vec<String>, QuantRS2Error> {
         let mut recommendations = Vec::new();
-        
+
         // Standard recommendations
         if self.gate_statistics.two_qubit_gate_ratio() > 0.5 {
-            recommendations.push("Consider reducing two-qubit gates to improve fidelity".to_string());
+            recommendations
+                .push("Consider reducing two-qubit gates to improve fidelity".to_string());
         }
-        
+
         if self.calculate_circuit_depth() > 100 {
             recommendations.push("Circuit depth is high - consider parallelization".to_string());
         }
-        
+
         // SciRS2-enhanced recommendations based on performance metrics
         if self.performance_metrics.simd_operations_count > 0 {
-            recommendations.push("SIMD operations detected - good use of vectorization".to_string());
+            recommendations
+                .push("SIMD operations detected - good use of vectorization".to_string());
         } else {
-            recommendations.push("Consider enabling SIMD operations for better performance".to_string());
+            recommendations
+                .push("Consider enabling SIMD operations for better performance".to_string());
         }
-        
+
         if self.performance_metrics.parallel_operations_count > 0 {
-            recommendations.push("Parallel operations used - optimal for multi-core systems".to_string());
+            recommendations
+                .push("Parallel operations used - optimal for multi-core systems".to_string());
         }
-        
+
         // Memory usage analysis
         if let Some(max_memory) = self.performance_metrics.memory_usage.iter().max() {
-            if *max_memory > 1024 * 1024 * 100 { // > 100MB
-                recommendations.push("High memory usage detected - consider SciRS2 memory optimization".to_string());
+            if *max_memory > 1024 * 1024 * 100 {
+                // > 100MB
+                recommendations.push(
+                    "High memory usage detected - consider SciRS2 memory optimization".to_string(),
+                );
             }
         }
-        
+
         // Performance-based recommendations
-        let avg_gate_time = self.performance_metrics.total_execution_time.as_nanos() as f64 
+        let avg_gate_time = self.performance_metrics.total_execution_time.as_nanos() as f64
             / (self.execution_trace.len() as f64 + 1.0);
-        if avg_gate_time > 1000.0 { // > 1μs per gate
+        if avg_gate_time > 1000.0 {
+            // > 1μs per gate
             recommendations.push("Gate execution time is high - consider optimization".to_string());
         }
-        
+
         recommendations.push("Apply error mitigation techniques".to_string());
         recommendations.push("Use SciRS2 advanced quantum state management".to_string());
-        
+
         Ok(recommendations)
     }
 
@@ -889,9 +920,18 @@ pub enum BreakpointCondition {
 /// State-based breakpoint conditions
 #[derive(Debug, Clone)]
 pub enum StateCondition {
-    AmplitudeThreshold { qubit: usize, threshold: f64 },
-    EntanglementThreshold { threshold: f64 },
-    PhaseDifference { qubit1: usize, qubit2: usize, threshold: f64 },
+    AmplitudeThreshold {
+        qubit: usize,
+        threshold: f64,
+    },
+    EntanglementThreshold {
+        threshold: f64,
+    },
+    PhaseDifference {
+        qubit1: usize,
+        qubit2: usize,
+        threshold: f64,
+    },
 }
 
 /// State snapshot for debugging
@@ -945,20 +985,20 @@ impl GateStatistics {
             total_count: 0,
         }
     }
-    
+
     pub fn record_gate(&mut self, gate: &QuantumGate) {
         let gate_type = format!("{:?}", gate.gate_type());
         *self.gate_counts.entry(gate_type).or_insert(0) += 1;
         self.total_count += 1;
     }
-    
+
     pub fn total_gates(&self) -> usize {
         self.total_count
     }
-    
+
     pub fn two_qubit_gate_ratio(&self) -> f64 {
-        let two_qubit_gates = *self.gate_counts.get("CNOT").unwrap_or(&0) +
-                             *self.gate_counts.get("CZ").unwrap_or(&0);
+        let two_qubit_gates =
+            *self.gate_counts.get("CNOT").unwrap_or(&0) + *self.gate_counts.get("CZ").unwrap_or(&0);
         if self.total_count > 0 {
             two_qubit_gates as f64 / self.total_count as f64
         } else {
@@ -1013,7 +1053,7 @@ pub struct PerformanceMetrics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::{QuantumGate, GateType};
+    use super::{GateType, QuantumGate};
 
     #[test]
     fn test_debugger_creation() {
@@ -1040,15 +1080,10 @@ mod tests {
     #[test]
     fn test_simple_circuit_debugging() {
         let mut debugger = QuantumDebugger::new();
-        let circuit = vec![
-            QuantumGate::new(GateType::H, vec![0], None),
-        ];
-        
-        let initial_state = vec![
-            Complex64::new(1.0, 0.0),
-            Complex64::new(0.0, 0.0),
-        ];
-        
+        let circuit = vec![QuantumGate::new(GateType::H, vec![0], None)];
+
+        let initial_state = vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
+
         let result = debugger.debug_circuit(&circuit, &initial_state, 1).unwrap();
         assert!(matches!(result.status, DebugStatus::Completed));
         assert_eq!(result.execution_trace.len(), 1);
@@ -1061,7 +1096,7 @@ mod tests {
             Complex64::new(std::f64::consts::FRAC_1_SQRT_2, 0.0),
             Complex64::new(std::f64::consts::FRAC_1_SQRT_2, 0.0),
         ];
-        
+
         let analysis = debugger.analyze_amplitudes(&state).unwrap();
         assert_eq!(analysis.amplitudes.len(), 2);
         assert!((analysis.mean_amplitude - std::f64::consts::FRAC_1_SQRT_2).abs() < 1e-4);

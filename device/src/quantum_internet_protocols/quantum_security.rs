@@ -63,7 +63,7 @@ pub enum AuthenticationMethod {
     Custom(String),
 }
 
-/// Encryption configuration  
+/// Encryption configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EncryptionConfig {
     pub encryption_algorithms: Vec<EncryptionAlgorithm>,
@@ -622,7 +622,7 @@ impl QuantumSecurityLayer {
         let encryption_manager = Arc::new(RwLock::new(QuantumEncryptionManager::new()?));
         let key_store = Arc::new(RwLock::new(QuantumKeyStore::new()?));
         let security_contexts = Arc::new(RwLock::new(HashMap::new()));
-        
+
         Ok(Self {
             config: config.clone(),
             qkd_manager,
@@ -633,13 +633,13 @@ impl QuantumSecurityLayer {
             security_contexts,
         })
     }
-    
+
     /// Initialize the security layer
     pub async fn initialize(&mut self) -> DeviceResult<()> {
         // Initialize all security managers
         Ok(())
     }
-    
+
     /// Setup security context for a connection
     pub async fn setup_security_context(&self, connection_id: &str) -> DeviceResult<()> {
         let context = SecurityContext {
@@ -649,35 +649,35 @@ impl QuantumSecurityLayer {
             quantum_signatures: true,
             trust_level: 0.99,
         };
-        
+
         self.security_contexts.write().await.insert(connection_id.to_string(), context);
         Ok(())
     }
-    
+
     /// Encrypt quantum data
     pub async fn encrypt_data(&self, data: QuantumData) -> DeviceResult<QuantumData> {
         // Use quantum-safe encryption
         let mut encrypted_data = data;
         encrypted_data.metadata.insert("encrypted".to_string(), "true".to_string());
         encrypted_data.metadata.insert("algorithm".to_string(), "quantum_safe".to_string());
-        
+
         Ok(encrypted_data)
     }
-    
+
     /// Decrypt quantum data
     pub async fn decrypt_data(&self, data: QuantumData) -> DeviceResult<QuantumData> {
         // Decrypt using quantum-safe decryption
         let mut decrypted_data = data;
         decrypted_data.metadata.remove("encrypted");
         decrypted_data.metadata.remove("algorithm");
-        
+
         Ok(decrypted_data)
     }
-    
+
     /// Authenticate user/system
     pub async fn authenticate(&self, credentials: AuthenticationCredentials) -> DeviceResult<AuthenticationResult> {
         let auth_manager = self.authentication_manager.read().await;
-        
+
         // Try each authenticator
         for authenticator in &auth_manager.authenticators {
             match authenticator.authenticate(&credentials).await {
@@ -689,7 +689,7 @@ impl QuantumSecurityLayer {
                 Err(_) => continue,
             }
         }
-        
+
         Ok(AuthenticationResult {
             success: false,
             user_identity: None,
@@ -699,63 +699,63 @@ impl QuantumSecurityLayer {
             error_message: Some("Authentication failed".to_string()),
         })
     }
-    
+
     /// Generate quantum signature
     pub async fn sign_data(&self, data: &[u8], key_id: &str) -> DeviceResult<QuantumSignature> {
         let sig_manager = self.signature_manager.read().await;
-        
+
         if let Some(key_pair) = sig_manager.key_pairs.get(key_id) {
             // Use first available signature scheme
             if let Some(scheme) = sig_manager.signature_schemes.first() {
                 return scheme.sign(data, &key_pair.private_key).await;
             }
         }
-        
+
         Err(DeviceError::InvalidInput("Key not found or no signature scheme available".to_string()))
     }
-    
+
     /// Verify quantum signature
     pub async fn verify_signature(&self, data: &[u8], signature: &QuantumSignature, public_key: &QuantumPublicKey) -> DeviceResult<bool> {
         let sig_manager = self.signature_manager.read().await;
-        
+
         // Try each signature scheme
         for scheme in &sig_manager.signature_schemes {
             if scheme.get_scheme_name() == signature.algorithm {
                 return scheme.verify(data, signature, public_key).await;
             }
         }
-        
+
         Ok(false)
     }
-    
+
     /// Establish QKD session
     pub async fn establish_qkd_session(&self, remote_party: &str) -> DeviceResult<String> {
         let mut qkd_manager = self.qkd_manager.write().await;
-        
+
         if let Some(protocol) = qkd_manager.protocols.first_mut() {
             protocol.establish_session(remote_party).await
         } else {
             Err(DeviceError::UnsupportedOperation("No QKD protocol available".to_string()))
         }
     }
-    
+
     /// Generate quantum keys
     pub async fn generate_quantum_keys(&self, session_id: &str, key_length: usize) -> DeviceResult<Vec<u8>> {
         let mut qkd_manager = self.qkd_manager.write().await;
-        
+
         if let Some(protocol) = qkd_manager.protocols.first_mut() {
             protocol.generate_keys(session_id, key_length).await
         } else {
             Err(DeviceError::UnsupportedOperation("No QKD protocol available".to_string()))
         }
     }
-    
+
     /// Cleanup security context
     pub async fn cleanup_security_context(&self, connection_id: &str) -> DeviceResult<()> {
         self.security_contexts.write().await.remove(connection_id);
         Ok(())
     }
-    
+
     /// Shutdown security layer
     pub async fn shutdown(&self) -> DeviceResult<()> {
         // Cleanup all security contexts and sessions

@@ -409,7 +409,7 @@ impl HardwareBackend for QuantumBackend {
 fn detect_simd_level() -> SimdLevel {
     use quantrs2_core::platform::PlatformCapabilities;
     let platform = PlatformCapabilities::detect();
-    
+
     if platform.cpu.simd.avx512 {
         SimdLevel::Avx512
     } else if platform.cpu.simd.avx2 {

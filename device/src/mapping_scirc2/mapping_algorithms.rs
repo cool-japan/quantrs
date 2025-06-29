@@ -37,7 +37,7 @@ impl SpectralEmbeddingMapper {
         // Simplified implementation - would need proper Laplacian computation
         let logical_embedding = Array2::zeros((logical_graph.node_count(), self.embedding_dims));
         let physical_embedding = Array2::zeros((physical_graph.node_count(), self.embedding_dims));
-        
+
         Ok((logical_embedding, physical_embedding))
     }
 }

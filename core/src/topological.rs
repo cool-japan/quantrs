@@ -654,7 +654,7 @@ pub struct ToricCode {
     pub size: usize,
     /// Vertex operators A_v
     pub vertex_ops: Vec<Vec<usize>>,
-    /// Plaquette operators B_p  
+    /// Plaquette operators B_p
     pub plaquette_ops: Vec<Vec<usize>>,
 }
 

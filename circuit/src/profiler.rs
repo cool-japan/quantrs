@@ -5,7 +5,7 @@
 //! and SciRS2-powered optimization suggestions for circuit execution analysis.
 
 use crate::builder::Circuit;
-use crate::scirs2_integration::{SciRS2CircuitAnalyzer, AnalyzerConfig, GraphMetrics};
+use crate::scirs2_integration::{AnalyzerConfig, GraphMetrics, SciRS2CircuitAnalyzer};
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use quantrs2_core::{
@@ -1801,10 +1801,7 @@ pub enum SuppressionCondition {
         end_time: SystemTime,
     },
     /// Metric-based suppression
-    MetricBased {
-        metric: String,
-        threshold: f64,
-    },
+    MetricBased { metric: String, threshold: f64 },
     /// Event-based suppression
     EventBased { event_type: String },
 }
@@ -2328,7 +2325,10 @@ pub enum StorageBackend {
     /// Database storage
     Database { connection_string: String },
     /// Cloud storage
-    Cloud { provider: String, config: HashMap<String, String> },
+    Cloud {
+        provider: String,
+        config: HashMap<String, String>,
+    },
 }
 
 /// Storage configuration
@@ -2646,7 +2646,7 @@ impl<const N: usize> QuantumProfiler<N> {
                     predictions: HashMap::new(),
                     config: PredictionConfig {
                         prediction_horizon: Duration::from_secs(60 * 60), // 1 hour
-                        update_frequency: Duration::from_secs(5 * 60), // 5 minutes
+                        update_frequency: Duration::from_secs(5 * 60),    // 5 minutes
                         min_data_points: 20,
                         confidence_level: config.confidence_level,
                         enable_ensemble: true,
@@ -2769,8 +2769,14 @@ impl<const N: usize> QuantumProfiler<N> {
 
     /// Start profiling session
     pub fn start_profiling(&mut self) -> QuantRS2Result<String> {
-        let session_id = format!("session_{}", SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_nanos());
-        
+        let session_id = format!(
+            "session_{}",
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+
         // Initialize SciRS2 analysis if enabled
         if self.config.enable_scirs2_analysis {
             self.initialize_scirs2_analysis()?;
@@ -2808,7 +2814,9 @@ impl<const N: usize> QuantumProfiler<N> {
                 },
                 metadata: HashMap::new(),
             };
-            session_manager.active_sessions.insert(session_id.clone(), session);
+            session_manager
+                .active_sessions
+                .insert(session_id.clone(), session);
         }
 
         Ok(session_id)
@@ -2846,10 +2854,19 @@ impl<const N: usize> QuantumProfiler<N> {
             gate_performance: gate_profiler.gate_profiles.clone(),
             memory_usage: memory_profiler.snapshots.back().cloned(),
             resource_utilization: ResourceUtilization {
-                cpu: resource_profiler.cpu_profiling.utilization_history.back().copied().unwrap_or(0.0),
+                cpu: resource_profiler
+                    .cpu_profiling
+                    .utilization_history
+                    .back()
+                    .copied()
+                    .unwrap_or(0.0),
                 memory: 0.0, // Would be calculated from memory profiler
-                gpu: resource_profiler.gpu_profiling.as_ref().map(|gpu| gpu.gpu_utilization),
-                io: resource_profiler.io_profiling.read_throughput + resource_profiler.io_profiling.write_throughput,
+                gpu: resource_profiler
+                    .gpu_profiling
+                    .as_ref()
+                    .map(|gpu| gpu.gpu_utilization),
+                io: resource_profiler.io_profiling.read_throughput
+                    + resource_profiler.io_profiling.write_throughput,
                 network: resource_profiler.network_profiling.bandwidth_utilization,
             },
             timestamp: SystemTime::now(),
@@ -2859,18 +2876,21 @@ impl<const N: usize> QuantumProfiler<N> {
     /// Analyze circuit performance
     pub fn analyze_performance(&mut self) -> QuantRS2Result<PerformanceAnalysisReport> {
         let mut analyzer = self.performance_analyzer.write().unwrap();
-        
+
         // Collect current performance data
         let current_data = self.collect_performance_data()?;
-        
+
         // Add to historical data
-        analyzer.historical_data.snapshots.push_back(PerformanceSnapshot {
-            timestamp: SystemTime::now(),
-            metrics: current_data.metrics,
-            system_state: current_data.system_state,
-            environment: current_data.environment,
-            metadata: HashMap::new(),
-        });
+        analyzer
+            .historical_data
+            .snapshots
+            .push_back(PerformanceSnapshot {
+                timestamp: SystemTime::now(),
+                metrics: current_data.metrics,
+                system_state: current_data.system_state,
+                environment: current_data.environment,
+                metadata: HashMap::new(),
+            });
 
         // Perform analysis
         let analysis_report = self.perform_comprehensive_analysis(&analyzer)?;
@@ -2881,45 +2901,61 @@ impl<const N: usize> QuantumProfiler<N> {
     /// Run benchmarks
     pub fn run_benchmarks(&mut self, suite_name: &str) -> QuantRS2Result<BenchmarkResult> {
         let mut benchmark_engine = self.benchmark_engine.write().unwrap();
-        
+
         if let Some(suite) = benchmark_engine.benchmark_suites.get(suite_name).cloned() {
             let result = self.execute_benchmark_suite(&suite)?;
-            benchmark_engine.benchmark_results.insert(suite_name.to_string(), result.clone());
+            benchmark_engine
+                .benchmark_results
+                .insert(suite_name.to_string(), result.clone());
             Ok(result)
         } else {
-            Err(QuantRS2Error::InvalidOperation(format!("Benchmark suite '{}' not found", suite_name)))
+            Err(QuantRS2Error::InvalidOperation(format!(
+                "Benchmark suite '{}' not found",
+                suite_name
+            )))
         }
     }
 
     /// Detect performance regressions
     pub fn detect_regressions(&mut self) -> QuantRS2Result<Vec<PerformanceRegression>> {
         let mut detector = self.regression_detector.write().unwrap();
-        
+
         // Get recent performance data
         let analyzer = self.performance_analyzer.read().unwrap();
-        let recent_data = analyzer.historical_data.snapshots.iter().rev().take(100).collect::<Vec<_>>();
-        
+        let recent_data = analyzer
+            .historical_data
+            .snapshots
+            .iter()
+            .rev()
+            .take(100)
+            .collect::<Vec<_>>();
+
         // Run regression detection algorithms
         let regressions = self.run_regression_detection(&recent_data, &detector.config)?;
-        
+
         detector.detected_regressions.extend(regressions.clone());
-        
+
         Ok(regressions)
     }
 
     /// Export profiling data
     pub fn export_data(&self, session_id: &str, format: ExportFormat) -> QuantRS2Result<String> {
         let session_manager = self.session_manager.read().unwrap();
-        
+
         if let Some(session) = session_manager.active_sessions.get(session_id) {
             match format {
                 ExportFormat::JSON => self.export_json(session),
                 ExportFormat::CSV => self.export_csv(session),
                 ExportFormat::Binary => self.export_binary(session),
-                _ => Err(QuantRS2Error::InvalidOperation("Unsupported export format".to_string())),
+                _ => Err(QuantRS2Error::InvalidOperation(
+                    "Unsupported export format".to_string(),
+                )),
             }
         } else {
-            Err(QuantRS2Error::InvalidOperation(format!("Session '{}' not found", session_id)))
+            Err(QuantRS2Error::InvalidOperation(format!(
+                "Session '{}' not found",
+                session_id
+            )))
         }
     }
 
@@ -3077,7 +3113,10 @@ impl<const N: usize> QuantumProfiler<N> {
         })
     }
 
-    fn perform_comprehensive_analysis(&self, _analyzer: &PerformanceAnalyzer) -> QuantRS2Result<PerformanceAnalysisReport> {
+    fn perform_comprehensive_analysis(
+        &self,
+        _analyzer: &PerformanceAnalyzer,
+    ) -> QuantRS2Result<PerformanceAnalysisReport> {
         // Perform comprehensive performance analysis
         Ok(PerformanceAnalysisReport {
             analysis_timestamp: SystemTime::now(),
@@ -3112,7 +3151,7 @@ impl<const N: usize> QuantumProfiler<N> {
     fn execute_benchmark_suite(&self, suite: &BenchmarkSuite) -> QuantRS2Result<BenchmarkResult> {
         // Execute benchmark suite
         let mut test_results = HashMap::new();
-        
+
         for test in &suite.tests {
             let result = self.execute_benchmark_test(test)?;
             test_results.insert(test.name.clone(), result);
@@ -3139,7 +3178,11 @@ impl<const N: usize> QuantumProfiler<N> {
         })
     }
 
-    fn run_regression_detection(&self, _data: &[&PerformanceSnapshot], _config: &RegressionDetectionConfig) -> QuantRS2Result<Vec<PerformanceRegression>> {
+    fn run_regression_detection(
+        &self,
+        _data: &[&PerformanceSnapshot],
+        _config: &RegressionDetectionConfig,
+    ) -> QuantRS2Result<Vec<PerformanceRegression>> {
         // Run regression detection algorithms
         Ok(Vec::new())
     }
@@ -3522,7 +3565,7 @@ mod tests {
     fn test_profiler_creation() {
         let circuit = Circuit::<1>::new();
         let profiler = QuantumProfiler::new(circuit);
-        
+
         assert!(profiler.config.enable_gate_profiling);
         assert!(profiler.config.enable_memory_profiling);
         assert!(profiler.config.enable_resource_profiling);
@@ -3534,9 +3577,9 @@ mod tests {
         let mut config = ProfilerConfig::default();
         config.precision_level = PrecisionLevel::Ultra;
         config.enable_scirs2_analysis = true;
-        
+
         let profiler = QuantumProfiler::with_config(circuit, config);
-        
+
         match profiler.config.precision_level {
             PrecisionLevel::Ultra => (),
             _ => panic!("Expected Ultra precision level"),
@@ -3547,13 +3590,13 @@ mod tests {
     fn test_profiling_session() {
         let mut circuit = Circuit::<1>::new();
         circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        
+
         let mut profiler = QuantumProfiler::new(circuit);
         let session_id = profiler.start_profiling().unwrap();
-        
+
         // Simulate some profiling
         std::thread::sleep(Duration::from_millis(10));
-        
+
         let report = profiler.stop_profiling(&session_id).unwrap();
         assert_eq!(report.session_id, session_id);
     }
@@ -3562,7 +3605,7 @@ mod tests {
     fn test_realtime_metrics() {
         let circuit = Circuit::<1>::new();
         let profiler = QuantumProfiler::new(circuit);
-        
+
         let metrics = profiler.get_realtime_metrics().unwrap();
         assert!(metrics.current_metrics.len() <= 10);
     }
@@ -3571,10 +3614,10 @@ mod tests {
     fn test_performance_analysis() {
         let mut circuit = Circuit::<1>::new();
         circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        
+
         let mut profiler = QuantumProfiler::new(circuit);
         let _analysis = profiler.analyze_performance().unwrap();
-        
+
         // Analysis should complete without errors
     }
 
@@ -3582,7 +3625,7 @@ mod tests {
     fn test_regression_detection() {
         let circuit = Circuit::<1>::new();
         let mut profiler = QuantumProfiler::new(circuit);
-        
+
         let regressions = profiler.detect_regressions().unwrap();
         // Should return empty list for new profiler
         assert!(regressions.is_empty());

@@ -51,7 +51,7 @@ struct MPSTensor {
     data: Array3<Complex64>,
     /// Left bond dimension
     left_dim: usize,
-    /// Right bond dimension  
+    /// Right bond dimension
     right_dim: usize,
 }
 

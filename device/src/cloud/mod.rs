@@ -166,7 +166,7 @@ pub struct QuantumCloudConfig {
 pub struct CloudMLConfig {
     /// Enable ML-driven optimization
     pub enable_ml_optimization: bool,
-    /// ML models for resource optimization  
+    /// ML models for resource optimization
     pub optimization_models: Vec<String>,
     /// Predictive analytics for resource planning
     pub predictive_analytics: bool,

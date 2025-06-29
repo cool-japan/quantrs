@@ -80,7 +80,7 @@ use crate::{
 pub struct MigrationConfig {
     /// Source platform
     pub source_platform: HardwareBackend,
-    /// Target platform  
+    /// Target platform
     pub target_platform: HardwareBackend,
     /// Migration strategy
     pub strategy: MigrationStrategy,
@@ -1339,7 +1339,7 @@ impl CircuitMigrationEngine {
             if metrics.performance_comparison.gate_count_change > max_gate_increase {
                 warnings.push(MigrationWarning {
                     warning_type: WarningType::PerformanceDegradation,
-                    message: format!("Gate count increased by {:.1}%, exceeding limit of {:.1}%", 
+                    message: format!("Gate count increased by {:.1}%, exceeding limit of {:.1}%",
                                    metrics.performance_comparison.gate_count_change * 100.0,
                                    max_gate_increase * 100.0),
                     severity: WarningSeverity::Warning,

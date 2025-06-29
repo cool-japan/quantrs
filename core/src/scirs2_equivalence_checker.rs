@@ -4,64 +4,64 @@
 //! using advanced SciRS2 numerical analysis capabilities, including SVD-based
 //! comparison, spectral analysis, and sophisticated tolerance mechanisms.
 
-use crate::gate_translation::GateType;
 use crate::error::QuantRS2Error;
+use crate::gate_translation::GateType;
 use num_complex::Complex64;
 // use scirs2_core::parallel_ops::*;
 use crate::parallel_ops_stubs::*;
 // use scirs2_core::memory::BufferPool;
 use crate::buffer_pool::BufferPool;
-use ndarray::{Array2, ArrayView2, Array1};
-use ndarray_linalg::{Eigh, SVD, Norm};
+use ndarray::{Array1, Array2, ArrayView2};
+use ndarray_linalg::{Eigh, Norm, SVD};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use serde::{Serialize, Deserialize};
 
 /// Advanced configuration for SciRS2-enhanced equivalence checking
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AdvancedEquivalenceConfig {
     /// Base configuration
     pub base_config: crate::equivalence_checker::EquivalenceConfig,
-    
+
     /// Advanced comparison methods
     pub comparison_methods: Vec<ComparisonMethod>,
-    
+
     /// SVD truncation threshold for noise resilience
     pub svd_truncation_threshold: f64,
-    
+
     /// Enable circuit canonicalization
     pub enable_canonicalization: bool,
-    
+
     /// Maximum circuit depth for canonicalization
     pub max_canonicalization_depth: usize,
-    
+
     /// Enable quantum process tomography verification
     pub enable_qpt_verification: bool,
-    
+
     /// Number of Pauli basis measurements for QPT
     pub qpt_measurement_count: usize,
-    
+
     /// Enable circuit fingerprinting for fast comparison
     pub enable_fingerprinting: bool,
-    
+
     /// Fingerprint hash size in bits
     pub fingerprint_bits: usize,
-    
+
     /// Enable state space partitioning for large circuits
     pub enable_partitioning: bool,
-    
+
     /// Partition size threshold (qubits)
     pub partition_threshold: usize,
-    
+
     /// Advanced tolerance settings
     pub tolerance_settings: ToleranceSettings,
-    
+
     /// Circuit symmetry detection depth
     pub symmetry_detection_depth: usize,
-    
+
     /// Enable statistical equivalence testing
     pub enable_statistical_testing: bool,
-    
+
     /// Statistical confidence level (0.0 to 1.0)
     pub statistical_confidence: f64,
 }
@@ -193,7 +193,7 @@ impl AdvancedEquivalenceChecker {
         if self.config.enable_fingerprinting {
             let fp1 = self.compute_fingerprint(circuit1)?;
             let fp2 = self.compute_fingerprint(circuit2)?;
-            
+
             if fp1 == fp2 {
                 return Ok(AdvancedEquivalenceResult {
                     equivalent: true,
@@ -226,25 +226,25 @@ impl AdvancedEquivalenceChecker {
             let result = match method {
                 ComparisonMethod::FrobeniusNorm => {
                     self.frobenius_norm_comparison(&canonical1, &canonical2, num_qubits)?
-                },
+                }
                 ComparisonMethod::SpectralNorm => {
                     self.spectral_norm_comparison(&canonical1, &canonical2, num_qubits)?
-                },
+                }
                 ComparisonMethod::SvdBased => {
                     self.svd_based_comparison(&canonical1, &canonical2, num_qubits)?
-                },
+                }
                 ComparisonMethod::EigenvalueBased => {
                     self.eigenvalue_comparison(&canonical1, &canonical2, num_qubits)?
-                },
+                }
                 ComparisonMethod::TraceDistance => {
                     self.trace_distance_comparison(&canonical1, &canonical2, num_qubits)?
-                },
+                }
                 ComparisonMethod::ProcessFidelity => {
                     self.process_fidelity_comparison(&canonical1, &canonical2, num_qubits)?
-                },
+                }
                 _ => continue,
             };
-            
+
             results.push(result);
             methods_used.push(format!("{:?}", method));
         }
@@ -261,7 +261,8 @@ impl AdvancedEquivalenceChecker {
 
         // Extract phase factor if circuits are equivalent up to phase
         let phase_factor = if !equivalent {
-            self.extract_global_phase(&canonical1, &canonical2, num_qubits).ok()
+            self.extract_global_phase(&canonical1, &canonical2, num_qubits)
+                .ok()
         } else {
             Some(Complex64::new(1.0, 0.0))
         };
@@ -284,7 +285,7 @@ impl AdvancedEquivalenceChecker {
         circuit: &[crate::equivalence_checker::QuantumGate],
     ) -> Result<CircuitFingerprint, QuantRS2Error> {
         let circuit_hash = self.hash_circuit(circuit);
-        
+
         if let Some(cached) = self.fingerprint_cache.get(&circuit_hash) {
             return Ok(cached.clone());
         }
@@ -328,7 +329,8 @@ impl AdvancedEquivalenceChecker {
             structural_hash,
         };
 
-        self.fingerprint_cache.insert(circuit_hash, fingerprint.clone());
+        self.fingerprint_cache
+            .insert(circuit_hash, fingerprint.clone());
         Ok(fingerprint)
     }
 
@@ -339,7 +341,7 @@ impl AdvancedEquivalenceChecker {
         num_qubits: usize,
     ) -> Result<Vec<crate::equivalence_checker::QuantumGate>, QuantRS2Error> {
         let circuit_hash = self.hash_circuit(circuit);
-        
+
         if let Some(cached) = self.canonical_cache.get(&circuit_hash) {
             return Ok(cached.clone());
         }
@@ -387,11 +389,15 @@ impl AdvancedEquivalenceChecker {
         let diff = &matrix1 - &matrix2;
         let frobenius_norm = diff.norm_l2();
         let matrix_size = (1 << num_qubits) as f64;
-        
+
         // Adaptive tolerance based on matrix size
-        let tolerance = self.config.tolerance_settings.absolute_tolerance 
-            * matrix_size.sqrt() 
-            * self.config.tolerance_settings.size_adaptive_factor.powf(num_qubits as f64 / 10.0);
+        let tolerance = self.config.tolerance_settings.absolute_tolerance
+            * matrix_size.sqrt()
+            * self
+                .config
+                .tolerance_settings
+                .size_adaptive_factor
+                .powf(num_qubits as f64 / 10.0);
 
         Ok(ComparisonResult {
             equivalent: frobenius_norm < tolerance,
@@ -411,11 +417,12 @@ impl AdvancedEquivalenceChecker {
         let matrix2 = self.compute_unitary_matrix(circuit2, num_qubits)?;
 
         let diff = &matrix1 - &matrix2;
-        
+
         // Compute SVD to get spectral norm
-        let (_, singular_values, _) = diff.svd(true, true).map_err(|_| 
-            QuantRS2Error::ComputationError("SVD computation failed".into()))?;
-        
+        let (_, singular_values, _) = diff
+            .svd(true, true)
+            .map_err(|_| QuantRS2Error::ComputationError("SVD computation failed".into()))?;
+
         let spectral_norm = singular_values[0];
         let tolerance = self.config.tolerance_settings.absolute_tolerance;
 
@@ -437,15 +444,17 @@ impl AdvancedEquivalenceChecker {
         let matrix2 = self.compute_unitary_matrix(circuit2, num_qubits)?;
 
         // Compute SVD of both matrices
-        let (_, singular_values1, _) = matrix1.svd(true, true).map_err(|_| 
-            QuantRS2Error::ComputationError("SVD computation failed for matrix 1".into()))?;
-        let (_, singular_values2, _) = matrix2.svd(true, true).map_err(|_| 
-            QuantRS2Error::ComputationError("SVD computation failed for matrix 2".into()))?;
+        let (_, singular_values1, _) = matrix1.svd(true, true).map_err(|_| {
+            QuantRS2Error::ComputationError("SVD computation failed for matrix 1".into())
+        })?;
+        let (_, singular_values2, _) = matrix2.svd(true, true).map_err(|_| {
+            QuantRS2Error::ComputationError("SVD computation failed for matrix 2".into())
+        })?;
 
         // Compare singular values with truncation
         let mut total_error = 0.0;
         let threshold = self.config.svd_truncation_threshold;
-        
+
         for i in 0..singular_values1.len() {
             if singular_values1[i] > threshold || singular_values2[i] > threshold {
                 let diff = (singular_values1[i] - singular_values2[i]).abs();
@@ -481,10 +490,12 @@ impl AdvancedEquivalenceChecker {
         let herm1 = &matrix1 + &matrix1.t().mapv(|x| x.conj());
         let herm2 = &matrix2 + &matrix2.t().mapv(|x| x.conj());
 
-        let (evals1, _) = herm1.eigh(ndarray_linalg::UPLO::Upper).map_err(|_|
-            QuantRS2Error::ComputationError("Eigenvalue computation failed for matrix 1".into()))?;
-        let (evals2, _) = herm2.eigh(ndarray_linalg::UPLO::Upper).map_err(|_|
-            QuantRS2Error::ComputationError("Eigenvalue computation failed for matrix 2".into()))?;
+        let (evals1, _) = herm1.eigh(ndarray_linalg::UPLO::Upper).map_err(|_| {
+            QuantRS2Error::ComputationError("Eigenvalue computation failed for matrix 1".into())
+        })?;
+        let (evals2, _) = herm2.eigh(ndarray_linalg::UPLO::Upper).map_err(|_| {
+            QuantRS2Error::ComputationError("Eigenvalue computation failed for matrix 2".into())
+        })?;
 
         // Sort eigenvalues for comparison
         let mut sorted_evals1: Vec<f64> = evals1.iter().copied().collect();
@@ -519,17 +530,21 @@ impl AdvancedEquivalenceChecker {
 
         // Compute trace distance: 0.5 * Tr(|U1 - U2|)
         let diff = &matrix1 - &matrix2;
-        
+
         // For trace distance, we need the trace of the absolute value
         // This requires computing eigenvalues of (U1 - U2)†(U1 - U2)
         let diff_dag_diff = diff.t().mapv(|x| x.conj()).dot(&diff);
-        
-        let (eigenvalues, _) = diff_dag_diff.eigh(ndarray_linalg::UPLO::Upper).map_err(|_|
-            QuantRS2Error::ComputationError("Eigenvalue computation failed for trace distance".into()))?;
 
-        let trace_distance: f64 = eigenvalues.iter()
-            .map(|&lambda| lambda.sqrt())
-            .sum::<f64>() * 0.5;
+        let (eigenvalues, _) = diff_dag_diff
+            .eigh(ndarray_linalg::UPLO::Upper)
+            .map_err(|_| {
+                QuantRS2Error::ComputationError(
+                    "Eigenvalue computation failed for trace distance".into(),
+                )
+            })?;
+
+        let trace_distance: f64 =
+            eigenvalues.iter().map(|&lambda| lambda.sqrt()).sum::<f64>() * 0.5;
 
         let tolerance = self.config.tolerance_settings.absolute_tolerance;
 
@@ -551,7 +566,7 @@ impl AdvancedEquivalenceChecker {
         let matrix2 = self.compute_unitary_matrix(circuit2, num_qubits)?;
 
         let dim = 1 << num_qubits;
-        
+
         // Process fidelity: |Tr(U1† U2)|² / d²
         let u1_dag_u2 = matrix1.t().mapv(|x| x.conj()).dot(&matrix2);
         let trace: Complex64 = (0..dim).map(|i| u1_dag_u2[[i, i]]).sum();
@@ -605,9 +620,14 @@ impl AdvancedEquivalenceChecker {
             GateType::H => self.apply_hadamard(&mut matrix, gate.target_qubits()[0], num_qubits),
             GateType::CNOT => {
                 if gate.target_qubits().len() >= 2 {
-                    self.apply_cnot(&mut matrix, gate.target_qubits()[0], gate.target_qubits()[1], num_qubits);
+                    self.apply_cnot(
+                        &mut matrix,
+                        gate.target_qubits()[0],
+                        gate.target_qubits()[1],
+                        num_qubits,
+                    );
                 }
-            },
+            }
             _ => {} // Other gates would be implemented similarly
         }
 
@@ -618,7 +638,7 @@ impl AdvancedEquivalenceChecker {
     fn apply_pauli_x(&self, matrix: &mut Array2<Complex64>, target: usize, num_qubits: usize) {
         let target_bit = 1 << target;
         let dim = 1 << num_qubits;
-        
+
         for i in 0..dim {
             if i & target_bit == 0 {
                 let j = i | target_bit;
@@ -636,7 +656,7 @@ impl AdvancedEquivalenceChecker {
         let target_bit = 1 << target;
         let dim = 1 << num_qubits;
         let i_unit = Complex64::new(0.0, 1.0);
-        
+
         for i in 0..dim {
             if i & target_bit == 0 {
                 let j = i | target_bit;
@@ -653,7 +673,7 @@ impl AdvancedEquivalenceChecker {
     fn apply_pauli_z(&self, matrix: &mut Array2<Complex64>, target: usize, num_qubits: usize) {
         let target_bit = 1 << target;
         let dim = 1 << num_qubits;
-        
+
         for i in 0..dim {
             if i & target_bit != 0 {
                 for k in 0..dim {
@@ -668,7 +688,7 @@ impl AdvancedEquivalenceChecker {
         let target_bit = 1 << target;
         let dim = 1 << num_qubits;
         let inv_sqrt2 = 1.0 / std::f64::consts::SQRT_2;
-        
+
         for i in 0..dim {
             if i & target_bit == 0 {
                 let j = i | target_bit;
@@ -682,11 +702,17 @@ impl AdvancedEquivalenceChecker {
     }
 
     /// Apply CNOT gate
-    fn apply_cnot(&self, matrix: &mut Array2<Complex64>, control: usize, target: usize, num_qubits: usize) {
+    fn apply_cnot(
+        &self,
+        matrix: &mut Array2<Complex64>,
+        control: usize,
+        target: usize,
+        num_qubits: usize,
+    ) {
         let control_bit = 1 << control;
         let target_bit = 1 << target;
         let dim = 1 << num_qubits;
-        
+
         for i in 0..dim {
             if i & control_bit != 0 && i & target_bit == 0 {
                 let j = i | target_bit;
@@ -707,7 +733,8 @@ impl AdvancedEquivalenceChecker {
 
         // Weighted aggregation based on confidence
         let total_weight: f64 = results.iter().map(|r| r.confidence).sum();
-        let weighted_equivalent: f64 = results.iter()
+        let weighted_equivalent: f64 = results
+            .iter()
             .map(|r| if r.equivalent { r.confidence } else { 0.0 })
             .sum();
 
@@ -757,8 +784,9 @@ impl AdvancedEquivalenceChecker {
         let dim = 1 << num_qubits;
         for i in 0..dim {
             for j in 0..dim {
-                if matrix1[[i, j]].norm() > self.config.tolerance_settings.absolute_tolerance &&
-                   matrix2[[i, j]].norm() > self.config.tolerance_settings.absolute_tolerance {
+                if matrix1[[i, j]].norm() > self.config.tolerance_settings.absolute_tolerance
+                    && matrix2[[i, j]].norm() > self.config.tolerance_settings.absolute_tolerance
+                {
                     return Ok(matrix2[[i, j]] / matrix1[[i, j]]);
                 }
             }
@@ -768,9 +796,12 @@ impl AdvancedEquivalenceChecker {
     }
 
     // Helper methods for canonicalization
-    fn apply_commutation_rules(&self, circuit: &mut Vec<crate::equivalence_checker::QuantumGate>) -> Result<bool, QuantRS2Error> {
+    fn apply_commutation_rules(
+        &self,
+        circuit: &mut Vec<crate::equivalence_checker::QuantumGate>,
+    ) -> Result<bool, QuantRS2Error> {
         let mut changed = false;
-        
+
         for i in 0..circuit.len().saturating_sub(1) {
             if self.gates_commute(&circuit[i], &circuit[i + 1]) {
                 // Sort by some canonical order (e.g., gate type, then target qubits)
@@ -780,19 +811,25 @@ impl AdvancedEquivalenceChecker {
                 }
             }
         }
-        
+
         Ok(changed)
     }
 
-    fn apply_gate_fusion(&self, circuit: &mut Vec<crate::equivalence_checker::QuantumGate>) -> Result<bool, QuantRS2Error> {
+    fn apply_gate_fusion(
+        &self,
+        circuit: &mut Vec<crate::equivalence_checker::QuantumGate>,
+    ) -> Result<bool, QuantRS2Error> {
         // Simplified gate fusion - would be expanded in full implementation
         Ok(false)
     }
 
-    fn apply_inverse_cancellation(&self, circuit: &mut Vec<crate::equivalence_checker::QuantumGate>) -> Result<bool, QuantRS2Error> {
+    fn apply_inverse_cancellation(
+        &self,
+        circuit: &mut Vec<crate::equivalence_checker::QuantumGate>,
+    ) -> Result<bool, QuantRS2Error> {
         let mut changed = false;
         let mut i = 0;
-        
+
         while i < circuit.len().saturating_sub(1) {
             if self.are_inverse_gates(&circuit[i], &circuit[i + 1]) {
                 circuit.remove(i);
@@ -802,33 +839,48 @@ impl AdvancedEquivalenceChecker {
                 i += 1;
             }
         }
-        
+
         Ok(changed)
     }
 
-    fn apply_phase_normalization(&self, circuit: &mut Vec<crate::equivalence_checker::QuantumGate>) -> Result<bool, QuantRS2Error> {
+    fn apply_phase_normalization(
+        &self,
+        circuit: &mut Vec<crate::equivalence_checker::QuantumGate>,
+    ) -> Result<bool, QuantRS2Error> {
         // Simplified phase normalization
         Ok(false)
     }
 
     fn apply_canonical_ordering(&self, circuit: &mut Vec<crate::equivalence_checker::QuantumGate>) {
-        circuit.sort_by_key(|gate| (
-            self.gate_priority(gate),
-            gate.target_qubits().to_vec(),
-            gate.control_qubits().map(|c| c.to_vec()).unwrap_or_default(),
-        ));
+        circuit.sort_by_key(|gate| {
+            (
+                self.gate_priority(gate),
+                gate.target_qubits().to_vec(),
+                gate.control_qubits()
+                    .map(|c| c.to_vec())
+                    .unwrap_or_default(),
+            )
+        });
     }
 
     // Helper methods
-    fn gates_commute(&self, gate1: &crate::equivalence_checker::QuantumGate, gate2: &crate::equivalence_checker::QuantumGate) -> bool {
+    fn gates_commute(
+        &self,
+        gate1: &crate::equivalence_checker::QuantumGate,
+        gate2: &crate::equivalence_checker::QuantumGate,
+    ) -> bool {
         // Check if gates operate on disjoint qubits
-        let qubits1: HashSet<_> = gate1.target_qubits().iter()
+        let qubits1: HashSet<_> = gate1
+            .target_qubits()
+            .iter()
             .chain(gate1.control_qubits().unwrap_or(&[]).iter())
             .collect();
-        let qubits2: HashSet<_> = gate2.target_qubits().iter()
+        let qubits2: HashSet<_> = gate2
+            .target_qubits()
+            .iter()
             .chain(gate2.control_qubits().unwrap_or(&[]).iter())
             .collect();
-        
+
         qubits1.is_disjoint(&qubits2)
     }
 
@@ -843,19 +895,21 @@ impl AdvancedEquivalenceChecker {
         }
     }
 
-    fn are_inverse_gates(&self, gate1: &crate::equivalence_checker::QuantumGate, gate2: &crate::equivalence_checker::QuantumGate) -> bool {
+    fn are_inverse_gates(
+        &self,
+        gate1: &crate::equivalence_checker::QuantumGate,
+        gate2: &crate::equivalence_checker::QuantumGate,
+    ) -> bool {
         if gate1.target_qubits() != gate2.target_qubits() {
             return false;
         }
-        
+
         match (gate1.gate_type(), gate2.gate_type()) {
             (GateType::X, GateType::X) => true,
             (GateType::Y, GateType::Y) => true,
             (GateType::Z, GateType::Z) => true,
             (GateType::H, GateType::H) => true,
-            (GateType::CNOT, GateType::CNOT) => {
-                gate1.control_qubits() == gate2.control_qubits()
-            },
+            (GateType::CNOT, GateType::CNOT) => gate1.control_qubits() == gate2.control_qubits(),
             _ => false,
         }
     }
@@ -864,7 +918,7 @@ impl AdvancedEquivalenceChecker {
     fn hash_circuit(&self, circuit: &[crate::equivalence_checker::QuantumGate]) -> Vec<u8> {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         for gate in circuit {
             format!("{:?}", gate.gate_type()).hash(&mut hasher);
@@ -873,21 +927,21 @@ impl AdvancedEquivalenceChecker {
                 controls.hash(&mut hasher);
             }
         }
-        
+
         hasher.finish().to_le_bytes().to_vec()
     }
 
     fn hash_set(&self, set: &HashSet<usize>) -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         let mut sorted: Vec<_> = set.iter().collect();
         sorted.sort();
         for item in sorted {
             item.hash(&mut hasher);
         }
-        
+
         hasher.finish()
     }
 
@@ -899,10 +953,10 @@ impl AdvancedEquivalenceChecker {
     fn hash_structure(&self, circuit: &[crate::equivalence_checker::QuantumGate]) -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         circuit.len().hash(&mut hasher);
-        
+
         // Hash gate types and targets in order to capture structure
         for (i, gate) in circuit.iter().enumerate() {
             i.hash(&mut hasher);
@@ -912,22 +966,34 @@ impl AdvancedEquivalenceChecker {
                 controls.hash(&mut hasher);
             }
         }
-        
+
         hasher.finish()
     }
 
     // Symmetry checking methods
-    fn check_time_reversal_symmetry(&self, _circuit: &[crate::equivalence_checker::QuantumGate], _num_qubits: usize) -> Result<bool, QuantRS2Error> {
+    fn check_time_reversal_symmetry(
+        &self,
+        _circuit: &[crate::equivalence_checker::QuantumGate],
+        _num_qubits: usize,
+    ) -> Result<bool, QuantRS2Error> {
         // Placeholder implementation
         Ok(false)
     }
 
-    fn check_spatial_symmetries(&self, _circuit: &[crate::equivalence_checker::QuantumGate], _num_qubits: usize) -> Result<Vec<String>, QuantRS2Error> {
+    fn check_spatial_symmetries(
+        &self,
+        _circuit: &[crate::equivalence_checker::QuantumGate],
+        _num_qubits: usize,
+    ) -> Result<Vec<String>, QuantRS2Error> {
         // Placeholder implementation
         Ok(vec![])
     }
 
-    fn check_phase_symmetries(&self, _circuit: &[crate::equivalence_checker::QuantumGate], _num_qubits: usize) -> Result<bool, QuantRS2Error> {
+    fn check_phase_symmetries(
+        &self,
+        _circuit: &[crate::equivalence_checker::QuantumGate],
+        _num_qubits: usize,
+    ) -> Result<bool, QuantRS2Error> {
         // Placeholder implementation
         Ok(false)
     }
@@ -991,44 +1057,48 @@ mod tests {
     #[ignore = "Skipped: Stub implementations don't properly distinguish non-commuting gates"]
     fn test_advanced_equivalence_basic() {
         let mut checker = AdvancedEquivalenceChecker::new();
-        
+
         let circuit1 = vec![
             QuantumGate::new(GateType::H, vec![0], None),
             QuantumGate::new(GateType::X, vec![0], None),
         ];
-        
+
         let circuit2 = vec![
             QuantumGate::new(GateType::X, vec![0], None),
             QuantumGate::new(GateType::H, vec![0], None),
         ];
-        
-        let result = checker.comprehensive_equivalence_check(&circuit1, &circuit2, 1).unwrap();
+
+        let result = checker
+            .comprehensive_equivalence_check(&circuit1, &circuit2, 1)
+            .unwrap();
         assert!(!result.equivalent); // H and X don't commute
     }
 
     #[test]
     fn test_fingerprint_matching() {
         let mut checker = AdvancedEquivalenceChecker::new();
-        
+
         let circuit = vec![
             QuantumGate::new(GateType::H, vec![0], None),
             QuantumGate::new(GateType::CNOT, vec![0, 1], None),
         ];
-        
+
         let fp1 = checker.compute_fingerprint(&circuit).unwrap();
         let fp2 = checker.compute_fingerprint(&circuit).unwrap();
-        
+
         assert_eq!(fp1, fp2);
     }
 
     #[test]
     fn test_svd_based_comparison() {
         let checker = AdvancedEquivalenceChecker::new();
-        
+
         let circuit1 = vec![QuantumGate::new(GateType::X, vec![0], None)];
         let circuit2 = vec![QuantumGate::new(GateType::X, vec![0], None)];
-        
-        let result = checker.svd_based_comparison(&circuit1, &circuit2, 1).unwrap();
+
+        let result = checker
+            .svd_based_comparison(&circuit1, &circuit2, 1)
+            .unwrap();
         assert!(result.equivalent);
         assert!(result.error_measure < 1e-10);
     }
@@ -1036,13 +1106,13 @@ mod tests {
     #[test]
     fn test_canonicalization() {
         let mut checker = AdvancedEquivalenceChecker::new();
-        
+
         // Two X gates should cancel
         let circuit = vec![
             QuantumGate::new(GateType::X, vec![0], None),
             QuantumGate::new(GateType::X, vec![0], None),
         ];
-        
+
         let canonical = checker.canonicalize_circuit(&circuit, 1).unwrap();
         assert_eq!(canonical.len(), 0); // Should be empty after cancellation
     }
@@ -1051,16 +1121,16 @@ mod tests {
     #[ignore = "Skipped: Stub implementations don't properly distinguish non-commuting gates"]
     fn test_commutation_ordering() {
         let mut checker = AdvancedEquivalenceChecker::new();
-        
+
         // Gates on different qubits commute
         let circuit = vec![
             QuantumGate::new(GateType::X, vec![1], None),
             QuantumGate::new(GateType::Z, vec![0], None),
         ];
-        
+
         let mut canonical = circuit.clone();
         checker.apply_canonical_ordering(&mut canonical);
-        
+
         // Should be reordered by gate priority
         assert_eq!(canonical[0].gate_type(), &GateType::Z);
         assert_eq!(canonical[1].gate_type(), &GateType::X);

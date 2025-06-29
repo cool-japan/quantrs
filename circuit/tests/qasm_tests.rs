@@ -219,7 +219,9 @@ fn test_qasm3_round_trip() {
     // Create a circuit
     let mut builder = CircuitBuilder::<3>::new();
     builder.h(Qubit::new(0)).unwrap();
-    builder.rx(Qubit::new(1), std::f64::consts::PI / 4.0).unwrap();
+    builder
+        .rx(Qubit::new(1), std::f64::consts::PI / 4.0)
+        .unwrap();
     builder.cx(Qubit::new(0), Qubit::new(2)).unwrap();
     builder.measure(Qubit::new(0)).unwrap();
     builder.measure(Qubit::new(1)).unwrap();

@@ -5,7 +5,7 @@
 //! theorem proving using SciRS2's formal methods and symbolic computation capabilities.
 
 use crate::builder::Circuit;
-use crate::scirs2_integration::{SciRS2CircuitAnalyzer, AnalyzerConfig, GraphMetrics};
+use crate::scirs2_integration::{AnalyzerConfig, GraphMetrics, SciRS2CircuitAnalyzer};
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use quantrs2_core::{
@@ -142,13 +142,9 @@ pub struct PropertyChecker<const N: usize> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum QuantumProperty<const N: usize> {
     /// Unitarity: U†U = I
-    Unitarity {
-        tolerance: f64,
-    },
+    Unitarity { tolerance: f64 },
     /// Preservation of norm: ||ψ|| = 1
-    NormPreservation {
-        tolerance: f64,
-    },
+    NormPreservation { tolerance: f64 },
     /// Entanglement properties
     Entanglement {
         target_qubits: Vec<usize>,
@@ -162,13 +158,9 @@ pub enum QuantumProperty<const N: usize> {
         threshold: f64,
     },
     /// Gate commutativity
-    Commutativity {
-        gate_pairs: Vec<(usize, usize)>,
-    },
+    Commutativity { gate_pairs: Vec<(usize, usize)> },
     /// Circuit equivalence (reference provided separately)
-    Equivalence {
-        tolerance: f64,
-    },
+    Equivalence { tolerance: f64 },
     /// Custom property with predicate
     Custom {
         name: String,
@@ -313,31 +305,17 @@ pub struct InvariantChecker<const N: usize> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CircuitInvariant<const N: usize> {
     /// Total probability conservation
-    ProbabilityConservation {
-        tolerance: f64,
-    },
+    ProbabilityConservation { tolerance: f64 },
     /// Qubit count invariant
-    QubitCount {
-        expected_count: usize,
-    },
+    QubitCount { expected_count: usize },
     /// Gate count bounds
-    GateCountBounds {
-        min_gates: usize,
-        max_gates: usize,
-    },
+    GateCountBounds { min_gates: usize, max_gates: usize },
     /// Circuit depth bounds
-    DepthBounds {
-        min_depth: usize,
-        max_depth: usize,
-    },
+    DepthBounds { min_depth: usize, max_depth: usize },
     /// Memory usage bounds
-    MemoryBounds {
-        max_memory_bytes: usize,
-    },
+    MemoryBounds { max_memory_bytes: usize },
     /// Execution time bounds
-    TimeBounds {
-        max_execution_time: Duration,
-    },
+    TimeBounds { max_execution_time: Duration },
     /// Custom invariant
     Custom {
         name: String,
@@ -411,9 +389,7 @@ pub enum QuantumTheorem<const N: usize> {
         input_states: Vec<Array1<Complex64>>,
     },
     /// Teleportation protocol correctness
-    Teleportation {
-        input_state: Array1<Complex64>,
-    },
+    Teleportation { input_state: Array1<Complex64> },
     /// Bell inequality violation
     BellInequality {
         measurement_settings: Vec<(f64, f64)>,
@@ -449,7 +425,10 @@ pub enum ErrorModel {
     /// Amplitude damping
     AmplitudeDamping { gamma: f64 },
     /// Custom error model
-    Custom { description: String, parameters: HashMap<String, f64> },
+    Custom {
+        description: String,
+        parameters: HashMap<String, f64>,
+    },
 }
 
 /// Expected output for algorithm verification
@@ -629,7 +608,10 @@ pub enum TemporalProperty {
     /// Next property
     Next { property: String },
     /// Until property
-    Until { property1: String, property2: String },
+    Until {
+        property1: String,
+        property2: String,
+    },
     /// Liveness property
     Liveness { property: String },
     /// Safety property
@@ -1228,7 +1210,9 @@ impl<const N: usize> QuantumVerifier<N> {
         // Theorem proving
         if self.config.enable_theorem_proving {
             results.theorem_results = self.prove_theorems()?;
-            results.statistics.theorems_proved = results.theorem_results.iter()
+            results.statistics.theorems_proved = results
+                .theorem_results
+                .iter()
                 .filter(|r| r.proof_status == ProofStatus::Proved)
                 .count();
         }
@@ -1331,7 +1315,7 @@ impl<const N: usize> QuantumVerifier<N> {
 
     /// Calculate overall success rate
     fn calculate_success_rate(&self, results: &VerificationResult) -> f64 {
-        let total_checks = results.property_results.len() 
+        let total_checks = results.property_results.len()
             + results.invariant_results.len()
             + results.theorem_results.len()
             + results.model_results.len();
@@ -1340,14 +1324,26 @@ impl<const N: usize> QuantumVerifier<N> {
             return 0.0;
         }
 
-        let successful_checks = results.property_results.iter()
-            .filter(|r| r.result == VerificationOutcome::Satisfied).count()
-            + results.invariant_results.iter()
-            .filter(|r| r.result == VerificationOutcome::Satisfied).count()
-            + results.theorem_results.iter()
-            .filter(|r| r.proof_status == ProofStatus::Proved).count()
-            + results.model_results.iter()
-            .filter(|r| r.result == VerificationOutcome::Satisfied).count();
+        let successful_checks = results
+            .property_results
+            .iter()
+            .filter(|r| r.result == VerificationOutcome::Satisfied)
+            .count()
+            + results
+                .invariant_results
+                .iter()
+                .filter(|r| r.result == VerificationOutcome::Satisfied)
+                .count()
+            + results
+                .theorem_results
+                .iter()
+                .filter(|r| r.proof_status == ProofStatus::Proved)
+                .count()
+            + results
+                .model_results
+                .iter()
+                .filter(|r| r.result == VerificationOutcome::Satisfied)
+                .count();
 
         successful_checks as f64 / total_checks as f64
     }
@@ -1379,10 +1375,9 @@ impl<const N: usize> QuantumVerifier<N> {
         let avg = confidences.iter().sum::<f64>() / confidences.len() as f64;
         let min = confidences.iter().fold(f64::INFINITY, |a, &b| a.min(b));
         let max = confidences.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-        
-        let variance = confidences.iter()
-            .map(|&x| (x - avg).powi(2))
-            .sum::<f64>() / confidences.len() as f64;
+
+        let variance =
+            confidences.iter().map(|&x| (x - avg).powi(2)).sum::<f64>() / confidences.len() as f64;
         let std_dev = variance.sqrt();
 
         ConfidenceStatistics {
@@ -1395,23 +1390,39 @@ impl<const N: usize> QuantumVerifier<N> {
 
     /// Determine overall verification status
     fn determine_overall_status(&self, results: &VerificationResult) -> VerificationStatus {
-        let has_failures = results.property_results.iter()
+        let has_failures = results
+            .property_results
+            .iter()
             .any(|r| r.result == VerificationOutcome::Violated)
-            || results.invariant_results.iter()
-            .any(|r| r.result == VerificationOutcome::Violated)
-            || results.theorem_results.iter()
-            .any(|r| r.proof_status == ProofStatus::Disproved)
-            || results.model_results.iter()
-            .any(|r| r.result == VerificationOutcome::Violated);
+            || results
+                .invariant_results
+                .iter()
+                .any(|r| r.result == VerificationOutcome::Violated)
+            || results
+                .theorem_results
+                .iter()
+                .any(|r| r.proof_status == ProofStatus::Disproved)
+            || results
+                .model_results
+                .iter()
+                .any(|r| r.result == VerificationOutcome::Violated);
 
-        let has_timeouts = results.property_results.iter()
+        let has_timeouts = results
+            .property_results
+            .iter()
             .any(|r| r.result == VerificationOutcome::Timeout)
-            || results.invariant_results.iter()
-            .any(|r| r.result == VerificationOutcome::Timeout)
-            || results.theorem_results.iter()
-            .any(|r| r.proof_status == ProofStatus::Timeout)
-            || results.model_results.iter()
-            .any(|r| r.result == VerificationOutcome::Timeout);
+            || results
+                .invariant_results
+                .iter()
+                .any(|r| r.result == VerificationOutcome::Timeout)
+            || results
+                .theorem_results
+                .iter()
+                .any(|r| r.proof_status == ProofStatus::Timeout)
+            || results
+                .model_results
+                .iter()
+                .any(|r| r.result == VerificationOutcome::Timeout);
 
         if has_failures {
             VerificationStatus::Failed
@@ -1482,13 +1493,17 @@ impl<const N: usize> QuantumVerifier<N> {
     }
 
     /// Construct formal proof
-    fn construct_formal_proof(&self, results: &VerificationResult) -> QuantRS2Result<Option<FormalProof>> {
+    fn construct_formal_proof(
+        &self,
+        results: &VerificationResult,
+    ) -> QuantRS2Result<Option<FormalProof>> {
         // This is a simplified implementation
         // In practice, this would construct a formal proof tree
         // from the verification results
-        
-        if results.statistics.success_rate >= 0.99 && 
-           results.statistics.confidence_stats.average_confidence >= 0.95 {
+
+        if results.statistics.success_rate >= 0.99
+            && results.statistics.confidence_stats.average_confidence >= 0.95
+        {
             Ok(Some(FormalProof {
                 proof_tree: ProofTree {
                     root: ProofNode {
@@ -1557,10 +1572,16 @@ impl<const N: usize> PropertyChecker<N> {
             QuantumProperty::NormPreservation { tolerance } => {
                 self.verify_norm_preservation(circuit, *tolerance)?
             }
-            QuantumProperty::Entanglement { target_qubits, entanglement_type, threshold } => {
-                self.verify_entanglement(circuit, target_qubits, entanglement_type, *threshold)?
-            }
-            QuantumProperty::Superposition { target_qubits, superposition_type, threshold } => {
+            QuantumProperty::Entanglement {
+                target_qubits,
+                entanglement_type,
+                threshold,
+            } => self.verify_entanglement(circuit, target_qubits, entanglement_type, *threshold)?,
+            QuantumProperty::Superposition {
+                target_qubits,
+                superposition_type,
+                threshold,
+            } => {
                 self.verify_superposition(circuit, target_qubits, superposition_type, *threshold)?
             }
             QuantumProperty::Commutativity { gate_pairs } => {
@@ -1569,9 +1590,11 @@ impl<const N: usize> PropertyChecker<N> {
             QuantumProperty::Equivalence { tolerance } => {
                 self.verify_equivalence(circuit, *tolerance)?
             }
-            QuantumProperty::Custom { name, description: _, predicate } => {
-                self.verify_custom_property(circuit, name, predicate)?
-            }
+            QuantumProperty::Custom {
+                name,
+                description: _,
+                predicate,
+            } => self.verify_custom_property(circuit, name, predicate)?,
         };
 
         Ok(PropertyVerificationResult {
@@ -1593,18 +1616,16 @@ impl<const N: usize> PropertyChecker<N> {
     ) -> QuantRS2Result<(String, VerificationOutcome, Vec<NumericalEvidence>)> {
         // Simplified unitarity check
         // In practice, this would compute the circuit unitary and check U†U = I
-        
+
         let property_name = "Unitarity".to_string();
         let result = VerificationOutcome::Satisfied; // Simplified
-        let evidence = vec![
-            NumericalEvidence {
-                evidence_type: EvidenceType::MatrixNorm,
-                measured_value: 1.0,
-                expected_value: 1.0,
-                deviation: 0.0,
-                p_value: None,
-            }
-        ];
+        let evidence = vec![NumericalEvidence {
+            evidence_type: EvidenceType::MatrixNorm,
+            measured_value: 1.0,
+            expected_value: 1.0,
+            deviation: 0.0,
+            p_value: None,
+        }];
 
         Ok((property_name, result, evidence))
     }
@@ -1733,29 +1754,34 @@ impl<const N: usize> InvariantChecker<N> {
     ) -> QuantRS2Result<InvariantCheckResult> {
         let start_time = Instant::now();
 
-        let (invariant_name, result, measured_value, expected_value, violation_severity) = match invariant {
-            CircuitInvariant::ProbabilityConservation { tolerance } => {
-                self.check_probability_conservation(circuit, *tolerance)?
-            }
-            CircuitInvariant::QubitCount { expected_count } => {
-                self.check_qubit_count(circuit, *expected_count)?
-            }
-            CircuitInvariant::GateCountBounds { min_gates, max_gates } => {
-                self.check_gate_count_bounds(circuit, *min_gates, *max_gates)?
-            }
-            CircuitInvariant::DepthBounds { min_depth, max_depth } => {
-                self.check_depth_bounds(circuit, *min_depth, *max_depth)?
-            }
-            CircuitInvariant::MemoryBounds { max_memory_bytes } => {
-                self.check_memory_bounds(circuit, *max_memory_bytes)?
-            }
-            CircuitInvariant::TimeBounds { max_execution_time } => {
-                self.check_time_bounds(circuit, *max_execution_time)?
-            }
-            CircuitInvariant::Custom { name, description: _, checker } => {
-                self.check_custom_invariant(circuit, name, checker)?
-            }
-        };
+        let (invariant_name, result, measured_value, expected_value, violation_severity) =
+            match invariant {
+                CircuitInvariant::ProbabilityConservation { tolerance } => {
+                    self.check_probability_conservation(circuit, *tolerance)?
+                }
+                CircuitInvariant::QubitCount { expected_count } => {
+                    self.check_qubit_count(circuit, *expected_count)?
+                }
+                CircuitInvariant::GateCountBounds {
+                    min_gates,
+                    max_gates,
+                } => self.check_gate_count_bounds(circuit, *min_gates, *max_gates)?,
+                CircuitInvariant::DepthBounds {
+                    min_depth,
+                    max_depth,
+                } => self.check_depth_bounds(circuit, *min_depth, *max_depth)?,
+                CircuitInvariant::MemoryBounds { max_memory_bytes } => {
+                    self.check_memory_bounds(circuit, *max_memory_bytes)?
+                }
+                CircuitInvariant::TimeBounds { max_execution_time } => {
+                    self.check_time_bounds(circuit, *max_execution_time)?
+                }
+                CircuitInvariant::Custom {
+                    name,
+                    description: _,
+                    checker,
+                } => self.check_custom_invariant(circuit, name, checker)?,
+            };
 
         Ok(InvariantCheckResult {
             invariant_name,
@@ -1772,14 +1798,26 @@ impl<const N: usize> InvariantChecker<N> {
         &self,
         circuit: &Circuit<N>,
         tolerance: f64,
-    ) -> QuantRS2Result<(String, VerificationOutcome, f64, f64, Option<ViolationSeverity>)> {
+    ) -> QuantRS2Result<(
+        String,
+        VerificationOutcome,
+        f64,
+        f64,
+        Option<ViolationSeverity>,
+    )> {
         let invariant_name = "Probability Conservation".to_string();
         let measured_value = 1.0; // Simplified
         let expected_value = 1.0;
         let result = VerificationOutcome::Satisfied;
         let violation_severity = None;
 
-        Ok((invariant_name, result, measured_value, expected_value, violation_severity))
+        Ok((
+            invariant_name,
+            result,
+            measured_value,
+            expected_value,
+            violation_severity,
+        ))
     }
 
     /// Check qubit count
@@ -1787,7 +1825,13 @@ impl<const N: usize> InvariantChecker<N> {
         &self,
         circuit: &Circuit<N>,
         expected_count: usize,
-    ) -> QuantRS2Result<(String, VerificationOutcome, f64, f64, Option<ViolationSeverity>)> {
+    ) -> QuantRS2Result<(
+        String,
+        VerificationOutcome,
+        f64,
+        f64,
+        Option<ViolationSeverity>,
+    )> {
         let invariant_name = "Qubit Count".to_string();
         let measured_value = N as f64;
         let expected_value = expected_count as f64;
@@ -1802,7 +1846,13 @@ impl<const N: usize> InvariantChecker<N> {
             None
         };
 
-        Ok((invariant_name, result, measured_value, expected_value, violation_severity))
+        Ok((
+            invariant_name,
+            result,
+            measured_value,
+            expected_value,
+            violation_severity,
+        ))
     }
 
     /// Check gate count bounds
@@ -1811,25 +1861,37 @@ impl<const N: usize> InvariantChecker<N> {
         circuit: &Circuit<N>,
         min_gates: usize,
         max_gates: usize,
-    ) -> QuantRS2Result<(String, VerificationOutcome, f64, f64, Option<ViolationSeverity>)> {
+    ) -> QuantRS2Result<(
+        String,
+        VerificationOutcome,
+        f64,
+        f64,
+        Option<ViolationSeverity>,
+    )> {
         let invariant_name = "Gate Count Bounds".to_string();
         let gate_count = circuit.num_gates();
         let measured_value = gate_count as f64;
         let expected_value = ((min_gates + max_gates) / 2) as f64;
-        
+
         let result = if gate_count >= min_gates && gate_count <= max_gates {
             VerificationOutcome::Satisfied
         } else {
             VerificationOutcome::Violated
         };
-        
+
         let violation_severity = if result == VerificationOutcome::Violated {
             Some(ViolationSeverity::Moderate)
         } else {
             None
         };
 
-        Ok((invariant_name, result, measured_value, expected_value, violation_severity))
+        Ok((
+            invariant_name,
+            result,
+            measured_value,
+            expected_value,
+            violation_severity,
+        ))
     }
 
     /// Check circuit depth bounds
@@ -1838,25 +1900,37 @@ impl<const N: usize> InvariantChecker<N> {
         circuit: &Circuit<N>,
         min_depth: usize,
         max_depth: usize,
-    ) -> QuantRS2Result<(String, VerificationOutcome, f64, f64, Option<ViolationSeverity>)> {
+    ) -> QuantRS2Result<(
+        String,
+        VerificationOutcome,
+        f64,
+        f64,
+        Option<ViolationSeverity>,
+    )> {
         let invariant_name = "Depth Bounds".to_string();
         let circuit_depth = circuit.calculate_depth();
         let measured_value = circuit_depth as f64;
         let expected_value = ((min_depth + max_depth) / 2) as f64;
-        
+
         let result = if circuit_depth >= min_depth && circuit_depth <= max_depth {
             VerificationOutcome::Satisfied
         } else {
             VerificationOutcome::Violated
         };
-        
+
         let violation_severity = if result == VerificationOutcome::Violated {
             Some(ViolationSeverity::Moderate)
         } else {
             None
         };
 
-        Ok((invariant_name, result, measured_value, expected_value, violation_severity))
+        Ok((
+            invariant_name,
+            result,
+            measured_value,
+            expected_value,
+            violation_severity,
+        ))
     }
 
     /// Check memory bounds
@@ -1864,25 +1938,37 @@ impl<const N: usize> InvariantChecker<N> {
         &self,
         circuit: &Circuit<N>,
         max_memory_bytes: usize,
-    ) -> QuantRS2Result<(String, VerificationOutcome, f64, f64, Option<ViolationSeverity>)> {
+    ) -> QuantRS2Result<(
+        String,
+        VerificationOutcome,
+        f64,
+        f64,
+        Option<ViolationSeverity>,
+    )> {
         let invariant_name = "Memory Bounds".to_string();
         let estimated_memory = std::mem::size_of::<Circuit<N>>(); // Simplified
         let measured_value = estimated_memory as f64;
         let expected_value = max_memory_bytes as f64;
-        
+
         let result = if estimated_memory <= max_memory_bytes {
             VerificationOutcome::Satisfied
         } else {
             VerificationOutcome::Violated
         };
-        
+
         let violation_severity = if result == VerificationOutcome::Violated {
             Some(ViolationSeverity::High)
         } else {
             None
         };
 
-        Ok((invariant_name, result, measured_value, expected_value, violation_severity))
+        Ok((
+            invariant_name,
+            result,
+            measured_value,
+            expected_value,
+            violation_severity,
+        ))
     }
 
     /// Check time bounds
@@ -1890,25 +1976,37 @@ impl<const N: usize> InvariantChecker<N> {
         &self,
         circuit: &Circuit<N>,
         max_execution_time: Duration,
-    ) -> QuantRS2Result<(String, VerificationOutcome, f64, f64, Option<ViolationSeverity>)> {
+    ) -> QuantRS2Result<(
+        String,
+        VerificationOutcome,
+        f64,
+        f64,
+        Option<ViolationSeverity>,
+    )> {
         let invariant_name = "Time Bounds".to_string();
         let estimated_time = Duration::from_millis(circuit.num_gates() as u64); // Simplified
         let measured_value = estimated_time.as_secs_f64();
         let expected_value = max_execution_time.as_secs_f64();
-        
+
         let result = if estimated_time <= max_execution_time {
             VerificationOutcome::Satisfied
         } else {
             VerificationOutcome::Violated
         };
-        
+
         let violation_severity = if result == VerificationOutcome::Violated {
             Some(ViolationSeverity::High)
         } else {
             None
         };
 
-        Ok((invariant_name, result, measured_value, expected_value, violation_severity))
+        Ok((
+            invariant_name,
+            result,
+            measured_value,
+            expected_value,
+            violation_severity,
+        ))
     }
 
     /// Check custom invariant
@@ -1917,14 +2015,26 @@ impl<const N: usize> InvariantChecker<N> {
         circuit: &Circuit<N>,
         name: &str,
         checker: &CustomInvariantChecker<N>,
-    ) -> QuantRS2Result<(String, VerificationOutcome, f64, f64, Option<ViolationSeverity>)> {
+    ) -> QuantRS2Result<(
+        String,
+        VerificationOutcome,
+        f64,
+        f64,
+        Option<ViolationSeverity>,
+    )> {
         let invariant_name = name.to_string();
         let measured_value = 1.0; // Simplified
         let expected_value = checker.expected_value;
         let result = VerificationOutcome::Satisfied; // Simplified
         let violation_severity = None;
 
-        Ok((invariant_name, result, measured_value, expected_value, violation_severity))
+        Ok((
+            invariant_name,
+            result,
+            measured_value,
+            expected_value,
+            violation_severity,
+        ))
     }
 }
 
@@ -1980,18 +2090,28 @@ impl<const N: usize> TheoremProver<N> {
             QuantumTheorem::Teleportation { input_state } => {
                 self.prove_teleportation(circuit, input_state)?
             }
-            QuantumTheorem::BellInequality { measurement_settings } => {
-                self.prove_bell_inequality(circuit, measurement_settings)?
-            }
-            QuantumTheorem::ErrorCorrection { code_distance, error_model } => {
-                self.prove_error_correction(circuit, *code_distance, error_model)?
-            }
-            QuantumTheorem::AlgorithmCorrectness { algorithm_name, input_parameters, expected_output } => {
-                self.prove_algorithm_correctness(circuit, algorithm_name, input_parameters, expected_output)?
-            }
-            QuantumTheorem::Custom { name, statement: _, proof_obligations } => {
-                self.prove_custom_theorem(circuit, name, proof_obligations)?
-            }
+            QuantumTheorem::BellInequality {
+                measurement_settings,
+            } => self.prove_bell_inequality(circuit, measurement_settings)?,
+            QuantumTheorem::ErrorCorrection {
+                code_distance,
+                error_model,
+            } => self.prove_error_correction(circuit, *code_distance, error_model)?,
+            QuantumTheorem::AlgorithmCorrectness {
+                algorithm_name,
+                input_parameters,
+                expected_output,
+            } => self.prove_algorithm_correctness(
+                circuit,
+                algorithm_name,
+                input_parameters,
+                expected_output,
+            )?,
+            QuantumTheorem::Custom {
+                name,
+                statement: _,
+                proof_obligations,
+            } => self.prove_custom_theorem(circuit, name, proof_obligations)?,
         };
 
         Ok(TheoremResult {
@@ -2015,7 +2135,12 @@ impl<const N: usize> TheoremProver<N> {
         &self,
         circuit: &Circuit<N>,
         input_states: &[Array1<Complex64>],
-    ) -> QuantRS2Result<(String, ProofStatus, Option<FormalProof>, Option<Counterexample>)> {
+    ) -> QuantRS2Result<(
+        String,
+        ProofStatus,
+        Option<FormalProof>,
+        Option<Counterexample>,
+    )> {
         let theorem_name = "No-Cloning Theorem".to_string();
         let proof_status = ProofStatus::Proved; // Simplified
         let proof = Some(FormalProof {
@@ -2043,7 +2168,12 @@ impl<const N: usize> TheoremProver<N> {
         &self,
         circuit: &Circuit<N>,
         input_state: &Array1<Complex64>,
-    ) -> QuantRS2Result<(String, ProofStatus, Option<FormalProof>, Option<Counterexample>)> {
+    ) -> QuantRS2Result<(
+        String,
+        ProofStatus,
+        Option<FormalProof>,
+        Option<Counterexample>,
+    )> {
         let theorem_name = "Quantum Teleportation".to_string();
         let proof_status = ProofStatus::Proved; // Simplified
         let proof = None;
@@ -2057,7 +2187,12 @@ impl<const N: usize> TheoremProver<N> {
         &self,
         circuit: &Circuit<N>,
         measurement_settings: &[(f64, f64)],
-    ) -> QuantRS2Result<(String, ProofStatus, Option<FormalProof>, Option<Counterexample>)> {
+    ) -> QuantRS2Result<(
+        String,
+        ProofStatus,
+        Option<FormalProof>,
+        Option<Counterexample>,
+    )> {
         let theorem_name = "Bell Inequality Violation".to_string();
         let proof_status = ProofStatus::Proved; // Simplified
         let proof = None;
@@ -2072,7 +2207,12 @@ impl<const N: usize> TheoremProver<N> {
         circuit: &Circuit<N>,
         code_distance: usize,
         error_model: &ErrorModel,
-    ) -> QuantRS2Result<(String, ProofStatus, Option<FormalProof>, Option<Counterexample>)> {
+    ) -> QuantRS2Result<(
+        String,
+        ProofStatus,
+        Option<FormalProof>,
+        Option<Counterexample>,
+    )> {
         let theorem_name = "Error Correction".to_string();
         let proof_status = ProofStatus::Proved; // Simplified
         let proof = None;
@@ -2088,7 +2228,12 @@ impl<const N: usize> TheoremProver<N> {
         algorithm_name: &str,
         input_parameters: &HashMap<String, f64>,
         expected_output: &ExpectedOutput,
-    ) -> QuantRS2Result<(String, ProofStatus, Option<FormalProof>, Option<Counterexample>)> {
+    ) -> QuantRS2Result<(
+        String,
+        ProofStatus,
+        Option<FormalProof>,
+        Option<Counterexample>,
+    )> {
         let theorem_name = format!("Algorithm Correctness: {}", algorithm_name);
         let proof_status = ProofStatus::Proved; // Simplified
         let proof = None;
@@ -2103,7 +2248,12 @@ impl<const N: usize> TheoremProver<N> {
         circuit: &Circuit<N>,
         name: &str,
         proof_obligations: &[ProofObligation],
-    ) -> QuantRS2Result<(String, ProofStatus, Option<FormalProof>, Option<Counterexample>)> {
+    ) -> QuantRS2Result<(
+        String,
+        ProofStatus,
+        Option<FormalProof>,
+        Option<Counterexample>,
+    )> {
         let theorem_name = name.to_string();
         let proof_status = ProofStatus::Proved; // Simplified
         let proof = None;
@@ -2190,8 +2340,8 @@ impl<const N: usize> SymbolicExecutor<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use quantrs2_core::gate::single::Hadamard;
     use quantrs2_core::gate::multi::CNOT;
+    use quantrs2_core::gate::single::Hadamard;
 
     #[test]
     fn test_verifier_creation() {
@@ -2204,7 +2354,7 @@ mod tests {
     fn test_property_addition() {
         let circuit = Circuit::<2>::new();
         let mut verifier = QuantumVerifier::new(circuit);
-        
+
         let property = QuantumProperty::Unitarity { tolerance: 1e-12 };
         verifier.add_property(property).unwrap();
     }
@@ -2213,7 +2363,7 @@ mod tests {
     fn test_invariant_addition() {
         let circuit = Circuit::<2>::new();
         let mut verifier = QuantumVerifier::new(circuit);
-        
+
         let invariant = CircuitInvariant::QubitCount { expected_count: 2 };
         verifier.add_invariant(invariant).unwrap();
     }
@@ -2222,16 +2372,28 @@ mod tests {
     fn test_verification_process() {
         let mut circuit = Circuit::<2>::new();
         circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(CNOT { control: QubitId(0), target: QubitId(1) }).unwrap();
-        
+        circuit
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .unwrap();
+
         let mut verifier = QuantumVerifier::new(circuit);
-        
+
         // Add some properties and invariants
-        verifier.add_property(QuantumProperty::Unitarity { tolerance: 1e-12 }).unwrap();
-        verifier.add_invariant(CircuitInvariant::QubitCount { expected_count: 2 }).unwrap();
-        
+        verifier
+            .add_property(QuantumProperty::Unitarity { tolerance: 1e-12 })
+            .unwrap();
+        verifier
+            .add_invariant(CircuitInvariant::QubitCount { expected_count: 2 })
+            .unwrap();
+
         let result = verifier.verify_circuit().unwrap();
-        assert!(matches!(result.status, VerificationStatus::Verified | VerificationStatus::Unknown));
+        assert!(matches!(
+            result.status,
+            VerificationStatus::Verified | VerificationStatus::Unknown
+        ));
     }
 
     #[test]
@@ -2239,7 +2401,7 @@ mod tests {
         let circuit = Circuit::<2>::new();
         let checker = PropertyChecker::new();
         let config = VerifierConfig::default();
-        
+
         let results = checker.verify_all_properties(&circuit, &config).unwrap();
         assert!(results.is_empty()); // No properties added
     }
@@ -2249,7 +2411,7 @@ mod tests {
         let circuit = Circuit::<2>::new();
         let checker = InvariantChecker::new();
         let config = VerifierConfig::default();
-        
+
         let results = checker.check_all_invariants(&circuit, &config).unwrap();
         assert!(results.is_empty()); // No invariants added
     }

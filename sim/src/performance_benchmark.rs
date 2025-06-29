@@ -11,10 +11,7 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use quantrs2_circuit::builder::{Circuit, Simulator};
-use quantrs2_core::{
-    error::QuantRS2Result,
-    qubit::QubitId,
-};
+use quantrs2_core::{error::QuantRS2Result, platform::PlatformCapabilities, qubit::QubitId};
 
 use crate::circuit_optimization::{CircuitOptimizer, OptimizationConfig};
 use crate::optimized_simd;
@@ -865,17 +862,44 @@ impl QuantumBenchmarkSuite {
 
     /// Gather system information
     fn gather_system_info() -> SystemInfo {
+        let platform_caps = PlatformCapabilities::detect();
+        let mut simd_support = Vec::new();
+
+        // Detect actual SIMD support
+        if platform_caps.cpu.simd.sse2 {
+            simd_support.push("SSE2".to_string());
+        }
+        if platform_caps.cpu.simd.sse3 {
+            simd_support.push("SSE3".to_string());
+        }
+        if platform_caps.cpu.simd.avx {
+            simd_support.push("AVX".to_string());
+        }
+        if platform_caps.cpu.simd.avx2 {
+            simd_support.push("AVX2".to_string());
+        }
+        if platform_caps.cpu.simd.avx512 {
+            simd_support.push("AVX512".to_string());
+        }
+        if platform_caps.cpu.simd.neon {
+            simd_support.push("NEON".to_string());
+        }
+
         SystemInfo {
-            cpu_info: "Modern CPU".to_string(), // Would use system detection
-            total_memory_gb: 16.0,              // Would use system detection
-            cpu_cores: num_cpus::get(),
+            cpu_info: format!(
+                "{} - {}",
+                platform_caps.cpu.vendor, platform_caps.cpu.model_name
+            ),
+            total_memory_gb: (platform_caps.memory.total_memory as f64)
+                / (1024.0 * 1024.0 * 1024.0),
+            cpu_cores: platform_caps.cpu.logical_cores,
             rust_version: env!("CARGO_PKG_RUST_VERSION").to_string(),
             optimization_level: if cfg!(debug_assertions) {
                 "Debug".to_string()
             } else {
                 "Release".to_string()
             },
-            simd_support: vec!["SSE2".to_string(), "AVX".to_string()], // Would detect actual support
+            simd_support,
         }
     }
 

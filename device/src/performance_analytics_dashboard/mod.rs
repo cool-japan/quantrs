@@ -24,7 +24,18 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use quantrs2_circuit::prelude::*;
+// Import specific types to avoid naming conflicts
+use quantrs2_circuit::prelude::{
+    PerformanceAnalyzer,
+    PerformanceSnapshot,
+    PerformanceSummary,
+    ProfilerConfig as ProfilerConfiguration,
+    // Avoid importing RealtimeMetrics, AnomalyDetectionAlgorithm, StorageConfig, StorageBackend
+    // to prevent conflicts with local types
+    ProfilingReport,
+    ProfilingSession,
+    QuantumProfiler,
+};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,

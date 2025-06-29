@@ -902,7 +902,7 @@ impl QuantumApplicationLayer {
         let service_manager = Arc::new(RwLock::new(QuantumServiceManager::new()));
         let active_sessions = Arc::new(RwLock::new(HashMap::new()));
         let resource_manager = Arc::new(RwLock::new(QuantumResourceManager::new()));
-        
+
         Ok(Self {
             config: config.clone(),
             application_registry,
@@ -912,60 +912,60 @@ impl QuantumApplicationLayer {
             resource_manager,
         })
     }
-    
+
     /// Initialize the application layer
     pub async fn initialize(&mut self) -> DeviceResult<()> {
         // Initialize application registry and services
         Ok(())
     }
-    
+
     /// Process outgoing data
     pub async fn process_outgoing_data(&self, data: QuantumData) -> DeviceResult<QuantumData> {
         // Add application-layer metadata
         let mut processed_data = data;
         processed_data.metadata.insert("layer".to_string(), "application".to_string());
-        processed_data.metadata.insert("timestamp".to_string(), 
+        processed_data.metadata.insert("timestamp".to_string(),
             SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap_or(Duration::from_secs(0)).as_secs().to_string());
-        
+
         Ok(processed_data)
     }
-    
+
     /// Process incoming data
     pub async fn process_incoming_data(&self, data: QuantumData) -> DeviceResult<QuantumData> {
         // Process application-layer data
         let mut processed_data = data;
         processed_data.metadata.insert("processed_by".to_string(), "quantum_application_layer".to_string());
-        
+
         Ok(processed_data)
     }
-    
+
     /// Register a new application
     pub async fn register_application(&self, app: RegisteredApplication) -> DeviceResult<()> {
         let mut registry = self.application_registry.write().await;
         registry.applications.insert(app.app_id.clone(), app);
         Ok(())
     }
-    
+
     /// Discover available services
     pub async fn discover_services(&self, service_type: ApplicationType) -> DeviceResult<Vec<ServiceEntry>> {
         let registry = self.application_registry.read().await;
         let mut matching_services = Vec::new();
-        
+
         for service in registry.service_catalog.services.values() {
             // Match service type (simplified logic)
             if service.category.contains(&format!("{:?}", service_type)) {
                 matching_services.push(service.clone());
             }
         }
-        
+
         Ok(matching_services)
     }
-    
+
     /// Create application session
     pub async fn create_session(&self, config: SessionConfig) -> DeviceResult<String> {
         let session_id = Uuid::new_v4().to_string();
-        
+
         let session = ApplicationSession {
             session_id: session_id.clone(),
             application_id: config.application_id,
@@ -983,21 +983,21 @@ impl QuantumApplicationLayer {
             last_activity: SystemTime::now(),
             session_data: HashMap::new(),
         };
-        
+
         self.active_sessions.write().await.insert(session_id.clone(), session);
         Ok(session_id)
     }
-    
+
     /// Allocate quantum resources
     pub async fn allocate_resources(&self, session_id: &str, requirements: ResourceRequirements) -> DeviceResult<ResourceAllocation> {
         let resource_manager = self.resource_manager.read().await;
-        
+
         // Find suitable resource
         for (resource_id, resource) in &resource_manager.resources {
             if resource.capacity.total_qubits >= requirements.min_qubits &&
                resource.capacity.fidelity >= requirements.min_fidelity &&
                resource.capacity.coherence_time >= requirements.min_coherence_time {
-                
+
                 let allocation = ResourceAllocation {
                     allocation_id: Uuid::new_v4().to_string(),
                     session_id: session_id.to_string(),
@@ -1008,14 +1008,14 @@ impl QuantumApplicationLayer {
                     priority: AllocationPriority::Normal,
                     status: AllocationStatus::Active,
                 };
-                
+
                 return Ok(allocation);
             }
         }
-        
+
         Err(DeviceError::ResourceUnavailable("No suitable quantum resource available".to_string()))
     }
-    
+
     /// Execute quantum operation
     pub async fn execute_operation(&self, session_id: &str, operation: &str, parameters: HashMap<String, serde_json::Value>) -> DeviceResult<ApplicationResponse> {
         let request = ApplicationRequest {
@@ -1027,7 +1027,7 @@ impl QuantumApplicationLayer {
             priority: RequestPriority::Normal,
             deadline: None,
         };
-        
+
         // Find appropriate protocol handler
         if let Some(handler) = self.protocol_handlers.get(operation) {
             handler.handle_request(request).await
@@ -1042,18 +1042,18 @@ impl QuantumApplicationLayer {
             })
         }
     }
-    
+
     /// Cleanup session
     pub async fn cleanup_session(&self, session_id: &str) -> DeviceResult<()> {
         self.active_sessions.write().await.remove(session_id);
-        
+
         // Cleanup associated resources
         let mut resource_manager = self.resource_manager.write().await;
         resource_manager.allocations.retain(|_, allocation| allocation.session_id != session_id);
-        
+
         Ok(())
     }
-    
+
     /// Shutdown application layer
     pub async fn shutdown(&self) -> DeviceResult<()> {
         // Cleanup all sessions and resources

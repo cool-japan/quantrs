@@ -3,9 +3,9 @@
 //! This module provides CUDA kernel management, compilation,
 //! and execution for GPU-accelerated quantum simulations.
 
+use crate::prelude::SimulatorError;
 use ndarray::Array1;
 use num_complex::Complex64;
-use crate::prelude::SimulatorError;
 
 #[cfg(feature = "advanced_math")]
 use std::collections::HashMap;

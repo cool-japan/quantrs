@@ -12,6 +12,7 @@ use quantrs2_circuit::prelude::*;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
+    platform::PlatformCapabilities,
     qubit::QubitId,
 };
 
@@ -1476,7 +1477,7 @@ impl Default for ParallelizationConfig {
 impl Default for ResourceAllocationConfig {
     fn default() -> Self {
         Self {
-            max_concurrent_circuits: num_cpus::get(),
+            max_concurrent_circuits: PlatformCapabilities::detect().cpu.logical_cores,
             max_concurrent_gates: 16,
             cpu_allocation: CpuAllocationStrategy::PercentageCores(0.8),
             memory_limits: MemoryLimits::default(),
@@ -1612,8 +1613,8 @@ impl Default for LoadBalancingParams {
 impl Default for ThreadPoolConfig {
     fn default() -> Self {
         Self {
-            core_threads: num_cpus::get(),
-            max_threads: num_cpus::get() * 2,
+            core_threads: PlatformCapabilities::detect().cpu.logical_cores,
+            max_threads: PlatformCapabilities::detect().cpu.logical_cores * 2,
             keep_alive_time: Duration::from_secs(60),
             thread_priority: ThreadPriority::Normal,
             affinity_config: ThreadAffinityConfig::default(),

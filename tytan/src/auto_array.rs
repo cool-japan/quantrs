@@ -8,11 +8,11 @@
 #[cfg(feature = "dwave")]
 use ndarray::{Array, ArrayD, IxDyn};
 #[cfg(feature = "dwave")]
+use quantrs2_symengine::Expression as SymEngineExpression;
+#[cfg(feature = "dwave")]
 use regex::Regex;
 #[cfg(feature = "dwave")]
 use std::collections::HashMap;
-#[cfg(feature = "dwave")]
-use quantrs2_symengine::Expression as SymEngineExpression;
 use thiserror::Error;
 
 #[cfg(feature = "dwave")]

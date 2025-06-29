@@ -7,15 +7,10 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-#[cfg(feature = "scirs")]
-use scirs2_core::gpu;
-
-// Stubs for missing GPU functionality
-#[cfg(feature = "scirs")]
-struct DeviceInfo;
-
-#[cfg(feature = "scirs")]
-struct GpuContext;
+use scirs2_core::gpu::{
+    GpuBackend, GpuDevice, GpuProfiler as SciRS2GpuProfiler, GpuPlatform,
+    GpuPerformanceMetrics as SciRS2PerformanceMetrics, GpuMemoryInfo, GpuTelemetry,
+};
 
 /// Performance metrics for GPU operations
 #[derive(Default, Clone, Debug)]
@@ -38,15 +33,18 @@ pub struct GpuPerformanceMetrics {
     pub cache_hit_rate: f64,
 }
 
-/// GPU performance profiler
+/// GPU performance profiler using SciRS2 GPU abstractions
 pub struct GpuProfiler {
     /// Current metrics
     metrics: Arc<Mutex<GpuPerformanceMetrics>>,
+    /// SciRS2 GPU profiler
+    scirs2_profiler: Arc<SciRS2GpuProfiler>,
+    /// GPU device handle
+    device: Arc<GpuDevice>,
+    /// GPU platform info
+    platform: Arc<GpuPlatform>,
     /// Profiling enabled
     enabled: bool,
-    /// Device info
-    #[cfg(feature = "scirs")]
-    device_info: Option<DeviceInfo>,
 }
 
 impl Default for GpuProfiler {

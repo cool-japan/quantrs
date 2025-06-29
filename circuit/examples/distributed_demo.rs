@@ -371,7 +371,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let topologies = vec![
         ("Linear", distributed::TopologyType::Linear),
-        ("2D Grid (3x3)", distributed::TopologyType::Grid2D { rows: 3, cols: 3 }),
+        (
+            "2D Grid (3x3)",
+            distributed::TopologyType::Grid2D { rows: 3, cols: 3 },
+        ),
         ("All-to-all", distributed::TopologyType::AllToAll),
         (
             "Random (70% density)",
@@ -476,7 +479,10 @@ fn create_hardware_backend() -> ExecutionBackend {
                 max_retries: 5,
                 base_delay: 2.0,
                 backoff_strategy: BackoffStrategy::Exponential { multiplier: 2.0 },
-                retryable_errors: vec![distributed::ErrorType::NetworkError, distributed::ErrorType::ServiceUnavailable],
+                retryable_errors: vec![
+                    distributed::ErrorType::NetworkError,
+                    distributed::ErrorType::ServiceUnavailable,
+                ],
             },
         },
     }
@@ -740,7 +746,10 @@ fn create_hybrid_backend() -> ExecutionBackend {
                 max_retries: 3,
                 base_delay: 5.0,
                 backoff_strategy: BackoffStrategy::Exponential { multiplier: 2.0 },
-                retryable_errors: vec![distributed::ErrorType::NetworkError, distributed::ErrorType::ServiceUnavailable],
+                retryable_errors: vec![
+                    distributed::ErrorType::NetworkError,
+                    distributed::ErrorType::ServiceUnavailable,
+                ],
             },
         },
     }

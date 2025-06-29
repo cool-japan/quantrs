@@ -1,9 +1,9 @@
 //! Temporary BufferPool implementation to replace scirs2_core::memory::BufferPool
 //! TODO: Replace with scirs2_core when regex dependency issue is fixed
 
-use std::sync::Mutex;
 use std::collections::VecDeque;
 use std::marker::PhantomData;
+use std::sync::Mutex;
 
 /// A simple buffer pool implementation
 pub struct BufferPool<T> {

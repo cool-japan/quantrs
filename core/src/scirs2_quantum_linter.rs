@@ -3,8 +3,8 @@
 //! This module provides comprehensive linting and static analysis for quantum circuits
 //! using SciRS2's advanced pattern matching, optimization detection, and code quality analysis.
 
-use crate::gate_translation::GateType;
 use crate::error::QuantRS2Error;
+use crate::gate_translation::GateType;
 use std::collections::{HashMap, HashSet};
 
 /// SciRS2-enhanced quantum gate representation for linting
@@ -16,22 +16,26 @@ pub struct QuantumGate {
 }
 
 impl QuantumGate {
-    pub fn new(gate_type: GateType, target_qubits: Vec<usize>, control_qubits: Option<Vec<usize>>) -> Self {
+    pub fn new(
+        gate_type: GateType,
+        target_qubits: Vec<usize>,
+        control_qubits: Option<Vec<usize>>,
+    ) -> Self {
         Self {
             gate_type,
             target_qubits,
             control_qubits,
         }
     }
-    
+
     pub fn gate_type(&self) -> &GateType {
         &self.gate_type
     }
-    
+
     pub fn target_qubits(&self) -> &[usize] {
         &self.target_qubits
     }
-    
+
     pub fn control_qubits(&self) -> Option<&[usize]> {
         self.control_qubits.as_deref()
     }
@@ -86,7 +90,9 @@ impl Default for LintingConfig {
 }
 
 /// Severity levels for lint findings
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum LintSeverity {
     Info,
     Warning,
@@ -141,7 +147,9 @@ impl SciRS2QuantumLinter {
 
         // Performance issue detection
         if self.config.detect_performance_issues {
-            let performance_issues = self.performance_analyzer.analyze_performance(circuit, num_qubits)?;
+            let performance_issues = self
+                .performance_analyzer
+                .analyze_performance(circuit, num_qubits)?;
             findings.extend(performance_issues);
         }
 
@@ -153,7 +161,9 @@ impl SciRS2QuantumLinter {
 
         // Circuit structure analysis
         if self.config.analyze_circuit_structure {
-            let structure_issues = self.structure_analyzer.analyze_structure(circuit, num_qubits)?;
+            let structure_issues = self
+                .structure_analyzer
+                .analyze_structure(circuit, num_qubits)?;
             findings.extend(structure_issues);
         }
 
@@ -165,7 +175,9 @@ impl SciRS2QuantumLinter {
 
         // Best practices checking
         if self.config.check_best_practices {
-            let best_practice_issues = self.best_practices_checker.check_practices(circuit, num_qubits)?;
+            let best_practice_issues = self
+                .best_practices_checker
+                .check_practices(circuit, num_qubits)?;
             findings.extend(best_practice_issues);
         }
 
@@ -177,7 +189,9 @@ impl SciRS2QuantumLinter {
 
         // SciRS2-specific optimization suggestions
         if self.config.enable_scirs2_optimizations {
-            let scirs2_suggestions = self.scirs2_optimizer.analyze_optimization_opportunities(circuit, num_qubits)?;
+            let scirs2_suggestions = self
+                .scirs2_optimizer
+                .analyze_optimization_opportunities(circuit, num_qubits)?;
             findings.extend(scirs2_suggestions);
         }
 
@@ -192,11 +206,13 @@ impl SciRS2QuantumLinter {
         };
 
         // Generate optimization suggestions
-        let optimization_suggestions = if self.config.suggest_simd_optimizations || self.config.analyze_parallel_potential {
-            self.optimization_suggester.generate_suggestions(circuit, &findings)?
-        } else {
-            Vec::new()
-        };
+        let optimization_suggestions =
+            if self.config.suggest_simd_optimizations || self.config.analyze_parallel_potential {
+                self.optimization_suggester
+                    .generate_suggestions(circuit, &findings)?
+            } else {
+                Vec::new()
+            };
 
         // Calculate overall code quality score
         let quality_score = self.calculate_code_quality_score(&findings, circuit.len());
@@ -208,7 +224,8 @@ impl SciRS2QuantumLinter {
             automatic_fixes,
             optimization_suggestions,
             code_quality_score: quality_score,
-            scirs2_enhancement_opportunities: self.identify_scirs2_enhancement_opportunities(circuit)?,
+            scirs2_enhancement_opportunities: self
+                .identify_scirs2_enhancement_opportunities(circuit)?,
             recommendations: self.generate_overall_recommendations(&findings, circuit)?,
         })
     }
@@ -222,10 +239,10 @@ impl SciRS2QuantumLinter {
 
         // Check for common inefficient patterns
         findings.extend(self.check_inefficient_patterns(pattern)?);
-        
+
         // Check for gate optimization opportunities
         findings.extend(self.check_gate_optimization_opportunities(pattern)?);
-        
+
         // Check for SIMD optimization potential
         if self.config.suggest_simd_optimizations {
             findings.extend(self.check_simd_optimization_potential(pattern)?);
@@ -235,7 +252,10 @@ impl SciRS2QuantumLinter {
     }
 
     /// Check for inefficient gate patterns
-    fn check_inefficient_patterns(&self, pattern: &[QuantumGate]) -> Result<Vec<LintFinding>, QuantRS2Error> {
+    fn check_inefficient_patterns(
+        &self,
+        pattern: &[QuantumGate],
+    ) -> Result<Vec<LintFinding>, QuantRS2Error> {
         let mut findings = Vec::new();
 
         // Check for redundant gate sequences (e.g., X-X, H-H)
@@ -243,12 +263,16 @@ impl SciRS2QuantumLinter {
             if window.len() == 2 {
                 let gate1 = &window[0];
                 let gate2 = &window[1];
-                
+
                 if self.are_gates_canceling(gate1, gate2) {
                     findings.push(LintFinding {
                         finding_type: LintFindingType::PerformanceIssue,
                         severity: LintSeverity::Warning,
-                        message: format!("Redundant gate sequence: {:?} followed by {:?}", gate1.gate_type(), gate2.gate_type()),
+                        message: format!(
+                            "Redundant gate sequence: {:?} followed by {:?}",
+                            gate1.gate_type(),
+                            gate2.gate_type()
+                        ),
                         location: LintLocation::GateSequence(vec![0, 1]), // Simplified location
                         suggestion: Some("Remove redundant gates or combine them".to_string()),
                         automatic_fix_available: true,
@@ -284,23 +308,36 @@ impl SciRS2QuantumLinter {
     }
 
     /// Check for rotation inefficiencies
-    fn check_rotation_inefficiencies(&self, pattern: &[QuantumGate]) -> Result<Vec<LintFinding>, QuantRS2Error> {
+    fn check_rotation_inefficiencies(
+        &self,
+        pattern: &[QuantumGate],
+    ) -> Result<Vec<LintFinding>, QuantRS2Error> {
         let mut findings = Vec::new();
 
         // Look for consecutive rotation gates that could be combined
         for window in pattern.windows(3) {
             if window.len() == 3 {
-                let rotations: Vec<_> = window.iter()
-                    .filter(|gate| matches!(gate.gate_type(), GateType::Rx(_) | GateType::Ry(_) | GateType::Rz(_)))
+                let rotations: Vec<_> = window
+                    .iter()
+                    .filter(|gate| {
+                        matches!(
+                            gate.gate_type(),
+                            GateType::Rx(_) | GateType::Ry(_) | GateType::Rz(_)
+                        )
+                    })
                     .collect();
 
                 if rotations.len() >= 2 && self.are_rotations_combinable(&rotations) {
                     findings.push(LintFinding {
                         finding_type: LintFindingType::OptimizationOpportunity,
                         severity: LintSeverity::Info,
-                        message: "Multiple rotation gates can be combined into a single rotation".to_string(),
+                        message: "Multiple rotation gates can be combined into a single rotation"
+                            .to_string(),
                         location: LintLocation::GateSequence((0..window.len()).collect()),
-                        suggestion: Some("Combine consecutive rotation gates using SciRS2 gate fusion".to_string()),
+                        suggestion: Some(
+                            "Combine consecutive rotation gates using SciRS2 gate fusion"
+                                .to_string(),
+                        ),
                         automatic_fix_available: true,
                         scirs2_optimization_potential: true,
                     });
@@ -322,26 +359,32 @@ impl SciRS2QuantumLinter {
         let first_type = rotations[0].gate_type();
 
         rotations.iter().all(|gate| {
-            gate.target_qubits() == first_target &&
-            std::mem::discriminant(gate.gate_type()) == std::mem::discriminant(first_type)
+            gate.target_qubits() == first_target
+                && std::mem::discriminant(gate.gate_type()) == std::mem::discriminant(first_type)
         })
     }
 
     /// Check gate ordering for optimization opportunities
-    fn check_gate_ordering(&self, pattern: &[QuantumGate]) -> Result<Vec<LintFinding>, QuantRS2Error> {
+    fn check_gate_ordering(
+        &self,
+        pattern: &[QuantumGate],
+    ) -> Result<Vec<LintFinding>, QuantRS2Error> {
         let mut findings = Vec::new();
 
         // Check if commuting gates can be reordered for better parallelization
         for i in 0..pattern.len() {
             for j in i + 1..pattern.len() {
-                if self.can_gates_commute(&pattern[i], &pattern[j]) && 
-                   self.would_reordering_improve_parallelism(&pattern[i], &pattern[j]) {
+                if self.can_gates_commute(&pattern[i], &pattern[j])
+                    && self.would_reordering_improve_parallelism(&pattern[i], &pattern[j])
+                {
                     findings.push(LintFinding {
                         finding_type: LintFindingType::OptimizationOpportunity,
                         severity: LintSeverity::Info,
                         message: "Gate reordering could improve parallelization".to_string(),
                         location: LintLocation::GateSequence(vec![i, j]),
-                        suggestion: Some("Reorder commuting gates to enable parallel execution".to_string()),
+                        suggestion: Some(
+                            "Reorder commuting gates to enable parallel execution".to_string(),
+                        ),
                         automatic_fix_available: false,
                         scirs2_optimization_potential: true,
                     });
@@ -355,10 +398,14 @@ impl SciRS2QuantumLinter {
     /// Check if two gates can commute
     fn can_gates_commute(&self, gate1: &QuantumGate, gate2: &QuantumGate) -> bool {
         // Simple check: gates commute if they operate on different qubits
-        let qubits1: HashSet<_> = gate1.target_qubits().iter()
+        let qubits1: HashSet<_> = gate1
+            .target_qubits()
+            .iter()
             .chain(gate1.control_qubits().unwrap_or(&[]).iter())
             .collect();
-        let qubits2: HashSet<_> = gate2.target_qubits().iter()
+        let qubits2: HashSet<_> = gate2
+            .target_qubits()
+            .iter()
             .chain(gate2.control_qubits().unwrap_or(&[]).iter())
             .collect();
 
@@ -366,13 +413,20 @@ impl SciRS2QuantumLinter {
     }
 
     /// Check if reordering would improve parallelism
-    fn would_reordering_improve_parallelism(&self, _gate1: &QuantumGate, _gate2: &QuantumGate) -> bool {
+    fn would_reordering_improve_parallelism(
+        &self,
+        _gate1: &QuantumGate,
+        _gate2: &QuantumGate,
+    ) -> bool {
         // Simplified heuristic: assume reordering independent gates helps parallelism
         true
     }
 
     /// Check gate optimization opportunities
-    fn check_gate_optimization_opportunities(&self, pattern: &[QuantumGate]) -> Result<Vec<LintFinding>, QuantRS2Error> {
+    fn check_gate_optimization_opportunities(
+        &self,
+        pattern: &[QuantumGate],
+    ) -> Result<Vec<LintFinding>, QuantRS2Error> {
         let mut findings = Vec::new();
 
         // Check for gates that could benefit from SciRS2 optimizations
@@ -384,22 +438,26 @@ impl SciRS2QuantumLinter {
                         severity: LintSeverity::Info,
                         message: "CNOT gate can benefit from SciRS2 SIMD optimization".to_string(),
                         location: LintLocation::Gate(i),
-                        suggestion: Some("Enable SciRS2 SIMD optimization for CNOT gates".to_string()),
+                        suggestion: Some(
+                            "Enable SciRS2 SIMD optimization for CNOT gates".to_string(),
+                        ),
                         automatic_fix_available: false,
                         scirs2_optimization_potential: true,
                     });
-                },
+                }
                 GateType::H => {
                     findings.push(LintFinding {
                         finding_type: LintFindingType::SciRS2Optimization,
                         severity: LintSeverity::Info,
                         message: "Hadamard gate can benefit from SciRS2 vectorization".to_string(),
                         location: LintLocation::Gate(i),
-                        suggestion: Some("Use SciRS2 vectorized Hadamard implementation".to_string()),
+                        suggestion: Some(
+                            "Use SciRS2 vectorized Hadamard implementation".to_string(),
+                        ),
                         automatic_fix_available: false,
                         scirs2_optimization_potential: true,
                     });
-                },
+                }
                 _ => {}
             }
         }
@@ -408,11 +466,15 @@ impl SciRS2QuantumLinter {
     }
 
     /// Check SIMD optimization potential
-    fn check_simd_optimization_potential(&self, pattern: &[QuantumGate]) -> Result<Vec<LintFinding>, QuantRS2Error> {
+    fn check_simd_optimization_potential(
+        &self,
+        pattern: &[QuantumGate],
+    ) -> Result<Vec<LintFinding>, QuantRS2Error> {
         let mut findings = Vec::new();
 
         // Look for patterns that could benefit from SIMD operations
-        let vectorizable_gates = pattern.iter()
+        let vectorizable_gates = pattern
+            .iter()
             .enumerate()
             .filter(|(_, gate)| self.is_gate_vectorizable(gate))
             .collect::<Vec<_>>();
@@ -421,9 +483,16 @@ impl SciRS2QuantumLinter {
             findings.push(LintFinding {
                 finding_type: LintFindingType::SciRS2Optimization,
                 severity: LintSeverity::Info,
-                message: format!("Found {} gates that could benefit from SIMD vectorization", vectorizable_gates.len()),
-                location: LintLocation::GateSequence(vectorizable_gates.iter().map(|(i, _)| *i).collect()),
-                suggestion: Some("Apply SciRS2 SIMD vectorization to improve performance".to_string()),
+                message: format!(
+                    "Found {} gates that could benefit from SIMD vectorization",
+                    vectorizable_gates.len()
+                ),
+                location: LintLocation::GateSequence(
+                    vectorizable_gates.iter().map(|(i, _)| *i).collect(),
+                ),
+                suggestion: Some(
+                    "Apply SciRS2 SIMD vectorization to improve performance".to_string(),
+                ),
                 automatic_fix_available: false,
                 scirs2_optimization_potential: true,
             });
@@ -434,15 +503,24 @@ impl SciRS2QuantumLinter {
 
     /// Check if a gate is vectorizable
     fn is_gate_vectorizable(&self, gate: &QuantumGate) -> bool {
-        matches!(gate.gate_type(), 
-            GateType::X | GateType::Y | GateType::Z | GateType::H |
-            GateType::Rx(_) | GateType::Ry(_) | GateType::Rz(_) |
-            GateType::Phase(_)
+        matches!(
+            gate.gate_type(),
+            GateType::X
+                | GateType::Y
+                | GateType::Z
+                | GateType::H
+                | GateType::Rx(_)
+                | GateType::Ry(_)
+                | GateType::Rz(_)
+                | GateType::Phase(_)
         )
     }
 
     /// Categorize findings by severity
-    fn categorize_findings_by_severity(&self, findings: &[LintFinding]) -> HashMap<LintSeverity, usize> {
+    fn categorize_findings_by_severity(
+        &self,
+        findings: &[LintFinding],
+    ) -> HashMap<LintSeverity, usize> {
         let mut counts = HashMap::new();
         for finding in findings {
             *counts.entry(finding.severity.clone()).or_insert(0) += 1;
@@ -476,11 +554,15 @@ impl SciRS2QuantumLinter {
     }
 
     /// Identify SciRS2 enhancement opportunities
-    fn identify_scirs2_enhancement_opportunities(&self, circuit: &[QuantumGate]) -> Result<Vec<SciRS2Enhancement>, QuantRS2Error> {
+    fn identify_scirs2_enhancement_opportunities(
+        &self,
+        circuit: &[QuantumGate],
+    ) -> Result<Vec<SciRS2Enhancement>, QuantRS2Error> {
         let mut enhancements = Vec::new();
 
         // SIMD opportunities
-        let simd_gates = circuit.iter()
+        let simd_gates = circuit
+            .iter()
             .filter(|gate| self.is_gate_vectorizable(gate))
             .count();
 
@@ -504,19 +586,24 @@ impl SciRS2QuantumLinter {
         }
 
         // Parallel execution opportunities
-        let parallel_gates = circuit.iter()
+        let parallel_gates = circuit
+            .iter()
             .enumerate()
             .filter(|(i, gate)| {
-                circuit.iter().skip(i + 1).any(|other_gate| {
-                    self.can_gates_commute(gate, other_gate)
-                })
+                circuit
+                    .iter()
+                    .skip(i + 1)
+                    .any(|other_gate| self.can_gates_commute(gate, other_gate))
             })
             .count();
 
         if parallel_gates > 5 {
             enhancements.push(SciRS2Enhancement {
                 enhancement_type: EnhancementType::ParallelExecution,
-                description: format!("Enable parallel execution for {} independent gates", parallel_gates),
+                description: format!(
+                    "Enable parallel execution for {} independent gates",
+                    parallel_gates
+                ),
                 expected_speedup: 1.8,
                 implementation_effort: ImplementationEffort::Medium,
             });
@@ -526,36 +613,63 @@ impl SciRS2QuantumLinter {
     }
 
     /// Generate overall recommendations
-    fn generate_overall_recommendations(&self, findings: &[LintFinding], circuit: &[QuantumGate]) -> Result<Vec<String>, QuantRS2Error> {
+    fn generate_overall_recommendations(
+        &self,
+        findings: &[LintFinding],
+        circuit: &[QuantumGate],
+    ) -> Result<Vec<String>, QuantRS2Error> {
         let mut recommendations = Vec::new();
 
-        let critical_count = findings.iter().filter(|f| f.severity == LintSeverity::Critical).count();
-        let error_count = findings.iter().filter(|f| f.severity == LintSeverity::Error).count();
-        let warning_count = findings.iter().filter(|f| f.severity == LintSeverity::Warning).count();
+        let critical_count = findings
+            .iter()
+            .filter(|f| f.severity == LintSeverity::Critical)
+            .count();
+        let error_count = findings
+            .iter()
+            .filter(|f| f.severity == LintSeverity::Error)
+            .count();
+        let warning_count = findings
+            .iter()
+            .filter(|f| f.severity == LintSeverity::Warning)
+            .count();
 
         if critical_count > 0 {
-            recommendations.push(format!("Address {} critical issues immediately", critical_count));
+            recommendations.push(format!(
+                "Address {} critical issues immediately",
+                critical_count
+            ));
         }
 
         if error_count > 0 {
-            recommendations.push(format!("Fix {} error-level issues to improve circuit correctness", error_count));
+            recommendations.push(format!(
+                "Fix {} error-level issues to improve circuit correctness",
+                error_count
+            ));
         }
 
         if warning_count > 0 {
-            recommendations.push(format!("Consider addressing {} warnings to improve performance", warning_count));
+            recommendations.push(format!(
+                "Consider addressing {} warnings to improve performance",
+                warning_count
+            ));
         }
 
         // SciRS2-specific recommendations
-        let scirs2_opportunities = findings.iter()
+        let scirs2_opportunities = findings
+            .iter()
             .filter(|f| f.scirs2_optimization_potential)
             .count();
 
         if scirs2_opportunities > 0 {
-            recommendations.push(format!("Implement {} SciRS2 optimizations for enhanced performance", scirs2_opportunities));
+            recommendations.push(format!(
+                "Implement {} SciRS2 optimizations for enhanced performance",
+                scirs2_opportunities
+            ));
         }
 
         if circuit.len() > 50 {
-            recommendations.push("Consider circuit compression techniques for large circuits".to_string());
+            recommendations
+                .push("Consider circuit compression techniques for large circuits".to_string());
         }
 
         if recommendations.is_empty() {
@@ -685,8 +799,11 @@ impl PatternMatcher {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn analyze_patterns(&self, _circuit: &[QuantumGate]) -> Result<Vec<LintFinding>, QuantRS2Error> {
+
+    pub fn analyze_patterns(
+        &self,
+        _circuit: &[QuantumGate],
+    ) -> Result<Vec<LintFinding>, QuantRS2Error> {
         Ok(vec![])
     }
 }
@@ -698,10 +815,14 @@ impl PerformanceAnalyzer {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn analyze_performance(&self, circuit: &[QuantumGate], _num_qubits: usize) -> Result<Vec<LintFinding>, QuantRS2Error> {
+
+    pub fn analyze_performance(
+        &self,
+        circuit: &[QuantumGate],
+        _num_qubits: usize,
+    ) -> Result<Vec<LintFinding>, QuantRS2Error> {
         let mut findings = Vec::new();
-        
+
         // Example: detect long circuits that might benefit from optimization
         if circuit.len() > 100 {
             findings.push(LintFinding {
@@ -714,7 +835,7 @@ impl PerformanceAnalyzer {
                 scirs2_optimization_potential: true,
             });
         }
-        
+
         Ok(findings)
     }
 }
@@ -726,8 +847,12 @@ impl StructureAnalyzer {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn analyze_structure(&self, _circuit: &[QuantumGate], _num_qubits: usize) -> Result<Vec<LintFinding>, QuantRS2Error> {
+
+    pub fn analyze_structure(
+        &self,
+        _circuit: &[QuantumGate],
+        _num_qubits: usize,
+    ) -> Result<Vec<LintFinding>, QuantRS2Error> {
         Ok(vec![])
     }
 }
@@ -739,8 +864,12 @@ impl ResourceAnalyzer {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn analyze_usage(&self, _circuit: &[QuantumGate], _num_qubits: usize) -> Result<Vec<LintFinding>, QuantRS2Error> {
+
+    pub fn analyze_usage(
+        &self,
+        _circuit: &[QuantumGate],
+        _num_qubits: usize,
+    ) -> Result<Vec<LintFinding>, QuantRS2Error> {
         Ok(vec![])
     }
 }
@@ -752,8 +881,12 @@ impl BestPracticesChecker {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn check_practices(&self, _circuit: &[QuantumGate], _num_qubits: usize) -> Result<Vec<LintFinding>, QuantRS2Error> {
+
+    pub fn check_practices(
+        &self,
+        _circuit: &[QuantumGate],
+        _num_qubits: usize,
+    ) -> Result<Vec<LintFinding>, QuantRS2Error> {
         Ok(vec![])
     }
 }
@@ -765,8 +898,11 @@ impl AntipatternDetector {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn detect_antipatterns(&self, _circuit: &[QuantumGate]) -> Result<Vec<LintFinding>, QuantRS2Error> {
+
+    pub fn detect_antipatterns(
+        &self,
+        _circuit: &[QuantumGate],
+    ) -> Result<Vec<LintFinding>, QuantRS2Error> {
         Ok(vec![])
     }
 }
@@ -778,8 +914,12 @@ impl OptimizationSuggester {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn generate_suggestions(&self, _circuit: &[QuantumGate], _findings: &[LintFinding]) -> Result<Vec<OptimizationSuggestion>, QuantRS2Error> {
+
+    pub fn generate_suggestions(
+        &self,
+        _circuit: &[QuantumGate],
+        _findings: &[LintFinding],
+    ) -> Result<Vec<OptimizationSuggestion>, QuantRS2Error> {
         Ok(vec![])
     }
 }
@@ -791,8 +931,12 @@ impl AutomaticFixGenerator {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn generate_fixes(&self, _findings: &[LintFinding], _circuit: &[QuantumGate]) -> Result<Vec<AutomaticFix>, QuantRS2Error> {
+
+    pub fn generate_fixes(
+        &self,
+        _findings: &[LintFinding],
+        _circuit: &[QuantumGate],
+    ) -> Result<Vec<AutomaticFix>, QuantRS2Error> {
         Ok(vec![])
     }
 }
@@ -804,27 +948,42 @@ impl SciRS2Optimizer {
     pub fn new() -> Self {
         Self {}
     }
-    
-    pub fn analyze_optimization_opportunities(&self, circuit: &[QuantumGate], _num_qubits: usize) -> Result<Vec<LintFinding>, QuantRS2Error> {
+
+    pub fn analyze_optimization_opportunities(
+        &self,
+        circuit: &[QuantumGate],
+        _num_qubits: usize,
+    ) -> Result<Vec<LintFinding>, QuantRS2Error> {
         let mut findings = Vec::new();
-        
+
         // Example: detect SIMD optimization opportunities
-        let vectorizable_count = circuit.iter()
-            .filter(|gate| matches!(gate.gate_type(), GateType::X | GateType::Y | GateType::Z | GateType::H))
+        let vectorizable_count = circuit
+            .iter()
+            .filter(|gate| {
+                matches!(
+                    gate.gate_type(),
+                    GateType::X | GateType::Y | GateType::Z | GateType::H
+                )
+            })
             .count();
-        
+
         if vectorizable_count > 5 {
             findings.push(LintFinding {
                 finding_type: LintFindingType::SciRS2Optimization,
                 severity: LintSeverity::Info,
-                message: format!("Found {} gates that could benefit from SciRS2 SIMD optimization", vectorizable_count),
+                message: format!(
+                    "Found {} gates that could benefit from SciRS2 SIMD optimization",
+                    vectorizable_count
+                ),
                 location: LintLocation::Circuit,
-                suggestion: Some("Enable SciRS2 SIMD vectorization for Pauli and Hadamard gates".to_string()),
+                suggestion: Some(
+                    "Enable SciRS2 SIMD vectorization for Pauli and Hadamard gates".to_string(),
+                ),
                 automatic_fix_available: false,
                 scirs2_optimization_potential: true,
             });
         }
-        
+
         Ok(findings)
     }
 }
@@ -847,7 +1006,7 @@ mod tests {
             QuantumGate::new(GateType::H, vec![0], None),
             QuantumGate::new(GateType::CNOT, vec![0, 1], None),
         ];
-        
+
         let report = linter.lint_circuit(&circuit, 2).unwrap();
         assert!(report.code_quality_score > 0.0);
         assert!(report.code_quality_score <= 1.0);
@@ -860,10 +1019,12 @@ mod tests {
             QuantumGate::new(GateType::X, vec![0], None),
             QuantumGate::new(GateType::X, vec![0], None), // Redundant
         ];
-        
+
         let findings = linter.lint_gate_pattern(&pattern).unwrap();
         assert!(!findings.is_empty());
-        assert!(findings.iter().any(|f| f.finding_type == LintFindingType::PerformanceIssue));
+        assert!(findings
+            .iter()
+            .any(|f| f.finding_type == LintFindingType::PerformanceIssue));
     }
 
     #[test]
@@ -871,7 +1032,7 @@ mod tests {
         let linter = SciRS2QuantumLinter::new();
         let gate1 = QuantumGate::new(GateType::H, vec![0], None);
         let gate2 = QuantumGate::new(GateType::H, vec![0], None);
-        
+
         assert!(linter.are_gates_canceling(&gate1, &gate2));
     }
 
@@ -880,7 +1041,7 @@ mod tests {
         let linter = SciRS2QuantumLinter::new();
         let gate1 = QuantumGate::new(GateType::X, vec![0], None);
         let gate2 = QuantumGate::new(GateType::Y, vec![1], None);
-        
+
         assert!(linter.can_gates_commute(&gate1, &gate2)); // Different qubits
     }
 
@@ -889,7 +1050,7 @@ mod tests {
         let linter = SciRS2QuantumLinter::new();
         let h_gate = QuantumGate::new(GateType::H, vec![0], None);
         let cnot_gate = QuantumGate::new(GateType::CNOT, vec![0, 1], None);
-        
+
         assert!(linter.is_gate_vectorizable(&h_gate));
         assert!(!linter.is_gate_vectorizable(&cnot_gate));
     }
@@ -900,31 +1061,29 @@ mod tests {
         let gate1 = QuantumGate::new(GateType::Rx("0.1".to_string()), vec![0], None);
         let gate2 = QuantumGate::new(GateType::Rx("0.2".to_string()), vec![0], None);
         let rotations = vec![&gate1, &gate2];
-        
+
         assert!(linter.are_rotations_combinable(&rotations));
     }
 
     #[test]
     fn test_code_quality_scoring() {
         let linter = SciRS2QuantumLinter::new();
-        
+
         // Empty findings should give perfect score
         let empty_findings = vec![];
         let score = linter.calculate_code_quality_score(&empty_findings, 10);
         assert_eq!(score, 1.0);
-        
+
         // Some findings should reduce score
-        let findings = vec![
-            LintFinding {
-                finding_type: LintFindingType::PerformanceIssue,
-                severity: LintSeverity::Error,
-                message: "Test finding".to_string(),
-                location: LintLocation::Gate(0),
-                suggestion: None,
-                automatic_fix_available: false,
-                scirs2_optimization_potential: false,
-            }
-        ];
+        let findings = vec![LintFinding {
+            finding_type: LintFindingType::PerformanceIssue,
+            severity: LintSeverity::Error,
+            message: "Test finding".to_string(),
+            location: LintLocation::Gate(0),
+            suggestion: None,
+            automatic_fix_available: false,
+            scirs2_optimization_potential: false,
+        }];
         let score_with_findings = linter.calculate_code_quality_score(&findings, 10);
         assert!(score_with_findings < 1.0);
     }
@@ -937,9 +1096,13 @@ mod tests {
             QuantumGate::new(GateType::X, vec![1], None),
             QuantumGate::new(GateType::Y, vec![2], None),
         ];
-        
-        let enhancements = linter.identify_scirs2_enhancement_opportunities(&circuit).unwrap();
+
+        let enhancements = linter
+            .identify_scirs2_enhancement_opportunities(&circuit)
+            .unwrap();
         assert!(!enhancements.is_empty());
-        assert!(enhancements.iter().any(|e| matches!(e.enhancement_type, EnhancementType::SimdVectorization)));
+        assert!(enhancements
+            .iter()
+            .any(|e| matches!(e.enhancement_type, EnhancementType::SimdVectorization)));
     }
 }

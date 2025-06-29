@@ -5,7 +5,7 @@
 //! and intelligent formatting using SciRS2's graph analysis and pattern recognition.
 
 use crate::builder::Circuit;
-use crate::scirs2_integration::{SciRS2CircuitAnalyzer, AnalyzerConfig, GraphMetrics};
+use crate::scirs2_integration::{AnalyzerConfig, GraphMetrics, SciRS2CircuitAnalyzer};
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
 use quantrs2_core::{
@@ -1263,7 +1263,10 @@ pub enum StyleAction {
     /// Replace text
     Replace { replacement: String },
     /// Insert text
-    Insert { text: String, position: InsertPosition },
+    Insert {
+        text: String,
+        position: InsertPosition,
+    },
     /// Delete text
     Delete,
     /// Reformat section
@@ -1474,7 +1477,10 @@ pub enum WhitespaceRuleType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WhitespaceAction {
     /// Add whitespace
-    Add { amount: usize, whitespace_type: WhitespaceType },
+    Add {
+        amount: usize,
+        whitespace_type: WhitespaceType,
+    },
     /// Remove whitespace
     Remove,
     /// Replace whitespace
@@ -1722,11 +1728,8 @@ impl<const N: usize> QuantumFormatter<N> {
         let alignment_changes = self.apply_alignment(&organized_structure)?;
 
         // Generate formatted output
-        let formatted_circuit = self.generate_formatted_output(
-            &organized_structure,
-            &layout_info,
-            &style_info,
-        )?;
+        let formatted_circuit =
+            self.generate_formatted_output(&organized_structure, &layout_info, &style_info)?;
 
         // Collect all changes
         let mut changes = Vec::new();
@@ -1735,7 +1738,8 @@ impl<const N: usize> QuantumFormatter<N> {
         changes.extend(alignment_changes);
 
         // Calculate statistics
-        let statistics = self.calculate_statistics(&input_statistics, &changes, start_time.elapsed());
+        let statistics =
+            self.calculate_statistics(&input_statistics, &changes, start_time.elapsed());
 
         // Determine compliance
         let style_compliance = self.assess_style_compliance(&style_info)?;
@@ -1831,7 +1835,7 @@ impl<const N: usize> QuantumFormatter<N> {
         let optimizer = self.layout_optimizer.read().map_err(|_| {
             QuantRS2Error::InvalidOperation("Failed to acquire layout optimizer lock".to_string())
         })?;
-        
+
         optimizer.optimize_layout(code_structure, scirs2_analysis, &self.config)
     }
 
@@ -1840,7 +1844,7 @@ impl<const N: usize> QuantumFormatter<N> {
         let enforcer = self.style_enforcer.read().map_err(|_| {
             QuantRS2Error::InvalidOperation("Failed to acquire style enforcer lock".to_string())
         })?;
-        
+
         enforcer.enforce_style(code_structure, &self.config)
     }
 
@@ -1849,34 +1853,43 @@ impl<const N: usize> QuantumFormatter<N> {
         let organizer = self.code_organizer.read().map_err(|_| {
             QuantRS2Error::InvalidOperation("Failed to acquire code organizer lock".to_string())
         })?;
-        
+
         organizer.organize_code(code_structure, &self.config)
     }
 
     /// Format comments
-    fn format_comments(&self, code_structure: &CodeStructure) -> QuantRS2Result<Vec<FormattingChange>> {
+    fn format_comments(
+        &self,
+        code_structure: &CodeStructure,
+    ) -> QuantRS2Result<Vec<FormattingChange>> {
         let formatter = self.comment_formatter.read().map_err(|_| {
             QuantRS2Error::InvalidOperation("Failed to acquire comment formatter lock".to_string())
         })?;
-        
+
         formatter.format_comments(code_structure, &self.config)
     }
 
     /// Manage whitespace
-    fn manage_whitespace(&self, code_structure: &CodeStructure) -> QuantRS2Result<Vec<FormattingChange>> {
+    fn manage_whitespace(
+        &self,
+        code_structure: &CodeStructure,
+    ) -> QuantRS2Result<Vec<FormattingChange>> {
         let manager = self.whitespace_manager.read().map_err(|_| {
             QuantRS2Error::InvalidOperation("Failed to acquire whitespace manager lock".to_string())
         })?;
-        
+
         manager.manage_whitespace(code_structure, &self.config)
     }
 
     /// Apply alignment
-    fn apply_alignment(&self, code_structure: &CodeStructure) -> QuantRS2Result<Vec<FormattingChange>> {
+    fn apply_alignment(
+        &self,
+        code_structure: &CodeStructure,
+    ) -> QuantRS2Result<Vec<FormattingChange>> {
         let engine = self.alignment_engine.read().map_err(|_| {
             QuantRS2Error::InvalidOperation("Failed to acquire alignment engine lock".to_string())
         })?;
-        
+
         engine.apply_alignment(code_structure, &self.config)
     }
 
@@ -1906,10 +1919,9 @@ impl<const N: usize> QuantumFormatter<N> {
         FormattingStatistics {
             total_lines: input_stats.original_line_count,
             lines_changed: changes.len(),
-            characters_added: changes.iter()
-                .map(|c| c.new_content.len())
-                .sum::<usize>(),
-            characters_removed: changes.iter()
+            characters_added: changes.iter().map(|c| c.new_content.len()).sum::<usize>(),
+            characters_removed: changes
+                .iter()
                 .map(|c| c.original_content.len())
                 .sum::<usize>(),
             formatting_time,
@@ -1919,7 +1931,10 @@ impl<const N: usize> QuantumFormatter<N> {
     }
 
     /// Assess style compliance
-    fn assess_style_compliance(&self, style_info: &StyleInformation) -> QuantRS2Result<StyleCompliance> {
+    fn assess_style_compliance(
+        &self,
+        style_info: &StyleInformation,
+    ) -> QuantRS2Result<StyleCompliance> {
         Ok(StyleCompliance {
             overall_score: style_info.compliance_score,
             category_scores: HashMap::new(),
@@ -2130,8 +2145,8 @@ impl<const N: usize> AlignmentEngine<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use quantrs2_core::gate::single::Hadamard;
     use quantrs2_core::gate::multi::CNOT;
+    use quantrs2_core::gate::single::Hadamard;
 
     #[test]
     fn test_formatter_creation() {
@@ -2144,11 +2159,16 @@ mod tests {
     fn test_formatting_process() {
         let mut circuit = Circuit::<2>::new();
         circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(CNOT { control: QubitId(0), target: QubitId(1) }).unwrap();
-        
+        circuit
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .unwrap();
+
         let mut formatter = QuantumFormatter::new(circuit);
         let result = formatter.format_circuit().unwrap();
-        
+
         assert!(!result.formatted_circuit.code.is_empty());
         assert!(result.statistics.total_lines > 0);
     }
@@ -2165,7 +2185,7 @@ mod tests {
     fn test_style_compliance() {
         let circuit = Circuit::<2>::new();
         let formatter = QuantumFormatter::new(circuit);
-        
+
         // Test default compliance assessment
         let style_info = StyleInformation {
             applied_rules: Vec::new(),
@@ -2179,8 +2199,11 @@ mod tests {
                 overall_consistency: 0.9,
             },
         };
-        
+
         let compliance = formatter.assess_style_compliance(&style_info).unwrap();
-        assert!(matches!(compliance.compliance_level, ComplianceLevel::Excellent));
+        assert!(matches!(
+            compliance.compliance_level,
+            ComplianceLevel::Excellent
+        ));
     }
 }

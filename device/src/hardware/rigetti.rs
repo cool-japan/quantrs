@@ -66,7 +66,7 @@ impl RigettiClient {
     /// Get available quantum processing units
     pub async fn get_available_qpus(&self) -> DeviceResult<Vec<RigettiQPU>> {
         let url = format!("{}/api/v1/qpus", self.config.qcs_url);
-        
+
         let response = self.client
             .get(&url)
             .header("Authorization", format!("Bearer {}", self.config.api_token))
@@ -91,7 +91,7 @@ impl RigettiClient {
     /// Submit a quantum program for execution
     pub async fn submit_program(&self, program: &RigettiProgram) -> DeviceResult<String> {
         let url = format!("{}/api/v1/jobs", self.config.qcs_url);
-        
+
         let response = self.client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.config.api_token))
@@ -118,7 +118,7 @@ impl RigettiClient {
     /// Get job results
     pub async fn get_job_results(&self, job_id: &str) -> DeviceResult<RigettiJobResults> {
         let url = format!("{}/api/v1/jobs/{}/results", self.config.qcs_url, job_id);
-        
+
         let response = self.client
             .get(&url)
             .header("Authorization", format!("Bearer {}", self.config.api_token))
@@ -143,21 +143,21 @@ impl RigettiClient {
     /// Convert QuantRS circuit to Quil program
     pub fn circuit_to_quil<const N: usize>(&self, circuit: &Circuit<N>) -> DeviceResult<String> {
         let mut quil_lines = Vec::new();
-        
+
         // Add DECLARE statement for memory
         quil_lines.push(format!("DECLARE memory BIT[{}]", N));
-        
+
         // Convert gates to Quil instructions
         for gate_info in circuit.iter_gates() {
             let quil_instruction = self.gate_to_quil(&gate_info.gate, &gate_info.qubits)?;
             quil_lines.push(quil_instruction);
         }
-        
+
         // Add measurements
         for i in 0..N {
             quil_lines.push(format!("MEASURE {} memory[{}]", i, i));
         }
-        
+
         Ok(quil_lines.join("\n"))
     }
 
@@ -253,16 +253,16 @@ impl RigettiDevice {
     /// Create a new Rigetti device
     pub async fn new(config: RigettiConfig) -> DeviceResult<Self> {
         let client = RigettiClient::new(config.clone())?;
-        
+
         // Get default QPU info
         let qpu_name = config.default_qpu.as_ref()
             .ok_or_else(|| DeviceError::Configuration("No default QPU specified".to_string()))?;
-        
+
         let qpus = client.get_available_qpus().await?;
         let qpu_info = qpus.into_iter()
             .find(|qpu| &qpu.name == qpu_name)
             .ok_or_else(|| DeviceError::Configuration(format!("QPU '{}' not found", qpu_name)))?;
-        
+
         Ok(Self { client, qpu_info })
     }
 }
@@ -306,7 +306,7 @@ impl QuantumDevice for RigettiDevice {
         for gate_info in circuit.iter_gates() {
             let gate_name = gate_info.gate.name();
             match gate_name.as_str() {
-                "I" | "X" | "Y" | "Z" | "H" | "S" | "T" | 
+                "I" | "X" | "Y" | "Z" | "H" | "S" | "T" |
                 "RX" | "RY" | "RZ" | "CNOT" | "CX" | "CZ" | "SWAP" | "CCX" | "CCNOT" => {},
                 _ => return Ok(false),
             }
@@ -325,7 +325,7 @@ impl CircuitExecutor for RigettiDevice {
     ) -> DeviceResult<CircuitResult> {
         // Convert circuit to Quil
         let quil_program = self.client.circuit_to_quil(circuit)?;
-        
+
         // Create Rigetti program
         let program = RigettiProgram {
             quil: quil_program,
@@ -334,22 +334,22 @@ impl CircuitExecutor for RigettiDevice {
             timeout: Some(self.client.config.timeout),
             priority: None,
         };
-        
+
         // Submit and wait for results
         let job_id = self.client.submit_program(&program).await?;
-        
+
         // Poll for completion (simplified - real implementation would be more sophisticated)
         tokio::time::sleep(Duration::from_secs(5)).await;
-        
+
         let results = self.client.get_job_results(&job_id).await?;
-        
+
         // Convert measurements to counts
         let mut counts = HashMap::new();
         for measurement in &results.measurements {
             let bitstring: String = measurement.iter().map(|&bit| bit.to_string()).collect();
             *counts.entry(bitstring).or_insert(0) += 1;
         }
-        
+
         Ok(CircuitResult { counts, shots })
     }
 
@@ -359,13 +359,13 @@ impl CircuitExecutor for RigettiDevice {
         shots: usize,
     ) -> DeviceResult<Vec<CircuitResult>> {
         let mut results = Vec::new();
-        
+
         // Execute circuits sequentially (could be parallelized)
         for circuit in circuits {
             let result = self.execute_circuit(circuit, shots).await?;
             results.push(result);
         }
-        
+
         Ok(results)
     }
 }
@@ -400,13 +400,13 @@ mod tests {
     fn test_circuit_to_quil_conversion() {
         let config = RigettiConfig::default();
         let client = RigettiClient::new(config).unwrap();
-        
+
         let mut circuit = Circuit::<2>::new();
         // Note: This is a simplified test - actual circuit building would use proper QuantRS gates
-        
+
         // For now just test the basic structure
         let quil = client.circuit_to_quil(&circuit).unwrap();
-        
+
         assert!(quil.contains("DECLARE memory BIT[2]"));
         assert!(quil.contains("MEASURE 0 memory[0]"));
         assert!(quil.contains("MEASURE 1 memory[1]"));

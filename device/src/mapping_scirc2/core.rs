@@ -164,7 +164,7 @@ impl SciRS2QubitMapper {
         // Simple fallback implementation
         let mut initial_mapping = HashMap::new();
         let mut final_mapping = HashMap::new();
-        
+
         // Sequential mapping
         for i in 0..N.min(self.device_topology.num_qubits()) {
             initial_mapping.insert(i, i);
@@ -548,11 +548,11 @@ impl SciRS2QubitMapper {
         _physical_graph: &Graph<usize, f64>,
     ) -> DeviceResult<(HashMap<usize, usize>, Vec<SwapOperation>, OptimizationMetrics)> {
         let start_time = Instant::now();
-        
+
         // Simple optimization - just return initial mapping
         let final_mapping = initial_mapping.clone();
         let swap_operations = Vec::new();
-        
+
         let optimization_time = start_time.elapsed();
         let objective_value = self.calculate_objective(&final_mapping, circuit)?;
 

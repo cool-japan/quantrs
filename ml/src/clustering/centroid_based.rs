@@ -3,5 +3,5 @@
 /// Quantum K-Means implementation
 pub struct QuantumKMeans;
 
-/// Quantum Fuzzy C-Means implementation  
+/// Quantum Fuzzy C-Means implementation
 pub struct QuantumFuzzyCMeans;

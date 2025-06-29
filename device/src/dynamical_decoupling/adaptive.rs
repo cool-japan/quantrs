@@ -764,7 +764,7 @@ impl AdaptiveDDSystem {
         Ok(best_sequence)
     }
 
-    /// Select sequence using learning agent  
+    /// Select sequence using learning agent
     fn select_sequence_with_learning(
         &self,
         agent: &mut LearningAgent,

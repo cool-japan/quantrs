@@ -4,18 +4,18 @@
 //! execution times across different simulation backends using SciRS2 analysis
 //! tools and machine learning techniques.
 
+use crate::{
+    auto_optimizer::{AnalysisDepth, BackendType, CircuitCharacteristics},
+    error::{Result, SimulatorError},
+    scirs2_integration::{Matrix, SciRS2Backend, Vector},
+};
+use num_complex::Complex64;
 use quantrs2_circuit::builder::Circuit;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
 };
-use crate::{
-    error::{Result, SimulatorError},
-    auto_optimizer::{BackendType, CircuitCharacteristics, AnalysisDepth},
-    scirs2_integration::{SciRS2Backend, Matrix, Vector},
-};
-use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
@@ -58,7 +58,6 @@ impl Default for PerformancePredictionConfig {
         }
     }
 }
-
 
 /// Prediction strategy for execution time estimation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -206,7 +205,7 @@ impl Default for PerformanceHardwareSpecs {
     fn default() -> Self {
         Self {
             cpu_cores: 1,
-            total_memory: 1024 * 1024 * 1024, // 1GB
+            total_memory: 1024 * 1024 * 1024,    // 1GB
             available_memory: 512 * 1024 * 1024, // 512MB
             gpu_memory: None,
             cpu_frequency: 2000.0, // 2GHz
@@ -356,7 +355,7 @@ impl PerformancePredictionEngine {
     /// Create new performance prediction engine
     pub fn new(config: PerformancePredictionConfig) -> Result<Self> {
         let current_hardware = Self::detect_hardware_specs()?;
-        
+
         Ok(Self {
             config,
             execution_history: VecDeque::with_capacity(10000),
@@ -374,10 +373,10 @@ impl PerformancePredictionEngine {
         backend_type: BackendType,
     ) -> Result<PredictionResult> {
         let start_time = Instant::now();
-        
+
         // Analyze circuit complexity using SciRS2
         let complexity = self.analyze_circuit_complexity(circuit)?;
-        
+
         // Get prediction based on strategy
         let prediction = match self.config.prediction_strategy {
             PredictionStrategy::StaticAnalysis => {
@@ -386,19 +385,17 @@ impl PerformancePredictionEngine {
             PredictionStrategy::MachineLearning => {
                 self.predict_with_ml(&complexity, backend_type)?
             }
-            PredictionStrategy::Hybrid => {
-                self.predict_with_hybrid(&complexity, backend_type)?
-            }
+            PredictionStrategy::Hybrid => self.predict_with_hybrid(&complexity, backend_type)?,
             PredictionStrategy::Ensemble => {
                 self.predict_with_ensemble(&complexity, backend_type)?
             }
         };
-        
+
         // Update statistics
         self.prediction_stats.total_predictions += 1;
         let prediction_time = start_time.elapsed();
         self.update_timing_stats(prediction_time);
-        
+
         Ok(prediction)
     }
 
@@ -409,18 +406,18 @@ impl PerformancePredictionEngine {
     ) -> Result<ComplexityMetrics> {
         let gate_count = circuit.num_gates();
         let qubit_count = N;
-        
+
         // Basic complexity analysis
         let circuit_depth = self.calculate_circuit_depth(circuit)?;
         let two_qubit_gate_count = self.count_two_qubit_gates(circuit)?;
         let memory_requirement = self.estimate_memory_requirement(qubit_count);
-        
+
         // Advanced analysis using SciRS2
         let parallelism_factor = self.analyze_parallelism_potential(circuit)?;
         let entanglement_complexity = self.estimate_entanglement_complexity(circuit)?;
         let gate_type_distribution = self.analyze_gate_distribution(circuit)?;
         let critical_path_complexity = self.analyze_critical_path(circuit)?;
-        
+
         // Resource estimation
         let resource_estimation = self.estimate_resources(&ComplexityMetrics {
             gate_count,
@@ -459,16 +456,16 @@ impl PerformancePredictionEngine {
         for (gate_idx, gate) in gates.iter().enumerate() {
             let gate_qubits = self.get_gate_qubits(gate.as_ref())?;
             let mut max_dependency = 0;
-            
+
             for &qubit in &gate_qubits {
                 if qubit < N {
                     max_dependency = max_dependency.max(qubit_last_gate[qubit]);
                 }
             }
-            
+
             let current_depth = max_dependency + 1;
             max_depth = max_depth.max(current_depth);
-            
+
             for &qubit in &gate_qubits {
                 if qubit < N {
                     qubit_last_gate[qubit] = current_depth;
@@ -508,15 +505,18 @@ impl PerformancePredictionEngine {
     }
 
     /// Analyze parallelism potential using SciRS2
-    fn analyze_parallelism_potential<const N: usize>(&mut self, circuit: &Circuit<N>) -> Result<f64> {
+    fn analyze_parallelism_potential<const N: usize>(
+        &mut self,
+        circuit: &Circuit<N>,
+    ) -> Result<f64> {
         // Use SciRS2 parallel analysis
         let independent_operations = self.count_independent_operations(circuit)?;
         let total_operations = circuit.num_gates();
-        
+
         if total_operations == 0 {
             return Ok(0.0);
         }
-        
+
         Ok(independent_operations as f64 / total_operations as f64)
     }
 
@@ -526,23 +526,23 @@ impl PerformancePredictionEngine {
         // This is a simplified implementation
         let mut independent_count = 0;
         let mut qubit_dependencies: Vec<Option<usize>> = vec![None; N];
-        
+
         let gates = circuit.gates_as_boxes();
         for (gate_idx, gate) in gates.iter().enumerate() {
             let gate_qubits = self.get_gate_qubits(gate.as_ref())?;
             let mut has_dependency = false;
-            
+
             for &qubit in &gate_qubits {
                 if qubit < N && qubit_dependencies[qubit].is_some() {
                     has_dependency = true;
                     break;
                 }
             }
-            
+
             if !has_dependency {
                 independent_count += 1;
             }
-            
+
             // Update dependencies
             for &qubit in &gate_qubits {
                 if qubit < N {
@@ -550,20 +550,23 @@ impl PerformancePredictionEngine {
                 }
             }
         }
-        
+
         Ok(independent_count)
     }
 
     /// Estimate entanglement complexity
-    fn estimate_entanglement_complexity<const N: usize>(&self, circuit: &Circuit<N>) -> Result<f64> {
+    fn estimate_entanglement_complexity<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+    ) -> Result<f64> {
         // Simplified entanglement analysis
         let two_qubit_gates = self.count_two_qubit_gates(circuit)?;
         let total_possible_entangling = N * (N - 1) / 2; // All possible qubit pairs
-        
+
         if total_possible_entangling == 0 {
             return Ok(0.0);
         }
-        
+
         Ok((two_qubit_gates as f64 / total_possible_entangling as f64).min(1.0))
     }
 
@@ -573,13 +576,13 @@ impl PerformancePredictionEngine {
         circuit: &Circuit<N>,
     ) -> Result<HashMap<String, usize>> {
         let mut distribution = HashMap::new();
-        
+
         let gates = circuit.gates_as_boxes();
         for gate in gates.iter() {
             let gate_type = self.get_gate_type_name(gate.as_ref());
             *distribution.entry(gate_type).or_insert(0) += 1;
         }
-        
+
         Ok(distribution)
     }
 
@@ -594,11 +597,11 @@ impl PerformancePredictionEngine {
         // Analyze the complexity of the critical path
         let depth = self.calculate_circuit_depth(circuit)?;
         let gate_count = circuit.num_gates();
-        
+
         if gate_count == 0 {
             return Ok(0.0);
         }
-        
+
         // Complexity is depth relative to total gates
         Ok(depth as f64 / gate_count as f64)
     }
@@ -613,20 +616,20 @@ impl PerformancePredictionEngine {
 
         // Memory estimation
         let memory_usage_estimate = complexity.memory_requirement;
-        
+
         // I/O estimation
         let io_operations_estimate = complexity.gate_count * 2; // Read + write per gate
-        
+
         // Network bandwidth for distributed execution
         let network_bandwidth_estimate = if complexity.qubit_count > 20 {
             complexity.memory_requirement / 10 // 10% of memory for communication
         } else {
             0
         };
-        
+
         // GPU memory estimation
         let gpu_memory_estimate = complexity.memory_requirement * 2; // GPU needs more memory
-        
+
         // Thread requirement
         let thread_requirement = (complexity.parallelism_factor * 16.0).ceil() as usize;
 
@@ -648,26 +651,30 @@ impl PerformancePredictionEngine {
     ) -> Result<PredictionResult> {
         // Static analysis-based prediction
         let base_time = complexity.resource_estimation.cpu_time_estimate;
-        
+
         // Backend-specific factors
         let backend_factor = match backend_type {
             BackendType::StateVector => 1.0,
-            BackendType::SciRS2Gpu => 0.3, // GPU acceleration
-            BackendType::LargeScale => 0.7, // Optimized for large circuits
+            BackendType::SciRS2Gpu => 0.3,   // GPU acceleration
+            BackendType::LargeScale => 0.7,  // Optimized for large circuits
             BackendType::Distributed => 0.5, // Distributed speedup
-            BackendType::Auto => 0.8, // Conservative estimate
+            BackendType::Auto => 0.8,        // Conservative estimate
         };
-        
+
         let predicted_seconds = base_time * backend_factor;
         let predicted_time = Duration::from_secs_f64(predicted_seconds);
-        
+
         // Static confidence based on circuit characteristics
-        let confidence = if complexity.qubit_count <= 20 { 0.9 } else { 0.7 };
-        
+        let confidence = if complexity.qubit_count <= 20 {
+            0.9
+        } else {
+            0.7
+        };
+
         // Prediction interval (±20%)
         let lower = Duration::from_secs_f64(predicted_seconds * 0.8);
         let upper = Duration::from_secs_f64(predicted_seconds * 1.2);
-        
+
         Ok(PredictionResult {
             predicted_time,
             confidence,
@@ -701,21 +708,23 @@ impl PerformancePredictionEngine {
         }
 
         // Get trained model
-        let model = self.trained_models.get(&backend_type)
+        let model = self
+            .trained_models
+            .get(&backend_type)
             .ok_or_else(|| SimulatorError::ComputationError("Model not found".to_string()))?;
 
         // Make prediction using trained model
         let predicted_seconds = self.apply_model(model, complexity)?;
         let predicted_time = Duration::from_secs_f64(predicted_seconds);
-        
+
         // ML confidence based on training statistics
         let confidence = model.training_stats.validation_accuracy;
-        
+
         // Prediction interval based on model error
         let error_margin = model.training_stats.mean_absolute_error;
         let lower = Duration::from_secs_f64((predicted_seconds - error_margin).max(0.0));
         let upper = Duration::from_secs_f64(predicted_seconds + error_margin);
-        
+
         Ok(PredictionResult {
             predicted_time,
             confidence,
@@ -740,31 +749,32 @@ impl PerformancePredictionEngine {
     ) -> Result<PredictionResult> {
         // Get static prediction
         let static_pred = self.predict_with_static_analysis(complexity, backend_type)?;
-        
+
         // Try ML prediction if enough data
         if self.execution_history.len() >= self.config.min_samples_for_ml {
             let ml_pred = self.predict_with_ml(complexity, backend_type)?;
-            
+
             // Weighted combination
             let static_weight = 0.3;
             let ml_weight = 0.7;
-            
-            let combined_seconds = static_pred.predicted_time.as_secs_f64() * static_weight +
-                                 ml_pred.predicted_time.as_secs_f64() * ml_weight;
-            
+
+            let combined_seconds = static_pred.predicted_time.as_secs_f64() * static_weight
+                + ml_pred.predicted_time.as_secs_f64() * ml_weight;
+
             let predicted_time = Duration::from_secs_f64(combined_seconds);
-            let confidence = (static_pred.confidence * static_weight + ml_pred.confidence * ml_weight);
-            
+            let confidence =
+                (static_pred.confidence * static_weight + ml_pred.confidence * ml_weight);
+
             // Combined prediction interval
             let lower_combined = Duration::from_secs_f64(
-                static_pred.prediction_interval.0.as_secs_f64() * static_weight +
-                ml_pred.prediction_interval.0.as_secs_f64() * ml_weight
+                static_pred.prediction_interval.0.as_secs_f64() * static_weight
+                    + ml_pred.prediction_interval.0.as_secs_f64() * ml_weight,
             );
             let upper_combined = Duration::from_secs_f64(
-                static_pred.prediction_interval.1.as_secs_f64() * static_weight +
-                ml_pred.prediction_interval.1.as_secs_f64() * ml_weight
+                static_pred.prediction_interval.1.as_secs_f64() * static_weight
+                    + ml_pred.prediction_interval.1.as_secs_f64() * ml_weight,
             );
-            
+
             Ok(PredictionResult {
                 predicted_time,
                 confidence,
@@ -800,13 +810,17 @@ impl PerformancePredictionEngine {
     fn train_model_for_backend(&mut self, backend_type: BackendType) -> Result<()> {
         // Simplified model training
         // In a real implementation, this would use proper ML libraries
-        
-        let training_data: Vec<_> = self.execution_history.iter()
+
+        let training_data: Vec<_> = self
+            .execution_history
+            .iter()
             .filter(|data| data.backend_type == backend_type && data.success)
             .collect();
-        
+
         if training_data.is_empty() {
-            return Err(SimulatorError::ComputationError("No training data available".to_string()));
+            return Err(SimulatorError::ComputationError(
+                "No training data available".to_string(),
+            ));
         }
 
         // Simple linear regression model
@@ -827,21 +841,24 @@ impl PerformancePredictionEngine {
 
         self.trained_models.insert(backend_type, model);
         self.prediction_stats.model_updates += 1;
-        
+
         Ok(())
     }
 
     /// Calculate feature weights for training
-    fn calculate_feature_weights(&self, training_data: &[&ExecutionDataPoint]) -> Result<HashMap<String, f64>> {
+    fn calculate_feature_weights(
+        &self,
+        training_data: &[&ExecutionDataPoint],
+    ) -> Result<HashMap<String, f64>> {
         let mut weights = HashMap::new();
-        
+
         // Simplified feature importance calculation
         weights.insert("gate_count".to_string(), 0.3);
         weights.insert("circuit_depth".to_string(), 0.25);
         weights.insert("qubit_count".to_string(), 0.2);
         weights.insert("entanglement_complexity".to_string(), 0.15);
         weights.insert("parallelism_factor".to_string(), 0.1);
-        
+
         Ok(weights)
     }
 
@@ -849,17 +866,18 @@ impl PerformancePredictionEngine {
     fn apply_model(&self, model: &TrainedModel, complexity: &ComplexityMetrics) -> Result<f64> {
         // Simplified model application
         let base_prediction = complexity.resource_estimation.cpu_time_estimate;
-        
+
         // Apply model coefficients
-        let gate_factor = model.parameters.get(0).unwrap_or(&1.0) * 
-                         (complexity.gate_count as f64).ln();
-        let depth_factor = model.parameters.get(1).unwrap_or(&1.0) * 
-                          complexity.circuit_depth as f64;
-        let qubit_factor = model.parameters.get(2).unwrap_or(&1.0) * 
-                          (complexity.qubit_count as f64).powi(2);
-        
-        let prediction = base_prediction * (1.0 + gate_factor * 1e-6 + depth_factor * 1e-4 + qubit_factor * 1e-3);
-        
+        let gate_factor =
+            model.parameters.get(0).unwrap_or(&1.0) * (complexity.gate_count as f64).ln();
+        let depth_factor =
+            model.parameters.get(1).unwrap_or(&1.0) * complexity.circuit_depth as f64;
+        let qubit_factor =
+            model.parameters.get(2).unwrap_or(&1.0) * (complexity.qubit_count as f64).powi(2);
+
+        let prediction = base_prediction
+            * (1.0 + gate_factor * 1e-6 + depth_factor * 1e-4 + qubit_factor * 1e-3);
+
         Ok(prediction)
     }
 
@@ -867,20 +885,20 @@ impl PerformancePredictionEngine {
     pub fn record_execution(&mut self, data_point: ExecutionDataPoint) -> Result<()> {
         // Add to history
         self.execution_history.push_back(data_point.clone());
-        
+
         // Maintain size limit
         if self.execution_history.len() > self.config.max_history_size {
             self.execution_history.pop_front();
         }
-        
+
         // Update prediction accuracy if we have a prediction for this data
         self.update_prediction_accuracy(&data_point);
-        
+
         // Retrain models periodically
         if self.execution_history.len() % 100 == 0 {
             self.retrain_models()?;
         }
-        
+
         Ok(())
     }
 
@@ -901,13 +919,17 @@ impl PerformancePredictionEngine {
             BackendType::LargeScale,
             BackendType::Distributed,
         ];
-        
+
         for backend in backends {
-            if self.execution_history.iter().any(|d| d.backend_type == backend) {
+            if self
+                .execution_history
+                .iter()
+                .any(|d| d.backend_type == backend)
+            {
                 self.train_model_for_backend(backend)?;
             }
         }
-        
+
         Ok(())
     }
 
@@ -919,8 +941,8 @@ impl PerformancePredictionEngine {
             total_memory: 16 * 1024 * 1024 * 1024, // 16GB default
             available_memory: 12 * 1024 * 1024 * 1024, // 12GB available
             gpu_memory: Some(8 * 1024 * 1024 * 1024), // 8GB GPU
-            cpu_frequency: 3000.0, // 3GHz
-            network_bandwidth: Some(1000.0), // 1Gbps
+            cpu_frequency: 3000.0,                 // 3GHz
+            network_bandwidth: Some(1000.0),       // 1Gbps
             load_average: 0.5,
         })
     }
@@ -948,7 +970,9 @@ impl PerformancePredictionEngine {
     pub fn import_models(&mut self, _data: &[u8]) -> Result<()> {
         // Note: Import functionality disabled due to SystemTime serialization limitations
         // In a full implementation, would use a custom serialization format or different time representation
-        Err(SimulatorError::ComputationError("Import not supported in current implementation".to_string()))
+        Err(SimulatorError::ComputationError(
+            "Import not supported in current implementation".to_string(),
+        ))
     }
 }
 

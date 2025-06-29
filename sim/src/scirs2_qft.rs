@@ -20,7 +20,7 @@ use crate::statevector::StateVectorSimulator;
 pub enum QFTMethod {
     /// Exact QFT using SciRS2 FFT
     SciRS2Exact,
-    /// Approximate QFT using SciRS2 FFT  
+    /// Approximate QFT using SciRS2 FFT
     SciRS2Approximate,
     /// Circuit-based QFT implementation
     Circuit,

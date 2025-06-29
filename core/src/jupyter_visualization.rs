@@ -99,11 +99,11 @@ impl PyQuantumCircuitVisualizer {
                         .unwrap_or_default();
                     html.push_str(&format!(
                         r#"
-                    <div style="position: absolute; left: {}%; transform: translateX(-50%); 
-                                width: 30px; height: 30px; background: {}; color: white; 
-                                border-radius: 4px; display: flex; align-items: center; 
+                    <div style="position: absolute; left: {}%; transform: translateX(-50%);
+                                width: 30px; height: 30px; background: {}; color: white;
+                                border-radius: 4px; display: flex; align-items: center;
                                 justify-content: center; font-size: 12px; font-weight: bold;
-                                cursor: pointer; top: -14px;" 
+                                cursor: pointer; top: -14px;"
                          title="{}{} at step {}">
                         {}
                     </div>
@@ -311,9 +311,9 @@ impl PyQuantumStateVisualizer {
             let binary_state = format!("{:0width$b}", i, width = self.num_qubits);
             html.push_str(&format!(r#"
         <div style="display: flex; flex-direction: column; align-items: center; margin: 2px;">
-            <div style="width: 20px; height: 100px; background: #f8f9fa; border: 1px solid #ddd; 
+            <div style="width: 20px; height: 100px; background: #f8f9fa; border: 1px solid #ddd;
                         display: flex; align-items: flex-end; position: relative;">
-                <div style="width: 100%; height: {}%; background: {}; 
+                <div style="width: 100%; height: {}%; background: {};
                             transition: height 0.3s ease;" title="State |{}⟩: {:.3}"></div>
             </div>
             <span style="font-size: 10px; margin-top: 4px; writing-mode: vertical-rl; text-orientation: mixed;">|{}⟩</span>
@@ -356,25 +356,25 @@ impl PyQuantumStateVisualizer {
 <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; margin: 10px; border-radius: 8px;">
     <h3 style="color: #2E86C1; margin-top: 0;">Bloch Sphere Representation</h3>
     <div style="display: flex; align-items: center; gap: 20px;">
-        <div style="width: 300px; height: 300px; border: 2px solid #34495e; border-radius: 50%; 
+        <div style="width: 300px; height: 300px; border: 2px solid #34495e; border-radius: 50%;
                     position: relative; background: radial-gradient(circle, #ecf0f1, #bdc3c7);">
             <!-- Sphere guidelines -->
             <div style="position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: #7f8c8d; transform: translateY(-50%);"></div>
             <div style="position: absolute; left: 50%; top: 0; height: 100%; width: 2px; background: #7f8c8d; transform: translateX(-50%);"></div>
-            
+
             <!-- State vector -->
-            <div style="position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; 
-                        background: #e74c3c; border-radius: 50%; transform: translate(-50%, -50%) 
+            <div style="position: absolute; top: 50%; left: 50%; width: 8px; height: 8px;
+                        background: #e74c3c; border-radius: 50%; transform: translate(-50%, -50%)
                         translate({}px, {}px);" title="State vector: ({:.3}, {:.3}, {:.3})">
             </div>
-            
+
             <!-- Axis labels -->
             <div style="position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-weight: bold;">|0⟩</div>
             <div style="position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-weight: bold;">|1⟩</div>
             <div style="position: absolute; top: 50%; left: -20px; transform: translateY(-50%); font-weight: bold;">Y</div>
             <div style="position: absolute; top: 50%; right: -20px; transform: translateY(-50%); font-weight: bold;">X</div>
         </div>
-        
+
         <div style="flex: 1;">
             <h4>State Information:</h4>
             <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; font-family: monospace;">
@@ -525,14 +525,14 @@ impl PyQuantumPerformanceMonitor {
         <div style="margin: 8px 0; display: flex; align-items: center;">
             <span style="width: 150px; font-size: 12px; color: #34495e;">{}</span>
             <div style="flex: 1; height: 25px; background: #f8f9fa; border: 1px solid #ddd; position: relative; border-radius: 4px;">
-                <div style="height: 100%; width: {}%; background: {}; border-radius: 3px; 
+                <div style="height: 100%; width: {}%; background: {}; border-radius: 3px;
                             display: flex; align-items: center; padding: 0 8px; color: white; font-size: 11px;"
                      title="{:.2}ms, {} gates, {} qubits{}">
                     {:.1}ms
                 </div>
             </div>
         </div>
-"#, measurement.operation, width_percent, color, measurement.duration_ms, 
+"#, measurement.operation, width_percent, color, measurement.duration_ms,
     measurement.gate_count, measurement.qubit_count, fidelity_display, measurement.duration_ms));
         }
 

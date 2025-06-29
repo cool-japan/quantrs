@@ -21,12 +21,12 @@ pub mod azure_device;
 pub mod backend_traits;
 pub mod benchmarking;
 pub mod calibration;
-pub mod scirs2_calibration_enhanced;
 pub mod characterization;
 pub mod circuit_integration;
 pub mod circuit_migration;
 pub mod cloud;
 pub mod continuous_variable;
+pub mod scirs2_calibration_enhanced;
 // pub mod cost_optimization;
 pub mod compiler_passes;
 pub mod cross_platform_benchmarking;
@@ -476,25 +476,6 @@ pub mod prelude {
         DeviceCalibration, DeviceTopology, QubitCalibration, ReadoutCalibration,
         SingleQubitGateCalibration, TwoQubitGateCalibration,
     };
-    pub use crate::scirs2_calibration_enhanced::{
-        EnhancedCalibrationSystem, EnhancedCalibrationConfig, CalibrationConfig,
-        HardwareSpec, CoherenceTimes, CalibrationProtocols, SingleQubitProtocols,
-        TwoQubitProtocols, ReadoutProtocols, CrosstalkProtocols, IdentificationMethod,
-        CalibrationObjective, PerformanceThresholds, AnalysisOptions, SystemCalibrationResult,
-        CalibrationState, QubitParameters, TwoQubitParameters, ReadoutParameters,
-        CrosstalkParameters, SingleQubitCalibration, TwoQubitCalibration,
-        ReadoutCalibration as EnhancedReadoutCalibration, CrosstalkCharacterization as EnhancedCrosstalkCharacterization,
-        SystemModel, ErrorModel, CalibrationReport, CalibrationSummary, DetailedResults,
-        SystemAnalysis, ErrorAnalysis, CalibrationVisualizations, PerformanceMetrics,
-        QualityMetrics, CalibrationRecommendation, RecommendationCategory, Priority,
-        RabiData, RamseyData, DragData, ChevronData, CNOTData, ZZData, DiscriminationData,
-        DiscriminationParameters, IQData, IQParameters, ProcessTomographyData, GSTData,
-        RBData, GateSet, MLSystemParameters, CoherentError, IncoherentError,
-        IncoherentErrorType, CorrelatedError, DriftMeasurement, DriftAnalysis,
-        DriftDirection, CalibrationModel, ErrorModelTrait, CalibrationInput,
-        CalibrationPrediction, CalibrationFeedback, ErrorData, ErrorCharacterization,
-        QuantumOperation,
-    };
     pub use crate::characterization::{
         CrosstalkCharacterization as CharacterizationCrosstalk, DriftTracker, ProcessTomography,
         RandomizedBenchmarking, StateTomography,
@@ -540,6 +521,24 @@ pub mod prelude {
         CVDeviceConfig, CVDeviceDiagnostics, CVEntanglementMeasures, CVMeasurementOutcome,
         CVMeasurementResult, CVMeasurementType, CVModeState, CVQuantumDevice, CVSystemType,
         Complex,
+    };
+    pub use crate::scirs2_calibration_enhanced::{
+        AnalysisOptions, CNOTData, CalibrationConfig, CalibrationFeedback, CalibrationInput,
+        CalibrationModel, CalibrationObjective, CalibrationPrediction, CalibrationProtocols,
+        CalibrationRecommendation, CalibrationReport, CalibrationState, CalibrationSummary,
+        CalibrationVisualizations, ChevronData, CoherenceTimes, CoherentError, CorrelatedError,
+        CrosstalkCharacterization as EnhancedCrosstalkCharacterization, CrosstalkParameters,
+        CrosstalkProtocols, DetailedResults, DiscriminationData, DiscriminationParameters,
+        DragData, DriftAnalysis, DriftDirection, DriftMeasurement, EnhancedCalibrationConfig,
+        EnhancedCalibrationSystem, ErrorAnalysis, ErrorCharacterization, ErrorData, ErrorModel,
+        ErrorModelTrait, GSTData, GateSet, HardwareSpec, IQData, IQParameters,
+        IdentificationMethod, IncoherentError, IncoherentErrorType, MLSystemParameters,
+        PerformanceMetrics, PerformanceThresholds, Priority, ProcessTomographyData, QualityMetrics,
+        QuantumOperation, QubitParameters, RBData, RabiData, RamseyData,
+        ReadoutCalibration as EnhancedReadoutCalibration, ReadoutParameters, ReadoutProtocols,
+        RecommendationCategory, SingleQubitCalibration, SingleQubitProtocols, SystemAnalysis,
+        SystemCalibrationResult, SystemModel, TwoQubitCalibration, TwoQubitParameters,
+        TwoQubitProtocols, ZZData,
     };
     // pub use crate::cost_optimization::{
     //     CostOptimizationEngine, CostOptimizationConfig, CostOptimizationStrategy as CostStrategy, CostEstimate,
@@ -591,8 +590,8 @@ pub mod prelude {
         HybridOptimizationConfig, HybridOptimizer, HybridPerformanceConfig,
         HybridQuantumClassicalExecutor, IterationResult, NoiseModelingConfig, OptimizationLevel,
         OptimizationPass, OptimizationSummary, PerformanceMetrics as HybridPerformanceMetrics,
-        QualityMetrics as HybridQualityMetrics, QuantumExecutionConfig, QuantumExecutionResult, RetryConfig,
-        SelectionCriterion, StateEstimationMethod,
+        QualityMetrics as HybridQualityMetrics, QuantumExecutionConfig, QuantumExecutionResult,
+        RetryConfig, SelectionCriterion, StateEstimationMethod,
     };
     pub use crate::ibm::IBMCircuitConfig;
     pub use crate::integrated_device_manager::{
@@ -741,12 +740,13 @@ pub mod prelude {
         TrainingStatistics,
     };
     pub use crate::quantum_ml_integration::{
-        create_high_performance_qml_config, create_qml_integration_hub, AnomalyType as QMLAnomalyType,
-        FrameworkBridge, HybridMLOptimizer, LossFunction, MLFramework, MLPerformanceAnalytics,
-        QMLArchitecture, QMLDataBatch, QMLDataPipeline, QMLDataset, QMLInferenceResult,
-        QMLIntegrationConfig, QMLMonitoringConfig, QMLOptimizationConfig, QMLResourceConfig,
-        QMLResourceRequirements, QMLTrainingConfig, QMLTrainingOrchestrator, QuantumEncodingType,
-        QuantumMLIntegrationHub, QuantumNeuralNetworkExecutor, TrainingPriority,
+        create_high_performance_qml_config, create_qml_integration_hub,
+        AnomalyType as QMLAnomalyType, FrameworkBridge, HybridMLOptimizer, LossFunction,
+        MLFramework, MLPerformanceAnalytics, QMLArchitecture, QMLDataBatch, QMLDataPipeline,
+        QMLDataset, QMLInferenceResult, QMLIntegrationConfig, QMLMonitoringConfig,
+        QMLOptimizationConfig, QMLResourceConfig, QMLResourceRequirements, QMLTrainingConfig,
+        QMLTrainingOrchestrator, QuantumEncodingType, QuantumMLIntegrationHub,
+        QuantumNeuralNetworkExecutor, TrainingPriority,
     };
     pub use crate::quantum_system_security::{
         AuthenticationMethod as SecurityAuthenticationMethod, AuthorizationModel,

@@ -141,7 +141,7 @@ impl NoiseModel {
         self.t1_times.get(&qubit).copied().unwrap_or(100.0)
     }
 
-    /// Get T2 time for a qubit  
+    /// Get T2 time for a qubit
     pub fn t2_time(&self, qubit: usize) -> f64 {
         self.t2_times.get(&qubit).copied().unwrap_or(50.0)
     }
@@ -175,7 +175,7 @@ pub struct NoiseAwareCostModel {
     coupling_map: Option<CouplingMap>,
     /// Weight for error rate in cost calculation
     pub error_weight: f64,
-    /// Weight for execution time in cost calculation  
+    /// Weight for execution time in cost calculation
     pub time_weight: f64,
     /// Weight for coherence effects
     pub coherence_weight: f64,
@@ -446,7 +446,7 @@ pub struct DynamicalDecoupling {
 pub enum DecouplingSequence {
     /// XY-4 sequence
     XY4,
-    /// CPMG sequence  
+    /// CPMG sequence
     CPMG,
     /// XY-8 sequence
     XY8,

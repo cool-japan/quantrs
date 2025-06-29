@@ -500,7 +500,7 @@ impl GaussianState {
         Ok(())
     }
 
-    /// Condition state on heterodyne measurement result  
+    /// Condition state on heterodyne measurement result
     pub fn condition_on_heterodyne_measurement(
         &mut self,
         mode: usize,

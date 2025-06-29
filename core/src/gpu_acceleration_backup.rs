@@ -78,7 +78,7 @@ impl GpuBuffer {
     fn allocate_buffer(device_id: u32, backend: GpuBackend, size: usize, _pinned: bool) -> QuantRS2Result<u64> {
         // In a real implementation, this would call CUDA/OpenCL/ROCm APIs
         static NEXT_BUFFER_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
-        
+
         if size == 0 {
             return Err(QuantRS2Error::InvalidParameter("Buffer size cannot be zero".to_string()));
         }
@@ -108,7 +108,7 @@ impl GpuBuffer {
         }
 
         // Mock implementation - in real code, this would copy to GPU memory
-        println!("Copying {} complex numbers to GPU buffer {} on {} device {}", 
+        println!("Copying {} complex numbers to GPU buffer {} on {} device {}",
                  data.len(), self.buffer_id, self.backend, self.device_id);
         Ok(())
     }
@@ -120,7 +120,7 @@ impl GpuBuffer {
         }
 
         // Mock implementation - in real code, this would copy from GPU memory
-        println!("Copying {} complex numbers from GPU buffer {} on {} device {}", 
+        println!("Copying {} complex numbers from GPU buffer {} on {} device {}",
                  data.len(), self.buffer_id, self.backend, self.device_id);
         Ok(())
     }
@@ -129,7 +129,7 @@ impl GpuBuffer {
 impl Drop for GpuBuffer {
     fn drop(&mut self) {
         // Mock cleanup
-        println!("Deallocating GPU buffer {} on {} device {}", 
+        println!("Deallocating GPU buffer {} on {} device {}",
                  self.buffer_id, self.backend, self.device_id);
     }
 }
@@ -176,7 +176,7 @@ impl GpuMemoryPool {
 
     fn allocate(&mut self, device_id: u32, size: usize) -> QuantRS2Result<GpuBuffer> {
         // Try to reuse existing buffer
-        if let Some(pos) = self.free_buffers.iter().position(|buf| 
+        if let Some(pos) = self.free_buffers.iter().position(|buf|
             buf.device_id == device_id && buf.size >= size) {
             return Ok(self.free_buffers.remove(pos));
         }
@@ -198,7 +198,7 @@ impl GpuContext {
     /// Create a new GPU context
     pub fn new(backend: GpuBackend) -> QuantRS2Result<Self> {
         let devices = Self::discover_devices(backend)?;
-        
+
         if devices.is_empty() {
             return Err(QuantRS2Error::NoHardwareAvailable(
                 format!("No {} devices found", backend)
@@ -281,13 +281,13 @@ impl GpuContext {
 
     /// Get active device information
     pub fn active_device(&self) -> Option<&GpuDevice> {
-        self.active_device.and_then(|id| 
+        self.active_device.and_then(|id|
             self.devices.iter().find(|d| d.id == id))
     }
 
     /// Compile a kernel
     pub fn compile_kernel(&self, name: &str, source: &str) -> QuantRS2Result<()> {
-        let device_id = self.active_device.ok_or_else(|| 
+        let device_id = self.active_device.ok_or_else(||
             QuantRS2Error::InvalidOperation("No active device".to_string()))?;
 
         let kernel = CompiledKernel {
@@ -300,7 +300,7 @@ impl GpuContext {
         };
 
         println!("Compiling kernel '{}' for {} device {}", name, self.backend, device_id);
-        
+
         self.kernels.write().unwrap().insert(name.to_string(), kernel);
         Ok(())
     }
@@ -308,12 +308,12 @@ impl GpuContext {
     /// Execute a kernel
     pub fn execute_kernel(&self, name: &str, buffers: &[&GpuBuffer], params: &[f64]) -> QuantRS2Result<()> {
         let kernels = self.kernels.read().unwrap();
-        let kernel = kernels.get(name).ok_or_else(|| 
+        let kernel = kernels.get(name).ok_or_else(||
             QuantRS2Error::InvalidOperation(format!("Kernel '{}' not found", name)))?;
 
-        println!("Executing kernel '{}' with {} buffers and {} parameters", 
+        println!("Executing kernel '{}' with {} buffers and {} parameters",
                  name, buffers.len(), params.len());
-        
+
         // Mock kernel execution
         std::thread::sleep(std::time::Duration::from_millis(1));
         Ok(())
@@ -321,7 +321,7 @@ impl GpuContext {
 
     /// Allocate GPU buffer
     pub fn allocate_buffer(&self, size: usize) -> QuantRS2Result<GpuBuffer> {
-        let device_id = self.active_device.ok_or_else(|| 
+        let device_id = self.active_device.ok_or_else(||
             QuantRS2Error::InvalidOperation("No active device".to_string()))?;
 
         self.memory_pool.lock().unwrap().allocate(device_id, size)
@@ -348,7 +348,7 @@ impl GpuStateVectorSimulator {
     pub fn new(context: Arc<GpuContext>, num_qubits: usize) -> QuantRS2Result<Self> {
         if num_qubits > 50 {
             return Err(QuantRS2Error::UnsupportedQubits(
-                num_qubits, 
+                num_qubits,
                 "Maximum 50 qubits supported for state vector simulation".to_string()
             ));
         }
@@ -380,7 +380,7 @@ impl GpuStateVectorSimulator {
         }
 
         let buffer_size = self.state_size * std::mem::size_of::<Complex64>();
-        
+
         // Allocate state buffer
         let mut state_buffer = self.context.allocate_buffer(buffer_size)?;
         state_buffer.copy_from_host(initial_state)?;
@@ -403,7 +403,7 @@ impl GpuStateVectorSimulator {
             return Err(QuantRS2Error::InvalidQubitId(qubit as u32));
         }
 
-        let state_buffer = self.state_buffer.as_ref().ok_or_else(|| 
+        let state_buffer = self.state_buffer.as_ref().ok_or_else(||
             QuantRS2Error::InvalidOperation("State not initialized".to_string()))?;
 
         // Copy gate matrix to device (simplified)
@@ -429,7 +429,7 @@ impl GpuStateVectorSimulator {
             return Err(QuantRS2Error::InvalidQubitId(control.max(target) as u32));
         }
 
-        let state_buffer = self.state_buffer.as_ref().ok_or_else(|| 
+        let state_buffer = self.state_buffer.as_ref().ok_or_else(||
             QuantRS2Error::InvalidOperation("State not initialized".to_string()))?;
 
         // Copy gate matrix to device (simplified)
@@ -447,7 +447,7 @@ impl GpuStateVectorSimulator {
 
     /// Apply phase rotation to entire state
     pub fn apply_global_phase(&mut self, phase: f64) -> QuantRS2Result<()> {
-        let state_buffer = self.state_buffer.as_ref().ok_or_else(|| 
+        let state_buffer = self.state_buffer.as_ref().ok_or_else(||
             QuantRS2Error::InvalidOperation("State not initialized".to_string()))?;
 
         self.context.execute_kernel("apply_phase_rotation", &[state_buffer], &[phase])?;
@@ -458,12 +458,12 @@ impl GpuStateVectorSimulator {
     pub fn expectation_value(&self, pauli_string: &str) -> QuantRS2Result<f64> {
         if pauli_string.len() != self.num_qubits {
             return Err(QuantRS2Error::InvalidInput(
-                format!("Pauli string length {} must match number of qubits {}", 
+                format!("Pauli string length {} must match number of qubits {}",
                         pauli_string.len(), self.num_qubits)
             ));
         }
 
-        let state_buffer = self.state_buffer.as_ref().ok_or_else(|| 
+        let state_buffer = self.state_buffer.as_ref().ok_or_else(||
             QuantRS2Error::InvalidOperation("State not initialized".to_string()))?;
 
         // Encode Pauli string (I=0, X=1, Y=2, Z=3)
@@ -481,14 +481,14 @@ impl GpuStateVectorSimulator {
         }
 
         self.context.execute_kernel("compute_expectation", &[state_buffer], &pauli_encoding)?;
-        
+
         // In real implementation, this would retrieve the result from GPU
         Ok(0.5) // Mock result
     }
 
     /// Get the current state vector
     pub fn get_state(&self) -> QuantRS2Result<Vec<Complex64>> {
-        let state_buffer = self.state_buffer.as_ref().ok_or_else(|| 
+        let state_buffer = self.state_buffer.as_ref().ok_or_else(||
             QuantRS2Error::InvalidOperation("State not initialized".to_string()))?;
 
         let mut state = vec![Complex64::new(0.0, 0.0); self.state_size];
@@ -540,12 +540,12 @@ impl GpuTensorNetworkContractor {
     }
 
     /// Contract two tensors on GPU
-    pub fn contract_tensors(&mut self, tensor1_id: usize, tensor2_id: usize, 
+    pub fn contract_tensors(&mut self, tensor1_id: usize, tensor2_id: usize,
                            contract_indices: &[(usize, usize)]) -> QuantRS2Result<Vec<Complex64>> {
-        let buffer1 = self.tensor_buffers.get(&tensor1_id).ok_or_else(|| 
+        let buffer1 = self.tensor_buffers.get(&tensor1_id).ok_or_else(||
             QuantRS2Error::InvalidOperation(format!("Tensor {} not found on GPU", tensor1_id)))?;
-        
-        let buffer2 = self.tensor_buffers.get(&tensor2_id).ok_or_else(|| 
+
+        let buffer2 = self.tensor_buffers.get(&tensor2_id).ok_or_else(||
             QuantRS2Error::InvalidOperation(format!("Tensor {} not found on GPU", tensor2_id)))?;
 
         // Encode contraction indices
@@ -563,7 +563,7 @@ impl GpuTensorNetworkContractor {
 
     /// Perform SVD decomposition on GPU
     pub fn tensor_svd(&self, tensor_id: usize, split_index: usize) -> QuantRS2Result<(Vec<Complex64>, Vec<f64>, Vec<Complex64>)> {
-        let buffer = self.tensor_buffers.get(&tensor_id).ok_or_else(|| 
+        let buffer = self.tensor_buffers.get(&tensor_id).ok_or_else(||
             QuantRS2Error::InvalidOperation(format!("Tensor {} not found on GPU", tensor_id)))?;
 
         self.context.execute_kernel("tensor_svd", &[buffer], &[split_index as f64])?;
@@ -581,7 +581,7 @@ impl GpuTensorNetworkContractor {
         // Simplified contraction order optimization
         let tensor_ids: Vec<usize> = network.tensors.keys().cloned().collect();
         let mut order = Vec::new();
-        
+
         for i in 0..tensor_ids.len() - 1 {
             order.push((tensor_ids[i], tensor_ids[i + 1]));
         }
@@ -660,16 +660,16 @@ const SINGLE_QUBIT_GATE_KERNEL: &str = r#"
 __global__ void apply_single_qubit_gate(Complex* state, Complex* gate, int qubit, int n_qubits) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int total_states = 1 << n_qubits;
-    
+
     if (idx >= total_states / 2) return;
-    
+
     int qubit_mask = 1 << qubit;
     int state_0 = (idx & ~qubit_mask) | ((idx & (qubit_mask - 1)));
     int state_1 = state_0 | qubit_mask;
-    
+
     Complex amp_0 = state[state_0];
     Complex amp_1 = state[state_1];
-    
+
     state[state_0] = gate[0] * amp_0 + gate[1] * amp_1;
     state[state_1] = gate[2] * amp_0 + gate[3] * amp_1;
 }
@@ -679,9 +679,9 @@ const TWO_QUBIT_GATE_KERNEL: &str = r#"
 __global__ void apply_two_qubit_gate(Complex* state, Complex* gate, int control, int target, int n_qubits) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int total_states = 1 << n_qubits;
-    
+
     if (idx >= total_states / 4) return;
-    
+
     // Implementation would handle two-qubit gate application
 }
 "#;
@@ -689,9 +689,9 @@ __global__ void apply_two_qubit_gate(Complex* state, Complex* gate, int control,
 const PHASE_ROTATION_KERNEL: &str = r#"
 __global__ void apply_phase_rotation(Complex* state, double phase, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    
+
     if (idx >= size) return;
-    
+
     Complex phase_factor = make_cuDoubleComplex(cos(phase), sin(phase));
     state[idx] = cuCmul(state[idx], phase_factor);
 }
@@ -704,8 +704,8 @@ __global__ void compute_expectation(Complex* state, double* paulis, double* resu
 "#;
 
 const TENSOR_CONTRACTION_KERNEL: &str = r#"
-__global__ void contract_tensors(Complex* tensor1, Complex* tensor2, 
-                               int* indices, Complex* result, 
+__global__ void contract_tensors(Complex* tensor1, Complex* tensor2,
+                               int* indices, Complex* result,
                                int* shape1, int* shape2) {
     // Implementation would perform tensor contraction
 }
@@ -733,7 +733,7 @@ mod tests {
     fn test_gpu_context_creation() {
         let context = GpuContext::new(GpuBackend::CUDA);
         assert!(context.is_ok());
-        
+
         let context = context.unwrap();
         assert!(!context.devices.is_empty());
         assert!(context.active_device.is_some());
@@ -744,7 +744,7 @@ mod tests {
         let context = GpuContext::new(GpuBackend::CUDA).unwrap();
         let buffer = context.allocate_buffer(1024);
         assert!(buffer.is_ok());
-        
+
         let buffer = buffer.unwrap();
         assert_eq!(buffer.size, 1024);
     }
@@ -753,23 +753,23 @@ mod tests {
     fn test_state_vector_simulator() {
         let context = Arc::new(GpuContext::new(GpuBackend::CUDA).unwrap());
         let mut simulator = GpuStateVectorSimulator::new(context, 3).unwrap();
-        
+
         // Initialize with |000⟩ state
         let initial_state = vec![
-            Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), 
+            Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
-            Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), 
+            Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
         ];
-        
+
         assert!(simulator.initialize_state(&initial_state).is_ok());
-        
+
         // Apply Hadamard gate on qubit 0
         let hadamard = vec![
             Complex64::new(1.0/2.0_f64.sqrt(), 0.0), Complex64::new(1.0/2.0_f64.sqrt(), 0.0),
             Complex64::new(1.0/2.0_f64.sqrt(), 0.0), Complex64::new(-1.0/2.0_f64.sqrt(), 0.0),
         ];
-        
+
         assert!(simulator.apply_single_qubit_gate(0, &hadamard).is_ok());
     }
 
@@ -777,7 +777,7 @@ mod tests {
     fn test_tensor_network_contractor() {
         let context = Arc::new(GpuContext::new(GpuBackend::CUDA).unwrap());
         let mut contractor = GpuTensorNetworkContractor::new(context).unwrap();
-        
+
         // Create a simple tensor
         let data = ndarray::Array::from_shape_vec(
             IxDyn(&[2, 2]),
@@ -786,7 +786,7 @@ mod tests {
                 Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0),
             ]
         ).unwrap();
-        
+
         let tensor = Tensor::new(0, data, vec!["i".to_string(), "j".to_string()]);
         assert!(contractor.upload_tensor(&tensor).is_ok());
     }
@@ -794,15 +794,15 @@ mod tests {
     #[test]
     fn test_performance_monitor() {
         let mut monitor = GpuPerformanceMonitor::new();
-        
+
         monitor.record_operation("gate_application", 1.5);
         monitor.record_operation("gate_application", 2.0);
         monitor.record_memory_usage(1024);
         monitor.record_kernel_launch();
-        
+
         assert_eq!(monitor.get_average_time("gate_application"), Some(1.75));
         assert_eq!(monitor.get_peak_memory_usage(), Some(1024));
-        
+
         let stats = monitor.get_stats();
         assert_eq!(stats.total_kernel_launches, 1);
     }
@@ -820,20 +820,20 @@ mod tests {
     fn test_invalid_qubit_operations() {
         let context = Arc::new(GpuContext::new(GpuBackend::CUDA).unwrap());
         let mut simulator = GpuStateVectorSimulator::new(context, 2).unwrap();
-        
+
         let initial_state = vec![
-            Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), 
+            Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
         ];
-        
+
         simulator.initialize_state(&initial_state).unwrap();
-        
+
         // Try to apply gate to non-existent qubit
         let hadamard = vec![
             Complex64::new(1.0/2.0_f64.sqrt(), 0.0), Complex64::new(1.0/2.0_f64.sqrt(), 0.0),
             Complex64::new(1.0/2.0_f64.sqrt(), 0.0), Complex64::new(-1.0/2.0_f64.sqrt(), 0.0),
         ];
-        
+
         let result = simulator.apply_single_qubit_gate(5, &hadamard);
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), QuantRS2Error::InvalidQubitId(_)));
@@ -843,15 +843,15 @@ mod tests {
     fn test_expectation_value_calculation() {
         let context = Arc::new(GpuContext::new(GpuBackend::CUDA).unwrap());
         let simulator = GpuStateVectorSimulator::new(context, 3).unwrap();
-        
+
         // Test invalid Pauli string
         let result = simulator.expectation_value("XYZ");
         assert!(result.is_ok());
-        
+
         // Test invalid Pauli string length
         let result = simulator.expectation_value("XY");
         assert!(result.is_err());
-        
+
         // Test invalid Pauli operator
         let result = simulator.expectation_value("ABC");
         assert!(result.is_err());

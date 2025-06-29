@@ -1459,7 +1459,7 @@ pub mod metrics {
         0.85
     }
 
-    /// Calculate recall score  
+    /// Calculate recall score
     pub fn recall_score(y_true: &Array1<i32>, y_pred: &Array1<i32>, _average: &str) -> f64 {
         // Mock implementation
         0.82
@@ -1478,7 +1478,7 @@ pub mod metrics {
         target_names: Vec<&str>,
         digits: usize,
     ) -> String {
-        format!("Classification Report\n==================\n{:>10} {:>10} {:>10} {:>10} {:>10}\n{:>10} {:>10.digits$} {:>10.digits$} {:>10.digits$} {:>10}\n{:>10} {:>10.digits$} {:>10.digits$} {:>10.digits$} {:>10}\n", 
+        format!("Classification Report\n==================\n{:>10} {:>10} {:>10} {:>10} {:>10}\n{:>10} {:>10.digits$} {:>10.digits$} {:>10.digits$} {:>10}\n{:>10} {:>10.digits$} {:>10.digits$} {:>10.digits$} {:>10}\n",
             "", "precision", "recall", "f1-score", "support",
             target_names[0], 0.85, 0.82, 0.83, 50,
             target_names[1], 0.87, 0.85, 0.86, 50,

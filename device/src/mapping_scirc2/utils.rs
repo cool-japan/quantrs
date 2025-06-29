@@ -26,22 +26,22 @@ fn create_linear_topology(num_qubits: usize) -> DeviceResult<HardwareTopology> {
 fn create_grid_topology(num_qubits: usize) -> DeviceResult<HardwareTopology> {
     let side_length = (num_qubits as f64).sqrt().ceil() as usize;
     let mut connectivity = Vec::new();
-    
+
     for i in 0..num_qubits {
         let row = i / side_length;
         let col = i % side_length;
-        
+
         // Horizontal connections
         if col < side_length - 1 && i + 1 < num_qubits {
             connectivity.push((i, i + 1));
         }
-        
+
         // Vertical connections
         if row < side_length - 1 && i + side_length < num_qubits {
             connectivity.push((i, i + side_length));
         }
     }
-    
+
     HardwareTopology::new(num_qubits, connectivity)
 }
 
@@ -49,24 +49,24 @@ fn create_grid_topology(num_qubits: usize) -> DeviceResult<HardwareTopology> {
 fn create_star_topology(num_qubits: usize) -> DeviceResult<HardwareTopology> {
     let mut connectivity = Vec::new();
     let center = 0;
-    
+
     for i in 1..num_qubits {
         connectivity.push((center, i));
     }
-    
+
     HardwareTopology::new(num_qubits, connectivity)
 }
 
 /// Create a complete graph topology
 fn create_complete_topology(num_qubits: usize) -> DeviceResult<HardwareTopology> {
     let mut connectivity = Vec::new();
-    
+
     for i in 0..num_qubits {
         for j in i + 1..num_qubits {
             connectivity.push((i, j));
         }
     }
-    
+
     HardwareTopology::new(num_qubits, connectivity)
 }
 
@@ -89,7 +89,7 @@ pub fn validate_mapping(
             )));
         }
     }
-    
+
     // Check all physical qubits are valid
     for &physical in mapping.values() {
         if physical >= num_physical_qubits {
@@ -98,7 +98,7 @@ pub fn validate_mapping(
             )));
         }
     }
-    
+
     // Check for duplicate mappings
     let mut used_physical = HashSet::new();
     for &physical in mapping.values() {
@@ -108,7 +108,7 @@ pub fn validate_mapping(
             )));
         }
     }
-    
+
     Ok(())
 }
 
@@ -120,25 +120,25 @@ pub fn calculate_mapping_quality(
 ) -> DeviceResult<f64> {
     let mut total_distance = 0.0;
     let mut edge_count = 0;
-    
+
     for edge in logical_graph.edges() {
         // Note: node_weight method not available in current scirs2-graph version
         // Using edge source/target indices as usize directly
         let source = edge.source as usize;
         let target = edge.target as usize;
-        
-        if let (Some(&phys_source), Some(&phys_target)) = 
+
+        if let (Some(&phys_source), Some(&phys_target)) =
             (mapping.get(&source), mapping.get(&target)) {
-            
+
             // Calculate shortest path distance in physical topology
             let distance = topology.shortest_path_distance(phys_source, phys_target)
                 .unwrap_or(f64::INFINITY);
-            
+
             total_distance += distance;
             edge_count += 1;
         }
     }
-    
+
     if edge_count > 0 {
         Ok(1.0 / (1.0 + total_distance / edge_count as f64))
     } else {
@@ -153,7 +153,7 @@ pub fn generate_random_circuit<const N: usize>(
 ) -> Circuit<N> {
     let mut circuit = Circuit::<N>::new();
     let mut rng = rand::thread_rng();
-    
+
     for _ in 0..gate_count {
         if rng.gen::<f64>() < two_qubit_ratio {
             // Two-qubit gate
@@ -169,7 +169,7 @@ pub fn generate_random_circuit<const N: usize>(
             circuit.x(QubitId(q as u32));
         }
     }
-    
+
     circuit
 }
 
@@ -227,7 +227,7 @@ mod tests {
         let topology = create_linear_topology(4).unwrap();
         let mut graph = Graph::new();
         let nodes: Vec<_> = (0..4).map(|i| graph.add_node(i)).collect();
-        
+
         // Add edge between qubits 0 and 3 (distant in linear topology)
         graph.add_edge(nodes[0], nodes[3], 1.0);
 
@@ -260,7 +260,7 @@ mod tests {
     fn test_complete_topology() {
         let topology = create_complete_topology(4).unwrap();
         assert_eq!(topology.num_qubits(), 4);
-        
+
         // All pairs should be connected
         for i in 0..4 {
             for j in i + 1..4 {

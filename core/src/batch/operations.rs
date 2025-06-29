@@ -10,7 +10,8 @@ use ndarray::{s, Array1, Array2, Array3, Axis};
 use num_complex::Complex64;
 // use scirs2_core::parallel_ops::*;
 use crate::parallel_ops_stubs::*;
-use crate::simd_ops_stubs::SimdF64;
+// use scirs2_core::simd_ops::SimdUnifiedOps;
+use crate::simd_ops_stubs::{SimdComplex64, SimdF64};
 
 /// Apply a single-qubit gate to all states in a batch
 pub fn apply_single_qubit_gate_batch(
@@ -167,7 +168,7 @@ fn apply_single_qubit_batch_simd(
     // Collect all pairs of amplitudes that need to be transformed
     let _pairs_per_batch = state_size / 2;
     let _total_pairs = batch_size * _pairs_per_batch;
-    
+
     // For simpler implementation, process each batch item individually
     // but use SIMD within each batch item
     for batch_idx in 0..batch_size {
@@ -175,7 +176,7 @@ fn apply_single_qubit_batch_simd(
         let mut idx_pairs = Vec::new();
         let mut a_values = Vec::new();
         let mut b_values = Vec::new();
-        
+
         for i in 0..state_size {
             if i & target_mask == 0 {
                 let j = i | target_mask;
@@ -184,67 +185,67 @@ fn apply_single_qubit_batch_simd(
                 b_values.push(batch.states[[batch_idx, j]]);
             }
         }
-        
+
         if idx_pairs.is_empty() {
             continue;
         }
-        
+
         // Apply gate transformation using SIMD
         // new_a = g00 * a + g01 * b
         // new_b = g10 * a + g11 * b
-        
+
         // Extract real and imaginary parts
         let _len = a_values.len();
         let a_real: Vec<f64> = a_values.iter().map(|c| c.re).collect();
         let a_imag: Vec<f64> = a_values.iter().map(|c| c.im).collect();
         let b_real: Vec<f64> = b_values.iter().map(|c| c.re).collect();
         let b_imag: Vec<f64> = b_values.iter().map(|c| c.im).collect();
-        
+
         // Compute new_a using SIMD
         let a_real_view = ArrayView1::from(&a_real);
         let a_imag_view = ArrayView1::from(&a_imag);
         let b_real_view = ArrayView1::from(&b_real);
         let b_imag_view = ArrayView1::from(&b_imag);
-        
+
         // new_a_real = g00.re * a.re - g00.im * a.im + g01.re * b.re - g01.im * b.im
         let term1 = <f64 as SimdF64>::simd_scalar_mul(&a_real_view, g00.re);
         let term2 = <f64 as SimdF64>::simd_scalar_mul(&a_imag_view, g00.im);
         let term3 = <f64 as SimdF64>::simd_scalar_mul(&b_real_view, g01.re);
         let term4 = <f64 as SimdF64>::simd_scalar_mul(&b_imag_view, g01.im);
-        
+
         let temp1 = <f64 as SimdF64>::simd_sub_arrays(&term1.view(), &term2.view());
         let temp2 = <f64 as SimdF64>::simd_sub_arrays(&term3.view(), &term4.view());
         let new_a_real = <f64 as SimdF64>::simd_add_arrays(&temp1.view(), &temp2.view());
-        
+
         // new_a_imag = g00.re * a.im + g00.im * a.re + g01.re * b.im + g01.im * b.re
         let term5 = <f64 as SimdF64>::simd_scalar_mul(&a_imag_view, g00.re);
         let term6 = <f64 as SimdF64>::simd_scalar_mul(&a_real_view, g00.im);
         let term7 = <f64 as SimdF64>::simd_scalar_mul(&b_imag_view, g01.re);
         let term8 = <f64 as SimdF64>::simd_scalar_mul(&b_real_view, g01.im);
-        
+
         let temp3 = <f64 as SimdF64>::simd_add_arrays(&term5.view(), &term6.view());
         let temp4 = <f64 as SimdF64>::simd_add_arrays(&term7.view(), &term8.view());
         let new_a_imag = <f64 as SimdF64>::simd_add_arrays(&temp3.view(), &temp4.view());
-        
+
         // Compute new_b using SIMD (similar process)
         let term9 = <f64 as SimdF64>::simd_scalar_mul(&a_real_view, g10.re);
         let term10 = <f64 as SimdF64>::simd_scalar_mul(&a_imag_view, g10.im);
         let term11 = <f64 as SimdF64>::simd_scalar_mul(&b_real_view, g11.re);
         let term12 = <f64 as SimdF64>::simd_scalar_mul(&b_imag_view, g11.im);
-        
+
         let temp5 = <f64 as SimdF64>::simd_sub_arrays(&term9.view(), &term10.view());
         let temp6 = <f64 as SimdF64>::simd_sub_arrays(&term11.view(), &term12.view());
         let new_b_real = <f64 as SimdF64>::simd_add_arrays(&temp5.view(), &temp6.view());
-        
+
         let term13 = <f64 as SimdF64>::simd_scalar_mul(&a_imag_view, g10.re);
         let term14 = <f64 as SimdF64>::simd_scalar_mul(&a_real_view, g10.im);
         let term15 = <f64 as SimdF64>::simd_scalar_mul(&b_imag_view, g11.re);
         let term16 = <f64 as SimdF64>::simd_scalar_mul(&b_real_view, g11.im);
-        
+
         let temp7 = <f64 as SimdF64>::simd_add_arrays(&term13.view(), &term14.view());
         let temp8 = <f64 as SimdF64>::simd_add_arrays(&term15.view(), &term16.view());
         let new_b_imag = <f64 as SimdF64>::simd_add_arrays(&temp7.view(), &temp8.view());
-        
+
         // Write back results
         for (idx, &(i, j)) in idx_pairs.iter().enumerate() {
             batch.states[[batch_idx, i]] = Complex64::new(new_a_real[idx], new_a_imag[idx]);
@@ -254,7 +255,6 @@ fn apply_single_qubit_batch_simd(
 
     Ok(())
 }
-
 
 /// Apply a two-qubit gate to a state vector
 fn apply_two_qubit_to_state(
@@ -421,7 +421,7 @@ pub fn batch_state_matrix_multiply(
     // Use parallel processing for large batches
     if batch_size > 16 {
         // use scirs2_core::parallel_ops::*;
-use crate::parallel_ops_stubs::*;
+        use crate::parallel_ops_stubs::*;
 
         let results: Vec<_> = (0..batch_size)
             .into_par_iter()

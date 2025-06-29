@@ -7,56 +7,56 @@ pub mod prelude;
 
 /// Core quantum computing primitives and fundamental types
 pub mod quantum {
+    pub use crate::gate::*;
     /// Basic quantum types
     pub use crate::qubit::*;
     pub use crate::register::*;
-    pub use crate::gate::*;
-    
+
     /// Quantum operations and measurements
     pub use crate::operations::{
-        apply_and_sample, sample_outcome, MeasurementOutcome, OperationResult, 
-        POVMMeasurement, ProjectiveMeasurement, QuantumOperation, Reset,
+        apply_and_sample, sample_outcome, MeasurementOutcome, OperationResult, POVMMeasurement,
+        ProjectiveMeasurement, QuantumOperation, Reset,
     };
-    
+
     /// Error handling
     pub use crate::error::*;
 }
 
 /// Circuit decomposition and synthesis tools
 pub mod synthesis {
-    pub use crate::decomposition::decompose_u_gate;
+    pub use crate::cartan::{
+        cartan_decompose, CartanCoefficients, CartanDecomposer, CartanDecomposition,
+        OptimizedCartanDecomposer,
+    };
     pub use crate::decomposition::clifford_t::{
         count_t_gates_in_sequence, optimize_gate_sequence as optimize_clifford_t_sequence,
         CliffordGate, CliffordTDecomposer, CliffordTGate, CliffordTSequence,
     };
+    pub use crate::decomposition::decompose_u_gate;
     pub use crate::decomposition::solovay_kitaev::{
         count_t_gates, BaseGateSet, SolovayKitaev, SolovayKitaevConfig,
     };
     pub use crate::decomposition::utils::{
         clone_gate, decompose_circuit, optimize_gate_sequence, GateSequence,
     };
-    pub use crate::synthesis::{
-        decompose_single_qubit_xyx, decompose_single_qubit_zyz, decompose_two_qubit_kak,
-        identify_gate, synthesize_unitary, KAKDecomposition, SingleQubitDecomposition,
-    };
-    pub use crate::cartan::{
-        cartan_decompose, CartanCoefficients, CartanDecomposer, CartanDecomposition,
-        OptimizedCartanDecomposer,
-    };
-    pub use crate::shannon::{shannon_decompose, OptimizedShannonDecomposer, ShannonDecomposer};
     pub use crate::kak_multiqubit::{
         kak_decompose_multiqubit, DecompositionMethod, DecompositionStats, DecompositionTree,
         KAKTreeAnalyzer, MultiQubitKAK, MultiQubitKAKDecomposer,
+    };
+    pub use crate::shannon::{shannon_decompose, OptimizedShannonDecomposer, ShannonDecomposer};
+    pub use crate::synthesis::{
+        decompose_single_qubit_xyx, decompose_single_qubit_zyz, decompose_two_qubit_kak,
+        identify_gate, synthesize_unitary, KAKDecomposition, SingleQubitDecomposition,
     };
 }
 
 /// Mathematical operations and linear algebra
 pub mod math {
+    pub use crate::complex_ext::{quantum_states, QuantumComplexExt};
     pub use crate::matrix_ops::{
         matrices_approx_equal, partial_trace, tensor_product_many, DenseMatrix, QuantumMatrix,
         SparseMatrix,
     };
-    pub use crate::complex_ext::{quantum_states, QuantumComplexExt};
     pub use crate::simd_ops::{
         apply_phase_simd, controlled_phase_simd, expectation_z_simd, inner_product, normalize_simd,
     };
@@ -73,6 +73,10 @@ pub mod backends {
 
 /// Optimization and compilation tools
 pub mod optimization {
+    pub use crate::compilation_cache::{
+        get_compilation_cache, initialize_compilation_cache, CacheConfig, CacheStatistics,
+        CompilationCache, CompiledGate,
+    };
     pub use crate::optimization::compression::{
         CompressedGate, CompressionConfig, CompressionStats, CompressionType, GateMetadata,
         GateSequenceCompressor,
@@ -87,10 +91,6 @@ pub mod optimization {
     pub use crate::optimization::{
         gates_are_disjoint, gates_can_commute, OptimizationChain, OptimizationPass,
     };
-    pub use crate::compilation_cache::{
-        get_compilation_cache, initialize_compilation_cache, CacheConfig, CacheStatistics,
-        CompilationCache, CompiledGate,
-    };
     pub use crate::real_time_compilation::{
         CompilationContext, HardwareTarget, OptimizationPipeline, PerformanceMonitor,
         RealTimeQuantumCompiler,
@@ -99,15 +99,15 @@ pub mod optimization {
 
 /// Developer tools and utilities
 pub mod dev_tools {
-    pub use crate::testing::{
-        QuantumAssert, QuantumTest, QuantumTestSuite, TestResult, TestSuiteResult,
-        DEFAULT_TOLERANCE,
-    };
     pub use crate::quantum_debugger::*;
     pub use crate::quantum_debugging_profiling::{
         CircuitAnalysisReport, ProfilingReport, QuantumCircuitAnalyzer, QuantumDebugProfiling,
         QuantumDebugProfilingReport, QuantumDebugger, QuantumErrorTracker,
         QuantumPerformanceProfiler, QuantumStateInspector, StateInspectionReport,
+    };
+    pub use crate::testing::{
+        QuantumAssert, QuantumTest, QuantumTestSuite, TestResult, TestSuiteResult,
+        DEFAULT_TOLERANCE,
     };
 }
 
@@ -150,6 +150,10 @@ pub mod quantum_ml {
 
 /// Variational quantum algorithms
 pub mod variational {
+    pub use crate::qaoa::{
+        CostHamiltonian, MixerHamiltonian, QAOACircuit, QAOAOptimizer, QAOAParams,
+    };
+    pub use crate::qpca::{DensityMatrixPCA, QPCAParams, QuantumPCA};
     pub use crate::variational::{
         ComputationGraph, DiffMode, Dual, Node, Operation, VariationalCircuit, VariationalGate,
         VariationalOptimizer,
@@ -162,43 +166,43 @@ pub mod variational {
         OptimizationMethod, OptimizationResult as VariationalOptimizationResult,
         VariationalQuantumOptimizer,
     };
-    pub use crate::qaoa::{
-        CostHamiltonian, MixerHamiltonian, QAOACircuit, QAOAOptimizer, QAOAParams,
-    };
-    pub use crate::qpca::{DensityMatrixPCA, QPCAParams, QuantumPCA};
 }
 
 /// Hardware and device interfaces
 pub mod hardware {
-    pub use crate::pulse::{
-        CouplingParams, HardwareCalibration, Pulse, PulseCompiler, PulseEnvelope, PulseNoiseModel,
-        PulseSequence, QubitControlParams, TimingConstraints,
-    };
     pub use crate::neutral_atom::{
         AtomSpecies, AtomState, LaserSystem, NeutralAtom, NeutralAtomErrorModel, NeutralAtomGates,
         NeutralAtomQC, OpticalTweezer, Position3D,
     };
-    pub use crate::trapped_ion::{
-        IonLevel, IonSpecies, LaserPulse, MotionalMode, MotionalModeType, TrappedIon,
-        TrappedIonGates, TrappedIonSystem,
-    };
-    pub use crate::silicon_quantum_dots::{
-        DeviceParams, QuantumDotParams, QuantumDotType, SiliconQuantumDot, SiliconQuantumDotGates,
-        SiliconQuantumDotSystem,
-    };
     pub use crate::photonic::{
         OpticalMode, PhotonicCircuit, PhotonicEncoding, PhotonicErrorCorrection, PhotonicGate,
         PhotonicGateType, PhotonicSystem,
+    };
+    pub use crate::pulse::{
+        CouplingParams, HardwareCalibration, Pulse, PulseCompiler, PulseEnvelope, PulseNoiseModel,
+        PulseSequence, QubitControlParams, TimingConstraints,
     };
     pub use crate::quantum_hardware_abstraction::{
         AdaptiveMiddleware, CalibrationEngine, ErrorMitigationLayer, ExecutionRequirements,
         HardwareCapabilities, HardwareResourceManager, HardwareType, QuantumHardwareAbstraction,
         QuantumHardwareBackend,
     };
+    pub use crate::silicon_quantum_dots::{
+        DeviceParams, QuantumDotParams, QuantumDotType, SiliconQuantumDot, SiliconQuantumDotGates,
+        SiliconQuantumDotSystem,
+    };
+    pub use crate::trapped_ion::{
+        IonLevel, IonSpecies, LaserPulse, MotionalMode, MotionalModeType, TrappedIon,
+        TrappedIonGates, TrappedIonSystem,
+    };
 }
 
 /// Advanced quantum algorithms
 pub mod algorithms {
+    pub use crate::adiabatic::{
+        AdiabaticQuantumComputer, AnnealingSchedule, IsingProblem, ProblemGenerator, ProblemType,
+        QUBOProblem, QuantumAnnealer, QuantumAnnealingSnapshot,
+    };
     pub use crate::hhl::{hhl_example, HHLAlgorithm, HHLParams};
     pub use crate::quantum_counting::{
         amplitude_estimation_example, quantum_counting_example, QuantumAmplitudeEstimation,
@@ -208,23 +212,20 @@ pub mod algorithms {
         CoinOperator, ContinuousQuantumWalk, DecoherentQuantumWalk, DiscreteQuantumWalk, Graph,
         GraphType, MultiWalkerQuantumWalk, QuantumWalkSearch, SearchOracle, SzegedyQuantumWalk,
     };
-    pub use crate::adiabatic::{
-        AdiabaticQuantumComputer, AnnealingSchedule, IsingProblem, ProblemGenerator, ProblemType,
-        QUBOProblem, QuantumAnnealer, QuantumAnnealingSnapshot,
-    };
 }
 
 /// Tensor networks and simulation methods
 pub mod tensor_networks {
+    pub use crate::memory_efficient::{EfficientStateVector, StateMemoryStats};
     pub use crate::tensor_network::{
         contraction_optimization::DynamicProgrammingOptimizer, Tensor, TensorEdge, TensorNetwork,
         TensorNetworkBuilder, TensorNetworkSimulator,
     };
-    pub use crate::memory_efficient::{EfficientStateVector, StateMemoryStats};
 }
 
 /// Symbolic computation and mathematical modeling
 pub mod symbolic {
+    pub use crate::parametric::{Parameter, ParametricGate, SymbolicParameter};
     #[cfg(feature = "symbolic")]
     pub use crate::symbolic::calculus::{diff, expand, integrate, limit, simplify};
     pub use crate::symbolic::{matrix::SymbolicMatrix, SymbolicExpression};
@@ -240,7 +241,6 @@ pub mod symbolic {
         HamiltonianExpectation, OptimizationResult, QAOACostFunction, SymbolicObjective,
         SymbolicOptimizationConfig, SymbolicOptimizer,
     };
-    pub use crate::parametric::{Parameter, ParametricGate, SymbolicParameter};
 }
 
 /// ZX-calculus and graphical reasoning
@@ -253,14 +253,14 @@ pub mod zx_calculus {
 
 /// Topological quantum computing
 pub mod topological {
-    pub use crate::topological::{
-        AnyonModel, AnyonType, AnyonWorldline, BraidingOperation, FibonacciModel, FusionTree,
-        IsingModel, TopologicalGate, TopologicalQC, ToricCode,
-    };
     pub use crate::holonomic::{
         // GeometricErrorCorrection, HolonomicGate, HolonomicGateSynthesis, HolonomicPath,
         // HolonomicQuantumComputer, PathOptimizationConfig,
         WilsonLoop,
+    };
+    pub use crate::topological::{
+        AnyonModel, AnyonType, AnyonWorldline, BraidingOperation, FibonacciModel, FusionTree,
+        IsingModel, TopologicalGate, TopologicalQC, ToricCode,
     };
 }
 
@@ -270,82 +270,81 @@ pub mod networking {
         DistributedGateType, DistributedQuantumGate, EntanglementManager, EntanglementProtocol,
         NetworkScheduler, QuantumNetwork, QuantumNode,
     };
+    pub use crate::post_quantum_crypto::{
+        CompressionFunction, QKDProtocol, QKDResult, QuantumDigitalSignature, QuantumHashFunction,
+        QuantumKeyDistribution, QuantumSignature,
+    };
     pub use crate::quantum_internet::{
         DistributedQuantumComputing, GlobalQuantumKeyDistribution, QuantumInternet,
         QuantumInternetAdvantageReport, QuantumInternetNode, QuantumInternetSecurity,
         QuantumNetworkInfrastructure, QuantumRouting,
-    };
-    pub use crate::post_quantum_crypto::{
-        CompressionFunction, QKDProtocol, QKDResult, QuantumDigitalSignature, QuantumHashFunction,
-        QuantumKeyDistribution, QuantumSignature,
     };
 }
 
 /// SciRS2 integration and enhanced tools
 pub mod scirs2 {
     pub use crate::scirs2_circuit_verifier::{
-        SciRS2CircuitVerifier, VerificationConfig, CircuitVerificationResult, VerificationVerdict,
-        AlgorithmSpecification, AlgorithmVerificationResult, EquivalenceVerificationResult,
-        SciRS2VerificationEnhancements, NumericalStabilityAnalysis, EquivalenceType,
+        AlgorithmSpecification, AlgorithmVerificationResult, CircuitVerificationResult,
+        EquivalenceType, EquivalenceVerificationResult, NumericalStabilityAnalysis,
+        SciRS2CircuitVerifier, SciRS2VerificationEnhancements, VerificationConfig,
+        VerificationVerdict,
     };
     pub use crate::scirs2_circuit_verifier_enhanced::{
-        EnhancedCircuitVerifier, EnhancedVerificationConfig, CertificateFormat,
-        CircuitProperty, SpecificationLanguage, QHLSpecification, QLTLSpecification,
-        QCTLSpecification, ZXSpecification, FormalVerificationResult, FormalProof,
-        ProofType, ProofStep, ProofStepType, Counterexample, VerificationTechnique,
-        VerificationReport, VerificationSummary, ConfidenceStatistics,
-    };
-    pub use crate::scirs2_quantum_linter::{
-        SciRS2QuantumLinter, LintingConfig, LintingReport, LintFinding, LintSeverity,
-        LintFindingType, AutomaticFix, OptimizationSuggestion, SciRS2Enhancement,
-    };
-    pub use crate::scirs2_quantum_linter_enhanced::{
-        EnhancedQuantumLinter, EnhancedLintingConfig, HardwareArchitecture, ReportFormat,
-        CustomLintRule, LintPattern, GatePatternMatcher, StructuralMatcher, ResourceMatcher,
-        EnhancedLintFinding, CircuitLocation, ImpactAnalysis, PerformanceImpact,
-        ResourceImpact, Compatibility, FixSuggestion, CodeChange, ChangeOperation,
-        RiskLevel, CircuitMetadata, EnhancedLintingReport, LintingSummary, QualityMetrics,
-    };
-    pub use crate::scirs2_quantum_profiler::{
-        SciRS2QuantumProfiler, SciRS2ProfilingConfig, ProfilingPrecision, GateProfilingResult,
-        CircuitProfilingResult, OptimizationRecommendation, MemoryAnalysis, SimdAnalysis,
-        SciRS2EnhancementSummary, ProfilingSessionReport,
-    };
-    pub use crate::scirs2_quantum_profiler_enhanced::{
-        EnhancedQuantumProfiler, EnhancedProfilingConfig, ExportFormat, MetricType,
-        PerformanceMetrics, MetricStatistics, AnomalyEvent, AnomalySeverity,
-        BottleneckAnalysis, Bottleneck, BottleneckType,
-        OptimizationOpportunity, OpportunityType, Difficulty, HardwarePerformanceModel,
-        HardwareCharacteristics, ScalingModel, ScalingType, HardwareOptimizationStrategy,
-        EnhancedGateProfilingResult, EnhancedOptimizationRecommendation,
-        RecommendationType, Priority, PerformancePredictions, PredictedPerformance,
-        ScalingAnalysis, EnhancedProfilingReport, ProfilingSummary,
+        CertificateFormat, CircuitProperty, ConfidenceStatistics, Counterexample,
+        EnhancedCircuitVerifier, EnhancedVerificationConfig, FormalProof, FormalVerificationResult,
+        ProofStep, ProofStepType, ProofType, QCTLSpecification, QHLSpecification,
+        QLTLSpecification, SpecificationLanguage, VerificationReport, VerificationSummary,
+        VerificationTechnique, ZXSpecification,
     };
     pub use crate::scirs2_quantum_formatter::{
-        SciRS2QuantumFormatter, FormattingConfig, FormattedCode, FormattingStatistics,
-        FormattingStyle, ProgrammingLanguage, OutputFormat, IndentationStyle, CommentStyle,
-        CodeAnnotation, AnnotationType, AnnotationLocation,
+        AnnotationLocation, AnnotationType, CodeAnnotation, CommentStyle, FormattedCode,
+        FormattingConfig, FormattingStatistics, FormattingStyle, IndentationStyle, OutputFormat,
+        ProgrammingLanguage, SciRS2QuantumFormatter,
     };
     pub use crate::scirs2_quantum_formatter_enhanced::{
-        EnhancedQuantumFormatter, EnhancedFormattingConfig, VisualFormat, QuantumBackend,
-        CustomFormattingRule, FormattingOptions,
-        EnhancedFormattedCode, SemanticInfo, AlgorithmPhase, QuantumPattern,
-        BeautificationSuggestions, HardwareFormattingInfo, FormattingSuggestion,
-        SuggestionType, SuggestionLocation, TemplatedCode, SyntaxMetadata,
-        SyntaxToken, TokenType, SyntaxScope, ColorScheme,
-        PlatformOptimization, CircuitChange, ChangeType, IncrementalUpdate,
-        UpdatedSection, InteractiveSuggestion,
+        AlgorithmPhase, BeautificationSuggestions, ChangeType, CircuitChange, ColorScheme,
+        CustomFormattingRule, EnhancedFormattedCode, EnhancedFormattingConfig,
+        EnhancedQuantumFormatter, FormattingOptions, FormattingSuggestion, HardwareFormattingInfo,
+        IncrementalUpdate, InteractiveSuggestion, PlatformOptimization, QuantumBackend,
+        QuantumPattern, SemanticInfo, SuggestionLocation, SuggestionType, SyntaxMetadata,
+        SyntaxScope, SyntaxToken, TemplatedCode, TokenType, UpdatedSection, VisualFormat,
+    };
+    pub use crate::scirs2_quantum_linter::{
+        AutomaticFix, LintFinding, LintFindingType, LintSeverity, LintingConfig, LintingReport,
+        OptimizationSuggestion, SciRS2Enhancement, SciRS2QuantumLinter,
+    };
+    pub use crate::scirs2_quantum_linter_enhanced::{
+        ChangeOperation, CircuitLocation, CircuitMetadata, CodeChange, Compatibility,
+        CustomLintRule, EnhancedLintFinding, EnhancedLintingConfig, EnhancedLintingReport,
+        EnhancedQuantumLinter, FixSuggestion, GatePatternMatcher, HardwareArchitecture,
+        ImpactAnalysis, LintPattern, LintingSummary, PerformanceImpact, QualityMetrics,
+        ReportFormat, ResourceImpact, ResourceMatcher, RiskLevel, StructuralMatcher,
+    };
+    pub use crate::scirs2_quantum_profiler::{
+        CircuitProfilingResult, GateProfilingResult, MemoryAnalysis, OptimizationRecommendation,
+        ProfilingPrecision, ProfilingSessionReport, SciRS2EnhancementSummary,
+        SciRS2ProfilingConfig, SciRS2QuantumProfiler, SimdAnalysis,
+    };
+    pub use crate::scirs2_quantum_profiler_enhanced::{
+        AnomalyEvent, AnomalySeverity, Bottleneck, BottleneckAnalysis, BottleneckType, Difficulty,
+        EnhancedGateProfilingResult, EnhancedOptimizationRecommendation, EnhancedProfilingConfig,
+        EnhancedProfilingReport, EnhancedQuantumProfiler, ExportFormat, HardwareCharacteristics,
+        HardwareOptimizationStrategy, HardwarePerformanceModel, MetricStatistics, MetricType,
+        OpportunityType, OptimizationOpportunity, PerformanceMetrics, PerformancePredictions,
+        PredictedPerformance, Priority, ProfilingSummary, RecommendationType, ScalingAnalysis,
+        ScalingModel, ScalingType,
     };
     pub use crate::scirs2_resource_estimator_enhanced::{
-        EnhancedResourceEstimator, EnhancedResourceConfig, CloudPlatform, OptimizationObjective,
-        AnalysisDepth, ResourceConstraint, ConstraintType, ConstraintPriority,
-        EstimationOptions, OptimizationLevel as ResourceOptimizationLevel, EnhancedResourceEstimate, BasicResourceAnalysis,
-        GateStatistics, GatePattern, CircuitTopology, TopologyType, ResourceRequirements,
-        MemoryRequirements, ErrorBudget, ComplexityMetrics, MLPredictions, ResourceAnomaly,
-        CostAnalysisResult, PlatformCost, CostBreakdown, CostOptimization,
-        OptimizationStrategy, ResourceImprovement, RiskAssessment, ComparativeAnalysis,
-        HardwareRecommendation, ScalingPredictions, ResourceScores, ReadinessLevel,
-        Recommendation, RecommendationCategory, Priority as ResourcePriority, Impact, Effort, MonitoringReport,
+        AnalysisDepth, BasicResourceAnalysis, CircuitTopology, CloudPlatform, ComparativeAnalysis,
+        ComplexityMetrics, ConstraintPriority, ConstraintType, CostAnalysisResult, CostBreakdown,
+        CostOptimization, Effort, EnhancedResourceConfig, EnhancedResourceEstimate,
+        EnhancedResourceEstimator, ErrorBudget, EstimationOptions, GatePattern, GateStatistics,
+        HardwareRecommendation, Impact, MLPredictions, MemoryRequirements, MonitoringReport,
+        OptimizationLevel as ResourceOptimizationLevel, OptimizationObjective,
+        OptimizationStrategy, PlatformCost, Priority as ResourcePriority, ReadinessLevel,
+        Recommendation, RecommendationCategory, ResourceAnomaly, ResourceConstraint,
+        ResourceImprovement, ResourceRequirements, ResourceScores, RiskAssessment,
+        ScalingPredictions, TopologyType,
     };
 }
 
@@ -376,16 +375,16 @@ pub mod batch {
 /// Python bindings (when enabled)
 #[cfg(feature = "python")]
 pub mod python {
-    pub use crate::python_bindings::{
-        PyCartanDecomposition, PyNumRS2Array, PyQuantumGate, PyQuantumInternet,
-        PyQuantumSensorNetwork, PyQubitId, PySingleQubitDecomposition, PyVariationalCircuit,
-    };
     pub use crate::jupyter_visualization::{
         PyQuantumCircuitVisualizer, PyQuantumPerformanceMonitor, PyQuantumStateVisualizer,
     };
-    pub use crate::quantum_complexity_analysis::PyQuantumComplexityAnalyzer;
     pub use crate::python_bindings::{
         PyAggregatedStats, PyAlert, PyMetricMeasurement, PyMonitoringConfig, PyMonitoringStatus,
         PyOptimizationRecommendation, PyRealtimeMonitor,
     };
+    pub use crate::python_bindings::{
+        PyCartanDecomposition, PyNumRS2Array, PyQuantumGate, PyQuantumInternet,
+        PyQuantumSensorNetwork, PyQubitId, PySingleQubitDecomposition, PyVariationalCircuit,
+    };
+    pub use crate::quantum_complexity_analysis::PyQuantumComplexityAnalyzer;
 }

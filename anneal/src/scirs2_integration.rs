@@ -3,7 +3,7 @@
 //! This module provides integration between QuantRS2-Anneal and the SciRS2 scientific computing
 //! framework. It implements the TODO items for SciRS2 integration including:
 //! - Sparse matrix operations using SciRS2 sparse arrays
-//! - Graph algorithms for embedding and partitioning  
+//! - Graph algorithms for embedding and partitioning
 //! - Statistical analysis for solution quality evaluation
 //! - Plotting utilities for energy landscape visualization
 //!

@@ -29,7 +29,7 @@ impl AlgorithmPortfolio {
             performance_history: HashMap::new(),
             diversity_analyzer: DiversityAnalyzer::new(config.diversity_criteria),
         };
-        
+
         // Initialize with default algorithms
         portfolio.add_default_algorithms();
         portfolio
@@ -72,7 +72,7 @@ impl AlgorithmPortfolio {
                 performance_guarantees: vec![],
             },
         };
-        
+
         self.algorithms.insert("simulated_annealing".to_string(), sa_algorithm);
 
         // Add quantum annealing
@@ -111,7 +111,7 @@ impl AlgorithmPortfolio {
                 performance_guarantees: vec![],
             },
         };
-        
+
         self.algorithms.insert("quantum_annealing".to_string(), qa_algorithm);
 
         // Add tabu search
@@ -150,7 +150,7 @@ impl AlgorithmPortfolio {
                 performance_guarantees: vec![],
             },
         };
-        
+
         self.algorithms.insert("tabu_search".to_string(), ts_algorithm);
     }
 
@@ -168,7 +168,7 @@ impl AlgorithmPortfolio {
     fn multi_armed_bandit_selection(&self, problem_features: &ProblemFeatures) -> Result<String, String> {
         // Simplified multi-armed bandit using average performance
         let applicable_algorithms = self.get_applicable_algorithms(problem_features);
-        
+
         if applicable_algorithms.is_empty() {
             return Err("No applicable algorithms found".to_string());
         }
@@ -186,7 +186,7 @@ impl AlgorithmPortfolio {
 
     fn ucb_selection(&self, problem_features: &ProblemFeatures) -> Result<String, String> {
         let applicable_algorithms = self.get_applicable_algorithms(problem_features);
-        
+
         if applicable_algorithms.is_empty() {
             return Err("No applicable algorithms found".to_string());
         }
@@ -200,25 +200,25 @@ impl AlgorithmPortfolio {
             .max_by(|a, b| {
                 let history_a = self.performance_history.get(*a).map(|h| h.len()).unwrap_or(0);
                 let history_b = self.performance_history.get(*b).map(|h| h.len()).unwrap_or(0);
-                
+
                 let mean_a = self.algorithms.get(*a).map(|alg| alg.performance_stats.mean_performance).unwrap_or(0.0);
                 let mean_b = self.algorithms.get(*b).map(|alg| alg.performance_stats.mean_performance).unwrap_or(0.0);
-                
+
                 let confidence_a = if history_a > 0 {
                     (2.0 * total_trials.ln() / history_a as f64).sqrt()
                 } else {
                     f64::INFINITY
                 };
-                
+
                 let confidence_b = if history_b > 0 {
                     (2.0 * total_trials.ln() / history_b as f64).sqrt()
                 } else {
                     f64::INFINITY
                 };
-                
+
                 let ucb_a = mean_a + confidence_a;
                 let ucb_b = mean_b + confidence_b;
-                
+
                 ucb_a.partial_cmp(&ucb_b).unwrap()
             })
             .ok_or("Failed to select algorithm")?;
@@ -229,7 +229,7 @@ impl AlgorithmPortfolio {
     fn thompson_sampling_selection(&self, problem_features: &ProblemFeatures) -> Result<String, String> {
         // Simplified Thompson sampling - just return the algorithm with highest variance
         let applicable_algorithms = self.get_applicable_algorithms(problem_features);
-        
+
         if applicable_algorithms.is_empty() {
             return Err("No applicable algorithms found".to_string());
         }
@@ -248,9 +248,9 @@ impl AlgorithmPortfolio {
     fn epsilon_greedy_selection(&self, problem_features: &ProblemFeatures, epsilon: f64) -> Result<String, String> {
         use rand::prelude::*;
         let mut rng = thread_rng();
-        
+
         let applicable_algorithms = self.get_applicable_algorithms(problem_features);
-        
+
         if applicable_algorithms.is_empty() {
             return Err("No applicable algorithms found".to_string());
         }
@@ -308,18 +308,18 @@ impl AlgorithmPortfolio {
 
     fn update_algorithm_stats(&mut self, algorithm: &mut Algorithm, record: &PerformanceRecord) {
         let history = self.performance_history.get(&algorithm.id).unwrap();
-        
+
         if !history.is_empty() {
             // Update mean performance
             let total_performance: f64 = history.iter().map(|r| r.performance).sum();
             algorithm.performance_stats.mean_performance = total_performance / history.len() as f64;
-            
+
             // Update variance
             let variance: f64 = history.iter()
                 .map(|r| (r.performance - algorithm.performance_stats.mean_performance).powi(2))
                 .sum::<f64>() / history.len() as f64;
             algorithm.performance_stats.performance_variance = variance;
-            
+
             // Update success rate (simplified: performance > 0.5)
             let successes = history.iter().filter(|r| r.performance > 0.5).count();
             algorithm.performance_stats.success_rate = successes as f64 / history.len() as f64;
@@ -350,7 +350,7 @@ impl AlgorithmPortfolio {
 
         self.composition.weights = new_weights;
         self.composition.last_update = Instant::now();
-        
+
         // Update selection probabilities (same as weights for simplicity)
         self.composition.selection_probabilities = self.composition.weights.clone();
     }
@@ -504,19 +504,19 @@ impl DiversityAnalyzer {
         // Simplified diversity calculation
         let num_algorithms = portfolio.algorithms.len() as f64;
         let max_diversity = (num_algorithms * (num_algorithms - 1.0) / 2.0).max(1.0);
-        
+
         // Calculate algorithmic diversity
         let algorithmic_diversity = if num_algorithms > 1.0 {
             1.0 / num_algorithms
         } else {
             0.0
         };
-        
+
         // Calculate performance diversity
         let performances: Vec<f64> = portfolio.algorithms.values()
             .map(|alg| alg.performance_stats.mean_performance)
             .collect();
-        
+
         let performance_diversity = if performances.len() > 1 {
             let mean_perf = performances.iter().sum::<f64>() / performances.len() as f64;
             let variance = performances.iter()
@@ -526,7 +526,7 @@ impl DiversityAnalyzer {
         } else {
             0.0
         };
-        
+
         self.current_diversity = (algorithmic_diversity + performance_diversity) / 2.0;
         self.current_diversity
     }
@@ -564,7 +564,7 @@ mod tests {
     fn test_algorithm_selection() {
         let config = PortfolioManagementConfig::default();
         let mut portfolio = AlgorithmPortfolio::new(config);
-        
+
         let features = ProblemFeatures {
             size: 100,
             density: 0.5,
@@ -573,7 +573,7 @@ mod tests {
             spectral_features: SpectralFeatures::default(),
             domain_features: HashMap::new(),
         };
-        
+
         let result = portfolio.select_algorithm(&features);
         assert!(result.is_ok());
     }

@@ -878,7 +878,7 @@ impl NextGenQuantumMLShowcase {
             execution_time,
             memory_usage: self.estimate_memory_usage("moe"),
             highlights: vec![
-                format!("Quantum superposition routing across {} experts with {:.1}% efficiency", 
+                format!("Quantum superposition routing across {} experts with {:.1}% efficiency",
                         statistics.expert_utilizations.len(), statistics.routing_efficiency * 100.0),
                 format!("Achieved {:.1}x quantum advantage through entanglement-enhanced expert interactions", quantum_advantage_factor),
                 format!("Superior load balancing with {:.3} balance score", statistics.load_balance_score),

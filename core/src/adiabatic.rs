@@ -3,7 +3,7 @@
 //! This module implements adiabatic quantum computing (AQC) and quantum annealing
 //! algorithms for solving optimization problems. It includes:
 //! - Adiabatic evolution under time-dependent Hamiltonians
-//! - Quantum annealing for combinatorial optimization  
+//! - Quantum annealing for combinatorial optimization
 //! - Problem encodings (QUBO, Ising model, etc.)
 //! - Annealing schedules and gap analysis
 //! - Performance monitoring and optimization

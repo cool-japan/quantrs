@@ -220,11 +220,11 @@ impl StandardLibrary {
                 body: r#"
                     param n = {n_cities};
                     param distances = {distance_matrix};
-                    
+
                     var x[n, n] binary;
-                    
+
                     minimize sum(i in 0..n, j in 0..n: distances[i][j] * x[i,j]);
-                    
+
                     subject to
                         forall(i in 0..n): sum(j in 0..n: x[i,j]) == 1;
                         forall(j in 0..n): sum(i in 0..n: x[i,j]) == 1;
@@ -260,11 +260,11 @@ impl StandardLibrary {
                     param n_vertices = {n_vertices};
                     param n_colors = {n_colors};
                     param edges = {edges};
-                    
+
                     var color[n_vertices, n_colors] binary;
-                    
+
                     minimize sum(v in 0..n_vertices, c in 0..n_colors: c * color[v,c]);
-                    
+
                     subject to
                         forall(v in 0..n_vertices): sum(c in 0..n_colors: color[v,c]) == 1;
                         forall((u,v) in edges, c in 0..n_colors): color[u,c] + color[v,c] <= 1;
@@ -306,11 +306,11 @@ impl StandardLibrary {
                     param weights = {weights};
                     param values = {values};
                     param capacity = {capacity};
-                    
+
                     var x[n] binary;
-                    
+
                     maximize sum(i in 0..n: values[i] * x[i]);
-                    
+
                     subject to
                         sum(i in 0..n: weights[i] * x[i]) <= capacity;
                 "#
@@ -345,9 +345,9 @@ impl StandardLibrary {
                     param n = {n_vertices};
                     param edges = {edges};
                     param weights = {weights};
-                    
+
                     var x[n] binary;
-                    
+
                     maximize sum((i,j,w) in zip(edges, weights): w * (x[i] + x[j] - 2*x[i]*x[j]));
                 "#
                 .to_string(),

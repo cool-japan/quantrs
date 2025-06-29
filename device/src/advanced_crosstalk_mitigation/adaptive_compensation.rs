@@ -17,20 +17,20 @@ impl AdaptiveCompensator {
             optimization_engine: OptimizationEngine::new(&config.optimization_config),
         }
     }
-    
+
     pub async fn compute_compensation(&mut self, characterization: &CrosstalkCharacterization) -> DeviceResult<AdaptiveCompensationResult> {
         // Update compensation matrix based on current crosstalk characterization
         self.update_compensation_matrix(characterization).await?;
-        
+
         // Check convergence
         let convergence_status = self.check_convergence()?;
-        
+
         // Analyze stability
         let stability_analysis = self.analyze_stability()?;
-        
+
         // Calculate performance improvement
         let performance_improvement = self.calculate_performance_improvement()?;
-        
+
         Ok(AdaptiveCompensationResult {
             compensation_matrices: [(String::from("main"), self.compensation_matrix.clone())].iter().cloned().collect(),
             learning_curves: self.get_learning_curves(),
@@ -64,10 +64,10 @@ impl AdaptiveCompensator {
                 },
             }
         }
-        
+
         // Update learning state
         self.learning_state.update()?;
-        
+
         Ok(())
     }
 
@@ -88,21 +88,21 @@ impl AdaptiveCompensator {
     fn apply_nonlinear_compensation(&mut self, polynomial_order: usize, characterization: &CrosstalkCharacterization) -> DeviceResult<()> {
         // Apply nonlinear compensation using polynomial expansion
         let crosstalk_matrix = &characterization.crosstalk_matrix;
-        
+
         // Apply polynomial transformation
         for i in 0..self.compensation_matrix.nrows() {
             for j in 0..self.compensation_matrix.ncols() {
                 let mut value = crosstalk_matrix[[i, j]];
-                
+
                 // Apply polynomial terms up to specified order
                 for order in 2..=polynomial_order {
                     value += crosstalk_matrix[[i, j]].powi(order as i32) / (order as f64);
                 }
-                
+
                 self.compensation_matrix[[i, j]] = -value; // Compensate by inverting
             }
         }
-        
+
         Ok(())
     }
 
@@ -111,7 +111,7 @@ impl AdaptiveCompensator {
         // Simplified implementation using a basic feedforward approach
         let input = characterization.crosstalk_matrix.as_slice().unwrap_or(&[]);
         let output = self.neural_network_forward(input, architecture)?;
-        
+
         // Update compensation matrix with network output
         let n = self.compensation_matrix.nrows();
         for (i, &val) in output.iter().take(n * n).enumerate() {
@@ -121,17 +121,17 @@ impl AdaptiveCompensator {
                 self.compensation_matrix[[row, col]] = val;
             }
         }
-        
+
         Ok(())
     }
 
     fn neural_network_forward(&self, input: &[f64], architecture: &[usize]) -> DeviceResult<Vec<f64>> {
         // Simplified neural network forward pass
         let mut current_layer = input.to_vec();
-        
+
         for &layer_size in architecture {
             let mut next_layer = vec![0.0; layer_size];
-            
+
             // Apply linear transformation with random weights (simplified)
             for i in 0..layer_size {
                 let mut sum = 0.0;
@@ -139,14 +139,14 @@ impl AdaptiveCompensator {
                     let weight = ((i + j) as f64 * 0.1).sin(); // Simplified weight
                     sum += val * weight;
                 }
-                
+
                 // Apply activation function (ReLU)
                 next_layer[i] = sum.max(0.0);
             }
-            
+
             current_layer = next_layer;
         }
-        
+
         Ok(current_layer)
     }
 
@@ -164,7 +164,7 @@ impl AdaptiveCompensator {
         // LMS adaptive filter compensation
         let step_size = self.config.learning_config.learning_rate;
         let crosstalk_vector = characterization.crosstalk_matrix.as_slice().unwrap_or(&[]);
-        
+
         // Update compensation matrix using LMS algorithm
         for i in 0..self.compensation_matrix.nrows() {
             for j in 0..self.compensation_matrix.ncols() {
@@ -172,14 +172,14 @@ impl AdaptiveCompensator {
                 self.compensation_matrix[[i, j]] -= step_size * error;
             }
         }
-        
+
         Ok(())
     }
 
     fn apply_rls_compensation(&mut self, order: usize, characterization: &CrosstalkCharacterization) -> DeviceResult<()> {
         // RLS adaptive filter compensation
         let forgetting_factor = self.config.learning_config.forgetting_factor;
-        
+
         // Simplified RLS implementation
         self.apply_lms_compensation(order, characterization) // Fallback to LMS for simplicity
     }
@@ -188,11 +188,11 @@ impl AdaptiveCompensator {
         // Normalized LMS adaptive filter compensation
         let step_size = self.config.learning_config.learning_rate;
         let crosstalk_vector = characterization.crosstalk_matrix.as_slice().unwrap_or(&[]);
-        
+
         // Calculate normalization factor
         let input_power = crosstalk_vector.iter().map(|x| x * x).sum::<f64>();
         let normalized_step = step_size / (input_power + 1e-8);
-        
+
         // Update compensation matrix
         for i in 0..self.compensation_matrix.nrows() {
             for j in 0..self.compensation_matrix.ncols() {
@@ -200,20 +200,20 @@ impl AdaptiveCompensator {
                 self.compensation_matrix[[i, j]] -= normalized_step * error;
             }
         }
-        
+
         Ok(())
     }
 
     fn apply_feedforward_compensation(&mut self, delay: f64, characterization: &CrosstalkCharacterization) -> DeviceResult<()> {
         // Apply feedforward compensation with specified delay
         // This would involve predicting future crosstalk and pre-compensating
-        
+
         // Simplified implementation: apply delayed compensation
         let delay_samples = (delay * 1000.0) as usize; // Convert to samples
-        
+
         // Store current compensation for delayed application
         // In a real implementation, this would use a delay buffer
-        
+
         Ok(())
     }
 
@@ -241,15 +241,15 @@ impl AdaptiveCompensator {
     fn apply_pid_compensation(&mut self, kp: f64, ki: f64, kd: f64, characterization: &CrosstalkCharacterization) -> DeviceResult<()> {
         // PID controller-based compensation
         let error_matrix = &characterization.crosstalk_matrix;
-        
+
         // Update integral and derivative terms (simplified)
         let proportional = error_matrix.clone();
         let integral = error_matrix * ki; // Simplified integral term
         let derivative = error_matrix * kd; // Simplified derivative term
-        
+
         // Combine PID terms
         self.compensation_matrix = &proportional * (-kp) + &integral * (-1.0) + &derivative * (-1.0);
-        
+
         Ok(())
     }
 
@@ -268,10 +268,10 @@ impl AdaptiveCompensator {
     fn apply_adaptive_control(&mut self, adaptation_rate: f64, characterization: &CrosstalkCharacterization) -> DeviceResult<()> {
         // Adaptive control compensation
         let error_matrix = &characterization.crosstalk_matrix;
-        
+
         // Simple adaptive update
         self.compensation_matrix = &self.compensation_matrix + error_matrix * (-adaptation_rate);
-        
+
         Ok(())
     }
 
@@ -280,9 +280,9 @@ impl AdaptiveCompensator {
         // Apply conservative compensation within uncertainty bounds
         let error_matrix = &characterization.crosstalk_matrix;
         let conservative_gain = 1.0 / (1.0 + uncertainty_bounds);
-        
+
         self.compensation_matrix = error_matrix * (-conservative_gain);
-        
+
         Ok(())
     }
 
@@ -290,11 +290,11 @@ impl AdaptiveCompensator {
         if self.performance_history.len() < 10 {
             return Ok(ConvergenceStatus::NotConverged);
         }
-        
+
         // Check if performance has converged
         let recent_performance: Vec<f64> = self.performance_history.iter().rev().take(5).cloned().collect();
         let variance = Self::calculate_variance(&recent_performance);
-        
+
         if variance < self.config.learning_config.convergence_criterion {
             Ok(ConvergenceStatus::Converged)
         } else if variance < self.config.learning_config.convergence_criterion * 10.0 {
@@ -314,7 +314,7 @@ impl AdaptiveCompensator {
         if data.is_empty() {
             return 0.0;
         }
-        
+
         let mean = data.iter().sum::<f64>() / data.len() as f64;
         let variance = data.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / data.len() as f64;
         variance
@@ -324,18 +324,18 @@ impl AdaptiveCompensator {
         if data.len() < 4 {
             return false;
         }
-        
+
         // Simple oscillation detection: check for alternating increases/decreases
         let mut direction_changes = 0;
         for i in 1..(data.len() - 1) {
             let prev_trend = data[i] - data[i - 1];
             let curr_trend = data[i + 1] - data[i];
-            
+
             if prev_trend * curr_trend < 0.0 {
                 direction_changes += 1;
             }
         }
-        
+
         direction_changes >= 2
     }
 
@@ -343,20 +343,20 @@ impl AdaptiveCompensator {
         // Perform stability analysis of the adaptive compensation system
         let stability_margins = StabilityMargins {
             gain_margin: 6.0,   // dB
-            phase_margin: 45.0, // degrees  
+            phase_margin: 45.0, // degrees
             delay_margin: 0.001, // seconds
         };
-        
+
         let lyapunov_exponents = Array1::zeros(3); // Simplified
         let stability_regions = vec![];
-        
+
         let robustness_metrics = RobustnessMetrics {
             sensitivity: HashMap::new(),
             worst_case_performance: 0.9,
             robust_stability_margin: 0.1,
             structured_singular_value: 0.5,
         };
-        
+
         Ok(StabilityAnalysisResult {
             stability_margins,
             lyapunov_exponents,
@@ -369,31 +369,31 @@ impl AdaptiveCompensator {
         if self.performance_history.len() < 2 {
             return Ok(0.0);
         }
-        
+
         let initial_performance = self.performance_history.front().unwrap_or(&1.0);
         let current_performance = self.performance_history.back().unwrap_or(&1.0);
-        
+
         let improvement = (initial_performance - current_performance) / initial_performance;
         Ok(improvement.max(0.0))
     }
 
     fn get_learning_curves(&self) -> HashMap<String, Array1<f64>> {
         let mut curves = HashMap::new();
-        
+
         let performance_curve = Array1::from_vec(self.performance_history.iter().cloned().collect());
         curves.insert("performance".to_string(), performance_curve);
-        
+
         // Add convergence history if available
         let convergence_curve = Array1::from_vec(self.learning_state.convergence_history.iter().cloned().collect());
         curves.insert("convergence".to_string(), convergence_curve);
-        
+
         curves
     }
 
     /// Update performance history
     pub fn update_performance(&mut self, performance_metric: f64) {
         self.performance_history.push_back(performance_metric);
-        
+
         // Keep history within bounds
         if self.performance_history.len() > 1000 {
             self.performance_history.pop_front();
@@ -432,16 +432,16 @@ impl LearningState {
 
     pub fn update(&mut self) -> DeviceResult<()> {
         self.iteration_count += 1;
-        
+
         // Update convergence metric (simplified)
         let convergence_metric = self.calculate_convergence_metric();
         self.convergence_history.push_back(convergence_metric);
-        
+
         // Keep history bounded
         if self.convergence_history.len() > 1000 {
             self.convergence_history.pop_front();
         }
-        
+
         Ok(())
     }
 
@@ -449,7 +449,7 @@ impl LearningState {
         // Calculate a metric indicating convergence progress
         let parameter_norm = self.current_parameters.mapv(|x| x * x).sum().sqrt();
         let gradient_norm = self.gradient_estimate.mapv(|x| x * x).sum().sqrt();
-        
+
         // Convergence metric: ratio of gradient to parameter magnitude
         if parameter_norm > 1e-8 {
             gradient_norm / parameter_norm
@@ -520,7 +520,7 @@ impl OptimizationEngine {
         let learning_rate = 0.01;
         let gradient = self.compute_gradient(current_state)?;
         let optimized_state = current_state - &gradient * learning_rate;
-        
+
         self.update_history(current_state);
         Ok(optimized_state)
     }
@@ -547,7 +547,7 @@ impl OptimizationEngine {
                 optimized_state[[i, j]] += perturbation;
             }
         }
-        
+
         self.update_history(current_state);
         Ok(optimized_state)
     }
@@ -638,14 +638,14 @@ impl OptimizationEngine {
                 },
             }
         }
-        
+
         Ok(true)
     }
 
     fn update_history(&mut self, objective_value: &Array2<f64>) {
         let objective = self.evaluate_objective(objective_value).unwrap_or(0.0);
         self.optimization_history.push_back(objective);
-        
+
         if self.optimization_history.len() > 1000 {
             self.optimization_history.pop_front();
         }

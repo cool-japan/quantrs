@@ -161,7 +161,7 @@ mod client {
         pub problem_type: String,
         /// Linear coefficients
         pub linear: HashMap<String, f64>,
-        /// Quadratic coefficients  
+        /// Quadratic coefficients
         pub quadratic: HashMap<String, f64>,
         /// Number of reads
         pub shots: usize,
@@ -226,7 +226,7 @@ mod client {
         pub device_type: Option<DeviceType>,
         /// Provider filter
         pub provider: Option<String>,
-        /// Status filter  
+        /// Status filter
         pub status: DeviceStatus,
         /// Minimum gate fidelity
         pub min_fidelity: Option<f64>,
@@ -258,7 +258,7 @@ mod client {
         pub annealing_time: Option<f64>,
         /// Programming thermalization
         pub programming_thermalization: Option<f64>,
-        /// Readout thermalization  
+        /// Readout thermalization
         pub readout_thermalization: Option<f64>,
         /// Beta (inverse temperature) schedule
         pub beta_schedule: Option<Vec<(f64, f64)>>,

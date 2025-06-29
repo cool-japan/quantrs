@@ -47,18 +47,18 @@ impl MemorySystem for EpisodicMemory {
         }
         Ok(())
     }
-    
+
     fn retrieve_examples(&self, n_examples: usize) -> Result<(Array2<f64>, Array1<i32>)> {
         let n = n_examples.min(self.stored_data.len());
         if n == 0 {
             return Ok((Array2::zeros((0, 0)), Array1::zeros(0)));
         }
-        
+
         let data = Array2::zeros((n, self.stored_data[0].len()));
         let labels = Array1::zeros(n);
         Ok((data, labels))
     }
-    
+
     fn get_statistics(&self) -> MemoryStatistics {
         MemoryStatistics {
             capacity: self.config.capacity,
@@ -76,7 +76,7 @@ pub fn create_memory_system(
     match memory_type {
         MemoryType::Episodic => Ok(Box::new(EpisodicMemory::new(config))),
         MemoryType::Semantic => Ok(Box::new(EpisodicMemory::new(config))), // Placeholder
-        MemoryType::Working => Ok(Box::new(EpisodicMemory::new(config))), // Placeholder  
+        MemoryType::Working => Ok(Box::new(EpisodicMemory::new(config))), // Placeholder
         MemoryType::Quantum => Ok(Box::new(EpisodicMemory::new(config))), // Placeholder
     }
 }

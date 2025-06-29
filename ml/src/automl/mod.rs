@@ -485,7 +485,7 @@ pub fn create_default_automl_config() -> QuantumAutoMLConfig {
     QuantumAutoMLConfig::basic()
 }
 
-/// Create a comprehensive AutoML configuration  
+/// Create a comprehensive AutoML configuration
 pub fn create_comprehensive_automl_config() -> QuantumAutoMLConfig {
     QuantumAutoMLConfig::comprehensive()
 }

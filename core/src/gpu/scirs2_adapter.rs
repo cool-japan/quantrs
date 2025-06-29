@@ -4,19 +4,19 @@
 //! and enhanced quantum computing acceleration using the SciRS2 framework.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use crate::gpu::{GpuBuffer, GpuKernel, GpuBackend as QuantumGpuBackend};
 use crate::gpu::large_scale_simulation::GpuBackend;
+use crate::gpu::{GpuBackend as QuantumGpuBackend, GpuBuffer, GpuKernel};
 use crate::gpu_stubs::SciRS2GpuConfig;
 use num_complex::Complex64;
-use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "gpu")]
 // use scirs2_core::gpu::GpuDevice;
 // Placeholder for GpuDevice until scirs2 is available
 #[cfg(feature = "gpu")]
 type GpuDevice = ();
-// 
+//
 // /// Enhanced GPU configuration for SciRS2 integration
 // #[derive(Debug, Clone)]
 // pub struct SciRS2GpuConfig {
@@ -172,12 +172,12 @@ impl GpuBuffer for SciRS2BufferAdapter {
             // Use SciRS2 GPU memory transfer
             // TODO: Implement actual GPU upload when SciRS2 API is stable
             self.data.copy_from_slice(data);
-            
+
             // Update metrics
             if let Ok(mut metrics) = self.metrics.lock() {
                 metrics.memory_usage_bytes = self.size * std::mem::size_of::<Complex64>();
             }
-            
+
             return Ok(());
         }
 
@@ -254,8 +254,8 @@ impl SciRS2KernelAdapter {
             kernel_executions: 0,
             avg_kernel_time_us: 0.0,
             memory_bandwidth_utilization: 0.8, // Estimate
-            compute_utilization: 0.7, // Estimate
-            cache_hit_rate: 0.9, // High cache hit rate expected
+            compute_utilization: 0.7,          // Estimate
+            cache_hit_rate: 0.9,               // High cache hit rate expected
             memory_usage_bytes: 0,
         }));
 
@@ -286,9 +286,10 @@ impl SciRS2KernelAdapter {
     /// Compile and cache a kernel
     fn compile_kernel(&mut self, kernel_name: &str, kernel_source: &str) -> QuantRS2Result<()> {
         if self.config.enable_kernel_cache {
-            self.kernel_cache.insert(kernel_name.to_string(), kernel_source.to_string());
+            self.kernel_cache
+                .insert(kernel_name.to_string(), kernel_source.to_string());
         }
-        
+
         // TODO: Use SciRS2 kernel compilation when API is available
         // For now, kernel compilation is handled internally
         Ok(())
@@ -306,7 +307,8 @@ impl SciRS2KernelAdapter {
         let start = Instant::now();
 
         // CPU fallback implementation with SIMD optimizations
-        let buffer = state.as_any_mut()
+        let buffer = state
+            .as_any_mut()
             .downcast_mut::<SciRS2BufferAdapter>()
             .ok_or_else(|| QuantRS2Error::InvalidInput("Invalid buffer type".to_string()))?;
 
@@ -320,7 +322,7 @@ impl SciRS2KernelAdapter {
                 let j = i | target_bit;
                 let amp_0 = buffer.data[i];
                 let amp_1 = buffer.data[j];
-                
+
                 buffer.data[i] = gate_matrix[0] * amp_0 + gate_matrix[1] * amp_1;
                 buffer.data[j] = gate_matrix[2] * amp_0 + gate_matrix[3] * amp_1;
             }
@@ -331,10 +333,11 @@ impl SciRS2KernelAdapter {
             metrics.kernel_executions += 1;
             let duration = start.elapsed();
             let duration_us = duration.as_nanos() as f64 / 1000.0;
-            
+
             // Update average execution time with exponential moving average
             let alpha = 0.1;
-            metrics.avg_kernel_time_us = alpha * duration_us + (1.0 - alpha) * metrics.avg_kernel_time_us;
+            metrics.avg_kernel_time_us =
+                alpha * duration_us + (1.0 - alpha) * metrics.avg_kernel_time_us;
         }
 
         Ok(())
@@ -352,7 +355,8 @@ impl SciRS2KernelAdapter {
         use std::time::Instant;
         let start = Instant::now();
 
-        let buffer = state.as_any_mut()
+        let buffer = state
+            .as_any_mut()
             .downcast_mut::<SciRS2BufferAdapter>()
             .ok_or_else(|| QuantRS2Error::InvalidInput("Invalid buffer type".to_string()))?;
 
@@ -374,8 +378,13 @@ impl SciRS2KernelAdapter {
 
                 if i <= j && i <= k && i <= l {
                     // Apply 4x4 gate matrix to the four amplitudes
-                    let amps = [buffer.data[i], buffer.data[j], buffer.data[k], buffer.data[l]];
-                    
+                    let amps = [
+                        buffer.data[i],
+                        buffer.data[j],
+                        buffer.data[k],
+                        buffer.data[l],
+                    ];
+
                     for (idx, &state_idx) in [i, j, k, l].iter().enumerate() {
                         let mut new_amp = Complex64::new(0.0, 0.0);
                         for j in 0..4 {
@@ -392,9 +401,10 @@ impl SciRS2KernelAdapter {
             metrics.kernel_executions += 1;
             let duration = start.elapsed();
             let duration_us = duration.as_nanos() as f64 / 1000.0;
-            
+
             let alpha = 0.1;
-            metrics.avg_kernel_time_us = alpha * duration_us + (1.0 - alpha) * metrics.avg_kernel_time_us;
+            metrics.avg_kernel_time_us =
+                alpha * duration_us + (1.0 - alpha) * metrics.avg_kernel_time_us;
         }
 
         Ok(())
@@ -433,21 +443,22 @@ impl GpuKernel for SciRS2KernelAdapter {
         use std::time::Instant;
         let start = Instant::now();
 
-        let buffer = state.as_any_mut()
+        let buffer = state
+            .as_any_mut()
             .downcast_mut::<SciRS2BufferAdapter>()
             .ok_or_else(|| QuantRS2Error::InvalidInput("Invalid buffer type".to_string()))?;
 
         let num_target_qubits = qubits.len();
         let gate_size = 1 << num_target_qubits;
-        
+
         if gate_matrix.nrows() != gate_size || gate_matrix.ncols() != gate_size {
             return Err(QuantRS2Error::InvalidInput(
-                "Gate matrix size doesn't match number of qubits".to_string()
+                "Gate matrix size doesn't match number of qubits".to_string(),
             ));
         }
 
         let state_size = 1 << n_qubits;
-        
+
         // Apply multi-qubit gate by iterating over all state indices
         for i in 0..state_size {
             // Extract the relevant qubit values
@@ -457,7 +468,7 @@ impl GpuKernel for SciRS2KernelAdapter {
                     source_idx |= 1 << bit_pos;
                 }
             }
-            
+
             // Calculate the contribution to the new amplitude
             let mut new_amplitude = Complex64::new(0.0, 0.0);
             for j in 0..gate_size {
@@ -471,10 +482,10 @@ impl GpuKernel for SciRS2KernelAdapter {
                         target_state &= !(1 << qubit.0);
                     }
                 }
-                
+
                 new_amplitude += gate_matrix[[source_idx, j]] * buffer.data[target_state];
             }
-            
+
             buffer.data[i] = new_amplitude;
         }
 
@@ -483,9 +494,10 @@ impl GpuKernel for SciRS2KernelAdapter {
             metrics.kernel_executions += 1;
             let duration = start.elapsed();
             let duration_us = duration.as_nanos() as f64 / 1000.0;
-            
+
             let alpha = 0.1;
-            metrics.avg_kernel_time_us = alpha * duration_us + (1.0 - alpha) * metrics.avg_kernel_time_us;
+            metrics.avg_kernel_time_us =
+                alpha * duration_us + (1.0 - alpha) * metrics.avg_kernel_time_us;
         }
 
         Ok(())
@@ -497,13 +509,14 @@ impl GpuKernel for SciRS2KernelAdapter {
         qubit: crate::qubit::QubitId,
         _n_qubits: usize,
     ) -> QuantRS2Result<(bool, f64)> {
-        let buffer = state.as_any()
+        let buffer = state
+            .as_any()
             .downcast_ref::<SciRS2BufferAdapter>()
             .ok_or_else(|| QuantRS2Error::InvalidInput("Invalid buffer type".to_string()))?;
 
         let qubit_bit = 1 << qubit.0;
         let mut prob_one = 0.0;
-        
+
         // Calculate probability of measuring |1⟩
         for (i, &amplitude) in buffer.data.iter().enumerate() {
             if i & qubit_bit != 0 {
@@ -514,7 +527,7 @@ impl GpuKernel for SciRS2KernelAdapter {
         // Simulate measurement outcome
         use rand::Rng;
         let outcome = rand::rng().random::<f64>() < prob_one;
-        
+
         Ok((outcome, if outcome { prob_one } else { 1.0 - prob_one }))
     }
 
@@ -525,42 +538,43 @@ impl GpuKernel for SciRS2KernelAdapter {
         qubits: &[crate::qubit::QubitId],
         n_qubits: usize,
     ) -> QuantRS2Result<f64> {
-        let buffer = state.as_any()
+        let buffer = state
+            .as_any()
             .downcast_ref::<SciRS2BufferAdapter>()
             .ok_or_else(|| QuantRS2Error::InvalidInput("Invalid buffer type".to_string()))?;
 
         let num_obs_qubits = qubits.len();
         let obs_size = 1 << num_obs_qubits;
-        
+
         if observable.nrows() != obs_size || observable.ncols() != obs_size {
             return Err(QuantRS2Error::InvalidInput(
-                "Observable matrix size doesn't match number of qubits".to_string()
+                "Observable matrix size doesn't match number of qubits".to_string(),
             ));
         }
 
         let mut expectation = 0.0;
         let state_size = 1 << n_qubits;
-        
+
         for i in 0..state_size {
             for j in 0..state_size {
                 // Extract qubit indices for observable
                 let mut obs_i = 0;
                 let mut obs_j = 0;
                 let mut matches = true;
-                
+
                 for (bit_pos, &qubit) in qubits.iter().enumerate() {
                     let bit_i = (i >> qubit.0) & 1;
                     let bit_j = (j >> qubit.0) & 1;
                     obs_i |= bit_i << bit_pos;
                     obs_j |= bit_j << bit_pos;
-                    
+
                     // Check if non-observable qubits match
                     if qubits.iter().all(|&q| q.0 != qubit.0) && bit_i != bit_j {
                         matches = false;
                         break;
                     }
                 }
-                
+
                 if matches {
                     let matrix_element = observable[[obs_i, obs_j]];
                     expectation += (buffer.data[i].conj() * matrix_element * buffer.data[j]).re;
@@ -588,16 +602,14 @@ impl SciRS2GpuBackend {
     /// Create with custom configuration
     pub fn with_config(config: SciRS2GpuConfig) -> QuantRS2Result<Self> {
         let mut kernel = SciRS2KernelAdapter::with_config(config.clone());
-        
+
         // Initialize GPU if available
         #[cfg(feature = "gpu")]
         let _ = kernel.initialize_gpu();
 
         let device_info = format!(
             "SciRS2 GPU Backend - Memory: {}MB, SIMD Level: {}, Cache: {}",
-            config.max_memory_mb,
-            config.simd_level,
-            config.enable_kernel_cache
+            config.max_memory_mb, config.simd_level, config.enable_kernel_cache
         );
 
         Ok(Self {
@@ -663,21 +675,21 @@ impl QuantumGpuBackend for SciRS2GpuBackend {
     fn allocate_state_vector(&self, n_qubits: usize) -> QuantRS2Result<Box<dyn GpuBuffer>> {
         let size = 1 << n_qubits;
         let mut buffer = SciRS2BufferAdapter::with_config(size, self.config.clone());
-        
+
         // Initialize GPU if not already done
         #[cfg(feature = "gpu")]
         let _ = buffer.initialize_gpu();
-        
+
         Ok(Box::new(buffer))
     }
 
     fn allocate_density_matrix(&self, n_qubits: usize) -> QuantRS2Result<Box<dyn GpuBuffer>> {
         let size = 1 << (2 * n_qubits); // Density matrix is 2^n x 2^n
         let mut buffer = SciRS2BufferAdapter::with_config(size, self.config.clone());
-        
+
         #[cfg(feature = "gpu")]
         let _ = buffer.initialize_gpu();
-        
+
         Ok(Box::new(buffer))
     }
 
@@ -697,25 +709,25 @@ pub fn get_scirs2_gpu_device() -> QuantRS2Result<GpuDevice> {
         GpuBackend::Metal,
         GpuBackend::OpenCL,
     ];
-    
+
     // For now, create a dummy device since the real SciRS2 API isn't available
     use crate::gpu::large_scale_simulation::GpuDevice as LargeScaleGpuDevice;
-    
+
     let _device = LargeScaleGpuDevice {
         id: 0,
         name: "SciRS2 GPU Device".to_string(),
-        backend: GpuBackend::CUDA, // Default to CUDA
+        backend: GpuBackend::CUDA,           // Default to CUDA
         memory_size: 8 * 1024 * 1024 * 1024, // 8GB
         compute_units: 80,
         max_work_group_size: 1024,
         supports_double_precision: true,
         is_available: true,
     };
-    
+
     // Convert to the SciRS2 GpuDevice type when available
     // For now, this is a placeholder
     Err(QuantRS2Error::BackendExecutionFailed(
-        "SciRS2 GPU API not yet integrated".to_string()
+        "SciRS2 GPU API not yet integrated".to_string(),
     ))
 }
 
@@ -726,12 +738,12 @@ pub fn register_quantum_kernel(name: &str, kernel_source: &str) -> QuantRS2Resul
     // For now, store kernel information for future use
     use std::sync::OnceLock;
     static KERNEL_REGISTRY: OnceLock<std::sync::Mutex<HashMap<String, String>>> = OnceLock::new();
-    
+
     let registry = KERNEL_REGISTRY.get_or_init(|| std::sync::Mutex::new(HashMap::new()));
     if let Ok(mut registry_lock) = registry.lock() {
         registry_lock.insert(name.to_string(), kernel_source.to_string());
     }
-    
+
     Ok(())
 }
 
@@ -784,29 +796,31 @@ impl SciRS2GpuFactory {
         let mut config = SciRS2GpuConfig::default();
         config.simd_level = 2; // Moderate SIMD for general algorithms
         config.enable_load_balancing = true;
-        config.compilation_flags.push("-DALGORITHM_OPTIMIZE".to_string());
+        config
+            .compilation_flags
+            .push("-DALGORITHM_OPTIMIZE".to_string());
         SciRS2GpuBackend::with_config(config)
     }
 
     /// List available GPU backends
     pub fn available_backends() -> Vec<String> {
         let mut backends = Vec::new();
-        
+
         #[cfg(feature = "gpu")]
         {
             // For now, list all potentially available backends
             backends.push("CUDA".to_string());
-            
+
             #[cfg(target_os = "macos")]
             backends.push("Metal".to_string());
-            
+
             backends.push("OpenCL".to_string());
         }
-        
+
         if backends.is_empty() {
             backends.push("CPU_Fallback".to_string());
         }
-        
+
         backends
     }
 }
@@ -814,11 +828,13 @@ impl SciRS2GpuFactory {
 /// Get system information for GPU optimization
 pub fn get_gpu_system_info() -> HashMap<String, String> {
     let mut info = HashMap::new();
-    
+
     // Add system information
-    info.insert("available_backends".to_string(), 
-               SciRS2GpuFactory::available_backends().join(", "));
-    
+    info.insert(
+        "available_backends".to_string(),
+        SciRS2GpuFactory::available_backends().join(", "),
+    );
+
     #[cfg(feature = "gpu")]
     {
         if let Ok(_device) = get_scirs2_gpu_device() {
@@ -828,13 +844,13 @@ pub fn get_gpu_system_info() -> HashMap<String, String> {
             info.insert("primary_device".to_string(), "CPU".to_string());
         }
     }
-    
+
     #[cfg(not(feature = "gpu"))]
     {
         info.insert("primary_device".to_string(), "CPU".to_string());
         info.insert("gpu_support".to_string(), "Disabled".to_string());
     }
-    
+
     info
 }
 
@@ -889,12 +905,12 @@ mod tests {
             Complex64::new(-1.0, 0.0),
             Complex64::new(0.0, -1.0),
         ];
-        
+
         buffer.upload(&data).unwrap();
-        
+
         let mut downloaded = vec![Complex64::new(0.0, 0.0); 4];
         buffer.download(&mut downloaded).unwrap();
-        
+
         for (original, downloaded) in data.iter().zip(downloaded.iter()) {
             assert!((original - downloaded).norm() < 1e-10);
         }
@@ -904,7 +920,7 @@ mod tests {
     fn test_kernel_execution() {
         let kernel = SciRS2KernelAdapter::new();
         let mut buffer = SciRS2BufferAdapter::new(4); // 2-qubit system
-        
+
         // Initialize to |00⟩
         let initial_state = vec![
             Complex64::new(1.0, 0.0), // |00⟩
@@ -913,24 +929,28 @@ mod tests {
             Complex64::new(0.0, 0.0), // |11⟩
         ];
         buffer.upload(&initial_state).unwrap();
-        
+
         // Apply X gate to qubit 0
         let x_gate = [
-            Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0),
-            Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
         ];
-        
-        kernel.apply_single_qubit_gate(
-            &mut buffer as &mut dyn GpuBuffer,
-            &x_gate,
-            crate::qubit::QubitId(0),
-            2,
-        ).unwrap();
-        
+
+        kernel
+            .apply_single_qubit_gate(
+                &mut buffer as &mut dyn GpuBuffer,
+                &x_gate,
+                crate::qubit::QubitId(0),
+                2,
+            )
+            .unwrap();
+
         // Check result - should be |01⟩
         let mut result = vec![Complex64::new(0.0, 0.0); 4];
         buffer.download(&mut result).unwrap();
-        
+
         assert!((result[0] - Complex64::new(0.0, 0.0)).norm() < 1e-10); // |00⟩
         assert!((result[1] - Complex64::new(1.0, 0.0)).norm() < 1e-10); // |01⟩
         assert!((result[2] - Complex64::new(0.0, 0.0)).norm() < 1e-10); // |10⟩
@@ -941,7 +961,7 @@ mod tests {
     fn test_gpu_factory() {
         let backend = SciRS2GpuFactory::create_best().unwrap();
         assert_eq!(backend.name(), "SciRS2_GPU");
-        
+
         let backends = SciRS2GpuFactory::available_backends();
         assert!(!backends.is_empty());
     }
@@ -951,7 +971,10 @@ mod tests {
         let backend = SciRS2GpuFactory::create_qml_optimized().unwrap();
         assert_eq!(backend.config.simd_level, 3);
         assert_eq!(backend.config.max_memory_mb, 4096);
-        assert!(backend.config.compilation_flags.contains(&"-DQML_OPTIMIZE".to_string()));
+        assert!(backend
+            .config
+            .compilation_flags
+            .contains(&"-DQML_OPTIMIZE".to_string()));
     }
 
     #[test]
@@ -965,10 +988,10 @@ mod tests {
     fn test_performance_metrics() {
         let backend = SciRS2GpuBackend::new().unwrap();
         let metrics = backend.get_performance_metrics();
-        
+
         // Initially no kernels executed
         assert_eq!(metrics.kernel_executions, 0);
-        
+
         let report = backend.optimization_report();
         assert!(report.contains("SciRS2 GPU Optimization Report"));
     }
@@ -986,7 +1009,7 @@ mod tests {
             enable_load_balancing: true,
             compilation_flags: vec!["-O3".to_string()],
         };
-        
+
         let backend = SciRS2GpuBackend::with_config(config.clone()).unwrap();
         assert_eq!(backend.config.max_memory_mb, 1024);
         assert_eq!(backend.config.simd_level, 2);

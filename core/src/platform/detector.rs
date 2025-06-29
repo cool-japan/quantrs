@@ -7,7 +7,7 @@ use std::env;
 pub fn detect_platform_capabilities() -> PlatformCapabilities {
     // Try to use SciRS2's platform detection if available
     // TODO: Use SciRS2's platform detection when available
-    
+
     // Fallback to our own detection
     PlatformCapabilities {
         cpu: detect_cpu_capabilities(),
@@ -18,7 +18,6 @@ pub fn detect_platform_capabilities() -> PlatformCapabilities {
         architecture: detect_architecture(),
     }
 }
-
 
 /// Detect CPU capabilities
 fn detect_cpu_capabilities() -> CpuCapabilities {
@@ -40,7 +39,7 @@ fn detect_cpu_capabilities() -> CpuCapabilities {
 fn detect_simd_capabilities() -> SimdCapabilities {
     // Try to use SciRS2's SIMD detection if available
     // TODO: Use SciRS2's SIMD capability detection when available
-    
+
     #[cfg(target_arch = "x86_64")]
     {
         SimdCapabilities {
@@ -100,11 +99,11 @@ fn detect_simd_capabilities() -> SimdCapabilities {
 fn detect_cache_info() -> CacheInfo {
     // Basic implementation - can be enhanced with platform-specific detection
     CacheInfo {
-        l1_data: Some(32 * 1024),      // 32KB default
+        l1_data: Some(32 * 1024),        // 32KB default
         l1_instruction: Some(32 * 1024), // 32KB default
-        l2: Some(256 * 1024),           // 256KB default
-        l3: Some(8 * 1024 * 1024),      // 8MB default
-        line_size: Some(64),            // 64 byte cache line default
+        l2: Some(256 * 1024),            // 256KB default
+        l3: Some(8 * 1024 * 1024),       // 8MB default
+        line_size: Some(64),             // 64 byte cache line default
     }
 }
 
@@ -138,7 +137,7 @@ fn detect_gpu_capabilities() -> GpuCapabilities {
 
     // Try to detect WebGPU devices (cross-platform)
     // Note: This is a placeholder - actual implementation would use wgpu
-    
+
     GpuCapabilities {
         available: false,
         devices,
@@ -149,10 +148,10 @@ fn detect_gpu_capabilities() -> GpuCapabilities {
 /// Detect memory capabilities
 fn detect_memory_capabilities() -> MemoryCapabilities {
     use sysinfo::System;
-    
+
     let mut sys = System::new_all();
     sys.refresh_memory();
-    
+
     MemoryCapabilities {
         total_memory: sys.total_memory() as usize,
         available_memory: sys.available_memory() as usize,
@@ -177,7 +176,8 @@ fn detect_hugepage_support() -> bool {
 /// Detect platform type
 fn detect_platform_type() -> PlatformType {
     // Basic heuristic based on environment
-    if env::var("KUBERNETES_SERVICE_HOST").is_ok() || env::var("ECS_CONTAINER_METADATA_URI").is_ok() {
+    if env::var("KUBERNETES_SERVICE_HOST").is_ok() || env::var("ECS_CONTAINER_METADATA_URI").is_ok()
+    {
         PlatformType::Cloud
     } else if cfg!(target_os = "android") {
         PlatformType::Mobile

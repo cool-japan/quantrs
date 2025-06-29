@@ -15,11 +15,11 @@ impl CrosstalkPredictor {
             uncertainty_quantifier: UncertaintyQuantifier::new(&config.uncertainty_quantification),
         }
     }
-    
+
     pub fn generate_predictions(&mut self, characterization: &CrosstalkCharacterization) -> DeviceResult<CrosstalkPredictionResult> {
         let n_qubits = characterization.crosstalk_matrix.nrows();
         let n_predictions = 10; // Number of prediction steps
-        
+
         Ok(CrosstalkPredictionResult {
             predictions: Array2::zeros((n_predictions, n_qubits * n_qubits)),
             timestamps: vec![SystemTime::now(); n_predictions],
@@ -61,9 +61,9 @@ impl CrosstalkPredictor {
         // Train different time series models
         for model_type in &[
             TimeSeriesModel::ARIMA { p: 2, d: 1, q: 2 },
-            TimeSeriesModel::ExponentialSmoothing { 
-                trend: "add".to_string(), 
-                seasonal: "add".to_string() 
+            TimeSeriesModel::ExponentialSmoothing {
+                trend: "add".to_string(),
+                seasonal: "add".to_string()
             },
         ] {
             let model = PredictionModel::new(model_type.clone())?;
@@ -76,7 +76,7 @@ impl CrosstalkPredictor {
     pub fn predict_multi_step(&self, input_data: &Array2<f64>, steps: usize) -> DeviceResult<Array2<f64>> {
         let n_features = input_data.ncols();
         let predictions = Array2::zeros((steps, n_features));
-        
+
         // Implement multi-step prediction logic
         // For now, return simplified predictions
         Ok(predictions)
@@ -131,14 +131,14 @@ impl CrosstalkPredictor {
     fn calculate_mape(&self, predictions: &Array2<f64>, ground_truth: &Array2<f64>) -> f64 {
         let mut total_ape = 0.0;
         let mut count = 0;
-        
+
         for (pred, actual) in predictions.iter().zip(ground_truth.iter()) {
             if actual.abs() > 1e-8 {
                 total_ape += ((pred - actual) / actual).abs();
                 count += 1;
             }
         }
-        
+
         if count > 0 {
             total_ape / count as f64 * 100.0
         } else {
@@ -149,7 +149,7 @@ impl CrosstalkPredictor {
     fn calculate_smape(&self, predictions: &Array2<f64>, ground_truth: &Array2<f64>) -> f64 {
         let mut total_sape = 0.0;
         let mut count = 0;
-        
+
         for (pred, actual) in predictions.iter().zip(ground_truth.iter()) {
             let denominator = (pred.abs() + actual.abs()) / 2.0;
             if denominator > 1e-8 {
@@ -157,7 +157,7 @@ impl CrosstalkPredictor {
                 count += 1;
             }
         }
-        
+
         if count > 0 {
             total_sape / count as f64 * 100.0
         } else {
@@ -233,21 +233,21 @@ impl UncertaintyQuantifier {
     ) -> DeviceResult<Array3<f64>> {
         let (n_steps, n_features) = predictions.dim();
         let mut intervals = Array3::zeros((n_steps, n_features, 2));
-        
+
         for level in &self.confidence_levels {
             let z_score = self.get_z_score(*level);
-            
+
             for i in 0..n_steps {
                 for j in 0..n_features {
                     let pred = predictions[[i, j]];
                     let uncertainty = uncertainties[[i, j]];
-                    
+
                     intervals[[i, j, 0]] = pred - z_score * uncertainty; // Lower bound
                     intervals[[i, j, 1]] = pred + z_score * uncertainty; // Upper bound
                 }
             }
         }
-        
+
         Ok(intervals)
     }
 
@@ -264,7 +264,7 @@ impl UncertaintyQuantifier {
     /// Update uncertainty history
     pub fn update_history(&mut self, uncertainty: Array1<f64>) {
         self.uncertainty_history.push_back(uncertainty);
-        
+
         // Keep only recent history
         if self.uncertainty_history.len() > 1000 {
             self.uncertainty_history.pop_front();
@@ -344,7 +344,7 @@ impl PredictionModel {
     pub fn predict(&self, input_data: &Array2<f64>, steps: usize) -> DeviceResult<Array2<f64>> {
         let n_features = input_data.ncols();
         let predictions = Array2::zeros((steps, n_features));
-        
+
         // Implement prediction logic based on model type
         Ok(predictions)
     }
@@ -388,7 +388,7 @@ impl TimeSeriesAnalyzer {
         let trend_analysis = self.trend_detector.analyze_trend(data)?;
         let seasonality_analysis = self.seasonality_detector.analyze_seasonality(data)?;
         let changepoint_analysis = self.changepoint_detector.detect_changepoints(data)?;
-        
+
         // Calculate forecast metrics (would typically be done after prediction)
         let forecast_metrics = ForecastMetrics {
             mae: 0.01,
@@ -505,10 +505,10 @@ impl SeasonalityDetector {
             if strength > self.strength_threshold {
                 detected_periods.push(period);
                 strengths.push(strength);
-                
+
                 let pattern = self.extract_seasonal_pattern(data, period)?;
                 patterns.insert(period, pattern);
-                
+
                 let sig = self.test_seasonal_significance(data, period)?;
                 significance.insert(period, sig);
             }

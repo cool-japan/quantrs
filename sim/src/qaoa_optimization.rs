@@ -420,7 +420,11 @@ impl QAOAOptimizer {
             }
 
             // Adaptive layer growth
-            if self.config.adaptive_layers && iteration % 20 == 19 && self.should_add_layer(&cost_history)? && current_layers < self.config.max_adaptive_layers {
+            if self.config.adaptive_layers
+                && iteration % 20 == 19
+                && self.should_add_layer(&cost_history)?
+                && current_layers < self.config.max_adaptive_layers
+            {
                 current_layers += 1;
                 self.add_qaoa_layer()?;
             }
