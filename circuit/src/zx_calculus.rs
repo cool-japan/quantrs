@@ -50,18 +50,17 @@ pub enum ZXNode {
 impl ZXNode {
     pub fn id(&self) -> usize {
         match self {
-            Self::ZSpider { id, .. } => *id,
-            Self::XSpider { id, .. } => *id,
-            Self::Hadamard { id } => *id,
-            Self::Input { id, .. } => *id,
-            Self::Output { id, .. } => *id,
+            Self::ZSpider { id, .. }
+            | Self::XSpider { id, .. }
+            | Self::Hadamard { id }
+            | Self::Input { id, .. }
+            | Self::Output { id, .. } => *id,
         }
     }
 
     pub fn phase(&self) -> f64 {
         match self {
-            Self::ZSpider { phase, .. } => *phase,
-            Self::XSpider { phase, .. } => *phase,
+            Self::ZSpider { phase, .. } | Self::XSpider { phase, .. } => *phase,
             _ => 0.0,
         }
     }
