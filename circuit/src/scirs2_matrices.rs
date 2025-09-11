@@ -131,7 +131,7 @@ impl SparseMatrix {
     }
 
     /// Matrix multiplication
-    pub fn matmul(&self, other: &SparseMatrix) -> QuantRS2Result<SparseMatrix> {
+    pub fn matmul(&self, other: &Self) -> QuantRS2Result<Self> {
         if self.shape.1 != other.shape.0 {
             return Err(QuantRS2Error::InvalidInput(
                 "Matrix dimensions incompatible for multiplication".to_string(),
@@ -139,7 +139,7 @@ impl SparseMatrix {
         }
 
         // Simplified sparse matrix multiplication
-        let mut result = SparseMatrix::new(self.shape.0, other.shape.1, SparseFormat::COO);
+        let mut result = Self::new(self.shape.0, other.shape.1, SparseFormat::COO);
 
         // This is a naive implementation - SciRS2 would use optimized algorithms
         for &(i, k, a_val) in &self.entries {
@@ -154,10 +154,10 @@ impl SparseMatrix {
     }
 
     /// Tensor product (Kronecker product)
-    pub fn kron(&self, other: &SparseMatrix) -> SparseMatrix {
+    pub fn kron(&self, other: &Self) -> Self {
         let new_rows = self.shape.0 * other.shape.0;
         let new_cols = self.shape.1 * other.shape.1;
-        let mut result = SparseMatrix::new(new_rows, new_cols, SparseFormat::COO);
+        let mut result = Self::new(new_rows, new_cols, SparseFormat::COO);
 
         for &(i1, j1, val1) in &self.entries {
             for &(i2, j2, val2) in &other.entries {
@@ -171,8 +171,8 @@ impl SparseMatrix {
     }
 
     /// Transpose matrix
-    pub fn transpose(&self) -> SparseMatrix {
-        let mut result = SparseMatrix::new(self.shape.1, self.shape.0, self.format.clone());
+    pub fn transpose(&self) -> Self {
+        let mut result = Self::new(self.shape.1, self.shape.0, self.format.clone());
         for &(i, j, val) in &self.entries {
             result.insert(j, i, val);
         }
@@ -180,8 +180,8 @@ impl SparseMatrix {
     }
 
     /// Hermitian conjugate (conjugate transpose)
-    pub fn dagger(&self) -> SparseMatrix {
-        let mut result = SparseMatrix::new(self.shape.1, self.shape.0, self.format.clone());
+    pub fn dagger(&self) -> Self {
+        let mut result = Self::new(self.shape.1, self.shape.0, self.format.clone());
         for &(i, j, val) in &self.entries {
             result.insert(j, i, val.conj());
         }
@@ -197,7 +197,7 @@ impl SparseMatrix {
         // U† U = I
         let dagger = self.dagger();
         if let Ok(product) = dagger.matmul(self) {
-            let identity = SparseMatrix::identity(self.shape.0);
+            let identity = Self::identity(self.shape.0);
             product.matrices_equal(&identity, tolerance)
         } else {
             false
@@ -205,7 +205,7 @@ impl SparseMatrix {
     }
 
     /// Check if two matrices are equal within tolerance
-    fn matrices_equal(&self, other: &SparseMatrix, tolerance: f64) -> bool {
+    fn matrices_equal(&self, other: &Self, tolerance: f64) -> bool {
         if self.shape != other.shape {
             return false;
         }
@@ -297,7 +297,7 @@ impl SparseGate {
     }
 
     /// Compose with another gate
-    pub fn compose(&self, other: &SparseGate) -> QuantRS2Result<SparseGate> {
+    pub fn compose(&self, other: &Self) -> QuantRS2Result<Self> {
         let composed_matrix = other.matrix.matmul(&self.matrix)?;
 
         // Merge qubit lists (simplified)
@@ -308,7 +308,7 @@ impl SparseGate {
             }
         }
 
-        Ok(SparseGate::new(
+        Ok(Self::new(
             format!("{}·{}", other.name, self.name),
             qubits,
             composed_matrix,

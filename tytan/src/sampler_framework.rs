@@ -350,7 +350,9 @@ impl HyperparameterOptimizer {
 
         // Bayesian optimization loop
         let y_array = Array1::from_vec(y_data.clone());
-        optimizer.update(&x_data, &y_array).map_err(|e| e.to_string())?;
+        optimizer
+            .update(&x_data, &y_array)
+            .map_err(|e| e.to_string())?;
 
         for _ in history.len()..self.num_trials {
             // Suggest next point

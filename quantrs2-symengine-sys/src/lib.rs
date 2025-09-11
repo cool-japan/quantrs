@@ -22,7 +22,7 @@
 //! - `static`: Link SymEngine statically
 //! - `system-deps`: Use pkg-config to find system dependencies
 
-use std::os::raw::{c_char, c_int, c_ulong};
+use std::os::raw::{c_char, c_int};
 
 // Include generated bindings
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -30,7 +30,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 /// SymEngine error codes
 pub mod error_codes {
     use super::c_int;
-    
+
     pub const SYMENGINE_NO_EXCEPTION: c_int = 0;
     pub const SYMENGINE_RUNTIME_ERROR: c_int = 1;
     pub const SYMENGINE_DIV_BY_ZERO: c_int = 2;
@@ -42,7 +42,7 @@ pub mod error_codes {
 /// SymEngine type codes
 pub mod type_codes {
     use super::c_int;
-    
+
     pub const SYMENGINE_SYMBOL: c_int = 1;
     pub const SYMENGINE_ADD: c_int = 2;
     pub const SYMENGINE_MUL: c_int = 3;
@@ -74,13 +74,13 @@ pub enum SymEngineError {
 impl std::fmt::Display for SymEngineError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SymEngineError::NoException => write!(f, "No exception"),
-            SymEngineError::RuntimeError(msg) => write!(f, "Runtime error: {}", msg),
-            SymEngineError::DivisionByZero => write!(f, "Division by zero"),
-            SymEngineError::NotImplemented => write!(f, "Operation not implemented"),
-            SymEngineError::DomainError => write!(f, "Domain error"),
-            SymEngineError::ParseError => write!(f, "Parse error"),
-            SymEngineError::Unknown(code) => write!(f, "Unknown error code: {}", code),
+            Self::NoException => write!(f, "No exception"),
+            Self::RuntimeError(msg) => write!(f, "Runtime error: {}", msg),
+            Self::DivisionByZero => write!(f, "Division by zero"),
+            Self::NotImplemented => write!(f, "Operation not implemented"),
+            Self::DomainError => write!(f, "Domain error"),
+            Self::ParseError => write!(f, "Parse error"),
+            Self::Unknown(code) => write!(f, "Unknown error code: {}", code),
         }
     }
 }
@@ -90,13 +90,13 @@ impl std::error::Error for SymEngineError {}
 impl From<c_int> for SymEngineError {
     fn from(code: c_int) -> Self {
         match code {
-            error_codes::SYMENGINE_NO_EXCEPTION => SymEngineError::NoException,
-            error_codes::SYMENGINE_RUNTIME_ERROR => SymEngineError::RuntimeError("Runtime error".to_string()),
-            error_codes::SYMENGINE_DIV_BY_ZERO => SymEngineError::DivisionByZero,
-            error_codes::SYMENGINE_NOT_IMPLEMENTED => SymEngineError::NotImplemented,
-            error_codes::SYMENGINE_DOMAIN_ERROR => SymEngineError::DomainError,
-            error_codes::SYMENGINE_PARSE_ERROR => SymEngineError::ParseError,
-            _ => SymEngineError::Unknown(code),
+            error_codes::SYMENGINE_NO_EXCEPTION => Self::NoException,
+            error_codes::SYMENGINE_RUNTIME_ERROR => Self::RuntimeError("Runtime error".to_string()),
+            error_codes::SYMENGINE_DIV_BY_ZERO => Self::DivisionByZero,
+            error_codes::SYMENGINE_NOT_IMPLEMENTED => Self::NotImplemented,
+            error_codes::SYMENGINE_DOMAIN_ERROR => Self::DomainError,
+            error_codes::SYMENGINE_PARSE_ERROR => Self::ParseError,
+            _ => Self::Unknown(code),
         }
     }
 }
@@ -119,12 +119,13 @@ pub fn version() -> &'static str {
 extern "C" {
     // Argument access functions
     pub fn basic_get_args_size(basic: *const basic_struct) -> usize;
-    pub fn basic_get_arg(out: *mut basic_struct, basic: *const basic_struct, index: usize) -> c_int;
-    
+    pub fn basic_get_arg(out: *mut basic_struct, basic: *const basic_struct, index: usize)
+        -> c_int;
+
     // Power operations
     pub fn basic_pow_get_base(out: *mut basic_struct, basic: *const basic_struct) -> c_int;
     pub fn basic_pow_get_exp(out: *mut basic_struct, basic: *const basic_struct) -> c_int;
-    
+
     // Symbol operations
     pub fn basic_symbol_get_name(basic: *const basic_struct) -> *const c_char;
 }
@@ -145,7 +146,10 @@ mod tests {
     #[test]
     fn test_error_conversion() {
         assert_eq!(SymEngineError::from(0), SymEngineError::NoException);
-        assert_eq!(SymEngineError::from(1), SymEngineError::RuntimeError("Runtime error".to_string()));
+        assert_eq!(
+            SymEngineError::from(1),
+            SymEngineError::RuntimeError("Runtime error".to_string())
+        );
         assert_eq!(SymEngineError::from(2), SymEngineError::DivisionByZero);
     }
 

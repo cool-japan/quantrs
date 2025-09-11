@@ -21,7 +21,7 @@ use quantrs2_tytan::{
     },
 };
 
-use quantrs2_tytan::compile::expr::{Expr, constant};
+use quantrs2_tytan::compile::expr::{constant, Expr};
 
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -478,9 +478,9 @@ impl serde::Serialize for DistanceMetric {
         S: serde::Serializer,
     {
         serializer.serialize_str(match self {
-            DistanceMetric::Euclidean => "Euclidean",
-            DistanceMetric::Haversine => "Haversine",
-            DistanceMetric::Manhattan => "Manhattan",
+            Self::Euclidean => "Euclidean",
+            Self::Haversine => "Haversine",
+            Self::Manhattan => "Manhattan",
         })
     }
 }

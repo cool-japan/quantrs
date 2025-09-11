@@ -29,11 +29,11 @@ pub enum GpuBackend {
 impl fmt::Display for GpuBackend {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            GpuBackend::CUDA => write!(f, "CUDA"),
-            GpuBackend::OpenCL => write!(f, "OpenCL"),
-            GpuBackend::ROCm => write!(f, "ROCm"),
-            GpuBackend::WebGPU => write!(f, "WebGPU"),
-            GpuBackend::Metal => write!(f, "Metal"),
+            Self::CUDA => write!(f, "CUDA"),
+            Self::OpenCL => write!(f, "OpenCL"),
+            Self::ROCm => write!(f, "ROCm"),
+            Self::WebGPU => write!(f, "WebGPU"),
+            Self::Metal => write!(f, "Metal"),
         }
     }
 }

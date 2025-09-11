@@ -364,7 +364,7 @@ impl IsingModel {
     /// Create an Ising model from a QUBO model
     pub fn from_qubo(qubo: &QuboModel) -> Self {
         // Create a new Ising model with the same number of variables
-        let mut ising = IsingModel::new(qubo.num_variables);
+        let mut ising = Self::new(qubo.num_variables);
 
         // Convert QUBO linear terms to Ising biases
         for (i, linear) in qubo.linear_terms.iter() {
@@ -648,7 +648,7 @@ impl QuboModel {
     }
 
     /// Convert to QUBO model (returns self since this is already a QUBO model)
-    pub fn to_qubo_model(&self) -> QuboModel {
+    pub fn to_qubo_model(&self) -> Self {
         self.clone()
     }
 }

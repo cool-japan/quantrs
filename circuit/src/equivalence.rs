@@ -59,7 +59,7 @@ pub struct EquivalenceOptions {
 
 impl Default for EquivalenceOptions {
     fn default() -> Self {
-        EquivalenceOptions {
+        Self {
             tolerance: DEFAULT_TOLERANCE,
             ignore_global_phase: true,
             check_all_states: true,
@@ -76,7 +76,7 @@ pub struct EquivalenceChecker {
 impl EquivalenceChecker {
     /// Create a new equivalence checker with options
     pub fn new(options: EquivalenceOptions) -> Self {
-        EquivalenceChecker { options }
+        Self { options }
     }
 
     /// Create a new equivalence checker with default options

@@ -34,14 +34,14 @@ impl OptimizationObjective {
     /// Get the weight of this objective
     pub fn weight(&self) -> f64 {
         match self {
-            OptimizationObjective::MaximizeAccuracy { weight } => *weight,
-            OptimizationObjective::MinimizeComplexity { weight } => *weight,
-            OptimizationObjective::MinimizeQuantumResources { weight } => *weight,
-            OptimizationObjective::MaximizeQuantumAdvantage { weight } => *weight,
-            OptimizationObjective::MinimizeInferenceTime { weight } => *weight,
-            OptimizationObjective::MinimizeTrainingTime { weight } => *weight,
-            OptimizationObjective::MaximizeRobustness { weight } => *weight,
-            OptimizationObjective::MaximizeInterpretability { weight } => *weight,
+            Self::MaximizeAccuracy { weight }
+            | Self::MinimizeComplexity { weight }
+            | Self::MinimizeQuantumResources { weight }
+            | Self::MaximizeQuantumAdvantage { weight }
+            | Self::MinimizeInferenceTime { weight }
+            | Self::MinimizeTrainingTime { weight }
+            | Self::MaximizeRobustness { weight }
+            | Self::MaximizeInterpretability { weight } => *weight,
         }
     }
 
@@ -49,24 +49,24 @@ impl OptimizationObjective {
     pub fn is_maximization(&self) -> bool {
         matches!(
             self,
-            OptimizationObjective::MaximizeAccuracy { .. }
-                | OptimizationObjective::MaximizeQuantumAdvantage { .. }
-                | OptimizationObjective::MaximizeRobustness { .. }
-                | OptimizationObjective::MaximizeInterpretability { .. }
+            Self::MaximizeAccuracy { .. }
+                | Self::MaximizeQuantumAdvantage { .. }
+                | Self::MaximizeRobustness { .. }
+                | Self::MaximizeInterpretability { .. }
         )
     }
 
     /// Get the objective name
     pub fn name(&self) -> &'static str {
         match self {
-            OptimizationObjective::MaximizeAccuracy { .. } => "accuracy",
-            OptimizationObjective::MinimizeComplexity { .. } => "complexity",
-            OptimizationObjective::MinimizeQuantumResources { .. } => "quantum_resources",
-            OptimizationObjective::MaximizeQuantumAdvantage { .. } => "quantum_advantage",
-            OptimizationObjective::MinimizeInferenceTime { .. } => "inference_time",
-            OptimizationObjective::MinimizeTrainingTime { .. } => "training_time",
-            OptimizationObjective::MaximizeRobustness { .. } => "robustness",
-            OptimizationObjective::MaximizeInterpretability { .. } => "interpretability",
+            Self::MaximizeAccuracy { .. } => "accuracy",
+            Self::MinimizeComplexity { .. } => "complexity",
+            Self::MinimizeQuantumResources { .. } => "quantum_resources",
+            Self::MaximizeQuantumAdvantage { .. } => "quantum_advantage",
+            Self::MinimizeInferenceTime { .. } => "inference_time",
+            Self::MinimizeTrainingTime { .. } => "training_time",
+            Self::MaximizeRobustness { .. } => "robustness",
+            Self::MaximizeInterpretability { .. } => "interpretability",
         }
     }
 }
@@ -75,14 +75,14 @@ impl OptimizationObjective {
 impl OptimizationObjective {
     /// Single accuracy objective
     pub fn accuracy_only() -> Vec<Self> {
-        vec![OptimizationObjective::MaximizeAccuracy { weight: 1.0 }]
+        vec![Self::MaximizeAccuracy { weight: 1.0 }]
     }
 
     /// Balanced accuracy and efficiency
     pub fn balanced() -> Vec<Self> {
         vec![
-            OptimizationObjective::MaximizeAccuracy { weight: 0.5 },
-            OptimizationObjective::MinimizeInferenceTime { weight: 0.3 },
+            Self::MaximizeAccuracy { weight: 0.5 },
+            Self::MinimizeInferenceTime { weight: 0.3 },
             OptimizationObjective::MinimizeComplexity { weight: 0.2 },
         ]
     }
@@ -90,48 +90,48 @@ impl OptimizationObjective {
     /// Quantum-focused objectives
     pub fn quantum_focused() -> Vec<Self> {
         vec![
-            OptimizationObjective::MaximizeQuantumAdvantage { weight: 0.5 },
-            OptimizationObjective::MaximizeAccuracy { weight: 0.3 },
-            OptimizationObjective::MinimizeQuantumResources { weight: 0.2 },
+            Self::MaximizeQuantumAdvantage { weight: 0.5 },
+            Self::MaximizeAccuracy { weight: 0.3 },
+            Self::MinimizeQuantumResources { weight: 0.2 },
         ]
     }
 
     /// Production-ready objectives
     pub fn production() -> Vec<Self> {
         vec![
-            OptimizationObjective::MaximizeAccuracy { weight: 0.4 },
-            OptimizationObjective::MaximizeRobustness { weight: 0.3 },
-            OptimizationObjective::MinimizeInferenceTime { weight: 0.2 },
-            OptimizationObjective::MaximizeInterpretability { weight: 0.1 },
+            Self::MaximizeAccuracy { weight: 0.4 },
+            Self::MaximizeRobustness { weight: 0.3 },
+            Self::MinimizeInferenceTime { weight: 0.2 },
+            Self::MaximizeInterpretability { weight: 0.1 },
         ]
     }
 
     /// Research objectives
     pub fn research() -> Vec<Self> {
         vec![
-            OptimizationObjective::MaximizeQuantumAdvantage { weight: 0.4 },
-            OptimizationObjective::MaximizeAccuracy { weight: 0.3 },
-            OptimizationObjective::MaximizeInterpretability { weight: 0.2 },
-            OptimizationObjective::MinimizeComplexity { weight: 0.1 },
+            Self::MaximizeQuantumAdvantage { weight: 0.4 },
+            Self::MaximizeAccuracy { weight: 0.3 },
+            Self::MaximizeInterpretability { weight: 0.2 },
+            Self::MinimizeComplexity { weight: 0.1 },
         ]
     }
 
     /// Fast inference objectives
     pub fn fast_inference() -> Vec<Self> {
         vec![
-            OptimizationObjective::MinimizeInferenceTime { weight: 0.5 },
-            OptimizationObjective::MaximizeAccuracy { weight: 0.3 },
-            OptimizationObjective::MinimizeComplexity { weight: 0.2 },
+            Self::MinimizeInferenceTime { weight: 0.5 },
+            Self::MaximizeAccuracy { weight: 0.3 },
+            Self::MinimizeComplexity { weight: 0.2 },
         ]
     }
 
     /// Resource-constrained objectives
     pub fn resource_constrained() -> Vec<Self> {
         vec![
-            OptimizationObjective::MinimizeQuantumResources { weight: 0.4 },
-            OptimizationObjective::MaximizeAccuracy { weight: 0.3 },
-            OptimizationObjective::MinimizeComplexity { weight: 0.2 },
-            OptimizationObjective::MinimizeTrainingTime { weight: 0.1 },
+            Self::MinimizeQuantumResources { weight: 0.4 },
+            Self::MaximizeAccuracy { weight: 0.3 },
+            Self::MinimizeComplexity { weight: 0.2 },
+            Self::MinimizeTrainingTime { weight: 0.1 },
         ]
     }
 }

@@ -263,7 +263,7 @@ pub enum PumpSchedule {
 impl std::fmt::Debug for PumpSchedule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PumpSchedule::Linear {
+            Self::Linear {
                 initial_power,
                 final_power,
             } => f
@@ -271,7 +271,7 @@ impl std::fmt::Debug for PumpSchedule {
                 .field("initial_power", initial_power)
                 .field("final_power", final_power)
                 .finish(),
-            PumpSchedule::Exponential {
+            Self::Exponential {
                 initial_power,
                 final_power,
                 time_constant,
@@ -281,7 +281,7 @@ impl std::fmt::Debug for PumpSchedule {
                 .field("final_power", final_power)
                 .field("time_constant", time_constant)
                 .finish(),
-            PumpSchedule::Sigmoid {
+            Self::Sigmoid {
                 initial_power,
                 final_power,
                 steepness,
@@ -293,7 +293,7 @@ impl std::fmt::Debug for PumpSchedule {
                 .field("steepness", steepness)
                 .field("midpoint", midpoint)
                 .finish(),
-            PumpSchedule::Custom { .. } => f
+            Self::Custom { .. } => f
                 .debug_struct("Custom")
                 .field("power_function", &"<function>")
                 .finish(),
@@ -304,36 +304,36 @@ impl std::fmt::Debug for PumpSchedule {
 impl Clone for PumpSchedule {
     fn clone(&self) -> Self {
         match self {
-            PumpSchedule::Linear {
+            Self::Linear {
                 initial_power,
                 final_power,
-            } => PumpSchedule::Linear {
+            } => Self::Linear {
                 initial_power: *initial_power,
                 final_power: *final_power,
             },
-            PumpSchedule::Exponential {
+            Self::Exponential {
                 initial_power,
                 final_power,
                 time_constant,
-            } => PumpSchedule::Exponential {
+            } => Self::Exponential {
                 initial_power: *initial_power,
                 final_power: *final_power,
                 time_constant: *time_constant,
             },
-            PumpSchedule::Sigmoid {
+            Self::Sigmoid {
                 initial_power,
                 final_power,
                 steepness,
                 midpoint,
-            } => PumpSchedule::Sigmoid {
+            } => Self::Sigmoid {
                 initial_power: *initial_power,
                 final_power: *final_power,
                 steepness: *steepness,
                 midpoint: *midpoint,
             },
-            PumpSchedule::Custom { .. } => {
+            Self::Custom { .. } => {
                 // Cannot clone function pointers, use default linear schedule
-                PumpSchedule::Linear {
+                Self::Linear {
                     initial_power: 0.0,
                     final_power: 1.0,
                 }

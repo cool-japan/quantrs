@@ -213,14 +213,14 @@ impl PulseSchedule {
     }
 
     /// Merge with another schedule
-    pub fn append(&mut self, other: &PulseSchedule, time_offset: Time) {
+    pub fn append(&mut self, other: &Self, time_offset: Time) {
         for (time, instruction) in &other.instructions {
             self.add_instruction(time + time_offset, instruction.clone());
         }
     }
 
     /// Align schedules on multiple channels
-    pub fn align_parallel(&mut self, schedules: Vec<PulseSchedule>) {
+    pub fn align_parallel(&mut self, schedules: Vec<Self>) {
         let start_time = self.duration;
         let mut max_duration: f64 = 0.0;
 

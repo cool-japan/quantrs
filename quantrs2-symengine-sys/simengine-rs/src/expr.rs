@@ -41,9 +41,7 @@ impl Expression {
         let expr_string = expr.to_string();
         let expr = CString::new(expr_string).expect("Failed to create CString");
         unsafe {
-            let mut new = Expression {
-                basic: UnsafeCell::new(std::mem::zeroed()),
-            };
+            let mut new = Self::zeroed();
             basic_new_stack(new.basic.get());
             let result = basic_parse(new.basic.get(), expr.as_ptr());
             if result != CWRAPPER_OUTPUT_TYPE::SYMENGINE_NO_EXCEPTION {
@@ -65,9 +63,7 @@ impl Expression {
         })?;
         
         unsafe {
-            let mut new = Expression {
-                basic: UnsafeCell::new(std::mem::zeroed()),
-            };
+            let mut new = Self::zeroed();
             basic_new_stack(new.basic.get());
             let result = basic_parse(new.basic.get(), expr.as_ptr());
             if result != CWRAPPER_OUTPUT_TYPE::SYMENGINE_NO_EXCEPTION {
@@ -85,9 +81,7 @@ impl Expression {
         let name_string = name.to_string();
         let name_cstr = CString::new(name_string).expect("Failed to create CString for symbol name");
         unsafe {
-            let mut new = Expression {
-                basic: UnsafeCell::new(std::mem::zeroed()),
-            };
+            let mut new = Self::zeroed();
             basic_new_stack(new.basic.get());
             symbol_set(new.basic.get(), name_cstr.as_ptr());
             new
@@ -238,14 +232,18 @@ impl Default for Expression {
 }
 
 impl Expression {
+    fn zeroed() -> Self {
+        Self {
+            basic: UnsafeCell::new(std::mem::zeroed()),
+        }
+    }
+
     fn binary_op<F>(self, other: Self, op: F) -> Self
     where
         F: Fn(*mut basic_struct, *mut basic_struct, *mut basic_struct) -> CWRAPPER_OUTPUT_TYPE,
     {
         unsafe {
-            let mut new = Expression {
-                basic: UnsafeCell::new(std::mem::zeroed()),
-            };
+            let mut new = Self::zeroed();
             basic_new_stack(new.basic.get());
             op(new.basic.get(), self.basic.get(), other.basic.get());
             new
@@ -254,9 +252,7 @@ impl Expression {
 
     pub fn expand(&self) -> Self {
         unsafe {
-            let mut new = Expression {
-                basic: UnsafeCell::new(std::mem::zeroed()),
-            };
+            let mut new = Self::zeroed();
             basic_new_stack(new.basic.get());
             basic_expand(new.basic.get(), self.basic.get());
             new
@@ -302,18 +298,14 @@ impl Expression {
     }
 
     /// Get the base and exponent of a power expression
-    pub fn as_pow(&self) -> Option<(Expression, Expression)> {
+    pub fn as_pow(&self) -> Option<(Self, Self)> {
         if !self.is_pow() {
             return None;
         }
         
         unsafe {
-            let mut base = Expression {
-                basic: UnsafeCell::new(std::mem::zeroed()),
-            };
-            let mut exp = Expression {
-                basic: UnsafeCell::new(std::mem::zeroed()),
-            };
+            let mut base = Self::zeroed();
+            let mut exp = Self::zeroed();
             basic_new_stack(base.basic.get());
             basic_new_stack(exp.basic.get());
             
@@ -336,9 +328,7 @@ impl Expression {
             let mut terms = Vec::new();
             
             for i in 0..args_size {
-                let mut term = Expression {
-                    basic: UnsafeCell::new(std::mem::zeroed()),
-                };
+                let mut term = Self::zeroed();
                 basic_new_stack(term.basic.get());
                 basic_get_arg(term.basic.get(), self.basic.get(), i);
                 terms.push(term);
@@ -359,9 +349,7 @@ impl Expression {
             let mut factors = Vec::new();
             
             for i in 0..args_size {
-                let mut factor = Expression {
-                    basic: UnsafeCell::new(std::mem::zeroed()),
-                };
+                let mut factor = Self::zeroed();
                 basic_new_stack(factor.basic.get());
                 basic_get_arg(factor.basic.get(), self.basic.get(), i);
                 factors.push(factor);
@@ -412,9 +400,7 @@ impl Expression {
     /// Power operation
     pub fn pow(&self, exp: Expression) -> Expression {
         unsafe {
-            let mut new = Expression {
-                basic: UnsafeCell::new(std::mem::zeroed()),
-            };
+            let mut new = Self::zeroes();
             basic_new_stack(new.basic.get());
             basic_pow(new.basic.get(), self.basic.get(), exp.basic.get());
             new

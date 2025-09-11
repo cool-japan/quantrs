@@ -77,25 +77,25 @@ pub enum ApplicationError {
 
 impl From<crate::ising::IsingError> for ApplicationError {
     fn from(err: crate::ising::IsingError) -> Self {
-        ApplicationError::OptimizationError(format!("Ising model error: {}", err))
+        Self::OptimizationError(format!("Ising model error: {}", err))
     }
 }
 
 impl From<crate::advanced_quantum_algorithms::AdvancedQuantumError> for ApplicationError {
     fn from(err: crate::advanced_quantum_algorithms::AdvancedQuantumError) -> Self {
-        ApplicationError::OptimizationError(format!("Advanced quantum algorithm error: {}", err))
+        Self::OptimizationError(format!("Advanced quantum algorithm error: {}", err))
     }
 }
 
 impl From<crate::quantum_error_correction::QuantumErrorCorrectionError> for ApplicationError {
     fn from(err: crate::quantum_error_correction::QuantumErrorCorrectionError) -> Self {
-        ApplicationError::OptimizationError(format!("Quantum error correction error: {}", err))
+        Self::OptimizationError(format!("Quantum error correction error: {}", err))
     }
 }
 
 impl From<crate::simulator::AnnealingError> for ApplicationError {
     fn from(err: crate::simulator::AnnealingError) -> Self {
-        ApplicationError::OptimizationError(format!("Annealing error: {}", err))
+        Self::OptimizationError(format!("Annealing error: {}", err))
     }
 }
 

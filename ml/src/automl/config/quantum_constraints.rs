@@ -209,7 +209,7 @@ impl QuantumTopology {
     /// Get the connectivity graph for this topology
     pub fn get_connectivity(&self, num_qubits: usize) -> Vec<(usize, usize)> {
         match self {
-            QuantumTopology::FullyConnected => {
+            Self::FullyConnected => {
                 let mut connections = Vec::new();
                 for i in 0..num_qubits {
                     for j in (i + 1)..num_qubits {
@@ -218,14 +218,14 @@ impl QuantumTopology {
                 }
                 connections
             }
-            QuantumTopology::Linear => {
+            Self::Linear => {
                 let mut connections = Vec::new();
                 for i in 0..(num_qubits - 1) {
                     connections.push((i, i + 1));
                 }
                 connections
             }
-            QuantumTopology::Grid { rows, cols } => {
+            Self::Grid { rows, cols } => {
                 let mut connections = Vec::new();
                 for row in 0..*rows {
                     for col in 0..*cols {
@@ -253,7 +253,7 @@ impl QuantumTopology {
                 }
                 connections
             }
-            QuantumTopology::HeavyHex => {
+            Self::HeavyHex => {
                 // Simplified heavy-hex connectivity for IBM quantum computers
                 let mut connections = Vec::new();
 
@@ -272,7 +272,7 @@ impl QuantumTopology {
 
                 connections
             }
-            QuantumTopology::Custom { connectivity } => connectivity.clone(),
+            Self::Custom { connectivity } => connectivity.clone(),
         }
     }
 

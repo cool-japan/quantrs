@@ -939,17 +939,17 @@ pub enum QECError {
 impl std::fmt::Display for QECError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            QECError::InvalidCodeParameters(msg) => write!(f, "Invalid code parameters: {}", msg),
-            QECError::SyndromeExtractionFailed(msg) => {
+            Self::InvalidCodeParameters(msg) => write!(f, "Invalid code parameters: {}", msg),
+            Self::SyndromeExtractionFailed(msg) => {
                 write!(f, "Syndrome extraction failed: {}", msg)
             }
-            QECError::DecodingFailed(msg) => write!(f, "Decoding failed: {}", msg),
-            QECError::InsufficientCorrection(msg) => write!(f, "Insufficient correction: {}", msg),
-            QECError::ThresholdExceeded(msg) => write!(f, "Threshold exceeded: {}", msg),
-            QECError::ResourceEstimationFailed(msg) => {
+            Self::DecodingFailed(msg) => write!(f, "Decoding failed: {}", msg),
+            Self::InsufficientCorrection(msg) => write!(f, "Insufficient correction: {}", msg),
+            Self::ThresholdExceeded(msg) => write!(f, "Threshold exceeded: {}", msg),
+            Self::ResourceEstimationFailed(msg) => {
                 write!(f, "Resource estimation failed: {}", msg)
             }
-            QECError::NumericalError(msg) => write!(f, "Numerical error: {}", msg),
+            Self::NumericalError(msg) => write!(f, "Numerical error: {}", msg),
         }
     }
 }

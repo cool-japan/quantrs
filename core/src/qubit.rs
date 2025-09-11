@@ -46,7 +46,7 @@ impl From<usize> for QubitId {
 impl From<QubitId> for usize {
     #[inline]
     fn from(qubit: QubitId) -> Self {
-        qubit.0 as usize
+        qubit.0 as Self
     }
 }
 

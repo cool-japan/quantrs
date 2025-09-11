@@ -494,10 +494,10 @@ impl QuantumBlockchain {
 impl fmt::Display for ConsensusType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ConsensusType::QuantumProofOfWork => write!(f, "Quantum Proof of Work"),
-            ConsensusType::QuantumProofOfStake => write!(f, "Quantum Proof of Stake"),
-            ConsensusType::QuantumByzantineAgreement => write!(f, "Quantum Byzantine Agreement"),
-            ConsensusType::QuantumFederated => write!(f, "Quantum Federated Consensus"),
+            Self::QuantumProofOfWork => write!(f, "Quantum Proof of Work"),
+            Self::QuantumProofOfStake => write!(f, "Quantum Proof of Stake"),
+            Self::QuantumByzantineAgreement => write!(f, "Quantum Byzantine Agreement"),
+            Self::QuantumFederated => write!(f, "Quantum Federated Consensus"),
         }
     }
 }

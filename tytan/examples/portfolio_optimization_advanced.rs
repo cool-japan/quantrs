@@ -22,7 +22,7 @@ use quantrs2_tytan::{
     },
 };
 
-use quantrs2_tytan::compile::expr::{Expr, constant};
+use quantrs2_tytan::compile::expr::{constant, Expr};
 
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -176,8 +176,7 @@ fn create_portfolio_model(
     for i in 0..n_assets {
         for j in 1..=n_bins {
             let weight_value = j as f64 / n_bins as f64;
-            total_weight =
-                total_weight + constant(weight_value) * weight_vars[&(i, j)].clone();
+            total_weight = total_weight + constant(weight_value) * weight_vars[&(i, j)].clone();
         }
     }
 
@@ -199,10 +198,8 @@ fn create_portfolio_model(
     let mut total_weight_penalty = total_weight.clone();
     total_weight_penalty = total_weight_penalty + constant(-1.0);
     // Penalty for (total_weight - 1)^2
-    objective = objective
-        + constant(penalty_weight)
-            * total_weight_penalty.clone()
-            * total_weight_penalty;
+    objective =
+        objective + constant(penalty_weight) * total_weight_penalty.clone() * total_weight_penalty;
 
     // 2. Asset count constraints
     let mut asset_count_objective = objective;
@@ -210,15 +207,15 @@ fn create_portfolio_model(
         let asset_count: Expr = selection_vars.iter().map(|v| v.clone()).sum();
         let violation = asset_count.clone() + constant(-(min_assets as f64));
         // Penalty for max(0, min_assets - count) which we approximate as (min_assets - count)^2 when count < min_assets
-        asset_count_objective = asset_count_objective
-            + constant(penalty_weight) * violation.clone() * violation;
+        asset_count_objective =
+            asset_count_objective + constant(penalty_weight) * violation.clone() * violation;
     }
     if let Some(max_assets) = constraints.max_assets {
         let asset_count: Expr = selection_vars.iter().map(|v| v.clone()).sum();
         let violation = asset_count + constant(-(max_assets as f64));
         // Penalty for max(0, count - max_assets)
-        asset_count_objective = asset_count_objective
-            + constant(penalty_weight) * violation.clone() * violation;
+        asset_count_objective =
+            asset_count_objective + constant(penalty_weight) * violation.clone() * violation;
     }
     let mut objective = asset_count_objective;
 

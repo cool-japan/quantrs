@@ -29,6 +29,17 @@ pub enum FermionOperatorType {
     Identity,
 }
 
+impl FermionOperatorType {
+    pub fn dagger(&self) -> Self {
+        match self {
+            Self::Creation => Self::Annihilation,
+            Self::Annihilation => Self::Creation,
+            Self::Number => Self::Number,
+            Self::Identity => Self::Identity,
+        }
+    }
+}
+
 /// A single fermionic operator acting on a specific mode
 #[derive(Debug, Clone, PartialEq)]
 pub struct FermionOperator {
@@ -76,20 +87,7 @@ impl FermionOperator {
     /// Get the Hermitian conjugate
     pub fn dagger(&self) -> Self {
         let conj_coeff = self.coefficient.conj();
-        match self.op_type {
-            FermionOperatorType::Creation => {
-                Self::new(FermionOperatorType::Annihilation, self.mode, conj_coeff)
-            }
-            FermionOperatorType::Annihilation => {
-                Self::new(FermionOperatorType::Creation, self.mode, conj_coeff)
-            }
-            FermionOperatorType::Number => {
-                Self::new(FermionOperatorType::Number, self.mode, conj_coeff)
-            }
-            FermionOperatorType::Identity => {
-                Self::new(FermionOperatorType::Identity, self.mode, conj_coeff)
-            }
-        }
+        Self::new(self.op_type.dagger(), self.mode, conj_coeff)
     }
 }
 
@@ -471,7 +469,7 @@ impl PauliOperator {
     /// Get the matrix representation
     pub fn matrix(&self) -> Array2<Complex64> {
         match self {
-            PauliOperator::I => Array2::from_shape_vec(
+            Self::I => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(1.0, 0.0),
@@ -481,7 +479,7 @@ impl PauliOperator {
                 ],
             )
             .unwrap(),
-            PauliOperator::X => Array2::from_shape_vec(
+            Self::X => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -491,7 +489,7 @@ impl PauliOperator {
                 ],
             )
             .unwrap(),
-            PauliOperator::Y => Array2::from_shape_vec(
+            Self::Y => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -501,7 +499,7 @@ impl PauliOperator {
                 ],
             )
             .unwrap(),
-            PauliOperator::Z => Array2::from_shape_vec(
+            Self::Z => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(1.0, 0.0),
@@ -511,7 +509,7 @@ impl PauliOperator {
                 ],
             )
             .unwrap(),
-            PauliOperator::Plus => Array2::from_shape_vec(
+            Self::Plus => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -521,7 +519,7 @@ impl PauliOperator {
                 ],
             )
             .unwrap(),
-            PauliOperator::Minus => Array2::from_shape_vec(
+            Self::Minus => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),

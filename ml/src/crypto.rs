@@ -457,11 +457,11 @@ pub fn decrypt_with_qkd(encrypted: &[u8], key: Vec<u8>) -> Vec<u8> {
 impl fmt::Display for ProtocolType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ProtocolType::BB84 => write!(f, "BB84"),
-            ProtocolType::E91 => write!(f, "E91"),
-            ProtocolType::B92 => write!(f, "B92"),
-            ProtocolType::BBM92 => write!(f, "BBM92"),
-            ProtocolType::SARG04 => write!(f, "SARG04"),
+            Self::BB84 => write!(f, "BB84"),
+            Self::E91 => write!(f, "E91"),
+            Self::B92 => write!(f, "B92"),
+            Self::BBM92 => write!(f, "BBM92"),
+            Self::SARG04 => write!(f, "SARG04"),
         }
     }
 }

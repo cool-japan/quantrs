@@ -49,13 +49,13 @@ pub enum SymEngineError {
 impl From<symengine_sys::SymEngineError> for SymEngineError {
     fn from(sys_error: symengine_sys::SymEngineError) -> Self {
         match sys_error {
-            symengine_sys::SymEngineError::NoException => SymEngineError::NoException,
-            symengine_sys::SymEngineError::RuntimeError(msg) => SymEngineError::RuntimeError { message: msg },
-            symengine_sys::SymEngineError::DivisionByZero => SymEngineError::DivisionByZero,
-            symengine_sys::SymEngineError::NotImplemented => SymEngineError::NotImplemented,
-            symengine_sys::SymEngineError::DomainError => SymEngineError::DomainError,
-            symengine_sys::SymEngineError::ParseError => SymEngineError::ParseError,
-            symengine_sys::SymEngineError::Unknown(code) => SymEngineError::Unknown { code },
+            symengine_sys::SymEngineError::NoException => Self::NoException,
+            symengine_sys::SymEngineError::RuntimeError(msg) => Self::RuntimeError { message: msg },
+            symengine_sys::SymEngineError::DivisionByZero => Self::DivisionByZero,
+            symengine_sys::SymEngineError::NotImplemented => Self::NotImplemented,
+            symengine_sys::SymEngineError::DomainError => Self::DomainError,
+            symengine_sys::SymEngineError::ParseError => Self::ParseError,
+            symengine_sys::SymEngineError::Unknown(code) => Self::Unknown { code },
         }
     }
 }
@@ -63,35 +63,35 @@ impl From<symengine_sys::SymEngineError> for SymEngineError {
 impl SymEngineError {
     /// Create a new runtime error with a custom message
     pub fn runtime_error(message: impl Into<String>) -> Self {
-        SymEngineError::RuntimeError {
+        Self::RuntimeError {
             message: message.into(),
         }
     }
     
     /// Create a new invalid operation error with a custom message
     pub fn invalid_operation(message: impl Into<String>) -> Self {
-        SymEngineError::InvalidOperation {
+        Self::InvalidOperation {
             message: message.into(),
         }
     }
     
     /// Check if this error indicates a critical failure
     pub fn is_critical(&self) -> bool {
-        matches!(self, SymEngineError::MemoryError | SymEngineError::Unknown { .. })
+        matches!(self, Self::MemoryError | Self::Unknown { .. })
     }
     
     /// Get the error code for this error (compatible with SymEngine C API)
     pub fn error_code(&self) -> i32 {
         match self {
-            SymEngineError::NoException => 0,
-            SymEngineError::RuntimeError { .. } => 1,
-            SymEngineError::DivisionByZero => 2,
-            SymEngineError::NotImplemented => 3,
-            SymEngineError::DomainError => 4,
-            SymEngineError::ParseError => 5,
-            SymEngineError::MemoryError => 6,
-            SymEngineError::InvalidOperation { .. } => 7,
-            SymEngineError::Unknown { code } => *code,
+            Self::NoException => 0,
+            Self::RuntimeError { .. } => 1,
+            Self::DivisionByZero => 2,
+            Self::NotImplemented => 3,
+            Self::DomainError => 4,
+            Self::ParseError => 5,
+            Self::MemoryError => 6,
+            Self::InvalidOperation { .. } => 7,
+            Self::Unknown { code } => *code,
         }
     }
 }

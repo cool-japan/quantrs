@@ -500,42 +500,42 @@ impl fmt::Display for ModelSummary {
 impl Expression {
     /// Create a constant expression
     pub fn constant(value: f64) -> Self {
-        Expression::Constant(value)
+        Self::Constant(value)
     }
 
     /// Create a sum expression
-    pub fn sum(terms: Vec<Expression>) -> Self {
-        Expression::Sum(terms)
+    pub fn sum(terms: Vec<Self>) -> Self {
+        Self::Sum(terms)
     }
 
     /// Add two expressions
-    pub fn add(self, other: Expression) -> Self {
+    pub fn add(self, other: Self) -> Self {
         match (self, other) {
-            (Expression::Sum(mut terms), Expression::Sum(other_terms)) => {
+            (Self::Sum(mut terms), Self::Sum(other_terms)) => {
                 terms.extend(other_terms);
-                Expression::Sum(terms)
+                Self::Sum(terms)
             }
-            (Expression::Sum(mut terms), other) => {
+            (Self::Sum(mut terms), other) => {
                 terms.push(other);
-                Expression::Sum(terms)
+                Self::Sum(terms)
             }
-            (expr, Expression::Sum(mut terms)) => {
+            (expr, Self::Sum(mut terms)) => {
                 terms.insert(0, expr);
-                Expression::Sum(terms)
+                Self::Sum(terms)
             }
-            (expr1, expr2) => Expression::Sum(vec![expr1, expr2]),
+            (expr1, expr2) => Self::Sum(vec![expr1, expr2]),
         }
     }
 
     /// Multiply expression by a constant
     pub fn scale(self, factor: f64) -> Self {
         match self {
-            Expression::Constant(value) => Expression::Constant(value * factor),
-            Expression::LinearCombination { weights, terms } => Expression::LinearCombination {
+            Self::Constant(value) => Self::Constant(value * factor),
+            Self::LinearCombination { weights, terms } => Self::LinearCombination {
                 weights: weights.into_iter().map(|w| w * factor).collect(),
                 terms,
             },
-            expr => Expression::LinearCombination {
+            expr => Self::LinearCombination {
                 weights: vec![factor],
                 terms: vec![expr],
             },
@@ -544,7 +544,7 @@ impl Expression {
 
     /// Negate expression
     pub fn negate(self) -> Self {
-        Expression::Negate(Box::new(self))
+        Self::Negate(Box::new(self))
     }
 }
 
@@ -596,7 +596,7 @@ impl VariableVector {
 /// Constraint builder methods for expressions
 impl Expression {
     /// Create equality constraint
-    pub fn equals(self, other: impl Into<Expression>) -> Constraint {
+    pub fn equals(self, other: impl Into<Self>) -> Constraint {
         Constraint {
             expression: BooleanExpression::Equal(self, other.into()),
             name: None,
@@ -606,7 +606,7 @@ impl Expression {
     }
 
     /// Create less-than constraint
-    pub fn less_than(self, other: impl Into<Expression>) -> Constraint {
+    pub fn less_than(self, other: impl Into<Self>) -> Constraint {
         Constraint {
             expression: BooleanExpression::LessThan(self, other.into()),
             name: None,
@@ -616,7 +616,7 @@ impl Expression {
     }
 
     /// Create less-than-or-equal constraint
-    pub fn less_than_or_equal(self, other: impl Into<Expression>) -> Constraint {
+    pub fn less_than_or_equal(self, other: impl Into<Self>) -> Constraint {
         Constraint {
             expression: BooleanExpression::LessThanOrEqual(self, other.into()),
             name: None,
@@ -626,7 +626,7 @@ impl Expression {
     }
 
     /// Create greater-than constraint
-    pub fn greater_than(self, other: impl Into<Expression>) -> Constraint {
+    pub fn greater_than(self, other: impl Into<Self>) -> Constraint {
         Constraint {
             expression: BooleanExpression::GreaterThan(self, other.into()),
             name: None,
@@ -636,7 +636,7 @@ impl Expression {
     }
 
     /// Create greater-than-or-equal constraint
-    pub fn greater_than_or_equal(self, other: impl Into<Expression>) -> Constraint {
+    pub fn greater_than_or_equal(self, other: impl Into<Self>) -> Constraint {
         Constraint {
             expression: BooleanExpression::GreaterThanOrEqual(self, other.into()),
             name: None,
@@ -649,19 +649,19 @@ impl Expression {
 /// Implement `Into<Expression>` for numeric types
 impl From<f64> for Expression {
     fn from(value: f64) -> Self {
-        Expression::Constant(value)
+        Self::Constant(value)
     }
 }
 
 impl From<i32> for Expression {
     fn from(value: i32) -> Self {
-        Expression::Constant(value as f64)
+        Self::Constant(value as f64)
     }
 }
 
 impl From<Variable> for Expression {
     fn from(var: Variable) -> Self {
-        Expression::Variable(var)
+        Self::Variable(var)
     }
 }
 

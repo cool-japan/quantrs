@@ -81,13 +81,13 @@ impl CachedData {
     /// Estimate memory usage of cached data
     pub fn estimate_size(&self) -> usize {
         match self {
-            CachedData::SingleQubitMatrix(_) => 4 * std::mem::size_of::<Complex64>(),
-            CachedData::TwoQubitMatrix(_) => 16 * std::mem::size_of::<Complex64>(),
-            CachedData::Matrix(m) => m.len() * std::mem::size_of::<Complex64>(),
-            CachedData::StateVector(v) => v.len() * std::mem::size_of::<Complex64>(),
-            CachedData::ExpectationValue(_) => std::mem::size_of::<Complex64>(),
-            CachedData::Probabilities(p) => p.len() * std::mem::size_of::<f64>(),
-            CachedData::Custom(data) => data.len(),
+            Self::SingleQubitMatrix(_) => 4 * std::mem::size_of::<Complex64>(),
+            Self::TwoQubitMatrix(_) => 16 * std::mem::size_of::<Complex64>(),
+            Self::Matrix(m) => m.len() * std::mem::size_of::<Complex64>(),
+            Self::StateVector(v) => v.len() * std::mem::size_of::<Complex64>(),
+            Self::ExpectationValue(_) => std::mem::size_of::<Complex64>(),
+            Self::Probabilities(p) => p.len() * std::mem::size_of::<f64>(),
+            Self::Custom(data) => data.len(),
         }
     }
 }

@@ -1,5 +1,4 @@
 use ndarray::Array2;
-use num_complex::Complex64;
 use quantrs2_sim::holographic_quantum_error_correction::*;
 
 fn main() {

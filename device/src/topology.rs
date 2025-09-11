@@ -980,7 +980,7 @@ impl TopologyAnalysis {
             self.avg_coherence_time
         ));
 
-        report.push_str(&format!("\nDegree distribution:\n"));
+        report.push_str(&"\nDegree distribution:\n".to_string());
         let mut degrees: Vec<_> = self.degree_distribution.iter().collect();
         degrees.sort_by_key(|&(k, _)| k);
         for (degree, count) in degrees {

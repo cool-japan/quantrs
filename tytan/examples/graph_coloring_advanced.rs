@@ -25,7 +25,7 @@ use quantrs2_tytan::{
     },
 };
 
-use quantrs2_tytan::compile::expr::{Expr, constant};
+use quantrs2_tytan::compile::expr::{constant, Expr};
 
 use std::collections::HashMap;
 use std::time::Instant;
@@ -90,7 +90,10 @@ fn create_graph_coloring_model(
     }
 
     // Minimize total colors used
-    let objective = color_usage_vars.into_iter().reduce(|acc, x| acc + x).unwrap();
+    let objective = color_usage_vars
+        .into_iter()
+        .reduce(|acc, x| acc + x)
+        .unwrap();
     model.set_objective(objective);
 
     Ok((model, edges))

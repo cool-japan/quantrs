@@ -57,20 +57,20 @@ impl Domain {
     /// Get the size of the domain
     pub fn size(&self) -> usize {
         match self {
-            Domain::Boolean => 2,
-            Domain::IntegerRange { min, max } => ((max - min + 1) as usize).max(0),
-            Domain::Discrete(values) => values.len(),
-            Domain::Categorical(labels) => labels.len(),
+            Self::Boolean => 2,
+            Self::IntegerRange { min, max } => ((max - min + 1) as usize).max(0),
+            Self::Discrete(values) => values.len(),
+            Self::Categorical(labels) => labels.len(),
         }
     }
 
     /// Check if a value is in the domain
     pub fn contains(&self, value: &CspValue) -> bool {
         match (self, value) {
-            (Domain::Boolean, CspValue::Boolean(_)) => true,
-            (Domain::IntegerRange { min, max }, CspValue::Integer(v)) => v >= min && v <= max,
-            (Domain::Discrete(values), CspValue::Integer(v)) => values.contains(v),
-            (Domain::Categorical(labels), CspValue::String(s)) => labels.contains(s),
+            (Self::Boolean, CspValue::Boolean(_)) => true,
+            (Self::IntegerRange { min, max }, CspValue::Integer(v)) => v >= min && v <= max,
+            (Self::Discrete(values), CspValue::Integer(v)) => values.contains(v),
+            (Self::Categorical(labels), CspValue::String(s)) => labels.contains(s),
             _ => false,
         }
     }
@@ -78,10 +78,10 @@ impl Domain {
     /// Convert to list of values
     pub fn values(&self) -> Vec<CspValue> {
         match self {
-            Domain::Boolean => vec![CspValue::Boolean(false), CspValue::Boolean(true)],
-            Domain::IntegerRange { min, max } => (*min..=*max).map(CspValue::Integer).collect(),
-            Domain::Discrete(values) => values.iter().map(|&v| CspValue::Integer(v)).collect(),
-            Domain::Categorical(labels) => {
+            Self::Boolean => vec![CspValue::Boolean(false), CspValue::Boolean(true)],
+            Self::IntegerRange { min, max } => (*min..=*max).map(CspValue::Integer).collect(),
+            Self::Discrete(values) => values.iter().map(|&v| CspValue::Integer(v)).collect(),
+            Self::Categorical(labels) => {
                 labels.iter().map(|s| CspValue::String(s.clone())).collect()
             }
         }
@@ -99,9 +99,9 @@ pub enum CspValue {
 impl fmt::Display for CspValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CspValue::Boolean(b) => write!(f, "{}", b),
-            CspValue::Integer(i) => write!(f, "{}", i),
-            CspValue::String(s) => write!(f, "{}", s),
+            Self::Boolean(b) => write!(f, "{}", b),
+            Self::Integer(i) => write!(f, "{}", i),
+            Self::String(s) => write!(f, "{}", s),
         }
     }
 }
@@ -187,11 +187,11 @@ pub enum CspConstraint {
 impl fmt::Debug for CspConstraint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CspConstraint::AllDifferent { variables } => f
+            Self::AllDifferent { variables } => f
                 .debug_struct("AllDifferent")
                 .field("variables", variables)
                 .finish(),
-            CspConstraint::Linear {
+            Self::Linear {
                 terms,
                 comparison,
                 rhs,
@@ -201,15 +201,15 @@ impl fmt::Debug for CspConstraint {
                 .field("comparison", comparison)
                 .field("rhs", rhs)
                 .finish(),
-            CspConstraint::ExactlyOne { variables } => f
+            Self::ExactlyOne { variables } => f
                 .debug_struct("ExactlyOne")
                 .field("variables", variables)
                 .finish(),
-            CspConstraint::AtMostOne { variables } => f
+            Self::AtMostOne { variables } => f
                 .debug_struct("AtMostOne")
                 .field("variables", variables)
                 .finish(),
-            CspConstraint::Element {
+            Self::Element {
                 array_var,
                 index_var,
                 value_var,
@@ -219,7 +219,7 @@ impl fmt::Debug for CspConstraint {
                 .field("index_var", index_var)
                 .field("value_var", value_var)
                 .finish(),
-            CspConstraint::GlobalCardinality {
+            Self::GlobalCardinality {
                 variables,
                 values,
                 min_counts,
@@ -231,7 +231,7 @@ impl fmt::Debug for CspConstraint {
                 .field("min_counts", min_counts)
                 .field("max_counts", max_counts)
                 .finish(),
-            CspConstraint::Table {
+            Self::Table {
                 variables,
                 tuples,
                 allowed,
@@ -241,7 +241,7 @@ impl fmt::Debug for CspConstraint {
                 .field("tuples", tuples)
                 .field("allowed", allowed)
                 .finish(),
-            CspConstraint::Custom {
+            Self::Custom {
                 name, variables, ..
             } => f
                 .debug_struct("Custom")
@@ -297,12 +297,12 @@ pub enum CspObjective {
 impl fmt::Debug for CspObjective {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CspObjective::Linear { terms, minimize } => f
+            Self::Linear { terms, minimize } => f
                 .debug_struct("Linear")
                 .field("terms", terms)
                 .field("minimize", minimize)
                 .finish(),
-            CspObjective::Custom { minimize, .. } => f
+            Self::Custom { minimize, .. } => f
                 .debug_struct("Custom")
                 .field("function", &"<function>")
                 .field("minimize", minimize)

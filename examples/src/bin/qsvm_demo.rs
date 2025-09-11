@@ -285,7 +285,13 @@ fn quantum_kernel_ridge_demo() -> std::result::Result<(), Box<dyn std::error::Er
             println!("✓ Quantum kernel ridge regression trained");
 
             // Test on a few points
-            let x_test = array![[0.0], [1.57], [std::f64::consts::PI], [4.71], [std::f64::consts::TAU]];
+            let x_test = array![
+                [0.0],
+                [1.57],
+                [std::f64::consts::PI],
+                [4.71],
+                [std::f64::consts::TAU]
+            ];
             match qkr.predict(&x_test) {
                 Ok(predictions) => {
                     println!("\nPredictions:");

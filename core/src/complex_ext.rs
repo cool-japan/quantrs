@@ -30,7 +30,7 @@ impl QuantumComplexExt for Complex64 {
         if mag > 0.0 {
             self / mag
         } else {
-            Complex64::new(0.0, 0.0)
+            Self::new(0.0, 0.0)
         }
     }
 

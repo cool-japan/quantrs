@@ -21,7 +21,7 @@ use quantrs2_tytan::{
     },
 };
 
-use quantrs2_tytan::compile::expr::{Expr, constant};
+use quantrs2_tytan::compile::expr::{constant, Expr};
 
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -107,16 +107,14 @@ fn create_two_way_partition_model(numbers: &[i32]) -> Result<Model, Box<dyn std:
                 // x_i^2 = x_i for binary
                 objective = objective + constant(coeff) * vars[i].clone();
             } else {
-                objective =
-                    objective + constant(coeff) * vars[i].clone() * vars[j].clone();
+                objective = objective + constant(coeff) * vars[i].clone() * vars[j].clone();
             }
         }
     }
 
     // Add -2*partition_sum*target term
     for i in 0..n {
-        objective = objective
-            + constant(-2.0 * numbers[i] as f64 * target_sum) * vars[i].clone();
+        objective = objective + constant(-2.0 * numbers[i] as f64 * target_sum) * vars[i].clone();
     }
 
     model.set_objective(objective);
@@ -160,8 +158,7 @@ fn create_k_way_partition_model(
         // Calculate partition sum
         let mut partition_sum = constant(0.0);
         for i in 0..n {
-            partition_sum =
-                partition_sum + constant(numbers[i] as f64) * vars[&(i, p)].clone();
+            partition_sum = partition_sum + constant(numbers[i] as f64) * vars[&(i, p)].clone();
         }
 
         // Add (partition_sum - target)^2 to objective
@@ -174,18 +171,15 @@ fn create_k_way_partition_model(
                 if i == j {
                     objective = objective + constant(coeff) * vars[&(i, p)].clone();
                 } else {
-                    objective = objective
-                        + constant(coeff)
-                            * vars[&(i, p)].clone()
-                            * vars[&(j, p)].clone();
+                    objective =
+                        objective + constant(coeff) * vars[&(i, p)].clone() * vars[&(j, p)].clone();
                 }
             }
         }
 
         for i in 0..n {
-            objective = objective
-                + constant(-2.0 * numbers[i] as f64 * target_sum)
-                    * vars[&(i, p)].clone();
+            objective =
+                objective + constant(-2.0 * numbers[i] as f64 * target_sum) * vars[&(i, p)].clone();
         }
     }
 

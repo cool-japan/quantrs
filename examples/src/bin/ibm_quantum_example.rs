@@ -4,7 +4,8 @@ use std::error::Error;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::prelude::{QubitId, Register};
 use quantrs2_device::{
-    create_ibm_client, create_ibm_device, ibm_device::IBMDeviceConfig, CircuitExecutor, QuantumDevice,
+    create_ibm_client, create_ibm_device, ibm_device::IBMDeviceConfig, CircuitExecutor,
+    QuantumDevice,
 };
 
 #[tokio::main]

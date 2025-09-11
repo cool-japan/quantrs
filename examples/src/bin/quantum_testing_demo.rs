@@ -1,6 +1,6 @@
 //! Quantum unit testing framework demonstration
 
-use ndarray::{array, Array1, Array2};
+use ndarray::{array, Array2};
 use num_complex::Complex64;
 use quantrs2_core::prelude::*;
 use std::f64::consts::PI;

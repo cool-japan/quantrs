@@ -94,7 +94,9 @@ async fn demo_matrix_multiplication(
     Ok(())
 }
 
-async fn demo_quantum_gates(gpu: &GpuLinearAlgebra) -> std::result::Result<(), Box<dyn std::error::Error>> {
+async fn demo_quantum_gates(
+    gpu: &GpuLinearAlgebra,
+) -> std::result::Result<(), Box<dyn std::error::Error>> {
     // Create Hadamard gate
     let sqrt2_inv = 1.0 / 2.0_f64.sqrt();
     let hadamard = Array2::from_shape_vec(

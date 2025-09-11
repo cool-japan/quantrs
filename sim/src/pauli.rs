@@ -9,7 +9,6 @@
 use crate::prelude::SimulatorError;
 use ndarray::Array2;
 use num_complex::Complex64;
-use rayon::prelude::*;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -34,10 +33,10 @@ pub enum PauliOperator {
 impl fmt::Display for PauliOperator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PauliOperator::I => write!(f, "I"),
-            PauliOperator::X => write!(f, "X"),
-            PauliOperator::Y => write!(f, "Y"),
-            PauliOperator::Z => write!(f, "Z"),
+            Self::I => write!(f, "I"),
+            Self::X => write!(f, "X"),
+            Self::Y => write!(f, "Y"),
+            Self::Z => write!(f, "Z"),
         }
     }
 }
@@ -46,10 +45,10 @@ impl PauliOperator {
     /// Parse from string
     pub fn from_str(s: &str) -> Result<Self> {
         match s.to_uppercase().as_str() {
-            "I" => Ok(PauliOperator::I),
-            "X" => Ok(PauliOperator::X),
-            "Y" => Ok(PauliOperator::Y),
-            "Z" => Ok(PauliOperator::Z),
+            "I" => Ok(Self::I),
+            "X" => Ok(Self::X),
+            "Y" => Ok(Self::Y),
+            "Z" => Ok(Self::Z),
             _ => Err(SimulatorError::InvalidInput(format!(
                 "Invalid Pauli operator: {}",
                 s
@@ -60,7 +59,7 @@ impl PauliOperator {
     /// Get matrix representation
     pub fn matrix(&self) -> Array2<Complex64> {
         match self {
-            PauliOperator::I => Array2::from_shape_vec(
+            Self::I => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(1.0, 0.0),
@@ -70,7 +69,7 @@ impl PauliOperator {
                 ],
             )
             .unwrap(),
-            PauliOperator::X => Array2::from_shape_vec(
+            Self::X => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -80,7 +79,7 @@ impl PauliOperator {
                 ],
             )
             .unwrap(),
-            PauliOperator::Y => Array2::from_shape_vec(
+            Self::Y => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -90,7 +89,7 @@ impl PauliOperator {
                 ],
             )
             .unwrap(),
-            PauliOperator::Z => Array2::from_shape_vec(
+            Self::Z => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(1.0, 0.0),
@@ -106,25 +105,25 @@ impl PauliOperator {
     /// Check if commutes with another Pauli
     pub fn commutes_with(&self, other: &PauliOperator) -> bool {
         match (self, other) {
-            (PauliOperator::I, _) | (_, PauliOperator::I) => true,
+            (Self::I, _) | (_, Self::I) => true,
             (a, b) if a == b => true,
             _ => false,
         }
     }
 
     /// Multiplication of Pauli operators (returns (result, phase))
-    pub fn multiply(&self, other: &PauliOperator) -> (PauliOperator, Complex64) {
+    pub fn multiply(&self, other: &Self) -> (Self, Complex64) {
         match (self, other) {
-            (PauliOperator::I, p) | (p, PauliOperator::I) => (*p, Complex64::new(1.0, 0.0)),
-            (PauliOperator::X, PauliOperator::X)
-            | (PauliOperator::Y, PauliOperator::Y)
-            | (PauliOperator::Z, PauliOperator::Z) => (PauliOperator::I, Complex64::new(1.0, 0.0)),
-            (PauliOperator::X, PauliOperator::Y) => (PauliOperator::Z, Complex64::new(0.0, 1.0)),
-            (PauliOperator::Y, PauliOperator::X) => (PauliOperator::Z, Complex64::new(0.0, -1.0)),
-            (PauliOperator::Y, PauliOperator::Z) => (PauliOperator::X, Complex64::new(0.0, 1.0)),
-            (PauliOperator::Z, PauliOperator::Y) => (PauliOperator::X, Complex64::new(0.0, -1.0)),
-            (PauliOperator::Z, PauliOperator::X) => (PauliOperator::Y, Complex64::new(0.0, 1.0)),
-            (PauliOperator::X, PauliOperator::Z) => (PauliOperator::Y, Complex64::new(0.0, -1.0)),
+            (Self::I, p) | (p, Self::I) => (*p, Complex64::new(1.0, 0.0)),
+            (Self::X, Self::X)
+            | (Self::Y, Self::Y)
+            | (Self::Z, Self::Z) => (Self::I, Complex64::new(1.0, 0.0)),
+            (Self::X, Self::Y) => (Self::Z, Complex64::new(0.0, 1.0)),
+            (Self::Y, Self::X) => (Self::Z, Complex64::new(0.0, -1.0)),
+            (Self::Y, Self::Z) => (Self::X, Complex64::new(0.0, 1.0)),
+            (Self::Z, Self::Y) => (Self::X, Complex64::new(0.0, -1.0)),
+            (Self::Z, Self::X) => (Self::Y, Complex64::new(0.0, 1.0)),
+            (Self::X, Self::Z) => (Self::Y, Complex64::new(0.0, -1.0)),
         }
     }
 }

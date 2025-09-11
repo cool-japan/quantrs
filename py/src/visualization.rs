@@ -67,31 +67,31 @@ impl GateType {
     /// Get the symbol for this gate type
     fn symbol(&self) -> &str {
         match self {
-            GateType::H => "H",
-            GateType::X => "X",
-            GateType::Y => "Y",
-            GateType::Z => "Z",
-            GateType::S => "S",
-            GateType::SDG => "S†",
-            GateType::T => "T",
-            GateType::TDG => "T†",
-            GateType::SX => "√X",
-            GateType::SXDG => "√X†",
-            GateType::RX => "Rx",
-            GateType::RY => "Ry",
-            GateType::RZ => "Rz",
-            GateType::CNOT => "●─┼─X",
-            GateType::CY => "●─┼─Y",
-            GateType::CZ => "●─┼─Z",
-            GateType::CH => "●─┼─H",
-            GateType::CS => "●─┼─S",
-            GateType::SWAP => "⨯―⨯",
-            GateType::CRX => "●─┼─Rx",
-            GateType::CRY => "●─┼─Ry",
-            GateType::CRZ => "●─┼─Rz",
-            GateType::Toffoli => "●─●─X",
-            GateType::Fredkin => "●─⨯─⨯",
-            GateType::Custom(s) => s,
+            Self::H => "H",
+            Self::X => "X",
+            Self::Y => "Y",
+            Self::Z => "Z",
+            Self::S => "S",
+            Self::SDG => "S†",
+            Self::T => "T",
+            Self::TDG => "T†",
+            Self::SX => "√X",
+            Self::SXDG => "√X†",
+            Self::RX => "Rx",
+            Self::RY => "Ry",
+            Self::RZ => "Rz",
+            Self::CNOT => "●─┼─X",
+            Self::CY => "●─┼─Y",
+            Self::CZ => "●─┼─Z",
+            Self::CH => "●─┼─H",
+            Self::CS => "●─┼─S",
+            Self::SWAP => "⨯―⨯",
+            Self::CRX => "●─┼─Rx",
+            Self::CRY => "●─┼─Ry",
+            Self::CRZ => "●─┼─Rz",
+            Self::Toffoli => "●─●─X",
+            Self::Fredkin => "●─⨯─⨯",
+            Self::Custom(s) => s,
         }
     }
 }
@@ -99,7 +99,7 @@ impl GateType {
 impl CircuitVisualization {
     /// Create a new circuit visualization
     pub fn new(n_qubits: usize) -> Self {
-        CircuitVisualization {
+        Self {
             n_qubits,
             operations: Vec::new(),
             depth: 0,

@@ -82,7 +82,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // For this simplified demonstration, we'll analyze the final state
     let amplitudes = result.amplitudes();
-    
+
     // Print measurement results
     println!("\nState amplitudes:");
     for i in 0..8 {
@@ -120,7 +120,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("2. Compute gcd(7^(r/2) - 1, 15) = gcd(48, 15) = 3");
     println!("3. Compute gcd(7^(r/2) + 1, 15) = gcd(50, 15) = 5");
     println!("4. Conclude that the factors of 15 are 3 and 5");
-    
+
     Ok(())
 }
 

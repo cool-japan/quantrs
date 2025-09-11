@@ -384,7 +384,7 @@ pub mod number_theory {
 
 impl Zero for Expression {
     fn zero() -> Self {
-        Expression::from(0)
+        Self::from(0)
     }
     
     fn is_zero(&self) -> bool {
@@ -395,7 +395,7 @@ impl Zero for Expression {
 
 impl One for Expression {
     fn one() -> Self {
-        Expression::from(1)
+        Self::from(1)
     }
     
     fn is_one(&self) -> bool {

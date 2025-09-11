@@ -63,12 +63,7 @@ impl Tensor {
     }
 
     /// Contract two tensors along specified indices
-    pub fn contract(
-        &self,
-        other: &Tensor,
-        self_idx: &str,
-        other_idx: &str,
-    ) -> QuantRS2Result<Tensor> {
+    pub fn contract(&self, other: &Self, self_idx: &str, other_idx: &str) -> QuantRS2Result<Self> {
         // Find index positions
         let self_pos = self
             .indices
@@ -115,7 +110,7 @@ impl Tensor {
         let contract_dim = self.shape[self_pos];
 
         // For now, return a placeholder
-        Ok(Tensor::new(new_data, new_shape, new_indices))
+        Ok(Self::new(new_data, new_shape, new_indices))
     }
 
     /// Reshape the tensor
@@ -424,7 +419,7 @@ impl MatrixProductState {
     }
 
     /// Calculate overlap with another MPS
-    pub fn overlap(&self, other: &MatrixProductState) -> QuantRS2Result<C64> {
+    pub fn overlap(&self, other: &Self) -> QuantRS2Result<C64> {
         if self.n_qubits != other.n_qubits {
             return Err(QuantRS2Error::InvalidInput(
                 "MPS have different number of qubits".to_string(),

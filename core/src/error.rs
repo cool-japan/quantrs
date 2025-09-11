@@ -132,7 +132,7 @@ pub type QuantRS2Result<T> = Result<T, QuantRS2Error>;
 
 impl From<ndarray::ShapeError> for QuantRS2Error {
     fn from(err: ndarray::ShapeError) -> Self {
-        QuantRS2Error::InvalidInput(format!("Shape error: {}", err))
+        Self::InvalidInput(format!("Shape error: {}", err))
     }
 }
 
@@ -145,18 +145,18 @@ impl From<ndarray_linalg::error::LinalgError> for QuantRS2Error {
 
 impl From<std::io::Error> for QuantRS2Error {
     fn from(err: std::io::Error) -> Self {
-        QuantRS2Error::RuntimeError(format!("I/O error: {}", err))
+        Self::RuntimeError(format!("I/O error: {}", err))
     }
 }
 
 impl From<Box<bincode::ErrorKind>> for QuantRS2Error {
     fn from(err: Box<bincode::ErrorKind>) -> Self {
-        QuantRS2Error::RuntimeError(format!("Serialization error: {:?}", err))
+        Self::RuntimeError(format!("Serialization error: {:?}", err))
     }
 }
 
 impl From<serde_json::Error> for QuantRS2Error {
     fn from(err: serde_json::Error) -> Self {
-        QuantRS2Error::RuntimeError(format!("JSON error: {}", err))
+        Self::RuntimeError(format!("JSON error: {}", err))
     }
 }

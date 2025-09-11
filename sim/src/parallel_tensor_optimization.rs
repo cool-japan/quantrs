@@ -6,7 +6,6 @@
 use crate::prelude::SimulatorError;
 use ndarray::{ArrayD, Dimension, IxDyn};
 use num_complex::Complex64;
-use rayon::prelude::*;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;

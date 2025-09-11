@@ -149,14 +149,14 @@ impl Optimizer {
         iteration: usize,
     ) -> Result<()> {
         match self {
-            Optimizer::GradientDescent { learning_rate } => {
+            Self::GradientDescent { learning_rate } => {
                 // Simple gradient descent update
                 for i in 0..parameters.len() {
                     parameters[i] -= learning_rate * gradients[i];
                 }
                 Ok(())
             }
-            Optimizer::Adam {
+            Self::Adam {
                 learning_rate,
                 beta1,
                 beta2,
@@ -169,7 +169,7 @@ impl Optimizer {
                 }
                 Ok(())
             }
-            Optimizer::SPSA {
+            Self::SPSA {
                 learning_rate,
                 perturbation,
             } => {
@@ -179,7 +179,7 @@ impl Optimizer {
                 }
                 Ok(())
             }
-            Optimizer::SciRS2 { method, config } => {
+            Self::SciRS2 { method, config } => {
                 // Placeholder - would delegate to SciRS2 optimizers
                 let learning_rate = config.get("learning_rate").unwrap_or(&0.001);
                 match method.as_str() {
@@ -244,14 +244,14 @@ pub trait ObjectiveFunction {
 impl fmt::Display for OptimizationMethod {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            OptimizationMethod::GradientDescent => write!(f, "Gradient Descent"),
-            OptimizationMethod::Adam => write!(f, "Adam"),
-            OptimizationMethod::SPSA => write!(f, "SPSA"),
-            OptimizationMethod::LBFGS => write!(f, "L-BFGS"),
-            OptimizationMethod::QuantumNaturalGradient => write!(f, "Quantum Natural Gradient"),
-            OptimizationMethod::SciRS2Adam => write!(f, "SciRS2 Adam"),
-            OptimizationMethod::SciRS2LBFGS => write!(f, "SciRS2 L-BFGS"),
-            OptimizationMethod::SciRS2CG => write!(f, "SciRS2 Conjugate Gradient"),
+            Self::GradientDescent => write!(f, "Gradient Descent"),
+            Self::Adam => write!(f, "Adam"),
+            Self::SPSA => write!(f, "SPSA"),
+            Self::LBFGS => write!(f, "L-BFGS"),
+            Self::QuantumNaturalGradient => write!(f, "Quantum Natural Gradient"),
+            Self::SciRS2Adam => write!(f, "SciRS2 Adam"),
+            Self::SciRS2LBFGS => write!(f, "SciRS2 L-BFGS"),
+            Self::SciRS2CG => write!(f, "SciRS2 Conjugate Gradient"),
         }
     }
 }
@@ -259,10 +259,10 @@ impl fmt::Display for OptimizationMethod {
 impl fmt::Display for Optimizer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Optimizer::GradientDescent { learning_rate } => {
+            Self::GradientDescent { learning_rate } => {
                 write!(f, "Gradient Descent (learning_rate: {})", learning_rate)
             }
-            Optimizer::Adam {
+            Self::Adam {
                 learning_rate,
                 beta1,
                 beta2,
@@ -274,7 +274,7 @@ impl fmt::Display for Optimizer {
                     learning_rate, beta1, beta2, epsilon
                 )
             }
-            Optimizer::SPSA {
+            Self::SPSA {
                 learning_rate,
                 perturbation,
             } => {
@@ -284,7 +284,7 @@ impl fmt::Display for Optimizer {
                     learning_rate, perturbation
                 )
             }
-            Optimizer::SciRS2 { method, config } => {
+            Self::SciRS2 { method, config } => {
                 write!(f, "SciRS2 {} with config: {:?}", method, config)
             }
         }

@@ -61,26 +61,26 @@ impl DynamicCircuit {
     /// Get the number of qubits
     pub fn num_qubits(&self) -> usize {
         match self {
-            DynamicCircuit::Circuit1(_) => 1,
-            DynamicCircuit::Circuit2(_) => 2,
-            DynamicCircuit::Circuit4(_) => 4,
-            DynamicCircuit::Circuit8(_) => 8,
-            DynamicCircuit::Circuit16(_) => 16,
-            DynamicCircuit::Circuit32(_) => 32,
-            DynamicCircuit::Circuit64(_) => 64,
+            Self::Circuit1(_) => 1,
+            Self::Circuit2(_) => 2,
+            Self::Circuit4(_) => 4,
+            Self::Circuit8(_) => 8,
+            Self::Circuit16(_) => 16,
+            Self::Circuit32(_) => 32,
+            Self::Circuit64(_) => 64,
         }
     }
 
     /// Get the number of gates (placeholder implementation)
     pub fn num_gates(&self) -> usize {
         match self {
-            DynamicCircuit::Circuit1(c) => c.gates().len(),
-            DynamicCircuit::Circuit2(c) => c.gates().len(),
-            DynamicCircuit::Circuit4(c) => c.gates().len(),
-            DynamicCircuit::Circuit8(c) => c.gates().len(),
-            DynamicCircuit::Circuit16(c) => c.gates().len(),
-            DynamicCircuit::Circuit32(c) => c.gates().len(),
-            DynamicCircuit::Circuit64(c) => c.gates().len(),
+            Self::Circuit1(c) => c.gates().len(),
+            Self::Circuit2(c) => c.gates().len(),
+            Self::Circuit4(c) => c.gates().len(),
+            Self::Circuit8(c) => c.gates().len(),
+            Self::Circuit16(c) => c.gates().len(),
+            Self::Circuit32(c) => c.gates().len(),
+            Self::Circuit64(c) => c.gates().len(),
         }
     }
 
@@ -93,37 +93,37 @@ impl DynamicCircuit {
     /// Get gates (placeholder implementation)
     pub fn gates(&self) -> Vec<&dyn quantrs2_core::gate::GateOp> {
         match self {
-            DynamicCircuit::Circuit1(c) => c
+            Self::Circuit1(c) => c
                 .gates()
                 .iter()
                 .map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp)
                 .collect(),
-            DynamicCircuit::Circuit2(c) => c
+            Self::Circuit2(c) => c
                 .gates()
                 .iter()
                 .map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp)
                 .collect(),
-            DynamicCircuit::Circuit4(c) => c
+            Self::Circuit4(c) => c
                 .gates()
                 .iter()
                 .map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp)
                 .collect(),
-            DynamicCircuit::Circuit8(c) => c
+            Self::Circuit8(c) => c
                 .gates()
                 .iter()
                 .map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp)
                 .collect(),
-            DynamicCircuit::Circuit16(c) => c
+            Self::Circuit16(c) => c
                 .gates()
                 .iter()
                 .map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp)
                 .collect(),
-            DynamicCircuit::Circuit32(c) => c
+            Self::Circuit32(c) => c
                 .gates()
                 .iter()
                 .map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp)
                 .collect(),
-            DynamicCircuit::Circuit64(c) => c
+            Self::Circuit64(c) => c
                 .gates()
                 .iter()
                 .map(|g| g.as_ref() as &dyn quantrs2_core::gate::GateOp)
@@ -761,10 +761,10 @@ impl SimulatorBackend for Backend {
         shots: Option<usize>,
     ) -> Result<SimulationResult> {
         match self {
-            Backend::Statevector(backend) => backend.execute_circuit(circuit, parameters, shots),
-            Backend::MPS(backend) => backend.execute_circuit(circuit, parameters, shots),
+            Self::Statevector(backend) => backend.execute_circuit(circuit, parameters, shots),
+            Self::MPS(backend) => backend.execute_circuit(circuit, parameters, shots),
             #[cfg(feature = "gpu")]
-            Backend::GPU(backend) => backend.execute_circuit(circuit, parameters, shots),
+            Self::GPU(backend) => backend.execute_circuit(circuit, parameters, shots),
         }
     }
 
@@ -775,12 +775,12 @@ impl SimulatorBackend for Backend {
         observable: &Observable,
     ) -> Result<f64> {
         match self {
-            Backend::Statevector(backend) => {
+            Self::Statevector(backend) => {
                 backend.expectation_value(circuit, parameters, observable)
             }
-            Backend::MPS(backend) => backend.expectation_value(circuit, parameters, observable),
+            Self::MPS(backend) => backend.expectation_value(circuit, parameters, observable),
             #[cfg(feature = "gpu")]
-            Backend::GPU(backend) => backend.expectation_value(circuit, parameters, observable),
+            Self::GPU(backend) => backend.expectation_value(circuit, parameters, observable),
         }
     }
 
@@ -792,14 +792,14 @@ impl SimulatorBackend for Backend {
         gradient_method: GradientMethod,
     ) -> Result<Array1<f64>> {
         match self {
-            Backend::Statevector(backend) => {
+            Self::Statevector(backend) => {
                 backend.compute_gradients(circuit, parameters, observable, gradient_method)
             }
-            Backend::MPS(backend) => {
+            Self::MPS(backend) => {
                 backend.compute_gradients(circuit, parameters, observable, gradient_method)
             }
             #[cfg(feature = "gpu")]
-            Backend::GPU(backend) => {
+            Self::GPU(backend) => {
                 backend.compute_gradients(circuit, parameters, observable, gradient_method)
             }
         }
@@ -807,37 +807,37 @@ impl SimulatorBackend for Backend {
 
     fn capabilities(&self) -> BackendCapabilities {
         match self {
-            Backend::Statevector(backend) => backend.capabilities(),
-            Backend::MPS(backend) => backend.capabilities(),
+            Self::Statevector(backend) => backend.capabilities(),
+            Self::MPS(backend) => backend.capabilities(),
             #[cfg(feature = "gpu")]
-            Backend::GPU(backend) => backend.capabilities(),
+            Self::GPU(backend) => backend.capabilities(),
         }
     }
 
     fn name(&self) -> &str {
         match self {
-            Backend::Statevector(backend) => backend.name(),
-            Backend::MPS(backend) => backend.name(),
+            Self::Statevector(backend) => backend.name(),
+            Self::MPS(backend) => backend.name(),
             #[cfg(feature = "gpu")]
-            Backend::GPU(backend) => backend.name(),
+            Self::GPU(backend) => backend.name(),
         }
     }
 
     fn max_qubits(&self) -> usize {
         match self {
-            Backend::Statevector(backend) => backend.max_qubits(),
-            Backend::MPS(backend) => backend.max_qubits(),
+            Self::Statevector(backend) => backend.max_qubits(),
+            Self::MPS(backend) => backend.max_qubits(),
             #[cfg(feature = "gpu")]
-            Backend::GPU(backend) => backend.max_qubits(),
+            Self::GPU(backend) => backend.max_qubits(),
         }
     }
 
     fn supports_noise(&self) -> bool {
         match self {
-            Backend::Statevector(backend) => backend.supports_noise(),
-            Backend::MPS(backend) => backend.supports_noise(),
+            Self::Statevector(backend) => backend.supports_noise(),
+            Self::MPS(backend) => backend.supports_noise(),
             #[cfg(feature = "gpu")]
-            Backend::GPU(backend) => backend.supports_noise(),
+            Self::GPU(backend) => backend.supports_noise(),
         }
     }
 }

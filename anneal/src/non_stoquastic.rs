@@ -511,7 +511,7 @@ impl QuantumState {
     }
 
     /// Calculate overlap with another state
-    pub fn overlap(&self, other: &QuantumState) -> NComplex<f64> {
+    pub fn overlap(&self, other: &Self) -> NComplex<f64> {
         if let (Some(ref amp1), Some(ref amp2)) = (&self.amplitudes, &other.amplitudes) {
             amp1.iter()
                 .zip(amp2.iter())

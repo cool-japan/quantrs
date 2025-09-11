@@ -1194,14 +1194,14 @@ impl VerificationStrategy for StatisticalVerificationStrategy {
 impl fmt::Display for UniversalGateSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            UniversalGateSet::CliffordT => write!(f, "Clifford+T"),
-            UniversalGateSet::ContinuousRotation => write!(f, "Continuous Rotation"),
-            UniversalGateSet::IBM => write!(f, "IBM"),
-            UniversalGateSet::Google => write!(f, "Google"),
-            UniversalGateSet::IonQ => write!(f, "IonQ"),
-            UniversalGateSet::Rigetti => write!(f, "Rigetti"),
-            UniversalGateSet::Xanadu => write!(f, "Xanadu"),
-            UniversalGateSet::Custom(name) => write!(f, "Custom({})", name),
+            Self::CliffordT => write!(f, "Clifford+T"),
+            Self::ContinuousRotation => write!(f, "Continuous Rotation"),
+            Self::IBM => write!(f, "IBM"),
+            Self::Google => write!(f, "Google"),
+            Self::IonQ => write!(f, "IonQ"),
+            Self::Rigetti => write!(f, "Rigetti"),
+            Self::Xanadu => write!(f, "Xanadu"),
+            Self::Custom(name) => write!(f, "Custom({})", name),
         }
     }
 }
@@ -1209,18 +1209,18 @@ impl fmt::Display for UniversalGateSet {
 impl fmt::Display for GateType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            GateType::X => write!(f, "X"),
-            GateType::Y => write!(f, "Y"),
-            GateType::Z => write!(f, "Z"),
-            GateType::H => write!(f, "H"),
-            GateType::S => write!(f, "S"),
-            GateType::T => write!(f, "T"),
-            GateType::Rx(param) => write!(f, "Rx({})", param),
-            GateType::Ry(param) => write!(f, "Ry({})", param),
-            GateType::Rz(param) => write!(f, "Rz({})", param),
-            GateType::CNOT => write!(f, "CNOT"),
-            GateType::CZ => write!(f, "CZ"),
-            GateType::Custom(name) => write!(f, "Custom({})", name),
+            Self::X => write!(f, "X"),
+            Self::Y => write!(f, "Y"),
+            Self::Z => write!(f, "Z"),
+            Self::H => write!(f, "H"),
+            Self::S => write!(f, "S"),
+            Self::T => write!(f, "T"),
+            Self::Rx(param) => write!(f, "Rx({})", param),
+            Self::Ry(param) => write!(f, "Ry({})", param),
+            Self::Rz(param) => write!(f, "Rz({})", param),
+            Self::CNOT => write!(f, "CNOT"),
+            Self::CZ => write!(f, "CZ"),
+            Self::Custom(name) => write!(f, "Custom({})", name),
             _ => write!(f, "{:?}", self),
         }
     }

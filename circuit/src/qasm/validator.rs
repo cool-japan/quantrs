@@ -154,7 +154,7 @@ impl QasmValidator {
         standard_gates.insert("ccx".to_string(), (0, 3));
         standard_gates.insert("cswap".to_string(), (0, 3));
 
-        QasmValidator {
+        Self {
             symbols: HashMap::new(),
             standard_gates,
             scope_stack: vec![],

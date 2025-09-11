@@ -845,7 +845,7 @@ impl QuantumRestrictedBoltzmannMachine {
 
 impl QuantumSamplingStats {
     /// Merge another stats object into this one
-    fn merge(&mut self, other: &QuantumSamplingStats) {
+    fn merge(&mut self, other: &Self) {
         self.total_sampling_time += other.total_sampling_time;
         self.sampling_calls += other.sampling_calls;
 
