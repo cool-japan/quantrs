@@ -117,9 +117,7 @@ fn optimize_with_custom_passes() {
     println!("Circuit created for custom optimization");
 
     // Create optimizer with only specific passes
-    use quantrs2_circuit::optimizer::{
-        CommutationOptimizer, PeepholeOptimizer,
-    };
+    use quantrs2_circuit::optimizer::{CommutationOptimizer, PeepholeOptimizer};
 
     let optimizer = CircuitOptimizer::<5>::with_passes(vec![
         OptimizationPassType::RedundantElimination(RedundantGateElimination),

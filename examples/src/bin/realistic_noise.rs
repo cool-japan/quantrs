@@ -131,10 +131,7 @@ fn simulate_with_ibm_noise() -> Result<(), Box<dyn std::error::Error>> {
         // Print the top 5 most probable states
         println!("Top 5 most probable states:");
         let probabilities = result.probabilities();
-        let mut probs = probabilities
-            .iter()
-            .enumerate()
-            .collect::<Vec<_>>();
+        let mut probs = probabilities.iter().enumerate().collect::<Vec<_>>();
         probs.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap());
 
         for (i, (idx, prob)) in probs.iter().take(5).enumerate() {

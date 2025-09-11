@@ -138,9 +138,7 @@ impl SymbolicExpression {
             }
 
             #[cfg(not(feature = "symbolic"))]
-            Self::Simple(simple_expr) => {
-                Self::evaluate_simple(simple_expr, variables)
-            }
+            Self::Simple(simple_expr) => Self::evaluate_simple(simple_expr, variables),
         }
     }
 
@@ -162,9 +160,7 @@ impl SymbolicExpression {
             )),
 
             #[cfg(not(feature = "symbolic"))]
-            Self::Simple(simple_expr) => {
-                Self::evaluate_simple_complex(simple_expr, variables)
-            }
+            Self::Simple(simple_expr) => Self::evaluate_simple_complex(simple_expr, variables),
         }
     }
 
@@ -279,14 +275,9 @@ impl SymbolicExpression {
     }
 
     /// Substitute variables with expressions
-    pub fn substitute(
-        &self,
-        substitutions: &HashMap<String, Self>,
-    ) -> QuantRS2Result<Self> {
+    pub fn substitute(&self, substitutions: &HashMap<String, Self>) -> QuantRS2Result<Self> {
         match self {
-            Self::Constant(_) | Self::ComplexConstant(_) => {
-                Ok(self.clone())
-            }
+            Self::Constant(_) | Self::ComplexConstant(_) => Ok(self.clone()),
             Self::Variable(name) => Ok(substitutions
                 .get(name)
                 .cloned()
@@ -344,12 +335,8 @@ impl std::ops::Add for SymbolicExpression {
         #[cfg(not(feature = "symbolic"))]
         {
             match (self, rhs) {
-                (Self::Constant(a), Self::Constant(b)) => {
-                    Self::Constant(a + b)
-                }
-                (a, b) => {
-                    Self::Simple(SimpleExpression::Add(Box::new(a), Box::new(b)))
-                }
+                (Self::Constant(a), Self::Constant(b)) => Self::Constant(a + b),
+                (a, b) => Self::Simple(SimpleExpression::Add(Box::new(a), Box::new(b))),
             }
         }
     }
@@ -386,12 +373,8 @@ impl std::ops::Sub for SymbolicExpression {
         #[cfg(not(feature = "symbolic"))]
         {
             match (self, rhs) {
-                (Self::Constant(a), Self::Constant(b)) => {
-                    Self::Constant(a - b)
-                }
-                (a, b) => {
-                    Self::Simple(SimpleExpression::Sub(Box::new(a), Box::new(b)))
-                }
+                (Self::Constant(a), Self::Constant(b)) => Self::Constant(a - b),
+                (a, b) => Self::Simple(SimpleExpression::Sub(Box::new(a), Box::new(b))),
             }
         }
     }
@@ -428,12 +411,8 @@ impl std::ops::Mul for SymbolicExpression {
         #[cfg(not(feature = "symbolic"))]
         {
             match (self, rhs) {
-                (Self::Constant(a), Self::Constant(b)) => {
-                    Self::Constant(a * b)
-                }
-                (a, b) => {
-                    Self::Simple(SimpleExpression::Mul(Box::new(a), Box::new(b)))
-                }
+                (Self::Constant(a), Self::Constant(b)) => Self::Constant(a * b),
+                (a, b) => Self::Simple(SimpleExpression::Mul(Box::new(a), Box::new(b))),
             }
         }
     }
@@ -477,9 +456,7 @@ impl std::ops::Div for SymbolicExpression {
                         Self::Constant(a / b)
                     }
                 }
-                (a, b) => {
-                    Self::Simple(SimpleExpression::Div(Box::new(a), Box::new(b)))
-                }
+                (a, b) => Self::Simple(SimpleExpression::Div(Box::new(a), Box::new(b))),
             }
         }
     }

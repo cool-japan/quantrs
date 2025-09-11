@@ -2,13 +2,14 @@ use std::time::Instant;
 
 use quantrs2_circuit::prelude::{Circuit, Simulator};
 use quantrs2_core::prelude::QubitId;
-use quantrs2_sim::{
-    ContractionStrategy, TensorNetworkSimulator,
-};
 use quantrs2_sim::prelude::StateVectorSimulator;
+use quantrs2_sim::{ContractionStrategy, TensorNetworkSimulator};
 
 // Create a QFT circuit
-fn create_qft_circuit(num_qubits: usize, _params: usize) -> Result<Circuit<4>, Box<dyn std::error::Error>> {
+fn create_qft_circuit(
+    num_qubits: usize,
+    _params: usize,
+) -> Result<Circuit<4>, Box<dyn std::error::Error>> {
     let mut circuit = Circuit::<4>::new();
 
     // Standard QFT implementation
@@ -23,14 +24,20 @@ fn create_qft_circuit(num_qubits: usize, _params: usize) -> Result<Circuit<4>, B
 
     // Reverse the order of qubits (standard in QFT)
     for i in 0..num_qubits.min(4) / 2 {
-        circuit.swap(QubitId::new(i as u32), QubitId::new((num_qubits.min(4) - i - 1) as u32))?;
+        circuit.swap(
+            QubitId::new(i as u32),
+            QubitId::new((num_qubits.min(4) - i - 1) as u32),
+        )?;
     }
 
     Ok(circuit)
 }
 
 // Create a QAOA circuit
-fn create_qaoa_circuit(num_qubits: usize, p: usize) -> Result<Circuit<4>, Box<dyn std::error::Error>> {
+fn create_qaoa_circuit(
+    num_qubits: usize,
+    p: usize,
+) -> Result<Circuit<4>, Box<dyn std::error::Error>> {
     let mut circuit = Circuit::<4>::new();
 
     // Initial state: superposition
@@ -92,7 +99,8 @@ where
 
     // Tensor network with greedy strategy
     let start = Instant::now();
-    let tensor_sim = TensorNetworkSimulator::new().with_contraction_strategy(ContractionStrategy::Greedy);
+    let tensor_sim =
+        TensorNetworkSimulator::new().with_contraction_strategy(ContractionStrategy::Greedy);
     let _tensor_result = tensor_sim.run(&circuit).unwrap();
     let greedy_duration = start.elapsed();
     println!("TensorNetwork (greedy): {:?}", greedy_duration);

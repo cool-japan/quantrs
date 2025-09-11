@@ -21,7 +21,7 @@ use quantrs2_tytan::{
     },
 };
 
-use quantrs2_tytan::compile::expr::{Expr, constant};
+use quantrs2_tytan::compile::expr::{constant, Expr};
 
 use std::collections::HashMap;
 use std::f64::consts::PI;

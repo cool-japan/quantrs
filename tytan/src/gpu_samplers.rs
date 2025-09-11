@@ -609,9 +609,10 @@ impl MIKASAmpler {
     ) -> SamplerResult<Vec<SampleResult>> {
         // Stub tensor contraction functionality
         use ndarray::{Array, IxDyn};
-        let cp_decomposition = |_: &ArrayD<f64>| -> Result<(Vec<usize>, Vec<Array<f64, IxDyn>>, f64), Box<dyn std::error::Error>> {
-            Ok((vec![], vec![Array::zeros(IxDyn(&[1]))], 0.0f64))
-        };
+        let cp_decomposition = |_: &ArrayD<f64>| -> Result<
+            (Vec<usize>, Vec<Array<f64, IxDyn>>, f64),
+            Box<dyn std::error::Error>,
+        > { Ok((vec![], vec![Array::zeros(IxDyn(&[1]))], 0.0f64)) };
         let optimize_contraction_order = |_: &[usize]| -> Vec<usize> { vec![] };
 
         let n_vars = var_map.len();

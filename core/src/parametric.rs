@@ -270,9 +270,7 @@ impl Add for Parameter {
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (Self::Constant(a), Self::Constant(b)) => Self::Constant(a + b),
-            (Self::ComplexConstant(a), Self::ComplexConstant(b)) => {
-                Self::ComplexConstant(a + b)
-            }
+            (Self::ComplexConstant(a), Self::ComplexConstant(b)) => Self::ComplexConstant(a + b),
             (Self::Constant(a), Self::ComplexConstant(b)) => {
                 Self::ComplexConstant(Complex64::new(a, 0.0) + b)
             }
@@ -295,9 +293,7 @@ impl Sub for Parameter {
     fn sub(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (Self::Constant(a), Self::Constant(b)) => Self::Constant(a - b),
-            (Self::ComplexConstant(a), Self::ComplexConstant(b)) => {
-                Self::ComplexConstant(a - b)
-            }
+            (Self::ComplexConstant(a), Self::ComplexConstant(b)) => Self::ComplexConstant(a - b),
             (Self::Constant(a), Self::ComplexConstant(b)) => {
                 Self::ComplexConstant(Complex64::new(a, 0.0) - b)
             }
@@ -320,9 +316,7 @@ impl Mul for Parameter {
     fn mul(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (Self::Constant(a), Self::Constant(b)) => Self::Constant(a * b),
-            (Self::ComplexConstant(a), Self::ComplexConstant(b)) => {
-                Self::ComplexConstant(a * b)
-            }
+            (Self::ComplexConstant(a), Self::ComplexConstant(b)) => Self::ComplexConstant(a * b),
             (Self::Constant(a), Self::ComplexConstant(b)) => {
                 Self::ComplexConstant(Complex64::new(a, 0.0) * b)
             }
@@ -345,9 +339,7 @@ impl Div for Parameter {
     fn div(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (Self::Constant(a), Self::Constant(b)) => Self::Constant(a / b),
-            (Self::ComplexConstant(a), Self::ComplexConstant(b)) => {
-                Self::ComplexConstant(a / b)
-            }
+            (Self::ComplexConstant(a), Self::ComplexConstant(b)) => Self::ComplexConstant(a / b),
             (Self::Constant(a), Self::ComplexConstant(b)) => {
                 Self::ComplexConstant(Complex64::new(a, 0.0) / b)
             }

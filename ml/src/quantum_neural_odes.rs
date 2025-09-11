@@ -901,12 +901,10 @@ mod tests {
         };
         let mut qnode = QuantumNeuralODE::new(config).unwrap();
 
-        let training_data = vec![
-            (
-                Array1::from_vec(vec![0.1, 0.2]),  // Match num_qubits
-                Array1::from_vec(vec![0.5, 0.6]),
-            ),
-        ];
+        let training_data = vec![(
+            Array1::from_vec(vec![0.1, 0.2]), // Match num_qubits
+            Array1::from_vec(vec![0.5, 0.6]),
+        )];
 
         // Only 1 epoch for faster testing
         let result = qnode.train(&training_data, 1);

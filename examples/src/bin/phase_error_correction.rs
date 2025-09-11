@@ -53,7 +53,9 @@ fn main() {
     // Then add the encoding operations
     let logical_qubits = vec![QubitId::new(0)];
     let ancilla_qubits = vec![QubitId::new(1), QubitId::new(2)];
-    let encoder = phase_code.encode_circuit(&logical_qubits, &ancilla_qubits).unwrap();
+    let encoder = phase_code
+        .encode_circuit(&logical_qubits, &ancilla_qubits)
+        .unwrap();
 
     // Transfer gates from the encoder to our main circuit
     for gate in encoder.gates() {
@@ -127,7 +129,9 @@ fn main() {
     let syndrome_qubits = vec![QubitId::new(3), QubitId::new(4)];
 
     // Get error correction circuit
-    let correction = phase_code.decode_circuit(&encoded_qubits, &syndrome_qubits).unwrap();
+    let correction = phase_code
+        .decode_circuit(&encoded_qubits, &syndrome_qubits)
+        .unwrap();
 
     // Add correction operations
     for gate in correction.gates() {

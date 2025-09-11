@@ -41,9 +41,7 @@ impl CliffordGate {
                 Array2::from_shape_vec((2, 2), vec![h_val, h_val, h_val, mh_val]).unwrap()
             }
             Self::Phase => Array2::from_shape_vec((2, 2), vec![c1, c0, c0, ci]).unwrap(),
-            Self::PhaseDagger => {
-                Array2::from_shape_vec((2, 2), vec![c1, c0, c0, cmi]).unwrap()
-            }
+            Self::PhaseDagger => Array2::from_shape_vec((2, 2), vec![c1, c0, c0, cmi]).unwrap(),
             Self::PauliX => Array2::from_shape_vec((2, 2), vec![c0, c1, c1, c0]).unwrap(),
             Self::PauliY => Array2::from_shape_vec((2, 2), vec![c0, cmi, ci, c0]).unwrap(),
             Self::PauliZ => Array2::from_shape_vec((2, 2), vec![c1, c0, c0, cm1]).unwrap(),

@@ -1,5 +1,5 @@
-use quantrs2_circuit::prelude::Circuit;
 use quantrs2_circuit::builder::Simulator;
+use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::prelude::{QubitId, Register};
 use quantrs2_sim::prelude::StateVectorSimulator;
 use std::f64::consts::PI;

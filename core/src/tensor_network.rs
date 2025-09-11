@@ -117,12 +117,7 @@ impl Tensor {
     }
 
     /// Contract this tensor with another over specified indices
-    pub fn contract(
-        &self,
-        other: &Self,
-        self_idx: &str,
-        other_idx: &str,
-    ) -> QuantRS2Result<Self> {
+    pub fn contract(&self, other: &Self, self_idx: &str, other_idx: &str) -> QuantRS2Result<Self> {
         // Find the positions of the indices to contract
         let self_pos = self
             .indices

@@ -20,11 +20,13 @@ fn main() {
             }
             // pkg-config handles linking automatically
         } else {
-            eprintln!("Warning: pkg-config failed to find SymEngine, falling back to manual detection");
+            eprintln!(
+                "Warning: pkg-config failed to find SymEngine, falling back to manual detection"
+            );
             setup_manual_linking();
         }
     }
-    
+
     #[cfg(not(feature = "system-deps"))]
     {
         setup_manual_linking();
@@ -74,18 +76,18 @@ fn setup_platform_specific() {
     {
         // Try common homebrew paths
         let homebrew_paths = [
-            "/opt/homebrew",  // Apple Silicon
-            "/usr/local",     // Intel
+            "/opt/homebrew", // Apple Silicon
+            "/usr/local",    // Intel
         ];
 
         for base_path in &homebrew_paths {
             let lib_path = format!("{}/lib", base_path);
             let include_path = format!("{}/include", base_path);
-            
+
             if std::path::Path::new(&lib_path).exists() {
                 println!("cargo:rustc-link-search=native={}", lib_path);
                 println!("cargo:include={}", include_path);
-                
+
                 // Add specific paths for SymEngine
                 let symengine_opt_path = format!("{}/opt/symengine", base_path);
                 if std::path::Path::new(&symengine_opt_path).exists() {
@@ -94,10 +96,13 @@ fn setup_platform_specific() {
                     if std::path::Path::new(&symengine_lib).exists() {
                         println!("cargo:rustc-link-search=native={}", symengine_lib);
                         println!("cargo:include={}", symengine_include);
-                        println!("cargo:rerun-if-changed={}/include/symengine/cwrapper.h", symengine_opt_path);
+                        println!(
+                            "cargo:rerun-if-changed={}/include/symengine/cwrapper.h",
+                            symengine_opt_path
+                        );
                     }
                 }
-                
+
                 // Add specific paths for dependencies
                 for dep in &["gmp", "mpfr", "symengine"] {
                     let dep_lib = format!("{}/lib/{}", base_path, dep);
@@ -143,7 +148,7 @@ fn setup_platform_specific() {
             let target_triplet = env::var("TARGET").unwrap_or_else(|_| "x64-windows".to_string());
             let lib_path = format!("{}/installed/{}/lib", vcpkg_root, target_triplet);
             let include_path = format!("{}/installed/{}/include", vcpkg_root, target_triplet);
-            
+
             if std::path::Path::new(&lib_path).exists() {
                 println!("cargo:rustc-link-search=native={}", lib_path);
                 println!("cargo:include={}", include_path);
@@ -180,7 +185,7 @@ fn generate_bindings() {
 
     // Add include paths from environment
     let mut clang_args = Vec::new();
-    
+
     // Add custom include paths
     if let Ok(paths) = env::var("BINDGEN_EXTRA_CLANG_ARGS") {
         clang_args.extend(paths.split_whitespace().map(String::from));
@@ -207,9 +212,7 @@ fn generate_bindings() {
         builder = builder.clang_arg(arg);
     }
 
-    let bindings = builder
-        .generate()
-        .expect("Unable to generate bindings");
+    let bindings = builder.generate().expect("Unable to generate bindings");
 
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
