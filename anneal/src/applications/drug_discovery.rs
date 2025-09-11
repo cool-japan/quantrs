@@ -55,49 +55,49 @@ pub enum AtomType {
 impl AtomType {
     pub fn atomic_number(&self) -> u8 {
         match self {
-            AtomType::Hydrogen => 1,
-            AtomType::Carbon => 6,
-            AtomType::Nitrogen => 7,
-            AtomType::Oxygen => 8,
-            AtomType::Phosphorus => 15,
-            AtomType::Sulfur => 16,
-            AtomType::Fluorine => 9,
-            AtomType::Chlorine => 17,
-            AtomType::Bromine => 35,
-            AtomType::Iodine => 53,
-            AtomType::Custom(n) => *n,
+            Self::Hydrogen => 1,
+            Self::Carbon => 6,
+            Self::Nitrogen => 7,
+            Self::Oxygen => 8,
+            Self::Phosphorus => 15,
+            Self::Sulfur => 16,
+            Self::Fluorine => 9,
+            Self::Chlorine => 17,
+            Self::Bromine => 35,
+            Self::Iodine => 53,
+            Self::Custom(n) => *n,
         }
     }
 
     pub fn symbol(&self) -> &'static str {
         match self {
-            AtomType::Hydrogen => "H",
-            AtomType::Carbon => "C",
-            AtomType::Nitrogen => "N",
-            AtomType::Oxygen => "O",
-            AtomType::Phosphorus => "P",
-            AtomType::Sulfur => "S",
-            AtomType::Fluorine => "F",
-            AtomType::Chlorine => "Cl",
-            AtomType::Bromine => "Br",
-            AtomType::Iodine => "I",
-            AtomType::Custom(_) => "X",
+            Self::Hydrogen => "H",
+            Self::Carbon => "C",
+            Self::Nitrogen => "N",
+            Self::Oxygen => "O",
+            Self::Phosphorus => "P",
+            Self::Sulfur => "S",
+            Self::Fluorine => "F",
+            Self::Chlorine => "Cl",
+            Self::Bromine => "Br",
+            Self::Iodine => "I",
+            Self::Custom(_) => "X",
         }
     }
 
     pub fn valence(&self) -> u8 {
         match self {
-            AtomType::Hydrogen => 1,
-            AtomType::Carbon => 4,
-            AtomType::Nitrogen => 3,
-            AtomType::Oxygen => 2,
-            AtomType::Phosphorus => 5,
-            AtomType::Sulfur => 6,
-            AtomType::Fluorine => 1,
-            AtomType::Chlorine => 1,
-            AtomType::Bromine => 1,
-            AtomType::Iodine => 1,
-            AtomType::Custom(_) => 4, // Default
+            Self::Hydrogen => 1,
+            Self::Carbon => 4,
+            Self::Nitrogen => 3,
+            Self::Oxygen => 2,
+            Self::Phosphorus => 5,
+            Self::Sulfur => 6,
+            Self::Fluorine => 1,
+            Self::Chlorine => 1,
+            Self::Bromine => 1,
+            Self::Iodine => 1,
+            Self::Custom(_) => 4, // Default
         }
     }
 }
@@ -125,7 +125,7 @@ impl Position3D {
         Self { x, y, z }
     }
 
-    pub fn distance(&self, other: &Position3D) -> f64 {
+    pub fn distance(&self, other: &Self) -> f64 {
         ((self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2))
             .sqrt()
     }
@@ -143,10 +143,10 @@ pub enum BondType {
 impl BondType {
     pub fn bond_order(&self) -> f64 {
         match self {
-            BondType::Single => 1.0,
-            BondType::Double => 2.0,
-            BondType::Triple => 3.0,
-            BondType::Aromatic => 1.5,
+            Self::Single => 1.0,
+            Self::Double => 2.0,
+            Self::Triple => 3.0,
+            Self::Aromatic => 1.5,
         }
     }
 }

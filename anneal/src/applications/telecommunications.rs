@@ -407,7 +407,7 @@ impl IndustrySolution for NetworkTopology {
             active_connections[i] = binary_solution[i] == 1;
         }
 
-        let total_cost = problem.calculate_total_cost(&NetworkTopology {
+        let total_cost = problem.calculate_total_cost(&Self {
             active_connections: active_connections.clone(),
             total_cost: 0.0,
             connectivity: 0.0,
@@ -422,7 +422,7 @@ impl IndustrySolution for NetworkTopology {
             },
         });
 
-        let connectivity = problem.calculate_connectivity(&NetworkTopology {
+        let connectivity = problem.calculate_connectivity(&Self {
             active_connections: active_connections.clone(),
             total_cost: 0.0,
             connectivity: 0.0,
@@ -437,7 +437,7 @@ impl IndustrySolution for NetworkTopology {
             },
         });
 
-        let average_latency = problem.calculate_network_latency(&NetworkTopology {
+        let average_latency = problem.calculate_network_latency(&Self {
             active_connections: active_connections.clone(),
             total_cost: 0.0,
             connectivity: 0.0,
@@ -463,7 +463,7 @@ impl IndustrySolution for NetworkTopology {
             coverage_area: num_active as f64 * 100.0, // 100 km² per connection
         };
 
-        Ok(NetworkTopology {
+        Ok(Self {
             active_connections,
             total_cost,
             connectivity,

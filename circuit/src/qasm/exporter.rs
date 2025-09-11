@@ -42,7 +42,7 @@ pub struct ExportOptions {
 
 impl Default for ExportOptions {
     fn default() -> Self {
-        ExportOptions {
+        Self {
             include_stdgates: true,
             decompose_custom: true,
             include_gate_comments: false,
@@ -74,7 +74,7 @@ struct GateInfo {
 impl QasmExporter {
     /// Create a new exporter with options
     pub fn new(options: ExportOptions) -> Self {
-        QasmExporter {
+        Self {
             options,
             custom_gates: HashMap::new(),
             qubit_usage: HashSet::new(),

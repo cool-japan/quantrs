@@ -52,11 +52,11 @@ impl AnnealingSchedule {
     pub fn evaluate(&self, t: f64, total_time: f64) -> f64 {
         let s = t / total_time;
         match self {
-            AnnealingSchedule::Linear => s,
-            AnnealingSchedule::Exponential { rate } => 1.0 - (-rate * s).exp(),
-            AnnealingSchedule::Polynomial { power } => s.powf(*power),
-            AnnealingSchedule::Trigonometric => (PI * s / 2.0).sin().powi(2),
-            AnnealingSchedule::Custom(func) => func(t, total_time),
+            Self::Linear => s,
+            Self::Exponential { rate } => 1.0 - (-rate * s).exp(),
+            Self::Polynomial { power } => s.powf(*power),
+            Self::Trigonometric => (PI * s / 2.0).sin().powi(2),
+            Self::Custom(func) => func(t, total_time),
         }
     }
 

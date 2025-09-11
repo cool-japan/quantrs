@@ -37,28 +37,28 @@ impl CliffordGate {
         let mh_val = Complex64::new(-1.0 / SQRT_2, 0.0);
 
         match self {
-            CliffordGate::Hadamard => {
+            Self::Hadamard => {
                 Array2::from_shape_vec((2, 2), vec![h_val, h_val, h_val, mh_val]).unwrap()
             }
-            CliffordGate::Phase => Array2::from_shape_vec((2, 2), vec![c1, c0, c0, ci]).unwrap(),
-            CliffordGate::PhaseDagger => {
+            Self::Phase => Array2::from_shape_vec((2, 2), vec![c1, c0, c0, ci]).unwrap(),
+            Self::PhaseDagger => {
                 Array2::from_shape_vec((2, 2), vec![c1, c0, c0, cmi]).unwrap()
             }
-            CliffordGate::PauliX => Array2::from_shape_vec((2, 2), vec![c0, c1, c1, c0]).unwrap(),
-            CliffordGate::PauliY => Array2::from_shape_vec((2, 2), vec![c0, cmi, ci, c0]).unwrap(),
-            CliffordGate::PauliZ => Array2::from_shape_vec((2, 2), vec![c1, c0, c0, cm1]).unwrap(),
+            Self::PauliX => Array2::from_shape_vec((2, 2), vec![c0, c1, c1, c0]).unwrap(),
+            Self::PauliY => Array2::from_shape_vec((2, 2), vec![c0, cmi, ci, c0]).unwrap(),
+            Self::PauliZ => Array2::from_shape_vec((2, 2), vec![c1, c0, c0, cm1]).unwrap(),
         }
     }
 
     /// Convert to a gate operation
     pub fn to_gate(&self, qubit: QubitId) -> Box<dyn GateOp> {
         match self {
-            CliffordGate::Hadamard => Box::new(Hadamard { target: qubit }),
-            CliffordGate::Phase => Box::new(Phase { target: qubit }),
-            CliffordGate::PhaseDagger => Box::new(PhaseDagger { target: qubit }),
-            CliffordGate::PauliX => Box::new(PauliX { target: qubit }),
-            CliffordGate::PauliY => Box::new(PauliY { target: qubit }),
-            CliffordGate::PauliZ => Box::new(PauliZ { target: qubit }),
+            Self::Hadamard => Box::new(Hadamard { target: qubit }),
+            Self::Phase => Box::new(Phase { target: qubit }),
+            Self::PhaseDagger => Box::new(PhaseDagger { target: qubit }),
+            Self::PauliX => Box::new(PauliX { target: qubit }),
+            Self::PauliY => Box::new(PauliY { target: qubit }),
+            Self::PauliZ => Box::new(PauliZ { target: qubit }),
         }
     }
 }
@@ -86,14 +86,14 @@ impl CliffordTGate {
     /// Get the matrix representation
     pub fn matrix(&self) -> Array2<Complex64> {
         match self {
-            CliffordTGate::Clifford(c) => c.matrix(),
-            CliffordTGate::T => {
+            Self::Clifford(c) => c.matrix(),
+            Self::T => {
                 let c1 = Complex64::new(1.0, 0.0);
                 let c0 = Complex64::new(0.0, 0.0);
                 let t_phase = Complex64::from_polar(1.0, PI / 4.0);
                 Array2::from_shape_vec((2, 2), vec![c1, c0, c0, t_phase]).unwrap()
             }
-            CliffordTGate::TDagger => {
+            Self::TDagger => {
                 let c1 = Complex64::new(1.0, 0.0);
                 let c0 = Complex64::new(0.0, 0.0);
                 let t_phase = Complex64::from_polar(1.0, -PI / 4.0);
@@ -105,15 +105,15 @@ impl CliffordTGate {
     /// Convert to a gate operation
     pub fn to_gate(&self, qubit: QubitId) -> Box<dyn GateOp> {
         match self {
-            CliffordTGate::Clifford(c) => c.to_gate(qubit),
-            CliffordTGate::T => Box::new(T { target: qubit }),
-            CliffordTGate::TDagger => Box::new(TDagger { target: qubit }),
+            Self::Clifford(c) => c.to_gate(qubit),
+            Self::T => Box::new(T { target: qubit }),
+            Self::TDagger => Box::new(TDagger { target: qubit }),
         }
     }
 
     /// Check if this is a T gate
     pub fn is_t_gate(&self) -> bool {
-        matches!(self, CliffordTGate::T | CliffordTGate::TDagger)
+        matches!(self, Self::T | Self::TDagger)
     }
 }
 

@@ -33,7 +33,7 @@ pub enum PrecisionMode {
 
 impl Default for PrecisionMode {
     fn default() -> Self {
-        PrecisionMode::Double
+        Self::Double
     }
 }
 

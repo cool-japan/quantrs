@@ -79,7 +79,7 @@ impl AdaptiveSimdDispatcher {
         let cpu_features = Self::detect_cpu_features();
         let selected_variant = Self::select_optimal_variant(&cpu_features);
 
-        let dispatcher = AdaptiveSimdDispatcher {
+        let dispatcher = Self {
             cpu_features,
             selected_variant,
             performance_cache: Mutex::new(std::collections::HashMap::new()),
@@ -93,7 +93,7 @@ impl AdaptiveSimdDispatcher {
     }
 
     /// Get the global dispatcher instance
-    pub fn instance() -> QuantRS2Result<&'static AdaptiveSimdDispatcher> {
+    pub fn instance() -> QuantRS2Result<&'static Self> {
         GLOBAL_DISPATCHER.get().ok_or_else(|| {
             QuantRS2Error::RuntimeError("Adaptive SIMD dispatcher not initialized".to_string())
         })

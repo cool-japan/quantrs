@@ -25,7 +25,7 @@ pub enum TestResult {
 
 impl TestResult {
     pub fn is_pass(&self) -> bool {
-        matches!(self, TestResult::Pass)
+        matches!(self, Self::Pass)
     }
 }
 

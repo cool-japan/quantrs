@@ -547,7 +547,7 @@ impl MpiInterface {
 /// Convert population annealing result to standard annealing solution
 impl From<PopulationAnnealingSolution> for AnnealingSolution {
     fn from(result: PopulationAnnealingSolution) -> Self {
-        AnnealingSolution {
+        Self {
             best_spins: result.best_configuration,
             best_energy: result.best_energy,
             repetitions: 1,

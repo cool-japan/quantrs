@@ -1,6 +1,6 @@
 //! Additional mathematical operations for SymEngine expressions.
 
-use crate::{Expression, SymEngineResult};
+use crate::Expression;
 use num_traits::{Zero, One};
 
 /// Mathematical constants
@@ -96,7 +96,7 @@ pub mod trig {
 /// Exponential and logarithmic functions
 pub mod exp_log {
     use crate::{Expression, SymEngineResult};
-    use super::constants;
+    
     
     /// Exponential function (e^x)
     pub fn exp(expr: &Expression) -> SymEngineResult<Expression> {
@@ -384,7 +384,7 @@ pub mod number_theory {
 
 impl Zero for Expression {
     fn zero() -> Self {
-        Expression::from(0)
+        Self::from(0)
     }
     
     fn is_zero(&self) -> bool {
@@ -395,7 +395,7 @@ impl Zero for Expression {
 
 impl One for Expression {
     fn one() -> Self {
-        Expression::from(1)
+        Self::from(1)
     }
     
     fn is_one(&self) -> bool {

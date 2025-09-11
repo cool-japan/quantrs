@@ -471,7 +471,7 @@ impl PauliOperator {
     /// Get the matrix representation
     pub fn matrix(&self) -> Array2<Complex64> {
         match self {
-            PauliOperator::I => Array2::from_shape_vec(
+            Self::I => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(1.0, 0.0),
@@ -481,7 +481,7 @@ impl PauliOperator {
                 ],
             )
             .unwrap(),
-            PauliOperator::X => Array2::from_shape_vec(
+            Self::X => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -491,7 +491,7 @@ impl PauliOperator {
                 ],
             )
             .unwrap(),
-            PauliOperator::Y => Array2::from_shape_vec(
+            Self::Y => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -501,7 +501,7 @@ impl PauliOperator {
                 ],
             )
             .unwrap(),
-            PauliOperator::Z => Array2::from_shape_vec(
+            Self::Z => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(1.0, 0.0),
@@ -511,7 +511,7 @@ impl PauliOperator {
                 ],
             )
             .unwrap(),
-            PauliOperator::Plus => Array2::from_shape_vec(
+            Self::Plus => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -521,7 +521,7 @@ impl PauliOperator {
                 ],
             )
             .unwrap(),
-            PauliOperator::Minus => Array2::from_shape_vec(
+            Self::Minus => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),

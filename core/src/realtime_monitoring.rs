@@ -1738,10 +1738,10 @@ impl Default for ExportSettings {
 impl fmt::Display for MetricType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MetricType::GateErrorRate => write!(f, "Gate Error Rate"),
-            MetricType::QubitCoherenceTime => write!(f, "Qubit Coherence Time"),
-            MetricType::SystemUptime => write!(f, "System Uptime"),
-            MetricType::Custom(name) => write!(f, "Custom: {}", name),
+            Self::GateErrorRate => write!(f, "Gate Error Rate"),
+            Self::QubitCoherenceTime => write!(f, "Qubit Coherence Time"),
+            Self::SystemUptime => write!(f, "System Uptime"),
+            Self::Custom(name) => write!(f, "Custom: {}", name),
             _ => write!(f, "{:?}", self),
         }
     }
@@ -1750,10 +1750,10 @@ impl fmt::Display for MetricType {
 impl fmt::Display for AlertLevel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AlertLevel::Info => write!(f, "INFO"),
-            AlertLevel::Warning => write!(f, "WARNING"),
-            AlertLevel::Critical => write!(f, "CRITICAL"),
-            AlertLevel::Emergency => write!(f, "EMERGENCY"),
+            Self::Info => write!(f, "INFO"),
+            Self::Warning => write!(f, "WARNING"),
+            Self::Critical => write!(f, "CRITICAL"),
+            Self::Emergency => write!(f, "EMERGENCY"),
         }
     }
 }

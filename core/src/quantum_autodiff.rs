@@ -68,12 +68,12 @@ pub enum DifferentiationMethod {
 impl fmt::Display for DifferentiationMethod {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            DifferentiationMethod::ParameterShift => write!(f, "Parameter-Shift"),
-            DifferentiationMethod::FiniteDifference => write!(f, "Finite Difference"),
-            DifferentiationMethod::CentralDifference => write!(f, "Central Difference"),
-            DifferentiationMethod::ComplexStep => write!(f, "Complex Step"),
-            DifferentiationMethod::DualNumber => write!(f, "Dual Number"),
-            DifferentiationMethod::Hybrid => write!(f, "Hybrid"),
+            Self::ParameterShift => write!(f, "Parameter-Shift"),
+            Self::FiniteDifference => write!(f, "Finite Difference"),
+            Self::CentralDifference => write!(f, "Central Difference"),
+            Self::ComplexStep => write!(f, "Complex Step"),
+            Self::DualNumber => write!(f, "Dual Number"),
+            Self::Hybrid => write!(f, "Hybrid"),
         }
     }
 }

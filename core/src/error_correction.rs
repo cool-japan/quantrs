@@ -23,7 +23,7 @@ impl Pauli {
     /// Get matrix representation
     pub fn matrix(&self) -> Array2<Complex64> {
         match self {
-            Pauli::I => Array2::from_shape_vec(
+            Self::I => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(1.0, 0.0),
@@ -33,7 +33,7 @@ impl Pauli {
                 ],
             )
             .unwrap(),
-            Pauli::X => Array2::from_shape_vec(
+            Self::X => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -43,7 +43,7 @@ impl Pauli {
                 ],
             )
             .unwrap(),
-            Pauli::Y => Array2::from_shape_vec(
+            Self::Y => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -53,7 +53,7 @@ impl Pauli {
                 ],
             )
             .unwrap(),
-            Pauli::Z => Array2::from_shape_vec(
+            Self::Z => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(1.0, 0.0),
@@ -67,7 +67,7 @@ impl Pauli {
     }
 
     /// Multiply two Pauli operators
-    pub fn multiply(&self, other: &Pauli) -> (Complex64, Pauli) {
+    pub fn multiply(&self, other: &Self) -> (Complex64, Self) {
         use Pauli::*;
         match (self, other) {
             (I, p) | (p, I) => (Complex64::new(1.0, 0.0), *p),
@@ -111,7 +111,7 @@ impl PauliString {
     }
 
     /// Multiply two Pauli strings
-    pub fn multiply(&self, other: &PauliString) -> QuantRS2Result<PauliString> {
+    pub fn multiply(&self, other: &Self) -> QuantRS2Result<Self> {
         if self.paulis.len() != other.paulis.len() {
             return Err(QuantRS2Error::InvalidInput(
                 "Pauli strings must have same length".to_string(),
@@ -127,11 +127,11 @@ impl PauliString {
             paulis.push(result);
         }
 
-        Ok(PauliString { phase, paulis })
+        Ok(Self { phase, paulis })
     }
 
     /// Check if two Pauli strings commute
-    pub fn commutes_with(&self, other: &PauliString) -> QuantRS2Result<bool> {
+    pub fn commutes_with(&self, other: &Self) -> QuantRS2Result<bool> {
         if self.paulis.len() != other.paulis.len() {
             return Err(QuantRS2Error::InvalidInput(
                 "Pauli strings must have same length".to_string(),

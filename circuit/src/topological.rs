@@ -41,13 +41,13 @@ impl AnyonType {
     /// Get the quantum dimension of the anyon
     pub fn quantum_dimension(&self) -> f64 {
         match self {
-            AnyonType::Vacuum => 1.0,
-            AnyonType::Ising => (2.0_f64).sqrt(),
-            AnyonType::Fibonacci => (1.0 + 5.0_f64.sqrt()) / 2.0, // Golden ratio
-            AnyonType::Majorana => (2.0_f64).sqrt(),
-            AnyonType::SU2 { level } => (*level as f64 + 1.0).sqrt(),
-            AnyonType::Parafermion { n } => (2.0 * (*n as f64)).sqrt(),
-            AnyonType::Custom {
+            Self::Vacuum => 1.0,
+            Self::Ising => (2.0_f64).sqrt(),
+            Self::Fibonacci => (1.0 + 5.0_f64.sqrt()) / 2.0, // Golden ratio
+            Self::Majorana => (2.0_f64).sqrt(),
+            Self::SU2 { level } => (*level as f64 + 1.0).sqrt(),
+            Self::Parafermion { n } => (2.0 * (*n as f64)).sqrt(),
+            Self::Custom {
                 quantum_dimension, ..
             } => *quantum_dimension,
         }
@@ -55,15 +55,15 @@ impl AnyonType {
 
     /// Check if this anyon type is Abelian
     pub fn is_abelian(&self) -> bool {
-        matches!(self, AnyonType::Vacuum)
+        matches!(self, Self::Vacuum)
     }
 
     /// Check if this anyon type supports universal quantum computation
     pub fn is_universal(&self) -> bool {
         match self {
-            AnyonType::Fibonacci => true,
-            AnyonType::SU2 { level } => *level >= 3,
-            AnyonType::Parafermion { n } => *n >= 3,
+            Self::Fibonacci => true,
+            Self::SU2 { level } => *level >= 3,
+            Self::Parafermion { n } => *n >= 3,
             _ => false,
         }
     }
@@ -103,7 +103,7 @@ impl Anyon {
     }
 
     /// Check if this anyon can fuse with another
-    pub fn can_fuse_with(&self, other: &Anyon) -> bool {
+    pub fn can_fuse_with(&self, other: &Self) -> bool {
         // For now, allow fusion between same types or with vacuum
         self.anyon_type == other.anyon_type
             || self.anyon_type == AnyonType::Vacuum

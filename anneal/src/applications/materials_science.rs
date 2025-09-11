@@ -79,24 +79,24 @@ impl LatticePosition {
         (dx * dx + dy * dy + dz * dz).sqrt()
     }
 
-    pub fn neighbors(&self, lattice_type: LatticeType) -> Vec<LatticePosition> {
+    pub fn neighbors(&self, lattice_type: LatticeType) -> Vec<Self> {
         match lattice_type {
             LatticeType::SimpleCubic => {
                 vec![
-                    LatticePosition::new(self.x + 1, self.y, self.z),
-                    LatticePosition::new(self.x - 1, self.y, self.z),
-                    LatticePosition::new(self.x, self.y + 1, self.z),
-                    LatticePosition::new(self.x, self.y - 1, self.z),
-                    LatticePosition::new(self.x, self.y, self.z + 1),
-                    LatticePosition::new(self.x, self.y, self.z - 1),
+                    Self::new(self.x + 1, self.y, self.z),
+                    Self::new(self.x - 1, self.y, self.z),
+                    Self::new(self.x, self.y + 1, self.z),
+                    Self::new(self.x, self.y - 1, self.z),
+                    Self::new(self.x, self.y, self.z + 1),
+                    Self::new(self.x, self.y, self.z - 1),
                 ]
             }
             LatticeType::Graphene => {
                 // Honeycomb lattice neighbors
                 vec![
-                    LatticePosition::new(self.x + 1, self.y, self.z),
-                    LatticePosition::new(self.x, self.y + 1, self.z),
-                    LatticePosition::new(self.x - 1, self.y + 1, self.z),
+                    Self::new(self.x + 1, self.y, self.z),
+                    Self::new(self.x, self.y + 1, self.z),
+                    Self::new(self.x - 1, self.y + 1, self.z),
                 ]
             }
             _ => {

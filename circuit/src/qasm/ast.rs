@@ -279,9 +279,9 @@ impl fmt::Display for QasmProgram {
 impl fmt::Display for Declaration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Declaration::QuantumRegister(reg) => write!(f, "qubit[{}] {};", reg.size, reg.name),
-            Declaration::ClassicalRegister(reg) => write!(f, "bit[{}] {};", reg.size, reg.name),
-            Declaration::GateDefinition(def) => {
+            Self::QuantumRegister(reg) => write!(f, "qubit[{}] {};", reg.size, reg.name),
+            Self::ClassicalRegister(reg) => write!(f, "bit[{}] {};", reg.size, reg.name),
+            Self::GateDefinition(def) => {
                 write!(f, "gate {}", def.name)?;
                 if !def.params.is_empty() {
                     write!(f, "({})", def.params.join(", "))?;
@@ -293,7 +293,7 @@ impl fmt::Display for Declaration {
                 }
                 write!(f, "}}")
             }
-            Declaration::Constant(name, expr) => write!(f, "const {} = {};", name, expr),
+            Self::Constant(name, expr) => write!(f, "const {} = {};", name, expr),
         }
     }
 }
@@ -301,8 +301,8 @@ impl fmt::Display for Declaration {
 impl fmt::Display for QasmStatement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            QasmStatement::Gate(gate) => write!(f, "{}", gate),
-            QasmStatement::Measure(meas) => {
+            Self::Gate(gate) => write!(f, "{}", gate),
+            Self::Measure(meas) => {
                 write!(f, "measure ")?;
                 for (i, (q, c)) in meas.qubits.iter().zip(&meas.targets).enumerate() {
                     if i > 0 {
@@ -312,7 +312,7 @@ impl fmt::Display for QasmStatement {
                 }
                 write!(f, ";")
             }
-            QasmStatement::Reset(qubits) => {
+            Self::Reset(qubits) => {
                 write!(f, "reset ")?;
                 for (i, q) in qubits.iter().enumerate() {
                     if i > 0 {
@@ -322,7 +322,7 @@ impl fmt::Display for QasmStatement {
                 }
                 write!(f, ";")
             }
-            QasmStatement::Barrier(qubits) => {
+            Self::Barrier(qubits) => {
                 write!(f, "barrier")?;
                 if !qubits.is_empty() {
                     write!(f, " ")?;
@@ -335,9 +335,9 @@ impl fmt::Display for QasmStatement {
                 }
                 write!(f, ";")
             }
-            QasmStatement::Assignment(var, expr) => write!(f, "{} = {};", var, expr),
-            QasmStatement::If(cond, stmt) => write!(f, "if ({}) {}", cond, stmt),
-            QasmStatement::For(for_loop) => {
+            Self::Assignment(var, expr) => write!(f, "{} = {};", var, expr),
+            Self::If(cond, stmt) => write!(f, "if ({}) {}", cond, stmt),
+            Self::For(for_loop) => {
                 write!(
                     f,
                     "for {} in [{}:{}] {{\n",
@@ -348,14 +348,14 @@ impl fmt::Display for QasmStatement {
                 }
                 write!(f, "}}")
             }
-            QasmStatement::While(cond, body) => {
+            Self::While(cond, body) => {
                 writeln!(f, "while ({}) {{", cond)?;
                 for stmt in body {
                     writeln!(f, "  {}", stmt)?;
                 }
                 write!(f, "}}")
             }
-            QasmStatement::Call(name, args) => {
+            Self::Call(name, args) => {
                 write!(f, "{}(", name)?;
                 for (i, arg) in args.iter().enumerate() {
                     if i > 0 {
@@ -365,7 +365,7 @@ impl fmt::Display for QasmStatement {
                 }
                 write!(f, ");")
             }
-            QasmStatement::Delay(duration, qubits) => {
+            Self::Delay(duration, qubits) => {
                 write!(f, "delay[{}]", duration)?;
                 if !qubits.is_empty() {
                     write!(f, " ")?;
@@ -421,13 +421,13 @@ impl fmt::Display for QasmGate {
 impl fmt::Display for QubitRef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            QubitRef::Single { register, index } => write!(f, "{}[{}]", register, index),
-            QubitRef::Slice {
+            Self::Single { register, index } => write!(f, "{}[{}]", register, index),
+            Self::Slice {
                 register,
                 start,
                 end,
             } => write!(f, "{}[{}:{}]", register, start, end),
-            QubitRef::Register(name) => write!(f, "{}", name),
+            Self::Register(name) => write!(f, "{}", name),
         }
     }
 }
@@ -435,13 +435,13 @@ impl fmt::Display for QubitRef {
 impl fmt::Display for ClassicalRef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ClassicalRef::Single { register, index } => write!(f, "{}[{}]", register, index),
-            ClassicalRef::Slice {
+            Self::Single { register, index } => write!(f, "{}[{}]", register, index),
+            Self::Slice {
                 register,
                 start,
                 end,
             } => write!(f, "{}[{}:{}]", register, start, end),
-            ClassicalRef::Register(name) => write!(f, "{}", name),
+            Self::Register(name) => write!(f, "{}", name),
         }
     }
 }
@@ -449,11 +449,11 @@ impl fmt::Display for ClassicalRef {
 impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Expression::Literal(lit) => write!(f, "{}", lit),
-            Expression::Variable(name) => write!(f, "{}", name),
-            Expression::Binary(op, left, right) => write!(f, "({} {} {})", left, op, right),
-            Expression::Unary(op, expr) => write!(f, "({}{})", op, expr),
-            Expression::Function(name, args) => {
+            Self::Literal(lit) => write!(f, "{}", lit),
+            Self::Variable(name) => write!(f, "{}", name),
+            Self::Binary(op, left, right) => write!(f, "({} {} {})", left, op, right),
+            Self::Unary(op, expr) => write!(f, "({}{})", op, expr),
+            Self::Function(name, args) => {
                 write!(f, "{}(", name)?;
                 for (i, arg) in args.iter().enumerate() {
                     if i > 0 {
@@ -463,7 +463,7 @@ impl fmt::Display for Expression {
                 }
                 write!(f, ")")
             }
-            Expression::Index(name, idx) => write!(f, "{}[{}]", name, idx),
+            Self::Index(name, idx) => write!(f, "{}[{}]", name, idx),
         }
     }
 }
@@ -471,13 +471,13 @@ impl fmt::Display for Expression {
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Literal::Integer(n) => write!(f, "{}", n),
-            Literal::Float(x) => write!(f, "{}", x),
-            Literal::Bool(b) => write!(f, "{}", b),
-            Literal::String(s) => write!(f, "\"{}\"", s),
-            Literal::Pi => write!(f, "pi"),
-            Literal::Euler => write!(f, "e"),
-            Literal::Tau => write!(f, "tau"),
+            Self::Integer(n) => write!(f, "{}", n),
+            Self::Float(x) => write!(f, "{}", x),
+            Self::Bool(b) => write!(f, "{}", b),
+            Self::String(s) => write!(f, "\"{}\"", s),
+            Self::Pi => write!(f, "pi"),
+            Self::Euler => write!(f, "e"),
+            Self::Tau => write!(f, "tau"),
         }
     }
 }
@@ -485,26 +485,26 @@ impl fmt::Display for Literal {
 impl fmt::Display for BinaryOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let op = match self {
-            BinaryOp::Add => "+",
-            BinaryOp::Sub => "-",
-            BinaryOp::Mul => "*",
-            BinaryOp::Div => "/",
-            BinaryOp::Mod => "%",
-            BinaryOp::Pow => "**",
-            BinaryOp::Eq => "==",
-            BinaryOp::Ne => "!=",
-            BinaryOp::Lt => "<",
-            BinaryOp::Le => "<=",
-            BinaryOp::Gt => ">",
-            BinaryOp::Ge => ">=",
-            BinaryOp::And => "&&",
-            BinaryOp::Or => "||",
-            BinaryOp::Xor => "^^",
-            BinaryOp::BitAnd => "&",
-            BinaryOp::BitOr => "|",
-            BinaryOp::BitXor => "^",
-            BinaryOp::Shl => "<<",
-            BinaryOp::Shr => ">>",
+            Self::Add => "+",
+            Self::Sub => "-",
+            Self::Mul => "*",
+            Self::Div => "/",
+            Self::Mod => "%",
+            Self::Pow => "**",
+            Self::Eq => "==",
+            Self::Ne => "!=",
+            Self::Lt => "<",
+            Self::Le => "<=",
+            Self::Gt => ">",
+            Self::Ge => ">=",
+            Self::And => "&&",
+            Self::Or => "||",
+            Self::Xor => "^^",
+            Self::BitAnd => "&",
+            Self::BitOr => "|",
+            Self::BitXor => "^",
+            Self::Shl => "<<",
+            Self::Shr => ">>",
         };
         write!(f, "{}", op)
     }
@@ -513,18 +513,18 @@ impl fmt::Display for BinaryOp {
 impl fmt::Display for UnaryOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let op = match self {
-            UnaryOp::Neg => "-",
-            UnaryOp::Not => "!",
-            UnaryOp::BitNot => "~",
-            UnaryOp::Sin => "sin",
-            UnaryOp::Cos => "cos",
-            UnaryOp::Tan => "tan",
-            UnaryOp::Asin => "asin",
-            UnaryOp::Acos => "acos",
-            UnaryOp::Atan => "atan",
-            UnaryOp::Exp => "exp",
-            UnaryOp::Ln => "ln",
-            UnaryOp::Sqrt => "sqrt",
+            Self::Neg => "-",
+            Self::Not => "!",
+            Self::BitNot => "~",
+            Self::Sin => "sin",
+            Self::Cos => "cos",
+            Self::Tan => "tan",
+            Self::Asin => "asin",
+            Self::Acos => "acos",
+            Self::Atan => "atan",
+            Self::Exp => "exp",
+            Self::Ln => "ln",
+            Self::Sqrt => "sqrt",
         };
         write!(f, "{}", op)
     }
@@ -539,12 +539,12 @@ impl fmt::Display for Condition {
 impl fmt::Display for ComparisonOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let op = match self {
-            ComparisonOp::Eq => "==",
-            ComparisonOp::Ne => "!=",
-            ComparisonOp::Lt => "<",
-            ComparisonOp::Le => "<=",
-            ComparisonOp::Gt => ">",
-            ComparisonOp::Ge => ">=",
+            Self::Eq => "==",
+            Self::Ne => "!=",
+            Self::Lt => "<",
+            Self::Le => "<=",
+            Self::Gt => ">",
+            Self::Ge => ">=",
         };
         write!(f, "{}", op)
     }

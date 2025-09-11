@@ -149,7 +149,7 @@ fn quantum_vs_classical() {
     for _ in 0..100 {
         let grad = matrix.dot(&x_classical) - &vector_b;
         for i in 0..n {
-            x_classical[i] = x_classical[i] - grad[i] * 0.1;
+            x_classical[i] -= grad[i] * 0.1;
         }
     }
 

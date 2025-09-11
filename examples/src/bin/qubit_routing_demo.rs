@@ -203,7 +203,7 @@ fn main() {
         // Create topologies of different sizes
         let linear_topo = HardwareTopology::linear_topology(size);
         let grid_cols = ((size as f64).sqrt().ceil()) as usize;
-        let grid_rows = (size + grid_cols - 1) / grid_cols;
+        let grid_rows = size.div_ceil(grid_cols);
         let grid_topo = HardwareTopology::grid_topology(grid_rows, grid_cols);
 
         // Estimate routing costs based on topology

@@ -44,8 +44,8 @@ pub enum AminoAcidType {
 impl fmt::Display for AminoAcidType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AminoAcidType::Hydrophobic => write!(f, "H"),
-            AminoAcidType::Polar => write!(f, "P"),
+            Self::Hydrophobic => write!(f, "H"),
+            Self::Polar => write!(f, "P"),
         }
     }
 }

@@ -29,36 +29,36 @@ impl IonSpecies {
     /// Get atomic mass in atomic mass units
     pub fn atomic_mass(&self) -> f64 {
         match self {
-            IonSpecies::Be9 => 9.012,
-            IonSpecies::Ca40 => 39.963,
-            IonSpecies::Ca43 => 42.959,
-            IonSpecies::Yb171 => 170.936,
-            IonSpecies::Ba137 => 136.906,
-            IonSpecies::Sr88 => 87.906,
+            Self::Be9 => 9.012,
+            Self::Ca40 => 39.963,
+            Self::Ca43 => 42.959,
+            Self::Yb171 => 170.936,
+            Self::Ba137 => 136.906,
+            Self::Sr88 => 87.906,
         }
     }
 
     /// Get typical trap frequency in Hz
     pub fn typical_trap_frequency(&self) -> f64 {
         match self {
-            IonSpecies::Be9 => 2.0e6,   // 2 MHz
-            IonSpecies::Ca40 => 1.5e6,  // 1.5 MHz
-            IonSpecies::Ca43 => 1.5e6,  // 1.5 MHz
-            IonSpecies::Yb171 => 1.0e6, // 1 MHz
-            IonSpecies::Ba137 => 0.8e6, // 0.8 MHz
-            IonSpecies::Sr88 => 1.2e6,  // 1.2 MHz
+            Self::Be9 => 2.0e6,   // 2 MHz
+            Self::Ca40 => 1.5e6,  // 1.5 MHz
+            Self::Ca43 => 1.5e6,  // 1.5 MHz
+            Self::Yb171 => 1.0e6, // 1 MHz
+            Self::Ba137 => 0.8e6, // 0.8 MHz
+            Self::Sr88 => 1.2e6,  // 1.2 MHz
         }
     }
 
     /// Get qubit transition wavelength in nanometers
     pub fn qubit_wavelength(&self) -> f64 {
         match self {
-            IonSpecies::Be9 => 313.0,   // UV
-            IonSpecies::Ca40 => 729.0,  // Near IR
-            IonSpecies::Ca43 => 729.0,  // Near IR
-            IonSpecies::Yb171 => 435.5, // Blue
-            IonSpecies::Ba137 => 455.4, // Blue
-            IonSpecies::Sr88 => 674.0,  // Red
+            Self::Be9 => 313.0,   // UV
+            Self::Ca40 => 729.0,  // Near IR
+            Self::Ca43 => 729.0,  // Near IR
+            Self::Yb171 => 435.5, // Blue
+            Self::Ba137 => 455.4, // Blue
+            Self::Sr88 => 674.0,  // Red
         }
     }
 }

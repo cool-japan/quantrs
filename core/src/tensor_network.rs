@@ -119,10 +119,10 @@ impl Tensor {
     /// Contract this tensor with another over specified indices
     pub fn contract(
         &self,
-        other: &Tensor,
+        other: &Self,
         self_idx: &str,
         other_idx: &str,
-    ) -> QuantRS2Result<Tensor> {
+    ) -> QuantRS2Result<Self> {
         // Find the positions of the indices to contract
         let self_pos = self
             .indices
@@ -163,7 +163,7 @@ impl Tensor {
             }
         }
 
-        Ok(Tensor::new(
+        Ok(Self::new(
             self.id.max(other.id) + 1,
             contracted,
             new_indices,
@@ -173,7 +173,7 @@ impl Tensor {
     /// Perform the actual index contraction
     fn contract_indices(
         &self,
-        other: &Tensor,
+        other: &Self,
         self_idx: usize,
         other_idx: usize,
     ) -> QuantRS2Result<ArrayD<Complex64>> {
@@ -267,7 +267,7 @@ impl Tensor {
         &self,
         idx: usize,
         max_rank: Option<usize>,
-    ) -> QuantRS2Result<(Tensor, Tensor)> {
+    ) -> QuantRS2Result<(Self, Self)> {
         if idx >= self.rank() {
             return Err(QuantRS2Error::InvalidInput(format!(
                 "Index {} out of bounds for tensor with rank {}",
@@ -330,9 +330,9 @@ impl Tensor {
         let mut right_indices = vec![format!("bond_{}", self.id)];
         right_indices.extend_from_slice(&self.indices[(idx + 1)..]);
 
-        let left_tensor = Tensor::new(self.id * 2, left_data.into_dyn(), left_indices);
+        let left_tensor = Self::new(self.id * 2, left_data.into_dyn(), left_indices);
 
-        let right_tensor = Tensor::new(self.id * 2 + 1, right_data.into_dyn(), right_indices);
+        let right_tensor = Self::new(self.id * 2 + 1, right_data.into_dyn(), right_indices);
 
         Ok((left_tensor, right_tensor))
     }

@@ -988,31 +988,31 @@ impl QuantumGateProfiler {
 
 impl QuantumCircuitProfiler {
     pub fn new() -> Self {
-        QuantumCircuitProfiler
+        Self
     }
 }
 
 impl QuantumFidelityAnalyzer {
     pub fn new() -> Self {
-        QuantumFidelityAnalyzer
+        Self
     }
 }
 
 impl CoherenceProfiler {
     pub fn new() -> Self {
-        CoherenceProfiler
+        Self
     }
 }
 
 impl ErrorRateAnalyzer {
     pub fn new() -> Self {
-        ErrorRateAnalyzer
+        Self
     }
 }
 
 impl ScalabilityAnalyzer {
     pub fn new() -> Self {
-        ScalabilityAnalyzer
+        Self
     }
 }
 
@@ -1042,7 +1042,7 @@ impl Default for TimeComplexityAnalyzer {
 
 impl SpaceComplexityAnalyzer {
     pub fn new() -> Self {
-        SpaceComplexityAnalyzer
+        Self
     }
 }
 
@@ -1054,7 +1054,7 @@ impl Default for SpaceComplexityAnalyzer {
 
 impl QuantumResourceComplexityAnalyzer {
     pub fn new() -> Self {
-        QuantumResourceComplexityAnalyzer
+        Self
     }
 }
 
@@ -1066,7 +1066,7 @@ impl Default for QuantumResourceComplexityAnalyzer {
 
 impl ClassicalComplexityComparator {
     pub fn new() -> Self {
-        ClassicalComplexityComparator
+        Self
     }
 }
 
@@ -1078,7 +1078,7 @@ impl Default for ClassicalComplexityComparator {
 
 impl AsymptoticAnalyzer {
     pub fn new() -> Self {
-        AsymptoticAnalyzer
+        Self
     }
 }
 

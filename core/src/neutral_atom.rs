@@ -41,33 +41,33 @@ impl AtomSpecies {
     /// Get atomic mass in atomic mass units
     pub fn mass(&self) -> f64 {
         match self {
-            AtomSpecies::Rb87 => 86.909183,
-            AtomSpecies::Cs133 => 132.905447,
-            AtomSpecies::Sr88 => 87.905614,
-            AtomSpecies::Yb171 => 170.936426,
-            AtomSpecies::Custom { mass, .. } => *mass,
+            Self::Rb87 => 86.909183,
+            Self::Cs133 => 132.905447,
+            Self::Sr88 => 87.905614,
+            Self::Yb171 => 170.936426,
+            Self::Custom { mass, .. } => *mass,
         }
     }
 
     /// Get typical trap depth in μK
     pub fn typical_trap_depth(&self) -> f64 {
         match self {
-            AtomSpecies::Rb87 => 1000.0,
-            AtomSpecies::Cs133 => 800.0,
-            AtomSpecies::Sr88 => 1200.0,
-            AtomSpecies::Yb171 => 900.0,
-            AtomSpecies::Custom { .. } => 1000.0,
+            Self::Rb87 => 1000.0,
+            Self::Cs133 => 800.0,
+            Self::Sr88 => 1200.0,
+            Self::Yb171 => 900.0,
+            Self::Custom { .. } => 1000.0,
         }
     }
 
     /// Get Rydberg state energy in GHz
     pub fn rydberg_energy(&self) -> f64 {
         match self {
-            AtomSpecies::Rb87 => 100.0, // Example value
-            AtomSpecies::Cs133 => 95.0,
-            AtomSpecies::Sr88 => 110.0,
-            AtomSpecies::Yb171 => 105.0,
-            AtomSpecies::Custom { .. } => 100.0,
+            Self::Rb87 => 100.0, // Example value
+            Self::Cs133 => 95.0,
+            Self::Sr88 => 110.0,
+            Self::Yb171 => 105.0,
+            Self::Custom { .. } => 100.0,
         }
     }
 }
@@ -86,13 +86,13 @@ impl Position3D {
     }
 
     /// Calculate distance to another position
-    pub fn distance_to(&self, other: &Position3D) -> f64 {
+    pub fn distance_to(&self, other: &Self) -> f64 {
         ((self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2))
             .sqrt()
     }
 
     /// Calculate Rydberg interaction strength at this distance
-    pub fn rydberg_interaction(&self, other: &Position3D, c6: f64) -> f64 {
+    pub fn rydberg_interaction(&self, other: &Self, c6: f64) -> f64 {
         let distance = self.distance_to(other);
         if distance == 0.0 {
             f64::INFINITY
@@ -151,7 +151,7 @@ impl NeutralAtom {
     }
 
     /// Calculate interaction strength with another atom
-    pub fn interaction_with(&self, other: &NeutralAtom) -> f64 {
+    pub fn interaction_with(&self, other: &Self) -> f64 {
         // C6 coefficient for Rydberg interactions (MHz·μm^6)
         let c6 = match (&self.species, &other.species) {
             (AtomSpecies::Rb87, AtomSpecies::Rb87) => 5000.0,

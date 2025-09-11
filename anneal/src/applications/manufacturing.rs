@@ -479,7 +479,7 @@ impl IndustrySolution for ProductionSchedule {
         }
 
         // Calculate metrics
-        let makespan = problem.calculate_makespan(&ProductionSchedule {
+        let makespan = problem.calculate_makespan(&Self {
             job_assignments: job_assignments.clone(),
             makespan: 0.0,
             total_tardiness: 0.0,
@@ -493,7 +493,7 @@ impl IndustrySolution for ProductionSchedule {
             },
         });
 
-        let total_tardiness = problem.calculate_tardiness(&ProductionSchedule {
+        let total_tardiness = problem.calculate_tardiness(&Self {
             job_assignments: job_assignments.clone(),
             makespan,
             total_tardiness: 0.0,
@@ -530,7 +530,7 @@ impl IndustrySolution for ProductionSchedule {
         }
         let on_time_rate = on_time_count as f64 / problem.num_jobs as f64;
 
-        let resource_utilization = problem.calculate_resource_utilization(&ProductionSchedule {
+        let resource_utilization = problem.calculate_resource_utilization(&Self {
             job_assignments: job_assignments.clone(),
             makespan,
             total_tardiness,
@@ -553,7 +553,7 @@ impl IndustrySolution for ProductionSchedule {
                 * (1.0 - total_tardiness / (makespan * problem.num_jobs as f64)),
         };
 
-        Ok(ProductionSchedule {
+        Ok(Self {
             job_assignments,
             makespan,
             total_tardiness,

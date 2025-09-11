@@ -38,8 +38,8 @@ impl UnifiedSolution {
     /// Get the binary part of the solution if available
     pub fn binary(&self) -> Option<&Vec<i8>> {
         match self {
-            UnifiedSolution::Binary(b) => Some(b),
-            UnifiedSolution::Mixed { binary, .. } => Some(binary),
+            Self::Binary(b) => Some(b),
+            Self::Mixed { binary, .. } => Some(binary),
             _ => None,
         }
     }
@@ -47,8 +47,8 @@ impl UnifiedSolution {
     /// Get the continuous part of the solution if available
     pub fn continuous(&self) -> Option<&Vec<f64>> {
         match self {
-            UnifiedSolution::Continuous(c) => Some(c),
-            UnifiedSolution::Mixed { continuous, .. } => Some(continuous),
+            Self::Continuous(c) => Some(c),
+            Self::Mixed { continuous, .. } => Some(continuous),
             _ => None,
         }
     }

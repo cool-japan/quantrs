@@ -475,7 +475,7 @@ impl IndustrySolution for GridSolution {
             reliability_score: 0.99,    // Simplified
         };
 
-        let total_cost = problem.calculate_generation_cost(&GridSolution {
+        let total_cost = problem.calculate_generation_cost(&Self {
             generation_schedule: generation_schedule.clone(),
             transmission_flows: transmission_flows.clone(),
             storage_operations: storage_operations.clone(),
@@ -483,7 +483,7 @@ impl IndustrySolution for GridSolution {
             grid_metrics: grid_metrics.clone(),
         });
 
-        Ok(GridSolution {
+        Ok(Self {
             generation_schedule,
             transmission_flows,
             storage_operations,

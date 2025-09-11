@@ -5,7 +5,7 @@
 //! - Quantum Counting for search problems
 //! - Quantum Amplitude Estimation
 
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 use num_complex::Complex64;
 use quantrs2_core::prelude::*;
 use std::f64::consts::PI;
@@ -215,7 +215,7 @@ fn multi_amplitude_estimation_demo() {
 
     // Create a non-uniform superposition
     let mut state_prep = Array2::zeros((n, n));
-    let amplitudes = vec![0.5, 0.3, 0.4, 0.2, 0.1, 0.3, 0.2, 0.4];
+    let amplitudes = [0.5, 0.3, 0.4, 0.2, 0.1, 0.3, 0.2, 0.4];
 
     // Normalize
     let norm: f64 = amplitudes.iter().map(|&a| a * a).sum::<f64>().sqrt();

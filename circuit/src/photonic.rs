@@ -110,12 +110,12 @@ impl PhotonicGate {
     /// Get the modes involved in this gate
     pub fn modes(&self) -> Vec<PhotonicMode> {
         match self {
-            PhotonicGate::BeamSplitter { mode1, mode2, .. } => vec![*mode1, *mode2],
-            PhotonicGate::PhaseShifter { mode, .. } => vec![*mode],
-            PhotonicGate::PolarizationRotator { mode, .. } => vec![*mode],
-            PhotonicGate::HalfWavePlate { mode, .. } => vec![*mode],
-            PhotonicGate::QuarterWavePlate { mode, .. } => vec![*mode],
-            PhotonicGate::PolarizingBeamSplitter {
+            Self::BeamSplitter { mode1, mode2, .. } => vec![*mode1, *mode2],
+            Self::PhaseShifter { mode, .. } => vec![*mode],
+            Self::PolarizationRotator { mode, .. } => vec![*mode],
+            Self::HalfWavePlate { mode, .. } => vec![*mode],
+            Self::QuarterWavePlate { mode, .. } => vec![*mode],
+            Self::PolarizingBeamSplitter {
                 input,
                 h_output,
                 v_output,
@@ -123,7 +123,7 @@ impl PhotonicGate {
             } => {
                 vec![*input, *h_output, *v_output]
             }
-            PhotonicGate::MachZehnder {
+            Self::MachZehnder {
                 input1,
                 input2,
                 output1,
@@ -132,8 +132,8 @@ impl PhotonicGate {
             } => {
                 vec![*input1, *input2, *output1, *output2]
             }
-            PhotonicGate::HongOuMandel { mode1, mode2, .. } => vec![*mode1, *mode2],
-            PhotonicGate::PhotonicCNOT {
+            Self::HongOuMandel { mode1, mode2, .. } => vec![*mode1, *mode2],
+            Self::PhotonicCNOT {
                 control,
                 target,
                 ancilla,
@@ -143,23 +143,23 @@ impl PhotonicGate {
                 modes.extend(ancilla);
                 modes
             }
-            PhotonicGate::KerrGate { mode, .. } => vec![*mode],
+            Self::KerrGate { mode, .. } => vec![*mode],
         }
     }
 
     /// Get gate name
     pub fn name(&self) -> &'static str {
         match self {
-            PhotonicGate::BeamSplitter { .. } => "BS",
-            PhotonicGate::PhaseShifter { .. } => "PS",
-            PhotonicGate::PolarizationRotator { .. } => "PR",
-            PhotonicGate::HalfWavePlate { .. } => "HWP",
-            PhotonicGate::QuarterWavePlate { .. } => "QWP",
-            PhotonicGate::PolarizingBeamSplitter { .. } => "PBS",
-            PhotonicGate::MachZehnder { .. } => "MZ",
-            PhotonicGate::HongOuMandel { .. } => "HOM",
-            PhotonicGate::PhotonicCNOT { .. } => "PCNOT",
-            PhotonicGate::KerrGate { .. } => "KERR",
+            Self::BeamSplitter { .. } => "BS",
+            Self::PhaseShifter { .. } => "PS",
+            Self::PolarizationRotator { .. } => "PR",
+            Self::HalfWavePlate { .. } => "HWP",
+            Self::QuarterWavePlate { .. } => "QWP",
+            Self::PolarizingBeamSplitter { .. } => "PBS",
+            Self::MachZehnder { .. } => "MZ",
+            Self::HongOuMandel { .. } => "HOM",
+            Self::PhotonicCNOT { .. } => "PCNOT",
+            Self::KerrGate { .. } => "KERR",
         }
     }
 }

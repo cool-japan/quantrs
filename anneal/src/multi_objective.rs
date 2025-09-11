@@ -135,7 +135,7 @@ impl ScalarizationMethod {
     /// Apply scalarization to convert multiple objectives to single value
     pub fn scalarize(&self, objectives: &[f64]) -> MultiObjectiveResult<f64> {
         match self {
-            ScalarizationMethod::WeightedSum { weights } => {
+            Self::WeightedSum { weights } => {
                 if weights.len() != objectives.len() {
                     return Err(MultiObjectiveError::ScalarizationError(
                         "Weights and objectives dimension mismatch".to_string(),
@@ -151,7 +151,7 @@ impl ScalarizationMethod {
                 Ok(weighted_sum)
             }
 
-            ScalarizationMethod::WeightedChebyshev {
+            Self::WeightedChebyshev {
                 weights,
                 reference_point,
             } => {
@@ -171,7 +171,7 @@ impl ScalarizationMethod {
                 Ok(max_weighted_deviation)
             }
 
-            ScalarizationMethod::AugmentedChebyshev {
+            Self::AugmentedChebyshev {
                 weights,
                 reference_point,
                 rho,
@@ -190,7 +190,7 @@ impl ScalarizationMethod {
                 Ok(chebyshev_value + augmentation_term)
             }
 
-            ScalarizationMethod::Achievement {
+            Self::Achievement {
                 weights,
                 reference_point,
             } => {
@@ -204,7 +204,7 @@ impl ScalarizationMethod {
                 Ok(achievement_value)
             }
 
-            ScalarizationMethod::EpsilonConstraint {
+            Self::EpsilonConstraint {
                 primary_objective,
                 constraints,
             } => {

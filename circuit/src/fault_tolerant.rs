@@ -41,13 +41,13 @@ impl QECCode {
     /// Get the number of physical qubits required
     pub fn physical_qubits(&self) -> usize {
         match self {
-            QECCode::SurfaceCode { distance } => distance * distance,
-            QECCode::ColorCode { distance } => 2 * distance * distance - 2 * distance + 1,
-            QECCode::RepetitionCode { distance } => *distance,
-            QECCode::SteaneCode => 7,
-            QECCode::ShorCode => 9,
-            QECCode::BaconShorCode { m, n } => m * n,
-            QECCode::ConcatenatedCode {
+            Self::SurfaceCode { distance } => distance * distance,
+            Self::ColorCode { distance } => 2 * distance * distance - 2 * distance + 1,
+            Self::RepetitionCode { distance } => *distance,
+            Self::SteaneCode => 7,
+            Self::ShorCode => 9,
+            Self::BaconShorCode { m, n } => m * n,
+            Self::ConcatenatedCode {
                 inner_code, levels, ..
             } => {
                 let base_qubits = inner_code.physical_qubits();
@@ -59,13 +59,13 @@ impl QECCode {
     /// Get the code distance
     pub fn distance(&self) -> usize {
         match self {
-            QECCode::SurfaceCode { distance }
-            | QECCode::ColorCode { distance }
-            | QECCode::RepetitionCode { distance } => *distance,
-            QECCode::SteaneCode => 3,
-            QECCode::ShorCode => 3,
-            QECCode::BaconShorCode { m, n } => (*m).min(*n),
-            QECCode::ConcatenatedCode {
+            Self::SurfaceCode { distance }
+            | Self::ColorCode { distance }
+            | Self::RepetitionCode { distance } => *distance,
+            Self::SteaneCode => 3,
+            Self::ShorCode => 3,
+            Self::BaconShorCode { m, n } => (*m).min(*n),
+            Self::ConcatenatedCode {
                 inner_code, levels, ..
             } => {
                 let base_distance = inner_code.distance();
@@ -228,20 +228,20 @@ impl MagicState {
     /// Get the fidelity threshold required for distillation
     pub fn fidelity_threshold(&self) -> f64 {
         match self {
-            MagicState::TState => 0.95,
-            MagicState::YState => 0.95,
-            MagicState::CCZState => 0.99,
-            MagicState::Custom { fidelity, .. } => *fidelity,
+            Self::TState => 0.95,
+            Self::YState => 0.95,
+            Self::CCZState => 0.99,
+            Self::Custom { fidelity, .. } => *fidelity,
         }
     }
 
     /// Get distillation overhead
     pub fn distillation_overhead(&self) -> f64 {
         match self {
-            MagicState::TState => 15.0, // Approximate overhead for T state distillation
-            MagicState::YState => 10.0,
-            MagicState::CCZState => 50.0,
-            MagicState::Custom { .. } => 20.0,
+            Self::TState => 15.0, // Approximate overhead for T state distillation
+            Self::YState => 10.0,
+            Self::CCZState => 50.0,
+            Self::Custom { .. } => 20.0,
         }
     }
 }

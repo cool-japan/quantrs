@@ -5,7 +5,6 @@
 //!
 //! Note: This requires the `scirs2-autograd` feature to be enabled.
 
-use num_complex::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
 use std::f64::consts::PI;
@@ -112,7 +111,7 @@ fn quantum_autograd_example() {
 
     for epoch in 0..num_epochs {
         // Compute gradients
-        let gradients = qnn.compute_gradients(&loss_fn);
+        let gradients = qnn.compute_gradients(loss_fn);
 
         // Update parameters (gradient descent)
         for i in 0..qnn.params.len() {
@@ -219,8 +218,8 @@ fn quantum_kernel_gradients() {
     };
 
     // Sample data points
-    let x_train = vec![0.0, 0.5, 1.0];
-    let y_train = vec![0.0, 1.0, 0.0];
+    let x_train = [0.0, 0.5, 1.0];
+    let y_train = [0.0, 1.0, 0.0];
 
     // Loss function for kernel alignment
     let loss_fn = |params: &[f64]| -> f64 {

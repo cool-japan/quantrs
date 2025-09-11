@@ -282,7 +282,7 @@ impl GateOp for CompositeGate {
     }
 
     fn clone_gate(&self) -> Box<dyn GateOp> {
-        Box::new(CompositeGate {
+        Box::new(Self {
             gates: self.gates.iter().map(|g| g.clone()).collect(),
             qubits: self.qubits.clone(),
             name: self.name.clone(),

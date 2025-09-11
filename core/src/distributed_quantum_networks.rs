@@ -66,7 +66,7 @@ impl QuantumNode {
     }
 
     /// Calculate distance to another node
-    pub fn distance_to(&self, other: &QuantumNode) -> f64 {
+    pub fn distance_to(&self, other: &Self) -> f64 {
         let dx = self.location.x - other.location.x;
         let dy = self.location.y - other.location.y;
         let dz = self.location.z - other.location.z;
@@ -86,7 +86,7 @@ impl QuantumNode {
     }
 
     /// Estimate communication latency to another node
-    pub fn communication_latency(&self, other: &QuantumNode) -> Duration {
+    pub fn communication_latency(&self, other: &Self) -> Duration {
         let distance = self.distance_to(other);
         let speed_of_light = 299_792_458.0; // m/s
         let latency_seconds = distance / speed_of_light;

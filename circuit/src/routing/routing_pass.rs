@@ -148,7 +148,7 @@ pub struct RoutingStatistics {
 
 impl RoutingStatistics {
     /// Calculate the improvement ratio compared to another statistic
-    pub fn improvement_ratio(&self, other: &RoutingStatistics) -> f64 {
+    pub fn improvement_ratio(&self, other: &Self) -> f64 {
         if other.total_gates == 0 {
             return 0.0;
         }
@@ -183,22 +183,22 @@ impl RoutingPassType {
     /// Get the name of the routing pass
     pub fn name(&self) -> &str {
         match self {
-            RoutingPassType::Sabre { .. } => "SABRE",
-            RoutingPassType::Lookahead { .. } => "Lookahead",
+            Self::Sabre { .. } => "SABRE",
+            Self::Lookahead { .. } => "Lookahead",
         }
     }
 
     /// Apply routing to a circuit
     pub fn route<const N: usize>(&self, circuit: &Circuit<N>) -> QuantRS2Result<RoutedCircuit<N>> {
         match self {
-            RoutingPassType::Sabre {
+            Self::Sabre {
                 coupling_map,
                 config,
             } => {
                 let router = super::SabreRouter::new(coupling_map.clone(), config.clone());
                 router.route(circuit)
             }
-            RoutingPassType::Lookahead {
+            Self::Lookahead {
                 coupling_map,
                 config,
             } => {
@@ -216,13 +216,13 @@ impl RoutingPassType {
     /// Get pass configuration as string (for debugging)
     pub fn config_string(&self) -> String {
         match self {
-            RoutingPassType::Sabre { config, .. } => {
+            Self::Sabre { config, .. } => {
                 format!(
                     "SABRE(depth={}, max_iter={}, stochastic={})",
                     config.lookahead_depth, config.max_iterations, config.stochastic
                 )
             }
-            RoutingPassType::Lookahead { config, .. } => {
+            Self::Lookahead { config, .. } => {
                 format!(
                     "Lookahead(depth={}, candidates={})",
                     config.lookahead_depth, config.max_swap_candidates

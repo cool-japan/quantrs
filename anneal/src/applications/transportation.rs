@@ -560,7 +560,7 @@ impl IndustrySolution for VehicleRoutingSolution {
             cost_per_customer,
         };
 
-        Ok(VehicleRoutingSolution {
+        Ok(Self {
             routes,
             total_distance,
             total_cost,

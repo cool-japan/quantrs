@@ -450,7 +450,7 @@ impl IndustrySolution for MedicalResourceSolution {
             }
         }
 
-        let solution = MedicalResourceSolution {
+        let solution = Self {
             allocations,
             total_cost,
             patient_satisfaction: 0.0,
@@ -478,7 +478,7 @@ impl IndustrySolution for MedicalResourceSolution {
             quality_score: patient_satisfaction,
         };
 
-        Ok(MedicalResourceSolution {
+        Ok(Self {
             allocations: solution.allocations,
             total_cost,
             patient_satisfaction,

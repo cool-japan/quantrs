@@ -36,7 +36,7 @@ pub struct CircuitMetrics {
 
 impl CircuitMetrics {
     /// Calculate improvement percentage compared to another metric
-    pub fn improvement_from(&self, other: &CircuitMetrics) -> MetricImprovement {
+    pub fn improvement_from(&self, other: &Self) -> MetricImprovement {
         MetricImprovement {
             gate_count: Self::percent_change(other.gate_count as f64, self.gate_count as f64),
             depth: Self::percent_change(other.depth as f64, self.depth as f64),

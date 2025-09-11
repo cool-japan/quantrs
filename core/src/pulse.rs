@@ -34,22 +34,22 @@ impl PulseEnvelope {
     /// Evaluate the envelope at time t (normalized to pulse duration)
     pub fn evaluate(&self, t: f64) -> f64 {
         match self {
-            PulseEnvelope::Gaussian { sigma } => {
+            Self::Gaussian { sigma } => {
                 let t_norm = (t - 0.5) / sigma;
                 (-0.5 * t_norm * t_norm).exp()
             }
-            PulseEnvelope::DRAG { sigma, beta: _ } => {
+            Self::DRAG { sigma, beta: _ } => {
                 let t_norm = (t - 0.5) / sigma;
                 (-0.5 * t_norm * t_norm).exp()
             }
-            PulseEnvelope::Square => {
+            Self::Square => {
                 if t >= 0.0 && t <= 1.0 {
                     1.0
                 } else {
                     0.0
                 }
             }
-            PulseEnvelope::RaisedCosine => {
+            Self::RaisedCosine => {
                 if t >= 0.0 && t <= 1.0 {
                     let phase = 2.0 * PI * t;
                     0.5 * (1.0 - phase.cos())
@@ -57,11 +57,11 @@ impl PulseEnvelope {
                     0.0
                 }
             }
-            PulseEnvelope::HyperbolicSecant { width } => {
+            Self::HyperbolicSecant { width } => {
                 let t_scaled = (t - 0.5) / width;
                 1.0 / t_scaled.cosh()
             }
-            PulseEnvelope::HermiteGaussian { n, sigma } => {
+            Self::HermiteGaussian { n, sigma } => {
                 let t_norm = (t - 0.5) / sigma;
                 let gaussian = (-0.5 * t_norm * t_norm).exp();
                 let hermite = self.hermite_polynomial(*n, t_norm);
@@ -91,7 +91,7 @@ impl PulseEnvelope {
     /// Get DRAG derivative component for DRAG pulses
     pub fn drag_derivative(&self, t: f64) -> f64 {
         match self {
-            PulseEnvelope::DRAG { sigma, beta } => {
+            Self::DRAG { sigma, beta } => {
                 let t_norm = (t - 0.5) / sigma;
                 let gaussian = (-0.5 * t_norm * t_norm).exp();
                 let derivative = -t_norm / sigma * gaussian;

@@ -30,7 +30,7 @@ impl MeasurementBasis {
     /// Get the measurement operator for this basis
     pub fn operator(&self) -> Array2<Complex64> {
         match self {
-            MeasurementBasis::Computational => {
+            Self::Computational => {
                 // |0⟩⟨0|
                 Array2::from_shape_vec(
                     (2, 2),
@@ -43,7 +43,7 @@ impl MeasurementBasis {
                 )
                 .unwrap()
             }
-            MeasurementBasis::X => {
+            Self::X => {
                 // |+⟩⟨+|
                 Array2::from_shape_vec(
                     (2, 2),
@@ -56,7 +56,7 @@ impl MeasurementBasis {
                 )
                 .unwrap()
             }
-            MeasurementBasis::Y => {
+            Self::Y => {
                 // |i⟩⟨i| where |i⟩ = (|0⟩ + i|1⟩)/√2
                 Array2::from_shape_vec(
                     (2, 2),
@@ -69,7 +69,7 @@ impl MeasurementBasis {
                 )
                 .unwrap()
             }
-            MeasurementBasis::XY(theta) => {
+            Self::XY(theta) => {
                 // |θ⟩⟨θ| where |θ⟩ = cos(θ/2)|0⟩ + sin(θ/2)|1⟩
                 let c = (theta / 2.0).cos();
                 let s = (theta / 2.0).sin();
@@ -84,7 +84,7 @@ impl MeasurementBasis {
                 )
                 .unwrap()
             }
-            MeasurementBasis::XZ(theta) => {
+            Self::XZ(theta) => {
                 // Rotation in XZ plane
                 let c = (theta / 2.0).cos();
                 let s = (theta / 2.0).sin();
@@ -99,7 +99,7 @@ impl MeasurementBasis {
                 )
                 .unwrap()
             }
-            MeasurementBasis::YZ(theta) => {
+            Self::YZ(theta) => {
                 // Rotation in YZ plane
                 let c = (theta / 2.0).cos();
                 let s = (theta / 2.0).sin();
