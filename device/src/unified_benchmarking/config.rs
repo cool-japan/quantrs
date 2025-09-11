@@ -238,16 +238,16 @@ pub enum SingleQubitGate {
 impl PartialEq for SingleQubitGate {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::X, Self::X) |
-            (Self::Y, Self::Y) |
-            (Self::Z, Self::Z) |
-            (Self::H, Self::H) |
-            (Self::S, Self::S) |
-            (Self::T, Self::T) |
-            (Self::SqrtX, Self::SqrtX) => true,
-            (Self::RX(a), Self::RX(b)) |
-            (Self::RY(a), Self::RY(b)) |
-            (Self::RZ(a), Self::RZ(b)) => (a - b).abs() < 1e-10,
+            (Self::X, Self::X)
+            | (Self::Y, Self::Y)
+            | (Self::Z, Self::Z)
+            | (Self::H, Self::H)
+            | (Self::S, Self::S)
+            | (Self::T, Self::T)
+            | (Self::SqrtX, Self::SqrtX) => true,
+            (Self::RX(a), Self::RX(b))
+            | (Self::RY(a), Self::RY(b))
+            | (Self::RZ(a), Self::RZ(b)) => (a - b).abs() < 1e-10,
             _ => false,
         }
     }
@@ -258,22 +258,22 @@ impl Eq for SingleQubitGate {}
 impl std::hash::Hash for SingleQubitGate {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
-            SingleQubitGate::X => 0u8.hash(state),
-            SingleQubitGate::Y => 1u8.hash(state),
-            SingleQubitGate::Z => 2u8.hash(state),
-            SingleQubitGate::H => 3u8.hash(state),
-            SingleQubitGate::S => 4u8.hash(state),
-            SingleQubitGate::T => 5u8.hash(state),
-            SingleQubitGate::SqrtX => 6u8.hash(state),
-            SingleQubitGate::RX(f) => {
+            Self::X => 0u8.hash(state),
+            Self::Y => 1u8.hash(state),
+            Self::Z => 2u8.hash(state),
+            Self::H => 3u8.hash(state),
+            Self::S => 4u8.hash(state),
+            Self::T => 5u8.hash(state),
+            Self::SqrtX => 6u8.hash(state),
+            Self::RX(f) => {
                 7u8.hash(state);
                 (*f as u64).hash(state);
             }
-            SingleQubitGate::RY(f) => {
+            Self::RY(f) => {
                 8u8.hash(state);
                 (*f as u64).hash(state);
             }
-            SingleQubitGate::RZ(f) => {
+            Self::RZ(f) => {
                 9u8.hash(state);
                 (*f as u64).hash(state);
             }

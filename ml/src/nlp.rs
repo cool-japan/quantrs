@@ -490,12 +490,12 @@ impl TextSummarizer {
 impl fmt::Display for NLPTaskType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            NLPTaskType::Classification => write!(f, "Classification"),
-            NLPTaskType::SequenceLabeling => write!(f, "Sequence Labeling"),
-            NLPTaskType::Translation => write!(f, "Translation"),
-            NLPTaskType::Generation => write!(f, "Generation"),
-            NLPTaskType::SentimentAnalysis => write!(f, "Sentiment Analysis"),
-            NLPTaskType::Summarization => write!(f, "Summarization"),
+            Self::Classification => write!(f, "Classification"),
+            Self::SequenceLabeling => write!(f, "Sequence Labeling"),
+            Self::Translation => write!(f, "Translation"),
+            Self::Generation => write!(f, "Generation"),
+            Self::SentimentAnalysis => write!(f, "Sentiment Analysis"),
+            Self::Summarization => write!(f, "Summarization"),
         }
     }
 }
@@ -503,10 +503,10 @@ impl fmt::Display for NLPTaskType {
 impl fmt::Display for EmbeddingStrategy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            EmbeddingStrategy::BagOfWords => write!(f, "Bag of Words"),
-            EmbeddingStrategy::TFIDF => write!(f, "TF-IDF"),
-            EmbeddingStrategy::Word2Vec => write!(f, "Word2Vec"),
-            EmbeddingStrategy::Custom => write!(f, "Custom"),
+            Self::BagOfWords => write!(f, "Bag of Words"),
+            Self::TFIDF => write!(f, "TF-IDF"),
+            Self::Word2Vec => write!(f, "Word2Vec"),
+            Self::Custom => write!(f, "Custom"),
         }
     }
 }

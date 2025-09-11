@@ -47,58 +47,58 @@ pub enum OptimizationGate {
 impl OptimizationGate {
     fn qubits(&self) -> Vec<usize> {
         match self {
-            OptimizationGate::H(q)
-            | OptimizationGate::X(q)
-            | OptimizationGate::Y(q)
-            | OptimizationGate::Z(q)
-            | OptimizationGate::S(q)
-            | OptimizationGate::SDag(q)
-            | OptimizationGate::T(q)
-            | OptimizationGate::TDag(q)
-            | OptimizationGate::RX(q, _)
-            | OptimizationGate::RY(q, _)
-            | OptimizationGate::RZ(q, _)
-            | OptimizationGate::U1(q, _)
-            | OptimizationGate::U2(q, _, _)
-            | OptimizationGate::U3(q, _, _, _) => vec![*q],
+            Self::H(q)
+            | Self::X(q)
+            | Self::Y(q)
+            | Self::Z(q)
+            | Self::S(q)
+            | Self::SDag(q)
+            | Self::T(q)
+            | Self::TDag(q)
+            | Self::RX(q, _)
+            | Self::RY(q, _)
+            | Self::RZ(q, _)
+            | Self::U1(q, _)
+            | Self::U2(q, _, _)
+            | Self::U3(q, _, _, _) => vec![*q],
 
-            OptimizationGate::CNOT(c, t)
-            | OptimizationGate::CY(c, t)
-            | OptimizationGate::CZ(c, t)
-            | OptimizationGate::CRX(c, t, _)
-            | OptimizationGate::CRY(c, t, _)
-            | OptimizationGate::CRZ(c, t, _) => vec![*c, *t],
+            Self::CNOT(c, t)
+            | Self::CY(c, t)
+            | Self::CZ(c, t)
+            | Self::CRX(c, t, _)
+            | Self::CRY(c, t, _)
+            | Self::CRZ(c, t, _) => vec![*c, *t],
 
-            OptimizationGate::SWAP(q1, q2) => vec![*q1, *q2],
+            Self::SWAP(q1, q2) => vec![*q1, *q2],
 
-            OptimizationGate::Toffoli(c1, c2, t) => vec![*c1, *c2, *t],
-            OptimizationGate::Fredkin(c, t1, t2) => vec![*c, *t1, *t2],
+            Self::Toffoli(c1, c2, t) => vec![*c1, *c2, *t],
+            Self::Fredkin(c, t1, t2) => vec![*c, *t1, *t2],
         }
     }
 
-    fn is_inverse_of(&self, other: &OptimizationGate) -> bool {
+    fn is_inverse_of(&self, other: &Self) -> bool {
         match (self, other) {
-            (OptimizationGate::H(q1), OptimizationGate::H(q2)) => q1 == q2,
-            (OptimizationGate::X(q1), OptimizationGate::X(q2)) => q1 == q2,
-            (OptimizationGate::Y(q1), OptimizationGate::Y(q2)) => q1 == q2,
-            (OptimizationGate::Z(q1), OptimizationGate::Z(q2)) => q1 == q2,
-            (OptimizationGate::S(q1), OptimizationGate::SDag(q2)) => q1 == q2,
-            (OptimizationGate::SDag(q1), OptimizationGate::S(q2)) => q1 == q2,
-            (OptimizationGate::T(q1), OptimizationGate::TDag(q2)) => q1 == q2,
-            (OptimizationGate::TDag(q1), OptimizationGate::T(q2)) => q1 == q2,
-            (OptimizationGate::CNOT(c1, t1), OptimizationGate::CNOT(c2, t2)) => {
+            (Self::H(q1), Self::H(q2)) |
+            (Self::X(q1), Self::X(q2)) |
+            (Self::Y(q1), Self::Y(q2)) |
+            (Self::Z(q1), Self::Z(q2)) |
+            (Self::S(q1), Self::SDag(q2)) |
+            (Self::SDag(q1), Self::S(q2)) |
+            (Self::T(q1), Self::TDag(q2)) |
+            (Self::TDag(q1), Self::T(q2)) => q1 == q2,
+            (Self::CNOT(c1, t1), Self::CNOT(c2, t2)) => {
                 c1 == c2 && t1 == t2
             }
-            (OptimizationGate::CY(c1, t1), OptimizationGate::CY(c2, t2)) => c1 == c2 && t1 == t2,
-            (OptimizationGate::CZ(c1, t1), OptimizationGate::CZ(c2, t2)) => c1 == c2 && t1 == t2,
-            (OptimizationGate::SWAP(q1, q2), OptimizationGate::SWAP(q3, q4)) => {
+            (Self::CY(c1, t1), Self::CY(c2, t2)) |
+            (Self::CZ(c1, t1), Self::CZ(c2, t2)) => c1 == c2 && t1 == t2,
+            (Self::SWAP(q1, q2), Self::SWAP(q3, q4)) => {
                 (q1 == q3 && q2 == q4) || (q1 == q4 && q2 == q3)
             }
             _ => false,
         }
     }
 
-    fn commutes_with(&self, other: &OptimizationGate) -> bool {
+    fn commutes_with(&self, other: &Self) -> bool {
         let self_qubits: HashSet<_> = self.qubits().into_iter().collect();
         let other_qubits: HashSet<_> = other.qubits().into_iter().collect();
 
@@ -110,15 +110,15 @@ impl OptimizationGate {
         // Check specific commutation rules
         match (self, other) {
             // Z-basis gates commute
-            (OptimizationGate::Z(q1), OptimizationGate::Z(q2)) => q1 == q2,
-            (OptimizationGate::Z(q1), OptimizationGate::S(q2)) => q1 == q2,
-            (OptimizationGate::Z(q1), OptimizationGate::SDag(q2)) => q1 == q2,
-            (OptimizationGate::Z(q1), OptimizationGate::T(q2)) => q1 == q2,
-            (OptimizationGate::Z(q1), OptimizationGate::TDag(q2)) => q1 == q2,
-            (OptimizationGate::Z(q1), OptimizationGate::RZ(q2, _)) => q1 == q2,
+            (Self::Z(q1), Self::Z(q2)) => q1 == q2,
+            (Self::Z(q1), Self::S(q2)) => q1 == q2,
+            (Self::Z(q1), Self::SDag(q2)) => q1 == q2,
+            (Self::Z(q1), Self::T(q2)) => q1 == q2,
+            (Self::Z(q1), Self::TDag(q2)) => q1 == q2,
+            (Self::Z(q1), Self::RZ(q2, _)) => q1 == q2,
 
             // CNOT commutation rules
-            (OptimizationGate::CNOT(c1, t1), OptimizationGate::CNOT(c2, t2)) => {
+            (Self::CNOT(c1, t1), Self::CNOT(c2, t2)) => {
                 // CNOT gates commute if they share control but different targets
                 (c1 == c2 && t1 != t2) ||
                 // Or if first target equals second control and vice versa
@@ -126,7 +126,7 @@ impl OptimizationGate {
             }
 
             // CZ gates always commute with themselves
-            (OptimizationGate::CZ(_, _), OptimizationGate::CZ(_, _)) => true,
+            (Self::CZ(_, _), Self::CZ(_, _)) => true,
 
             _ => false,
         }

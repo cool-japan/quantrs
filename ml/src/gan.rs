@@ -556,9 +556,9 @@ fn sample_batch(data: &Array2<f64>, batch_size: usize) -> Result<Array2<f64>> {
 impl fmt::Display for GeneratorType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            GeneratorType::Classical => write!(f, "Classical"),
-            GeneratorType::QuantumOnly => write!(f, "Quantum Only"),
-            GeneratorType::HybridClassicalQuantum => write!(f, "Hybrid Classical-Quantum"),
+            Self::Classical => write!(f, "Classical"),
+            Self::QuantumOnly => write!(f, "Quantum Only"),
+            Self::HybridClassicalQuantum => write!(f, "Hybrid Classical-Quantum"),
         }
     }
 }
@@ -566,10 +566,10 @@ impl fmt::Display for GeneratorType {
 impl fmt::Display for DiscriminatorType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            DiscriminatorType::Classical => write!(f, "Classical"),
-            DiscriminatorType::QuantumOnly => write!(f, "Quantum Only"),
-            DiscriminatorType::HybridQuantumFeatures => write!(f, "Hybrid with Quantum Features"),
-            DiscriminatorType::HybridQuantumDecision => write!(f, "Hybrid with Quantum Decision"),
+            Self::Classical => write!(f, "Classical"),
+            Self::QuantumOnly => write!(f, "Quantum Only"),
+            Self::HybridQuantumFeatures => write!(f, "Hybrid with Quantum Features"),
+            Self::HybridQuantumDecision => write!(f, "Hybrid with Quantum Decision"),
         }
     }
 }

@@ -507,18 +507,18 @@ impl OptimizationTrajectory {
 impl std::fmt::Display for VQAOptimizer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = match self {
-            VQAOptimizer::LBFGSB => "L-BFGS-B",
-            VQAOptimizer::COBYLA => "COBYLA",
-            VQAOptimizer::NelderMead => "Nelder-Mead",
-            VQAOptimizer::DifferentialEvolution => "Differential Evolution",
-            VQAOptimizer::SimulatedAnnealing => "Simulated Annealing",
-            VQAOptimizer::BasinHopping => "Basin Hopping",
-            VQAOptimizer::DualAnnealing => "Dual Annealing",
-            VQAOptimizer::Powell => "Powell",
-            VQAOptimizer::PSO => "Particle Swarm Optimization",
-            VQAOptimizer::QNG => "Quantum Natural Gradient",
-            VQAOptimizer::SPSA => "SPSA",
-            VQAOptimizer::Custom(name) => name,
+            Self::LBFGSB => "L-BFGS-B",
+            Self::COBYLA => "COBYLA",
+            Self::NelderMead => "Nelder-Mead",
+            Self::DifferentialEvolution => "Differential Evolution",
+            Self::SimulatedAnnealing => "Simulated Annealing",
+            Self::BasinHopping => "Basin Hopping",
+            Self::DualAnnealing => "Dual Annealing",
+            Self::Powell => "Powell",
+            Self::PSO => "Particle Swarm Optimization",
+            Self::QNG => "Quantum Natural Gradient",
+            Self::SPSA => "SPSA",
+            Self::Custom(name) => name,
         };
         write!(f, "{}", name)
     }

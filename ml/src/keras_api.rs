@@ -943,18 +943,18 @@ impl LossFunction {
     /// Compute loss
     pub fn compute(&self, predictions: &ArrayD<f64>, targets: &ArrayD<f64>) -> Result<f64> {
         match self {
-            LossFunction::MeanSquaredError => {
+            Self::MeanSquaredError => {
                 let diff = predictions - targets;
                 Ok(diff.mapv(|x| x * x).mean().unwrap())
             }
-            LossFunction::BinaryCrossentropy => {
+            Self::BinaryCrossentropy => {
                 let epsilon = 1e-15;
                 let clipped_preds = predictions.mapv(|x| x.max(epsilon).min(1.0 - epsilon));
                 let loss = targets * clipped_preds.mapv(|x| x.ln())
                     + (1.0 - targets) * clipped_preds.mapv(|x| (1.0 - x).ln());
                 Ok(-loss.mean().unwrap())
             }
-            LossFunction::MeanAbsoluteError => {
+            Self::MeanAbsoluteError => {
                 let diff = predictions - targets;
                 Ok(diff.mapv(|x| x.abs()).mean().unwrap())
             }
@@ -1008,19 +1008,19 @@ impl MetricType {
     /// Get metric name
     pub fn name(&self) -> String {
         match self {
-            MetricType::Accuracy => "accuracy".to_string(),
-            MetricType::Precision => "precision".to_string(),
-            MetricType::Recall => "recall".to_string(),
-            MetricType::F1Score => "f1_score".to_string(),
-            MetricType::MeanAbsoluteError => "mean_absolute_error".to_string(),
-            MetricType::MeanSquaredError => "mean_squared_error".to_string(),
+            Self::Accuracy => "accuracy".to_string(),
+            Self::Precision => "precision".to_string(),
+            Self::Recall => "recall".to_string(),
+            Self::F1Score => "f1_score".to_string(),
+            Self::MeanAbsoluteError => "mean_absolute_error".to_string(),
+            Self::MeanSquaredError => "mean_squared_error".to_string(),
         }
     }
 
     /// Compute metric
     pub fn compute(&self, predictions: &ArrayD<f64>, targets: &ArrayD<f64>) -> Result<f64> {
         match self {
-            MetricType::Accuracy => {
+            Self::Accuracy => {
                 let pred_classes = predictions.mapv(|x| if x > 0.5 { 1.0 } else { 0.0 });
                 let correct = pred_classes
                     .iter()
@@ -1029,11 +1029,11 @@ impl MetricType {
                     .count();
                 Ok(correct as f64 / targets.len() as f64)
             }
-            MetricType::MeanAbsoluteError => {
+            Self::MeanAbsoluteError => {
                 let diff = predictions - targets;
                 Ok(diff.mapv(|x| x.abs()).mean().unwrap())
             }
-            MetricType::MeanSquaredError => {
+            Self::MeanSquaredError => {
                 let diff = predictions - targets;
                 Ok(diff.mapv(|x| x * x).mean().unwrap())
             }

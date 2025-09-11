@@ -314,16 +314,16 @@ impl QNNBuilder {
 impl fmt::Display for QNNLayerType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            QNNLayerType::EncodingLayer { num_features } => {
+            Self::EncodingLayer { num_features } => {
                 write!(f, "Encoding Layer (features: {})", num_features)
             }
-            QNNLayerType::VariationalLayer { num_params } => {
+            Self::VariationalLayer { num_params } => {
                 write!(f, "Variational Layer (parameters: {})", num_params)
             }
-            QNNLayerType::EntanglementLayer { connectivity } => {
+            Self::EntanglementLayer { connectivity } => {
                 write!(f, "Entanglement Layer (connectivity: {})", connectivity)
             }
-            QNNLayerType::MeasurementLayer { measurement_basis } => {
+            Self::MeasurementLayer { measurement_basis } => {
                 write!(f, "Measurement Layer (basis: {})", measurement_basis)
             }
         }
