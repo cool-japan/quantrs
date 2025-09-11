@@ -29,6 +29,17 @@ pub enum FermionOperatorType {
     Identity,
 }
 
+impl FermionOperatorType {
+    pub fn dagger(&self) -> Self {
+        match self {
+            Self::Creation => Self::Annihilation,
+            Self::Annihilation => Self::Creation,
+            Self::Number => Self::Number,
+            Self::Identity => Self::Identity,
+        }
+    }
+}
+
 /// A single fermionic operator acting on a specific mode
 #[derive(Debug, Clone, PartialEq)]
 pub struct FermionOperator {
@@ -76,20 +87,7 @@ impl FermionOperator {
     /// Get the Hermitian conjugate
     pub fn dagger(&self) -> Self {
         let conj_coeff = self.coefficient.conj();
-        match self.op_type {
-            FermionOperatorType::Creation => {
-                Self::new(FermionOperatorType::Annihilation, self.mode, conj_coeff)
-            }
-            FermionOperatorType::Annihilation => {
-                Self::new(FermionOperatorType::Creation, self.mode, conj_coeff)
-            }
-            FermionOperatorType::Number => {
-                Self::new(FermionOperatorType::Number, self.mode, conj_coeff)
-            }
-            FermionOperatorType::Identity => {
-                Self::new(FermionOperatorType::Identity, self.mode, conj_coeff)
-            }
-        }
+        Self::new(self.op_type.dagger(), self.mode, conj_coeff)
     }
 }
 

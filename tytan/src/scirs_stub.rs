@@ -481,31 +481,31 @@ mod scirs2_plot_stub {
 
     impl Subplot {
         pub fn bar(&self, _x: &[f64], _y: &[f64]) -> Self {
-            Subplot
+            Self
         }
         pub fn scatter(&self, _x: &[f64], _y: &[f64]) -> Self {
-            Subplot
+            Self
         }
         pub fn plot(&self, _x: &[f64], _y: &[f64]) -> Self {
-            Subplot
+            Self
         }
         pub fn contourf(&self, _x: &[f64], _y: &[f64], _z: &[f64]) -> Self {
-            Subplot
+            Self
         }
         pub fn barh(&self, _y: &[f64], _width: &[f64], _left: &[f64], _height: f64) -> Self {
-            Subplot
+            Self
         }
         pub fn pie(&self, _sizes: &[f64], _labels: &[String]) -> Self {
-            Subplot
+            Self
         }
         pub fn bar_horizontal(&self, _names: &[String], _values: &[f64]) -> Self {
-            Subplot
+            Self
         }
         pub fn text(&self, _x: f64, _y: f64, _text: &str) -> Self {
-            Subplot
+            Self
         }
         pub fn axvline(&self, _x: f64) -> Self {
-            Subplot
+            Self
         }
 
         pub fn set_xlabel(&self, _label: &str) -> &Self {
