@@ -78,19 +78,18 @@ impl OptimizationGate {
 
     fn is_inverse_of(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::H(q1), Self::H(q2)) |
-            (Self::X(q1), Self::X(q2)) |
-            (Self::Y(q1), Self::Y(q2)) |
-            (Self::Z(q1), Self::Z(q2)) |
-            (Self::S(q1), Self::SDag(q2)) |
-            (Self::SDag(q1), Self::S(q2)) |
-            (Self::T(q1), Self::TDag(q2)) |
-            (Self::TDag(q1), Self::T(q2)) => q1 == q2,
-            (Self::CNOT(c1, t1), Self::CNOT(c2, t2)) => {
+            (Self::H(q1), Self::H(q2))
+            | (Self::X(q1), Self::X(q2))
+            | (Self::Y(q1), Self::Y(q2))
+            | (Self::Z(q1), Self::Z(q2))
+            | (Self::S(q1), Self::SDag(q2))
+            | (Self::SDag(q1), Self::S(q2))
+            | (Self::T(q1), Self::TDag(q2))
+            | (Self::TDag(q1), Self::T(q2)) => q1 == q2,
+            (Self::CNOT(c1, t1), Self::CNOT(c2, t2)) => c1 == c2 && t1 == t2,
+            (Self::CY(c1, t1), Self::CY(c2, t2)) | (Self::CZ(c1, t1), Self::CZ(c2, t2)) => {
                 c1 == c2 && t1 == t2
             }
-            (Self::CY(c1, t1), Self::CY(c2, t2)) |
-            (Self::CZ(c1, t1), Self::CZ(c2, t2)) => c1 == c2 && t1 == t2,
             (Self::SWAP(q1, q2), Self::SWAP(q3, q4)) => {
                 (q1 == q3 && q2 == q4) || (q1 == q4 && q2 == q3)
             }

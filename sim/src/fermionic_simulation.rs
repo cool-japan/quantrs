@@ -89,20 +89,20 @@ pub struct FermionicStats {
 impl FermionicOperator {
     /// Check if operator is creation type
     pub fn is_creation(&self) -> bool {
-        matches!(self, FermionicOperator::Creation(_))
+        matches!(self, Self::Creation(_))
     }
 
     /// Check if operator is annihilation type
     pub fn is_annihilation(&self) -> bool {
-        matches!(self, FermionicOperator::Annihilation(_))
+        matches!(self, Self::Annihilation(_))
     }
 
     /// Get site index for single-site operators
     pub fn site(&self) -> Option<usize> {
         match self {
-            FermionicOperator::Creation(i)
-            | FermionicOperator::Annihilation(i)
-            | FermionicOperator::Number(i) => Some(*i),
+            Self::Creation(i)
+            | Self::Annihilation(i)
+            | Self::Number(i) => Some(*i),
             _ => None,
         }
     }
@@ -110,11 +110,11 @@ impl FermionicOperator {
     /// Get canonical ordering for operator comparison
     pub fn ordering_key(&self) -> (usize, usize) {
         match self {
-            FermionicOperator::Creation(i) => (1, *i),
-            FermionicOperator::Annihilation(i) => (0, *i),
-            FermionicOperator::Number(i) => (2, *i),
-            FermionicOperator::Hopping { from, to } => (3, from.min(to) * 1000 + from.max(to)),
-            FermionicOperator::Interaction { sites } => {
+            Self::Creation(i) => (1, *i),
+            Self::Annihilation(i) => (0, *i),
+            Self::Number(i) => (2, *i),
+            Self::Hopping { from, to } => (3, from.min(to) * 1000 + from.max(to)),
+            Self::Interaction { sites } => {
                 let mut sorted_sites = *sites;
                 sorted_sites.sort();
                 (

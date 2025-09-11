@@ -83,15 +83,15 @@ impl SymEngineError {
     /// Get the error code for this error (compatible with SymEngine C API)
     pub fn error_code(&self) -> i32 {
         match self {
-            SymEngineError::NoException => 0,
-            SymEngineError::RuntimeError { .. } => 1,
-            SymEngineError::DivisionByZero => 2,
-            SymEngineError::NotImplemented => 3,
-            SymEngineError::DomainError => 4,
-            SymEngineError::ParseError => 5,
-            SymEngineError::MemoryError => 6,
-            SymEngineError::InvalidOperation { .. } => 7,
-            SymEngineError::Unknown { code } => *code,
+            Self::NoException => 0,
+            Self::RuntimeError { .. } => 1,
+            Self::DivisionByZero => 2,
+            Self::NotImplemented => 3,
+            Self::DomainError => 4,
+            Self::ParseError => 5,
+            Self::MemoryError => 6,
+            Self::InvalidOperation { .. } => 7,
+            Self::Unknown { code } => *code,
         }
     }
 }

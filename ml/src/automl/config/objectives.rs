@@ -34,14 +34,14 @@ impl OptimizationObjective {
     /// Get the weight of this objective
     pub fn weight(&self) -> f64 {
         match self {
-            Self::MaximizeAccuracy { weight } |
-            Self::MinimizeComplexity { weight } |
-            Self::MinimizeQuantumResources { weight } |
-            Self::MaximizeQuantumAdvantage { weight } |
-            Self::MinimizeInferenceTime { weight } |
-            Self::MinimizeTrainingTime { weight } |
-            Self::MaximizeRobustness { weight } |
-            Self::MaximizeInterpretability { weight } => *weight,
+            Self::MaximizeAccuracy { weight }
+            | Self::MinimizeComplexity { weight }
+            | Self::MinimizeQuantumResources { weight }
+            | Self::MaximizeQuantumAdvantage { weight }
+            | Self::MinimizeInferenceTime { weight }
+            | Self::MinimizeTrainingTime { weight }
+            | Self::MaximizeRobustness { weight }
+            | Self::MaximizeInterpretability { weight } => *weight,
         }
     }
 
