@@ -1228,12 +1228,10 @@ impl std::fmt::Debug for AlertCondition {
 impl Clone for AlertCondition {
     fn clone(&self) -> Self {
         match self {
-            Self::ThresholdExceeded { metric, threshold } => {
-                Self::ThresholdExceeded {
-                    metric: metric.clone(),
-                    threshold: *threshold,
-                }
-            }
+            Self::ThresholdExceeded { metric, threshold } => Self::ThresholdExceeded {
+                metric: metric.clone(),
+                threshold: *threshold,
+            },
             Self::TrendDetected { trend, duration } => Self::TrendDetected {
                 trend: trend.clone(),
                 duration: *duration,

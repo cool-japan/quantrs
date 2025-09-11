@@ -100,9 +100,7 @@ impl FermionicOperator {
     /// Get site index for single-site operators
     pub fn site(&self) -> Option<usize> {
         match self {
-            Self::Creation(i)
-            | Self::Annihilation(i)
-            | Self::Number(i) => Some(*i),
+            Self::Creation(i) | Self::Annihilation(i) | Self::Number(i) => Some(*i),
             _ => None,
         }
     }

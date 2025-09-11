@@ -255,14 +255,15 @@ impl AdaptiveStateVector {
     pub fn needs_precision_upgrade(&self, threshold: f64) -> bool {
         // Check if small amplitudes might be lost
         let min_amplitude = match self {
-            Self::Half(v) => v
-                .iter()
-                .map(|c| c.norm_sqr())
-                .filter(|&n| n > 0.0)
-                .fold(None, |acc, x| match acc {
-                    None => Some(x),
-                    Some(y) => Some(if x < y { x } else { y }),
-                }),
+            Self::Half(v) => {
+                v.iter()
+                    .map(|c| c.norm_sqr())
+                    .filter(|&n| n > 0.0)
+                    .fold(None, |acc, x| match acc {
+                        None => Some(x),
+                        Some(y) => Some(if x < y { x } else { y }),
+                    })
+            }
             Self::Single(v) => v
                 .iter()
                 .map(|c| c.norm_sqr() as f64)
@@ -271,14 +272,15 @@ impl AdaptiveStateVector {
                     None => Some(x),
                     Some(y) => Some(if x < y { x } else { y }),
                 }),
-            Self::Double(v) => v
-                .iter()
-                .map(|c| c.norm_sqr())
-                .filter(|&n| n > 0.0)
-                .fold(None, |acc, x| match acc {
-                    None => Some(x),
-                    Some(y) => Some(if x < y { x } else { y }),
-                }),
+            Self::Double(v) => {
+                v.iter()
+                    .map(|c| c.norm_sqr())
+                    .filter(|&n| n > 0.0)
+                    .fold(None, |acc, x| match acc {
+                        None => Some(x),
+                        Some(y) => Some(if x < y { x } else { y }),
+                    })
+            }
         };
 
         if let Some(min_amp) = min_amplitude {
