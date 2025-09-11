@@ -719,17 +719,17 @@ pub enum TensorNetworkError {
 impl std::fmt::Display for TensorNetworkError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TensorNetworkError::InvalidDimensions(msg) => write!(f, "Invalid dimensions: {}", msg),
-            TensorNetworkError::CompressionFailed(msg) => write!(f, "Compression failed: {}", msg),
-            TensorNetworkError::OptimizationFailed(msg) => {
+            Self::InvalidDimensions(msg) => write!(f, "Invalid dimensions: {}", msg),
+            Self::CompressionFailed(msg) => write!(f, "Compression failed: {}", msg),
+            Self::OptimizationFailed(msg) => {
                 write!(f, "Optimization failed: {}", msg)
             }
-            TensorNetworkError::MemoryAllocationFailed(msg) => {
+            Self::MemoryAllocationFailed(msg) => {
                 write!(f, "Memory allocation failed: {}", msg)
             }
-            TensorNetworkError::SymmetryViolation(msg) => write!(f, "Symmetry violation: {}", msg),
-            TensorNetworkError::ConvergenceFailed(msg) => write!(f, "Convergence failed: {}", msg),
-            TensorNetworkError::NumericalError(msg) => write!(f, "Numerical error: {}", msg),
+            Self::SymmetryViolation(msg) => write!(f, "Symmetry violation: {}", msg),
+            Self::ConvergenceFailed(msg) => write!(f, "Convergence failed: {}", msg),
+            Self::NumericalError(msg) => write!(f, "Numerical error: {}", msg),
         }
     }
 }

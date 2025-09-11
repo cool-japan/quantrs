@@ -703,20 +703,20 @@ impl Default for UnifiedErrorHandler {
 impl Display for ErrorCategory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let display = match self {
-            ErrorCategory::Network => "Network",
-            ErrorCategory::Authentication => "Authentication",
-            ErrorCategory::RateLimit => "RateLimit",
-            ErrorCategory::Validation => "Validation",
-            ErrorCategory::Hardware => "Hardware",
-            ErrorCategory::ServiceUnavailable => "ServiceUnavailable",
-            ErrorCategory::ServerError => "ServerError",
-            ErrorCategory::NotFound => "NotFound",
-            ErrorCategory::Timeout => "Timeout",
-            ErrorCategory::Insufficient => "Insufficient",
-            ErrorCategory::DataFormat => "DataFormat",
-            ErrorCategory::Unsupported => "Unsupported",
-            ErrorCategory::Execution => "Execution",
-            ErrorCategory::Critical => "Critical",
+            Self::Network => "Network",
+            Self::Authentication => "Authentication",
+            Self::RateLimit => "RateLimit",
+            Self::Validation => "Validation",
+            Self::Hardware => "Hardware",
+            Self::ServiceUnavailable => "ServiceUnavailable",
+            Self::ServerError => "ServerError",
+            Self::NotFound => "NotFound",
+            Self::Timeout => "Timeout",
+            Self::Insufficient => "Insufficient",
+            Self::DataFormat => "DataFormat",
+            Self::Unsupported => "Unsupported",
+            Self::Execution => "Execution",
+            Self::Critical => "Critical",
         };
         write!(f, "{}", display)
     }

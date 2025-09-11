@@ -24,15 +24,15 @@ pub enum AnalysisError {
 impl std::fmt::Display for AnalysisError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AnalysisError::ConfigurationError(msg) => write!(f, "Configuration error: {}", msg),
-            AnalysisError::DataCollectionError(msg) => write!(f, "Data collection error: {}", msg),
-            AnalysisError::ComputationError(msg) => write!(f, "Computation error: {}", msg),
-            AnalysisError::InsufficientData(msg) => write!(f, "Insufficient data: {}", msg),
-            AnalysisError::ModelTrainingError(msg) => write!(f, "Model training error: {}", msg),
-            AnalysisError::ReportGenerationError(msg) => {
+            Self::ConfigurationError(msg) => write!(f, "Configuration error: {}", msg),
+            Self::DataCollectionError(msg) => write!(f, "Data collection error: {}", msg),
+            Self::ComputationError(msg) => write!(f, "Computation error: {}", msg),
+            Self::InsufficientData(msg) => write!(f, "Insufficient data: {}", msg),
+            Self::ModelTrainingError(msg) => write!(f, "Model training error: {}", msg),
+            Self::ReportGenerationError(msg) => {
                 write!(f, "Report generation error: {}", msg)
             }
-            AnalysisError::SystemError(msg) => write!(f, "System error: {}", msg),
+            Self::SystemError(msg) => write!(f, "System error: {}", msg),
         }
     }
 }

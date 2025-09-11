@@ -238,16 +238,16 @@ pub enum SingleQubitGate {
 impl PartialEq for SingleQubitGate {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (SingleQubitGate::X, SingleQubitGate::X) => true,
-            (SingleQubitGate::Y, SingleQubitGate::Y) => true,
-            (SingleQubitGate::Z, SingleQubitGate::Z) => true,
-            (SingleQubitGate::H, SingleQubitGate::H) => true,
-            (SingleQubitGate::S, SingleQubitGate::S) => true,
-            (SingleQubitGate::T, SingleQubitGate::T) => true,
-            (SingleQubitGate::SqrtX, SingleQubitGate::SqrtX) => true,
-            (SingleQubitGate::RX(a), SingleQubitGate::RX(b)) => (a - b).abs() < 1e-10,
-            (SingleQubitGate::RY(a), SingleQubitGate::RY(b)) => (a - b).abs() < 1e-10,
-            (SingleQubitGate::RZ(a), SingleQubitGate::RZ(b)) => (a - b).abs() < 1e-10,
+            (Self::X, Self::X) |
+            (Self::Y, Self::Y) |
+            (Self::Z, Self::Z) |
+            (Self::H, Self::H) |
+            (Self::S, Self::S) |
+            (Self::T, Self::T) |
+            (Self::SqrtX, Self::SqrtX) => true,
+            (Self::RX(a), Self::RX(b)) |
+            (Self::RY(a), Self::RY(b)) |
+            (Self::RZ(a), Self::RZ(b)) => (a - b).abs() < 1e-10,
             _ => false,
         }
     }

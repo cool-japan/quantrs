@@ -144,15 +144,15 @@ impl WorkloadType {
     /// Convert WorkloadType to u8 for hashing/identification purposes
     pub fn as_u8(&self) -> u8 {
         match self {
-            WorkloadType::Simulation => 0,
-            WorkloadType::Optimization => 1,
-            WorkloadType::MachineLearning => 2,
-            WorkloadType::Cryptography => 3,
-            WorkloadType::Chemistry => 4,
-            WorkloadType::FinancialModeling => 5,
-            WorkloadType::Research => 6,
-            WorkloadType::Production => 7,
-            WorkloadType::Custom(_) => 8,
+            Self::Simulation => 0,
+            Self::Optimization => 1,
+            Self::MachineLearning => 2,
+            Self::Cryptography => 3,
+            Self::Chemistry => 4,
+            Self::FinancialModeling => 5,
+            Self::Research => 6,
+            Self::Production => 7,
+            Self::Custom(_) => 8,
         }
     }
 }

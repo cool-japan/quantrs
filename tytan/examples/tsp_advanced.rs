@@ -478,9 +478,9 @@ impl serde::Serialize for DistanceMetric {
         S: serde::Serializer,
     {
         serializer.serialize_str(match self {
-            DistanceMetric::Euclidean => "Euclidean",
-            DistanceMetric::Haversine => "Haversine",
-            DistanceMetric::Manhattan => "Manhattan",
+            Self::Euclidean => "Euclidean",
+            Self::Haversine => "Haversine",
+            Self::Manhattan => "Manhattan",
         })
     }
 }

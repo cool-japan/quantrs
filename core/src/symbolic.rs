@@ -125,7 +125,7 @@ impl SymbolicExpression {
             }),
 
             #[cfg(feature = "symbolic")]
-            SymbolicExpression::SymEngine(expr) => {
+            Self::SymEngine(expr) => {
                 // For SymEngine evaluation, we would need to substitute variables
                 // This is a simplified implementation
                 if let Ok(value) = expr.to_string().parse::<f64>() {
@@ -155,7 +155,7 @@ impl SymbolicExpression {
             }),
 
             #[cfg(feature = "symbolic")]
-            SymbolicExpression::SymEngine(_) => Err(QuantRS2Error::UnsupportedOperation(
+            Self::SymEngine(_) => Err(QuantRS2Error::UnsupportedOperation(
                 "Complex SymEngine evaluation not yet implemented".to_string(),
             )),
 
@@ -226,7 +226,7 @@ impl SymbolicExpression {
             Self::Variable(name) => vec![name.clone()],
 
             #[cfg(feature = "symbolic")]
-            SymbolicExpression::SymEngine(_) => {
+            Self::SymEngine(_) => {
                 // Would need to implement variable extraction from SymEngine
                 Vec::new()
             }
@@ -264,7 +264,7 @@ impl SymbolicExpression {
             Self::Variable(_) => false,
 
             #[cfg(feature = "symbolic")]
-            SymbolicExpression::SymEngine(_) => {
+            Self::SymEngine(_) => {
                 // Would need to check if SymEngine expression has variables
                 false
             }
@@ -284,7 +284,7 @@ impl SymbolicExpression {
                 .unwrap_or_else(|| self.clone())),
 
             #[cfg(feature = "symbolic")]
-            SymbolicExpression::SymEngine(_) => {
+            Self::SymEngine(_) => {
                 // Would implement SymEngine substitution
                 Err(QuantRS2Error::UnsupportedOperation(
                     "SymEngine substitution not yet implemented".to_string(),
@@ -478,7 +478,7 @@ impl fmt::Display for SymbolicExpression {
             Self::Variable(name) => write!(f, "{}", name),
 
             #[cfg(feature = "symbolic")]
-            SymbolicExpression::SymEngine(expr) => write!(f, "{}", expr),
+            Self::SymEngine(expr) => write!(f, "{}", expr),
 
             #[cfg(not(feature = "symbolic"))]
             Self::Simple(expr) => Self::display_simple(expr, f),

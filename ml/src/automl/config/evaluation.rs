@@ -162,35 +162,35 @@ impl EvaluationMetric {
     pub fn is_maximization(&self) -> bool {
         matches!(
             self,
-            EvaluationMetric::Accuracy
-                | EvaluationMetric::Precision
-                | EvaluationMetric::Recall
-                | EvaluationMetric::F1Score
-                | EvaluationMetric::AUC
-                | EvaluationMetric::R2Score
-                | EvaluationMetric::QuantumAdvantage
-                | EvaluationMetric::ResourceEfficiency
-                | EvaluationMetric::Robustness
+            Self::Accuracy
+                | Self::Precision
+                | Self::Recall
+                | Self::F1Score
+                | Self::AUC
+                | Self::R2Score
+                | Self::QuantumAdvantage
+                | Self::ResourceEfficiency
+                | Self::Robustness
         )
     }
 
     /// Get the metric name as a string
     pub fn name(&self) -> &'static str {
         match self {
-            EvaluationMetric::Accuracy => "accuracy",
-            EvaluationMetric::Precision => "precision",
-            EvaluationMetric::Recall => "recall",
-            EvaluationMetric::F1Score => "f1_score",
-            EvaluationMetric::AUC => "auc",
-            EvaluationMetric::MeanSquaredError => "mse",
-            EvaluationMetric::MeanAbsoluteError => "mae",
-            EvaluationMetric::R2Score => "r2_score",
-            EvaluationMetric::QuantumAdvantage => "quantum_advantage",
-            EvaluationMetric::ResourceEfficiency => "resource_efficiency",
-            EvaluationMetric::InferenceTime => "inference_time",
-            EvaluationMetric::TrainingTime => "training_time",
-            EvaluationMetric::ModelComplexity => "model_complexity",
-            EvaluationMetric::Robustness => "robustness",
+            Self::Accuracy => "accuracy",
+            Self::Precision => "precision",
+            Self::Recall => "recall",
+            Self::F1Score => "f1_score",
+            Self::AUC => "auc",
+            Self::MeanSquaredError => "mse",
+            Self::MeanAbsoluteError => "mae",
+            Self::R2Score => "r2_score",
+            Self::QuantumAdvantage => "quantum_advantage",
+            Self::ResourceEfficiency => "resource_efficiency",
+            Self::InferenceTime => "inference_time",
+            Self::TrainingTime => "training_time",
+            Self::ModelComplexity => "model_complexity",
+            Self::Robustness => "robustness",
         }
     }
 }
@@ -199,26 +199,22 @@ impl CrossValidationStrategy {
     /// Get the number of folds/splits for this strategy
     pub fn n_splits(&self) -> usize {
         match self {
-            CrossValidationStrategy::KFold { k } => *k,
-            CrossValidationStrategy::StratifiedKFold { k } => *k,
-            CrossValidationStrategy::TimeSeriesSplit { n_splits } => *n_splits,
-            CrossValidationStrategy::LeaveOneOut => 1, // Special case
-            CrossValidationStrategy::Bootstrap { n_bootstrap } => *n_bootstrap,
-            CrossValidationStrategy::HoldOut { .. } => 1,
+            Self::KFold { k } => *k,
+            Self::StratifiedKFold { k } => *k,
+            Self::TimeSeriesSplit { n_splits } => *n_splits,
+            Self::LeaveOneOut => 1, // Special case
+            Self::Bootstrap { n_bootstrap } => *n_bootstrap,
+            Self::HoldOut { .. } => 1,
         }
     }
 
     /// Check if this strategy preserves class distribution
     pub fn is_stratified(&self) -> bool {
-        matches!(self, CrossValidationStrategy::StratifiedKFold { .. })
+        matches!(self, Self::StratifiedKFold { .. })
     }
 
     /// Check if this strategy is suitable for time series data
     pub fn is_time_series_safe(&self) -> bool {
-        matches!(
-            self,
-            CrossValidationStrategy::TimeSeriesSplit { .. }
-                | CrossValidationStrategy::HoldOut { .. }
-        )
+        matches!(self, Self::TimeSeriesSplit { .. } | Self::HoldOut { .. })
     }
 }
