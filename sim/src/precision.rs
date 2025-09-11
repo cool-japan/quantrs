@@ -29,33 +29,33 @@ impl Precision {
     /// Get bytes per complex number
     pub fn bytes_per_complex(&self) -> usize {
         match self {
-            Precision::Half => 4,      // 2 * f16
-            Precision::Single => 8,    // 2 * f32
-            Precision::Double => 16,   // 2 * f64
-            Precision::Extended => 32, // 2 * f128 (future)
+            Self::Half => 4,      // 2 * f16
+            Self::Single => 8,    // 2 * f32
+            Self::Double => 16,   // 2 * f64
+            Self::Extended => 32, // 2 * f128 (future)
         }
     }
 
     /// Get relative epsilon for this precision
     pub fn epsilon(&self) -> f64 {
         match self {
-            Precision::Half => 0.001,     // ~2^-10
-            Precision::Single => 1e-7,    // ~2^-23
-            Precision::Double => 1e-15,   // ~2^-52
-            Precision::Extended => 1e-30, // ~2^-100
+            Self::Half => 0.001,     // ~2^-10
+            Self::Single => 1e-7,    // ~2^-23
+            Self::Double => 1e-15,   // ~2^-52
+            Self::Extended => 1e-30, // ~2^-100
         }
     }
 
     /// Determine minimum precision needed for a given error tolerance
     pub fn from_tolerance(tolerance: f64) -> Self {
         if tolerance >= 0.001 {
-            Precision::Half
+            Self::Half
         } else if tolerance >= 1e-7 {
-            Precision::Single
+            Self::Single
         } else if tolerance >= 1e-15 {
-            Precision::Double
+            Self::Double
         } else {
-            Precision::Extended
+            Self::Extended
         }
     }
 }
@@ -192,18 +192,18 @@ impl AdaptiveStateVector {
     /// Get current precision
     pub fn precision(&self) -> Precision {
         match self {
-            AdaptiveStateVector::Half(_) => Precision::Half,
-            AdaptiveStateVector::Single(_) => Precision::Single,
-            AdaptiveStateVector::Double(_) => Precision::Double,
+            Self::Half(_) => Precision::Half,
+            Self::Single(_) => Precision::Single,
+            Self::Double(_) => Precision::Double,
         }
     }
 
     /// Get number of qubits
     pub fn num_qubits(&self) -> usize {
         let size = match self {
-            AdaptiveStateVector::Half(v) => v.len(),
-            AdaptiveStateVector::Single(v) => v.len(),
-            AdaptiveStateVector::Double(v) => v.len(),
+            Self::Half(v) => v.len(),
+            Self::Single(v) => v.len(),
+            Self::Double(v) => v.len(),
         };
         (size as f64).log2() as usize
     }
@@ -211,16 +211,16 @@ impl AdaptiveStateVector {
     /// Convert to double precision for computation
     pub fn to_complex64(&self) -> Array1<Complex64> {
         match self {
-            AdaptiveStateVector::Half(v) => v.map(|c| c.to_complex64()),
-            AdaptiveStateVector::Single(v) => v.map(|c| c.to_complex64()),
-            AdaptiveStateVector::Double(v) => v.clone(),
+            Self::Half(v) => v.map(|c| c.to_complex64()),
+            Self::Single(v) => v.map(|c| c.to_complex64()),
+            Self::Double(v) => v.clone(),
         }
     }
 
     /// Update from double precision
     pub fn from_complex64(&mut self, data: &Array1<Complex64>) -> Result<()> {
         match self {
-            AdaptiveStateVector::Half(v) => {
+            Self::Half(v) => {
                 if v.len() != data.len() {
                     return Err(SimulatorError::DimensionMismatch(format!(
                         "Size mismatch: {} vs {}",
@@ -232,7 +232,7 @@ impl AdaptiveStateVector {
                     v[i] = ComplexF16::from_complex64(c);
                 }
             }
-            AdaptiveStateVector::Single(v) => {
+            Self::Single(v) => {
                 if v.len() != data.len() {
                     return Err(SimulatorError::DimensionMismatch(format!(
                         "Size mismatch: {} vs {}",
@@ -244,7 +244,7 @@ impl AdaptiveStateVector {
                     v[i] = Complex32::from_complex64(c);
                 }
             }
-            AdaptiveStateVector::Double(v) => {
+            Self::Double(v) => {
                 v.assign(data);
             }
         }
@@ -255,7 +255,7 @@ impl AdaptiveStateVector {
     pub fn needs_precision_upgrade(&self, threshold: f64) -> bool {
         // Check if small amplitudes might be lost
         let min_amplitude = match self {
-            AdaptiveStateVector::Half(v) => v
+            Self::Half(v) => v
                 .iter()
                 .map(|c| c.norm_sqr())
                 .filter(|&n| n > 0.0)
@@ -263,7 +263,7 @@ impl AdaptiveStateVector {
                     None => Some(x),
                     Some(y) => Some(if x < y { x } else { y }),
                 }),
-            AdaptiveStateVector::Single(v) => v
+            Self::Single(v) => v
                 .iter()
                 .map(|c| c.norm_sqr() as f64)
                 .filter(|&n| n > 0.0)
@@ -271,7 +271,7 @@ impl AdaptiveStateVector {
                     None => Some(x),
                     Some(y) => Some(if x < y { x } else { y }),
                 }),
-            AdaptiveStateVector::Double(v) => v
+            Self::Double(v) => v
                 .iter()
                 .map(|c| c.norm_sqr())
                 .filter(|&n| n > 0.0)
@@ -320,14 +320,14 @@ impl AdaptiveStateVector {
         // Compute error from downgrade
         let mut max_error: f64 = 0.0;
         match &test_vec {
-            AdaptiveStateVector::Half(_) => {
+            Self::Half(_) => {
                 for &c in data.iter() {
                     let converted = ComplexF16::from_complex64(c).to_complex64();
                     let error = (c - converted).norm();
                     max_error = max_error.max(error);
                 }
             }
-            AdaptiveStateVector::Single(_) => {
+            Self::Single(_) => {
                 for &c in data.iter() {
                     let converted = Complex32::from_complex64(c).to_complex64();
                     let error = (c - converted).norm();
@@ -348,9 +348,9 @@ impl AdaptiveStateVector {
     /// Memory usage in bytes
     pub fn memory_usage(&self) -> usize {
         let elements = match self {
-            AdaptiveStateVector::Half(v) => v.len(),
-            AdaptiveStateVector::Single(v) => v.len(),
-            AdaptiveStateVector::Double(v) => v.len(),
+            Self::Half(v) => v.len(),
+            Self::Single(v) => v.len(),
+            Self::Double(v) => v.len(),
         };
         elements * self.precision().bytes_per_complex()
     }

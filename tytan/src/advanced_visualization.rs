@@ -1203,21 +1203,21 @@ pub enum AlertCondition {
 impl std::fmt::Debug for AlertCondition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AlertCondition::ThresholdExceeded { metric, threshold } => f
+            Self::ThresholdExceeded { metric, threshold } => f
                 .debug_struct("ThresholdExceeded")
                 .field("metric", metric)
                 .field("threshold", threshold)
                 .finish(),
-            AlertCondition::TrendDetected { trend, duration } => f
+            Self::TrendDetected { trend, duration } => f
                 .debug_struct("TrendDetected")
                 .field("trend", trend)
                 .field("duration", duration)
                 .finish(),
-            AlertCondition::AnomalyDetected { anomaly_type } => f
+            Self::AnomalyDetected { anomaly_type } => f
                 .debug_struct("AnomalyDetected")
                 .field("anomaly_type", anomaly_type)
                 .finish(),
-            AlertCondition::Custom(_) => f
+            Self::Custom(_) => f
                 .debug_struct("Custom")
                 .field("function", &"<custom function>")
                 .finish(),
@@ -1228,22 +1228,22 @@ impl std::fmt::Debug for AlertCondition {
 impl Clone for AlertCondition {
     fn clone(&self) -> Self {
         match self {
-            AlertCondition::ThresholdExceeded { metric, threshold } => {
-                AlertCondition::ThresholdExceeded {
+            Self::ThresholdExceeded { metric, threshold } => {
+                Self::ThresholdExceeded {
                     metric: metric.clone(),
                     threshold: *threshold,
                 }
             }
-            AlertCondition::TrendDetected { trend, duration } => AlertCondition::TrendDetected {
+            Self::TrendDetected { trend, duration } => Self::TrendDetected {
                 trend: trend.clone(),
                 duration: *duration,
             },
-            AlertCondition::AnomalyDetected { anomaly_type } => AlertCondition::AnomalyDetected {
+            Self::AnomalyDetected { anomaly_type } => Self::AnomalyDetected {
                 anomaly_type: anomaly_type.clone(),
             },
-            AlertCondition::Custom(_) => {
+            Self::Custom(_) => {
                 // For Custom variants, we can't clone the function, so create a no-op
-                AlertCondition::Custom(Box::new(|_| false))
+                Self::Custom(Box::new(|_| false))
             }
         }
     }

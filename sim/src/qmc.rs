@@ -80,7 +80,7 @@ impl WaveFunction {
     /// Evaluate wave function amplitude for a configuration
     pub fn amplitude(&self, config: &[bool]) -> Complex64 {
         match self {
-            WaveFunction::Product(amps) => {
+            Self::Product(amps) => {
                 let mut result = Complex64::new(1.0, 0.0);
                 for (i, &bit) in config.iter().enumerate() {
                     if i < amps.len() {
@@ -93,7 +93,7 @@ impl WaveFunction {
                 }
                 result
             }
-            WaveFunction::Jastrow { alpha, beta } => {
+            Self::Jastrow { alpha, beta } => {
                 // Jastrow factor: exp(sum_ij J_ij n_i n_j)
                 let mut exponent = 0.0;
                 for (i, &n_i) in config.iter().enumerate() {
@@ -108,7 +108,7 @@ impl WaveFunction {
                 }
                 Complex64::new(exponent.exp(), 0.0)
             }
-            WaveFunction::NeuralNetwork { weights, biases } => {
+            Self::NeuralNetwork { weights, biases } => {
                 // Simplified RBM-like network
                 let input: Vec<f64> = config.iter().map(|&b| if b { 1.0 } else { 0.0 }).collect();
                 let hidden_dim = weights.nrows();
@@ -130,7 +130,7 @@ impl WaveFunction {
                 }
                 Complex64::new(log_psi.exp(), 0.0)
             }
-            WaveFunction::MPS { .. } => {
+            Self::MPS { .. } => {
                 // Simplified MPS evaluation
                 Complex64::new(1.0, 0.0)
             }
@@ -140,7 +140,7 @@ impl WaveFunction {
     /// Compute log derivative for parameter optimization
     pub fn log_derivative(&self, config: &[bool], param_idx: usize) -> f64 {
         match self {
-            WaveFunction::Jastrow { alpha, beta } => {
+            Self::Jastrow { alpha, beta } => {
                 // Gradient w.r.t. Jastrow parameters
                 if param_idx == 0 {
                     // d/d(alpha)

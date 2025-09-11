@@ -726,14 +726,14 @@ pub enum TomographyError {
 impl std::fmt::Display for TomographyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TomographyError::InsufficientData(msg) => write!(f, "Insufficient data: {}", msg),
-            TomographyError::ReconstructionFailed(msg) => {
+            Self::InsufficientData(msg) => write!(f, "Insufficient data: {}", msg),
+            Self::ReconstructionFailed(msg) => {
                 write!(f, "Reconstruction failed: {}", msg)
             }
-            TomographyError::InvalidBasis(msg) => write!(f, "Invalid basis: {}", msg),
-            TomographyError::ConvergenceFailed(msg) => write!(f, "Convergence failed: {}", msg),
-            TomographyError::ValidationFailed(msg) => write!(f, "Validation failed: {}", msg),
-            TomographyError::NumericalError(msg) => write!(f, "Numerical error: {}", msg),
+            Self::InvalidBasis(msg) => write!(f, "Invalid basis: {}", msg),
+            Self::ConvergenceFailed(msg) => write!(f, "Convergence failed: {}", msg),
+            Self::ValidationFailed(msg) => write!(f, "Validation failed: {}", msg),
+            Self::NumericalError(msg) => write!(f, "Numerical error: {}", msg),
         }
     }
 }

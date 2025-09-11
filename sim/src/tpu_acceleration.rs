@@ -285,13 +285,13 @@ impl TPUDataType {
     /// Get size in bytes
     pub fn size_bytes(&self) -> usize {
         match self {
-            TPUDataType::Float32 => 4,
-            TPUDataType::Float64 => 8,
-            TPUDataType::BFloat16 => 2,
-            TPUDataType::Complex64 => 8,
-            TPUDataType::Complex128 => 16,
-            TPUDataType::Int32 => 4,
-            TPUDataType::Int64 => 8,
+            Self::Float32 => 4,
+            Self::Float64 => 8,
+            Self::BFloat16 => 2,
+            Self::Complex64 => 8,
+            Self::Complex128 => 16,
+            Self::Int32 => 4,
+            Self::Int64 => 8,
         }
     }
 }
