@@ -14,8 +14,8 @@ description = "Core types and traits for the QuantRS2 quantum computing framewor
 num-complex.workspace = true
 thiserror.workspace = true
 ndarray.workspace = true
-# Temporarily disabled due to scirs2-core regex dependency issue
-# scirs2-core = { workspace = true, features = ["types", "memory_management", "simd", "serialization", "parallel", "gpu", "linalg"] }
+# Temporarily commented due to upstream compilation issues in beta.1
+# scirs2-core = { workspace = true, features = ["simd", "parallel"] }
 # scirs2-linalg.workspace = true
 # scirs2-optimize.workspace = true
 # scirs2-sparse.workspace = true

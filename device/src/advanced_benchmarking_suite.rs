@@ -1197,11 +1197,11 @@ impl AdvancedHardwareBenchmarkSuite {
             #[cfg(feature = "scirs2")]
             {
                 feature_vector.push(mean(&exec_times.view()).unwrap_or(0.0));
-                feature_vector.push(std(&exec_times.view(), 1).unwrap_or(0.0));
+                feature_vector.push(std(&exec_times.view(), 1, None).unwrap_or(0.0));
                 feature_vector.push(mean(&fidelities.view()).unwrap_or(0.0));
-                feature_vector.push(std(&fidelities.view(), 1).unwrap_or(0.0));
+                feature_vector.push(std(&fidelities.view(), 1, None).unwrap_or(0.0));
                 feature_vector.push(mean(&error_rates.view()).unwrap_or(0.0));
-                feature_vector.push(std(&error_rates.view(), 1).unwrap_or(0.0));
+                feature_vector.push(std(&error_rates.view(), 1, None).unwrap_or(0.0));
             }
 
             #[cfg(not(feature = "scirs2"))]

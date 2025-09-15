@@ -8,8 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use scirs2_core::gpu::{
-    GpuBackend, GpuDevice, GpuMemoryInfo, GpuPerformanceMetrics as SciRS2PerformanceMetrics,
-    GpuPlatform, GpuProfiler as SciRS2GpuProfiler, GpuTelemetry,
+    GpuBackend, GpuContext, GpuDevice, GpuError,
 };
 
 /// Performance metrics for GPU operations
@@ -37,12 +36,10 @@ pub struct GpuPerformanceMetrics {
 pub struct GpuProfiler {
     /// Current metrics
     metrics: Arc<Mutex<GpuPerformanceMetrics>>,
-    /// SciRS2 GPU profiler
-    scirs2_profiler: Arc<SciRS2GpuProfiler>,
-    /// GPU device handle
-    device: Arc<GpuDevice>,
-    /// GPU platform info
-    platform: Arc<GpuPlatform>,
+    /// GPU context handle
+    context: Arc<GpuContext>,
+    /// GPU backend type
+    backend: GpuBackend,
     /// Profiling enabled
     enabled: bool,
 }
@@ -56,20 +53,30 @@ impl Default for GpuProfiler {
 impl GpuProfiler {
     /// Create new profiler
     pub fn new() -> Self {
+        // Use CPU backend as default fallback
+        let backend = GpuBackend::Cpu;
+        let context = GpuContext::new(backend).unwrap_or_else(|_| {
+            // This should never fail for CPU backend
+            panic!("Failed to create CPU context")
+        });
+
         Self {
             metrics: Arc::new(Mutex::new(GpuPerformanceMetrics::default())),
+            context: Arc::new(context),
+            backend,
             enabled: true,
-            #[cfg(feature = "scirs")]
-            device_info: None,
         }
     }
 
     /// Initialize with device context
-    #[cfg(feature = "scirs")]
-    pub fn with_context(mut self, ctx: &GpuContext) -> Self {
-        // TODO: Implement get_device_info in GPU stub
-        // self.device_info = Some(ctx.get_device_info());
-        self
+    pub fn with_context(ctx: GpuContext) -> Self {
+        let backend = ctx.backend();
+        Self {
+            metrics: Arc::new(Mutex::new(GpuPerformanceMetrics::default())),
+            context: Arc::new(ctx),
+            backend,
+            enabled: true,
+        }
     }
 
     /// Enable/disable profiling

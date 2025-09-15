@@ -609,7 +609,7 @@ impl DDPerformanceAnalyzer {
             let mean_val = values.sum() / values.len() as f64;
 
             #[cfg(feature = "scirs2")]
-            let std_val = std(&values.view(), 1).unwrap_or(1.0);
+            let std_val = std(&values.view(), 1, None).unwrap_or(1.0);
             #[cfg(not(feature = "scirs2"))]
             let std_val = {
                 let mean = mean_val;

@@ -2322,7 +2322,7 @@ impl QuantumErrorCorrector {
         #[cfg(feature = "scirs2")]
         let mean_success = mean(&success_array.view()).unwrap_or(0.0);
         #[cfg(feature = "scirs2")]
-        let std_success = std(&success_array.view(), 1).unwrap_or(0.0);
+        let std_success = std(&success_array.view(), 1, None).unwrap_or(0.0);
 
         #[cfg(not(feature = "scirs2"))]
         let mean_success = fallback_scirs2::mean(&success_array.view()).unwrap_or(0.0);

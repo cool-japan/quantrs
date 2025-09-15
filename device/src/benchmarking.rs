@@ -25,8 +25,9 @@ use scirs2_linalg::{
     correlationmatrix, det, eigvals, inv, matrix_norm, svd, LinalgError, LinalgResult,
 };
 use scirs2_stats::{
-    distributions, mean, median, pearsonr, spearmanr, std, ttest_1samp, var, Alternative,
+    distributions, mean, median, pearsonr, spearmanr, std, ttest_1samp, var,
     TTestResult,
+    ttest::Alternative,
 };
 
 use ndarray::{s, Array1, Array2, ArrayView1, ArrayView2};

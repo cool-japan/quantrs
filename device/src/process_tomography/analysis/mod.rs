@@ -20,7 +20,8 @@ pub use structural::*;
 #[cfg(feature = "scirs2")]
 use scirs2_stats::{
     corrcoef, mean, pearsonr, shapiro_wilk, spearmanr, std, ttest_1samp, ttest_ind, var,
-    Alternative, TTestResult,
+    TTestResult,
+    ttest::Alternative,
 };
 
 #[cfg(not(feature = "scirs2"))]

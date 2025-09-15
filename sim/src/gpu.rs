@@ -39,10 +39,13 @@ pub struct SciRS2GpuStateVectorSimulator {
 impl SciRS2GpuStateVectorSimulator {
     /// Create a new SciRS2-powered GPU state vector simulator
     pub fn new() -> QuantRS2Result<Self> {
-        let platform = GpuPlatform::detect_best_platform()?;
-        let device = Arc::new(platform.create_device(0)?);
-        let backend = Arc::new(GpuBackendFactory::create_backend(platform)?);
-        let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), 1024 * 1024 * 1024)?); // 1GB pool
+        // TODO: Update to use scirs2_core beta.1 GPU API
+        // let platform = GpuPlatform::detect_best_platform()?;
+        // let device = Arc::new(platform.create_device(0)?);
+        // let backend = Arc::new(GpuBackendFactory::create_backend(platform)?);
+        // let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), 1024 * 1024 * 1024)?); // 1GB pool
+
+        return Err(QuantRS2Error::GpuError("GPU backend API has changed in beta.1. Please use CPU simulation for now.".to_string()));
         
         Ok(Self {
             backend,
@@ -69,9 +72,8 @@ impl SciRS2GpuStateVectorSimulator {
 
     /// Create an optimized simulator for quantum machine learning
     pub fn new_qml_optimized() -> QuantRS2Result<Self> {
-        // TODO: SciRS2GpuFactory not available in beta.1
-        // let backend = Arc::new(SciRS2GpuFactory::create_qml_optimized()?);
-        return Err(SimulatorError::GpuError("GPU backend not available in beta.1".to_string()));
+        // TODO: GPU backend API has changed in beta.1
+        return Err(SimulatorError::GpuError("GPU backend API has changed in beta.1. Please use CPU simulation for now.".to_string()));
         Ok(Self {
             backend,
             enable_profiling: true,

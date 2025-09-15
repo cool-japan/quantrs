@@ -35,11 +35,14 @@ pub struct GpuLinearAlgebra {
 impl GpuLinearAlgebra {
     /// Create a new GPU linear algebra instance using SciRS2
     pub async fn new() -> Result<Self, QuantRS2Error> {
-        let platform = GpuPlatform::detect_best_platform()?;
-        let device = Arc::new(platform.create_device(0)?);
-        let backend = Arc::new(GpuBackendFactory::create_backend(platform)?);
-        let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), 1024 * 1024 * 1024)?); // 1GB pool
-        let kernel_manager = Arc::new(GpuKernelManager::new(device.clone())?);
+        // TODO: Update to use scirs2_core beta.1 GPU API
+        // let platform = GpuPlatform::detect_best_platform()?;
+        // let device = Arc::new(platform.create_device(0)?);
+        // let backend = Arc::new(GpuBackendFactory::create_backend(platform)?);
+        // let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), 1024 * 1024 * 1024)?); // 1GB pool
+        // let kernel_manager = Arc::new(GpuKernelManager::new(device.clone())?);
+
+        return Err(QuantRS2Error::GpuError("GPU backend API has changed in beta.1. Please use CPU linear algebra for now.".to_string()));
         
         Ok(Self {
             backend,
@@ -52,19 +55,14 @@ impl GpuLinearAlgebra {
 
     /// Create a new instance with custom SciRS2 configuration
     pub fn with_config(config: GpuConfig) -> Result<Self, QuantRS2Error> {
-        let platform = GpuPlatform::from_config(&config)?;
-        let device = Arc::new(platform.create_device(config.device_id)?);
-        let backend = Arc::new(GpuBackendFactory::create_backend_with_config(platform, &config)?);
-        let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), config.memory_pool_size)?);
-        let kernel_manager = Arc::new(GpuKernelManager::new(device.clone())?);
-        
-        Ok(Self {
-            backend,
-            device,
-            memory_pool,
-            kernel_manager,
-            enable_profiling: config.enable_profiling,
-        })
+        // TODO: Update to use scirs2_core beta.1 GPU API
+        // let platform = GpuPlatform::from_config(&config)?;
+        // let device = Arc::new(platform.create_device(config.device_id)?);
+        // let backend = Arc::new(GpuBackendFactory::create_backend_with_config(platform, &config)?);
+        // let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), config.memory_pool_size)?);
+        // let kernel_manager = Arc::new(GpuKernelManager::new(device.clone())?);
+
+        Err(QuantRS2Error::GpuError("GPU backend API has changed in beta.1. Please use CPU linear algebra for now.".to_string()))
     }
 
     /// Create an instance optimized for quantum machine learning

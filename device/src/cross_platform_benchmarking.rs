@@ -1318,7 +1318,7 @@ impl CrossPlatformBenchmarker {
                 sorted_latencies[mid]
             }
         };
-        let std_dev_latency = std(&latency_array.view(), 1).unwrap_or(0.0);
+        let std_dev_latency = std(&latency_array.view(), 1, None).unwrap_or(0.0);
 
         let mut percentiles = HashMap::new();
         let mut sorted_latencies = latencies.clone();
@@ -1463,7 +1463,7 @@ impl CrossPlatformBenchmarker {
             .map(|r| r.total_time.as_secs_f64())
             .collect();
         let latency_array = Array1::from_vec(latency_values);
-        let latency_variability = std(&latency_array.view(), 1).unwrap_or(0.0);
+        let latency_variability = std(&latency_array.view(), 1, None).unwrap_or(0.0);
 
         Ok(LatencyAnalysis {
             submission_latency: Duration::from_millis(100), // Mock value

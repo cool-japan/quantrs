@@ -1405,7 +1405,7 @@ impl CrosstalkAnalyzer {
         // Check frequency independence
         let is_frequency_independent = if let Some(freq_data) = frequency_crosstalk.get(&(i, j)) {
             let amplitudes = freq_data.mapv(|c| c.norm());
-            let variation = std(&amplitudes.view(), 1).unwrap_or(0.0);
+            let variation = std(&amplitudes.view(), 1, None).unwrap_or(0.0);
             let mean_amp = mean(&amplitudes.view()).unwrap_or(1.0);
             variation / mean_amp < 0.1 // Low frequency variation
         } else {
@@ -1420,7 +1420,7 @@ impl CrosstalkAnalyzer {
         let amplitudes = frequency_data.mapv(|c| c.norm());
 
         // Look for frequency-dependent behavior
-        let variation = std(&amplitudes.view(), 1).unwrap_or(0.0);
+        let variation = std(&amplitudes.view(), 1, None).unwrap_or(0.0);
         let mean_amp = mean(&amplitudes.view()).unwrap_or(1.0);
 
         variation / mean_amp > 0.2 // High frequency variation indicates capacitive coupling

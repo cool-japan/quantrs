@@ -91,6 +91,9 @@ pub mod neutral_atom;
 pub mod operations;
 pub mod optimization;
 pub mod optimization_stubs;
+pub mod optimizations_stable;
+// Temporarily disabled until scirs2-core cache/profiling features are stable
+// pub mod optimizations;
 pub mod parallel_ops_stubs;
 pub mod parametric;
 pub mod photonic;

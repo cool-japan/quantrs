@@ -212,13 +212,13 @@ impl StatisticalAnalyzer {
         let data_mean = mean(&data_array.view())
             .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {:?}", e)))?;
 
-        let data_var = var(&data_array.view(), 1)
+        let data_var = var(&data_array.view(), 1, None)
             .map_err(|e| DeviceError::APIError(format!("Variance calculation error: {:?}", e)))?;
 
-        let data_skew = skew(&data_array.view(), true)
+        let data_skew = skew(&data_array.view(), true, None)
             .map_err(|e| DeviceError::APIError(format!("Skewness calculation error: {:?}", e)))?;
 
-        let data_kurt = kurtosis(&data_array.view(), true, true)
+        let data_kurt = kurtosis(&data_array.view(), true, true, None)
             .map_err(|e| DeviceError::APIError(format!("Kurtosis calculation error: {:?}", e)))?;
 
         // Calculate higher moments

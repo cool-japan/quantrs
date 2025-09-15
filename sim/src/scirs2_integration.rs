@@ -12,6 +12,7 @@
 //! - GPU-ready abstractions for heterogeneous computing
 
 use ndarray::{s, Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
+#[cfg(feature = "advanced_math")]
 use ndrustfft::FftHandler;
 use num_complex::Complex64;
 use std::collections::HashMap;

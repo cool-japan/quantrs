@@ -26,8 +26,9 @@ use scirs2_optimize::{minimize, OptimizeResult};
 #[cfg(feature = "scirs2")]
 use scirs2_stats::{
     distributions::{beta, chi2, gamma, norm},
-    ks_2samp, mean, pearsonr, spearmanr, std, ttest_1samp, ttest_ind, var, Alternative,
+    ks_2samp, mean, pearsonr, spearmanr, std, ttest_1samp, ttest_ind, var,
     TTestResult,
+    ttest::Alternative,
 };
 
 #[cfg(not(feature = "scirs2"))]
@@ -1281,7 +1282,7 @@ impl AdvancedNoiseCharacterizer {
 
             // Fit normal distribution
             let mean_fid = mean(&fidelity_array.view()).unwrap_or(0.9);
-            let std_fid = std(&fidelity_array.view(), 1).unwrap_or(0.1);
+            let std_fid = std(&fidelity_array.view(), 1, None).unwrap_or(0.1);
 
             distribution_fits.insert(
                 "fidelity_normal".to_string(),
