@@ -361,7 +361,7 @@ mod tests {
     #[test]
     fn test_std() {
         let data = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
-        let result = std(&data.view(), 1).unwrap();
+        let result = std(&data.view(), 1, None).unwrap();
         // Standard deviation of [1,2,3,4,5] with ddof=1 is sqrt(2.5) ≈ 1.58
         assert!((result - 1.5811388300841898).abs() < 1e-10);
     }

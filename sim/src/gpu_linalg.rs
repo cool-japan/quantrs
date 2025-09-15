@@ -9,9 +9,9 @@ use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use num_complex::Complex64;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
 use scirs2_core::gpu::{
-    GpuBackend, GpuBackendFactory, GpuBuffer, GpuConfig, GpuDevice, GpuMemoryPool,
-    GpuKernel, GpuKernelManager, GpuPlatform, GpuProfiler,
+    GpuBackend, GpuBuffer, GpuDevice, GpuKernel,
 };
+use quantrs2_core::{GpuBackendFactory, GpuConfig};
 use quantrs2_core::prelude::*;
 use std::sync::Arc;
 
@@ -69,11 +69,9 @@ impl GpuLinearAlgebra {
 
     /// Create an instance optimized for quantum machine learning
     pub fn new_qml_optimized() -> Result<Self, QuantRS2Error> {
-        let backend = Arc::new(SciRS2GpuFactory::create_qml_optimized()?);
-        Ok(Self {
-            backend,
-            enable_profiling: true,
-        })
+        // TODO: SciRS2GpuFactory not available in beta.1
+        // let backend = Arc::new(SciRS2GpuFactory::create_qml_optimized()?);
+        Err(QuantRS2Error::GpuError("GPU backend not available in beta.1".to_string()))
     }
 
     /// Enable performance profiling
@@ -108,7 +106,7 @@ impl GpuLinearAlgebra {
 
         // Use SciRS2 SIMD-optimized matrix multiplication
         // This leverages the same SIMD primitives used in the main simulator
-        use quantrs2_core::simd_ops::SimdUnifiedOps;
+        use scirs2_core::simd_ops::SimdUnifiedOps;
 
         // Convert to ndarray views for SIMD operations
         let a_view = a.view();

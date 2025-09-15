@@ -17,11 +17,16 @@ pub mod automatic_parallelization;
 pub mod cache_optimized_layouts;
 pub mod circuit_interfaces;
 pub mod concatenated_error_correction;
+// CUDA-specific modules (not available on macOS)
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 pub mod cuda;
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 pub mod cuda_kernels;
 pub mod debugger;
 pub mod decision_diagram;
 pub mod device_noise_models;
+// Distributed GPU simulation (CUDA-based, not available on macOS)
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 pub mod distributed_gpu;
 pub mod distributed_simulator;
 pub mod dynamic;
@@ -214,8 +219,9 @@ pub mod prelude {
         ConcatenationLevel, ConcatenationStats, DecodingResult, ErrorCorrectionCode, ErrorType,
         HierarchicalDecodingMethod, LevelDecodingResult,
     };
-    #[cfg(feature = "advanced_math")]
+    #[cfg(all(feature = "advanced_math", not(target_os = "macos")))]
     pub use crate::cuda_kernels::{CudaContext, CudaDeviceProperties, CudaKernel};
+    #[cfg(all(feature = "gpu", not(target_os = "macos")))]
     pub use crate::cuda_kernels::{
         CudaKernelConfig, CudaKernelStats, CudaQuantumKernels, GateType as CudaGateType,
         OptimizationLevel as CudaOptimizationLevel,
@@ -556,7 +562,7 @@ pub mod prelude {
         VisualizationHook, VisualizationManager,
     };
 
-    #[cfg(feature = "gpu")]
+    #[cfg(all(feature = "gpu", not(target_os = "macos")))]
     pub use crate::gpu_linalg::{benchmark_gpu_linalg, GpuLinearAlgebra};
     #[allow(unused_imports)]
     pub use crate::statevector::*;
@@ -591,11 +597,19 @@ pub mod v1 {
     pub use crate::api::prelude::*;
 }
 
-#[cfg(feature = "gpu")]
+// CUDA-based GPU implementation (Linux/Windows with NVIDIA GPU)
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 pub mod gpu;
 
-#[cfg(feature = "gpu")]
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 pub mod gpu_linalg;
+
+// Metal-based GPU implementation for macOS (future implementation)
+#[cfg(all(feature = "gpu", target_os = "macos"))]
+pub mod gpu_metal;
+
+#[cfg(all(feature = "gpu", target_os = "macos"))]
+pub mod gpu_linalg_metal;
 
 #[cfg(feature = "advanced_math")]
 pub use crate::tensor_network::*;

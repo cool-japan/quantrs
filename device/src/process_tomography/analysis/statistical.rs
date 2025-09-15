@@ -31,7 +31,7 @@ impl SciRS2ProcessTomographer {
             let data_view = data_array.view();
 
             let mean_val = mean(&data_view).unwrap_or(0.0);
-            let std_val = std(&data_view, 0).unwrap_or(1.0);
+            let std_val = std(&data_view, 0, None).unwrap_or(1.0);
 
             // Test goodness of fit for normal distribution
             let mut goodness_of_fit = 0.0;

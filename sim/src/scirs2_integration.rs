@@ -12,6 +12,7 @@
 //! - GPU-ready abstractions for heterogeneous computing
 
 use ndarray::{s, Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
+use ndrustfft::FftHandler;
 use num_complex::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -671,17 +672,16 @@ impl Default for SciRS2Backend {
 #[cfg(feature = "advanced_math")]
 #[derive(Debug)]
 pub struct MemoryPool {
-    inner: SciRS2MemoryPool,
+    // TODO: SciRS2MemoryPool not available in beta.1, using placeholder
+    _placeholder: (),
 }
 
 #[cfg(feature = "advanced_math")]
 impl MemoryPool {
     pub fn new() -> Self {
         Self {
-            inner: SciRS2MemoryPool::new(1024, 128).unwrap_or_else(|_| {
-                // Fallback to a simple memory pool implementation
-                panic!("Failed to create SciRS2 memory pool")
-            }),
+            // TODO: Implement memory pool when SciRS2MemoryPool is available
+            _placeholder: (),
         }
     }
 }

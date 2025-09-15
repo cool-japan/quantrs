@@ -42,7 +42,7 @@ num-traits.workspace = true
 pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"], optional = true }
 numpy = { workspace = true, optional = true }
 chrono.workspace = true
-# numrs2 = { version = "0.1.0-alpha.4", optional = true }  # Temporarily disabled due to ARM64 platform compilation issues
+numrs2 = { version = "0.1.0-beta.1", optional = true }
 
 [features]
 default = []

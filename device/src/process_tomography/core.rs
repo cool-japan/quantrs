@@ -31,7 +31,7 @@ use super::{
 // Conditional imports for SciRS2
 #[cfg(feature = "scirs2")]
 use scirs2_graph::{
-    betweenness_centrality, closeness_centrality, minimum_spanning_tree, shortest_path,
+    betweenness_centrality, closeness_centrality, dijkstra_path, minimum_spanning_tree,
     strongly_connected_components, Graph,
 };
 #[cfg(feature = "scirs2")]

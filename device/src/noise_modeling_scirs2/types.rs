@@ -93,7 +93,7 @@ pub struct MomentAnalysis {
 /// Correlation structure analysis
 #[derive(Debug, Clone)]
 pub struct CorrelationStructure {
-    pub correlation_matrix: Array2<f64>,
+    pub correlationmatrix: Array2<f64>,
     pub partial_correlations: Array2<f64>,
     pub rank_correlations: Array2<f64>,
     pub time_varying_correlations: Option<Array3<f64>>,

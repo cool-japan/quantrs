@@ -18,7 +18,7 @@ use quantrs2_core::qubit::QubitId;
 #[allow(unused_imports)]
 use std::collections::HashMap;
 
-#[cfg(feature = "gpu")]
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use crate::gpu::GpuStateVectorSimulator;
 
 /// A dynamic circuit that encapsulates circuits of different qubit counts

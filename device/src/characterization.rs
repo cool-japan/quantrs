@@ -655,7 +655,7 @@ pub struct DistributionFitResult {
 
 #[derive(Debug, Clone)]
 pub struct CorrelationAnalysisResult {
-    pub correlation_matrix: Array2<f64>,
+    pub correlationmatrix: Array2<f64>,
     pub significant_correlations: Vec<(String, String, f64, f64)>,
     pub correlation_network: HashMap<String, Vec<String>>,
 }
@@ -1417,7 +1417,7 @@ impl AdvancedNoiseCharacterizer {
     ) -> DeviceResult<CorrelationAnalysisResult> {
         // Placeholder implementation
         Ok(CorrelationAnalysisResult {
-            correlation_matrix: Array2::eye(3),
+            correlationmatrix: Array2::eye(3),
             significant_correlations: Vec::new(),
             correlation_network: HashMap::new(),
         })

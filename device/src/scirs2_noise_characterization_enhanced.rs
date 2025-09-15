@@ -400,12 +400,12 @@ impl EnhancedNoiseCharacterizer {
         let error_data = self.measure_correlated_errors(device, qubits)?;
 
         // Compute correlation matrix
-        let correlation_matrix = self.correlation_analyzer
-            .compute_correlation_matrix(&error_data)?;
-        correlation_data.correlation_matrix = correlation_matrix;
+        let correlationmatrix = self.correlation_analyzer
+            .compute_correlationmatrix(&error_data)?;
+        correlation_data.correlationmatrix = correlationmatrix;
 
         // Identify correlated error clusters
-        let clusters = self.identify_error_clusters(&correlation_matrix)?;
+        let clusters = self.identify_error_clusters(&correlationmatrix)?;
         correlation_data.error_clusters = clusters;
 
         // Analyze spatial correlations
@@ -852,7 +852,7 @@ struct OneOverFParameters {
 /// Correlation data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CorrelationData {
-    correlation_matrix: Array2<f64>,
+    correlationmatrix: Array2<f64>,
     error_clusters: Vec<ErrorCluster>,
     spatial_correlations: Option<SpatialCorrelations>,
 }
@@ -860,7 +860,7 @@ struct CorrelationData {
 impl CorrelationData {
     fn new() -> Self {
         Self {
-            correlation_matrix: Array2::zeros((0, 0)),
+            correlationmatrix: Array2::zeros((0, 0)),
             error_clusters: Vec::new(),
             spatial_correlations: None,
         }

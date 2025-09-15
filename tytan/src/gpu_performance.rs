@@ -8,8 +8,8 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use scirs2_core::gpu::{
-    GpuBackend, GpuDevice, GpuProfiler as SciRS2GpuProfiler, GpuPlatform,
-    GpuPerformanceMetrics as SciRS2PerformanceMetrics, GpuMemoryInfo, GpuTelemetry,
+    GpuBackend, GpuDevice, GpuMemoryInfo, GpuPerformanceMetrics as SciRS2PerformanceMetrics,
+    GpuPlatform, GpuProfiler as SciRS2GpuProfiler, GpuTelemetry,
 };
 
 /// Performance metrics for GPU operations

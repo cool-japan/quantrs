@@ -696,7 +696,7 @@ pub struct DistributionAnalysis {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CorrelationAnalysis {
-    pub correlation_matrix: Array2<f64>,
+    pub correlationmatrix: Array2<f64>,
     pub correlation_significance: HashMap<String, f64>,
     pub causal_relationships: Vec<String>,
 }
@@ -889,7 +889,7 @@ impl Default for DistributionAnalysis {
 impl Default for CorrelationAnalysis {
     fn default() -> Self {
         Self {
-            correlation_matrix: Array2::zeros((0, 0)),
+            correlationmatrix: Array2::zeros((0, 0)),
             correlation_significance: HashMap::new(),
             causal_relationships: Vec::new(),
         }

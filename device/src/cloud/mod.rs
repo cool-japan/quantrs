@@ -21,8 +21,9 @@ use quantrs2_core::{
 use scirs2_linalg::{det, eig, inv, matrix_norm, prelude::*, svd, LinalgError, LinalgResult};
 #[cfg(feature = "scirs2")]
 use scirs2_optimize::{minimize, OptimizeResult};
+use scirs2_stats::ttest::Alternative;
 #[cfg(feature = "scirs2")]
-use scirs2_stats::{corrcoef, distributions, mean, pearsonr, spearmanr, std, var, Alternative};
+use scirs2_stats::{corrcoef, distributions, mean, pearsonr, spearmanr, std, var};
 
 // Fallback implementations when SciRS2 is not available
 #[cfg(not(feature = "scirs2"))]

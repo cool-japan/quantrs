@@ -18,7 +18,7 @@ use quantrs2_core::{
 
 // SciRS2 integration for advanced optimization and analysis
 #[cfg(feature = "scirs2")]
-use scirs2_graph::{minimum_spanning_tree, shortest_path, Graph};
+use scirs2_graph::{dijkstra_path, minimum_spanning_tree, Graph};
 #[cfg(feature = "scirs2")]
 use scirs2_optimize::{differential_evolution, minimize, OptimizeResult};
 #[cfg(feature = "scirs2")]

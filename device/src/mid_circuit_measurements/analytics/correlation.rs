@@ -67,20 +67,20 @@ impl CorrelationAnalyzer {
     ) -> DeviceResult<Array2<f64>> {
         let variables = [latencies, confidences, timestamps];
         let n_vars = variables.len();
-        let mut correlation_matrix = Array2::zeros((n_vars, n_vars));
+        let mut correlationmatrix = Array2::zeros((n_vars, n_vars));
 
         for i in 0..n_vars {
             for j in 0..n_vars {
                 if i == j {
-                    correlation_matrix[[i, j]] = 1.0;
+                    correlationmatrix[[i, j]] = 1.0;
                 } else {
                     let corr = self.pearson_correlation(variables[i], variables[j]);
-                    correlation_matrix[[i, j]] = corr;
+                    correlationmatrix[[i, j]] = corr;
                 }
             }
         }
 
-        Ok(correlation_matrix)
+        Ok(correlationmatrix)
     }
 
     /// Calculate Spearman correlation matrix
@@ -93,23 +93,23 @@ impl CorrelationAnalyzer {
         // For simplicity, use rank correlation approximation
         let variables = [latencies, confidences, timestamps];
         let n_vars = variables.len();
-        let mut correlation_matrix = Array2::zeros((n_vars, n_vars));
+        let mut correlationmatrix = Array2::zeros((n_vars, n_vars));
 
         for i in 0..n_vars {
             for j in 0..n_vars {
                 if i == j {
-                    correlation_matrix[[i, j]] = 1.0;
+                    correlationmatrix[[i, j]] = 1.0;
                 } else {
                     // Convert to ranks and calculate Pearson on ranks
                     let ranks_i = self.convert_to_ranks(variables[i]);
                     let ranks_j = self.convert_to_ranks(variables[j]);
                     let corr = self.pearson_correlation(&ranks_i, &ranks_j);
-                    correlation_matrix[[i, j]] = corr;
+                    correlationmatrix[[i, j]] = corr;
                 }
             }
         }
 
-        Ok(correlation_matrix)
+        Ok(correlationmatrix)
     }
 
     /// Calculate Kendall correlation matrix
@@ -121,20 +121,20 @@ impl CorrelationAnalyzer {
     ) -> DeviceResult<Array2<f64>> {
         let variables = [latencies, confidences, timestamps];
         let n_vars = variables.len();
-        let mut correlation_matrix = Array2::zeros((n_vars, n_vars));
+        let mut correlationmatrix = Array2::zeros((n_vars, n_vars));
 
         for i in 0..n_vars {
             for j in 0..n_vars {
                 if i == j {
-                    correlation_matrix[[i, j]] = 1.0;
+                    correlationmatrix[[i, j]] = 1.0;
                 } else {
                     let corr = self.kendall_tau(variables[i], variables[j]);
-                    correlation_matrix[[i, j]] = corr;
+                    correlationmatrix[[i, j]] = corr;
                 }
             }
         }
 
-        Ok(correlation_matrix)
+        Ok(correlationmatrix)
     }
 
     /// Calculate Pearson correlation between two variables
@@ -213,22 +213,22 @@ impl CorrelationAnalyzer {
     /// Find significant correlations
     fn find_significant_correlations(
         &self,
-        correlation_matrix: &Array2<f64>,
+        correlationmatrix: &Array2<f64>,
     ) -> DeviceResult<Vec<CorrelationPair>> {
         let mut significant_correlations = Vec::new();
         let variable_names = ["latency", "confidence", "timestamp"];
 
         let threshold = 0.3; // Significance threshold
 
-        for i in 0..correlation_matrix.nrows() {
-            for j in (i + 1)..correlation_matrix.ncols() {
-                let correlation = correlation_matrix[[i, j]];
+        for i in 0..correlationmatrix.nrows() {
+            for j in (i + 1)..correlationmatrix.ncols() {
+                let correlation = correlationmatrix[[i, j]];
                 if correlation.abs() > threshold {
                     significant_correlations.push(CorrelationPair {
                         variable1: variable_names[i].to_string(),
                         variable2: variable_names[j].to_string(),
                         correlation,
-                        p_value: self.estimate_p_value(correlation, correlation_matrix.nrows()),
+                        p_value: self.estimate_p_value(correlation, correlationmatrix.nrows()),
                         correlation_type: CorrelationType::Pearson,
                     });
                 }
@@ -272,17 +272,17 @@ impl CorrelationAnalyzer {
     /// Perform network analysis
     fn perform_network_analysis(
         &self,
-        correlation_matrix: &Array2<f64>,
+        correlationmatrix: &Array2<f64>,
     ) -> DeviceResult<CorrelationNetworkAnalysis> {
         let threshold = 0.3;
-        let n = correlation_matrix.nrows();
+        let n = correlationmatrix.nrows();
 
         // Create adjacency matrix
         let mut adjacency_matrix = Array2::zeros((n, n));
         for i in 0..n {
             for j in 0..n {
-                if i != j && correlation_matrix[[i, j]].abs() > threshold {
-                    adjacency_matrix[[i, j]] = correlation_matrix[[i, j]].abs();
+                if i != j && correlationmatrix[[i, j]].abs() > threshold {
+                    adjacency_matrix[[i, j]] = correlationmatrix[[i, j]].abs();
                 }
             }
         }

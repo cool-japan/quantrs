@@ -289,7 +289,7 @@ impl ClusterStateGenerator {
         let strength = self.config.entangling_strength;
 
         // Get current covariance matrix elements
-        let old_covar = state.covariance_matrix.clone();
+        let old_covar = state.covariancematrix.clone();
 
         // Apply CZ transformation to covariance matrix
         // CZ gate: exp(i*g*x1*x2) creates correlations
@@ -300,14 +300,14 @@ impl ClusterStateGenerator {
         let i2_p = 2 * mode2 + 1; // p quadrature of mode 2
 
         // CZ gate adds correlations between x1-p2 and p1-x2
-        state.covariance_matrix[i1_x][i2_p] +=
+        state.covariancematrix[i1_x][i2_p] +=
             strength * old_covar[i1_x][i1_x].sqrt() * old_covar[i2_p][i2_p].sqrt();
-        state.covariance_matrix[i2_p][i1_x] +=
+        state.covariancematrix[i2_p][i1_x] +=
             strength * old_covar[i1_x][i1_x].sqrt() * old_covar[i2_p][i2_p].sqrt();
 
-        state.covariance_matrix[i1_p][i2_x] +=
+        state.covariancematrix[i1_p][i2_x] +=
             strength * old_covar[i1_p][i1_p].sqrt() * old_covar[i2_x][i2_x].sqrt();
-        state.covariance_matrix[i2_x][i1_p] +=
+        state.covariancematrix[i2_x][i1_p] +=
             strength * old_covar[i1_p][i1_p].sqrt() * old_covar[i2_x][i2_x].sqrt();
 
         Ok(())
@@ -326,7 +326,7 @@ impl ClusterStateGenerator {
 
         for mode in 0..self.config.num_modes {
             // Calculate required compensation based on current variance
-            let var_x = state.covariance_matrix[2 * mode][2 * mode];
+            let var_x = state.covariancematrix[2 * mode][2 * mode];
             let compensation_squeezing = if var_x > 0.1 {
                 -0.5 * var_x.ln() // Additional squeezing to reduce variance
             } else {
@@ -350,7 +350,7 @@ impl ClusterStateGenerator {
         // Calculate nullifier violations (measure of finite squeezing effects)
         let mut total_violation = 0.0;
         for mode in 0..self.config.num_modes {
-            let var_x = state.covariance_matrix[2 * mode][2 * mode];
+            let var_x = state.covariancematrix[2 * mode][2 * mode];
             // Ideal cluster state has zero x-variance
             total_violation += var_x;
         }
@@ -533,7 +533,7 @@ impl ClusterStateGenerator {
         let mut eigenvalues = Vec::new();
 
         for mode in 0..self.config.num_modes {
-            let var_x = state.covariance_matrix[2 * mode][2 * mode];
+            let var_x = state.covariancematrix[2 * mode][2 * mode];
             eigenvalues.push(var_x);
         }
 
@@ -548,7 +548,7 @@ impl ClusterStateGenerator {
         // Calculate bipartite entanglement for each possible bipartition
         for i in 0..self.config.num_modes {
             for j in (i + 1)..self.config.num_modes {
-                let cov_ij = state.covariance_matrix[2 * i][2 * j];
+                let cov_ij = state.covariancematrix[2 * i][2 * j];
                 let entanglement = cov_ij.abs(); // Simplified measure
                 spectrum.push(entanglement);
             }

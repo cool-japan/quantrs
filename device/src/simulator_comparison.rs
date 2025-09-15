@@ -1161,7 +1161,7 @@ pub struct StatisticalAnalysis {
     /// ANOVA results
     pub anova_results: HashMap<String, ANOVAResult>,
     /// Correlation matrix
-    pub correlation_matrix: HashMap<String, HashMap<String, f64>>,
+    pub correlationmatrix: HashMap<String, HashMap<String, f64>>,
     /// Significance tests
     pub significance_tests: HashMap<String, SignificanceTest>,
     /// Effect sizes
@@ -1664,7 +1664,7 @@ impl SimulatorComparisonFramework {
             recommendations: vec![],
             statistical_analysis: StatisticalAnalysis {
                 anova_results: HashMap::new(),
-                correlation_matrix: HashMap::new(),
+                correlationmatrix: HashMap::new(),
                 significance_tests: HashMap::new(),
                 effect_sizes: HashMap::new(),
                 confidence_intervals: HashMap::new(),

@@ -10,9 +10,10 @@ use quantrs2_circuit::builder::Simulator as CircuitSimulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
 use scirs2_core::gpu::{
-    GpuBackend, GpuBackendFactory, GpuBuffer, GpuConfig, GpuDevice, GpuMemoryPool, 
-    GpuKernel, GpuKernelManager, GpuPlatform, GpuProfiler,
+    GpuBackend, GpuBuffer, GpuDevice, GpuKernel,
 };
+use quantrs2_core::{GpuBackendFactory, GpuConfig};
+// TODO: SciRS2GpuFactory not available in beta.1
 use quantrs2_core::prelude::QubitId;
 use std::sync::Arc;
 
@@ -68,7 +69,9 @@ impl SciRS2GpuStateVectorSimulator {
 
     /// Create an optimized simulator for quantum machine learning
     pub fn new_qml_optimized() -> QuantRS2Result<Self> {
-        let backend = Arc::new(SciRS2GpuFactory::create_qml_optimized()?);
+        // TODO: SciRS2GpuFactory not available in beta.1
+        // let backend = Arc::new(SciRS2GpuFactory::create_qml_optimized()?);
+        return Err(SimulatorError::GpuError("GPU backend not available in beta.1".to_string()));
         Ok(Self {
             backend,
             enable_profiling: true,
@@ -96,7 +99,8 @@ impl SciRS2GpuStateVectorSimulator {
 
     /// Get available GPU backends
     pub fn available_backends() -> Vec<String> {
-        SciRS2GpuFactory::available_backends()
+        // TODO: SciRS2GpuFactory not available in beta.1
+        vec![]
     }
 }
 

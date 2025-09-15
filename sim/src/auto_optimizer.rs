@@ -21,7 +21,7 @@ use quantrs2_core::{
     register::Register,
 };
 
-#[cfg(feature = "gpu")]
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use crate::gpu::SciRS2GpuStateVectorSimulator;
 use num_complex::Complex64;
 use serde::{Deserialize, Serialize};

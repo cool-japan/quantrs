@@ -29,15 +29,16 @@ pub mod simulation {
 
 /// GPU and accelerated computing backends
 pub mod gpu {
-    #[cfg(feature = "gpu")]
+    #[cfg(all(feature = "gpu", not(target_os = "macos")))]
     pub use crate::gpu_linalg::{benchmark_gpu_linalg, GpuLinearAlgebra};
 
+    #[cfg(all(feature = "gpu", not(target_os = "macos")))]
     pub use crate::cuda_kernels::{
         CudaKernelConfig, CudaKernelStats, CudaQuantumKernels, GateType as CudaGateType,
         OptimizationLevel as CudaOptimizationLevel,
     };
 
-    #[cfg(feature = "advanced_math")]
+    #[cfg(all(feature = "advanced_math", not(target_os = "macos")))]
     pub use crate::cuda_kernels::{CudaContext, CudaDeviceProperties, CudaKernel};
 
     pub use crate::opencl_amd_backend::{
@@ -74,6 +75,7 @@ pub mod distributed {
         WorkDistribution,
     };
 
+    #[cfg(all(feature = "gpu", not(target_os = "macos")))]
     pub use crate::distributed_gpu::*;
 }
 

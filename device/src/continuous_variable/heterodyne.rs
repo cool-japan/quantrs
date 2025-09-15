@@ -334,9 +334,9 @@ impl HeterodyneDetector {
         // Get state parameters with phase corrections
         let mean_x = state.mean_vector[2 * mode];
         let mean_p = state.mean_vector[2 * mode + 1];
-        let var_x = state.covariance_matrix[2 * mode][2 * mode];
-        let var_p = state.covariance_matrix[2 * mode + 1][2 * mode + 1];
-        let cov_xp = state.covariance_matrix[2 * mode][2 * mode + 1];
+        let var_x = state.covariancematrix[2 * mode][2 * mode];
+        let var_p = state.covariancematrix[2 * mode + 1][2 * mode + 1];
+        let cov_xp = state.covariancematrix[2 * mode][2 * mode + 1];
 
         // Calculate noise contributions
         let shot_noise = self.calculate_shot_noise_level();

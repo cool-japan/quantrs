@@ -18,7 +18,7 @@ use quantrs2_core::{
 // SciRS2 integration for advanced migration optimization
 #[cfg(feature = "scirs2")]
 use scirs2_graph::{
-    betweenness_centrality, closeness_centrality, minimum_spanning_tree, shortest_path, Graph,
+    betweenness_centrality, closeness_centrality, dijkstra_path, minimum_spanning_tree, Graph,
 };
 #[cfg(feature = "scirs2")]
 use scirs2_optimize::{differential_evolution, minimize, OptimizeResult};

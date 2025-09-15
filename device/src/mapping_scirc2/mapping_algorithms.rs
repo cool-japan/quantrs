@@ -66,7 +66,7 @@ impl CommunityBasedMapper {
         graph: &Graph<usize, f64>,
     ) -> DeviceResult<HashMap<usize, usize>> {
         match self.method {
-            CommunityMethod::Louvain => self.louvain_communities(graph),
+            CommunityMethod::Louvain => self.louvain_communities_result(graph),
             CommunityMethod::Leiden => self.leiden_communities(graph),
             CommunityMethod::LabelPropagation => self.label_propagation(graph),
             CommunityMethod::SpectralClustering => self.spectral_clustering(graph),
@@ -74,9 +74,9 @@ impl CommunityBasedMapper {
         }
     }
 
-    fn louvain_communities(&self, graph: &Graph<usize, f64>) -> DeviceResult<HashMap<usize, usize>> {
+    fn louvain_communities_result(&self, graph: &Graph<usize, f64>) -> DeviceResult<HashMap<usize, usize>> {
         // Use SciRS2's Louvain implementation
-        match louvain_communities(graph) {
+        match louvain_communities_result(graph) {
             Ok(communities) => {
                 let mut result = HashMap::new();
                 for (i, community) in communities.iter().enumerate() {

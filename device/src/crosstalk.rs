@@ -14,13 +14,14 @@ use quantrs2_core::{
 };
 
 use scirs2_graph::{
-    betweenness_centrality, closeness_centrality, minimum_spanning_tree, shortest_path,
+    betweenness_centrality, closeness_centrality, dijkstra_path, minimum_spanning_tree,
     strongly_connected_components, Graph,
 };
 use scirs2_linalg::{
-    correlation_matrix, det, eig, inv, matrix_norm, svd, LinalgError, LinalgResult,
+    correlationmatrix, det, eig, inv, matrix_norm, svd, LinalgError, LinalgResult,
 };
-use scirs2_stats::{corrcoef, distributions, mean, pearsonr, spearmanr, std, var, Alternative};
+use scirs2_stats::ttest::Alternative;
+use scirs2_stats::{corrcoef, distributions, mean, pearsonr, spearmanr, std, var};
 // TODO: Add scirs2_signal when it becomes available
 // use scirs2_signal::{
 //     find_peaks, periodogram, coherence, cross_correlation,

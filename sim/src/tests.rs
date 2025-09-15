@@ -297,6 +297,7 @@ mod ultrathink_tests {
         AdaptiveFusionConfig, AdaptiveGateFusion, CircuitPatternAnalyzer, FusionStrategy, GateType,
         MLFusionPredictor, QuantumGate,
     };
+    #[cfg(all(feature = "gpu", not(target_os = "macos")))]
     use crate::distributed_gpu::{
         DistributedGpuConfig, DistributedGpuStateVector, PartitionScheme, SyncStrategy,
     };

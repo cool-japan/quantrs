@@ -18,7 +18,7 @@ pub struct GaussianState {
     /// Mean vector (displacement amplitudes) - [x1, p1, x2, p2, ...]
     pub mean_vector: Vec<f64>,
     /// Covariance matrix (2N x 2N where N is number of modes)
-    pub covariance_matrix: Vec<Vec<f64>>,
+    pub covariancematrix: Vec<Vec<f64>>,
     /// Symplectic matrix for canonical commutation relations
     symplectic_matrix: Vec<Vec<f64>>,
 }
@@ -30,9 +30,9 @@ impl GaussianState {
         let mean_vector = vec![0.0; vector_size];
 
         // Vacuum covariance matrix: I/2 (identity matrix scaled by 1/2)
-        let mut covariance_matrix = vec![vec![0.0; vector_size]; vector_size];
+        let mut covariancematrix = vec![vec![0.0; vector_size]; vector_size];
         for i in 0..vector_size {
-            covariance_matrix[i][i] = 0.5;
+            covariancematrix[i][i] = 0.5;
         }
 
         let symplectic_matrix = Self::build_symplectic_matrix(num_modes);
@@ -40,7 +40,7 @@ impl GaussianState {
         Self {
             num_modes,
             mean_vector,
-            covariance_matrix,
+            covariancematrix,
             symplectic_matrix,
         }
     }
@@ -141,7 +141,7 @@ impl GaussianState {
         let i = 2 * mode;
         let j = 2 * mode + 1;
 
-        let old_covar = self.covariance_matrix.clone();
+        let old_covar = self.covariancematrix.clone();
 
         // Transform covariance matrix: S * V * S^T
         for a in 0..2 * self.num_modes {
@@ -183,16 +183,16 @@ impl GaussianState {
                         }
                     }
 
-                    self.covariance_matrix[a][b] = new_val;
+                    self.covariancematrix[a][b] = new_val;
                 } else if a == i || a == j {
                     // Mixed terms
                     let s_a = if a == i { [s11, s12] } else { [s21, s22] };
-                    self.covariance_matrix[a][b] =
+                    self.covariancematrix[a][b] =
                         s_a[0] * old_covar[i][b] + s_a[1] * old_covar[j][b];
                 } else if b == i || b == j {
                     // Mixed terms (transpose)
                     let s_b = if b == i { [s11, s21] } else { [s12, s22] };
-                    self.covariance_matrix[a][b] =
+                    self.covariancematrix[a][b] =
                         old_covar[a][i] * s_b[0] + old_covar[a][j] * s_b[1];
                 }
             }
@@ -222,7 +222,7 @@ impl GaussianState {
 
         // Two-mode squeezing transformation
         let indices = [2 * mode1, 2 * mode1 + 1, 2 * mode2, 2 * mode2 + 1];
-        let old_covar = self.covariance_matrix.clone();
+        let old_covar = self.covariancematrix.clone();
 
         // Build 4x4 transformation matrix
         let mut transform = [[0.0; 4]; 4];
@@ -249,7 +249,7 @@ impl GaussianState {
                             transform[i][k] * old_covar[indices[k]][indices[l]] * transform[j][l];
                     }
                 }
-                self.covariance_matrix[indices[i]][indices[j]] = new_val;
+                self.covariancematrix[indices[i]][indices[j]] = new_val;
             }
         }
 
@@ -278,7 +278,7 @@ impl GaussianState {
         // Beamsplitter transformation matrix
         let indices = [2 * mode1, 2 * mode1 + 1, 2 * mode2, 2 * mode2 + 1];
         let old_mean = self.mean_vector.clone();
-        let old_covar = self.covariance_matrix.clone();
+        let old_covar = self.covariancematrix.clone();
 
         // Transform mean vector
         let mean1_x = old_mean[2 * mode1];
@@ -318,7 +318,7 @@ impl GaussianState {
                             transform[i][k] * old_covar[indices[k]][indices[l]] * transform[j][l];
                     }
                 }
-                self.covariance_matrix[indices[i]][indices[j]] = new_val;
+                self.covariancematrix[indices[i]][indices[j]] = new_val;
             }
         }
 
@@ -346,7 +346,7 @@ impl GaussianState {
 
         // Rotation transformation matrix
         let indices = [2 * mode, 2 * mode + 1];
-        let old_covar = self.covariance_matrix.clone();
+        let old_covar = self.covariancematrix.clone();
 
         let transform = [[cos_phi, sin_phi], [-sin_phi, cos_phi]];
 
@@ -360,7 +360,7 @@ impl GaussianState {
                             transform[i][k] * old_covar[indices[k]][indices[l]] * transform[j][l];
                     }
                 }
-                self.covariance_matrix[indices[i]][indices[j]] = new_val;
+                self.covariancematrix[indices[i]][indices[j]] = new_val;
             }
         }
 
@@ -390,9 +390,9 @@ impl GaussianState {
             cos_phi * self.mean_vector[2 * mode] + sin_phi * self.mean_vector[2 * mode + 1];
 
         // Variance
-        let var_x = self.covariance_matrix[2 * mode][2 * mode];
-        let var_p = self.covariance_matrix[2 * mode + 1][2 * mode + 1];
-        let cov_xp = self.covariance_matrix[2 * mode][2 * mode + 1];
+        let var_x = self.covariancematrix[2 * mode][2 * mode];
+        let var_p = self.covariancematrix[2 * mode + 1][2 * mode + 1];
+        let cov_xp = self.covariancematrix[2 * mode][2 * mode + 1];
 
         let variance = cos_phi * cos_phi * var_x
             + sin_phi * sin_phi * var_p
@@ -433,8 +433,8 @@ impl GaussianState {
         let mean_x = self.mean_vector[2 * mode];
         let mean_p = self.mean_vector[2 * mode + 1];
 
-        let var_x = self.covariance_matrix[2 * mode][2 * mode];
-        let var_p = self.covariance_matrix[2 * mode + 1][2 * mode + 1];
+        let var_x = self.covariancematrix[2 * mode][2 * mode];
+        let var_p = self.covariancematrix[2 * mode + 1][2 * mode + 1];
 
         // Add noise
         let noise_variance = self.calculate_measurement_noise(config);
@@ -490,12 +490,12 @@ impl GaussianState {
         self.mean_vector[2 * mode + 1] = result * sin_phi / (2.0_f64).sqrt();
 
         // Simplified: reduce variance in measured quadrature
-        let measured_var = cos_phi * cos_phi * self.covariance_matrix[2 * mode][2 * mode]
-            + sin_phi * sin_phi * self.covariance_matrix[2 * mode + 1][2 * mode + 1];
+        let measured_var = cos_phi * cos_phi * self.covariancematrix[2 * mode][2 * mode]
+            + sin_phi * sin_phi * self.covariancematrix[2 * mode + 1][2 * mode + 1];
 
         let reduction_factor = 0.1; // Measurement significantly reduces uncertainty
-        self.covariance_matrix[2 * mode][2 * mode] *= reduction_factor;
-        self.covariance_matrix[2 * mode + 1][2 * mode + 1] *= reduction_factor;
+        self.covariancematrix[2 * mode][2 * mode] *= reduction_factor;
+        self.covariancematrix[2 * mode + 1][2 * mode + 1] *= reduction_factor;
 
         Ok(())
     }
@@ -524,18 +524,18 @@ impl GaussianState {
         self.mean_vector[2 * mode + 1] = 0.0;
 
         // Reset covariance to vacuum values
-        self.covariance_matrix[2 * mode][2 * mode] = 0.5;
-        self.covariance_matrix[2 * mode + 1][2 * mode + 1] = 0.5;
-        self.covariance_matrix[2 * mode][2 * mode + 1] = 0.0;
-        self.covariance_matrix[2 * mode + 1][2 * mode] = 0.0;
+        self.covariancematrix[2 * mode][2 * mode] = 0.5;
+        self.covariancematrix[2 * mode + 1][2 * mode + 1] = 0.5;
+        self.covariancematrix[2 * mode][2 * mode + 1] = 0.0;
+        self.covariancematrix[2 * mode + 1][2 * mode] = 0.0;
 
         // Remove correlations with other modes
         for i in 0..2 * self.num_modes {
             if i != 2 * mode && i != 2 * mode + 1 {
-                self.covariance_matrix[2 * mode][i] = 0.0;
-                self.covariance_matrix[2 * mode + 1][i] = 0.0;
-                self.covariance_matrix[i][2 * mode] = 0.0;
-                self.covariance_matrix[i][2 * mode + 1] = 0.0;
+                self.covariancematrix[2 * mode][i] = 0.0;
+                self.covariancematrix[2 * mode + 1][i] = 0.0;
+                self.covariancematrix[i][2 * mode] = 0.0;
+                self.covariancematrix[i][2 * mode + 1] = 0.0;
             }
         }
 
@@ -556,8 +556,8 @@ impl GaussianState {
             self.mean_vector[2 * mode + 1] / (2.0_f64).sqrt(),
         );
 
-        let var_x = self.covariance_matrix[2 * mode][2 * mode];
-        let var_p = self.covariance_matrix[2 * mode + 1][2 * mode + 1];
+        let var_x = self.covariancematrix[2 * mode][2 * mode];
+        let var_p = self.covariancematrix[2 * mode + 1][2 * mode + 1];
 
         // Calculate squeezing parameters
         let (squeezing_parameter, squeezing_phase) = self.calculate_squeezing(mode);
@@ -576,9 +576,9 @@ impl GaussianState {
 
     /// Calculate squeezing parameters for a mode
     fn calculate_squeezing(&self, mode: usize) -> (f64, f64) {
-        let var_x = self.covariance_matrix[2 * mode][2 * mode];
-        let var_p = self.covariance_matrix[2 * mode + 1][2 * mode + 1];
-        let cov_xp = self.covariance_matrix[2 * mode][2 * mode + 1];
+        let var_x = self.covariancematrix[2 * mode][2 * mode];
+        let var_p = self.covariancematrix[2 * mode + 1][2 * mode + 1];
+        let cov_xp = self.covariancematrix[2 * mode][2 * mode + 1];
 
         // Find minimum variance quadrature
         let delta = (var_x - var_p).powi(2) + 4.0 * cov_xp.powi(2);
@@ -602,9 +602,9 @@ impl GaussianState {
 
     /// Calculate mode purity
     fn calculate_mode_purity(&self, mode: usize) -> f64 {
-        let var_x = self.covariance_matrix[2 * mode][2 * mode];
-        let var_p = self.covariance_matrix[2 * mode + 1][2 * mode + 1];
-        let cov_xp = self.covariance_matrix[2 * mode][2 * mode + 1];
+        let var_x = self.covariancematrix[2 * mode][2 * mode];
+        let var_p = self.covariancematrix[2 * mode + 1][2 * mode + 1];
+        let cov_xp = self.covariancematrix[2 * mode][2 * mode + 1];
 
         let det = var_x * var_p - cov_xp.powi(2);
         1.0 / (4.0 * det)
@@ -636,9 +636,9 @@ impl GaussianState {
         let mut entropy = 0.0;
 
         for mode in 0..self.num_modes {
-            let var_x = self.covariance_matrix[2 * mode][2 * mode];
-            let var_p = self.covariance_matrix[2 * mode + 1][2 * mode + 1];
-            let cov_xp = self.covariance_matrix[2 * mode][2 * mode + 1];
+            let var_x = self.covariancematrix[2 * mode][2 * mode];
+            let var_p = self.covariancematrix[2 * mode + 1][2 * mode + 1];
+            let cov_xp = self.covariancematrix[2 * mode][2 * mode + 1];
 
             let det = var_x * var_p - cov_xp.powi(2);
             if det > 0.25 {
@@ -671,8 +671,8 @@ impl GaussianState {
         }
 
         // Calculate correlation between first two modes
-        let cov_x1x2 = self.covariance_matrix[0][2];
-        let cov_p1p2 = self.covariance_matrix[1][3];
+        let cov_x1x2 = self.covariancematrix[0][2];
+        let cov_p1p2 = self.covariancematrix[1][3];
 
         (cov_x1x2.abs() + cov_p1p2.abs()) / 2.0
     }
@@ -689,11 +689,11 @@ mod tests {
         let state = GaussianState::vacuum_state(2);
         assert_eq!(state.num_modes, 2);
         assert_eq!(state.mean_vector.len(), 4);
-        assert_eq!(state.covariance_matrix.len(), 4);
+        assert_eq!(state.covariancematrix.len(), 4);
 
         // Check vacuum variances
-        assert!((state.covariance_matrix[0][0] - 0.5).abs() < 1e-10);
-        assert!((state.covariance_matrix[1][1] - 0.5).abs() < 1e-10);
+        assert!((state.covariancematrix[0][0] - 0.5).abs() < 1e-10);
+        assert!((state.covariancematrix[1][1] - 0.5).abs() < 1e-10);
     }
 
     #[test]
@@ -723,8 +723,8 @@ mod tests {
         state.apply_squeezing(0, 1.0, 0.0).unwrap();
 
         // Check that one quadrature is squeezed
-        assert!(state.covariance_matrix[0][0] < 0.5); // x should be squeezed
-        assert!(state.covariance_matrix[1][1] > 0.5); // p should be antisqueezed
+        assert!(state.covariancematrix[0][0] < 0.5); // x should be squeezed
+        assert!(state.covariancematrix[1][1] > 0.5); // p should be antisqueezed
     }
 
     #[test]

@@ -47,9 +47,9 @@ pub use quantrs2_core::{
 pub use scirs2_graph::{
     astar_search, astar_search_digraph, barabasi_albert_graph, betweenness_centrality,
     closeness_centrality, clustering_coefficient, diameter, eigenvector_centrality,
-    erdos_renyi_graph, graph_density, k_core_decomposition, louvain_communities,
+    erdos_renyi_graph, graph_density, k_core_decomposition, louvain_communities_result,
     maximum_bipartite_matching, minimum_cut, minimum_spanning_tree, pagerank, radius,
-    shortest_path, shortest_path_digraph, spectral_radius, strongly_connected_components,
+    dijkstra_path, shortest_path_digraph, spectral_radius, strongly_connected_components,
     topological_sort, watts_strogatz_graph, DiGraph, Edge, Graph, GraphError, Node,
     Result as GraphResult,
 };

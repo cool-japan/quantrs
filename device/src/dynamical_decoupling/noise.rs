@@ -612,7 +612,7 @@ pub struct SpatialAnalysis {
 #[derive(Debug, Clone)]
 pub struct SpatialCorrelations {
     /// Correlation matrix
-    pub correlation_matrix: Array2<f64>,
+    pub correlationmatrix: Array2<f64>,
     /// Correlation functions
     pub correlation_functions: Array2<f64>,
     /// Distance matrix
@@ -1078,7 +1078,7 @@ impl DDNoiseAnalyzer {
 
         Ok(SpatialAnalysis {
             spatial_correlations: SpatialCorrelations {
-                correlation_matrix: Array2::eye(n_qubits),
+                correlationmatrix: Array2::eye(n_qubits),
                 correlation_functions: Array2::zeros((n_qubits, 100)),
                 distance_matrix: Array2::zeros((n_qubits, n_qubits)),
                 length_scales: Array1::from_vec(vec![1e-3, 5e-3, 1e-2]),

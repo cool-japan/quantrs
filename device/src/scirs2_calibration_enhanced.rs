@@ -1667,7 +1667,7 @@ pub enum IncoherentErrorType {
 
 #[derive(Debug, Clone)]
 pub struct CorrelatedError {
-    pub correlation_matrix: Array2<f64>,
+    pub correlationmatrix: Array2<f64>,
     pub affected_qubits: Vec<usize>,
 }
 

@@ -525,8 +525,8 @@ impl CVGateSequence {
     fn estimate_photon_number(&self, mode: usize, state: &GaussianState) -> f64 {
         let mean_x = state.mean_vector[2 * mode];
         let mean_p = state.mean_vector[2 * mode + 1];
-        let var_x = state.covariance_matrix[2 * mode][2 * mode];
-        let var_p = state.covariance_matrix[2 * mode + 1][2 * mode + 1];
+        let var_x = state.covariancematrix[2 * mode][2 * mode];
+        let var_p = state.covariancematrix[2 * mode + 1][2 * mode + 1];
 
         // Average photon number approximation
         0.5 * ((mean_x.powi(2) + mean_p.powi(2)) / 2.0 + (var_x + var_p) - 1.0)
@@ -704,7 +704,7 @@ mod tests {
         // Check that squeezing was applied
         // For mode 1 (index 2 for x-quadrature), squeezing should reduce variance
         // Expected: 0.5 * exp(-2*r) = 0.5 * exp(-1) ≈ 0.184
-        assert!(state.covariance_matrix[2][2] < 0.5);
+        assert!(state.covariancematrix[2][2] < 0.5);
     }
 
     #[test]

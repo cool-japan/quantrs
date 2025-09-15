@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 // SciRS2 dependencies for advanced marketplace analytics and optimization
 #[cfg(feature = "scirs2")]
 use scirs2_graph::{
-    betweenness_centrality, closeness_centrality, minimum_spanning_tree, shortest_path,
+    betweenness_centrality, closeness_centrality, minimum_spanning_tree, dijkstra_path,
     strongly_connected_components, Graph,
 };
 #[cfg(feature = "scirs2")]
@@ -30,7 +30,8 @@ use scirs2_linalg::{det, eig, inv, matrix_norm, prelude::*, svd, LinalgError, Li
 #[cfg(feature = "scirs2")]
 use scirs2_optimize::{minimize, OptimizeResult};
 #[cfg(feature = "scirs2")]
-use scirs2_stats::{corrcoef, distributions, mean, pearsonr, spearmanr, std, var, Alternative};
+use scirs2_stats::{corrcoef, distributions, mean, pearsonr, spearmanr, std, var};
+use scirs2_stats::ttest::Alternative;
 
 // Fallback implementations when SciRS2 is not available
 #[cfg(not(feature = "scirs2"))]

@@ -308,7 +308,7 @@ impl MemoryVerifier {
 
     /// Test GPU buffer efficiency (if available)
     fn test_gpu_buffer_efficiency(&self) -> Option<f64> {
-        #[cfg(feature = "gpu")]
+        #[cfg(all(feature = "gpu", not(target_os = "macos")))]
         {
             use crate::gpu::GpuStateVectorSimulator;
 

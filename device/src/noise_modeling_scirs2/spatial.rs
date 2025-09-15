@@ -124,7 +124,7 @@ impl SpatialAnalyzer {
     fn estimate_range_parameter(
         &self,
         distance_matrix: &Array2<f64>,
-        covariance_matrix: &Array2<f64>,
+        covariancematrix: &Array2<f64>,
     ) -> DeviceResult<f64> {
         // Use method of moments or maximum likelihood estimation
         // For simplicity, use empirical estimate
@@ -136,7 +136,7 @@ impl SpatialAnalyzer {
         for i in 0..num_qubits {
             for j in i+1..num_qubits {
                 let dist = distance_matrix[[i, j]];
-                let cov = covariance_matrix[[i, j]];
+                let cov = covariancematrix[[i, j]];
                 if cov > 0.0 && dist > 0.0 {
                     sum_dist_cov += dist * cov.ln();
                     sum_cov += cov;
@@ -153,18 +153,18 @@ impl SpatialAnalyzer {
     }
 
     /// Estimate nugget effect (measurement error)
-    fn estimate_nugget_effect(&self, covariance_matrix: &Array2<f64>) -> DeviceResult<f64> {
+    fn estimate_nugget_effect(&self, covariancematrix: &Array2<f64>) -> DeviceResult<f64> {
         // Estimate from diagonal vs off-diagonal elements
-        let num_qubits = covariance_matrix.nrows();
+        let num_qubits = covariancematrix.nrows();
         let mut diag_mean = 0.0;
         let mut off_diag_mean = 0.0;
         let mut off_diag_count = 0;
 
         for i in 0..num_qubits {
-            diag_mean += covariance_matrix[[i, i]];
+            diag_mean += covariancematrix[[i, i]];
             for j in 0..num_qubits {
                 if i != j {
-                    off_diag_mean += covariance_matrix[[i, j]];
+                    off_diag_mean += covariancematrix[[i, j]];
                     off_diag_count += 1;
                 }
             }
