@@ -50,3 +50,5 @@ full = ["ml", "anneal", "tytan", "numrs", "pandrs"]
 [package.metadata.maturin]
 python-source = "python"
 module-name = "quantrs2"
+[lints]
+workspace = true

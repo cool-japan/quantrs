@@ -55,3 +55,6 @@ mps = []
 compression = []
 symbolic = ["dep:quantrs2-symengine", "dep:quantrs2-symengine-sys"]  # Enable symbolic computation with SymEngine
 python = ["dep:pyo3", "dep:numpy"]  # Enable Python bindings with PyO3 and NumPy (NumRS2 integration ready but disabled due to ARM64 compilation issues)
+
+[lints]
+workspace = true

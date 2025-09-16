@@ -73,3 +73,6 @@ neutral_atom = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait", "de
 scheduling = ["dep:tokio", "dep:async-trait", "dep:uuid", "dep:futures"]
 scirs2 = ["dep:scirs2-stats", "dep:scirs2-graph", "dep:scirs2-linalg", "dep:scirs2-optimize"]
 security = ["dep:aes-gcm", "dep:x25519-dalek", "dep:sha2", "dep:chrono"]
+
+[lints]
+workspace = true

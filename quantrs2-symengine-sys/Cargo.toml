@@ -26,3 +26,6 @@ default = []
 static = []  # Enable static linking
 system-deps = ["pkg-config"]  # Use system dependencies
 serde = ["dep:serde"]  # Enable serde serialization support
+
+[lints]
+workspace = true

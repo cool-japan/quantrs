@@ -215,12 +215,14 @@ impl SIMDGateProcessor {
 
             // SIMD-optimized single qubit gate application
             #[cfg(target_arch = "x86_64")]
-            if self.simd_features.avx2 {
-                self.apply_single_qubit_gate_avx2(matrix, qubit_mask, state_vector)?;
-            } else if self.simd_features.sse2 {
-                self.apply_single_qubit_gate_sse2(matrix, qubit_mask, state_vector)?;
-            } else {
-                self.apply_single_qubit_gate_scalar(matrix, qubit_mask, state_vector)?;
+            unsafe {
+                if self.simd_features.avx2 {
+                    self.apply_single_qubit_gate_avx2(matrix, qubit_mask, state_vector)?;
+                } else if self.simd_features.sse2 {
+                    self.apply_single_qubit_gate_sse2(matrix, qubit_mask, state_vector)?;
+                } else {
+                    self.apply_single_qubit_gate_scalar(matrix, qubit_mask, state_vector)?;
+                }
             }
 
             #[cfg(not(target_arch = "x86_64"))]

@@ -7,7 +7,6 @@
 #![allow(unexpected_cfgs)]
 #![allow(deprecated)]
 
-extern crate proc_macro;
 
 /// Quantum circuit representation and DSL for the QuantRS2 framework.
 ///

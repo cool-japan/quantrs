@@ -71,3 +71,6 @@ path = "src/bin/test_stabilizer.rs"
 [[bin]]
 name = "debug_holographic_matrix"
 path = "debug_holographic_matrix.rs"
+
+[lints]
+workspace = true

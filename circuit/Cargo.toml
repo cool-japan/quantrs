@@ -33,3 +33,5 @@ uuid.workspace = true
 
 [dev-dependencies]
 num-complex.workspace = true
+[lints]
+workspace = true

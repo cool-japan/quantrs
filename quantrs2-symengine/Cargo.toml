@@ -28,3 +28,6 @@ default = []
 serde-serialize = ["serde", "quantrs2-symengine-sys/serde"]
 static = ["quantrs2-symengine-sys/static"]
 system-deps = ["quantrs2-symengine-sys/system-deps"]
+
+[lints]
+workspace = true

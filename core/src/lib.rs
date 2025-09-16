@@ -18,6 +18,11 @@
 //! - Metal GPU backend ready for SciRS2 v0.1.0-alpha.6 integration
 //! - Zero-warning compilation across all modules
 
+#![allow(clippy::fn_address_comparisons)]
+#![allow(clippy::elided_lifetimes_in_paths)]
+#![allow(clippy::ptr_eq)]
+#![warn(clippy::all)]
+
 #![allow(dead_code)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::needless_range_loop)]

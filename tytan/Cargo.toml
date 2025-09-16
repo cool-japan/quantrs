@@ -67,3 +67,5 @@ colored.workspace = true
 # [[bench]]
 # name = "performance_benchmark"
 # harness = false
+[lints]
+workspace = true

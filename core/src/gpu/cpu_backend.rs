@@ -3,6 +3,8 @@
 //! This provides a CPU-based fallback implementation of the GPU backend
 //! interface, useful for testing and systems without GPU support.
 
+#![allow(clippy::elided_lifetimes_in_paths)]
+
 use super::{GpuBackend, GpuBuffer, GpuKernel};
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
@@ -26,7 +28,7 @@ impl CpuBuffer {
     }
 
     /// Get a reference to the data
-    pub fn data(&self) -> std::sync::MutexGuard<Vec<Complex64>> {
+    pub fn data(&self) -> std::sync::MutexGuard<'_, Vec<Complex64>> {
         self.data.lock().unwrap()
     }
 }

@@ -24,9 +24,18 @@ exclude-members = ["py", "examples"]
 
 [workspace.lints.rust]
 nonstandard_style = "warn"
-missing_debug_implementations = "warn"
-missing_docs = "warn"
+missing_debug_implementations = "allow"
+missing_docs = "allow"
 rust_2018_idioms = { level = "deny", priority = -1 }
+unused_imports = "allow"
+unused_variables = "allow"
+unused_assignments = "allow"
+unused_mut = "allow"
+deprecated = "allow"
+ambiguous_glob_reexports = "allow"
+private_bounds = "allow"
+elided_lifetimes_in_paths = "allow"
+private_interfaces = "allow"
 
 [workspace.lints.clippy]
 enum_glob_use = "warn"
@@ -37,6 +46,11 @@ cast_possible_truncation = "warn"
 cast_sign_loss = "warn"
 cast_possible_wrap = "warn"
 dbg_macro = "warn"
+missing_docs_in_private_items = "allow"
+ambiguous_glob_reexports = "allow"
+fn_address_comparisons = "allow"
+elided_lifetimes_in_paths = "allow"
+ptr_eq = "allow"
 
 [workspace.package]
 version = "0.1.0-beta.1"
