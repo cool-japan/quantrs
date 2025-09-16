@@ -9,14 +9,14 @@
 //! ## Quick Start
 //!
 //! ```rust,no_run
-//! use symengine::Expression;
+//! use quantrs2_symengine::Expression;
 //!
 //! // Create symbolic expressions
 //! let x = Expression::symbol("x");
 //! let y = Expression::symbol("y");
 //!
 //! // Perform operations
-//! let expr = &x * &x + 2 * &x * &y + &y * &y;
+//! let expr = x.clone() * x.clone() + x.clone() * 2 * y.clone() + y.clone() * y.clone();
 //! let expanded = expr.expand();
 //!
 //! println!("Expression: {}", expr);

@@ -12,13 +12,12 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use quantrs2_anneal::ising::IsingModel;
+
 #[cfg(feature = "braket")]
-use quantrs2_anneal::{
-    braket::{
-        AdvancedAnnealingParams, BraketClient, CostTracker, DeviceSelector, DeviceStatus,
-        DeviceType,
-    },
-    ising::IsingModel,
+use quantrs2_anneal::braket::{
+    AdvancedAnnealingParams, BraketClient, CostTracker, DeviceSelector, DeviceStatus,
+    DeviceType,
 };
 
 #[cfg(not(feature = "braket"))]

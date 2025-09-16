@@ -763,7 +763,7 @@ impl PerformancePredictionEngine {
 
             let predicted_time = Duration::from_secs_f64(combined_seconds);
             let confidence =
-                (static_pred.confidence * static_weight + ml_pred.confidence * ml_weight);
+                static_pred.confidence * static_weight + ml_pred.confidence * ml_weight;
 
             // Combined prediction interval
             let lower_combined = Duration::from_secs_f64(

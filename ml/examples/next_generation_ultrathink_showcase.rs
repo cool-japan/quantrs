@@ -120,7 +120,7 @@ impl NextGenQuantumMLShowcase {
             scene_bounds: SceneBounds {
                 min_bound: Array1::from_vec(vec![-2.0, -2.0, -2.0]),
                 max_bound: Array1::from_vec(vec![2.0, 2.0, 2.0]),
-                voxel_resolution: Array1::from_vec(vec![256, 256, 256]),
+                voxel_resolution: Array1::from_vec(vec![32, 32, 32]),
             },
             num_qubits: config.num_qubits,
             quantum_enhancement_level: config.quantum_enhancement_level,
@@ -433,7 +433,7 @@ impl NextGenQuantumMLShowcase {
         let start_time = Instant::now();
 
         // Generate quantum-enhanced samples
-        let num_samples = 50;
+        let num_samples = 10;
         let generation_output = self.quantum_diffusion.quantum_generate(
             num_samples,
             None,
@@ -606,7 +606,7 @@ impl NextGenQuantumMLShowcase {
         let start_time = Instant::now();
 
         // Generate 3D coordinates for scene reconstruction
-        let scene_coordinates = self.generate_3d_coordinates(200)?;
+        let scene_coordinates = self.generate_3d_coordinates(50)?;
 
         // Render scene using Quantum NeRF
         let camera_position = Array1::from_vec(vec![2.0, 2.0, 2.0]);
@@ -616,8 +616,8 @@ impl NextGenQuantumMLShowcase {
             &camera_position,
             &camera_direction,
             &camera_up,
-            1024,
-            1024,
+            128,
+            128,
             45.0,
         )?;
 
@@ -1091,7 +1091,7 @@ impl NextGenQuantumMLShowcase {
 
     fn create_default_quantum_context_state(&self) -> Result<QuantumContextState> {
         Ok(QuantumContextState {
-            quantum_amplitudes: Array1::from_elem(256, Complex64::new(1.0, 0.0)),
+            quantum_amplitudes: Array1::from_elem(16, Complex64::new(1.0, 0.0)),
             classical_features: Array1::zeros(self.config.data_dimensions),
             entanglement_measure: 0.5,
             coherence_time: 1.0,
@@ -1109,12 +1109,12 @@ impl NextGenQuantumMLShowcase {
 
     fn estimate_memory_usage(&self, algorithm: &str) -> f64 {
         match algorithm {
-            "diffusion" => 150_000_000.0, // 150 MB
-            "flows" => 120_000_000.0,     // 120 MB
-            "nerf" => 200_000_000.0,      // 200 MB
-            "icl" => 80_000_000.0,        // 80 MB
-            "moe" => 180_000_000.0,       // 180 MB
-            _ => 100_000_000.0,           // 100 MB default
+            "diffusion" => 15_000_000.0, // 15 MB
+            "flows" => 12_000_000.0,     // 12 MB
+            "nerf" => 20_000_000.0,      // 20 MB
+            "icl" => 8_000_000.0,        // 8 MB
+            "moe" => 18_000_000.0,       // 18 MB
+            _ => 10_000_000.0,           // 10 MB default
         }
     }
 
@@ -1442,14 +1442,14 @@ impl Default for UltraThinkShowcaseConfig {
     fn default() -> Self {
         Self {
             data_dimensions: 64,
-            num_samples: 100,
-            num_qubits: 16,
-            complexity_level: ComplexityLevel::Research,
-            demonstration_mode: DemonstrationMode::Integrated,
-            quantum_enhancement_level: 1.5,
+            num_samples: 20,
+            num_qubits: 8,
+            complexity_level: ComplexityLevel::Educational,
+            demonstration_mode: DemonstrationMode::Sequential,
+            quantum_enhancement_level: 1.2,
             enable_quantum_advantage_analysis: true,
-            enable_comparative_benchmarking: true,
-            enable_real_time_monitoring: true,
+            enable_comparative_benchmarking: false,
+            enable_real_time_monitoring: false,
         }
     }
 }
@@ -1460,9 +1460,14 @@ pub fn run_next_generation_showcase() -> Result<()> {
 
     // Create showcase configuration
     let config = UltraThinkShowcaseConfig {
-        complexity_level: ComplexityLevel::Experimental,
-        demonstration_mode: DemonstrationMode::Integrated,
-        quantum_enhancement_level: 2.0,
+        complexity_level: ComplexityLevel::Educational,
+        demonstration_mode: DemonstrationMode::Sequential,
+        quantum_enhancement_level: 1.2,
+        data_dimensions: 64,
+        num_samples: 5,
+        num_qubits: 6,
+        enable_comparative_benchmarking: false,
+        enable_real_time_monitoring: false,
         ..Default::default()
     };
 
