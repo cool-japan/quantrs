@@ -77,7 +77,7 @@ The current implementation has these key issues:
 ## Contributing
 
 If you're interested in contributing to the GPU implementation, the main file to work on is:
-`/Users/kitasan/work/quantrs/sim/src/gpu.rs`
+`$quantrs/sim/src/gpu.rs`
 
 Key improvements needed:
 1. Update wgpu API usage to match v0.19.4

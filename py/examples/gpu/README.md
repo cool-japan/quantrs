@@ -7,7 +7,7 @@
 QuantRS2をGPUスタブ実装でビルドする必要があります：
 
 ```bash
-cd /Users/kitasan/work/quantrs/py
+cd $quantrs/py
 ./tools/gpu/build_with_gpu_stub.sh
 source .venv/bin/activate
 ```
