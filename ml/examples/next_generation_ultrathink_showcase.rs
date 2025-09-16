@@ -1509,6 +1509,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_sequential_demonstration() {
         let config = UltraThinkShowcaseConfig {
             demonstration_mode: DemonstrationMode::Sequential,

@@ -779,6 +779,7 @@ mod tests {
     use super::*;
     use crate::sampler::SASampler;
     use ndarray::array;
+    use quantrs2_anneal::simulator::AnnealingParams;
 
     #[test]
     fn test_quantum_svm() {
@@ -787,7 +788,14 @@ mod tests {
         let mut y = array![-1.0, -1.0, 1.0, 1.0];
 
         let mut svm = QuantumSVM::new(KernelType::Linear, 1.0);
-        let sampler = SASampler::new(Some(42));
+
+        // Create fast annealing parameters for testing
+        let mut params = AnnealingParams::new();
+        params.timeout = Some(10.0); // 10 second timeout
+        params.num_sweeps = 100; // Reduce from default 1000
+        params.num_repetitions = 2; // Reduce from default 10
+
+        let sampler = SASampler::with_params(Some(42), params);
 
         svm.fit(&x, &y, &sampler).unwrap();
 

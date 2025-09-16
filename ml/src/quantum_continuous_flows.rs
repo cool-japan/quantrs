@@ -1805,7 +1805,7 @@ impl QuantumContinuousFlow {
 
                 Ok(enhanced_sample)
             }
-            _ => Ok(Array1::zeros(self.config.latent_dim)),
+            _ => Ok(Array1::zeros(self.config.input_dim)),
         }
     }
 

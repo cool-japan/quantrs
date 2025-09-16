@@ -1,7 +1,7 @@
 //! Quantum Independent Component Analysis
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2};
+use ndarray::{Array1, Array2, s};
 use std::collections::HashMap;
 
 use super::super::config::{DRTrainedState, QICAConfig};
@@ -22,9 +22,10 @@ impl QICA {
     }
 
     pub fn fit(&mut self, data: &Array2<f64>) -> Result<()> {
-        let n_components = self.config.n_components.min(data.ncols());
+        let n_features = data.ncols();
+        let n_components = self.config.n_components.min(n_features);
         let mean = data.mean_axis(ndarray::Axis(0)).unwrap();
-        let components = Array2::eye(n_components);
+        let components = Array2::eye(n_features).slice(s![..n_components, ..]).to_owned();
         let explained_variance_ratio = Array1::ones(n_components) / n_components as f64;
 
         self.trained_state = Some(DRTrainedState {

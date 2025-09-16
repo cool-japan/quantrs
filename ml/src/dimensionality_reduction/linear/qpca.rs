@@ -1,7 +1,7 @@
 //! Quantum Principal Component Analysis
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2};
+use ndarray::{Array1, Array2, s};
 use std::collections::HashMap;
 
 use super::super::config::{DRTrainedState, QPCAConfig};
@@ -37,8 +37,9 @@ impl QPCA {
         // Compute covariance matrix
         let cov = centered.t().dot(&centered) / (n_samples - 1) as f64;
 
-        // Placeholder eigendecomposition
-        let components = Array2::eye(n_components);
+        // Placeholder eigendecomposition - create components matrix with correct dimensions
+        // Components stored as (n_components, n_features) to work with transform method
+        let components = Array2::eye(n_features).slice(s![..n_components, ..]).to_owned();
         let eigenvalues =
             Array1::from_vec((0..n_components).map(|i| 1.0 / (i + 1) as f64).collect());
         let explained_variance_ratio = &eigenvalues / eigenvalues.sum();

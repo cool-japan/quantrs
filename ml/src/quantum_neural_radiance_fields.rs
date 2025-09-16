@@ -817,13 +817,19 @@ impl QuantumNeRF {
         let num_heads = config.quantum_attention_config.num_attention_heads;
         let head_dim = config.num_qubits / num_heads;
 
+        // Calculate the actual input feature dimension
+        let mut input_dim = 3 + config.quantum_encoding_levels * 6; // 3D position + quantum encoding
+        if config.quantum_view_synthesis {
+            input_dim += 3 + config.quantum_encoding_levels * 6; // 3D view direction + encoding
+        }
+
         Ok(QuantumSpatialAttention {
             num_heads,
             head_dim,
-            quantum_query_projection: Array2::eye(config.num_qubits)
+            quantum_query_projection: Array2::eye(input_dim)
                 .mapv(|x| Complex64::new(x, 0.0)),
-            quantum_key_projection: Array2::eye(config.num_qubits).mapv(|x| Complex64::new(x, 0.0)),
-            quantum_value_projection: Array2::eye(config.num_qubits)
+            quantum_key_projection: Array2::eye(input_dim).mapv(|x| Complex64::new(x, 0.0)),
+            quantum_value_projection: Array2::eye(input_dim)
                 .mapv(|x| Complex64::new(x, 0.0)),
             entanglement_weights: Array1::ones(num_heads) * 0.5,
         })
@@ -1624,19 +1630,19 @@ impl QuantumNeRF {
         // Convert features to quantum state
         let quantum_features = features.mapv(|x| Complex64::new(x, 0.0));
 
+        // Get actual input dimension and create appropriately sized projection matrices
+        let input_dim = quantum_features.len();
+        let output_dim = self.config.num_qubits;
+
+        // Create projection matrices that match the actual input dimension
+        let query_projection = Array2::eye(input_dim).mapv(|x| Complex64::new(x, 0.0));
+        let key_projection = Array2::eye(input_dim).mapv(|x| Complex64::new(x, 0.0));
+        let value_projection = Array2::eye(input_dim).mapv(|x| Complex64::new(x, 0.0));
+
         // Apply quantum attention mechanism
-        let query = self
-            .spatial_attention
-            .quantum_query_projection
-            .dot(&quantum_features);
-        let key = self
-            .spatial_attention
-            .quantum_key_projection
-            .dot(&quantum_features);
-        let value = self
-            .spatial_attention
-            .quantum_value_projection
-            .dot(&quantum_features);
+        let query = query_projection.dot(&quantum_features);
+        let key = key_projection.dot(&quantum_features);
+        let value = value_projection.dot(&quantum_features);
 
         // Compute attention weights with quantum enhancement
         let attention_scores = query
