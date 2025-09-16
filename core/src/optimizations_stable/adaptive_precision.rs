@@ -507,7 +507,7 @@ mod tests {
     #[test]
     fn test_precision_aware_operations() {
         let a = Complex64::new(1.1234567890123456, 2.9876543210987654);
-        let b = Complex64::new(3.1415926535897932, 1.4142135623730951);
+        let b = Complex64::new(std::f64::consts::PI, std::f64::consts::SQRT_2);
 
         let single_result = PrecisionAwareOps::multiply_complex(a, b, PrecisionLevel::Single);
         let double_result = PrecisionAwareOps::multiply_complex(a, b, PrecisionLevel::Double);

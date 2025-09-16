@@ -290,7 +290,7 @@ fn demonstrate_parallel_execution() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
 
-    let mut simulator = LargeScaleQuantumSimulator::new(sim_config);
+    let mut simulator = LargeScaleQuantumSimulator::new(sim_config)?;
 
     // Execute with parallelization (this would normally run the parallel version)
     println!("\nExecuting circuit with automatic parallelization...");

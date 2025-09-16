@@ -784,8 +784,8 @@ mod tests {
         let atom = NeutralAtom::new(AtomSpecies::Rb87, position);
         let loaded = tweezer.load_atom(atom);
         // Loading is probabilistic, so we can't guarantee success
-        // Test that loading returns a boolean value
-        assert!(loaded || !loaded);
+        // Test that loading returns a valid boolean value (no panic)
+        let _result = loaded; // Simply verify the operation completes
     }
 
     #[test]

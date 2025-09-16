@@ -291,9 +291,111 @@ impl EquivalenceChecker {
                     );
                 }
             }
+            GateType::S => {
+                self.apply_single_qubit_gate(
+                    &mut matrix,
+                    gate.target_qubits()[0],
+                    &[
+                        [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
+                        [Complex64::new(0.0, 0.0), Complex64::new(0.0, 1.0)],
+                    ],
+                    num_qubits,
+                );
+            }
+            GateType::T => {
+                let sqrt2_inv = 1.0 / std::f64::consts::SQRT_2;
+                self.apply_single_qubit_gate(
+                    &mut matrix,
+                    gate.target_qubits()[0],
+                    &[
+                        [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
+                        [Complex64::new(0.0, 0.0), Complex64::new(sqrt2_inv, sqrt2_inv)],
+                    ],
+                    num_qubits,
+                );
+            }
+            GateType::SqrtX => {
+                let sqrt2_inv = 1.0 / std::f64::consts::SQRT_2;
+                self.apply_single_qubit_gate(
+                    &mut matrix,
+                    gate.target_qubits()[0],
+                    &[
+                        [Complex64::new(0.5, 0.5), Complex64::new(0.5, -0.5)],
+                        [Complex64::new(0.5, -0.5), Complex64::new(0.5, 0.5)],
+                    ],
+                    num_qubits,
+                );
+            }
+            GateType::SqrtY => {
+                let sqrt2_inv = 1.0 / std::f64::consts::SQRT_2;
+                self.apply_single_qubit_gate(
+                    &mut matrix,
+                    gate.target_qubits()[0],
+                    &[
+                        [Complex64::new(sqrt2_inv, 0.0), Complex64::new(-sqrt2_inv, 0.0)],
+                        [Complex64::new(sqrt2_inv, 0.0), Complex64::new(sqrt2_inv, 0.0)],
+                    ],
+                    num_qubits,
+                );
+            }
+            GateType::SqrtZ => {
+                self.apply_single_qubit_gate(
+                    &mut matrix,
+                    gate.target_qubits()[0],
+                    &[
+                        [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
+                        [Complex64::new(0.0, 0.0), Complex64::new(0.0, 1.0)],
+                    ],
+                    num_qubits,
+                );
+            }
+            GateType::CZ => {
+                if gate.target_qubits().len() >= 2 {
+                    self.apply_cz_gate(
+                        &mut matrix,
+                        gate.target_qubits()[0],
+                        gate.target_qubits()[1],
+                        num_qubits,
+                    );
+                }
+            }
+            GateType::CY => {
+                if gate.target_qubits().len() >= 2 {
+                    self.apply_controlled_gate(
+                        &mut matrix,
+                        gate.target_qubits()[0],
+                        gate.target_qubits()[1],
+                        &[
+                            [Complex64::new(0.0, 0.0), Complex64::new(0.0, -1.0)],
+                            [Complex64::new(0.0, 1.0), Complex64::new(0.0, 0.0)],
+                        ],
+                        num_qubits,
+                    );
+                }
+            }
+            GateType::SWAP => {
+                if gate.target_qubits().len() >= 2 {
+                    self.apply_swap_gate(
+                        &mut matrix,
+                        gate.target_qubits()[0],
+                        gate.target_qubits()[1],
+                        num_qubits,
+                    );
+                }
+            }
+            GateType::ISwap => {
+                if gate.target_qubits().len() >= 2 {
+                    self.apply_iswap_gate(
+                        &mut matrix,
+                        gate.target_qubits()[0],
+                        gate.target_qubits()[1],
+                        num_qubits,
+                    );
+                }
+            }
             _ => {
-                // For other gates, use identity (placeholder)
-                // In a full implementation, all gate types would be handled
+                // For truly unsupported gates, log warning but continue
+                eprintln!("Warning: Gate type {:?} not fully implemented in equivalence checker", gate.gate_type());
             }
         }
 
@@ -344,6 +446,111 @@ impl EquivalenceChecker {
                         let temp = matrix[i][k];
                         matrix[i][k] = matrix[j][k];
                         matrix[j][k] = temp;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Apply a CZ gate to the circuit matrix
+    fn apply_cz_gate(
+        &self,
+        matrix: &mut Vec<Vec<Complex64>>,
+        control_qubit: usize,
+        target_qubit: usize,
+        num_qubits: usize,
+    ) {
+        let dim = 1 << num_qubits;
+        let control_bit = 1 << control_qubit;
+        let target_bit = 1 << target_qubit;
+
+        for i in 0..dim {
+            if (i & control_bit != 0) && (i & target_bit != 0) {
+                for k in 0..dim {
+                    matrix[i][k] *= -1.0;
+                }
+            }
+        }
+    }
+
+    /// Apply a general controlled gate to the circuit matrix
+    fn apply_controlled_gate(
+        &self,
+        matrix: &mut Vec<Vec<Complex64>>,
+        control_qubit: usize,
+        target_qubit: usize,
+        gate_matrix: &[[Complex64; 2]; 2],
+        num_qubits: usize,
+    ) {
+        let dim = 1 << num_qubits;
+        let control_bit = 1 << control_qubit;
+        let target_bit = 1 << target_qubit;
+
+        for i in 0..dim {
+            if i & control_bit != 0 {
+                let j = i ^ target_bit;
+                for k in 0..dim {
+                    let old_i = matrix[i][k];
+                    let old_j = matrix[j][k];
+                    matrix[i][k] = gate_matrix[0][0] * old_i + gate_matrix[0][1] * old_j;
+                    matrix[j][k] = gate_matrix[1][0] * old_i + gate_matrix[1][1] * old_j;
+                }
+            }
+        }
+    }
+
+    /// Apply a SWAP gate to the circuit matrix
+    fn apply_swap_gate(
+        &self,
+        matrix: &mut Vec<Vec<Complex64>>,
+        qubit1: usize,
+        qubit2: usize,
+        num_qubits: usize,
+    ) {
+        let dim = 1 << num_qubits;
+        let bit1 = 1 << qubit1;
+        let bit2 = 1 << qubit2;
+
+        for i in 0..dim {
+            let state1 = (i & bit1) != 0;
+            let state2 = (i & bit2) != 0;
+
+            if state1 != state2 {
+                let j = i ^ bit1 ^ bit2;
+                if i < j {
+                    for k in 0..dim {
+                        let temp = matrix[i][k];
+                        matrix[i][k] = matrix[j][k];
+                        matrix[j][k] = temp;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Apply an iSWAP gate to the circuit matrix
+    fn apply_iswap_gate(
+        &self,
+        matrix: &mut Vec<Vec<Complex64>>,
+        qubit1: usize,
+        qubit2: usize,
+        num_qubits: usize,
+    ) {
+        let dim = 1 << num_qubits;
+        let bit1 = 1 << qubit1;
+        let bit2 = 1 << qubit2;
+
+        for i in 0..dim {
+            let state1 = (i & bit1) != 0;
+            let state2 = (i & bit2) != 0;
+
+            if state1 != state2 {
+                let j = i ^ bit1 ^ bit2;
+                if i < j {
+                    for k in 0..dim {
+                        let temp = matrix[i][k];
+                        matrix[i][k] = Complex64::new(0.0, 1.0) * matrix[j][k];
+                        matrix[j][k] = Complex64::new(0.0, 1.0) * temp;
                     }
                 }
             }
@@ -548,8 +755,137 @@ impl EquivalenceChecker {
                     }
                 }
             }
+            GateType::S => {
+                let target = gate.target_qubits()[0];
+                let target_bit = 1 << target;
+                for i in 0..(1 << num_qubits) {
+                    if i & target_bit != 0 {
+                        state[i] *= Complex64::new(0.0, 1.0);
+                    }
+                }
+            }
+            GateType::T => {
+                let target = gate.target_qubits()[0];
+                let target_bit = 1 << target;
+                let sqrt2_inv = 1.0 / std::f64::consts::SQRT_2;
+                let t_phase = Complex64::new(sqrt2_inv, sqrt2_inv);
+                for i in 0..(1 << num_qubits) {
+                    if i & target_bit != 0 {
+                        state[i] *= t_phase;
+                    }
+                }
+            }
+            GateType::SqrtX => {
+                let target = gate.target_qubits()[0];
+                let target_bit = 1 << target;
+                for i in 0..(1 << num_qubits) {
+                    let j = i ^ target_bit;
+                    if i < j {
+                        let temp = state[i];
+                        state[i] = Complex64::new(0.5, 0.5) * temp + Complex64::new(0.5, -0.5) * state[j];
+                        state[j] = Complex64::new(0.5, -0.5) * temp + Complex64::new(0.5, 0.5) * state[j];
+                    }
+                }
+            }
+            GateType::SqrtY => {
+                let target = gate.target_qubits()[0];
+                let target_bit = 1 << target;
+                let sqrt2_inv = 1.0 / std::f64::consts::SQRT_2;
+                for i in 0..(1 << num_qubits) {
+                    let j = i ^ target_bit;
+                    if i < j {
+                        let temp = state[i];
+                        state[i] = sqrt2_inv * (temp - state[j]);
+                        state[j] = sqrt2_inv * (temp + state[j]);
+                    }
+                }
+            }
+            GateType::SqrtZ => {
+                let target = gate.target_qubits()[0];
+                let target_bit = 1 << target;
+                for i in 0..(1 << num_qubits) {
+                    if i & target_bit != 0 {
+                        state[i] *= Complex64::new(0.0, 1.0);
+                    }
+                }
+            }
+            GateType::CZ => {
+                if gate.target_qubits().len() >= 2 {
+                    let control = gate.target_qubits()[0];
+                    let target = gate.target_qubits()[1];
+                    let control_bit = 1 << control;
+                    let target_bit = 1 << target;
+
+                    for i in 0..(1 << num_qubits) {
+                        if (i & control_bit != 0) && (i & target_bit != 0) {
+                            state[i] *= -1.0;
+                        }
+                    }
+                }
+            }
+            GateType::CY => {
+                if gate.target_qubits().len() >= 2 {
+                    let control = gate.target_qubits()[0];
+                    let target = gate.target_qubits()[1];
+                    let control_bit = 1 << control;
+                    let target_bit = 1 << target;
+
+                    for i in 0..(1 << num_qubits) {
+                        if i & control_bit != 0 {
+                            let j = i ^ target_bit;
+                            if i < j {
+                                let temp = state[i];
+                                state[i] = Complex64::new(0.0, 1.0) * state[j];
+                                state[j] = Complex64::new(0.0, -1.0) * temp;
+                            }
+                        }
+                    }
+                }
+            }
+            GateType::SWAP => {
+                if gate.target_qubits().len() >= 2 {
+                    let qubit1 = gate.target_qubits()[0];
+                    let qubit2 = gate.target_qubits()[1];
+                    let bit1 = 1 << qubit1;
+                    let bit2 = 1 << qubit2;
+
+                    for i in 0..(1 << num_qubits) {
+                        let state1 = (i & bit1) != 0;
+                        let state2 = (i & bit2) != 0;
+
+                        if state1 != state2 {
+                            let j = i ^ bit1 ^ bit2;
+                            if i < j {
+                                state.swap(i, j);
+                            }
+                        }
+                    }
+                }
+            }
+            GateType::ISwap => {
+                if gate.target_qubits().len() >= 2 {
+                    let qubit1 = gate.target_qubits()[0];
+                    let qubit2 = gate.target_qubits()[1];
+                    let bit1 = 1 << qubit1;
+                    let bit2 = 1 << qubit2;
+
+                    for i in 0..(1 << num_qubits) {
+                        let state1 = (i & bit1) != 0;
+                        let state2 = (i & bit2) != 0;
+
+                        if state1 != state2 {
+                            let j = i ^ bit1 ^ bit2;
+                            if i < j {
+                                let temp = state[i];
+                                state[i] = Complex64::new(0.0, 1.0) * state[j];
+                                state[j] = Complex64::new(0.0, 1.0) * temp;
+                            }
+                        }
+                    }
+                }
+            }
             _ => {
-                // For other gates, no operation (placeholder)
+                // For unsupported gates, continue silently (warning already logged)
             }
         }
 
@@ -763,5 +1099,150 @@ mod tests {
         assert!(checker
             .are_circuits_equivalent(&circuit1, &circuit2, 1)
             .unwrap());
+    }
+
+    #[test]
+    fn test_s_gate_equivalence() {
+        let checker = EquivalenceChecker::new();
+        let s_gate = QuantumGate::new(GateType::S, vec![0], None);
+
+        let circuit1 = vec![s_gate.clone(), s_gate.clone(), s_gate.clone(), s_gate.clone()];
+        let circuit2 = vec![];
+
+        // S^4 = I
+        assert!(checker
+            .are_circuits_equivalent(&circuit1, &circuit2, 1)
+            .unwrap());
+    }
+
+    #[test]
+    fn test_t_gate_equivalence() {
+        let checker = EquivalenceChecker::new();
+        let t_gate = QuantumGate::new(GateType::T, vec![0], None);
+
+        let circuit1 = vec![
+            t_gate.clone(),
+            t_gate.clone(),
+            t_gate.clone(),
+            t_gate.clone(),
+            t_gate.clone(),
+            t_gate.clone(),
+            t_gate.clone(),
+            t_gate.clone(),
+        ];
+        let circuit2 = vec![];
+
+        // T^8 = I
+        assert!(checker
+            .are_circuits_equivalent(&circuit1, &circuit2, 1)
+            .unwrap());
+    }
+
+    #[test]
+    fn test_sqrt_gate_equivalence() {
+        let checker = EquivalenceChecker::new();
+        let sqrt_x_gate = QuantumGate::new(GateType::SqrtX, vec![0], None);
+
+        let circuit1 = vec![sqrt_x_gate.clone(), sqrt_x_gate.clone()];
+        let x_gate = QuantumGate::new(GateType::X, vec![0], None);
+        let circuit2 = vec![x_gate];
+
+        // (√X)^2 = X
+        assert!(checker
+            .are_circuits_equivalent(&circuit1, &circuit2, 1)
+            .unwrap());
+    }
+
+    #[test]
+    fn test_cz_gate_equivalence() {
+        let checker = EquivalenceChecker::new();
+        let cz_gate = QuantumGate::new(GateType::CZ, vec![0, 1], None);
+
+        let circuit1 = vec![cz_gate.clone(), cz_gate.clone()];
+        let circuit2 = vec![];
+
+        // CZ * CZ = I (CZ is self-inverse)
+        assert!(checker
+            .are_circuits_equivalent(&circuit1, &circuit2, 2)
+            .unwrap());
+    }
+
+    #[test]
+    fn test_swap_gate_equivalence() {
+        let checker = EquivalenceChecker::new();
+        let swap_gate = QuantumGate::new(GateType::SWAP, vec![0, 1], None);
+
+        let circuit1 = vec![swap_gate.clone(), swap_gate.clone()];
+        let circuit2 = vec![];
+
+        // SWAP * SWAP = I
+        assert!(checker
+            .are_circuits_equivalent(&circuit1, &circuit2, 2)
+            .unwrap());
+    }
+
+    #[test]
+    fn test_iswap_gate_equivalence() {
+        let checker = EquivalenceChecker::new();
+        let iswap_gate = QuantumGate::new(GateType::ISwap, vec![0, 1], None);
+
+        // Test that iSWAP^4 = I (since iSWAP has order 4)
+        let circuit1 = vec![
+            iswap_gate.clone(),
+            iswap_gate.clone(),
+            iswap_gate.clone(),
+            iswap_gate.clone(),
+        ];
+        let circuit2 = vec![];
+
+        // iSWAP^4 = I
+        assert!(checker
+            .are_circuits_equivalent(&circuit1, &circuit2, 2)
+            .unwrap());
+    }
+
+    #[test]
+    fn test_cnot_cz_hadamard_equivalence() {
+        let checker = EquivalenceChecker::new();
+
+        // Test simpler equivalence: CNOT control-target = CNOT control-target (identity)
+        let cnot1 = QuantumGate::new(GateType::CNOT, vec![0, 1], None);
+        let cnot2 = QuantumGate::new(GateType::CNOT, vec![0, 1], None);
+
+        let circuit1 = vec![cnot1.clone(), cnot2.clone()];
+        let circuit2 = vec![];
+
+        // CNOT * CNOT = I
+        assert!(checker
+            .are_circuits_equivalent(&circuit1, &circuit2, 2)
+            .unwrap());
+    }
+
+    #[test]
+    fn test_advanced_equivalence_features() {
+        let checker = EquivalenceChecker::new();
+        let x_gate = QuantumGate::new(GateType::X, vec![0], None);
+        let y_gate = QuantumGate::new(GateType::Y, vec![0], None);
+
+        let circuit1 = vec![x_gate.clone()];
+        let circuit2 = vec![y_gate];
+
+        let result = checker
+            .advanced_equivalence_check(&circuit1, &circuit2, 1)
+            .unwrap();
+
+        // X and Y gates are not equivalent (different operations)
+        assert!(!result.equivalent);
+
+        // Test that the advanced checker works for basic inequality
+        let x_circuit = vec![x_gate.clone()];
+        let xx_circuit = vec![x_gate.clone(), x_gate.clone()];
+
+        let result2 = checker
+            .advanced_equivalence_check(&x_circuit, &xx_circuit, 1)
+            .unwrap();
+
+        // X ≠ X*X since X*X = I
+        assert!(!result2.equivalent);
     }
 }

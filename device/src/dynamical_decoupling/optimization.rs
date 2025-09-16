@@ -335,19 +335,37 @@ impl DDSequenceOptimizer {
         executor: &dyn DDCircuitExecutor,
         initial_params: &Array1<f64>,
     ) -> DeviceResult<Array1<f64>> {
-        let result = minimize(
-            |params: &ArrayView1<f64>| {
-                let params_array = params.to_owned();
-                -self.evaluate_objective(&params_array, base_sequence, executor)
-                // Minimize negative for maximization
-            },
-            initial_params.as_slice().unwrap(),
-            scirs2_optimize::unconstrained::Method::NelderMead,
-            None,
-        )
-        .map_err(|e| crate::DeviceError::OptimizationError(format!("{:?}", e)))?;
+        #[cfg(feature = "scirs2")]
+        {
+            let result = minimize(
+                |params: &ArrayView1<f64>| {
+                    let params_array = params.to_owned();
+                    -self.evaluate_objective(&params_array, base_sequence, executor)
+                    // Minimize negative for maximization
+                },
+                initial_params.as_slice().unwrap(),
+                scirs2_optimize::unconstrained::Method::NelderMead,
+                None,
+            )
+            .map_err(|e| crate::DeviceError::OptimizationError(format!("{:?}", e)))?;
 
-        Ok(Array1::from_vec(result.x.to_vec()))
+            Ok(Array1::from_vec(result.x.to_vec()))
+        }
+
+        #[cfg(not(feature = "scirs2"))]
+        {
+            let result = minimize(
+                |params: &Array1<f64>| {
+                    -self.evaluate_objective(params, base_sequence, executor)
+                    // Minimize negative for maximization
+                },
+                initial_params.as_slice().unwrap(),
+                "nelder-mead",
+            )
+            .map_err(|e| crate::DeviceError::OptimizationError(format!("{:?}", e)))?;
+
+            Ok(result.x)
+        }
     }
 
     /// Optimize using simulated annealing (placeholder)

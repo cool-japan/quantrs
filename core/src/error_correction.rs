@@ -1186,20 +1186,18 @@ impl ToricCode {
         let n = self.qubit_map.len();
         let mut stabilizers = Vec::new();
 
-        // Vertex stabilizers (X-type)
+        // Vertex stabilizers (X-type) - star operators
         for r in 0..self.rows {
             for c in 0..self.cols {
                 let mut paulis = vec![Pauli::I; n];
 
-                // Four qubits around vertex (with periodic boundary)
-                let coords = [
-                    (2 * r, c),
-                    (2 * r + 1, c),
-                    (2 * ((r + self.rows - 1) % self.rows), c),
-                    (2 * r + 1, (c + self.cols - 1) % self.cols),
-                ];
+                // Four edges around vertex with correct torus indexing
+                let h_edge_below = (2 * r, c);
+                let h_edge_above = (2 * ((r + self.rows - 1) % self.rows), c);
+                let v_edge_left = (2 * r + 1, (c + self.cols - 1) % self.cols);
+                let v_edge_right = (2 * r + 1, c);
 
-                for &coord in &coords {
+                for &coord in &[h_edge_below, h_edge_above, v_edge_left, v_edge_right] {
                     if let Some(&qubit) = self.qubit_map.get(&coord) {
                         paulis[qubit] = Pauli::X;
                     }
@@ -1209,20 +1207,18 @@ impl ToricCode {
             }
         }
 
-        // Plaquette stabilizers (Z-type)
+        // Plaquette stabilizers (Z-type) - face operators
         for r in 0..self.rows {
             for c in 0..self.cols {
                 let mut paulis = vec![Pauli::I; n];
 
-                // Four qubits around plaquette
-                let coords = [
-                    (2 * r, c),
-                    (2 * r, (c + 1) % self.cols),
-                    (2 * r + 1, c),
-                    (2 * ((r + 1) % self.rows), c),
-                ];
+                // Four edges around plaquette with correct indexing
+                let h_edge_top = (2 * r, c);
+                let h_edge_bottom = (2 * ((r + 1) % self.rows), c);
+                let v_edge_left = (2 * r + 1, c);
+                let v_edge_right = (2 * r + 1, (c + 1) % self.cols);
 
-                for &coord in &coords {
+                for &coord in &[h_edge_top, h_edge_bottom, v_edge_left, v_edge_right] {
                     if let Some(&qubit) = self.qubit_map.get(&coord) {
                         paulis[qubit] = Pauli::Z;
                     }
@@ -1238,22 +1234,26 @@ impl ToricCode {
         let mut logical_x2 = vec![Pauli::I; n];
         let mut logical_z2 = vec![Pauli::I; n];
 
-        // Horizontal logical operators
+        // Horizontal logical loop operators
         for c in 0..self.cols {
-            if let Some(&qubit) = self.qubit_map.get(&(0, c)) {
+            // Logical X along horizontal direction (vertical edges)
+            if let Some(&qubit) = self.qubit_map.get(&(1, c)) {
                 logical_x1[qubit] = Pauli::X;
             }
-            if let Some(&qubit) = self.qubit_map.get(&(1, c)) {
+            // Logical Z along horizontal direction (horizontal edges)
+            if let Some(&qubit) = self.qubit_map.get(&(0, c)) {
                 logical_z2[qubit] = Pauli::Z;
             }
         }
 
-        // Vertical logical operators
+        // Vertical logical loop operators
         for r in 0..self.rows {
-            if let Some(&qubit) = self.qubit_map.get(&(2 * r + 1, 0)) {
+            // Logical X along vertical direction (horizontal edges)
+            if let Some(&qubit) = self.qubit_map.get(&(2 * r, 0)) {
                 logical_x2[qubit] = Pauli::X;
             }
-            if let Some(&qubit) = self.qubit_map.get(&(2 * r, 0)) {
+            // Logical Z along vertical direction (vertical edges)
+            if let Some(&qubit) = self.qubit_map.get(&(2 * r + 1, 0)) {
                 logical_z1[qubit] = Pauli::Z;
             }
         }
@@ -3351,7 +3351,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // TODO: Fix toric code stabilizer commutation issue
     fn test_topological_codes() {
         let toric = ToricCode::new(2, 2);
         assert_eq!(toric.logical_qubits(), 2);
