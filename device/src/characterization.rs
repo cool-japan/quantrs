@@ -26,9 +26,9 @@ use scirs2_optimize::{minimize, OptimizeResult};
 #[cfg(feature = "scirs2")]
 use scirs2_stats::{
     distributions::{beta, chi2, gamma, norm},
-    ks_2samp, mean, pearsonr, spearmanr, std, ttest_1samp, ttest_ind, var,
-    TTestResult,
+    ks_2samp, mean, pearsonr, spearmanr, std,
     ttest::Alternative,
+    ttest_1samp, ttest_ind, var, TTestResult,
 };
 
 #[cfg(not(feature = "scirs2"))]

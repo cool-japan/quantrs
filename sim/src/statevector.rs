@@ -12,7 +12,7 @@ use quantrs2_core::{
 
 use crate::diagnostics::SimulationDiagnostics;
 use crate::optimized_simd;
-use crate::scirs2_integration::{Matrix, SciRS2Backend, Vector, BLAS};
+use crate::scirs2_integration::{SciRS2Backend, SciRS2Matrix, SciRS2Vector, BLAS};
 use crate::utils::{flip_bit, gate_vec_to_array2};
 
 /// A state vector simulator for quantum circuits
@@ -293,16 +293,8 @@ impl StateVectorSimulator {
             let vector_1d = Array1::from_vec(vector.to_vec());
 
             // Convert to SciRS2 format
-            let scirs2_matrix = Matrix::from_array2(
-                &matrix_2d.view(),
-                &crate::scirs2_integration::MemoryPool::new(),
-            )
-            .map_err(|_| QuantRS2Error::ComputationError("Matrix conversion failed".to_string()))?;
-            let scirs2_vector = Vector::from_array1(
-                &vector_1d.view(),
-                &crate::scirs2_integration::MemoryPool::new(),
-            )
-            .map_err(|_| QuantRS2Error::ComputationError("Vector conversion failed".to_string()))?;
+            let scirs2_matrix = SciRS2Matrix::from_array2(matrix_2d);
+            let scirs2_vector = SciRS2Vector::from_array1(vector_1d);
 
             // Perform optimized matrix-vector multiplication
             let scirs2_result = self

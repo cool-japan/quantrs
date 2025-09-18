@@ -113,7 +113,7 @@ impl ComplexSimdOps {
         let ai_bi = f64::simd_mul(&a_imag, &b_imag);
         let real_result = f64::simd_sub(&ar_br.view(), &ai_bi.view());
 
-        // Imaginary part: a_r*b_i + a_i*b_r using SciRS2 SIMD operations  
+        // Imaginary part: a_r*b_i + a_i*b_r using SciRS2 SIMD operations
         let ar_bi = f64::simd_mul(&a_real, &b_imag);
         let ai_br = f64::simd_mul(&a_imag, &b_real);
         let imag_result = f64::simd_add(&ar_bi.view(), &ai_br.view());

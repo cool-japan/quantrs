@@ -3,9 +3,9 @@
 //! High-performance quantum gate implementations using SIMD (Single Instruction, Multiple Data)
 //! operations for maximum computational throughput on modern CPUs.
 
-use num_complex::Complex64;
-use std::sync::{Arc, RwLock, OnceLock};
 use crate::error::{QuantRS2Error, QuantRS2Result};
+use num_complex::Complex64;
+use std::sync::{Arc, OnceLock, RwLock};
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
@@ -157,7 +157,11 @@ impl SIMDGateProcessor {
 
     /// Greatest common divisor helper
     fn gcd(a: usize, b: usize) -> usize {
-        if b == 0 { a } else { Self::gcd(b, a % b) }
+        if b == 0 {
+            a
+        } else {
+            Self::gcd(b, a % b)
+        }
     }
 
     /// Process vectorized operations with SIMD optimization
@@ -169,18 +173,22 @@ impl SIMDGateProcessor {
         let start_time = std::time::Instant::now();
 
         let speedup = match operation {
-            VectorizedOperation::SingleQubitBroadcast { matrix, target_qubits } => {
-                self.process_single_qubit_broadcast(matrix, target_qubits, state_vector)?
-            },
-            VectorizedOperation::TwoQubitBroadcast { matrix, qubit_pairs } => {
-                self.process_two_qubit_broadcast(matrix, qubit_pairs, state_vector)?
-            },
-            VectorizedOperation::StateVectorOps { operation_type, chunk_size } => {
-                self.process_state_vector_operation(operation_type, *chunk_size, state_vector)?
-            },
-            VectorizedOperation::BatchMeasurements { qubit_indices, sample_count } => {
-                self.process_batch_measurements(qubit_indices, *sample_count, state_vector)?
-            },
+            VectorizedOperation::SingleQubitBroadcast {
+                matrix,
+                target_qubits,
+            } => self.process_single_qubit_broadcast(matrix, target_qubits, state_vector)?,
+            VectorizedOperation::TwoQubitBroadcast {
+                matrix,
+                qubit_pairs,
+            } => self.process_two_qubit_broadcast(matrix, qubit_pairs, state_vector)?,
+            VectorizedOperation::StateVectorOps {
+                operation_type,
+                chunk_size,
+            } => self.process_state_vector_operation(operation_type, *chunk_size, state_vector)?,
+            VectorizedOperation::BatchMeasurements {
+                qubit_indices,
+                sample_count,
+            } => self.process_batch_measurements(qubit_indices, *sample_count, state_vector)?,
         };
 
         // Update statistics
@@ -189,9 +197,9 @@ impl SIMDGateProcessor {
         stats.total_elements_processed += state_vector.len() as u64;
 
         let elapsed = start_time.elapsed().as_nanos() as f64;
-        stats.average_speedup =
-            (stats.average_speedup * (stats.operations_vectorized - 1) as f64 + speedup) /
-            stats.operations_vectorized as f64;
+        stats.average_speedup = (stats.average_speedup * (stats.operations_vectorized - 1) as f64
+            + speedup)
+            / stats.operations_vectorized as f64;
 
         Ok(speedup)
     }
@@ -273,10 +281,16 @@ impl SIMDGateProcessor {
                     // Complex matrix multiplication using SIMD
                     // This is a simplified version - full implementation would handle
                     // complex arithmetic properly with separate real/imaginary operations
-                    let result_0 = _mm256_fmadd_pd(m00_real, state_0_vals,
-                                                   _mm256_mul_pd(m01_real, state_1_vals));
-                    let result_1 = _mm256_fmadd_pd(m10_real, state_0_vals,
-                                                   _mm256_mul_pd(m11_real, state_1_vals));
+                    let result_0 = _mm256_fmadd_pd(
+                        m00_real,
+                        state_0_vals,
+                        _mm256_mul_pd(m01_real, state_1_vals),
+                    );
+                    let result_1 = _mm256_fmadd_pd(
+                        m10_real,
+                        state_0_vals,
+                        _mm256_mul_pd(m11_real, state_1_vals),
+                    );
 
                     // Store results back
                     let result_ptr_0 = state_vector.as_mut_ptr().add(i) as *mut f64;
@@ -417,7 +431,7 @@ impl SIMDGateProcessor {
     ) -> QuantRS2Result<()> {
         if control >= 64 || target >= 64 {
             return Err(QuantRS2Error::InvalidQubitId(
-                if control >= 64 { control } else { target } as u32
+                if control >= 64 { control } else { target } as u32,
             ));
         }
 
@@ -443,14 +457,22 @@ impl SIMDGateProcessor {
                     let amp_10 = state_vector[j10];
                     let amp_11 = state_vector[j11];
 
-                    state_vector[j00] = matrix[0] * amp_00 + matrix[1] * amp_01 +
-                                       matrix[2] * amp_10 + matrix[3] * amp_11;
-                    state_vector[j01] = matrix[4] * amp_00 + matrix[5] * amp_01 +
-                                       matrix[6] * amp_10 + matrix[7] * amp_11;
-                    state_vector[j10] = matrix[8] * amp_00 + matrix[9] * amp_01 +
-                                       matrix[10] * amp_10 + matrix[11] * amp_11;
-                    state_vector[j11] = matrix[12] * amp_00 + matrix[13] * amp_01 +
-                                       matrix[14] * amp_10 + matrix[15] * amp_11;
+                    state_vector[j00] = matrix[0] * amp_00
+                        + matrix[1] * amp_01
+                        + matrix[2] * amp_10
+                        + matrix[3] * amp_11;
+                    state_vector[j01] = matrix[4] * amp_00
+                        + matrix[5] * amp_01
+                        + matrix[6] * amp_10
+                        + matrix[7] * amp_11;
+                    state_vector[j10] = matrix[8] * amp_00
+                        + matrix[9] * amp_01
+                        + matrix[10] * amp_10
+                        + matrix[11] * amp_11;
+                    state_vector[j11] = matrix[12] * amp_00
+                        + matrix[13] * amp_01
+                        + matrix[14] * amp_10
+                        + matrix[15] * amp_11;
                 }
             }
         }
@@ -470,22 +492,27 @@ impl SIMDGateProcessor {
         match operation_type {
             StateVectorOpType::Normalization => {
                 self.simd_normalize(state_vector, effective_chunk_size)
-            },
+            }
             StateVectorOpType::ProbabilityCalculation => {
                 self.simd_probabilities(state_vector, effective_chunk_size)
-            },
+            }
             StateVectorOpType::PhaseRotation => {
-                self.simd_phase_rotation(state_vector, effective_chunk_size, 0.0) // Default angle
-            },
+                self.simd_phase_rotation(state_vector, effective_chunk_size, 0.0)
+                // Default angle
+            }
             _ => {
                 // Other operations not yet implemented with SIMD
                 Ok(1.0)
-            },
+            }
         }
     }
 
     /// SIMD-optimized state vector normalization
-    fn simd_normalize(&self, state_vector: &mut [Complex64], chunk_size: usize) -> QuantRS2Result<f64> {
+    fn simd_normalize(
+        &self,
+        state_vector: &mut [Complex64],
+        chunk_size: usize,
+    ) -> QuantRS2Result<f64> {
         // Calculate norm squared using SIMD
         let mut norm_squared = 0.0;
 
@@ -511,7 +538,11 @@ impl SIMDGateProcessor {
     }
 
     /// SIMD-optimized probability calculation
-    fn simd_probabilities(&self, state_vector: &[Complex64], chunk_size: usize) -> QuantRS2Result<f64> {
+    fn simd_probabilities(
+        &self,
+        state_vector: &[Complex64],
+        chunk_size: usize,
+    ) -> QuantRS2Result<f64> {
         // This would return probabilities, but for now just calculate them
         let mut _total_prob = 0.0;
 
@@ -525,7 +556,12 @@ impl SIMDGateProcessor {
     }
 
     /// SIMD-optimized phase rotation
-    fn simd_phase_rotation(&self, state_vector: &mut [Complex64], chunk_size: usize, angle: f64) -> QuantRS2Result<f64> {
+    fn simd_phase_rotation(
+        &self,
+        state_vector: &mut [Complex64],
+        chunk_size: usize,
+        angle: f64,
+    ) -> QuantRS2Result<f64> {
         let phase = Complex64::from_polar(1.0, angle);
 
         for chunk in state_vector.chunks_mut(chunk_size) {
@@ -632,14 +668,18 @@ mod tests {
     fn test_single_qubit_gate_application() {
         let processor = SIMDGateProcessor::new();
         let mut state_vector = vec![
-            Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-            Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
         ];
 
         // Pauli-X matrix
         let pauli_x = [
-            Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0),
-            Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
         ];
 
         let result = processor.apply_single_qubit_gate_scalar(&pauli_x, 1, &mut state_vector);

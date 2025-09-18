@@ -319,6 +319,26 @@ impl Expression {
         }
 
         unsafe {
+            let args = vecbasic_new();
+            if args.is_null() {
+                return None;
+            }
+
+            // Get arguments into CVecBasic
+            if basic_get_args(self.basic.get(), args)
+                != symengine_exceptions_t::SYMENGINE_NO_EXCEPTION
+            {
+                vecbasic_free(args);
+                return None;
+            }
+
+            let args_size = vecbasic_size(args);
+            if args_size != 2 {
+                // Power should have exactly 2 arguments (base and exponent)
+                vecbasic_free(args);
+                return None;
+            }
+
             let base = Expression {
                 basic: UnsafeCell::new(std::mem::zeroed()),
             };
@@ -328,10 +348,11 @@ impl Expression {
             basic_new_stack(base.basic.get());
             basic_new_stack(exp.basic.get());
 
-            // Get the base and exponent
-            basic_pow_get_base(base.basic.get(), self.basic.get());
-            basic_pow_get_exp(exp.basic.get(), self.basic.get());
+            // Get the base (first argument) and exponent (second argument)
+            vecbasic_get(args, 0, base.basic.get());
+            vecbasic_get(args, 1, exp.basic.get());
 
+            vecbasic_free(args);
             Some((base, exp))
         }
     }
@@ -343,7 +364,20 @@ impl Expression {
         }
 
         unsafe {
-            let args_size = basic_get_args_size(self.basic.get());
+            let args = vecbasic_new();
+            if args.is_null() {
+                return None;
+            }
+
+            // Get arguments into CVecBasic
+            if basic_get_args(self.basic.get(), args)
+                != symengine_exceptions_t::SYMENGINE_NO_EXCEPTION
+            {
+                vecbasic_free(args);
+                return None;
+            }
+
+            let args_size = vecbasic_size(args);
             let mut terms = Vec::new();
 
             for i in 0..args_size {
@@ -351,10 +385,11 @@ impl Expression {
                     basic: UnsafeCell::new(std::mem::zeroed()),
                 };
                 basic_new_stack(term.basic.get());
-                basic_get_arg(term.basic.get(), self.basic.get(), i);
+                vecbasic_get(args, i, term.basic.get());
                 terms.push(term);
             }
 
+            vecbasic_free(args);
             Some(terms)
         }
     }
@@ -366,7 +401,20 @@ impl Expression {
         }
 
         unsafe {
-            let args_size = basic_get_args_size(self.basic.get());
+            let args = vecbasic_new();
+            if args.is_null() {
+                return None;
+            }
+
+            // Get arguments into CVecBasic
+            if basic_get_args(self.basic.get(), args)
+                != symengine_exceptions_t::SYMENGINE_NO_EXCEPTION
+            {
+                vecbasic_free(args);
+                return None;
+            }
+
+            let args_size = vecbasic_size(args);
             let mut factors = Vec::new();
 
             for i in 0..args_size {
@@ -374,10 +422,11 @@ impl Expression {
                     basic: UnsafeCell::new(std::mem::zeroed()),
                 };
                 basic_new_stack(factor.basic.get());
-                basic_get_arg(factor.basic.get(), self.basic.get(), i);
+                vecbasic_get(args, i, factor.basic.get());
                 factors.push(factor);
             }
 
+            vecbasic_free(args);
             Some(factors)
         }
     }
@@ -389,12 +438,15 @@ impl Expression {
         }
 
         unsafe {
-            let name_ptr = basic_symbol_get_name(self.basic.get());
+            let name_ptr = function_symbol_get_name(self.basic.get());
             if name_ptr.is_null() {
                 return None;
             }
             let name_cstr = CStr::from_ptr(name_ptr);
-            Some(name_cstr.to_string_lossy().to_string())
+            let name = name_cstr.to_string_lossy().to_string();
+            // Free the allocated string (assuming SymEngine allocates the string)
+            basic_str_free(name_ptr);
+            Some(name)
         }
     }
 

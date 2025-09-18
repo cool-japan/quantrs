@@ -13,7 +13,7 @@ use quantrs2_core::{
     gate::GateOp,
     register::Register,
 };
-use rand::thread_rng;
+use rand::{thread_rng, Rng};
 use scirs2_core::parallel_ops::*;
 use std::f64::consts::{PI, SQRT_2};
 

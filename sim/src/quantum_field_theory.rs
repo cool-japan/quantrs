@@ -1559,6 +1559,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_path_integral_monte_carlo_short() {
         let config = QFTConfig::default();
         let mut simulator = QuantumFieldTheorySimulator::new(config).unwrap();

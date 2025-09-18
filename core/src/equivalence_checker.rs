@@ -309,7 +309,10 @@ impl EquivalenceChecker {
                     gate.target_qubits()[0],
                     &[
                         [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
-                        [Complex64::new(0.0, 0.0), Complex64::new(sqrt2_inv, sqrt2_inv)],
+                        [
+                            Complex64::new(0.0, 0.0),
+                            Complex64::new(sqrt2_inv, sqrt2_inv),
+                        ],
                     ],
                     num_qubits,
                 );
@@ -332,8 +335,14 @@ impl EquivalenceChecker {
                     &mut matrix,
                     gate.target_qubits()[0],
                     &[
-                        [Complex64::new(sqrt2_inv, 0.0), Complex64::new(-sqrt2_inv, 0.0)],
-                        [Complex64::new(sqrt2_inv, 0.0), Complex64::new(sqrt2_inv, 0.0)],
+                        [
+                            Complex64::new(sqrt2_inv, 0.0),
+                            Complex64::new(-sqrt2_inv, 0.0),
+                        ],
+                        [
+                            Complex64::new(sqrt2_inv, 0.0),
+                            Complex64::new(sqrt2_inv, 0.0),
+                        ],
                     ],
                     num_qubits,
                 );
@@ -395,7 +404,10 @@ impl EquivalenceChecker {
             }
             _ => {
                 // For truly unsupported gates, log warning but continue
-                eprintln!("Warning: Gate type {:?} not fully implemented in equivalence checker", gate.gate_type());
+                eprintln!(
+                    "Warning: Gate type {:?} not fully implemented in equivalence checker",
+                    gate.gate_type()
+                );
             }
         }
 
@@ -782,8 +794,10 @@ impl EquivalenceChecker {
                     let j = i ^ target_bit;
                     if i < j {
                         let temp = state[i];
-                        state[i] = Complex64::new(0.5, 0.5) * temp + Complex64::new(0.5, -0.5) * state[j];
-                        state[j] = Complex64::new(0.5, -0.5) * temp + Complex64::new(0.5, 0.5) * state[j];
+                        state[i] =
+                            Complex64::new(0.5, 0.5) * temp + Complex64::new(0.5, -0.5) * state[j];
+                        state[j] =
+                            Complex64::new(0.5, -0.5) * temp + Complex64::new(0.5, 0.5) * state[j];
                     }
                 }
             }
@@ -1106,7 +1120,12 @@ mod tests {
         let checker = EquivalenceChecker::new();
         let s_gate = QuantumGate::new(GateType::S, vec![0], None);
 
-        let circuit1 = vec![s_gate.clone(), s_gate.clone(), s_gate.clone(), s_gate.clone()];
+        let circuit1 = vec![
+            s_gate.clone(),
+            s_gate.clone(),
+            s_gate.clone(),
+            s_gate.clone(),
+        ];
         let circuit2 = vec![];
 
         // S^4 = I

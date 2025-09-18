@@ -3,8 +3,10 @@
 //! Advanced circuit optimization using gate fusion, parallelization detection,
 //! and circuit depth reduction techniques.
 
-use crate::optimizations_stable::gate_fusion::{QuantumGate, GateType, FusedGateSequence, apply_gate_fusion};
 use crate::error::{QuantRS2Error, QuantRS2Result};
+use crate::optimizations_stable::gate_fusion::{
+    apply_gate_fusion, FusedGateSequence, GateType, QuantumGate,
+};
 use std::collections::{HashMap, HashSet};
 
 /// Optimization levels for circuits
@@ -82,10 +84,9 @@ impl QuantumCircuit {
 
         // Estimate execution time (rough approximation)
         // Single-qubit: 10ns, Two-qubit: 100ns, Multi-qubit: 1000ns
-        metrics.estimated_execution_time_ns =
-            (metrics.single_qubit_gates * 10) as u64 +
-            (metrics.two_qubit_gates * 100) as u64 +
-            (metrics.multi_qubit_gates * 1000) as u64;
+        metrics.estimated_execution_time_ns = (metrics.single_qubit_gates * 10) as u64
+            + (metrics.two_qubit_gates * 100) as u64
+            + (metrics.multi_qubit_gates * 1000) as u64;
 
         metrics
     }
@@ -99,7 +100,9 @@ impl QuantumCircuit {
 
         for (gate_idx, gate) in self.gates.iter().enumerate() {
             // Find the earliest time this gate can be executed
-            let earliest_time = gate.qubits.iter()
+            let earliest_time = gate
+                .qubits
+                .iter()
                 .map(|&q| qubit_last_used[q])
                 .max()
                 .unwrap_or(0);
@@ -112,8 +115,9 @@ impl QuantumCircuit {
             max_depth = max_depth.max(earliest_time + 1);
 
             // Check if this gate can run in parallel with previous gates
-            if current_parallel_group.is_empty() ||
-               self.can_run_in_parallel(gate, &current_parallel_group) {
+            if current_parallel_group.is_empty()
+                || self.can_run_in_parallel(gate, &current_parallel_group)
+            {
                 current_parallel_group.push(gate_idx);
             } else {
                 if current_parallel_group.len() > 1 {
@@ -128,7 +132,11 @@ impl QuantumCircuit {
             parallel_groups.push(current_parallel_group);
         }
 
-        let parallel_ops = parallel_groups.iter().map(|g| g.len()).sum::<usize>().saturating_sub(parallel_groups.len());
+        let parallel_ops = parallel_groups
+            .iter()
+            .map(|g| g.len())
+            .sum::<usize>()
+            .saturating_sub(parallel_groups.len());
 
         DepthAnalysis {
             depth: max_depth,
@@ -192,20 +200,20 @@ impl QuantumCircuit {
 
         // Check for known inverse pairs
         match (&gate1.gate_type, &gate2.gate_type) {
-            (GateType::PauliX, GateType::PauliX) |
-            (GateType::PauliY, GateType::PauliY) |
-            (GateType::PauliZ, GateType::PauliZ) |
-            (GateType::Hadamard, GateType::Hadamard) => true,
+            (GateType::PauliX, GateType::PauliX)
+            | (GateType::PauliY, GateType::PauliY)
+            | (GateType::PauliZ, GateType::PauliZ)
+            | (GateType::Hadamard, GateType::Hadamard) => true,
 
-            (GateType::RX(a1), GateType::RX(a2)) |
-            (GateType::RY(a1), GateType::RY(a2)) |
-            (GateType::RZ(a1), GateType::RZ(a2)) => {
+            (GateType::RX(a1), GateType::RX(a2))
+            | (GateType::RY(a1), GateType::RY(a2))
+            | (GateType::RZ(a1), GateType::RZ(a2)) => {
                 // Check if angles sum to 2π (modulo 2π)
                 let angle1 = (*a1 as f64) / 1_000_000.0;
                 let angle2 = (*a2 as f64) / 1_000_000.0;
                 let sum = (angle1 + angle2) % (2.0 * std::f64::consts::PI);
                 sum.abs() < 1e-10 || (sum - 2.0 * std::f64::consts::PI).abs() < 1e-10
-            },
+            }
 
             _ => false,
         }
@@ -219,7 +227,10 @@ impl QuantumCircuit {
         for gate in &self.gates {
             let mut qubits = gate.qubits.clone();
             qubits.sort();
-            qubit_sequences.entry(qubits).or_insert_with(Vec::new).push(gate.clone());
+            qubit_sequences
+                .entry(qubits)
+                .or_insert_with(Vec::new)
+                .push(gate.clone());
         }
 
         let mut total_optimizations = 0;
@@ -302,19 +313,21 @@ impl CircuitOptimizer {
         // Update statistics
         let final_metrics = circuit.calculate_metrics();
         self.statistics.circuits_optimized += 1;
-        self.statistics.total_depth_reduction +=
-            original_metrics.circuit_depth.saturating_sub(final_metrics.circuit_depth);
+        self.statistics.total_depth_reduction += original_metrics
+            .circuit_depth
+            .saturating_sub(final_metrics.circuit_depth);
 
         let speedup = if final_metrics.estimated_execution_time_ns > 0 {
-            original_metrics.estimated_execution_time_ns as f64 /
-            final_metrics.estimated_execution_time_ns as f64
+            original_metrics.estimated_execution_time_ns as f64
+                / final_metrics.estimated_execution_time_ns as f64
         } else {
             1.0
         };
 
-        self.statistics.average_speedup =
-            (self.statistics.average_speedup * (self.statistics.circuits_optimized - 1) as f64 + speedup) /
-            self.statistics.circuits_optimized as f64;
+        self.statistics.average_speedup = (self.statistics.average_speedup
+            * (self.statistics.circuits_optimized - 1) as f64
+            + speedup)
+            / self.statistics.circuits_optimized as f64;
 
         Ok(circuit)
     }
@@ -338,8 +351,9 @@ impl CircuitOptimizer {
         // Simple bubble-sort style optimization for commuting gates
         for i in 0..circuit.gates.len() {
             for j in (i + 1)..circuit.gates.len() {
-                if self.gates_commute(&circuit.gates[i], &circuit.gates[j]) &&
-                   self.should_swap_for_optimization(&circuit.gates[i], &circuit.gates[j]) {
+                if self.gates_commute(&circuit.gates[i], &circuit.gates[j])
+                    && self.should_swap_for_optimization(&circuit.gates[i], &circuit.gates[j])
+                {
                     circuit.gates.swap(i, j);
                     optimized = true;
                 }
@@ -361,8 +375,7 @@ impl CircuitOptimizer {
 
         // Some specific gate pairs commute even on same qubits
         match (&gate1.gate_type, &gate2.gate_type) {
-            (GateType::PauliZ, GateType::RZ(_)) |
-            (GateType::RZ(_), GateType::PauliZ) => true,
+            (GateType::PauliZ, GateType::RZ(_)) | (GateType::RZ(_), GateType::PauliZ) => true,
             _ => false,
         }
     }
@@ -407,7 +420,11 @@ impl CircuitOptimizer {
     }
 
     /// Find and optimize rotation sequences
-    fn find_optimizable_rotation_sequence(&self, circuit: &QuantumCircuit, start_idx: usize) -> Option<OptimizedSequence> {
+    fn find_optimizable_rotation_sequence(
+        &self,
+        circuit: &QuantumCircuit,
+        start_idx: usize,
+    ) -> Option<OptimizedSequence> {
         let start_gate = &circuit.gates[start_idx];
 
         // Look for consecutive rotations of the same type on same qubit
@@ -417,8 +434,7 @@ impl CircuitOptimizer {
                 let mut count = 0;
 
                 for gate in circuit.gates[start_idx..].iter() {
-                    if gate.gate_type == start_gate.gate_type &&
-                       gate.qubits == start_gate.qubits {
+                    if gate.gate_type == start_gate.gate_type && gate.qubits == start_gate.qubits {
                         if let Some(angle) = self.extract_rotation_angle(&gate.gate_type) {
                             total_angle = (total_angle + angle) % (2 * 1_000_000 * 314159); // 2π in quantized units
                             count += 1;
@@ -439,15 +455,17 @@ impl CircuitOptimizer {
                         _ => unreachable!(),
                     };
 
-                    if let Ok(optimized_gate) = QuantumGate::new(optimized_gate_type, start_gate.qubits.clone()) {
+                    if let Ok(optimized_gate) =
+                        QuantumGate::new(optimized_gate_type, start_gate.qubits.clone())
+                    {
                         return Some(OptimizedSequence {
                             gates: vec![optimized_gate],
                             original_length: count,
                         });
                     }
                 }
-            },
-            _ => {},
+            }
+            _ => {}
         }
 
         None
@@ -480,7 +498,10 @@ struct OptimizedSequence {
 }
 
 /// Optimize a circuit with specified level
-pub fn optimize_circuit(circuit: QuantumCircuit, level: OptimizationLevel) -> QuantRS2Result<QuantumCircuit> {
+pub fn optimize_circuit(
+    circuit: QuantumCircuit,
+    level: OptimizationLevel,
+) -> QuantRS2Result<QuantumCircuit> {
     let mut optimizer = CircuitOptimizer::new(level);
     optimizer.optimize(circuit)
 }
@@ -511,8 +532,12 @@ mod tests {
         let mut circuit = QuantumCircuit::new(1);
 
         // Add two X gates (should cancel out)
-        circuit.add_gate(QuantumGate::new(GateType::PauliX, vec![0]).unwrap()).unwrap();
-        circuit.add_gate(QuantumGate::new(GateType::PauliX, vec![0]).unwrap()).unwrap();
+        circuit
+            .add_gate(QuantumGate::new(GateType::PauliX, vec![0]).unwrap())
+            .unwrap();
+        circuit
+            .add_gate(QuantumGate::new(GateType::PauliX, vec![0]).unwrap())
+            .unwrap();
 
         let eliminated = circuit.eliminate_redundant_gates();
         assert_eq!(eliminated, 2);
@@ -523,8 +548,12 @@ mod tests {
     fn test_circuit_metrics() {
         let mut circuit = QuantumCircuit::new(2);
 
-        circuit.add_gate(QuantumGate::new(GateType::Hadamard, vec![0]).unwrap()).unwrap();
-        circuit.add_gate(QuantumGate::new(GateType::CNOT, vec![0, 1]).unwrap()).unwrap();
+        circuit
+            .add_gate(QuantumGate::new(GateType::Hadamard, vec![0]).unwrap())
+            .unwrap();
+        circuit
+            .add_gate(QuantumGate::new(GateType::CNOT, vec![0, 1]).unwrap())
+            .unwrap();
 
         let metrics = circuit.calculate_metrics();
         assert_eq!(metrics.total_gates, 2);
@@ -538,9 +567,15 @@ mod tests {
         let mut circuit = QuantumCircuit::new(1);
 
         // Add redundant gates
-        circuit.add_gate(QuantumGate::new(GateType::Hadamard, vec![0]).unwrap()).unwrap();
-        circuit.add_gate(QuantumGate::new(GateType::Hadamard, vec![0]).unwrap()).unwrap();
-        circuit.add_gate(QuantumGate::new(GateType::PauliX, vec![0]).unwrap()).unwrap();
+        circuit
+            .add_gate(QuantumGate::new(GateType::Hadamard, vec![0]).unwrap())
+            .unwrap();
+        circuit
+            .add_gate(QuantumGate::new(GateType::Hadamard, vec![0]).unwrap())
+            .unwrap();
+        circuit
+            .add_gate(QuantumGate::new(GateType::PauliX, vec![0]).unwrap())
+            .unwrap();
 
         let optimized = optimize_circuit(circuit, OptimizationLevel::Standard).unwrap();
 
@@ -567,8 +602,12 @@ mod tests {
         let mut circuit = QuantumCircuit::new(2);
 
         // Add gates on different qubits (should be parallelizable)
-        circuit.add_gate(QuantumGate::new(GateType::Hadamard, vec![0]).unwrap()).unwrap();
-        circuit.add_gate(QuantumGate::new(GateType::Hadamard, vec![1]).unwrap()).unwrap();
+        circuit
+            .add_gate(QuantumGate::new(GateType::Hadamard, vec![0]).unwrap())
+            .unwrap();
+        circuit
+            .add_gate(QuantumGate::new(GateType::Hadamard, vec![1]).unwrap())
+            .unwrap();
 
         let metrics = circuit.calculate_metrics();
         assert!(metrics.parallelizable_operations > 0);

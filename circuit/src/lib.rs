@@ -7,7 +7,6 @@
 #![allow(unexpected_cfgs)]
 #![allow(deprecated)]
 
-
 /// Quantum circuit representation and DSL for the QuantRS2 framework.
 ///
 /// This crate provides types for constructing and manipulating

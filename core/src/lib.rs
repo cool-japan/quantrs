@@ -22,7 +22,6 @@
 #![allow(clippy::elided_lifetimes_in_paths)]
 #![allow(clippy::ptr_eq)]
 #![warn(clippy::all)]
-
 #![allow(dead_code)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::needless_range_loop)]

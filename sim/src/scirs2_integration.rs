@@ -12,6 +12,7 @@
 //! - GPU-ready abstractions for heterogeneous computing
 
 use ndarray::{s, Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
+use ndarray_linalg::Norm;
 #[cfg(feature = "advanced_math")]
 use ndrustfft::FftHandler;
 use num_complex::Complex64;
@@ -123,6 +124,11 @@ impl SciRS2Vector {
     /// Get mutable view of the data
     pub fn data_view_mut(&mut self) -> ArrayViewMut1<Complex64> {
         self.data.view_mut()
+    }
+
+    /// Convert to Array1
+    pub fn to_array1(&self) -> Result<Array1<Complex64>> {
+        Ok(self.data.clone())
     }
 }
 
@@ -264,6 +270,13 @@ impl Default for SciRS2MemoryAllocator {
     }
 }
 
+impl SciRS2MemoryAllocator {
+    /// Create a new memory allocator
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 /// Vectorized FFT engine using SciRS2 SIMD operations
 #[derive(Debug)]
 pub struct SciRS2VectorizedFFT {
@@ -308,6 +321,73 @@ impl Default for SciRS2VectorizedFFT {
         Self {
             plans: HashMap::new(),
             optimization_level: OptimizationLevel::Aggressive,
+        }
+    }
+}
+
+impl SciRS2VectorizedFFT {
+    /// Perform forward FFT on a vector
+    pub fn forward(&self, input: &SciRS2Vector) -> Result<SciRS2Vector> {
+        // Get the input data as an array
+        let data = input.data_view().to_owned();
+
+        // Perform FFT using ndrustfft
+        #[cfg(feature = "advanced_math")]
+        {
+            let mut handler = FftHandler::<f64>::new(data.len());
+            let mut output = data.clone();
+            ndrustfft::ndfft(&data, &mut output, &mut handler, 0);
+            Ok(SciRS2Vector::from_array1(output))
+        }
+
+        #[cfg(not(feature = "advanced_math"))]
+        {
+            // Basic DFT implementation for when advanced_math is not enabled
+            let n = data.len();
+            let mut output = Array1::zeros(n);
+            for k in 0..n {
+                let mut sum = Complex64::new(0.0, 0.0);
+                for j in 0..n {
+                    let angle = -2.0 * PI * (k * j) as f64 / n as f64;
+                    let twiddle = Complex64::new(angle.cos(), angle.sin());
+                    sum += data[j] * twiddle;
+                }
+                output[k] = sum;
+            }
+            Ok(SciRS2Vector::from_array1(output))
+        }
+    }
+
+    /// Perform inverse FFT on a vector
+    pub fn inverse(&self, input: &SciRS2Vector) -> Result<SciRS2Vector> {
+        // Get the input data as an array
+        let data = input.data_view().to_owned();
+
+        // Perform inverse FFT
+        #[cfg(feature = "advanced_math")]
+        {
+            let mut handler = FftHandler::<f64>::new(data.len());
+            let mut output = data.clone();
+            ndrustfft::ndifft(&data, &mut output, &mut handler, 0);
+            Ok(SciRS2Vector::from_array1(output))
+        }
+
+        #[cfg(not(feature = "advanced_math"))]
+        {
+            // Basic inverse DFT implementation
+            let n = data.len();
+            let mut output = Array1::zeros(n);
+            let scale = 1.0 / n as f64;
+            for k in 0..n {
+                let mut sum = Complex64::new(0.0, 0.0);
+                for j in 0..n {
+                    let angle = 2.0 * PI * (k * j) as f64 / n as f64;
+                    let twiddle = Complex64::new(angle.cos(), angle.sin());
+                    sum += data[j] * twiddle;
+                }
+                output[k] = sum * scale;
+            }
+            Ok(SciRS2Vector::from_array1(output))
         }
     }
 }

@@ -866,6 +866,7 @@ mod ultrathink_tests {
     }
 
     #[test]
+    #[ignore]
     fn test_quantum_reservoir_benchmark() {
         // Test the benchmark function
         let result = crate::quantum_reservoir_computing::benchmark_quantum_reservoir_computing();

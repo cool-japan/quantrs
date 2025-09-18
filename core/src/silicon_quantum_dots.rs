@@ -406,8 +406,10 @@ impl SiliconQuantumDotSystem {
 
                 if phase.abs() < 1e-10 {
                     // X rotation: Rx(θ) = [cos(θ/2) -i*sin(θ/2); -i*sin(θ/2) cos(θ/2)]
-                    dot.state[0] = cos_half * old_state[0] - Complex64::new(0.0, sin_half) * old_state[1];
-                    dot.state[1] = -Complex64::new(0.0, sin_half) * old_state[0] + cos_half * old_state[1];
+                    dot.state[0] =
+                        cos_half * old_state[0] - Complex64::new(0.0, sin_half) * old_state[1];
+                    dot.state[1] =
+                        -Complex64::new(0.0, sin_half) * old_state[0] + cos_half * old_state[1];
                 } else if (phase - std::f64::consts::PI / 2.0).abs() < 1e-10 {
                     // Y rotation: Ry(θ) = [cos(θ/2) -sin(θ/2); sin(θ/2) cos(θ/2)]
                     dot.state[0] = cos_half * old_state[0] - sin_half * old_state[1];
@@ -415,8 +417,11 @@ impl SiliconQuantumDotSystem {
                 } else {
                     // General rotation around axis in xy plane
                     let phase_factor = Complex64::new(0.0, phase).exp();
-                    dot.state[0] = cos_half * old_state[0] - Complex64::new(0.0, sin_half) * phase_factor * old_state[1];
-                    dot.state[1] = -Complex64::new(0.0, sin_half) * phase_factor.conj() * old_state[0] + cos_half * old_state[1];
+                    dot.state[0] = cos_half * old_state[0]
+                        - Complex64::new(0.0, sin_half) * phase_factor * old_state[1];
+                    dot.state[1] =
+                        -Complex64::new(0.0, sin_half) * phase_factor.conj() * old_state[0]
+                            + cos_half * old_state[1];
                 }
             }
         }
@@ -527,7 +532,6 @@ impl SiliconQuantumDotSystem {
 
         total_t2 / self.num_dots as f64
     }
-
 }
 
 /// Silicon quantum dot gates

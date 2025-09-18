@@ -19,9 +19,8 @@ pub use structural::*;
 // Conditional imports
 #[cfg(feature = "scirs2")]
 use scirs2_stats::{
-    corrcoef, mean, pearsonr, shapiro_wilk, spearmanr, std, ttest_1samp, ttest_ind, var,
-    TTestResult,
-    ttest::Alternative,
+    corrcoef, mean, pearsonr, shapiro_wilk, spearmanr, std, ttest::Alternative, ttest_1samp,
+    ttest_ind, var, TTestResult,
 };
 
 #[cfg(not(feature = "scirs2"))]

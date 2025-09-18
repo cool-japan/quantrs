@@ -204,14 +204,18 @@ fn create_portfolio_model(
     // 2. Asset count constraints
     let mut asset_count_objective = objective;
     if let Some(min_assets) = constraints.min_assets {
-        let asset_count: Expr = selection_vars.iter().map(|v| v.clone()).sum();
+        let asset_count: Expr = selection_vars
+            .iter()
+            .fold(constant(0.0), |acc, v| acc + v.clone());
         let violation = asset_count.clone() + constant(-(min_assets as f64));
         // Penalty for max(0, min_assets - count) which we approximate as (min_assets - count)^2 when count < min_assets
         asset_count_objective =
             asset_count_objective + constant(penalty_weight) * violation.clone() * violation;
     }
     if let Some(max_assets) = constraints.max_assets {
-        let asset_count: Expr = selection_vars.iter().map(|v| v.clone()).sum();
+        let asset_count: Expr = selection_vars
+            .iter()
+            .fold(constant(0.0), |acc, v| acc + v.clone());
         let violation = asset_count + constant(-(max_assets as f64));
         // Penalty for max(0, count - max_assets)
         asset_count_objective =

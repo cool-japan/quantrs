@@ -597,9 +597,9 @@ impl AutoOptimizer {
     /// Update backend availability status
     fn update_backend_availability(&mut self) -> QuantRS2Result<()> {
         // Check GPU availability
-        #[cfg(feature = "gpu")]
+        #[cfg(all(feature = "gpu", not(target_os = "macos")))]
         let gpu_available = SciRS2GpuStateVectorSimulator::is_available();
-        #[cfg(not(feature = "gpu"))]
+        #[cfg(any(not(feature = "gpu"), target_os = "macos"))]
         let gpu_available = false;
 
         self.backend_availability
@@ -825,7 +825,7 @@ impl AutoOptimizer {
                     .map_err(|e| SimulatorError::ComputationError(e.to_string()))
             }
             BackendType::SciRS2Gpu => {
-                #[cfg(feature = "gpu")]
+                #[cfg(all(feature = "gpu", not(target_os = "macos")))]
                 {
                     let simulator = SciRS2GpuStateVectorSimulator::new()
                         .map_err(|e| SimulatorError::ComputationError(e.to_string()))?;
@@ -833,7 +833,7 @@ impl AutoOptimizer {
                         .run(circuit)
                         .map_err(|e| SimulatorError::ComputationError(e.to_string()))
                 }
-                #[cfg(not(feature = "gpu"))]
+                #[cfg(any(not(feature = "gpu"), target_os = "macos"))]
                 {
                     // Fallback to state vector if GPU not available
                     let simulator = StateVectorSimulator::new();

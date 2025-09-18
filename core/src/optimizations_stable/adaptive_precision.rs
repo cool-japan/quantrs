@@ -4,9 +4,9 @@
 //! error tolerance requirements, and computational resources to optimize
 //! performance while maintaining accuracy.
 
+use crate::error::{QuantRS2Error, QuantRS2Result};
 use num_complex::Complex64;
 use std::collections::HashMap;
-use crate::error::{QuantRS2Error, QuantRS2Result};
 
 /// Available precision levels for quantum computations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -45,10 +45,10 @@ impl PrecisionLevel {
     /// Get relative performance factor (1.0 = baseline double precision)
     pub fn performance_factor(self) -> f64 {
         match self {
-            PrecisionLevel::Single => 1.8,      // ~80% faster
-            PrecisionLevel::Double => 1.0,      // Baseline
-            PrecisionLevel::Extended => 0.3,    // ~70% slower
-            PrecisionLevel::Mixed => 1.2,       // ~20% faster on average
+            PrecisionLevel::Single => 1.8,   // ~80% faster
+            PrecisionLevel::Double => 1.0,   // Baseline
+            PrecisionLevel::Extended => 0.3, // ~70% slower
+            PrecisionLevel::Mixed => 1.2,    // ~20% faster on average
         }
     }
 }
@@ -117,54 +117,77 @@ impl AdaptivePrecisionManager {
     fn initialize_default_requirements(&mut self) {
         let operations = vec![
             // High-precision operations
-            ("eigenvalue_decomposition", PrecisionRequirements {
-                min_precision: PrecisionLevel::Double,
-                error_tolerance: 1e-14,
-                relative_importance: 0.9,
-            }),
-            ("quantum_fourier_transform", PrecisionRequirements {
-                min_precision: PrecisionLevel::Double,
-                error_tolerance: 1e-13,
-                relative_importance: 0.8,
-            }),
-            ("phase_estimation", PrecisionRequirements {
-                min_precision: PrecisionLevel::Double,
-                error_tolerance: 1e-12,
-                relative_importance: 0.9,
-            }),
-
+            (
+                "eigenvalue_decomposition",
+                PrecisionRequirements {
+                    min_precision: PrecisionLevel::Double,
+                    error_tolerance: 1e-14,
+                    relative_importance: 0.9,
+                },
+            ),
+            (
+                "quantum_fourier_transform",
+                PrecisionRequirements {
+                    min_precision: PrecisionLevel::Double,
+                    error_tolerance: 1e-13,
+                    relative_importance: 0.8,
+                },
+            ),
+            (
+                "phase_estimation",
+                PrecisionRequirements {
+                    min_precision: PrecisionLevel::Double,
+                    error_tolerance: 1e-12,
+                    relative_importance: 0.9,
+                },
+            ),
             // Medium-precision operations
-            ("gate_application", PrecisionRequirements {
-                min_precision: PrecisionLevel::Single,
-                error_tolerance: 1e-10,
-                relative_importance: 0.6,
-            }),
-            ("state_vector_norm", PrecisionRequirements {
-                min_precision: PrecisionLevel::Single,
-                error_tolerance: 1e-8,
-                relative_importance: 0.4,
-            }),
-            ("expectation_value", PrecisionRequirements {
-                min_precision: PrecisionLevel::Double,
-                error_tolerance: 1e-11,
-                relative_importance: 0.7,
-            }),
-
+            (
+                "gate_application",
+                PrecisionRequirements {
+                    min_precision: PrecisionLevel::Single,
+                    error_tolerance: 1e-10,
+                    relative_importance: 0.6,
+                },
+            ),
+            (
+                "state_vector_norm",
+                PrecisionRequirements {
+                    min_precision: PrecisionLevel::Single,
+                    error_tolerance: 1e-8,
+                    relative_importance: 0.4,
+                },
+            ),
+            (
+                "expectation_value",
+                PrecisionRequirements {
+                    min_precision: PrecisionLevel::Double,
+                    error_tolerance: 1e-11,
+                    relative_importance: 0.7,
+                },
+            ),
             // Lower-precision operations
-            ("probability_calculation", PrecisionRequirements {
-                min_precision: PrecisionLevel::Single,
-                error_tolerance: 1e-6,
-                relative_importance: 0.3,
-            }),
-            ("measurement_sampling", PrecisionRequirements {
-                min_precision: PrecisionLevel::Single,
-                error_tolerance: 1e-5,
-                relative_importance: 0.2,
-            }),
+            (
+                "probability_calculation",
+                PrecisionRequirements {
+                    min_precision: PrecisionLevel::Single,
+                    error_tolerance: 1e-6,
+                    relative_importance: 0.3,
+                },
+            ),
+            (
+                "measurement_sampling",
+                PrecisionRequirements {
+                    min_precision: PrecisionLevel::Single,
+                    error_tolerance: 1e-5,
+                    relative_importance: 0.2,
+                },
+            ),
         ];
 
         for (op_name, requirements) in operations {
-            self.operation_requirements.insert(op_name.to_string(), requirements);
+            self.operation_requirements
+                .insert(op_name.to_string(), requirements);
         }
     }
 
@@ -178,7 +201,8 @@ impl AdaptivePrecisionManager {
         self.statistics.total_operations += 1;
 
         // Get operation requirements
-        let requirements = self.operation_requirements
+        let requirements = self
+            .operation_requirements
             .get(operation_name)
             .cloned()
             .unwrap_or_default();
@@ -208,8 +232,10 @@ impl AdaptivePrecisionManager {
         self.update_precision_statistics(optimal_precision, &requirements);
 
         // Track error contribution
-        let estimated_error = self.estimate_operation_error(operation_name, optimal_precision, input_size);
-        self.error_estimates.insert(operation_name.to_string(), estimated_error);
+        let estimated_error =
+            self.estimate_operation_error(operation_name, optimal_precision, input_size);
+        self.error_estimates
+            .insert(operation_name.to_string(), estimated_error);
         self.statistics.error_budget_used += estimated_error;
 
         optimal_precision
@@ -258,17 +284,21 @@ impl AdaptivePrecisionManager {
     }
 
     /// Update precision statistics
-    fn update_precision_statistics(&mut self, chosen_precision: PrecisionLevel, requirements: &PrecisionRequirements) {
+    fn update_precision_statistics(
+        &mut self,
+        chosen_precision: PrecisionLevel,
+        requirements: &PrecisionRequirements,
+    ) {
         match chosen_precision.cmp(&requirements.min_precision) {
             std::cmp::Ordering::Less => {
                 // This shouldn't happen in a well-designed system
-            },
+            }
             std::cmp::Ordering::Greater => {
                 self.statistics.precision_upgrades += 1;
-            },
+            }
             std::cmp::Ordering::Equal => {
                 // No change
-            },
+            }
         }
 
         if chosen_precision == PrecisionLevel::Mixed {
@@ -277,36 +307,43 @@ impl AdaptivePrecisionManager {
 
         // Update performance metrics
         let speedup = chosen_precision.performance_factor();
-        self.statistics.average_speedup =
-            (self.statistics.average_speedup * (self.statistics.total_operations - 1) as f64 + speedup) /
-            self.statistics.total_operations as f64;
+        self.statistics.average_speedup = (self.statistics.average_speedup
+            * (self.statistics.total_operations - 1) as f64
+            + speedup)
+            / self.statistics.total_operations as f64;
 
         // Memory savings (rough estimate)
         let memory_factor = match chosen_precision {
-            PrecisionLevel::Single => 0.5,     // Half the memory of double
-            PrecisionLevel::Double => 1.0,     // Baseline
-            PrecisionLevel::Extended => 2.0,   // Double the memory
-            PrecisionLevel::Mixed => 0.75,     // Average savings
+            PrecisionLevel::Single => 0.5,   // Half the memory of double
+            PrecisionLevel::Double => 1.0,   // Baseline
+            PrecisionLevel::Extended => 2.0, // Double the memory
+            PrecisionLevel::Mixed => 0.75,   // Average savings
         };
 
-        self.statistics.memory_savings =
-            (self.statistics.memory_savings * (self.statistics.total_operations - 1) as f64 + memory_factor) /
-            self.statistics.total_operations as f64;
+        self.statistics.memory_savings = (self.statistics.memory_savings
+            * (self.statistics.total_operations - 1) as f64
+            + memory_factor)
+            / self.statistics.total_operations as f64;
     }
 
     /// Estimate numerical error for an operation at given precision
-    fn estimate_operation_error(&self, operation_name: &str, precision: PrecisionLevel, input_size: usize) -> f64 {
+    fn estimate_operation_error(
+        &self,
+        operation_name: &str,
+        precision: PrecisionLevel,
+        input_size: usize,
+    ) -> f64 {
         let base_error = precision.epsilon();
         let size_scaling = (input_size as f64).log2() * 0.1; // Error grows logarithmically with size
 
         // Operation-specific error factors
         let operation_factor = match operation_name {
-            "eigenvalue_decomposition" => 10.0,  // Iterative algorithms accumulate error
-            "quantum_fourier_transform" => 5.0,  // Many arithmetic operations
-            "matrix_multiplication" => 3.0,      // O(n³) operations
-            "gate_application" => 1.0,           // Simple operations
-            "probability_calculation" => 0.5,    // Usually normalized
-            _ => 2.0,                            // Default factor
+            "eigenvalue_decomposition" => 10.0, // Iterative algorithms accumulate error
+            "quantum_fourier_transform" => 5.0, // Many arithmetic operations
+            "matrix_multiplication" => 3.0,     // O(n³) operations
+            "gate_application" => 1.0,          // Simple operations
+            "probability_calculation" => 0.5,   // Usually normalized
+            _ => 2.0,                           // Default factor
         };
 
         base_error * operation_factor * (1.0 + size_scaling)
@@ -334,12 +371,21 @@ impl AdaptivePrecisionManager {
     }
 
     /// Add custom precision requirements for an operation
-    pub fn set_operation_requirements(&mut self, operation_name: String, requirements: PrecisionRequirements) {
-        self.operation_requirements.insert(operation_name, requirements);
+    pub fn set_operation_requirements(
+        &mut self,
+        operation_name: String,
+        requirements: PrecisionRequirements,
+    ) {
+        self.operation_requirements
+            .insert(operation_name, requirements);
     }
 
     /// Suggest optimal precision level for a quantum circuit
-    pub fn suggest_circuit_precision(&self, circuit_operations: &[(String, usize)], target_fidelity: f64) -> PrecisionLevel {
+    pub fn suggest_circuit_precision(
+        &self,
+        circuit_operations: &[(String, usize)],
+        target_fidelity: f64,
+    ) -> PrecisionLevel {
         let error_tolerance = 1.0 - target_fidelity;
         let total_operations = circuit_operations.len();
 
@@ -350,7 +396,8 @@ impl AdaptivePrecisionManager {
         let mut max_precision = PrecisionLevel::Single;
 
         for (op_name, size) in circuit_operations {
-            let requirements = self.operation_requirements
+            let requirements = self
+                .operation_requirements
                 .get(op_name)
                 .cloned()
                 .unwrap_or_default();
@@ -363,14 +410,14 @@ impl AdaptivePrecisionManager {
                         } else {
                             PrecisionLevel::Double
                         }
-                    },
+                    }
                     PrecisionLevel::Double => {
                         if per_operation_budget < 1e-14 {
                             PrecisionLevel::Extended
                         } else {
                             PrecisionLevel::Double
                         }
-                    },
+                    }
                     PrecisionLevel::Extended => PrecisionLevel::Extended,
                     PrecisionLevel::Mixed => PrecisionLevel::Mixed,
                 };
@@ -403,15 +450,13 @@ impl PrecisionAwareOps {
                 let b32 = Complex::<f32>::new(b.re as f32, b.im as f32);
                 let result32 = a32 * b32;
                 Complex64::new(result32.re as f64, result32.im as f64)
-            },
-            PrecisionLevel::Double | PrecisionLevel::Mixed => {
-                a * b
-            },
+            }
+            PrecisionLevel::Double | PrecisionLevel::Mixed => a * b,
             PrecisionLevel::Extended => {
                 // For extended precision, we'd use a higher-precision library
                 // For now, fall back to double precision
                 a * b
-            },
+            }
         }
     }
 
@@ -423,13 +468,9 @@ impl PrecisionAwareOps {
                 let b32 = Complex::<f32>::new(b.re as f32, b.im as f32);
                 let result32 = a32 + b32;
                 Complex64::new(result32.re as f64, result32.im as f64)
-            },
-            PrecisionLevel::Double | PrecisionLevel::Mixed => {
-                a + b
-            },
-            PrecisionLevel::Extended => {
-                a + b
-            },
+            }
+            PrecisionLevel::Double | PrecisionLevel::Mixed => a + b,
+            PrecisionLevel::Extended => a + b,
         }
     }
 
@@ -439,10 +480,8 @@ impl PrecisionAwareOps {
             PrecisionLevel::Single => {
                 let a32 = Complex::<f32>::new(a.re as f32, a.im as f32);
                 a32.norm() as f64
-            },
-            PrecisionLevel::Double | PrecisionLevel::Mixed | PrecisionLevel::Extended => {
-                a.norm()
-            },
+            }
+            PrecisionLevel::Double | PrecisionLevel::Mixed | PrecisionLevel::Extended => a.norm(),
         }
     }
 }
@@ -458,7 +497,10 @@ mod tests {
     fn test_precision_level_properties() {
         assert_eq!(PrecisionLevel::Single.decimal_digits(), 7);
         assert_eq!(PrecisionLevel::Double.decimal_digits(), 15);
-        assert!(PrecisionLevel::Single.performance_factor() > PrecisionLevel::Double.performance_factor());
+        assert!(
+            PrecisionLevel::Single.performance_factor()
+                > PrecisionLevel::Double.performance_factor()
+        );
     }
 
     #[test]
@@ -470,8 +512,11 @@ mod tests {
         assert!(precision == PrecisionLevel::Single || precision == PrecisionLevel::Double);
 
         // Test high-precision requirement
-        let high_precision = manager.determine_optimal_precision("eigenvalue_decomposition", 1000, Some(1e-14));
-        assert!(high_precision == PrecisionLevel::Double || high_precision == PrecisionLevel::Extended);
+        let high_precision =
+            manager.determine_optimal_precision("eigenvalue_decomposition", 1000, Some(1e-14));
+        assert!(
+            high_precision == PrecisionLevel::Double || high_precision == PrecisionLevel::Extended
+        );
     }
 
     #[test]
@@ -497,11 +542,17 @@ mod tests {
         ];
 
         let suggested = manager.suggest_circuit_precision(&operations, 0.999);
-        assert!(matches!(suggested, PrecisionLevel::Single | PrecisionLevel::Double));
+        assert!(matches!(
+            suggested,
+            PrecisionLevel::Single | PrecisionLevel::Double
+        ));
 
         // High fidelity should suggest higher precision
         let high_fidelity = manager.suggest_circuit_precision(&operations, 0.9999999);
-        assert!(matches!(high_fidelity, PrecisionLevel::Double | PrecisionLevel::Extended));
+        assert!(matches!(
+            high_fidelity,
+            PrecisionLevel::Double | PrecisionLevel::Extended
+        ));
     }
 
     #[test]

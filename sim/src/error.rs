@@ -38,6 +38,10 @@ pub enum SimulatorError {
     #[error("GPU execution error: {0}")]
     GPUExecutionError(String),
 
+    /// General GPU error
+    #[error("GPU error: {0}")]
+    GpuError(String),
+
     /// Dimension mismatch
     #[error("Dimension mismatch: {0}")]
     DimensionMismatch(String),

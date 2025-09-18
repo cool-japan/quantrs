@@ -16,8 +16,7 @@ use quantrs2_anneal::ising::IsingModel;
 
 #[cfg(feature = "braket")]
 use quantrs2_anneal::braket::{
-    AdvancedAnnealingParams, BraketClient, CostTracker, DeviceSelector, DeviceStatus,
-    DeviceType,
+    AdvancedAnnealingParams, BraketClient, CostTracker, DeviceSelector, DeviceStatus, DeviceType,
 };
 
 #[cfg(not(feature = "braket"))]

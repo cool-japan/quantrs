@@ -8,11 +8,9 @@ use crate::linalg_ops;
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use num_complex::Complex64;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
-use scirs2_core::gpu::{
-    GpuBackend, GpuBuffer, GpuDevice, GpuKernel,
-};
-use quantrs2_core::{GpuBackendFactory, GpuConfig};
 use quantrs2_core::prelude::*;
+use quantrs2_core::{GpuBackendFactory, GpuConfig};
+use scirs2_core::gpu::{GpuBackend, GpuBuffer, GpuDevice, GpuKernel};
 use std::sync::Arc;
 
 /// SciRS2-powered GPU linear algebra operations
@@ -42,8 +40,11 @@ impl GpuLinearAlgebra {
         // let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), 1024 * 1024 * 1024)?); // 1GB pool
         // let kernel_manager = Arc::new(GpuKernelManager::new(device.clone())?);
 
-        return Err(QuantRS2Error::GpuError("GPU backend API has changed in beta.1. Please use CPU linear algebra for now.".to_string()));
-        
+        return Err(QuantRS2Error::GpuError(
+            "GPU backend API has changed in beta.1. Please use CPU linear algebra for now."
+                .to_string(),
+        ));
+
         Ok(Self {
             backend,
             device,
@@ -62,14 +63,19 @@ impl GpuLinearAlgebra {
         // let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), config.memory_pool_size)?);
         // let kernel_manager = Arc::new(GpuKernelManager::new(device.clone())?);
 
-        Err(QuantRS2Error::GpuError("GPU backend API has changed in beta.1. Please use CPU linear algebra for now.".to_string()))
+        Err(QuantRS2Error::GpuError(
+            "GPU backend API has changed in beta.1. Please use CPU linear algebra for now."
+                .to_string(),
+        ))
     }
 
     /// Create an instance optimized for quantum machine learning
     pub fn new_qml_optimized() -> Result<Self, QuantRS2Error> {
         // TODO: SciRS2GpuFactory not available in beta.1
         // let backend = Arc::new(SciRS2GpuFactory::create_qml_optimized()?);
-        Err(QuantRS2Error::GpuError("GPU backend not available in beta.1".to_string()))
+        Err(QuantRS2Error::GpuError(
+            "GPU backend not available in beta.1".to_string(),
+        ))
     }
 
     /// Enable performance profiling

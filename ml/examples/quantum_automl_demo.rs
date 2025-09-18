@@ -251,7 +251,7 @@ mod tests {
         .iter()
         .filter(|&&enabled| enabled)
         .count();
-        assert!(algorithm_count >= 5);  // At least some algorithms should be enabled
+        assert!(algorithm_count >= 5); // At least some algorithms should be enabled
         assert!(config.search_space.preprocessing.quantum_encodings.len() >= 5);
     }
 }

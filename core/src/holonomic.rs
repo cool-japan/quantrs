@@ -8,7 +8,7 @@ use crate::gate::GateOp;
 use crate::qubit::QubitId;
 use num_complex::Complex64;
 // use scirs2_linalg::{decompose_svd, matrix_exp, matrix_log};
-use ndarray::{Array1, Array2, array};
+use ndarray::{array, Array1, Array2};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -89,9 +89,9 @@ pub struct PathOptimizationConfig {
 impl Default for PathOptimizationConfig {
     fn default() -> Self {
         Self {
-            max_iterations: 100,  // Reduced for faster testing
-            tolerance: 1e-6,      // Relaxed tolerance
-            step_size: 0.1,       // Larger step size
+            max_iterations: 100, // Reduced for faster testing
+            tolerance: 1e-6,     // Relaxed tolerance
+            step_size: 0.1,      // Larger step size
             regularization: 1e-6,
         }
     }
@@ -170,7 +170,8 @@ impl HolonomicGateOpSynthesis {
             for j in 0..n {
                 if i == j {
                     // Diagonal elements based on path curvature
-                    gauge_field[[i, j]] = Complex64::new(0.0, total_curvature * (i as f64 - n as f64 / 2.0) * 0.1);
+                    gauge_field[[i, j]] =
+                        Complex64::new(0.0, total_curvature * (i as f64 - n as f64 / 2.0) * 0.1);
                 } else {
                     // Off-diagonal elements
                     let phase = total_curvature * (i + j) as f64 * 0.05;
@@ -575,7 +576,7 @@ mod tests {
         // Use a simpler target gate - a phase gate that's closer to identity
         let target_gate = array![
             [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
-            [Complex64::new(0.0, 0.0), Complex64::new(0.0, 1.0)]  // i instead of -1
+            [Complex64::new(0.0, 0.0), Complex64::new(0.0, 1.0)] // i instead of -1
         ];
 
         let synthesis = HolonomicGateOpSynthesis::new(target_gate.clone(), 2);
@@ -585,12 +586,12 @@ mod tests {
             Ok(path) => {
                 let fidelity = path.fidelity(&target_gate);
                 println!("Synthesis succeeded with fidelity: {}", fidelity);
-                assert!(fidelity > 0.1);  // Very low threshold for basic functionality
+                assert!(fidelity > 0.1); // Very low threshold for basic functionality
             }
             Err(e) => {
                 println!("Synthesis failed with error: {}", e);
                 // For now, just test that the API works, not that it converges
-                assert!(true);  // Allow test to pass even if optimization fails
+                assert!(true); // Allow test to pass even if optimization fails
             }
         }
     }

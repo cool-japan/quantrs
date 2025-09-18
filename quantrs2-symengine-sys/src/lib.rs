@@ -119,17 +119,16 @@ pub fn version() -> &'static str {
 
 // Additional function declarations that might not be in the generated bindings
 extern "C" {
-    // Argument access functions
-    pub fn basic_get_args_size(basic: *const basic_struct) -> usize;
-    pub fn basic_get_arg(out: *mut basic_struct, basic: *const basic_struct, index: usize)
-        -> c_int;
-
-    // Power operations
-    pub fn basic_pow_get_base(out: *mut basic_struct, basic: *const basic_struct) -> c_int;
-    pub fn basic_pow_get_exp(out: *mut basic_struct, basic: *const basic_struct) -> c_int;
+    // CVecBasic functions (for handling argument vectors)
+    pub fn vecbasic_new() -> *mut CVecBasic;
+    pub fn vecbasic_free(self_: *mut CVecBasic);
+    pub fn vecbasic_push_back(self_: *mut CVecBasic, value: *const basic_struct) -> c_int;
+    pub fn vecbasic_get(self_: *mut CVecBasic, n: usize, result: *mut basic_struct) -> c_int;
+    pub fn vecbasic_size(self_: *const CVecBasic) -> usize;
 
     // Symbol operations
-    pub fn basic_symbol_get_name(basic: *const basic_struct) -> *const c_char;
+    pub fn function_symbol_get_name(basic: *const basic_struct) -> *mut c_char;
+    // Note: basic_get_args, basic_str_free, and basic_pow are already in the generated bindings
 }
 
 /// Check if SymEngine is available at runtime

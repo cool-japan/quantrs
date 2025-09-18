@@ -574,7 +574,10 @@ impl DDPerformanceAnalyzer {
             means.insert(metric_name.clone(), value);
             standard_deviations.insert(metric_name.clone(), value * 0.1); // 10% std dev
             medians.insert(metric_name.clone(), value);
-            percentiles.insert(metric_name.clone(), vec![value * 0.9, value * 1.1, value * 1.2, value * 1.3]);
+            percentiles.insert(
+                metric_name.clone(),
+                vec![value * 0.9, value * 1.1, value * 1.2, value * 1.3],
+            );
             ranges.insert(metric_name, (value * 0.8, value * 1.2));
         }
 

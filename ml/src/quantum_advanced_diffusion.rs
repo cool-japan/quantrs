@@ -959,7 +959,8 @@ impl QuantumAdvancedDiffusionModel {
         let sqrt_alpha_cumprod_t = alpha_cumprod_t.sqrt();
         let sqrt_one_minus_alpha_cumprod = (1.0 - alpha_cumprod_t).sqrt();
 
-        let predicted_x0 = (xt - sqrt_one_minus_alpha_cumprod * &denoise_output.denoised_data) / sqrt_alpha_cumprod_t;
+        let predicted_x0 = (xt - sqrt_one_minus_alpha_cumprod * &denoise_output.denoised_data)
+            / sqrt_alpha_cumprod_t;
 
         // Mean of reverse process
         let sqrt_alpha_cumprod_prev = alpha_cumprod_prev.sqrt() * entanglement_factor;

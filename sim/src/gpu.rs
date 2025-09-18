@@ -9,10 +9,8 @@ use num_complex::Complex64;
 use quantrs2_circuit::builder::Simulator as CircuitSimulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
-use scirs2_core::gpu::{
-    GpuBackend, GpuBuffer, GpuDevice, GpuKernel,
-};
 use quantrs2_core::{GpuBackendFactory, GpuConfig};
+use scirs2_core::gpu::{GpuBackend, GpuBuffer, GpuDevice, GpuKernel};
 // TODO: SciRS2GpuFactory not available in beta.1
 use quantrs2_core::prelude::QubitId;
 use std::sync::Arc;
@@ -45,8 +43,10 @@ impl SciRS2GpuStateVectorSimulator {
         // let backend = Arc::new(GpuBackendFactory::create_backend(platform)?);
         // let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), 1024 * 1024 * 1024)?); // 1GB pool
 
-        return Err(QuantRS2Error::GpuError("GPU backend API has changed in beta.1. Please use CPU simulation for now.".to_string()));
-        
+        return Err(QuantRS2Error::GpuError(
+            "GPU backend API has changed in beta.1. Please use CPU simulation for now.".to_string(),
+        ));
+
         Ok(Self {
             backend,
             device,
@@ -59,9 +59,11 @@ impl SciRS2GpuStateVectorSimulator {
     pub fn with_config(config: GpuConfig) -> QuantRS2Result<Self> {
         let platform = GpuPlatform::from_config(&config)?;
         let device = Arc::new(platform.create_device(config.device_id)?);
-        let backend = Arc::new(GpuBackendFactory::create_backend_with_config(platform, &config)?);
+        let backend = Arc::new(GpuBackendFactory::create_backend_with_config(
+            platform, &config,
+        )?);
         let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), config.memory_pool_size)?);
-        
+
         Ok(Self {
             backend,
             device,
@@ -73,7 +75,9 @@ impl SciRS2GpuStateVectorSimulator {
     /// Create an optimized simulator for quantum machine learning
     pub fn new_qml_optimized() -> QuantRS2Result<Self> {
         // TODO: GPU backend API has changed in beta.1
-        return Err(SimulatorError::GpuError("GPU backend API has changed in beta.1. Please use CPU simulation for now.".to_string()));
+        return Err(SimulatorError::GpuError(
+            "GPU backend API has changed in beta.1. Please use CPU simulation for now.".to_string(),
+        ));
         Ok(Self {
             backend,
             enable_profiling: true,

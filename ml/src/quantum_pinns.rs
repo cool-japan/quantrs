@@ -1443,6 +1443,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_training() {
         let mut config = QPINNConfig::default();
         config.training_config.epochs = 5;

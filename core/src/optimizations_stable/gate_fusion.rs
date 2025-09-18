@@ -3,10 +3,10 @@
 //! Optimizes quantum circuits by fusing adjacent gates into efficient sequences,
 //! reducing the total number of matrix multiplications and improving performance.
 
+use crate::error::{QuantRS2Error, QuantRS2Result};
 use num_complex::Complex64;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock, OnceLock};
-use crate::error::{QuantRS2Error, QuantRS2Result};
+use std::sync::{Arc, OnceLock, RwLock};
 
 /// Types of gates that can be fused
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -55,72 +55,104 @@ impl QuantumGate {
 
     /// Compute the unitary matrix for a gate type
     fn compute_matrix(gate_type: &GateType) -> QuantRS2Result<Vec<Complex64>> {
-        use std::f64::consts::{PI, FRAC_1_SQRT_2};
+        use std::f64::consts::{FRAC_1_SQRT_2, PI};
 
         let matrix = match gate_type {
             GateType::PauliX => vec![
-                Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0),
-                Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
             ],
             GateType::PauliY => vec![
-                Complex64::new(0.0, 0.0), Complex64::new(0.0, -1.0),
-                Complex64::new(0.0, 1.0), Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, -1.0),
+                Complex64::new(0.0, 1.0),
+                Complex64::new(0.0, 0.0),
             ],
             GateType::PauliZ => vec![
-                Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(-1.0, 0.0),
             ],
             GateType::Hadamard => vec![
-                Complex64::new(FRAC_1_SQRT_2, 0.0), Complex64::new(FRAC_1_SQRT_2, 0.0),
-                Complex64::new(FRAC_1_SQRT_2, 0.0), Complex64::new(-FRAC_1_SQRT_2, 0.0),
+                Complex64::new(FRAC_1_SQRT_2, 0.0),
+                Complex64::new(FRAC_1_SQRT_2, 0.0),
+                Complex64::new(FRAC_1_SQRT_2, 0.0),
+                Complex64::new(-FRAC_1_SQRT_2, 0.0),
             ],
             GateType::S => vec![
-                Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0), Complex64::new(0.0, 1.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 1.0),
             ],
             GateType::T => vec![
-                Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0), Complex64::new(FRAC_1_SQRT_2, FRAC_1_SQRT_2),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(FRAC_1_SQRT_2, FRAC_1_SQRT_2),
             ],
             GateType::RX(quantized_angle) => {
                 let angle = (*quantized_angle as f64) / 1_000_000.0;
                 let cos_half = (angle / 2.0).cos();
                 let sin_half = (angle / 2.0).sin();
                 vec![
-                    Complex64::new(cos_half, 0.0), Complex64::new(0.0, -sin_half),
-                    Complex64::new(0.0, -sin_half), Complex64::new(cos_half, 0.0),
+                    Complex64::new(cos_half, 0.0),
+                    Complex64::new(0.0, -sin_half),
+                    Complex64::new(0.0, -sin_half),
+                    Complex64::new(cos_half, 0.0),
                 ]
-            },
+            }
             GateType::RY(quantized_angle) => {
                 let angle = (*quantized_angle as f64) / 1_000_000.0;
                 let cos_half = (angle / 2.0).cos();
                 let sin_half = (angle / 2.0).sin();
                 vec![
-                    Complex64::new(cos_half, 0.0), Complex64::new(-sin_half, 0.0),
-                    Complex64::new(sin_half, 0.0), Complex64::new(cos_half, 0.0),
+                    Complex64::new(cos_half, 0.0),
+                    Complex64::new(-sin_half, 0.0),
+                    Complex64::new(sin_half, 0.0),
+                    Complex64::new(cos_half, 0.0),
                 ]
-            },
+            }
             GateType::RZ(quantized_angle) => {
                 let angle = (*quantized_angle as f64) / 1_000_000.0;
                 let cos_half = (angle / 2.0).cos();
                 let sin_half = (angle / 2.0).sin();
                 vec![
-                    Complex64::new(cos_half, -sin_half), Complex64::new(0.0, 0.0),
-                    Complex64::new(0.0, 0.0), Complex64::new(cos_half, sin_half),
+                    Complex64::new(cos_half, -sin_half),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(cos_half, sin_half),
                 ]
-            },
+            }
             GateType::Phase(quantized_angle) => {
                 let angle = (*quantized_angle as f64) / 1_000_000.0;
                 vec![
-                    Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-                    Complex64::new(0.0, 0.0), Complex64::new(angle.cos(), angle.sin()),
+                    Complex64::new(1.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(angle.cos(), angle.sin()),
                 ]
-            },
+            }
             GateType::CNOT => vec![
-                Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0),
-                Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
             ],
             _ => return Err(QuantRS2Error::UnsupportedGate(format!("{:?}", gate_type))),
         };
@@ -131,9 +163,16 @@ impl QuantumGate {
     /// Get the number of qubits this gate acts on
     pub fn num_qubits(&self) -> usize {
         match self.gate_type {
-            GateType::PauliX | GateType::PauliY | GateType::PauliZ |
-            GateType::Hadamard | GateType::Phase(_) | GateType::RX(_) |
-            GateType::RY(_) | GateType::RZ(_) | GateType::S | GateType::T => 1,
+            GateType::PauliX
+            | GateType::PauliY
+            | GateType::PauliZ
+            | GateType::Hadamard
+            | GateType::Phase(_)
+            | GateType::RX(_)
+            | GateType::RY(_)
+            | GateType::RZ(_)
+            | GateType::S
+            | GateType::T => 1,
 
             GateType::CNOT | GateType::CZ | GateType::SWAP | GateType::CRZ(_) => 2,
 
@@ -160,42 +199,36 @@ impl FusionRule {
                 replacement: vec![], // Identity = no gates
                 efficiency_gain: 2.0,
             },
-
             // Y * Y = I
             FusionRule {
                 pattern: vec![GateType::PauliY, GateType::PauliY],
                 replacement: vec![],
                 efficiency_gain: 2.0,
             },
-
             // Z * Z = I
             FusionRule {
                 pattern: vec![GateType::PauliZ, GateType::PauliZ],
                 replacement: vec![],
                 efficiency_gain: 2.0,
             },
-
             // H * H = I
             FusionRule {
                 pattern: vec![GateType::Hadamard, GateType::Hadamard],
                 replacement: vec![],
                 efficiency_gain: 2.0,
             },
-
             // S * S = Z
             FusionRule {
                 pattern: vec![GateType::S, GateType::S],
                 replacement: vec![GateType::PauliZ],
                 efficiency_gain: 2.0,
             },
-
             // T * T * T * T = I
             FusionRule {
                 pattern: vec![GateType::T, GateType::T, GateType::T, GateType::T],
                 replacement: vec![],
                 efficiency_gain: 4.0,
             },
-
             // Commute Z and RZ (can be parallelized)
             // This would be handled by specialized logic
         ]
@@ -215,7 +248,9 @@ impl FusedGateSequence {
     /// Create a fused sequence from individual gates
     pub fn from_gates(gates: Vec<QuantumGate>) -> QuantRS2Result<Self> {
         if gates.is_empty() {
-            return Err(QuantRS2Error::InvalidInput("Empty gate sequence".to_string()));
+            return Err(QuantRS2Error::InvalidInput(
+                "Empty gate sequence".to_string(),
+            ));
         }
 
         // All gates must act on the same qubits for fusion
@@ -223,7 +258,7 @@ impl FusedGateSequence {
         for gate in &gates {
             if gate.qubits != target_qubits {
                 return Err(QuantRS2Error::InvalidInput(
-                    "All gates must act on the same qubits for fusion".to_string()
+                    "All gates must act on the same qubits for fusion".to_string(),
                 ));
             }
         }
@@ -278,7 +313,9 @@ impl FusedGateSequence {
         size: usize,
     ) -> QuantRS2Result<Vec<Complex64>> {
         if a.len() != size * size || b.len() != size * size {
-            return Err(QuantRS2Error::InvalidInput("Matrix size mismatch".to_string()));
+            return Err(QuantRS2Error::InvalidInput(
+                "Matrix size mismatch".to_string(),
+            ));
         }
 
         let mut result = vec![Complex64::new(0.0, 0.0); size * size];
@@ -540,12 +577,16 @@ mod tests {
     fn test_matrix_multiplication() {
         // Test identity multiplication
         let identity = vec![
-            Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-            Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(1.0, 0.0),
         ];
         let pauli_x = vec![
-            Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0),
-            Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
         ];
 
         let result = FusedGateSequence::matrix_multiply(&identity, &pauli_x, 2).unwrap();

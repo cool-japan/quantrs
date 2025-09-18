@@ -3,12 +3,12 @@
 //! High-performance caching for quantum gate matrices, decompositions, and results
 //! using only stable Rust features and standard library components.
 
+use crate::error::QuantRS2Result;
 use num_complex::Complex64;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use std::sync::{Arc, RwLock, OnceLock};
+use std::sync::{Arc, OnceLock, RwLock};
 use std::time::{Duration, Instant};
-use crate::error::QuantRS2Result;
 
 /// Cache key for quantum computations
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -216,9 +216,7 @@ impl StableQuantumCache {
             let total_accesses: u64 = entries.values().map(|e| e.access_count).sum();
             stats.average_access_count = total_accesses as f64 / entries.len() as f64;
 
-            let oldest_entry = entries.values()
-                .min_by_key(|e| e.created_at)
-                .unwrap();
+            let oldest_entry = entries.values().min_by_key(|e| e.created_at).unwrap();
             stats.oldest_entry_age = Instant::now().duration_since(oldest_entry.created_at);
         }
 
@@ -270,8 +268,8 @@ static GLOBAL_CACHE: OnceLock<StableQuantumCache> = OnceLock::new();
 pub fn get_global_cache() -> &'static StableQuantumCache {
     GLOBAL_CACHE.get_or_init(|| {
         StableQuantumCache::new(
-            4096,  // 4K entries
-            3600,  // 1 hour TTL
+            4096, // 4K entries
+            3600, // 1 hour TTL
         )
     })
 }
@@ -282,7 +280,7 @@ macro_rules! cached_quantum_computation {
     ($operation:expr, $params:expr, $qubits:expr, $compute:expr) => {{
         let cache = $crate::optimizations_stable::quantum_cache::get_global_cache();
         let key = $crate::optimizations_stable::quantum_cache::CacheKey::new(
-            $operation, $params, $qubits
+            $operation, $params, $qubits,
         );
 
         if let Some(result) = cache.get(&key) {

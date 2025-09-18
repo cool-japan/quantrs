@@ -32,14 +32,15 @@ impl MetalGpuSimulator {
         // TODO: Create command queue
 
         Err(SimulatorError::GpuError(
-            "Metal GPU support not yet implemented. Please use CPU simulation on macOS for now.".to_string()
+            "Metal GPU support not yet implemented. Please use CPU simulation on macOS for now."
+                .to_string(),
         ))
     }
 
     /// Simulate a quantum circuit
-    pub fn simulate(&mut self, _circuit: &Circuit) -> Result<()> {
+    pub fn simulate<const N: usize>(&mut self, _circuit: &Circuit<N>) -> Result<()> {
         Err(SimulatorError::GpuError(
-            "Metal GPU simulation not yet implemented".to_string()
+            "Metal GPU simulation not yet implemented".to_string(),
         ))
     }
 

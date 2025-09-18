@@ -166,7 +166,7 @@ fn test_sampler_one_hot_constraint() {
     let z = symbols("z");
 
     // Constraint: (x + y + z - 1)^2
-    let expr = (x.clone() + y.clone() + z.clone() - 1).pow(symengine::expr::Expression::from(2));
+    let expr = (x.clone() + y.clone() + z.clone() - 1).pow(quantrs2_symengine::Expression::from(2));
 
     // Compile to QUBO
     let (qubo, _) = Compile::new(expr).get_qubo().unwrap();

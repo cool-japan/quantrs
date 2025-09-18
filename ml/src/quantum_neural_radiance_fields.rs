@@ -826,11 +826,9 @@ impl QuantumNeRF {
         Ok(QuantumSpatialAttention {
             num_heads,
             head_dim,
-            quantum_query_projection: Array2::eye(input_dim)
-                .mapv(|x| Complex64::new(x, 0.0)),
+            quantum_query_projection: Array2::eye(input_dim).mapv(|x| Complex64::new(x, 0.0)),
             quantum_key_projection: Array2::eye(input_dim).mapv(|x| Complex64::new(x, 0.0)),
-            quantum_value_projection: Array2::eye(input_dim)
-                .mapv(|x| Complex64::new(x, 0.0)),
+            quantum_value_projection: Array2::eye(input_dim).mapv(|x| Complex64::new(x, 0.0)),
             entanglement_weights: Array1::ones(num_heads) * 0.5,
         })
     }

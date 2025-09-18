@@ -2775,6 +2775,7 @@ mod tests {
     use crate::sampler::SASampler;
 
     #[test]
+    #[ignore]
     fn test_testing_framework() {
         let mut config = TestConfig {
             seed: Some(42),

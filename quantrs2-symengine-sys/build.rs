@@ -36,10 +36,52 @@ fn main() {
     generate_bindings();
 }
 
+#[cfg(target_os = "macos")]
+fn check_static_lib_exists() -> bool {
+    // Check common Homebrew paths for static symengine library
+    let paths = [
+        "/opt/homebrew/opt/symengine/lib/libsymengine.a",
+        "/opt/homebrew/lib/libsymengine.a",
+        "/usr/local/opt/symengine/lib/libsymengine.a",
+        "/usr/local/lib/libsymengine.a",
+    ];
+
+    for path in &paths {
+        if std::path::Path::new(path).exists() {
+            return true;
+        }
+    }
+
+    // Also check if SYMENGINE_DIR is set and has static library
+    if let Ok(dir) = env::var("SYMENGINE_DIR") {
+        let static_lib_path = format!("{}/lib/libsymengine.a", dir);
+        if std::path::Path::new(&static_lib_path).exists() {
+            return true;
+        }
+    }
+
+    false
+}
+
 fn setup_manual_linking() {
     // Link to symengine
     if cfg!(feature = "static") {
-        println!("cargo:rustc-link-lib=static=symengine");
+        // On macOS with Homebrew, static libraries might not be available
+        // Check if static library exists, otherwise fall back to dynamic
+        #[cfg(target_os = "macos")]
+        {
+            let static_lib_exists = check_static_lib_exists();
+            if static_lib_exists {
+                println!("cargo:rustc-link-lib=static=symengine");
+            } else {
+                eprintln!("Warning: Static library not found, using dynamic linking instead");
+                println!("cargo:rustc-link-lib=symengine");
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            println!("cargo:rustc-link-lib=static=symengine");
+        }
     } else {
         println!("cargo:rustc-link-lib=symengine");
     }

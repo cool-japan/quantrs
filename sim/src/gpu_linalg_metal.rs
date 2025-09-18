@@ -29,7 +29,8 @@ impl MetalLinalgBackend {
         // TODO: Setup Accelerate framework integration
 
         Err(QuantRS2Error::GpuError(
-            "Metal linear algebra not yet implemented. Please use CPU linear algebra on macOS.".to_string()
+            "Metal linear algebra not yet implemented. Please use CPU linear algebra on macOS."
+                .to_string(),
         ))
     }
 
@@ -41,7 +42,7 @@ impl MetalLinalgBackend {
         // - Configure for gradient computations
 
         Err(QuantRS2Error::GpuError(
-            "Metal QML optimization not yet implemented".to_string()
+            "Metal QML optimization not yet implemented".to_string(),
         ))
     }
 
@@ -53,23 +54,29 @@ impl MetalLinalgBackend {
     ) -> QuantRS2Result<Array2<Complex64>> {
         // TODO: Use MPSMatrixMultiplication
         Err(QuantRS2Error::GpuError(
-            "Metal matrix multiplication not yet implemented".to_string()
+            "Metal matrix multiplication not yet implemented".to_string(),
         ))
     }
 
     /// Eigenvalue decomposition using Accelerate framework
-    pub fn eig(&self, _matrix: &ArrayView2<Complex64>) -> QuantRS2Result<(Array2<Complex64>, Array2<Complex64>)> {
+    pub fn eig(
+        &self,
+        _matrix: &ArrayView2<Complex64>,
+    ) -> QuantRS2Result<(Array2<Complex64>, Array2<Complex64>)> {
         // TODO: Use Accelerate's LAPACK routines
         Err(QuantRS2Error::GpuError(
-            "Metal eigenvalue decomposition not yet implemented".to_string()
+            "Metal eigenvalue decomposition not yet implemented".to_string(),
         ))
     }
 
     /// Singular value decomposition
-    pub fn svd(&self, _matrix: &ArrayView2<Complex64>) -> QuantRS2Result<(Array2<Complex64>, Array2<f64>, Array2<Complex64>)> {
+    pub fn svd(
+        &self,
+        _matrix: &ArrayView2<Complex64>,
+    ) -> QuantRS2Result<(Array2<Complex64>, Array2<f64>, Array2<Complex64>)> {
         // TODO: Use Accelerate's LAPACK routines or MPS
         Err(QuantRS2Error::GpuError(
-            "Metal SVD not yet implemented".to_string()
+            "Metal SVD not yet implemented".to_string(),
         ))
     }
 
@@ -93,24 +100,24 @@ impl MetalLinalgBackend {
     }
 }
 
-/// Future implementation notes:
-///
-/// 1. Metal Shaders for Quantum Gates:
-///    - Implement custom compute shaders for Pauli gates
-///    - Optimize for sparse operations
-///    - Use threadgroup memory for local computations
-///
-/// 2. Memory Management:
-///    - Leverage unified memory on Apple Silicon
-///    - Implement efficient buffer management
-///    - Use shared memory between CPU and GPU
-///
-/// 3. Performance Optimizations:
-///    - Tile-based rendering for large state vectors
-///    - Parallel command encoding
-///    - Async compute with multiple command queues
-///
-/// 4. Integration with Accelerate:
-///    - Use vDSP for signal processing
-///    - Use BLAS for basic operations
-///    - Use LAPACK for advanced decompositions
+// Future implementation notes:
+//
+// 1. Metal Shaders for Quantum Gates:
+//    - Implement custom compute shaders for Pauli gates
+//    - Optimize for sparse operations
+//    - Use threadgroup memory for local computations
+//
+// 2. Memory Management:
+//    - Leverage unified memory on Apple Silicon
+//    - Implement efficient buffer management
+//    - Use shared memory between CPU and GPU
+//
+// 3. Performance Optimizations:
+//    - Tile-based rendering for large state vectors
+//    - Parallel command encoding
+//    - Async compute with multiple command queues
+//
+// 4. Integration with Accelerate:
+//    - Use vDSP for signal processing
+//    - Use BLAS for basic operations
+//    - Use LAPACK for advanced decompositions
