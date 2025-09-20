@@ -86,11 +86,11 @@ num = "0.4"
 approx = "0.5"
 wide = "0.7.32"
 
-# SciRS2 ecosystem dependencies - TEMPORARY: Using local beta.2 development version
-scirs2-core = { path = "../scirs/scirs2-core", default-features = false, features = ["parallel", "simd", "cache", "memory_management", "profiling", "validation", "types"] }
-scirs2-optimize = { path = "../scirs/scirs2-optimize", default-features = false }
-scirs2-linalg = { path = "../scirs/scirs2-linalg", default-features = false }
-scirs2-sparse = { path = "../scirs/scirs2-sparse" }
+# SciRS2 ecosystem dependencies
+scirs2-core = { version = "0.1.0-beta.2", default-features = false, features = ["parallel", "simd", "cache", "memory_management", "profiling", "validation", "types"] }
+scirs2-optimize = { version = "0.1.0-beta.2", default-features = false }
+scirs2-linalg = { version = "0.1.0-beta.2", default-features = false }
+scirs2-sparse = { version = "0.1.0-beta.2" }
 
 # Performance and parallel computing
 rayon = "1.10.0"

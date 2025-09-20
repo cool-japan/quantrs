@@ -34,4 +34,5 @@ Templates for module documentation (README and TODO templates).
 - [Development TODO](development/TODO.md)
 - [Development Roadmap](development/ROADMAP_SUMMARY.md)
 - [macOS Build Guide](MACOS_BUILD_GUIDE.md)
+- [Linux Build Guide](LINUX_BUILD_GUIDE.md)
 - [Python Release Guide](build/PYTHON_RELEASE.md)
