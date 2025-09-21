@@ -760,7 +760,6 @@ impl Compile {
         Ok(((enhanced_matrix, var_map), offset))
     }
 
-
     /// Compile the expression to a HOBO model
     ///
     /// This method compiles the symbolic expression to a Higher-Order Binary Optimization model,
@@ -799,7 +798,6 @@ impl Compile {
 // Helper function to calculate the highest degree in the expression
 #[cfg(feature = "dwave")]
 fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
-
     // If the expression is a single variable, it's degree 1
     if expr.is_symbol() {
         return Ok(1);
@@ -891,7 +889,9 @@ fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
             let degree = if part.contains("**") || part.contains("^") {
                 // Power term like x**2 or y**3
                 // Extract the exponent
-                let exp_str = part.split("**").nth(1)
+                let exp_str = part
+                    .split("**")
+                    .nth(1)
                     .or_else(|| part.split("^").nth(1))
                     .unwrap_or("2")
                     .trim();
@@ -1044,7 +1044,8 @@ fn extract_coefficients(expr: &Expr) -> CompileResult<(HashMap<Vec<String>, f64>
                         term.split("**").next().unwrap_or(term)
                     } else {
                         term.split("^").next().unwrap_or(term)
-                    }.trim();
+                    }
+                    .trim();
 
                     // Extract coefficient if present (e.g., "10*x^2" -> coeff=10, base="x")
                     let (coeff_mult, var_name) = if base.contains('*') {

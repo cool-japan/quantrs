@@ -323,13 +323,19 @@ impl EnhancedMPS {
         // Reshape for SVD
         let matrix = theta_prime.into_shape((left_dim * 2, 2 * right_dim))?;
 
-        eprintln!("DEBUG apply_and_decompose: matrix shape = {:?}", matrix.shape());
+        eprintln!(
+            "DEBUG apply_and_decompose: matrix shape = {:?}",
+            matrix.shape()
+        );
         eprintln!("DEBUG apply_and_decompose: matrix = {:?}", matrix);
 
         // Perform SVD with truncation
         let (u, s, vt) = self.truncated_svd(&matrix)?;
 
-        eprintln!("DEBUG apply_and_decompose: singular values before truncation = {:?}", s);
+        eprintln!(
+            "DEBUG apply_and_decompose: singular values before truncation = {:?}",
+            s
+        );
 
         // Update tensors
         let new_bond = s.len();
@@ -416,9 +422,17 @@ impl EnhancedMPS {
             return Err(QuantRS2Error::InvalidQubitId(target as u32));
         }
 
-        eprintln!("DEBUG move_orthogonality_center: target={}, current={}", target, self.orthogonality_center);
-        eprintln!("DEBUG move_orthogonality_center: tensor shapes before = {:?}",
-                  self.tensors.iter().map(|t| t.data.shape()).collect::<Vec<_>>());
+        eprintln!(
+            "DEBUG move_orthogonality_center: target={}, current={}",
+            target, self.orthogonality_center
+        );
+        eprintln!(
+            "DEBUG move_orthogonality_center: tensor shapes before = {:?}",
+            self.tensors
+                .iter()
+                .map(|t| t.data.shape())
+                .collect::<Vec<_>>()
+        );
 
         // If no current center, canonicalize from edges
         if self.orthogonality_center < 0 {
@@ -439,8 +453,13 @@ impl EnhancedMPS {
                 self.left_canonicalize_site(i)?;
             }
             self.orthogonality_center = target as i32;
-            eprintln!("DEBUG move_orthogonality_center: tensor shapes after = {:?}",
-                      self.tensors.iter().map(|t| t.data.shape()).collect::<Vec<_>>());
+            eprintln!(
+                "DEBUG move_orthogonality_center: tensor shapes after = {:?}",
+                self.tensors
+                    .iter()
+                    .map(|t| t.data.shape())
+                    .collect::<Vec<_>>()
+            );
             return Ok(());
         }
 
@@ -456,8 +475,13 @@ impl EnhancedMPS {
             for i in (target + 1..=current).rev() {
                 eprintln!("DEBUG: Moving center left from site {}", i);
                 self.move_center_left(i)?;
-                eprintln!("DEBUG: After move, tensor shapes = {:?}",
-                          self.tensors.iter().map(|t| t.data.shape()).collect::<Vec<_>>());
+                eprintln!(
+                    "DEBUG: After move, tensor shapes = {:?}",
+                    self.tensors
+                        .iter()
+                        .map(|t| t.data.shape())
+                        .collect::<Vec<_>>()
+                );
             }
         }
 
@@ -563,7 +587,11 @@ impl EnhancedMPS {
         // Q has shape (left_dim * 2, new_bond) where new_bond = rank
         let new_bond = q.shape()[1];
 
-        eprintln!("DEBUG right_canonicalize: Q shape = {:?}, R shape = {:?}", q.shape(), r.shape());
+        eprintln!(
+            "DEBUG right_canonicalize: Q shape = {:?}, R shape = {:?}",
+            q.shape(),
+            r.shape()
+        );
 
         // Reshape Q back to 3D tensor (left, physical, new_right)
         let mut q_tensor = Array3::<Complex64>::zeros((tensor.left_dim, 2, new_bond));
@@ -596,10 +624,11 @@ impl EnhancedMPS {
             }
 
             if prev_matrix.shape()[1] != r.shape()[0] {
-                return Err(QuantRS2Error::InvalidInput(
-                    format!("Bond dimension mismatch: expected {} but got {}",
-                            prev_matrix.shape()[1], r.shape()[0])
-                ));
+                return Err(QuantRS2Error::InvalidInput(format!(
+                    "Bond dimension mismatch: expected {} but got {}",
+                    prev_matrix.shape()[1],
+                    r.shape()[0]
+                )));
             } else {
                 let new_prev = prev_matrix.dot(&r);
                 self.tensors[site - 1] =
@@ -970,19 +999,23 @@ impl EnhancedMPS {
 
             // Compute reduced density matrix for first qubit
             let mut rho = Array2::<Complex64>::zeros((2, 2));
-            rho[[0, 0]] = psi[0] * psi[0].conj() + psi[2] * psi[2].conj();  // |00⟩⟨00| + |01⟩⟨01|
-            rho[[0, 1]] = psi[0] * psi[1].conj() + psi[2] * psi[3].conj();  // |00⟩⟨10| + |01⟩⟨11|
-            rho[[1, 0]] = psi[1] * psi[0].conj() + psi[3] * psi[2].conj();  // |10⟩⟨00| + |11⟩⟨01|
-            rho[[1, 1]] = psi[1] * psi[1].conj() + psi[3] * psi[3].conj();  // |10⟩⟨10| + |11⟩⟨11|
+            rho[[0, 0]] = psi[0] * psi[0].conj() + psi[2] * psi[2].conj(); // |00⟩⟨00| + |01⟩⟨01|
+            rho[[0, 1]] = psi[0] * psi[1].conj() + psi[2] * psi[3].conj(); // |00⟩⟨10| + |01⟩⟨11|
+            rho[[1, 0]] = psi[1] * psi[0].conj() + psi[3] * psi[2].conj(); // |10⟩⟨00| + |11⟩⟨01|
+            rho[[1, 1]] = psi[1] * psi[1].conj() + psi[3] * psi[3].conj(); // |10⟩⟨10| + |11⟩⟨11|
 
             eprintln!("DEBUG: Reduced density matrix: {:?}", rho);
 
             // Compute eigenvalues
             use ndarray_linalg::Eigh;
-            let (eigenvalues, _) = rho.eigh(ndarray_linalg::UPLO::Lower)
-                .map_err(|e| QuantRS2Error::LinalgError(format!("Eigenvalue decomposition failed: {}", e)))?;
+            let (eigenvalues, _) = rho.eigh(ndarray_linalg::UPLO::Lower).map_err(|e| {
+                QuantRS2Error::LinalgError(format!("Eigenvalue decomposition failed: {}", e))
+            })?;
 
-            eprintln!("DEBUG: Eigenvalues of reduced density matrix: {:?}", eigenvalues);
+            eprintln!(
+                "DEBUG: Eigenvalues of reduced density matrix: {:?}",
+                eigenvalues
+            );
 
             // Compute von Neumann entropy
             let mut entropy = 0.0;

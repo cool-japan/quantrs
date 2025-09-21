@@ -102,11 +102,11 @@ impl GPUBackend {
             metrics.cache_misses += 1;
 
             // Create new GPU simulator
-            let simulator = SciRS2GpuStateVectorSimulator::new_with_device(
-                num_qubits,
-                self.device_id,
-            )
-            .map_err(|e| MLError::BackendError(format!("Failed to create GPU simulator: {}", e)))?;
+            let simulator =
+                SciRS2GpuStateVectorSimulator::new_with_device(num_qubits, self.device_id)
+                    .map_err(|e| {
+                        MLError::BackendError(format!("Failed to create GPU simulator: {}", e))
+                    })?;
 
             let simulator_arc = Arc::new(simulator);
             simulators.insert(num_qubits, Arc::clone(&simulator_arc));
@@ -152,17 +152,17 @@ impl GPUBackend {
         gpu_sim.initialize();
 
         for gate in param_circuit.gates() {
-            gpu_sim.apply_gate(gate)
-                .map_err(|e| MLError::BackendError(format!("GPU gate application failed: {}", e)))?;
+            gpu_sim.apply_gate(gate).map_err(|e| {
+                MLError::BackendError(format!("GPU gate application failed: {}", e))
+            })?;
         }
 
         // Get results
-        let state = gpu_sim.get_state_vector()
+        let state = gpu_sim
+            .get_state_vector()
             .map_err(|e| MLError::BackendError(format!("Failed to get state from GPU: {}", e)))?;
 
-        let probabilities = state.iter()
-            .map(|amp| amp.norm_sqr())
-            .collect::<Vec<f64>>();
+        let probabilities = state.iter().map(|amp| amp.norm_sqr()).collect::<Vec<f64>>();
 
         // Handle measurements if requested
         let measurements = if let Some(n_shots) = shots {
@@ -182,7 +182,10 @@ impl GPUBackend {
         metadata.insert("device_id".to_string(), self.device_id as f64);
         metadata.insert("num_qubits".to_string(), N as f64);
         metadata.insert("gpu_time_ms".to_string(), elapsed_ms);
-        metadata.insert("total_gpu_circuits".to_string(), metrics.total_circuits_executed as f64);
+        metadata.insert(
+            "total_gpu_circuits".to_string(),
+            metrics.total_circuits_executed as f64,
+        );
 
         Ok(SimulationResult {
             state: Some(state),
@@ -310,11 +313,9 @@ impl SimulatorBackend for GPUBackend {
                     self.execute_circuit_typed(c, parameters, shots)
                 }
             }
-            DynamicCircuit::Circuit64(c) => {
-                Err(MLError::InvalidInput(
-                    "64-qubit circuits not supported on GPU due to memory constraints".to_string(),
-                ))
-            }
+            DynamicCircuit::Circuit64(c) => Err(MLError::InvalidInput(
+                "64-qubit circuits not supported on GPU due to memory constraints".to_string(),
+            )),
         }
     }
 
@@ -327,7 +328,8 @@ impl SimulatorBackend for GPUBackend {
         // Execute circuit to get state
         let result = self.execute_circuit(circuit, parameters, None)?;
 
-        let state = result.state
+        let state = result
+            .state
             .ok_or_else(|| MLError::BackendError("No state returned from GPU".to_string()))?;
 
         match observable {
@@ -405,7 +407,7 @@ impl SimulatorBackend for GPUBackend {
             gpu_acceleration: true,
             distributed: false,
             adjoint_gradients: false, // Would need custom GPU kernels
-            memory_per_qubit: 16, // Complex64 = 16 bytes per amplitude
+            memory_per_qubit: 16,     // Complex64 = 16 bytes per amplitude
         }
     }
 
@@ -455,7 +457,8 @@ impl GPUMemoryPool {
         }
 
         let mut buffers = self.buffers.lock().unwrap();
-        buffers.entry(buffer.len())
+        buffers
+            .entry(buffer.len())
             .or_insert_with(Vec::new)
             .push(buffer);
     }

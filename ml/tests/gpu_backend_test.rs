@@ -3,9 +3,7 @@
 #[cfg(all(test, feature = "gpu"))]
 mod tests {
     use quantrs2_ml::gpu_backend_impl::GPUBackend;
-    use quantrs2_ml::simulator_backends::{
-        Backend, DynamicCircuit, Observable, SimulatorBackend,
-    };
+    use quantrs2_ml::simulator_backends::{Backend, DynamicCircuit, Observable, SimulatorBackend};
 
     #[test]
     fn test_gpu_backend_creation() {
@@ -22,7 +20,10 @@ mod tests {
                 assert_eq!(backend.max_qubits(), 20);
             } else {
                 // GPU not available on this system
-                assert!(result.unwrap_err().to_string().contains("GPU not available"));
+                assert!(result
+                    .unwrap_err()
+                    .to_string()
+                    .contains("GPU not available"));
             }
         }
 
@@ -30,7 +31,10 @@ mod tests {
         {
             // On macOS or without GPU feature, should return not supported
             assert!(result.is_err());
-            assert!(result.unwrap_err().to_string().contains("not available on this platform"));
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .contains("not available on this platform"));
         }
     }
 
@@ -126,8 +130,8 @@ mod tests {
 
     #[test]
     fn test_gpu_backend_gradient_computation() {
-        use quantrs2_ml::simulator_backends::GradientMethod;
         use quantrs2_circuit::prelude::Circuit;
+        use quantrs2_ml::simulator_backends::GradientMethod;
 
         if let Ok(backend) = GPUBackend::new(0, 10) {
             let circuit = Circuit::<2>::new();

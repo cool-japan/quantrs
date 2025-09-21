@@ -7,9 +7,9 @@ use num_complex::Complex64;
 #[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use quantrs2_core::prelude::*;
 #[cfg(all(feature = "gpu", not(target_os = "macos")))]
-use quantrs2_sim::prelude::*;
-#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use quantrs2_sim::gpu_linalg::GpuLinearAlgebra;
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
+use quantrs2_sim::prelude::*;
 #[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use std::time::Instant;
 

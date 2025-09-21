@@ -575,7 +575,6 @@ impl MPSBackend {
 #[cfg(feature = "gpu")]
 pub use crate::gpu_backend_impl::GPUBackend;
 
-
 // SimulatorBackend implementation for GPUBackend is in gpu_backend_impl.rs
 
 /// Enum for different backend types (avoids dyn compatibility issues)

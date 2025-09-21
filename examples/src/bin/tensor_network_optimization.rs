@@ -1,11 +1,11 @@
 use std::time::Instant;
 
-use quantrs2_circuit::prelude::Circuit;
 use quantrs2_circuit::builder::Simulator as CircuitSimulator;
-use quantrs2_sim::Simulator as SimSimulator;
+use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::prelude::QubitId;
 use quantrs2_sim::prelude::StateVectorSimulator;
 use quantrs2_sim::prelude::{ContractionStrategy, TensorNetworkSimulator};
+use quantrs2_sim::Simulator as SimSimulator;
 
 // Create a QFT circuit
 fn create_qft_circuit(
@@ -111,7 +111,9 @@ where
     let start = Instant::now();
     let mut tensor_sim = match name {
         "QFT" => TensorNetworkSimulator::qft(),
-        "QAOA" => TensorNetworkSimulator::new(num_qubits).with_strategy(ContractionStrategy::Greedy),
+        "QAOA" => {
+            TensorNetworkSimulator::new(num_qubits).with_strategy(ContractionStrategy::Greedy)
+        }
         _ => TensorNetworkSimulator::new(num_qubits).with_strategy(ContractionStrategy::Greedy),
     };
     let _tensor_result = tensor_sim.run(&circuit).unwrap();

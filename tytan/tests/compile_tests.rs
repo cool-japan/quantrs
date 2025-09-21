@@ -86,7 +86,6 @@ fn test_compile_constraint_expression() {
     // Constraint: (x + y + z - 1)^2
     let expr = (x.clone() + y.clone() + z.clone() - 1).pow(quantrs2_symengine::Expression::from(2));
 
-
     // Compile to QUBO
     let (qubo, offset) = Compile::new(expr).get_qubo().unwrap();
     let (matrix, var_map) = qubo;

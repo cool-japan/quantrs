@@ -167,7 +167,8 @@ fn test_sampler_one_hot_constraint() {
     let z = symbols("z");
 
     // Constraint: 10 * (x + y + z - 1)^2 with higher penalty weight
-    let expr = quantrs2_symengine::Expression::from(10) * (x.clone() + y.clone() + z.clone() - 1).pow(quantrs2_symengine::Expression::from(2));
+    let expr = quantrs2_symengine::Expression::from(10)
+        * (x.clone() + y.clone() + z.clone() - 1).pow(quantrs2_symengine::Expression::from(2));
 
     println!("DEBUG: Original expression = {}", expr);
     let expanded = expr.expand();
@@ -204,11 +205,17 @@ fn test_sampler_one_hot_constraint() {
 
     if sum == 1 {
         // Perfect solution found - this satisfies the one-hot constraint
-        println!("Perfect solution found: sum={}, energy={}, total_energy={}", sum, best.energy, total_energy);
+        println!(
+            "Perfect solution found: sum={}, energy={}, total_energy={}",
+            sum, best.energy, total_energy
+        );
         assert!(true, "Found valid one-hot solution");
     } else {
         // Suboptimal solution - but let's check if the QUBO is working correctly
-        println!("Warning: Sampler found suboptimal solution with sum={}, energy={}, total_energy={}", sum, best.energy, total_energy);
+        println!(
+            "Warning: Sampler found suboptimal solution with sum={}, energy={}, total_energy={}",
+            sum, best.energy, total_energy
+        );
 
         // For a constraint violation where all variables are 1, the constraint value should be higher
         // than when exactly one variable is 1. Let's verify this by running more iterations
@@ -217,21 +224,31 @@ fn test_sampler_one_hot_constraint() {
         let improved_results = improved_sampler.run_qubo(&qubo, 10000).unwrap();
         let improved_best = &improved_results[0];
         let improved_sum = (*improved_best.assignments.get("x").unwrap() as i32)
-                         + (*improved_best.assignments.get("y").unwrap() as i32)
-                         + (*improved_best.assignments.get("z").unwrap() as i32);
+            + (*improved_best.assignments.get("y").unwrap() as i32)
+            + (*improved_best.assignments.get("z").unwrap() as i32);
 
-        println!("Improved sampler result: sum={}, energy={}", improved_sum, improved_best.energy);
+        println!(
+            "Improved sampler result: sum={}, energy={}",
+            improved_sum, improved_best.energy
+        );
 
         // If the improved sampler finds a solution with sum=1, that validates our QUBO compilation
         if improved_sum == 1 {
             println!("Improved sampler found valid one-hot solution!");
-            assert!(true, "QUBO compilation works - improved sampler found valid solution");
+            assert!(
+                true,
+                "QUBO compilation works - improved sampler found valid solution"
+            );
         } else {
             // Even with more iterations, check that the energy ordering makes sense
             // A solution with sum closer to 1 should have lower energy
-            if improved_sum == 1 || (improved_sum != sum && (improved_sum - 1).abs() < (sum - 1).abs()) {
-                assert!(improved_best.energy <= best.energy,
-                        "Better solution should have lower or equal energy");
+            if improved_sum == 1
+                || (improved_sum != sum && (improved_sum - 1).abs() < (sum - 1).abs())
+            {
+                assert!(
+                    improved_best.energy <= best.energy,
+                    "Better solution should have lower or equal energy"
+                );
             }
 
             // At minimum, verify that the QUBO produces consistent results
