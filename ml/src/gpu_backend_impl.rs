@@ -112,10 +112,9 @@ impl GPUBackend {
             metrics.cache_misses += 1;
 
             // Create new GPU simulator (note: GPU API changed in beta.1)
-            let simulator = SciRS2GpuStateVectorSimulator::new()
-                    .map_err(|e| {
-                        MLError::ComputationError(format!("Failed to create GPU simulator: {}", e))
-                    })?;
+            let simulator = SciRS2GpuStateVectorSimulator::new().map_err(|e| {
+                MLError::ComputationError(format!("Failed to create GPU simulator: {}", e))
+            })?;
 
             let simulator_arc = Arc::new(simulator);
             simulators.insert(num_qubits, Arc::clone(&simulator_arc));
@@ -160,7 +159,8 @@ impl GPUBackend {
         #[allow(unreachable_code)]
         let state: Vec<Complex64> = vec![];
 
-        let probabilities = Array1::from(state.iter().map(|amp| amp.norm_sqr()).collect::<Vec<f64>>());
+        let probabilities =
+            Array1::from(state.iter().map(|amp| amp.norm_sqr()).collect::<Vec<f64>>());
 
         // Handle measurements if requested
         let measurements = if let Some(n_shots) = shots {
@@ -197,9 +197,7 @@ impl GPUBackend {
     fn sample_measurements(&self, _probabilities: &[f64], n_shots: usize) -> Array1<usize> {
         // Simplified implementation since GPU backend is disabled in beta.1
         // Just return uniform random outcomes for now
-        let outcomes: Vec<usize> = (0..n_shots)
-            .map(|i| i % _probabilities.len())
-            .collect();
+        let outcomes: Vec<usize> = (0..n_shots).map(|i| i % _probabilities.len()).collect();
         Array1::from(outcomes)
     }
 
@@ -327,7 +325,13 @@ impl SimulatorBackend for GPUBackend {
             }
             Observable::PauliZ(qubits) => {
                 let pauli_string = "Z".repeat(qubits.len());
-                Ok(self.compute_pauli_expectation(state.as_slice().unwrap(), &pauli_string, qubits))
+                Ok(
+                    self.compute_pauli_expectation(
+                        state.as_slice().unwrap(),
+                        &pauli_string,
+                        qubits,
+                    ),
+                )
             }
             Observable::Hamiltonian(terms) => {
                 let mut total = 0.0;

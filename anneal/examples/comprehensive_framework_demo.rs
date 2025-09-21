@@ -163,7 +163,8 @@ fn demo_problem_formulations() -> Result<(), Box<dyn std::error::Error>> {
     // Constraint: select exactly 2 assets (simplified)
     for i in 0..4 {
         for j in (i + 1)..4 {
-            let _ = qubo.add_coupling(variables[i].index, variables[j].index, 5.0)
+            let _ = qubo
+                .add_coupling(variables[i].index, variables[j].index, 5.0)
                 .unwrap(); // Penalty for selecting too many
         }
     }

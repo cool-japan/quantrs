@@ -189,9 +189,12 @@ impl GpuLinearAlgebra {
         }
 
         // Use SciRS2 GPU backend for unitary application
-        let backend = self.backend.as_ref().ok_or(QuantRS2Error::BackendExecutionFailed(
-            "GPU not initialized".to_string(),
-        ))?;
+        let backend = self
+            .backend
+            .as_ref()
+            .ok_or(QuantRS2Error::BackendExecutionFailed(
+                "GPU not initialized".to_string(),
+            ))?;
         let kernel = backend.kernel();
 
         // Create a temporary buffer for the state

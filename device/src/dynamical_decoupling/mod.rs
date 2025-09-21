@@ -47,7 +47,6 @@ use crate::{
     CircuitResult, DeviceError, DeviceResult,
 };
 
-
 /// Main result type for dynamical decoupling operations
 #[derive(Debug, Clone)]
 pub struct DynamicalDecouplingResult {

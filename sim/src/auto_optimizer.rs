@@ -834,7 +834,8 @@ impl AutoOptimizer {
                     let mut simulator = SciRS2GpuStateVectorSimulator::new()
                         .map_err(|e| SimulatorError::ComputationError(e.to_string()))?;
                     use crate::simulator::Simulator;
-                    simulator.run(circuit)
+                    simulator
+                        .run(circuit)
                         .map_err(|e| SimulatorError::ComputationError(e.to_string()))
                         .and_then(|result| {
                             Register::with_amplitudes(result.amplitudes().to_vec())

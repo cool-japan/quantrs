@@ -1660,14 +1660,14 @@ impl AdvancedNoiseCharacterizer {
     ) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
         let _ = circuit.x(qubit); // Prepare excited state
-                          // Add wait time (would be implemented with delays in real hardware)
+                                  // Add wait time (would be implemented with delays in real hardware)
         Ok(circuit)
     }
 
     fn create_t2_echo_circuit(&self, qubit: QubitId, wait_time: f64) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
         let _ = circuit.h(qubit); // Create superposition
-                          // Add echo sequence with wait time
+                                  // Add echo sequence with wait time
         let _ = circuit.h(qubit); // Return to computational basis
         Ok(circuit)
     }

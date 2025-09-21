@@ -112,7 +112,6 @@ pub mod codes;
 pub mod detection;
 pub mod mitigation;
 
-
 // Additional trait definitions for test compatibility
 pub trait SyndromeDetector {
     fn detect_syndromes(
