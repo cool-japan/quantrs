@@ -47,7 +47,6 @@ use crate::{
     CircuitResult, DeviceError, DeviceResult,
 };
 
-use self::optimization::DDSequenceOptimizer;
 
 /// Main result type for dynamical decoupling operations
 #[derive(Debug, Clone)]

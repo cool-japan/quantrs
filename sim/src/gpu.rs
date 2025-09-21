@@ -9,10 +9,11 @@ use num_complex::Complex64;
 use quantrs2_circuit::builder::Simulator as CircuitSimulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
-use quantrs2_core::{GpuBackendFactory, GpuConfig};
-use scirs2_core::gpu::{GpuBackend, GpuBuffer, GpuDevice, GpuKernel};
-// TODO: SciRS2GpuFactory not available in beta.1
+use quantrs2_core::gpu::{
+    is_gpu_available, GpuBackend as QuantRS2GpuBackend, GpuConfig, SciRS2GpuBackend,
+};
 use quantrs2_core::prelude::QubitId;
+use scirs2_core::gpu::{GpuBackend, GpuBuffer, GpuContext};
 use std::sync::Arc;
 
 use crate::error::{Result, SimulatorError};
@@ -22,14 +23,11 @@ use crate::simulator::{Simulator, SimulatorResult};
 ///
 /// This simulator leverages SciRS2's unified GPU abstraction layer to provide
 /// optimal performance across different GPU backends (CUDA, Metal, OpenCL).
-#[derive(Debug)]
 pub struct SciRS2GpuStateVectorSimulator {
-    /// SciRS2 GPU backend
-    backend: Arc<GpuBackend>,
-    /// GPU device handle
-    device: Arc<GpuDevice>,
-    /// Memory pool for efficient allocations
-    memory_pool: Arc<GpuMemoryPool>,
+    /// QuantRS2 GPU backend (wrapper around SciRS2)
+    backend: Option<Arc<SciRS2GpuBackend>>,
+    /// SciRS2 GPU context for direct GPU operations
+    gpu_context: Option<GpuContext>,
     /// Performance tracking enabled
     enable_profiling: bool,
 }
@@ -38,48 +36,43 @@ impl SciRS2GpuStateVectorSimulator {
     /// Create a new SciRS2-powered GPU state vector simulator
     pub fn new() -> QuantRS2Result<Self> {
         // TODO: Update to use scirs2_core beta.1 GPU API
-        // let platform = GpuPlatform::detect_best_platform()?;
-        // let device = Arc::new(platform.create_device(0)?);
-        // let backend = Arc::new(GpuBackendFactory::create_backend(platform)?);
-        // let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), 1024 * 1024 * 1024)?); // 1GB pool
-
-        return Err(QuantRS2Error::GpuError(
+        return Err(QuantRS2Error::BackendExecutionFailed(
             "GPU backend API has changed in beta.1. Please use CPU simulation for now.".to_string(),
         ));
 
+        #[allow(unreachable_code)]
         Ok(Self {
-            backend,
-            device,
-            memory_pool,
+            backend: None,
+            gpu_context: None,
             enable_profiling: false,
         })
     }
 
     /// Create a new simulator with custom configuration
-    pub fn with_config(config: GpuConfig) -> QuantRS2Result<Self> {
-        let platform = GpuPlatform::from_config(&config)?;
-        let device = Arc::new(platform.create_device(config.device_id)?);
-        let backend = Arc::new(GpuBackendFactory::create_backend_with_config(
-            platform, &config,
-        )?);
-        let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), config.memory_pool_size)?);
+    pub fn with_config(_config: GpuConfig) -> QuantRS2Result<Self> {
+        // GPU backend API has changed in beta.1
+        return Err(QuantRS2Error::BackendExecutionFailed(
+            "GPU backend API has changed in beta.1. Please use CPU simulation for now.".to_string(),
+        ));
 
+        #[allow(unreachable_code)]
         Ok(Self {
-            backend,
-            device,
-            memory_pool,
-            enable_profiling: config.enable_profiling,
+            backend: None,
+            gpu_context: None,
+            enable_profiling: _config.enable_profiling,
         })
     }
 
     /// Create an optimized simulator for quantum machine learning
     pub fn new_qml_optimized() -> QuantRS2Result<Self> {
         // TODO: GPU backend API has changed in beta.1
-        return Err(SimulatorError::GpuError(
+        return Err(QuantRS2Error::BackendExecutionFailed(
             "GPU backend API has changed in beta.1. Please use CPU simulation for now.".to_string(),
         ));
+        #[allow(unreachable_code)]
         Ok(Self {
-            backend,
+            backend: None,
+            gpu_context: None,
             enable_profiling: true,
         })
     }
@@ -92,7 +85,11 @@ impl SciRS2GpuStateVectorSimulator {
     /// Get performance metrics if profiling is enabled
     pub fn get_performance_metrics(&self) -> Option<String> {
         if self.enable_profiling {
-            Some(self.backend.optimization_report())
+            if let Some(backend) = &self.backend {
+                Some(backend.optimization_report())
+            } else {
+                Some("GPU not initialized".to_string())
+            }
         } else {
             None
         }
@@ -100,7 +97,7 @@ impl SciRS2GpuStateVectorSimulator {
 
     /// Check if GPU acceleration is available
     pub fn is_available() -> bool {
-        SciRS2GpuBackend::is_available()
+        is_gpu_available()
     }
 
     /// Get available GPU backends
@@ -112,8 +109,23 @@ impl SciRS2GpuStateVectorSimulator {
 
 impl Simulator for SciRS2GpuStateVectorSimulator {
     fn run<const N: usize>(&mut self, circuit: &Circuit<N>) -> Result<SimulatorResult<N>> {
-        // Use SciRS2 GPU backend for simulation
-        let mut state_vector = match self.backend.allocate_state_vector(N) {
+        // GPU backend not available in beta.1, use CPU fallback
+        let cpu_sim = crate::statevector::StateVectorSimulator::new();
+        let cpu_result = cpu_sim
+            .run(circuit)
+            .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
+        return Ok(SimulatorResult {
+            amplitudes: cpu_result.amplitudes().to_vec(),
+            num_qubits: N,
+        });
+
+        // Original GPU implementation (disabled in beta.1):
+        #[allow(unreachable_code)]
+        let backend = self
+            .backend
+            .as_ref()
+            .ok_or(SimulatorError::GPUNotAvailable)?;
+        let mut state_vector = match backend.allocate_state_vector(N) {
             Ok(buffer) => buffer,
             Err(e) => {
                 // Fallback to CPU simulation for small circuits or on error
@@ -144,7 +156,7 @@ impl Simulator for SciRS2GpuStateVectorSimulator {
             .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
 
         // Apply gates using SciRS2 GPU kernel
-        let kernel = self.backend.kernel();
+        let kernel = backend.kernel();
 
         for gate in circuit.gates() {
             let qubits = gate.qubits();
@@ -226,34 +238,37 @@ impl Simulator for SciRS2GpuStateVectorSimulator {
 pub type GpuStateVectorSimulator = SciRS2GpuStateVectorSimulator;
 
 impl GpuStateVectorSimulator {
-    /// Create a new GPU state vector simulator using SciRS2 backend
+    /// Create a new GPU state vector simulator using SciRS2 backend (legacy)
     ///
     /// Note: Parameters are ignored for backward compatibility.
     /// The SciRS2 backend automatically handles device and queue management.
-    pub fn new(_device: std::sync::Arc<()>, _queue: std::sync::Arc<()>) -> Self {
+    pub fn new_legacy(_device: std::sync::Arc<()>, _queue: std::sync::Arc<()>) -> Self {
         // Ignore legacy WGPU parameters and use SciRS2 backend
-        Self::new().unwrap_or_else(|_| {
-            // If GPU initialization fails, this will be handled in the run() method
-            // with automatic fallback to CPU
-            SciRS2GpuStateVectorSimulator {
-                backend: Arc::new(
-                    SciRS2GpuBackend::new().expect("Failed to create SciRS2 backend"),
-                ),
-                enable_profiling: false,
+        match SciRS2GpuStateVectorSimulator::new() {
+            Ok(sim) => sim,
+            Err(_) => {
+                // Fallback simulator when GPU initialization fails
+                SciRS2GpuStateVectorSimulator {
+                    backend: None,
+                    gpu_context: None,
+                    enable_profiling: false,
+                }
             }
-        })
+        }
     }
 
     /// Create a blocking version of the GPU simulator
     ///
     /// This method provides backward compatibility with the legacy async API.
-    pub fn new_blocking() -> Result<Self, Box<dyn std::error::Error>> {
-        match Self::new() {
+    pub fn new_blocking() -> std::result::Result<Self, Box<dyn std::error::Error>> {
+        match SciRS2GpuStateVectorSimulator::new() {
             Ok(simulator) => Ok(simulator),
-            Err(e) => Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to create SciRS2 GPU simulator: {}", e),
-            ))),
+            Err(e) => {
+                let err: Box<dyn std::error::Error> = Box::new(SimulatorError::BackendError(
+                    format!("Failed to create SciRS2 GPU simulator: {}", e),
+                ));
+                Err(err)
+            }
         }
     }
 }

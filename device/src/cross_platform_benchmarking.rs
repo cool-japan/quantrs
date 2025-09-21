@@ -1112,7 +1112,7 @@ impl CrossPlatformBenchmarker {
                 while qubit2 == qubit1 {
                     qubit2 = rng.gen_range(0..complexity.qubit_count) as u32;
                 }
-                circuit.cnot(QubitId(qubit1), QubitId(qubit2));
+                let _ = circuit.cnot(QubitId(qubit1), QubitId(qubit2));
             }
 
             circuits.push(circuit);

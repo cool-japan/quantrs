@@ -827,11 +827,10 @@ impl AutoOptimizer {
             BackendType::SciRS2Gpu => {
                 #[cfg(all(feature = "gpu", not(target_os = "macos")))]
                 {
-                    let simulator = SciRS2GpuStateVectorSimulator::new()
+                    let mut simulator = SciRS2GpuStateVectorSimulator::new()
                         .map_err(|e| SimulatorError::ComputationError(e.to_string()))?;
-                    simulator
-                        .run(circuit)
-                        .map_err(|e| SimulatorError::ComputationError(e.to_string()))
+                    use crate::simulator::Simulator;
+                    simulator.run(circuit)
                 }
                 #[cfg(any(not(feature = "gpu"), target_os = "macos"))]
                 {
@@ -1038,10 +1037,10 @@ mod tests {
 
         // Create a simple test circuit
         let mut builder = CircuitBuilder::<4>::new();
-        builder.h(0);
-        builder.cnot(0, 1);
-        builder.h(2);
-        builder.cnot(2, 3);
+        let _ = builder.h(0);
+        let _ = builder.cnot(0, 1);
+        let _ = builder.h(2);
+        let _ = builder.cnot(2, 3);
         let circuit = builder.build();
 
         let characteristics = optimizer.analyze_circuit(&circuit).unwrap();
@@ -1058,8 +1057,8 @@ mod tests {
 
         // Create a small circuit
         let mut builder = CircuitBuilder::<2>::new();
-        builder.h(0);
-        builder.cnot(0, 1);
+        let _ = builder.h(0);
+        let _ = builder.cnot(0, 1);
         let circuit = builder.build();
 
         let recommendation = optimizer.recommend_backend(&circuit).unwrap();
@@ -1074,8 +1073,8 @@ mod tests {
 
         // Create a simple circuit
         let mut builder = CircuitBuilder::<2>::new();
-        builder.h(0);
-        builder.cnot(0, 1);
+        let _ = builder.h(0);
+        let _ = builder.cnot(0, 1);
         let circuit = builder.build();
 
         let result = optimizer.execute_optimized(&circuit);
@@ -1091,8 +1090,8 @@ mod tests {
     fn test_convenience_functions() {
         // Create a simple circuit
         let mut builder = CircuitBuilder::<2>::new();
-        builder.h(0);
-        builder.cnot(0, 1);
+        let _ = builder.h(0);
+        let _ = builder.cnot(0, 1);
         let circuit = builder.build();
 
         // Test recommendation function

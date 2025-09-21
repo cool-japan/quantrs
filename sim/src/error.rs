@@ -105,6 +105,10 @@ pub enum SimulatorError {
     /// Invalid state
     #[error("Invalid state: {0}")]
     InvalidState(String),
+
+    /// Backend error
+    #[error("Backend error: {0}")]
+    BackendError(String),
 }
 
 /// Result type for simulator operations

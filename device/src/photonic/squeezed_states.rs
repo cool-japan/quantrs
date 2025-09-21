@@ -27,6 +27,7 @@ pub enum SqueezedStateError {
 
 /// Types of squeezed states
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[allow(non_snake_case)]
 pub enum SqueezedStateType {
     /// Single-mode squeezed vacuum
     SingleMode { squeezing_dB: f64, angle: f64 },
@@ -88,6 +89,7 @@ pub enum Phasematching {
 
 /// Squeezed state characterization
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(non_snake_case)]
 pub struct SqueezingCharacterization {
     /// Measured squeezing level (dB)
     pub measured_squeezing_dB: f64,
@@ -119,6 +121,7 @@ pub struct SqueezedStateGenerator {
 
 /// Squeezing generation parameters
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(non_snake_case)]
 pub struct SqueezingParameters {
     /// Target squeezing level (dB)
     pub target_squeezing_dB: f64,
@@ -149,6 +152,7 @@ impl Default for SqueezingParameters {
 
 /// Generator performance metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(non_snake_case)]
 pub struct GeneratorPerformance {
     /// Achieved squeezing level (dB)
     pub achieved_squeezing_dB: f64,
@@ -220,6 +224,7 @@ impl Default for GeneratorCalibration {
     }
 }
 
+#[allow(non_snake_case)]
 impl SqueezedStateGenerator {
     pub fn new(method: SqueezingMethod) -> Self {
         Self {
@@ -604,6 +609,7 @@ pub struct SqueezedStateMeasurement {
     pub bandwidth_hz: f64,
 }
 
+#[allow(non_snake_case)]
 impl SqueezedStateMeasurement {
     pub fn new() -> Self {
         Self {

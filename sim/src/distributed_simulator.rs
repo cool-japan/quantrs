@@ -1274,9 +1274,9 @@ pub fn benchmark_distributed_simulation(
         if i % num_qubits < num_qubits {
             let qubit = QubitId((i % num_qubits) as u32);
             if i % 2 == 0 {
-                circuit.h(qubit);
+                let _ = circuit.h(qubit);
             } else {
-                circuit.x(qubit);
+                let _ = circuit.x(qubit);
             }
         }
     }

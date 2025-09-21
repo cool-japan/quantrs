@@ -8,9 +8,9 @@ use crate::linalg_ops;
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use num_complex::Complex64;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
+use quantrs2_core::gpu::{GpuConfig, SciRS2GpuBackend};
 use quantrs2_core::prelude::*;
-use quantrs2_core::{GpuBackendFactory, GpuConfig};
-use scirs2_core::gpu::{GpuBackend, GpuBuffer, GpuDevice, GpuKernel};
+use scirs2_core::gpu::{GpuBackend, GpuBuffer, GpuContext};
 use std::sync::Arc;
 
 /// SciRS2-powered GPU linear algebra operations
@@ -19,13 +19,9 @@ use std::sync::Arc;
 /// SciRS2's unified GPU abstraction layer for quantum simulations.
 pub struct GpuLinearAlgebra {
     /// SciRS2 GPU backend
-    backend: Arc<GpuBackend>,
-    /// GPU device handle
-    device: Arc<GpuDevice>,
-    /// Memory pool for efficient GPU allocations
-    memory_pool: Arc<GpuMemoryPool>,
-    /// Kernel manager for optimized operations
-    kernel_manager: Arc<GpuKernelManager>,
+    backend: Option<Arc<SciRS2GpuBackend>>,
+    /// SciRS2 GPU context for direct GPU operations
+    gpu_context: Option<GpuContext>,
     /// Enable performance profiling
     enable_profiling: bool,
 }
@@ -40,40 +36,44 @@ impl GpuLinearAlgebra {
         // let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), 1024 * 1024 * 1024)?); // 1GB pool
         // let kernel_manager = Arc::new(GpuKernelManager::new(device.clone())?);
 
-        return Err(QuantRS2Error::GpuError(
+        return Err(QuantRS2Error::BackendExecutionFailed(
             "GPU backend API has changed in beta.1. Please use CPU linear algebra for now."
                 .to_string(),
         ));
 
+        #[allow(unreachable_code)]
         Ok(Self {
-            backend,
-            device,
-            memory_pool,
-            kernel_manager,
+            backend: None,
+            gpu_context: None,
             enable_profiling: false,
         })
     }
 
     /// Create a new instance with custom SciRS2 configuration
-    pub fn with_config(config: GpuConfig) -> Result<Self, QuantRS2Error> {
+    pub fn with_config(_config: GpuConfig) -> Result<Self, QuantRS2Error> {
         // TODO: Update to use scirs2_core beta.1 GPU API
-        // let platform = GpuPlatform::from_config(&config)?;
+        return Err(QuantRS2Error::BackendExecutionFailed(
+            "GPU backend API has changed in beta.1. Please use CPU linear algebra for now."
+                .to_string(),
+        ));
         // let device = Arc::new(platform.create_device(config.device_id)?);
         // let backend = Arc::new(GpuBackendFactory::create_backend_with_config(platform, &config)?);
         // let memory_pool = Arc::new(GpuMemoryPool::new(device.clone(), config.memory_pool_size)?);
         // let kernel_manager = Arc::new(GpuKernelManager::new(device.clone())?);
 
-        Err(QuantRS2Error::GpuError(
-            "GPU backend API has changed in beta.1. Please use CPU linear algebra for now."
-                .to_string(),
-        ))
+        #[allow(unreachable_code)]
+        Ok(Self {
+            backend: None,
+            gpu_context: None,
+            enable_profiling: _config.enable_profiling,
+        })
     }
 
     /// Create an instance optimized for quantum machine learning
     pub fn new_qml_optimized() -> Result<Self, QuantRS2Error> {
         // TODO: SciRS2GpuFactory not available in beta.1
         // let backend = Arc::new(SciRS2GpuFactory::create_qml_optimized()?);
-        Err(QuantRS2Error::GpuError(
+        Err(QuantRS2Error::BackendExecutionFailed(
             "GPU backend not available in beta.1".to_string(),
         ))
     }
@@ -86,7 +86,11 @@ impl GpuLinearAlgebra {
     /// Get performance metrics if profiling is enabled
     pub fn get_performance_metrics(&self) -> Option<String> {
         if self.enable_profiling {
-            Some(self.backend.optimization_report())
+            if let Some(backend) = &self.backend {
+                Some(backend.optimization_report())
+            } else {
+                Some("GPU not initialized".to_string())
+            }
         } else {
             None
         }
@@ -108,9 +112,8 @@ impl GpuLinearAlgebra {
             )));
         }
 
-        // Use SciRS2 SIMD-optimized matrix multiplication
-        // This leverages the same SIMD primitives used in the main simulator
-        use scirs2_core::simd_ops::SimdUnifiedOps;
+        // Use CPU fallback for matrix multiplication
+        // GPU backend API has changed in beta.1
 
         // Convert to ndarray views for SIMD operations
         let a_view = a.view();
@@ -212,17 +215,24 @@ impl GpuLinearAlgebra {
     ) -> Result<f64, QuantRS2Error> {
         let num_qubits = (state.len() as f64).log2() as usize;
 
-        // Create GPU buffer for the state
-        let state_buffer = self.backend.allocate_state_vector(num_qubits)?;
+        // GPU backend not available in beta.1
+        return Err(QuantRS2Error::BackendExecutionFailed(
+            "GPU backend not available in beta.1, use CPU implementation".to_string(),
+        ));
 
-        // Convert target_qubits to QubitIds
-        let qubits: Vec<_> = target_qubits.iter().map(|&q| QubitId(q)).collect();
-
-        // Use SciRS2 kernel for expectation value calculation
-        let kernel = self.backend.kernel();
+        // Original GPU implementation would be:
+        #[allow(unreachable_code)]
+        let backend = self
+            .backend
+            .as_ref()
+            .ok_or(QuantRS2Error::BackendExecutionFailed(
+                "GPU not initialized".to_string(),
+            ))?;
+        let state_buffer = backend.allocate_state_vector(num_qubits)?;
+        let qubits: Vec<_> = target_qubits.iter().map(|&q| QubitId(q as u32)).collect();
+        let kernel = backend.kernel();
         let expectation =
             kernel.expectation_value(state_buffer.as_ref(), observable, &qubits, num_qubits)?;
-
         Ok(expectation)
     }
 

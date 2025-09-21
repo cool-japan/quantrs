@@ -2400,26 +2400,7 @@ impl Default for QuantumPerformanceHistory {
     }
 }
 
-// Stub implementations for supporting types
-macro_rules! impl_new_for_quantum_types {
-    ($($type:ty),*) => {
-        $(
-            impl $type {
-                pub fn new() -> Self {
-                    // Create a placeholder implementation
-                    Self::default()
-                }
-            }
-
-            impl Default for $type {
-                fn default() -> Self {
-                    // For complex types, we'll need individual implementations
-                    todo!("Implement proper default for {}", stringify!($type))
-                }
-            }
-        )*
-    };
-}
+// Individual default implementations are provided below
 
 // Individual implementations for each type to avoid unsafe operations
 impl Default for QuantumLoadPredictionModel {
@@ -2625,26 +2606,7 @@ impl crate::quantum_network::network_optimization::MLModel for SimpleMLModel {
     }
 }
 
-// Create a macro for simple default implementations with placeholder fields
-macro_rules! impl_default_with_placeholder {
-    ($($type:ty),*) => {
-        $(
-            impl Default for $type {
-                fn default() -> Self {
-                    Self {
-                        placeholder_field: "stub_implementation".to_string(),
-                    }
-                }
-            }
-
-            impl $type {
-                pub fn new() -> Self {
-                    Self::default()
-                }
-            }
-        )*
-    };
-}
+// Stub implementations with placeholder fields are provided individually
 
 // Additional implementations for key functionality
 impl QuantumLoadPredictionModel {

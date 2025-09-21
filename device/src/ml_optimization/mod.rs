@@ -16,29 +16,7 @@ use quantrs2_core::{
     qubit::QubitId,
 };
 
-// SciRS2 dependencies for ML and optimization
-#[cfg(feature = "scirs2")]
-use scirs2_graph::{
-    betweenness_centrality, closeness_centrality, dijkstra_path, minimum_spanning_tree,
-    strongly_connected_components, Graph,
-};
-#[cfg(feature = "scirs2")]
-use scirs2_linalg::{
-    cholesky, det, eig, inv, matrix_norm, prelude::*, qr, svd, trace, LinalgError, LinalgResult,
-};
-#[cfg(feature = "scirs2")]
-use scirs2_optimize::{
-    minimize, // least_squares, differential_evolution,
-    OptimizeResult, // OptimizeMethod, minimize_scalar,
-              // basinhopping, dual_annealing,
-};
-#[cfg(feature = "scirs2")]
-use scirs2_stats::{
-    corrcoef,
-    distributions::{beta, chi2, gamma, norm, uniform},
-    ks_2samp, mean, pearsonr, shapiro_wilk, spearmanr, std, ttest_1samp, ttest_ind, var,
-    Alternative, TTestResult,
-};
+// SciRS2 dependencies are conditionally re-exported through fallback_scirs2
 
 // Fallback implementations when SciRS2 is not available
 pub mod fallback_scirs2;

@@ -1364,24 +1364,24 @@ impl AdvancedNoiseCharacterizer {
 
         // Add preparation
         if !qubits.is_empty() {
-            circuit.h(qubits[0]);
+            let _ = circuit.h(qubits[0]);
         }
 
         // Add target gate
         match gate_name {
             "H" => {
                 if !qubits.is_empty() {
-                    circuit.h(qubits[0]);
+                    let _ = circuit.h(qubits[0]);
                 }
             }
             "X" => {
                 if !qubits.is_empty() {
-                    circuit.x(qubits[0]);
+                    let _ = circuit.x(qubits[0]);
                 }
             }
             "CNOT" => {
                 if qubits.len() >= 2 {
-                    circuit.cnot(qubits[0], qubits[1]);
+                    let _ = circuit.cnot(qubits[0], qubits[1]);
                 }
             }
             _ => return Err(DeviceError::UnsupportedOperation(gate_name.to_string())),
@@ -1389,7 +1389,7 @@ impl AdvancedNoiseCharacterizer {
 
         // Add measurement preparation
         if !qubits.is_empty() {
-            circuit.h(qubits[0]);
+            let _ = circuit.h(qubits[0]);
         }
 
         Ok(circuit)
@@ -1659,16 +1659,16 @@ impl AdvancedNoiseCharacterizer {
         wait_time: f64,
     ) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
-        circuit.x(qubit); // Prepare excited state
+        let _ = circuit.x(qubit); // Prepare excited state
                           // Add wait time (would be implemented with delays in real hardware)
         Ok(circuit)
     }
 
     fn create_t2_echo_circuit(&self, qubit: QubitId, wait_time: f64) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
-        circuit.h(qubit); // Create superposition
+        let _ = circuit.h(qubit); // Create superposition
                           // Add echo sequence with wait time
-        circuit.h(qubit); // Return to computational basis
+        let _ = circuit.h(qubit); // Return to computational basis
         Ok(circuit)
     }
 
@@ -1719,7 +1719,7 @@ impl AdvancedNoiseCharacterizer {
     ) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
         if excited_state {
-            circuit.x(qubit); // Prepare |1> state
+            let _ = circuit.x(qubit); // Prepare |1> state
         }
         // |0> state is prepared by default
         Ok(circuit)

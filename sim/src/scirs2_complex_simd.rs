@@ -67,12 +67,12 @@ impl ComplexSimdVector {
     }
 
     /// Get real part as array view
-    pub fn real_view(&self) -> ArrayView1<f64> {
+    pub fn real_view(&self) -> ArrayView1<'_, f64> {
         ArrayView1::from(&self.real[..self.length])
     }
 
     /// Get imaginary part as array view
-    pub fn imag_view(&self) -> ArrayView1<f64> {
+    pub fn imag_view(&self) -> ArrayView1<'_, f64> {
         ArrayView1::from(&self.imag[..self.length])
     }
 

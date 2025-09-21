@@ -71,12 +71,12 @@ impl SciRS2Matrix {
     }
 
     /// Get immutable view of the data
-    pub fn data_view(&self) -> ArrayView2<Complex64> {
+    pub fn data_view(&self) -> ArrayView2<'_, Complex64> {
         self.data.view()
     }
 
     /// Get mutable view of the data
-    pub fn data_view_mut(&mut self) -> ArrayViewMut2<Complex64> {
+    pub fn data_view_mut(&mut self) -> ArrayViewMut2<'_, Complex64> {
         self.data.view_mut()
     }
 }
@@ -117,12 +117,12 @@ impl SciRS2Vector {
     }
 
     /// Get immutable view of the data
-    pub fn data_view(&self) -> ArrayView1<Complex64> {
+    pub fn data_view(&self) -> ArrayView1<'_, Complex64> {
         self.data.view()
     }
 
     /// Get mutable view of the data
-    pub fn data_view_mut(&mut self) -> ArrayViewMut1<Complex64> {
+    pub fn data_view_mut(&mut self) -> ArrayViewMut1<'_, Complex64> {
         self.data.view_mut()
     }
 
@@ -442,6 +442,10 @@ pub struct BackendStats {
     pub vectorized_fft_ops: usize,
     /// Number of sparse matrix SIMD operations
     pub sparse_simd_ops: usize,
+    /// Number of matrix operations
+    pub matrix_ops: usize,
+    /// Time spent in LAPACK operations (milliseconds)
+    pub lapack_time_ms: f64,
     /// Cache hit rate for SciRS2 operations
     pub cache_hit_rate: f64,
 }
@@ -723,8 +727,10 @@ impl SciRS2Backend {
 
         let result = LAPACK::svd(matrix)?;
 
-        self.stats.matrix_ops += 1;
-        self.stats.lapack_time_ms += start_time.elapsed().as_secs_f64() * 1000.0;
+        if let Ok(mut stats) = self.stats.lock() {
+            stats.matrix_ops += 1;
+            stats.lapack_time_ms += start_time.elapsed().as_secs_f64() * 1000.0;
+        }
 
         Ok(result)
     }
@@ -736,8 +742,10 @@ impl SciRS2Backend {
 
         let result = LAPACK::eig(matrix)?;
 
-        self.stats.matrix_ops += 1;
-        self.stats.lapack_time_ms += start_time.elapsed().as_secs_f64() * 1000.0;
+        if let Ok(mut stats) = self.stats.lock() {
+            stats.matrix_ops += 1;
+            stats.lapack_time_ms += start_time.elapsed().as_secs_f64() * 1000.0;
+        }
 
         Ok(result)
     }

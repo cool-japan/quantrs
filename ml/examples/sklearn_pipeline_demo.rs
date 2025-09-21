@@ -11,6 +11,7 @@ use quantrs2_ml::sklearn_compatibility::{
 };
 use std::collections::HashMap;
 
+#[allow(non_snake_case)]
 fn main() -> Result<()> {
     println!("=== Scikit-learn Compatible Quantum ML Demo ===\n");
 
@@ -316,6 +317,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+#[allow(non_snake_case)]
 fn create_sklearn_dataset() -> Result<(Array2<f64>, Array1<f64>)> {
     let num_samples = 300;
     let num_features = 4;
@@ -410,6 +412,7 @@ impl LogisticRegression {
     }
 }
 
+#[allow(non_snake_case)]
 impl SklearnEstimator for LogisticRegression {
     fn fit(&mut self, _X: &Array2<f64>, _y: Option<&Array1<f64>>) -> Result<()> {
         self.fitted = true;
@@ -429,6 +432,7 @@ impl SklearnEstimator for LogisticRegression {
     }
 }
 
+#[allow(non_snake_case)]
 impl SklearnClassifier for LogisticRegression {
     fn predict(&self, X: &Array2<f64>) -> Result<Array1<i32>> {
         if !self.fitted {
@@ -461,6 +465,7 @@ impl SklearnClassifier for LogisticRegression {
     }
 }
 
+#[allow(non_snake_case)]
 impl SklearnFit for LogisticRegression {
     fn fit(&mut self, _X: &Array2<f64>, _y: &Array1<f64>) -> Result<()> {
         self.fitted = true;
@@ -478,6 +483,7 @@ impl RandomForestClassifier {
     }
 }
 
+#[allow(non_snake_case)]
 impl SklearnEstimator for RandomForestClassifier {
     fn fit(&mut self, _X: &Array2<f64>, _y: Option<&Array1<f64>>) -> Result<()> {
         self.fitted = true;
@@ -497,6 +503,7 @@ impl SklearnEstimator for RandomForestClassifier {
     }
 }
 
+#[allow(non_snake_case)]
 impl SklearnClassifier for RandomForestClassifier {
     fn predict(&self, X: &Array2<f64>) -> Result<Array1<i32>> {
         if !self.fitted {
@@ -529,6 +536,7 @@ impl SklearnClassifier for RandomForestClassifier {
     }
 }
 
+#[allow(non_snake_case)]
 impl SklearnFit for RandomForestClassifier {
     fn fit(&mut self, _X: &Array2<f64>, _y: &Array1<f64>) -> Result<()> {
         self.fitted = true;
@@ -546,6 +554,7 @@ impl SVC {
     }
 }
 
+#[allow(non_snake_case)]
 impl SklearnEstimator for SVC {
     fn fit(&mut self, _X: &Array2<f64>, _y: Option<&Array1<f64>>) -> Result<()> {
         self.fitted = true;
@@ -565,6 +574,7 @@ impl SklearnEstimator for SVC {
     }
 }
 
+#[allow(non_snake_case)]
 impl SklearnClassifier for SVC {
     fn predict(&self, X: &Array2<f64>) -> Result<Array1<i32>> {
         if !self.fitted {
@@ -597,6 +607,7 @@ impl SklearnClassifier for SVC {
     }
 }
 
+#[allow(non_snake_case)]
 impl SklearnFit for SVC {
     fn fit(&mut self, _X: &Array2<f64>, _y: &Array1<f64>) -> Result<()> {
         self.fitted = true;

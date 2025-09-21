@@ -66,21 +66,46 @@ fn check_static_lib_exists() -> bool {
 fn setup_manual_linking() {
     // Link to symengine
     if cfg!(feature = "static") {
-        // On macOS with Homebrew, static libraries might not be available
-        // Check if static library exists, otherwise fall back to dynamic
+        // Check if static library exists on any platform
+        let mut static_lib_exists = false;
+
         #[cfg(target_os = "macos")]
         {
-            let static_lib_exists = check_static_lib_exists();
-            if static_lib_exists {
-                println!("cargo:rustc-link-lib=static=symengine");
-            } else {
-                eprintln!("Warning: Static library not found, using dynamic linking instead");
-                println!("cargo:rustc-link-lib=symengine");
+            static_lib_exists = check_static_lib_exists();
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            // Check common Linux paths for static symengine library
+            let paths = [
+                "/usr/local/lib/libsymengine.a",
+                "/usr/lib/libsymengine.a",
+                "/usr/lib/x86_64-linux-gnu/libsymengine.a",
+            ];
+
+            for path in &paths {
+                if std::path::Path::new(path).exists() {
+                    static_lib_exists = true;
+                    break;
+                }
+            }
+
+            // Also check if SYMENGINE_DIR is set and has static library
+            if !static_lib_exists {
+                if let Ok(dir) = env::var("SYMENGINE_DIR") {
+                    let static_lib_path = format!("{}/lib/libsymengine.a", dir);
+                    if std::path::Path::new(&static_lib_path).exists() {
+                        static_lib_exists = true;
+                    }
+                }
             }
         }
-        #[cfg(not(target_os = "macos"))]
-        {
+
+        if static_lib_exists {
             println!("cargo:rustc-link-lib=static=symengine");
+        } else {
+            eprintln!("Warning: Static library not found, using dynamic linking instead");
+            println!("cargo:rustc-link-lib=symengine");
         }
     } else {
         println!("cargo:rustc-link-lib=symengine");
@@ -171,8 +196,8 @@ fn setup_platform_specific() {
 
     #[cfg(target_os = "linux")]
     {
-        // Common Linux paths
-        let common_paths = ["/usr/lib", "/usr/local/lib", "/usr/lib/x86_64-linux-gnu"];
+        // Common Linux paths - prioritize /usr/local/lib for custom installations
+        let common_paths = ["/usr/local/lib", "/usr/lib", "/usr/lib/x86_64-linux-gnu"];
         for path in &common_paths {
             if std::path::Path::new(path).exists() {
                 println!("cargo:rustc-link-search=native={}", path);
@@ -180,7 +205,7 @@ fn setup_platform_specific() {
         }
 
         // Include paths
-        let include_paths = ["/usr/include", "/usr/local/include"];
+        let include_paths = ["/usr/local/include", "/usr/include"];
         for path in &include_paths {
             if std::path::Path::new(path).exists() {
                 println!("cargo:include={}", path);
@@ -252,6 +277,7 @@ fn generate_bindings() {
     {
         clang_args.push("-I/usr/include".to_string());
         clang_args.push("-I/usr/local/include".to_string());
+        // On Linux, use libstdc++ (default, no need to specify)
     }
 
     // Apply clang args

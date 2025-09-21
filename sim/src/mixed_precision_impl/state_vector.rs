@@ -179,16 +179,8 @@ impl MixedPrecisionStateVector {
     /// Calculate the L2 norm of the state vector
     pub fn norm(&self) -> f64 {
         match self {
-            Self::Half(arr) => arr
-                .iter()
-                .map(|x| (x.norm_sqr() as f64))
-                .sum::<f64>()
-                .sqrt(),
-            Self::Single(arr) => arr
-                .iter()
-                .map(|x| (x.norm_sqr() as f64))
-                .sum::<f64>()
-                .sqrt(),
+            Self::Half(arr) => arr.iter().map(|x| x.norm_sqr() as f64).sum::<f64>().sqrt(),
+            Self::Single(arr) => arr.iter().map(|x| x.norm_sqr() as f64).sum::<f64>().sqrt(),
             Self::Double(arr) => arr.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt(),
             Self::Adaptive { primary, .. } => primary.norm(),
         }

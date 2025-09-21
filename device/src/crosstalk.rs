@@ -926,16 +926,16 @@ impl CrosstalkAnalyzer {
     fn create_crosstalk_preparation_circuit(&self, target: usize) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
         // Prepare target qubit in |+⟩ state (sensitive to Z errors)
-        circuit.h(QubitId(target as u32));
+        let _ = circuit.h(QubitId(target as u32));
         Ok(circuit)
     }
 
     fn create_ramsey_circuit(&self, target: usize, frequency: f64) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
         // Ramsey sequence for frequency-sensitive measurement
-        circuit.h(QubitId(target as u32));
+        let _ = circuit.h(QubitId(target as u32));
         // Virtual Z rotation at frequency would be inserted here
-        circuit.h(QubitId(target as u32));
+        let _ = circuit.h(QubitId(target as u32));
         Ok(circuit)
     }
 
@@ -946,7 +946,7 @@ impl CrosstalkAnalyzer {
     ) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
         // Prepare target for temporal response measurement
-        circuit.h(QubitId(target as u32));
+        let _ = circuit.h(QubitId(target as u32));
         // Delay would be implemented in the pulse sequence
         Ok(circuit)
     }

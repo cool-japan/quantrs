@@ -112,7 +112,6 @@ pub mod codes;
 pub mod detection;
 pub mod mitigation;
 
-use mitigation::FoldingConfig;
 
 // Additional trait definitions for test compatibility
 pub trait SyndromeDetector {

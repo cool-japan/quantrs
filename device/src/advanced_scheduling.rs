@@ -1333,19 +1333,7 @@ impl FairnessEngine {
 // Default implementations for supporting structures...
 // (Many Default implementations would be added here for completeness)
 
-// Placeholder Default implementations for complex types
-macro_rules! default_impl {
-    ($type:ident) => {
-        impl Default for $type {
-            fn default() -> Self {
-                unimplemented!(
-                    "Default implementation for {} not yet implemented",
-                    stringify!($type)
-                )
-            }
-        }
-    };
-}
+// Default implementations are provided via derive macros for most types
 
 // Apply default implementations to complex types that aren't type aliases
 // Note: The following types are String aliases and already have Default implementations:

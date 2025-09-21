@@ -694,7 +694,7 @@ impl HardwareBenchmarkSuite {
             let q1_idx = q1.0 as usize;
             let q2_idx = q2.0 as usize;
             if let (Some(&n1), Some(&n2)) = (node_map.get(&q1_idx), node_map.get(&q2_idx)) {
-                graph.add_edge(n1.index(), n2.index(), 1.0);
+                let _ = graph.add_edge(n1.index(), n2.index(), 1.0);
             }
         }
 
@@ -896,13 +896,13 @@ impl HardwareBenchmarkSuite {
 
         match gate_type {
             "H" => {
-                circuit.h(QubitId(0));
+                let _ = circuit.h(QubitId(0));
             }
             "CNOT" => {
-                circuit.cnot(QubitId(0), QubitId(1));
+                let _ = circuit.cnot(QubitId(0), QubitId(1));
             }
             "RZ" => {
-                circuit.rz(QubitId(0), std::f64::consts::PI / 4.0);
+                let _ = circuit.rz(QubitId(0), std::f64::consts::PI / 4.0);
             }
             _ => {
                 return Err(DeviceError::UnsupportedOperation(format!(
@@ -925,9 +925,9 @@ impl HardwareBenchmarkSuite {
         for layer in 0..depth {
             for qubit in 0..num_qubits {
                 if layer % 2 == 0 {
-                    circuit.h(QubitId(qubit as u32));
+                    let _ = circuit.h(QubitId(qubit as u32));
                 } else if qubit + 1 < num_qubits {
-                    circuit.cnot(QubitId(qubit as u32), QubitId((qubit + 1) as u32));
+                    let _ = circuit.cnot(QubitId(qubit as u32), QubitId((qubit + 1) as u32));
                 }
             }
         }
@@ -952,26 +952,26 @@ impl HardwareBenchmarkSuite {
 
             match *gate {
                 "H" => {
-                    circuit.h(QubitId(qubit));
+                    let _ = circuit.h(QubitId(qubit));
                 }
                 "X" => {
-                    circuit.x(QubitId(qubit));
+                    let _ = circuit.x(QubitId(qubit));
                 }
                 "Y" => {
-                    circuit.y(QubitId(qubit));
+                    let _ = circuit.y(QubitId(qubit));
                 }
                 "Z" => {
-                    circuit.z(QubitId(qubit));
+                    let _ = circuit.z(QubitId(qubit));
                 }
                 "CNOT" => {
                     let target = rng.gen_range(0..num_qubits) as u32;
                     if target != qubit {
-                        circuit.cnot(QubitId(qubit), QubitId(target));
+                        let _ = circuit.cnot(QubitId(qubit), QubitId(target));
                     }
                 }
                 "RZ" => {
                     let angle = rng.gen_range(-std::f64::consts::PI..std::f64::consts::PI);
-                    circuit.rz(QubitId(qubit), angle);
+                    let _ = circuit.rz(QubitId(qubit), angle);
                 }
                 _ => {}
             }
