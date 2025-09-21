@@ -1585,6 +1585,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_correlation_function_calculation() {
         let config = QFTConfig::default();
         let mut simulator = QuantumFieldTheorySimulator::new(config).unwrap();

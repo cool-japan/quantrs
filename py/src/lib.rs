@@ -353,7 +353,7 @@ impl PyCircuit {
                     #[cfg(feature = "gpu")]
                     {
                         // Check if GPU is available
-                        if !quantrs2_sim::dynamic::DynamicCircuit::is_gpu_available() {
+                        if !DynamicCircuit::is_gpu_available() {
                             return Err(PyValueError::new_err(
                                 "GPU acceleration requested but no compatible GPU found",
                             ));
@@ -415,7 +415,7 @@ impl PyCircuit {
                     #[cfg(feature = "gpu")]
                     {
                         // Check if GPU is available
-                        if !quantrs2_sim::dynamic::DynamicCircuit::is_gpu_available() {
+                        if !DynamicCircuit::is_gpu_available() {
                             return Err(PyValueError::new_err(
                                 "GPU acceleration requested but no compatible GPU found",
                             ));
@@ -500,7 +500,7 @@ impl PyCircuit {
     fn is_gpu_available() -> bool {
         #[cfg(feature = "gpu")]
         {
-            quantrs2_sim::dynamic::DynamicCircuit::is_gpu_available()
+            DynamicCircuit::is_gpu_available()
         }
 
         #[cfg(not(feature = "gpu"))]

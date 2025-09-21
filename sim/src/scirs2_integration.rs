@@ -727,10 +727,9 @@ impl SciRS2Backend {
 
         let result = LAPACK::svd(matrix)?;
 
-        if let Ok(mut stats) = self.stats.lock() {
-            stats.matrix_ops += 1;
-            stats.lapack_time_ms += start_time.elapsed().as_secs_f64() * 1000.0;
-        }
+        let mut stats = self.stats.lock().unwrap();
+        stats.simd_matrix_ops += 1;
+        stats.simd_time_ns += start_time.elapsed().as_nanos() as u64;
 
         Ok(result)
     }
@@ -742,10 +741,9 @@ impl SciRS2Backend {
 
         let result = LAPACK::eig(matrix)?;
 
-        if let Ok(mut stats) = self.stats.lock() {
-            stats.matrix_ops += 1;
-            stats.lapack_time_ms += start_time.elapsed().as_secs_f64() * 1000.0;
-        }
+        let mut stats = self.stats.lock().unwrap();
+        stats.simd_matrix_ops += 1;
+        stats.simd_time_ns += start_time.elapsed().as_nanos() as u64;
 
         Ok(result)
     }

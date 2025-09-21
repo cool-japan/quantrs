@@ -72,6 +72,8 @@ pub mod explainable_ai;
 pub mod federated;
 pub mod few_shot;
 pub mod gnn;
+#[cfg(feature = "gpu")]
+pub mod gpu_backend_impl;
 pub mod industry_examples;
 pub mod keras_api;
 pub mod lstm;

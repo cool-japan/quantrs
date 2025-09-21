@@ -87,11 +87,14 @@ num = "0.4"
 approx = "0.5"
 wide = "0.7.32"
 
-# SciRS2 ecosystem dependencies
+# SciRS2 ecosystem dependencies - Using published beta.2 version
 scirs2-core = { version = "0.1.0-beta.2", default-features = false, features = ["parallel", "simd", "cache", "memory_management", "profiling", "validation", "types"] }
 scirs2-optimize = { version = "0.1.0-beta.2", default-features = false }
 scirs2-linalg = { version = "0.1.0-beta.2", default-features = false }
 scirs2-sparse = { version = "0.1.0-beta.2" }
+scirs2-stats = { version = "0.1.0-beta.2", default-features = false }
+scirs2-graph = { version = "0.1.0-beta.2", default-features = false }
+scirs2-cluster = { version = "0.1.0-beta.2" }
 
 # Performance and parallel computing
 rayon = "1.10.0"

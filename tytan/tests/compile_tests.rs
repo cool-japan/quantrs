@@ -102,14 +102,15 @@ fn test_compile_constraint_expression() {
     // Check matrix values - specific values depend on variable ordering
     // but we can check some properties
 
-    // Linear terms should all be equal to -2.0
+    // Linear terms: from (x+y+z-1)^2 = x^2+y^2+z^2+2xy+2xz+2yz-2x-2y-2z+1
+    // With x^2=x for binary: x+y+z+2xy+2xz+2yz-2x-2y-2z+1 = -x-y-z+2xy+2xz+2yz+1
     let x_idx = var_map["x"];
     let y_idx = var_map["y"];
     let z_idx = var_map["z"];
 
-    assert_eq!(matrix[[x_idx, x_idx]], 1.0);
-    assert_eq!(matrix[[y_idx, y_idx]], 1.0);
-    assert_eq!(matrix[[z_idx, z_idx]], 1.0);
+    assert_eq!(matrix[[x_idx, x_idx]], -1.0);
+    assert_eq!(matrix[[y_idx, y_idx]], -1.0);
+    assert_eq!(matrix[[z_idx, z_idx]], -1.0);
 
     // Quadratic terms should all be 2.0 (coefficient of x*y, x*z, y*z in the expansion)
     // Depending on how the matrix is stored, check both locations for symmetry

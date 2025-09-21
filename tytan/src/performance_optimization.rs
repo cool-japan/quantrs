@@ -8,7 +8,7 @@
 use ndarray::{Array1, Array2, ArrayView1};
 use quantrs2_core::platform::PlatformCapabilities;
 #[cfg(feature = "parallel")]
-use scirs2_core::parallel_ops::*;
+use rayon::prelude::*;
 use scirs2_core::simd_ops;
 use std::sync::Arc;
 

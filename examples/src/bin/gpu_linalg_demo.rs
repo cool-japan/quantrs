@@ -1,11 +1,19 @@
 //! Demonstration of GPU-accelerated linear algebra operations
 
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use ndarray::Array2;
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use num_complex::Complex64;
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use quantrs2_core::prelude::*;
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
+use quantrs2_sim::gpu_linalg::GpuLinearAlgebra;
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use quantrs2_sim::prelude::*;
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use std::time::Instant;
 
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 #[tokio::main]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("=== GPU Linear Algebra Demo ===\n");
@@ -37,11 +45,12 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Example 3: Performance benchmark
     println!("Example 3: Performance Benchmark");
-    benchmark_gpu_linalg().await?;
+    benchmark_gpu_linalg(&gpu_linalg).await?;
 
     Ok(())
 }
 
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 async fn demo_matrix_multiplication(
     gpu: &GpuLinearAlgebra,
 ) -> std::result::Result<(), Box<dyn std::error::Error>> {
@@ -94,6 +103,7 @@ async fn demo_matrix_multiplication(
     Ok(())
 }
 
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 async fn demo_quantum_gates(
     gpu: &GpuLinearAlgebra,
 ) -> std::result::Result<(), Box<dyn std::error::Error>> {
@@ -161,10 +171,11 @@ async fn demo_quantum_gates(
 }
 
 // Performance comparison for different matrix sizes
-async fn compare_performance() -> std::result::Result<(), Box<dyn std::error::Error>> {
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
+async fn benchmark_gpu_linalg(
+    gpu_linalg: &GpuLinearAlgebra,
+) -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("\n=== Performance Comparison ===\n");
-
-    let gpu_linalg = GpuLinearAlgebra::new().await?;
 
     for size in [16, 32, 64, 128, 256] {
         println!("Matrix size: {}x{}", size, size);
@@ -203,4 +214,12 @@ async fn compare_performance() -> std::result::Result<(), Box<dyn std::error::Er
     }
 
     Ok(())
+}
+
+// Stub main function for platforms without GPU support
+#[cfg(not(all(feature = "gpu", not(target_os = "macos"))))]
+fn main() {
+    println!("=== GPU Linear Algebra Demo ===\n");
+    println!("GPU acceleration is not available on this platform.");
+    println!("This demo requires a non-macOS system with GPU support enabled.");
 }

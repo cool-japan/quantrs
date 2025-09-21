@@ -87,7 +87,7 @@ impl<'a> AutoArray<'a> {
         }
 
         // Create a regex to extract indices
-        let re_str = format.replace("{}", "(.+?)");
+        let re_str = format.replace("{}", "(\\d+|\\w+)");
         #[cfg(feature = "dwave")]
         let re = Regex::new(&re_str)
             .map_err(|e| AutoArrayError::InvalidFormat(format!("Invalid regex: {}", e)))?;
@@ -107,9 +107,15 @@ impl<'a> AutoArray<'a> {
             }
         }
 
-        // Deduplicate and sort indices
+        // Deduplicate and sort indices naturally (1, 2, 10 instead of 1, 10, 2)
         for dim_indices in &mut indices_by_dim {
-            dim_indices.sort();
+            // Try to parse as numbers for natural sorting
+            dim_indices.sort_by(|a, b| {
+                match (a.parse::<i32>(), b.parse::<i32>()) {
+                    (Ok(na), Ok(nb)) => na.cmp(&nb),
+                    _ => a.cmp(b), // Fall back to lexicographic for non-numeric
+                }
+            });
             dim_indices.dedup();
         }
 

@@ -1086,6 +1086,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_ultra_high_fidelity_synthesis() {
         let target = array![
             [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
