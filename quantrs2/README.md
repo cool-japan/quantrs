@@ -24,20 +24,21 @@ quantrs2 = { version = "0.1.0-beta.1", features = ["circuit", "sim"] }
 Then use it in your code:
 
 ```rust
-// With the facade crate, all modules are available under quantrs2::
-use quantrs2::core::prelude::*;
-use quantrs2::circuit::builder::Circuit;
-use quantrs2::sim::statevector::StateVectorSimulator;
+// With the facade crate, modules are available under quantrs2::
+use quantrs2::core::api::prelude::essentials::*; // QubitId, Register, QuantRS2Result
+use quantrs2::circuit::builder::{Circuit, Simulator}; // Circuit and the Simulator trait
+use quantrs2::sim::statevector::StateVectorSimulator; // Feature "sim"
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create a quantum circuit
-    let mut circuit = Circuit::new();
-    circuit.h(QubitId::new(0));
-    circuit.cx(QubitId::new(0), QubitId::new(1));
+    // Create a 2-qubit circuit (const-generic N)
+    const N: usize = 2;
+    let mut circuit = Circuit::<N>::new();
+    circuit.h(QubitId::new(0))?;
+    circuit.cx(QubitId::new(0), QubitId::new(1))?;
 
     // Simulate the circuit
     let mut simulator = StateVectorSimulator::new();
-    let result = simulator.run(&circuit)?;
+    let result: Register<N> = simulator.run(&circuit)?;
 
     println!("Measurement results: {:?}", result);
     Ok(())
@@ -150,11 +151,48 @@ quantrs2-sim = "0.1.0-beta.1"
 # etc.
 ```
 
+## End-to-End Example
+
+This example builds a Bell state on 2 qubits and prints the probabilities. Enable features `circuit` and `sim`.
+
+```rust
+use quantrs2::core::api::prelude::essentials::*;
+use quantrs2::circuit::builder::{Circuit, Simulator};
+use quantrs2::sim::statevector::StateVectorSimulator;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    const N: usize = 2;
+    let mut circuit = Circuit::<N>::new();
+    circuit.h(QubitId::new(0))?;                  // H on qubit 0
+    circuit.cx(QubitId::new(0), QubitId::new(1))?; // CNOT 0->1
+
+    let sim = StateVectorSimulator::new();
+    let reg: Register<N> = sim.run(&circuit)?;
+
+    let probs = reg.probabilities();
+    println!(
+        "|00>: {:.3}, |01>: {:.3}, |10>: {:.3}, |11>: {:.3}",
+        probs[0], probs[1], probs[2], probs[3]
+    );
+    Ok(())
+}
+```
+
 ## Documentation
 
-- [Main QuantRS2 Documentation](https://docs.rs/quantrs2-core)
+- [Main QuantRS2 Documentation](https://docs.rs/quantrs2)
 - [Examples and Tutorials](https://github.com/cool-japan/quantrs/tree/master/examples)
-- [Migration Guide](https://github.com/cool-japan/quantrs/blob/master/MIGRATION_GUIDE_ALPHA_TO_BETA.md)
+
+## Subcrates
+
+- `quantrs2-core`: Core types, math, error handling, and APIs — https://github.com/cool-japan/quantrs/tree/master/core
+- `quantrs2-circuit`: Circuit builder, DSL, optimization — https://github.com/cool-japan/quantrs/tree/master/circuit
+- `quantrs2-sim`: Simulators (statevector, stabilizer, MPS, etc.) — https://github.com/cool-japan/quantrs/tree/master/sim
+- `quantrs2-anneal`: Quantum annealing algorithms and workflows — https://github.com/cool-japan/quantrs/tree/master/anneal
+- `quantrs2-device`: Hardware/device connectors and scheduling — https://github.com/cool-japan/quantrs/tree/master/device
+- `quantrs2-ml`: Quantum machine learning utilities — https://github.com/cool-japan/quantrs/tree/master/ml
+- `quantrs2-tytan`: High-level annealing interface inspired by TYTAN — https://github.com/cool-japan/quantrs/tree/master/tytan
+- `quantrs2-symengine`: Symbolic computation bindings — https://github.com/cool-japan/quantrs/tree/master/quantrs2-symengine
 
 ## License
 

@@ -9,6 +9,9 @@ license.workspace = true
 keywords.workspace = true
 categories.workspace = true
 description = "Comprehensive Rust quantum computing framework - unified entry point for quantum simulation, algorithm development, and hardware interaction"
+readme = "README.md"
+documentation = "https://docs.rs/quantrs2"
+homepage = "https://github.com/cool-japan/quantrs"
 
 [dependencies]
 quantrs2-core = { workspace = true }
