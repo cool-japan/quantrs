@@ -3,11 +3,13 @@
 //! This module provides tools for optimizing GPU performance including
 //! memory access patterns, kernel fusion, and performance profiling.
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use scirs2_core::gpu::{GpuBackend, GpuContext, GpuDevice, GpuError};
+use scirs2_core::gpu::{GpuBackend, GpuContext, GpuError};
 
 /// Performance metrics for GPU operations
 #[derive(Default, Clone, Debug)]

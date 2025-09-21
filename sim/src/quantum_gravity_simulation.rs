@@ -2383,6 +2383,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_benchmark_quantum_gravity() {
         // This is a more comprehensive test that would run longer
         // In practice, you might want to make this an integration test

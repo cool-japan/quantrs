@@ -23,7 +23,7 @@ fn test_auto_array_1d() {
     };
 
     // Convert to ndarray
-    let (arr, indices) = Auto_array::new(&result).get_ndarray("x{}").unwrap();
+    let (arr, indices) = AutoArray::new(&result).get_ndarray("x{}").unwrap();
 
     // Check array dimensions
     assert_eq!(arr.ndim(), 1);
@@ -35,10 +35,11 @@ fn test_auto_array_1d() {
     assert_eq!(arr[2], 1);
 
     // Check indices
-    assert_eq!(indices.len(), 3);
-    assert_eq!(indices[0], "0");
-    assert_eq!(indices[1], "1");
-    assert_eq!(indices[2], "2");
+    assert_eq!(indices.len(), 1); // 1D array has 1 dimension
+    assert_eq!(indices[0].len(), 3); // First dimension has 3 indices
+    assert_eq!(indices[0][0], "0");
+    assert_eq!(indices[0][1], "1");
+    assert_eq!(indices[0][2], "2");
 }
 
 #[test]
@@ -58,7 +59,7 @@ fn test_auto_array_2d() {
     };
 
     // Convert to ndarray
-    let (arr, indices) = Auto_array::new(&result).get_ndarray("q{}_{}").unwrap();
+    let (arr, indices) = AutoArray::new(&result).get_ndarray("q{}_{}").unwrap();
 
     // Check array dimensions
     assert_eq!(arr.ndim(), 2);
@@ -93,7 +94,7 @@ fn test_auto_array_dframe() {
     };
 
     // Convert to DataFrame
-    let (df, indices) = Auto_array::new(&result).get_dframe("q{}_{}").unwrap();
+    let (df, indices) = AutoArray::new(&result).get_dframe("q{}_{}").unwrap();
 
     // Check DataFrame dimensions
     assert_eq!(df.shape(), &[2, 2]);
@@ -127,7 +128,7 @@ fn test_auto_array_image() {
     };
 
     // Convert to image
-    let (img, indices) = Auto_array::new(&result).get_image("q{}_{}").unwrap();
+    let (img, indices) = AutoArray::new(&result).get_image("q{}_{}").unwrap();
 
     // Check image dimensions
     assert_eq!(img.shape(), &[2, 2]);
@@ -161,7 +162,7 @@ fn test_auto_array_missing_values() {
     };
 
     // Convert to ndarray
-    let (arr, _) = Auto_array::new(&result).get_ndarray("q{}_{}").unwrap();
+    let (arr, _) = AutoArray::new(&result).get_ndarray("q{}_{}").unwrap();
 
     // Check array dimensions
     assert_eq!(arr.shape(), &[2, 2]);
@@ -191,7 +192,7 @@ fn test_auto_array_natural_sort() {
     };
 
     // Convert to ndarray
-    let (_, indices) = Auto_array::new(&result).get_ndarray("q{}_{}").unwrap();
+    let (_, indices) = AutoArray::new(&result).get_ndarray("q{}_{}").unwrap();
 
     // Check that indices are sorted naturally (1, 2, 10 not 1, 10, 2)
     assert_eq!(indices[0], ["1", "2", "10"]);

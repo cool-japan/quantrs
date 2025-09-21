@@ -11,6 +11,7 @@ use std::collections::{HashMap, HashSet};
 
 #[cfg(feature = "scirs")]
 use crate::scirs_stub;
+
 #[cfg(feature = "dwave")]
 use quantrs2_symengine::Expression as SymEngineExpression;
 
@@ -754,10 +755,11 @@ impl Compile {
         let ((matrix, var_map), offset) = self.get_qubo_standard()?;
 
         // Apply SciRS2 enhancements
-        let enhanced_matrix = scirs_stub::enhance_qubo_matrix(&matrix);
+        let enhanced_matrix = crate::scirs_stub::enhance_qubo_matrix(&matrix);
 
         Ok(((enhanced_matrix, var_map), offset))
     }
+
 
     /// Compile the expression to a HOBO model
     ///
@@ -797,6 +799,7 @@ impl Compile {
 // Helper function to calculate the highest degree in the expression
 #[cfg(feature = "dwave")]
 fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
+
     // If the expression is a single variable, it's degree 1
     if expr.is_symbol() {
         return Ok(1);
@@ -864,6 +867,58 @@ fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
             let term_degree = calc_highest_degree(&term)?;
             max_degree = std::cmp::max(max_degree, term_degree);
         }
+        return Ok(max_degree);
+    }
+
+    // Check for other compound expressions by trying to parse them
+    let expr_str = format!("{}", expr);
+    if expr_str.contains('+') || expr_str.contains('-') {
+        // It's a sum-like expression but not recognized as ADD
+        // Parse the string to find the highest degree term
+        // This is a workaround for symengine type detection issues
+        let mut max_degree = 0;
+
+        // Split by + and - (keeping the sign)
+        let parts: Vec<&str> = expr_str.split(|c| c == '+' || c == '-').collect();
+
+        for part in parts {
+            let part = part.trim();
+            if part.is_empty() {
+                continue;
+            }
+
+            // Count degree based on what the term contains
+            let degree = if part.contains("**") || part.contains("^") {
+                // Power term like x**2 or y**3
+                // Extract the exponent
+                let exp_str = part.split("**").nth(1)
+                    .or_else(|| part.split("^").nth(1))
+                    .unwrap_or("2")
+                    .trim();
+                exp_str.parse::<usize>().unwrap_or(2)
+            } else if part.contains('*') {
+                // Product term - count the number of variables
+                let factors: Vec<&str> = part.split('*').collect();
+                let mut var_count = 0;
+                for factor in factors {
+                    let factor = factor.trim();
+                    // Check if it's a variable (not a number)
+                    if !factor.is_empty() && factor.parse::<f64>().is_err() {
+                        var_count += 1;
+                    }
+                }
+                var_count
+            } else if part.parse::<f64>().is_err() && !part.is_empty() {
+                // Single variable
+                1
+            } else {
+                // Constant
+                0
+            };
+
+            max_degree = std::cmp::max(max_degree, degree);
+        }
+
         return Ok(max_degree);
     }
 
@@ -965,16 +1020,96 @@ fn extract_coefficients(expr: &Expr) -> CompileResult<(HashMap<Vec<String>, f64>
             offset += term_offset;
         }
     } else {
-        // Process a single term
-        let (term_coeffs, term_offset) = extract_term_coefficients(expr)?;
+        // Check if it's a sum-like expression that wasn't detected as ADD
+        let expr_str = format!("{}", expr);
+        if expr_str.contains('+') || expr_str.contains('-') {
+            // Use regex to split properly maintaining signs
+            // This is a more robust workaround for symengine type detection issues
+            use regex::Regex;
+            let re = Regex::new(r"([+-]?)([^+-]+)").unwrap();
 
-        // Merge coefficients
-        for (vars, coeff) in term_coeffs {
-            *coeffs.entry(vars).or_insert(0.0) += coeff;
+            for caps in re.captures_iter(&expr_str) {
+                let sign = caps.get(1).map_or("", |m| m.as_str());
+                let term = caps.get(2).map_or("", |m| m.as_str()).trim();
+
+                if term.is_empty() {
+                    continue;
+                }
+
+                let sign_mult = if sign == "-" { -1.0 } else { 1.0 };
+
+                // Handle x**2 or x^2 (becomes just x for binary)
+                if term.contains("**") || term.contains("^") {
+                    let base = if term.contains("**") {
+                        term.split("**").next().unwrap_or(term)
+                    } else {
+                        term.split("^").next().unwrap_or(term)
+                    }.trim();
+
+                    // Extract coefficient if present (e.g., "10*x^2" -> coeff=10, base="x")
+                    let (coeff_mult, var_name) = if base.contains('*') {
+                        let parts: Vec<&str> = base.split('*').collect();
+                        if parts.len() == 2 {
+                            if let Ok(num) = parts[0].trim().parse::<f64>() {
+                                (num, parts[1].trim().to_string())
+                            } else if let Ok(num) = parts[1].trim().parse::<f64>() {
+                                (num, parts[0].trim().to_string())
+                            } else {
+                                (1.0, base.to_string())
+                            }
+                        } else {
+                            (1.0, base.to_string())
+                        }
+                    } else {
+                        (1.0, base.to_string())
+                    };
+
+                    let vars = vec![var_name.clone()];
+                    *coeffs.entry(vars).or_insert(0.0) += sign_mult * coeff_mult;
+                } else if term.contains('*') {
+                    // Handle multiplication: could be "x*y", "2*x", "x*2", "x*y*z", etc.
+                    let parts: Vec<&str> = term.split('*').collect();
+                    let mut coeff = sign_mult;
+                    let mut vars = Vec::new();
+
+                    for part in parts {
+                        let part = part.trim();
+                        if let Ok(num) = part.parse::<f64>() {
+                            coeff *= num;
+                        } else {
+                            // It's a variable
+                            vars.push(part.to_string());
+                        }
+                    }
+
+                    // Sort variables for consistent ordering
+                    vars.sort();
+                    *coeffs.entry(vars).or_insert(0.0) += coeff;
+                } else if let Ok(num) = term.parse::<f64>() {
+                    // Constant term
+                    offset += sign_mult * num;
+                } else {
+                    // Single variable with coefficient 1
+                    let vars = vec![term.to_string()];
+                    *coeffs.entry(vars).or_insert(0.0) += sign_mult;
+                }
+            }
+            return Ok((coeffs, offset));
         }
 
-        // Add constant terms to offset
-        offset += term_offset;
+        // Only process as a single term if we haven't processed it as ADD yet
+        if coeffs.is_empty() {
+            // Process a single term
+            let (term_coeffs, term_offset) = extract_term_coefficients(expr)?;
+
+            // Merge coefficients
+            for (vars, coeff) in term_coeffs {
+                *coeffs.entry(vars).or_insert(0.0) += coeff;
+            }
+
+            // Add constant terms to offset
+            offset += term_offset;
+        }
     }
 
     Ok((coeffs, offset))
@@ -1115,9 +1250,12 @@ fn build_qubo_matrix(
                     // Diagonal term
                     matrix[[i, i]] += coeff;
                 } else {
-                    // Off-diagonal term
-                    matrix[[i, j]] += coeff;
-                    matrix[[j, i]] += coeff; // Make sure matrix is symmetric
+                    // Off-diagonal term - store full coefficient in upper triangular, zero in lower
+                    if i <= j {
+                        matrix[[i, j]] += coeff;
+                    } else {
+                        matrix[[j, i]] += coeff;
+                    }
                 }
             }
             _ => {

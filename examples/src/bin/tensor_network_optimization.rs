@@ -1,9 +1,11 @@
 use std::time::Instant;
 
-use quantrs2_circuit::prelude::{Circuit, Simulator};
+use quantrs2_circuit::prelude::Circuit;
+use quantrs2_circuit::builder::Simulator as CircuitSimulator;
+use quantrs2_sim::Simulator as SimSimulator;
 use quantrs2_core::prelude::QubitId;
 use quantrs2_sim::prelude::StateVectorSimulator;
-use quantrs2_sim::{ContractionStrategy, TensorNetworkSimulator};
+use quantrs2_sim::prelude::{ContractionStrategy, TensorNetworkSimulator};
 
 // Create a QFT circuit
 fn create_qft_circuit(
@@ -92,25 +94,25 @@ where
 
     // Tensor network with default strategy
     let start = Instant::now();
-    let tensor_sim = TensorNetworkSimulator::new();
+    let mut tensor_sim = TensorNetworkSimulator::new(num_qubits);
     let _tensor_result = tensor_sim.run(&circuit).unwrap();
     let tensor_duration = start.elapsed();
     println!("TensorNetwork (default): {:?}", tensor_duration);
 
     // Tensor network with greedy strategy
     let start = Instant::now();
-    let tensor_sim =
-        TensorNetworkSimulator::new().with_contraction_strategy(ContractionStrategy::Greedy);
+    let mut tensor_sim =
+        TensorNetworkSimulator::new(num_qubits).with_strategy(ContractionStrategy::Greedy);
     let _tensor_result = tensor_sim.run(&circuit).unwrap();
     let greedy_duration = start.elapsed();
     println!("TensorNetwork (greedy): {:?}", greedy_duration);
 
     // Tensor network with optimal strategy for this circuit type
     let start = Instant::now();
-    let tensor_sim = match name {
+    let mut tensor_sim = match name {
         "QFT" => TensorNetworkSimulator::qft(),
-        "QAOA" => TensorNetworkSimulator::qaoa(),
-        _ => TensorNetworkSimulator::new().with_contraction_strategy(ContractionStrategy::Greedy),
+        "QAOA" => TensorNetworkSimulator::new(num_qubits).with_strategy(ContractionStrategy::Greedy),
+        _ => TensorNetworkSimulator::new(num_qubits).with_strategy(ContractionStrategy::Greedy),
     };
     let _tensor_result = tensor_sim.run(&circuit).unwrap();
     let optimized_duration = start.elapsed();

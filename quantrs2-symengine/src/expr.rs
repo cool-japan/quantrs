@@ -284,13 +284,17 @@ impl Expression {
 
     /// Check if the expression is a symbol
     pub fn is_symbol(&self) -> bool {
-        unsafe { basic_get_type(self.basic.get()) as i32 == SYMENGINE_SYMBOL }
+        unsafe {
+            let type_id = basic_get_type(self.basic.get());
+            type_id as i32 == SYMENGINE_SYMBOL
+        }
     }
 
     /// Check if the expression is a number
     pub fn is_number(&self) -> bool {
         unsafe {
-            let type_code = basic_get_type(self.basic.get()) as i32;
+            let type_id = basic_get_type(self.basic.get());
+            let type_code = type_id as i32;
             type_code == SYMENGINE_INTEGER
                 || type_code == SYMENGINE_RATIONAL
                 || type_code == SYMENGINE_REAL_DOUBLE
@@ -299,17 +303,26 @@ impl Expression {
 
     /// Check if the expression is a power operation
     pub fn is_pow(&self) -> bool {
-        unsafe { basic_get_type(self.basic.get()) as i32 == SYMENGINE_POW }
+        unsafe {
+            let type_id = basic_get_type(self.basic.get());
+            type_id as i32 == SYMENGINE_POW
+        }
     }
 
     /// Check if the expression is a multiplication
     pub fn is_mul(&self) -> bool {
-        unsafe { basic_get_type(self.basic.get()) as i32 == SYMENGINE_MUL }
+        unsafe {
+            let type_id = basic_get_type(self.basic.get());
+            type_id as i32 == SYMENGINE_MUL
+        }
     }
 
     /// Check if the expression is an addition
     pub fn is_add(&self) -> bool {
-        unsafe { basic_get_type(self.basic.get()) as i32 == SYMENGINE_ADD }
+        unsafe {
+            let type_id = basic_get_type(self.basic.get());
+            type_id as i32 == SYMENGINE_ADD
+        }
     }
 
     /// Get the base and exponent of a power expression
@@ -457,7 +470,8 @@ impl Expression {
         }
 
         unsafe {
-            let type_code = basic_get_type(self.basic.get()) as i32;
+            let type_id = basic_get_type(self.basic.get());
+            let type_code = type_id as i32;
             match type_code {
                 SYMENGINE_REAL_DOUBLE => {
                     let value = real_double_get_d(self.basic.get());

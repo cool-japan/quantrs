@@ -614,6 +614,20 @@ impl DynamicCircuit {
         }
     }
 
+    /// Check if GPU acceleration is available (stub for macOS)
+    #[cfg(not(all(feature = "gpu", not(target_os = "macos"))))]
+    pub fn is_gpu_available() -> bool {
+        false
+    }
+
+    /// Run the circuit on a GPU simulator (stub for macOS)
+    #[cfg(not(all(feature = "gpu", not(target_os = "macos"))))]
+    pub fn run_gpu(&self) -> QuantRS2Result<DynamicResult> {
+        Err(QuantRS2Error::BackendExecutionFailed(
+            "GPU acceleration is not available on this platform".to_string(),
+        ))
+    }
+
     /// Run the circuit on the best available simulator (GPU if available, CPU otherwise)
     #[cfg(all(feature = "gpu", not(target_os = "macos")))]
     pub fn run_best(&self) -> QuantRS2Result<DynamicResult> {

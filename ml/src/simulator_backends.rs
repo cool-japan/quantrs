@@ -9,8 +9,8 @@ use ndarray::{Array1, Array2, ArrayView1};
 use num_complex::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
-#[cfg(feature = "gpu")]
-use quantrs2_sim::gpu::GpuStateVectorSimulator;
+// GpuStateVectorSimulator import removed - not used in this file
+// The GPUBackend is a placeholder that doesn't use the actual GPU simulator yet
 use quantrs2_sim::prelude::{MPSSimulator, PauliString, StateVectorSimulator};
 use std::collections::HashMap;
 
@@ -571,179 +571,12 @@ impl MPSBackend {
     }
 }
 
-/// GPU-accelerated simulator backend (placeholder)
+// GPU backend is now implemented in gpu_backend_impl module
 #[cfg(feature = "gpu")]
-pub struct GPUBackend {
-    /// Device ID
-    device_id: usize,
-    /// Maximum qubits
-    max_qubits: usize,
-}
+pub use crate::gpu_backend_impl::GPUBackend;
 
-#[cfg(feature = "gpu")]
-impl GPUBackend {
-    /// Create new GPU backend
-    pub fn new(device_id: usize, max_qubits: usize) -> Result<Self> {
-        Ok(Self {
-            device_id,
-            max_qubits,
-        })
-    }
-}
 
-#[cfg(feature = "gpu")]
-impl SimulatorBackend for GPUBackend {
-    fn execute_circuit(
-        &self,
-        circuit: &DynamicCircuit,
-        _parameters: &[f64],
-        _shots: Option<usize>,
-    ) -> Result<SimulationResult> {
-        // GPU implementation handles all circuit sizes
-        match circuit {
-            DynamicCircuit::Circuit1(_c) => {
-                // For 1-qubit circuits
-                Ok(SimulationResult {
-                    state: None, // Placeholder - would run GPU simulation
-                    measurements: None,
-                    probabilities: None,
-                    metadata: {
-                        let mut meta = HashMap::new();
-                        meta.insert("device_id".to_string(), self.device_id as f64);
-                        meta.insert("num_qubits".to_string(), 1.0);
-                        meta
-                    },
-                })
-            }
-            _ => {
-                // For larger circuits
-                Ok(SimulationResult {
-                    state: None, // Placeholder - would run GPU simulation
-                    measurements: None,
-                    probabilities: None,
-                    metadata: {
-                        let mut meta = HashMap::new();
-                        meta.insert("device_id".to_string(), self.device_id as f64);
-                        meta.insert("num_qubits".to_string(), circuit.num_qubits() as f64);
-                        meta
-                    },
-                })
-            }
-        }
-    }
-
-    fn expectation_value(
-        &self,
-        circuit: &DynamicCircuit,
-        _parameters: &[f64],
-        observable: &Observable,
-    ) -> Result<f64> {
-        match observable {
-            Observable::PauliString(_pauli) => {
-                // Would run GPU simulation and compute expectation
-                Ok(0.0) // Placeholder
-            }
-            Observable::PauliZ(_qubits) => {
-                // Would run GPU simulation and compute Pauli Z expectation
-                Ok(0.0) // Placeholder
-            }
-            Observable::Hamiltonian(terms) => {
-                let mut expectation = 0.0;
-                for (coeff, _pauli) in terms {
-                    // Would compute each term using GPU
-                    expectation += coeff * 0.0; // Placeholder
-                }
-                Ok(expectation)
-            }
-            Observable::Matrix(_) => Err(MLError::NotSupported(
-                "Matrix observables not yet supported for GPU backend".to_string(),
-            )),
-        }
-    }
-
-    fn compute_gradients(
-        &self,
-        circuit: &DynamicCircuit,
-        parameters: &[f64],
-        observable: &Observable,
-        gradient_method: GradientMethod,
-    ) -> Result<Array1<f64>> {
-        match gradient_method {
-            GradientMethod::ParameterShift => {
-                self.parameter_shift_gradients_dynamic(circuit, parameters, observable)
-            }
-            GradientMethod::Adjoint => {
-                self.adjoint_gradients_dynamic(circuit, parameters, observable)
-            }
-            _ => Err(MLError::NotSupported(
-                "Gradient method not supported for GPU backend".to_string(),
-            )),
-        }
-    }
-
-    fn capabilities(&self) -> BackendCapabilities {
-        BackendCapabilities {
-            max_qubits: self.max_qubits,
-            noise_simulation: false,
-            gpu_acceleration: true,
-            distributed: false,
-            adjoint_gradients: true,
-            memory_per_qubit: 16, // GPU memory
-        }
-    }
-
-    fn name(&self) -> &str {
-        "gpu"
-    }
-
-    fn max_qubits(&self) -> usize {
-        self.max_qubits
-    }
-
-    fn supports_noise(&self) -> bool {
-        false
-    }
-}
-
-#[cfg(feature = "gpu")]
-impl GPUBackend {
-    fn parameter_shift_gradients_dynamic(
-        &self,
-        circuit: &DynamicCircuit,
-        parameters: &[f64],
-        observable: &Observable,
-    ) -> Result<Array1<f64>> {
-        // Use GPU for parallel parameter shift
-        let shift = std::f64::consts::PI / 2.0;
-        let mut gradients = Array1::zeros(parameters.len());
-
-        for i in 0..parameters.len() {
-            let mut params_plus = parameters.to_vec();
-            params_plus[i] += shift;
-            let val_plus = self.expectation_value(circuit, &params_plus, observable)?;
-
-            let mut params_minus = parameters.to_vec();
-            params_minus[i] -= shift;
-            let val_minus = self.expectation_value(circuit, &params_minus, observable)?;
-
-            gradients[i] = (val_plus - val_minus) / 2.0;
-        }
-
-        Ok(gradients)
-    }
-
-    fn adjoint_gradients_dynamic(
-        &self,
-        _circuit: &DynamicCircuit,
-        _parameters: &[f64],
-        _observable: &Observable,
-    ) -> Result<Array1<f64>> {
-        // Placeholder for adjoint method implementation
-        Err(MLError::NotSupported(
-            "Adjoint gradients not yet implemented".to_string(),
-        ))
-    }
-}
+// SimulatorBackend implementation for GPUBackend is in gpu_backend_impl.rs
 
 /// Enum for different backend types (avoids dyn compatibility issues)
 pub enum Backend {

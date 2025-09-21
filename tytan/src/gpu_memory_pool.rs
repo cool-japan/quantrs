@@ -24,14 +24,24 @@ impl GpuContext {
 }
 
 #[cfg(feature = "scirs")]
-#[derive(Default)]
-pub struct GpuMemory;
+#[derive(Clone)]
+pub struct GpuMemory {
+    id: usize,
+    size: usize,
+}
+
+#[cfg(feature = "scirs")]
+impl Default for GpuMemory {
+    fn default() -> Self {
+        Self { id: 0, size: 0 }
+    }
+}
 
 /// Memory block information
 #[derive(Clone)]
 struct MemoryBlock {
-    /// Pointer to GPU memory
-    ptr: NonNull<u8>,
+    /// Unique ID for this block
+    id: usize,
     /// Size in bytes
     size: usize,
     /// Whether the block is currently in use
@@ -57,6 +67,8 @@ pub struct GpuMemoryPool {
     stats: AllocationStats,
     /// Mutex for thread safety
     mutex: Arc<Mutex<()>>,
+    /// Next block ID
+    next_block_id: usize,
 }
 
 /// Allocation statistics
@@ -88,6 +100,7 @@ impl GpuMemoryPool {
             current_size: 0,
             stats: AllocationStats::default(),
             mutex: Arc::new(Mutex::new(())),
+            next_block_id: 0,
         }
     }
 
@@ -109,8 +122,19 @@ impl GpuMemoryPool {
                     block.last_access = std::time::Instant::now();
                     self.stats.cache_hits += 1;
 
-                    // TODO: Implement from_raw in GPU stub
-                    return Ok(GpuMemory::default());
+                    // Update the block in all_blocks
+                    for b in &mut self.all_blocks {
+                        if b.id == block.id {
+                            b.in_use = true;
+                            b.last_access = block.last_access;
+                            break;
+                        }
+                    }
+
+                    return Ok(GpuMemory {
+                        id: block.id,
+                        size: block.size,
+                    });
                 }
             }
         }
@@ -128,11 +152,11 @@ impl GpuMemoryPool {
         }
 
         // Allocate new block
-        // TODO: Implement allocate_raw in GPU stub
-        let gpu_mem = GpuMemory::default();
+        let block_id = self.next_block_id;
+        self.next_block_id += 1;
 
         let block = MemoryBlock {
-            ptr: NonNull::dangling(), // Placeholder
+            id: block_id,
             size: aligned_size,
             in_use: true,
             last_access: std::time::Instant::now(),
@@ -146,7 +170,10 @@ impl GpuMemoryPool {
             self.stats.peak_memory_usage = self.current_size;
         }
 
-        Ok(gpu_mem)
+        Ok(GpuMemory {
+            id: block_id,
+            size: aligned_size,
+        })
     }
 
     /// Release memory back to the pool
@@ -154,19 +181,15 @@ impl GpuMemoryPool {
     pub fn release(&mut self, memory: GpuMemory) {
         let _lock = self.mutex.lock().unwrap();
 
-        // TODO: Implement as_ptr and size methods in GPU stub
-        let ptr = NonNull::dangling();
-        let size = 0;
-
         // Find the block and mark it as free
         for block in &mut self.all_blocks {
-            if block.ptr == ptr && block.size == size {
+            if block.id == memory.id {
                 block.in_use = false;
                 block.last_access = std::time::Instant::now();
 
                 // Add to the pool for reuse
                 self.blocks_by_size
-                    .entry(size)
+                    .entry(block.size)
                     .or_insert_with(VecDeque::new)
                     .push_back(block.clone());
 
@@ -191,7 +214,7 @@ impl GpuMemoryPool {
                 break;
             }
 
-            blocks_to_evict.push(block.ptr);
+            blocks_to_evict.push(block.id);
             freed_size += block.size;
             self.stats.evictions += 1;
         }
@@ -201,12 +224,12 @@ impl GpuMemoryPool {
         }
 
         // Actually evict the blocks
-        for ptr in blocks_to_evict {
-            self.all_blocks.retain(|b| b.ptr != ptr);
+        for block_id in blocks_to_evict {
+            self.all_blocks.retain(|b| b.id != block_id);
 
             // Remove from size-based pools
             for blocks in self.blocks_by_size.values_mut() {
-                blocks.retain(|b| b.ptr != ptr);
+                blocks.retain(|b| b.id != block_id);
             }
 
             // Free GPU memory
@@ -233,15 +256,8 @@ impl GpuMemoryPool {
     pub fn clear(&mut self) -> Result<(), String> {
         let _lock = self.mutex.lock().unwrap();
 
-        // Free all GPU memory
-        for block in &self.all_blocks {
-            unsafe {
-                // TODO: Implement free_raw in GPU stub
-                // self.context
-                //     .free_raw(block.ptr)
-                //     .map_err(|e| format!("Failed to free GPU memory: {}", e))?;
-            }
-        }
+        // Clear all blocks (in a real implementation, this would free GPU memory)
+        // For our stub implementation, we just clear the tracking structures
 
         self.blocks_by_size.clear();
         self.all_blocks.clear();
@@ -384,6 +400,7 @@ impl GpuMemoryPool {
             current_size: 0,
             stats: AllocationStats::default(),
             mutex: Arc::new(Mutex::new(())),
+            next_block_id: 0,
         }
     }
 

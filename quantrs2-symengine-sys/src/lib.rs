@@ -128,7 +128,7 @@ extern "C" {
 
     // Symbol operations
     pub fn function_symbol_get_name(basic: *const basic_struct) -> *mut c_char;
-    // Note: basic_get_args, basic_str_free, and basic_pow are already in the generated bindings
+    // Note: basic_get_args, basic_str_free, basic_pow, and basic_get_type are already in the generated bindings
 }
 
 /// Check if SymEngine is available at runtime
