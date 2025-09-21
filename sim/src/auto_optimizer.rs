@@ -823,6 +823,10 @@ impl AutoOptimizer {
                 simulator
                     .run(circuit)
                     .map_err(|e| SimulatorError::ComputationError(e.to_string()))
+                    .and_then(|result| {
+                        Register::with_amplitudes(result.amplitudes().to_vec())
+                            .map_err(|e| SimulatorError::ComputationError(e.to_string()))
+                    })
             }
             BackendType::SciRS2Gpu => {
                 #[cfg(all(feature = "gpu", not(target_os = "macos")))]
@@ -831,6 +835,11 @@ impl AutoOptimizer {
                         .map_err(|e| SimulatorError::ComputationError(e.to_string()))?;
                     use crate::simulator::Simulator;
                     simulator.run(circuit)
+                        .map_err(|e| SimulatorError::ComputationError(e.to_string()))
+                        .and_then(|result| {
+                            Register::with_amplitudes(result.amplitudes().to_vec())
+                                .map_err(|e| SimulatorError::ComputationError(e.to_string()))
+                        })
                 }
                 #[cfg(any(not(feature = "gpu"), target_os = "macos"))]
                 {
@@ -839,6 +848,10 @@ impl AutoOptimizer {
                     simulator
                         .run(circuit)
                         .map_err(|e| SimulatorError::ComputationError(e.to_string()))
+                        .and_then(|result| {
+                            Register::with_amplitudes(result.amplitudes().to_vec())
+                                .map_err(|e| SimulatorError::ComputationError(e.to_string()))
+                        })
                 }
             }
             BackendType::LargeScale => {

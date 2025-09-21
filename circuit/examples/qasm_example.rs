@@ -28,20 +28,20 @@ fn export_example() {
     let mut builder = CircuitBuilder::<3>::new();
 
     // Create Bell pair between Alice and Bob
-    builder.h(Qubit::new(1));
-    builder.cx(Qubit::new(1), Qubit::new(2));
+    let _ = builder.h(Qubit::new(1));
+    let _ = builder.cx(Qubit::new(1), Qubit::new(2));
 
     // Alice's operations
-    builder.cx(Qubit::new(0), Qubit::new(1));
-    builder.h(Qubit::new(0));
+    let _ = builder.cx(Qubit::new(0), Qubit::new(1));
+    let _ = builder.h(Qubit::new(0));
 
     // Measurements (in real teleportation, these would be mid-circuit)
-    builder.measure(Qubit::new(0));
-    builder.measure(Qubit::new(1));
+    let _ = builder.measure(Qubit::new(0));
+    let _ = builder.measure(Qubit::new(1));
 
     // Bob's corrections (would be conditional in real circuit)
-    builder.cx(Qubit::new(1), Qubit::new(2));
-    builder.cz(Qubit::new(0), Qubit::new(2));
+    let _ = builder.cx(Qubit::new(1), Qubit::new(2));
+    let _ = builder.cz(Qubit::new(0), Qubit::new(2));
 
     let circuit = builder.build();
 
@@ -188,24 +188,24 @@ fn round_trip_example() {
 
     // Layer 1: Single-qubit rotations
     for i in 0..4 {
-        builder.ry(Qubit::new(i), 0.5);
-        builder.rz(Qubit::new(i), 0.3);
+        let _ = builder.ry(Qubit::new(i), 0.5);
+        let _ = builder.rz(Qubit::new(i), 0.3);
     }
 
     // Layer 2: Entangling gates
     for i in 0..3 {
-        builder.cx(Qubit::new(i), Qubit::new(i + 1));
+        let _ = builder.cx(Qubit::new(i), Qubit::new(i + 1));
     }
-    builder.cx(Qubit::new(3), Qubit::new(0)); // Circular connectivity
+    let _ = builder.cx(Qubit::new(3), Qubit::new(0)); // Circular connectivity
 
     // Layer 3: More rotations
     for i in 0..4 {
-        builder.rx(Qubit::new(i), -0.2);
+        let _ = builder.rx(Qubit::new(i), -0.2);
     }
 
     // Measurements
     for i in 0..4 {
-        builder.measure(Qubit::new(i));
+        let _ = builder.measure(Qubit::new(i));
     }
 
     let original = builder.build();

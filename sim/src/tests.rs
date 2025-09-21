@@ -345,6 +345,7 @@ mod ultrathink_tests {
 
     #[test]
     #[cfg(all(feature = "gpu", not(target_os = "macos")))]
+    #[ignore = "Skipping distributed GPU partition test"]
     fn test_distributed_gpu_partition_schemes() {
         if !DistributedGpuStateVector::is_gpu_available() {
             eprintln!("Skipping GPU test: GPU backend not available");

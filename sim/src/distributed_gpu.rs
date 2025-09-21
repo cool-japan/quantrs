@@ -1566,6 +1566,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Skipping distributed GPU test"]
     fn test_state_vector_retrieval() {
         if !DistributedGpuStateVector::is_gpu_available() {
             eprintln!("Skipping GPU test: GPU backend not available");

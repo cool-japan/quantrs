@@ -157,13 +157,13 @@ fn demo_problem_formulations() -> Result<(), Box<dyn std::error::Error>> {
     // Objective: maximize utility (minimize negative utility)
     let utilities = vec![0.8, 0.6, 0.9, 0.7];
     for (i, &utility) in utilities.iter().enumerate() {
-        qubo.set_linear_term(&variables[i], -utility).unwrap(); // Negative for maximization
+        let _ = qubo.set_linear_term(&variables[i], -utility).unwrap(); // Negative for maximization
     }
 
     // Constraint: select exactly 2 assets (simplified)
     for i in 0..4 {
         for j in (i + 1)..4 {
-            qubo.add_coupling(variables[i].index, variables[j].index, 5.0)
+            let _ = qubo.add_coupling(variables[i].index, variables[j].index, 5.0)
                 .unwrap(); // Penalty for selecting too many
         }
     }
@@ -734,14 +734,14 @@ fn demo_advanced_optimization() -> Result<(), Box<dyn std::error::Error>> {
 
     // Objective terms
     for i in 0..5 {
-        qubo.add_bias(i, rand::random::<f64>() - 0.5);
+        let _ = qubo.add_bias(i, rand::random::<f64>() - 0.5);
     }
 
     // Hard constraint: exactly 2 variables should be 1 (simplified implementation)
     // Add penalty terms for constraint violation
     for i in 0..5 {
         for j in (i + 1)..5 {
-            qubo.add_coupling(i, j, 1.0); // Penalty for having too many variables set
+            let _ = qubo.add_coupling(i, j, 1.0); // Penalty for having too many variables set
         }
     }
 

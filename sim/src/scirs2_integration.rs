@@ -882,11 +882,11 @@ impl Matrix {
         (self.data.nrows(), self.data.ncols())
     }
 
-    pub fn view(&self) -> ArrayView2<Complex64> {
+    pub fn view(&self) -> ArrayView2<'_, Complex64> {
         self.data.view()
     }
 
-    pub fn view_mut(&mut self) -> ndarray::ArrayViewMut2<Complex64> {
+    pub fn view_mut(&mut self) -> ndarray::ArrayViewMut2<'_, Complex64> {
         self.data.view_mut()
     }
 }
@@ -957,11 +957,11 @@ impl Vector {
         self.data.len()
     }
 
-    pub fn view(&self) -> ArrayView1<Complex64> {
+    pub fn view(&self) -> ArrayView1<'_, Complex64> {
         self.data.view()
     }
 
-    pub fn view_mut(&mut self) -> ndarray::ArrayViewMut1<Complex64> {
+    pub fn view_mut(&mut self) -> ndarray::ArrayViewMut1<'_, Complex64> {
         self.data.view_mut()
     }
 }

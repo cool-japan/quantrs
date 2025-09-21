@@ -10,7 +10,8 @@ use num_complex::Complex64;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
 use quantrs2_core::gpu::{GpuConfig, SciRS2GpuBackend};
 use quantrs2_core::prelude::*;
-use scirs2_core::gpu::{GpuBackend, GpuBuffer, GpuContext};
+use quantrs2_core::GpuBackend;
+use scirs2_core::gpu::{GpuBackend as SciRS2GpuBackendTrait, GpuBuffer, GpuContext};
 use std::sync::Arc;
 
 /// SciRS2-powered GPU linear algebra operations
@@ -188,14 +189,17 @@ impl GpuLinearAlgebra {
         }
 
         // Use SciRS2 GPU backend for unitary application
-        let kernel = self.backend.kernel();
+        let backend = self.backend.as_ref().ok_or(QuantRS2Error::BackendExecutionFailed(
+            "GPU not initialized".to_string(),
+        ))?;
+        let kernel = backend.kernel();
 
         // Create a temporary buffer for the state
-        let mut state_buffer = self.backend.allocate_state_vector(num_qubits)?;
+        let mut state_buffer = backend.allocate_state_vector(num_qubits)?;
         state_buffer.upload(state)?;
 
         // Convert target_qubits to QubitIds
-        let qubits: Vec<_> = target_qubits.iter().map(|&q| QubitId(q)).collect();
+        let qubits: Vec<_> = target_qubits.iter().map(|&q| QubitId(q as u32)).collect();
 
         // Apply the unitary using SciRS2's optimized multi-qubit gate kernel
         kernel.apply_multi_qubit_gate(state_buffer.as_mut(), unitary, &qubits, num_qubits)?;
@@ -269,8 +273,9 @@ impl GpuLinearAlgebra {
                     .map(|(a, b)| a.conj() * b)
                     .sum();
 
+                let r_i_k_values: Vec<_> = (0..m).map(|i| r[[i, k]]).collect();
                 for i in 0..m {
-                    r[[i, j]] -= dot_product * r[[i, k]];
+                    r[[i, j]] -= dot_product * r_i_k_values[i];
                 }
             }
         }

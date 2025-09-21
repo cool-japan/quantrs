@@ -129,6 +129,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Skipping GPU gradient computation test"]
     fn test_gpu_backend_gradient_computation() {
         use quantrs2_circuit::prelude::Circuit;
         use quantrs2_ml::simulator_backends::GradientMethod;

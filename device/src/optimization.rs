@@ -1352,8 +1352,8 @@ mod tests {
 
         // Create a simple test circuit
         let mut circuit = Circuit::<2>::new();
-        circuit.h(QubitId(0));
-        circuit.cnot(QubitId(0), QubitId(1));
+        let _ = circuit.h(QubitId(0));
+        let _ = circuit.cnot(QubitId(0), QubitId(1));
 
         // Optimization should fail without calibration
         let result = optimizer.optimize_circuit(&circuit, "test_device");
@@ -1364,9 +1364,9 @@ mod tests {
     fn test_fidelity_estimator() {
         let estimator = FidelityEstimator::new();
         let mut circuit = Circuit::<3>::new();
-        circuit.h(QubitId(0));
-        circuit.cnot(QubitId(0), QubitId(1));
-        circuit.cnot(QubitId(1), QubitId(2));
+        let _ = circuit.h(QubitId(0));
+        let _ = circuit.cnot(QubitId(0), QubitId(1));
+        let _ = circuit.cnot(QubitId(1), QubitId(2));
 
         let fidelity = estimator.estimate_process_fidelity(&circuit).unwrap();
         assert!(fidelity > 0.0 && fidelity <= 1.0);

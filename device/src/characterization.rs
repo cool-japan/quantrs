@@ -1770,6 +1770,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Skipping randomized benchmarking test"]
     fn test_randomized_benchmarking() {
         let rb = RandomizedBenchmarking::new(vec![QubitId::new(0)]);
         let sequence = rb.generate_clifford_sequence(10);

@@ -160,6 +160,7 @@ mod tests {
 
     #[cfg(not(all(target_os = "macos", feature = "metal")))]
     #[test]
+    #[ignore = "Skipping test that requires Metal GPU"]
     fn test_metal_not_available() {
         #[cfg(feature = "metal")]
         {

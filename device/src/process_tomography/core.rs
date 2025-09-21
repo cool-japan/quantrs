@@ -391,11 +391,11 @@ impl SciRS2ProcessTomographer {
 /// Trait for process tomography executors
 pub trait ProcessTomographyExecutor {
     /// Execute a circuit on input states and perform measurements
-    async fn execute_process_measurement<const N: usize>(
+    fn execute_process_measurement<const N: usize>(
         &self,
         circuit: &Circuit<N>,
         input_state: &Array2<Complex64>,
         measurement: &Array2<Complex64>,
         shots: usize,
-    ) -> DeviceResult<f64>;
+    ) -> impl std::future::Future<Output = DeviceResult<f64>> + Send;
 }

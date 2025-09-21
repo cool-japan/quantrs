@@ -36,25 +36,25 @@ fn create_sample_circuit() -> Circuit<4> {
 
     // Add some gates with optimization opportunities
     // Pattern 1: Redundant gates (H-H = I, X-X = I)
-    circuit.h(0);
-    circuit.h(0);
+    let _ = circuit.h(0);
+    let _ = circuit.h(0);
 
     // Pattern 2: Commutable gates
-    circuit.x(1);
-    circuit.z(0);
-    circuit.cnot(0, 1);
+    let _ = circuit.x(1);
+    let _ = circuit.z(0);
+    let _ = circuit.cnot(0, 1);
 
     // Pattern 3: Mergeable rotations
-    circuit.rz(2, std::f64::consts::PI / 4.0);
-    circuit.rz(2, std::f64::consts::PI / 4.0);
+    let _ = circuit.rz(2, std::f64::consts::PI / 4.0);
+    let _ = circuit.rz(2, std::f64::consts::PI / 4.0);
 
     // Pattern 4: Known patterns (H-X-H = Z)
-    circuit.h(3);
-    circuit.x(3);
-    circuit.h(3);
+    let _ = circuit.h(3);
+    let _ = circuit.x(3);
+    let _ = circuit.h(3);
 
     // Pattern 5: Decomposable gates
-    circuit.toffoli(0, 1, 2);
+    let _ = circuit.toffoli(0, 1, 2);
 
     circuit
 }

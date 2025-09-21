@@ -291,10 +291,10 @@ pub async fn benchmark_gpu_performance() -> QuantRS2Result<String> {
 
         // Add some gates for benchmarking
         for i in 0..n_qubits {
-            builder.h(i);
+            let _ = builder.h(i);
         }
         for i in 0..n_qubits - 1 {
-            builder.cnot(i, i + 1);
+            let _ = builder.cnot(i, i + 1);
         }
 
         let circuit = builder.build();
@@ -342,11 +342,8 @@ mod tests {
         // Test the legacy interface still works
         use std::sync::Arc;
 
-        // These parameters are ignored in the new implementation
-        let _simulator = GpuStateVectorSimulator::new(
-            Arc::new(()), // Dummy device
-            Arc::new(()), // Dummy queue
-        );
+        // The new implementation takes no parameters
+        let _simulator = GpuStateVectorSimulator::new();
 
         // Should create successfully with SciRS2 backend
         assert!(
@@ -367,8 +364,8 @@ mod tests {
 
         // Create a simple 2-qubit circuit
         let mut builder = CircuitBuilder::<2>::new();
-        builder.h(0);
-        builder.cnot(0, 1);
+        let _ = builder.h(0);
+        let _ = builder.cnot(0, 1);
         let circuit = builder.build();
 
         // Run simulation

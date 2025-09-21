@@ -51,11 +51,11 @@ async fn demo_multi_platform_compilation() -> Result<(), Box<dyn std::error::Err
 
     // Create test circuit
     let mut circuit = Circuit::<4>::new();
-    circuit.h(QubitId(0));
-    circuit.cnot(QubitId(0), QubitId(1));
-    circuit.cnot(QubitId(1), QubitId(2));
-    circuit.cnot(QubitId(2), QubitId(3));
-    circuit.h(QubitId(3));
+    let _ = circuit.h(QubitId(0));
+    let _ = circuit.cnot(QubitId(0), QubitId(1));
+    let _ = circuit.cnot(QubitId(1), QubitId(2));
+    let _ = circuit.cnot(QubitId(2), QubitId(3));
+    let _ = circuit.h(QubitId(3));
 
     // IBM Quantum compilation
     println!("🔬 Compiling for IBM Quantum...");
@@ -88,15 +88,15 @@ async fn demo_advanced_optimization() -> Result<(), Box<dyn std::error::Error>> 
 
     // Create entangled state with redundancies
     for i in 0..7 {
-        circuit.h(QubitId(i));
-        circuit.cnot(QubitId(i), QubitId(i + 1));
+        let _ = circuit.h(QubitId(i));
+        let _ = circuit.cnot(QubitId(i), QubitId(i + 1));
     }
 
     // Add some redundant operations
-    circuit.z(QubitId(0));
-    circuit.z(QubitId(0)); // Redundant - should be optimized away
-    circuit.x(QubitId(1));
-    circuit.x(QubitId(1)); // Redundant - should be optimized away
+    let _ = circuit.z(QubitId(0));
+    let _ = circuit.z(QubitId(0)); // Redundant - should be optimized away
+    let _ = circuit.x(QubitId(1));
+    let _ = circuit.x(QubitId(1)); // Redundant - should be optimized away
 
     println!(
         "📊 Original circuit: {} gates, estimated depth: {}",
@@ -148,12 +148,12 @@ async fn demo_scirs2_integration() -> Result<(), Box<dyn std::error::Error>> {
     let mut circuit = Circuit::<6>::new();
 
     // Create a pattern that benefits from graph optimization
-    circuit.h(QubitId(0));
-    circuit.cnot(QubitId(0), QubitId(2));
-    circuit.cnot(QubitId(2), QubitId(4));
-    circuit.cnot(QubitId(1), QubitId(3));
-    circuit.cnot(QubitId(3), QubitId(5));
-    circuit.cnot(QubitId(0), QubitId(5));
+    let _ = circuit.h(QubitId(0));
+    let _ = circuit.cnot(QubitId(0), QubitId(2));
+    let _ = circuit.cnot(QubitId(2), QubitId(4));
+    let _ = circuit.cnot(QubitId(1), QubitId(3));
+    let _ = circuit.cnot(QubitId(3), QubitId(5));
+    let _ = circuit.cnot(QubitId(0), QubitId(5));
 
     // Enable comprehensive SciRS2 features
     let mut config = CompilerConfig::default();
@@ -208,10 +208,10 @@ async fn demo_performance_analysis() -> Result<(), Box<dyn std::error::Error>> {
 
     // Quantum Fourier Transform-like pattern
     for i in 0..5 {
-        circuit.h(QubitId(i));
+        let _ = circuit.h(QubitId(i));
         for j in (i + 1)..5 {
             // Controlled phase rotations (simplified)
-            circuit.cnot(QubitId(i), QubitId(j));
+            let _ = circuit.cnot(QubitId(i), QubitId(j));
         }
     }
 
@@ -380,21 +380,21 @@ fn estimate_circuit_depth<const N: usize>(circuit: &Circuit<N>) -> usize {
 
 fn create_simple_circuit() -> Circuit<3> {
     let mut circuit = Circuit::<3>::new();
-    circuit.h(QubitId(0));
-    circuit.cnot(QubitId(0), QubitId(1));
-    circuit.cnot(QubitId(1), QubitId(2));
+    let _ = circuit.h(QubitId(0));
+    let _ = circuit.cnot(QubitId(0), QubitId(1));
+    let _ = circuit.cnot(QubitId(1), QubitId(2));
     circuit
 }
 
 fn create_medium_circuit() -> Circuit<3> {
     let mut circuit = Circuit::<3>::new();
     for i in 0..3 {
-        circuit.h(QubitId(i));
+        let _ = circuit.h(QubitId(i));
     }
     for i in 0..2 {
-        circuit.cnot(QubitId(i), QubitId(i + 1));
+        let _ = circuit.cnot(QubitId(i), QubitId(i + 1));
     }
-    circuit.cnot(QubitId(2), QubitId(0)); // Add cycle
+    let _ = circuit.cnot(QubitId(2), QubitId(0)); // Add cycle
     circuit
 }
 
@@ -403,20 +403,20 @@ fn create_complex_circuit() -> Circuit<3> {
 
     // Create complex entanglement pattern
     for i in 0..3 {
-        circuit.h(QubitId(i));
+        let _ = circuit.h(QubitId(i));
     }
 
     // Create multiple CNOT layers
     for layer in 0..2 {
         for i in 0..2 {
             let target = (i + layer + 1) % 3;
-            circuit.cnot(QubitId(i), QubitId(target));
+            let _ = circuit.cnot(QubitId(i), QubitId(target));
         }
     }
 
     // Add some single-qubit rotations
     for i in 0..3 {
-        circuit.z(QubitId(i));
+        let _ = circuit.z(QubitId(i));
     }
 
     circuit

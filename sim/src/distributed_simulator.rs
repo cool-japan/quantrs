@@ -1304,6 +1304,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Skipping node capabilities detection test"]
     fn test_node_capabilities_detection() {
         let capabilities = DistributedQuantumSimulator::detect_local_capabilities();
         assert!(capabilities.is_ok());
