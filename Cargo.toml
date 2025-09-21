@@ -12,6 +12,7 @@ members = [
     "examples",
     "quantrs2-symengine-sys",
     "quantrs2-symengine",
+    "quantrs2",
 ]
 exclude = [
     "symengine-fork",

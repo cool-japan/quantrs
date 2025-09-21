@@ -66,5 +66,8 @@ publish_crate "ml" "quantrs2-ml"
 # 9. tytan (depends on core, anneal)
 publish_crate "tytan" "quantrs2-tytan"
 
+# 10. facade (re-exports all)
+publish_crate "quantrs2" "quantrs2"
+
 echo ""
 echo "🎉 All crates published successfully!"
