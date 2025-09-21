@@ -40,10 +40,10 @@ publish_crate() {
 }
 
 # 1. symengine-sys (no dependencies)
-publish_crate "simengine-sys" "quantrs2-symengine-sys"
+publish_crate "quantrs2-symengine-sys" "quantrs2-symengine-sys"
 
 # 2. symengine (depends on symengine-sys)
-publish_crate "simengine-rs" "quantrs2-symengine"
+publish_crate "quantrs2-symengine" "quantrs2-symengine"
 
 # 3. core (depends on symengine)
 publish_crate "core" "quantrs2-core"
