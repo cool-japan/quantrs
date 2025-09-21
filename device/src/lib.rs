@@ -26,6 +26,7 @@ pub mod circuit_integration;
 pub mod circuit_migration;
 pub mod cloud;
 pub mod continuous_variable;
+pub mod scirs2_calibration_enhanced;
 // pub mod cost_optimization;
 pub mod compiler_passes;
 pub mod cross_platform_benchmarking;
@@ -61,6 +62,9 @@ pub mod quantum_network;
 pub mod quantum_system_security;
 pub mod routing;
 pub mod routing_advanced;
+// Temporarily disabled for compilation fixes
+// pub mod scirs2_hardware_benchmarks_enhanced;
+// pub mod scirs2_noise_characterization_enhanced;
 pub mod security;
 pub mod telemetry;
 pub mod topological;
@@ -518,6 +522,24 @@ pub mod prelude {
         CVMeasurementResult, CVMeasurementType, CVModeState, CVQuantumDevice, CVSystemType,
         Complex,
     };
+    pub use crate::scirs2_calibration_enhanced::{
+        AnalysisOptions, CNOTData, CalibrationConfig, CalibrationFeedback, CalibrationInput,
+        CalibrationModel, CalibrationObjective, CalibrationPrediction, CalibrationProtocols,
+        CalibrationRecommendation, CalibrationReport, CalibrationState, CalibrationSummary,
+        CalibrationVisualizations, ChevronData, CoherenceTimes, CoherentError, CorrelatedError,
+        CrosstalkCharacterization as EnhancedCrosstalkCharacterization, CrosstalkParameters,
+        CrosstalkProtocols, DetailedResults, DiscriminationData, DiscriminationParameters,
+        DragData, DriftAnalysis, DriftDirection, DriftMeasurement, EnhancedCalibrationConfig,
+        EnhancedCalibrationSystem, ErrorAnalysis, ErrorCharacterization, ErrorData, ErrorModel,
+        ErrorModelTrait, GSTData, GateSet, HardwareSpec, IQData, IQParameters,
+        IdentificationMethod, IncoherentError, IncoherentErrorType, MLSystemParameters,
+        PerformanceMetrics, PerformanceThresholds, Priority, ProcessTomographyData, QualityMetrics,
+        QuantumOperation, QubitParameters, RBData, RabiData, RamseyData,
+        ReadoutCalibration as EnhancedReadoutCalibration, ReadoutParameters, ReadoutProtocols,
+        RecommendationCategory, SingleQubitCalibration, SingleQubitProtocols, SystemAnalysis,
+        SystemCalibrationResult, SystemModel, TwoQubitCalibration, TwoQubitParameters,
+        TwoQubitProtocols, ZZData,
+    };
     // pub use crate::cost_optimization::{
     //     CostOptimizationEngine, CostOptimizationConfig, CostOptimizationStrategy as CostStrategy, CostEstimate,
     //     CostBreakdown, CostEstimationMetadata, BudgetConfig, BudgetStatus, BudgetRolloverPolicy,
@@ -568,8 +590,8 @@ pub mod prelude {
         HybridOptimizationConfig, HybridOptimizer, HybridPerformanceConfig,
         HybridQuantumClassicalExecutor, IterationResult, NoiseModelingConfig, OptimizationLevel,
         OptimizationPass, OptimizationSummary, PerformanceMetrics as HybridPerformanceMetrics,
-        QualityMetrics, QuantumExecutionConfig, QuantumExecutionResult, RetryConfig,
-        SelectionCriterion, StateEstimationMethod,
+        QualityMetrics as HybridQualityMetrics, QuantumExecutionConfig, QuantumExecutionResult,
+        RetryConfig, SelectionCriterion, StateEstimationMethod,
     };
     pub use crate::ibm::IBMCircuitConfig;
     pub use crate::integrated_device_manager::{
@@ -604,13 +626,45 @@ pub mod prelude {
     pub use crate::mid_circuit_measurements::{
         ExecutionStats, HardwareOptimizations, MeasurementEvent, MidCircuitCapabilities,
         MidCircuitConfig, MidCircuitDeviceExecutor, MidCircuitExecutionResult, MidCircuitExecutor,
-        PerformanceMetrics, ValidationConfig, ValidationResult,
+        PerformanceMetrics as MidCircuitPerformanceMetrics, ValidationConfig, ValidationResult,
     };
     pub use crate::noise_model::{
         CalibrationNoiseModel, GateNoiseParams, NoiseModelBuilder, QubitNoiseParams,
         ReadoutNoiseParams,
     };
     pub use crate::noise_modeling_scirs2::{SciRS2NoiseConfig, SciRS2NoiseModeler};
+    // Temporarily disabled
+    // pub use crate::scirs2_noise_characterization_enhanced::{
+    //     EnhancedNoiseCharacterizer, EnhancedNoiseConfig, NoiseCharacterizationConfig,
+    //     NoiseModel, StatisticalMethod, AnalysisParameters, ReportingOptions,
+    //     ExportFormat, NoiseCharacterizationResult, MLNoiseInsights,
+    //     NoiseClassification, PredictedNoisePoint, NoisePredictions,
+    //     NoiseTrend, NoiseAlert, AlertType, Severity, NoiseReport,
+    //     NoiseSummary, ModelAnalysis, TemporalAnalysis, SpectralAnalysis,
+    //     CorrelationAnalysis, Recommendation, RecommendationType, Priority as NoisePriority,
+    //     NoiseVisualizations, PlotData, HeatmapData, Landscape3D,
+    //     PlotMetadata, PlotType, Visualization3DParams, SurfaceType,
+    // };
+    // Temporarily disabled
+    // pub use crate::scirs2_hardware_benchmarks_enhanced::{
+    //     EnhancedHardwareBenchmark, EnhancedBenchmarkConfig, BenchmarkConfig as EnhancedBenchmarkConfig2,
+    //     BenchmarkSuite as EnhancedBenchmarkSuite, PerformanceMetric, AnalysisMethod, ReportingOptions as BenchmarkReportingOptions,
+    //     ExportFormat as BenchmarkExportFormat, ComprehensiveBenchmarkResult,
+    //     DeviceInfo as BenchmarkDeviceInfo, BenchmarkSuiteResult, StatisticalAnalysis as BenchmarkStatisticalAnalysis,
+    //     SuiteStatistics, CorrelationMatrix, SignificanceTest, ConfidenceInterval,
+    //     PerformancePredictions, PredictedPerformance, DegradationTimeline,
+    //     DegradationThreshold, DegradationEvent, DegradationType, ImpactLevel,
+    //     MaintenanceRecommendation, MaintenanceType, ComparativeAnalysis,
+    //     HistoricalComparison, PerformanceTrend, HistoricalAnomaly, AnomalyType,
+    //     Severity as BenchmarkSeverity, DeviceComparison, IndustryPosition,
+    //     IndustryTier, BenchmarkRecommendation, RecommendationCategory as BenchmarkRecommendationCategory,
+    //     Priority as BenchmarkPriority, EffortLevel, BenchmarkReport,
+    //     ExecutiveSummary, SuiteReport, MetricReport, MetricTrend,
+    //     StatisticalSummary, PredictionSummary, ComparativeSummary,
+    //     BenchmarkVisualizations, HeatmapVisualization, TrendPlot, DataSeries,
+    //     PlotType as BenchmarkPlotType, ComparisonChart, ComparisonDataSet,
+    //     ChartType, RadarChart, RadarDataSet,
+    // };
     pub use crate::optimization::{
         CalibrationOptimizer, FidelityEstimator, OptimizationConfig, OptimizationResult,
         PulseOptimizer,
@@ -686,12 +740,13 @@ pub mod prelude {
         TrainingStatistics,
     };
     pub use crate::quantum_ml_integration::{
-        create_high_performance_qml_config, create_qml_integration_hub, AnomalyType,
-        FrameworkBridge, HybridMLOptimizer, LossFunction, MLFramework, MLPerformanceAnalytics,
-        QMLArchitecture, QMLDataBatch, QMLDataPipeline, QMLDataset, QMLInferenceResult,
-        QMLIntegrationConfig, QMLMonitoringConfig, QMLOptimizationConfig, QMLResourceConfig,
-        QMLResourceRequirements, QMLTrainingConfig, QMLTrainingOrchestrator, QuantumEncodingType,
-        QuantumMLIntegrationHub, QuantumNeuralNetworkExecutor, TrainingPriority,
+        create_high_performance_qml_config, create_qml_integration_hub,
+        AnomalyType as QMLAnomalyType, FrameworkBridge, HybridMLOptimizer, LossFunction,
+        MLFramework, MLPerformanceAnalytics, QMLArchitecture, QMLDataBatch, QMLDataPipeline,
+        QMLDataset, QMLInferenceResult, QMLIntegrationConfig, QMLMonitoringConfig,
+        QMLOptimizationConfig, QMLResourceConfig, QMLResourceRequirements, QMLTrainingConfig,
+        QMLTrainingOrchestrator, QuantumEncodingType, QuantumMLIntegrationHub,
+        QuantumNeuralNetworkExecutor, TrainingPriority,
     };
     pub use crate::quantum_system_security::{
         AuthenticationMethod as SecurityAuthenticationMethod, AuthorizationModel,

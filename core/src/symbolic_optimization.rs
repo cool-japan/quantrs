@@ -213,7 +213,7 @@ impl SymbolicObjective for HamiltonianExpectation {
 pub struct QAOACostFunction {
     /// Cost Hamiltonian
     pub cost_hamiltonian: SymbolicHamiltonian,
-    /// Mixer Hamiltonian  
+    /// Mixer Hamiltonian
     pub mixer_hamiltonian: SymbolicHamiltonian,
     /// Number of QAOA layers
     pub p_layers: usize,

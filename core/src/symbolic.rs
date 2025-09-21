@@ -5,7 +5,7 @@
 //! advanced mathematical analysis for quantum circuits and algorithms.
 
 #[cfg(feature = "symbolic")]
-pub use symengine::{Expression as SymEngine, SymEngineError, SymEngineResult};
+pub use quantrs2_symengine::{Expression as SymEngine, SymEngineError, SymEngineResult};
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use num_complex::Complex64;
@@ -19,7 +19,7 @@ pub enum SymbolicExpression {
     /// Constant floating-point value
     Constant(f64),
 
-    /// Complex constant value  
+    /// Complex constant value
     ComplexConstant(Complex64),
 
     /// Variable with a name
@@ -319,6 +319,10 @@ impl std::ops::Add for SymbolicExpression {
         #[cfg(feature = "symbolic")]
         {
             match (self, rhs) {
+                // Optimize constant addition
+                (SymbolicExpression::Constant(a), SymbolicExpression::Constant(b)) => {
+                    SymbolicExpression::Constant(a + b)
+                }
                 (SymbolicExpression::SymEngine(a), SymbolicExpression::SymEngine(b)) => {
                     SymbolicExpression::SymEngine(a + b)
                 }
@@ -362,6 +366,10 @@ impl std::ops::Sub for SymbolicExpression {
         #[cfg(feature = "symbolic")]
         {
             match (self, rhs) {
+                // Optimize constant subtraction
+                (SymbolicExpression::Constant(a), SymbolicExpression::Constant(b)) => {
+                    SymbolicExpression::Constant(a - b)
+                }
                 (SymbolicExpression::SymEngine(a), SymbolicExpression::SymEngine(b)) => {
                     SymbolicExpression::SymEngine(a - b)
                 }
@@ -404,6 +412,10 @@ impl std::ops::Mul for SymbolicExpression {
         #[cfg(feature = "symbolic")]
         {
             match (self, rhs) {
+                // Optimize constant multiplication
+                (SymbolicExpression::Constant(a), SymbolicExpression::Constant(b)) => {
+                    SymbolicExpression::Constant(a * b)
+                }
                 (SymbolicExpression::SymEngine(a), SymbolicExpression::SymEngine(b)) => {
                     SymbolicExpression::SymEngine(a * b)
                 }
@@ -446,6 +458,14 @@ impl std::ops::Div for SymbolicExpression {
         #[cfg(feature = "symbolic")]
         {
             match (self, rhs) {
+                // Optimize constant division
+                (SymbolicExpression::Constant(a), SymbolicExpression::Constant(b)) => {
+                    if b.abs() < 1e-12 {
+                        SymbolicExpression::Constant(f64::INFINITY)
+                    } else {
+                        SymbolicExpression::Constant(a / b)
+                    }
+                }
                 (SymbolicExpression::SymEngine(a), SymbolicExpression::SymEngine(b)) => {
                     SymbolicExpression::SymEngine(a / b)
                 }
@@ -580,7 +600,7 @@ impl One for SymbolicExpression {
 #[cfg(feature = "symbolic")]
 pub mod calculus {
     use super::*;
-    use symengine::ops::calculus;
+    use quantrs2_symengine::ops::calculus;
 
     /// Differentiate an expression with respect to a variable
     pub fn diff(expr: &SymbolicExpression, var: &str) -> QuantRS2Result<SymbolicExpression> {
@@ -708,18 +728,18 @@ pub mod matrix {
             {
                 let half_theta = theta.clone() / SymbolicExpression::constant(2.0);
                 let cos_expr = SymbolicExpression::SymEngine(
-                    symengine::ops::trig::cos(&match &half_theta {
+                    quantrs2_symengine::ops::trig::cos(&match &half_theta {
                         SymbolicExpression::SymEngine(expr) => expr.clone(),
                         _ => return matrix,
                     })
-                    .unwrap_or_else(|_| symengine::Expression::from(1.0)),
+                    .unwrap_or_else(|_| quantrs2_symengine::Expression::from(1.0)),
                 );
                 let sin_expr = SymbolicExpression::SymEngine(
-                    symengine::ops::trig::sin(&match &half_theta {
+                    quantrs2_symengine::ops::trig::sin(&match &half_theta {
                         SymbolicExpression::SymEngine(expr) => expr.clone(),
                         _ => return matrix,
                     })
-                    .unwrap_or_else(|_| symengine::Expression::from(0.0)),
+                    .unwrap_or_else(|_| quantrs2_symengine::Expression::from(0.0)),
                 );
 
                 matrix.elements[0][0] = cos_expr.clone();

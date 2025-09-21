@@ -1,5 +1,7 @@
 use quantrs2_circuit::prelude::Circuit;
-use quantrs2_device::{aws_device::AWSDeviceConfig, create_aws_client, create_aws_device, CircuitExecutor};
+use quantrs2_device::{
+    aws_device::AWSDeviceConfig, create_aws_client, create_aws_device, CircuitExecutor,
+};
 use std::env;
 
 /// This example demonstrates how to create and use an AWS Braket quantum device.

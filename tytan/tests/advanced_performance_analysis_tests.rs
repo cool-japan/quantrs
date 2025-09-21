@@ -6,7 +6,7 @@ mod tests {
     // Note: Sampler types not needed for performance analysis tests
     use ndarray::{Array1, Array2, Array3, ArrayD};
     use std::collections::HashMap;
-    use std::time::{Duration, Instant};
+    use std::time::Duration;
 
     /// Test analysis configuration
     #[test]

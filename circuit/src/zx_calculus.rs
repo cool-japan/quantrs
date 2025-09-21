@@ -26,7 +26,7 @@ pub enum ZXNode {
         /// Number of inputs/outputs
         arity: usize,
     },
-    /// Red spider (X-spider) - represents X-basis operations  
+    /// Red spider (X-spider) - represents X-basis operations
     XSpider {
         id: usize,
         phase: f64,

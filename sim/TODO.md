@@ -2,6 +2,16 @@
 
 This document outlines the development plans and future tasks for the QuantRS2-Sim module.
 
+## Version 0.1.0-beta.1 Status
+
+This beta release features comprehensive SciRS2 v0.1.0-alpha.5 integration:
+- ✅ All simulators now use `scirs2_core::parallel_ops` for parallelization
+- ✅ SciRS2 linear algebra fully integrated (scirs2_integration.rs, scirs2_qft.rs, scirs2_sparse.rs, scirs2_eigensolvers.rs)
+- 🚧 SIMD migration to `scirs2_core::simd_ops` (in progress)
+- 🚧 GPU operations migration to `scirs2_core::gpu` (planned)
+
+See [SciRS2 Integration Checklist](../docs/integration/SCIRS2_INTEGRATION_CHECKLIST.md) for detailed status.
+
 ## Current Status
 
 ### Completed Features

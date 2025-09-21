@@ -23,24 +23,24 @@ extern "C" __global__ void coalesced_spin_update(
     const int tid = blockIdx.x * blockDim.x + threadIdx.x;
     const int warp_id = tid / 32;
     const int lane_id = tid % 32;
-    
+
     if (tid >= batch_size) return;
-    
+
     // Shared memory for warp-level operations
     extern __shared__ float shared_mem[];
     float* warp_energies = &shared_mem[warp_id * 32];
-    
+
     // Initialize RNG
     curandState_t rng_state;
     curand_init(seed + tid, 0, 0, &rng_state);
-    
+
     // Load state with coalesced access
     unsigned char local_state[MAX_VARS];
     for (int i = lane_id; i < n_vars; i += 32) {
         local_state[i] = states[tid * n_vars + i];
     }
     __syncwarp();
-    
+
     // Calculate initial energy
     float energy = 0.0f;
     for (int i = 0; i < n_vars; i++) {
@@ -53,16 +53,16 @@ extern "C" __global__ void coalesced_spin_update(
             }
         }
     }
-    
+
     // Store energy in shared memory
     warp_energies[lane_id] = energy;
     __syncwarp();
-    
+
     // Main optimization loop
     for (int iter = 0; iter < 1000; iter++) {
         // Choose random variable to flip
         int flip_idx = curand(&rng_state) % n_vars;
-        
+
         // Calculate delta energy using warp shuffle
         float delta = 0.0f;
         if (local_state[flip_idx]) {
@@ -70,7 +70,7 @@ extern "C" __global__ void coalesced_spin_update(
         } else {
             delta += 2.0f * qubo_matrix[flip_idx * n_vars + flip_idx];
         }
-        
+
         // Parallel reduction for interaction terms
         for (int j = 0; j < n_vars; j++) {
             if (j != flip_idx && local_state[j]) {
@@ -78,18 +78,18 @@ extern "C" __global__ void coalesced_spin_update(
                 delta += (local_state[flip_idx] ? -2.0f : 2.0f) * coupling;
             }
         }
-        
+
         // Metropolis acceptance
-        bool accept = (delta <= 0.0f) || 
+        bool accept = (delta <= 0.0f) ||
                      (curand_uniform(&rng_state) < expf(-delta / temperature));
-        
+
         if (accept) {
             local_state[flip_idx] = !local_state[flip_idx];
             energy += delta;
             warp_energies[lane_id] = energy;
         }
     }
-    
+
     // Write back results with coalesced access
     for (int i = lane_id; i < n_vars; i += 32) {
         states[tid * n_vars + i] = local_state[i];
@@ -113,47 +113,47 @@ extern "C" __global__ void mixed_precision_annealing(
 ) {
     const int tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid >= batch_size) return;
-    
+
     // Use tensor cores for matrix operations
     __half local_qubo[TILE_SIZE][TILE_SIZE];
     unsigned char state[MAX_VARS];
-    
+
     // Initialize state
     curandState_t rng;
     curand_init(seed + tid, 0, 0, &rng);
-    
+
     for (int i = 0; i < n_vars; i++) {
         state[i] = curand(&rng) & 1;
     }
-    
+
     // Temperature schedule
     const float temp_ratio = powf(final_temp / initial_temp, 1.0f / sweeps);
     float temperature = initial_temp;
-    
+
     for (int sweep = 0; sweep < sweeps; sweep++) {
         // Load QUBO tile into shared memory
         for (int tile = 0; tile < (n_vars + TILE_SIZE - 1) / TILE_SIZE; tile++) {
             // Cooperative loading of tiles
             __syncthreads();
-            
+
             int tile_start = tile * TILE_SIZE;
             if (threadIdx.x < TILE_SIZE && threadIdx.y < TILE_SIZE) {
                 int i = tile_start + threadIdx.x;
                 int j = tile_start + threadIdx.y;
                 if (i < n_vars && j < n_vars) {
-                    local_qubo[threadIdx.x][threadIdx.y] = 
+                    local_qubo[threadIdx.x][threadIdx.y] =
                         qubo_matrix_fp16[i * n_vars + j];
                 }
             }
             __syncthreads();
-            
+
             // Process tile with tensor cores
             // (Actual tensor core operations would go here)
         }
-        
+
         temperature *= temp_ratio;
     }
-    
+
     // Convert final energy to FP32 and store
     float final_energy = 0.0f;
     for (int i = 0; i < n_vars; i++) {
@@ -185,23 +185,23 @@ extern "C" __global__ void dynamic_parallel_sampling(
 ) {
     const int tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid >= batch_size) return;
-    
+
     // Run initial sampling
     float energy = sample_solution(n_vars, qubo_matrix, &states[tid * n_vars], seed + tid);
     energies[tid] = energy;
-    
+
     // If solution is promising, spawn child kernels
     if (energy < threshold_energy) {
         int children = min(4, (int)((threshold_energy - energy) / threshold_energy * 8));
         num_children[tid] = children;
-        
+
         if (children > 0) {
             // Launch child kernel for local search
             dim3 child_blocks(1);
             dim3 child_threads(children);
-            
+
             local_search_kernel<<<child_blocks, child_threads>>>(
-                n_vars, qubo_matrix, &states[tid * n_vars], 
+                n_vars, qubo_matrix, &states[tid * n_vars],
                 &energies[tid], seed + tid * 1000
             );
         }
@@ -218,27 +218,27 @@ __device__ float sample_solution(
 ) {
     curandState_t rng;
     curand_init(seed, 0, 0, &rng);
-    
+
     // Random initialization
     for (int i = 0; i < n_vars; i++) {
         state[i] = curand(&rng) & 1;
     }
-    
+
     // Quick annealing
     float energy = calculate_energy(n_vars, qubo_matrix, state);
     float temp = 10.0f;
-    
+
     for (int iter = 0; iter < 100; iter++) {
         int flip = curand(&rng) % n_vars;
         float delta = calculate_delta_energy(n_vars, qubo_matrix, state, flip);
-        
+
         if (delta < 0.0f || curand_uniform(&rng) < expf(-delta / temp)) {
             state[flip] = !state[flip];
             energy += delta;
         }
         temp *= 0.95f;
     }
-    
+
     return energy;
 }
 "#;
@@ -258,22 +258,22 @@ extern "C" __global__ void texture_memory_sampling(
 ) {
     const int tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid >= batch_size) return;
-    
+
     curandState_t rng;
     curand_init(seed + tid, 0, 0, &rng);
-    
+
     unsigned char state[MAX_VARS];
     for (int i = 0; i < n_vars; i++) {
         state[i] = curand(&rng) & 1;
     }
-    
+
     // Calculate energy using texture memory
     float energy = 0.0f;
     for (int i = 0; i < n_vars; i++) {
         if (state[i]) {
             // Texture fetch for diagonal
             energy += tex2D(qubo_texture, i, i);
-            
+
             for (int j = i + 1; j < n_vars; j++) {
                 if (state[j]) {
                     // Texture fetch for off-diagonal
@@ -282,14 +282,14 @@ extern "C" __global__ void texture_memory_sampling(
             }
         }
     }
-    
+
     // Optimization loop with texture fetches
     for (int iter = 0; iter < 1000; iter++) {
         int flip = curand(&rng) % n_vars;
-        
+
         float delta = 0.0f;
         delta += (state[flip] ? -2.0f : 2.0f) * tex2D(qubo_texture, flip, flip);
-        
+
         for (int j = 0; j < n_vars; j++) {
             if (j != flip && state[j]) {
                 int i = min(flip, j);
@@ -297,13 +297,13 @@ extern "C" __global__ void texture_memory_sampling(
                 delta += (state[flip] ? -2.0f : 2.0f) * tex2D(qubo_texture, i, k);
             }
         }
-        
+
         if (delta < 0.0f || curand_uniform(&rng) < expf(-delta / temperature)) {
             state[flip] = !state[flip];
             energy += delta;
         }
     }
-    
+
     // Store results
     for (int i = 0; i < n_vars; i++) {
         states[tid * n_vars + i] = state[i];
@@ -340,9 +340,9 @@ __kernel void optimized_annealing(
     const int gid = get_global_id(0);
     const int lid = get_local_id(0);
     const int group_size = get_local_size(0);
-    
+
     if (gid >= batch_size) return;
-    
+
     // Cooperatively load QUBO matrix into local memory
     const int elements_per_thread = (n_vars * n_vars + group_size - 1) / group_size;
     for (int i = 0; i < elements_per_thread; i++) {
@@ -352,17 +352,17 @@ __kernel void optimized_annealing(
         }
     }
     barrier(CLK_LOCAL_MEM_FENCE);
-    
+
     // Initialize RNG
     ulong rng_state = seed + gid;
-    
+
     // Initialize state
     uchar state[2048]; // Max supported variables
     for (int i = 0; i < n_vars; i++) {
         rng_state = xorshift64(rng_state);
         state[i] = (rng_state & 1) ? 1 : 0;
     }
-    
+
     // Calculate initial energy from local memory
     float energy = 0.0f;
     for (int i = 0; i < n_vars; i++) {
@@ -375,22 +375,22 @@ __kernel void optimized_annealing(
             }
         }
     }
-    
+
     // Temperature schedule
     float temp_ratio = pow(final_temp / initial_temp, 1.0f / sweeps);
     float temperature = initial_temp;
-    
+
     // Main annealing loop
     for (int sweep = 0; sweep < sweeps; sweep++) {
         // Multiple spin flips per sweep
         for (int flip_count = 0; flip_count < n_vars; flip_count++) {
             rng_state = xorshift64(rng_state);
             int flip = rng_state % n_vars;
-            
+
             // Calculate delta energy from local memory
             float delta = 0.0f;
             delta += (state[flip] ? -2.0f : 2.0f) * local_qubo[flip * n_vars + flip];
-            
+
             for (int j = 0; j < n_vars; j++) {
                 if (j != flip && state[j]) {
                     int row = min(flip, j);
@@ -398,20 +398,20 @@ __kernel void optimized_annealing(
                     delta += (state[flip] ? -2.0f : 2.0f) * local_qubo[row * n_vars + col];
                 }
             }
-            
+
             // Metropolis acceptance
             rng_state = xorshift64(rng_state);
             float rand_val = (float)(rng_state & 0xFFFFFFFF) / (float)0xFFFFFFFF;
-            
+
             if (delta < 0.0f || rand_val < exp(-delta / temperature)) {
                 state[flip] = !state[flip];
                 energy += delta;
             }
         }
-        
+
         temperature *= temp_ratio;
     }
-    
+
     // Store results
     for (int i = 0; i < n_vars; i++) {
         states[gid * n_vars + i] = state[i];
@@ -435,32 +435,32 @@ __kernel void parallel_tempering_exchange(
 ) {
     const int replica_id = get_global_id(0);
     const int lid = get_local_id(0);
-    
+
     if (replica_id >= num_replicas) return;
-    
+
     // Load temperature for this replica
     float my_temp = temperatures[replica_id];
-    
+
     // Load current energy into local memory
     local_energies[lid] = energies[replica_id];
     barrier(CLK_LOCAL_MEM_FENCE);
-    
+
     // Exchange attempt with neighbor
     if (replica_id % 2 == 0 && replica_id + 1 < num_replicas) {
         // Even replicas initiate exchange with odd neighbors
         float my_energy = local_energies[lid];
         float neighbor_energy = local_energies[lid + 1];
         float neighbor_temp = temperatures[replica_id + 1];
-        
+
         // Calculate exchange probability
-        float delta = (1.0f / my_temp - 1.0f / neighbor_temp) * 
+        float delta = (1.0f / my_temp - 1.0f / neighbor_temp) *
                      (neighbor_energy - my_energy);
-        
+
         // Generate random number
         ulong rng = seed + replica_id + get_global_offset(0);
         rng = xorshift64(rng);
         float rand_val = (float)(rng & 0xFFFFFFFF) / (float)0xFFFFFFFF;
-        
+
         // Perform exchange if accepted
         if (delta >= 0.0f || rand_val < exp(delta)) {
             // Swap states
@@ -469,7 +469,7 @@ __kernel void parallel_tempering_exchange(
                 states[replica_id * n_vars + i] = states[(replica_id + 1) * n_vars + i];
                 states[(replica_id + 1) * n_vars + i] = temp;
             }
-            
+
             // Swap energies
             energies[replica_id] = neighbor_energy;
             energies[replica_id + 1] = my_energy;

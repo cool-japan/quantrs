@@ -29,10 +29,10 @@ fn create_demo_circuit() -> Circuit<4> {
     let mut circuit = Circuit::<4>::new();
 
     // Add some basic gates
-    circuit.h(0);
-    circuit.cnot(0, 1);
-    circuit.cnot(1, 2);
-    circuit.h(3);
+    let _ = circuit.h(0);
+    let _ = circuit.cnot(0, 1);
+    let _ = circuit.cnot(1, 2);
+    let _ = circuit.h(3);
 
     circuit
 }

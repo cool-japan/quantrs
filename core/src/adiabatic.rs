@@ -3,10 +3,12 @@
 //! This module implements adiabatic quantum computing (AQC) and quantum annealing
 //! algorithms for solving optimization problems. It includes:
 //! - Adiabatic evolution under time-dependent Hamiltonians
-//! - Quantum annealing for combinatorial optimization  
+//! - Quantum annealing for combinatorial optimization
 //! - Problem encodings (QUBO, Ising model, etc.)
 //! - Annealing schedules and gap analysis
 //! - Performance monitoring and optimization
+
+#![allow(clippy::fn_address_comparisons)]
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use ndarray::{Array1, Array2};
@@ -33,7 +35,7 @@ pub enum ProblemType {
 }
 
 /// Annealing schedule types
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 pub enum AnnealingSchedule {
     /// Linear annealing: s(t) = t/T
     Linear,

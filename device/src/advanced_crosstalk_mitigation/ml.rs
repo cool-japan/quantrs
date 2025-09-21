@@ -14,7 +14,7 @@ impl FeatureExtractor {
             scaler: None,
         }
     }
-    
+
     pub fn extract_features(&mut self, characterization: &CrosstalkCharacterization) -> DeviceResult<Array2<f64>> {
         // Simplified feature extraction
         let n_qubits = characterization.crosstalk_matrix.nrows();
@@ -112,7 +112,7 @@ impl FeatureExtractor {
                 self.scaler = Some(StandardScaler::default());
             }
         }
-        
+
         // Apply scaling
         Ok(features.clone()) // Simplified implementation
     }
@@ -326,12 +326,12 @@ impl MLModelTrainer {
     ) -> DeviceResult<Vec<f64>> {
         let n_folds = self.config.cv_folds;
         let mut scores = Vec::with_capacity(n_folds);
-        
+
         for _ in 0..n_folds {
             // Simplified CV implementation
             scores.push(0.85 + (rand::random::<f64>() - 0.5) * 0.1);
         }
-        
+
         Ok(scores)
     }
 
@@ -340,17 +340,17 @@ impl MLModelTrainer {
         if !self.config.data_augmentation.enable {
             return Ok((features.clone(), targets.clone()));
         }
-        
+
         let aug_ratio = self.config.data_augmentation.augmentation_ratio;
         let noise_level = self.config.data_augmentation.noise_level;
-        
+
         // Add noise and time warping (simplified implementation)
         let mut aug_features = features.clone();
         let mut aug_targets = targets.clone();
-        
+
         // Apply augmentation transformations
         // ... implementation details
-        
+
         Ok((aug_features, aug_targets))
     }
 
@@ -394,14 +394,14 @@ impl AnomalyDetector {
         let anomaly_scores = Array1::from_vec(
             (0..n_samples).map(|_| rand::random::<f64>()).collect()
         );
-        
+
         let anomalies: Vec<usize> = anomaly_scores
             .iter()
             .enumerate()
             .filter(|(_, &score)| score > self.threshold)
             .map(|(i, _)| i)
             .collect();
-        
+
         Ok(AnomalyDetectionResult {
             anomaly_scores,
             anomalies,
@@ -429,14 +429,14 @@ impl ClusteringAnalyzer {
     pub fn analyze_clusters(&self, data: &Array2<f64>) -> DeviceResult<ClusteringResult> {
         let n_samples = data.nrows();
         let n_features = data.ncols();
-        
+
         // Simplified clustering implementation
         let cluster_labels = (0..n_samples)
             .map(|i| i % self.n_clusters)
             .collect();
-        
+
         let cluster_centers = Array2::zeros((self.n_clusters, n_features));
-        
+
         Ok(ClusteringResult {
             cluster_labels,
             cluster_centers,

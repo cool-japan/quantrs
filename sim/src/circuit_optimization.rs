@@ -510,11 +510,14 @@ impl CircuitOptimizer {
                 let qubits3 = gates[i + 2].qubits();
 
                 // Check for specific CNOT chain pattern that can be optimized
-                if qubits1.len() == 2 && qubits2.len() == 2 && qubits3.len() == 2 {
-                    if qubits1 == qubits3 && qubits1[1] == qubits2[0] {
-                        // Found CNOT(a,b) CNOT(b,c) CNOT(a,b) pattern - can be optimized
-                        optimization_count += 1;
-                    }
+                if qubits1.len() == 2
+                    && qubits2.len() == 2
+                    && qubits3.len() == 2
+                    && qubits1 == qubits3
+                    && qubits1[1] == qubits2[0]
+                {
+                    // Found CNOT(a,b) CNOT(b,c) CNOT(a,b) pattern - can be optimized
+                    optimization_count += 1;
                 }
             }
         }
@@ -530,14 +533,15 @@ impl CircuitOptimizer {
                 let qubits3 = gates[i + 2].qubits();
 
                 // Check for CNOT(a,b) CNOT(b,a) CNOT(a,b) = SWAP(a,b) pattern
-                if qubits1.len() == 2 && qubits2.len() == 2 && qubits3.len() == 2 {
-                    if qubits1[0] == qubits3[0]
-                        && qubits1[1] == qubits3[1]
-                        && qubits1[0] == qubits2[1]
-                        && qubits1[1] == qubits2[0]
-                    {
-                        optimization_count += 1;
-                    }
+                if qubits1.len() == 2
+                    && qubits2.len() == 2
+                    && qubits3.len() == 2
+                    && qubits1[0] == qubits3[0]
+                    && qubits1[1] == qubits3[1]
+                    && qubits1[0] == qubits2[1]
+                    && qubits1[1] == qubits2[0]
+                {
+                    optimization_count += 1;
                 }
             }
         }

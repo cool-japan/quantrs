@@ -52,9 +52,9 @@
 //! // ... add your operations here ...
 //! ```
 
+use crate::error::{Result, SimulatorError};
 use quantrs2_circuit::builder::Circuit;
 use quantrs2_core::qubit::QubitId;
-use crate::error::{Result, SimulatorError};
 
 mod codes;
 
@@ -81,8 +81,11 @@ pub trait ErrorCorrection {
     /// # Returns
     ///
     /// A Result containing the circuit with encoding operations, or an error if insufficient qubits
-    fn encode_circuit(&self, logical_qubits: &[QubitId], ancilla_qubits: &[QubitId])
-        -> Result<Circuit<16>>;
+    fn encode_circuit(
+        &self,
+        logical_qubits: &[QubitId],
+        ancilla_qubits: &[QubitId],
+    ) -> Result<Circuit<16>>;
 
     /// Create a circuit to decode and correct errors
     ///
@@ -250,10 +253,11 @@ pub mod utils {
         use num_complex::Complex64;
 
         if state1.len() != state2.len() {
-            return Err(SimulatorError::DimensionMismatch(
-                format!("States have different dimensions: {} vs {}", 
-                        state1.len(), state2.len())
-            ));
+            return Err(SimulatorError::DimensionMismatch(format!(
+                "States have different dimensions: {} vs {}",
+                state1.len(),
+                state2.len()
+            )));
         }
 
         // Calculate inner product

@@ -18,7 +18,7 @@ use quantrs2_core::qubit::QubitId;
 #[allow(unused_imports)]
 use std::collections::HashMap;
 
-#[cfg(feature = "gpu")]
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use crate::gpu::GpuStateVectorSimulator;
 
 /// A dynamic circuit that encapsulates circuits of different qubit counts
@@ -464,13 +464,13 @@ impl DynamicCircuit {
     }
 
     /// Check if GPU acceleration is available
-    #[cfg(feature = "gpu")]
+    #[cfg(all(feature = "gpu", not(target_os = "macos")))]
     pub fn is_gpu_available() -> bool {
         GpuStateVectorSimulator::is_available()
     }
 
     /// Run the circuit on a GPU simulator
-    #[cfg(feature = "gpu")]
+    #[cfg(all(feature = "gpu", not(target_os = "macos")))]
     pub fn run_gpu(&self) -> QuantRS2Result<DynamicResult> {
         // Try to create the GPU simulator
         let mut gpu_simulator = match GpuStateVectorSimulator::new_blocking() {
@@ -614,8 +614,22 @@ impl DynamicCircuit {
         }
     }
 
+    /// Check if GPU acceleration is available (stub for macOS)
+    #[cfg(not(all(feature = "gpu", not(target_os = "macos"))))]
+    pub fn is_gpu_available() -> bool {
+        false
+    }
+
+    /// Run the circuit on a GPU simulator (stub for macOS)
+    #[cfg(not(all(feature = "gpu", not(target_os = "macos"))))]
+    pub fn run_gpu(&self) -> QuantRS2Result<DynamicResult> {
+        Err(QuantRS2Error::BackendExecutionFailed(
+            "GPU acceleration is not available on this platform".to_string(),
+        ))
+    }
+
     /// Run the circuit on the best available simulator (GPU if available, CPU otherwise)
-    #[cfg(feature = "gpu")]
+    #[cfg(all(feature = "gpu", not(target_os = "macos")))]
     pub fn run_best(&self) -> QuantRS2Result<DynamicResult> {
         if Self::is_gpu_available() && self.num_qubits() >= 4 {
             self.run_gpu()
@@ -623,6 +637,13 @@ impl DynamicCircuit {
             let simulator = StateVectorSimulator::new();
             self.run(&simulator)
         }
+    }
+
+    /// Run the circuit on the best available simulator (CPU only on macOS with GPU feature)
+    #[cfg(all(feature = "gpu", target_os = "macos"))]
+    pub fn run_best(&self) -> QuantRS2Result<DynamicResult> {
+        let simulator = StateVectorSimulator::new();
+        self.run(&simulator)
     }
 
     /// Run the circuit on the best available simulator (CPU only if GPU feature is disabled)

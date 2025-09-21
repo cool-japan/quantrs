@@ -22,7 +22,7 @@
 //! - `static`: Link SymEngine statically
 //! - `system-deps`: Use pkg-config to find system dependencies
 
-use std::os::raw::{c_char, c_int, c_ulong};
+use std::os::raw::{c_char, c_int};
 
 // Include generated bindings
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -30,7 +30,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 /// SymEngine error codes
 pub mod error_codes {
     use super::c_int;
-    
+
     pub const SYMENGINE_NO_EXCEPTION: c_int = 0;
     pub const SYMENGINE_RUNTIME_ERROR: c_int = 1;
     pub const SYMENGINE_DIV_BY_ZERO: c_int = 2;
@@ -42,7 +42,7 @@ pub mod error_codes {
 /// SymEngine type codes
 pub mod type_codes {
     use super::c_int;
-    
+
     pub const SYMENGINE_SYMBOL: c_int = 1;
     pub const SYMENGINE_ADD: c_int = 2;
     pub const SYMENGINE_MUL: c_int = 3;
@@ -91,7 +91,9 @@ impl From<c_int> for SymEngineError {
     fn from(code: c_int) -> Self {
         match code {
             error_codes::SYMENGINE_NO_EXCEPTION => SymEngineError::NoException,
-            error_codes::SYMENGINE_RUNTIME_ERROR => SymEngineError::RuntimeError("Runtime error".to_string()),
+            error_codes::SYMENGINE_RUNTIME_ERROR => {
+                SymEngineError::RuntimeError("Runtime error".to_string())
+            }
             error_codes::SYMENGINE_DIV_BY_ZERO => SymEngineError::DivisionByZero,
             error_codes::SYMENGINE_NOT_IMPLEMENTED => SymEngineError::NotImplemented,
             error_codes::SYMENGINE_DOMAIN_ERROR => SymEngineError::DomainError,
@@ -117,25 +119,23 @@ pub fn version() -> &'static str {
 
 // Additional function declarations that might not be in the generated bindings
 extern "C" {
-    // Argument access functions
-    pub fn basic_get_args_size(basic: *const basic_struct) -> usize;
-    pub fn basic_get_arg(out: *mut basic_struct, basic: *const basic_struct, index: usize) -> c_int;
-    
-    // Power operations
-    pub fn basic_pow_get_base(out: *mut basic_struct, basic: *const basic_struct) -> c_int;
-    pub fn basic_pow_get_exp(out: *mut basic_struct, basic: *const basic_struct) -> c_int;
-    
+    // CVecBasic functions (for handling argument vectors)
+    pub fn vecbasic_new() -> *mut CVecBasic;
+    pub fn vecbasic_free(self_: *mut CVecBasic);
+    pub fn vecbasic_push_back(self_: *mut CVecBasic, value: *const basic_struct) -> c_int;
+    pub fn vecbasic_get(self_: *mut CVecBasic, n: usize, result: *mut basic_struct) -> c_int;
+    pub fn vecbasic_size(self_: *const CVecBasic) -> usize;
+
     // Symbol operations
-    pub fn basic_symbol_get_name(basic: *const basic_struct) -> *const c_char;
+    pub fn function_symbol_get_name(basic: *const basic_struct) -> *mut c_char;
+    // Note: basic_get_args, basic_str_free, basic_pow, and basic_get_type are already in the generated bindings
 }
 
 /// Check if SymEngine is available at runtime
 pub fn is_symengine_available() -> bool {
     // Try to call a basic SymEngine function to verify it's available
-    unsafe {
-        // This should be safe as long as SymEngine is properly linked
-        std::ptr::null_mut::<basic_struct>() != std::ptr::null_mut()
-    }
+    // This should be safe as long as SymEngine is properly linked
+    std::ptr::null_mut::<basic_struct>() != std::ptr::null_mut()
 }
 
 #[cfg(test)]
@@ -145,7 +145,10 @@ mod tests {
     #[test]
     fn test_error_conversion() {
         assert_eq!(SymEngineError::from(0), SymEngineError::NoException);
-        assert_eq!(SymEngineError::from(1), SymEngineError::RuntimeError("Runtime error".to_string()));
+        assert_eq!(
+            SymEngineError::from(1),
+            SymEngineError::RuntimeError("Runtime error".to_string())
+        );
         assert_eq!(SymEngineError::from(2), SymEngineError::DivisionByZero);
     }
 

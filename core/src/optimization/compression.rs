@@ -11,11 +11,13 @@ use crate::{
 };
 use ndarray::{Array2, ArrayView2};
 use num_complex::Complex64;
-use scirs2_linalg::lowrank::{randomized_svd, truncated_svd};
-use scirs2_optimize::prelude::DifferentialEvolutionOptions;
+// use scirs2_linalg::lowrank::{randomized_svd, truncated_svd};
+// use scirs2_optimize::prelude::DifferentialEvolutionOptions;
 // Tucker decomposition temporarily disabled due to scirs2-linalg compilation issues
 // use scirs2_linalg::tensor_contraction::tucker::{tucker_decomposition, Tucker};
-use scirs2_optimize::differential_evolution;
+// use scirs2_optimize::differential_evolution;
+use crate::linalg_stubs::{randomized_svd, truncated_svd};
+use crate::optimization_stubs::{differential_evolution, DifferentialEvolutionOptions};
 use std::any::Any;
 use std::collections::HashMap;
 
@@ -210,18 +212,18 @@ impl GateSequenceCompressor {
 
         // Apply SVD to real and imaginary parts separately
         let (u_real, s_real, vt_real) = if self.config.use_randomized {
-            randomized_svd(&real_part.view(), target_rank, Some(10), Some(2))
+            randomized_svd(&real_part.view(), target_rank, Some(10), Some(2), None)
                 .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {}", e)))?
         } else {
-            truncated_svd(&real_part.view(), target_rank)
+            truncated_svd(&real_part.view(), target_rank, None)
                 .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {}", e)))?
         };
 
         let (u_imag, s_imag, vt_imag) = if self.config.use_randomized {
-            randomized_svd(&imag_part.view(), target_rank, Some(10), Some(2))
+            randomized_svd(&imag_part.view(), target_rank, Some(10), Some(2), None)
                 .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {}", e)))?
         } else {
-            truncated_svd(&imag_part.view(), target_rank)
+            truncated_svd(&imag_part.view(), target_rank, None)
                 .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {}", e)))?
         };
 
@@ -347,7 +349,7 @@ impl GateSequenceCompressor {
             .collect();
 
         let result =
-            differential_evolution(objective, de_bounds, Some(options), None).map_err(|e| {
+            differential_evolution(objective, &de_bounds, Some(options), None).map_err(|e| {
                 QuantRS2Error::InvalidInput(format!("Parameter optimization failed: {:?}", e))
             })?;
 

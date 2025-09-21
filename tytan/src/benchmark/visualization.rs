@@ -336,11 +336,11 @@ impl BenchmarkVisualizer {
         th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
         th {{ background-color: #f2f2f2; }}
         .metric {{ font-weight: bold; color: #0066cc; }}
-        .recommendation {{ 
-            background-color: #f0f8ff; 
-            padding: 10px; 
-            margin: 10px 0; 
-            border-left: 4px solid #0066cc; 
+        .recommendation {{
+            background-color: #f0f8ff;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #0066cc;
         }}
         .high {{ border-left-color: #ff0000; }}
         .medium {{ border-left-color: #ff9900; }}
@@ -349,7 +349,7 @@ impl BenchmarkVisualizer {
 </head>
 <body>
     <h1>Quantum Annealing Benchmark Report</h1>
-    
+
     <h2>Summary</h2>
     <p>Generated: {:?}</p>
     <p>Total benchmarks: <span class="metric">{}</span></p>
@@ -357,7 +357,7 @@ impl BenchmarkVisualizer {
     <p>Best energy found: <span class="metric">{:.4}</span></p>
     <p>Most efficient backend: <span class="metric">{}</span></p>
     <p>Most efficient sampler: <span class="metric">{}</span></p>
-    
+
     <h2>Backend Analysis</h2>
     <table>
         <tr>
@@ -369,15 +369,15 @@ impl BenchmarkVisualizer {
         </tr>
         {}
     </table>
-    
+
     <h2>Scaling Analysis</h2>
     <p>Time complexity: <span class="metric">{}</span> (R² = {:.3})</p>
     <p>Memory complexity: <span class="metric">{}</span> (R² = {:.3})</p>
     <p>Optimal problem sizes: <span class="metric">{:?}</span></p>
-    
+
     <h2>Recommendations</h2>
     {}
-    
+
     <h2>Visualizations</h2>
     <p>See the following files in the output directory:</p>
     <ul>

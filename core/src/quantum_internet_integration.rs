@@ -806,7 +806,7 @@ impl NetworkAwareCircuitPartitioner {
         requirements: &NetworkPathRequirements,
     ) -> Result<Vec<NetworkAwareCircuitPartition>> {
         let mut network_partitions = Vec::new();
-        
+
         for partition in partitions {
             let network_partition = NetworkAwareCircuitPartition {
                 base_partition: partition.clone(),
@@ -823,7 +823,7 @@ impl NetworkAwareCircuitPartitioner {
             };
             network_partitions.push(network_partition);
         }
-        
+
         Ok(network_partitions)
     }
 }
@@ -878,7 +878,7 @@ impl GlobalQuantumLoadBalancer {
     ) -> Result<GlobalLoadBalancingResult> {
         let mut satellite_assignments = HashMap::new();
         let mut ground_station_assignments = HashMap::new();
-        
+
         for partition in partitions {
             if let Some(satellite_id) = partition.satellite_node {
                 satellite_assignments.insert(satellite_id, SatelliteLoadAssignment {
@@ -895,7 +895,7 @@ impl GlobalQuantumLoadBalancer {
                 });
             }
         }
-        
+
         Ok(GlobalLoadBalancingResult {
             satellite_assignments,
             ground_station_assignments,
@@ -1020,7 +1020,7 @@ mod tests {
     #[tokio::test]
     async fn test_bridge_creation() {
         let bridge = QuantumInternetProtocolBridge::new();
-        
+
         // Test that bridge components are properly initialized
         assert!(!std::ptr::eq(bridge.constellation_manager.as_ref(), std::ptr::null()));
     }
@@ -1028,14 +1028,14 @@ mod tests {
     #[tokio::test]
     async fn test_distributed_circuit_execution() {
         let bridge = QuantumInternetProtocolBridge::new();
-        
+
         let partitions = vec![CircuitPartition {
             partition_id: Uuid::new_v4(),
             qubit_count: 10,
             gate_count: 50,
             complexity_score: 0.7,
         }];
-        
+
         let requirements = NetworkPathRequirements {
             max_latency: Duration::from_millis(100),
             min_bandwidth: 100.0,
@@ -1048,10 +1048,10 @@ mod tests {
                 availability_requirement: 0.99,
             },
         };
-        
+
         let result = bridge.execute_distributed_circuit(&partitions, &requirements).await;
         assert!(result.is_ok());
-        
+
         let execution_result = result.unwrap();
         assert_eq!(execution_result.partitions_executed, 1);
     }
@@ -1059,10 +1059,10 @@ mod tests {
     #[tokio::test]
     async fn test_global_coverage_analysis() {
         let bridge = QuantumInternetProtocolBridge::new();
-        
+
         let timestamp = Utc::now();
         let result = bridge.analyze_global_coverage_with_protocols(timestamp).await;
-        
+
         assert!(result.is_ok());
         let analysis = result.unwrap();
         assert_eq!(analysis.integration_timestamp, timestamp);
@@ -1071,10 +1071,10 @@ mod tests {
     #[tokio::test]
     async fn test_integrated_monitoring() {
         let bridge = QuantumInternetProtocolBridge::new();
-        
+
         let result = bridge.monitor_integrated_system().await;
         assert!(result.is_ok());
-        
+
         let monitoring_result = result.unwrap();
         assert_eq!(monitoring_result.constellation_health.operational_satellites, 648);
     }
@@ -1082,10 +1082,10 @@ mod tests {
     #[tokio::test]
     async fn test_quantum_advantage_optimization() {
         let bridge = QuantumInternetProtocolBridge::new();
-        
+
         let result = bridge.optimize_for_quantum_advantage().await;
         assert!(result.is_ok());
-        
+
         let optimization_result = result.unwrap();
         assert!(optimization_result.predicted_improvement > 1.0);
     }

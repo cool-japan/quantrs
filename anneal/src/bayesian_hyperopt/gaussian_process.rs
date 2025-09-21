@@ -85,7 +85,7 @@ impl Default for GPHyperparameters {
 pub struct GaussianProcessModel {
     /// Training input data
     pub x_train: Vec<Vec<f64>>,
-    /// Training output data  
+    /// Training output data
     pub y_train: Vec<f64>,
     /// GP configuration
     pub config: GaussianProcessConfig,

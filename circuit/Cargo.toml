@@ -19,6 +19,19 @@ thiserror.workspace = true
 pyo3.workspace = true
 rand.workspace = true
 serde.workspace = true
+scirs2-core.workspace = true
+scirs2-optimize.workspace = true
+scirs2-linalg.workspace = true
+serde_json.workspace = true
+petgraph.workspace = true
+pest.workspace = true
+pest_derive.workspace = true
+regex.workspace = true
+bincode.workspace = true
+rayon.workspace = true
+uuid.workspace = true
 
 [dev-dependencies]
 num-complex.workspace = true
+[lints]
+workspace = true

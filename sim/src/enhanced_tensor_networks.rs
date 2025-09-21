@@ -6,7 +6,7 @@
 
 use ndarray::{Array, Array2, ArrayD, IxDyn};
 use num_complex::Complex64;
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 

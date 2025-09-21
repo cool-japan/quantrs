@@ -196,8 +196,8 @@ mod tests {
     #[test]
     fn test_enhanced_simulator() {
         let mut circuit = Circuit::<2>::new();
-        circuit.h(QubitId(0));
-        circuit.cnot(QubitId(0), QubitId(1));
+        let _ = circuit.h(QubitId(0));
+        let _ = circuit.cnot(QubitId(0), QubitId(1));
 
         let mut simulator = EnhancedStateVectorSimulator::new();
         let result = simulator.run(&circuit).unwrap();

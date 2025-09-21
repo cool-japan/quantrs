@@ -6,6 +6,14 @@
 
 QuantRS2-Circuit is the comprehensive quantum circuit construction and optimization engine of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing advanced circuit representation, analysis, optimization, and compilation capabilities for quantum computing applications.
 
+## Version 0.1.0-beta.1
+
+This beta release leverages [SciRS2](https://github.com/cool-japan/scirs2) v0.1.0-alpha.5 integration for enhanced performance in:
+- Graph-based circuit optimization algorithms
+- Parallel circuit analysis and transformation
+- Memory-efficient circuit representations
+- Hardware-aware compilation optimizations
+
 ## Core Features
 
 ### Circuit Construction & Representation
@@ -338,6 +346,9 @@ fn qasm_interoperability_example() -> Result<(), Box<dyn std::error::Error>> {
 ### Machine Learning & Advanced Algorithms
 - **ml_optimization.rs**: Machine learning-based circuit optimization
 - **scirs2_integration.rs**: SciRS2 integration for graph algorithms and optimization
+  - Leverages `scirs2_core::parallel_ops` for parallel circuit transformations
+  - Uses SciRS2 graph algorithms for optimized circuit routing
+  - Integrates SciRS2 memory management for large circuit handling
 
 ## API Overview
 

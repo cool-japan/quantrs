@@ -355,7 +355,7 @@ pub enum OptimizationRisk {
 pub enum SynchronizationRequirements {
     /// Loose synchronization requirements
     Loose,
-    /// Strict synchronization requirements  
+    /// Strict synchronization requirements
     Strict,
     /// Adaptive synchronization requirements
     Adaptive,

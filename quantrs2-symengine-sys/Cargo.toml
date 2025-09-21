@@ -1,6 +1,6 @@
 [package]
 name = "quantrs2-symengine-sys"
-version = "0.1.0-alpha.5"
+version = "0.1.0-beta.1"
 authors = ["KitaSan <info@kitasan.io>"]
 license = "MIT"
 description = "Low level bindings to the symengine library (fixed for macOS)"
@@ -26,3 +26,6 @@ default = []
 static = []  # Enable static linking
 system-deps = ["pkg-config"]  # Use system dependencies
 serde = ["dep:serde"]  # Enable serde serialization support
+
+[lints]
+workspace = true

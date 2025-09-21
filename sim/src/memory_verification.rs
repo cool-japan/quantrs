@@ -57,7 +57,7 @@ unsafe impl GlobalAlloc for TrackingAllocator {
             self.allocations.fetch_add(1, Ordering::SeqCst);
             let size = layout.size();
             self.total_allocated.fetch_add(size, Ordering::SeqCst);
-            
+
             // Update peak memory
             let current = self.total_allocated.load(Ordering::SeqCst);
             let mut peak = self.peak_memory.load(Ordering::SeqCst);
@@ -173,41 +173,41 @@ impl MemoryVerifier {
 
         // Test without buffer pool (naive implementation)
         let start_stats = ALLOCATOR.get_stats();
-        
+
         for &num_qubits in &self.test_qubit_counts {
             for _ in 0..self.test_iterations {
                 let dim = 1 << num_qubits;
-                
+
                 // Simulate naive allocation without pooling
                 let _naive_buffer1: Vec<Complex64> = vec![Complex64::new(0.0, 0.0); dim];
                 let _naive_buffer2: Vec<Complex64> = vec![Complex64::new(0.0, 0.0); dim];
                 let _naive_buffer3: Vec<Complex64> = vec![Complex64::new(0.0, 0.0); dim];
             }
         }
-        
+
         let naive_stats = ALLOCATOR.get_stats();
         let naive_allocations = naive_stats.allocations - start_stats.allocations;
-        
+
         ALLOCATOR.reset();
         let start_stats = ALLOCATOR.get_stats();
 
         // Test with buffer pool
         for &num_qubits in &self.test_qubit_counts {
             let sim = StateVectorSimulator::with_buffer_pool(true, 8, 1 << num_qubits);
-            
+
             for _ in 0..self.test_iterations {
                 // Use buffer pool through simulator operations
                 let mut pool = sim.get_buffer_pool().borrow_mut();
                 let buffer1 = pool.get_buffer(1 << num_qubits);
                 let buffer2 = pool.get_buffer(1 << num_qubits);
                 let buffer3 = pool.get_buffer(1 << num_qubits);
-                
+
                 pool.return_buffer(buffer1);
                 pool.return_buffer(buffer2);
                 pool.return_buffer(buffer3);
             }
         }
-        
+
         let pooled_stats = ALLOCATOR.get_stats();
         let pooled_allocations = pooled_stats.allocations - start_stats.allocations;
 
@@ -222,7 +222,7 @@ impl MemoryVerifier {
     /// Test SIMD memory overhead
     fn test_simd_memory_overhead(&self) -> f64 {
         let test_size = 1024;
-        
+
         ALLOCATOR.reset();
         let start_stats = ALLOCATOR.get_stats();
 
@@ -232,17 +232,17 @@ impl MemoryVerifier {
             let in_amps1: Vec<Complex64> = vec![Complex64::new(0.0, 1.0); test_size];
             let mut out_amps0: Vec<Complex64> = vec![Complex64::new(0.0, 0.0); test_size];
             let mut out_amps1: Vec<Complex64> = vec![Complex64::new(0.0, 0.0); test_size];
-            
+
             // Simulate scalar gate application
             for i in 0..test_size {
                 out_amps0[i] = in_amps1[i]; // Simple X gate
                 out_amps1[i] = in_amps0[i];
             }
         }
-        
+
         let scalar_stats = ALLOCATOR.get_stats();
         let scalar_allocations = scalar_stats.allocations - start_stats.allocations;
-        
+
         ALLOCATOR.reset();
         let start_stats = ALLOCATOR.get_stats();
 
@@ -252,11 +252,11 @@ impl MemoryVerifier {
             let in_amps1: Vec<Complex64> = vec![Complex64::new(0.0, 1.0); test_size];
             let mut out_amps0: Vec<Complex64> = vec![Complex64::new(0.0, 0.0); test_size];
             let mut out_amps1: Vec<Complex64> = vec![Complex64::new(0.0, 0.0); test_size];
-            
+
             // Use SIMD gate application
             crate::optimized_simd::apply_x_gate_simd(&in_amps0, &in_amps1, &mut out_amps0, &mut out_amps1);
         }
-        
+
         let simd_stats = ALLOCATOR.get_stats();
         let simd_allocations = simd_stats.allocations - start_stats.allocations;
 
@@ -270,10 +270,10 @@ impl MemoryVerifier {
 
     /// Test parallel memory scaling
     fn test_parallel_memory_scaling(&self) -> f64 {
-        use rayon::prelude::*;
-        
+        use scirs2_core::parallel_ops::*;
+
         let test_size = 1024;
-        
+
         ALLOCATOR.reset();
         let start_stats = ALLOCATOR.get_stats();
 
@@ -282,10 +282,10 @@ impl MemoryVerifier {
             let data: Vec<Complex64> = vec![Complex64::new(1.0, 0.0); test_size];
             let _result: Vec<f64> = data.iter().map(|x| x.norm_sqr()).collect();
         }
-        
+
         let sequential_stats = ALLOCATOR.get_stats();
         let sequential_memory = sequential_stats.peak_memory - start_stats.total_allocated;
-        
+
         ALLOCATOR.reset();
         let start_stats = ALLOCATOR.get_stats();
 
@@ -294,7 +294,7 @@ impl MemoryVerifier {
             let data: Vec<Complex64> = vec![Complex64::new(1.0, 0.0); test_size];
             let _result: Vec<f64> = data.par_iter().map(|x| x.norm_sqr()).collect();
         }
-        
+
         let parallel_stats = ALLOCATOR.get_stats();
         let parallel_memory = parallel_stats.peak_memory - start_stats.total_allocated;
 
@@ -308,10 +308,10 @@ impl MemoryVerifier {
 
     /// Test GPU buffer efficiency (if available)
     fn test_gpu_buffer_efficiency(&self) -> Option<f64> {
-        #[cfg(feature = "gpu")]
+        #[cfg(all(feature = "gpu", not(target_os = "macos")))]
         {
             use crate::gpu::GpuStateVectorSimulator;
-            
+
             if !GpuStateVectorSimulator::is_available() {
                 return None;
             }
@@ -320,7 +320,7 @@ impl MemoryVerifier {
             // This would require implementing buffer pool statistics in GPU module
             Some(0.85) // Placeholder - would be actual measurement
         }
-        
+
         #[cfg(not(feature = "gpu"))]
         None
     }
@@ -334,7 +334,7 @@ impl MemoryVerifier {
         for &num_qubits in &self.test_qubit_counts {
             if num_qubits <= 8 { // Keep reasonable for testing
                 let sim = StateVectorSimulator::sequential(); // Disable optimizations
-                
+
                 for _ in 0..3 {
                     let dim = 1 << num_qubits;
                     let _state: Vec<Complex64> = vec![Complex64::new(0.0, 0.0); dim];
@@ -342,9 +342,9 @@ impl MemoryVerifier {
                 }
             }
         }
-        
+
         let baseline_memory = ALLOCATOR.get_stats();
-        
+
         ALLOCATOR.reset();
         let start_stats = ALLOCATOR.get_stats();
 
@@ -352,18 +352,18 @@ impl MemoryVerifier {
         for &num_qubits in &self.test_qubit_counts {
             if num_qubits <= 8 {
                 let sim = StateVectorSimulator::high_performance(); // All optimizations enabled
-                
+
                 for _ in 0..3 {
                     let mut pool = sim.get_buffer_pool().borrow_mut();
                     let buffer1 = pool.get_buffer(1 << num_qubits);
                     let buffer2 = pool.get_buffer(1 << num_qubits);
-                    
+
                     pool.return_buffer(buffer1);
                     pool.return_buffer(buffer2);
                 }
             }
         }
-        
+
         let optimized_memory = ALLOCATOR.get_stats();
 
         // Calculate improvement factor
@@ -387,7 +387,7 @@ impl MemoryVerifier {
   • Efficiency: {:.1}%
   • Status: {}
 
-⚡ SIMD Memory Overhead  
+⚡ SIMD Memory Overhead
   • Overhead: {:.1}%
   • Status: {}
 
@@ -406,22 +406,22 @@ impl MemoryVerifier {
   • Status: {}
 
 ✅ Summary
-All memory optimizations are functioning correctly and providing significant 
+All memory optimizations are functioning correctly and providing significant
 efficiency improvements. The quantum simulation framework is now optimized
 for production use with minimal memory overhead.
 "#,
             results.buffer_pool_efficiency * 100.0,
             if results.buffer_pool_efficiency > 0.5 { "✅ EXCELLENT" } else { "⚠️  NEEDS IMPROVEMENT" },
-            
+
             results.simd_memory_overhead * 100.0,
             if results.simd_memory_overhead < 0.1 { "✅ EXCELLENT" } else { "⚠️  ACCEPTABLE" },
-            
+
             results.parallel_memory_scaling * 100.0,
             if results.parallel_memory_scaling > 0.8 { "✅ EXCELLENT" } else { "⚠️  NEEDS OPTIMIZATION" },
-            
+
             results.gpu_buffer_efficiency.map_or("N/A".to_string(), |e| format!("{:.1}%", e * 100.0)),
             if results.gpu_buffer_efficiency.is_some() { "✅ AVAILABLE" } else { "➖ NOT AVAILABLE" },
-            
+
             results.baseline_memory.peak_memory,
             results.optimized_memory.peak_memory,
             results.improvement_factor,
@@ -444,13 +444,13 @@ mod tests {
     fn test_memory_verification() {
         let verifier = MemoryVerifier::new();
         let results = verifier.verify_all_optimizations();
-        
+
         // Assert optimizations are working
         assert!(results.buffer_pool_efficiency > 0.3, "Buffer pool should provide at least 30% efficiency");
         assert!(results.simd_memory_overhead < 0.2, "SIMD overhead should be less than 20%");
         assert!(results.parallel_memory_scaling > 0.7, "Parallel scaling should be at least 70% efficient");
         assert!(results.improvement_factor > 1.2, "Overall improvement should be at least 1.2x");
-        
+
         println!("{}", verifier.generate_report(&results));
     }
 
@@ -458,7 +458,7 @@ mod tests {
     fn test_buffer_pool_reuse() {
         let verifier = MemoryVerifier::new();
         let efficiency = verifier.test_buffer_pool_efficiency();
-        
+
         assert!(efficiency > 0.0, "Buffer pool should provide some efficiency gain");
     }
 
@@ -466,7 +466,7 @@ mod tests {
     fn test_simd_overhead() {
         let verifier = MemoryVerifier::new();
         let overhead = verifier.test_simd_memory_overhead();
-        
+
         assert!(overhead < 0.5, "SIMD overhead should be reasonable");
     }
 }

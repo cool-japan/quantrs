@@ -950,18 +950,18 @@ module single_qubit_gate #(
     input  logic                    clk,
     input  logic                    rst_n,
     input  logic                    enable,
-    
+
     // Gate parameters
     input  logic [1:0]              gate_type,  // 00: H, 01: X, 10: Y, 11: Z
     input  logic [DATA_WIDTH-1:0]   gate_param, // For rotation gates
     input  logic [ADDR_WIDTH-1:0]   target_qubit,
-    
+
     // State vector interface
     input  logic [DATA_WIDTH-1:0]   state_real_in,
     input  logic [DATA_WIDTH-1:0]   state_imag_in,
     output logic [DATA_WIDTH-1:0]   state_real_out,
     output logic [DATA_WIDTH-1:0]   state_imag_out,
-    
+
     // Control signals
     output logic                    ready,
     output logic                    valid_out
@@ -972,18 +972,18 @@ module single_qubit_gate #(
     logic [DATA_WIDTH-1:0] pipeline_imag [0:PIPELINE_DEPTH-1];
     logic [1:0] pipeline_gate_type [0:PIPELINE_DEPTH-1];
     logic [PIPELINE_DEPTH-1:0] pipeline_valid;
-    
+
     // Gate matrices (pre-computed constants)
     localparam real SQRT2_INV = 0.7071067811865476;
-    
+
     // Complex multiplication units
     logic [DATA_WIDTH-1:0] mult_real, mult_imag;
     logic [DATA_WIDTH-1:0] add_real, add_imag;
-    
+
     // DSP blocks for complex arithmetic
     logic [DATA_WIDTH*2-1:0] dsp_mult_result;
     logic [DATA_WIDTH-1:0] dsp_add_result;
-    
+
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             pipeline_valid <= '0;
@@ -995,17 +995,17 @@ module single_qubit_gate #(
                 pipeline_imag[i] <= pipeline_imag[i-1];
                 pipeline_gate_type[i] <= pipeline_gate_type[i-1];
             end
-            
+
             // Input stage
             pipeline_real[0] <= state_real_in;
             pipeline_imag[0] <= state_imag_in;
             pipeline_gate_type[0] <= gate_type;
-            
+
             // Valid signal pipeline
             pipeline_valid <= {{pipeline_valid[PIPELINE_DEPTH-2:0], enable}};
         end
     end
-    
+
     // Gate operation logic (combinational)
     always_comb begin
         case (pipeline_gate_type[PIPELINE_DEPTH-1])
@@ -1030,10 +1030,10 @@ module single_qubit_gate #(
                 state_imag_out = pipeline_imag[PIPELINE_DEPTH-1];
             end
         endcase
-        
+
         valid_out = pipeline_valid[PIPELINE_DEPTH-1];
     end
-    
+
 endmodule
 "#,
             self.config.platform,
@@ -1069,29 +1069,29 @@ __kernel void single_qubit_gate(
 ) {
     const int global_id = get_global_id(0);
     const int total_states = 1 << num_qubits;
-    
+
     if (global_id >= total_states / 2) return;
-    
+
     const int target_mask = 1 << target_qubit;
     const int i = global_id;
     const int j = i | target_mask;
-    
+
     if ((i & target_mask) == 0) {
         float2 state_i = state[i];
         float2 state_j = state[j];
-        
+
         // Apply 2x2 gate matrix
         state[i] = (float2)(
-            gate_matrix[0] * state_i.x - gate_matrix[1] * state_i.y + 
+            gate_matrix[0] * state_i.x - gate_matrix[1] * state_i.y +
             gate_matrix[2] * state_j.x - gate_matrix[3] * state_j.y,
-            gate_matrix[0] * state_i.y + gate_matrix[1] * state_i.x + 
+            gate_matrix[0] * state_i.y + gate_matrix[1] * state_i.x +
             gate_matrix[2] * state_j.y + gate_matrix[3] * state_j.x
         );
-        
+
         state[j] = (float2)(
-            gate_matrix[4] * state_i.x - gate_matrix[5] * state_i.y + 
+            gate_matrix[4] * state_i.x - gate_matrix[5] * state_i.y +
             gate_matrix[6] * state_j.x - gate_matrix[7] * state_j.y,
-            gate_matrix[4] * state_i.y + gate_matrix[5] * state_i.x + 
+            gate_matrix[4] * state_i.y + gate_matrix[5] * state_i.x +
             gate_matrix[6] * state_j.y + gate_matrix[7] * state_j.x
         );
     }

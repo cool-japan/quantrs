@@ -17,7 +17,7 @@ use crate::applications::{
 use crate::ising::{IsingModel, QuboModel};
 
 use super::config::{
-    ParallelProcessingConfig, ThreadPoolConfig, NUMAConfig, 
+    ParallelProcessingConfig, ThreadPoolConfig, NUMAConfig,
     TaskSchedulingStrategy, LoadBalancingConfig, LoadBalancingStrategy,
     ThreadPriority, NUMAMemoryBinding, NUMAThreadAffinity,
 };
@@ -51,37 +51,37 @@ impl AdvancedParallelProcessor {
         // Schedule the task
         let task_id = task.id.clone();
         self.task_scheduler.schedule_task(task)?;
-        
+
         // Trigger load balancing if needed
         if self.config.load_balancing.enable_dynamic_balancing {
             self.load_balancer.rebalance_if_needed(&mut self.thread_pool)?;
         }
-        
+
         Ok(task_id)
     }
 
     pub fn execute_tasks(&mut self) -> Result<Vec<TaskResult>, String> {
         let mut results = Vec::new();
-        
+
         // Process scheduled tasks
         while let Some(scheduled_task) = self.task_scheduler.get_next_task() {
             // Find best worker
             let worker_id = self.load_balancer.select_worker(&self.thread_pool, &scheduled_task.task)?;
-            
+
             // Execute task
             let result = self.execute_task_on_worker(scheduled_task.task, worker_id)?;
             results.push(result);
-            
+
             // Update performance metrics
             self.update_performance_metrics();
         }
-        
+
         Ok(results)
     }
 
     fn execute_task_on_worker(&mut self, task: Task, worker_id: usize) -> Result<TaskResult, String> {
         let start_time = Instant::now();
-        
+
         // Simulate task execution based on task type
         let result = match &task.function {
             TaskFunction::ProteinFolding(protein_task) => {
@@ -99,7 +99,7 @@ impl AdvancedParallelProcessor {
         };
 
         let execution_time = start_time.elapsed();
-        
+
         // Update worker statistics
         if let Some(worker) = self.thread_pool.workers.get_mut(worker_id) {
             worker.statistics.total_tasks_completed += 1;
@@ -152,7 +152,7 @@ impl AdvancedParallelProcessor {
         let active_workers = self.thread_pool.workers.iter()
             .filter(|w| w.current_task.is_some())
             .count();
-        
+
         if total_workers > 0 {
             self.performance_metrics.parallel_efficiency = active_workers as f64 / total_workers as f64;
         }
@@ -183,12 +183,12 @@ impl ThreadPool {
     pub fn new(size: usize) -> Self {
         let mut workers = Vec::with_capacity(size);
         let task_queue = Arc::new(Mutex::new(VecDeque::new()));
-        
+
         // Create worker threads
         for id in 0..size {
             workers.push(WorkerThread::new(id, Arc::clone(&task_queue)));
         }
-        
+
         Self {
             workers,
             task_queue,
@@ -208,7 +208,7 @@ impl ThreadPool {
 
     pub fn get_worker_loads(&self) -> HashMap<usize, WorkerLoad> {
         let mut loads = HashMap::new();
-        
+
         for worker in &self.workers {
             let load = WorkerLoad {
                 worker_id: worker.id,
@@ -219,7 +219,7 @@ impl ThreadPool {
             };
             loads.insert(worker.id, load);
         }
-        
+
         loads
     }
 
@@ -407,7 +407,7 @@ impl TaskScheduler {
         };
 
         let task_id = scheduled_task.task.id.clone();
-        
+
         match self.strategy {
             TaskSchedulingStrategy::FIFO => {
                 self.task_queue.push_back(scheduled_task.task);
@@ -497,7 +497,7 @@ impl LoadBalancer {
 
     pub fn select_worker(&mut self, thread_pool: &ThreadPool, task: &Task) -> Result<usize, String> {
         self.update_worker_loads(thread_pool);
-        
+
         match self.strategy {
             LoadBalancingStrategy::RoundRobin => {
                 Ok(self.statistics.last_assigned_worker % thread_pool.workers.len())
@@ -516,7 +516,7 @@ impl LoadBalancer {
 
     pub fn rebalance_if_needed(&mut self, thread_pool: &mut ThreadPool) -> Result<(), String> {
         self.update_worker_loads(thread_pool);
-        
+
         if self.should_rebalance() {
             self.perform_rebalancing(thread_pool)
         } else {
@@ -560,10 +560,10 @@ impl LoadBalancer {
         let loads: Vec<f64> = self.worker_loads.values()
             .map(|w| w.performance_score)
             .collect();
-        
+
         let max_load = loads.iter().fold(0.0f64, |a, &b| a.max(b));
         let min_load = loads.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-        
+
         (max_load - min_load) > 0.3 // 30% threshold
     }
 
@@ -576,7 +576,7 @@ impl LoadBalancer {
             tasks_moved: Vec::new(),
             rationale: "Load imbalance detected".to_string(),
         };
-        
+
         self.decisions.push_back(decision);
         Ok(())
     }
@@ -789,7 +789,7 @@ mod tests {
     fn test_parallel_processor_creation() {
         let config = ParallelProcessingConfig::default();
         let processor = AdvancedParallelProcessor::new(config);
-        
+
         assert!(!processor.thread_pool.workers.is_empty());
         assert_eq!(processor.performance_metrics.parallel_efficiency, 0.0);
     }
@@ -804,7 +804,7 @@ mod tests {
                 computation_type: ComputationType::CPU,
             })
         );
-        
+
         assert_eq!(task.id, "test_task");
         assert_eq!(task.priority, TaskPriority::Medium);
     }
@@ -812,12 +812,12 @@ mod tests {
     #[test]
     fn test_task_scheduler() {
         let mut scheduler = TaskScheduler::new(TaskSchedulingStrategy::FIFO);
-        
+
         let task = Task::new(
             "test_task".to_string(),
             TaskFunction::Generic(GenericTask::default())
         );
-        
+
         assert!(scheduler.schedule_task(task).is_ok());
         assert!(scheduler.get_next_task().is_some());
     }
@@ -832,7 +832,7 @@ mod tests {
     fn test_worker_thread() {
         let task_queue = Arc::new(Mutex::new(VecDeque::new()));
         let worker = WorkerThread::new(0, task_queue);
-        
+
         assert_eq!(worker.id, 0);
         assert!(worker.current_task.is_none());
     }

@@ -10,6 +10,7 @@
 //! - Circuit-to-simulator interfaces
 
 use quantrs2_circuit::prelude::*;
+use quantrs2_circuit::simulator_interface::CompilationTarget;
 use quantrs2_core::gate::multi::CNOT;
 use quantrs2_core::gate::single::{Hadamard, PauliX};
 use quantrs2_core::qubit::QubitId;

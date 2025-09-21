@@ -116,34 +116,34 @@ impl std::hash::Hash for InterfaceGateType {
             InterfaceGateType::T => 8u8.hash(state),
             InterfaceGateType::Phase(angle) => {
                 9u8.hash(state);
-                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+                angle.to_bits().hash(state);
             }
             InterfaceGateType::RX(angle) => {
                 10u8.hash(state);
-                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+                angle.to_bits().hash(state);
             }
             InterfaceGateType::RY(angle) => {
                 11u8.hash(state);
-                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+                angle.to_bits().hash(state);
             }
             InterfaceGateType::RZ(angle) => {
                 12u8.hash(state);
-                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+                angle.to_bits().hash(state);
             }
             InterfaceGateType::U1(angle) => {
                 13u8.hash(state);
-                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+                angle.to_bits().hash(state);
             }
             InterfaceGateType::U2(theta, phi) => {
                 14u8.hash(state);
-                unsafe { mem::transmute::<f64, u64>(*theta) }.hash(state);
-                unsafe { mem::transmute::<f64, u64>(*phi) }.hash(state);
+                theta.to_bits().hash(state);
+                phi.to_bits().hash(state);
             }
             InterfaceGateType::U3(theta, phi, lambda) => {
                 15u8.hash(state);
-                unsafe { mem::transmute::<f64, u64>(*theta) }.hash(state);
-                unsafe { mem::transmute::<f64, u64>(*phi) }.hash(state);
-                unsafe { mem::transmute::<f64, u64>(*lambda) }.hash(state);
+                theta.to_bits().hash(state);
+                phi.to_bits().hash(state);
+                lambda.to_bits().hash(state);
             }
             InterfaceGateType::CNOT => 16u8.hash(state),
             InterfaceGateType::CZ => 17u8.hash(state),
@@ -152,19 +152,19 @@ impl std::hash::Hash for InterfaceGateType {
             InterfaceGateType::ISwap => 20u8.hash(state),
             InterfaceGateType::CRX(angle) => {
                 21u8.hash(state);
-                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+                angle.to_bits().hash(state);
             }
             InterfaceGateType::CRY(angle) => {
                 22u8.hash(state);
-                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+                angle.to_bits().hash(state);
             }
             InterfaceGateType::CRZ(angle) => {
                 23u8.hash(state);
-                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+                angle.to_bits().hash(state);
             }
             InterfaceGateType::CPhase(angle) => {
                 24u8.hash(state);
-                unsafe { mem::transmute::<f64, u64>(*angle) }.hash(state);
+                angle.to_bits().hash(state);
             }
             InterfaceGateType::Toffoli => 25u8.hash(state),
             InterfaceGateType::Fredkin => 26u8.hash(state),

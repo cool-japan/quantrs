@@ -176,7 +176,7 @@ pub struct TopologicalQubit {
 pub struct TopologicalQubitState {
     /// Amplitude for |0⟩ state
     pub amplitude_0: f64,
-    /// Amplitude for |1⟩ state  
+    /// Amplitude for |1⟩ state
     pub amplitude_1: f64,
     /// Relative phase
     pub phase: f64,

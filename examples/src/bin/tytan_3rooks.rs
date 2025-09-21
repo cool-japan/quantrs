@@ -4,9 +4,9 @@
 //! which involves placing 3 rooks on a 3x3 chess board such that none can
 //! attack each other (i.e., no two rooks share a row or column).
 
-use quantrs2_tytan::{symbols_list, AutoArray, Compile, SASampler};
 use quantrs2_tytan::sampler::Sampler;
 use quantrs2_tytan::symbol::Expression;
+use quantrs2_tytan::{symbols_list, AutoArray, Compile, SASampler};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("3-Rooks Problem Solver");

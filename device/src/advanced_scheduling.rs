@@ -145,8 +145,8 @@ type PerformancePredictor = String;
 // SciRS2 dependencies for advanced algorithms
 #[cfg(feature = "scirs2")]
 use scirs2_graph::{
-    betweenness_centrality, closeness_centrality, louvain_communities, minimum_spanning_tree,
-    pagerank, shortest_path, strongly_connected_components, Graph,
+    betweenness_centrality, closeness_centrality, dijkstra_path, louvain_communities_result,
+    minimum_spanning_tree, pagerank, strongly_connected_components, Graph,
 };
 #[cfg(feature = "scirs2")]
 use scirs2_linalg::{eig, matrix_norm, svd, trace, LinalgResult};
@@ -1333,19 +1333,7 @@ impl FairnessEngine {
 // Default implementations for supporting structures...
 // (Many Default implementations would be added here for completeness)
 
-// Placeholder Default implementations for complex types
-macro_rules! default_impl {
-    ($type:ident) => {
-        impl Default for $type {
-            fn default() -> Self {
-                unimplemented!(
-                    "Default implementation for {} not yet implemented",
-                    stringify!($type)
-                )
-            }
-        }
-    };
-}
+// Default implementations are provided via derive macros for most types
 
 // Apply default implementations to complex types that aren't type aliases
 // Note: The following types are String aliases and already have Default implementations:

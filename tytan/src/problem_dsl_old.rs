@@ -22,27 +22,27 @@ pub use problem_dsl::*;
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_tokenizer() {
         let mut dsl = ProblemDSL::new();
         let source = "var x binary;";
         let tokens = dsl.tokenize(source);
-        
+
         assert!(tokens.is_ok());
         let tokens = tokens.unwrap();
         assert_eq!(tokens.len(), 5); // var, x, binary, ;, EOF
     }
-    
+
     #[test]
     fn test_parser() {
         let mut dsl = ProblemDSL::new();
         let source = examples::get_example("simple_binary").unwrap();
         let ast = dsl.parse(source);
-        
+
         assert!(ast.is_ok());
     }
-    
+
     #[test]
     fn test_examples() {
         assert!(examples::get_example("simple_binary").is_some());

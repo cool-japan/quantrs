@@ -641,7 +641,7 @@ pub struct NeutralAtomErrorModel {
     pub loading_fidelity: f64,
     /// Single-qubit gate fidelity
     pub single_qubit_fidelity: f64,
-    /// Two-qubit gate fidelity  
+    /// Two-qubit gate fidelity
     pub two_qubit_fidelity: f64,
     /// Measurement fidelity
     pub measurement_fidelity: f64,
@@ -784,8 +784,8 @@ mod tests {
         let atom = NeutralAtom::new(AtomSpecies::Rb87, position);
         let loaded = tweezer.load_atom(atom);
         // Loading is probabilistic, so we can't guarantee success
-        // Test that loading returns a boolean value
-        assert!(loaded == true || loaded == false);
+        // Test that loading returns a valid boolean value (no panic)
+        let _result = loaded; // Simply verify the operation completes
     }
 
     #[test]
@@ -981,7 +981,9 @@ mod tests {
             assert!(position.x >= 0.0); // Should be at positive x coordinates
                                         // has_atom depends on loading success, so we just test the interface
                                         // Test that has_atom returns a boolean value
-            assert!(has_atom == true || has_atom == false);
+                                        // has_atom is a boolean, so this assertion is always true
+                                        // We're just exercising the has_atom method
+            let _ = has_atom;
         }
     }
 }

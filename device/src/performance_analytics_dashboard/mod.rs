@@ -24,7 +24,18 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use quantrs2_circuit::prelude::*;
+// Import specific types to avoid naming conflicts
+use quantrs2_circuit::prelude::{
+    PerformanceAnalyzer,
+    PerformanceSnapshot,
+    PerformanceSummary,
+    ProfilerConfig as ProfilerConfiguration,
+    // Avoid importing RealtimeMetrics, AnomalyDetectionAlgorithm, StorageConfig, StorageBackend
+    // to prevent conflicts with local types
+    ProfilingReport,
+    ProfilingSession,
+    QuantumProfiler,
+};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
@@ -34,7 +45,7 @@ use quantrs2_core::{
 // SciRS2 dependencies for advanced analytics
 #[cfg(feature = "scirs2")]
 use scirs2_graph::{
-    betweenness_centrality, closeness_centrality, minimum_spanning_tree, shortest_path,
+    betweenness_centrality, closeness_centrality, dijkstra_path, minimum_spanning_tree,
     strongly_connected_components, Graph,
 };
 #[cfg(feature = "scirs2")]

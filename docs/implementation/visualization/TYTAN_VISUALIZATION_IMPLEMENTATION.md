@@ -94,16 +94,16 @@ pub struct ConvergenceData {
 
 ## Files Created/Modified
 
-1. **Created**: `/Users/kitasan/work/quantrs/tytan/src/analysis/visualization.rs`
+1. **Created**: `$quantrs/tytan/src/analysis/visualization.rs`
    - Main visualization module with all analysis functions
 
-2. **Modified**: `/Users/kitasan/work/quantrs/tytan/src/analysis/mod.rs`
+2. **Modified**: `$quantrs/tytan/src/analysis/mod.rs`
    - Added module exports for visualization
 
-3. **Created**: `/Users/kitasan/work/quantrs/tytan/tests/visualization_tests.rs`
+3. **Created**: `$quantrs/tytan/tests/visualization_tests.rs`
    - Comprehensive test suite and examples
 
-4. **Created**: `/Users/kitasan/work/quantrs/tytan/src/analysis/README.md`
+4. **Created**: `$quantrs/tytan/src/analysis/README.md`
    - Documentation for the visualization module
 
 ## Usage Example

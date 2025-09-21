@@ -7,9 +7,9 @@
 
 #[cfg(feature = "dwave")]
 use ndarray::Array;
-use std::fmt::Write;
 #[cfg(feature = "dwave")]
-use symengine::Expression as SymEngineExpression;
+use quantrs2_symengine::Expression as SymEngineExpression;
+use std::fmt::Write;
 use thiserror::Error;
 
 /// Errors that can occur when working with symbols

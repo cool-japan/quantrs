@@ -31,12 +31,12 @@ use super::{
 // Conditional imports for SciRS2
 #[cfg(feature = "scirs2")]
 use scirs2_graph::{
-    betweenness_centrality, closeness_centrality, minimum_spanning_tree, shortest_path,
+    betweenness_centrality, closeness_centrality, dijkstra_path, minimum_spanning_tree,
     strongly_connected_components, Graph,
 };
 #[cfg(feature = "scirs2")]
 use scirs2_linalg::{
-    cholesky, det, eig, inv, matrix_norm, prelude::*, qr, svd, trace, LinalgError, LinalgResult,
+    cholesky, det, eigvals, inv, matrix_norm, prelude::*, qr, svd, trace, LinalgError, LinalgResult,
 };
 #[cfg(feature = "scirs2")]
 use scirs2_optimize::{minimize, OptimizeResult};
@@ -354,7 +354,7 @@ impl SciRS2ProcessTomographer {
             // Compute eigenvalues of the partial transpose
             let partial_transpose = self.partial_transpose(&choi_matrix)?;
 
-            if let Ok((eigenvalues, _)) = eig(&partial_transpose.view()) {
+            if let Ok(eigenvalues) = eigvals(&partial_transpose.view(), None) {
                 let negative_eigenvalues: Vec<f64> = eigenvalues
                     .iter()
                     .map(|x| x.re)
@@ -391,11 +391,11 @@ impl SciRS2ProcessTomographer {
 /// Trait for process tomography executors
 pub trait ProcessTomographyExecutor {
     /// Execute a circuit on input states and perform measurements
-    async fn execute_process_measurement<const N: usize>(
+    fn execute_process_measurement<const N: usize>(
         &self,
         circuit: &Circuit<N>,
         input_state: &Array2<Complex64>,
         measurement: &Array2<Complex64>,
         shots: usize,
-    ) -> DeviceResult<f64>;
+    ) -> impl std::future::Future<Output = DeviceResult<f64>> + Send;
 }

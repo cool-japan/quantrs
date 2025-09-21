@@ -5,7 +5,8 @@
 
 use crate::builder::Circuit;
 use crate::dag::{circuit_to_dag, CircuitDag};
-use crate::scirs2_matrices::{Complex64, SparseMatrix};
+use crate::scirs2_matrices::SparseMatrix;
+use num_complex::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,

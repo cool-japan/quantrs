@@ -27,30 +27,30 @@ pub struct AdvancedCrosstalkMitigationSystem {
     config: AdvancedCrosstalkConfig,
     base_analyzer: CrosstalkAnalyzer,
     calibration_manager: CalibrationManager,
-    
+
     // ML components
     ml_models: RwLock<HashMap<String, TrainedModel>>,
     feature_extractor: Arc<Mutex<FeatureExtractor>>,
-    
+
     // Prediction components
     predictor: Arc<Mutex<CrosstalkPredictor>>,
     time_series_analyzer: Arc<Mutex<TimeSeriesAnalyzer>>,
-    
+
     // Signal processing components
     signal_processor: Arc<Mutex<SignalProcessor>>,
     filter_bank: Arc<Mutex<FilterBank>>,
-    
+
     // Adaptive compensation
     compensator: Arc<TokioMutex<AdaptiveCompensator>>,
     controller: Arc<TokioMutex<FeedbackController>>,
-    
+
     // Real-time monitoring
     monitor: Arc<TokioMutex<RealtimeMonitor>>,
     alert_system: Arc<Mutex<AlertSystem>>,
-    
+
     // Multi-level mitigation
     mitigation_coordinator: Arc<TokioMutex<MitigationCoordinator>>,
-    
+
     // Performance tracking
     performance_history: Arc<TokioRwLock<VecDeque<PerformanceSnapshot>>>,
     system_state: Arc<TokioRwLock<SystemState>>,
@@ -64,7 +64,7 @@ impl AdvancedCrosstalkMitigationSystem {
         device_topology: HardwareTopology,
     ) -> QuantRS2Result<Self> {
         let base_analyzer = CrosstalkAnalyzer::new(config.base_config.clone(), device_topology);
-        
+
         Ok(Self {
             config: config.clone(),
             base_analyzer,
@@ -92,57 +92,57 @@ impl AdvancedCrosstalkMitigationSystem {
         executor: &E,
     ) -> DeviceResult<AdvancedCrosstalkResult> {
         let start_time = Instant::now();
-        
+
         // Update system state
         *self.system_state.write().await = SystemState::Active;
-        
+
         // Step 1: Run base crosstalk characterization
         let base_characterization = self.base_analyzer.characterize_crosstalk(device_id, executor).await?;
-        
+
         // Step 2: Extract features for ML analysis
         let features = {
             let mut extractor = self.feature_extractor.lock().unwrap();
             extractor.extract_features(&base_characterization)?
         };
-        
+
         // Step 3: Perform ML analysis
         let ml_analysis = self.perform_ml_analysis(&features).await?;
-        
+
         // Step 4: Generate predictions
         let prediction_results = {
             let mut predictor = self.predictor.lock().unwrap();
             predictor.generate_predictions(&base_characterization)?
         };
-        
+
         // Step 5: Advanced signal processing
         let signal_processing = {
             let mut processor = self.signal_processor.lock().unwrap();
             processor.process_signals(&base_characterization)?
         };
-        
+
         // Step 6: Adaptive compensation
         let adaptive_compensation = {
             let mut compensator = self.compensator.lock().await;
             compensator.compute_compensation(&base_characterization).await?
         };
-        
+
         // Step 7: Real-time monitoring update
         let realtime_monitoring = {
             let mut monitor = self.monitor.lock().await;
             monitor.update_monitoring(&base_characterization).await?
         };
-        
+
         // Step 8: Multi-level mitigation coordination
         let multilevel_mitigation = {
             let mut coordinator = self.mitigation_coordinator.lock().await;
             coordinator.coordinate_mitigation(&base_characterization).await?
         };
-        
+
         // Update system state
         *self.system_state.write().await = SystemState::Idle;
-        
+
         println!("Advanced crosstalk analysis completed in {:?}", start_time.elapsed());
-        
+
         Ok(AdvancedCrosstalkResult {
             base_characterization,
             ml_analysis,
@@ -161,32 +161,32 @@ impl AdvancedCrosstalkMitigationSystem {
     ) -> DeviceResult<CrosstalkMLResult> {
         // Train models for each configured ML model type
         let mut models = HashMap::new();
-        
+
         for model_type in &self.config.ml_config.model_types {
             let trained_model = self.train_model(model_type, features).await?;
             models.insert(format!("{:?}", model_type), trained_model);
         }
-        
+
         // Feature analysis
         let feature_analysis = self.analyze_features(features).await?;
-        
+
         // Clustering analysis if enabled
         let clustering_results = if self.config.ml_config.enable_clustering {
             Some(self.perform_clustering(features).await?)
         } else {
             None
         };
-        
+
         // Anomaly detection if enabled
         let anomaly_detection = if self.config.ml_config.enable_anomaly_detection {
             Some(self.detect_anomalies(features).await?)
         } else {
             None
         };
-        
+
         // Calculate performance metrics
         let performance_metrics = self.calculate_ml_performance(&models).await?;
-        
+
         Ok(CrosstalkMLResult {
             models,
             feature_analysis,
@@ -291,24 +291,24 @@ impl AdvancedCrosstalkMitigationSystem {
     /// Retrain ML models with new data
     pub async fn retrain_models(&self, training_data: &Array2<f64>) -> DeviceResult<()> {
         let mut models = self.ml_models.write().unwrap();
-        
+
         for model_type in &self.config.ml_config.model_types {
             let trained_model = self.train_model(model_type, training_data).await?;
             models.insert(format!("{:?}", model_type), trained_model);
         }
-        
+
         Ok(())
     }
 
     /// Emergency stop - halt all mitigation activities
     pub async fn emergency_stop(&self) -> DeviceResult<()> {
         *self.system_state.write().await = SystemState::Error;
-        
+
         // Stop all active components
         let mut compensator = self.compensator.lock().await;
         let mut controller = self.controller.lock().await;
         let mut monitor = self.monitor.lock().await;
-        
+
         // Reset to safe state
         Ok(())
     }

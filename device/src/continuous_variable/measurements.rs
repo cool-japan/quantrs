@@ -206,9 +206,9 @@ impl CVMeasurementEngine {
         let mean_p = state.mean_vector[2 * mode + 1];
         let theoretical_mean = cos_phi * mean_x + sin_phi * mean_p;
 
-        let var_x = state.covariance_matrix[2 * mode][2 * mode];
-        let var_p = state.covariance_matrix[2 * mode + 1][2 * mode + 1];
-        let cov_xp = state.covariance_matrix[2 * mode][2 * mode + 1];
+        let var_x = state.covariancematrix[2 * mode][2 * mode];
+        let var_p = state.covariancematrix[2 * mode + 1][2 * mode + 1];
+        let cov_xp = state.covariancematrix[2 * mode][2 * mode + 1];
 
         let theoretical_variance =
             cos_phi.powi(2) * var_x + sin_phi.powi(2) * var_p + 2.0 * cos_phi * sin_phi * cov_xp;
@@ -307,8 +307,8 @@ impl CVMeasurementEngine {
         // Get state parameters
         let mean_x = state.mean_vector[2 * mode];
         let mean_p = state.mean_vector[2 * mode + 1];
-        let var_x = state.covariance_matrix[2 * mode][2 * mode];
-        let var_p = state.covariance_matrix[2 * mode + 1][2 * mode + 1];
+        let var_x = state.covariancematrix[2 * mode][2 * mode];
+        let var_p = state.covariancematrix[2 * mode + 1][2 * mode + 1];
 
         // Add noise
         let noise_variance = self.calculate_detection_noise(mode);
@@ -396,8 +396,8 @@ impl CVMeasurementEngine {
         // For Gaussian states, estimate photon number from second moments
         let mean_x = state.mean_vector[2 * mode];
         let mean_p = state.mean_vector[2 * mode + 1];
-        let var_x = state.covariance_matrix[2 * mode][2 * mode];
-        let var_p = state.covariance_matrix[2 * mode + 1][2 * mode + 1];
+        let var_x = state.covariancematrix[2 * mode][2 * mode];
+        let var_p = state.covariancematrix[2 * mode + 1][2 * mode + 1];
 
         // Average photon number for Gaussian state
         let mean_n = 0.5 * ((mean_x.powi(2) + mean_p.powi(2)) / 2.0 + (var_x + var_p) - 1.0);

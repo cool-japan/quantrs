@@ -126,7 +126,7 @@ pub struct CentralityMeasures {
 }
 
 /// Graph-level metrics
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphMetrics {
     /// Number of nodes
     pub num_nodes: usize,
@@ -157,7 +157,7 @@ pub struct SciRS2CircuitAnalyzer {
 }
 
 /// Configuration for SciRS2 analysis
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnalyzerConfig {
     /// Enable community detection
     pub enable_community_detection: bool,

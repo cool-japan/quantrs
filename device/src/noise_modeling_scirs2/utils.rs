@@ -40,7 +40,7 @@ impl NoiseModelingUtils {
         calibration_data: &HashMap<String, Array2<f64>>,
     ) -> DeviceResult<Vec<String>> {
         let mut features = Vec::new();
-        
+
         // Basic temporal features
         features.push("mean_drift".to_string());
         features.push("variance_trend".to_string());
@@ -49,20 +49,20 @@ impl NoiseModelingUtils {
         features.push("temporal_stability".to_string());
         features.push("change_point_density".to_string());
         features.push("long_term_memory".to_string());
-        
+
         // Adaptive features based on data characteristics
         if let Some((_, data)) = calibration_data.iter().next() {
             if data.ncols() > 100 {
                 features.push("seasonal_component".to_string());
                 features.push("trend_component".to_string());
             }
-            
+
             if data.nrows() > 10 {
                 features.push("cross_correlation_max".to_string());
                 features.push("cross_correlation_lag".to_string());
             }
         }
-        
+
         Ok(features)
     }
 
@@ -71,7 +71,7 @@ impl NoiseModelingUtils {
         calibration_data: &HashMap<String, Array2<f64>>,
     ) -> DeviceResult<Vec<String>> {
         let mut features = Vec::new();
-        
+
         // Basic spectral features
         features.push("dominant_frequency".to_string());
         features.push("spectral_centroid".to_string());
@@ -80,19 +80,19 @@ impl NoiseModelingUtils {
         features.push("spectral_rolloff".to_string());
         features.push("noise_color_exponent".to_string());
         features.push("harmonic_ratio".to_string());
-        
+
         // Frequency band power features
         for i in 0..5 {
             features.push(format!("band_power_{}", i));
         }
-        
+
         // Cross-spectral features
         if calibration_data.len() > 1 {
             features.push("coherence_max".to_string());
             features.push("phase_coupling".to_string());
             features.push("cross_spectral_density".to_string());
         }
-        
+
         Ok(features)
     }
 
@@ -101,19 +101,19 @@ impl NoiseModelingUtils {
         calibration_data: &HashMap<String, Array2<f64>>,
     ) -> DeviceResult<Vec<String>> {
         let mut features = Vec::new();
-        
+
         // Basic spatial features
         features.push("spatial_correlation_range".to_string());
         features.push("spatial_variance".to_string());
         features.push("spatial_anisotropy".to_string());
         features.push("nugget_effect".to_string());
         features.push("spatial_clustering".to_string());
-        
+
         // Geometric features
         features.push("distance_to_center".to_string());
         features.push("nearest_neighbor_distance".to_string());
         features.push("local_density".to_string());
-        
+
         // Advanced spatial features
         if let Some((_, data)) = calibration_data.iter().next() {
             if data.nrows() > 5 {
@@ -122,7 +122,7 @@ impl NoiseModelingUtils {
                 features.push("regional_effects".to_string());
             }
         }
-        
+
         Ok(features)
     }
 
@@ -132,22 +132,22 @@ impl NoiseModelingUtils {
         spectral_features: &[String],
     ) -> DeviceResult<Vec<String>> {
         let mut interactions = Vec::new();
-        
+
         // Temporal-spectral interactions
         interactions.push("temporal_spectral_coupling".to_string());
         interactions.push("time_frequency_localization".to_string());
         interactions.push("spectral_temporal_stability".to_string());
-        
+
         // Cross-domain features
         interactions.push("wavelet_coefficients_variance".to_string());
         interactions.push("short_time_fourier_features".to_string());
-        
+
         // Higher-order interactions
         if temporal_features.len() > 3 && spectral_features.len() > 3 {
             interactions.push("multivariate_coupling".to_string());
             interactions.push("nonlinear_interactions".to_string());
         }
-        
+
         Ok(interactions)
     }
 
@@ -159,20 +159,20 @@ impl NoiseModelingUtils {
         spatial_features: &[String],
     ) -> DeviceResult<HashMap<String, f64>> {
         let mut selection_results = HashMap::new();
-        
+
         // Simplified feature selection scoring
         for feature in temporal_features {
             selection_results.insert(feature.clone(), rand::random::<f64>());
         }
-        
+
         for feature in spectral_features {
             selection_results.insert(feature.clone(), rand::random::<f64>());
         }
-        
+
         for feature in spatial_features {
             selection_results.insert(feature.clone(), rand::random::<f64>());
         }
-        
+
         Ok(selection_results)
     }
 
@@ -251,16 +251,16 @@ impl NoiseModelingUtils {
             "r2".to_string(),
             "prediction_interval_coverage".to_string(),
         ];
-        
+
         let mut performance_history = HashMap::new();
         for metric in &monitoring_metrics {
             performance_history.insert(metric.clone(), Array1::zeros(100));
         }
-        
+
         let mut degradation_thresholds = HashMap::new();
         degradation_thresholds.insert("rmse".to_string(), 0.2);
         degradation_thresholds.insert("r2".to_string(), 0.8);
-        
+
         let alert_system = AlertSystem {
             alert_levels: vec!["warning".to_string(), "critical".to_string()],
             notification_channels: vec!["email".to_string(), "log".to_string()],
@@ -280,12 +280,12 @@ impl NoiseModelingUtils {
         data: &HashMap<String, Array2<f64>>,
     ) -> DeviceResult<HashMap<String, NoiseStatistics>> {
         let mut statistics = HashMap::new();
-        
+
         for (noise_type, values) in data {
             let stats = Self::compute_single_statistics(values)?;
             statistics.insert(noise_type.clone(), stats);
         }
-        
+
         Ok(statistics)
     }
 
@@ -293,27 +293,27 @@ impl NoiseModelingUtils {
     fn compute_single_statistics(data: &Array2<f64>) -> DeviceResult<NoiseStatistics> {
         let flattened: Vec<f64> = data.iter().copied().collect();
         let n = flattened.len() as f64;
-        
+
         // Basic statistics
         let mean = flattened.iter().sum::<f64>() / n;
         let variance = flattened.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (n - 1.0);
         let std_dev = variance.sqrt();
-        
+
         // Min/max
         let min_val = flattened.iter().fold(f64::INFINITY, |a, &b| a.min(b));
         let max_val = flattened.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-        
+
         // Percentiles (simplified)
         let mut sorted = flattened.clone();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let p25_idx = (0.25 * n) as usize;
         let p50_idx = (0.50 * n) as usize;
         let p75_idx = (0.75 * n) as usize;
-        
+
         let percentile_25 = sorted.get(p25_idx).copied().unwrap_or(mean);
         let median = sorted.get(p50_idx).copied().unwrap_or(mean);
         let percentile_75 = sorted.get(p75_idx).copied().unwrap_or(mean);
-        
+
         Ok(NoiseStatistics {
             mean,
             std_dev,
@@ -333,7 +333,7 @@ impl NoiseModelingUtils {
         if std_dev < 1e-8 {
             return 0.0;
         }
-        
+
         let n = data.len() as f64;
         let sum_cubed = data.iter().map(|x| ((x - mean) / std_dev).powi(3)).sum::<f64>();
         sum_cubed / n
@@ -344,7 +344,7 @@ impl NoiseModelingUtils {
         if std_dev < 1e-8 {
             return 0.0;
         }
-        
+
         let n = data.len() as f64;
         let sum_fourth = data.iter().map(|x| ((x - mean) / std_dev).powi(4)).sum::<f64>();
         (sum_fourth / n) - 3.0 // Excess kurtosis
@@ -356,12 +356,12 @@ impl NoiseModelingUtils {
         config: &SciRS2NoiseConfig,
     ) -> DeviceResult<HashMap<String, ModelParameters>> {
         let mut parameters = HashMap::new();
-        
+
         for (noise_type, values) in data {
             let params = Self::estimate_single_model_parameters(values, config)?;
             parameters.insert(noise_type.clone(), params);
         }
-        
+
         Ok(parameters)
     }
 
@@ -372,19 +372,19 @@ impl NoiseModelingUtils {
     ) -> DeviceResult<ModelParameters> {
         let num_qubits = data.nrows();
         let num_samples = data.ncols();
-        
+
         // Estimate noise correlation length
         let correlation_length = Self::estimate_correlation_length(data)?;
-        
+
         // Estimate characteristic time scales
         let characteristic_time = Self::estimate_characteristic_time(data, config.sampling_frequency)?;
-        
+
         // Estimate noise amplitude
         let noise_amplitude = Self::estimate_noise_amplitude(data)?;
-        
+
         // Model complexity estimation
         let model_complexity = Self::estimate_model_complexity(num_qubits, num_samples);
-        
+
         Ok(ModelParameters {
             correlation_length,
             characteristic_time,
@@ -401,11 +401,11 @@ impl NoiseModelingUtils {
         if data.ncols() < 10 {
             return Ok(1.0);
         }
-        
+
         let first_row = data.row(0);
         let autocorr_1 = Self::compute_autocorrelation(&first_row, 1)?;
         let autocorr_5 = Self::compute_autocorrelation(&first_row, 5)?;
-        
+
         // Exponential decay assumption: exp(-lag/tau)
         if autocorr_1 > 1e-8 {
             let tau = -1.0 / autocorr_1.ln();
@@ -420,20 +420,20 @@ impl NoiseModelingUtils {
         if data.len() <= lag {
             return Ok(0.0);
         }
-        
+
         let n = data.len() - lag;
         let mean = data.mean().unwrap_or(0.0);
-        
+
         let mut numerator = 0.0;
         let mut denominator = 0.0;
-        
+
         for i in 0..n {
             let x_i = data[i] - mean;
             let x_lag = data[i + lag] - mean;
             numerator += x_i * x_lag;
             denominator += x_i * x_i;
         }
-        
+
         if denominator > 1e-8 {
             Ok(numerator / denominator)
         } else {

@@ -304,7 +304,7 @@ impl QuantumTransportLayer {
         let sctp_manager = Arc::new(RwLock::new(QuantumSCTPManager::new(&config.sctp_config)?));
         let active_connections = Arc::new(RwLock::new(HashMap::new()));
         let port_manager = Arc::new(RwLock::new(PortManager::new(config.port_range)));
-        
+
         Ok(Self {
             config: config.clone(),
             tcp_manager,
@@ -314,13 +314,13 @@ impl QuantumTransportLayer {
             port_manager,
         })
     }
-    
+
     /// Initialize the transport layer
     pub async fn initialize(&mut self) -> DeviceResult<()> {
         // Initialize all transport protocol managers
         Ok(())
     }
-    
+
     /// Create a new connection
     pub async fn create_connection(&self, connection_id: &str) -> DeviceResult<()> {
         let connection = TransportConnection {
@@ -343,17 +343,17 @@ impl QuantumTransportLayer {
             created_at: SystemTime::now(),
             last_activity: SystemTime::now(),
         };
-        
+
         self.active_connections.write().await.insert(connection_id.to_string(), connection);
         Ok(())
     }
-    
+
     /// Send data using the transport layer
     pub async fn send_data(&self, connection_id: &str, data: QuantumData) -> DeviceResult<QuantumData> {
         let mut connections = self.active_connections.write().await;
         let connection = connections.get_mut(connection_id)
             .ok_or_else(|| DeviceError::InvalidInput(format!("Connection {} not found", connection_id)))?;
-        
+
         match connection.protocol {
             TransportProtocol::QuantumTCP => {
                 self.tcp_manager.read().await.send(connection_id, &data.payload).await?;
@@ -368,21 +368,21 @@ impl QuantumTransportLayer {
                 return Err(DeviceError::UnsupportedOperation("Protocol not implemented".to_string()));
             }
         }
-        
+
         // Update statistics
         connection.statistics.bytes_sent += data.payload.len() as u64;
         connection.statistics.packets_sent += 1;
         connection.last_activity = SystemTime::now();
-        
+
         Ok(data)
     }
-    
+
     /// Receive data from the transport layer
     pub async fn receive_data(&self, connection_id: &str, _data: QuantumData) -> DeviceResult<QuantumData> {
         let mut connections = self.active_connections.write().await;
         let connection = connections.get_mut(connection_id)
             .ok_or_else(|| DeviceError::InvalidInput(format!("Connection {} not found", connection_id)))?;
-        
+
         let received_data = match connection.protocol {
             TransportProtocol::QuantumTCP => {
                 let mut buffer = vec![0u8; 1024];
@@ -405,19 +405,19 @@ impl QuantumTransportLayer {
                 return Err(DeviceError::UnsupportedOperation("Protocol not implemented".to_string()));
             }
         };
-        
+
         // Update statistics
         connection.statistics.bytes_received += received_data.payload.len() as u64;
         connection.statistics.packets_received += 1;
         connection.last_activity = SystemTime::now();
-        
+
         Ok(received_data)
     }
-    
+
     /// Cleanup connection
     pub async fn cleanup_connection(&self, connection_id: &str) -> DeviceResult<()> {
         self.active_connections.write().await.remove(connection_id);
-        
+
         // Cleanup protocol-specific resources
         match self.config.default_protocol {
             TransportProtocol::QuantumTCP => {
@@ -431,10 +431,10 @@ impl QuantumTransportLayer {
             }
             _ => {}
         }
-        
+
         Ok(())
     }
-    
+
     /// Shutdown the transport layer
     pub async fn shutdown(&self) -> DeviceResult<()> {
         // Close all connections
@@ -442,14 +442,14 @@ impl QuantumTransportLayer {
         for connection_id in connection_ids {
             self.cleanup_connection(&connection_id).await?;
         }
-        
+
         Ok(())
     }
-    
+
     // Helper methods for UDP
     async fn send_udp_data(&self, _connection: &TransportConnection, data: &QuantumData) -> DeviceResult<()> {
         let udp_manager = self.udp_manager.read().await;
-        
+
         // Create UDP packet
         let packet = QuantumUDPPacket {
             header: UDPHeader {
@@ -479,12 +479,12 @@ impl QuantumTransportLayer {
             }),
             timestamp: SystemTime::now(),
         };
-        
+
         // Send packet (simplified)
         drop(udp_manager);
         Ok(())
     }
-    
+
     async fn receive_udp_data(&self, _connection: &TransportConnection) -> DeviceResult<QuantumData> {
         // Simulate receiving UDP data
         Ok(QuantumData {
@@ -494,23 +494,23 @@ impl QuantumTransportLayer {
             entanglement_requirements: None,
         })
     }
-    
+
     // Helper methods for SCTP
     async fn send_sctp_data(&self, _connection: &TransportConnection, _data: &QuantumData) -> DeviceResult<()> {
         // Implement SCTP data sending
         Ok(())
     }
-    
+
     async fn receive_sctp_data(&self, _connection: &TransportConnection) -> DeviceResult<QuantumData> {
         // Implement SCTP data receiving
         Ok(QuantumData::default())
     }
-    
+
     async fn cleanup_sctp_association(&self, _connection_id: &str) -> DeviceResult<()> {
         // Cleanup SCTP association
         Ok(())
     }
-    
+
     fn calculate_udp_checksum(&self, data: &[u8]) -> u16 {
         // Simple checksum calculation
         data.iter().map(|&b| b as u16).sum()
@@ -545,7 +545,7 @@ impl PortManager {
             next_port: port_range.0,
         }
     }
-    
+
     fn allocate_port(&mut self) -> Option<u16> {
         for _ in self.port_range.0..=self.port_range.1 {
             if !self.allocated_ports.contains(&self.next_port) {
@@ -558,7 +558,7 @@ impl PortManager {
                 };
                 return Some(port);
             }
-            
+
             self.next_port = if self.next_port >= self.port_range.1 {
                 self.port_range.0
             } else {
@@ -567,7 +567,7 @@ impl PortManager {
         }
         None
     }
-    
+
     fn deallocate_port(&mut self, port: u16) {
         self.allocated_ports.remove(&port);
     }
@@ -581,15 +581,15 @@ impl StreamManager {
             quantum_streams: HashSet::new(),
         }
     }
-    
+
     fn allocate_stream(&mut self, quantum_enabled: bool) -> u16 {
         let stream_id = self.next_stream_id;
         self.next_stream_id += 1;
-        
+
         if quantum_enabled {
             self.quantum_streams.insert(stream_id);
         }
-        
+
         stream_id
     }
 }

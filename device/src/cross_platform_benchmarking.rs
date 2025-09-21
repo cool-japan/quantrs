@@ -20,7 +20,7 @@ use quantrs2_core::{
 
 // SciRS2 imports for advanced analysis
 #[cfg(feature = "scirs2")]
-use scirs2_linalg::{correlation_matrix, eig, matrix_norm, svd, LinalgResult};
+use scirs2_linalg::{correlationmatrix, eig, matrix_norm, svd, LinalgResult};
 #[cfg(feature = "scirs2")]
 use scirs2_optimize::{minimize, OptimizeResult};
 #[cfg(feature = "scirs2")]
@@ -501,7 +501,7 @@ pub struct PairwiseComparison {
 /// Correlation analysis results
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CorrelationAnalysisResult {
-    pub correlation_matrix: Array2<f64>,
+    pub correlationmatrix: Array2<f64>,
     pub significant_correlations: Vec<CorrelationPair>,
     pub correlation_network: HashMap<String, Vec<String>>,
 }
@@ -1112,7 +1112,7 @@ impl CrossPlatformBenchmarker {
                 while qubit2 == qubit1 {
                     qubit2 = rng.gen_range(0..complexity.qubit_count) as u32;
                 }
-                circuit.cnot(QubitId(qubit1), QubitId(qubit2));
+                let _ = circuit.cnot(QubitId(qubit1), QubitId(qubit2));
             }
 
             circuits.push(circuit);
@@ -1318,7 +1318,7 @@ impl CrossPlatformBenchmarker {
                 sorted_latencies[mid]
             }
         };
-        let std_dev_latency = std(&latency_array.view(), 1).unwrap_or(0.0);
+        let std_dev_latency = std(&latency_array.view(), 1, None).unwrap_or(0.0);
 
         let mut percentiles = HashMap::new();
         let mut sorted_latencies = latencies.clone();
@@ -1463,7 +1463,7 @@ impl CrossPlatformBenchmarker {
             .map(|r| r.total_time.as_secs_f64())
             .collect();
         let latency_array = Array1::from_vec(latency_values);
-        let latency_variability = std(&latency_array.view(), 1).unwrap_or(0.0);
+        let latency_variability = std(&latency_array.view(), 1, None).unwrap_or(0.0);
 
         Ok(LatencyAnalysis {
             submission_latency: Duration::from_millis(100), // Mock value
@@ -1601,7 +1601,7 @@ impl CrossPlatformBenchmarker {
         // Simplified statistical analysis
         let anova_results = HashMap::new();
         let correlation_analysis = CorrelationAnalysisResult {
-            correlation_matrix: Array2::eye(4),
+            correlationmatrix: Array2::eye(4),
             significant_correlations: Vec::new(),
             correlation_network: HashMap::new(),
         };

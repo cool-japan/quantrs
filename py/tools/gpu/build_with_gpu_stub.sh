@@ -55,8 +55,8 @@ EOF
 
 # Temporarily move the real GPU implementation and use our stub
 echo "Temporarily disabling real GPU implementation..."
-ORIGINAL_GPU_FILE="/Users/kitasan/work/quantrs/sim/src/gpu.rs"
-BACKUP_GPU_FILE="/Users/kitasan/work/quantrs/sim/src/gpu.rs.bak"
+ORIGINAL_GPU_FILE="$quantrs/sim/src/gpu.rs"
+BACKUP_GPU_FILE="$quantrs/sim/src/gpu.rs.bak"
 
 if [ -f "$ORIGINAL_GPU_FILE" ]; then
     mv "$ORIGINAL_GPU_FILE" "$BACKUP_GPU_FILE"

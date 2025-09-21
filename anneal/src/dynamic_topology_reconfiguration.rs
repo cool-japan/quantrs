@@ -820,7 +820,7 @@ impl DynamicTopologyManager {
         let hardware_monitor = Arc::new(Mutex::new(HardwareStateMonitor::new()));
         let prediction_engine = Arc::new(Mutex::new(TopologyPredictionEngine::new()));
         let impact_analyzer = Arc::new(Mutex::new(PerformanceImpactAnalyzer::new()));
-        
+
         Self {
             config: config.clone(),
             current_state,
@@ -836,43 +836,43 @@ impl DynamicTopologyManager {
             reconfiguration_history: Arc::new(Mutex::new(VecDeque::new())),
         }
     }
-    
+
     /// Start dynamic topology monitoring
     pub fn start_monitoring(&self) -> ApplicationResult<()> {
         println!("Starting dynamic topology monitoring");
-        
+
         // Initialize hardware monitoring
         let mut monitor = self.hardware_monitor.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire monitor lock".to_string())
         })?;
-        
+
         monitor.start_monitoring()?;
-        
+
         // Start prediction engine
         let mut prediction = self.prediction_engine.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire prediction engine lock".to_string())
         })?;
-        
+
         prediction.start_predictions()?;
-        
+
         // Start monitoring loop in background thread
         self.start_monitoring_loop()?;
-        
+
         println!("Dynamic topology monitoring started successfully");
         Ok(())
     }
-    
+
     /// Start background monitoring loop
     fn start_monitoring_loop(&self) -> ApplicationResult<()> {
         let config = self.config.clone();
         let current_state = Arc::clone(&self.current_state);
         let hardware_monitor = Arc::clone(&self.hardware_monitor);
         let prediction_engine = Arc::clone(&self.prediction_engine);
-        
+
         thread::spawn(move || {
             loop {
                 thread::sleep(config.monitoring_interval);
-                
+
                 // Update hardware state
                 if let Ok(mut monitor) = hardware_monitor.lock() {
                     if let Ok(new_state) = monitor.collect_hardware_state() {
@@ -881,27 +881,27 @@ impl DynamicTopologyManager {
                         }
                     }
                 }
-                
+
                 // Run predictions
                 if let Ok(mut predictor) = prediction_engine.lock() {
                     let _ = predictor.update_predictions();
                 }
             }
         });
-        
+
         Ok(())
     }
-    
+
     /// Analyze topology and recommend reconfigurations
     pub fn analyze_topology(&self, problem: &IsingModel) -> ApplicationResult<Vec<ReconfigurationRecommendation>> {
         println!("Analyzing topology for potential reconfigurations");
-        
+
         let current_state = self.current_state.read().map_err(|_| {
             ApplicationError::OptimizationError("Failed to read current state".to_string())
         })?;
-        
+
         let mut recommendations = Vec::new();
-        
+
         // Check for failed qubits affecting the problem
         let failed_qubits = self.identify_failed_qubits(&current_state)?;
         if !failed_qubits.is_empty() {
@@ -918,7 +918,7 @@ impl DynamicTopologyManager {
                 },
             });
         }
-        
+
         // Check for performance degradation
         if current_state.health_score < 0.8 {
             recommendations.push(ReconfigurationRecommendation {
@@ -934,12 +934,12 @@ impl DynamicTopologyManager {
                 },
             });
         }
-        
+
         // Get predictions from ML engine
         let prediction_engine = self.prediction_engine.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire prediction engine lock".to_string())
         })?;
-        
+
         let predictions = prediction_engine.get_predictions(Duration::from_hours(1))?;
         for prediction in predictions {
             if let PredictedEvent::QubitFailure { qubit_id, time_to_failure } = prediction.predicted_event {
@@ -959,15 +959,15 @@ impl DynamicTopologyManager {
                 }
             }
         }
-        
+
         println!("Generated {} topology recommendations", recommendations.len());
         Ok(recommendations)
     }
-    
+
     /// Execute topology reconfiguration
     pub fn execute_reconfiguration(&self, decision: ReconfigurationDecision) -> ApplicationResult<String> {
         println!("Executing topology reconfiguration");
-        
+
         let execution_id = format!("reconfig_{}", Instant::now().elapsed().as_nanos());
         let execution = ReconfigurationExecution {
             id: execution_id.clone(),
@@ -983,22 +983,22 @@ impl DynamicTopologyManager {
                 phase: Some("initialization".to_string()),
             }],
         };
-        
+
         // Store active reconfiguration
         let mut active_reconfigs = self.active_reconfigurations.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire active reconfigurations lock".to_string())
         })?;
-        
+
         active_reconfigs.insert(execution_id.clone(), execution);
         drop(active_reconfigs);
-        
+
         // Execute migration strategy
         self.execute_migration_strategy(&execution_id, &decision.migration_strategy)?;
-        
+
         println!("Topology reconfiguration initiated with ID: {}", execution_id);
         Ok(execution_id)
     }
-    
+
     /// Execute specific migration strategy
     fn execute_migration_strategy(&self, execution_id: &str, strategy: &MigrationStrategy) -> ApplicationResult<()> {
         match strategy.migration_type {
@@ -1008,99 +1008,99 @@ impl DynamicTopologyManager {
             MigrationType::Hybrid => self.execute_hybrid_migration(execution_id, strategy),
         }
     }
-    
+
     /// Execute hot migration (no downtime)
     fn execute_hot_migration(&self, execution_id: &str, strategy: &MigrationStrategy) -> ApplicationResult<()> {
         println!("Executing hot migration for {}", execution_id);
-        
+
         // Simulate hot migration phases
         for (i, phase) in strategy.phases.iter().enumerate() {
             self.update_execution_progress(execution_id, &phase.id, (i + 1) as f64 / strategy.phases.len() as f64)?;
-            
+
             // Simulate phase execution
             thread::sleep(Duration::from_millis(100));
-            
-            self.log_execution_event(execution_id, LogLevel::Info, 
+
+            self.log_execution_event(execution_id, LogLevel::Info,
                 &format!("Completed phase: {}", phase.description), Some(&phase.id))?;
         }
-        
+
         self.complete_execution(execution_id, ExecutionStatus::Completed)?;
         Ok(())
     }
-    
+
     /// Execute warm migration (minimal downtime)
     fn execute_warm_migration(&self, execution_id: &str, strategy: &MigrationStrategy) -> ApplicationResult<()> {
         println!("Executing warm migration for {}", execution_id);
-        
+
         // Similar to hot migration but with brief pause
         for (i, phase) in strategy.phases.iter().enumerate() {
             self.update_execution_progress(execution_id, &phase.id, (i + 1) as f64 / strategy.phases.len() as f64)?;
             thread::sleep(Duration::from_millis(150));
-            
-            self.log_execution_event(execution_id, LogLevel::Info, 
+
+            self.log_execution_event(execution_id, LogLevel::Info,
                 &format!("Completed phase: {}", phase.description), Some(&phase.id))?;
         }
-        
+
         self.complete_execution(execution_id, ExecutionStatus::Completed)?;
         Ok(())
     }
-    
+
     /// Execute cold migration (full restart)
     fn execute_cold_migration(&self, execution_id: &str, strategy: &MigrationStrategy) -> ApplicationResult<()> {
         println!("Executing cold migration for {}", execution_id);
-        
+
         // Simulate longer migration with restart
         for (i, phase) in strategy.phases.iter().enumerate() {
             self.update_execution_progress(execution_id, &phase.id, (i + 1) as f64 / strategy.phases.len() as f64)?;
             thread::sleep(Duration::from_millis(300));
-            
-            self.log_execution_event(execution_id, LogLevel::Info, 
+
+            self.log_execution_event(execution_id, LogLevel::Info,
                 &format!("Completed phase: {}", phase.description), Some(&phase.id))?;
         }
-        
+
         self.complete_execution(execution_id, ExecutionStatus::Completed)?;
         Ok(())
     }
-    
+
     /// Execute hybrid migration (mixed approach)
     fn execute_hybrid_migration(&self, execution_id: &str, strategy: &MigrationStrategy) -> ApplicationResult<()> {
         println!("Executing hybrid migration for {}", execution_id);
-        
+
         // Adaptive migration based on phase requirements
         for (i, phase) in strategy.phases.iter().enumerate() {
             self.update_execution_progress(execution_id, &phase.id, (i + 1) as f64 / strategy.phases.len() as f64)?;
-            
+
             // Variable delay based on phase complexity
             let delay = if phase.is_critical { 200 } else { 100 };
             thread::sleep(Duration::from_millis(delay));
-            
-            self.log_execution_event(execution_id, LogLevel::Info, 
+
+            self.log_execution_event(execution_id, LogLevel::Info,
                 &format!("Completed phase: {}", phase.description), Some(&phase.id))?;
         }
-        
+
         self.complete_execution(execution_id, ExecutionStatus::Completed)?;
         Ok(())
     }
-    
+
     /// Helper methods for execution management
     fn update_execution_progress(&self, execution_id: &str, phase: &str, progress: f64) -> ApplicationResult<()> {
         let mut active_reconfigs = self.active_reconfigurations.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire active reconfigurations lock".to_string())
         })?;
-        
+
         if let Some(execution) = active_reconfigs.get_mut(execution_id) {
             execution.current_phase = phase.to_string();
             execution.progress = progress;
         }
-        
+
         Ok(())
     }
-    
+
     fn log_execution_event(&self, execution_id: &str, level: LogLevel, message: &str, phase: Option<&str>) -> ApplicationResult<()> {
         let mut active_reconfigs = self.active_reconfigurations.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire active reconfigurations lock".to_string())
         })?;
-        
+
         if let Some(execution) = active_reconfigs.get_mut(execution_id) {
             execution.execution_logs.push(ExecutionLog {
                 timestamp: Instant::now(),
@@ -1109,24 +1109,24 @@ impl DynamicTopologyManager {
                 phase: phase.map(|p| p.to_string()),
             });
         }
-        
+
         Ok(())
     }
-    
+
     fn complete_execution(&self, execution_id: &str, status: ExecutionStatus) -> ApplicationResult<()> {
         let mut active_reconfigs = self.active_reconfigurations.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire active reconfigurations lock".to_string())
         })?;
-        
+
         if let Some(mut execution) = active_reconfigs.remove(execution_id) {
             execution.status = status;
             execution.progress = 100.0;
-            
+
             // Move to history
             let mut history = self.reconfiguration_history.lock().map_err(|_| {
                 ApplicationError::OptimizationError("Failed to acquire history lock".to_string())
             })?;
-            
+
             let record = ReconfigurationRecord {
                 id: execution.id.clone(),
                 decision: execution.decision.clone(),
@@ -1145,24 +1145,24 @@ impl DynamicTopologyManager {
                     success_rate: 1.0,
                 },
             };
-            
+
             history.push_back(record);
-            
+
             // Limit history size
             if history.len() > 1000 {
                 history.pop_front();
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Get current reconfiguration status
     pub fn get_reconfiguration_status(&self, execution_id: &str) -> ApplicationResult<Option<ReconfigurationStatus>> {
         let active_reconfigs = self.active_reconfigurations.lock().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire active reconfigurations lock".to_string())
         })?;
-        
+
         if let Some(execution) = active_reconfigs.get(execution_id) {
             Ok(Some(ReconfigurationStatus {
                 execution_id: execution_id.to_string(),
@@ -1176,7 +1176,7 @@ impl DynamicTopologyManager {
             Ok(None)
         }
     }
-    
+
     /// Helper methods for internal operations
     fn create_initial_state() -> HardwareState {
         HardwareState {
@@ -1201,7 +1201,7 @@ impl DynamicTopologyManager {
             },
         }
     }
-    
+
     fn identify_failed_qubits(&self, state: &HardwareState) -> ApplicationResult<Vec<usize>> {
         let failed_qubits: Vec<usize> = state.qubit_status.iter()
             .filter_map(|(qubit, status)| {
@@ -1212,7 +1212,7 @@ impl DynamicTopologyManager {
                 }
             })
             .collect();
-        
+
         Ok(failed_qubits)
     }
 }
@@ -1290,7 +1290,7 @@ impl HardwareStateMonitor {
             },
         }
     }
-    
+
     fn create_default_sensors() -> Vec<HardwareSensor> {
         vec![
             HardwareSensor {
@@ -1316,21 +1316,21 @@ impl HardwareStateMonitor {
             },
         ]
     }
-    
+
     fn start_monitoring(&mut self) -> ApplicationResult<()> {
         self.monitoring_state.is_active = true;
         self.monitoring_state.start_time = Instant::now();
         self.monitoring_state.active_sensors = self.sensors.len();
-        
+
         println!("Hardware state monitoring started with {} sensors", self.sensors.len());
         Ok(())
     }
-    
+
     fn collect_hardware_state(&mut self) -> ApplicationResult<HardwareState> {
         // Simulate hardware state collection
         let mut qubit_status = HashMap::new();
         let mut coupler_status = HashMap::new();
-        
+
         // Simulate some qubits with different statuses
         for i in 0..100 {
             let status = match i % 20 {
@@ -1340,7 +1340,7 @@ impl HardwareStateMonitor {
             };
             qubit_status.insert(i, status);
         }
-        
+
         // Simulate some couplers
         for i in 0..99 {
             let status = if i % 30 == 0 {
@@ -1350,9 +1350,9 @@ impl HardwareStateMonitor {
             };
             coupler_status.insert((i, i + 1), status);
         }
-        
+
         let health_score = 0.85 + (Instant::now().elapsed().as_secs() % 100) as f64 * 0.001;
-        
+
         Ok(HardwareState {
             timestamp: Instant::now(),
             qubit_status,
@@ -1390,7 +1390,7 @@ impl TopologyPredictionEngine {
             },
         }
     }
-    
+
     fn create_default_extractors() -> Vec<FeatureExtractor> {
         vec![
             FeatureExtractor {
@@ -1407,21 +1407,21 @@ impl TopologyPredictionEngine {
             },
         ]
     }
-    
+
     fn start_predictions(&mut self) -> ApplicationResult<()> {
         println!("Starting topology prediction engine");
         Ok(())
     }
-    
+
     fn update_predictions(&mut self) -> ApplicationResult<()> {
         // Simulate prediction updates
         Ok(())
     }
-    
+
     fn get_predictions(&self, horizon: Duration) -> ApplicationResult<Vec<PredictionOutcome>> {
         // Generate mock predictions
         let mut predictions = Vec::new();
-        
+
         // Simulate some predicted failures
         if horizon > Duration::from_hours(1) {
             predictions.push(PredictionOutcome {
@@ -1435,7 +1435,7 @@ impl TopologyPredictionEngine {
                 model_id: "failure_predictor_v1".to_string(),
             });
         }
-        
+
         Ok(predictions)
     }
 }
@@ -1454,17 +1454,17 @@ impl PerformanceImpactAnalyzer {
 pub fn create_example_dynamic_topology_manager() -> ApplicationResult<DynamicTopologyManager> {
     let config = DynamicTopologyConfig::default();
     let manager = DynamicTopologyManager::new(config);
-    
+
     // Initialize with some default state
     println!("Created dynamic topology manager with default configuration");
-    
+
     Ok(manager)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_dynamic_topology_config() {
         let config = DynamicTopologyConfig::default();
@@ -1473,66 +1473,66 @@ mod tests {
         assert!(config.enable_proactive_reconfig);
         assert_eq!(config.reconfiguration_strategy, ReconfigurationStrategy::GradualMigration);
     }
-    
+
     #[test]
     fn test_topology_manager_creation() {
         let config = DynamicTopologyConfig::default();
         let manager = DynamicTopologyManager::new(config);
-        
+
         // Verify manager is created with correct configuration
         assert_eq!(manager.config.monitoring_interval, Duration::from_secs(10));
         assert_eq!(manager.reconfig_strategies.len(), 3);
     }
-    
+
     #[test]
     fn test_hardware_state_monitor() {
         let mut monitor = HardwareStateMonitor::new();
         assert!(!monitor.monitoring_state.is_active);
-        
+
         let result = monitor.start_monitoring();
         assert!(result.is_ok());
         assert!(monitor.monitoring_state.is_active);
-        
+
         let state = monitor.collect_hardware_state();
         assert!(state.is_ok());
-        
+
         let hardware_state = state.unwrap();
         assert!(!hardware_state.qubit_status.is_empty());
         assert!(!hardware_state.coupler_status.is_empty());
     }
-    
+
     #[test]
     fn test_prediction_engine() {
         let mut engine = TopologyPredictionEngine::new();
         assert_eq!(engine.historical_data.len(), 0);
-        
+
         let result = engine.start_predictions();
         assert!(result.is_ok());
-        
+
         let predictions = engine.get_predictions(Duration::from_hours(2));
         assert!(predictions.is_ok());
-        
+
         let prediction_list = predictions.unwrap();
         assert!(!prediction_list.is_empty()); // Should have at least one prediction
     }
-    
+
     #[test]
     fn test_topology_analysis() {
         let manager = create_example_dynamic_topology_manager().unwrap();
         let problem = IsingModel::new(50);
-        
+
         let recommendations = manager.analyze_topology(&problem);
         assert!(recommendations.is_ok());
-        
+
         let recs = recommendations.unwrap();
         // Should have recommendations based on simulated hardware state
         assert!(!recs.is_empty());
     }
-    
+
     #[test]
     fn test_reconfiguration_execution() {
         let manager = create_example_dynamic_topology_manager().unwrap();
-        
+
         let decision = ReconfigurationDecision {
             timestamp: Instant::now(),
             trigger: ReconfigurationTrigger::Manual { reason: "Test".to_string() },
@@ -1566,20 +1566,20 @@ mod tests {
             },
             rollback_plan: None,
         };
-        
+
         let result = manager.execute_reconfiguration(decision);
         assert!(result.is_ok());
-        
+
         let execution_id = result.unwrap();
         assert!(!execution_id.is_empty());
-        
+
         // Wait a bit for execution to complete
         thread::sleep(Duration::from_millis(200));
-        
+
         let status = manager.get_reconfiguration_status(&execution_id);
         assert!(status.is_ok());
     }
-    
+
     #[test]
     fn test_alert_thresholds() {
         let thresholds = AlertThresholds::default();
@@ -1588,12 +1588,12 @@ mod tests {
         assert_eq!(thresholds.temperature_threshold, 300.0);
         assert_eq!(thresholds.coherence_threshold, Duration::from_micros(10));
     }
-    
+
     #[test]
     fn test_migration_strategies() {
         assert_eq!(MigrationType::Hot, MigrationType::Hot);
         assert_ne!(MigrationType::Hot, MigrationType::Cold);
-        
+
         let strategy = MigrationStrategy {
             migration_type: MigrationType::Warm,
             phases: vec![],
@@ -1605,7 +1605,7 @@ mod tests {
                 storage_requirements: 100.0,
             },
         };
-        
+
         assert_eq!(strategy.migration_type, MigrationType::Warm);
         assert_eq!(strategy.estimated_time, Duration::from_secs(30));
     }

@@ -5,6 +5,71 @@ All notable changes to the QuantRS2 project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-beta.1] - 2025-09-16
+
+### 🎉 Major Release - Production Ready!
+
+QuantRS2 v0.1.0-beta.1 represents a major milestone, delivering a comprehensive, production-ready quantum computing framework with advanced SciRS2 integration, extensive developer tools, and exceptional performance capabilities.
+
+### Added
+
+#### 🔧 Complete SciRS2 v0.1.0-beta.2 Integration
+- **Deep SciRS2 Integration**: Full integration with Scientific Rust v0.1.0-beta.2 for optimal performance
+- **SIMD Operations**: All operations leverage `scirs2_core::simd_ops` with hardware-aware optimization
+- **Parallel Computing**: Automatic parallelization via `scirs2_core::parallel_ops`
+- **Platform Detection**: Smart capability detection using `PlatformCapabilities`
+- **Memory Management**: Advanced memory-efficient algorithms for 30+ qubit simulations
+- **GPU Acceleration**: Full GPU support through `scirs2_core::gpu` (sim crate)
+
+#### 🛠️ Developer Experience Suite (NEW!)
+- **Circuit Equivalence Checker**: Verify circuit correctness with SciRS2 numerical tolerance
+- **Resource Estimator**: Analyze complexity and performance using SciRS2 analysis
+- **Quantum Debugger**: Step-by-step circuit execution with SciRS2 visualization
+- **Performance Profiler**: Comprehensive execution analysis with SciRS2 metrics
+- **Circuit Verifier**: Formal verification using SciRS2 mathematical methods
+- **Quantum Linter**: Code quality analysis with SciRS2 pattern matching
+- **Quantum Formatter**: Consistent code style with SciRS2 code analysis
+
+#### 🤖 Intelligent System Features (NEW!)
+- **AutoOptimizer**: Automatic backend selection based on problem characteristics
+- **Complex SIMD Support**: Advanced vectorized quantum operations
+- **Unified Platform Detection**: Consistent hardware capability management
+- **Performance Analytics**: Real-time optimization recommendations
+
+#### 🏆 Production Readiness Features
+- **Comprehensive Framework**: 30+ qubit simulation capability
+- **Hardware Integration**: Support for IBM, D-Wave, AWS Braket
+- **Python Bindings**: Complete PyO3-based Python API
+- **Algorithm Library**: 50+ quantum algorithm implementations
+- **Error Correction**: Advanced error correction and noise modeling
+- **Robust Testing**: Comprehensive test suite and documentation
+
+#### 🚀 Performance Enhancements
+- **Memory Optimization**: SciRS2-powered memory management for large-scale simulations
+- **SIMD Acceleration**: Hardware-aware vectorized operations
+- **GPU Computing**: Cross-platform GPU acceleration support
+- **Automatic Optimization**: Intelligent backend selection and resource allocation
+
+### Updated
+- **External Dependencies**: Full operational integration with SciRS2 v0.1.0-beta.2
+- **Documentation**: Comprehensive updates reflecting beta.1 capabilities
+- **Examples**: Enhanced examples demonstrating production-ready features
+- **Testing Framework**: Expanded test coverage for all new features
+
+### Fixed
+- **Dependency Conflicts**: Resolved all external dependency issues
+- **Platform Compatibility**: Improved cross-platform build and runtime support
+- **Performance**: Optimized algorithms and memory usage patterns
+
+### Security
+- **Best Practices**: Implementation of security best practices throughout the codebase
+- **Cryptographic**: Enhanced quantum cryptographic protocol implementations
+
+### Notes
+- **Breaking Changes**: This release includes API improvements that may require minor updates to existing code
+- **Migration Guide**: See MIGRATION_GUIDE_ALPHA_TO_BETA.md for detailed upgrade instructions
+- **Performance**: Significant performance improvements across all modules
+
 ## [0.1.0-alpha.5] - 2025-06-17
 
 ### Added

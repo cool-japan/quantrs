@@ -313,7 +313,7 @@ impl CouplingMap {
         coupling_map
     }
 
-    /// IBM Nairobi device topology  
+    /// IBM Nairobi device topology
     pub fn ibm_nairobi() -> Self {
         let mut coupling_map = Self::new(7);
 

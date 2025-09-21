@@ -156,6 +156,7 @@ pub struct QuantumDenoisingNetwork {
     classical_layers: Vec<ClassicalLayer>,
     quantum_parameters: Array1<f64>,
     hybrid_connections: Vec<HybridConnection>,
+    data_dim: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -954,11 +955,12 @@ impl QuantumAdvancedDiffusionModel {
         let phase_factor = self.phase_schedule[t];
 
         // Predicted x0 with quantum corrections
-        let sqrt_recip_alpha_cumprod = 1.0 / alpha_cumprod_t.sqrt();
+        // Note: denoised_data actually contains predicted noise, not denoised data
+        let sqrt_alpha_cumprod_t = alpha_cumprod_t.sqrt();
         let sqrt_one_minus_alpha_cumprod = (1.0 - alpha_cumprod_t).sqrt();
 
-        let predicted_x0 = sqrt_recip_alpha_cumprod * xt
-            - sqrt_one_minus_alpha_cumprod / alpha_cumprod_t.sqrt() * &denoise_output.denoised_data;
+        let predicted_x0 = (xt - sqrt_one_minus_alpha_cumprod * &denoise_output.denoised_data)
+            / sqrt_alpha_cumprod_t;
 
         // Mean of reverse process
         let sqrt_alpha_cumprod_prev = alpha_cumprod_prev.sqrt() * entanglement_factor;
@@ -1468,6 +1470,7 @@ impl QuantumDenoisingNetwork {
             classical_layers,
             quantum_parameters,
             hybrid_connections,
+            data_dim: config.data_dim,
         })
     }
 
@@ -1625,10 +1628,7 @@ impl QuantumDenoisingNetwork {
         // Extract noise prediction from quantum state
         // This would involve quantum measurements in practice
         // Return only the first portion corresponding to original data dimension
-        let data_dim = match &self.architecture {
-            DenoisingArchitecture::QuantumUNet { .. } => 2, // Default for this architecture
-            _ => 2,                                         // Default fallback
-        };
+        let data_dim = self.data_dim;
 
         if quantum_state.classical_data.len() >= data_dim {
             Ok(quantum_state

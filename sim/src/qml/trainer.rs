@@ -5,9 +5,8 @@
 
 use crate::prelude::HardwareOptimizations;
 use ndarray::Array1;
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 use crate::circuit_interfaces::{CircuitInterface, InterfaceCircuit};
 use crate::device_noise_models::DeviceNoiseModel;

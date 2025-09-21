@@ -98,7 +98,7 @@ pub struct ComplexCoupling {
 pub enum InteractionType {
     /// XX interaction (σ_x^i σ_x^j)
     XX,
-    /// YY interaction (σ_y^i σ_y^j)  
+    /// YY interaction (σ_y^i σ_y^j)
     YY,
     /// ZZ interaction (σ_z^i σ_z^j)
     ZZ,

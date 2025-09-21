@@ -259,11 +259,11 @@ impl QuantumTCPManager {
             acknowledgments: Arc::new(RwLock::new(HashMap::new())),
         }
     }
-    
+
     /// Establish a quantum TCP connection
     pub async fn connect(&self, destination: &str, port: u16) -> DeviceResult<String> {
         let connection_id = format!("{}:{}", destination, port);
-        
+
         // Create connection state
         let connection = QuantumTCPConnection {
             connection_id: connection_id.clone(),
@@ -289,75 +289,75 @@ impl QuantumTCPManager {
             entanglement_resources: vec![],
             performance_metrics: QuantumTCPMetrics::default(),
         };
-        
+
         // Perform quantum handshake
         self.perform_quantum_handshake(&connection_id).await?;
-        
+
         // Store connection
         self.connections.write().await.insert(connection_id.clone(), connection);
-        
+
         Ok(connection_id)
     }
-    
+
     /// Send data over quantum TCP
     pub async fn send(&self, connection_id: &str, data: &[u8]) -> DeviceResult<usize> {
         let mut connections = self.connections.write().await;
         let connection = connections.get_mut(connection_id)
             .ok_or_else(|| DeviceError::InvalidInput(format!("Connection {} not found", connection_id)))?;
-        
+
         if connection.state != TCPState::Established {
             return Err(DeviceError::InvalidInput("Connection not established".to_string()));
         }
-        
+
         // Create quantum packet
         let packet = self.create_data_packet(connection, data).await?;
-        
+
         // Add to send buffer
         connection.send_buffer.push_back(packet);
-        
+
         // Send packets within window
         self.send_window_packets(connection).await?;
-        
+
         Ok(data.len())
     }
-    
+
     /// Receive data from quantum TCP
     pub async fn receive(&self, connection_id: &str, buffer: &mut [u8]) -> DeviceResult<usize> {
         let mut connections = self.connections.write().await;
         let connection = connections.get_mut(connection_id)
             .ok_or_else(|| DeviceError::InvalidInput(format!("Connection {} not found", connection_id)))?;
-        
+
         if connection.receive_buffer.is_empty() {
             return Ok(0);
         }
-        
+
         let mut bytes_read = 0;
         while let Some(packet) = connection.receive_buffer.pop_front() {
             let packet_data = &packet.payload.data;
             let copy_len = std::cmp::min(packet_data.len(), buffer.len() - bytes_read);
-            
+
             buffer[bytes_read..bytes_read + copy_len].copy_from_slice(&packet_data[..copy_len]);
             bytes_read += copy_len;
-            
+
             if bytes_read >= buffer.len() {
                 break;
             }
         }
-        
+
         Ok(bytes_read)
     }
-    
+
     /// Process incoming packet
     pub async fn handle_incoming_packet(&self, packet: QuantumPacket) -> DeviceResult<()> {
         let connection_id = format!("{}:{}", "unknown", packet.header.destination_port);
-        
+
         let mut connections = self.connections.write().await;
         if let Some(connection) = connections.get_mut(&connection_id) {
             // Verify quantum integrity
             if let Some(entanglement_info) = &packet.entanglement_info {
                 self.verify_quantum_integrity(entanglement_info).await?;
             }
-            
+
             // Process based on packet type
             if packet.header.flags.syn {
                 self.handle_syn_packet(connection, &packet).await?;
@@ -370,10 +370,10 @@ impl QuantumTCPManager {
                 self.handle_data_packet(connection, packet).await?;
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Close quantum TCP connection
     pub async fn close(&self, connection_id: &str) -> DeviceResult<()> {
         let mut connections = self.connections.write().await;
@@ -381,26 +381,26 @@ impl QuantumTCPManager {
             // Send FIN packet
             let fin_packet = self.create_fin_packet(&connection).await?;
             self.send_packet(&fin_packet).await?;
-            
+
             // Update state
             connection.state = TCPState::FinWait1;
-            
+
             // Cleanup entanglement resources
             self.cleanup_entanglement_resources(&connection.entanglement_resources).await?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Get connection statistics
     pub async fn get_statistics(&self, connection_id: &str) -> DeviceResult<QuantumTCPMetrics> {
         let connections = self.connections.read().await;
         let connection = connections.get(connection_id)
             .ok_or_else(|| DeviceError::InvalidInput(format!("Connection {} not found", connection_id)))?;
-        
+
         Ok(connection.performance_metrics.clone())
     }
-    
+
     // Helper methods
     async fn perform_quantum_handshake(&self, _connection_id: &str) -> DeviceResult<()> {
         // Implement quantum handshake protocol
@@ -410,7 +410,7 @@ impl QuantumTCPManager {
         // 4. Quantum error detection setup
         Ok(())
     }
-    
+
     async fn create_data_packet(&self, connection: &QuantumTCPConnection, data: &[u8]) -> DeviceResult<QuantumPacket> {
         let header = QuantumTCPHeader {
             source_port: 0, // Would be set based on connection
@@ -433,14 +433,14 @@ impl QuantumTCPManager {
             quantum_checksum: Some(self.calculate_quantum_checksum(data).await?),
             options: vec![],
         };
-        
+
         let payload = QuantumPayload {
             data_type: QuantumDataType::QuantumMessage,
             data: data.to_vec(),
             quantum_encoding: None,
             error_protection: ErrorProtectionScheme::HybridECC,
         };
-        
+
         Ok(QuantumPacket {
             header,
             payload,
@@ -449,44 +449,44 @@ impl QuantumTCPManager {
             timestamp: Instant::now(),
         })
     }
-    
+
     async fn send_window_packets(&self, _connection: &mut QuantumTCPConnection) -> DeviceResult<()> {
         // Implement sliding window protocol
         // Send packets within congestion window
         Ok(())
     }
-    
+
     async fn verify_quantum_integrity(&self, _entanglement_info: &EntanglementInfo) -> DeviceResult<()> {
         // Verify quantum state integrity using entanglement
         Ok(())
     }
-    
+
     async fn handle_syn_packet(&self, _connection: &mut QuantumTCPConnection, _packet: &QuantumPacket) -> DeviceResult<()> {
         // Handle SYN packet
         Ok(())
     }
-    
+
     async fn handle_ack_packet(&self, _connection: &mut QuantumTCPConnection, _packet: &QuantumPacket) -> DeviceResult<()> {
         // Handle ACK packet
         Ok(())
     }
-    
+
     async fn handle_fin_packet(&self, _connection: &mut QuantumTCPConnection, _packet: &QuantumPacket) -> DeviceResult<()> {
         // Handle FIN packet
         Ok(())
     }
-    
+
     async fn handle_data_packet(&self, connection: &mut QuantumTCPConnection, packet: QuantumPacket) -> DeviceResult<()> {
         // Add to receive buffer
         connection.receive_buffer.push_back(packet);
-        
+
         // Send ACK
         let ack_packet = self.create_ack_packet(connection).await?;
         self.send_packet(&ack_packet).await?;
-        
+
         Ok(())
     }
-    
+
     async fn create_fin_packet(&self, _connection: &QuantumTCPConnection) -> DeviceResult<QuantumPacket> {
         // Create FIN packet
         Ok(QuantumPacket {
@@ -522,7 +522,7 @@ impl QuantumTCPManager {
             timestamp: Instant::now(),
         })
     }
-    
+
     async fn create_ack_packet(&self, _connection: &QuantumTCPConnection) -> DeviceResult<QuantumPacket> {
         // Create ACK packet
         Ok(QuantumPacket {
@@ -558,22 +558,22 @@ impl QuantumTCPManager {
             timestamp: Instant::now(),
         })
     }
-    
+
     async fn send_packet(&self, _packet: &QuantumPacket) -> DeviceResult<()> {
         // Send packet over quantum channel
         Ok(())
     }
-    
+
     async fn cleanup_entanglement_resources(&self, _resources: &[String]) -> DeviceResult<()> {
         // Cleanup entanglement resources
         Ok(())
     }
-    
+
     fn calculate_checksum(&self, data: &[u8]) -> u32 {
         // Simple checksum calculation
         data.iter().map(|&b| b as u32).sum()
     }
-    
+
     async fn calculate_quantum_checksum(&self, _data: &[u8]) -> DeviceResult<QuantumChecksum> {
         // Calculate quantum checksum using entanglement
         Ok(QuantumChecksum {

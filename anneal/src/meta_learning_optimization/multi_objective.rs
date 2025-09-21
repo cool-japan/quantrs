@@ -36,7 +36,7 @@ impl MultiObjectiveOptimizer {
 
         for (i, candidate) in candidates.iter().enumerate() {
             let objective_values = self.evaluate_objectives(candidate)?;
-            
+
             let solution = MultiObjectiveSolution {
                 id: format!("solution_{}", i),
                 objective_values,
@@ -44,13 +44,13 @@ impl MultiObjectiveOptimizer {
                 dominance_rank: 0, // Will be calculated later
                 crowding_distance: 0.0, // Will be calculated later
             };
-            
+
             solutions.push(solution);
         }
 
         // Update Pareto frontier
         self.update_pareto_frontier(&mut solutions)?;
-        
+
         // Calculate dominance ranks and crowding distances
         self.calculate_dominance_ranks(&mut solutions);
         self.calculate_crowding_distances(&mut solutions);
@@ -102,7 +102,7 @@ impl MultiObjectiveOptimizer {
                 },
                 OptimizationObjective::Custom(_) => 0.5, // Default value
             };
-            
+
             objective_values.push(value);
         }
 
@@ -130,7 +130,7 @@ impl MultiObjectiveOptimizer {
 
             if !is_dominated {
                 new_solutions.push(solution.clone());
-                
+
                 // Remove dominated solutions from frontier
                 self.pareto_frontier.solutions.retain(|s| !dominated_solutions.contains(&s.id));
             }
@@ -171,14 +171,14 @@ impl MultiObjectiveOptimizer {
     fn prune_frontier(&mut self) -> Result<(), String> {
         // Use crowding distance to maintain diversity
         self.calculate_crowding_distances_frontier();
-        
+
         // Sort by crowding distance (descending) and keep top solutions
         self.pareto_frontier.solutions.sort_by(|a, b| {
             b.crowding_distance.partial_cmp(&a.crowding_distance).unwrap()
         });
-        
+
         self.pareto_frontier.solutions.truncate(self.config.pareto_config.max_frontier_size);
-        
+
         Ok(())
     }
 
@@ -208,12 +208,12 @@ impl MultiObjectiveOptimizer {
                 self.pareto_frontier.solutions[num_solutions - 1].crowding_distance = f64::INFINITY;
 
                 // Calculate distance for interior solutions
-                let obj_range = self.pareto_frontier.solutions[num_solutions - 1].objective_values[obj_idx] - 
+                let obj_range = self.pareto_frontier.solutions[num_solutions - 1].objective_values[obj_idx] -
                                self.pareto_frontier.solutions[0].objective_values[obj_idx];
 
                 if obj_range > 0.0 {
                     for i in 1..num_solutions - 1 {
-                        let distance = (self.pareto_frontier.solutions[i + 1].objective_values[obj_idx] - 
+                        let distance = (self.pareto_frontier.solutions[i + 1].objective_values[obj_idx] -
                                        self.pareto_frontier.solutions[i - 1].objective_values[obj_idx]) / obj_range;
                         self.pareto_frontier.solutions[i].crowding_distance += distance;
                     }
@@ -238,17 +238,17 @@ impl MultiObjectiveOptimizer {
 
     fn update_frontier_statistics(&mut self) {
         self.pareto_frontier.statistics.size = self.pareto_frontier.solutions.len();
-        
+
         // Calculate hypervolume (simplified)
         self.pareto_frontier.statistics.hypervolume = self.pareto_frontier.solutions.len() as f64 * 0.1;
-        
+
         // Calculate spread (simplified)
         if self.pareto_frontier.solutions.len() > 1 {
             self.pareto_frontier.statistics.spread = 1.0;
         } else {
             self.pareto_frontier.statistics.spread = 0.0;
         }
-        
+
         // Update convergence and coverage
         self.pareto_frontier.statistics.convergence = 0.8;
         self.pareto_frontier.statistics.coverage = 0.9;
@@ -386,7 +386,7 @@ impl Scalarizer {
             ScalarizationMethod::WeightedTchebycheff => {
                 let reference = self.reference_point.as_ref()
                     .unwrap_or(&vec![0.0; objectives.len()]);
-                
+
                 let mut max_weighted_diff = 0.0;
                 for ((obj, ref_val), weight) in objectives.iter().zip(reference.iter()).zip(weights.iter()) {
                     let weighted_diff = weight * (ref_val - obj).abs();
@@ -662,10 +662,10 @@ mod tests {
         let scalarizer = Scalarizer::new(ScalarizationMethod::WeightedSum);
         let objectives = vec![0.8, 0.6, 0.9];
         let weights = vec![0.5, 0.3, 0.2];
-        
+
         let result = scalarizer.scalarize(&objectives, &weights);
         assert!(result.is_ok());
-        
+
         let score = result.unwrap();
         assert!((score - 0.76).abs() < 1e-10); // 0.8*0.5 + 0.6*0.3 + 0.9*0.2 = 0.76
     }
@@ -673,7 +673,7 @@ mod tests {
     #[test]
     fn test_decision_maker() {
         let mut decision_maker = DecisionMaker::new();
-        
+
         let solutions = vec![
             MultiObjectiveSolution {
                 id: "sol1".to_string(),
@@ -693,7 +693,7 @@ mod tests {
                 crowding_distance: 1.0,
             },
         ];
-        
+
         let result = decision_maker.make_decision(&solutions, None);
         assert!(result.is_ok());
     }

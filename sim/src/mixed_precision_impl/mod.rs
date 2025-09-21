@@ -23,7 +23,7 @@ use crate::error::Result;
 /// Initialize the mixed-precision subsystem
 pub fn initialize() -> Result<()> {
     // Perform any necessary initialization
-    #[cfg(all(feature = "advanced_math", feature = "mixed_precision"))]
+    #[cfg(feature = "advanced_math")]
     {
         // Initialize SciRS2 mixed precision context if available
         let _context = MixedPrecisionContext::new(AdaptiveStrategy::ErrorBased(1e-6));
@@ -34,7 +34,7 @@ pub fn initialize() -> Result<()> {
 
 /// Check if mixed-precision features are available
 pub fn is_available() -> bool {
-    cfg!(all(feature = "advanced_math", feature = "mixed_precision"))
+    cfg!(feature = "advanced_math")
 }
 
 /// Get supported precision levels

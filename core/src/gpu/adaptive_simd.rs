@@ -4,8 +4,12 @@
 //! to the most optimized SIMD implementation available on the target hardware.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
+use crate::platform::PlatformCapabilities;
 use num_complex::Complex64;
 use std::sync::{Mutex, OnceLock};
+// use scirs2_core::simd_ops::SimdUnifiedOps;
+use crate::simd_ops_stubs::SimdF64;
+use ndarray::ArrayView1;
 
 /// CPU feature detection results
 #[derive(Debug, Clone, Copy)]
@@ -101,100 +105,22 @@ impl AdaptiveSimdDispatcher {
 
     /// Detect CPU features at runtime
     fn detect_cpu_features() -> CpuFeatures {
-        // Use conditional compilation for different target architectures
-        #[cfg(target_arch = "x86_64")]
-        {
-            Self::detect_x86_64_features()
-        }
-        #[cfg(target_arch = "aarch64")]
-        {
-            Self::detect_aarch64_features()
-        }
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-        {
-            // Fallback for unsupported architectures
-            CpuFeatures {
-                has_avx2: false,
-                has_avx512: false,
-                has_fma: false,
-                has_avx512vl: false,
-                has_avx512dq: false,
-                has_avx512cd: false,
-                has_sse41: false,
-                has_sse42: false,
-                num_cores: 1,
-                l1_cache_size: 32768,
-                l2_cache_size: 262144,
-                l3_cache_size: 8388608,
-            }
-        }
-    }
-
-    #[cfg(target_arch = "x86_64")]
-    fn detect_x86_64_features() -> CpuFeatures {
-        use std::arch::x86_64::*;
-
-        // CPUID feature detection
-        let has_avx2 = is_x86_feature_detected!("avx2");
-        let has_avx512 = is_x86_feature_detected!("avx512f");
-        let has_fma = is_x86_feature_detected!("fma");
-        let has_avx512vl = is_x86_feature_detected!("avx512vl");
-        let has_avx512dq = is_x86_feature_detected!("avx512dq");
-        let has_avx512cd = is_x86_feature_detected!("avx512cd");
-        let has_sse41 = is_x86_feature_detected!("sse4.1");
-        let has_sse42 = is_x86_feature_detected!("sse4.2");
-
-        // Detect cache sizes and core count
-        let num_cores = 8; // Fallback to reasonable default
-        let (l1_cache, l2_cache, l3_cache) = Self::detect_cache_sizes();
+        let platform = PlatformCapabilities::detect();
 
         CpuFeatures {
-            has_avx2,
-            has_avx512,
-            has_fma,
-            has_avx512vl,
-            has_avx512dq,
-            has_avx512cd,
-            has_sse41,
-            has_sse42,
-            num_cores,
-            l1_cache_size: l1_cache,
-            l2_cache_size: l2_cache,
-            l3_cache_size: l3_cache,
+            has_avx2: platform.cpu.simd.avx2,
+            has_avx512: platform.cpu.simd.avx512,
+            has_fma: platform.cpu.simd.fma,
+            has_avx512vl: false, // Not detected in current platform capabilities
+            has_avx512dq: false, // Not detected in current platform capabilities
+            has_avx512cd: false, // Not detected in current platform capabilities
+            has_sse41: platform.cpu.simd.sse4_1,
+            has_sse42: platform.cpu.simd.sse4_2,
+            num_cores: platform.cpu.logical_cores,
+            l1_cache_size: platform.cpu.cache.l1_data.unwrap_or(32 * 1024),
+            l2_cache_size: platform.cpu.cache.l2.unwrap_or(256 * 1024),
+            l3_cache_size: platform.cpu.cache.l3.unwrap_or(8 * 1024 * 1024),
         }
-    }
-
-    #[cfg(target_arch = "aarch64")]
-    fn detect_aarch64_features() -> CpuFeatures {
-        // ARM NEON is available on all AArch64 processors
-        let num_cores = 8; // Fallback to reasonable default
-        let (l1_cache, l2_cache, l3_cache) = Self::detect_cache_sizes();
-
-        CpuFeatures {
-            has_avx2: false,   // N/A for ARM
-            has_avx512: false, // N/A for ARM
-            has_fma: true,     // NEON supports FMA
-            has_avx512vl: false,
-            has_avx512dq: false,
-            has_avx512cd: false,
-            has_sse41: false, // N/A for ARM
-            has_sse42: false, // N/A for ARM
-            num_cores,
-            l1_cache_size: l1_cache,
-            l2_cache_size: l2_cache,
-            l3_cache_size: l3_cache,
-        }
-    }
-
-    /// Detect cache sizes (simplified implementation)
-    fn detect_cache_sizes() -> (usize, usize, usize) {
-        // This is a simplified implementation
-        // In practice, you would use CPUID or /proc/cpuinfo on Linux
-        let l1_cache = 32768; // 32KB typical L1
-        let l2_cache = 262144; // 256KB typical L2
-        let l3_cache = 8388608; // 8MB typical L3
-
-        (l1_cache, l2_cache, l3_cache)
     }
 
     /// Select the optimal SIMD variant based on CPU features
@@ -362,8 +288,9 @@ impl AdaptiveSimdDispatcher {
         target: usize,
         matrix: &[Complex64; 4],
     ) -> QuantRS2Result<()> {
-        // AVX-512 implementation using 512-bit vectors
-        simd_ops::apply_single_qubit_gate_simd(state, target, matrix)
+        // AVX-512 implementation using SciRS2 SIMD operations
+        // SciRS2 will automatically use AVX-512 if available
+        self.apply_single_qubit_simd_unified(state, target, matrix)
     }
 
     #[cfg(target_arch = "x86_64")]
@@ -373,8 +300,9 @@ impl AdaptiveSimdDispatcher {
         target: usize,
         matrix: &[Complex64; 4],
     ) -> QuantRS2Result<()> {
-        // AVX2 implementation using 256-bit vectors
-        simd_ops::apply_single_qubit_gate_simd(state, target, matrix)
+        // AVX2 implementation using SciRS2 SIMD operations
+        // SciRS2 will automatically use AVX2 if available
+        self.apply_single_qubit_simd_unified(state, target, matrix)
     }
 
     fn apply_single_qubit_sse4(
@@ -383,9 +311,9 @@ impl AdaptiveSimdDispatcher {
         target: usize,
         matrix: &[Complex64; 4],
     ) -> QuantRS2Result<()> {
-        // For now, fall back to scalar implementation
-        // TODO: Implement SIMD version
-        self.apply_single_qubit_scalar(state, target, matrix)
+        // SSE4 implementation using SciRS2 SIMD operations
+        // SciRS2 will automatically use SSE4 if available
+        self.apply_single_qubit_simd_unified(state, target, matrix)
     }
 
     fn apply_single_qubit_scalar(
@@ -405,6 +333,115 @@ impl AdaptiveSimdDispatcher {
                 state[j] = matrix[2] * temp0 + matrix[3] * temp1;
             }
         }
+        Ok(())
+    }
+
+    /// Apply single-qubit gate using SciRS2 unified SIMD operations
+    fn apply_single_qubit_simd_unified(
+        &self,
+        state: &mut [Complex64],
+        target: usize,
+        matrix: &[Complex64; 4],
+    ) -> QuantRS2Result<()> {
+        let qubit_mask = 1 << target;
+        let half_size = state.len() / 2;
+
+        // Collect pairs of indices that need to be processed
+        let mut idx0_list = Vec::new();
+        let mut idx1_list = Vec::new();
+
+        for i in 0..half_size {
+            let idx0 = (i & !(qubit_mask >> 1)) | ((i & (qubit_mask >> 1)) << 1);
+            let idx1 = idx0 | qubit_mask;
+
+            if idx1 < state.len() {
+                idx0_list.push(idx0);
+                idx1_list.push(idx1);
+            }
+        }
+
+        let pair_count = idx0_list.len();
+        if pair_count == 0 {
+            return Ok(());
+        }
+
+        // Extract amplitude pairs for SIMD processing
+        let mut a0_real = Vec::with_capacity(pair_count);
+        let mut a0_imag = Vec::with_capacity(pair_count);
+        let mut a1_real = Vec::with_capacity(pair_count);
+        let mut a1_imag = Vec::with_capacity(pair_count);
+
+        for i in 0..pair_count {
+            let a0 = state[idx0_list[i]];
+            let a1 = state[idx1_list[i]];
+            a0_real.push(a0.re);
+            a0_imag.push(a0.im);
+            a1_real.push(a1.re);
+            a1_imag.push(a1.im);
+        }
+
+        // Convert to array views for SciRS2 SIMD operations
+        let a0_real_view = ArrayView1::from(&a0_real);
+        let a0_imag_view = ArrayView1::from(&a0_imag);
+        let a1_real_view = ArrayView1::from(&a1_real);
+        let a1_imag_view = ArrayView1::from(&a1_imag);
+
+        // Extract matrix elements
+        let m00_re = matrix[0].re;
+        let m00_im = matrix[0].im;
+        let m01_re = matrix[1].re;
+        let m01_im = matrix[1].im;
+        let m10_re = matrix[2].re;
+        let m10_im = matrix[2].im;
+        let m11_re = matrix[3].re;
+        let m11_im = matrix[3].im;
+
+        // Compute new amplitudes using SciRS2 SIMD operations
+        // new_a0 = m00 * a0 + m01 * a1
+        // new_a1 = m10 * a0 + m11 * a1
+
+        // For new_a0_real: m00_re * a0_re - m00_im * a0_im + m01_re * a1_re - m01_im * a1_im
+        let term1 = <f64 as SimdF64>::simd_scalar_mul(&a0_real_view, m00_re);
+        let term2 = <f64 as SimdF64>::simd_scalar_mul(&a0_imag_view, m00_im);
+        let term3 = <f64 as SimdF64>::simd_scalar_mul(&a1_real_view, m01_re);
+        let term4 = <f64 as SimdF64>::simd_scalar_mul(&a1_imag_view, m01_im);
+        let sub1 = <f64 as SimdF64>::simd_sub_arrays(&term1.view(), &term2.view());
+        let sub2 = <f64 as SimdF64>::simd_sub_arrays(&term3.view(), &term4.view());
+        let new_a0_real_arr = <f64 as SimdF64>::simd_add_arrays(&sub1.view(), &sub2.view());
+
+        // For new_a0_imag: m00_re * a0_im + m00_im * a0_re + m01_re * a1_im + m01_im * a1_re
+        let term5 = <f64 as SimdF64>::simd_scalar_mul(&a0_imag_view, m00_re);
+        let term6 = <f64 as SimdF64>::simd_scalar_mul(&a0_real_view, m00_im);
+        let term7 = <f64 as SimdF64>::simd_scalar_mul(&a1_imag_view, m01_re);
+        let term8 = <f64 as SimdF64>::simd_scalar_mul(&a1_real_view, m01_im);
+        let add1 = <f64 as SimdF64>::simd_add_arrays(&term5.view(), &term6.view());
+        let add2 = <f64 as SimdF64>::simd_add_arrays(&term7.view(), &term8.view());
+        let new_a0_imag_arr = <f64 as SimdF64>::simd_add_arrays(&add1.view(), &add2.view());
+
+        // For new_a1_real: m10_re * a0_re - m10_im * a0_im + m11_re * a1_re - m11_im * a1_im
+        let term9 = <f64 as SimdF64>::simd_scalar_mul(&a0_real_view, m10_re);
+        let term10 = <f64 as SimdF64>::simd_scalar_mul(&a0_imag_view, m10_im);
+        let term11 = <f64 as SimdF64>::simd_scalar_mul(&a1_real_view, m11_re);
+        let term12 = <f64 as SimdF64>::simd_scalar_mul(&a1_imag_view, m11_im);
+        let sub3 = <f64 as SimdF64>::simd_sub_arrays(&term9.view(), &term10.view());
+        let sub4 = <f64 as SimdF64>::simd_sub_arrays(&term11.view(), &term12.view());
+        let new_a1_real_arr = <f64 as SimdF64>::simd_add_arrays(&sub3.view(), &sub4.view());
+
+        // For new_a1_imag: m10_re * a0_im + m10_im * a0_re + m11_re * a1_im + m11_im * a1_re
+        let term13 = <f64 as SimdF64>::simd_scalar_mul(&a0_imag_view, m10_re);
+        let term14 = <f64 as SimdF64>::simd_scalar_mul(&a0_real_view, m10_im);
+        let term15 = <f64 as SimdF64>::simd_scalar_mul(&a1_imag_view, m11_re);
+        let term16 = <f64 as SimdF64>::simd_scalar_mul(&a1_real_view, m11_im);
+        let add3 = <f64 as SimdF64>::simd_add_arrays(&term13.view(), &term14.view());
+        let add4 = <f64 as SimdF64>::simd_add_arrays(&term15.view(), &term16.view());
+        let new_a1_imag_arr = <f64 as SimdF64>::simd_add_arrays(&add3.view(), &add4.view());
+
+        // Write back results
+        for i in 0..pair_count {
+            state[idx0_list[i]] = Complex64::new(new_a0_real_arr[i], new_a0_imag_arr[i]);
+            state[idx1_list[i]] = Complex64::new(new_a1_real_arr[i], new_a1_imag_arr[i]);
+        }
+
         Ok(())
     }
 

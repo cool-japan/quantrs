@@ -179,7 +179,7 @@ impl CalibrationOptimizer {
         let mut optimized_gates: Vec<
             std::sync::Arc<dyn quantrs2_core::gate::GateOp + Send + Sync>,
         > = Vec::new();
-        let original_gates = circuit.gates().clone();
+        let original_gates = circuit.gates();
 
         for gate in original_gates.iter() {
             let qubits = gate.qubits();
@@ -284,7 +284,7 @@ impl CalibrationOptimizer {
         }
 
         // Strategy 2: Use faster gate implementations
-        let original_gates = circuit.gates().clone();
+        let original_gates = circuit.gates();
         for (i, gate) in original_gates.iter().enumerate() {
             let qubits = gate.qubits();
 
@@ -348,7 +348,7 @@ impl CalibrationOptimizer {
         calibration: &DeviceCalibration,
         decisions: &mut Vec<OptimizationDecision>,
     ) -> QuantRS2Result<()> {
-        let original_gates = circuit.gates().clone();
+        let original_gates = circuit.gates();
 
         for gate in original_gates.iter() {
             let qubits = gate.qubits();
@@ -495,7 +495,7 @@ impl CalibrationOptimizer {
         calibration: &DeviceCalibration,
         decisions: &mut Vec<OptimizationDecision>,
     ) -> QuantRS2Result<()> {
-        let original_gates = circuit.gates().clone();
+        let original_gates = circuit.gates();
 
         // Strategy 1: Analyze crosstalk patterns and identify problematic gate pairs
         let crosstalk_matrix = &calibration.crosstalk_matrix;
@@ -927,7 +927,7 @@ impl CalibrationOptimizer {
         // This would implement gate cancellation logic
         // e.g., H-H = I, X-X = I, consecutive rotations can be combined
 
-        let gates = circuit.gates().clone();
+        let gates = circuit.gates();
         let mut to_remove = Vec::new();
 
         // Look for consecutive identical Pauli gates
@@ -1065,7 +1065,6 @@ impl FidelityEstimator {
     }
 
     /// Helper methods for optimization strategies
-
     /// Try to decompose a gate into simpler components
     fn try_decompose_gate(&self, gate: &dyn GateOp) -> Option<Vec<Box<dyn GateOp>>> {
         // This would implement gate decomposition logic
@@ -1179,7 +1178,7 @@ impl FidelityEstimator {
         // This would implement gate cancellation logic
         // e.g., H-H = I, X-X = I, consecutive rotations can be combined
 
-        let gates = circuit.gates().clone();
+        let gates = circuit.gates();
         let mut to_remove = Vec::new();
 
         // Look for consecutive identical Pauli gates
@@ -1353,8 +1352,8 @@ mod tests {
 
         // Create a simple test circuit
         let mut circuit = Circuit::<2>::new();
-        circuit.h(QubitId(0));
-        circuit.cnot(QubitId(0), QubitId(1));
+        let _ = circuit.h(QubitId(0));
+        let _ = circuit.cnot(QubitId(0), QubitId(1));
 
         // Optimization should fail without calibration
         let result = optimizer.optimize_circuit(&circuit, "test_device");
@@ -1365,9 +1364,9 @@ mod tests {
     fn test_fidelity_estimator() {
         let estimator = FidelityEstimator::new();
         let mut circuit = Circuit::<3>::new();
-        circuit.h(QubitId(0));
-        circuit.cnot(QubitId(0), QubitId(1));
-        circuit.cnot(QubitId(1), QubitId(2));
+        let _ = circuit.h(QubitId(0));
+        let _ = circuit.cnot(QubitId(0), QubitId(1));
+        let _ = circuit.cnot(QubitId(1), QubitId(2));
 
         let fidelity = estimator.estimate_process_fidelity(&circuit).unwrap();
         assert!(fidelity > 0.0 && fidelity <= 1.0);

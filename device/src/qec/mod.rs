@@ -9,7 +9,18 @@ use std::hash::Hasher;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use quantrs2_circuit::prelude::*;
+// Import specific types to avoid naming conflicts
+use quantrs2_circuit::prelude::{
+    Circuit,
+    PerformanceAnalyzer,
+    PerformanceSnapshot,
+    PerformanceSummary,
+    ProfilerConfig as ProfilerConfiguration,
+    // Avoid importing StorageConfig, StorageBackend to prevent conflicts with local types
+    ProfilingReport,
+    ProfilingSession,
+    QuantumProfiler,
+};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
@@ -18,7 +29,7 @@ use quantrs2_core::{
 
 // SciRS2 dependencies for advanced error correction
 #[cfg(feature = "scirs2")]
-use scirs2_graph::{betweenness_centrality, closeness_centrality, shortest_path, Graph};
+use scirs2_graph::{betweenness_centrality, closeness_centrality, dijkstra_path, Graph};
 #[cfg(feature = "scirs2")]
 use scirs2_linalg::{det, eig, inv, matrix_norm, svd, LinalgError, LinalgResult};
 #[cfg(feature = "scirs2")]
@@ -27,7 +38,7 @@ use scirs2_optimize::{minimize, OptimizeResult};
 use scirs2_stats::{
     corrcoef,
     distributions::{chi2, exponential, gamma, norm, uniform},
-    ks_2samp, mannwhitneyu, mean, pearsonr, shapiro_wilk, spearmanr, std, ttest_1samp, ttest_ind,
+    ks_2samp, mann_whitney, mean, pearsonr, shapiro_wilk, spearmanr, std, ttest_1samp, ttest_ind,
     var, Alternative, TTestResult,
 };
 
@@ -100,8 +111,6 @@ pub mod adaptive;
 pub mod codes;
 pub mod detection;
 pub mod mitigation;
-
-use mitigation::FoldingConfig;
 
 // Additional trait definitions for test compatibility
 pub trait SyndromeDetector {
@@ -2311,7 +2320,7 @@ impl QuantumErrorCorrector {
         #[cfg(feature = "scirs2")]
         let mean_success = mean(&success_array.view()).unwrap_or(0.0);
         #[cfg(feature = "scirs2")]
-        let std_success = std(&success_array.view(), 1).unwrap_or(0.0);
+        let std_success = std(&success_array.view(), 1, None).unwrap_or(0.0);
 
         #[cfg(not(feature = "scirs2"))]
         let mean_success = fallback_scirs2::mean(&success_array.view()).unwrap_or(0.0);
@@ -2775,7 +2784,7 @@ impl QuantumErrorCorrector {
         error_stats: &ErrorStatistics,
     ) -> QuantRS2Result<CorrelationAnalysisData> {
         Ok(CorrelationAnalysisData {
-            correlation_matrix: Array2::eye(3),
+            correlationmatrix: Array2::eye(3),
             significant_correlations: vec![("error_1".to_string(), "error_2".to_string(), 0.6)],
         })
     }
@@ -2935,7 +2944,7 @@ pub struct TrendAnalysisData {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CorrelationAnalysisData {
-    pub correlation_matrix: Array2<f64>,
+    pub correlationmatrix: Array2<f64>,
     pub significant_correlations: Vec<(String, String, f64)>,
 }
 
@@ -3722,7 +3731,7 @@ pub struct QECMonitoringConfig {
     pub alerting: MonitoringAlertingConfig,
 }
 
-/// QEC optimization configuration  
+/// QEC optimization configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QECOptimizationConfig {
     pub enable_code_optimization: bool,

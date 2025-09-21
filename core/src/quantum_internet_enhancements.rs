@@ -765,7 +765,7 @@ pub struct CodingScheme {
 }
 
 /// Latency model
-#[derive(Debug, Clone)]  
+#[derive(Debug, Clone)]
 pub struct LatencyModel {
     /// Model name
     pub name: String,
@@ -870,13 +870,13 @@ impl AdvancedSatelliteConstellation {
     pub fn calculate_global_coverage(&self, timestamp: DateTime<Utc>) -> Result<GlobalCoverageAnalysis> {
         let mut regional_coverage = HashMap::new();
         let mut coverage_gaps = Vec::new();
-        
+
         // Define major regions for analysis
         let regions = self.define_analysis_regions();
-        
+
         for region in regions {
             let coverage = self.calculate_regional_coverage(&region, timestamp)?;
-            
+
             if coverage.coverage_percentage < 95.0 {
                 coverage_gaps.push(CoverageGap {
                     geographic_bounds: region.bounds.clone(),
@@ -888,7 +888,7 @@ impl AdvancedSatelliteConstellation {
                     ),
                 });
             }
-            
+
             regional_coverage.insert(region.name.clone(), coverage);
         }
 
@@ -945,7 +945,7 @@ impl AdvancedSatelliteConstellation {
     fn calculate_regional_coverage(&self, region: &AnalysisRegion, timestamp: DateTime<Utc>) -> Result<RegionalCoverage> {
         // Get satellite positions at the specified time
         let satellite_positions = self.orbital_propagator.propagate_constellation(timestamp)?;
-        
+
         // Calculate visibility for grid points in the region
         let grid_points = self.generate_coverage_grid(&region.bounds);
         let mut covered_points = 0;
@@ -955,14 +955,14 @@ impl AdvancedSatelliteConstellation {
 
         for point in &grid_points {
             let visible_satellites = self.find_visible_satellites(point, &satellite_positions)?;
-            
+
             if !visible_satellites.is_empty() {
                 covered_points += 1;
-                
+
                 // Find best satellite for this point
                 let best_satellite = self.select_best_satellite(point, &visible_satellites)?;
                 available_satellites.insert(best_satellite.satellite_id);
-                
+
                 total_link_quality += best_satellite.link_quality;
                 total_latency += best_satellite.latency;
             }
@@ -997,7 +997,7 @@ impl AdvancedSatelliteConstellation {
     fn generate_coverage_grid(&self, bounds: &GeographicBounds) -> Vec<GridPoint> {
         let mut grid_points = Vec::new();
         let resolution = self.coverage_calculator.grid_resolution;
-        
+
         let mut lat = bounds.min_latitude;
         while lat <= bounds.max_latitude {
             let mut lon = bounds.min_longitude;
@@ -1011,21 +1011,21 @@ impl AdvancedSatelliteConstellation {
             }
             lat += resolution;
         }
-        
+
         grid_points
     }
 
     /// Find visible satellites from a ground point
     fn find_visible_satellites(&self, point: &GridPoint, satellite_positions: &HashMap<SatelliteId, SatelliteState>) -> Result<Vec<VisibleSatellite>> {
         let mut visible_satellites = Vec::new();
-        
+
         for (satellite_id, state) in satellite_positions {
             let elevation_angle = self.calculate_elevation_angle(point, state)?;
-            
+
             if elevation_angle >= self.coverage_calculator.min_elevation_angle {
                 let link_quality = self.calculate_link_quality(point, state)?;
                 let latency = self.calculate_latency(point, state)?;
-                
+
                 if link_quality >= self.coverage_calculator.quality_thresholds.min_link_quality {
                     visible_satellites.push(VisibleSatellite {
                         satellite_id: *satellite_id,
@@ -1036,7 +1036,7 @@ impl AdvancedSatelliteConstellation {
                 }
             }
         }
-        
+
         Ok(visible_satellites)
     }
 
@@ -1044,23 +1044,23 @@ impl AdvancedSatelliteConstellation {
     fn calculate_elevation_angle(&self, point: &GridPoint, satellite_state: &SatelliteState) -> Result<f64> {
         // Convert geographic coordinates to ECEF
         let ground_ecef = self.geographic_to_ecef(point.latitude, point.longitude, point.altitude);
-        
+
         // Calculate range vector from ground to satellite
         let range_vector = [
             satellite_state.position[0] - ground_ecef[0],
             satellite_state.position[1] - ground_ecef[1],
             satellite_state.position[2] - ground_ecef[2],
         ];
-        
+
         // Calculate local up vector at ground point
         let up_vector = self.calculate_up_vector(point)?;
-        
+
         // Calculate elevation angle
         let range_magnitude = (range_vector[0].powi(2) + range_vector[1].powi(2) + range_vector[2].powi(2)).sqrt();
         let dot_product = range_vector[0] * up_vector[0] + range_vector[1] * up_vector[1] + range_vector[2] * up_vector[2];
-        
+
         let elevation_angle = (dot_product / range_magnitude).asin().to_degrees();
-        
+
         Ok(elevation_angle)
     }
 
@@ -1068,16 +1068,16 @@ impl AdvancedSatelliteConstellation {
     fn geographic_to_ecef(&self, latitude: f64, longitude: f64, altitude: f64) -> [f64; 3] {
         let lat_rad = latitude.to_radians();
         let lon_rad = longitude.to_radians();
-        
+
         let a = 6378137.0; // WGS84 semi-major axis
         let e2 = 0.00669437999014; // WGS84 first eccentricity squared
-        
+
         let n = a / (1.0 - e2 * lat_rad.sin().powi(2)).sqrt();
-        
+
         let x = (n + altitude) * lat_rad.cos() * lon_rad.cos();
         let y = (n + altitude) * lat_rad.cos() * lon_rad.sin();
         let z = (n * (1.0 - e2) + altitude) * lat_rad.sin();
-        
+
         [x, y, z]
     }
 
@@ -1085,7 +1085,7 @@ impl AdvancedSatelliteConstellation {
     fn calculate_up_vector(&self, point: &GridPoint) -> Result<[f64; 3]> {
         let ecef = self.geographic_to_ecef(point.latitude, point.longitude, point.altitude);
         let magnitude = (ecef[0].powi(2) + ecef[1].powi(2) + ecef[2].powi(2)).sqrt();
-        
+
         Ok([
             ecef[0] / magnitude,
             ecef[1] / magnitude,
@@ -1097,13 +1097,13 @@ impl AdvancedSatelliteConstellation {
     fn calculate_link_quality(&self, point: &GridPoint, satellite_state: &SatelliteState) -> Result<f64> {
         // Simplified link quality calculation
         // In reality, this would include path loss, atmospheric effects, etc.
-        
+
         let distance = self.calculate_distance(point, satellite_state)?;
         let free_space_loss = 20.0 * (distance / 1000.0).log10() + 20.0 * (2.4e9 / 1e6).log10() - 147.55; // dB
-        
+
         // Normalize to 0-1 scale (higher is better)
         let link_quality = 1.0 / (1.0 + (-free_space_loss / 100.0).exp());
-        
+
         Ok(link_quality)
     }
 
@@ -1111,23 +1111,23 @@ impl AdvancedSatelliteConstellation {
     fn calculate_latency(&self, point: &GridPoint, satellite_state: &SatelliteState) -> Result<Duration> {
         let distance = self.calculate_distance(point, satellite_state)?;
         let speed_of_light = 299_792_458.0; // m/s
-        
+
         let latency_seconds = (distance * 1000.0) / speed_of_light; // Convert km to m
         let latency_millis = (latency_seconds * 1000.0) as u64;
-        
+
         Ok(Duration::from_millis(latency_millis))
     }
 
     /// Calculate distance from ground point to satellite
     fn calculate_distance(&self, point: &GridPoint, satellite_state: &SatelliteState) -> Result<f64> {
         let ground_ecef = self.geographic_to_ecef(point.latitude, point.longitude, point.altitude);
-        
+
         let dx = satellite_state.position[0] - ground_ecef[0];
         let dy = satellite_state.position[1] - ground_ecef[1];
         let dz = satellite_state.position[2] - ground_ecef[2];
-        
+
         let distance = (dx.powi(2) + dy.powi(2) + dz.powi(2)).sqrt();
-        
+
         Ok(distance)
     }
 
@@ -1155,7 +1155,7 @@ impl AdvancedSatelliteConstellation {
     /// Generate coverage recommendations
     fn generate_coverage_recommendations(&self, region: &AnalysisRegion, coverage: &RegionalCoverage) -> Vec<CoverageRecommendation> {
         let mut recommendations = Vec::new();
-        
+
         if coverage.coverage_percentage < 75.0 {
             recommendations.push(CoverageRecommendation::AdditionalSatellites {
                 count: ((75.0 - coverage.coverage_percentage) / 10.0).ceil() as usize,
@@ -1169,7 +1169,7 @@ impl AdvancedSatelliteConstellation {
                 },
             });
         }
-        
+
         if coverage.available_satellites < 3 {
             recommendations.push(CoverageRecommendation::GroundStations {
                 locations: vec![
@@ -1182,7 +1182,7 @@ impl AdvancedSatelliteConstellation {
                 ],
             });
         }
-        
+
         recommendations
     }
 
@@ -1190,7 +1190,7 @@ impl AdvancedSatelliteConstellation {
     fn calculate_overall_coverage_percentage(&self, regional_coverage: &HashMap<String, RegionalCoverage>) -> f64 {
         let total_population: u64 = regional_coverage.values().map(|r| r.population_covered).sum();
         let total_regional_population: u64 = 7_800_000_000; // Approximate world population
-        
+
         (total_population as f64 / total_regional_population as f64) * 100.0
     }
 
@@ -1200,20 +1200,20 @@ impl AdvancedSatelliteConstellation {
         let mut latencies = Vec::new();
         let mut total_quality = 0.0;
         let region_count = regional_coverage.len();
-        
+
         for coverage in regional_coverage.values() {
             total_latency += coverage.average_latency;
             latencies.push(coverage.average_latency);
             total_quality += coverage.average_link_quality;
         }
-        
+
         let average_global_latency = total_latency / region_count as u32;
-        
+
         // Calculate 99th percentile latency
         latencies.sort();
         let percentile_99_index = ((latencies.len() as f64) * 0.99) as usize;
         let latency_99th_percentile = latencies[percentile_99_index.min(latencies.len() - 1)];
-        
+
         Ok(CoveragePerformanceMetrics {
             average_global_latency,
             latency_99th_percentile,
@@ -1267,12 +1267,12 @@ impl OrbitalPropagator {
     /// Propagate entire constellation to a specific time
     pub fn propagate_constellation(&self, timestamp: DateTime<Utc>) -> Result<HashMap<SatelliteId, SatelliteState>> {
         let mut constellation_state = HashMap::new();
-        
+
         for (satellite_id, elements) in &self.satellite_elements {
             let state = self.propagate_satellite(*satellite_id, timestamp)?;
             constellation_state.insert(*satellite_id, state);
         }
-        
+
         Ok(constellation_state)
     }
 
@@ -1282,34 +1282,34 @@ impl OrbitalPropagator {
             .ok_or_else(|| QuantumInternetEnhancementError::OrbitalMechanicsFailed(
                 format!("Satellite {} not found", satellite_id)
             ))?;
-            
+
         // Calculate time since epoch
         let time_since_epoch = timestamp.signed_duration_since(elements.epoch);
         let dt = time_since_epoch.num_seconds() as f64;
-        
+
         // Simplified Keplerian propagation (in reality, would use SGP4/SDP4)
         let n = (self.mu / elements.semi_major_axis.powi(3)).sqrt(); // Mean motion
         let mean_anomaly = elements.mean_anomaly.to_radians() + n * dt;
-        
+
         // Solve Kepler's equation (simplified - no iterative solution)
         let eccentric_anomaly = mean_anomaly + elements.eccentricity * mean_anomaly.sin();
-        
+
         // True anomaly
-        let true_anomaly = 2.0 * ((1.0 + elements.eccentricity).sqrt() * (eccentric_anomaly / 2.0).tan() / 
+        let true_anomaly = 2.0 * ((1.0 + elements.eccentricity).sqrt() * (eccentric_anomaly / 2.0).tan() /
                                   (1.0 - elements.eccentricity).sqrt()).atan();
-        
+
         // Distance from Earth center
         let r = elements.semi_major_axis * (1.0 - elements.eccentricity * eccentric_anomaly.cos());
-        
+
         // Position in orbital plane
         let x_orbital = r * true_anomaly.cos();
         let y_orbital = r * true_anomaly.sin();
-        
+
         // Convert to Earth-centered inertial coordinates
         let inclination_rad = elements.inclination.to_radians();
         let raan_rad = elements.longitude_of_ascending_node.to_radians();
         let arg_perigee_rad = elements.argument_of_perigee.to_radians();
-        
+
         // Rotation matrices
         let cos_i = inclination_rad.cos();
         let sin_i = inclination_rad.sin();
@@ -1317,25 +1317,25 @@ impl OrbitalPropagator {
         let sin_raan = raan_rad.sin();
         let cos_arg = arg_perigee_rad.cos();
         let sin_arg = arg_perigee_rad.sin();
-        
+
         // Transform to ECI coordinates
         let position = [
-            x_orbital * (cos_raan * cos_arg - sin_raan * sin_arg * cos_i) - 
+            x_orbital * (cos_raan * cos_arg - sin_raan * sin_arg * cos_i) -
             y_orbital * (cos_raan * sin_arg + sin_raan * cos_arg * cos_i),
-            
-            x_orbital * (sin_raan * cos_arg + cos_raan * sin_arg * cos_i) - 
+
+            x_orbital * (sin_raan * cos_arg + cos_raan * sin_arg * cos_i) -
             y_orbital * (sin_raan * sin_arg - cos_raan * cos_arg * cos_i),
-            
+
             x_orbital * (sin_arg * sin_i) + y_orbital * (cos_arg * sin_i),
         ];
-        
+
         // Simplified velocity calculation
         let velocity = [
             -n * elements.semi_major_axis * mean_anomaly.sin(),
             n * elements.semi_major_axis * mean_anomaly.cos(),
             0.0,
         ];
-        
+
         Ok(SatelliteState {
             position,
             velocity,
@@ -1468,29 +1468,29 @@ impl CollisionAvoidanceSystem {
     }
 
     /// Assess collision risk between two satellites
-    pub fn assess_collision_risk(&mut self, sat1: SatelliteId, sat2: SatelliteId, 
+    pub fn assess_collision_risk(&mut self, sat1: SatelliteId, sat2: SatelliteId,
                                  state1: &SatelliteState, state2: &SatelliteState) -> Result<CollisionRisk> {
         // Simplified collision risk assessment
         let distance = self.calculate_distance_between_satellites(state1, state2)?;
-        
+
         let risk_level = match distance {
             d if d < 1.0 => RiskLevel::Critical,
             d if d < 5.0 => RiskLevel::High,
             d if d < 20.0 => RiskLevel::Medium,
             _ => RiskLevel::Low,
         };
-        
+
         let probability = 1.0 / (1.0 + distance); // Simplified probability model
-        
+
         let risk = CollisionRisk {
             probability,
             closest_approach_time: state1.timestamp, // Simplified
             minimum_distance: distance,
             risk_level,
         };
-        
+
         self.risk_assessments.insert((sat1, sat2), risk.clone());
-        
+
         Ok(risk)
     }
 
@@ -1499,7 +1499,7 @@ impl CollisionAvoidanceSystem {
         let dx = state1.position[0] - state2.position[0];
         let dy = state1.position[1] - state2.position[1];
         let dz = state1.position[2] - state2.position[2];
-        
+
         Ok((dx.powi(2) + dy.powi(2) + dz.powi(2)).sqrt())
     }
 }
@@ -1518,16 +1518,16 @@ impl LinkBudgetOptimizer {
     pub fn optimize_link(&self, conditions: &LinkConditions) -> Result<OptimizationResult> {
         // Simplified link optimization
         let mut optimized_power = self.link_parameters.transmit_power;
-        
+
         // Adjust power based on distance and atmospheric conditions
         if conditions.distance > 2000.0 {
             optimized_power *= 1.5; // Increase power for long distances
         }
-        
+
         if conditions.weather_factor < 0.8 {
             optimized_power *= 1.2; // Increase power for bad weather
         }
-        
+
         Ok(OptimizationResult {
             optimized_transmit_power: optimized_power,
             expected_throughput: self.calculate_expected_throughput(optimized_power, conditions)?,
@@ -1549,7 +1549,7 @@ impl LinkBudgetOptimizer {
         let speed_of_light = 299_792_458.0; // m/s
         let propagation_delay = (conditions.distance * 1000.0) / speed_of_light;
         let processing_delay = 0.001; // 1ms processing delay
-        
+
         let total_delay = propagation_delay + processing_delay;
         Ok(Duration::from_secs_f64(total_delay))
     }
@@ -1579,11 +1579,11 @@ impl LinkBudgetParameters {
         let mut antenna_gains = HashMap::new();
         antenna_gains.insert("satellite".to_string(), 30.0); // dBi
         antenna_gains.insert("ground_station".to_string(), 40.0); // dBi
-        
+
         let mut noise_temperatures = HashMap::new();
         noise_temperatures.insert("satellite".to_string(), 300.0); // K
         noise_temperatures.insert("ground_station".to_string(), 150.0); // K
-        
+
         Self {
             transmit_power: 10.0, // Watts
             antenna_gains,

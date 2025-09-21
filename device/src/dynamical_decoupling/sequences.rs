@@ -891,7 +891,7 @@ impl MultiQubitDDCoordinator {
         Ok(base)
     }
 
-    /// Generate adaptive DD sequence  
+    /// Generate adaptive DD sequence
     fn generate_adaptive_sequence(
         target_qubits: &[QubitId],
         duration: f64,

@@ -2536,7 +2536,7 @@ pub struct StatisticalTest {
 /// Correlation analysis
 #[derive(Debug, Clone)]
 pub struct CorrelationAnalysis {
-    pub correlation_matrix: Vec<Vec<f64>>,
+    pub correlationmatrix: Vec<Vec<f64>>,
     pub variable_names: Vec<String>,
     pub significant_correlations: Vec<(String, String, f64)>,
 }

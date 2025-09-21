@@ -1908,19 +1908,7 @@ pub enum ImpactSeverity {
     Severe,
 }
 
-// Stub implementations for supporting components
-macro_rules! impl_new_for_monitoring_types {
-    ($($type:ty),*) => {
-        $(
-            impl $type {
-                pub fn new(_config: &impl std::fmt::Debug) -> Self {
-                    // Return a placeholder implementation instead of unsafe zeroed memory
-                    todo!("Implement proper initialization for {}", stringify!($type))
-                }
-            }
-        )*
-    };
-}
+// Stub implementations for supporting components are provided individually
 
 // Individual implementations for monitoring types
 impl RealTimeMetricsCollector {

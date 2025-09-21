@@ -7,11 +7,12 @@ members = [
     "anneal",
     "device",
     "ml",
-    "tytan",  # Re-enabled after resolving dependency conflicts
+    "tytan", 
     "py",
     "examples",
-    "simengine-sys",
-    "simengine-rs",
+    "quantrs2-symengine-sys",
+    "quantrs2-symengine",
+    "quantrs2",
 ]
 exclude = [
     "symengine-fork",
@@ -23,23 +24,38 @@ exclude-members = ["py", "examples"]
 
 
 [workspace.lints.rust]
-nonstandard_style = "warn"
-missing_debug_implementations = "warn"
-missing_docs = "warn"
+nonstandard_style = { level = "warn", priority = -1 }
+missing_debug_implementations = "allow"
+missing_docs = "allow"
 rust_2018_idioms = { level = "deny", priority = -1 }
+unused_imports = "allow"
+dead_code = "allow"
+unused_variables = "allow"
+unused_assignments = "allow"
+unused_mut = "allow"
+deprecated = "allow"
+ambiguous_glob_reexports = "allow"
+private_bounds = "allow"
+elided_lifetimes_in_paths = "allow"
+private_interfaces = "allow"
 
 [workspace.lints.clippy]
 enum_glob_use = "warn"
-pedantic = "warn"
-nursery = "warn"
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
 unwrap_used = "warn"
 cast_possible_truncation = "warn"
 cast_sign_loss = "warn"
 cast_possible_wrap = "warn"
 dbg_macro = "warn"
+missing_docs_in_private_items = "allow"
+ambiguous_glob_reexports = "allow"
+fn_address_comparisons = "allow"
+elided_lifetimes_in_paths = "allow"
+ptr_eq = "allow"
 
 [workspace.package]
-version = "0.1.0-alpha.5"
+version = "0.1.0-beta.1"
 authors = ["QuantRS2 Contributors"]
 edition = "2021"
 rust-version = "1.86.0"
@@ -50,17 +66,17 @@ categories = ["science", "simulation"]
 
 [workspace.dependencies]
 # Core quantum computing dependencies
-quantrs2-core = { path = "core", version = "0.1.0-alpha.5" }
-quantrs2-circuit = { path = "circuit", version = "0.1.0-alpha.5" }
-quantrs2-sim = { path = "sim", version = "0.1.0-alpha.5" }
-quantrs2-anneal = { path = "anneal", version = "0.1.0-alpha.5" }
-quantrs2-device = { path = "device", version = "0.1.0-alpha.5" }
-quantrs2-ml = { path = "ml", version = "0.1.0-alpha.5" }
-quantrs2-tytan = { path = "tytan", version = "0.1.0-alpha.5" }
+quantrs2-core = { path = "core", version = "0.1.0-beta.1" }
+quantrs2-circuit = { path = "circuit", version = "0.1.0-beta.1" }
+quantrs2-sim = { path = "sim", version = "0.1.0-beta.1" }
+quantrs2-anneal = { path = "anneal", version = "0.1.0-beta.1" }
+quantrs2-device = { path = "device", version = "0.1.0-beta.1" }
+quantrs2-ml = { path = "ml", version = "0.1.0-beta.1" }
+quantrs2-tytan = { path = "tytan", version = "0.1.0-beta.1" }
 
 # Common math and linear algebra dependencies
 num-complex = "0.4.6"
-ndarray = { version = "0.16.1", features = ["rayon"] }
+ndarray = { version = "0.16.1", features = ["rayon", "serde"] }
 nalgebra = "0.33.2"
 ndarray-linalg = { version = "0.17", default-features = false, features = ["openblas-system"] }
 ndarray-rand = "0.15"
@@ -72,11 +88,14 @@ num = "0.4"
 approx = "0.5"
 wide = "0.7.32"
 
-# SciRS2 ecosystem dependencies
-scirs2-core = { version = "0.1.0-alpha.4", default-features = false }
-scirs2-optimize = { version = "0.1.0-alpha.4", default-features = false }
-scirs2-linalg = { version = "0.1.0-alpha.4", default-features = false }
-scirs2-sparse = { version = "0.1.0-alpha.4" }
+# SciRS2 ecosystem dependencies - Using published beta.2 version
+scirs2-core = { version = "0.1.0-beta.2", default-features = false, features = ["parallel", "simd", "cache", "memory_management", "profiling", "validation", "types"] }
+scirs2-optimize = { version = "0.1.0-beta.2", default-features = false }
+scirs2-linalg = { version = "0.1.0-beta.2", default-features = false }
+scirs2-sparse = { version = "0.1.0-beta.2" }
+scirs2-stats = { version = "0.1.0-beta.2", default-features = false }
+scirs2-graph = { version = "0.1.0-beta.2", default-features = false }
+scirs2-cluster = { version = "0.1.0-beta.2" }
 
 # Performance and parallel computing
 rayon = "1.10.0"
@@ -84,17 +103,17 @@ smallvec = { version = "1.15", features = ["const_generics"] }
 rustc-hash = "2.1"
 fastrand = "2.3.0"
 num_cpus = "1.17.0"
-dashmap = "5.5"
+dashmap = "6.1"
 half = { version = "2.6", features = ["num-traits"] }
 
 # Error handling
 thiserror = "2.0.12"
 
 # Random number generation
-rand = "0.9.1"
+rand = "0.9.2"
 rand_chacha = "0.9.0"  
 rand_distr = "0.5"
-rand_xoshiro = "0.6"
+rand_xoshiro = "0.7"
 
 # Serialization and data formats
 serde = { version = "1.0", features = ["derive"] }
@@ -125,6 +144,9 @@ chrono = { version = "0.4", features = ["serde"] }
 regex = "1.11.1"
 colored = "2.2"
 tempfile = "3.0"
+petgraph = "0.8"
+pest = "2.7"
+pest_derive = "2.7"
 
 # Cryptographic functions
 hmac = "0.12.1"
@@ -132,8 +154,8 @@ sha2 = "0.10.9"
 hex = "0.4.3"
 
 # Symbolic computation (local workspace versions)
-quantrs2-symengine = { path = "simengine-rs", version = "0.1.0-alpha.5" }
-quantrs2-symengine-sys = { path = "simengine-sys", version = "0.1.0-alpha.5" }
+quantrs2-symengine = { path = "quantrs2-symengine", version = "0.1.0-beta.1" }
+quantrs2-symengine-sys = { path = "quantrs2-symengine-sys", version = "0.1.0-beta.1" }
 
 # Advanced math libraries
 ndrustfft = "0.5"
@@ -143,8 +165,11 @@ nalgebra-sparse = "0.9"
 # Visualization and plotting
 plotters = "0.3"
 
+# System information
+sysinfo = "0.33"
+
 # Development and testing
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.7", features = ["html_reports"] }
 
 [profile.release]
 lto = "thin"

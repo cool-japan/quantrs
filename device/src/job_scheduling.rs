@@ -29,7 +29,7 @@ use crate::{
 
 // SciRS2 dependencies for optimization algorithms
 #[cfg(feature = "scirs2")]
-use scirs2_graph::{minimum_spanning_tree, shortest_path, Graph};
+use scirs2_graph::{dijkstra_path, minimum_spanning_tree, Graph};
 #[cfg(feature = "scirs2")]
 use scirs2_optimize::{minimize, OptimizeResult};
 #[cfg(feature = "scirs2")]
@@ -1418,7 +1418,7 @@ impl QuantumJobScheduler {
                 use ndarray::Array1;
                 let data_array = Array1::from_vec(performance_data);
                 let avg_utilization = mean(&data_array.view());
-                let utilization_std = std(&data_array.view(), 1);
+                let utilization_std = std(&data_array.view(), 1, None);
 
                 // TODO: Implement more sophisticated SciRS2 optimization
                 // This could include:

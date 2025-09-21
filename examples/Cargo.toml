@@ -295,3 +295,6 @@ required-features = []
 name = "ultrathink_simple_demo"
 path = "src/bin/ultrathink_simple_demo.rs"
 required-features = []
+
+[lints]
+workspace = true

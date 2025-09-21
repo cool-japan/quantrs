@@ -33,7 +33,7 @@
 To build with GPU support, run:
 
 ```bash
-cd /Users/kitasan/work/quantrs/py
+cd $quantrs/py
 ./build_with_gpu.sh
 ```
 

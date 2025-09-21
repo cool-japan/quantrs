@@ -352,23 +352,23 @@ impl QuantumInternetStack {
         let routing_layer = Arc::new(RwLock::new(
             QuantumRoutingLayer::new(&config.routing_config).await?
         ));
-        
+
         let transport_layer = Arc::new(RwLock::new(
             QuantumTransportLayer::new(&config.transport_config).await?
         ));
-        
+
         let session_layer = Arc::new(RwLock::new(
             QuantumSessionLayer::new().await?
         ));
-        
+
         let application_layer = Arc::new(RwLock::new(
             QuantumApplicationLayer::new(&config.application_config).await?
         ));
-        
+
         let security_layer = Arc::new(RwLock::new(
             QuantumSecurityLayer::new(&config.security_config).await?
         ));
-        
+
         Ok(Self {
             routing_layer,
             transport_layer,
@@ -380,7 +380,7 @@ impl QuantumInternetStack {
             stats: Arc::new(RwLock::new(QuantumProtocolStats::default())),
         })
     }
-    
+
     /// Initialize the quantum internet stack
     pub async fn initialize(&self) -> DeviceResult<()> {
         // Initialize all layers
@@ -389,14 +389,14 @@ impl QuantumInternetStack {
         self.session_layer.write().await.initialize().await?;
         self.application_layer.write().await.initialize().await?;
         self.security_layer.write().await.initialize().await?;
-        
+
         Ok(())
     }
-    
+
     /// Establish a quantum connection
     pub async fn connect(&self, destination: &str, connection_type: ConnectionType) -> DeviceResult<String> {
         let connection_id = Uuid::new_v4().to_string();
-        
+
         // Create quantum connection
         let connection = QuantumConnection {
             connection_id: connection_id.clone(),
@@ -436,29 +436,29 @@ impl QuantumInternetStack {
             created_at: SystemTime::now(),
             last_activity: SystemTime::now(),
         };
-        
+
         // Establish routing
         self.routing_layer.write().await.establish_route(&connection_id, destination).await?;
-        
+
         // Setup transport layer
         self.transport_layer.write().await.create_connection(&connection_id).await?;
-        
+
         // Initialize security
         self.security_layer.write().await.setup_security_context(&connection_id).await?;
-        
+
         // Store connection
         self.connections.write().await.insert(connection_id.clone(), connection);
-        
+
         // Update statistics
         {
             let mut stats = self.stats.write().await;
             stats.total_connections += 1;
             stats.active_connections += 1;
         }
-        
+
         Ok(connection_id)
     }
-    
+
     /// Send quantum data
     pub async fn send_quantum_data(&self, connection_id: &str, data: QuantumData) -> DeviceResult<()> {
         // Get connection
@@ -468,13 +468,13 @@ impl QuantumInternetStack {
                 .ok_or_else(|| DeviceError::InvalidInput(format!("Connection {} not found", connection_id)))?
                 .clone()
         };
-        
+
         // Process through layers
         let processed_data = self.application_layer.read().await.process_outgoing_data(data).await?;
         let secured_data = self.security_layer.read().await.encrypt_data(processed_data).await?;
         let transported_data = self.transport_layer.read().await.send_data(&connection.connection_id, secured_data).await?;
         self.routing_layer.read().await.route_data(&connection.destination_node, transported_data).await?;
-        
+
         // Update connection activity
         {
             let mut connections = self.connections.write().await;
@@ -482,10 +482,10 @@ impl QuantumInternetStack {
                 conn.last_activity = SystemTime::now();
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Receive quantum data
     pub async fn receive_quantum_data(&self, connection_id: &str) -> DeviceResult<QuantumData> {
         // Simulate receiving data through the protocol stack
@@ -493,17 +493,17 @@ impl QuantumInternetStack {
         let transported_data = self.transport_layer.read().await.receive_data(&connection_id, raw_data).await?;
         let decrypted_data = self.security_layer.read().await.decrypt_data(transported_data).await?;
         let processed_data = self.application_layer.read().await.process_incoming_data(decrypted_data).await?;
-        
+
         Ok(processed_data)
     }
-    
+
     /// Distribute entanglement
     pub async fn distribute_entanglement(&self, connection_id: &str, num_pairs: usize) -> DeviceResult<Vec<String>> {
         let mut entanglement_ids = Vec::new();
-        
+
         for _ in 0..num_pairs {
             let entanglement_id = Uuid::new_v4().to_string();
-            
+
             // Create entanglement resource
             let resource = EntanglementResource {
                 resource_id: entanglement_id.clone(),
@@ -513,7 +513,7 @@ impl QuantumInternetStack {
                 created_at: SystemTime::now(),
                 reserved: false,
             };
-            
+
             // Add to connection
             {
                 let mut connections = self.connections.write().await;
@@ -522,19 +522,19 @@ impl QuantumInternetStack {
                     connection.quantum_state.entangled_pairs += 1;
                 }
             }
-            
+
             entanglement_ids.push(entanglement_id);
         }
-        
+
         // Update statistics
         {
             let mut stats = self.stats.write().await;
             stats.total_entangled_pairs += num_pairs;
         }
-        
+
         Ok(entanglement_ids)
     }
-    
+
     /// Perform quantum teleportation
     pub async fn teleport_quantum_state(&self, connection_id: &str, state: QuantumState) -> DeviceResult<TeleportationResult> {
         // Check if entanglement is available
@@ -546,28 +546,28 @@ impl QuantumInternetStack {
                 false
             }
         };
-        
+
         if !entanglement_available {
             return Err(DeviceError::InvalidInput("No entanglement resources available".to_string()));
         }
-        
+
         // Perform Bell measurement
         let measurement_result = self.perform_bell_measurement(&state).await?;
-        
+
         // Send classical information
         let classical_data = ClassicalData {
             measurement_result: measurement_result.clone(),
             correction_operations: vec!["X".to_string(), "Z".to_string()],
         };
-        
+
         self.send_classical_data(connection_id, classical_data).await?;
-        
+
         // Update statistics
         {
             let mut stats = self.stats.write().await;
             stats.successful_teleportations += 1;
         }
-        
+
         Ok(TeleportationResult {
             success: true,
             fidelity: 0.95,
@@ -575,21 +575,21 @@ impl QuantumInternetStack {
             teleportation_time: Duration::from_millis(10),
         })
     }
-    
+
     /// Get connection statistics
     pub async fn get_connection_stats(&self, connection_id: &str) -> DeviceResult<ConnectionMetrics> {
         let connections = self.connections.read().await;
         let connection = connections.get(connection_id)
             .ok_or_else(|| DeviceError::InvalidInput(format!("Connection {} not found", connection_id)))?;
-        
+
         Ok(connection.performance_metrics.clone())
     }
-    
+
     /// Get protocol statistics
     pub async fn get_protocol_stats(&self) -> QuantumProtocolStats {
         self.stats.read().await.clone()
     }
-    
+
     /// Disconnect and cleanup
     pub async fn disconnect(&self, connection_id: &str) -> DeviceResult<()> {
         // Remove connection
@@ -597,21 +597,21 @@ impl QuantumInternetStack {
             let mut connections = self.connections.write().await;
             connections.remove(connection_id);
         }
-        
+
         // Cleanup layers
         self.transport_layer.write().await.cleanup_connection(connection_id).await?;
         self.routing_layer.write().await.cleanup_route(connection_id).await?;
         self.security_layer.write().await.cleanup_security_context(connection_id).await?;
-        
+
         // Update statistics
         {
             let mut stats = self.stats.write().await;
             stats.active_connections = stats.active_connections.saturating_sub(1);
         }
-        
+
         Ok(())
     }
-    
+
     /// Shutdown the quantum internet stack
     pub async fn shutdown(&self) -> DeviceResult<()> {
         // Shutdown all layers
@@ -620,13 +620,13 @@ impl QuantumInternetStack {
         self.session_layer.write().await.shutdown().await?;
         self.transport_layer.write().await.shutdown().await?;
         self.routing_layer.write().await.shutdown().await?;
-        
+
         // Clear connections
         self.connections.write().await.clear();
-        
+
         Ok(())
     }
-    
+
     // Helper methods
     async fn perform_bell_measurement(&self, _state: &QuantumState) -> DeviceResult<MeasurementResult> {
         // Simulate Bell measurement
@@ -636,7 +636,7 @@ impl QuantumInternetStack {
             measurement_basis: "Bell".to_string(),
         })
     }
-    
+
     async fn send_classical_data(&self, _connection_id: &str, _data: ClassicalData) -> DeviceResult<()> {
         // Simulate sending classical data
         Ok(())

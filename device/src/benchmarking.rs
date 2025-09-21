@@ -18,14 +18,14 @@ use quantrs2_core::{
 };
 
 use scirs2_graph::{
-    betweenness_centrality, closeness_centrality, clustering_coefficient, graph_density,
-    shortest_path, spectral_radius, Graph,
+    betweenness_centrality, closeness_centrality, clustering_coefficient, dijkstra_path,
+    graph_density, spectral_radius, Graph,
 };
 use scirs2_linalg::{
-    correlation_matrix, det, eig, inv, matrix_norm, svd, LinalgError, LinalgResult,
+    correlationmatrix, det, eigvals, inv, matrix_norm, svd, LinalgError, LinalgResult,
 };
 use scirs2_stats::{
-    distributions, mean, median, pearsonr, spearmanr, std, ttest_1samp, var, Alternative,
+    distributions, mean, median, pearsonr, spearmanr, std, ttest::Alternative, ttest_1samp, var,
     TTestResult,
 };
 
@@ -136,7 +136,7 @@ pub struct StatisticalAnalysis {
     /// Error rate statistics
     pub error_rate_stats: DescriptiveStats,
     /// Correlation matrix between metrics
-    pub correlation_matrix: Array2<f64>,
+    pub correlationmatrix: Array2<f64>,
     /// Statistical tests results
     pub statistical_tests: HashMap<String, TestResult>,
     /// Distribution fitting results
@@ -608,7 +608,7 @@ impl HardwareBenchmarkSuite {
         )
         .map_err(|e| DeviceError::APIError(format!("Array creation error: {}", e)))?;
 
-        let correlation_matrix = correlation_matrix(&data_matrix.view(), None).map_err(|e| {
+        let correlationmatrix = correlationmatrix(&data_matrix.view(), None).map_err(|e| {
             DeviceError::APIError(format!("Correlation computation error: {:?}", e))
         })?;
 
@@ -667,7 +667,7 @@ impl HardwareBenchmarkSuite {
             execution_time_stats,
             fidelity_stats,
             error_rate_stats,
-            correlation_matrix,
+            correlationmatrix,
             statistical_tests,
             distribution_fits,
         })
@@ -694,7 +694,7 @@ impl HardwareBenchmarkSuite {
             let q1_idx = q1.0 as usize;
             let q2_idx = q2.0 as usize;
             if let (Some(&n1), Some(&n2)) = (node_map.get(&q1_idx), node_map.get(&q2_idx)) {
-                graph.add_edge(n1.index(), n2.index(), 1.0);
+                let _ = graph.add_edge(n1.index(), n2.index(), 1.0);
             }
         }
 
@@ -896,13 +896,13 @@ impl HardwareBenchmarkSuite {
 
         match gate_type {
             "H" => {
-                circuit.h(QubitId(0));
+                let _ = circuit.h(QubitId(0));
             }
             "CNOT" => {
-                circuit.cnot(QubitId(0), QubitId(1));
+                let _ = circuit.cnot(QubitId(0), QubitId(1));
             }
             "RZ" => {
-                circuit.rz(QubitId(0), std::f64::consts::PI / 4.0);
+                let _ = circuit.rz(QubitId(0), std::f64::consts::PI / 4.0);
             }
             _ => {
                 return Err(DeviceError::UnsupportedOperation(format!(
@@ -925,9 +925,9 @@ impl HardwareBenchmarkSuite {
         for layer in 0..depth {
             for qubit in 0..num_qubits {
                 if layer % 2 == 0 {
-                    circuit.h(QubitId(qubit as u32));
+                    let _ = circuit.h(QubitId(qubit as u32));
                 } else if qubit + 1 < num_qubits {
-                    circuit.cnot(QubitId(qubit as u32), QubitId((qubit + 1) as u32));
+                    let _ = circuit.cnot(QubitId(qubit as u32), QubitId((qubit + 1) as u32));
                 }
             }
         }
@@ -952,26 +952,26 @@ impl HardwareBenchmarkSuite {
 
             match *gate {
                 "H" => {
-                    circuit.h(QubitId(qubit));
+                    let _ = circuit.h(QubitId(qubit));
                 }
                 "X" => {
-                    circuit.x(QubitId(qubit));
+                    let _ = circuit.x(QubitId(qubit));
                 }
                 "Y" => {
-                    circuit.y(QubitId(qubit));
+                    let _ = circuit.y(QubitId(qubit));
                 }
                 "Z" => {
-                    circuit.z(QubitId(qubit));
+                    let _ = circuit.z(QubitId(qubit));
                 }
                 "CNOT" => {
                     let target = rng.gen_range(0..num_qubits) as u32;
                     if target != qubit {
-                        circuit.cnot(QubitId(qubit), QubitId(target));
+                        let _ = circuit.cnot(QubitId(qubit), QubitId(target));
                     }
                 }
                 "RZ" => {
                     let angle = rng.gen_range(-std::f64::consts::PI..std::f64::consts::PI);
-                    circuit.rz(QubitId(qubit), angle);
+                    let _ = circuit.rz(QubitId(qubit), angle);
                 }
                 _ => {}
             }
@@ -1031,10 +1031,10 @@ impl HardwareBenchmarkSuite {
         let median_val = median(&data.view())
             .map_err(|e| DeviceError::APIError(format!("Median calculation error: {:?}", e)))?;
 
-        let std_val = std(&data.view(), 1)
+        let std_val = std(&data.view(), 1, None)
             .map_err(|e| DeviceError::APIError(format!("Std calculation error: {:?}", e)))?;
 
-        let var_val = var(&data.view(), 1)
+        let var_val = var(&data.view(), 1, None)
             .map_err(|e| DeviceError::APIError(format!("Variance calculation error: {:?}", e)))?;
 
         let min_val = data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
@@ -1105,9 +1105,9 @@ impl HardwareBenchmarkSuite {
         }
 
         // Calculate eigenvalues
-        let eigenvalues = match eig(&adj_matrix.view()) {
-            Ok((vals, _)) => vals.mapv(|c| c.re), // Take real parts
-            Err(_) => Array1::zeros(n),           // Fallback
+        let eigenvalues = match eigvals(&adj_matrix.view(), None) {
+            Ok(vals) => vals.mapv(|c| c.re), // Take real parts
+            Err(_) => Array1::zeros(n),      // Fallback
         };
 
         let spectral_radius = eigenvalues

@@ -6,6 +6,22 @@
 
 QuantRS2-Py provides Python bindings for the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, allowing Python users to access the high-performance Rust implementation with a user-friendly Python API.
 
+## Version 0.1.0-beta.1 🎉
+
+**Production-Ready Beta Release!** This major milestone benefits from deep [SciRS2](https://github.com/cool-japan/scirs2) v0.1.0-beta.2 integration and comprehensive platform support:
+
+### 🖥️ Platform Support
+- **macOS Optimization**: Native Apple Silicon and Intel Mac support with optimized performance
+- **CUDA/Linux Support**: Full CUDA GPU acceleration on Linux platforms
+- **Cross-Platform Compatibility**: Unified codebase supporting Windows, macOS, and Linux
+
+### 🚀 SciRS2 Integration & Performance
+- **Enhanced Performance**: SciRS2's parallel operations with automatic optimization
+- **SIMD Acceleration**: Hardware-aware vectorized quantum operations
+- **GPU Computing**: Complete GPU backend with CUDA support and memory optimization
+- **Memory Management**: Advanced algorithms for 30+ qubit simulations
+- **Automatic Backend Selection**: Intelligent selection based on problem characteristics
+
 ## Features
 
 ### Core Quantum Computing
@@ -18,13 +34,29 @@ QuantRS2-Py provides Python bindings for the [QuantRS2](https://github.com/cool-
 
 ### Advanced Features
 
-- **Quantum Machine Learning**: QNN, VQE, QAOA, and quantum classifiers
+#### 🤖 Quantum Machine Learning Suite
+- **Autograd Quantum ML**: Automatic differentiation for quantum machine learning
+- **Enhanced QGANs**: Improved Quantum Generative Adversarial Networks
+- **Quantum CNNs**: Quantum Convolutional Neural Networks implementation
+- **QNN Training**: Parameter-shift rule gradients with adaptive learning rates
+- **VQE**: Multi-ansatz support with hardware-efficient circuits
+- **QAOA**: Quantum Approximate Optimization Algorithm with MaxCut examples
+- **Quantum PCA**: Principal Component Analysis using quantum computing
+
+#### 🛠️ Developer Experience Tools
+- **Circuit Optimizer**: Advanced quantum circuit optimization with ZX-calculus
+- **Tensor Network Optimization**: High-performance tensor network simulations
+- **Performance Profiler**: Comprehensive execution analysis and optimization recommendations
+- **Enhanced Testing**: Expanded test coverage with GPU backend validation
+- **Resource Estimator**: Advanced complexity and performance analysis
+
+#### 🏭 Production Features
 - **Dynamic Qubit Allocation**: Runtime resource management with efficient memory usage
 - **Hardware Backend Integration**: Support for IBM Quantum, Google Quantum AI, and AWS Braket
 - **Error Mitigation**: Zero-noise extrapolation and other mitigation techniques
 - **Quantum Annealing**: QUBO/Ising model optimization framework
 - **Cryptography Protocols**: BB84, E91, and quantum signature implementations
-- **Development Tools**: Interactive circuit builders and debugging utilities
+- **Comprehensive Examples**: 50+ working examples demonstrating all features
 
 ## Installation
 
@@ -176,6 +208,42 @@ else:
 probs = result.probabilities()
 ```
 
+### Advanced GPU Linear Algebra
+
+```python
+from quantrs2.gpu import GPUBackend, GPULinearAlgebra
+
+# Initialize GPU backend
+gpu_backend = GPUBackend()
+
+# Create GPU-accelerated linear algebra operations
+gpu_linalg = GPULinearAlgebra(gpu_backend)
+
+# Perform high-performance quantum state operations
+large_state = qr.create_quantum_state(25)  # 25-qubit state
+optimized_state = gpu_linalg.optimize_state(large_state)
+
+# GPU-accelerated tensor network contractions
+tensor_result = gpu_linalg.contract_tensor_network(quantum_circuit)
+```
+
+### Tensor Network Optimization
+
+```python
+from quantrs2.tensor_networks import TensorNetworkOptimizer
+
+# Create and optimize tensor networks
+optimizer = TensorNetworkOptimizer()
+
+# Build a complex quantum circuit
+circuit = qr.PyCircuit(30)
+# Add many gates...
+
+# Optimize using tensor network techniques
+optimized_circuit = optimizer.optimize(circuit)
+result = optimized_circuit.run()
+```
+
 ## API Reference
 
 ### Core Classes
@@ -223,19 +291,43 @@ probs = result.probabilities()
 
 ## Performance
 
-QuantRS2-Py is designed for high performance quantum simulation:
+QuantRS2-Py v0.1.0-beta.1 delivers exceptional performance for production quantum computing:
 
-- Efficiently simulates up to 30+ qubits on standard hardware
-- GPU acceleration available for large circuits
-- Optimized memory usage through Rust's zero-cost abstractions
-- Parallel execution capabilities
-- Automatic circuit optimization
+### Simulation Capabilities
+- **Large-Scale Simulation**: Efficiently simulates 30+ qubits on standard hardware
+- **GPU Acceleration**: Complete GPU backend with CUDA support for massive speedups
+- **Memory Optimization**: Advanced SciRS2-powered algorithms for efficient memory usage
+- **SIMD Vectorization**: Hardware-aware vectorized operations on all platforms
+
+### Platform Optimization
+- **macOS Native**: Optimized for Apple Silicon and Intel Macs
+- **CUDA/Linux**: Full GPU acceleration on Linux with CUDA support
+- **Cross-Platform**: Consistent performance across Windows, macOS, and Linux
+- **Automatic Detection**: Smart hardware capability detection and optimization
+
+### Advanced Features
+- **Parallel Execution**: Automatic parallelization via SciRS2 parallel operations
+- **Tensor Networks**: High-performance tensor network contractions
+- **Circuit Optimization**: Automatic quantum circuit optimization
+- **Backend Selection**: Intelligent backend selection based on problem characteristics
 
 ## Requirements
 
+### Basic Requirements
 - Python 3.8 or higher
-- NumPy
-- Optional: CUDA toolkit for GPU support
+- NumPy >= 1.20.0
+- Matplotlib >= 3.3.0 (for visualization)
+- IPython >= 7.0.0 (for interactive features)
+
+### Optional Dependencies
+- **GPU Support**: CUDA toolkit 11.0+ for GPU acceleration on Linux
+- **Machine Learning**: scikit-learn >= 1.0.0, scipy >= 1.7.0 (install with `pip install quantrs2[ml]`)
+- **Development**: pytest, black, flake8 (install with `pip install quantrs2[dev]`)
+
+### Platform Specific
+- **macOS**: Optimized for macOS 10.15+ (both Intel and Apple Silicon)
+- **Linux**: CUDA support requires compatible NVIDIA drivers
+- **Windows**: Full feature support with optional GPU acceleration
 
 ## Contributing
 

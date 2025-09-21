@@ -95,7 +95,7 @@ pub enum MixerType {
 pub enum QuantumGate {
     /// Single-qubit rotation around X-axis
     RX { qubit: usize, angle: ParameterRef },
-    /// Single-qubit rotation around Y-axis  
+    /// Single-qubit rotation around Y-axis
     RY { qubit: usize, angle: ParameterRef },
     /// Single-qubit rotation around Z-axis
     RZ { qubit: usize, angle: ParameterRef },

@@ -48,9 +48,9 @@ async fn test_ml_enhanced_job_configuration() {
 
     // Create a test circuit
     let mut circuit: Circuit<16> = Circuit::new();
-    circuit.h(0);
-    circuit.cx(0, 1);
-    circuit.measure_all();
+    let _ = circuit.h(0);
+    let _ = circuit.cx(0, 1);
+    let _ = circuit.measure_all();
 
     // Test ML-enhanced job submission
     let config = create_ml_training_config();
@@ -126,9 +126,7 @@ async fn test_sla_compliance_monitoring() {
 
     // Verify report structure
     assert!(report.current_compliance >= 0.0 && report.current_compliance <= 1.0);
-    assert!(report.predicted_violations.len() >= 0);
-    assert!(report.mitigation_strategies.len() >= 0);
-    assert!(report.recommendations.len() >= 0);
+    // Vector lengths are always non-negative, no need to check
 
     println!("SLA Compliance: {:.2}%", report.current_compliance * 100.0);
     println!(
@@ -153,8 +151,7 @@ async fn test_cost_optimization() {
 
     // Verify cost optimization report
     assert!(report.savings_potential >= 0.0);
-    assert!(report.optimizations.len() >= 0);
-    assert!(report.recommendations.len() >= 0);
+    // Vector lengths are always non-negative, no need to check
 
     println!("Potential savings: ${:.2}", report.savings_potential);
     println!("Optimization opportunities: {}", report.optimizations.len());
@@ -173,7 +170,7 @@ async fn test_energy_optimization() {
     // Verify energy optimization report
     assert!(report.sustainability_score >= 0.0 && report.sustainability_score <= 1.0);
     assert!(report.carbon_reduction_potential >= 0.0);
-    assert!(report.efficiency_recommendations.len() >= 0);
+    // Vector length is always non-negative
 
     println!("Sustainability score: {:.2}", report.sustainability_score);
     println!(
@@ -197,9 +194,7 @@ async fn test_fairness_and_game_theory() {
     let report = fairness_report.unwrap();
 
     // Verify fairness report
-    assert!(report.user_satisfaction_scores.len() >= 0);
-    assert!(report.incentive_mechanisms.len() >= 0);
-    assert!(report.recommendations.len() >= 0);
+    // Vector lengths are always non-negative, no need to check
 
     println!(
         "User satisfaction scores: {:?}",
@@ -386,8 +381,8 @@ async fn test_comprehensive_workflow() {
 
     // High-priority real-time job
     let mut circuit1 = Circuit::<4>::new();
-    circuit1.h(0);
-    circuit1.measure_all();
+    let _ = circuit1.h(0);
+    let _ = circuit1.measure_all();
     let job1 = scheduler
         .submit_intelligent_job(circuit1, 100, create_realtime_config(), "user1".to_string())
         .await
@@ -397,12 +392,12 @@ async fn test_comprehensive_workflow() {
     // ML training job
     let mut circuit2 = Circuit::<16>::new();
     for i in 0..10 {
-        circuit2.h(i);
+        let _ = circuit2.h(i);
         if i > 0 {
-            circuit2.cx(i - 1, i);
+            let _ = circuit2.cx(i - 1, i);
         }
     }
-    circuit2.measure_all();
+    let _ = circuit2.measure_all();
     let job2 = scheduler
         .submit_intelligent_job(
             circuit2,
@@ -416,9 +411,9 @@ async fn test_comprehensive_workflow() {
 
     // Cost-optimized batch job
     let mut circuit3 = Circuit::<8>::new();
-    circuit3.h(0);
-    circuit3.rx(QubitId::from(1), std::f64::consts::PI / 4.0);
-    circuit3.measure_all();
+    let _ = circuit3.h(0);
+    let _ = circuit3.rx(QubitId::from(1), std::f64::consts::PI / 4.0);
+    let _ = circuit3.measure_all();
     let job3 = scheduler
         .submit_intelligent_job(
             circuit3,
@@ -433,9 +428,9 @@ async fn test_comprehensive_workflow() {
     // Energy-efficient simulation
     let mut circuit4 = Circuit::<4>::new();
     for i in 0..5 {
-        circuit4.ry(QubitId::from(i), std::f64::consts::PI / 8.0);
+        let _ = circuit4.ry(QubitId::from(i), std::f64::consts::PI / 8.0);
     }
-    circuit4.measure_all();
+    let _ = circuit4.measure_all();
     let job4 = scheduler
         .submit_intelligent_job(
             circuit4,
@@ -557,8 +552,8 @@ async fn test_performance_under_load() {
         let handle: tokio::task::JoinHandle<Result<String, DeviceError>> =
             tokio::spawn(async move {
                 let mut circuit: Circuit<16> = Circuit::new();
-                circuit.h(0);
-                circuit.measure_all();
+                let _ = circuit.h(0);
+                let _ = circuit.measure_all();
 
                 let config = if i % 4 == 0 {
                     create_realtime_config()

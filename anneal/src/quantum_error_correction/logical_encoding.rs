@@ -290,7 +290,7 @@ pub struct AnnealingTopology {
 pub enum TopologyType {
     /// D-Wave Chimera graph
     Chimera { m: usize, n: usize, l: usize },
-    /// D-Wave Pegasus graph  
+    /// D-Wave Pegasus graph
     Pegasus { m: usize },
     /// Grid topology
     Grid { rows: usize, cols: usize },

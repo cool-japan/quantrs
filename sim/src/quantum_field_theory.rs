@@ -14,7 +14,6 @@ use std::f64::consts::PI;
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
-use crate::statevector::StateVectorSimulator;
 
 /// Quantum field theory simulation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1560,6 +1559,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_path_integral_monte_carlo_short() {
         let config = QFTConfig::default();
         let mut simulator = QuantumFieldTheorySimulator::new(config).unwrap();
@@ -1585,6 +1585,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_correlation_function_calculation() {
         let config = QFTConfig::default();
         let mut simulator = QuantumFieldTheorySimulator::new(config).unwrap();

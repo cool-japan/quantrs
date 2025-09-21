@@ -1471,16 +1471,16 @@ use quantrs2_tytan::*;
 fn main() -> Result<(), Box<dyn std::error::Error>> {{
     // Variables
     {variables}
-    
+
     // Objective function
     {objective}
-    
+
     // Constraints
     {constraints}
-    
+
     // Build and solve
     {solve_code}
-    
+
     Ok(())
 }}
 "#
@@ -1622,16 +1622,16 @@ for r in result:
         let constraints_code = "    // Constraints not implemented in template".to_string();
 
         // Generate solve code
-        let solve_code = r#"    
+        let solve_code = r#"
     // Compile to QUBO
     let (qubo, offset) = Compile::new(&h).get_qubo()?;
-    
+
     // Choose solver
     let solver = SASampler::new(None);
-    
+
     // Solve
     let mut result = solver.run_qubo(&qubo, 100)?;
-    
+
     // Display results
     for r in &result {
         println!("{:?}", r);

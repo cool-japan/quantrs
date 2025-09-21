@@ -14,7 +14,7 @@ use std::f64::consts::PI;
 pub enum MeasurementBasis {
     /// Computational basis (Z)
     Computational,
-    /// X basis  
+    /// X basis
     X,
     /// Y basis
     Y,

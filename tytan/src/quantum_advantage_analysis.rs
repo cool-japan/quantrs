@@ -1071,11 +1071,11 @@ fn reproduce_analysis() {{
     let problem_size = {};
     let has_advantage = {};
     let confidence = {:.3};
-    
+
     println!("Problem size: {{}}", problem_size);
     println!("Quantum advantage: {{}}", has_advantage);
     println!("Confidence: {{:.1%}}", confidence);
-    
+
     // Add your analysis reproduction code here
 }}
 "#,

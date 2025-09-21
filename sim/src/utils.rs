@@ -1,6 +1,6 @@
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 
 use quantrs2_core::qubit::QubitId;
 

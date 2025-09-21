@@ -27,8 +27,8 @@ rayon.workspace = true
 num_cpus.workspace = true
 
 # SciRS2 dependencies for advanced algorithms
-scirs2-stats = { version = "0.1.0-alpha.4", default-features = false, optional = true }
-scirs2-graph = { version = "0.1.0-alpha.4", default-features = false, optional = true }
+scirs2-stats = { workspace = true, optional = true }
+scirs2-graph = { workspace = true, optional = true }
 scirs2-linalg = { workspace = true, optional = true }
 scirs2-optimize = { workspace = true, optional = true }
 
@@ -73,3 +73,6 @@ neutral_atom = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait", "de
 scheduling = ["dep:tokio", "dep:async-trait", "dep:uuid", "dep:futures"]
 scirs2 = ["dep:scirs2-stats", "dep:scirs2-graph", "dep:scirs2-linalg", "dep:scirs2-optimize"]
 security = ["dep:aes-gcm", "dep:x25519-dalek", "dep:sha2", "dep:chrono"]
+
+[lints]
+workspace = true

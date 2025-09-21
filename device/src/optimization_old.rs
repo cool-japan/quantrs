@@ -486,8 +486,8 @@ mod tests {
 
         // Create a simple circuit
         let mut circuit = Circuit::<2>::new();
-        circuit.h(QubitId(0));
-        circuit.cnot(QubitId(0), QubitId(1));
+        let _ = circuit.h(QubitId(0));
+        let _ = circuit.cnot(QubitId(0), QubitId(1));
 
         let result = optimizer.optimize_circuit(&circuit, "test").unwrap();
 
@@ -501,9 +501,9 @@ mod tests {
         let estimator = FidelityEstimator::new(cal);
 
         let mut circuit = Circuit::<3>::new();
-        circuit.h(QubitId(0));
-        circuit.cnot(QubitId(0), QubitId(1));
-        circuit.cnot(QubitId(1), QubitId(2));
+        let _ = circuit.h(QubitId(0));
+        let _ = circuit.cnot(QubitId(0), QubitId(1));
+        let _ = circuit.cnot(QubitId(1), QubitId(2));
 
         let process_fidelity = estimator.estimate_process_fidelity(&circuit).unwrap();
         let state_fidelity = estimator.estimate_state_fidelity(&circuit, true).unwrap();

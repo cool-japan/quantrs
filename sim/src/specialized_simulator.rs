@@ -4,7 +4,7 @@
 //! for improved performance compared to general matrix multiplication.
 
 use num_complex::Complex64;
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use std::sync::Arc;
 
 use quantrs2_circuit::builder::{Circuit, Simulator};
@@ -471,8 +471,8 @@ mod tests {
     #[test]
     fn test_specialized_simulator() {
         let mut circuit = Circuit::<2>::new();
-        circuit.h(QubitId(0));
-        circuit.cnot(QubitId(0), QubitId(1));
+        let _ = circuit.h(QubitId(0));
+        let _ = circuit.cnot(QubitId(0), QubitId(1));
 
         let mut sim = SpecializedStateVectorSimulator::new(Default::default());
         let state = sim.run(&circuit).unwrap();

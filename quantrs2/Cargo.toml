@@ -1,0 +1,50 @@
+[package]
+name = "quantrs2"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Comprehensive Rust quantum computing framework - unified entry point for quantum simulation, algorithm development, and hardware interaction"
+readme = "README.md"
+documentation = "https://docs.rs/quantrs2"
+homepage = "https://github.com/cool-japan/quantrs"
+
+[dependencies]
+quantrs2-core = { workspace = true }
+quantrs2-circuit = { workspace = true, optional = true }
+quantrs2-sim = { workspace = true, optional = true }
+quantrs2-anneal = { workspace = true, optional = true }
+quantrs2-device = { workspace = true, optional = true }
+quantrs2-ml = { workspace = true, optional = true }
+quantrs2-tytan = { workspace = true, optional = true }
+quantrs2-symengine = { workspace = true, optional = true }
+
+[features]
+default = []
+
+# Convenience features to opt into subcrates from a single entry point
+circuit = ["dep:quantrs2-circuit"]
+sim = ["dep:quantrs2-sim", "circuit"]
+anneal = ["dep:quantrs2-anneal", "circuit"]
+device = ["dep:quantrs2-device", "circuit"]
+ml = ["dep:quantrs2-ml", "sim", "anneal"]
+tytan = ["dep:quantrs2-tytan", "anneal"]
+symengine = ["dep:quantrs2-symengine"]
+
+# Enable everything at once
+full = [
+    "circuit",
+    "sim",
+    "anneal",
+    "device",
+    "ml",
+    "tytan",
+    "symengine",
+]
+
+[lints]
+workspace = true

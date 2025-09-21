@@ -59,27 +59,27 @@ fn demo_problem_dsl() -> Result<(), Box<dyn std::error::Error>> {
         param n_nodes = 4;
         param n_colors = 3;
         param edges = [(0,1), (1,2), (2,3), (3,0), (0,2)];
-        
+
         // Decision variables: x[node, color] = 1 if node gets color
         var x[n_nodes, n_colors] binary;
-        
+
         // Minimize number of colors used
         var color_used[n_colors] binary;
         minimize sum(c in 0..n_colors: color_used[c]);
-        
+
         subject to
             // Each node gets exactly one color
             forall(n in 0..n_nodes):
                 sum(c in 0..n_colors: x[n,c]) == 1;
-            
+
             // Adjacent nodes have different colors
             forall((i,j) in edges, c in 0..n_colors):
                 x[i,c] + x[j,c] <= 1;
-            
+
             // Color is used if any node has it
             forall(c in 0..n_colors):
                 color_used[c] >= x[n,c] forall n in 0..n_nodes;
-        
+
         // Symmetry breaking hint
         hint symmetry permutation(color_used);
     "#;
@@ -403,14 +403,14 @@ fn demo_complete_workflow() -> Result<(), Box<dyn std::error::Error>> {
         param risk[n_assets, n_assets];
         param budget = 1.0;
         param risk_tolerance = 0.1;
-        
+
         var x[n_assets] binary;
         var allocation[n_assets] continuous in [0, 1];
-        
+
         maximize sum(i in 0..n_assets: returns[i] * allocation[i])
-                 - risk_tolerance * sum(i in 0..n_assets, j in 0..n_assets: 
+                 - risk_tolerance * sum(i in 0..n_assets, j in 0..n_assets:
                      allocation[i] * risk[i,j] * allocation[j]);
-        
+
         subject to
             sum(i in 0..n_assets: allocation[i]) <= budget;
             forall(i in 0..n_assets): allocation[i] <= x[i];

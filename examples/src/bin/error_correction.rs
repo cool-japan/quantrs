@@ -191,16 +191,12 @@ fn run_with_noise(encode_circuit: &Circuit<5>, correction_circuit: &Circuit<5>) 
 
     // Add encoded state preparation with noise
     for gate in full_circuit.gates() {
-        correction_with_encoded
-            .add_gate_arc(gate.clone())
-            .unwrap();
+        correction_with_encoded.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Add correction gates
     for gate in correction_circuit.gates() {
-        correction_with_encoded
-            .add_gate_arc(gate.clone())
-            .unwrap();
+        correction_with_encoded.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Run on clean simulator
@@ -277,16 +273,12 @@ fn run_with_high_noise(encode_circuit: &Circuit<5>, correction_circuit: &Circuit
 
     // Add encoded state preparation with noise
     for gate in full_circuit.gates() {
-        correction_with_encoded
-            .add_gate_arc(gate.clone())
-            .unwrap();
+        correction_with_encoded.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Add correction gates
     for gate in correction_circuit.gates() {
-        correction_with_encoded
-            .add_gate_arc(gate.clone())
-            .unwrap();
+        correction_with_encoded.add_gate_arc(gate.clone()).unwrap();
     }
 
     // Run on clean simulator

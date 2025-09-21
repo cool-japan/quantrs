@@ -33,3 +33,6 @@ num_cpus.workspace = true
 [features]
 default = []
 gpu = ["quantrs2-sim/gpu"]
+
+[lints]
+workspace = true

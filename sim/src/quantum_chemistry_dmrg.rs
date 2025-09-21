@@ -14,7 +14,6 @@ use std::f64::consts::PI;
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
-use crate::statevector::StateVectorSimulator;
 
 /// Quantum chemistry DMRG simulation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

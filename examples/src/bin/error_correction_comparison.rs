@@ -344,7 +344,9 @@ fn test_code_with_noise<T: ErrorCorrection>(
     }
 
     // Add error correction operations
-    let correction = code.decode_circuit(&encoded_qubits, &syndrome_qubits).unwrap();
+    let correction = code
+        .decode_circuit(&encoded_qubits, &syndrome_qubits)
+        .unwrap();
     for gate in correction.gates() {
         correction_circuit.add_gate_arc(gate.clone()).unwrap();
     }
@@ -361,7 +363,8 @@ fn test_code_with_noise<T: ErrorCorrection>(
     // For corrected state, we need to extract the logical qubit state,
     // but this is a simplified approach for demonstration
     let logical_state = extract_logical_state(&corrected_state);
-    let fidelity_after = utils::calculate_fidelity(ideal_state.amplitudes(), &logical_state).unwrap();
+    let fidelity_after =
+        utils::calculate_fidelity(ideal_state.amplitudes(), &logical_state).unwrap();
 
     // Print results
     println!("Fidelity before correction: {:.6}", fidelity_before);

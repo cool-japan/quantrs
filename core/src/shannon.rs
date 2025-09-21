@@ -405,7 +405,7 @@ pub struct OptimizedShannonDecomposer {
     base: ShannonDecomposer,
     /// Enable peephole optimization
     peephole: bool,
-    /// Enable commutation-based optimization  
+    /// Enable commutation-based optimization
     commutation: bool,
 }
 

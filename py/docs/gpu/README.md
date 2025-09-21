@@ -22,7 +22,7 @@ GPUサポートを使うには、次のステップに従ってください：
 
 1. GPUスタブ実装でビルドする
    ```bash
-   cd /Users/kitasan/work/quantrs/py
+   cd $quantrs/py
    ./tools/gpu/build_with_gpu_stub.sh
    source .venv/bin/activate
    ```

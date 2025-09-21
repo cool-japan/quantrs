@@ -878,58 +878,58 @@ impl GateTranslator {
             // IBM gates
             "id" => {} // Identity, do nothing
             "x" => {
-                circuit.x(gate.qubits[0]);
+                let _ = circuit.x(gate.qubits[0]);
             }
             "sx" => {
-                circuit.sx(gate.qubits[0]);
+                let _ = circuit.sx(gate.qubits[0]);
             }
             "rz" => {
-                circuit.rz(gate.qubits[0], gate.parameters[0]);
+                let _ = circuit.rz(gate.qubits[0], gate.parameters[0]);
             }
             "cx" => {
-                circuit.cnot(gate.qubits[0], gate.qubits[1]);
+                let _ = circuit.cnot(gate.qubits[0], gate.qubits[1]);
             }
 
             // IonQ gates
             "rx" => {
-                circuit.rx(gate.qubits[0], gate.parameters[0]);
+                let _ = circuit.rx(gate.qubits[0], gate.parameters[0]);
             }
             "ry" => {
-                circuit.ry(gate.qubits[0], gate.parameters[0]);
+                let _ = circuit.ry(gate.qubits[0], gate.parameters[0]);
             }
             "xx" => {
                 // XX gate would need to be added to circuit builder
                 // For now, decompose to CNOT
-                circuit.cnot(gate.qubits[0], gate.qubits[1]);
+                let _ = circuit.cnot(gate.qubits[0], gate.qubits[1]);
             }
 
             // Common gates
             "h" => {
-                circuit.h(gate.qubits[0]);
+                let _ = circuit.h(gate.qubits[0]);
             }
             "y" => {
-                circuit.y(gate.qubits[0]);
+                let _ = circuit.y(gate.qubits[0]);
             }
             "z" => {
-                circuit.z(gate.qubits[0]);
+                let _ = circuit.z(gate.qubits[0]);
             }
             "s" => {
-                circuit.s(gate.qubits[0]);
+                let _ = circuit.s(gate.qubits[0]);
             }
             "t" => {
-                circuit.t(gate.qubits[0]);
+                let _ = circuit.t(gate.qubits[0]);
             }
             "cnot" => {
-                circuit.cnot(gate.qubits[0], gate.qubits[1]);
+                let _ = circuit.cnot(gate.qubits[0], gate.qubits[1]);
             }
             "cz" => {
-                circuit.cz(gate.qubits[0], gate.qubits[1]);
+                let _ = circuit.cz(gate.qubits[0], gate.qubits[1]);
             }
             "swap" => {
-                circuit.swap(gate.qubits[0], gate.qubits[1]);
+                let _ = circuit.swap(gate.qubits[0], gate.qubits[1]);
             }
             "ccnot" => {
-                circuit.toffoli(gate.qubits[0], gate.qubits[1], gate.qubits[2]);
+                let _ = circuit.toffoli(gate.qubits[0], gate.qubits[1], gate.qubits[2]);
             }
 
             _ => {
@@ -1118,8 +1118,8 @@ mod tests {
         let mut translator = GateTranslator::new();
 
         let mut circuit = Circuit::<2>::new();
-        circuit.h(QubitId(0));
-        circuit.cnot(QubitId(0), QubitId(1));
+        let _ = circuit.h(QubitId(0));
+        let _ = circuit.cnot(QubitId(0), QubitId(1));
 
         let translated = translator
             .translate_circuit(&circuit, HardwareBackend::IBMQuantum)

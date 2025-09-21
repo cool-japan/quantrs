@@ -9,7 +9,7 @@ use crate::simulator::{Simulator, SimulatorResult};
 use ndarray::{Array2, ArrayView2};
 use num_complex::Complex64;
 use quantrs2_circuit::prelude::*;
-use quantrs2_core::gate::{multi::*, single::*, GateOp};
+use quantrs2_core::gate::GateOp;
 use quantrs2_core::prelude::*;
 use rand::prelude::*;
 use std::collections::HashMap;

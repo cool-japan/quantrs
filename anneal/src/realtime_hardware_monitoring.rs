@@ -7,7 +7,7 @@
 //!
 //! Revolutionary Features:
 //! - Real-time noise characterization and adaptation
-//! - Dynamic qubit topology reconfiguration  
+//! - Dynamic qubit topology reconfiguration
 //! - Adaptive chain strength optimization during execution
 //! - Live error rate monitoring and mitigation
 //! - Predictive hardware failure detection

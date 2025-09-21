@@ -6,6 +6,14 @@
 
 QuantRS2-Tytan is a comprehensive, high-performance quantum annealing library for the QuantRS2 framework. Inspired by the Python [Tytan](https://github.com/tytansdk/tytan) library, it provides powerful tools for formulating and solving quantum optimization problems with state-of-the-art performance.
 
+## Version 0.1.0-beta.1
+
+This beta release features enhanced integration with [SciRS2](https://github.com/cool-japan/scirs2) v0.1.0-alpha.5:
+- High-performance sparse matrix operations via SciRS2
+- Parallel optimization using `scirs2_core::parallel_ops`
+- SIMD-accelerated energy calculations
+- Memory-efficient large problem handling
+
 ## Key Features
 
 ### Core Capabilities
@@ -57,10 +65,10 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs2-tytan = "0.1.0-alpha.5"
+quantrs2-tytan = "0.1.0-beta.1"
 
 # Optional features
-# quantrs2-tytan = { version = "0.1.0-alpha.5", features = ["gpu", "dwave", "scirs"] }
+# quantrs2-tytan = { version = "0.1.0-beta.1", features = ["gpu", "dwave", "scirs"] }
 ```
 
 ### Basic Example
@@ -274,7 +282,7 @@ fn constrained_problem() -> Result<(), Box<dyn std::error::Error>> {
 - `dwave`: Symbolic math and D-Wave quantum hardware support
 
 ### Performance Features
-- `scirs`: High-performance computing with SciRS2 libraries
+- `scirs`: High-performance computing with SciRS2 libraries (leverages `scirs2_core::parallel_ops` and sparse matrix operations)
 - `advanced_optimization`: State-of-the-art optimization algorithms
 - `gpu_accelerated`: Full GPU acceleration pipeline
 - `simd`: SIMD optimizations for CPU operations

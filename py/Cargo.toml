@@ -26,10 +26,8 @@ quantrs2-ml = { workspace = true, optional = true }
 quantrs2-anneal = { workspace = true, optional = true }
 quantrs2-tytan = { workspace = true, optional = true }
 # Enhanced numerical computing and data analysis (using local development versions)
-# Note: Currently disabled due to ARM64 compatibility issues with SIMD optimizations
-# These will be enabled once ARM64 support is improved
-# numrs2 = { path = "../../numrs", version = "0.1.0-alpha.4", optional = true }
-# pandrs = { path = "../../pandrs", version = "0.1.0-alpha.4", optional = true }
+numrs2 = { version = "0.1.0-beta.2", optional = true }
+pandrs = { version = "0.1.0-beta.2", optional = true }
 pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"] }
 num-complex.workspace = true
 ndarray.workspace = true
@@ -44,11 +42,13 @@ ml = ["quantrs2-ml"]
 anneal = ["quantrs2-anneal"]
 tytan = ["quantrs2-tytan"]
 # Enhanced numerical computing and data analysis features
-# numrs = ["numrs2"]  # Disabled - numrs2 dependency is commented out
-# pandas = ["pandrs"]  # Disabled - pandrs dependency is commented out
-full = ["ml", "anneal", "tytan"]  # numrs and pandas disabled
+numrs = ["dep:numrs2"]
+pandrs = ["dep:pandrs"]
+full = ["ml", "anneal", "tytan", "numrs", "pandrs"]
 
 # Minimal maturin configuration
 [package.metadata.maturin]
 python-source = "python"
 module-name = "quantrs2"
+[lints]
+workspace = true

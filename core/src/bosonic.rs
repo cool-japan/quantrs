@@ -868,7 +868,7 @@ fn kron_complex(a: &Array2<Complex64>, b: &Array2<Complex64>) -> Array2<Complex6
 pub struct SparseBosonOperator {
     /// Row indices
     pub rows: Vec<usize>,
-    /// Column indices  
+    /// Column indices
     pub cols: Vec<usize>,
     /// Non-zero values
     pub data: Vec<Complex64>,

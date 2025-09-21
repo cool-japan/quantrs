@@ -48,7 +48,7 @@ pub struct MomentAnalysis {
 /// Correlation structure between noise sources
 #[derive(Debug, Clone)]
 pub struct CorrelationStructure {
-    pub correlation_matrix: Array2<f64>,
+    pub correlationmatrix: Array2<f64>,
     pub partial_correlations: Array2<f64>,
     pub rank_correlations: Array2<f64>,
     pub time_varying_correlations: Option<Array2<f64>>,
@@ -143,7 +143,7 @@ impl StatisticalAnalyzer {
         // Test normal distribution
         let data_mean = mean(&data_array.view())
             .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {:?}", e)))?;
-        let data_std = std(&data_array.view(), 1)
+        let data_std = std(&data_array.view(), 1, None)
             .map_err(|e| DeviceError::APIError(format!("Std calculation error: {:?}", e)))?;
 
         let (ks_stat, p_value) =
@@ -212,13 +212,13 @@ impl StatisticalAnalyzer {
         let data_mean = mean(&data_array.view())
             .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {:?}", e)))?;
 
-        let data_var = var(&data_array.view(), 1)
+        let data_var = var(&data_array.view(), 1, None)
             .map_err(|e| DeviceError::APIError(format!("Variance calculation error: {:?}", e)))?;
 
-        let data_skew = skew(&data_array.view(), true)
+        let data_skew = skew(&data_array.view(), true, None)
             .map_err(|e| DeviceError::APIError(format!("Skewness calculation error: {:?}", e)))?;
 
-        let data_kurt = kurtosis(&data_array.view(), true, true)
+        let data_kurt = kurtosis(&data_array.view(), true, true, None)
             .map_err(|e| DeviceError::APIError(format!("Kurtosis calculation error: {:?}", e)))?;
 
         // Calculate higher moments
@@ -244,7 +244,7 @@ impl StatisticalAnalyzer {
     ) -> DeviceResult<CorrelationStructure> {
         if noise_measurements.len() < 2 {
             return Ok(CorrelationStructure {
-                correlation_matrix: Array2::zeros((0, 0)),
+                correlationmatrix: Array2::zeros((0, 0)),
                 partial_correlations: Array2::zeros((0, 0)),
                 rank_correlations: Array2::zeros((0, 0)),
                 time_varying_correlations: None,
@@ -278,20 +278,20 @@ impl StatisticalAnalyzer {
         }
 
         // Compute correlation matrices
-        let correlation_matrix = corrcoef(&data_matrix.view(), "pearson")
+        let correlationmatrix = corrcoef(&data_matrix.view(), "pearson")
             .map_err(|e| DeviceError::APIError(format!("Correlation matrix error: {:?}", e)))?;
 
         // Compute rank correlations
         let rank_correlations = self.compute_rank_correlations(&data_matrix)?;
 
         // Compute partial correlations
-        let partial_correlations = self.compute_partial_correlations(&correlation_matrix)?;
+        let partial_correlations = self.compute_partial_correlations(&correlationmatrix)?;
 
         // Build correlation networks
-        let correlation_networks = self.build_correlation_networks(&correlation_matrix)?;
+        let correlation_networks = self.build_correlation_networks(&correlationmatrix)?;
 
         Ok(CorrelationStructure {
-            correlation_matrix,
+            correlationmatrix,
             partial_correlations,
             rank_correlations,
             time_varying_correlations: None,
@@ -347,7 +347,7 @@ impl StatisticalAnalyzer {
         }
 
         // Scott's rule for bandwidth selection
-        let data_std = std(&data_array.view(), 1)
+        let data_std = std(&data_array.view(), 1, None)
             .map_err(|e| DeviceError::APIError(format!("Std calculation error: {:?}", e)))?;
         let bandwidth = 1.06 * data_std * (n as f64).powf(-1.0 / 5.0);
 
@@ -410,7 +410,7 @@ impl StatisticalAnalyzer {
 
         let data_mean = mean(&data.view())
             .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {:?}", e)))?;
-        let data_std = std(&data.view(), 1)
+        let data_std = std(&data.view(), 1, None)
             .map_err(|e| DeviceError::APIError(format!("Std calculation error: {:?}", e)))?;
 
         let mut max_diff: f64 = 0.0;
@@ -500,7 +500,7 @@ impl StatisticalAnalyzer {
     fn estimate_gamma_parameters(&self, data: &Array1<f64>) -> DeviceResult<(f64, f64)> {
         let data_mean = mean(&data.view())
             .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {:?}", e)))?;
-        let data_var = var(&data.view(), 1)
+        let data_var = var(&data.view(), 1, None)
             .map_err(|e| DeviceError::APIError(format!("Variance calculation error: {:?}", e)))?;
 
         if data_var > 0.0 {

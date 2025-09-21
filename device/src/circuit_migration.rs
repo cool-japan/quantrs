@@ -18,7 +18,7 @@ use quantrs2_core::{
 // SciRS2 integration for advanced migration optimization
 #[cfg(feature = "scirs2")]
 use scirs2_graph::{
-    betweenness_centrality, closeness_centrality, minimum_spanning_tree, shortest_path, Graph,
+    betweenness_centrality, closeness_centrality, dijkstra_path, minimum_spanning_tree, Graph,
 };
 #[cfg(feature = "scirs2")]
 use scirs2_optimize::{differential_evolution, minimize, OptimizeResult};
@@ -80,7 +80,7 @@ use crate::{
 pub struct MigrationConfig {
     /// Source platform
     pub source_platform: HardwareBackend,
-    /// Target platform  
+    /// Target platform
     pub target_platform: HardwareBackend,
     /// Migration strategy
     pub strategy: MigrationStrategy,
@@ -1339,7 +1339,7 @@ impl CircuitMigrationEngine {
             if metrics.performance_comparison.gate_count_change > max_gate_increase {
                 warnings.push(MigrationWarning {
                     warning_type: WarningType::PerformanceDegradation,
-                    message: format!("Gate count increased by {:.1}%, exceeding limit of {:.1}%", 
+                    message: format!("Gate count increased by {:.1}%, exceeding limit of {:.1}%",
                                    metrics.performance_comparison.gate_count_change * 100.0,
                                    max_gate_increase * 100.0),
                     severity: WarningSeverity::Warning,

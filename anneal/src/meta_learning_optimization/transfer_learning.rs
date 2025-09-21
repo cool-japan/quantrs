@@ -40,7 +40,7 @@ impl TransferLearner {
 
     pub fn add_source_domain(&mut self, domain: SourceDomain) {
         self.source_domains.push(domain);
-        
+
         // Limit number of source domains
         while self.source_domains.len() > 50 {
             self.source_domains.remove(0);
@@ -54,7 +54,7 @@ impl TransferLearner {
     ) -> Result<Vec<TransferableModel>, String> {
         // Find most similar source domains
         let similar_domains = self.find_similar_domains(target_features, target_domain)?;
-        
+
         if similar_domains.is_empty() {
             return Ok(Vec::new());
         }
@@ -121,7 +121,7 @@ impl TransferLearner {
 
     fn is_domain_compatible(&self, source_domain: &ProblemDomain, target_domain: &ProblemDomain) -> bool {
         // Allow transfer within same domain or to/from general domains
-        source_domain == target_domain || 
+        source_domain == target_domain ||
         matches!(source_domain, ProblemDomain::Combinatorial) ||
         matches!(target_domain, ProblemDomain::Combinatorial)
     }
@@ -185,7 +185,7 @@ impl TransferLearner {
     ) -> Result<TransferableModel, String> {
         // Transfer feature representations and transformations
         let mut feature_mappings = HashMap::new();
-        
+
         // Simple feature mapping based on similarity
         feature_mappings.insert("size_scaling".to_string(), target_features.size as f64 / source_domain.characteristics.avg_problem_size);
         feature_mappings.insert("density_scaling".to_string(), target_features.density / source_domain.characteristics.avg_density);
@@ -249,7 +249,7 @@ impl TransferLearner {
     ) -> Result<TransferableModel, String> {
         // Transfer relational knowledge between features and performance
         let mut relations = HashMap::new();
-        
+
         // Simplified relation extraction
         relations.insert("size_performance_relation".to_string(), 0.8);
         relations.insert("density_performance_relation".to_string(), 0.6);
@@ -305,10 +305,10 @@ impl TransferLearner {
 
     fn calculate_experience_similarity(&self, exp_features: &ProblemFeatures, target_features: &ProblemFeatures) -> f64 {
         // Simple similarity calculation
-        let size_similarity = 1.0 - (exp_features.size as f64 - target_features.size as f64).abs() / 
+        let size_similarity = 1.0 - (exp_features.size as f64 - target_features.size as f64).abs() /
                                exp_features.size.max(target_features.size) as f64;
         let density_similarity = 1.0 - (exp_features.density - target_features.density).abs();
-        
+
         (size_similarity + density_similarity) / 2.0
     }
 
@@ -485,7 +485,7 @@ impl DomainSimilarityAnalyzer {
         target_domain: &ProblemDomain,
     ) -> Result<f64, String> {
         // Create cache key
-        let cache_key = format!("{}_{}_{}_{}", 
+        let cache_key = format!("{}_{}_{}_{}",
             source_characteristics.domain as u8,
             source_characteristics.avg_problem_size as u32,
             target_features.size,
@@ -502,7 +502,7 @@ impl DomainSimilarityAnalyzer {
         // Domain type similarity
         let domain_similarity = if source_characteristics.domain == *target_domain {
             1.0
-        } else if matches!(source_characteristics.domain, ProblemDomain::Combinatorial) || 
+        } else if matches!(source_characteristics.domain, ProblemDomain::Combinatorial) ||
                   matches!(target_domain, ProblemDomain::Combinatorial) {
             0.7 // Combinatorial problems are somewhat similar to others
         } else {
@@ -612,7 +612,7 @@ mod tests {
     #[test]
     fn test_domain_similarity_analyzer() {
         let mut analyzer = DomainSimilarityAnalyzer::new();
-        
+
         let source_characteristics = DomainCharacteristics {
             domain: ProblemDomain::Combinatorial,
             avg_problem_size: 100.0,
@@ -621,7 +621,7 @@ mod tests {
             performance_distribution: DistributionStats::default(),
             feature_importance: HashMap::new(),
         };
-        
+
         let target_features = ProblemFeatures {
             size: 120,
             density: 0.6,
@@ -630,12 +630,12 @@ mod tests {
             spectral_features: SpectralFeatures::default(),
             domain_features: HashMap::new(),
         };
-        
+
         let target_domain = ProblemDomain::Combinatorial;
-        
+
         let similarity = analyzer.calculate_similarity(&source_characteristics, &target_features, &target_domain);
         assert!(similarity.is_ok());
-        
+
         let sim_value = similarity.unwrap();
         assert!(sim_value >= 0.0 && sim_value <= 1.0);
     }
@@ -650,7 +650,7 @@ mod tests {
             confidence: 0.8,
             adaptation_required: true,
         };
-        
+
         assert_eq!(model.model_type, ModelType::ParameterBased);
         assert!(model.adaptation_required);
         assert_eq!(model.confidence, 0.8);

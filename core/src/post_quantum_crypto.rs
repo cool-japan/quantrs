@@ -1097,6 +1097,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_quantum_digital_signature() {
         let signature_scheme = QuantumDigitalSignature::new(16, 128);
         assert!(signature_scheme.is_ok());

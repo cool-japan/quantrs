@@ -61,7 +61,7 @@ pub struct GateSetSpecification {
 }
 
 /// Generic gate type for translation
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum GateType {
     // Pauli gates
     X,
@@ -1229,7 +1229,6 @@ impl fmt::Display for GateType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::gate::GateOp;
 
     #[test]
     fn test_gate_translator_creation() {

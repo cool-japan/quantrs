@@ -5,6 +5,66 @@ All notable changes to QuantRS2-Py will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-beta.1] - 2025-09-21
+
+### 🎉 Beta Release - Production Ready!
+
+QuantRS2-Py v0.1.0-beta.1 represents a major milestone, delivering a comprehensive production-ready quantum computing Python framework with advanced GPU acceleration, cross-platform support, and exceptional performance capabilities.
+
+### Added - Major Features 🚀
+
+#### 🖥️ Enhanced Platform Support
+- **macOS Optimization**: Native Apple Silicon and Intel Mac support with optimized performance
+- **CUDA/Linux Support**: Full CUDA GPU acceleration on Linux platforms
+- **Cross-Platform Compatibility**: Unified codebase supporting Windows, macOS, and Linux
+
+#### 🔧 Complete SciRS2 v0.1.0-beta.2 Integration
+- **Deep SciRS2 Integration**: Full integration with Scientific Rust v0.1.0-beta.2 for optimal performance
+- **SIMD Operations**: All operations leverage `scirs2_core::simd_ops` with hardware-aware optimization
+- **Parallel Computing**: Automatic parallelization via `scirs2_core::parallel_ops`
+- **Memory Management**: Advanced memory-efficient algorithms for 30+ qubit simulations
+
+#### 🚀 GPU Acceleration Suite
+- **GPU Backend**: Complete GPU backend implementation with CUDA support
+- **GPU Linear Algebra**: High-performance GPU-accelerated linear algebra operations
+- **Memory Optimization**: Efficient GPU memory management for large quantum states
+- **Hardware Detection**: Automatic GPU capability detection and optimization
+
+#### 🛠️ Developer Experience Tools
+- **Circuit Optimizer**: Advanced quantum circuit optimization with ZX-calculus
+- **Tensor Network Optimization**: High-performance tensor network simulations
+- **Performance Profiler**: Comprehensive execution analysis and optimization recommendations
+- **Enhanced Testing**: Expanded test coverage with GPU backend validation
+
+#### 🤖 Advanced Quantum Algorithms
+- **Autograd Quantum ML**: Automatic differentiation for quantum machine learning
+- **Enhanced QGAN**: Improved Quantum Generative Adversarial Networks
+- **Quantum CNNs**: Quantum Convolutional Neural Networks implementation
+- **QAOA**: Quantum Approximate Optimization Algorithm with MaxCut examples
+- **Quantum PCA**: Principal Component Analysis using quantum computing
+
+#### 📦 Production Readiness
+- **PyO3 Integration**: Enhanced Python bindings with improved performance
+- **Package Structure**: Optimized package organization with proper error handling
+- **GPU Dependencies**: New optional `gpu` dependency group for GPU acceleration
+- **Comprehensive Examples**: 50+ working examples demonstrating all features
+
+### Improved
+- **Package Performance**: Significant performance improvements across all modules
+- **Memory Efficiency**: Optimized memory usage patterns for large-scale simulations
+- **Error Handling**: Better error messages and graceful degradation
+- **Documentation**: Enhanced API documentation with usage examples
+
+### Technical Enhancements
+- **SIMD Vectorization**: Hardware-aware vectorized quantum operations
+- **Automatic Backend Selection**: Intelligent backend selection based on problem characteristics
+- **Platform Detection**: Smart capability detection for optimal performance
+- **Resource Estimation**: Advanced complexity and performance analysis
+
+### Breaking Changes
+- **API Improvements**: Minor API updates for consistency and performance
+- **Migration Guide**: See main project MIGRATION_GUIDE_ALPHA_TO_BETA.md for upgrade instructions
+
 ## [0.1.0a5] - 2025-06
 
 ### Added - Major Feature Release 🚀

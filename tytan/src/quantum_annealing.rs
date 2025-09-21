@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use std::f64::consts::PI;
 
 #[cfg(feature = "scirs")]
-use scirs2::linalg;
+use scirs2_linalg;
 
 // Stub for missing quantum functionality
 #[cfg(feature = "scirs")]

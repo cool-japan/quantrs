@@ -71,7 +71,7 @@ fn demo_algebraic_equivalence() -> Result<(), Box<dyn std::error::Error>> {
     let circuit2 = Circuit::<1>::new();
 
     // Check equivalence
-    let checker = EquivalenceChecker::default();
+    let mut checker = EquivalenceChecker::default();
     let result = checker.check_equivalence(&circuit1, &circuit2)?;
 
     println!("   Circuit 1: X(0), X(0)");
@@ -114,19 +114,37 @@ fn demo_phase_equivalence() -> Result<(), Box<dyn std::error::Error>> {
     circuit2.t(0)?;
 
     // Check with phase ignored
-    let checker_phase = EquivalenceChecker::new(EquivalenceOptions {
+    let mut checker_phase = EquivalenceChecker::new(EquivalenceOptions {
         tolerance: 1e-10,
         ignore_global_phase: true,
         check_all_states: true,
         max_unitary_qubits: 10,
+        enable_adaptive_tolerance: true,
+        enable_statistical_analysis: true,
+        enable_stability_analysis: true,
+        enable_graph_comparison: false,
+        confidence_level: 0.95,
+        max_condition_number: 1e12,
+        scirs2_config: None,
+        complex_tolerance: 1e-14,
+        enable_parallel_computation: true,
     });
 
     // Check without phase ignored
-    let checker_no_phase = EquivalenceChecker::new(EquivalenceOptions {
+    let mut checker_no_phase = EquivalenceChecker::new(EquivalenceOptions {
         tolerance: 1e-10,
         ignore_global_phase: false,
         check_all_states: true,
         max_unitary_qubits: 10,
+        enable_adaptive_tolerance: true,
+        enable_statistical_analysis: true,
+        enable_stability_analysis: true,
+        enable_graph_comparison: false,
+        confidence_level: 0.95,
+        max_condition_number: 1e12,
+        scirs2_config: None,
+        complex_tolerance: 1e-14,
+        enable_parallel_computation: true,
     });
 
     println!("   Circuit 1: S(0)");
@@ -179,19 +197,37 @@ fn demo_custom_tolerance() -> Result<(), Box<dyn std::error::Error>> {
     circuit2.rx(0, PI / 4.0 + 1e-12)?; // Tiny difference
 
     // Strict tolerance
-    let strict_checker = EquivalenceChecker::new(EquivalenceOptions {
+    let mut strict_checker = EquivalenceChecker::new(EquivalenceOptions {
         tolerance: 1e-15,
         ignore_global_phase: false,
         check_all_states: true,
         max_unitary_qubits: 10,
+        enable_adaptive_tolerance: true,
+        enable_statistical_analysis: true,
+        enable_stability_analysis: true,
+        enable_graph_comparison: false,
+        confidence_level: 0.95,
+        max_condition_number: 1e12,
+        scirs2_config: None,
+        complex_tolerance: 1e-14,
+        enable_parallel_computation: true,
     });
 
     // Relaxed tolerance
-    let relaxed_checker = EquivalenceChecker::new(EquivalenceOptions {
+    let mut relaxed_checker = EquivalenceChecker::new(EquivalenceOptions {
         tolerance: 1e-10,
         ignore_global_phase: false,
         check_all_states: true,
         max_unitary_qubits: 10,
+        enable_adaptive_tolerance: true,
+        enable_statistical_analysis: true,
+        enable_stability_analysis: true,
+        enable_graph_comparison: false,
+        confidence_level: 0.95,
+        max_condition_number: 1e12,
+        scirs2_config: None,
+        complex_tolerance: 1e-14,
+        enable_parallel_computation: true,
     });
 
     println!("   Circuit 1: RX(0, π/4)");

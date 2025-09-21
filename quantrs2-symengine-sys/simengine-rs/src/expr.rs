@@ -24,7 +24,7 @@ impl Clone for Expression {
         let mut new = Expression {
             basic: UnsafeCell::new(unsafe { std::mem::zeroed() }),
         };
-        unsafe { 
+        unsafe {
             basic_new_stack(new.basic.get());
             basic_assign(new.basic.get(), self.basic.get());
         };
@@ -63,7 +63,7 @@ impl Expression {
         let expr = CString::new(expr_string).map_err(|_| {
             SymEngineError::invalid_operation("String contains null bytes")
         })?;
-        
+
         unsafe {
             let mut new = Expression {
                 basic: UnsafeCell::new(std::mem::zeroed()),
@@ -274,7 +274,7 @@ impl Expression {
     pub fn is_number(&self) -> bool {
         unsafe {
             let type_code = basic_get_type(self.basic.get()) as i32;
-            type_code == SYMENGINE_INTEGER || 
+            type_code == SYMENGINE_INTEGER ||
             type_code == SYMENGINE_RATIONAL ||
             type_code == SYMENGINE_REAL_DOUBLE
         }
@@ -306,7 +306,7 @@ impl Expression {
         if !self.is_pow() {
             return None;
         }
-        
+
         unsafe {
             let mut base = Expression {
                 basic: UnsafeCell::new(std::mem::zeroed()),
@@ -316,11 +316,11 @@ impl Expression {
             };
             basic_new_stack(base.basic.get());
             basic_new_stack(exp.basic.get());
-            
+
             // Get the base and exponent
             basic_pow_get_base(base.basic.get(), self.basic.get());
             basic_pow_get_exp(exp.basic.get(), self.basic.get());
-            
+
             Some((base, exp))
         }
     }
@@ -330,11 +330,11 @@ impl Expression {
         if !self.is_add() {
             return None;
         }
-        
+
         unsafe {
             let args_size = basic_get_args_size(self.basic.get());
             let mut terms = Vec::new();
-            
+
             for i in 0..args_size {
                 let mut term = Expression {
                     basic: UnsafeCell::new(std::mem::zeroed()),
@@ -343,7 +343,7 @@ impl Expression {
                 basic_get_arg(term.basic.get(), self.basic.get(), i);
                 terms.push(term);
             }
-            
+
             Some(terms)
         }
     }
@@ -353,11 +353,11 @@ impl Expression {
         if !self.is_mul() {
             return None;
         }
-        
+
         unsafe {
             let args_size = basic_get_args_size(self.basic.get());
             let mut factors = Vec::new();
-            
+
             for i in 0..args_size {
                 let mut factor = Expression {
                     basic: UnsafeCell::new(std::mem::zeroed()),
@@ -366,7 +366,7 @@ impl Expression {
                 basic_get_arg(factor.basic.get(), self.basic.get(), i);
                 factors.push(factor);
             }
-            
+
             Some(factors)
         }
     }
@@ -376,7 +376,7 @@ impl Expression {
         if !self.is_symbol() {
             return None;
         }
-        
+
         unsafe {
             let name_ptr = basic_symbol_get_name(self.basic.get());
             if name_ptr.is_null() {
@@ -392,7 +392,7 @@ impl Expression {
         if !self.is_number() {
             return None;
         }
-        
+
         unsafe {
             let type_code = basic_get_type(self.basic.get()) as i32;
             match type_code {

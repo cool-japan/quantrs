@@ -386,7 +386,7 @@ impl Default for HardwareOptimizationConfig {
         let mut gate_fidelities = HashMap::new();
         gate_fidelities.insert("single_qubit".to_string(), 0.999);
         gate_fidelities.insert("two_qubit".to_string(), 0.99);
-        
+
         Self {
             target_hardware: QuantumHardwareTarget::Simulator,
             minimize_gate_count: true,

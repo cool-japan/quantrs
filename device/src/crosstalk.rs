@@ -14,13 +14,14 @@ use quantrs2_core::{
 };
 
 use scirs2_graph::{
-    betweenness_centrality, closeness_centrality, minimum_spanning_tree, shortest_path,
+    betweenness_centrality, closeness_centrality, dijkstra_path, minimum_spanning_tree,
     strongly_connected_components, Graph,
 };
 use scirs2_linalg::{
-    correlation_matrix, det, eig, inv, matrix_norm, svd, LinalgError, LinalgResult,
+    correlationmatrix, det, eig, inv, matrix_norm, svd, LinalgError, LinalgResult,
 };
-use scirs2_stats::{corrcoef, distributions, mean, pearsonr, spearmanr, std, var, Alternative};
+use scirs2_stats::ttest::Alternative;
+use scirs2_stats::{corrcoef, distributions, mean, pearsonr, spearmanr, std, var};
 // TODO: Add scirs2_signal when it becomes available
 // use scirs2_signal::{
 //     find_peaks, periodogram, coherence, cross_correlation,
@@ -925,16 +926,16 @@ impl CrosstalkAnalyzer {
     fn create_crosstalk_preparation_circuit(&self, target: usize) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
         // Prepare target qubit in |+⟩ state (sensitive to Z errors)
-        circuit.h(QubitId(target as u32));
+        let _ = circuit.h(QubitId(target as u32));
         Ok(circuit)
     }
 
     fn create_ramsey_circuit(&self, target: usize, frequency: f64) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
         // Ramsey sequence for frequency-sensitive measurement
-        circuit.h(QubitId(target as u32));
+        let _ = circuit.h(QubitId(target as u32));
         // Virtual Z rotation at frequency would be inserted here
-        circuit.h(QubitId(target as u32));
+        let _ = circuit.h(QubitId(target as u32));
         Ok(circuit)
     }
 
@@ -945,7 +946,7 @@ impl CrosstalkAnalyzer {
     ) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
         // Prepare target for temporal response measurement
-        circuit.h(QubitId(target as u32));
+        let _ = circuit.h(QubitId(target as u32));
         // Delay would be implemented in the pulse sequence
         Ok(circuit)
     }
@@ -1404,7 +1405,7 @@ impl CrosstalkAnalyzer {
         // Check frequency independence
         let is_frequency_independent = if let Some(freq_data) = frequency_crosstalk.get(&(i, j)) {
             let amplitudes = freq_data.mapv(|c| c.norm());
-            let variation = std(&amplitudes.view(), 1).unwrap_or(0.0);
+            let variation = std(&amplitudes.view(), 1, None).unwrap_or(0.0);
             let mean_amp = mean(&amplitudes.view()).unwrap_or(1.0);
             variation / mean_amp < 0.1 // Low frequency variation
         } else {
@@ -1419,7 +1420,7 @@ impl CrosstalkAnalyzer {
         let amplitudes = frequency_data.mapv(|c| c.norm());
 
         // Look for frequency-dependent behavior
-        let variation = std(&amplitudes.view(), 1).unwrap_or(0.0);
+        let variation = std(&amplitudes.view(), 1, None).unwrap_or(0.0);
         let mean_amp = mean(&amplitudes.view()).unwrap_or(1.0);
 
         variation / mean_amp > 0.2 // High frequency variation indicates capacitive coupling

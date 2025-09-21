@@ -286,9 +286,9 @@ impl HomodyneDetector {
         let mean_p = state.mean_vector[2 * mode + 1];
         let theoretical_mean = cos_phi * mean_x + sin_phi * mean_p;
 
-        let var_x = state.covariance_matrix[2 * mode][2 * mode];
-        let var_p = state.covariance_matrix[2 * mode + 1][2 * mode + 1];
-        let cov_xp = state.covariance_matrix[2 * mode][2 * mode + 1];
+        let var_x = state.covariancematrix[2 * mode][2 * mode];
+        let var_p = state.covariancematrix[2 * mode + 1][2 * mode + 1];
+        let cov_xp = state.covariancematrix[2 * mode][2 * mode + 1];
 
         let theoretical_variance =
             cos_phi.powi(2) * var_x + sin_phi.powi(2) * var_p + 2.0 * cos_phi * sin_phi * cov_xp;

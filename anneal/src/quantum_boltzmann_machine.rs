@@ -101,7 +101,7 @@ pub struct QuantumRestrictedBoltzmannMachine {
     /// Visible layer configuration
     visible_config: LayerConfig,
 
-    /// Hidden layer configuration  
+    /// Hidden layer configuration
     hidden_config: LayerConfig,
 
     /// Visible unit biases

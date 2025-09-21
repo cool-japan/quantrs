@@ -17,7 +17,7 @@ impl SignalProcessor {
             wavelet_analyzer: WaveletAnalyzer::new(&config.wavelet_config),
         }
     }
-    
+
     pub fn process_signals(&mut self, characterization: &CrosstalkCharacterization) -> DeviceResult<SignalProcessingResult> {
         Ok(SignalProcessingResult {
             filtered_signals: HashMap::new(),
@@ -53,12 +53,12 @@ impl SignalProcessor {
     /// Apply filtering to signals
     pub fn apply_filtering(&mut self, signals: &HashMap<String, Array1<f64>>) -> DeviceResult<HashMap<String, Array1<f64>>> {
         let mut filtered_signals = HashMap::new();
-        
+
         for (signal_name, signal_data) in signals {
             let filtered = self.filter_bank.apply_filters(signal_data)?;
             filtered_signals.insert(signal_name.clone(), filtered);
         }
-        
+
         Ok(filtered_signals)
     }
 
@@ -194,7 +194,7 @@ impl DigitalFilter {
     pub fn new(filter_type: FilterType, parameters: FilterParameters) -> Self {
         let coefficients = Self::design_filter(&filter_type, &parameters);
         let state = Array1::zeros(coefficients.len());
-        
+
         Self {
             filter_type,
             coefficients,
@@ -206,11 +206,11 @@ impl DigitalFilter {
     /// Apply filter to input signal
     pub fn apply(&mut self, input: &Array1<f64>) -> DeviceResult<Array1<f64>> {
         let mut output = Array1::zeros(input.len());
-        
+
         for (i, &x) in input.iter().enumerate() {
             output[i] = self.filter_sample(x);
         }
-        
+
         Ok(output)
     }
 
@@ -299,22 +299,22 @@ impl AdaptiveFilter {
     /// Apply adaptive filter to input
     pub fn apply(&self, input: &Array1<f64>) -> DeviceResult<Array1<f64>> {
         let mut output = Array1::zeros(input.len());
-        
+
         for (i, &x) in input.iter().enumerate() {
             // Simplified adaptive filtering
             let mut y = 0.0;
             let start_idx = if i >= self.filter_length { i - self.filter_length + 1 } else { 0 };
-            
+
             for (j, &w) in self.weights.iter().enumerate() {
                 let input_idx = start_idx + j;
                 if input_idx < input.len() {
                     y += w * input[input_idx];
                 }
             }
-            
+
             output[i] = y;
         }
-        
+
         Ok(output)
     }
 
@@ -343,12 +343,12 @@ impl AdaptiveFilter {
         // LMS (Least Mean Squares) algorithm
         let output = self.apply(input)?;
         let error = desired - &output;
-        
+
         for i in 0..self.weights.len() {
             // Simplified weight update
             self.weights[i] += step_size * error.mean().unwrap_or(0.0);
         }
-        
+
         self.learning_curve.push_back(error.mapv(|x| x * x).mean().unwrap_or(0.0));
         Ok(())
     }
@@ -412,10 +412,10 @@ impl NoiseReducer {
     fn spectral_subtraction(&mut self, signal: &Array1<f64>, over_subtraction_factor: f64) -> DeviceResult<Array1<f64>> {
         // Spectral subtraction noise reduction
         let noise_estimate = self.noise_estimator.estimate_noise(signal)?;
-        
+
         // Simplified implementation: apply gain reduction
         let reduced_signal = signal.mapv(|x| x * (1.0 - over_subtraction_factor * noise_estimate));
-        
+
         self.reduction_history.push_back(noise_estimate);
         Ok(reduced_signal)
     }
@@ -424,9 +424,9 @@ impl NoiseReducer {
         // Wiener filtering for noise reduction
         let signal_power = signal.var(0.0);
         let wiener_gain = signal_power / (signal_power + noise_estimate);
-        
+
         let filtered_signal = signal.mapv(|x| x * wiener_gain);
-        
+
         self.reduction_history.push_back(noise_estimate);
         Ok(filtered_signal)
     }
@@ -435,7 +435,7 @@ impl NoiseReducer {
         // Wavelet denoising
         // Simplified implementation: apply soft thresholding
         let threshold = signal.std(0.0) * 0.1; // Simple threshold estimate
-        
+
         let denoised_signal = signal.mapv(|x| {
             if x.abs() > threshold {
                 x - threshold * x.signum()
@@ -443,7 +443,7 @@ impl NoiseReducer {
                 0.0
             }
         });
-        
+
         Ok(denoised_signal)
     }
 
@@ -453,7 +453,7 @@ impl NoiseReducer {
             LearningAlgorithm::LMS { step_size },
             filter_length,
         );
-        
+
         // Use delayed version as reference (simplified)
         let delayed_signal = if signal.len() > 1 {
             let mut delayed = Array1::zeros(signal.len());
@@ -462,7 +462,7 @@ impl NoiseReducer {
         } else {
             signal.clone()
         };
-        
+
         adaptive_filter.apply(signal)
     }
 }
@@ -494,7 +494,7 @@ impl NoiseEstimator {
         }?;
 
         // Update estimate with adaptation
-        self.noise_estimate = (1.0 - self.adaptation_rate) * self.noise_estimate 
+        self.noise_estimate = (1.0 - self.adaptation_rate) * self.noise_estimate
                             + self.adaptation_rate * new_estimate;
 
         Ok(self.noise_estimate)
@@ -512,14 +512,14 @@ impl NoiseEstimator {
         // Minimum statistics noise estimation
         let window_size = 100;
         let mut min_powers = Vec::new();
-        
+
         for i in (0..signal.len()).step_by(window_size) {
             let end_idx = std::cmp::min(i + window_size, signal.len());
             let window = signal.slice(ndarray::s![i..end_idx]);
             let power = window.mapv(|x| x * x).mean().unwrap_or(0.0);
             min_powers.push(power);
         }
-        
+
         let min_power = min_powers.iter().cloned().fold(f64::INFINITY, f64::min);
         Ok(min_power)
     }
@@ -665,7 +665,7 @@ impl SpectralAnalyzer {
 
     fn generate_window(&self, length: usize) -> DeviceResult<Array1<f64>> {
         let mut window = Array1::zeros(length);
-        
+
         match &self.window_function {
             WindowFunction::Rectangular => {
                 window.fill(1.0);
@@ -683,7 +683,7 @@ impl SpectralAnalyzer {
             WindowFunction::Blackman => {
                 for (i, w) in window.iter_mut().enumerate() {
                     let n = i as f64 / (length - 1) as f64;
-                    *w = 0.42 - 0.5 * (2.0 * std::f64::consts::PI * n).cos() 
+                    *w = 0.42 - 0.5 * (2.0 * std::f64::consts::PI * n).cos()
                         + 0.08 * (4.0 * std::f64::consts::PI * n).cos();
                 }
             },
@@ -692,14 +692,14 @@ impl SpectralAnalyzer {
                 for (i, w) in window.iter_mut().enumerate() {
                     let n = i as f64 - (length - 1) as f64 / 2.0;
                     let alpha = (length - 1) as f64 / 2.0;
-                    *w = self.modified_bessel_i0(*beta * (1.0 - (n / alpha).powi(2)).sqrt()) 
+                    *w = self.modified_bessel_i0(*beta * (1.0 - (n / alpha).powi(2)).sqrt())
                         / self.modified_bessel_i0(*beta);
                 }
             },
             WindowFunction::Tukey { alpha } => {
                 // Tukey window implementation
                 let transition_samples = (*alpha * length as f64 / 2.0) as usize;
-                
+
                 for (i, w) in window.iter_mut().enumerate() {
                     if i < transition_samples {
                         *w = 0.5 * (1.0 + (std::f64::consts::PI * i as f64 / transition_samples as f64 - std::f64::consts::PI).cos());
@@ -712,7 +712,7 @@ impl SpectralAnalyzer {
                 }
             },
         }
-        
+
         Ok(window)
     }
 
@@ -736,7 +736,7 @@ impl SpectralAnalyzer {
         // Simplified FFT implementation (would use proper FFT library in practice)
         let n = signal.len();
         let mut result = Array1::zeros(n);
-        
+
         for k in 0..n {
             let mut sum = Complex64::new(0.0, 0.0);
             for j in 0..n {
@@ -745,7 +745,7 @@ impl SpectralAnalyzer {
             }
             result[k] = sum;
         }
-        
+
         Ok(result)
     }
 
@@ -753,7 +753,7 @@ impl SpectralAnalyzer {
         // Compute cross-spectral density
         let fft1 = self.compute_fft(signal1)?;
         let fft2 = self.compute_fft(signal2)?;
-        
+
         let csd = Array1::from_iter(fft1.iter().zip(fft2.iter()).map(|(x1, x2)| x1 * x2.conj()));
         Ok(csd)
     }
@@ -763,14 +763,14 @@ impl SpectralAnalyzer {
         let csd = self.compute_cross_spectral_density(signal1, signal2)?;
         let psd1 = self.compute_psd(signal1)?;
         let psd2 = self.compute_psd(signal2)?;
-        
+
         let coherence = Array1::from_iter(
             csd.iter().zip(psd1.iter().zip(psd2.iter()))
                 .map(|(csd_val, (psd1_val, psd2_val))| {
                     csd_val.norm_sqr() / (psd1_val * psd2_val)
                 })
         );
-        
+
         Ok(coherence)
     }
 
@@ -778,7 +778,7 @@ impl SpectralAnalyzer {
         // Compute transfer function H(f) = Sxy(f) / Sxx(f)
         let csd = self.compute_cross_spectral_density(input, output)?;
         let psd_input = self.compute_psd(input)?;
-        
+
         let transfer_function = Array1::from_iter(
             csd.iter().zip(psd_input.iter())
                 .map(|(csd_val, psd_val)| {
@@ -789,14 +789,14 @@ impl SpectralAnalyzer {
                     }
                 })
         );
-        
+
         Ok(transfer_function)
     }
 
     fn find_spectral_peaks(&self, signal: &Array1<f64>) -> DeviceResult<Vec<SpectralPeak>> {
         let psd = self.compute_psd(signal)?;
         let mut peaks = Vec::new();
-        
+
         // Simple peak detection
         for i in 1..(psd.len() - 1) {
             if psd[i] > psd[i - 1] && psd[i] > psd[i + 1] && psd[i] > 0.1 {
@@ -810,7 +810,7 @@ impl SpectralAnalyzer {
                 });
             }
         }
-        
+
         Ok(peaks)
     }
 }

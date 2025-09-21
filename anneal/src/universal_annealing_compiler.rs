@@ -998,13 +998,13 @@ pub enum VerificationLevel {
 pub trait PlatformCompiler: Send + Sync {
     /// Compile problem for specific platform
     fn compile(&self, problem: &IsingModel, platform: &PlatformInfo) -> ApplicationResult<CompilationResult>;
-    
+
     /// Get supported platform
     fn get_platform(&self) -> QuantumPlatform;
-    
+
     /// Estimate compilation time
     fn estimate_compilation_time(&self, problem: &IsingModel) -> Duration;
-    
+
     /// Validate compilation result
     fn validate_result(&self, result: &CompilationResult) -> ApplicationResult<ValidationResult>;
 }
@@ -1314,13 +1314,13 @@ pub struct ValidationMetadata {
 pub trait OptimizationPass: Send + Sync {
     /// Apply optimization pass
     fn apply(&self, representation: &mut CompiledRepresentation) -> ApplicationResult<OptimizationResult>;
-    
+
     /// Get pass name
     fn get_name(&self) -> &str;
-    
+
     /// Get pass dependencies
     fn get_dependencies(&self) -> Vec<String>;
-    
+
     /// Estimate optimization time
     fn estimate_time(&self, representation: &CompiledRepresentation) -> Duration;
 }
@@ -1916,36 +1916,36 @@ impl UniversalAnnealingCompiler {
             hardware_monitor: Arc::new(Mutex::new(RealTimeHardwareMonitor::new(Default::default()))),
         }
     }
-    
+
     /// Compile and execute problem on optimal platform
     pub fn compile_and_execute(&self, problem: &IsingModel) -> ApplicationResult<UniversalExecutionResult> {
         println!("Starting universal compilation and execution");
-        
+
         let start_time = Instant::now();
-        
+
         // Step 1: Discover available platforms
         let available_platforms = self.discover_platforms()?;
-        
+
         // Step 2: Compile for all suitable platforms
         let compilation_results = self.compile_for_platforms(problem, &available_platforms)?;
-        
+
         // Step 3: Predict performance for each platform
         let performance_predictions = self.predict_performance(&compilation_results)?;
-        
+
         // Step 4: Optimize cost and select optimal platform
         let optimal_platform = self.select_optimal_platform(&performance_predictions)?;
-        
+
         // Step 5: Schedule execution
         let execution_plan = self.schedule_execution(&optimal_platform)?;
-        
+
         // Step 6: Execute on selected platform
         let execution_result = self.execute_on_platform(&execution_plan)?;
-        
+
         // Step 7: Analyze results and update models
         self.update_performance_models(&execution_result)?;
-        
+
         let total_time = start_time.elapsed();
-        
+
         let result = UniversalExecutionResult {
             problem_id: format!("universal_execution_{}", start_time.elapsed().as_millis()),
             optimal_platform: optimal_platform.platform,
@@ -1961,19 +1961,19 @@ impl UniversalAnnealingCompiler {
                 performance_improvement: 0.25,
             },
         };
-        
+
         println!("Universal compilation and execution completed in {:?}", total_time);
         println!("Selected platform: {:?}", result.optimal_platform);
         println!("Performance improvement: {:.1}%", result.metadata.performance_improvement * 100.0);
         println!("Cost savings: {:.1}%", result.metadata.cost_savings * 100.0);
-        
+
         Ok(result)
     }
-    
+
     /// Discover available quantum platforms
     fn discover_platforms(&self) -> ApplicationResult<Vec<QuantumPlatform>> {
         println!("Discovering available quantum platforms");
-        
+
         if self.config.auto_platform_discovery {
             // Simulate platform discovery
             Ok(vec![
@@ -1988,16 +1988,16 @@ impl UniversalAnnealingCompiler {
             Ok(self.config.scheduling_preferences.resource_preferences.preferred_platforms.clone())
         }
     }
-    
+
     /// Compile problem for multiple platforms
     fn compile_for_platforms(&self, problem: &IsingModel, platforms: &[QuantumPlatform]) -> ApplicationResult<HashMap<QuantumPlatform, CompilationResult>> {
         println!("Compiling for {} platforms", platforms.len());
-        
+
         let mut results = HashMap::new();
-        
+
         for platform in platforms {
             println!("Compiling for platform: {:?}", platform);
-            
+
             // Simulate compilation
             let compilation_result = CompilationResult {
                 platform: platform.clone(),
@@ -2033,21 +2033,21 @@ impl UniversalAnnealingCompiler {
                     },
                 },
             };
-            
+
             results.insert(platform.clone(), compilation_result);
             thread::sleep(Duration::from_millis(10)); // Simulate compilation time
         }
-        
+
         println!("Compilation completed for all platforms");
         Ok(results)
     }
-    
+
     /// Predict performance for compilation results
     fn predict_performance(&self, results: &HashMap<QuantumPlatform, CompilationResult>) -> ApplicationResult<HashMap<QuantumPlatform, PlatformPerformancePrediction>> {
         println!("Predicting performance for compiled results");
-        
+
         let mut predictions = HashMap::new();
-        
+
         for (platform, compilation_result) in results {
             let prediction = PlatformPerformancePrediction {
                 platform: platform.clone(),
@@ -2066,21 +2066,21 @@ impl UniversalAnnealingCompiler {
                     model_accuracy: 0.92,
                 },
             };
-            
+
             predictions.insert(platform.clone(), prediction);
         }
-        
+
         println!("Performance prediction completed");
         Ok(predictions)
     }
-    
+
     /// Select optimal platform based on predictions
     fn select_optimal_platform(&self, predictions: &HashMap<QuantumPlatform, PlatformPerformancePrediction>) -> ApplicationResult<OptimalPlatformSelection> {
         println!("Selecting optimal platform");
-        
+
         let mut best_platform = None;
         let mut best_score = 0.0;
-        
+
         for (platform, prediction) in predictions {
             // Calculate composite score based on strategy
             let score = match self.config.allocation_strategy {
@@ -2092,17 +2092,17 @@ impl UniversalAnnealingCompiler {
                 },
                 _ => prediction.predicted_performance.solution_quality * prediction.confidence_score,
             };
-            
+
             if score > best_score {
                 best_score = score;
                 best_platform = Some(platform.clone());
             }
         }
-        
+
         let selected_platform = best_platform.unwrap_or(QuantumPlatform::LocalSimulator);
-        
+
         println!("Selected optimal platform: {:?}", selected_platform);
-        
+
         Ok(OptimalPlatformSelection {
             platform: selected_platform.clone(),
             selection_score: best_score,
@@ -2115,11 +2115,11 @@ impl UniversalAnnealingCompiler {
             },
         })
     }
-    
+
     /// Schedule execution on selected platform
     fn schedule_execution(&self, selection: &OptimalPlatformSelection) -> ApplicationResult<ExecutionPlan> {
         println!("Scheduling execution on platform: {:?}", selection.platform);
-        
+
         let execution_plan = ExecutionPlan {
             platform: selection.platform.clone(),
             scheduled_start_time: Instant::now() + Duration::from_secs(10),
@@ -2138,18 +2138,18 @@ impl UniversalAnnealingCompiler {
                 error_mitigation: self.config.error_correction.enable_error_correction,
             },
         };
-        
+
         println!("Execution scheduled for {:?}", execution_plan.scheduled_start_time);
         Ok(execution_plan)
     }
-    
+
     /// Execute on the selected platform
     fn execute_on_platform(&self, plan: &ExecutionPlan) -> ApplicationResult<PlatformExecutionResult> {
         println!("Executing on platform: {:?}", plan.platform);
-        
+
         // Simulate execution
         thread::sleep(Duration::from_millis(200));
-        
+
         let execution_result = PlatformExecutionResult {
             platform: plan.platform.clone(),
             execution_id: "exec_67890".to_string(),
@@ -2174,24 +2174,24 @@ impl UniversalAnnealingCompiler {
                 execution_environment: "production".to_string(),
             },
         };
-        
+
         println!("Execution completed successfully");
         println!("Objective value: {:.2}", execution_result.objective_value);
         println!("Solution quality: {:.1}%", execution_result.quality_metrics.solution_quality * 100.0);
         println!("Cost: ${:.2}", execution_result.resource_usage.cost_incurred);
-        
+
         Ok(execution_result)
     }
-    
+
     /// Update performance models based on execution results
     fn update_performance_models(&self, result: &PlatformExecutionResult) -> ApplicationResult<()> {
         println!("Updating performance models with execution results");
-        
+
         // Update platform performance history
         let registry = self.platform_registry.write().map_err(|_| {
             ApplicationError::OptimizationError("Failed to acquire platform registry lock".to_string())
         })?;
-        
+
         // This would update the actual performance models
         println!("Performance models updated successfully");
         Ok(())
@@ -2535,14 +2535,14 @@ pub fn create_example_universal_compiler() -> ApplicationResult<UniversalAnneali
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_universal_compiler_creation() {
         let compiler = create_example_universal_compiler().unwrap();
         assert!(compiler.config.auto_platform_discovery);
         assert_eq!(compiler.config.optimization_level, OptimizationLevel::Aggressive);
     }
-    
+
     #[test]
     fn test_platform_types() {
         let platforms = vec![
@@ -2553,7 +2553,7 @@ mod tests {
         ];
         assert_eq!(platforms.len(), 4);
     }
-    
+
     #[test]
     fn test_optimization_levels() {
         let levels = vec![
@@ -2565,7 +2565,7 @@ mod tests {
         ];
         assert_eq!(levels.len(), 5);
     }
-    
+
     #[test]
     fn test_resource_allocation_strategies() {
         let strategies = vec![
@@ -2576,7 +2576,7 @@ mod tests {
         ];
         assert_eq!(strategies.len(), 4);
     }
-    
+
     #[test]
     fn test_platform_registry() {
         let registry = PlatformRegistry::new();

@@ -20,7 +20,7 @@ use crate::statevector::StateVectorSimulator;
 pub enum QFTMethod {
     /// Exact QFT using SciRS2 FFT
     SciRS2Exact,
-    /// Approximate QFT using SciRS2 FFT  
+    /// Approximate QFT using SciRS2 FFT
     SciRS2Approximate,
     /// Circuit-based QFT implementation
     Circuit,
@@ -369,18 +369,12 @@ impl SciRS2QFT {
         if let Some(ref backend) = self.backend {
             if backend.is_available() {
                 // Use actual SciRS2 FFT implementation
-                use crate::scirs2_integration::{MemoryPool, Vector};
+                use crate::scirs2_integration::{SciRS2MemoryAllocator, SciRS2Vector};
                 use ndarray::Array1;
 
-                let pool = MemoryPool::new();
+                let _allocator = SciRS2MemoryAllocator::new();
                 let input_array = Array1::from_vec(data.to_vec());
-                let scirs2_vector =
-                    Vector::from_array1(&input_array.view(), &pool).map_err(|e| {
-                        SimulatorError::ComputationError(format!(
-                            "Failed to create SciRS2 vector: {}",
-                            e
-                        ))
-                    })?;
+                let scirs2_vector = SciRS2Vector::from_array1(input_array);
 
                 // Perform forward FFT using SciRS2 engine
                 #[cfg(feature = "advanced_math")]
@@ -423,18 +417,12 @@ impl SciRS2QFT {
         if let Some(ref backend) = self.backend {
             if backend.is_available() {
                 // Use actual SciRS2 inverse FFT implementation
-                use crate::scirs2_integration::{MemoryPool, Vector};
+                use crate::scirs2_integration::{SciRS2MemoryAllocator, SciRS2Vector};
                 use ndarray::Array1;
 
-                let pool = MemoryPool::new();
+                let _allocator = SciRS2MemoryAllocator::new();
                 let input_array = Array1::from_vec(data.to_vec());
-                let scirs2_vector =
-                    Vector::from_array1(&input_array.view(), &pool).map_err(|e| {
-                        SimulatorError::ComputationError(format!(
-                            "Failed to create SciRS2 vector: {}",
-                            e
-                        ))
-                    })?;
+                let scirs2_vector = SciRS2Vector::from_array1(input_array);
 
                 // Perform inverse FFT using SciRS2 engine
                 #[cfg(feature = "advanced_math")]

@@ -98,7 +98,7 @@ pub fn mean(data: &ArrayView1<f64>) -> Result<f64, String> {
     Ok(data.sum() / data.len() as f64)
 }
 
-pub fn std(data: &ArrayView1<f64>, ddof: i32) -> Result<f64, String> {
+pub fn std(data: &ArrayView1<f64>, ddof: i32, _workers: Option<usize>) -> Result<f64, String> {
     if data.len() <= ddof as usize {
         return Err("Insufficient data for standard deviation calculation".to_string());
     }
@@ -110,7 +110,7 @@ pub fn std(data: &ArrayView1<f64>, ddof: i32) -> Result<f64, String> {
     Ok(variance.sqrt())
 }
 
-pub fn var(data: &ArrayView1<f64>, ddof: i32) -> Result<f64, String> {
+pub fn var(data: &ArrayView1<f64>, ddof: i32, _workers: Option<usize>) -> Result<f64, String> {
     if data.len() <= ddof as usize {
         return Err("Insufficient data for variance calculation".to_string());
     }
@@ -186,7 +186,7 @@ pub fn ttest_1samp(data: &ArrayView1<f64>, pop_mean: f64) -> Result<(f64, f64), 
     }
 
     let sample_mean = mean(data)?;
-    let sample_std = std(data, 1)?;
+    let sample_std = std(data, 1, None)?;
     let n = data.len() as f64;
 
     let t_statistic = (sample_mean - pop_mean) / (sample_std / n.sqrt());
@@ -239,7 +239,7 @@ pub fn shapiro_wilk(data: &ArrayView1<f64>) -> Result<(f64, f64), String> {
 
     // Simplified implementation - just check if data looks roughly normal
     let mean_val = mean(data)?;
-    let std_val = std(data, 1)?;
+    let std_val = std(data, 1, None)?;
 
     // Calculate skewness and kurtosis as rough normality indicators
     let n = data.len() as f64;
@@ -361,7 +361,7 @@ mod tests {
     #[test]
     fn test_std() {
         let data = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
-        let result = std(&data.view(), 1).unwrap();
+        let result = std(&data.view(), 1, None).unwrap();
         // Standard deviation of [1,2,3,4,5] with ddof=1 is sqrt(2.5) ≈ 1.58
         assert!((result - 1.5811388300841898).abs() < 1e-10);
     }

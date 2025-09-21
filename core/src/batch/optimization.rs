@@ -5,12 +5,15 @@ use super::BatchStateVector;
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use ndarray::{Array1, Array2};
 use num_complex::Complex64;
-use rayon::prelude::*;
+// use scirs2_core::parallel_ops::*;
+use crate::optimization_stubs::{minimize, Method, OptimizeResult, Options};
+use crate::parallel_ops_stubs::*;
+// use scirs2_core::optimization::{minimize, Method, OptimizeResult, Options};
 use std::sync::Arc;
 
 // Import SciRS2 optimization
-extern crate scirs2_optimize;
-use scirs2_optimize::unconstrained::{minimize, Method, OptimizeResult, Options};
+// extern crate scirs2_optimize;
+// use scirs2_optimize::unconstrained::{minimize, Method, OptimizeResult, Options};
 
 /// Batch optimizer for parameterized quantum circuits
 pub struct BatchParameterOptimizer {
@@ -129,7 +132,8 @@ impl BatchParameterOptimizer {
         };
 
         // Run optimization using SciRS2
-        let result = minimize(objective, initial_params, self.config.method, Some(options));
+        let initial_array = Array1::from_vec(initial_params.to_vec());
+        let result = minimize(objective, &initial_array, self.config.method, Some(options));
 
         match result {
             Ok(opt_result) => Ok(opt_result),
@@ -275,7 +279,7 @@ impl Clone for BatchCircuitExecutor {
         Self {
             config: self.config.clone(),
             gpu_backend: self.gpu_backend.clone(),
-            thread_pool: None, // Don't clone thread pool
+            // thread_pool: None, // Don't clone thread pool - removed per CORE_USAGE_POLICY
         }
     }
 }

@@ -7,7 +7,8 @@
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use num_complex::Complex64;
-use scirs2_sparse::csr::CsrMatrix;
+// use scirs2_sparse::csr::CsrMatrix;
+use crate::linalg_stubs::CsrMatrix;
 use std::fmt::Debug;
 
 /// Trait for quantum matrix operations
@@ -217,16 +218,7 @@ impl QuantumMatrix for SparseMatrix {
     }
 
     fn to_dense(&self) -> Array2<Complex64> {
-        let dense_vec = self.csr.to_dense();
-        let rows = dense_vec.len();
-        let cols = if rows > 0 { dense_vec[0].len() } else { 0 };
-
-        let mut flat = Vec::with_capacity(rows * cols);
-        for row in dense_vec {
-            flat.extend(row);
-        }
-
-        Array2::from_shape_vec((rows, cols), flat).unwrap()
+        self.csr.to_dense()
     }
 
     fn to_sparse(&self) -> QuantRS2Result<CsrMatrix<Complex64>> {

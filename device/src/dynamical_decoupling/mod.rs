@@ -47,8 +47,6 @@ use crate::{
     CircuitResult, DeviceError, DeviceResult,
 };
 
-use self::optimization::DDSequenceOptimizer;
-
 /// Main result type for dynamical decoupling operations
 #[derive(Debug, Clone)]
 pub struct DynamicalDecouplingResult {
@@ -313,7 +311,7 @@ pub struct DDSystemStatus {
     pub optimization_success_rate: f64,
 }
 
-/// Circuit executor trait for DD operations  
+/// Circuit executor trait for DD operations
 pub trait DDCircuitExecutor: Send + Sync {
     /// Execute a circuit and return results
     fn execute_circuit(

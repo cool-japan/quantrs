@@ -811,40 +811,40 @@ impl EnhancedQuantumSensorNetwork {
     /// Add an advanced quantum sensor to the network
     pub async fn add_sensor(&mut self, sensor: AdvancedQuantumSensor) -> Result<()> {
         let sensor_id = sensor.sensor_id;
-        
+
         // Initialize sensor in the network
         self.initialize_sensor(&sensor).await?;
-        
+
         // Establish entanglement connections if needed
         self.establish_entanglement_connections(&sensor).await?;
-        
+
         // Configure environmental adaptation
         self.configure_adaptation(&sensor).await?;
-        
+
         // Add to sensor collection
         self.quantum_sensors.insert(sensor_id, sensor);
-        
+
         Ok(())
     }
 
     /// Launch a distributed sensing campaign
     pub async fn launch_campaign(&self, campaign: SensingCampaign) -> Result<CampaignId> {
         let campaign_id = campaign.campaign_id;
-        
+
         // Validate campaign parameters
         self.validate_campaign(&campaign).await?;
-        
+
         // Allocate resources for the campaign
         self.allocate_campaign_resources(&campaign).await?;
-        
+
         // Initialize participating sensors
         self.initialize_campaign_sensors(&campaign).await?;
-        
+
         // Start the campaign
         self.sensing_coordinator
             .start_campaign(campaign)
             .await?;
-        
+
         Ok(campaign_id)
     }
 
@@ -1222,7 +1222,7 @@ impl SensorNetworkMonitor {
         let operational_sensors = sensors.values()
             .filter(|s| matches!(s.sensor_state, SensorState::Operational))
             .count();
-        
+
         Ok(NetworkStatus {
             operational_state: NetworkOperationalState::Operational,
             sensor_status_summary: SensorStatusSummary {
@@ -1260,7 +1260,7 @@ mod tests {
     async fn test_enhanced_sensor_network_creation() {
         let network_id = Uuid::new_v4();
         let network = EnhancedQuantumSensorNetwork::new(network_id);
-        
+
         assert_eq!(network.network_id, network_id);
         assert_eq!(network.quantum_sensors.len(), 0);
     }
@@ -1269,7 +1269,7 @@ mod tests {
     async fn test_sensor_addition() {
         let network_id = Uuid::new_v4();
         let mut network = EnhancedQuantumSensorNetwork::new(network_id);
-        
+
         let sensor = AdvancedQuantumSensor {
             sensor_id: Uuid::new_v4(),
             sensor_type: AdvancedSensorType::QuantumGravimeter {
@@ -1330,7 +1330,7 @@ mod tests {
                 reference_standards: vec!["NIST".to_string()],
             },
         };
-        
+
         let result = network.add_sensor(sensor).await;
         assert!(result.is_ok());
         assert_eq!(network.quantum_sensors.len(), 1);
@@ -1340,7 +1340,7 @@ mod tests {
     async fn test_quantum_advantage_calculation() {
         let network_id = Uuid::new_v4();
         let mut network = EnhancedQuantumSensorNetwork::new(network_id);
-        
+
         // Add multiple sensors with different quantum advantages
         for i in 0..5 {
             let sensor = AdvancedQuantumSensor {
@@ -1403,12 +1403,12 @@ mod tests {
                     reference_standards: vec!["NIST".to_string()],
                 },
             };
-            
+
             network.add_sensor(sensor).await.unwrap();
         }
-        
+
         let advantage_metrics = network.calculate_quantum_advantage();
-        
+
         assert_eq!(advantage_metrics.total_sensors, 5);
         assert!(advantage_metrics.average_quantum_advantage > 0.0);
         assert!(advantage_metrics.sensing_precision_improvement > 0.0);
@@ -1419,10 +1419,10 @@ mod tests {
     async fn test_network_status() {
         let network_id = Uuid::new_v4();
         let network = EnhancedQuantumSensorNetwork::new(network_id);
-        
+
         let status = network.get_network_status().await;
         assert!(status.is_ok());
-        
+
         let status = status.unwrap();
         assert!(matches!(status.operational_state, NetworkOperationalState::Operational));
         assert!(status.health_indicators.system_health_score > 0.0);

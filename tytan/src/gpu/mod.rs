@@ -196,16 +196,16 @@ pub fn gpu_solve_qubo(
                                          const int n_vars) {
                     int gid = get_global_id(0);
                     int offset = gid * n_vars;
-                    
+
                     double energy = 0.0;
-                    
+
                     // Linear terms
                     for (int i = 0; i < n_vars; i++) {
                         if (binary[offset + i]) {
                             energy += matrix[i * n_vars + i];
                         }
                     }
-                    
+
                     // Quadratic terms
                     for (int i = 0; i < n_vars; i++) {
                         if (binary[offset + i]) {
@@ -216,7 +216,7 @@ pub fn gpu_solve_qubo(
                             }
                         }
                     }
-                    
+
                     energies[gid] = energy;
                 }
             "#,

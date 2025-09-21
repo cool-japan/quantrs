@@ -12,13 +12,14 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use quantrs2_anneal::ising::IsingModel;
+
 #[cfg(feature = "dwave")]
 use quantrs2_anneal::{
     dwave::{
         AdvancedProblemParams, AnnealingSchedule, ChainStrengthMethod, DWaveClient,
         EmbeddingConfig, HybridSolverParams, SolverCategory, SolverSelector,
     },
-    ising::IsingModel,
     OptimizationLevel,
 };
 

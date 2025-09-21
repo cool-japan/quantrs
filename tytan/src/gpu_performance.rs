@@ -3,19 +3,13 @@
 //! This module provides tools for optimizing GPU performance including
 //! memory access patterns, kernel fusion, and performance profiling.
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-#[cfg(feature = "scirs")]
-use scirs2_core::gpu;
-
-// Stubs for missing GPU functionality
-#[cfg(feature = "scirs")]
-struct DeviceInfo;
-
-#[cfg(feature = "scirs")]
-struct GpuContext;
+use scirs2_core::gpu::{GpuBackend, GpuContext, GpuError};
 
 /// Performance metrics for GPU operations
 #[derive(Default, Clone, Debug)]
@@ -38,15 +32,16 @@ pub struct GpuPerformanceMetrics {
     pub cache_hit_rate: f64,
 }
 
-/// GPU performance profiler
+/// GPU performance profiler using SciRS2 GPU abstractions
 pub struct GpuProfiler {
     /// Current metrics
     metrics: Arc<Mutex<GpuPerformanceMetrics>>,
+    /// GPU context handle
+    context: Arc<GpuContext>,
+    /// GPU backend type
+    backend: GpuBackend,
     /// Profiling enabled
     enabled: bool,
-    /// Device info
-    #[cfg(feature = "scirs")]
-    device_info: Option<DeviceInfo>,
 }
 
 impl Default for GpuProfiler {
@@ -58,20 +53,30 @@ impl Default for GpuProfiler {
 impl GpuProfiler {
     /// Create new profiler
     pub fn new() -> Self {
+        // Use CPU backend as default fallback
+        let backend = GpuBackend::Cpu;
+        let context = GpuContext::new(backend).unwrap_or_else(|_| {
+            // This should never fail for CPU backend
+            panic!("Failed to create CPU context")
+        });
+
         Self {
             metrics: Arc::new(Mutex::new(GpuPerformanceMetrics::default())),
+            context: Arc::new(context),
+            backend,
             enabled: true,
-            #[cfg(feature = "scirs")]
-            device_info: None,
         }
     }
 
     /// Initialize with device context
-    #[cfg(feature = "scirs")]
-    pub fn with_context(mut self, ctx: &GpuContext) -> Self {
-        // TODO: Implement get_device_info in GPU stub
-        // self.device_info = Some(ctx.get_device_info());
-        self
+    pub fn with_context(ctx: GpuContext) -> Self {
+        let backend = ctx.backend();
+        Self {
+            metrics: Arc::new(Mutex::new(GpuPerformanceMetrics::default())),
+            context: Arc::new(ctx),
+            backend,
+            enabled: true,
+        }
     }
 
     /// Enable/disable profiling

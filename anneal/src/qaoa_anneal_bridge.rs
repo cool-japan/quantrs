@@ -72,7 +72,7 @@ impl QaoaAnnealBridge {
 
         // Analyze the resulting problem graph
         let analysis = self.graph_analyzer.analyze_problem_graph(&qubo)?;
-        println!("QAOA->QUBO conversion: {} qubits, {} edges, difficulty: {:?}", 
+        println!("QAOA->QUBO conversion: {} qubits, {} edges, difficulty: {:?}",
                  analysis.metrics.num_nodes, analysis.metrics.num_edges, analysis.embedding_difficulty);
 
         Ok(qubo)
@@ -102,7 +102,7 @@ impl QaoaAnnealBridge {
             let beta = (beta_sum / (solution.len() / num_layers) as f64) * PI / 2.0;
             beta_params.push(beta);
 
-            // Map to cost angles (gamma) 
+            // Map to cost angles (gamma)
             let gamma_sum: f64 = solution.iter()
                 .rev()
                 .skip(layer * solution.len() / num_layers)
@@ -133,7 +133,7 @@ impl QaoaAnnealBridge {
 
         // Step 2: Convert to annealing-compatible QUBO
         let qubo = self.qaoa_to_qubo(&qaoa_problem)?;
-        
+
         // Step 3: Analyze problem characteristics to choose strategy
         let analysis = self.graph_analyzer.analyze_problem_graph(&qubo)?;
         let strategy = self.select_optimization_strategy(&analysis)?;
@@ -180,7 +180,7 @@ impl QaoaAnnealBridge {
         // For now, approximate multi-qubit terms as pairwise interactions
         // More sophisticated reduction methods could be implemented
         let pair_weight = weight / (qubits.len() - 1) as f64;
-        
+
         for i in 0..qubits.len()-1 {
             qubo.set_quadratic(qubits[i], qubits[i+1], pair_weight)?;
         }
@@ -204,7 +204,7 @@ impl QaoaAnnealBridge {
 
     fn select_optimization_strategy(&self, analysis: &crate::scirs2_integration::GraphAnalysisResult) -> ApplicationResult<OptimizationStrategy> {
         use crate::scirs2_integration::EmbeddingDifficulty;
-        
+
         match analysis.embedding_difficulty {
             EmbeddingDifficulty::Easy => {
                 if analysis.metrics.num_nodes < 20 {
@@ -222,7 +222,7 @@ impl QaoaAnnealBridge {
         // Simplified annealing solve - would use actual annealing solver
         let solution = vec![1; qubo.num_variables];
         let energy = qubo.evaluate(&solution)?;
-        
+
         Ok(SolutionResult {
             energy,
             solution,
@@ -236,13 +236,13 @@ impl QaoaAnnealBridge {
         // Simplified QAOA solve - would use actual QAOA implementation
         let solution = vec![1; problem.num_qubits];
         let energy = -1.0; // Placeholder
-        
+
         let qaoa_params = QaoaParameters {
             beta: vec![PI/4.0; self.config.default_qaoa_layers],
             gamma: vec![PI/2.0; self.config.default_qaoa_layers],
             num_layers: self.config.default_qaoa_layers,
         };
-        
+
         Ok(SolutionResult {
             energy,
             solution,
@@ -255,7 +255,7 @@ impl QaoaAnnealBridge {
     fn solve_sequential(&self, qaoa_problem: &QaoaProblem, qubo: &SciRS2QuboModel) -> ApplicationResult<SolutionResult> {
         // First try QAOA, then refine with annealing
         let qaoa_result = self.solve_with_qaoa(qaoa_problem)?;
-        
+
         if qaoa_result.energy < self.config.energy_threshold {
             Ok(qaoa_result)
         } else {
@@ -267,7 +267,7 @@ impl QaoaAnnealBridge {
         // Run both approaches and return the better result
         let qaoa_result = self.solve_with_qaoa(qaoa_problem)?;
         let annealing_result = self.solve_with_annealing(qubo)?;
-        
+
         if qaoa_result.energy < annealing_result.energy {
             Ok(qaoa_result)
         } else {
@@ -333,7 +333,7 @@ pub enum MixingType {
 pub struct QaoaParameters {
     /// Mixing angles (beta parameters)
     pub beta: Vec<f64>,
-    /// Cost angles (gamma parameters) 
+    /// Cost angles (gamma parameters)
     pub gamma: Vec<f64>,
     /// Number of QAOA layers
     pub num_layers: usize,
@@ -441,23 +441,23 @@ impl PerformanceMetrics {
 /// Example usage and testing functions
 pub fn create_example_max_cut_problem(num_vertices: usize) -> UnifiedProblem {
     let mut clauses = Vec::new();
-    
+
     // Create a ring graph for Max-Cut
     for i in 0..num_vertices {
         let j = (i + 1) % num_vertices;
-        clauses.push(QaoaClause::TwoQubit { 
-            qubit1: i, 
-            qubit2: j, 
-            weight: 1.0 
+        clauses.push(QaoaClause::TwoQubit {
+            qubit1: i,
+            qubit2: j,
+            weight: 1.0
         });
     }
-    
+
     let qaoa_problem = QaoaProblem {
         num_qubits: num_vertices,
         cost_clauses: clauses,
         mixing_type: MixingType::StandardX,
     };
-    
+
     UnifiedProblem {
         formulation: ProblemFormulation::Qaoa(qaoa_problem),
         metadata: ProblemMetadata {
@@ -483,7 +483,7 @@ mod tests {
     #[test]
     fn test_max_cut_problem_creation() {
         let problem = create_example_max_cut_problem(4);
-        
+
         if let ProblemFormulation::Qaoa(qaoa) = problem.formulation {
             assert_eq!(qaoa.num_qubits, 4);
             assert_eq!(qaoa.cost_clauses.len(), 4); // Ring graph has 4 edges
@@ -496,11 +496,11 @@ mod tests {
     fn test_qaoa_to_qubo_conversion() {
         let problem = create_example_max_cut_problem(3);
         let mut bridge = QaoaAnnealBridge::new(BridgeConfig::default());
-        
+
         if let ProblemFormulation::Qaoa(qaoa) = problem.formulation {
             let result = bridge.qaoa_to_qubo(&qaoa);
             assert!(result.is_ok());
-            
+
             let qubo = result.unwrap();
             assert_eq!(qubo.num_variables, 3);
             assert_eq!(qubo.quadratic_terms.len(), 3); // 3 edges in ring
@@ -511,10 +511,10 @@ mod tests {
     fn test_hybrid_optimization() {
         let problem = create_example_max_cut_problem(6);
         let mut bridge = QaoaAnnealBridge::new(BridgeConfig::default());
-        
+
         let result = bridge.hybrid_optimize(&problem);
         assert!(result.is_ok());
-        
+
         let opt_result = result.unwrap();
         assert_eq!(opt_result.best_solution.len(), 6);
         assert!(opt_result.execution_time.as_millis() > 0);

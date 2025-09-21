@@ -24,7 +24,7 @@ use quantrs2_core::{
 use scirs2_stats::{
     bartlett, chi2_gof,
     distributions::{beta, chi2 as chi2_dist, exponential, f as f_dist, gamma, norm, t},
-    kendall_tau, ks_2samp, kurtosis, levene, mannwhitneyu, mean, median, pearsonr, percentile,
+    kendall_tau, ks_2samp, kurtosis, levene, mann_whitney, mean, median, pearsonr, percentile,
     skew, spearmanr, std, ttest_1samp, ttest_ind, var, wilcoxon, Alternative, TTestResult,
 };
 
@@ -32,7 +32,7 @@ use scirs2_stats::{
 use scirs2_linalg::lowrank::pca;
 #[cfg(feature = "scirs2")]
 use scirs2_linalg::{
-    cond, correlation_matrix, covariance_matrix, det, eig, matrix_norm, svd, LinalgResult,
+    cond, correlationmatrix, covariancematrix, det, eig, matrix_norm, svd, LinalgResult,
 };
 
 #[cfg(feature = "scirs2")]
@@ -42,8 +42,8 @@ use scirs2_optimize::{differential_evolution, minimize, particle_swarm, Optimize
 use scirs2_graph::spectral::spectral_clustering;
 #[cfg(feature = "scirs2")]
 use scirs2_graph::{
-    betweenness_centrality, closeness_centrality, clustering_coefficient, eigenvector_centrality,
-    graph_density, louvain_communities, pagerank, shortest_path, Graph,
+    betweenness_centrality, closeness_centrality, clustering_coefficient, dijkstra_path,
+    eigenvector_centrality, graph_density, louvain_communities_result, pagerank, Graph,
 };
 
 // TODO: scirs2_ml crate not available yet
@@ -1197,11 +1197,11 @@ impl AdvancedHardwareBenchmarkSuite {
             #[cfg(feature = "scirs2")]
             {
                 feature_vector.push(mean(&exec_times.view()).unwrap_or(0.0));
-                feature_vector.push(std(&exec_times.view(), 1).unwrap_or(0.0));
+                feature_vector.push(std(&exec_times.view(), 1, None).unwrap_or(0.0));
                 feature_vector.push(mean(&fidelities.view()).unwrap_or(0.0));
-                feature_vector.push(std(&fidelities.view(), 1).unwrap_or(0.0));
+                feature_vector.push(std(&fidelities.view(), 1, None).unwrap_or(0.0));
                 feature_vector.push(mean(&error_rates.view()).unwrap_or(0.0));
-                feature_vector.push(std(&error_rates.view(), 1).unwrap_or(0.0));
+                feature_vector.push(std(&error_rates.view(), 1, None).unwrap_or(0.0));
             }
 
             #[cfg(not(feature = "scirs2"))]
@@ -1846,7 +1846,7 @@ mod tests {
                     q75: 0.06,
                     confidence_interval: (0.04, 0.06),
                 },
-                correlation_matrix: Array2::eye(3),
+                correlationmatrix: Array2::eye(3),
                 statistical_tests: HashMap::new(),
                 distribution_fits: HashMap::new(),
             },

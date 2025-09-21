@@ -3,12 +3,12 @@
 //! This example shows how to use quantrs-tytan with SciRS2 integration
 //! to solve the max-cut problem on a graph.
 
-use quantrs2_tytan::{
-    calculate_diversity, cluster_solutions, optimize_qubo, symbols_list, 
-    auto_array::AutoArray, Compile, GASampler, SASampler,
-};
-use quantrs2_tytan::symbol::Expression;
 use quantrs2_tytan::sampler::Sampler;
+use quantrs2_tytan::symbol::Expression;
+use quantrs2_tytan::{
+    auto_array::AutoArray, calculate_diversity, cluster_solutions, optimize_qubo, symbols_list,
+    Compile, GASampler, SASampler,
+};
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -4,7 +4,7 @@ use super::types::*;
 use crate::sampler::{SampleResult, Sampler};
 use ndarray::Array2;
 #[cfg(feature = "parallel")]
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use std::collections::HashMap;
 
 /// Domain decomposition solver

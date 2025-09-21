@@ -55,7 +55,7 @@ pub struct NoiseStatistics {
 /// Correlation analysis between noise sources
 #[derive(Debug, Clone)]
 pub struct CorrelationAnalysis {
-    pub correlation_matrix: Array2<f64>,
+    pub correlationmatrix: Array2<f64>,
     pub correlation_strength: f64,
 }
 
@@ -163,11 +163,11 @@ impl SciRS2NoiseModeler {
                 DeviceError::APIError(format!("Statistical analysis error: {:?}", e))
             })?;
 
-            let std_val = std(&data_view, 1).map_err(|e| {
+            let std_val = std(&data_view, 1, None).map_err(|e| {
                 DeviceError::APIError(format!("Statistical analysis error: {:?}", e))
             })?;
 
-            let var_val = var(&data_view, 1).map_err(|e| {
+            let var_val = var(&data_view, 1, None).map_err(|e| {
                 DeviceError::APIError(format!("Statistical analysis error: {:?}", e))
             })?;
 
@@ -214,7 +214,7 @@ impl SciRS2NoiseModeler {
         Ok(StatisticalNoiseAnalysis {
             noise_statistics: analysis_results,
             correlation_analysis: CorrelationAnalysis {
-                correlation_matrix: ndarray::Array2::eye(noise_data.len()),
+                correlationmatrix: ndarray::Array2::eye(noise_data.len()),
                 correlation_strength: 0.1,
             },
             temporal_analysis: None,
@@ -229,7 +229,7 @@ impl SciRS2NoiseModeler {
         use ndarray::Array2;
 
         let n_sources = noise_data.len();
-        let mut correlation_matrix = Array2::eye(n_sources);
+        let mut correlationmatrix = Array2::eye(n_sources);
 
         // Calculate pairwise correlations
         let sources: Vec<_> = noise_data.keys().collect();
@@ -260,19 +260,19 @@ impl SciRS2NoiseModeler {
                         0.0
                     };
 
-                    correlation_matrix[[i, j]] = corr;
+                    correlationmatrix[[i, j]] = corr;
                 }
             }
         }
 
-        let avg_correlation = correlation_matrix.iter()
+        let avg_correlation = correlationmatrix.iter()
             .filter(|&&x| x != 1.0)  // Exclude diagonal
             .map(|&x| x.abs())
             .sum::<f64>()
             / ((n_sources * n_sources - n_sources) as f64).max(1.0);
 
         Ok(CorrelationAnalysis {
-            correlation_matrix,
+            correlationmatrix,
             correlation_strength: avg_correlation,
         })
     }
@@ -353,7 +353,7 @@ impl SciRS2NoiseModeler {
             readout_noise,
             crosstalk: CrosstalkNoise {
                 crosstalk_matrix: {
-                    let matrix = &analysis.correlation_analysis.correlation_matrix;
+                    let matrix = &analysis.correlation_analysis.correlationmatrix;
                     let rows = matrix.nrows();
                     let cols = matrix.ncols();
                     let mut vec_matrix = Vec::with_capacity(rows);
@@ -456,11 +456,11 @@ mod tests {
         );
 
         let correlation = modeler.perform_correlation_analysis(&noise_data).unwrap();
-        assert_eq!(correlation.correlation_matrix.shape(), [2, 2]);
-        assert_eq!(correlation.correlation_matrix[[0, 0]], 1.0);
-        assert_eq!(correlation.correlation_matrix[[1, 1]], 1.0);
+        assert_eq!(correlation.correlationmatrix.shape(), [2, 2]);
+        assert_eq!(correlation.correlationmatrix[[0, 0]], 1.0);
+        assert_eq!(correlation.correlationmatrix[[1, 1]], 1.0);
 
         // Off-diagonal should show correlation
-        assert!(correlation.correlation_matrix[[0, 1]].abs() > 0.5);
+        assert!(correlation.correlationmatrix[[0, 1]].abs() > 0.5);
     }
 }

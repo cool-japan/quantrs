@@ -18,7 +18,7 @@ impl AlertGenerator {
     pub fn check_for_alerts(&mut self, characterization: &CrosstalkCharacterization) -> DeviceResult<Vec<AlertEvent>> {
         let mut alerts = Vec::new();
         let current_time = SystemTime::now();
-        
+
         // Check crosstalk threshold
         let max_crosstalk = characterization.crosstalk_matrix.mapv(|x| x.abs()).max().unwrap_or(0.0);
         if max_crosstalk > self.thresholds.crosstalk_threshold {
@@ -26,7 +26,7 @@ impl AlertGenerator {
                 timestamp: current_time,
                 level: AlertLevel::Warning,
                 alert_type: "High Crosstalk".to_string(),
-                message: format!("Crosstalk level {:.3} exceeds threshold {:.3}", 
+                message: format!("Crosstalk level {:.3} exceeds threshold {:.3}",
                                max_crosstalk, self.thresholds.crosstalk_threshold),
                 affected_qubits: self.identify_affected_qubits(characterization),
                 recommended_actions: vec!["Apply compensation".to_string(), "Recalibrate".to_string()],
@@ -34,7 +34,7 @@ impl AlertGenerator {
             alerts.push(alert.clone());
             self.alert_history.push_back(alert);
         }
-        
+
         // Check for instability
         let instability_metric = self.calculate_instability_metric(characterization)?;
         if instability_metric > self.thresholds.instability_threshold {
@@ -42,7 +42,7 @@ impl AlertGenerator {
                 timestamp: current_time,
                 level: AlertLevel::Critical,
                 alert_type: "System Instability".to_string(),
-                message: format!("Instability metric {:.3} exceeds threshold {:.3}", 
+                message: format!("Instability metric {:.3} exceeds threshold {:.3}",
                                instability_metric, self.thresholds.instability_threshold),
                 affected_qubits: vec![], // System-wide issue
                 recommended_actions: vec!["Emergency stop".to_string(), "System diagnosis".to_string()],
@@ -50,22 +50,22 @@ impl AlertGenerator {
             alerts.push(alert.clone());
             self.alert_history.push_back(alert);
         }
-        
+
         // Manage escalation
         self.escalation_manager.update_escalation(&alerts)?;
-        
+
         // Keep alert history bounded
         while self.alert_history.len() > 1000 {
             self.alert_history.pop_front();
         }
-        
+
         Ok(alerts)
     }
 
     fn identify_affected_qubits(&self, characterization: &CrosstalkCharacterization) -> Vec<usize> {
         let mut affected_qubits = Vec::new();
         let threshold = self.thresholds.crosstalk_threshold;
-        
+
         for i in 0..characterization.crosstalk_matrix.nrows() {
             for j in 0..characterization.crosstalk_matrix.ncols() {
                 if characterization.crosstalk_matrix[[i, j]].abs() > threshold {
@@ -78,20 +78,20 @@ impl AlertGenerator {
                 }
             }
         }
-        
+
         affected_qubits
     }
 
     fn calculate_instability_metric(&self, characterization: &CrosstalkCharacterization) -> DeviceResult<f64> {
         // Calculate a metric that indicates system instability
         let matrix = &characterization.crosstalk_matrix;
-        
+
         // Use matrix norm as instability indicator
         let frobenius_norm = matrix.mapv(|x| x * x).sum().sqrt();
-        
+
         // Normalize by matrix size
         let normalized_norm = frobenius_norm / (matrix.nrows() as f64 * matrix.ncols() as f64).sqrt();
-        
+
         Ok(normalized_norm)
     }
 
@@ -99,21 +99,21 @@ impl AlertGenerator {
         if self.alert_history.is_empty() {
             return AlertStatistics::default();
         }
-        
+
         let mut level_counts = HashMap::new();
         let mut type_counts = HashMap::new();
-        
+
         for alert in &self.alert_history {
             *level_counts.entry(alert.level.clone()).or_insert(0) += 1;
             *type_counts.entry(alert.alert_type.clone()).or_insert(0) += 1;
         }
-        
+
         let total_alerts = self.alert_history.len();
         let recent_alerts = self.alert_history.iter()
             .rev()
             .take(10)
             .count();
-        
+
         AlertStatistics {
             total_alerts,
             recent_alerts,
@@ -135,17 +135,17 @@ impl AlertSystem {
     pub fn send_alert(&mut self, alert: AlertEvent) -> DeviceResult<()> {
         // Add alert to queue
         self.alert_queue.push_back(alert.clone());
-        
+
         // Send notifications through configured channels
         for channel in &self.notification_channels {
             self.send_notification(channel, &alert)?;
         }
-        
+
         // Keep queue bounded
         if self.alert_queue.len() > 1000 {
             self.alert_queue.pop_front();
         }
-        
+
         Ok(())
     }
 
@@ -157,7 +157,7 @@ impl AlertSystem {
             alert.message,
             alert.timestamp
         );
-        
+
         match channel {
             NotificationChannel::Log { level } => {
                 // Log the alert
@@ -187,7 +187,7 @@ impl AlertSystem {
                 self.notification_history.push(format!("WS {}: {}", endpoint, notification_message));
             },
         }
-        
+
         Ok(())
     }
 
@@ -221,17 +221,17 @@ impl EscalationManager {
             self.reset_escalation();
             return Ok(());
         }
-        
+
         // Check if escalation is needed
         let highest_severity = alerts.iter()
             .map(|alert| self.get_alert_severity(&alert.level))
             .max()
             .unwrap_or(0);
-        
+
         if highest_severity > self.current_level {
             self.escalate_to_level(highest_severity)?;
         }
-        
+
         // Check escalation timer
         if let Some(timer_start) = self.escalation_timer {
             let escalation_time = Duration::from_secs(30); // Default escalation time
@@ -239,7 +239,7 @@ impl EscalationManager {
                 self.escalate_next_level()?;
             }
         }
-        
+
         Ok(())
     }
 
@@ -257,12 +257,12 @@ impl EscalationManager {
         if level < self.escalation_levels.len() {
             self.current_level = level;
             self.escalation_timer = Some(SystemTime::now());
-            
+
             // Execute escalation actions
             let escalation_level = &self.escalation_levels[level];
             self.execute_escalation_actions(escalation_level)?;
         }
-        
+
         Ok(())
     }
 
@@ -271,13 +271,13 @@ impl EscalationManager {
         if next_level < self.escalation_levels.len() {
             self.escalate_to_level(next_level)?;
         }
-        
+
         Ok(())
     }
 
     fn execute_escalation_actions(&self, level: &EscalationLevel) -> DeviceResult<()> {
         println!("Executing escalation actions for level: {}", level.level);
-        
+
         for action in &level.actions {
             match action.as_str() {
                 "alert" => {
@@ -294,7 +294,7 @@ impl EscalationManager {
                 },
             }
         }
-        
+
         Ok(())
     }
 
@@ -325,26 +325,26 @@ impl MitigationCoordinator {
             resource_manager: ResourceManager::new(),
         }
     }
-    
+
     pub async fn coordinate_mitigation(&mut self, characterization: &CrosstalkCharacterization) -> DeviceResult<MultilevelMitigationResult> {
         // Determine which levels should be active
         let required_levels = self.determine_required_levels(characterization)?;
-        
+
         // Update active levels
         self.update_active_levels(&required_levels)?;
-        
+
         // Coordinate between levels based on strategy
         let coordination_effectiveness = self.coordinate_levels(characterization).await?;
-        
+
         // Calculate level performance
         let level_performance = self.evaluate_level_performance(characterization)?;
-        
+
         // Calculate resource utilization
         let resource_utilization = self.resource_manager.calculate_utilization(&self.active_levels)?;
-        
+
         // Calculate overall effectiveness
         let overall_effectiveness = self.calculate_overall_effectiveness(&level_performance);
-        
+
         Ok(MultilevelMitigationResult {
             active_levels: required_levels,
             level_performance,
@@ -356,10 +356,10 @@ impl MitigationCoordinator {
 
     fn determine_required_levels(&self, characterization: &CrosstalkCharacterization) -> DeviceResult<Vec<String>> {
         let mut required_levels = Vec::new();
-        
+
         let crosstalk_strength = characterization.crosstalk_matrix.mapv(|x| x.abs()).mean().unwrap_or(0.0);
         let max_crosstalk = characterization.crosstalk_matrix.mapv(|x| x.abs()).max().unwrap_or(0.0);
-        
+
         // Determine levels based on crosstalk severity
         for level in &self.config.mitigation_levels {
             let should_activate = match level.name.as_str() {
@@ -368,15 +368,15 @@ impl MitigationCoordinator {
                 "Level3_Comprehensive" => max_crosstalk > 0.2, // Activate for severe crosstalk
                 _ => crosstalk_strength > 0.1, // Default threshold
             };
-            
+
             if should_activate {
                 required_levels.push(level.name.clone());
             }
         }
-        
+
         // Apply level selection strategy
         self.apply_level_selection_strategy(&mut required_levels)?;
-        
+
         Ok(required_levels)
     }
 
@@ -410,7 +410,7 @@ impl MitigationCoordinator {
                 self.apply_load_balanced_selection(levels)?;
             },
         }
-        
+
         Ok(())
     }
 
@@ -441,7 +441,7 @@ impl MitigationCoordinator {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -456,7 +456,7 @@ impl MitigationCoordinator {
         levels.retain(|name| {
             self.resource_manager.can_allocate_for_level(name).unwrap_or(false)
         });
-        
+
         Ok(())
     }
 
@@ -476,10 +476,10 @@ impl MitigationCoordinator {
         // Calculate efficiency as accuracy / resource_cost
         let level = self.config.mitigation_levels.iter()
             .find(|level| level.name == level_name)?;
-        
+
         let accuracy = level.performance_targets.crosstalk_reduction;
         let cost = level.resource_requirements.computational_complexity;
-        
+
         if cost > 0.0 {
             Some(accuracy / cost)
         } else {
@@ -490,12 +490,12 @@ impl MitigationCoordinator {
     fn update_active_levels(&mut self, required_levels: &[String]) -> DeviceResult<()> {
         // Clear current active levels
         self.active_levels.clear();
-        
+
         // Activate required levels
         for level_name in required_levels {
             self.active_levels.insert(level_name.clone(), true);
         }
-        
+
         Ok(())
     }
 
@@ -520,17 +520,17 @@ impl MitigationCoordinator {
         // Sequential coordination: apply levels one after another
         let mut effectiveness = 0.0;
         let mut remaining_crosstalk = characterization.crosstalk_matrix.clone();
-        
+
         for (level_name, &is_active) in &self.active_levels {
             if is_active {
                 let level_effectiveness = self.apply_level_mitigation(level_name, &remaining_crosstalk)?;
                 effectiveness += level_effectiveness;
-                
+
                 // Update remaining crosstalk (simplified)
                 remaining_crosstalk = &remaining_crosstalk * (1.0 - level_effectiveness);
             }
         }
-        
+
         Ok(effectiveness.min(1.0))
     }
 
@@ -538,7 +538,7 @@ impl MitigationCoordinator {
         // Parallel coordination: apply all levels simultaneously
         let mut total_effectiveness = 0.0;
         let mut level_count = 0;
-        
+
         for (level_name, &is_active) in &self.active_levels {
             if is_active {
                 let level_effectiveness = self.apply_level_mitigation(level_name, &characterization.crosstalk_matrix)?;
@@ -546,14 +546,14 @@ impl MitigationCoordinator {
                 level_count += 1;
             }
         }
-        
+
         // Average effectiveness of parallel levels
         let coordination_effectiveness = if level_count > 0 {
             total_effectiveness / level_count as f64
         } else {
             0.0
         };
-        
+
         Ok(coordination_effectiveness)
     }
 
@@ -561,17 +561,17 @@ impl MitigationCoordinator {
         // Hierarchical coordination: levels in order of hierarchy
         let mut effectiveness = 0.0;
         let mut remaining_crosstalk = characterization.crosstalk_matrix.clone();
-        
+
         for level_name in hierarchy {
             if self.active_levels.get(level_name).unwrap_or(&false) {
                 let level_effectiveness = self.apply_level_mitigation(level_name, &remaining_crosstalk)?;
                 effectiveness += level_effectiveness * 0.9_f64.powi(effectiveness as i32); // Diminishing returns
-                
+
                 // Update remaining crosstalk
                 remaining_crosstalk = &remaining_crosstalk * (1.0 - level_effectiveness);
             }
         }
-        
+
         Ok(effectiveness.min(1.0))
     }
 
@@ -603,12 +603,12 @@ impl MitigationCoordinator {
         // Apply mitigation for a specific level
         let level = self.config.mitigation_levels.iter()
             .find(|level| level.name == level_name);
-        
+
         if let Some(level) = level {
             // Calculate effectiveness based on level's performance targets
             let target_reduction = level.performance_targets.crosstalk_reduction;
             let current_crosstalk = crosstalk_matrix.mapv(|x| x.abs()).mean().unwrap_or(0.0);
-            
+
             // Simplified effectiveness calculation
             let effectiveness = (target_reduction * (1.0 - current_crosstalk)).min(target_reduction);
             Ok(effectiveness)
@@ -619,18 +619,18 @@ impl MitigationCoordinator {
 
     fn evaluate_level_performance(&self, characterization: &CrosstalkCharacterization) -> DeviceResult<HashMap<String, LevelPerformance>> {
         let mut performance_map = HashMap::new();
-        
+
         for (level_name, &is_active) in &self.active_levels {
             if is_active {
                 let level = self.config.mitigation_levels.iter()
                     .find(|level| level.name == level_name);
-                
+
                 if let Some(level) = level {
                     let effectiveness = self.apply_level_mitigation(level_name, &characterization.crosstalk_matrix)?;
                     let resource_usage = self.calculate_level_resource_usage(level);
                     let response_time = level.performance_targets.max_latency;
                     let stability = level.performance_targets.reliability;
-                    
+
                     performance_map.insert(level_name.clone(), LevelPerformance {
                         effectiveness,
                         resource_usage,
@@ -640,7 +640,7 @@ impl MitigationCoordinator {
                 }
             }
         }
-        
+
         Ok(performance_map)
     }
 
@@ -648,7 +648,7 @@ impl MitigationCoordinator {
         // Calculate resource usage as fraction of available resources
         let computational_usage = level.resource_requirements.computational_complexity / 10.0; // Normalize
         let memory_usage = level.resource_requirements.memory_mb as f64 / 1024.0; // Normalize to GB
-        
+
         (computational_usage + memory_usage) / 2.0
     }
 
@@ -656,12 +656,12 @@ impl MitigationCoordinator {
         if level_performance.is_empty() {
             return 0.0;
         }
-        
+
         // Calculate weighted average effectiveness
         let total_effectiveness: f64 = level_performance.values()
             .map(|perf| perf.effectiveness * perf.stability)
             .sum();
-        
+
         total_effectiveness / level_performance.len() as f64
     }
 
@@ -674,7 +674,7 @@ impl MitigationCoordinator {
 
     pub fn get_coordination_status(&self) -> CoordinationStatus {
         let active_count = self.active_levels.values().filter(|&&is_active| is_active).count();
-        
+
         CoordinationStatus {
             active_level_count: active_count,
             coordination_strategy: self.coordination_strategy.clone(),
@@ -708,7 +708,7 @@ impl ResourceManager {
         let mut memory_utilization = 0.0;
         let mut computation_time = Duration::ZERO;
         let mut hardware_utilization = HashMap::new();
-        
+
         // Calculate utilization based on active levels
         for (level_name, &is_active) in active_levels {
             if is_active {
@@ -716,11 +716,11 @@ impl ResourceManager {
                 cpu_utilization += 0.1; // Each level uses 10% CPU
                 memory_utilization += 0.05; // Each level uses 5% memory
                 computation_time += Duration::from_millis(5); // Each level adds 5ms
-                
+
                 hardware_utilization.insert(level_name.clone(), 0.1);
             }
         }
-        
+
         Ok(ResourceUtilizationResult {
             cpu_utilization: cpu_utilization.min(1.0),
             memory_utilization: memory_utilization.min(1.0),
@@ -733,7 +733,7 @@ impl ResourceManager {
         // Check if resources are available for the specified level
         let current_cpu = self.get_current_cpu_usage();
         let current_memory = self.get_current_memory_usage();
-        
+
         // Simplified resource check
         Some(current_cpu < 0.8 && current_memory < 0.8)
     }
@@ -752,7 +752,7 @@ impl ResourceManager {
         // Return overall resource utilization
         let cpu_usage = self.get_current_cpu_usage();
         let memory_usage = self.get_current_memory_usage();
-        
+
         (cpu_usage + memory_usage) / 2.0
     }
 
@@ -775,7 +775,7 @@ impl ResourceManager {
     pub fn optimize_allocation(&mut self) -> DeviceResult<()> {
         // Optimize resource allocation based on performance targets
         // Simplified implementation
-        
+
         // Sort levels by efficiency
         let mut levels: Vec<_> = self.allocated_resources.keys().cloned().collect();
         levels.sort_by_key(|name| {
@@ -784,17 +784,17 @@ impl ResourceManager {
                 .map(|req| -(req.computational_complexity * 1000.0) as i64)
                 .unwrap_or(0)
         });
-        
+
         // Rebuild allocation in optimized order
         let old_allocation = self.allocated_resources.clone();
         self.allocated_resources.clear();
-        
+
         for level_name in levels {
             if let Some(requirements) = old_allocation.get(&level_name) {
                 self.allocated_resources.insert(level_name, requirements.clone());
             }
         }
-        
+
         Ok(())
     }
 }

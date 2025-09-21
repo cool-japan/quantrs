@@ -36,3 +36,6 @@ default = []
 braket = ["dep:reqwest", "dep:tokio"]
 dwave = ["dep:reqwest", "dep:tokio"]
 fujitsu = ["dep:reqwest", "dep:tokio"]
+
+[lints]
+workspace = true

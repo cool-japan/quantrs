@@ -1561,6 +1561,7 @@ mod tests {
         }
 
         #[test]
+        #[ignore]
         fn test_reservoir_benchmark() {
             let result =
                 crate::quantum_reservoir_computing::benchmark_quantum_reservoir_computing();

@@ -61,15 +61,9 @@ impl OptimizedSimulator {
 
     /// Check if SIMD is available on this system
     pub fn is_simd_available() -> bool {
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        {
-            return is_x86_feature_detected!("avx2");
-        }
-
-        #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-        {
-            false
-        }
+        use quantrs2_core::platform::PlatformCapabilities;
+        let platform = PlatformCapabilities::detect();
+        platform.cpu.simd.avx2 || platform.cpu.simd.avx512 || platform.cpu.simd.sse4_1
     }
 }
 

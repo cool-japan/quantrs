@@ -17,7 +17,7 @@ py/
 
 1. GPUスタブ実装をビルドする
    ```bash
-   cd /Users/kitasan/work/quantrs/py
+   cd $quantrs/py
    ./tools/gpu/build_with_gpu_stub.sh
    source .venv/bin/activate
    ```

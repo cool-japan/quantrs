@@ -91,6 +91,10 @@ pub enum MLError {
     /// Numerical error during computation
     #[error("Numerical error: {0}")]
     NumericalError(String),
+
+    /// Backend error
+    #[error("Backend error: {0}")]
+    BackendError(String),
 }
 
 impl From<String> for MLError {

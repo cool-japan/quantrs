@@ -560,7 +560,7 @@ impl SciRS2SparseSolver {
                     h[[i, j]] = vi
                         .iter()
                         .zip(w.iter())
-                        .map(|(&vi_val, &w_val)| (vi_val.conj() * w_val))
+                        .map(|(&vi_val, &w_val)| vi_val.conj() * w_val)
                         .sum();
                 }
 
@@ -792,7 +792,7 @@ impl SciRS2SparseSolver {
                 h[[i, j]] = vi
                     .iter()
                     .zip(w.iter())
-                    .map(|(&vi_val, &w_val)| (vi_val.conj() * w_val))
+                    .map(|(&vi_val, &w_val)| vi_val.conj() * w_val)
                     .sum();
             }
 

@@ -48,7 +48,7 @@ impl SpatialAnalyzer {
     ) -> DeviceResult<SpatialCovariance> {
         let num_qubits = qubit_positions.nrows();
         let mut distance_matrix = Array2::zeros((num_qubits, num_qubits));
-        
+
         // Compute pairwise distances
         for i in 0..num_qubits {
             for j in 0..num_qubits {
@@ -87,7 +87,7 @@ impl SpatialAnalyzer {
     ) -> DeviceResult<(Array2<f64>, f64, f64)> {
         let num_qubits = distance_matrix.nrows();
         let num_samples = noise_data.ncols();
-        
+
         // Compute empirical covariance matrix
         let mut empirical_cov = Array2::zeros((num_qubits, num_qubits));
         for i in 0..num_qubits {
@@ -103,7 +103,7 @@ impl SpatialAnalyzer {
         // Fit exponential covariance model: C(h) = σ² * exp(-h/θ) + δ
         let range_param = self.estimate_range_parameter(distance_matrix, &empirical_cov)?;
         let nugget_effect = self.estimate_nugget_effect(&empirical_cov)?;
-        
+
         // Generate fitted covariance matrix
         let mut fitted_cov = Array2::zeros((num_qubits, num_qubits));
         for i in 0..num_qubits {
@@ -124,19 +124,19 @@ impl SpatialAnalyzer {
     fn estimate_range_parameter(
         &self,
         distance_matrix: &Array2<f64>,
-        covariance_matrix: &Array2<f64>,
+        covariancematrix: &Array2<f64>,
     ) -> DeviceResult<f64> {
         // Use method of moments or maximum likelihood estimation
         // For simplicity, use empirical estimate
         let mut sum_dist_cov = 0.0;
         let mut sum_cov = 0.0;
         let mut count = 0;
-        
+
         let num_qubits = distance_matrix.nrows();
         for i in 0..num_qubits {
             for j in i+1..num_qubits {
                 let dist = distance_matrix[[i, j]];
-                let cov = covariance_matrix[[i, j]];
+                let cov = covariancematrix[[i, j]];
                 if cov > 0.0 && dist > 0.0 {
                     sum_dist_cov += dist * cov.ln();
                     sum_cov += cov;
@@ -144,7 +144,7 @@ impl SpatialAnalyzer {
                 }
             }
         }
-        
+
         if count > 0 {
             Ok(-sum_dist_cov / sum_cov)
         } else {
@@ -153,28 +153,28 @@ impl SpatialAnalyzer {
     }
 
     /// Estimate nugget effect (measurement error)
-    fn estimate_nugget_effect(&self, covariance_matrix: &Array2<f64>) -> DeviceResult<f64> {
+    fn estimate_nugget_effect(&self, covariancematrix: &Array2<f64>) -> DeviceResult<f64> {
         // Estimate from diagonal vs off-diagonal elements
-        let num_qubits = covariance_matrix.nrows();
+        let num_qubits = covariancematrix.nrows();
         let mut diag_mean = 0.0;
         let mut off_diag_mean = 0.0;
         let mut off_diag_count = 0;
-        
+
         for i in 0..num_qubits {
-            diag_mean += covariance_matrix[[i, i]];
+            diag_mean += covariancematrix[[i, i]];
             for j in 0..num_qubits {
                 if i != j {
-                    off_diag_mean += covariance_matrix[[i, j]];
+                    off_diag_mean += covariancematrix[[i, j]];
                     off_diag_count += 1;
                 }
             }
         }
-        
+
         diag_mean /= num_qubits as f64;
         if off_diag_count > 0 {
             off_diag_mean /= off_diag_count as f64;
         }
-        
+
         Ok((diag_mean - off_diag_mean).max(0.0))
     }
 
@@ -184,16 +184,16 @@ impl SpatialAnalyzer {
         qubit_positions: &Array2<f64>,
     ) -> DeviceResult<SpatialBasisFunctions> {
         let num_qubits = qubit_positions.nrows();
-        
+
         // Compute radial basis functions
         let radial_functions = self.compute_radial_basis_functions(qubit_positions)?;
-        
+
         // Compute polynomial basis functions
         let polynomial_functions = self.compute_polynomial_basis_functions(qubit_positions)?;
-        
+
         // Compute wavelet basis functions (simplified)
         let wavelet_functions = self.compute_wavelet_basis_functions(qubit_positions)?;
-        
+
         Ok(SpatialBasisFunctions {
             radial_functions,
             polynomial_functions,
@@ -209,10 +209,10 @@ impl SpatialAnalyzer {
     ) -> DeviceResult<Array2<f64>> {
         let num_qubits = qubit_positions.nrows();
         let mut rbf_matrix = Array2::zeros((num_qubits, num_qubits));
-        
+
         // Use Gaussian RBF with adaptive bandwidth
         let bandwidth = self.estimate_rbf_bandwidth(qubit_positions)?;
-        
+
         for i in 0..num_qubits {
             for j in 0..num_qubits {
                 let pos_i = qubit_positions.row(i);
@@ -221,7 +221,7 @@ impl SpatialAnalyzer {
                 rbf_matrix[[i, j]] = (-dist_sq / (2.0 * bandwidth.powi(2))).exp();
             }
         }
-        
+
         Ok(rbf_matrix)
     }
 
@@ -229,7 +229,7 @@ impl SpatialAnalyzer {
     fn estimate_rbf_bandwidth(&self, qubit_positions: &Array2<f64>) -> DeviceResult<f64> {
         let num_qubits = qubit_positions.nrows();
         let mut distances = Vec::new();
-        
+
         for i in 0..num_qubits {
             for j in i+1..num_qubits {
                 let pos_i = qubit_positions.row(i);
@@ -238,14 +238,14 @@ impl SpatialAnalyzer {
                 distances.push(dist);
             }
         }
-        
+
         distances.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let median_distance = if distances.is_empty() {
             1.0
         } else {
             distances[distances.len() / 2]
         };
-        
+
         Ok(median_distance / 2.0)
     }
 
@@ -257,13 +257,13 @@ impl SpatialAnalyzer {
         let num_qubits = qubit_positions.nrows();
         let poly_degree = 2; // Quadratic polynomials
         let num_terms = (poly_degree + 1) * (poly_degree + 2) / 2; // Number of terms in 2D polynomial
-        
+
         let mut poly_matrix = Array2::zeros((num_qubits, num_terms));
-        
+
         for i in 0..num_qubits {
             let x = qubit_positions[[i, 0]];
             let y = qubit_positions[[i, 1]];
-            
+
             let mut term_idx = 0;
             for px in 0..=poly_degree {
                 for py in 0..=(poly_degree - px) {
@@ -272,7 +272,7 @@ impl SpatialAnalyzer {
                 }
             }
         }
-        
+
         Ok(poly_matrix)
     }
 
@@ -284,30 +284,30 @@ impl SpatialAnalyzer {
         let num_qubits = qubit_positions.nrows();
         let num_scales = 3;
         let num_wavelets = num_qubits * num_scales;
-        
+
         let mut wavelet_matrix = Array2::zeros((num_qubits, num_wavelets));
-        
+
         // Simple Mexican hat wavelets at different scales
         for scale in 0..num_scales {
             let scale_factor = 2.0_f64.powi(scale as i32);
-            
+
             for center in 0..num_qubits {
                 let center_pos = qubit_positions.row(center);
                 let wavelet_idx = scale * num_qubits + center;
-                
+
                 for i in 0..num_qubits {
                     let pos = qubit_positions.row(i);
                     let dx = (pos[0] - center_pos[0]) / scale_factor;
                     let dy = (pos[1] - center_pos[1]) / scale_factor;
                     let r_sq = dx * dx + dy * dy;
-                    
+
                     // Mexican hat wavelet
                     let wavelet_val = (2.0 - r_sq) * (-r_sq / 2.0).exp() / scale_factor;
                     wavelet_matrix[[i, wavelet_idx]] = wavelet_val;
                 }
             }
         }
-        
+
         Ok(wavelet_matrix)
     }
 
@@ -318,12 +318,12 @@ impl SpatialAnalyzer {
         noise_data: &HashMap<String, Array2<f64>>,
     ) -> DeviceResult<HashMap<String, KrigingModel>> {
         let mut kriging_models = HashMap::new();
-        
+
         for (noise_type, data) in noise_data {
             let model = self.build_single_kriging_model(qubit_positions, data)?;
             kriging_models.insert(noise_type.clone(), model);
         }
-        
+
         Ok(kriging_models)
     }
 
@@ -335,16 +335,16 @@ impl SpatialAnalyzer {
     ) -> DeviceResult<KrigingModel> {
         let num_qubits = qubit_positions.nrows();
         let num_samples = noise_data.ncols();
-        
+
         // Use the most recent sample for kriging (could be extended to use all samples)
         let current_values = noise_data.column(num_samples - 1).to_owned();
-        
+
         // Estimate variogram
         let variogram = self.estimate_variogram(qubit_positions, &current_values)?;
-        
+
         // Solve kriging system
         let kriging_weights = self.solve_kriging_system(qubit_positions, &variogram)?;
-        
+
         Ok(KrigingModel {
             qubit_positions: qubit_positions.clone(),
             observed_values: current_values,
@@ -362,7 +362,7 @@ impl SpatialAnalyzer {
     ) -> DeviceResult<Variogram> {
         let num_qubits = qubit_positions.nrows();
         let mut distance_variance_pairs = Vec::new();
-        
+
         for i in 0..num_qubits {
             for j in i+1..num_qubits {
                 let pos_i = qubit_positions.row(i);
@@ -372,26 +372,26 @@ impl SpatialAnalyzer {
                 distance_variance_pairs.push((dist, variance));
             }
         }
-        
+
         // Bin the pairs and compute empirical variogram
         distance_variance_pairs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-        
+
         let num_bins = 10;
         let mut bin_distances = Vec::new();
         let mut bin_variances = Vec::new();
-        
+
         let max_dist = distance_variance_pairs.last().map(|p| p.0).unwrap_or(1.0);
         let bin_width = max_dist / num_bins as f64;
-        
+
         for bin in 0..num_bins {
             let bin_start = bin as f64 * bin_width;
             let bin_end = (bin + 1) as f64 * bin_width;
-            
+
             let bin_pairs: Vec<_> = distance_variance_pairs
                 .iter()
                 .filter(|(d, _)| *d >= bin_start && *d < bin_end)
                 .collect();
-            
+
             if !bin_pairs.is_empty() {
                 let mean_dist = bin_pairs.iter().map(|(d, _)| *d).sum::<f64>() / bin_pairs.len() as f64;
                 let mean_var = bin_pairs.iter().map(|(_, v)| *v).sum::<f64>() / bin_pairs.len() as f64;
@@ -399,7 +399,7 @@ impl SpatialAnalyzer {
                 bin_variances.push(mean_var);
             }
         }
-        
+
         Ok(Variogram {
             distances: Array1::from(bin_distances),
             variances: Array1::from(bin_variances),
@@ -415,10 +415,10 @@ impl SpatialAnalyzer {
         variogram: &Variogram,
     ) -> DeviceResult<Array2<f64>> {
         let num_qubits = qubit_positions.nrows();
-        
+
         // Build covariance matrix from variogram
         let mut cov_matrix = Array2::zeros((num_qubits + 1, num_qubits + 1));
-        
+
         for i in 0..num_qubits {
             for j in 0..num_qubits {
                 if i == j {
@@ -427,7 +427,7 @@ impl SpatialAnalyzer {
                     let pos_i = qubit_positions.row(i);
                     let pos_j = qubit_positions.row(j);
                     let dist = ((pos_i[0] - pos_j[0]).powi(2) + (pos_i[1] - pos_j[1]).powi(2)).sqrt();
-                    let covariance = variogram.parameters[0] * 
+                    let covariance = variogram.parameters[0] *
                         (1.0 - (-dist / variogram.parameters[1]).exp()) + variogram.parameters[2];
                     cov_matrix[[i, j]] = covariance;
                 }
@@ -437,7 +437,7 @@ impl SpatialAnalyzer {
             cov_matrix[[num_qubits, i]] = 1.0;
         }
         cov_matrix[[num_qubits, num_qubits]] = 0.0;
-        
+
         // For now, return identity matrix (placeholder)
         Ok(Array2::eye(num_qubits))
     }
@@ -451,7 +451,7 @@ impl SpatialAnalyzer {
         // Simplified spatial clustering implementation
         let num_qubits = qubit_positions.nrows();
         let cluster_labels = Array1::from(vec![0; num_qubits]); // All in one cluster for now
-        
+
         let mut cluster_statistics = HashMap::new();
         cluster_statistics.insert(0, ClusterStatistics {
             centroid: qubit_positions.mean_axis(ndarray::Axis(0)).unwrap(),
@@ -459,7 +459,7 @@ impl SpatialAnalyzer {
             within_cluster_variance: 1.0,
             separation_distance: 0.0,
         });
-        
+
         Ok(SpatialClusters {
             cluster_labels,
             num_clusters: 1,
@@ -477,7 +477,7 @@ impl SpatialAnalyzer {
         // Simplified anisotropy analysis
         let principal_directions = Array1::from(vec![0.0, std::f64::consts::PI / 2.0]);
         let anisotropy_ratios = Array1::from(vec![1.0, 1.0]);
-        
+
         Ok(AnisotropyAnalysis {
             is_isotropic: true,
             principal_directions,

@@ -93,7 +93,7 @@ impl MetaLearningOptimizer {
         };
 
         // Apply neural architecture search if needed
-        let optimized_config = if self.config.nas_config.enable_nas && 
+        let optimized_config = if self.config.nas_config.enable_nas &&
                                  algorithm_config.architecture.is_some() {
             let mut nas = self.nas_engine.lock().map_err(|_| ApplicationError::InternalError("Failed to lock NAS engine".to_string()))?;
             if let Ok(architecture_candidate) = nas.search_architecture(&features) {
@@ -126,7 +126,7 @@ impl MetaLearningOptimizer {
 
         // Combine recommendations and create final strategy
         let mut final_hyperparameters = meta_recommendation.configuration.hyperparameters;
-        
+
         // Merge with transferred knowledge
         for model in &transferred_knowledge {
             for (param_name, param_value) in &model.parameters {
@@ -170,7 +170,7 @@ impl MetaLearningOptimizer {
         // Update portfolio performance
         if let Some(algorithm_name) = self.algorithm_type_to_name(&experience.configuration.algorithm) {
             let mut portfolio = self.portfolio_manager.lock().map_err(|_| ApplicationError::InternalError("Failed to lock portfolio manager".to_string()))?;
-            
+
             let performance_record = PerformanceRecord {
                 timestamp: experience.timestamp,
                 problem_features: experience.problem_features.clone(),
@@ -178,7 +178,7 @@ impl MetaLearningOptimizer {
                 resource_usage: experience.results.resource_usage.clone(),
                 context: HashMap::new(),
             };
-            
+
             portfolio.record_performance(&algorithm_name, performance_record);
             portfolio.update_composition();
         }
@@ -333,7 +333,7 @@ impl MetaLearner {
             },
         }
     }
-    
+
     pub fn recommend_strategy(&mut self, features: &ProblemFeatures, experiences: &[OptimizationExperience]) -> ApplicationResult<RecommendedStrategy> {
         // Simple strategy recommendation based on problem size
         let algorithm = if features.size < 100 {
@@ -343,16 +343,16 @@ impl MetaLearner {
         } else {
             AlgorithmType::TabuSearch
         };
-        
+
         let mut hyperparameters = HashMap::new();
-        
+
         // Set hyperparameters based on experiences
         if !experiences.is_empty() {
             let avg_initial_temp = experiences.iter()
                 .filter_map(|exp| exp.configuration.hyperparameters.get("initial_temperature"))
                 .sum::<f64>() / experiences.len() as f64;
             hyperparameters.insert("initial_temperature".to_string(), avg_initial_temp.max(1.0));
-            
+
             let avg_final_temp = experiences.iter()
                 .filter_map(|exp| exp.configuration.hyperparameters.get("final_temperature"))
                 .sum::<f64>() / experiences.len() as f64;
@@ -362,9 +362,9 @@ impl MetaLearner {
             hyperparameters.insert("initial_temperature".to_string(), 10.0);
             hyperparameters.insert("final_temperature".to_string(), 0.1);
         }
-        
+
         hyperparameters.insert("num_sweeps".to_string(), (features.size as f64 * 10.0).min(10000.0));
-        
+
         let configuration = OptimizationConfiguration {
             algorithm,
             hyperparameters,
@@ -376,9 +376,9 @@ impl MetaLearner {
                 time: Duration::from_secs(60),
             },
         };
-        
+
         let confidence = if experiences.len() >= 5 { 0.9 } else { 0.6 };
-        
+
         Ok(RecommendedStrategy {
             algorithm: "meta_learner_recommendation".to_string(),
             hyperparameters: configuration.hyperparameters,
@@ -550,7 +550,7 @@ mod tests {
             accuracy: 0.8,
             timestamp: Instant::now(),
         };
-        
+
         assert_eq!(episode.id, "test_episode");
         assert_eq!(episode.loss, 0.5);
         assert_eq!(episode.accuracy, 0.8);

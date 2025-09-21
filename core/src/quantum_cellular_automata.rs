@@ -16,7 +16,7 @@ pub enum QCAType {
     Partitioned,
     /// Margolus neighborhood QCA - 2x2 blocks with alternating shifts
     Margolus,
-    /// Moore neighborhood QCA - 3x3 neighborhoods  
+    /// Moore neighborhood QCA - 3x3 neighborhoods
     Moore,
     /// Von Neumann neighborhood QCA - plus-shaped neighborhoods
     VonNeumann,

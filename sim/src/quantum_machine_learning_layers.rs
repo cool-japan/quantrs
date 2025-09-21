@@ -5,10 +5,10 @@
 //! networks, and hybrid classical-quantum training algorithms. This framework enables
 //! quantum advantage in machine learning applications with hardware-aware optimization.
 
-use ndarray::{Array1, Array2};
+use ndarray::Array1;
 use num_complex::Complex64;
 use rand::{thread_rng, Rng};
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -1479,10 +1479,8 @@ impl QuantumMLFramework {
         // Convert input to binary representation
         let mut binary_index = 0;
         for (i, &val) in input.iter().enumerate() {
-            if i < n_qubits {
-                if val > 0.5 {
-                    binary_index |= 1 << i;
-                }
+            if i < n_qubits && val > 0.5 {
+                binary_index |= 1 << i;
             }
         }
 

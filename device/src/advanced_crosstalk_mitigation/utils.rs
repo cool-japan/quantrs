@@ -115,7 +115,7 @@ pub trait Validator {
 impl CrosstalkMitigationTestSuite {
     pub fn new() -> Self {
         let mut test_scenarios = Vec::new();
-        
+
         // Add standard test scenarios
         test_scenarios.push(TestScenario {
             name: "basic_mitigation".to_string(),
@@ -166,7 +166,7 @@ impl CrosstalkMitigationTestSuite {
     pub async fn run_all_tests(&mut self) -> DeviceResult<TestSuiteResult> {
         let mut test_results = Vec::new();
         let mut passed_tests = 0;
-        
+
         for scenario in &self.test_scenarios {
             let result = self.run_test_scenario(scenario).await?;
             if result.success {
@@ -190,19 +190,19 @@ impl CrosstalkMitigationTestSuite {
 
     async fn run_test_scenario(&self, scenario: &TestScenario) -> DeviceResult<TestResult> {
         let start_time = SystemTime::now();
-        
+
         // Create test configuration
         let config = self.create_test_config(&scenario.test_parameters)?;
-        
+
         // Run the test
         let mut mitigation_system = AdvancedCrosstalkMitigationSystem::new(&config);
-        
+
         // Generate test crosstalk characterization
         let characterization = self.generate_test_characterization(&scenario.test_parameters)?;
-        
+
         // Execute mitigation
         let result = mitigation_system.run_advanced_analysis("test_device", &TestExecutor).await;
-        
+
         let execution_time = start_time.elapsed().unwrap_or(Duration::ZERO);
         let success = match result {
             Ok(mitigation_result) => {
@@ -329,7 +329,7 @@ impl CrosstalkMitigationTestSuite {
         let mut rng = rand::thread_rng();
         let n = params.n_qubits;
         let mut crosstalk_matrix = Array2::zeros((n, n));
-        
+
         // Generate realistic crosstalk matrix
         for i in 0..n {
             for j in 0..n {
@@ -371,7 +371,7 @@ impl CrosstalkMitigationTestSuite {
 impl BenchmarkingSuite {
     pub fn new() -> Self {
         let mut benchmarks = HashMap::new();
-        
+
         benchmarks.insert("throughput_test".to_string(), Benchmark {
             name: "throughput_test".to_string(),
             description: "Measure mitigation throughput".to_string(),
@@ -394,7 +394,7 @@ impl BenchmarkingSuite {
 
     pub async fn run_all_benchmarks(&mut self) -> DeviceResult<Vec<BenchmarkResult>> {
         let mut results = Vec::new();
-        
+
         for (_, benchmark) in &self.benchmarks {
             let result = self.run_benchmark(benchmark).await?;
             results.push(result);
@@ -407,7 +407,7 @@ impl BenchmarkingSuite {
     async fn run_benchmark(&self, benchmark: &Benchmark) -> DeviceResult<BenchmarkResult> {
         let start_time = SystemTime::now();
         let mut metrics = HashMap::new();
-        
+
         match &benchmark.benchmark_type {
             BenchmarkType::ThroughputTest { target_operations_per_second } => {
                 let actual_ops = self.measure_throughput(benchmark.iterations).await?;
@@ -425,7 +425,7 @@ impl BenchmarkingSuite {
         }
 
         let execution_time = start_time.elapsed().unwrap_or(Duration::ZERO);
-        
+
         Ok(BenchmarkResult {
             benchmark_name: benchmark.name.clone(),
             timestamp: SystemTime::now(),
@@ -438,23 +438,23 @@ impl BenchmarkingSuite {
 
     async fn measure_throughput(&self, iterations: usize) -> DeviceResult<f64> {
         let start_time = SystemTime::now();
-        
+
         // Simulate operations
         for _ in 0..iterations {
             // Simplified simulation
             tokio::task::yield_now().await;
         }
-        
+
         let elapsed = start_time.elapsed().unwrap_or(Duration::from_secs(1));
         Ok(iterations as f64 / elapsed.as_secs_f64())
     }
 
     async fn measure_latency(&self) -> DeviceResult<Duration> {
         let start_time = SystemTime::now();
-        
+
         // Simulate single operation
         tokio::task::yield_now().await;
-        
+
         Ok(start_time.elapsed().unwrap_or(Duration::from_millis(1)))
     }
 }
@@ -469,7 +469,7 @@ impl ValidationFramework {
 
     pub async fn run_all_validations(&mut self) -> DeviceResult<Vec<ValidationResult>> {
         let mut results = Vec::new();
-        
+
         // Since validators are boxed trait objects, we'd need a different approach
         // For now, create some example validation results
         results.push(ValidationResult {
@@ -525,7 +525,7 @@ pub struct TestResult {
 /// Utility functions for data generation and analysis
 pub mod data_utils {
     use super::*;
-    
+
     /// Generate synthetic crosstalk data for testing
     pub fn generate_synthetic_crosstalk_data(
         n_qubits: usize,
@@ -535,7 +535,7 @@ pub mod data_utils {
     ) -> Array3<f64> {
         let mut rng = rand::thread_rng();
         let mut data = Array3::zeros((n_timesteps, n_qubits, n_qubits));
-        
+
         for t in 0..n_timesteps {
             for i in 0..n_qubits {
                 for j in 0..n_qubits {
@@ -547,41 +547,41 @@ pub mod data_utils {
                 }
             }
         }
-        
+
         data
     }
-    
+
     /// Calculate matrix condition number
     pub fn matrix_condition_number(matrix: &Array2<f64>) -> f64 {
         // Simplified condition number calculation
         let max_val = matrix.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
         let min_val = matrix.iter().cloned().fold(f64::INFINITY, f64::min);
-        
+
         if min_val.abs() > 1e-12 {
             max_val.abs() / min_val.abs()
         } else {
             f64::INFINITY
         }
     }
-    
+
     /// Calculate signal-to-noise ratio
     pub fn calculate_snr(signal: &Array1<f64>, noise: &Array1<f64>) -> f64 {
         let signal_power = signal.mapv(|x| x * x).mean().unwrap_or(0.0);
         let noise_power = noise.mapv(|x| x * x).mean().unwrap_or(1e-12);
-        
+
         10.0 * (signal_power / noise_power).log10()
     }
-    
+
     /// Compute cross-correlation between two signals
     pub fn cross_correlation(signal1: &Array1<f64>, signal2: &Array1<f64>) -> Array1<f64> {
         let n = signal1.len();
         let mut correlation = Array1::zeros(2 * n - 1);
-        
+
         for lag in 0..(2 * n - 1) {
             let shift = lag as i32 - (n - 1) as i32;
             let mut sum = 0.0;
             let mut count = 0;
-            
+
             for i in 0..n {
                 let j = i as i32 + shift;
                 if j >= 0 && j < n as i32 {
@@ -589,10 +589,10 @@ pub mod data_utils {
                     count += 1;
                 }
             }
-            
+
             correlation[lag] = if count > 0 { sum / count as f64 } else { 0.0 };
         }
-        
+
         correlation
     }
 }
@@ -601,12 +601,12 @@ pub mod data_utils {
 pub mod profiling {
     use super::*;
     use std::time::Instant;
-    
+
     pub struct Profiler {
         start_times: HashMap<String, Instant>,
         measurements: HashMap<String, Vec<Duration>>,
     }
-    
+
     impl Profiler {
         pub fn new() -> Self {
             Self {
@@ -614,11 +614,11 @@ pub mod profiling {
                 measurements: HashMap::new(),
             }
         }
-        
+
         pub fn start_timing(&mut self, label: &str) {
             self.start_times.insert(label.to_string(), Instant::now());
         }
-        
+
         pub fn end_timing(&mut self, label: &str) -> Duration {
             if let Some(start_time) = self.start_times.remove(label) {
                 let duration = start_time.elapsed();
@@ -630,20 +630,20 @@ pub mod profiling {
                 Duration::from_secs(0)
             }
         }
-        
+
         pub fn get_statistics(&self, label: &str) -> Option<TimingStatistics> {
             if let Some(measurements) = self.measurements.get(label) {
                 if measurements.is_empty() {
                     return None;
                 }
-                
+
                 let durations_ns: Vec<u64> = measurements.iter().map(|d| d.as_nanos() as u64).collect();
                 let mean_ns = durations_ns.iter().sum::<u64>() as f64 / durations_ns.len() as f64;
                 let variance_ns = durations_ns.iter()
                     .map(|&x| (x as f64 - mean_ns).powi(2))
                     .sum::<f64>() / durations_ns.len() as f64;
                 let std_dev_ns = variance_ns.sqrt();
-                
+
                 Some(TimingStatistics {
                     mean: Duration::from_nanos(mean_ns as u64),
                     std_dev: Duration::from_nanos(std_dev_ns as u64),
@@ -656,7 +656,7 @@ pub mod profiling {
             }
         }
     }
-    
+
     #[derive(Debug, Clone)]
     pub struct TimingStatistics {
         pub mean: Duration,
@@ -670,27 +670,27 @@ pub mod profiling {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_crosstalk_mitigation_basic() {
         let mut test_suite = CrosstalkMitigationTestSuite::new();
         let result = test_suite.run_all_tests().await;
         assert!(result.is_ok());
     }
-    
+
     #[test]
     fn test_synthetic_data_generation() {
         let data = data_utils::generate_synthetic_crosstalk_data(4, 100, 0.1, 0.01);
         assert_eq!(data.shape(), &[100, 4, 4]);
     }
-    
+
     #[test]
     fn test_matrix_condition_number() {
         let matrix = Array2::eye(3);
         let cond_num = data_utils::matrix_condition_number(&matrix);
         assert!((cond_num - 1.0).abs() < 1e-10);
     }
-    
+
     #[test]
     fn test_profiler() {
         let mut profiler = profiling::Profiler::new();
@@ -698,7 +698,7 @@ mod tests {
         std::thread::sleep(Duration::from_millis(1));
         let duration = profiler.end_timing("test");
         assert!(duration >= Duration::from_millis(1));
-        
+
         let stats = profiler.get_statistics("test");
         assert!(stats.is_some());
     }

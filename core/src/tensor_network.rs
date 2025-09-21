@@ -6,11 +6,12 @@
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
+    linalg_stubs::svd,
     register::Register,
 };
 use ndarray::{Array, Array2, ArrayD, IxDyn};
 use num_complex::Complex;
-use scirs2_linalg::svd;
+// use scirs2_linalg::svd;
 use std::collections::{HashMap, HashSet};
 
 /// Type alias for complex numbers
@@ -298,7 +299,7 @@ impl Tensor {
 
         // Perform SVD using SciRS2
         let real_matrix = matrix.mapv(|c| c.re);
-        let (u, s, vt) = svd(&real_matrix.view(), false)
+        let (u, s, vt) = svd(&real_matrix.view(), false, None)
             .map_err(|e| QuantRS2Error::ComputationError(format!("SVD failed: {:?}", e)))?;
 
         // Determine rank to keep

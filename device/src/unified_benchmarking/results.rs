@@ -531,7 +531,7 @@ pub struct HypothesisTestResult {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CorrelationAnalysisResult {
-    pub correlation_matrix: Array2<f64>,
+    pub correlationmatrix: Array2<f64>,
     pub significant_correlations: Vec<CorrelationPair>,
     pub partial_correlations: Array2<f64>,
 }

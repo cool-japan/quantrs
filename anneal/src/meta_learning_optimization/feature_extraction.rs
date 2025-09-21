@@ -249,26 +249,26 @@ impl FeatureExtractor {
             reducers: Vec::new(),
         }
     }
-    
+
     pub fn extract_features(&mut self, problem: &IsingModel) -> ApplicationResult<ProblemFeatures> {
         let graph_features = if self.config.enable_graph_features {
             self.extract_graph_features(problem)?
         } else {
             GraphFeatures::default()
         };
-        
+
         let statistical_features = if self.config.enable_statistical_features {
             self.extract_statistical_features(problem)?
         } else {
             StatisticalFeatures::default()
         };
-        
+
         let spectral_features = if self.config.enable_spectral_features {
             self.extract_spectral_features(problem)?
         } else {
             SpectralFeatures::default()
         };
-        
+
         Ok(ProblemFeatures {
             size: problem.num_qubits,
             density: self.calculate_density(problem),
@@ -278,11 +278,11 @@ impl FeatureExtractor {
             domain_features: HashMap::new(),
         })
     }
-    
+
     fn extract_graph_features(&self, problem: &IsingModel) -> ApplicationResult<GraphFeatures> {
         let num_vertices = problem.num_qubits;
         let mut num_edges = 0;
-        
+
         // Count edges (non-zero couplings)
         for i in 0..problem.num_qubits {
             for j in (i + 1)..problem.num_qubits {
@@ -291,13 +291,13 @@ impl FeatureExtractor {
                 }
             }
         }
-        
+
         let avg_degree = if num_vertices > 0 {
             2.0 * num_edges as f64 / num_vertices as f64
         } else {
             0.0
         };
-        
+
         Ok(GraphFeatures {
             num_vertices,
             num_edges,
@@ -317,16 +317,16 @@ impl FeatureExtractor {
             },
         })
     }
-    
+
     fn extract_statistical_features(&self, problem: &IsingModel) -> ApplicationResult<StatisticalFeatures> {
         let mut bias_values = Vec::new();
         let mut coupling_values = Vec::new();
-        
+
         // Collect bias values
         for i in 0..problem.num_qubits {
             bias_values.push(problem.get_bias(i).unwrap_or(0.0));
         }
-        
+
         // Collect coupling values
         for i in 0..problem.num_qubits {
             for j in (i + 1)..problem.num_qubits {
@@ -336,7 +336,7 @@ impl FeatureExtractor {
                 }
             }
         }
-        
+
         Ok(StatisticalFeatures {
             bias_stats: self.calculate_distribution_stats(&bias_values),
             coupling_stats: self.calculate_distribution_stats(&coupling_values),
@@ -353,12 +353,12 @@ impl FeatureExtractor {
             },
         })
     }
-    
+
     fn extract_spectral_features(&self, problem: &IsingModel) -> ApplicationResult<SpectralFeatures> {
         // Simplified spectral analysis
         let n = problem.num_qubits as f64;
         let spectral_gap_estimate = 1.0 / n.sqrt();
-        
+
         Ok(SpectralFeatures {
             eigenvalue_stats: DistributionStats {
                 mean: 0.0,
@@ -374,11 +374,11 @@ impl FeatureExtractor {
             condition_number: n,
         })
     }
-    
+
     fn calculate_density(&self, problem: &IsingModel) -> f64 {
         let mut num_edges = 0;
         let max_edges = problem.num_qubits * (problem.num_qubits - 1) / 2;
-        
+
         for i in 0..problem.num_qubits {
             for j in (i + 1)..problem.num_qubits {
                 if problem.get_coupling(i, j).unwrap_or(0.0).abs() > 1e-10 {
@@ -386,25 +386,25 @@ impl FeatureExtractor {
                 }
             }
         }
-        
+
         if max_edges > 0 {
             num_edges as f64 / max_edges as f64
         } else {
             0.0
         }
     }
-    
+
     fn calculate_distribution_stats(&self, values: &[f64]) -> DistributionStats {
         if values.is_empty() {
             return DistributionStats::default();
         }
-        
+
         let mean = values.iter().sum::<f64>() / values.len() as f64;
         let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
         let std_dev = variance.sqrt();
         let min = values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
         let max = values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-        
+
         DistributionStats {
             mean,
             std_dev,
@@ -833,12 +833,12 @@ impl ExperienceDatabase {
             },
         }
     }
-    
+
     pub fn add_experience(&mut self, experience: OptimizationExperience) {
         self.experiences.push_back(experience.clone());
         self.update_index(&experience);
         self.update_statistics();
-        
+
         // Limit buffer size
         if self.experiences.len() > 10000 {
             if let Some(removed) = self.experiences.pop_front() {
@@ -846,75 +846,75 @@ impl ExperienceDatabase {
             }
         }
     }
-    
+
     fn update_index(&mut self, experience: &OptimizationExperience) {
         // Update domain index
         self.index.domain_index
             .entry(experience.domain.clone())
             .or_insert_with(Vec::new)
             .push(experience.id.clone());
-        
+
         // Update size index
         self.index.size_index
             .entry(experience.problem_features.size)
             .or_insert_with(Vec::new)
             .push(experience.id.clone());
     }
-    
+
     fn remove_from_index(&mut self, experience: &OptimizationExperience) {
         // Remove from domain index
         if let Some(ids) = self.index.domain_index.get_mut(&experience.domain) {
             ids.retain(|id| id != &experience.id);
         }
-        
+
         // Remove from size index
         if let Some(ids) = self.index.size_index.get_mut(&experience.problem_features.size) {
             ids.retain(|id| id != &experience.id);
         }
     }
-    
+
     fn update_statistics(&mut self) {
         self.statistics.total_experiences = self.experiences.len();
-        
+
         if !self.experiences.is_empty() {
             let total_performance: f64 = self.experiences.iter()
                 .map(|exp| exp.results.quality_metrics.objective_value)
                 .sum();
             self.statistics.avg_performance = total_performance / self.experiences.len() as f64;
         }
-        
+
         // Update domain distribution
         self.statistics.domain_distribution.clear();
         for experience in &self.experiences {
             *self.statistics.domain_distribution.entry(experience.domain.clone()).or_insert(0) += 1;
         }
     }
-    
+
     pub fn find_similar_experiences(&self, features: &ProblemFeatures, limit: usize) -> ApplicationResult<Vec<OptimizationExperience>> {
         let mut similarities = Vec::new();
-        
+
         for experience in &self.experiences {
             let similarity = self.calculate_similarity(features, &experience.problem_features);
             similarities.push((experience.clone(), similarity));
         }
-        
+
         // Sort by similarity (descending)
         similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        
+
         Ok(similarities.into_iter()
             .take(limit)
             .map(|(exp, _)| exp)
             .collect())
     }
-    
+
     fn calculate_similarity(&self, features1: &ProblemFeatures, features2: &ProblemFeatures) -> f64 {
         // Simple similarity calculation based on size and density
         let size_diff = (features1.size as f64 - features2.size as f64).abs() / features1.size.max(features2.size) as f64;
         let density_diff = (features1.density - features2.density).abs();
-        
+
         let size_similarity = 1.0 - size_diff;
         let density_similarity = 1.0 - density_diff;
-        
+
         (size_similarity + density_similarity) / 2.0
     }
 }

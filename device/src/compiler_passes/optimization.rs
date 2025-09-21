@@ -85,7 +85,7 @@ impl SciRS2OptimizationEngine {
         Ok(StatisticalAnalysisResult {
             mean: 0.5,
             variance: 0.1,
-            correlation_matrix: vec![vec![1.0]],
+            correlationmatrix: vec![vec![1.0]],
             significance_tests: HashMap::new(),
             anomaly_detection: Vec::new(),
             trend_analysis: TrendAnalysis {
@@ -224,7 +224,7 @@ pub struct StatisticalAnalysisResult {
     /// Variance
     pub variance: f64,
     /// Correlation matrix
-    pub correlation_matrix: Vec<Vec<f64>>,
+    pub correlationmatrix: Vec<Vec<f64>>,
     /// Significance test results
     pub significance_tests: HashMap<String, f64>,
     /// Anomaly detection results

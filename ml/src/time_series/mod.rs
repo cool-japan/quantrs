@@ -51,7 +51,7 @@ pub fn financial_config(forecast_horizon: usize) -> QuantumTimeSeriesConfig {
     QuantumTimeSeriesConfig::financial(forecast_horizon)
 }
 
-/// Create IoT sensor forecasting configuration  
+/// Create IoT sensor forecasting configuration
 pub fn iot_config(sampling_rate: usize) -> QuantumTimeSeriesConfig {
     QuantumTimeSeriesConfig::iot_sensor(sampling_rate)
 }

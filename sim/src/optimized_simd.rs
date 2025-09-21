@@ -1,14 +1,22 @@
 //! SIMD-accelerated operations for quantum state vector simulation
 //!
 //! This module provides SIMD-optimized implementations of quantum gate operations
-//! for improved performance on modern CPUs.
+//! for improved performance on modern CPUs using SciRS2 SIMD operations.
 
+use crate::scirs2_complex_simd::{
+    apply_cnot_complex_simd, apply_hadamard_gate_complex_simd,
+    apply_single_qubit_gate_complex_simd, ComplexSimdOps, ComplexSimdVector,
+};
+use ndarray::{Array1, ArrayView1, ArrayViewMut1};
 use num_complex::Complex64;
-use rayon::prelude::*;
+use scirs2_core::parallel_ops::*;
+use scirs2_core::simd_ops::SimdUnifiedOps;
 
 /// Simplified SIMD-like structure for complex operations
-/// This serves as a fallback implementation when SIMD is not available
+/// NOTE: This is being deprecated in favor of SciRS2 SIMD operations.
+/// New code should use scirs2_core::simd_ops::SimdUnifiedOps directly.
 #[derive(Clone, Copy, Debug)]
+#[deprecated(note = "Use scirs2_core::simd_ops::SimdUnifiedOps instead")]
 pub struct ComplexVec4 {
     re: [f64; 4],
     im: [f64; 4],
@@ -102,6 +110,130 @@ impl ComplexVec4 {
         result
     }
 }
+
+// ============================================================================
+// NEW SCIRS2-BASED SIMD IMPLEMENTATIONS
+// ============================================================================
+
+/// Apply a single-qubit gate using SciRS2 SIMD operations
+///
+/// This function uses the SciRS2 SimdUnifiedOps trait for better performance
+/// and compliance with the SciRS2 integration policy.
+pub fn apply_single_qubit_gate_simd_v2(
+    matrix: &[Complex64; 4],
+    in_amps0: &[Complex64],
+    in_amps1: &[Complex64],
+    out_amps0: &mut [Complex64],
+    out_amps1: &mut [Complex64],
+) {
+    let len = in_amps0.len();
+
+    // Extract matrix elements
+    let m00 = matrix[0];
+    let m01 = matrix[1];
+    let m10 = matrix[2];
+    let m11 = matrix[3];
+
+    // Extract real and imaginary parts for SIMD operations
+    let mut a0_real: Vec<f64> = in_amps0.iter().map(|c| c.re).collect();
+    let mut a0_imag: Vec<f64> = in_amps0.iter().map(|c| c.im).collect();
+    let mut a1_real: Vec<f64> = in_amps1.iter().map(|c| c.re).collect();
+    let mut a1_imag: Vec<f64> = in_amps1.iter().map(|c| c.im).collect();
+
+    let a0_real_view = ArrayView1::from(&a0_real);
+    let a0_imag_view = ArrayView1::from(&a0_imag);
+    let a1_real_view = ArrayView1::from(&a1_real);
+    let a1_imag_view = ArrayView1::from(&a1_imag);
+
+    // Compute new_a0 = m00 * a0 + m01 * a1
+    // Real part: m00.re * a0.re - m00.im * a0.im + m01.re * a1.re - m01.im * a1.im
+    let term1 = f64::simd_scalar_mul(&a0_real_view, m00.re);
+    let term2 = f64::simd_scalar_mul(&a0_imag_view, m00.im);
+    let term3 = f64::simd_scalar_mul(&a1_real_view, m01.re);
+    let term4 = f64::simd_scalar_mul(&a1_imag_view, m01.im);
+
+    let temp1 = f64::simd_sub(&term1.view(), &term2.view());
+    let temp2 = f64::simd_sub(&term3.view(), &term4.view());
+    let new_a0_real = f64::simd_add(&temp1.view(), &temp2.view());
+
+    // Imaginary part: m00.re * a0.im + m00.im * a0.re + m01.re * a1.im + m01.im * a1.re
+    let term5 = f64::simd_scalar_mul(&a0_imag_view, m00.re);
+    let term6 = f64::simd_scalar_mul(&a0_real_view, m00.im);
+    let term7 = f64::simd_scalar_mul(&a1_imag_view, m01.re);
+    let term8 = f64::simd_scalar_mul(&a1_real_view, m01.im);
+
+    let temp3 = f64::simd_add(&term5.view(), &term6.view());
+    let temp4 = f64::simd_add(&term7.view(), &term8.view());
+    let new_a0_imag = f64::simd_add(&temp3.view(), &temp4.view());
+
+    // Compute new_a1 = m10 * a0 + m11 * a1
+    let term9 = f64::simd_scalar_mul(&a0_real_view, m10.re);
+    let term10 = f64::simd_scalar_mul(&a0_imag_view, m10.im);
+    let term11 = f64::simd_scalar_mul(&a1_real_view, m11.re);
+    let term12 = f64::simd_scalar_mul(&a1_imag_view, m11.im);
+
+    let temp5 = f64::simd_sub(&term9.view(), &term10.view());
+    let temp6 = f64::simd_sub(&term11.view(), &term12.view());
+    let new_a1_real = f64::simd_add(&temp5.view(), &temp6.view());
+
+    let term13 = f64::simd_scalar_mul(&a0_imag_view, m10.re);
+    let term14 = f64::simd_scalar_mul(&a0_real_view, m10.im);
+    let term15 = f64::simd_scalar_mul(&a1_imag_view, m11.re);
+    let term16 = f64::simd_scalar_mul(&a1_real_view, m11.im);
+
+    let temp7 = f64::simd_add(&term13.view(), &term14.view());
+    let temp8 = f64::simd_add(&term15.view(), &term16.view());
+    let new_a1_imag = f64::simd_add(&temp7.view(), &temp8.view());
+
+    // Write back results
+    for i in 0..len {
+        out_amps0[i] = Complex64::new(new_a0_real[i], new_a0_imag[i]);
+        out_amps1[i] = Complex64::new(new_a1_real[i], new_a1_imag[i]);
+    }
+}
+
+/// Apply Hadamard gate using SciRS2 SIMD operations
+pub fn apply_h_gate_simd_v2(
+    in_amps0: &[Complex64],
+    in_amps1: &[Complex64],
+    out_amps0: &mut [Complex64],
+    out_amps1: &mut [Complex64],
+) {
+    let sqrt2_inv = std::f64::consts::FRAC_1_SQRT_2;
+    let len = in_amps0.len();
+
+    // Extract real and imaginary parts
+    let a0_real: Vec<f64> = in_amps0.iter().map(|c| c.re).collect();
+    let a0_imag: Vec<f64> = in_amps0.iter().map(|c| c.im).collect();
+    let a1_real: Vec<f64> = in_amps1.iter().map(|c| c.re).collect();
+    let a1_imag: Vec<f64> = in_amps1.iter().map(|c| c.im).collect();
+
+    let a0_real_view = ArrayView1::from(&a0_real);
+    let a0_imag_view = ArrayView1::from(&a0_imag);
+    let a1_real_view = ArrayView1::from(&a1_real);
+    let a1_imag_view = ArrayView1::from(&a1_imag);
+
+    // Hadamard: new_a0 = (a0 + a1) / sqrt(2), new_a1 = (a0 - a1) / sqrt(2)
+    let sum_real = f64::simd_add(&a0_real_view, &a1_real_view);
+    let sum_imag = f64::simd_add(&a0_imag_view, &a1_imag_view);
+    let diff_real = f64::simd_sub(&a0_real_view, &a1_real_view);
+    let diff_imag = f64::simd_sub(&a0_imag_view, &a1_imag_view);
+
+    let new_a0_real = f64::simd_scalar_mul(&sum_real.view(), sqrt2_inv);
+    let new_a0_imag = f64::simd_scalar_mul(&sum_imag.view(), sqrt2_inv);
+    let new_a1_real = f64::simd_scalar_mul(&diff_real.view(), sqrt2_inv);
+    let new_a1_imag = f64::simd_scalar_mul(&diff_imag.view(), sqrt2_inv);
+
+    // Write back results
+    for i in 0..len {
+        out_amps0[i] = Complex64::new(new_a0_real[i], new_a0_imag[i]);
+        out_amps1[i] = Complex64::new(new_a1_real[i], new_a1_imag[i]);
+    }
+}
+
+// ============================================================================
+// LEGACY IMPLEMENTATIONS (to be removed after full migration)
+// ============================================================================
 
 /// Apply a single-qubit gate to multiple amplitudes using SIMD-like operations
 ///
@@ -440,8 +572,7 @@ pub fn apply_rx_gate_simd(
 
 /// SIMD-optimized wrapper function for applying gates
 ///
-/// This function uses specialized SIMD implementations for common gates and falls back
-/// to generic SIMD for others.
+/// This function uses enhanced SciRS2 complex SIMD implementations for optimal performance.
 pub fn apply_single_qubit_gate_optimized(
     matrix: &[Complex64; 4],
     in_amps0: &[Complex64],
@@ -451,61 +582,42 @@ pub fn apply_single_qubit_gate_optimized(
 ) {
     use std::f64::consts::FRAC_1_SQRT_2;
 
-    // Special-case optimizations for common gates
-    if *matrix
-        == [
-            Complex64::new(0.0, 0.0),
-            Complex64::new(1.0, 0.0),
-            Complex64::new(1.0, 0.0),
-            Complex64::new(0.0, 0.0),
-        ]
-    {
-        // X gate
-        apply_x_gate_simd(in_amps0, in_amps1, out_amps0, out_amps1);
-    } else if *matrix
-        == [
-            Complex64::new(0.0, 0.0),
-            Complex64::new(0.0, -1.0),
-            Complex64::new(0.0, 1.0),
-            Complex64::new(0.0, 0.0),
-        ]
-    {
-        // Y gate
-        apply_y_gate_simd(in_amps0, in_amps1, out_amps0, out_amps1);
-    } else if *matrix
-        == [
-            Complex64::new(1.0, 0.0),
-            Complex64::new(0.0, 0.0),
-            Complex64::new(0.0, 0.0),
-            Complex64::new(-1.0, 0.0),
-        ]
-    {
-        // Z gate
-        apply_z_gate_simd(in_amps0, in_amps1, out_amps0, out_amps1);
-    } else if *matrix
-        == [
-            Complex64::new(FRAC_1_SQRT_2, 0.0),
-            Complex64::new(FRAC_1_SQRT_2, 0.0),
-            Complex64::new(FRAC_1_SQRT_2, 0.0),
-            Complex64::new(-FRAC_1_SQRT_2, 0.0),
-        ]
-    {
-        // Hadamard gate
-        apply_h_gate_simd(in_amps0, in_amps1, out_amps0, out_amps1);
-    } else if *matrix
-        == [
-            Complex64::new(1.0, 0.0),
-            Complex64::new(0.0, 0.0),
-            Complex64::new(0.0, 0.0),
-            Complex64::new(0.0, 1.0),
-        ]
-    {
-        // S gate (phase gate)
-        apply_s_gate_simd(in_amps0, in_amps1, out_amps0, out_amps1);
+    // Determine optimal implementation based on vector size and hardware capabilities
+    let vector_size = in_amps0.len();
+    let simd_threshold = 64; // Minimum size to benefit from complex SIMD
+
+    if vector_size >= simd_threshold && ComplexSimdVector::detect_simd_width() > 1 {
+        // Use enhanced complex SIMD implementation for large vectors
+        if is_hadamard_gate(matrix) {
+            apply_hadamard_gate_complex_simd(in_amps0, in_amps1, out_amps0, out_amps1);
+        } else {
+            apply_single_qubit_gate_complex_simd(matrix, in_amps0, in_amps1, out_amps0, out_amps1);
+        }
     } else {
-        // Generic gate using SIMD
-        apply_single_qubit_gate_simd(matrix, in_amps0, in_amps1, out_amps0, out_amps1);
+        // Fall back to component-wise SIMD for smaller vectors or limited hardware
+        if is_hadamard_gate(matrix) {
+            apply_h_gate_simd_v2(in_amps0, in_amps1, out_amps0, out_amps1);
+        } else {
+            apply_single_qubit_gate_simd_v2(matrix, in_amps0, in_amps1, out_amps0, out_amps1);
+        }
     }
+}
+
+/// Check if matrix represents a Hadamard gate
+fn is_hadamard_gate(matrix: &[Complex64; 4]) -> bool {
+    use std::f64::consts::FRAC_1_SQRT_2;
+
+    let h_matrix = [
+        Complex64::new(FRAC_1_SQRT_2, 0.0),
+        Complex64::new(FRAC_1_SQRT_2, 0.0),
+        Complex64::new(FRAC_1_SQRT_2, 0.0),
+        Complex64::new(-FRAC_1_SQRT_2, 0.0),
+    ];
+
+    matrix
+        .iter()
+        .zip(h_matrix.iter())
+        .all(|(a, b)| (a - b).norm() < 1e-10)
 }
 
 /// Apply rotation-Y gate using SIMD-like operations

@@ -1186,20 +1186,18 @@ impl ToricCode {
         let n = self.qubit_map.len();
         let mut stabilizers = Vec::new();
 
-        // Vertex stabilizers (X-type)
+        // Vertex stabilizers (X-type) - star operators
         for r in 0..self.rows {
             for c in 0..self.cols {
                 let mut paulis = vec![Pauli::I; n];
 
-                // Four qubits around vertex (with periodic boundary)
-                let coords = [
-                    (2 * r, c),
-                    (2 * r + 1, c),
-                    (2 * ((r + self.rows - 1) % self.rows), c),
-                    (2 * r + 1, (c + self.cols - 1) % self.cols),
-                ];
+                // Four edges around vertex with correct torus indexing
+                let h_edge_below = (2 * r, c);
+                let h_edge_above = (2 * ((r + self.rows - 1) % self.rows), c);
+                let v_edge_left = (2 * r + 1, (c + self.cols - 1) % self.cols);
+                let v_edge_right = (2 * r + 1, c);
 
-                for &coord in &coords {
+                for &coord in &[h_edge_below, h_edge_above, v_edge_left, v_edge_right] {
                     if let Some(&qubit) = self.qubit_map.get(&coord) {
                         paulis[qubit] = Pauli::X;
                     }
@@ -1209,20 +1207,18 @@ impl ToricCode {
             }
         }
 
-        // Plaquette stabilizers (Z-type)
+        // Plaquette stabilizers (Z-type) - face operators
         for r in 0..self.rows {
             for c in 0..self.cols {
                 let mut paulis = vec![Pauli::I; n];
 
-                // Four qubits around plaquette
-                let coords = [
-                    (2 * r, c),
-                    (2 * r, (c + 1) % self.cols),
-                    (2 * r + 1, c),
-                    (2 * ((r + 1) % self.rows), c),
-                ];
+                // Four edges around plaquette with correct indexing
+                let h_edge_top = (2 * r, c);
+                let h_edge_bottom = (2 * ((r + 1) % self.rows), c);
+                let v_edge_left = (2 * r + 1, c);
+                let v_edge_right = (2 * r + 1, (c + 1) % self.cols);
 
-                for &coord in &coords {
+                for &coord in &[h_edge_top, h_edge_bottom, v_edge_left, v_edge_right] {
                     if let Some(&qubit) = self.qubit_map.get(&coord) {
                         paulis[qubit] = Pauli::Z;
                     }
@@ -1238,22 +1234,26 @@ impl ToricCode {
         let mut logical_x2 = vec![Pauli::I; n];
         let mut logical_z2 = vec![Pauli::I; n];
 
-        // Horizontal logical operators
+        // Horizontal logical loop operators
         for c in 0..self.cols {
-            if let Some(&qubit) = self.qubit_map.get(&(0, c)) {
+            // Logical X along horizontal direction (vertical edges)
+            if let Some(&qubit) = self.qubit_map.get(&(1, c)) {
                 logical_x1[qubit] = Pauli::X;
             }
-            if let Some(&qubit) = self.qubit_map.get(&(1, c)) {
+            // Logical Z along horizontal direction (horizontal edges)
+            if let Some(&qubit) = self.qubit_map.get(&(0, c)) {
                 logical_z2[qubit] = Pauli::Z;
             }
         }
 
-        // Vertical logical operators
+        // Vertical logical loop operators
         for r in 0..self.rows {
-            if let Some(&qubit) = self.qubit_map.get(&(2 * r + 1, 0)) {
+            // Logical X along vertical direction (horizontal edges)
+            if let Some(&qubit) = self.qubit_map.get(&(2 * r, 0)) {
                 logical_x2[qubit] = Pauli::X;
             }
-            if let Some(&qubit) = self.qubit_map.get(&(2 * r, 0)) {
+            // Logical Z along vertical direction (vertical edges)
+            if let Some(&qubit) = self.qubit_map.get(&(2 * r + 1, 0)) {
                 logical_z1[qubit] = Pauli::Z;
             }
         }
@@ -1637,7 +1637,7 @@ pub mod real_time {
 
                             // Check latency constraint
                             if cycle_time > config.max_latency {
-                                eprintln!("Warning: Error correction cycle exceeded max latency: {:?} > {:?}", 
+                                eprintln!("Warning: Error correction cycle exceeded max latency: {:?} > {:?}",
                                          cycle_time, config.max_latency);
                             }
 
@@ -3332,7 +3332,7 @@ mod tests {
         assert_eq!(hpc.k, 1); // k = n1*k2 + k1*n2 - k1*k2 = 3*1 + 1*3 - 1*1 = 5 for this example, but simplified
 
         let stab_code = hpc.to_stabilizer_code();
-        assert!(stab_code.stabilizers.len() > 0);
+        assert!(!stab_code.stabilizers.is_empty());
     }
 
     #[test]
@@ -3342,7 +3342,7 @@ mod tests {
         assert_eq!(qldpc.k, 2);
 
         let stab_code = qldpc.to_stabilizer_code();
-        assert!(stab_code.stabilizers.len() > 0);
+        assert!(!stab_code.stabilizers.is_empty());
 
         // Test that stabilizers have bounded weight
         for stabilizer in &stab_code.stabilizers {
@@ -3351,7 +3351,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // TODO: Fix toric code stabilizer commutation issue
     fn test_topological_codes() {
         let toric = ToricCode::new(2, 2);
         assert_eq!(toric.logical_qubits(), 2);
@@ -3531,7 +3530,7 @@ mod tests {
         let x_gate = logical_x.unwrap();
         assert_eq!(x_gate.logical_qubits, vec![0]);
         assert_eq!(x_gate.physical_operations.len(), 1);
-        assert!(x_gate.error_propagation.single_qubit_propagation.len() > 0);
+        assert!(!x_gate.error_propagation.single_qubit_propagation.is_empty());
 
         // Test logical Z gate synthesis
         let logical_z = synthesizer.synthesize_logical_z(&code, 0);
@@ -3618,8 +3617,8 @@ mod tests {
 
         // Check error propagation analysis
         let analysis = &logical_x.error_propagation;
-        assert!(analysis.single_qubit_propagation.len() > 0);
-        assert!(analysis.max_error_weight >= 0);
+        assert!(!analysis.single_qubit_propagation.is_empty());
+        // max_error_weight is usize, so it's always >= 0
         assert_eq!(analysis.fault_tolerance_threshold, 0.01);
 
         // Check that some errors are marked as correctable
@@ -3633,8 +3632,6 @@ mod tests {
 
     #[test]
     fn test_pauli_string_weight() {
-        use crate::error_correction::logical_gates::*;
-
         let identity_string = PauliString::new(vec![Pauli::I, Pauli::I, Pauli::I]);
         assert_eq!(identity_string.weight(), 0);
 
@@ -3680,7 +3677,6 @@ mod tests {
     #[test]
     fn test_adaptive_threshold_estimator() {
         use crate::error_correction::adaptive_threshold::*;
-        use std::time::Duration;
 
         let noise_model = NoiseModel::default();
         let algorithm = ThresholdEstimationAlgorithm::Bayesian {
@@ -3825,7 +3821,7 @@ mod tests {
     fn test_noise_model_updates() {
         use crate::error_correction::adaptive_threshold::*;
 
-        let mut noise_model = NoiseModel::default();
+        let noise_model = NoiseModel::default();
         let algorithm = ThresholdEstimationAlgorithm::Bayesian {
             prior_strength: 1.0,
             update_rate: 0.1,

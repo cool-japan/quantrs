@@ -49,7 +49,7 @@ impl AlgorithmOptimizer {
 
     pub fn optimize_problem(&mut self, problem_data: ProblemData) -> ApplicationResult<OptimizationResult> {
         let problem_id = self.generate_problem_id(&problem_data);
-        
+
         // Check cache first
         if self.config.caching_config.enable_result_caching {
             if let Some(cached_result) = self.result_cache.get(&problem_id) {
@@ -58,7 +58,7 @@ impl AlgorithmOptimizer {
         }
 
         // Decompose problem if enabled and large enough
-        let optimization_result = if self.config.decomposition_config.enable_hierarchical_decomposition 
+        let optimization_result = if self.config.decomposition_config.enable_hierarchical_decomposition
             && self.should_decompose(&problem_data) {
             self.solve_with_decomposition(problem_data)?
         } else if self.config.approximation_config.enable_approximations {
@@ -83,14 +83,14 @@ impl AlgorithmOptimizer {
             ProblemData::MaterialsScience(_) => 1000, // Default size
             ProblemData::DrugDiscovery(_) => 500,     // Default size
         };
-        
+
         problem_size > self.config.decomposition_config.max_subproblem_size
     }
 
     fn solve_with_decomposition(&mut self, problem_data: ProblemData) -> ApplicationResult<OptimizationResult> {
         // Decompose the problem
         let subproblems = self.decomposer.decompose_problem(problem_data)?;
-        
+
         // Solve subproblems
         let mut subresults = Vec::new();
         for subproblem in &subproblems {
@@ -99,7 +99,7 @@ impl AlgorithmOptimizer {
                 subresults.push(subresult);
             }
         }
-        
+
         // Combine results
         self.combine_subproblem_results(subresults)
     }
@@ -107,7 +107,7 @@ impl AlgorithmOptimizer {
     fn solve_with_approximation(&mut self, problem_data: ProblemData) -> ApplicationResult<OptimizationResult> {
         // Select best approximation strategy
         let strategy = self.approximation_engine.select_best_strategy(&problem_data)?;
-        
+
         // Apply approximation
         self.approximation_engine.approximate_solution(problem_data, strategy)
     }
@@ -142,7 +142,7 @@ impl AlgorithmOptimizer {
         // Combine subproblem results into final solution
         let total_objective = subresults.iter().map(|r| r.objective_value).sum::<f64>() / subresults.len() as f64;
         let total_time = subresults.iter().map(|r| r.execution_time).sum();
-        
+
         let mut combined_solution = Vec::new();
         for result in &subresults {
             combined_solution.extend(&result.partial_solution);
@@ -221,7 +221,7 @@ impl ProblemDecomposer {
         // Divide problem into uniform-sized subproblems
         let mut subproblems = Vec::new();
         let chunk_size = self.config.max_subproblem_size;
-        
+
         // Simplified uniform decomposition
         for i in 0..3 { // Create 3 subproblems for demonstration
             let subproblem = Subproblem {
@@ -233,10 +233,10 @@ impl ProblemDecomposer {
             };
             subproblems.push(subproblem);
         }
-        
+
         self.statistics.total_decompositions += 1;
         self.statistics.total_subproblems += subproblems.len() as u64;
-        
+
         Ok(subproblems)
     }
 
@@ -344,11 +344,11 @@ impl ResultCache {
             // Update access statistics
             result.access_count += 1;
             self.statistics.hits += 1;
-            
+
             // Update access order for LRU
             self.access_order.retain(|k| k != key);
             self.access_order.push_front(key.to_string());
-            
+
             Some(result)
         } else {
             self.statistics.misses += 1;
@@ -443,7 +443,7 @@ impl ApproximationEngine {
             strategy_performance: HashMap::new(),
             config,
         };
-        
+
         // Initialize strategy performance tracking
         for strategy in &engine.strategies {
             engine.strategy_performance.insert(
@@ -451,7 +451,7 @@ impl ApproximationEngine {
                 StrategyPerformance::new(strategy.clone())
             );
         }
-        
+
         engine
     }
 
@@ -475,7 +475,7 @@ impl ApproximationEngine {
 
     pub fn approximate_solution(&mut self, problem_data: ProblemData, strategy: ApproximationStrategy) -> ApplicationResult<OptimizationResult> {
         let start_time = Instant::now();
-        
+
         let result = match strategy {
             ApproximationStrategy::Sampling => self.monte_carlo_approximation(problem_data),
             ApproximationStrategy::Clustering => self.clustering_approximation(problem_data),
@@ -485,7 +485,7 @@ impl ApproximationEngine {
         };
 
         let execution_time = start_time.elapsed();
-        
+
         // Update strategy performance
         if let Some(performance) = self.strategy_performance.get_mut(&strategy) {
             performance.usage_count += 1;
@@ -646,13 +646,13 @@ impl StreamingProcessor {
     fn process_window(&mut self, window: &ProcessingWindow) -> ApplicationResult<StreamProcessingResult> {
         let start_time = Instant::now();
         let element_count = window.data.len();
-        
+
         // Process all elements in the window
         let mut results = Vec::new();
         for element in &window.data {
             results.push(element.data.clone());
         }
-        
+
         let processing_time = start_time.elapsed();
         self.statistics.total_windows_processed += 1;
         self.statistics.total_elements_processed += element_count as u64;
@@ -796,7 +796,7 @@ mod tests {
     fn test_algorithm_optimizer_creation() {
         let config = AlgorithmOptimizationConfig::default();
         let optimizer = AlgorithmOptimizer::new(config);
-        
+
         assert!(optimizer.config.enable_algorithmic_improvements);
     }
 
@@ -804,10 +804,10 @@ mod tests {
     fn test_problem_decomposer() {
         let config = DecompositionConfig::default();
         let mut decomposer = ProblemDecomposer::new(config);
-        
+
         let problem_data = ProblemData::Ising(IsingModel::new(100));
         let result = decomposer.decompose_problem(problem_data);
-        
+
         assert!(result.is_ok());
         let subproblems = result.unwrap();
         assert!(!subproblems.is_empty());
@@ -817,10 +817,10 @@ mod tests {
     fn test_result_cache() {
         let config = CachingConfig::default();
         let mut cache = ResultCache::new(config);
-        
+
         let result = OptimizationResult::default();
         cache.put("test_key".to_string(), &result);
-        
+
         let cached = cache.get("test_key");
         assert!(cached.is_some());
     }
@@ -829,10 +829,10 @@ mod tests {
     fn test_approximation_engine() {
         let config = ApproximationConfig::default();
         let mut engine = ApproximationEngine::new(config);
-        
+
         let problem_data = ProblemData::Ising(IsingModel::new(50));
         let strategy = engine.select_best_strategy(&problem_data);
-        
+
         assert!(strategy.is_ok());
         assert_eq!(strategy.unwrap(), ApproximationStrategy::Sampling);
     }
@@ -841,10 +841,10 @@ mod tests {
     fn test_streaming_processor() {
         let config = StreamingConfig::default();
         let mut processor = StreamingProcessor::new(config);
-        
+
         let data = vec![1, 2, 3, 4, 5];
         let result = processor.process_data(data);
-        
+
         assert!(result.is_ok());
         assert_eq!(result.unwrap().processed_elements, 1);
     }

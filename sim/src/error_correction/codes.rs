@@ -4,9 +4,9 @@
 //! including the bit-flip code, phase-flip code, Shor code, and 5-qubit perfect code.
 
 use super::ErrorCorrection;
+use crate::error::{Result, SimulatorError};
 use quantrs2_circuit::builder::Circuit;
 use quantrs2_core::qubit::QubitId;
-use crate::error::{Result, SimulatorError};
 
 /// The 3-qubit bit flip code
 ///
@@ -39,12 +39,12 @@ impl ErrorCorrection for BitFlipCode {
         // Check if we have enough qubits
         if logical_qubits.len() < 1 {
             return Err(SimulatorError::InvalidInput(
-                "BitFlipCode requires at least 1 logical qubit".to_string()
+                "BitFlipCode requires at least 1 logical qubit".to_string(),
             ));
         }
         if ancilla_qubits.len() < 2 {
             return Err(SimulatorError::InvalidInput(
-                "BitFlipCode requires at least 2 ancilla qubits".to_string()
+                "BitFlipCode requires at least 2 ancilla qubits".to_string(),
             ));
         }
 
@@ -71,12 +71,12 @@ impl ErrorCorrection for BitFlipCode {
         // Check if we have enough qubits
         if encoded_qubits.len() < 3 {
             return Err(SimulatorError::InvalidInput(
-                "BitFlipCode requires at least 3 encoded qubits".to_string()
+                "BitFlipCode requires at least 3 encoded qubits".to_string(),
             ));
         }
         if syndrome_qubits.len() < 2 {
             return Err(SimulatorError::InvalidInput(
-                "BitFlipCode requires at least 2 syndrome qubits".to_string()
+                "BitFlipCode requires at least 2 syndrome qubits".to_string(),
             ));
         }
 
@@ -143,12 +143,12 @@ impl ErrorCorrection for PhaseFlipCode {
         // Check if we have enough qubits
         if logical_qubits.len() < 1 {
             return Err(SimulatorError::InvalidInput(
-                "PhaseFlipCode requires at least 1 logical qubit".to_string()
+                "PhaseFlipCode requires at least 1 logical qubit".to_string(),
             ));
         }
         if ancilla_qubits.len() < 2 {
             return Err(SimulatorError::InvalidInput(
-                "PhaseFlipCode requires at least 2 ancilla qubits".to_string()
+                "PhaseFlipCode requires at least 2 ancilla qubits".to_string(),
             ));
         }
 
@@ -184,12 +184,12 @@ impl ErrorCorrection for PhaseFlipCode {
         // Check if we have enough qubits
         if encoded_qubits.len() < 3 {
             return Err(SimulatorError::InvalidInput(
-                "PhaseFlipCode requires at least 3 encoded qubits".to_string()
+                "PhaseFlipCode requires at least 3 encoded qubits".to_string(),
             ));
         }
         if syndrome_qubits.len() < 2 {
             return Err(SimulatorError::InvalidInput(
-                "PhaseFlipCode requires at least 2 syndrome qubits".to_string()
+                "PhaseFlipCode requires at least 2 syndrome qubits".to_string(),
             ));
         }
 
@@ -266,12 +266,12 @@ impl ErrorCorrection for ShorCode {
         // Check if we have enough qubits
         if logical_qubits.len() < 1 {
             return Err(SimulatorError::InvalidInput(
-                "ShorCode requires at least 1 logical qubit".to_string()
+                "ShorCode requires at least 1 logical qubit".to_string(),
             ));
         }
         if ancilla_qubits.len() < 8 {
             return Err(SimulatorError::InvalidInput(
-                "ShorCode requires at least 8 ancilla qubits".to_string()
+                "ShorCode requires at least 8 ancilla qubits".to_string(),
             ));
         }
 
@@ -324,12 +324,12 @@ impl ErrorCorrection for ShorCode {
         // Check if we have enough qubits
         if encoded_qubits.len() < 9 {
             return Err(SimulatorError::InvalidInput(
-                "ShorCode requires at least 9 encoded qubits".to_string()
+                "ShorCode requires at least 9 encoded qubits".to_string(),
             ));
         }
         if syndrome_qubits.len() < 8 {
             return Err(SimulatorError::InvalidInput(
-                "ShorCode requires at least 8 syndrome qubits".to_string()
+                "ShorCode requires at least 8 syndrome qubits".to_string(),
             ));
         }
 
@@ -478,12 +478,12 @@ impl ErrorCorrection for FiveQubitCode {
         // Check if we have enough qubits
         if logical_qubits.len() < 1 {
             return Err(SimulatorError::InvalidInput(
-                "FiveQubitCode requires at least 1 logical qubit".to_string()
+                "FiveQubitCode requires at least 1 logical qubit".to_string(),
             ));
         }
         if ancilla_qubits.len() < 4 {
             return Err(SimulatorError::InvalidInput(
-                "FiveQubitCode requires at least 4 ancilla qubits".to_string()
+                "FiveQubitCode requires at least 4 ancilla qubits".to_string(),
             ));
         }
 
@@ -546,12 +546,12 @@ impl ErrorCorrection for FiveQubitCode {
         // Check if we have enough qubits
         if encoded_qubits.len() < 5 {
             return Err(SimulatorError::InvalidInput(
-                "FiveQubitCode requires at least 5 encoded qubits".to_string()
+                "FiveQubitCode requires at least 5 encoded qubits".to_string(),
             ));
         }
         if syndrome_qubits.len() < 4 {
             return Err(SimulatorError::InvalidInput(
-                "FiveQubitCode requires at least 4 syndrome qubits".to_string()
+                "FiveQubitCode requires at least 4 syndrome qubits".to_string(),
             ));
         }
 
@@ -700,9 +700,12 @@ impl FiveQubitCode {
                 circuit.cz(syndrome_qubits[0], target).unwrap();
                 circuit.cx(syndrome_qubits[0], target).unwrap();
             }
-            _ => return Err(SimulatorError::UnsupportedOperation(
-                format!("Unsupported error type: {}", error_type)
-            )),
+            _ => {
+                return Err(SimulatorError::UnsupportedOperation(format!(
+                    "Unsupported error type: {}",
+                    error_type
+                )))
+            }
         }
 
         // Undo the combination of syndrome bits
@@ -716,7 +719,7 @@ impl FiveQubitCode {
                 circuit.x(syndrome_qubits[i]).unwrap();
             }
         }
-        
+
         Ok(())
     }
 }
