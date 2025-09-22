@@ -14,7 +14,7 @@ categories = ["mathematics", "science"]
 [dependencies]
 serde = { version = "1.0", optional = true, features = ["derive"] }
 quantrs2-symengine-sys = { path = "../quantrs2-symengine-sys", version = "0.1.0-beta.1" }
-thiserror = "1.0"
+thiserror = "2.0"
 num-traits = "0.2"
 num-complex = "0.4"
 
